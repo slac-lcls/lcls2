@@ -71,13 +71,6 @@ const geometry_t& CalibPars::geometry_str(Query& q) {
   return _calibparsdb->get_string(q);
 }
 
-/*
-const geometry_t& CalibPars::geometry(Query& q) {
-  _default_msg("geometry(...)");
-  return _geometry;
-}
-*/
-
 geometry::GeometryAccess* CalibPars::geometryAccess(Query& q) {
   if(!_geometryaccess) {
       std::stringstream ss(geometry_str(q));
@@ -90,23 +83,23 @@ void CalibPars::deleteGeometryAccess() {
   if(_geometryaccess) delete _geometryaccess;
 }
 
-//NDArray<const pixel_coord_t>& CalibPars::coords(Query& q) {
-//  _default_msg("coords(...)");
-//  return _pixel_coords;
-//}
-
 NDArray<const pixel_coord_t>& CalibPars::coords(Query& q) {
-  SG::AXIS axis = (SG::AXIS)stoi(q.parameter(q.AXISNUM));
+  SG::AXIS axis = (SG::AXIS)q.parameter_uint(q.AXISNUM);
   return *(geometryAccess(q) -> get_pixel_coords(axis));
 }
 
 NDArray<const pixel_idx_t>& CalibPars::indexes(Query& q) {
-  SG::AXIS axis = (SG::AXIS)stoi(q.parameter(q.AXISNUM));
+  SG::AXIS axis = (SG::AXIS)q.parameter_uint(q.AXISNUM);
   return *(geometryAccess(q) -> get_pixel_coord_indexes(axis));
 }
 
 NDArray<const pixel_area_t>& CalibPars::pixel_area(Query& q) {
   return *(geometryAccess(q) -> get_pixel_areas());
+}
+
+NDArray<const pixel_mask_t>& CalibPars::mask_geo(Query& q) {
+  unsigned mbits = q.parameter_uint(q.MASKBITSGEO);
+  return *(geometryAccess(q) -> get_pixel_mask(mbits));
 }
 
 // ============== TODO ============== 
@@ -124,14 +117,9 @@ NDArray<const pixel_size_t>& CalibPars::image_yaxis(Query& q) {
 NDArray<const pixel_size_t>& CalibPars::pixel_size(Query& q) {
   _default_msg("image_size(...)");
   return _pixel_size;
-  //SG::AXIS axis = (SG::AXIS)stoi(q.parameter(q.AXISNUM));
+  //SG::AXIS axis = (SG::AXIS)q.parameter_uint(q.AXISNUM);
   //return *(geometryAccess(q) -> get_pixel_size(axis));
 }
-
-//NDArray<const pixel_mask_t>& CalibPars::pixel_mask(Query& q) {
-//  unsigned mbits = (unsigned)stoi(q.parameter(q.MASKBITS));
-//  return *(geometryAccess(q) -> get_pixel_mask(mbits));/
-//}
 
 /* ==============
 

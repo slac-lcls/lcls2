@@ -14,6 +14,7 @@ using namespace std;
 //using namespace geometry;
 
 typedef geometry::GeometryObject::SG SG;
+typedef SG::pixel_mask_t pixel_mask_t;
 
 struct timespec start, stop;
 int status;
@@ -44,7 +45,8 @@ void test_file_to_stringstream()
   cout << "\n==test_file_to_stringstream fname: " << fname << " \n";
 
   std::stringstream ss;
-  geometry::file_to_stringstream(fname, ss);
+  //geometry::file_to_stringstream(fname, ss);
+  geometry::GeometryAccess::file_to_stringstream(fname, ss);
   cout << "string:\n" << ss.str() <<  "\n";
 }
 
@@ -105,7 +107,7 @@ void test_geo_get_pixel_coords_as_ndarray()
 
   //geometry::GeometryAccess geo(fname);
   std::stringstream ss;
-  geometry::file_to_stringstream(fname, ss);
+  geometry::GeometryAccess::file_to_stringstream(fname, ss);
   geometry::GeometryAccess geo(ss);
 
   psalg::NDArray<const double>* pxarr = geo.get_pixel_coords(SG::AXIS_X);
@@ -136,11 +138,11 @@ void test_geo_get_misc()
   const double Zplane1 = 1000000; //[um] or 0
   const double Zplane2 = 100000; //[um] or 0
 
-  psalg::NDArray<const double>*   areas = geo.get_pixel_areas();
-  psalg::NDArray<const int>*      mask  = geo.get_pixel_mask(0377);
-  psalg::NDArray<const double>*   xatz  = geo.get_pixel_coords_at_z(Zplane1, SG::AXIS_X);
-  psalg::NDArray<const unsigned>* ix    = geo.get_pixel_coord_indexes(SG::AXIS_X, pix_scale_size_um, xy0_off_pix_v1);
-  psalg::NDArray<const unsigned>* ixatz = geo.get_pixel_inds_at_z(Zplane2, SG::AXIS_X, pix_scale_size_um, xy0_off_pix_v2);
+  psalg::NDArray<const double>*       areas = geo.get_pixel_areas();
+  psalg::NDArray<const pixel_mask_t>* mask  = geo.get_pixel_mask(0377);
+  psalg::NDArray<const double>*       xatz  = geo.get_pixel_coords_at_z(Zplane1, SG::AXIS_X);
+  psalg::NDArray<const unsigned>*     ix    = geo.get_pixel_coord_indexes(SG::AXIS_X, pix_scale_size_um, xy0_off_pix_v1);
+  psalg::NDArray<const unsigned>*     ixatz = geo.get_pixel_inds_at_z(Zplane2, SG::AXIS_X, pix_scale_size_um, xy0_off_pix_v2);
 
   cout << "  areas: " << *areas << '\n';
   cout << "  mask : " << *mask  << '\n';

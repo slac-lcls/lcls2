@@ -43,9 +43,9 @@ public:
   virtual const NDArray<pixel_mask_t>&    mask_from_status (Query&);
   virtual const NDArray<pixel_mask_t>&    mask_edges       (Query&);//, const size_t& nnbrs=8);
   virtual const NDArray<pixel_mask_t>&    mask_neighbors   (Query&);//, const size_t& nrows=1, const size_t& ncols=1);
-  virtual const NDArray<pixel_mask_t>&    mask_bits        (Query&);//, const size_t& mbits=0177777);
+  virtual const NDArray<pixel_mask_t>&    mask_bits        (Query&);// q.MASKBITS
   virtual const NDArray<pixel_mask_t>&    mask             (Query&);//, const bool& calib=true,
-							                  //  const bool& sataus=true,
+							                  //  const bool& status=true,
                                                                           //  const bool& edges=true,
 							                  //  const bool& neighbors=true);
 
@@ -56,15 +56,14 @@ public:
   //virtual const geometry_t& geometry(Query&);
   virtual const geometry_t& geometry_str(Query&); // returns geometry calibration file content as string
 
-  virtual NDArray<const pixel_coord_t>& coords     (Query&); //, const SG::AXIS axis=SG::AXIS_X);
-  virtual NDArray<const pixel_idx_t>&   indexes    (Query&); //, const SG::AXIS axis=SG::AXIS_X);
-  virtual NDArray<const pixel_size_t>&  pixel_size (Query&); //, const SG::AXIS axis=SG::AXIS_X);
+  virtual NDArray<const pixel_coord_t>& coords     (Query&); // q.AXISNUM
+  virtual NDArray<const pixel_idx_t>&   indexes    (Query&); // q.AXISNUM
+  virtual NDArray<const pixel_size_t>&  pixel_size (Query&); // q.AXISNUM
   virtual NDArray<const pixel_area_t>&  pixel_area (Query&);
+  virtual NDArray<const pixel_mask_t>&  mask_geo   (Query&); // q.MASKBITSGEO
 
   virtual NDArray<const pixel_size_t>&  image_xaxis(Query&);
   virtual NDArray<const pixel_size_t>&  image_yaxis(Query&);
-
-  //const NDArray<const pixel_coord_t>& CalibPars::coords(Query& q, const SG::AXIS axis=SG::AXIS_X) {
 
  //-------------------
 

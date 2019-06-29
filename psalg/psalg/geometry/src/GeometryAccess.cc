@@ -1,37 +1,19 @@
 //-------------------
 
+#include "psalg/geometry/GeometryAccess.hh"
+
 #include <iostream> // cout
 #include <fstream>  // ifstream 
 #include <iomanip>  // setw, setfill
-
-#include "psalg/geometry/GeometryAccess.hh"
-#include "psalg/geometry/GeometryObject.hh"
 
 //-------------------
 
 namespace geometry {
 
-//-------------------
-
-void file_to_stringstream(const std::string& fname, std::stringstream& ss)
-{
-
-  std::ifstream f(fname.c_str());
-
-  if(f.good()) {MSG(DEBUG, "file_to_stringstream(...): " << fname);}
-  else         {MSG(ERROR, "File " << fname << " does not exist");}
-
-  ss << f.rdbuf();
-  f.close();
-  //return ss.str();
-}
-
-//std::ostream& operator<<(std::ostream& out, const CalibFile& cf)
-
-//-------------------
-
 typedef GeometryAccess::image_t image_t;
+typedef GeometryAccess::pixel_mask_t pixel_mask_t;
 
+//-------------------
 
 GeometryAccess::GeometryAccess(const std::string& path)
   : m_path(path)
@@ -113,7 +95,8 @@ void GeometryAccess::load_pars_from_file(const std::string& fname)
   if(m_path.empty())  MSG(DEBUG, "geometry file name is not specified, object is not initialized");
 
   std::stringstream ss;
-  geometry::file_to_stringstream(m_path, ss);
+  //geometry::file_to_stringstream(m_path, ss);
+  file_to_stringstream(m_path, ss);
   //cout << "string:\n" << ss.str() <<  "\n";
 
   load_pars_from_stringstream(ss);
@@ -435,11 +418,11 @@ GeometryAccess::get_pixel_areas(const double*& A,
 //-------------------
 
 void
-GeometryAccess::get_pixel_mask(const int*& mask, 
+GeometryAccess::get_pixel_mask(const pixel_mask_t*& mask,
 			       unsigned& size,
-                               const std::string& oname, 
-                               const unsigned& oindex,
-                               const unsigned& mbits)
+			       const std::string& oname,
+			       const unsigned& oindex,
+			       const unsigned& mbits)
 {
   //cout << "GeometryAccess::get_pixel_mask(): mbits =" << mbits << '\n';   
 
@@ -454,7 +437,7 @@ GeometryAccess::get_pixel_mask(const int*& mask,
 //-------------------
 
 double
-GeometryAccess::get_pixel_scale_size(const std::string& oname, 
+GeometryAccess::get_pixel_scale_size(const std::string& oname,
                                      const unsigned& oindex)
 {
   GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
@@ -833,18 +816,35 @@ GeometryAccess::get_pixel_areas()
     shape_t sh[1] = {size,};
     return new NDArray<const double>(sh, 1, A);
 }
+
 //-------------------
 
-NDArray<const int>* 
-GeometryAccess::get_pixel_mask(const unsigned mbits)
+NDArray<const pixel_mask_t>*
+GeometryAccess::get_pixel_mask(const unsigned& mbits)
 {
-    const int* mask;
+    const pixel_mask_t* mask;
     unsigned size;
     get_pixel_mask(mask, size, std::string(), 0, mbits);
     //cout << "XXX get_pixel_mask: " << size << '\n';
     shape_t sh[1] = {size,};
-    return new NDArray<const int>(sh, 1, mask);
+    return new NDArray<const pixel_mask_t>(sh, 1, mask);
 }
+
+//-------------------
+
+void GeometryAccess::file_to_stringstream(const std::string& fname, std::stringstream& ss)
+{
+  std::ifstream f(fname.c_str());
+
+  if(f.good()) {MSG(DEBUG, "file_to_stringstream(...): " << fname);}
+  else         {MSG(ERROR, "File " << fname << " does not exist");}
+
+  ss << f.rdbuf();
+  f.close();
+  //return ss.str();
+}
+
+//std::ostream& operator<<(std::ostream& out, const CalibFile& cf)
 
 //-------------------
 

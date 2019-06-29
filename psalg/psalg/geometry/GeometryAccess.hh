@@ -7,9 +7,10 @@
 //#include <vector> // in GeometryObject.hh
 #include <map>
 #include <sstream>  // stringstream
+#include <stdint.h>  // uint8_t, uint16_t, uint32_t, etc.
 
 #include "psalg/geometry/GeometryObject.hh"
-//#include "psalg/geometry/SegmentGeometry.hh" // AXIS
+//#include "psalg/geometry/SegGeometry.hh"
 
 #include "psalg/calib/NDArray.hh"
 
@@ -75,7 +76,7 @@ namespace geometry {
  *        geometry.get_pixel_areas(A,size);
  * 
  *    // Access pixel mask:
- *        const int* mask;
+ *        const pixel_mask_t* mask;
  *        unsigned   size;
  *        unsigned   mbits=0377; // 1-edges; 2-wide central cols; 4-non-bound; 8-non-bound neighbours
  *        geometry.get_pixel_mask(A, size, std::string(), 0, mbits);
@@ -141,16 +142,14 @@ namespace geometry {
 
 using namespace psalg;
 
-
-void file_to_stringstream(const std::string& fname, std::stringstream& ss);
-
-class GeometryAccess  {
-
-typedef psalg::types::shape_t shape_t;
-typedef GeometryObject::pGO pGO;
-typedef GeometryObject::SG SG;
-
+class GeometryAccess {
 public:
+
+  typedef psalg::types::shape_t shape_t;
+  typedef GeometryObject::pGO pGO;
+  typedef GeometryObject::SG SG;
+  typedef SG::pixel_mask_t pixel_mask_t;
+  //typedef uint16_t pixel_mask_t;
 
   typedef double image_t;
 
@@ -248,13 +247,13 @@ public:
    *              +4-non-bounded, 
    *              +8-non-bounded neighbours.
    */
-  void  get_pixel_mask(const int*& mask, 
-                       unsigned& size,
-		       const std::string& oname = std::string(),
- 		       const unsigned& oindex = 0,
-		       const unsigned& mbits = 0377);
+  void get_pixel_mask(const pixel_mask_t*& mask, 
+                      unsigned& size,
+		      const std::string& oname = std::string(),
+ 		      const unsigned& oindex = 0,
+		      const unsigned& mbits = 0377);
 
-  NDArray<const int>* get_pixel_mask(const unsigned mbits = 0377);
+  NDArray<const pixel_mask_t>* get_pixel_mask(const unsigned& mbits=0377);
 
   /// Returns pixel scale size for specified geometry object through its children segment
   /**
@@ -406,7 +405,9 @@ public:
                 const double& dt_z = 0 
 		);
 
-protected:
+  static void file_to_stringstream(const std::string& fname, std::stringstream& ss);
+
+  //protected:
 
 private:
 

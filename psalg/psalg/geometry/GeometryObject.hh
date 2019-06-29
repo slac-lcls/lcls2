@@ -116,7 +116,8 @@ public:
 
   typedef geometry::SegGeometry SG;
   typedef GeometryObject* pGO;
-  //typedef boost::shared_ptr<GeometryObject> pGO;
+  typedef SG::pixel_mask_t pixel_mask_t;
+
 
   //static constexpr double DEG_TO_RAD = 3.141592653589793238463 / 180;
 
@@ -226,7 +227,7 @@ public:
    *              + 4 - mask non-bounded pixels,
    *              + 8 - mask nearest neighbours of nonbonded pixels.
    */
-  void get_pixel_mask(const int*& mask, unsigned& size, const unsigned& mbits = 0377);
+  void get_pixel_mask(const pixel_mask_t*& mask, unsigned& size, const unsigned& mbits = 0377);
 
   /// Returns size of geometry object array - number of pixels
   unsigned get_size_geo_array();
@@ -309,7 +310,7 @@ private:
   double*  p_yarr;
   double*  p_zarr;
   double*  p_aarr; // pixel area array
-  int*     p_marr; // pixel mask array
+  pixel_mask_t* p_marr; // pixel mask array
 
   void transform_geo_coord_arrays(const double* X, 
                                   const double* Y,  

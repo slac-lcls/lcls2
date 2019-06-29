@@ -66,63 +66,11 @@ namespace calib {
           << sep << "RUN: "        << parameter(RUN)
           << sep << "TIME_SEC: "   << parameter(TIME_SEC)
 	  << sep << "VERSION: "    << parameter(VERSION)
-          << sep << "AXISNUM: "    << parameter(AXISNUM);
+          << sep << "AXISNUM: "    << parameter(AXISNUM)
+          << sep << "MASKBITS: "   << parameter(MASKBITS)
+          << sep << "MASKBITSGEO: "<< parameter(MASKBITSGEO);
      return ss.str();
   }
-
-//-------------------
-
-  void Query::set_paremeters(const char* det, const char* exp, const char* ctype,
-			     const unsigned run, const unsigned time_sec, const char* version, const AXIS axis) {
-
-    _qmap[DETECTOR]   = std::string(det);
-    _qmap[EXPERIMENT] = _string_from_char(exp);
-    _qmap[CALIBTYPE]  = _string_from_char(ctype);
-    _qmap[RUN]        = _string_from_uint(run);
-    _qmap[TIME_SEC]   = _string_from_uint(time_sec);
-    _qmap[VERSION]    = _string_from_char(version);
-    _qmap[AXISNUM]    = _string_from_uint(axis);
-
-    _constr_type = QUERY_PARS;
-  }
-
-//-------------------
-
-  void Query::set_paremeter(const QUERY_PAR t, const char* p) {
-    _qmap[t] = std::string(p);
-  } 
-
-//-------------------
-
-  const std::string Query::parameter_default(const QUERY_PAR t) {    
-    switch(t) {
-    case DETECTOR  : return "NULL";
-    case EXPERIMENT: return "NULL";
-    case CALIBTYPE : return "NULL";
-    case RUN       : return "0";   
-    case TIME_SEC  : return "0";   
-    case VERSION   : return "NULL";
-    case AXISNUM   : return "0";   
-    default        : return "NULL";
-    }
-  }
- 
-//-------------------
-
-  //bool Query::is_set(const QUERY_PAR t) {return _qmap.find(t) != _qmap.end();}
-  bool Query::is_set(const QUERY_PAR t) {return _qmap.count(t) > 0;}
-
-//-------------------
-
-  const std::string Query::parameter(const QUERY_PAR t) {
-    return is_set(t) ? _qmap[t] : parameter_default(t);
-  } 
-
-//-------------------
-
-  void Query::set_calibtype(const CALIB_TYPE& ctype) {
-    _qmap[CALIBTYPE] = std::string(name_of_calibtype(ctype));
-  } 
 
 //-------------------
 
@@ -138,7 +86,86 @@ namespace calib {
       _qmap[TIME_SEC]   = "0";
       _qmap[VERSION]    = "NULL";
       _qmap[AXISNUM]    = "0";   
+      _qmap[MASKBITS]   = "0377";   
+      _qmap[MASKBITSGEO]= "0377";   
     }
+  } 
+
+//-------------------
+
+  void Query::set_paremeters(const char* det, const char* exp, const char* ctype,
+			     const unsigned run, const unsigned time_sec, const char* version,
+                             const AXIS axis, const unsigned mbits, const unsigned mbitsgeo) {
+
+    _qmap[DETECTOR]   = std::string(det);
+    _qmap[EXPERIMENT] = _string_from_char(exp);
+    _qmap[CALIBTYPE]  = _string_from_char(ctype);
+    _qmap[RUN]        = _string_from_uint(run);
+    _qmap[TIME_SEC]   = _string_from_uint(time_sec);
+    _qmap[VERSION]    = _string_from_char(version);
+    _qmap[AXISNUM]    = _string_from_uint(axis);
+    _qmap[MASKBITS]   = _string_from_uint(mbits);
+    _qmap[MASKBITSGEO]= _string_from_uint(mbitsgeo);
+
+    _constr_type = QUERY_PARS;
+  }
+
+//-------------------
+
+  void Query::set_paremeter(const QUERY_PAR t, const char* p) {
+    _qmap[t] = std::string(p);
+  } 
+
+//-------------------
+
+  void Query::set_calibtype(const CALIB_TYPE& ctype) {
+    _qmap[CALIBTYPE] = std::string(name_of_calibtype(ctype));
+  } 
+
+//-------------------
+
+  bool Query::is_set(const QUERY_PAR t) {return _qmap.find(t) != _qmap.end();}
+  //bool Query::is_set(const QUERY_PAR t) {return _qmap.count(t) > 0;}
+
+//-------------------
+
+  std::string Query::parameter_default(const QUERY_PAR t) {    
+    switch(t) {
+    case DETECTOR    : return "NULL";
+    case EXPERIMENT  : return "NULL";
+    case CALIBTYPE   : return "NULL";
+    case RUN         : return "0";   
+    case TIME_SEC    : return "0";   
+    case VERSION     : return "NULL";
+    case AXISNUM     : return "0";   
+    case MASKBITS    : return "0377";   
+    case MASKBITSGEO : return "0377";   
+    default          : return "NULL";
+    }
+  }
+ 
+//-------------------
+
+  std::string Query::parameter(const QUERY_PAR t) {
+    return is_set(t) ? _qmap[t] : parameter_default(t);
+  } 
+
+//-------------------
+
+  int Query::parameter_int(const QUERY_PAR t) {
+    return stoi(parameter(t));
+  } 
+
+//-------------------
+
+  unsigned Query::parameter_uint(const QUERY_PAR t) {
+    return (unsigned)stoi(parameter(t));
+  } 
+
+//-------------------
+
+  uint16_t Query::parameter_uint16(const QUERY_PAR t) {
+    return (uint16_t)stoi(parameter(t));
   } 
 
 //-------------------

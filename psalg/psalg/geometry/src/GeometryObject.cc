@@ -249,7 +249,7 @@ void GeometryObject::get_pixel_areas(const double*& areas, unsigned& size)
 
 //-------------------
 
-void GeometryObject::get_pixel_mask(const int*& mask, unsigned& size, const unsigned& mbits)
+void GeometryObject::get_pixel_mask(const pixel_mask_t*& mask, unsigned& size, const unsigned& mbits)
 {
   if(mbits != m_mbits or p_marr==0) {m_mbits = mbits; evaluate_pixel_coords();}
   mask = p_marr;
@@ -274,7 +274,7 @@ void GeometryObject::evaluate_pixel_coords(const bool do_tilt, const bool do_eva
     p_yarr = new double [m_size];
     p_zarr = new double [m_size];
     p_aarr = new double [m_size];
-    p_marr = new int    [m_size];
+    p_marr = new pixel_mask_t[m_size];
   }
 
   if(m_seggeom) {
@@ -283,11 +283,11 @@ void GeometryObject::evaluate_pixel_coords(const bool do_tilt, const bool do_eva
        const double* y_arr = m_seggeom -> pixel_coord_array(SG::AXIS_Y);
        const double* z_arr = m_seggeom -> pixel_coord_array(SG::AXIS_Z);
        const double* a_arr = m_seggeom -> pixel_area_array();
-       const int*    m_arr = m_seggeom -> pixel_mask_array(m_mbits);
+       const pixel_mask_t* m_arr = m_seggeom -> pixel_mask_array(m_mbits);
 
        transform_geo_coord_arrays(x_arr, y_arr, z_arr, m_size, p_xarr, p_yarr, p_zarr, do_tilt);
        std::memcpy(&p_aarr[0], a_arr, m_size*sizeof(double));
-       std::memcpy(&p_marr[0], m_arr, m_size*sizeof(int));
+       std::memcpy(&p_marr[0], m_arr, m_size*sizeof(pixel_mask_t));
        return;
   }
 
@@ -308,7 +308,7 @@ void GeometryObject::evaluate_pixel_coords(const bool do_tilt, const bool do_eva
     const double* pYch;
     const double* pZch; 
     const double* pAch; 
-    const int*    pMch; 
+    const pixel_mask_t* pMch; 
     unsigned      sizech;
 
     (*it)->get_pixel_coords(pXch, pYch, pZch, sizech, do_tilt, do_eval);       
@@ -318,7 +318,7 @@ void GeometryObject::evaluate_pixel_coords(const bool do_tilt, const bool do_eva
     std::memcpy(&p_aarr[ibase], pAch, sizech*sizeof(double));
 
     (*it)->get_pixel_mask(pMch, sizech, m_mbits);
-    std::memcpy(&p_marr[ibase], pMch, sizech*sizeof(int));
+    std::memcpy(&p_marr[ibase], pMch, sizech*sizeof(pixel_mask_t));
 
     ibase += sizech;
 
@@ -333,7 +333,7 @@ void GeometryObject::evaluate_pixel_coords(const bool do_tilt, const bool do_eva
     two2x1ToData2x2<double>(p_yarr);
     two2x1ToData2x2<double>(p_zarr);
     two2x1ToData2x2<double>(p_aarr);
-    two2x1ToData2x2<int>   (p_marr);
+    two2x1ToData2x2<pixel_mask_t>(p_marr);
   }
 }
 

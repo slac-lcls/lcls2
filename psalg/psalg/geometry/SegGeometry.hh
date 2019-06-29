@@ -4,6 +4,7 @@
 //-------------------
 
 #include <cstddef>  // for size_t
+#include <stdint.h>  // uint8_t, uint16_t, uint32_t, etc.
 
 using namespace std;
 
@@ -48,7 +49,8 @@ public:
  
   typedef double pixel_coord_t;
   typedef double pixel_area_t;
-  typedef int    pixel_mask_t;
+  typedef uint16_t pixel_mask_t;
+  //typedef int pixel_mask_t;
   //typedef int    pixel_index_t;
 
   // Destructor

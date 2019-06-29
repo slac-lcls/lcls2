@@ -206,7 +206,7 @@ void test_getCalibPars_geometry_misc(const char* detname = "undefined") { //"epi
   //const string& s = cp->geometry_str(q);
   //std::cout << "cp->geometry_str(q):\n" << cp->geometry_str(q) << '\n'; 
 
-  NDArray<const int>* p_mask = geo -> get_pixel_mask(0377);
+  NDArray<const uint16_t>* p_mask = geo -> get_pixel_mask(0377);
   std::cout << "\n== geo -> get_pixel_mask(0377) : " << *p_mask; 
 
   NDArray<const pixel_coord_t>& coords = cp->coords(q);
@@ -216,7 +216,11 @@ void test_getCalibPars_geometry_misc(const char* detname = "undefined") { //"epi
   std::cout << "\n== cp->indexes(q)   : " << indexes; 
 
   NDArray<const pixel_area_t>& area = cp->pixel_area(q);
-  std::cout << "\n== cp->pixel_area(q): " << area << "\n\n"; 
+  std::cout << "\n== cp->pixel_area(q): " << area; 
+
+  q.set_paremeter(Query::MASKBITSGEO, "0377");
+  NDArray<const pixel_mask_t>& mask = cp->mask_geo(q);
+  std::cout << "\n== cp->mask_geo(q): " << mask << "\n\n"; 
 
   delete cp;
 }
