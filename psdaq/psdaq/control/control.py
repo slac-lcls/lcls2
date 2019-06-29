@@ -28,7 +28,7 @@ class DaqControl:
         'ConfigUpdate'      : 6,
         'BeginRecord'       : 7,
         'EndRecord'         : 8,
-        'EpicsUpdate'       : 9,
+        'SlowUpdate'        : 9,
         'L1Accept'          : 12,
     }
 
@@ -36,7 +36,7 @@ class DaqControl:
                    'connect', 'disconnect',
                    'configure', 'unconfigure',
                    'enable', 'disable',
-                   'configupdate', 'epicsupdate', 'reset']
+                   'configupdate', 'slowupdate', 'reset']
 
     states = [
         'reset',
@@ -487,8 +487,6 @@ class CollectionManager():
                                            conditions='condition_disable')
         self.collectMachine.add_transition('configupdate', 'paused', 'paused',
                                            conditions='condition_configupdate')
-        self.collectMachine.add_transition('epicsupdate', 'running', 'running',
-                                           conditions='condition_epicsupdate')
 
         logging.info('Initial state = %s' % self.state)
 
@@ -581,6 +579,9 @@ class CollectionManager():
             self.trigger(key)
         except MachineError as ex:
             logging.debug('MachineError: %s' % ex)
+            trigError = str(ex)
+        except AttributeError as ex:
+            logging.debug('AttributeError: %s' % ex)
             trigError = str(ex)
         else:
             # check for error: trigger failed to change the state
@@ -764,12 +765,6 @@ class CollectionManager():
         # TODO
         self.lastTransition = 'configupdate'
         logging.debug('condition_configupdate() returning True')
-        return True
-
-    def condition_epicsupdate(self):
-        # TODO
-        self.lastTransition = 'epicsupdate'
-        logging.debug('condition_epicsupdate() returning True')
         return True
 
     def condition_connect(self):

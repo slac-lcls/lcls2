@@ -14,7 +14,7 @@ const char* TransitionId::name(TransitionId::Value id)
         "ConfigUpdate",
         "BeginRecord",
         "EndRecord",
-        "EpicsUpdate",
+        "SlowUpdate",
         "Unused_10",
         "Unused_11",
         "L1Accept",
