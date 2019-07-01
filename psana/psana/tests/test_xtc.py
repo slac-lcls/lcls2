@@ -1,6 +1,6 @@
 import os, shutil
 import subprocess
-import sys, os
+import sys
 import pytest
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 from xtc import xtc
@@ -9,6 +9,7 @@ from det import det
 import hashlib
 from psana import DataSource
 import dgramCreate as dc
+from setup_input_files import setup_input_files
 
 
 class Test:
@@ -39,31 +40,8 @@ class Test:
     def test_xtcdata(self, xtc_file):
         xtc(xtc_file, nsegments=2)
 
-    def setup_input_files(self, tmp_path):
-        xtc_dir = tmp_path / '.tmp'
-        xtc_dir.mkdir()
-        smd_dir = xtc_dir / 'smalldata'
-        smd_dir.mkdir()
-
-        # segments 0,1 and "counting" timestamps for event-building
-        s01file = str(xtc_dir / 'data-r0001-s00.xtc2')
-        subprocess.call(['xtcwriter','-f',s01file,'-t'])
-        subprocess.call(['smdwriter','-f',s01file,'-o',str(smd_dir / 'data-r0001-s00.smd.xtc2')])
-
-        # segments 2,3
-        s23file = str(xtc_dir / 'data-r0001-s01.xtc2')
-        subprocess.call(['xtcwriter','-f',s23file,'-t','-s','2',])
-        subprocess.call(['smdwriter','-f',s23file,'-o',str(smd_dir / 'data-r0001-s01.smd.xtc2')])
-
-        subprocess.call(['epicswriter','-f',s01file,'-o',str(xtc_dir / 'data-r0001-s02.xtc2')])
-        # Epics data with streamId 2
-        subprocess.call(['epicswriter','-f',s01file,'-o',str(xtc_dir / 'data-r0001-s03.xtc2'), '-s', '2'])
-        
-        shutil.copy(s01file,str(smd_dir / 'data-r0002-s00.smd.xtc2'))
-        shutil.copy(s23file,str(smd_dir / 'data-r0002-s01.smd.xtc2'))
-
     def test_serial(self, tmp_path):
-        self.setup_input_files(tmp_path)
+        setup_input_files(tmp_path)
 
         env = dict(list(os.environ.items()) + [
             ('TEST_XTC_DIR', str(tmp_path)),
@@ -83,7 +61,7 @@ class Test:
 
     @pytest.mark.skipif(sys.platform == 'darwin', reason="psana with legion not supported on mac")
     def test_legion(self, tmp_path):
-        self.setup_input_files(tmp_path)
+        setup_input_files(tmp_path)
 
         # Legion script mode.
         env = dict(list(os.environ.items()) + [
@@ -103,7 +81,7 @@ class Test:
 
     def test_run_pickle(self, tmp_path):
         # Test that run is pickleable
-        self.setup_input_files(tmp_path)
+        setup_input_files(tmp_path)
 
         import run_pickle
         run_pickle.test_run_pickle(tmp_path)
@@ -111,7 +89,7 @@ class Test:
     @pytest.mark.skipif(sys.platform == 'darwin', reason="psana with legion not supported on mac")
     def test_legion_pickle(self, tmp_path):
         # Again, in Legion
-        self.setup_input_files(tmp_path)
+        setup_input_files(tmp_path)
 
         python_path = os.environ.get('PYTHONPATH', '').split(':')
         python_path.append(os.path.dirname(os.path.realpath(__file__)))
