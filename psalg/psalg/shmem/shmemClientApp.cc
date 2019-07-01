@@ -1,3 +1,5 @@
+// The following is needed to get PRIu16 and friends defined in c++ files
+#define __STDC_FORMAT_MACROS
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
