@@ -24,16 +24,16 @@ namespace geometry {
 using namespace psalg;
 
 typedef psalg::types::shape_t shape_t;
-typedef psalg::types::size_t  size_t;
+typedef psalg::types::size_t  psalg_size_t;
   //typedef psalg::NDArray NDArray;
 
 //-------------------
 
-static const size_t N2X1    = 2;
-static const size_t ROWS2X1 = 185;
-static const size_t COLS2X1 = 388;
-static const size_t SIZE2X1 = COLS2X1*ROWS2X1; 
-static const size_t SIZE2X2 = N2X1*SIZE2X1; 
+static const psalg_size_t N2X1    = 2;
+static const psalg_size_t ROWS2X1 = 185;
+static const psalg_size_t COLS2X1 = 388;
+static const psalg_size_t SIZE2X1 = COLS2X1*ROWS2X1; 
+static const psalg_size_t SIZE2X2 = N2X1*SIZE2X1; 
 
 //-------------------
 
@@ -49,9 +49,9 @@ static const size_t SIZE2X2 = N2X1*SIZE2X1;
     shape_t sh[3] = {N2X1, ROWS2X1, COLS2X1};
     NDArray<T>& two2x1 = * new NDArray<T>(sh, 3);
     
-    for(size_t n=0; n<N2X1;    ++n) {
-    for(size_t c=0; c<COLS2X1; ++c) {
-    for(size_t r=0; r<ROWS2X1; ++r) {
+    for(psalg_size_t n=0; n<N2X1;    ++n) {
+    for(psalg_size_t c=0; c<COLS2X1; ++c) {
+    for(psalg_size_t r=0; r<ROWS2X1; ++r) {
 
       two2x1(n,r,c) = data2x2(r,c,n);  
 
@@ -74,9 +74,9 @@ static const size_t SIZE2X2 = N2X1*SIZE2X1;
     shape_t sh[3] = {N2X1, ROWS2X1, COLS2X1};
     NDArray<T>& data2x2 = * new NDArray<T>(sh, 3);
     
-    for(size_t n=0; n<N2X1;    ++n) {
-    for(size_t c=0; c<COLS2X1; ++c) {
-    for(size_t r=0; r<ROWS2X1; ++r) {
+    for(psalg_size_t n=0; n<N2X1;    ++n) {
+    for(psalg_size_t c=0; c<COLS2X1; ++c) {
+    for(psalg_size_t r=0; r<ROWS2X1; ++r) {
 
       data2x2(r,c,n) = two2x1(n,r,c);
 
@@ -101,9 +101,9 @@ static const size_t SIZE2X2 = N2X1*SIZE2X1;
     NDArray<T> two2x1(shape_in, 3, A);
     NDArray<T> data2x2(shape_out, 3);
 
-    for(size_t n=0; n<N2X1;    ++n) {
-    for(size_t c=0; c<COLS2X1; ++c) {
-    for(size_t r=0; r<ROWS2X1; ++r) {
+    for(psalg_size_t n=0; n<N2X1;    ++n) {
+    for(psalg_size_t c=0; c<COLS2X1; ++c) {
+    for(psalg_size_t r=0; r<ROWS2X1; ++r) {
 
       data2x2(r,c,n) = two2x1(n,r,c);
 

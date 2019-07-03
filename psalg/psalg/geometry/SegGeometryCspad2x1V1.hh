@@ -14,7 +14,6 @@ namespace geometry {
  *
  *  @brief Class SegGeometryCspad2x1V1 defines the cspad 2x1 V1 sensor pixel coordinates in its local frame.
  *
- *
  *  2x1 sensor coordinate frame:
  * 
  *  @code
@@ -64,15 +63,15 @@ namespace geometry {
  *  @li  Access methods
  *  @code
  *        // scalar values
- *        const size_t         array_size        = seg_geom_2x1 -> size(); // 185*388
- *        const size_t         number_of_rows    = seg_geom_2x1 -> rows(); // 185
- *        const size_t         number_of_cols    = seg_geom_2x1 -> cols(); // 388
+ *        const gsize_t         array_size        = seg_geom_2x1 -> size(); // 185*388
+ *        const gsize_t         number_of_rows    = seg_geom_2x1 -> rows(); // 185
+ *        const gsize_t         number_of_cols    = seg_geom_2x1 -> cols(); // 388
  *        const pixel_coord_t  pixel_scale_size  = seg_geom_2x1 -> pixel_scale_size();             // 109.92 
  *        const pixel_coord_t  pixel_coord_min   = seg_geom_2x1 -> pixel_coord_min(SG2X1::AXIS_Z);
  *        const pixel_coord_t  pixel_coord_max   = seg_geom_2x1 -> pixel_coord_max(SG2X1::AXIS_X);
  * 
  *        // pointer to arrays with size equal to array_size
- *        const size_t*        p_array_shape     = seg_geom_2x1 -> shape();                        // {185, 388}
+ *        const gsize_t*        p_array_shape     = seg_geom_2x1 -> shape();                        // {185, 388}
  *        const pixel_area_t*  p_pixel_area      = seg_geom_2x1 -> pixel_area_array(); // array of 1-for regular or 2.5-for long pixels
  *        const pixel_coord_t* p_pixel_size_arr  = seg_geom_2x1 -> pixel_size_array(SG2X1::AXIS_X);
  *        const pixel_coord_t* p_pixel_coord_arr = seg_geom_2x1 -> pixel_coord_array(SG2X1::AXIS_Y);
@@ -81,11 +80,8 @@ namespace geometry {
  *        const pixel_mask_t*  p_mask_arr = seg_geom_2x1 -> pixel_mask_array(mbits);
  *  @endcode
  *  
- *  This software was developed for the LCLS project.  If you use all or 
- *  part of it, please give an appropriate acknowledgment.
- *
- *
- *  @version \$Id$
+ *  This software was developed for the LCLS project.
+ *  If you use all or part of it, please give an appropriate acknowledgment.
  *
  *  @author Mikhail S. Dubrovin
  */ 
@@ -94,19 +90,19 @@ class SegGeometryCspad2x1V1 : public geometry::SegGeometry {
 public:
 
   /// Number of pixel rows in 2x1 
-  static const size_t  ROWS     = 185;
+  static const gsize_t ROWS     = 185;
 
   /// Number of pixel columnss in 2x1
-  static const size_t  COLS     = 388;
+  static const gsize_t COLS     = 388;
 
   /// Half number of pixel columnss in 2x1
-  static const size_t  COLSHALF = 194;
+  static const gsize_t COLSHALF = 194;
 
   /// Number of pixels in 2x1
-  static const size_t  SIZE     = COLS*ROWS; 
+  static const gsize_t SIZE     = COLS*ROWS; 
 
   /// Number of corners
-  static const size_t  NCORNERS = 4;
+  static const gsize_t NCORNERS = 4;
 
   /// Pixel scale size [um] for indexing  
   static const pixel_coord_t PIX_SCALE_SIZE; // = 109.92;
@@ -124,7 +120,7 @@ public:
   static const pixel_coord_t PIX_SIZE_DEPTH; // = 400.;
 
   /// Conversion factor between um and pix 
-  static const double UM_TO_PIX; //             = 1./109.92;
+  static const double UM_TO_PIX; //         = 1./109.92;
 
   //-----------------
   /// Implementation of interface methods
@@ -133,19 +129,19 @@ public:
   virtual void print_seg_info(const unsigned& pbits=0);
 
   /// Returns size of the coordinate arrays
-  virtual const size_t size() { return SIZE; }
+  virtual const gsize_t size() {return SIZE;}
 
   /// Returns number of rows in segment
-  virtual const size_t rows() { return ROWS; }
+  virtual const gsize_t rows() {return ROWS;}
 
   /// Returns number of cols in segment
-  virtual const size_t cols() { return COLS; }
+  virtual const gsize_t cols() {return COLS;}
 
   /// Returns shape of the segment {rows, cols}
-  virtual const size_t* shape() { return &ARR_SHAPE[0]; }
+  virtual const gsize_t* shape() {return &ARR_SHAPE[0];}
 
   /// Returns pixel size in um for indexing
-  virtual const pixel_coord_t pixel_scale_size() { return PIX_SCALE_SIZE; }
+  virtual const pixel_coord_t pixel_scale_size() {return PIX_SCALE_SIZE;}
 
   /// Returns pointer to the array of pixel areas
   virtual const pixel_area_t* pixel_area_array();
@@ -183,14 +179,12 @@ public:
 
 private:
 
-  // Constructor
   /**
    *  @brief Fills-in the map of perfect 2x1 coordinates, defined through the chip geometry.
    *  @param[in] use_wide_pix_center Optional parameter can be used if the wide-pixel row coordinate is prefered to be in the raw center.
    */
-  SegGeometryCspad2x1V1 (const bool& use_wide_pix_center=false);
+  SegGeometryCspad2x1V1(const bool& use_wide_pix_center=false);
 
-  /// Destructor
   virtual ~SegGeometryCspad2x1V1();
 
   static geometry::SegGeometry* m_pInstance;
@@ -212,7 +206,6 @@ private:
   /// Prints minimal and maximal values of the 2x1 coordinates for X, Y, and Z axes
   void print_min_max_coords();
 
-
   /// switch between two options of the wide pixel row center
   bool m_use_wide_pix_center;
 
@@ -220,28 +213,28 @@ private:
   unsigned m_done_bits;
 
   /// 1-d pixel coordinates of rows and cols
-  pixel_coord_t  m_x_rhs_um [COLSHALF];  
-  pixel_coord_t  m_x_arr_um [COLS];  
-  pixel_coord_t  m_y_arr_um [ROWS];  
+  pixel_coord_t m_x_rhs_um[COLSHALF];  
+  pixel_coord_t m_x_arr_um[COLS];  
+  pixel_coord_t m_y_arr_um[ROWS];  
 
-  const static size_t IND_CORNER[NCORNERS];
-  const static size_t ARR_SHAPE[2];
+  const static gsize_t IND_CORNER[NCORNERS];
+  const static gsize_t ARR_SHAPE[2];
 
   /// 2-d pixel coordinate arrays
-  pixel_coord_t  m_x_pix_coord_um [ROWS][COLS];  
-  pixel_coord_t  m_y_pix_coord_um [ROWS][COLS];  
-  pixel_coord_t  m_z_pix_coord_um [ROWS][COLS];
+  pixel_coord_t m_x_pix_coord_um[ROWS][COLS];  
+  pixel_coord_t m_y_pix_coord_um[ROWS][COLS];  
+  pixel_coord_t m_z_pix_coord_um[ROWS][COLS];
 
   /// 2-d pixel size arrays
-  pixel_coord_t  m_x_pix_size_um [ROWS][COLS];  
-  pixel_coord_t  m_y_pix_size_um [ROWS][COLS];  
-  pixel_coord_t  m_z_pix_size_um [ROWS][COLS];
+  pixel_coord_t m_x_pix_size_um[ROWS][COLS];  
+  pixel_coord_t m_y_pix_size_um[ROWS][COLS];  
+  pixel_coord_t m_z_pix_size_um[ROWS][COLS];
 
   /// 2-d pixel area arrays
-  pixel_area_t  m_pix_area_arr [ROWS][COLS];  
+  pixel_area_t m_pix_area_arr[ROWS][COLS];  
 
   /// 2-d pixel mask arrays
-  pixel_mask_t  m_pix_mask_arr [ROWS][COLS];  
+  pixel_mask_t m_pix_mask_arr[ROWS][COLS];  
 
   // Copy constructor and assignment are disabled
   SegGeometryCspad2x1V1(const SegGeometryCspad2x1V1&) = delete;

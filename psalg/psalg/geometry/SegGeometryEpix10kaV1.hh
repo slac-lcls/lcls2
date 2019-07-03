@@ -7,7 +7,6 @@
 
 namespace geometry {
 
-
 /// @addtogroup geometry
 
 /**
@@ -76,15 +75,15 @@ namespace geometry {
  *  @li  Access methods
  *  @code
  *        // scalar values
- *        const size_t         array_size        = seg_geom -> size();
- *        const size_t         number_of_rows    = seg_geom -> rows();
- *        const size_t         number_of_cols    = seg_geom -> cols();
+ *        const gsize_t         array_size        = seg_geom -> size();
+ *        const gsize_t         number_of_rows    = seg_geom -> rows();
+ *        const gsize_t         number_of_cols    = seg_geom -> cols();
  *        const pixel_coord_t  pixel_scale_size  = seg_geom -> pixel_scale_size();
  *        const pixel_coord_t  pixel_coord_min   = seg_geom -> pixel_coord_min(SG::AXIS_Z);
  *        const pixel_coord_t  pixel_coord_max   = seg_geom -> pixel_coord_max(SG::AXIS_X);
  * 
  *        // pointer to arrays with size equal to array_size
- *        const size_t*        p_array_shape     = seg_geom -> shape();
+ *        const gsize_t*        p_array_shape     = seg_geom -> shape();
  *        const pixel_area_t*  p_pixel_area      = seg_geom -> pixel_area_array(); // array of 1-for regular or 2.5-for long pixels
  *        const pixel_coord_t* p_pixel_size_arr  = seg_geom -> pixel_size_array(SG::AXIS_X);
  *        const pixel_coord_t* p_pixel_coord_arr = seg_geom -> pixel_coord_array(SG::AXIS_Y);
@@ -93,11 +92,8 @@ namespace geometry {
  *        const pixel_mask_t*  p_mask_arr = seg_geom -> pixel_mask_array(mbits);
  *  @endcode
  *  
- *  This software was developed for the LCLS project.  If you use all or 
- *  part of it, please give an appropriate acknowledgment.
- *
- *
- *  @version \$Id$
+ *  This software was developed for the LCLS project.
+ *  If you use all or part of it, please give an appropriate acknowledgment.
  *
  *  @author Mikhail S. Dubrovin
  */ 
@@ -106,22 +102,22 @@ class SegGeometryEpix10kaV1 : public geometry::SegGeometry {
 public:
 
   /// Number of pixel rows in segment 
-  static const size_t  ROWS     = 352;
+  static const gsize_t  ROWS     = 352;
 
   /// Number of pixel columns in segment
-  static const size_t  COLS     = 384;
+  static const gsize_t  COLS     = 384;
 
   /// Half number of pixel rows in segment
-  static const size_t  ROWSHALF = 176;
+  static const gsize_t  ROWSHALF = 176;
 
   /// Half number of pixel columns in segment
-  static const size_t  COLSHALF = 192;
+  static const gsize_t  COLSHALF = 192;
 
   /// Number of pixels in segment
-  static const size_t  SIZE     = COLS*ROWS; 
+  static const gsize_t  SIZE     = COLS*ROWS; 
 
   /// Number of corners
-  static const size_t  NCORNERS = 4;
+  static const gsize_t  NCORNERS = 4;
 
   /// Pixel scale size [um] for indexing  
   static const pixel_coord_t PIX_SCALE_SIZE; // = 50.0;
@@ -149,16 +145,16 @@ public:
   virtual void print_seg_info(const unsigned& pbits=0);
 
   /// Returns size of the coordinate arrays
-  virtual const size_t size() {return SIZE;}
+  virtual const gsize_t size() {return SIZE;}
 
   /// Returns number of rows in segment
-  virtual const size_t rows() {return ROWS;}
+  virtual const gsize_t rows() {return ROWS;}
 
   /// Returns number of cols in segment
-  virtual const size_t cols() {return COLS;}
+  virtual const gsize_t cols() {return COLS;}
 
   /// Returns shape of the segment {rows, cols}
-  virtual const size_t* shape() {return &ARR_SHAPE[0];}
+  virtual const gsize_t* shape() {return &ARR_SHAPE[0];}
 
   /// Returns pixel size in um for indexing
   virtual const pixel_coord_t pixel_scale_size() {return PIX_SCALE_SIZE;}
@@ -196,14 +192,12 @@ public:
 
 private:
 
-  // Constructor
   /**
    *  @brief Fills-in the map of perfect segment coordinates, defined through the chip geometry.
    *  @param[in] use_wide_pix_center Optional parameter can be used if the wide-pixel row coordinate is prefered to be in the raw center.
    */
   SegGeometryEpix10kaV1(const bool& use_wide_pix_center=false);
 
-  /// Destructor
   virtual ~SegGeometryEpix10kaV1();
 
   static geometry::SegGeometry* m_pInstance;
@@ -225,7 +219,6 @@ private:
   /// Prints minimal and maximal values of the segment coordinates for X, Y, and Z axes
   void print_min_max_coords();
 
-
   /// switch between two options of the wide pixel row center
   bool m_use_wide_pix_center;
 
@@ -233,29 +226,29 @@ private:
   unsigned m_done_bits;
 
   /// 1-d pixel coordinates of rows and cols
-  pixel_coord_t  m_x_rhs_um [COLSHALF];  
-  pixel_coord_t  m_y_rhs_um [ROWSHALF];  
-  pixel_coord_t  m_x_arr_um [COLS];  
-  pixel_coord_t  m_y_arr_um [ROWS];  
+  pixel_coord_t  m_x_rhs_um[COLSHALF];
+  pixel_coord_t  m_y_rhs_um[ROWSHALF];
+  pixel_coord_t  m_x_arr_um[COLS];
+  pixel_coord_t  m_y_arr_um[ROWS];
 
-  const static size_t IND_CORNER[NCORNERS];
-  const static size_t ARR_SHAPE[2];
+  const static gsize_t IND_CORNER[NCORNERS];
+  const static gsize_t ARR_SHAPE[2];
 
   /// 2-d pixel coordinate arrays
-  pixel_coord_t  m_x_pix_coord_um [ROWS][COLS];  
-  pixel_coord_t  m_y_pix_coord_um [ROWS][COLS];  
-  pixel_coord_t  m_z_pix_coord_um [ROWS][COLS];
+  pixel_coord_t  m_x_pix_coord_um[ROWS][COLS];
+  pixel_coord_t  m_y_pix_coord_um[ROWS][COLS];
+  pixel_coord_t  m_z_pix_coord_um[ROWS][COLS];
 
   /// 2-d pixel size arrays
-  pixel_coord_t  m_x_pix_size_um [ROWS][COLS];  
-  pixel_coord_t  m_y_pix_size_um [ROWS][COLS];  
-  pixel_coord_t  m_z_pix_size_um [ROWS][COLS];
+  pixel_coord_t  m_x_pix_size_um[ROWS][COLS];
+  pixel_coord_t  m_y_pix_size_um[ROWS][COLS];
+  pixel_coord_t  m_z_pix_size_um[ROWS][COLS];
 
   /// 2-d pixel area arrays
-  pixel_area_t  m_pix_area_arr [ROWS][COLS];  
+  pixel_area_t  m_pix_area_arr[ROWS][COLS];
 
   /// 2-d pixel mask arrays
-  pixel_mask_t  m_pix_mask_arr [ROWS][COLS];  
+  pixel_mask_t  m_pix_mask_arr[ROWS][COLS];
 
   // Copy constructor and assignment are disabled by default
   SegGeometryEpix10kaV1(const SegGeometryEpix10kaV1&) = delete;

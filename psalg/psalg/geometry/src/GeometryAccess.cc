@@ -11,7 +11,6 @@
 namespace geometry {
 
 typedef GeometryAccess::image_t image_t;
-typedef GeometryAccess::pixel_mask_t pixel_mask_t;
 
 //-------------------
 
@@ -195,19 +194,19 @@ void GeometryAccess::add_comment_to_dict(const std::string& line)
 
 GeometryAccess::pGO GeometryAccess::parse_line(const std::string& line)
 {
-  std::string pname;
-  unsigned    pindex;
-  std::string oname;
-  unsigned    oindex;
-  double      x0;
-  double      y0;
-  double      z0;
-  double      rot_z;
-  double      rot_y;
-  double      rot_x;                  
-  double      tilt_z;
-  double      tilt_y;
-  double      tilt_x; 
+  std::string   pname;
+  segindex_t      pindex;
+  std::string   oname;
+  segindex_t      oindex;
+  pixel_coord_t x0;
+  pixel_coord_t y0;
+  pixel_coord_t z0;
+  angle_t       rot_z;
+  angle_t       rot_y;
+  angle_t       rot_x;                  
+  angle_t       tilt_z;
+  angle_t       tilt_y;
+  angle_t       tilt_x; 
 
   std::stringstream ss(line);
 
@@ -302,7 +301,7 @@ void GeometryAccess::set_relations()
 
 //-------------------
 
-GeometryAccess::pGO GeometryAccess::get_geo(const std::string& oname, const unsigned& oindex)
+GeometryAccess::pGO GeometryAccess::get_geo(const std::string& oname, const segindex_t& oindex)
 {
   for(std::vector<GeometryAccess::pGO>::iterator it  = v_list_of_geos.begin(); 
                                                  it != v_list_of_geos.end(); ++it) {
@@ -323,12 +322,12 @@ GeometryAccess::pGO GeometryAccess::get_top_geo()
 //-------------------
 
 void
-GeometryAccess::get_pixel_coords(const double*& X, 
-                                 const double*& Y, 
-                                 const double*& Z, 
-				 unsigned& size,
+GeometryAccess::get_pixel_coords(const pixel_coord_t*& X, 
+                                 const pixel_coord_t*& Y, 
+                                 const pixel_coord_t*& Z, 
+				 gsize_t& size,
                                  const std::string& oname, 
-                                 const unsigned& oindex,
+                                 const segindex_t& oindex,
                                  const bool do_tilt,
                                  const bool do_eval)
 {
@@ -344,17 +343,17 @@ GeometryAccess::get_pixel_coords(const double*& X,
 //-------------------
 
 void
-GeometryAccess::get_pixel_xy_at_z(const double*& XatZ, 
-                                  const double*& YatZ, 
-				  unsigned& size,
-                                  const double& Zplain, 
+GeometryAccess::get_pixel_xy_at_z(const pixel_coord_t*& XatZ, 
+                                  const pixel_coord_t*& YatZ, 
+				  gsize_t& size,
+                                  const pixel_coord_t& Zplain, 
                                   const std::string& oname, 
-                                  const unsigned& oindex)
+                                  const segindex_t& oindex)
 {
-  const double* X;
-  const double* Y;
-  const double* Z;
-  //unsigned   size;
+  const pixel_coord_t* X;
+  const pixel_coord_t* Y;
+  const pixel_coord_t* Z;
+  //gsize_t  size;
   const bool do_tilt=true;
   const bool do_eval=true;
   get_pixel_coords(X,Y,Z,size,oname,oindex,do_tilt,do_eval);
@@ -367,14 +366,14 @@ GeometryAccess::get_pixel_xy_at_z(const double*& XatZ,
   if (p_XatZ) delete [] p_XatZ;
   if (p_YatZ) delete [] p_YatZ;
 
-  p_XatZ = new double[size];
-  p_YatZ = new double[size];
+  p_XatZ = new pixel_coord_t[size];
+  p_YatZ = new pixel_coord_t[size];
 
   // find Z0 as average Z if Zplain is not specified
-  double Z0 = 0;
+  pixel_coord_t Z0 = 0;
   if (Zplain) Z0 = Zplain;
   else {
-    for(unsigned i=0; i<size; ++i) Z0 += Z[i]; 
+    for(gsize_t i=0; i<size; ++i) Z0 += Z[i]; 
     Z0 = Z0/size;
   }
 
@@ -384,8 +383,8 @@ GeometryAccess::get_pixel_xy_at_z(const double*& XatZ,
     return;
   }  
 
-  double R;
-  for(unsigned i=0; i<size; ++i) {
+  pixel_coord_t R;
+  for(gsize_t i=0; i<size; ++i) {
     if (Z[i]) {
       R = Z0/Z[i];
       p_XatZ[i] = X[i]*R;
@@ -402,10 +401,10 @@ GeometryAccess::get_pixel_xy_at_z(const double*& XatZ,
 //-------------------
 
 void
-GeometryAccess::get_pixel_areas(const double*& A, 
-				unsigned& size,
+GeometryAccess::get_pixel_areas(const pixel_area_t*& A, 
+				gsize_t& size,
                                 const std::string& oname, 
-                                const unsigned& oindex)
+                                const segindex_t& oindex)
 {
   GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
   if(m_pbits & 32) {
@@ -419,9 +418,9 @@ GeometryAccess::get_pixel_areas(const double*& A,
 
 void
 GeometryAccess::get_pixel_mask(const pixel_mask_t*& mask,
-			       unsigned& size,
+			       gsize_t& size,
 			       const std::string& oname,
-			       const unsigned& oindex,
+			       const segindex_t& oindex,
 			       const unsigned& mbits)
 {
   //cout << "GeometryAccess::get_pixel_mask(): mbits =" << mbits << '\n';   
@@ -436,9 +435,9 @@ GeometryAccess::get_pixel_mask(const pixel_mask_t*& mask,
 
 //-------------------
 
-double
+pixel_coord_t
 GeometryAccess::get_pixel_scale_size(const std::string& oname,
-                                     const unsigned& oindex)
+                                     const segindex_t& oindex)
 {
   GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
   return geo -> get_pixel_scale_size();
@@ -448,16 +447,16 @@ GeometryAccess::get_pixel_scale_size(const std::string& oname,
 
 void
 GeometryAccess::set_geo_pars(const std::string& oname, 
-		             const unsigned& oindex,
-                             const double& x0,
-                             const double& y0,
-                             const double& z0,
-                             const double& rot_z,
-                             const double& rot_y,
-                             const double& rot_x,                  
-                             const double& tilt_z,
-                             const double& tilt_y,
-                             const double& tilt_x 
+		             const segindex_t& oindex,
+                             const pixel_coord_t& x0,
+                             const pixel_coord_t& y0,
+                             const pixel_coord_t& z0,
+                             const angle_t      & rot_z,
+                             const angle_t      & rot_y,
+                             const angle_t      & rot_x,                  
+                             const angle_t      & tilt_z,
+                             const angle_t      & tilt_y,
+                             const angle_t      & tilt_x 
 		             )
 {
   GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
@@ -468,10 +467,10 @@ GeometryAccess::set_geo_pars(const std::string& oname,
 
 void
 GeometryAccess::move_geo(const std::string& oname, 
-		         const unsigned& oindex,
-                         const double& dx,
-                         const double& dy,
-                         const double& dz
+		         const segindex_t& oindex,
+                         const pixel_coord_t& dx,
+                         const pixel_coord_t& dy,
+                         const pixel_coord_t& dz
 			 )
 {
   GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
@@ -482,10 +481,10 @@ GeometryAccess::move_geo(const std::string& oname,
 
 void
 GeometryAccess::tilt_geo(const std::string& oname, 
-		         const unsigned& oindex,
-                         const double& dt_x,
-                         const double& dt_y,
-                         const double& dt_z
+		         const segindex_t& oindex,
+                         const pixel_coord_t& dt_x,
+                         const pixel_coord_t& dt_y,
+                         const pixel_coord_t& dt_z
 			 )
 {
   GeometryAccess::pGO geo = (oname.empty()) ? get_top_geo() : get_geo(oname, oindex);
@@ -540,12 +539,12 @@ void GeometryAccess::print_comments_from_dict()
 
 void
 GeometryAccess::print_pixel_coords(const std::string& oname, 
-                                   const unsigned& oindex)
+                                   const segindex_t& oindex)
 {
-  const double* X;
-  const double* Y;
-  const double* Z;
-  unsigned   size;
+  const pixel_coord_t* X;
+  const pixel_coord_t* Y;
+  const pixel_coord_t* Z;
+  gsize_t size;
   const bool do_tilt=true;
   get_pixel_coords(X,Y,Z,size,oname,oindex,do_tilt);
 
@@ -571,49 +570,49 @@ GeometryAccess::print_geometry_info(const unsigned& pbits) {
 //-------------------
 
 void
-GeometryAccess::get_pixel_coord_indexes(const unsigned *& iX, 
-                                        const unsigned *& iY, 
-				        unsigned& size,
+GeometryAccess::get_pixel_coord_indexes(const pixel_idx_t *& iX, 
+                                        const pixel_idx_t *& iY, 
+				        gsize_t& size,
                                         const std::string& oname, 
-					const unsigned& oindex, 
-                                        const double& pix_scale_size_um, 
+					const segindex_t& oindex, 
+                                        const pixel_coord_t& pix_scale_size_um, 
                                         const int* xy0_off_pix,
                                         const bool do_tilt)
 {
-  const double* X;
-  const double* Y;
-  const double* Z;
+  const pixel_coord_t* X;
+  const pixel_coord_t* Y;
+  const pixel_coord_t* Z;
 
   get_pixel_coords(X,Y,Z,size,oname,oindex,do_tilt);
   
-  double pix_size = (pix_scale_size_um) ? pix_scale_size_um : get_pixel_scale_size(oname, oindex);
+  pixel_coord_t pix_size = (pix_scale_size_um) ? pix_scale_size_um : get_pixel_scale_size(oname, oindex);
 
   if (p_iX) delete [] p_iX;
   if (p_iY) delete [] p_iY;
 
-  p_iX = new unsigned[size];
-  p_iY = new unsigned[size];
+  p_iX = new pixel_idx_t[size];
+  p_iY = new pixel_idx_t[size];
 
   if (xy0_off_pix) {
     // Offset in pix -> um
-    double x_off_um = xy0_off_pix[0] * pix_size;
-    double y_off_um = xy0_off_pix[1] * pix_size;
+    pixel_coord_t x_off_um = xy0_off_pix[0] * pix_size;
+    pixel_coord_t y_off_um = xy0_off_pix[1] * pix_size;
     // Protection against wrong offset bringing negative indexes
-    double x_min=0; for(unsigned i=0; i<size; ++i) {if (X[i] + x_off_um < x_min) x_min = X[i] + x_off_um;} x_off_um -= x_min - pix_size/2;
-    double y_min=0; for(unsigned i=0; i<size; ++i) {if (Y[i] + y_off_um < y_min) y_min = Y[i] + y_off_um;} y_off_um -= y_min - pix_size/2;
+    pixel_coord_t x_min=0; for(gsize_t i=0; i<size; ++i) {if (X[i] + x_off_um < x_min) x_min = X[i] + x_off_um;} x_off_um -= x_min - pix_size/2;
+    pixel_coord_t y_min=0; for(gsize_t i=0; i<size; ++i) {if (Y[i] + y_off_um < y_min) y_min = Y[i] + y_off_um;} y_off_um -= y_min - pix_size/2;
 
-    for(unsigned i=0; i<size; ++i) { 
-      p_iX[i] = (unsigned)((X[i] + x_off_um) / pix_size);
-      p_iY[i] = (unsigned)((Y[i] + y_off_um) / pix_size);
+    for(gsize_t i=0; i<size; ++i) { 
+      p_iX[i] = (pixel_idx_t)((X[i] + x_off_um) / pix_size);
+      p_iY[i] = (pixel_idx_t)((Y[i] + y_off_um) / pix_size);
     }
   } 
   else {
     // Find coordinate min values
-    double x_min=X[0]; for(unsigned i=0; i<size; ++i) {if (X[i] < x_min) x_min = X[i];} x_min -= pix_size/2;
-    double y_min=Y[0]; for(unsigned i=0; i<size; ++i) {if (Y[i] < y_min) y_min = Y[i];} y_min -= pix_size/2;
-    for(unsigned i=0; i<size; ++i) { 
-      p_iX[i] = (unsigned)((X[i] - x_min) / pix_size);
-      p_iY[i] = (unsigned)((Y[i] - y_min) / pix_size);
+    pixel_coord_t x_min=X[0]; for(gsize_t i=0; i<size; ++i) {if (X[i] < x_min) x_min = X[i];} x_min -= pix_size/2;
+    pixel_coord_t y_min=Y[0]; for(gsize_t i=0; i<size; ++i) {if (Y[i] < y_min) y_min = Y[i];} y_min -= pix_size/2;
+    for(gsize_t i=0; i<size; ++i) { 
+      p_iX[i] = (pixel_idx_t)((X[i] - x_min) / pix_size);
+      p_iY[i] = (pixel_idx_t)((Y[i] - y_min) / pix_size);
     }
   }
 
@@ -624,48 +623,48 @@ GeometryAccess::get_pixel_coord_indexes(const unsigned *& iX,
 //-------------------
 
 void
-GeometryAccess::get_pixel_xy_inds_at_z(const unsigned *& iX, 
-                                       const unsigned *& iY, 
-				       unsigned& size,
-                                       const double& Zplain, 
+GeometryAccess::get_pixel_xy_inds_at_z(const pixel_idx_t *& iX, 
+                                       const pixel_idx_t *& iY, 
+				       gsize_t& size,
+                                       const pixel_coord_t& Zplain, 
                                        const std::string& oname, 
-				       const unsigned& oindex, 
-                                       const double& pix_scale_size_um, 
+				       const segindex_t& oindex, 
+                                       const pixel_coord_t& pix_scale_size_um, 
                                        const int* xy0_off_pix)
 {
-  const double* X;
-  const double* Y;
+  const pixel_coord_t* X;
+  const pixel_coord_t* Y;
 
   get_pixel_xy_at_z(X,Y,size,Zplain,oname,oindex);
   
-  double pix_size = (pix_scale_size_um) ? pix_scale_size_um : get_pixel_scale_size(oname, oindex);
+  pixel_coord_t pix_size = (pix_scale_size_um) ? pix_scale_size_um : get_pixel_scale_size(oname, oindex);
 
   if (p_iX) delete [] p_iX;
   if (p_iY) delete [] p_iY;
 
-  p_iX = new unsigned[size];
-  p_iY = new unsigned[size];
+  p_iX = new pixel_idx_t[size];
+  p_iY = new pixel_idx_t[size];
 
   if (xy0_off_pix) {
     // Offset in pix -> um
-    double x_off_um = xy0_off_pix[0] * pix_size;
-    double y_off_um = xy0_off_pix[1] * pix_size;
+    pixel_coord_t x_off_um = xy0_off_pix[0] * pix_size;
+    pixel_coord_t y_off_um = xy0_off_pix[1] * pix_size;
     // Protection against wrong offset bringing negative indexes
-    double x_min=0; for(unsigned i=0; i<size; ++i) {if (X[i] + x_off_um < x_min) x_min = X[i] + x_off_um;} x_off_um -= x_min - pix_size/2;
-    double y_min=0; for(unsigned i=0; i<size; ++i) {if (Y[i] + y_off_um < y_min) y_min = Y[i] + y_off_um;} y_off_um -= y_min - pix_size/2;
+    pixel_coord_t x_min=0; for(gsize_t i=0; i<size; ++i) {if (X[i] + x_off_um < x_min) x_min = X[i] + x_off_um;} x_off_um -= x_min - pix_size/2;
+    pixel_coord_t y_min=0; for(gsize_t i=0; i<size; ++i) {if (Y[i] + y_off_um < y_min) y_min = Y[i] + y_off_um;} y_off_um -= y_min - pix_size/2;
 
-    for(unsigned i=0; i<size; ++i) { 
-      p_iX[i] = (unsigned)((X[i] + x_off_um) / pix_size);
-      p_iY[i] = (unsigned)((Y[i] + y_off_um) / pix_size);
+    for(gsize_t i=0; i<size; ++i) { 
+      p_iX[i] = (pixel_idx_t)((X[i] + x_off_um) / pix_size);
+      p_iY[i] = (pixel_idx_t)((Y[i] + y_off_um) / pix_size);
     }
   } 
   else {
     // Find coordinate min values
-    double x_min=X[0]; for(unsigned i=0; i<size; ++i) {if (X[i] < x_min) x_min = X[i];} x_min -= pix_size/2;
-    double y_min=Y[0]; for(unsigned i=0; i<size; ++i) {if (Y[i] < y_min) y_min = Y[i];} y_min -= pix_size/2;
-    for(unsigned i=0; i<size; ++i) { 
-      p_iX[i] = (unsigned)((X[i] - x_min) / pix_size);
-      p_iY[i] = (unsigned)((Y[i] - y_min) / pix_size);
+    pixel_coord_t x_min=X[0]; for(gsize_t i=0; i<size; ++i) {if (X[i] < x_min) x_min = X[i];} x_min -= pix_size/2;
+    pixel_coord_t y_min=Y[0]; for(gsize_t i=0; i<size; ++i) {if (Y[i] < y_min) y_min = Y[i];} y_min -= pix_size/2;
+    for(gsize_t i=0; i<size; ++i) { 
+      p_iX[i] = (pixel_idx_t)((X[i] - x_min) / pix_size);
+      p_iY[i] = (pixel_idx_t)((Y[i] - y_min) / pix_size);
     }
   }
 
@@ -677,13 +676,13 @@ GeometryAccess::get_pixel_xy_inds_at_z(const unsigned *& iX,
 //-------------------
 
 NDArray<image_t> &
-GeometryAccess::ref_img_from_pixel_arrays(const unsigned*& iX, 
-                                          const unsigned*& iY, 
+GeometryAccess::ref_img_from_pixel_arrays(const pixel_idx_t*& iX, 
+                                          const pixel_idx_t*& iY, 
                                           const double*    W,
-                                          const unsigned&  size)
+                                          const gsize_t&  size)
 {
-    unsigned ix_max=iX[0]; for(unsigned i=0; i<size; ++i) {if (iX[i] > ix_max) ix_max = iX[i];} ix_max++;
-    unsigned iy_max=iY[0]; for(unsigned i=0; i<size; ++i) {if (iY[i] > iy_max) iy_max = iY[i];} iy_max++;
+    pixel_idx_t ix_max=iX[0]; for(gsize_t i=0; i<size; ++i) {if (iX[i] > ix_max) ix_max = iX[i];} ix_max++;
+    pixel_idx_t iy_max=iY[0]; for(gsize_t i=0; i<size; ++i) {if (iY[i] > iy_max) iy_max = iY[i];} iy_max++;
 
     shape_t sh[2] = {ix_max, iy_max};
 
@@ -693,8 +692,8 @@ GeometryAccess::ref_img_from_pixel_arrays(const unsigned*& iX,
 
     std::fill_n(img.data(), int(img.size()), image_t(0));
 
-    if (W) for(unsigned i=0; i<size; ++i) img(iX[i],iY[i]) = (image_t) W[i];
-    else   for(unsigned i=0; i<size; ++i) img(iX[i],iY[i]) = 1;
+    if (W) for(gsize_t i=0; i<size; ++i) img(iX[i],iY[i]) = (image_t) W[i];
+    else   for(gsize_t i=0; i<size; ++i) img(iX[i],iY[i]) = 1;
     return *p_image;
 }
 
@@ -705,32 +704,32 @@ GeometryAccess::ref_img_from_pixel_arrays(const unsigned*& iX,
 //-------------------
 
 NDArray<image_t>
-GeometryAccess::img_from_pixel_arrays(const unsigned*& iX, 
-                                      const unsigned*& iY, 
+GeometryAccess::img_from_pixel_arrays(const pixel_idx_t*& iX, 
+                                      const pixel_idx_t*& iY, 
                                       const double*    W,
-                                      const unsigned&  size)
+                                      const gsize_t&  size)
 {
-    unsigned ix_max=iX[0]; for(unsigned i=0; i<size; ++i) {if (iX[i] > ix_max) ix_max = iX[i];} ix_max++;
-    unsigned iy_max=iY[0]; for(unsigned i=0; i<size; ++i) {if (iY[i] > iy_max) iy_max = iY[i];} iy_max++;
+    pixel_idx_t ix_max=iX[0]; for(gsize_t i=0; i<size; ++i) {if (iX[i] > ix_max) ix_max = iX[i];} ix_max++;
+    pixel_idx_t iy_max=iY[0]; for(gsize_t i=0; i<size; ++i) {if (iY[i] > iy_max) iy_max = iY[i];} iy_max++;
 
     shape_t sh[2] = {ix_max, iy_max};
     NDArray<image_t>& img = *(new NDArray<image_t>(sh, 2));
     std::fill_n(img.data(), int(img.size()), image_t(0));
 
-    if (W) for(unsigned i=0; i<size; ++i) img(iX[i],iY[i]) = (image_t) W[i];
-    else   for(unsigned i=0; i<size; ++i) img(iX[i],iY[i]) = 1;
+    if (W) for(gsize_t i=0; i<size; ++i) img(iX[i],iY[i]) = (image_t) W[i];
+    else   for(gsize_t i=0; i<size; ++i) img(iX[i],iY[i]) = 1;
     return img;
 }
 
 //-------------------
 
-NDArray<const double>*
-GeometryAccess::get_pixel_coords(const SG::AXIS axis)
+NDArray<const pixel_coord_t>*
+GeometryAccess::get_pixel_coords(const AXIS axis)
 {
-    const double* X;
-    const double* Y;
-    const double* Z;
-    unsigned size;
+    const pixel_coord_t* X;
+    const pixel_coord_t* Y;
+    const pixel_coord_t* Z;
+    gsize_t size;
     get_pixel_coords(X,Y,Z,size, std::string(), 0, true); //,oname,oindex,do_tilt
 
     //cout << "XXX get_pixel_coords size: " << size << '\n';
@@ -738,18 +737,18 @@ GeometryAccess::get_pixel_coords(const SG::AXIS axis)
 
     switch(axis) {
       default         : 
-      case SG::AXIS_X : return new NDArray<const double>(&sh[0], 1, X);
-      case SG::AXIS_Y : return new NDArray<const double>(&sh[0], 1, Y);
-      case SG::AXIS_Z : return new NDArray<const double>(&sh[0], 1, Z);
+      case AXIS_X : return new NDArray<const pixel_coord_t>(&sh[0], 1, X);
+      case AXIS_Y : return new NDArray<const pixel_coord_t>(&sh[0], 1, Y);
+      case AXIS_Z : return new NDArray<const pixel_coord_t>(&sh[0], 1, Z);
     }
 }
 //-------------------
 
-NDArray<const double>*
-GeometryAccess::get_pixel_coords_at_z(const double Zplane, const SG::AXIS axis) {
-    const double* X;
-    const double* Y;
-    unsigned size;
+NDArray<const pixel_coord_t>*
+GeometryAccess::get_pixel_coords_at_z(const pixel_coord_t Zplane, const AXIS axis) {
+    const pixel_coord_t* X;
+    const pixel_coord_t* Y;
+    gsize_t size;
     get_pixel_xy_at_z(X,Y,size, Zplane, std::string(), 0);
 
     //cout << "XXX get_pixel_coords_at_z size: " << size << '\n';
@@ -757,20 +756,20 @@ GeometryAccess::get_pixel_coords_at_z(const double Zplane, const SG::AXIS axis) 
 
     switch(axis) {
       default         : 
-      case SG::AXIS_X : return new NDArray<const double>(sh, 1, X);
-      case SG::AXIS_Y : return new NDArray<const double>(sh, 1, Y);
+      case AXIS_X : return new NDArray<const pixel_coord_t>(sh, 1, X);
+      case AXIS_Y : return new NDArray<const pixel_coord_t>(sh, 1, Y);
     }
 }
 //-------------------
 
-NDArray<const unsigned>*
-GeometryAccess::get_pixel_coord_indexes(const SG::AXIS axis,
-                                        const double pix_scale_size_um,
+NDArray<const pixel_idx_t>*
+GeometryAccess::get_pixel_coord_indexes(const AXIS axis,
+                                        const pixel_coord_t pix_scale_size_um,
                                         const int* xy0_off_pix)
 {
-  const unsigned* iX;
-  const unsigned* iY;
-  unsigned size;
+  const pixel_idx_t* iX;
+  const pixel_idx_t* iY;
+  gsize_t size;
 
   get_pixel_coord_indexes(iX, iY, size, std::string(), 0, pix_scale_size_um, xy0_off_pix, true);
   //cout << "XXX get_pixel_coord_indexes size: " << size << '\n';
@@ -778,43 +777,43 @@ GeometryAccess::get_pixel_coord_indexes(const SG::AXIS axis,
 
   switch(axis) {
     default         : 
-    case SG::AXIS_X : return new NDArray<const unsigned>(sh, 1, iX);
-    case SG::AXIS_Y : return new NDArray<const unsigned>(sh, 1, iY);
+    case AXIS_X : return new NDArray<const pixel_idx_t>(sh, 1, iX);
+    case AXIS_Y : return new NDArray<const pixel_idx_t>(sh, 1, iY);
   }
 }
 
 //-------------------
 
-NDArray<const unsigned>* 
-GeometryAccess::get_pixel_inds_at_z(const double Zplane,
-                                    const SG::AXIS axis,
-                                    const double pix_scale_size_um,
+NDArray<const pixel_idx_t>* 
+GeometryAccess::get_pixel_inds_at_z(const pixel_coord_t Zplane,
+                                    const AXIS axis,
+                                    const pixel_coord_t pix_scale_size_um,
                                     const int* xy0_off_pix)
 {
-  const unsigned* iX;
-  const unsigned* iY;
-  unsigned size;
+  const pixel_idx_t* iX;
+  const pixel_idx_t* iY;
+  gsize_t size;
   get_pixel_xy_inds_at_z(iX, iY, size, Zplane, std::string(), 0, pix_scale_size_um, xy0_off_pix);
   shape_t sh[1] = {size,};
 
   switch(axis) {
     default         : 
-    case SG::AXIS_X : return new NDArray<const unsigned>(sh, 1, iX);
-    case SG::AXIS_Y : return new NDArray<const unsigned>(sh, 1, iY);
+    case AXIS_X : return new NDArray<const pixel_idx_t>(sh, 1, iX);
+    case AXIS_Y : return new NDArray<const pixel_idx_t>(sh, 1, iY);
   }
 }
 
 //-------------------
 
-NDArray<const double>*
+NDArray<const pixel_area_t>*
 GeometryAccess::get_pixel_areas()
 {
-    const double* A;
-    unsigned size;
+    const pixel_area_t* A;
+    gsize_t size;
     get_pixel_areas(A, size, std::string(), 0);
     //cout << "XXX get_pixel_areas: " << size << '\n';
     shape_t sh[1] = {size,};
-    return new NDArray<const double>(sh, 1, A);
+    return new NDArray<const pixel_area_t>(sh, 1, A);
 }
 
 //-------------------
@@ -823,7 +822,7 @@ NDArray<const pixel_mask_t>*
 GeometryAccess::get_pixel_mask(const unsigned& mbits)
 {
     const pixel_mask_t* mask;
-    unsigned size;
+    gsize_t size;
     get_pixel_mask(mask, size, std::string(), 0, mbits);
     //cout << "XXX get_pixel_mask: " << size << '\n';
     shape_t sh[1] = {size,};

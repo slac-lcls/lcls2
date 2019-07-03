@@ -69,15 +69,15 @@ namespace geometry {
  *  @li  Access methods
  *  @code
  *        // scalar values
- *        const size_t         array_size        = seg_geom -> size(); // 512*512
- *        const size_t         number_of_rows    = seg_geom -> rows(); // 512
- *        const size_t         number_of_cols    = seg_geom -> cols(); // 512
+ *        const gsize_t         array_size        = seg_geom -> size(); // 512*512
+ *        const gsize_t         number_of_rows    = seg_geom -> rows(); // 512
+ *        const gsize_t         number_of_cols    = seg_geom -> cols(); // 512
  *        const pixel_coord_t  pixel_scale_size  = seg_geom -> pixel_scale_size();             // 75.00 
  *        const pixel_coord_t  pixel_coord_min   = seg_geom -> pixel_coord_min(SG::AXIS_Z);
  *        const pixel_coord_t  pixel_coord_max   = seg_geom -> pixel_coord_max(SG::AXIS_X);
  * 
  *        // pointer to arrays with size equal to array_size
- *        const size_t*        p_array_shape     = seg_geom -> shape();                        // {512, 512}
+ *        const gsize_t*        p_array_shape     = seg_geom -> shape();                        // {512, 512}
  *        const pixel_area_t*  p_pixel_area      = seg_geom -> pixel_area_array(); // array of 1-for regular or 2.5-for long pixels
  *        const pixel_coord_t* p_pixel_size_arr  = seg_geom -> pixel_size_array(SG::AXIS_X);
  *        const pixel_coord_t* p_pixel_coord_arr = seg_geom -> pixel_coord_array(SG::AXIS_Y);
@@ -86,15 +86,13 @@ namespace geometry {
  *        const pixel_mask_t*  p_mask_arr = seg_geom -> pixel_mask_array(mbits);
  *  @endcode
  *  
- *  This software was developed for the LCLS project.  If you use all or 
- *  part of it, please give an appropriate acknowledgment.
- *
- *
- *  @version \$Id$
+ *  This software was developed for the LCLS project.
+ *  If you use all or part of it, please give an appropriate acknowledgment.
  *
  *  @author Mikhail S. Dubrovin
  */ 
 
+//-------------------
   /**  
    *  @brief Splits the string segname like MTRX:384:384:100:100 and returns values
    *  @param[in] segname - string like MTRX:384:384:100:100;
@@ -103,11 +101,13 @@ namespace geometry {
    *  @param[out] pix_size_rows - pixel size along axis counting rows
    *  @param[out] pix_size_cols - pixel size along axis counting cols
    */  
-bool matrix_pars( const std::string& segname
-		, size_t& rows
-		, size_t& cols
-		, float& pix_size_rows
-		, float& pix_size_cols);
+bool matrix_pars(const std::string& segname
+		,gsize_t& rows
+		,gsize_t& cols
+		,pixel_coord_t& pix_size_rows
+		,pixel_coord_t& pix_size_cols);
+
+//-------------------
 
 class SegGeometryMatrixV1 : public geometry::SegGeometry {
 
@@ -115,7 +115,22 @@ public:
 
   typedef std::map<const std::string, geometry::SegGeometry*> MapInstance;
 
-  // Constructor
+  /// Number of corners
+  static const gsize_t  NCORNERS = 4;
+
+  /// Pixel scale size [um] for indexing  
+  //static constexpr pixel_coord_t PIX_SCALE_SIZE_DEF = 12345;
+  static const pixel_coord_t PIX_SCALE_SIZE_DEF;// = 12345;
+
+  /// Pixel size [um] in column direction
+  static const pixel_coord_t PIX_SIZE_COLS_DEF;// = 75;
+
+  /// Pixel size [um] in row direction
+  static const pixel_coord_t PIX_SIZE_ROWS_DEF;// = 75;
+
+  /// Pixel size [um] in depth
+  static const pixel_coord_t PIX_SIZE_DEPTH_DEF;// = 400.;
+
   /**
    *  @brief Fills-in the map of perfect segment coordinates, defined through the chip geometry.
    *  @param[in] rows - number of rows
@@ -125,44 +140,15 @@ public:
    *  @param[in] pix_size_depth - pixel size in depth in micrometers [um] 
    *  @param[in] pix_scale_size - pixel size parameter taken as a 2-d image grid parameter
    */
-  SegGeometryMatrixV1 ( const size_t& rows = 512
-		      , const size_t& cols = 512
-		      , const float& pix_size_rows  = PIX_SIZE_ROWS_DEF
-		      , const float& pix_size_cols  = PIX_SIZE_COLS_DEF
-		      , const float& pix_size_depth = PIX_SIZE_DEPTH_DEF
-		      , const float& pix_scale_size = PIX_SCALE_SIZE_DEF
-                      );
-  /// Destructor
-  virtual ~SegGeometryMatrixV1 ();
+  SegGeometryMatrixV1(const gsize_t& rows = 512
+		     ,const gsize_t& cols = 512
+		     ,const pixel_coord_t& pix_size_rows  = PIX_SIZE_ROWS_DEF
+		     ,const pixel_coord_t& pix_size_cols  = PIX_SIZE_COLS_DEF
+		     ,const pixel_coord_t& pix_size_depth = PIX_SIZE_DEPTH_DEF
+		     ,const pixel_coord_t& pix_scale_size = PIX_SCALE_SIZE_DEF
+                     );
 
-
-
-  /// Number of pixel rows in segment 
-  //static const size_t  ROWS     = 512;
-
-  /// Number of pixel columnss in segment
-  //static const size_t  COLS     = 512;
-
-  /// Number of pixels in segment
-  //static const size_t  SIZE     = COLS*ROWS; 
-
-  /// Number of corners
-  static const size_t  NCORNERS = 4;
-
-  /// Pixel scale size [um] for indexing  
-  static constexpr pixel_coord_t PIX_SCALE_SIZE_DEF = 12345;
-
-  /// Pixel size [um] in column direction
-  static constexpr pixel_coord_t PIX_SIZE_COLS_DEF = 75;
-
-  /// Pixel size [um] in row direction
-  static constexpr pixel_coord_t PIX_SIZE_ROWS_DEF = 75;
-
-  /// Pixel size [um] in depth
-  static constexpr pixel_coord_t PIX_SIZE_DEPTH_DEF = 400;
-
-  /// Conversion factor between um and pix 
-  //static const double UM_TO_PIX;             // = 1./75;
+  virtual ~SegGeometryMatrixV1();
 
   //-----------------
   /// Implementation of interface methods
@@ -171,16 +157,16 @@ public:
   virtual void print_seg_info(const unsigned& pbits=0);
 
   /// Returns size of the coordinate arrays
-  virtual const size_t size() {return SIZE;}
+  virtual const gsize_t size() {return SIZE;}
 
   /// Returns number of rows in segment
-  virtual const size_t rows() {return ROWS;}
+  virtual const gsize_t rows() {return ROWS;}
 
   /// Returns number of cols in segment
-  virtual const size_t cols() {return COLS;}
+  virtual const gsize_t cols() {return COLS;}
 
   /// Returns shape of the segment {rows, cols}
-  virtual const size_t* shape() {return &ARR_SHAPE[0];}
+  virtual const gsize_t* shape() {return &ARR_SHAPE[0];}
 
   /// Returns pixel size in um for indexing
   virtual const pixel_coord_t pixel_scale_size() {return PIX_SCALE_SIZE;}
@@ -241,14 +227,14 @@ private:
   void print_min_max_coords();
 
   /// Number of pixel rows in segment 
-  size_t  ROWS;
+  gsize_t ROWS;
   /// Number of pixel columnss in segment
-  size_t  COLS;
+  gsize_t COLS;
   /// Number of pixels in segment SIZE = COLS*ROWS
-  size_t  SIZE;
+  gsize_t SIZE;
 
-  size_t  IND_CORNER[NCORNERS];
-  size_t  ARR_SHAPE[2];
+  gsize_t IND_CORNER[NCORNERS];
+  gsize_t ARR_SHAPE[2];
 
   /// Pixel scale size [um] for indexing  
   pixel_coord_t PIX_SCALE_SIZE; // = 75;

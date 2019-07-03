@@ -47,7 +47,15 @@ logger = logging.getLogger(__name__)
 def run_begin_end_time(exp, runnum) :
     # returns a list of dicts per run with 'begin_time', 'end_time', 'run_num', 'run_type'
     if runnum>0 :
-        resp = requests_get('https://pswww.slac.stanford.edu/prevlgbk/lgbk/%s/ws/runs' % exp).json()
+        url = 'https://pswww.slac.stanford.edu/prevlgbk/lgbk/%s/ws/runs' % exp
+        r = requests_get(url)
+        if not r :
+            msg = '\nrun_begin_end_time try to get run times from experiment DB'\
+                  '\nurl: %s\nstatus_code: %d\ncontent: %s' %(url, r.status_code, r.text)
+            logger.error(msg)  
+            sys.exit('THIS ERROR MUST BE FIXED')
+        resp = r.json()
+
         for d in resp :
             if d['run_num'] == runnum :
                 return int(d['begin_time']), int(d['end_time'])

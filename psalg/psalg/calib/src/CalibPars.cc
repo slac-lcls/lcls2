@@ -1,3 +1,5 @@
+//-------------------
+
 #include "psalg/calib/CalibPars.hh"
 #include "psalg/utils/Logger.hh" // for MSG
 
@@ -84,12 +86,12 @@ void CalibPars::deleteGeometryAccess() {
 }
 
 NDArray<const pixel_coord_t>& CalibPars::coords(Query& q) {
-  SG::AXIS axis = (SG::AXIS)q.parameter_uint(q.AXISNUM);
+  AXIS axis = (AXIS)q.parameter_uint(q.AXISNUM);
   return *(geometryAccess(q) -> get_pixel_coords(axis));
 }
 
 NDArray<const pixel_idx_t>& CalibPars::indexes(Query& q) {
-  SG::AXIS axis = (SG::AXIS)q.parameter_uint(q.AXISNUM);
+  AXIS axis = (AXIS)q.parameter_uint(q.AXISNUM);
   return *(geometryAccess(q) -> get_pixel_coord_indexes(axis));
 }
 
@@ -117,7 +119,7 @@ NDArray<const pixel_size_t>& CalibPars::image_yaxis(Query& q) {
 NDArray<const pixel_size_t>& CalibPars::pixel_size(Query& q) {
   _default_msg("image_size(...)");
   return _pixel_size;
-  //SG::AXIS axis = (SG::AXIS)q.parameter_uint(q.AXISNUM);
+  //AXIS axis = (AXIS)q.parameter_uint(q.AXISNUM);
   //return *(geometryAccess(q) -> get_pixel_size(axis));
 }
 

@@ -9,7 +9,7 @@
 #include "psalg/calib/Query.hh"
 
 #include "psalg/geometry/GeometryAccess.hh"
-#include "psalg/geometry/GeometryObject.hh"
+//#include "psalg/geometry/GeometryObject.hh"
 
 //using namespace std;
 using namespace psalg;
@@ -22,7 +22,8 @@ class CalibPars {
 
 public:
 
-  typedef geometry::GeometryObject::SG SG;
+  //typedef geometry::GeometryObject::SG SG;
+  typedef geometry::AXIS AXIS;
 
   CalibPars(const char* detname = "Undefined detname", const DBTYPE& dbtype=DBWEB);
   virtual ~CalibPars();

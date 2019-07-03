@@ -13,8 +13,13 @@
 using namespace std;
 //using namespace geometry;
 
-typedef geometry::GeometryObject::SG SG;
-typedef SG::pixel_mask_t pixel_mask_t;
+//typedef geometry::GeometryObject::SG SG;
+
+typedef geometry::pixel_coord_t pixel_coord_t;
+typedef geometry::pixel_area_t pixel_area_t;
+typedef geometry::pixel_mask_t pixel_mask_t;
+typedef geometry::pixel_idx_t pixel_idx_t;
+typedef geometry::gsize_t gsize_t;
 
 struct timespec start, stop;
 int status;
@@ -81,10 +86,10 @@ void test_geo_get_pixel_coords_as_pointer()
   cout << "\n==test_geo_get_pixel_coords_as_pointer fname: " << fname << " \n";
 
   geometry::GeometryAccess geo(fname);
-  const double* X;
-  const double* Y;
-  const double* Z;
-  unsigned   size;
+  const pixel_coord_t* X;
+  const pixel_coord_t* Y;
+  const pixel_coord_t* Z;
+  gsize_t size;
   geo.get_pixel_coords(X,Y,Z,size); //,oname,oindex,do_tilt
 
   std::stringstream ss; ss << "print_pixel_coords():\n"
@@ -110,9 +115,9 @@ void test_geo_get_pixel_coords_as_ndarray()
   geometry::GeometryAccess::file_to_stringstream(fname, ss);
   geometry::GeometryAccess geo(ss);
 
-  psalg::NDArray<const double>* pxarr = geo.get_pixel_coords(SG::AXIS_X);
-  psalg::NDArray<const double>* pyarr = geo.get_pixel_coords(SG::AXIS_Y);
-  psalg::NDArray<const double>* pzarr = geo.get_pixel_coords(SG::AXIS_Z);
+  psalg::NDArray<const pixel_coord_t>* pxarr = geo.get_pixel_coords(geometry::AXIS_X);
+  psalg::NDArray<const pixel_coord_t>* pyarr = geo.get_pixel_coords(geometry::AXIS_Y);
+  psalg::NDArray<const pixel_coord_t>* pzarr = geo.get_pixel_coords(geometry::AXIS_Z);
 
   cout << "  X: " << *pxarr << '\n';
   cout << "  Y: " << *pyarr << '\n';
@@ -132,17 +137,17 @@ void test_geo_get_misc()
 
   geometry::GeometryAccess geo(fname);
 
-  const double pix_scale_size_um = 109.92;
+  const pixel_coord_t pix_scale_size_um = 109.92;
   const int xy0_off_pix_v2[] = {500,500};
   const int xy0_off_pix_v1[] = {300,300};
-  const double Zplane1 = 1000000; //[um] or 0
-  const double Zplane2 = 100000; //[um] or 0
+  const pixel_coord_t Zplane1 = 1000000; //[um] or 0
+  const pixel_coord_t Zplane2 = 100000; //[um] or 0
 
-  psalg::NDArray<const double>*       areas = geo.get_pixel_areas();
-  psalg::NDArray<const pixel_mask_t>* mask  = geo.get_pixel_mask(0377);
-  psalg::NDArray<const double>*       xatz  = geo.get_pixel_coords_at_z(Zplane1, SG::AXIS_X);
-  psalg::NDArray<const unsigned>*     ix    = geo.get_pixel_coord_indexes(SG::AXIS_X, pix_scale_size_um, xy0_off_pix_v1);
-  psalg::NDArray<const unsigned>*     ixatz = geo.get_pixel_inds_at_z(Zplane2, SG::AXIS_X, pix_scale_size_um, xy0_off_pix_v2);
+  psalg::NDArray<const pixel_area_t>*  areas = geo.get_pixel_areas();
+  psalg::NDArray<const pixel_mask_t>*  mask  = geo.get_pixel_mask(0377);
+  psalg::NDArray<const pixel_coord_t>* xatz  = geo.get_pixel_coords_at_z(Zplane1, geometry::AXIS_X);
+  psalg::NDArray<const pixel_idx_t>*   ix    = geo.get_pixel_coord_indexes(geometry::AXIS_X, pix_scale_size_um, xy0_off_pix_v1);
+  psalg::NDArray<const pixel_idx_t>*   ixatz = geo.get_pixel_inds_at_z(Zplane2, geometry::AXIS_X, pix_scale_size_um, xy0_off_pix_v2);
 
   cout << "  areas: " << *areas << '\n';
   cout << "  mask : " << *mask  << '\n';
@@ -181,7 +186,7 @@ int main(int argc, char* argv[])
 
   cout << usage(); 
   print_hline(80,'_');
-  if (argc==1) {return 0;}
+  if(argc==1) {return 0;}
   std::string tname(argv[1]);
   cout << usage(tname); 
 

@@ -7,6 +7,7 @@
 #include <vector>
 #include <math.h>      // sin, cos
 
+#include "psalg/geometry/GeometryTypes.hh"
 #include "psalg/geometry/SegGeometryStore.hh"
 
 //-------------------
@@ -22,10 +23,8 @@ namespace geometry {
  *
  *  @brief Class supports elementary building block for hierarchial geometry description
  *
- *  @note This software was developed for the LCLS project.  If you use all or 
- *  part of it, please give an appropriate acknowledgment.
- *
- *  @see GeometryObject, ...
+ *  @note This software was developed for the LCLS project.
+ *  If you use all or part of it, please give an appropriate acknowledgment.
  *
  *  @author Mikhail S. Dubrovin
  *
@@ -59,21 +58,21 @@ namespace geometry {
  *  @li Access methods
  *  @code
  *    // get pixel coordinates
- *    const double* X;
- *    const double* Y;
- *    const double* Z;
- *    unsigned   size;
- *    bool       do_tilt=true;
+ *    const pixel_coord_t* X;
+ *    const pixel_coord_t* Y;
+ *    const pixel_coord_t* Z;
+ *    gsize_t size;
+ *    bool do_tilt=true;
  *    geo->get_pixel_coords(X, Y, Z, size, do_tilt);
  *
  *    // get pixel areas
- *    const double* A;
- *    unsigned   size;
+ *    const pixel_area_t* A;
+ *    gsize_t size;
  *    geo->get_pixel_areas(A, size);
  *
  *    // get pixel mask
  *    const int* mask;
- *    unsigned   size;
+ *    gsize_t size;
  *    unsigned   mbits = 377; // 1-edges; 2-wide central cols; 4-non-bound; 8-non-bound neighbours
  *    geo->get_pixel_mask(mask, size, mbits);
  *
@@ -81,10 +80,10 @@ namespace geometry {
  *    std::vector<shpGO> lst = geo->get_list_of_children();
  *
  *    std::string oname  = geo->get_geo_name();
- *    unsigned    oindex = geo->get_geo_index();
+ *    segindex_t  oindex = geo->get_geo_index();
  *    std::string pname  = geo->get_parent_name();
- *    unsigned    pindex = geo->get_parent_index();
- *    double      pixsize= geo->get_pixel_scale_size();
+ *    segindex_t  pindex = geo->get_parent_index();
+ *    pixel_coord_t pixsize= geo->get_pixel_scale_size();
  *
  *    double x, y, z, rot_z, rot_y, rot_x, tilt_z, tilt_y, tilt_x;     
  *    geo->get_geo_pars(x, y, z, rot_z, rot_y, rot_x, tilt_z, tilt_y, tilt_x);
@@ -111,15 +110,14 @@ namespace geometry {
 
 //-------------------
 
+
+//-------------------
+
 class GeometryObject {
 public:
 
   typedef geometry::SegGeometry SG;
   typedef GeometryObject* pGO;
-  typedef SG::pixel_mask_t pixel_mask_t;
-
-
-  //static constexpr double DEG_TO_RAD = 3.141592653589793238463 / 180;
 
   /**
    *  @brief Class constructor accepts path to the calibration "geometry" file and verbosity control bit-word 
@@ -138,22 +136,21 @@ public:
    *  @param[in] tilt_y - object tilt/deviation angle [deg] around axis y of the parent frame
    *  @param[in] tilt_x - object tilt/deviation angle [deg] around axis x of the parent frame
    */
-  GeometryObject(std::string pname  = std::string(),
-                 unsigned    pindex = 0,
-                 std::string oname  = std::string(),
-                 unsigned    oindex = 0,
-                 double      x0     = 0,
-                 double      y0     = 0,
-                 double      z0     = 0,
-                 double      rot_z  = 0,
-                 double      rot_y  = 0,
-                 double      rot_x  = 0,                  
-                 double      tilt_z = 0,
-                 double      tilt_y = 0,
-                 double      tilt_x = 0
+  GeometryObject(std::string   pname  = std::string(),
+                 segindex_t    pindex = 0,
+                 std::string   oname  = std::string(),
+                 segindex_t    oindex = 0,
+                 pixel_coord_t x0     = 0,
+                 pixel_coord_t y0     = 0,
+                 pixel_coord_t z0     = 0,
+                 angle_t       rot_z  = 0,
+                 angle_t       rot_y  = 0,
+                 angle_t       rot_x  = 0,                  
+                 angle_t       tilt_z = 0,
+                 angle_t       tilt_y = 0,
+                 angle_t       tilt_x = 0
                 );
 
-  // Destructor
   virtual ~GeometryObject() ;
 
   std::string string_geo();
@@ -183,13 +180,13 @@ public:
   std::string get_geo_name()     {return m_oname;}
 
   /// Returns self object index
-  unsigned    get_geo_index()    {return m_oindex;}
+  segindex_t    get_geo_index()    {return m_oindex;}
 
   /// Returns parent object name
   std::string get_parent_name()  {return m_pname;}
 
   /// Returns parent object index
-  unsigned    get_parent_index() {return m_pindex;}
+  segindex_t    get_parent_index() {return m_pindex;}
 
   /**
    *  @brief Re-evaluate pixel coordinates (useful if geo is changed)
@@ -207,7 +204,7 @@ public:
    *  @param[in]  do_tilt - on/off tilt angle correction
    *  @param[in]  do_eval - enforce (re-)evaluation of pixel coordinates
    */
-  void get_pixel_coords(const double*& X, const double*& Y, const double*& Z, unsigned& size, 
+  void get_pixel_coords(const pixel_coord_t*& X, const pixel_coord_t*& Y, const pixel_coord_t*& Z, gsize_t& size, 
                         const bool do_tilt=true, const bool do_eval=false);
 
   /**
@@ -215,7 +212,7 @@ public:
    *  @param[out] areas - pointer to pixel areas array
    *  @param[out] size - size of the pixel areas array (number of pixels)
    */
-  void get_pixel_areas(const double*& areas, unsigned& size);
+  void get_pixel_areas(const pixel_area_t*& areas, gsize_t& size);
 
   /**
    *  @brief Returns pointers to pixel mask array
@@ -227,48 +224,48 @@ public:
    *              + 4 - mask non-bounded pixels,
    *              + 8 - mask nearest neighbours of nonbonded pixels.
    */
-  void get_pixel_mask(const pixel_mask_t*& mask, unsigned& size, const unsigned& mbits = 0377);
+  void get_pixel_mask(const pixel_mask_t*& mask, gsize_t& size, const unsigned& mbits = 0377);
 
   /// Returns size of geometry object array - number of pixels
-  unsigned get_size_geo_array();
+  gsize_t get_size_geo_array();
 
   /// Returns pixel scale size of geometry object
-  double get_pixel_scale_size();
+  pixel_coord_t get_pixel_scale_size();
 
   /// Gets self object geometry parameters
-  void get_geo_pars(double& x0,
-                    double& y0,
-                    double& z0,
-                    double& rot_z,
-                    double& rot_y,
-                    double& rot_x,                  
-                    double& tilt_z,
-                    double& tilt_y,
-                    double& tilt_x 
+  void get_geo_pars(pixel_coord_t& x0,
+                    pixel_coord_t& y0,
+                    pixel_coord_t& z0,
+                    angle_t&       rot_z,
+                    angle_t&       rot_y,
+                    angle_t&       rot_x,                  
+                    angle_t&       tilt_z,
+                    angle_t&       tilt_y,
+                    angle_t&       tilt_x 
 		   );
 
   /// Sets self object geometry parameters
-  void set_geo_pars(const double& x0 = 0,
-                    const double& y0 = 0,
-                    const double& z0 = 0,
-                    const double& rot_z = 0,
-                    const double& rot_y = 0,
-                    const double& rot_x = 0,                  
-                    const double& tilt_z = 0,
-                    const double& tilt_y = 0,
-                    const double& tilt_x = 0 
+  void set_geo_pars(const pixel_coord_t& x0 = 0,
+                    const pixel_coord_t& y0 = 0,
+                    const pixel_coord_t& z0 = 0,
+                    const angle_t&       rot_z = 0,
+                    const angle_t&       rot_y = 0,
+                    const angle_t&       rot_x = 0,                  
+                    const angle_t&       tilt_z = 0,
+                    const angle_t&       tilt_y = 0,
+                    const angle_t&       tilt_x = 0 
 		   );
 
   /// Adds offset for origin of the self object w.r.t. current position
-  void move_geo(const double& dx = 0,
-                const double& dy = 0,
-                const double& dz = 0
+  void move_geo(const pixel_coord_t& dx = 0,
+                const pixel_coord_t& dy = 0,
+                const pixel_coord_t& dz = 0
 	       );
 
   /// Adds tilts to the self object w.r.t. current orientation
-  void tilt_geo(const double& dt_x = 0,
-                const double& dt_y = 0,
-                const double& dt_z = 0 
+  void tilt_geo(const pixel_coord_t& dt_x = 0,
+                const pixel_coord_t& dt_y = 0,
+                const pixel_coord_t& dt_z = 0 
 	       );
 
   /// Returns class name for MsgLogger
@@ -279,55 +276,55 @@ protected:
 private:
 
   // Data members
-  std::string m_pname;
-  unsigned    m_pindex;
+  std::string   m_pname;
+  segindex_t    m_pindex;
 
-  std::string m_oname;
-  unsigned    m_oindex;
+  std::string   m_oname;
+  segindex_t    m_oindex;
 
-  double      m_x0;
-  double      m_y0;
-  double      m_z0;
+  pixel_coord_t m_x0;
+  pixel_coord_t m_y0;
+  pixel_coord_t m_z0;
 
-  double      m_rot_z;
-  double      m_rot_y;
-  double      m_rot_x;
+  angle_t       m_rot_z;
+  angle_t       m_rot_y;
+  angle_t       m_rot_x;
 
-  double      m_tilt_z;
-  double      m_tilt_y;
-  double      m_tilt_x;
+  angle_t       m_tilt_z;
+  angle_t       m_tilt_y;
+  angle_t       m_tilt_x;
 
-  bool        m_do_tilt;
-  unsigned    m_mbits; // mask control bits
+  bool          m_do_tilt;
+  unsigned      m_mbits; // mask control bits
 
   SG* m_seggeom;
 
   pGO m_parent;
   std::vector<pGO> v_list_of_children;
 
-  unsigned m_size;
-  double*  p_xarr;
-  double*  p_yarr;
-  double*  p_zarr;
-  double*  p_aarr; // pixel area array
-  pixel_mask_t* p_marr; // pixel mask array
+  gsize_t m_size;
+  pixel_coord_t* p_xarr;
+  pixel_coord_t* p_yarr;
+  pixel_coord_t* p_zarr;
+  pixel_area_t*  p_aarr; // pixel area array
+  pixel_mask_t*  p_marr; // pixel mask array
 
-  void transform_geo_coord_arrays(const double* X, 
-                                  const double* Y,  
-                                  const double* Z, 
-                                  const unsigned size,
-                                  double* Xt,  
-                                  double* Yt,  
-                                  double* Zt,
-                                  const bool do_tilt=true
-                                 );
+  void transform_geo_coord_arrays(const pixel_coord_t* X,
+				  const pixel_coord_t* Y,
+				  const pixel_coord_t* Z,
+				  const gsize_t size,
+				  pixel_coord_t* Xt,
+				  pixel_coord_t* Yt,
+				  pixel_coord_t* Zt,
+				  const bool do_tilt=true
+				  );
 
-  static void rotation(const double* X, const double* Y, const unsigned size,
+  static void rotation(const pixel_coord_t* X, const pixel_coord_t* Y, const gsize_t size,
                        const double C, const double S,
-		       double* Xrot, double* Yrot);
+		       pixel_coord_t* Xrot, pixel_coord_t* Yrot);
 
-  static void rotation(const double* X, const double* Y, const unsigned size, const double angle_deg,
-                       double* Xrot, double* Yrot);
+  static void rotation(const pixel_coord_t* X, const pixel_coord_t* Y, const gsize_t size, const angle_t angle_deg,
+                       pixel_coord_t* Xrot, pixel_coord_t* Yrot);
 
   /// Delete arrays with allocated memory, reset pointers to 0
   void _deallocate_memory();

@@ -23,10 +23,8 @@ namespace geometry {
  *
  *  @brief class SegGeometryStore has a static factory method Create for SegGeometry object
  *
- *  This software was developed for the LCLS project. If you use all or 
- *  part of it, please give an appropriate acknowledgment.
- *
- *  @version $Id$
+ *  This software was developed for the LCLS project.
+ *  If you use all or part of it, please give an appropriate acknowledgment.
  *
  *  @author Mikhail S. Dubrovin
  *
@@ -66,15 +64,15 @@ namespace geometry {
  *  \n are defined in the interface SegGeometry and implemented in SegGeometryCspad2x1V1
  *  @code
  *  // scalar values
- *  const SG::size_t         array_size        = segeo -> size(); 
- *  const SG::size_t         number_of_rows    = segeo -> rows();
- *  const SG::size_t         number_of_cols    = segeo -> cols();
+ *  const SG::gsize_t        array_size        = segeo -> size(); 
+ *  const SG::gsize_t        number_of_rows    = segeo -> rows();
+ *  const SG::gsize_t        number_of_cols    = segeo -> cols();
  *  const SG::pixel_coord_t  pixel_scale_size  = segeo -> pixel_scale_size();
  *  const SG::pixel_coord_t  pixel_coord_min   = segeo -> pixel_coord_min(SG::AXIS_Z);
  *  const SG::pixel_coord_t  pixel_coord_max   = segeo -> pixel_coord_max(SG::AXIS_X);
  * 
  *  // pointer to arrays with size equal to array_size
- *  const SG::size_t*        p_array_shape     = segeo -> shape();
+ *  const SG::gsize_t*       p_array_shape     = segeo -> shape();
  *  const SG::pixel_area_t*  p_pixel_area      = segeo -> pixel_area_array();
  *  const SG::pixel_coord_t* p_pixel_size_arr  = segeo -> pixel_size_array(SG::AXIS_X);
  *  const SG::pixel_coord_t* p_pixel_coord_arr = segeo -> pixel_coord_array(SG::AXIS_Y);

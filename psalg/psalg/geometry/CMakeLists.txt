@@ -26,10 +26,11 @@ target_link_libraries(geometry ${OpenMP_CXX_FLAGS}
 )
 
 install(FILES
+    GeometryTypes.hh
+    SegGeometry.hh
     SegGeometryCspad2x1V1.hh
     SegGeometryEpix100V1.hh
     SegGeometryEpix10kaV1.hh
-    SegGeometry.hh
     SegGeometryMatrixV1.hh
     SegGeometryStore.hh
     UtilsCSPAD.hh
