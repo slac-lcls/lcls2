@@ -155,14 +155,14 @@ void SegGeometryEpix10kaV1::print_coord_arrs()
   cout << "\nSegGeometryEpix10kaV1::print_coord_arrs\n";
 
   cout << "m_x_arr_um:\n"; 
-  for(unsigned counter=0, c=0; c<COLS; c++) {
+  for(gsize_t counter=0, c=0; c<COLS; c++) {
     cout << " " << m_x_arr_um[c];
     if(++counter > 19) {counter=0; cout << "\n";}
   }
   cout << "\n"; 
 
   cout << "m_y_arr_um:\n"; 
-  for(unsigned counter=0, r=0; r<ROWS; r++) { 
+  for(gsize_t counter=0, r=0; r<ROWS; r++) { 
     cout << " " << m_y_arr_um[r];
     if(++counter > 19) {counter=0; cout << "\n";}
   }
@@ -187,7 +187,7 @@ void SegGeometryEpix10kaV1::print_min_max_coords()
 //--------------
 //--------------
 
-void SegGeometryEpix10kaV1::print_seg_info(const unsigned& pbits)
+void SegGeometryEpix10kaV1::print_seg_info(const bitword_t& pbits)
 {
   if(pbits & 1) print_member_data();
   if(pbits & 2) print_coord_arrs();
@@ -245,9 +245,8 @@ const pixel_coord_t SegGeometryEpix10kaV1::pixel_coord_max (AXIS axis)
 
 //--------------
 
-const pixel_mask_t* SegGeometryEpix10kaV1::pixel_mask_array(const unsigned& mbits)
+const pixel_mask_t* SegGeometryEpix10kaV1::pixel_mask_array(const bitword_t& mbits)
 {
-
   //cout << "SegGeometryEpix10kaV1::pixel_mask_array(): mbits =" << mbits << '\n';   
 
   std::fill_n(&m_pix_mask_arr[0][0], int(SIZE), pixel_mask_t(1));

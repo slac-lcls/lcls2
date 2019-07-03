@@ -27,8 +27,6 @@ namespace geometry {
  *  This software was developed for the LCLS project.  If you use all or 
  *  part of it, please give an appropriate acknowledgment.
  *
- *  @version $Id$
- *
  *  @see GeometryObject, CalibFileFinder, psalg/geometry/test/ex_geometry_access.cpp
  *
  *  @anchor interface
@@ -37,7 +35,7 @@ namespace geometry {
  *  @li  Include
  *  @code
  *  #include "psalg/geometry/GeometryAccess.hh"
- *  #include "psalg/calib/NDArray.hh" // need it if image is returned
+ *  #include "psalg/calib/NDArray.hh" // need it if image or constants are returned
  *  @endcode
  *
  *  @li Instatiation
@@ -45,7 +43,7 @@ namespace geometry {
  *  Code below instateates GeometryAccess object using path to the calibration "geometry" file and verbosity control bit-word:
  *  @code
  *  std::string path = /reg/d/psdm/<INS>/<experiment>/calib/<calib-type>/<det-src>/geometry/0-end.data"
- *  unsigned print_bits = 0377; // or = 0 (by default) - to suppress printout from this object. 
+ *  bitword_t print_bits = 0377; // or = 0 (by default) - to suppress printout from this object. 
  *  geometry::GeometryAccess geometry(path, print_bits);
  *  @endcode
  *  To find path automatically use CalibFileFinder.
@@ -77,7 +75,7 @@ namespace geometry {
  *    // Access pixel mask:
  *        const pixel_mask_t* mask;
  *        gsize_t   size;
- *        unsigned   mbits=0377; // 1-edges; 2-wide central cols; 4-non-bound; 8-non-bound neighbours
+ *        bitword_t   mbits=0377; // 1-edges; 2-wide central cols; 4-non-bound; 8-non-bound neighbours
  *        geometry.get_pixel_mask(A, size, std::string(), 0, mbits);
  * 
  *    // Access pixel size for entire detector:
@@ -246,7 +244,7 @@ public:
                       gsize_t& size,
 		      const std::string& oname = std::string(),
  		      const segindex_t& oindex = 0,
-		      const unsigned& mbits = 0377);
+		      const bitword_t& mbits = 0377);
 
   NDArray<const pixel_mask_t>* get_pixel_mask(const unsigned& mbits=0377);
 
@@ -256,7 +254,7 @@ public:
    *  @param[in]  oindex - object index
    */
   pixel_coord_t get_pixel_scale_size(const std::string& oname = std::string(), 
-                              const segindex_t& oindex = 0);
+                                     const segindex_t& oindex = 0);
 
   /// Returns dictionary of comments
   //std::map<std::string, std::string>& get_dict_of_comments() {return m_dict_of_comments;}
@@ -276,7 +274,7 @@ public:
 			  const segindex_t& oindex = 0);
 
   /// Prints geometry info using all other print_* methods
-  void print_geometry_info(const unsigned& pbits=255);
+  void print_geometry_info(const bitword_t& pbits=255);
 
   /// Returns pixel coordinate index arrays iX, iY of size for specified geometry object 
  /**
@@ -299,8 +297,8 @@ public:
                                const bool do_tilt=true);
 
   NDArray<const pixel_idx_t>* get_pixel_coord_indexes(const AXIS axis=AXIS_X,
-                                                   const pixel_coord_t pix_scale_size_um = 0,
-                                                   const int* xy0_off_pix = 0);
+                                                      const pixel_coord_t pix_scale_size_um = 0,
+                                                      const int* xy0_off_pix = 0);
 
   /// Returns pixel coordinate index arrays iX, iY of size for specified Zplane and geometry object 
  /**
@@ -323,9 +321,9 @@ public:
                               const int* xy0_off_pix = 0);
 
   NDArray<const pixel_idx_t>* get_pixel_inds_at_z(const pixel_coord_t Zplane = 0,
-                                               const AXIS axis=AXIS_X,
-                                               const pixel_coord_t pix_scale_size_um = 0,
-                                               const int* xy0_off_pix = 0);
+                                                  const AXIS axis=AXIS_X,
+                                                  const pixel_coord_t pix_scale_size_um = 0,
+                                                  const int* xy0_off_pix = 0);
 
   /// Static method returns image as NDArray<image_t> object
  /**
@@ -340,7 +338,7 @@ public:
                         const double* W = 0,
                         const gsize_t& size = 0);
 
-  /// Returns pointer to the data member NDArray<image_t> image object
+  /// Returns reference to data member NDArray<image_t> image object
   NDArray<image_t>&
   ref_img_from_pixel_arrays(const pixel_idx_t*& iX, 
                             const pixel_idx_t*& iY, 
@@ -368,7 +366,7 @@ public:
  /**
    *  @param[in] pbits - printout control bitword
    */
-  void set_print_bits(unsigned pbits=0) {m_pbits=pbits;}
+  void set_print_bits(bitword_t pbits=0) {m_pbits=pbits;}
 
   /// Sets self object geometry parameters
   void set_geo_pars(const std::string& oname = std::string(), 
@@ -410,7 +408,7 @@ private:
   std::string m_path;
 
   /// print bits
-  unsigned m_pbits;
+  bitword_t m_pbits;
 
   /// pointer to x pixel coordinate index array
   pixel_idx_t* p_iX;

@@ -24,7 +24,6 @@ Created on 2018-03-05 by Mikhail Dubrovin
 import os
 import sys
 import numpy as np
-from requests import get as requests_get
 import json
 
 import psana.pyalgos.generic.Utils as gu
@@ -39,22 +38,45 @@ from   psana.pscalib.calib.XtcavUtils import load_xtcav_calib_file
 from   psana.pscalib.calib.MDBConvertUtils import serialize_dict, info_dict, print_dict
 from   psana.pscalib.calib.MDBConversionMap import DETECTOR_NAME_CONVERSION_DICT as dic_det_name_conv
 
+from requests import get as requests_get
+from urllib.parse import urlparse
+from krtc import KerberosTicket
+
 import logging
 logger = logging.getLogger(__name__)
+
+#------------------------------
+
+def must_to_fix_error(msg) :
+    logger.error(msg)  
+    sys.exit('THIS ERROR MUST TO BE FIXED')
+
+#------------------------------
+
+def get_for_url(url) :
+
+    krbheaders = KerberosTicket("HTTP@" + urlparse(url).hostname).getAuthHeaders()
+    r = requests_get(url, headers=krbheaders) # returns {'success': True, 'value': [<old-style-responce>]}
+    if not r :
+        msg = '\nget_for_url try to get run times from experiment DB'\
+              '\nurl: %s\nstatus_code: %d\ncontent: %s' %(url, r.status_code, r.text)
+        must_to_fix_error(msg)
+
+    jdic = r.json()
+    if jdic['success'] : return jdic['value'] 
+    else : 
+        must_to_fix_error('\nget_for_url un-successful responce: %s\nfor url: %s' % (str(r), url))
 
 #------------------------------
 
 def run_begin_end_time(exp, runnum) :
     # returns a list of dicts per run with 'begin_time', 'end_time', 'run_num', 'run_type'
     if runnum>0 :
-        url = 'https://pswww.slac.stanford.edu/prevlgbk/lgbk/%s/ws/runs' % exp
-        r = requests_get(url)
-        if not r :
-            msg = '\nrun_begin_end_time try to get run times from experiment DB'\
-                  '\nurl: %s\nstatus_code: %d\ncontent: %s' %(url, r.status_code, r.text)
-            logger.error(msg)  
-            sys.exit('THIS ERROR MUST BE FIXED')
-        resp = r.json()
+        url = 'https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/%s/ws/runs_for_calib' % exp
+        #url = 'https://pswww.slac.stanford.edu/prevlgbk/lgbk/%s/ws/runs' % exp
+
+        resp = get_for_url(url)
+        #returns [{'begin_time': 1438751015, 'run_num': 201, 'run_type': 'DATA', 'end_time': 1438751093},...]
 
         for d in resp :
             if d['run_num'] == runnum :
@@ -221,6 +243,20 @@ if __name__ == "__main__" :
 
 #------------------------------
 
+  def test_get_for_url() :
+      #url = 'https://pswww.slac.stanford.edu/prevlgbk/lgbk/amo86615/ws/runs'
+      url = 'https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/amo86615/ws/runs_for_calib'
+      resp = get_for_url(url)
+      print('url  : %s\nresp: %s' % (url, resp))
+
+#------------------------------
+
+  def test_run_begin_end_time() :
+      exp, runnum = 'amo86615', 23
+      print('test_run_begin_end_time: %s' % str(run_begin_end_time(exp, runnum)))
+
+#------------------------------
+
   def test_all(tname) :
     logger.info('\n%s\n' % usage())
     kwa = {'host':cc.HOST,\
@@ -231,6 +267,8 @@ if __name__ == "__main__" :
     elif tname == '2': scan_calib_for_experiment('cxix25615', **kwa)
     elif tname == '3': test_detname_conversion(tname)
     elif tname == '4': scan_calib_for_experiment('amox23616', **kwa) 
+    elif tname == '5': test_get_for_url()
+    elif tname == '6': test_run_begin_end_time()
     # /reg/d/psdm/AMO/amox23616/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/104-end.data
     else : sys.exit('Test number parameter is not recognized.\n%s' % usage())
 

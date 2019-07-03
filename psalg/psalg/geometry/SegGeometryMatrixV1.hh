@@ -62,7 +62,7 @@ namespace geometry {
  *
  *  @li  Print info
  *  @code
- *       unsigned pbits=0377; // 1-member data; 2-coordinate arrays; 4-min/max coordinate values
+ *       bitword_t pbits=0377; // 1-member data; 2-coordinate arrays; 4-min/max coordinate values
  *       seg_geom -> print_seg_info(pbits);
  *  @endcode
  *
@@ -82,7 +82,7 @@ namespace geometry {
  *        const pixel_coord_t* p_pixel_size_arr  = seg_geom -> pixel_size_array(SG::AXIS_X);
  *        const pixel_coord_t* p_pixel_coord_arr = seg_geom -> pixel_coord_array(SG::AXIS_Y);
  *
- *        unsigned mbits=0377; // 1-edges; 2-wide central cols; 4-non-bound; 8-non-bound neighbours
+ *        bitword_t mbits=0377; // 1-edges; 2-wide central cols; 4-non-bound; 8-non-bound neighbours
  *        const pixel_mask_t*  p_mask_arr = seg_geom -> pixel_mask_array(mbits);
  *  @endcode
  *  
@@ -154,7 +154,7 @@ public:
   /// Implementation of interface methods
 
   /// Prints segment info for selected bits
-  virtual void print_seg_info(const unsigned& pbits=0);
+  virtual void print_seg_info(const bitword_t& pbits=0);
 
   /// Returns size of the coordinate arrays
   virtual const gsize_t size() {return SIZE;}
@@ -194,7 +194,7 @@ public:
    *  @param[in] mbits - mask control bits;
    *             + 1 - mask edges,
    */  
-  virtual const pixel_mask_t* pixel_mask_array(const unsigned& mbits = 0377);
+  virtual const pixel_mask_t* pixel_mask_array(const bitword_t& mbits = 0377);
 
   //-----------------
   // Singleton stuff:
@@ -255,7 +255,7 @@ private:
   bool m_use_wide_pix_center;
 
   /// done bits
-  unsigned m_done_bits;
+  bitword_t m_done_bits;
 
   /// 1-d pixel coordinates of rows and cols
   pixel_coord_t*  m_x_arr_um;  

@@ -249,7 +249,7 @@ void GeometryObject::get_pixel_areas(const pixel_area_t*& areas, gsize_t& size)
 
 //-------------------
 
-void GeometryObject::get_pixel_mask(const pixel_mask_t*& mask, gsize_t& size, const unsigned& mbits)
+void GeometryObject::get_pixel_mask(const pixel_mask_t*& mask, gsize_t& size, const bitword_t& mbits)
 {
   if(mbits != m_mbits or p_marr==0) {m_mbits = mbits; evaluate_pixel_coords();}
   mask = p_marr;

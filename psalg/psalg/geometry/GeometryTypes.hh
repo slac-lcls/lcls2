@@ -6,8 +6,8 @@
  * #include "psalg/geometry/GeometryTypes.hh"
  */
 
-//#include <cstddef>  // for std::size_t
-#include <stdint.h>  // uint8_t, uint16_t, uint32_t, etc.
+//#include <cstddef> // for std::size_t
+#include <stdint.h> // uint8_t, uint16_t, uint32_t, etc.
 
 //-------------------
 
@@ -21,6 +21,7 @@ namespace geometry {
   typedef double   angle_t;       // angle degree or radian
   typedef unsigned gsize_t;       // size of array
   typedef unsigned segindex_t;    // segment index in parent detector
+  typedef unsigned bitword_t;     // bitword to control mask layers, print bits etc.
 
   /// Enumerator for X, Y, and Z axes
   enum AXIS {AXIS_X=0, AXIS_Y, AXIS_Z};

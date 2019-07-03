@@ -73,7 +73,7 @@ namespace geometry {
  *    // get pixel mask
  *    const int* mask;
  *    gsize_t size;
- *    unsigned   mbits = 377; // 1-edges; 2-wide central cols; 4-non-bound; 8-non-bound neighbours
+ *    bitword_t   mbits = 377; // 1-edges; 2-wide central cols; 4-non-bound; 8-non-bound neighbours
  *    geo->get_pixel_mask(mask, size, mbits);
  *
  *    shpGO parobj = geo->get_parent();
@@ -177,16 +177,16 @@ public:
   std::vector<pGO>& get_list_of_children() {return v_list_of_children;}
 
   /// Returns self object name
-  std::string get_geo_name()     {return m_oname;}
+  std::string get_geo_name() {return m_oname;}
 
   /// Returns self object index
-  segindex_t    get_geo_index()    {return m_oindex;}
+  segindex_t get_geo_index() {return m_oindex;}
 
   /// Returns parent object name
-  std::string get_parent_name()  {return m_pname;}
+  std::string get_parent_name() {return m_pname;}
 
   /// Returns parent object index
-  segindex_t    get_parent_index() {return m_pindex;}
+  segindex_t get_parent_index() {return m_pindex;}
 
   /**
    *  @brief Re-evaluate pixel coordinates (useful if geo is changed)
@@ -224,7 +224,7 @@ public:
    *              + 4 - mask non-bounded pixels,
    *              + 8 - mask nearest neighbours of nonbonded pixels.
    */
-  void get_pixel_mask(const pixel_mask_t*& mask, gsize_t& size, const unsigned& mbits = 0377);
+  void get_pixel_mask(const pixel_mask_t*& mask, gsize_t& size, const bitword_t& mbits = 0377);
 
   /// Returns size of geometry object array - number of pixels
   gsize_t get_size_geo_array();
@@ -295,7 +295,7 @@ private:
   angle_t       m_tilt_x;
 
   bool          m_do_tilt;
-  unsigned      m_mbits; // mask control bits
+  bitword_t     m_mbits; // mask control bits
 
   SG* m_seggeom;
 

@@ -421,7 +421,7 @@ GeometryAccess::get_pixel_mask(const pixel_mask_t*& mask,
 			       gsize_t& size,
 			       const std::string& oname,
 			       const segindex_t& oindex,
-			       const unsigned& mbits)
+			       const bitword_t& mbits)
 {
   //cout << "GeometryAccess::get_pixel_mask(): mbits =" << mbits << '\n';   
 
@@ -560,7 +560,7 @@ GeometryAccess::print_pixel_coords(const std::string& oname,
 //-------------------
 
 void
-GeometryAccess::print_geometry_info(const unsigned& pbits) {
+GeometryAccess::print_geometry_info(const bitword_t& pbits) {
   if(pbits & 1) print_comments_from_dict();
   if(pbits & 2) print_list_of_geos();
   if(pbits & 4) print_list_of_geos_children();
@@ -819,7 +819,7 @@ GeometryAccess::get_pixel_areas()
 //-------------------
 
 NDArray<const pixel_mask_t>*
-GeometryAccess::get_pixel_mask(const unsigned& mbits)
+GeometryAccess::get_pixel_mask(const bitword_t& mbits)
 {
     const pixel_mask_t* mask;
     gsize_t size;

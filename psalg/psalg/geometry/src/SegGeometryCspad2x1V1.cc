@@ -126,14 +126,14 @@ void SegGeometryCspad2x1V1::print_coord_arrs()
   cout << "\nSegGeometryCspad2x1V1::print_coord_arrs\n";
 
   cout << "m_x_arr_um:\n"; 
-  for(unsigned counter=0, c=0; c<COLS; c++) {
+  for(gsize_t counter=0, c=0; c<COLS; c++) {
     cout << " " << m_x_arr_um[c];
     if(++counter > 19) {counter=0; cout << "\n";}
   }
   cout << "\n"; 
 
   cout << "m_y_arr_um:\n"; 
-  for(unsigned counter=0, r=0; r<ROWS; r++) { 
+  for(gsize_t counter=0, r=0; r<ROWS; r++) { 
     cout << " " << m_y_arr_um[r];
     if(++counter > 19) {counter=0; cout << "\n";}
   }
@@ -156,7 +156,7 @@ void SegGeometryCspad2x1V1::print_min_max_coords()
 
 //--------------
 
-void SegGeometryCspad2x1V1::print_seg_info(const unsigned& pbits)
+void SegGeometryCspad2x1V1::print_seg_info(const bitword_t& pbits)
 {
   if(pbits & 1) print_member_data();
   if(pbits & 2) print_coord_arrs();
@@ -199,7 +199,7 @@ const pixel_coord_t SegGeometryCspad2x1V1::pixel_coord_min(AXIS axis)
 { 
   const pixel_coord_t* arr = pixel_coord_array (axis);
   pixel_coord_t corner_coords[NCORNERS];
-  for (gsize_t i=0; i<NCORNERS; ++i) {corner_coords[i] = arr[IND_CORNER[i]];}
+  for(gsize_t i=0; i<NCORNERS; ++i) {corner_coords[i] = arr[IND_CORNER[i]];}
   return geometry::min_of_arr(corner_coords, NCORNERS); 
 }
 
@@ -209,15 +209,14 @@ const pixel_coord_t SegGeometryCspad2x1V1::pixel_coord_max(AXIS axis)
 { 
   const pixel_coord_t* arr = pixel_coord_array (axis);
   pixel_coord_t corner_coords[NCORNERS];
-  for (gsize_t i=0; i<NCORNERS; ++i) {corner_coords[i] = arr[IND_CORNER[i]];}
+  for(gsize_t i=0; i<NCORNERS; ++i) {corner_coords[i] = arr[IND_CORNER[i]];}
   return geometry::max_of_arr(corner_coords, NCORNERS); 
 }
 
 //--------------
 
-const pixel_mask_t* SegGeometryCspad2x1V1::pixel_mask_array(const unsigned& mbits)
+const pixel_mask_t* SegGeometryCspad2x1V1::pixel_mask_array(const bitword_t& mbits)
 {
-
   //cout << "SegGeometryCspad2x1V1::pixel_mask_array(): mbits =" << mbits << '\n';   
 
   std::fill_n(&m_pix_mask_arr[0][0], int(SIZE), pixel_mask_t(1));

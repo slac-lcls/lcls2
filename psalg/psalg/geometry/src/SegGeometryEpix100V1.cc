@@ -155,14 +155,14 @@ void SegGeometryEpix100V1::print_coord_arrs()
   cout << "\nSegGeometryEpix100V1::print_coord_arrs\n";
 
   cout << "m_x_arr_um:\n"; 
-  for(unsigned counter=0, c=0; c<COLS; c++) {
+  for(gsize_t counter=0, c=0; c<COLS; c++) {
     cout << " " << m_x_arr_um[c];
     if(++counter > 19) {counter=0; cout << "\n";}
   }
   cout << "\n"; 
 
   cout << "m_y_arr_um:\n"; 
-  for(unsigned counter=0, r=0; r<ROWS; r++) { 
+  for(gsize_t counter=0, r=0; r<ROWS; r++) { 
     cout << " " << m_y_arr_um[r];
     if(++counter > 19) {counter=0; cout << "\n";}
   }
@@ -185,11 +185,11 @@ void SegGeometryEpix100V1::print_min_max_coords()
 
 //--------------
 
-void SegGeometryEpix100V1::print_seg_info(const unsigned& pbits)
+void SegGeometryEpix100V1::print_seg_info(const bitword_t& pbits)
 {
-  if (pbits & 1) print_member_data();
-  if (pbits & 2) print_coord_arrs();
-  if (pbits & 4) print_min_max_coords();
+  if(pbits & 1) print_member_data();
+  if(pbits & 2) print_coord_arrs();
+  if(pbits & 4) print_min_max_coords();
 }
 
 //--------------
@@ -227,7 +227,7 @@ const pixel_coord_t SegGeometryEpix100V1::pixel_coord_min(AXIS axis)
 { 
   const pixel_coord_t* arr = pixel_coord_array (axis);
   pixel_coord_t corner_coords[NCORNERS];
-  for (gsize_t i=0; i<NCORNERS; ++i) {corner_coords[i] = arr[IND_CORNER[i]];}
+  for(gsize_t i=0; i<NCORNERS; ++i) {corner_coords[i] = arr[IND_CORNER[i]];}
   return geometry::min_of_arr(&corner_coords[0], NCORNERS); 
 }
 
@@ -237,13 +237,13 @@ const pixel_coord_t SegGeometryEpix100V1::pixel_coord_max(AXIS axis)
 { 
   const pixel_coord_t* arr = pixel_coord_array (axis);
   pixel_coord_t corner_coords[NCORNERS];
-  for (gsize_t i=0; i<NCORNERS; ++i) {corner_coords[i] = arr[IND_CORNER[i]];}
+  for(gsize_t i=0; i<NCORNERS; ++i) {corner_coords[i] = arr[IND_CORNER[i]];}
   return geometry::max_of_arr(&corner_coords[0], NCORNERS); 
 }
 
 //--------------
 
-const pixel_mask_t* SegGeometryEpix100V1::pixel_mask_array(const unsigned& mbits)
+const pixel_mask_t* SegGeometryEpix100V1::pixel_mask_array(const bitword_t& mbits)
 {
 
   //cout << "SegGeometryEpix100V1::pixel_mask_array(): mbits =" << mbits << '\n';   
@@ -255,12 +255,12 @@ const pixel_mask_t* SegGeometryEpix100V1::pixel_mask_array(const unsigned& mbits
 
   if(mbits & 1) {
     // mask edges
-    for (gsize_t r=0; r<ROWS; r++) {
+    for(gsize_t r=0; r<ROWS; r++) {
       m_pix_mask_arr[r][0]      = 0;
       m_pix_mask_arr[r][COLS-1] = 0;
     }
 
-    for (gsize_t c=0; c<COLS; c++) {
+    for(gsize_t c=0; c<COLS; c++) {
       m_pix_mask_arr[0][c]      = 0;
       m_pix_mask_arr[ROWS-1][c] = 0;
     }
