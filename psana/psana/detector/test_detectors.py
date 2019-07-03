@@ -78,13 +78,9 @@ class EpicsImpl(DetectorImpl):
             epics_values = self._epics_store.values([events], self._var_name)
             return epics_values[0]
 
-class epics_fast_0_0_0(EpicsImpl):
+class epics_epics_0_0_0(EpicsImpl):
     def __init__(self, *args):
-        super(epics_fast_0_0_0, self).__init__(*args)
-
-class epics_slow_0_0_0(EpicsImpl):
-    def __init__(self, *args):
-        super(epics_slow_0_0_0, self).__init__(*args)
+        super(epics_epics_0_0_0, self).__init__(*args)
 
 # for early cctbx/psana2 development
 class cspad_raw_1_2_3(DetectorImpl):

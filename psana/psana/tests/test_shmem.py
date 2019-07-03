@@ -10,7 +10,7 @@ dgram_count  = 64 # number of expected datagrams per client
 @pytest.mark.skipif(sys.platform == 'darwin', reason="shmem not supported on mac")
 class Test:
     def launch_server(self,tmp_file,pid):
-        cmd_args = ['shmemServer','-c',str(client_count),'-n','10','-f',tmp_file,'-p','shmem_test_'+pid,'-s','0x80000','-c','4']
+        cmd_args = ['shmemServer','-c',str(client_count),'-n','10','-f',tmp_file,'-p','shmem_test_'+pid,'-s','0x80000']
         return subprocess.Popen(cmd_args, stdout=subprocess.PIPE)
 
     def launch_client(self,pid):
@@ -22,7 +22,9 @@ class Test:
         tmp_dir = tmp_path / 'shmem'
         tmp_dir.mkdir()
         tmp_file = tmp_dir / 'data_shmem.xtc2'
-        subprocess.call(['xtcwriter','-n',str(dgram_count),'-f',str(tmp_file)])
+        # cpo: disable epics in the stream for now with "-e 0" since
+        # we need changes in the TransitionCache.
+        subprocess.call(['xtcwriter','-n',str(dgram_count),'-f',str(tmp_file),'-e','0'])
         return tmp_file
         
     def test_shmem(self, tmp_path):

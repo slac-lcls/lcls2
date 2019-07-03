@@ -20,6 +20,10 @@ class Test:
         subprocess.call(['xtcwriter', '-f', fname])
         return fname
 
+    # cpo: remove this test because cydgram doesn't support charstr/enum
+    # datatypes which are produced by xtcwriter.  also, cydgram is tested
+    # in the test_py2xtc.py test (without these datatypes).
+    """
     def test_cydgram(self, xtc_file, tmp_path):
         fname = str(tmp_path / 'data_cydgram.xtc2')
 
@@ -36,6 +40,7 @@ class Test:
 
         # test that the values in the new file are correct
         xtc(fname, nsegments=1, cydgram=True)
+    """
 
     def test_xtcdata(self, xtc_file):
         xtc(xtc_file, nsegments=2)

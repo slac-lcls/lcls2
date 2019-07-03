@@ -39,13 +39,13 @@ if rank == 0:
 
 for run in ds.runs():
     det = run.Detector('xppcspad')
-    edet = run.Detector('XPP:VARS:STRING:01')
+    #edet = run.Detector('XPP:VARS:STRING:01')
     for evt in run.events():
         sendbuf += 1
         padarray = vals.padarray
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
         assert evt._size == 2 # check that two dgrams are in there
-        assert edet(evt) == "Test String"
+        #assert edet(evt) == "Test String"
 
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:

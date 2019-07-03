@@ -188,7 +188,9 @@ class RunShmem(Run):
         self.dm.calibs = self.calibs
 
     def events(self):
-        for evt in self.dm: yield evt
+        for evt in self.dm:
+            if evt._dgrams[0].seq.service() != 12: continue
+            yield evt
 
 class RunSingleFile(Run):
     """ Yields list of events from a single bigdata file. """
@@ -205,7 +207,9 @@ class RunSingleFile(Run):
             self.calibs[det_name] = self._get_calib(det_name)
 
     def events(self):
-        for evt in self.dm: yield evt
+        for evt in self.dm:
+            if evt._dgrams[0].seq.service() != 12: continue
+            yield evt
 
 
 class RunSerial(Run):
@@ -243,6 +247,7 @@ class RunSerial(Run):
             for batch_dict in eb_man.batches(chunk):
                 batch, _ = batch_dict[0] # there's only 1 dest_rank for serial run
                 for evt in ev_man.events(batch):
+                    if evt._dgrams[0].seq.service() != 12: continue
                     yield evt
     
     def epicsStore(self, evt):
@@ -329,6 +334,7 @@ class RunParallel(Run):
     
     def events(self):
         for evt in run_node(self):
+            if evt._dgrams[0].seq.service() != 12: continue
             yield evt
     
     def epicsStore(self, evt):

@@ -22,6 +22,31 @@ using namespace rapidjson;
 
 #define BUFSIZE 0x4000000
 
+enum MyNamesId {HsdRaw,HsdFex,Cspad,Epics,NumberOf};
+
+class EpicsDef:public VarDef
+{
+public:
+  enum index
+    {
+        HX2_DVD_GCC_01_PMON,
+        HX2_DVD_GPI_01_PMON,
+    };
+
+  EpicsDef()
+   {
+        NameVec.push_back({"HX2:DVD:GCC:01:PMON",Name::DOUBLE});
+        NameVec.push_back({"HX2:DVD:GPI:01:PMON",Name::CHARSTR,1});
+   }
+} EpicsDef;
+
+void epicsExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
+{ 
+    CreateData epics(parent, namesLookup, namesId);
+    epics.set_value(EpicsDef::HX2_DVD_GCC_01_PMON, (double)41.0);
+    epics.set_string(EpicsDef::HX2_DVD_GPI_01_PMON, "Test String");
+}
+
 class FexDef:public VarDef
 {
 public:
@@ -379,19 +404,19 @@ void padExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
 
 void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
     Alg hsdRawAlg("raw",0,0,0);
-    NamesId namesId0(nodeId,0+10*segment);
+    NamesId namesId0(nodeId,MyNamesId::HsdRaw+MyNamesId::NumberOf*segment);
     Names& frontEndNames = *new(xtc) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234", namesId0, segment);
     frontEndNames.add(xtc,PgpDef);
     namesLookup[namesId0] = NameIndex(frontEndNames);
 
     Alg hsdFexAlg("fex",4,5,6);
-    NamesId namesId1(nodeId,1+10*segment);
+    NamesId namesId1(nodeId,MyNamesId::HsdFex+MyNamesId::NumberOf*segment);
     Names& fexNames = *new(xtc) Names("xpphsd", hsdFexAlg, "hsd","detnum1234", namesId1, segment);
     fexNames.add(xtc, FexDef);
     namesLookup[namesId1] = NameIndex(fexNames);
 
     Alg cspadRawAlg("raw",2,3,42);
-    NamesId namesId2(nodeId,2+10*segment);
+    NamesId namesId2(nodeId,MyNamesId::Cspad+MyNamesId::NumberOf*segment);
     Names& padNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", namesId2, segment);
     Alg segmentAlg("cspadseg",2,3,42);
     padNames.add(xtc, PadDef);
@@ -399,11 +424,11 @@ void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned seg
 }
 
 void addData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
-    NamesId namesId0(nodeId,0+10*segment);
+    NamesId namesId0(nodeId,MyNamesId::HsdRaw+MyNamesId::NumberOf*segment);
     pgpExample(xtc, namesLookup, namesId0);
-    NamesId namesId1(nodeId,1+10*segment);
+    NamesId namesId1(nodeId,MyNamesId::HsdFex+MyNamesId::NumberOf*segment);
     fexExample(xtc, namesLookup, namesId1);
-    NamesId namesId2(nodeId,2+10*segment);
+    NamesId namesId2(nodeId,MyNamesId::Cspad+MyNamesId::NumberOf*segment);
     padExample(xtc, namesLookup, namesId2);
 }
 
@@ -452,6 +477,20 @@ void save(Dgram& dg, FILE* xtcFile) {
     }
 }
 
+void addEpicsNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
+    Alg xppEpicsAlg("epics",0,0,0);
+    NamesId namesId(nodeId,MyNamesId::Epics+MyNamesId::NumberOf*segment);
+    Names& epicsNames = *new(xtc) Names("epics", xppEpicsAlg, "epics","detnum1234", namesId, segment);
+    epicsNames.add(xtc, EpicsDef);
+    namesLookup[namesId] = NameIndex(epicsNames);
+}
+
+void addEpicsData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
+    NamesId namesId(nodeId,MyNamesId::Epics+MyNamesId::NumberOf*segment);
+    epicsExample(xtc, namesLookup, namesId);
+}
+
+
 #define MAX_FNAME_LEN 256
 
 int main(int argc, char* argv[])
@@ -459,6 +498,7 @@ int main(int argc, char* argv[])
     int c;
     int parseErr = 0;
     unsigned nevents = 2;
+    unsigned epicsPeriod = 4;
     char xtcname[MAX_FNAME_LEN];
     strncpy(xtcname, "data.xtc2", MAX_FNAME_LEN);
     unsigned starting_segment = 0;
@@ -466,13 +506,16 @@ int main(int argc, char* argv[])
     // so we can do offline event-building.
     bool counting_timestamps = false;
 
-    while ((c = getopt(argc, argv, "hf:n:s:t")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:s:e:t")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
                 exit(0);
             case 'n':
                 nevents = atoi(optarg);
+                break;
+            case 'e':
+                epicsPeriod = atoi(optarg);
                 break;
             case 's':
                 starting_segment = atoi(optarg);
@@ -506,20 +549,44 @@ int main(int argc, char* argv[])
 
     unsigned nodeid1 = 1;
     unsigned nodeid2 = 2;
-    NamesLookup namesLookup1;
+    NamesLookup namesLookup;
     unsigned nSegments=2;
+    unsigned iseg = 0;
+    // only add epics to the first stream
+    if (starting_segment==0) addEpicsNames(config.xtc, namesLookup, nodeid1, iseg);
     for (unsigned iseg=0; iseg<nSegments; iseg++) {
-        addNames(config.xtc, namesLookup1, nodeid1, iseg+starting_segment);
-        addData(config.xtc, namesLookup1, nodeid1, iseg+starting_segment);
+        addNames(config.xtc, namesLookup, nodeid1, iseg+starting_segment);
+        addData(config.xtc, namesLookup, nodeid1, iseg+starting_segment);
     }
 
     save(config,xtcFile);
 
-    DebugIter iter(&config.xtc, namesLookup1);
+    DebugIter iter(&config.xtc, namesLookup);
     iter.iterate();
 
     void* buf = malloc(BUFSIZE);
-    for (int i = 0; i < nevents; i++) {
+    for (unsigned ievt=0; ievt<nevents; ievt++) {
+        if (epicsPeriod>0) {
+            if (ievt>0 and ievt%epicsPeriod==0) {
+                // make a ConfigUpdate with epics data
+                if (counting_timestamps) {
+                    tv.tv_sec = 0;
+                    tv.tv_usec = timestamp_val;
+                    timestamp_val++;
+                } else {
+                    gettimeofday(&tv, NULL);
+                }
+                Sequence seq(Sequence::Event, TransitionId::ConfigUpdate, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+                Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
+
+                unsigned iseg = 0;
+                // only add epics to the first stream
+                if (starting_segment==0) addEpicsData(dgram.xtc, namesLookup, nodeid1, iseg);
+                save(dgram,xtcFile);
+            }
+        }
+
+        // generate a normal L1
         if (counting_timestamps) {
             tv.tv_sec = 0;
             tv.tv_usec = timestamp_val;
@@ -527,18 +594,16 @@ int main(int argc, char* argv[])
         } else {
             gettimeofday(&tv, NULL);
         }
-
         Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
         Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 
         for (unsigned iseg=0; iseg<nSegments; iseg++) {
-            addData(dgram.xtc, namesLookup1, nodeid1, iseg+starting_segment);
+            addData(dgram.xtc, namesLookup, nodeid1, iseg+starting_segment);
         }
-
-        DebugIter iter(&dgram.xtc, namesLookup1);
+        DebugIter iter(&dgram.xtc, namesLookup);
         iter.iterate();
-
         save(dgram,xtcFile);
+
      }
 
     fclose(xtcFile);
