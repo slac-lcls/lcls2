@@ -79,11 +79,10 @@ cdef class EventBuilder:
         # Storing python list of bytearray as c pointers
         cdef Dgram* d
         cdef size_t payload = 0
-        cdef char* cview
+        cdef char* view_ptr
         cdef Py_buffer buf
         cdef list raw_dgrams = [0] * self.nsmds
         cdef list event_dgrams = [0] * self.nsmds
-        cdef char[:] to_view
 
         # Setup event footer and batch footer - see above comments for the content of batch_dict
         cdef array.array int_array_template = array.array('I', [])
@@ -109,15 +108,15 @@ cdef class EventBuilder:
             for view_idx in range(self.nsmds):
                 view = self.views[view_idx]
                 if self.offsets[view_idx] < self.sizes[view_idx]:
+                    # Fill buf with data from memoryview 'view'.
                     PyObject_GetBuffer(view, &buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
-                    cview = <char *>buf.buf
-                    cview += self.offsets[view_idx]
-                    d = <Dgram *>(cview)
+                    view_ptr = <char *>buf.buf
+                    view_ptr += self.offsets[view_idx]
+                    d = <Dgram *>(view_ptr)
                     payload = d.xtc.extent - self.xtc_size
                     self.timestamps[view_idx] = <unsigned long>d.seq.high << 32 | d.seq.low
                     self.dgram_sizes[view_idx] = self.dgram_size + payload
-                    to_view = <char[:self.dgram_sizes[view_idx]]>cview
-                    raw_dgrams[view_idx] = to_view
+                    raw_dgrams[view_idx] = <char[:self.dgram_sizes[view_idx]]>view_ptr
                     PyBuffer_Release(&buf)
 
             sorted_smd_id = np.argsort(self.timestamps)
@@ -146,25 +145,24 @@ cdef class EventBuilder:
                     
                     event_dgrams[view_idx] = 0
                     PyObject_GetBuffer(view, &buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
-                    cview = <char *>buf.buf
-                    cview += self.offsets[view_idx]
-                    d = <Dgram *>(cview)
+                    view_ptr = <char *>buf.buf
+                    view_ptr += self.offsets[view_idx]
+                    d = <Dgram *>(view_ptr)
                     self.max_ts = <unsigned long>d.seq.high << 32 | d.seq.low
                     payload = d.xtc.extent - self.xtc_size
                     while self.max_ts <= self.event_timestamps[smd_id]:
                         if self.max_ts == self.event_timestamps[smd_id]:
                             self.event_timestamps[view_idx] = self.max_ts
                             self.timestamps[view_idx] = 0
-                            to_view = <char[:self.dgram_size+payload]>cview
-                            event_dgrams[view_idx] = to_view
+                            event_dgrams[view_idx] = <char[:self.dgram_size+payload]>view_ptr
 
                         self.offsets[view_idx] += (self.dgram_size + payload)
 
                         if self.offsets[view_idx] == self.sizes[view_idx]:
                             break
 
-                        cview += (self.dgram_size + payload)
-                        d = <Dgram *>(cview)
+                        view_ptr += (self.dgram_size + payload)
+                        d = <Dgram *>(view_ptr)
                         self.max_ts = <unsigned long>d.seq.high << 32 | d.seq.low
                         payload = d.xtc.extent - self.xtc_size
                     
