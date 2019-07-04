@@ -576,7 +576,7 @@ int main(int argc, char* argv[])
                 } else {
                     gettimeofday(&tv, NULL);
                 }
-                Sequence seq(Sequence::Event, TransitionId::ConfigUpdate, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+                Sequence seq(Sequence::Event, TransitionId::SlowUpdate, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
                 Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 
                 unsigned iseg = 0;
