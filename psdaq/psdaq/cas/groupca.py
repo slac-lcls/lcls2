@@ -5,16 +5,21 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import *
 from psdaq.cas.collection_widget import CollectionWidget
 
+Transitions = [('ClearReadout',0),
+               ('Configure'  ,2),
+               ('Enable'     ,4),
+               ('Disable'    ,5),
+               ('Unconfigure',3)]
+
 class PvStateMachine(QtWidgets.QWidget):
     def __init__(self, base, pvbase, xpm, groups):
         super(PvStateMachine,self).__init__()
 
         print('PvStateMachine',pvbase,groups)
 
-        pvTr    = Pv(pvbase+'Transition'   )
-        pvTrId  = Pv(pvbase+'TransitionId' )
-        pvTr   .get()
-        self.trId = pvTrId .get()
+        pvTr      = [tr[0] for tr in Transitions]
+        pvTrId    = [tr[1] for tr in Transitions]
+        self.trId = pvTrId
 
         self.pvMsgInsert = Pv(base+':XPM:'+xpm+':GroupMsgInsert')
 
@@ -27,18 +32,18 @@ class PvStateMachine(QtWidgets.QWidget):
             
         self.btn = []
         self.env = []
-        for i,tr in enumerate(pvTr.__value__):
+        for i,tr in enumerate(pvTr):
             btn = QtWidgets.QPushButton(tr)
             env = QtWidgets.QLineEdit('0')
             trlo.addWidget(btn                                       ,i+1,0)
-            trlo.addWidget(QtWidgets.QLabel('%d'%pvTrId.__value__[i]),i+1,1)
+            trlo.addWidget(QtWidgets.QLabel('%d'%pvTrId[i])          ,i+1,1)
             trlo.addWidget(env                                       ,i+1,2)
             btn.setCheckable(True)
             btn.toggled.connect(self.transition)
             self.btn.append(btn)
             self.env.append(env)
-        trlo.addWidget(QtWidgets.QLabel(),len(pvTr.__value__)+1,0)
-        trlo.setRowStretch(len(pvTr.__value__)+1,1)
+        trlo.addWidget(QtWidgets.QLabel(),len(pvTr)+1,0)
+        trlo.setRowStretch(len(pvTr)+1,1)
 
         self.group        = 0
         self.pvMsgHeader  = []
@@ -143,8 +148,22 @@ def addGroup(tw, base, group, xpm):
     w.setLayout(wlo)
     tw.addTab(w,'Group '+group)
 
-    pvXpm = Pv(pvbase+'XPM')
-    pvXpm.put(int(xpm))
+#    pvXpm = Pv(pvbase+'XPM')
+#    pvXpm.put(int(xpm))
+    pvXpm = Pv(pvbase+'Master')
+    pvXpm.put(1)
+
+class GroupMaster(QtWidgets.QWidget):
+    def __init__(self, pvbase, groups):
+        super(GroupMaster,self).__init__()
+        hlo = QtWidgets.QHBoxLayout()
+        hlo.addWidget(QtWidgets.QLabel('Master:'))
+        hlo.addStretch()
+        for g in groups:
+            b=PvCheckBox(pvbase+g+':Master','Group '+g)
+            hlo.addWidget(b)
+            hlo.addStretch()
+        self.setLayout(hlo)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, base, xpm, groups):
@@ -152,11 +171,13 @@ class Ui_MainWindow(object):
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
 
-        pvbase = base+':PART:'
+        pvbase = base+':XPM:'+xpm+':PART:'
 
         print('MainWindow',base,pvbase)
 
         lol = QtWidgets.QVBoxLayout()
+
+        lol.addWidget(GroupMaster(pvbase,groups))
 
         tw = QtWidgets.QTabWidget()
         for g in groups:
@@ -190,6 +211,16 @@ class Ui_MainWindow(object):
         MainWindow.resize(440, 660)
         MainWindow.setWindowTitle(base)
         MainWindow.setCentralWidget(self.centralWidget)
+
+    def master(self,checked):
+        if checked:
+            self.pvL0Enable.put(self.groups)
+            time.sleep(0.1)
+            self.pvL0Enable.put(0)
+        else:
+            self.pvL0Disable.put(self.groups)
+            time.sleep(0.1)
+            self.pvL0Disable.put(0)
 
 def main():
     print(QtCore.PYQT_VERSION_STR)

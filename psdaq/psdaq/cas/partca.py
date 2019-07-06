@@ -15,7 +15,8 @@ class Ui_MainWindow(object):
 
         lol = QtWidgets.QVBoxLayout()
 
-        LblEditInt   (lol, pvbase, 'XPM')
+        lol.addWidget(PvCheckBox(pvbase+'Master','Master'))
+#        LblEditInt   (lol, pvbase, 'XPM')
 #        lol.addWidget( PvEditInt(pvbase+'XPM','XPM') );
 
         trgbox = QtWidgets.QGroupBox('Trigger')
