@@ -732,7 +732,7 @@ class CollectionManager():
         for g in range(8):
             if self.groups & (1 << g):
                 self.pvListMsgHeader.append(self.pv_base+":PART:"+str(g)+':MsgHeader')
-                self.pvListXPM.append(self.pv_base+":PART:"+str(g)+':XPM')
+                self.pvListXPM.append(self.pv_base+":PART:"+str(g)+':Master')
         logging.debug('pvListMsgHeader: %s' % self.pvListMsgHeader)
         logging.debug('pvListXPM: %s' % self.pvListXPM)
 
@@ -770,7 +770,7 @@ class CollectionManager():
     def condition_connect(self):
         # set XPM PV
         for pv in self.pvListXPM:
-            self.pv_put(pv, self.xpm_master)
+            self.pv_put(pv, 1)
         logging.info('master XPM is %d' % self.xpm_master)
 
         # select procs with active flag set

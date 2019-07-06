@@ -38,9 +38,7 @@ static inline unsigned setf(Pds::Cphw::Reg& o, unsigned v, unsigned n, unsigned 
 
 static inline unsigned nlsb(unsigned v)
 {
-  for(unsigned i=0; i<32; i++)
-    if (!(v&(1<<i))) return i;
-  return -1U;
+  return __builtin_ffs(v)-1;
 }
 
 #endif
