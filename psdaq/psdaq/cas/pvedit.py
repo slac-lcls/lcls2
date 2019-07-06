@@ -25,6 +25,7 @@ seqIdxs     = ['s%u'%i for i in range(18)]
 seqBursts   = ['%u x %.2fus'%(2<<(i%4),float(int(i/4+1))*interval) for i in range(16)]
 seqRates    = ['%u0kHz'%(i+1) for i in range(16)]
 seqLocal    = ['%u0kHz'%(4*i+4) for i in range(16)]
+seqGlobal   = ['GLT %d'%(i) for i in range(17)]
 
 frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
@@ -573,13 +574,15 @@ class PvDefSeq(QtWidgets.QWidget):
 
         lo = QtWidgets.QVBoxLayout()
         self.seqsel = QtWidgets.QComboBox()
-        self.seqsel.addItems(['Bursts','10k Rates','Local'])
+        self.seqsel.addItems(['Global_%d'%i for i in range(17)]+['Local'])
         self.seqsel.currentIndexChanged.connect(self.setValue)
         lo.addWidget(self.seqsel)
 
         seqstack = QtWidgets.QStackedWidget()
-        seqstack.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqBursts))
-        seqstack.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqRates))
+        for i in range(17):
+            seqstack.addWidget(PvEditCmb(pvname+'_SeqBit', seqGlobal))
+#        seqstack.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqBursts))
+#        seqstack.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqRates))
         seqstack.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqLocal))
         self.seqsel.currentIndexChanged.connect(seqstack.setCurrentIndex)
         lo.addWidget(seqstack)
@@ -590,17 +593,14 @@ class PvDefSeq(QtWidgets.QWidget):
 
     def setValue(self):
         value = self.seqsel.currentIndex()
-        self.pv.put(value+15)  # Defined sequences start at 15
+#        self.pv.put(value+15)  # Defined sequences start at 15
+        self.pv.put(value)
 
     def update(self,err):
         q = self.pv.__value__
         if err is None:
-            if q >= 15:
-                if nogui:
-                    print(self.pv.pvname,q)
-                else:
-                    self.seqsel.setCurrentIndex(q-15)
-                    self.valueSet.emit(q-15)
+            self.seqsel.setCurrentIndex(q)
+            self.valueSet.emit(q)
         else:
             print(err)
 
