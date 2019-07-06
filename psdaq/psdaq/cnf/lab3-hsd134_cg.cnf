@@ -33,8 +33,8 @@ procmgr_config = [
  {                        id:'hsdpvb_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdpva DAQ:LAB2:HSD:DEV06_3E:B'},
  { host: 'daq-tst-dev06', id:'hsdioc_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P DAQ:LAB2:HSD:DEV06_3E -d /dev/pcie_adc_3e'},
 
- { host: 'drp-tst-dev022', id:'hsd-0', flags:'xp', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -n xpphsd -s 0 -o /ffb01/dev022'},
- { host: 'drp-tst-dev023', id:'hsd-1', flags:'xp', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -n xpphsd -s 1 -o /ffb01/dev023'},
+ { host: 'drp-tst-dev022', id:'xpphsd_0', flags:'xpu', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/dev022'},
+ { host: 'drp-tst-dev023', id:'xpphsd_1', flags:'xpu', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/dev023'},
 
  { host: 'drp-tst-dev002', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
  { host: 'drp-tst-dev023', id:'meb1', flags:'spu', conda:conda_rel, cmd:'monReqServer -P TMO -d -q 4 -s 0x40000 -C '+collect_host+' '},

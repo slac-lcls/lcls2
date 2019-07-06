@@ -37,6 +37,7 @@ setup(
                 'xpmioc = psdaq.cas.xpmioc:main',
                 'bldcas = psdaq.cas.bldcas:main',
                 'hpsdbuscas = psdaq.cas.hpsdbuscas:main',
+                'pyxpm = psdaq.pyxpm.pyxpm:main',
                 'control_gui = psdaq.control_gui.app.control_gui:control_gui',
               ]
        },
