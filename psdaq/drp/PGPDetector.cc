@@ -268,7 +268,9 @@ void PGPDetector::shutdown()
     std::cout<<"shutting down PGPReader\n";
     for (unsigned i = 0; i < m_para.nworkers; i++) {
         m_workerInputQueues[i].shutdown();
-        m_workerThreads[i].join();
+        if (m_workerThreads[i].joinable()) {
+            m_workerThreads[i].join();
+        }
     }
     std::cout<<"Worker threads finished\n";
     for (unsigned i = 0; i < m_para.nworkers; i++) {

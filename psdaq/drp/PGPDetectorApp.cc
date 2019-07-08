@@ -33,8 +33,12 @@ void PGPDetectorApp::shutdown()
 {
     if (m_pgpDetector) {
         m_pgpDetector->shutdown();
-        m_pgpThread.join();
-        m_collectorThread.join();
+        if (m_pgpThread.joinable()) {
+            m_pgpThread.join();
+        }
+        if (m_collectorThread.joinable()) {
+            m_collectorThread.join();
+        }
     }
 }
 
