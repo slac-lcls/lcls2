@@ -82,14 +82,9 @@ Damage Pds::Eb::DecideImpl::event(const Dgram* ctrb, uint32_t* result, size_t si
 }
 
 
-// The class factories
+// The class factory
 
 extern "C" Pds::Eb::Decide* create()
 {
   return new DecideImpl;
-}
-
-extern "C" void destroy(Pds::Eb::Decide* decide)
-{
-  delete decide;
 }

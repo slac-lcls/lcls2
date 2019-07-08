@@ -26,9 +26,8 @@ namespace Pds {
                                         size_t                sizeofPayload) = 0;
     };
 
-    // The types of the class factories
+    // The types of the class factory
     typedef Decide* Create_t();
-    typedef void Destroy_t(Decide*);
   };
 };
 

@@ -564,11 +564,10 @@ int TebApp::_handleConfigure(const json& msg)
       if (!rc)
       {
         Create_t*  createFn  = reinterpret_cast<Create_t*> (_dl.loadSymbol("create"));
-        Destroy_t* destroyFn = reinterpret_cast<Destroy_t*>(_dl.loadSymbol("destroy"));
-        if (createFn && destroyFn)
+        if (createFn)
         {
           Decide* decide = _teb.decide();
-          if (decide)  destroyFn(decide);
+          if (decide)  delete decide;
 
           decide = createFn();
           if (decide)
@@ -582,8 +581,8 @@ int TebApp::_handleConfigure(const json& msg)
           else rc = fprintf(stderr, "%s:\n  Failed to create Decide object\n",
                             __PRETTY_FUNCTION__);
         }
-        else rc = fprintf(stderr, "%s:\n  Decide object's create() (%p) or destroy() (%p) not found in %s\n",
-                          __PRETTY_FUNCTION__, createFn, destroyFn, so.c_str());
+        else rc = fprintf(stderr, "%s:\n  Decide object's create() (%p) not found in %s\n",
+                          __PRETTY_FUNCTION__, createFn, so.c_str());
       }
     }
     else rc = fprintf(stderr, "%s:\n  Key '%s' not found in Document %s\n",
