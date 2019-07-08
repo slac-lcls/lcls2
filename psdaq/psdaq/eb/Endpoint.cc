@@ -1000,7 +1000,9 @@ void Endpoint::shutdown()
 {
   if (_ep) {
     fi_shutdown(_ep, 0);
-    fi_close(&_ep->fid);
+    if (_state == EP_CONNECTED) {       // Avoid seg fault
+      fi_close(&_ep->fid);
+    }
     _ep = 0;
   }
 
