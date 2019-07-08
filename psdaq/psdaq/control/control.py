@@ -422,7 +422,7 @@ class CollectionManager():
         self.config_alias = config_alias
         self.cfg_dbase = cfg_dbase
         self.xpm_master = xpm_master
-        self.pv_base = pv_base
+        self.pv_base = pv_base + ':XPM:%d' % xpm_master
         self.context = zmq.Context(1)
         self.back_pull = self.context.socket(zmq.PULL)
         self.back_pub = self.context.socket(zmq.PUB)
@@ -444,11 +444,10 @@ class CollectionManager():
         # name PVs
         self.pvListMsgHeader = []   # filled in at alloc
         self.pvListXPM = []         # filled in at alloc
-        pv_xpm_base = pv_base + ':XPM:%d' % xpm_master
-        self.pvGroupL0Enable =  pv_xpm_base+':GroupL0Enable'
-        self.pvGroupL0Disable = pv_xpm_base+':GroupL0Disable'
-        self.pvGroupMsgInsert = pv_xpm_base+':GroupMsgInsert'
-        self.pvGroupL0Reset = pv_xpm_base+':GroupL0Reset'
+        self.pvGroupL0Enable =  self.pv_base+':GroupL0Enable'
+        self.pvGroupL0Disable = self.pv_base+':GroupL0Disable'
+        self.pvGroupMsgInsert = self.pv_base+':GroupMsgInsert'
+        self.pvGroupL0Reset =   self.pv_base+':GroupL0Reset'
 
         self.groups = 0     # groups bitmask
         self.cmstate = {}

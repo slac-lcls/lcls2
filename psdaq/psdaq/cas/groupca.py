@@ -60,10 +60,8 @@ class PvStateMachine(QtWidgets.QWidget):
             if b.isChecked():
                 b.setChecked(False)
                 for pv in self.pvMsgHeader:
-#                    pv.put(self.trId[i],wait=True)
                     pv.put(self.trId[i])
                 for pv in self.pvMsgPayload:
-#                    pv.put(int(self.env[i].text()),wait=True)
                     pv.put(int(self.env[i].text()))
                 self.pvMsgInsert.put(self.group)
                 self.pvMsgInsert.put(0)
