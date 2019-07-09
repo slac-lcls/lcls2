@@ -557,18 +557,22 @@ int TebApp::_handleConfigure(const json& msg)
       std::string so(top[key].GetString());
       printf("Loading 'Decide' symbols from library '%s'\n", so.c_str());
 
+      Decide* decide = _teb.decide();   // If the object exists,
+      if (decide)                       // delete it before unloading the lib
+      {
+        delete decide;
+        _teb.decide(nullptr);           // Don't allow a double delete
+      }
+
       // Lib must remain open during Unconfig transition
       _dl.close();                      // If a lib is open, close it first
 
       rc = _dl.open(so, RTLD_LAZY);
       if (!rc)
       {
-        Create_t*  createFn  = reinterpret_cast<Create_t*> (_dl.loadSymbol("create"));
+        Create_t* createFn = reinterpret_cast<Create_t*> (_dl.loadSymbol("create"));
         if (createFn)
         {
-          Decide* decide = _teb.decide();
-          if (decide)  delete decide;
-
           decide = createFn();
           if (decide)
           {
