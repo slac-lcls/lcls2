@@ -177,8 +177,11 @@ class DragPoint(QGraphicsPathItem, DragBase) :
 
 
     def mousePressEvent(self, e) :
-        logger.debug('DragPoint.mousePressEvent at point: (%.1f, %.1f) on scene %s'%
-                      (e.pos().x(),  e.pos().y(), str(e.scenePos()))) # self.__class__.__name__
+        pe = e.pos()
+        ps = e.scenePos()
+        pc = self.path().currentPosition()
+        logger.debug('DragPoint.mousePressEvent at point (%6.1f, %6.1f) on scene (%6.1f, %6.1f) currentPosition (%6.1f, %6.1f)'%
+                      (pe.x(), pe.y(), ps.x(), ps.y(), pc.x(), pc.y()))
         self.setSelected(True)
         #print("DragPoint is selected: ", self.isSelected())
         QGraphicsPathItem.mousePressEvent(self, e)
@@ -194,8 +197,10 @@ class DragPoint(QGraphicsPathItem, DragBase) :
 
 
     def mouseReleaseEvent(self, e) :
-        logger.debug('DragPoint.mouseReleaseEvent at point:(%.1f, %.1f) on scene: %s '%
-                      (e.pos().x(),  e.pos().y(), str(e.scenePos()))) # self.__class__.__name__
+        pe = e.pos()
+        ps = e.scenePos()
+        logger.debug('DragPoint.mouseReleaseEvent at point (%6.1f, %6.1f) on scene (%6.1f, %6.1f)'%
+                      (pe.x(), pe.y(), ps.x(), ps.y()))
         self.setSelected(False)
         QGraphicsPathItem.mouseReleaseEvent(self, e)
         if self._drag_mode == ADD :

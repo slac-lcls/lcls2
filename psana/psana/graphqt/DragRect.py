@@ -154,7 +154,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
             self.set_drag_mode(EDIT)
             self.set_child_item_sel(item_sel)
             self.rect0 = self.rect().normalized()
-            self.p0 = self.pos()
+            #self.p0 = self.pos()
 
             self.p0_ptr = self.ptr.pos()
             self.p0_ptl = self.ptl.pos()
@@ -168,7 +168,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
 
     def mouseMoveEvent(self, e) :
-        QGraphicsPathItem.mouseMoveEvent(self, e)
+        QGraphicsRectItem.mouseMoveEvent(self, e)
         #logger.debug('%s.mouseMoveEvent' % self.__class__.__name__)
         #print('%s.mouseMoveEvent, at point: ' % self.__class__.__name__, e.pos(), ' scenePos: ', e.scenePos())
 
@@ -196,8 +196,6 @@ class DragRect(QGraphicsRectItem, DragBase) :
             elif i == self.pcb : r.setBottom(r.bottom() + dp.y())
             elif i == self.pcr : r.setRight (r.right()  + dp.x())
 
-            elif i == self.ped : pass
-
             r = r.normalized()
             self.setRect(r)
             self.move_control_points()
@@ -205,7 +203,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
     def mouseReleaseEvent(self, e):
         #logger.debug('DragRect.mouseReleaseEvent') # % self.__class__.__name__)
-        QGraphicsPathItem.mouseReleaseEvent(self, e)
+        QGraphicsRectItem.mouseReleaseEvent(self, e)
 
         if self._drag_mode == ADD :
             self.ungrabMouse()

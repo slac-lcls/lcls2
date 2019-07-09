@@ -83,6 +83,9 @@ class FWViewImageShapes(FWViewImage) :
         logger.debug('FWViewImageShapes.mousePressEvent but=%d %s scene x=%.1f y=%.1f'%\
                      (e.button(), str(e.pos()), scpoint.x(), scpoint.y())) # self.__class__.__name__
 
+        #print('XXX DragPoly.mousePressEvent button L/R/M = 1/2/4: ', e.button())
+        #print('XXX DragPoly.mousePressEvent Left: ', e.button()==Qt.LeftButton)
+
         FWViewImage.mousePressEvent(self, e) # to select/deselect items
 
         if self.add_request is not None :
