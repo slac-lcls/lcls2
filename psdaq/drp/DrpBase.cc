@@ -226,6 +226,13 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_inprocSend.connect("inproc://drp");
 }
 
+void DrpBase::shutdown()
+{
+    if (m_meb) {
+        m_meb->shutdown();
+    }
+}
+
 std::string DrpBase::connect(const json& msg, size_t id)
 {
     parseConnectionParams(msg["body"], id);
@@ -302,8 +309,7 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     m_tPrms.contractor = m_tPrms.readoutGroup; // Revisit: Value to come from CfgDb
 
     m_para.rogMask = 0; // Readout group mask to ignore other partitions' RoGs
-    for (auto it : body["drp"].items())
-    {
+    for (auto it : body["drp"].items()) {
         m_para.rogMask |= 1 << unsigned(it.value()["det_info"]["readout"]);
     }
 

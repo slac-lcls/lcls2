@@ -47,6 +47,7 @@ class DrpBase
 {
 public:
     DrpBase(Parameters& para, ZmqContext& context);
+    void shutdown();
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string disconnect(const nlohmann::json& msg);
     Pds::Eb::TebContributor& tebContributor() const {return *m_tebContributor;}

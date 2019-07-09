@@ -40,6 +40,7 @@ void PGPDetectorApp::shutdown()
             m_collectorThread.join();
         }
     }
+    m_drp.shutdown();
 }
 
 void PGPDetectorApp::handleConnect(const json& msg)
