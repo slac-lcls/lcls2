@@ -60,7 +60,7 @@ void XpmDetector::connect(const json& json, const std::string& collectionId)
     dmaWriteRegister(fd, 0x00a00000, v);
     uint32_t w;
     dmaReadRegister(fd, 0x00a00000, &w);
-    printf("Configured partition [%u], length [%u], links [%x]: [%x](%x)\n",
+    printf("Configured readout group [%u], length [%u], links [%x]: [%x](%x)\n",
            readoutGroup, length, links, v, w);
     for (unsigned i=0; i<4; i++) {
         if (links&(1<<i)) {
