@@ -486,6 +486,9 @@ class CollectionManager():
                                            conditions='condition_disable')
         self.collectMachine.add_transition('configupdate', 'paused', 'paused',
                                            conditions='condition_configupdate')
+        # slowupdate is an internal transition
+        self.collectMachine.add_transition('slowupdate', 'running', None,
+                                           conditions='condition_slowupdate')
 
         logging.info('Initial state = %s' % self.state)
 
@@ -507,8 +510,8 @@ class CollectionManager():
 
         try:
             self.ctxt.put(pvName, val)
-        except Exception as ex:
-            logging.error("self.ctxt.put('%s', %d) Exception: %s" % (pvName, val, ex))
+        except Exception:
+            logging.error("self.ctxt.put('%s', %d) failed" % (pvName, val))
         else:
             retval = True
             logging.debug("self.ctxt.put('%s', %d)" % (pvName, val))
@@ -766,27 +769,39 @@ class CollectionManager():
         logging.debug('condition_configupdate() returning True')
         return True
 
+    def condition_slowupdate(self):
+        self.lastTransition = 'slowupdate'
+        # TODO
+        logging.debug('condition_slowupdate() returning True')
+        return True
+
     def condition_connect(self):
+        connect_ok = True
+
         # set XPM PV
         for pv in self.pvListXPM:
-            self.pv_put(pv, 1)
-        logging.info('master XPM is %d' % self.xpm_master)
+            if not self.pv_put(pv, 1):
+                connect_ok = False
+                break
 
-        # select procs with active flag set
-        ids = self.filter_active_set(self.ids)
-        msg = create_msg('connect', body=self.filter_active_dict(self.cmstate_levels()))
-        self.back_pub.send_multipart([b'partition', json.dumps(msg)])
-
-        retlist, answers = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids, self.front_pub)
-        connect_ok = (self.check_answers(answers) == 0)
-        ret = len(retlist)
-        if ret:
-            for alias in self.get_aliases(retlist):
-                self.report_error('%s did not respond to connect' % alias)
-            self.report_error('%d client did not respond to connect' % ret)
-            connect_ok = False
         if connect_ok:
-            self.lastTransition = 'connect'
+            logging.info('master XPM is %d' % self.xpm_master)
+
+            # select procs with active flag set
+            ids = self.filter_active_set(self.ids)
+            msg = create_msg('connect', body=self.filter_active_dict(self.cmstate_levels()))
+            self.back_pub.send_multipart([b'partition', json.dumps(msg)])
+
+            retlist, answers = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids, self.front_pub)
+            connect_ok = (self.check_answers(answers) == 0)
+            ret = len(retlist)
+            if ret:
+                for alias in self.get_aliases(retlist):
+                    self.report_error('%s did not respond to connect' % alias)
+                self.report_error('%d client did not respond to connect' % ret)
+                connect_ok = False
+            if connect_ok:
+                self.lastTransition = 'connect'
         logging.debug('condition_connect() returning %s' % connect_ok)
         return connect_ok
 
