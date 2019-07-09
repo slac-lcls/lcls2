@@ -104,7 +104,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         std::cout<<"transition phase1 complete\n";
     }
     answer = createMsg(msg["header"]["key"], msg["header"]["msg_id"], getId(), body);
-reply(answer);
+    reply(answer);
 }
 
 void PGPDetectorApp::handleReset(const json& msg)

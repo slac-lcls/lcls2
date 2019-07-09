@@ -63,19 +63,17 @@ MemPool::MemPool(const Parameters& para)
 
 
 EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
-                       MemPool& pool, ZmqContext& context, Pds::Eb::MebContributor* mon,
+                       MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
                        std::shared_ptr<MetricExporter> exporter) :
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
   m_mon(mon),
   m_fileWriter(4194304),
   m_smdWriter(1048576),
-  m_inprocSend(&context, ZMQ_PAIR),
+  m_inprocSend(inprocSend),
   m_count(0),
   m_offset(0)
 {
-    m_inprocSend.connect("inproc://drp");
-
     if (!para.outputDir.empty()) {
         std::string fileName = {para.outputDir + "/data-" + std::to_string(tPrms.id) + ".xtc2"};
         // cpo suggests leaving this print statement in because
@@ -191,7 +189,7 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
 
 
 DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
-    pool(para), m_para(para), m_context(context)
+    pool(para), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
 {
     size_t maxSize = sizeof(MyDgram);
     m_tPrms = { /* .ifAddr        = */ { }, // Network interface to use
@@ -224,6 +222,8 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
         std::cout<<"Could not start monitoring server!!\n";
         std::cout<<e.what()<<std::endl;
     }
+
+    m_inprocSend.connect("inproc://drp");
 }
 
 std::string DrpBase::connect(const json& msg, size_t id)
@@ -252,7 +252,7 @@ std::string DrpBase::connect(const json& msg, size_t id)
         }
     }
 
-    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_context, m_meb.get(), m_exporter);
+    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, m_meb.get(), m_exporter);
     rc = m_ebRecv->connect(m_tPrms);
     if (rc) {
         return std::string{"EbReceiver connect failed"};
@@ -286,6 +286,8 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     m_tPrms.ifAddr = body["drp"][stringId]["connect_info"]["nic_ip"];
 
     uint64_t builders = 0;
+    m_tPrms.addrs.clear();
+    m_tPrms.ports.clear();
     for (auto it : body["teb"].items()) {
         unsigned tebId = it.value()["teb_id"];
         std::string address = it.value()["connect_info"]["nic_ip"];
@@ -305,6 +307,8 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
         m_para.rogMask |= 1 << unsigned(it.value()["det_info"]["readout"]);
     }
 
+    m_mPrms.addrs.clear();
+    m_mPrms.ports.clear();
     if (body.find("meb") != body.end()) {
         for (auto it : body["meb"].items()) {
             unsigned mebId = it.value()["meb_id"];

@@ -24,7 +24,7 @@ class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
     EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
-               ZmqContext& context, Pds::Eb::MebContributor* mon,
+               ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
                std::shared_ptr<MetricExporter> exporter);
     void process(const XtcData::Dgram* result, const void* input) override;
 private:
@@ -33,7 +33,7 @@ private:
     BufferedFileWriter m_fileWriter;
     SmdWriter m_smdWriter;
     bool m_writing;
-    ZmqSocket m_inprocSend;
+    ZmqSocket& m_inprocSend;
     static const int m_size = 100;
     uint32_t m_indices[m_size];
     int m_count;
@@ -64,7 +64,7 @@ private:
     std::unique_ptr<EbReceiver> m_ebRecv;
     std::unique_ptr<prometheus::Exposer> m_exposer;
     std::shared_ptr<MetricExporter> m_exporter;
-    ZmqContext& m_context;
+    ZmqSocket m_inprocSend;
 };
 
 }
