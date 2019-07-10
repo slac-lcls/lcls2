@@ -10,6 +10,7 @@ import argparse
 import logging
 import string
 from p4p.client.thread import Context
+from threading import Thread, Event
 
 PORT_BASE = 29980
 POSIX_TIME_AT_EPICS_EPOCH = 631152000
@@ -416,7 +417,7 @@ def confirm_response(socket, wait_time, msg_id, ids, err_pub):
 
 
 class CollectionManager():
-    def __init__(self, platform, instrument, pv_base, xpm_master, alias, cfg_dbase, config_alias):
+    def __init__(self, platform, instrument, pv_base, xpm_master, alias, cfg_dbase, config_alias, slow_update_rate):
         self.platform = platform
         self.alias = alias
         self.config_alias = config_alias
@@ -432,6 +433,13 @@ class CollectionManager():
         self.back_pub.bind('tcp://*:%d' % back_pub_port(platform))
         self.front_rep.bind('tcp://*:%d' % front_rep_port(platform))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(platform))
+        self.slow_update_rate = slow_update_rate
+        self.slow_update_enabled = False
+        self.slow_update_exit = Event()
+
+        if self.slow_update_rate:
+            # initialize slow update thread
+            self.slow_update_thread = Thread(target=self.slow_update_func, name='slowupdate')
 
         # initialize poll set
         self.poller = zmq.Poller()
@@ -481,8 +489,10 @@ class CollectionManager():
         self.collectMachine.add_transition('unconfigure', 'paused', 'connected',
                                            conditions='condition_unconfigure')
         self.collectMachine.add_transition('enable', 'paused', 'running',
+                                           after='after_enable',
                                            conditions='condition_enable')
         self.collectMachine.add_transition('disable', 'running', 'paused',
+                                           before='before_disable',
                                            conditions='condition_disable')
         self.collectMachine.add_transition('configupdate', 'paused', 'paused',
                                            conditions='condition_configupdate')
@@ -492,8 +502,18 @@ class CollectionManager():
 
         logging.info('Initial state = %s' % self.state)
 
+        if self.slow_update_rate:
+            # start slow update thread
+            self.slow_update_enabled = False
+            self.slow_update_thread.start()
+
         # start main loop
         self.run()
+
+        if self.slow_update_rate:
+            # stop slow update thread
+            self.slow_update_exit.set()
+            time.sleep(0.5)
 
     #
     # cmstate_levels - return copy of cmstate with only drp/teb/meb entries
@@ -510,6 +530,8 @@ class CollectionManager():
 
         try:
             self.ctxt.put(pvName, val)
+        except TimeoutError:
+            logging.error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
         except Exception:
             logging.error("self.ctxt.put('%s', %d) failed" % (pvName, val))
         else:
@@ -540,6 +562,11 @@ class CollectionManager():
             elif key[0] in DaqControl.transitions:
                 # send 'ok' reply before calling handle_trigger()
                 self.front_rep.send_json(create_msg('ok'))
+                # drop slowupdate transition if not in running state,
+                # due to race condition between slowupdate and disable
+                if key[0] == 'slowupdate' and self.state != 'running':
+                    logging.debug('dropped slowupdate transition in state %s' % self.state)
+                    return
                 retval = self.handle_trigger(key[0], stateChange=False)
                 answer = None
                 try:
@@ -1047,6 +1074,14 @@ class CollectionManager():
             rv = self.pv_put(self.pvGroupL0Disable, self.groups)
         return rv
 
+    def before_disable(self):
+        # disable slowupdate timer
+        self.slow_update_enabled = False
+
+    def after_enable(self):
+        # enable slowupdate timer
+        self.slow_update_enabled = True
+
     def condition_enable(self):
         # phase 1
         ok = self.condition_common('enable', 6000)
@@ -1100,12 +1135,30 @@ class CollectionManager():
 
 
     def condition_reset(self):
-        # is a reply to reset necessary?
+        # disable slowupdate timer
+        self.slow_update_enabled = False
+
         msg = create_msg('reset')
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
         self.lastTransition = 'reset'
         logging.debug('condition_reset() returning True')
         return True
+
+    def slow_update_func(self):
+        logging.debug('slowupdate thread starting up')
+
+        # zmq sockets are not thread-safe
+        # so create a zmq socket for the slowupdate thread
+        slow_front_req = self.context.socket(zmq.REQ)
+        slow_front_req.connect('tcp://localhost:%d' % front_rep_port(self.platform))
+        msg = create_msg('slowupdate')
+
+        while not self.slow_update_exit.wait(1.0 / self.slow_update_rate):
+            if self.slow_update_enabled:
+                slow_front_req.send_json(msg)
+                answer = slow_front_req.recv_multipart()
+
+        logging.debug('slowupdate thread shutting down')
 
 class Client:
     def __init__(self, platform):
@@ -1156,7 +1209,6 @@ class Client:
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.back_push.send_json(reply)
 
-
 def main():
     from multiprocessing import Process
 
@@ -1169,6 +1221,7 @@ def main():
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')
+    parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 0)')
     parser.add_argument('-a', action='store_true', help='autoconnect')
     parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
@@ -1180,7 +1233,7 @@ def main():
         logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def manager():
-        manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d, args.C)
+        manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d, args.C, args.S)
 
     def client(i):
         c = Client(platform)
