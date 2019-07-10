@@ -1,4 +1,7 @@
 import time
+import threading
+import socket
+import struct
 from p4p.nt import NTScalar
 from p4p.server.thread import SharedPV
 from psdaq.pyxpm.pvseq import *
@@ -387,11 +390,13 @@ class GroupCtrls(object):
 
 class PVCtrls(object):
 
-    def __init__(self, p, m, name, xpm, stats):
+    def __init__(self, p, m, name, ip, xpm, stats):
         global provider
         provider = p
         global lock
         lock     = m
+
+        self._ip    = ip
 
         self._links = []
         for i in range(24):
@@ -409,9 +414,37 @@ class PVCtrls(object):
 
         self._group = GroupCtrls(name, app, stats)
 
-        self._seq = PVSeq(provider, name+':SEQENG:0',Engine(0, xpm.SeqEng_0))
+        self._seq = PVSeq(provider, name+':SEQENG:0', ip, Engine(0, xpm.SeqEng_0))
 
         self._pv_dumpSeq = SharedPV(initial=NTScalar('I').wrap(0), 
                                     handler=IdxCmdH(self._seq._eng.dump))
         provider.add(name+':DumpSeq',self._pv_dumpSeq)
 
+        self._thread = threading.Thread(target=self.notify)
+        self._thread.start()
+
+
+    def notify(self):
+        client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        client.connect((self._ip,8197))
+        
+        msg = b'\x00\x00\x00\x00'
+        client.send(msg)
+        
+        while True:
+            msg = client.recv(256)
+            s = struct.Struct('H')
+            siter = s.iter_unpack(msg)
+            mask = next(siter)[0]
+            print('mask {:x}'.format(mask))
+            i=0
+            while mask!=0:
+                if mask&1:
+                    addr = next(siter)[0]
+                    print('addr[{}] {:x}'.format(i,addr))
+                    if i<1:
+                        self._seq.checkPoint(addr)
+                i += 1
+                mask = mask>>1
+            
+            

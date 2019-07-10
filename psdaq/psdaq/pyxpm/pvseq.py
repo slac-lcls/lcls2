@@ -211,7 +211,7 @@ class Engine(object):
                     print('[{:08x}] {:08x}'.format(key+j,self._ram[key+j].get()))
 
 class PVSeq(object):
-    def __init__(self, provider, name, engine):
+    def __init__(self, provider, name, ip, engine):
         self._eng = engine
         self._seq = []
 
@@ -277,6 +277,6 @@ class PVSeq(object):
             self._eng.setAddress(idx,0,0)
             self._eng.reset()
 
-    def checkPoint(self):
+    def checkPoint(self,addr):
         pvUpdate(self._pv_Running,0)
 

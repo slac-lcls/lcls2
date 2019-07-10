@@ -97,9 +97,9 @@ class TimingStatus(object):
 
     def update(self):
 
-        def updatePv(pv,nv,ov,verbose=False):
+        def updatePv(pv,nv,ov,verbose=False,nb=32):
             value = pv.current()
-            value['value'] = nv-ov
+            value['value'] = (nv-ov)&((1<<nb)-1)
             value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
             pv.post(value)
             return nv
@@ -248,11 +248,11 @@ class GroupStats(object):
             numL0    = self._app.numL0   .get()
             numL0Acc = self._app.numL0Acc.get()
             numL0Inh = self._app.numL0Inh.get()
-            linkInhEv = []
-            linkInhTm = []
-            for i in range(32):
-                linkInhEv.append(self._app.inhEvCnt[i].get())
-                linkInhTm.append(self._app.inhTmCnt[i].get())
+#            linkInhEv = []
+#            linkInhTm = []
+#            for i in range(32):
+#                linkInhEv.append(self._app.inhEvCnt[i].get())
+#                linkInhTm.append(self._app.inhTmCnt[i].get())
             updatePv(self._pv_runTime, l0Ena*FID_PERIOD)
             updatePv(self._pv_msgDelay, self._app.l0Delay.get())
             dL0Ena   = l0Ena    - self._l0Ena
