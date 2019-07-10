@@ -104,8 +104,9 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
     XtcData::TransitionId::Value transitionId = timingHeader->seq.service();
     //printf("EbReceiver:  %u   index %u\n", timingHeader->evtCounter, index);
 
-    // pass non L1 accepts to control level
-    if (transitionId != XtcData::TransitionId::L1Accept) {
+    // pass everything except L1 accepts and slow updates to control level
+    if ((transitionId != XtcData::TransitionId::L1Accept) &&
+        (transitionId != XtcData::TransitionId::SlowUpdate)) {
         // send pulseId to inproc so it gets forwarded to the collection
         m_inprocSend.send(std::to_string(timingHeader->seq.pulseId().value()));
         printf("EbReceiver saw %s transition\n", XtcData::TransitionId::name(transitionId));

@@ -797,10 +797,21 @@ class CollectionManager():
         return True
 
     def condition_slowupdate(self):
-        self.lastTransition = 'slowupdate'
-        # TODO
-        logging.debug('condition_slowupdate() returning True')
-        return True
+        update_ok = True
+
+        # phase 1 not needed
+        # phase 2 no replies needed
+        for pv in self.pvListMsgHeader:
+            if not self.pv_put(pv, DaqControl.transitionId['SlowUpdate']):
+                update_ok = False
+                break
+
+        if update_ok:
+            self.pv_put(self.pvGroupMsgInsert, self.groups)
+            self.pv_put(self.pvGroupMsgInsert, 0)
+            self.lastTransition = 'slowupdate'
+
+        return update_ok
 
     def condition_connect(self):
         connect_ok = True
