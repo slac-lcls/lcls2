@@ -106,6 +106,9 @@ class Run(object):
         # Here, epics_store object is passed to drp_class so that the keyword
         # can be looked-up when evt is given (e.g. det(evt) returns value of
         # the given epics keyword.
+        # Update 20190709 - there's only one algorithm (epics).
+        # d.epics[0].epics.HX2:DVD:GCC:01:PMON = 41.0
+        # d.epics[0].epics.HX2:DVD:GPI:01:PMON = 'Test String'
         if not flag_found:
             alg = self.epics_store.alg_from_variable(name)
             if alg:
