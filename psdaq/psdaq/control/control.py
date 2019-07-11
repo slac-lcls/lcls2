@@ -1146,13 +1146,18 @@ class CollectionManager():
 
 
     def condition_reset(self):
+
+        # disable triggers
+        if self.state == 'running':
+            if not self.group_run(False):
+                logging.error('condition_reset(): group_run(False) failed')
+
         # disable slowupdate timer
         self.slow_update_enabled = False
 
         msg = create_msg('reset')
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
         self.lastTransition = 'reset'
-        logging.debug('condition_reset() returning True')
         return True
 
     def slow_update_func(self):
