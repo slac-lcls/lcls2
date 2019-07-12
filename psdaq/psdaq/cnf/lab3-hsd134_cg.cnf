@@ -8,7 +8,8 @@ conda_rel = 'ps-2.0.1'
 
 collect_host = 'drp-tst-acc06'
 #groups = platform
-groups = '0 5'
+#groups = '0 5'
+groups = '0'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
