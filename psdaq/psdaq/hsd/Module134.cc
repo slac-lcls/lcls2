@@ -90,7 +90,8 @@ void Module134::setup_timing()
     if (txclkr < TXCLKR_MIN ||
         txclkr > TXCLKR_MAX) {
       i2c_lock(I2cSwitch::LocalBus);  // ClkSynth is on local bus
-      i2c().clksynth.setup(M64);
+      i2c().clksynth.setup(LCLSII);
+      //      i2c().clksynth.setup(M64);
       i2c_unlock();
 
       usleep(100000);
@@ -112,6 +113,8 @@ void Module134::setup_timing()
 
       tpr.resetRxPll();
       r0.resetFbPLL();
+
+      optfmc().resetPgp();
     }
   }
 }
@@ -123,7 +126,8 @@ void Module134::setup_jesd()
   Fmc134Ctrl* ctrl = &p->fmc_ctrl;
   uint32_t* jesd0  = &p->surf_jesd0[0];
   uint32_t* jesd1  = &p->surf_jesd1[0];
-  cpld->default_clocktree_init();
+  //  cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL);
+  cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL);
   cpld->default_adc_init();
   jesd0[0] = 0xff;
   jesd1[0] = 0xff;

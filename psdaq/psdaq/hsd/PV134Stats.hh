@@ -91,7 +91,7 @@ namespace Pds {
     class MonJesd {
     public:
       int32_t stat[112];
-      float   clks[4];
+      float   clks[5];
     };
 
     class PV134Stats {

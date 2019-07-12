@@ -57,7 +57,7 @@ namespace Pds {
     static const unsigned _sz_monRawBuf[] = {0};
     static const unsigned _sz_monFexBuf[] = {0};
     static const unsigned _sz_monRawDet[] = {16,16,16,16,};
-    static const unsigned _sz_monJesd  [] = {112,4,};
+    static const unsigned _sz_monJesd  [] = {112,5,};
     static const unsigned _sz_monEnv   [] = {0};
     static const unsigned _sz_monAdc   [] = {0};
 
@@ -172,8 +172,8 @@ namespace Pds {
         { MonJesd v;
           for(unsigned j=0; j<8; j++) 
             reinterpret_cast<Jesd204bStatus*>(v.stat)[j] = _m.jesd(i).status(j);
-          for(unsigned j=0; j<4; j++)
-            v.clks[j] = float(_m.optfmc().clks[j+1]&0x1fffffff)*1.e-6;
+          for(unsigned j=0; j<5; j++)
+            v.clks[j] = float(_m.optfmc().clks[j]&0x1fffffff)*1.e-6;
           PVPUT(monJesd); 
         }
 
