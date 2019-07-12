@@ -22,10 +22,6 @@
 #include <new>
 #include <vector>
 
-#include <cpsw_api_user.h>
-#include <cpsw_yaml_keydefs.h>
-#include <cpsw_yaml.h>
-
 #include "psdaq/app/AppUtils.hh"
 
 #include "psdaq/cphw/BldControl.hh"

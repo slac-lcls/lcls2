@@ -14,8 +14,6 @@ target_link_libraries(hpsBldServer
    cphw
    bld
    epicstools
-   cpsw::cpsw
-   ${YAML_CPP_LIB}
    dl
    pthread
    rt
@@ -31,12 +29,9 @@ target_include_directories(hpsBldClient PUBLIC
 target_link_libraries(hpsBldClient
    app
    kcu
-   cphw
    bld
    epicstools
    xtcdata::xtc
-   cpsw::cpsw
-   ${YAML_CPP_LIB}
    dl
    pthread
    rt
