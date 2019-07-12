@@ -66,26 +66,27 @@ namespace Pds {
 
     struct EbParams                // Used with both TEBs and MEBs
     {
-      using string_t = std::string;
-      using vecstr_t = std::vector<std::string>;
-      using u64arr_t = std::array<uint64_t, NUM_READOUT_GROUPS>;
+      using string_t  = std::string;
+      using vecstr_t  = std::vector<std::string>;
+      using vecsize_t = std::vector<size_t>;
+      using u64arr_t  = std::array<uint64_t, NUM_READOUT_GROUPS>;
 
-      string_t ifAddr;             // Network interface to use
-      string_t ebPort;             // EB port to serve
-      string_t mrqPort;            // Mon request port to receive on
-      unsigned partition;          // The chosen system
-      string_t alias;              // Unique name passed on cmd line
-      unsigned id;                 // EB instance identifier
-      uint64_t contributors;       // ID bit list of contributors
-      vecstr_t addrs;              // Contributor addresses
-      vecstr_t ports;              // Contributor ports
-      size_t   maxTrSize;          // Max non-event Dgram size
-      size_t   maxResultSize;      // Max result Dgram size
-      unsigned numMrqs;            // Number of Mon request servers
-      int      core[2];            // Cores to pin threads to
-      unsigned verbose;            // Level of detail to print
-      u64arr_t contractors;        // Ctrbs providing Inputs  per readout group
-      u64arr_t receivers;          // Ctrbs expecting Results per readout group
+      string_t  ifAddr;            // Network interface to use
+      string_t  ebPort;            // EB port to serve
+      string_t  mrqPort;           // Mon request port to receive on
+      unsigned  partition;         // The chosen system
+      string_t  alias;             // Unique name passed on cmd line
+      unsigned  id;                // EB instance identifier
+      uint64_t  contributors;      // ID bit list of contributors
+      vecstr_t  addrs;             // Contributor addresses
+      vecstr_t  ports;             // Contributor ports
+      vecsize_t maxTrSize;         // Max non-event Dgram size for each Ctrb
+      size_t    maxResultSize;     // Max result Dgram size
+      unsigned  numMrqs;           // Number of Mon request servers
+      int       core[2];           // Cores to pin threads to
+      unsigned  verbose;           // Level of detail to print
+      u64arr_t  contractors;       // Ctrbs providing Inputs  per readout group
+      u64arr_t  receivers;         // Ctrbs expecting Results per readout group
     };
 
     // Sanity checks

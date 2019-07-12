@@ -31,7 +31,7 @@ namespace Pds {
     class TebContributor
     {
     public:
-      TebContributor(const TebCtrbParams&, std::shared_ptr<MetricExporter>);
+      TebContributor(const TebCtrbParams&, std::shared_ptr<MetricExporter>&);
       ~TebContributor() {}
     public:
       int        connect(const TebCtrbParams&);

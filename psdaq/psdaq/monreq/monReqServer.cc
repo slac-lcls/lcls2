@@ -26,8 +26,7 @@
 static const int      core_0               = 10; // devXXX: 10, devXX:  7, accXX:  9
 static const int      core_1               = 11; // devXXX: 11, devXX: 19, accXX: 21
 static const unsigned epoch_duration       = 8;  // Revisit: 1 per xferBuffer
-static const unsigned numberof_xferBuffers = 8;  // Revisit: Value; corresponds to ctrb:maxEvents
-static const unsigned sizeof_buffers       = 256 * 1024; // Revisit
+static const unsigned numberof_xferBuffers = 8;  // Value corresponds to ctrb:maxEvents
 
 using namespace XtcData;
 using namespace Pds::Eb;
@@ -59,26 +58,35 @@ void sigHandler( int signal )
 
 
 namespace Pds {
+  namespace Eb {
+    struct MebParams : public EbParams
+    {
+      MebParams(EbParams prms, unsigned mbs, unsigned neb) :
+        EbParams(prms), maxBufferSize(mbs), numEvBuffers(neb) {}
+
+      unsigned maxBufferSize;           // Maximum built event size
+      unsigned numEvBuffers;            // Number of event buffers
+    };
+  };
+
   class MyXtcMonitorServer : public XtcMonitorServer {
   public:
-    MyXtcMonitorServer(const char*     tag,
-                       unsigned        sizeofBuffers,
-                       unsigned        numberofEvBuffers,
-                       unsigned        numberofEvQueues,
-                       const EbParams& prms) :
+    MyXtcMonitorServer(const char*      tag,
+                       unsigned         numberofEvQueues,
+                       const MebParams& prms) :
       XtcMonitorServer(tag,
-                       sizeofBuffers,
-                       numberofEvBuffers,
+                       prms.maxBufferSize,
+                       prms.numEvBuffers,
                        numberofEvQueues),
-      _sizeofBuffers(sizeofBuffers),
+      _sizeofBuffers(prms.maxBufferSize),
       _iTeb         (0),
       _mrqTransport (prms.verbose),
       _mrqLinks     (),
-      _bufFreeList  (numberofEvBuffers),
+      _bufFreeList  (prms.numEvBuffers),
       _id           (-1u)
     {
     }
-    int connect(const EbParams& prms)
+    int connect(const MebParams& prms)
     {
       _iTeb = 0;
       _id   = prms.id;
@@ -234,21 +242,13 @@ namespace Pds {
   class Meb : public EbAppBase
   {
   public:
-    Meb(const char*                     tag,
-        unsigned                        sizeofEvBuffers,
-        unsigned                        numberofEvBuffers,
-        unsigned                        nevqueues,
-        bool                            dist,
-        const EbParams&                 prms,
+    Meb(const MebParams&                prms,
         std::shared_ptr<MetricExporter> exporter) :
-      EbAppBase  (prms, epoch_duration, 1, numberof_xferBuffers),
-      _apps      (tag, sizeofEvBuffers, numberofEvBuffers, nevqueues, prms),
+      EbAppBase  (prms, epoch_duration, 1, prms.numEvBuffers),
+      _apps      (nullptr),
       _pool      (nullptr),
       _eventCount(0),
-      _verbose   (prms.verbose),
-      _numBuffers(numberofEvBuffers),
-      _prms      (prms),
-      _dist      (dist)
+      _prms      (prms)
     {
       std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
       exporter->add("MEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;      });
@@ -266,26 +266,17 @@ namespace Pds {
     {
     }
   public:
-    int connect(const EbParams& prms)
-    {
-      unsigned entries = std::bitset<64>(prms.contributors).count();
-      _pool = new GenericPool(sizeof(Dgram) + entries * sizeof(Dgram*) +
-                              sizeof(unsigned), _numBuffers);
-
-      int rc;
-      if ( (rc = EbAppBase::connect(prms)) )
-        return rc;
-
-      if ( (rc = _apps.connect(prms)) )
-        return rc;
-
-      _apps.distribute(_dist);
-
-      return 0;
-    }
-    void run()
+    void run(MyXtcMonitorServer& apps)
     {
       pinThread(pthread_self(), _prms.core[0]);
+
+      _apps = &apps;
+
+      // Create pool for transferring events to MyXtcMonitorServer
+      unsigned    entries = std::bitset<64>(_prms.contributors).count();
+      size_t      size    = sizeof(Dgram) + entries * sizeof(Dgram*) + sizeof(unsigned);
+      GenericPool pool(size, _prms.numEvBuffers);
+      _pool = &pool;
 
       _eventCount = 0;
 
@@ -303,16 +294,16 @@ namespace Pds {
         }
       }
 
-      _apps.shutdown();
+      _apps->shutdown();
 
       EbAppBase::shutdown();
 
-      delete _pool;
+      _apps = nullptr;
       _pool = nullptr;
     }
     virtual void process(EbEvent* event)
     {
-      if (_verbose > 3)
+      if (_prms.verbose > 3)
       {
         static unsigned cnt = 0;
         printf("Meb::process event dump:\n");
@@ -336,7 +327,7 @@ namespace Pds {
       memcpy(buf, event->begin(), sz);
       *(unsigned*)dg->xtc.next() = idx; // Pass buffer's index to _deleteDatagram()
 
-      if (_verbose > 2)
+      if (_prms.verbose > 2)
       {
         uint64_t pid = dg->seq.pulseId().value();
         unsigned ctl = dg->seq.pulseId().control();
@@ -344,25 +335,22 @@ namespace Pds {
         unsigned src = dg->xtc.src.value();
         unsigned env = dg->env;
         unsigned svc = dg->seq.service();
-        printf("MEB processed              event[%4ld]    @ "
+        printf("MEB processed              event[%5ld]    @ "
                "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, %3s # %2d\n",
                _eventCount, dg, ctl, pid, sz, src, env,
                svc == TransitionId::L1Accept ? "buf" : "tr", idx);
       }
 
-      if (_apps.events(dg) == XtcMonitorServer::Handled)
+      if (_apps->events(dg) == XtcMonitorServer::Handled)
       {
         Pool::free((void*)dg);
       }
     }
   private:
-    MyXtcMonitorServer _apps;
-    GenericPool*       _pool;
-    uint64_t           _eventCount;
-    const unsigned     _verbose;
-    const unsigned     _numBuffers;
-    const EbParams&    _prms;
-    const bool         _dist;
+    MyXtcMonitorServer* _apps;
+    GenericPool*        _pool;
+    uint64_t            _eventCount;
+    const MebParams&    _prms;
   };
 };
 
@@ -370,92 +358,94 @@ namespace Pds {
 class MebApp : public CollectionApp
 {
 public:
-  MebApp(const std::string&              collSrv,
-         const char*                     tag,
-         unsigned                        sizeofEvBuffers,
-         unsigned                        maxBuffes,
-         unsigned                        nevqueues,
-         bool                            dist,
-         EbParams&                       prms,
-         std::shared_ptr<MetricExporter> exporter);
+  MebApp(const std::string&               collSrv,
+         const char*                      tag,
+         unsigned                         numEvQueues,
+         bool                             distribute,
+         MebParams&                       prms,
+         std::shared_ptr<MetricExporter>& exporter);
 public:                                 // For CollectionApp
-  json connectionInfo() override;
-  void handleConnect(const json& msg) override;
-  void handleDisconnect(const json& msg) override;
-  void handlePhase1(const json& msg) override;
-  void handleReset(const json& msg) override;
+  json         connectionInfo() override;
+  void         handleConnect(const json& msg) override;
+  void         handleDisconnect(const json& msg) override;
+  void         handlePhase1(const json& msg) override;
+  void         handleReset(const json& msg) override;
 private:
-  int  _handleConnect(const json& msg);
-  int  _parseConnectionParams(const json& msg);
+  std::string _handleConnect(const json& msg);
+  int         _parseConnectionParams(const json& msg);
 private:
-  EbParams&     _prms;
-  Meb           _meb;
-  std::thread   _appThread;
-  bool          _shutdown;
+  const char*                         _tag;
+  unsigned                            _numEvQueues;
+  bool                                _distribute;
+  std::unique_ptr<Meb>                _meb;
+  std::unique_ptr<MyXtcMonitorServer> _apps;
+  std::thread                         _appThread;
+  MebParams&                          _prms;
+  std::shared_ptr<MetricExporter>&    _exporter;
 };
 
-MebApp::MebApp(const std::string&              collSrv,
-               const char*                     tag,
-               unsigned                        sizeofEvBuffers,
-               unsigned                        numberofEvBuffers,
-               unsigned                        nevqueues,
-               bool                            dist,
-               EbParams&                       prms,
-               std::shared_ptr<MetricExporter> exporter) :
+MebApp::MebApp(const std::string&               collSrv,
+               const char*                      tag,
+               unsigned                         numEvQueues,
+               bool                             distribute,
+               MebParams&                       prms,
+               std::shared_ptr<MetricExporter>& exporter) :
   CollectionApp(collSrv, prms.partition, "meb", prms.alias),
+  _tag         (tag),
+  _numEvQueues (numEvQueues),
+  _distribute  (distribute),
   _prms        (prms),
-  _meb         (tag, sizeofEvBuffers, numberofEvBuffers, nevqueues, dist, prms, exporter),
-  _shutdown    (false)
+  _exporter    (exporter)
 {
-  printf("  Tag:                        %s\n", tag);
-  printf("  Max event buffer size:      %d\n", sizeofEvBuffers);
-  printf("  Number of Event buffers:    %d\n", numberofEvBuffers);
-  printf("  Number of Event queues:     %d\n", nevqueues);
-  printf("  Distribute:                 %s\n", dist ? "yes" : "no");
 }
 
 json MebApp::connectionInfo()
 {
   // Allow the default NIC choice to be overridden
-  std::cout<<"custom nicIp\n";
   std::string ip = _prms.ifAddr.empty() ? getNicIp() : _prms.ifAddr;
   json body = {{"connect_info", {{"nic_ip", ip}}}};
+  json bufInfo = {{"buf_count", _prms.numEvBuffers}};
+  body["connect_info"].update(bufInfo);
   return body;
 }
 
-int MebApp::_handleConnect(const json &msg)
+std::string MebApp::_handleConnect(const json &msg)
 {
   int rc = _parseConnectionParams(msg["body"]);
-  if (rc)  return rc;
+  if (rc)  return std::string("Error parsing parameters");
 
-  rc = _meb.connect(_prms);
-  if (rc)  return rc;
+  _meb = std::make_unique<Meb>(_prms, _exporter);
+  rc = _meb->connect(_prms);
+  if (rc)  return std::string("Failed MEB connect()");
+
+  _apps = std::make_unique<MyXtcMonitorServer>(_tag, _numEvQueues, _prms);
+  rc = _apps->connect(_prms);
+  if (rc)  return std::string("Failed XtcMonitorServer connect()");
+
+  _apps->distribute(_distribute);
 
   lRunning = 1;
 
-  _appThread = std::thread(&Meb::run, std::ref(_meb));
+  _appThread = std::thread(&Meb::run, std::ref(*_meb), std::ref(*_apps));
 
-  return 0;
+  return std::string{};
 }
 
 void MebApp::handleConnect(const json &msg)
 {
-  int rc = _handleConnect(msg);
+  std::string errMsg = _handleConnect(msg);
 
   // Reply to collection with connect status
   json body = json({});
-  if (rc)  body["error"] = "Connect error";
+  if (!errMsg.empty())  body["error_info"] = errMsg;
   reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
 }
 
 void MebApp::handlePhase1(const json& msg)
 {
-  int         rc  = 0;
-  std::string key = msg["header"]["key"];
-
   // Reply to collection with transition status
   json body = json({});
-  if (rc)  body["error"] = "Phase 1 failed";
+  std::string key = msg["header"]["key"];
   reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
 }
 
@@ -468,18 +458,23 @@ void MebApp::handleDisconnect(const json &msg)
   // Reply to collection with connect status
   json body   = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
-
-  _shutdown = true;
 }
 
 void MebApp::handleReset(const json &msg)
 {
-  if (!_shutdown)
-  {
-    if (_appThread.joinable())  _appThread.join();
+  if (_appThread.joinable())  _appThread.join();
+}
 
-    _shutdown = true;
+static void _printGroups(unsigned groups, const u64arr_t& array)
+{
+  while (groups)
+  {
+    unsigned group = __builtin_ffs(groups) - 1;
+    groups &= ~(1 << group);
+
+    printf("%d: 0x%016lx  ", group, array[group]);
   }
+  printf("\n");
 }
 
 int MebApp::_parseConnectionParams(const json& body)
@@ -499,68 +494,69 @@ int MebApp::_parseConnectionParams(const json& body)
   _prms.ifAddr = body["meb"][id]["connect_info"]["nic_ip"];
   _prms.ebPort = std::to_string(mebPortBase + _prms.id);
 
-  _prms.contributors = 0;
-
-  uint16_t groups = 0;
-  if (body.find("drp") != body.end())
+  if (body.find("drp") == body.end())
   {
-    for (auto it : body["drp"].items())
-    {
-      unsigned drpId = it.value()["drp_id"];
-      if (drpId > MAX_DRPS - 1)
-      {
-        fprintf(stderr, "DRP ID %d is out of range 0 - %d\n", drpId, MAX_DRPS - 1);
-        return 1;
-      }
-      _prms.contributors |= 1ul << drpId;
-
-      groups |= 1 << unsigned(it.value()["det_info"]["readout"]);
-    }
+    fprintf(stderr, "Missing required DRP specs\n");
+    return 1;
   }
+
+  uint16_t groups        = 0;
+  size_t   maxTrSize     = 0;
+  size_t   maxBufferSize = 0;
+  _prms.contributors     = 0;
+  _prms.maxBufferSize    = 0;
+  _prms.maxTrSize.resize(body["drp"].size());
 
   _prms.contractors.fill(0);
   _prms.receivers.fill(0);
 
-  while (groups)
+  for (auto it : body["drp"].items())
   {
-    unsigned group = __builtin_ffs(groups) - 1;
-    groups &= ~(1 << group);
-
-    uint64_t contractors = _prms.contributors; // Revisit: Value to come from CfgDb
-
-    if (!contractors)
+    unsigned drpId = it.value()["drp_id"];
+    if (drpId > MAX_DRPS - 1)
     {
-      fprintf(stderr, "No contributors found for readout group %d\n",
-              group);
+      fprintf(stderr, "DRP ID %d is out of range 0 - %d\n", drpId, MAX_DRPS - 1);
       return 1;
     }
+    _prms.contributors |= 1ul << drpId;
 
-    _prms.contractors[group] = contractors;
-    _prms.receivers[group]   = 0;       // Unused by MEB
+    unsigned group = it.value()["det_info"]["readout"];
+    if (group > NUM_READOUT_GROUPS - 1)
+    {
+      fprintf(stderr, "Readout group %d is out of range 0 - %d\n", group, NUM_READOUT_GROUPS - 1);
+      return 1;
+    }
+    _prms.contractors[group] |= 1ul << drpId;
+    _prms.receivers[group]    = 0;      // Unused by MEB
+    groups |= 1 << group;
+
+    _prms.maxTrSize[drpId] = size_t(it.value()["connect_info"]["max_tr_size"]);
+    maxTrSize             += _prms.maxTrSize[drpId];
+    maxBufferSize         += size_t(it.value()["connect_info"]["max_ev_size"]);
+  }
+  // shmem buffers must fit both built events and transitions of worst case size
+  _prms.maxBufferSize = maxBufferSize > maxTrSize ? maxBufferSize : maxTrSize;
+
+  if (body.find("teb") == body.end())
+  {
+    fprintf(stderr, "Missing required TEB specs\n");
+    return 1;
   }
 
   _prms.addrs.clear();
   _prms.ports.clear();
 
-  if (body.find("teb") != body.end())
+  for (auto it : body["teb"].items())
   {
-    for (auto it : body["teb"].items())
+    unsigned    tebId   = it.value()["teb_id"];
+    std::string address = it.value()["connect_info"]["nic_ip"];
+    if (tebId > MAX_TEBS - 1)
     {
-      unsigned    tebId   = it.value()["teb_id"];
-      std::string address = it.value()["connect_info"]["nic_ip"];
-      if (tebId > MAX_TEBS - 1)
-      {
-        fprintf(stderr, "TEB ID %d is out of range 0 - %d\n", tebId, MAX_TEBS - 1);
-        return 1;
-      }
-      _prms.addrs.push_back(address);
-      _prms.ports.push_back(std::string(std::to_string(mrqPortBase + tebId)));
+      fprintf(stderr, "TEB ID %d is out of range 0 - %d\n", tebId, MAX_TEBS - 1);
+      return 1;
     }
-  }
-  if (_prms.addrs.size() == 0)
-  {
-    fprintf(stderr, "Missing required TEB request address(es)\n");
-    return 1;
+    _prms.addrs.push_back(address);
+    _prms.ports.push_back(std::string(std::to_string(mrqPortBase + tebId)));
   }
 
   printf("\nParameters of MEB ID %d:\n",                     _prms.id);
@@ -568,10 +564,14 @@ int MebApp::_parseConnectionParams(const json& body)
   printf("  Partition:                  %d\n",               _prms.partition);
   printf("  Bit list of contributors: 0x%016lx, cnt: %zd\n", _prms.contributors,
                                                              std::bitset<64>(_prms.contributors).count());
+  printf("  Readout group contractors:  ");                  _printGroups(groups, _prms.contractors);
   printf("  Buffer duration:          0x%014lx\n",           BATCH_DURATION);
-  printf("  Buffer pool depth:          %d\n",               numberof_xferBuffers);
+  printf("  Number of event buffers:    %d\n",               _prms.numEvBuffers);
   printf("  Max # of entries / buffer:  %d\n",               1);
-  printf("  Max transition size:        %zd\n",              _prms.maxTrSize);
+  printf("  shmem buffer size:          %d\n",               _prms.maxBufferSize);
+  printf("  Number of event queues:     %d\n",               _numEvQueues);
+  printf("  Distribute:                 %s\n",               _distribute ? "yes" : "no");
+  printf("  Tag:                        %s\n",               _tag);
   printf("\n");
   printf("  MRQ port range: %d - %d\n", mrqPortBase, mrqPortBase + MAX_MEBS - 1);
   printf("  MEB port range: %d - %d\n", mebPortBase, mebPortBase + MAX_MEBS - 1);
@@ -590,7 +590,6 @@ void usage(char* progname)
                    "-p <partition> "
                    "-P <partition name> "
                    "-n <numb shm buffers> "
-                   "-s <shm buffer size> "
                    "-u <alias> "
                   "[-q <# event queues>] "
                   "[-t <tag name>] "
@@ -605,33 +604,33 @@ void usage(char* progname)
 
 int main(int argc, char** argv)
 {
-  const unsigned NO_PARTITION    = unsigned(-1u);
-  const char*    tag             = 0;
+  const unsigned NO_PARTITION = unsigned(-1u);
+  const char*    tag          = 0;
   std::string    partitionTag;
   std::string    collSrv;
-  EbParams       prms { /* .ifAddr        = */ { }, // Network interface to use
-                        /* .ebPort        = */ { },
-                        /* .mrqPort       = */ { }, // Unused here
-                        /* .partition     = */ NO_PARTITION,
-                        /* .alias         = */ { }, // Unique name passed on cmd line
-                        /* .id            = */ -1u,
-                        /* .contributors  = */ 0,   // DRPs
-                        /* .addrs         = */ { }, // MonReq addr served by TEB
-                        /* .ports         = */ { }, // MonReq port served by TEB
-                        /* .maxTrSize     = */ sizeof_buffers,
-                        /* .maxResultSize = */ 0,   // Unused here
-                        /* .numMrqs       = */ 0,   // Unused here
-                        /* .core          = */ { core_0, core_1 },
-                        /* .verbose       = */ 0,
-                        /* .contractors   = */ 0,
-                        /* .receivers     = */ 0 };
-  unsigned       sizeofEvBuffers = sizeof_buffers;
-  unsigned       numberOfBuffers = numberof_xferBuffers;
-  unsigned       nevqueues       = 1;
-  bool           ldist           = false;
+  MebParams      prms { { /* .ifAddr        = */ { }, // Network interface to use
+                          /* .ebPort        = */ { },
+                          /* .mrqPort       = */ { }, // Unused here
+                          /* .partition     = */ NO_PARTITION,
+                          /* .alias         = */ { }, // Unique name passed on cmd line
+                          /* .id            = */ -1u,
+                          /* .contributors  = */ 0,   // DRPs
+                          /* .addrs         = */ { }, // MonReq addr served by TEB
+                          /* .ports         = */ { }, // MonReq port served by TEB
+                          /* .maxTrSize     = */ { }, // Filled in @ connect
+                          /* .maxResultSize = */ 0,   // Unused here
+                          /* .numMrqs       = */ 0,   // Unused here
+                          /* .core          = */ { core_0, core_1 },
+                          /* .verbose       = */ 0,
+                          /* .contractors   = */ 0,
+                          /* .receivers     = */ 0 },
+                        /* .maxBufferSize = */ 0,     // Filled in @ connect
+                        /* .numEvBuffers  = */ numberof_xferBuffers };
+  unsigned       nevqueues = 1;
+  bool           ldist     = false;
 
   int c;
-  while ((c = getopt(argc, argv, "p:P:n:s:q:t:dA:C:1:2:u:vh")) != -1)
+  while ((c = getopt(argc, argv, "p:P:n:t:q:dA:C:1:2:u:vh")) != -1)
   {
     errno = 0;
     char* endPtr;
@@ -644,16 +643,13 @@ int main(int argc, char** argv)
         partitionTag = std::string(optarg);
         break;
       case 'n':
-        sscanf(optarg, "%d", &numberOfBuffers);
+        sscanf(optarg, "%d", &prms.numEvBuffers);
         break;
       case 't':
         tag = optarg;
         break;
       case 'q':
         nevqueues = strtoul(optarg, NULL, 0);
-        break;
-      case 's':
-        sizeofEvBuffers = (unsigned) strtoul(optarg, NULL, 0);
         break;
       case 'd':
         ldist = true;
@@ -675,17 +671,6 @@ int main(int argc, char** argv)
     }
   }
 
-  if (!numberOfBuffers)
-  {
-    fprintf(stderr, "Missing '%s' parameter\n", "-n <max buffers>");
-    return 1;
-  }
-  if (!sizeofEvBuffers)
-  {
-    fprintf(stderr, "Missing '%s' parameter\n", "-s <size of event buffers>");
-    return 1;
-  }
-
   if (prms.partition == NO_PARTITION)
   {
     fprintf(stderr, "Missing '%s' parameter\n", "-p <Partition number>");
@@ -694,6 +679,11 @@ int main(int argc, char** argv)
   if (partitionTag.empty())
   {
     fprintf(stderr, "Missing '%s' parameter\n", "-P <Partition name>");
+    return 1;
+  }
+  if (!prms.numEvBuffers)
+  {
+    fprintf(stderr, "Missing '%s' parameter\n", "-n <max buffers>");
     return 1;
   }
   if (collSrv.empty())
@@ -706,8 +696,8 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  if (numberOfBuffers < numberof_xferBuffers)
-    numberOfBuffers = numberof_xferBuffers;
+  if (prms.numEvBuffers < numberof_xferBuffers)
+    prms.numEvBuffers = numberof_xferBuffers;
 
   if (!tag)  tag = partitionTag.c_str();
   printf("Partition Tag: '%s'\n", tag);
@@ -723,7 +713,7 @@ int main(int argc, char** argv)
   prometheus::Exposer exposer{"0.0.0.0:9200", "/metrics", 1};
   auto exporter = std::make_shared<MetricExporter>();
 
-  MebApp app(collSrv, tag, sizeofEvBuffers, numberOfBuffers, nevqueues, ldist, prms, exporter);
+  MebApp app(collSrv, tag, nevqueues, ldist, prms, exporter);
 
   exposer.RegisterCollectable(exporter);
 

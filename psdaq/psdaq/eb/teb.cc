@@ -26,6 +26,7 @@
 #include <cassert>
 #include <iostream>
 #include <exception>
+#include <algorithm>                    // For std::fill()
 #include <Python.h>
 #include "rapidjson/document.h"
 
@@ -85,7 +86,7 @@ namespace Pds {
     class Teb : public EbAppBase
     {
     public:
-      Teb(const EbParams& prms, std::shared_ptr<MetricExporter> exporter);
+      Teb(const EbParams& prms, std::shared_ptr<MetricExporter>& exporter);
     public:
       int      connect(const EbParams&);
       Decide*  decide()               { return _decideObj; }
@@ -123,7 +124,7 @@ namespace Pds {
 
 using namespace Pds::Eb;
 
-Teb::Teb(const EbParams& prms, std::shared_ptr<MetricExporter> exporter) :
+Teb::Teb(const EbParams& prms, std::shared_ptr<MetricExporter>& exporter) :
   EbAppBase    (prms, BATCH_DURATION, MAX_ENTRIES, MAX_BATCHES),
   _l3Links     (),
   _mrqTransport(prms.verbose),
@@ -468,7 +469,7 @@ void Teb::post(const Batch* batch, uint64_t& receivers)
 class TebApp : public CollectionApp
 {
 public:
-  TebApp(const std::string& collSrv, EbParams&, std::shared_ptr<MetricExporter>);
+  TebApp(const std::string& collSrv, EbParams&, std::shared_ptr<MetricExporter>&);
   virtual ~TebApp();
 public:                                 // For CollectionApp
   json connectionInfo() override;
@@ -485,17 +486,15 @@ private:
   Teb         _teb;
   std::thread _appThread;
   Dl          _dl;
-  bool        _shutdown;
   std::string _connect_json;
 };
 
-TebApp::TebApp(const std::string&              collSrv,
-               EbParams&                       prms,
-               std::shared_ptr<MetricExporter> exporter) :
+TebApp::TebApp(const std::string&               collSrv,
+               EbParams&                        prms,
+               std::shared_ptr<MetricExporter>& exporter) :
   CollectionApp(collSrv, prms.partition, "teb", prms.alias),
   _prms        (prms),
-  _teb         (prms, exporter),
-  _shutdown    (false)
+  _teb         (prms, exporter)
 {
   Py_Initialize();
 }
@@ -623,18 +622,11 @@ void TebApp::handleDisconnect(const json& msg)
   // Reply to collection with transition status
   json body = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
-
-  _shutdown = true;
 }
 
 void TebApp::handleReset(const json& msg)
 {
-  if (!_shutdown)
-  {
-    if (_appThread.joinable())  _appThread.join();
-
-    _shutdown = true;
-  }
+  if (_appThread.joinable())  _appThread.join();
 }
 
 static void _printGroups(unsigned groups, const u64arr_t& array)
@@ -676,32 +668,38 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.receivers.fill(0);
 
   uint16_t groups = 0;
-  if (body.find("drp") != body.end())
+  if (body.find("drp") == body.end())
   {
-    for (auto it : body["drp"].items())
-    {
-      unsigned    drpId   = it.value()["drp_id"];
-      std::string address = it.value()["connect_info"]["nic_ip"];
-      if (drpId > MAX_DRPS - 1)
-      {
-        fprintf(stderr, "DRP ID %d is out of range 0 - %d\n", drpId, MAX_DRPS - 1);
-        return 1;
-      }
-      _prms.contributors |= 1ul << drpId;
-      _prms.addrs.push_back(address);
-      _prms.ports.push_back(std::string(std::to_string(drpPortBase + drpId)));
-
-      auto group = unsigned(it.value()["det_info"]["readout"]);
-      _prms.contractors[group] |= 1ul << drpId;
-      _prms.receivers[group]   |= 1ul << drpId;
-      groups |= 1 << group;
-    }
-  }
-  if (_prms.addrs.size() == 0)
-  {
-    fprintf(stderr, "Missing required DRP address(es)\n");
+    fprintf(stderr, "Missing required DRP specs\n");
     return 1;
   }
+
+  for (auto it : body["drp"].items())
+  {
+    unsigned    drpId   = it.value()["drp_id"];
+    std::string address = it.value()["connect_info"]["nic_ip"];
+    if (drpId > MAX_DRPS - 1)
+    {
+      fprintf(stderr, "DRP ID %d is out of range 0 - %d\n", drpId, MAX_DRPS - 1);
+      return 1;
+    }
+    _prms.contributors |= 1ul << drpId;
+    _prms.addrs.push_back(address);
+    _prms.ports.push_back(std::string(std::to_string(drpPortBase + drpId)));
+
+    auto group = unsigned(it.value()["det_info"]["readout"]);
+    if (group > NUM_READOUT_GROUPS - 1)
+    {
+      fprintf(stderr, "Readout group %d is out of range 0 - %d\n", group, NUM_READOUT_GROUPS - 1);
+      return 1;
+    }
+    _prms.contractors[group] |= 1ul << drpId;
+    _prms.receivers[group]   |= 1ul << drpId;
+    groups |= 1 << group;
+  }
+  auto& vec =_prms.maxTrSize;
+  vec.resize(body["drp"].size());
+  std::fill(vec.begin(), vec.end(), max_contrib_size); // Same for all contributors
 
   _prms.numMrqs = 0;
   if (body.find("meb") != body.end())
@@ -723,8 +721,9 @@ int TebApp::_parseConnectionParams(const json& body)
   printf("  Batch duration:            0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
   printf("  Batch pool depth:            %d\n",               MAX_BATCHES);
   printf("  Max # of entries / batch:    %d\n",               MAX_ENTRIES);
+  printf("  # of contrib. buffers:       %d\n",               MAX_LATENCY);
   printf("  Max result     Dgram size:   %zd\n",              _prms.maxResultSize);
-  printf("  Max transition Dgram size:   %zd\n",              _prms.maxTrSize);
+  printf("  Max transition Dgram size:   %zd\n",              _prms.maxTrSize[0]);
   printf("\n");
   printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS - 1);
   printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS - 1);
@@ -778,7 +777,7 @@ int main(int argc, char **argv)
                         /* .contributors  = */ 0,   // DRPs
                         /* .addrs         = */ { }, // Result dst addr served by Ctrbs
                         /* .ports         = */ { }, // Result dst port served by Ctrbs
-                        /* .maxTrSize     = */ max_contrib_size,
+                        /* .maxTrSize     = */ { }, // Filled in at connect
                         /* .maxResultSize = */ max_result_size,
                         /* .numMrqs       = */ 0,   // Number of Mon requestors
                         /* .core          = */ { core_0, core_1 },

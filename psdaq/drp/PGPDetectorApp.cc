@@ -119,6 +119,8 @@ json PGPDetectorApp::connectionInfo()
     json body = {{"connect_info", {{"nic_ip", ip}}}};
     json info = m_det->connectionInfo();
     body["connect_info"].update(info);
+    json bufInfo = m_drp.connectionInfo();
+    body["connect_info"].update(bufInfo);
     return body;
 }
 

@@ -38,7 +38,7 @@ procmgr_config = [
  { host: 'drp-tst-dev023', id:'xpphsd_1', flags:'xpu', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/dev023'},
 
  { host: 'drp-tst-dev002', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
- { host: 'drp-tst-dev023', id:'meb1', flags:'spu', conda:conda_rel, cmd:'monReqServer -P TMO -d -q 4 -s 0x40000 -C '+collect_host+' '},
+ { host: 'drp-tst-dev023', id:'meb1', flags:'spu', conda:conda_rel, cmd:'monReqServer -P TMO -d -q 4 -C '+collect_host+' '},
  { host: 'drp-tst-dev023', id:'shmc', flags:'sx', conda:conda_rel, cmd:'shmemClient -p TMO -i 0'},
 # {                      , id:'ami', flags:'', conda:conda_rel, cmd:'ami-local shmem://examples/shmem.json'},
 

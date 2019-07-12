@@ -41,10 +41,6 @@ EbAppBase::EbAppBase(const EbParams& prms,
                 duration,
                 prms.verbose),
   _transport   (prms.verbose),
-  _links       (),
-  _trSize      (roundUpSize(TransitionId::NumberOf * prms.maxTrSize)),
-  _maxTrSize   (prms.maxTrSize),
-  _maxBufSize  (),
   _maxBuffers  (maxBuffers),
   //_dummy       (Level::Fragment),
   _verbose     (prms.verbose),
@@ -62,6 +58,8 @@ int EbAppBase::connect(const EbParams& prms)
   unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
 
   _links.resize(nCtrbs);
+  _trRegSize.resize(nCtrbs);
+  _maxTrSize.resize(nCtrbs);
   _maxBufSize.resize(nCtrbs);
   _id           = prms.id;
   _contributors = prms.contributors;
@@ -98,8 +96,10 @@ int EbAppBase::connect(const EbParams& prms)
       return rc;
     }
     _links[link->id()]      = link;
+    _maxTrSize[link->id()]  = prms.maxTrSize[link->id()];
+    _trRegSize[link->id()]  = roundUpSize(TransitionId::NumberOf * _maxTrSize[link->id()]);
     _maxBufSize[link->id()] = regSize / _maxBuffers;
-    regSize                += _trSize;  // Ctrbs don't have a transition space
+    regSize                += _trRegSize[link->id()];  // Ctrbs don't have a transition space
     regSizes[link->id()]    = regSize;
     sumSize                += regSize;
   }
@@ -151,6 +151,8 @@ void EbAppBase::shutdown()
   if (_region)  free(_region);
   _region = nullptr;
 
+  _trRegSize.clear();
+  _maxTrSize.clear();
   _maxBufSize.clear();
   _contributors = 0;
   _id           = -1;
@@ -178,8 +180,8 @@ int EbAppBase::process()
   unsigned     idx = ImmData::idx(data);
   EbLfLink*    lnk = _links[src];
   size_t       ofs = (ImmData::buf(flg) == ImmData::Buffer)
-                   ? (_trSize + idx * _maxBufSize[src])
-                   : (idx * _maxTrSize);
+                   ? (_trRegSize[src] + idx * _maxBufSize[src])
+                   : (idx * _maxTrSize[src]);
   const Dgram* idg = static_cast<Dgram*>(lnk->lclAdx(ofs));
   if ( (rc = lnk->postCompRecv()) )
   {

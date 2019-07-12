@@ -16,8 +16,8 @@ using namespace XtcData;
 using namespace Pds::Eb;
 
 
-MebContributor::MebContributor(const MebCtrbParams&            prms,
-                               std::shared_ptr<MetricExporter> exporter) :
+MebContributor::MebContributor(const MebCtrbParams&             prms,
+                               std::shared_ptr<MetricExporter>& exporter) :
   _maxEvSize (roundUpSize(prms.maxEvSize)),
   _maxTrSize (prms.maxTrSize),
   _trSize    (roundUpSize(TransitionId::NumberOf * _maxTrSize)),
@@ -101,7 +101,7 @@ int MebContributor::post(const Dgram* ddg, uint32_t destination)
     uint64_t pid    = ddg->seq.pulseId().value();
     unsigned ctl    = ddg->seq.pulseId().control();
     void*    rmtAdx = (void*)link->rmtAdx(offset);
-    printf("MebCtrb posts %6ld       monEvt [%4d]  @ "
+    printf("MebCtrb posts %9ld    monEvt [%5d]  @ "
            "%16p, ctl %02d, pid %014lx, sz %4zd, MEB %2d @ %16p, data %08x\n",
            _eventCount, idx, ddg, ctl, pid, sz, link->id(), rmtAdx, data);
   }
@@ -136,7 +136,7 @@ int MebContributor::post(const Dgram* ddg)
       uint64_t pid    = ddg->seq.pulseId().value();
       unsigned ctl    = ddg->seq.pulseId().control();
       void*    rmtAdx = (void*)link->rmtAdx(ofs);
-      printf("MebCtrb posts %6ld         trId [%4d]  @ "
+      printf("MebCtrb posts %9ld      trId [%5d]  @ "
              "%16p, ctl %02x, pid %014lx, sz %4zd, MEB %2d @ %16p, data %08x\n",
              _eventCount, tr, ddg, ctl, pid, sz, link->id(), rmtAdx, data);
     }

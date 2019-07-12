@@ -25,7 +25,7 @@ class EbReceiver : public Pds::Eb::EbCtrbInBase
 public:
     EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
-               std::shared_ptr<MetricExporter> exporter);
+               std::shared_ptr<MetricExporter>& exporter);
     void process(const XtcData::Dgram* result, const void* input) override;
 private:
     MemPool& m_pool;
@@ -48,6 +48,7 @@ class DrpBase
 public:
     DrpBase(Parameters& para, ZmqContext& context);
     void shutdown();
+    nlohmann::json connectionInfo();
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string disconnect(const nlohmann::json& msg);
     Pds::Eb::TebContributor& tebContributor() const {return *m_tebContributor;}
