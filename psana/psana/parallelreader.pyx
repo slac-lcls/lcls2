@@ -7,7 +7,7 @@ cdef class ParallelReader:
     def __init__(self, fds):
         self.fds = array.array('i', fds)
         self.chunksize = 0x100000
-        self.maxretries = int(os.environ.get('PS_R_MAX_RETRIES', '1')) # FIXME: check for end of file?
+        self.maxretries = int(os.environ.get('PS_R_MAX_RETRIES', '5'))
         self.sleep_secs = int(os.environ.get('PS_R_SLEEP_SECS', '1'))
         self.nfiles = len(self.fds)
         self.bufs = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)

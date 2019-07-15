@@ -11,7 +11,7 @@ class DataSourceBase(object):
     sel_det_ids = []
     exp = None
     run_num = -1
-    live = 0
+    live = False
     dir = None
     files = None
     shmem = None
@@ -31,16 +31,22 @@ class DataSourceBase(object):
         max_events  -- no. of maximum events
         sel_det_ids -- user-selected detector IDs.
         destination -- callback that takes a timestamp and returns rank no (only works with RunParallel).
+        live        -- turns live mode on/off (default is False). 
         """
         if kwargs is not None:
             keywords = ('exp', 'dir', 'files', 'shmem', \
-                    'filter', 'batch_size', 'max_events', 'sel_det_ids', 'det_name','destination')
+                    'filter', 'batch_size', 'max_events', 'sel_det_ids', \
+                    'det_name','destination','live')
+            
             for k in keywords:
                 if k in kwargs:
                     setattr(self, k, kwargs[k])
 
             if 'run' in kwargs:
                 setattr(self, 'run_num', int(kwargs['run']))
+
+            if not self.live:
+                os.environ['PS_R_MAX_RETRIES'] = '1' # only try reading once in live mode
 
         assert self.batch_size > 0
     
