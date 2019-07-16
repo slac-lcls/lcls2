@@ -1396,4 +1396,7 @@ void Fmc134Cpld::adc_range(unsigned chip,unsigned fsrng)
     spi_read(0, dev, 0x0030+i, &dw[i]) ;
   printf("Read FS_RANGE_0: %x %x %x %x\n",
     dw[0], dw[1], dw[2], dw[3]);
+
+  //  Enable overrange detection
+  spi_write(0, dev, 0x213, (1<<3)); 
 }

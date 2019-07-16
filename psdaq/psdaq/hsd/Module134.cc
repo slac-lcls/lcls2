@@ -373,6 +373,7 @@ EnvMon Module134::mon() const
   v.aux12v   = m.ain[7]*6.;
   m = i2c.vtmon2.mon();
   v.boardTemp = m.Tint;
+  //  v.boardTemp = m.Text;
   v.local1_8v = m.ain[6];
   m = i2c.vtmon3.mon();
   v.fmc12v = m.ain[2]*6.;

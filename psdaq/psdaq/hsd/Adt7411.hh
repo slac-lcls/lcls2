@@ -9,6 +9,7 @@ namespace Pds {
     class Adt7411_Mon {
     public:
       double Tint;  // degC
+      double Text;  // degC
       double Vdd;   // Volt
       double ain[8];// Volt
     };
