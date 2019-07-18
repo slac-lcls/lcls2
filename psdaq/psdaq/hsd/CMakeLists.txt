@@ -27,6 +27,7 @@ add_library(hsd SHARED
   Fmc134Ctrl.cc
   Fmc134Cpld.cc
   Ad7291.cc
+  OptFmc.cc
 
   Module134.cc
   ModuleBase.cc

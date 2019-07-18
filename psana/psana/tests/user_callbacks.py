@@ -21,6 +21,7 @@ def filter_fn(evt):
     return True
 
 xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
+
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
 def event_fn(event, det):
     padarray = vals.padarray
@@ -28,5 +29,5 @@ def event_fn(event, det):
 
 for run in ds.runs():
     det = run.Detector('xppcspad')
-    edet = run.Detector('XPP:VARS:STRING:01')
+    edet = run.Detector('HX2:DVD:GCC:01:PMON')
     run.analyze(event_fn=event_fn, det=det)

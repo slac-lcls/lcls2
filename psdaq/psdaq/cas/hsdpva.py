@@ -220,7 +220,7 @@ class HsdJesd(QtWidgets.QWidget):
 
         glo = QtWidgets.QGridLayout()
         cwidgets = []
-        names = ['RxClk','SysRef','DevClk','GtRefClk']
+        names = ['PllClk','RxClk','SysRef','DevClk','GtRefClk']
         for i in range(len(names)):
             glo.addWidget(QtWidgets.QLabel(names[i]),i,0)
             w = QtWidgets.QLabel('')

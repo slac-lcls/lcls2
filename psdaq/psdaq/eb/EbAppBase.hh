@@ -52,8 +52,8 @@ namespace Pds {
       u64arr_t                 _receivers;
       Pds::Eb::EbLfServer      _transport;
       std::vector<EbLfLink*>   _links;
-      const size_t             _trSize;
-      const size_t             _maxTrSize;
+      std::vector<size_t>      _trRegSize;
+      std::vector<size_t>      _maxTrSize;
       std::vector<size_t>      _maxBufSize;
       const unsigned           _maxBuffers;
       //EbDummyTC                _dummy;   // Template for TC of dummy contributions  // Revisit: ???

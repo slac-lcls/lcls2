@@ -694,13 +694,13 @@ unsigned Fmc134Cpld::_read()
 #define i2c_write(unit,addr,val)  reinterpret_cast<uint32_t*>(this)[addr]=val
 #define i2c_read(unit,addr,valp)  *(valp) = reinterpret_cast<uint32_t*>(this)[addr]
 #define unitapi_sleep_ms(tms) usleep(tms*1000)
-#define CLOCKTREE_CLKSRC_INTERNAL 0
+
 static const int32_t UNITAPI_OK = 0;
 static const int32_t FMC134_CLOCKTREE_ERR_OK = 0;
 static const int32_t FMC134_ADC_ERR_OK       = 0;
 static const int32_t FMC134_ERR_ADC_INIT     = 1;
 
-int32_t Fmc134Cpld::default_clocktree_init()
+int32_t Fmc134Cpld::default_clocktree_init(unsigned clockmode)
 {
   printf("*** default_clocktree_init ***\n");
   uint32_t dword;
@@ -708,8 +708,6 @@ int32_t Fmc134Cpld::default_clocktree_init()
   uint32_t samplingrate_setting;
   unsigned i2c_unit;
   int32_t rc = UNITAPI_OK;     
-
-  unsigned clockmode = CLOCKTREE_CLKSRC_INTERNAL;
 
   printf("Configured the sampling rate to 3200MSPs\n");
   samplingrate_setting = 0x6020000;                       //0x6020000 default N=/32
@@ -1064,7 +1062,7 @@ int32_t Fmc134Cpld::internal_ref_and_lmx_enable(uint32_t i2c_unit, uint32_t cloc
                 return rc;
 
         switch(clockmode) {
-        case 0:                         // Internal Reference
+        case CLOCKTREE_CLKSRC_INTERNAL:                         // Internal Reference
                 printf("Internal Reference Mode \n");
                 // Set bits 3, 1, and 0
                 dword |= 0xB;
@@ -1084,7 +1082,7 @@ int32_t Fmc134Cpld::internal_ref_and_lmx_enable(uint32_t i2c_unit, uint32_t cloc
                         return rc;
                 break;
 
-        case 1:
+        case CLOCKTREE_CLKSRC_EXTERNAL:
                 printf("External Sample Clock \n");
                 // turn off 0sc, ref switch and LMX enable0
                 dword = 0xC4;
@@ -1104,7 +1102,7 @@ int32_t Fmc134Cpld::internal_ref_and_lmx_enable(uint32_t i2c_unit, uint32_t cloc
                         return rc;
                 break;
 
-        case 2:         
+        case CLOCKTREE_REFSRC_EXTERNAL:         
                 printf("External Reference Mode \n");
                 // turn off 0sc, point at ext ref enable LMX bits 3, 1, and 0
                 dword = 0xCC;
@@ -1124,7 +1122,7 @@ int32_t Fmc134Cpld::internal_ref_and_lmx_enable(uint32_t i2c_unit, uint32_t cloc
                         return rc;
                 break;
 
-        case 3:         
+        case CLOCKTREE_REFSRC_STACKED:         
                 printf("Stacked Internal Reference Sourcing Mode \n");
                 // turn ON 0sc, point at ext ref enable LMX bits 3, 1, and 0
                 dword = 0xCD;
@@ -1398,4 +1396,7 @@ void Fmc134Cpld::adc_range(unsigned chip,unsigned fsrng)
     spi_read(0, dev, 0x0030+i, &dw[i]) ;
   printf("Read FS_RANGE_0: %x %x %x %x\n",
     dw[0], dw[1], dw[2], dw[3]);
+
+  //  Enable overrange detection
+  spi_write(0, dev, 0x213, (1<<3)); 
 }

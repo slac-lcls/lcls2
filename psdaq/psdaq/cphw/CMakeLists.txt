@@ -121,6 +121,7 @@ target_link_libraries(xvc_srv
 
 
 install(TARGETS cphw
+                cphwr
                 amc_timing
                 amc_timing_udp
                 amc_eyescan

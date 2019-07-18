@@ -42,8 +42,8 @@ static const size_t   result_extent    = 2;    // Revisit: Number of "L3" result
 static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 static const unsigned mon_buf_cnt      = 8;    // Revisit: Corresponds to monReqServer::numberofEvBuffers
-static const size_t   mon_buf_size     = 64 * 1024; // Revisit: Corresponds to monReqServer:sizeofBuffers option
-static const size_t   mon_trSize       = 64 * 1024; // Revisit: Corresponds to monReqServer:??? option
+static const size_t   mon_buf_size     = 64 * 1024;
+static const size_t   mon_trSize       = 128 * 1024;
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -124,10 +124,10 @@ namespace Pds {
     class EbCtrbIn : public EbCtrbInBase
     {
     public:
-      EbCtrbIn(const TebCtrbParams&            prms,
-               DrpSim&                         drpSim,
-               ZmqContext&                     context,
-               std::shared_ptr<MetricExporter> exporter);
+      EbCtrbIn(const TebCtrbParams&             prms,
+               DrpSim&                          drpSim,
+               ZmqContext&                      context,
+               std::shared_ptr<MetricExporter>& exporter);
       virtual ~EbCtrbIn() {}
     public:
       int      connect(const TebCtrbParams&, MebContributor*);
@@ -144,8 +144,8 @@ namespace Pds {
     class EbCtrbApp : public TebContributor
     {
     public:
-      EbCtrbApp(const TebCtrbParams&            prms,
-                std::shared_ptr<MetricExporter> exporter);
+      EbCtrbApp(const TebCtrbParams&             prms,
+                std::shared_ptr<MetricExporter>& exporter);
       ~EbCtrbApp() {}
     public:
       DrpSim&  drpSim() { return _drpSim; }
@@ -338,10 +338,10 @@ void DrpSim::release(const Input* input)
 }
 
 
-EbCtrbIn::EbCtrbIn(const TebCtrbParams&            prms,
-                   DrpSim&                         drpSim,
-                   ZmqContext&                     context,
-                   std::shared_ptr<MetricExporter> exporter) :
+EbCtrbIn::EbCtrbIn(const TebCtrbParams&             prms,
+                   DrpSim&                          drpSim,
+                   ZmqContext&                      context,
+                   std::shared_ptr<MetricExporter>& exporter) :
   EbCtrbInBase(prms, exporter),
   _drpSim     (drpSim),
   _mebCtrb    (nullptr),
@@ -424,8 +424,8 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
 }
 
 
-EbCtrbApp::EbCtrbApp(const TebCtrbParams&            prms,
-                     std::shared_ptr<MetricExporter> exporter) :
+EbCtrbApp::EbCtrbApp(const TebCtrbParams&             prms,
+                     std::shared_ptr<MetricExporter>& exporter) :
   TebContributor(prms, exporter),
   _drpSim       (prms.maxInputSize),
   _prms         (prms)
@@ -490,7 +490,7 @@ void EbCtrbApp::run(EbCtrbIn& in)
 class CtrbApp : public CollectionApp
 {
 public:
-  CtrbApp(const std::string& collSrv, TebCtrbParams&, MebCtrbParams&, std::shared_ptr<MetricExporter>);
+  CtrbApp(const std::string& collSrv, TebCtrbParams&, MebCtrbParams&, std::shared_ptr<MetricExporter>&);
 public:                                 // For CollectionApp
   json connectionInfo() override;
   void handleConnect(const json& msg) override;
@@ -510,10 +510,10 @@ private:
   bool           _shutdown;
 };
 
-CtrbApp::CtrbApp(const std::string&              collSrv,
-                 TebCtrbParams&                  tebPrms,
-                 MebCtrbParams&                  mebPrms,
-                 std::shared_ptr<MetricExporter> exporter) :
+CtrbApp::CtrbApp(const std::string&               collSrv,
+                 TebCtrbParams&                   tebPrms,
+                 MebCtrbParams&                   mebPrms,
+                 std::shared_ptr<MetricExporter>& exporter) :
   CollectionApp(collSrv, tebPrms.partition, "drp", tebPrms.alias),
   _tebPrms(tebPrms),
   _mebPrms(mebPrms),
@@ -528,7 +528,9 @@ json CtrbApp::connectionInfo()
 {
   // Allow the default NIC choice to be overridden
   std::string ip = _tebPrms.ifAddr.empty() ? getNicIp() : _tebPrms.ifAddr;
-  json body = {{"connect_info", {{"nic_ip", ip}}}};
+  json body = {{"connect_info", {{"nic_ip", ip},
+                                 {"max_ev_size", _mebPrms.maxEvSize},
+                                 {"max_tr_size", _mebPrms.maxTrSize}}}};
   return body;
 }
 
@@ -584,8 +586,8 @@ void CtrbApp::handlePhase1(const json &msg)
   {
     // Use base 10 to deal with leading zeros
     // Divide by 100 to allow max rate of "10 MHz" before overflow
-    pid = (std::stoul(ts.substr(0, fnd), nullptr, 10) * 1000000000 +
-           std::stoul(ts.substr(fnd + 1, std::string::npos), nullptr, 10)) / 100;
+    pid = (std::stoul(ts.substr(0, fnd), nullptr, 10) * 1000000000ul +
+           std::stoul(ts.substr(fnd + 1, std::string::npos), nullptr, 10)) / 100ul;
   }
 
   // Ugly hack to give TEB time to react before passing the transition down the
@@ -660,26 +662,24 @@ int CtrbApp::_parseConnectionParams(const json& body)
   _tebPrms.addrs.clear();
   _tebPrms.ports.clear();
 
-  if (body.find("teb") != body.end())
+  if (body.find("teb") == body.end())
   {
-    for (auto it : body["teb"].items())
-    {
-      unsigned    tebId   = it.value()["teb_id"];
-      std::string address = it.value()["connect_info"]["nic_ip"];
-      if (tebId > MAX_TEBS - 1)
-      {
-        fprintf(stderr, "TEB ID %d is out of range 0 - %d\n", tebId, MAX_TEBS - 1);
-        return 1;
-      }
-      _tebPrms.builders |= 1ul << tebId;
-      _tebPrms.addrs.push_back(address);
-      _tebPrms.ports.push_back(std::string(std::to_string(tebPortBase + tebId)));
-    }
-  }
-  if (_tebPrms.addrs.size() == 0)
-  {
-    fprintf(stderr, "Missing required TEB address(es)\n");
+    fprintf(stderr, "Missing required TEB specs\n");
     return 1;
+  }
+
+  for (auto it : body["teb"].items())
+  {
+    unsigned    tebId   = it.value()["teb_id"];
+    std::string address = it.value()["connect_info"]["nic_ip"];
+    if (tebId > MAX_TEBS - 1)
+    {
+      fprintf(stderr, "TEB ID %d is out of range 0 - %d\n", tebId, MAX_TEBS - 1);
+      return 1;
+    }
+    _tebPrms.builders |= 1ul << tebId;
+    _tebPrms.addrs.push_back(address);
+    _tebPrms.ports.push_back(std::string(std::to_string(tebPortBase + tebId)));
   }
 
   unsigned group = body["drp"][id]["det_info"]["readout"];
@@ -695,6 +695,7 @@ int CtrbApp::_parseConnectionParams(const json& body)
 
   _mebPrms.addrs.clear();
   _mebPrms.ports.clear();
+  _mebPrms.maxEvents = 0;
 
   if (body.find("meb") != body.end())
   {
@@ -709,6 +710,12 @@ int CtrbApp::_parseConnectionParams(const json& body)
       }
       _mebPrms.addrs.push_back(address);
       _mebPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
+
+      unsigned count = it.value()["connect_info"]["buf_count"];
+      if (!_mebPrms.maxEvents)  _mebPrms.maxEvents = count;
+      if (count != _mebPrms.maxEvents) {
+        printf("Error: maxEvents must be the same for all MEBs\n");
+      }
     }
   }
 
@@ -723,9 +730,11 @@ int CtrbApp::_parseConnectionParams(const json& body)
   printf("  Batch duration:           0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
   printf("  Batch pool depth:           %d\n",               MAX_BATCHES);
   printf("  Max # of entries / batch:   %d\n",               MAX_ENTRIES);
+  printf("  # of TEB contrib. buffers:  %d\n",               MAX_LATENCY);
   printf("  Max TEB contribution size:  %zd\n",              _tebPrms.maxInputSize);
-  printf("  Max MEB event        size:  %zd\n",              _mebPrms.maxEvSize);
+  printf("  Max MEB contribution size:  %zd\n",              _mebPrms.maxEvSize);
   printf("  Max MEB transition   size:  %zd\n",              _mebPrms.maxTrSize);
+  printf("  # of MEB contrib. buffers:  %d\n",               _mebPrms.maxEvents);
   printf("\n");
   printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS - 1);
   printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS - 1);
@@ -787,8 +796,8 @@ int main(int argc, char **argv)
   MebCtrbParams  mebPrms { /* .addrs         = */ { },
                            /* .ports         = */ { },
                            /* .partition     = */ NO_PARTITION,
-                           /* .id            = */ tebPrms.id,
-                           /* .maxEvents     = */ mon_buf_cnt,
+                           /* .id            = */ -1u,
+                           /* .maxEvents     = */ 0,  // Filled in @ connect time
                            /* .maxEvSize     = */ mon_buf_size,
                            /* .maxTrSize     = */ mon_trSize,
                            /* .verbose       = */ 0 };

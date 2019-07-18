@@ -39,17 +39,17 @@ if rank == 0:
 
 for run in ds.runs():
     det = run.Detector('xppcspad')
-    #edet = run.Detector('XPP:VARS:STRING:01')
+    edet = run.Detector('HX2:DVD:GCC:01:PMON')
     for evt in run.events():
         sendbuf += 1
         padarray = vals.padarray
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
         assert evt._size == 2 # check that two dgrams are in there
-        #assert edet(evt) == "Test String"
+        assert edet(evt) is None or edet(evt) == 41.0
 
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
-    assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
+    assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
 
 # Usecase 1b : two iterators without filter function
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
@@ -69,7 +69,7 @@ for run in ds.runs():
 
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
-    assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
+    assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
 
 # Usecase 2: one iterator 
 sendbuf = np.zeros(1, dtype='i')
@@ -85,7 +85,7 @@ for evt in ds.events():
 
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
-    assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
+    assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
 
 # Usecase 3: reading smalldata w/o bigdata
 ds = DataSource(exp='xpptut13', run=2, dir=xtc_dir)
@@ -103,7 +103,7 @@ for run in ds.runs():
 
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
-    assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
+    assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
 
 
 # Usecase 4 : test destination callback (for handling cube data)
@@ -128,4 +128,4 @@ for run in ds.runs():
 
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
-    assert np.sum(recvbuf) == 2 # need this to make sure that events loop is active
+    assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active

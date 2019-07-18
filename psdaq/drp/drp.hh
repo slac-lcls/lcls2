@@ -39,20 +39,21 @@ struct Parameters
 class Pebble
 {
 public:
-    void resize(unsigned nbuffers, unsigned bufferSize)
+    void resize(unsigned nbuffers, size_t bufferSize)
     {
-        m_bufferSize = static_cast<uint64_t>(bufferSize);
-        uint64_t size = static_cast<uint64_t>(nbuffers)*m_bufferSize;
+        m_bufferSize = bufferSize;
+        size_t size = nbuffers*m_bufferSize;
         m_buffer.resize(size);
     }
 
     inline uint8_t* operator [] (unsigned index) {
-        uint64_t offset = static_cast<uint64_t>(index)*m_bufferSize;
+        uint64_t offset = index*m_bufferSize;
         return &m_buffer[offset];
     }
     size_t size() const {return m_buffer.size();}
+    size_t bufferSize() const {return m_bufferSize;}
 private:
-    uint64_t m_bufferSize;
+    size_t m_bufferSize;
     std::vector<uint8_t> m_buffer;
 };
 

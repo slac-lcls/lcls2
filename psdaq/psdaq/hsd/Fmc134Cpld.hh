@@ -38,7 +38,11 @@ namespace Pds {
     public:
       void dump() const;
     public:
-      int32_t default_clocktree_init();  // factory default config
+      enum { CLOCKTREE_CLKSRC_INTERNAL=0, 
+             CLOCKTREE_CLKSRC_EXTERNAL=1,
+             CLOCKTREE_REFSRC_EXTERNAL=2,
+             CLOCKTREE_REFSRC_STACKED =3 };
+      int32_t default_clocktree_init(unsigned clockmode = CLOCKTREE_CLKSRC_INTERNAL);  // factory default config
       int32_t default_adc_init      ();
       int32_t config_prbs           (unsigned);
     private:

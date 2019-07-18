@@ -3,6 +3,7 @@ import time
 def pvUpdate(pv, val):
     value = pv.current()
     value['value'] = val
+    value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
     pv.post(value)
 
 class DefaultPVHandler(object):

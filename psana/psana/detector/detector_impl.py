@@ -7,8 +7,11 @@ class DetectorImpl(object):
 
         self._config_segments = []
         for config in self._configs:
-            seg_dict = getattr(config.software,self._det_name)
-            self._config_segments += list(seg_dict.keys())
+            # mona put this in since epics right now only exists
+            # in one xtc file.
+            if hasattr(config.software,self._det_name):
+                seg_dict = getattr(config.software,self._det_name)
+                self._config_segments += list(seg_dict.keys())
         self._config_segments.sort()
         return
 

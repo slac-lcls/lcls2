@@ -425,8 +425,6 @@ void EventBuilder::process(const Dgram* ctrb, unsigned prm)
   const EbEvent* due   = nullptr;
   unsigned       cnt   = 0;
 
-  bool dmp = false;
-
   while (true)
   {
     event = _insert(epoch, ctrb, event, prm);

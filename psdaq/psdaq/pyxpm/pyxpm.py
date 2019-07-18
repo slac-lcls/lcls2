@@ -61,6 +61,7 @@ def main():
     base.start(
         pollEn   = False,
         initRead = False,
+        zmqPort  = None,
     )
 
     xpm = base.XPM
@@ -73,7 +74,7 @@ def main():
 
     lock = Lock()
     pvstats = PVStats(provider, lock, args.P, xpm)
-    pvctrls = PVCtrls(provider, lock, args.P, xpm, pvstats._groups)
+    pvctrls = PVCtrls(provider, lock, args.P, args.ip, xpm, pvstats._groups)
 
     # process PVA transactions
     updatePeriod = 1.0

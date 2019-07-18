@@ -56,15 +56,7 @@ target_link_libraries(json2xtc
     xtc
 )
 
-add_executable(epicswriter
-    epicswriter.cc
-)
-
-target_link_libraries(epicswriter
-    xtc
-)
-
-install(TARGETS xtcwriter smdwriter xtcreader json2xtc amiwriter epicswriter
+install(TARGETS xtcwriter smdwriter xtcreader json2xtc amiwriter
     EXPORT xtcdataTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

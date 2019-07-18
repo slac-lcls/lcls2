@@ -13,6 +13,8 @@ from setup_input_files import setup_input_files
 
 
 class Test:
+    # Use pytest fixtures for creating test folders.
+    # Test data are in /tmp/pytest-of-username
     @staticmethod
     @pytest.fixture(scope='function')
     def xtc_file(tmp_path):

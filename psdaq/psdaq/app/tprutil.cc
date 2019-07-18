@@ -418,8 +418,8 @@ void generate_triggers(TprReg& reg, bool lcls2)
   unsigned ucontrol = 0;
   reg.base.channel[_channel].control = ucontrol;
 
-  //  unsigned urate   = lcls2 ? 0 : (1<<11) | (0x3f<<3); // max rate
-  unsigned urate   = (1<<11) | (0x9<<3); // max rate
+  unsigned urate   = lcls2 ? 0 : (1<<11) | (0x3f<<3); // max rate
+  //unsigned urate   = (1<<11) | (0x9<<3); // max rate
   unsigned destsel = 1<<17; // BEAM - DONT CARE
   reg.base.channel[_channel].evtSel = (destsel<<13) | (urate<<0);
   reg.base.channel[_channel].bsaDelay = 0;

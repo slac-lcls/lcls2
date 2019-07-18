@@ -60,7 +60,7 @@ monEnv    = {'local12v' :('f',0),
              'fmcpwr'   :('f',0) }
 
 monJesd   = {'stat' :('ai',[0]*112),
-             'clks' :('af',[0.]*4) }
+             'clks' :('af',[0.]*5) }
 
 monAdc   = {'oor_ina_0' :('i',0),
             'oor_ina_1' :('i',0),

@@ -65,40 +65,41 @@ if bd_main_comm != MPI.COMM_NULL:
 if nodetype is None:
     nodetype = 'smd0' # if no nodetype assigned, I must be smd0
 
-class EpicsManager(object):
+class UpdateManager(object):
     """ Keeps epics data and their send history. """
-    def __init__(self, client_size, n_epics):
-        self.n_epics = n_epics
-        self.epics_bufs = [bytearray() for i in range(self.n_epics)]
-        self.epics_send_history = []
+    def __init__(self, client_size, n_smds):
+        self.n_smds = n_smds
+        self.bufs = [bytearray() for i in range(self.n_smds)]
+        self.send_history = []
         # Initialize no. of sent bytes to 0 for evtbuilder
-        # [[offset_epics0, offset_epics1, ], [offset_epics0, offset_epics1, ], ...]
-        # [ --------evtbuilder0------------, --------evtbuilder1------------ ,
+        # [[offset_update0, offset_update1, ], [offset_update0, offset_update1, ], ...]
+        # [ ---------evtbuilder0------------ ,  ---------evtbuilder1------------ ,
         for i in range(1, client_size):
-            self.epics_send_history.append([0]*self.n_epics)
+            self.send_history.append([0]*self.n_smds)
 
     def extend_buffers(self, views):
+        print(len(views), len(self.bufs), self.n_smds)
         for i, view in enumerate(views):
-            self.epics_bufs[i].extend(view)
+            self.bufs[i].extend(view)
 
     def get_buffer(self, client_id):
         """ Returns new epics data (if any) for this client
         then updates the sent record."""
-        epics_chunk = bytearray()
+        update_chunk = bytearray()
 
-        if self.n_epics: # do nothing if no epics data found
+        if self.n_smds: # do nothing if no epics data found
             indexed_id = client_id - 1 # rank 0 has no send history.
-            pf = PacketFooter(self.n_epics)
-            for i, epics_buf in enumerate(self.epics_bufs):
-                current_buf = self.epics_bufs[i]
-                current_offset = self.epics_send_history[indexed_id][i]
+            pf = PacketFooter(self.n_smds)
+            for i, buf in enumerate(self.bufs):
+                current_buf = self.bufs[i]
+                current_offset = self.send_history[indexed_id][i]
                 current_buf_size = memoryview(current_buf).shape[0]
                 pf.set_size(i, current_buf_size - current_offset)
-                epics_chunk.extend(current_buf[current_offset:])
-                self.epics_send_history[indexed_id][i] = current_buf_size
-            epics_chunk.extend(pf.footer)
+                update_chunk.extend(current_buf[current_offset:])
+                self.send_history[indexed_id][i] = current_buf_size
+            update_chunk.extend(pf.footer)
         
-        return epics_chunk
+        return update_chunk
         
 
 
@@ -110,13 +111,13 @@ class Smd0(object):
     def __init__(self, run):
         self.smdr_man = SmdReaderManager(run.smd_dm.fds, run.max_events)
         self.run = run
-        self.epics_man = EpicsManager(smd_size, self.run.epics_store.n_files)
+        self.epics_man = UpdateManager(smd_size, self.run.epics_store.n_files)
         self.run_mpi()
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
 
-        for smd_chunk in self.smdr_man.chunks():
+        for (smd_chunk, update_chunk) in self.smdr_man.chunks():
             # Creates a chunk from smd and epics data to send to SmdNode
             # Anatomy of a chunk (pf=packet_footer):
             # [ [smd0][smd1][smd2][pf] ][ [epics0][epics1][epics2][pf] ][ pf ]
@@ -125,7 +126,8 @@ class Smd0(object):
             
             # Read new epics data as available in the queue
             # then send only unseen portion of data to the evtbuilder rank.
-            self.epics_man.extend_buffers(self.run.epics_reader.read())
+            update_pf = PacketFooter(view=update_chunk)
+            self.epics_man.extend_buffers(update_pf.split_packets())
             smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             epics_chunk = self.epics_man.get_buffer(rankreq[0])
 
@@ -149,7 +151,7 @@ class SmdNode(object):
         self.eb_man = EventBuilderManager(run.smd_configs, batch_size=run.batch_size, filter_fn=run.filter_callback, destination=run.destination)
         self.n_bd_nodes = bd_comm.Get_size() - 1
         self.run = run
-        self.epics_man = EpicsManager(bd_size, self.run.epics_store.n_files)
+        self.epics_man = UpdateManager(bd_size, self.run.epics_store.n_files)
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')

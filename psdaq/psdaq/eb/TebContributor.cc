@@ -27,7 +27,7 @@ using namespace Pds::Eb;
 
 
 TebContributor::TebContributor(const TebCtrbParams&            prms,
-                               std::shared_ptr<MetricExporter> exporter) :
+                               std::shared_ptr<MetricExporter>& exporter) :
   _prms        (prms),
   _batMan      (prms.maxInputSize),
   _transport   (prms.verbose),

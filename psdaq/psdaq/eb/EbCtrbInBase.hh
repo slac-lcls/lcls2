@@ -28,7 +28,7 @@ namespace Pds
     class EbCtrbInBase
     {
     public:
-      EbCtrbInBase(const TebCtrbParams&, std::shared_ptr<MetricExporter>);
+      EbCtrbInBase(const TebCtrbParams&, std::shared_ptr<MetricExporter>&);
       virtual ~EbCtrbInBase() {}
     public:
       int      connect(const TebCtrbParams&);

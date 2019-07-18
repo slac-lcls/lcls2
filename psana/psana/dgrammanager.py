@@ -25,7 +25,7 @@ FN_L = 200
 
 class DgramManager():
     
-    def __init__(self, xtc_files, configs=[], tag=None, pulse_id=None):
+    def __init__(self, xtc_files, configs=[], tag=None):
         """ Opens xtc_files and stores configs."""
         self.xtc_files = []
         self.shmem = None
@@ -71,14 +71,6 @@ class DgramManager():
         self.det_class_table, self.xtc_info = self.get_det_class_table()
         self.calibs = {} # initialize to empty dict - will be populated by run class
 
-        # pulse_id can be used to filter xtc_files
-        if pulse_id:
-            sel_indices = [i for i, config in enumerate(self.configs) \
-                    if config.seq.pulseid() == pulse_id]
-            self.configs = [self.configs[i] for i in sel_indices]
-            self.xtc_files = [self.xtc_files[i] for i in sel_indices]
-            self.fds = [self.fds[i] for i in sel_indices]
-   
     def __del__(self):
         if self.fds:
             for fd in self.fds:

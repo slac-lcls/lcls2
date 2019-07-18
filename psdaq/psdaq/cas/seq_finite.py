@@ -14,7 +14,7 @@ if __name__ == '__main__':
     
     instrset = []
     #  Insert global sync instruction (1Hz?)
-    instrset.append(FixedRateSync(marker=sync_marker,occ=1))
+    instrset.append(FixedRateSync(marker=sync_marker,occ=10))
 
     for i in range(4):
         sh = i*4

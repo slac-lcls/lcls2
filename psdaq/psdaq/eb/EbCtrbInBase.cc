@@ -24,7 +24,7 @@ using namespace Pds::Eb;
 
 
 EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&            prms,
-                           std::shared_ptr<MetricExporter> exporter) :
+                           std::shared_ptr<MetricExporter>& exporter) :
   _transport   (prms.verbose),
   _links       (),
   _maxBatchSize(0),

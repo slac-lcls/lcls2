@@ -64,7 +64,7 @@ MemPool::MemPool(const Parameters& para)
 
 EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
-                       std::shared_ptr<MetricExporter> exporter) :
+                       std::shared_ptr<MetricExporter>& exporter) :
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
   m_mon(mon),
@@ -104,8 +104,9 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
     XtcData::TransitionId::Value transitionId = timingHeader->seq.service();
     //printf("EbReceiver:  %u   index %u\n", timingHeader->evtCounter, index);
 
-    // pass non L1 accepts to control level
-    if (transitionId != XtcData::TransitionId::L1Accept) {
+    // pass everything except L1 accepts and slow updates to control level
+    if ((transitionId != XtcData::TransitionId::L1Accept) &&
+        (transitionId != XtcData::TransitionId::SlowUpdate)) {
         // send pulseId to inproc so it gets forwarded to the collection
         m_inprocSend.send(std::to_string(timingHeader->seq.pulseId().value()));
         printf("EbReceiver saw %s transition\n", XtcData::TransitionId::name(transitionId));
@@ -193,27 +194,27 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 {
     size_t maxSize = sizeof(MyDgram);
     m_tPrms = { /* .ifAddr        = */ { }, // Network interface to use
-                      /* .port          = */ { }, // Port served to TEBs
-                      /* .partition     = */ m_para.partition,
-                      /* .alias         = */ { }, // Unique name from cmd line
-                      /* .id            = */ 0,
-                      /* .builders      = */ 0,   // TEBs
-                      /* .addrs         = */ { },
-                      /* .ports         = */ { },
-                      /* .maxInputSize  = */ maxSize,
-                      /* .core          = */ { 10, 11 },
-                      /* .verbose       = */ 0,
-                      /* .readoutGroup  = */ 0,
-                      /* .contractor    = */ 0 };
+                /* .port          = */ { }, // Port served to TEBs
+                /* .partition     = */ m_para.partition,
+                /* .alias         = */ { }, // Unique name from cmd line
+                /* .id            = */ 0,
+                /* .builders      = */ 0,   // TEBs
+                /* .addrs         = */ { },
+                /* .ports         = */ { },
+                /* .maxInputSize  = */ maxSize,
+                /* .core          = */ { 10, 11 },
+                /* .verbose       = */ 0,
+                /* .readoutGroup  = */ 0,
+                /* .contractor    = */ 0 };
 
     m_mPrms = { /* .addrs         = */ { },
-                      /* .ports         = */ { },
-                      /* .partition     = */ m_para.partition,
-                      /* .id            = */ 0,
-                      /* .maxEvents     = */ 8,    //mon_buf_cnt,
-                      /* .maxEvSize     = */ 65536, //mon_buf_size,
-                      /* .maxTrSize     = */ 256*1024, //mon_trSize,
-                      /* .verbose       = */ 0 };
+                /* .ports         = */ { },
+                /* .partition     = */ m_para.partition,
+                /* .id            = */ 0,
+                /* .maxEvents     = */ 8,    //mon_buf_cnt,
+                /* .maxEvSize     = */ pool.pebble.bufferSize(), //mon_buf_size,
+                /* .maxTrSize     = */ 256 * 1024, //mon_trSize,
+                /* .verbose       = */ 0 };
 
     try {
         m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
@@ -315,6 +316,7 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
 
     m_mPrms.addrs.clear();
     m_mPrms.ports.clear();
+    m_mPrms.maxEvents = 0;
     if (body.find("meb") != body.end()) {
         for (auto it : body["meb"].items()) {
             unsigned mebId = it.value()["meb_id"];
@@ -322,8 +324,20 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
             std::cout << "MEB: " << mebId << "  " << address << '\n';
             m_mPrms.addrs.push_back(address);
             m_mPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
+            unsigned count = it.value()["connect_info"]["buf_count"];
+            if (!m_mPrms.maxEvents)  m_mPrms.maxEvents = count;
+            if (count != m_mPrms.maxEvents) {
+                printf("Error: maxEvents must be the same for all MEBs\n");
+            }
         }
     }
+}
+
+json DrpBase::connectionInfo()
+{
+    json info = {{"max_ev_size", m_mPrms.maxEvSize},
+                 {"max_tr_size", m_mPrms.maxTrSize}};
+    return info;
 }
 
 }

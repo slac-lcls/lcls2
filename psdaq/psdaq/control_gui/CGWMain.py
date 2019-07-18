@@ -25,7 +25,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 #------------------------------
-import json
+# zmq.utils.jsonapi ensures bytes, instead of unicode
+import zmq.utils.jsonapi as json
 from time import time
 
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit, QSizePolicy
@@ -328,8 +329,7 @@ class CGWMain(QWZMQListener) :
         #print('==== msg: %s' % str(msg))
         try :
             for rec in msg :
-                ucode = rec.decode('utf8').replace("\'t", ' not').replace("'", '"')
-                jo = json.loads(ucode)
+                jo = json.loads(rec)
                 #  jo['header'] # {'key': 'status', 'msg_id': '0918505109-317821000', 'sender_id': None}
                 #  jo['body']   # {'state': 'allocated', 'transition': 'alloc'}
 

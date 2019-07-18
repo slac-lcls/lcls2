@@ -28,7 +28,7 @@ Adt7411_Mon Adt7411::mon()
     usleep(1000);
   }
 
-  unsigned Vdd=0, Tint=0;
+  unsigned Vdd=0, Tint=0, Text=0;
   unsigned ain[8];
 
   unsigned v = r[3];
@@ -36,6 +36,7 @@ Adt7411_Mon Adt7411::mon()
   Vdd  |= (v>>2)&3;
 
   v = r[4];
+  Text  |= (v>>0)&3;
   ain[0] = (v>>0)&3;
   ain[1] = (v>>2)&3;
   ain[2] = (v>>4)&3;
@@ -49,13 +50,15 @@ Adt7411_Mon Adt7411::mon()
 
   Vdd  |= (r[6]<<2)&0x3fc;
   Tint |= (r[7]<<2)&0x3fc;
+  Text |= (r[8]<<2)&0x3fc;
   for(unsigned i=0; i<8; i++) {
     v = r[8+i];
     ain[i] |= (v<<2)&0x3fc;
   }
 
   Adt7411_Mon m;
-  m.Tint = double(int(Tint<<22))*0.25/double(1<<22)+40;
+  m.Tint = double(int(Tint<<22))*0.25/double(1<<22);
+  m.Text = double(int(Text<<22))*0.25/double(1<<22);
   m.Vdd  = double(Vdd)*3.11*2.197e-3;
   for(unsigned i=0; i<8; i++)
     m.ain[i] = double(ain[i])*2.197e-3;
