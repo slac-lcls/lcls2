@@ -13,9 +13,10 @@ RECT = 3
 CIRC = 4
 POLY = 5
 WEDG = 6
+ELLIPSE = 7
 
-drag_types = ( UNDEF,   POINT,   LINE,   RECT,   CIRC,   POLY,   WEDG)
-drag_names = ('UNDEF', 'POINT', 'LINE', 'RECT', 'CIRC', 'POLY', 'WEDG')
+drag_types = ( UNDEF,   POINT,   LINE,   RECT,   CIRC,   POLY,   WEDG,   ELLIPSE)
+drag_names = ('UNDEF', 'POINT', 'LINE', 'RECT', 'CIRC', 'POLY', 'WEDG', 'ELLIPSE')
 
 dic_drag_type_to_name = dict(zip(drag_types, drag_names))
 dic_drag_name_to_type = dict(zip(drag_names, drag_types))

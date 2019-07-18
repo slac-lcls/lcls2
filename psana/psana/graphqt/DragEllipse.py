@@ -1,8 +1,8 @@
 """
-Class :py:class:`DragRect` - for draggable shape item
+Class :py:class:`DragEllipse` - for draggable shape item
 =======================================================
 
-Created on 2016-10-10 by Mikhail Dubrovin
+Created on 2019-07-11 by Mikhail Dubrovin
 """
 #-----------------------------
 
@@ -11,13 +11,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtCore import QRectF #Qt, QPointF#, QRect, QRectF
-from psana.graphqt.DragBase import FROZEN, ADD, MOVE, EDIT, DELETE, RECT
+from psana.graphqt.DragBase import FROZEN, ADD, MOVE, EDIT, DELETE, ELLIPSE
 from psana.graphqt.DragPoint import * # DragPoint, DragBase, Qt, QPen, QBrush, QCursor
-from PyQt5.QtWidgets import QGraphicsRectItem
+from PyQt5.QtWidgets import QGraphicsEllipseItem, QGraphicsItem
 
 #-----------------------------
 
-class DragRect(QGraphicsRectItem, DragBase) :
+class DragEllipse(QGraphicsEllipseItem, DragBase) :
                 # QRectF, QGraphicsItem, QGraphicsScene
     def __init__(self, obj, parent=None, scene=None,\
                  brush=QBrush(), pen=QPen(Qt.blue, 0, Qt.SolidLine)) :
@@ -29,21 +29,21 @@ class DragRect(QGraphicsRectItem, DragBase) :
               obj is QPointF - shape parameters are defined at first mouse click
               obj is QRectF - it will be drawn as is
         """
-        logger.debug('In DragRect')
+        logger.debug('In DragEllipse')
 
         rect = obj if isinstance(obj, QRectF) else\
                QRectF(obj, obj + QPointF(5,5)) if isinstance(obj, QPointF) else\
                None
         if rect is None :
-            logger.warning('DragRect - wrong init object type:', str(obj))
+            logger.warning('DragEllipse - wrong init object type:', str(obj))
             return
 
-        self._dragtype = RECT
+        self._dragtype = ELLIPSE
         parent_for_base = None
-        QGraphicsRectItem.__init__(self, rect, parent_for_base)
-        #DragBase.__init__(self, parent, brush, pen) # is called inside QGraphicsRectItem
+        QGraphicsEllipseItem.__init__(self, rect, parent_for_base)
+        #DragBase.__init__(self, parent, brush, pen) # is called inside QGraphicsEllipseItem
 
-        logger.debug('In DragRect - superclass initialization is done')
+        logger.debug('In DragEllipse - superclass initialization is done')
         
         if isinstance(obj, QPointF) :
             self._drag_mode = ADD
@@ -53,7 +53,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
         if self._drag_mode == ADD :
             self.grabMouse() # makes available mouseMoveEvent 
-            logger.debug('In DragRect mode grabMouse()')
+            logger.debug('In DragEllipse mode grabMouse()')
 
         self.setAcceptHoverEvents(True)
         #self.setAcceptTouchEvents(True)
@@ -140,7 +140,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
     def itemChange(self, change, value) :
         #print('%s.itemChange' % (self.__class__.__name__), ' change: %d, value:' % change, value)
-        valnew = QGraphicsRectItem.itemChange(self, change, value)
+        valnew = QGraphicsEllipseItem.itemChange(self, change, value)
         if change == self.ItemSelectedHasChanged :
             #self.set_control_points_visible(visible=True)            
             self.set_control_points_visible(visible=self.isSelected())            
@@ -148,10 +148,10 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
 
     def mousePressEvent(self, e) :
-        logger.debug('DragRect.mousePressEvent, at point: %s on scene: %s '%\
+        logger.debug('DragEllipse.mousePressEvent, at point: %s on scene: %s '%\
                      (str(e.pos()), str(e.scenePos()))) # self.__class__.__name__
-        QGraphicsRectItem.mousePressEvent(self, e) # points would not show up w/o this line
-        #print("DragRect is selected: ", self.isSelected())
+        QGraphicsEllipseItem.mousePressEvent(self, e) # points would not show up w/o this line
+        #print("DragEllipse is selected: ", self.isSelected())
 
         ps = e.scenePos()
         #print('%s.mousePressEvent itemAt:' % self.__class__.__name__, self.scene().itemAt(ps))
@@ -161,7 +161,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
         #item_sel = self.scene().itemAt(ps)
 
         if self.lst_ctl_points is None : 
-            logger.warning('DragRect.lst_ctl_points is None')
+            logger.warning('DragEllipse.lst_ctl_points is None')
             return
 
         if item_sel in self.lst_ctl_points :
@@ -183,7 +183,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
 
     def mouseMoveEvent(self, e) :
-        QGraphicsRectItem.mouseMoveEvent(self, e)
+        QGraphicsEllipseItem.mouseMoveEvent(self, e)
         #logger.debug('%s.mouseMoveEvent' % self.__class__.__name__)
         #print('%s.mouseMoveEvent, at point: ' % self.__class__.__name__, e.pos(), ' scenePos: ', e.scenePos())
 
@@ -191,6 +191,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
         if self._drag_mode == MOVE and self.isSelected() :
             self.moveBy(dp.x(), dp.y())
+            #self.move_control_points()
 
         elif self._drag_mode == ADD :
             #print('%s.mouseMoveEvent _drag_mode=ADD' % self.__class__.__name__)
@@ -221,22 +222,25 @@ class DragRect(QGraphicsRectItem, DragBase) :
             r = r.normalized()
             self.setRect(r)
 
-            if i != self.pro :
+            if i != self.pro:
                 self.setTransformOriginPoint(r.center())
 
             self.move_control_points()
 
 
     def mouseReleaseEvent(self, e):
-        #logger.debug('DragRect.mouseReleaseEvent') # % self.__class__.__name__)
-        QGraphicsRectItem.mouseReleaseEvent(self, e)
+        #logger.debug('DragEllipse.mouseReleaseEvent') # % self.__class__.__name__)
+        QGraphicsEllipseItem.mouseReleaseEvent(self, e)
 
         if self._drag_mode == ADD :
             self.ungrabMouse()
             self.setRect(self.rect().normalized())
+
             self.set_control_points()
             #self.setSelected(False)
-            self.setTransformOriginPoint(self.rect().center())
+
+            self.setStartAngle(10*16)
+            self.setSpanAngle(300*16)
 
         if self._drag_mode == EDIT :
             self.set_child_item_sel(None)
@@ -244,38 +248,37 @@ class DragRect(QGraphicsRectItem, DragBase) :
         self.set_drag_mode()
 
         c = self.rect().center()
-        ##c_on_map = self.mapToScene(c.x(), c.y())
-        #self.setTransformOriginPoint(c)
+        self.setTransformOriginPoint(c)
+        #print('XXX set rect transform origin to rect center x:%6.1f y:%6.1f' % (c.x(), c.y()))
+        #print('XXX item scenePos() x:%6.1f y:%6.1f' % (p.x(), p.y()))
 
-        p = self.scenePos()
-        print('XXX set rect transform origin to rect center x:%6.1f y:%6.1f' % (c.x(), c.y()))
-        print('XXX item scenePos() x:%6.1f y:%6.1f' % (p.x(), p.y()))
+
 
 #    def hoverEnterEvent(self, e) :
 #        #print('%s.hoverEnterEvent' % self.__class__.__name__)
-#        QGraphicsRectItem.hoverEnterEvent(self, e)
+#        QGraphicsEllipseItem.hoverEnterEvent(self, e)
 #        #QApplication.setOverrideCursor(QCursor(self.hover_cursor))
 
 
 #    def hoverLeaveEvent(self, e) :
 #        #print('%s.hoverLeaveEvent' % self.__class__.__name__)
-#        QGraphicsRectItem.hoverLeaveEvent(self, e)
+#        QGraphicsEllipseItem.hoverLeaveEvent(self, e)
 #        #QApplication.setOverrideCursor(QCursor(self.hover_cursor))
 #        #QApplication.restoreOverrideCursor()
         
 
 #    def hoverMoveEvent(self, e) :
 #        #print('%s.hoverMoveEvent' % self.__class__.__name__)
-#        QGraphicsRectItem.hoverMoveEvent(self, e)
+#        QGraphicsEllipseItem.hoverMoveEvent(self, e)
 
 
 #    def mouseDoubleClickEvent(self, e) :
-#        QGraphicsRectItem.hoverLeaveEvent(self, e)
+#        QGraphicsEllipseItem.hoverLeaveEvent(self, e)
 #        print('%s.mouseDoubleClickEvent, at point: ' % self.__class__.__name__, e.pos() #e.globalX(), e.globalY())
 
 
 #    def wheelEvent(self, e) :
-#        QGraphicsRectItem.wheelEvent(self, e)
+#        QGraphicsEllipseItem.wheelEvent(self, e)
 #        #print('%s.wheelEvent, at point: ' % self.__class__.__name__, e.pos() #e.globalX(), e.globalY())
 
 

@@ -107,7 +107,8 @@ void test_getAreaDetector() {
 //-------------------
 
 int file_descriptor(int argc, char* argv[]) {
-    const char* fname = "/reg/neh/home/cpo/git/lcls2/psana/psana/dgramPort/jungfrau.xtc2";
+  //const char* fname = "/reg/neh/home/cpo/git/lcls2/psana/psana/dgramPort/jungfrau.xtc2";
+    const char* fname = "/reg/g/psdm/detector/data2_test/xtc/data-cxid9114-r0089-e000010-cspad.xtc2";
     std::cout << "xtc file name: " << fname << '\n';
     int fd = open(fname, O_RDONLY);
     if (fd < 0) {

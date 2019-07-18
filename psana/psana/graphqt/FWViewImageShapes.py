@@ -25,7 +25,7 @@ from PyQt5.QtCore import Qt #, QPointF#, QRect, QRectF
 
 import psana.graphqt.ColorTable as ct
 from psana.graphqt.FWViewImage import FWViewImage
-from psana.graphqt.DragTypes import POINT, LINE, RECT, CIRC, POLY, WEDG,\
+from psana.graphqt.DragTypes import POINT, LINE, RECT, CIRC, POLY, WEDG, ELLIPSE,\
                                     dic_drag_type_to_name, dic_drag_name_to_type
 from psana.graphqt.DragFactory import add_item, DragPoint
 from psana.graphqt.DragBase import FROZEN, ADD, MOVE, EDIT, DELETE
@@ -149,7 +149,8 @@ class FWViewImageShapes(FWViewImage) :
                '\n  ESC - exit'\
                '\n  M - add point'\
                '\n  A - add rect'\
-               '\n  P - add polyline TBD'\
+               '\n  P - add polyline'\
+               '\n  E - add ellipse TBD'\
                '\n  L - add line TBD'\
                '\n  C - add circle TBD'\
                '\n  W - add wedge TBD'\
@@ -165,7 +166,7 @@ class FWViewImageShapes(FWViewImage) :
         #FWViewImage.keyPressEvent(self, e) # uses Key_R and Key_N
 
         d = {Qt.Key_M : POINT, Qt.Key_A : RECT, Qt.Key_L : LINE,\
-             Qt.Key_C : CIRC,  Qt.Key_P : POLY, Qt.Key_W : WEDG}
+             Qt.Key_C : CIRC,  Qt.Key_P : POLY, Qt.Key_W : WEDG, Qt.Key_E : ELLIPSE}
 
         if   e.key() == Qt.Key_Escape :
             self.close()
