@@ -16,21 +16,35 @@ class SmdReaderManager(object):
                 self.n_events = self.max_events
 
     def chunks(self):
+        """ Generates a tuple of smd and update dgrams """
         got_events = -1
         while got_events != 0:
             self.smdr.get(self.n_events)
             got_events = self.smdr.got_events
             self.processed_events += got_events
-            view = bytearray()
-            pf = PacketFooter(n_packets=self.n_files)
+            
+            smd_view = bytearray()
+            smd_pf = PacketFooter(n_packets=self.n_files)
+            update_view = bytearray()
+            update_pf = PacketFooter(n_packets=self.n_files)
+            
             for i in range(self.n_files):
-                if self.smdr.view(i) != 0:
-                    view.extend(self.smdr.view(i))
-                    pf.set_size(i, memoryview(self.smdr.view(i)).shape[0])
+                _smd_view = self.smdr.view(i)
+                if _smd_view != 0:
+                    smd_view.extend(_smd_view)
+                    smd_pf.set_size(i, memoryview(_smd_view).shape[0])
+                
+                _update_view = self.smdr.view(i, update=True)
+                if _update_view != 0:
+                    update_view.extend(_update_view)
+                    update_pf.set_size(i, memoryview(_update_view).shape[0])
 
-            if view:
-                view.extend(pf.footer) # attach footer 
-                yield view
+            if smd_view or update_view:
+                if smd_view:
+                    smd_view.extend(smd_pf.footer)
+                if update_view:
+                    update_view.extend(update_pf.footer)
+                yield (smd_view, update_view)
 
             if self.max_events:
                 if self.processed_events >= self.max_events:

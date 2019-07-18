@@ -11,9 +11,8 @@ from psana.psexp import legion_node
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
-from psana.psexp.epicsstore import EpicsStore
-from psana.psexp.epicsreader import EpicsReader
-
+from psana.psexp.updatestore import UpdateStore
+from psana.psexp.packet_footer import PacketFooter
 
 from psana.psexp.tools import mode
 MPI = None
@@ -115,8 +114,8 @@ class Run(object):
                 det_name = 'epics'
                 var_name = name
                 drp_class_name = alg
-                drp_class = self.epics_dm.det_class_table[(det_name, drp_class_name)]
-                det = drp_class(det_name, var_name, drp_class_name, self.epics_dm.configs, self.calibs, self.epics_store)
+                drp_class = self.dm.det_class_table[(det_name, drp_class_name)]
+                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibs, self.epics_store)
 
         return det
 
@@ -226,9 +225,7 @@ class RunSerial(Run):
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
         self.smd_dm = DgramManager(smd_files)
-        self.epics_dm = DgramManager(other_files, pulse_id=0xffff)
-        self.epics_reader = EpicsReader(self.epics_dm.fds)
-        self.epics_store = EpicsStore(self.epics_dm.configs)
+        self.epics_store = UpdateStore(self.smd_dm.configs, 'epics')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
@@ -241,26 +238,18 @@ class RunSerial(Run):
         #get smd chunks
         smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
         eb_man = EventBuilderManager(smd_configs, batch_size=self.batch_size, filter_fn=self.filter_callback)
-        for chunk in smdr_man.chunks():
+        for (smd_chunk, update_chunk) in smdr_man.chunks():
             # Update epics_store for each chunk
-            # This update checks for new data in epics_reader's queue
-            # and rebuild the store accordingly.
-            self.epics_store.update(self.epics_reader.read())
+            update_pf = PacketFooter(view=update_chunk)
+            update_views = update_pf.split_packets()
+            self.epics_store.update(update_views)
             
-            for batch_dict in eb_man.batches(chunk):
+            for batch_dict in eb_man.batches(smd_chunk):
                 batch, _ = batch_dict[0] # there's only 1 dest_rank for serial run
                 for evt in ev_man.events(batch):
                     if evt._dgrams[0].seq.service() != 12: continue
                     yield evt
     
-    def epicsStore(self, evt):
-        """ Returns Epics event """
-        epics_dicts = self.epics_store.checkout_by_events([evt])
-        if not epics_dicts:
-            return None
-
-        return epics_dicts[0]
-
 
 class RunParallel(Run):
     """ Yields list of events from multiple smd/bigdata files using > 3 cores."""
@@ -288,32 +277,20 @@ class RunParallel(Run):
             for det_name in self.detnames:
                 self.calibs[det_name] = super(RunParallel, self)._get_calib(det_name)
             
-            self.epics_dm = DgramManager(other_files, pulse_id=0xffff)
-            self.epics_reader = EpicsReader(self.epics_dm.fds)
-            self.epics_configs = self.epics_dm.configs
-            epics_files = self.epics_dm.xtc_files
-            epics_nbytes = np.array([memoryview(config).shape[0] for config in self.epics_configs], \
-                            dtype='i')
         else:
             self.dm = None
             self.calibs = None
             self.smd_dm = None
-            self.epics_dm = None
             nbytes = np.empty(len(xtc_files), dtype='i')
             smd_nbytes = np.empty(len(smd_files), dtype='i')
-            epics_files = None
-            epics_nbytes = None
         
         comm.Bcast(smd_nbytes, root=0) # no. of bytes is required for mpich
         comm.Bcast(nbytes, root=0) 
-        epics_files = comm.bcast(epics_files, root=0)
-        epics_nbytes = comm.bcast(epics_nbytes, root=0)
         
         # create empty views of known size
         if rank > 0:
             self.smd_configs = [np.empty(smd_nbyte, dtype='b') for smd_nbyte in smd_nbytes]
             self.configs = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
-            self.epics_configs = [np.empty(epics_nbyte, dtype='b') for epics_nbyte in epics_nbytes]
         
         for i in range(len(self.smd_configs)):
             comm.Bcast([self.smd_configs[i], smd_nbytes[i], MPI.BYTE], root=0)
@@ -321,9 +298,6 @@ class RunParallel(Run):
         for i in range(len(self.configs)):
             comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
         
-        for i in range(len(self.epics_configs)):
-            comm.Bcast([self.epics_configs[i], epics_nbytes[i], MPI.BYTE], root=0)
-
         self.calibs = comm.bcast(self.calibs, root=0)
 
         if rank > 0:
@@ -331,22 +305,13 @@ class RunParallel(Run):
             self.smd_configs = [dgram.Dgram(view=smd_config, offset=0) for smd_config in self.smd_configs]
             self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
             self.dm = DgramManager(xtc_files, configs=self.configs)
-            self.epics_configs = [dgram.Dgram(view=config, offset=0) for config in self.epics_configs]
-            self.epics_dm = DgramManager(epics_files, configs=self.epics_configs)
-        self.epics_store = EpicsStore(self.epics_configs)   
+        
+        self.epics_store = UpdateStore(self.smd_configs, 'epics')   
     
     def events(self):
         for evt in run_node(self):
             if evt._dgrams[0].seq.service() != 12: continue
             yield evt
-    
-    def epicsStore(self, evt):
-        """ Returns Epics event """
-        epics_dicts = self.epics_store.checkout_by_events([evt])
-        if not epics_dicts:
-            return None
-
-        return epics_dicts[0]
     
 class RunLegion(Run):
 
@@ -359,9 +324,7 @@ class RunLegion(Run):
         self.configs = self.dm.configs
         self.smd_dm = DgramManager(smd_files)
         self.smd_configs = self.smd_dm.configs
-        self.epics_dm = DgramManager(other_files, pulse_id=0xffff)
-        self.epics_reader = EpicsReader(self.epics_dm.fds)
-        self.epics_store = EpicsStore(self.epics_dm.configs)
+        self.epics_store = UpdateStore(self.smd_configs, 'epics')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = super(RunLegion, self)._get_calib(det_name)

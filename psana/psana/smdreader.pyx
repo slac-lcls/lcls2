@@ -47,11 +47,13 @@ cdef class SmdReader:
         for idx in range(self.prl_reader.nfiles):
             self.update_bufs[idx].chunk = <char *>malloc(0x100000)
             self.update_bufs[idx].offset = 0
+            self.update_bufs[idx].nevents = 0
 
     def _reset_update_bufs(self):
         cdef int idx
         for idx in range(self.prl_reader.nfiles):
             self.update_bufs[idx].offset = 0
+            self.update_bufs[idx].nevents = 0
 
     def __dealloc__(self):
         cdef int idx
@@ -100,6 +102,7 @@ cdef class SmdReader:
                     elif payload > 0: # not an empty non L1
                         memcpy(self.update_bufs[smd_id].chunk + self.update_bufs[smd_id].offset, buf.chunk + prev_offset, self.DGRAM_SIZE + payload)
                         self.update_bufs[smd_id].offset += self.DGRAM_SIZE + payload
+                        self.update_bufs[smd_id].nevents += 1
                 else:
                     needs_reread = 1
                     break
@@ -169,7 +172,7 @@ cdef class SmdReader:
                 self.limit_ts = current_max_ts + 1
                 self.got_events = current_got_events
                 current_got_events = 0
-
+    
     def view(self, int buf_id, int update=0):
         """ Returns memoryview of the buffer object.
 
@@ -185,6 +188,8 @@ cdef class SmdReader:
                 return 0
             view = <char [:block_size]> (self.prl_reader.bufs[buf_id].chunk + self.prl_reader.bufs[buf_id].block_offset)
         else:
+            if self.update_bufs[buf_id].nevents == 0:
+                return 0
             view = <char [:self.update_bufs[buf_id].offset]> self.update_bufs[buf_id].chunk
 
         return view

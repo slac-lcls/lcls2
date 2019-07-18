@@ -22,8 +22,8 @@ def run_smd0_task(run):
     global_procs = legion.Tunable.select(legion.Tunable.GLOBAL_PYS).get()
 
     smdr_man = SmdReaderManager(run.smd_dm.fds, run.max_events)
-    for i, chunk in enumerate(smdr_man.chunks()):
-        run_smd_task(chunk, run, point=i)
+    for i, (smd_chunk, update_chunk) in enumerate(smdr_man.chunks()):
+        run_smd_task(smd_chunk, run, point=i)
     # Block before returning so that the caller can use this task's future for synchronization
     legion.execution_fence(block=True)
 
@@ -37,8 +37,9 @@ def run_smd_task(view, run):
 @task
 def run_bigdata_task(batch, run):
     evt_man = EventManager(run.smd_configs, run.dm, run.filter_callback)
-    for event in evt_man.events(batch):
-        run.event_fn(event, run.det)
+    for evt in evt_man.events(batch):
+        if evt._dgrams[0].seq.service() != 12: continue
+        run.event_fn(evt, run.det)
 
 run_to_process = []
 def analyze(run, event_fn=None, start_run_fn=None, det=None):
