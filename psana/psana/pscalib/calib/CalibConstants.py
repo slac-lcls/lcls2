@@ -28,7 +28,7 @@ import numpy as np
 import os
 
 URL_ENV = os.environ.get('LCLS_CALIB_HTTP', None)
-URL = 'https://pswww-dev.slac.stanford.edu/calib_ws' if URL_ENV is None else URL_ENV
+URL = 'https://pswww.slac.stanford.edu/calib_ws' if URL_ENV is None else URL_ENV
 HOST = 'psdb-dev' # 'psanaphi103'
 PORT = 9306       # 27017
 USERNAME = 'calibuser'

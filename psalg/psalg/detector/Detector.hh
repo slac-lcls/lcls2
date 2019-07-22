@@ -24,12 +24,11 @@ public:
   const DETTYPE&     dettype() {return _dettype;};
 
   friend std::ostream& operator << (std::ostream& os, Detector& o) {
-    os << "Detector name=" << o.detname() << " type=" << o.dettype(); return os;
+    os << "Detector name=" << o.detname() << " type=" << o.dettype() << " typename=" << dettypename(o.dettype()); return os;
   }
 
   Detector(const Detector&) = delete;
   Detector& operator = (const Detector&) = delete;
-  //Detector() {}
 
 private:
     std::string _detname;

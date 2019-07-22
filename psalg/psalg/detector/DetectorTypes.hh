@@ -24,8 +24,22 @@ namespace detector {
                 IPIMB_DETECTOR,
                 OCEAN_DETECTOR,
                 USDUSB_DETECTOR,
-                TDC_DETECTOR
+                TDC_DETECTOR         
                };
+
+  static std::map<DETTYPE, std::string> map_dettype_to_typename = {
+    {UNDEFINED_DETECTOR,    "UNDEFINED_DETECTOR"},
+    {AREA_DETECTOR,         "AREA_DETECTOR"},
+    {CONTROL_DATA_DETECTOR, "CONTROL_DATA_DETECTOR"},
+    {DDL_DETECTOR,          "DDL_DETECTOR"},
+    {EPICS_DETECTOR, 	    "EPICS_DETECTOR"},
+    {EVR_DETECTOR,   	    "EVR_DETECTOR"},
+    {WF_DETECTOR,    	    "WF_DETECTOR"},
+    {IPIMB_DETECTOR, 	    "IPIMB_DETECTOR"},
+    {OCEAN_DETECTOR, 	    "OCEAN_DETECTOR"},
+    {USDUSB_DETECTOR,	    "USDUSB_DETECTOR"},
+    {TDC_DETECTOR,    	    "TDC_DETECTOR"}
+  };
 
   static std::map<std::string, DETTYPE> map_detname_to_dettype = {
     {"NoDevice"       , UNDEFINED_DETECTOR},
@@ -168,6 +182,9 @@ namespace detector {
   };
 
   const DETTYPE find_dettype(const std::string& detname);
+
+  inline const std::string& dettypename(const DETTYPE dettype) {return map_dettype_to_typename[dettype];}
+
   void print_map_detname_to_dettype();
   void print_map_bldinfo_to_dettype();
 

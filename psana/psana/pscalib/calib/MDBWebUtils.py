@@ -43,7 +43,7 @@ def request(url, query=None) :
 
 #------------------------------
 
-# curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/test_db"
+# curl -s "https://pswww.slac.stanford.edu/calib_ws/test_db"
 def database_names(url=cc.URL) :
     """Returns list of database names for url.
     """
@@ -52,7 +52,7 @@ def database_names(url=cc.URL) :
 
 #------------------------------
 
-# curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/test_db/test_coll"
+# curl -s "https://pswww.slac.stanford.edu/calib_ws/test_db/test_coll"
 def collection_names(dbname, url=cc.URL) :
     """Returns list of collection names for dbname and url.
     """
@@ -60,7 +60,7 @@ def collection_names(dbname, url=cc.URL) :
     return r.json()
 
 #------------------------------
-# curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/test_db/test_coll?query_string=%7B%20%22item%22..."
+# curl -s "https://pswww.slac.stanford.edu/calib_ws/test_db/test_coll?query_string=%7B%20%22item%22..."
 def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
     """Returns list of documents for query, e.g. query={'ctype':'pedestals', "run":{ "$gte":80}}
     """
@@ -101,7 +101,7 @@ def find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
 
 #------------------------------
 
-# curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/5b6893e81ead141643fe4344"
+# curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/5b6893e81ead141643fe4344"
 def get_doc_for_docid(dbname, colname, docid, url=cc.URL) :
     """Returns document for docid.
     """
@@ -110,7 +110,7 @@ def get_doc_for_docid(dbname, colname, docid, url=cc.URL) :
 
 #------------------------------
 
-# curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cxic0415/gridfs/5b6893d91ead141643fe3f6a" 
+# curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/gridfs/5b6893d91ead141643fe3f6a" 
 def get_data_for_id(dbname, dataid, url=cc.URL) :
     """Returns raw data from GridFS, at this level there is no info for parsing.
     """
@@ -131,7 +131,7 @@ def get_data_for_docid(dbname, colname, docid, url=cc.URL) :
 
 #------------------------------
 
-# curl -s "https://pswww-dev.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/gridfs/5b6893e81ead141643fe4344"
+# curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/gridfs/5b6893e81ead141643fe4344"
 def get_data_for_doc(dbname, colname, doc, url=cc.URL) :
     """Returns data from GridFS using doc.
     """
