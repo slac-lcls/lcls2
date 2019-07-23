@@ -36,12 +36,10 @@ static const int MaxTimeouts = 50;     // In units of transport.pend() timeouts
 */
 
 EbEvent::EbEvent(uint64_t      contract,
-                 uint64_t      receivers,
                  EbEvent*      after,
                  const Dgram*  cdg,
                  unsigned      prm) :
   _contract (contract),
-  _receivers(receivers),
   _living   (MaxTimeouts),
   _prm      (prm),
   _damage   (cdg->xtc.damage.value()),

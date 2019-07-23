@@ -43,7 +43,7 @@ static const size_t   max_contrib_size = header_size + input_extent  * sizeof(ui
 static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
 static const unsigned mon_buf_cnt      = 8;    // Revisit: Corresponds to monReqServer::numberofEvBuffers
 static const size_t   mon_buf_size     = 64 * 1024;
-static const size_t   mon_trSize       = 128 * 1024;
+static const size_t   mon_trSize       = 64 * 1024;
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -387,9 +387,9 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
 
   if (_pid > pid)
   {
-    fprintf(stderr, "%s:\n  Pulse Id didn't increase: previous = %014lx, current = %014lx\n",
-            __PRETTY_FUNCTION__, _pid, pid);
-    abort();
+    fprintf(stderr, "%s:\n  Out of order event: prev %014lx, cur %014lx, diff %ld, xor %014lx\n",
+            __PRETTY_FUNCTION__, _pid, pid, pid - _pid, pid ^ _pid);
+    //abort();
   }
   _pid = pid;
 

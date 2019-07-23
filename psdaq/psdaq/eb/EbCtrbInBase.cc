@@ -156,8 +156,6 @@ int EbCtrbInBase::process(TebContributor& ctrb)
   const int tmo = 100;                  // milliseconds
   if ( (rc = _transport.pend(&data, tmo)) < 0)  return rc;
 
-  ++_batchCount;
-
   unsigned     src = ImmData::src(data);
   unsigned     idx = ImmData::idx(data);
   EbLfLink*    lnk = _links[src];
@@ -182,6 +180,8 @@ int EbCtrbInBase::process(TebContributor& ctrb)
 
   _pairUp(ctrb, idx, bdg);
 
+  ++_batchCount;
+
   return 0;
 }
 
@@ -204,9 +204,15 @@ void EbCtrbInBase::_pairUp(TebContributor& ctrb,
       {
         uint64_t pid       = result->seq.pulseId().value();
         uint64_t cachedPid = batch->result()->seq.pulseId().value();
-        fprintf(stderr, "%s:\n  Slot occupied by unhandled result: "
-                "idx %08x, batch pid %014lx, cached pid %014lx, result pid %014lx\n",
-                __PRETTY_FUNCTION__, idx, batch->id(), cachedPid, pid);
+        fprintf(stderr, "%s:\n  Slot is already occupied by an unhandled result:\n"
+                "    input batch  idx %08x, pid %014lx\n"
+                "    saved result           pid %014lx\n"
+                "    new result   idx %08x, pid %014lx\n"
+                "    pending head idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
+                batch->index(), batch->id(),
+                cachedPid,
+                idx, pid,
+                inputs->index(), inputs->id());
         abort();
       }
 
@@ -221,9 +227,9 @@ void EbCtrbInBase::_pairUp(TebContributor& ctrb,
       uint64_t rPid = result->seq.pulseId().value();
       if (unlikely((iPid ^ rPid) & ~(BATCH_DURATION - 1))) // Include bits above index()
       {
-        fprintf(stderr, "%s:\n  Result and Input batches don't match: "
-                "Input pid %014lx, Result pid %014lx\n",
-                __PRETTY_FUNCTION__, iPid, rPid);
+        fprintf(stderr, "%s:\n  Result / Input batch mismatch: "
+                "Input pid %014lx, Result pid %014lx, xor %014lx\n",
+                __PRETTY_FUNCTION__, iPid, rPid, iPid ^ rPid);
         abort();
       }
 
@@ -245,9 +251,13 @@ void EbCtrbInBase::_pairUp(TebContributor& ctrb,
     {
       uint64_t pid       = result->seq.pulseId().value();
       uint64_t cachedPid = batch->result()->seq.pulseId().value();
-      fprintf(stderr, "%s:\n  Empty pending FIFO, but slot occupied by unhandled result: "
-              "idx %08x, batch pid %014lx, cached pid %014lx, result pid %014lx\n",
-              __PRETTY_FUNCTION__, idx, batch->id(), cachedPid, pid);
+      fprintf(stderr, "%s:\n  Empty pending FIFO, but slot is occupied by an unhandled result:\n"
+              "    input batch  idx %08x, pid %014lx\n"
+              "    saved result           pid %014lx\n"
+              "    new result   idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
+              batch->index(), batch->id(),
+              cachedPid,
+              idx, pid);
       abort();
     }
 

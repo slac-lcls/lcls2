@@ -190,10 +190,7 @@ EbEvent* EventBuilder::_event(const Dgram* ctrb,
   void* buffer = _eventFreelist.alloc(sizeof(EbEvent));
   if (buffer)
   {
-    uint64_t receivers;
-    uint64_t contract = contracts(ctrb, receivers);
-    EbEvent* event    = ::new(buffer) EbEvent(contract,
-                                              receivers,
+    EbEvent* event    = ::new(buffer) EbEvent(contract(ctrb),
                                               after,
                                               ctrb,
                                               prm);
@@ -254,7 +251,6 @@ EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
 void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
 {
   uint64_t& remaining = event->_remaining;
-  uint64_t& receivers = event->_receivers;
 
   do
   {
@@ -263,7 +259,6 @@ void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
     fixup(event, srcId);
 
     remaining &= ~(1ul << srcId);
-    receivers &= ~(1ul << srcId);       // Don't send Results to Ctrbs that didn't provide Inputs
   }
   while (remaining);
 }

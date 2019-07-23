@@ -63,8 +63,7 @@ int EbAppBase::connect(const EbParams& prms)
   _maxBufSize.resize(nCtrbs);
   _id           = prms.id;
   _contributors = prms.contributors;
-  _contracts    = prms.contractors;
-  _receivers    = prms.receivers;
+  _contract     = prms.contractors;
   _bufferCnt    = 0;
   _fixupCnt     = 0;
 
@@ -156,8 +155,7 @@ void EbAppBase::shutdown()
   _maxBufSize.clear();
   _contributors = 0;
   _id           = -1;
-  _contracts.fill(0);
-  _receivers.fill(0);
+  _contract.fill(0);
 }
 
 int EbAppBase::process()
@@ -209,45 +207,34 @@ int EbAppBase::process()
 
 void EbAppBase::trim(unsigned dst)
 {
-  for (unsigned group = 0; group < _contracts.size(); ++group)
+  for (unsigned group = 0; group < _contract.size(); ++group)
   {
-    _contracts[group] &= ~(1 << dst);
-    _receivers[group] &= ~(1 << dst);
+    _contract[group]  &= ~(1 << dst);
+    //_receivers[group] &= ~(1 << dst);
   }
 }
 
-uint64_t EbAppBase::contracts(const Dgram* ctrb,
-                              uint64_t&    receivers) const
+uint64_t EbAppBase::contract(const Dgram* ctrb) const
 {
-  // This method called when the event is created, which happens when the event
+  // This method is called when the event is created, which happens when the event
   // builder recognizes the first contribution.  This contribution contains
   // information from the L1 trigger that identifies which readout groups are
   // involved.  This routine can thus look up the expected list of contributors
   // (the contract) to the event for each of the readout groups and logically OR
   // them together to provide the overall contract.  The list of contributors
   // participating in each readout group is provided at configuration time.
-  // There are two types of contracts: suppliers and receivers.  Suppliers are
-  // those contributors that are expected to provide contributions to the event.
-  // Receivers are those contributors that don't provide input to the event, but
-  // are interested in the built event.
 
-  uint64_t suppliers;
-  unsigned groups = ctrb->readoutGroups();
+  uint64_t contract = 0;
+  unsigned groups   = ctrb->readoutGroups();
 
-  suppliers = 0;
-  receivers = 0;
   while (groups)
   {
     unsigned group = __builtin_ffs(groups) - 1;
     groups &= ~(1 << group);
 
-    suppliers |= _contracts[group];
-    receivers |= _receivers[group];
+    contract |= _contract[group];
   }
-  assert(suppliers);   // Configuration error when no contributors are expected
-  //  Meb should have no receivers?  -weaver
-  //  assert(receivers);   // Configuration error when no contributors get results
-  return suppliers;
+  return contract;
 }
 
 void EbAppBase::fixup(EbEvent* event, unsigned srcId)

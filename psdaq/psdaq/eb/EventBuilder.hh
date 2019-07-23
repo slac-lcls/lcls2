@@ -28,10 +28,9 @@ namespace Pds {
                    unsigned verbose);
       virtual ~EventBuilder();
     public:
-      virtual void       fixup(EbEvent*, unsigned srcId)      = 0;
-      virtual void       process(EbEvent*)                    = 0;
-      virtual uint64_t   contracts(const XtcData::Dgram*,
-                                   uint64_t& receivers) const = 0;
+      virtual void       fixup(EbEvent*, unsigned srcId)       = 0;
+      virtual void       process(EbEvent*)                     = 0;
+      virtual uint64_t   contract(const XtcData::Dgram*) const = 0;
     public:
       void               expired();
     public:

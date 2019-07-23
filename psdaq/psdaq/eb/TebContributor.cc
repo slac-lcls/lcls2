@@ -124,25 +124,6 @@ void TebContributor::shutdown()
 
 void* TebContributor::allocate(const Dgram* datagram, const void* appPrm)
 {
-  uint64_t pid   = datagram->seq.pulseId().value();
-  Batch*   batch = _batMan.fetch();
-  if (!batch || batch->expired(pid))
-  {
-    if (batch)  post(batch);
-
-    batch = _batMan.allocate(pid);
-    if (!batch)  return batch;          // Null when terminating
-  }
-
-  ++_eventCount;                        // Count all events handled
-
-  batch->store(pid, appPrm);            // Save the appPrm for _every_ event
-
-  return batch->allocate();
-}
-
-void TebContributor::process(const Dgram* datagram)
-{
   if (_prms.verbose > 1)
   {
     const char* svc = TransitionId::name(datagram->seq.service());
@@ -157,17 +138,65 @@ void TebContributor::process(const Dgram* datagram)
            svc, datagram, ctl, pid, sz, src, env, inp[0], inp[1]);
   }
 
-  if (!datagram->seq.isEvent())
+  //uint64_t pid   = datagram->seq.pulseId().value();
+  //Batch*   batch = _batMan.fetch();
+  //if (!batch || batch->expired(pid))
+  //{
+  //  if (batch)  post(batch);
+  //
+  //  batch = _batMan.allocate(pid);
+  //  if (!batch)  return batch;          // Null when terminating
+  //}
+
+  auto batch = _batMan.allocate(*datagram);
+  if (batch)
   {
-    post(_batMan.fetch());           // Contains at least the just-loaded Dgram
-    post(datagram);
+    ++_eventCount;                      // Count all events handled
+
+    uint64_t pid = datagram->seq.pulseId().value();
+    batch->store(pid, appPrm);          // Save the appPrm for _every_ event
+
+    return batch->allocate();
   }
+  return batch;                         // Null when terminating
+}
+
+void TebContributor::process(const Dgram* datagram)
+{
+  //if (!datagram->seq.isEvent())
+  //{
+  //  post(_batMan.fetch());           // Contains at least the just-loaded Dgram
+  //  post(datagram);
+  //}
+
+  auto&    batchList = _batMan.busylist();
+  uint64_t pid       = datagram->seq.pulseId().value();
+  bool     isEvent   = datagram->seq.isEvent();
+
+  for (auto it = batchList.cbegin(); it != batchList.cend(); )
+  {
+    auto batch = *it;
+    auto rogs  = batch->rogsRem(*datagram); // Take down RoG bits
+
+    if ((batch->expired(pid) && !rogs) || !isEvent)
+    {
+      post(batch);
+
+      it = batchList.erase(it);
+    }
+    else
+    {
+      ++it;
+    }
+    if (batch->id() > pid)  break;
+  }
+  if (!isEvent)  post(datagram);
 }
 
 void TebContributor::post(const Batch* batch)
 {
   _pending.push(batch); // Added to the list only when complete, even if empty
-  _batMan.flush();      // Ensure a new batch is allocated, possibly the same one
+  //_batMan.flush();      // Ensure a new batch is allocated, possibly the same one
 
   if (!batch->empty())
   {
@@ -200,7 +229,7 @@ void TebContributor::post(const Dgram* nonEvent)
   // containing it.  These EBs won't generate responses.
 
   uint64_t pid    = nonEvent->seq.pulseId().value();
-  uint32_t idx    = Batch::batchId(pid);
+  uint32_t idx    = Batch::batchNum(pid);
   unsigned dst    = idx % _numEbs;
   unsigned tr     = nonEvent->seq.service();
   uint32_t data   = ImmData::value(ImmData::Transition | ImmData::NoResponse, _id, tr);

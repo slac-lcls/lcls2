@@ -45,11 +45,9 @@ namespace Pds {
       void             trim(unsigned dst);
     public:                            // For EventBuilder
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
-      virtual uint64_t contracts(const XtcData::Dgram* contrib,
-                                 uint64_t& receivers) const;
+      virtual uint64_t contract(const XtcData::Dgram* contrib) const;
     private:                           // Arranged in order of access frequency
-      u64arr_t                 _contracts;
-      u64arr_t                 _receivers;
+      u64arr_t                 _contract;
       Pds::Eb::EbLfServer      _transport;
       std::vector<EbLfLink*>   _links;
       std::vector<size_t>      _trRegSize;

@@ -18,12 +18,12 @@ static_assert((MAX_BATCHES - 1) <= ImmData::MaxIdx, "MAX_BATCHES exceeds availab
 
 
 BatchManager::BatchManager(size_t maxSize) :
-  _maxSize      (maxSize),
-  _maxBatchSize (roundUpSize(MAX_ENTRIES * maxSize)),
-  _region       (static_cast<char*>(allocRegion(batchRegionSize()))),
-  _batchFreelist(MAX_BATCHES),
-  _appPrms      (new AppPrm[MAX_BATCHES * MAX_ENTRIES]),
-  _batch        (nullptr)
+  _maxSize     (maxSize),
+  _maxBatchSize(roundUpSize(MAX_ENTRIES * maxSize)),
+  _region      (static_cast<char*>(allocRegion(batchRegionSize()))),
+  _freelist    (MAX_BATCHES),
+  _appPrms     (new AppPrm[MAX_BATCHES * MAX_ENTRIES]),
+  _batch       (nullptr)
 {
   if (MAX_ENTRIES < BATCH_DURATION)
   {
@@ -55,7 +55,7 @@ BatchManager::BatchManager(size_t maxSize) :
   AppPrm* appPrms = _appPrms;
   for (unsigned i = 0; i < MAX_BATCHES; ++i)
   {
-    new(_batchFreelist[i]) Batch(buffer, appPrms);
+    new(_freelist[i]) Batch(buffer, appPrms);
     buffer  += _maxBatchSize;
     appPrms += MAX_ENTRIES;
   }
@@ -69,7 +69,7 @@ BatchManager::~BatchManager()
 
 void BatchManager::shutdown()
 {
-  _batchFreelist.clear();
+  _freelist.clear();
   _batch = nullptr;
 
   memset(_region, 0, batchRegionSize() * sizeof(*_region));
@@ -79,5 +79,5 @@ void BatchManager::shutdown()
 void BatchManager::dump() const
 {
   printf("\nBatchManager batch freelist:\n");
-  _batchFreelist.dump();
+  _freelist.dump();
 }

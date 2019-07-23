@@ -95,10 +95,11 @@ namespace Pds {
     public:                         // For EventBuilder
       virtual
       void     process(EbEvent* event);
-    public:
-      void     post(const Batch*, uint64_t& receivers);
     private:
-      Damage   _configure(const Dgram* dg);
+      Damage   _configure(const Dgram& dg);
+      void     _tryPost(const Dgram& dg);
+      void     _post(const Batch&);
+      uint64_t _receivers(const Dgram& ctrb) const;
     private:
       std::vector<EbLfLink*> _l3Links;
       EbLfServer             _mrqTransport;
@@ -107,7 +108,7 @@ namespace Pds {
       unsigned               _id;
       const unsigned         _verbose;
     private:
-      uint64_t               _receivers;
+      u64arr_t               _rcvrs;
       //uint64_t               _trimmed;
       Decide*                _decide;
     private:
@@ -132,7 +133,7 @@ Teb::Teb(const EbParams& prms, std::shared_ptr<MetricExporter>& exporter) :
   _batMan      (prms.maxResultSize),
   _id          (-1),
   _verbose     (prms.verbose),
-  _receivers   (0),
+  //_receivers   (0),
   //_trimmed     (0),
   _decide      (nullptr),
   _eventCount  (0),
@@ -167,6 +168,7 @@ int Teb::connect(const EbParams& prms)
 
   _id = prms.id;
   _l3Links.resize(prms.addrs.size());
+  _rcvrs = prms.receivers;
 
   void*  region  = _batMan.batchRegion();
   size_t regSize = _batMan.batchRegionSize();
@@ -237,7 +239,7 @@ void Teb::run()
 {
   pinThread(pthread_self(), _prms.core[0]);
 
-  _receivers  = 0;
+  //_receivers  = 0;
   //_trimmed    = 0;
   _eventCount = 0;
   _batchCount = 0;
@@ -275,9 +277,10 @@ void Teb::run()
   _batMan.shutdown();
 
   _id = -1;
+  _rcvrs.fill(0);
 }
 
-Damage Teb::_configure(const Dgram* dg)
+Damage Teb::_configure(const Dgram& dg)
 {
   _decide = _decideObj.load(std::memory_order_acquire);
   if (!_decide)
@@ -286,7 +289,7 @@ Damage Teb::_configure(const Dgram* dg)
     abort();
   }
 
-  return _decide->configure(dg);
+  return _decide->configure(&dg);
 }
 
 void Teb::process(EbEvent* event)
@@ -303,25 +306,43 @@ void Teb::process(EbEvent* event)
   ++_eventCount;
 
   Damage damage(event->damageVal());
-  const Dgram* dg = event->creator();
-  if (dg->seq.service() == TransitionId::Configure)
+  const Dgram& dg = *event->creator();
+  if (dg.seq.service() == TransitionId::Configure)
   {
     damage = _configure(dg);
   }
 
+  unsigned idx = -1;
   if (ImmData::rsp(ImmData::flg(event->parameter())) == ImmData::Response)
   {
-    uint64_t pid    = dg->seq.pulseId().value();
-    Batch*   batch  = _batMan.fetch();
-    if (!batch || batch->expired(pid))
-    {
-      if (batch)  post(batch, _receivers);
+    //uint64_t pid   = dg.seq.pulseId().value();
+    //Batch*   batch = _batMan.fetch();
+    //if (!batch || batch->expired(pid))
+    //{
+    //  if (batch)  post(batch, _receivers);
+    //
+    //  batch = _batMan.allocate(pid);
+    //  assert(batch);                    // Null "can't" happen
+    //}
 
-      batch = _batMan.allocate(pid);
-      assert(batch);                    // Null "can't" happen
-    }
+    Batch* batch = _batMan.allocate(dg);
+    idx = batch->index();
 
-    Dgram*    rdg        = new(batch->allocate()) ResultDgram(*dg, _id);
+    //uint64_t pid   = dg.seq.pulseId().value();
+    //Batch*   batch = _batMan.fetch(*dg);
+    //if (!batch || (batch->expired(pid) && !batch->rogs()))
+    //{
+    //  if (batch)  post(batch);
+    //
+    //  batch = _batMan.allocate(*dg);
+    //  assert(batch);                    // Null "can't" happen
+    //}
+
+    // Accumulate the list of ctrbs to this batch
+    //_receivers |= receivers(dg);   // Cleared after posting, below
+    batch->accumRcvrs(_receivers(dg));
+
+    Dgram*    rdg        = new(batch->allocate()) ResultDgram(dg, _id);
     uint32_t* result     = reinterpret_cast<uint32_t*>(rdg->xtc.payload());
     size_t    resultSize = rdg->xtc.sizeofPayload();
 
@@ -337,9 +358,6 @@ void Teb::process(EbEvent* event)
 
     rdg->xtc.damage.increase(damage.value());
 
-    // Accumulate the list of ctrbs to this batch
-    _receivers |= event->receivers();   // Cleared after posting, below
-
     if (rdg->seq.isEvent())
     {
       if (result[MON_IDX])
@@ -354,29 +372,29 @@ void Teb::process(EbEvent* event)
         }
       }
     }
-    else                                // Non-event
-    {
-      result[WRT_IDX] = 1;              // Always write out transitions
-      result[MON_IDX] = 1;              // Always monitor transitions
-    }
+    //else                                // Non-event
+    //{
+    //  result[WRT_IDX] = 1;              // Always write out transitions
+    //  result[MON_IDX] = 1;              // Always monitor transitions
+    //}
 
-    if (_verbose > 2) // || result[1])
-    {
-      unsigned idx = batch->index();
-      uint64_t pid = rdg->seq.pulseId().value();
-      unsigned ctl = rdg->seq.pulseId().control();
-      size_t   sz  = sizeof(*rdg) + rdg->xtc.sizeofPayload();
-      unsigned src = rdg->xtc.src.value();
-      unsigned env = rdg->env;
-      printf("TEB processed              result  [%5d] @ "
-             "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, res [%08x, %08x]\n",
-             idx, rdg, ctl, pid, sz, src, env, result[0], result[1]);
-    }
+    //if (_verbose > 2) // || result[MON_IDX])
+    //{
+    //  unsigned idx = batch->index();
+    //  uint64_t pid = rdg->seq.pulseId().value();
+    //  unsigned ctl = rdg->seq.pulseId().control();
+    //  size_t   sz  = sizeof(*rdg) + rdg->xtc.sizeofPayload();
+    //  unsigned src = rdg->xtc.src.value();
+    //  unsigned env = rdg->env;
+    //  printf("TEB processed              result  [%5d] @ "
+    //         "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, res [%08x, %08x]\n",
+    //         idx, rdg, ctl, pid, sz, src, env, result[WRT_IDX], result[MON_IDX]);
+    //}
 
-    if (!rdg->seq.isEvent())            // Non-event
-    {
-      post(batch, _receivers);
-    }
+    //if (!dg.seq.isEvent())            // Non-event
+    //{
+    //  //post(batch, _receivers);
+    //}
   }
   else
   {
@@ -389,36 +407,81 @@ void Teb::process(EbEvent* event)
     }
     while (++ctrb != last);
 
-    if (_verbose > 2)
-    {
-      uint64_t pid = dg->seq.pulseId().value();
-      unsigned ctl = dg->seq.pulseId().control();
-      size_t   sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
-      unsigned src = dg->xtc.src.value();
-      unsigned env = dg->env;
-      printf("TEB processed           non-event         @ "
-             "%16p, ctl %02x, pid %014lx, sz %4zd, src %02d, env %08x\n",
-             dg, ctl, pid, sz, src, env);
-    }
+    //if (_verbose > 2)
+    //{
+    //  uint64_t pid = dg.seq.pulseId().value();
+    //  unsigned ctl = dg.seq.pulseId().control();
+    //  size_t   sz  = sizeof(*dg) + dg.xtc.sizeofPayload();
+    //  unsigned src = dg.xtc.src.value();
+    //  unsigned env = dg.env;
+    //  printf("TEB processed           non-event         @ "
+    //         "%16p, ctl %02x, pid %014lx, sz %4zd, src %02d, env %08x\n",
+    //         dg, ctl, pid, sz, src, env);
+    //}
 
     // Even though no response is being emitted for this event, in the case that
     // it's a transition, any in-progress batch must be flushed
-    if (!dg->seq.isEvent())
+    //if (!dg.seq.isEvent())
+    //{
+    //  //Batch* batch = _batMan.fetch();
+    //  //if (batch)  post(batch, _receivers);
+    //
+    //  auto list  = _batMan.busyList();
+    //  due = list->crbegin()->second;
+    //  //post(batch);
+    //}
+  }
+
+  if (_verbose > 2) // || result[MON_IDX])
+  {
+    //unsigned  idx = due->index();
+    uint64_t  pid = dg.seq.pulseId().value();
+    unsigned  ctl = dg.seq.pulseId().control();
+    size_t    sz  = sizeof(dg) + dg.xtc.sizeofPayload();
+    unsigned  src = dg.xtc.src.value();
+    unsigned  env = dg.env;
+    uint32_t* res = reinterpret_cast<uint32_t*>(dg.xtc.payload());
+    printf("TEB processed              result  [%5d] @ "
+           "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, res [%08x, %08x]\n",
+           idx, dg, ctl, pid, sz, src, env, res[WRT_IDX], res[MON_IDX]);
+  }
+
+  _tryPost(dg);
+}
+
+void Teb::_tryPost(const Dgram& dg)
+{
+  auto&    batchList = _batMan.busylist();
+  uint64_t pid       = dg.seq.pulseId().value();
+  bool     isEvent   = dg.seq.isEvent();
+
+  for (auto it = batchList.cbegin(); it != batchList.cend(); )
+  {
+    auto batch = *it;
+    auto rogs  = batch->rogsRem(dg);    // Take down RoG bits
+
+    if ((batch->expired(pid) && !rogs) || !isEvent)
     {
-      Batch* batch = _batMan.fetch();
-      if (batch)  post(batch, _receivers);
+      _post(*batch);
+
+      it = batchList.erase(it);
     }
+    else
+    {
+      ++it;
+    }
+    if (batch->id() > pid)  break;
   }
 }
 
-void Teb::post(const Batch* batch, uint64_t& receivers)
+void Teb::_post(const Batch& batch)
 {
-  uint32_t    idx    = batch->index();
+  uint32_t    idx    = batch.index();
   uint64_t    data   = ImmData::value(ImmData::Buffer, _id, idx);
-  size_t      extent = batch->terminate();
+  size_t      extent = batch.terminate();
   unsigned    offset = idx * _batMan.maxBatchSize();
-  const void* buffer = batch->buffer();
-  uint64_t    destns = receivers; // & ~_trimmed;
+  const void* buffer = batch.buffer();
+  uint64_t    destns = batch.receivers(); // & ~_trimmed;
 
   ++_batchCount;
 
@@ -431,7 +494,7 @@ void Teb::post(const Batch* batch, uint64_t& receivers)
 
     if (_verbose)
     {
-      uint64_t pid    = batch->id();
+      uint64_t pid    = batch.id();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
       printf("TEB posts           %6ld result  [%5d] @ "
              "%16p,         pid %014lx, sz %4zd, dst %2d @ %16p\n",
@@ -452,7 +515,7 @@ void Teb::post(const Batch* batch, uint64_t& receivers)
     }
   }
 
-  receivers = 0;                        // Clear to start a new accumulation
+  //receivers = 0;                        // Clear to start a new accumulation
 
   // Revisit: The following deallocation constitutes a race with the posts to
   // the transport above as the batch's memory cannot be allowed to be reused
@@ -461,8 +524,32 @@ void Teb::post(const Batch* batch, uint64_t& receivers)
   // and only one is active at a time, a previous batch will have completed
   // transmitting before the next one starts (or the subsequent transmit won't
   // start), thus making it safe to "pre-delete" it here.
-  _batMan.release(batch);
-  _batMan.flush();
+  _batMan.release(&batch);
+  //_batMan.flush();
+}
+
+uint64_t Teb::_receivers(const Dgram& ctrb) const
+{
+  // This method is called when the event is processed, which happens when the
+  // event builder has built the event.  The supplied contribution contains
+  // information from the L1 trigger that identifies which readout groups were
+  // involved.  This routine can thus look up the list of receivers expecting
+  // results from the event for each of the readout groups and logically OR
+  // them together to provide the overall receiver list.  The list of receivers
+  // in each readout group desiring event results is provided at configuration
+  // time.
+
+  uint64_t receivers = 0;
+  unsigned groups    = ctrb.readoutGroups();
+
+  while (groups)
+  {
+    unsigned group = __builtin_ffs(groups) - 1;
+    groups &= ~(1 << group);
+
+    receivers |= _rcvrs[group];
+  }
+  return receivers;
 }
 
 
@@ -694,7 +781,7 @@ int TebApp::_parseConnectionParams(const json& body)
       return 1;
     }
     _prms.contractors[group] |= 1ul << drpId;
-    _prms.receivers[group]   |= 1ul << drpId;
+    _prms.receivers[group]   |= 1ul << drpId; // Revisit: to come from elsewhere
     groups |= 1 << group;
   }
   auto& vec =_prms.maxTrSize;
