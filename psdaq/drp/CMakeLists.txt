@@ -2,16 +2,17 @@ find_package(PythonLibs REQUIRED)
 
 add_library(drpbase
     DrpBase.cc
+    FileWriter.cc
 )
 
 target_include_directories(drpbase PUBLIC
     ../psdaq/pgp/aes-stream-drivers/include
-    $ENV{CONDA_PREFIX}/include
 )
 
 target_link_libraries(drpbase
     contributor
     exporter
+    collection
 )
 
 add_executable(drp
@@ -20,22 +21,24 @@ add_executable(drp
     Digitizer.cc
     TimingSystem.cc
     TimeTool.cc
-    FileWriter.cc
     PGPDetector.cc
     PGPDetectorApp.cc
     drp.cc
 )
 
-target_include_directories(drp PUBLIC
-    ../psdaq/pgp/aes-stream-drivers/include
-    $ENV{CONDA_PREFIX}/include
-)
-
 target_link_libraries(drp
     xtcdata::xtc
     pthread
-    collection
     drpbase
+)
+
+add_executable(drp_bld
+    BldDetector.cc
+)
+
+target_link_libraries(drp_bld
+    drpbase
+    epicstools
 )
 
 add_executable(configdb_obj_2xtc
@@ -43,9 +46,8 @@ add_executable(configdb_obj_2xtc
 )
 
 target_include_directories(configdb_obj_2xtc PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     ${PYTHON_INCLUDE_DIRS}
-    $ENV{CONDA_PREFIX}/include)
+)
 
 target_link_libraries(configdb_obj_2xtc
     xtcdata::xtc
@@ -57,9 +59,8 @@ add_executable(test_teb_config
 )
 
 target_include_directories(test_teb_config PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     ${PYTHON_INCLUDE_DIRS}
-    $ENV{CONDA_PREFIX}/include)
+)
 
 target_link_libraries(test_teb_config
     xtcdata::xtc
@@ -86,7 +87,7 @@ target_include_directories(drp_validate PUBLIC
      pthread
  )
 
-install(TARGETS drp
+install(TARGETS drp drp_bld
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin

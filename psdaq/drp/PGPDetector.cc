@@ -157,7 +157,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter)
 
     int64_t worker = 0L;
     uint64_t batchId = 0L;
-    const unsigned nbuffers = m_pool.nbuffers();
+    const unsigned bufferMask = m_pool.nbuffers() - 1;
     while (1) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
@@ -171,7 +171,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter)
 
             const uint32_t* data = (uint32_t*)m_pool.dmaBuffers[index];
             uint32_t evtCounter = data[5] & 0xffffff;
-            uint32_t current = evtCounter % nbuffers;
+            uint32_t current = evtCounter & bufferMask;
             PGPEvent* event = &m_pool.pgpEvents[current];
 
             DmaBuffer* buffer = &event->buffers[lane];
@@ -190,7 +190,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter)
                     throw "Jump in event counter";
 
                     for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
-                        PGPEvent* brokenEvent = &m_pool.pgpEvents[e % nbuffers];
+                        PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
                         printf("broken event:  %08x\n", brokenEvent->mask);
                         brokenEvent->mask = 0;
 

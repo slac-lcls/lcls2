@@ -60,11 +60,11 @@ private:
 class MemPool
 {
 public:
-    MemPool (const Parameters& para);
+    MemPool(const Parameters& para);
     Pebble pebble;
     std::vector<PGPEvent> pgpEvents;
     void** dmaBuffers;
-    unsigned nbuffers () const {return m_nbuffers;}
+    unsigned nbuffers() const {return m_nbuffers;}
     int fd () const {return m_fd;}
 private:
     unsigned m_nbuffers;
