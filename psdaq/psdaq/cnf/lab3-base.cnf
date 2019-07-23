@@ -47,6 +47,9 @@ procmgr_config = [
  { host: epics_host,  id:'hpsdbuscas', port:'29463', flags:'s', conda:conda_rel, env:epics_env, cmd:'hpsdbuscas -P DAQ:LAB2:HPSEX'},
  { host: epics_host,  id:'bldcas'    , port:'29464', flags:'s', conda:conda_rel, env:epics_env, cmd:'bldcas -P DAQ:LAB2'},
  { host: 'drp-tst-dev021',  id:'hpsbldsvc' , port:'29465', flags:'s', conda:conda_rel, env:epics_env, cmd:'hpsBldServer -a 10.0.3.104 -i eno1 -n DAQ:LAB2:HPSEX -p 0x1e0'},
+## EPICS camera
+ { host: epics_host,  id:'pvcamcas', port:'29465', flags:'s', conda:conda_rel, env:epics_env, cmd:'campvs -P DAQ:LAB2:PVCAM'},
+ { host: 'daq-tst-dev03',  id:'pvcam', port:'29466', flags:'s', conda:conda_rel, env:epics_env, cmd:'pvcam -p DAQ:LAB2:PVCAM'},
 
 ## procstat
  {                    id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
