@@ -29,14 +29,14 @@ def run_smd0_task(run):
 
 @task(inner=True)
 def run_smd_task(view, run):
-    eb_man = EventBuilderManager(run.smd_configs, batch_size=run.batch_size, filter_fn=run.filter_callback, destination=0) #FIXME: needs to talk to Elliott how to handle cube data in legion
+    eb_man = EventBuilderManager(run.configs, batch_size=run.batch_size, filter_fn=run.filter_callback, destination=0) #FIXME: needs to talk to Elliott how to handle cube data in legion
     for i, batch_dict in enumerate(eb_man.batches(view)):
         batch, _ = batch_dict[0]
         run_bigdata_task(batch, run, point=i)
 
 @task
 def run_bigdata_task(batch, run):
-    evt_man = EventManager(run.smd_configs, run.dm, run.filter_callback)
+    evt_man = EventManager(run.configs, run.dm, run.filter_callback)
     for evt in evt_man.events(batch):
         if evt._dgrams[0].seq.service() != 12: continue
         run.event_fn(evt, run.det)

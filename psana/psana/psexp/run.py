@@ -65,11 +65,11 @@ class Run(object):
     dm = None
     configs = None
     smd_dm = None
-    smd_configs = None
     max_events = None
     batch_size = None
     filter_callback = None
     epics_store = None
+    nfiles = 0
     
     def __init__(self, exp, run_no, max_events=0, batch_size=1, filter_callback=0, destination=0):
         self.exp = exp
@@ -222,22 +222,21 @@ class RunSerial(Run):
                 max_events=kwargs['max_events'], batch_size=kwargs['batch_size'], \
                 filter_callback=kwargs['filter_callback'])
         xtc_files, smd_files, other_files = run_src
-        self.dm = DgramManager(xtc_files)
-        self.configs = self.dm.configs
         self.smd_dm = DgramManager(smd_files)
+        self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
+        self.configs = self.dm.configs
         self.epics_store = UpdateStore(self.smd_dm.configs, 'epics')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
         
     def events(self):
-        smd_configs = self.smd_dm.configs
-        ev_man = EventManager(smd_configs, self.dm, \
+        ev_man = EventManager(self.configs, self.dm, \
                 filter_fn=self.filter_callback)
 
         #get smd chunks
         smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
-        eb_man = EventBuilderManager(smd_configs, batch_size=self.batch_size, filter_fn=self.filter_callback)
+        eb_man = EventBuilderManager(self.configs, batch_size=self.batch_size, filter_fn=self.filter_callback)
         for (smd_chunk, update_chunk) in smdr_man.chunks():
             # Update epics_store for each chunk
             update_pf = PacketFooter(view=update_chunk)
@@ -265,36 +264,28 @@ class RunParallel(Run):
                 destination=kwargs['destination'])
         xtc_files, smd_files, other_files = run_src
         if rank == 0:
-            self.dm = DgramManager(xtc_files)
-            self.configs = self.dm.configs
             self.smd_dm = DgramManager(smd_files)
-            self.smd_configs = self.smd_dm.configs
+            self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
+            self.configs = self.dm.configs
             nbytes = np.array([memoryview(config).shape[0] for config in self.configs], \
-                            dtype='i')
-            smd_nbytes = np.array([memoryview(config).shape[0] for config in self.smd_configs], \
                             dtype='i')
             self.calibs = {}
             for det_name in self.detnames:
                 self.calibs[det_name] = super(RunParallel, self)._get_calib(det_name)
             
         else:
-            self.dm = None
-            self.calibs = None
             self.smd_dm = None
-            nbytes = np.empty(len(xtc_files), dtype='i')
-            smd_nbytes = np.empty(len(smd_files), dtype='i')
+            self.dm = None
+            self.configs = None
+            self.calibs = None
+            nbytes = np.empty(len(smd_files), dtype='i')
         
-        comm.Bcast(smd_nbytes, root=0) # no. of bytes is required for mpich
-        comm.Bcast(nbytes, root=0) 
+        comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
         
         # create empty views of known size
         if rank > 0:
-            self.smd_configs = [np.empty(smd_nbyte, dtype='b') for smd_nbyte in smd_nbytes]
             self.configs = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
         
-        for i in range(len(self.smd_configs)):
-            comm.Bcast([self.smd_configs[i], smd_nbytes[i], MPI.BYTE], root=0)
-
         for i in range(len(self.configs)):
             comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
         
@@ -302,11 +293,10 @@ class RunParallel(Run):
 
         if rank > 0:
             # Create dgram objects using views from rank 0 (no disk operation).
-            self.smd_configs = [dgram.Dgram(view=smd_config, offset=0) for smd_config in self.smd_configs]
             self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
             self.dm = DgramManager(xtc_files, configs=self.configs)
         
-        self.epics_store = UpdateStore(self.smd_configs, 'epics')   
+        self.epics_store = UpdateStore(self.configs, 'epics')   
     
     def events(self):
         for evt in run_node(self):
@@ -320,11 +310,10 @@ class RunLegion(Run):
         super(RunLegion, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
                 batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'])
         xtc_files, smd_files, other_files = run_src
-        self.dm = DgramManager(xtc_files)
-        self.configs = self.dm.configs
         self.smd_dm = DgramManager(smd_files)
-        self.smd_configs = self.smd_dm.configs
-        self.epics_store = UpdateStore(self.smd_configs, 'epics')
+        self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
+        self.configs = self.dm.configs
+        self.epics_store = UpdateStore(self.configs, 'epics')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = super(RunLegion, self)._get_calib(det_name)

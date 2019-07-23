@@ -78,7 +78,6 @@ class UpdateManager(object):
             self.send_history.append([0]*self.n_smds)
 
     def extend_buffers(self, views):
-        print(len(views), len(self.bufs), self.n_smds)
         for i, view in enumerate(views):
             self.bufs[i].extend(view)
 
@@ -148,7 +147,7 @@ class SmdNode(object):
     offsets and dgramsizes into a numpy array. Sends
     this np array to bd_nodes that are registered to it."""
     def __init__(self, run):
-        self.eb_man = EventBuilderManager(run.smd_configs, batch_size=run.batch_size, filter_fn=run.filter_callback, destination=run.destination)
+        self.eb_man = EventBuilderManager(run.configs, batch_size=run.batch_size, filter_fn=run.filter_callback, destination=run.destination)
         self.n_bd_nodes = bd_comm.Get_size() - 1
         self.run = run
         self.epics_man = UpdateManager(bd_size, self.run.epics_store.n_files)
@@ -223,7 +222,7 @@ class SmdNode(object):
 
 class BigDataNode(object):
     def __init__(self, run):
-        self.evt_man = EventManager(run.smd_configs, run.dm, \
+        self.evt_man = EventManager(run.configs, run.dm, \
                 filter_fn=run.filter_callback)
         self.run = run
 
