@@ -16,7 +16,7 @@ namespace Pds {
   namespace Eb {
 
     using BatchFreeList = IndexPoolW<Batch>;
-    using BatchBusyList = std::multiset<Batch*>;
+    using BatchBusyList = std::multiset<Batch*, Batch>;
     using AppPrm        = std::atomic<uintptr_t>;
 
     class BatchManager

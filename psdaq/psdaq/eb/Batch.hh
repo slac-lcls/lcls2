@@ -29,7 +29,7 @@ namespace Pds {
       Batch(void* buffer, AppPrm* appPrms);
     public:
       void*                 operator new(size_t, Pds::Eb::Batch&);
-      bool                  operator<(const Batch&);
+      bool                  operator()(Batch* const& lhs, Batch* const& rhs) const;
     public:
       static uint64_t       batchNum(uint64_t pid);
     public:
@@ -74,9 +74,9 @@ void* Pds::Eb::Batch::operator new(size_t, Pds::Eb::Batch& batch)
 }
 
 inline
-bool Pds::Eb::Batch::operator<(const Pds::Eb::Batch& batch)
+bool Pds::Eb::Batch::operator()(Batch* const& lhs, Batch* const& rhs) const
 {
-  return _id < batch._id;
+  return lhs->_id < rhs->_id;
 }
 
 inline
