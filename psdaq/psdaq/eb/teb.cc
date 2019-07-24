@@ -387,7 +387,7 @@ void Teb::process(EbEvent* event)
     //  unsigned src = rdg->xtc.src.value();
     //  unsigned env = rdg->env;
     //  printf("TEB processed              result  [%5d] @ "
-    //         "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, res [%08x, %08x]\n",
+    //         "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, res [%08x, %08x]\n",
     //         idx, rdg, ctl, pid, sz, src, env, result[WRT_IDX], result[MON_IDX]);
     //}
 
@@ -415,7 +415,7 @@ void Teb::process(EbEvent* event)
     //  unsigned src = dg.xtc.src.value();
     //  unsigned env = dg.env;
     //  printf("TEB processed           non-event         @ "
-    //         "%16p, ctl %02x, pid %014lx, sz %4zd, src %02d, env %08x\n",
+    //         "%16p, ctl %02x, pid %014lx, sz %6zd, src %02d, env %08x\n",
     //         dg, ctl, pid, sz, src, env);
     //}
 
@@ -442,7 +442,7 @@ void Teb::process(EbEvent* event)
     unsigned  env = dg.env;
     uint32_t* res = reinterpret_cast<uint32_t*>(dg.xtc.payload());
     printf("TEB processed              result  [%5d] @ "
-           "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, res [%08x, %08x]\n",
+           "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, res [%08x, %08x]\n",
            idx, dg, ctl, pid, sz, src, env, res[WRT_IDX], res[MON_IDX]);
   }
 
@@ -497,7 +497,7 @@ void Teb::_post(const Batch& batch)
       uint64_t pid    = batch.id();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
       printf("TEB posts           %6ld result  [%5d] @ "
-             "%16p,         pid %014lx, sz %4zd, dst %2d @ %16p\n",
+             "%16p,         pid %014lx, sz %6zd, dst %2d @ %16p\n",
              _batchCount, idx, buffer, pid, extent, dst, rmtAdx);
     }
 

@@ -292,7 +292,7 @@ void EbCtrbInBase::_process(TebContributor& ctrb,
       const char* svc    = TransitionId::name(result->seq.service());
       size_t      extent = sizeof(*result) + result->xtc.sizeofPayload();
       printf("CtrbIn  found  [%5d]  %15s    @ "
-             "%16p, ctl %02x, pid %014lx, sz %4zd, TEB %2d, env %08x, deliver %d [%014lx]\n",
+             "%16p, ctl %02x, pid %014lx, sz %6zd, TEB %2d, env %08x, deliver %d [%014lx]\n",
              idx, svc, result, ctl, rPid, extent, src, env, rPid == iPid, iPid);
     }
 

@@ -102,7 +102,8 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
     uint32_t dmaIndex = event->buffers[lane].index;
     Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)m_pool.dmaBuffers[dmaIndex];
     XtcData::TransitionId::Value transitionId = timingHeader->seq.service();
-    //printf("EbReceiver:  %u   index %u\n", timingHeader->evtCounter, index);
+    //printf("EbReceiver:  %u   index %u  tid %u  pid %014lx  env %08x\n",
+    //       timingHeader->evtCounter, index, transitionId, timingHeader->seq.pulseId().value(), timingHeader->env);
 
     // pass everything except L1 accepts and slow updates to control level
     if ((transitionId != XtcData::TransitionId::L1Accept) &&

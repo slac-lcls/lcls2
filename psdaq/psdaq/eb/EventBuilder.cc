@@ -434,7 +434,7 @@ void EventBuilder::process(const Dgram* ctrb, unsigned prm)
       size_t    sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
       unsigned  src = ctrb->xtc.src.value();
       printf("EB found          a  ctrb                  @ "
-             "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, pld [%08x, %08x], prm %08x, due %014lx\n",
+             "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, pld [%08x, %08x], prm %08x, due %014lx\n",
              ctrb, ctl, pid, sz, src, env, pld[WRT_IDX], pld[MON_IDX], prm, due ? due->sequence() : 0ul);
     }
 

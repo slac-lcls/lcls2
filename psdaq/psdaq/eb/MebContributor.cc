@@ -102,7 +102,7 @@ int MebContributor::post(const Dgram* ddg, uint32_t destination)
     unsigned ctl    = ddg->seq.pulseId().control();
     void*    rmtAdx = (void*)link->rmtAdx(offset);
     printf("MebCtrb posts %9ld    monEvt [%5d]  @ "
-           "%16p, ctl %02d, pid %014lx, sz %4zd, MEB %2d @ %16p, data %08x\n",
+           "%16p, ctl %02d, pid %014lx, sz %6zd, MEB %2d @ %16p, data %08x\n",
            _eventCount, idx, ddg, ctl, pid, sz, link->id(), rmtAdx, data);
   }
 
@@ -137,7 +137,7 @@ int MebContributor::post(const Dgram* ddg)
       unsigned ctl    = ddg->seq.pulseId().control();
       void*    rmtAdx = (void*)link->rmtAdx(ofs);
       printf("MebCtrb posts %9ld      trId [%5d]  @ "
-             "%16p, ctl %02x, pid %014lx, sz %4zd, MEB %2d @ %16p, data %08x\n",
+             "%16p, ctl %02x, pid %014lx, sz %6zd, MEB %2d @ %16p, data %08x\n",
              _eventCount, tr, ddg, ctl, pid, sz, link->id(), rmtAdx, data);
     }
 

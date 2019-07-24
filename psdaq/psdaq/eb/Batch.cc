@@ -41,7 +41,7 @@ void Batch::dump() const
       unsigned    env = dg->env;
       uint32_t*   inp = (uint32_t*)dg->xtc.payload();
       printf("  %2d, %15s  dg @ "
-             "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, inp [%08x, %08x], appPrm %p\n",
+             "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, inp [%08x, %08x], appPrm %p\n",
              cnt, svc, dg, ctl, pid, sz, src, env, inp[0], inp[1], retrieve(pid));
 
       dg = reinterpret_cast<const Dgram*>(dg->xtc.next());
