@@ -28,7 +28,7 @@ procmgr_config = [
  { host: collect_host,    id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -C BEAM -P TMO -B DAQ:LAB2 -x 2 -S 1'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -l WARNING -H '+collect_host},
  # trigger event builder
- { host: 'drp-tst-acc06', id:'teb1', flags:'xpu', conda:conda_rel, cmd:'teb -C '+collect_host},
+ { host: 'drp-tst-dev009', id:'teb1', flags:'xpu', conda:conda_rel, cmd:'teb -C '+collect_host},
  # drp
  { host: 'drp-tst-dev008', id:'cookie_0', flags:'sxpu', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -o /tmp -C '+collect_host},
  { host: 'drp-tst-dev009', id:'cookie_1', flags:'sxpu', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_0 -o /tmp -C '+collect_host}
