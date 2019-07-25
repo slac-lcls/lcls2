@@ -26,8 +26,6 @@ logger = logging.getLogger(__name__)
 
 #------------------------------
 
-# zmq.utils.jsonapi ensures bytes, instead of unicode
-import zmq.utils.jsonapi as json
 from time import time
 
 from PyQt5.QtWidgets import QGroupBox, QPushButton, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit, QSizePolicy

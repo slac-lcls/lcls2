@@ -29,8 +29,7 @@ Created on 2019-03-08 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-# zmq.utils.jsonapi ensures bytes, instead of unicode
-import zmq.utils.jsonapi as json
+import json
 from psdaq.control_gui.CGDaqControl import daq_control #, DaqControl #, worker_set_state
 
 #from psana.pyalgos.generic.Utils import load_textfile
