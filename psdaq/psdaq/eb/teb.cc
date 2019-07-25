@@ -453,14 +453,14 @@ void Teb::_tryPost(const Dgram& dg)
 {
   auto&    batchList = _batMan.busylist();
   uint64_t pid       = dg.seq.pulseId().value();
-  bool     isEvent   = dg.seq.isEvent();
+  bool     postIt    = !(dg.seq.isEvent() || (dg.seq.service() == TransitionId::SlowUpdate));
 
   for (auto it = batchList.cbegin(); it != batchList.cend(); )
   {
     auto batch = *it;
     auto rogs  = batch->rogsRem(dg);    // Take down RoG bits
 
-    if ((batch->expired(pid) && !rogs) || !isEvent)
+    if ((batch->expired(pid) && !rogs) || postIt)
     {
       _post(*batch);
 

@@ -206,7 +206,9 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter)
                 uint64_t pid = timingHeader->seq.pulseId().value();
 
                 // send batch to worker if batch is full or if it's a transition
-                if (((batchId ^ pid) & ~(m_para.batchSize - 1)) || (transitionId != XtcData::TransitionId::L1Accept)) {
+                if (((batchId ^ pid) & ~(m_para.batchSize - 1)) ||
+                    ((transitionId != XtcData::TransitionId::L1Accept) &&
+                     (transitionId != XtcData::TransitionId::SlowUpdate))) {
                     m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
                     worker++;
                     m_batch.start = evtCounter + 1;

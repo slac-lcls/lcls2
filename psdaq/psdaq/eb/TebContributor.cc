@@ -171,14 +171,14 @@ void TebContributor::process(const Dgram* datagram)
 
   auto&    batchList = _batMan.busylist();
   uint64_t pid       = datagram->seq.pulseId().value();
-  bool     isEvent   = datagram->seq.isEvent();
+  bool     postIt    = !(datagram->seq.isEvent() || (datagram->seq.service() == TransitionId::SlowUpdate));
 
   for (auto it = batchList.cbegin(); it != batchList.cend(); )
   {
     auto batch = *it;
     auto rogs  = batch->rogsRem(*datagram); // Take down RoG bits
 
-    if ((batch->expired(pid) && !rogs) || !isEvent)
+    if ((batch->expired(pid) && !rogs) || postIt)
     {
       post(batch);
 
@@ -190,7 +190,7 @@ void TebContributor::process(const Dgram* datagram)
     }
     if (batch->id() > pid)  break;
   }
-  if (!isEvent)  post(datagram);
+  if (!datagram->seq.isEvent())  post(datagram);
 }
 
 void TebContributor::post(const Batch* batch)
