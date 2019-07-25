@@ -90,7 +90,6 @@ cdef class SmdReader:
                 if payload <= remaining:
                     # got dgram
                     buf.offset += payload
-                    buf.nevents += 1
                     buf.timestamp = <unsigned long>d.seq.high << 32 | d.seq.low
 
                     # check if this a non L1
@@ -98,6 +97,7 @@ cdef class SmdReader:
                     control = (pulse_id & self.s_cntrl) >> self.v_cntrl
                     service = (control >> self.v_service) & self.m_service
                     if service == self.L1_ACCEPT:
+                        buf.nevents += 1
                         break
                     elif payload > 0: # not an empty non L1
                         memcpy(self.update_bufs[smd_id].chunk + self.update_bufs[smd_id].offset, buf.chunk + prev_offset, self.DGRAM_SIZE + payload)
