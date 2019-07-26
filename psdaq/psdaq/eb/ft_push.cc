@@ -66,7 +66,7 @@ int listen(PassiveEndpoint* pendp, MemoryRegion* mr, char* key_buff, size_t key_
     }
 
     // write the local buffer to address on the remote client - send the number of times remote writes have been requested as the immediate data
-    if(endp->write_data_sync(data_buff, keys->extent, keys, value++, mr)) {
+    if(endp->writedata_sync(data_buff, keys->extent, keys, value++, mr)) {
       fprintf(stderr, "Writeing of data to remote client failed: %s\n", endp->error());
       ret = endp->error_num();
       pendp->close(endp);

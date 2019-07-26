@@ -16,11 +16,13 @@ using namespace Pds::Eb;
 
 
 EbLfLink::EbLfLink(Endpoint* ep,
+                   size_t    injectSize,
                    unsigned  verbose,
                    uint64_t& pending) :
   _ep(ep),
   _mr(nullptr),
   _ra(),
+  _injectSize(injectSize),
   _depth(0),
   _count(1),
   _pending(pending),
@@ -37,6 +39,7 @@ EbLfLink::EbLfLink(Endpoint* ep,
   _ep(ep),
   _mr(nullptr),
   _ra(),
+  _injectSize(0),
   _depth(depth),
   _count(1),
   _pending(pending),
@@ -300,12 +303,19 @@ int EbLfLink::post(const void* buf,
 
   while (true)
   {
-    rc = _ep->write_data(buf, len, &ra, ctx, immData, _mr);
+    if (len > _injectSize)
+    {
+      rc = _ep->writedata(buf, len, &ra, ctx, immData, _mr);
+    }
+    else
+    {
+      rc = _ep->inject_writedata(buf, len, &ra, immData);
+    }
     if (!rc)  break;
 
     if (rc != -FI_EAGAIN)
     {
-      fprintf(stderr, "%s:\n  write_data to ID %d failed: %s\n",
+      fprintf(stderr, "%s:\n  writedata to ID %d failed: %s\n",
               __PRETTY_FUNCTION__, _id, _ep->error());
       break;
     }
@@ -351,9 +361,9 @@ int EbLfLink::post(const void* buf,
                    size_t      len,
                    uint64_t    immData)
 {
-  if (ssize_t rc = _ep->inject_data(buf, len, immData) < 0)
+  if (ssize_t rc = _ep->injectdata(buf, len, immData) < 0)
   {
-    fprintf(stderr, "%s:\n  inject_data failed: %s\n",
+    fprintf(stderr, "%s:\n  injectdata failed: %s\n",
             __PRETTY_FUNCTION__, _ep->error());
     return rc;
   }

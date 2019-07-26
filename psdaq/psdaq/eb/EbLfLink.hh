@@ -14,7 +14,7 @@ namespace Pds {
     class EbLfLink
     {
     public:
-      EbLfLink(Fabrics::Endpoint*, unsigned verbose, uint64_t& pending);
+      EbLfLink(Fabrics::Endpoint*, size_t injectSize, unsigned verbose, uint64_t& pending);
       EbLfLink(Fabrics::Endpoint*, int rxDepth, unsigned verbose, uint64_t& pending);
       ~EbLfLink();
     public:
@@ -54,16 +54,17 @@ namespace Pds {
     private:
       int      _postCompRecv(int count, void* ctx = NULL);
       int      _tryCq(fi_cq_data_entry*);
-    private:                            // Arranged in order of access frequency
-      Fabrics::Endpoint*      _ep;      // Endpoint
-      Fabrics::MemoryRegion*  _mr;      // Memory Region
-      Fabrics::RemoteAddress  _ra;      // Remote address descriptor
-      const int               _depth;   // Depth  of the Completion Queue
-      int                     _count;   // Number of completion buffers remaining
-      uint64_t&               _pending; // Bit list of IDs currently posting
-      unsigned                _id;      // ID     of peer on the remote side
-      const unsigned          _verbose; // Print some stuff if set
-      char*                   _region;  // Used when App doesn't provide an MR
+    private:                               // Arranged in order of access frequency
+      Fabrics::Endpoint*      _ep;         // Endpoint
+      Fabrics::MemoryRegion*  _mr;         // Memory Region
+      Fabrics::RemoteAddress  _ra;         // Remote address descriptor
+      const size_t            _injectSize; // Max inject_writedata() size for post()
+      const int               _depth;      // Depth  of the Completion Queue
+      int                     _count;      // Number of completion buffers remaining
+      uint64_t&               _pending;    // Bit list of IDs currently posting
+      unsigned                _id;         // ID     of peer on the remote side
+      const unsigned          _verbose;    // Print some stuff if set
+      char*                   _region;     // Used when App doesn't provide an MR
     };
   };
 };

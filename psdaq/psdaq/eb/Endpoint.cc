@@ -1239,7 +1239,7 @@ ssize_t Endpoint::write_sync(const LocalAddress* laddr, const RemoteAddress* rad
   return write_sync(laddr->buf(), laddr->len(), raddr, laddr->mr());
 }
 
-ssize_t Endpoint::write_data(const void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr)
+ssize_t Endpoint::writedata(const void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr)
 {
   CHECK_MR(buf, len, mr, "fi_writedata");
 
@@ -1252,11 +1252,11 @@ ssize_t Endpoint::write_data(const void* buf, size_t len, const RemoteAddress* r
   return rret;
 }
 
-ssize_t Endpoint::write_data_sync(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr)
+ssize_t Endpoint::writedata_sync(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr)
 {
   int context = _counter++;
 
-  ssize_t rret = write_data(buf, len, raddr, &context, data, mr);
+  ssize_t rret = writedata(buf, len, raddr, &context, data, mr);
   if (rret == FI_SUCCESS) {
     return check_completion(_txcq, context, FI_WRITE | FI_RMA);
   }
@@ -1264,14 +1264,30 @@ ssize_t Endpoint::write_data_sync(const void* buf, size_t len, const RemoteAddre
   return rret;
 }
 
-ssize_t Endpoint::write_data(const LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data)
+ssize_t Endpoint::writedata(const LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data)
 {
-  return write_data(laddr->buf(), laddr->len(), raddr, context, data, laddr->mr());
+  return writedata(laddr->buf(), laddr->len(), raddr, context, data, laddr->mr());
 }
 
-ssize_t Endpoint::write_data_sync(const LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data)
+ssize_t Endpoint::writedata_sync(const LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data)
 {
-  return write_data_sync(laddr->buf(), laddr->len(), raddr, data, laddr->mr());
+  return writedata_sync(laddr->buf(), laddr->len(), raddr, data, laddr->mr());
+}
+
+ssize_t Endpoint::inject_writedata(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data)
+{
+  ssize_t rret = fi_inject_writedata(_ep, buf, len, data, 0, raddr->addr, raddr->rkey);
+  if (rret != FI_SUCCESS) {
+    _errno = (int) rret;
+    set_error("fi_inject_writedata");
+  }
+
+  return rret;
+}
+
+ssize_t Endpoint::inject_writedata(const LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data)
+{
+  return inject_writedata(laddr->buf(), laddr->len(), raddr, data);
 }
 
 ssize_t Endpoint::recvv(LocalIOVec* iov, void* context)
@@ -1478,7 +1494,7 @@ ssize_t Endpoint::writemsg_sync(RmaMessage* msg, uint64_t flags)
   return rret;
 }
 
-ssize_t Endpoint::inject_data(const void* buf, size_t len, uint64_t data)
+ssize_t Endpoint::injectdata(const void* buf, size_t len, uint64_t data)
 {
   ssize_t rret = fi_injectdata(_ep, buf, len, data, 0);
   if (rret != FI_SUCCESS) {
@@ -1487,6 +1503,11 @@ ssize_t Endpoint::inject_data(const void* buf, size_t len, uint64_t data)
   }
 
   return rret;
+}
+
+ssize_t Endpoint::injectdata(const LocalAddress* laddr, uint64_t data)
+{
+  return injectdata(laddr->buf(), laddr->len(), data);
 }
 
 ssize_t Endpoint::check_completion(CompletionQueue* cq, int context, unsigned flags, uint64_t* data)

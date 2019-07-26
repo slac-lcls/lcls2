@@ -246,14 +246,17 @@ namespace Pds {
       ssize_t recv(void* buf, size_t len, void* context, const MemoryRegion* mr=NULL);
       ssize_t read(void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr=NULL);
       ssize_t write(const void* buf, size_t len, const RemoteAddress* raddr, void* context, const MemoryRegion* mr=NULL);
-      ssize_t write_data(const void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr=NULL);
-      ssize_t inject_data(const void* buf, size_t len, uint64_t data);
+      ssize_t writedata(const void* buf, size_t len, const RemoteAddress* raddr, void* context, uint64_t data, const MemoryRegion* mr=NULL);
+      ssize_t inject_writedata(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data);
+      ssize_t injectdata(const void* buf, size_t len, uint64_t data);
       /* Asynchronous calls (LocalAddress wrapper) */
       ssize_t send(const LocalAddress* laddr, void* context);
       ssize_t recv(LocalAddress* laddr, void* context);
       ssize_t read(LocalAddress* laddr, const RemoteAddress* raddr, void* context);
       ssize_t write(const LocalAddress* laddr, const RemoteAddress* raddr, void* context);
-      ssize_t write_data(const LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data);
+      ssize_t writedata(const LocalAddress* laddr, const RemoteAddress* raddr, void* context, uint64_t data);
+      ssize_t inject_writedata(const LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data);
+      ssize_t injectdata(const LocalAddress* laddr, uint64_t data);
       /* Vectored Asynchronous calls */
       ssize_t sendv(LocalIOVec* iov, void* context);
       ssize_t recvv(LocalIOVec* iov, void* context);
@@ -269,13 +272,13 @@ namespace Pds {
       ssize_t recv_sync(void* buf, size_t len, const MemoryRegion* mr=NULL);
       ssize_t read_sync(void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr=NULL);
       ssize_t write_sync(const void* buf, size_t len, const RemoteAddress* raddr, const MemoryRegion* mr=NULL);
-      ssize_t write_data_sync(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr=NULL);
+      ssize_t writedata_sync(const void* buf, size_t len, const RemoteAddress* raddr, uint64_t data, const MemoryRegion* mr=NULL);
       /* Synchronous calls (LocalAddress wrapper) */
       ssize_t send_sync(const LocalAddress* laddr);
       ssize_t recv_sync(LocalAddress* laddr);
       ssize_t read_sync(LocalAddress* laddr, const RemoteAddress* raddr);
       ssize_t write_sync(const LocalAddress* laddr, const RemoteAddress* raddr);
-      ssize_t write_data_sync(const LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data);
+      ssize_t writedata_sync(const LocalAddress* laddr, const RemoteAddress* raddr, uint64_t data);
       /* Vectored Synchronous calls */
       ssize_t sendv_sync(LocalIOVec* iov);
       ssize_t recvv_sync(LocalIOVec* iov);
