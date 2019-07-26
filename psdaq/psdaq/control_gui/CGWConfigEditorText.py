@@ -68,8 +68,7 @@ class CGWConfigEditorText(QWidget) :
         """
         self.dictj = dictj
         sj = str_json(dictj)
-        #self.edi_txt.append(sj)
-        self.edi_txt.setText(sj)
+        self.edi_txt.setText(str(sj))
 
 #--------------------
  

@@ -43,7 +43,7 @@ class DragBase(object) :
     def __init__(self, parent=None,\
                  brush=QBrush(), pen=QPen(Qt.blue, 0, Qt.SolidLine)) :
 
-        logger.debug('In DragBase create %s' % self.str_dragtype())
+        #logger.debug('In DragBase create %s' % self.str_dragtype())
 
         self.set_drag_mode()
         self.set_child_item_sel()
@@ -62,7 +62,7 @@ class DragBase(object) :
 
     
     def set_drag_mode(self, mode=MOVE) :
-        logger.debug('In DragBase.set_drag_mode %s for %s' % (mode_names[mode], self.str_dragtype()))
+        #logger.debug('In DragBase.set_drag_mode %s for %s' % (mode_names[mode], self.str_dragtype()))
         self._drag_mode = mode
 
 

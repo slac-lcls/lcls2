@@ -9,7 +9,7 @@ public:
     enum { Stop, Continue };
     NamesIter(XtcData::Xtc* xtc) : XtcData::XtcIterator(xtc) {}
     NamesIter() : XtcData::XtcIterator() {}
-    int process(XtcData::Xtc* xtc);
+    virtual int process(XtcData::Xtc* xtc);
     NamesLookup& namesLookup() {return _namesLookup;}
 private:
     NamesLookup _namesLookup;

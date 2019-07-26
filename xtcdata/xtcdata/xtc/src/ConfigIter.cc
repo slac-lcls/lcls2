@@ -1,4 +1,7 @@
 
+
+#include <stdio.h> // sprintf, printf( "%lf\n", accum );
+
 #include "xtcdata/xtc/ConfigIter.hh"
 
 using namespace XtcData;
@@ -16,7 +19,7 @@ ConfigIter::~ConfigIter() {
 int ConfigIter::process(XtcData::Xtc* xtc)
 {
   TypeId::Type type = xtc->contains.id(); 
-  //printf("DataIter TypeId::%-20s Xtc*: %p\n", TypeId::name(type), &xtc);
+  //printf("\nZZZ ConfigIter.process TypeId::%-20s Xtc*: %p", TypeId::name(type), &xtc);
 
   switch (type) {
     case (TypeId::Parent): {
@@ -43,13 +46,30 @@ int ConfigIter::process(XtcData::Xtc* xtc)
 }
 
 DescData& ConfigIter::desc_shape() {
-  if(! _desc_shape) _desc_shape = new DescData(shape(), namesLookup()[shape().namesId()]);
+  //printf("\n YYY ConfigIter::desc_shape namesLookup(): %d", namesLookup().size());
+  //printf("\n YYY ConfigIter::desc_shape: %p", _desc_shape);
+  //if(! _desc_shape) _desc_shape = new DescData(shape(), namesLookup()[shape().namesId()]);
+  if(_desc_shape) delete _desc_shape; 
+  _desc_shape = new DescData(shape(), namesLookup()[shape().namesId()]);
   return *_desc_shape; 
 }
 
+//void ConfigIter::desc_value() {
 DescData& ConfigIter::desc_value() {
-  if(! _desc_value) _desc_value = new DescData(value(), namesLookup()[value().namesId()]);
-  return *_desc_value; 
+  printf("\nYYY ==> ConfigIter::desc_value");
+
+  // problem arises here, value() returns undefined _shapesData[1]
+  //ShapesData& v = value();
+  //printf("\nYYY == ConfigIter::desc_value - value is accessed");
+  //printf("\nYYY == ConfigIter::desc_value - value().namesId(): %i", v.namesId());
+
+  //if(_desc_value){delete _desc_value; _desc_value = NULL;}
+  //printf("\nYYY ConfigIter::desc_value: %p", _desc_value);
+  //printf("\n YYY ConfigIter::desc_value namesLookup(): %d", namesLookup().size());
+
+  if(_desc_value) delete _desc_value;
+  _desc_value = new DescData(value(), namesLookup()[value().namesId()]);
+  return *_desc_value;
 }
 
 //---------

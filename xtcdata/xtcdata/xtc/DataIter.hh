@@ -21,7 +21,7 @@ public:
     DataIter() : XtcData::XtcIterator() {}
    ~DataIter();
 
-    int process(XtcData::Xtc* xtc);
+    virtual int process(XtcData::Xtc* xtc);
 
     ShapesData& shape() {return *_shapesData[0];}
     ShapesData& value() {return *_shapesData[1];}

@@ -349,8 +349,12 @@ class CGWMain(QWZMQListener) :
                 elif jo['header']['key'] == 'error' :
                     body = jo['body']
                     logger.error('received error msg: %s' % body['err_info'])
-                    self.wctrl.set_but_ctrls('error')
-                    self.wconf.set_config_type('error')
+
+                    # grab state directly (not from error message)
+                    state = daq_control().getState()
+
+                    self.wctrl.set_but_ctrls(state)   # ('error')
+                    self.wconf.set_config_type(state) # ('error')
 
                 else :
                     sj = json.dumps(jo, indent=2, sort_keys=False)
