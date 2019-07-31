@@ -9,15 +9,12 @@
 #include "psalg/calib/Query.hh"
 #include "psalg/calib/CalibParsStore.hh" // CalibPars, getCalibPars
 #include "psalg/calib/NDArray.hh" // NDArray
-#include "psalg/calib/AreaDetectorTypes.hh"
-#include "psalg/detector/Detector.hh"
+#include "psalg/calib/AreaDetectorTypes.hh" // event_t
 
+#include "psalg/detector/Detector.hh"
 #include "psalg/detector/UtilsConfig.hh" // configNames
 
-//#include "xtcdata/xtc/Array.hh" // Array
-
 #include "xtcdata/xtc/DataIter.hh"
-
 #include "xtcdata/xtc/ConfigIter.hh"
 typedef XtcData::ConfigIter ConfigIter;
 
@@ -31,26 +28,22 @@ namespace detector {
 class AreaDetector : public Detector {
 public:
 
-  //typedef uint16_t rawu16_t;
-
   AreaDetector(const std::string& detname, ConfigIter& config);
   AreaDetector(const std::string& detname);
   AreaDetector(); 
 
   virtual ~AreaDetector();
 
+  void _default_msg(const std::string& msg=std::string()) const;
+
   virtual void process_config();
   virtual void process_data(XtcData::DataIter& datao);
-
-  void _default_msg(const std::string& msg=std::string()) const;
 
   virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
   virtual std::string detid(const int ind=-1);
 
-  /// shape, size, ndim of data from configuration object
-  virtual const size_t   ndim();
-  virtual const size_t   size();
-  //virtual const shape_t* shape();
+  virtual const size_t ndim();
+  virtual const size_t size();
   virtual shape_t* shape();
 
   virtual const size_t   ndim (const event_t&);
@@ -100,7 +93,6 @@ public:
 
   /// access to geometry
   virtual const geometry_t& geometry(const event_t&);
-
   virtual NDArray<const pixel_coord_t>& coords     (const event_t&, const size_t& axis=0);
   virtual NDArray<const pixel_idx_t>&   indexes    (const event_t&, const size_t& axis=0);
   virtual NDArray<const pixel_size_t>&  pixel_size (const event_t&, const size_t& axis=0);

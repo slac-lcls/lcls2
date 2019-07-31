@@ -279,6 +279,32 @@ void test_getCalibParsDB_NDArray(const DBTYPE& dbtype=DBDEF) {
 
 //-------------------
 
+void test_getCalibParsDB_NDArray_jungfrau() {
+  MSG(INFO, "In test_getCalibParsDB_NDArray test access to CalibParsDB through the factory method getCalibParsDB");
+
+  Query::map_t map = 
+    {{Query::DETECTOR,  "jungfrau_0004"}
+    ,{Query::EXPERIMENT,"xpptut15"}
+    ,{Query::CALIBTYPE, "pedestals"}
+    ,{Query::RUN,       "430"}
+    ,{Query::TIME_SEC,  "0"}
+    ,{Query::VERSION,   "NULL"}
+    };
+  Query q(map);
+  std::cout << "q: " << q.string_members("\n   ") << "\n\n";
+
+  CalibParsDB* o = getCalibParsDB(DBWEB);
+  std::cout << "In test_CalibParsDB dbtypename: " << o->dbtypename() << '\n';
+
+  //const NDArray<float>& nda = o->get_ndarray_float(q);
+  const NDArray<double>& nda = o->get_ndarray_double(q);
+  std::cout << "\n  pedestals   : " << nda << '\n'; 
+
+  delete o;
+}
+
+//-------------------
+
 void test_getCalibParsDB_string(const DBTYPE& dbtype=DBDEF) {
   MSG(INFO, "In test_getCalibParsDB_string test access to CalibParsDB through the factory method getCalibParsDB");
 
@@ -425,6 +451,7 @@ std::string usage(const std::string& tname="")
   if (tname == "" || tname=="13") ss << "\n  13  - test_getCalibParsDB_string  (DBWEB)";
   if (tname == "" || tname=="14") ss << "\n  14  - test_getCalibParsDB_metadata(DBWEB)";
   if (tname == "" || tname=="15") ss << "\n  15  - test_getCalibParsDB_data    (DBWEB)";
+  if (tname == "" || tname=="16") ss << "\n  16  - test_getCalibParsDB_NDArray_jungfrau()";
 
   if (tname == "" || tname=="20") ss << "\n  20  - test_Query()";
   ss << '\n';
@@ -458,6 +485,7 @@ int main(int argc, char **argv) {
   else if (tname=="13") test_getCalibParsDB_string(DBWEB);
   else if (tname=="14") test_getCalibParsDB_metadata(DBWEB);
   else if (tname=="15") test_getCalibParsDB_data(DBWEB);
+  else if (tname=="16") test_getCalibParsDB_NDArray_jungfrau();
 
   else if (tname=="20") test_Query();
 

@@ -45,6 +45,8 @@ char_expand  = u' \u25BC' # down-head triangle
 class CGWMainConfiguration(QGroupBox) :
     """
     """
+    list_of_aliases = ['NOBEAM', 'BEAM']
+
     def __init__(self, parent=None, parent_ctrl=None):
 
         QGroupBox.__init__(self, 'Configuration', parent)
@@ -144,7 +146,7 @@ class CGWMainConfiguration(QGroupBox) :
         inst, confdb = self.inst_configdb('on_but_type: ')
         list_of_aliases = confdb.get_aliases(hutch=inst) # ['NOBEAM', 'BEAM']
         if not list_of_aliases :
-            list_of_aliases = ['NOBEAM', 'BEAM']
+            list_of_aliases = self.list_of_aliases # ['NOBEAM', 'BEAM']
             logger.warning('List of configdb-s IS EMPTY... Use default: %s' % str(list_of_aliases))
 
         selected = popup_select_item_from_list(self.but_type, list_of_aliases, dx=-46, dy=-33)
@@ -170,6 +172,8 @@ class CGWMainConfiguration(QGroupBox) :
              transition, state, cfgtype = daq_control().getStatus()
 
         if cfgtype == self.type_old : return
+
+        if not (cfgtype in self.list_of_aliases) : return
 
         self.set_but_type_text(cfgtype)
         self.type_old = cfgtype
