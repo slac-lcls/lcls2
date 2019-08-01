@@ -17,7 +17,6 @@ if(BUILD_SHMEM)
   add_library(shmemcli SHARED
     ShmemClient.cc
     XtcMonitorMsg.cc
-    TransitionCache.cc
   )
 
   target_include_directories(shmemcli PUBLIC

@@ -181,9 +181,9 @@ public:
             Names& names = *(Names*)xtc;
             _namesLookup[names.namesId()] = NameIndex(names);
             Alg& alg = names.alg();
-	    printf("*** DetName: %s, Segment %d, DetType: %s, Alg: %s, Version: 0x%6.6x, Names:\n",
+	    printf("*** DetName: %s, Segment %d, DetType: %s, Alg: %s, Version: 0x%6.6x, namesid: 0x%x, Names:\n",
                    names.detName(), names.segment(), names.detType(),
-                   alg.name(), alg.version());
+                   alg.name(), alg.version(), (int)names.namesId());
 
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
@@ -196,9 +196,15 @@ public:
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
             NamesId namesId = shapesdata.namesId();
-            // protect against the fact that this xtc
-            // may not have a _namesLookup
-            if (_namesLookup.count(namesId)<0) break;
+            // protect against the fact that this namesid
+            // may not have a NamesLookup.  cpo thinks this
+            // should be fatal, since it is a sign the xtc is "corrupted",
+            // in some sense.
+            if (_namesLookup.count(namesId)<=0) {
+                printf("*** Corrupt xtc: namesid 0x%x not found in NamesLookup\n",(int)namesId);
+                throw "invalid namesid";
+                break;
+            }
             DescData descdata(shapesdata, _namesLookup[namesId]);
             Names& names = descdata.nameindex().names();
             Data& data = shapesdata.data();
@@ -231,8 +237,9 @@ int main(int argc, char* argv[])
     char* xtcname = 0;
     int parseErr = 0;
     unsigned neventreq = 0xffffffff;
+    bool debugprint = false;
 
-    while ((c = getopt(argc, argv, "hf:n:")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:d")) != -1) {
         switch (c) {
         case 'h':
             usage(argv[0]);
@@ -242,6 +249,9 @@ int main(int argc, char* argv[])
             break;
         case 'n':
             neventreq = atoi(optarg);
+            break;
+        case 'd':
+            debugprint = true;
             break;
         default:
             parseErr++;
@@ -266,12 +276,13 @@ int main(int argc, char* argv[])
     while ((dg = iter.next())) {
         if (nevent>=neventreq) break;
         nevent++;
-        printf("%s transition: time %d.%09d, pulseId 0x%lu, env 0x%lu, "
+        printf("event %d, %s transition: time %d.%09d, pulseId 0x%lu, env 0x%lu, "
                "payloadSize %d extent %d\n",
+               nevent,
                TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
                dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
                dg->env, dg->xtc.sizeofPayload(),dg->xtc.extent);
-        dbgiter.iterate(&(dg->xtc));
+        if (debugprint) dbgiter.iterate(&(dg->xtc));
     }
 
     ::close(fd);

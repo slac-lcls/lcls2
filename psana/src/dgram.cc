@@ -468,11 +468,16 @@ public:
             ShapesData& shapesdata = *(ShapesData*)xtc;
             // lookup the index of the names we are supposed to use
             NamesId namesId = shapesdata.namesId();
-            // protect against the fact that this datagram
-            // may not have a _namesLookup
+            // protect against the fact that this namesid
+            // may not have a NamesLookup.  cpo thinks this
+            // should be fatal, since it is a sign the xtc is "corrupted",
+            // in some sense.
             if (_namesLookup.count(namesId)>0) {
                 DescData descdata(shapesdata, _namesLookup[namesId]);
                 dictAssign(_pyDgram, descdata);
+            } else {
+                printf("*** Corrupt xtc: namesid 0x%x not found in NamesLookup\n",(int)namesId);
+                throw "invalid namesid";
             }
             break;
         }
