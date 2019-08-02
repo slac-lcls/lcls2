@@ -17,10 +17,12 @@ namespace XtcData
     enum { v_cntrl   = 0, k_cntrl   = 8 };
     enum { v_service = 0, k_service = 4 };
     enum { v_seqtype = 4, k_seqtype = 2 };
+    enum { v_ehdrerr = 7, k_ehdrerr = 1 }; // Event Header Error
 
     enum { m_cntrl   = ((1 << k_cntrl  ) - 1), s_cntrl   = (m_cntrl   << v_cntrl  ) };
     enum { m_service = ((1 << k_service) - 1), s_service = (m_service << v_service) };
     enum { m_seqtype = ((1 << k_seqtype) - 1), s_seqtype = (m_seqtype << v_seqtype) };
+    enum { m_ehdrerr = ((1 << k_ehdrerr) - 1), s_ehdrerr = (m_ehdrerr << v_ehdrerr) };
 
 class Sequence
 {
