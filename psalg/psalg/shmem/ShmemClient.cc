@@ -21,6 +21,7 @@
 #include <poll.h>
 
 //#define DBUG
+//#define DBUG2
 
 enum {PERMS = S_IRUSR|S_IRGRP|S_IROTH|S_IWUSR|S_IWGRP|S_IWOTH};
 enum {PERMS_IN  = S_IRUSR|S_IRGRP|S_IROTH};
@@ -149,6 +150,9 @@ namespace psalg {
 #endif
         if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
           XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
+#ifdef DBUG2
+          printf("*** received transition id %d\n",dg->seq.service());
+#endif
           index = i;
           size = myMsg.sizeOfBuffers();
           
@@ -192,6 +196,9 @@ namespace psalg {
 #endif
           if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
             XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
+#ifdef DBUG2
+            printf("*** received event id %d\n",dg->seq.service());
+#endif
             index = i;
             size = myMsg.sizeOfBuffers();
             return dg;
