@@ -26,6 +26,7 @@ private:
   void _addPaths(std::list<std::string> newPaths);
   double timeDiff(struct timespec* end, struct timespec* start);
   Dgram* next();
+  bool _interactive;
 
 public:
   XtcRunSet();
@@ -34,7 +35,8 @@ public:
   void addPathsFromDir(std::string dirPath, std::string matchString = "");
   void addPathsFromRunPrefix(std::string runPrefix);
   void addPathsFromListFile(std::string listFile);
-  void connect(char* partitionTag, unsigned sizeOfBuffers, int numberOfBuffers, unsigned nclients, int rate, bool verbose = false, bool veryverbose = false);
+  void connect(char* partitionTag, unsigned sizeOfBuffers, int numberOfBuffers, unsigned nclients, int rate,
+               bool verbose = false, bool veryverbose = false, bool interactive = false);
   void run();
   void wait();
   void exit();

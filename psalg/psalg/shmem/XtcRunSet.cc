@@ -7,6 +7,7 @@
 #include <iostream>
 #include <dirent.h>
 #include <string.h>
+#include <unistd.h>
 
 using namespace psalg::shmem;
 using namespace XtcData;
@@ -213,10 +214,11 @@ void XtcRunSet::addPathsFromListFile(string listFile) {
   _addPaths(newPaths);
 }
 
-void XtcRunSet::connect(char* partitionTag, unsigned sizeOfBuffers, int numberOfBuffers, unsigned nclients, int rate, bool verbose, bool veryverbose) {
+void XtcRunSet::connect(char* partitionTag, unsigned sizeOfBuffers, int numberOfBuffers, unsigned nclients, int rate, bool verbose, bool veryverbose, bool interactive) {
   if (_server == NULL) {
     _verbose = verbose;
     _veryverbose = veryverbose;
+    _interactive = interactive;
 
     if (rate > 0) {
       _period = 1000000000 / rate; // period in nanoseconds
@@ -271,7 +273,9 @@ void XtcRunSet::run() {
         timespec sleepTime;
         sleepTime.tv_sec = 0;
         sleepTime.tv_nsec = _period - busyTime;
-        if (nanosleep(&sleepTime, &now) < 0) {
+        if (_interactive) {
+          (void) getpass("--hit CR--");
+        } else if (nanosleep(&sleepTime, &now) < 0) {
           perror("nanosleep");
         }
       }

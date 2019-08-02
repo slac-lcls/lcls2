@@ -18,6 +18,7 @@ void usage(char* progname) {
   cerr << "other_options:" << endl;
   cerr << " [-r <ratePerSec>] [-c <# clients>]" << endl 
        << " [-L <numberOfLoops] " << endl
+       << " [-i]                 : interactive" << endl
        << "[-v] [-V]" << endl;
 }
 
@@ -41,12 +42,13 @@ int main(int argc, char* argv[]) {
   // These are for debugging (also optional)
   bool verbose = false;
   bool veryverbose = false;
+  bool interactive = false;
 
   //  (void) signal(SIGINT, sigfunc);
   //  (void) signal(SIGSEGV, sigfunc);
 
   int c;
-  while ((c = getopt(argc, argv, "f:l:x:d:p:n:s:r:c:L:vVh?")) != -1) {
+  while ((c = getopt(argc, argv, "f:l:x:d:p:n:s:r:c:L:vVih?")) != -1) {
     switch (c) {
       case 'f':
         xtcFile = optarg;
@@ -85,6 +87,9 @@ int main(int argc, char* argv[]) {
         verbose = true;
         veryverbose = true;
         break;
+      case 'i':
+        interactive = true;
+        break;
       case 'h':
       case '?':
         usage(argv[0]);
@@ -117,7 +122,7 @@ int main(int argc, char* argv[]) {
   }
 
   XtcRunSet runSet;
-  runSet.connect(partitionTag, sizeOfBuffers, numberOfBuffers, nclients, rate, verbose, veryverbose);
+  runSet.connect(partitionTag, sizeOfBuffers, numberOfBuffers, nclients, rate, verbose, veryverbose, interactive);
   runSet.wait();
   do {
     if (xtcFile) {
