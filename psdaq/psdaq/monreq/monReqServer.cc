@@ -318,7 +318,8 @@ namespace Pds {
       void*    buffer = _pool->alloc(sizeof(Dgram) + sz + sizeof(idx));
       if (!buffer)
       {
-        fprintf(stderr, "%s:\n  Dgram pool allocation failed:\n", __PRETTY_FUNCTION__);
+        fprintf(stderr, "%s:\n  Dgram pool allocation of size %zd failed:\n",
+                __PRETTY_FUNCTION__, sizeof(Dgram) + sz + sizeof(idx));
         _pool->dump();
         abort();
       }
@@ -336,7 +337,7 @@ namespace Pds {
         unsigned env = dg->env;
         unsigned svc = dg->seq.service();
         printf("MEB processed              event[%5ld]    @ "
-               "%16p, ctl %02x, pid %014lx, sz %4zd, src %2d, env %08x, %3s # %2d\n",
+               "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, %3s # %2d\n",
                _eventCount, dg, ctl, pid, sz, src, env,
                svc == TransitionId::L1Accept ? "buf" : "tr", idx);
       }

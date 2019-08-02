@@ -41,6 +41,7 @@ EbAppBase::EbAppBase(const EbParams& prms,
                 duration,
                 prms.verbose),
   _transport   (prms.verbose),
+  _maxEntries  (maxEntries),
   _maxBuffers  (maxBuffers),
   //_dummy       (Level::Fragment),
   _verbose     (prms.verbose),
@@ -189,18 +190,22 @@ int EbAppBase::process()
 
   if (_verbose)
   {
-    unsigned        env = idg->env;
-    uint64_t        pid = idg->seq.pulseId().value();
-    unsigned        ctl = idg->seq.pulseId().control();
-    const char*     knd = (ImmData::buf(flg) == ImmData::Buffer)
-                        ? "buffer"
-                        : TransitionId::name(idg->seq.service());
+    unsigned    env = idg->env;
+    uint64_t    pid = idg->seq.pulseId().value();
+    unsigned    ctl = idg->seq.pulseId().control();
+    const char* knd = (ImmData::buf(flg) == ImmData::Buffer)
+                    ? "buffer"
+                    : TransitionId::name(idg->seq.service());
     printf("EbAp rcvd %6ld %15s[%5d]    @ "
-           "%16p, ctl %02x, pid %014lx,          src %2d, env %08x, data %08lx, ext %4d\n",
+           "%16p, ctl %02x, pid %014lx,            src %2d, env %08x, data %08lx, ext %4d\n",
            _bufferCnt, knd, idx, idg, ctl, pid, lnk->id(), env, data, idg->xtc.extent);
   }
 
-  EventBuilder::process(idg, data);
+  // Tr space bufSize value is irrelevant since maxEntries will be 1 for that case
+  unsigned maxEntries = (ImmData::buf(flg) == ImmData::Buffer) ? _maxEntries : 1;
+  size_t   bufSize    = _maxBufSize[src] / maxEntries;
+
+  EventBuilder::process(idg, bufSize, maxEntries, data);
 
   return 0;
 }

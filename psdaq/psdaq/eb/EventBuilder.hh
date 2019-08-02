@@ -34,7 +34,10 @@ namespace Pds {
     public:
       void               expired();
     public:
-      void               process(const XtcData::Dgram*, unsigned prm);
+      void               process(const XtcData::Dgram* dgrams,
+                                 const size_t          bufSize,
+                                 unsigned              maxEntries,
+                                 unsigned              prm);
     public:
       void               clear();
       void               dump(unsigned detail) const;

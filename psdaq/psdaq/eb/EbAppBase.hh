@@ -53,6 +53,7 @@ namespace Pds {
       std::vector<size_t>      _trRegSize;
       std::vector<size_t>      _maxTrSize;
       std::vector<size_t>      _maxBufSize;
+      const unsigned           _maxEntries;
       const unsigned           _maxBuffers;
       //EbDummyTC                _dummy;   // Template for TC of dummy contributions  // Revisit: ???
       const unsigned           _verbose;

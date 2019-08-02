@@ -413,14 +413,18 @@ void EventBuilder::expired()            // Periodically called upon a timeout
 ** --
 */
 
-void EventBuilder::process(const Dgram* ctrb, unsigned prm)
+void EventBuilder::process(const Dgram* ctrb,
+                           const size_t size,
+                           unsigned     maxEntries,
+                           unsigned     prm)
 {
-  EbEpoch*       epoch = _match(ctrb->seq.pulseId().value());
+  uint64_t       pid   = ctrb->seq.pulseId().value();
+  EbEpoch*       epoch = _match(pid);
   EbEvent*       event = epoch->pending.forward();
   const EbEvent* due   = nullptr;
-  unsigned       cnt   = 0;
+  unsigned       cnt   = maxEntries;
 
-  while (true)
+  do
   {
     event = _insert(epoch, ctrb, event, prm);
     if (!event->_remaining)  due = event;
@@ -429,7 +433,6 @@ void EventBuilder::process(const Dgram* ctrb, unsigned prm)
     {
       unsigned  env = ctrb->env;
       unsigned  ctl = ctrb->seq.pulseId().control();
-      uint64_t  pid = ctrb->seq.pulseId().value();
       uint32_t* pld = reinterpret_cast<uint32_t*>(ctrb->xtc.payload());
       size_t    sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
       unsigned  src = ctrb->xtc.src.value();
@@ -438,11 +441,11 @@ void EventBuilder::process(const Dgram* ctrb, unsigned prm)
              ctrb, ctl, pid, sz, src, env, pld[WRT_IDX], pld[MON_IDX], prm, due ? due->sequence() : 0ul);
     }
 
-    ctrb = reinterpret_cast<const Dgram*>(ctrb->xtc.next());
+    ctrb = reinterpret_cast<const Dgram*>(reinterpret_cast<const char*>(ctrb) + size);
 
-    uint64_t pid = ctrb->seq.pulseId().value();
-    if ((++cnt == MAX_ENTRIES) || !pid)  break; // Handle full list faster
+    pid = ctrb->seq.pulseId().value();
   }
+  while (--cnt && pid);                 // Handle full list faster
 
   if (due)
   {

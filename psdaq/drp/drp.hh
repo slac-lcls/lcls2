@@ -17,6 +17,7 @@ struct PGPEvent
 {
     DmaBuffer buffers[4];
     uint8_t mask = 0;
+    void* l3InpBuf;
 };
 
 struct Parameters

@@ -5,6 +5,7 @@
 
 #include "BatchManager.hh"
 #include "EbLfClient.hh"
+#include "psdaq/service/Fifo.hh"
 
 #include <cstdint>
 #include <memory>
@@ -39,7 +40,7 @@ namespace Pds {
       void       stop();
       void       shutdown();
     public:
-      void*      allocate(const XtcData::Dgram* datagram, const void* appPrm);
+      void*      allocate(const XtcData::Transition* header, const void* appPrm);
       void       process(const XtcData::Dgram* datagram);
       void       post(const XtcData::Dgram* nonEvent);
       void       post(const Batch* input);
@@ -56,7 +57,7 @@ namespace Pds {
       unsigned               _numEbs;
       BatchFifo              _pending;     // Time ordered list of completed Batches
       size_t                 _batchBase;
-      uint16_t               _postFlag;
+      Batch*                 _batch;
     private:
       uint64_t               _eventCount;
       uint64_t               _batchCount;

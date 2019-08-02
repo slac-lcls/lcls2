@@ -1,16 +1,14 @@
 #ifndef PSDAQ_TIMING_HEADER_H
 #define PSDAQ_TIMING_HEADER_H
 
-#include "xtcdata/xtc/Sequence.hh"
+#include "xtcdata/xtc/Dgram.hh"
 
 namespace Pds {
 
 #pragma pack(push,4)
 
-class TimingHeader {
+  class TimingHeader : public XtcData::Transition {
 public:
-    XtcData::Sequence seq;
-    uint32_t env;
     uint32_t evtCounter;
     uint32_t _opaque[2];
 };

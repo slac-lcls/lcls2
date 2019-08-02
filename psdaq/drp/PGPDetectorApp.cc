@@ -62,7 +62,8 @@ void PGPDetectorApp::handleConnect(const json& msg)
     if (m_drp.exposer()) {
         m_drp.exposer()->RegisterCollectable(exporter);
     }
-    m_pgpThread = std::thread{&PGPDetector::reader, std::ref(*m_pgpDetector), exporter};
+    m_pgpThread = std::thread{&PGPDetector::reader, std::ref(*m_pgpDetector), exporter,
+                              std::ref(m_drp.tebContributor())};
     m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
                                     std::ref(m_drp.tebContributor()));
 

@@ -4,19 +4,16 @@
 #include "eb.hh"
 #include "Batch.hh"
 #include "IndexPool.hh"
-#include "psdaq/service/Fifo.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <cstddef>                      // For size_t
 #include <cstdint>                      // For uint64_t
 #include <atomic>
-#include <set>
 
 namespace Pds {
   namespace Eb {
 
     using BatchFreeList = IndexPoolW<Batch>;
-    using BatchBusyList = std::multiset<Batch*, Batch>;
     using AppPrm        = std::atomic<uintptr_t>;
 
     class BatchManager
@@ -27,14 +24,10 @@ namespace Pds {
     public:
       void            stop();
       void            shutdown();
-      void            flush();
-      Batch*          fetch() const;
-      Batch*          allocate(uint64_t pid);
-      Batch*          allocate(const XtcData::Dgram& dg);
+      Batch*          allocate(const XtcData::Transition&);
       void            release(const Batch*);
       Batch*          batch(unsigned idx);
       const Batch*    batch(unsigned idx) const;
-      BatchBusyList&  busylist();
       size_t          maxSize()           const;
       size_t          maxBatchSize()      const;
       void*           batchRegion()       const;
@@ -50,10 +43,7 @@ namespace Pds {
       const size_t   _maxBatchSize;  // Max batch size rounded up by page size
       char* const    _region;        // RDMA buffers for batches
       BatchFreeList  _freelist;      // Free list of Batch objects
-      BatchBusyList  _busylist;      // List of in-use Batch objects
       AppPrm* const  _appPrms;       // Lookup array of application parameters
-    private:
-      Batch*         _batch;         // Batch currently being accumulated
     };
   };
 };
@@ -102,32 +92,9 @@ size_t Pds::Eb::BatchManager::maxBatchSize() const
 }
 
 inline
-void Pds::Eb::BatchManager::flush()
+Pds::Eb::Batch* Pds::Eb::BatchManager::allocate(const XtcData::Transition& hdr)
 {
-  _batch = nullptr;                     // Force a new batch to be started
-}
-
-inline
-Pds::Eb::Batch* Pds::Eb::BatchManager::fetch() const
-{
-  return _batch;
-}
-
-inline
-Pds::Eb::Batch* Pds::Eb::BatchManager::allocate(uint64_t pid)
-{
-  const auto idx = Pds::Eb::Batch::batchNum(pid);
-  auto       bat = _freelist.allocate(idx);
-  if (bat)  bat->initialize(pid);   // Full PID, not BatchNum
-
-  _batch = bat;
-  return bat;
-}
-
-inline
-Pds::Eb::Batch* Pds::Eb::BatchManager::allocate(const XtcData::Dgram& dg)
-{
-  const auto pid = dg.seq.pulseId().value();
+  const auto pid = hdr.seq.pulseId().value();
   const auto idx = Pds::Eb::Batch::batchNum(pid);
 
   if (_freelist.isAllocated(idx))
@@ -136,26 +103,16 @@ Pds::Eb::Batch* Pds::Eb::BatchManager::allocate(const XtcData::Dgram& dg)
 
     assert((bat->id() & ~(BATCH_DURATION - 1)) == (pid & ~(BATCH_DURATION - 1)));
 
-    bat->accumRogs(dg);
-
     return bat;
   }
   else
   {
     auto bat = _freelist.allocate(idx);
 
-    bat->initialize(dg);
-
-    _busylist.insert(bat);
+    bat->initialize(hdr);
 
     return bat;
   }
-}
-
-inline
-Pds::Eb::BatchBusyList& Pds::Eb::BatchManager::busylist()
-{
-  return _busylist;
 }
 
 inline

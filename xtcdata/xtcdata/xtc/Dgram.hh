@@ -16,6 +16,8 @@ public:
     Transition(const Sequence& seq_, uint32_t env_) :
         seq(seq_), env(env_) { }
 public:
+    uint16_t readoutGroups() const { return (env)&0xffff; }
+public:
     Sequence seq;
     uint32_t env;
 };
@@ -26,8 +28,6 @@ public:
     Dgram() {}
     Dgram(const Transition& transition_, const Xtc& xtc_) :
         Transition(transition_), xtc(xtc_)  { }
-public:
-    uint16_t readoutGroups() const { return (env)&0xffff; }
 public:
     Xtc xtc;
 };

@@ -133,7 +133,7 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
 
   while (true)
   {
-    if (!running)
+    if (!running.load(std::memory_order_relaxed))
     {
       if (_transport.pollEQ() == -FI_ENOTCONN)  break;
     }
@@ -206,7 +206,7 @@ void EbCtrbInBase::_pairUp(TebContributor& ctrb,
         uint64_t cachedPid = batch->result()->seq.pulseId().value();
         fprintf(stderr, "%s:\n  Slot is already occupied by an unhandled result:\n"
                 "    input batch  idx %08x, pid %014lx\n"
-                "    saved result           pid %014lx\n"
+                "    saved result               pid %014lx\n"
                 "    new result   idx %08x, pid %014lx\n"
                 "    pending head idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
                 batch->index(), batch->id(),
@@ -271,11 +271,13 @@ void EbCtrbInBase::_process(TebContributor& ctrb,
 {
   const Dgram* result = results;
   const Dgram* input  = static_cast<const Dgram*>(inputs->buffer());
+  const size_t iSize  = inputs->size();
+  const size_t rSize  = _maxBatchSize / MAX_ENTRIES;
   uint64_t     rPid   = result->seq.pulseId().value();
   uint64_t     iPid   = input->seq.pulseId().value();
-  unsigned     rCnt   = 0;
-  unsigned     iCnt   = 0;
-  while (true)
+  unsigned     rCnt   = MAX_ENTRIES;
+  unsigned     iCnt   = MAX_ENTRIES;
+  do
   {
     // Ignore results for which there is no input
     // This can happen due to this Ctrb being in a different readout group than
@@ -298,56 +300,25 @@ void EbCtrbInBase::_process(TebContributor& ctrb,
 
     if (rPid == iPid)
     {
-      //static unsigned lastIndex = 0;
-      //unsigned index = reinterpret_cast<uint32_t*>(input->xtc.payload())[1];
-      //if (index != ((lastIndex + 1) & (131072 - 1))) {
-      //  printf("EbCtrbInBase:  index %u  last %u  diff %d\n", index, lastIndex, index - lastIndex);
-      //  printf("EbCtrbInBase:  pid %014lx, env %08x %08x\n", rPid, input->env, result->env);
-      //
-      //  unsigned     cnt = 0;
-      //  const Dgram* res = results;
-      //  const Dgram* inp = static_cast<const Dgram*>(inputs->buffer());
-      //  while (true)
-      //  {
-      //    printf("Res: %2d pid = %014lx, env = %08x\n", cnt++, res->seq.pulseId().value(), res->env);
-      //
-      //    res = reinterpret_cast<const Dgram*>(res->xtc.next());
-      //
-      //    uint64_t pid = res->seq.pulseId().value();
-      //    if ((cnt == MAX_ENTRIES) || !pid)  break; // Handle full list faster
-      //  }
-      //  cnt = 0;
-      //  while (true)
-      //  {
-      //    printf("Inp: %2d pid = %014lx, env = %08x, index %u\n", cnt++, inp->seq.pulseId().value(), inp->env, reinterpret_cast<uint32_t*>(inp->xtc.payload())[1]);
-      //
-      //    inp = reinterpret_cast<const Dgram*>(inp->xtc.next());
-      //
-      //    uint64_t pid = inp->seq.pulseId().value();
-      //    if ((cnt == MAX_ENTRIES) || !pid)  break; // Handle full list faster
-      //  }
-      //}
-      //lastIndex = index;
-
       process(result, inputs->retrieve(iPid));
 
-      ++_eventCount;                  // Don't count events not meant for us
+      ++_eventCount;                    // Don't count events not meant for us
 
-      input = reinterpret_cast<const Dgram*>(input->xtc.next());
+      input = reinterpret_cast<const Dgram*>(reinterpret_cast<const char*>(input) + iSize);
 
       iPid = input->seq.pulseId().value();
-      if ((++iCnt == MAX_ENTRIES) || !iPid)  break; // Handle full list faster
+      if (!--iCnt || !iPid)  break;     // Handle full list faster
     }
 
-    result = reinterpret_cast<const Dgram*>(result->xtc.next());
+    result = reinterpret_cast<const Dgram*>(reinterpret_cast<const char*>(result) + rSize);
 
     rPid = result->seq.pulseId().value();
-    if ((++rCnt == MAX_ENTRIES) || !rPid)  break; // Handle full list faster
   }
+  while (--rCnt && rPid);               // Handle full list faster
 
-  if ((iCnt != MAX_ENTRIES) && iPid)
+  if (iCnt && iPid)
   {
     fprintf(stderr, "%s:\n  Warning: Not all inputs received results, inp: %d %014lx res: %d %014lx\n",
-            __PRETTY_FUNCTION__, iCnt, iPid, rCnt, rPid);
+            __PRETTY_FUNCTION__, MAX_ENTRIES - iCnt, iPid, MAX_ENTRIES - rCnt, rPid);
   }
 }

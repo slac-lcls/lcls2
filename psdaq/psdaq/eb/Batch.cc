@@ -8,17 +8,17 @@ using namespace Pds::Eb;
 
 Batch::Batch() :
   _buffer (nullptr),
+  _size   (0),
   _id     (0),
-  _dg     (nullptr),
   _appPrms(nullptr),
   _result (nullptr)
 {
 }
 
-Batch::Batch(void* buffer, AppPrm* appPrms) :
-  _buffer (static_cast<Dgram*>(buffer)),
+Batch::Batch(void* buffer, size_t bufSize, AppPrm* appPrms) :
+  _buffer (buffer),
+  _size   (bufSize),
   _id     (0),
-  _dg     (nullptr),
   _appPrms(appPrms),
   _result (nullptr)
 {
@@ -26,25 +26,27 @@ Batch::Batch(void* buffer, AppPrm* appPrms) :
 
 void Batch::dump() const
 {
-  const Dgram* dg = static_cast<Dgram*>(_buffer);
-  if (dg)
+  const char* buffer = static_cast<const char*>(_buffer);
+  if (buffer)
   {
     printf("Dump of Batch at index %d\n", index());
     unsigned cnt = 0;
     while (true)
     {
-      const char* svc = TransitionId::name(dg->seq.service());
-      unsigned    ctl = dg->seq.pulseId().control();
-      uint64_t    pid = dg->seq.pulseId().value();
-      size_t      sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
-      unsigned    src = dg->xtc.src.value();
-      unsigned    env = dg->env;
-      uint32_t*   inp = (uint32_t*)dg->xtc.payload();
+      const Dgram* dg  = reinterpret_cast<const Dgram*>(buffer);
+      const char*  svc = TransitionId::name(dg->seq.service());
+      unsigned     ctl = dg->seq.pulseId().control();
+      uint64_t     pid = dg->seq.pulseId().value();
+      size_t       sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
+      unsigned     src = dg->xtc.src.value();
+      unsigned     env = dg->env;
+      uint32_t*    inp = (uint32_t*)dg->xtc.payload();
       printf("  %2d, %15s  dg @ "
              "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, inp [%08x, %08x], appPrm %p\n",
              cnt, svc, dg, ctl, pid, sz, src, env, inp[0], inp[1], retrieve(pid));
 
-      dg = reinterpret_cast<const Dgram*>(dg->xtc.next());
+      buffer += _size;
+      dg      = reinterpret_cast<const Dgram*>(buffer);
 
       pid = dg->seq.pulseId().value();
       if ((++cnt == MAX_ENTRIES) || !pid)  break; // Handle full list faster

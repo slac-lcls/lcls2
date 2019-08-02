@@ -106,10 +106,11 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
     //       timingHeader->evtCounter, index, transitionId, timingHeader->seq.pulseId().value(), timingHeader->env);
 
     // pass everything except L1 accepts and slow updates to control level
-    if ((transitionId != XtcData::TransitionId::L1Accept) &&
-        (transitionId != XtcData::TransitionId::SlowUpdate)) {
+    if ((transitionId != XtcData::TransitionId::L1Accept)) {
         // send pulseId to inproc so it gets forwarded to the collection
-        m_inprocSend.send(std::to_string(timingHeader->seq.pulseId().value()));
+        if (transitionId != XtcData::TransitionId::SlowUpdate) {
+            m_inprocSend.send(std::to_string(timingHeader->seq.pulseId().value()));
+        }
         printf("EbReceiver saw %s transition\n", XtcData::TransitionId::name(transitionId));
     }
 
@@ -203,7 +204,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
                 /* .addrs         = */ { },
                 /* .ports         = */ { },
                 /* .maxInputSize  = */ maxSize,
-                /* .core          = */ { 10, 11 },
+                /* .core          = */ { 11, 12 },
                 /* .verbose       = */ 0,
                 /* .readoutGroup  = */ 0,
                 /* .contractor    = */ 0 };
