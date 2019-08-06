@@ -19,3 +19,7 @@ def setup_input_files(tmp_path):
 
     shutil.copy(s01file,str(smd_dir / 'data-r0002-s00.smd.xtc2'))
     shutil.copy(s23file,str(smd_dir / 'data-r0002-s01.smd.xtc2'))
+
+if __name__ == "__main__":
+    import pathlib
+    setup_input_files(pathlib.Path('.'))
