@@ -43,4 +43,20 @@ namespace psalg {
   };
 };
 
+#define TR_HASH(a,b)                (((a)*1000)+(b))
+
+#define CONFIGURE_UNCONFIGURE       TR_HASH(XtcData::TransitionId::Configure, XtcData::TransitionId::Unconfigure)
+#define CONFIGURE_ENABLE            TR_HASH(XtcData::TransitionId::Configure, XtcData::TransitionId::Enable)
+#define CONFIGURE_CONFIGUPDATE      TR_HASH(XtcData::TransitionId::Configure, XtcData::TransitionId::ConfigUpdate)
+
+#define CONFIGUPDATE_UNCONFIGURE    TR_HASH(XtcData::TransitionId::ConfigUpdate, XtcData::TransitionId::Unconfigure)
+#define CONFIGUPDATE_CONFIGUPDATE   TR_HASH(XtcData::TransitionId::ConfigUpdate, XtcData::TransitionId::ConfigUpdate)
+#define CONFIGUPDATE_ENABLE         TR_HASH(XtcData::TransitionId::ConfigUpdate, XtcData::TransitionId::Enable)
+
+#define ENABLE_DISABLE              TR_HASH(XtcData::TransitionId::Enable, XtcData::TransitionId::Disable)
+#define ENABLE_SLOWUPDATE           TR_HASH(XtcData::TransitionId::Enable, XtcData::TransitionId::SlowUpdate)
+
+#define SLOWUPDATE_SLOWUPDATE       TR_HASH(XtcData::TransitionId::SlowUpdate, XtcData::TransitionId::SlowUpdate)
+#define SLOWUPDATE_DISABLE          TR_HASH(XtcData::TransitionId::SlowUpdate, XtcData::TransitionId::Disable)
+
 #endif
