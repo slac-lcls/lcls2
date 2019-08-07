@@ -6,6 +6,8 @@ from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
 from psana.psexp.packet_footer import PacketFooter
 from psana.event import Event
+from psana.psexp.config_update import ConfigUpdate
+from psana import dgram
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -147,10 +149,19 @@ class SmdNode(object):
     offsets and dgramsizes into a numpy array. Sends
     this np array to bd_nodes that are registered to it."""
     def __init__(self, run):
-        self.eb_man = EventBuilderManager(run.configs, batch_size=run.batch_size, filter_fn=run.filter_callback, destination=run.destination)
         self.n_bd_nodes = bd_comm.Get_size() - 1
         self.run = run
         self.epics_man = UpdateManager(bd_size, self.run.epics_store.n_files)
+        self._update_dgram_pos = 0 # bookkeeping for running in scan mode
+
+    def pack(self, *args):
+        pf = PacketFooter(len(args))
+        batch = bytearray()
+        for i, arg in enumerate(args):
+            pf.set_size(i, memoryview(arg).shape[0])
+            batch += arg
+        batch += pf.footer
+        return batch
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
@@ -168,52 +179,56 @@ class SmdNode(object):
             # Unpack the chunk received from Smd0
             pf = PacketFooter(view=chunk)
             smd_chunk, epics_chunk = pf.split_packets()
+        
+            eb_man = EventBuilderManager(smd_chunk, self.run.configs, \
+                    batch_size=self.run.batch_size, filter_fn=self.run.filter_callback, \
+                    destination=self.run.destination)
             
             # Unpack epics chunk and updates run's epics_store and epics_manager  
             pfe = PacketFooter(view=epics_chunk)
             epics_views = pfe.split_packets()
             self.run.epics_store.update(epics_views)
             self.epics_man.extend_buffers(epics_views)
+
+            # For scan mode, only send out events within a configUpdate cycle
+            if self.run.scan:
+                update_dgrams = [update_dgram for update_dgram in \
+                        self.run.epics_store.dgrams()]
+            else:
+                update_dgrams = [bytearray()]
             
             # Build batch of events
-            for smd_batch_dict in self.eb_man.batches(smd_chunk):
-
-                # If single item and dest_rank=0, send to any bigdata nodes.
-                if 0 in smd_batch_dict.keys():
-                    smd_batch, _ = smd_batch_dict[0]
-
-                    bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-
-                    epics_batch = self.epics_man.get_buffer(rankreq[0])
-
-                    _pf = PacketFooter(2)
-                    _pf.set_size(0, memoryview(smd_batch).shape[0])
-                    _pf.set_size(1, memoryview(epics_batch).shape[0])
-                    batch = smd_batch + epics_batch + _pf.footer
-                    
-                    bd_comm.Send(batch, dest=rankreq[0])
-
-                # With > 1 dest_rank, start looping until all dest_rank batches
-                # have been sent.
+            for i, update_dgram in enumerate(update_dgrams):
+                if i < self._update_dgram_pos: continue
+                self._update_dgram_pos += 1
+                if update_dgram:
+                    limit_ts = update_dgram.seq.timestamp()
                 else:
-                    while smd_batch_dict:
+                    limit_ts = -1
+                
+                for smd_batch_dict in eb_man.batches(limit_ts=limit_ts):
+                    # If single item and dest_rank=0, send to any bigdata nodes.
+                    if 0 in smd_batch_dict.keys():
+                        smd_batch, _ = smd_batch_dict[0]
                         bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+                        epics_batch = self.epics_man.get_buffer(rankreq[0])
+                        batch = self.pack(smd_batch, epics_batch) 
+                        bd_comm.Send(batch, dest=rankreq[0])
 
-                        if rankreq[0] in smd_batch_dict:
-                            smd_batch, _ = smd_batch_dict[rankreq[0]]
+                    # With > 1 dest_rank, start looping until all dest_rank batches
+                    # have been sent.
+                    else:
+                        while smd_batch_dict:
+                            bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
 
-                            epics_batch = self.epics_man.get_buffer(rankreq[0])
-
-                            _pf = PacketFooter(2)
-                            _pf.set_size(0, memoryview(smd_batch).shape[0])
-                            _pf.set_size(1, memoryview(epics_batch).shape[0])
-                            batch = smd_batch + epics_batch + _pf.footer
-                            
-                            bd_comm.Send(batch, dest=rankreq[0])
-
-                            del smd_batch_dict[rankreq[0]] # done sending 
-                        else:
-                            bd_comm.Send(bytearray(b'wait'), dest=rankreq[0])
+                            if rankreq[0] in smd_batch_dict:
+                                smd_batch, _ = smd_batch_dict[rankreq[0]]
+                                epics_batch = self.epics_man.get_buffer(rankreq[0])
+                                batch = self.pack(smd_batch, epics_batch) 
+                                bd_comm.Send(batch, dest=rankreq[0])
+                                del smd_batch_dict[rankreq[0]] # done sending 
+                            else:
+                                bd_comm.Send(bytearray(b'wait'), dest=rankreq[0])
 
         # Done - kill all alive bigdata nodes
         for i in range(self.n_bd_nodes):
@@ -247,8 +262,11 @@ class BigDataNode(object):
             epics_views = pfe.split_packets()
             self.run.epics_store.update(epics_views)
 
-            for event in self.evt_man.events(smd_chunk):
-                yield event
+            if self.run.scan: 
+                yield ConfigUpdate(self.run, smd_batch=smd_chunk)
+            else:
+                for event in self.evt_man.events(smd_chunk):
+                    yield event
 
 def run_node(run):
     if nodetype == 'smd0':

@@ -52,11 +52,17 @@ for run in ds.runs():
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
 
 # Usecase 2: one iterator 
+ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
 for evt in ds.events():
     pass
 
-# Todo: MONA add back configUpdates()
-# Usecase#3: looping through configs
-#for run in ds.runs():
-#    for configUpdate in run.configUpdates():
-#        for config in configUpdate.events():
+# Usecase#3: looping through configUpdates
+ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
+for run in ds.runs():
+    det = run.Detector('xppcspad')
+    edet = run.Detector('HX2:DVD:GCC:01:PMON')
+    for config_update in run.configUpdates():
+        for evt in config_update.events():
+            padarray = vals.padarray
+            assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
+            

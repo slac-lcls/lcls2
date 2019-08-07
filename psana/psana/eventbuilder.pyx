@@ -56,7 +56,7 @@ cdef class EventBuilder:
                 return True
         return False
 
-    def build(self, unsigned batch_size=1, filter_fn=0, destination=0):
+    def build(self, batch_size=1, filter_fn=0, destination=0, limit_ts=-1):
         """
         Builds a list of batches.
 
@@ -99,7 +99,9 @@ cdef class EventBuilder:
         cdef short view_idx = 0
         cdef unsigned evt_idx = 0
 
-        while got < batch_size and self._has_more():
+        cdef unsigned reach_limit_ts = 0
+
+        while got < batch_size and self._has_more() and not reach_limit_ts:
             array.zero(self.timestamps)
             array.zero(self.dgram_sizes)
             
@@ -205,10 +207,15 @@ cdef class EventBuilder:
                 # TODO: 
                 # Find a place for filter(evt)
 
+                if limit_ts > -1:
+                    if self.max_ts >= limit_ts:
+                        reach_limit_ts = 1
+                        break
+                
                 got += 1
                 if got == batch_size:
                     break
-                
+
         
         self.nevents = got
         

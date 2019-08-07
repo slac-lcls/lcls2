@@ -29,8 +29,8 @@ def run_smd0_task(run):
 
 @task(inner=True)
 def run_smd_task(view, run):
-    eb_man = EventBuilderManager(run.configs, batch_size=run.batch_size, filter_fn=run.filter_callback, destination=0) #FIXME: needs to talk to Elliott how to handle cube data in legion
-    for i, batch_dict in enumerate(eb_man.batches(view)):
+    eb_man = EventBuilderManager(view, run.configs, batch_size=run.batch_size, filter_fn=run.filter_callback, destination=0) #FIXME: needs to talk to Elliott how to handle cube data in legion
+    for i, batch_dict in enumerate(eb_man.batches()):
         batch, _ = batch_dict[0]
         run_bigdata_task(batch, run, point=i)
 

@@ -129,3 +129,24 @@ for run in ds.runs():
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
     assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
+    
+# Usecase 5: test looping over configUpdates
+ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
+
+sendbuf = np.zeros(1, dtype='i')
+recvbuf = None
+if rank == 0:
+    recvbuf = np.empty([size, 1], dtype='i')
+
+for run in ds.runs():
+    det = run.Detector('xppcspad')
+    edet = run.Detector('HX2:DVD:GCC:01:PMON')
+    for config_update in run.configUpdates():
+        for evt in config_update.events():
+            sendbuf += 1
+            padarray = vals.padarray
+            raw = det.raw.calib(evt)
+
+comm.Gather(sendbuf, recvbuf, root=0)
+if rank == 0:
+    assert np.sum(recvbuf) == 6 # need this to make sure that events loop is active

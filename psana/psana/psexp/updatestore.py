@@ -86,13 +86,19 @@ class UpdateStore(object):
         """ Updates the store with new data from list of views. """
         if views:
             for i in range(self.n_files):
-                view, update = views[i], self._update_list[i]
+                view, update = bytearray(views[i]), self._update_list[i]
                 offset = 0
-                while offset < view.shape[0]:
+                while offset < memoryview(view).shape[0]:
                     d = Dgram(view=view, config=update.config, offset=offset)
                     update.add(d)
                     offset += d._size
                 
+    def dgrams(self):
+        # mona: for now, assuming that update dgrams are from a single smd file
+        for update in self._update_list:
+            for dgram in update.dgrams:
+                yield dgram
+    
     def values(self, events, update_variable):
         """ Returns values of the update_variable for the given events.
 
@@ -125,4 +131,10 @@ class UpdateStore(object):
                 break
         
         return update_values
+    
+    @property
+    def config(self):
+        # mona: for now, assuming that update dgrams are from a single smd file
+        assert len(self._update_list) > 0
+        return self._update_list[0].config
 

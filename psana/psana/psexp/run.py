@@ -13,6 +13,7 @@ from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
 from psana.psexp.updatestore import UpdateStore
 from psana.psexp.packet_footer import PacketFooter
+from psana.psexp.config_update import ConfigUpdate
 
 from psana.psexp.tools import mode
 MPI = None
@@ -70,6 +71,7 @@ class Run(object):
     filter_callback = None
     epics_store = None
     nfiles = 0
+    scan = False # True when looping over configUpdates
     
     def __init__(self, exp, run_no, max_events=0, batch_size=1, filter_callback=0, destination=0):
         self.exp = exp
@@ -236,19 +238,35 @@ class RunSerial(Run):
 
         #get smd chunks
         smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
-        eb_man = EventBuilderManager(self.configs, batch_size=self.batch_size, filter_fn=self.filter_callback)
         for (smd_chunk, update_chunk) in smdr_man.chunks():
             # Update epics_store for each chunk
             update_pf = PacketFooter(view=update_chunk)
             update_views = update_pf.split_packets()
             self.epics_store.update(update_views)
             
-            for batch_dict in eb_man.batches(smd_chunk):
+            eb_man = EventBuilderManager(smd_chunk, self.configs, batch_size=self.batch_size, filter_fn=self.filter_callback)
+            
+            for batch_dict in eb_man.batches():
                 batch, _ = batch_dict[0] # there's only 1 dest_rank for serial run
                 for evt in ev_man.events(batch):
                     if evt._dgrams[0].seq.service() != 12: continue
                     yield evt
     
+    def configUpdates(self):
+        """ Generates events between each config update. """
+        smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
+        for (smd_chunk, update_chunk) in smdr_man.chunks():
+            # Update updateStore
+            update_pf = PacketFooter(view=update_chunk)
+            update_views = update_pf.split_packets()
+            self.epics_store.update(update_views)
+            
+            eb_man = EventBuilderManager(smd_chunk, self.configs, \
+                    batch_size=self.batch_size, filter_fn=self.filter_callback)
+            
+            for update_dgram in self.epics_store.dgrams():
+                yield ConfigUpdate(self, eb_man=eb_man, update_dgram=update_dgram)
+
 
 class RunParallel(Run):
     """ Yields list of events from multiple smd/bigdata files using > 3 cores."""
@@ -302,6 +320,11 @@ class RunParallel(Run):
         for evt in run_node(self):
             if evt._dgrams[0].seq.service() != 12: continue
             yield evt
+
+    def configUpdates(self):
+        self.scan = True
+        for config_update in run_node(self):
+            yield config_update
     
 class RunLegion(Run):
 
