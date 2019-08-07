@@ -106,7 +106,12 @@ class DataSourceBase(object):
 
             smd_dir = os.path.join(xtc_path, 'smalldata')
             for r in run_list:
-                smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(r).zfill(4))))
+                all_smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(r).zfill(4))))
+                if self.sel_det_ids:
+                    smd_files = [all_smd_files[i] for i in self.sel_det_ids]
+                else:
+                    smd_files = all_smd_files
+                    
                 xtc_files = [os.path.join(xtc_path, \
                              os.path.basename(smd_file).split('.smd')[0] + '.xtc2') \
                              for smd_file in smd_files \

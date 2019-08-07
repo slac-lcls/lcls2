@@ -150,3 +150,21 @@ for run in ds.runs():
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
     assert np.sum(recvbuf) == 6 # need this to make sure that events loop is active
+
+# Usecase 6 : selecting only the second detector
+ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, sel_det_ids=[1])
+
+sendbuf = np.zeros(1, dtype='i')
+recvbuf = None
+if rank == 0:
+    recvbuf = np.empty([size, 1], dtype='i')
+
+for run in ds.runs():
+    det = run.Detector('xppcspad')
+    for evt in run.events():
+        sendbuf += 1
+        assert evt._size == 1 # check that only one dgram is in there
+
+comm.Gather(sendbuf, recvbuf, root=0)
+if rank == 0:
+    assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
