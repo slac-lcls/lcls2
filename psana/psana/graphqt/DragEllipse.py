@@ -6,7 +6,7 @@ Created on 2019-07-11 by Mikhail Dubrovin
 """
 #-----------------------------
 
-from math import atan2, degrees
+from math import atan2, degrees, radians, sin, cos
 import logging
 logger = logging.getLogger(__name__)
 
@@ -102,8 +102,19 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
 
         self.pro = DragPoint(ct+(ct-cb)/5, parent, scene, pshape='r', rsize=6)
 
+        sta = radians(self.startAngle()/16)
+        spa = radians(self.spanAngle()/16) 
+        end = sta + spa
+        c, w, h = r.center(), r.width(), r.height()
+        eb = c + 0.3*QPointF(w*cos(sta), -h*sin(sta))
+        ee = c + 0.3*QPointF(w*cos(end), -h*sin(end))
+
+        self.peb = DragPoint(eb, parent, scene, pshape='r', rsize=6)
+        self.pee = DragPoint(ee, parent, scene, pshape='r', rsize=6)
+
         self.lst_ctl_points = [self.ptr, self.ptl, self.pbr, self.pbl,\
-                               self.pct, self.pcl, self.pcb, self.pcr, self.ped, self.pro]
+                               self.pct, self.pcl, self.pcb, self.pcr,\
+                               self.ped, self.pro, self.peb, self.pee]
 
         for cpt in self.lst_ctl_points : self.setZValue(100)
 
@@ -136,6 +147,35 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
         self.ped.setPos(0.7*dptr+0.3*dptl)
 
         self.pro.setPos(ct+(ct-cb)/5)
+
+        sta_deg = self.startAngle()/16
+        spa_deg = self.spanAngle()/16
+        sta = radians(sta_deg)
+        spa = radians(spa_deg)
+
+        print('XXX angles(deg) start: %6.0f span: %6.0f' % (sta_deg, spa_deg))
+
+        end = sta + spa
+        ceb, seb = 0.3*cos(sta), -0.3*sin(sta)
+        cee, see = 0.3*cos(end), -0.3*sin(end)
+        c = 0.5*(ct+cb)
+        diag = dpbr-dptl
+        dx, dy = diag.x(), diag.y()
+        eb = c + QPointF(dx*ceb, dy*seb)
+        ee = c + QPointF(dx*cee, dy*see) 
+        print('XXX eb:', eb)
+        print('XXX ee:', ee)
+        self.peb.setPos(eb)
+        self.pee.setPos(ee)
+
+        print('XXX pos    %6.1f %6.1f' % (self.pos().x(), self.pos().y()))
+        print('XXX center %6.1f %6.1f' % (c.x(), c.y()))
+        print('XXX tl     %6.1f %6.1f' % (dptl.x(), dptl.y()))
+        print('XXX tr     %6.1f %6.1f' % (dptr.x(), dptr.y()))
+        print('XXX rect:', r)
+
+        #self.peb.setPos(c + self.rotate_point(eb, sign=1))
+        #self.pee.setPos(c + self.rotate_point(ee, sign=1))
 
 
     def itemChange(self, change, value) :
@@ -200,17 +240,39 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
             self.setRect(rect)
 
         elif self._drag_mode == EDIT :
+
+            dp = self.rotate_point(dp)
+
             r = self.rect()
             i = self.child_item_sel()
-            if   i == self.pbr : r.setBottomRight(r.bottomRight() + dp)
-            elif i == self.ptr : r.setTopRight   (r.topRight()    + dp)
-            elif i == self.ptl : r.setTopLeft    (r.topLeft()     + dp)
-            elif i == self.pbl : r.setBottomLeft (r.bottomLeft()  + dp)
+            if   i == self.pbr : 
+                r.setBottomRight(r.bottomRight() + 0.5*dp)
+                r.setTopRight   (r.topRight()    + 0.5*QPointF( dp.x(), -dp.y()))
+                r.setTopLeft    (r.topLeft()     + 0.5*QPointF(-dp.x(), -dp.y()))
+                r.setBottomLeft (r.bottomLeft()  + 0.5*QPointF(-dp.x(),  dp.y()))
 
-            elif i == self.pct : r.setTop   (r.top()    + dp.y())
-            elif i == self.pcl : r.setLeft  (r.left()   + dp.x())
-            elif i == self.pcb : r.setBottom(r.bottom() + dp.y())
-            elif i == self.pcr : r.setRight (r.right()  + dp.x())
+            elif i == self.ptr : 
+                r.setTopRight   (r.topRight()    + 0.5*dp)
+                r.setTopLeft    (r.topLeft()     + 0.5*QPointF(-dp.x(),  dp.y()))
+                r.setBottomLeft (r.bottomLeft()  + 0.5*QPointF(-dp.x(), -dp.y()))
+                r.setBottomRight(r.bottomRight() + 0.5*QPointF( dp.x(), -dp.y()))
+
+            elif i == self.ptl : 
+                r.setTopLeft    (r.topLeft()     + 0.5*dp)
+                r.setTopRight   (r.topRight()    + 0.5*QPointF(-dp.x(),  dp.y()))
+                r.setBottomLeft (r.bottomLeft()  + 0.5*QPointF( dp.x(), -dp.y()))
+                r.setBottomRight(r.bottomRight() + 0.5*QPointF(-dp.x(), -dp.y()))
+
+            elif i == self.pbl : 
+                r.setBottomLeft (r.bottomLeft()  + 0.5*dp)
+                r.setBottomRight(r.bottomRight() + 0.5*QPointF(-dp.x(),  dp.y()))
+                r.setTopRight   (r.topRight()    + 0.5*QPointF(-dp.x(), -dp.y()))
+                r.setTopLeft    (r.topLeft()     + 0.5*QPointF( dp.x(), -dp.y()))
+
+            elif i == self.pct : r.setTop   (r.top()    + dp.y()); r.setBottom(r.bottom() - dp.y())
+            elif i == self.pcl : r.setLeft  (r.left()   + dp.x()); r.setRight (r.right()  - dp.x())
+            elif i == self.pcb : r.setBottom(r.bottom() + dp.y()); r.setTop   (r.top()    - dp.y())
+            elif i == self.pcr : r.setRight (r.right()  + dp.x()); r.setLeft  (r.left()   - dp.x())
 
             elif i == self.pro :
                 c = r.center()
@@ -219,12 +281,27 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
                 angle = degrees(atan2(v.y(), v.x())) + 90
                 self.setRotation(angle)
 
+            elif i == self.peb :
+                c = r.center()
+                v = e.scenePos() - self.mapToScene(c.x(), c.y()) # in scene coordinates
+                #angle0 = self.startAngle()/16
+                angle = degrees(atan2(v.y(), v.x()))
+                self.setStartAngle(-angle*16)
+
+            elif i == self.pee :
+                c = r.center()
+                v = e.scenePos() - self.mapToScene(c.x(), c.y()) # in scene coordinates
+                angle = degrees(atan2(v.y(), v.x())) + 180
+                angle -= self.startAngle()/16
+                self.setSpanAngle(-angle*16)
+
             r = r.normalized()
             self.setRect(r)
 
             if i != self.pro:
                 self.setTransformOriginPoint(r.center())
 
+            #self.redefine_rect()
             self.move_control_points()
 
 
@@ -236,11 +313,12 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
             self.ungrabMouse()
             self.setRect(self.rect().normalized())
 
+            self.setStartAngle(60*16)
+            self.setSpanAngle(240*16)
+
+            self.redefine_rect()
             self.set_control_points()
             #self.setSelected(False)
-
-            self.setStartAngle(10*16)
-            self.setSpanAngle(300*16)
 
         if self._drag_mode == EDIT :
             self.set_child_item_sel(None)
@@ -249,6 +327,7 @@ class DragEllipse(QGraphicsEllipseItem, DragBase) :
 
         c = self.rect().center()
         self.setTransformOriginPoint(c)
+        #self.redefine_rect()
         #print('XXX set rect transform origin to rect center x:%6.1f y:%6.1f' % (c.x(), c.y()))
         #print('XXX item scenePos() x:%6.1f y:%6.1f' % (p.x(), p.y()))
 

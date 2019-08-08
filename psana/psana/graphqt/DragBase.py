@@ -8,6 +8,8 @@ Created on 2016-09-14 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
+from math import radians, sin, cos
+
 from PyQt5.QtCore import Qt, QPoint, QPointF, QRect, QRectF
 from PyQt5.QtGui import QPen, QBrush, QCursor
 
@@ -127,6 +129,32 @@ class DragBase(object) :
 
         else :
             print('DragBase: this point features are not implemented for item "%s"' % txt)
+
+
+    def rotate_point(self, p, sign=-1) :
+        angle = self.rotation()
+        angle_rads = sign * radians(angle)
+        s,c = sin(angle_rads), cos(angle_rads)
+        x,y = p.x(), p.y()
+        return QPointF(x*c-y*s, x*s+y*c)
+
+
+    def redefine_rect(self):
+        """Keeps item rect Top-Left corner always (0,0) its position is defined in pos().
+        """
+        #ps = self.scenePos()
+        #t0 = self.transformOriginPoint()
+        p0 = self.pos()
+        r0 = self.rect().normalized()
+        tl = r0.topLeft()
+        dp = self.rotate_point(tl, sign=1)
+
+        #print('XXX item pos dx:%6.1f dy:%6.1f' % (p0.x(), p0.y()))
+        #print('XXX rect tl    :%6.1f dy:%6.1f' % (tl.x(), tl.y()))
+        #print('XXX rot  tl    :%6.1f dy:%6.1f' % (dp.x(), dp.y()))
+
+        self.setRect(QRectF(QPointF(0,0), r0.size()))        
+        self.setPos(p0+dp)
 
 #-----------------------------
 # Abstract interface methods

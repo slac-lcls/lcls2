@@ -6,7 +6,7 @@ Created on 2016-10-10 by Mikhail Dubrovin
 """
 #-----------------------------
 
-from math import atan2, degrees
+from math import atan2, degrees #, radians, sin, cos
 import logging
 logger = logging.getLogger(__name__)
 
@@ -78,6 +78,8 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
 
     def set_control_points(self) :
+        logger.debug('in DragRect.set_control_points')
+
         parent = self # None
         r = self.rect()
         scene=self.scene()
@@ -100,42 +102,57 @@ class DragRect(QGraphicsRectItem, DragBase) :
                                pen=QPen(Qt.black, 2, Qt.SolidLine),\
                                brush=QBrush(Qt.yellow, Qt.SolidPattern), pshape='r', rsize=6)
 
-        self.pro = DragPoint(ct+(ct-cb)/5, parent, scene, pshape='r', rsize=6)
+        #self.pro = DragPoint(ct+(ct-cb)/5, parent, scene, pshape='r', rsize=6)
+        self.pro = DragPoint(0.3*r.topRight()+0.7*r.topLeft(), parent, scene, pshape='r', rsize=6)
 
         self.lst_ctl_points = [self.ptr, self.ptl, self.pbr, self.pbl,\
                                self.pct, self.pcl, self.pcb, self.pcr, self.ped, self.pro]
 
         for cpt in self.lst_ctl_points : self.setZValue(100)
 
+        logger.debug('exit DragRect.set_control_points')
+
+
+    def remove_control_points(self) :
+        logger.debug('DragRect.remove_control_points')
+        scene=self.scene()
+        for item in self.lst_ctl_points : 
+            scene.removeItem(item)
+            del item
+        #scene.update()
+
 
     def move_control_points(self) :
 
-        r = self.rect().normalized()
         r0 = self.rect0
+        r = self.rect().normalized()
+        #p = self.pos() 
+        #print('DragRect.move_control_points rect:', r)
 
-        dptr = r.topRight()   -r0.topRight()    + self.p0_ptr
-        dptl = r.topLeft()    -r0.topLeft()     + self.p0_ptl
-        dpbr = r.bottomRight()-r0.bottomRight() + self.p0_pbr
-        dpbl = r.bottomLeft() -r0.bottomLeft()  + self.p0_pbl
+        tr = r.topRight()    - r0.topRight()     + self.p0_ptr
+        tl = r.topLeft()     - r0.topLeft()      + self.p0_ptl
+        br = r.bottomRight() - r0.bottomRight()  + self.p0_pbr
+        bl = r.bottomLeft()  - r0.bottomLeft()   + self.p0_pbl
 
-        self.ptr.setPos(dptr)
-        self.ptl.setPos(dptl)
-        self.pbr.setPos(dpbr)
-        self.pbl.setPos(dpbl)
+        self.ptr.setPos(tr)
+        self.ptl.setPos(tl)
+        self.pbr.setPos(br)
+        self.pbl.setPos(bl)
 
-        ct = 0.5*(dptr+dptl)
-        cb = 0.5*(dpbl+dpbr)
-        cl = 0.5*(dptl+dpbl)
-        cr = 0.5*(dptr+dpbr)
+        ct = 0.5*(tr+tl)
+        cb = 0.5*(bl+br)
+        cl = 0.5*(tl+bl)
+        cr = 0.5*(tr+br)
 
         self.pct.setPos(ct)
         self.pcl.setPos(cl)
         self.pcb.setPos(cb)
         self.pcr.setPos(cr)
 
-        self.ped.setPos(0.7*dptr+0.3*dptl)
+        self.ped.setPos(0.7*tr+0.3*tl)
+        self.pro.setPos(0.3*tr+0.7*tl)
 
-        self.pro.setPos(ct+(ct-cb)/5)
+        #self.pro.setPos(ct+(ct-cb)/5)
 
 
     def itemChange(self, change, value) :
@@ -148,26 +165,31 @@ class DragRect(QGraphicsRectItem, DragBase) :
 
 
     def mousePressEvent(self, e) :
-        logger.debug('DragRect.mousePressEvent, at point: %s on scene: %s '%\
-                     (str(e.pos()), str(e.scenePos()))) # self.__class__.__name__
+        ps = e.scenePos()
+        pe = e.pos()
+
+        logger.debug('DragRect.mousePressEvent, at point: %6.1f %6.1f on scene: %6.1f %6.1f'%\
+                     (pe.x(), pe.y(), ps.x(), ps.y()))
         QGraphicsRectItem.mousePressEvent(self, e) # points would not show up w/o this line
         #print("DragRect is selected: ", self.isSelected())
 
-        ps = e.scenePos()
         #print('%s.mousePressEvent itemAt:' % self.__class__.__name__, self.scene().itemAt(ps))
 
         t = self.scene().views()[0].transform()
-        item_sel = self.scene().itemAt(ps.x(), ps.y(), t)
+        i = item_sel = self.scene().itemAt(ps.x(), ps.y(), t)
         #item_sel = self.scene().itemAt(ps)
 
         if self.lst_ctl_points is None : 
             logger.warning('DragRect.lst_ctl_points is None')
             return
 
-        if item_sel in self.lst_ctl_points :
+        if i in self.lst_ctl_points :
+
+            r = self.rect()
+
             #print('set mode EDIT')
             self.set_drag_mode(EDIT)
-            self.set_child_item_sel(item_sel)
+            self.set_child_item_sel(i)
             self.rect0 = self.rect().normalized()
             #self.p0 = self.pos()
 
@@ -176,7 +198,7 @@ class DragRect(QGraphicsRectItem, DragBase) :
             self.p0_pbr = self.pbr.pos()
             self.p0_pbl = self.pbl.pos()
 
-            if item_sel == self.ped : self.control_point_menu()
+            if i == self.ped : self.control_point_menu()
 
             #print('%s.mousePressEvent rect0' % self.__class__.__name__, self.rect0)      
             #print('%s.mousePressEvent: pcb.pos()' % self.__class__.__name__, self.pcb.pos())
@@ -188,19 +210,21 @@ class DragRect(QGraphicsRectItem, DragBase) :
         #print('%s.mouseMoveEvent, at point: ' % self.__class__.__name__, e.pos(), ' scenePos: ', e.scenePos())
 
         dp = e.scenePos() - e.lastScenePos() 
+        r = self.rect()
 
         if self._drag_mode == MOVE and self.isSelected() :
             self.moveBy(dp.x(), dp.y())
 
         elif self._drag_mode == ADD :
             #print('%s.mouseMoveEvent _drag_mode=ADD' % self.__class__.__name__)
-            rect = self.rect()
-            rect.setBottomRight(rect.bottomRight() + dp)
-            self.setRect(rect)
+            r.setBottomRight(r.bottomRight() + dp)
+            self.setRect(r)
 
         elif self._drag_mode == EDIT :
-            r = self.rect()
             i = self.child_item_sel()
+
+            dp = self.rotate_point(dp)
+
             if   i == self.pbr : r.setBottomRight(r.bottomRight() + dp)
             elif i == self.ptr : r.setTopRight   (r.topRight()    + dp)
             elif i == self.ptl : r.setTopLeft    (r.topLeft()     + dp)
@@ -212,17 +236,16 @@ class DragRect(QGraphicsRectItem, DragBase) :
             elif i == self.pcr : r.setRight (r.right()  + dp.x())
 
             elif i == self.pro :
-                c = r.center()
+                #c = r.center()
+                #c = r.topLeft()
+                c = self.transformOriginPoint()
                 #print('=== rect center %6.1f %6.1f' % (c.x(), c.y()))
                 v = e.scenePos() - self.mapToScene(c.x(), c.y()) # in scene coordinates
-                angle = degrees(atan2(v.y(), v.x())) + 90
+                angle = degrees(atan2(v.y(), v.x())) #+ 90
                 self.setRotation(angle)
 
             r = r.normalized()
             self.setRect(r)
-
-            if i != self.pro :
-                self.setTransformOriginPoint(r.center())
 
             self.move_control_points()
 
@@ -234,22 +257,17 @@ class DragRect(QGraphicsRectItem, DragBase) :
         if self._drag_mode == ADD :
             self.ungrabMouse()
             self.setRect(self.rect().normalized())
+            self.setTransformOriginPoint(QPointF(0,0))
+            self.redefine_rect()
             self.set_control_points()
-            #self.setSelected(False)
-            self.setTransformOriginPoint(self.rect().center())
 
         if self._drag_mode == EDIT :
             self.set_child_item_sel(None)
-
+            self.redefine_rect()
+            self.move_control_points()
+        
         self.set_drag_mode()
 
-        c = self.rect().center()
-        ##c_on_map = self.mapToScene(c.x(), c.y())
-        #self.setTransformOriginPoint(c)
-
-        p = self.scenePos()
-        print('XXX set rect transform origin to rect center x:%6.1f y:%6.1f' % (c.x(), c.y()))
-        print('XXX item scenePos() x:%6.1f y:%6.1f' % (p.x(), p.y()))
 
 #    def hoverEnterEvent(self, e) :
 #        #print('%s.hoverEnterEvent' % self.__class__.__name__)

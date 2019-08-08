@@ -36,7 +36,7 @@ class DragPoly(QGraphicsPolygonItem, DragBase) :
         elif isinstance(obj, QPointF) :
            poly = QPolygonF()
            poly.append(obj)
-           print('XXX DragPoly 0-point QPolygonF() size  = %d' % poly.size())
+           #print('XXX DragPoly 0-point QPolygonF() size  = %d' % poly.size())
 
         if poly is None :
             logger.warning('DragPoly - wrong init object type:', str(obj))
@@ -109,7 +109,7 @@ class DragPoly(QGraphicsPolygonItem, DragBase) :
 
 
     def move_control_points(self) :
-        logger.debug('In DragPoly.move_control_points - TBE')
+        #logger.debug('In DragPoly.move_control_points - TBE')
 
         poly  = self.polygon()           
         poly0 = self.poly0
@@ -134,8 +134,8 @@ class DragPoly(QGraphicsPolygonItem, DragBase) :
 
 
     def mousePressEvent(self, e) :
-        logger.debug('DragPoly.mousePressEvent, at point: %s on scene: %s '%\
-                     (str(e.pos()), str(e.scenePos()))) # self.__class__.__name__
+        #logger.debug('DragPoly.mousePressEvent, at point: %s on scene: %s '%\
+        #             (str(e.pos()), str(e.scenePos()))) # self.__class__.__name__
         QGraphicsPolygonItem.mousePressEvent(self, e) # points would not show up w/o this line
 
         #print("DragPoly is selected: ", self.isSelected())

@@ -43,7 +43,7 @@ class DragPoint(QGraphicsPathItem, DragBase) :
         #print('selected path', str(path))
 
         QGraphicsPathItem.__init__(self, path, parent)
-        if scene is not None: scene.addItem(self)
+        if (parent is None) and (scene is not None) : scene.addItem(self)
         DragBase.__init__(self, parent, brush, pen)
 
         self.setTransformOriginPoint(point)
