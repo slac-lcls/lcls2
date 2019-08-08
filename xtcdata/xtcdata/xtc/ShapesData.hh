@@ -56,7 +56,7 @@ private:
 class Name {
 public:
     // if you add types here, you must update the corresponding sizes in ShapesData.cc
-    enum DataType { UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE, CHARSTR, ENUMVAL, ENUMDICT};
+    enum DataType {UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE, CHARSTR, ENUMVAL, ENUMDICT};
 
     static int get_element_size(DataType type);
 
@@ -93,6 +93,8 @@ public:
     DataType    type() {return (DataType)_type;}
     uint32_t    rank() {return _rank;}
     Alg&        alg()  {return _alg;}
+    const char* str_type();
+
   
 private:
     Alg      _alg;

@@ -19,6 +19,25 @@ static const int element_sizes[] = {
     sizeof(int32_t)   // ENUMDICT
 };
 
+const char* Name::str_type() // (DataType type)
+{
+  switch((DataType)_type) {
+  case UINT8    : return std::move("UINT8");
+  case UINT16   : return std::move("UINT16");
+  case UINT32   : return std::move("UINT32");
+  case UINT64   : return std::move("UINT64");
+  case INT8     : return std::move("INT8");
+  case INT16    : return std::move("INT16");
+  case INT32    : return std::move("INT32");
+  case INT64    : return std::move("INT64");
+  case FLOAT    : return std::move("FLOAT");
+  case DOUBLE   : return std::move("DOUBLE");
+  case CHARSTR  : return std::move("CHARSTR");
+  case ENUMVAL  : return std::move("ENUMVAL");
+  case ENUMDICT : return std::move("ENUMDICT");
+  };
+}
+
 int Name::get_element_size(Name::DataType type)
 {
     return element_sizes[type];

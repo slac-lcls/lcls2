@@ -23,6 +23,7 @@ public:
         _rank = rank;
     }
     Array() : _shape(0), _data(0), _rank(0) {}
+    Array(const Array& a) : _shape(a._shape), _data(a._data), _rank(a._rank) {}
     T& operator()(unsigned i){
         assert(i < _shape[0]);
         return _data[i];
