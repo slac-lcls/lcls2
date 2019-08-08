@@ -18,13 +18,13 @@ public:
         Reset,
         Configure,
         Unconfigure,
+        BeginRun,
+        EndRun,
+        BeginStep,
+        EndStep,
         Enable,
         Disable,
-        ConfigUpdate,
-        BeginRecord,
-        EndRecord,
         SlowUpdate,
-        Unused_10,
         Unused_11,
         L1Accept = 12,       // Must be 12 to agree with firmware
         NumberOf
