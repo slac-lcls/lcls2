@@ -575,9 +575,13 @@ static int dgram_read(PyDgramObject* self, int sequential)
     char s[TMPSTRINGSIZE];
     if (sequential) {
         // When read sequentially, self->dgram already has header data
-        // - only reads the payload content.
-        //readSuccess = read(self->file_descriptor, self->dgram->xtc.payload(), self->dgram->xtc.sizeofPayload());
-        readSuccess = read_with_retries(self->file_descriptor, self->dgram->xtc.payload(), self->dgram->xtc.sizeofPayload(), 0);
+        // - only reads the payload content if it is larger than 0.
+        unsigned sizeofPayload = self->dgram->xtc.sizeofPayload();
+        if (sizeofPayload>0) {
+            readSuccess = read_with_retries(self->file_descriptor, self->dgram->xtc.payload(), sizeofPayload, 0);
+        } else {
+            readSuccess = 1;
+        }
         if (readSuccess <= 0) {
             snprintf(s, TMPSTRINGSIZE, "loading dgram was unsuccessful -- %s", strerror(errno));
             PyErr_SetString(PyExc_StopIteration, s);

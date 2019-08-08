@@ -383,7 +383,7 @@ int main(int argc, char* argv[])
             nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload()); // add up offset before appending info name.
             addNames(dgIn->xtc, namesLookup, nodeId);
             save(*dgIn, xtcFile);
-        } else if (dgIn->seq.service() == TransitionId::SlowUpdate) {
+        } else if (dgIn->seq.service() == TransitionId::SlowUpdate || dgIn->seq.service() == TransitionId::Enable || dgIn->seq.service() == TransitionId::Disable) {
             save(*dgIn, xtcFile);
             eventUpdateId++;
             nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());    
