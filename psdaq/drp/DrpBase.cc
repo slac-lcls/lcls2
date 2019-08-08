@@ -135,10 +135,9 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
     lastEvtCounter = timingHeader->evtCounter;
 
     XtcData::Dgram* dgram = (XtcData::Dgram*)m_pool.pebble[index];
-    // write event to file if it passes event builder or is a configure transition
     if (m_writing) {
-        if ((ebDecision[Pds::Eb::WRT_IDX] == 1 && (transitionId == XtcData::TransitionId::L1Accept)) ||
-            (transitionId == XtcData::TransitionId::Configure)) {
+        // write event to file if it passes event builder or if it's a transition
+        if ((ebDecision[Pds::Eb::WRT_IDX] == 1) || (transitionId != XtcData::TransitionId::L1Accept)) {
             size_t size = sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload();
             m_fileWriter.writeEvent(dgram, size);
 
