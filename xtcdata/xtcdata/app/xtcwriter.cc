@@ -564,11 +564,29 @@ int main(int argc, char* argv[])
     DebugIter iter(&config.xtc, namesLookup);
     iter.iterate();
 
+    // make a BeginRun
+    Dgram& beginRunTr = createTransition(TransitionId::BeginRun,
+                                       counting_timestamps,
+                                       timestamp_val);
+    save(beginRunTr, xtcFile);
+
+    // make a BeginStep
+    Dgram& beginStepTr = createTransition(TransitionId::BeginStep,
+                                       counting_timestamps,
+                                       timestamp_val);
+    save(beginStepTr, xtcFile);
+
+    // make an Enable
+    Dgram& enableTr = createTransition(TransitionId::Enable,
+                                       counting_timestamps,
+                                       timestamp_val);
+    save(enableTr, xtcFile);
+
     void* buf = malloc(BUFSIZE);
     for (unsigned ievt=0; ievt<nevents; ievt++) {
         if (epicsPeriod>0) {
             if (ievt>0 and ievt%epicsPeriod==0) {
-                // make a ConfigUpdate with epics data
+                // make a SlowUpdate with epics data
                 if (counting_timestamps) {
                     tv.tv_sec = 0;
                     tv.tv_usec = timestamp_val;
