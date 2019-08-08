@@ -28,16 +28,51 @@ namespace detector {
 class AreaDetector : public Detector {
 public:
 
-  AreaDetector(const std::string& detname, ConfigIter& config);
+  AreaDetector(const std::string& detname, ConfigIter& ci);
   AreaDetector(const std::string& detname);
-  AreaDetector(); 
+  AreaDetector();
 
   virtual ~AreaDetector();
 
   void _default_msg(const std::string& msg=std::string()) const;
 
+  virtual void set_indexes_config(XtcData::ConfigIter&);
+  virtual void set_indexes_data(XtcData::DataIter&);
+
+  //-------------------
+
+  template <typename T>
+  inline T config_value_for_index(XtcData::ConfigIter& ci, unsigned i) {
+    return ci.desc_shape().get_value<T>(i);
+  }
+
+  template <typename T>
+  inline const Array<T> config_array_for_index(XtcData::ConfigIter& ci, unsigned i) {
+    return ci.desc_shape().get_array<T>(i);
+  }
+
+  //-------------------
+  inline DescData& descdata(XtcData::DataIter& di) {
+    ConfigIter& ci = *_pconfig;
+    NamesLookup& namesLookup = ci.namesLookup();
+    return di.desc_value(namesLookup);
+  }
+
+  template <typename T>
+  inline T data_value_for_index(XtcData::DataIter& di, unsigned i) {
+    return descdata(di).get_value<T>(i);
+  }
+
+  template <typename T>
+  inline const Array<T> data_array_for_index(XtcData::DataIter& di, unsigned i) {
+    return descdata(di).get_array<T>(i);
+  }
+
+  //-------------------
+
+  //DEPRICATED
   virtual void process_config();
-  virtual void process_data(XtcData::DataIter& datao);
+  virtual void process_data(XtcData::DataIter&);
 
   virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
   virtual std::string detid(const int ind=-1);
@@ -51,6 +86,8 @@ public:
   virtual const shape_t* shape(const event_t&);
 
   virtual const void print_config();
+  virtual const void print_data();
+  virtual const void print_data(XtcData::DataIter&);
 
   template<typename T>
   void raw(XtcData::DescData& ddata, T*& pdata, const char* dataname="frame");

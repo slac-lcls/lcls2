@@ -39,6 +39,18 @@ void AreaDetector::_default_msg(const std::string& msg) const {
 
 //-------------------
 
+void AreaDetector::set_indexes_config(XtcData::ConfigIter& configiter) {
+    _default_msg("set_indexes_config");
+}
+
+//-------------------
+
+void AreaDetector::set_indexes_data(XtcData::DataIter& dataiter) {
+    _default_msg("set_indexes_data");
+}
+
+//-------------------
+
 void AreaDetector::process_config() {
 
   ConfigIter& configo = *_pconfig;
@@ -113,6 +125,18 @@ void AreaDetector::process_data(XtcData::DataIter& datao) {
 
 const void AreaDetector::print_config() {
     _default_msg("print_config");
+}
+
+//-------------------
+
+const void AreaDetector::print_data() {
+    _default_msg("print_data");
+}
+
+//-------------------
+
+const void AreaDetector::print_data(XtcData::DataIter&) {
+    _default_msg("print_data");
 }
 
 //-------------------

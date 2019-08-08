@@ -16,10 +16,13 @@
  *  uint32_t sh[2] = {3,4};
  *  uint32_t ndim = 2;
  *
- *  // 1: use external data buffer:
+ *  // use external data buffer:
  *  NDArray<float> a(sh, ndim, data);
  *
- *  // 2: use internal data buffer:
+ *  // set from NDArray or XtcData::Array a
+ *  NDArray(a);
+ *  
+ *  // use internal data buffer:
  *  NDArray<float> b(sh, ndim);
  *  // or set it later
  *  b.set_data_buffer(data) 
@@ -29,6 +32,7 @@
  *  c.set_shape(sh, ndim);    // or alias reshape(sh, ndim)
  *  c.set_shape(str_shape);   // sets _shape and _rank from string
  *  c.set_data_buffer(data);
+ *  c.set_ndarray(a);         // where a is NDArray or XtcData::Array
  *
  *  size_t   ndim = a.ndim();
  *  size_t   size = a.size();
@@ -86,6 +90,22 @@ public:
   }
 
 //-------------------
+/*
+  NDArray(NDArray<T>& a) :
+    base(), _buf_ext(0), _buf_own(0)
+  {
+     set_ndarray(a);
+  }
+*/
+//-------------------
+
+  NDArray(XtcData::Array<T> a) :
+    base(), _buf_ext(0), _buf_own(0)
+  {
+    set_ndarray(a);
+  }
+
+//-------------------
 
   NDArray() : base(), _buf_ext(0), _buf_own(0) {}
 
@@ -138,11 +158,27 @@ public:
 
   inline size_t ndim() const {return base::rank();}
 
+  inline size_t rank() const {return base::rank();}
+
 //-------------------
 
   inline size_t size() const {
     size_t s=1; for(size_t i=0; i<ndim(); i++) s*=shape()[i]; 
     return s;
+  }
+
+//-------------------
+
+  inline void set_ndarray(XtcData::Array<T> a) {
+     set_shape(a.shape(), a.rank());
+     set_data_buffer(a.data());
+  }
+
+//-------------------
+
+  inline void set_ndarray(NDArray<T> a) {
+     set_shape(a.shape(), a.rank());
+     set_data_buffer(a.data());
   }
 
 //-------------------
@@ -210,13 +246,13 @@ public:
   {
     size_t nd = o.ndim();
     if(nd) {
-      shape_t* sh = o.shape(); 
+      shape_t* sh = o.shape();
       os << "typeid=" << typeid(T).name() << " ndim=" << nd << " size=" << o.size() << " shape=(";
       for(size_t i=0; i<nd; i++) {os << sh[i]; if(i != (nd-1)) os << ", ";}
       os << ") data=";
-      size_t nvals(4);
+      size_t nvals = min((size_t)4, o.size());
       const T* d = o.const_data();
-      for(size_t i=0; i<nvals; i++, d++) {os << *d; if(i<nvals) os << ", ";} os << "...";
+      for(size_t i=0; i<nvals; i++, d++) {os << *d; if(i<nvals) os << ", ";} if(nvals>1) os << "...";
     }
     return os;
   }

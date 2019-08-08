@@ -134,9 +134,9 @@ void AreaDetectorJungfrau::process_config() {
         char cbuf1[32]; sprintf(&cbuf1[0], "moduleConfig%d_firmwareVersion", m);
         char cbuf2[32]; sprintf(&cbuf2[0], "moduleConfig%d_moduleVersion", m);
         char cbuf3[32]; sprintf(&cbuf3[0], "moduleConfig%d_serialNumber", m);
-        if (strcmp(cname, cbuf1) == 0) {firmwareVersion[m] = desc_shape.get_value<int64_t>(i); break;}
-        if (strcmp(cname, cbuf2) == 0) {moduleVersion  [m] = desc_shape.get_value<int64_t>(i); break;}
-        if (strcmp(cname, cbuf3) == 0) {serialNumber   [m] = desc_shape.get_value<int64_t>(i); break;}
+        if (strcmp(cname, cbuf1) == 0) {_firmwareVersion[m] = desc_shape.get_value<int64_t>(i); break;}
+        if (strcmp(cname, cbuf2) == 0) {_moduleVersion  [m] = desc_shape.get_value<int64_t>(i); break;}
+        if (strcmp(cname, cbuf3) == 0) {_serialNumber   [m] = desc_shape.get_value<int64_t>(i); break;}
       }
 
       /*
@@ -225,9 +225,9 @@ void AreaDetectorJungfrau::process_data(XtcData::DataIter& datao) {
 //-------------------
 
 void AreaDetectorJungfrau::_panel_id(std::ostream& os, const int ind) {
-  os << std::hex << moduleVersion[ind] << '-' 
-     << std::hex << firmwareVersion[ind] << '-' 
-     << std::hex << setfill('0')  << serialNumber[ind];
+  os << std::hex << _moduleVersion[ind] << '-' 
+     << std::hex << _firmwareVersion[ind] << '-' 
+     << std::hex << setfill('0')  << _serialNumber[ind];
   // << std::hex << std::setw(10) << std::setprecision(8) << std::right<< setfill('0')
 }
 
@@ -247,9 +247,9 @@ void AreaDetectorJungfrau::detid(std::ostream& os, const int ind) {
 
 //-------------------
 
-NDArray<rawjf_t>& AreaDetectorJungfrau::raw(XtcData::DescData& ddata) {
+NDArray<raw_jungfrau_t>& AreaDetectorJungfrau::raw(XtcData::DescData& ddata) {
     if(_ind_data < 0) _set_index_data(ddata, "frame");
-    rawjf_t* pdata = ddata.get_array<rawjf_t>(_ind_data).data();
+    raw_jungfrau_t* pdata = ddata.get_array<raw_jungfrau_t>(_ind_data).data();
     _raw.set_shape(shape(), ndim());
     _raw.set_data_buffer(pdata);
     return _raw;
@@ -257,7 +257,7 @@ NDArray<rawjf_t>& AreaDetectorJungfrau::raw(XtcData::DescData& ddata) {
 
 //-------------------
 
-NDArray<rawjf_t>& AreaDetectorJungfrau::raw(XtcData::DataIter& datao) {
+NDArray<raw_jungfrau_t>& AreaDetectorJungfrau::raw(XtcData::DataIter& datao) {
     DescData&  ddata = datao.desc_value(_pconfig->namesLookup());
     return raw(ddata);
 }

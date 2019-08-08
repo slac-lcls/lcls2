@@ -21,6 +21,8 @@
 #include "xtcdata/xtc/DataIter.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 
+#include "psalg/calib/NDArray.hh"
+
 //using namespace psalgos;
 //using namespace psalg;
 using namespace std; 
@@ -72,40 +74,65 @@ void dump(const char* comment, DescData& descdata) {
  
     static const char* _names[] = {"Configuration", "Data"};
 
-    printf("\n  DDD dump A\n");
-
   //NameIndex& nameIndex   = descdata.nameindex();
     ShapesData& shapesData = descdata.shapesdata();
     NamesId& namesId       = shapesData.namesId();
     Names& names           = descdata.nameindex().names();
 
-    printf("\n  DDD dump B\n");
-
     unsigned trans_ind = namesId.namesId();
     const char* transition  = _names[trans_ind];
     printf("transition: %d  0/1 = config/data transition: %s\n", trans_ind, transition);
 
-    printf("\n  DDD dump C\n");
-
     printf("Names:: detName: %s  detType: %s  detId: %s  segment: %d alg.name: %s\n",
 	   names.detName(), names.detType(), names.detId(), names.segment(), names.alg().name());
-
-
-    printf("\n  DDD dump D\n");
 
     printf("------ %d Names for %s ---------\n", names.num(), comment);
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
-        printf("%02d name: %-32s rank: %d type: %d\n", i, name.name(), name.rank(), name.type());
+        printf("%02d name: %-32s rank: %d type: %d %s\n", i, name.name(), name.rank(), name.type(), name.str_type());
     }
-
-    printf("\n  DDD dump E\n");
 
     printf("------ Values for %s ---------\n", comment);
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
-        if (name.type()==Name::INT64 and name.rank()==0) {
-	  printf("%02d name %-32s value %ld\n", i, name.name(), descdata.get_value<int64_t>(name.name()));
+
+        if(name.rank()==0) {
+          if(name.type()==Name::INT64)
+	    printf("%02d name %-32s value %ld\n", i, name.name(), descdata.get_value<int64_t>(name.name()));
+          else if(name.type()==Name::UINT16)
+	    printf("%02d name %-32s value %d\n", i, name.name(), descdata.get_value<uint16_t>(name.name()));
+          else
+	    printf("%02d name %-32s not-implemented in dump(...) scalar type: %s\n", i, name.name(), name.str_type());
+        }
+        else if(name.rank() > 0) {
+          //enum DataType { UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE, CHARSTR, ENUMVAL, ENUMDICT};
+          if(name.type()==Name::UINT16) {
+	    psalg::NDArray<uint16_t> nda(descdata.get_array<uint16_t>(i));
+	    std::stringstream ss; ss << nda;
+	    printf("%02d name %-32s Array %s\n", i, name.name(), ss.str().c_str());
+	  }
+          else if(name.type()==Name::INT64) {
+	    psalg::NDArray<int64_t> nda(descdata.get_array<int64_t>(i));
+	    std::stringstream ss; ss << nda;
+	    printf("%02d name %-32s Array %s\n", i, name.name(), ss.str().c_str());
+	  }
+          else if(name.type()==Name::INT16) {
+	    psalg::NDArray<int16_t> nda(descdata.get_array<int16_t>(i));
+	    std::stringstream ss; ss << nda;
+	    printf("%02d name %-32s Array %s\n", i, name.name(), ss.str().c_str());
+	  }
+          else if(name.type()==Name::FLOAT) {
+	    psalg::NDArray<float> nda(descdata.get_array<float>(i));
+	    std::stringstream ss; ss << nda;
+	    printf("%02d name %-32s Array %s\n", i, name.name(), ss.str().c_str());
+	  }
+          else if(name.type()==Name::DOUBLE) {
+	    psalg::NDArray<double> nda(descdata.get_array<double>(i));
+	    std::stringstream ss; ss << nda;
+	    printf("%02d name %-32s Array %s\n", i, name.name(), ss.str().c_str());
+	  }
+          else
+	    printf("%02d name %-32s not-implemented in dump(...) type: Array<%s>\n", i, name.name(), name.str_type());
         }
     }
 
@@ -173,8 +200,6 @@ int test_all(const char* fname="data-xpptut15-r0430-e000010-jungfrau.xtc2") {
     ConfigIter configo(&(dg->xtc));
     NamesLookup& namesLookup = configo.namesLookup();
 
-    printf("\nXXX point A\n");
-
     //DESC_SHAPE(desc_shape, configo, namesLookup);
     DescData& desc_shape = configo.desc_shape();
     dump("Config shape", desc_shape);
@@ -194,11 +219,7 @@ int test_all(const char* fname="data-xpptut15-r0430-e000010-jungfrau.xtc2") {
         if (nevent>=neventreq) break;
         nevent++;
 
-        printf("\nXXX point E\n");
-
         DataIter datao(&(dg->xtc));
- 
-        printf("\nXXX point F\n");
 
         printf("evt:%04d ==== transition: %s of type: %d time %d.%09d, pulseId %lux, env %ux, "
                "payloadSize %d extent %d\n", nevent,
@@ -206,16 +227,10 @@ int test_all(const char* fname="data-xpptut15-r0430-e000010-jungfrau.xtc2") {
                dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
                dg->env, dg->xtc.sizeofPayload(), dg->xtc.extent);
 
-        printf("\nXXX point G\n");
-
         //DESC_VALUE(desc_data, datao, namesLookup);
         DescData& desc_data = datao.desc_value(namesLookup);
         dump("Data values", desc_data);
-
-        printf("\nXXX point H\n");
     }
-
-    printf("XXX before close\n");
 
     ::close(fd);
     return 0;
@@ -229,8 +244,12 @@ std::string usage(const std::string& tname="")
   if (tname == "") ss << "Usage command> test_xtc_data <test-number>\n  where test-number";
   if (tname == "" || tname=="0")  ss << "\n  0  - test_xtc_content(jungfrau) - demo of ...";
   if (tname == "" || tname=="1")  ss << "\n  1  - test_all(jungfrau)         - demo of ...";
+
   if (tname == "" || tname=="10") ss << "\n  10 - test_xtc_content(cspad)    - demo of ...";
   if (tname == "" || tname=="11") ss << "\n  11 - test_all(cspad)            - demo of ...";
+
+  if (tname == "" || tname=="20") ss << "\n  20 - test_xtc_content(pnccd)    - demo of ...";
+  if (tname == "" || tname=="21") ss << "\n  21 - test_all(pnccd)            - demo of ...";
   ss << '\n';
   return ss.str();
 }
@@ -249,8 +268,16 @@ int main(int argc, char **argv) {
 
   if      (tname== "0") test_xtc_content("data-xpptut15-r0430-e000010-jungfrau.xtc2");
   else if (tname== "1") test_all();
+
   else if (tname=="10") test_xtc_content("data-cxid9114-r0089-e000010-cspad.xtc2");
   else if (tname=="11") test_all("data-cxid9114-r0089-e000010-cspad.xtc2");
+
+  else if (tname=="20") test_xtc_content("data-xpptut15-r0450-e000010-pnccd.xtc2");
+  else if (tname=="21") test_all("data-xpptut15-r0450-e000010-pnccd.xtc2");
+
+  //else if (tname=="20") test_xtc_content("");
+  //else if (tname=="21") test_all("");
+
   else printf("WARNING: Undefined test name: %s", tname.c_str());
 
   print_hline(80,'_');

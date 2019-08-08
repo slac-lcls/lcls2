@@ -10,27 +10,28 @@ using namespace psalg;
 
 namespace detector {
 
-typedef uint16_t rawjf_t; // raw daq rata type of jungfrau
+typedef uint16_t raw_jungfrau_t; // raw daq rata type of jungfrau
 
 //-----------------------------
 class AreaDetectorJungfrau : public AreaDetector {
 public:
 
   //------------------------------
-  void process_config();
-  void process_data(XtcData::DataIter& datao);
-  void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
-
-  const void print_config();
 
   AreaDetectorJungfrau(const std::string& detname, XtcData::ConfigIter& config);
   AreaDetectorJungfrau(const std::string& detname);
   virtual ~AreaDetectorJungfrau();
 
+  virtual void process_config();
+  virtual void process_data(XtcData::DataIter& datao);
+  virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
+
+  virtual const void print_config();
+
   void _class_msg(const std::string& msg=std::string());
 
-  NDArray<rawjf_t>& raw(XtcData::DescData& ddata);
-  NDArray<rawjf_t>& raw(XtcData::DataIter& datao);
+  NDArray<raw_jungfrau_t>& raw(XtcData::DescData& ddata);
+  NDArray<raw_jungfrau_t>& raw(XtcData::DataIter& datao);
 
   // implemented in AreaDetector
   /// shape, size, ndim of data from configuration object
@@ -79,11 +80,11 @@ public:
 
 private:
 
-  int64_cfg_t moduleVersion  [MAX_NUMBER_OF_MODULES];
-  int64_cfg_t firmwareVersion[MAX_NUMBER_OF_MODULES];
-  int64_cfg_t serialNumber   [MAX_NUMBER_OF_MODULES];
+  int64_cfg_t _moduleVersion  [MAX_NUMBER_OF_MODULES];
+  int64_cfg_t _firmwareVersion[MAX_NUMBER_OF_MODULES];
+  int64_cfg_t _serialNumber   [MAX_NUMBER_OF_MODULES];
 
-  NDArray<rawjf_t> _raw;
+  NDArray<raw_jungfrau_t> _raw;
 
   void _panel_id(std::ostream& os, const int ind);
 

@@ -10,7 +10,7 @@ using namespace psalg;
 
 namespace detector {
 
-typedef int16_t raw_cspad_t; // raw daq rata type of jungfrau
+typedef int16_t raw_cspad_t; // raw daq rata type of cspad
 
 //-----------------------------
 class AreaDetectorCspad : public AreaDetector {

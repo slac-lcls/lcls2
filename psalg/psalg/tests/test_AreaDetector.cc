@@ -31,6 +31,7 @@
 #include "psalg/detector/UtilsConfig.hh" // print_dg_info
 
 #include "psalg/detector/AreaDetectorJungfrau.hh"
+#include "psalg/detector/AreaDetectorPnccd.hh"
 //#include "psalg/detector/AreaDetectorCspad.hh"
 
 using namespace calib;
@@ -275,7 +276,6 @@ void test_AreaDetectorJungfrau(int argc, char* argv[]) {
   Dgram* dg = xfi.next();
   ConfigIter configo(&(dg->xtc));
 
-
   AreaDetectorJungfrau det("jungfrau", configo);
   //det.process_config();
   //std::cout << str_config_names(configo) << '\n';
@@ -290,11 +290,11 @@ void test_AreaDetectorJungfrau(int argc, char* argv[]) {
       //print_dg_info(dg);
 
       DataIter datao(&(dg->xtc));
-      NDArray<rawjf_t>& nda1 = det.raw(datao);
+      NDArray<raw_jungfrau_t>& nda1 = det.raw(datao);
       std::cout << "  == raw data nda for DataIter: " << nda1 << '\n';
 
       DescData& ddata = datao.desc_value(configo.namesLookup());
-      NDArray<rawjf_t>& nda2 = det.raw(ddata);
+      NDArray<raw_jungfrau_t>& nda2 = det.raw(ddata);
       std::cout << "  == raw data nda for DescData: " << nda2 << '\n';
 
       nevent++;
@@ -316,8 +316,8 @@ void test_AreaDetectorCspad(int argc, char* argv[]) {
   Dgram* dg = xfi.next();
   ConfigIter configo(&(dg->xtc));
 
-
   AreaDetectorJungfrau det("jungfrau", configo);
+  //AreaDetectorCspad det("jungfrau", configo);
   //det.process_config();
   //std::cout << str_config_names(configo) << '\n';
   det.print_config();
@@ -331,15 +331,68 @@ void test_AreaDetectorCspad(int argc, char* argv[]) {
       //print_dg_info(dg);
 
       DataIter datao(&(dg->xtc));
-      NDArray<rawjf_t>& nda1 = det.raw(datao);
+      NDArray<raw_jungfrau_t>& nda1 = det.raw(datao);
       std::cout << "  == raw data nda for DataIter: " << nda1 << '\n';
 
       DescData& ddata = datao.desc_value(configo.namesLookup());
-      NDArray<rawjf_t>& nda2 = det.raw(ddata);
+      NDArray<raw_jungfrau_t>& nda2 = det.raw(ddata);
       std::cout << "  == raw data nda for DescData: " << nda2 << '\n';
 
       nevent++;
   }
+  ::close(fd);
+}
+
+//-------------------
+
+void test_AreaDetectorPnccd(int argc, char* argv[]) {
+  MSG(INFO, "In test_AreaDetectorPnccd");
+
+  //typedef uint16_t raw_t; // in psalg/calib/AreaDetectorTypes.hh
+  //int fd = file_descriptor("data-sxrx20915-r0206-e000010-pnccd.xtc2");
+
+  int fd = file_descriptor("data-xpptut15-r0450-e000010-pnccd.xtc2");
+  XtcFileIterator xfi(fd, 0x4000000);
+
+  Dgram* dg = xfi.next();
+  ConfigIter ci(&(dg->xtc));
+
+  AreaDetectorPnccd det("pnccd", ci);
+  det._class_msg("some string");
+
+  //det.process_config();
+  det.set_indexes_config(ci);
+
+  std::cout << str_config_names(ci) << '\n';
+  det.print_config();
+
+  unsigned neventreq=5;
+  unsigned nevent=0;
+  while ((dg = xfi.next())) {
+      if (nevent>=neventreq) break;
+
+      printf("evt:%04d\n", nevent);
+
+      print_dg_info(dg);
+
+      DataIter di(&(dg->xtc));
+      //det.process_data(dataiter);
+      det.set_indexes_data(di);
+      det.print_data(di);
+
+      /*
+      NDArray<raw_pnccd_t>& nda1 = det.raw(dataiter);
+      std::cout << "  == raw data nda for DataIter: " << nda1 << '\n';
+
+      DescData& ddata = dataiter.desc_value(ci.namesLookup());
+      NDArray<raw_pnccd_t>& nda2 = det.raw(ddata);
+      std::cout << "  == raw data nda for DescData: " << nda2 << '\n';
+      */
+
+      nevent++;
+  }
+
+
   ::close(fd);
 }
 
@@ -354,8 +407,9 @@ std::string usage(const std::string& tname="")
   if (tname == "" || tname=="0"	) ss << "\n  0  - test_AreaDetector()         - demo of derived AreaDetectorJungfrau methods";
   if (tname == "" || tname=="1"	) ss << "\n  1  - test_AreaDetector_base()    - demo of generic methods of the base class";
   if (tname == "" || tname=="2"	) ss << "\n  2  - test_AreaDetector_mix()     - demo of mixed output of different objects";
-  if (tname == "" || tname=="3"	) ss << "\n  3  - test_AreaDetectorJungfrau() - demo of Jungfrau specific methods";
-  if (tname == "" || tname=="4"	) ss << "\n  4  - test_AreaDetectorCspad()    - demo of Cspad specific methods";
+  if (tname == "" || tname=="3"	) ss << "\n  3  - test_AreaDetectorJungfrau() - demo of jungfrau specific methods";
+  if (tname == "" || tname=="4"	) ss << "\n  4  - test_AreaDetectorPnccd()    - demo of pnccd specific methods";
+  //if (tname == "" || tname=="5"	) ss << "\n  5  - test_AreaDetectorCspad()    - demo of cspad specific methods";
   if (tname == "" || tname=="9"	) ss << "\n  9  - test_getAreaDetector()";
   ss << '\n';
   return ss.str();
@@ -378,7 +432,8 @@ int main(int argc, char **argv) {
   else if (tname=="1") test_AreaDetector_base(argc, argv);
   else if (tname=="2") test_AreaDetector_mix(argc, argv);
   else if (tname=="3") test_AreaDetectorJungfrau(argc, argv);
-  else if (tname=="4") test_AreaDetectorCspad(argc, argv);
+  else if (tname=="4") test_AreaDetectorPnccd(argc, argv);
+  //else if (tname=="5") test_AreaDetectorCspad(argc, argv);
   else if (tname=="9") test_getAreaDetector();
   else MSG(WARNING, "Undefined test name: " << tname);
 
