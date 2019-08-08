@@ -383,10 +383,6 @@ int main(int argc, char* argv[])
             nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload()); // add up offset before appending info name.
             addNames(dgIn->xtc, namesLookup, nodeId);
             save(*dgIn, xtcFile);
-        } else if (dgIn->seq.service() == TransitionId::SlowUpdate || dgIn->seq.service() == TransitionId::Enable || dgIn->seq.service() == TransitionId::Disable) {
-            save(*dgIn, xtcFile);
-            eventUpdateId++;
-            nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());    
         } else if (dgIn->seq.service() == TransitionId::L1Accept) {
             Dgram& dgOut = *(Dgram*)buf;
             TypeId tid(TypeId::Parent, 0);
@@ -431,6 +427,11 @@ int main(int argc, char* argv[])
                     break;
                 }
             }
+        } else {
+            // save all other transitions to smd, including SlowUpdate
+            save(*dgIn, xtcFile);
+            eventUpdateId++;
+            nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());    
         }// end if (dgIn->
         
         eventId++;
