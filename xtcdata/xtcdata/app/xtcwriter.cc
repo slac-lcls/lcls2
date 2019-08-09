@@ -130,8 +130,8 @@ public:
         Motor1,
         Motor2
     };
-  
-  
+
+
   ScanDef()
    {
      Alg scanAlg("scanalg",2,3,42);
@@ -141,7 +141,7 @@ public:
 } ScanDef;
 
 void scanExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
-{ 
+{
     CreateData scan(parent, namesLookup, namesId);
     scan.set_value(ScanDef::Motor1, (float)41.0);
     scan.set_value(ScanDef::Motor2, (double)42.0);
