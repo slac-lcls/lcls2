@@ -830,27 +830,83 @@ class CollectionManager():
         return True
 
     def condition_beginrun(self):
-        # TODO
+        # phase 1
+        ok = self.condition_common('beginrun', 6000)
+        if not ok:
+            logging.error('condition_beginrun(): beginrun phase1 failed')
+            return False
+
+        # phase 2
+        for pv in self.pvListMsgHeader:
+            self.pv_put(pv, DaqControl.transitionId['BeginRun'])
+        self.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, 0)
+
+        ok = self.get_phase2_replies('beginrun')
+        if not ok:
+            return False
+
         self.lastTransition = 'beginrun'
-        logging.debug('condition_beginrun() returning True')
         return True
 
     def condition_endrun(self):
-        # TODO
+        # phase 1
+        ok = self.condition_common('endrun', 6000)
+        if not ok:
+            logging.error('condition_endrun(): endrun phase1 failed')
+            return False
+
+        # phase 2
+        for pv in self.pvListMsgHeader:
+            self.pv_put(pv, DaqControl.transitionId['EndRun'])
+        self.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, 0)
+
+        ok = self.get_phase2_replies('endrun')
+        if not ok:
+            return False
+
         self.lastTransition = 'endrun'
-        logging.debug('condition_endrun() returning True')
         return True
 
     def condition_beginstep(self):
-        # TODO
+        # phase 1
+        ok = self.condition_common('beginstep', 6000)
+        if not ok:
+            logging.error('condition_beginstep(): beginstep phase1 failed')
+            return False
+
+        # phase 2
+        for pv in self.pvListMsgHeader:
+            self.pv_put(pv, DaqControl.transitionId['BeginStep'])
+        self.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, 0)
+
+        ok = self.get_phase2_replies('beginstep')
+        if not ok:
+            return False
+
         self.lastTransition = 'beginstep'
-        logging.debug('condition_beginstep() returning True')
         return True
 
     def condition_endstep(self):
-        # TODO
+        # phase 1
+        ok = self.condition_common('endstep', 6000)
+        if not ok:
+            logging.error('condition_endstep(): endstep phase1 failed')
+            return False
+
+        # phase 2
+        for pv in self.pvListMsgHeader:
+            self.pv_put(pv, DaqControl.transitionId['EndStep'])
+        self.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, 0)
+
+        ok = self.get_phase2_replies('endstep')
+        if not ok:
+            return False
+
         self.lastTransition = 'endstep'
-        logging.debug('condition_endstep() returning True')
         return True
 
     def condition_slowupdate(self):
