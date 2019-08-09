@@ -48,9 +48,9 @@ class DaqControl:
         'allocated',
         'connected',
         'configured',
-        'running',
+        'starting',
         'paused',
-        'enabled'
+        'running'
     ]
 
     default_active = 1
@@ -265,64 +265,64 @@ next_dict = {
                       'allocated' :   'rollcall',
                       'connected' :   'rollcall',
                       'configured' :  'rollcall',
-                      'running' :     'rollcall',
+                      'starting' :    'rollcall',
                       'paused' :      'rollcall',
-                      'enabled' :     'rollcall' },
+                      'running' :     'rollcall' },
 
     'unallocated' : { 'reset' :       'reset',
                       'allocated' :   'alloc',
                       'connected' :   'alloc',
                       'configured' :  'alloc',
-                      'running' :     'alloc',
+                      'starting' :    'alloc',
                       'paused' :      'alloc',
-                      'enabled' :     'alloc' },
+                      'running' :     'alloc' },
 
     'allocated' :   { 'reset' :       'dealloc',
                       'unallocated' : 'dealloc',
                       'connected' :   'connect',
                       'configured' :  'connect',
-                      'running' :     'connect',
+                      'starting' :    'connect',
                       'paused' :      'connect',
-                      'enabled' :     'connect' },
+                      'running' :     'connect' },
 
     'connected' :   { 'reset' :       'disconnect',
                       'unallocated' : 'disconnect',
                       'allocated' :   'disconnect',
                       'configured' :  'configure',
-                      'running' :     'configure',
+                      'starting' :    'configure',
                       'paused' :      'configure',
-                      'enabled' :     'configure' },
+                      'running' :     'configure' },
 
     'configured' :  { 'reset' :       'unconfigure',
                       'unallocated' : 'unconfigure',
                       'allocated' :   'unconfigure',
                       'connected' :   'unconfigure',
-                      'running' :     'beginrun',
+                      'starting' :    'beginrun',
                       'paused' :      'beginrun',
-                      'enabled' :     'beginrun' },
+                      'running' :     'beginrun' },
 
-    'running' :     { 'reset' :       'endrun',
+    'starting' :    { 'reset' :       'endrun',
                       'unallocated' : 'endrun',
                       'allocated' :   'endrun',
                       'connected' :   'endrun',
                       'configured' :  'endrun',
                       'paused' :      'beginstep',
-                      'enabled' :     'beginstep' },
+                      'running' :     'beginstep' },
 
     'paused' :      { 'reset' :       'endstep',
                       'unallocated' : 'endstep',
                       'allocated' :   'endstep',
                       'connected' :   'endstep',
                       'configured' :  'endstep',
-                      'running' :     'endstep',
-                      'enabled' :     'enable' },
+                      'starting' :    'endstep',
+                      'running' :     'enable' },
 
-    'enabled' :     { 'reset' :       'disable',
+    'running' :     { 'reset' :       'disable',
                       'unallocated' : 'disable',
                       'allocated' :   'disable',
                       'connected' :   'disable',
                       'configured' :  'disable',
-                      'running' :     'disable',
+                      'starting' :    'disable',
                       'paused' :      'disable' }
 }
 
@@ -521,22 +521,22 @@ class CollectionManager():
                                            conditions='condition_configure')
         self.collectMachine.add_transition('unconfigure', 'configured', 'connected',
                                            conditions='condition_unconfigure')
-        self.collectMachine.add_transition('beginrun', 'configured', 'running',
+        self.collectMachine.add_transition('beginrun', 'configured', 'starting',
                                            conditions='condition_beginrun')
-        self.collectMachine.add_transition('endrun', 'running', 'configured',
+        self.collectMachine.add_transition('endrun', 'starting', 'configured',
                                            conditions='condition_endrun')
-        self.collectMachine.add_transition('beginstep', 'running', 'paused',
+        self.collectMachine.add_transition('beginstep', 'starting', 'paused',
                                            conditions='condition_beginstep')
-        self.collectMachine.add_transition('endstep', 'paused', 'running',
+        self.collectMachine.add_transition('endstep', 'paused', 'starting',
                                            conditions='condition_endstep')
-        self.collectMachine.add_transition('enable', 'paused', 'enabled',
+        self.collectMachine.add_transition('enable', 'paused', 'running',
                                            after='after_enable',
                                            conditions='condition_enable')
-        self.collectMachine.add_transition('disable', 'enabled', 'paused',
+        self.collectMachine.add_transition('disable', 'running', 'paused',
                                            before='before_disable',
                                            conditions='condition_disable')
         # slowupdate is an internal transition
-        self.collectMachine.add_transition('slowupdate', 'enabled', None,
+        self.collectMachine.add_transition('slowupdate', 'running', None,
                                            conditions='condition_slowupdate')
 
         logging.info('Initial state = %s' % self.state)

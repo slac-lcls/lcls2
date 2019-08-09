@@ -44,7 +44,7 @@ class CGWMainTabUser(QGroupBox) :
 
     _name = 'CGWMainTabUser'
 
-    s_enabled, s_paused = 'enabled', 'paused'
+    s_running, s_paused = 'running', 'paused'
     s_play_start, s_play_pause, s_play_wait = 'Start', 'Pause', 'Wait'
 
     status_record = ['Begin', 'End', 'Wait']
@@ -79,7 +79,7 @@ class CGWMainTabUser(QGroupBox) :
         logger.debug('In %s.set_but_ctrls received state: %s' % (self._name, s_state))
         state =  s_state.lower()
 
-        if state == self.s_enabled :
+        if state == self.s_running :
             self.but_play.setIcon(icon.icon_playback_pause_sym)
             self.but_play.setAccessibleName(self.s_play_pause)
 
@@ -101,7 +101,7 @@ class CGWMainTabUser(QGroupBox) :
 #------------------------------
 
     def set_tool_tips(self) :
-        self.but_play  .setToolTip('%s triggers'  % self.but_play  .accessibleName())
+        self.but_play  .setToolTip('%s running'  % self.but_play  .accessibleName())
         self.but_record.setToolTip('%s recording' % self.but_record.accessibleName())
 
 #--------------------
@@ -152,13 +152,13 @@ class CGWMainTabUser(QGroupBox) :
         daq_ctrl = daq_control()
         state = daq_ctrl.getState() if daq_ctrl is not None else 'unknown'
         logger.debug('current state is "%s"' % state)
-        is_enabled = state==self.s_enabled
+        is_running = state==self.s_running
 
-        self.but_play   = QPushButton(icon.icon_playback_pause_sym if is_enabled else\
+        self.but_play   = QPushButton(icon.icon_playback_pause_sym if is_running else\
                                       icon.icon_playback_start_sym, '')
         self.but_record = QPushButton(icon.icon_record_sym, '')         # icon.icon_record
 
-        self.but_play  .setAccessibleName(self.s_play_pause if is_enabled else\
+        self.but_play  .setAccessibleName(self.s_play_pause if is_running else\
                                           self.s_play_start)
         self.but_record.setAccessibleName(self.status_record[0])
 
@@ -192,7 +192,7 @@ class CGWMainTabUser(QGroupBox) :
         state = daq_ctrl.getState() if daq_ctrl is not None else 'unknown'
         logger.debug('current state is %s' % state)
 
-        cmd = self.s_paused if txt==self.s_play_pause else self.s_enabled
+        cmd = self.s_paused if txt==self.s_play_pause else self.s_running
 
         daq_ctrl = daq_control()
         if daq_ctrl is not None :
@@ -204,9 +204,9 @@ class CGWMainTabUser(QGroupBox) :
         self.set_but_play_enabled(False) # lock button untill RUNNING status is received
 
 
-    def set_but_play_enabled(self, is_enabled=True) :
-        self.but_play.setEnabled(is_enabled)
-        self.but_play.setFlat(not is_enabled)
+    def set_but_play_enabled(self, is_running=True) :
+        self.but_play.setEnabled(is_running)
+        self.but_play.setFlat(not is_running)
 
 
     def on_but_record(self) :
