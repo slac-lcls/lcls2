@@ -114,6 +114,20 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
           _cachedTr.pop();
           _freeTr.push_back(ib);
         }
+        else if (oid == TransitionId::SlowUpdate && id == TransitionId::SlowUpdate) {
+          // SlowUpdate -> SlowUpdate: replace top entry
+          _cachedTr.pop();
+          _cachedTr.push(ibuffer);
+        }
+        else if (oid == TransitionId::SlowUpdate && id == TransitionId::Disable) {
+          // SlowUpdate -> Disable: pop two entries
+          int ib=_cachedTr.top();
+          _cachedTr.pop();
+          _freeTr.push_back(ib);
+          ib=_cachedTr.top();
+          _cachedTr.pop();
+          _freeTr.push_back(ib);
+        }
         else {  // unexpected transition
           printf("Unexpected transition for TransitionCache: tr[%s]!=[%s] or [%s]\n",
                  TransitionId::name(id),
