@@ -8,9 +8,12 @@ class CustomCollector():
         self.pvactx = Context('pva')
 
     def collect(self):
-        value = self.pvactx.get('DAQ:LAB2:PART:2:DeadFrac')
-        print('collect', value.raw.value)
-        yield GaugeMetricFamily('drp_dead_frac', documentation='',  value=value.raw.value)
+        g = GaugeMetricFamily('drp_dead_frac', documentation='',  labels=['partition'])
+        for p in range(8):
+            value = self.pvactx.get('DAQ:LAB2:XPM:2:PART:%d:DeadFrac' %p)
+            print('collect', value.raw.value)
+            g.add_metric([str(p)], value.raw.value)
+        yield g
 
 REGISTRY.register(CustomCollector())
 
