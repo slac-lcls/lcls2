@@ -22,7 +22,7 @@ using namespace rapidjson;
 
 #define BUFSIZE 0x4000000
 
-enum MyNamesId {HsdRaw,HsdFex,Cspad,Epics,NumberOf};
+enum MyNamesId {HsdRaw,HsdFex,Cspad,Epics,Scan,NumberOf};
 
 class EpicsDef:public VarDef
 {
@@ -122,6 +122,30 @@ public:
 } PadDef;
 
 
+class ScanDef:public VarDef
+{
+public:
+  enum index
+    {
+        Motor1,
+        Motor2
+    };
+  
+  
+  ScanDef()
+   {
+     Alg scanAlg("scanalg",2,3,42);
+     NameVec.push_back({"motor1", Name::FLOAT, 0, scanAlg});
+     NameVec.push_back({"motor2", Name::DOUBLE, 0, scanAlg});
+   }
+} ScanDef;
+
+void scanExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
+{ 
+    CreateData scan(parent, namesLookup, namesId);
+    scan.set_value(ScanDef::Motor1, (float)41.0);
+    scan.set_value(ScanDef::Motor2, (double)42.0);
+}
 
 class DebugIter : public XtcIterator
 {
@@ -418,7 +442,6 @@ void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned seg
     Alg cspadRawAlg("raw",2,3,42);
     NamesId namesId2(nodeId,MyNamesId::Cspad+MyNamesId::NumberOf*segment);
     Names& padNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", namesId2, segment);
-    Alg segmentAlg("cspadseg",2,3,42);
     padNames.add(xtc, PadDef);
     namesLookup[namesId2] = NameIndex(padNames);
 }
@@ -490,6 +513,19 @@ void addEpicsData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned 
     epicsExample(xtc, namesLookup, namesId);
 }
 
+void addScanNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
+    Alg scanAlg("scan",2,3,42);
+    NamesId namesId(nodeId,MyNamesId::Scan+MyNamesId::NumberOf*segment);
+    Names& scanNames = *new(xtc) Names("xppscan", scanAlg, "scanDet", "detnum1234", namesId, segment);
+    scanNames.add(xtc, ScanDef);
+    namesLookup[namesId] = NameIndex(scanNames);
+}
+
+void addScanData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
+    NamesId namesId(nodeId,MyNamesId::Scan+MyNamesId::NumberOf*segment);
+    scanExample(xtc, namesLookup, namesId);
+}
+
 
 #define MAX_FNAME_LEN 256
 
@@ -498,6 +534,7 @@ int main(int argc, char* argv[])
     int c;
     int parseErr = 0;
     unsigned nevents = 2;
+    unsigned nmotorsteps = 1;
     unsigned epicsPeriod = 4;
     char xtcname[MAX_FNAME_LEN];
     strncpy(xtcname, "data.xtc2", MAX_FNAME_LEN);
@@ -506,13 +543,16 @@ int main(int argc, char* argv[])
     // so we can do offline event-building.
     bool counting_timestamps = false;
 
-    while ((c = getopt(argc, argv, "hf:n:s:e:t")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:s:e:m:t")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
                 exit(0);
             case 'n':
                 nevents = atoi(optarg);
+                break;
+            case 'm':
+                nmotorsteps = atoi(optarg);
                 break;
             case 'e':
                 epicsPeriod = atoi(optarg);
@@ -552,8 +592,11 @@ int main(int argc, char* argv[])
     NamesLookup namesLookup;
     unsigned nSegments=2;
     unsigned iseg = 0;
-    // only add epics to the first stream
-    if (starting_segment==0) addEpicsNames(config.xtc, namesLookup, nodeid1, iseg);
+    // only add epics and scan info to the first stream
+    if (starting_segment==0) {
+        addEpicsNames(config.xtc, namesLookup, nodeid1, iseg);
+        addScanNames(config.xtc, namesLookup, nodeid1, iseg);
+    }
     for (unsigned iseg=0; iseg<nSegments; iseg++) {
         addNames(config.xtc, namesLookup, nodeid1, iseg+starting_segment);
         addData(config.xtc, namesLookup, nodeid1, iseg+starting_segment);
@@ -564,65 +607,78 @@ int main(int argc, char* argv[])
     DebugIter iter(&config.xtc, namesLookup);
     iter.iterate();
 
-    // make a BeginRun
     Dgram& beginRunTr = createTransition(TransitionId::BeginRun,
                                        counting_timestamps,
                                        timestamp_val);
     save(beginRunTr, xtcFile);
 
-    // make a BeginStep
-    Dgram& beginStepTr = createTransition(TransitionId::BeginStep,
-                                       counting_timestamps,
-                                       timestamp_val);
-    save(beginStepTr, xtcFile);
+    for (unsigned istep=0; istep<nmotorsteps; istep++) {
 
-    // make an Enable
-    Dgram& enableTr = createTransition(TransitionId::Enable,
-                                       counting_timestamps,
-                                       timestamp_val);
-    save(enableTr, xtcFile);
+        Dgram& beginStepTr = createTransition(TransitionId::BeginStep,
+                                              counting_timestamps,
+                                              timestamp_val);
+        // cpo comments this out because it somehow causes
+        // the BeginStep transition to end up in the epics store
+        //if (starting_segment==0) addScanData(beginStepTr.xtc, namesLookup, nodeid1, iseg);
+        save(beginStepTr, xtcFile);
 
-    void* buf = malloc(BUFSIZE);
-    for (unsigned ievt=0; ievt<nevents; ievt++) {
-        if (epicsPeriod>0) {
-            if (ievt>0 and ievt%epicsPeriod==0) {
-                // make a SlowUpdate with epics data
-                if (counting_timestamps) {
-                    tv.tv_sec = 0;
-                    tv.tv_usec = timestamp_val;
-                    timestamp_val++;
-                } else {
-                    gettimeofday(&tv, NULL);
+        Dgram& enableTr = createTransition(TransitionId::Enable,
+                                           counting_timestamps,
+                                           timestamp_val);
+        save(enableTr, xtcFile);
+
+        void* buf = malloc(BUFSIZE);
+        for (unsigned ievt=0; ievt<nevents; ievt++) {
+            if (epicsPeriod>0) {
+                if (ievt>0 and ievt%epicsPeriod==0) {
+                    // make a SlowUpdate with epics data
+                    if (counting_timestamps) {
+                        tv.tv_sec = 0;
+                        tv.tv_usec = timestamp_val;
+                        timestamp_val++;
+                    } else {
+                        gettimeofday(&tv, NULL);
+                    }
+                    Sequence seq(Sequence::Event, TransitionId::SlowUpdate, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+                    Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
+
+                    unsigned iseg = 0;
+                    // only add epics to the first stream
+                    if (starting_segment==0) addEpicsData(dgram.xtc, namesLookup, nodeid1, iseg);
+                    save(dgram,xtcFile);
                 }
-                Sequence seq(Sequence::Event, TransitionId::SlowUpdate, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
-                Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
-
-                unsigned iseg = 0;
-                // only add epics to the first stream
-                if (starting_segment==0) addEpicsData(dgram.xtc, namesLookup, nodeid1, iseg);
-                save(dgram,xtcFile);
             }
-        }
 
-        // generate a normal L1
-        if (counting_timestamps) {
-            tv.tv_sec = 0;
-            tv.tv_usec = timestamp_val;
-            timestamp_val++;
-        } else {
-            gettimeofday(&tv, NULL);
-        }
-        Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
-        Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
+            // generate a normal L1
+            if (counting_timestamps) {
+                tv.tv_sec = 0;
+                tv.tv_usec = timestamp_val;
+                timestamp_val++;
+            } else {
+                gettimeofday(&tv, NULL);
+            }
+            Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+            Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
 
-        for (unsigned iseg=0; iseg<nSegments; iseg++) {
-            addData(dgram.xtc, namesLookup, nodeid1, iseg+starting_segment);
-        }
-        DebugIter iter(&dgram.xtc, namesLookup);
-        iter.iterate();
-        save(dgram,xtcFile);
+            for (unsigned iseg=0; iseg<nSegments; iseg++) {
+                addData(dgram.xtc, namesLookup, nodeid1, iseg+starting_segment);
+            }
+            DebugIter iter(&dgram.xtc, namesLookup);
+            iter.iterate();
+            save(dgram,xtcFile);
 
-     }
+        } // events
+
+        Dgram& disableTr = createTransition(TransitionId::Disable,
+                                            counting_timestamps,
+                                            timestamp_val);
+        save(disableTr, xtcFile);
+
+        Dgram& endStepTr = createTransition(TransitionId::EndStep,
+                                            counting_timestamps,
+                                            timestamp_val);
+        save(endStepTr, xtcFile);
+    } // steps
 
     // make a Disable
     Dgram& disableTr = createTransition(TransitionId::Disable,
