@@ -171,6 +171,19 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
     exporter->add("drp_port_xmit_rate", labels, MetricType::Rate,
                   [](){return 4*readInfinibandCounter("port_xmit_data");});
 
+    auto queueLength = [](std::vector<SPSCQueue<Batch> >& vec) {
+        size_t sum = 0;
+        for (auto& q: vec) {
+            sum += q.guess_size();
+        }
+        return sum;
+    };
+    exporter->add("drp_worker_input_queue", labels, MetricType::Gauge,
+                  [&](){return queueLength(m_workerInputQueues);});
+
+    exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
+                   [&](){return queueLength(m_workerOutputQueues);});
+
 
     int64_t worker = 0L;
     uint64_t batchId = 0L;
