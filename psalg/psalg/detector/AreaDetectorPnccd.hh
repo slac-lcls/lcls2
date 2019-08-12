@@ -10,8 +10,9 @@ using namespace psalg;
 
 namespace detector {
 
-typedef uint16_t raw_pnccd_t; // raw   type of pnccd data
-typedef  float calib_pnccd_t; // calib type of pnccd data
+typedef uint16_t pnccd_raw_t;       // raw   type of pnccd data
+typedef float    pnccd_calib_t;     // calib type of pnccd data
+typedef double   pnccd_pedestals_t; // pedestals type of pnccd data
 
 //-----------------------------
 class AreaDetectorPnccd : public AreaDetector {
@@ -36,11 +37,11 @@ public:
 
   void _class_msg(const std::string& msg=std::string());
 
-  virtual NDArray<raw_pnccd_t>& raw(XtcData::DescData&);
-  virtual NDArray<raw_pnccd_t>& raw(XtcData::DataIter& di) {return raw(descdata(di));}
+  virtual NDArray<pnccd_raw_t>& raw(XtcData::DescData&);
+  virtual NDArray<pnccd_raw_t>& raw(XtcData::DataIter& di) {return raw(descdata(di));}
 
-  virtual NDArray<calib_pnccd_t>& calib(XtcData::DescData&);
-  virtual NDArray<calib_pnccd_t>& calib(XtcData::DataIter& di) {return calib(descdata(di));}
+  virtual NDArray<pnccd_calib_t>& calib(XtcData::DescData&);
+  virtual NDArray<pnccd_calib_t>& calib(XtcData::DataIter& di) {return calib(descdata(di));}
 
   virtual void load_calib_constants();
 
@@ -114,10 +115,10 @@ public:
   inline cfg_int64_t specialWord(XtcData::DataIter& di, unsigned m) {return data_value_for_index<cfg_int64_t>(di, _specialWord[m]);}
 
   inline Array<cfg_int64_t> frame_shape(XtcData::DataIter& di)        {return data_array_for_index<cfg_int64_t>(di, _frame_shape);}
-  inline Array<raw_pnccd_t> data2d(XtcData::DescData& dd, unsigned m) {return data_array_for_index<raw_pnccd_t>(dd, _data[m]);}
-  inline Array<raw_pnccd_t> data2d(XtcData::DataIter& di, unsigned m) {return data2d(descdata(di), m);}
-  inline Array<raw_pnccd_t> data1d(XtcData::DescData& dd, unsigned m) {return data_array_for_index<raw_pnccd_t>(dd, __data[m]);}
-  inline Array<raw_pnccd_t> data1d(XtcData::DataIter& di, unsigned m) {return data1d(descdata(di), m);}
+  inline Array<pnccd_raw_t> data2d(XtcData::DescData& dd, unsigned m) {return data_array_for_index<pnccd_raw_t>(dd, _data[m]);}
+  inline Array<pnccd_raw_t> data2d(XtcData::DataIter& di, unsigned m) {return data2d(descdata(di), m);}
+  inline Array<pnccd_raw_t> data1d(XtcData::DescData& dd, unsigned m) {return data_array_for_index<pnccd_raw_t>(dd, __data[m]);}
+  inline Array<pnccd_raw_t> data1d(XtcData::DataIter& di, unsigned m) {return data1d(descdata(di), m);}
 
 private:
 
@@ -153,10 +154,9 @@ private:
   char _cbuf5[MAX_NUMBER_OF_MODULES][32];
   char _cbuf6[MAX_NUMBER_OF_MODULES][32];
 
-  NDArray<raw_pnccd_t>   _raw;
-  NDArray<calib_pnccd_t> _calib;
-  //const NDArray<double>& _peds;
-  NDArray<double> _peds;
+  NDArray<pnccd_raw_t>   _raw;
+  NDArray<pnccd_calib_t> _calib;
+  const NDArray<pnccd_pedestals_t>* _peds;
 
   void _panel_id(std::ostream& os, const int ind);
 

@@ -249,8 +249,8 @@ const void AreaDetectorPnccd::print_data(XtcData::DataIter& di) {
     LONG_STRING1(_cbuf2[m] << ": " << timeStampHi(di ,m))
     LONG_STRING1(_cbuf3[m] << ": " << timeStampLo(di ,m))
     LONG_STRING1(_cbuf4[m] << ": " << specialWord(di ,m))
-    LONG_STRING1(_cbuf5[m] << ": " << (NDArray<raw_pnccd_t>)data2d(di ,m))
-    LONG_STRING1(_cbuf6[m] << ": " << (NDArray<raw_pnccd_t>)data1d(di ,m))
+    LONG_STRING1(_cbuf5[m] << ": " << (NDArray<pnccd_raw_t>)data2d(di ,m))
+    LONG_STRING1(_cbuf6[m] << ": " << (NDArray<pnccd_raw_t>)data1d(di ,m))
 }
 
 //-------------------
@@ -306,33 +306,32 @@ void AreaDetectorPnccd::_make_raw(XtcData::DescData& dd) {
   _raw.set_shape(shape(), ndim());
   // copy segment data of four Array to single NDArray 
   for(unsigned m=0; m<MAX_NUMBER_OF_MODULES; m++) {
-    Array<raw_pnccd_t> a = dd.get_array<raw_pnccd_t>(__data[m]);
-    raw_pnccd_t* pdata = a.data();
-    memcpy(&_raw(m,0,0), pdata, sizeof(raw_pnccd_t) * a.num_elem());
+    Array<pnccd_raw_t> a = dd.get_array<pnccd_raw_t>(__data[m]);
+    pnccd_raw_t* pdata = a.data();
+    memcpy(&_raw(m,0,0), pdata, sizeof(pnccd_raw_t) * a.num_elem());
   }
 }
 
 //-------------------
 
-NDArray<raw_pnccd_t>& AreaDetectorPnccd::raw(XtcData::DescData& dd) {
+NDArray<pnccd_raw_t>& AreaDetectorPnccd::raw(XtcData::DescData& dd) {
   _make_raw(dd);
   return _raw;
 }
 
 //-------------------
 
-NDArray<calib_pnccd_t>& AreaDetectorPnccd::calib(XtcData::DescData& dd) {
+NDArray<pnccd_calib_t>& AreaDetectorPnccd::calib(XtcData::DescData& dd) {
   _make_raw(dd);
   unsigned n = size();
   _calib.reserve_data_buffer(n);
   _calib.set_shape(shape(), ndim());
 
-  raw_pnccd_t*   pr = _raw.data();
-  raw_pnccd_t*   pr_last = &pr[n];
-  calib_pnccd_t* pc = _calib.data();
-  const double*  pp = _peds.data();
-  for(; pr<pr_last; pr++, pc++, pp++) *pc = (calib_pnccd_t)*pr - (calib_pnccd_t)*pp;
-  //for(; pr<pr_last; pr++, pc++) *pc = (calib_pnccd_t)*pr;
+  pnccd_raw_t*   pr = _raw.data();
+  pnccd_raw_t*   pr_last = &pr[n];
+  pnccd_calib_t* pc = _calib.data();
+  const pnccd_pedestals_t* pp = (*_peds).const_data();
+  for(; pr<pr_last; pr++, pc++, pp++) *pc = (pnccd_calib_t)*pr - (pnccd_calib_t)*pp;
   return _calib;
 }
 
@@ -340,11 +339,9 @@ NDArray<calib_pnccd_t>& AreaDetectorPnccd::calib(XtcData::DescData& dd) {
 
 void AreaDetectorPnccd::load_calib_constants() {
   set_calibtype("pedestals");
-  const NDArray<double>& a = pedestals_d();
+  const NDArray<pnccd_pedestals_t>& a = pedestals_d();
   std::cout << "== det.pedestals_d : " << a << '\n';
-  //_peds.set_ndarray(peds);
-  _peds.set_shape(a.shape(), a.ndim());
-  _peds.set_data_copy(a.const_data());
+  _peds = &a;
 }
 
 //-------------------

@@ -137,6 +137,8 @@ public:
 							                    const bool& neighbors=true);
 
   /// access to raw, calibrated data, and image
+  virtual void load_calib_constants();
+
   virtual const NDArray<raw_t>& raw(const event_t&);
   virtual const NDArray<calib_t>& calib(const event_t&);
   virtual const NDArray<image_t>& image(const event_t&);

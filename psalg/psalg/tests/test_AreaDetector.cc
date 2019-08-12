@@ -399,14 +399,14 @@ void test_AreaDetectorPnccd(int argc, char* argv[]) {
 
       det.print_data(di);
 
-      NDArray<raw_pnccd_t>& nda1 = det.raw(di);
+      NDArray<pnccd_raw_t>& nda1 = det.raw(di);
       std::cout << "  ==   raw data nda for DataIter: " << nda1 << '\n';
 
       //DescData& dd = di.desc_value(ci.namesLookup());
-      //NDArray<raw_pnccd_t>& nda2 = det.raw(dd);
+      //NDArray<pnccd_raw_t>& nda2 = det.raw(dd);
       //std::cout << "  ==   raw data nda for DescData: " << nda2 << '\n';
 
-      NDArray<calib_pnccd_t>& nda3 = det.calib(di);
+      NDArray<pnccd_calib_t>& nda3 = det.calib(di);
       std::cout << "  == calib data nda for DataIter: " << nda3 << '\n';
       nevent++;
   }

@@ -301,8 +301,6 @@ const NDArray<common_mode_t>& AreaDetector::common_mode(const event_t& evt) {
 
 const NDArray<double>& AreaDetector::pedestals_d() {
   return calib_pars()->pedestals_d(query());
-  //  _default_msg("pedestals(...)");
-  //  return _pedestals;
 }
 
 const NDArray<pedestals_t>& AreaDetector::pedestals(const event_t& evt) {
@@ -380,9 +378,15 @@ const NDArray<pixel_mask_t>& AreaDetector::mask(const event_t& evt, const bool& 
   //  return _pixel_mask;
 }
 
+
+
+//-------------------
+
+void AreaDetector::load_calib_constants() {
+  _default_msg("load_calib_constants");
+}
+
 /// access to raw, calibrated data, and image
-
-
 const NDArray<raw_t>& AreaDetector::raw(const event_t& evt) {
   _default_msg("raw(...)");
   return _raw;
@@ -463,7 +467,6 @@ calib::CalibPars* AreaDetector::calib_pars_updated() {
   return calib_pars();
 }
 
-//-------------------
 //-------------------
 
 } // namespace detector
