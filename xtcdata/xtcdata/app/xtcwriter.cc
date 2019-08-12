@@ -680,18 +680,6 @@ int main(int argc, char* argv[])
         save(endStepTr, xtcFile);
     } // steps
 
-    // make a Disable
-    Dgram& disableTr = createTransition(TransitionId::Disable,
-                                        counting_timestamps,
-                                        timestamp_val);
-    save(disableTr, xtcFile);
-
-    // make an EndStep
-    Dgram& endStepTr = createTransition(TransitionId::EndStep,
-                                        counting_timestamps,
-                                        timestamp_val);
-    save(endStepTr, xtcFile);
-
     // make an EndRun
     Dgram& endRunTr = createTransition(TransitionId::EndRun,
                                        counting_timestamps,
