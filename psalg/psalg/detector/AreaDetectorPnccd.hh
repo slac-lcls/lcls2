@@ -10,7 +10,8 @@ using namespace psalg;
 
 namespace detector {
 
-typedef int16_t raw_pnccd_t; // raw daq rata type of pnccd
+typedef uint16_t raw_pnccd_t; // raw   type of pnccd data
+typedef  float calib_pnccd_t; // calib type of pnccd data
 
 //-----------------------------
 class AreaDetectorPnccd : public AreaDetector {
@@ -23,23 +24,25 @@ public:
   AreaDetectorPnccd();
   virtual ~AreaDetectorPnccd();
 
+  virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
+
   virtual void set_indexes_config(XtcData::ConfigIter&);
   virtual void set_indexes_data(XtcData::DataIter&);
 
-  //DEPRICATED
-  //virtual void process_config();
-  //virtual void process_data(XtcData::DataIter&);
-
-  virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
-
+  virtual const void print_config_indexes();
+  virtual const void print_data_indexes();
   virtual const void print_config();
-  virtual const void print_data();
   virtual const void print_data(XtcData::DataIter&);
 
   void _class_msg(const std::string& msg=std::string());
 
   virtual NDArray<raw_pnccd_t>& raw(XtcData::DescData&);
-  virtual NDArray<raw_pnccd_t>& raw(XtcData::DataIter&);
+  virtual NDArray<raw_pnccd_t>& raw(XtcData::DataIter& di) {return raw(descdata(di));}
+
+  virtual NDArray<calib_pnccd_t>& calib(XtcData::DescData&);
+  virtual NDArray<calib_pnccd_t>& calib(XtcData::DataIter& di) {return calib(descdata(di));}
+
+  virtual void load_calib_constants();
 
   // implemented in AreaDetector
   /// shape, size, ndim of data from configuration object
@@ -86,38 +89,37 @@ public:
 
   enum {MAX_NUMBER_OF_MODULES=4};
 
-  // convenience methods
-  inline int64_cfg_t Version             () {return config_value_for_index<int64_cfg_t>(*_pconfig, _Version             );}
-  inline int64_cfg_t TypeId              () {return config_value_for_index<int64_cfg_t>(*_pconfig, _TypeId              );}
-  inline int64_cfg_t numLinks            () {return config_value_for_index<int64_cfg_t>(*_pconfig, _numLinks            );}
-  inline int64_cfg_t numChannels         () {return config_value_for_index<int64_cfg_t>(*_pconfig, _numChannels         );}
-  inline int64_cfg_t camexMagic          () {return config_value_for_index<int64_cfg_t>(*_pconfig, _camexMagic          );}
-  inline int64_cfg_t numRows             () {return config_value_for_index<int64_cfg_t>(*_pconfig, _numRows             );}
-  inline int64_cfg_t numSubmoduleRows    () {return config_value_for_index<int64_cfg_t>(*_pconfig, _numSubmoduleRows    );}
-  inline int64_cfg_t payloadSizePerLink  () {return config_value_for_index<int64_cfg_t>(*_pconfig, _payloadSizePerLink  );}
-  inline int64_cfg_t numSubmoduleChannels() {return config_value_for_index<int64_cfg_t>(*_pconfig, _numSubmoduleChannels);}
-  inline int64_cfg_t numSubmodules       () {return config_value_for_index<int64_cfg_t>(*_pconfig, _numSubmodules       );}
+  // convenience methods of AreaDetectorPnccd ONLY!
+  inline cfg_int64_t Version             () {return config_value_for_index<cfg_int64_t>(*_pconfig, _Version);}
+  inline cfg_int64_t TypeId              () {return config_value_for_index<cfg_int64_t>(*_pconfig, _TypeId);}
+  inline cfg_int64_t numLinks            () {return config_value_for_index<cfg_int64_t>(*_pconfig, _numLinks);}
+  inline cfg_int64_t numChannels         () {return config_value_for_index<cfg_int64_t>(*_pconfig, _numChannels);}
+  inline cfg_int64_t camexMagic          () {return config_value_for_index<cfg_int64_t>(*_pconfig, _camexMagic);}
+  inline cfg_int64_t numRows             () {return config_value_for_index<cfg_int64_t>(*_pconfig, _numRows);}
+  inline cfg_int64_t numSubmoduleRows    () {return config_value_for_index<cfg_int64_t>(*_pconfig, _numSubmoduleRows);}
+  inline cfg_int64_t payloadSizePerLink  () {return config_value_for_index<cfg_int64_t>(*_pconfig, _payloadSizePerLink);}
+  inline cfg_int64_t numSubmoduleChannels() {return config_value_for_index<cfg_int64_t>(*_pconfig, _numSubmoduleChannels);}
+  inline cfg_int64_t numSubmodules       () {return config_value_for_index<cfg_int64_t>(*_pconfig, _numSubmodules);}
 
-  inline const Array<int64_cfg_t> info_shape()        {return config_array_for_index<int64_cfg_t>(*_pconfig, _info_shape);}
-  inline const Array<int64_cfg_t> timingFName_shape() {return config_array_for_index<int64_cfg_t>(*_pconfig, _timingFName_shape);}
+  inline Array<cfg_int64_t> info_shape()        {return config_array_for_index<cfg_int64_t>(*_pconfig, _info_shape);}
+  inline Array<cfg_int64_t> timingFName_shape() {return config_array_for_index<cfg_int64_t>(*_pconfig, _timingFName_shape);}
 
   //data values, arrays
-  inline int64_cfg_t data_Version       (XtcData::DataIter& di) {return data_value_for_index<int64_cfg_t>(di, _data_Version);}
-  inline int64_cfg_t data_TypeId        (XtcData::DataIter& di) {return data_value_for_index<int64_cfg_t>(di, _data_TypeId);}
-  inline int64_cfg_t data_numLinks      (XtcData::DataIter& di) {return data_value_for_index<int64_cfg_t>(di, _numLinks);}
-  inline const Array<int64_cfg_t> frame_shape(XtcData::DataIter& di){return data_array_for_index<int64_cfg_t>(di, _frame_shape);}
+  inline cfg_int64_t data_Version (XtcData::DataIter& di) {return data_value_for_index<cfg_int64_t>(di, _data_Version);}
+  inline cfg_int64_t data_TypeId  (XtcData::DataIter& di) {return data_value_for_index<cfg_int64_t>(di, _data_TypeId);}
+  inline cfg_int64_t data_numLinks(XtcData::DataIter& di) {return data_value_for_index<cfg_int64_t>(di, _numLinks);}
+  inline cfg_int64_t frameNumber(XtcData::DataIter& di, unsigned m) {return data_value_for_index<cfg_int64_t>(di, _frameNumber[m]);}
+  inline cfg_int64_t timeStampHi(XtcData::DataIter& di, unsigned m) {return data_value_for_index<cfg_int64_t>(di, _timeStampHi[m]);}
+  inline cfg_int64_t timeStampLo(XtcData::DataIter& di, unsigned m) {return data_value_for_index<cfg_int64_t>(di, _timeStampLo[m]);}
+  inline cfg_int64_t specialWord(XtcData::DataIter& di, unsigned m) {return data_value_for_index<cfg_int64_t>(di, _specialWord[m]);}
 
-  inline const Array<uint16_t> data2d(XtcData::DataIter& di, unsigned m) {return data_array_for_index<uint16_t>(di,  _data[m]);}
-  inline const Array<uint16_t> data1d(XtcData::DataIter& di, unsigned m) {return data_array_for_index<uint16_t>(di, __data[m]);}
-
-  inline int64_cfg_t frameNumber(XtcData::DataIter& di, unsigned m) {return data_value_for_index<int64_cfg_t>(di, _frameNumber[m]);}
-  inline int64_cfg_t timeStampHi(XtcData::DataIter& di, unsigned m) {return data_value_for_index<int64_cfg_t>(di, _timeStampHi[m]);}
-  inline int64_cfg_t timeStampLo(XtcData::DataIter& di, unsigned m) {return data_value_for_index<int64_cfg_t>(di, _timeStampLo[m]);}
-  inline int64_cfg_t specialWord(XtcData::DataIter& di, unsigned m) {return data_value_for_index<int64_cfg_t>(di, _specialWord[m]);}
+  inline Array<cfg_int64_t> frame_shape(XtcData::DataIter& di)        {return data_array_for_index<cfg_int64_t>(di, _frame_shape);}
+  inline Array<raw_pnccd_t> data2d(XtcData::DescData& dd, unsigned m) {return data_array_for_index<raw_pnccd_t>(dd, _data[m]);}
+  inline Array<raw_pnccd_t> data2d(XtcData::DataIter& di, unsigned m) {return data2d(descdata(di), m);}
+  inline Array<raw_pnccd_t> data1d(XtcData::DescData& dd, unsigned m) {return data_array_for_index<raw_pnccd_t>(dd, __data[m]);}
+  inline Array<raw_pnccd_t> data1d(XtcData::DataIter& di, unsigned m) {return data1d(descdata(di), m);}
 
 private:
-
-  typedef unsigned index_t;
 
   index_t _data_Version = 0;         // 1
   index_t _data_TypeId = 0;          // 11
@@ -151,9 +153,14 @@ private:
   char _cbuf5[MAX_NUMBER_OF_MODULES][32];
   char _cbuf6[MAX_NUMBER_OF_MODULES][32];
 
-  NDArray<raw_pnccd_t> _raw;
+  NDArray<raw_pnccd_t>   _raw;
+  NDArray<calib_pnccd_t> _calib;
+  //const NDArray<double>& _peds;
+  NDArray<double> _peds;
 
   void _panel_id(std::ostream& os, const int ind);
+
+  void _make_raw(XtcData::DescData& dd);
 
   //char* panel_ids[MAX_NUMBER_OF_MODULES];
 }; // class

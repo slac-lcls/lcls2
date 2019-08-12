@@ -54,6 +54,7 @@ const NDArray<T>& Calib##N(Query& q) {\
 
 GET_NDARRAY_DEF(common_mode_t,  Pars::common_mode,      double)
 GET_NDARRAY_DEF(pedestals_t,    Pars::pedestals,        float)
+GET_NDARRAY_DEF(double,         Pars::pedestals_d,      double)
 GET_NDARRAY_DEF(pixel_rms_t,    Pars::rms,              float)
 GET_NDARRAY_DEF(pixel_status_t, Pars::status,           uint16)
 GET_NDARRAY_DEF(pixel_gain_t,   Pars::gain,             float)

@@ -20,8 +20,8 @@ public:
   Detector(const std::string& detname="NoDevice", const DETTYPE& dettype=UNDEFINED_DETECTOR);
   virtual ~Detector();
 
-  const std::string& detname() {return _detname;};
-  const DETTYPE&     dettype() {return _dettype;};
+  const std::string& detname() {return _detname;}
+  const DETTYPE&     dettype() {return _dettype;}
 
   friend std::ostream& operator << (std::ostream& os, Detector& o) {
     os << "Detector name=" << o.detname() << " type=" << o.dettype() << " typename=" << dettypename(o.dettype()); return os;
@@ -33,7 +33,6 @@ public:
 private:
     std::string _detname;
     DETTYPE     _dettype;
-
 }; // class
 
 } // namespace detector

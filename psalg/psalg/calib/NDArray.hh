@@ -161,7 +161,8 @@ public:
   inline size_t rank() const {return base::rank();}
 
 //-------------------
-
+// the same as uint64_t Array::num_elem()
+//  inline uint64_t size() const {return base::num_elem();}
   inline size_t size() const {
     size_t s=1; for(size_t i=0; i<ndim(); i++) s*=shape()[i]; 
     return s;

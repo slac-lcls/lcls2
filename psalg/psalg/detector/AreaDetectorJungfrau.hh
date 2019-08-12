@@ -80,9 +80,9 @@ public:
 
 private:
 
-  int64_cfg_t _moduleVersion  [MAX_NUMBER_OF_MODULES];
-  int64_cfg_t _firmwareVersion[MAX_NUMBER_OF_MODULES];
-  int64_cfg_t _serialNumber   [MAX_NUMBER_OF_MODULES];
+  cfg_int64_t _moduleVersion  [MAX_NUMBER_OF_MODULES];
+  cfg_int64_t _firmwareVersion[MAX_NUMBER_OF_MODULES];
+  cfg_int64_t _serialNumber   [MAX_NUMBER_OF_MODULES];
 
   NDArray<raw_jungfrau_t> _raw;
 

@@ -133,10 +133,10 @@ void test_AreaDetector_base(int argc, char* argv[]) {
 
   // get configuration out of the 1-st datagram
   Dgram* dg = xfi.next();
-  ConfigIter configo(&(dg->xtc));
+  ConfigIter ci(&(dg->xtc));
 
-  //AreaDetectorJungfrau& det = (AreaDetectorJungfrau&)*getAreaDetector("jungfrau", configo);
-  AreaDetector& det = *getAreaDetector("jungfrau", configo);
+  //AreaDetectorJungfrau& det = (AreaDetectorJungfrau&)*getAreaDetector("jungfrau", ci);
+  AreaDetector& det = *getAreaDetector("jungfrau", ci);
 
   det.AreaDetector::process_config();
   //det.process_config();
@@ -149,10 +149,10 @@ void test_AreaDetector_base(int argc, char* argv[]) {
       printf("evt:%04d\n", nevent);
       print_dg_info(dg);
 
-      DataIter datao(&(dg->xtc));
+      DataIter di(&(dg->xtc));
  
-      det.AreaDetector::process_data(datao);
-      //det.process_data(datao);
+      det.AreaDetector::process_data(di);
+      //det.process_data(di);
 
       nevent++;
   }
@@ -169,17 +169,17 @@ void test_AreaDetector_mix(int argc, char* argv[]) {
   XtcFileIterator xfi(fd, 0x4000000);
 
   Dgram* dg = xfi.next();
-  ConfigIter configo(&(dg->xtc));
+  ConfigIter ci(&(dg->xtc));
 
-  //AreaDetectorJungfrau& det = (AreaDetectorJungfrau&)*getAreaDetector("jungfrau", configo);
-  AreaDetector& det = *getAreaDetector("jungfrau", configo);
-  //AreaDetector det("jungfrau", configo);
+  //AreaDetectorJungfrau& det = (AreaDetectorJungfrau&)*getAreaDetector("jungfrau", ci);
+  AreaDetector& det = *getAreaDetector("jungfrau", ci);
+  //AreaDetector det("jungfrau", ci);
 
   //det.AreaDetector::process_config();
   //det.process_config();
 
   det.print_config();
-  std::cout << str_config_names(configo) << '\n';
+  std::cout << str_config_names(ci) << '\n';
 
   //=======
   //query_t query = 123;
@@ -190,7 +190,7 @@ void test_AreaDetector_mix(int argc, char* argv[]) {
   //std::cout << "\n  cmod   : " << cmod;
   //std::cout << "\n  raw    : " << raw;
   //std::cout << '\n';
-  //NamesLookup& namesLookup = configo.namesLookup();
+  //NamesLookup& namesLookup = ci.namesLookup();
   //=======
 
   unsigned neventreq=2;
@@ -201,21 +201,21 @@ void test_AreaDetector_mix(int argc, char* argv[]) {
       printf("evt:%04d\n", nevent);
       print_dg_info(dg);
 
-      DataIter datao(&(dg->xtc));
+      DataIter di(&(dg->xtc));
  
-      //DESC_VALUE(desc_data, datao, namesLookup);
-      //DescData& desc_data = datao.desc_value(namesLookup);
+      //DESC_VALUE(desc_data, di, namesLookup);
+      //DescData& desc_data = di.desc_value(namesLookup);
       //dump("Data values", desc_data);
 
-      //det.AreaDetector::process_data(datao);
-      det.process_data(datao); // <- prints data details 
+      //det.AreaDetector::process_data(di);
+      det.process_data(di); // <- prints data details 
 
       raw_t* data;
-      det.raw<raw_t>(datao, data, "frame");
+      det.raw<raw_t>(di, data, "frame");
       printf(" == raw data pointer: %d %d %d %d %d\n", data[0],data[1],data[2],data[3],data[4]);
 
       NDArray<raw_t> nda;
-      det.raw<raw_t>(datao, nda);
+      det.raw<raw_t>(di, nda);
       std::cout << " == raw data nda: " << nda << '\n';
 
       nevent++;
@@ -232,10 +232,10 @@ void test_AreaDetector(int argc, char* argv[]) {
   XtcFileIterator xfi(fd, 0x4000000);
 
   Dgram* dg = xfi.next();
-  ConfigIter configo(&(dg->xtc));
+  ConfigIter ci(&(dg->xtc));
 
-  //AreaDetectorJungfrau& det = (AreaDetectorJungfrau&)*getAreaDetector("jungfrau", configo);
-  AreaDetector& det = *getAreaDetector("jungfrau", configo);
+  //AreaDetectorJungfrau& det = (AreaDetectorJungfrau&)*getAreaDetector("jungfrau", ci);
+  AreaDetector& det = *getAreaDetector("jungfrau", ci);
 
   //det.AreaDetector::process_config();
   //det.process_config();
@@ -248,14 +248,14 @@ void test_AreaDetector(int argc, char* argv[]) {
 
       printf("evt:%04d %s", nevent, str_dg_info(dg).c_str());
 
-      DataIter datao(&(dg->xtc));
+      DataIter di(&(dg->xtc));
 
       raw_t* d;
-      det.raw<raw_t>(datao, d, "frame");
+      det.raw<raw_t>(di, d, "frame");
       printf("\n == raw data pointer: %d %d %d %d %d\n", d[0],d[1],d[2],d[3],d[4]);
 
       NDArray<raw_t> nda;
-      det.raw<raw_t>(datao, nda);
+      det.raw<raw_t>(di, nda);
       std::cout << " == raw data nda: " << nda << '\n';
 
       nevent++;
@@ -274,11 +274,11 @@ void test_AreaDetectorJungfrau(int argc, char* argv[]) {
   XtcFileIterator xfi(fd, 0x4000000);
 
   Dgram* dg = xfi.next();
-  ConfigIter configo(&(dg->xtc));
+  ConfigIter ci(&(dg->xtc));
 
-  AreaDetectorJungfrau det("jungfrau", configo);
+  AreaDetectorJungfrau det("jungfrau", ci);
   //det.process_config();
-  //std::cout << str_config_names(configo) << '\n';
+  //std::cout << str_config_names(ci) << '\n';
   det.print_config();
 
   unsigned neventreq=5;
@@ -289,11 +289,11 @@ void test_AreaDetectorJungfrau(int argc, char* argv[]) {
       printf("evt:%04d\n", nevent);
       //print_dg_info(dg);
 
-      DataIter datao(&(dg->xtc));
-      NDArray<raw_jungfrau_t>& nda1 = det.raw(datao);
+      DataIter di(&(dg->xtc));
+      NDArray<raw_jungfrau_t>& nda1 = det.raw(di);
       std::cout << "  == raw data nda for DataIter: " << nda1 << '\n';
 
-      DescData& ddata = datao.desc_value(configo.namesLookup());
+      DescData& ddata = di.desc_value(ci.namesLookup());
       NDArray<raw_jungfrau_t>& nda2 = det.raw(ddata);
       std::cout << "  == raw data nda for DescData: " << nda2 << '\n';
 
@@ -314,12 +314,12 @@ void test_AreaDetectorCspad(int argc, char* argv[]) {
   XtcFileIterator xfi(fd, 0x4000000);
 
   Dgram* dg = xfi.next();
-  ConfigIter configo(&(dg->xtc));
+  ConfigIter ci(&(dg->xtc));
 
-  AreaDetectorJungfrau det("jungfrau", configo);
-  //AreaDetectorCspad det("jungfrau", configo);
+  AreaDetectorJungfrau det("jungfrau", ci);
+  //AreaDetectorCspad det("jungfrau", ci);
   //det.process_config();
-  //std::cout << str_config_names(configo) << '\n';
+  //std::cout << str_config_names(ci) << '\n';
   det.print_config();
 
   unsigned neventreq=5;
@@ -330,11 +330,12 @@ void test_AreaDetectorCspad(int argc, char* argv[]) {
       printf("evt:%04d\n", nevent);
       //print_dg_info(dg);
 
-      DataIter datao(&(dg->xtc));
-      NDArray<raw_jungfrau_t>& nda1 = det.raw(datao);
+      DataIter di(&(dg->xtc));
+      NDArray<raw_jungfrau_t>& nda1 = det.raw(di);
       std::cout << "  == raw data nda for DataIter: " << nda1 << '\n';
 
-      DescData& ddata = datao.desc_value(configo.namesLookup());
+
+      DescData& ddata = di.desc_value(ci.namesLookup());
       NDArray<raw_jungfrau_t>& nda2 = det.raw(ddata);
       std::cout << "  == raw data nda for DescData: " << nda2 << '\n';
 
@@ -357,17 +358,30 @@ void test_AreaDetectorPnccd(int argc, char* argv[]) {
   Dgram* dg = xfi.next();
   ConfigIter ci(&(dg->xtc));
 
-  AreaDetectorPnccd det("pnccd", ci);
+  AreaDetectorPnccd det("pnccd_0001", ci);
   det._class_msg("some string");
 
-  //det.process_config();
+  // set parameters to get calib files.
+  // In future this info should be supplied directly from xtc file...
+  det.set_expname("xpptut15");
+  det.set_runnum(450);
+
+  std::cout << "== det.expname     : " << det.expname() << '\n';
+  std::cout << "== det.runnum      : " << det.runnum()  << '\n';
+  std::cout << "== det.detname     : " << det.detname() << '\n';
+  std::cout << "== det.query       : " << det.query()   << '\n';
+
+  det.load_calib_constants();
+
   det.set_indexes_config(ci);
+  det.print_config_indexes();
 
   std::cout << str_config_names(ci) << '\n';
   det.print_config();
 
   unsigned neventreq=5;
   unsigned nevent=0;
+  bool first_entrance = true;
   while ((dg = xfi.next())) {
       if (nevent>=neventreq) break;
 
@@ -376,22 +390,26 @@ void test_AreaDetectorPnccd(int argc, char* argv[]) {
       print_dg_info(dg);
 
       DataIter di(&(dg->xtc));
-      //det.process_data(dataiter);
-      det.set_indexes_data(di);
+
+      if(first_entrance) {
+        first_entrance = false;
+        det.set_indexes_data(di);
+        det.print_data_indexes();
+      }
+
       det.print_data(di);
 
-      /*
-      NDArray<raw_pnccd_t>& nda1 = det.raw(dataiter);
-      std::cout << "  == raw data nda for DataIter: " << nda1 << '\n';
+      NDArray<raw_pnccd_t>& nda1 = det.raw(di);
+      std::cout << "  ==   raw data nda for DataIter: " << nda1 << '\n';
 
-      DescData& ddata = dataiter.desc_value(ci.namesLookup());
-      NDArray<raw_pnccd_t>& nda2 = det.raw(ddata);
-      std::cout << "  == raw data nda for DescData: " << nda2 << '\n';
-      */
+      //DescData& dd = di.desc_value(ci.namesLookup());
+      //NDArray<raw_pnccd_t>& nda2 = det.raw(dd);
+      //std::cout << "  ==   raw data nda for DescData: " << nda2 << '\n';
 
+      NDArray<calib_pnccd_t>& nda3 = det.calib(di);
+      std::cout << "  == calib data nda for DataIter: " << nda3 << '\n';
       nevent++;
   }
-
 
   ::close(fd);
 }
@@ -421,7 +439,8 @@ int main(int argc, char **argv) {
 
   print_hline(80,'_');
   //MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
-  LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format
+  //LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format
+  LOGGER.setLogger(LL::INFO, "%H:%M:%S.%f");           // set level and time format
 
   cout << usage(); 
   print_hline(80,'_');

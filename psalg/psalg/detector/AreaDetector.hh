@@ -23,6 +23,9 @@ using namespace psalg;
 
 namespace detector {
 
+typedef unsigned index_t; // index of data in the xtc data types
+typedef int64_t cfg_int64_t;
+
 //-----------------------------
 
 class AreaDetector : public Detector {
@@ -42,16 +45,17 @@ public:
   //-------------------
 
   template <typename T>
-  inline T config_value_for_index(XtcData::ConfigIter& ci, unsigned i) {
+  inline T config_value_for_index(XtcData::ConfigIter& ci, index_t i) {
     return ci.desc_shape().get_value<T>(i);
   }
 
   template <typename T>
-  inline const Array<T> config_array_for_index(XtcData::ConfigIter& ci, unsigned i) {
+  inline Array<T> config_array_for_index(XtcData::ConfigIter& ci, index_t i) {
     return ci.desc_shape().get_array<T>(i);
   }
 
   //-------------------
+
   inline DescData& descdata(XtcData::DataIter& di) {
     ConfigIter& ci = *_pconfig;
     NamesLookup& namesLookup = ci.namesLookup();
@@ -59,13 +63,25 @@ public:
   }
 
   template <typename T>
-  inline T data_value_for_index(XtcData::DataIter& di, unsigned i) {
-    return descdata(di).get_value<T>(i);
+  inline T data_value_for_index(XtcData::DescData& dd, index_t i) {
+    return dd.get_value<T>(i);
   }
 
   template <typename T>
-  inline const Array<T> data_array_for_index(XtcData::DataIter& di, unsigned i) {
+  inline T data_value_for_index(XtcData::DataIter& di, index_t i) {
+    return descdata(di).get_value<T>(i);
+    //return data_value_for_index<T>(descdata(di), i);
+  }
+
+  template <typename T>
+  inline Array<T> data_array_for_index(XtcData::DescData& dd, index_t i) {
+    return dd.get_array<T>(i);
+  }
+
+  template <typename T>
+  inline Array<T> data_array_for_index(XtcData::DataIter& di, index_t i) {
     return descdata(di).get_array<T>(i);
+    //return data_array_for_index<T>(descdata(di), i);
   }
 
   //-------------------
@@ -104,6 +120,7 @@ public:
   /// access to calibration constants
   virtual const NDArray<common_mode_t>&   common_mode      (const event_t&);
   virtual const NDArray<pedestals_t>&     pedestals        (const event_t&);
+  virtual const NDArray<double>&          pedestals_d      ();
   virtual const NDArray<pixel_rms_t>&     rms              (const event_t&);
   virtual const NDArray<pixel_status_t>&  status           (const event_t&);
   virtual const NDArray<pixel_gain_t>&    gain             (const event_t&);
@@ -139,6 +156,15 @@ public:
   calib::CalibPars* calib_pars();
   calib::CalibPars* calib_pars_updated();
 
+  const std::string& expname()   {return _expname;}
+  const std::string& calibtype() {return _calibtype;}
+  const unsigned     runnum()    {return _runnum;}
+
+  void set_expname(const std::string& expname) {_expname = expname;}
+  void set_runnum(unsigned runnum) {_runnum = runnum;}
+  void set_calibtype(const std::string& calibtype) {_calibtype = calibtype;}
+
+  Query& query();
   Query& query(const event_t&);
 
   AreaDetector(const AreaDetector&) = delete;
@@ -146,26 +172,11 @@ public:
 
   //---------------------------
 
-  typedef int64_t int64_cfg_t;
-
-  int64_cfg_t maxModulesPerDetector;
-  int64_cfg_t numberOfModules;
-  int64_cfg_t numberOfRows;
-  int64_cfg_t numberOfColumns;
-  int64_cfg_t numberOfPixels;
-
-  //int64_cfg_t *shape_cfg;
-  //Array<int64_cfg_t>& shape_config;
-
-  //int64_cfg_t Version;
-  //int64_cfg_t MaxColumnsPerModule;
-  //int64_cfg_t GainMode;
-  //int64_cfg_t TypeId;
-  //int64_cfg_t* moduleConfig_shape;
-  //int64_cfg_t numPixels;
-  //int64_cfg_t numberOfRowsPerModule;
-  //int64_cfg_t numberOfColumnsPerModule;
-  //int64_cfg_t gainMode;
+  cfg_int64_t maxModulesPerDetector;
+  cfg_int64_t numberOfModules;
+  cfg_int64_t numberOfRows;
+  cfg_int64_t numberOfColumns;
+  cfg_int64_t numberOfPixels;
 
 protected:
   shape_t*                _shape;
@@ -182,6 +193,9 @@ private:
   NDArray<calib_t>        _calib;
   NDArray<image_t>        _image;
 
+  std::string             _expname = "NOT_DEFINED";
+  std::string             _calibtype = "pedestals";
+  unsigned                _runnum = 0;
   Query                   _query;
 
   /*

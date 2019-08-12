@@ -53,19 +53,19 @@ void AreaDetector::set_indexes_data(XtcData::DataIter& dataiter) {
 
 void AreaDetector::process_config() {
 
-  ConfigIter& configo = *_pconfig;
-  NamesId& namesId = configo.shape().namesId();
-  Names& names = configNames(configo);
+  ConfigIter& ci = *_pconfig;
+  NamesId& namesId = ci.shape().namesId();
+  Names& names = configNames(ci);
 
   MSG(DEBUG, "In AreaDetector::process_config, transition: " << namesId.namesId() << " (0/1 = config/data)\n");
   printf("Names:: detName: %s  detType: %s  detId: %s  segment: %d alg.name: %s\n",
           names.detName(), names.detType(), names.detId(), names.segment(), names.alg().name());
 
-  //DESC_SHAPE(desc_shape, configo, namesLookup);
-  DescData& desc_shape = configo.desc_shape();
+  //DESC_SHAPE(desc_shape, ci, namesLookup);
+  DescData& desc_shape = ci.desc_shape();
 
-  //DESC_VALUE(desc_value, configo, namesLookup);
-  //DescData& desc_value = configo.desc_value();
+  //DESC_VALUE(desc_value, ci, namesLookup);
+  //DescData& desc_value = ci.desc_value();
 
   printf("------ ConfigIter %d names and values for detector %s ---------\n", names.num(), names.detName());
   for (unsigned i = 0; i < names.num(); i++) {
@@ -89,22 +89,22 @@ void AreaDetector::process_config() {
 
 //-------------------
 
-void AreaDetector::process_data(XtcData::DataIter& datao) {
+void AreaDetector::process_data(XtcData::DataIter& di) {
     _default_msg("process_data");
 
     //MSG(DEBUG, "In AreaDetector::process_data");
 
-    ConfigIter& configo = *_pconfig;
-    NamesLookup& namesLookup = configo.namesLookup();
+    ConfigIter& ci = *_pconfig;
+    NamesLookup& namesLookup = ci.namesLookup();
 
-    DescData& descdata = datao.desc_value(namesLookup);
+    DescData& descdata = di.desc_value(namesLookup);
 
     //NameIndex& nameIndex   = descdata.nameindex();
     //ShapesData& shapesData = descdata.shapesdata();
     //NamesId& namesId       = shapesData.namesId();
     Names& names           = descdata.nameindex().names();
 
-    //MSG(DEBUG, str_config_names(configo).c_str());
+    //MSG(DEBUG, str_config_names(ci).c_str());
 
     printf("------ %d Names and values for data ---------\n", names.num());
     for (unsigned i = 0; i < names.num(); i++) {
@@ -169,10 +169,10 @@ template void AreaDetector::raw<uint16_t>(XtcData::DescData&, uint16_t*&, const 
 //-------------------
 
 template<typename T>
-void AreaDetector::raw(XtcData::DataIter& datao, T*& pdata, const char* dataname) {
-  //ConfigIter& configo = *_pconfig;
-  //NamesLookup& namesLookup = configo.namesLookup();
-    DescData& ddata = datao.desc_value(_pconfig->namesLookup());
+void AreaDetector::raw(XtcData::DataIter& di, T*& pdata, const char* dataname) {
+  //ConfigIter& ci = *_pconfig;
+  //NamesLookup& namesLookup = ci.namesLookup();
+    DescData& ddata = di.desc_value(_pconfig->namesLookup());
     raw<T>(ddata, pdata, dataname);
 }
 
@@ -185,11 +185,11 @@ void AreaDetector::raw(XtcData::DataIter& datao, T*& pdata, const char* dataname
 //-------------------
 
 template<typename T>
-void AreaDetector::raw(XtcData::DescData& ddata, NDArray<T>& nda, const char* dataname) {
+void AreaDetector::raw(XtcData::DescData& dd, NDArray<T>& nda, const char* dataname) {
   //if(_ind_data < 0) _set_index_data(ddata, dataname);
   //T* pdata = ddata.get_array<T>(_ind_data).data();
     T* pdata = 0;
-    raw<T>(ddata, pdata, dataname);
+    raw<T>(dd, pdata, dataname);
     nda.set_shape(shape(), ndim());
     nda.set_data_buffer(pdata);
 }
@@ -203,8 +203,8 @@ void AreaDetector::raw(XtcData::DescData& ddata, NDArray<T>& nda, const char* da
 //-------------------
 
 template<typename T>
-void AreaDetector::raw(XtcData::DataIter& datao, NDArray<T>& nda, const char* dataname) {
-    DescData& ddata = datao.desc_value(_pconfig->namesLookup());
+void AreaDetector::raw(XtcData::DataIter& di, NDArray<T>& nda, const char* dataname) {
+    DescData& ddata = di.desc_value(_pconfig->namesLookup());
     raw<T>(ddata, nda, dataname);
 }
 
@@ -283,6 +283,11 @@ const size_t AreaDetector::size(const event_t& evt) {
 //===================
 
 /// access to calibration constants
+Query& AreaDetector::query() {
+  _query.set_paremeters(detname().c_str(), expname().c_str(), calibtype().c_str(), runnum());
+  return _query;
+}
+
 Query& AreaDetector::query(const event_t& evt) {
   return _query;
 }
@@ -292,6 +297,12 @@ const NDArray<common_mode_t>& AreaDetector::common_mode(const event_t& evt) {
   return calib_pars()->common_mode(query(evt));
   //  _default_msg(std::string("common_mode(...)"));
   //  return _common_mode;
+}
+
+const NDArray<double>& AreaDetector::pedestals_d() {
+  return calib_pars()->pedestals_d(query());
+  //  _default_msg("pedestals(...)");
+  //  return _pedestals;
 }
 
 const NDArray<pedestals_t>& AreaDetector::pedestals(const event_t& evt) {

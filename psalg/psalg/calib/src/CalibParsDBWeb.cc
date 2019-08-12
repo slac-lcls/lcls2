@@ -67,9 +67,9 @@ const NDArray<float>& CalibParsDBWeb::get_ndarray_float(Query& q) {
 
 //-------------------
 
+//_default_msg(std::string("get_ndarray_"#N"(Query&)"));
 #define GET_NDARRAY(T,N)\
 const NDArray<T>& CalibParsDBWeb::get_ndarray_##N(Query& q) {\
-  _default_msg(std::string("get_ndarray_"#N"(Query&)"));\
   rapidjson::Document doc;\
   Query::map_t& qmap = q.qmap();\
   calib_constants_nda<T>(_ndarray_##N, doc, QUERY_PARAMETERS(qmap));\
@@ -86,7 +86,7 @@ GET_NDARRAY(uint32_t, uint32)
 //-------------------
 
 const std::string& CalibParsDBWeb::get_string(Query& q) {
-  _default_msg(std::string("get_string(Query&)"));
+  //_default_msg(std::string("get_string(Query&)"));
   Query::map_t& qmap = q.qmap();
   calib_constants(_string, _metadata, QUERY_PARAMETERS(qmap));
   return _string;

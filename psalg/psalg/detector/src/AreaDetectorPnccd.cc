@@ -3,6 +3,7 @@
 //#include <iostream> // for cout, puts
 #include <iomanip>    // for setw, hex, setprecision, right
 #include <sstream>    // for stringstream
+#include <cstring>    // memcpy
 
 #include "psalg/detector/AreaDetectorPnccd.hh"
 #include "psalg/utils/Logger.hh" // for MSG
@@ -199,8 +200,8 @@ const void AreaDetectorPnccd::print_config() {
   std::cout << "numSubmoduleRows     : " << numSubmoduleRows()     << '\n';
   std::cout << "numSubmoduleChannels : " << numSubmoduleChannels() << '\n';
   std::cout << "payloadSizePerLink   : " << payloadSizePerLink()   << '\n';
-  std::cout << "info_shape        nda: " << (NDArray<int64_cfg_t>)info_shape() << '\n';
-  std::cout << "timingFName_shape nda: " << (NDArray<int64_cfg_t>)timingFName_shape() << '\n';
+  std::cout << "info_shape        nda: " << (NDArray<cfg_int64_t>)info_shape() << '\n';
+  std::cout << "timingFName_shape nda: " << (NDArray<cfg_int64_t>)timingFName_shape() << '\n';
 
   std::cout << "\n==== Derived values ====\n";
   std::cout << "numberOfModules      : " << numberOfModules        << '\n';
@@ -214,26 +215,64 @@ const void AreaDetectorPnccd::print_config() {
 
 //-------------------
 
-const void AreaDetectorPnccd::print_data() {
-    std::cout << "\n==== Data ====\n";
-    _class_msg("print_data() is DEPRECATED");
+const void AreaDetectorPnccd::print_config_indexes() {
+  std::cout << "\n\n==== indecses for names in configuration ====\n"; 
+  std::cout << setfill(' ');
+  std::cout << "Version              : " << std::right << std::setw(2) << _Version              << '\n';
+  std::cout << "TypeId               : " << std::right << std::setw(2) << _TypeId               << '\n';
+  std::cout << "camexMagic           : " << std::right << std::setw(2) << _camexMagic           << '\n';
+  std::cout << "numChannels          : " << std::right << std::setw(2) << _numChannels          << '\n';
+  std::cout << "numRows              : " << std::right << std::setw(2) << _numRows              << '\n';
+  std::cout << "numLinks             : " << std::right << std::setw(2) << _numLinks             << '\n';
+  std::cout << "numSubmodules        : " << std::right << std::setw(2) << _numSubmodules        << '\n';
+  std::cout << "numSubmoduleRows     : " << std::right << std::setw(2) << _numSubmoduleRows     << '\n';
+  std::cout << "numSubmoduleChannels : " << std::right << std::setw(2) << _numSubmoduleChannels << '\n';
+  std::cout << "payloadSizePerLink   : " << std::right << std::setw(2) << _payloadSizePerLink   << '\n';
+  std::cout << "info_shape        nda: " << std::right << std::setw(2) << _info_shape           << '\n';
+  std::cout << "timingFName_shape nda: " << std::right << std::setw(2) << _timingFName_shape    << '\n';
 }
 
 //-------------------
 
+#define LONG_STRING1(T)\
+  for(unsigned m=0; m<MAX_NUMBER_OF_MODULES; m++)\
+    std::cout << std::left << std::setw(20) << T << '\n';
+
 const void AreaDetectorPnccd::print_data(XtcData::DataIter& di) {
     std::cout << "\n==== Data ====\n";
     std::cout << "Version      : " << data_Version(di) << '\n';
-    std::cout << "TypeId       : " << data_TypeId(di)  << '\n';
+    std::cout << "TypeId       : " << data_TypeId(di) << '\n';
     std::cout << "numLinks     : " << data_numLinks(di) << '\n';
-    std::cout << "frame_shape  : " << (NDArray<int64_cfg_t>)frame_shape(di)  << '\n';
+    std::cout << "frame_shape  : " << (NDArray<cfg_int64_t>)frame_shape(di)  << '\n';
 
-    for(unsigned m=0; m<MAX_NUMBER_OF_MODULES; m++) std::cout << _cbuf1[m] << ": " << frameNumber(di ,m) << '\n';
-    for(unsigned m=0; m<MAX_NUMBER_OF_MODULES; m++) std::cout << _cbuf2[m] << ": " << timeStampHi(di ,m) << '\n';
-    for(unsigned m=0; m<MAX_NUMBER_OF_MODULES; m++) std::cout << _cbuf3[m] << ": " << timeStampLo(di ,m) << '\n';
-    for(unsigned m=0; m<MAX_NUMBER_OF_MODULES; m++) std::cout << _cbuf4[m] << ": " << specialWord(di ,m) << '\n';
-    for(unsigned m=0; m<MAX_NUMBER_OF_MODULES; m++) std::cout << _cbuf5[m] << ": " << (NDArray<uint16_t>)data2d(di ,m) << '\n';
-    for(unsigned m=0; m<MAX_NUMBER_OF_MODULES; m++) std::cout << _cbuf6[m] << ": " << (NDArray<uint16_t>)data1d(di ,m) << '\n';
+    LONG_STRING1(_cbuf1[m] << ": " << frameNumber(di ,m))
+    LONG_STRING1(_cbuf2[m] << ": " << timeStampHi(di ,m))
+    LONG_STRING1(_cbuf3[m] << ": " << timeStampLo(di ,m))
+    LONG_STRING1(_cbuf4[m] << ": " << specialWord(di ,m))
+    LONG_STRING1(_cbuf5[m] << ": " << (NDArray<raw_pnccd_t>)data2d(di ,m))
+    LONG_STRING1(_cbuf6[m] << ": " << (NDArray<raw_pnccd_t>)data1d(di ,m))
+}
+
+//-------------------
+
+#define LONG_STRING2(T,I)\
+  for(unsigned m=0; m<MAX_NUMBER_OF_MODULES; m++)\
+    std::cout << std::left << std::setw(20) << T << ": " << std::right << std::setw(2) << I << '\n';
+
+const void AreaDetectorPnccd::print_data_indexes() {
+    std::cout << "\n\n==== indecses for names in data ====\n";
+    std::cout << setfill(' ');
+    std::cout << "Version      : " << std::right << std::setw(2) << _Version  << '\n';
+    std::cout << "TypeId       : " << std::right << std::setw(2) << _data_TypeId << '\n';
+    std::cout << "numLinks     : " << std::right << std::setw(2) << _numLinks << '\n';
+    std::cout << "frame_shape  : " << std::right << std::setw(2) << _frame_shape  << '\n';
+
+    LONG_STRING2(_cbuf1[m], _frameNumber[m])
+    LONG_STRING2(_cbuf2[m], _timeStampHi[m])
+    LONG_STRING2(_cbuf3[m], _timeStampLo[m])
+    LONG_STRING2(_cbuf4[m], _specialWord[m])
+    LONG_STRING2(_cbuf5[m], _data[m])
+    LONG_STRING2(_cbuf6[m], __data[m])
 }
 
 //-------------------
@@ -262,19 +301,50 @@ void AreaDetectorPnccd::detid(std::ostream& os, const int ind) {
 
 //-------------------
 
-NDArray<raw_pnccd_t>& AreaDetectorPnccd::raw(XtcData::DescData& ddata) {
-    if(_ind_data < 0) _set_index_data(ddata, "frame");
-    raw_pnccd_t* pdata = ddata.get_array<raw_pnccd_t>(_ind_data).data();
-    _raw.set_shape(shape(), ndim());
-    _raw.set_data_buffer(pdata);
-    return _raw;
+void AreaDetectorPnccd::_make_raw(XtcData::DescData& dd) {
+  _raw.reserve_data_buffer(size());
+  _raw.set_shape(shape(), ndim());
+  // copy segment data of four Array to single NDArray 
+  for(unsigned m=0; m<MAX_NUMBER_OF_MODULES; m++) {
+    Array<raw_pnccd_t> a = dd.get_array<raw_pnccd_t>(__data[m]);
+    raw_pnccd_t* pdata = a.data();
+    memcpy(&_raw(m,0,0), pdata, sizeof(raw_pnccd_t) * a.num_elem());
+  }
 }
 
 //-------------------
 
-NDArray<raw_pnccd_t>& AreaDetectorPnccd::raw(XtcData::DataIter& datao) {
-    DescData&  ddata = datao.desc_value(_pconfig->namesLookup());
-    return raw(ddata);
+NDArray<raw_pnccd_t>& AreaDetectorPnccd::raw(XtcData::DescData& dd) {
+  _make_raw(dd);
+  return _raw;
+}
+
+//-------------------
+
+NDArray<calib_pnccd_t>& AreaDetectorPnccd::calib(XtcData::DescData& dd) {
+  _make_raw(dd);
+  unsigned n = size();
+  _calib.reserve_data_buffer(n);
+  _calib.set_shape(shape(), ndim());
+
+  raw_pnccd_t*   pr = _raw.data();
+  raw_pnccd_t*   pr_last = &pr[n];
+  calib_pnccd_t* pc = _calib.data();
+  const double*  pp = _peds.data();
+  for(; pr<pr_last; pr++, pc++, pp++) *pc = (calib_pnccd_t)*pr - (calib_pnccd_t)*pp;
+  //for(; pr<pr_last; pr++, pc++) *pc = (calib_pnccd_t)*pr;
+  return _calib;
+}
+
+//-------------------
+
+void AreaDetectorPnccd::load_calib_constants() {
+  set_calibtype("pedestals");
+  const NDArray<double>& a = pedestals_d();
+  std::cout << "== det.pedestals_d : " << a << '\n';
+  //_peds.set_ndarray(peds);
+  _peds.set_shape(a.shape(), a.ndim());
+  _peds.set_data_copy(a.const_data());
 }
 
 //-------------------

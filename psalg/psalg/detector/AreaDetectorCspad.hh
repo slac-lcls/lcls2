@@ -79,9 +79,9 @@ public:
 
 private:
 
-  int64_cfg_t moduleVersion  [MAX_NUMBER_OF_MODULES];
-  int64_cfg_t firmwareVersion[MAX_NUMBER_OF_MODULES];
-  int64_cfg_t serialNumber   [MAX_NUMBER_OF_MODULES];
+  cfg_int64_t moduleVersion  [MAX_NUMBER_OF_MODULES];
+  cfg_int64_t firmwareVersion[MAX_NUMBER_OF_MODULES];
+  cfg_int64_t serialNumber   [MAX_NUMBER_OF_MODULES];
 
   NDArray<raw_cspad_t> _raw;
 

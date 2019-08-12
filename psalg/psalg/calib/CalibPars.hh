@@ -35,6 +35,7 @@ public:
   /// access to calibration constants
   virtual const NDArray<common_mode_t>&   common_mode      (Query&);
   virtual const NDArray<pedestals_t>&     pedestals        (Query&);
+  virtual const NDArray<double>&          pedestals_d      (Query&);
   virtual const NDArray<pixel_rms_t>&     rms              (Query&);
   virtual const NDArray<pixel_status_t>&  status           (Query&);
   virtual const NDArray<pixel_gain_t>&    gain             (Query&);
