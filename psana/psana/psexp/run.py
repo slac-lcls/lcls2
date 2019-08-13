@@ -253,9 +253,10 @@ class RunSerial(Run):
                     yield evt
     
     def configUpdates(self):
+        current_update_pos = 0
         """ Generates events between each config update. """
         smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
-        for (smd_chunk, update_chunk) in smdr_man.chunks():
+        for i, (smd_chunk, update_chunk) in enumerate(smdr_man.chunks()):
             # Update updateStore
             update_pf = PacketFooter(view=update_chunk)
             update_views = update_pf.split_packets()
@@ -264,8 +265,13 @@ class RunSerial(Run):
             eb_man = EventBuilderManager(smd_chunk, self.configs, \
                     batch_size=self.batch_size, filter_fn=self.filter_callback)
             
-            for update_dgram in self.epics_store.dgrams():
-                yield ConfigUpdate(self, eb_man=eb_man, update_dgram=update_dgram)
+            for update_dgram in self.epics_store.dgrams(from_pos=current_update_pos+1):
+                if update_dgram:
+                    limit_ts = update_dgram.seq.timestamp()
+                    current_update_pos += 1
+                else:
+                    limit_ts = -1
+                yield ConfigUpdate(self, eb_man=eb_man, limit_ts=limit_ts)
 
 
 class RunParallel(Run):

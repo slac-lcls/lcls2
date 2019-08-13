@@ -619,7 +619,7 @@ int main(int argc, char* argv[])
                                               timestamp_val);
         // cpo comments this out because it somehow causes
         // the BeginStep transition to end up in the epics store
-        //if (starting_segment==0) addScanData(beginStepTr.xtc, namesLookup, nodeid1, iseg);
+        if (starting_segment==0) addScanData(beginStepTr.xtc, namesLookup, nodeid1, iseg);
         save(beginStepTr, xtcFile);
 
         Dgram& enableTr = createTransition(TransitionId::Enable,

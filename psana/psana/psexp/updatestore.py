@@ -90,14 +90,22 @@ class UpdateStore(object):
                 offset = 0
                 while offset < memoryview(view).shape[0]:
                     d = Dgram(view=view, config=update.config, offset=offset)
-                    update.add(d)
+                    if hasattr(d, self.update_name):
+                        update.add(d)
                     offset += d._size
                 
-    def dgrams(self):
-        # mona: for now, assuming that update dgrams are from a single smd file
-        for update in self._update_list:
-            for dgram in update.dgrams:
-                yield dgram
+    def dgrams(self, from_pos=0, scan=True):
+        """ Generates list of dgrams with 0 as last item. """  
+        if scan:
+            cn_dgrams = 0
+            for update in self._update_list:
+                for dgram in update.dgrams:
+                    if cn_dgrams < from_pos: 
+                        cn_dgrams += 1
+                        continue
+                    cn_dgrams += 1
+                    yield dgram
+        yield 0
     
     def values(self, events, update_variable):
         """ Returns values of the update_variable for the given events.
@@ -132,9 +140,4 @@ class UpdateStore(object):
         
         return update_values
     
-    @property
-    def config(self):
-        # mona: for now, assuming that update dgrams are from a single smd file
-        assert len(self._update_list) > 0
-        return self._update_list[0].config
 

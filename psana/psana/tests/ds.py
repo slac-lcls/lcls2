@@ -149,7 +149,7 @@ for run in ds.runs():
 
 comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
-    assert np.sum(recvbuf) == 6 # need this to make sure that events loop is active
+    assert np.sum(recvbuf) == 9 # need this to make sure that events loop is active
 
 # Usecase 6 : selecting only the second detector
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, sel_det_ids=[1])

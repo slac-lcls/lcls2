@@ -165,6 +165,7 @@ class SmdNode(object):
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
+        current_update_pos = 0
         while True:
             # handles requests from smd_0
             smd_comm.Send(np.array([smd_rank], dtype='i'), dest=0)
@@ -190,19 +191,11 @@ class SmdNode(object):
             self.run.epics_store.update(epics_views)
             self.epics_man.extend_buffers(epics_views)
 
-            # For scan mode, only send out events within a configUpdate cycle
-            if self.run.scan:
-                update_dgrams = [update_dgram for update_dgram in \
-                        self.run.epics_store.dgrams()]
-            else:
-                update_dgrams = [bytearray()]
-            
             # Build batch of events
-            for i, update_dgram in enumerate(update_dgrams):
-                if i < self._update_dgram_pos: continue
-                self._update_dgram_pos += 1
+            for update_dgram in self.run.epics_store.dgrams(from_pos=current_update_pos+1, scan=self.run.scan):
                 if update_dgram:
                     limit_ts = update_dgram.seq.timestamp()
+                    current_update_pos += 1
                 else:
                     limit_ts = -1
                 
