@@ -1,6 +1,6 @@
 from psana.psexp.event_manager import EventManager
 
-class ConfigUpdate(object):
+class Step(object):
     
     def __init__(self, run, eb_man=0, limit_ts=-1, smd_batch=0):
         self.run = run

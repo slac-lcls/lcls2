@@ -6,7 +6,7 @@ from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
 from psana.psexp.packet_footer import PacketFooter
 from psana.event import Event
-from psana.psexp.config_update import ConfigUpdate
+from psana.psexp.step import Step
 from psana import dgram
 
 from mpi4py import MPI
@@ -257,7 +257,7 @@ class BigDataNode(object):
             self.run.epics_store.update(epics_views)
 
             if self.run.scan: 
-                yield ConfigUpdate(self.run, smd_batch=smd_chunk)
+                yield Step(self.run, smd_batch=smd_chunk)
             else:
                 for event in self.evt_man.events(smd_chunk):
                     yield event

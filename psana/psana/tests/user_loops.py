@@ -61,8 +61,8 @@ ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
 for run in ds.runs():
     det = run.Detector('xppcspad')
     edet = run.Detector('HX2:DVD:GCC:01:PMON')
-    for config_update in run.configUpdates():
-        for evt in config_update.events():
+    for step in run.steps():
+        for evt in step.events():
             padarray = vals.padarray
             assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
             

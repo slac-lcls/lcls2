@@ -131,7 +131,7 @@ if rank == 0:
     assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
 
 
-# Usecase 5: test looping over configUpdates
+# Usecase 5: test looping over steps
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
 
 sendbuf = np.zeros(1, dtype='i')
@@ -142,8 +142,8 @@ if rank == 0:
 for run in ds.runs():
     det = run.Detector('xppcspad')
     edet = run.Detector('HX2:DVD:GCC:01:PMON')
-    for config_update in run.configUpdates():
-        for evt in config_update.events():
+    for step in run.steps():
+        for evt in step.events():
             sendbuf += 1
             padarray = vals.padarray
             assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))

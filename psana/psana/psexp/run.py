@@ -11,9 +11,9 @@ from psana.psexp import legion_node
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
-from psana.psexp.updatestore import UpdateStore
+from psana.psexp.stepstore import StepStore
 from psana.psexp.packet_footer import PacketFooter
-from psana.psexp.config_update import ConfigUpdate
+from psana.psexp.step import Step
 
 from psana.psexp.tools import mode
 MPI = None
@@ -71,7 +71,7 @@ class Run(object):
     filter_callback = None
     epics_store = None
     nfiles = 0
-    scan = False # True when looping over configUpdates
+    scan = False # True when looping over steps
     
     def __init__(self, exp, run_no, max_events=0, batch_size=1, filter_callback=0, destination=0):
         self.exp = exp
@@ -227,8 +227,8 @@ class RunSerial(Run):
         self.smd_dm = DgramManager(smd_files)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
-        self.epics_store = UpdateStore(self.smd_dm.configs, 'epics')
-        self.step_store = UpdateStore(self.smd_dm.configs, 'xppscan')
+        self.epics_store = StepStore(self.smd_dm.configs, 'epics')
+        self.step_store = StepStore(self.smd_dm.configs, 'xppscan')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
@@ -239,11 +239,11 @@ class RunSerial(Run):
 
         #get smd chunks
         smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
-        for (smd_chunk, update_chunk) in smdr_man.chunks():
+        for (smd_chunk, step_chunk) in smdr_man.chunks():
             # Update epics_store for each chunk
-            update_pf = PacketFooter(view=update_chunk)
-            update_views = update_pf.split_packets()
-            self.epics_store.update(update_views)
+            step_pf = PacketFooter(view=step_chunk)
+            step_views = step_pf.split_packets()
+            self.epics_store.update(step_views)
             
             eb_man = EventBuilderManager(smd_chunk, self.configs, batch_size=self.batch_size, filter_fn=self.filter_callback)
             
@@ -253,27 +253,27 @@ class RunSerial(Run):
                     if evt._dgrams[0].seq.service() != 12: continue
                     yield evt
     
-    def configUpdates(self):
-        current_update_pos = 0
-        """ Generates events between each config update. """
+    def steps(self):
+        current_step_pos = 0
+        """ Generates events between steps. """
         smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
-        for i, (smd_chunk, update_chunk) in enumerate(smdr_man.chunks()):
+        for i, (smd_chunk, step_chunk) in enumerate(smdr_man.chunks()):
             # Update step stores
-            update_pf = PacketFooter(view=update_chunk)
-            update_views = update_pf.split_packets()
-            self.epics_store.update(update_views)
-            self.step_store.update(update_views)
+            step_pf = PacketFooter(view=step_chunk)
+            step_views = step_pf.split_packets()
+            self.epics_store.update(step_views)
+            self.step_store.update(step_views)
             
             eb_man = EventBuilderManager(smd_chunk, self.configs, \
                     batch_size=self.batch_size, filter_fn=self.filter_callback)
             
-            for i,update_dgram in enumerate(self.step_store.dgrams(from_pos=current_update_pos+1)):
-                if update_dgram:
-                    limit_ts = update_dgram.seq.timestamp()
-                    current_update_pos += 1
+            for i,step_dgram in enumerate(self.step_store.dgrams(from_pos=current_step_pos+1)):
+                if step_dgram:
+                    limit_ts = step_dgram.seq.timestamp()
+                    current_step_pos += 1
                 else:
                     limit_ts = -1
-                yield ConfigUpdate(self, eb_man=eb_man, limit_ts=limit_ts)
+                yield Step(self, eb_man=eb_man, limit_ts=limit_ts)
 
 
 class RunParallel(Run):
@@ -322,18 +322,18 @@ class RunParallel(Run):
             self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
             self.dm = DgramManager(xtc_files, configs=self.configs)
         
-        self.epics_store = UpdateStore(self.configs, 'epics')   
-        self.step_store = UpdateStore(self.configs, 'xppscan')
+        self.epics_store = StepStore(self.configs, 'epics')   
+        self.step_store = StepStore(self.configs, 'xppscan')
     
     def events(self):
         for evt in run_node(self):
             if evt._dgrams[0].seq.service() != 12: continue
             yield evt
 
-    def configUpdates(self):
+    def steps(self):
         self.scan = True
-        for config_update in run_node(self):
-            yield config_update
+        for step in run_node(self):
+            yield step
     
 class RunLegion(Run):
 
@@ -345,7 +345,7 @@ class RunLegion(Run):
         self.smd_dm = DgramManager(smd_files)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
-        self.epics_store = UpdateStore(self.configs, 'epics')
+        self.epics_store = StepStore(self.configs, 'epics')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = super(RunLegion, self)._get_calib(det_name)
