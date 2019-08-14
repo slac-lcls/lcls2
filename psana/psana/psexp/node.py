@@ -179,20 +179,21 @@ class SmdNode(object):
            
             # Unpack the chunk received from Smd0
             pf = PacketFooter(view=chunk)
-            smd_chunk, epics_chunk = pf.split_packets()
+            smd_chunk, update_chunk = pf.split_packets()
         
             eb_man = EventBuilderManager(smd_chunk, self.run.configs, \
                     batch_size=self.run.batch_size, filter_fn=self.run.filter_callback, \
                     destination=self.run.destination)
             
             # Unpack epics chunk and updates run's epics_store and epics_manager  
-            pfe = PacketFooter(view=epics_chunk)
-            epics_views = pfe.split_packets()
-            self.run.epics_store.update(epics_views)
-            self.epics_man.extend_buffers(epics_views)
+            pfe = PacketFooter(view=update_chunk)
+            update_views = pfe.split_packets()
+            self.run.epics_store.update(update_views)
+            self.run.step_store.update(update_views)
+            self.epics_man.extend_buffers(update_views)
 
             # Build batch of events
-            for update_dgram in self.run.epics_store.dgrams(from_pos=current_update_pos+1, scan=self.run.scan):
+            for update_dgram in self.run.step_store.dgrams(from_pos=current_update_pos+1, scan=self.run.scan):
                 if update_dgram:
                     limit_ts = update_dgram.seq.timestamp()
                     current_update_pos += 1

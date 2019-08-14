@@ -228,6 +228,7 @@ class RunSerial(Run):
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
         self.epics_store = UpdateStore(self.smd_dm.configs, 'epics')
+        self.step_store = UpdateStore(self.smd_dm.configs, 'xppscan')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
@@ -257,15 +258,16 @@ class RunSerial(Run):
         """ Generates events between each config update. """
         smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
         for i, (smd_chunk, update_chunk) in enumerate(smdr_man.chunks()):
-            # Update updateStore
+            # Update step stores
             update_pf = PacketFooter(view=update_chunk)
             update_views = update_pf.split_packets()
             self.epics_store.update(update_views)
+            self.step_store.update(update_views)
             
             eb_man = EventBuilderManager(smd_chunk, self.configs, \
                     batch_size=self.batch_size, filter_fn=self.filter_callback)
             
-            for update_dgram in self.epics_store.dgrams(from_pos=current_update_pos+1):
+            for i,update_dgram in enumerate(self.step_store.dgrams(from_pos=current_update_pos+1)):
                 if update_dgram:
                     limit_ts = update_dgram.seq.timestamp()
                     current_update_pos += 1
@@ -321,6 +323,7 @@ class RunParallel(Run):
             self.dm = DgramManager(xtc_files, configs=self.configs)
         
         self.epics_store = UpdateStore(self.configs, 'epics')   
+        self.step_store = UpdateStore(self.configs, 'xppscan')
     
     def events(self):
         for evt in run_node(self):
