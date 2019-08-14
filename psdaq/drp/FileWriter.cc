@@ -1,3 +1,5 @@
+#include <errno.h>
+#include <cstring>
 #include <unistd.h>
 #include <fcntl.h>
 #include <cstring>
@@ -29,7 +31,10 @@ void BufferedFileWriter::writeEvent(void* data, size_t size)
 {
     // doesn't fit into the remaing m_buffer
     if (size > (m_buffer.size() - m_count)) {
-        write(m_fd, m_buffer.data(), m_count);
+        if (write(m_fd, m_buffer.data(), m_count) == -1) {
+            printf("write error %s\n", strerror(errno));
+            throw std::string("File writing failed");
+        }
         m_count = 0;
     }
     if (size>(m_buffer.size() - m_count)) {
