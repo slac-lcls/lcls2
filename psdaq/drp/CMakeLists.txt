@@ -41,6 +41,15 @@ target_link_libraries(drp_bld
     epicstools
 )
 
+add_executable(drp_pva
+    PvaDetector.cc
+)
+
+target_link_libraries(drp_pva
+    drpbase
+    epicstools
+)
+
 add_executable(configdb_obj_2xtc
     configdb_obj_2xtc.cc
 )
