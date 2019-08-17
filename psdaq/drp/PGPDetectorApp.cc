@@ -85,13 +85,13 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
     std::string key = msg["header"]["key"];
     unsigned error = 0;
+    XtcData::Xtc& xtc = m_det->transitionXtc();
+    XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
+    xtc.contains = tid;
+    xtc.damage = 0;
+    xtc.extent = sizeof(XtcData::Xtc);
     if (key == "configure") {
         std::string config_alias = msg["body"]["config_alias"];
-        XtcData::Xtc& xtc = m_det->transitionXtc();
-        XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-        xtc.contains = tid;
-        xtc.damage = 0;
-        xtc.extent = sizeof(XtcData::Xtc);
         error = m_det->configure(config_alias, xtc);
         m_pgpDetector->resetEventCounter();
     }

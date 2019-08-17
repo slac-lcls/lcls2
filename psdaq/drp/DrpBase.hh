@@ -39,6 +39,8 @@ private:
     int m_count;
     uint32_t lastIndex;
     uint32_t lastEvtCounter;
+    uint64_t lastPid;
+    XtcData::TransitionId::Value lastTid;
     uint64_t m_offset;
     unsigned m_nodeId;
 };

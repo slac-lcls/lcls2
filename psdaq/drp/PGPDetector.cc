@@ -104,12 +104,16 @@ void workerFunc(const Parameters& para, MemPool& pool,
                 //val |= ((uint64_t)index) << 32;
             }
             // transitions
-            else {
+            else if (transitionId != XtcData::TransitionId::SlowUpdate) {
                 // copy the temporary xtc created on phase 1 of the transition
                 // into the real location
                 XtcData::Xtc& transitionXtc = det->transitionXtc();
                 memcpy(&dgram->xtc, &transitionXtc, transitionXtc.extent);
                 val = 0;                // Value is irrelevant for transitions
+            }
+            if (dgram->xtc.extent > pool.bufferSize()) {
+                printf("Buffer size (%d) too small for requested extent (%d)\n", dgram->xtc.extent, pool.bufferSize());
+                exit(-1);
             }
             // set the src field for the event builders
             dgram->xtc.src = XtcData::Src(det->nodeId);
@@ -188,6 +192,8 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
     int64_t worker = 0L;
     uint64_t batchId = 0L;
     const unsigned bufferMask = m_pool.nbuffers() - 1;
+    XtcData::TransitionId::Value lastTid;
+    uint32_t lastData[6];
     while (1) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
@@ -198,6 +204,10 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
             uint32_t index = dmaIndex[b];
             uint32_t lane = (dest[b] >> 8) & 7;
             bytes += size;
+            if (size > m_pool.dmaSize()) {
+                printf("DMA buffer is too small: %d vs %d\n", size, m_pool.dmaSize());
+                exit(-1);
+            }
 
             const uint32_t* data = (uint32_t*)m_pool.dmaBuffers[index];
             uint32_t evtCounter = data[5] & 0xffffff;
@@ -213,13 +223,20 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 const Pds::TimingHeader* timingHeader = reinterpret_cast<const Pds::TimingHeader*>(data);
                 XtcData::TransitionId::Value transitionId = timingHeader->seq.service();
                 uint64_t pid = timingHeader->seq.pulseId().value();
-
+                if (transitionId != XtcData::TransitionId::L1Accept) {
+                    printf("PGPReader  saw %s transition @ %014lx\n", XtcData::TransitionId::name(transitionId), pid);
+                }
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
                     printf("\033[0;31m");
                     printf("Fatal: Jump in complete l1Count %u -> %u | difference %d, tid %s\n",
                            m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId));
                     printf("data: %08x %08x %08x %08x %08x %08x\n",
                            data[0], data[1], data[2], data[3], data[4], data[5]);
+
+                    printf("lastTid %s\n", XtcData::TransitionId::name(lastTid));
+                    printf("lastData: %08x %08x %08x %08x %08x %08x\n",
+                           lastData[0], lastData[1], lastData[2], lastData[3], lastData[4], lastData[5]);
+
                     printf("\033[0m");
                     throw "Jump in event counter";
 
@@ -231,6 +248,8 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                     }
                 }
                 m_lastComplete = evtCounter;
+                lastTid = transitionId;
+                memcpy(lastData, data, 24);
 
                 nevents++;
                 m_batch.size++;
@@ -272,6 +291,7 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
                 MyDgram* dg = reinterpret_cast<MyDgram*>(event->l3InpBuf);
                 tebContributor.process(dg);
             }
+
             counter++;
         }
         worker++;

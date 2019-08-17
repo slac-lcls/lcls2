@@ -40,13 +40,13 @@ MemPool::MemPool(const Parameters& para)
         throw "Error opening kcu1500!!\n";
     }
 
-    uint32_t dmaCount, dmaSize;
-    dmaBuffers = dmaMapDma(m_fd, &dmaCount, &dmaSize);
+    uint32_t dmaCount;
+    dmaBuffers = dmaMapDma(m_fd, &dmaCount, &m_dmaSize);
     if (dmaBuffers == NULL ) {
         std::cout<<"Failed to map dma buffers!\n";
         throw "Error calling dmaMapDma!!\n";
     }
-    printf("dmaCount %u  dmaSize %u\n", dmaCount, dmaSize);
+    printf("dmaCount %u  dmaSize %u\n", dmaCount, m_dmaSize);
 
     // make sure there are more buffers in the pebble than in the pgp driver
     // otherwise the pebble buffers will be overwritten by the pgp event builder
@@ -54,9 +54,9 @@ MemPool::MemPool(const Parameters& para)
 
     // make the size of the pebble buffer that will contain the datagram equal
     // to the dmaSize times the number of lanes
-    unsigned bufferSize = __builtin_popcount(para.laneMask) * dmaSize;
-    pebble.resize(m_nbuffers, bufferSize);
-    printf("nbuffer %u  pebble buffer size %u\n", m_nbuffers, bufferSize);
+    m_bufferSize = __builtin_popcount(para.laneMask) * m_dmaSize;
+    pebble.resize(m_nbuffers, m_bufferSize);
+    printf("nbuffer %u  pebble buffer size %u\n", m_nbuffers, m_bufferSize);
 
     pgpEvents.resize(m_nbuffers);
 }
@@ -111,15 +111,17 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
         if (transitionId != XtcData::TransitionId::SlowUpdate) {
             m_inprocSend.send(std::to_string(timingHeader->seq.pulseId().value()));
         }
-        printf("EbReceiver saw %s transition\n", XtcData::TransitionId::name(transitionId));
+        printf("EbReceiver saw %s transition @ %014lx\n", XtcData::TransitionId::name(transitionId), timingHeader->seq.pulseId().value());
     }
 
     if (index != ((lastIndex + 1) & (m_pool.nbuffers() - 1))) {
         printf("\033[0;31m");
         printf("jumping index %u  previous index %u  diff %d\n", index, lastIndex, index - lastIndex);
         printf("evtCounter %u\n", timingHeader->evtCounter);
-        printf("lastevtCounter %u\n", lastEvtCounter);
         printf("pid = %014lx, env = %08x\n", timingHeader->seq.pulseId().value(), timingHeader->env);
+        printf("tid %s\n", XtcData::TransitionId::name(transitionId));
+        printf("lastevtCounter %u\n", lastEvtCounter);
+        printf("lastPid %014lx lastTid %s\n", lastPid, XtcData::TransitionId::name(lastTid));
         printf("\033[0m");
     }
 
@@ -128,11 +130,16 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
         printf("index %u  previous index %u\n", index, lastIndex);
         std::cout<<"pebble pulseId  "<<timingHeader->seq.pulseId().value()<<
                  "  result dgram pulseId  "<<result->seq.pulseId().value()<<'\n';
+        uint64_t tPid = timingHeader->seq.pulseId().value();
+        uint64_t rPid = result->seq.pulseId().value();
+        printf("pebble PID %014lx, result PID %014lx, xor %014lx, diff %ld\n", tPid, rPid, tPid ^ rPid, tPid - rPid);
         exit(-1);
     }
 
     lastIndex = index;
     lastEvtCounter = timingHeader->evtCounter;
+    lastPid = timingHeader->seq.pulseId().value();
+    lastTid = timingHeader->seq.service();
 
     XtcData::Dgram* dgram = (XtcData::Dgram*)m_pool.pebble[index];
     if (m_writing) {

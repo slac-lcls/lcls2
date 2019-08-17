@@ -205,13 +205,13 @@ void EbCtrbInBase::_pairUp(TebContributor& ctrb,
         uint64_t pid       = result->seq.pulseId().value();
         uint64_t cachedPid = batch->result()->seq.pulseId().value();
         fprintf(stderr, "%s:\n  Slot is already occupied by an unhandled result:\n"
-                "    input batch  idx %08x, pid %014lx\n"
-                "    saved result               pid %014lx\n"
-                "    new result   idx %08x, pid %014lx\n"
-                "    pending head idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
+                "    new result      idx %08x, pid %014lx\n"
+                "    looked up batch idx %08x, pid %014lx\n"
+                "    result in batch               pid %014lx\n"
+                "    pending head    idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
+                idx, pid,
                 batch->index(), batch->id(),
                 cachedPid,
-                idx, pid,
                 inputs->index(), inputs->id());
         abort();
       }
@@ -228,9 +228,10 @@ void EbCtrbInBase::_pairUp(TebContributor& ctrb,
       if (unlikely((iPid ^ rPid) & ~(BATCH_DURATION - 1))) // Include bits above index()
       {
         fprintf(stderr, "%s:\n  Result / Input batch mismatch: "
-                "Input pid %014lx, Result pid %014lx, xor %014lx\n",
-                __PRETTY_FUNCTION__, iPid, rPid, iPid ^ rPid);
-        abort();
+                "Input pid %014lx, Result pid %014lx, xor %014lx, diff %ld\n",
+                __PRETTY_FUNCTION__, iPid, rPid, iPid ^ rPid, iPid - rPid);
+        //abort();
+        break;
       }
 
       _process(ctrb, result, inputs);

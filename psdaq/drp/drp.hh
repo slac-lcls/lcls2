@@ -66,9 +66,13 @@ public:
     std::vector<PGPEvent> pgpEvents;
     void** dmaBuffers;
     unsigned nbuffers() const {return m_nbuffers;}
+    unsigned bufferSize() const {return m_bufferSize;}
+    unsigned dmaSize() const {return m_dmaSize;}
     int fd () const {return m_fd;}
 private:
     unsigned m_nbuffers;
+    unsigned m_bufferSize;
+    unsigned m_dmaSize;
     int m_fd;
 };
 

@@ -390,7 +390,6 @@ void Teb::_tryPost(const Dgram& dg)
     auto batch = *it;
     auto rogs  = batch->rogsRem(dg);    // Take down RoG bits
 
-    if (batch == cur)  cur = nullptr;   // Insert only once
     if ((batch->expired(pid) && !rogs) || flush)
     {
       _post(*batch);
@@ -401,7 +400,11 @@ void Teb::_tryPost(const Dgram& dg)
     {
       ++it;
     }
-    if (batch->id() > pid)  break;
+    if (batch == cur)
+    {
+      cur = nullptr;                    // Insert only once
+      break;
+    }
   }
 
   if (cur)
