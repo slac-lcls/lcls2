@@ -176,6 +176,12 @@ class Top(pr.Device):
                 offset = Top.mmcmParms[i][1],
             ))
         
+        self.add(xpm.CuPhase(
+            memBase = self.srp,
+            name = 'CuPhase',
+            offset = 0x80050000,
+        ))
+
         hsrParms = [ ['HSRep0',0x09000000],
                      ['HSRep1',0x09010000],
                      ['HSRep2',0x09020000],

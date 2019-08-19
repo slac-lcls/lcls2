@@ -80,6 +80,7 @@ class XpmApp(pr.Device):
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RW",
+            verify       = False,
         ))
 
         self.add(pr.RemoteVariable(    

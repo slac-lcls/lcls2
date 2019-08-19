@@ -40,54 +40,64 @@ class MmcmPhaseLock(pr.Device):
             mode         = "RW",
         ))
 
-        self.add(pr.RemoteVariable(    
+        self.add(pr.RemoteVariable(
+            name         = "status",
+            description  = "Lock status",
+            offset       =  0x04,
+            bitSize      =  32,
+            bitOffset    =  0x00,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
+        def _delayValue(var,read):
+            return (var.dependencies[0].get(read)>> 0)&0x7ff
+
+        def _delayEnd(var,read):
+            return (var.dependencies[0].get(read)>>16)&0x7ff
+
+        def _externalLock(var,read):
+            return (var.dependencies[0].get(read)>>29)&1
+
+        def _nready(var,read):
+            return (var.dependencies[0].get(read)>>30)&1
+
+        def _internalLock(var,read):
+            return (var.dependencies[0].get(read)>>31)&1
+
+        self.add(pr.LinkVariable(    
             name         = "delayValue",
             description  = "Delay value from scan",
-            offset       =  0x04,
-            bitSize      =  11,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            mode         = "RO",
+            linkedGet    = _delayValue,
+            dependencies = [self.status]
         ))
 
-        self.add(pr.RemoteVariable(    
+        self.add(pr.LinkVariable(    
             name         = "delayEnd",
             description  = "Delay value scan range",
-            offset       =  0x06,
-            bitSize      =  11,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            mode         = "RO",
+            linkedGet    = _delayEnd,
+            dependencies = [self.status]
         ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "External Lock",
+        self.add(pr.LinkVariable(    
+            name         = "externalLock",
             description  = "External lock status",
-            offset       =  0x07,
-            bitSize      =  1,
-            bitOffset    =  0x05,
-            base         = pr.UInt,
-            mode         = "RO",
+            linkedGet    = _externalLock,
+            dependencies = [self.status]
         ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "reset",
+        self.add(pr.LinkVariable(    
+            name         = "nready",
             description  = "Reset status",
-            offset       =  0x07,
-            bitSize      =  1,
-            bitOffset    =  0x06,
-            base         = pr.UInt,
-            mode         = "RO",
+            linkedGet    = _nready,
+            dependencies = [self.status]
         ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "Internal Lock",
+        self.add(pr.LinkVariable(    
+            name         = "internalLock",
             description  = "Internal lock status",
-            offset       =  0x07,
-            bitSize      =  1,
-            bitOffset    =  0x07,
-            base         = pr.UInt,
-            mode         = "RO",
+            linkedGet    = _internalLock,
+            dependencies = [self.status]
         ))
 
         self.add(pr.RemoteVariable(    
@@ -118,9 +128,81 @@ class MmcmPhaseLock(pr.Device):
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RW",
+            verify       = False,
         ))
 
         @self.command(name="Rescan", description="Reset and rescan",)
         def Rescan():
             self.rescan.set(1)
+
+        self.add(pr.RemoteVariable(    
+            name         = "halfPeriod",
+            description  = "Half period",
+            offset       =  0x14,
+            bitSize      =  16,
+            bitOffset    =  0x00,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
+        self.add(pr.RemoteVariable(    
+            name         = "sumPeriod",
+            description  = "Sum period",
+            offset       =  0x14,
+            bitSize      =  16,
+            bitOffset    =  16,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
+        self.add(pr.RemoteVariable(    
+            name         = "minSum",
+            description  = "min Sum",
+            offset       =  0x18,
+            bitSize      =  16,
+            bitOffset    =  0,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
+        self.add(pr.RemoteVariable(    
+            name         = "minDelay",
+            description  = "min Delay",
+            offset       =  0x18,
+            bitSize      =  16,
+            bitOffset    =  16,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
+        self.add(pr.RemoteVariable(    
+            name         = "maxSum",
+            description  = "max Sum",
+            offset       =  0x1c,
+            bitSize      =  16,
+            bitOffset    =  0,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
+        self.add(pr.RemoteVariable(    
+            name         = "maxDelay",
+            description  = "max Delay",
+            offset       =  0x1c,
+            bitSize      =  16,
+            bitOffset    =  16,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
+        self.add(pr.RemoteVariable(    
+            name         = "ramData1",
+            description  = "Readback RAM1 value",
+            offset       =  0x20,
+            bitSize      =  16,
+            bitOffset    =  0x00,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
 

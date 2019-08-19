@@ -13,7 +13,7 @@ class DefaultPVHandler(object):
 
     def put(self, pv, op):
         postedval = op.value()
-        print('DefaultPVHandler.put ',pv,postedval['value'])
+#        print('DefaultPVHandler.put ',pv,postedval['value'])
         postedval['timeStamp.secondsPastEpoch'], postedval['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
         pv.post(postedval)
         op.done()
@@ -25,7 +25,7 @@ class PVHandler(object):
 
     def put(self, pv, op):
         postedval = op.value()
-        print('PVHandler.put ',postedval['value'],self._cb)
+#        print('PVHandler.put ',postedval['value'],self._cb)
         postedval['timeStamp.secondsPastEpoch'], postedval['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
         pv.post(postedval)
         self._cb(pv,postedval['value'])

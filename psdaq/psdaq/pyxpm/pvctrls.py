@@ -55,7 +55,7 @@ class IdxCmdH(PVHandler):
         self._idx      = idx
 
     def handle(self, pv, value):
-        print('IdxCmdH handle ',value,self._cmd)
+#        print('IdxCmdH handle ',value,self._cmd)
         if value:
             if self._idxcmd:
                 lock.acquire()
@@ -134,7 +134,7 @@ class CuGenCtrls(object):
         xbar = xpm.AxiSy56040.find(name='OutputConfig[\*]')
         self._pv_cuDelay    = addPV('CuDelay'   , 200*800, IdxCmdH(xpm.CuGenerator.cuDelay))
         self._pv_cuBeamCode = addPV('CuBeamCode',     140, IdxCmdH(xpm.CuGenerator.cuBeamCode))
-        self._pv_cuInput    = addPV('CuInput'   ,       0, RegArrayH(xbar))
+        self._pv_cuInput    = addPV('CuInput'   ,       1, RegArrayH(xbar))
         self._pv_clearErr   = addPV('ClearErr'  ,       0, IdxRegH(xpm.CuGenerator.cuFiducialIntv))
 
         #  initialization
@@ -396,6 +396,12 @@ class PVCtrls(object):
         global lock
         lock     = m
 
+        # Assign transmit link ID
+        ip_comp = ip.split('.')
+        v = (0xff0000 | (int(ip_comp[2])<<8) | int(ip_comp[3]))<<4
+        xpm.XpmApp.paddr.set(v)
+        print('Set PADDR to 0x{:x}'.format(v))
+
         self._ip    = ip
 
         self._links = []
@@ -403,6 +409,7 @@ class PVCtrls(object):
             self._links.append(LinkCtrls(name, xpm, i))
             
         app = xpm.XpmApp
+
         self._pv_amcDumpPLL = []
         for i in range(2):
             pv = SharedPV(initial=NTScalar('I').wrap(0), 

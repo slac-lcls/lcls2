@@ -6,7 +6,8 @@ from psdaq.pyxpm.pvhandler import *
 provider = None
 lock     = None
 
-FID_PERIOD = 1400e-6/1300.
+FID_PERIOD    = 1400e-6/1300.
+FID_PERIOD_NS = 1400e3 /1300.
 
 def addPV(name,ctype,init=0):
     pv = SharedPV(initial=NTScalar(ctype).wrap(init), handler=DefaultPVHandler())
@@ -291,7 +292,7 @@ class GroupStats(object):
             self._numL0Inh= numL0Inh
                 
         else:
-            nfid = (timeval - self._timeval)/FID_PERIOD
+            nfid = (timeval - self._timeval)/FID_PERIOD_NS
             linkInhTm = []
             for i in range(32):
                 linkInh = self._app.inhTmCnt[i].get()

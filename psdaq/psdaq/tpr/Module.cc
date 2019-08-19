@@ -41,7 +41,7 @@ void TprBase::dump() const {
   for(unsigned i=0; i<NChan; i++)      printf("%08x ",channel[i].bsaWidth);
   //  printf("\nframeCnt: %08x\n",frameCount);
   //  printf("bsaCnCnt: %08x\n",bsaCntlCount);
-  printf("trigger0  [%p]\n",&trigger[0].control);
+  printf("\ntrigger0  [%p]\n",&trigger[0].control);
   printf("trgCntrl: ");
   for(unsigned i=0; i<NChan; i++)      printf("%08x ",trigger[i].control);
   printf("\ntrgDelay: ");

@@ -17,6 +17,7 @@ from datetime import datetime
 from psdaq.pyxpm.xpm.Top import *
 from psdaq.pyxpm.pvstats import *
 from psdaq.pyxpm.pvctrls import *
+from psdaq.pyxpm.pvxtpg  import *
 
 class NoLock(object):
     def __init__(self):
@@ -73,16 +74,25 @@ def main():
     provider = StaticProvider(__name__)
 
     lock = Lock()
+
     pvstats = PVStats(provider, lock, args.P, xpm)
     pvctrls = PVCtrls(provider, lock, args.P, args.ip, xpm, pvstats._groups)
+    pvxtpg  = None
+    if 'xtpg' in xpm.AxiVersion.ImageName.get():
+        pvxtpg = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms)
+
 
     # process PVA transactions
     updatePeriod = 1.0
     with Server(providers=[provider]):
         try:
+            if pvxtpg is not None:
+                pvxtpg .init()
             pvstats.init()
             while True:
                 prev = time.perf_counter()
+                if pvxtpg is not None:
+                    pvxtpg .update()
                 pvstats.update()
                 curr  = time.perf_counter()
                 delta = prev+updatePeriod-curr
