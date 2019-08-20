@@ -1,6 +1,7 @@
 import weakref
 import os, glob
 import numpy as np
+from psana.dgrammanager import DgramManager
 
 class InvalidFileType(Exception): pass
 
@@ -8,7 +9,7 @@ class DataSourceBase(object):
     filter = 0
     batch_size = 1
     max_events = 0
-    sel_det_ids = []
+    detectors = []
     exp = None
     run_num = -1
     live = False
@@ -29,13 +30,13 @@ class DataSourceBase(object):
         filter      -- callback that takes an evt and return True/False.
         batch_size  -- length of batched offsets
         max_events  -- no. of maximum events
-        sel_det_ids -- user-selected detector IDs.
+        detectors   -- user-selected detector names (for list of names, use detnames cli).
         destination -- callback that takes a timestamp and returns rank no (only works with RunParallel).
         live        -- turns live mode on/off (default is False). 
         """
         if kwargs is not None:
             keywords = ('exp', 'dir', 'files', 'shmem', \
-                    'filter', 'batch_size', 'max_events', 'sel_det_ids', \
+                    'filter', 'batch_size', 'max_events', 'detectors', \
                     'det_name','destination','live')
             
             for k in keywords:
@@ -107,8 +108,13 @@ class DataSourceBase(object):
             smd_dir = os.path.join(xtc_path, 'smalldata')
             for r in run_list:
                 all_smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(r).zfill(4))))
-                if self.sel_det_ids:
-                    smd_files = [all_smd_files[i] for i in self.sel_det_ids]
+                if self.detectors:
+                    # Create a dgrammanager to access the configs. This will be
+                    # done on only core 0.
+                    s1 = set(self.detectors)
+                    smd_dm = DgramManager(all_smd_files)
+                    smd_files = [all_smd_files[i] for i in range(len(all_smd_files)) \
+                                if s1.intersection(set(smd_dm.configs[i].__dict__.keys()))]
                 else:
                     smd_files = all_smd_files
                     
