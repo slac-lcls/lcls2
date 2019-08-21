@@ -61,7 +61,7 @@ class ts_connector:
         unique_xpms = set(xpms)
         pv_names = []
         for xpm_num in unique_xpms:
-            for xpm_port in range(32):
+            for xpm_port in range(24):
                 pv_names.append(self.xpm_base+str(xpm_num)+':'+'LinkGroupMask'+str(xpm_port))
         current_group_masks = self.ctxt.get(pv_names)
 

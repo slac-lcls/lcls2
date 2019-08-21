@@ -31,9 +31,15 @@ group = comm.Get_group() # This this the world group
 #       1   4   7   10      0   1   2   3
 #       2   5   8   11      0   1   2   3
 
+# Reserved nodes are for external applications (e.g. smalldata
+# servers).  These nodes will do nothing for event/step iterators
+# (see run_node method below).  The "psana_group" consists of
+# all non-reserved ranks and is used for smd0/smd/bd cores.
+PS_RESERVED_NODES = int(os.environ.get('PS_SRV_NODES', 0))
 PS_SMD_NODES = int(os.environ.get('PS_SMD_NODES', 1))
-smd_group = group.Incl(range(PS_SMD_NODES + 1))
-bd_main_group = group.Excl([0])
+psana_group = group.Excl(range(world_size-PS_RESERVED_NODES,world_size))
+smd_group = psana_group.Incl(range(PS_SMD_NODES + 1))
+bd_main_group = psana_group.Excl([0])
 
 smd_comm = comm.Create(smd_group)
 smd_rank = 0
@@ -64,8 +70,10 @@ if bd_main_comm != MPI.COMM_NULL:
     else:
         nodetype = 'bd'
 
-if nodetype is None:
-    nodetype = 'smd0' # if no nodetype assigned, I must be smd0
+if world_rank==0:
+    nodetype = 'smd0'
+elif world_rank>=psana_group.Get_size():
+    nodetype = 'reserved'
 
 class UpdateManager(object):
     """ Keeps epics data and their send history. """
@@ -272,3 +280,6 @@ def run_node(run):
         bd_node = BigDataNode(run)
         for evt in bd_node.run_mpi():
             yield evt
+    elif nodetype == 'reserved':
+        # tell the iterator to do nothing
+        return

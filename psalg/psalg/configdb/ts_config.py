@@ -27,7 +27,8 @@ def ts_config(connect_json,cfgtype,detname):
     readout_groups = set(readout_groups)
 
     control_info = connect_info['body']['control']['0']['control_info']
-    pv_prefix = control_info['pv_base']+':PART:'
+    xpm_master = control_info['xpm_master']
+    pv_prefix = control_info['pv_base']+':XPM:'+str(xpm_master)+':PART:'
 
     # this structure of epics variable names must mirror
     # the configdb.  alternatively, we could consider

@@ -456,7 +456,7 @@ class CollectionManager():
         self.config_alias = config_alias
         self.cfg_dbase = cfg_dbase
         self.xpm_master = xpm_master
-        self.pv_base = pv_base + ':XPM:%d' % xpm_master
+        self.pv_base = pv_base
         self.context = zmq.Context(1)
         self.back_pull = self.context.socket(zmq.PULL)
         self.back_pub = self.context.socket(zmq.PUB)
@@ -485,10 +485,11 @@ class CollectionManager():
         # name PVs
         self.pvListMsgHeader = []   # filled in at alloc
         self.pvListXPM = []         # filled in at alloc
-        self.pvGroupL0Enable =  self.pv_base+':GroupL0Enable'
-        self.pvGroupL0Disable = self.pv_base+':GroupL0Disable'
-        self.pvGroupMsgInsert = self.pv_base+':GroupMsgInsert'
-        self.pvGroupL0Reset =   self.pv_base+':GroupL0Reset'
+        self.pv_xpm_base = pv_base + ':XPM:%d' % xpm_master
+        self.pvGroupL0Enable =  self.pv_xpm_base+':GroupL0Enable'
+        self.pvGroupL0Disable = self.pv_xpm_base+':GroupL0Disable'
+        self.pvGroupMsgInsert = self.pv_xpm_base+':GroupMsgInsert'
+        self.pvGroupL0Reset = self.pv_xpm_base+':GroupL0Reset'
 
         self.groups = 0     # groups bitmask
         self.cmstate = {}
@@ -799,8 +800,8 @@ class CollectionManager():
         self.pvListXPM = []
         for g in range(8):
             if self.groups & (1 << g):
-                self.pvListMsgHeader.append(self.pv_base+":PART:"+str(g)+':MsgHeader')
-                self.pvListXPM.append(self.pv_base+":PART:"+str(g)+':Master')
+                self.pvListMsgHeader.append(self.pv_xpm_base+":PART:"+str(g)+':MsgHeader')
+                self.pvListXPM.append(self.pv_xpm_base+":PART:"+str(g)+':Master')
         logging.debug('pvListMsgHeader: %s' % self.pvListMsgHeader)
         logging.debug('pvListXPM: %s' % self.pvListXPM)
 
