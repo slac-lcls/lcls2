@@ -154,6 +154,7 @@ comm.Gather(sendbuf, recvbuf, root=0)
 if rank == 0:
     assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
 
+
 # Usecase 6 : selecting only xppcspad
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, detectors=['xppcspad'])
 

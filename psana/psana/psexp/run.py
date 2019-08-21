@@ -11,7 +11,7 @@ from psana.psexp import legion_node
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
-from psana.psexp.stepstore import StepStore
+from psana.psexp.stepstore_manager import StepStoreManager
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.step import Step
 
@@ -69,7 +69,6 @@ class Run(object):
     max_events = None
     batch_size = None
     filter_callback = None
-    epics_store = None
     nfiles = 0
     scan = False # True when looping over steps
     
@@ -104,20 +103,20 @@ class Run(object):
         
         # If no detector found, try epics 
         # Epics det is identified by its keywords (e.g. 'XPP:VARS:FLOAT:02', etc).
-        # Here, epics_store object is passed to drp_class so that the keyword
+        # Here, epics store is passed to drp_class so that the keyword
         # can be looked-up when evt is given (e.g. det(evt) returns value of
         # the given epics keyword.
         # Update 20190709 - there's only one algorithm (epics).
         # d.epics[0].epics.HX2:DVD:GCC:01:PMON = 41.0
         # d.epics[0].epics.HX2:DVD:GPI:01:PMON = 'Test String'
         if not flag_found:
-            alg = self.epics_store.alg_from_variable(name)
+            alg = self.ssm.stores['epics'].alg_from_variable(name)
             if alg:
                 det_name = 'epics'
                 var_name = name
                 drp_class_name = alg
                 drp_class = self.dm.det_class_table[(det_name, drp_class_name)]
-                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibs, self.epics_store)
+                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibs, self.ssm.stores['epics'])
 
         return det
 
@@ -134,7 +133,7 @@ class Run(object):
 
     @property
     def epicsinfo(self):
-        return self.epics_store.epics_info
+        return self.ssm.stores['epics'].epics_info
     
     @property
     def xtcinfo(self):
@@ -227,8 +226,7 @@ class RunSerial(Run):
         self.smd_dm = DgramManager(smd_files)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
-        self.epics_store = StepStore(self.smd_dm.configs, 'epics')
-        self.step_store = StepStore(self.smd_dm.configs, 'xppscan')
+        self.ssm = StepStoreManager(self.smd_dm.configs, 'epics', 'xppscan')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
@@ -240,10 +238,10 @@ class RunSerial(Run):
         #get smd chunks
         smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
         for (smd_chunk, step_chunk) in smdr_man.chunks():
-            # Update epics_store for each chunk
+            # Update stepStores
             step_pf = PacketFooter(view=step_chunk)
             step_views = step_pf.split_packets()
-            self.epics_store.update(step_views)
+            self.ssm.update(step_views)
             
             eb_man = EventBuilderManager(smd_chunk, self.configs, batch_size=self.batch_size, filter_fn=self.filter_callback)
             
@@ -261,13 +259,12 @@ class RunSerial(Run):
             # Update step stores
             step_pf = PacketFooter(view=step_chunk)
             step_views = step_pf.split_packets()
-            self.epics_store.update(step_views)
-            self.step_store.update(step_views)
+            self.ssm.update(step_views)
             
             eb_man = EventBuilderManager(smd_chunk, self.configs, \
                     batch_size=self.batch_size, filter_fn=self.filter_callback)
             
-            for i,step_dgram in enumerate(self.step_store.dgrams(from_pos=current_step_pos+1)):
+            for i,step_dgram in enumerate(self.ssm.stores['xppscan'].dgrams(from_pos=current_step_pos+1)):
                 if step_dgram:
                     limit_ts = step_dgram.seq.timestamp()
                     current_step_pos += 1
@@ -322,8 +319,7 @@ class RunParallel(Run):
             self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
             self.dm = DgramManager(xtc_files, configs=self.configs)
         
-        self.epics_store = StepStore(self.configs, 'epics')   
-        self.step_store = StepStore(self.configs, 'xppscan')
+        self.ssm = StepStoreManager(self.configs, 'epics', 'xppscan')
     
     def events(self):
         for evt in run_node(self):
@@ -345,7 +341,7 @@ class RunLegion(Run):
         self.smd_dm = DgramManager(smd_files)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
-        self.epics_store = StepStore(self.configs, 'epics')
+        self.ssm = StepStoreManager(self.configs, 'epics', 'xppscan')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = super(RunLegion, self)._get_calib(det_name)

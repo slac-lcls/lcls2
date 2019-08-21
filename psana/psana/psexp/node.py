@@ -120,7 +120,7 @@ class Smd0(object):
     def __init__(self, run):
         self.smdr_man = SmdReaderManager(run.smd_dm.fds, run.max_events)
         self.run = run
-        self.epics_man = UpdateManager(smd_size, self.run.epics_store.n_files)
+        self.epics_man = UpdateManager(smd_size, self.run.ssm.stores['epics'].n_files)
         self.run_mpi()
 
     def run_mpi(self):
@@ -159,7 +159,7 @@ class SmdNode(object):
     def __init__(self, run):
         self.n_bd_nodes = bd_comm.Get_size() - 1
         self.run = run
-        self.epics_man = UpdateManager(bd_size, self.run.epics_store.n_files)
+        self.epics_man = UpdateManager(bd_size, self.run.ssm.stores['epics'].n_files)
         self._update_dgram_pos = 0 # bookkeeping for running in scan mode
 
     def pack(self, *args):
@@ -193,15 +193,14 @@ class SmdNode(object):
                     batch_size=self.run.batch_size, filter_fn=self.run.filter_callback, \
                     destination=self.run.destination)
             
-            # Unpack epics chunk and updates run's epics_store and epics_manager  
+            # Unpack epics chunk and updates run's epics store and epics_manager  
             pfe = PacketFooter(view=update_chunk)
             update_views = pfe.split_packets()
-            self.run.epics_store.update(update_views)
-            self.run.step_store.update(update_views)
+            self.run.ssm.update(update_views)
             self.epics_man.extend_buffers(update_views)
 
             # Build batch of events
-            for update_dgram in self.run.step_store.dgrams(from_pos=current_update_pos+1, scan=self.run.scan):
+            for update_dgram in self.run.ssm.stores['xppscan'].dgrams(from_pos=current_update_pos+1, scan=self.run.scan):
                 if update_dgram:
                     limit_ts = update_dgram.seq.timestamp()
                     current_update_pos += 1
@@ -262,7 +261,7 @@ class BigDataNode(object):
             
             pfe = PacketFooter(view=epics_chunk)
             epics_views = pfe.split_packets()
-            self.run.epics_store.update(epics_views)
+            self.run.ssm.update(epics_views)
 
             if self.run.scan: 
                 yield Step(self.run, smd_batch=smd_chunk)
