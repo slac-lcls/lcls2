@@ -116,7 +116,7 @@ import gridfs
 from pymongo import MongoClient, errors, ASCENDING, DESCENDING
 from pymongo.database import Database
 from pymongo.collection import Collection
-from collections import Iterable
+from collections.abc import Iterable
 #from pymongo.errors import ConnectionFailure
 #import pymongo
 
