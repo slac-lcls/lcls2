@@ -107,17 +107,17 @@ ext = Extension("peakFinder",
 setup(name="peakFinder",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
-ext = Extension("constFracDiscrim",
-                sources=["psana/constFracDiscrim/constFracDiscrim.pyx",
-                         "../psalg/psalg/constFracDiscrim/src/ConstFracDiscrim.cc"],
-                language="c++",
-                extra_compile_args = extra_compile_args,
-                extra_link_args = extra_link_args + ['-lgsl', '-lm', '-lgslcblas'],
-                include_dirs=[np.get_include(), os.path.join(xtcdata, 'include')],
-)
+# ext = Extension("constFracDiscrim",
+#                 sources=["psana/constFracDiscrim/constFracDiscrim.pyx",
+#                          "../psalg/psalg/constFracDiscrim/src/ConstFracDiscrim.cc"],
+#                 language="c++",
+#                 extra_compile_args = extra_compile_args,
+#                 extra_link_args = extra_link_args + ['-lgsl', '-lm', '-lgslcblas'],
+#                 include_dirs=[np.get_include(), os.path.join(xtcdata, 'include')],
+# )
 
-setup(name="constFracDiscrim",
-      ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
+# setup(name="constFracDiscrim",
+#       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
 ext = Extension('dgramCreate',
                 #packages=['psana.peakfinder',],
