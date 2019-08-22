@@ -6,7 +6,7 @@ add_subdirectory(peaks)
 add_subdirectory(digitizer)
 add_subdirectory(detector)
 add_subdirectory(shmem)
-# add_subdirectory(constFracDiscrim)
+add_subdirectory(constFracDiscrim)
 
 add_library(psalg SHARED
     calib/src/ArrayIO.cc
