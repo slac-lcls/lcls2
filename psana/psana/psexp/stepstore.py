@@ -1,4 +1,3 @@
-from psana.dgram import Dgram
 from psana.event import Event
 from psana.psexp.packet_footer import PacketFooter
 import numpy as np
@@ -81,25 +80,16 @@ class StepStore(object):
             if variable_name in val:
                 return key
         return None
+    
+    def add_to(self, dgram, step_manager_idx):
+        self.step_managers[step_manager_idx].add(dgram)
 
-    def update(self, views):
-        """ Updates the store with new data from list of views. """
-        if views:
-            for i in range(self.n_files):
-                view, step = bytearray(views[i]), self.step_managers[i]
-                offset = 0
-                while offset < memoryview(view).shape[0]:
-                    d = Dgram(view=view, config=step.config, offset=offset)
-                    if hasattr(d, self.step_name):
-                        step.add(d)
-                    offset += d._size
-                
     def dgrams(self, from_pos=0, scan=True):
         """ Generates list of dgrams with 0 as last item. """  
         if scan:
             cn_dgrams = 0
-            for step in self.step_managers:
-                for dgram in step.dgrams:
+            for sm in self.step_managers:
+                for dgram in sm.dgrams:
                     if cn_dgrams < from_pos: 
                         cn_dgrams += 1
                         continue
