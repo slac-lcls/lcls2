@@ -40,6 +40,7 @@ PS_SMD_NODES = int(os.environ.get('PS_SMD_NODES', 1))
 psana_group = group.Excl(range(world_size-PS_RESERVED_NODES,world_size))
 smd_group = psana_group.Incl(range(PS_SMD_NODES + 1))
 bd_main_group = psana_group.Excl([0])
+bd_only_group = bd_main_group.Difference(bd_main_group,smd_group)
 
 smd_comm = comm.Create(smd_group)
 smd_rank = 0
