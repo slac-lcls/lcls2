@@ -11,6 +11,7 @@ add_library(service SHARED
     GenericPoolW.cc
     Histogram.cc
     Dl.cc
+    SysLog.cc
 )
 
 target_include_directories(service PUBLIC
