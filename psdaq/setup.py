@@ -39,6 +39,7 @@ setup(
                 'hpsdbuscas = psdaq.cas.hpsdbuscas:main',
                 'pyxpm = psdaq.pyxpm.pyxpm:main',
                 'control_gui = psdaq.control_gui.app.control_gui:control_gui',
+                'bluesky_simple = psdaq.control.bluesky_simple:main',
               ]
        },
 )

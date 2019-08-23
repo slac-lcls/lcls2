@@ -46,10 +46,14 @@ class MyDAQ:
         self.push_socket.bind('tcp://*:5555')
         self.pull_socket = self.context.socket(zmq.PULL)
         self.pull_socket.connect('tcp://localhost:5555')
-        self.thread = threading.Thread(target=self.daq_communicator_thread, args=())
+        self.comm_thread = threading.Thread(target=self.daq_communicator_thread, args=())
+        self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
         self.motor = motor
-        self.thread.start()
+        self.daqState = 'noconnect'
+        self.daqState_cv = threading.Condition()
+        self.comm_thread.start()
+        self.mon_thread.start()
 
     def read(self):
         # stuff we want to give back to user running bluesky
@@ -89,19 +93,48 @@ class MyDAQ:
                 # send 'daqstate(starting)' and wait for complete
                 # we can block here since we are not in the bluesky
                 # event loop
-                #self.control.setState('starting')
+                errMsg = self.control.setState('starting')
+                if errMsg is not None:
+                    print('*** error:', errMsg)
+                    continue
+                with self.daqState_cv:
+                    while self.daqState != 'starting':
+                        print('daqState \'%s\', waiting for \'starting\'...' % self.daqState)
+                        self.daqState_cv.wait(1.0)
+                    print('daqState \'%s\'' % self.daqState)
                 self.ready.set()
             elif state==b'running':
                 # launch the step with 'daqstate(running)' (with the
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
-                # simulate with sleep.
-                time.sleep(1)
+                errMsg = self.control.setState('running')
+                if errMsg is not None:
+                    print('*** error:', errMsg)
+                    continue
+                with self.daqState_cv:
+                    while self.daqState != 'running':
+                        print('daqState \'%s\', waiting for \'running\'...' % self.daqState)
+                        self.daqState_cv.wait(1.0)
+                    print('daqState \'%s\'' % self.daqState)
                 # tell bluesky step is complete
                 # this line is needed in ReadableDevice mode to flag completion
                 self.status._finished(success=True)
             elif state==b'shutdown':
                 break
+
+    def daq_monitor_thread(self):
+        print('*** daq_monitor_thread')
+        while True:
+            part1, part2, part3 = self.control.monitorStatus()
+            if part1 is None:
+                break
+            elif part1 == 'error':
+                continue
+
+            # part1=transition, part2=state, part3=config
+            with self.daqState_cv:
+                self.daqState = part2
+                self.daqState_cv.notify()
 
     # for the ReadableDevice style
     # this is a co-routine, so shouldn't block
@@ -178,7 +211,6 @@ class MyDAQ:
         return [self]
 
 def main():
-
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
                         help='platform (default 0)')
@@ -235,7 +267,7 @@ def main():
     #RE(fly_during_wrapper(count([det], num=3), dets))
 
     mydaq.push_socket.send_string('shutdown') #shutdown the daq thread
-    mydaq.thread.join()
+    mydaq.comm_thread.join()
 
 if __name__ == '__main__':
     main()
