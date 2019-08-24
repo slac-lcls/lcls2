@@ -112,7 +112,7 @@ void workerFunc(const Parameters& para, MemPool& pool,
                 val = 0;                // Value is irrelevant for transitions
             }
             if (dgram->xtc.extent > pool.bufferSize()) {
-                printf("Buffer size (%d) too small for requested extent (%d)\n", dgram->xtc.extent, pool.bufferSize());
+                printf("Buffer size (%d) too small for requested extent (%d)\n", pool.bufferSize(), dgram->xtc.extent);
                 exit(-1);
             }
             // set the src field for the event builders
