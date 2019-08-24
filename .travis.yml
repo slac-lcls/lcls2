@@ -13,7 +13,7 @@ matrix:
   - os: osx
     python: 3.6
   - os: linux
-    env: OS=centos7 PYVER=3.6
+    env: OS=centos7 PYVER=3.7
 
 install:
   - ./install_travis.sh
