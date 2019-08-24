@@ -2,7 +2,6 @@
 #include "EventBuilder.hh"
 #include "EbEpoch.hh"
 #include "EbEvent.hh"
-#include "EbContribution.hh"
 
 #include "psdaq/service/Task.hh"
 #include "xtcdata/xtc/Dgram.hh"
@@ -436,9 +435,9 @@ void EventBuilder::process(const Dgram* ctrb,
       uint32_t* pld = reinterpret_cast<uint32_t*>(ctrb->xtc.payload());
       size_t    sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
       unsigned  src = ctrb->xtc.src.value();
-      printf("EB found          a  ctrb                  @ "
+      printf("EB found a ctrb                              @ "
              "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, pld [%08x, %08x], prm %08x, due %014lx\n",
-             ctrb, ctl, pid, sz, src, env, pld[WRT_IDX], pld[MON_IDX], prm, due ? due->sequence() : 0ul);
+             ctrb, ctl, pid, sz, src, env, pld[0], pld[1], prm, due ? due->sequence() : 0ul);
     }
 
     ctrb = reinterpret_cast<const Dgram*>(reinterpret_cast<const char*>(ctrb) + size);

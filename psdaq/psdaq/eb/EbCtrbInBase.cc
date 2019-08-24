@@ -4,6 +4,7 @@
 #include "EbLfServer.hh"
 #include "Batch.hh"
 #include "TebContributor.hh"
+#include "ResultDgram.hh"
 
 #include "utilities.hh"
 
@@ -17,6 +18,7 @@
 #include <cassert>
 #include <string>
 #include <bitset>
+#include <chrono>
 
 
 using namespace XtcData;
@@ -138,7 +140,7 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
       if (_transport.pollEQ() == -FI_ENOTCONN)  break;
     }
 
-    if (process(ctrb) < 0)
+    if (_process(ctrb) < 0)
     {
       if (_transport.pollEQ() == -FI_ENOTCONN)  break;
     }
@@ -147,7 +149,7 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
   shutdown();
 }
 
-int EbCtrbInBase::process(TebContributor& ctrb)
+int EbCtrbInBase::_process(TebContributor& ctrb)
 {
   int rc;
 
@@ -156,11 +158,11 @@ int EbCtrbInBase::process(TebContributor& ctrb)
   const int tmo = 100;                  // milliseconds
   if ( (rc = _transport.pend(&data, tmo)) < 0)  return rc;
 
-  unsigned     src = ImmData::src(data);
-  unsigned     idx = ImmData::idx(data);
-  EbLfLink*    lnk = _links[src];
-  const Dgram* bdg = (const Dgram*)(lnk->lclAdx(idx * _maxBatchSize));
-  uint64_t     pid = bdg->seq.pulseId().value();
+  unsigned           src = ImmData::src(data);
+  unsigned           idx = ImmData::idx(data);
+  EbLfLink*          lnk = _links[src];
+  const ResultDgram* bdg = reinterpret_cast<const ResultDgram*>(lnk->lclAdx(idx * _maxBatchSize));
+  uint64_t           pid = bdg->seq.pulseId().value();
   if ( (rc = lnk->postCompRecv()) )
   {
     fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
@@ -173,8 +175,8 @@ int EbCtrbInBase::process(TebContributor& ctrb)
     unsigned   env     = bdg->env;
     BatchFifo& pending = ctrb.pending();
     printf("CtrbIn  rcvd        %6ld result  [%5d] @ "
-           "%16p, ctl %02x, pid %014lx,          src %2d, env %08x, E %d %zd, result %p\n",
-           _batchCount, idx, bdg, ctl, pid, lnk->id(), env, pending.empty(),
+           "%16p, ctl %02x, pid %014lx,            src %2d, env %08x, empty %c, cnt %zd, result %p\n",
+           _batchCount, idx, bdg, ctl, pid, lnk->id(), env, pending.empty() ? 'Y' : 'N',
            pending.count(), ctrb.batch(idx)->result());
   }
 
@@ -188,96 +190,93 @@ int EbCtrbInBase::process(TebContributor& ctrb)
 #define unlikely(expr)  __builtin_expect(!!(expr), 0)
 #define likely(expr)    __builtin_expect(!!(expr), 1)
 
-void EbCtrbInBase::_pairUp(TebContributor& ctrb,
-                           unsigned        idx,
-                           const Dgram*    result)
+void EbCtrbInBase::_pairUp(TebContributor&    ctrb,
+                           unsigned           idx,
+                           const ResultDgram* result)
 {
   BatchFifo& pending = ctrb.pending();
-  if (!pending.empty())
+
+  if (pending.empty())
   {
-    const Batch* inputs = pending.front();
-    if (inputs->index() != idx)
+    auto t0 = fast_monotonic_clock::now();
+    do
     {
-      Batch* batch = ctrb.batch(idx);
+      std::this_thread::yield();
 
-      if (unlikely(batch->result()))
+      using     ms_t  = std::chrono::milliseconds;
+      const int msTmo = 100;
+      auto      t1    = fast_monotonic_clock::now();
+
+      if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
       {
-        uint64_t pid       = result->seq.pulseId().value();
-        uint64_t cachedPid = batch->result()->seq.pulseId().value();
-        fprintf(stderr, "%s:\n  Slot is already occupied by an unhandled result:\n"
-                "    new result      idx %08x, pid %014lx\n"
-                "    looked up batch idx %08x, pid %014lx\n"
-                "    result in batch               pid %014lx\n"
-                "    pending head    idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
-                idx, pid,
-                batch->index(), batch->id(),
-                cachedPid,
-                inputs->index(), inputs->id());
-        abort();
+        fprintf(stderr, "%s:\n  No input batch for result: empty pending FIFO timeout:\n"
+                "    new result   idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
+                idx, result->seq.pulseId().value());
+        return;
       }
-
-      batch->result(result);            // Batch is possibly not allocated yet
-
-      result = inputs->result();        // Go on to proccess whatever is ready
     }
-
-    while (result)
-    {
-      uint64_t iPid = inputs->id();
-      uint64_t rPid = result->seq.pulseId().value();
-      if (unlikely((iPid ^ rPid) & ~(BATCH_DURATION - 1))) // Include bits above index()
-      {
-        fprintf(stderr, "%s:\n  Result / Input batch mismatch: "
-                "Input pid %014lx, Result pid %014lx, xor %014lx, diff %ld\n",
-                __PRETTY_FUNCTION__, iPid, rPid, iPid ^ rPid, iPid - rPid);
-        //abort();
-        break;
-      }
-
-      _process(ctrb, result, inputs);
-
-      pending.pop();
-      ctrb.release(inputs);      // Release input, and by proxy, result batches
-      if (pending.empty())  break;
-
-      inputs = pending.front();
-      result = inputs->result();
-    }
+    while (pending.empty());
   }
-  else
+
+  const Batch* inputs = pending.front();
+  if (inputs->index() != idx)
   {
     Batch* batch = ctrb.batch(idx);
 
     if (unlikely(batch->result()))
     {
-      uint64_t pid       = result->seq.pulseId().value();
-      uint64_t cachedPid = batch->result()->seq.pulseId().value();
-      fprintf(stderr, "%s:\n  Empty pending FIFO, but slot is occupied by an unhandled result:\n"
-              "    input batch  idx %08x, pid %014lx\n"
-              "    saved result           pid %014lx\n"
-              "    new result   idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
+      fprintf(stderr, "%s:\n  Unhandled result found:\n"
+              "    new result      idx %08x, pid %014lx\n"
+              "    looked up batch idx %08x, pid %014lx\n"
+              "    unhandled result              pid %014lx\n"
+              "    pending head    idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
+              idx, result->seq.pulseId().value(),
               batch->index(), batch->id(),
-              cachedPid,
-              idx, pid);
+              batch->result()->seq.pulseId().value(),
+              inputs->index(), inputs->id());
       abort();
     }
 
-    batch->result(result);              // Batch is possibly not allocated yet
+    batch->result(result);            // Batch is possibly not allocated yet
+
+    result = inputs->result();        // Go on to proccess whatever is ready
+  }
+
+  while (result)
+  {
+    uint64_t iPid = inputs->id();
+    uint64_t rPid = result->seq.pulseId().value();
+    if (unlikely((iPid ^ rPid) & ~(BATCH_DURATION - 1))) // Include bits above index()
+    {
+      fprintf(stderr, "%s:\n  Result / Input batch mismatch: "
+              "Input pid %014lx, Result pid %014lx, xor %014lx, diff %ld\n",
+              __PRETTY_FUNCTION__, iPid, rPid, iPid ^ rPid, iPid - rPid);
+      abort();
+    }
+
+    _deliver(ctrb, result, inputs);
+
+    pending.pop();
+    ctrb.release(inputs);      // Release input, and by proxy, result batches
+    if (pending.empty())  break;
+
+    inputs = pending.front();
+    result = inputs->result();
   }
 }
 
-void EbCtrbInBase::_process(TebContributor& ctrb,
-                            const Dgram*    results,
-                            const Batch*    inputs)
+void EbCtrbInBase::_deliver(TebContributor&    ctrb,
+                            const ResultDgram* results,
+                            const Batch*       inputs)
 {
-  const Dgram* result = results;
-  const Dgram* input  = static_cast<const Dgram*>(inputs->buffer());
-  const size_t iSize  = inputs->size();
-  const size_t rSize  = _maxBatchSize / MAX_ENTRIES;
-  uint64_t     rPid   = result->seq.pulseId().value();
-  uint64_t     iPid   = input->seq.pulseId().value();
-  unsigned     rCnt   = MAX_ENTRIES;
-  unsigned     iCnt   = MAX_ENTRIES;
+  const ResultDgram* result = results;
+  const Dgram*       input  = static_cast<const Dgram*>(inputs->buffer());
+  const size_t       iSize  = inputs->size();
+  const size_t       rSize  = _maxBatchSize / MAX_ENTRIES;
+  uint64_t           rPid   = result->seq.pulseId().value();
+  uint64_t           iPid   = input->seq.pulseId().value();
+  unsigned           rCnt   = MAX_ENTRIES;
+  unsigned           iCnt   = MAX_ENTRIES;
   do
   {
     // Ignore results for which there is no input
@@ -295,13 +294,13 @@ void EbCtrbInBase::_process(TebContributor& ctrb,
       const char* svc    = TransitionId::name(result->seq.service());
       size_t      extent = sizeof(*result) + result->xtc.sizeofPayload();
       printf("CtrbIn  found  [%5d]  %15s    @ "
-             "%16p, ctl %02x, pid %014lx, sz %6zd, TEB %2d, env %08x, deliver %d [%014lx]\n",
-             idx, svc, result, ctl, rPid, extent, src, env, rPid == iPid, iPid);
+             "%16p, ctl %02x, pid %014lx, sz %6zd, TEB %2d, env %08x, deliver %c [%014lx]\n",
+             idx, svc, result, ctl, rPid, extent, src, env, rPid == iPid ? 'Y' : 'N', iPid);
     }
 
     if (rPid == iPid)
     {
-      process(result, inputs->retrieve(iPid));
+      process(*result, inputs->retrieve(iPid));
 
       ++_eventCount;                    // Don't count events not meant for us
 
@@ -311,7 +310,7 @@ void EbCtrbInBase::_process(TebContributor& ctrb,
       if (!--iCnt || !iPid)  break;     // Handle full list faster
     }
 
-    result = reinterpret_cast<const Dgram*>(reinterpret_cast<const char*>(result) + rSize);
+    result = reinterpret_cast<const ResultDgram*>(reinterpret_cast<const char*>(result) + rSize);
 
     rPid = result->seq.pulseId().value();
   }
@@ -319,7 +318,18 @@ void EbCtrbInBase::_process(TebContributor& ctrb,
 
   if (iCnt && iPid)
   {
-    fprintf(stderr, "%s:\n  Warning: Not all inputs received results, inp: %d %014lx res: %d %014lx\n",
+    fprintf(stderr, "%s:\n  Not all inputs received results, inp: %d %014lx res: %d %014lx\n",
             __PRETTY_FUNCTION__, MAX_ENTRIES - iCnt, iPid, MAX_ENTRIES - rCnt, rPid);
+    printf("Results:\n");
+    result = results;
+    for (unsigned i = 0; i < MAX_ENTRIES; ++i)
+    {
+      uint64_t pid = result->seq.pulseId().value();
+      printf("  %2d: pid %014lx, appPrm %p\n", i, pid, inputs->retrieve(pid));
+      if (pid == 0ul)  break;
+      result = reinterpret_cast<const ResultDgram*>(reinterpret_cast<const char*>(result) + rSize);
+    }
+    printf("Inputs:\n");
+    inputs->dump();
   }
 }

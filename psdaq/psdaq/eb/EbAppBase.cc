@@ -64,7 +64,6 @@ int EbAppBase::connect(const EbParams& prms)
   _maxBufSize.resize(nCtrbs);
   _id           = prms.id;
   _contributors = prms.contributors;
-  _contract     = prms.contractors;
   _bufferCnt    = 0;
   _fixupCnt     = 0;
 
@@ -136,6 +135,13 @@ int EbAppBase::connect(const EbParams& prms)
   return 0;
 }
 
+int EbAppBase::configure(const EbParams& prms)
+{
+  _contract = prms.contractors;
+
+  return 0;
+}
+
 void EbAppBase::shutdown()
 {
   EventBuilder::dump(0);
@@ -193,10 +199,8 @@ int EbAppBase::process()
     unsigned    env = idg->env;
     uint64_t    pid = idg->seq.pulseId().value();
     unsigned    ctl = idg->seq.pulseId().control();
-    const char* knd = (ImmData::buf(flg) == ImmData::Buffer)
-                    ? "buffer"
-                    : TransitionId::name(idg->seq.service());
-    printf("EbAp rcvd %6ld %15s[%5d]   @ "
+    const char* knd = TransitionId::name(idg->seq.service());
+    printf("EbAp rcvd %9ld %15s[%5d]   @ "
            "%16p, ctl %02x, pid %014lx,            src %2d, env %08x, data %08lx, ext %4d\n",
            _bufferCnt, knd, idx, idg, ctl, pid, lnk->id(), env, data, idg->xtc.extent);
   }
@@ -252,5 +256,5 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
             __PRETTY_FUNCTION__, event->sequence(), event->size(), srcId);
   }
 
-  event->damageInc(Damage::DroppedContribution);
+  event->damage(Damage::DroppedContribution);
 }

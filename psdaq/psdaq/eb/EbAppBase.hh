@@ -40,6 +40,7 @@ namespace Pds {
       int              checkEQ()  { return _transport.pollEQ(); }
     public:
       int              connect(const EbParams&);
+      int              configure(const EbParams&);
       int              process();
       void             shutdown();
       void             trim(unsigned dst);

@@ -42,12 +42,13 @@ namespace Pds {
     public:
       void*      allocate(const XtcData::Transition* header, const void* appPrm);
       void       process(const XtcData::Dgram* datagram);
-      void       post(const XtcData::Dgram* nonEvent);
-      void       post(const Batch* input);
     public:
       void       release(const Batch* batch) { _batMan.release(batch); }
       BatchFifo& pending()                   { return _pending; }
       Batch*     batch(unsigned idx)         { return _batMan.batch(idx); }
+    private:
+      void       _post(const XtcData::Dgram* nonEvent) const;
+      void       _post(const Batch* input) const;
     private:
       const TebCtrbParams&   _prms;
       BatchManager           _batMan;
@@ -59,8 +60,8 @@ namespace Pds {
       size_t                 _batchBase;
       Batch*                 _batch;
     private:
-      uint64_t               _eventCount;
-      uint64_t               _batchCount;
+      mutable uint64_t       _eventCount;
+      mutable uint64_t       _batchCount;
     private:
       std::atomic<bool>      _running;
       std::thread            _rcvrThread;

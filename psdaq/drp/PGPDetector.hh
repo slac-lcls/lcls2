@@ -18,11 +18,12 @@ struct Batch
     uint32_t size;
 };
 
+class DrpBase;
+
 class PGPDetector
 {
 public:
-    PGPDetector(const Parameters& para, MemPool& pool,
-                Detector* det);
+    PGPDetector(const Parameters& para, DrpBase& drp, Detector* det);
     void reader(std::shared_ptr<MetricExporter> exporter, Pds::Eb::TebContributor& tebContributor);
     void collector(Pds::Eb::TebContributor& tebContributor);
     void resetEventCounter();

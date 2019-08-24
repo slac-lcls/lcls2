@@ -6,10 +6,10 @@
 #include "EbLfClient.hh"
 #include "EbLfServer.hh"
 
-#include "Decide.hh"
-
 #include "utilities.hh"
 
+#include "psdaq/trigger/Trigger.hh"
+#include "psdaq/trigger/utilities.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/Dl.hh"
@@ -30,16 +30,19 @@
 #include <algorithm>                    // For std::fill()
 #include <set>                          // For multiset
 #include <Python.h>
+
 #include "rapidjson/document.h"
 
+using namespace rapidjson;
 using namespace XtcData;
 using namespace Pds;
+using namespace Pds::Trg;
 
 using json = nlohmann::json;
 using logging = Pds::SysLog;
 
-static const int      core_0           = 11; // devXXX: 11, devXX:  7, accXX:  9
-static const int      core_1           = 12; // devXXX: 12, devXX: 19, accXX: 21
+static const int      core_0           = 18; // devXXX: 11, devXX:  7, accXX:  9
+static const int      core_1           = 19; // devXXX: 12, devXX: 19, accXX: 21
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 2; // Revisit: Number of "L3" input  data words
 static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
@@ -71,35 +74,19 @@ void sigHandler( int signal )
 namespace Pds {
   namespace Eb {
 
-    class ResultDgram : public Dgram
-    {
-    public:
-      ResultDgram(const Transition& transition_, unsigned id) :
-        Dgram(transition_, Xtc(TypeId(TypeId::Data, 0), Src(id, Level::Event)))
-      {
-        xtc.alloc(sizeof(_data));
-
-        for (unsigned i = 0; i < result_extent; ++i)
-          _data[i] = 0;
-      }
-    private:
-      uint32_t _data[result_extent];
-    };
-
     class Teb : public EbAppBase
     {
     public:
       Teb(const EbParams& prms, std::shared_ptr<MetricExporter>& exporter);
     public:
       int      connect(const EbParams&);
-      Decide*  decide()               { return _decideObj; }
-      void     decide(Decide* object) { _decideObj.store(object, std::memory_order_release); }
+      int      configure(const EbParams&, Trigger* object, unsigned prescale);
+      Trigger* trigger() const { return _trigger; }
       void     run();
     public:                         // For EventBuilder
       virtual
       void     process(EbEvent* event);
     private:
-      Damage   _configure(const Dgram& dg);
       void     _tryPost(const Dgram& dg);
       void     _post(const Batch&);
       uint64_t _receivers(const Dgram& ctrb) const;
@@ -114,14 +101,19 @@ namespace Pds {
     private:
       u64arr_t                     _rcvrs;
       //uint64_t                     _trimmed;
-      Decide*                      _decide;
+      Trigger*                     _trigger;
+      unsigned                     _prescale;
+    private:
+      unsigned                     _wrtCounter;
     private:
       uint64_t                     _eventCount;
       uint64_t                     _batchCount;
+      uint64_t                     _writeCount;
+      uint64_t                     _monitorCount;
+      uint64_t                     _prescaleCount;
     private:
       const EbParams&              _prms;
       EbLfClient                   _l3Transport;
-      std::atomic<Decide*>         _decideObj;
     };
   };
 };
@@ -130,20 +122,22 @@ namespace Pds {
 using namespace Pds::Eb;
 
 Teb::Teb(const EbParams& prms, std::shared_ptr<MetricExporter>& exporter) :
-  EbAppBase    (prms, BATCH_DURATION, MAX_ENTRIES, MAX_BATCHES),
-  _l3Links     (),
-  _mrqTransport(prms.verbose),
-  _mrqLinks    (),
-  _batMan      (prms.maxResultSize),
-  _id          (-1),
-  _verbose     (prms.verbose),
-  //_trimmed     (0),
-  _decide      (nullptr),
-  _eventCount  (0),
-  _batchCount  (0),
-  _prms        (prms),
-  _l3Transport (prms.verbose),
-  _decideObj   (nullptr)
+  EbAppBase     (prms, BATCH_DURATION, MAX_ENTRIES, MAX_BATCHES),
+  _l3Links      (),
+  _mrqTransport (prms.verbose),
+  _mrqLinks     (),
+  _batMan       (Trigger::size()), // Revisit: prms.maxResultSize),
+  _id           (-1),
+  _verbose      (prms.verbose),
+  //_trimmed      (0),
+  _trigger      (nullptr),
+  _eventCount   (0),
+  _batchCount   (0),
+  _writeCount   (0),
+  _monitorCount (0),
+  _prescaleCount(0),
+  _prms         (prms),
+  _l3Transport  (prms.verbose)
 {
   std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
   exporter->add("TEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;             });
@@ -161,6 +155,9 @@ Teb::Teb(const EbParams& prms, std::shared_ptr<MetricExporter>& exporter) :
   exporter->add("TEB_BtInCt", labels, MetricType::Counter, [&](){ return  bufferCnt();            }); // Inbound
   exporter->add("TEB_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();             });
   exporter->add("TEB_ToEvCt", labels, MetricType::Counter, [&](){ return  tmoEvtCnt();            });
+  exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return  _writeCount;            });
+  exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return  _monitorCount;          });
+  exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return  _prescaleCount;         });
 }
 
 int Teb::connect(const EbParams& prms)
@@ -238,13 +235,29 @@ int Teb::connect(const EbParams& prms)
   return 0;
 }
 
+int Teb::configure(const EbParams& prms,
+                   Trigger*        object,
+                   unsigned        prescale)
+{
+  EbAppBase::configure(prms);
+
+  _trigger    = object;
+  _prescale   = prescale - 1;
+  _wrtCounter = _prescale;        // Reset prescale counter
+
+  return 0;
+}
+
 void Teb::run()
 {
   pinThread(pthread_self(), _prms.core[0]);
 
-  //_trimmed    = 0;
-  _eventCount = 0;
-  _batchCount = 0;
+  //_trimmed       = 0;
+  _eventCount    = 0;
+  _batchCount    = 0;
+  _writeCount    = 0;
+  _monitorCount  = 0;
+  _prescaleCount = 0;
 
   while (true)
   {
@@ -282,18 +295,6 @@ void Teb::run()
   _rcvrs.fill(0);
 }
 
-Damage Teb::_configure(const Dgram& dg)
-{
-  _decide = _decideObj.load(std::memory_order_acquire);
-  if (!_decide)
-  {
-    fprintf(stderr, "%s:\n  No Decide object found\n", __PRETTY_FUNCTION__);
-    abort();
-  }
-
-  return _decide->configure(&dg);
-}
-
 void Teb::process(EbEvent* event)
 {
   // Accumulate output datagrams (result) from the event builder into a batch
@@ -307,42 +308,43 @@ void Teb::process(EbEvent* event)
   }
   ++_eventCount;
 
-  Damage damage(event->damageVal());
   const Dgram& dg = *event->creator();
-  if (dg.seq.service() == TransitionId::Configure)
-  {
-    damage = _configure(dg);
-  }
 
   if (ImmData::rsp(ImmData::flg(event->parameter())) == ImmData::Response)
   {
-    Batch*    batch      = _batMan.allocate(dg);
-    Dgram*    rdg        = new(batch->allocate()) ResultDgram(dg, _id);
-    uint32_t* result     = reinterpret_cast<uint32_t*>(rdg->xtc.payload());
-    size_t    resultSize = rdg->xtc.sizeofPayload();
+    Batch*       batch = _batMan.fetch(dg);
+    ResultDgram& rdg   = *new(batch->allocate()) ResultDgram(dg, dg.xtc.src.value());
+
+    rdg.xtc.damage.increase(event->damage().value());
 
     // Accumulate the list of ctrbs to this batch
     batch->accumRcvrs(_receivers(dg));
+    batch->accumRogs(dg);
 
-    // Present event contributions to "user" code for building a result datagram
-    const EbContribution** const  last = event->end();
-    const EbContribution*  const* ctrb = event->begin();
-    do
+    if (dg.seq.isEvent())
     {
-      Damage dmg = _decide->event(*ctrb, result, resultSize);
-      damage.increase(dmg.value());
-    }
-    while (++ctrb != last);
+      // Present event contributions to "user" code for building a result datagram
+      _trigger->event(event->begin(), event->end(), rdg); // Consume
 
-    rdg->xtc.damage.increase(damage.value());
+      unsigned line = 0;                // Revisit: For future expansion
 
-    if (rdg->seq.isEvent())
-    {
-      if (result[MON_IDX])
+      // Handle prescale
+      if (!rdg.persist(line) && !_wrtCounter--)
       {
+        _prescaleCount++;
+
+        rdg.prescale(line, true);
+        _wrtCounter = _prescale;
+      }
+
+      if (rdg.persist())  _writeCount++;
+      if (rdg.monitor())
+      {
+        _monitorCount++;
+
         uint64_t data;
         int      rc = _mrqTransport.poll(&data);
-        result[MON_IDX] = (rc < 0) ? 0 : data;
+        rdg.monBufNo((rc < 0) ? 0 : data);
         if ((rc > 0) && (rc = _mrqLinks[ImmData::src(data)]->postCompRecv()) )
         {
           fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
@@ -350,31 +352,19 @@ void Teb::process(EbEvent* event)
         }
       }
     }
-  }
-  else
-  {
-    // Present event contributions to "user" code for handling
-    const EbContribution** const  last = event->end();
-    const EbContribution*  const* ctrb = event->begin();
-    do
-    {
-      _decide->event(*ctrb, nullptr, 0);
-    }
-    while (++ctrb != last);
-  }
 
-  if (_verbose > 2) // || result[MON_IDX])
-  {
-    uint64_t  pid = dg.seq.pulseId().value();
-    unsigned  idx = Batch::batchNum(pid);
-    unsigned  ctl = dg.seq.pulseId().control();
-    size_t    sz  = sizeof(dg) + dg.xtc.sizeofPayload();
-    unsigned  src = dg.xtc.src.value();
-    unsigned  env = dg.env;
-    uint32_t* res = reinterpret_cast<uint32_t*>(dg.xtc.payload());
-    printf("TEB processed              result  [%5d] @ "
-           "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, res [%08x, %08x]\n",
-           idx, &dg, ctl, pid, sz, src, env, res[WRT_IDX], res[MON_IDX]);
+    if (_verbose > 2) // || rdg.monitor())
+    {
+      uint64_t  pid = rdg.seq.pulseId().value();
+      unsigned  idx = Batch::batchNum(pid);
+      unsigned  ctl = rdg.seq.pulseId().control();
+      size_t    sz  = sizeof(rdg) + rdg.xtc.sizeofPayload();
+      unsigned  src = rdg.xtc.src.value();
+      unsigned  env = rdg.env;
+      printf("TEB processed                result  [%5d] @ "
+             "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, res [%08x, %08x]\n",
+             idx, &rdg, ctl, pid, sz, src, env, rdg.persist(), rdg.monitor());
+    }
   }
 
   _tryPost(dg);
@@ -394,6 +384,7 @@ void Teb::_tryPost(const Dgram& dg)
 
     if ((batch->expired(pid) && !rogs) || flush)
     {
+      batch->terminate();
       _post(*batch);
 
       it = _batchList.erase(it);
@@ -402,25 +393,23 @@ void Teb::_tryPost(const Dgram& dg)
     {
       ++it;
     }
-    if (batch == cur)
-    {
-      cur = nullptr;                    // Insert only once
-      break;
-    }
+    if (batch == cur)  return;          // Insert only once
   }
 
-  if (cur)
+  if (flush)
   {
-    if (!flush)  _batchList.insert(cur);
-    else         _post(*cur);
+    cur->terminate();
+   _post(*cur);
   }
+  else
+    _batchList.insert(cur);
 }
 
 void Teb::_post(const Batch& batch)
 {
   uint32_t    idx    = batch.index();
   uint64_t    data   = ImmData::value(ImmData::Buffer, _id, idx);
-  size_t      extent = batch.terminate();
+  size_t      extent = batch.extent();
   unsigned    offset = idx * _batMan.maxBatchSize();
   const void* buffer = batch.buffer();
   uint64_t    destns = batch.receivers(); // & ~_trimmed;
@@ -438,7 +427,7 @@ void Teb::_post(const Batch& batch)
     {
       uint64_t pid    = batch.id();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
-      printf("TEB posts           %6ld result  [%5d] @ "
+      printf("TEB posts          %9ld result  [%5d] @ "
              "%16p,         pid %014lx, sz %6zd, dst %2d @ %16p\n",
              _batchCount, idx, buffer, pid, extent, dst, rmtAdx);
     }
@@ -504,15 +493,16 @@ public:                                 // For CollectionApp
   void handlePhase1(const json& msg) override;
   void handleReset(const json& msg) override;
 private:
-  int  _handleConnect(const json& msg);
-  int  _handleConfigure(const json& msg);
+  int  _connect(const json& msg);
+  int  _configure(const json& msg);
   int  _parseConnectionParams(const json& msg);
+  void _buildContract(const Document& top);
 private:
-  EbParams&   _prms;
-  Teb         _teb;
-  std::thread _appThread;
-  Dl          _dl;
-  std::string _connect_json;
+  EbParams&                  _prms;
+  Teb                        _teb;
+  std::thread                _appThread;
+  json                       _connectMsg;
+  Trg::Factory<Trg::Trigger> _factory;
 };
 
 TebApp::TebApp(const std::string&               collSrv,
@@ -538,7 +528,7 @@ json TebApp::connectionInfo()
   return body;
 }
 
-int TebApp::_handleConnect(const json& msg)
+int TebApp::_connect(const json& msg)
 {
   int rc = _parseConnectionParams(msg["body"]);
   if (rc)  return rc;
@@ -555,87 +545,104 @@ int TebApp::_handleConnect(const json& msg)
 
 void TebApp::handleConnect(const json& msg)
 {
-  int rc = _handleConnect(msg);
+  json body = json({});
+  int  rc   = _connect(msg);
+  if (rc)
+  {
+    std::string errorMsg = "Failed to connect";
+    body["err_info"] = errorMsg;
+    fprintf(stderr, "%s:\n  %s\n", __PRETTY_FUNCTION__, errorMsg.c_str());
+  }
 
   // Save a copy of the json so we can use it to connect to
   // the config database on configure
-  _connect_json = msg.dump();
+  _connectMsg = msg;
 
   // Reply to collection with transition status
-  json body = json({});
-  if (rc)  body["err_info"] = "Connect error";
   reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
 }
 
-int TebApp::_handleConfigure(const json& msg)
+void TebApp::_buildContract(const Document& top)
 {
-  using namespace rapidjson;
+  const json& body = _connectMsg["body"];
 
-  Document          top;
-  const std::string detName("tmoteb");
-  int               rc = fetchFromCfgDb(detName, top, _connect_json);
-  if (!rc)
+  for (auto it : body["drp"].items())
   {
-    const char* key("soname");
-    if (top.HasMember(key))
-    {
-      std::string so(top[key].GetString());
-      printf("Loading 'Decide' symbols from library '%s'\n", so.c_str());
+    unsigned    drpId   = it.value()["drp_id"];
+    std::string alias   = it.value()["proc_info"]["alias"];
+    size_t      found   = alias.rfind('_');
+    std::string detName = alias.substr(0, found);
 
-      Decide* decide = _teb.decide();   // If the object exists,
-      if (decide)                       // delete it before unloading the lib
-      {
-        delete decide;
-        _teb.decide(nullptr);           // Don't allow a double delete
-      }
+    auto group = unsigned(it.value()["det_info"]["readout"]);
 
-      // Lib must remain open during Unconfig transition
-      _dl.close();                      // If a lib is open, close it first
-
-      rc = _dl.open(so, RTLD_LAZY);
-      if (!rc)
-      {
-        Create_t* createFn = reinterpret_cast<Create_t*> (_dl.loadSymbol("create"));
-        if (createFn)
-        {
-          decide = createFn();
-          if (decide)
-          {
-            _teb.decide(decide);
-
-            rc = decide->configure(msg, _connect_json);
-            if (rc)  fprintf(stderr, "%s:\n  Failed to configure Decide object: rc = %d\n",
-                             __PRETTY_FUNCTION__, rc);
-          }
-          else rc = fprintf(stderr, "%s:\n  Failed to create Decide object\n",
-                            __PRETTY_FUNCTION__);
-        }
-        else rc = fprintf(stderr, "%s:\n  Decide object's create() (%p) not found in %s\n",
-                          __PRETTY_FUNCTION__, createFn, so.c_str());
-      }
-    }
-    else rc = fprintf(stderr, "%s:\n  Key '%s' not found in Document %s\n",
-                      __PRETTY_FUNCTION__, key, detName.c_str());
+    if (top.HasMember(detName.c_str()))
+      _prms.contractors[group] |= 1ul << drpId;
   }
-  else rc = fprintf(stderr, "%s:\n  Failed to find Document '%s' in ConfigDb\n",
-                    __PRETTY_FUNCTION__, detName.c_str());
+}
+
+int TebApp::_configure(const json& msg)
+{
+  int rc = 0;
+  const std::string configAlias(msg["body"]["config_alias"]);
+  const std::string detName("tmoTrigger");
+  Document          top;
+  if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, detName, top))
+  {
+    fprintf(stderr, "%s:\n  Document '%s' not found in ConfigDb\n",
+            __PRETTY_FUNCTION__, detName.c_str());
+    return -1;
+  }
+
+  _buildContract(top);
+
+  const std::string symbol("create_consumer");
+  Trigger* trigger = _factory.create(top, detName, symbol);
+  if (!trigger)
+  {
+    fprintf(stderr, "%s:\n  Failed to create Trigger\n",
+            __PRETTY_FUNCTION__);
+    return -1;
+  }
+
+  if (trigger->configure(_connectMsg, top))
+  {
+    fprintf(stderr, "%s:\n  Failed to configure Trigger\n",
+            __PRETTY_FUNCTION__);
+    return -1;
+  }
+
+# define _FETCH(key, item)                                               \
+  if (top.HasMember(key))  item = top[key].GetUint();                    \
+  else { fprintf(stderr, "%s:\n  Key '%s' not found in Document %s\n",   \
+                 __PRETTY_FUNCTION__, key, detName.c_str());  rc = -1; }
+
+  unsigned prescale;  _FETCH("prescale", prescale);
+
+# undef _FETCH
+
+  _teb.configure(_prms, trigger, prescale);
 
   return rc;
 }
 
 void TebApp::handlePhase1(const json& msg)
 {
-  int         rc  = 0;
-  std::string key = msg["header"]["key"];
+  json        body = json({});
+  std::string key  = msg["header"]["key"];
 
   if (key == "configure")
   {
-    rc = _handleConfigure(msg);
+    int rc = _configure(msg);
+    if (rc)
+    {
+      std::string errorMsg = "Phase 1 error: ";
+      errorMsg += "Failed to set up Trigger";
+      body["err_info"] = errorMsg;
+      fprintf(stderr, "%s:\n  %s\n", __PRETTY_FUNCTION__, errorMsg.c_str());
+    }
   }
 
   // Reply to collection with transition status
-  json body = json({});
-  if (rc)  body["err_info"] = "Phase 1 failed";
   reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
 }
 
@@ -675,6 +682,7 @@ int TebApp::_parseConnectionParams(const json& body)
   const unsigned mrqPortBase = MRQ_PORT_BASE + numPorts * _prms.partition;
 
   std::string id = std::to_string(getId());
+  printf("%s: id %zu 0x%08zx '%s'\n", __PRETTY_FUNCTION__, getId(), getId(), id.c_str());
   _prms.id = body["teb"][id]["teb_id"];
   if (_prms.id >= MAX_TEBS)
   {
@@ -690,7 +698,7 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.addrs.clear();
   _prms.ports.clear();
 
-  _prms.contractors.fill(0);
+  _prms.contractors.fill(0);            // Filled in during Configure
   _prms.receivers.fill(0);
 
   uint16_t groups = 0;
@@ -719,8 +727,7 @@ int TebApp::_parseConnectionParams(const json& body)
       fprintf(stderr, "Readout group %d is out of range 0 - %d\n", group, NUM_READOUT_GROUPS - 1);
       return 1;
     }
-    _prms.contractors[group] |= 1ul << drpId;
-    _prms.receivers[group]   |= 1ul << drpId; // Revisit: to come from elsewhere
+    _prms.receivers[group]  |= 1ul << drpId; // All contributors receive results
     groups |= 1 << group;
   }
   auto& vec =_prms.maxTrSize;

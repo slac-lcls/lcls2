@@ -3,16 +3,10 @@
 
 #include <stdint.h>
 
-#include "EbContribution.hh"
-
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/Pool.hh"
-#include "xtcdata/xtc/Damage.hh"
+#include "xtcdata/xtc/Dgram.hh"
 
-
-namespace XtcData {
-  class Dgram;
-};
 
 namespace Pds {
 
@@ -33,17 +27,17 @@ namespace Pds {
               unsigned              prm);
       ~EbEvent();
     public:
-      unsigned parameter() const;
-      uint64_t sequence()  const;
-      size_t   size()      const;
-      uint64_t remaining() const;
-      uint64_t contract()  const;
-      uint16_t damageVal() const;
-      void     damageInc(XtcData::Damage::Value);
+      unsigned        parameter() const;
+      uint64_t        sequence()  const;
+      size_t          size()      const;
+      uint64_t        remaining() const;
+      uint64_t        contract()  const;
+      XtcData::Damage damage()    const;
+      void            damage(XtcData::Damage::Value);
     public:
-      const EbContribution*  const  creator() const;
-      const EbContribution*  const* begin()   const;
-      const EbContribution** const  end()     const;
+      const XtcData::Dgram*  const  creator() const;
+      const XtcData::Dgram*  const* begin()   const;
+      const XtcData::Dgram** const  end()     const;
     public:
       void     dump(int number);
     private:
@@ -59,8 +53,8 @@ namespace Pds {
       int                    _living;          // Aging counter
       unsigned               _prm;             // An application level free parameter
       XtcData::Damage        _damage;          // Accumulate damage about this event
-      const EbContribution** _last;            // Pointer into the contributions array
-      const EbContribution*  _contributions[]; // Array of contributions
+      const XtcData::Dgram** _last;            // Pointer into the contributions array
+      const XtcData::Dgram*  _contributions[]; // Array of contributions
     };
   };
 };
@@ -143,9 +137,9 @@ inline uint64_t Pds::Eb::EbEvent::remaining() const
 ** --
 */
 
-inline uint16_t Pds::Eb::EbEvent::damageVal() const
+inline XtcData::Damage Pds::Eb::EbEvent::damage() const
 {
-  return _damage.value();
+  return _damage;
 }
 
 /*
@@ -156,7 +150,7 @@ inline uint16_t Pds::Eb::EbEvent::damageVal() const
 ** --
 */
 
-inline void Pds::Eb::EbEvent::damageInc(XtcData::Damage::Value value)
+inline void Pds::Eb::EbEvent::damage(XtcData::Damage::Value value)
 {
   _damage.increase(value);
 }
@@ -171,17 +165,17 @@ inline void Pds::Eb::EbEvent::damageInc(XtcData::Damage::Value value)
 ** --
 */
 
-inline const Pds::Eb::EbContribution* const Pds::Eb::EbEvent::creator() const
+inline const XtcData::Dgram* const Pds::Eb::EbEvent::creator() const
 {
   return _contributions[0];
 }
 
-inline const Pds::Eb::EbContribution* const* Pds::Eb::EbEvent::begin() const
+inline const XtcData::Dgram* const* Pds::Eb::EbEvent::begin() const
 {
   return _contributions;
 }
 
-inline const Pds::Eb::EbContribution** const Pds::Eb::EbEvent::end() const
+inline const XtcData::Dgram** const Pds::Eb::EbEvent::end() const
 {
   return _last;
 }

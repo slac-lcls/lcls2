@@ -21,6 +21,7 @@ namespace Pds {
     using AppPrm = std::atomic<uintptr_t>;
 
     class BatchManager;
+    class ResultDgram;
 
     class Batch
     {
@@ -28,39 +29,40 @@ namespace Pds {
       Batch();
       Batch(void* buffer, size_t bufSize, AppPrm* appPrms);
     public:
-      void*                 operator new(size_t, Pds::Eb::Batch&);
-      bool                  operator()(Batch* const& lhs, Batch* const& rhs) const;
+      void*              operator new(size_t, Pds::Eb::Batch&);
+      bool               operator()(Batch* const& lhs, Batch* const& rhs) const;
     public:
-      static uint64_t       batchNum(uint64_t pid);
+      static uint64_t    batchNum(uint64_t pid);
     public:
-      XtcData::Dgram*       allocate();
-      Batch*                initialize(const XtcData::Transition&);
-      void                  accumRogs(const XtcData::Transition&);
-      uint16_t              rogsRem(const XtcData::Transition&);
-      void                  accumRcvrs(uint64_t receivers);
-      uint64_t              receivers() const;
-      size_t                terminate() const;
-      void                  release();
-      void                  store(uint64_t pid, const void* appPrm);
-      const void*           retrieve(uint64_t pid) const;
-      void                  result(const XtcData::Dgram*);
-      const XtcData::Dgram* result() const;
-      size_t                size() const;
-      uint64_t              id() const;
-      unsigned              index() const;
-      const void*           buffer() const;
-      const bool            empty() const;
-      bool                  expired(uint64_t pid) const;
-      void                  dump() const;
+      XtcData::Dgram*    allocate();
+      Batch*             initialize(const XtcData::Transition&);
+      void               accumRogs(const XtcData::Transition&);
+      uint16_t           rogsRem(const XtcData::Transition&);
+      void               accumRcvrs(uint64_t receivers);
+      uint64_t           receivers() const;
+      size_t             terminate();
+      void               release();
+      void               store(uint64_t pid, const void* appPrm);
+      const void*        retrieve(uint64_t pid) const;
+      void               result(const ResultDgram*);
+      const ResultDgram* result() const;
+      size_t             size() const;   // Entry buffer size
+      size_t             extent() const; // Current extent
+      uint64_t           id() const;
+      unsigned           index() const;
+      const void*        buffer() const;
+      const bool         empty() const;
+      bool               expired(uint64_t pid) const;
+      void               dump() const;
     private:
-      void* const           _buffer;   // Pointer to RDMA space for this Batch
-      size_t                _size;     // Size of entries
-      uint64_t              _id;       // Id of Batch, in case it remains empty
-      unsigned              _entries;  // Number of entries in this batch
-      unsigned              _rogs;     // Readout groups that contributed
-      uint64_t              _receivers;// Destinations for this batch
-      AppPrm* const         _appPrms;  // Pointer to AppPrms array for this Batch
-      const XtcData::Dgram* _result;   // For when Batch is handled out of order
+      void* const        _buffer;    // Pointer to RDMA space for this Batch
+      const size_t       _size;      // Size of entries
+      uint64_t           _id;        // Id of Batch, in case it remains empty
+      unsigned           _extent;    // Current extent (unsigned is large enough)
+      unsigned           _rogs;      // Readout groups that contributed
+      uint64_t           _receivers; // Destinations for this batch
+      AppPrm* const      _appPrms;   // Pointer to AppPrms array for this Batch
+      const ResultDgram* _result;    // For when Batch is handled out of order
     };
   };
 };
@@ -103,9 +105,15 @@ size_t Pds::Eb::Batch::size() const
 }
 
 inline
+size_t Pds::Eb::Batch::extent() const
+{
+  return _extent;
+}
+
+inline
 const bool Pds::Eb::Batch::empty() const
 {
-  return _entries == 0;
+  return _extent == 0;
 }
 
 inline
@@ -115,7 +123,7 @@ Pds::Eb::Batch* Pds::Eb::Batch::initialize(const XtcData::Transition& hdr)
   _id        = hdr.seq.pulseId().value(); // Full PID, not BatchNum
   _rogs      = hdr.readoutGroups();
   _receivers = 0;
-  _entries   = 0;
+  _extent    = 0;
 
   return this;
 }
@@ -155,23 +163,26 @@ void Pds::Eb::Batch::release()
 inline
 XtcData::Dgram* Pds::Eb::Batch::allocate()
 {
-  char* buf = static_cast<char*>(_buffer) + _entries++ * _size;
+  char* buf = static_cast<char*>(_buffer) + _extent;
+  _extent += _size;
   return reinterpret_cast<XtcData::Dgram*>(buf);
 }
 
 inline
-size_t Pds::Eb::Batch::terminate() const
+size_t Pds::Eb::Batch::terminate()
 {
-  size_t size = _entries * _size;
+  assert(_extent <= MAX_ENTRIES * _size);
 
-  if (_entries < MAX_ENTRIES)
+  // No NULL termination needed for a full batch
+  if (_extent < MAX_ENTRIES * _size)
   {
-    char*           buf = static_cast<char*>(_buffer) + size;
+    char*           buf = static_cast<char*>(_buffer) + _extent;
     XtcData::Dgram* dg  = reinterpret_cast<XtcData::Dgram*>(buf);
-    dg->seq = XtcData::Sequence(XtcData::TimeStamp(), XtcData::PulseId());
-    size += sizeof(XtcData::PulseId);
+    dg->seq  = XtcData::Sequence(XtcData::TimeStamp(), XtcData::PulseId());
+    _extent += sizeof(XtcData::PulseId);
   }
-  return size;
+
+  return _extent;
 }
 
 inline
@@ -191,13 +202,13 @@ const void* Pds::Eb::Batch::retrieve(uint64_t pid) const
 }
 
 inline
-void Pds::Eb::Batch::result(const XtcData::Dgram* batch)
+void Pds::Eb::Batch::result(const ResultDgram* batch)
 {
   _result = batch;
 }
 
 inline
-const XtcData::Dgram* Pds::Eb::Batch::result() const
+const Pds::Eb::ResultDgram* Pds::Eb::Batch::result() const
 {
   return _result;
 }

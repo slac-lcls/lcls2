@@ -31,6 +31,7 @@ target_link_libraries(drp
     xtcdata::xtc
     pthread
     drpbase
+    trigger
 )
 
 add_executable(drp_bld
@@ -39,6 +40,7 @@ add_executable(drp_bld
 
 target_link_libraries(drp_bld
     drpbase
+    trigger
     epicstools
 )
 

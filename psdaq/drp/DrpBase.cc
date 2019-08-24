@@ -1,8 +1,10 @@
 #include <iostream>
 #include "TimingHeader.hh"
-#include "DataDriver.h"
+#include <DmaDriver.h>
 #include "DrpBase.hh"
 #include "psdaq/service/SysLog.hh"
+
+#include "rapidjson/document.h"
 
 using json = nlohmann::json;
 using logging = Pds::SysLog;
@@ -93,10 +95,13 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
     m_nodeId = tPrms.id;
 }
 
-void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
+void EbReceiver::resetCounters()
 {
-    uint32_t* ebDecision = (uint32_t*)(result->xtc.payload());
-    //printf("eb decisions write: %u, monitor: %u\n", ebDecision[WRT_IDX], ebDecision[MON_IDX]);
+    m_lastIndex = 0;
+}
+
+void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
+{
     unsigned index = (uintptr_t)appPrm;
     PGPEvent* event = &m_pool.pgpEvents[index];
 
@@ -117,35 +122,35 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
         logging::info("EbReceiver saw %s transition @ %014lx\n", XtcData::TransitionId::name(transitionId), timingHeader->seq.pulseId().value());
     }
 
-    if (index != ((lastIndex + 1) & (m_pool.nbuffers() - 1))) {
-        logging::critical("jumping index %u  previous index %u  diff %d", index, lastIndex, index - lastIndex);
+    if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
+        printf("\033[0;31m");
+        logging::critical("jumping index %u  previous index %u  diff %d", index, m_lastIndex, index - m_lastIndex);
         logging::critical("evtCounter %u", timingHeader->evtCounter);
         logging::critical("pid = %014lx, env = %08x", timingHeader->seq.pulseId().value(), timingHeader->env);
         logging::critical("tid %s", XtcData::TransitionId::name(transitionId));
-        logging::critical("lastevtCounter %u", lastEvtCounter);
-        logging::critical("lastPid %014lx lastTid %s", lastPid, XtcData::TransitionId::name(lastTid));
+        logging::critical("lastevtCounter %u", m_lastEvtCounter);
+        logging::critical("lastPid %014lx lastTid %s", m_lastPid, XtcData::TransitionId::name(m_lastTid));
+        printf("\033[0m");
     }
 
     if (timingHeader->seq.pulseId().value() != result->seq.pulseId().value()) {
         logging::critical("timestamps don't match");
-        logging::critical("index %u  previous index %u", index, lastIndex);
-        logging::critical("pebble pulseId %014lx  result dgram pulseId %014lx",
-                          timingHeader->seq.pulseId().value(), result->seq.pulseId().value());
+        logging::critical("index %u  previous index %u", index, m_lastIndex);
         uint64_t tPid = timingHeader->seq.pulseId().value();
         uint64_t rPid = result->seq.pulseId().value();
-        logging::critical("pebble PID %014lx, result PID %014lx, xor %014lx, diff %ld", tPid, rPid, tPid ^ rPid, tPid - rPid);
+        logging::critical("pebble pulseId %014lx, result dgram pulseId %014lx, xor %014lx, diff %ld", tPid, rPid, tPid ^ rPid, tPid - rPid);
         exit(-1);
     }
 
-    lastIndex = index;
-    lastEvtCounter = timingHeader->evtCounter;
-    lastPid = timingHeader->seq.pulseId().value();
-    lastTid = timingHeader->seq.service();
+    m_lastIndex = index;
+    m_lastEvtCounter = timingHeader->evtCounter;
+    m_lastPid = timingHeader->seq.pulseId().value();
+    m_lastTid = timingHeader->seq.service();
 
     XtcData::Dgram* dgram = (XtcData::Dgram*)m_pool.pebble[index];
     if (m_writing) {
         // write event to file if it passes event builder or if it's a transition
-        if ((ebDecision[Pds::Eb::WRT_IDX] == 1) || (transitionId != XtcData::TransitionId::L1Accept)) {
+        if (result.persist() || result.prescale() || (transitionId != XtcData::TransitionId::L1Accept)) {
             size_t size = sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload();
             m_fileWriter.writeEvent(dgram, size);
 
@@ -173,8 +178,10 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
 
     if (m_mon) {
         // L1Accept
-        if (result->seq.isEvent()) {
-            if (ebDecision[Pds::Eb::MON_IDX])  m_mon->post(dgram, ebDecision[Pds::Eb::MON_IDX]);
+        if (result.seq.isEvent()) {
+            if (result.monitor()) {
+                m_mon->post(dgram, result.monBufNo());
+            }
         }
         // Other Transition
         else {
@@ -211,7 +218,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
                 /* .addrs         = */ { },
                 /* .ports         = */ { },
                 /* .maxInputSize  = */ maxSize,
-                /* .core          = */ { 11, 12 },
+                /* .core          = */ { 18, 19 },
                 /* .verbose       = */ 0,
                 /* .readoutGroup  = */ 0,
                 /* .contractor    = */ 0 };
@@ -245,6 +252,10 @@ void DrpBase::shutdown()
 
 std::string DrpBase::connect(const json& msg, size_t id)
 {
+    // Save a copy of the json so we can use it to connect to the config database on configure
+    m_connectMsg = msg;
+    m_collectionId = id;
+
     parseConnectionParams(msg["body"], id);
 
     m_exporter = std::make_shared<MetricExporter>();
@@ -287,6 +298,54 @@ std::string DrpBase::disconnect(const json& msg)
     return std::string{};
 }
 
+std::string DrpBase::configure(const json& msg)
+{
+    if (setupTriggerPrimitives(msg["body"])) {
+        return std::string("Failed to set up TriggerPrimitive(s)");
+    }
+    m_ebRecv->resetCounters();
+    return std::string{};
+}
+
+int DrpBase::setupTriggerPrimitives(const json& body)
+{
+    using namespace rapidjson;
+
+    const std::string configAlias = body["config_alias"];
+    const std::string detName("tmoTrigger");
+    Document          top;
+    if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, detName, top))
+    {
+        fprintf(stderr, "%s:\n  Document '%s' not found in ConfigDb\n",
+                __PRETTY_FUNCTION__, detName.c_str());
+        return -1;
+    }
+
+    if (!top.HasMember(m_para.detName.c_str())) {
+        printf("%s:\n  Trigger data not contributed: '%s' not found in ConfigDb for %s\n",
+               __PRETTY_FUNCTION__, m_para.detName.c_str(), detName.c_str());
+        m_tPrms.contractor = 0;    // This DRP won't provide trigger input data
+        m_triggerPrimitive = nullptr;
+        return 0;
+    }
+    m_tPrms.contractor = m_tPrms.readoutGroup;
+
+    const std::string symbol("create_producer_" + m_para.detName);
+    m_triggerPrimitive = m_trigPrimFactory.create(top, detName, symbol);
+    if (!m_triggerPrimitive) {
+        fprintf(stderr, "%s:\n  Failed to create TriggerPrimitive\n",
+                __PRETTY_FUNCTION__);
+        return -1;
+    }
+    if (m_triggerPrimitive->configure(top, m_connectMsg, m_collectionId)) {
+        fprintf(stderr, "%s:\n  Failed to configure TriggerPrimitive\n",
+                __PRETTY_FUNCTION__);
+        return -1;
+    }
+
+    return 0;
+}
+
 void DrpBase::parseConnectionParams(const json& body, size_t id)
 {
     std::string stringId = std::to_string(id);
@@ -315,10 +374,11 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     }
     m_tPrms.builders = builders;
 
+    // Store our readout group as a mask to make comparison with Dgram::readoutGroups() cheaper
     m_tPrms.readoutGroup = 1 << unsigned(body["drp"][stringId]["det_info"]["readout"]);
-    m_tPrms.contractor = m_tPrms.readoutGroup; // Revisit: Value to come from CfgDb
+    m_tPrms.contractor = 0;             // Overridden during Configure
 
-    m_para.rogMask = 0; // Readout group mask to ignore other partitions' RoGs
+    m_para.rogMask = 0; // Build readout group mask for ignoring other partitions' RoGs
     for (auto it : body["drp"].items()) {
         m_para.rogMask |= 1 << unsigned(it.value()["det_info"]["readout"]);
     }

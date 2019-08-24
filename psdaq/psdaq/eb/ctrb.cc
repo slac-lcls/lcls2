@@ -1,10 +1,9 @@
 #include "MebContributor.hh"
 #include "TebContributor.hh"
 #include "EbCtrbInBase.hh"
-
+#include "ResultDgram.hh"
 #include "utilities.hh"
 #include "EbLfClient.hh"
-#include "utilities.hh"
 
 #include "psdaq/service/GenericPoolW.hh"
 #include "psdaq/service/Collection.hh"
@@ -70,6 +69,8 @@ void sigHandler( int signal )
 namespace Pds {
   namespace Eb {
 
+    enum { WRT_IDX, MON_IDX };          // Indexes of trigger decision results
+
     class Input : public Dgram
     {
     public:
@@ -133,7 +134,7 @@ namespace Pds {
       int      connect(const TebCtrbParams&, MebContributor*);
       void     shutdown();
     public:                             // For EbCtrbInBase
-      virtual void process(const Dgram* result, const void* input);
+      virtual void process(const ResultDgram& result, const void* input);
     private:
       DrpSim&         _drpSim;
       MebContributor* _mebCtrb;
@@ -365,17 +366,17 @@ void EbCtrbIn::shutdown()
   if (_mebCtrb)  _mebCtrb->shutdown();
 }
 
-void EbCtrbIn::process(const Dgram* result, const void* appPrm)
+void EbCtrbIn::process(const ResultDgram& result, const void* appPrm)
 {
   const Input* input = (const Input*)appPrm;
-  uint64_t     pid   = result->seq.pulseId().value();
+  uint64_t     pid   = result.seq.pulseId().value();
 
   assert(input);
 
-  //if (result->xtc.damage.value())
+  //if (result.xtc.damage.value())
   //{
   //  fprintf(stderr, "%s:\n  Result with pulse Id %014lx has damage %04x\n",
-  //          __PRETTY_FUNCTION__, pid, result->xtc.damage.value());
+  //          __PRETTY_FUNCTION__, pid, result.xtc.damage.value());
   //}
 
   if (pid != input->seq.pulseId().value())
@@ -395,11 +396,9 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
 
   if (_mebCtrb)
   {
-    if (result->seq.isEvent())          // L1Accept
+    if (result.seq.isEvent())           // L1Accept
     {
-      uint32_t* response = (uint32_t*)result->xtc.payload();
-
-      if (response[MON_IDX])  _mebCtrb->post(input, response[MON_IDX]);
+      if (result.monitor())  _mebCtrb->post(input, result.monBufNo());
     }
     else                                // Other Transition
     {
@@ -408,10 +407,10 @@ void EbCtrbIn::process(const Dgram* result, const void* appPrm)
   }
 
   // Pass non L1 accepts to control level
-  if (!result->seq.isEvent())
+  if (!result.seq.isEvent())
   {
     printf("%s:\n  Saw '%s' transition on %014lx\n",
-           __PRETTY_FUNCTION__, TransitionId::name(result->seq.service()), pid);
+           __PRETTY_FUNCTION__, TransitionId::name(result.seq.service()), pid);
 
     // Send pulseId to inproc so it gets forwarded to Collection
     _inprocSend.send(std::to_string(pid * 100)); // Convert PID back to "timestamp"

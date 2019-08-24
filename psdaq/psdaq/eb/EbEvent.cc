@@ -1,5 +1,4 @@
 #include "EbEvent.hh"
-#include "EbContribution.hh"
 #include "EventBuilder.hh"
 
 #include "xtcdata/xtc/Dgram.hh"
@@ -45,13 +44,11 @@ EbEvent::EbEvent(uint64_t      contract,
   _damage   (cdg->xtc.damage.value()),
   _last     (_contributions)
 {
-  const EbContribution* contribution = static_cast<const EbContribution*>(cdg);
+  *_last++   = cdg;
 
-  *_last++   = contribution;
+  _size      = cdg->xtc.sizeofPayload();
 
-  _size      = contribution->payloadSize();
-
-  _remaining = contract & contribution->retire();
+  _remaining = contract & ~(1ul << cdg->xtc.src.value());
   assert(_remaining != contract);       // Make sure some bit was taken down
 
   connect(after);
@@ -83,7 +80,7 @@ Pds::Eb::EbEvent::~EbEvent()
 
 void EbEvent::_insert(const Dgram* dummy)
 {
-  *_last++ = static_cast<const EbContribution*>(dummy);
+  *_last++ = dummy;
 }
 
 /*
@@ -102,17 +99,15 @@ void EbEvent::_insert(const Dgram* dummy)
 
 EbEvent* EbEvent::_add(const Dgram* cdg)
 {
-  const EbContribution* contribution = (EbContribution*)cdg;
+  *_last++   = cdg;
 
-  *_last++   = contribution;
-
-  _size     += contribution->payloadSize();
+  _size     += cdg->xtc.sizeofPayload();
 
   uint64_t remaining = _remaining;
-  _remaining = remaining & contribution->retire();
+  _remaining = remaining & ~(1ul << cdg->xtc.src.value());
   assert(_remaining != remaining);      // Make sure some bit was taken down
 
-  _damage.increase(contribution->xtc.damage.value());
+  _damage.increase(cdg->xtc.damage.value());
 
   _living    = MaxTimeouts;
 
@@ -139,13 +134,13 @@ void EbEvent::dump(int number)
          _remaining, _contract);
   printf("    Total size (in bytes) = %zd\n", _size);
 
-  const EbContribution** const  last    = end();
-  const EbContribution*  const* current = begin();
-  const EbContribution*         contrib = *current;
+  const Dgram** const  last    = end();
+  const Dgram*  const* current = begin();
+  const Dgram*         contrib = *current;
 
   printf("    Creator (%p) was @ source %02x with an environment of 0x%08x\n",
          contrib,
-         contrib->number(),
+         contrib->xtc.src.value(),
          contrib->env);
 
   printf("    Contributors to this event:\n");
@@ -154,9 +149,9 @@ void EbEvent::dump(int number)
     contrib = *current;
     printf("     %p: src %02x seq %014lx size %08x env 0x%08x\n",
            contrib,
-           contrib->number(),
+           contrib->xtc.src.value(),
            contrib->seq.pulseId().value(),
-           contrib->payloadSize(),
+           contrib->xtc.sizeofPayload(),
            contrib->env);
   }
 }

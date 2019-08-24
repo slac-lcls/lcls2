@@ -1,4 +1,4 @@
-
+find_package(PythonLibs REQUIRED)
 
 add_library(utilities SHARED
   utilities.cc
@@ -55,20 +55,6 @@ target_include_directories(eventBuilder PUBLIC
 
 target_link_libraries(eventBuilder
   utilities
-)
-
-add_library(tmoteb SHARED
-  Decide.cc
-)
-
-target_include_directories(tmoteb PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-  $<INSTALL_INTERFACE:include>
-  ${PYTHON_INCLUDE_DIRS}
-)
-
-target_link_libraries(tmoteb
-  xtcdata::xtc
 )
 
 #add_executable(ft_pingpong ft_pingpong.cc fiTransport.cc)
@@ -174,6 +160,7 @@ target_link_libraries(ctrb
 
 target_link_libraries(teb
   eventBuilder
+  trigger
   collection
   exporter
   pthread
@@ -187,7 +174,6 @@ install(TARGETS
   utilities
   contributor
   eventBuilder
-  tmoteb
   ctrb
   teb
   ARCHIVE DESTINATION lib

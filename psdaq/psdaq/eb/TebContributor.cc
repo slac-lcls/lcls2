@@ -26,7 +26,7 @@ using namespace XtcData;
 using namespace Pds::Eb;
 
 
-TebContributor::TebContributor(const TebCtrbParams&            prms,
+TebContributor::TebContributor(const TebCtrbParams&             prms,
                                std::shared_ptr<MetricExporter>& exporter) :
   _prms        (prms),
   _batMan      (prms.maxInputSize),
@@ -135,33 +135,42 @@ void* TebContributor::allocate(const Transition* hdr, const void* appPrm)
            svc, hdr, ctl, pid, env, appPrm);
   }
 
-  auto batch = _batMan.allocate(*hdr);
-  if (batch)
+  auto batch = _batMan.fetch(*hdr);
+  if (batch)                            // Null when terminating
   {
-    ++_eventCount;                      // Count all events handled
+    ++_eventCount;                      // Only count events handled
 
-    uint64_t pid = hdr->seq.pulseId().value();
+    auto pid = hdr->seq.pulseId().value();
     batch->store(pid, appPrm);          // Save the appPrm for _every_ event
 
     return batch->allocate();
   }
-  return batch;                         // Null when terminating
+  return batch;
 }
 
-void TebContributor::process(const Dgram* datagram)
+void TebContributor::process(const Dgram* dgram)
 {
-  const auto pid   = datagram->seq.pulseId().value();
-  const auto idx   = Batch::batchNum(pid);
-  auto       cur   = _batMan.batch(idx);
-  bool       flush = !(datagram->seq.isEvent() || (datagram->seq.service() == TransitionId::SlowUpdate));
+  const auto pid        = dgram->seq.pulseId().value();
+  const auto idx        = Batch::batchNum(pid);
+  auto       cur        = _batMan.batch(idx);
+  bool       flush      = !(dgram->seq.isEvent() ||
+                            (dgram->seq.service() == TransitionId::SlowUpdate));
+  bool       contractor = dgram->readoutGroups() & _prms.contractor;
 
   if ((_batch && _batch->expired(pid)) || flush)
   {
-    if (_batch)  post(_batch);
+    if (_batch)
+    {
+      _batch->terminate();   // Avoid race: terminate before adding it to the list
+      _pending.push(_batch); // Add to the list only when complete, even if empty
+      if (contractor)  _post(_batch);
+    }
 
     if (flush && (_batch != cur))
     {
-      post(cur);
+      cur->terminate();      // Avoid race: terminate before adding it to the list
+      _pending.push(cur);    // Add to the list only when complete, even if empty
+      if (contractor)  _post(cur);
       cur = nullptr;
     }
 
@@ -169,20 +178,22 @@ void TebContributor::process(const Dgram* datagram)
   }
   else if (!_batch)  _batch = cur;
 
-  if (!datagram->seq.isEvent())  post(datagram);
+  // Revisit and fix this to use the last dgram in the batch
+  if (!dgram->seq.isEvent())
+  {
+    if (contractor)  _post(dgram);
+  }
 }
 
-void TebContributor::post(const Batch* batch)
+void TebContributor::_post(const Batch* batch) const
 {
-  _pending.push(batch); // Added to the list only when complete, even if empty
-
   if (!batch->empty())
   {
     uint32_t    idx    = batch->index();
     unsigned    dst    = idx % _numEbs;
     EbLfLink*   link   = _links[dst];
     uint32_t    data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
-    size_t      extent = batch->terminate();
+    size_t      extent = batch->extent();
     unsigned    offset = _batchBase + idx * _batMan.maxBatchSize();
     const void* buffer = batch->buffer();
 
@@ -201,17 +212,17 @@ void TebContributor::post(const Batch* batch)
   ++_batchCount;                        // Count all batches handled
 }
 
-void TebContributor::post(const Dgram* nonEvent)
+void TebContributor::_post(const Dgram* dgram) const
 {
-  // Non-events are sent to all EBs, except the one that got the batch
-  // containing it.  These EBs won't generate responses.
+  // Non-events datagrams are sent to all EBs, except the one that got the
+  // batch containing it.  These EBs won't generate responses.
 
-  uint64_t pid    = nonEvent->seq.pulseId().value();
+  uint64_t pid    = dgram->seq.pulseId().value();
   uint32_t idx    = Batch::batchNum(pid);
   unsigned dst    = idx % _numEbs;
-  unsigned tr     = nonEvent->seq.service();
+  unsigned tr     = dgram->seq.service();
   uint32_t data   = ImmData::value(ImmData::Transition | ImmData::NoResponse, _id, tr);
-  size_t   extent = sizeof(*nonEvent) + nonEvent->xtc.sizeofPayload();
+  size_t   extent = sizeof(*dgram) + dgram->xtc.sizeofPayload();
   unsigned offset = tr * _prms.maxInputSize;
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
@@ -221,16 +232,16 @@ void TebContributor::post(const Dgram* nonEvent)
     {
       if (_prms.verbose)
       {
-        unsigned    env    = nonEvent->env;
-        unsigned    ctl    = nonEvent->seq.pulseId().control();
-        const char* svc    = TransitionId::name(nonEvent->seq.service());
+        unsigned    env    = dgram->env;
+        unsigned    ctl    = dgram->seq.pulseId().control();
+        const char* svc    = TransitionId::name(dgram->seq.service());
         void*       rmtAdx = (void*)link->rmtAdx(offset);
         printf("CtrbOut posts    %15s           @ "
                "%16p, ctl %02x, pid %014lx, sz %6zd, TEB %2d, env %08x @ %16p, data %08x\n",
-               svc, nonEvent, ctl, pid, extent, link->id(), env, rmtAdx, data);
+               svc, dgram, ctl, pid, extent, link->id(), env, rmtAdx, data);
       }
 
-      link->post(nonEvent, extent, offset, data); // Not a batch
+      link->post(dgram, extent, offset, data); // Not a batch
     }
   }
 }

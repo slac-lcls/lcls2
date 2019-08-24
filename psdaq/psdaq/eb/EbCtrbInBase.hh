@@ -24,6 +24,7 @@ namespace Pds
     class EbLfLink;
     class Batch;
     class TebContributor;
+    class ResultDgram;
 
     class EbCtrbInBase
     {
@@ -32,21 +33,21 @@ namespace Pds
       virtual ~EbCtrbInBase() {}
     public:
       int      connect(const TebCtrbParams&);
-      int      process(TebContributor& ctrb);
       void     shutdown();
     public:
       size_t   maxBatchSize() const { return _maxBatchSize; }
       void     receiver(TebContributor&, std::atomic<bool>& running);
     public:
-      virtual void process(const XtcData::Dgram* result, const void* input) = 0;
+      virtual void process(const ResultDgram& result, const void* input) = 0;
     private:
       void    _initialize(const char* who);
-      void    _pairUp(TebContributor&       ctrb,
-                      unsigned              idx,
-                      const XtcData::Dgram* result);
-      void    _process(TebContributor&       ctrb,
-                       const XtcData::Dgram* results,
-                       const Batch*          inputs);
+      int     _process(TebContributor& ctrb);
+      void    _pairUp(TebContributor&    ctrb,
+                      unsigned           idx,
+                      const ResultDgram* result);
+      void    _deliver(TebContributor&    ctrb,
+                       const ResultDgram* results,
+                       const Batch*       inputs);
     private:
       EbLfServer             _transport;
       std::vector<EbLfLink*> _links;

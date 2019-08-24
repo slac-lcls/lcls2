@@ -28,8 +28,6 @@ namespace Pds {
 
     const unsigned NUM_READOUT_GROUPS = 16;     // Number of readout groups supported
 
-    enum { WRT_IDX, MON_IDX };                  // Indexes of trigger decision results
-
     struct TebCtrbParams
     {
       using string_t = std::string;

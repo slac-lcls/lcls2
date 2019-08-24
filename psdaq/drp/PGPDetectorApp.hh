@@ -3,6 +3,7 @@
 #include <thread>
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
+#include "psdaq/trigger/TriggerPrimitive.hh"
 #include "psdaq/service/Collection.hh"
 
 namespace Drp {
@@ -24,6 +25,7 @@ private:
     std::thread m_collectorThread;
     std::unique_ptr<PGPDetector> m_pgpDetector;
     Detector* m_det;
+    Pds::Trg::Factory<Pds::Trg::TriggerPrimitive> m_trigPrimFactory;
 };
 
 }

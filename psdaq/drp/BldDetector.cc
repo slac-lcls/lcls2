@@ -13,6 +13,7 @@
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include <getopt.h>
+#include <Python.h>
 
 
 using json = nlohmann::json;
@@ -307,9 +308,20 @@ void BldApp::handleConnect(const nlohmann::json& msg)
 
 void BldApp::handlePhase1(const json& msg)
 {
-    // nothing to do for bld on phase 1 for transitions
+    std::cout<<"handlePhase1 in DrpApp\n";
+
     json body = json({});
-    json answer = createMsg(msg["header"]["key"], msg["header"]["msg_id"], getId(), body);
+    std::string key = msg["header"]["key"];
+    if (key == "configure") {
+        std::string errorMsg = m_drp.configure(msg);
+        if (!errorMsg.empty()) {
+            std::cout<<"Error in DrpBase::configure\n";
+            std::cout<<errorMsg<<'\n';
+            body["err_info"] = errorMsg;
+        }
+    }
+
+    json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);
 }
 
@@ -366,6 +378,9 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
     exporter->add("drp_event_rate", labels, MetricType::Rate,
                   [&](){return nevents;});
 
+    uint64_t nmissed = 0L;
+    exporter->add("bld_miss_count", labels, MetricType::Counter,
+                  [&](){return nmissed;});
 
     while (1) {
         uint8_t* bldPayload;
@@ -374,8 +389,9 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
         XtcData::Dgram* dgram = pgp.next(pulseId, index);
         if (dgram) {
             if (dgram->xtc.damage.value()) {
-                printf("Missed bld data!!\n");
-                printf("pulseId bld %016lu  | pgp %016lu\n", pulseId, dgram->seq.pulseId().value());
+                ++nmissed;
+                //printf("Missed bld data!!\n");
+                //printf("pulseId bld %016lx  | pgp %016lx\n", pulseId, dgram->seq.pulseId().value());
             }
             else {
                 XtcData::NamesId namesId(m_drp.nodeId(), 0);
@@ -408,15 +424,17 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
 
 void BldApp::sentToTeb(XtcData::Dgram& dgram, uint32_t index)
 {
-    // make every event pass the teb trigger decision
-    uint64_t val = 0xdeadbeef;
-
-    // always monitor every event
-    val |= 0x1234567800000000ul;
     void* buffer = m_drp.tebContributor().allocate(&dgram, (void*)((uintptr_t)index));
-    if (buffer) { // else this DRP doesn't provide input, or timed out
-        MyDgram* dg = new(buffer) MyDgram(dgram, val, m_drp.nodeId());
-        m_drp.tebContributor().process(dg);
+    if (buffer) { // else timed out
+        PGPEvent* event = &m_drp.pool.pgpEvents[index];
+        event->l3InpBuf = buffer;
+        XtcData::Dgram* l3InpDg = new(buffer) XtcData::Dgram(dgram);
+        if (dgram.seq.isEvent()) {
+            if (m_drp.triggerPrimitive()) {// else this DRP doesn't provide input
+                m_drp.triggerPrimitive()->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc); // Produce
+            }
+        }
+        m_drp.tebContributor().process(l3InpDg);
     }
 }
 
@@ -427,10 +445,8 @@ void BldApp::sentToTeb(XtcData::Dgram& dgram, uint32_t index)
 int main(int argc, char* argv[])
 {
     Drp::Parameters para;
-    //para.partition = 2;
-    //para.device = "/dev/datadev_0";
     para.laneMask = 0x1;
-    // para.collectionHost = "drp-tst-acc06";
+    para.detName = "bld";               // Revisit: Should come from alias?
     para.detSegment = 0;
     int c;
     while((c = getopt(argc, argv, "p:o:C:d:u:")) != EOF) {
@@ -455,6 +471,8 @@ int main(int argc, char* argv[])
         }
     }
 
+    Py_Initialize(); // for use by configuration
     Drp::BldApp app(para);
     app.run();
+    Py_Finalize(); // for use by configuration
 }
