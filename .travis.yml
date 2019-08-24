@@ -38,6 +38,5 @@ notifications:
   email:
     recipients:
       - cpo@slac.stanford.edu
-      - weninc@slac.stanford.edu
     on_success: never # default: change
     on_failure: always # default: always
