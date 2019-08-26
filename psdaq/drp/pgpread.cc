@@ -4,6 +4,7 @@
 #include <signal.h>
 #include <cstdio>
 #include <AxisDriver.h>
+#include <stdlib.h>
 #include "TimingHeader.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include <unistd.h>
@@ -26,12 +27,17 @@ void int_handler(int dummy)
 
 int main(int argc, char* argv[])
 {
-    int c;
+    int c, channel;
+
+    channel = 0;
     std::string device;
-    while((c = getopt(argc, argv, "d:")) != EOF) {
+    while((c = getopt(argc, argv, "c:d:")) != EOF) {
         switch(c) {
             case 'd':
                 device = optarg;
+                break;
+            case 'c':
+                channel = atoi(optarg);
                 break;
         }
     }
@@ -42,7 +48,7 @@ int main(int argc, char* argv[])
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
     for (unsigned i=0; i<4; i++) {
-        dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
+        dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, channel));
     }
 
     std::cout<<"device  "<<device<<'\n';
