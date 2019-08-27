@@ -13,7 +13,7 @@ from mpi4py import MPI
 comm = MPI.COMM_WORLD
 world_rank = comm.Get_rank()
 world_size = comm.Get_size()
-group = comm.Get_group() # This this the world group
+world_group = comm.Get_group() # This this the world group
 
 # Setting up group communications
 # Ex. PS_SMD_NODES=3 mpirun -n 13
@@ -37,10 +37,11 @@ group = comm.Get_group() # This this the world group
 # all non-reserved ranks and is used for smd0/smd/bd cores.
 PS_RESERVED_NODES = int(os.environ.get('PS_SRV_NODES', 0))
 PS_SMD_NODES = int(os.environ.get('PS_SMD_NODES', 1))
-psana_group = group.Excl(range(world_size-PS_RESERVED_NODES,world_size))
+psana_group = world_group.Excl(range(world_size-PS_RESERVED_NODES,world_size))
 smd_group = psana_group.Incl(range(PS_SMD_NODES + 1))
 bd_main_group = psana_group.Excl([0])
-bd_only_group = bd_main_group.Difference(bd_main_group,smd_group)
+_bd_only_group = MPI.Group.Difference(bd_main_group,smd_group)
+_reserved_group = MPI.Group.Difference(world_group,psana_group)
 
 smd_comm = comm.Create(smd_group)
 smd_rank = 0
@@ -55,7 +56,7 @@ bd_main_size = 0
 bd_rank = 0
 bd_size = 0
 color = 0
-nodetype = None
+_nodetype = None
 if bd_main_comm != MPI.COMM_NULL:
     bd_main_rank = bd_main_comm.Get_rank()
     bd_main_size = bd_main_comm.Get_size()
@@ -67,14 +68,14 @@ if bd_main_comm != MPI.COMM_NULL:
     bd_size = bd_comm.Get_size()
 
     if bd_rank == 0:
-        nodetype = 'smd'
+        _nodetype = 'smd'
     else:
-        nodetype = 'bd'
+        _nodetype = 'bd'
 
 if world_rank==0:
-    nodetype = 'smd0'
+    _nodetype = 'smd0'
 elif world_rank>=psana_group.Get_size():
-    nodetype = 'reserved'
+    _nodetype = 'reserved'
 
 class UpdateManager(object):
     """ Keeps epics data and their send history. """
@@ -271,15 +272,24 @@ class BigDataNode(object):
                     yield event
 
 def run_node(run):
-    if nodetype == 'smd0':
+    if _nodetype == 'smd0':
         Smd0(run)
-    elif nodetype == 'smd':
+    elif _nodetype == 'smd':
         smd_node = SmdNode(run)
         smd_node.run_mpi()
-    elif nodetype == 'bd':
+    elif _nodetype == 'bd':
         bd_node = BigDataNode(run)
         for evt in bd_node.run_mpi():
             yield evt
-    elif nodetype == 'reserved':
+    elif _nodetype == 'reserved':
         # tell the iterator to do nothing
         return
+
+def bd_group():
+    return _bd_only_group
+
+def reserved_group():
+    return _reserved_group
+
+def node_type():
+    return _nodetype
