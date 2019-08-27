@@ -8,10 +8,11 @@ class SysLog
 {
 public:
     SysLog(const char *ident);
-    void logDebug(const char *msg);
-    void logInfo(const char *msg);
-    void logWarning(const char *msg);
-    void logError(const char *msg);
+    void debug(const char *msg);
+    void info(const char *msg);
+    void warning(const char *msg);
+    void error(const char *msg);
+    void alert(const char *msg);
 };
 }
 

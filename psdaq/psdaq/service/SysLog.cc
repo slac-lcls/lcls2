@@ -7,22 +7,27 @@ SysLog::SysLog(const char *ident)
     openlog(ident, LOG_PERROR | LOG_PID, LOG_LOCAL0);
 }
 
-void SysLog::logDebug(const char *msg)
+void SysLog::debug(const char *msg)
 {
     syslog(LOG_DEBUG, "%s", msg);
 }
 
-void SysLog::logInfo(const char *msg)
+void SysLog::info(const char *msg)
 {
     syslog(LOG_INFO, "%s", msg);
 }
 
-void SysLog::logWarning(const char *msg)
+void SysLog::warning(const char *msg)
 {
     syslog(LOG_WARNING, "%s", msg);
 }
 
-void SysLog::logError(const char *msg)
+void SysLog::error(const char *msg)
 {
     syslog(LOG_ERR, "%s", msg);
+}
+
+void SysLog::alert(const char *msg)
+{
+    syslog(LOG_ALERT, "%s", msg);
 }
