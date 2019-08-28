@@ -43,10 +43,9 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     Detector(para, pool),
     m_evtcount(0),
     m_evtNamesId(nodeId, EventNamesIndex),
-    m_epics_name(para->detSegment==0 ? 
-                 "DAQ:LAB2:HSD:DEV06_3E:A" :
-                 "DAQ:LAB2:HSD:DEV06_3E:B")
+    m_epics_name(para->kwargs["hsd_epics_prefix"])
 {
+    printf("*** found epics name %s\n",m_epics_name.c_str());
 }
 
 static void check(PyObject* obj) {

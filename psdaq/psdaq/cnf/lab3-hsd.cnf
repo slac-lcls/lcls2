@@ -1,10 +1,11 @@
-platform = '0'
+platform = '4'
 username = 'lcls2'
 expname  = 'expname'
 expnum   = 'expnum'
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 conda_rel = 'ps-2.0.3'
+hsd_epics_prefix = 'DAQ:LAB2:HSD:DEV02'
 
 shelf = '2'
 ip_addr = '10.0.'+shelf
@@ -26,12 +27,14 @@ collect_host = 'drp-tst-acc06'
 
 procmgr_config = [
  { host: 'daq-tst-dev03', id:'hsdioc', flags:'x', conda:conda_rel, env:epics_env, cmd:'hsdPVs -P DAQ:LAB2:HSD:DEV02 -I -d /dev/qadca'},
- {                        id:'partca',flags:'s', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
+# {                        id:'partca',flags:'s', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
+ {                        id:'groupca',flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+platform},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
  {                        id:'xpmca'  ,flags:'', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:'+shelf},
- {                        id:'hsdca', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV02'},
+ {                        id:'xpmca1'  ,flags:'', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:1'},
+ {                        id:'hsdca', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdca '+hsd_epics_prefix},
  { host: 'drp-tst-dev002', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'teb -C '+collect_host},
-{ host: 'drp-tst-dev024', id:'hsd_0', flags:'xpu', conda:conda_rel, cmd:'drp -o /ffb01/tstopr -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host},
+{ host: 'drp-tst-dev024', id:'xpphsd_0', flags:'xpu', conda:conda_rel, cmd:'drp -o /ffb01/tstopr -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -k hsd_epics_prefix='+hsd_epics_prefix},
  { host: collect_host, id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P TMO'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 ]
