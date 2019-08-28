@@ -1,3 +1,6 @@
+## cython: linetrace=True
+## distutils: define_macros=CYTHON_TRACE_NOGIL=1
+
 from parallelreader cimport Buffer
 from cython.parallel import prange
 import os

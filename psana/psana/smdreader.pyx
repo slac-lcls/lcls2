@@ -1,3 +1,6 @@
+## cython: linetrace=True
+## distutils: define_macros=CYTHON_TRACE_NOGIL=1
+
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from dgramlite cimport Xtc, Sequence, Dgram
@@ -61,57 +64,6 @@ cdef class SmdReader:
             free(self.update_bufs[idx].chunk)
         free(self.update_bufs)
 
-    cdef inline int _check_dgram(self, Buffer *buf, unsigned smd_id):
-        """ Checks status of the dgram.
-        
-        - If the entire dgram doesn't fit in the chunk, return needs_reread status.
-        - If this dgram is a non L1Accept, save the dgram in update_buf
-          and move on to the next dgram.
-        """
-        cdef size_t remaining = 0
-        cdef size_t payload = 0
-        cdef int needs_reread = 0
-        cdef unsigned long pulse_id = 0
-        cdef unsigned control = 0
-        cdef unsigned service = 0
-        cdef size_t prev_offset = 0
-
-        while True:
-            remaining = buf.got - buf.offset
-            
-            if self.DGRAM_SIZE <= remaining:
-                # get payload
-                d = <Dgram *>(buf.chunk + buf.offset)
-                payload = d.xtc.extent - self.XTC_SIZE
-                prev_offset = buf.offset # save the offset for updates if needed
-                buf.offset += self.DGRAM_SIZE
-                
-                remaining = buf.got - buf.offset
-                if payload <= remaining:
-                    # got dgram
-                    buf.offset += payload
-                    buf.timestamp = <unsigned long>d.seq.high << 32 | d.seq.low
-
-                    # check if this a non L1
-                    pulse_id = d.seq.pulse_id
-                    control = (pulse_id & self.s_cntrl) >> self.v_cntrl
-                    service = (control >> self.v_service) & self.m_service
-                    if service == self.L1_ACCEPT:
-                        buf.nevents += 1
-                        break
-                    elif payload > 0: # not an empty non L1
-                        memcpy(self.update_bufs[smd_id].chunk + self.update_bufs[smd_id].offset, buf.chunk + prev_offset, self.DGRAM_SIZE + payload)
-                        self.update_bufs[smd_id].offset += self.DGRAM_SIZE + payload
-                        self.update_bufs[smd_id].nevents += 1
-                else:
-                    needs_reread = 1
-                    break
-            else:
-                needs_reread = 1
-                break
-
-        return needs_reread
-
     def get(self, unsigned n_events = 1):
         """ Identifies the boundary of each smd chunk so that all exporting
         chunks have the same maximum timestamp. The maximum timestamp is 
@@ -137,12 +89,63 @@ cdef class SmdReader:
         cdef unsigned current_got_events = 0
         cdef int idx = 0
         
+        cdef size_t remaining = 0
+        cdef size_t payload = 0
+        cdef unsigned long pulse_id = 0
+        cdef unsigned control = 0
+        cdef unsigned service = 0
+        cdef size_t prev_offset = 0
+        cdef Buffer* buf
+        
         while self.got_events < n_events and self.prl_reader.bufs[winner].got > 0:
             for i in range(i_st, self.prl_reader.nfiles):
                 # read this file until hit limit timestamp
                 while self.prl_reader.bufs[i].timestamp < self.limit_ts and self.prl_reader.bufs[i].got > 0:
                     # check that dgram fits in parallel reader buffer and it's non L1
-                    needs_reread = self._check_dgram(&(self.prl_reader.bufs[i]), i)
+                    remaining = 0
+                    payload = 0
+                    needs_reread = 0
+                    pulse_id = 0
+                    control = 0
+                    service = 0
+                    prev_offset = 0
+                    buf = &(self.prl_reader.bufs[i])
+                    
+                    while True:
+                        remaining = buf.got - buf.offset
+
+                        if self.DGRAM_SIZE <= remaining:
+                            # get payload
+                            d = <Dgram *>(buf.chunk + buf.offset)
+                            payload = d.xtc.extent - self.XTC_SIZE
+                            prev_offset = buf.offset # save the offset for updates if needed
+                            buf.offset += self.DGRAM_SIZE
+
+                            remaining = buf.got - buf.offset
+                            if payload <= remaining:
+                                # got dgram
+                                buf.offset += payload
+                                buf.timestamp = <unsigned long>d.seq.high << 32 | d.seq.low
+
+                                # check if this a non L1
+                                pulse_id = d.seq.pulse_id
+                                control = (pulse_id & self.s_cntrl) >> self.v_cntrl
+                                service = (control >> self.v_service) & self.m_service
+                                if service == self.L1_ACCEPT:
+                                    buf.nevents += 1
+                                    break
+                                elif payload > 0: # not an empty non L1
+                                    memcpy(self.update_bufs[i].chunk + self.update_bufs[i].offset, buf.chunk + prev_offset, self.DGRAM_SIZE + payload)
+                                    self.update_bufs[i].offset += self.DGRAM_SIZE + payload
+                                    self.update_bufs[i].nevents += 1
+                            else:
+                                needs_reread = 1
+                                break
+                        else:
+                            needs_reread = 1
+                            break
+                    
+                    
                     if needs_reread:
                         break
 
