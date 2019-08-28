@@ -28,9 +28,12 @@ def test_py2xtc(tmp_path):
         }
 
         cydgram.addDet(nameinfo, alg, my_data)
-        timestamp = 0
-        pulseid = 0
-        transitionid = 0
+        timestamp = i
+        pulseid = i
+        if (i==0):
+            transitionid = 2  # Configure
+        else:
+            transitionid = 12 # L1Accept
         xtc_bytes = cydgram.get(timestamp,pulseid,transitionid)
         f.write(xtc_bytes)
     f.close()
@@ -41,3 +44,8 @@ def test_py2xtc(tmp_path):
     for nevt,evt in enumerate(myrun.events()):
         assert np.array_equal(evt._dgrams[0].spi_cspad[0].raw.image,image_array+nevt+1)
         assert np.array_equal(evt._dgrams[0].spi_cspad[0].raw.orientations,orientations_array+nevt+1)
+    assert nevt>0 #make sure we get events
+
+if __name__ == "__main__":
+    import pathlib
+    test_py2xtc(pathlib.Path('.'))
