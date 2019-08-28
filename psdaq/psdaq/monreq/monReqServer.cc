@@ -168,7 +168,6 @@ namespace Pds {
         {
           fprintf(stderr, "%s:\n  Datagram is too large (%zd) for buffer of size %d\n",
                   __PRETTY_FUNCTION__, sizeof(*odg) + odg->xtc.sizeofPayload(), _sizeofBuffers);
-          // Revisit: Maybe replace this with an empty Dgram with damage set?
           abort();            // The memcpy would blow by the buffer size limit
         }
 

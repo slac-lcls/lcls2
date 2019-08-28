@@ -36,8 +36,8 @@ using namespace Pds;
 
 using json = nlohmann::json;
 
-static const int      core_0           = 10; // devXXX: 10, devXX:  7, accXX:  9
-static const int      core_1           = 11; // devXXX: 11, devXX: 19, accXX: 21
+static const int      core_0           = 11; // devXXX: 11, devXX:  7, accXX:  9
+static const int      core_1           = 12; // devXXX: 12, devXX: 19, accXX: 21
 static const size_t   header_size      = sizeof(Dgram);
 static const size_t   input_extent     = 2; // Revisit: Number of "L3" input  data words
 static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words

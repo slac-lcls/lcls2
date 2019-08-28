@@ -93,6 +93,7 @@ int MebContributor::post(const Dgram* ddg, uint32_t destination)
   {
     fprintf(stderr, "%s:\n  L1Accept of size %zd is too big for target buffer of size %zd\n",
             __PRETTY_FUNCTION__, sz, _maxEvSize);
+    abort();
     return -1;
   }
 
@@ -123,6 +124,7 @@ int MebContributor::post(const Dgram* ddg)
   {
     fprintf(stderr, "%s:\n  %s transition of size %zd is too big for target buffer of size %zd\n",
             __PRETTY_FUNCTION__, TransitionId::name(tr), sz, _maxTrSize);
+    abort();
     return -1;
   }
 
