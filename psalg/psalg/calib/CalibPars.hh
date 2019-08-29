@@ -32,6 +32,9 @@ public:
 
   //-------------------
 
+  //template<typename T>
+  //virtual const NDArray<T>& get(Query&);
+
   /// access to calibration constants
   virtual const NDArray<common_mode_t>&   common_mode      (Query&);
   virtual const NDArray<pedestals_t>&     pedestals        (Query&);

@@ -157,6 +157,18 @@ target_link_libraries(test_MDBWebUtils
     CURL::libcurl
 )
 
+# Test include "roentdek/resort64c.h"
+add_executable(test_resort64c
+    tests/test_resort64c.cc
+)
+find_library(Resort64c_x64 libResort64c_x64.a PATHS $ENV{CONDA_PREFIX}/lib)
+target_link_libraries(test_resort64c
+    psalg
+    Resort64c_x64
+    #$ENV{CONDA_PREFIX}/lib/libResort64c_x64.a
+    #/reg/g/psdm/sw/conda2/inst/envs/ps-2.0.3/lib/libResort64c_x64.a
+)
+
 # Test access to xtc data
 add_executable(test_xtc_data
     tests/test_xtc_data.cc
@@ -178,6 +190,7 @@ install(TARGETS psalg
                 test_AreaDetector
                 test_MDBWebUtils
                 test_logger
+                test_resort64c
                 test_xtc_data
                 datareader
     ARCHIVE DESTINATION lib
