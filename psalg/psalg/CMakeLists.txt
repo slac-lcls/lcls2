@@ -1,3 +1,4 @@
+add_subdirectory(hexanode)
 add_subdirectory(utils)
 add_subdirectory(calib)
 add_subdirectory(geometry)
