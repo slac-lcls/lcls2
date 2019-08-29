@@ -1,33 +1,19 @@
+#include <stdio.h>
+#include <errno.h>
 #include "psdaq/service/SysLog.hh"
+
+extern char *program_invocation_short_name;
 
 using namespace Pds;
 
-SysLog::SysLog(const char *ident) 
+SysLog::SysLog(const char *experiment) 
 {
-    openlog(ident, LOG_PERROR | LOG_PID, LOG_LOCAL0);
+    static char ident[20];
+    snprintf(ident, sizeof(ident)-1, "%s-%s", experiment, program_invocation_short_name);
+    openlog(ident, LOG_PERROR | LOG_PID, LOG_USER);
 }
 
-void SysLog::debug(const char *msg)
+SysLog::~SysLog() 
 {
-    syslog(LOG_DEBUG, "%s", msg);
-}
-
-void SysLog::info(const char *msg)
-{
-    syslog(LOG_INFO, "%s", msg);
-}
-
-void SysLog::warning(const char *msg)
-{
-    syslog(LOG_WARNING, "%s", msg);
-}
-
-void SysLog::error(const char *msg)
-{
-    syslog(LOG_ERR, "%s", msg);
-}
-
-void SysLog::alert(const char *msg)
-{
-    syslog(LOG_ALERT, "%s", msg);
+    closelog();
 }
