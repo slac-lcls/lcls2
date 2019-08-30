@@ -30,6 +30,7 @@ add_library(hsd SHARED
   OptFmc.cc
 
   Module134.cc
+  Module126.cc
   ModuleBase.cc
   ChipAdcReg.cc
 )
@@ -158,10 +159,6 @@ target_link_libraries(hsd_pgp
 
 add_executable(hsdPVs hsdPVs.cc PVCtrls.cc PVStats.cc)
 
-target_include_directories(hsd_pgp PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-)
-
 target_link_libraries(hsdPVs
     service
     epicstools
@@ -182,7 +179,7 @@ target_link_libraries(hsd64PVs
     rt
 )
 
-add_executable(hsd134PVs hsd134PVs.cc PV134Ctrls.cc PV134Stats.cc)
+add_executable(hsd134PVs hsd134PVs.cc PV134Ctrls.cc PVCtrlsBase.cc PV134Stats.cc)
 
 target_link_libraries(hsd134PVs
     service
@@ -196,6 +193,18 @@ target_link_libraries(hsd134PVs
     mmhw
     rt
 )
+
+add_executable(hsd126PVs hsd126PVs.cc PV126Ctrls.cc PVCtrlsBase.cc PV126Stats.cc)
+
+target_link_libraries(hsd126PVs
+    service
+    epicstools
+    pthread
+    hsd
+    mmhw
+    rt
+)
+
 
 add_executable(hsd_sim hsd_sim.cc)
 target_link_libraries(hsd_sim
@@ -275,14 +284,8 @@ target_link_libraries(hsd_promload
 
 install(TARGETS hsd
                 hsd_promload
-		hsd_eyescan
-		hsd_init
-		hsd_phase
-		hsd_pgp
-		hsd_test
- 		hsdRead
  		hsdPVs
- 		hsd64PVs
+ 		hsd126PVs
  		hsd134PVs
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

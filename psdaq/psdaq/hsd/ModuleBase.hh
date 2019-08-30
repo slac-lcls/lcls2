@@ -19,6 +19,8 @@ namespace Pds {
       void setRxResetLength(unsigned);
       void dumpRxAlign     () const;
     public:
+      static unsigned local_id(unsigned bus); 
+    public:
       Mmhw::AxiVersion version;
       uint32_t rsvd_to_0x08000[(0x8000-sizeof(version))/4];
 

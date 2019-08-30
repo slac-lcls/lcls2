@@ -37,17 +37,22 @@ def hsd_config(connect_str,epics_prefix,cfgtype,detname,group):
                'expert' : {'datamode'   : 'test_pattern',
                            'fullthresh' : 'full_event',
                            'fullsize'   : 'full_size',
-                           'fsrange'    : 'fs_range_vpp'},
+                           'fsrange'    : 'fs_range_vpp',    # FMC134 only
+                           'trigshift'  : 'trig_shift',      # FMC126 only
+                           'synce'      : 'sync_ph_even',    # FMC126 only
+                           'synco'      : 'sync_ph_odd'},    # FMC126 only
     }
+
+    # fetch the current configuration for defaults not specified in the configuration
+    ctxt = Context('pva')
+    values = ctxt.get(epics_prefix+':CONFIG')
 
     # look in the cfg dictionary for values that match the epics
     # variables in the pvtable
-    values = {}
     epics_names_values(pvtable,cfg,values)
     values['readoutGroup'] = group
 
     # program the values
-    ctxt = Context('pva')
     print(epics_prefix)
     ctxt.put(epics_prefix+':READY',0,wait=True)
 

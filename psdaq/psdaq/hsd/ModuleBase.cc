@@ -1,4 +1,7 @@
 #include "ModuleBase.hh"
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <string.h>
 
 using Pds::HSD::ModuleBase;
 
@@ -31,3 +34,28 @@ void ModuleBase::dumpRxAlign     () const
   printf("\n");
 }
 
+unsigned ModuleBase::local_id(unsigned bus)
+{
+  struct addrinfo hints;
+  struct addrinfo* result;
+
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_INET;       /* Allow IPv4 or IPv6 */
+  hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+  hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+
+  char hname[64];
+  gethostname(hname,64);
+  int s = getaddrinfo(hname, NULL, &hints, &result);
+  if (s != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+    exit(EXIT_FAILURE);
+  }
+
+  sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
+
+  unsigned id = 0xfc000000 | (bus<<16) |
+    (ntohl(saddr->sin_addr.s_addr)&0xffff);
+
+  return id;
+}

@@ -7,7 +7,7 @@ namespace Pds {
 class SysLog
 {
 public:
-    SysLog(const char *experiment);
+    SysLog(const char *instrument, int level);
     ~SysLog();
 };
 }

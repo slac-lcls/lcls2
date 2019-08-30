@@ -236,6 +236,39 @@ private:
 };
 
 
+class CheckNamesIdIter : public XtcIterator
+{
+public:
+    enum { Stop, Continue };
+    CheckNamesIdIter(NamesId offset_namesId) : XtcIterator(),
+                                               _offset_namesId(offset_namesId) {}
+
+    int process(Xtc* xtc)
+    {
+        switch (xtc->contains.id()) {
+        case (TypeId::Parent): {
+            iterate(xtc);
+            break;
+        }
+        case (TypeId::Names): {
+            Names& names = *(Names*)xtc;
+            if (names.namesId() == _offset_namesId) {
+                printf ("Error: smd names id in use\n");
+                throw ("smd names id in use");
+            }
+            break;
+        }
+        default:
+            break;
+        }
+        return Continue;
+    }
+
+private:
+    NamesId _offset_namesId;
+};
+
+
 class SmdDef:public VarDef
 {
 public:
@@ -256,6 +289,11 @@ void addNames(Xtc& parent, NamesLookup& namesLookup, unsigned nodeId)
 {
     Alg alg("offsetAlg",0,0,0);
     NamesId namesId(nodeId,0);
+
+    // check that our chose namesId isn't already in use
+    CheckNamesIdIter checkNamesId(namesId);
+    checkNamesId.iterate(&parent);
+    
     Names& offsetNames = *new(parent) Names("info", alg, "offset", "", namesId);
     offsetNames.add(parent,SmdDef);
     namesLookup[namesId] = NameIndex(offsetNames);
@@ -373,7 +411,7 @@ int main(int argc, char* argv[])
     uint64_t nowDgramSize = 0;
     struct timeval tv;
     uint64_t pulseId = 0;
-    unsigned nodeId=0;
+    unsigned nodeId=512; // choose a nodeId that the DAQ will not use.  this is checked in addNames()
     NamesLookup namesLookup;
 
     printf("\nStart writing offsets.\n"); 

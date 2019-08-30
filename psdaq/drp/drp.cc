@@ -4,6 +4,7 @@
 #include <Python.h>
 #include "drp.hh"
 #include "PGPDetectorApp.hh"
+#include "psdaq/service/SysLog.hh"
 
 void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
     std::istringstream ss(kwargs_str);
@@ -27,7 +28,10 @@ int main(int argc, char* argv[])
     int c;
     para.detSegment = 0;
     std::string kwargs_str;
-    while((c = getopt(argc, argv, "p:o:l:D:C:d:u:k:")) != EOF) {
+    bool lVerbose = false;
+    char *instrument = NULL;
+    Pds::SysLog *logger = NULL;
+    while((c = getopt(argc, argv, "p:o:l:D:C:d:u:k:P:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -53,23 +57,39 @@ int main(int argc, char* argv[])
             case 'k':
                 kwargs_str = std::string(optarg);
                 break;
+            case 'P':
+                instrument = optarg;
+                break;
+            case 'v':
+                lVerbose = true;
+                break;
             default:
                 exit(1);
         }
     }
+    if (instrument) {
+        logger = new Pds::SysLog(instrument, lVerbose ? LOG_INFO : LOG_WARNING);
+        logInfo("logging configured");
+    } else {
+        logError("-P: instrument is needed to configure logging");
+        // logger default configuration does not print to stderr
+        fprintf(stderr, "-P: instrument is needed to configure logging\n");
+    }
+    logger = logger;    // silence compiler warning
+
     // Check required parameters
     if (para.device.empty()) {
-        printf("-d: device is mandatory!\n");
+        logCritical("-d: device is mandatory");
         exit(1);
     }
     if (para.alias.empty()) {
-        printf("-u: alias is mandatory\n");
+        logCritical("-u: alias is mandatory");
         exit(1);
     }
     // Alias must be of form <detName>_<detSegment>
     size_t found = para.alias.rfind('_');
     if ((found == std::string::npos) || !isdigit(para.alias.back())) {
-        printf("-u: alias must have _N suffix\n");
+        logCritical("-u: alias must have _N suffix");
         exit(1);
     }
     para.detName = para.alias.substr(0, found);
