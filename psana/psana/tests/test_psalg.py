@@ -22,13 +22,13 @@ def test_cfd():
     waveform = gain*np.sin(times)
 
     delay = 1
-    walk = 40
+    walk = 39
     threshold = 8
     fraction = 0.5
 
     peak_time = cfd.cfd(sample_interval, horpos, gain, offset, waveform, delay, walk, threshold, fraction)
-    # commented out by cpo until Seshu replaces the gsl dependency
-    #assert(abs(peak_time - 1.58732246) < 1e-8)
+    assert(abs(peak_time - math.pi/2) < 1e-2)
+
 
 def test_peakFinder():
     import peakFinder
