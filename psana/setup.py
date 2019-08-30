@@ -112,7 +112,6 @@ ext = Extension("constFracDiscrim",
                          "../psalg/psalg/constFracDiscrim/src/ConstFracDiscrim.cc"],
                 language="c++",
                 extra_compile_args = extra_compile_args,
-                extra_link_args = extra_link_args + ['-lgsl', '-lm', '-lgslcblas'],
                 include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(xtcdata, 'include')],
 )
 
