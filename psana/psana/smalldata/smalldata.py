@@ -54,69 +54,134 @@ def _flatten_dictionary(d, parent_key='', sep='/'):
     return dict(items)
 
 
-def _h5py_create_or_append(file_handle, dataset_name, data):
-    """
-    Add data to an HDF5 dataset. If the dataset exists, append to it, otherwise
-    create a new dataset then add to it.
 
-    Parameters
-    ----------
-    file_handle : h5py.File
-        The h5py File object
+# FOR NEXT TIME
+# CONSIDER MAKING A FileServer CLASS
+# CLASS BASECLASS METHOD THEN HANDLES HDF5
 
-    dataset_name : str
-        The dataset name
 
-    data : np.ndarray
-        The data
-    """
+class Server: # (hdf5 handling)
 
-    dset = file_handle.get(dataset_name)
+    def __init__(self, filename=None, smdcomm=None):
 
-    # create
-    if dset is None:
-        dset = file_handle.create_dataset(dataset_name, 
-                                          (1,) + data.shape, 
-                                          maxshape=(None,) + data.shape,
-                                          dtype=data.dtype)  # TODO will not work for native float/int
-                                          #chunks=np.product(data.shape)) # TODO optimize
-        dset[:] = data
+        self.filename = filename
+        self.smdcomm  = smdcomm
 
-    # append
-    else:
-        if not dset.dtype == data.dtype:
-            raise TypeError('dataset (%s) type does not match new data type'
-                            '' % dset.name)
-        if not dset.shape[1:] == data.shape:
-            raise ValueError('dataset (%s) shape does not match new data shape'
-                            '' % dset.name)
+        # dsets maps dataset_name --> (dtype, shape)
+        self._dsets = {}
+        self.num_events_seen = 0
+
+        if (self.filename is not None):
+            self.file_handle = h5py.File(self.filename, 'w')
+
+        return
+
+    def recv_loop(self):
+
+        num_clients_done = 0
+        num_clients = self.smdcomm.Get_size() - 1
+        while num_clients_done < num_clients:
+            msg = self.smdcomm.recv(source=MPI.ANY_SOURCE)
+            if type(msg) is list:
+                self.handle(msg)
+            elif msg == 'done':
+                num_clients_done += 1
+
+        return
+
+
+    def handle(self, batch):
+
+        for event_data_dict in batch:
+            self.num_events_seen += 1
+
+            # TODO > CALLBACKS HERE <
+
+            if self.filename is not None:
+
+                # to_backfill: list of keys we have seen previously
+                #              we want to be sure to backfill if we
+                #              dont see them
+                to_backfill = list(self._dsets.keys())
+
+                for dataset_name, data in event_data_dict.items():
+
+                    if dataset_name not in self._dsets.keys():
+                        self.new_dset(dataset_name, data)
+                    else:
+                        to_backfill.remove(dataset_name)
+                    self.append_to_dset(dataset_name, data)
+
+                for dataset_name in to_backfill:
+                    self.backfill(dataset_name, 1)
+
+        return
+
+
+    def new_dset(self, dataset_name, data):
+
+        if type(data) == int:
+            shape = (0,)
+            maxshape = (None,)
+            dtype = 'i8'
+        elif type(data) == float:
+            shape = (0,)
+            maxshape = (None,)
+            dtype = 'f8'
+        elif hasattr(data, 'dtype'):
+            shape = (0,) + data.shape
+            maxshape = (None,) + data.shape
+            dtype = data.dtype
+        else:
+            raise TypeError('Type: %s not compatible' % type(data))
+
+        self._dsets[dataset_name] = (dtype, shape)
+
+        dset = self.file_handle.create_dataset(dataset_name,
+                                               shape,
+                                               maxshape=maxshape,
+                                               dtype=dtype)
+
+        self.backfill(dataset_name, self.num_events_seen)
+
+        return
+
+
+    def append_to_dset(self, dataset_name, data):
+        dset = self.file_handle.get(dataset_name)
         new_size = (dset.shape[0] + 1,) + dset.shape[1:]
         dset.resize(new_size)
         dset[-1,...] = data
+        return
 
-    return
+
+    def backfill(self, dataset_name, num_to_backfill):
+        return
 
 
-class SmallData:
+    def done(self):
+        if (self.filename is not None):
+            self.file_handle.close()
+        return
+
+
+
+class SmallData: # (client)
 
     def __init__(self, filename=None, batch_size=5):
 
-        self.filename = filename
         self.batch_size = batch_size
         self._batch = []
 
         if MODE == 'PARALLEL':
             self._comm_partition()
-
             if self._type == 'server':
-                if (self.filename is not None):
-                    self.file_handle = h5py.File(self.filename)
-                self._recv_loop()
+                self._server = Server(filename=filename, smdcomm=self._smdcomm)
+                self._server.recv_loop()
 
         elif MODE == 'SERIAL':
             self._type = 'serial'
-            if (self.filename is not None):
-                self.file_handle = h5py.File(self.filename)            
+            self._server = Server(filename=filename)
 
         return
 
@@ -146,23 +211,7 @@ class SmallData:
         return
 
 
-    def done(self):
-
-        if self._type == 'server':
-            self.file_handle.close()
-
-        elif self._type == 'client':
-            # we want to send the finish signal to the server
-            if len(self._batch) > 0:
-                self._send(self._batch)
-            self._smdcomm.send('done', dest=0)
-
-        return
-
-
     def event(self, event, *args, **kwargs):
-
-        # TODO : missing rows AND columns
 
         # collect all new data to add
         event_data_dict = {}
@@ -173,49 +222,24 @@ class SmallData:
 
         if len(self._batch) >= self.batch_size:
             if MODE == 'SERIAL':
-                self._handle(self._batch)
+                self._server.handle(self._batch)
             elif MODE == 'PARALLEL':
-                self._send(self._batch)
+                self._smdcomm.send(self._batch, dest=0)
             self._batch = []
 
         return
 
 
-    def _send(self, batch):
-        self._smdcomm.send(batch, dest=0)
-        return
+    def done(self):
 
+        if self._type == 'client':
+            # we want to send the finish signal to the server
+            if len(self._batch) > 0:
+                self._smdcomm.send(self._batch, dest=0)
+            self._smdcomm.send('done', dest=0)
+        elif self._type == 'server':
+            self._server.done()
 
-    def _recv_loop(self):
-
-        num_clients_done = 0
-        num_clients = self._smdcomm.Get_size() - 1
-        while num_clients_done < num_clients:
-            msg = self._smdcomm.recv(source=MPI.ANY_SOURCE)
-            if type(msg) is list:
-                self._handle(msg)
-            elif msg == 'done':
-                num_clients_done += 1
-
-        return
-
-
-    def _handle(self, batch):
-
-        for event_data_dict in batch:
-
-            for dataset_name, data in event_data_dict.items():
-                if self.filename is not None:
-                    _h5py_create_or_append(self.file_handle,
-                                           dataset_name,
-                                           np.array(data))
-
-                # TODO also call all callbacks
-
-        return
-
-
-    def summary(self, *args, **kwargs):
         return
 
 
