@@ -20,11 +20,8 @@ using Pds::Mmhw::RingBuffer;
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
-#include <netdb.h>
-#include <arpa/inet.h>
 #include <sys/mman.h>
 #include <poll.h>
-#include <string.h>
 
 using std::string;
 
@@ -243,28 +240,7 @@ uint64_t Module134::device_dna() const
 
 void Module134::set_local_id(unsigned bus)
 {
-  struct addrinfo hints;
-  struct addrinfo* result;
-
-  memset(&hints, 0, sizeof(struct addrinfo));
-  hints.ai_family = AF_INET;       /* Allow IPv4 or IPv6 */
-  hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
-  hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
-
-  char hname[64];
-  gethostname(hname,64);
-  int s = getaddrinfo(hname, NULL, &hints, &result);
-  if (s != 0) {
-    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-    exit(EXIT_FAILURE);
-  }
-
-  sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
-
-  unsigned id = 0xfc000000 | (bus<<16) |
-    (ntohl(saddr->sin_addr.s_addr)&0xffff);
-
-  chip(0).reg.setLocalId(id);
+  chip(0).reg.setLocalId(ModuleBase::local_id(bus));
 }
 
 void Module134::board_status()
@@ -275,7 +251,7 @@ void Module134::board_status()
     printf("Dna: %08x%08x  Serial: %08x%08x\n",
            v.DeviceDnaHigh,
            v.DeviceDnaLow,
-         v.FdSerialHigh,
+           v.FdSerialHigh,
            v.FdSerialLow ); }
 
   p->fmc_ctrl.dump();
@@ -297,9 +273,9 @@ void Module134::board_status()
   printf("imona/b\n");
   i2c().imona.dump();
   i2c().imonb.dump();
+  i2c_unlock();
 
-  i2c().i2c_sw_control.select(I2cSwitch::PrimaryFmc);
-
+  i2c_lock(I2cSwitch::PrimaryFmc);
   { unsigned v;
     printf("FMC EEPROM:");
     for(unsigned i=0; i<32; i++) {

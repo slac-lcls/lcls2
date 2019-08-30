@@ -93,69 +93,11 @@ class ChipServer(object):
 class PVAServer(object):
     def __init__(self, provider_name, prefix):
         self.provider = StaticProvider(provider_name)
-        self.a = ChipServer(self.provider, prefix+':A')
-        self.b = ChipServer(self.provider, prefix+':B')
+        self.chip     = ChipServer(self.provider, prefix)
 
     def forever(self):
         Server.forever(providers=[self.provider])
 
-
-#
-#  Brief rogue implementation of HSD
-#
-#class Top(pr.Root):
-#    def __init__(self, 
-#                 name        = "Top",
-#                 description = "Container for HSD",
-#                 dev         = '/dev/pcie_adc_3e',
-#                 hwType      = 'special',
-#                 lane        = 0,
-#                 **kwargs):
-#        super().__init__(name=name, description=description, **kwargs)
-
-        # Connect the SRPv0 to PCIe
-#        memMap = rogue.hardware.axi.AxiMemMap(dev)
-        
-#        pr.busConnect(memMast,memMap)
-
-#        self.add(DaqConfig(name    = 'DaqConfig',
-#                           memBase = memMap,
-#                           offset  = 0,
-#                           expand  = False))
-
-#        self.add(MonTiming(name    = 'MonTiming',
-#                           memBase = memMap,
-#                           offset  = 0,
-#                           expand  = False))
-
-#class DaqConfig(pr.Device):
-#    def __init__(self, **kwargs):
-#        super().__init__(description='DaqConfig', **kwargs)
-
-        # Add devices
-#        for x,y in daqConfig:
-#            self.add(pr.RemoteVariable(name        = x,
-#                                       description = x,
-#                                       offset      = y[2],
-#                                       bitSize     = y[3],
-#                                       bitOffset   = y[4],
-#                                       base        = pr.UInt,
-#                                       mode        = 'RW',
-#                                       verify      = False,))
-
-#class MonTiming(pr.Device):
-#    def __init__(self, **kwargs):
-#        super().__init__(description='MonTiming', **kwargs)
-
-#        for x,y in monTiming:
-#            self.add(pr.RemoteVariable(name        = x,
-#                                       description = x,
-#                                       offset      = y[2],
-#                                       bitSize     = y[3],
-#                                       bitOffset   = y[4],
-#                                       base        = pr.UInt,
-#                                       mode        = 'RW',
-#                                       verify      = False,))
 
 import argparse
 
@@ -163,7 +105,7 @@ def main():
 
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for High Speed Digitizer')
 
-    parser.add_argument('-P', required=True, help='DAQ:LAB2:HSD:DEV06_3E:A', metavar='PREFIX')
+    parser.add_argument('-P', required=True, help='DAQ:LAB2:HSD:DEV06_3E', metavar='PREFIX')
 #    parser.add_argument('-d', required=True, help='device filename', metavar='DEV')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 

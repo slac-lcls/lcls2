@@ -3,6 +3,9 @@ daqConfig = {'readoutGroup':('i', 0),
              'full_size'   :('i', 2048),
              'test_pattern':('i', 0),
              'fs_range_vpp':('i', 0xa000),
+             'trig_shift'  :('i', 0),
+             'sync_ph_even':('i', 11250),
+             'sync_ph_odd' :('i',  1450),
              'enable'      :('i', 0),
              'raw_start'   :('i', 4),
              'raw_gate'    :('i', 20),
@@ -57,7 +60,10 @@ monEnv    = {'local12v' :('f',0),
              'local3v3' :('f',0),
              'local2v5' :('f',0),
              'totalpwr' :('f',0),
-             'fmcpwr'   :('f',0) }
+             'fmcpwr'   :('f',0),
+             'sync_even':('i',0),
+             'sync_odd' :('i',0) }
+
 
 monJesd   = {'stat' :('ai',[0]*112),
              'clks' :('af',[0.]*5) }

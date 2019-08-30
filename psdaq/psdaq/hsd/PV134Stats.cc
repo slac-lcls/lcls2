@@ -52,15 +52,6 @@ namespace Pds {
            _monAdc,
            _NumberOf };
 
-    static const unsigned _sz_monTiming[] = {0};
-    static const unsigned _sz_monPgp   [] = {4,4,4,4,4,4,4,4,4,4,};
-    static const unsigned _sz_monRawBuf[] = {0};
-    static const unsigned _sz_monFexBuf[] = {0};
-    static const unsigned _sz_monRawDet[] = {16,16,16,16,};
-    static const unsigned _sz_monJesd  [] = {112,5,};
-    static const unsigned _sz_monEnv   [] = {0};
-    static const unsigned _sz_monAdc   [] = {0};
-
     PV134Stats::PV134Stats(Module134& m) : _m(m), _pgp(m.pgp()), _pv(2*_NumberOf) {}
     PV134Stats::~PV134Stats() {}
 
