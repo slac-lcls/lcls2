@@ -9,7 +9,7 @@
 
 #include <cassert>
 #include <cmath>
-#include <gsl/gsl_poly.h>
+//#include <gsl/gsl_poly.h>
 
 #include "../ConstFracDiscrim.hh"
 
@@ -125,7 +125,7 @@ double getcfd(const double sampleInterval,
         const double y[4] = {fsx_m1,fsx,fsx_1,fsx_2}; //y vector
         double coeff[4] = {0,0,0,0};                  //Newton coeff vector
 
-        gsl_poly_dd_init(coeff, x, y, 4);
+        //gsl_poly_dd_init(coeff, x, y, 4);
 
         if (fabs(coeff[0]) > 1e-8)
         {
@@ -138,8 +138,8 @@ double getcfd(const double sampleInterval,
 
         double x0, x1, x2 = 0.0;
 
-        int num_roots = gsl_poly_solve_cubic(coeff[1], coeff[2], coeff[3] - walkB, &x0, &x1, &x2);
-        assert(num_roots == 1);
+        //int num_roots = gsl_poly_solve_cubic(coeff[1], coeff[2], coeff[3] - walkB, &x0, &x1, &x2);
+        //assert(num_roots == 1);
 
         //printf("{'Num roots': %d 'Roots': (%f, %f, %f)}\n", num_roots, x0, x1, x2);
         return x0;

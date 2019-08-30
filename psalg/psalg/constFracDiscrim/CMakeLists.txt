@@ -2,10 +2,10 @@ add_library(constfracdiscrim SHARED
     src/ConstFracDiscrim.cc
 )
 
-find_package(GSL REQUIRED)
+#find_package(GSL REQUIRED)
 
 target_link_libraries(constfracdiscrim
-  GSL::gsl GSL::gslcblas m
+  #GSL::gsl GSL::gslcblas m
 )
 
 
