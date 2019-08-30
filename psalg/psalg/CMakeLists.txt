@@ -1,4 +1,6 @@
-add_subdirectory(hexanode)
+if (ROENTDEK_FOUND)
+    add_subdirectory(hexanode)
+endif()
 add_subdirectory(utils)
 add_subdirectory(calib)
 add_subdirectory(geometry)
