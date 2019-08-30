@@ -516,7 +516,7 @@ void addEpicsData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned 
 void addScanNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
     Alg scanAlg("scan",2,3,42);
     NamesId namesId(nodeId,MyNamesId::Scan+MyNamesId::NumberOf*segment);
-    Names& scanNames = *new(xtc) Names("xppscan", scanAlg, "scanDet", "detnum1234", namesId, segment);
+    Names& scanNames = *new(xtc) Names("scan", scanAlg, "scanDet", "detnum1234", namesId, segment);
     scanNames.add(xtc, ScanDef);
     namesLookup[namesId] = NameIndex(scanNames);
 }
