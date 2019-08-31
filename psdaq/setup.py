@@ -18,6 +18,7 @@ setup(
                 'daqstate = psdaq.control.daqstate:main',
                 'testClient2 = psdaq.control.testClient2:main',
                 'testAsyncErr = psdaq.control.testAsyncErr:main',
+                'syslog = psdaq.control.syslog:main',
                 'groupca = psdaq.cas.groupca:main',
                 'partca = psdaq.cas.partca:main',
                 'partcas = psdaq.cas.partcas:main',
