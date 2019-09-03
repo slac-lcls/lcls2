@@ -9,8 +9,6 @@
 
 #include <cassert>
 #include <cmath>
-#include <gsl/gsl_poly.h>
-
 #include "../ConstFracDiscrim.hh"
 
 /** Implematation of Constant Fraction Method
@@ -31,6 +29,67 @@
  */
 
 namespace psalgos {
+
+std::vector<double> diff_table(int deg, const std::vector<double>& x, const std::vector<double>& y)
+{
+  int rows = x.size();
+
+  std::vector<double> table(rows*(deg+1), 0);
+  table.insert(table.begin(), y.begin(), y.end());
+
+  std::vector<double> coeffs(1, y[0]);
+
+  for(int col = 0, offset = 1; col < (deg+1); col++)
+  {
+    for(int row = 0; row < rows-(col+1); row++)
+    {
+      double a = table[col*rows+row];
+      double b = table[col*rows+row+1];
+      // printf("%d %d %g\n", row+1, col, b);
+      // printf("%d %d %g\n", row, col, a);
+      table[(col+1)*rows+row] = (b - a) / (x[row] - x[row+1]);
+      // printf("%d %d %g\n\n", row, col+1, table[(col+1)*rows+row]);
+      if(row == 0)
+      {
+        coeffs.push_back(table[(col+1)*rows+row]);
+      }
+    }
+  }
+
+  return coeffs;
+}
+
+double eval_poly(double x, const std::vector<double> &coeffs)
+{
+  double s = 0;
+  int p = coeffs.size()-1;
+
+  for(int i = 0; i < p+1; i++)
+  {
+    s += coeffs[i]*pow(x, p-i);
+  }
+  return s;
+}
+
+double find_root(const std::vector<double>& f, const std::vector<double>& df, double error, double x0, int max_its)
+{
+  std::vector<double> xs(1, x0);
+
+  int end = 0;
+  while(true)
+  {
+    double fx = eval_poly(xs[end], f);
+    double dfx = eval_poly(xs[end], df);
+    xs.push_back(xs[end] - fx/dfx);
+    end++;
+    if (fabs(xs[end] - xs[end-1]) < error)
+    {
+      return xs[end];
+    }
+    else if (end-1 > max_its)
+      return NAN;
+  }
+}
 
 double getcfd(const double sampleInterval,
               const double horpos,
@@ -118,30 +177,32 @@ double getcfd(const double sampleInterval,
 
         //--find x with a cubic polynomial interpolation between four points--//
         //--do this with the Newtons interpolation Polynomial--//
-        const double x[4] = {static_cast<double>(i-1),
-                             static_cast<double>(i),
-                             static_cast<double>(i+1),
-                             static_cast<double>(i+2)};          //x vector
-        const double y[4] = {fsx_m1,fsx,fsx_1,fsx_2}; //y vector
-        double coeff[4] = {0,0,0,0};                  //Newton coeff vector
+        const std::vector<double> x = {static_cast<double>(i-1),
+                                       static_cast<double>(i),
+                                       static_cast<double>(i+1),
+                                       static_cast<double>(i+2)};          //x vector
+        const std::vector<double> y = {fsx_m1,fsx,fsx_1,fsx_2}; //y vector
 
-        gsl_poly_dd_init(coeff, x, y, 4);
+        std::vector<double> coeffs = diff_table(3, x, y);
 
-        if (fabs(coeff[0]) > 1e-8)
+        if (fabs(coeffs[0]) > 1e-8)
         {
-          double a = coeff[0];
+          double a = coeffs[0];
           for(int i = 0; i < 4; i++)
           {
-            coeff[i] /= a;
+            coeffs[i] /= a;
           }
         }
 
-        double x0, x1, x2 = 0.0;
+        coeffs[3] -= walkB;
 
-        int num_roots = gsl_poly_solve_cubic(coeff[1], coeff[2], coeff[3] - walkB, &x0, &x1, &x2);
-        assert(num_roots == 1);
+        std::vector<double> dy;
+        for(int i = 0, size = coeffs.size()-1; i < size; i++)
+        {
+          dy.push_back(coeffs[i]*(size-i));
+        }
 
-        //printf("{'Num roots': %d 'Roots': (%f, %f, %f)}\n", num_roots, x0, x1, x2);
+        double x0 = find_root(coeffs, dy, 1e-7, x[0]);
         return x0;
 
         //--numericaly solve the Newton Polynomial--//

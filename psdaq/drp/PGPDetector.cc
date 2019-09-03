@@ -92,6 +92,11 @@ void workerFunc(const Parameters& para, MemPool& pool,
             uint64_t val;
             if (transitionId == XtcData::TransitionId::L1Accept) {
                 det->event(*dgram, event);
+                // make sure the detector hasn't made the event too big
+                if (dgram->xtc.extent > pool.bufferSize()) {
+                    printf("L1Accept: buffer size (%d) too small for requested extent (%d)\n", pool.bufferSize(), dgram->xtc.extent);
+                    exit(-1);
+                }
 
                 if (counter % 2 == 0) {
                     val = 0xdeadbeef;
@@ -111,8 +116,9 @@ void workerFunc(const Parameters& para, MemPool& pool,
                 memcpy(&dgram->xtc, &transitionXtc, transitionXtc.extent);
                 val = 0;                // Value is irrelevant for transitions
             }
+            // make sure the transition isn't too big
             if (dgram->xtc.extent > pool.bufferSize()) {
-                printf("Buffer size (%d) too small for requested extent (%d)\n", pool.bufferSize(), dgram->xtc.extent);
+                printf("Transition: buffer size (%d) too small for requested extent (%d)\n", pool.bufferSize(), dgram->xtc.extent);
                 exit(-1);
             }
             // set the src field for the event builders
