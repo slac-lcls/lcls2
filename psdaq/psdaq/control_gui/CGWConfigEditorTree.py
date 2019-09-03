@@ -31,8 +31,26 @@ from psdaq.control_gui.QWPopupSelectItem import popup_select_item_from_list
 from psdaq.control_gui.CGJsonUtils import json_from_str
 
 from psalg.configdb.typed_json import updateValue, getType #, getValue
-
+import ast
+import re
 #--------------------
+
+def str_is_int(s):
+    return s.isdigit() or (s.startswith('-') and s[1:].isdigit())
+    #return re.match(r"[-+]?\d+$", s) is not None
+    #return re.match(r"^[-+]?[0-9]+$", s) is not None
+    #return re.match("^([+-]?[1-9]\d*|0)$", s) is not None
+
+def str_is_hex(s):
+    return '0x' in s 
+    #return re.fullmatch(r"^[0-9a-fA-F]$", s or "") is not None
+
+def str_is_oct(s):
+    return '0o' in s 
+    #return re.match(r"\b0o[0-7]+\b", s) is not None
+
+def str_is_bin(s):
+    return '0b' in s 
 
 def path_to_item(item):
     #if item is None : return None
@@ -48,7 +66,7 @@ class CGWConfigEditorTree(QWTree) :
     def __init__(self, **kwargs) :
 
         parent = kwargs.get('parent',None)
-        self.dictj        = kwargs.get('dictj', {'a_test':0,'b_test':1})
+        self.dictj        = kwargs.get('dictj', {'a_test':0o377,'b_test':12345})
         self.parent_ctrl  = kwargs.get('parent_ctrl',None)
         self.list_max_len = kwargs.get('list_max_len',5)
 
@@ -56,6 +74,7 @@ class CGWConfigEditorTree(QWTree) :
 
         icon.set_icons()
         self.doubleClicked[QModelIndex].connect(self.on_double_click)
+        self.model.itemChanged.connect(self.on_item_changed)
 
 #--------------------
 
@@ -168,7 +187,7 @@ class CGWConfigEditorTree(QWTree) :
                 dtype = self.data_type(parent_item, o)
                 item.setToolTip('%s path: [%s] dtype: %s'% (cmt,path,str(dtype)))
                 #item.setIcon(icon.icon_table)
-                item.setCheckable(True)
+                item.setCheckable(False)
                 item.setEditable(not (is_trimmed or is_read_only)) 
                 item.setEnabled(not is_read_only) 
                 parent_item.appendRow(item)
@@ -294,6 +313,49 @@ class CGWConfigEditorTree(QWTree) :
 
             else :
                logger.warning("CGWConfigEditorTree.updateValue is None, dictj can't be updated")
+
+#--------------------
+
+    def on_item_changed(self, item):
+        #item.setEnabled(False)
+        #if item.hasChildren() :
+            #item.setEnabled(True)
+            #return # do not change parental items
+
+        s = item.text()
+        state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
+        msg = 'XXX on_item_changed: item "%s", is at state %s' % (s, state)
+        s1 = s
+
+        #item.setCheckState(0 if str_is_bin(s) else 1)
+
+        if   str_is_int(s) : s1 = hex(int(s,10))
+        elif str_is_hex(s) : s1 = oct(int(s,16))
+        elif str_is_oct(s) : s1 = bin(int(s,8))
+        elif str_is_bin(s) : s1 = str(int(s,2))
+
+        item.setEnabled(False)
+        item.setText(s1)
+        item.setEnabled(True)
+        
+        logger.debug(msg)
+
+#--------------------
+
+    def on_click(self, index):
+        item = self.model.itemFromIndex(index)
+        parent = item.parent()
+        spar = parent.text() if parent is not None else None
+        #msg = 'xxxxx clicked item: %s parent: %s' % (item.text(), spar) # index.row()
+        s = item.text()
+        msg = ''
+        if str_is_int(s) :
+            d = ast.literal_eval(s)
+            b,o,h = bin(d), oct(d), hex(d)
+            msg = 'clicked item dec: %s hex: %s oct: %s bin: %s' % (s,h,o,b)
+        else :
+            msg = 'clicked item: %s is not a digit' % s
+        logger.debug(msg)
 
 #--------------------
 

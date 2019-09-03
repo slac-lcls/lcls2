@@ -33,6 +33,7 @@ if(APPLE)
         peaks
         digitizer
         detector
+        hexanode
     )
 else()
     target_link_libraries(psalg
@@ -42,6 +43,7 @@ else()
         peaks
         digitizer
         detector
+        hexanode
         rt
     )
 endif()
@@ -158,17 +160,50 @@ target_link_libraries(test_MDBWebUtils
     CURL::libcurl
 )
 
+
+
+
+
+
 # Test include "roentdek/resort64c.h"
-add_executable(test_resort64c
-    tests/test_resort64c.cc
+add_executable(ex01_resort64c
+    tests/ex01_resort64c.cc
 )
-find_library(Resort64c_x64 libResort64c_x64.a PATHS $ENV{CONDA_PREFIX}/lib)
-target_link_libraries(test_resort64c
+target_link_libraries(ex01_resort64c
     psalg
-    Resort64c_x64
+    roentdek::resort64c
     #$ENV{CONDA_PREFIX}/lib/libResort64c_x64.a
     #/reg/g/psdm/sw/conda2/inst/envs/ps-2.0.3/lib/libResort64c_x64.a
 )
+
+## Test ex02_read_lmf_data
+add_executable(ex02_read_lmf_data
+    tests/ex02_read_lmf_data.cc
+)
+target_link_libraries(ex02_read_lmf_data
+    psalg
+)
+
+## Test ex03_lmf2txt
+add_executable(ex03_lmf2txt
+    tests/ex03_lmf2txt.cc
+)
+target_link_libraries(ex03_lmf2txt
+    psalg
+)
+
+## Test ex04_sort
+add_executable(ex04_sort
+    tests/ex04_sort.cc
+)
+target_link_libraries(ex04_sort
+    psalg
+    roentdek::resort64c
+)
+
+
+
+
 
 # Test access to xtc data
 add_executable(test_xtc_data
@@ -191,7 +226,10 @@ install(TARGETS psalg
                 test_AreaDetector
                 test_MDBWebUtils
                 test_logger
-                test_resort64c
+                ex01_resort64c
+                ex02_read_lmf_data
+                ex03_lmf2txt
+                ex04_sort
                 test_xtc_data
                 datareader
     ARCHIVE DESTINATION lib

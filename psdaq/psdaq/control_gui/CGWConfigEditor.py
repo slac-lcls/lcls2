@@ -59,6 +59,7 @@ class CGWConfigEditor(QWidget) :
         self.dictj = dictj
         if dictj is None : self.load_dict() # fills self.dictj
 
+        self.but_cancel=QPushButton('Cancel')
         self.but_apply= QPushButton('Apply')
         self.but_expn = QPushButton('Expand %s'%char_expand)
         self.box_type = QComboBox(self)
@@ -73,6 +74,7 @@ class CGWConfigEditor(QWidget) :
 
         self.hbox = QHBoxLayout() 
         self.hbox.addWidget(self.but_apply)
+        self.hbox.addWidget(self.but_cancel)
         self.hbox.addWidget(self.but_expn)
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.box_more)
@@ -88,6 +90,7 @@ class CGWConfigEditor(QWidget) :
 
         self.but_expn.clicked.connect(self.on_but_expn)
         self.but_apply.clicked.connect(self.on_but_apply)
+        self.but_cancel.clicked.connect(self.on_but_cancel)
         self.box_type.currentIndexChanged[int].connect(self.on_box_type)
         self.box_more.currentIndexChanged[int].connect(self.on_box_more)
 
@@ -98,6 +101,7 @@ class CGWConfigEditor(QWidget) :
         self.box_type.setToolTip('Select editor type')
         self.but_expn.setToolTip('Expand/Collapse tree-like content')
         self.but_apply.setToolTip('Apply content changes to configuration DB')
+        self.but_apply.setToolTip('Cancel changes')
         self.box_more.setToolTip('More options:'\
                                 +'\n * Load content from file'\
                                 +'\n * Save content in file')
@@ -214,6 +218,12 @@ class CGWConfigEditor(QWidget) :
 
 #--------------------
  
+    def on_but_cancel(self):
+        logger.debug('on_but_cancel')
+        self.close()
+
+#--------------------
+ 
     def on_box_more(self, ind) :
         opt = self.MORE_OPTIONS[ind]
         logger.info('CGWConfigEditor selected option %s' % opt)
@@ -271,9 +281,11 @@ class CGWConfigEditor(QWidget) :
 
 #--------------------
 
-#    def closeEvent(self, e):
-#        logger.debug('closeEvent')
-#        #self.parent_ctrl.w_display = None
+    def closeEvent(self, e):
+        QWidget.closeEvent(self, e)
+        logger.debug('closeEvent')
+        if self.parent_ctrl is not None :
+           self.parent_ctrl.w_edit = None
 
 #--------------------
 

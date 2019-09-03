@@ -186,6 +186,7 @@ class QWTree(QTreeView) :
 
 
     def set_style(self):
+        self.header().hide()
         #from psana.graphqt.Styles import style
         self.setWindowIcon(icon.icon_monitor)
         self.setContentsMargins(0,0,0,0)

@@ -25,11 +25,11 @@ if(ROENTDEK_FOUND)
     set(ROENTDEK_INCLUDE_DIRS ${ROENTDEK_INCLUDE_DIR})
 
     # I think this sets up the machinery needed to locate
-    # headers/libraries using the "roentdek::roentdek" syntax
+    # headers/libraries using the "roentdek::resort64c" syntax
     # in CMakeLists.txt
-    if(NOT TARGET roentdek::roentdek)
-        add_library(roentdek::roentdek UNKNOWN IMPORTED)
-        set_target_properties(roentdek::roentdek PROPERTIES
+    if(NOT TARGET roentdek::resort64c)
+        add_library(roentdek::resort64c UNKNOWN IMPORTED)
+        set_target_properties(roentdek::resort64c PROPERTIES
             IMPORTED_LOCATION ${ROENTDEK_LIBRARY}
             INTERFACE_INCLUDE_DIRECTORIES ${ROENTDEK_INCLUDE_DIR}
         )
