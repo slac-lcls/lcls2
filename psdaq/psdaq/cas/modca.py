@@ -66,40 +66,6 @@ class PvPAddr(QtWidgets.QWidget):
         else:
             print(err)
 
-class PvCString(QtWidgets.QWidget):
-    def __init__(self, parent, pvbase, name, dName=None):
-        super(PvCString,self).__init__()
-        layout = QtWidgets.QHBoxLayout()
-        layout.setContentsMargins(0,0,0,0)
-        label  = QtWidgets.QLabel(name)
-        label.setMinimumWidth(100)
-        layout.addWidget(label)
-        #layout.addStretch()
-        self.__display = PvDisplay()
-        self.__display.setWordWrap(True)
-        self.__display.connect_signal()
-        layout.addWidget(self.__display)
-        self.setLayout(layout)
-        parent.addWidget(self)
-
-        pvname = pvbase+name
-        initPvMon(self,pvname)
-
-    def update(self, err):
-        q = self.pv.get()
-        if err is None:
-            s = QString()
-            slen = len(q)
-#            if slen > 64:
-#                slen = 64
-            for i in range(slen):
-                if q[i]==0:
-                    break
-                s += QChar(ord(q[i]))
-            self.__display.valueSet.emit(s)
-        else:
-            print(err)
-
 class PvPushButtonX(QtWidgets.QPushButton):
 
     valueSet = QtCore.pyqtSignal('QString',name='valueSet')
