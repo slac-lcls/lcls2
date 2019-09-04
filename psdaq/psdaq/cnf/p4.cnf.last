@@ -1,0 +1,55 @@
+# --- automatically generated file - DO NOT EDIT -----------------------------
+# COMMAND: /reg/neh/home/weaver/lcls2/install/bin/procmgr start lab3-hsd134_cg.cnf
+# DATE: Fri Aug 23 12:50:42 2019
+procmgr_macro['HOST'] = 'daq-tst-dev02'
+procmgr_macro['LOGPATH'] = '/reg/neh/home/weaver'
+procmgr_macro['USER'] = 'weaver'
+# ----------------------------------------------------------------------------
+platform = '4'
+username = 'lcls2'
+expname  = 'expname'
+expnum   = 'expnum'
+
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
+conda_rel = 'ps-2.0.3'
+
+collect_host = 'drp-tst-acc06'
+#groups = platform
+#groups = '0 5'
+groups = '4'
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#                "X" open xterm
+#                "s" send signal to child when stopping
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+ {                        id:'groupca',flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
+ {                        id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+
+ {                        id:'hsdpvs_3e', port:'29074', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P DAQ:LAB2:HSD:DEV06_3E'},
+ {                        id:'hsdpva_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdpva DAQ:LAB2:HSD:DEV06_3E:A'},
+ {                        id:'hsdpvb_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdpva DAQ:LAB2:HSD:DEV06_3E:B'},
+ { host: 'daq-tst-dev06', id:'hsdioc_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P DAQ:LAB2:HSD:DEV06_3E -d /dev/pcie_adc_3e'},
+
+ { host: 'drp-tst-dev022', id:'xpphsd_0', flags:'xpu', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/dev022'},
+ { host: 'drp-tst-dev023', id:'xpphsd_1', flags:'xpu', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/dev023'},
+
+ { host: 'drp-tst-dev002', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
+ { host: 'drp-tst-dev023', id:'meb1', flags:'spu', conda:conda_rel, cmd:'monReqServer -P TMO -d -q 4 -C '+collect_host+' '},
+ { host: 'drp-tst-dev023', id:'shmc', flags:'sx', conda:conda_rel, cmd:'shmemClient -p TMO -i 0'},
+# {                      , id:'ami', flags:'', conda:conda_rel, cmd:'ami-local shmem://examples/shmem.json'},
+
+ { host: collect_host    , id:'Collection', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -P TMO -B DAQ:LAB2 -x 2 -C BEAM'},
+ {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
+
+]

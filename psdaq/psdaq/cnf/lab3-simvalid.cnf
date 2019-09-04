@@ -1,0 +1,46 @@
+platform = '0'
+username = 'lcls2'
+expname  = 'expname'
+expnum   = 'expnum'
+
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.42.255'
+conda_rel = 'ps-2.0.1'
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#                "X" open xterm
+#                "s" send signal to child when stopping
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+ {                        id:'partca',flags:'s', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
+ {                        id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ {                        id:'modca'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
+
+# { host: 'drp-tst-dev002', id:'simv017', flags:'s', conda:conda_rel, cmd:'kcuSimValid -C '+platform+',320,0xf -F -N -v0xff'},
+# { host: 'drp-tst-dev018', id:'simv018', flags:'s', conda:conda_rel, cmd:'kcuSimValid -d /dev/datadev_0 -C '+platform+',320,0x1 -F -N -v0xff'},
+
+# {                        id:'hsdcas_88', port:'29070', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdcas -P DAQ:LAB2:HSD:DEV06_88'},
+# {                        id:'hsdcas_b1', port:'29071', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdcas -P DAQ:LAB2:HSD:DEV06_B1'},
+# {                        id:'hsdcas_da', port:'29072', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdcas -P DAQ:LAB2:HSD:DEV06_DA'},
+ {                        id:'hsdcas_3e', port:'29073', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdcas -P DAQ:LAB2:HSD:DEV06_3E'},
+# {                        id:'hsdca_88', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV06_88'},
+# {                        id:'hsdca_b1', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV06_B1'},
+# {                        id:'hsdca_da', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV06_DA'},
+ {                        id:'hsdca_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV06_3E -d'},
+# { host: 'daq-tst-dev06', id:'hsdioc_88', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdPVs -P DAQ:LAB2:HSD:DEV06_88 -d /dev/pcie_adc_88 -I'},
+# { host: 'daq-tst-dev06', id:'hsdioc_b1', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdPVs -P DAQ:LAB2:HSD:DEV06_B1 -d /dev/pcie_adc_b1 -I'},
+# { host: 'daq-tst-dev06', id:'hsdioc_da', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdPVs -P DAQ:LAB2:HSD:DEV06_DA -d /dev/pcie_adc_da -I'},
+ { host: 'daq-tst-dev06', id:'hsdioc_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsd64PVs -P DAQ:LAB2:HSD:DEV06_3E -d /dev/pcie_adc_3e -I'},
+
+# { host: 'drp-tst-dev018', id:'hsdv_88', flags:'s', conda:conda_rel, cmd:'hsd_validate -d /dev/datadev_0 -v'},
+
+]
