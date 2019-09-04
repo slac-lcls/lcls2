@@ -43,8 +43,12 @@ class Client:
             'connect': self.handle_connect,
             'disconnect': self.handle_disconnect,
             'configure': self.handle_configure,
+            'beginrun': self.handle_beginrun,
+            'beginstep': self.handle_beginstep,
             'enable': self.handle_enable,
             'disable': self.handle_disable,
+            'endstep': self.handle_endstep,
+            'endrun': self.handle_endrun,
             'unconfigure': self.handle_unconfigure
         }
 
@@ -121,6 +125,30 @@ class Client:
         logging.debug('Client handle_disable(msg_id=\'%s\')' % msg['header']['msg_id'])
         if self.state == 'running':
             self.state = 'paused'
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_beginstep(self, msg):
+        logging.debug('Client handle_beginstep(msg_id=\'%s\')' % msg['header']['msg_id'])
+        if True:
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_endstep(self, msg):
+        logging.debug('Client handle_endstep(msg_id=\'%s\')' % msg['header']['msg_id'])
+        if True:
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_beginrun(self, msg):
+        logging.debug('Client handle_beginrun(msg_id=\'%s\')' % msg['header']['msg_id'])
+        if True:
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_endrun(self, msg):
+        logging.debug('Client handle_endrun(msg_id=\'%s\')' % msg['header']['msg_id'])
+        if True:
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
 
