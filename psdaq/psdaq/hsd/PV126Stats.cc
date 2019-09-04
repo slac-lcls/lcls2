@@ -2,6 +2,7 @@
 #include "psdaq/hsd/Module126.hh"
 #include "psdaq/hsd/FexCfg.hh"
 #include "psdaq/hsd/HdrFifo.hh"
+#include "psdaq/hsd/PhaseMsmt.hh"
 #include "psdaq/hsd/Pgp.hh"
 #include "psdaq/hsd/QABase.hh"
 
@@ -118,6 +119,7 @@ namespace Pds {
           v.rxcnt      [j] = pgp.rxOpCodeCount();
           v.rxlast     [j] = pgp.rxOpCodeLast();
           v.rempause   [j] = pgp.remPause();
+          v.remlinkid  [j] = pgp.remoteLinkId();
         }
         PVPUT(monPgp);
       }
@@ -163,8 +165,8 @@ namespace Pds {
         v.local2v5 = mon.local2_5v;
         v.totalpwr = mon.totalPower;
         v.fmcpwr   = mon.fmcPower;
-        v.sync_even= _m.trgPhase()[0];
-        v.sync_odd = _m.trgPhase()[1];
+        v.sync_even= _m.trgPhase()->phaseA_even;
+        v.sync_odd = _m.trgPhase()->phaseA_odd;
         PVPUT(monEnv); }
 
 #undef PVPUT

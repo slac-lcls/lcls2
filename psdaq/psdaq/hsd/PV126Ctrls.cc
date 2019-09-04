@@ -2,6 +2,7 @@
 #include "psdaq/hsd/Module126.hh"
 #include "psdaq/hsd/FexCfg.hh"
 #include "psdaq/hsd/QABase.hh"
+#include "psdaq/hsd/PhaseMsmt.hh"
 #include "psdaq/hsd/Pgp.hh"
 #include "psdaq/epicstools/EpicsPVA.hh"
 
@@ -62,8 +63,14 @@ namespace Pds {
         int pattern = PVGET(test_pattern);
         printf("Pattern: %d\n",pattern);
         _m.disable_test_pattern();
-        if (pattern>=0)
-          _m.enable_test_pattern((Module126::TestPattern)pattern);
+        if (pattern>=0) {
+          static const Module126::TestPattern tpatt[] = { Module126::Ramp,
+                                                          Module126::Flash11,
+                                                          Module126::Flash12,
+                                                          Module126::Flash16,
+                                                          Module126::DMA };
+          _m.enable_test_pattern(tpatt[pattern]);
+        }
         
         int ephlo = PVGET(sync_ph_even) - SYNC_WIDTH/2;
         int ephhi = ephlo + SYNC_WIDTH;
@@ -71,14 +78,22 @@ namespace Pds {
         int ophhi = ophlo + SYNC_WIDTH;
         int eph, oph;
         while(1) {
-          eph = _m.trgPhase()[0];
-          oph = _m.trgPhase()[1];
+          const uint32_t* v = reinterpret_cast<const uint32_t*>(_m.trgPhase());
+          printf("trig phase:");
+          for(unsigned i=0; i<8; i++)
+            printf(" 0x%04x",v[i]);
+          printf("\n");
+
+          eph = _m.trgPhase()->phaseA_even;
+          oph = _m.trgPhase()->phaseA_odd;
           printf("trig phase %05d [%05d/%05d] %05d [%05d/%05d]\n",
                  eph,ephlo,ephhi,
                  oph,ophlo,ophhi);
           if (eph > ephlo && eph < ephhi &&
               oph > ophlo && oph < ophhi)
             break;
+
+          break; // broken!
           _m.sync();
           usleep(100000);  // Wait for relock
         }

@@ -22,6 +22,8 @@
 
 #include "psdaq/epicstools/EpicsPVA.hh"
 
+#include "psdaq/app/AppUtils.hh"
+
 extern int optind;
 
 using Pds::Task;
@@ -180,6 +182,19 @@ int main(int argc, char** argv)
   m->setup_jesd();
 
   m->set_local_id(strtoul(dev+strlen(dev)-2,NULL,16));
+
+  { unsigned upaddr = m->remote_id();
+    std::string paddr = Psdaq::AppUtils::parse_paddr(upaddr);
+    for(unsigned i=0; i<2; i++) {
+      std::string sprefix(prefix);
+      sprefix += ":"+std::string(1,'A'+i)+":PADDR";
+      Pds_Epics::EpicsPVA pvPaddr(sprefix.c_str());
+      while(!pvPaddr.connected())
+        usleep(1000);
+      pvPaddr.putFrom(paddr); 
+    }
+    printf("paddr [0x%x] [%s]\n", upaddr, paddr.c_str());
+  }
 
   StatsTimer* timer = new StatsTimer(*m);
 

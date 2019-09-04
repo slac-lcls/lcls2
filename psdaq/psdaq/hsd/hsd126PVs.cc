@@ -19,6 +19,9 @@
 #include "psdaq/service/Task.hh"
 #include "psdaq/service/Timer.hh"
 
+#include "psdaq/epicstools/EpicsPVA.hh"
+
+#include "psdaq/app/AppUtils.hh"
 
 extern int optind;
 
@@ -164,12 +167,33 @@ int main(int argc, char** argv)
   }
 
   Module126* m = Module126::create(fd);
+
+  { std::string buildStamp = m->version().buildStamp();
+    printf("BuildStamp: %s\n",buildStamp.c_str());
+    std::string sprefix(prefix);
+    sprefix += ":FWBUILD";
+    Pds_Epics::EpicsPVA pvBuild(sprefix.c_str());
+    while(!pvBuild.connected())
+      usleep(1000);
+    pvBuild.putFrom(buildStamp); 
+  }
+
   m->setup_timing();
 
   m->set_local_id(strtoul(dev+strlen(dev)-2,NULL,16));
 
-  std::string buildStamp = m->version().buildStamp();
-  printf("BuildStamp: %s\n",buildStamp.c_str());
+  m->fmc_dump();
+
+  { unsigned upaddr = m->remote_id();
+    std::string paddr = Psdaq::AppUtils::parse_paddr(upaddr);
+    std::string sprefix(prefix);
+    sprefix += ":PADDR";
+    Pds_Epics::EpicsPVA pvPaddr(sprefix.c_str());
+    while(!pvPaddr.connected())
+      usleep(1000);
+    pvPaddr.putFrom(paddr); 
+    printf("paddr [0x%x] [%s]\n", upaddr, paddr.c_str());
+  }
 
   StatsTimer* timer = new StatsTimer(*m);
 

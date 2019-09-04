@@ -14,14 +14,15 @@ namespace Pds {
       virtual void   loopback       (bool v);
       virtual void   skip_interval  (unsigned) {}
     public:
-      virtual bool   localLinkReady () const;
-      virtual bool   remoteLinkReady() const;
+      virtual bool     localLinkReady () const;
+      virtual bool     remoteLinkReady() const;
+      virtual unsigned remoteLinkId () const;
       virtual double   txClkFreqMHz () const;
       virtual double   rxClkFreqMHz () const;
       virtual unsigned txCount      () const;
       virtual unsigned txErrCount   () const;
       virtual unsigned rxOpCodeCount() const;
-      virtual unsigned rxOpCodeLast () const;
+      virtual uint64_t rxOpCodeLast () const;
       virtual unsigned remPause     () const;
       virtual bool     loopback     () const;
     private:

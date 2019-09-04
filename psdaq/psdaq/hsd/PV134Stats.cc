@@ -126,6 +126,7 @@ namespace Pds {
             v.rxcnt      [j] = pgp.rxOpCodeCount();
             v.rxlast     [j] = pgp.rxOpCodeLast();
             v.rempause   [j] = pgp.remPause();
+            v.remlinkid  [j] = pgp.remoteLinkId();
           }
           PVPUT(monPgp);
         }

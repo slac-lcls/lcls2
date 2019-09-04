@@ -54,6 +54,12 @@ namespace Pds {
       void     board_status();
 
       void     set_local_id(unsigned bus);
+      unsigned remote_id   () const;
+
+      enum TestPattern { PRBS7=1, PRBS15=2, PRBS23=3, Ramp=4, Transport=5, D21_5=6,
+                         K28_5=7, ILA=8, RPAT=9, SO_LO=10, SO_HI=11 };
+      void     enable_test_pattern(Module134::TestPattern);
+      void     disable_test_pattern();
 
       void     dumpRxAlign     () const;
       void     dumpPgp         () const;
