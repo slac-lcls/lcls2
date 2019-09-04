@@ -1362,8 +1362,9 @@ def main():
     if args.v:
         level=logging.DEBUG
     else:
-        level=logging.WARNING
+        level=logging.INFO
     logger = SysLog(instrument=args.P, level=level)
+    logging.info('logging initialized')
 
     def manager():
         manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d, args.C, args.S)
