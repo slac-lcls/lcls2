@@ -1,0 +1,5 @@
+LOG_LEVEL                        INFO
+MAIN_WIN_POS_X                   90
+MAIN_WIN_POS_Y                   0
+MAIN_WIN_WIDTH                   370
+MAIN_WIN_HEIGHT                  810

@@ -214,7 +214,10 @@ class CGWConfigEditorTree(QWTree) :
                 is_enum, dic_enum, dic_inv = self.enum_dicts(dtype)
                 #if is_enum : print('ZZZZZ this is it: %s enum dicts: %s %s' % (str(dtype), str(dic_enum), str(dic_inv)))
 
-                s = dic_inv[o] if is_enum else str(o)
+                if is_enum:
+                    s = dic_inv[o] if o in dic_inv.keys() else next(iter(dic_inv.values()))
+                else:
+                    s = str(o)
                 item = QStandardItem(s)
                 item.setAccessibleText(s)
                 #item.setAccessibleDescription('data')

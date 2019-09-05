@@ -41,7 +41,8 @@ monPgp    = {'loclinkrdy' :('ai', [0]*4),
              'txerrcntsum':('ai', [0]*4),
              'rxcnt'      :('ai', [0]*4),
              'rxlast'     :('ai', [0]*4),
-             'rempause'   :('ai', [0]*4) }
+             'rempause'   :('ai', [0]*4),
+             'remlinkid'  :('ai', [0]*4) }
 
 monBuf    = {'freesz'  :('i', 0),
              'freeevt' :('i', 0),

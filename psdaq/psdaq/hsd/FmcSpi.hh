@@ -2,6 +2,8 @@
 #define HSD_FmcSpi_hh
 
 #include "psdaq/hsd/Globals.hh"
+#include "psdaq/mmhw/RegProxy.hh"
+
 #include <stdint.h>
 
 namespace Pds {
@@ -52,9 +54,9 @@ namespace Pds {
       void     _applySync();
       char     _cardId() const;
     private:
-      uint32_t _reg[256]; // Bridge configuration access
-      uint32_t _sp1[256]; // SPI device access 1B address
-      uint32_t _sp2[256]; // SPI device access 2B address
+      Pds::Mmhw::RegProxy _reg[256]; // Bridge configuration access
+      Pds::Mmhw::RegProxy _sp1[256]; // SPI device access 1B address
+      Pds::Mmhw::RegProxy _sp2[256]; // SPI device access 2B address
     };
   };
 };

@@ -236,12 +236,26 @@ uint64_t Module134::device_dna() const
   return v;
 }
 
+void Module134::enable_test_pattern(TestPattern p)
+{
+  jesdctl().default_init(i2c().fmc_cpld, unsigned(p)); 
+  jesdctl().dump();
+}
+
+void Module134::disable_test_pattern()
+{
+  jesdctl().default_init(i2c().fmc_cpld, 0);
+  jesdctl().dump();
+}
+
 // Update ID advertised on timing link
 
 void Module134::set_local_id(unsigned bus)
 {
   chip(0).reg.setLocalId(ModuleBase::local_id(bus));
 }
+
+unsigned Module134::remote_id() const { return p->chip[0].reg.partitionAddr; }
 
 void Module134::board_status()
 {

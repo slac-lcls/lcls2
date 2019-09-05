@@ -1,3 +1,10 @@
+# --- automatically generated file - DO NOT EDIT -----------------------------
+# COMMAND: /reg/neh/home/weaver/lcls2/install/bin/procmgr start lab3-base.cnf
+# DATE: Sat Aug 31 07:33:27 2019
+procmgr_macro['HOST'] = 'daq-tst-dev02'
+procmgr_macro['LOGPATH'] = '/reg/neh/home/weaver'
+procmgr_macro['USER'] = 'weaver'
+# ----------------------------------------------------------------------------
 platform = '7'
 username = 'lcls2'
 expname  = 'expname'

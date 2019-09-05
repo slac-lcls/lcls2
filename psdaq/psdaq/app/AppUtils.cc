@@ -47,6 +47,21 @@ unsigned AppUtils::parse_interface(const char* interfaceString) {
   return interface;
 }
 
+std::string AppUtils::parse_paddr(unsigned v)
+{
+  char buff[256];
+  if (v==0xffffffff)
+    sprintf(buff,"XTPG");
+  else if ((v>>24)==0xff) {
+    unsigned shelf = (v>>16)&0xff;
+    unsigned port  = (v>> 0)&0xff;
+    sprintf(buff,"XPM:%d:AMC%d-%d",shelf,port/7,port%7);
+  }    
+  else
+    sprintf(buff,"Unknown");
+  return std::string(buff);
+}
+
 static void* countThread(void* args)
 {
   const MonitorArgs* margs = reinterpret_cast<MonitorArgs*>(args);

@@ -22,6 +22,7 @@ namespace Pds {
     class HdrFifo;
     class PhaseMsmt;
     class Pgp;
+    class OptFmc;
 
     class Module126 {
     public:
@@ -38,6 +39,7 @@ namespace Pds {
       void board_status();
 
       void set_local_id(unsigned bus);
+      unsigned remote_id() const;
 
       void flash_write(const char*);
       FlashController& flash();
@@ -95,19 +97,20 @@ namespace Pds {
       void dumpBase        () const;
       void dumpMap         () const;
 
-      FexCfg*   fex     ();
-      HdrFifo*  hdrFifo ();
-      uint32_t* trgPhase();
-
       //  Zero copy read semantics
       //      ssize_t dequeue(void*&);
       //      void    enqueue(void*);
       //  Copy on read
       int read(uint32_t* data, unsigned data_size);
 
-      void* reg();
-      std::vector<Pgp*> pgp();
-      Pds::Mmhw::Jtag*  xvc();
+      FexCfg*                     fex     ();
+      HdrFifo*                    hdrFifo ();
+      PhaseMsmt*                  trgPhase();
+
+      std::vector<Pgp*>            pgp    ();
+      Pds::Mmhw::Jtag*             xvc    ();
+      OptFmc&                      optfmc ();
+      void*                        reg    ();
 
       //  Monitoring
       void   mon_start();

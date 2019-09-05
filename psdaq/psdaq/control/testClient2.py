@@ -12,6 +12,7 @@ import zmq
 from psdaq.control.control import back_pull_port, back_pub_port, create_msg
 import argparse
 import logging
+from psdaq.control.syslog import SysLog
 import zmq.utils.jsonapi as json
 
 class Client:
@@ -42,8 +43,12 @@ class Client:
             'connect': self.handle_connect,
             'disconnect': self.handle_disconnect,
             'configure': self.handle_configure,
+            'beginrun': self.handle_beginrun,
+            'beginstep': self.handle_beginstep,
             'enable': self.handle_enable,
             'disable': self.handle_disable,
+            'endstep': self.handle_endstep,
+            'endrun': self.handle_endrun,
             'unconfigure': self.handle_unconfigure
         }
 
@@ -123,6 +128,30 @@ class Client:
             reply = create_msg('ok', msg['header']['msg_id'], self.id)
             self.push.send_json(reply)
 
+    def handle_beginstep(self, msg):
+        logging.debug('Client handle_beginstep(msg_id=\'%s\')' % msg['header']['msg_id'])
+        if True:
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_endstep(self, msg):
+        logging.debug('Client handle_endstep(msg_id=\'%s\')' % msg['header']['msg_id'])
+        if True:
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_beginrun(self, msg):
+        logging.debug('Client handle_beginrun(msg_id=\'%s\')' % msg['header']['msg_id'])
+        if True:
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
+    def handle_endrun(self, msg):
+        logging.debug('Client handle_endrun(msg_id=\'%s\')' % msg['header']['msg_id'])
+        if True:
+            reply = create_msg('ok', msg['header']['msg_id'], self.id)
+            self.push.send_json(reply)
+
     def handle_reset(self, msg):
         logging.debug('Client handle_reset(msg_id=\'%s\')' % msg['header']['msg_id'])
         self.state = 'reset'
@@ -135,15 +164,18 @@ def main():
         parser = argparse.ArgumentParser()
         parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
         parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host (default localhost)')
+        parser.add_argument('-P', metavar='INSTRUMENT', default='TST', help='instrument (default TST)')
         parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
         parser.add_argument('-v', action='store_true', help='be verbose')
         args = parser.parse_args()
 
         # configure logging
         if args.v:
-            logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+            level = logging.DEBUG
         else:
-            logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
+            level = logging.WARNING
+        logger = SysLog(instrument=args.P, level=level)
+        logging.info('logging configured')
 
         # start client
         client = Client(args.p, args.C, args.u)

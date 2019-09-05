@@ -189,6 +189,7 @@ target_link_libraries(hsd134PVs
     ${EPICS_PVACCESS_LIB}
     ${EPICS_PVACLIENT_LIB}
     pthread
+    app
     hsd
     mmhw
     rt
@@ -200,6 +201,7 @@ target_link_libraries(hsd126PVs
     service
     epicstools
     pthread
+    app
     hsd
     mmhw
     rt

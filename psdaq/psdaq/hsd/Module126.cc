@@ -29,6 +29,7 @@
 #include "psdaq/hsd/HdrFifo.hh"
 #include "psdaq/hsd/PhaseMsmt.hh"
 #include "psdaq/hsd/FlashController.hh"
+#include "psdaq/hsd/OptFmc.hh"
 
 using Pds::Mmhw::AxiVersion;
 using Pds::Mmhw::Pgp2bAxi;
@@ -69,8 +70,8 @@ namespace Pds {
       AdcCore  adcb_core;        // 0x81C00
       AdcSync  adc_sync;         // 0x82000
       HdrFifo  hdr_fifo[4];      // 0x82800
-      PhaseMsmt trg_phase[2];
-      uint32_t rsvd_to_0x88000  [(0x5800-4*sizeof(HdrFifo)-2*sizeof(PhaseMsmt))/4];
+      PhaseMsmt trg_phase;
+      uint32_t rsvd_to_0x88000  [(0x5800-4*sizeof(HdrFifo)-sizeof(PhaseMsmt))/4];
 
       FexCfg   fex_chan[4];      // 0x88000
       uint32_t rsvd_to_0x90000  [(0x8000-4*sizeof(FexCfg))/4];
@@ -80,8 +81,8 @@ namespace Pds {
       //      uint32_t pgp_fmc1;
       //      uint32_t pgp_fmc2;
       uint32_t pgp_reg[0x4000>>2];
-      uint32_t auxStatus;
-      uint32_t auxControl;
+      uint32_t rsvd_to_0x98000  [0x4000>>2];
+      uint32_t opt_fmc [0x1000>>2]; // 0x98000
     };
   };
 };
@@ -121,8 +122,8 @@ void Module126::setup_timing()
     if (txclkr < TXCLKR_MIN ||
         txclkr > TXCLKR_MAX) {
       i2c_lock(I2cSwitch::LocalBus);  // ClkSynth is on local bus
-      i2c().clksynth.setup(LCLSII);
-      //      i2c().clksynth.setup(M64);
+      //      i2c().clksynth.setup(LCLSII);
+      i2c().clksynth.setup(M3_7);
       i2c_unlock();
 
       usleep(100000);
@@ -138,6 +139,8 @@ void Module126::setup_timing()
       usleep(1000000);
 
       tpr.resetCounts();
+
+      optfmc().resetPgp();
 
       usleep(100000);
 
@@ -517,6 +520,8 @@ void Module126::PrivateData::dumpPgp     () const
     LPRINT("locStatus"      ,locStatus);
   }
 
+  /*
+  **  Removed mezzanine card
   { printf(" prsnt1L %x\n", (auxStatus>>0)&1);
     printf(" pwrgd1  %x\n", (auxStatus>>1)&1);
     printf(" qsfpPrsN %x\n", (auxStatus>>2)&3);
@@ -524,7 +529,7 @@ void Module126::PrivateData::dumpPgp     () const
     printf(" oe_osc   %x\n", (auxControl>>0)&1);
     printf(" qsfpRstN %x\n", (auxControl>>3)&1);
   }
-
+  */
 }
 
 #undef LPRINT
@@ -633,6 +638,8 @@ void Module126::set_local_id(unsigned bus)
   p->base.localId = id;
   p->mbase.version.UserConstants[0] = id;
 }
+
+unsigned Module126::remote_id() const { return p->base.partitionAddr; }
 
 void Module126::board_status()
 {
@@ -889,7 +896,9 @@ FexCfg* Module126::fex() { return &p->fex_chan[0]; }
 
 HdrFifo* Module126::hdrFifo() { return &p->hdr_fifo[0]; }
 
-uint32_t* Module126::trgPhase() { return reinterpret_cast<uint32_t*>(&p->trg_phase[0]); }
+PhaseMsmt* Module126::trgPhase() { return reinterpret_cast<PhaseMsmt*>(&p->trg_phase); }
+
+OptFmc&     Module126::optfmc() { return *reinterpret_cast<OptFmc*>(p->opt_fmc); }
 
 void   Module126::mon_start()
 {

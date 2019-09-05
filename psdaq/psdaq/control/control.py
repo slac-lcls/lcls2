@@ -8,6 +8,7 @@ import zmq.utils.jsonapi as json
 from transitions import Machine, MachineError, State
 import argparse
 import logging
+from psdaq.control.syslog import SysLog
 import string
 from p4p.client.thread import Context
 from threading import Thread, Event
@@ -1357,10 +1358,13 @@ def main():
     args = parser.parse_args()
     platform = args.p
 
+    # configure logging handlers
     if args.v:
-        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+        level=logging.DEBUG
     else:
-        logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
+        level=logging.INFO
+    logger = SysLog(instrument=args.P, level=level)
+    logging.info('logging initialized')
 
     def manager():
         manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d, args.C, args.S)

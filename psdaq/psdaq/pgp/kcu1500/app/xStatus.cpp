@@ -12,6 +12,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <linux/types.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 
 #include "DataDriver.h"
 #include "Si570.hh"
@@ -78,13 +80,14 @@ int main (int argc, char **argv) {
   unsigned     base;
   int          lbmask = -1;
   bool         lCounterReset = false;
+  bool         lUpdateId = false;
   int          c;
 
   while((c=getopt(argc,argv,"l:CIR"))!=-1) {
     switch(c) {
     case 'l': lbmask = strtoul(optarg,NULL,0); break;
-    case 'C': lCounterReset = true; break;
-    case 'I': lInit = true; break;
+    case 'C': lCounterReset = true; lUpdateId = true; break;
+    case 'I': lInit = true; lUpdateId = true; break;
     case 'R': lReset = true; break;
     default:  usage(argv[0]); return 1;
     }
@@ -170,6 +173,38 @@ int main (int argc, char **argv) {
     usleep(10000);
   }
 
+  //
+  //  Update ID advertised on timing link
+  //
+  if (lUpdateId) {
+    struct addrinfo hints;
+    struct addrinfo* result;
+
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_INET;       /* Allow IPv4 or IPv6 */
+    hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+    hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+
+    char hname[64];
+    gethostname(hname,64);
+    int s = getaddrinfo(hname, NULL, &hints, &result);
+    if (s != 0) {
+      fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+      exit(EXIT_FAILURE);
+    }
+
+    sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
+
+    unsigned id = 0xfb000000 | 
+      (ntohl(saddr->sin_addr.s_addr)&0xffff);
+
+    for(unsigned i=0; i<8; i++) {
+      int ifd = fd[i>>2];
+      if (ifd >= 0)
+        dmaWriteRegister(ifd, 0x00a40010+4*(i&3), id | (i<<16));
+    }
+  }
+
 #define PRINTCLK(name, addr) {                                          \
     uint32_t reg;                                                       \
     printf("%20.20s :", #name);                                         \
@@ -215,6 +250,21 @@ int main (int argc, char **argv) {
   PRINTFRQ(txClkFreq  , 0x9c);
   PRINTERR(txOpCodeCnt, 0xa0);
   PRINTREG(txOpCodeLst, 0xa4);
+
+  base = 0x00a40000;
+#define PRINTID(name, addr) {                                   \
+    uint32_t reg;                                               \
+    printf("%20.20s :", #name);                                 \
+    for(unsigned i=0; i<8; i++) {                               \
+      int ifd = fd[i>>2];                                       \
+      if (ifd>=0) {                                             \
+        READREG(name,addr+base+(i&3)*4);                        \
+        printf(" %8x", reg);                                    \
+      }                                                         \
+    }                                                           \
+    printf("\n"); }
+  PRINTID(rxLinkId, 0);
+  PRINTID(txLinkId, 0x10);
 
   close(fd[0]);
   close(fd[1]);

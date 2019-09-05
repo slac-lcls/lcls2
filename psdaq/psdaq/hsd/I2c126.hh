@@ -7,6 +7,7 @@
 #include "psdaq/hsd/Tps2481.hh"
 #include "psdaq/hsd/Adt7411.hh"
 #include "psdaq/hsd/FmcSpi.hh"
+#include "psdaq/mmhw/RegProxy.hh"
 
 namespace Pds {
   namespace HSD {
@@ -23,7 +24,7 @@ namespace Pds {
       Tps2481    imonb;           // 0x11C00
       Adt7411    vtmona;          // 0x12000
       FmcSpi     fmc_spi;         // 0x12400
-      uint32_t   eeprom[0x100];   // 0x12800
+      Pds::Mmhw::RegProxy eeprom[0x100];   // 0x12800
     };
   };
 };

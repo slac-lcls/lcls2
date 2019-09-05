@@ -18,9 +18,10 @@ namespace Psdaq {
 
   class AppUtils {
   public:
-    static unsigned  parse_ip(const char* ipString);
-    static unsigned  parse_interface(const char* interfaceString);
-    static pthread_t monitor(const MonitorArgs&);
+    static unsigned    parse_ip(const char* ipString);
+    static unsigned    parse_interface(const char* interfaceString);
+    static std::string parse_paddr(unsigned);
+    static pthread_t   monitor(const MonitorArgs&);
   };
 };
 

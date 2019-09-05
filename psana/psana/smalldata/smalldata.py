@@ -3,6 +3,7 @@ import os
 import numpy as np
 import h5py
 import collections
+from glob import glob
 
 # -----------------------------------------------------------------------------
 
@@ -37,6 +38,9 @@ FLOAT_TYPES = [float, np.float16, np.float32, np.float64, np.float128, np.float]
 RAGGED_PREFIX   = 'ragged_'
 UNALIGED_PREFIX = 'unaligned_'
 
+def is_unaligned(dset_name):
+    return dset_name.split('/')[-1].startswith(UNALIGED_PREFIX)
+
 # -----------------------------------------------------------------------------
 
 
@@ -53,6 +57,20 @@ def _flatten_dictionary(d, parent_key='', sep='/'):
             items.append((new_key, v))
     return dict(items)
 
+
+def _get_missing_value(dtype):
+
+    if type(dtype) is not np.dtype:
+        dtype = np.dtype(dtype)
+
+    if dtype in INT_TYPES:
+        missing_value = MISSING_INT
+    elif dtype in FLOAT_TYPES:
+        missing_value = MISSING_FLOAT
+    else:
+        raise ValueError('%s :: Invalid num type for missing data' % str(dtype))
+
+    return missing_value
 
 
 # FOR NEXT TIME
@@ -93,7 +111,6 @@ class Server: # (hdf5 handling)
     def handle(self, batch):
 
         for event_data_dict in batch:
-            self.num_events_seen += 1
 
             # TODO > CALLBACKS HERE <
 
@@ -114,6 +131,8 @@ class Server: # (hdf5 handling)
 
                 for dataset_name in to_backfill:
                     self.backfill(dataset_name, 1)
+
+            self.num_events_seen += 1
 
         return
 
@@ -156,6 +175,16 @@ class Server: # (hdf5 handling)
 
 
     def backfill(self, dataset_name, num_to_backfill):
+        
+        dtype, shape = self._dsets[dataset_name]
+
+        missing_value = _get_missing_value(dtype) 
+        fill_data = np.empty(shape[1:], dtype=dtype)
+        fill_data.fill(missing_value)
+    
+        for i in range(num_to_backfill):
+            self.append_to_dset(dataset_name, fill_data)
+        
         return
 
 
@@ -173,15 +202,17 @@ class SmallData: # (client)
         self.batch_size = batch_size
         self._batch = []
 
+        self._filename = '.' + str(RANK) + '_' + filename
+
         if MODE == 'PARALLEL':
             self._comm_partition()
             if self._type == 'server':
-                self._server = Server(filename=filename, smdcomm=self._smdcomm)
+                self._server = Server(filename=self._filename, smdcomm=self._smdcomm)
                 self._server.recv_loop()
 
         elif MODE == 'SERIAL':
             self._type = 'serial'
-            self._server = Server(filename=filename)
+            self._server = Server(filename=self._filename)
 
         return
 
@@ -237,9 +268,93 @@ class SmallData: # (client)
             if len(self._batch) > 0:
                 self._smdcomm.send(self._batch, dest=0)
             self._smdcomm.send('done', dest=0)
+
         elif self._type == 'server':
             self._server.done()
 
+        elif self._type == 'serial':
+            self._server.handle(self._batch)
+            self._server.done()
+
         return
+
+
+def join_files(base_filename):
+    """
+    """
+
+    joined_file = h5py.File(base_filename, 'w', libver='latest')
+
+    files = glob('.*_' + base_filename)
+    print('Joining: %d files --> %s' % (len(files), base_filename))
+
+    # h5py requires you declare the size of the VDS at creation
+    # so: we must first loop over each file to find # events
+    #     that come from each file
+    # then do a second loop to join the data together
+
+    # part (1) : discover the size of the timestamps in each file
+    file_dsets = {}
+
+    def assign_dset_info(name, obj):
+        # TODO check if name contains unaligned, if so ignore
+        if isinstance(obj, h5py.Dataset):
+            dsets[obj.name] = (obj.dtype, obj.shape)
+
+    for fn in files:
+        dsets = {}
+        f = h5py.File(fn, 'r')
+        f.visititems(assign_dset_info)
+        file_dsets[fn] = dsets
+        f.close()
+
+    # part (2) : loop over datasets and combine them into a vds
+    for dset_name in dsets.keys():
+
+        # inspect the first file (w data) to get basic shape & dtype
+
+        total_events = 0
+        for fn in files:
+            dsets = file_dsets[fn]
+            if dset_name in dsets.keys():
+                dtype, shape = dsets[dset_name]
+                total_events += shape[0]
+
+            # we need to reserve space for missing data for aligned data
+            elif not is_unaligned(dset_name):
+                total_events += dsets['/timestamp'][1][0]
+
+        combined_shape = (total_events,) + shape[1:]
+
+        layout = h5py.VirtualLayout(shape=combined_shape, 
+                                    dtype=dtype)
+
+        # add data for "dset", from each file, in order
+        index_of_last_fill = 0
+        for fn in files:
+
+            dsets = file_dsets[fn]
+
+            if dset_name in dsets.keys():
+                _, shape = dsets[dset_name]
+                vsource = h5py.VirtualSource(fn, dset_name, shape=shape)
+                layout[index_of_last_fill:index_of_last_fill+shape[0], ...] = vsource
+                index_of_last_fill += shape[0]
+
+            else:
+                if is_unaligned(dset_name):
+                    pass
+                else: # should be aligned
+                    n_timestamps = dsets['/timestamp'][1][0]
+                    index_of_last_fill += n_timestamps
+
+        joined_file.create_virtual_dataset(dset_name,
+                                           layout,
+                                           fillvalue=_get_missing_value(dtype)) 
+
+    joined_file.close()
+
+    return
+
 
 

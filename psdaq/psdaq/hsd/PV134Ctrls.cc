@@ -51,13 +51,17 @@ namespace Pds {
       ChipAdcReg& reg = _m.chip(fmc).reg;
       reg.stop();
 
+      _m.dumpPgp();
+
       _m.i2c_lock(I2cSwitch::PrimaryFmc);
 
-      unsigned testp = PVGET(test_pattern);
+      int testp = PVGET(test_pattern);
       if (testp!=_testpattern) {
-        _m.jesdctl().default_init(_m.i2c().fmc_cpld, 
-                                  _testpattern=testp);
-        _m.jesdctl().dump();
+        if (testp>=0)
+          _m.enable_test_pattern(Module134::TestPattern::Transport);
+        else
+          _m.disable_test_pattern();
+        _testpattern = testp;
       }
 
       _m.i2c().fmc_cpld.adc_range(fmc,PVGET(fs_range_vpp));
