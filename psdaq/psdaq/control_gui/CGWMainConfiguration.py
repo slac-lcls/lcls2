@@ -76,6 +76,7 @@ class CGWMainConfiguration(QGroupBox) :
         #self.box_seq.currentIndexChanged[int].connect(self.on_box_seq)
         #self.cbx_seq.stateChanged[int].connect(self.on_cbx_seq)
 
+        self.device = None
         self.w_edit = None
         self.type_old = None
         self.set_config_type('init')
@@ -129,13 +130,22 @@ class CGWMainConfiguration(QGroupBox) :
         cfgtype, devname = self.cfgtype_and_device()
         inst, confdb = self.inst_configdb('CGWConfigEditor.on_but_apply: ')
 
+        logger.debug('cfgtype:%s devname:%s' % (cfgtype, devname))
+        logger.debug('inst:%s confdb:%s' % (inst, confdb))
+        logger.debug('dictj:%s' % str(dictj))
+
         resp = confirm_or_cancel_dialog_box(parent=None,
                                             text='Save changes in configuration DB',\
-                                            title='Confirm or cancel') 
-        if resp : 
-            new_key = confdb.modify_device(cfgtype, dictj, hutch=inst)
-            logger.debug('save_dictj_in_db new_key: %d' % new_key)
-            
+                                            title='Confirm or cancel')
+        if resp :
+            try:
+                new_key = confdb.modify_device(cfgtype, dictj, hutch=inst)
+                logger.debug('save_dictj_in_db new_key: %d' % new_key)
+            except ValueError as err:
+                logger.error('ValueError: %s' % err)
+            except Exception as err:            
+                logger.error('Exception: %s' % err)
+
         else :
             logger.warning('Saving of configuration in DB is cancelled...')
 
@@ -190,7 +200,7 @@ class CGWMainConfiguration(QGroupBox) :
 #--------------------
 
     def cfgtype_and_device(self):
-        return self.but_type_text(), None # self.but_dev_text()
+        return self.but_type_text(), self.device #self.but_dev_text()
 
 #--------------------
  
@@ -262,6 +272,7 @@ class CGWMainConfiguration(QGroupBox) :
             resp = self.select_config_type_and_dev()
             if resp is None : return
             cfgtype, dev = resp
+            self.device = dev
 
             inst, confdb = self.inst_configdb('on_but_edit: ')
             self.config = confdb.get_configuration(cfgtype, dev, hutch=inst)

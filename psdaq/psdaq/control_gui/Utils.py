@@ -29,7 +29,7 @@ Usage::
     fmode = gu.file_mode(fname)
 
     gu.create_directory(dir, mode=0o777)
-    exists = gu.create_path(path, depth=6, mode=0o777)
+    exists = gu.create_path(path, mode=0o777)
 
     flist = gu.get_list_of_files_in_dir(dirname)
     flist = gu.get_list_of_files_in_dir_for_ext(dir, ext='.xtc')
@@ -193,37 +193,41 @@ def log_rec_on_start() :
 
 #------------------------------
 
-def create_directory(dir, mode=0o377) :
+def create_directory(dirname, mode=0o377) :
     """Creates directory and sets its mode
     """
-    if os.path.exists(dir) :
-        logger.debug('Directory exists: %s' % dir)
+    if os.path.exists(dirname) :
+        logger.debug('Directory exists: %s' % dirname)
     else :
-        os.makedirs(dir)
-        os.chmod(dir, mode)
-        logger.debug('Directory created: %s, mode(oct)=%s' % (dir, oct(mode)))
+        os.makedirs(dirname, mode)
+        #os.chmod(dirname, mode)
+        logger.debug('Directory created: %s, mode(oct)=%s' % (dirname, oct(mode)))
 
 #------------------------------
 
-def create_path(path, depth=6, mode=0o377) : 
+def create_path(path, mode=0o377) : 
     """Creates missing path of specified depth from the beginning
-       e.g. for '/reg/g/psdm/logs/calibman/2016/07/log-file-name.txt'
-       or '/reg/d/psdm/cxi/cxi11216/calib/Jungfrau::CalibV1/CxiEndstation.0:Jungfrau.0/pedestals/9-end.data'
+       e.g. for path '/reg/g/psdm/logs/calibman/2016/07/log-file-name.txt'
+       creates sub-directories '/reg/g/psdm/logs/calibman/2016/07/'
 
        Returns True if path to file exists, False othervise
     """
     logger.debug('create_path: %s' % path)
 
-    #subdirs = path.strip('/').split('/')
-    subdirs = path.split('/')
-    cpath = subdirs[0]
-    for i,sd in enumerate(subdirs[:-1]) :
-        if i>0 : cpath += '/%s'% sd 
-        if i<depth : continue
-        if cpath=='' : continue
-        create_directory(cpath, mode)
+    d = path.rsplit('/',1)[0]
 
-    return os.path.exists(cpath)
+    ##subdirs = path.strip('/').split('/')
+    #subdirs = path.split('/')
+    #cpath = subdirs[0]
+    #for i,sd in enumerate(subdirs[:-1]) :
+    #    if i>0 : cpath += '/%s'% sd 
+    #    if i<depth : continue
+    #    if cpath=='' : continue
+    #    create_directory(cpath, mode)
+
+    create_directory(d, mode)
+
+    return os.path.exists(d)
 
 #------------------------------
 
@@ -246,16 +250,16 @@ def get_list_of_files_in_dir_for_ext(dir, ext='.xtc'):
 
 #------------------------------
 
-def get_list_of_files_in_dir_for_part_fname(dir, pattern='-r0022'):
+def get_list_of_files_in_dir_for_part_fname(dirname, pattern='-r0022'):
     """Returns the list of files in the directory for specified file name pattern or [] - empty list."""
-    if dir is None : return []
-    if not os.path.exists(dir) : return [] 
+    if dirname is None : return []
+    if not os.path.exists(dirname) : return [] 
     
-    list_of_files_in_dir = os.listdir(dir)
+    list_of_files_in_dir = os.listdir(dirname)
     list_of_files = []
     for fname in list_of_files_in_dir :
         if pattern in fname :
-            fpath = os.path.join(dir,fname)
+            fpath = os.path.join(dirname,fname)
             list_of_files.append(fpath)
     return sorted(list_of_files)
 

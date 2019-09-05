@@ -32,7 +32,7 @@ from psdaq.control_gui.CGJsonUtils import json_from_str
 
 from psalg.configdb.typed_json import updateValue, getType #, getValue
 import ast
-import re
+#import re
 #--------------------
 
 def str_is_int(s):
@@ -52,6 +52,12 @@ def str_is_oct(s):
 def str_is_bin(s):
     return '0b' in s 
 
+def str_is_any_int(s):
+    return str_is_int(s)\
+        or str_is_hex(s)\
+        or str_is_oct(s)\
+        or str_is_bin(s)
+
 def path_to_item(item):
     #if item is None : return None
     parent = item.parent()
@@ -66,15 +72,20 @@ class CGWConfigEditorTree(QWTree) :
     def __init__(self, **kwargs) :
 
         parent = kwargs.get('parent',None)
-        self.dictj        = kwargs.get('dictj', {'a_test':0o377,'b_test':12345})
+        self.dictj        = kwargs.get('dictj', {'i_test':12345,'o_test':0o377,'h_test':0xffea,'b_test':12345})
         self.parent_ctrl  = kwargs.get('parent_ctrl',None)
         self.list_max_len = kwargs.get('list_max_len',5)
 
         QWTree.__init__(self, parent)
 
         icon.set_icons()
+        #self.clicked[QModelIndex].connect(self.on_click)
         self.doubleClicked[QModelIndex].connect(self.on_double_click)
         self.model.itemChanged.connect(self.on_item_changed)
+        #self.connect_item_selected_to(self.on_item_selected)
+
+        self.disconnect_item_selected_from(self.on_item_selected)
+        self.clicked[QModelIndex].disconnect(self.on_click)
 
 #--------------------
 
@@ -102,8 +113,8 @@ class CGWConfigEditorTree(QWTree) :
 #--------------------
 
     def str_object_type(self, o) :
-        return 'str'   if isinstance(o, str) else\
-               'int'  if isinstance(o, int) else\
+        return 'str'    if isinstance(o, str) else\
+               'int'    if isinstance(o, int) else\
                'float'  if isinstance(o, float) else\
               ('list [%s, %d]' % (self.str_object_type(o[0]), len(o))) if isinstance(o, list) else\
                str(type(o))
@@ -214,7 +225,8 @@ class CGWConfigEditorTree(QWTree) :
                 #item.setIcon(icon.icon_table)
                 item.setEditable(not is_read_only) 
                 item.setEnabled(not is_read_only) 
-                item.setCheckable(True) 
+                item.setSelectable(False) 
+                item.setCheckable(str_is_any_int(s)) 
                 parent_item.appendRow(item)
                 #print('XXXX item: %s data_type: %s' % (item.text(), str(dtype)))
 
@@ -317,29 +329,32 @@ class CGWConfigEditorTree(QWTree) :
 #--------------------
 
     def on_item_changed(self, item):
-        #item.setEnabled(False)
-        #if item.hasChildren() :
-            #item.setEnabled(True)
-            #return # do not change parental items
+
+        if item.hasChildren() : return
 
         s = item.text()
-        state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
-        msg = 'XXX on_item_changed: item "%s", is at state %s' % (s, state)
+        #state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
+        #msg = 'on_item_changed: item "%s", is at state %s' % (s, state)
+
+        #print('on_item_changed item.checkState: %d' % item.checkState())
+        if item.checkState() != 2 : return # in case if state is changed not clicking on check box
+
+        #item.setEnabled(False) <<<=== does not work
+        self.model.itemChanged.disconnect(self.on_item_changed)
+
+        item.setCheckState(0 if str_is_bin(s) else 1)
         s1 = s
-
-        #item.setCheckState(0 if str_is_bin(s) else 1)
-
         if   str_is_int(s) : s1 = hex(int(s,10))
         elif str_is_hex(s) : s1 = oct(int(s,16))
         elif str_is_oct(s) : s1 = bin(int(s,8))
         elif str_is_bin(s) : s1 = str(int(s,2))
 
-        item.setEnabled(False)
-        item.setText(s1)
-        item.setEnabled(True)
-        
+        msg = 'on_item_changed: item value %s converted to %s' % (s, s1)
         logger.debug(msg)
 
+        item.setText(s1)
+        self.model.itemChanged.connect(self.on_item_changed)
+        
 #--------------------
 
     def on_click(self, index):

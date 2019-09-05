@@ -163,17 +163,17 @@ def get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
 
 def get_existing_directory_through_dialog_box(parent, path0, title, options = QFileDialog.ShowDirsOnly):       
 
-    path = QFileDialog.getExistingDirectory(parent, title, path0, options)
+    resp = QFileDialog.getExistingDirectory(parent, title, path0, options)
 
     #logger.debug('XXX: get_open_fname_through_dialog_box path =', path)
     #logger.debug('XXX: get_open_fname_through_dialog_box fext =', fext)
 
-    dname = path #, fname = os.path.split(path)
+    dname = resp #, fname = os.path.split(path)
     if dname == '' :
         # logger.debug('Input directiry name or file name is empty... keep file path unchanged...'
         return None
-    logger.info('Selected directory: %s' % path) 
-    return path
+    logger.info('Selected directory: %s' % dname) 
+    return dname
 
 #------------------------------
 
@@ -319,6 +319,10 @@ if __name__ == "__main__" :
         dict_of_cbox = {'VAR1':True, 'VAR2':False, 'VAR3':False, 'VAR4':False, 'VAR5':False}
         resp = change_check_box_dict_in_popup_menu(dict_of_cbox, win_title='Select vars(s)')
         for (var,stat) in dict_of_cbox.items() : logger.debug('%s: %s' % (var, stat))
+        logger.debug('resp: %s' % resp)
+
+    elif tname == '10':
+        resp = get_existing_directory_through_dialog_box(None, '.', 'Select directory', options = QFileDialog.ShowDirsOnly)
         logger.debug('resp: %s' % resp)
         
     else :

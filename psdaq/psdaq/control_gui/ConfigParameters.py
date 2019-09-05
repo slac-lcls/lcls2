@@ -321,12 +321,10 @@ class ConfigParameters :
         self.setParsFileName(fname)        
         msg = 'Read configuration parameters from file: ' + self.fname
         logger.debug(msg)
-        #print(msg)
 
         if not os.path.exists(self.fname) :
             msg = 'The file %s is not found, use default parameters.' % self.fname
-            logger.warning(msg)
-            #print(msg)
+            logger.debug(msg)
             return
  
         f=open(self.fname,'r')
@@ -336,7 +334,6 @@ class ConfigParameters :
             self.setParameterValueByName(name=fields[0], str_val=fields[1].strip(' '))
         f.close() 
 
-#------------------------------
 #------------------------------
 
 def usage() :

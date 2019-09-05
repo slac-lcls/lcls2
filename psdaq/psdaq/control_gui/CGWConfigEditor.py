@@ -33,6 +33,8 @@ from psdaq.control_gui.CGWConfigEditorText import CGWConfigEditorText
 from psdaq.control_gui.Utils import save_textfile, path_to_test_data
 from psdaq.control_gui.CGJsonUtils import load_json_from_file, str_json, json_from_str
 
+from psdaq.control_gui.QWUtils import help_dialog_box
+
 #--------------------
 
 char_expand  = u' \u25BC' # down-head triangle
@@ -43,7 +45,7 @@ char_shrink  = u' \u25B2' # solid up-head triangle
 class CGWConfigEditor(QWidget) :
     """Configuration editor top widget
     """
-    MORE_OPTIONS = ('More','Load','Save')
+    MORE_OPTIONS = ('More','Load','Save','Help')
     EDITOR_TYPES = ('Text','Tree')
 
     def __init__(self, parent=None, parent_ctrl=None, dictj=None):
@@ -56,10 +58,12 @@ class CGWConfigEditor(QWidget) :
         self.ifname_json = '%s/json2xtc_test.json' % path_to_test_data() # input file
         self.ofname_json = './test.json' # output file
 
+        self.help_box = None
+
         self.dictj = dictj
         if dictj is None : self.load_dict() # fills self.dictj
 
-        self.but_cancel=QPushButton('Cancel')
+        self.but_close= QPushButton('Close')
         self.but_apply= QPushButton('Apply')
         self.but_expn = QPushButton('Expand %s'%char_expand)
         self.box_type = QComboBox(self)
@@ -74,7 +78,7 @@ class CGWConfigEditor(QWidget) :
 
         self.hbox = QHBoxLayout() 
         self.hbox.addWidget(self.but_apply)
-        self.hbox.addWidget(self.but_cancel)
+        self.hbox.addWidget(self.but_close)
         self.hbox.addWidget(self.but_expn)
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.box_more)
@@ -90,18 +94,29 @@ class CGWConfigEditor(QWidget) :
 
         self.but_expn.clicked.connect(self.on_but_expn)
         self.but_apply.clicked.connect(self.on_but_apply)
-        self.but_cancel.clicked.connect(self.on_but_cancel)
+        self.but_close.clicked.connect(self.on_but_close)
         self.box_type.currentIndexChanged[int].connect(self.on_box_type)
         self.box_more.currentIndexChanged[int].connect(self.on_box_more)
 
 #--------------------
 
     def set_tool_tips(self) :
-        self.setToolTip('Configuration editor GUI')
+        self.setToolTip('Configuration editor GUI'\
+                        '\n - Expand/Collapse button - expands/collapse entire dictionary content'\
+                        '\n - Close button - closes editor window, all modifications'\
+                        '     since last click on Apply will be lost'\
+                        '\n - Tree/Text button - switches between editor in "tree" and "text" modes'\
+                        '\n - More button - selects other editor options'\
+                        '\n - click on triangle -  expands/collapses particular item'\
+                        '\n - * (star) to the right of item title indicates that item is compound object'\
+                        '\n - double-click on value starts in-line editor or compound item editor window'\
+                        '\n - click on rectangular box in front of INT value swap presentation between'\
+                        '\n   DEC/HEX/OCT/BIN'\
+                       )
         self.box_type.setToolTip('Select editor type')
         self.but_expn.setToolTip('Expand/Collapse tree-like content')
         self.but_apply.setToolTip('Apply content changes to configuration DB')
-        self.but_apply.setToolTip('Cancel changes')
+        self.but_close.setToolTip('Close window, cancel all modifications since last click on Apply button')
         self.box_more.setToolTip('More options:'\
                                 +'\n * Load content from file'\
                                 +'\n * Save content in file')
@@ -174,6 +189,15 @@ class CGWConfigEditor(QWidget) :
 
 #--------------------
  
+    def on_but_help(self):
+        logger.debug('on_but_help')
+        s = self.toolTip()
+        if self.help_box is not None : self.help_box.close()
+        self.help_box = help_dialog_box(parent=self.box_more,
+                                        text=self.toolTip(), title='Help')
+
+#--------------------
+ 
     def select_ofname(self):
         logger.info('select_ofname %s' % self.ofname_json)
         path, ftype = QFileDialog.getSaveFileName(self,
@@ -218,8 +242,8 @@ class CGWConfigEditor(QWidget) :
 
 #--------------------
  
-    def on_but_cancel(self):
-        logger.debug('on_but_cancel')
+    def on_but_close(self):
+        logger.debug('on_but_close')
         self.close()
 
 #--------------------
@@ -230,6 +254,7 @@ class CGWConfigEditor(QWidget) :
 
         if   ind==1 : self.on_but_load()
         elif ind==2 : self.on_but_save()
+        elif ind==3 : self.on_but_help()
         self.box_more.setCurrentIndex(0)
 
 #--------------------
@@ -286,6 +311,7 @@ class CGWConfigEditor(QWidget) :
         logger.debug('closeEvent')
         if self.parent_ctrl is not None :
            self.parent_ctrl.w_edit = None
+        if self.help_box is not None : self.help_box.close()
 
 #--------------------
 

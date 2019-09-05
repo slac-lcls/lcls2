@@ -23,6 +23,9 @@ Copied and modified from lcls2/psana/psana/grephqt/QWLoggerStd.py on 2019-01-28 
 #------------------------------
 
 import logging
+
+from psdaq.control.syslog import SysLog
+
 logger = logging.getLogger() # need in root to intercept messages from all other loggers
 #logger = logging.getLogger(__name__)
 
@@ -55,7 +58,7 @@ MSG_LEVEL_TO_TEXT_COLOR = {'CRITICAL': Qt.gray,
 #------------------------------
 
 def log_file_name(lfpath='.') :
-    """Returns (str) log file name like /reg/g/psdm/logs/calibman/lcls2/2018/20180518T122407-dubrovin.txt
+    """Returns (str) log file name like /reg/g/psdm/logs/calibman/lcls2/20180518T122407-dubrovin.txt
     """
     if lfpath in (None,'') : return None
 
@@ -64,8 +67,8 @@ def log_file_name(lfpath='.') :
     t0_sec = time()
     t0_localtime = localtime(t0_sec)
     tstamp = strftime('%Y%m%dT%H%M%S', t0_localtime)
-    year = strftime('%Y', t0_localtime)
-    return '%s/%s/%s-%s.txt' % (lfpath, year, tstamp, getuser())#, os.getpid())
+    #year = strftime('%Y', t0_localtime)
+    return '%s/%s-%s.txt' % (lfpath, tstamp, getuser())#, os.getpid())
 
 #------------------------------
 
@@ -97,19 +100,20 @@ class QWLoggerStd(QWidget) :
 
     _name = 'QWLoggerStd'
 
-    def __init__(self, show_buttons=True, log_level='DEBUG', log_prefix='.') :
+    def __init__(self, show_buttons=True, log_level='DEBUG', log_prefix='.', instrument='TST') :
 
         QWidget.__init__(self, parent=None)
 
         self.log_level  = log_level # cp.log_level
         self.log_fname  = log_file_name(log_prefix)
+        self.instrument = instrument
 
         if log_level=='DEBUG' :
             print('%s.__init__ log_fname: %s' % (self._name, self.log_fname))
 
         if self.log_fname is not None :
-            depth = 6 if self.log_fname[0]=='/' else 1
-            gu.create_path(self.log_fname, depth, mode=0o0777)
+            #depth = 6 if self.log_fname[0]=='/' else 1
+            gu.create_path(self.log_fname, mode=0o0777)
             #print('Log file: %s' % log_fname)
 
         self.show_buttons = show_buttons
@@ -157,12 +161,39 @@ class QWLoggerStd(QWidget) :
         self.config_logger(self.log_fname)
 
 
-    def config_logger(self, log_fname='cm-log.txt') :
+    def config_logger(self, log_fname='is-not-used') :
+        
+        levname = self.log_level
+        level = self.dict_name_to_level.get(levname, logging.DEBUG) # e.g. logging.DEBUG
+
+        self.syslog = SysLog(instrument=self.instrument, level=level)
+
+        for h in logger.handlers :
+            print('XXX handler:', str(h))
+
+        tsfmt='%Y-%m-%dT%H:%M:%S'
+        fmt = '%(levelname)s %(name)s: %(message)s' if level==logging.DEBUG else\
+              '%(asctime)s %(levelname)s: %(message)s'
+              #'%(asctime)s %(levelname)s %(name)s: %(message)s'
+
+        #sys.stdout = sys.stderr = open('/dev/null', 'w')
+
+        self.formatter = logging.Formatter(fmt, datefmt=tsfmt)
+
+        self._myfilter = QWFilter(self)
+        #self.syslog.syslog_handler.addFilter(self._myfilter)
+        self.syslog.console_handler.addFilter(self._myfilter)
+
+
+
+    def config_logger_v0(self, log_fname='control_gui.txt') :
 
         self.append_qwlogger('Start logger\nLog file: %s' % log_fname)
 
         levname = self.log_level
         level = self.dict_name_to_level.get(levname, logging.DEBUG) # e.g. logging.DEBUG
+
+        #print('YYYYY config_logger levname:', levname, ' level:', level, ' logging.DEBUG:', logging.DEBUG)
 
         tsfmt='%Y-%m-%dT%H:%M:%S'
         fmt = '%(levelname)s %(name)s: %(message)s' if level==logging.DEBUG else\
@@ -174,10 +205,14 @@ class QWLoggerStd(QWidget) :
         self.formatter = logging.Formatter(fmt, datefmt=tsfmt)
         #logger.addFilter(QWFilter(self)) # register self for callback from filter
         # TRICK: add filter to handler to intercept ALL messages
-        #self.handler = logging.StreamHandler()
-        
+
         fname = log_fname if log_fname is not None else '/var/tmp/control_gui_%s.log' % gu.get_login()
-        self.handler = logging.FileHandler(fname, 'w')
+        do_save_log_file = (log_fname is not None) or (level==logging.DEBUG)
+
+        self.handler = logging.FileHandler(fname, 'w') if do_save_log_file else\
+                       logging.StreamHandler()
+        #self.handler = logging.FileHandler(fname, 'w')
+        #self.handler = logging.StreamHandler()
 
         self._myfilter = QWFilter(self)
         self.handler.addFilter(self._myfilter)
@@ -185,10 +220,7 @@ class QWLoggerStd(QWidget) :
         self.handler.setFormatter(self.formatter)
         logger.addHandler(self.handler)
         self.set_level(levname) # pass level name
-
         print('logging.FileHandler file: %s' % fname)
-
-        #logger.debug('dir(self.handler):' , dir(self.handler))
 
 
     def set_level(self, level_name='DEBUG') :
@@ -274,12 +306,14 @@ class QWLoggerStd(QWidget) :
     def closeEvent(self, e):
         logger.info('%s.closeEvent' % self._name)
         #self.save_log_total_in_file() # It will be saved at closing of GUIMain
+        #self.syslog.syslog_handler.removeFilter(self._myfilter)
+        self.syslog.console_handler.removeFilter(self._myfilter)
 
-        self.handler.removeFilter(self._myfilter)
-        self.handler.close()
+        #self.handler.removeFilter(self._myfilter)
+        #self.handler.close()
         QWidget.closeEvent(self, e)
 
-        logging.shutdown()
+        #logging.shutdown()
         #print('Exit QWLoggerStd.closeEvent')
 
 
@@ -314,11 +348,13 @@ class QWLoggerStd(QWidget) :
 
     def save_log_in_file(self):
         logger.info('save_log_in_file ' + self.log_fname)
-        path = str(QFileDialog.getSaveFileName(self,
-                                               caption   = 'Select the file to save log',
-                                               directory = self.log_fname,
-                                               filter    = '*.txt'
-                                               ))
+        resp = QFileDialog.getSaveFileName(self,
+                                           caption   = 'Select the file to save log',
+                                           directory = self.log_fname,
+                                           filter    = '*.txt'
+                                           )
+        logger.debug('save_log_in_file resp: %s' % str(resp))
+        path, ftype = resp
         if path == '' :
             logger.debug('Saving is cancelled.')
             return 

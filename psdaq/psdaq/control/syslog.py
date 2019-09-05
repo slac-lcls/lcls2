@@ -12,6 +12,7 @@ class SysLog:
 
         root = logging.getLogger()
         root.setLevel(level)
+        root.handlers = []
 
         # syslog handler relies on syslog server to add timestamp
         syslog_handler = SysLogHandler('/dev/log')
@@ -28,7 +29,10 @@ class SysLog:
         console_handler.setFormatter(console_formatter)
         root.addHandler(console_handler)
 
-        return
+        self.syslog_handler = syslog_handler
+        self.console_handler = console_handler
+
+        #for h in root.handlers : print(str(h))
 
 # ------------------------ self-test ----------------------------
 
