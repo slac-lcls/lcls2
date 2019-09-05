@@ -1,12 +1,20 @@
-//--------------------------------------------
-// Adapted on 2019-08-28 by Mikhail Dubrovin
-//--------------------------------------------
+//--------------------------------------------------------------------------
+// File and Version Information:
+// 	$Id: ex_hexanode.cpp 13182 2017-02-22 20:25:58Z davidsch@SLAC.STANFORD.EDU $
+//
+// Description:
+//	Test class 
+//
+// Author List:
+//      Mikhail Dubrovin
+//
+//------------------------------------------------------------------------
 
 //#include "hexanode/xxx.h"
 
 // ~/lib/hexanode-lib/sort_non-LMF_from_1_detector/resort64c.h
 
-#include "roentdek/resort64c.h"
+#include "hexanode_proxy/resort64c.h"
 
 #include <string>
 #include <iostream>
