@@ -205,7 +205,7 @@ void Validator::validate(const char* buffer, int ret)
     }
 
     if (p != buffer+ret) {
-      printf("dma size mismatch ret [%x] iterate[%x]\n",
+      printf("dma size mismatch ret [%x] iterate[%lx]\n",
              ret, p-buffer);
     }
   }
