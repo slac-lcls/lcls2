@@ -1,2 +1,2 @@
 from .datasource import DataSource
-from .smalldata.smalldata import SmallData
+#from .smalldata.smalldata import SmallData
