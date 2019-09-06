@@ -144,7 +144,7 @@ namespace Pds_Epics {
 
       if (ldebug) {
         root->getStructure()->dump(std::cout);
-        printf("Fields[%u]\n", fields.size());
+        printf("Fields[%zd]\n", fields.size());
         _debug = true;
       }
 
