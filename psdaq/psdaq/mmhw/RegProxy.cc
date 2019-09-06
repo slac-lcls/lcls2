@@ -45,7 +45,7 @@ RegProxy& RegProxy::operator=(const unsigned r)
     usleep(1000);
     if ((++tmo&tmo_mask) ==  tmo_mask) {
       tmo_mask = (tmo_mask<<1) | 1;
-      printf("RegProxy tmo (%x) writing 0x%x to %llx\n", 
+      printf("RegProxy tmo (%x) writing 0x%x to %lx\n", 
              tmo, r, reinterpret_cast<uint64_t>(this)-_base);
     }
   } while ( (_csr[1]&1)==0 );
@@ -74,7 +74,7 @@ RegProxy::operator unsigned() const
     usleep(1000);
     if ((++tmo&tmo_mask) == tmo_mask) {
       tmo_mask = (tmo_mask<<1) | 1;
-      printf("RegProxy tmo (%x) read from %llx\n", 
+      printf("RegProxy tmo (%x) read from %lx\n", 
              tmo, reinterpret_cast<uint64_t>(this)-_base);
     }
   } while ( (_csr[1]&1)==0 );
