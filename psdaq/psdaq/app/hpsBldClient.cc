@@ -281,7 +281,7 @@ int main(int argc, char* argv[])
         break;
 
       if (lverbose && nprint) {
-        printf("bld pid 0x%llx\n", pulseId);
+        printf("bld pid 0x%lx\n", pulseId);
         nprint--;
       }
     
