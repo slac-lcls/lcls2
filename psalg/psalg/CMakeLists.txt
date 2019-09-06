@@ -168,15 +168,17 @@ target_link_libraries(test_MDBWebUtils
 
 
 # Test include "roentdek/resort64c.h"
-add_executable(ex01_resort64c
-    tests/ex01_resort64c.cc
-)
-target_link_libraries(ex01_resort64c
-    psalg
-    roentdek::resort64c
-    #$ENV{CONDA_PREFIX}/lib/libResort64c_x64.a
-    #/reg/g/psdm/sw/conda2/inst/envs/ps-2.0.3/lib/libResort64c_x64.a
-)
+if (ROENTDEK_FOUND)
+    add_executable(ex01_resort64c
+        tests/ex01_resort64c.cc
+    )
+    target_link_libraries(ex01_resort64c
+        psalg
+        roentdek::resort64c
+        #$ENV{CONDA_PREFIX}/lib/libResort64c_x64.a
+        #/reg/g/psdm/sw/conda2/inst/envs/ps-2.0.3/lib/libResort64c_x64.a
+    )
+endif()
 
 ## Test ex02_read_lmf_data
 add_executable(ex02_read_lmf_data
@@ -195,14 +197,15 @@ target_link_libraries(ex03_lmf2txt
 )
 
 ## Test ex04_sort
-add_executable(ex04_sort
-    tests/ex04_sort.cc
-)
-target_link_libraries(ex04_sort
-    psalg
-    roentdek::resort64c
-)
-
+if (ROENTDEK_FOUND)
+    add_executable(ex04_sort
+        tests/ex04_sort.cc
+    )
+    target_link_libraries(ex04_sort
+        psalg
+        roentdek::resort64c
+    )
+endif()
 
 
 
@@ -219,21 +222,6 @@ add_test(NAME test_xtc_data COMMAND ${CMAKE_BINARY_DIR}/psalg/test_xtc_data
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 install(TARGETS psalg
-                test_array
-                test_peakFinder
-                test_hsd
-                test_CalibPars
-                test_SegGeometry
-                test_GeometryAccess
-                test_AreaDetector
-                test_MDBWebUtils
-                test_logger
-                ex01_resort64c
-                ex02_read_lmf_data
-                ex03_lmf2txt
-                ex04_sort
-                test_xtc_data
-                datareader
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
