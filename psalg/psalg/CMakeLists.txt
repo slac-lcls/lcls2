@@ -177,26 +177,24 @@ if (ROENTDEK_FOUND)
         #$ENV{CONDA_PREFIX}/lib/libResort64c_x64.a
         #/reg/g/psdm/sw/conda2/inst/envs/ps-2.0.3/lib/libResort64c_x64.a
     )
-endif()
 
-## Test ex02_read_lmf_data
-add_executable(ex02_read_lmf_data
-    tests/ex02_read_lmf_data.cc
-)
-target_link_libraries(ex02_read_lmf_data
-    psalg
-)
+    ## Test ex02_read_lmf_data
+    add_executable(ex02_read_lmf_data
+	tests/ex02_read_lmf_data.cc
+    )
+    target_link_libraries(ex02_read_lmf_data
+	psalg
+    )
 
-## Test ex03_lmf2txt
-add_executable(ex03_lmf2txt
-    tests/ex03_lmf2txt.cc
-)
-target_link_libraries(ex03_lmf2txt
-    psalg
-)
+    ## Test ex03_lmf2txt
+    add_executable(ex03_lmf2txt
+	tests/ex03_lmf2txt.cc
+    )
+    target_link_libraries(ex03_lmf2txt
+	psalg
+    )
 
-## Test ex04_sort
-if (ROENTDEK_FOUND)
+    ## Test ex04_sort
     add_executable(ex04_sort
         tests/ex04_sort.cc
     )
