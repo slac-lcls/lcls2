@@ -451,7 +451,7 @@ def confirm_response(socket, wait_time, msg_id, ids, err_pub):
 
 
 class CollectionManager():
-    def __init__(self, platform, instrument, pv_base, xpm_master, alias, cfg_dbase, config_alias, slow_update_rate):
+    def __init__(self, platform, instrument, pv_base, xpm_master, alias, cfg_dbase, config_alias, slow_update_rate, phase2_timeout):
         self.platform = platform
         self.alias = alias
         self.config_alias = config_alias
@@ -470,6 +470,7 @@ class CollectionManager():
         self.slow_update_rate = slow_update_rate
         self.slow_update_enabled = False
         self.slow_update_exit = Event()
+        self.phase2_timeout = phase2_timeout
 
         if self.slow_update_rate:
             # initialize slow update thread
@@ -753,7 +754,7 @@ class CollectionManager():
         ids = self.filter_active_set(self.ids)
         ids = self.filter_level('drp', ids)
         # make sure all the clients respond to transition before timeout
-        missing, answers = confirm_response(self.back_pull, 5000, None, ids, self.front_pub)
+        missing, answers = confirm_response(self.back_pull, self.phase2_timeout, None, ids, self.front_pub)
         if missing:
             logging.error('%s phase2 failed' % transition)
             for alias in self.get_aliases(missing):
@@ -1353,6 +1354,7 @@ def main():
     parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')
     parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 0)')
+    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
     parser.add_argument('-a', action='store_true', help='autoconnect')
     parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
@@ -1367,7 +1369,7 @@ def main():
     logging.info('logging initialized')
 
     def manager():
-        manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d, args.C, args.S)
+        manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d, args.C, args.S, args.T)
 
     def client(i):
         c = Client(platform)
