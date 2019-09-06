@@ -75,7 +75,6 @@ int main(int argc, char* argv[]) {
   const char* partitionTag = 0;
   const char* fname = 0;
   unsigned index = 0;
-  int rate = 0;
   bool verbose = false;
 
   while ((c = getopt(argc, argv, "?hvi:p:f:")) != -1) {
