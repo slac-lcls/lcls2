@@ -24,7 +24,7 @@ Created on 2019-03-14 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from psdaq.control_gui.QWTree import QWTree, QStandardItemModel, QStandardItem, Qt, QModelIndex
+from psdaq.control_gui.QWTree import QWTree, QStandardItemModel, QStandardItem, Qt, QModelIndex, QAbstractItemView
 from psdaq.control_gui.QWIcons import icon
 from psdaq.control_gui.QWPopupEditText import QWPopupEditText, QDialog
 from psdaq.control_gui.QWPopupSelectItem import popup_select_item_from_list
@@ -80,12 +80,11 @@ class CGWConfigEditorTree(QWTree) :
 
         icon.set_icons()
         #self.clicked[QModelIndex].connect(self.on_click)
-        self.doubleClicked[QModelIndex].connect(self.on_double_click)
+        #self.doubleClicked[QModelIndex].connect(self.on_double_click)
         self.model.itemChanged.connect(self.on_item_changed)
         #self.connect_item_selected_to(self.on_item_selected)
-
         self.disconnect_item_selected_from(self.on_item_selected)
-        self.clicked[QModelIndex].disconnect(self.on_click)
+        #self.clicked[QModelIndex].disconnect(self.on_click)
 
 #--------------------
 
@@ -149,6 +148,10 @@ class CGWConfigEditorTree(QWTree) :
            - setAccessibleText - bare text from fields in dictj
            - setAccessibleDescription - preserves internal data types: dict, list, data
         """
+
+        #self.setEditTriggers(QAbstractItemView.DoubleClicked) #AnyKeyPressed) # SelectedClicked
+        #self.setEditTriggers(QAbstractItemView.SelectedClicked)
+
         if isinstance(o, dict) :
             parent_item.setAccessibleText(parent_item.text())
             parent_item.setText('%s *' % parent_item.text())
@@ -371,13 +374,26 @@ class CGWConfigEditorTree(QWTree) :
             d = ast.literal_eval(s)
             b,o,h = bin(d), oct(d), hex(d)
             msg = 'clicked item dec: %s hex: %s oct: %s bin: %s' % (s,h,o,b)
-        else :
-            msg = 'clicked item: %s is not a digit' % s
-        logger.debug(msg)
+            logger.debug(msg)
+        #else : 
+        #    logger.debug('clicked item: %s is not a digit' % s)
+
+        if self.start_special_editor(index) : return
+        self.edit(index)
 
 #--------------------
 
     def on_double_click(self, index):
+        pass
+        #self.start_special_editor(index)
+
+#--------------------
+
+    def start_special_editor(self, index):
+        """start editor for
+           - enumerated values
+           - long "trimmed" arrays
+        """
         item = self.model.itemFromIndex(index)
         #msg = 'on_double_click item in row:%02d text: %s acc-text: %s' % (index.row(), item.text(), item.accessibleText())
         #logger.debug(msg)
@@ -389,28 +405,32 @@ class CGWConfigEditorTree(QWTree) :
 
         txt = item.accessibleText()
         descr = item.accessibleDescription()
-
         is_enum, dic_enum, dic_inv = self.enum_dicts(descr)
+
+        # start editor for enumerated values
         if is_enum :
             #print('XXX TBD enum editor for txt: %s and dict: %s' % (txt, str(dic_enum)))
             selected = popup_select_item_from_list(self, dic_enum.keys(), dx=-20, dy=-10, use_cursor_pos=True, do_sort=False)
-            if selected is None : return
+            if selected is None : return True
             self.set_item_for_list(item, selected)
-            return
+            return True
 
+        # start editor for long "trimmed" arrays
         #print('descr: "%s"' % descr[:7])
-        if descr[:7] != 'trimmed' : return
+        if descr[:7] == 'trimmed' : 
+            #logger.info('select_ifname %s' % self.ifname)
+            w = QWPopupEditText(parent=self, text=txt)
+            #w.move(self.pos() + QPoint(self.width()+5, 0))
+            resp=w.exec_()
+            logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
+            if resp == QDialog.Rejected : return True
 
-        #logger.info('select_ifname %s' % self.ifname)
-        w = QWPopupEditText(parent=self, text=txt)
-        #w.move(self.pos() + QPoint(self.width()+5, 0))
-        resp=w.exec_()
-        logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
-        if resp == QDialog.Rejected : return
+            txt_new = w.get_content()
+            self.set_item_for_list(item, txt_new)
+            #print('TBD on_double_click edited: %s' % txt_new)
+            return True
 
-        txt_new = w.get_content()
-        self.set_item_for_list(item, txt_new)
-        #print('TBD on_double_click edited: %s' % txt_new)
+        return False
 
 #--------------------
 
