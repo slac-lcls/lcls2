@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
     if ((sz = getline(&line, &linesz, f))<=0)
       break;
     if (_lverbose)
-      printf("Readline %d [%32.32s]\n",sz, line);
+      printf("Readline %zd [%32.32s]\n",sz, line);
 
     char* p = line;
     unsigned i;
