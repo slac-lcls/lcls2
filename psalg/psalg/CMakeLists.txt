@@ -27,7 +27,7 @@ message(STATUS "psalg/CMakeLists: CURL_LIBRARY=${CURL_LIBRARY}")
 message(STATUS "psalg/CMakeLists: CONDA_PREFIX=$ENV{CONDA_PREFIX}")
 
 # this is necessary only on RHEL6 where we need to pick up clock_gettime
-if(APPLE)
+if(APPLE OR NOT ROENTDEK_FOUND)
     target_link_libraries(psalg
         utils
         calib
@@ -35,7 +35,6 @@ if(APPLE)
         peaks
         digitizer
         detector
-        hexanode
     )
 else()
     target_link_libraries(psalg
