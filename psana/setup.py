@@ -6,10 +6,10 @@ from setuptools import setup, Extension, find_packages
 
 print('Begin: %s' % ' '.join(sys.argv))
 
-arg = [arg for arg in sys.argv if arg.startswith('--xtcdata')]
+arg = [arg for arg in sys.argv if arg.startswith('--instdir')]
 if not arg:
-    raise Exception('Parameter --xtcdata is missing')
-xtcdata = arg[0].split('=')[1]
+    raise Exception('Parameter --instdir is missing')
+instdir = arg[0].split('=')[1]
 sys.argv.remove(arg[0])
 
 
@@ -19,30 +19,30 @@ if sys.platform == 'darwin':
 else:
     extra_compile_args=['-std=c++11']
     extra_link_args = []
-extra_link_args_rpath = extra_link_args + ['-Wl,-rpath,'+ os.path.abspath(os.path.join(xtcdata, 'lib'))]
+extra_link_args_rpath = extra_link_args + ['-Wl,-rpath,'+ os.path.abspath(os.path.join(instdir, 'lib'))]
 
 
 dgram_module = Extension('psana.dgram',
                          sources = ['src/dgram.cc'],
                          libraries = ['xtc','shmemcli'],
-                         include_dirs = ['src', np.get_include(), os.path.join(xtcdata, 'include')],
-                         library_dirs = [os.path.join(xtcdata, 'lib')],
+                         include_dirs = ['src', np.get_include(), os.path.join(instdir, 'include')],
+                         library_dirs = [os.path.join(instdir, 'lib')],
                          extra_link_args = extra_link_args_rpath,
                          extra_compile_args = extra_compile_args)
 
 seq_module = Extension('psana.seq',
                          sources = ['src/seq.cc'],
                          libraries = ['xtc'],
-                         include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
-                         library_dirs = [os.path.join(xtcdata, 'lib')],
+                         include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
+                         library_dirs = [os.path.join(instdir, 'lib')],
                          extra_link_args = extra_link_args_rpath,
                          extra_compile_args = extra_compile_args)
 
 container_module = Extension('psana.container',
                          sources = ['src/container.cc'],
                          libraries = ['xtc'],
-                         include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
-                         library_dirs = [os.path.join(xtcdata, 'lib')],
+                         include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
+                         library_dirs = [os.path.join(instdir, 'lib')],
                          extra_link_args = extra_link_args_rpath,
                          extra_compile_args = extra_compile_args)
 
@@ -84,8 +84,8 @@ from Cython.Build import cythonize
 ext = Extension('shmem',
                 sources=["psana/shmem/shmem.pyx"],
                 libraries = ['xtc','shmemcli'],
-                include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
-                library_dirs = [os.path.join(xtcdata, 'lib')],
+                include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
+                library_dirs = [os.path.join(instdir, 'lib')],
                 language="c++",
                 extra_compile_args = extra_compile_args,
                 extra_link_args = extra_link_args_rpath,
@@ -94,6 +94,7 @@ ext = Extension('shmem',
 setup(name="shmem",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
+
 ext = Extension("peakFinder",
                 sources=["psana/peakFinder/peakFinder.pyx",
                          "../psalg/psalg/peaks/src/PeakFinderAlgos.cc",
@@ -101,18 +102,60 @@ ext = Extension("peakFinder",
                 language="c++",
                 extra_compile_args = extra_compile_args,
                 extra_link_args = extra_link_args,
-                include_dirs=[np.get_include(), os.path.join(xtcdata, 'include')],
+                include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
 )
 
 setup(name="peakFinder",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
+
+
+                         #"../psalg/psalg/hexanode/src/hexanode.cc",
+                         #"../psalg/psalg/hexanode/src/wrap_resort64c.cc",
+                         #     os.path.join(instdir, 'include'),
+                         #"../psalg/psalg/hexanode/src/LMF_IO.cc",
+
+#ext = Extension("hexanode",
+#                sources=["psana/hexanode/hexanode_ext.pyx",
+#                         "../psalg/psalg/hexanode/src/cfib.cc"],
+#                libraries=['psalg',],
+#                language="c++",
+#                extra_compile_args = extra_compile_args,
+#                include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(),],
+#                library_dirs = [os.path.join(instdir, 'lib')],
+#                extra_link_args = extra_link_args,
+#)
+
+#setup(name="hexanode",
+#      ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
+
+
+##                libraries=['psalg',],
+ext = Extension("hexanode",
+                sources=["psana/hexanode/test_ext.pyx",
+                         "../psalg/psalg/hexanode/src/cfib.cc"],
+                language="c++",
+                extra_compile_args = extra_compile_args,
+                include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
+                library_dirs = [os.path.join(instdir, 'lib')],
+                extra_link_args = extra_link_args,
+)
+
+setup(name="hexanode",
+      ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
+
+
+
+
+
+
+
 
 ext = Extension("constFracDiscrim",
                 sources=["psana/constFracDiscrim/constFracDiscrim.pyx",
                          "../psalg/psalg/constFracDiscrim/src/ConstFracDiscrim.cc"],
                 language="c++",
                 extra_compile_args = extra_compile_args,
-                include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(xtcdata, 'include')],
+                include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
 )
 
 setup(name="constFracDiscrim",
@@ -122,8 +165,8 @@ ext = Extension('dgramCreate',
                 #packages=['psana.peakfinder',],
                 sources=["psana/peakFinder/dgramCreate.pyx"],
                 libraries = ['xtc'],
-                include_dirs = [np.get_include(), os.path.join(xtcdata, 'include')],
-                library_dirs = [os.path.join(xtcdata, 'lib')],
+                include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
+                library_dirs = [os.path.join(instdir, 'lib')],
                 language="c++",
                 extra_compile_args = extra_compile_args,
                 extra_link_args = extra_link_args_rpath,
@@ -174,8 +217,8 @@ ext = Extension("hsd",
                 extra_compile_args=extra_compile_args,
                 include_dirs=[np.get_include(),
                               "../install/include",
-                              os.path.join(xtcdata, 'include')],
-                library_dirs = [os.path.join(xtcdata, 'lib')],
+                              os.path.join(instdir, 'include')],
+                library_dirs = [os.path.join(instdir, 'lib')],
                 extra_link_args = extra_link_args_rpath,
 )
 
@@ -187,21 +230,21 @@ setup(name="hsd",
 from setuptools.command.build_ext import build_ext
 class dgram_build_ext(build_ext):
     user_options = build_ext.user_options
-    user_options.extend([('xtcdata=', None, 'base folder of xtcdata installation')])
+    user_options.extend([('instdir=', None, 'base folder of instdir installation')])
 
     def initialize_options(self):
         build_ext.initialize_options(self)
-        self.xtcdata = None
+        self.instdir = None
     
     def finalize_options(self):
         build_ext.finalize_options(self)
-        if self.xtcdata is not None:
+        if self.instdir is not None:
             for ext in self.extensions:
-                ext.library_dirs.append(os.path.join(self.xtcdata, 'lib'))
-                ext.include_dirs.append(os.path.join(self.xtcdata, 'include'))
-                ext.extra_link_args.append('-Wl,-rpath,'+ os.path.join(self.xtcdata, 'lib'))
+                ext.library_dirs.append(os.path.join(self.instdir, 'lib'))
+                ext.include_dirs.append(os.path.join(self.instdir, 'include'))
+                ext.extra_link_args.append('-Wl,-rpath,'+ os.path.join(self.instdir, 'lib'))
         else:
             print('missing')
-            #raise Exception("Parameter --xtcdata is missing")
+            #raise Exception("Parameter --instdir is missing")
         print(self.extensions)
 '''   
