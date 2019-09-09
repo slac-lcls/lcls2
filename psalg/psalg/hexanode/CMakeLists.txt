@@ -1,6 +1,6 @@
 add_library(hexanode SHARED
     #src/hexanode.cc
-    #src/cfib.cc
+    src/cfib.cc
     src/wrap_resort64c.cc
     src/LMF_IO.cc
 )
@@ -15,7 +15,7 @@ target_include_directories(hexanode PUBLIC
 )
 
 install(FILES
-    #cfib.hh
+    cfib.hh
     wrap_resort64c.hh
     LMF_IO.hh
     SortUtils.hh

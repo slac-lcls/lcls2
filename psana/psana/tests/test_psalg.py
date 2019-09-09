@@ -7,6 +7,15 @@ doPlot = 0
 
 #------------------------------
 
+def test_hexanode():
+    from hexanode import fib
+    n = 9
+    v = fib(n)
+    print("fib(%d) = %d"% (n,v))
+    assert(v==34)
+
+#------------------------------
+
 def test_cfd():
     import constFracDiscrim as cfd
     import numpy as np
@@ -121,6 +130,7 @@ def test_peakFinder():
 def psalg() :
     test_peakFinder()
     test_cfd()
+    test_hexanode()
 
 #------------------------------
 

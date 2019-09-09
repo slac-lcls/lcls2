@@ -1,3 +1,6 @@
+
+message(STATUS "psalg/CMakeLists: ROENTDEK_FOUND=${ROENTDEK_FOUND}")
+
 if (ROENTDEK_FOUND)
     add_subdirectory(hexanode)
 endif()
@@ -219,6 +222,10 @@ add_test(NAME test_xtc_data COMMAND ${CMAKE_BINARY_DIR}/psalg/test_xtc_data
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 install(TARGETS psalg
+                ex01_resort64c
+                ex02_read_lmf_data
+                ex03_lmf2txt
+                ex04_sort
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin

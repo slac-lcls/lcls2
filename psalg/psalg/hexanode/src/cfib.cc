@@ -1,5 +1,8 @@
 
-#include "psalg/hexanode/cfib.hh"
+//#include "psalg/hexanode/cfib.hh"
+#include "../cfib.hh"
+
+//namespace psalgos {
 
 double cfib(int n) {
     int i;
@@ -10,3 +13,4 @@ double cfib(int n) {
     return a;
 }
 
+//} //namespace psalgos

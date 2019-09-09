@@ -1,0 +1,41 @@
+1	// 1 = sort,   2 = calibrate fu,fv,fw, w_offset,    3 = generate correction tables and write them to disk
+
+1	// type of detector (HEX = 1, DLD = 0)
+0	// 0 = common start, 1 = common stop (for TDC8HP and fADC always use 0)
+
+1	// TDC channel for u1 (counting starts at 1)
+2	// TDC channel for u2 (counting starts at 1)
+3	// TDC channel for v1 (counting starts at 1)
+4	// TDC channel for v2 (counting starts at 1)
+5	// HEX ONLY: TDC channel for w1 (counting starts at 1)
+6	// HEX ONLY: TDC channel for w2 (counting starts at 1)
+7	// TDC channel for mcp (counting starts at 1)  (0 if not used)
+
+-96.60	// offset to shift timesum layer U to zero (in nanoseconds)
+-99.60	// offset to shift timesum layer V to zero (in nanoseconds)
+-98.40 	// HEX ONLY: offset to shift timesum layer W to zero (in nanoseconds)
+
+0.	// offset to shift the position picture in X
+0.	// offset to shift the position picture in Y
+
+5.5  	// halfwidth (at base) of timesum layer U (in nanoseconds)
+5.5  	// halfwidth (at base) of timesum layer V (in nanoseconds)
+5.5  	// HEX ONLY: halfwidth (at base) of timesum layer W (in nanoseconds)
+
+0.68  	// scalefactor for layer U
+0.657	// scalefactor for layer V
+0.6655	// HEX ONLY: scalefactor for layer W
+
+1.9 	// HEX ONLY: offset layer W (in nanoseconds)
+117.  	// runtime u (in nanosecods)
+117.  	// runtime v (in nanosecods)
+117.  	// runtime w (in nanosecods)
+43.  	// radius of active MCP area (in millimeters) (always a bit larger than the real radius)
+20.  	// deadtime of signals from the anode
+20.  	// deadtime of signals from the mcp
+
+0  	// use position dependend correction of time sums?   0=no 1=yes
+0  	// use position dependend NL-correction of position? 0=no 1=yes
+
+88888	// check value for reading this file. Must be 88888
+

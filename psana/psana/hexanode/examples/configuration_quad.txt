@@ -1,0 +1,41 @@
+2	// -1 = detector does not exist, 0 = just read (no sort/calib) , 1 = sort,   2 = calibrate fu,fv,fw, w_offset,    3 = generate correction tables and write them to disk
+
+0	// hexanode used (yes = 1, no = 0)  				 (Parameter 1101)
+0	// 0 = common start, 1 = common stop (for TDC8HP and fADC always use 0)
+
+1	// TDC channel for u1 (counting starts at 1)			(Parameter 1129)
+2	// TDC channel for u2 (counting starts at 1)			(Parameter 1130)
+3	// TDC channel for v1 (counting starts at 1)			(Parameter 1131)
+4	// TDC channel for v2 (counting starts at 1)			(Parameter 1132)
+0	// HEX ONLY: TDC channel for w1 (counting starts at 1)		(Parameter 1133)
+0	// HEX ONLY: TDC channel for w2 (counting starts at 1)		(Parameter 1134)
+5	// TDC channel for mcp (counting starts at 1)  (0 if not used)	(Parameter 1135)
+
+-131.4	// offset to shift timesum layer U to zero (in nanoseconds)		(Parameter 1108)
+-141.2  // offset to shift timesum layer V to zero (in nanoseconds)		(Parameter 1109)
+0 	// HEX ONLY: offset to shift timesum layer W to zero (in nanoseconds)	(Parameter 1110)
+
+0.	// offset to shift the position picture in X		(Parameter 1106)
+0.	// offset to shift the position picture in Y		(Parameter 1107)
+
+5.5  	// halfwidth (at base) of timesum layer U (in nanoseconds)		(Parameter 1115)
+5.5     // halfwidth (at base) of timesum layer V (in nanoseconds)		(Parameter 1116)
+5.  	// HEX ONLY: halfwidth (at base) of timesum layer W (in nanoseconds)(Parameter 1117)
+
+1  	// scalefactor for layer U (mm/ns)				(Parameter 1102)
+1	// scalefactor for layer V (mm/ns)				(Parameter 1103)
+1	// HEX ONLY: 0. scalefactor for layer W			(Parameter 1104)
+1 	// HEX ONLY: 0. offset layer W (in nanoseconds)		(Parameter 1105)
+
+100.  	// runtime layer u (in nanosecods)			(Parameter 1118)
+100.  	// runtime layer v (in nanosecods) 0 means: same as u	(Parameter 1119)
+0.  	// runtime layer w (in nanosecods) 0 means: same as u	(Parameter 1120)
+
+40.  	// radius of active MCP area (in millimeters) (always a bit larger than the real radius)  (Parameter 1111)
+20.  	// deadtime of signals from the anode			(Parameter 1121)
+20.  	// deadtime of signals from the mcp			(Parameter 1122)
+
+1  	// use position dependend correction of time sums?   0=no 1=yes	(Parameter 1124)
+0  	// use position dependend NL-correction of position? 0=no 1=yes	(Parameter 1125) HEX ONLY
+
+88888	// check value for reading this file. Must be 88888
