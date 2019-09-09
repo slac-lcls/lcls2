@@ -691,8 +691,8 @@ unsigned Fmc134Cpld::_read()
 #define cpld_address 0
 #define spi_write(unit,sel,reg,val) writeRegister(sel,reg,val)
 #define spi_read(unit,sel,reg,valp) *(valp) = readRegister(sel,reg)
-#define i2c_write(unit,addr,val)  reinterpret_cast<uint32_t*>(this)[addr]=val
-#define i2c_read(unit,addr,valp)  *(valp) = reinterpret_cast<uint32_t*>(this)[addr]
+#define i2c_write(unit,addr,val)  reinterpret_cast<volatile uint32_t*>(this)[addr]=val
+#define i2c_read(unit,addr,valp)  *(valp) = reinterpret_cast<volatile uint32_t*>(this)[addr]
 #define unitapi_sleep_ms(tms) usleep(tms*1000)
 
 static const int32_t UNITAPI_OK = 0;
@@ -704,7 +704,6 @@ int32_t Fmc134Cpld::default_clocktree_init(unsigned clockmode)
 {
   printf("*** default_clocktree_init ***\n");
   uint32_t dword;
-  uint32_t dword2;
   uint32_t samplingrate_setting;
   unsigned i2c_unit;
   int32_t rc = UNITAPI_OK;     
@@ -999,7 +998,7 @@ int32_t Fmc134Cpld::default_clocktree_init(unsigned clockmode)
        if(rc!=UNITAPI_OK)
          return rc;
 
-       dword2 = (dword & 0x07);
+       //dword2 = (dword & 0x07);
        if ((dword&0x02)!=0x02) {
          //printf("LMK04832 PLL2 not locked!!! reg 0x183 = 0x%X\n",dword2);      
          // not an error
@@ -1190,7 +1189,6 @@ int32_t Fmc134Cpld::default_adc_init()
   uint32_t sampleMode=1;
   uint32_t adc_txemphasis=0;
 
-        uint32_t i2c_unit;
         uint32_t dword0;
         int32_t rc = UNITAPI_OK;
 

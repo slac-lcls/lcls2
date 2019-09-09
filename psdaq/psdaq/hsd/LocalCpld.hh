@@ -1,8 +1,8 @@
 #ifndef HSD_LocalCpld_hh
 #define HSD_LocalCpld_hh
 
+#include "Globals.hh"
 #include "psdaq/mmhw/RegProxy.hh"
-#include <stdint.h>
 
 namespace Pds {
   namespace HSD {

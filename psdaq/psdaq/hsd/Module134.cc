@@ -25,6 +25,8 @@ using Pds::Mmhw::RingBuffer;
 
 using std::string;
 
+typedef volatile uint32_t vuint32_t;
+
 namespace Pds {
   namespace HSD {
 
@@ -44,8 +46,8 @@ namespace Pds {
       uint32_t    rsvd_90000[(0x7800-sizeof(mmcm))>>2];
       uint32_t    pgp_reg  [0x8000>>2]; // 0x90000
       uint32_t    opt_fmc  [0x1000>>2]; // 0x98000
-      uint32_t    qsfp0_i2c[0x1000>>2]; // 0x99000
-      uint32_t    qsfp1_i2c[0x1000>>2]; // 0x9A000
+      vuint32_t   qsfp0_i2c[0x1000>>2]; // 0x99000
+      vuint32_t   qsfp1_i2c[0x1000>>2]; // 0x9A000
       uint32_t    surf_jesd0[0x800>>2]; // 0x9B000
       uint32_t    surf_jesd1[0x800>>2]; // 0x9B800
     };
@@ -121,8 +123,8 @@ void Module134::setup_jesd()
   i2c_lock(I2cSwitch::PrimaryFmc);
   Fmc134Cpld* cpld = &i2c().fmc_cpld;
   Fmc134Ctrl* ctrl = &p->fmc_ctrl;
-  uint32_t* jesd0  = &p->surf_jesd0[0];
-  uint32_t* jesd1  = &p->surf_jesd1[0];
+  vuint32_t* jesd0  = &p->surf_jesd0[0];
+  vuint32_t* jesd1  = &p->surf_jesd1[0];
   //  cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL);
   cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL);
   cpld->default_adc_init();
@@ -173,7 +175,7 @@ Module134::~Module134()
     
 void Module134::PrivateData::dumpPgp     () const
 {
-  const Pgp3Axil* pgp = reinterpret_cast<const Pgp3Axil*>(pgp_reg);
+  const volatile Pgp3Axil* pgp = reinterpret_cast<const volatile Pgp3Axil*>(pgp_reg);
   LPRINT("loopback"       ,loopback);
   LPRINT("skpInterval"    ,skpInterval);
   LPRBF ("localLinkReady" ,rxStatus,1,1);
@@ -224,7 +226,6 @@ void Module134::dumpMap() const
   printf("Fmc134Ctrl     : 0x%lx\n", OFFS(fmc_ctrl));
   printf("mmcm           : 0x%lx\n", OFFS(mmcm));
   printf("Pgp            : 0x%lx\n", OFFS(pgp_reg[0]));
-  printf("SurfJesd[0]    : 0x%lx\n", OFFS(surf_jesd0[0]));
 #undef OFFS
 }
 

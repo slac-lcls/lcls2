@@ -1,7 +1,7 @@
 #ifndef HSD_QABase_hh
 #define HSD_QABase_hh
 
-#include <stdint.h>
+#include "Globals.hh"
 
 namespace Pds {
   namespace HSD {
@@ -32,11 +32,11 @@ namespace Pds {
       void setupDaq(unsigned partition, unsigned fmc);
       unsigned running() const;
     public:
-      uint32_t irqEnable;
-      uint32_t irqStatus;
-      uint32_t partitionAddr;
-      uint32_t dmaFullThr;
-      uint32_t csr; 
+      vuint32_t irqEnable;
+      vuint32_t irqStatus;
+      vuint32_t partitionAddr;
+      vuint32_t dmaFullThr;
+      vuint32_t csr; 
       //   CSR
       // [ 0:0]  count reset
       // [ 1:1]  dma size histogram enable (unused)
@@ -47,19 +47,19 @@ namespace Pds {
       // [ 6:6]  fb pll reset
       // [ 8:15] trigger bit mask shift
       // [31:30] acqEnable per FMC
-      uint32_t acqSelect;
+      vuint32_t acqSelect;
       //   AcqSelect
       // [12: 0]  rateSel  :   [7:0] eventCode
       // [31:13]  destSel
-      uint32_t control;
+      vuint32_t control;
       //   Control
       // [7:0] channel enable mask
       // [8:8] interleave
       // [19:16] partition FMC 0
       // [23:20] partition FMC 1
       // [24]  inhibit
-      uint32_t samples;       //  Must be a multiple of 16 [v1 only]
-      uint32_t prescale;      //  Sample prescaler [v1 only]
+      vuint32_t samples;       //  Must be a multiple of 16 [v1 only]
+      vuint32_t prescale;      //  Sample prescaler [v1 only]
       //   Prescale
       //   Values are mapped as follows:
       //  Value    Rate Divisor    Nominal Rate
@@ -75,29 +75,29 @@ namespace Pds {
       //  [48..55]     70             17.9 MHz
       //  [56..63]     80             15.6 MHz
       //  Delay (bits 6:31) [units of TimingRef clk]
-      uint32_t offset;        //  Not implemented
-      uint32_t countAcquire;
-      uint32_t countEnable;
-      uint32_t countInhibit;
-      uint32_t countRead;
-      uint32_t countStart;
-      uint32_t countQueue;
+      vuint32_t offset;        //  Not implemented
+      vuint32_t countAcquire;
+      vuint32_t countEnable;
+      vuint32_t countInhibit;
+      vuint32_t countRead;
+      vuint32_t countStart;
+      vuint32_t countQueue;
       //
-      uint32_t cacheSel;
-      uint32_t cacheState;
-      uint32_t cacheAddr;
+      vuint32_t cacheSel;
+      vuint32_t cacheState;
+      vuint32_t cacheAddr;
 
-      uint32_t msgDelay;
-      uint32_t headerCnt;
+      vuint32_t msgDelay;
+      vuint32_t headerCnt;
 
-      uint32_t rsvd_84[5];
+      vuint32_t rsvd_84[5];
 
-      uint32_t localId;
-      uint32_t upstreamId;
-      uint32_t dnstreamId[4];
+      vuint32_t localId;
+      vuint32_t upstreamId;
+      vuint32_t dnstreamId[4];
       //
-      //      uint32_t status;
-      //      uint32_t statusCount[32];
+      //      vuint32_t status;
+      //      vuint32_t statusCount[32];
     };
   };
 };

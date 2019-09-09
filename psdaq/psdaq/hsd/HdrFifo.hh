@@ -1,14 +1,14 @@
 #ifndef HSD_HdrFifo_hh
 #define HSD_HdrFifo_hh
 
-#include <stdint.h>
+#include "Globals.hh"
 
 namespace Pds {
   namespace HSD {
     class HdrFifo {
     public:
-      uint32_t _wrFifoCnt;
-      uint32_t _rdFifoCnt;
+      vuint32_t _wrFifoCnt;
+      vuint32_t _rdFifoCnt;
     };
   };
 };

@@ -65,8 +65,8 @@ public:
   enum { AddrCtrl=0 };
 };
 
-#define unitapi_write_register(unit,addr,val) reinterpret_cast<uint32_t*>(this)[addr] = val
-#define unitapi_read_register(unit,addr,pval) *(pval) = reinterpret_cast<uint32_t*>(this)[addr]
+#define unitapi_write_register(unit,addr,val) reinterpret_cast<volatile uint32_t*>(this)[addr] = val
+#define unitapi_read_register(unit,addr,pval) *(pval) = reinterpret_cast<volatile uint32_t*>(this)[addr]
 #define unitapi_sleep_ms(tms) usleep(tms*1000)
 static const int32_t UNITAPI_OK = 0;
 static const int32_t FMC134_ERR_ADC_INIT = 1;
@@ -112,7 +112,8 @@ int32_t Fmc134Ctrl::default_init(Fmc134Cpld& cpld, unsigned mode)
         if(rc!=UNITAPI_OK)     return rc;
 
         // Wait for MGTs to adapt
-        unitapi_sleep_ms(100);
+        //unitapi_sleep_ms(100);
+        unitapi_sleep_ms(1000);
 
         // Hold TAP values, CDR, and AGCs
         unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x1, 0x1FF00); 

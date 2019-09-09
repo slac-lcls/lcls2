@@ -4,8 +4,6 @@
 #include "psdaq/hsd/Globals.hh"
 #include "psdaq/mmhw/RegProxy.hh"
 
-#include <stdint.h>
-
 namespace Pds {
   namespace HSD {
     class FmcSpi {

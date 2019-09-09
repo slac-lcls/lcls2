@@ -14,7 +14,7 @@ static bool luseFifo = true;
 void FlashController::verbose(bool v) {lverbose=v;}
 void FlashController::useFifo(bool v) {luseFifo=v;}
 
-void FlashController::_write(const uint32_t* p, unsigned nwords)
+void FlashController::_write(const unsigned* p, unsigned nwords)
 {
   _command = 1; // reset
   usleep(10);
@@ -118,7 +118,7 @@ void FlashController::write(const char* fname)
 }
 
 
-int  FlashController::_verify(const uint32_t* p, unsigned nwords)
+int  FlashController::_verify(const unsigned* p, unsigned nwords)
 {
   const uint16_t* q = reinterpret_cast<const uint16_t*>(p);
 

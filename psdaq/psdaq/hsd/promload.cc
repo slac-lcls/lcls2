@@ -1,9 +1,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include "psdaq/hsd/Module.hh"
+#include "psdaq/hsd/ModuleBase.hh"
 
-using Pds::HSD::Module;
+using Pds::HSD::ModuleBase;
 
 void usage(const char* p) {
   printf("Usage: %s -d <dev> -f <file>\n",p);
@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  Module::create(fd)->flash_write(fname);
+  ModuleBase::create(fd)->flash.write(fname);
 
   return 0;
 }

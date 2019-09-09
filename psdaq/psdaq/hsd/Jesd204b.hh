@@ -1,7 +1,7 @@
 #ifndef Jesd204b_hh
 #define Jesd204b_hh
 
-#include <stdint.h>
+#include "Globals.hh"
 
 namespace Pds {
   namespace HSD {
@@ -31,7 +31,7 @@ namespace Pds {
     public:
       void clearErrors();
     public:
-      uint32_t reg[256];
+      vuint32_t reg[256];
       //  0.0  enableRx
       //  1.0  sysRefDlyRx
       //  2.0  rxPolarity

@@ -1,7 +1,7 @@
 #ifndef HSD_I2cSwitch_hh
 #define HSD_I2cSwitch_hh
 
-#include <stdint.h>
+#include "Globals.hh"
 
 namespace Pds {
   namespace HSD {
@@ -11,8 +11,8 @@ namespace Pds {
       void select(Port);
       void dump () const;
     private:
-      volatile uint32_t _control;
-      uint32_t          _reserved[255];
+      vuint32_t _control;
+      uint32_t  _reserved[255];
     };
   };
 };

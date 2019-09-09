@@ -21,6 +21,7 @@ uint64_t Pgp3::rxOpCodeLast () const
   uint64_t v = _axi.rxOpCodeCnt&0xffffff;
   v <<= 32;
   v |= _axi.rxOpCodeLast;
+  return v;
 }
 
 unsigned Pgp3::remPause     () const { return _axi.remRxOflow; }

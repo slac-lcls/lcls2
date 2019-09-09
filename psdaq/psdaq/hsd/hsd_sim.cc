@@ -104,7 +104,6 @@ int main(int argc, char** argv) {
   }
 
   uint32_t* event = new uint32_t[0x100000];
-  uint16_t* compr = new uint16_t[0x1000];
 
   const unsigned linesz = 40960;
   char* line = new char[linesz];

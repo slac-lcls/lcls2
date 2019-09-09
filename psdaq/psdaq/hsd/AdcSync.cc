@@ -5,7 +5,7 @@
 
 using namespace Pds::HSD;
 
-void AdcSync::set_delay(const uint32_t* delay)
+void AdcSync::set_delay(const unsigned* delay)
 {
   for(unsigned i=0; i<4; i++)
     _delay[2*i] = delay[i];

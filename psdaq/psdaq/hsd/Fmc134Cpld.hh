@@ -1,7 +1,7 @@
 #ifndef Fmc134CPld_hh
 #define Fmc134CPld_hh
 
-#include <stdint.h>
+#include "Globals.hh"
 
 namespace Pds {
   namespace HSD {
@@ -49,15 +49,15 @@ namespace Pds {
       int32_t internal_ref_and_lmx_enable(uint32_t i2c_unit, uint32_t clockmode);
       int32_t reset_clock_chip(int32_t);
     private:
-      volatile uint32_t _command; // device select
-      volatile uint32_t _control0; //
-      volatile uint32_t _control1; //
-      uint32_t _reserved3;
-      volatile uint32_t _status;
-      volatile uint32_t _version;
-      volatile uint32_t _i2c_data[4]; // write cache
-      volatile uint32_t _i2c_read[4]; // read cache
-      uint32_t _reserved[0x100-14];
+      vuint32_t _command; // device select
+      vuint32_t _control0; //
+      vuint32_t _control1; //
+      uint32_t  _reserved3;
+      vuint32_t _status;
+      vuint32_t _version;
+      vuint32_t _i2c_data[4]; // write cache
+      vuint32_t _i2c_read[4]; // read cache
+      uint32_t  _reserved[0x100-14];
     };
   };
 };

@@ -56,7 +56,7 @@ namespace Pds {
       _m.i2c_lock(I2cSwitch::PrimaryFmc);
 
       int testp = PVGET(test_pattern);
-      if (testp!=_testpattern) {
+      if (testp!=int(_testpattern)) {
         if (testp>=0)
           _m.enable_test_pattern(Module134::TestPattern::Transport);
         else

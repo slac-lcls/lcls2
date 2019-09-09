@@ -7,7 +7,7 @@
 using namespace Pds::HSD;
 
 bool TprCore::rxPolarity() const {
-  uint32_t v = CSR;
+  volatile uint32_t v = CSR;
   return v&(1<<2);
 }
 
@@ -63,7 +63,7 @@ static double clockRate(volatile uint32_t& clockReg)
 {
   timespec tvb;
   clock_gettime(CLOCK_REALTIME,&tvb);
-  unsigned vvb = clockReg;
+  volatile unsigned vvb = clockReg;
 
   usleep(10000);
 

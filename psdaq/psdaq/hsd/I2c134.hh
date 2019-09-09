@@ -1,6 +1,7 @@
 #ifndef HSD_I2c134_hh
 #define HSD_I2c134_hh
 
+#include "Globals.hh"
 #include "psdaq/hsd/I2cSwitch.hh"
 #include "psdaq/hsd/ClkSynth.hh"
 #include "psdaq/hsd/LocalCpld.hh"
@@ -25,7 +26,7 @@ namespace Pds {
       Ad7291     fmcadcmon;       // 0x12000
       Ad7291     fmcvmon;         // 0x12400
       Fmc134Cpld fmc_cpld;        // 0x12800 
-      uint32_t   eeprom[0x100];   // 0x12C00
+      vuint32_t  eeprom[0x100];   // 0x12C00
     };
   };
 };

@@ -16,7 +16,6 @@ int main(int argc, char** argv)
   extern char* optarg;
 
   int c;
-  bool lUsage = false;
   off_t    adx    = 0;
   unsigned nbytes = 1;
 

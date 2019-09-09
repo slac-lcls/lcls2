@@ -1,7 +1,7 @@
 #ifndef HSD_Fmc134Ctrl_hh
 #define HSD_Fmc134Ctrl_hh
 
-#include <stdint.h>
+#include "Globals.hh"
 
 namespace Pds {
   namespace HSD {
@@ -12,18 +12,18 @@ namespace Pds {
       int32_t default_init(Fmc134Cpld&, unsigned mode=0);
       void dump();
     public:
-      uint32_t info;
-      uint32_t xcvr;
-      uint32_t status;
-      uint32_t adc_val;
-      uint32_t scramble;
-      uint32_t sw_trigger;
-      uint32_t lmfc_cnt;
-      uint32_t align_char;
-      uint32_t adc_pins;
-      uint32_t adc_pins_r;
-      uint32_t test_clksel;
-      uint32_t test_clkfrq;
+      vuint32_t info;
+      vuint32_t xcvr;
+      vuint32_t status;
+      vuint32_t adc_val;
+      vuint32_t scramble;
+      vuint32_t sw_trigger;
+      vuint32_t lmfc_cnt;
+      vuint32_t align_char;
+      vuint32_t adc_pins;
+      vuint32_t adc_pins_r;
+      vuint32_t test_clksel;
+      vuint32_t test_clkfrq;
     };
   };
 };

@@ -1,7 +1,7 @@
 #ifndef HSD_AdcCore_hh
 #define HSD_AdcCore_hh
 
-#include <stdint.h>
+#include "Globals.hh"
 
 namespace Pds {
   namespace HSD {
@@ -16,15 +16,15 @@ namespace Pds {
       void set_ref_delay (unsigned);
       void dump_status   () const;
     private:
-      uint32_t _cmd;
-      uint32_t _status;
-      uint32_t _master_start;
-      uint32_t _adrclk_delay_set_auto;
-      uint32_t _channel_select;
-      uint32_t _tap_match_lo;
-      uint32_t _tap_match_hi;
-      uint32_t _adc_req_tap ;
-      uint32_t _rsvd2[0xf8];
+      vuint32_t _cmd;
+      vuint32_t _status;
+      vuint32_t _master_start;
+      vuint32_t _adrclk_delay_set_auto;
+      vuint32_t _channel_select;
+      vuint32_t _tap_match_lo;
+      vuint32_t _tap_match_hi;
+      vuint32_t _adc_req_tap ;
+      vuint32_t _rsvd2[0xf8];
     };
   };
 };

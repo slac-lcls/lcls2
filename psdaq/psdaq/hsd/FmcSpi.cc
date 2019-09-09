@@ -361,10 +361,11 @@ void FmcSpi::_applySync()
   _writeCPLD(0,v);
   usleep(50000);
 
-  uint32_t q = _readCPLD(0);
+  uint32_t q = v;
+  v = _readCPLD(0);
   //  printf("applySync-1 %x\n",q);
 
-  v |= 0x10;
+  v = q | 0x10;
   _writeCPLD(0,v);
   usleep(50000);
 

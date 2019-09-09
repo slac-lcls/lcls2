@@ -1,7 +1,7 @@
 #ifndef HSD_FmcCore_hh
 #define HSD_FmcCore_hh
 
-#include <stdint.h>
+#include "Globals.hh"
 
 namespace Pds {
   namespace HSD {
@@ -14,16 +14,16 @@ namespace Pds {
       void   cal_enable ();
       void   cal_disable();
     private:
-      uint32_t _irq;
-      uint32_t _irq_en;
-      uint32_t _rsvd[6];
-      uint32_t _detect;
-      uint32_t _cmd;
-      uint32_t _ctrl;
-      uint32_t _rsvd2[5];
-      uint32_t _clock_select;
-      uint32_t _clock_count;
-      uint32_t _rsvd3[0xee];
+      vuint32_t _irq;
+      vuint32_t _irq_en;
+      vuint32_t _rsvd[6];
+      vuint32_t _detect;
+      vuint32_t _cmd;
+      vuint32_t _ctrl;
+      vuint32_t _rsvd2[5];
+      vuint32_t _clock_select;
+      vuint32_t _clock_count;
+      vuint32_t _rsvd3[0xee];
     };
   };
 };

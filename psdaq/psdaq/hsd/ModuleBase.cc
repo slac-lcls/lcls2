@@ -1,9 +1,27 @@
 #include "ModuleBase.hh"
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <sys/mman.h>
 #include <string.h>
+#include <unistd.h>
 
 using Pds::HSD::ModuleBase;
+
+ModuleBase* ModuleBase::create(int fd)
+{
+  void* ptr = mmap(0, sizeof(ModuleBase), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+  if (ptr == MAP_FAILED) {
+    perror("Failed to map");
+    return 0;
+  }
+
+  ModuleBase* m = new ModuleBase;
+
+  Pds::Mmhw::RegProxy::initialize(m, m->regProxy);
+  
+  return m;
+}
 
 void ModuleBase::setRxAlignTarget(unsigned t)
 {

@@ -1,20 +1,20 @@
 #ifndef HSD_PhaseMsmt_hh
 #define HSD_PhaseMsmt_hh
 
-#include <stdint.h>
+#include "Globals.hh"
 
 namespace Pds {
   namespace HSD {
     class PhaseMsmt {
     public:
-      uint32_t phaseA_even;
-      uint32_t phaseA_odd;
-      uint32_t phaseB_even;
-      uint32_t phaseB_odd;
-      uint32_t countA_even;
-      uint32_t countA_odd;
-      uint32_t countB_even;
-      uint32_t countB_odd;
+      vuint32_t phaseA_even;
+      vuint32_t phaseA_odd;
+      vuint32_t phaseB_even;
+      vuint32_t phaseB_odd;
+      vuint32_t countA_even;
+      vuint32_t countA_odd;
+      vuint32_t countB_even;
+      vuint32_t countB_odd;
     };
   };
 };

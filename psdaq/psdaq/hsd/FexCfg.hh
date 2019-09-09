@@ -1,16 +1,16 @@
 #ifndef HSD_FexCfg_hh
 #define HSD_FexCfg_hh
 
-#include <stdint.h>
+#include "Globals.hh"
 
 namespace Pds {
   namespace HSD {
     class FexCfg {
     public:
-      uint32_t _streams;
-      uint32_t _oflow;
-      uint32_t _test_pattern_errors;      
-      uint32_t _test_pattern_errbits;
+      vuint32_t _streams;
+      vuint32_t _oflow;
+      vuint32_t _test_pattern_errors;      
+      vuint32_t _test_pattern_errbits;
 
       class StreamBase {
       public:
@@ -24,34 +24,34 @@ namespace Pds {
           events = (v>>16)&0xff;
         }
       public:
-        uint32_t _prescale;
-        uint32_t _gate;
-        uint32_t _full; 
-        uint32_t _free;
+        vuint32_t _prescale;
+        vuint32_t _gate;
+        vuint32_t _full; 
+        vuint32_t _free;
       } _base  [4];
 
-      uint32_t _rsvd_50[0x20>>2];
-      uint32_t _bram_wr_errors;
-      uint32_t _bram_wr_sample;
-      uint32_t _bram_rd_errors;
-      uint32_t _bram_rd_sample;
+      vuint32_t _rsvd_50[0x20>>2];
+      vuint32_t _bram_wr_errors;
+      vuint32_t _bram_wr_sample;
+      vuint32_t _bram_rd_errors;
+      vuint32_t _bram_rd_sample;
 
-      uint32_t _rsvd_80[0x80>>2];
+      vuint32_t _rsvd_80[0x80>>2];
 
       class Stream {
       public:
         Stream() {}
       public:
-        uint32_t rsvd [4];
+        vuint32_t rsvd [4];
         class Parm {
         public:
-          uint32_t v;
-          uint32_t rsvd;
+          vuint32_t v;
+          vuint32_t rsvd;
         } parms[30];
       } _stream[4];
 
     private:
-      uint32_t _rsvd3[(0x1000-0x500)>>2];
+      vuint32_t _rsvd3[(0x1000-0x500)>>2];
     };
   };
 };

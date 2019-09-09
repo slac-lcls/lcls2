@@ -1,7 +1,7 @@
 #ifndef HSD_FmcCoreVoid_hh
 #define HSD_FmcCoreVoid_hh
 
-#include <stdint.h>
+#include "Globals.hh"
 
 namespace Pds {
   namespace HSD {
@@ -14,7 +14,7 @@ namespace Pds {
       void   cal_enable () {}
       void   cal_disable() {}
     private:
-      uint32_t _rsvd[0x100];
+      vuint32_t _rsvd[0x100];
     };
   };
 };

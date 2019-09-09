@@ -11,6 +11,8 @@
 #include "psdaq/mmhw/RingBuffer.hh"
 #include "psdaq/mmhw/Xvc.hh"
 
+typedef volatile uint32_t vuint32_t;
+
 namespace Pds {
   namespace HSD {
     class ModuleBase {
@@ -20,6 +22,7 @@ namespace Pds {
       void dumpRxAlign     () const;
     public:
       static unsigned local_id(unsigned bus); 
+      static ModuleBase* create(int);
     public:
       Mmhw::AxiVersion version;
       uint32_t rsvd_to_0x08000[(0x8000-sizeof(version))/4];
@@ -27,8 +30,8 @@ namespace Pds {
       FlashController      flash;
       uint32_t rsvd_to_0x10000[(0x8000-sizeof(flash))/4];
 
-      uint32_t i2c_regs[0x8000/4];  // FMC-dependent
-      uint32_t regProxy[(0x08000)/4]; // 0x18000
+      uint32_t  i2c_regs[0x8000/4];  // FMC-dependent
+      vuint32_t regProxy[(0x08000)/4]; // 0x18000
 
       // DMA
       DmaCore           dma_core; // 0x20000
@@ -39,12 +42,12 @@ namespace Pds {
       uint32_t rsvd_to_0x31000[(0x1000-sizeof(phy_core))/4];
 
       // GTH
-      uint32_t gthAlign[10];     // 0x31000
+      vuint32_t gthAlign[10];     // 0x31000
       uint32_t rsvd_to_0x31100  [54];
-      uint32_t gthAlignTarget;
-      uint32_t gthAlignLast;
+      vuint32_t gthAlignTarget;
+      vuint32_t gthAlignLast;
       uint32_t rsvd_to_0x31800[(0x800-0x108)/4];
-      uint32_t gthDrp[0x200];
+      vuint32_t gthDrp[0x200];
 
       // XVC
       Mmhw::Jtag    xvc;
