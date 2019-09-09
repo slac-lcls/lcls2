@@ -21,6 +21,7 @@ static unsigned linktest_period = 1;
 static unsigned triggerPolarity = 1;
 static unsigned triggerDelay = 1;
 static unsigned triggerWidth = 0;
+static bool     verbose = false;
 
 extern int optind;
 
@@ -355,7 +356,8 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2)
     while(allrp < q.allwp[idx] && nframes<10) {
       const uint32_t* p = reinterpret_cast<const uint32_t*>
         (&q.allq[q.allrp[idx].idx[allrp &(MAX_TPR_ALLQ-1)] &(MAX_TPR_ALLQ-1) ].word[0]);
-      //      dump_frame(p);
+      if (verbose)
+        dump_frame(p);
       if (parse_frame(p, pulseId, timeStamp)) {
         if (pulseIdP) {
           uint64_t pulseIdN = pulseIdP+1;

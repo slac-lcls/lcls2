@@ -75,16 +75,6 @@ static inline void set_reg32(int reg, uint32_t value) {
   dmaWriteRegister(fd, reg, value);
 }
 
-static void print_dma_lane(const char* name, int addr, int offset, int mask)
-{
-    printf("%20.20s", name);
-    for(int i=0; i<4; i++) {
-        uint32_t reg = get_reg32( DMA_LANES(i) + addr);
-        printf(" %8x", (reg >> offset) & mask);
-    }
-    printf("\n");
-}
-
 static void print_mig_lane(const char* name, int addr, int offset, int mask)
 {
     const unsigned MIG_LANES = 0x00800080;

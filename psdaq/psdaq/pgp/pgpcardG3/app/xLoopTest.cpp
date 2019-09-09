@@ -126,7 +126,8 @@ int main (int argc, char **argv) {
       if ( (lanes & (1<<lane))==0 )
         continue;
 
-      pgpCardTx.data = (__u32*)(1<<lane);
+      uintptr_t m = (1<<lane);
+      pgpCardTx.data = (__u32*)m;
 
       printf("Clearing Tx for lane %d\n",lane);
       write(lfd[lane],&pgpCardTx,sizeof(PgpCardTx));

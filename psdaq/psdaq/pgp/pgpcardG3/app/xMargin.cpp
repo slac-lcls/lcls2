@@ -374,7 +374,6 @@ using std::hex;
 
 int main (int argc, char **argv) {
   int           fd;
-  int           ret;
   unsigned      idev=0;
   unsigned      lanes=1;
   char dev[64];

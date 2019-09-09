@@ -24,9 +24,6 @@
 using namespace std;
 
 int main (int argc, char **argv) {
-  PgpCardG3Status status;
-  PgpCardTx pgpCardTx;
-  unsigned size = sizeof(PgpCardTx);
   int           fd;
   int           x;
   const char*  dev = "/dev/pgpcardG3_0_0";

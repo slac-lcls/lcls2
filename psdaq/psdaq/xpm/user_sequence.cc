@@ -21,7 +21,7 @@ unsigned ExptRequest::value() const
 
 #ifndef EXCLUDE_CHECKPOINT
 Checkpoint::Checkpoint(Callback* cb) : _callback(cb) {}
-Checkpoint::~Checkpoint() { delete _callback; }
+Checkpoint::~Checkpoint() { } // delete _callback; }
 Callback* Checkpoint::callback() const { return _callback; }
 Instruction::Type Checkpoint::instr() const
 { return Instruction::Check; }

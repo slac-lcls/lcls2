@@ -62,7 +62,7 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  void* p = mmap(0, msize, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
+  char* p = (char*)mmap(0, msize, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
   if (p == MAP_FAILED) {
     perror("Failed to map");
     return -1;

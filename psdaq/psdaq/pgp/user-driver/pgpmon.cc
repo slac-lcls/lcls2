@@ -53,7 +53,7 @@ public:
       bool lnodiff=true;
       uint32_t diff[256];
       for(unsigned i=0; i<sz; i++) {
-        if (diff[i] = p[i+1]-_data[i])
+        if ((diff[i] = p[i+1]-_data[i]))
           lnodiff=false;
         // if (_data[i] > p[i+1])
         //   printf("[%02x] (%04x - %04x : %04x)\n", i, p[i+1],_data[i],_diff[i]);

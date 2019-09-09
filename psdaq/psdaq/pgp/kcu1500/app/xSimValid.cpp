@@ -522,6 +522,7 @@ static inline uint32_t get_reg32(int reg) {
   return v;
 }
 
+/**
 static void print_dma_lane(const char* name, int addr, int offset, int mask)
 {
     printf("%20.20s", name);
@@ -531,6 +532,7 @@ static void print_dma_lane(const char* name, int addr, int offset, int mask)
     }
     printf("\n");
 }
+**/
 
 static void print_mig_lane(const char* name, int addr, int offset, int mask)
 {
