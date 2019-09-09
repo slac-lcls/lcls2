@@ -130,24 +130,23 @@ setup(name="peakFinder",
 
 
 ##                libraries=['psalg',],
-ext = Extension("hexanode",
-                sources=["psana/hexanode/test_ext.pyx",
-                         "../psalg/psalg/hexanode/src/cfib.cc"],
-                language="c++",
-                extra_compile_args = extra_compile_args,
-                include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
-                library_dirs = [os.path.join(instdir, 'lib')],
-                extra_link_args = extra_link_args,
-)
 
-setup(name="hexanode",
-      ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
+# ugly: only build hexanode apps if the roentdek software exists.
+# this is a rough python equivalent of the way cmake finds out whether
+# packages exist. - cpo
+if (os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
+    ext = Extension("hexanode",
+                    sources=["psana/hexanode/test_ext.pyx",
+                             "../psalg/psalg/hexanode/src/cfib.cc"],
+                    language="c++",
+                    extra_compile_args = extra_compile_args,
+                    include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
+                    library_dirs = [os.path.join(instdir, 'lib')],
+                    extra_link_args = extra_link_args,
+                )
 
-
-
-
-
-
+    setup(name="hexanode",
+          ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
 
 ext = Extension("constFracDiscrim",
