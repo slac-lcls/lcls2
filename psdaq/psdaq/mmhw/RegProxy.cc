@@ -3,17 +3,20 @@
 
 #include <unistd.h>
 #include <stdio.h>
+#include <inttypes.h>
+
+typedef volatile uint32_t vuint32_t;
 
 static uint64_t _base = 0;
-static uint32_t* _csr = 0;
+static vuint32_t* _csr = 0;
 static Pds::Semaphore _sem(Pds::Semaphore::FULL);
 
 using namespace Pds::Mmhw;
 
-void RegProxy::initialize(void* base, void* csr)
+void RegProxy::initialize(void* base, volatile void* csr)
 {
   _base = reinterpret_cast<uint64_t>(base);
-  _csr  = reinterpret_cast<uint32_t*>(csr);
+  _csr  = reinterpret_cast<vuint32_t*>(csr);
   //  Test if proxy exists
   { 
     const unsigned t = 0xdeadbeef;
@@ -45,7 +48,7 @@ RegProxy& RegProxy::operator=(const unsigned r)
     usleep(1000);
     if ((++tmo&tmo_mask) ==  tmo_mask) {
       tmo_mask = (tmo_mask<<1) | 1;
-      printf("RegProxy tmo (%x) writing 0x%x to %lx\n", 
+      printf("RegProxy tmo (%x) writing 0x%x to %" PRIx64 "\n", 
              tmo, r, reinterpret_cast<uint64_t>(this)-_base);
     }
   } while ( (_csr[1]&1)==0 );
@@ -74,7 +77,7 @@ RegProxy::operator unsigned() const
     usleep(1000);
     if ((++tmo&tmo_mask) == tmo_mask) {
       tmo_mask = (tmo_mask<<1) | 1;
-      printf("RegProxy tmo (%x) read from %lx\n", 
+      printf("RegProxy tmo (%x) read from %" PRIx64 "\n", 
              tmo, reinterpret_cast<uint64_t>(this)-_base);
     }
   } while ( (_csr[1]&1)==0 );

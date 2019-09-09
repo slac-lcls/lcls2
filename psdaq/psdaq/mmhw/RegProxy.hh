@@ -8,7 +8,7 @@ namespace Pds {
     class RegProxy {
     public:
       static void initialize(void* base,
-                             void* csr);
+                             volatile void* csr);
     public:
       RegProxy& operator=(const unsigned);
       operator unsigned() const;
