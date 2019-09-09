@@ -1,12 +1,17 @@
-#------------------------------
-# nosetests -sv psana/psana/tests
-# 
-#------------------------------
+import os
+import sys
+import pytest
 
 doPlot = 0
 
 #------------------------------
 
+# ugly: only build hexanode apps if the roentdek software exists.
+# this is a rough python equivalent of the way cmake finds out whether
+# packages exist. - cpo
+roentdek_found = os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))
+
+@pytest.mark.skipif(not roentdek_found, reason="roentdek library not found")
 def test_hexanode():
     from hexanode import fib
     n = 9
