@@ -90,7 +90,14 @@ class ChipServer(object):
         self.provider.add(prefix+':MONJESD'   ,self.monJesd)
         self.provider.add(prefix+':MONJESDTTL',self.monJesdTtl)
 
+        #  Expert functions
+        self.daqReset = MySharedPV(daqReset,self.updateDaqReset)
+        self.provider.add(prefix+':RESET',self.daqReset)
+
     def updateDaqConfig(self,value):
+        pass
+
+    def updateDaqReset(self,value):
         pass
 
 class PVAServer(object):

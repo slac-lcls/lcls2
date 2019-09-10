@@ -18,8 +18,15 @@ daqConfig = {'readoutGroup':('i', 0),
              'fex_xpre'    :('i', 1),
              'fex_xpost'   :('i', 1) }
 
+daqReset   = {'timrxrst'    :('i', 0),
+              'timpllrst'   :('i', 0),
+              'pgploopback' :('i', 0),
+              'reset'       :('i', 0) }
+
 monTiming = {'timframecnt':('i', 0),
              'timpausecnt':('i', 0),
+             'timerrcntsum':('i', 0),
+             'timrstcntsum':('i', 0),
              'trigcnt'    :('i', 0),
              'trigcntsum' :('i', 0),
              'readcntsum' :('i', 0),

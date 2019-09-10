@@ -4,6 +4,7 @@
 #include "psdaq/hsd/QABase.hh"
 #include "psdaq/hsd/PhaseMsmt.hh"
 #include "psdaq/hsd/Pgp.hh"
+#include "psdaq/hsd/TprCore.hh"
 #include "psdaq/epicstools/EpicsPVA.hh"
 
 #include <algorithm>
@@ -16,6 +17,9 @@ using Pds_Epics::EpicsPVA;
 
 static bool _interleave = true;
 static const int SYNC_WIDTH = (1<<16)/12;
+
+#define PVGET(name) pv.getScalarAs<unsigned>(#name)
+#define PVGETF(name) pv.getScalarAs<float>(#name)
 
 namespace Pds {
   namespace HSD {
@@ -31,9 +35,6 @@ namespace Pds {
     }
 
     void PV126Ctrls::configure(unsigned fmc) {
-
-#define PVGET(name) pv.getScalarAs<unsigned>(#name)
-#define PVGETF(name) pv.getScalarAs<float>(#name)
 
       Pds_Epics::EpicsPVA& pv = *_pv[fmc];
 
@@ -131,12 +132,27 @@ namespace Pds {
     }
 
     void PV126Ctrls::reset() {
-      QABase& base = *reinterpret_cast<QABase*>((char*)_m.reg()+0x80000);
-      base.resetFbPLL();
-      usleep(1000000);
-      base.resetFb ();
-      base.resetDma();
-      usleep(1000000);
+      Pds_Epics::EpicsPVA& pv = *_pv[_pv.size()-1];
+      if (PVGET(reset)) {
+        QABase& base = *reinterpret_cast<QABase*>((char*)_m.reg()+0x80000);
+        base.resetFbPLL();
+        usleep(1000000);
+        base.resetFb ();
+        base.resetDma();
+        usleep(1000000);
+      }
+      if (PVGET(timpllrst)) {
+        Pds::HSD::TprCore& tpr = _m.tpr();
+        tpr.resetRxPll();
+        usleep(10000);
+        tpr.resetCounts();
+      }
+      if (PVGET(timrxrst)) {
+        Pds::HSD::TprCore& tpr = _m.tpr();
+        tpr.resetRx();
+        usleep(10000);
+        tpr.resetCounts();
+      }
     }
 
     void PV126Ctrls::loopback(bool v) {

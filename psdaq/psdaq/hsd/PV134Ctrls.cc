@@ -9,6 +9,7 @@
 #include "Pgp.hh"
 #include "OptFmc.hh"
 #include "Jesd204b.hh"
+#include "TprCore.hh"
 
 #include "psdaq/epicstools/EpicsPVA.hh"
 
@@ -93,16 +94,30 @@ namespace Pds {
     }
 
     void PV134Ctrls::reset() {
-      for(unsigned i=0; i<2; i++) {
-        ChipAdcReg& reg = _m.chip(i).reg;
-        reg.resetFbPLL();
-        usleep(1000000);
-        reg.resetFb ();
-        reg.resetDma();
-        usleep(1000000);
+      Pds_Epics::EpicsPVA& pv = *_pv[_pv.size()-1];
+      if (PVGET(reset)) {
+        for(unsigned i=0; i<2; i++) {
+          ChipAdcReg& reg = _m.chip(i).reg;
+          reg.resetFbPLL();
+          usleep(1000000);
+          reg.resetFb ();
+          reg.resetDma();
+          usleep(1000000);
+        }
+      }
+      if (PVGET(timpllrst)) {
+        Pds::HSD::TprCore& tpr = _m.tpr();
+        tpr.resetRxPll();
+        usleep(10000);
+        tpr.resetCounts();
+      }
+      if (PVGET(timrxrst)) {
+        Pds::HSD::TprCore& tpr = _m.tpr();
+        tpr.resetRx();
+        usleep(10000);
+        tpr.resetCounts();
       }
     }
-
     void PV134Ctrls::loopback(bool v) {
       std::vector<Pgp*> pgp = _m.pgp();
       for(unsigned i=0; i<pgp.size(); i++)

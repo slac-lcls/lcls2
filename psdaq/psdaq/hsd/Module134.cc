@@ -126,8 +126,10 @@ void Module134::setup_jesd()
   vuint32_t* jesd0  = &p->surf_jesd0[0];
   vuint32_t* jesd1  = &p->surf_jesd1[0];
   //  cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL);
-  cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL);
-  cpld->default_adc_init();
+  if (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL))
+    abort();
+  if (cpld->default_adc_init())
+    abort();
   jesd0[0] = 0xff;
   jesd1[0] = 0xff;
   jesd0[4] = 0x27;
@@ -135,7 +137,8 @@ void Module134::setup_jesd()
   usleep(100);
   jesd0[4] = 0x23;
   jesd1[4] = 0x23;
-  ctrl->default_init(*cpld, 0);
+  if (ctrl->default_init(*cpld, 0))
+    abort();
   ctrl->dump();
   i2c_unlock();
 }
@@ -337,6 +340,8 @@ Fmc134Ctrl& Module134::jesdctl() { return p->fmc_ctrl; }
 OptFmc&     Module134::optfmc() { return *reinterpret_cast<OptFmc*>(p->opt_fmc); }
 
 Mmcm&       Module134::mmcm() { return p->mmcm; }
+
+TprCore&    Module134::tpr() { return p->base.tpr; }
 
 Jesd204b& Module134::jesd(unsigned ch)
 { return *reinterpret_cast<Jesd204b*>(ch==0 ? p->surf_jesd0 : p->surf_jesd1); }

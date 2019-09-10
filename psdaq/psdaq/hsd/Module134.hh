@@ -40,6 +40,7 @@ namespace Pds {
       ChipAdcCore&                 chip   (unsigned ch);
       Fmc134Ctrl&                  jesdctl();
       Mmcm&                        mmcm   ();
+      TprCore&                     tpr    ();
 
       std::vector<Pgp*>            pgp    ();
       Jesd204b&                    jesd   (unsigned ch);
