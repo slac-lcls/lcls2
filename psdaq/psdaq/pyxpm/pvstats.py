@@ -280,7 +280,7 @@ class GroupStats(object):
             updatePv(self._pv_numL0Inp, numL0)
             updatePv(self._pv_numL0Acc, numL0Acc)
             if dL0Ena:
-                deadFrac = dL0Inh/dL0Ena
+                deadFrac = dnumL0Inh/dnumL0
             else:
                 deadFrac = 0
             updatePv(self._pv_deadFrac, deadFrac)
