@@ -37,7 +37,9 @@ class QWZMQListener(QWidget):
         QWidget.__init__(self, parent=None)
         #logger.debug('In QWZMQListener.__init__')
 
-        self.timeout = kwargs.get('timeout', 1000)
+        self.vold = -1
+
+        self.timeout = kwargs.get('timeout', 1000) # milliseconds
         _is_normal   = kwargs.get('is_normal', True)
         _on_poll     = kwargs.get('on_poll', self.on_zmq_poll)
         _host        = kwargs.get('host', 'localhost')
@@ -54,9 +56,12 @@ class QWZMQListener(QWidget):
         self.zmq_socket = self.zmq_context.socket(zmq.SUB)
         self.zmq_socket.connect(uri)
         self.zmq_socket.setsockopt(zmq.SUBSCRIBE, topicfilter)
+        self.zmq_socket.setsockopt(zmq.RCVTIMEO, self.timeout) # milliseconds
 
         self.zmq_notifier = QSocketNotifier(self.zmq_socket.getsockopt(zmq.FD), QSocketNotifier.Read, self)
         self.zmq_notifier.activated.connect(on_poll)
+
+        #print("QWZMQListener flags zmq.POLLIN:%d POLLOUT:%d POLLERR:%d" % (zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR))
 
 
     def on_zmq_poll(self):
@@ -66,23 +71,48 @@ class QWZMQListener(QWidget):
         flags = self.zmq_socket.getsockopt(zmq.EVENTS)
         flag = 'UNKNOWN'
         msg = ''
+        #print("A")
         if flags & zmq.POLLIN :
+          while self.zmq_socket.getsockopt(zmq.EVENTS) & zmq.POLLIN :
             flag = 'POLLIN'
             msg = self.zmq_socket.recv_multipart()
-            self.setWindowTitle(str(msg))
+            self.process_zmq_message(msg)
+            #print("L")
+            
         elif flags & zmq.POLLOUT : flag = 'POLLOUT'
         elif flags & zmq.POLLERR : flag = 'POLLERR'
         else : pass
-        print("Flag zmq.%s in %d msg: %s" % (flag, flags, msg))
+        print("QWZMQListener Flag zmq.%s in %d msg: %s" % (flag, flags, msg))
+        #print("B")
 
         self.zmq_notifier.setEnabled(True)
-        self.kick_zmq() # WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
+
+        #self.kick_zmq() # WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
+        _flags = self.zmq_socket.getsockopt(zmq.EVENTS)
+        if _flags & zmq.POLLIN : self.on_zmq_poll()
+        #print("E")
+
+
+    def process_zmq_message(self, msg):
+        s = msg[1].decode('utf-8')
+        v = int(s.split(' ',1)[0])
+        #self.setWindowTitle(s)
+        self.edi_text.append(s)
+        self.edi_text.moveCursor(23,0) # QTextCursor.NextRow, QTextCursor.MoveAnchor
+        if v!=self.vold+1 : self.edi_text.append('   ===== got it!')
+        self.vold = v
+        if v%50 == 0 : self.edi_text.setText('')
+        #scrollbar = self.edi_text.verticalScrollBar()
+        #scrollbar.setValue(scrollbar.maximum());
 
 
     def kick_zmq(self):
         """ WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
         """
         _flags = self.zmq_socket.getsockopt(zmq.EVENTS)
+        print("kick_zmq _flags:", _flags)
+
+        if _flags==1 : print('GRRRRRRRRRRRRRRRRRRRRRRR!')
 
 
     def closeEvent(self, e) :
@@ -94,10 +124,18 @@ class QWZMQListener(QWidget):
 if __name__ == '__main__':
 
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
-    from PyQt5.QtWidgets import QApplication
+    from PyQt5.QtWidgets import QApplication, QTextEdit, QVBoxLayout
     app = QApplication([])
-    win = QWZMQListener()
-    win.show()
+    w = QWZMQListener()
+    w.setMinimumSize(500,800)
+    w.edi_text = QTextEdit('QTextEdit')
+    w.edi_text.setOverwriteMode(True)
+    w.vbox = QVBoxLayout()
+    w.vbox.addWidget(w.edi_text)
+    w.setLayout(w.vbox)
+    w.layout().setContentsMargins(0,0,0,0)
+
+    w.show()
     app.exec_()
 
 #----------

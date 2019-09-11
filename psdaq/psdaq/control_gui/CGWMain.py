@@ -302,11 +302,8 @@ class CGWMain(QWZMQListener) :
         """Re-implementation of the superclass QWZMQListener method for zmq message processing.
         """
         t0_sec = time()
-
         self.zmq_notifier.setEnabled(False)
-
         flags = self.zmq_socket.getsockopt(zmq.EVENTS)
-
         flag = 'UNKNOWN'
         msg = ''
         if flags & zmq.POLLIN :
@@ -320,9 +317,10 @@ class CGWMain(QWZMQListener) :
         else : pass
 
         self.zmq_notifier.setEnabled(True)
-        _ = self.zmq_socket.getsockopt(zmq.EVENTS) # WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
+        _flags = self.zmq_socket.getsockopt(zmq.EVENTS) # WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
         logger.debug('CGWMain.on_zmq_poll Flag zmq.%s in %d msg: %s' % (flag, flags, msg)\
                    + '\n    poll processing time = %.6f sec' % (time()-t0_sec))
+        if _flags & zmq.POLLIN : self.on_zmq_poll()
 
 
     def process_zmq_message(self, msg):
