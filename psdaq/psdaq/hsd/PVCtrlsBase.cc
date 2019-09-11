@@ -68,8 +68,7 @@ namespace Pds {
       connectedBody                                                     \
         }
     
-    CPV(Reset       ,{if (getScalarAs<unsigned>()) _ctrl.call(Reset      );}, {})
-    CPV(PgpLoopback ,{_ctrl.loopback (getScalarAs<unsigned>()!=0);   }, {})
+    CPV(Reset       ,{_ctrl.call(Reset     );}, {})
     CPV(ConfigA     ,{_ctrl.call(ConfigureA);}, {})
     CPV(ConfigB     ,{_ctrl.call(ConfigureB);}, {})
 
@@ -108,6 +107,8 @@ namespace Pds {
         printf("Unknown allocation of %d chips\n",_nchips());
         break;
       }
+
+      NPV(Reset    ,"RESET");
 
       _allocate();
 

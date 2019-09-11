@@ -5,6 +5,7 @@
 #include "Jesd204b.hh"
 #include "ChipAdcCore.hh"
 #include "OptFmc.hh"
+#include "TprCore.hh"
 
 #include "psdaq/epicstools/EpicsPVA.hh"
 using Pds_Epics::EpicsPVA;
@@ -81,6 +82,12 @@ namespace Pds {
       printf("PVs allocated\n");
 
       _m.mon_start();
+
+      for(unsigned i=0; i<2; i++) {
+        TprCore& tpr  = _m.tpr();
+        _p_monTiming[i].timerrcntsum = tpr.RxDecErrs + tpr.RxDspErrs;
+        _p_monTiming[i].timrstcntsum = tpr.RxRstDone;
+      }
     }
 
     void PV134Stats::update()
@@ -96,10 +103,13 @@ namespace Pds {
         ChipAdcCore& chip = _m.chip(i);
         ChipAdcReg&  reg  = chip.reg;
         FexCfg&      fex  = chip.fex;
+        TprCore& tpr  = _m.tpr();
 
         { MonTiming v;
           v.timframecnt = DELT(reg.countEnable , _p_monTiming[i].timframeprv);
           v.timpausecnt = DELT(reg.countInhibit, _p_monTiming[i].timpauseprv);
+          v.timerrcntsum= tpr.RxDecErrs + tpr.RxDspErrs - _p_monTiming[i].timerrcntsum;
+          v.timrstcntsum= tpr.RxRstDone                 - _p_monTiming[i].timrstcntsum;
           v.trigcntsum  = reg.countAcquire;
           v.readcntsum  = reg.countRead;
           v.startcntsum = reg.countStart;

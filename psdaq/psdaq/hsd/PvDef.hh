@@ -10,6 +10,8 @@ namespace Pds {
     public:
       int32_t timframecnt;
       int32_t timpausecnt;
+      int32_t timerrcntsum;
+      int32_t timrstcntsum;
       int32_t trigcnt;
       int32_t trigcntsum;
       int32_t readcntsum;
@@ -27,6 +29,8 @@ namespace Pds {
     public:
       uint32_t timframeprv;
       uint32_t timpauseprv;
+      uint32_t timerrcntsum;
+      uint32_t timrstcntsum;
     };
 
     class MonPgp {

@@ -68,7 +68,7 @@ public:
 #define unitapi_write_register(unit,addr,val) reinterpret_cast<volatile uint32_t*>(this)[addr] = val
 #define unitapi_read_register(unit,addr,pval) *(pval) = reinterpret_cast<volatile uint32_t*>(this)[addr]
 #define unitapi_sleep_ms(tms) usleep(tms*1000)
-static const int32_t UNITAPI_OK = 0;
+
 static const int32_t FMC134_ERR_ADC_INIT = 1;
 static const int32_t FMC134_ERR_OK = 0;
 
@@ -83,33 +83,28 @@ void    Fmc134Ctrl::remote_sync ()
 
 int32_t Fmc134Ctrl::default_init(Fmc134Cpld& cpld, unsigned mode)
 {
-  int32_t rc = UNITAPI_OK;
         uint32_t dword = 0;
 
         // Enable Scrambling in JESD204B core
         //        unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x04, 0x1); 
         unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x04, 0x0); 
-        if(rc!=UNITAPI_OK)     return rc;
 
         // Try a different align char (default=0xfc)
         unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x07, 0xfc); 
-        if(rc!=UNITAPI_OK)     return rc;
 
         // Configure the ADC0 and ADC1 to generate PRBS23
         cpld.config_prbs(0x3);
 
         // Stop hold TAP values, CDR, and AGCs
         unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x1, 0x0); 
-        if(rc!=UNITAPI_OK)     return rc;
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Configure Tranceiver
         // Assert Transceiver Reset
         unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x01, 0x1); 
-        if(rc!=UNITAPI_OK)     return rc;
+
         // Release Tranceiver Reset
         unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x01, 0x0);
-        if(rc!=UNITAPI_OK)     return rc;
 
         // Wait for MGTs to adapt
         //unitapi_sleep_ms(100);
@@ -117,7 +112,6 @@ int32_t Fmc134Ctrl::default_init(Fmc134Cpld& cpld, unsigned mode)
 
         // Hold TAP values, CDR, and AGCs
         unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x1, 0x1FF00); 
-        if(rc!=UNITAPI_OK)     return rc;
 
         //Disable PRBS
         cpld.config_prbs(mode);
@@ -127,27 +121,26 @@ int32_t Fmc134Ctrl::default_init(Fmc134Cpld& cpld, unsigned mode)
 
         // Assert DIV2 Reset
         unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x01, 0x1FF02); 
-        if(rc!=UNITAPI_OK)     return rc;
+
         // Release DIV2 Reset
         unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x01, 0x1FF00);
-        if(rc!=UNITAPI_OK)     return rc;
 
         unitapi_read_register(fmc_unit,   FMC134Offset::AddrCtrl+0x02, &dword);
-        if(rc!=UNITAPI_OK)     return rc;
+
         dword &= 0xF00000; 
         if (dword != 0xF00000) {
                 printf("QPLLs NOT LOCKED!\n");
+                return FMC134_ERR_ADC_INIT;
         } else {
                 printf("QPLLs are locked.\n");
         }
 
         // Enable transceiver alignment
         unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x01, 0x1FF10);
-        if(rc!=UNITAPI_OK)     return rc;
+
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Check for JESD ADC to be stable
         unitapi_read_register(fmc_unit,   FMC134Offset::AddrCtrl + 0x02, &dword);
-        if(rc!=UNITAPI_OK)     return rc;
 
         if (((dword >> 16) & 0x3) == 0x3)
                 printf("ADC0 Aligned\n");
@@ -166,15 +159,15 @@ int32_t Fmc134Ctrl::default_init(Fmc134Cpld& cpld, unsigned mode)
         ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Check for JESD multiframe alignment
         unitapi_read_register(fmc_unit,   FMC134Offset::AddrCtrl+0x03, &dword);
-        if(rc!=UNITAPI_OK)     return rc;
 
         if (dword == 0xF) {
                 printf("Initial Lane Alignment Complete\n");
-                return FMC134_ERR_OK;
         }
         else {
                 printf("\n\nADC Initial Lane Alignment Failed!\n");
                 printf("reg7 = 0x%X\n\n", dword);
                 return FMC134_ERR_ADC_INIT;
         }
+
+        return FMC134_ERR_OK;
 }

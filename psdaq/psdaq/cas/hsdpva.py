@@ -262,6 +262,8 @@ class Ui_MainWindow(object):
                         'Adc' )
         maintab.addTab( HsdJesd         (title), 
                         'Jesd' )
+        maintab.addTab( PvScalarBox(title+':RESET','Reset',daqReset,edit=True),
+                        'Reset' )
 
         lo = QtWidgets.QVBoxLayout()
         lo.addWidget(maintab)

@@ -5,6 +5,7 @@
 #include "psdaq/hsd/PhaseMsmt.hh"
 #include "psdaq/hsd/Pgp.hh"
 #include "psdaq/hsd/QABase.hh"
+#include "psdaq/hsd/TprCore.hh"
 
 #include "psdaq/epicstools/EpicsPVA.hh"
 using Pds_Epics::EpicsPVA;
@@ -73,6 +74,10 @@ namespace Pds {
       printf("PVs allocated\n");
 
       _m.mon_start();
+
+      TprCore& tpr  = _m.tpr();
+      _p_monTiming[0].timerrcntsum= tpr.RxDecErrs + tpr.RxDspErrs;
+      _p_monTiming[0].timrstcntsum= tpr.RxRstDone;
     }
 
     void PV126Stats::update()
@@ -89,10 +94,13 @@ namespace Pds {
       QABase&  reg  = *reinterpret_cast<QABase*>((char*)_m.reg()+0x00080000);
       HdrFifo& hdrf = _m.hdrFifo()[0];
       FexCfg & fex  = _m.fex()[0];
+      TprCore& tpr  = _m.tpr();
 
       { MonTiming v;
         v.timframecnt = DELT(reg.countEnable , _p_monTiming[0].timframeprv);
         v.timpausecnt = DELT(reg.countInhibit, _p_monTiming[0].timpauseprv);
+        v.timerrcntsum= tpr.RxDecErrs + tpr.RxDspErrs - _p_monTiming[0].timerrcntsum;
+        v.timrstcntsum= tpr.RxRstDone                 - _p_monTiming[0].timrstcntsum;
         v.trigcntsum  = reg.countAcquire;
         v.readcntsum  = reg.countRead;
         v.startcntsum = reg.countStart;

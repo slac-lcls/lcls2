@@ -145,7 +145,8 @@ void Module126::setup_timing()
       usleep(100000);
 
       fmc_init(LCLSII);
-      train_io(0);
+      if (train_io(0))
+        abort();
     }
   }
 }
@@ -266,7 +267,7 @@ void Module126::fmc_init(TimingType timing)
   if (!p->fmca_core.present()) {
     printf("FMC card A not present\n");
     printf("FMC init failed!\n");
-    return;
+    abort();
   }
 
   {
