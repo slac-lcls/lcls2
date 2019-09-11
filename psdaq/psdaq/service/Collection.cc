@@ -8,6 +8,7 @@
 #include <netinet/ether.h>
 #include <netdb.h>
 #include "Collection.hh"
+#include "psdaq/service/SysLog.hh"
 
 using json = nlohmann::json;
 
@@ -273,10 +274,10 @@ void CollectionApp::run()
             std::cout<<"topic:  "<<topic<<'\n';
 
             std::string key = msg["header"]["key"];
-            std::cout<<"received key = "<<key<<'\n';
+            logInfo("received key = %s", key.c_str());
             std::cout << std::setw(4) << msg << "\n\n";
             if (m_handleMap.find(key) == m_handleMap.end()) {
-                std::cout<<"unknown key  "<<key<<'\n';
+                logError("unknown key = %s", key.c_str());
             }
             else {
                 m_handleMap[key](msg);
