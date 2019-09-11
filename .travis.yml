@@ -10,9 +10,11 @@ env:
 
 matrix:
   include:
-  - os: osx
+  - if: branch = master
+    os: osx
     python: 3.6
-  - os: linux
+  - if: branch = master
+    os: linux
     env: OS=centos7 PYVER=3.7
 
 install:
