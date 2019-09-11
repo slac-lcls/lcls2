@@ -56,12 +56,14 @@ class CGWMain(QWZMQListener) :
         else : # emulator mode for TEST ONLY
           QWZMQListener.__init__(self, is_normal=False)
 
-        self.wlogr = QWLoggerStd(log_level=self.loglevel, show_buttons=False, log_prefix=self.logdir)
+        #instr = self.expname[:3].upper()
+        instr = daq_control().getInstrument()
+        if instr in ('TST', None) : instr = 'TMO'
+
+        self.wlogr = QWLoggerStd(log_level=self.loglevel, instrument=instr,\
+                                 log_prefix=self.logdir, show_buttons=False)
  
-        #instrument = self.expname[:3].upper()
-        instrument = daq_control().getInstrument()
-        logger.debug('daq_control().getInstrument(): %s' % instrument)
-        self.inst = 'TMO' if instrument in ('TST', None) else instrument
+        logger.debug('logger started with log_level: %s instrument: %s' % (self.loglevel,instr))
 
         cp.cgwmain = self
 

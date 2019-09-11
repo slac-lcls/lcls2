@@ -97,18 +97,18 @@ class QWFilter(logging.Filter) :
 #------------------------------
 
 class QWLoggerStd(QWidget) :
-
     _name = 'QWLoggerStd'
 
-    def __init__(self, show_buttons=True, log_level='DEBUG', log_prefix='.', instrument='TST') :
+    def __init__(self, **kwargs) :
 
         QWidget.__init__(self, parent=None)
 
-        self.log_level  = log_level # cp.log_level
-        self.log_fname  = log_file_name(log_prefix)
-        self.instrument = instrument
+        self.log_level    = kwargs.get('log_level', 'DEBUG')
+        self.show_buttons = kwargs.get('show_buttons', True)
+        self.instrument   = kwargs.get('instrument', 'TST')
+        self.log_fname    = log_file_name(kwargs.get('log_prefix', '.'))
 
-        if log_level=='DEBUG' :
+        if self.log_level=='DEBUG' :
             print('%s.__init__ log_fname: %s' % (self._name, self.log_fname))
 
         if self.log_fname is not None :
@@ -116,7 +116,6 @@ class QWLoggerStd(QWidget) :
             gu.create_path(self.log_fname, mode=0o0777)
             #print('Log file: %s' % log_fname)
 
-        self.show_buttons = show_buttons
         #cp.qwloggerstd = self
 
         #logger.debug('logging.DEBUG: ', logging.DEBUG)
@@ -158,13 +157,13 @@ class QWLoggerStd(QWidget) :
         self.set_style()
         self.set_tool_tips()
 
-        self.config_logger(self.log_fname)
+        self.config_logger()
 
 
-    def config_logger(self, log_fname='is-not-used') :
+    def config_logger(self) :
         
         levname = self.log_level
-        level = self.dict_name_to_level.get(levname, logging.DEBUG) # e.g. logging.DEBUG
+        level = self.dict_name_to_level.get(levname, logging.DEBUG)
 
         self.syslog = SysLog(instrument=self.instrument, level=level)
 
