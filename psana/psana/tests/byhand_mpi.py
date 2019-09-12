@@ -12,6 +12,7 @@ class Test:
 
         env = dict(list(os.environ.items()) + [
             ('TEST_XTC_DIR', str(tmp_path)),
+            ('PS_SRV_NODES', '0')
         ])
 
         loop_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_loops.py')
@@ -22,3 +23,7 @@ class Test:
         
         loop_exhaustive_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ds.py')
         subprocess.check_call(['mpirun','-n','3','python',loop_exhaustive_based], env=env)
+
+        env['PS_SRV_NODES'] = '1'
+        run_smalldata = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_smalldata.py')
+        subprocess.check_call(['mpirun','-n','5','python',run_smalldata], env=env)
