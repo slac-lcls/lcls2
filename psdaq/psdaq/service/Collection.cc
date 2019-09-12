@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include "Collection.hh"
 #include "psdaq/service/SysLog.hh"
+using logging = Pds::SysLog;
 
 using json = nlohmann::json;
 
@@ -274,10 +275,10 @@ void CollectionApp::run()
             std::cout<<"topic:  "<<topic<<'\n';
 
             std::string key = msg["header"]["key"];
-            logInfo("received key = %s", key.c_str());
+            logging::info("received key = %s", key.c_str());
             std::cout << std::setw(4) << msg << "\n\n";
             if (m_handleMap.find(key) == m_handleMap.end()) {
-                logError("unknown key = %s", key.c_str());
+                logging::error("unknown key = %s", key.c_str());
             }
             else {
                 m_handleMap[key](msg);

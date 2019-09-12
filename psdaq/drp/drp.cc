@@ -5,6 +5,7 @@
 #include "drp.hh"
 #include "PGPDetectorApp.hh"
 #include "psdaq/service/SysLog.hh"
+using logging = Pds::SysLog;
 
 void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
     std::istringstream ss(kwargs_str);
@@ -30,7 +31,6 @@ int main(int argc, char* argv[])
     std::string kwargs_str;
     bool lVerbose = false;
     char *instrument = NULL;
-    Pds::SysLog *logger = NULL;
     while((c = getopt(argc, argv, "p:o:l:D:C:d:u:k:P:v")) != EOF) {
         switch(c) {
             case 'p':
@@ -68,28 +68,27 @@ int main(int argc, char* argv[])
         }
     }
     if (instrument) {
-        logger = new Pds::SysLog(instrument, lVerbose ? LOG_INFO : LOG_WARNING);
-        logInfo("logging configured");
+        logging::init(instrument, lVerbose ? LOG_INFO : LOG_WARNING);
+        logging::info("logging configured");
     } else {
-        logError("-P: instrument is needed to configure logging");
-        // logger default configuration does not print to stderr
+        logging::error("-P: instrument is needed to configure logging");
+        // logging default configuration does not print to stderr
         fprintf(stderr, "-P: instrument is needed to configure logging\n");
     }
-    logger = logger;    // silence compiler warning
 
     // Check required parameters
     if (para.device.empty()) {
-        logCritical("-d: device is mandatory");
+        logging::critical("-d: device is mandatory");
         exit(1);
     }
     if (para.alias.empty()) {
-        logCritical("-u: alias is mandatory");
+        logging::critical("-u: alias is mandatory");
         exit(1);
     }
     // Alias must be of form <detName>_<detSegment>
     size_t found = para.alias.rfind('_');
     if ((found == std::string::npos) || !isdigit(para.alias.back())) {
-        logCritical("-u: alias must have _N suffix");
+        logging::critical("-u: alias must have _N suffix");
         exit(1);
     }
     para.detName = para.alias.substr(0, found);

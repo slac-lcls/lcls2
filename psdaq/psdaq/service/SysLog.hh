@@ -2,23 +2,67 @@
 #define PDS_SYSLOG_HH
 
 #include <syslog.h>
+#include <stdarg.h>
 
 namespace Pds {
 class SysLog
 {
 public:
     SysLog(const char *instrument, int level);
-    ~SysLog();
+
+    static void init(const char *instrument, int level) 
+    {
+        static char ident[20];
+        if (instrument) {
+            snprintf(ident, sizeof(ident)-1, "%s-%s", instrument, program_invocation_short_name);
+        } else {
+            snprintf(ident, sizeof(ident)-1, "%s", program_invocation_short_name);
+        }
+        openlog(ident, LOG_PERROR | LOG_PID, LOG_USER);
+        setlogmask(LOG_UPTO(level));
+    }
+
+    static void debug(const char *fmt, ...)
+    {
+        va_list args;
+        va_start(args, fmt);
+        vsyslog(LOG_DEBUG, fmt, args);
+        va_end(args);
+    }
+
+    static void info(const char *fmt, ...)
+    {
+        va_list args;
+        va_start(args, fmt);
+        vsyslog(LOG_INFO, fmt, args);
+        va_end(args);
+    }
+
+    static void warning(const char *fmt, ...)
+    {
+        va_list args;
+        va_start(args, fmt);
+        vsyslog(LOG_WARNING, fmt, args);
+        va_end(args);
+    }
+
+    static void error(const char *fmt, ...)
+    {
+        va_list args;
+        va_start(args, fmt);
+        vsyslog(LOG_ERR, fmt, args);
+        va_end(args);
+    }
+
+    static void critical(const char *fmt, ...)
+    {
+        va_list args;
+        va_start(args, fmt);
+        vsyslog(LOG_CRIT, fmt, args);
+        va_end(args);
+    }
 };
 }
-
-// Support same subset of syslog severities as the
-// Python standard library logging module.
-#define logCritical(...)    syslog(LOG_CRIT, __VA_ARGS__)
-#define logError(...)       syslog(LOG_ERR, __VA_ARGS__)
-#define logWarning(...)     syslog(LOG_WARNING, __VA_ARGS__)
-#define logInfo(...)        syslog(LOG_INFO, __VA_ARGS__)
-#define logDebug(...)       syslog(LOG_DEBUG, __VA_ARGS__)
 
 #endif
 

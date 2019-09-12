@@ -13,8 +13,3 @@ SysLog::SysLog(const char *instrument, int level)
     openlog(ident, LOG_PERROR | LOG_PID, LOG_USER);
     setlogmask(LOG_UPTO(level));
 }
-
-SysLog::~SysLog() 
-{
-    closelog();
-}
