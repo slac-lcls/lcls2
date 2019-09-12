@@ -1,0 +1,463 @@
+##############################################################################
+## This file is part of 'SLAC Firmware Standard Library'.
+## It is subject to the license terms in the LICENSE.txt file found in the 
+## top-level directory of this distribution and at: 
+##    https://confluence.slac.stanford.edu/display/ppareg/LICENSE.html. 
+## No part of 'SLAC Firmware Standard Library', including this file, 
+## may be copied, modified, propagated, or distributed except according to 
+## the terms contained in the LICENSE.txt file.
+##############################################################################
+#schemaversion 3.0.0
+#once Pgp3AxiL.yaml
+
+Pgp3AxiL: &Pgp3AxiL
+  class: MMIODev
+  configPrio: 1
+  description: Status of pgp link
+  size: 0x2000
+  children:
+    #########################################################
+    CountReset:
+      at:
+        offset: 0x00
+      class: IntField
+      name: CountReset
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: Counter reset
+    #########################################################
+    AutoStatus:
+      at:
+        offset: 0x04
+      class: IntField
+      name: AutoStatus
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: rx error irq enable
+    #########################################################
+    Loopback:
+      at:
+        offset: 0x08
+      class: IntField
+      name: Loopback
+      sizeBits: 3
+      lsBit: 0
+      mode: RW
+      description: Loopback setting
+    #########################################################
+    PhyRxActive:
+      at:
+        offset: 0x010
+      class: IntField
+      name: PhyRxActive
+      sizeBits: 1
+      lsBit: 0
+      mode: RO
+      description: Phy Rx Active
+    #########################################################
+    LocLinkReady:
+      at:
+        offset: 0x010
+      class: IntField
+      name: LocLinkReady
+      sizeBits: 1
+      lsBit: 1
+      mode: RO
+      description: Local Link Ready Status
+    #########################################################
+    RemLinkReady:
+      at:
+        offset: 0x010
+      class: IntField
+      name: RemLinkReady
+      sizeBits: 1
+      lsBit: 2
+      mode: RO
+      description: Remote Link Ready Status
+    #########################################################
+    CellErrorCount:
+      at:
+        offset: 0x014
+      class: IntField
+      name: CellErrorCount
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Rx Cell error count
+    #########################################################
+    LinkDownCount:
+      at:
+        offset: 0x018
+      class: IntField
+      name: LinkDownCount
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Rx link down count
+    #########################################################
+    LinkErrorCount:
+      at:
+        offset: 0x01c
+      class: IntField
+      name: LinkErrorCount
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Rx link error count
+    #########################################################
+    RemRxOverflow:
+      at:
+        offset: 0x020
+      class: IntField
+      name: RemRxOverflow
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Rx remote overflow count
+    #########################################################
+    RemRxPause:
+      at:
+        offset: 0x022
+      class: IntField
+      name: RemRxPause
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Rx remote pause count
+    #########################################################
+    FrameCount:
+      at:
+        offset: 0x024
+      class: IntField
+      name: FrameCount
+      sizeBits: 32
+      lsBit: 0
+      mode: RO
+      description: Rx frame count
+    #########################################################
+    FrameErrCount:
+      at:
+        offset: 0x028
+      class: IntField
+      name: FrameErrCount
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Rx frame error count
+    #########################################################
+    RxClkFreq:
+      at:
+        offset: 0x02c
+      class: IntField
+      name: RxClkFreq
+      sizeBits: 32
+      lsBit: 0
+      mode: RW
+      description: Rx clock frequency
+    #########################################################
+    RxOpCodeCount:
+      at:
+        offset: 0x030
+      class: IntField
+      name: RxOpCodeCount
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Rx opcode count
+    #########################################################
+    RxOpCodeDataLast:
+      at:
+        offset: 0x034
+      class: IntField
+      name: RxOpCodeDataLast
+      sizeBits: 56
+      lsBit: 0
+      mode: RO
+      description: Rx last opcode data
+    #########################################################
+    RxOpCodeDataNumberLast:
+      at:
+        offset: 0x03b
+      class: IntField
+      name: RxOpCodeDataLast
+      sizeBits: 8
+      lsBit: 0
+      mode: RO
+      description: Rx last number of opcodes
+    #########################################################
+    RxRemOverflowCount:
+      at:
+        offset: 0x040
+        stride: 4
+        enum: 16
+      class: IntField
+      name: RxRemOverflowCount
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Rx remote overflow count
+    #########################################################
+    RxPhyData:
+      at:
+        offset: 0x100
+      class: IntField
+      name: RxPhyData
+      sizeBits: 64
+      lsBit: 0
+      mode: RO
+      description: Rx phy data
+    #########################################################
+    RxPhyHeader:
+      at:
+        offset: 0x108
+      class: IntField
+      name: RxPhyHeader
+      sizeBits: 2
+      lsBit: 0
+      mode: RO
+      description: Rx phy header
+    #########################################################
+    RxPhyValid:
+      at:
+        offset: 0x108
+      class: IntField
+      name: RxPhyValid
+      sizeBits: 1
+      lsBit: 2
+      mode: RO
+      description: Rx phy valid
+    #########################################################
+    RxEbData:
+      at:
+        offset: 0x110
+      class: IntField
+      name: RxEbData
+      sizeBits: 64
+      lsBit: 0
+      mode: RO
+      description: Rx eb data
+    #########################################################
+    RxEbHeader:
+      at:
+        offset: 0x118
+      class: IntField
+      name: RxEbHeader
+      sizeBits: 2
+      lsBit: 0
+      mode: RO
+      description: Rx eb header
+    #########################################################
+    RxEbValid:
+      at:
+        offset: 0x118
+      class: IntField
+      name: RxEbValid
+      sizeBits: 1
+      lsBit: 2
+      mode: RO
+      description: Rx eb valid
+    #########################################################
+    RxEbStatus:
+      at:
+        offset: 0x118
+      class: IntField
+      name: RxEbStatus
+      sizeBits: 9
+      lsBit: 3
+      mode: RO
+      description: Rx eb status
+    #########################################################
+    RxEbOverflow:
+      at:
+        offset: 0x11c
+      class: IntField
+      name: RxEbOverflow
+      sizeBits: 1
+      lsBit: 0
+      mode: RO
+      description: Rx eb overflow
+    #########################################################
+    RxEbOverflowCnt:
+      at:
+        offset: 0x11c
+      class: IntField
+      name: RxEbOverflowCnt
+      sizeBits: 4
+      lsBit: 1
+      mode: RO
+      description: Rx eb overflow count
+    #########################################################
+    RxGearboxAligned:
+      at:
+        offset: 0x120
+      class: IntField
+      name: RxGearboxAligned
+      sizeBits: 1
+      lsBit: 0
+      mode: RO
+      description: Rx gearbox aligned
+    #########################################################
+    RxGearboxAlignedCnt:
+      at:
+        offset: 0x120
+      class: IntField
+      name: RxGearboxAlignedCnt
+      sizeBits: 8
+      lsBit: 8
+      mode: RO
+      description: Rx gearbox aligned count
+    #########################################################
+    RxPhyInitCnt:
+      at:
+        offset: 0x130
+      class: IntField
+      name: RxPhyInitCnt
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Rx phy init count
+    #########################################################
+    TxFlowCntlDis:
+      at:
+        offset: 0x080
+      class: IntField
+      name: TxFlowCntlDis
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: Tx flow control disable
+    #########################################################
+    TxDisable:
+      at:
+        offset: 0x080
+      class: IntField
+      name: TxDisable
+      sizeBits: 1
+      lsBit: 1
+      mode: RW
+      description: Tx disable
+    #########################################################
+    TxSkpInterval:
+      at:
+        offset: 0x00C
+      class: IntField
+      name: TxSkpInterval
+      sizeBits: 32
+      lsBit: 0
+      mode: RW
+      description: Tx skip interval
+    #########################################################
+    TxPhyActive:
+      at:
+        offset: 0x084
+      class: IntField
+      name: TxPhyActive
+      sizeBits: 1
+      lsBit: 0
+      mode: RO
+      description: Tx phy active
+    #########################################################
+    TxLinkReady:
+      at:
+        offset: 0x084
+      class: IntField
+      name: TxLinkReady
+      sizeBits: 1
+      lsBit: 1
+      mode: RO
+      description: Tx link ready
+    #########################################################
+    TxLocOverflow:
+      at:
+        offset: 0x08c
+      class: IntField
+      name: TxLocOverflow
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Tx local overflow
+    #########################################################
+    TxLocPause:
+      at:
+        offset: 0x08e
+      class: IntField
+      name: TxLocPause
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Tx local pause
+    #########################################################
+    TxFrameCount:
+      at:
+        offset: 0x090
+      class: IntField
+      name: TxFrameCount
+      sizeBits: 16
+      lsBit: 0
+      mode: RO
+      description: Tx frame count
+    #########################################################
+    TxFrameErrCount:
+      at:
+        offset: 0x094
+      class: IntField
+      name: TxFrameErrCount
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Tx frame error count
+    #########################################################
+    TxClkFreq:
+      at:
+        offset: 0x09c
+      class: IntField
+      name: TxClkFreq
+      sizeBits: 32
+      lsBit: 0
+      mode: RO
+      description: Tx clock frequency
+    #########################################################
+    TxOpCodeCount:
+      at:
+        offset: 0x0a0
+      class: IntField
+      name: TxOpCodeCount
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Tx opcode count
+    #########################################################
+    TxOpCodeDataLast:
+      at:
+        offset: 0x0a4
+      class: IntField
+      name: TxOpCodeDataLast
+      sizeBits: 56
+      lsBit: 0
+      mode: RO
+      description: Tx last opcode data
+    #########################################################
+    TxOpCodeNumberLast:
+      at:
+        offset: 0x0ab
+      class: IntField
+      name: TxOpCodeNumberLast
+      sizeBits: 56
+      lsBit: 0
+      mode: RO
+      description: Tx last opcode number
+    #########################################################
+    TxLocOverflowCnt:
+      at:
+        offset: 0x0b0
+        stride: 4
+        enum: 16
+      class: IntField
+      name: TxLocOverflowCnt
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Tx local overflow count
+    #########################################################

@@ -1,0 +1,9 @@
+# Compiled source files
+*.o
+*.pyc
+*.db
+*.swp
+*._*
+*.db
+xvcSrv
+doxygen/

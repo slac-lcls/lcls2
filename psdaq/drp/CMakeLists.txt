@@ -89,6 +89,18 @@ target_link_libraries(pgpread
     xtcdata::xtc
 )
 
+add_executable(pgpread_timetool
+    pgpread_timetool.cc
+)
+target_include_directories(pgpread_timetool PUBLIC
+    ../psdaq/pgp/aes-stream-drivers/include
+    ${PYTHON_INCLUDE_DIRS}
+)
+target_link_libraries(pgpread_timetool
+    xtcdata::xtc
+    ${PYTHON_LIBRARIES}
+)
+
 add_executable(drp_validate
     validate.cc
 )

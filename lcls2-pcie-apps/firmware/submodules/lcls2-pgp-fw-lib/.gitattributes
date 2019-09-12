@@ -1,0 +1,5 @@
+*.dcp        filter=lfs diff=lfs merge=lfs -text
+*.mcs        filter=lfs diff=lfs merge=lfs -text
+*.mcs.gz     filter=lfs diff=lfs merge=lfs -text
+*.bit        filter=lfs diff=lfs merge=lfs -text
+*.bit.gz     filter=lfs diff=lfs merge=lfs -text

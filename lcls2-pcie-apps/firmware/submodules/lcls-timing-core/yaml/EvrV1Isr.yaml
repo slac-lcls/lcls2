@@ -1,0 +1,28 @@
+##############################################################################
+## This file is part of 'SLAC Firmware Standard Library'.
+## It is subject to the license terms in the LICENSE.txt file found in the 
+## top-level directory of this distribution and at: 
+##    https://confluence.slac.stanford.edu/display/ppareg/LICENSE.html. 
+## No part of 'SLAC Firmware Standard Library', including this file, 
+## may be copied, modified, propagated, or distributed except according to 
+## the terms contained in the LICENSE.txt file.
+##############################################################################
+#schemaversion 3.0.0
+#once EvrV1Isr.yaml
+
+EvrV1Isr: &EvrV1Isr
+  class: MMIODev
+  configPrio: 1
+  description: LCLS-I EVR ISR Controller
+  size: 0x10
+  children:
+    #########################################################  
+    IsrSelect:
+      at:
+        offset: 0x0
+      class: IntField
+      name: IsrSelect
+      sizeBits: 1
+      mode: RW
+      description: 0x1 = Software ISR, 0x0 = Firmware ISR
+    #########################################################  

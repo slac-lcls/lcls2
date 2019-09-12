@@ -1,0 +1,111 @@
+TimeToolDev:
+  TimeToolRx:
+    frameLength: 2176
+  #########################################################################################################
+  Application:
+    AppLane[:]:
+      ###################
+      Prescale:
+        DialInPreScaling: 0x0
+      ###################
+      EventBuilder:
+        Bypass:  0x0
+  #########################################################################################################
+  ClinkFeb[:]:
+    ###################
+    ClinkTop:
+    ###################
+      ###################
+      Ch[:]:
+        LinkMode: Full 
+        DataMode: 8Bit
+        FrameMode: Line
+        TapCount: 0x8
+        DataEn: True
+        Blowoff: False
+        BaudRate: 9600 # units of bps
+        SerThrottle: 10000 # (10ms x 1us throttle rate) = 10000
+        SwControlValue: 0x0
+        SwControlEn: 0x0     
+        ###################
+        UartPiranha4: # Piranha4 UART interface
+          CCF: ''
+          CLS: ''
+          CLM: '2'
+          CPA[0]: ''
+          CPA[1]: ''
+          CPA[2]: ''
+          DST: ''
+          FFM: ''
+          FRS: ''
+          GET: ''
+          LPC: ''
+          ROI[0]: ''
+          ROI[1]: ''
+          SAC: ''
+          SAD[0]: ''
+          SAD[1]: ''
+          SAD[2]: ''
+          SAM: ''
+          SBH: ''
+          SBR: ''
+          SBV: ''
+          SCD: ''
+          SEM: '0'
+          SET: '5000'
+          SMM: ''
+          SPF: '0'
+          SSB: ''
+          SSF: '3'
+          SSG: ''
+          STG: ''
+          STM: '1'
+          SVM: '1'
+          USD: ''
+          USL: ''
+          USS: ''   
+    ###################
+    TrigCtrl[0]:
+      EnableTrig: True
+      InvCC: False
+      TrigMap: ChA
+      TrigPulseWidth: 32.768
+      TrigMask: 0x1
+    ###################
+    BoardTemp:
+      RemoteTcritSetpoint: 100 # Prevent FEB from thermal shutdown until FPGA Tj = 100 degC (max. operating temp)        
+  #########################################################################################################
+  Hardware:
+    Timing:
+      ###################
+      TimingDbgMon:
+        Loopback: 0x0
+        # UseMiniTpg: False
+        UseMiniTpg: True # True for standalone testing!!!
+      ###################
+      Triggering: # https://confluence.slac.stanford.edu/download/attachments/216713616/ConfigEvrV2CoreTriggersYaml.pdf
+        ###################
+        Ch[:]:
+          EnableReg: False # Disable triggers (use StartRun() command to start the triggering)
+          # RateSel: 0x1028  # LCLS-I @ 120 Hz
+          RateSel: 0x102B # LCLS-I @ 10 Hz
+          # RateSel: 0x102C # LCLS-I @ 5 Hz
+          # RateSel: 0x102D # LCLS-I @ 1 Hz
+          DestSel: 0x20000
+        ###################
+        LocalTrig[:]:
+          EnableTrig: True
+          Polarity: Rising
+          Delay: 0x0 # zero delay for low latency local trigger
+          Width: 0x1 # 0x1 = one cycle pulse
+        ###################
+        RemoteTrig[:]:
+          EnableTrig: True
+          Polarity: Rising
+          Delay: 0x0 # zero delay for low latency fiber trigger
+          Width: 0x1 # 0x1 = one cycle pulse          
+      ###################
+      TimingFrameRx:
+        ClkSel: 0x0 # 0x0 = LCLS-I timing
+        RxDown: 0x0 # Reset the latching register
+      ###################

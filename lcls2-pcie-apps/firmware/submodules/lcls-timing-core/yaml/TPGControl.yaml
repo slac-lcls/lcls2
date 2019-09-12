@@ -1,0 +1,347 @@
+##############################################################################
+## This file is part of 'SLAC Firmware Standard Library'.
+## It is subject to the license terms in the LICENSE.txt file found in the 
+## top-level directory of this distribution and at: 
+##    https://confluence.slac.stanford.edu/display/ppareg/LICENSE.html. 
+## No part of 'SLAC Firmware Standard Library', including this file, 
+## may be copied, modified, propagated, or distributed except according to 
+## the terms contained in the LICENSE.txt file.
+##############################################################################
+#schemaversion 3.0.0
+#once TPGControl.yaml
+
+TPGControl: &TPGControl
+  class: MMIODev
+  configPrio: 1
+  description: Timing pattern generator control
+  size: 0x400
+  children:
+    #########################################################
+    NBeamSeq:
+      at:
+        offset: 0x0000
+      class: IntField
+      name: NBeamSeq
+      sizeBits: 8
+      lsBit: 0
+      mode: RO
+      description: Number of beam control sequences
+    #########################################################
+    NControlSeq:
+      at:
+        offset: 0x0001
+      class: IntField
+      name: NControlSeq
+      sizeBits: 8
+      lsBit: 0
+      mode: RO
+      description: Number of experiment control sequences
+    #########################################################
+    NArraysBSA:
+      at:
+        offset: 0x0002
+      class: IntField
+      name: NArraysBSA
+      sizeBits: 8
+      lsBit: 0
+      mode: RO
+      description: Number of BSA arrays
+    #########################################################
+    SeqAddrLen:
+      at:
+        offset: 0x0003
+      class: IntField
+      name: SeqAddrLen
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Sequence instruction at:
+        offset bus width
+    #########################################################
+    NAllowSeq:
+      at:
+        offset: 0x0003
+      class: IntField
+      name: NAllowSeq
+      sizeBits: 4
+      lsBit: 4
+      mode: RO
+      description: Number of allow table sequences
+    #########################################################
+    ClockPeriod:
+      at:
+        offset: 0x0004
+      class: IntField
+      name: ClockPeriod
+      sizeBits: 32
+      lsBit: 0
+      mode: RW
+      description: Period of beam synchronous clock (ns/cycle)
+    #########################################################
+    BaseControl:
+      at:
+        offset: 0x0008
+      class: IntField
+      name: BaseControl
+      sizeBits: 16
+      mode: RW
+      description: Base rate control divisor
+    #########################################################
+    ACDelay:
+      at:
+        offset: 0x000C
+      class: IntField
+      name: ACDelay
+      sizeBits: 32
+      mode: RW
+      description: Adjustable delay for power line crossing measurement
+    PulseIdL:
+    #########################################################
+      at:
+        offset: 0x0010
+      class: IntField
+      name: PulseIdL
+      sizeBits: 32
+      mode: RW
+      description: Pulse ID lower word
+    #########################################################
+    PulseIdU:
+      at:
+        offset: 0x0014
+      class: IntField
+      name: PulseIdU
+      sizeBits: 32
+      mode: RW
+      description: Pulse ID upper word
+    #########################################################
+    TStampL:
+      at:
+        offset: 0x0018
+      class: IntField
+      name: TStampL
+      sizeBits: 32
+      mode: RW
+      description: Time stamp lower word
+    #########################################################
+    TStampU:
+      at:
+        offset: 0x001C
+      class: IntField
+      name: TStampU
+      sizeBits: 32
+      mode: RW
+      description: Time stamp upper word
+    #########################################################
+    ACRateDiv:
+      at:
+        offset: 0x0020
+        stride: 1
+        nelms: 6
+      class: IntField
+      name: ACRateDiv
+      sizeBits: 8
+      mode: RW
+      description: Power line synch rate marker divisors
+    #########################################################
+    FixedRateDiv:
+      at:
+        offset: 0x0040
+        stride: 4
+        nelms: 10
+      class: IntField
+      name: FixedRateDiv
+      sizeBits: 32
+      mode: RW
+      description: Fixed rate marker divisors
+    #########################################################
+    RateReload:
+      at:
+        offset: 0x0068
+      class: IntField
+      name: RateReload
+      # sizeBits: 1
+      mode: WO
+      # CPSW requires all WO variables to be 32-bit size and 32-bit aligned
+      sizeBits: 32
+      description: Loads cached ac/fixed rate marker divisors
+    #########################################################
+    Sync:
+      at:
+        offset: 0x0070
+      class: IntField
+      name: Sync
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: Sync status with 71kHz
+    #########################################################
+    IrqFifoEnable:
+      at:
+        offset: 0x0074
+      class: IntField
+      name: IrqFifoEnable
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: Enable sequence checkpoint interrupt
+    #########################################################
+    IrqIntvEnable:
+      at:
+        offset: 0x0074
+      class: IntField
+      name: IrqIntvEnable
+      sizeBits: 1
+      lsBit: 1
+      mode: RW
+      description: Enable interval counter interrupt
+    #########################################################
+    IrqBsaEnable:
+      at:
+        offset: 0x0074
+      class: IntField
+      name: IrqBsaEnable
+      sizeBits: 1
+      lsBit: 2
+      mode: RW
+      description: Enable BSA complete interrupt
+    #########################################################
+    IrqEnable:
+      at:
+        offset: 0x0077
+      class: IntField
+      name: IrqEnable
+      sizeBits: 1
+      lsBit: 7
+      mode: RW
+      description: Enable interrupts
+    #########################################################
+    IrqIntvStatus:
+      at:
+        offset: 0x0078
+      class: IntField
+      name: IrqIntvStatus
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: Interval counters updated
+    #########################################################
+    IrqBsaStatus:
+      at:
+        offset: 0x0078
+      class: IntField
+      name: IrqBsaStatus
+      sizeBits: 1
+      lsBit: 1
+      mode: RO
+      description: BSA complete updated
+    #########################################################
+    SeqFifoData:
+      at:
+        offset: 0x007C
+      class: IntField
+      name: SeqFifoData
+      sizeBits: 32
+      mode: RO
+      description: Sequence checkpoint data
+    #########################################################
+    BeamSeqCntl:
+      at:
+        offset: 0x0080
+        nelms: 16
+      class: IntField
+      name: BeamSeqCntl
+      sizeBits: 32
+      mode: RW
+      description: Beam sequence arbitration control
+    #########################################################
+    SeqResetL:
+      at:
+        offset: 0x0100
+      class: IntField
+      name: SeqResetL
+      sizeBits: 32
+      mode: WO
+      description: Sequence restart lower word
+    #########################################################
+    SeqResetU:
+      at:
+        offset: 0x0104
+      class: IntField
+      name: SeqResetU
+      sizeBits: 32
+      mode: WO
+      description: Sequence restart upper word
+    #########################################################
+    BeamEnergy:
+      at:
+        offset: 0x0120
+      class: IntField
+      name: BeamEnergy
+      sizeBits: 32
+        nelms: 4
+      mode: RW
+      description: Beam energy meta data
+    #########################################################
+    BeamDiagCntl:
+      at:
+        offset: 0x01E4
+      class: IntField
+      name: BeamDiagCntl
+      sizeBits: 32
+      mode: WO
+      description: Beam diagnostic buffer control
+    #########################################################
+    BeamDiagStat:
+      at:
+        offset: 0x01E8
+        stride: 4
+        nelms: 4
+      class: IntField
+      name: BeamDiagStat
+      sizeBits: 32
+      mode: RO
+      description: Beam diagnostic latched status
+    #########################################################
+    BsaCompleteL:
+      at:
+        offset: 0x01F8
+      class: IntField
+      name: BsaCompleteL
+      sizeBits: 32
+      mode: RW
+      description: Bsa buffers complete lower word
+    #########################################################
+    BsaCompleteU:
+      at:
+        offset: 0x01FC
+      class: IntField
+      name: BsaCompleteU
+      sizeBits: 32
+      mode: RW
+      description: Bsa buffers complete upper word
+    #########################################################
+    BsaEventSel:
+      at:
+        offset: 0x0200
+        stride: 8
+        nelms: 64
+      class: IntField
+      name: BsaEventSel
+      sizeBits: 32
+      lsbit: 0
+      mode: RW
+      description: Bsa definition rate/destination selection
+    #########################################################
+    BsaStatSel:
+      at:
+        offset: 0x0204
+        stride: 8
+        nelms: 64
+      class: IntField
+      name: BsaStatSel
+      sizeBits: 32
+      lsbit: 0
+      mode: RW
+      description: Bsa definition samples to average/acquire
+    #########################################################
+    

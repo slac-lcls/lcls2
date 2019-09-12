@@ -16,6 +16,14 @@
 static int fd;
 std::atomic<bool> terminate;
 
+static void check(PyObject* obj) {
+    if (!obj) {
+        PyErr_Print();
+        throw "**** python error\n";
+    }
+}
+
+
 unsigned dmaDest(unsigned lane, unsigned vc)
 {
     return (lane<<8) | vc;
@@ -27,8 +35,64 @@ void int_handler(int dummy)
     // dmaUnMapDma();
 }
 
+int toggle_acquisition(int x)
+{
+    printf("starting prescaler config testing  \n");
 
-int main(int argc, char *argv[])
+    PyObject *pName, *pModule, *pFunc;
+    PyObject *pArgs, *pValue;
+
+    Py_Initialize();
+    PyObject* sysPath = PySys_GetObject((char*)"path");
+
+
+    //PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/software/TimeTool/scripts"));
+    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/submodules/surf/python"));
+    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/submodules/axi-pcie-core/python"));
+    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/submodules/lcls2-pgp-fw-lib/python"));
+    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/submodules/lcls-timing-core/python"));
+    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/submodules/lcls2-pgp-fw-lib/python"));
+    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/applications/TimeTool/python"));
+    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/submodules/clink-gateway-fw-lib/python"));
+    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/software/TimeTool/python"));
+    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/software/TimeTool/scripts"));
+
+
+    pName = PyUnicode_DecodeFSDefault("toggle_prescaling");
+
+
+    pModule = PyImport_Import(pName);
+
+    check(pModule);
+
+    if (!pModule){
+    printf("can't find module \n");
+    return 0;
+    }
+
+    pFunc = PyObject_GetAttrString(pModule, "toggle_prescaling");
+    check(pFunc);
+
+    PyObject_CallFunction(pFunc, NULL);
+
+    Py_XDECREF(pFunc);
+
+
+     if (PyErr_Occurred()){
+                PyErr_Print();
+        }
+
+    //Py_XDECREF(pArgs);
+    //Py_XDECREF(pModule);
+    //Py_XDECREF(sysPath);
+    //Py_XDECREF(pValue);
+    //Py_XDECREF(pName);
+
+    printf("ending prescaler config testing \n ");
+
+}
+
+int main_b(int argc, char *argv[])
 {
     PyObject *pName, *pModule, *pFunc;
     PyObject *pArgs, *pValue;
@@ -100,8 +164,10 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-int main_b(int argc, char* argv[])
+int main(int argc, char* argv[])
 {
+    printf("starting main \n");
+    toggle_acquisition(0);
 
     int c, channel;
 
@@ -173,9 +239,9 @@ int main_b(int argc, char* argv[])
             //uint32_t dest = dmaDest[b] >> 8;
             raw_data = reinterpret_cast<uint8_t *>(dmaBuffers[index]);
 
-            if(size !=2112){
-                printf("corrupted frame. size = %d",size);
-            }
+            //if(size !=2112){
+            //    printf("corrupted frame. size = %d",size);
+            //}
             
 
             if(raw_counter%100000 == 0){

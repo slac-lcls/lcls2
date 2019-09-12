@@ -1,0 +1,349 @@
+##############################################################################
+## This file is part of 'SLAC Firmware Standard Library'.
+## It is subject to the license terms in the LICENSE.txt file found in the 
+## top-level directory of this distribution and at: 
+##    https://confluence.slac.stanford.edu/display/ppareg/LICENSE.html. 
+## No part of 'SLAC Firmware Standard Library', including this file, 
+## may be copied, modified, propagated, or distributed except according to 
+## the terms contained in the LICENSE.txt file.
+##############################################################################
+#schemaversion 3.0.0
+#once DtiDsPgp5Gb.yaml
+
+DtiDsPgp5Gb: &DtiDsPgp5Gb
+  class: MMIODev
+  configPrio: 1
+  description: Status of pgp link
+  size: 0x100
+  children:
+    #########################################################
+    CountReset:
+      at:
+        offset: 0x00
+      class: IntField
+      name: CountReset
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: Counter reset
+    #########################################################
+    ResetRx:
+      at:
+        offset: 0x04
+      class: IntField
+      name: ResetRx
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: Reset receiver
+    #########################################################
+    Flush:
+      at:
+        offset: 0x08
+      class: IntField
+      name: Flush
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: Flush link queues
+    #########################################################
+    Loopback:
+      at:
+        offset: 0x0C
+      class: IntField
+      name: Loopback
+      sizeBits: 2
+      lsBit: 0
+      mode: RW
+      description: Loopback mode
+    #########################################################
+    TxLocData:
+      at:
+        offset: 0x10
+      class: IntField
+      name: TxLocData
+      sizeBits: 8
+      lsBit: 0
+      mode: RW
+      description: Transmit sideband data
+    #########################################################
+    TxLocDataEn:
+      at:
+        offset: 0x12
+      class: IntField
+      name: TxLocDataEn
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: Enable sideband data transmission
+    #########################################################
+    AutoStatSendEn:
+      at:
+        offset: 0x14
+      class: IntField
+      name: AutoStatSendEn
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: Enable auto status send for PPI
+    #########################################################
+    FlowControlDisable:
+      at:
+        offset: 0x18
+      class: IntField
+      name: FlowControlDisable
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: Disable flow control
+    #########################################################
+    RxPhyReady:
+      at:
+        offset: 0x20
+      class: IntField
+      name: RxPhyReady
+      sizeBits: 1
+      lsBit: 0
+      mode: RO
+      description: Rx phy ready
+    #########################################################
+    TxPhyReady:
+      at:
+        offset: 0x20
+      class: IntField
+      name: TxPhyReady
+      sizeBits: 1
+      lsBit: 1
+      mode: RO
+      description: Tx phy ready
+    #########################################################
+    LocalLinkReady:
+      at:
+        offset: 0x20
+      class: IntField
+      name: LocalLinkReady
+      sizeBits: 1
+      lsBit: 2
+      mode: RO
+      description: Local link ready
+    #########################################################
+    RemoteLinkReady:
+      at:
+        offset: 0x20
+      class: IntField
+      name: RemoteLinkReady
+      sizeBits: 1
+      lsBit: 3
+      mode: RO
+      description: Remote link ready
+    #########################################################
+    TxReady:
+      at:
+        offset: 0x20
+      class: IntField
+      name: TxReady
+      sizeBits: 1
+      lsBit: 4
+      mode: RO
+      description: Tx ready
+    #########################################################
+    RxPolarity:
+      at:
+        offset: 0x21
+      class: IntField
+      name: RxPolarity
+      sizeBits: 2
+      lsBit: 0
+      mode: RO
+      description: Receive link polarity
+    #########################################################
+    RemotePauseStatus:
+      at:
+        offset: 0x21
+      class: IntField
+      name: RemotePauseStatus
+      sizeBits: 4
+      lsBit: 4
+      mode: RO
+      description: Remote link pause status
+    #########################################################
+    LocalPauseStatus:
+      at:
+        offset: 0x22
+      class: IntField
+      name: LocalPauseStatus
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Local link pause status
+    #########################################################
+    RemoteOverflowStatus:
+      at:
+        offset: 0x22
+      class: IntField
+      name: RemoteOverflowStatus
+      sizeBits: 4
+      lsBit: 4
+      mode: RO
+      description: Remote link overflow status
+    #########################################################
+    LocalOverflowStatus:
+      at:
+        offset: 0x23
+      class: IntField
+      name: LocalOverflowStatus
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: Local link overflow status
+    #########################################################
+    RemoteData:
+      at:
+        offset: 0x24
+      class: IntField
+      name: RemoteData
+      sizeBits: 8
+      lsBit: 0
+      mode: RO
+      description: Remote link data
+    #########################################################
+    CellErrCount:
+      at:
+        offset: 0x28
+      class: IntField
+      name: CellErrCount
+      sizeBits: 32
+      lsBit: 0
+      mode: RO
+      description: Cell error count
+    #########################################################
+    LinkDownCount:
+      at:
+        offset: 0x2C
+      class: IntField
+      name: LinkDownCount
+      sizeBits: 32
+      mode: RO
+      description: Link down count
+    #########################################################
+    LinkErrCount:
+      at:
+        offset: 0x30
+      class: IntField
+      name: LinkErrCount
+      sizeBits: 32
+      mode: RO
+      description: Link error count
+    #########################################################
+    RemoteOverflowVC:
+      at:
+        offset: 0x34
+        stride: 4
+        nelms: 4
+      class: IntField
+      name: RemoteOverflowVC
+      sizeBits: 32
+      mode: RO
+      description: Remote VC overflow count
+    #########################################################
+    RxFrameErrCount:
+      at:
+        offset: 0x44
+      class: IntField
+      name: RxFrameErrCount
+      sizeBits: 32
+      mode: RO
+      description: Receive frame error count
+    #########################################################
+    RxFrameCount:
+      at:
+        offset: 0x48
+      class: IntField
+      name: RxFrameCount
+      sizeBits: 32
+      mode: RO
+      description: Receive frame count
+    #########################################################
+    LocalOverflowVC:
+      at:
+        offset: 0x4C
+        stride: 4
+        nelms: 4
+      class: IntField
+      name: LocalOverflowVC
+      sizeBits: 32
+      mode: RO
+      description: Local VC overflow count
+    #########################################################
+    TxFrameErrCount:
+      at:
+        offset: 0x5C
+      class: IntField
+      name: TxFrameErrCount
+      sizeBits: 32
+      mode: RO
+      description: Transmit frame error count
+    #########################################################
+    TxFrameCount:
+      at:
+        offset: 0x60
+      class: IntField
+      name: TxFrameCount
+      sizeBits: 32
+      mode: RO
+      description: Transmit frame count
+    #########################################################
+    RxClockFreq:
+      at:
+        offset: 0x64
+      class: IntField
+      name: RxClockFreq
+      sizeBits: 32
+      mode: RO
+      description: Receive clock frequency
+    #########################################################
+    TxClockFreq:
+      at:
+        offset: 0x68
+      class: IntField
+      name: TxClockFreq
+      sizeBits: 32
+      mode: RO
+      description: Transmit clock frequency
+    #########################################################
+    TxLastOpCode:
+      at:
+        offset: 0x70
+      class: IntField
+      name: TxLastOpCode
+      sizeBits: 8
+      mode: RO
+      description: Last opcode transmitted
+    #########################################################
+    RxLastOpCode:
+      at:
+        offset: 0x74
+      class: IntField
+      name: RxLastOpCode
+      sizeBits: 8
+      mode: RO
+      description: Last opcode received
+    #########################################################
+    TxOpCodeCount:
+      at:
+        offset: 0x78
+      class: IntField
+      name: TxOpCodeCount
+      sizeBits: 32
+      mode: RO
+      description: Transmit opcode count
+    #########################################################
+    RxOpCodeCount:
+      at:
+        offset: 0x7C
+      class: IntField
+      name: RxOpCodeCount
+      sizeBits: 32
+      mode: RO
+      description: Receive opcode count
+    #########################################################

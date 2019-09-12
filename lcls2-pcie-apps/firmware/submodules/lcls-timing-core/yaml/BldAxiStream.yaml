@@ -1,0 +1,130 @@
+##############################################################################
+## This file is part of 'SLAC Firmware Standard Library'.
+## It is subject to the license terms in the LICENSE.txt file found in the 
+## top-level directory of this distribution and at: 
+##    https://confluence.slac.stanford.edu/display/ppareg/LICENSE.html. 
+## No part of 'SLAC Firmware Standard Library', including this file, 
+## may be copied, modified, propagated, or distributed except according to 
+## the terms contained in the LICENSE.txt file.
+##############################################################################
+#schemaversion 3.0.0
+#once BldAxiStream.yaml
+
+BldAxiStream: &BldAxiStream 
+  class: MMIODev
+  configPrio: 1
+  description: Beamline data streaming module for AMC Carrier
+  size: 0x10000
+  ########
+  children:
+  ########
+    PacketSize:
+      at:
+        offset: 0x0000
+      class: IntField
+      name: PacketSize
+      sizeBits: 12
+      lsBit: 0
+      mode: RW
+      description: BLD max packet size in words
+    ##################################################
+    Enable:
+      at:
+        offset: 0x0003
+      class: IntField
+      name: Enable
+      sizeBits: 1
+      lsBit: 7
+      mode: RW
+      description: Enable BLD packet streaming
+    ##################################################
+    ChannelMask:
+      at:
+        offset: 0x0004
+      class: IntField
+      name: ChannelMask
+      sizeBits: 31
+      lsBit: 0
+      mode: RW
+      description: BLD diagnostic channel selection
+    ##################################################
+    ChannelSevr:
+      at:
+        offset: 0x0008
+      class: IntField
+      name: ChannelSevr
+      sizeBits: 62
+      lsBit: 0
+      mode: RW
+      description: BLD diagnostic channel severity limit
+    ##################################################
+    WordCount:
+      at:
+        offset: 0x0010
+      class: IntField
+      name: WordCount
+      sizeBits: 12
+      lsBit: 0
+      mode: RO
+      description: current BLD packet word count
+    ##################################################
+    TxState:
+      at:
+        offset: 0x0012
+      class: IntField
+      name: TxState
+      sizeBits: 4
+      lsBit: 0
+      mode: RO
+      description: BLD Tx State
+    ##################################################
+    PulseIdL:
+      at:
+        offset: 0x0014
+      class: IntField
+      name: PulseIdL
+      sizeBits: 20
+      lsBit: 0
+      mode: RO
+      description: BLD PulseID latch
+    ##################################################
+    TimeStampL:
+      at:
+        offset: 0x0018
+      class: IntField
+      name: TimeStampL
+      sizeBits: 32
+      lsBit: 0
+      mode: RO
+      description: BLD TimeStamp latch
+    ##################################################
+    Delta:
+      at:
+        offset: 0x001C
+      class: IntField
+      name: Delta
+      sizeBits: 32
+      lsBit: 0
+      mode: RO
+      description: BLD Pulse Delta
+    ##################################################
+    PacketCount:
+      at:
+        offset: 0x0020
+      class: IntField
+      name: Delta
+      sizeBits: 20
+      lsBit: 0
+      mode: RO
+      description: BLD Packet Count
+    ##################################################
+    Paused:
+      at:
+        offset: 0x0023
+      class: IntField
+      name: Delta
+      sizeBits: 1
+      lsBit: 7
+      mode: RO
+      description: BLD Paused
+    ##################################################

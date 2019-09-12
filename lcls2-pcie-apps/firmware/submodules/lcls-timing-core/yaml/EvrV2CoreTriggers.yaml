@@ -1,0 +1,41 @@
+##############################################################################
+## This file is part of 'SLAC Firmware Standard Library'.
+## It is subject to the license terms in the LICENSE.txt file found in the 
+## top-level directory of this distribution and at: 
+##    https://confluence.slac.stanford.edu/display/ppareg/LICENSE.html. 
+## No part of 'SLAC Firmware Standard Library', including this file, 
+## may be copied, modified, propagated, or distributed except according to 
+## the terms contained in the LICENSE.txt file.
+##############################################################################
+#schemaversion 3.0.0
+#once EvrV2CoreTriggers.yaml
+#include EvrV2ChannelReg.yaml
+#include EvrV2TriggerReg.yaml
+
+## Refer to https://confluence.slac.stanford.edu/download/attachments/216713616/ConfigEvrV2CoreTriggersYaml.pdf
+
+EvrV2CoreTriggers: &EvrV2CoreTriggers
+  class: MMIODev
+  configPrio: 1
+  description: Core trigger control
+  size: 0x40000
+  metadata:
+    numTriggers: &numTriggers 16
+  ############
+  children:
+  ############
+    #########################################################
+    EvrV2ChannelReg:
+      <<: *EvrV2ChannelReg
+      at:
+        offset: 0x0000
+        nelms: *numTriggers
+        stride: 0x100
+    #########################################################
+    EvrV2TriggerReg:
+      <<: *EvrV2TriggerReg
+      at:
+        offset: 0x1000
+        nelms: *numTriggers
+        stride: 0x100
+    #########################################################

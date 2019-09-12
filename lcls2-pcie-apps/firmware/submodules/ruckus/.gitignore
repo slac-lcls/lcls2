@@ -1,0 +1,9 @@
+html/
+latex/
+
+*.bit
+*.bin
+*.mcs
+*.ltx
+*.gz
+*.dcp

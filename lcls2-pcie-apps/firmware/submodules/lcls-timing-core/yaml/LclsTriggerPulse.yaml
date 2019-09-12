@@ -1,0 +1,59 @@
+##############################################################################
+## This file is part of 'SLAC Firmware Standard Library'.
+## It is subject to the license terms in the LICENSE.txt file found in the 
+## top-level directory of this distribution and at: 
+##    https://confluence.slac.stanford.edu/display/ppareg/LICENSE.html. 
+## No part of 'SLAC Firmware Standard Library', including this file, 
+## may be copied, modified, propagated, or distributed except according to 
+## the terms contained in the LICENSE.txt file.
+##############################################################################
+#schemaversion 3.0.0
+#once LclsTriggerPulse.yaml
+
+LclsTriggerPulse: &LclsTriggerPulse 
+  class: MMIODev
+  configPrio: 1
+  description: "Timing trigger pulse comfiguration"
+  size: 0x100
+  #########
+  children:
+  #########
+    #########################################################
+    #
+    #    Control registers
+    #
+    #########################################################
+    OpCodeMask:
+      at:
+        offset: 0x0
+        stride: 4
+        nelms: 8
+      class: IntField
+      sizeBits: 32
+      mode: RW
+      description: "Opcode mask 256 bits to connect the pulse to any combination of opcodes"
+    #########################################################
+    PulseDelay:
+      at:
+        offset: 0x020
+      class: IntField
+      sizeBits: 32
+      mode: RW
+      description: "Pulse delay (Number of recovered clock cycles)"
+    #########################################################
+    PulseWidth:
+      at:
+        offset: 0x24
+      class: IntField
+      sizeBits: 32
+      mode: RW
+      description: "Pulse Width (Number of recovered clock cycles)"
+    #########################################################
+    PulsePolarity:
+      at:
+        offset: 0x28
+      class: IntField
+      sizeBits: 1
+      mode: RW
+      description: "Pulse polarity: 0-Normal. 1-Inverted"
+    #########################################################

@@ -1,0 +1,187 @@
+TimeToolDev:
+  enable: True
+  ForceWrite: False
+  InitAfterConfig: True
+  Hardware:
+    enable: False
+    AxiPcieCore:
+      enable: ParentFalse
+      AxiPciePhy:
+        enable: ParentFalse
+      AxiVersion:
+        enable: ParentFalse
+        ScratchPad: 0x000000
+        FpgaReloadHalt: 0x0
+        FpgaReloadAddress: 0x0
+        UserReset: 0x0
+      DmaIbAxisMon:
+        enable: ParentFalse
+        CntRst: 0x0
+      DmaObAxisMon:
+        enable: ParentFalse
+        CntRst: 0x0
+    PgpMon[0]:
+      enable: ParentFalse
+      Loopback: 'No'
+      LocData: 0x0
+      LocDataEn: False
+      AutoStatus: False
+    PgpTxAxisMon[0]:
+      enable: ParentFalse
+      CntRst: 0x0
+    PgpRxAxisMon[0]:
+      enable: ParentFalse
+      CntRst: 0x0
+    Timing:
+      enable: ParentFalse
+      GthRxAlignCheck[0]:
+        enable: ParentFalse
+        PhaseTarget: 0x0
+        ResetLen: 0x0
+      GthRxAlignCheck[1]:
+        enable: ParentFalse
+        PhaseTarget: 0x0
+        ResetLen: 0x0
+      TimingDbgMon:
+        enable: ParentFalse
+        Loopback: 'No'
+        UseMiniTpg: False
+        CntRst: 0x0
+      Triggering:
+        enable: ParentFalse
+        Ch[0]:
+          enable: ParentFalse
+          EnableReg: False
+          RateSel: 0x0
+          DestSel: 0x0
+        LocalTrig[0]:
+          enable: ParentFalse
+          EnableTrig: False
+          Source: 0x0
+          Polarity: Falling
+          Delay: 0x0
+          Width: 0x0
+        RemoteTrig[0]:
+          enable: ParentFalse
+          EnableTrig: False
+          Source: 0x0
+          Polarity: Falling
+          Delay: 0x0
+          Width: 0x0
+      TimingFrameRx:
+        enable: ParentFalse
+        RxCountReset: 0x0
+        RxPolarity: 0x0
+        RxReset: 0x0
+        ClkSel: 0x0
+        RxDown: 0x0
+        BypassRst: 0x0
+        RxPllReset: 0x0
+        MsgDelay: 0x0
+      TPGMiniCore:
+        enable: ParentFalse
+        TxPolarity: 0x0
+        TxLoopback: 0x0
+        TxInhibit: 0x0
+        BaseControl: 0x0
+        PulseIdWr: 0x0
+        PulseIdSet: 0x0
+        TStampWr: 0x0
+        TStampSet: 0x0
+        FixedRateDiv[0]: 0x0
+        FixedRateDiv[1]: 0x0
+        FixedRateDiv[2]: 0x0
+        FixedRateDiv[3]: 0x0
+        FixedRateDiv[4]: 0x0
+        FixedRateDiv[5]: 0x0
+        FixedRateDiv[6]: 0x0
+        FixedRateDiv[7]: 0x0
+        FixedRateDiv[8]: 0x0
+        FixedRateDiv[9]: 0x0
+        RateReload: 0x0
+        TxReset: 0x0
+        CountIntervalReset: 0x0
+        Lcls1BsaNumSamples: 0x0
+        Lcls1BsaRate: 120Hz
+        Lcls1BsaTimeSlot: TS1
+        Lcls1BsaSeverity: INVALID
+        Lcls1BsaEdefSlot: 0x0
+        Lcls1BsaNumAvgs: 0x0
+        Lcls1BsaStart: 0x0
+        BsaCompleteWr: 0x0
+        BsaActive[0]: 0x0
+        BsaActive[1]: 0x0
+        BsaRateSelMode[0]: FixedRate
+        BsaRateSelMode[1]: FixedRate
+        BsaFixedRate[0]: 1MHz
+        BsaFixedRate[1]: 1MHz
+        BsaACRate[0]: 60Hz
+        BsaACRate[1]: 60Hz
+        BsaACTSMask[0]: 0x0
+        BsaACTSMask[1]: 0x0
+        BsaSequenceSelect[0]: 0x0
+        BsaSequenceSelect[1]: 0x0
+        BsaSequenceBitSelect[0]: 0x0
+        BsaSequenceBitSelect[1]: 0x0
+        BsaDestMode[0]: Dont_Care
+        BsaDestMode[1]: Dont_Care
+        BsaDestInclusiveMask[0]: 0x0
+        BsaDestInclusiveMask[1]: 0x0
+        BsaDestExclusiveMask[0]: 0x0
+        BsaDestExclusiveMask[1]: 0x0
+        BsaNtoAvg[0]: 0x0
+        BsaNtoAvg[1]: 0x0
+        BsaAvgToWr[0]: 0x0
+        BsaAvgToWr[1]: 0x0
+        BsaMaxSeverity[0]: NoAlarm
+        BsaMaxSeverity[1]: NoAlarm
+        CountInterval: 0x0
+  TimeToolRx:
+    enable: True
+    frameLength: 2052
+  Application:
+    enable: True
+    AppLane[0]:
+      enable: True
+      EventBuilder:
+        enable: True
+        Bypass: 0x1
+        Timeout: 0x0
+        Blowoff: False
+      Fex:
+        enable: True
+        EventBuilder:
+          enable: True
+          Bypass: 0x0
+          Timeout: 0x0
+          Blowoff: False
+        EVC_placeholder:
+          enable: True
+          ScratchPad: 0x000000
+          DialInPreScaling: 0x0
+        FIR:
+          enable: True
+          CoefficientSet0: 0xf7f7f7f7
+          CoefficientSet1: 0xf7f7f7f7
+          CoefficientSet2: 0xf7f7f7f7
+          CoefficientSet3: 0xf7f7f7f7
+          CoefficientSet4: 0x81818181
+          CoefficientSet5: 0x81818181
+          CoefficientSet6: 0x81818181
+          CoefficientSet7: 0x81818181
+        FrameIIR:
+          enable: True
+          ScratchPad: 0x000000
+          TimeConstant: 0x1
+        background_prescaler:
+          enable: True
+          ScratchPad: 0x000000
+          DialInPreScaling: 0x4
+      Prescale:
+        enable: True
+        ScratchPad: 0x000000
+        DialInPreScaling: 0x3
+      ByPass:
+        enable: True
+        ScratchPad: 0x000000
+        ByPass: 0x0

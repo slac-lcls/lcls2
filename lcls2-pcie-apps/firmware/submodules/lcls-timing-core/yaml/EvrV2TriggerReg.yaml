@@ -1,0 +1,98 @@
+#############################
+## This file is part of 'SLAC Firmware Standard Library'.
+## It is subject to the license terms in the LICENSE.txt file found in the 
+## top-level directory of this distribution and at: 
+##    https://confluence.slac.stanford.edu/display/ppareg/LICENSE.html. 
+## No part of 'SLAC Firmware Standard Library', including this file, 
+## may be copied, modified, propagated, or distributed except according to 
+## the terms contained in the LICENSE.txt file.
+##############################################################################
+#schemaversion 3.0.0
+#once EvrV2TriggerReg
+
+EvrV2TriggerReg: &EvrV2TriggerReg
+  class: MMIODev
+  configPrio: 1
+  description: Trigger
+  size: 0x1000
+  children:
+    #########################################################  
+    Enable:
+      at:
+        offset: 0x03
+      class: IntField
+      name: Enable
+      sizeBits: 1
+      lsBit: 7
+      mode: RW
+      description: Trigger enable
+    #########################################################  
+    Source:
+      at:
+        offset: 0x00
+      class: IntField
+      name: SourceMask
+      sizeBits: 4
+      lsBit: 0
+      mode: RW
+      description: Source channel
+    #########################################################  
+    Polarity:
+      at:
+        offset: 0x02
+      class: IntField
+      name: Polarity
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      enums:
+        - name: Falling
+          class: Enum
+          value: 0
+        - name: Rising
+          class: Enum
+          value: 1
+#        { name: Falling, value: 0 }
+#        { name: Rising , value: 1 }
+      description: Signal polarity
+    #########################################################  
+    Delay:
+      at:
+        offset: 0x04
+      class: IntField
+      name: Delay
+      sizeBits: 28
+      lsBit: 0
+      mode: RW
+      description: Delay in ticks
+    #########################################################  
+    Width:
+      at:
+        offset: 0x08
+      class: IntField
+      name: Width
+      sizeBits: 28
+      lsBit: 0
+      mode: RW
+      description: Width in ticks
+    #########################################################  
+    DelayTap:
+      at:
+        offset: 0x0C
+      class: IntField
+      name: DelayTap
+      sizeBits: 6
+      lsBit: 0
+      mode: RW
+      description: Delay tap in ticks/64 (Only valid register is USE_TAP_C=true)
+    #########################################################  
+    DelayTapReadback:
+      at:
+        offset: 0x0E
+      class: IntField
+      name: DelayTapReadback
+      sizeBits: 6
+      lsBit: 0
+      mode: RO
+      description: Delay tap readback in ticks/64 (Only valid register is USE_TAP_C=true)
+    #########################################################  

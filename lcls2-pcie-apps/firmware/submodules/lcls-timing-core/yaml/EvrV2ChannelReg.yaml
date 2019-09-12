@@ -1,0 +1,107 @@
+#############################
+## This file is part of 'SLAC Firmware Standard Library'.
+## It is subject to the license terms in the LICENSE.txt file found in the 
+## top-level directory of this distribution and at: 
+##    https://confluence.slac.stanford.edu/display/ppareg/LICENSE.html. 
+## No part of 'SLAC Firmware Standard Library', including this file, 
+## may be copied, modified, propagated, or distributed except according to 
+## the terms contained in the LICENSE.txt file.
+##############################################################################
+#schemaversion 3.0.0
+#once EvrV2ChannelReg
+
+EvrV2ChannelReg: &EvrV2ChannelReg
+  class: MMIODev
+  configPrio: 1
+  description: Channel
+  size: 0x20
+  children:
+    #########################################################  
+    Enable:
+      at:
+        offset: 0x00
+      class: IntField
+      name: Enable
+      sizeBits: 1
+      lsBit: 0
+      mode: RW
+      description: Enable Register
+    #########################################################  
+    BsaEnabled:
+      at:
+        offset: 0x00
+      class: IntField
+      name: BsaEnabled
+      sizeBits: 1
+      lsBit: 1
+      mode: RW
+      description: Bsa Enable Register (Only valid register is DMA_ENABLE_G=true)
+    #########################################################  
+    DmaEnabled:
+      at:
+        offset: 0x00
+      class: IntField
+      name: DmaEnabled
+      sizeBits: 1
+      lsBit: 2
+      mode: RW
+      description: Dma Enable Register (Only valid register is DMA_ENABLE_G=true)
+    #########################################################  
+    RateSel:
+      at:
+        offset: 0x04
+      class: IntField
+      name: RateSelect
+      sizeBits: 13
+      lsBit: 0
+      mode: RW
+      description: Rate select
+    #########################################################  
+    DestSel:
+      at:
+        offset: 0x05
+      class: IntField
+      name: DestSelect
+      sizeBits: 19
+      lsBit: 5
+      mode: RW
+      description: Destination select
+    #########################################################  
+    Count:
+      at:
+        offset: 0x08
+      class: IntField
+      name: Count
+      mode: RO
+      description: Counts
+    #########################################################  
+    BsaWindowDelay:
+      at:
+        offset: 0x0C
+      class: IntField
+      name: BsaWindowDelay
+      sizeBits: 20
+      lsBit: 0
+      mode: RW
+      description: Start of BSA sensitivity window following trigger (Only valid register is DMA_ENABLE_G=true)
+    #########################################################  
+    BsaWindowSetup:
+      at:
+        offset: 0x0E
+      class: IntField
+      name: BsaWindowSetup
+      sizeBits: 6
+      lsBit: 4
+      mode: RW
+      description: Start of BSA sensitivity window before trigger (Only valid register is DMA_ENABLE_G=true)
+    #########################################################  
+    BsaWindowWidth:
+      at:
+        offset: 0x10
+      class: IntField
+      name: BsaWindowWidth
+      sizeBits: 20
+      lsBit: 0
+      mode: RW
+      description: Width of BSA sensitivity window (Only valid register is DMA_ENABLE_G=true)
+    #########################################################  
