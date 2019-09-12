@@ -27,6 +27,7 @@ add_executable(drp
 )
 
 target_link_libraries(drp
+    psalg::digitizer
     xtcdata::xtc
     pthread
     drpbase

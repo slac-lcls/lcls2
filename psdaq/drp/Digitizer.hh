@@ -5,6 +5,7 @@
 #include "Detector.hh"
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/NamesId.hh"
+#include "psalg/alloc/Allocator.hh"
 
 namespace Drp {
 
@@ -23,6 +24,7 @@ private:
     XtcData::NamesId  m_evtNamesId;
     std::string       m_connect_json;
     std::string       m_epics_name;
+    Heap              m_allocator;
 };
 
 }

@@ -8,32 +8,7 @@
 namespace Pds {
   namespace HSD {
 
-  class EventHeader : public XtcData::L1Dgram {
-    public:
-      EventHeader() {}
-    public:
-      uint64_t pulseId   () const { return seq.pulseId().value(); }
-      unsigned eventType () const { return seq.pulseId().control(); }
-      uint64_t timeStamp () const { return seq.stamp().value(); }//nanoseconds() | (uint64_t)(seq.stamp().seconds())<<32; }
-      unsigned samples   () const { return _info[0]&0xfffff; }
-      unsigned streams   () const { return (_info[0]>>20)&0xf; }
-      unsigned channels  () const { return (_info[0]>>24)&0xff; }
-      unsigned sync      () const { return _info[1]&0x7; }
-
-      void dump() const
-      {
-        printf("EventHeader dump\n");
-        uint32_t* word = (uint32_t*) this;
-        for(unsigned i=0; i<8; i++)
-          printf("[%d] %08x ", i, word[i]);//, i<7 ? '.' : '\n');
-        printf("pID [%016llx]  time [%u.%09u]  trig [%04x]  sync [%u]\n",
-               (unsigned long long) pulseId(), seq.stamp().seconds(), seq.stamp().nanoseconds(),
-               readoutGroups(), sync());
-        printf("####@ 0x%x 0x%x 0x%x %u %u %u %llu\n", env, _info[0], _info[1], samples(), streams(), channels(), (unsigned long long) timeStamp());
-      }
-  private:
-      uint32_t _info[2];
-  };
+  // used by class Channel
 
   class StreamHeader {
     public:
@@ -64,6 +39,37 @@ namespace Pds {
     private:
       uint32_t _word[4];
   };
+
+  // this class is used only for testing (psalg/tests/hsd_valid.cc)
+
+  class EventHeader : public XtcData::L1Dgram {
+    public:
+      EventHeader() {}
+    public:
+      uint64_t pulseId   () const { return seq.pulseId().value(); }
+      unsigned eventType () const { return seq.pulseId().control(); }
+      uint64_t timeStamp () const { return seq.stamp().value(); }//nanoseconds() | (uint64_t)(seq.stamp().seconds())<<32; }
+      unsigned samples   () const { return _info[0]&0xfffff; }
+      unsigned streams   () const { return (_info[0]>>20)&0xf; }
+      unsigned channels  () const { return (_info[0]>>24)&0xff; }
+      unsigned sync      () const { return _info[1]&0x7; }
+
+      void dump() const
+      {
+        printf("EventHeader dump\n");
+        uint32_t* word = (uint32_t*) this;
+        for(unsigned i=0; i<8; i++)
+          printf("[%d] %08x ", i, word[i]);//, i<7 ? '.' : '\n');
+        printf("pID [%016llx]  time [%u.%09u]  trig [%04x]  sync [%u]\n",
+               (unsigned long long) pulseId(), seq.stamp().seconds(), seq.stamp().nanoseconds(),
+               readoutGroups(), sync());
+        printf("####@ 0x%x 0x%x 0x%x %u %u %u %llu\n", env, _info[0], _info[1], samples(), streams(), channels(), (unsigned long long) timeStamp());
+      }
+  private:
+      uint32_t _info[2];
+  };
+
+  // this class is used only for testing (psalg/tests/hsd_valid.cc)
 
   class RawStream {
     public:

@@ -39,7 +39,7 @@ class HsdIter : public XtcIterator
 {
 public:
     enum { Stop, Continue };
-    HsdIter(Xtc* xtc, NamesLookup& namesLookup) : XtcIterator(xtc), _namesLookup(namesLookup), env(0)
+    HsdIter(Xtc* xtc, NamesLookup& namesLookup) : XtcIterator(xtc), _namesLookup(namesLookup), eventHeader(0)
     {
     }
 
@@ -60,9 +60,9 @@ public:
 
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
-                if (strcmp(name.name(), "env") == 0) {
-                    auto env_array = descdata.get_array<uint32_t>(i);
-                    env = env_array.data();
+                if (strcmp(name.name(), "eventHeader") == 0) {
+                    auto eventHeader_array = descdata.get_array<uint32_t>(i);
+                    eventHeader = eventHeader_array.data();
                 }
                 // Here we check algorithm and version can be analyzed
                 if (strcmp(name.alg().name(), "fpga") == 0) {
@@ -84,7 +84,7 @@ public:
 
 public:
     std::map <std::string, uint8_t*> chans;
-    uint32_t* env; // the "event header" words for the HSD
+    uint32_t* eventHeader; // the "event header" words for the HSD
 };
 
 int main (int argc, char* argv[]) {
@@ -150,29 +150,17 @@ int main (int argc, char* argv[]) {
         // Test DRP situation
         unsigned nChan = hsdIter.chans.size();
         printf("nChan: %d\n", nChan);
-        /*
-        // Create Hsd using the factory
-        Pds::HSD::Factory *pFactory = new Pds::HSD::Factory(&heap, "1.2.3", nChan);
-        Pds::HSD::HsdEventHeaderV1 *pHsd = pFactory->getHsd();
-        Pds::HSD::Hsd_v1_2_3 *vHsd = (Pds::HSD::Hsd_v1_2_3*) pHsd;
-        */
-        Pds::HSD::Hsd_v1_2_3 *vHsd = new Pds::HSD::Hsd_v1_2_3(&stack); //, dg, nChan);
 
-        assert(hsdIter.env);
-        vHsd->init(hsdIter.env);
-        printf("####### hsd: %u %u %u %u\n", vHsd->samples(), vHsd->streams(), vHsd->channels(), vHsd->sync());
+        assert(hsdIter.eventHeader);
         // iterate over all available channels
         for (std::map<std::string, uint8_t*>::iterator it=hsdIter.chans.begin(); it!=hsdIter.chans.end(); ++it){
             std::cout << "Channel name: " << it->first << std::endl;
             //Pds::HSD::Channel mychan = Pds::HSD::Channel(&stack, vHsd, (const uint8_t*)hsdIter.chans[it->first]);
             //printf("npeaks: %d\n", mychan.npeaks());
         }
-        //delete pFactory;
-        delete vHsd;
     }
 
     ::close(fd);
 
     return 0;
 }
-

@@ -6,7 +6,7 @@
 #include "xtcdata/xtc/Json2Xtc.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
-#include "psalg/digitizer/Stream.hh"
+#include "psalg/digitizer/Hsd.hh"
 #include "DataDriver.h"
 
 #include <Python.h>
@@ -25,12 +25,13 @@ namespace Drp {
 class HsdDef : public VarDef
 {
 public:
+    enum index {EventHeader = 0};
     HsdDef(unsigned lane_mask)
     {
         Alg alg("fpga", 1, 2, 3);
         const unsigned nameLen = 7;
         char chanName[nameLen];
-        NameVec.push_back({"env", Name::UINT32, 1});
+        NameVec.push_back({"eventHeader", Name::UINT32, 1});
         for (unsigned i = 0; i < sizeof(lane_mask)*sizeof(uint8_t); i++){
             if (!((1<<i)&lane_mask)) continue;
             snprintf(chanName, nameLen, "chan%2.2d", i);
@@ -144,8 +145,6 @@ void Digitizer::connect(const json& connect_json, const std::string& collectionI
   m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
 }
 
-// TODO: put timeout value in connect and attach (conceptually like Collection.cc CollectionApp::handlePlat)
-
 unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc)
 {
     //  Reset the PGP links
@@ -171,7 +170,7 @@ unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc)
     lane_mask = Digitizer::_addJson(xtc, configNamesId);
 
     // set up the names for L1Accept data
-    Alg hsdAlg("hsd", 1, 2, 3); // TODO: should this be configured by hsdconfig.py?
+    Alg hsdAlg("hsd", 1, 2, 3);
     Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), hsdAlg, "hsd", "detnum1235", m_evtNamesId, m_para->detSegment);
     HsdDef myHsdDef(lane_mask);
     eventNames.add(xtc, myHsdDef);
@@ -188,22 +187,25 @@ void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
     unsigned data_size;
     unsigned shape[MaxRank];
     shape[0] = 2;
-    Array<uint32_t> arrayH = hsd.allocate<uint32_t>(0, shape);
-    // FIXME: check that Matt is sending this extra HSD info in the
-    // timing header
+    Array<uint32_t> arrayH = hsd.allocate<uint32_t>(HsdDef::EventHeader, shape);
+
     int lane = __builtin_ffs(event->mask) - 1;
     uint32_t dmaIndex = event->buffers[lane].index;
     Pds::TimingHeader* timing_header = (Pds::TimingHeader*)m_pool->dmaBuffers[dmaIndex];
     arrayH(0) = timing_header->_opaque[0];
     arrayH(1) = timing_header->_opaque[1];
-    for (int i=0; i<4; i++) { // TODO: print npeaks using psalg/Hsd.hh
+    for (int i=0; i<4; i++) {
         if (event->mask & (1 << i)) {
-            // size without Event header
             data_size = event->buffers[i].size - sizeof(Pds::TimingHeader);
             shape[0] = data_size;
             Array<uint8_t> arrayT = hsd.allocate<uint8_t>(i+1, shape);
             uint32_t dmaIndex = event->buffers[i].index;
             memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
+            // example showing how to use psalg Hsd code to extract data
+            Pds::HSD::Channel channel(&m_allocator,
+                                      (const uint32_t*)arrayH.data(),
+                                      (const uint8_t*)arrayT.data());
+            //printf("*** npeaks %d\n",channel.npeaks());
          }
     }
 }

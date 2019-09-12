@@ -2,41 +2,46 @@
 #define HSD_EVENTHEADER_HH
 
 /*
- * How to handle changing version number:
- * The factory method can return a completely different object if there is a big change
- * The algorithm name is some ways corresponds to the major version number
- * For some small backwardly compatible changes (minor version inc.), consider adding methods using inheritance
- * We have tried to demonstrate this with HsdEventHeaderV1, where additional virtual methods can be specified
- * as the objects evolve in time.
+ * Summary of design ideas from cpo/yoon82 (9/11/19)
  *
- * The factory method is for use in python only
- * In the DRP, hard code version number and create object directly
+ * The Channel class here are intended to be used both in the drp (C++) and
+ * psana (via cython wrapper psana/psana/hsd/hsd.pyx).  The code
+ * unpacks the firmware-compressed data into more usable in-memory
+ * arrays (which can be exported to python, for example).
+ * The guts of the code are Channel::_parse_waveforms and
+ * Channel::_parse_peaks.  There is (at least) one complex idea:
+ * The unpacked arrays are variable-length and we wanted to avoid calling
+ * malloc on every event in the drp (OK to do that for psana) so
+ * we should try to use the simple Stack obj in psalg/alloc/Allocator.hh
+ * in the drp.  the python uses a similar Heap obj which calls malloc.
+ * In the drp each core should have its own Stack to avoid reentrancy
+ * problems.
  *
+ * The "event header" is formed from the two uint32_t _opaque fields of the
+ * TimingHeader and contains information about whether the event contains
+ * raw, fex, or both.  Originally we had a class for this, but this
+ * was switched to an array uint32_t[2] for two reasons:
  *
+ * - easier inter-operability with python
+ * - we only ever accessed the "streams" field
+ * 
+ * Structure of the event header:
+ * 20b  unused
+ * 4b   stream mask (raw is bit 0, fex is bit 1)
+ * 8b   x"01"
+ * 16b  trigger phase on the sample clock
+ * 16b  trigger waveform on the sample clock
  *
- * Hsd object is created per event
- *
- * EventHeader is in the env of the dgram and contains information about it containing raw, fex, or both.
- * (1/Nov/18: Currently, we can only determine whether the dgram contains raw, fex, or both by checking the size
- * of the payload. This makes the fex results ambiguous when empty. Matt will look into fixing this.)
- * Both streamheaders for raw and fex exist, even if prescale is not set to 1.
+ * Immediately following the EventHeader in the dma buffer are the stream
+ * headers (raw and fex) and their associated data:
+ * Both raw/fex streamheaders are present on every event, even if their
+ * associated data is missing (e.g. if prescale is not set to 1).
  * Per-channel structure:
+ *
  * streamheader raw
  * raw data
  * streamheader fex
  * fex data
- *
- * (7/Feb/19): HSD Header
- * 128b sequence
- * 32b  env
- * 24b  event counter
- * 8b   version
- * --
- * 20b  unused
- * 4b   stream mask
- * 8b   x"01"
- * 16b  trigger phase on the sample clock
- * 16b  trigger waveform on the sample clock
  *
  */
 
@@ -48,74 +53,15 @@
 #include "Stream.hh"
 #include "psalg/alloc/Allocator.hh"
 #include "psalg/alloc/AllocArray.hh"
+
 using namespace psalg;
 
 namespace Pds {
   namespace HSD {
-    // V1 corresponds to the major version of the high level alg/version number
-    class HsdEventHeaderV1 {
+
+    class Channel {
     public:
-        static HsdEventHeaderV1* Create(Allocator *allocator, Dgram* dg, const char* version, const unsigned nChan);
-        virtual ~HsdEventHeaderV1(){}
-        virtual void printVersion  () = 0;
-        virtual unsigned samples   () = 0;
-        virtual unsigned streams   () = 0;
-        virtual unsigned channels  () = 0;
-        virtual unsigned sync      () = 0;
-        virtual bool raw           () = 0;
-        virtual bool fex           () = 0;
-    protected:
-        std::string version;
-    };
-
-    class Hsd_v1_2_3 : public HsdEventHeaderV1 {
-    // This uses the high level alg/version number for the detector to reflect changes in the datagram env.
-    public:
-        Hsd_v1_2_3(Allocator *allocator);
-
-        ~Hsd_v1_2_3(){}
-
-        void init(uint32_t *e) {
-            env = e;
-        }
-
-        void printVersion() {
-            std::cout << "hsd version " << version << std::endl;
-        }
-
-        // TODO: find out how to convert bin number to time (we need the configure transition)
-        unsigned samples   ()  { return env[1]&0xfffff; }    // NOTE: These 3 functions assume
-        unsigned streams   ()  { return (env[1]>>20)&0xf; }  // all event headers in each
-        unsigned channels  ()  { return (env[1]>>24)&0xff; } // channel are identical
-        unsigned sync      ()  { return env[2]&0x7; }
-
-        bool raw() {
-            if (streams() & 1) return true;
-            return false;
-        }
-
-        bool fex() {
-            if (streams() & 2) return true;
-            return false;
-        }
-
-    public:
-        Allocator *m_allocator; // python uses this interface to use the heap
-        // TODO: get rid of m_allocator if not needed
-    private:
-        uint32_t *env;
-    };
-
-    HsdEventHeaderV1* HsdEventHeaderV1::Create(Allocator *allocator, Dgram* dg, const char* version, const unsigned nChan) {
-        if ( strcmp(version, "1.2.3") == 0 )
-            return new Hsd_v1_2_3(allocator); //, dg, nChan);
-        else
-            return NULL;
-    }
-
-    class Channel { // TODO: ideally get a version number from low level alg/version like we do for HsdEventHeaderV1
-    public:
-        Channel(Allocator *allocator, Hsd_v1_2_3 *vHsd, const uint32_t *evtheader, const uint8_t *data);
+        Channel(Allocator *allocator, const uint32_t *evtheader, const uint8_t *data);
 
         ~Channel(){}
 
@@ -181,30 +127,6 @@ namespace Pds {
                 numFexPeaks++;
             }
         }
-    };
-
-    class Factory {
-    public:
-        // Factory doesn't explicitly create objects
-        // but passes type to factory method "Create()"
-        Factory(Allocator* allocator, const char* version, const unsigned nChan, Dgram* dg)
-        {
-            // assert version = v1
-            printf("@@@@ Hsd Factory Create\n");
-            pHsd = HsdEventHeaderV1::Create(allocator, dg, version, nChan);
-        }
-        ~Factory() {
-            if (pHsd) {
-                delete pHsd;
-                pHsd = NULL;
-            }
-        }
-        HsdEventHeaderV1* getHsd()  {
-            return pHsd;
-        }
-
-    private:
-        HsdEventHeaderV1 *pHsd = NULL;
     };
   } // HSD
 } // Pds

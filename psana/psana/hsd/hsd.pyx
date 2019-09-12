@@ -1,4 +1,7 @@
-# Import the Python-level symbols of numpy
+#
+# See psalg/digitizer/Hsd.hh for a summary of hsd software design ideas.
+#
+
 import numpy as np
 from psana.detector.detector_impl import DetectorImpl
 
@@ -17,7 +20,7 @@ include "../peakFinder/peakFinder.pyx"  # defines Allocator, PyAlloArray1D
 ctypedef AllocArray1D[cnp.uint16_t*] arrp
 
 cimport libc.stdint as si
-ctypedef si.uint32_t env_t
+ctypedef si.uint32_t evthdr_t
 ctypedef si.uint8_t chan_t
 
 cdef extern from "xtcdata/xtc/Dgram.hh" namespace "XtcData":
@@ -25,22 +28,8 @@ cdef extern from "xtcdata/xtc/Dgram.hh" namespace "XtcData":
         pass
 
 cdef extern from "psalg/digitizer/Hsd.hh" namespace "Pds::HSD":
-    cdef cppclass HsdEventHeaderV1:
-        void printVersion()
-        unsigned samples()
-        unsigned streams()
-        unsigned channels()
-        unsigned sync()
-        bint raw()
-        bint fex()
-
-    cdef cppclass Hsd_v1_2_3(HsdEventHeaderV1):
-        Hsd_v1_2_3(Allocator *allocator)
-        void init(env_t *e)
-        void printVersion()
-
     cdef cppclass Channel:
-        Channel(Allocator *allocator, Hsd_v1_2_3 *vHsd, const env_t *evtheader, const si.uint8_t *data)
+        Channel(Allocator *allocator, const evthdr_t *evtheader, const si.uint8_t *data)
         unsigned npeaks()
         unsigned numPixels
         AllocArray1D[cnp.uint16_t] waveform
@@ -80,10 +69,8 @@ class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
         return channels
 
 cdef class cyhsd_base_1_2_3:
-    cdef HsdEventHeaderV1* hptr
-    cdef Hsd_v1_2_3* cptr
     cdef Heap heap
-    cdef Heap *ptr
+    cdef Heap *allocator
     cdef Dgram *dptr
     cdef Channel *chptr[16*16] # Maximum channels: 16, maximum segments: 16
     cdef dict _wvDict
@@ -92,8 +79,7 @@ cdef class cyhsd_base_1_2_3:
     cdef dict _peaksDict
 
     def __cinit__(self):
-        self.ptr = &self.heap
-        self.cptr = new Hsd_v1_2_3(self.ptr)
+        self.allocator = &self.heap
         for chptr in self.chptr:
             chptr=<Channel*>0
 
@@ -105,15 +91,11 @@ cdef class cyhsd_base_1_2_3:
         self._peaksDict = {}
         self._fexPeaks = []
 
-    # see psalg/digitizer/Hsd.hh for description of env information
-    def _setEnv(self, cnp.ndarray[env_t, ndim=1, mode="c"] env):
-        self.cptr.init(&env[0])
-
-    def _setChan(self, iseg, chanNum, cnp.ndarray[env_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan):
+    def _setChan(self, iseg, chanNum, cnp.ndarray[evthdr_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan):
         index = iseg*16+chanNum
         if self.chptr[index]:
             del self.chptr[index]
-        self.chptr[index] = new Channel(self.ptr, self.cptr, &evtheader[0], &chan[0])
+        self.chptr[index] = new Channel(self.allocator, &evtheader[0], &chan[0])
         self._chanList.append((iseg,chanNum))
 
     def _isNewEvt(self, evt):
@@ -128,10 +110,6 @@ cdef class cyhsd_base_1_2_3:
         self._peaksDict = {}
         self._fexPeaks = []
         self._hsdsegments = self._segments(evt)
-        # FIXME: this line assumes all the env values are the same
-        # (samples/streams/channels).  this chooses the value in the
-        # first segment.  see psalg/digitizer/Hsd.hh for info about env
-        self._setEnv(next(iter(self._hsdsegments.values())).env)
         self._evt = evt
         for iseg in self._hsdsegments:
             for chanNum in xrange(16): # Maximum channels: 16
@@ -139,30 +117,11 @@ cdef class cyhsd_base_1_2_3:
                 if hasattr(self._hsdsegments[iseg], chanName):
                     chan = eval('self._hsdsegments[iseg].'+chanName)
                     if chan.size > 0:
-                        self._setChan(iseg,chanNum, self._hsdsegments[iseg].env, chan)
+                        self._setChan(iseg,chanNum, self._hsdsegments[iseg].eventHeader, chan)
 
     def __dealloc__(self):
-        del self.cptr
         for chptr in self.chptr:
             if chptr: del chptr
-
-    def _samples(self):
-        return self.cptr.samples()
-
-    def _streams(self):
-        return self.cptr.streams()
-
-    def _channelMask(self):
-        return self.cptr.channels()
-
-    def _sync(self):
-        return self.cptr.sync()
-
-    def _raw(self):
-        return self.cptr.raw()
-
-    def _fex(self):
-        return self.cptr.fex()
 
     # adding this decorator allows access to the signature information of the function in python
     # this is used for AMI type safety
