@@ -22,9 +22,7 @@ class Test:
         tmp_dir = tmp_path / 'shmem'
         tmp_dir.mkdir()
         tmp_file = tmp_dir / 'data_shmem.xtc2'
-        # cpo: disable epics in the stream for now with "-e 0" since
-        # we need changes in the TransitionCache.
-        subprocess.call(['xtcwriter','-n',str(dgram_count),'-f',str(tmp_file),'-e','0'])
+        subprocess.call(['xtcwriter','-n',str(dgram_count),'-f',str(tmp_file)])
         return tmp_file
         
     def test_shmem(self, tmp_path):
