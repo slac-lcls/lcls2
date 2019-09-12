@@ -9,7 +9,7 @@ else
   export INSTDIR="$TESTRELDIR"
 fi
 
-cmake_option="Debug"
+cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
 psana_setup_args=""
 force_clean=0
