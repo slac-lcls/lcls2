@@ -64,6 +64,7 @@ import math
 import numpy as np
 from psana.pyalgos.generic.HBins import HBins
 
+from psana.pyalgos.generic.NDArrUtils import print_ndarr
 #------------------------------
 
 def divide_protected(num, den, vsub_zero=0) :
@@ -119,7 +120,7 @@ class HPolar() :
            - radedges - radial bin edges for corrected region in the same units of xarr;
                         default=None - all radial range
            - nradbins - number of radial bins
-           - phiedges - phi ange bin edges for corrected region.
+           - phiedges - phi angle bin edges for corrected region.
                         default=(0,360)
                         Difference of the edge limits should not exceed +/-360 degree 
            - nphibins - number of angular bins
@@ -140,9 +141,9 @@ class HPolar() :
         
         npbins = self.pb.nbins()
         nrbins = self.rb.nbins()
-        ntbins = npbins*nrbins
+        self.ntbins = npbins*nrbins # total number of bins in r-phi array
         
-        self.irad = self.rb.bin_indexes(self.rad, edgemode=1)        
+        self.irad = self.rb.bin_indexes(self.rad, edgemode=1)  
         self.iphi = self.pb.bin_indexes(self.phi, edgemode=1)
 
         cond = np.logical_and(\
@@ -153,12 +154,13 @@ class HPolar() :
         if mask is not None : 
             cond = np.logical_and(cond, mask.astype(np.bool).flatten())
 
-        self.iseq = np.select((cond,), (self.iphi*nrbins + self.irad,), ntbins).flatten()
+        # index ntbins stands for overflow bin
+        self.iseq = np.select((cond,), (self.iphi*nrbins + self.irad,), self.ntbins).flatten() 
 
-        self.npix_per_bin = np.bincount(self.iseq, weights=None, minlength=None)
+        #self.npix_per_bin = np.bincount(self.iseq, weights=None, minlength=None)
+        self.npix_per_bin = np.bincount(self.iseq, weights=None, minlength=self.ntbins+1)
 
         self.griddata = None
-        self.print_ndarr = None
 
 
     def _set_rad_bins(self, radedges, nradbins) :
@@ -186,12 +188,9 @@ class HPolar() :
 
     def print_ndarrs(self) :
         print('%s n-d arrays:' % self.__class__.__name__)
-        if self.print_ndarr is None :
-            from psana.pyalgos.generic.NDArrUtils import print_ndarr
-            self.print_ndarr = print_ndarr
-        self.print_ndarr(self.rad, '  rad')
-        self.print_ndarr(self.phi, '  phi')
-        self.print_ndarr(self.mask,'  mask')
+        print_ndarr(self.rad, '  rad')
+        print_ndarr(self.phi, '  phi')
+        print_ndarr(self.mask,'  mask')
         #print('Phi limits: ', phiedges[0], phiedges[-1])
 
 
@@ -249,19 +248,23 @@ class HPolar() :
 
     def bin_intensity(self, nda) :
         """Returns 1-d numpy array of total pixel intensity per bin for input array nda."""
-        return np.bincount(self.iseq, weights=self._flatten_(nda), minlength=None)
+        #return np.bincount(self.iseq, weights=self._flatten_(nda), minlength=None)
+        return np.bincount(self.iseq, weights=self._flatten_(nda), minlength=self.ntbins+1) # +1 for overflow bin
 
 
     def bin_avrg(self, nda) :
         """Returns 1-d numpy array of averaged in bin intensity for input array nda."""
         num = self.bin_intensity(self._flatten_(nda))
         den = self.bin_number_of_pixels()
+        #print_ndarr(nda, name='ZZZ bin_avrg: nda', first=0, last=5)
+        #print_ndarr(num, name='ZZZ bin_avrg: num', first=0, last=5)
+        #print_ndarr(den, name='ZZZ bin_avrg: den', first=0, last=5)
         return divide_protected(num, den, vsub_zero=0)
 
 
     def bin_avrg_rad_phi(self, nda, do_transp=True) :
         """Returns 2-d (rad,phi) numpy array of averaged in bin intensity for input array nda."""
-        arr_rphi = self.bin_avrg(self._flatten_(nda))[:-1]
+        arr_rphi = self.bin_avrg(self._flatten_(nda))[:-1] # -1 removes overflow bin
         arr_rphi.shape = (self.pb.nbins(), self.rb.nbins())
         return np.transpose(arr_rphi) if do_transp else arr_rphi
 
@@ -456,7 +459,7 @@ def test02(ntest, prefix='fig-v01') :
     elif ntest == 26 : nda, title = hp.pixel_iseq() + 2,   'pixel sequential (rad and phi) bin index'
     #elif ntest == 27 : nda, title = mask,                  'mask'
     elif ntest == 28 : nda, title = hp.pixel_avrg(nda),    'averaged radial intensity'
-    elif ntest == 29 : nda, title = hp.pixel_avrg_interpol(nda), 'averaged radial interpolated intensity'
+    elif ntest == 29 : nda, title = hp.pixel_avrg_interpol(nda) * mask, 'averaged radial interpolated intensity'
     elif ntest == 30 : nda, title = hp.bin_avrg_rad_phi(nda),'r-phi'
     else :
         print('Test %d is not implemented' % ntest)
@@ -521,7 +524,7 @@ def test03(ntest, prefix='fig-v01') :
     elif ntest == 46 : nda, title = hp.pixel_iseq() + 2,   'pixel sequential (rad and phi) bin index'
     #elif ntest == 47 : nda, title = mask,                  'mask'
     elif ntest == 48 : nda, title = hp.pixel_avrg(nda),    'averaged radial intensity'
-    elif ntest == 49 : nda, title = hp.pixel_avrg_interpol(nda), 'averaged radial interpolated intensity'
+    elif ntest == 49 : nda, title = hp.pixel_avrg_interpol(nda) * mask, 'averaged radial interpolated intensity'
     elif ntest == 50 : nda, title = hp.bin_avrg_rad_phi(nda),'r-phi'
     else :
         print('Test %d is not implemented' % ntest)
