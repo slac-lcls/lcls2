@@ -1,8 +1,7 @@
 #ifndef PDS_SYSLOG_HH
 #define PDS_SYSLOG_HH
 
-#include <syslog.h>
-#include <stdarg.h>
+#include <syslog.h>     // defines LOG_WARNING, etc
 
 namespace Pds {
 class SysLog

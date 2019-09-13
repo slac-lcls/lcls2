@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <errno.h>
+#include <stdarg.h>
 #include "psdaq/service/SysLog.hh"
 
 extern char *program_invocation_short_name;
@@ -80,7 +81,7 @@ void SysLog::error(const char *fmt, ...)
 
     // stderr
     char newfmt[256];
-    snprintf(newfmt, sizeof(newfmt), "ERR %s\n", fmt);
+    snprintf(newfmt, sizeof(newfmt), "ERROR %s\n", fmt);
     va_start(args, fmt);
     vfprintf(stderr, newfmt, args);
     va_end(args);
@@ -97,7 +98,7 @@ void SysLog::critical(const char *fmt, ...)
 
     // stderr
     char newfmt[256];
-    snprintf(newfmt, sizeof(newfmt), "CRIT %s\n", fmt);
+    snprintf(newfmt, sizeof(newfmt), "CRITICAL %s\n", fmt);
     va_start(args, fmt);
     vfprintf(stderr, newfmt, args);
     va_end(args);
