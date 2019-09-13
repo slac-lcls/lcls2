@@ -28,7 +28,7 @@ Usage::
     int   = hp.bin_intensity(nda)
     arr1d = hp.bin_avrg(nda)
     arr2d = hp.bin_avrg_rad_phi(nda, do_transp=True)
-    pixav = hp.pixel_avrg(nda)
+    pixav = hp.pixel_avrg(nda, subs_value=0)
     pixav = hp.pixel_avrg_interpol(nda, method='linear') # method='nearest' 'cubic'
 
     # Print attributes and n-d arrays
@@ -146,16 +146,16 @@ class HPolar() :
         self.irad = self.rb.bin_indexes(self.rad, edgemode=1)  
         self.iphi = self.pb.bin_indexes(self.phi, edgemode=1)
 
-        cond = np.logical_and(\
+        self.cond = np.logical_and(\
                np.logical_and(self.irad > -1, self.irad < nrbins),
                np.logical_and(self.iphi > -1, self.iphi < npbins)
                )
 
         if mask is not None : 
-            cond = np.logical_and(cond, mask.astype(np.bool).flatten())
+            self.cond = np.logical_and(self.cond, mask.astype(np.bool).flatten())
 
         # index ntbins stands for overflow bin
-        self.iseq = np.select((cond,), (self.iphi*nrbins + self.irad,), self.ntbins).flatten() 
+        self.iseq = np.select((self.cond,), (self.iphi*nrbins + self.irad,), self.ntbins).flatten() 
 
         #self.npix_per_bin = np.bincount(self.iseq, weights=None, minlength=None)
         self.npix_per_bin = np.bincount(self.iseq, weights=None, minlength=self.ntbins+1)
@@ -210,7 +210,7 @@ class HPolar() :
 
 
     def pixel_irad(self) :
-        """Returns 1-d numpy array of pixel radial indexes."""
+        """Returns 1-d numpy array of pixel radial indexes [-1,nrbins] - extended edgemode."""
         return self.irad
 
 
@@ -225,12 +225,15 @@ class HPolar() :
 
 
     def pixel_iphi(self) :
-        """Returns 1-d numpy array of pixel angular indexes."""
+        """Returns 1-d numpy array of pixel angular indexes [-1,npbins] - extended edgemode."""
         return self.iphi
 
 
     def pixel_iseq(self) :
-        """Returns 1-d numpy array of sequentially (in rad and phi) numerated pixel indexes."""
+        """Returns 1-d numpy array of sequentially (in rad and phi) numerated pixel indexes [0,ntbins].
+           WARNING: pixels outside the r-phi region of interest marked by the index ntbins, 
+                    ntbins - total number of r-phi bins, which exceeds allowed range of r-phi indices...
+        """
         return self.iseq
 
 
@@ -253,7 +256,9 @@ class HPolar() :
 
 
     def bin_avrg(self, nda) :
-        """Returns 1-d numpy array of averaged in bin intensity for input array nda."""
+        """Returns 1-d numpy array of averaged in r-phi bin intensities for input image array nda.
+           WARNING array range [0, nrbins*npbins + 1], where +1 bin intensity is for all off ROI pixels.
+        """
         num = self.bin_intensity(self._flatten_(nda))
         den = self.bin_number_of_pixels()
         #print_ndarr(nda, name='ZZZ bin_avrg: nda', first=0, last=5)
@@ -264,19 +269,29 @@ class HPolar() :
 
     def bin_avrg_rad_phi(self, nda, do_transp=True) :
         """Returns 2-d (rad,phi) numpy array of averaged in bin intensity for input array nda."""
-        arr_rphi = self.bin_avrg(self._flatten_(nda))[:-1] # -1 removes overflow bin
+        arr_rphi = self.bin_avrg(self._flatten_(nda))[:-1] # -1 removes off ROI bin
         arr_rphi.shape = (self.pb.nbins(), self.rb.nbins())
         return np.transpose(arr_rphi) if do_transp else arr_rphi
 
 
-    def pixel_avrg(self, nda) :
-        """Returns 1-d numpy array of per-pixel background for input array nda."""
+    def pixel_avrg(self, nda, subs_value=0) :
+        """Makes r-phi histogram of intensities from input image array and 
+           projects r-phi averaged intensities back to image.
+           Returns flatten 1-d numpy array of per-pixel intensities taken from r-phi histogram.
+           - nda - input (2-d or 1-d-flatten) pixel array.
+           - subs_value - value sabstituted for pixels out of ROI defined by the min/max in r-phi. 
+        """
         bin_avrg= self.bin_avrg(self._flatten_(nda))
-        return np.array([bin_avrg[i] for i in self.iseq])
+        return np.select((self.cond,), (bin_avrg[self.iseq],), subs_value).flatten() 
+        #return np.array([bin_avrg[i] for i in self.iseq]) # iseq may be outside the bin_avrg range
 
 
-    def pixel_avrg_interpol(self, nda, method='linear', verb=False) : # 'nearest' 'cubic'
-        """Returns 1-d numpy array of per-pixel interpolated background for averaged input data."""
+    def pixel_avrg_interpol(self, nda, method='linear', verb=False, subs_value=0) : # 'nearest' 'cubic'
+        """Makes r-phi histogram of intensities from input image and 
+           projects r-phi averaged intensities back to image with per-pixel interpolation.
+           Returns 1-d numpy array of per-pixel interpolated intensities taken from r-phi histogram.
+           - subs_value - value sabstituted for pixels out of ROI defined by the min/max in r-phi. 
+        """
 
         #if not is360 : raise ValueError('Interpolation works for 360 degree coverage ONLY') 
 
@@ -315,15 +330,16 @@ class HPolar() :
         points_rad, points_phi = np.meshgrid(rad_nodes, phi_nodes)
         if verb : print('points_phi.shape', points_phi.shape)
         if verb : print('points_rad.shape', points_rad.shape)
-        points = np.array(zip(points_phi.flatten(), points_rad.flatten())) 
-        if verb : print('points.shape', points.shape)
-
+        points = np.vstack((points_phi.flatten(), points_rad.flatten())).T
         values = val_nodes.flatten()
-        if verb : print('values.shape', values.shape)
+        if verb : 
+            #print('points:', points)
+            print('points.shape', points.shape)
+            print('values.shape', values.shape)
 
-        # 4) return interpolated data on (phi, rad) grid
+        # 5) return interpolated data on (phi, rad) grid
         grid_vals = self.griddata(points, values, (self.phi, self.rad), method=method)
-        return np.select((self.iseq<self.pb.nbins()*self.rb.nbins(),), (grid_vals,), default=0)
+        return np.select((self.iseq<self.ntbins,), (grid_vals,), default=subs_value)
 
 #------------------------------
 #------------------------------
@@ -377,7 +393,7 @@ def usage(ntest=None) :
     if ntest in (None, 5) : s+='\n  5 - pixel phi bin index'
     if ntest in (None, 6) : s+='\n  6 - pixel sequential (rad and phi) bin index'
     if ntest in (None, 7) : s+='\n  7 - mask'
-    if ntest in (None, 8) : s+='\n  8 - averaged radial intensity'
+    if ntest in (None, 8) : s+='\n  8 - averaged radial-phi intensity'
     if ntest in (None, 9) : s+='\n  9 - interpolated radial intensity'
 
     if ntest is None      : s+='\n Test for 2-d (default) binning of the rad-phi range of entire image'
@@ -385,8 +401,8 @@ def usage(ntest=None) :
     if ntest in (None,24) : s+='\n 24 - pixel radial bin index'
     if ntest in (None,25) : s+='\n 25 - pixel phi bin index'
     if ntest in (None,26) : s+='\n 26 - pixel sequential (rad and phi) bin index'
-    if ntest in (None,28) : s+='\n 28 - averaged radial intensity'
-    if ntest in (None,29) : s+='\n 29 - averaged radial interpolated intensity'
+    if ntest in (None,28) : s+='\n 28 - averaged radial-phi intensity'
+    if ntest in (None,29) : s+='\n 29 - averaged radial-phi interpolated intensity'
     if ntest in (None,30) : s+='\n 30 - r-phi'
                                      
     if ntest is None      : s+='\n Test for 2-d binning of the restricted rad-phi range of entire image'
@@ -394,8 +410,8 @@ def usage(ntest=None) :
     if ntest in (None,44) : s+='\n 44 - pixel radial bin index'
     if ntest in (None,45) : s+='\n 45 - pixel phi bin index'
     if ntest in (None,46) : s+='\n 46 - pixel sequential (rad and phi) bin index'
-    if ntest in (None,48) : s+='\n 48 - averaged radial intensity'
-    if ntest in (None,49) : s+='\n 49 - averaged radial interpolated intensity'
+    if ntest in (None,48) : s+='\n 48 - averaged radial-phi intensity'
+    if ntest in (None,49) : s+='\n 49 - averaged radial-phi interpolated intensity'
     if ntest in (None,50) : s+='\n 50 - r-phi'
 
     return s
@@ -428,7 +444,7 @@ def test01(ntest, prefix='fig-v01') :
     elif ntest == 2 : nda, title = hp.pixel_rad(),        'pixel radius value'
     elif ntest == 3 : nda, title = hp.pixel_phi(),        'pixel phi value'
     elif ntest == 4 : nda, title = hp.pixel_irad() + 2,   'pixel radial bin index' 
-    elif ntest == 5 : nda, title = hp.pixel_iphi() + 2,   'pixel phi bin index'
+    elif ntest == 5 : nda, title = hp.pixel_iphi() + 1,   'pixel phi bin index'
     elif ntest == 6 : nda, title = hp.pixel_iseq() + 2,   'pixel sequential (rad and phi) bin index'
     elif ntest == 7 : nda, title = mask,                  'mask'
     elif ntest == 8 : nda, title = hp.pixel_avrg(nda),    'averaged radial intensity'
@@ -559,8 +575,8 @@ def test03(ntest, prefix='fig-v01') :
     elif ntest == 45 : nda, title = hp.pixel_iphi() + 2,   'pixel phi bin index'
     elif ntest == 46 : nda, title = hp.pixel_iseq() + 2,   'pixel sequential (rad and phi) bin index'
     #elif ntest == 47 : nda, title = mask,                  'mask'
-    elif ntest == 48 : nda, title = hp.pixel_avrg(nda),    'averaged radial intensity'
-    elif ntest == 49 : nda, title = hp.pixel_avrg_interpol(nda) * mask, 'averaged radial interpolated intensity'
+    elif ntest == 48 : nda, title = hp.pixel_avrg(nda, subs_value=180), 'averaged radial intensity'
+    elif ntest == 49 : nda, title = hp.pixel_avrg_interpol(nda, verb=True) * mask, 'averaged radial interpolated intensity'
     elif ntest == 50 : nda, title = hp.bin_avrg_rad_phi(nda),'r-phi'
     else :
         print('Test %d is not implemented' % ntest)
