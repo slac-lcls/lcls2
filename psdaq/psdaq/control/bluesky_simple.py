@@ -107,7 +107,7 @@ class MyDAQ:
                 # launch the step with 'daqstate(running)' (with the
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
-                errMsg = self.control.setState('running')
+                errMsg = self.control.setState('running',{'beginstep':'hello from beginstep'})
                 if errMsg is not None:
                     print('*** error:', errMsg)
                     continue

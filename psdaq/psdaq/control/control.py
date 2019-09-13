@@ -206,11 +206,16 @@ class DaqControl:
 
     #
     # DaqControl.setState - change the state
+    # The optional second argument is a dictionary containing
+    # one entry per transition that contains information that
+    # will be put into the phase1-json of the transition. An example:
+    # {'beginstep': {'myvalue1':3 , 'myvalue2': {'myvalue3':72}},
+    #  'enable':    {'myvalue5':37, 'myvalue6': 'hello'}}
     #
-    def setState(self, state):
+    def setState(self, state, phase1Info={}):
         errorMessage = None
         try:
-            msg = create_msg('setstate.' + state)
+            msg = create_msg('setstate.' + state, body=phase1Info)
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except Exception as ex:
@@ -244,11 +249,15 @@ class DaqControl:
 
     #
     # DaqControl.setTransition - trigger a transition
+    # The optional second argument is a dictionary containing
+    # information that will be put into the phase1-json of the transition.
+    # An example:
+    # {'myvalue1':3 , 'myvalue2': {'myvalue3':72}}
     #
-    def setTransition(self, transition):
+    def setTransition(self, transition, phase1Info={}):
         errorMessage = None
         try:
-            msg = create_msg(transition)
+            msg = create_msg(transition, body=phase1Info)
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except Exception as ex:
@@ -454,7 +463,7 @@ class CollectionManager():
     def __init__(self, platform, instrument, pv_base, xpm_master, alias, cfg_dbase, config_alias, slow_update_rate, phase2_timeout):
         self.platform = platform
         self.alias = alias
-        self.config_alias = config_alias
+        self.config_alias = config_alias # e.g. BEAM/NOBEAM
         self.cfg_dbase = cfg_dbase
         self.xpm_master = xpm_master
         self.pv_base = pv_base
@@ -495,6 +504,7 @@ class CollectionManager():
 
         self.groups = 0     # groups bitmask
         self.cmstate = {}
+        self.phase1Info = {}
         self.level_keys = {'drp', 'teb', 'meb', 'control'}
         self.instrument = instrument
         self.ids = set()
@@ -595,6 +605,7 @@ class CollectionManager():
             body = msg['body']
             if key[0] == 'setstate':
                 # handle_setstate() sends reply internally
+                self.phase1Info.update(body)
                 self.handle_setstate(key[1])
                 answer = None
             elif key[0] == 'setconfig':
@@ -602,6 +613,10 @@ class CollectionManager():
                 self.handle_setconfig(key[1])
                 answer = None
             elif key[0] in DaqControl.transitions:
+                # is body dict not-empty?
+                if body:
+                    self.phase1Info[key[1]] = body
+                    print('***',key[1],phase1Info)
                 # send 'ok' reply before calling handle_trigger()
                 self.front_rep.send_json(create_msg('ok'))
                 # drop slowupdate transition if not in running state,
@@ -647,6 +662,9 @@ class CollectionManager():
         stateBefore = self.state
         trigError = None
         try:
+            # this is a call into the "transitions" package which
+            # we reuse.  this causes callbacks to happen (e.g.
+            # condition_configure()
             self.trigger(key)
         except MachineError as ex:
             logging.debug('MachineError: %s' % ex)
@@ -1116,8 +1134,14 @@ class CollectionManager():
         retval = True
         # select procs with active flag set
         ids = self.filter_active_set(self.ids)
+        # include phase1 info in the msg, if it exists
+        if transition in self.phase1Info.keys():
+            body['phase1Info'] = self.phase1Info[transition]
         msg = create_msg(transition, body=body)
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
+        # now that the message has been sent, delete the phase1
+        # info so we don't send stale information next time.
+        self.phase1Info.pop(transition,None)
 
         # only drp/teb/meb groups (aka levels) respond to configure and above
         ids = self.filter_level('drp', ids) | self.filter_level('teb', ids) | self.filter_level('meb',ids)

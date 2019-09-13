@@ -95,6 +95,16 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         error = m_det->configure(config_alias, xtc);
         m_pgpDetector->resetEventCounter();
     }
+    else if (key == "beginstep") {
+        // see if we find some step information in phase 1 that needs to be
+        // to be attached to the xtc
+        if (msg.find("body") != msg.end()) {
+            if (msg["body"].find("phase1Info") != msg["body"].end()) {
+                const json& stepInfo = msg["body"]["phase1Info"];
+                m_det->beginstep(stepInfo, xtc);
+            }
+        }
+    }
 
     json answer;
     json body = json({});

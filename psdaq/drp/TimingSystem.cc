@@ -144,6 +144,10 @@ unsigned TimingSystem::configure(const std::string& config_alias, Xtc& xtc)
     return 0;
 }
 
+void TimingSystem::beginstep(const json& stepInfo, XtcData::Xtc& xtc) {
+    std::cout << "*** stepInfo: " << stepInfo.dump() << std::endl;
+}
+
 void TimingSystem::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
     m_evtcount+=1;

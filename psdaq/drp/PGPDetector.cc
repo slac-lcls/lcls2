@@ -206,7 +206,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
         }
         int32_t ret = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
         for (int b=0; b < ret; b++) {
-            int32_t size = dmaRet[b];
+            uint32_t size = dmaRet[b];
             uint32_t index = dmaIndex[b];
             uint32_t lane = (dest[b] >> 8) & 7;
             bytes += size;
