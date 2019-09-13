@@ -56,13 +56,13 @@ def gen_h5():
                   )
 
 
-        #if i % 2 == 0:
-        #    smd.event(evt,
-        #              unaligned=3,
-        #              every_other_missing=2)
+        if i % 2 == 0:
+            smd.event(evt,
+                      # unaligned_int=3,
+                      every_other_missing=2)
 
-        #if (rank % 2 == 0) and (smd._type == 'client'):
-        #    smd.event(evt, missing_vds=1)
+        if (rank % 2 == 0) and (smd._type == 'client'):
+            smd.event(evt, missing_vds=1)
 
     # smd.summary(...)
 
@@ -74,8 +74,7 @@ def gen_h5():
 class SmallDataTest:
 
     def __init__(self):
-        self.fn = glob(".?_smalldata_test.h5")[0] # this should change!
-        # self.fn = 'smalldata_test.h5' # should change TODO
+        self.fn = 'smalldata_test.h5'
         print('TESTING --> %s' % self.fn)
         f = h5py.File(self.fn, 'r')
         self.f = f
@@ -105,7 +104,13 @@ class SmallDataTest:
         return
 
     # def test_unaligned(self): return
-    # def test_every_other_missing(self): return
+
+    def test_every_other_missing(self):
+        d = np.array(self.f['/every_other_missing'])
+        assert np.all(d[::2] == 2), d
+        assert np.all(d[1::2] == -99999), d
+        return
+
     # def test_missing_vds(self): return
 
     
@@ -129,6 +134,7 @@ def main():
         testobj.test_float()
         testobj.test_arrint()
         testobj.test_arrfloat()
+        testobj.test_every_other_missing()
 
     return
 

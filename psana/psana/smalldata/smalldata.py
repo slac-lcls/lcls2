@@ -25,7 +25,6 @@ if SIZE > 1:
 else:
     MODE = 'SERIAL'
 
-
 # -----------------------------------------------------------------------------
 
 MISSING_INT   = -99999
@@ -201,18 +200,26 @@ class SmallData: # (client)
 
         self.batch_size = batch_size
         self._batch = []
+        self._previous_timestamp = -1
 
-        self._filename = '.' + str(RANK) + '_' + filename
+        self._base_filename = filename
 
         if MODE == 'PARALLEL':
+
+            # hide intermediate files -- join later via VDS
+            self._filename = '.' + str(RANK) + '_' + filename
+
             self._comm_partition()
             if self._type == 'server':
-                self._server = Server(filename=self._filename, smdcomm=self._smdcomm)
+                self._server = Server(filename=self._filename, smdcomm=self._srvcomm)
                 self._server.recv_loop()
 
         elif MODE == 'SERIAL':
+            self._filename = self._base_filename # dont hide file
             self._type = 'serial'
             self._server = Server(filename=self._filename)
+
+        print(RANK, 'here')
 
         return
 
@@ -229,11 +236,11 @@ class SmallData: # (client)
         if node_type() == 'srv':
             self._type = 'server'
             self._srv_color = _srv_group.rank
-            self._smdcomm = smalldata_comm.Split(self._srv_color, 0) # rank=0
+            self._srvcomm = smalldata_comm.Split(self._srv_color, 0) # rank=0
         elif node_type() == 'bd':
             self._type = 'client'
             self._srv_color = bd_group().rank % n_srv
-            self._smdcomm = smalldata_comm.Split(self._srv_color, 
+            self._srvcomm = smalldata_comm.Split(self._srv_color, 
                                                  RANK+1) # keep rank order
         else:
             # we are some other node type
@@ -249,14 +256,38 @@ class SmallData: # (client)
         event_data_dict.update(kwargs)
         for d in args:
             event_data_dict.update( _flatten_dictionary(d) )
-        self._batch.append(event_data_dict)
 
-        if len(self._batch) >= self.batch_size:
-            if MODE == 'SERIAL':
-                self._server.handle(self._batch)
-            elif MODE == 'PARALLEL':
-                self._smdcomm.send(self._batch, dest=0)
-            self._batch = []
+
+        # check to see if the timestamp indicates a new event
+
+        # multiple calls to self.event(...), same event as before
+        if event.timestamp == self._previous_timestamp:
+            self._batch[-1].update(event_data_dict)
+
+        # we have a new event
+        elif event.timestamp > self._previous_timestamp:
+
+            # if we have a "batch_size", ship events
+            # (this avoids splitting events if we have multiple
+            #  calls to self.event)
+            if len(self._batch) >= self.batch_size:
+                if MODE == 'SERIAL':
+                    self._server.handle(self._batch)
+                elif MODE == 'PARALLEL':
+                    self._srvcomm.send(self._batch, dest=0)
+                self._batch = []           
+
+            event_data_dict['timestamp'] = event.timestamp
+            self._previous_timestamp = event.timestamp
+            self._batch.append(event_data_dict)
+
+
+        else:
+            raise IndexError('event data is "old", event timestamps'
+                             ' must increase monotonically'
+                             ' previous timestamp: %d, current: %d'
+                             '' % (previous_timestamp, event.timestamp))
+
 
         return
 
@@ -266,8 +297,8 @@ class SmallData: # (client)
         if self._type == 'client':
             # we want to send the finish signal to the server
             if len(self._batch) > 0:
-                self._smdcomm.send(self._batch, dest=0)
-            self._smdcomm.send('done', dest=0)
+                self._srvcomm.send(self._batch, dest=0)
+            self._srvcomm.send('done', dest=0)
 
         elif self._type == 'server':
             self._server.done()
@@ -275,6 +306,12 @@ class SmallData: # (client)
         elif self._type == 'serial':
             self._server.handle(self._batch)
             self._server.done()
+
+        if MODE == 'PARALLEL':
+            if self._type != 'other': # other = Mona
+                smalldata_comm.barrier()
+                if smalldata_comm.Get_rank() == 0:
+                    join_files(self._base_filename)
 
         return
 
