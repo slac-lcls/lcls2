@@ -367,6 +367,42 @@ def data_geo(ntest) :
 
 #------------------------------
 
+def usage(ntest=None) :
+    s = ''
+    if ntest is None      : s+='\n Tests for radial 1-d binning of entire image'
+    if ntest in (None, 1) : s+='\n  1 - averaged data'
+    if ntest in (None, 2) : s+='\n  2 - pixel radius value'
+    if ntest in (None, 3) : s+='\n  3 - pixel phi value'
+    if ntest in (None, 4) : s+='\n  4 - pixel radial bin index'
+    if ntest in (None, 5) : s+='\n  5 - pixel phi bin index'
+    if ntest in (None, 6) : s+='\n  6 - pixel sequential (rad and phi) bin index'
+    if ntest in (None, 7) : s+='\n  7 - mask'
+    if ntest in (None, 8) : s+='\n  8 - averaged radial intensity'
+    if ntest in (None, 9) : s+='\n  9 - interpolated radial intensity'
+
+    if ntest is None      : s+='\n Test for 2-d (default) binning of the rad-phi range of entire image'
+    if ntest in (None,21) : s+='\n 21 - averaged data'
+    if ntest in (None,24) : s+='\n 24 - pixel radial bin index'
+    if ntest in (None,25) : s+='\n 25 - pixel phi bin index'
+    if ntest in (None,26) : s+='\n 26 - pixel sequential (rad and phi) bin index'
+    if ntest in (None,28) : s+='\n 28 - averaged radial intensity'
+    if ntest in (None,29) : s+='\n 29 - averaged radial interpolated intensity'
+    if ntest in (None,30) : s+='\n 30 - r-phi'
+                                     
+    if ntest is None      : s+='\n Test for 2-d binning of the restricted rad-phi range of entire image'
+    if ntest in (None,41) : s+='\n 41 - averaged data'
+    if ntest in (None,44) : s+='\n 44 - pixel radial bin index'
+    if ntest in (None,45) : s+='\n 45 - pixel phi bin index'
+    if ntest in (None,46) : s+='\n 46 - pixel sequential (rad and phi) bin index'
+    if ntest in (None,48) : s+='\n 48 - averaged radial intensity'
+    if ntest in (None,49) : s+='\n 49 - averaged radial interpolated intensity'
+    if ntest in (None,50) : s+='\n 50 - r-phi'
+
+    return s
+
+
+#------------------------------
+
 def test01(ntest, prefix='fig-v01') :
     """Test for radial 1-d binning of entire image.
     """
@@ -559,8 +595,12 @@ def test03(ntest, prefix='fig-v01') :
 
 if __name__ == '__main__' :
     import sys
+
+    #if len(sys.argv) == 1 : print(usage())
+    print(usage())
+
     ntest = int(sys.argv[1]) if len(sys.argv)>1 else 1
-    print('Test # %d' % ntest)
+    print('Test # %d: %s' % (ntest, usage(ntest)))
 
     prefix = 'fig-v01-cspad-HPolar'
 
