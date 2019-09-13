@@ -58,7 +58,7 @@ class CGWMain(QWZMQListener) :
 
         #instr = self.expname[:3].upper()
         instr = daq_control().getInstrument()
-        if instr in ('TST', None) : instr = 'TMO'
+        if instr is None : instr = 'TST'
 
         self.wlogr = QWLoggerStd(log_level=self.loglevel, instrument=instr,\
                                  log_prefix=self.logdir, show_buttons=False)
