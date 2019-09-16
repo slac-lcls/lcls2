@@ -45,19 +45,6 @@ int toggle_acquisition(int x)
     Py_Initialize();
     PyObject* sysPath = PySys_GetObject((char*)"path");
 
-
-    //PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/software/TimeTool/scripts"));
-    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/submodules/surf/python"));
-    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/submodules/axi-pcie-core/python"));
-    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/submodules/lcls2-pgp-fw-lib/python"));
-    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/submodules/lcls-timing-core/python"));
-    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/submodules/lcls2-pgp-fw-lib/python"));
-    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/applications/TimeTool/python"));
-    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/firmware/submodules/clink-gateway-fw-lib/python"));
-    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/software/TimeTool/python"));
-    PyList_Append(sysPath, PyUnicode_FromString("/u1/sioan/slac-lcls/lcls2/lcls2-pcie-apps/software/TimeTool/scripts"));
-
-
     pName = PyUnicode_DecodeFSDefault("toggle_prescaling");
 
 
