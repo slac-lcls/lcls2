@@ -4,6 +4,15 @@ import sys
 import numpy as np
 from setuptools import setup, Extension, find_packages
 
+## HIDE WARNING:
+## cc1plus: warning: command line option "-Wstrict-prototypes" is valid for C/ObjC but not for C++
+from distutils.sysconfig import get_config_vars
+cfg_vars = get_config_vars()
+for k, v in cfg_vars.items():
+    if type(v) == str:
+        cfg_vars[k] = v.replace("-Wstrict-prototypes", "")
+
+
 print('Begin: %s' % ' '.join(sys.argv))
 
 arg = [arg for arg in sys.argv if arg.startswith('--instdir')]
@@ -17,8 +26,12 @@ if sys.platform == 'darwin':
     extra_compile_args = ['-std=c++11', '-mmacosx-version-min=10.9']
     extra_link_args = ['-mmacosx-version-min=10.9']
 else:
-    extra_compile_args=['-std=c++11']
+    #extra_compile_args=['-std=c++11']
+    # Flag -Wno-cpp hides warning: 
+    #warning "Using deprecated NumPy API, disable it with " "#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION" [-Wcpp]
+    extra_compile_args=['-std=c++11', '-Wno-cpp']
     extra_link_args = []
+
 extra_link_args_rpath = extra_link_args + ['-Wl,-rpath,'+ os.path.abspath(os.path.join(instdir, 'lib'))]
 
 
@@ -46,11 +59,12 @@ container_module = Extension('psana.container',
                          extra_link_args = extra_link_args_rpath,
                          extra_compile_args = extra_compile_args)
 
+       #cmdclass = {'build': build_ext, 'build_ext': my_build_ext},
+       #cmdclass={'build_ext': my_build_ext},
 setup(
        name = 'psana',
        license = 'LCLS II',
        description = 'LCLS II analysis package',
-
        install_requires=[
          'numpy',
        ],
@@ -58,8 +72,7 @@ setup(
        include_package_data = True,
        package_data={'graphqt': ['data/icons/*.png','data/icons/*.gif'],
        },
-
-       #cmdclass = {'build': dgram_build, 'build_ext': dgram_build_ext},
+       #cmdclass={'build_ext': my_build_ext},
        ext_modules = [dgram_module, seq_module, container_module],
        entry_points={
             'console_scripts': [
@@ -114,27 +127,28 @@ setup(name="peakFinder",
                          #     os.path.join(instdir, 'include'),
                          #"../psalg/psalg/hexanode/src/LMF_IO.cc",
 
-#ext = Extension("hexanode",
-#                sources=["psana/hexanode/hexanode_ext.pyx",
-#                         "../psalg/psalg/hexanode/src/cfib.cc"],
+if(os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
+    ext = Extension("hexanode",
+                    sources=["psana/hexanode/hexanode_ext.pyx",
+                             "../psalg/psalg/hexanode/src/cfib.cc"],
+                    libraries=['psalg',],
+                    language="c++",
+                    extra_compile_args = extra_compile_args,
+                    include_dirs=[np.get_include(), os.path.join(instdir, 'include'), os.path.join(sys.prefix,'include'),],
+                    library_dirs = [os.path.join(instdir, 'lib')],
+                    extra_link_args = extra_link_args,
+                    )
+    setup(name="hexanode",
+          ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
+
+
 #                libraries=['psalg',],
-#                language="c++",
-#                extra_compile_args = extra_compile_args,
-#                include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(),],
-#                library_dirs = [os.path.join(instdir, 'lib')],
-#                extra_link_args = extra_link_args,
-#)
-
-#setup(name="hexanode",
-#      ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
-
-
-##                libraries=['psalg',],
 
 # ugly: only build hexanode apps if the roentdek software exists.
 # this is a rough python equivalent of the way cmake finds out whether
 # packages exist. - cpo
-if (os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
+if False :
+  if(os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
     ext = Extension("hexanode",
                     sources=["psana/hexanode/test_ext.pyx",
                              "../psalg/psalg/hexanode/src/cfib.cc"],
@@ -144,9 +158,11 @@ if (os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
                     library_dirs = [os.path.join(instdir, 'lib')],
                     extra_link_args = extra_link_args,
                 )
-
     setup(name="hexanode",
           ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
+
+
+
 
 
 ext = Extension("constFracDiscrim",
@@ -225,25 +241,4 @@ setup(name="hsd",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR),
 )
 
-'''
-from setuptools.command.build_ext import build_ext
-class dgram_build_ext(build_ext):
-    user_options = build_ext.user_options
-    user_options.extend([('instdir=', None, 'base folder of instdir installation')])
 
-    def initialize_options(self):
-        build_ext.initialize_options(self)
-        self.instdir = None
-    
-    def finalize_options(self):
-        build_ext.finalize_options(self)
-        if self.instdir is not None:
-            for ext in self.extensions:
-                ext.library_dirs.append(os.path.join(self.instdir, 'lib'))
-                ext.include_dirs.append(os.path.join(self.instdir, 'include'))
-                ext.extra_link_args.append('-Wl,-rpath,'+ os.path.join(self.instdir, 'lib'))
-        else:
-            print('missing')
-            #raise Exception("Parameter --instdir is missing")
-        print(self.extensions)
-'''   

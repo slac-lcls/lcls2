@@ -161,7 +161,7 @@ cdef extern from "psalg/hexanode/wrap_resort64c.hh":
     void test_resort()
 
 def ctest_resort():
-    print 'In hexanode_ext.ctest_resort - call cpp method which uses hexanode_proxy/resort64c.h'
+    print 'In hexanode_ext.ctest_resort - call cpp method which uses psalg/hexanode/resort64c.hh'
     test_resort()
 
 #------------------------------
@@ -170,7 +170,7 @@ def ctest_resort():
 #------------------------------
 #------------------------------
 
-cdef extern from "hexanode_proxy/resort64c.h":
+cdef extern from "psalg/hexanode/resort64c.hh":
     cdef cppclass hit_class:
         double x, y, time
         int32_t method
@@ -207,7 +207,7 @@ cdef class py_hit_class:
 #------------------------------
 #------------------------------
 
-cdef extern from "hexanode_proxy/resort64c.h":
+cdef extern from "psalg/hexanode/resort64c.hh":
     cdef cppclass scalefactors_calibration_class:
 
         double best_fv, best_fw, best_w_offset
@@ -272,7 +272,7 @@ cdef class py_scalefactors_calibration_class:
 #------------------------------
 #------------------------------
 
-cdef extern from "hexanode_proxy/resort64c.h":
+cdef extern from "psalg/hexanode/resort64c.hh":
     cdef cppclass sort_class:
         int Cu1, Cu2, Cv1, Cv2, Cw1, Cw2, Cmcp 
         bint use_sum_correction 
@@ -633,7 +633,7 @@ def py_sorter_scalefactors_calibration_map_is_full_enough(py_sort_class sorter) 
 #------------------------------
 #------------------------------
 
-cdef extern from "hexanode_proxy/resort64c.h":
+cdef extern from "psalg/hexanode/resort64c.hh":
     cdef cppclass signal_corrector_class:
         signal_corrector_class()
 
@@ -646,7 +646,7 @@ cdef class py_signal_corrector_class:
 
     def __cinit__(self):
         print "In py_signal_corrector_class.__cinit__",\
-              " - direct test of methods from hexanode_proxy/resort64c.h in hexanode_ext.class py_signal_corrector_class"
+              " - direct test of methods from psalg/hexanode/resort64c.hh in hexanode_ext.class py_signal_corrector_class"
         self.cptr = new signal_corrector_class();
 
     def __dealloc__(self):
