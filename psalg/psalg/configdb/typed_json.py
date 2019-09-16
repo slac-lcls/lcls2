@@ -370,15 +370,43 @@ class cdict(object):
         if isinstance(old, cdict):
             self.dict.update(old.dict)
             self.enumdef.update(old.enumdef)
-        elif isinstance(old, dict) and ":types:" in old.keys():
-            cp = {}
-            cp.update(old)
-            jt = cp[':types:']
-            if ":enum:" in jt.keys():
-                self.enumdef = jt[":enum:"]
-                del jt[":enum:"]
-            del cp[':types:']
-            self.init_from_json(cp, jt)
+        elif isinstance(old, dict):
+            if ":types:" in old.keys():
+                cp = {}
+                cp.update(old)
+                jt = cp[':types:']
+                if ":enum:" in jt.keys():
+                    self.enumdef = jt[":enum:"]
+                    del jt[":enum:"]
+                del cp[':types:']
+                self.init_from_json(cp, jt)
+            else:
+                self.init_from_dict(old)
+
+    def init_from_dict(self, old, base=None):
+        if isinstance(old, dict):
+            for k in old.keys():
+                if base is None:
+                    n = k
+                else:
+                    n = base + "." + k
+                self.init_from_dict(old[k], n)
+            for k in ["detType:RO", "detName:RO", "detId:RO", "doc:RO", "alg:RO"]:
+                if not k in old.keys():
+                    if k != "alg:RO":
+                        self.dict[k] = ""
+                    else:
+                        self.dict[k] = { "alg:RO": "", "doc:RO": "", "version:RO": [0, 0, 0]}
+        elif isinstance(old, list):
+            for (k, v) in enumerate(old):
+                n = base + "." + str(k)
+                self.init_from_dict(v, n)
+        elif isinstance(old, str):
+            self.set(base, old, type="CHARSTR")
+        elif isinstance(old, float):
+            self.set(base, old, type="DOUBLE")
+        else:
+            self.set(base, old, type="INT32")
 
     def init_from_json(self, old, jt, base=None):
         if isinstance(old, dict):
@@ -410,7 +438,7 @@ class cdict(object):
                     self.set(n, v, t)
         elif isinstance(old, list):
             for (k, v) in enumerate(old):
-                n = base + str(k)
+                n = base + "." + str(k)
                 self.init_from_json(v, jt, n)
 
     def typed_json(self):
