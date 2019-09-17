@@ -10,8 +10,12 @@ from glob import glob
 from setup_input_files import setup_input_files
 
 from psana import DataSource
-from psana import SmallData
 
+try:
+    from psana import SmallData
+    DOTEST = True
+except:
+    DOTEST = False
 
 # cpo found this on the web as a way to get mpirun to exit when
 # one of the ranks has an exception
@@ -56,7 +60,7 @@ def gen_h5():
                   )
 
 
-        if i % 2 == 0:
+        if evt.timestamp % 2 == 0:
             smd.event(evt,
                       # unaligned_int=3,
                       every_other_missing=2)
@@ -107,8 +111,8 @@ class SmallDataTest:
 
     def test_every_other_missing(self):
         d = np.array(self.f['/every_other_missing'])
-        assert np.all(d[::2] == 2), d
-        assert np.all(d[1::2] == -99999), d
+        assert np.sum((d == 2)) == 5, d
+        assert np.sum((d == -99999)) == 5, d
         return
 
     # def test_missing_vds(self): return

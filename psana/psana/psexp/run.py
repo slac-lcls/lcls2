@@ -16,15 +16,21 @@ from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.step import Step
 
 from psana.psexp.tools import mode
-MPI = None
+
 if mode == 'mpi':
     from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    size = comm.Get_size()
-    rank = comm.Get_rank()
-    
-    if size > 1:
-        from psana.psexp.node import run_node # only import node when running in parallel
+    world_comm = MPI.COMM_WORLD
+    world_size = world_comm.Get_size()
+
+    # only import node when running in parallel
+    if (world_size > 1):
+        from psana.psexp.node import _nodetype
+        if (_nodetype in ['smd0', 'smd', 'bd']):
+            from psana.psexp.node import psana_comm
+            from psana.psexp.node import run_node
+            comm = psana_comm
+            rank = comm.Get_rank()
+            size = comm.Get_size()
         
 
 def _enumerate_attrs(obj):

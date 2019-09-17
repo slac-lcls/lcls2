@@ -11,9 +11,9 @@ from psana import dgram
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
-world_rank = comm.Get_rank()
-world_size = comm.Get_size()
-world_group = comm.Get_group() # This this the world group
+world_rank  = comm.Get_rank()
+world_size  = comm.Get_size()
+world_group = comm.Get_group()
 
 # Setting up group communications
 # Ex. PS_SMD_NODES=3 mpirun -n 13
@@ -39,6 +39,8 @@ PS_SRV_NODES = int(os.environ.get('PS_SRV_NODES', 0))
 PS_SMD_NODES = int(os.environ.get('PS_SMD_NODES', 1))
 
 psana_group    = world_group.Excl(range(world_size-PS_SRV_NODES, world_size))
+psana_comm     = comm.Create(psana_group)
+
 smd_group      = psana_group.Incl(range(PS_SMD_NODES + 1))
 bd_main_group  = psana_group.Excl([0])
 _bd_only_group = MPI.Group.Difference(bd_main_group,smd_group)

@@ -1,5 +1,7 @@
 import weakref
 import os
+
+# mode can be 'mpi' or 'legion'
 mode = os.environ.get('PS_PARALLEL', 'mpi')
 
 class RunHelper(object):

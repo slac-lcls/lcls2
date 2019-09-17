@@ -7,9 +7,17 @@ class InvalidEventBuilderCores(Exception): pass
 
 if mode == 'mpi':
     from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
+    world_comm = MPI.COMM_WORLD
+    world_size = world_comm.Get_size()
+
+    if (world_size > 1):
+        from psana.psexp.node import _nodetype
+        if (_nodetype in ['smd0', 'smd', 'bd']):
+            from psana.psexp.node import psana_comm
+            comm = psana_comm
+            rank = comm.Get_rank()
+            size = comm.Get_size()
+
 
 class MPIDataSource(DataSourceBase):
 

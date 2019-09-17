@@ -12,6 +12,7 @@ from psana.psexp.mpi_ds        import MPIDataSource
 from psana.psexp.singlefile_ds import SingleFileDataSource
 from psana.psexp.shmem_ds      import ShmemDataSource
 from psana.psexp.legion_ds     import LegionDataSource
+from psana.psexp.null_ds       import NullDataSource
 
 
 def DataSource(*args, **kwargs):
@@ -19,19 +20,28 @@ def DataSource(*args, **kwargs):
 
     if 'shmem' in kwargs:
         return ShmemDataSource(*args, **kwargs)
+
     elif 'exp' in kwargs: # experiment string - assumed multiple files
+
         if mode == 'mpi':
             if size == 1:
                 return SerialDataSource(*args, **kwargs)
             else:
-                return MPIDataSource(*args, **kwargs)
+                from psana.psexp.node import _nodetype
+                if _nodetype in ['smd0', 'smd', 'bd']:
+                    return MPIDataSource(*args, **kwargs)
+                else:
+                    return NullDataSource(*args, **kwargs)
+
         elif mode == 'legion':
             return LegionDataSource(*args, **kwargs)
+
         else:
             raise InvalidDataSource("Incorrect mode. DataSource mode only supports either mpi or legion.")
     
     elif 'files' in kwargs: # list of files
         return SingleFileDataSource(*args, **kwargs)
+
     else:
         raise InvalidDataSource("Expected keyword(s) not found. DataSource requires exp, shmem, or files keywords.")
 
