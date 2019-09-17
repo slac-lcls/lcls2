@@ -5,10 +5,7 @@ class SerialDataSource(DataSourceBase):
 
     def __init__(self, *args, **kwargs):
         super(SerialDataSource, self).__init__(**kwargs)
-        self.exp, self.run_dict = self.setup_xtcs()
-
-    class Factory:
-        def create(self, *args, **kwargs): return SerialDataSource(*args, **kwargs)
+        self.exp, self.run_dict = self._setup_xtcs()
 
     def runs(self):
         for run_no in self.run_dict:

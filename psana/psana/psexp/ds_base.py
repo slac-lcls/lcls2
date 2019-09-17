@@ -1,11 +1,14 @@
 import weakref
-import os, glob
+import os
+import glob
+import abc
 import numpy as np
 from psana.dgrammanager import DgramManager
 
 class InvalidFileType(Exception): pass
 
-class DataSourceBase(object):
+class DataSourceBase(abc.ABC):
+
     filter = 0
     batch_size = 1
     max_events = 0
@@ -55,11 +58,16 @@ class DataSourceBase(object):
         for run in self.runs():
             for evt in run.events(): yield evt
 
-    # FIXME: this supports cctbx code and will be removed in next update
-    def Detector(self, det_name):
-        return self.run.Detector(det_name)
+    @abc.abstractmethod
+    def runs(self):
+        return
+
+    # to be added at a later date...
+    #@abc.abstractmethod
+    #def steps(self):
+    #    return
     
-    def setup_xtcs(self):
+    def _setup_xtcs(self):
         exp = None
         run_dict = {} # stores list of runs with corresponding xtc_files, smd_files, and epic file
 

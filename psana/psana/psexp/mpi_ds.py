@@ -17,7 +17,7 @@ class MPIDataSource(DataSourceBase):
         super(MPIDataSource, self).__init__(**kwargs)
 
         if rank == 0:
-            exp, run_dict = super(MPIDataSource, self).setup_xtcs()
+            exp, run_dict = super(MPIDataSource, self)._setup_xtcs()
         else:
             exp, run_dict = None, None
 
@@ -33,10 +33,6 @@ class MPIDataSource(DataSourceBase):
 
         self.exp = exp
         self.run_dict = run_dict
-
-
-    class Factory:
-        def create(self, *args, **kwargs): return MPIDataSource(*args, **kwargs)
 
     def runs(self):
         for run_no in self.run_dict:
