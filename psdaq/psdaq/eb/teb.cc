@@ -13,6 +13,7 @@
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/Dl.hh"
+#include "psdaq/service/SysLog.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <stdio.h>
@@ -35,6 +36,7 @@ using namespace XtcData;
 using namespace Pds;
 
 using json = nlohmann::json;
+using logging = Pds::SysLog;
 
 static const int      core_0           = 11; // devXXX: 11, devXX:  7, accXX:  9
 static const int      core_1           = 12; // devXXX: 12, devXX: 19, accXX: 21
@@ -775,6 +777,8 @@ static void usage(char *name, char *desc, const EbParams& prms)
           "Collection server");
   fprintf(stderr, " %-22s %s (required)\n",           "-p <partition number>",
           "Partition number");
+  fprintf(stderr, " %-22s %s\n",                      "-P <instrument>",
+          "Instrument name");
   fprintf(stderr, " %-22s %s (required)\n",           "-u <alias>",
           "Alias for teb process");
   fprintf(stderr, " %-22s %s (default: %d)\n",        "-1 <core>",
@@ -791,6 +795,7 @@ int main(int argc, char **argv)
 {
   const unsigned NO_PARTITION = unsigned(-1u);
   int            op           = 0;
+  char *         instrument   = NULL;
   std::string    collSrv;
   EbParams       prms { /* .ifAddr        = */ { }, // Network interface to use
                         /* .ebPort        = */ { },
@@ -809,12 +814,13 @@ int main(int argc, char **argv)
                         /* .contractors   = */ 0,
                         /* .receivers     = */ 0 };
 
-  while ((op = getopt(argc, argv, "C:p:A:1:2:u:h?v")) != -1)
+  while ((op = getopt(argc, argv, "C:p:A:1:2:u:P:h?v")) != -1)
   {
     switch (op)
     {
       case 'C':  collSrv         = optarg;             break;
       case 'p':  prms.partition  = std::stoi(optarg);  break;
+      case 'P':  instrument      = optarg;             break;
       case 'A':  prms.ifAddr     = optarg;             break;
       case '1':  prms.core[0]    = atoi(optarg);       break;
       case '2':  prms.core[1]    = atoi(optarg);       break;
@@ -827,7 +833,17 @@ int main(int argc, char **argv)
         return 1;
     }
   }
-
+  switch (prms.verbose)
+  {
+    case 0:  logging::init(instrument, LOG_WARNING);  break;
+    case 1:  logging::init(instrument, LOG_INFO);     break;
+    default: logging::init(instrument, LOG_DEBUG);    break;
+  }
+  logging::info("logging configured");
+  if (!instrument)
+  {
+    logging::warning("Missing '-P <instrument>' parameter");
+  }
   if (prms.partition == NO_PARTITION)
   {
     fprintf(stderr, "Missing '%s' parameter\n", "-p <Partition number>");
