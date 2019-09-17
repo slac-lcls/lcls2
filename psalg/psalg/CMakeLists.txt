@@ -1,6 +1,4 @@
 
-message(STATUS "psalg/CMakeLists: ROENTDEK_FOUND=${ROENTDEK_FOUND}")
-
 if (ROENTDEK_FOUND)
     add_subdirectory(hexanode)
 endif()
@@ -24,6 +22,8 @@ target_include_directories(psalg PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
+message(STATUS "psalg/CMakeLists: ROENTDEK_FOUND=${ROENTDEK_FOUND}")
+message(STATUS "psalg/CMakeLists: CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 message(STATUS "psalg/CMakeLists: CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 message(STATUS "psalg/CMakeLists: CMAKE_SOURCE_DIR=${CMAKE_SOURCE_DIR}")
 message(STATUS "psalg/CMakeLists: CURL_LIBRARY=${CURL_LIBRARY}")

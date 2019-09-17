@@ -385,8 +385,8 @@ void
 dbnames_collection_query(std::map<std::string, std::string>& omap, const char* det, const char* exp, const char* ctype, const unsigned run, const unsigned time_sec, const char* vers) {
   MSG(DEBUG, "dbnames_collection_query for det: " << det);
 
-  bool cond = (run>0) || (time_sec>0) || vers;
-  assert(cond);
+  //bool cond = (run>0) || (time_sec>0) || vers;
+  assert((run>0) || (time_sec>0) || vers);
 
   const std::string db_det = (det) ? db_prefixed_name(det) : "";
   const std::string db_exp = (exp) ? db_prefixed_name(exp) : "";  

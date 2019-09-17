@@ -39,7 +39,7 @@ std::vector<double> diff_table(int deg, const std::vector<double>& x, const std:
 
   std::vector<double> coeffs(1, y[0]);
 
-  for(int col = 0, offset = 1; col < (deg+1); col++)
+  for(int col = 0; col < (deg+1); col++)
   {
     for(int row = 0; row < rows-(col+1); row++)
     {
@@ -102,17 +102,17 @@ double getcfd(const double sampleInterval,
               const double fraction)
 {
   //now extract information from the Channel
-  const double sampleIntervalNS = sampleInterval*1e9;    //convert the s to ns
-  const double horposNS         = horpos*1.e9;
+  //const double sampleIntervalNS = sampleInterval*1e9;    //convert the s to ns
+  //const double horposNS         = horpos*1.e9;
   const double vGain            = gain;
   const int32_t vOff            = static_cast<int32_t>(offset / vGain);       //V -> ADC Bytes
 
-  const int32_t idxToFiPoint = 0;
+  //const int32_t idxToFiPoint = 0;
   const Waveform& Data = waveform;
   const size_t wLength = waveform.size();
 
   //--get the right cfd settings--//
-  const int32_t delayNS     = static_cast<int32_t>(delay / sampleIntervalNS); //ns -> sampleinterval units
+  //const int32_t delayNS     = static_cast<int32_t>(delay / sampleIntervalNS); //ns -> sampleinterval units
   const double walkB        = walk / vGain;                                 //V -> ADC Bytes
   const double thresholdB   = threshold / vGain;                            //V -> ADC Bytes
 

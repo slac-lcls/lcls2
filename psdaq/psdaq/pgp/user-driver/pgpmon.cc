@@ -81,14 +81,14 @@ int main(int argc, char* argv[])
     
     int c;
     int device_id;
-    bool lverbose = false;
+    //bool lverbose = false;
     while((c = getopt(argc, argv, "d:v")) != EOF) {
         switch(c) {
         case 'd':
           device_id = std::stoi(optarg, nullptr, 16);
           break;
         case 'v':
-          lverbose = true;
+          //lverbose = true;
           break;
         }
     }

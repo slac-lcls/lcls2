@@ -1,5 +1,5 @@
 #define WINVER 0x0501
-#pragma warning(disable : 4996)
+// #pragma warning(disable : 4996)
 
 #include "psalg/hexanode/LMF_IO.hh"
 
@@ -88,7 +88,7 @@ unsigned __int32 ReadCStringLength(MyFILE &in_file)
 	unsigned __int16 wLength;
 	unsigned __int8  bLength;
 
-	__int32 nCharSize = sizeof(__int8);
+	//__int32 nCharSize = sizeof(__int8);
 
 	// First, try to read a one-byte length
 	in_file >> bLength;
@@ -101,7 +101,7 @@ unsigned __int32 ReadCStringLength(MyFILE &in_file)
 	if (wLength == 0xfffe)
 	{
 		// Unicode string.  Start over at 1-byte length
-		nCharSize = sizeof(wchar_t);
+		//nCharSize = sizeof(wchar_t);
 
 		in_file >> bLength;
 		if (bLength < 0xff)
@@ -645,7 +645,7 @@ bool LMF_IO::OpenInputLMF(__int8 * LMF_Filename)
 		unsigned __int32 dummy_uint32;
 		unsigned __int64 pos = input_lmf->tell(); 
 		*input_lmf >> dummy_uint32;
-		if (dummy_uint32 == INT_MIN_+10) CTime_version = 2005; else CTime_version = 2003;
+		if ((int)dummy_uint32 == INT_MIN_+10) CTime_version = 2005; else CTime_version = 2003;
 		input_lmf->seek(pos);
 	}
 	
@@ -717,7 +717,7 @@ bool LMF_IO::OpenInputLMF(__int8 * LMF_Filename)
 		goto L666;
 	}
 
-	if (__int32(input_lmf->tell()) != Headersize) {
+	if (__int32(input_lmf->tell()) != __int32(Headersize)) {
 		errorflag = 6;
 		InputFileIsOpen = false;
 		goto L666;
@@ -769,7 +769,7 @@ L100:
 	if (DAQ_ID == DAQ_ID_CAMAC)  byte_counter += ReadCAMACHeader();
 	if (DAQ_ID == DAQ_ID_TCPIP)  byte_counter += ReadTCPIPHeader();
 
-	if ((User_header_size != byte_counter) || (data_format_in_userheader != data_format_in_header)) {
+	if ((User_header_size != (unsigned __int32)byte_counter) || (data_format_in_userheader != data_format_in_header)) {
 		if (!(DAQ_ID == DAQ_ID_TDC8 && this->LMF_Version == 0x8)) {
 			errorflag = 6; // error reading header
 			CloseInputLMF();
@@ -1052,7 +1052,7 @@ L50:
 
 	*input_lmf >> module_2nd;	byte_counter += sizeof(__int32);		// indicator for 2nd module data
 	
-	if (byte_counter == User_header_size - 12) return byte_counter;
+	if (byte_counter == __int32(User_header_size) - 12) return byte_counter;
 
 	if (DAQVersion >= 20020408 && TDC8PCI2.use_normal_method) {
 		*input_lmf >> TDC8PCI2.GateDelay_1st_card;			byte_counter += sizeof(__int32); // gate delay 1st card
@@ -1075,7 +1075,7 @@ L50:
 	END_CATCH
 */
 
-	if (byte_counter != User_header_size - 12 && DAQVersion < 20080507) {
+	if (byte_counter != __int32(User_header_size) - 12 && DAQVersion < 20080507) {
 		if (!TDC8PCI2.use_normal_method) return 0;
 		TDC8PCI2.use_normal_method = false;
 		input_lmf->seek(StartPosition);
@@ -1258,7 +1258,7 @@ L50:
 L200:
 
 	if (DAQVersion < 20080507) {
-		if (byte_counter != User_header_size - 12) {
+	        if (byte_counter != __int32(User_header_size) - 12) {
 			if (desperate_mode) return 0;
 			if (!TDC8PCI2.use_normal_method_2nd_card) {
 				desperate_mode = true;
@@ -1270,7 +1270,7 @@ L200:
 	}
 
 	if (DAQVersion >= 20080507) {
-		if (byte_counter != User_header_size - 20) {
+	        if (byte_counter != __int32(User_header_size) - 20) {
 			byte_counter = -1000; // XXX (this line is okay. I have put the XXX just to bring it to attention)
 		}
 	}
@@ -1438,11 +1438,11 @@ L50:
 	byte_counter += TDC8HP.csDNLFile_Length;
 
 	if (DAQVersion < 20080000) {
-		if (byte_counter == User_header_size - 12 - 4) {  // Cobold 2002 v11
+	        if (byte_counter == __int32(User_header_size) - 12 - 4) {  // Cobold 2002 v11
 			if (TDC8HP.UserHeaderVersion < 2) TDC8HP.UserHeaderVersion = 2;
 			*input_lmf >> TDC8HP.SyncValidationChannel;  byte_counter += sizeof(__int32); 	// parameter 77-1
 		}
-		if (byte_counter == User_header_size - 12 - 4 - 4) { // never used in official Cobold releases
+	        if (byte_counter == __int32(User_header_size) - 12 - 4 - 4) { // never used in official Cobold releases
 			TDC8HP.UserHeaderVersion = 3;
 			*input_lmf >> TDC8HP.SyncValidationChannel;  byte_counter += sizeof(__int32);
 			*input_lmf >> TDC8HP.VHR_25ps;				 byte_counter += sizeof(bool);
@@ -1540,7 +1540,7 @@ __int32	LMF_IO::ReadTDC8HPHeader_LMFV_8_to_9()
 	byte_counter += DAQ_info_Length;
 
 //	input_lmf->flush();
-	unsigned __int64 StartPosition = input_lmf->tell();
+	//unsigned __int64 StartPosition = input_lmf->tell();
 	__int32 old_byte_counter = byte_counter;
 
 	byte_counter = old_byte_counter;
@@ -1800,7 +1800,7 @@ __int32	LMF_IO::ReadHM1Header()
 	__int32 nominalHeaderLength;
 	nominalHeaderLength = sizeof(__int32)*21 + sizeof(double)*2 + DAQ_info_Length;	// size of user defined header
 	if (DAQ_ID == DAQ_ID_HM1_ABM) nominalHeaderLength += 24*sizeof(__int32);
-	if (nominalHeaderLength == User_header_size) HM1.use_normal_method = true;
+	if (nominalHeaderLength == __int32(User_header_size)) HM1.use_normal_method = true;
 
 	if (DAQVersion >= 20020408 && HM1.use_normal_method) {
 		*input_lmf >> LMF_Version; byte_counter += sizeof(__int32);
@@ -1954,7 +1954,7 @@ __int32	LMF_IO::Write2TDC8PCI2Header()
 {
 	unsigned __int32 byte_counter;
 	byte_counter = 0;
-	__int32 int_Dummy = 0;
+	//__int32 int_Dummy = 0;
 
 	*output_lmf << frequency;	byte_counter += sizeof(double);		// frequency is always 4th value
 	*output_lmf << IOaddress;	byte_counter += sizeof(__int32);		// IO address (parameter 1) always 5th value
@@ -2032,7 +2032,7 @@ __int32	LMF_IO::WriteTDC8HPHeader_LMFV_1_to_7()
 	byte_counter = 0;
 	double	double_Dummy = 0.;
 	__int32		int_Dummy = 0;
-	unsigned __int32 unsigned_int_Dummy = 0;
+	//unsigned __int32 unsigned_int_Dummy = 0;
 
 	*output_lmf << frequency;	byte_counter += sizeof(double);		// frequency is always 4th value
 	*output_lmf << IOaddress;	byte_counter += sizeof(__int32);		// IO address (parameter 1) always 5th value
@@ -2183,8 +2183,8 @@ __int32	LMF_IO::WriteTDC8HPHeader_LMFV_8_to_9()
 	unsigned __int32 byte_counter	= 0;
 
 	bool			 bool_dummy = false;
-	double			 double_Dummy	= 0.;
-	__int32			 int_Dummy		= 0;
+	//double			 double_Dummy	= 0.;
+	//__int32			 int_Dummy		= 0;
 	unsigned __int32 unsigned_int_Dummy = 0;
 	__int64			 int64_dummy	= 0;
 
@@ -2367,7 +2367,7 @@ __int32	LMF_IO::WriteHM1Header()
 {
 	unsigned __int32 byte_counter;
 	byte_counter = 0;
-	__int32 int_Dummy = 0;
+	//__int32 int_Dummy = 0;
 
 	*output_lmf << frequency;	byte_counter += sizeof(double);		// frequency is always 4th value
 	*output_lmf << IOaddress;	byte_counter += sizeof(__int32);		// IO address (parameter 1) always 5th value
@@ -2510,9 +2510,9 @@ bool LMF_IO::OpenOutputLMF(std::string LMF_Filename)
 bool LMF_IO::OpenOutputLMF(__int8 * LMF_Filename)
 /////////////////////////////////////////////////////////////////
 {
-	double				double_Dummy = 0.;
-	unsigned __int32	unsigned_int_Dummy = 0;
-	__int32				int_Dummy = 0;
+  //double				double_Dummy = 0.;
+  //unsigned __int32	unsigned_int_Dummy = 0;
+  //__int32				int_Dummy = 0;
 
 	if (OutputFileIsOpen) {
 		errorflag = 12; // file is already open
@@ -2595,7 +2595,7 @@ bool LMF_IO::OpenOutputLMF(__int8 * LMF_Filename)
 
 	Headersize_output = 0;
 
-	if (DAQVersion_output == -1) DAQVersion_output = DAQVersion;
+	if (int(DAQVersion_output) == -1) DAQVersion_output = DAQVersion;
 
 	if (DAQVersion_output >= 20080000 && Cobold_Header_version_output == 0) Cobold_Header_version_output = 2008;
 	if (Cobold_Header_version_output == 0) Cobold_Header_version_output = Cobold_Header_version;
@@ -2623,7 +2623,7 @@ bool LMF_IO::OpenOutputLMF(__int8 * LMF_Filename)
 		if (max_number_of_hits2_output == -1) max_number_of_hits2_output = max_number_of_hits2;
 	}
 
-	if (timestamp_format_output == -1) timestamp_format_output = timestamp_format;
+	if (int(timestamp_format_output) == -1) timestamp_format_output = timestamp_format;
 
 	if (Numberofcoordinates_output == -2) {
 		if (data_format_in_userheader_output == LM_SHORT)  Numberofcoordinates_output = timestamp_format_output * 2;

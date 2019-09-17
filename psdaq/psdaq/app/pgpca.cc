@@ -49,7 +49,7 @@ public:
     }
     unsigned sz = 1<<(p[0]&0x1f);
     if (_pv->connected()) {
-      unsigned csz = sz*sizeof(uint32_t);
+      //unsigned csz = sz*sizeof(uint32_t);
       printf("AxisHistogram: The following lines have been commented out; we need some refactoring here for PVAccess\n");
       // TODO mshankar
       //if (_pv->data_size() != csz) {

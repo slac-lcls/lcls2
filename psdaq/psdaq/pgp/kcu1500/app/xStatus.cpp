@@ -53,7 +53,7 @@ static void check_program_clock(int ifd, const AxiVersion& vsn)
     else
       s.program();
     //  Reset the QPLL
-    uint32_t reg;
+    //uint32_t reg;
     dmaWriteRegister(ifd, 0x00a40024, 1);
     usleep(10);
     dmaWriteRegister(ifd, 0x00a40024, 0);
