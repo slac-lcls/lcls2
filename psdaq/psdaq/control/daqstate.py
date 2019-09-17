@@ -11,6 +11,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
                         help='platform (default 0)')
+    parser.add_argument('-P', metavar='INSTRUMENT', required=True,
+                        help='instrument name (required)')
     parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost',
                         help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
@@ -31,6 +33,14 @@ def main():
 
     # instantiate DaqControl object
     control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
+
+    # verify instrument name match
+    instr = control.getInstrument()
+    if instr is None:
+        exit('Error: failed to read instrument name')
+    elif instr != args.P:
+        exit('Error: instrument name \'%s\' does not match \'%s\'' %
+              (args.P, instr))
 
     if args.state:
         # change the state
