@@ -584,7 +584,7 @@ int TebApp::_configure(const json& msg)
 {
   int rc = 0;
   const std::string configAlias(msg["body"]["config_alias"]);
-  const std::string detName("tmoTrigger");
+  const std::string detName("trigger");
   Document          top;
   if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, detName, top))
   {

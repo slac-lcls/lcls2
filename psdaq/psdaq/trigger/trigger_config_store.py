@@ -18,7 +18,7 @@ mycdb.add_device_config('trigger')
 
 top = cdict()
 
-top.setInfo('trigger', 'tmoTrigger', 'No serial number', 'No comment')
+top.setInfo('trigger', 'trigger', 'No serial number', 'No comment')
 top.setAlg('triggerConfig', [0,0,1])
 
 top.set('soname', 'libtmoTrigger.so',  'CHARSTR')

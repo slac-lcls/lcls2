@@ -312,7 +312,7 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     using namespace rapidjson;
 
     const std::string configAlias = body["config_alias"];
-    const std::string detName("tmoTrigger");
+    const std::string detName("trigger");
     Document          top;
     if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, detName, top))
     {
