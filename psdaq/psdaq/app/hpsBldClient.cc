@@ -92,15 +92,21 @@ static uint64_t  misses = 0;
 
 static Pds::Kcu::Client* tpr = 0;
 
-static void dump(XtcData::Xtc* xtc, const char* title)
-{  // dump the xtc
-  printf("-- %s --\n",title);
-  const uint32_t* p = reinterpret_cast<const uint32_t*>(xtc);
-  for(unsigned i=0; i<xtc->extent>>2; i++)
-    printf("%08x%c", p[i], (i&7)==7 ? '\n':' ');
-  if ((xtc->extent&31)!=0)
-    printf("\n");
-}
+
+// METHOD dump IS COMMENTED IN ORDER TO GET RID OF COMPILER WARNING:
+//  warning: void dump(XtcData::Xtc*, const char*) defined but not used [-Wunused-function]
+//  static void dump(XtcData::Xtc* xtc, const char* title)
+
+//static void dump(XtcData::Xtc* xtc, const char* title)
+//{  // dump the xtc
+//  printf("-- %s --\n",title);
+//  const uint32_t* p = reinterpret_cast<const uint32_t*>(xtc);
+//  for(unsigned i=0; i<xtc->extent>>2; i++)
+//    printf("%08x%c", p[i], (i&7)==7 ? '\n':' ');
+//  if ((xtc->extent&31)!=0)
+//    printf("\n");
+//}
+
 
 static void sigHandler(int signal)
 {

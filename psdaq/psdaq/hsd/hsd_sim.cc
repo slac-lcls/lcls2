@@ -92,6 +92,8 @@ int main(int argc, char** argv) {
     }
   }
 
+  if(FMIN < FMAX){}; // REDUNDANT LINE IS ADDED TO GET RID OF COMPILER WARNINGS ABOUT NOT USED FMIN, FMAX
+
   if (lUsage) {
     usage(argv[0]);
     exit(1);
