@@ -76,16 +76,45 @@ def _get_missing_value(dtype):
 # CONSIDER MAKING A FileServer CLASS
 # CLASS BASECLASS METHOD THEN HANDLES HDF5
 
+class CacheArray:
+
+    def __init__(self, singleton_shape, dtype, cache_size):
+        
+        self.singleton_shape = singleton_shape
+        self.dtype = dtype
+        self.cache_size = cache_size
+
+        # initialize
+        self.data = np.empty((self.cache_size,) + self.singleton_shape,
+                             dtype=self.dtype)
+        self.reset()
+
+        return
+
+    def append(self, data):
+        self.data[self.n_events,...] = data
+        self.n_events += 1
+        return
+
+    def reset(self):
+        self.n_events = 0
+        return
+
 
 class Server: # (hdf5 handling)
 
-    def __init__(self, filename=None, smdcomm=None):
+    def __init__(self, filename=None, smdcomm=None, cache_size=5):
 
-        self.filename = filename
-        self.smdcomm  = smdcomm
+        self.filename   = filename
+        self.smdcomm    = smdcomm
+        self.cache_size = cache_size
 
         # dsets maps dataset_name --> (dtype, shape)
         self._dsets = {}
+
+        # maps dataset_name --> CacheArray()
+        self._cache = {}
+
         self.num_events_seen = 0
 
         if (self.filename is not None):
@@ -126,7 +155,7 @@ class Server: # (hdf5 handling)
                         self.new_dset(dataset_name, data)
                     else:
                         to_backfill.remove(dataset_name)
-                    self.append_to_dset(dataset_name, data)
+                    self.append_to_cache(dataset_name, data)
 
                 for dataset_name in to_backfill:
                     self.backfill(dataset_name, 1)
@@ -139,15 +168,15 @@ class Server: # (hdf5 handling)
     def new_dset(self, dataset_name, data):
 
         if type(data) == int:
-            shape = (0,)
+            shape = ()
             maxshape = (None,)
             dtype = 'i8'
         elif type(data) == float:
-            shape = (0,)
+            shape = ()
             maxshape = (None,)
             dtype = 'f8'
         elif hasattr(data, 'dtype'):
-            shape = (0,) + data.shape
+            shape = data.shape
             maxshape = (None,) + data.shape
             dtype = data.dtype
         else:
@@ -156,7 +185,7 @@ class Server: # (hdf5 handling)
         self._dsets[dataset_name] = (dtype, shape)
 
         dset = self.file_handle.create_dataset(dataset_name,
-                                               shape,
+                                               (0,) + shape, # (0,) -> expand dim
                                                maxshape=maxshape,
                                                dtype=dtype)
 
@@ -165,11 +194,30 @@ class Server: # (hdf5 handling)
         return
 
 
-    def append_to_dset(self, dataset_name, data):
+    def append_to_cache(self, dataset_name, data):
+
+        if dataset_name not in self._cache.keys():
+            dtype, shape = self._dsets[dataset_name]
+            cache = CacheArray(shape, dtype, self.cache_size)
+            self._cache[dataset_name] = cache
+        else:
+            cache = self._cache[dataset_name]
+
+        cache.append(data)
+
+        if cache.n_events == self.cache_size:
+            self.write_to_file(dataset_name, cache)
+
+        return
+
+
+    def write_to_file(self, dataset_name, cache):
         dset = self.file_handle.get(dataset_name)
-        new_size = (dset.shape[0] + 1,) + dset.shape[1:]
+        new_size = (dset.shape[0] + cache.n_events,) + dset.shape[1:]
         dset.resize(new_size)
-        dset[-1,...] = data
+        # remember: data beyond n_events in the cache may be OLD
+        dset[-cache.n_events:,...] = cache.data[:cache.n_events,...] 
+        cache.reset()
         return
 
 
@@ -178,17 +226,21 @@ class Server: # (hdf5 handling)
         dtype, shape = self._dsets[dataset_name]
 
         missing_value = _get_missing_value(dtype) 
-        fill_data = np.empty(shape[1:], dtype=dtype)
+        fill_data = np.empty(shape, dtype=dtype)
         fill_data.fill(missing_value)
     
         for i in range(num_to_backfill):
-            self.append_to_dset(dataset_name, fill_data)
+            self.append_to_cache(dataset_name, fill_data)
         
         return
 
 
     def done(self):
         if (self.filename is not None):
+            # flush the data caches (in case did not hit cache_size yet)
+            for dset, cache in self._cache.items():
+                if cache.n_events > 0:
+                    self.write_to_file(dset, cache)
             self.file_handle.close()
         return
 
@@ -196,7 +248,7 @@ class Server: # (hdf5 handling)
 
 class SmallData: # (client)
 
-    def __init__(self, filename=None, batch_size=5):
+    def __init__(self, filename=None, batch_size=5, cache_size=5):
 
         self.batch_size = batch_size
         self._batch = []
@@ -211,15 +263,16 @@ class SmallData: # (client)
 
             self._comm_partition()
             if self._type == 'server':
-                self._server = Server(filename=self._filename, smdcomm=self._srvcomm)
+                self._server = Server(filename=self._filename, 
+                                      smdcomm=self._srvcomm, 
+                                      cache_size=cache_size)
                 self._server.recv_loop()
 
         elif MODE == 'SERIAL':
             self._filename = self._base_filename # dont hide file
             self._type = 'serial'
-            self._server = Server(filename=self._filename)
-
-        print(RANK, 'here')
+            self._server = Server(filename=self._filename,
+                                  cache_size=cache_size)
 
         return
 
