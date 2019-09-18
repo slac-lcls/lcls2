@@ -38,6 +38,7 @@ namespace Pds {
       Batch*             initialize(const XtcData::Transition&);
       void               accumRogs(const XtcData::Transition&);
       uint16_t           rogsRem(const XtcData::Transition&);
+      uint16_t           rogs() const;
       void               accumRcvrs(uint64_t receivers);
       uint64_t           receivers() const;
       size_t             terminate();
@@ -139,6 +140,12 @@ uint16_t Pds::Eb::Batch::rogsRem(const XtcData::Transition& hdr)
 {
   _rogs &= ~hdr.readoutGroups();
 
+  return _rogs;
+}
+
+inline
+uint16_t Pds::Eb::Batch::rogs() const
+{
   return _rogs;
 }
 

@@ -242,8 +242,8 @@ int Teb::configure(const EbParams& prms,
   EbAppBase::configure(prms);
 
   _trigger    = object;
-  _prescale   = prescale - 1;
-  _wrtCounter = _prescale;        // Reset prescale counter
+  _prescale   = prescale - 1;           // Be zero based
+  _wrtCounter = _prescale;              // Reset prescale counter
 
   return 0;
 }
@@ -682,7 +682,6 @@ int TebApp::_parseConnectionParams(const json& body)
   const unsigned mrqPortBase = MRQ_PORT_BASE + numPorts * _prms.partition;
 
   std::string id = std::to_string(getId());
-  printf("%s: id %zu 0x%08zx '%s'\n", __PRETTY_FUNCTION__, getId(), getId(), id.c_str());
   _prms.id = body["teb"][id]["teb_id"];
   if (_prms.id >= MAX_TEBS)
   {

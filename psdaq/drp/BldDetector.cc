@@ -156,8 +156,8 @@ uint64_t Bld::next(unsigned payloadSize, uint8_t** payload)
 class Pgp
 {
 public:
-    Pgp(MemPool& pool, unsigned nodeId) :
-        m_pool(pool), m_nodeId(nodeId), m_available(0), m_current(0)
+    Pgp(MemPool& pool, unsigned nodeId, uint32_t envMask) :
+        m_pool(pool), m_nodeId(nodeId), m_envMask(envMask), m_available(0), m_current(0)
     {
         uint8_t mask[DMA_MASK_SIZE];
         dmaInitMaskBytes(mask);
@@ -172,6 +172,7 @@ private:
     XtcData::Dgram* handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex);
     MemPool& m_pool;
     unsigned m_nodeId;
+    uint32_t m_envMask;
     int32_t m_available;
     int32_t m_current;
     static const int MAX_RET_CNT_C = 100;
@@ -204,7 +205,7 @@ XtcData::Dgram* Pgp::handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
 
     // fill in dgram header
     dgram->seq = timingHeader->seq;
-    dgram->env = timingHeader->env;
+    dgram->env = timingHeader->env & m_envMask;
 
     // set the src field for the event builders
     dgram->xtc.src = XtcData::Src(m_nodeId);
@@ -371,7 +372,7 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
     printf("payloadSize %u\n", payloadSize);
 
     Bld bld(mcaddr, port);
-    Pgp pgp(m_drp.pool, m_drp.nodeId());
+    Pgp pgp(m_drp.pool, m_drp.nodeId(), 0xffff0000 | uint32_t(m_para.rogMask));
 
     uint64_t nevents = 0L;
     std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};

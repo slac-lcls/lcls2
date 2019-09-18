@@ -29,7 +29,13 @@ void Batch::dump() const
   const char* buffer = static_cast<const char*>(_buffer);
   if (buffer)
   {
-    printf("Dump of Batch at index %d\n", index());
+    printf("Dump of Batch %014lx at index %d (%p)\n", id(), index(), buffer);
+    printf("  extent %zd, entry size %zd => # of entries %zd\n",
+           extent(), size(), extent() / size());
+    printf("  Readout groups remaining: %04x\n", rogs());
+    printf("  Receiver ID list: %016lx\n", receivers());
+    printf("  Result Dgram: %p\n", result());
+
     unsigned cnt = 0;
     while (true)
     {
@@ -49,7 +55,7 @@ void Batch::dump() const
       dg      = reinterpret_cast<const Dgram*>(buffer);
 
       pid = dg->seq.pulseId().value();
-      if ((++cnt == MAX_ENTRIES) || !pid)  break; // Handle full list faster
+      if ((++cnt == MAX_ENTRIES) || !pid)  break;
     }
   }
   else
