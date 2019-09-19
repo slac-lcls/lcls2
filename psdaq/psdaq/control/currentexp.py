@@ -7,6 +7,7 @@ import sys
 import json
 import requests
 import argparse
+import socket
 
 def main():
 
@@ -30,14 +31,22 @@ def main():
         instrument_name = args.instrument
         station = 0
 
-    resp = requests.get((args.url + "/" if not args.url.endswith("/") else args.url) +
-                        "/lgbk/ws/activeexperiment_for_instrument_station",
-                        params={"instrument_name": instrument_name, "station": station})
+    try:
+        resp = requests.get((args.url + "/" if not args.url.endswith("/") else args.url) + "/lgbk/ws/activeexperiment_for_instrument_station",
+                            params={"instrument_name": instrument_name, "station": station})
+    except requests.exceptions.RequestException:
+        exit("Error: request exception")
+
     if args.verbose >= 2:
         print("response: %s" % resp.text)
     experiment_name = None
-    if resp.status_code == 200:
-        experiment_name = resp.json().get("value", {}).get("name", None)
+    if resp.status_code == requests.codes.ok:
+        if args.verbose >= 2:
+            print("headers: %s" % resp.headers)
+        try:
+            experiment_name = resp.json().get("value", {}).get("name", None)
+        except json.decoder.JSONDecodeError:
+            exit("Error: failed to decode JSON")
     else:
         exit("Error: status code %d" % resp.status_code)
 
