@@ -16,6 +16,7 @@ setup(
                 'selectPlatform = psdaq.control.selectPlatform:main',
                 'showPlatform = psdaq.control.showPlatform:main',
                 'daqstate = psdaq.control.daqstate:main',
+                'currentexp = psdaq.control.currentexp:main',
                 'testClient2 = psdaq.control.testClient2:main',
                 'testAsyncErr = psdaq.control.testAsyncErr:main',
                 'syslog = psdaq.control.syslog:main',
