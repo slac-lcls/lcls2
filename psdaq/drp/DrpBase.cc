@@ -245,6 +245,8 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
 void DrpBase::shutdown()
 {
+    m_tebContributor->shutdown();
+
     if (m_meb) {
         m_meb->shutdown();
     }

@@ -257,8 +257,18 @@ XtcData::Dgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex)
 BldApp::BldApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
-    m_para(para)
+    m_para(para),
+    m_terminate(false)
 {
+}
+
+void BldApp::shutdown()
+{
+    m_terminate.store(true, std::memory_order_release);
+    if (m_workerThread.joinable()) {
+        m_workerThread.join();
+    }
+    m_drp.shutdown();
 }
 
 json BldApp::connectionInfo()
@@ -267,7 +277,7 @@ json BldApp::connectionInfo()
     std::cout<<"nic ip  "<<ip<<'\n';
     json body = {{"connect_info", {{"nic_ip", ip}}}};
     json bufInfo = m_drp.connectionInfo();
-    body["connect_info"].update(bufInfo);
+    body["connect_info"].update(bufInfo); // Revisit: Should be in det_info
     return body;
 }
 
@@ -301,10 +311,20 @@ void BldApp::handleConnect(const nlohmann::json& msg)
         m_drp.exposer()->RegisterCollectable(exporter);
     }
 
+    m_terminate.store(false, std::memory_order_release);
+
     m_workerThread = std::thread{&BldApp::worker, this, exporter};
 
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
+}
+
+void BldApp::handleDisconnect(const json& msg)
+{
+    m_drp.disconnect(msg);
+    shutdown();
+    json body = json({});
+    reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
 void BldApp::handlePhase1(const json& msg)
@@ -316,9 +336,9 @@ void BldApp::handlePhase1(const json& msg)
     if (key == "configure") {
         std::string errorMsg = m_drp.configure(msg);
         if (!errorMsg.empty()) {
-            std::cout<<"Error in DrpBase::configure\n";
-            std::cout<<errorMsg<<'\n';
+            errorMsg = "Phase 1 error: " + errorMsg;
             body["err_info"] = errorMsg;
+            std::cout<<errorMsg<<'\n';
         }
     }
 
@@ -384,6 +404,9 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
                   [&](){return nmissed;});
 
     while (1) {
+        if (m_terminate.load(std::memory_order_relaxed)) {
+            break;
+        }
         uint8_t* bldPayload;
         uint64_t pulseId = bld.next(payloadSize, &bldPayload);
         uint32_t index;
@@ -421,6 +444,7 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
             nevents++;
         }
     }
+    std::cout<<"Worker thread finished\n";
 }
 
 void BldApp::sentToTeb(XtcData::Dgram& dgram, uint32_t index)

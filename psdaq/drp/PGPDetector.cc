@@ -292,7 +292,6 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
         }
         worker++;
     }
-    tebContributor.shutdown();
 }
 
 void PGPDetector::resetEventCounter()

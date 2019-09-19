@@ -3,6 +3,7 @@
 #pragma once
 
 #include <thread>
+#include <atomic>
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
 #include "psdaq/service/Collection.hh"
@@ -38,9 +39,11 @@ class BldApp : public CollectionApp
 {
 public:
     BldApp(Parameters& para);
+    void shutdown();
     nlohmann::json connectionInfo() override;
 private:
     void handleConnect(const nlohmann::json& msg) override;
+    void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
     void handleReset(const nlohmann::json& msg) override;
     void connectPgp(const nlohmann::json& json, const std::string& collectionId);
@@ -50,11 +53,11 @@ private:
     DrpBase m_drp;
     Parameters& m_para;
     std::thread m_workerThread;
-    std::unique_ptr<Bld> m_bld;
     std::unique_ptr<Pds_Epics::PVBase> m_pvaAddr;
     std::unique_ptr<Pds_Epics::PVBase> m_pvaPort;
     std::unique_ptr<BldDescriptor> m_pvaDescriptor;
     XtcData::NameIndex m_nameIndex;
+    std::atomic<bool> m_terminate;
 };
 
 }

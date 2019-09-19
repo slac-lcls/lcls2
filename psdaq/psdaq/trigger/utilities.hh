@@ -52,7 +52,6 @@ T* Pds::Trg::Factory<T>::create(const rapidjson::Document& top,
   }
   std::string so(top[key.c_str()].GetString());
   if (so.length() == 0)  return nullptr;
-  printf("Loading symbols from library '%s'\n", so.c_str());
 
   if (_object)                          // If the object exists,
     delete _object;                     // delete it before unloading the lib
