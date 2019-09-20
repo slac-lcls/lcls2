@@ -12,7 +12,6 @@
 import rogue
 import rogue.hardware.axi
 
-#import pyrogue
 import pyrogue as pr
 import pyrogue.protocols
 import time
@@ -24,18 +23,6 @@ import surf.devices.microchip       as microchip
 import LclsTimingCore               as timing
 import psdaq.pyxpm.xpm              as xpm
 from psdaq.pyxpm._AxiLiteRingBuffer import AxiLiteRingBuffer
-#from psdaq.pyxpm.surf.axi._AxiVersion         import *
-#from psdaq.pyxpm.surf.xilinx                  import *
-#from psdaq.pyxpm.surf.devices.ti              import *
-#from psdaq.pyxpm.surf.devices.micron          import *
-#from psdaq.pyxpm.surf.devices.microchip       import *
-#from psdaq.pyxpm.LclsTimingCore.TimingFrameRx import *
-
-#from psdaq.pyxpm.xpm._XpmApp                  import *
-#from psdaq.pyxpm.xpm._XpmSequenceEngine       import *
-
-
-#import surf.protocols.rssi as rssi
 
 class Top(pr.Device):
     mmcmParms = [ ['MmcmPL119', 0x08900000],
@@ -48,9 +35,6 @@ class Top(pr.Device):
             description = "Container for XPM",
             ipAddr      = '10.0.1.101',
             memBase     = 0,
-#            dev         = '/dev/pgpcard_0',
-#            hwType      = 'pgp3_cardG3',
-#            lane        = 0,
             **kwargs):
         super().__init__(name=name, description=description, **kwargs)
         
