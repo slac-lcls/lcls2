@@ -7,7 +7,6 @@ import sys
 import json
 import requests
 import argparse
-import socket
 
 def main():
 
@@ -43,10 +42,13 @@ def main():
     if resp.status_code == requests.codes.ok:
         if args.verbose >= 2:
             print("headers: %s" % resp.headers)
-        try:
-            experiment_name = resp.json().get("value", {}).get("name", None)
-        except json.decoder.JSONDecodeError:
-            exit("Error: failed to decode JSON")
+        if 'application/json' in resp.headers['Content-Type']:
+            try:
+                experiment_name = resp.json().get("value", {}).get("name", None)
+            except json.decoder.JSONDecodeError:
+                exit("Error: failed to decode JSON")
+        else:
+            exit("Error: failed to receive JSON")
     else:
         exit("Error: status code %d" % resp.status_code)
 
