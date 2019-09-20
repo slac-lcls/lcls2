@@ -667,7 +667,7 @@ class XpmApp(pr.Device):
             mode         = "RO",
         )
 
-        for i in range(5):
+        for i in range(4):
             self.add(pr.RemoteVariable(    
                 name         = "monClk_%d"%i,
                 description  = "Monitor clock rate",
