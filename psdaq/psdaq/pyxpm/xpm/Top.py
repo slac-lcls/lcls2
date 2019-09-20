@@ -16,21 +16,19 @@ import rogue.hardware.axi
 import pyrogue as pr
 import pyrogue.protocols
 import time
-
-import psdaq.pyxpm.surf.axi                     as axi
-import psdaq.pyxpm.surf.xilinx                  as xil
-import psdaq.pyxpm.surf.devices.ti              as ti
-import psdaq.pyxpm.surf.devices.micron          as micron
-import psdaq.pyxpm.surf.devices.microchip       as microchip
-import psdaq.pyxpm.AmcCarrierCore               as amcc
-import psdaq.pyxpm.LclsTimingCore               as timing
-import psdaq.pyxpm.xpm                          as xpm
+import surf.axi                     as axi
+import surf.xilinx                  as xil
+import surf.devices.ti              as ti
+import surf.devices.micron          as micron
+import surf.devices.microchip       as microchip
+import LclsTimingCore               as timing
+import psdaq.pyxpm.xpm              as xpm
+from psdaq.pyxpm._AxiLiteRingBuffer import AxiLiteRingBuffer
 #from psdaq.pyxpm.surf.axi._AxiVersion         import *
 #from psdaq.pyxpm.surf.xilinx                  import *
 #from psdaq.pyxpm.surf.devices.ti              import *
 #from psdaq.pyxpm.surf.devices.micron          import *
 #from psdaq.pyxpm.surf.devices.microchip       import *
-#from psdaq.pyxpm.AmcCarrierCore.AmcCarrierBsi import *
 #from psdaq.pyxpm.LclsTimingCore.TimingFrameRx import *
 
 #from psdaq.pyxpm.xpm._XpmApp                  import *
@@ -145,12 +143,6 @@ class Top(pr.Device):
             expand       =  False,
         ))
 
-        self.add(amcc.AmcCarrierBsi(   
-            memBase = self.srp,
-            offset       =  0x07000000, 
-            expand       =  False,
-        ))
-
         self.add(timing.TimingFrameRx(
             memBase = self.srp,
             name = 'UsTiming',
@@ -213,7 +205,7 @@ class Top(pr.Device):
             offset = 0x80000000,
         ))
         
-        self.add(axi.AxiLiteRingBuffer(
+        self.add(AxiLiteRingBuffer(
             memBase = self.srp,
             name      = 'AxiLiteRingBuffer',
             datawidth = 16,

@@ -41,6 +41,11 @@ class ts_connector:
 
     def get_xpm_info(self):
         self.xpm_info = []
+        # FIXME: cpo/weaver think this doesn't work for digitizers,
+        # for example, where the DRP node can't learn which XPM port
+        # is feeding it timing information.  Currently think we should
+        # try to get the information from the XPM side, instead of the
+        # drp side.
         for key,node_info in self.connect_info['body']['drp'].items():
             try:
                 # FIXME: should have a better method to map xpm ip
