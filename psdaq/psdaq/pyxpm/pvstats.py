@@ -204,16 +204,19 @@ class GroupStats(object):
         self._master = 0
         self._timeval = float(time.time_ns())
         self._app.partition.set(group)
-        self._l0Ena   = self._app.l0EnaCnt.get()
-        self._l0Inh   = self._app.l0InhCnt.get()
-        self._numL0   = self._app.numL0   .get()
-        self._numL0Acc= self._app.numL0Acc.get()
-        self._numL0Inh= self._app.numL0Acc.get()
+        l0Stats        = self._app.l0Stats.get()
+        self._l0Ena    = self._app.l0EnaCnt(l0Stats)
+        self._l0Inh    = self._app.l0InhCnt(l0Stats)
+        self._numL0    = self._app.numL0   (l0Stats)
+        self._numL0Acc = self._app.numL0Acc(l0Stats)
+        self._numL0Inh = self._app.numL0Inh(l0Stats)
+        linkInhEvReg   = self._app.inhEvCnt.get()
+        linkInhTmReg   = self._app.inhTmCnt.get()
         self._linkInhEv = []
         self._linkInhTm = []
         for i in range(32):
-            self._linkInhEv.append(self._app.inhEvCnt[i].get())
-            self._linkInhTm.append(self._app.inhTmCnt[i].get())
+            self._linkInhEv.append((linkInhEvReg>>(32*i))&0xffffffff)
+            self._linkInhTm.append((linkInhTmReg>>(32*i))&0xffffffff)
 
         def addPVF(label):
             return addPV(name+':'+label,'f')
@@ -244,16 +247,13 @@ class GroupStats(object):
         lock.acquire()
         self._app.partition.set(self._group)
         if self._master:
-            l0Ena    = self._app.l0EnaCnt.get()
-            l0Inh    = self._app.l0InhCnt.get()
-            numL0    = self._app.numL0   .get()
-            numL0Acc = self._app.numL0Acc.get()
-            numL0Inh = self._app.numL0Inh.get()
-#            linkInhEv = []
-#            linkInhTm = []
-#            for i in range(32):
-#                linkInhEv.append(self._app.inhEvCnt[i].get())
-#                linkInhTm.append(self._app.inhTmCnt[i].get())
+            l0Stats  = self._app.l0Stats.get()
+            l0Ena    = self._app.l0EnaCnt(l0Stats)
+            l0Inh    = self._app.l0InhCnt(l0Stats)
+            numL0    = self._app.numL0   (l0Stats)
+            numL0Acc = self._app.numL0Acc(l0Stats)
+            numL0Inh = self._app.numL0Inh(l0Stats)
+
             updatePv(self._pv_runTime, l0Ena*FID_PERIOD)
             updatePv(self._pv_msgDelay, self._app.l0Delay.get())
             dL0Ena   = l0Ena    - self._l0Ena
@@ -266,9 +266,10 @@ class GroupStats(object):
                 l0InpRate = dnumL0/dt
                 l0AccRate = dnumL0Acc/dt
                 updatePv(self._pv_deadTime, dL0Inh/dL0Ena)
+                linkInhEvReg = self._app.inhEvCnt.get()
                 linkInhEv = []
                 for i in range(32):
-                    linkInh = self._app.inhEvCnt[i].get()
+                    linkInh = (linkInhEvReg>>(32*i))&0xffffffff
                     linkInhEv.append((linkInh - self._linkInhEv[i])/dL0Ena)
                     self._linkInhEv[i] = linkInh
                 updatePv(self._pv_deadFLink, linkInhEv)
@@ -293,9 +294,10 @@ class GroupStats(object):
                 
         else:
             nfid = (timeval - self._timeval)/FID_PERIOD_NS
+            linkInhTmReg = self._app.inhTmCnt.get()
             linkInhTm = []
             for i in range(32):
-                linkInh = self._app.inhTmCnt[i].get()
+                linkInh = (linkInhTmReg>>(32*i))&0xffffffff
                 linkInhTm.append((linkInh - self._linkInhTm[i])/nfid)
                 self._linkInhTm[i] = linkInh
             updatePv(self._pv_deadFLink, linkInhTm)

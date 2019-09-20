@@ -408,62 +408,11 @@ class XpmApp(pr.Device):
             mode         = "RW",
         ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "l0EnaCnt",
-            description  = "L0 enabled count",
+        self.add(pr.RemoteVariable(
+            name         = "l0Stats",
+            description  = "L0 Statistics",
             offset       =  0x20,
-            bitSize      =  64,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
-
-        def fidToSec(var,read):
-            FID_PERIOD = 14.e-6/13.
-            value = var.dependencies[0].get(read)
-            return FID_PERIOD*value
-
-        self.add(pr.LinkVariable(
-            name         = "l0EnaTime",
-            linkedGet    = fidToSec,
-            dependencies = [self.l0EnaCnt]
-        ))
-
-        self.add(pr.RemoteVariable(    
-            name         = "l0InhCnt",
-            description  = "L0 inhibited count",
-            offset       =  0x28,
-            bitSize      =  64,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
-
-        self.add(pr.RemoteVariable(    
-            name         = "numL0",
-            description  = "L0 input count",
-            offset       =  0x30,
-            bitSize      =  64,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
-
-        self.add(pr.RemoteVariable(    
-            name         = "numL0Inh",
-            description  = "L0 input inhibited count",
-            offset       =  0x38,
-            bitSize      =  64,
-            bitOffset    =  0x00,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
-
-        self.add(pr.RemoteVariable(    
-            name         = "numL0Acc",
-            description  = "L0 accept count",
-            offset       =  0x40,
-            bitSize      =  64,
+            bitSize      =  320,
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RO",
@@ -579,7 +528,7 @@ class XpmApp(pr.Device):
                 base         = pr.UInt,
                 mode         = "RO",
             ))
-
+            
         self.add(pr.RemoteVariable(    
             name         = "pipelineDepth",
             description  = "Pipeline depth",
@@ -655,17 +604,15 @@ class XpmApp(pr.Device):
                 offset       =  0x80+4*i,
             ))
 
-        self.addRemoteVariables(
+        self.add(pr.RemoteVariable(
             name         = "inhEvCnt",
             description  = "Inhibit event counts by link",
-            number       =  32,
-            stride       =  4,
             offset       =  0x90,
-            bitSize      =  32,
+            bitSize      =  1024,
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RO",
-        )
+        ))
 
         for i in range(4):
             self.add(pr.RemoteVariable(    
@@ -678,17 +625,15 @@ class XpmApp(pr.Device):
                 mode         = "RO",
             ))
 
-        self.addRemoteVariables(    
+        self.add(pr.RemoteVariable(    
             name         = "inhTmCnt",
             description  = "Inhibit time counts by link",
-            number       = 32,
-            stride       = 4,
             offset       =  0x120,
-            bitSize      =  32,
+            bitSize      =  1024,
             bitOffset    =  0x00,
             base         = pr.UInt,
             mode         = "RO",
-        )
+        ))
 
         self.add(pr.RemoteVariable(    
             name         = "groupL0Reset",
@@ -733,3 +678,23 @@ class XpmApp(pr.Device):
             mode         = "RW",
             verify       = False,
         ))
+
+    def l0EnaCnt(self, l0Stats):
+        return (l0Stats>>0)&((1<<64)-1)
+
+    def l0EnaTime(self, l0Stats):
+        FID_PERIOD = 14.e-6/13.
+        return self.l0EnaCnt(l0Stats)*FID_PERIOD
+
+    def l0InhCnt(self, l0Stats):
+        return (l0Stats>>64)&((1<<64)-1)
+
+    def numL0(self, l0Stats):
+        return (l0Stats>>128)&((1<<64)-1)
+        
+    def numL0Inh(self, l0Stats):
+        return (l0Stats>>192)&((1<<64)-1)
+        
+    def numL0Acc(self, l0Stats):
+        return (l0Stats>>256)&((1<<64)-1)
+        
