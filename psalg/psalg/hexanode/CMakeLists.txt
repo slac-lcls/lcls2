@@ -3,6 +3,7 @@ add_library(hexanode SHARED
     src/cfib.cc
     src/wrap_resort64c.cc
     src/LMF_IO.cc
+    src/SortUtils.cc
 )
 
 target_link_libraries(hexanode

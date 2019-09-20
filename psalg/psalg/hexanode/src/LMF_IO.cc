@@ -1140,9 +1140,9 @@ __int32	LMF_IO::ReadCAMACHeader()
 __int32	LMF_IO::Read2TDC8PCI2Header()
 /////////////////////////////////////////////////////////////////
 {
-	unsigned __int64 StartPosition;
-	__int32 old_byte_counter;
-	bool desperate_mode;
+	unsigned __int64 StartPosition = 0;
+	__int32 old_byte_counter = -1;
+	bool desperate_mode = false;
 
 	TDC8PCI2.variable_event_length = 0;
 	__int32 byte_counter;
@@ -3353,7 +3353,7 @@ bool LMF_IO::SeekToEventNumber(unsigned __int64 target_number)
 
 	if (target_number < 0) return false;
 	if (target_number > uint64_Numberofevents) return false;
-	__int32 eventsize;
+	__int32 eventsize = 0;
 	if (data_format_in_userheader == 2 ) eventsize = 2 * Numberofcoordinates;
 	if (data_format_in_userheader == 5 ) eventsize = 8 * Numberofcoordinates;
 	if (data_format_in_userheader == 10) eventsize = 4 * Numberofcoordinates;

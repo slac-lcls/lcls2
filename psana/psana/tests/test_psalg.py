@@ -13,6 +13,9 @@ roentdek_found = os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x6
 
 @pytest.mark.skipif(not roentdek_found, reason="roentdek library not found")
 def test_hexanode():
+
+    print("indeed in psana/psana/tests/test_hexanode.py")
+
     from hexanode import fib
     n = 9
     v = fib(n)
@@ -132,14 +135,24 @@ def test_peakFinder():
 
 #------------------------------
 
-def psalg() :
-    test_peakFinder()
-    test_cfd()
-    test_hexanode()
+def usage(tname):
+    s = 'Usage: python test_psalg <test-number>'
+    if tname == '0' or tname == '1' : s+='\n 1 - test peakFinder'
+    if tname == '0' or tname == '2' : s+='\n 2 - test cfd'
+    if tname == '0' or tname == '3' : s+='\n 3 - test hexanode'
+    return s
 
 #------------------------------
 
 if __name__ == '__main__':
-    psalg()
+    import sys
+    tname = sys.argv[1] if len(sys.argv) > 1 else '0'
+    print('%s' % usage(tname))
+
+    print(50*'_', '\nTest %s' % tname)
+    if tname == '0' or tname == '1' : test_peakFinder()
+    if tname == '0' or tname == '2' : test_cfd()
+    if tname == '0' or tname == '3' : test_hexanode()
+    sys.exit('END OF TEST %s' % tname)
 
 #------------------------------

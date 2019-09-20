@@ -1,23 +1,28 @@
 
-# Example:
-# /reg/g/psdm/sw/releases/ana-current/ConfigSvc/pyext/_ConfigSvc.pyx
+# Conversion from LCLS1 -> LCLS2
+# 1) hexanode_proxy/resort64c.h -> psalg/hexanode/resort64c.hh (6) ??? or roentdek/resort64c.h
+# 2) hexanode/SortUtils.h -> psalg/hexanode/SortUtils.hh (1)
+# 3) hexanode/LMF_IO.h -> psalg/hexanode/LMF_IO.hh (2)
+# 4) hexanode/cfib.h -> psalg/hexanode/cfib.hh (1)
+# 5) hexanode/ctest_nda.h -> psalg/hexanode/ctest_nda.hh (1)
+# 6) hexanode/wrap_resort64c.h -> psalg/hexanode/wrap_resort64c.hh (1)
+# 7) print ... -> print(...)
+# 8) see psana/setup.py for hexanode
 
-# library header:
-# /reg/common/package/hexanodelib/0.0.1/x86_64-centos7-gcc485/resort64c.h
-# ~/lib/hexanode-lib/sort_non-LMF_from_1_detector/resort64c.h
+# library and header:
+# /reg/g/psdm/sw/conda2/inst/envs/ps-2.0.3/include/roentdek/resort64c.h
+# /reg/g/psdm/sw/conda2/inst/envs/ps-2.0.3/lib/libResort64c_x64.a
+# /reg/g/psdm/sw/conda2/inst/pkgs/roentdek-0.0.3-1/include/roentdek/resort64c.h
+# /reg/g/psdm/sw/conda2/inst/pkgs/roentdek-0.0.3-1/lib/libResort64c_x64.a
 
 # passing numpy arrays:
 # http://stackoverflow.com/questions/17855032/passing-and-returning-numpy-arrays-to-c-methods-via-cython
-
-# issue with outdated numpy
-# https://docs.scipy.org/doc/numpy/reference/c-api.deprecations.html#deprecation-mechanism-npy-no-deprecated-api
 
 # issue with resort64c.h:
 # - seen from hexanode/src and app, but 
 # - not seen in compilation stage from hexanode/includes or hexanode/pyext/hexanode_ext.pyx
 # Hack to fix:
 # export CPATH=/reg/common/package/hexanodelib/0.0.1/x86_64-centos7-gcc485
-
 
 #from cpython.bool cimport *
 #from cpython.float cimport *
@@ -52,7 +57,6 @@ cdef extern from "<stdint.h>" nogil:
     ctypedef unsigned int   uint32_t
     ctypedef unsigned long  uint64_t
 
-
 ctypedef fused dtypes2d :
     np.ndarray[np.double_t, ndim=2]
     np.ndarray[np.int16_t,  ndim=2]
@@ -69,7 +73,7 @@ ctypedef fused dtypes2d :
 def met1():
     """cython method for test call from python"""
     cdef int nelem = 1
-    print "HELL of cython is here"
+    print("HELL of cython is here")
 
 
 cdef extern from "psalg/hexanode/cfib.hh":
@@ -92,7 +96,7 @@ cdef extern from "psalg/hexanode/ctest_nda.hh":
 # Most compact working case 
 
 #def test_nda_v1(np.ndarray nda):
-#    print 'nda.dtype =', str(nda.dtype)
+#    print('nda.dtype =', str(nda.dtype))
 #    if   nda.dtype == np.float64 : ctest_nda(<double*>   nda.data, nda.shape[0], nda.shape[1])
 #    elif nda.dtype == np.int16   : ctest_nda(<int16_t*>  nda.data, nda.shape[0], nda.shape[1])
 #    elif nda.dtype == np.uint16  : ctest_nda(<uint16_t*> nda.data, nda.shape[0], nda.shape[1])
@@ -117,12 +121,11 @@ def test_nda_u2(np.ndarray[np.uint16_t, ndim=2, mode="c"] nda): ctest_nda_u2(&nd
 
 #def test_nda(np.ndarray nda):
 #def test_nda(dtypes2d nda):
-#    print 'nda.dtype =', str(nda.dtype)
+#    print('nda.dtype =', str(nda.dtype))
 #    if   nda.dtype == np.float64 : test_nda_f8(nda)
 #    elif nda.dtype == np.int16   : test_nda_i2(nda)
 #    elif nda.dtype == np.uint16  : test_nda_u2(nda)
 #    else: raise ValueError("Array data type is unknown")
-
 
 #------------------------------
 #------------------------------
@@ -130,7 +133,7 @@ def test_nda_u2(np.ndarray[np.uint16_t, ndim=2, mode="c"] nda): ctest_nda_u2(&nd
 
 #def test_nda(np.ndarray nda):
 #def test_nda(dtypes2d nda):
-#    #print 'nda.dtype =', str(nda.dtype)
+#    #print('nda.dtype =', str(nda.dtype))
 #    if   nda.dtype == np.float64 : ctest_nda_f8(<double*>   nda.data, nda.shape[0], nda.shape[1])
 #    elif nda.dtype == np.int16   : ctest_nda_i2(<int16_t*>  nda.data, nda.shape[0], nda.shape[1])
 #    elif nda.dtype == np.uint16  : ctest_nda_u2(<uint16_t*> nda.data, nda.shape[0], nda.shape[1])
@@ -149,7 +152,7 @@ def test_nda_u2(np.ndarray[np.uint16_t, ndim=2, mode="c"] nda): ctest_nda_u2(&nd
 # Very compact, BUT GENERATES TOO MANY WARNINGS AT scons
 
 #def test_nda_xxx(dtypes2d nda):
-#    print 'nda.dtype =', str(nda.dtype)
+#    print('nda.dtype =', str(nda.dtype))
 #    ctest_nda(&nda[0,0], nda.shape[0], nda.shape[1])
 
 #------------------------------
@@ -161,7 +164,7 @@ cdef extern from "psalg/hexanode/wrap_resort64c.hh":
     void test_resort()
 
 def ctest_resort():
-    print 'In hexanode_ext.ctest_resort - call cpp method which uses psalg/hexanode/resort64c.hh'
+    print('In hexanode_ext.ctest_resort - call cpp method which uses psalg/hexanode/wrap_resort64c.hh')
     test_resort()
 
 #------------------------------
@@ -170,7 +173,8 @@ def ctest_resort():
 #------------------------------
 #------------------------------
 
-cdef extern from "psalg/hexanode/resort64c.hh":
+#cdef extern from "psalg/hexanode/resort64c.hh":
+cdef extern from "roentdek/resort64c.h":
     cdef cppclass hit_class:
         double x, y, time
         int32_t method
@@ -182,12 +186,12 @@ cdef class py_hit_class:
     cdef hit_class* cptr  # holds a C++ instance
 
     def __cinit__(self, py_sort_class sorter, int i=0):
-        #print "In py_hit_class.__cinit__ index: %d" % i
+        #print("In py_hit_class.__cinit__ index: %d" % i)
         self.cptr = sorter.cptr.output_hit_array[i]
 
-#    def __dealloc__(self):
-#        print "In py_hit_class.__dealloc__"
-#        del self.cptr
+    def __dealloc__(self):
+        print("In py_hit_class.__dealloc__")
+        del self.cptr
 
     @property
     def x(self) : return self.cptr.x
@@ -201,20 +205,24 @@ cdef class py_hit_class:
     @property
     def method(self) : return self.cptr.method
 
-#------------------------------
-#------------------------------
-# scalefactors_calibration_class
-#------------------------------
-#------------------------------
+##------------------------------
+##------------------------------
+## scalefactors_calibration_class
+##------------------------------
+##------------------------------
+## /reg/g/psdm/sw/conda2/inst/pkgs/roentdek-0.0.3-1/lib/libResort64c_x64.a
+## /reg/g/psdm/sw/conda2/inst/envs/ps-2.0.3/lib/libResort64c_x64.a
+## /reg/g/psdm/sw/conda2/inst/envs/ps-2.0.3/include/roentdek/resort64c.h
+## cdef extern from "/reg/g/psdm/sw/conda2/inst/envs/ps-2.0.3/include/roentdek/resort64c.h":
+## cdef extern from "psalg/hexanode/resort64c.hh":
 
-cdef extern from "psalg/hexanode/resort64c.hh":
+cdef extern from "roentdek/resort64c.h":
     cdef cppclass scalefactors_calibration_class:
 
         double best_fv, best_fw, best_w_offset
         int32_t binx, biny
         double detector_map_resol_FWHM_fill
         double detector_map_devi_fill
-
         scalefactors_calibration_class() except +
         scalefactors_calibration_class(bint BuildStack, double runtime_u, double runtime_v, double runtime_w, 
                                        double runtime_inner_fraction, 
@@ -233,13 +241,13 @@ cdef class py_scalefactors_calibration_class:
     #cdef scalefactors_calibration_class* cptc  # holds a C++ instance
 
     def __cinit__(self, py_sort_class sorter):
-        #print "In py_scalefactors_calibration_class.__cinit__"
+        #print("In py_scalefactors_calibration_class.__cinit__")
         self.cptr = sorter.cptr.scalefactors_calibrator
         #st = self.cptr.clone(self.cptc)
 
-#    def __dealloc__(self):
-#        print "In py_scalefactors_calibration_class.__dealloc__"
-#        del self.cptr
+    def __dealloc__(self):
+        print("In py_scalefactors_calibration_class.__dealloc__")
+        del self.cptr
 
     @property
     def best_fv(self) : return self.cptr.best_fv
@@ -263,7 +271,7 @@ cdef class py_scalefactors_calibration_class:
     def detector_map_devi_fill(self) : return self.cptr.detector_map_devi_fill
 
     def map_is_full_enough(self) :
-        #print "In py_scalefactors_calibration_class.map_is_full_enough()"
+        print("In py_scalefactors_calibration_class.map_is_full_enough()")
         return self.cptr.map_is_full_enough()
 
 #------------------------------
@@ -272,7 +280,8 @@ cdef class py_scalefactors_calibration_class:
 #------------------------------
 #------------------------------
 
-cdef extern from "psalg/hexanode/resort64c.hh":
+#cdef extern from "psalg/hexanode/resort64c.hh":
+cdef extern from "roentdek/resort64c.h":
     cdef cppclass sort_class:
         int Cu1, Cu2, Cv1, Cv2, Cw1, Cw2, Cmcp 
         bint use_sum_correction 
@@ -346,13 +355,13 @@ cdef class py_sort_class:
     cdef sort_class* cptr  # holds a C++ instance
 
     def __cinit__(self):
-        #print "In py_sort_class.__cinit__"
+        #print("In py_sort_class.__cinit__")
         self.cptr = new sort_class();
         if self.cptr == NULL:
             raise MemoryError('In py_sort_class.__cinit__: Not enough memory.')
 
     def __dealloc__(self):
-        #print "In py_sort_class.__dealloc__"
+        #print("In py_sort_class.__dealloc__")
         del self.cptr
 
     @property
@@ -527,48 +536,48 @@ cdef class py_sort_class:
                                                 double& runtime_w,\
                                                 double& v,\
                                                 double& fu, double& fv, double& fw) :
-        print "In py_sort_class.create_scalefactors_calibrator"
+        print("In py_sort_class.create_scalefactors_calibrator")
         return self.cptr.create_scalefactors_calibrator(bv, runtime_u, runtime_v, runtime_w, v, fu, fv, fw)
 
 
     def sort(self) :
-        #ok print "In py_sort_class.sort"
+        #ok print("In py_sort_class.sort")
         return self.cptr.sort()
 
 
     def run_without_sorting(self) :
-        #ok print "In py_sort_class.run_without_sorting"
+        #ok print("In py_sort_class.run_without_sorting")
         return self.cptr.run_without_sorting()
 
 
     def init_after_setting_parameters(self) :
         """Returns (int) error_code"""
-        print "In py_sort_class.init_after_setting_parameters"
+        print("In py_sort_class.init_after_setting_parameters")
         return self.cptr.init_after_setting_parameters()
 
 
     def shift_sums(self, int32_t direction, double Sumu_offeset, double Sumv_offeset, double Sumw_offeset=0) :
-        #print "In py_sort_class.shift_sums"
+        #print("In py_sort_class.shift_sums")
         self.cptr.shift_sums(direction, Sumu_offeset, Sumv_offeset, Sumw_offeset)
 
 
     def shift_layer_w(self, int32_t direction, double& w_offeset) :
-        #print "In py_sort_class.shift_layer_w"
+        #print("In py_sort_class.shift_layer_w")
         self.cptr.shift_layer_w(direction, w_offeset)
 
 
     def shift_position_origin(self, int32_t direction, double& x_pos_offeset, double& y_pos_offeset) :
-        #print "In py_sort_class.shift_position_origin"
+        #print("In py_sort_class.shift_position_origin")
         self.cptr.shift_position_origin(direction, x_pos_offeset, y_pos_offeset)
 
 
     def do_calibration(self) :
-        print "In py_sort_class.do_calibration"
+        print("In py_sort_class.do_calibration")
         return self.cptr.do_calibration()
 
 
     def feed_calibration_data(self, bint build_map, double w_offset, int32_t number_of_correction_points=0) :
-        #print "In py_sort_class.feed_calibration_data"
+        #print("In py_sort_class.feed_calibration_data")
         #return self.cptr.feed_calibration_data(build_map, w_offset, number_of_correction_points)
         return self.cptr.feed_calibration_data(build_map, w_offset)
 
@@ -600,7 +609,7 @@ cdef extern from "psalg/hexanode/SortUtils.hh":
 #------------------------------
 
 def py_read_config_file(const char* fname, py_sort_class sorter) :
-    print "In py_read_config_file from %s" % fname
+    print("In py_read_config_file from %s" % fname)
     cdef int command = 0
     cdef double offset_sum_u = 0
     cdef double offset_sum_v = 0
@@ -615,17 +624,17 @@ def py_read_config_file(const char* fname, py_sort_class sorter) :
 
 
 def py_read_calibration_tables(const char* fname, py_sort_class sorter) :
-    print "In py_read_calibration_tables from file %s" % fname
+    print("In py_read_calibration_tables from file %s" % fname)
     return read_calibration_tables(fname, sorter.cptr)
 
 
 def py_create_calibration_tables(const char* fname, py_sort_class sorter) :
-    print "In py_create_calibration_tables in file %s" % fname
+    print("In py_create_calibration_tables in file %s" % fname)
     return create_calibration_tables(fname, sorter.cptr)
 
 
-def py_sorter_scalefactors_calibration_map_is_full_enough(py_sort_class sorter) :
-    return sorter_scalefactors_calibration_map_is_full_enough(sorter.cptr)
+    def py_sorter_scalefactors_calibration_map_is_full_enough(py_sort_class sorter) :
+         return sorter_scalefactors_calibration_map_is_full_enough(sorter.cptr)
 
 #------------------------------
 #------------------------------
@@ -633,7 +642,8 @@ def py_sorter_scalefactors_calibration_map_is_full_enough(py_sort_class sorter) 
 #------------------------------
 #------------------------------
 
-cdef extern from "psalg/hexanode/resort64c.hh":
+#cdef extern from "psalg/hexanode/resort64c.hh":
+cdef extern from "roentdek/resort64c.h":
     cdef cppclass signal_corrector_class:
         signal_corrector_class()
 
@@ -645,12 +655,12 @@ cdef class py_signal_corrector_class:
     cdef signal_corrector_class* cptr  # holds a C++ instance which we're wrapping
 
     def __cinit__(self):
-        print "In py_signal_corrector_class.__cinit__",\
-              " - direct test of methods from psalg/hexanode/resort64c.hh in hexanode_ext.class py_signal_corrector_class"
+        print("In py_signal_corrector_class.__cinit__",\
+              " - direct test of methods from psalg/hexanode/resort64c.hh in hexanode_ext.class py_signal_corrector_class")
         self.cptr = new signal_corrector_class();
 
     def __dealloc__(self):
-        print "In py_signal_corrector_class.__dealloc__"
+        print("In py_signal_corrector_class.__dealloc__")
         del self.cptr
 
 #------------------------------
@@ -727,19 +737,19 @@ cdef class lmf_io:
     cdef LMF_IO* cptr # holds a C++ instance
 
     def __cinit__(self, int number_of_channels, int number_of_hits):
-        print "In LMF_IO.__cinit__ pars %d, %d" % (number_of_channels, number_of_hits)
+        print("In LMF_IO.__cinit__ pars %d, %d" % (number_of_channels, number_of_hits))
         self.cptr = new LMF_IO(number_of_channels, number_of_hits)
         if self.cptr == NULL:
             raise MemoryError('Not enough memory.')
 
     def __dealloc__(self):
-        print "In LMF_IO.__del__"
+        print("In LMF_IO.__del__")
         del self.cptr
 
     def open_input_lmf(self, const char* fname):
-        print "In LMF_IO.cptr.open_input_lmf, open file %s" % fname
+        print("In LMF_IO.cptr.open_input_lmf, open file %s" % fname)
         s = self.cptr.OpenInputLMF(fname)
-        #print "file opening status %d" % s
+        #print("file opening status %d" % s)
         return s
 
     def start_time(self):

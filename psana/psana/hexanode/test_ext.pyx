@@ -31,10 +31,10 @@
 #------------------------------
 #------------------------------
 
-#def met1():
-#    """cython method for test call from python"""
-#    cdef int nelem = 1
-#    print "HELL of cython is here"
+def met1():
+    """cython method for test call from python"""
+    cdef int nelem = 1
+    print "HELL of cython is here"
 
 
 #cdef extern from "psalg/hexanode/cfib.hh":
