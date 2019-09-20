@@ -1,1 +1,0 @@
-Refer to https://github.com/slaclab/surf-dcp-targets/tree/master/firmware/dcp/XauiGtx7/ for original source code
