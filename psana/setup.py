@@ -4,14 +4,13 @@ import sys
 import numpy as np
 from setuptools import setup, Extension, find_packages
 
-## HIDE WARNING:
-## cc1plus: warning: command line option "-Wstrict-prototypes" is valid for C/ObjC but not for C++
+# HIDE WARNING:
+# cc1plus: warning: command line option "-Wstrict-prototypes" is valid for C/ObjC but not for C++
 from distutils.sysconfig import get_config_vars
 cfg_vars = get_config_vars()
 for k, v in cfg_vars.items():
     if type(v) == str:
         cfg_vars[k] = v.replace("-Wstrict-prototypes", "")
-
 
 print('Begin: %s' % ' '.join(sys.argv))
 
@@ -20,6 +19,22 @@ if not arg:
     raise Exception('Parameter --instdir is missing')
 instdir = arg[0].split('=')[1]
 sys.argv.remove(arg[0])
+
+
+# Shorter BUILD_LIST can be used to speedup development loop.
+#Command example: ./build_all.sh -b PEAKFINDER:HEXANODE:CFD -md
+BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD')
+arg = [arg for arg in sys.argv if arg.startswith('--ext_list')]
+if arg:
+    s_exts = arg[0].split('=')[1]
+    sys.argv.remove(arg[0])
+    if s_exts : BUILD_LIST = s_exts.split(':')
+    #print('Build c++ python-extensions: %s' % s_exts)
+
+print('-- psana.setup.py build extensions  : %s' % ' '.join(BUILD_LIST))
+print('-- psana.setup.py install directory : %s' % instdir)
+print('-- psana.setup.py include sys.prefix: %s' % sys.prefix)
+print('-- psana.setup.py np.get_include()  : %s' % np.get_include())
 
 
 if sys.platform == 'darwin':
@@ -34,8 +49,13 @@ else:
 
 extra_link_args_rpath = extra_link_args + ['-Wl,-rpath,'+ os.path.abspath(os.path.join(instdir, 'lib'))]
 
+CYT_BLD_DIR = 'build'
 
-dgram_module = Extension('psana.dgram',
+from Cython.Build import cythonize
+
+
+if 'PSANA' in BUILD_LIST :
+  dgram_module = Extension('psana.dgram',
                          sources = ['src/dgram.cc'],
                          libraries = ['xtc','shmemcli'],
                          include_dirs = ['src', np.get_include(), os.path.join(instdir, 'include')],
@@ -43,7 +63,7 @@ dgram_module = Extension('psana.dgram',
                          extra_link_args = extra_link_args_rpath,
                          extra_compile_args = extra_compile_args)
 
-seq_module = Extension('psana.seq',
+  seq_module = Extension('psana.seq',
                          sources = ['src/seq.cc'],
                          libraries = ['xtc'],
                          include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
@@ -51,7 +71,7 @@ seq_module = Extension('psana.seq',
                          extra_link_args = extra_link_args_rpath,
                          extra_compile_args = extra_compile_args)
 
-container_module = Extension('psana.container',
+  container_module = Extension('psana.container',
                          sources = ['src/container.cc'],
                          libraries = ['xtc'],
                          include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
@@ -61,7 +81,7 @@ container_module = Extension('psana.container',
 
        #cmdclass = {'build': build_ext, 'build_ext': my_build_ext},
        #cmdclass={'build_ext': my_build_ext},
-setup(
+  setup(
        name = 'psana',
        license = 'LCLS II',
        description = 'LCLS II analysis package',
@@ -89,12 +109,11 @@ setup(
                 'detnames            = psana.app.detnames:detnames',
              ]
        },
-)
+   )
 
-CYT_BLD_DIR = 'build'
 
-from Cython.Build import cythonize
-ext = Extension('shmem',
+if 'SHMEM' in BUILD_LIST :
+  ext = Extension('shmem',
                 sources=["psana/shmem/shmem.pyx"],
                 libraries = ['xtc','shmemcli'],
                 include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
@@ -102,13 +121,14 @@ ext = Extension('shmem',
                 language="c++",
                 extra_compile_args = extra_compile_args,
                 extra_link_args = extra_link_args_rpath,
-)
+  )
 
-setup(name="shmem",
+  setup(name="shmem",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
 
-ext = Extension("peakFinder",
+if 'PEAKFINDER' in BUILD_LIST :
+  ext = Extension("peakFinder",
                 sources=["psana/peakFinder/peakFinder.pyx",
                          "../psalg/psalg/peaks/src/PeakFinderAlgos.cc",
                          "../psalg/psalg/peaks/src/LocalExtrema.cc"],
@@ -116,41 +136,40 @@ ext = Extension("peakFinder",
                 extra_compile_args = extra_compile_args,
                 extra_link_args = extra_link_args,
                 include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
-)
+  )
 
-setup(name="peakFinder",
+  setup(name="peakFinder",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
 
-                         #"../psalg/psalg/hexanode/src/hexanode.cc",
-                         #"../psalg/psalg/hexanode/src/wrap_resort64c.cc",
-                         #     os.path.join(instdir, 'include'),
-                         #"../psalg/psalg/hexanode/src/LMF_IO.cc",
-
-if(os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
+if 'HEXANODE' in BUILD_LIST :
+  # ugly: only build hexanode apps if the roentdek software exists.
+  # this is a rough python equivalent of the way cmake finds out whether
+  # packages exist. - cpo
+  if(os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
     ext = Extension("hexanode",
                     sources=["psana/hexanode/hexanode_ext.pyx",
-                             "../psalg/psalg/hexanode/src/cfib.cc"],
-                    libraries=['psalg',],
+                             "../psalg/psalg/hexanode/src/cfib.cc",
+                             "../psalg/psalg/hexanode/src/wrap_resort64c.cc",
+                             "../psalg/psalg/hexanode/src/SortUtils.cc",
+                             "../psalg/psalg/hexanode/src/LMF_IO.cc"],
                     language="c++",
                     extra_compile_args = extra_compile_args,
-                    include_dirs=[np.get_include(), os.path.join(instdir, 'include'), os.path.join(sys.prefix,'include'),],
+                    include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
                     library_dirs = [os.path.join(instdir, 'lib')],
+                    libraries=['Resort64c_x64'],
                     extra_link_args = extra_link_args,
                     )
+
     setup(name="hexanode",
           ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
 
-#                libraries=['psalg',],
-
-# ugly: only build hexanode apps if the roentdek software exists.
-# this is a rough python equivalent of the way cmake finds out whether
-# packages exist. - cpo
-if False :
+if 'HEXANODE_TEST' in BUILD_LIST :
   if(os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
     ext = Extension("hexanode",
                     sources=["psana/hexanode/test_ext.pyx",
+                             "../psalg/psalg/hexanode/src/LMF_IO.cc",
                              "../psalg/psalg/hexanode/src/cfib.cc"],
                     language="c++",
                     extra_compile_args = extra_compile_args,
@@ -158,25 +177,26 @@ if False :
                     library_dirs = [os.path.join(instdir, 'lib')],
                     extra_link_args = extra_link_args,
                 )
+
     setup(name="hexanode",
           ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
 
-
-
-
-ext = Extension("constFracDiscrim",
+if 'CFD' in BUILD_LIST :
+  ext = Extension("constFracDiscrim",
                 sources=["psana/constFracDiscrim/constFracDiscrim.pyx",
                          "../psalg/psalg/constFracDiscrim/src/ConstFracDiscrim.cc"],
                 language="c++",
                 extra_compile_args = extra_compile_args,
                 include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
-)
+  )
 
-setup(name="constFracDiscrim",
+  setup(name="constFracDiscrim",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
-ext = Extension('dgramCreate',
+
+if 'DGRAM' in BUILD_LIST :
+  ext = Extension('dgramCreate',
                 #packages=['psana.peakfinder',],
                 sources=["psana/peakFinder/dgramCreate.pyx"],
                 libraries = ['xtc'],
@@ -187,32 +207,32 @@ ext = Extension('dgramCreate',
                 extra_link_args = extra_link_args_rpath,
                 # include_dirs=[np.get_include(),
                               # "../install/include"]
-)
+  )
 
-setup(name='dgramCreate',
+  setup(name='dgramCreate',
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
-setup(name='dgramchunk',
+  setup(name='dgramchunk',
       ext_modules = cythonize(Extension(
                     "psana.dgramchunk",
                     sources=["src/dgramchunk.pyx"],
       ), build_dir=CYT_BLD_DIR))
 
-setup(name='smdreader',
+  setup(name='smdreader',
       ext_modules = cythonize(Extension(
                     "psana.smdreader",
                     sources=["psana/smdreader.pyx"],
                     include_dirs=["psana"],
       ), build_dir=CYT_BLD_DIR))
 
-setup(name='eventbuilder', 
+  setup(name='eventbuilder', 
       ext_modules = cythonize(Extension(
                     "psana.eventbuilder",                                 
                     sources=["psana/eventbuilder.pyx"],  
                     include_dirs=["psana"],
       ), build_dir=CYT_BLD_DIR))
 
-setup(name='parallelreader',
+  setup(name='parallelreader',
       ext_modules = cythonize(Extension(
                     "psana.parallelreader",
                     sources=["psana/parallelreader.pyx"],
@@ -223,7 +243,9 @@ setup(name='parallelreader',
                     library_dirs = [os.path.join(os.environ['CONDA_PREFIX'],'lib')],
       ), build_dir=CYT_BLD_DIR))
 
-ext = Extension("hsd",
+
+if 'HSD' in BUILD_LIST :
+  ext = Extension("hsd",
                 sources=["psana/hsd/hsd.pyx",
                          "../psalg/psalg/peaks/src/PeakFinderAlgos.cc",
                          "../psalg/psalg/peaks/src/LocalExtrema.cc"],
@@ -235,10 +257,10 @@ ext = Extension("hsd",
                               os.path.join(instdir, 'include')],
                 library_dirs = [os.path.join(instdir, 'lib')],
                 extra_link_args = extra_link_args_rpath,
-)
+  )
 
-setup(name="hsd",
+  setup(name="hsd",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR),
-)
+  )
 
-
+# ===== EOF ======

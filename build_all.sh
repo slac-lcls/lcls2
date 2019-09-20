@@ -16,8 +16,9 @@ force_clean=0
 no_daq=0
 no_ana=0
 no_shmem=0
+build_ext_list=""
 
-while getopts ":c:p:s:f:dam" opt; do
+while getopts ":c:p:s:b:f:dam" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
     ;;
@@ -30,6 +31,8 @@ while getopts ":c:p:s:f:dam" opt; do
     p) pyInstallStyle="$OPTARG"
     ;;
     s) psana_setup_args="$OPTARG"
+    ;;
+    b) build_ext_list="$OPTARG"
     ;;
     f) force_clean=1                       # Force clean is required building between rhel6&7
     ;;
@@ -46,6 +49,7 @@ fi
 
 echo "CMAKE_BUILD_TYPE:" $cmake_option
 echo "Python install option:" $pyInstallStyle
+echo "build_ext_list:" $build_ext_list
 
 if [ $force_clean == 1 ]; then
     echo "force_clean"
@@ -100,6 +104,6 @@ if [ $no_ana == 0 ]; then
     # force build of the extensions.  do this because in some cases
     # setup.py is unable to detect if an external header file changed
     # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
-    python setup.py build_ext --instdir=$INSTDIR -f --inplace
-    python setup.py $pyInstallStyle $psana_setup_args --instdir=$INSTDIR --prefix=$INSTDIR
+    python setup.py build_ext --instdir=$INSTDIR --ext_list=$build_ext_list -f --inplace
+    python setup.py $pyInstallStyle $psana_setup_args --instdir=$INSTDIR --prefix=$INSTDIR --ext_list=$build_ext_list
 fi
