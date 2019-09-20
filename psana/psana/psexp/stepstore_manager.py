@@ -16,7 +16,6 @@ class StepStoreManager(object):
     def update(self, views):
         if not views:
             return
-        
         for i in range(len(views)):
             view = bytearray(views[i])
             offset = 0
@@ -27,5 +26,6 @@ class StepStoreManager(object):
                         self.stores[key].add_to(d, i)
                     
                 offset += d._size
+
         
         

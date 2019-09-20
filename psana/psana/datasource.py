@@ -1,9 +1,9 @@
 import os
 from psana.psexp.tools import mode
-size = 1
+world_size = 1
 if mode == 'mpi':
     from mpi4py import MPI
-    size = MPI.COMM_WORLD.Get_size()
+    world_size = MPI.COMM_WORLD.Get_size()
 
 class InvalidDataSource(Exception): pass
 
@@ -24,11 +24,12 @@ def DataSource(*args, **kwargs):
     elif 'exp' in kwargs: # experiment string - assumed multiple files
 
         if mode == 'mpi':
-            if size == 1:
+            if world_size == 1:
                 return SerialDataSource(*args, **kwargs)
             else:
-                from psana.psexp.node import _nodetype
-                if _nodetype in ['smd0', 'smd', 'bd']:
+                from psana.psexp.psana_mpi import PsanaMPI
+                psmpi = PsanaMPI()
+                if psmpi._nodetype in ['smd0', 'smd', 'bd']:
                     return MPIDataSource(*args, **kwargs)
                 else:
                     return NullDataSource(*args, **kwargs)

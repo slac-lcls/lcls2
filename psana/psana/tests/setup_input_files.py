@@ -1,24 +1,23 @@
 import subprocess
 import shutil
 
-def setup_input_files(tmp_path):
+def setup_input_files(tmp_path, n_files=2, slow_update_freq=4, n_motor_steps=1, n_events_per_step=10, gen_run2=True):
     xtc_dir = tmp_path / '.tmp'
     xtc_dir.mkdir()
     smd_dir = xtc_dir / 'smalldata'
     smd_dir.mkdir()
 
-    # segments 0,1 and "counting" timestamps for event-building
-    s01file = str(xtc_dir / 'data-r0001-s00.xtc2')
-    subprocess.call(['xtcwriter','-f',s01file,'-t','-n','10']) # ask for 10 events with every 4 events, one SlowUpdate inserted.
-    subprocess.call(['smdwriter','-f',s01file,'-o',str(smd_dir / 'data-r0001-s00.smd.xtc2')])
-
-    # segments 2,3
-    s23file = str(xtc_dir / 'data-r0001-s01.xtc2')
-    subprocess.call(['xtcwriter','-f',s23file,'-t','-s','2','-n','10'])
-    subprocess.call(['smdwriter','-f',s23file,'-o',str(smd_dir / 'data-r0001-s01.smd.xtc2')])
-
-    shutil.copy(s01file,str(smd_dir / 'data-r0002-s00.smd.xtc2'))
-    shutil.copy(s23file,str(smd_dir / 'data-r0002-s01.smd.xtc2'))
+    for i in range(n_files):
+        # Only segments 0,1 has "counting" timestamps for event-building
+        filename = 'data-r0001-s%s.xtc2'%(str(i).zfill(2))
+        smd_filename = 'data-r0001-s%s.smd.xtc2'%(str(i).zfill(2))
+        sfile = str(xtc_dir / filename)
+        subprocess.call(['xtcwriter','-f',sfile,'-t','-n',str(n_events_per_step),'-s',str(i*2),'-e',str(slow_update_freq),'-m',str(n_motor_steps)])
+        subprocess.call(['smdwriter','-f',sfile,'-o',str(smd_dir / smd_filename)])
+        
+        # Copy small data for run no. 2 (test reading small data w/o big data)
+        if gen_run2:
+            shutil.copy(sfile,str(smd_dir / smd_filename.replace('r0001','r0002')))
 
 if __name__ == "__main__":
     import pathlib

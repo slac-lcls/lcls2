@@ -90,12 +90,10 @@ class StepStore(object):
             cn_dgrams = 0
             for sm in self.step_managers:
                 for dgram in sm.dgrams:
-                    if cn_dgrams < from_pos: 
-                        cn_dgrams += 1
-                        continue
                     cn_dgrams += 1
+                    if cn_dgrams < from_pos: 
+                        continue
                     yield dgram
-        yield 0
     
     def values(self, events, step_variable):
         """ Returns values of the step_variable for the given events.

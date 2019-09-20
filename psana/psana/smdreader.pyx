@@ -94,61 +94,51 @@ cdef class SmdReader:
         cdef unsigned long pulse_id = 0
         cdef unsigned control = 0
         cdef unsigned service = 0
-        cdef size_t prev_offset = 0
         cdef Buffer* buf
         
         while self.got_events < n_events and self.prl_reader.bufs[winner].got > 0:
             for i in range(i_st, self.prl_reader.nfiles):
-                # read this file until hit limit timestamp
                 while self.prl_reader.bufs[i].timestamp < self.limit_ts and self.prl_reader.bufs[i].got > 0:
-                    # check that dgram fits in parallel reader buffer and it's non L1
-                    remaining = 0
-                    payload = 0
-                    needs_reread = 0
-                    pulse_id = 0
-                    control = 0
-                    service = 0
-                    prev_offset = 0
                     buf = &(self.prl_reader.bufs[i])
-                    
+                    # read until found an L1Accept
                     while True:
                         remaining = buf.got - buf.offset
 
                         if self.DGRAM_SIZE <= remaining:
-                            # get payload
+                            # get payload and timestamp
                             d = <Dgram *>(buf.chunk + buf.offset)
                             payload = d.xtc.extent - self.XTC_SIZE
-                            prev_offset = buf.offset # save the offset for updates if needed
                             buf.offset += self.DGRAM_SIZE
+                            buf.timestamp = <unsigned long>d.seq.high << 32 | d.seq.low
+                            
+                            # check if this a non L1
+                            pulse_id = d.seq.pulse_id
+                            control = (pulse_id & self.s_cntrl) >> self.v_cntrl
+                            service = (control >> self.v_service) & self.m_service
 
                             remaining = buf.got - buf.offset
                             if payload <= remaining:
                                 # got dgram
                                 buf.offset += payload
-                                buf.timestamp = <unsigned long>d.seq.high << 32 | d.seq.low
 
-                                # check if this a non L1
-                                pulse_id = d.seq.pulse_id
-                                control = (pulse_id & self.s_cntrl) >> self.v_cntrl
-                                service = (control >> self.v_service) & self.m_service
                                 if service == self.L1_ACCEPT:
                                     buf.nevents += 1
                                     break
-                                elif payload > 0: # not an empty non L1
-                                    memcpy(self.update_bufs[i].chunk + self.update_bufs[i].offset, buf.chunk + prev_offset, self.DGRAM_SIZE + payload)
+                                elif payload > 0:
+                                    memcpy(self.update_bufs[i].chunk + self.update_bufs[i].offset, d, self.DGRAM_SIZE + payload)
                                     self.update_bufs[i].offset += self.DGRAM_SIZE + payload
                                     self.update_bufs[i].nevents += 1
                             else:
-                                needs_reread = 1
+                                needs_reread = 1 # not enough payload
                                 break
                         else:
-                            needs_reread = 1
+                            needs_reread = 1 # not enough dgram header
                             break
                     
                     
                     if needs_reread:
                         break
-
+                    
                 if needs_reread:
                     i_st = i # start with the current buffer
                     break
@@ -175,7 +165,7 @@ cdef class SmdReader:
                 self.limit_ts = current_max_ts + 1
                 self.got_events = current_got_events
                 current_got_events = 0
-    
+
     def view(self, int buf_id, int update=0):
         """ Returns memoryview of the buffer object.
 

@@ -24,11 +24,11 @@ if mode == 'mpi':
 
     # only import node when running in parallel
     if (world_size > 1):
-        from psana.psexp.node import _nodetype
-        if (_nodetype in ['smd0', 'smd', 'bd']):
-            from psana.psexp.node import psana_comm
+        from psana.psexp.psana_mpi import PsanaMPI
+        psmpi = PsanaMPI()
+        if (psmpi._nodetype in ['smd0', 'smd', 'bd']):
             from psana.psexp.node import run_node
-            comm = psana_comm
+            comm = psmpi.psana_comm
             rank = comm.Get_rank()
             size = comm.Get_size()
         
@@ -232,7 +232,7 @@ class RunSerial(Run):
         self.smd_dm = DgramManager(smd_files)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
-        self.ssm = StepStoreManager(self.smd_dm.configs, 'epics', 'xppscan')
+        self.ssm = StepStoreManager(self.smd_dm.configs, 'epics', 'scan')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
@@ -266,17 +266,18 @@ class RunSerial(Run):
             step_pf = PacketFooter(view=step_chunk)
             step_views = step_pf.split_packets()
             self.ssm.update(step_views)
-            
+            step_dgrams = [sd for sd in self.ssm.stores['scan'].dgrams()][current_step_pos:]
+            n_step_dgrams = len(step_dgrams)
             eb_man = EventBuilderManager(smd_chunk, self.configs, \
-                    batch_size=self.batch_size, filter_fn=self.filter_callback)
-            
-            for i,step_dgram in enumerate(self.ssm.stores['xppscan'].dgrams(from_pos=current_step_pos+1)):
-                if step_dgram:
-                    limit_ts = step_dgram.seq.timestamp()
+                batch_size=self.batch_size, filter_fn=self.filter_callback)
+            for i,step_dgram in enumerate(step_dgrams):
+                if i < n_step_dgrams - 1:
+                    limit_ts = step_dgrams[i + 1].seq.timestamp()
                     current_step_pos += 1
                 else:
                     limit_ts = -1
-                yield Step(self, eb_man=eb_man, limit_ts=limit_ts)
+                step = Step(self, eb_man=eb_man, limit_ts=limit_ts)
+                yield step
 
 
 class RunParallel(Run):
@@ -325,7 +326,7 @@ class RunParallel(Run):
             self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
             self.dm = DgramManager(xtc_files, configs=self.configs)
         
-        self.ssm = StepStoreManager(self.configs, 'epics', 'xppscan')
+        self.ssm = StepStoreManager(self.configs, 'epics', 'scan')
     
     def events(self):
         for evt in run_node(self):
@@ -347,7 +348,7 @@ class RunLegion(Run):
         self.smd_dm = DgramManager(smd_files)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
-        self.ssm = StepStoreManager(self.configs, 'epics', 'xppscan')
+        self.ssm = StepStoreManager(self.configs, 'epics', 'scan')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = super(RunLegion, self)._get_calib(det_name)

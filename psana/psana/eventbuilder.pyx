@@ -70,7 +70,6 @@ cdef class EventBuilder:
         filter_fn: takes an event and return True/False
         destination: takes a timestamp and return rank no.
         """
-
         cdef unsigned got = 0
         batch_dict = {} # keeps list of batches (w/o destination callback, only one batch is returned at index 0)
         self.min_ts = 0
@@ -241,3 +240,7 @@ cdef class EventBuilder:
     @property
     def max_ts(self):
         return self.max_ts
+    
+    @property
+    def offsets(self):
+        return self.offsets

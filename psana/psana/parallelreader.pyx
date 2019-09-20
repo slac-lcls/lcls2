@@ -74,7 +74,7 @@ cdef class ParallelReader:
         cdef size_t new_got = 0
         for i in prange(self.nfiles, nogil=True):
             chunk = self.bufs[i].chunk
-            remaining = self.chunksize - self.bufs[i].block_offset
+            remaining = self.bufs[i].got - self.bufs[i].block_offset
             if remaining > 0:
                 memcpy(chunk, chunk + self.bufs[i].block_offset, remaining)
             
