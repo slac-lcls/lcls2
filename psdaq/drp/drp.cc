@@ -29,9 +29,9 @@ int main(int argc, char* argv[])
     int c;
     para.detSegment = 0;
     std::string kwargs_str;
-    int verbose = 0;
+    para.verbose = 0;
     char *instrument = NULL;
-    while((c = getopt(argc, argv, "p:o:l:D:C:d:u:k:P:v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:C:d:u:k:P:T::v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -60,14 +60,18 @@ int main(int argc, char* argv[])
             case 'P':
                 instrument = optarg;
                 break;
+            case 'T':
+                para.trgDetName = optarg ? optarg : "trigger";
+                break;
             case 'v':
-                ++ verbose;
+                ++para.verbose;
                 break;
             default:
                 exit(1);
         }
     }
-    switch (verbose) {
+
+    switch (para.verbose) {
       case 0:  logging::init(instrument, LOG_WARNING);  break;
       case 1:  logging::init(instrument, LOG_INFO);     break;
       default: logging::init(instrument, LOG_DEBUG);    break;

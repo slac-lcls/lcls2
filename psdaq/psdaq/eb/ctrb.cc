@@ -33,16 +33,14 @@ using namespace Pds;
 using json = nlohmann::json;
 
 static const unsigned CLS              = 64;   // Cache Line Size
-static const int      core_0           = 11;   // devXXX: 11, devXX:  7, accXX:  9
-static const int      core_1           = 12;   // devXXX: 12, devXX: 19, accXX: 21
-static const size_t   header_size      = sizeof(Dgram);
-static const size_t   input_extent     = 2;    // Revisit: Number of "L3" input  data words
-static const size_t   result_extent    = 2;    // Revisit: Number of "L3" result data words
-static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
-static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
-static const unsigned mon_buf_cnt      = 8;    // Revisit: Corresponds to monReqServer::numberofEvBuffers
-static const size_t   mon_buf_size     = 64 * 1024;
-static const size_t   mon_trSize       = 64 * 1024;
+static const int      CORE_0           = 18;   // devXXX: 11, devXX:  7, accXX:  9
+static const int      CORE_1           = 19;   // devXXX: 12, devXX: 19, accXX: 21
+static const size_t   HEADER_SIZE      = sizeof(Dgram);
+static const size_t   INPUT_EXTENT     = 2;    // Revisit: Number of "L3" input  data words
+static const size_t   RESULT_EXTENT    = 2;    // Revisit: Number of "L3" result data words
+static const size_t   MAX_CONTRIB_SIZE = HEADER_SIZE + INPUT_EXTENT  * sizeof(uint32_t);
+static const size_t   MON_BUF_SIZE     = 64 * 1024;
+static const size_t   MON_TRSIZE       = 64 * 1024;
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -293,7 +291,7 @@ const Dgram* DrpSim::generate()
 
   Input* idg = ::new(buffer) Input(_readoutGroup, seq, _xtc);
 
-  size_t inputSize = input_extent * sizeof(uint32_t);
+  size_t inputSize = INPUT_EXTENT * sizeof(uint32_t);
 
   // Here is where trigger input information is inserted into the datagram
   {
@@ -600,6 +598,14 @@ void CtrbApp::handlePhase1(const json &msg)
     rc = _tebCtrb.drpSim().transition(TransitionId::Configure, pid);
   else if (key == "unconfigure")
     rc = _tebCtrb.drpSim().transition(TransitionId::Unconfigure, pid);
+  else if (key == "beginrun")
+    rc = _tebCtrb.drpSim().transition(TransitionId::BeginRun, pid);
+  else if (key == "endrun")
+    rc = _tebCtrb.drpSim().transition(TransitionId::EndRun, pid);
+  else if (key == "beginstep")
+    rc = _tebCtrb.drpSim().transition(TransitionId::BeginStep, pid);
+  else if (key == "endstep")
+    rc = _tebCtrb.drpSim().transition(TransitionId::EndStep, pid);
   else if (key == "enable")
     rc = _tebCtrb.drpSim().transition(TransitionId::Enable, pid);
   else if (key == "disable")
@@ -787,8 +793,8 @@ int main(int argc, char **argv)
                            /* .builders      = */ 0,   // TEBs
                            /* .addrs         = */ { },
                            /* .ports         = */ { },
-                           /* .maxInputSize  = */ max_contrib_size,
-                           /* .core          = */ { core_0, core_1 },
+                           /* .maxInputSize  = */ MAX_CONTRIB_SIZE,
+                           /* .core          = */ { CORE_0, CORE_1 },
                            /* .verbose       = */ 0,
                            /* .groups        = */ 0,
                            /* .contractor    = */ 0 };
@@ -797,8 +803,8 @@ int main(int argc, char **argv)
                            /* .partition     = */ NO_PARTITION,
                            /* .id            = */ -1u,
                            /* .maxEvents     = */ 0,  // Filled in @ connect time
-                           /* .maxEvSize     = */ mon_buf_size,
-                           /* .maxTrSize     = */ mon_trSize,
+                           /* .maxEvSize     = */ MON_BUF_SIZE,
+                           /* .maxTrSize     = */ MON_TRSIZE,
                            /* .verbose       = */ 0 };
 
   while ((op = getopt(argc, argv, "C:p:A:1:2:u:h?v")) != -1)

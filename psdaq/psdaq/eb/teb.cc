@@ -38,16 +38,18 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Trg;
 
-using json = nlohmann::json;
-using logging = Pds::SysLog;
+using json     = nlohmann::json;
+using logging  = Pds::SysLog;
+using string_t = std::string;
 
-static const int      core_0           = 18; // devXXX: 11, devXX:  7, accXX:  9
-static const int      core_1           = 19; // devXXX: 12, devXX: 19, accXX: 21
-static const size_t   header_size      = sizeof(Dgram);
-static const size_t   input_extent     = 2; // Revisit: Number of "L3" input  data words
-static const size_t   result_extent    = 2; // Revisit: Number of "L3" result data words
-static const size_t   max_contrib_size = header_size + input_extent  * sizeof(uint32_t);
-static const size_t   max_result_size  = header_size + result_extent * sizeof(uint32_t);
+static const int      CORE_0           = 18; // devXXX: 11, devXX:  7, accXX:  9
+static const int      CORE_1           = 19; // devXXX: 12, devXX: 19, accXX: 21
+static const size_t   HEADER_SIZE      = sizeof(Dgram);
+static const size_t   INPUT_EXTENT     = 2; // Revisit: Number of "L3" input  data words
+static const size_t   RESULT_EXTENT    = 2; // Revisit: Number of "L3" result data words
+static const size_t   MAX_CONTRIB_SIZE = HEADER_SIZE + INPUT_EXTENT  * sizeof(uint32_t);
+static const size_t   MAX_RESULT_SIZE  = HEADER_SIZE + RESULT_EXTENT * sizeof(uint32_t);
+static const string_t TRIGGER_DETNAME  = "tmoTeb";
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -481,6 +483,38 @@ uint64_t Teb::_receivers(const Dgram& ctrb) const
 }
 
 
+static void _printGroups(unsigned groups, const u64arr_t& array)
+{
+  while (groups)
+  {
+    unsigned group = __builtin_ffs(groups) - 1;
+    groups &= ~(1 << group);
+
+    printf("%d: 0x%016lx  ", group, array[group]);
+  }
+  printf("\n");
+}
+
+static void _printParams(EbParams& prms, unsigned groups)
+{
+  printf("Parameters of TEB ID %d:\n",                        prms.id);
+  printf("  Thread core numbers:         %d, %d\n",           prms.core[0], prms.core[1]);
+  printf("  Partition:                   %d\n",               prms.partition);
+  printf("  Bit list of contributors:  0x%016lx, cnt: %zd\n", prms.contributors,
+                                                              std::bitset<64>(prms.contributors).count());
+  printf("  Readout group contractors:   ");                  _printGroups(groups, prms.contractors);
+  printf("  Readout group receivers:     ");                  _printGroups(groups, prms.receivers);
+  printf("  ConfigDb trigger detName:    %s\n",               prms.trgDetName.c_str());
+  printf("  Number of MEB requestors:    %d\n",               prms.numMrqs);
+  printf("  Batch duration:            0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
+  printf("  Batch pool depth:            %d\n",               MAX_BATCHES);
+  printf("  Max # of entries / batch:    %d\n",               MAX_ENTRIES);
+  printf("  # of contrib. buffers:       %d\n",               MAX_LATENCY);
+  printf("  Max result     Dgram size:   %zd\n",              prms.maxResultSize);
+  printf("  Max transition Dgram size:   %zd\n",              prms.maxTrSize[0]);
+  printf("\n");
+}
+
 class TebApp : public CollectionApp
 {
 public:
@@ -503,6 +537,7 @@ private:
   std::thread                _appThread;
   json                       _connectMsg;
   Trg::Factory<Trg::Trigger> _factory;
+  uint16_t                   _groups;
 };
 
 TebApp::TebApp(const std::string&               collSrv,
@@ -566,6 +601,8 @@ void TebApp::_buildContract(const Document& top)
 {
   const json& body = _connectMsg["body"];
 
+  _prms.contractors.fill(0);
+
   for (auto it : body["drp"].items())
   {
     unsigned    drpId   = it.value()["drp_id"];
@@ -573,19 +610,25 @@ void TebApp::_buildContract(const Document& top)
     size_t      found   = alias.rfind('_');
     std::string detName = alias.substr(0, found);
 
-    auto group = unsigned(it.value()["det_info"]["readout"]);
-
     if (top.HasMember(detName.c_str()))
+    {
+      auto group = unsigned(it.value()["det_info"]["readout"]);
       _prms.contractors[group] |= 1ul << drpId;
+    }
   }
 }
 
 int TebApp::_configure(const json& msg)
 {
-  int rc = 0;
-  const std::string configAlias(msg["body"]["config_alias"]);
-  const std::string detName("trigger");
+  int               rc = 0;
   Document          top;
+  const std::string configAlias(msg["body"]["config_alias"]);
+  std::string&      detName = _prms.trgDetName;
+  if (_prms.trgDetName.empty())  _prms.trgDetName = TRIGGER_DETNAME;
+
+  printf("Fetching trigger info from ConfigDb/%s/%s\n\n",
+         configAlias.c_str(), detName.c_str());
+
   if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, detName, top))
   {
     fprintf(stderr, "%s:\n  Document '%s' not found in ConfigDb\n",
@@ -593,7 +636,7 @@ int TebApp::_configure(const json& msg)
     return -1;
   }
 
-  _buildContract(top);
+  if (detName != TRIGGER_DETNAME)  _buildContract(top);
 
   const std::string symbol("create_consumer");
   Trigger* trigger = _factory.create(top, detName, symbol);
@@ -640,6 +683,8 @@ void TebApp::handlePhase1(const json& msg)
       body["err_info"] = errorMsg;
       fprintf(stderr, "%s:\n  %s\n", __PRETTY_FUNCTION__, errorMsg.c_str());
     }
+
+    _printParams(_prms, _groups);
   }
 
   // Reply to collection with transition status
@@ -662,24 +707,17 @@ void TebApp::handleReset(const json& msg)
   if (_appThread.joinable())  _appThread.join();
 }
 
-static void _printGroups(unsigned groups, const u64arr_t& array)
-{
-  while (groups)
-  {
-    unsigned group = __builtin_ffs(groups) - 1;
-    groups &= ~(1 << group);
-
-    printf("%d: 0x%016lx  ", group, array[group]);
-  }
-  printf("\n");
-}
-
 int TebApp::_parseConnectionParams(const json& body)
 {
   const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_TEBS + MAX_MEBS;
   const unsigned tebPortBase = TEB_PORT_BASE + numPorts * _prms.partition;
   const unsigned drpPortBase = DRP_PORT_BASE + numPorts * _prms.partition;
   const unsigned mrqPortBase = MRQ_PORT_BASE + numPorts * _prms.partition;
+
+  printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS - 1);
+  printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS - 1);
+  printf("  MRQ port range: %d - %d\n", mrqPortBase, mrqPortBase + MAX_MEBS - 1);
+  printf("\n");
 
   std::string id = std::to_string(getId());
   _prms.id = body["teb"][id]["teb_id"];
@@ -697,10 +735,10 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.addrs.clear();
   _prms.ports.clear();
 
-  _prms.contractors.fill(0);            // Filled in during Configure
+  _prms.contractors.fill(0);
   _prms.receivers.fill(0);
+  _groups = 0;
 
-  uint16_t groups = 0;
   if (body.find("drp") == body.end())
   {
     fprintf(stderr, "Missing required DRP specs\n");
@@ -726,12 +764,14 @@ int TebApp::_parseConnectionParams(const json& body)
       fprintf(stderr, "Readout group %d is out of range 0 - %d\n", group, NUM_READOUT_GROUPS - 1);
       return 1;
     }
-    _prms.receivers[group]  |= 1ul << drpId; // All contributors receive results
-    groups |= 1 << group;
+    _prms.contractors[group] |= 1ul << drpId; // Possibly overridden during Configure
+    _prms.receivers[group]   |= 1ul << drpId; // All contributors receive results
+    _groups |= 1 << group;
   }
+
   auto& vec =_prms.maxTrSize;
   vec.resize(body["drp"].size());
-  std::fill(vec.begin(), vec.end(), max_contrib_size); // Same for all contributors
+  std::fill(vec.begin(), vec.end(), MAX_CONTRIB_SIZE); // Same for all contributors
 
   _prms.numMrqs = 0;
   if (body.find("meb") != body.end())
@@ -741,26 +781,6 @@ int TebApp::_parseConnectionParams(const json& body)
       _prms.numMrqs++;
     }
   }
-
-  printf("\nParameters of TEB ID %d:\n",                      _prms.id);
-  printf("  Thread core numbers:         %d, %d\n",           _prms.core[0], _prms.core[1]);
-  printf("  Partition:                   %d\n",               _prms.partition);
-  printf("  Bit list of contributors:  0x%016lx, cnt: %zd\n", _prms.contributors,
-                                                              std::bitset<64>(_prms.contributors).count());
-  printf("  Readout group contractors:   ");                  _printGroups(groups, _prms.contractors);
-  printf("  Readout group receivers:     ");                  _printGroups(groups, _prms.receivers);
-  printf("  Number of MEB requestors:    %d\n",               _prms.numMrqs);
-  printf("  Batch duration:            0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
-  printf("  Batch pool depth:            %d\n",               MAX_BATCHES);
-  printf("  Max # of entries / batch:    %d\n",               MAX_ENTRIES);
-  printf("  # of contrib. buffers:       %d\n",               MAX_LATENCY);
-  printf("  Max result     Dgram size:   %zd\n",              _prms.maxResultSize);
-  printf("  Max transition Dgram size:   %zd\n",              _prms.maxTrSize[0]);
-  printf("\n");
-  printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS - 1);
-  printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS - 1);
-  printf("  MRQ port range: %d - %d\n", mrqPortBase, mrqPortBase + MAX_MEBS - 1);
-  printf("\n");
 
   return 0;
 }
@@ -776,24 +796,28 @@ static void usage(char *name, char *desc, const EbParams& prms)
 
   fprintf(stderr, "\nOptions:\n");
 
-  fprintf(stderr, " %-22s %s (default: %s)\n",        "-A <interface_addr>",
+  fprintf(stderr, " %-23s %s (default: %s)\n",        "-A <interface_addr>",
           "IP address of the interface to use",       "libfabric's 'best' choice");
 
-  fprintf(stderr, " %-22s %s (required)\n",           "-C <address>",
+  fprintf(stderr, " %-23s %s (required)\n",           "-C <address>",
           "Collection server");
-  fprintf(stderr, " %-22s %s (required)\n",           "-p <partition number>",
+  fprintf(stderr, " %-23s %s (required)\n",           "-p <partition number>",
           "Partition number");
-  fprintf(stderr, " %-22s %s\n",                      "-P <instrument>",
+  fprintf(stderr, " %-23s %s\n",                      "-P <instrument>",
           "Instrument name");
-  fprintf(stderr, " %-22s %s (required)\n",           "-u <alias>",
+  fprintf(stderr, " %-23s %s (default: '%s')\n"
+                  " %-23s %s\n",                      "-T[<trigger 'detName'>]",
+          "ConfigDb detName for trigger",             TRIGGER_DETNAME.c_str(),
+          " ", "(-T without arg gives system default; n.b. no space between -T and arg)");
+  fprintf(stderr, " %-23s %s (required)\n",           "-u <alias>",
           "Alias for teb process");
-  fprintf(stderr, " %-22s %s (default: %d)\n",        "-1 <core>",
-          "Core number for pinning App thread to",    core_0);
-  fprintf(stderr, " %-22s %s (default: %d)\n",        "-2 <core>",
-          "Core number for pinning other threads to", core_1);
+  fprintf(stderr, " %-23s %s (default: %d)\n",        "-1 <core>",
+          "Core number for pinning App thread to",    CORE_0);
+  fprintf(stderr, " %-23s %s (default: %d)\n",        "-2 <core>",
+          "Core number for pinning other threads to", CORE_1);
 
-  fprintf(stderr, " %-22s %s\n", "-v", "enable debugging output (repeat for increased detail)");
-  fprintf(stderr, " %-22s %s\n", "-h", "display this help output");
+  fprintf(stderr, " %-23s %s\n", "-v", "enable debugging output (repeat for increased detail)");
+  fprintf(stderr, " %-23s %s\n", "-h", "display this help output");
 }
 
 
@@ -801,7 +825,7 @@ int main(int argc, char **argv)
 {
   const unsigned NO_PARTITION = unsigned(-1u);
   int            op           = 0;
-  char *         instrument   = NULL;
+  char*          instrument   = NULL;
   std::string    collSrv;
   EbParams       prms { /* .ifAddr        = */ { }, // Network interface to use
                         /* .ebPort        = */ { },
@@ -810,28 +834,30 @@ int main(int argc, char **argv)
                         /* .alias         = */ { }, // Unique name passed on cmd line
                         /* .id            = */ -1u,
                         /* .contributors  = */ 0,   // DRPs
+                        /* .contractors   = */ { },
+                        /* .receivers     = */ { },
                         /* .addrs         = */ { }, // Result dst addr served by Ctrbs
                         /* .ports         = */ { }, // Result dst port served by Ctrbs
                         /* .maxTrSize     = */ { }, // Filled in at connect
-                        /* .maxResultSize = */ max_result_size,
+                        /* .maxResultSize = */ MAX_RESULT_SIZE,
                         /* .numMrqs       = */ 0,   // Number of Mon requestors
-                        /* .core          = */ { core_0, core_1 },
-                        /* .verbose       = */ 0,
-                        /* .contractors   = */ 0,
-                        /* .receivers     = */ 0 };
+                        /* .trgDetName    = */ { },
+                        /* .core          = */ { CORE_0, CORE_1 },
+                        /* .verbose       = */ 0 };
 
-  while ((op = getopt(argc, argv, "C:p:A:1:2:u:P:h?v")) != -1)
+  while ((op = getopt(argc, argv, "C:p:P:T::A:1:2:u:h?v")) != -1)
   {
     switch (op)
     {
-      case 'C':  collSrv         = optarg;             break;
-      case 'p':  prms.partition  = std::stoi(optarg);  break;
-      case 'P':  instrument      = optarg;             break;
-      case 'A':  prms.ifAddr     = optarg;             break;
-      case '1':  prms.core[0]    = atoi(optarg);       break;
-      case '2':  prms.core[1]    = atoi(optarg);       break;
-      case 'u':  prms.alias      = optarg;             break;
-      case 'v':  ++prms.verbose;                       break;
+      case 'C':  collSrv         = optarg;                       break;
+      case 'p':  prms.partition  = std::stoi(optarg);            break;
+      case 'P':  instrument      = optarg;                       break;
+      case 'T':  prms.trgDetName = optarg ? optarg : "trigger";  break;
+      case 'A':  prms.ifAddr     = optarg;                       break;
+      case '1':  prms.core[0]    = atoi(optarg);                 break;
+      case '2':  prms.core[1]    = atoi(optarg);                 break;
+      case 'u':  prms.alias      = optarg;                       break;
+      case 'v':  ++prms.verbose;                                 break;
       case '?':
       case 'h':
       default:
@@ -839,29 +865,25 @@ int main(int argc, char **argv)
         return 1;
     }
   }
-  switch (prms.verbose)
-  {
-    case 0:  logging::init(instrument, LOG_WARNING);  break;
-    case 1:  logging::init(instrument, LOG_INFO);     break;
-    default: logging::init(instrument, LOG_DEBUG);    break;
-  }
+
+  logging::init(instrument, prms.verbose ? LOG_DEBUG : LOG_WARNING);
   logging::info("logging configured");
   if (!instrument)
   {
-    logging::warning("Missing '-P <instrument>' parameter");
+    logging::warning("-P: instrument name is missing");
   }
   if (prms.partition == NO_PARTITION)
   {
-    fprintf(stderr, "Missing '%s' parameter\n", "-p <Partition number>");
+    logging::critical("-p: partition number is mandatory");
     return 1;
   }
   if (collSrv.empty())
   {
-    fprintf(stderr, "Missing '%s' parameter\n", "-C <Collection server>");
+    logging::critical("-C: collection server is mandatory");
     return 1;
   }
   if (prms.alias.empty()) {
-    fprintf(stderr, "Missing '%s' parameter\n", "-u <Alias>");
+    logging::critical("-u: alias is mandatory");
     return 1;
   }
 
@@ -881,19 +903,23 @@ int main(int argc, char **argv)
   // Event build them according to their trigger group
 
   std::unique_ptr<prometheus::Exposer> exposer;
-  try {
-      exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
-  } catch(const std::runtime_error& e) {
-      std::cout<<__PRETTY_FUNCTION__<<": error opening monitoring port.  Monitoring disabled.\n";
-      std::cout<<e.what()<<std::endl;
+  try
+  {
+    exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
+  }
+  catch(const std::runtime_error& e)
+  {
+    logging::warning("Error opening monitoring port.  Monitoring disabled.");
+    std::cout<<e.what()<<std::endl;
   }
 
   auto exporter = std::make_shared<MetricExporter>();
 
   TebApp app(collSrv, prms, exporter);
 
-  if (exposer) {
-      exposer->RegisterCollectable(exporter);
+  if (exposer)
+  {
+    exposer->RegisterCollectable(exporter);
   }
 
   try
@@ -902,7 +928,7 @@ int main(int argc, char **argv)
   }
   catch (std::exception& e)
   {
-    fprintf(stderr, "%s\n", e.what());
+    logging::critical("Application exception:\n  %s", e.what());
   }
 
   app.handleReset(json({}));

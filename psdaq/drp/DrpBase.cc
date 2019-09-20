@@ -211,7 +211,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     size_t maxSize = sizeof(MyDgram);
     m_tPrms = { /* .ifAddr        = */ { }, // Network interface to use
                 /* .port          = */ { }, // Port served to TEBs
-                /* .partition     = */ m_para.partition,
+                /* .partition     = */ para.partition,
                 /* .alias         = */ { }, // Unique name from cmd line
                 /* .id            = */ 0,
                 /* .builders      = */ 0,   // TEBs
@@ -219,18 +219,18 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
                 /* .ports         = */ { },
                 /* .maxInputSize  = */ maxSize,
                 /* .core          = */ { 18, 19 },
-                /* .verbose       = */ 0,
+                /* .verbose       = */ para.verbose,
                 /* .readoutGroup  = */ 0,
                 /* .contractor    = */ 0 };
 
     m_mPrms = { /* .addrs         = */ { },
                 /* .ports         = */ { },
-                /* .partition     = */ m_para.partition,
+                /* .partition     = */ para.partition,
                 /* .id            = */ 0,
                 /* .maxEvents     = */ 8,    //mon_buf_cnt,
                 /* .maxEvSize     = */ pool.pebble.bufferSize(), //mon_buf_size,
                 /* .maxTrSize     = */ 256 * 1024, //mon_trSize,
-                /* .verbose       = */ 0 };
+                /* .verbose       = */ para.verbose };
 
     try {
         m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
@@ -313,9 +313,15 @@ int DrpBase::setupTriggerPrimitives(const json& body)
 {
     using namespace rapidjson;
 
+    Document top;
     const std::string configAlias = body["config_alias"];
-    const std::string detName("trigger");
-    Document          top;
+    const std::string dummy("tmoTeb");  // Default trigger library
+    std::string&      detName = m_para.trgDetName;
+    if (m_para.trgDetName.empty())  m_para.trgDetName = dummy;
+
+    printf("Fetching trigger info from ConfigDb/%s/%s\n",
+           configAlias.c_str(), detName.c_str());
+
     if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, detName, top))
     {
         fprintf(stderr, "%s:\n  Document '%s' not found in ConfigDb\n",
@@ -323,7 +329,7 @@ int DrpBase::setupTriggerPrimitives(const json& body)
         return -1;
     }
 
-    if (!top.HasMember(m_para.detName.c_str())) {
+    if ((detName != dummy) && !top.HasMember(m_para.detName.c_str())) {
         printf("%s:\n  Trigger data not contributed: '%s' not found in ConfigDb for %s\n",
                __PRETTY_FUNCTION__, m_para.detName.c_str(), detName.c_str());
         m_tPrms.contractor = 0;    // This DRP won't provide trigger input data
@@ -332,7 +338,8 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     }
     m_tPrms.contractor = m_tPrms.readoutGroup;
 
-    const std::string symbol("create_producer_" + m_para.detName);
+    std::string symbol("create_producer");
+    if (detName != dummy)  symbol +=  "_" + m_para.detName;
     m_triggerPrimitive = m_trigPrimFactory.create(top, detName, symbol);
     if (!m_triggerPrimitive) {
         fprintf(stderr, "%s:\n  Failed to create TriggerPrimitive\n",

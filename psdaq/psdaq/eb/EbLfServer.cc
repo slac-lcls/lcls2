@@ -63,8 +63,8 @@ int EbLfServer::initialize(const std::string& addr,
 
   struct fi_info* info   = fab->info();
   size_t          cqSize = nLinks * info->rx_attr->size;
-  printf("EbLfServer: rx_attr.size = %zd, tx_attr.size = %zd\n",
-         info->rx_attr->size, info->tx_attr->size);
+  if (_verbose)  printf("EbLfServer: rx_attr.size = %zd, tx_attr.size = %zd\n",
+                        info->rx_attr->size, info->tx_attr->size);
   _rxcq = new CompletionQueue(fab, cqSize);
   if (!_rxcq)
   {
@@ -98,7 +98,7 @@ int EbLfServer::connect(EbLfLink** link, int tmo)
   }
 
   int rxDepth = _pep->fabric()->info()->rx_attr->size;
-  printf("EbLfServer: rx_attr.size = %d\n", rxDepth);
+  if (_verbose)  printf("EbLfServer: rx_attr.size = %d\n", rxDepth);
   *link = new EbLfLink(ep, rxDepth, _verbose, _unused);
   if (!*link)
   {

@@ -50,8 +50,8 @@ int EbLfClient::connect(const char* peer,
 
   struct fi_info*  info   = fab->info();
   size_t           cqSize = info->tx_attr->size;
-  printf("EbLfClient: rx_attr.size = %zd, tx_attr.size = %zd\n",
-         info->rx_attr->size, info->tx_attr->size);
+  if (_verbose)  printf("EbLfClient: rx_attr.size = %zd, tx_attr.size = %zd\n",
+                        info->rx_attr->size, info->tx_attr->size);
   CompletionQueue* txcq   = new CompletionQueue(fab, cqSize);
   if (!txcq)
   {
@@ -101,7 +101,8 @@ int EbLfClient::connect(const char* peer,
     return (rc != FI_SUCCESS) ? rc : -FI_ETIMEDOUT;
   }
 
-  printf("EbLfClient: tx_attr.inject_size = %zd\n", info->tx_attr->inject_size);
+  if (_verbose)  printf("EbLfClient: tx_attr.inject_size = %zd\n",
+                        info->tx_attr->inject_size);
   *link = new EbLfLink(ep, info->tx_attr->inject_size, _verbose, _pending);
   if (!*link)
   {

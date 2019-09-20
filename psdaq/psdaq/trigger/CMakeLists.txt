@@ -38,7 +38,26 @@ target_link_libraries(tmoTrigger
 
 #---
 
+add_library(tmoTeb SHARED
+  tmoTebPrimitive.cc
+  tmoTeb.cc
+)
+
+target_include_directories(tmoTeb PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:include>
+  ${PYTHON_INCLUDE_DIRS}
+)
+
+target_link_libraries(tmoTeb
+  xtcdata::xtc
+  trigger
+)
+
+#---
+
 install(TARGETS
   trigger
   tmoTrigger
+  tmoTeb
 )

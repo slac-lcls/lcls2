@@ -23,10 +23,10 @@
 #include <iostream>
 #include <atomic>
 
-static const int      core_0               = 10; // devXXX: 10, devXX:  7, accXX:  9
-static const int      core_1               = 11; // devXXX: 11, devXX: 19, accXX: 21
-static const unsigned epoch_duration       = 8;  // Revisit: 1 per xferBuffer
-static const unsigned numberof_xferBuffers = 8;  // Value corresponds to ctrb:maxEvents
+static const int      CORE_0               = 18; // devXXX: 18, devXX:  7, accXX:  9
+static const int      CORE_1               = 19; // devXXX: 19, devXX: 19, accXX: 21
+static const unsigned EPOCH_DURATION       = 8;  // Revisit: 1 per xferBuffer
+static const unsigned NUMBEROF_XFERBUFFERS = 8;  // Value corresponds to ctrb:maxEvents
 
 using namespace XtcData;
 using namespace Pds::Eb;
@@ -243,7 +243,7 @@ namespace Pds {
   public:
     Meb(const MebParams&                prms,
         std::shared_ptr<MetricExporter> exporter) :
-      EbAppBase  (prms, epoch_duration, 1, prms.numEvBuffers),
+      EbAppBase  (prms, EPOCH_DURATION, 1, prms.numEvBuffers),
       _apps      (nullptr),
       _pool      (nullptr),
       _eventCount(0),
@@ -334,11 +334,9 @@ namespace Pds {
         size_t   sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
         unsigned src = dg->xtc.src.value();
         unsigned env = dg->env;
-        unsigned svc = dg->seq.service();
-        printf("MEB processed              event[%5ld]    @ "
-               "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, %3s # %2d\n",
-               _eventCount, dg, ctl, pid, sz, src, env,
-               svc == TransitionId::L1Accept ? "buf" : "tr", idx);
+        printf("MEB processed  %5ld          event  [%5d] @ "
+               "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x\n",
+               _eventCount, idx, dg, ctl, pid, sz, src, env);
       }
 
       if (_apps->events(dg) == XtcMonitorServer::Handled)
@@ -615,17 +613,18 @@ int main(int argc, char** argv)
                           /* .alias         = */ { }, // Unique name passed on cmd line
                           /* .id            = */ -1u,
                           /* .contributors  = */ 0,   // DRPs
+                          /* .contractors   = */ { },
+                          /* .receivers     = */ { },
                           /* .addrs         = */ { }, // MonReq addr served by TEB
                           /* .ports         = */ { }, // MonReq port served by TEB
                           /* .maxTrSize     = */ { }, // Filled in @ connect
                           /* .maxResultSize = */ 0,   // Unused here
                           /* .numMrqs       = */ 0,   // Unused here
-                          /* .core          = */ { core_0, core_1 },
-                          /* .verbose       = */ 0,
-                          /* .contractors   = */ 0,
-                          /* .receivers     = */ 0 },
+                          /* .trgDetName    = */ { }, // Unused here
+                          /* .core          = */ { CORE_0, CORE_1 },
+                          /* .verbose       = */ 0 },
                         /* .maxBufferSize = */ 0,     // Filled in @ connect
-                        /* .numEvBuffers  = */ numberof_xferBuffers };
+                        /* .numEvBuffers  = */ NUMBEROF_XFERBUFFERS };
   unsigned       nevqueues = 1;
   bool           ldist     = false;
 
@@ -696,8 +695,8 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  if (prms.numEvBuffers < numberof_xferBuffers)
-    prms.numEvBuffers = numberof_xferBuffers;
+  if (prms.numEvBuffers < NUMBEROF_XFERBUFFERS)
+    prms.numEvBuffers = NUMBEROF_XFERBUFFERS;
 
   if (!tag)  tag = partitionTag.c_str();
   printf("Partition Tag: '%s'\n", tag);

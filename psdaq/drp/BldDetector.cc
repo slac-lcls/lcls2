@@ -12,11 +12,13 @@
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/eb/TebContributor.hh"
+#include "psdaq/service/SysLog.hh"
 #include <getopt.h>
 #include <Python.h>
 
 
 using json = nlohmann::json;
+using logging = Pds::SysLog;
 
 namespace Drp {
 
@@ -473,8 +475,10 @@ int main(int argc, char* argv[])
     para.laneMask = 0x1;
     para.detName = "bld";               // Revisit: Should come from alias?
     para.detSegment = 0;
+    para.verbose = 0;
+    char *instrument = NULL;
     int c;
-    while((c = getopt(argc, argv, "p:o:C:d:u:")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:C:d:u:P:T::v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -491,10 +495,47 @@ int main(int argc, char* argv[])
             case 'u':
                 para.alias = optarg;
                 break;
+            case 'P':
+                instrument = optarg;
+                break;
+            case 'T':
+                para.trgDetName = optarg ? optarg : "trigger";
+                break;
+            case 'v':
+                ++para.verbose;
+                break;
             default:
                 exit(1);
         }
     }
+
+    switch (para.verbose) {
+      case 0:  logging::init(instrument, LOG_WARNING);  break;
+      case 1:  logging::init(instrument, LOG_INFO);     break;
+      default: logging::init(instrument, LOG_DEBUG);    break;
+    }
+    logging::info("logging configured");
+    if (!instrument) {
+        logging::warning("-P: instrument name is missing");
+    }
+    // Check required parameters
+    if (para.device.empty()) {
+        logging::critical("-d: device is mandatory");
+        exit(1);
+    }
+    if (para.alias.empty()) {
+        logging::critical("-u: alias is mandatory");
+        exit(1);
+    }
+
+    // Alias must be of form <detName>_<detSegment>
+    size_t found = para.alias.rfind('_');
+    if ((found == std::string::npos) || !isdigit(para.alias.back())) {
+        logging::critical("-u: alias must have _N suffix");
+        exit(1);
+    }
+    para.detName = para.alias.substr(0, found);
+    para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
     Py_Initialize(); // for use by configuration
     Drp::BldApp app(para);

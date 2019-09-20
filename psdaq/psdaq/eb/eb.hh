@@ -76,15 +76,16 @@ namespace Pds {
       string_t  alias;             // Unique name passed on cmd line
       unsigned  id;                // EB instance identifier
       uint64_t  contributors;      // ID bit list of contributors
+      u64arr_t  contractors;       // Ctrbs providing Inputs  per readout group
+      u64arr_t  receivers;         // Ctrbs expecting Results per readout group
       vecstr_t  addrs;             // Contributor addresses
       vecstr_t  ports;             // Contributor ports
       vecsize_t maxTrSize;         // Max non-event Dgram size for each Ctrb
       size_t    maxResultSize;     // Max result Dgram size
       unsigned  numMrqs;           // Number of Mon request servers
+      string_t  trgDetName;        // Trigger 'detName' for ConfigDb
       int       core[2];           // Cores to pin threads to
       unsigned  verbose;           // Level of detail to print
-      u64arr_t  contractors;       // Ctrbs providing Inputs  per readout group
-      u64arr_t  receivers;         // Ctrbs expecting Results per readout group
     };
 
     // Sanity checks

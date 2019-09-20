@@ -35,6 +35,8 @@ struct Parameters
     std::string collectionHost;
     std::map<std::string,std::string> kwargs;
     uint16_t rogMask;
+    std::string trgDetName;
+    unsigned verbose;
 };
 
 class Pebble
