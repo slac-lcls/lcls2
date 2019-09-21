@@ -1,6 +1,8 @@
 #ifndef __CONSTFRACDISCRIM_H__
 #define __CONSTFRACDISCRIM_H__
 
+#include <cstddef>
+#include <cstdint>
 #include <vector>
 
 namespace psalgos {
