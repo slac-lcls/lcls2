@@ -2,8 +2,10 @@
 #include "TimingHeader.hh"
 #include "DataDriver.h"
 #include "DrpBase.hh"
+#include "psdaq/service/SysLog.hh"
 
 using json = nlohmann::json;
+using logging = Pds::SysLog;
 
 namespace Drp {
 
@@ -36,17 +38,17 @@ MemPool::MemPool(const Parameters& para)
 {
     m_fd = open(para.device.c_str(), O_RDWR);
     if (m_fd < 0) {
-        std::cout<<"Error opening "<<para.device<<'\n';
+        logging::critical("Error opening %s", para.device.c_str());
         throw "Error opening kcu1500!!\n";
     }
 
     uint32_t dmaCount;
     dmaBuffers = dmaMapDma(m_fd, &dmaCount, &m_dmaSize);
     if (dmaBuffers == NULL ) {
-        std::cout<<"Failed to map dma buffers!\n";
+        logging::critical("Failed to map dma buffers!");
         throw "Error calling dmaMapDma!!\n";
     }
-    printf("dmaCount %u  dmaSize %u\n", dmaCount, m_dmaSize);
+    logging::info("dmaCount %u  dmaSize %u", dmaCount, m_dmaSize);
 
     // make sure there are more buffers in the pebble than in the pgp driver
     // otherwise the pebble buffers will be overwritten by the pgp event builder
@@ -56,7 +58,7 @@ MemPool::MemPool(const Parameters& para)
     // to the dmaSize times the number of lanes
     m_bufferSize = __builtin_popcount(para.laneMask) * m_dmaSize;
     pebble.resize(m_nbuffers, m_bufferSize);
-    printf("nbuffer %u  pebble buffer size %u\n", m_nbuffers, m_bufferSize);
+    logging::info("nbuffer %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
 
     pgpEvents.resize(m_nbuffers);
 }
@@ -80,6 +82,7 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
         // filesystems can hang in ways we can't timeout/detect
         // and this print statement may speed up debugging significantly.
         std::cout << "Opening file " << fileName << std::endl;
+        logging::info("Opening file '%s'", fileName.c_str());
         m_fileWriter.open(fileName);
         m_smdWriter.open({para.outputDir + "/data-" + std::to_string(tPrms.id) + ".smd.xtc2"});
         m_writing = true;
@@ -111,28 +114,26 @@ void EbReceiver::process(const XtcData::Dgram* result, const void* appPrm)
         if (transitionId != XtcData::TransitionId::SlowUpdate) {
             m_inprocSend.send(std::to_string(timingHeader->seq.pulseId().value()));
         }
-        printf("EbReceiver saw %s transition @ %014lx\n", XtcData::TransitionId::name(transitionId), timingHeader->seq.pulseId().value());
+        logging::info("EbReceiver saw %s transition @ %014lx\n", XtcData::TransitionId::name(transitionId), timingHeader->seq.pulseId().value());
     }
 
     if (index != ((lastIndex + 1) & (m_pool.nbuffers() - 1))) {
-        printf("\033[0;31m");
-        printf("jumping index %u  previous index %u  diff %d\n", index, lastIndex, index - lastIndex);
-        printf("evtCounter %u\n", timingHeader->evtCounter);
-        printf("pid = %014lx, env = %08x\n", timingHeader->seq.pulseId().value(), timingHeader->env);
-        printf("tid %s\n", XtcData::TransitionId::name(transitionId));
-        printf("lastevtCounter %u\n", lastEvtCounter);
-        printf("lastPid %014lx lastTid %s\n", lastPid, XtcData::TransitionId::name(lastTid));
-        printf("\033[0m");
+        logging::critical("jumping index %u  previous index %u  diff %d", index, lastIndex, index - lastIndex);
+        logging::critical("evtCounter %u", timingHeader->evtCounter);
+        logging::critical("pid = %014lx, env = %08x", timingHeader->seq.pulseId().value(), timingHeader->env);
+        logging::critical("tid %s", XtcData::TransitionId::name(transitionId));
+        logging::critical("lastevtCounter %u", lastEvtCounter);
+        logging::critical("lastPid %014lx lastTid %s", lastPid, XtcData::TransitionId::name(lastTid));
     }
 
     if (timingHeader->seq.pulseId().value() != result->seq.pulseId().value()) {
-        std::cout<<"crap timestamps dont match\n";
-        printf("index %u  previous index %u\n", index, lastIndex);
-        std::cout<<"pebble pulseId  "<<timingHeader->seq.pulseId().value()<<
-                 "  result dgram pulseId  "<<result->seq.pulseId().value()<<'\n';
+        logging::critical("timestamps don't match");
+        logging::critical("index %u  previous index %u", index, lastIndex);
+        logging::critical("pebble pulseId %014lx  result dgram pulseId %014lx",
+                          timingHeader->seq.pulseId().value(), result->seq.pulseId().value());
         uint64_t tPid = timingHeader->seq.pulseId().value();
         uint64_t rPid = result->seq.pulseId().value();
-        printf("pebble PID %014lx, result PID %014lx, xor %014lx, diff %ld\n", tPid, rPid, tPid ^ rPid, tPid - rPid);
+        logging::critical("pebble PID %014lx, result PID %014lx, xor %014lx, diff %ld", tPid, rPid, tPid ^ rPid, tPid - rPid);
         exit(-1);
     }
 
@@ -228,8 +229,8 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
         m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
     }
     catch(const std::runtime_error& e) {
-        std::cout<<"Could not start monitoring server!!\n";
-        std::cout<<e.what()<<std::endl;
+        logging::error("Could not start monitoring server!!");
+        logging::error("%s", e.what());
     }
 
     m_inprocSend.connect("inproc://drp");
@@ -289,7 +290,7 @@ std::string DrpBase::disconnect(const json& msg)
 void DrpBase::parseConnectionParams(const json& body, size_t id)
 {
     std::string stringId = std::to_string(id);
-    std::cout<<"id  "<<stringId<<std::endl;
+    logging::info("id %zu", id);
     m_tPrms.id = body["drp"][stringId]["drp_id"];
     m_nodeId = body["drp"][stringId]["drp_id"];
     const unsigned numPorts    = Pds::Eb::MAX_DRPS + Pds::Eb::MAX_TEBS + Pds::Eb::MAX_MEBS + Pds::Eb::MAX_MEBS;
@@ -307,7 +308,7 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     for (auto it : body["teb"].items()) {
         unsigned tebId = it.value()["teb_id"];
         std::string address = it.value()["connect_info"]["nic_ip"];
-        std::cout << "TEB: " << tebId << "  " << address << '\n';
+        logging::info("TEB: %u  %s", tebId, address.c_str());
         builders |= 1ul << tebId;
         m_tPrms.addrs.push_back(address);
         m_tPrms.ports.push_back(std::string(std::to_string(tebPortBase + tebId)));
@@ -329,13 +330,13 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
         for (auto it : body["meb"].items()) {
             unsigned mebId = it.value()["meb_id"];
             std::string address = it.value()["connect_info"]["nic_ip"];
-            std::cout << "MEB: " << mebId << "  " << address << '\n';
+            logging::info("MEB: %u  %s", mebId, address.c_str());
             m_mPrms.addrs.push_back(address);
             m_mPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
             unsigned count = it.value()["connect_info"]["buf_count"];
             if (!m_mPrms.maxEvents)  m_mPrms.maxEvents = count;
             if (count != m_mPrms.maxEvents) {
-                printf("Error: maxEvents must be the same for all MEBs\n");
+                logging::error("Error: maxEvents must be the same for all MEBs");
             }
         }
     }
