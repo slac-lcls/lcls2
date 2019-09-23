@@ -1,4 +1,4 @@
-from psana.psexp.event_manager import EventManager
+from psana.psexp.event_manager import EventManager, TransitionId
 
 class Step(object):
     
@@ -20,12 +20,12 @@ class Step(object):
             for batch_dict in self.eb_man.batches(limit_ts=self.limit_ts):
                 batch, _ = batch_dict[0]
                 for evt in ev_man.events(batch):
-                    if evt._dgrams[0].seq.service() != 12: continue
+                    if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
                     yield evt
 
         else:
             for evt in ev_man.events(self.smd_batch):
-                if evt._dgrams[0].seq.service() != 12: continue
+                if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
                 yield evt 
 
 

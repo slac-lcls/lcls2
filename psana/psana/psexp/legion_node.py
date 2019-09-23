@@ -15,7 +15,7 @@ else:
 
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
-from psana.psexp.event_manager import EventManager
+from psana.psexp.event_manager import EventManager, TransitionId
 
 @task(inner=True)
 def run_smd0_task(run):
@@ -38,7 +38,7 @@ def run_smd_task(view, run):
 def run_bigdata_task(batch, run):
     evt_man = EventManager(run.configs, run.dm, run.filter_callback)
     for evt in evt_man.events(batch):
-        if evt._dgrams[0].seq.service() != 12: continue
+        if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
         run.event_fn(evt, run.det)
 
 run_to_process = []

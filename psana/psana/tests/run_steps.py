@@ -91,6 +91,9 @@ if __name__ == "__main__":
             setup_input_files(p, n_files=2, slow_update_freq=4, n_motor_steps=3, n_events_per_step=10, gen_run2=False)
     
     comm.Barrier()
+    result = run_serial_read(51)
+    print(result)
+    """
     # Expected result: 
     # each_read n_events, smd_chunk_nbytes, step_chunk_nbytes
     # total_n_events
@@ -135,4 +138,4 @@ if __name__ == "__main__":
         result = run_serial_read(19)
         if rank == 2: # assuming mpirun -n 3 test
             assert result == expected_result
-        
+   """ 

@@ -14,6 +14,7 @@ from psana.psexp.event_manager import EventManager
 from psana.psexp.stepstore_manager import StepStoreManager
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.step import Step
+from psana.psexp.event_manager import TransitionId
 
 from psana.psexp.tools import mode
 
@@ -198,7 +199,7 @@ class RunShmem(Run):
 
     def events(self):
         for evt in self.dm:
-            if evt._dgrams[0].seq.service() != 12: continue
+            if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
             yield evt
 
 class RunSingleFile(Run):
@@ -217,7 +218,7 @@ class RunSingleFile(Run):
 
     def events(self):
         for evt in self.dm:
-            if evt._dgrams[0].seq.service() != 12: continue
+            if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
             yield evt
 
 
@@ -254,7 +255,7 @@ class RunSerial(Run):
             for batch_dict in eb_man.batches():
                 batch, _ = batch_dict[0] # there's only 1 dest_rank for serial run
                 for evt in ev_man.events(batch):
-                    if evt._dgrams[0].seq.service() != 12: continue
+                    if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
                     yield evt
     
     def steps(self):
@@ -330,7 +331,7 @@ class RunParallel(Run):
     
     def events(self):
         for evt in run_node(self):
-            if evt._dgrams[0].seq.service() != 12: continue
+            if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
             yield evt
 
     def steps(self):
