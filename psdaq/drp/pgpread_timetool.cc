@@ -79,6 +79,66 @@ int toggle_acquisition(int x)
 
 }
 
+int tt_config(int x)
+{
+    printf("starting prescaler config testing  \n");
+
+    PyObject *pName, *pModule, *pFunc;
+    PyObject *pArgs, *pValue;
+
+    Py_Initialize();
+    PyObject* sysPath = PySys_GetObject((char*)"path");
+
+    pName = PyUnicode_DecodeFSDefault("tt_config");
+
+
+    pModule = PyImport_Import(pName);
+
+    check(pModule);
+
+    if (!pModule){
+    printf("can't find module \n");
+    return 0;
+    }
+
+    pFunc = PyObject_GetAttrString(pModule, "tt_config");
+    check(pFunc);
+
+    /*PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssi",
+                                              m_connect_json.c_str(),
+                                              m_epics_name.c_str(),
+                                              "BEAM", 
+                                              m_para->detName.c_str(),
+                                              m_readoutGroup);*/
+
+    /*PyObject* mybytes = PyObject_CallFunction(pFunc,
+                                              m_connect_json.c_str(),
+                                              m_epics_name.c_str(),
+                                              "BEAM", 
+                                              m_para->detName.c_str(),
+                                              m_readoutGroup);*/
+
+    char* m_connect_json_str = "{'body': {'control': {'0': {'control_info': {'instrument': 'TMO', 'cfg_dbase': 'mcbrowne:psana@psdb-dev:9306/configDB'}}}}}" ; 
+
+    PyObject* mybytes = PyObject_CallFunction(pFunc,m_connect_json_str,"BEAM", "tmotimetool",0);
+
+    Py_XDECREF(pFunc);
+
+
+     if (PyErr_Occurred()){
+                PyErr_Print();
+        }
+
+    //Py_XDECREF(pArgs);
+    //Py_XDECREF(pModule);
+    //Py_XDECREF(sysPath);
+    //Py_XDECREF(pValue);
+    //Py_XDECREF(pName);
+
+    printf("ending prescaler config testing \n ");
+
+}
+
 
 int main(int argc, char* argv[])
 {
@@ -100,7 +160,8 @@ int main(int argc, char* argv[])
                 channel = atoi(optarg);
                 break;
             case 't':
-                   toggle_acquisition(0); 
+                   tt_config(0);
+                   //toggle_acquisition(0);  
         }
     }
 
