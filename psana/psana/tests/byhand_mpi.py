@@ -28,6 +28,6 @@ class Test:
         #run_smalldata = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_smalldata.py')
         #subprocess.check_call(['mpirun','-n','6','python',run_smalldata], env=env)
         
-        run_steps = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_steps.py')
-        subprocess.check_call(['mpirun','-n','3','python',run_steps], env=env)
+        #run_steps = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_steps.py')
+        #subprocess.check_call(['mpirun','-n','3','python',run_steps], env=env)
 
