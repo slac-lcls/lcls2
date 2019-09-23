@@ -81,28 +81,26 @@ int toggle_acquisition(int x)
 
 int tt_config(int x)
 {
-    printf("starting prescaler config testing  \n");
-
-    PyObject *pName, *pModule, *pFunc;
-    PyObject *pArgs, *pValue;
-
+    printf("Initializing python \n");    
     Py_Initialize();
-    PyObject* sysPath = PySys_GetObject((char*)"path");
-
-    pName = PyUnicode_DecodeFSDefault("tt_config");
-
-
-    pModule = PyImport_Import(pName);
-
+    // returns new reference
+    printf("importing module \n");
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.tt_config");
+    
+    printf("checking module \n");
     check(pModule);
-
-    if (!pModule){
-    printf("can't find module \n");
-    return 0;
-    }
-
-    pFunc = PyObject_GetAttrString(pModule, "tt_config");
+    
+    // returns borrowed reference
+    printf("getting dict \n");
+    PyObject* pDict = PyModule_GetDict(pModule);
+    printf("checking dict \n");
+    // returns borrowed reference
+    printf("loading function \n");
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"tt_config");
+    check(pDict);
+    printf("checking function \n");
     check(pFunc);
+
 
     /*PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssi",
                                               m_connect_json.c_str(),
@@ -118,9 +116,10 @@ int tt_config(int x)
                                               m_para->detName.c_str(),
                                               m_readoutGroup);*/
 
-    char* m_connect_json_str = "{'body': {'control': {'0': {'control_info': {'instrument': 'TMO', 'cfg_dbase': 'mcbrowne:psana@psdb-dev:9306/configDB'}}}}}" ; 
+    //char* m_connect_json_str = "{'body': {'control': {'0': {'control_info': {'instrument': 'TMO', 'cfg_dbase': 'mcbrowne:psana@psdb-dev:9306/configDB'}}}}}" ; 
+    char* m_connect_json_str = "\{\"body\": \{\"control\": \{\"0\": \{\"control_info\": \{\"instrument\": \"TMO\", \"cfg_dbase\": \"mcbrowne:psana@psdb-dev:9306/configDB\"\}\}\}\}\}" ;
 
-    PyObject* mybytes = PyObject_CallFunction(pFunc,m_connect_json_str,"BEAM", "tmotimetool",0);
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssi",m_connect_json_str,"BEAM", "tmotimetool",0);
 
     Py_XDECREF(pFunc);
 
@@ -160,12 +159,14 @@ int main(int argc, char* argv[])
                 channel = atoi(optarg);
                 break;
             case 't':
+                   printf("entering tt config \n");
                    tt_config(0);
                    //toggle_acquisition(0);  
         }
     }
 
-
+    printf("finished with tt config \n");
+    usleep(1e6);
 
     terminate.store(false, std::memory_order_release);
     signal(SIGINT, int_handler);
