@@ -15,6 +15,7 @@
 #include <time.h>
 #include <Python.h>
 #include <fstream>
+#include <vector>
 
 #define MAX_RET_CNT_C 1000
 //static int fd;
@@ -22,25 +23,23 @@ std::atomic<bool> terminate;
 
 class eventBuilderParser {
     public:
-        int frame_size;        //in bytes
-        uint8_t *raw_data;     //pointer to the raw data
+        std::vector<uint8_t> raw_data;     //pointer to the raw data
         int *main_header;   
         int version;    
         
               
         
         int get_frame_size(){
-            return frame_size;
+            return raw_data.size();
         }
 
-        int load_frame(void *memblock,int size){
-            raw_data   = reinterpret_cast<uint8_t *>(memblock);  
-            frame_size = size;
+        int load_frame(std::vector<uint8_t> &incoming_data){
+            raw_data   = incoming_data;
             return 0;        
         }
 
         int parseArray(){
-            version         = raw_data[0] & 15;
+            version          = raw_data[0] & 15;
             *main_header     = raw_data[0];
 
             return 0;
@@ -49,7 +48,7 @@ class eventBuilderParser {
         }
 
         int print_frame(){
-            for (int i=0;i<frame_size;i=i+1){
+            for (int i=0;i<raw_data.size();i=i+1){
                 printf("%x ",raw_data[i]);
             }
             printf("\n");
@@ -60,16 +59,12 @@ class eventBuilderParser {
 
 };
 
+int load_file(char *filname, std::vector<uint8_t> &raw_data, int* data_size){
 
-
-int main(int argc, char* argv[])
-{
     printf("Starting main \n");
 
     std::streampos size;
     char * memblock;
-    uint8_t *raw_data;
-    eventBuilderParser my_frame;
    
     std::ifstream file ("/home/sioan/Desktop/timeToolParser/raw_data/p2",std::ios::in|std::ios::binary|std::ios::ate);
     
@@ -83,26 +78,45 @@ int main(int argc, char* argv[])
         file.close();
 
         std::cout << "the entire file content is in memory \n" ;
+        *data_size = size;
         
-        raw_data = reinterpret_cast<uint8_t *>(memblock);
 
-        /*for (int i=0;i<size;i=i+1){
-            printf("%x ",raw_data[i]);
+        
+        
+
+        for(int i=0;i<size;i=i+1){
+        
+        //raw_data[i] = uint8_t(memblock[i]);
+            raw_data.push_back(uint8_t(memblock[i]));    
         }
-        printf("\n");
-        printf("size = %i \n",size);*/
-        
-        my_frame.load_frame(memblock,size);
-        
+        //raw_data = reinterpret_cast<uint8_t *> (memblock);
 
+        
         delete[] memblock;
         //delete[] raw_data;
       }
       else std::cout << "Unable to open file \n";
 
+
+    return 0;
+
+}
+
+
+int main(int argc, char* argv[])
+{
+
+      eventBuilderParser my_frame;
+
+      std::vector<uint8_t> raw_data;
+      int size;      
+
+      load_file("test",raw_data,&size);
+
+
+      my_frame.load_frame(raw_data);
     
       my_frame.print_frame();
-      printf("byte state = %d \n",my_frame.get_frame_size());
     
 
       return 0;
