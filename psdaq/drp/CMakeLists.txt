@@ -101,6 +101,18 @@ target_link_libraries(pgpread_timetool
     ${PYTHON_LIBRARIES}
 )
 
+add_executable(AxiBatcherParserTest
+    AxiBatcherParserTest.cc
+)
+target_include_directories(AxiBatcherParserTest PUBLIC
+    ../psdaq/pgp/aes-stream-drivers/include
+    ${PYTHON_INCLUDE_DIRS}
+)
+target_link_libraries(AxiBatcherParserTest
+    xtcdata::xtc
+    ${PYTHON_LIBRARIES}
+)
+
 add_executable(drp_validate
     validate.cc
 )
