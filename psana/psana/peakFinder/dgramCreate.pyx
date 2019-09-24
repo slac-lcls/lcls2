@@ -206,6 +206,7 @@ cdef class PyBlockDgram:
 
     def __dealloc__(self):
         del self.cptr
+        free(self.buffer)
 
 cdef class PyAlgVer:
     cdef AlgVersion* cptr
