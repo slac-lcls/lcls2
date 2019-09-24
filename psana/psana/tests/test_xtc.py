@@ -69,6 +69,7 @@ class Test:
         run_steps = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_steps.py')
         subprocess.check_call(['python',run_steps], env=env)
 
+    @pytest.mark.legion
     @pytest.mark.skipif(sys.platform == 'darwin', reason="psana with legion not supported on mac")
     def test_legion(self, tmp_path):
         setup_input_files(tmp_path)
@@ -96,6 +97,7 @@ class Test:
         import run_pickle
         run_pickle.test_run_pickle(tmp_path)
 
+    @pytest.mark.legion
     @pytest.mark.skipif(sys.platform == 'darwin', reason="psana with legion not supported on mac")
     def test_legion_pickle(self, tmp_path):
         # Again, in Legion
