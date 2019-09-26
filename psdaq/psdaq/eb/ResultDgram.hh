@@ -44,9 +44,12 @@ namespace Pds {
         xtc.alloc(sizeof(ResultDgram) - sizeof(XtcData::Dgram));
       }
     public:
-      void     persist (unsigned line, bool value) { if (value)  _data |= s_persist  << (4 * line); }
-      void     monitor (unsigned line, bool value) { if (value)  _data |= s_monitor  << (4 * line); }
-      void     prescale(unsigned line, bool value) { if (value)  _data |= s_prescale << (4 * line); }
+      void     persist (unsigned line, bool value) { if (value) _data |=   s_persist  << (4 * line);
+                                                     else       _data &= ~(s_persist  << (4 * line)); }
+      void     monitor (unsigned line, bool value) { if (value) _data |=   s_monitor  << (4 * line);
+                                                     else       _data &= ~(s_monitor  << (4 * line)); }
+      void     prescale(unsigned line, bool value) { if (value) _data |=   s_prescale << (4 * line);
+                                                     else       _data &= ~(s_prescale << (4 * line)); }
       bool     persist (unsigned line) const { return (_data >> (4 * line)) & s_persist;  }
       bool     monitor (unsigned line) const { return (_data >> (4 * line)) & s_monitor;  }
       bool     prescale(unsigned line) const { return (_data >> (4 * line)) & s_prescale; }

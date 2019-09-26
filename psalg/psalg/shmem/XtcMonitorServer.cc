@@ -139,13 +139,18 @@ XtcMonitorServer::XtcMonitorServer(const char* tag,
 
 XtcMonitorServer::~XtcMonitorServer()
 {
-  pthread_kill(_discThread, SIGTERM);
-  pthread_kill(_taskThread, SIGTERM);
+  _terminate.store(true, std::memory_order_release);
+  if (_discThread.joinable())  _discThread.join();
+  if (_taskThread.joinable())  _taskThread.join();
+
   printf("Not Unlinking Shared Memory... \n");
 
   unlink();
+  apps = 0;
 
-  delete _transitionCache;
+  delete    _transitionCache;
+  delete [] _myOutputEvQueue;
+  delete [] _pfd;
 }
 
 void XtcMonitorServer::distribute(bool l)
@@ -280,6 +285,12 @@ void XtcMonitorServer::discover()
     exit(1);
   }
 
+  pollfd pfd;
+  int    nfd = 1;
+  pfd.fd      = fd;
+  pfd.events  = POLLIN;
+  pfd.revents = 0;
+
   //  assign an ephemeral port
   unsigned port = 32768;
   sockaddr_in saddr;
@@ -298,7 +309,7 @@ void XtcMonitorServer::discover()
 #endif
     port++;
   }
-  printf("Awaiting XtcMonitor clients on port %d\n",port);
+  printf("Awaiting XtcMonitor clients on port %d (%d)\n",port,fd);
 
   const char* p = _tag;
   char* fromQname  = new char[128];
@@ -314,7 +325,7 @@ void XtcMonitorServer::discover()
   if (::listen(fd,10)<0)
     printf("ConnectionManager listen failed\n");
   else {
-    while(1) {
+    while(!_terminate.load(std::memory_order_relaxed)) {
       timespec tv; tv.tv_sec=tv.tv_nsec=0;
       XtcMonitorMsg m(port);
       if (mq_timedsend(_discoveryQueue,(const char*)&m,sizeof(m),0,&_tmo)<0) {
@@ -322,31 +333,46 @@ void XtcMonitorServer::discover()
         abort();
       }
 
-      sockaddr_in client;
-      socklen_t   len = sizeof(sockaddr_in);
-      int s = ::accept(fd,(sockaddr*)&client,&len);
-      if (s<0) {
-        perror("XtcMonitorServer discovery accept failed");
-        abort();
-      }
+      // Wait for a connection
+      while(!_terminate.load(std::memory_order_relaxed)) {
+        int rc;
+        int tmo = 1000;
+        if ((rc = ::poll(&pfd,nfd,tmo)) > 0) {
+          if (pfd.revents & POLLIN) {
+            sockaddr_in client;
+            socklen_t   len = sizeof(sockaddr_in);
+            int s = ::accept(fd,(sockaddr*)&client,&len);
+            if (s<0) {
+              perror("XtcMonitorServer discovery accept failed");
+              abort();
+            }
 
 #ifdef DBUG
-      printf("Accepted connection from %x.%d on socket %d\n",
-             ntohl(client.sin_addr.s_addr),ntohs(client.sin_port),s);
-      printf("Writing to %d\n",_initFd);
+            printf("Accepted connection from %x.%d on socket %d\n",
+                   ntohl(client.sin_addr.s_addr),ntohs(client.sin_port),s);
+            printf("Writing to %d\n",_initFd);
 #endif
 
-      //  Post connection request to taskThread
-      ::write(_initFd,&s,sizeof(s));
+            //  Post connection request to taskThread
+            ::write(_initFd,&s,sizeof(s));
+
+            // Advertise the discovery port again
+            break;
+          }
+        }
+      }
     }
   }
+  ::close(fd);
+  ::close(_initFd);
 }
 
 void XtcMonitorServer::routine()
 {
-  while(1) {
+  while(!_terminate.load(std::memory_order_relaxed)) {
 
-    if (::poll(_pfd,_nfd,-1) > 0) {
+    int tmo = 1000;                     // ms
+    if ((::poll(_pfd,_nfd,tmo)) > 0) {
 
       if (_pfd[0].revents & POLLIN)
         _initialize_client();
@@ -465,6 +491,12 @@ void XtcMonitorServer::routine()
       }
     }
   }
+
+  for(auto i = 3; i < _nfd; ++i) {
+    ::shutdown(_pfd[i].fd, SHUT_RDWR); // Induce the client to exit
+    ::close(_pfd[i].fd);
+  }
+  ::close(_pfd[0].fd);
 }
 
 void XtcMonitorServer::_clearDest(mqd_t queue)
@@ -487,20 +519,6 @@ void XtcMonitorServer::_clearDest(mqd_t queue)
   }
 }
 
-
-static void* DiscRoutine(void* task)
-{
-  XtcMonitorServer* srv = (XtcMonitorServer*)task;
-  srv->discover();
-  return srv;
-}
-
-static void* TaskRoutine(void* task)
-{
-  XtcMonitorServer* srv = (XtcMonitorServer*)task;
-  srv->routine();
-  return srv;
-}
 
 int XtcMonitorServer::_init()
 {
@@ -591,8 +609,9 @@ int XtcMonitorServer::_init()
   _pfd[2].revents = 0;
 
   // create the listening threads
-  pthread_create(&_taskThread,NULL,TaskRoutine,this);
-  pthread_create(&_discThread,NULL,DiscRoutine,this);
+  _terminate.store(false, std::memory_order_release);
+  _taskThread = std::thread(&XtcMonitorServer::routine,  std::ref(*this));
+  _discThread = std::thread(&XtcMonitorServer::discover, std::ref(*this));
 
   delete[] shmName;
   delete[] toQname;
@@ -765,6 +784,8 @@ void XtcMonitorServer::_moveQueue(mqd_t iq, mqd_t oq)
 
 void XtcMonitorServer::unlink()
 {
+  _terminate.store(true, std::memory_order_release);
+
   //printf("Unlinking Message Queues... \n");
   mq_close(_myInputEvQueue);
 

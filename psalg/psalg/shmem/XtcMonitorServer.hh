@@ -47,7 +47,8 @@
 
 #include "xtcdata/xtc/TransitionId.hh"
 
-#include <pthread.h>
+#include <thread>
+#include <atomic>
 #include <mqueue.h>
 #include <queue>
 #include <stack>
@@ -96,33 +97,34 @@ namespace psalg {
       virtual void _deleteDatagram(XtcData::Dgram* dg);
       virtual void _requestDatagram();
     private:
-      const char*     _tag;               // name of the complete shared memory segment
-      unsigned        _sizeOfBuffers;     // size of each shared memory datagram buffer
-      unsigned        _numberOfEvBuffers; // number of shared memory buffers for events
-      unsigned        _numberOfEvQueues;  // number of message queues for events
-      char*           _myShm;             // the pointer to start of shared memory
-      XtcMonitorMsg   _myMsg;             // template for messages
-      mqd_t           _discoveryQueue;    // message queue for clients to get
-      // the TCP port for initiating connections
-      mqd_t           _myInputEvQueue;    // message queue for returned events
-      mqd_t*          _myOutputEvQueue;   // message queues[nclients] for distributing events
-      std::vector<int> _myTrFd;           // TCP sockets to clients for distributing
-      // transitions and detecting disconnects.
-      std::vector<int> _msgDest;          // last client to which the buffer was sent
-      TransitionCache* _transitionCache;
-      int             _initFd;
-      pollfd*         _pfd;               /* poll descriptors for:
-                                          **   0  new client connections
-                                          **   1  buffer returned from client
-                                          **   2  events to be distributed
-                                          **   3+ transition send/receive  */
-      int             _nfd;
-      mqd_t           _shuffleQueue;      // message queue for pre-distribution event processing
-      mqd_t           _requestQueue;      // message queue for buffers awaiting request completion
-      timespec        _tmo;
-      pthread_t       _discThread;        // thread for receiving new client connections
-      pthread_t       _taskThread;        // thread for datagram distribution
-      unsigned        _ievt;              // event vector
+      const char*       _tag;               // name of the complete shared memory segment
+      unsigned          _sizeOfBuffers;     // size of each shared memory datagram buffer
+      unsigned          _numberOfEvBuffers; // number of shared memory buffers for events
+      unsigned          _numberOfEvQueues;  // number of message queues for events
+      char*             _myShm;             // the pointer to start of shared memory
+      XtcMonitorMsg     _myMsg;             // template for messages
+      mqd_t             _discoveryQueue;    // message queue for clients to get
+                                            // the TCP port for initiating connections
+      mqd_t             _myInputEvQueue;    // message queue for returned events
+      mqd_t*            _myOutputEvQueue;   // message queues[nclients] for distributing events
+      std::vector<int>  _myTrFd;            // TCP sockets to clients for distributing
+                                            // transitions and detecting disconnects.
+      std::vector<int>  _msgDest;           // last client to which the buffer was sent
+      TransitionCache*  _transitionCache;
+      int               _initFd;
+      pollfd*           _pfd;               /* poll descriptors for:
+                                            **   0  new client connections
+                                            **   1  buffer returned from client
+                                            **   2  events to be distributed
+                                            **   3+ transition send/receive  */
+      int               _nfd;
+      mqd_t             _shuffleQueue;      // message queue for pre-distribution event processing
+      mqd_t             _requestQueue;      // message queue for buffers awaiting request completion
+      timespec          _tmo;
+      std::atomic<bool> _terminate;         // Flag for causing subthreads to exit
+      std::thread       _discThread;        // thread for receiving new client connections
+      std::thread       _taskThread;        // thread for datagram distribution
+      unsigned          _ievt;              // event vector
     };
   };
 };

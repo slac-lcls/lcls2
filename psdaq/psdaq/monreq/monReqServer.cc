@@ -369,17 +369,16 @@ public:                                 // For CollectionApp
   void         handlePhase1(const json& msg) override;
   void         handleReset(const json& msg) override;
 private:
-  std::string _handleConnect(const json& msg);
+  std::string _connect(const json& msg);
   int         _parseConnectionParams(const json& msg);
 private:
   const char*                         _tag;
   unsigned                            _numEvQueues;
   bool                                _distribute;
-  std::unique_ptr<Meb>                _meb;
+  MebParams&                          _prms;
+  Meb                                 _meb;
   std::unique_ptr<MyXtcMonitorServer> _apps;
   std::thread                         _appThread;
-  MebParams&                          _prms;
-  std::shared_ptr<MetricExporter>&    _exporter;
 };
 
 MebApp::MebApp(const std::string&               collSrv,
@@ -393,7 +392,7 @@ MebApp::MebApp(const std::string&               collSrv,
   _numEvQueues (numEvQueues),
   _distribute  (distribute),
   _prms        (prms),
-  _exporter    (exporter)
+  _meb         (prms, exporter)
 {
 }
 
@@ -407,13 +406,12 @@ json MebApp::connectionInfo()
   return body;
 }
 
-std::string MebApp::_handleConnect(const json &msg)
+std::string MebApp::_connect(const json &msg)
 {
   int rc = _parseConnectionParams(msg["body"]);
   if (rc)  return std::string("Error parsing parameters");
 
-  _meb = std::make_unique<Meb>(_prms, _exporter);
-  rc = _meb->connect(_prms);
+  rc = _meb.connect(_prms);
   if (rc)  return std::string("Failed MEB connect()");
 
   _apps = std::make_unique<MyXtcMonitorServer>(_tag, _numEvQueues, _prms);
@@ -424,14 +422,14 @@ std::string MebApp::_handleConnect(const json &msg)
 
   lRunning = 1;
 
-  _appThread = std::thread(&Meb::run, std::ref(*_meb), std::ref(*_apps));
+  _appThread = std::thread(&Meb::run, std::ref(_meb), std::ref(*_apps));
 
   return std::string{};
 }
 
 void MebApp::handleConnect(const json &msg)
 {
-  std::string errMsg = _handleConnect(msg);
+  std::string errMsg = _connect(msg);
 
   // Reply to collection with connect status
   json body = json({});
@@ -441,9 +439,22 @@ void MebApp::handleConnect(const json &msg)
 
 void MebApp::handlePhase1(const json& msg)
 {
+  json        body = json({});
+  std::string key  = msg["header"]["key"];
+
+  if (key == "configure")
+  {
+    int rc = _meb.configure(_prms);
+    if (rc)
+    {
+      std::string errorMsg = "Phase 1 error: ";
+      errorMsg += "Failed to configure MEB";
+      body["err_info"] = errorMsg;
+      fprintf(stderr, "%s:\n  %s\n", __PRETTY_FUNCTION__, errorMsg.c_str());
+    }
+  }
+
   // Reply to collection with transition status
-  json body = json({});
-  std::string key = msg["header"]["key"];
   reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
 }
 
@@ -452,6 +463,7 @@ void MebApp::handleDisconnect(const json &msg)
   lRunning = 0;
 
   if (_appThread.joinable())  _appThread.join();
+  _apps.reset();
 
   // Reply to collection with connect status
   json body   = json({});
@@ -460,7 +472,10 @@ void MebApp::handleDisconnect(const json &msg)
 
 void MebApp::handleReset(const json &msg)
 {
+  lRunning = 0;
+
   if (_appThread.joinable())  _appThread.join();
+  _apps.reset();
 }
 
 static void _printGroups(unsigned groups, const u64arr_t& array)

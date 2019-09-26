@@ -76,6 +76,7 @@ void PGPDetectorApp::handleDisconnect(const json& msg)
 {
     m_drp.disconnect(msg);
     shutdown();
+
     json body = json({});
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
@@ -127,6 +128,8 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
 void PGPDetectorApp::handleReset(const json& msg)
 {
+    m_drp.disconnect(msg);
+    shutdown();
 }
 
 json PGPDetectorApp::connectionInfo()

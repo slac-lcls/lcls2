@@ -245,11 +245,19 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
 void DrpBase::shutdown()
 {
-    m_tebContributor->shutdown();
+    m_exporter.reset();
+
+    if (m_tebContributor) {
+      m_tebContributor->shutdown();
+      m_tebContributor.reset();
+    }
 
     if (m_meb) {
         m_meb->shutdown();
+        m_meb.reset();
     }
+
+    m_ebRecv.reset();
 }
 
 std::string DrpBase::connect(const json& msg, size_t id)
@@ -296,7 +304,7 @@ std::string DrpBase::connect(const json& msg, size_t id)
 
 std::string DrpBase::disconnect(const json& msg)
 {
-    m_tebContributor->stop();
+    if (m_tebContributor)  m_tebContributor->stop();
     return std::string{};
 }
 

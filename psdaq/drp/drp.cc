@@ -4,8 +4,10 @@
 #include <Python.h>
 #include "drp.hh"
 #include "PGPDetectorApp.hh"
+#include "rapidjson/document.h"
 #include "psdaq/service/SysLog.hh"
 using logging = Pds::SysLog;
+using json = nlohmann::json;
 
 void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
     std::istringstream ss(kwargs_str);
@@ -105,7 +107,7 @@ int main(int argc, char* argv[])
     Py_Initialize(); // for use by configuration
     Drp::PGPDetectorApp app(para);
     app.run();
-    app.shutdown();
+    app.handleReset(json({}));
     Py_Finalize(); // for use by configuration
     std::cout<<"end of main drp\n";
 }

@@ -346,11 +346,17 @@ void Teb::process(EbEvent* event)
 
         uint64_t data;
         int      rc = _mrqTransport.poll(&data);
-        rdg.monBufNo((rc < 0) ? 0 : data);
-        if ((rc > 0) && (rc = _mrqLinks[ImmData::src(data)]->postCompRecv()) )
+        if (rc < 0)  rdg.monitor(line, false);
+        else
         {
-          fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
-                  __PRETTY_FUNCTION__, rc);
+          rdg.monBufNo(data);
+
+          rc = _mrqLinks[ImmData::src(data)]->postCompRecv();
+          if (rc)
+          {
+            fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
+                    __PRETTY_FUNCTION__, rc);
+          }
         }
       }
     }
@@ -679,7 +685,7 @@ void TebApp::handlePhase1(const json& msg)
     if (rc)
     {
       std::string errorMsg = "Phase 1 error: ";
-      errorMsg += "Failed to set up Trigger";
+      errorMsg += "Failed to configure TEB";
       body["err_info"] = errorMsg;
       fprintf(stderr, "%s:\n  %s\n", __PRETTY_FUNCTION__, errorMsg.c_str());
     }
@@ -704,6 +710,8 @@ void TebApp::handleDisconnect(const json& msg)
 
 void TebApp::handleReset(const json& msg)
 {
+  lRunning = 0;
+
   if (_appThread.joinable())  _appThread.join();
 }
 

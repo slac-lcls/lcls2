@@ -325,6 +325,7 @@ void BldApp::handleDisconnect(const json& msg)
 {
     m_drp.disconnect(msg);
     shutdown();
+
     json body = json({});
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
@@ -350,6 +351,8 @@ void BldApp::handlePhase1(const json& msg)
 
 void BldApp::handleReset(const nlohmann::json& msg)
 {
+    m_drp.disconnect(msg);
+    shutdown();
 }
 
 void BldApp::connectPgp(const json& json, const std::string& collectionId)
@@ -540,5 +543,6 @@ int main(int argc, char* argv[])
     Py_Initialize(); // for use by configuration
     Drp::BldApp app(para);
     app.run();
+    app.handleReset(json({}));
     Py_Finalize(); // for use by configuration
 }

@@ -20,6 +20,13 @@
     return false;                 \
   }
 
+#define CHECK_OBJ(function, obj)                \
+  if (!function) {                              \
+    _errno = (obj)->error_num();                \
+    set_custom_error((obj)->error());           \
+    return false;                               \
+  }
+
 #define CHECK_ERR_EX(function, msg, exclude)            \
   _errno = function;                                    \
   if ((_errno != FI_SUCCESS) && (_errno != -exclude)) { \
@@ -871,42 +878,30 @@ CompletionQueue* EndpointBase::rxcq() const { return _rxcq; }
 
 bool EndpointBase::event(uint32_t* event, void* entry, bool* cm_entry)
 {
-  bool rret = _eq->event(event, entry, cm_entry);
-  if (!rret) {
-    _errno = (int) _eq->error_num();
-    strncpy(_error, _eq->error(), ERR_MSG_LEN);
-  }
-  return rret;
+  CHECK_OBJ(_eq->event(event, entry, cm_entry), _eq);
+
+  return true;
 }
 
 bool EndpointBase::event_wait(uint32_t* event, void* entry, bool* cm_entry, int timeout)
 {
-  bool rret = _eq->event_wait(event, entry, cm_entry, timeout);
-  if (!rret) {
-    _errno = (int) _eq->error_num();
-    strncpy(_error, _eq->error(), ERR_MSG_LEN);
-  }
-  return rret;
+  CHECK_OBJ(_eq->event_wait(event, entry, cm_entry, timeout), _eq);
+
+  return true;
 }
 
 bool EndpointBase::event_error(struct fi_eq_err_entry *entry)
 {
-  bool rret = _eq->event_error(entry);
-  if (!rret) {
-    _errno = (int) _eq->error_num();
-    strncpy(_error, _eq->error(), ERR_MSG_LEN);
-  }
-  return rret;
+  CHECK_OBJ(_eq->event_error(entry), _eq);
+
+  return true;
 }
 
 bool EndpointBase::handle_event(ssize_t event_ret, bool* cm_entry, const char* cmd)
 {
-  bool rret = _eq->handle_event(event_ret, cm_entry, cmd);
-  if (!rret) {
-    _errno = (int) _eq->error_num();
-    strncpy(_error, _eq->error(), ERR_MSG_LEN);
-  }
-  return rret;
+  CHECK_OBJ(_eq->handle_event(event_ret, cm_entry, cmd), _eq);
+
+  return true;
 }
 
 void EndpointBase::shutdown()
@@ -957,14 +952,18 @@ bool EndpointBase::initialize()
 
   if (!_eq) {
     _eq = new EventQueue(_fabric, &eq_attr, NULL);
+    if (!_eq)  return false;
+    _eq_owner = true;
   }
 
   if (!_txcq) {
     _txcq = new CompletionQueue(_fabric, &cq_attr, NULL);
+    if (!_txcq)  return false;
     _txcq_owner = true;
   }
   if (!_rxcq) {
     _rxcq = _txcq_owner ? _txcq : new CompletionQueue(_fabric, &cq_attr, NULL);
+    if (!_rxcq)  return false;
     _rxcq_owner = true;
   }
 
@@ -1038,10 +1037,10 @@ bool Endpoint::connect(int timeout, uint64_t txFlags, uint64_t rxFlags, void* co
   if (_txcq == _rxcq)           txFlags |= rxFlags;
 
   CHECK_ERR(fi_endpoint(_fabric->domain(), _fabric->info(), &_ep, context), "fi_endpoint");
-  CHECK(_eq->bind(this));
-  CHECK(_txcq->bind(this, txFlags));
+  CHECK_OBJ(_eq->bind(this), _eq);
+  CHECK_OBJ(_txcq->bind(this, txFlags), _txcq);
   if (_txcq != _rxcq) {
-    CHECK(_rxcq->bind(this, rxFlags));
+    CHECK_OBJ(_rxcq->bind(this, rxFlags), _rxcq);
   }
   CHECK_ERR(fi_enable(_ep), "fi_enable");
   CHECK_ERR(fi_connect(_ep, _fabric->info()->dest_addr, NULL, 0), "fi_connect");
@@ -1059,10 +1058,10 @@ bool Endpoint::accept(struct fi_info* remote_info, int timeout, uint64_t txFlags
   if (_txcq == _rxcq)           txFlags |= rxFlags;
 
   CHECK_ERR(fi_endpoint(_fabric->domain(), remote_info, &_ep, context), "fi_endpoint");
-  CHECK(_eq->bind(this));
-  CHECK(_txcq->bind(this, txFlags));
+  CHECK_OBJ(_eq->bind(this), _eq);
+  CHECK_OBJ(_txcq->bind(this, txFlags), _txcq);
   if (_txcq != _rxcq) {
-    CHECK(_rxcq->bind(this, rxFlags));
+    CHECK_OBJ(_rxcq->bind(this, rxFlags), _rxcq);
   }
   CHECK_ERR(fi_enable(_ep), "fi_enable");
   CHECK_ERR(fi_accept(_ep, NULL, 0), "fi_accept");
@@ -1515,7 +1514,7 @@ ssize_t Endpoint::check_completion(CompletionQueue* cq, int context, unsigned fl
   ssize_t rret = cq->check_completion(context, flags, data);
   if (rret != FI_SUCCESS) {
     _errno = (int) cq->error_num();
-    strncpy(_error, cq->error(), ERR_MSG_LEN);
+    set_custom_error(cq->error());
   }
 
   return rret;
@@ -1526,7 +1525,7 @@ ssize_t Endpoint::check_completion_noctx(CompletionQueue* cq, unsigned flags, ui
   ssize_t rret = cq->check_completion_noctx(flags, data);
   if (rret != FI_SUCCESS) {
     _errno = (int) cq->error_num();
-    strncpy(_error, cq->error(), ERR_MSG_LEN);
+    set_custom_error(cq->error());
   }
 
   return rret;

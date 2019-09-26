@@ -41,11 +41,11 @@ public:
     BldApp(Parameters& para);
     void shutdown();
     nlohmann::json connectionInfo() override;
+    void handleReset(const nlohmann::json& msg) override;
 private:
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
-    void handleReset(const nlohmann::json& msg) override;
     void connectPgp(const nlohmann::json& json, const std::string& collectionId);
     void worker(std::shared_ptr<MetricExporter> exporter);
     void sentToTeb(XtcData::Dgram& dgram, uint32_t index);
