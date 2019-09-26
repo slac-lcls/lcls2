@@ -72,32 +72,29 @@ int EbLfClient::connect(const char* peer,
     return ep ? ep->error_num() : -FI_ENOMEM;
   }
 
-  bool     tmoEnabled = tmo != 0;
-  int      timeout    = tmoEnabled ? 100000 : -1; // mS
   auto     t0(std::chrono::steady_clock::now());
   auto     t1(t0);
   uint64_t dT = 0;
   while (true)
   {
-    if (ep->connect(timeout, FI_TRANSMIT | FI_SELECTIVE_COMPLETION, 0))  break; // Success
+    if (ep->connect(tmo, FI_TRANSMIT | FI_SELECTIVE_COMPLETION, 0))  break; // Success
     if (ep->error_num() == -FI_ENODATA)       break; // connect() timed out
     if (ep->error_num() != -FI_ECONNREFUSED)  break; // Serious error
 
     t1 = std::chrono::steady_clock::now();
     dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
-    if (tmoEnabled && (dT > tmo))  break;
+    if (tmo && (dT > tmo))  break;
 
     ep->shutdown();               // Can't try to connect on an EP a 2nd time
 
-    usleep(100000);               // < 100 ms causes ENOMEM in rdma_create_ep()
+    usleep(10000);                // Short on human time scales
   }
-  if ((ep->error_num() != FI_SUCCESS) || (tmoEnabled && (dT > tmo)))
+  if ((ep->error_num() != FI_SUCCESS) || (tmo && (dT > tmo)))
   {
     int rc = ep->error_num();
     fprintf(stderr, "%s:\n  Error connecting to %s:%s: %s\n",
             __PRETTY_FUNCTION__, peer, port,
             (rc != FI_ENODATA) ? ep->error() : "Timed out");
-    delete ep;
     return (rc != FI_SUCCESS) ? rc : -FI_ETIMEDOUT;
   }
 
