@@ -133,11 +133,11 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         printf("\033[0m");
     }
 
-    if (timingHeader->seq.pulseId().value() != result->seq.pulseId().value()) {
+    if (timingHeader->seq.pulseId().value() != result.seq.pulseId().value()) {
         logging::critical("timestamps don't match");
         logging::critical("index %u  previous index %u", index, m_lastIndex);
         uint64_t tPid = timingHeader->seq.pulseId().value();
-        uint64_t rPid = result->seq.pulseId().value();
+        uint64_t rPid = result.seq.pulseId().value();
         logging::critical("pebble pulseId %014lx, result dgram pulseId %014lx, xor %014lx, diff %ld", tPid, rPid, tPid ^ rPid, tPid - rPid);
         exit(-1);
     }
