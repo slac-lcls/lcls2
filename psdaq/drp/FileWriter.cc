@@ -29,6 +29,10 @@ void BufferedFileWriter::open(const std::string& fileName)
 
 void BufferedFileWriter::writeEvent(void* data, size_t size)
 {
+    // cpo: uncomment these two lines to get "unbuffered" writing
+    // write(m_fd, data, size);
+    // return;
+
     // doesn't fit into the remaing m_buffer
     if (size > (m_buffer.size() - m_count)) {
         if (write(m_fd, m_buffer.data(), m_count) == -1) {
