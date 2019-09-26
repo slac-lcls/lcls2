@@ -92,8 +92,16 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     xtc.contains = tid;
     xtc.extent = sizeof(XtcData::Xtc);
 
+    json stepInfo{ "" };
+    if (msg.find("body") != msg.end()) {
+        if (msg["body"].find("phase1Info") != msg["body"].end()) {
+            stepInfo = msg["body"]["phase1Info"];
+        }
+    }
+
     json body = json({});
     std::string key = msg["header"]["key"];
+
     if (key == "configure") {
         std::string errorMsg = m_drp.configure(msg);
         if (!errorMsg.empty()) {
@@ -114,12 +122,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     else if (key == "beginstep") {
         // see if we find some step information in phase 1 that needs to be
         // to be attached to the xtc
-        if (msg.find("body") != msg.end()) {
-            if (msg["body"].find("phase1Info") != msg["body"].end()) {
-                const json& stepInfo = msg["body"]["phase1Info"];
-                m_det->beginstep(stepInfo, xtc);
-            }
-        }
+        m_det->beginstep(xtc, stepInfo);
     }
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
