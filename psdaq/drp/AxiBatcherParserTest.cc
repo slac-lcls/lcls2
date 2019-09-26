@@ -33,7 +33,7 @@ class eventBuilderParser {
         std::vector<std::vector<uint16_t>>    frame_positions_reverse_order;  //vector of vectors.  N elements long with each element containing a start and an end.
         std::vector<std::vector<uint8_t>>     frames;                         //the actual edge positions, camera images, time stamps, etc... will be elements of this array.
                                                                               //I.e. this is the scientific data that gets viewed, analyzed, and published
-        std::vector<bool>                     is_sub_frame;                   
+        std::vector<short>                    is_sub_frame;                   
 
         int                                   spsft            = 16;          //spsft stand for the size position in the sub frame tail
         int                                   HEADER_WIDTH     = 16;                            
@@ -69,7 +69,8 @@ class eventBuilderParser {
         //frame_sizes_reverse_order, frame_position_reverse_order are populated
         int parse_array(){
             version         = raw_data[0] & 15;
-            main_header.push_back(raw_data[0]);
+            main_header.resize(HEADER_WIDTH);
+            std::copy(raw_data.begin(),raw_data.begin()+HEADER_WIDTH,main_header.begin());
 
 
             
@@ -123,6 +124,7 @@ class eventBuilderParser {
 
             }
 
+            check_for_subframes();
 
             return 0;
 
@@ -133,12 +135,20 @@ class eventBuilderParser {
         int check_for_subframes(){
 
              for (int i = 0 ; i <  frames.size() ; i = i + 1){
-                int x =1;
-   
+                    if(std::equal(frames[i].begin(), frames[i].begin()+2, main_header.begin())){
+                     is_sub_frame.push_back(1);                   
+                    }
+                    else{
+                        is_sub_frame.push_back(0);                   
+                    }
              }
 
 
         return 1;
+        }
+
+        int resolve_sub_frames(){
+            return 1
         }
 
 
@@ -161,6 +171,9 @@ class eventBuilderParser {
             
             printf("\nsub frame positions = \n");
             print_vector2d(frame_positions_reverse_order);
+
+            printf("\n vector indicating if it's a sub frame. length = %d \n",is_sub_frame.size());
+            print_vector(is_sub_frame);
 
             
                 
