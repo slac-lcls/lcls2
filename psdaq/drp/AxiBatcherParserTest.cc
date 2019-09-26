@@ -31,8 +31,9 @@ class eventBuilderParser {
         std::vector<uint8_t>                  main_header;   
         std::vector<uint16_t>                 frame_sizes_reverse_order;      //the size of each subframe extracted from the tail
         std::vector<std::vector<uint16_t>>    frame_positions_reverse_order;  //vector of vectors.  N elements long with each element containing a start and an end.
-        std::vector<std::vector<uint8_t>>     frame_list;                     //the actual edge positions, camera images, time stamps, etc... will be elements of this array.
+        std::vector<std::vector<uint8_t>>     frames;                         //the actual edge positions, camera images, time stamps, etc... will be elements of this array.
                                                                               //I.e. this is the scientific data that gets viewed, analyzed, and published
+        std::vector<bool>                     is_sub_frame;                   
 
         int                                   spsft            = 16;          //spsft stand for the size position in the sub frame tail
         int                                   HEADER_WIDTH     = 16;                            
@@ -73,12 +74,19 @@ class eventBuilderParser {
 
             
 
-            //frame_positions_reverse_order.push_back(12);
+            //storing frame size
             frame_sizes_reverse_order.push_back(frame_to_position(raw_data.size()-spsft)); //sptl stand for the size position in the sub frame tail
 
+            //storing frame position in raw data
             std::vector<uint16_t> sub_frame_range = {raw_data.size()-spsft-frame_sizes_reverse_order.back(),raw_data.size()-spsft};
             frame_positions_reverse_order.push_back(sub_frame_range);
 
+            
+            //storing first parsed frame in frames
+            std::vector<uint8_t> frame(sub_frame_range[1]-sub_frame_range[0]+1);
+            std::copy(raw_data.begin()+sub_frame_range[0],raw_data.begin()+sub_frame_range[1]+1,frame.begin());
+            frames.push_back(frame);
+            
 
             int parsed_frame_size = frame_positions_reverse_order.size()*HEADER_WIDTH;
             for(std::vector<uint16_t>::iterator it = frame_sizes_reverse_order.begin(); it != frame_sizes_reverse_order.end(); ++it)
@@ -86,21 +94,32 @@ class eventBuilderParser {
 
             
 
-            while(raw_data.size()>parsed_frame_size){
+            while(raw_data.size() > (parsed_frame_size+HEADER_WIDTH)){
+
+                //storing frame sizes 
                 frame_sizes_reverse_order.push_back(frame_to_position(frame_positions_reverse_order.back()[0]-spsft));
 
-                //self.frame_positions_reversed.append([self.frame_positions_reversed[-1][0]-16-self.frame_sizes_reversed[-1],self.frame_positions_reversed[-1][0]-16]) #[start, and]
 
+                //storing frame positions in raw data
                 std::vector<uint16_t> new_positions;
-
                 new_positions.push_back( frame_positions_reverse_order.back()[0]-spsft-frame_sizes_reverse_order.back());
                 new_positions.push_back( frame_positions_reverse_order.back()[0]-spsft);
-
                 frame_positions_reverse_order.push_back(new_positions);
-                //(frame_positions_reverse_order.back()[0]-spsft-frame_positions_reverse_order.back());
+
+
+                //parsing frames into new list
+                frame.resize(new_positions[1]-new_positions[0]+1);
+                std::copy(raw_data.begin()+new_positions[0],raw_data.begin()+new_positions[1]+1,frame.begin());
+                frames.push_back(frame);
+
+                //printf("parsed frame = \n");
+                //print_vector(frame);
+
+                
 
 
                 parsed_frame_size = parsed_frame_size+frame_sizes_reverse_order.back()+HEADER_WIDTH;
+                //printf("raw data size = %d, parsed data size = %d \n",raw_data.size(),parsed_frame_size);
 
             }
 
@@ -111,6 +130,16 @@ class eventBuilderParser {
         }
 
 
+        int check_for_subframes(){
+
+             for (int i = 0 ; i <  frames.size() ; i = i + 1){
+                int x =1;
+   
+             }
+
+
+        return 1;
+        }
 
 
         int print_raw(){
@@ -121,12 +150,20 @@ class eventBuilderParser {
         }
 
         int print_frame(){
-    
+   
+
+            printf("\nparsed frames = \n");
+            print_vector2d(frames);
+            
+ 
             printf("\nnsub frame size = \n");
             print_vector(frame_sizes_reverse_order);
             
             printf("\nsub frame positions = \n");
             print_vector2d(frame_positions_reverse_order);
+
+            
+            
 
             return 0;
         }
@@ -137,11 +174,11 @@ class eventBuilderParser {
             //printf("my_vector[0] data type is %s \n",typeid(my_vector[0]).name());     
              
             for (uint32_t i=0;i<my_vector.size();i=i+1){
-                    printf(" [");
+                    printf("sub frame %d = [",i);
                     for(uint32_t j=0;j<my_vector[i].size();j=j+1){
                         printf("%d ",my_vector[i][j]);
                     }
-                    printf("] ");
+                    printf("]\n ");
             }
             printf("\n");
             return 0;
@@ -224,7 +261,7 @@ int main(int argc, char* argv[])
 
       my_frame.parse_array();
       
-      my_frame.print_raw();    
+      //my_frame.print_raw();    
       my_frame.print_frame();
     
 
