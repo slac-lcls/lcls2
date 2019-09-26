@@ -83,8 +83,8 @@ class eventBuilderParser {
 
             
             //storing first parsed frame in frames
-            std::vector<uint8_t> frame(sub_frame_range[1]-sub_frame_range[0]+1);
-            std::copy(raw_data.begin()+sub_frame_range[0],raw_data.begin()+sub_frame_range[1]+1,frame.begin());
+            std::vector<uint8_t> frame(sub_frame_range[1]-sub_frame_range[0]);
+            std::copy(raw_data.begin()+sub_frame_range[0],raw_data.begin()+sub_frame_range[1],frame.begin());
             frames.push_back(frame);
             
 
@@ -108,8 +108,8 @@ class eventBuilderParser {
 
 
                 //parsing frames into new list
-                frame.resize(new_positions[1]-new_positions[0]+1);
-                std::copy(raw_data.begin()+new_positions[0],raw_data.begin()+new_positions[1]+1,frame.begin());
+                frame.resize(new_positions[1]-new_positions[0]);
+                std::copy(raw_data.begin()+new_positions[0],raw_data.begin()+new_positions[1],frame.begin());
                 frames.push_back(frame);
 
                 //printf("parsed frame = \n");
@@ -163,7 +163,7 @@ class eventBuilderParser {
             print_vector2d(frame_positions_reverse_order);
 
             
-            
+                
 
             return 0;
         }
@@ -178,7 +178,7 @@ class eventBuilderParser {
                     for(uint32_t j=0;j<my_vector[i].size();j=j+1){
                         printf("%d ",my_vector[i][j]);
                     }
-                    printf("]\n ");
+                    printf("]\n length = %d \n",my_vector[i].size());
             }
             printf("\n");
             return 0;
