@@ -107,7 +107,7 @@ class MyDAQ:
                 # launch the step with 'daqstate(running)' (with the
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
-                errMsg = self.control.setState('running',{'beginstep':'hello from beginstep'})
+                errMsg = self.control.setState('running',{self.motor.name:self.motor.position})
                 if errMsg is not None:
                     print('*** error:', errMsg)
                     continue
@@ -258,7 +258,7 @@ def main():
     mydaq = MyDAQ(control,motor)
     dets = [mydaq]   # just one in this case, but it could be more than one
 
-    print('motor',motor.position) # in some cases we have to look at ".value"
+    print('motor',motor.position,motor.name) # in some cases we have to look at ".value"
     RE(scan(dets, motor, -1, 1, 3))
     print('motor',motor.position)
     #RE(count(dets, num=3))
