@@ -31,8 +31,10 @@ class eventBuilderParser {
         std::vector<uint8_t>                  main_header;   
         std::vector<uint16_t>                 frame_sizes_reverse_order;      //the size of each subframe extracted from the tail
         std::vector<std::vector<uint16_t>>    frame_positions_reverse_order;  //vector of vectors.  N elements long with each element containing a start and an end.
-        std::vector<std::vector<uint8_t>>     frames;                         //the actual edge positions, camera images, time stamps, etc... will be elements of this array.
+        std::vector<std::vector<uint8_t>>     frames;                         //the actual edge positions, camera images, time stamps, etc... will be elements of this array.  
                                                                               //I.e. this is the scientific data that gets viewed, analyzed, and published
+        std::vector<eventBuilderParser>       sub_frames; 
+        
         std::vector<short>                    is_sub_frame;                   
 
         int                                   spsft            = 16;          //spsft stand for the size position in the sub frame tail
@@ -132,11 +134,20 @@ class eventBuilderParser {
         }
 
 
+        // checks if one of the frame elements is itself an axi batcher sub frame type. 
         int check_for_subframes(){
 
              for (int i = 0 ; i <  frames.size() ; i = i + 1){
                     if(std::equal(frames[i].begin(), frames[i].begin()+2, main_header.begin())){
-                     is_sub_frame.push_back(1);                   
+                     is_sub_frame.push_back(1);
+
+                    eventBuilderParser my_sub_frame;
+
+                    my_sub_frame.load_frame(frames[i]);
+                    my_sub_frame.parse_array();
+
+                    sub_frames.push_back(my_sub_frame);
+                   
                     }
                     else{
                         is_sub_frame.push_back(0);                   
@@ -147,8 +158,10 @@ class eventBuilderParser {
         return 1;
         }
 
+        // this will populate the subframe
         int resolve_sub_frames(){
-            return 1
+
+            return 1;
         }
 
 
@@ -161,22 +174,22 @@ class eventBuilderParser {
 
         int print_frame(){
    
-
-            printf("\nparsed frames = \n");
+            printf("raw parsed frames = \n");
             print_vector2d(frames);
             
- 
-            printf("\nnsub frame size = \n");
+            printf("___________________________\n");
+            printf("printing summary data\n");
+            printf("nsub frame size = \n");
             print_vector(frame_sizes_reverse_order);
             
-            printf("\nsub frame positions = \n");
+            printf("sub frame positions = \n");
             print_vector2d(frame_positions_reverse_order);
 
-            printf("\n vector indicating if it's a sub frame. length = %d \n",is_sub_frame.size());
+            printf("vector indicating if it's a sub frame. length = %d \n",is_sub_frame.size());
             print_vector(is_sub_frame);
 
-            
-                
+            printf("___________________________\n___________________________\n___________________________\n___________________________\n");            
+            print_sub_batcher();   
 
             return 0;
         }
@@ -187,17 +200,37 @@ class eventBuilderParser {
             //printf("my_vector[0] data type is %s \n",typeid(my_vector[0]).name());     
              
             for (uint32_t i=0;i<my_vector.size();i=i+1){
-                    printf("sub frame %d = [",i);
-                    for(uint32_t j=0;j<my_vector[i].size();j=j+1){
-                        printf("%d ",my_vector[i][j]);
+
+
+                    if(is_sub_frame[i]!=1){
+
+                        printf("sub frame %d = [",i);
+                        for(uint32_t j=0;j<my_vector[i].size();j=j+1){
+                            printf("%d ",my_vector[i][j]);
+                        }
+                        printf("]\n length = %d \n",my_vector[i].size());
                     }
-                    printf("]\n length = %d \n",my_vector[i].size());
+                    else{
+
+                        printf("subframe %d is a sub batcher \n",i);
+    
+                    }
             }
-            printf("\n");
             return 0;
         }
 
+        int print_sub_batcher(){
 
+            printf("\nPrinting a sub batcher \n");
+            for (int i =0; i<sub_frames.size();i=i+1){
+    
+                sub_frames[i].print_frame();
+
+
+            }
+            
+            return 0;
+        }
         
         template <class T> int print_vector(std::vector<T> &my_vector){
    
