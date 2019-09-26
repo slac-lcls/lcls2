@@ -29,11 +29,11 @@ void SysLog::debug(const char *fmt, ...)
     va_end(args);
 
     // stderr
-    char newfmt[256];
-    snprintf(newfmt, sizeof(newfmt), "DEBUG %s\n", fmt);
+    fprintf(stderr, "DEBUG ");
     va_start(args, fmt);
-    vfprintf(stderr, newfmt, args);
+    vfprintf(stderr, fmt, args);
     va_end(args);
+    fprintf(stderr, "\n");
 }
 
 void SysLog::info(const char *fmt, ...)
@@ -46,11 +46,11 @@ void SysLog::info(const char *fmt, ...)
     va_end(args);
 
     // stderr
-    char newfmt[256];
-    snprintf(newfmt, sizeof(newfmt), "INFO %s\n", fmt);
+    fprintf(stderr, "INFO ");
     va_start(args, fmt);
-    vfprintf(stderr, newfmt, args);
+    vfprintf(stderr, fmt, args);
     va_end(args);
+    fprintf(stderr, "\n");
 }
 
 void SysLog::warning(const char *fmt, ...)
@@ -63,11 +63,11 @@ void SysLog::warning(const char *fmt, ...)
     va_end(args);
 
     // stderr
-    char newfmt[256];
-    snprintf(newfmt, sizeof(newfmt), "WARNING %s\n", fmt);
+    fprintf(stderr, "WARNING ");
     va_start(args, fmt);
-    vfprintf(stderr, newfmt, args);
+    vfprintf(stderr, fmt, args);
     va_end(args);
+    fprintf(stderr, "\n");
 }
 
 void SysLog::error(const char *fmt, ...)
@@ -80,11 +80,11 @@ void SysLog::error(const char *fmt, ...)
     va_end(args);
 
     // stderr
-    char newfmt[256];
-    snprintf(newfmt, sizeof(newfmt), "ERROR %s\n", fmt);
+    fprintf(stderr, "ERROR ");
     va_start(args, fmt);
-    vfprintf(stderr, newfmt, args);
+    vfprintf(stderr, fmt, args);
     va_end(args);
+    fprintf(stderr, "\n");
 }
 
 void SysLog::critical(const char *fmt, ...)
@@ -97,9 +97,9 @@ void SysLog::critical(const char *fmt, ...)
     va_end(args);
 
     // stderr
-    char newfmt[256];
-    snprintf(newfmt, sizeof(newfmt), "CRITICAL %s\n", fmt);
+    fprintf(stderr, "CRITICAL ");
     va_start(args, fmt);
-    vfprintf(stderr, newfmt, args);
+    vfprintf(stderr, fmt, args);
     va_end(args);
+    fprintf(stderr, "\n");
 }
