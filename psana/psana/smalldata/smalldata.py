@@ -15,10 +15,9 @@ SIZE = COMM.Get_size()
 if SIZE > 1:
     MODE = 'PARALLEL'
     # these are all functions that provide xface to MPI pool
-    from psana.psexp.psana_mpi import PsanaMPI
-    psmpi = PsanaMPI()
+    from psana.psexp.node import comms
 
-    smalldata_group = MPI.Group.Union(psmpi.srv_group(), psmpi.bd_group())
+    smalldata_group = MPI.Group.Union(comms.srv_group(), comms.bd_group())
     smalldata_comm  = COMM.Create(smalldata_group)
 
 else:
@@ -279,19 +278,19 @@ class SmallData: # (client)
     def _comm_partition(self):
     
         # partition into comms
-        _srv_group = psmpi.srv_group()
+        _srv_group = comms.srv_group()
         n_srv = _srv_group.size
         if n_srv < 1:
             raise Exception('Attempting to run smalldata with no servers'
                             ' set env var PS_SRV_NODES to be 1 or more')
 
-        if psmpi.node_type() == 'srv':
+        if comms.node_type() == 'srv':
             self._type = 'server'
             self._srv_color = _srv_group.rank
             self._srvcomm = smalldata_comm.Split(self._srv_color, 0) # rank=0
-        elif psmpi.node_type() == 'bd':
+        elif comms.node_type() == 'bd':
             self._type = 'client'
-            self._srv_color = psmpi.bd_group().rank % n_srv
+            self._srv_color = comms.bd_group().rank % n_srv
             self._srvcomm = smalldata_comm.Split(self._srv_color, 
                                                  RANK+1) # keep rank order
         else:

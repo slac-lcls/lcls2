@@ -11,10 +11,9 @@ if mode == 'mpi':
     world_size = world_comm.Get_size()
 
     if (world_size > 1):
-        from psana.psexp.psana_mpi import PsanaMPI
-        psmpi = PsanaMPI()
-        if (psmpi._nodetype in ['smd0', 'smd', 'bd']):
-            comm = psmpi.psana_comm
+        from psana.psexp.node import comms
+        if (comms._nodetype in ['smd0', 'smd', 'bd']):
+            comm = comms.psana_comm
             rank = comm.Get_rank()
             size = comm.Get_size()
 

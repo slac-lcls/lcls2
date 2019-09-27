@@ -27,9 +27,8 @@ def DataSource(*args, **kwargs):
             if world_size == 1:
                 return SerialDataSource(*args, **kwargs)
             else:
-                from psana.psexp.psana_mpi import PsanaMPI
-                psmpi = PsanaMPI()
-                if psmpi._nodetype in ['smd0', 'smd', 'bd']:
+                from psana.psexp.node import comms
+                if comms._nodetype in ['smd0', 'smd', 'bd']:
                     return MPIDataSource(*args, **kwargs)
                 else:
                     return NullDataSource(*args, **kwargs)

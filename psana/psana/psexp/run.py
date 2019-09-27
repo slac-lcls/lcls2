@@ -25,11 +25,10 @@ if mode == 'mpi':
 
     # only import node when running in parallel
     if (world_size > 1):
-        from psana.psexp.psana_mpi import PsanaMPI
-        psmpi = PsanaMPI()
-        if (psmpi._nodetype in ['smd0', 'smd', 'bd']):
+        from psana.psexp.node import comms
+        if (comms._nodetype in ['smd0', 'smd', 'bd']):
             from psana.psexp.node import run_node
-            comm = psmpi.psana_comm
+            comm = comms.psana_comm
             rank = comm.Get_rank()
             size = comm.Get_size()
         

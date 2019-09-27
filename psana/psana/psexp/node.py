@@ -7,9 +7,102 @@ from psana.psexp.packet_footer import PacketFooter
 from psana.event import Event
 from psana.psexp.step import Step
 from psana import dgram
-from psana.psexp.psana_mpi import PsanaMPI
+import os
 from mpi4py import MPI
 
+# Setting up group communications
+# Ex. PS_SMD_NODES=3 mpirun -n 13
+#       1   4   7   10
+#   0   2   5   8   11
+#       3   6   9   12
+#-smd_group-
+#       -bd_main_group-
+#       color
+#       0   0   0   0
+#       1   1   1   1
+#       2   2   2   2
+#       bd_main_rank        bd_rank
+#       0   3   6   9       0   1   2   3
+#       1   4   7   10      0   1   2   3
+#       2   5   8   11      0   1   2   3
+
+class Communications(object):
+    # Reserved nodes are for external applications (e.g. smalldata
+    # servers).  These nodes will do nothing for event/step iterators
+    # (see run_node method below).  The "psana_group" consists of
+    # all non-reserved ranks and is used for smd0/smd/bd cores.
+    comm = None
+    world_rank  = 0
+    world_size  = 1
+    world_group = None
+    smd_comm = None
+    smd_rank = 0
+    smd_size = 0
+    bd_main_comm = None
+    bd_main_rank = 0
+    bd_main_size = 0
+    bd_rank = 0
+    bd_size = 0
+    color = 0
+    _nodetype = None
+    bd_comm = None
+
+    def __init__(self):
+        self.comm = MPI.COMM_WORLD
+        self.world_rank  = self.comm.Get_rank()
+        self.world_size  = self.comm.Get_size()
+        self.world_group = self.comm.Get_group()
+        assert self.world_size >= 3
+        PS_SRV_NODES = int(os.environ.get('PS_SRV_NODES', 0))
+        PS_SMD_NODES = int(os.environ.get('PS_SMD_NODES', 1))
+        self.n_smd_nodes = PS_SMD_NODES
+
+        self.psana_group    = self.world_group.Excl(range(self.world_size-PS_SRV_NODES, self.world_size))
+        self.psana_comm     = self.comm.Create(self.psana_group)
+
+        self.smd_group      = self.psana_group.Incl(range(PS_SMD_NODES + 1))
+        self.bd_main_group  = self.psana_group.Excl([0])
+        self._bd_only_group = MPI.Group.Difference(self.bd_main_group,self.smd_group)
+        self._srv_group     = MPI.Group.Difference(self.world_group,self.psana_group)
+
+        self.smd_comm = self.comm.Create(self.smd_group)
+        self.bd_main_comm = self.comm.Create(self.bd_main_group)
+        
+        if self.smd_comm != MPI.COMM_NULL:
+            self.smd_rank = self.smd_comm.Get_rank()
+            self.smd_size = self.smd_comm.Get_size()
+
+        if self.bd_main_comm != MPI.COMM_NULL:
+            self.bd_main_rank = self.bd_main_comm.Get_rank()
+            self.bd_main_size = self.bd_main_comm.Get_size()
+
+            # Split bigdata main comm to PS_SMD_NODES groups
+            color = self.bd_main_rank % PS_SMD_NODES
+            self.bd_comm = self.bd_main_comm.Split(color, self.bd_main_rank)
+            self.bd_rank = self.bd_comm.Get_rank()
+            self.bd_size = self.bd_comm.Get_size()
+
+            if self.bd_rank == 0:
+                self._nodetype = 'smd'
+            else:
+                self._nodetype = 'bd'
+
+        if self.world_rank==0:
+            self._nodetype = 'smd0'
+        elif self.world_rank>=self.psana_group.Get_size():
+            self._nodetype = 'srv'
+    
+    def bd_group(self):
+        return self._bd_only_group
+
+    def srv_group(self):
+        return self._srv_group
+
+    def node_type(self):
+        return self._nodetype
+
+# Make the Communications class global
+comms = Communications()
 
 class UpdateManager(object):
     """ Keeps epics data and their send history. """
@@ -53,13 +146,13 @@ class Smd0(object):
     Identifies limit timestamp of the slowest detector then
     sends all smds within that timestamp to an smd_node.
     """
-    def __init__(self, run, psmpi):
+    def __init__(self, run):
         self.smdr_man = SmdReaderManager(run.smd_dm.fds, run.max_events)
         self.run = run
-        self.epics_man = UpdateManager(psmpi.smd_size, self.run.ssm.stores['epics'].n_files)
-        self.run_mpi(psmpi)
+        self.epics_man = UpdateManager(comms.smd_size, self.run.ssm.stores['epics'].n_files)
+        self.run_mpi()
 
-    def run_mpi(self, psmpi):
+    def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
 
         for (smd_chunk, update_chunk) in self.smdr_man.chunks():
@@ -73,7 +166,7 @@ class Smd0(object):
             # then send only unseen portion of data to the evtbuilder rank.
             update_pf = PacketFooter(view=update_chunk)
             self.epics_man.extend_buffers(update_pf.split_packets())
-            psmpi.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+            comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             epics_chunk = self.epics_man.get_buffer(rankreq[0])
 
             pf = PacketFooter(2)
@@ -81,11 +174,11 @@ class Smd0(object):
             pf.set_size(1, memoryview(epics_chunk).shape[0])
             chunk = smd_chunk + epics_chunk + pf.footer
 
-            psmpi.smd_comm.Send(chunk, dest=rankreq[0])
+            comms.smd_comm.Send(chunk, dest=rankreq[0])
 
-        for i in range(psmpi.n_smd_nodes):
-            psmpi.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-            psmpi.smd_comm.Send(bytearray(), dest=rankreq[0])
+        for i in range(comms.n_smd_nodes):
+            comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+            comms.smd_comm.Send(bytearray(), dest=rankreq[0])
 
 class SmdNode(object):
     """Handles both smd_0 and bd_nodes
@@ -105,14 +198,14 @@ class SmdNode(object):
         batch += pf.footer
         return batch
 
-    def run_mpi(self, psmpi):
+    def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
         current_step_pos = 0
-        smd_comm = psmpi.smd_comm
-        n_bd_nodes = psmpi.bd_comm.Get_size() - 1
-        bd_comm = psmpi.bd_comm
-        smd_rank = psmpi.smd_rank
-        epics_man = UpdateManager(psmpi.bd_size, self.run.ssm.stores['epics'].n_files)
+        smd_comm = comms.smd_comm
+        n_bd_nodes = comms.bd_comm.Get_size() - 1
+        bd_comm = comms.bd_comm
+        smd_rank = comms.smd_rank
+        epics_man = UpdateManager(comms.bd_size, self.run.ssm.stores['epics'].n_files)
 
         while True:
             # handles requests from smd_0
@@ -184,9 +277,9 @@ class BigDataNode(object):
                 filter_fn=run.filter_callback)
         self.run = run
 
-    def run_mpi(self, psmpi):
-        bd_comm = psmpi.bd_comm
-        bd_rank = psmpi.bd_rank
+    def run_mpi(self):
+        bd_comm = comms.bd_comm
+        bd_rank = comms.bd_rank
         while True:
             bd_comm.Send(np.array([bd_rank], dtype='i'), dest=0)
             info = MPI.Status()
@@ -214,17 +307,16 @@ class BigDataNode(object):
                     yield event
 
 def run_node(run):
-    psmpi = PsanaMPI()
-    if psmpi._nodetype == 'smd0':
-        Smd0(run, psmpi)
-    elif psmpi._nodetype == 'smd':
+    if comms._nodetype == 'smd0':
+        Smd0(run)
+    elif comms._nodetype == 'smd':
         smd_node = SmdNode(run)
-        smd_node.run_mpi(psmpi)
-    elif psmpi._nodetype == 'bd':
+        smd_node.run_mpi()
+    elif comms._nodetype == 'bd':
         bd_node = BigDataNode(run)
-        for evt in bd_node.run_mpi(psmpi):
+        for evt in bd_node.run_mpi():
             yield evt
-    elif psmpi._nodetype == 'srv':
+    elif comms._nodetype == 'srv':
         # tell the iterator to do nothing
         return
 
