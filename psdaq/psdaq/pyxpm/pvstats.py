@@ -1,4 +1,6 @@
+import sys
 import time
+import traceback
 from p4p.nt import NTScalar
 from p4p.server.thread import SharedPV
 from psdaq.pyxpm.pvhandler import *
@@ -339,15 +341,22 @@ class PVStats(object):
         pass
 
     def update(self):
-        for i in range(32):
-            self._links[i].update()
-        for i in range(2):
-            self._amcPll[i].update()
-        for i in range(8):
-            self._groups[i].update()
+        try:
+            for i in range(32):
+                self._links[i].update()
+            for i in range(2):
+                self._amcPll[i].update()
+            for i in range(8):
+                self._groups[i].update()
 
-        self._usTiming.update()
-        self._cuTiming.update()
-        self._cuGen   .update()
-        self._monClks .update()
-
+            self._usTiming.update()
+            self._cuTiming.update()
+            self._cuGen   .update()
+            self._monClks .update()
+        except:
+            exc = sys.exc_info()
+            if exc[0]==KeyboardInterrupt:
+                raise
+            else:
+                traceback.print_exception(exc[0],exc[1],exc[2])
+                print('Caught exception... retrying.')

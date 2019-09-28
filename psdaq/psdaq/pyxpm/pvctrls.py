@@ -1,4 +1,6 @@
+import sys
 import time
+import traceback
 import threading
 import socket
 import struct
@@ -24,55 +26,99 @@ class RateSel(object):
 def forceUpdate(reg):
     reg.get()
 
+def retry(cmd,pv,value):
+    for tries in range(5):
+        try:
+            cmd(pv,value)
+            break
+        except:
+            exc = sys.exc_info()
+            if exc[0]==KeyboardInterrupt:
+                raise
+            else:
+                traceback.print_exception(exc[0],exc[1],exc[2])
+                print('Caught exception... retrying.')
+
+def retry_wlock(cmd,pv,value):
+    lock.acquire()
+    retry(cmd,pv,value)
+    lock.release()
+
+class RetryWLock(object):
+    def __init__(self, func):
+        self.func = func
+
+    def __call__(self, pv, value):
+        retry_wlock(self.func, pv, value)
+
+class RegH(PVHandler):
+    def __init__(self, valreg):
+        super(RegH,self).__init__(self.handle)
+        self._valreg   = valreg
+
+    def cmd(self,pv,value):
+        self._valreg.post(value)
+
+    def handle(self, pv, value):
+        retry('RegH.handle',self.cmd,pv,value)
+
+    
 class IdxRegH(PVHandler):
-    def __init__(self, valreg, idxreg=None, idx=0):
+    def __init__(self, valreg, idxreg, idx):
         super(IdxRegH,self).__init__(self.handle)
         self._valreg   = valreg
         self._idxreg   = idxreg
         self._idx      = idx
 
-    def handle(self, pv, value):
-        if self._idxreg:
-            lock.acquire()
-            self._idxreg.post(self._idx)
-            forceUpdate(self._valreg)
+    def cmd(self,pv,value):
+        self._idxreg.post(self._idx)
+        forceUpdate(self._valreg)
         self._valreg.post(value)
 
-        if  self._idxreg:
-            print('IdxRegH.handle reg {} idxr {} idx {} val {:x} read {:x}'
-                  .format(self._valreg, self._idxreg, self._idx, value, self._valreg.get()))
-            lock.release()
-        else:
-            print('IdxRegH.handle reg {} val {:x} read {:x}'
-                  .format(self._valreg, value, self._valreg.get()))
+    def handle(self, pv, value):
+        retry_wlock(self.cmd,pv,value)
 
+class CmdH(PVHandler):
+
+    def __init__(self, cmd):
+        super(CmdH,self).__init__(self.handle)
+        self._cmd      = cmd
+
+    def cmd(self,pv,value):
+        self._cmd()
+
+    def handle(self, pv, value):
+        if value:
+            retry(self.cmd,pv,value) 
+            
 class IdxCmdH(PVHandler):
 
-    def __init__(self, cmd, idxcmd=None, idx=0):
+    def __init__(self, cmd, idxcmd, idx):
         super(IdxCmdH,self).__init__(self.handle)
         self._cmd      = cmd
         self._idxcmd   = idxcmd
         self._idx      = idx
 
-    def handle(self, pv, value):
-#        print('IdxCmdH handle ',value,self._cmd)
-        if value:
-            if self._idxcmd:
-                lock.acquire()
-                self._idxcmd.set(self._idx)
-            self._cmd()
-            if self._idxcmd:
-                lock.release()
+    def cmd(self,pv,value):
+        self._idxcmd.set(self._idx)
+        self._cmd()
 
+    def handle(self, pv, value):
+        if value:
+            retry_wlock(self.idxcmd,pv,value)
+            
 class RegArrayH(PVHandler):
 
     def __init__(self, valreg):
         super(RegArrayH,self).__init__(self.handle)
         self._valreg   = valreg
 
-    def handle(self, pv, val):
+    def cmd(self,pv,val):
         for reg in self._valreg:
             reg.post(val)
+        
+    def handle(self, pv, val):
+        retry(self.cmd,pv,val)
 
 class LinkCtrls(object):
     def __init__(self, name, xpm, link):
@@ -109,19 +155,20 @@ class LinkCtrls(object):
 
         self._pv_linkRxDump    = addPV('RxLinkDump',0,handler=PVHandler(self.dump))
 
-    def dump(self, pv, val):
+    def _dump(self, pv, val):
+        self._app.linkDebug.set(self._link)
+        self._ringb.clear.set(1)
+        time.sleep(1e-6)
+        self._ringb.clear.set(0)
+        self._ringb.start.set(1)
+        time.sleep(100e-6)
+        self._ringb.start.set(0)
+            
+    def dump(self,pv,val):
         if val:
-            lock.acquire()
-            self._app.linkDebug.set(self._link)
-            self._ringb.clear.set(1)
-            time.sleep(1e-6)
-            self._ringb.clear.set(0)
-            self._ringb.start.set(1)
-            time.sleep(100e-6)
-            self._ringb.start.set(0)
-            lock.release()
+            retry_wlock(self._dump,pv,val)
             self._ringb.Dump()
-        
+
 class CuGenCtrls(object):
     def __init__(self, name, xpm):
 
@@ -132,10 +179,10 @@ class CuGenCtrls(object):
             return pv
 
         xbar = xpm.AxiSy56040.find(name='OutputConfig[\*]')
-        self._pv_cuDelay    = addPV('CuDelay'   , 200*800, IdxCmdH(xpm.CuGenerator.cuDelay))
-        self._pv_cuBeamCode = addPV('CuBeamCode',     140, IdxCmdH(xpm.CuGenerator.cuBeamCode))
+        self._pv_cuDelay    = addPV('CuDelay'   , 200*800, CmdH(xpm.CuGenerator.cuDelay))
+        self._pv_cuBeamCode = addPV('CuBeamCode',     140, CmdH(xpm.CuGenerator.cuBeamCode))
         self._pv_cuInput    = addPV('CuInput'   ,       1, RegArrayH(xbar))
-        self._pv_clearErr   = addPV('ClearErr'  ,       0, IdxRegH(xpm.CuGenerator.cuFiducialIntv))
+        self._pv_clearErr   = addPV('ClearErr'  ,       0, RegH(xpm.CuGenerator.cuFiducialIntv))
 
         #  initialization
         xpm.CuGenerator.cuDelay   .set(200*800)
@@ -157,30 +204,24 @@ class PVInhibit(object):
             cmd(pv,init)  # initialize
             return pv
 
-        self._pv_InhibitInt = addPV('InhInterval', self.inhibitIntv, 10)
-        self._pv_InhibitLim = addPV('InhLimit'   , self.inhibitLim ,  4)
-        self._pv_InhibitEna = addPV('InhEnable'  , self.inhibitEna ,  0)
+        self._pv_InhibitInt = addPV('InhInterval', RetryWLock(self.inhibitIntv), 10)
+        self._pv_InhibitLim = addPV('InhLimit'   , RetryWLock(self.inhibitLim ),  4)
+        self._pv_InhibitEna = addPV('InhEnable'  , RetryWLock(self.inhibitEna ),  0)
 
     def inhibitIntv(self, pv, value):
-        lock.acquire()
         self._app.partition.set(self._group)
         forceUpdate(self._inh.intv)
         self._inh.intv.set(value-1)
-        lock.release()
 
     def inhibitLim(self, pv, value):
-        lock.acquire()
         self._app.partition.set(self._group)
         forceUpdate(self._inh.maxAcc)
         self._inh.maxAcc.set(value-1)
-        lock.release()
 
     def inhibitEna(self, pv, value):
-        lock.acquire()
         self._app.partition.set(self._group)
         forceUpdate(self._inh.inhEn)
         self._inh.inhEn.set(value)
-        lock.release()
 
 class GroupSetup(object):
     def __init__(self, name, app, group, stats):
@@ -250,7 +291,7 @@ class GroupSetup(object):
     def setFixedRate(self):
         rateVal = (0<<14) | (self._pv_FixedRate.current()['value']&0xf)
         self._app.l0RateSel.set(rateVal)
-
+        
     def setACRate(self):
         acRate = self._pv_ACRate    .current()['value']
         acTS   = self._pv_ACTimeslot.current()['value']
@@ -375,7 +416,7 @@ class GroupCtrls(object):
 
         def addPV(label,reg):
             pv = SharedPV(initial=NTScalar('I').wrap(0), 
-                          handler=IdxRegH(reg))
+                          handler=RegH(reg))
             provider.add(name+':'+label,pv)
             return pv
 
@@ -424,7 +465,7 @@ class PVCtrls(object):
         self._seq = PVSeq(provider, name+':SEQENG:0', ip, Engine(0, xpm.SeqEng_0))
 
         self._pv_dumpSeq = SharedPV(initial=NTScalar('I').wrap(0), 
-                                    handler=IdxCmdH(self._seq._eng.dump))
+                                    handler=CmdH(self._seq._eng.dump))
         provider.add(name+':DumpSeq',self._pv_dumpSeq)
 
         self._thread = threading.Thread(target=self.notify)
