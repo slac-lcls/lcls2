@@ -205,6 +205,7 @@ int main(int argc, char* argv[])
     uint8_t      expected_next_count  = 0;
 
     uint32_t     raw_counter          = 0;
+    uint32_t     last_raw_counter     = 0;
     uint32_t     t_counter            = 0;
     std::time_t  last_time;    
 
@@ -230,7 +231,8 @@ int main(int argc, char* argv[])
             
 
             if(last_time != ts.tv_sec){
-                printf("%x %x %x %x %d %d %d %d",raw_data[1],expected_next_count,raw_data[32],raw_data[32],ts.tv_sec,ts.tv_nsec,raw_counter,size);
+                printf("%x %x %x %x %d %d %d %d",raw_data[1],expected_next_count,raw_data[32],raw_data[32],ts.tv_sec,ts.tv_nsec,raw_counter-last_raw_counter,size);
+                last_raw_counter = raw_counter;
                 printf("\n");
             }
 
