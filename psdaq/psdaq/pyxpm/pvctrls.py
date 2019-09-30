@@ -60,7 +60,7 @@ class RegH(PVHandler):
         self._valreg.post(value)
 
     def handle(self, pv, value):
-        retry('RegH.handle',self.cmd,pv,value)
+        retry(self.cmd,pv,value)
 
     
 class IdxRegH(PVHandler):

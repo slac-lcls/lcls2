@@ -76,9 +76,9 @@ class Pv:
         logger.info("Current value of PV %s Value %s", self.pvname, self.__value__)
         return self.__value__
 
-    def put(self, newval):
+    def put(self, newval, wait=None):
         logger.info("Putting to PV %s current value %s new value %s", self.pvname, self.__value__, newval)
-        ret =  pvactx.put(self.pvname, newval)
+        ret =  pvactx.put(self.pvname, newval, wait=wait)
         self.__value__ = newval
         return ret
 
