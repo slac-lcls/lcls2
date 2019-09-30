@@ -51,9 +51,6 @@ int eventBuilderParser::parse_array(){
     main_header.resize(HEADER_WIDTH);
     std::copy(raw_data.begin(),raw_data.begin()+HEADER_WIDTH,main_header.begin());
 
-
-    
-
     //storing frame size
     frame_sizes_reverse_order.push_back(frame_to_position(raw_data.size()-spsft)); //sptl stand for the size position in the sub frame tail
 
@@ -91,8 +88,7 @@ int eventBuilderParser::parse_array(){
         std::copy(raw_data.begin()+new_positions[0],raw_data.begin()+new_positions[1],frame.begin());
         frames.push_back(frame);
 
-        printf("raw frame size = %d\n",frame.size());
-        //print_vector(frame);
+
 
         //keeping track of the index the points to where the raw frame should be broken up.
         parsed_frame_size = parsed_frame_size+frame_sizes_reverse_order.back()+HEADER_WIDTH;
