@@ -228,7 +228,7 @@ int main(int argc, char* argv[])
             //uint32_t dest = dmaDest[b] >> 8;
             raw_data = reinterpret_cast<uint8_t *>(dmaBuffers[index]);
 
-            std::vector<uint8_t> raw_vector(raw_data,raw_data+size);
+            
 
             //if(size !=2112){
             //    printf("corrupted frame. size = %d",size);
@@ -236,12 +236,16 @@ int main(int argc, char* argv[])
             
 
             if(last_time != ts.tv_sec){
-                printf("%x %x %x %x %d elapsed time = %d number of shots = %d %d \n",raw_data[1],expected_next_count,raw_data[32],raw_data[32],ts.tv_sec,ts.tv_sec-last_time,raw_counter-last_raw_counter,size);
-                last_raw_counter = raw_counter;
+                
+                std::vector<uint8_t> raw_vector(raw_data,raw_data+size);
 
                 my_frame.load_frame( raw_vector );
                 my_frame.parse_array();
                 my_frame.print_frame();
+                my_frame.clear();
+
+                printf("%x %x %x %x %d elapsed time = %d number of shots = %d %d \n",raw_data[1],expected_next_count,raw_data[32],raw_data[32],ts.tv_sec,ts.tv_sec-last_time,raw_counter-last_raw_counter,size);
+                last_raw_counter = raw_counter;
 
             }
 

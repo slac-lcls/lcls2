@@ -63,6 +63,11 @@ class eventBuilderParser {
 
         // this will populate the subframe
         int resolve_sub_frames();
+
+        //pgpread_timetool sub frames keep growing.  this should prevent that.
+        int clear();
+
+        //printing for debugging
         int print_raw();
         int print_frame();
 

@@ -20,6 +20,7 @@
 #include <fstream>
 #include <vector>
 #include <typeinfo>
+#include <algorithm>
 
 #define MAX_RET_CNT_C 1000
 
@@ -41,6 +42,17 @@ int eventBuilderParser::get_frame_size(){
 int eventBuilderParser::load_frame(std::vector<uint8_t> &incoming_data){
     raw_data   = incoming_data;
     return 0;        
+}
+
+int eventBuilderParser::clear(){
+
+        raw_data.clear();
+        main_header.clear();   
+        frame_sizes_reverse_order.clear();
+        frame_positions_reverse_order.clear();
+        frames.clear();
+        sub_frames.clear();
+        is_sub_frame.clear();
 }
 
 //this method does the actual parsing.  Upon completion of this method, the members
@@ -143,8 +155,8 @@ int eventBuilderParser::print_raw(){
 
 int eventBuilderParser::print_frame(){
 
-    printf("raw parsed frames = \n");
-    print_vector2d(frames);
+    //printf("raw parsed frames = \n");
+    //print_vector2d(frames);
     
     printf("___________________________\n");
     printf("printing summary data\n");
@@ -171,7 +183,7 @@ template <class T> int eventBuilderParser::print_vector2d(std::vector<T> &my_vec
             if(is_sub_frame[i]!=1){
 
                 printf("sub frame %d = [",i);
-                for(uint32_t j=0;j<my_vector[i].size();j=j+1){
+                for(uint32_t j=0;j<std::min(int(my_vector[i].size()),32);j=j+1){
                     printf("%d ",my_vector[i][j]);
                 }
                 printf("]\n length = %d \n",my_vector[i].size());
@@ -200,7 +212,7 @@ int eventBuilderParser::print_sub_batcher(){
         
 template <class T> int eventBuilderParser::print_vector(std::vector<T> &my_vector){
 
-    for (uint32_t i=0;i<my_vector.size();i=i+1){
+    for (uint32_t i=0;i<std::min(int(my_vector.size()),32);i=i+1){
         printf("%d ",my_vector[i]);
     }
     printf("\n");
