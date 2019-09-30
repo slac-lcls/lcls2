@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <time.h>
+#include <ctime>
 #include <Python.h>
 
 #define MAX_RET_CNT_C 1000
@@ -195,15 +196,17 @@ int main(int argc, char* argv[])
     dmaSetMaskBytes(fd, mask);
 
 
-    int32_t dmaRet[MAX_RET_CNT_C];
-    uint32_t dmaIndex[MAX_RET_CNT_C];
-    uint32_t dmaDest[MAX_RET_CNT_C];
+    int32_t      dmaRet[MAX_RET_CNT_C];
+    uint32_t     dmaIndex[MAX_RET_CNT_C];
+    uint32_t     dmaDest[MAX_RET_CNT_C];
 
-    uint8_t *raw_data;
+    uint8_t     *raw_data;
 
-    uint8_t expected_next_count = 0;
+    uint8_t      expected_next_count  = 0;
 
-    uint32_t raw_counter = 0;
+    uint32_t     raw_counter          = 0;
+    uint32_t     t_counter            = 0;
+    std::time_t  last_time;    
 
     while (1) {
         if (terminate.load(std::memory_order_acquire) == true) {
@@ -226,12 +229,13 @@ int main(int argc, char* argv[])
             //}
             
 
-            if(raw_counter%100000 == 0){
+            if(last_time != ts.tv_sec){
                 printf("%x %x %x %x %d %d %d %d",raw_data[1],expected_next_count,raw_data[32],raw_data[32],ts.tv_sec,ts.tv_nsec,raw_counter,size);
                 printf("\n");
             }
 
-
+            last_time = ts.tv_sec;
+        
             raw_counter = raw_counter + 1;
 
             if(expected_next_count != raw_data[1]){
