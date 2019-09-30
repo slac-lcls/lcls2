@@ -26,7 +26,7 @@ from mpi4py import MPI
 #       1   4   7   10      0   1   2   3
 #       2   5   8   11      0   1   2   3
 
-class Communications(object):
+class Communicators(object):
     # Reserved nodes are for external applications (e.g. smalldata
     # servers).  These nodes will do nothing for event/step iterators
     # (see run_node method below).  The "psana_group" consists of
@@ -101,8 +101,8 @@ class Communications(object):
     def node_type(self):
         return self._nodetype
 
-# Make the Communications class global
-comms = Communications()
+# Make the Communicators class global
+comms = Communicators()
 
 class UpdateManager(object):
     """ Keeps epics data and their send history. """
