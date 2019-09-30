@@ -6,9 +6,12 @@
 #include "xtcdata/xtc/Dgram.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/SysLog.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
+
+using logging = Pds::SysLog;
 
 namespace Drp {
 
@@ -224,20 +227,18 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 XtcData::TransitionId::Value transitionId = timingHeader->seq.service();
                 uint64_t pid = timingHeader->seq.pulseId().value();
                 if (transitionId != XtcData::TransitionId::L1Accept) {
-                    printf("PGPReader  saw %s transition @ %014lx\n", XtcData::TransitionId::name(transitionId), pid);
+                    logging::info("PGPReader  saw %s transition @ %014lx", XtcData::TransitionId::name(transitionId), pid);
                 }
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-                    printf("\033[0;31m");
-                    printf("Fatal: Jump in complete l1Count %u -> %u | difference %d, tid %s\n",
+                    logging::critical("Fatal: Jump in complete l1Count %u -> %u | difference %d, tid %s",
                            m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId));
-                    printf("data: %08x %08x %08x %08x %08x %08x\n",
+                    logging::critical("data: %08x %08x %08x %08x %08x %08x",
                            data[0], data[1], data[2], data[3], data[4], data[5]);
 
-                    printf("lastTid %s\n", XtcData::TransitionId::name(lastTid));
-                    printf("lastData: %08x %08x %08x %08x %08x %08x\n",
+                    logging::critical("lastTid %s", XtcData::TransitionId::name(lastTid));
+                    logging::critical("lastData: %08x %08x %08x %08x %08x %08x",
                            lastData[0], lastData[1], lastData[2], lastData[3], lastData[4], lastData[5]);
 
-                    printf("\033[0m");
                     throw "Jump in event counter";
 
                     for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
