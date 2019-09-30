@@ -90,6 +90,7 @@ target_link_libraries(pgpread
 )
 
 add_executable(pgpread_timetool
+    AxiBatcherParser.cc
     pgpread_timetool.cc
 )
 target_include_directories(pgpread_timetool PUBLIC
