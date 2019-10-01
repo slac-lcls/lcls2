@@ -24,28 +24,36 @@ public:
     }
     Array() : _shape(0), _data(0), _rank(0) {}
     Array(const Array& a) : _shape(a._shape), _data(a._data), _rank(a._rank) {}
+    Array& operator=(Array& o){
+        if(&o == this) return *this;
+        _shape = o.shape;
+        _rank = o.rank;
+        _data = o._data;
+        return *this;
+    }
     T& operator()(unsigned i){
-        assert(i < _shape[0]);
+        assert(i<_shape[0]);
         return _data[i];
     }
     T& operator()(unsigned i, unsigned j){
         assert(i<_shape[0]);assert(j<_shape[1]);
         return _data[i * _shape[1] + j];
     }
-    const T& operator()(unsigned i, unsigned j) const{
-        assert(i< _shape[0]);assert(j<_shape[1]);
-        return _data[i * _shape[1] + j];
-    }
     T& operator()(unsigned i, unsigned j, unsigned k){
-        assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);
+        assert(i<_shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);
         return _data[(i * _shape[1] + j) * _shape[2] + k];
     }
-    const T& operator()(unsigned i, unsigned j, unsigned k) const
-    {
-        assert(i< _shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);
-        return _data[(i * _shape[1] + j) * _shape[2] + k];
+  /*
+    T& operator()(unsigned i, unsigned j, unsigned k, unsigned l){
+        assert(i<_shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);assert(l<_shape[3]);
+        return _data[((i * _shape[1] + j) * _shape[2] + k) * _shape[3] + l];
     }
-    uint32_t rank() const {
+    T& operator()(unsigned i, unsigned j, unsigned k, unsigned l, unsigned m){
+        assert(i<_shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);assert(l<_shape[3]);assert(m<_shape[4]);
+        return _data[(((i * _shape[1] + j) * _shape[2] + k) * _shape[3] + l) * _shape[4] + m];
+    }
+  */
+    uint32_t rank(){
         return _rank;
     }
     uint32_t* shape() const {

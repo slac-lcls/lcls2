@@ -90,6 +90,25 @@ public:
   }
 
 //-------------------
+
+  NDArray<T>& operator=(const NDArray<T>& o)
+  {
+    if(&o == this) return *this;
+    base::operator=(o);
+    set_shape(o.shape(), o.rank());
+    set_data_copy(o._data);
+    return *this;
+  }
+
+//-------------------
+
+
+
+
+
+
+
+
 /*
   NDArray(NDArray<T>& a) :
     base(), _buf_ext(0), _buf_own(0)
@@ -97,9 +116,13 @@ public:
      set_ndarray(a);
   }
 */
+
+
+
+
 //-------------------
 
-  NDArray(XtcData::Array<T> a) :
+  NDArray(const base& a) :
     base(), _buf_ext(0), _buf_own(0)
   {
     set_ndarray(a);
@@ -111,7 +134,7 @@ public:
 
 //-------------------
 
-  ~NDArray(){if(_buf_own) delete _buf_own;}
+  ~NDArray(){if(_buf_own) delete _buf_own;} // delete &_shape;}
 
 //-------------------
 
@@ -170,18 +193,28 @@ public:
 
 //-------------------
 
-  inline void set_ndarray(XtcData::Array<T> a) {
+  inline void set_ndarray(base& a) {
      set_shape(a.shape(), a.rank());
-     set_data_buffer(a.data());
+     set_data_buffer((void*)a.data());
   }
 
 //-------------------
+//-------------------
+//------------------- 
+//-------------------
+
+
+//  inline void set_ndarray(NDArray<T>& a) {
+
 
   inline void set_ndarray(NDArray<T> a) {
      set_shape(a.shape(), a.rank());
-     set_data_buffer(a.data());
+     set_data_buffer((void*)a.data());
   }
 
+//-------------------
+//-------------------
+//-------------------
 //-------------------
 
 //-------------------
@@ -243,7 +276,7 @@ public:
 //-------------------
 
   friend std::ostream& 
-  operator << (std::ostream& os, const NDArray& o) 
+  operator << (std::ostream& os, const NDArray<T>& o) 
   {
     size_t nd = o.ndim();
     if(nd) {
