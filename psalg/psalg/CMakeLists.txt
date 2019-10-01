@@ -174,11 +174,6 @@ target_link_libraries(test_MDBWebUtils
     CURL::libcurl
 )
 
-
-
-
-
-
 # Test include "roentdek/resort64c.h"
 if (ROENTDEK_FOUND)
     add_executable(ex01_resort64c
@@ -217,8 +212,13 @@ if (ROENTDEK_FOUND)
     )
 endif()
 
-
-
+## test_WFAlgos
+add_executable(test_WFAlgos
+    tests/test_WFAlgos.cc
+)
+target_link_libraries(test_WFAlgos
+    psalg
+)
 
 # Test access to xtc data
 add_executable(test_xtc_data

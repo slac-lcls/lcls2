@@ -132,18 +132,18 @@ def test_nda_u2(np.ndarray[np.uint16_t, ndim=2, mode="c"] nda): ctest_nda_u2(&nd
 #------------------------------
 
 #def test_nda(np.ndarray nda):
-#def test_nda(dtypes2d nda):
-#    #print('nda.dtype =', str(nda.dtype))
-#    if   nda.dtype == np.float64 : ctest_nda_f8(<double*>   nda.data, nda.shape[0], nda.shape[1])
-#    elif nda.dtype == np.int16   : ctest_nda_i2(<int16_t*>  nda.data, nda.shape[0], nda.shape[1])
-#    elif nda.dtype == np.uint16  : ctest_nda_u2(<uint16_t*> nda.data, nda.shape[0], nda.shape[1])
-#    else: raise ValueError("Array data type is unknown")
+def test_nda(dtypes2d nda):
+    #print('nda.dtype =', str(nda.dtype))
+    if   nda.dtype == np.float64 : ctest_nda_f8(<double*>   nda.data, nda.shape[0], nda.shape[1])
+    elif nda.dtype == np.int16   : ctest_nda_i2(<int16_t*>  nda.data, nda.shape[0], nda.shape[1])
+    elif nda.dtype == np.uint16  : ctest_nda_u2(<uint16_t*> nda.data, nda.shape[0], nda.shape[1])
+    else: raise ValueError("Array data type is unknown")
 
 #------------------------------
 #------------------------------
 #------------------------------
 
-## DOES NOT WORK
+## IT SOULD BUT DOES NOT WORK
 #def test_nda_xxx(np.ndarray nda):
 #    ctest_nda(nda.data, nda.shape[0], nda.shape[1])
 
@@ -164,7 +164,7 @@ cdef extern from "psalg/hexanode/wrap_resort64c.hh":
     void test_resort()
 
 def ctest_resort():
-    print('In hexanode_ext.ctest_resort - call cpp method which uses psalg/hexanode/wrap_resort64c.hh')
+    print('In psalg/hexanode/hexanode_ext.pyx ctest_resort - calls cpp test_resort() from psalg/hexanode/wrap_resort64c.h')
     test_resort()
 
 #------------------------------
@@ -216,7 +216,8 @@ cdef class py_hit_class:
 ## cdef extern from "/reg/g/psdm/sw/conda2/inst/envs/ps-2.0.3/include/roentdek/resort64c.h":
 ## cdef extern from "psalg/hexanode/resort64c.hh":
 
-cdef extern from "roentdek/resort64c.h":
+#cdef extern from "roentdek/resort64c.h":
+cdef extern from "psalg/hexanode/resort64c.hh":
     cdef cppclass scalefactors_calibration_class:
 
         double best_fv, best_fw, best_w_offset
@@ -280,8 +281,8 @@ cdef class py_scalefactors_calibration_class:
 #------------------------------
 #------------------------------
 
-#cdef extern from "psalg/hexanode/resort64c.hh":
-cdef extern from "roentdek/resort64c.h":
+#cdef extern from "roentdek/resort64c.h":
+cdef extern from "psalg/hexanode/resort64c.hh":
     cdef cppclass sort_class:
         int Cu1, Cu2, Cv1, Cv2, Cw1, Cw2, Cmcp 
         bint use_sum_correction 
@@ -633,8 +634,8 @@ def py_create_calibration_tables(const char* fname, py_sort_class sorter) :
     return create_calibration_tables(fname, sorter.cptr)
 
 
-    def py_sorter_scalefactors_calibration_map_is_full_enough(py_sort_class sorter) :
-         return sorter_scalefactors_calibration_map_is_full_enough(sorter.cptr)
+def py_sorter_scalefactors_calibration_map_is_full_enough(py_sort_class sorter) :
+    return sorter_scalefactors_calibration_map_is_full_enough(sorter.cptr)
 
 #------------------------------
 #------------------------------
@@ -642,8 +643,8 @@ def py_create_calibration_tables(const char* fname, py_sort_class sorter) :
 #------------------------------
 #------------------------------
 
-#cdef extern from "psalg/hexanode/resort64c.hh":
-cdef extern from "roentdek/resort64c.h":
+#cdef extern from "roentdek/resort64c.h":
+cdef extern from "psalg/hexanode/resort64c.hh":
     cdef cppclass signal_corrector_class:
         signal_corrector_class()
 
@@ -655,8 +656,8 @@ cdef class py_signal_corrector_class:
     cdef signal_corrector_class* cptr  # holds a C++ instance which we're wrapping
 
     def __cinit__(self):
-        print("In py_signal_corrector_class.__cinit__",\
-              " - direct test of methods from psalg/hexanode/resort64c.hh in hexanode_ext.class py_signal_corrector_class")
+        print("In py_signal_corrector_class.__cinit__"\
+              " - direct test of methods from roentdek/resort64c.h in hexanode_ext.class py_signal_corrector_class")
         self.cptr = new signal_corrector_class();
 
     def __dealloc__(self):
@@ -743,7 +744,7 @@ cdef class lmf_io:
             raise MemoryError('Not enough memory.')
 
     def __dealloc__(self):
-        print("In LMF_IO.__del__")
+        print("In LMF_IO.__dealloc__")
         del self.cptr
 
     def open_input_lmf(self, const char* fname):
@@ -753,10 +754,10 @@ cdef class lmf_io:
         return s
 
     def start_time(self):
-        return ctime(&self.cptr.Starttime).strip('\n')
+        return ctime(&self.cptr.Starttime).decode().strip('\n')
 
     def stop_time(self):
-        return ctime(&self.cptr.Stoptime).strip('\n')
+        return ctime(&self.cptr.Stoptime).decode().strip('\n')
 
     def read_next_event(self):
         return self.cptr.ReadNextEvent()

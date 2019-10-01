@@ -1,6 +1,6 @@
 
 
-// #include "hexanode/resort64c.h"
+// #include "roentdec/resort64c.h"
 #include "psalg/hexanode/wrap_resort64c.hh"
 
 #include <iostream>
@@ -8,11 +8,10 @@ using namespace std;
 
 void test_resort()
 {
-  cout << "In src/wrap_resort64c.cc which includes resort64c.h through the /wrap_resort64c.hh\n"; 
+  cout << "In psalg/hexanode/src/wrap_resort64c.cc which includes roentdec/resort64c.h through the local wrap_resort64c.hh\n"; 
+  cout << "test sort_class()\n";
 
-  cout << "test sort_class\n";
   sort_class* sorter = new sort_class();
-
   sorter -> common_start_mode = true;
   sorter -> use_HEX = true;
   sorter -> use_MCP = true;

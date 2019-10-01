@@ -137,9 +137,10 @@ def test_peakFinder():
 
 def usage(tname):
     s = 'Usage: python test_psalg <test-number>'
-    if tname == '0' or tname == '1' : s+='\n 1 - test peakFinder'
-    if tname == '0' or tname == '2' : s+='\n 2 - test cfd'
-    if tname == '0' or tname == '3' : s+='\n 3 - test hexanode'
+    if tname in ('0',)    : s+='\n 0 - test ALL (default)'
+    if tname in ('0','1') : s+='\n 1 - test peakFinder'
+    if tname in ('0','2') : s+='\n 2 - test cfd'
+    if tname in ('0','3') : s+='\n 3 - test hexanode'
     return s
 
 #------------------------------
@@ -148,11 +149,11 @@ if __name__ == '__main__':
     import sys
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     print('%s' % usage(tname))
-
     print(50*'_', '\nTest %s' % tname)
-    if tname == '0' or tname == '1' : test_peakFinder()
-    if tname == '0' or tname == '2' : test_cfd()
-    if tname == '0' or tname == '3' : test_hexanode()
+    if tname in ('0','1') : test_peakFinder()
+    if tname in ('0','2') : test_cfd()
+    if tname in ('0','3') : test_hexanode()
+    print('%s' % usage(tname))
     sys.exit('END OF TEST %s' % tname)
 
 #------------------------------

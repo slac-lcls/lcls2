@@ -1,10 +1,13 @@
 add_library(peaks SHARED
     src/LocalExtrema.cc
     src/PeakFinderAlgos.cc
+    src/WFAlgos.cc
 )
 
+# calib included for NDArray
 target_link_libraries(peaks
     xtcdata::xtc
+    calib
 )
 
 
@@ -17,6 +20,7 @@ install(FILES
     LocalExtrema.hh
     PeakFinderAlgos.hh
     Types.hh
+    WFAlgos.hh
     DESTINATION include/psalg/peaks
 )
 
