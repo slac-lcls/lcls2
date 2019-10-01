@@ -74,8 +74,7 @@ int main(int argc, char* argv[])
     }
 
     switch (para.verbose) {
-      case 0:  logging::init(instrument, LOG_WARNING);  break;
-      case 1:  logging::init(instrument, LOG_INFO);     break;
+      case 0:  logging::init(instrument, LOG_INFO);     break;
       default: logging::init(instrument, LOG_DEBUG);    break;
     }
     logging::info("logging configured");

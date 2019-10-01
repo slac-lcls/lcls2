@@ -8,8 +8,10 @@
 #include "Digitizer.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "PGPDetectorApp.hh"
+#include "psdaq/service/SysLog.hh"
 
 using json = nlohmann::json;
+using logging = Pds::SysLog;
 
 namespace Drp {
 
@@ -83,7 +85,7 @@ void PGPDetectorApp::handleDisconnect(const json& msg)
 
 void PGPDetectorApp::handlePhase1(const json& msg)
 {
-    std::cout<<"handlePhase1 in DrpApp\n";
+    logging::info("handlePhase1 in PGPDetectorApp");
 
     XtcData::Xtc& xtc = m_det->transitionXtc();
     XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
