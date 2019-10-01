@@ -874,7 +874,7 @@ int main(int argc, char **argv)
     }
   }
 
-  logging::init(instrument, prms.verbose ? LOG_DEBUG : LOG_WARNING);
+  logging::init(instrument, prms.verbose ? LOG_DEBUG : LOG_INFO);
   logging::info("logging configured");
   if (!instrument)
   {
