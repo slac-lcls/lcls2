@@ -197,18 +197,19 @@ int main(int argc, char* argv[])
     dmaSetMaskBytes(fd, mask);
 
 
-    int32_t              dmaRet[MAX_RET_CNT_C];
-    uint32_t             dmaIndex[MAX_RET_CNT_C];
-    uint32_t             dmaDest[MAX_RET_CNT_C];
+    int32_t                 dmaRet[MAX_RET_CNT_C];
+    uint32_t                dmaIndex[MAX_RET_CNT_C];
+    uint32_t                dmaDest[MAX_RET_CNT_C];
 
-    uint8_t              *raw_data;
+    uint8_t                *raw_data;
 
-    uint8_t              expected_next_count          = 0;
+    uint8_t                 expected_next_count          = 0;
 
-    uint32_t             raw_counter                  = 0;
-    uint32_t             last_raw_counter             = 0;
-    uint32_t             t_counter                    = 0;
-    std::time_t          last_time;    
+    uint32_t                raw_counter                  = 0;
+    uint32_t                last_raw_counter             = 0;
+    uint32_t                t_counter                    = 0;
+    std::time_t             last_time;    
+    std::vector<uint8_t>    raw_vector;
 
     eventBuilderParser   my_frame;
 
@@ -235,19 +236,26 @@ int main(int argc, char* argv[])
             //}
             
 
+
+            raw_vector = std::vector<uint8_t> (raw_data,raw_data+size);
+            my_frame.load_frame( raw_vector );
+            my_frame.parse_array();
+            
             if(last_time != ts.tv_sec){
                 
-                std::vector<uint8_t> raw_vector(raw_data,raw_data+size);
+                
 
-                my_frame.load_frame( raw_vector );
-                my_frame.parse_array();
                 my_frame.print_frame();
-                my_frame.clear();
+
 
                 printf("%x %x %x %x %d elapsed time = %d number of shots = %d %d \n",raw_data[1],expected_next_count,raw_data[32],raw_data[32],ts.tv_sec,ts.tv_sec-last_time,raw_counter-last_raw_counter,size);
                 last_raw_counter = raw_counter;
 
             }
+
+            my_frame.clear();
+
+
 
             last_time = ts.tv_sec;
         
