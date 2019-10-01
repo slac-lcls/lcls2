@@ -327,12 +327,12 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     std::string&      detName = m_para.trgDetName;
     if (m_para.trgDetName.empty())  m_para.trgDetName = dummy;
 
-    printf("Fetching trigger info from ConfigDb/%s/%s\n",
+    logging::info("Fetching trigger info from ConfigDb/%s/%s\n",
            configAlias.c_str(), detName.c_str());
 
     if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, detName, top))
     {
-        fprintf(stderr, "%s:\n  Document '%s' not found in ConfigDb\n",
+        logging::error("%s:\n  Document '%s' not found in ConfigDb\n",
                 __PRETTY_FUNCTION__, detName.c_str());
         return -1;
     }

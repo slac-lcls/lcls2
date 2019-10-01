@@ -632,12 +632,12 @@ int TebApp::_configure(const json& msg)
   std::string&      detName = _prms.trgDetName;
   if (_prms.trgDetName.empty())  _prms.trgDetName = TRIGGER_DETNAME;
 
-  printf("Fetching trigger info from ConfigDb/%s/%s\n\n",
+  logging::info("Fetching trigger info from ConfigDb/%s/%s\n\n",
          configAlias.c_str(), detName.c_str());
 
   if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, detName, top))
   {
-    fprintf(stderr, "%s:\n  Document '%s' not found in ConfigDb\n",
+    logging::error("%s:\n  Document '%s' not found in ConfigDb\n",
             __PRETTY_FUNCTION__, detName.c_str());
     return -1;
   }
@@ -687,7 +687,7 @@ void TebApp::handlePhase1(const json& msg)
       std::string errorMsg = "Phase 1 error: ";
       errorMsg += "Failed to configure TEB";
       body["err_info"] = errorMsg;
-      fprintf(stderr, "%s:\n  %s\n", __PRETTY_FUNCTION__, errorMsg.c_str());
+      logging::error("%s:\n  %s", __PRETTY_FUNCTION__, errorMsg.c_str());
     }
 
     _printParams(_prms, _groups);
@@ -731,7 +731,7 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.id = body["teb"][id]["teb_id"];
   if (_prms.id >= MAX_TEBS)
   {
-    fprintf(stderr, "TEB ID %d is out of range 0 - %d\n", _prms.id, MAX_TEBS - 1);
+    logging::error("TEB ID %d is out of range 0 - %d\n", _prms.id, MAX_TEBS - 1);
     return 1;
   }
 
@@ -749,7 +749,7 @@ int TebApp::_parseConnectionParams(const json& body)
 
   if (body.find("drp") == body.end())
   {
-    fprintf(stderr, "Missing required DRP specs\n");
+    logging::error("Missing required DRP specs");
     return 1;
   }
 
@@ -759,7 +759,7 @@ int TebApp::_parseConnectionParams(const json& body)
     std::string address = it.value()["connect_info"]["nic_ip"];
     if (drpId > MAX_DRPS - 1)
     {
-      fprintf(stderr, "DRP ID %d is out of range 0 - %d\n", drpId, MAX_DRPS - 1);
+      logging::error("DRP ID %d is out of range 0 - %d", drpId, MAX_DRPS - 1);
       return 1;
     }
     _prms.contributors |= 1ul << drpId;
@@ -769,7 +769,7 @@ int TebApp::_parseConnectionParams(const json& body)
     auto group = unsigned(it.value()["det_info"]["readout"]);
     if (group > NUM_READOUT_GROUPS - 1)
     {
-      fprintf(stderr, "Readout group %d is out of range 0 - %d\n", group, NUM_READOUT_GROUPS - 1);
+      logging::error("Readout group %d is out of range 0 - %d", group, NUM_READOUT_GROUPS - 1);
       return 1;
     }
     _prms.contractors[group] |= 1ul << drpId; // Possibly overridden during Configure

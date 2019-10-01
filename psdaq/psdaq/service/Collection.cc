@@ -53,12 +53,12 @@ std::string getNicIp()
         }
     }
     if (interface_name == nullptr) {
-        printf("Warning: No infiniband device found!");
+        logging::warning("Warning: No infiniband device found!");
         if (ethernet_name == nullptr) {
-            printf("  And no ethernet either!\n");
+            logging::warning("  And no ethernet either!\n");
             return std::string();
         }
-        printf("  Falling back to ethernet.\n");
+        logging::warning("  Falling back to ethernet.\n");
         interface_name = ethernet_name;
     }
 
@@ -116,8 +116,8 @@ std::string ZmqSocket::recv()
     ZmqMessage frame;
     int rc = zmq_msg_recv(&frame.msg, socket, 0);
     if (rc == -1) {
-        fprintf(stderr,"Collection.cc: zmq_msg_recv bad return value %d\n",rc);
-        fprintf(stderr,"This can happen when a process is sent a signal.  Exiting.\n");
+        logging::error("Collection.cc: zmq_msg_recv bad return value %d",rc);
+        logging::error("This can happen when a process is sent a signal.  Exiting.");
         return std::string();
     }
     return std::string((char*)frame.data(), frame.size());
@@ -128,8 +128,8 @@ json ZmqSocket::recvJson()
     ZmqMessage frame;
     int rc = zmq_msg_recv(&frame.msg, socket, 0);
     if (rc == -1) {
-        fprintf(stderr,"Collection.cc: zmq_msg_recv bad return value %d\n",rc);
-        fprintf(stderr,"This can happen when a process is sent a signal.  Exiting.\n");
+        logging::error("Collection.cc: zmq_msg_recv bad return value %d",rc);
+        logging::error("This can happen when a process is sent a signal.  Exiting.");
         return json({});
     }
     char* begin = (char*)frame.data();
@@ -146,16 +146,16 @@ std::vector<ZmqMessage> ZmqSocket::recvMultipart()
         ZmqMessage frame;
         int rc = zmq_msg_recv(&frame.msg, socket, 0);
         if (rc == -1) {
-            fprintf(stderr,"Collection.cc: zmq_msg_recv bad return value %d\n",rc);
-            fprintf(stderr,"This can happen when a process is sent a signal.  Exiting.\n");
+            logging::error("Collection.cc: zmq_msg_recv bad return value %d",rc);
+            logging::error("This can happen when a process is sent a signal.  Exiting.");
             frames.clear();
             break;                      // Let application wind down
         }
         frames.emplace_back(std::move(frame));
         rc = zmq_getsockopt(socket, ZMQ_RCVMORE, &more, &more_size);
         if (rc != 0) {
-            fprintf(stderr,"Collection.cc: zmq_getsockopt bad return value %d\n",rc);
-            fprintf(stderr,"This can happen when a process is sent a signal.  Exiting.\n");
+            logging::error("Collection.cc: zmq_getsockopt bad return value %d",rc);
+            logging::error("This can happen when a process is sent a signal.  Exiting.");
             frames.clear();
             break;                      // Let application wind down
         }
@@ -167,7 +167,7 @@ void ZmqSocket::send(const std::string& msg)
 {
     int ret = zmq_send(socket, msg.c_str(), msg.length(), 0);
     if (ret == -1) {
-        std::cout<<"Error sending zmq message:  "<<msg<<'\n';
+        logging::error("Error sending zmq message:  %s", msg.c_str());
     }
 }
 
@@ -289,7 +289,7 @@ void CollectionApp::run()
         if (items[1].revents & ZMQ_POLLIN) {
             // forward message to contol system with pulseId as the message id
             std::string pulseId = m_inprocRecv.recv();
-            std::cout<<"inproc message received  "<<pulseId<<'\n';
+            logging::info("inproc message received  %s", pulseId.c_str());
             json body;
             json answer = createMsg("timingTransition", pulseId, getId(), body);
             reply(answer);

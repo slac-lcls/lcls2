@@ -332,7 +332,7 @@ void BldApp::handleDisconnect(const json& msg)
 
 void BldApp::handlePhase1(const json& msg)
 {
-    std::cout<<"handlePhase1 in DrpApp\n";
+    logging::info("handlePhase1 in BldApp");
 
     json body = json({});
     std::string key = msg["header"]["key"];
@@ -341,7 +341,7 @@ void BldApp::handlePhase1(const json& msg)
         if (!errorMsg.empty()) {
             errorMsg = "Phase 1 error: " + errorMsg;
             body["err_info"] = errorMsg;
-            std::cout<<errorMsg<<'\n';
+            logging::error("%s", errorMsg.c_str());
         }
     }
 
