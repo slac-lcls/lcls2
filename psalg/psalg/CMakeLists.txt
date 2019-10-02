@@ -220,6 +220,14 @@ target_link_libraries(test_WFAlgos
     psalg
 )
 
+## test_NDArray
+add_executable(test_NDArray
+    tests/test_NDArray.cc
+)
+target_link_libraries(test_NDArray
+    psalg
+)
+
 # Test access to xtc data
 add_executable(test_xtc_data
     tests/test_xtc_data.cc
