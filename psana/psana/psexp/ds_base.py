@@ -3,7 +3,9 @@ import os
 import glob
 import abc
 import numpy as np
+
 from psana.dgrammanager import DgramManager
+from psana.smalldata import SmallData
 
 class InvalidFileType(Exception): pass
 
@@ -38,9 +40,10 @@ class DataSourceBase(abc.ABC):
         live        -- turns live mode on/off (default is False). 
         """
         if kwargs is not None:
+            self.smalldata_kwargs = {}
             keywords = ('exp', 'dir', 'files', 'shmem', \
                     'filter', 'batch_size', 'max_events', 'detectors', \
-                    'det_name','destination','live')
+                    'det_name','destination','live','smalldata_kwargs')
             
             for k in keywords:
                 if k in kwargs:
@@ -53,7 +56,7 @@ class DataSourceBase(abc.ABC):
                 os.environ['PS_R_MAX_RETRIES'] = '1' # only try reading once in live mode
 
         assert self.batch_size > 0
-    
+
     def events(self):
         for run in self.runs():
             for evt in run.events(): yield evt
@@ -136,4 +139,11 @@ class DataSourceBase(abc.ABC):
                 run_dict[r] = (xtc_files, smd_files, other_files)
         
         return self.exp, run_dict
+
+
+    def smalldata(self, **kwargs):
+        return SmallData(**self.smalldata_kwargs, **kwargs)
+
+
+
 

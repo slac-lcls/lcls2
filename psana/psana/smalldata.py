@@ -14,12 +14,6 @@ SIZE = COMM.Get_size()
 
 if SIZE > 1:
     MODE = 'PARALLEL'
-    # these are all functions that provide xface to MPI pool
-    from psana.psexp.node import comms
-
-    smalldata_group = MPI.Group.Union(comms.srv_group(), comms.bd_group())
-    smalldata_comm  = COMM.Create(smalldata_group)
-
 else:
     MODE = 'SERIAL'
 
@@ -246,7 +240,8 @@ class Server: # (hdf5 handling)
 
 class SmallData: # (client)
 
-    def __init__(self, filename=None, batch_size=5, cache_size=5):
+    def __init__(self, server_group=None, client_group=None, 
+                 filename=None, batch_size=5, cache_size=5):
 
         self.batch_size = batch_size
         self._batch = []
@@ -255,6 +250,9 @@ class SmallData: # (client)
         self._base_filename = filename
 
         if MODE == 'PARALLEL':
+
+            self._server_group = server_group
+            self._client_group = client_group
 
             # hide intermediate files -- join later via VDS
             self._filename = '.' + str(RANK) + '_' + filename
@@ -276,22 +274,24 @@ class SmallData: # (client)
 
 
     def _comm_partition(self):
-    
+
+        self._smalldata_group = MPI.Group.Union(self._server_group, self._client_group)
+        self._smalldata_comm  = COMM.Create(self._smalldata_group)
+
         # partition into comms
-        _srv_group = comms.srv_group()
-        n_srv = _srv_group.size
+        n_srv = self._server_group.size
         if n_srv < 1:
             raise Exception('Attempting to run smalldata with no servers'
                             ' set env var PS_SRV_NODES to be 1 or more')
 
-        if comms.node_type() == 'srv':
+        if self._server_group.rank != MPI.UNDEFINED: # if in server group TODO
             self._type = 'server'
-            self._srv_color = _srv_group.rank
-            self._srvcomm = smalldata_comm.Split(self._srv_color, 0) # rank=0
-        elif comms.node_type() == 'bd':
+            self._srv_color = self._server_group.rank
+            self._srvcomm = self._smalldata_comm.Split(self._srv_color, 0) # rank=0
+        elif self._client_group.rank != MPI.UNDEFINED: # if in client group TODO
             self._type = 'client'
-            self._srv_color = comms.bd_group().rank % n_srv
-            self._srvcomm = smalldata_comm.Split(self._srv_color, 
+            self._srv_color = self._client_group.rank % n_srv
+            self._srvcomm = self._smalldata_comm.Split(self._srv_color, 
                                                  RANK+1) # keep rank order
         else:
             # we are some other node type
@@ -360,8 +360,8 @@ class SmallData: # (client)
 
         if MODE == 'PARALLEL':
             if self._type != 'other': # other = Mona
-                smalldata_comm.barrier()
-                if smalldata_comm.Get_rank() == 0:
+                self._smalldata_comm.barrier()
+                if self._smalldata_comm.Get_rank() == 0:
                     join_files(self._base_filename)
 
         return

@@ -52,7 +52,10 @@ class Communicators(object):
         self.world_rank  = self.comm.Get_rank()
         self.world_size  = self.comm.Get_size()
         self.world_group = self.comm.Get_group()
-        assert self.world_size >= 3
+
+        if self.world_size < 3:
+            raise Exception('Too few MPI nodes to run parallel psana (min 3)')
+
         PS_SRV_NODES = int(os.environ.get('PS_SRV_NODES', 0))
         PS_SMD_NODES = int(os.environ.get('PS_SMD_NODES', 1))
         self.n_smd_nodes = PS_SMD_NODES

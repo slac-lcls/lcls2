@@ -11,11 +11,6 @@ from setup_input_files import setup_input_files
 
 from psana import DataSource
 
-try:
-    from psana import SmallData
-    DOTEST = True
-except:
-    DOTEST = False
 
 # cpo found this on the web as a way to get mpirun to exit when
 # one of the ranks has an exception
@@ -31,7 +26,7 @@ def global_except_hook(exctype, value, traceback):
     sys.__excepthook__(exctype, value, traceback)
 
 
-#sys.excepthook = global_except_hook
+sys.excepthook = global_except_hook
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -43,7 +38,7 @@ def gen_h5():
 
     xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
     ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=lambda x : True, batch_size=2)
-    smd = SmallData(filename='smalldata_test.h5', batch_size=5)
+    smd = ds.smalldata(filename='smalldata_test.h5', batch_size=5)
 
     run = next(ds.runs())
     for i,evt in enumerate(run.events()):

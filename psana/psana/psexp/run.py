@@ -18,21 +18,6 @@ from psana.psexp.event_manager import TransitionId
 
 from psana.psexp.tools import mode
 
-if mode == 'mpi':
-    from mpi4py import MPI
-    world_comm = MPI.COMM_WORLD
-    world_size = world_comm.Get_size()
-
-    # only import node when running in parallel
-    if (world_size > 1):
-        from psana.psexp.node import comms
-        if (comms._nodetype in ['smd0', 'smd', 'bd']):
-            from psana.psexp.node import run_node
-            comm = comms.psana_comm
-            rank = comm.Get_rank()
-            size = comm.Get_size()
-        
-
 def _enumerate_attrs(obj):
     state = []
     found = []
@@ -280,64 +265,6 @@ class RunSerial(Run):
                 yield step
 
 
-class RunParallel(Run):
-    """ Yields list of events from multiple smd/bigdata files using > 3 cores."""
-
-    def __init__(self, exp, run_no, run_src, **kwargs):
-        """ Parallel read requires that rank 0 does the file system works.
-        Configs and calib constants are sent to other ranks by MPI.
-        
-        Note that destination callback only works with RunParallel.
-        """
-        super(RunParallel, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
-                batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'], \
-                destination=kwargs['destination'])
-        xtc_files, smd_files, other_files = run_src
-        if rank == 0:
-            self.smd_dm = DgramManager(smd_files)
-            self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
-            self.configs = self.dm.configs
-            nbytes = np.array([memoryview(config).shape[0] for config in self.configs], \
-                            dtype='i')
-            self.calibs = {}
-            for det_name in self.detnames:
-                self.calibs[det_name] = super(RunParallel, self)._get_calib(det_name)
-            
-        else:
-            self.smd_dm = None
-            self.dm = None
-            self.configs = None
-            self.calibs = None
-            nbytes = np.empty(len(smd_files), dtype='i')
-        
-        comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
-        
-        # create empty views of known size
-        if rank > 0:
-            self.configs = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
-        
-        for i in range(len(self.configs)):
-            comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
-        
-        self.calibs = comm.bcast(self.calibs, root=0)
-
-        if rank > 0:
-            # Create dgram objects using views from rank 0 (no disk operation).
-            self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
-            self.dm = DgramManager(xtc_files, configs=self.configs)
-        
-        self.ssm = StepStoreManager(self.configs, 'epics', 'scan')
-    
-    def events(self):
-        for evt in run_node(self):
-            if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
-            yield evt
-
-    def steps(self):
-        self.scan = True
-        for step in run_node(self):
-            yield step
-    
 class RunLegion(Run):
 
     def __init__(self, exp, run_no, run_src, **kwargs):
@@ -355,3 +282,4 @@ class RunLegion(Run):
 
     def analyze(self, **kwargs):
         return legion_node.analyze(self, **kwargs)
+

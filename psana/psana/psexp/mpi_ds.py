@@ -1,27 +1,93 @@
 import os
+import numpy as np
+from mpi4py import MPI
+
 from .tools import mode
 from .ds_base import DataSourceBase
-from psana.psexp.run import RunParallel
+from .run import Run
+from .node import run_node
+
+from psana import dgram
+from psana.dgrammanager import DgramManager
+from psana.psexp.stepstore_manager import StepStoreManager
+from psana.psexp.event_manager import TransitionId
 
 class InvalidEventBuilderCores(Exception): pass
 
-if mode == 'mpi':
-    from mpi4py import MPI
-    world_comm = MPI.COMM_WORLD
-    world_size = world_comm.Get_size()
 
-    if (world_size > 1):
-        from psana.psexp.node import comms
-        if (comms._nodetype in ['smd0', 'smd', 'bd']):
-            comm = comms.psana_comm
-            rank = comm.Get_rank()
-            size = comm.Get_size()
+
+class RunParallel(Run):
+    """ Yields list of events from multiple smd/bigdata files using > 3 cores."""
+
+    def __init__(self, psana_comm, exp, run_no, run_src, **kwargs):
+        """ Parallel read requires that rank 0 does the file system works.
+        Configs and calib constants are sent to other ranks by MPI.
+        
+        Note that destination callback only works with RunParallel.
+        """
+        super(RunParallel, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
+                batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'], \
+                destination=kwargs['destination'])
+        xtc_files, smd_files, other_files = run_src
+
+        rank = psana_comm.Get_rank()
+        size = psana_comm.Get_size()
+
+        if rank == 0:
+            self.smd_dm = DgramManager(smd_files)
+            self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
+            self.configs = self.dm.configs
+            nbytes = np.array([memoryview(config).shape[0] for config in self.configs], \
+                            dtype='i')
+            self.calibs = {}
+            for det_name in self.detnames:
+                self.calibs[det_name] = super(RunParallel, self)._get_calib(det_name)
+            
+        else:
+            self.smd_dm = None
+            self.dm = None
+            self.configs = None
+            self.calibs = None
+            nbytes = np.empty(len(smd_files), dtype='i')
+        
+        psana_comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
+        
+        # create empty views of known size
+        if rank > 0:
+            self.configs = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
+        
+        for i in range(len(self.configs)):
+            psana_comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
+        
+        self.calibs = psana_comm.bcast(self.calibs, root=0)
+
+        if rank > 0:
+            # Create dgram objects using views from rank 0 (no disk operation).
+            self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
+            self.dm = DgramManager(xtc_files, configs=self.configs)
+        
+        self.ssm = StepStoreManager(self.configs, 'epics', 'scan')
+    
+    def events(self):
+        for evt in run_node(self):
+            if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
+            yield evt
+
+    def steps(self):
+        self.scan = True
+        for step in run_node(self):
+            yield step
 
 
 class MPIDataSource(DataSourceBase):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, comms, *args, **kwargs):
         super(MPIDataSource, self).__init__(**kwargs)
+
+        self.comms = comms
+        comm = self.comms.psana_comm # todo could be better
+        rank = comm.Get_rank()
+        size = comm.Get_size()
 
         if rank == 0:
             exp, run_dict = super(MPIDataSource, self)._setup_xtcs()
@@ -41,11 +107,13 @@ class MPIDataSource(DataSourceBase):
         self.exp = exp
         self.run_dict = run_dict
 
+
     def runs(self):
         for run_no in self.run_dict:
-            run = RunParallel(self.exp, run_no, self.run_dict[run_no], \
+            run = RunParallel(self.comms.psana_comm, self.exp, run_no, self.run_dict[run_no], \
                         max_events=self.max_events, batch_size=self.batch_size, \
                         filter_callback=self.filter, destination=self.destination)
             self.run = run # FIXME: provide support for cctbx code (ds.Detector). will be removed in next cctbx update.
             yield run
+
 
