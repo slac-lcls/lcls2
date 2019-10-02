@@ -56,7 +56,7 @@ void testArray(Allocator& buf1){
     a(1)=998;
     assert(a(1)==998);
 
-    std::cout << "----- NDArray" << std::endl;
+    std::cout << "----- n-d Array" << std::endl;
 
     auto m = AllocArray<float>(buf1, 6, 2);
     m.shape(2,3);
