@@ -118,6 +118,29 @@ int eventBuilderParser::parse_array(){
 // checks if one of the frame elements is itself an axi batcher sub frame type. 
 int eventBuilderParser::check_for_subframes(){
 
+     //before populating for a sub batcher, we need to make sure the frames aren't.  Otherwise there's a segfault in
+     //conditional declaration part frames[i].begin+2 that doesn't exist (thanks gdb back trace for pointing here)
+     //It's not clear where the damage that requires this check is coming from.  
+     //It wasn't present when doing soft triggered testing at 75 KHz, so that indicates it's related to the timing and/or timestamp
+     bool damaged_frame = false;
+
+     for (int i = 0 ; i <  frames.size() ; i = i + 1){
+        if(frames[i].size()<2){
+            damaged_frame = true;
+        }
+
+     }
+
+     if(damaged_frame){
+        for (int i = 0 ; i <  frames.size() ; i = i + 1){
+                is_sub_frame.push_back(0);
+        }  
+
+     return 0;
+     }
+     
+
+     //if the frames aren't damaged, then let's start identifying which frames are axi-batcher frames
      for (int i = 0 ; i <  frames.size() ; i = i + 1){
             if(std::equal(frames[i].begin(), frames[i].begin()+2, main_header.begin())){
             is_sub_frame.push_back(1);
