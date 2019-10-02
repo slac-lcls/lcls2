@@ -53,7 +53,7 @@ public:
         return _data[(((i * _shape[1] + j) * _shape[2] + k) * _shape[3] + l) * _shape[4] + m];
     }
   */
-    uint32_t rank(){
+    uint32_t rank() const {
         return _rank;
     }
     uint32_t* shape() const {
