@@ -73,7 +73,7 @@ public:
 
 //-------------------
 
-  NDArray(shape_t* sh, const size_t ndim, void *buf=0) :
+  NDArray(const shape_t* sh, const size_t ndim, void *buf=0) :
     base(), _buf_ext(0), _buf_own(0)
   {
      set_shape(sh, ndim);
@@ -82,7 +82,7 @@ public:
 
 //-------------------
 
-  NDArray(shape_t* sh, const size_t ndim, const void *buf) :
+  NDArray(const shape_t* sh, const size_t ndim, const void *buf) :
     base(), _buf_ext(0), _buf_own(0)
   {
      set_shape(sh, ndim);
@@ -138,7 +138,7 @@ public:
 
 //-------------------
 
-  inline void set_shape(shape_t* shape=NULL, const size_t ndim=0) {
+  inline void set_shape(const shape_t* shape=NULL, const size_t ndim=0) {
     //MSG(TRACE, "set_shape for ndim="<<ndim);
     assert(ndim<MAXNDIM);
     if(shape) std::memcpy(_shape, shape, sizeof(shape_t)*ndim);
@@ -171,7 +171,7 @@ public:
 
 //-------------------
 
-  inline void reshape(shape_t* shape, const size_t ndim) {set_shape(shape, ndim);}
+  inline void reshape(const shape_t* shape, const size_t ndim) {set_shape(shape, ndim);}
 
   inline T* data() {return base::data();}
 
