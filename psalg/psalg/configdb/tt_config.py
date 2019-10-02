@@ -34,7 +34,8 @@ def tt_config(connect_str,cfgtype,detname,group):
 
     print("scratch pad value = ",cl.Application.AppLane[0].Prescale.ScratchPad.get())
 
-    cl.stop()
+    cl.stop()   #gui.py should be able to run after this, but it's still using the axi lite resource.
+                #deleting cl doesn't resolve this problem.
 
     return json.dumps(cfg)
 
