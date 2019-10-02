@@ -17,11 +17,8 @@ template <typename T>
 class Array {
 public:
 
-    Array(void *data, uint32_t *shape, uint32_t rank){
-        _shape = shape;
-        _data = reinterpret_cast<T*>(data);
-        _rank = rank;
-    }
+    Array(void *data, uint32_t *shape, uint32_t rank) : 
+        _shape(shape), _data(reinterpret_cast<T*>(data)), _rank(rank) {}
     Array() : _shape(0), _data(0), _rank(0) {}
     Array(const Array& a) : _shape(a._shape), _data(a._data), _rank(a._rank) {}
     Array& operator=(Array& o){
@@ -43,7 +40,6 @@ public:
         assert(i<_shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);
         return _data[(i * _shape[1] + j) * _shape[2] + k];
     }
-  /*
     T& operator()(unsigned i, unsigned j, unsigned k, unsigned l){
         assert(i<_shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);assert(l<_shape[3]);
         return _data[((i * _shape[1] + j) * _shape[2] + k) * _shape[3] + l];
@@ -52,17 +48,16 @@ public:
         assert(i<_shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);assert(l<_shape[3]);assert(m<_shape[4]);
         return _data[(((i * _shape[1] + j) * _shape[2] + k) * _shape[3] + l) * _shape[4] + m];
     }
-  */
-    uint32_t rank() const {
+    inline uint32_t rank() const {
         return _rank;
     }
-    uint32_t* shape() const {
+    inline uint32_t* shape() const {
         return _shape;
     }
-    T* data(){
+    inline T* data(){
         return _data;
     }
-    const T* const_data() const {
+    inline const T* const_data() const {
         return _data;
     }
     uint64_t num_elem(){
@@ -80,6 +75,9 @@ public:
         _shape[3] = d;
         _shape[4] = e;
     }
+    inline void set_rank(uint32_t rank) {_rank = rank;}
+    inline void set_shape(uint32_t *shape) {_shape = shape;}
+    inline void set_data(void *data) {_data = reinterpret_cast<T*>(data);}
 
 protected:
     uint32_t *_shape;
