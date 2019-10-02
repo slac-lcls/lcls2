@@ -917,18 +917,15 @@ int main(int argc, char **argv)
   }
   catch(const std::runtime_error& e)
   {
-    logging::warning("Error opening monitoring port.  Monitoring disabled.");
-    std::cout<<e.what()<<std::endl;
+    logging::warning("Could not start run-time monitoring server");
+    logging::warning("%s", e.what());
   }
 
   auto exporter = std::make_shared<MetricExporter>();
 
   TebApp app(collSrv, prms, exporter);
 
-  if (exposer)
-  {
-    exposer->RegisterCollectable(exporter);
-  }
+  if (exposer)  exposer->RegisterCollectable(exporter);
 
   try
   {

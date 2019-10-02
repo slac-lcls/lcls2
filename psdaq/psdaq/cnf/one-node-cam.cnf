@@ -1,0 +1,40 @@
+platform = '0'
+username = 'lcls2'
+expname  = 'expname'
+expnum   = 'expnum'
+
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
+conda_rel = 'ps-2.0.5'
+
+instr        = 'TMO'
+site         = 'LAB2'
+collect_host = 'localhost'
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+ { id:'procstat',    flags:'p',    conda:conda_rel,                cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ { id:'modca',                     conda:conda_rel, env:epics_env, cmd:'modca DAQ:'+site+':XPM:3'},
+ { id:'groupca',     flags:'s',    conda:conda_rel, env:epics_env, cmd:'groupca DAQ:'+site+' 3 '+platform},
+ { id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:'+site+' -x 3 -P '+instr},
+ { id:'control_gui', flags:'p',    conda:conda_rel,                cmd:'control_gui -H '+collect_host},
+
+ # Trigger event builder
+ { id:'teb',         flags:'sxpu', conda:conda_rel, cmd:'teb -P '+instr+' -C '+collect_host},
+
+ # Monitor event builder
+ { id:'meb',         flags:'sxpu', conda:conda_rel, cmd:'monReqServer -d -q 4 -P '+instr+' -C '+collect_host},
+
+ # Contributors
+ { id:'drp_1',       flags:'sxpu', conda:conda_rel, cmd: 'drp -l 0x1 -D AreaDetector -d /dev/datadev_0 -o /drpffb/'+username+' -P '+instr+' -C '+collect_host },
+]

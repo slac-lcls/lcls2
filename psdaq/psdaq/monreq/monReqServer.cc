@@ -12,6 +12,7 @@
 #include "psdaq/service/GenericPool.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/SysLog.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <signal.h>
@@ -33,7 +34,8 @@ using namespace Pds::Eb;
 using namespace psalg::shmem;
 using namespace Pds;
 
-using json = nlohmann::json;
+using json    = nlohmann::json;
+using logging = Pds::SysLog;
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -724,12 +726,22 @@ int main(int argc, char** argv)
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
     fprintf(stderr, "Failed to set up ^C handler\n");
 
-  prometheus::Exposer exposer{"0.0.0.0:9200", "/metrics", 1};
+  std::unique_ptr<prometheus::Exposer> exposer;
+  try
+  {
+    exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
+  }
+  catch(const std::runtime_error& e)
+  {
+    logging::warning("Could not start run-time monitoring server");
+    logging::warning("%s", e.what());
+  }
+
   auto exporter = std::make_shared<MetricExporter>();
 
   MebApp app(collSrv, tag, nevqueues, ldist, prms, exporter);
 
-  exposer.RegisterCollectable(exporter);
+  if (exposer)  exposer->RegisterCollectable(exporter);
 
   try
   {
