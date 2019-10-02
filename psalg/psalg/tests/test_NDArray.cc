@@ -54,6 +54,10 @@ void test_cpp() {
   printf("In test_cpp\n");
   const int i=1; const int j=2; int k=3; const int l=4;
   test_input_pars(i,j,k,l);
+
+        double* p; *p = 6;
+  const double* q; q=p;
+  cout << "\n conversion double* p to const double* q: " << *q << '\n'; 
 }
 
 //-------------------

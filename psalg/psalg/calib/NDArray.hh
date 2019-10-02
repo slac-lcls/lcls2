@@ -51,6 +51,7 @@
 #include "psalg/utils/Logger.hh" // for MSG
 #include <typeinfo> // typeid
 #include <cstring>  // memcpy
+#include <type_traits> //std::remove_const
 
 using namespace std;
 //using namespace XtcData; // XtcData::Array
@@ -67,6 +68,8 @@ public:
   typedef psalg::types::shape_t shape_t; // uint32_t
   typedef psalg::types::size_t  size_t;  // uint32_t
   typedef XtcData::Array<T> base;  // base class scope
+
+  using NON_CONST_T = typename remove_const<T>::type;  // non-const T
 
   //const static size_t MAXNDIM = 10; 
   enum {MAXNDIM = XtcData::MaxRank};
@@ -91,34 +94,16 @@ public:
 
 //-------------------
 
-  NDArray<T>& operator=(const NDArray<T>& o)
-  {
-    if(&o == this) return *this;
-    base::operator=(o);
-    set_shape(o.shape(), o.rank());
-    set_data_copy(o._data);
-    return *this;
-  }
+  NDArray() : base(), _buf_ext(0), _buf_own(0) {}
 
 //-------------------
 
+  ~NDArray(){if(_buf_own) delete _buf_own;} // delete &_shape;}
 
+//-------------------
 
-
-
-
-
-
-/*
-  NDArray(NDArray<T>& a) :
-    base(), _buf_ext(0), _buf_own(0)
-  {
-     set_ndarray(a);
-  }
-*/
-
-
-
+  //NDArray(const NDArray<T>&) = delete;
+  //NDArray<T>& operator = (const NDArray<T>&) = delete;
 
 //-------------------
 
@@ -130,11 +115,24 @@ public:
 
 //-------------------
 
-  NDArray() : base(), _buf_ext(0), _buf_own(0) {}
+  NDArray(const NDArray<T>& o) :
+    base(), _buf_ext(0), _buf_own(0)
+  {
+    set_shape(o.shape(), o.rank());
+    set_data_copy(o._data);
+  }
 
 //-------------------
 
-  ~NDArray(){if(_buf_own) delete _buf_own;} // delete &_shape;}
+  NDArray<T>& operator=(const NDArray<T>& o)
+  {
+    if(&o == this) return *this;
+    _buf_ext=0; _buf_own=0;
+    base::operator=(o);
+    set_shape(o.shape(), o.rank());
+    set_data_copy(o._data);
+    return *this;
+  }
 
 //-------------------
 
@@ -142,7 +140,7 @@ public:
     //MSG(TRACE, "set_shape for ndim="<<ndim);
     assert(ndim<MAXNDIM);
     if(shape) std::memcpy(_shape, shape, sizeof(shape_t)*ndim);
-    base::_rank=ndim;
+    base::_rank = ndim;
     base::_shape = _shape;
   }
 
@@ -199,13 +197,6 @@ public:
   }
 
 //-------------------
-//-------------------
-//------------------- 
-//-------------------
-
-
-//  inline void set_ndarray(NDArray<T>& a) {
-
 
   inline void set_ndarray(NDArray<T> a) {
      set_shape(a.shape(), a.rank());
@@ -243,7 +234,7 @@ public:
       _buf_own = 0;
     }
     else {
-      _buf_own = base::_data = new T[size()];
+      _buf_own = base::_data = new NON_CONST_T [size()];
       _buf_ext = 0;
     }
   }
@@ -255,8 +246,9 @@ public:
   inline void set_data_copy(const void *buf=0) {
     //MSG(TRACE, "In set_data_copy *buf=" << buf);
     if(_buf_own) delete _buf_own;  
-    _buf_own = base::_data = new T[size()];
-    std::memcpy(base::_data, buf, sizeof(T)*size());
+    _buf_own = new NON_CONST_T [size()];
+    std::memcpy(_buf_own, buf, sizeof(T)*size());
+    base::_data = _buf_own;
     _buf_ext = 0;
   }
 
@@ -270,7 +262,8 @@ public:
     //MSG(TRACE, "In get_data_buffer size=" << size);
     if(_buf_ext) return;
     if(_buf_own) delete _buf_own;  
-    _buf_own = base::_data = new T[size];
+    _buf_own = new NON_CONST_T [size];
+    base::_data = _buf_own;
   }
 
 //-------------------
@@ -291,12 +284,13 @@ public:
     return os;
   }
 
+
 //-------------------
 
 private:
   shape_t _shape[MAXNDIM];
   T* _buf_ext;
-  T* _buf_own;
+  NON_CONST_T* _buf_own;
 
 public:
   /// Copy constructor and assignment are disabled by default
