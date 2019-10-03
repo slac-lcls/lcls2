@@ -50,6 +50,14 @@ void test_input_pars(int i, const int j, int& k, const int& l) {
   cout << '\n'; 
 }
 
+//void test_met_signature(int i)       // accepts both const and non-const int
+//void test_met_signature(const int i) // accepts both const and non-const intv
+//void test_met_signature(int& i)      // accepts non-const int &
+void test_met_signature(const int& i)  // accepts both const and non-const int &
+{ 
+  cout << "\n  [const] int [&] : " << i; 
+}
+
 void test_cpp() {
   printf("In test_cpp\n");
   const int i=1; const int j=2; int k=3; const int l=4;
@@ -58,6 +66,11 @@ void test_cpp() {
         double* p; *p = 6;
   const double* q; q=p;
   cout << "\n conversion double* p to const double* q: " << *q << '\n'; 
+
+  const int v=5;
+  int vnc=6;
+  test_met_signature(v);
+  test_met_signature(vnc);
 }
 
 //-------------------

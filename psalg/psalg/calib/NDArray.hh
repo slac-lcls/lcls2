@@ -13,8 +13,8 @@
  *  typedef psalg::types::size_t  size_t;  // uint32_t
  *
  *  float data[] = {1,2,3,4,5,6,7,8,9,10,11,12};
- *  uint32_t sh[2] = {3,4};
- *  uint32_t ndim = 2;
+ *  shape_t sh[2] = {3,4};
+ *  size_t ndim = 2;
  *
  *  // use external data buffer:
  *  NDArray<float> a(sh, ndim, data);
@@ -51,7 +51,7 @@
 #include "psalg/utils/Logger.hh" // for MSG
 #include <typeinfo> // typeid
 #include <cstring>  // memcpy
-#include <type_traits> //std::remove_const
+#include <type_traits> //std::remove_const, is_const
 
 using namespace std;
 //using namespace XtcData; // XtcData::Array
@@ -71,25 +71,27 @@ public:
 
   using NON_CONST_T = typename remove_const<T>::type;  // non-const T
 
+  bool T_IS_CONST = std::is_const<T>::value;
+
   //const static size_t MAXNDIM = 10; 
   enum {MAXNDIM = XtcData::MaxRank};
 
 //-------------------
 
-  NDArray(const shape_t* sh, const size_t ndim, void *buf=0) :
+  NDArray(const shape_t* sh, const size_t ndim, void *buf_ext=0) :
     base(), _buf_ext(0), _buf_own(0)
   {
      set_shape(sh, ndim);
-     set_data_buffer(buf);
+     set_data_buffer(buf_ext);
   }
 
 //-------------------
 
-  NDArray(const shape_t* sh, const size_t ndim, const void *buf) :
+  NDArray(const shape_t* sh, const size_t ndim, const void *buf_ext) :
     base(), _buf_ext(0), _buf_own(0)
   {
      set_shape(sh, ndim);
-     set_const_data_buffer(buf);
+     set_const_data_buffer(buf_ext);
   }
 
 //-------------------
@@ -102,35 +104,37 @@ public:
 
 //-------------------
 
-  //NDArray(const NDArray<T>&) = delete;
-  //NDArray<T>& operator = (const NDArray<T>&) = delete;
-
-//-------------------
-
-  NDArray(const base& a) :
+// copy constructor from XtcData::Array<T>&
+  NDArray(const base& o) :
     base(), _buf_ext(0), _buf_own(0)
   {
-    set_ndarray(a);
+    //set_ndarray(o);
+    set_shape(o.shape(), o.rank());
+    set_data_copy(o.const_data());
   }
 
 //-------------------
-
+// copy constructor from NDArray<T>&
   NDArray(const NDArray<T>& o) :
     base(), _buf_ext(0), _buf_own(0)
   {
     set_shape(o.shape(), o.rank());
-    set_data_copy(o._data);
+    set_data_copy(o.const_data()); // protected o._data - also works for derived class
   }
+
+//-------------------
+
+  //NDArray(const NDArray<T>&) = delete;
+  //NDArray<T>& operator = (const NDArray<T>&) = delete;
 
 //-------------------
 
   NDArray<T>& operator=(const NDArray<T>& o)
   {
     if(&o == this) return *this;
-    _buf_ext=0; _buf_own=0;
     base::operator=(o);
     set_shape(o.shape(), o.rank());
-    set_data_copy(o._data);
+    set_data_copy(o.const_data());
     return *this;
   }
 
@@ -193,14 +197,14 @@ public:
 
   inline void set_ndarray(base& a) {
      set_shape(a.shape(), a.rank());
-     set_data_buffer((void*)a.data());
+     set_data_buffer(a.data()); // (void*)a.data()
   }
 
 //-------------------
 
-  inline void set_ndarray(NDArray<T> a) {
+  inline void set_ndarray(NDArray<T>& a) {
      set_shape(a.shape(), a.rank());
-     set_data_buffer((void*)a.data());
+     set_data_buffer(a.data());
   }
 
 //-------------------
@@ -210,28 +214,34 @@ public:
 
 //-------------------
 /// CONST !!! *buf
-/// sets pointer to data
+/// sets pointer to external data buffer
 /// WARNING shape needs to be set first, othervice size() is undefined!
 
-  inline void set_const_data_buffer(const void *buf=0) {
-    //MSG(TRACE, "In set_data_buffer *buf=" << buf);
-    if(_buf_own) delete _buf_own;  
-    if(buf) {
-      _buf_ext = base::_data = reinterpret_cast<T*>(buf);
-      _buf_own = 0;
+  inline void set_const_data_buffer(const void *buf_ext=0) {
+    //MSG(TRACE, "In set_data_buffer *buf=" << buf_ext);
+    if(_buf_own) {
+       delete _buf_own;
+       _buf_own = 0;
+    }
+    if(buf_ext) {
+      _buf_ext = base::_data = reinterpret_cast<T*>(buf_ext);
     }
   }
+
+  //  T_IS_CONST
 
 //-------------------
 /// sets pointer to data
 /// WARNING shape needs to be set first, othervice size() is undefined!
 
-  inline void set_data_buffer(void *buf=0) { // base::_data=reinterpret_cast<T*>(buf);}
-    //MSG(TRACE, "In set_data_buffer *buf=" << buf);
-    if(_buf_own) delete _buf_own;  
-    if(buf) {
-      _buf_ext = base::_data = reinterpret_cast<T*>(buf);
+  inline void set_data_buffer(void *buf_ext=0) { // base::_data=reinterpret_cast<T*>(buf_ext);}
+    //MSG(TRACE, "In set_data_buffer *buf=" << buf_ext);
+    if(_buf_own) {
+       delete _buf_own;  
       _buf_own = 0;
+    }
+    if(buf_ext) {
+      _buf_ext = base::_data = reinterpret_cast<T*>(buf_ext);
     }
     else {
       _buf_own = base::_data = new NON_CONST_T [size()];
@@ -247,7 +257,7 @@ public:
     //MSG(TRACE, "In set_data_copy *buf=" << buf);
     if(_buf_own) delete _buf_own;  
     _buf_own = new NON_CONST_T [size()];
-    std::memcpy(_buf_own, buf, sizeof(T)*size());
+    std::memcpy(_buf_own, buf, sizeof(NON_CONST_T)*size());
     base::_data = _buf_own;
     _buf_ext = 0;
   }
@@ -258,7 +268,7 @@ public:
 /// othervise reserves memory on heap.
 /// size is a number of values
 
-  inline void reserve_data_buffer(const size_t& size) {
+  inline void reserve_data_buffer(const size_t size) {
     //MSG(TRACE, "In get_data_buffer size=" << size);
     if(_buf_ext) return;
     if(_buf_own) delete _buf_own;  
