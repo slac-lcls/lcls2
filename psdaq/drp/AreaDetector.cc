@@ -3,9 +3,11 @@
 #include "TimingHeader.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
+#include "psdaq/service/SysLog.hh"
 
 using namespace XtcData;
 using json = nlohmann::json;
+using logging = Pds::SysLog;
 
 namespace Drp {
 
@@ -49,7 +51,7 @@ AreaDetector::AreaDetector(Parameters* para, MemPool* pool) :
 
 unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc)
 {
-    printf("AreaDetector configure\n");
+    logging::info("AreaDetector configure");
 
     Alg cspadFexAlg("cspadFexAlg", 1, 2, 3);
     unsigned segment = 0;

@@ -10,20 +10,28 @@ def test_hsd():
 
     myrun = next(ds.runs())
     det = myrun.Detector('xpphsd')
-    seg_chans = det.hsd._seg_chans()
-    iseg = 0
-    ichan = 0
 
     for nevt,evt in enumerate(myrun.events()):
         wfs = det.hsd.waveforms(evt)
-        peaks = det.hsd.peaks(evt)
-        times = wfs[iseg]['times']
-        waveform = wfs[iseg][ichan]
-        assert np.array_equal(times,np.arange(1600))
-        assert len(waveform)== len(times)
-        starttimes,peaks = peaks[iseg][ichan]
-        # for this test-pattern data there is only one peak found: the
-        # entire waveform starting at time 0.
-        assert np.array_equal(peaks[0],waveform)
-        assert starttimes[0] == 0
+        fex = det.hsd.peaks(evt)
+        nwf = 0
+        for digitizer,wf in wfs.items():
+            times = wfs[digitizer]['times']
+            assert np.array_equal(times,np.arange(1600))
+            for channel,waveform in wf.items():
+                if type(channel) is int: # skip over the 'times'
+                    assert len(waveform)== len(times)
+                    nwf+=1
+        assert nwf == 1
+        nfex = 0
+        for digitizer,fexdata in fex.items():
+            for channel,fexchan in fexdata.items():
+                starttimes,peaks = fexchan
+                # for this test-pattern data there is only one peak found: the
+                # entire waveform starting at time 0.
+                assert np.array_equal(peaks[0],waveform)
+                assert len(starttimes) == 1
+                assert starttimes[0] == 0
+                nfex+=1
+        assert nfex == 1
     assert(nevt==3)

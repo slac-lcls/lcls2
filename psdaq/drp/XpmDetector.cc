@@ -2,9 +2,11 @@
 #include "XpmDetector.hh"
 #include "AxisDriver.h"
 #include <unistd.h>
+#include "psdaq/service/SysLog.hh"
 
 using namespace XtcData;
 using json = nlohmann::json;
+using logging = Pds::SysLog;
 
 namespace Drp {
 
@@ -17,7 +19,7 @@ json XpmDetector::connectionInfo()
 {
     int fd = open(m_para->device.c_str(), O_RDWR);
     if (fd < 0) {
-        std::cout<<"Error opening "<< m_para->device << '\n';
+        logging::error("Error opening %s", m_para->device.c_str());
         return json();
     }
     uint32_t reg;
@@ -28,7 +30,7 @@ json XpmDetector::connectionInfo()
     // fix, but throw here to highlight the problem. - cpo
     if (!reg) {
         const char msg[] = "XPM Remote link id register is zero\n";
-        printf("%s\n",msg);
+        logging::error("%s", msg);
         throw msg;
     }
     int x = (reg >> 16) & 0xFF;
@@ -42,14 +44,14 @@ json XpmDetector::connectionInfo()
 // setup up device to receive data over pgp
 void XpmDetector::connect(const json& json, const std::string& collectionId)
 {
-    std::cout<<"XpmDetector connect\n";
+    logging::info("XpmDetector connect");
     // FIXME make configureable
     int length = 100;
     int links = m_para->laneMask;
 
     int fd = open(m_para->device.c_str(), O_RDWR);
     if (fd < 0) {
-        std::cout<<"Error opening "<< m_para->device << '\n';
+        logging::error("Error opening %s", m_para->device.c_str());
         return;
     }
 
@@ -60,8 +62,8 @@ void XpmDetector::connect(const json& json, const std::string& collectionId)
     dmaWriteRegister(fd, 0x00a00000, v);
     uint32_t w;
     dmaReadRegister(fd, 0x00a00000, &w);
-    printf("Configured readout group [%u], length [%u], links [%x]: [%x](%x)\n",
-           readoutGroup, length, links, v, w);
+    logging::info("Configured readout group [%u], length [%u], links [%x]: [%x](%x)\n",
+                  readoutGroup, length, links, v, w);
     for (unsigned i=0; i<4; i++) {
         if (links&(1<<i)) {
             // this is the threshold to assert deadtime (high water mark) for every link

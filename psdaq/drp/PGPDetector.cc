@@ -41,7 +41,7 @@ bool checkPulseIds(MemPool& pool, PGPEvent* event)
             }
             else {
                 if (pulseId != timingHeader->seq.pulseId().value()) {
-                    printf("Wrong pulse id! expected %lu but got %lu instead\n",
+                    logging::error("Wrong pulse id! expected %lu but got %lu instead\n",
                            pulseId, timingHeader->seq.pulseId().value());
                     return false;
                 }
@@ -49,7 +49,7 @@ bool checkPulseIds(MemPool& pool, PGPEvent* event)
             // check bit 7 in pulseId for error
             bool error = timingHeader->seq.pulseId().control() & (1 << 7);
             if (error) {
-                std::cout<<"Error bit in pulseId is set\n";
+                logging::error("Error bit in pulseId is set");
             }
         }
     }
@@ -96,7 +96,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 det->event(*dgram, event);
                 // make sure the detector hasn't made the event too big
                 if (dgram->xtc.extent > pool.bufferSize()) {
-                    printf("L1Accept: buffer size (%d) too small for requested extent (%d)\n", pool.bufferSize(), dgram->xtc.extent);
+                    logging::error("L1Accept: buffer size (%d) too small for requested extent (%d)\n", pool.bufferSize(), dgram->xtc.extent);
                     exit(-1);
                 }
 
@@ -120,7 +120,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             }
             // make sure the transition isn't too big
             if (dgram->xtc.extent > pool.bufferSize()) {
-                printf("Transition: buffer size (%d) too small for requested extent (%d)\n", pool.bufferSize(), dgram->xtc.extent);
+                logging::error("Transition: buffer size (%d) too small for requested extent (%d)\n", pool.bufferSize(), dgram->xtc.extent);
                 exit(-1);
             }
         }
@@ -137,7 +137,7 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
     dmaInitMaskBytes(mask);
     for (int i=0; i<4; i++) {
         if (para.laneMask & (1 << i)) {
-            std::cout<<"setting lane  "<<i<<'\n';
+            logging::info("setting lane  %d", i);
             dmaAddMaskBytes(mask, dmaDest(i, 0));
         }
     }
@@ -208,7 +208,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
             uint32_t lane = (dest[b] >> 8) & 7;
             bytes += size;
             if (unsigned(size) > m_pool.dmaSize()) {
-                printf("DMA buffer is too small: %d vs %d\n", size, m_pool.dmaSize());
+                logging::error("DMA buffer is too small: %d vs %d\n", size, m_pool.dmaSize());
                 exit(-1);
             }
 
@@ -243,7 +243,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
 
                     for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
                         PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
-                        printf("broken event:  %08x\n", brokenEvent->mask);
+                        logging::error("broken event:  %08x\n", brokenEvent->mask);
                         brokenEvent->mask = 0;
 
                     }
@@ -305,14 +305,14 @@ void PGPDetector::resetEventCounter()
 void PGPDetector::shutdown()
 {
     m_terminate.store(true, std::memory_order_release);
-    std::cout<<"shutting down PGPReader\n";
+    logging::info("shutting down PGPReader");
     for (unsigned i = 0; i < m_para.nworkers; i++) {
         m_workerInputQueues[i].shutdown();
         if (m_workerThreads[i].joinable()) {
             m_workerThreads[i].join();
         }
     }
-    std::cout<<"Worker threads finished\n";
+    logging::info("Worker threads finished");
     for (unsigned i = 0; i < m_para.nworkers; i++) {
         m_workerOutputQueues[i].shutdown();
     }

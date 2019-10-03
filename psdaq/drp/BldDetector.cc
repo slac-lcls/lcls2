@@ -363,7 +363,7 @@ void BldApp::connectPgp(const json& json, const std::string& collectionId)
 
     int fd = open(m_para.device.c_str(), O_RDWR);
     if (fd < 0) {
-        std::cout<<"Error opening "<< m_para.device << '\n';
+        logging::error("Error opening %s", m_para.device.c_str());
     }
 
     int readoutGroup = json["body"]["drp"][collectionId]["det_info"]["readout"];
@@ -373,7 +373,7 @@ void BldApp::connectPgp(const json& json, const std::string& collectionId)
     dmaWriteRegister(fd, 0x00a00000, v);
     uint32_t w;
     dmaReadRegister(fd, 0x00a00000, &w);
-    printf("Configured readout group [%u], length [%u], links [%x]: [%x](%x)\n",
+    logging::info("Configured readout group [%u], length [%u], links [%x]: [%x](%x)\n",
            readoutGroup, length, links, v, w);
     for (unsigned i=0; i<4; i++) {
         if (links&(1<<i)) {
