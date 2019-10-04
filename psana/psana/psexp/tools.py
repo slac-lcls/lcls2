@@ -14,9 +14,9 @@ class RunHelper(object):
     run_by_id = weakref.WeakValueDictionary()
 
     def __init__(self, run):
-        run.id = self.next_run_id
-        self.next_run_id += 1
-        self.run_by_id[run.id] = run
+        run.id = RunHelper.next_run_id
+        RunHelper.next_run_id += 1
+        RunHelper.run_by_id[run.id] = run
 
 def run_from_id(run_id):
     return RunHelper.run_by_id[run_id]
