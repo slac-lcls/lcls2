@@ -112,6 +112,18 @@ class Test:
         ])
         subprocess.check_call(['legion_python', 'run_pickle', '-ll:py', '1'], env=env)
 
+    @pytest.mark.legion
+    @pytest.mark.skipif(sys.platform == 'darwin', reason="psana with legion not supported on mac")
+    def test_legion_no_mpi(self, tmp_path):
+        python_path = os.environ.get('PYTHONPATH', '').split(':')
+        python_path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), 'fake_mpi4py'))
+        python_path.append(os.path.dirname(os.path.realpath(__file__)))
+        env = dict(list(os.environ.items()) + [
+            ('PYTHONPATH', ':'.join(python_path)),
+            ('PS_PARALLEL', 'legion'),
+        ])
+        subprocess.check_call(['legion_python', 'run_no_mpi', '-ll:py', '1'], env=env)
+
     def test_det(self, xtc_file):
         det(xtc_file)
 
