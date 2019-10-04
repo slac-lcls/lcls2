@@ -711,6 +711,8 @@ int main(int argc, char** argv)
     fprintf(stderr, "Missing '%s' parameter\n", "-u <Alias>");
     return 1;
   }
+  logging::init(partitionTag.c_str(), prms.verbose ? LOG_DEBUG : LOG_INFO);
+  logging::info("logging configured");
 
   if (prms.numEvBuffers < NUMBEROF_XFERBUFFERS)
     prms.numEvBuffers = NUMBEROF_XFERBUFFERS;
