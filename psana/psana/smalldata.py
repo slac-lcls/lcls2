@@ -7,10 +7,13 @@ from glob import glob
 
 # -----------------------------------------------------------------------------
 
-from mpi4py import MPI
-COMM = MPI.COMM_WORLD
-RANK = COMM.Get_rank()
-SIZE = COMM.Get_size()
+from psana.psexp.tools import mode
+SIZE = 1
+if mode == 'mpi':
+    from mpi4py import MPI
+    COMM = MPI.COMM_WORLD
+    RANK = COMM.Get_rank()
+    SIZE = COMM.Get_size()
 
 if SIZE > 1:
     MODE = 'PARALLEL'
