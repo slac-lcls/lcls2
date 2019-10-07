@@ -21,10 +21,15 @@ def write_scratch_pad(prescaling):
     #3)  main by pass. (still isn't working with FEX in hardware, but does in simulation.)
     #4)  all prescalers.  This has potential to crash linux kernel during hi rate and low prescaling.  How to add protection?  Slow ramp?
     #5)  low pass on background
-    #6)  op code. there's no rogue counter part of this yet.
+    #6)  op code (now called readout group). there's no rogue counter part of this yet.
     #7)  the load coefficients bit needs to set to one for the FIR coefficients to be written.
     #8)  camera rate and soft or hard trigger. The soft trigger is for offline testing.  For users or just for me?
     #9)  the batcher bypass so soft trigger doesn't halt.
+
+    ######################################################################
+    ####### Keeping it simple.  Just what Giaccomo will need #############
+    ######################################################################
+
 
     top.set("cl.Application.AppLane1.Prescale.ScratchPad",int(prescaling),'UINT32')
     mycdb.modify_device('BEAM', top)

@@ -2,6 +2,18 @@ from psalg.configdb.get_config import get_config
 import TimeToolDev
 import json
 
+#this function reads the data base and converts it into.... what sort of object?
+def read_database():
+    return 0
+
+#this takes the data base object from read_database, does some messy calculations on it, and converts it to a rogue writeable object
+def database_object_calculations_2rogue():
+    return 0
+
+
+#this function takes in the object from
+def write_to_rogue():
+    return 0
 
 def tt_config(connect_str,cfgtype,detname,group):
 
@@ -49,7 +61,7 @@ if __name__ == "__main__":
     connect_info['body']['control']['0']['control_info'] = {}
     connect_info['body']['control']['0']['control_info']['instrument'] = 'TMO'
     connect_info['body']['control']['0']['control_info']['cfg_dbase'] = 'mcbrowne:psana@psdb-dev:9306/configDB'
-    import json
+
     mystring = json.dumps(connect_info)                             #paste this string into the pgpread_timetool.cc as parameter for the tt_config function call
     print(mystring)
     my_config = tt_config(mystring,"BEAM", "tmotimetool",None)          

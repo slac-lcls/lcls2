@@ -67,6 +67,9 @@ class eventBuilderParser {
         //pgpread_timetool sub frames keep growing.  this should prevent that.
         int clear();
 
+        //checking for damage in frame 
+        bool is_damaged(uint8_t start,uint8_t end);
+
         //printing for debugging
         int print_raw();
         int print_frame();

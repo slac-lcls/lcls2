@@ -55,6 +55,17 @@ int eventBuilderParser::clear(){
         is_sub_frame.clear();
 }
 
+//need to check frames for damage.  this means, among other things, that the size from the sub frame tail isn't the actual size.
+bool eventBuilderParser::is_damaged(uint8_t start,uint8_t end){
+
+
+    if(start>=end || int(end) >=raw_data.size() ){
+        clear();
+        return true;
+    }
+    return false;
+}
+
 //this method does the actual parsing.  Upon completion of this method, the members
 //frame_sizes_reverse_order, frame_position_reverse_order are populated
 int eventBuilderParser::parse_array(){
@@ -70,6 +81,13 @@ int eventBuilderParser::parse_array(){
     std::vector<uint16_t> sub_frame_range = {raw_data.size()-spsft-frame_sizes_reverse_order.back(),raw_data.size()-spsft};
     frame_positions_reverse_order.push_back(sub_frame_range);
 
+    //check for damaged frame
+    if(is_damaged(sub_frame_range[0],sub_frame_range[1])){
+            clear();
+            return 1;
+        }
+
+        
     
     //storing first parsed frame in frames
     std::vector<uint8_t> frame(sub_frame_range[1]-sub_frame_range[0]);
@@ -89,14 +107,19 @@ int eventBuilderParser::parse_array(){
 
 
         //storing frame positions in raw data
-        std::vector<uint16_t> new_positions;
+        std::vector<uint16_t> new_positions = {};
         new_positions.push_back( frame_positions_reverse_order.back()[0]-spsft-frame_sizes_reverse_order.back());
         new_positions.push_back( frame_positions_reverse_order.back()[0]-spsft);
         frame_positions_reverse_order.push_back(new_positions);
 
 
+        if(is_damaged(new_positions[0],new_positions[1])){
+            clear();
+            return 1;
+        }
+
         //parsing frames into new list
-        frame.resize(new_positions[1]-new_positions[0]);
+        frame.resize(new_positions[1]-new_positions[0]);    //source of another core dump
         std::copy(raw_data.begin()+new_positions[0],raw_data.begin()+new_positions[1],frame.begin());
         frames.push_back(frame);
 
@@ -136,7 +159,7 @@ int eventBuilderParser::check_for_subframes(){
                 is_sub_frame.push_back(0);
         }  
 
-     return 0;
+     return 1;
      }
      
 
@@ -159,7 +182,7 @@ int eventBuilderParser::check_for_subframes(){
      }
 
 
-return 1;
+return 0;
 }
 
 // this will populate the subframe

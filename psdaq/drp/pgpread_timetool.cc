@@ -262,8 +262,10 @@ int main(int argc, char* argv[])
             raw_counter = raw_counter + 1;
 
             if(expected_next_count != raw_data[1]){
-                printf("Dropped shot");
+                printf("Dropped shot. raw_counter = %d, expected_next_counter = %d ",raw_data[1],expected_next_count);
                 printf("\n");
+
+                //expected_next_count = (raw_data[1]+1)%256;
             }
 
             expected_next_count = (raw_data[1]+1)%256;

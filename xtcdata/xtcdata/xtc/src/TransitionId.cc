@@ -22,5 +22,5 @@ const char* TransitionId::name(TransitionId::Value id)
     return (id < TransitionId::NumberOf ? _names[id] : "-Invalid-");
 
     // Bail on compilation if someone forgets to update this list
-    static_assert(sizeof(_names) / sizeof(*_names) == TransitionId::NumberOf);
+    static_assert(sizeof(_names) / sizeof(*_names) == TransitionId::NumberOf,"test message");
 };
