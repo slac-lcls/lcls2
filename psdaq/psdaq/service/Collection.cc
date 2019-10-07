@@ -196,7 +196,9 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
 
     m_subSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)});
     m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "all", 3);
-    std::cout<<std::string{"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)}<<std::endl;
+    std::ostringstream ss;
+    ss << std::string{"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)};
+    logging::info("%s", ss.str().c_str());
     m_inprocRecv.bind("inproc://drp");
 
     // register callbacks
@@ -233,12 +235,14 @@ void CollectionApp::handleAlloc(const json &msg)
     // check if own id is in included in the msg
     auto it = std::find(msg["body"]["ids"].begin(), msg["body"]["ids"].end(), m_id);
     if (it != msg["body"]["ids"].end()) {
-        std::cout<<"subscribing to partition\n";
+        logging::info("%s", "subscribing to partition");
         m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "partition", 9);
 
         json info = connectionInfo();
         json body = {{m_level, info}};
-        std::cout << "body handleAlloc  " << std::setw(4) << body << "\n\n";
+        std::ostringstream ss;
+        ss << std::setw(4) << body;
+        logging::info("body handleAlloc  %s", ss.str().c_str());
         json answer = createMsg("alloc", msg["header"]["msg_id"], m_id, body);
 
         reply(answer);
@@ -272,11 +276,13 @@ void CollectionApp::run()
             char* end = begin + frames[1].size();
             json msg = json::parse(begin, end);
             std::string topic((char*)frames[0].data(), frames[0].size());
-            std::cout<<"topic:  "<<topic<<'\n';
+            logging::info("topic:  %s", topic.c_str());
 
             std::string key = msg["header"]["key"];
             logging::info("received key = %s", key.c_str());
-            std::cout << std::setw(4) << msg << "\n\n";
+            std::ostringstream ss;
+            ss << std::setw(4) << msg;
+            logging::debug("%s", ss.str().c_str());
             if (m_handleMap.find(key) == m_handleMap.end()) {
                 logging::error("unknown key = %s", key.c_str());
             }
