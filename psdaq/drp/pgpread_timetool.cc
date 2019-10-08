@@ -5,9 +5,13 @@
 #include <cstdio>
 #include <AxisDriver.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "TimingHeader.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/TypeId.hh"
 #include "AxiBatcherParser.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
+#include "xtcdata/xtc/Json2Xtc.hh"
 #include <unistd.h>
 #include <getopt.h>
 #include <time.h>
@@ -15,8 +19,16 @@
 #include <Python.h>
 
 #define MAX_RET_CNT_C 1000
-static int fd;
+
+using namespace XtcData;
+
+static int        fd;
 std::atomic<bool> terminate;
+
+const  unsigned   BUFSIZE                = 1024*1024*32;
+static char       config_buf[BUFSIZE];
+
+enum {ConfigNamesIndex, EventNamesIndex};
 
 static void check(PyObject* obj) {
     if (!obj) {
@@ -25,6 +37,22 @@ static void check(PyObject* obj) {
     }
 }
 
+
+Dgram& createTransition(TransitionId::Value transId,
+                        unsigned& timestamp_val) {
+    TypeId tid(TypeId::Parent, 0);
+    uint64_t pulseId = 0;
+    uint32_t env = 0;
+    struct timeval tv;
+    void* buf = malloc(BUFSIZE);
+
+    tv.tv_sec = 0;
+    tv.tv_usec = timestamp_val;
+    timestamp_val++;
+
+    Sequence seq(Sequence::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
+    return *new(buf) Dgram(Transition(seq, env), Xtc(tid));
+}
 
 unsigned dmaDest(unsigned lane, unsigned vc)
 {
@@ -42,10 +70,10 @@ int toggle_acquisition(int x)
     printf("starting prescaler config testing  \n");
 
     PyObject *pName, *pModule, *pFunc;
-    PyObject *pArgs, *pValue;
+    //PyObject *pArgs, *pValue;
 
     Py_Initialize();
-    PyObject* sysPath = PySys_GetObject((char*)"path");
+    //PyObject* sysPath = PySys_GetObject((char*)"path");
 
     pName = PyUnicode_DecodeFSDefault("toggle_prescaling");
 
@@ -79,6 +107,8 @@ int toggle_acquisition(int x)
 
     printf("ending prescaler config testing \n ");
 
+    return 0;
+
 }
 
 int tt_config(int x)
@@ -103,25 +133,12 @@ int tt_config(int x)
     printf("checking function \n");
     check(pFunc);
 
-
-    /*PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssi",
-                                              m_connect_json.c_str(),
-                                              m_epics_name.c_str(),
-                                              "BEAM", 
-                                              m_para->detName.c_str(),
-                                              m_readoutGroup);*/
-
-    /*PyObject* mybytes = PyObject_CallFunction(pFunc,
-                                              m_connect_json.c_str(),
-                                              m_epics_name.c_str(),
-                                              "BEAM", 
-                                              m_para->detName.c_str(),
-                                              m_readoutGroup);*/
-
     //char* m_connect_json_str = "{'body': {'control': {'0': {'control_info': {'instrument': 'TMO', 'cfg_dbase': 'mcbrowne:psana@psdb-dev:9306/configDB'}}}}}" ; 
-    char* m_connect_json_str = "\{\"body\": \{\"control\": \{\"0\": \{\"control_info\": \{\"instrument\": \"TMO\", \"cfg_dbase\": \"mcbrowne:psana@psdb-dev:9306/configDB\"\}\}\}\}\}" ;
+    //char* m_connect_json_str = "\{\"body\": \{\"control\": \{\"0\": \{\"control_info\": \{\"instrument\": \"TMO\", \"cfg_dbase\": \"mcbrowne:psana@psdb-dev:9306/configDB\"\}\}\}\}\}" ;
+    char const* m_connect_json_str = "\{\"body\": \{\"control\": \{\"0\": \{\"control_info\": \{\"instrument\": \"TMO\", \"cfg_dbase\": \"mcbrowne:psana@psdb-dev:9306/configDB\" } } } } }" ;
 
     PyObject* mybytes = PyObject_CallFunction(pFunc,"sssi",m_connect_json_str,"BEAM", "tmotimetool",0);
+    check(mybytes);
 
     Py_XDECREF(pFunc);
 
@@ -130,6 +147,48 @@ int tt_config(int x)
                 PyErr_Print();
         }
 
+    //***********************************
+    //***** converting json to xtc ******
+    //***********************************
+    PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
+    check(json_bytes);
+    char* json = (char*)PyBytes_AsString(json_bytes);
+
+    // convert to json to xtc
+    unsigned nodeId = 0; //Fix me for real drp
+    NamesId configNamesId(nodeId,ConfigNamesIndex);
+    unsigned len = translateJson2Xtc(json, config_buf, configNamesId);
+    if (len>BUFSIZE) {
+        throw "**** Config json output too large for buffer\n";
+    }
+    if (len <= 0) {
+        throw "**** Config json translation error\n";
+    }
+
+    //***********************************
+    //***** writing xtc to buffer  ******
+    //***********************************
+    unsigned timestamp_val = 0;
+    Dgram& config = createTransition(TransitionId::Configure,timestamp_val);
+
+    // append the config xtc info to the dgram
+    Xtc& jsonxtc = *(Xtc*)config_buf;
+    Xtc& xtc     = config.xtc;
+    memcpy(xtc.next(),jsonxtc.payload(),jsonxtc.sizeofPayload());
+    xtc.alloc(jsonxtc.sizeofPayload());
+
+    FILE* xtcFile = fopen("timetoolconfig.xtc2", "w");
+    if (!xtcFile) {
+        printf("Error opening output xtc file.\n");
+    }
+
+    if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
+        printf("Error writing to output xtc file.\n");
+    }
+
+    fclose(xtcFile);
+
+    // FIXME: should uncomment these to not leak memory
     //Py_XDECREF(pArgs);
     //Py_XDECREF(pModule);
     //Py_XDECREF(sysPath);
@@ -137,6 +196,8 @@ int tt_config(int x)
     //Py_XDECREF(pName);
 
     printf("ending prescaler config testing \n ");
+
+    return 0;
 
 }
 
@@ -207,7 +268,7 @@ int main(int argc, char* argv[])
 
     uint32_t                raw_counter                  = 0;
     uint32_t                last_raw_counter             = 0;
-    uint32_t                t_counter                    = 0;
+
     std::time_t             last_time;    
     std::vector<uint8_t>    raw_vector;
 
@@ -248,7 +309,7 @@ int main(int argc, char* argv[])
                 my_frame.print_frame();
 
 
-                printf("%x %x %x %x %d elapsed time = %d number of shots = %d %d \n",raw_data[1],expected_next_count,raw_data[32],raw_data[32],ts.tv_sec,ts.tv_sec-last_time,raw_counter-last_raw_counter,size);
+                printf("%x %x %x %x %ld elapsed time = %ld number of shots = %d %d \n",raw_data[1],expected_next_count,raw_data[32],raw_data[32],ts.tv_sec,ts.tv_sec-last_time,raw_counter-last_raw_counter,size);
                 last_raw_counter = raw_counter;
 
             }

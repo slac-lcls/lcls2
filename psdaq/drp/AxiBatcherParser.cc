@@ -53,6 +53,8 @@ int eventBuilderParser::clear(){
         frames.clear();
         sub_frames.clear();
         is_sub_frame.clear();
+
+        return 0;
 }
 
 //need to check frames for damage.  this means, among other things, that the size from the sub frame tail isn't the actual size.
@@ -78,13 +80,13 @@ int eventBuilderParser::parse_array(){
     frame_sizes_reverse_order.push_back(frame_to_position(raw_data.size()-spsft)); //sptl stand for the size position in the sub frame tail
 
     //storing frame position in raw data
-    std::vector<uint16_t> sub_frame_range = {raw_data.size()-spsft-frame_sizes_reverse_order.back(),raw_data.size()-spsft};
+    std::vector<uint16_t> sub_frame_range = {uint16_t(raw_data.size()-spsft-frame_sizes_reverse_order.back()),uint16_t(raw_data.size()-spsft)};
     frame_positions_reverse_order.push_back(sub_frame_range);
 
     //check for damaged frame
     if(is_damaged(sub_frame_range[0],sub_frame_range[1])){
             clear();
-            return 1;
+            return 1;//force
         }
 
         
@@ -100,7 +102,7 @@ int eventBuilderParser::parse_array(){
         parsed_frame_size += *it;
     
 
-    while(raw_data.size() > (parsed_frame_size+HEADER_WIDTH)){
+    while(int(raw_data.size()) > (parsed_frame_size+HEADER_WIDTH)){
 
         //storing frame sizes 
         frame_sizes_reverse_order.push_back(frame_to_position(frame_positions_reverse_order.back()[0]-spsft));
@@ -147,7 +149,7 @@ int eventBuilderParser::check_for_subframes(){
      //It wasn't present when doing soft triggered testing at 75 KHz, so that indicates it's related to the timing and/or timestamp
      bool damaged_frame = false;
 
-     for (int i = 0 ; i <  frames.size() ; i = i + 1){
+     for (int i = 0 ; i <  int(frames.size()) ; i = i + 1){
         if(frames[i].size()<2){
             damaged_frame = true;
         }
@@ -155,7 +157,7 @@ int eventBuilderParser::check_for_subframes(){
      }
 
      if(damaged_frame){
-        for (int i = 0 ; i <  frames.size() ; i = i + 1){
+        for (int i = 0 ; i <  int(frames.size()) ; i = i + 1){
                 is_sub_frame.push_back(0);
         }  
 
@@ -164,7 +166,7 @@ int eventBuilderParser::check_for_subframes(){
      
 
      //if the frames aren't damaged, then let's start identifying which frames are axi-batcher frames
-     for (int i = 0 ; i <  frames.size() ; i = i + 1){
+     for (int i = 0 ; i <  int(frames.size()) ; i = i + 1){
             if(std::equal(frames[i].begin(), frames[i].begin()+2, main_header.begin())){
             is_sub_frame.push_back(1);
 
@@ -212,7 +214,7 @@ int eventBuilderParser::print_frame(){
     printf("sub frame positions = \n");
     print_vector2d(frame_positions_reverse_order);
 
-    printf("vector indicating if it's a sub frame. length = %d \n",is_sub_frame.size());
+    printf("vector indicating if it's a sub frame. length = %d \n",int(is_sub_frame.size()));
     print_vector(is_sub_frame);
 
     printf("___________________________\n___________________________\n___________________________\n___________________________\n");            
@@ -229,10 +231,10 @@ template <class T> int eventBuilderParser::print_vector2d(std::vector<T> &my_vec
             if(is_sub_frame[i]!=1){
 
                 printf("sub frame %d = [",i);
-                for(uint32_t j=0;j<std::min(int(my_vector[i].size()),32);j=j+1){
+                for(int j=0;j<std::min(int(my_vector[i].size()),32);j=j+1){
                     printf("%d ",my_vector[i][j]);
                 }
-                printf("]\n length = %d \n",my_vector[i].size());
+                printf("]\n length = %d \n",int(my_vector[i].size()));
             }
             else{
 
@@ -246,7 +248,7 @@ template <class T> int eventBuilderParser::print_vector2d(std::vector<T> &my_vec
 int eventBuilderParser::print_sub_batcher(){
 
     printf("\nPrinting a sub batcher \n");
-    for (int i =0; i<sub_frames.size();i=i+1){
+    for (int i =0; i<int(sub_frames.size());i=i+1){
 
         sub_frames[i].print_frame();
 
@@ -258,7 +260,7 @@ int eventBuilderParser::print_sub_batcher(){
         
 template <class T> int eventBuilderParser::print_vector(std::vector<T> &my_vector){
 
-    for (uint32_t i=0;i<std::min(int(my_vector.size()),32);i=i+1){
+    for (int i=0;i<std::min(int(my_vector.size()),32);i=i+1){
         printf("%d ",my_vector[i]);
     }
     printf("\n");
