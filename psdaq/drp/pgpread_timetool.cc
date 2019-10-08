@@ -27,6 +27,7 @@ std::atomic<bool> terminate;
 
 const  unsigned   BUFSIZE                = 1024*1024*32;
 static char       config_buf[BUFSIZE];
+static char       dgram_buf[BUFSIZE];
 
 enum {ConfigNamesIndex, EventNamesIndex};
 
@@ -37,6 +38,18 @@ static void check(PyObject* obj) {
     }
 }
 
+class TTDef : public VarDef
+{
+public:
+    enum index {
+        data
+    };
+    TTDef()
+    {
+        Alg alg("timetool", 0, 0, 1);
+        NameVec.push_back({"data", Name::UINT8, 1});
+    }
+} TTDef;
 
 Dgram& createTransition(TransitionId::Value transId,
                         unsigned& timestamp_val) {
@@ -44,14 +57,14 @@ Dgram& createTransition(TransitionId::Value transId,
     uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
-    void* buf = malloc(BUFSIZE);
+    //void* buf = malloc(BUFSIZE);
 
     tv.tv_sec = 0;
     tv.tv_usec = timestamp_val;
     timestamp_val++;
 
     Sequence seq(Sequence::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
-    return *new(buf) Dgram(Transition(seq, env), Xtc(tid));
+    return *new(dgram_buf) Dgram(Transition(seq, env), Xtc(tid));
 }
 
 unsigned dmaDest(unsigned lane, unsigned vc)
@@ -111,7 +124,7 @@ int toggle_acquisition(int x)
 
 }
 
-int tt_config(int x)
+int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
 {
     printf("Initializing python \n");    
     Py_Initialize();
@@ -133,8 +146,6 @@ int tt_config(int x)
     printf("checking function \n");
     check(pFunc);
 
-    //char* m_connect_json_str = "{'body': {'control': {'0': {'control_info': {'instrument': 'TMO', 'cfg_dbase': 'mcbrowne:psana@psdb-dev:9306/configDB'}}}}}" ; 
-    //char* m_connect_json_str = "\{\"body\": \{\"control\": \{\"0\": \{\"control_info\": \{\"instrument\": \"TMO\", \"cfg_dbase\": \"mcbrowne:psana@psdb-dev:9306/configDB\"\}\}\}\}\}" ;
     char const* m_connect_json_str = "\{\"body\": \{\"control\": \{\"0\": \{\"control_info\": \{\"instrument\": \"TMO\", \"cfg_dbase\": \"mcbrowne:psana@psdb-dev:9306/configDB\" } } } } }" ;
 
     PyObject* mybytes = PyObject_CallFunction(pFunc,"sssi",m_connect_json_str,"BEAM", "tmotimetool",0);
@@ -177,18 +188,29 @@ int tt_config(int x)
     memcpy(xtc.next(),jsonxtc.payload(),jsonxtc.sizeofPayload());
     xtc.alloc(jsonxtc.sizeofPayload());
 
-    FILE* xtcFile = fopen("timetoolconfig.xtc2", "w");
-    if (!xtcFile) {
-        printf("Error opening output xtc file.\n");
-    }
+    // append the metadata; which algorithm is needed to interpret bytes, the detector type, etc...
+    Alg ttAlg("timetool", 0, 0, 1);
+
+    NamesId eventNamesId(nodeId,EventNamesIndex);
+
+
+    unsigned segment = 0;
+    Names& eventNames = *new(xtc) Names("tmo_timetool", ttAlg, "tt", "detnum1235", eventNamesId, segment);
+    eventNames.add(xtc, TTDef);
+    namesLookup[eventNamesId] = NameIndex(eventNames);
+
+    //***********************************
+    //***** writing xtc to file    ******
+    //***********************************
+
+
 
     if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
         printf("Error writing to output xtc file.\n");
     }
 
-    fclose(xtcFile);
 
-    // FIXME: should uncomment these to not leak memory
+    // FIXME: should uncomment these to avoid memory leak
     //Py_XDECREF(pArgs);
     //Py_XDECREF(pModule);
     //Py_XDECREF(sysPath);
@@ -204,8 +226,17 @@ int tt_config(int x)
 
 int main(int argc, char* argv[])
 {
+
+    
     printf("starting main \n");
 
+    FILE* xtcFile = fopen("timetoolconfig.xtc2", "w");
+    if (!xtcFile) {
+        printf("Error opening output xtc file.\n");
+    }
+
+
+    NamesLookup namesLookup;
 
     int c, channel;
 
@@ -223,7 +254,7 @@ int main(int argc, char* argv[])
                 break;
             case 't':
                    printf("entering tt config \n");
-                   tt_config(0);
+                   tt_config(0,namesLookup,xtcFile);
                    //toggle_acquisition(0);  
         }
     }
@@ -272,7 +303,7 @@ int main(int argc, char* argv[])
     std::time_t             last_time;    
     std::vector<uint8_t>    raw_vector;
 
-    eventBuilderParser   my_frame;
+    eventBuilderParser      my_frame;
 
     while (1) {
         if (terminate.load(std::memory_order_acquire) == true) {
@@ -312,6 +343,36 @@ int main(int argc, char* argv[])
                 printf("%x %x %x %x %ld elapsed time = %ld number of shots = %d %d \n",raw_data[1],expected_next_count,raw_data[32],raw_data[32],ts.tv_sec,ts.tv_sec-last_time,raw_counter-last_raw_counter,size);
                 last_raw_counter = raw_counter;
 
+                //*****************************
+                //**** writing xtc to disk ****
+                //*****************************
+
+                Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(ts.tv_sec, ts.tv_nsec), PulseId(raw_counter,0));
+                TypeId tid(TypeId::Parent, 0);
+                unsigned env = 0;
+                Dgram& dgram = *new(dgram_buf) Dgram(Transition(seq, env), Xtc(tid));
+                unsigned nodeId = 0;
+                NamesId eventNamesId(nodeId,EventNamesIndex);
+
+                CreateData fex(dgram.xtc, namesLookup, eventNamesId);
+
+                unsigned shape[MaxRank];
+                shape[0] = size;
+                Array<uint8_t> arrayT = fex.allocate<uint8_t>(TTDef::data,shape);
+                for(unsigned i=0; i<shape[0]; i++){
+                    arrayT(i) = raw_data[i];
+                };
+
+
+                
+                if (fwrite(&dgram, sizeof(dgram) + dgram.xtc.sizeofPayload(), 1, xtcFile) != 1) {
+                    printf("Error writing to output xtc file.\n");
+                }
+
+                printf("wrote to disk \n");
+
+
+
             }
 
             my_frame.clear();
@@ -341,5 +402,6 @@ int main(int argc, char* argv[])
 	    if ( ret > 0 ) dmaRetIndexes(fd, ret, dmaIndex);
 	    //sleep(0.1)
     }
+    fclose(xtcFile);
     printf("finished\n");
 }
