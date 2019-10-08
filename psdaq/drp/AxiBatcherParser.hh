@@ -41,7 +41,6 @@ class eventBuilderParser {
         int                                   spsft               = 16;       //spsft stand for the size position in the sub frame tail
         int                                   HEADER_WIDTH        = 16;                            
         int                                   version;    
-        char*                                 vector_type_name    = "St6vector" ;
 
         bool                                  DEBUG;             
 
