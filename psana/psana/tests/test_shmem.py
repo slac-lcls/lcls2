@@ -13,12 +13,12 @@ dgram_count  = 64 # number of expected datagrams per client
 class Test:
     def launch_server(self,tmp_file,pid):
         cmd_args = ['shmemServer','-c',str(client_count),'-n','10','-f',tmp_file,'-p','shmem_test_'+pid,'-s','0x80000']
-        return subprocess.Popen(cmd_args, stdout=subprocess.PIPE)
+        return subprocess.Popen(cmd_args)
 
     def launch_client(self,pid):
         shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'  
         cmd_args = ['python',shmem_file,pid]
-        return subprocess.Popen(cmd_args, stdout=subprocess.PIPE)
+        return subprocess.Popen(cmd_args)
                 
     def setup_input_files(self, tmp_path):
         tmp_dir = tmp_path / 'shmem'
