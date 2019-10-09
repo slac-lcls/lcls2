@@ -158,7 +158,7 @@ class DaqControl:
     # DaqControl.getStatus - get status
     #
     def getStatus(self):
-        r1 = r2 = r3 = 'error'
+        r1 = r2 = r3 = r4 = 'error'
         try:
             msg = create_msg('getstatus')
             self.front_req.send_json(msg)
@@ -172,10 +172,11 @@ class DaqControl:
                 r1 = reply['body']['transition']
                 r2 = reply['body']['state']
                 r3 = reply['body']['config_alias']
+                r4 = reply['body']['recording']
             except KeyError:
                 pass
 
-        return (r1, r2, r3)
+        return (r1, r2, r3, r4)
 
     #
     # DaqControl.monitorStatus - monitor the status
@@ -188,8 +189,8 @@ class DaqControl:
                 msg = self.front_sub.recv_json()
 
                 if msg['header']['key'] == 'status':
-                    # return transition, state, config_alias
-                    return msg['body']['transition'], msg['body']['state'], msg['body']['config_alias']
+                    # return transition, state, config_alias, recording
+                    return msg['body']['transition'], msg['body']['state'], msg['body']['config_alias'], msg['body']['recording']
 
                 elif msg['header']['key'] == 'error':
                     # return 'error', error message, 'error'
@@ -244,6 +245,34 @@ class DaqControl:
                 errorMessage = reply['body']['err_info']
             except KeyError:
                 pass
+
+        return errorMessage
+
+    #
+    # DaqControl.setRecord - set record flag
+    #   True or False
+    #
+    def setRecord(self, recordIn):
+        errorMessage = None
+        if type(recordIn) == type(True):
+            if recordIn:
+                record = '1'
+            else:
+                record = '0'
+
+            try:
+                msg = create_msg('setrecord.' + record)
+                self.front_req.send_json(msg)
+                reply = self.front_req.recv_json()
+            except Exception as ex:
+                errorMessage = 'setRecord() Exception: %s' % ex
+            else:
+                try:
+                    errorMessage = reply['body']['err_info']
+                except KeyError:
+                    pass
+        else:
+            errorMessage = 'setRecord() requires True or False'
 
         return errorMessage
 
@@ -515,6 +544,7 @@ class CollectionManager():
             'getstatus': self.handle_getstatus
         }
         self.lastTransition = 'reset'
+        self.recording = False
 
         self.collectMachine = Machine(self, DaqControl.states, initial='reset', after_state_change='report_status')
 
@@ -596,6 +626,7 @@ class CollectionManager():
         # msg['header']['key'] formats:
         #  setstate.STATE
         #  setconfig.CONFIG_ALIAS
+        #  setrecord.RECORD_FLAG
         #  TRANSITION
         #  REQUEST
         answer = None
@@ -611,6 +642,13 @@ class CollectionManager():
             elif key[0] == 'setconfig':
                 # handle_setconfig() sends reply internally
                 self.handle_setconfig(key[1])
+                answer = None
+            elif key[0] == 'setrecord':
+                # handle_setrecord() sends reply internally
+                if key[1] == '0':
+                    self.handle_setrecord(False)
+                else:
+                    self.handle_setrecord(True)
                 answer = None
             elif key[0] in DaqControl.transitions:
                 # is body dict not-empty?
@@ -742,9 +780,26 @@ class CollectionManager():
             # reply 'ok'
             self.front_rep.send_json(answer)
 
+    def handle_setrecord(self, newrecording):
+        logging.debug('handle_setrecord(\'%s\') in state %s' % (newrecording, self.state))
+
+        if self.state == 'running' or self.state == 'paused' or self.state == 'starting':
+            errMsg = 'cannot change recording setting in state \'%s\' -- end run first' % self.state
+            logging.error(errMsg)
+            answer = create_msg('error', body={'err_info': errMsg})
+            # reply 'error'
+            self.front_rep.send_json(answer)
+        else:
+            if newrecording != self.recording:
+                self.recording = newrecording
+                self.report_status()
+            answer = create_msg('ok')
+            # reply 'ok'
+            self.front_rep.send_json(answer)
+
     def status_msg(self):
         body = {'state': self.state, 'transition': self.lastTransition,
-                'config_alias': str(self.config_alias)}
+                'config_alias': str(self.config_alias), 'recording': self.recording}
         return create_msg('status', body=body)
 
     def report_status(self):

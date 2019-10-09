@@ -234,8 +234,8 @@ class CGWMainControl(QGroupBox) :
         """
         logger.debug('CGWMainDetector.check_transition')
         #t0_sec = time() # takes 0.001s
-        transition, state, config_alias = daq_control().getStatus() # submits request to check transition, state and config_alias
-        logger.debug('CGWMainDetector.check_transition transition:%s state:%s config_alias:%s' % (str(transition), str(state), str(config_alias)))
+        transition, state, config_alias, recording = daq_control().getStatus() # submits request to check transition, state, config_alias, and recording
+        logger.debug('CGWMainDetector.check_transition transition:%s state:%s config_alias:%s recording:%s' % (str(transition), str(state), str(config_alias), str(recording)))
         self.but_transition.setText(transition.upper()) # + ' since %s' % self.ts)
         #state = daq_control().getState()
         #self.but_state.setText(state.upper() + ' since %s' % self.ts)

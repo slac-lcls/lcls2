@@ -179,7 +179,7 @@ class CGWMainConfiguration(QGroupBox) :
 
         cfgtype = config_type
         if config_type in ('error','init') :
-             transition, state, cfgtype = daq_control().getStatus()
+             transition, state, cfgtype, recording = daq_control().getStatus()
 
         if cfgtype == self.type_old : return
 

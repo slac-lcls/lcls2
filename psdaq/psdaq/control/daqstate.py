@@ -22,6 +22,7 @@ def main():
     group.add_argument('--transition', choices=DaqControl.transitions)
     group.add_argument('--monitor', action="store_true")
     group.add_argument('--config', metavar='ALIAS', help='configuration alias')
+    group.add_argument('--record', type=int, choices=range(0, 2), help='recording flag')
     group.add_argument('-B', action="store_true", help='shortcut for --config BEAM')
     args = parser.parse_args()
 
@@ -60,21 +61,30 @@ def main():
         if rv is not None:
             print('Error: %s' % rv)
 
+    elif args.record is not None:
+        # recording flag request
+        if args.record == 0:
+            rv = control.setRecord(False)
+        else:
+            rv = control.setRecord(True)
+        if rv is not None:
+            print('Error: %s' % rv)
+
     elif args.monitor:
         # monitor the status
         while True:
-            part1, part2, part3 = control.monitorStatus()
+            part1, part2, part3, part4 = control.monitorStatus()
             if part1 is None:
                 break
             elif part1 == 'error':
                 print('error: %s' % part2)
             else:
-                print('transition: %-11s  state: %-11s  config: %s' % (part1, part2, part3))
+                print('transition: %-11s  state: %-11s  config: %s  recording: %s' % (part1, part2, part3, part4))
 
     else:
         # print current state
-        transition, state, config_alias = control.getStatus()
-        print('last transition: %s  state: %s  configuration alias: %s' % (transition, state, config_alias))
+        transition, state, config_alias, recording = control.getStatus()
+        print('last transition: %s  state: %s  configuration alias: %s  recording: %s' % (transition, state, config_alias, recording))
 
 if __name__ == '__main__':
     main()
