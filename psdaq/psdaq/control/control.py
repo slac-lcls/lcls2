@@ -193,8 +193,8 @@ class DaqControl:
                     return msg['body']['transition'], msg['body']['state'], msg['body']['config_alias'], msg['body']['recording']
 
                 elif msg['header']['key'] == 'error':
-                    # return 'error', error message, 'error'
-                    return 'error', msg['body']['err_info'], 'error'
+                    # return 'error', error message, 'error', 'error'
+                    return 'error', msg['body']['err_info'], 'error', 'error'
 
             except KeyboardInterrupt:
                 break
@@ -203,7 +203,7 @@ class DaqControl:
                 logging.error('KeyError: %s' % ex)
                 break
 
-        return None, None, None
+        return None, None, None, None
 
     #
     # DaqControl.setState - change the state
