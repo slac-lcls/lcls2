@@ -5,6 +5,9 @@
 #include <cstring>
 #include <iostream>
 #include "FileWriter.hh"
+#include "psdaq/service/SysLog.hh"
+
+using logging = Pds::SysLog;
 
 namespace Drp {
 
@@ -23,7 +26,8 @@ void BufferedFileWriter::open(const std::string& fileName)
 {
     m_fd = ::open(fileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
     if (m_fd == -1) {
-        std::cout<<"Error creating file "<<fileName<<'\n';
+        // %m will be replaced by the string strerror(errno)
+        logging::error("Error creating file %s: %m", fileName.c_str());
     }
 }
 
@@ -36,7 +40,8 @@ void BufferedFileWriter::writeEvent(void* data, size_t size)
     // doesn't fit into the remaing m_buffer
     if (size > (m_buffer.size() - m_count)) {
         if (write(m_fd, m_buffer.data(), m_count) == -1) {
-            printf("write error %s\n", strerror(errno));
+            // %m will be replaced by the string strerror(errno)
+            logging::error("write error: %m");
             throw std::string("File writing failed");
         }
         m_count = 0;

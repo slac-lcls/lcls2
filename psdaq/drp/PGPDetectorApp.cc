@@ -27,9 +27,13 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     f.register_type<AreaDetector>("AreaDetector");
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {
-        std::cout<< "Error !! Could not create Detector object\n";
+        logging::error("Error !! Could not create Detector object");
     }
-    std::cout << "output dir: " << m_para.outputDir << std::endl;
+    if (m_para.outputDir.empty()) {
+        logging::info("output dir: n/a");
+    } else {
+        logging::info("output dir: %s", m_para.outputDir.c_str());
+    }
 }
 
 void PGPDetectorApp::shutdown()
