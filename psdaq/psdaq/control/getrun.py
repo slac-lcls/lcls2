@@ -34,37 +34,55 @@ def main():
         # start run
         if args.verbose:
             print("Start a run (start_run)")
-        resp = requests.post(serverURLPrefix + "start_run", auth=HTTPBasicAuth(args.user, args.password)  )
-        if args.verbose >= 2:
-            print("Response: %s" % resp.text)
-        if resp.json().get("success", None):
-            print("start_run success")
+        try:
+            resp = requests.post(serverURLPrefix + "start_run", auth=HTTPBasicAuth(args.user, args.password)  )
+        except Exception as ex:
+            print('start_run error')
+            if args.verbose >= 2:
+                print('HTTP request: %s' % ex)
         else:
-            print("start_run failure")
+            if args.verbose >= 2:
+                print("Response: %s" % resp.text)
+            if resp.json().get("success", None):
+                print("start_run success")
+            else:
+                print("start_run failure")
 
     # get current run
     if args.verbose:
         print("Get the current run (current_run)")
-    resp = requests.get(serverURLPrefix + "current_run?skipClosedRuns=true", auth=HTTPBasicAuth(args.user, args.password)  )
-    if args.verbose >= 2:
-        print("Response: %s" % resp.text)
-    if resp.json().get("success", None):
-        num = resp.json().get("value", {}).get("num", None)
-        print("run number: %s" % num)
+    try:
+        resp = requests.get(serverURLPrefix + "current_run?skipClosedRuns=true", auth=HTTPBasicAuth(args.user, args.password)  )
+    except Exception as ex:
+        print('current_run error')
+        if args.verbose >= 2:
+            print('HTTP request: %s' % ex)
     else:
-        print("current_run failure")
+        if args.verbose >= 2:
+            print("Response: %s" % resp.text)
+        if resp.json().get("success", None):
+            num = resp.json().get("value", {}).get("num", None)
+            print("run number: %s" % num)
+        else:
+            print("current_run failure")
 
     if args.end:
         # end run
         if args.verbose:
             print("End a run (end_run)")
-        resp = requests.post(serverURLPrefix + "end_run", auth=HTTPBasicAuth(args.user, args.password)  )
-        if args.verbose >= 2:
-            print("Response: %s" % resp.text)
-        if resp.json().get("success", None):
-            print("end_run success")
+        try:
+            resp = requests.post(serverURLPrefix + "end_run", auth=HTTPBasicAuth(args.user, args.password)  )
+        except Exception as ex:
+            print('end_run error')
+            if args.verbose >= 2:
+                print('HTTP request: %s' % ex)
         else:
-            print("end_run failure")
+            if args.verbose >= 2:
+                print("Response: %s" % resp.text)
+            if resp.json().get("success", None):
+                print("end_run success")
+            else:
+                print("end_run failure")
 
 if __name__ == '__main__':
     main()
