@@ -195,7 +195,7 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
 
 
     unsigned segment = 0;
-    Names& eventNames = *new(xtc) Names("tmo_timetool", ttAlg, "tt", "detnum1235", eventNamesId, segment);
+    Names& eventNames = *new(xtc) Names("tmotimetool", ttAlg, "timetool", "detnum1235", eventNamesId, segment);
     eventNames.add(xtc, TTDef);
     namesLookup[eventNamesId] = NameIndex(eventNames);
 
