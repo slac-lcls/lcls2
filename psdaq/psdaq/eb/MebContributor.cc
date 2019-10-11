@@ -97,7 +97,7 @@ int MebContributor::post(const Dgram* ddg, uint32_t destination)
     return -1;
   }
 
-  if (_verbose)
+  if (_verbose >= VL_BATCH)
   {
     uint64_t pid    = ddg->seq.pulseId().value();
     unsigned ctl    = ddg->seq.pulseId().control();
@@ -133,7 +133,7 @@ int MebContributor::post(const Dgram* ddg)
     EbLfCltLink* link = *it;
     uint32_t     data = ImmData::value(ImmData::Transition, _id, tr);
 
-    if (_verbose)
+    if (_verbose >= VL_BATCH)
     {
       uint64_t pid    = ddg->seq.pulseId().value();
       unsigned ctl    = ddg->seq.pulseId().control();

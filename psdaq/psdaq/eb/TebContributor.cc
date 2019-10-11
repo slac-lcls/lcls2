@@ -122,7 +122,7 @@ void TebContributor::shutdown()
 
 void* TebContributor::allocate(const Transition* hdr, const void* appPrm)
 {
-  if (_prms.verbose > 1)
+  if (_prms.verbose >= VL_EVENT)
   {
     const char* svc = TransitionId::name(hdr->seq.service());
     unsigned    ctl = hdr->seq.pulseId().control();
@@ -203,7 +203,7 @@ void TebContributor::_post(const Batch* batch) const
     unsigned     offset = _batchBase + idx * _batMan.maxBatchSize();
     const void*  buffer = batch->buffer();
 
-    if (_prms.verbose)
+    if (_prms.verbose >= VL_BATCH)
     {
       uint64_t pid    = batch->id();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
@@ -236,7 +236,7 @@ void TebContributor::_post(const Dgram* dgram) const
     EbLfCltLink* link = *it;
     if (link->id() != dst)        // Batch posted above included this non-event
     {
-      if (_prms.verbose)
+      if (_prms.verbose >= VL_BATCH)
       {
         unsigned    env    = dgram->env;
         unsigned    ctl    = dgram->seq.pulseId().control();

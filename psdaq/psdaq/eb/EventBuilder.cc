@@ -428,7 +428,7 @@ void EventBuilder::process(const Dgram* ctrb,
     event = _insert(epoch, ctrb, event, prm);
     if (!event->_remaining)  due = event;
 
-    if (_verbose > 1)
+    if (_verbose >= VL_EVENT)
     {
       unsigned  env = ctrb->env;
       unsigned  ctl = ctrb->seq.pulseId().control();

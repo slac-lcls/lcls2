@@ -176,7 +176,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
             __PRETTY_FUNCTION__, rc);
   }
 
-  if (_prms.verbose)
+  if (_prms.verbose >= VL_BATCH)
   {
     unsigned   ctl     = bdg->seq.pulseId().control();
     unsigned   env     = bdg->env;
@@ -292,7 +292,7 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
     // was subsequently fixed up by the TEB.  In both cases there is no
     // input corresponding to the result.
 
-    if (_prms.verbose)
+    if (_prms.verbose >= VL_EVENT)
     {
       unsigned    idx    = inputs->index();
       unsigned    env    = result->env;

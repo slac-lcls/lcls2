@@ -60,14 +60,14 @@ void sigHandler( int signal )
 
   if (callCount == 0)
   {
-    printf("\nShutting down\n");
+    logging::info("\nShutting down");
 
     lRunning = 0;
   }
 
   if (callCount++)
   {
-    fprintf(stderr, "Aborting on 2nd ^C...\n");
+    logging::critical("Aborting on 2nd ^C...");
     ::abort();
   }
 }
@@ -187,29 +187,30 @@ int Teb::configure(const EbParams& prms,
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _l3Transport.connect(&link, addr, port, _id, tmo)) )
     {
-      fprintf(stderr, "%s:\n  Error connecting to Ctrb at %s:%s\n",
-              __PRETTY_FUNCTION__, addr, port);
+      logging::error("%s:\n  Error connecting to Ctrb at %s:%s",
+                     __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
     unsigned rmtId = link->id();
     _l3Links[rmtId] = link;
 
-    if (_verbose)  printf("Outbound link with Ctrb ID %d connected\n", rmtId);
+    logging::debug("Outbound link with Ctrb ID %d connected", rmtId);
 
     if ( (rc = link->prepare(region, regSize)) )
     {
-      fprintf(stderr, "%s:\n  Failed to prepare link with Ctrb ID %d\n",
-              __PRETTY_FUNCTION__, rmtId);
+      logging::error("%s:\n  Failed to prepare link with Ctrb ID %d",
+                     __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
 
-    printf("Outbound link with Ctrb ID %d connected and configured\n", rmtId);
+    logging::info("Outbound link with Ctrb ID %d connected and configured",
+                  rmtId);
   }
 
   if ( (rc = _mrqTransport.initialize(prms.ifAddr, prms.mrqPort, prms.numMrqs)) )
   {
-    fprintf(stderr, "%s:\n  Failed to initialize MonReq EbLfServer\n",
-            __PRETTY_FUNCTION__);
+    logging::error("%s:\n  Failed to initialize MonReq EbLfServer",
+                   __PRETTY_FUNCTION__);
     return rc;
   }
 
@@ -220,28 +221,29 @@ int Teb::configure(const EbParams& prms,
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _mrqTransport.connect(&link, _id, tmo)) )
     {
-      fprintf(stderr, "%s:\n  Error connecting to a Mon Requestor\n",
-              __PRETTY_FUNCTION__);
+      logging::error("%s:\n  Error connecting to a Mon Requestor",
+                     __PRETTY_FUNCTION__);
       return rc;
     }
     unsigned rmtId = link->id();
     _mrqLinks[rmtId] = link;
 
-    if (_verbose)  printf("Inbound link with Mon Requestor ID %d connected\n", rmtId);
+    logging::debug("Inbound link with Mon Requestor ID %d connected", rmtId);
 
     if ( (rc = link->prepare()) )
     {
-      fprintf(stderr, "%s:\n  Failed to prepare link with Mon Requestor ID %d\n",
-              __PRETTY_FUNCTION__, rmtId);
+      logging::error("%s:\n  Failed to prepare link with Mon Requestor ID %d",
+                     __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
     if (link->postCompRecv())
     {
-      fprintf(stderr, "%s:\n  Failed to post CQ buffers for Mon Requestor ID %d\n",
-              __PRETTY_FUNCTION__, rmtId);
+      logging::error("%s:\n  Failed to post CQ buffers for Mon Requestor ID %d",
+                     __PRETTY_FUNCTION__, rmtId);
     }
 
-    printf("Inbound link with Mon Requestor ID %d connected and configured\n", rmtId);
+    logging::info("Inbound link with Mon Requestor ID %d connected and configured",
+                  rmtId);
   }
 
   return 0;
@@ -251,7 +253,7 @@ void Teb::run()
 {
   pinThread(pthread_self(), _prms.core[0]);
 
-  printf("TEB thread is starting\n");
+  logging::info("TEB thread is starting");
 
   //_trimmed       = 0;
   _eventCount    = 0;
@@ -270,7 +272,7 @@ void Teb::run()
 
   _shutdown();
 
-  printf("TEB thread is exiting\n");
+  logging::info("TEB thread is exiting");
 }
 
 void Teb::_shutdown()
@@ -302,7 +304,7 @@ void Teb::process(EbEvent* event)
   // Accumulate output datagrams (result) from the event builder into a batch
   // datagram.  When the batch completes, post it to the contributors.
 
-  if (_verbose > 3)
+  if (_verbose >= VL_DETAILED)
   {
     static unsigned cnt = 0;
     printf("Teb::process event dump:\n");
@@ -354,14 +356,14 @@ void Teb::process(EbEvent* event)
           rc = _mrqLinks[ImmData::src(data)]->postCompRecv();
           if (rc)
           {
-            fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
-                    __PRETTY_FUNCTION__, rc);
+            logging::error("%s:\n  Failed to post CQ buffers: %d",
+                           __PRETTY_FUNCTION__, rc);
           }
         }
       }
     }
 
-    if (_verbose > 2) // || rdg.monitor())
+    if (_verbose >= VL_EVENT) // || rdg.monitor())
     {
       uint64_t  pid = rdg.seq.pulseId().value();
       unsigned  idx = Batch::batchNum(pid);
@@ -431,7 +433,7 @@ void Teb::_post(const Batch& batch)
 
     destns &= ~(1ul << dst);
 
-    if (_verbose)
+    if (_verbose >= VL_BATCH)
     {
       uint64_t pid    = batch.id();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
@@ -575,7 +577,7 @@ void TebApp::handleConnect(const json& msg)
   {
     std::string errorMsg = "Error parsing connect message";
     body["err_info"] = errorMsg;
-    fprintf(stderr, "%s:\n  %s\n", __PRETTY_FUNCTION__, errorMsg.c_str());
+    logging::error("%s:\n  %s", __PRETTY_FUNCTION__, errorMsg.c_str());
   }
 
   // Save a copy of the json so we can use it to connect to
@@ -631,22 +633,23 @@ int TebApp::_configure(const json& msg)
   Trigger* trigger = _factory.create(top, detName, symbol);
   if (!trigger)
   {
-    fprintf(stderr, "%s:\n  Failed to create Trigger\n",
-            __PRETTY_FUNCTION__);
+    logging::error("%s:\n  Failed to create Trigger",
+                   __PRETTY_FUNCTION__);
     return -1;
   }
 
   if (trigger->configure(_connectMsg, top))
   {
-    fprintf(stderr, "%s:\n  Failed to configure Trigger\n",
-            __PRETTY_FUNCTION__);
+    logging::error("%s:\n  Failed to configure Trigger",
+                   __PRETTY_FUNCTION__);
     return -1;
   }
 
-# define _FETCH(key, item)                                               \
-  if (top.HasMember(key))  item = top[key].GetUint();                    \
-  else { fprintf(stderr, "%s:\n  Key '%s' not found in Document %s\n",   \
-                 __PRETTY_FUNCTION__, key, detName.c_str());  rc = -1; }
+# define _FETCH(key, item)                                              \
+  if (top.HasMember(key))  item = top[key].GetUint();                   \
+  else { logging::error("%s:\n  Key '%s' not found in Document %s",     \
+                        __PRETTY_FUNCTION__, key, detName.c_str());     \
+         rc = -1; }
 
   unsigned prescale;  _FETCH("prescale", prescale);
 
@@ -873,6 +876,7 @@ int main(int argc, char **argv)
 
   logging::init(instrument, prms.verbose ? LOG_DEBUG : LOG_INFO);
   logging::info("logging configured");
+
   if (!instrument)
   {
     logging::warning("-P: instrument name is missing");
@@ -898,7 +902,7 @@ int main(int argc, char **argv)
   sigAction.sa_flags   = SA_RESTART;
   sigemptyset(&sigAction.sa_mask);
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
-    fprintf(stderr, "Failed to set up ^C handler\n");
+    logging::error("Failed to set up ^C handler");
 
   // Event builder sorts contributions into a time ordered list
   // Then calls the user's process() with complete events to build the result datagram

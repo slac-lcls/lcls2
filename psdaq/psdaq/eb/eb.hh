@@ -28,6 +28,8 @@ namespace Pds {
 
     const unsigned NUM_READOUT_GROUPS = 16;     // Number of readout groups supported
 
+    enum { VL_NONE, VL_DEFAULT, VL_BATCH, VL_EVENT, VL_DETAILED }; // Verbosity levels
+
     struct TebCtrbParams
     {
       using string_t = std::string;

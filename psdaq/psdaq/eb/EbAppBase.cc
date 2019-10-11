@@ -196,7 +196,7 @@ int EbAppBase::process()
             __PRETTY_FUNCTION__, rc);
   }
 
-  if (_verbose)
+  if (_verbose >= VL_BATCH)
   {
     unsigned    env = idg->env;
     uint64_t    pid = idg->seq.pulseId().value();
@@ -252,7 +252,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
   ++_fixupCnt;
 
-  if (_verbose)
+  if (_verbose >= VL_EVENT)
   {
     fprintf(stderr, "%s:\n  Fixup event %014lx, size %zu, for source %d\n",
             __PRETTY_FUNCTION__, event->sequence(), event->size(), srcId);
