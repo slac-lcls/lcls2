@@ -88,37 +88,44 @@ namespace Pds {
       _id           (-1u)
     {
     }
-    int connect(const MebParams& prms)
+    virtual ~MyXtcMonitorServer()
+    {
+    }
+    int configure(const MebParams& prms)
     {
       _iTeb = 0;
       _id   = prms.id;
       _mrqLinks.resize(prms.addrs.size());
 
-      unsigned numBuffers = _bufFreeList.size();
-      for (unsigned i = 0; i < prms.addrs.size(); ++i)
+      for (unsigned i = 0; i < _mrqLinks.size(); ++i)
       {
         int            rc;
         const char*    addr = prms.addrs[i].c_str();
         const char*    port = prms.ports[i].c_str();
-        EbLfLink*      link;
+        EbLfCltLink*   link;
         const unsigned tmo(120000);     // Milliseconds
-        if ( (rc = _mrqTransport.connect(addr, port, tmo, &link)) )
+        if ( (rc = _mrqTransport.connect(&link, addr, port, _id, tmo)) )
         {
-          fprintf(stderr, "%s:\n  Error connecting to Monitor EbLfServer at %s:%s\n",
+          fprintf(stderr, "%s:\n  Error connecting to TEB at %s:%s\n",
                   __PRETTY_FUNCTION__, addr, port);
           return rc;
         }
-        if ( (rc = link->preparePoster(_id)) )
-        {
-          fprintf(stderr, "%s:\n  Failed to prepare Monitor link to %s:%s\n",
-                  __PRETTY_FUNCTION__, addr, port);
-          return rc;
-        }
-        _mrqLinks[link->id()] = link;
+        unsigned rmtId = link->id();
+        _mrqLinks[rmtId] = link;
 
-        printf("Outbound link with TEB ID %d connected\n", link->id());
+        if (prms.verbose)  printf("Outbound link with TEB ID %d connected\n", rmtId);
+
+        if ( (rc = link->prepare()) )
+        {
+          fprintf(stderr, "%s:\n  Failed to prepare link with TEB ID %d\n",
+                  __PRETTY_FUNCTION__, rmtId);
+          return rc;
+        }
+
+        printf("Outbound link with TEB ID %d connected and configured\n", rmtId);
       }
 
+      unsigned numBuffers = _bufFreeList.size();
       for (unsigned i = 0; i < numBuffers; ++i)
       {
         if (_bufFreeList.push(i))
@@ -131,15 +138,12 @@ namespace Pds {
 
       return 0;
     }
-    virtual ~MyXtcMonitorServer()
-    {
-    }
   public:
     void shutdown()
     {
       for (auto it = _mrqLinks.begin(); it != _mrqLinks.end(); ++it)
       {
-        _mrqTransport.shutdown(*it);
+        _mrqTransport.disconnect(*it);
       }
       _mrqLinks.clear();
 
@@ -213,7 +217,7 @@ namespace Pds {
         unsigned iTeb = _iTeb++;
         if (_iTeb == _mrqLinks.size())  _iTeb = 0;
 
-        EbLfLink* link = _mrqLinks[iTeb];
+        EbLfCltLink* link = _mrqLinks[iTeb];
 
         data = ImmData::value(ImmData::Buffer, _id, data);
 
@@ -232,12 +236,12 @@ namespace Pds {
     }
 
   private:
-    unsigned               _sizeofBuffers;
-    unsigned               _iTeb;
-    EbLfClient             _mrqTransport;
-    std::vector<EbLfLink*> _mrqLinks;
-    FifoMT<unsigned>       _bufFreeList;
-    unsigned               _id;
+    unsigned                  _sizeofBuffers;
+    unsigned                  _iTeb;
+    EbLfClient                _mrqTransport;
+    std::vector<EbLfCltLink*> _mrqLinks;
+    FifoMT<unsigned>          _bufFreeList;
+    unsigned                  _id;
   };
 
   class Meb : public EbAppBase
@@ -271,6 +275,8 @@ namespace Pds {
     {
       pinThread(pthread_self(), _prms.core[0]);
 
+      printf("MEB thread is starting\n");
+
       _apps = &apps;
 
       // Create pool for transferring events to MyXtcMonitorServer
@@ -281,20 +287,20 @@ namespace Pds {
 
       _eventCount = 0;
 
-      while (true)
+      while (lRunning)
       {
-        int rc;
-        if (!lRunning)
-        {
-          if (checkEQ() == -FI_ENOTCONN)  break;
-        }
-
-        if ( (rc = EbAppBase::process()) < 0)
+        if (EbAppBase::process() < 0)
         {
           if (checkEQ() == -FI_ENOTCONN)  break;
         }
       }
 
+      _shutdown();
+
+      printf("MEB thread is exiting\n");
+    }
+    void _shutdown()
+    {
       _apps->shutdown();
 
       EbAppBase::shutdown();
@@ -372,6 +378,7 @@ public:                                 // For CollectionApp
   void         handleReset(const json& msg) override;
 private:
   std::string _connect(const json& msg);
+  std::string _configure(const json& msg);
   int         _parseConnectionParams(const json& msg);
 private:
   const char*                         _tag;
@@ -413,19 +420,6 @@ std::string MebApp::_connect(const json &msg)
   int rc = _parseConnectionParams(msg["body"]);
   if (rc)  return std::string("Error parsing parameters");
 
-  rc = _meb.connect(_prms);
-  if (rc)  return std::string("Failed MEB connect()");
-
-  _apps = std::make_unique<MyXtcMonitorServer>(_tag, _numEvQueues, _prms);
-  rc = _apps->connect(_prms);
-  if (rc)  return std::string("Failed XtcMonitorServer connect()");
-
-  _apps->distribute(_distribute);
-
-  lRunning = 1;
-
-  _appThread = std::thread(&Meb::run, std::ref(_meb), std::ref(*_apps));
-
   return std::string{};
 }
 
@@ -435,8 +429,24 @@ void MebApp::handleConnect(const json &msg)
 
   // Reply to collection with connect status
   json body = json({});
-  if (!errMsg.empty())  body["error_info"] = errMsg;
+  if (!errMsg.empty())
+  {
+    body["error_info"] = errMsg;
+    fprintf(stderr, "%s:\n  %s\n", __PRETTY_FUNCTION__, errMsg.c_str());
+  }
   reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
+}
+
+std::string MebApp::_configure(const json &msg)
+{
+  int rc = _meb.configure(_prms);
+  if (rc)  return std::string("Failed to configure MEB");
+
+  _apps = std::make_unique<MyXtcMonitorServer>(_tag, _numEvQueues, _prms);
+  rc = _apps->configure(_prms);
+  if (rc)  return std::string("Failed XtcMonitorServer configure()");
+
+  return std::string{};
 }
 
 void MebApp::handlePhase1(const json& msg)
@@ -446,14 +456,27 @@ void MebApp::handlePhase1(const json& msg)
 
   if (key == "configure")
   {
-    int rc = _meb.configure(_prms);
-    if (rc)
+    // Shut down the previously running instance, if any
+    if (_appThread.joinable())
     {
-      std::string errorMsg = "Phase 1 error: ";
-      errorMsg += "Failed to configure MEB";
-      body["err_info"] = errorMsg;
-      fprintf(stderr, "%s:\n  %s\n", __PRETTY_FUNCTION__, errorMsg.c_str());
+      lRunning = 0;
+
+      _appThread.join();
+      _apps.reset();
     }
+
+    std::string errMsg = _configure(msg);
+    if (!errMsg.empty())
+    {
+      body["error_info"] = "Phase 1 error: " + errMsg;
+      fprintf(stderr, "%s:\n  %s\n", __PRETTY_FUNCTION__, errMsg.c_str());
+    }
+
+    _apps->distribute(_distribute);
+
+    lRunning = 1;
+
+    _appThread = std::thread(&Meb::run, std::ref(_meb), std::ref(*_apps));
   }
 
   // Reply to collection with transition status
@@ -465,10 +488,11 @@ void MebApp::handleDisconnect(const json &msg)
   lRunning = 0;
 
   if (_appThread.joinable())  _appThread.join();
+
   _apps.reset();
 
   // Reply to collection with connect status
-  json body   = json({});
+  json body = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 

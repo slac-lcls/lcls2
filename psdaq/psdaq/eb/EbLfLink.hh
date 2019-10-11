@@ -14,57 +14,72 @@ namespace Pds {
     class EbLfLink
     {
     public:
-      EbLfLink(Fabrics::Endpoint*, size_t injectSize, unsigned verbose, uint64_t& pending);
-      EbLfLink(Fabrics::Endpoint*, int rxDepth, unsigned verbose, uint64_t& pending);
-      ~EbLfLink();
+      EbLfLink(Fabrics::Endpoint*, unsigned verbose);
     public:
-      int       preparePender(unsigned id);
-      int       preparePender(unsigned id,
-                              size_t*  size);
-      int       preparePoster(unsigned id);
-      int       preparePoster(unsigned id,
-                              void*    region,
-                              size_t   lclSize,
-                              size_t   rmtSize);
-      int       preparePoster(unsigned id,
-                              void*    region,
-                              size_t   size);
-    public:
-      int       setupMr(void* region, size_t size);
-      int       setupMr(void* region, size_t size, Fabrics::MemoryRegion**);
-      int       recvU32(Fabrics::MemoryRegion*, uint32_t* u32, const char* name);
-      int       sendU32(Fabrics::MemoryRegion*, uint32_t  u32, const char* name);
-      int       sendMr(Fabrics::MemoryRegion*);
-      int       recvMr(Fabrics::MemoryRegion*);
+      int setupMr(void* region, size_t size);
+      int setupMr(void* region, size_t size, Fabrics::MemoryRegion**);
+      int recvU32(uint32_t* u32, const char* name);
+      int sendU32(uint32_t  u32, const char* name);
+      int sendMr(Fabrics::MemoryRegion*);
+      int recvMr(Fabrics::RemoteAddress&);
     public:
       void*     lclAdx(size_t offset) const;
       uintptr_t rmtAdx(size_t offset) const;
-      int       postCompRecv(void* ctx = NULL);
-      int       post(const void* buf,
-                     size_t      len,
-                     uint64_t    offset,
-                     uint64_t    immData,
-                     void*       ctx = nullptr);
-      int       post(const void* buf,
-                     size_t      len,
-                     uint64_t    immData);
     public:
       Fabrics::Endpoint* endpoint() const { return _ep;  }
       unsigned           id()       const { return _id;  }
+    protected:                         // Arranged in order of access frequency
+      Fabrics::Endpoint*     _ep;      // Endpoint
+      Fabrics::MemoryRegion* _mr;      // Memory Region
+      Fabrics::RemoteAddress _ra;      // Remote address descriptor
+      unsigned               _id;      // ID of peer
+      const unsigned         _verbose; // Print some stuff if set
+      char                   _buffer[sizeof(Fabrics::RemoteAddress)]; // Used when App doesn't provide an MR
+      Fabrics::MemoryRegion* _bufMr;   // _buffer's
+    };
+
+    class EbLfSvrLink : public EbLfLink
+    {
+    public:
+      EbLfSvrLink(Fabrics::Endpoint*, int rxDepth, unsigned verbose);
+    public:
+      int exchangeIds(unsigned id);
+      int prepare();
+      int prepare(size_t* size);
+    public:
+      int postCompRecv();
     private:
-      int      _postCompRecv(int count, void* ctx = NULL);
-      int      _tryCq(fi_cq_data_entry*);
-    private:                               // Arranged in order of access frequency
-      Fabrics::Endpoint*      _ep;         // Endpoint
-      Fabrics::MemoryRegion*  _mr;         // Memory Region
-      Fabrics::RemoteAddress  _ra;         // Remote address descriptor
-      const size_t            _injectSize; // Max inject_writedata() size for post()
-      const int               _depth;      // Depth  of the Completion Queue
-      int                     _count;      // Number of completion buffers remaining
-      uint64_t&               _pending;    // Bit list of IDs currently posting
-      unsigned                _id;         // ID     of peer on the remote side
-      const unsigned          _verbose;    // Print some stuff if set
-      char*                   _region;     // Used when App doesn't provide an MR
+      int _postCompRecv(int count);
+      int _tryCq(fi_cq_data_entry*);
+    private:                          // Arranged in order of access frequency
+      const int _depth;               // Depth  of the Completion Queue
+      int       _count;               // Number of completion buffers remaining
+    };
+
+    class EbLfCltLink : public EbLfLink
+    {
+    public:
+      EbLfCltLink(Fabrics::Endpoint*, size_t injectSize, unsigned verbose, uint64_t& pending);
+    public:
+      int exchangeIds(unsigned id);
+      int prepare();
+      int prepare(void*  region,
+                  size_t lclSize,
+                  size_t rmtSize);
+      int prepare(void*  region,
+                  size_t size);
+    public:
+      int post(const void* buf,
+               size_t      len,
+               uint64_t    offset,
+               uint64_t    immData,
+               void*       ctx = nullptr);
+      int post(const void* buf,
+               size_t      len,
+               uint64_t    immData);
+    private:                          // Arranged in order of access frequency
+      const size_t _injectSize;       // Max inject_writedata() size for post()
+      uint64_t&    _pending;          // Bit list of IDs currently posting
     };
   };
 };
@@ -82,11 +97,11 @@ uintptr_t Pds::Eb::EbLfLink::rmtAdx(size_t offset) const
 }
 
 inline
-int Pds::Eb::EbLfLink::postCompRecv(void* ctx)
+int Pds::Eb::EbLfSvrLink::postCompRecv()
 {
   if (--_count < 1)
   {
-    _count += _postCompRecv(_depth - _count, ctx);
+    _count += _postCompRecv(_depth - _count);
     if (_count < _depth)  return _depth - _count;
   }
 

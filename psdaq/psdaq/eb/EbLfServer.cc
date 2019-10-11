@@ -1,6 +1,5 @@
 #include "EbLfServer.hh"
 
-#include "EbLfLink.hh"
 #include "Endpoint.hh"
 
 #include "psdaq/service/fast_monotonic_clock.hh"
@@ -22,9 +21,13 @@ EbLfServer::EbLfServer(unsigned verbose) :
   _tmo    (0),                          // Start by polling
   _verbose(verbose),
   _pending(0),
-  _pep    (nullptr),
-  _linkByEp()
+  _pep    (nullptr)
 {
+}
+
+EbLfServer::~EbLfServer()
+{
+  shutdown();
 }
 
 int EbLfServer::initialize(const std::string& addr,
@@ -85,7 +88,7 @@ int EbLfServer::initialize(const std::string& addr,
   return 0;
 }
 
-int EbLfServer::connect(EbLfLink** link, int tmo)
+int EbLfServer::connect(EbLfSvrLink** link, unsigned id, int tmo)
 {
   CompletionQueue* txcq    = nullptr;
   uint64_t         txFlags = 0;
@@ -99,13 +102,20 @@ int EbLfServer::connect(EbLfLink** link, int tmo)
 
   int rxDepth = _pep->fabric()->info()->rx_attr->size;
   if (_verbose)  printf("EbLfServer: rx_attr.size = %d\n", rxDepth);
-  *link = new EbLfLink(ep, rxDepth, _verbose, _unused);
+  *link = new EbLfSvrLink(ep, rxDepth, _verbose);
   if (!*link)
   {
     fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);
     return ENOMEM;
   }
   _linkByEp[ep->endpoint()] = *link;
+
+  int rc = (*link)->exchangeIds(id);
+  if (rc)
+  {
+    fprintf(stderr, "%s:\n  Failed to exchange ID with peer\n", __PRETTY_FUNCTION__);
+    return rc;
+  }
 
   return 0;
 }
@@ -125,7 +135,7 @@ int EbLfServer::pollEQ()
       fid_ep* ep = reinterpret_cast<fid_ep*>(entry.fid);
       if (_linkByEp.find(ep) != _linkByEp.end())
       {
-        EbLfLink* link = _linkByEp[ep];
+        EbLfSvrLink* link = _linkByEp[ep];
         printf("EbLfClient %d disconnected\n", link->id());
         _linkByEp.erase(ep);
         rc = (_linkByEp.size() == 0) ? -FI_ENOTCONN : FI_SUCCESS;
@@ -167,14 +177,16 @@ int EbLfServer::pollEQ()
   return rc;
 }
 
-int EbLfServer::shutdown(EbLfLink* link)
+int EbLfServer::disconnect(EbLfSvrLink* link)
 {
+  printf("Disconnecting from EbLfClient %d\n", link->id());
+
   Endpoint* ep = link->endpoint();
   if (!ep)  return -FI_ENOTCONN;
 
   _pep->close(ep);
 
-  if (link)   delete link;
+  delete link;
 
   return FI_SUCCESS;
 }

@@ -29,6 +29,7 @@ int main(int argc, char* argv[])
 {
     Drp::Parameters para;
     int c;
+    para.partition = -1;
     para.detSegment = 0;
     std::string kwargs_str;
     para.verbose = 0;
@@ -82,6 +83,10 @@ int main(int argc, char* argv[])
         logging::warning("-P: instrument name is missing");
     }
     // Check required parameters
+    if (para.partition == unsigned(-1)) {
+        logging::critical("-p: partition is mandatory");
+        exit(1);
+    }
     if (para.device.empty()) {
         logging::critical("-d: device is mandatory");
         exit(1);

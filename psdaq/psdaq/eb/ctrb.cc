@@ -129,7 +129,7 @@ namespace Pds {
                std::shared_ptr<MetricExporter>& exporter);
       virtual ~EbCtrbIn() {}
     public:
-      int      connect(const TebCtrbParams&, MebContributor*);
+      int      configure(const TebCtrbParams&, MebContributor*);
       void     shutdown();
     public:                             // For EbCtrbInBase
       virtual void process(const ResultDgram& result, const void* input);
@@ -149,7 +149,6 @@ namespace Pds {
     public:
       DrpSim&  drpSim() { return _drpSim; }
     public:
-      void     stop();
       void     run(EbCtrbIn&);
     private:
       DrpSim               _drpSim;
@@ -350,13 +349,13 @@ EbCtrbIn::EbCtrbIn(const TebCtrbParams&             prms,
   _inprocSend.connect("inproc://drp");
 }
 
-int EbCtrbIn::connect(const TebCtrbParams& tebPrms, MebContributor* mebCtrb)
+int EbCtrbIn::configure(const TebCtrbParams& tebPrms, MebContributor* mebCtrb)
 {
   _pid = 0;
 
   _mebCtrb = mebCtrb;
 
-  return EbCtrbInBase::connect(tebPrms);
+  return EbCtrbInBase::configure(tebPrms);
 }
 
 void EbCtrbIn::shutdown()
@@ -431,13 +430,6 @@ EbCtrbApp::EbCtrbApp(const TebCtrbParams&             prms,
   exporter->add("TCtbO_AlPdg", labels, MetricType::Gauge, [&](){ return _drpSim.allocPending(); });
 }
 
-void EbCtrbApp::stop()
-{
-  _drpSim.stop();
-
-  TebContributor::stop();
-}
-
 void EbCtrbApp::run(EbCtrbIn& in)
 {
   TebContributor::startup(in);
@@ -481,6 +473,8 @@ void EbCtrbApp::run(EbCtrbIn& in)
   _drpSim.shutdown();
 
   in.shutdown();        // Revisit: The 'in' base class is shut down in TebCtrb
+
+  printf("Ctrb thread is exiting\n");
 }
 
 
@@ -492,10 +486,10 @@ public:                                 // For CollectionApp
   json connectionInfo() override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
-  void handlePhase1(const json &msg) override;
+  void handlePhase1(const json& msg) override;
   void handleReset(const json& msg) override;
 private:
-  int  _handleConnect(const json& msg);
+  int  _configure(const json& msg);
   int  _parseConnectionParams(const json& msg);
 private:
   TebCtrbParams& _tebPrms;
@@ -504,7 +498,7 @@ private:
   MebContributor _mebCtrb;
   EbCtrbIn       _inbound;
   std::thread    _appThread;
-  bool           _shutdown;
+  bool           _unconfigure;
 };
 
 CtrbApp::CtrbApp(const std::string&               collSrv,
@@ -516,8 +510,7 @@ CtrbApp::CtrbApp(const std::string&               collSrv,
   _mebPrms(mebPrms),
   _tebCtrb(tebPrms, exporter),
   _mebCtrb(mebPrms, exporter),
-  _inbound(tebPrms, _tebCtrb.drpSim(), context(), exporter),
-  _shutdown(false)
+  _inbound(tebPrms, _tebCtrb.drpSim(), context(), exporter)
 {
 }
 
@@ -531,12 +524,32 @@ json CtrbApp::connectionInfo()
   return body;
 }
 
-int CtrbApp::_handleConnect(const json &msg)
+void CtrbApp::handleConnect(const json& msg)
 {
   int rc = _parseConnectionParams(msg["body"]);
-  if (rc)  return rc;
 
-  rc = _tebCtrb.connect(_tebPrms);
+  _unconfigure = false;
+
+  // Reply to collection with connect status
+  json body = json({});
+  if (rc)  body["err_info"] = "Connect error";
+  reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
+}
+
+int CtrbApp::_configure(const json& msg)
+{
+  if (_unconfigure)
+  {
+    lRunning = 0;
+
+    _tebCtrb.drpSim().stop();
+
+    if (_appThread.joinable())  _appThread.join();
+
+    _unconfigure = false;
+  }
+
+  int rc = _tebCtrb.configure(_tebPrms);
   if (rc)  return rc;
 
   void*  base;
@@ -546,13 +559,13 @@ int CtrbApp::_handleConnect(const json &msg)
   MebContributor* mebCtrb = nullptr;
   if (_mebPrms.addrs.size() != 0)
   {
-    int rc = _mebCtrb.connect(_mebPrms, base, size);
+    int rc = _mebCtrb.configure(_mebPrms, base, size);
     if (rc)  return rc;
 
     mebCtrb = &_mebCtrb;
   }
 
-  rc = _inbound.connect(_tebPrms, mebCtrb);
+  rc = _inbound.configure(_tebPrms, mebCtrb);
   if (rc)  return rc;
 
   lRunning = 1;
@@ -562,17 +575,7 @@ int CtrbApp::_handleConnect(const json &msg)
   return 0;
 }
 
-void CtrbApp::handleConnect(const json &msg)
-{
-  int rc = _handleConnect(msg);
-
-  // Reply to collection with connect status
-  json body = json({});
-  if (rc)  body["err_info"] = "Connect error";
-  reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
-}
-
-void CtrbApp::handlePhase1(const json &msg)
+void CtrbApp::handlePhase1(const json& msg)
 {
   int         rc  = 0;
   std::string key = msg["header"]["key"];
@@ -595,9 +598,15 @@ void CtrbApp::handlePhase1(const json &msg)
   sleep(key == "configure" ? 5 : 1); // Nothing to wait on that ensures TEB is done
 
   if      (key == "configure")
+  {
+    rc = _configure(msg);
     rc = _tebCtrb.drpSim().transition(TransitionId::Configure, pid);
+  }
   else if (key == "unconfigure")
+  {
+    _unconfigure = true;
     rc = _tebCtrb.drpSim().transition(TransitionId::Unconfigure, pid);
+  }
   else if (key == "beginrun")
     rc = _tebCtrb.drpSim().transition(TransitionId::BeginRun, pid);
   else if (key == "endrun")
@@ -617,31 +626,26 @@ void CtrbApp::handlePhase1(const json &msg)
   reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
 }
 
-void CtrbApp::handleDisconnect(const json &msg)
+void CtrbApp::handleDisconnect(const json& msg)
 {
   lRunning = 0;
 
-  _tebCtrb.stop();
+  _tebCtrb.drpSim().stop();
 
   if (_appThread.joinable())  _appThread.join();
 
   // Reply to collection with connect status
   json body = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
-
-  _shutdown = true;
 }
 
-void CtrbApp::handleReset(const json &msg)
+void CtrbApp::handleReset(const json& msg)
 {
-  if (!_shutdown)
-  {
-    _tebCtrb.stop();
+  lRunning = 0;
 
-    if (_appThread.joinable())  _appThread.join();
+  _tebCtrb.drpSim().stop();
 
-    _shutdown = true;
-  }
+  if (_appThread.joinable())  _appThread.join();
 }
 
 int CtrbApp::_parseConnectionParams(const json& body)

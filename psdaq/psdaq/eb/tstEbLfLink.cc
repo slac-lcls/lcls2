@@ -75,19 +75,19 @@ int server(const std::string& ifAddr,
     return rc;
   }
 
-  std::vector<EbLfLink*> links(numClients);
-  std::vector<void*>     regions(numClients);
-  std::vector<size_t>    bufSize(numClients);
+  std::vector<EbLfSvrLink*> links(numClients);
+  std::vector<void*>        regions(numClients);
+  std::vector<size_t>       bufSize(numClients);
   for (unsigned i = 0; i < links.size(); ++i)
   {
     const unsigned tmo(120000);
-    if ( (rc = svr->connect(&links[i], tmo)) )
+    if ( (rc = svr->connect(&links[i], id, tmo)) )
     {
       fprintf(stderr, "Error connecting to EbLfClient[%d]\n", i);
       return rc;
     }
     size_t regSize;
-    if ( (rc = links[i]->preparePender(id, &regSize)) < 0)
+    if ( (rc = links[i]->prepare(&regSize)) < 0)
     {
       fprintf(stderr, "Failed to prepare link[%d]\n", i);
       return rc;
@@ -121,13 +121,13 @@ int server(const std::string& ifAddr,
     const int tmo = 5000;               // milliseconds
     if (svr->pend(&data, tmo) < 0)  continue;
 
-    unsigned  flg = ImmData::flg(data);
-    unsigned  src = ImmData::src(data);
-    unsigned  idx = ImmData::idx(data);
-    EbLfLink* lnk = links[src];
-    size_t    ofs = (ImmData::buf(flg) == ImmData::Buffer)
-                  ? trSize + idx * bufSize[src]
-                  : trOffset[idx];
+    unsigned     flg = ImmData::flg(data);
+    unsigned     src = ImmData::src(data);
+    unsigned     idx = ImmData::idx(data);
+    EbLfSvrLink* lnk = links[src];
+    size_t       ofs = (ImmData::buf(flg) == ImmData::Buffer)
+                     ? trSize + idx * bufSize[src]
+                     : trOffset[idx];
     if ( (rc = links[src]->postCompRecv()) )
     {
       fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
@@ -143,7 +143,7 @@ int server(const std::string& ifAddr,
   for (unsigned i = 0; i < links.size(); ++i)
   {
     free(regions[i]);
-    svr->shutdown(links[i]);
+    svr->disconnect(links[i]);
   }
   delete svr;
 
@@ -176,18 +176,18 @@ int client(std::vector<std::string>& svrAddrs,
   // Adjust for the region size round up
   bufSize = (regSize - trSize) / numBuffers;
 
-  std::vector<EbLfLink*> links(svrAddrs.size());
+  std::vector<EbLfCltLink*> links(svrAddrs.size());
   for (unsigned i = 0; i < links.size(); ++i)
   {
     const char* svrAddr = svrAddrs[i].c_str();
     const char* svrPort = svrPorts[i].c_str();
 
-    if ( (rc = clt->connect(svrAddr, svrPort, tmo, &links[i])) )
+    if ( (rc = clt->connect(&links[i], svrAddr, svrPort, id, tmo)) )
     {
       fprintf(stderr, "Error connecting to EbLfServer[%d]\n", i);
       return rc;
     }
-    if ( (rc = links[i]->preparePoster(id, region, regSize)) < 0)
+    if ( (rc = links[i]->prepare(region, regSize)) < 0)
     {
       fprintf(stderr, "Failed to prepare link[%d]\n", i);
       return rc;
@@ -302,7 +302,7 @@ int client(std::vector<std::string>& svrAddrs,
 
   for (unsigned dst = 0; dst < links.size(); ++dst)
   {
-    clt->shutdown(links[dst]);
+    clt->disconnect(links[dst]);
   }
   delete clt;
 

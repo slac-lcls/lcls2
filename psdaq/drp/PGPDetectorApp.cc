@@ -80,7 +80,6 @@ void PGPDetectorApp::handleConnect(const json& msg)
 
 void PGPDetectorApp::handleDisconnect(const json& msg)
 {
-    m_drp.disconnect(msg);
     shutdown();
 
     json body = json({});
@@ -125,6 +124,14 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
         m_pgpDetector->resetEventCounter();
     }
+    else if (key == "unconfigure") {
+        std::string errorMsg = m_drp.unconfigure(msg);
+        if (!errorMsg.empty()) {
+            errorMsg = "Phase 1 error: " + errorMsg;
+            body["err_info"] = errorMsg;
+            std::cout<<errorMsg<<'\n';
+        }
+    }
     else if (key == "beginstep") {
         // see if we find some step information in phase 1 that needs to be
         // to be attached to the xtc
@@ -137,7 +144,6 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
 void PGPDetectorApp::handleReset(const json& msg)
 {
-    m_drp.disconnect(msg);
     shutdown();
 }
 

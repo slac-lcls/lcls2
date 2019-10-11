@@ -18,29 +18,29 @@ namespace XtcData {
 namespace Pds {
   namespace Eb {
 
-    class EbLfLink;
+    class EbLfCltLink;
 
     class MebContributor
     {
     public:
       MebContributor(const MebCtrbParams&, std::shared_ptr<MetricExporter>&);
     public:
-      int  connect(const MebCtrbParams&, void* region, size_t size);
+      int  configure(const MebCtrbParams&, void* region, size_t size);
       void shutdown();
     public:
       int  post(const XtcData::Dgram* dataDatagram); // Transitions
       int  post(const XtcData::Dgram* dataDatagram,
                 uint32_t              destination);  // L1Accepts
     private:
-      size_t                 _maxEvSize;
-      size_t                 _maxTrSize;
-      size_t                 _trSize;
-      EbLfClient             _transport;
-      std::vector<EbLfLink*> _links;
-      unsigned               _id;
-      unsigned               _verbose;
+      size_t                    _maxEvSize;
+      size_t                    _maxTrSize;
+      size_t                    _trSize;
+      EbLfClient                _transport;
+      std::vector<EbLfCltLink*> _links;
+      unsigned                  _id;
+      unsigned                  _verbose;
     private:
-      uint64_t               _eventCount;
+      uint64_t                  _eventCount;
     };
   };
 };

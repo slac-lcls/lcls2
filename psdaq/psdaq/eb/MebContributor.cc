@@ -32,9 +32,9 @@ MebContributor::MebContributor(const MebCtrbParams&             prms,
   exporter->add("MCtbO_TxPdg", labels, MetricType::Counter, [&](){ return _transport.pending(); });
 }
 
-int MebContributor::connect(const MebCtrbParams& prms,
-                            void*                region,
-                            size_t               size)
+int MebContributor::configure(const MebCtrbParams& prms,
+                              void*                region,
+                              size_t               size)
 {
   int    rc;
   size_t regSize = prms.maxEvents * _maxEvSize;
@@ -47,15 +47,15 @@ int MebContributor::connect(const MebCtrbParams& prms,
   {
     const char*    addr = prms.addrs[i].c_str();
     const char*    port = prms.ports[i].c_str();
-    EbLfLink*      link;
+    EbLfCltLink*   link;
     const unsigned tmo(120000);         // Milliseconds
-    if ( (rc = _transport.connect(addr, port, tmo, &link)) )
+    if ( (rc = _transport.connect(&link, addr, port, _id, tmo)) )
     {
       fprintf(stderr, "%s:\n  Error connecting to MEB at %s:%s\n",
               __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
-    if ( (rc = link->preparePoster(prms.id, region, size, regSize)) )
+    if ( (rc = link->prepare(region, size, regSize)) )
     {
       fprintf(stderr, "%s:\n  Failed to prepare link with MEB at %s:%s\n",
               __PRETTY_FUNCTION__, addr, port);
@@ -73,7 +73,7 @@ void MebContributor::shutdown()
 {
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
-    _transport.shutdown(*it);
+    _transport.disconnect(*it);
   }
   _links.clear();
 
@@ -82,12 +82,12 @@ void MebContributor::shutdown()
 
 int MebContributor::post(const Dgram* ddg, uint32_t destination)
 {
-  unsigned  dst    = ImmData::src(destination);
-  uint32_t  idx    = ImmData::idx(destination);
-  size_t    sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
-  unsigned  offset = _trSize + idx * _maxEvSize;
-  EbLfLink* link   = _links[dst];
-  uint32_t  data   = ImmData::value(ImmData::Buffer, _id, idx);
+  unsigned     dst    = ImmData::src(destination);
+  uint32_t     idx    = ImmData::idx(destination);
+  size_t       sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
+  unsigned     offset = _trSize + idx * _maxEvSize;
+  EbLfCltLink* link   = _links[dst];
+  uint32_t     data   = ImmData::value(ImmData::Buffer, _id, idx);
 
   if (sz > _maxEvSize)
   {
@@ -130,8 +130,8 @@ int MebContributor::post(const Dgram* ddg)
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
-    EbLfLink* link = *it;
-    uint32_t  data = ImmData::value(ImmData::Transition, _id, tr);
+    EbLfCltLink* link = *it;
+    uint32_t     data = ImmData::value(ImmData::Transition, _id, tr);
 
     if (_verbose)
     {

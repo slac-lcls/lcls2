@@ -57,8 +57,8 @@ public:
     void shutdown();
     nlohmann::json connectionInfo();
     std::string connect(const nlohmann::json& msg, size_t id);
-    std::string disconnect(const nlohmann::json& msg);
     std::string configure(const nlohmann::json& msg);
+    std::string unconfigure(const nlohmann::json& msg);
     Pds::Eb::TebContributor& tebContributor() const {return *m_tebContributor;}
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
     prometheus::Exposer* exposer() {return m_exposer.get();}
@@ -81,6 +81,7 @@ private:
     size_t m_collectionId;
     Pds::Trg::Factory<Pds::Trg::TriggerPrimitive> m_trigPrimFactory;
     Pds::Trg::TriggerPrimitive* m_triggerPrimitive;
+    bool m_unconfigure;
 };
 
 }

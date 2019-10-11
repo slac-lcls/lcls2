@@ -323,7 +323,6 @@ void BldApp::handleConnect(const nlohmann::json& msg)
 
 void BldApp::handleDisconnect(const json& msg)
 {
-    m_drp.disconnect(msg);
     shutdown();
 
     json body = json({});
@@ -344,6 +343,14 @@ void BldApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
     }
+    else if (key == "unconfigure") {
+        std::string errorMsg = m_drp.unconfigure(msg);
+        if (!errorMsg.empty()) {
+            errorMsg = "Phase 1 error: " + errorMsg;
+            body["err_info"] = errorMsg;
+            std::cout<<errorMsg<<'\n';
+        }
+    }
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -351,7 +358,6 @@ void BldApp::handlePhase1(const json& msg)
 
 void BldApp::handleReset(const nlohmann::json& msg)
 {
-    m_drp.disconnect(msg);
     shutdown();
 }
 
@@ -475,6 +481,7 @@ void BldApp::sentToTeb(XtcData::Dgram& dgram, uint32_t index)
 int main(int argc, char* argv[])
 {
     Drp::Parameters para;
+    para.partition = -1;
     para.laneMask = 0x1;
     para.detName = "bld";               // Revisit: Should come from alias?
     para.detSegment = 0;
@@ -522,6 +529,10 @@ int main(int argc, char* argv[])
         logging::warning("-P: instrument name is missing");
     }
     // Check required parameters
+    if (para.partition == unsigned(-1)) {
+        logging::critical("-p: partition is mandatory");
+        exit(1);
+    }
     if (para.device.empty()) {
         logging::critical("-d: device is mandatory");
         exit(1);
