@@ -417,12 +417,20 @@ int main(int argc, char* argv[])
     printf("\nStart writing offsets.\n"); 
     
     while ((dgIn = iter.next())) {
+        nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload()); 
         if (dgIn->seq.service() == TransitionId::Configure) {
-            nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload()); // add up offset before appending info name.
-            addNames(dgIn->xtc, namesLookup, nodeId);
-            save(*dgIn, xtcFile);
-        } else if (dgIn->seq.service() == TransitionId::L1Accept) {
+            Dgram& dgOut = *dgIn;
+            addNames(dgOut.xtc, namesLookup, nodeId);
+            save(dgOut, xtcFile);
+        } else { 
             Dgram& dgOut = *(Dgram*)buf;
+            if (dgIn->seq.service() == TransitionId::L1Accept) {
+                eventL1Id++;
+            } else {
+                dgOut = *dgIn; 
+                eventUpdateId++;
+            }
+            
             TypeId tid(TypeId::Parent, 0);
             dgOut.xtc.contains = tid;
             dgOut.xtc.damage = 0;
@@ -443,7 +451,6 @@ int main(int argc, char* argv[])
             NamesId namesId(nodeId,0);
             CreateData smd(dgOut.xtc, namesLookup, namesId);
             smd.set_value(SmdDef::intOffset, nowOffset);
-            nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
             smd.set_value(SmdDef::intDgramSize, nowDgramSize);
 
             if (nowOffset < 0) {
@@ -456,8 +463,6 @@ int main(int argc, char* argv[])
             }
 
             save(dgOut, xtcFile);
-            eventL1Id++;
-            nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());    
 
             if (n_events > 0) {
                 if (eventL1Id - 1 >= n_events) {
@@ -465,14 +470,10 @@ int main(int argc, char* argv[])
                     break;
                 }
             }
-        } else {
-            // save all other transitions to smd, including SlowUpdate
-            save(*dgIn, xtcFile);
-            eventUpdateId++;
-            nowOffset += (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());    
-        }// end if (dgIn->
+        } // end else dgIn->seq.service() == TransitionId::Configure
         
         eventId++;
+        nowOffset += nowDgramSize;
     }// end while((dgIn...
 
   cout << "Finished writing smd for " << eventL1Id - 1 << " L1 events and " << eventUpdateId << " update events. Big data file has " << eventId << " events with size (B): " << nowOffset << endl;

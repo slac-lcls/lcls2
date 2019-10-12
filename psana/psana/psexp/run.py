@@ -15,6 +15,7 @@ from psana.psexp.stepstore_manager import StepStoreManager
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.step import Step
 from psana.psexp.event_manager import TransitionId
+from psana.psexp.events import Events
 
 from psana.psexp.tools import mode
 
@@ -223,46 +224,17 @@ class RunSerial(Run):
             self.calibs[det_name] = self._get_calib(det_name)
         
     def events(self):
-        ev_man = EventManager(self.configs, self.dm, \
-                filter_fn=self.filter_callback)
-
-        #get smd chunks
-        smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
-        for (smd_chunk, step_chunk) in smdr_man.chunks():
-            # Update stepStores
-            step_pf = PacketFooter(view=step_chunk)
-            step_views = step_pf.split_packets()
-            self.ssm.update(step_views)
-            
-            eb_man = EventBuilderManager(smd_chunk, self.configs, batch_size=self.batch_size, filter_fn=self.filter_callback)
-            
-            for batch_dict in eb_man.batches():
-                batch, _ = batch_dict[0] # there's only 1 dest_rank for serial run
-                for evt in ev_man.events(batch):
-                    if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
-                    yield evt
+        events = Events(self)
+        for evt in events:
+            if evt._dgrams[0].seq.service() == TransitionId.L1Accept:
+                yield evt
     
     def steps(self):
-        current_step_pos = 0
         """ Generates events between steps. """
-        smdr_man = SmdReaderManager(self.smd_dm.fds, self.max_events)
-        for i, (smd_chunk, step_chunk) in enumerate(smdr_man.chunks()):
-            # Update step stores
-            step_pf = PacketFooter(view=step_chunk)
-            step_views = step_pf.split_packets()
-            self.ssm.update(step_views)
-            step_dgrams = [sd for sd in self.ssm.stores['scan'].dgrams()][current_step_pos:]
-            n_step_dgrams = len(step_dgrams)
-            eb_man = EventBuilderManager(smd_chunk, self.configs, \
-                batch_size=self.batch_size, filter_fn=self.filter_callback)
-            for i,step_dgram in enumerate(step_dgrams):
-                if i < n_step_dgrams - 1:
-                    limit_ts = step_dgrams[i + 1].seq.timestamp()
-                    current_step_pos += 1
-                else:
-                    limit_ts = -1
-                step = Step(self, eb_man=eb_man, limit_ts=limit_ts)
-                yield step
+        events = Events(self)
+        for evt in events:
+            if evt._dgrams[0].seq.service() == TransitionId.BeginStep:
+                yield Step(evt, events)
 
 
 class RunLegion(Run):

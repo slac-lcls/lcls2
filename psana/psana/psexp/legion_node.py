@@ -21,23 +21,22 @@ from psana.psexp.event_manager import EventManager, TransitionId
 def run_smd0_task(run):
     global_procs = legion.Tunable.select(legion.Tunable.GLOBAL_PYS).get()
 
-    smdr_man = SmdReaderManager(run.smd_dm.fds, run.max_events)
-    for i, (smd_chunk, update_chunk) in enumerate(smdr_man.chunks()):
-        run_smd_task(smd_chunk, run, point=i)
+    smdr_man = SmdReaderManager(run)
+    for i, batch_iter in enumerate(smdr_man):
+        run_smd_task(batch_iter, run, point=i)
     # Block before returning so that the caller can use this task's future for synchronization
     legion.execution_fence(block=True)
 
 @task(inner=True)
-def run_smd_task(view, run):
-    eb_man = EventBuilderManager(view, run.configs, batch_size=run.batch_size, filter_fn=run.filter_callback, destination=0) #FIXME: needs to talk to Elliott how to handle cube data in legion
-    for i, batch_dict in enumerate(eb_man.batches()):
+def run_smd_task(batch_iter, run):
+    for i, batch_dict in enumerate(batch_iter):
         batch, _ = batch_dict[0]
         run_bigdata_task(batch, run, point=i)
 
 @task
 def run_bigdata_task(batch, run):
-    evt_man = EventManager(run.configs, run.dm, run.filter_callback)
-    for evt in evt_man.events(batch):
+    evt_man = EventManager(batch, run.configs, run.dm, run.filter_callback)
+    for evt in evt_man:
         if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
         run.event_fn(evt, run.det)
 
