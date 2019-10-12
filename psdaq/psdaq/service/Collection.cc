@@ -294,7 +294,8 @@ void CollectionApp::run()
         if (items[1].revents & ZMQ_POLLIN) {
             // forward message to contol system with pulseId as the message id
             std::string pulseId = m_inprocRecv.recv();
-            logging::info("inproc message received  %s", pulseId.c_str());
+            uint64_t pid = std::stoul(pulseId);
+            logging::info("inproc message received  %014lx", pid);
             json body;
             json answer = createMsg("timingTransition", pulseId, getId(), body);
             reply(answer);
