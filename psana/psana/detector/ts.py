@@ -43,17 +43,19 @@ class ts_ts_1_2_3(DetectorImpl):
 
     def info(self,evt):
         # check for missing data
-        if self._segments(evt) is None: return None
+        segments = self._segments(evt)
+        if segments is None: return None
         # seems reasonable to assume that all TS data comes from one segment
-        data = evt._dgrams[0].xppts[0].ts.data
+        data = segments[0].data
         unpacked = self.bitstructure.unpack(data.tobytes())
         return self.TsData(*unpacked)
 
     def sequencer_info(self,evt):
         # check for missing data
-        if self._segments(evt) is None: return None
+        segments = self._segments(evt)
+        if segments is None: return None
         # seems reasonable to assume that all TS data comes from one segment
-        data = evt._dgrams[0].xppts[0].ts.data
+        data = segments[0].data
         # look in the remaining bytes for the event codes
         tmp = data[self.total_bytes:]
         seq = tmp.view('uint16')
