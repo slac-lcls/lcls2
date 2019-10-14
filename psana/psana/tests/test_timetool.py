@@ -14,7 +14,7 @@ def test_timetool():
         image = det.timetool.image(evt)
 
         #print("image shape = ",image.shape)
-        assert image.shape == (2224,)
+        assert image.shape == (2224,) or image.shape == (144,) or image.shape == (4304,)
 
     assert nevt==5
 
