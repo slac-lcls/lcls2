@@ -14,6 +14,19 @@ using namespace std;
 namespace psalg {
 
 template <typename T>
+void ctest_nda_v2(T *arr, uint32_t* sh, int& ndim) {
+  cout << "In ctest_nda ndim=" << ndim << " shape: ";
+  for(int i=0; i<ndim; i++) {cout << sh[i] << ' ';} 
+  cout << "\n arr: ";
+  for(int i=0; i<5; i++) {
+      cout << arr[i] << ' ';
+      arr[i] = i + arr[i];
+  } cout << '\n';
+}
+
+//-----------------------------
+
+template <typename T>
 void ctest_nda(T *arr, int r, int c) {
   cout << "In ctest_nda r=" << r << " c=" << c << " arr: ";
   for(int i=0; i < r*c; i++) {

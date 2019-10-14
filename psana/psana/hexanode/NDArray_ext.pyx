@@ -9,19 +9,21 @@
 #----------
 
 #cimport cython
+#from libc.time cimport time_t, ctime
+#from libc.string cimport memcpy
 
 import numpy as np
 cimport numpy as cnp
 cimport libc.stdint as si
 from libcpp.string cimport string
-
-#from libc.time cimport time_t, ctime
-#from libc.string cimport memcpy
+from libcpp.vector cimport vector
 
 #----------
 
 ctypedef si.uint32_t shape_t
 ctypedef si.uint32_t size_t
+ctypedef si.uint32_t CSHAPE_T # also works as cnp.uint32_t
+NP_SHAPE_T = np.uint32
 
 #----------
 
@@ -46,20 +48,40 @@ def test_nda_fused(dtypes2d nda):
 
 #----------
 
-from libcpp.vector cimport vector
-ctypedef vector[double] cvector_t
+cdef extern from "psalg/hexanode/ctest_utils.hh" namespace "psalg":
+    void ctest_nda_v2[T](T*, CSHAPE_T*, int&) except +
 
-#ctypedef fused cvector_t :
-#    vector[double]
-#    vector[float]
-#    vector[int]
+def print_cnparr(dtypes2d nda):
+    print('nda.dtype =', str(nda.dtype))
+    print('nda.shape[0]:', nda.shape[0])
+    print('nda.ndim:', nda.ndim)
+
+def cnp_shape(dtypes2d nda):
+    cdef cnp.ndarray[CSHAPE_T, ndim=1] ash = np.empty(nda.ndim, dtype=NP_SHAPE_T)
+    for i in range(nda.ndim) : ash[i]=nda.shape[i]
+    return ash
+
+def test_nda_fused_v2(dtypes2d nda):
+    #cdef cnp.ndarray[CSHAPE_T, ndim=1] ash = cnp_shape(nda) # WORKS !!!
+    cdef cnp.ndarray[CSHAPE_T, ndim=1] ash = np.empty(nda.ndim, dtype=NP_SHAPE_T)
+    for i in range(nda.ndim) : ash[i]=nda.shape[i]
+    print_cnparr(nda)
+    #print ('test_nda_fused_v2 nda:\n', nda)
+    #print ('test_nda_fused_v2 ash:', ash)
+    ctest_nda_v2(&nda[0,0], &ash[0], nda.ndim)
+
+#----------
 
 cdef extern from "psalg/hexanode/ctest_utils.hh" namespace "psalg":
-    double ctest_vector(cvector_t &v)
+    double ctest_vector(vector[double] &v)
 
 def py_ctest_vector(v):
     ctest_vector(v)
 
+#----------
+#----------
+#----------
+#----------
 #----------
 
 cdef extern from "xtcdata/xtc/Array.hh" namespace "XtcData":
