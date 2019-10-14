@@ -7,19 +7,17 @@ class timetool_timetool_0_0_1(DetectorImpl):
 
     def image(self,evt):
         # check for missing data
-        if self._segments(evt) is None: return None
-        # seems reasonable to assume that all timetool  data comes from one segment
-        segment = getattr(evt._dgrams[0],self._det_name)[0]
-        
-        return segment.timetool.data
+        segments = self._segments(evt)
+        if segments is None: return None
+        # seems reasonable to assume that all timetool data comes from one segment
+        return segments[0].data
 
     def header(self,evt):                           #take out.  scientists don't care about this. 
         # check for missing data
-        if self._segments(evt) is None: return None
+        segments = self._segments(evt)
+        if segments is None: return None
         # seems reasonable to assume that all timetool data comes from one segment
-        segment = getattr(evt._dgrams[0],self._det_name)[0]
-        
-        return segment.timetool.data[:16]
+        return segments[0].data[:16]
 
     #def edge_value(self,evt):              #speak with damiani for how to send back this data to ami
     #def edge_uncertainty(self,evt):
