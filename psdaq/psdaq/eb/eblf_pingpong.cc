@@ -141,12 +141,12 @@ int main(int argc, char **argv)
     return rc;
   }
 
-  unsigned    id      = 0;
-  EbLfServer* svr     = nullptr;
-  EbLfClient* clt     = nullptr;
-  unsigned    nLinks  = 1;
-  EbLfLink*   svrLink;
-  EbLfLink*   cltLink;
+  unsigned     id      = 0;
+  EbLfServer*  svr     = nullptr;
+  EbLfClient*  clt     = nullptr;
+  unsigned     nLinks  = 1;
+  EbLfSvrLink* svrLink;
+  EbLfCltLink* cltLink;
   if (!start)
   {
     svr = new EbLfServer(verbose);
@@ -155,13 +155,13 @@ int main(int argc, char **argv)
       fprintf(stderr, "Failed to initialize EbLfServer\n");
       return rc;
     }
-    if ( (rc = svr->connect(&svrLink)) )
+    if ( (rc = svr->connect(&svrLink, id)) )
     {
       fprintf(stderr, "Error connecting to client\n");
       return rc;
     }
     size_t snkSize;
-    if ( (rc = svrLink->preparePender(id, &snkSize)) < 0 )
+    if ( (rc = svrLink->prepare(&snkSize)) < 0 )
     {
       fprintf(stderr, "Failed to prepare server's link\n");
       return rc;
@@ -185,12 +185,12 @@ int main(int argc, char **argv)
 
     const unsigned tmo(120);
     clt = new EbLfClient(verbose);
-    if ( (rc = clt->connect(cltAddr.c_str(), cltPort.c_str(), tmo, &cltLink)) )
+    if ( (rc = clt->connect(&cltLink, cltAddr.c_str(), cltPort.c_str(), id, tmo)) )
     {
       fprintf(stderr, "Error connecting to server\n");
       return rc;
     }
-    if ( (rc = cltLink->preparePoster(id, srcBuf, srcSize)) < 0)
+    if ( (rc = cltLink->prepare(srcBuf, srcSize)) < 0)
     {
       fprintf(stderr, "Failed to prepare client's link\n");
       return rc;
@@ -201,12 +201,12 @@ int main(int argc, char **argv)
   {
     const unsigned tmo(120);
     clt = new EbLfClient(verbose);
-    if ( (rc = clt->connect(cltAddr.c_str(), cltPort.c_str(), tmo, &cltLink)) )
+    if ( (rc = clt->connect(&cltLink, cltAddr.c_str(), cltPort.c_str(), id, tmo)) )
     {
       fprintf(stderr, "Error connecting to server\n");
       return rc;
     }
-    if ( (rc = cltLink->preparePoster(id, srcBuf, srcSize)) < 0)
+    if ( (rc = cltLink->prepare(srcBuf, srcSize)) < 0)
     {
       fprintf(stderr, "Failed to prepare client's link\n");
       return rc;
@@ -219,13 +219,13 @@ int main(int argc, char **argv)
       fprintf(stderr, "Failed to initialize EbLfServer\n");
       return rc;
     }
-    if ( (rc = svr->connect(&svrLink)) )
+    if ( (rc = svr->connect(&svrLink, id)) )
     {
       fprintf(stderr, "Error connecting to client\n");
       return rc;
     }
     size_t snkSize;
-    if ( (rc = svrLink->preparePender(id, &snkSize)) < 0)
+    if ( (rc = svrLink->prepare(&snkSize)) < 0)
     {
       fprintf(stderr, "Failed to prepare server's link\n");
       return rc;
@@ -304,12 +304,12 @@ int main(int argc, char **argv)
 
   if (svr)
   {
-    svr->shutdown(svrLink);
+    svr->disconnect(svrLink);
     delete svr;
   }
   if (clt)
   {
-    clt->shutdown(cltLink);
+    clt->disconnect(cltLink);
     delete clt;
   }
   free(snkBuf);

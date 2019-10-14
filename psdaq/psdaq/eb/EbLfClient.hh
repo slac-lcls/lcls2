@@ -11,14 +11,14 @@ namespace Pds {
     public:
       EbLfClient(unsigned verbose);
     public:
-      int connect(const char* peer,
-                  const char* port,
-                  unsigned    tmo,
-                  EbLfLink**  link);
+      int connect(EbLfCltLink** link,
+                  const char*   peer,
+                  const char*   port,
+                  unsigned      id,
+                  unsigned      tmo);
+      int disconnect(EbLfCltLink*);
     public:
       const uint64_t& pending() const  { return _pending; }
-    public:
-      int shutdown(EbLfLink*);
     private:
       uint64_t _pending;                // Bit list of IDs currently posting
       unsigned _verbose;                // Print some stuff if set

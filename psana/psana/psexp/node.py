@@ -2,11 +2,10 @@ from sys import byteorder
 import numpy as np
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
-from psana.psexp.event_manager import EventManager
 from psana.psexp.packet_footer import PacketFooter
-from psana.event import Event
 from psana.psexp.step import Step
-from psana import dgram
+from psana.psexp.events import Events
+from psana.psexp.event_manager import TransitionId
 import os
 from mpi4py import MPI
 
@@ -150,7 +149,7 @@ class Smd0(object):
     sends all smds within that timestamp to an smd_node.
     """
     def __init__(self, run):
-        self.smdr_man = SmdReaderManager(run.smd_dm.fds, run.max_events)
+        self.smdr_man = SmdReaderManager(run)
         self.run = run
         self.epics_man = UpdateManager(comms.smd_size, self.run.ssm.stores['epics'].n_files)
         self.run_mpi()
@@ -190,7 +189,6 @@ class SmdNode(object):
     this np array to bd_nodes that are registered to it."""
     def __init__(self, run):
         self.run = run
-        self._update_dgram_pos = 0 # bookkeeping for running in scan mode
 
     def pack(self, *args):
         pf = PacketFooter(len(args))
@@ -210,25 +208,24 @@ class SmdNode(object):
         smd_rank = comms.smd_rank
         epics_man = UpdateManager(comms.bd_size, self.run.ssm.stores['epics'].n_files)
 
+        cn = 0
         while True:
-            # handles requests from smd_0
             smd_comm.Send(np.array([smd_rank], dtype='i'), dest=0)
             info = MPI.Status()
             smd_comm.Probe(source=0, status=info)
             count = info.Get_elements(MPI.BYTE)
             chunk = bytearray(count)
             smd_comm.Recv(chunk, source=0)
-            if count == 0:
+            if not chunk:
                 break
            
             # Unpack the chunk received from Smd0
             pf = PacketFooter(view=chunk)
             smd_chunk, step_chunk = pf.split_packets()
-        
             eb_man = EventBuilderManager(smd_chunk, self.run.configs, \
                     batch_size=self.run.batch_size, filter_fn=self.run.filter_callback, \
                     destination=self.run.destination)
-            
+        
             # Unpack step chunk and updates run's epics store and epics_manager  
             step_pf = PacketFooter(view=step_chunk)
             step_views = step_pf.split_packets()
@@ -236,79 +233,74 @@ class SmdNode(object):
             epics_man.extend_buffers(step_views)
 
             # Build batch of events
-            step_dgrams = [sd for sd in self.run.ssm.stores['scan'].dgrams()][current_step_pos:]
-            n_step_dgrams = len(step_dgrams)
-            for i,step_dgram in enumerate(step_dgrams):
-                if i < n_step_dgrams - 1:
-                    limit_ts = step_dgrams[i + 1].seq.timestamp()
-                    current_step_pos += 1
+            for smd_batch_dict in eb_man.batches():
+                # If single item and dest_rank=0, send to any bigdata nodes.
+                if 0 in smd_batch_dict.keys():
+                    smd_batch, _ = smd_batch_dict[0]
+                    bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+                    epics_batch = epics_man.get_buffer(rankreq[0])
+                    batch = self.pack(smd_batch, epics_batch) 
+                    bd_comm.Send(batch, dest=rankreq[0])
+                    cn += 1
+
+                # With > 1 dest_rank, start looping until all dest_rank batches
+                # have been sent.
                 else:
-                    limit_ts = -1
-                
-                for smd_batch_dict in eb_man.batches(limit_ts=limit_ts):
-                    # If single item and dest_rank=0, send to any bigdata nodes.
-                    if 0 in smd_batch_dict.keys():
-                        smd_batch, _ = smd_batch_dict[0]
+                    while smd_batch_dict:
                         bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-                        epics_batch = epics_man.get_buffer(rankreq[0])
-                        batch = self.pack(smd_batch, epics_batch) 
-                        bd_comm.Send(batch, dest=rankreq[0])
 
-                    # With > 1 dest_rank, start looping until all dest_rank batches
-                    # have been sent.
-                    else:
-                        while smd_batch_dict:
-                            bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-
-                            if rankreq[0] in smd_batch_dict:
-                                smd_batch, _ = smd_batch_dict[rankreq[0]]
-                                epics_batch = epics_man.get_buffer(rankreq[0])
-                                batch = self.pack(smd_batch, epics_batch) 
-                                bd_comm.Send(batch, dest=rankreq[0])
-                                del smd_batch_dict[rankreq[0]] # done sending 
-                            else:
-                                bd_comm.Send(bytearray(b'wait'), dest=rankreq[0])
+                        if rankreq[0] in smd_batch_dict:
+                            smd_batch, _ = smd_batch_dict[rankreq[0]]
+                            epics_batch = epics_man.get_buffer(rankreq[0])
+                            batch = self.pack(smd_batch, epics_batch) 
+                            bd_comm.Send(batch, dest=rankreq[0])
+                            del smd_batch_dict[rankreq[0]] # done sending 
+                        else:
+                            bd_comm.Send(bytearray(b'wait'), dest=rankreq[0])
 
         # Done - kill all alive bigdata nodes
         for i in range(n_bd_nodes):
             bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             bd_comm.Send(bytearray(), dest=rankreq[0])
+            cn += 1
 
 class BigDataNode(object):
     def __init__(self, run):
-        self.evt_man = EventManager(run.configs, run.dm, \
-                filter_fn=run.filter_callback)
         self.run = run
 
     def run_mpi(self):
         bd_comm = comms.bd_comm
         bd_rank = comms.bd_rank
-        while True:
+        self.cn = 0 
+        def get_smd():
             bd_comm.Send(np.array([bd_rank], dtype='i'), dest=0)
             info = MPI.Status()
             bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
             count = info.Get_elements(MPI.BYTE)
             chunk = bytearray(count)
             bd_comm.Recv(chunk, source=0)
-            if count == 0:
-                break
-
-            if chunk == bytearray(b'wait'):
-                continue
+            self.cn += 1
             
-            pf = PacketFooter(view=chunk)
-            smd_chunk, step_chunk = pf.split_packets()
+            smd_chunk = bytearray()
+            if chunk:
+                pf = PacketFooter(view=chunk)
+                smd_chunk, step_chunk = pf.split_packets()
             
-            pfe = PacketFooter(view=step_chunk)
-            step_views = pfe.split_packets()
-            self.run.ssm.update(step_views)
-
-            if self.run.scan: 
-                yield Step(self.run, smd_batch=smd_chunk)
-            else:
-                for event in self.evt_man.events(smd_chunk):
-                    yield event
-
+            return smd_chunk
+        
+        events = Events(self.run, get_smd=get_smd)
+        if self.run.scan:
+            n_step = 0
+            for evt in events:
+                if evt._dgrams[0].seq.service() == TransitionId.BeginStep:
+                    n_step += 1
+                    yield Step(evt, events)
+                    #exit()
+        else:
+            for evt in events:
+                if evt._dgrams[0].seq.service() == TransitionId.L1Accept:
+                    yield evt
+        
 def run_node(run):
     if comms._nodetype == 'smd0':
         Smd0(run)
@@ -317,8 +309,8 @@ def run_node(run):
         smd_node.run_mpi()
     elif comms._nodetype == 'bd':
         bd_node = BigDataNode(run)
-        for evt in bd_node.run_mpi():
-            yield evt
+        for result in bd_node.run_mpi():
+            yield result
     elif comms._nodetype == 'srv':
         # tell the iterator to do nothing
         return

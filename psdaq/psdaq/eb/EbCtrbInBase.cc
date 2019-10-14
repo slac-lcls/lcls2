@@ -41,16 +41,15 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&            prms,
   exporter->add("TCtbI_EvtCt", labels, MetricType::Counter, [&](){ return _eventCount;          });
 }
 
-int EbCtrbInBase::connect(const TebCtrbParams& prms)
+int EbCtrbInBase::configure(const TebCtrbParams& prms)
 {
-  int rc;
-
   _batchCount = 0;
   _eventCount = 0;
 
   unsigned numEbs = std::bitset<64>(prms.builders).count();
   _links.resize(numEbs);
 
+  int rc;
   if ( (rc = _transport.initialize(prms.ifAddr, prms.port, numEbs)) )
   {
     fprintf(stderr, "%s:\n  Failed to initialize EbLfServer\n",
@@ -61,25 +60,28 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
   size_t size = 0;
 
   // Since each EB handles a specific batch, one region can be shared by all
-  for (unsigned i = 0; i < numEbs; ++i)
+  for (unsigned i = 0; i < _links.size(); ++i)
   {
-    EbLfLink*      link;
+    EbLfSvrLink*   link;
     const unsigned tmo(120000);         // Milliseconds
-    if ( (rc = _transport.connect(&link, tmo)) )
+    if ( (rc = _transport.connect(&link, prms.id, tmo)) )
     {
       fprintf(stderr, "%s:\n  Error connecting to TEB %d\n",
               __PRETTY_FUNCTION__, i);
       return rc;
     }
+    unsigned rmtId = link->id();
+    _links[rmtId] = link;
+
+    if (_prms.verbose)  printf("Inbound link with TEB ID %d connected\n", rmtId);
 
     size_t regSize;
-    if ( (rc = link->preparePender(prms.id, &regSize)) )
+    if ( (rc = link->prepare(&regSize)) )
     {
-      fprintf(stderr, "%s:\n  Failed to prepare link with TEB %d\n",
-              __PRETTY_FUNCTION__, i);
+      fprintf(stderr, "%s:\n  Failed to prepare link with TEB ID %d\n",
+              __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
-    _links[link->id()] = link;
 
     if (!size)
     {
@@ -97,7 +99,7 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
     else if (regSize != size)
     {
       fprintf(stderr, "%s:\n  Error: Result MR size (%zd) cannot differ between TEBs "
-              "(%zd from Id %d)\n", __PRETTY_FUNCTION__, size, regSize, link->id());
+              "(%zd from Id %d)\n", __PRETTY_FUNCTION__, size, regSize, rmtId);
       return -1;
     }
 
@@ -105,48 +107,53 @@ int EbCtrbInBase::connect(const TebCtrbParams& prms)
     {
       char* region = static_cast<char*>(_region);
       fprintf(stderr, "%s:\n  Failed to set up Result MR for TEB ID %d, %p:%p, size %zd\n",
-              __PRETTY_FUNCTION__, link->id(), region, region + regSize, regSize);
+              __PRETTY_FUNCTION__, rmtId, region, region + regSize, regSize);
+      if (_region)  free(_region);
+      _region = nullptr;
       return rc;
     }
-    link->postCompRecv();
+    if (link->postCompRecv())
+    {
+      fprintf(stderr, "%s:\n  Failed to post CQ buffers for Ctrb ID %d\n",
+              __PRETTY_FUNCTION__, rmtId);
+    }
 
-    printf("Inbound link with TEB ID %d connected\n", link->id());
+    printf("Inbound link with TEB ID %d connected and configured\n", rmtId);
   }
 
   return 0;
-}
-
-void EbCtrbInBase::shutdown()
-{
-  for (auto it = _links.begin(); it != _links.end(); ++it)
-  {
-    _transport.shutdown(*it);
-  }
-  _links.clear();
-  _transport.shutdown();
-
-  if (_region)  free(_region);
-  _region = nullptr;
 }
 
 void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
 {
   pinThread(pthread_self(), _prms.core[1]);
 
-  while (true)
-  {
-    if (!running.load(std::memory_order_relaxed))
-    {
-      if (_transport.pollEQ() == -FI_ENOTCONN)  break;
-    }
+  printf("Receiver thread is starting\n");
 
+  while (running.load(std::memory_order_relaxed))
+  {
     if (_process(ctrb) < 0)
     {
       if (_transport.pollEQ() == -FI_ENOTCONN)  break;
     }
   }
 
-  shutdown();
+  _shutdown();
+
+  printf("Receiver thread is exiting\n");
+}
+
+void EbCtrbInBase::_shutdown()
+{
+  for (auto it = _links.begin(); it != _links.end(); ++it)
+  {
+    _transport.disconnect(*it);
+  }
+  _links.clear();
+  _transport.shutdown();
+
+  if (_region)  free(_region);
+  _region = nullptr;
 }
 
 int EbCtrbInBase::_process(TebContributor& ctrb)
@@ -160,7 +167,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
 
   unsigned           src = ImmData::src(data);
   unsigned           idx = ImmData::idx(data);
-  EbLfLink*          lnk = _links[src];
+  EbLfSvrLink*       lnk = _links[src];
   const ResultDgram* bdg = reinterpret_cast<const ResultDgram*>(lnk->lclAdx(idx * _maxBatchSize));
   uint64_t           pid = bdg->seq.pulseId().value();
   if ( (rc = lnk->postCompRecv()) )
@@ -169,7 +176,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
             __PRETTY_FUNCTION__, rc);
   }
 
-  if (_prms.verbose)
+  if (_prms.verbose >= VL_BATCH)
   {
     unsigned   ctl     = bdg->seq.pulseId().control();
     unsigned   env     = bdg->env;
@@ -285,7 +292,7 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
     // was subsequently fixed up by the TEB.  In both cases there is no
     // input corresponding to the result.
 
-    if (_prms.verbose)
+    if (_prms.verbose >= VL_EVENT)
     {
       unsigned    idx    = inputs->index();
       unsigned    env    = result->env;

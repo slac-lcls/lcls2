@@ -1,6 +1,5 @@
 #include "EbLfClient.hh"
 
-#include "EbLfLink.hh"
 #include "Endpoint.hh"
 
 #include <stdio.h>
@@ -23,10 +22,11 @@ EbLfClient::EbLfClient(unsigned verbose) :
 {
 }
 
-int EbLfClient::connect(const char* peer,
-                        const char* port,
-                        unsigned    tmo,
-                        EbLfLink**  link)
+int EbLfClient::connect(EbLfCltLink** link,
+                        const char*   peer,
+                        const char*   port,
+                        unsigned      id,
+                        unsigned      tmo)
 {
   _pending = 0;
 
@@ -98,37 +98,41 @@ int EbLfClient::connect(const char* peer,
     return (rc != FI_SUCCESS) ? rc : -FI_ETIMEDOUT;
   }
 
-  if (_verbose)  printf("EbLfClient: tx_attr.inject_size = %zd\n",
-                        info->tx_attr->inject_size);
-  *link = new EbLfLink(ep, info->tx_attr->inject_size, _verbose, _pending);
+  size_t injectSize = info->tx_attr->inject_size;
+  if (_verbose)  printf("EbLfClient: tx_attr.inject_size = %zd\n", injectSize);
+  *link = new EbLfCltLink(ep, injectSize, _verbose, _pending);
   if (!*link)
   {
     fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);
     return ENOMEM;
   }
 
+  int rc = (*link)->exchangeIds(id);
+  if (rc)
+  {
+    fprintf(stderr, "%s:\n  Failed to exchange ID with peer\n", __PRETTY_FUNCTION__);
+    return rc;
+  }
+
   return 0;
 }
 
-int EbLfClient::shutdown(EbLfLink* link)
+int EbLfClient::disconnect(EbLfCltLink* link)
 {
-  if (link)
-  {
-    printf("Disconnecting from EbLfServer %d\n", link->id());
+  printf("Disconnecting from EbLfServer %d\n", link->id());
 
-    Endpoint* ep = link->endpoint();
-    if (ep)
-    {
-      CompletionQueue* txcq = ep->txcq();
-      Fabric*          fab  = ep->fabric();
-      if (txcq)  delete txcq;
-      if (fab)   delete fab;
-      ep->shutdown();
-      delete ep;
-    }
-    delete link;
-    _pending = 0;
+  Endpoint* ep = link->endpoint();
+  if (ep)
+  {
+    CompletionQueue* txcq = ep->txcq();
+    Fabric*          fab  = ep->fabric();
+    if (txcq)  delete txcq;
+    if (fab)   delete fab;
+    ep->shutdown();
+    delete ep;
   }
+  delete link;
+  _pending = 0;
 
   return 0;
 }

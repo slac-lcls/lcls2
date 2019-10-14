@@ -21,7 +21,7 @@ namespace Pds
   namespace Eb
   {
     class TebCtrbParams;
-    class EbLfLink;
+    class EbLfSvrLink;
     class Batch;
     class TebContributor;
     class ResultDgram;
@@ -32,8 +32,7 @@ namespace Pds
       EbCtrbInBase(const TebCtrbParams&, std::shared_ptr<MetricExporter>&);
       virtual ~EbCtrbInBase() {}
     public:
-      int      connect(const TebCtrbParams&);
-      void     shutdown();
+      int      configure(const TebCtrbParams&);
     public:
       size_t   maxBatchSize() const { return _maxBatchSize; }
       void     receiver(TebContributor&, std::atomic<bool>& running);
@@ -41,6 +40,7 @@ namespace Pds
       virtual void process(const ResultDgram& result, const void* input) = 0;
     private:
       void    _initialize(const char* who);
+      void    _shutdown();
       int     _process(TebContributor& ctrb);
       void    _pairUp(TebContributor&    ctrb,
                       unsigned           idx,
@@ -49,13 +49,13 @@ namespace Pds
                        const ResultDgram* results,
                        const Batch*       inputs);
     private:
-      EbLfServer             _transport;
-      std::vector<EbLfLink*> _links;
-      size_t                 _maxBatchSize;
-      uint64_t               _batchCount;
-      uint64_t               _eventCount;
-      const TebCtrbParams&   _prms;
-      void*                  _region;
+      EbLfServer                _transport;
+      std::vector<EbLfSvrLink*> _links;
+      size_t                    _maxBatchSize;
+      uint64_t                  _batchCount;
+      uint64_t                  _eventCount;
+      const TebCtrbParams&      _prms;
+      void*                     _region;
     };
   };
 };

@@ -12,13 +12,13 @@ class PGPDetectorApp : public CollectionApp
 {
 public:
     PGPDetectorApp(Parameters& para);
-    void shutdown();
     nlohmann::json connectionInfo() override;
     void handleReset(const nlohmann::json& msg) override;
 private:
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
+    void shutdown();
     DrpBase m_drp;
     Parameters& m_para;
     std::thread m_pgpThread;

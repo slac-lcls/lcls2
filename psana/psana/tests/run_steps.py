@@ -61,10 +61,13 @@ def run_smd0(n_events):
 
     return result
 
+def filter_fn(evt):
+    return True
+
 def run_serial_read(n_events):
     exp_xtc_dir = os.path.join(xtc_dir, '.tmp')
     os.environ['PS_SMD_N_EVENTS'] = str(n_events)
-    ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir)
+    ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir, batch_size=1, filter=filter_fn)
     cn_steps = 0
     cn_events = 0
     result = {'evt_per_step':[], 'n_steps': 0, 'n_events':0}
@@ -76,11 +79,13 @@ def run_serial_read(n_events):
                 cn_events += 1
             cn_steps +=1
             result['evt_per_step'].append(cn_evt_per_step)
-
     result['n_steps'] = cn_steps
     result['n_events'] = cn_events
     return result
     
+def check_results(results, expected_result):
+    for result in results:
+        assert result == expected_result
 
 if __name__ == "__main__":
     import pathlib
@@ -91,51 +96,33 @@ if __name__ == "__main__":
             setup_input_files(p, n_files=2, slow_update_freq=4, n_motor_steps=3, n_events_per_step=10, gen_run2=False)
     
     comm.Barrier()
-    result = run_serial_read(51)
-    print(result)
+    
     """
     # Expected result: 
     # each_read n_events, smd_chunk_nbytes, step_chunk_nbytes
     # total_n_events
     # Test 1: No. of chunk-read events covers the entire smds
-    expected_result = {'each_read': [[30, 6728, 888]], 'total_n_events': 30}
+    expected_result = {'each_read': [[30, 7896, 3108]], 'total_n_events': 30}
     result = run_smd0(51)
     assert result == expected_result
 
     # Test 2: No. of chunk-read events covers beyond the next BeginStep
-    expected_result = {'each_read': [[20, 4464, 592], [10, 2264, 296]], 'total_n_events': 30}
+    expected_result = {'each_read': [[20, 5208, 1848], [10, 2688, 1260]], 'total_n_events': 30}
     result = run_smd0(20)
     assert result == expected_result
 
     # Test 3: No. of chunk-read events covers the next BeginStep
-    expected_result = {'each_read': [[19, 4296, 592], [11, 2432, 296]], 'total_n_events': 30}
+    expected_result = {'each_read': [[19, 5040, 1848], [11, 2856, 1260]], 'total_n_events': 30}
     result = run_smd0(19)
     assert result == expected_result
+    """
+    # Test run.steps() 
+    expected_result = {'evt_per_step': [10, 10, 10], 'n_steps': 3, 'n_events': 30}
 
-    if size == 1:
-        expected_result = {'evt_per_step': [10, 10, 10], 'n_steps': 3, 'n_events': 30}
-        result = run_serial_read(51)
-        assert result == expected_result
-        
-        expected_result = {'evt_per_step': [10, 10, 0, 10], 'n_steps': 4, 'n_events': 30}
-        result = run_serial_read(20)
-        assert result == expected_result
+    results = []
+    results.append(run_serial_read(51))
+    results.append(run_serial_read(20))
+    results.append(run_serial_read(19))
 
-        expected_result = {'evt_per_step': [10, 9, 1, 10], 'n_steps': 4, 'n_events': 30}
-        result = run_serial_read(19)
-        assert result == expected_result
-
-    else:
-        expected_result = {'evt_per_step': [0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1], 'n_steps': 45, 'n_events': 30}
-        result = run_serial_read(51)
-        if rank == 2: # assuming mpirun -n 3 test
-            assert result == expected_result
-            
-        result = run_serial_read(20)
-        if rank == 2: # assuming mpirun -n 3 test
-            assert result == expected_result
-        
-        result = run_serial_read(19)
-        if rank == 2: # assuming mpirun -n 3 test
-            assert result == expected_result
-   """ 
+    if size == 1 or rank == 2:
+        check_results(results, expected_result)

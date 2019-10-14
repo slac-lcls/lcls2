@@ -51,38 +51,42 @@ TebContributor::TebContributor(const TebCtrbParams&             prms,
   exporter->add("TCtbO_InFlt",  labels, MetricType::Gauge,   [&](){ return _pending.count();        });
 }
 
-int TebContributor::connect(const TebCtrbParams& prms)
+int TebContributor::configure(const TebCtrbParams& prms)
 {
   _id      = prms.id;
   _numEbs  = std::bitset<64>(prms.builders).count();
-  _links.resize(prms.addrs.size());
   _pending.clear();
 
   int    rc;
   void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
   size_t regSize = _batMan.batchRegionSize(); // No need to add Tr space size here
 
-  for (unsigned i = 0; i < prms.addrs.size(); ++i)
+  _links.resize(prms.addrs.size());
+  for (unsigned i = 0; i < _links.size(); ++i)
   {
     const char*    addr = prms.addrs[i].c_str();
     const char*    port = prms.ports[i].c_str();
-    EbLfLink*      link;
+    EbLfCltLink*   link;
     const unsigned tmo(120000);         // Milliseconds
-    if ( (rc = _transport.connect(addr, port, tmo, &link)) )
+    if ( (rc = _transport.connect(&link, addr, port, _id, tmo)) )
     {
       fprintf(stderr, "%s:\n  Error connecting to TEB at %s:%s\n",
               __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
-    if ( (rc = link->preparePoster(prms.id, region, regSize)) )
+    unsigned rmtId = link->id();
+    _links[rmtId] = link;
+
+    if (_prms.verbose)  printf("Outbound link with TEB ID %d connected\n", rmtId);
+
+    if ( (rc = link->prepare(region, regSize)) )
     {
-      fprintf(stderr, "%s:\n  Failed to prepare link with TEB at %s:%s\n",
-              __PRETTY_FUNCTION__, addr, port);
+      fprintf(stderr, "%s:\n  Failed to prepare link with TEB ID %d\n",
+              __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
-    _links[link->id()] = link;
 
-    printf("Outbound link with TEB ID %d connected\n", link->id());
+    printf("Outbound link with TEB ID %d connected and configured\n", rmtId);
   }
 
   return 0;
@@ -97,34 +101,28 @@ void TebContributor::startup(EbCtrbInBase& in)
   _rcvrThread = std::thread([&] { in.receiver(*this, _running); });
 }
 
-// Called from another thread to trigger shutting down
-void TebContributor::stop()
+void TebContributor::shutdown()
 {
   _running.store(false, std::memory_order_release);
 
-  _batMan.stop();
-}
-
-// Called from the current thread to shut it down
-void TebContributor::shutdown()
-{
-  for (auto it = _links.begin(); it != _links.end(); ++it)
-  {
-    _transport.shutdown(*it);
-  }
-  _links.clear();
-
   if (_rcvrThread.joinable())  _rcvrThread.join();
 
+  _batMan.stop();
   _batMan.dump();
   _batMan.shutdown();
+
+  for (auto it = _links.begin(); it != _links.end(); ++it)
+  {
+    _transport.disconnect(*it);
+  }
+  _links.clear();
 
   _id = -1;
 }
 
 void* TebContributor::allocate(const Transition* hdr, const void* appPrm)
 {
-  if (_prms.verbose > 1)
+  if (_prms.verbose >= VL_EVENT)
   {
     const char* svc = TransitionId::name(hdr->seq.service());
     unsigned    ctl = hdr->seq.pulseId().control();
@@ -178,7 +176,15 @@ void TebContributor::process(const Dgram* dgram)
   }
   else if (!_batch)  _batch = cur;
 
-  // Revisit and fix this to use the last dgram in the batch
+  // Revisit: Sending the transitions to the non-selected EBs may not be useful
+  // since they are not sent with a payload.  The TEB can't really do anything
+  // with them since they don't contain any information for the TEB to react to.
+  // The only exceptions to this might be that the value of the env may some day
+  // be used for something and the presence of a transition is used to flush
+  // whatever Result batch is in progress, if that can happen.  For now we leave
+  // this code in until there's a compelling reason to remove it.  If it is to
+  // be removed, consider removing the additional RDMA memory region space where
+  // the transitions land as well, if this doesn't conflict with the MEB's needs.
   if (!dgram->seq.isEvent())
   {
     if (contractor)  _post(dgram);
@@ -189,15 +195,15 @@ void TebContributor::_post(const Batch* batch) const
 {
   if (!batch->empty())
   {
-    uint32_t    idx    = batch->index();
-    unsigned    dst    = idx % _numEbs;
-    EbLfLink*   link   = _links[dst];
-    uint32_t    data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
-    size_t      extent = batch->extent();
-    unsigned    offset = _batchBase + idx * _batMan.maxBatchSize();
-    const void* buffer = batch->buffer();
+    uint32_t     idx    = batch->index();
+    unsigned     dst    = idx % _numEbs;
+    EbLfCltLink* link   = _links[dst];
+    uint32_t     data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
+    size_t       extent = batch->extent();
+    unsigned     offset = _batchBase + idx * _batMan.maxBatchSize();
+    const void*  buffer = batch->buffer();
 
-    if (_prms.verbose)
+    if (_prms.verbose >= VL_BATCH)
     {
       uint64_t pid    = batch->id();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
@@ -214,7 +220,7 @@ void TebContributor::_post(const Batch* batch) const
 
 void TebContributor::_post(const Dgram* dgram) const
 {
-  // Non-events datagrams are sent to all EBs, except the one that got the
+  // Non-events datagrams are sent to all TEBs, except the one that got the
   // batch containing it.  These EBs won't generate responses.
 
   uint64_t pid    = dgram->seq.pulseId().value();
@@ -227,10 +233,10 @@ void TebContributor::_post(const Dgram* dgram) const
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
-    EbLfLink* link = *it;
+    EbLfCltLink* link = *it;
     if (link->id() != dst)        // Batch posted above included this non-event
     {
-      if (_prms.verbose)
+      if (_prms.verbose >= VL_BATCH)
       {
         unsigned    env    = dgram->env;
         unsigned    ctl    = dgram->seq.pulseId().control();

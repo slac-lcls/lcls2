@@ -1,19 +1,69 @@
 from psana.smdreader import SmdReader
 from psana.psexp.packet_footer import PacketFooter
+from psana.eventbuilder import EventBuilder
 import os
+
+class BatchIterator(object):
+    """ Iterates over batches of events.
+
+    SmdReaderManager returns this object when a chunk is read.
+    """
+    def __init__(self, views, batch_size=1, filter_fn=0, destination=0):
+        self.batch_size = batch_size
+        self.filter_fn = filter_fn
+        self.destination = destination
+        self.eb = None
+        if all(views) == 0:
+            self.eb = None
+        else:
+            self.eb = EventBuilder(views)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        # With batch_size known, smditer returns a batch_dict,
+        # {rank:[bytearray, evt_size_list], ...} for each next 
+        # while updating offsets of each smd memoryview
+        if not self.eb: raise StopIteration
+
+        batch_dict = self.eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn, \
+                destination=self.destination)
+        if self.eb.nevents == 0: raise StopIteration
+        return batch_dict
 
 class SmdReaderManager(object):
 
-    def __init__(self, fds, max_events):
-        self.n_files = len(fds)
+    def __init__(self, run):
+        self.n_files = len(run.smd_dm.fds)
         assert self.n_files > 0
-        self.smdr = SmdReader(fds)
+        self.run = run
+        self.smdr = SmdReader(run.smd_dm.fds)
         self.n_events = int(os.environ.get('PS_SMD_N_EVENTS', 1000))
-        self.max_events = max_events
         self.processed_events = 0
-        if self.max_events:
-            if self.max_events < self.n_events:
-                self.n_events = self.max_events
+        if self.run.max_events:
+            if self.run.max_events < self.n_events:
+                self.n_events = self.run.max_events
+        self.got_events = -1
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.got_events == 0: raise StopIteration
+
+        self.smdr.get(self.n_events)
+        self.got_events = self.smdr.got_events
+        self.processed_events += self.got_events
+        views = [self.smdr.view(i) for i in range(self.n_files)]
+        batch_iter = BatchIterator(views, batch_size=self.run.batch_size, \
+                filter_fn=self.run.filter_callback, destination=self.run.destination)
+        
+        if self.run.max_events:
+            if self.processed_events >= self.run.max_events:
+                self.got_events = 0
+        
+        return batch_iter
 
     def chunks(self):
         """ Generates a tuple of smd and update dgrams """
@@ -46,8 +96,8 @@ class SmdReaderManager(object):
                     update_view.extend(update_pf.footer)
                 yield (smd_view, update_view)
 
-            if self.max_events:
-                if self.processed_events >= self.max_events:
+            if self.run.max_events:
+                if self.processed_events >= self.run.max_events:
                     break
     
     @property

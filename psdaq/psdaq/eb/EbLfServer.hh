@@ -19,18 +19,19 @@ namespace Pds {
 
   namespace Eb {
 
-    using LinkMap = std::unordered_map<fid_ep*, EbLfLink*>;
+    using LinkMap = std::unordered_map<fid_ep*, EbLfSvrLink*>;
 
     class EbLfServer
     {
     public:
       EbLfServer(unsigned verbose);
+      ~EbLfServer();
     public:
       int  initialize(const std::string& addr,    // Interface to use
                       const std::string& port,    // Port to listen on
                       unsigned           nLinks); // Number of links to expect
-      int  connect(EbLfLink**, int msTmo = -1);
-      int  shutdown(EbLfLink*);
+      int  connect(EbLfSvrLink**, unsigned id, int msTmo = -1);
+      int  disconnect(EbLfSvrLink*);
       void shutdown();
       int  pend(fi_cq_data_entry*, int msTmo);
       int  pend(void** context, int msTmo);
@@ -41,14 +42,13 @@ namespace Pds {
       const uint64_t& pending() const { return _pending; }
     private:
       int _poll(fi_cq_data_entry*, uint64_t flags);
-    private:                            // Arranged in order of access frequency
+    private:                              // Arranged in order of access frequency
       Fabrics::EventQueue*      _eq;      // Event Queue
       Fabrics::CompletionQueue* _rxcq;    // Receive Completion Queue
       int                       _tmo;     // Timeout for polling or waiting
       unsigned                  _verbose; // Print some stuff if set
     private:
       uint64_t                  _pending; // Flag set when currently pending
-      uint64_t                  _unused;  // Bit list of IDs currently posting
     private:
       Fabrics::PassiveEndpoint* _pep;     // EP for establishing connections
       LinkMap                   _linkByEp;// Map to retrieve link given raw EP

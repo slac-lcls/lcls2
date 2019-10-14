@@ -35,9 +35,8 @@ namespace Pds {
       TebContributor(const TebCtrbParams&, std::shared_ptr<MetricExporter>&);
       ~TebContributor() {}
     public:
-      int        connect(const TebCtrbParams&);
+      int        configure(const TebCtrbParams&);
       void       startup(EbCtrbInBase&);
-      void       stop();
       void       shutdown();
     public:
       void*      allocate(const XtcData::Transition* header, const void* appPrm);
@@ -50,21 +49,21 @@ namespace Pds {
       void       _post(const XtcData::Dgram* nonEvent) const;
       void       _post(const Batch* input) const;
     private:
-      const TebCtrbParams&   _prms;
-      BatchManager           _batMan;
-      EbLfClient             _transport;
-      std::vector<EbLfLink*> _links;
-      unsigned               _id;
-      unsigned               _numEbs;
-      BatchFifo              _pending;     // Time ordered list of completed Batches
-      size_t                 _batchBase;
-      Batch*                 _batch;
+      const TebCtrbParams&      _prms;
+      BatchManager              _batMan;
+      EbLfClient                _transport;
+      std::vector<EbLfCltLink*> _links;
+      unsigned                  _id;
+      unsigned                  _numEbs;
+      BatchFifo                 _pending; // Time ordered list of completed Batches
+      size_t                    _batchBase;
+      Batch*                    _batch;
     private:
-      mutable uint64_t       _eventCount;
-      mutable uint64_t       _batchCount;
+      mutable uint64_t          _eventCount;
+      mutable uint64_t          _batchCount;
     private:
-      std::atomic<bool>      _running;
-      std::thread            _rcvrThread;
+      std::atomic<bool>         _running;
+      std::thread               _rcvrThread;
     };
   };
 };

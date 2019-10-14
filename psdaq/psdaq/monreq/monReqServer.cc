@@ -46,14 +46,14 @@ void sigHandler( int signal )
 
   if (callCount == 0)
   {
-    printf("\nShutting down\n");
+    logging::info("\nShutting down");
 
     lRunning = 0;
   }
 
   if (callCount++)
   {
-    fprintf(stderr, "Aborting on 2nd ^C...\n");
+    logging::critical("Aborting on 2nd ^C...");
     ::abort();
   }
 }
@@ -88,41 +88,49 @@ namespace Pds {
       _id           (-1u)
     {
     }
-    int connect(const MebParams& prms)
+    virtual ~MyXtcMonitorServer()
+    {
+    }
+    int configure(const MebParams& prms)
     {
       _iTeb = 0;
       _id   = prms.id;
       _mrqLinks.resize(prms.addrs.size());
 
-      unsigned numBuffers = _bufFreeList.size();
-      for (unsigned i = 0; i < prms.addrs.size(); ++i)
+      for (unsigned i = 0; i < _mrqLinks.size(); ++i)
       {
         int            rc;
         const char*    addr = prms.addrs[i].c_str();
         const char*    port = prms.ports[i].c_str();
-        EbLfLink*      link;
+        EbLfCltLink*   link;
         const unsigned tmo(120000);     // Milliseconds
-        if ( (rc = _mrqTransport.connect(addr, port, tmo, &link)) )
+        if ( (rc = _mrqTransport.connect(&link, addr, port, _id, tmo)) )
         {
-          fprintf(stderr, "%s:\n  Error connecting to Monitor EbLfServer at %s:%s\n",
-                  __PRETTY_FUNCTION__, addr, port);
+          logging::error("%s:\n  Error connecting to TEB at %s:%s",
+                         __PRETTY_FUNCTION__, addr, port);
           return rc;
         }
-        if ( (rc = link->preparePoster(_id)) )
-        {
-          fprintf(stderr, "%s:\n  Failed to prepare Monitor link to %s:%s\n",
-                  __PRETTY_FUNCTION__, addr, port);
-          return rc;
-        }
-        _mrqLinks[link->id()] = link;
+        unsigned rmtId = link->id();
+        _mrqLinks[rmtId] = link;
 
-        printf("Outbound link with TEB ID %d connected\n", link->id());
+        logging::debug("Outbound link with TEB ID %d connected", rmtId);
+
+        if ( (rc = link->prepare()) )
+        {
+          logging::error("%s:\n  Failed to prepare link with TEB ID %d",
+                         __PRETTY_FUNCTION__, rmtId);
+          return rc;
+        }
+
+        logging::info("Outbound link with TEB ID %d connected and configured",
+                      rmtId);
       }
 
+      unsigned numBuffers = _bufFreeList.size();
       for (unsigned i = 0; i < numBuffers; ++i)
       {
         if (_bufFreeList.push(i))
-          fprintf(stderr, "%s:\n  _bufFreeList.push(%d) failed\n", __PRETTY_FUNCTION__, i);
+          logging::error("%s:\n  _bufFreeList.push(%d) failed", __PRETTY_FUNCTION__, i);
         //printf("%s:\n  _bufFreeList.push(%d), count = %zd\n",
         //       __PRETTY_FUNCTION__, i, _bufFreeList.count());
       }
@@ -131,15 +139,12 @@ namespace Pds {
 
       return 0;
     }
-    virtual ~MyXtcMonitorServer()
-    {
-    }
   public:
     void shutdown()
     {
       for (auto it = _mrqLinks.begin(); it != _mrqLinks.end(); ++it)
       {
-        _mrqTransport.shutdown(*it);
+        _mrqTransport.disconnect(*it);
       }
       _mrqLinks.clear();
 
@@ -168,8 +173,8 @@ namespace Pds {
 
         if (sizeof(*odg) + odg->xtc.sizeofPayload() > _sizeofBuffers)
         {
-          fprintf(stderr, "%s:\n  Datagram is too large (%zd) for buffer of size %d\n",
-                  __PRETTY_FUNCTION__, sizeof(*odg) + odg->xtc.sizeofPayload(), _sizeofBuffers);
+          logging::critical("%s:\n  Datagram is too large (%zd) for buffer of size %d",
+                            __PRETTY_FUNCTION__, sizeof(*odg) + odg->xtc.sizeofPayload(), _sizeofBuffers);
           abort();            // The memcpy would blow by the buffer size limit
         }
 
@@ -185,7 +190,7 @@ namespace Pds {
 
       unsigned idx = *(unsigned*)dg->xtc.next();
       if (_bufFreeList.push(idx))
-        printf("_bufFreeList.push(%d) failed, count = %zd\n", idx, _bufFreeList.count());
+        logging::error("_bufFreeList.push(%d) failed, count = %zd", idx, _bufFreeList.count());
       //printf("_deleteDatagram: dg = %p, pid = %014lx, _bufFreeList.push(%d), count = %zd\n",
       //       dg, dg->seq.pulseId().value(), idx, _bufFreeList.count());
 
@@ -198,7 +203,7 @@ namespace Pds {
 
       if (_bufFreeList.empty())
       {
-        fprintf(stderr, "%s:\n  No free buffers available\n", __PRETTY_FUNCTION__);
+        logging::warning("%s:\n  No free buffers available", __PRETTY_FUNCTION__);
         return;
       }
 
@@ -213,7 +218,7 @@ namespace Pds {
         unsigned iTeb = _iTeb++;
         if (_iTeb == _mrqLinks.size())  _iTeb = 0;
 
-        EbLfLink* link = _mrqLinks[iTeb];
+        EbLfCltLink* link = _mrqLinks[iTeb];
 
         data = ImmData::value(ImmData::Buffer, _id, data);
 
@@ -226,18 +231,18 @@ namespace Pds {
       }
       if (rc)
       {
-        fprintf(stderr, "%s:\n  Unable to post request to any TEB\n", __PRETTY_FUNCTION__);
+        logging::error("%s:\n  Unable to post request to any TEB", __PRETTY_FUNCTION__);
         // Revisit: Is this fatal or ignorable?
       }
     }
 
   private:
-    unsigned               _sizeofBuffers;
-    unsigned               _iTeb;
-    EbLfClient             _mrqTransport;
-    std::vector<EbLfLink*> _mrqLinks;
-    FifoMT<unsigned>       _bufFreeList;
-    unsigned               _id;
+    unsigned                  _sizeofBuffers;
+    unsigned                  _iTeb;
+    EbLfClient                _mrqTransport;
+    std::vector<EbLfCltLink*> _mrqLinks;
+    FifoMT<unsigned>          _bufFreeList;
+    unsigned                  _id;
   };
 
   class Meb : public EbAppBase
@@ -271,6 +276,8 @@ namespace Pds {
     {
       pinThread(pthread_self(), _prms.core[0]);
 
+      logging::info("MEB thread is starting");
+
       _apps = &apps;
 
       // Create pool for transferring events to MyXtcMonitorServer
@@ -281,20 +288,20 @@ namespace Pds {
 
       _eventCount = 0;
 
-      while (true)
+      while (lRunning)
       {
-        int rc;
-        if (!lRunning)
-        {
-          if (checkEQ() == -FI_ENOTCONN)  break;
-        }
-
-        if ( (rc = EbAppBase::process()) < 0)
+        if (EbAppBase::process() < 0)
         {
           if (checkEQ() == -FI_ENOTCONN)  break;
         }
       }
 
+      _shutdown();
+
+      logging::info("MEB thread is exiting");
+    }
+    void _shutdown()
+    {
       _apps->shutdown();
 
       EbAppBase::shutdown();
@@ -304,7 +311,7 @@ namespace Pds {
     }
     virtual void process(EbEvent* event)
     {
-      if (_prms.verbose > 3)
+      if (_prms.verbose >= VL_DETAILED)
       {
         static unsigned cnt = 0;
         printf("Meb::process event dump:\n");
@@ -319,8 +326,8 @@ namespace Pds {
       void*    buffer = _pool->alloc(sizeof(Dgram) + sz + sizeof(idx));
       if (!buffer)
       {
-        fprintf(stderr, "%s:\n  Dgram pool allocation of size %zd failed:\n",
-                __PRETTY_FUNCTION__, sizeof(Dgram) + sz + sizeof(idx));
+        logging::critical("%s:\n  Dgram pool allocation of size %zd failed:",
+                          __PRETTY_FUNCTION__, sizeof(Dgram) + sz + sizeof(idx));
         _pool->dump();
         abort();
       }
@@ -329,7 +336,7 @@ namespace Pds {
       memcpy(buf, event->begin(), sz);
       *(unsigned*)dg->xtc.next() = idx; // Pass buffer's index to _deleteDatagram()
 
-      if (_prms.verbose > 2)
+      if (_prms.verbose >= VL_EVENT)
       {
         uint64_t pid = dg->seq.pulseId().value();
         unsigned ctl = dg->seq.pulseId().control();
@@ -372,6 +379,7 @@ public:                                 // For CollectionApp
   void         handleReset(const json& msg) override;
 private:
   std::string _connect(const json& msg);
+  std::string _configure(const json& msg);
   int         _parseConnectionParams(const json& msg);
 private:
   const char*                         _tag;
@@ -413,19 +421,6 @@ std::string MebApp::_connect(const json &msg)
   int rc = _parseConnectionParams(msg["body"]);
   if (rc)  return std::string("Error parsing parameters");
 
-  rc = _meb.connect(_prms);
-  if (rc)  return std::string("Failed MEB connect()");
-
-  _apps = std::make_unique<MyXtcMonitorServer>(_tag, _numEvQueues, _prms);
-  rc = _apps->connect(_prms);
-  if (rc)  return std::string("Failed XtcMonitorServer connect()");
-
-  _apps->distribute(_distribute);
-
-  lRunning = 1;
-
-  _appThread = std::thread(&Meb::run, std::ref(_meb), std::ref(*_apps));
-
   return std::string{};
 }
 
@@ -435,8 +430,24 @@ void MebApp::handleConnect(const json &msg)
 
   // Reply to collection with connect status
   json body = json({});
-  if (!errMsg.empty())  body["error_info"] = errMsg;
+  if (!errMsg.empty())
+  {
+    body["error_info"] = errMsg;
+    logging::error("%s:\n  %s", __PRETTY_FUNCTION__, errMsg.c_str());
+  }
   reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
+}
+
+std::string MebApp::_configure(const json &msg)
+{
+  int rc = _meb.configure(_prms);
+  if (rc)  return std::string("Failed to configure MEB");
+
+  _apps = std::make_unique<MyXtcMonitorServer>(_tag, _numEvQueues, _prms);
+  rc = _apps->configure(_prms);
+  if (rc)  return std::string("Failed XtcMonitorServer configure()");
+
+  return std::string{};
 }
 
 void MebApp::handlePhase1(const json& msg)
@@ -446,14 +457,27 @@ void MebApp::handlePhase1(const json& msg)
 
   if (key == "configure")
   {
-    int rc = _meb.configure(_prms);
-    if (rc)
+    // Shut down the previously running instance, if any
+    if (_appThread.joinable())
     {
-      std::string errorMsg = "Phase 1 error: ";
-      errorMsg += "Failed to configure MEB";
-      body["err_info"] = errorMsg;
-      fprintf(stderr, "%s:\n  %s\n", __PRETTY_FUNCTION__, errorMsg.c_str());
+      lRunning = 0;
+
+      _appThread.join();
+      _apps.reset();
     }
+
+    std::string errMsg = _configure(msg);
+    if (!errMsg.empty())
+    {
+      body["error_info"] = "Phase 1 error: " + errMsg;
+      logging::error("%s:\n  %s", __PRETTY_FUNCTION__, errMsg.c_str());
+    }
+
+    _apps->distribute(_distribute);
+
+    lRunning = 1;
+
+    _appThread = std::thread(&Meb::run, std::ref(_meb), std::ref(*_apps));
   }
 
   // Reply to collection with transition status
@@ -465,10 +489,11 @@ void MebApp::handleDisconnect(const json &msg)
   lRunning = 0;
 
   if (_appThread.joinable())  _appThread.join();
+
   _apps.reset();
 
   // Reply to collection with connect status
-  json body   = json({});
+  json body = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
@@ -502,7 +527,7 @@ int MebApp::_parseConnectionParams(const json& body)
   _prms.id       = body["meb"][id]["meb_id"];
   if (_prms.id >= MAX_MEBS)
   {
-    fprintf(stderr, "MEB ID %d is out of range 0 - %d\n", _prms.id, MAX_MEBS - 1);
+    logging::error("MEB ID %d is out of range 0 - %d", _prms.id, MAX_MEBS - 1);
     return 1;
   }
 
@@ -511,7 +536,7 @@ int MebApp::_parseConnectionParams(const json& body)
 
   if (body.find("drp") == body.end())
   {
-    fprintf(stderr, "Missing required DRP specs\n");
+    logging::error("Missing required DRP specs");
     return 1;
   }
 
@@ -530,7 +555,7 @@ int MebApp::_parseConnectionParams(const json& body)
     unsigned drpId = it.value()["drp_id"];
     if (drpId > MAX_DRPS - 1)
     {
-      fprintf(stderr, "DRP ID %d is out of range 0 - %d\n", drpId, MAX_DRPS - 1);
+      logging::error("DRP ID %d is out of range 0 - %d", drpId, MAX_DRPS - 1);
       return 1;
     }
     _prms.contributors |= 1ul << drpId;
@@ -538,7 +563,7 @@ int MebApp::_parseConnectionParams(const json& body)
     unsigned group = it.value()["det_info"]["readout"];
     if (group > NUM_READOUT_GROUPS - 1)
     {
-      fprintf(stderr, "Readout group %d is out of range 0 - %d\n", group, NUM_READOUT_GROUPS - 1);
+      logging::error("Readout group %d is out of range 0 - %d", group, NUM_READOUT_GROUPS - 1);
       return 1;
     }
     _prms.contractors[group] |= 1ul << drpId;
@@ -554,7 +579,7 @@ int MebApp::_parseConnectionParams(const json& body)
 
   if (body.find("teb") == body.end())
   {
-    fprintf(stderr, "Missing required TEB specs\n");
+    logging::error("Missing required TEB specs");
     return 1;
   }
 
@@ -567,7 +592,7 @@ int MebApp::_parseConnectionParams(const json& body)
     std::string address = it.value()["connect_info"]["nic_ip"];
     if (tebId > MAX_TEBS - 1)
     {
-      fprintf(stderr, "TEB ID %d is out of range 0 - %d\n", tebId, MAX_TEBS - 1);
+      logging::error("TEB ID %d is out of range 0 - %d", tebId, MAX_TEBS - 1);
       return 1;
     }
     _prms.addrs.push_back(address);
@@ -687,38 +712,39 @@ int main(int argc, char** argv)
     }
   }
 
+  logging::init(partitionTag.c_str(), prms.verbose ? LOG_DEBUG : LOG_INFO);
+  logging::info("logging configured");
+
   if (prms.partition == NO_PARTITION)
   {
-    fprintf(stderr, "Missing '%s' parameter\n", "-p <Partition number>");
+    logging::critical("-p: partition number is mandatory");
     return 1;
   }
   if (partitionTag.empty())
   {
-    fprintf(stderr, "Missing '%s' parameter\n", "-P <Partition name>");
+    logging::critical("-P: instrument name is mandatory");
     return 1;
   }
   if (!prms.numEvBuffers)
   {
-    fprintf(stderr, "Missing '%s' parameter\n", "-n <max buffers>");
+    logging::critical("-n: max buffers is mandatory");
     return 1;
   }
   if (collSrv.empty())
   {
-    fprintf(stderr, "Missing '%s' parameter\n", "-C <Collection server>");
+    logging::critical("-C: collection server is mandatory");
     return 1;
   }
   if (prms.alias.empty()) {
-    fprintf(stderr, "Missing '%s' parameter\n", "-u <Alias>");
+    logging::critical("-u: alias is mandatory");
     return 1;
   }
-  logging::init(partitionTag.c_str(), prms.verbose ? LOG_DEBUG : LOG_INFO);
-  logging::info("logging configured");
 
   if (prms.numEvBuffers < NUMBEROF_XFERBUFFERS)
     prms.numEvBuffers = NUMBEROF_XFERBUFFERS;
 
   if (!tag)  tag = partitionTag.c_str();
-  printf("Partition Tag: '%s'\n", tag);
+  logging::info("Partition Tag: '%s'", tag);
 
   struct sigaction sigAction;
 
@@ -726,7 +752,7 @@ int main(int argc, char** argv)
   sigAction.sa_flags   = SA_RESTART;
   sigemptyset(&sigAction.sa_mask);
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
-    fprintf(stderr, "Failed to set up ^C handler\n");
+    logging::error("Failed to set up ^C handler");
 
   std::unique_ptr<prometheus::Exposer> exposer;
   try
@@ -745,14 +771,8 @@ int main(int argc, char** argv)
 
   if (exposer)  exposer->RegisterCollectable(exporter);
 
-  try
-  {
-    app.run();
-  }
-  catch (std::exception& e)
-  {
-    fprintf(stderr, "%s\n", e.what());
-  }
+  try                        { app.run(); }
+  catch (std::exception& e)  { logging::critical("%s", e.what()); }
 
   app.handleReset(json({}));
 

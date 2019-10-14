@@ -13,11 +13,11 @@ class EventBuilderManager(object):
         views = pf.split_packets()
         self.eb = EventBuilder(views)
 
-    def batches(self, limit_ts=-1):
-        batch = self.eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn, destination=self.destination, limit_ts=limit_ts)
+    def batches(self):
+        batch = self.eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn, destination=self.destination)
         while self.eb.nevents:
             self.min_ts = self.eb.min_ts
             self.max_ts = self.eb.max_ts
             yield batch
-            batch = self.eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn, destination=self.destination, limit_ts=limit_ts)
+            batch = self.eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn, destination=self.destination)
 

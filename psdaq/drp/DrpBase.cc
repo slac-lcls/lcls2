@@ -236,8 +236,8 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
         m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
     }
     catch(const std::runtime_error& e) {
-        logging::error("Could not start monitoring server!!");
-        logging::error("%s", e.what());
+        logging::warning("Could not start run-time monitoring server");
+        logging::warning("%s", e.what());
     }
 
     m_inprocSend.connect("inproc://drp");
@@ -248,8 +248,8 @@ void DrpBase::shutdown()
     m_exporter.reset();
 
     if (m_tebContributor) {
-      m_tebContributor->shutdown();
-      m_tebContributor.reset();
+        m_tebContributor->shutdown();
+        m_tebContributor.reset();
     }
 
     if (m_meb) {
@@ -275,45 +275,58 @@ std::string DrpBase::connect(const json& msg, size_t id)
 
     // Create all the eb things and do the connections
     m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, m_exporter);
-    int rc = m_tebContributor->connect(m_tPrms);
-    if (rc) {
-        return std::string{"TebContributor connect failed"};
-    }
 
     if (m_mPrms.addrs.size() != 0) {
         m_meb = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, m_exporter);
-        void* poolBase = (void*)pool.pebble[0];
-        size_t poolSize = pool.pebble.size();
-        rc = m_meb->connect(m_mPrms, poolBase, poolSize);
-        if (rc) {
-            return std::string{"MebContributor connect failed"};
-        }
     }
 
     m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, m_meb.get(), m_exporter);
-    rc = m_ebRecv->connect(m_tPrms);
-    if (rc) {
-        return std::string{"EbReceiver connect failed"};
-    }
 
-    // start eb receiver thread
-    m_tebContributor->startup(*m_ebRecv);
-
-    return std::string{};
-}
-
-std::string DrpBase::disconnect(const json& msg)
-{
-    if (m_tebContributor)  m_tebContributor->stop();
+    m_unconfigure = false;
     return std::string{};
 }
 
 std::string DrpBase::configure(const json& msg)
 {
+    if (m_unconfigure) {
+        m_tebContributor->shutdown();
+        if (m_meb)  m_meb->shutdown();
+        m_unconfigure = false;
+    }
+
     if (setupTriggerPrimitives(msg["body"])) {
         return std::string("Failed to set up TriggerPrimitive(s)");
     }
+
+    int rc = m_tebContributor->configure(m_tPrms);
+    if (rc) {
+        return std::string{"TebContributor configure failed"};
+    }
+
+    if (m_meb) {
+        void* poolBase = (void*)pool.pebble[0];
+        size_t poolSize = pool.pebble.size();
+        rc = m_meb->configure(m_mPrms, poolBase, poolSize);
+        if (rc) {
+            return std::string{"MebContributor connect failed"};
+        }
+    }
+
+    rc = m_ebRecv->configure(m_tPrms);
+    if (rc) {
+        return std::string{"EbReceiver configure failed"};
+    }
+
+    // start eb receiver thread
+    m_tebContributor->startup(*m_ebRecv);
+
     m_ebRecv->resetCounters();
+    return std::string{};
+}
+
+std::string DrpBase::unconfigure(const json& msg)
+{
+    m_unconfigure = true;
     return std::string{};
 }
 

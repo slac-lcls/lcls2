@@ -53,9 +53,8 @@ EbAppBase::EbAppBase(const EbParams& prms,
 {
 }
 
-int EbAppBase::connect(const EbParams& prms)
+int EbAppBase::configure(const EbParams& prms)
 {
-  int rc;
   unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
 
   _links.resize(nCtrbs);
@@ -64,43 +63,49 @@ int EbAppBase::connect(const EbParams& prms)
   _maxBufSize.resize(nCtrbs);
   _id           = prms.id;
   _contributors = prms.contributors;
+  _contract     = prms.contractors;
   _bufferCnt    = 0;
   _fixupCnt     = 0;
-
-  if ( (rc = _transport.initialize(prms.ifAddr, prms.ebPort, nCtrbs)) )
-  {
-    fprintf(stderr, "%s:\n  Failed to initialize EbLfServer\n",
-            __PRETTY_FUNCTION__);
-    return rc;
-  }
 
   std::vector<size_t> regSizes(nCtrbs);
   size_t              sumSize = 0;
 
-  for (unsigned i = 0; i < nCtrbs; ++i)
+  int rc;
+  if ( (rc = _transport.initialize(prms.ifAddr, prms.ebPort, nCtrbs)) )
   {
-    EbLfLink*      link;
+    fprintf(stderr, "%s:\n  Failed to initialize Ctrb EbLfServer\n",
+            __PRETTY_FUNCTION__);
+    return rc;
+  }
+
+  for (unsigned i = 0; i < _links.size(); ++i)
+  {
+    EbLfSvrLink*   link;
     const unsigned tmo(120000);         // Milliseconds
-    if ( (rc = _transport.connect(&link, tmo)) )
+    if ( (rc = _transport.connect(&link, _id, tmo)) )
     {
-      fprintf(stderr, "%s:\n  Error connecting to Ctrb %d\n",
-              __PRETTY_FUNCTION__, i);
+      fprintf(stderr, "%s:\n  Error connecting to a Ctrb\n",
+              __PRETTY_FUNCTION__);
       return rc;
     }
-    size_t regSize;
-    if ( (rc = link->preparePender(prms.id, &regSize)) )
+    unsigned rmtId = link->id();
+    _links[rmtId] = link;
+
+    if (_verbose)  printf("Inbound link with Ctrb ID %d connected\n", rmtId);
+
+    size_t       regSize;
+    if ( (rc = link->prepare(&regSize)) )
     {
-      fprintf(stderr, "%s:\n  Failed to prepare link with Ctrb %d\n",
-              __PRETTY_FUNCTION__, i);
+      fprintf(stderr, "%s:\n  Failed to prepare link with Ctrb ID %d\n",
+              __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
-    _links[link->id()]      = link;
-    _maxTrSize[link->id()]  = prms.maxTrSize[link->id()];
-    _trRegSize[link->id()]  = roundUpSize(TransitionId::NumberOf * _maxTrSize[link->id()]);
-    _maxBufSize[link->id()] = regSize / _maxBuffers;
-    regSize                += _trRegSize[link->id()];  // Ctrbs don't have a transition space
-    regSizes[link->id()]    = regSize;
-    sumSize                += regSize;
+    _maxTrSize[rmtId]  = prms.maxTrSize[rmtId];
+    _trRegSize[rmtId]  = roundUpSize(TransitionId::NumberOf * _maxTrSize[rmtId]);
+    _maxBufSize[rmtId] = regSize / _maxBuffers;
+    regSize           += _trRegSize[rmtId];  // Ctrbs don't have a transition space
+    regSizes[rmtId]    = regSize;
+    sumSize           += regSize;
   }
 
   _region = allocRegion(sumSize);
@@ -112,32 +117,29 @@ int EbAppBase::connect(const EbParams& prms)
   }
 
   char* region = reinterpret_cast<char*>(_region);
-  for (unsigned id = 0; id < nCtrbs; ++id)
+  for (unsigned rmtId = 0; rmtId < _links.size(); ++rmtId)
   {
-    if ( (rc = _links[id]->setupMr(region, regSizes[id])) )
+    EbLfSvrLink* link = _links[rmtId];
+    if ( (rc = link->setupMr(region, regSizes[rmtId])) )
     {
       fprintf(stderr, "%s:\n  Failed to set up Input MR for Ctrb ID %d, "
               "%p:%p, size %zd\n", __PRETTY_FUNCTION__,
-              id, region, region + regSizes[id], regSizes[id]);
+              rmtId, region, region + regSizes[rmtId], regSizes[rmtId]);
+      if (_region)  free(_region);
+      _region = nullptr;
       return rc;
     }
-    if ( (rc = _links[id]->postCompRecv()) )
+
+    if (link->postCompRecv())
     {
-      fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
-              __PRETTY_FUNCTION__, rc);
+      fprintf(stderr, "%s:\n  Failed to post CQ buffers for Ctrb ID %d\n",
+              __PRETTY_FUNCTION__, rmtId);
     }
 
-    printf("Inbound link with Ctrb ID %d connected\n", id);
+    region += regSizes[rmtId];
 
-    region += regSizes[id];
+    printf("Inbound link with Ctrb ID %d connected and configured\n", rmtId);
   }
-
-  return 0;
-}
-
-int EbAppBase::configure(const EbParams& prms)
-{
-  _contract = prms.contractors;
 
   return 0;
 }
@@ -149,7 +151,7 @@ void EbAppBase::shutdown()
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
-    _transport.shutdown(*it);
+    _transport.disconnect(*it);
   }
   _links.clear();
   _transport.shutdown();
@@ -183,7 +185,7 @@ int EbAppBase::process()
   unsigned     flg = ImmData::flg(data);
   unsigned     src = ImmData::src(data);
   unsigned     idx = ImmData::idx(data);
-  EbLfLink*    lnk = _links[src];
+  EbLfSvrLink* lnk = _links[src];
   size_t       ofs = (ImmData::buf(flg) == ImmData::Buffer)
                    ? (_trRegSize[src] + idx * _maxBufSize[src])
                    : (idx * _maxTrSize[src]);
@@ -194,7 +196,7 @@ int EbAppBase::process()
             __PRETTY_FUNCTION__, rc);
   }
 
-  if (_verbose)
+  if (_verbose >= VL_BATCH)
   {
     unsigned    env = idg->env;
     uint64_t    pid = idg->seq.pulseId().value();
@@ -250,7 +252,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
   ++_fixupCnt;
 
-  if (_verbose)
+  if (_verbose >= VL_EVENT)
   {
     fprintf(stderr, "%s:\n  Fixup event %014lx, size %zu, for source %d\n",
             __PRETTY_FUNCTION__, event->sequence(), event->size(), srcId);

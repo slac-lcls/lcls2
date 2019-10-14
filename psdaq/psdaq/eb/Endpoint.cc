@@ -689,6 +689,18 @@ MemoryRegion* Fabric::register_memory(LocalAddress* laddr)
   return NULL;
 }
 
+bool Fabric::deregister_memory(MemoryRegion* mr)
+{
+  for (auto it = _mem_regions.begin(); it != _mem_regions.end(); ++it) {
+    if (*it == mr) {
+      _mem_regions.erase(it);
+      delete mr;
+      return true;
+    }
+  }
+  return false;
+}
+
 MemoryRegion* Fabric::lookup_memory(const void* start, size_t len) const
 {
   for (unsigned i=0; i<_mem_regions.size(); i++) {
@@ -1852,11 +1864,11 @@ ssize_t CompletionQueue::comp_error(struct fi_cq_err_entry* comp_err)
   ssize_t rret = fi_cq_readerr(_cq, comp_err, 0);
   if (rret < 0) {
     set_error("fi_cq_readerr");
+    _errno = (int) rret;
   } else if (rret == 0) {
     set_custom_error("fi_cq_readerr: no errors to be read");
     rret = FI_SUCCESS;
   }
-  _errno = (int) rret;
 
   return rret;
 }
@@ -1869,7 +1881,9 @@ ssize_t CompletionQueue::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* 
     _errno = (int) comp_ret;
     if (comp_ret == -FI_EAVAIL) {
       if (comp_error(&comp_err) > 0) {
-        fi_cq_strerror(_cq, comp_err.prov_errno, comp_err.err_data, _error, ERR_MSG_LEN);
+        char buf[ERR_MSG_LEN];
+        fi_cq_strerror(_cq, comp_err.prov_errno, comp_err.err_data, buf, sizeof(buf));
+        set_custom_error("%s: %s(%d)", cmd, buf, comp_err.prov_errno);
       }
     } else {
       set_error(cmd);
