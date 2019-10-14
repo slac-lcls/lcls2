@@ -56,6 +56,7 @@ class DaqControlEmulator:
     def setTransition(self, s) :  self.msg('setTransition');  return 'emulator' 
     def selectPlatform(self, s) : self.msg('selectPlatform'); return
     def getPlatform(self) :       self.msg('getPlatform');    return 'emulator'
+    def setRecord(self, v) :      self.msg('setRecord %s'%v); return
 
 #----------
 

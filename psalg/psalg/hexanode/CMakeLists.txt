@@ -17,7 +17,7 @@ target_include_directories(hexanode PUBLIC
 
 install(FILES
     cfib.hh
-    ctest_nda.hh
+    ctest_utils.hh
     resort64c.hh
     wrap_resort64c.hh
     LMF_IO.hh

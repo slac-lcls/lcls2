@@ -23,7 +23,7 @@ sys.argv.remove(arg[0])
 
 # Shorter BUILD_LIST can be used to speedup development loop.
 #Command example: ./build_all.sh -b PEAKFINDER:HEXANODE:CFD -md
-BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD')
+BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY')
 arg = [arg for arg in sys.argv if arg.startswith('--ext_list')]
 if arg:
     s_exts = arg[0].split('=')[1]
@@ -262,5 +262,21 @@ if 'HSD' in BUILD_LIST :
   setup(name="hsd",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR),
   )
+
+
+if 'NDARRAY' in BUILD_LIST :
+  ext = Extension("ndarray",
+                  sources=["psana/hexanode/NDArray_ext.pyx",],
+                  language="c++",
+                  extra_compile_args = extra_compile_args,
+                  include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
+                  library_dirs = [os.path.join(instdir, 'lib')],
+                  libraries=[],
+                  extra_link_args = extra_link_args,
+                  )
+
+  setup(name="ndarray",
+        ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
+
 
 # ===== EOF ======

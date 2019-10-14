@@ -42,7 +42,7 @@ from psdaq.control_gui.CGDaqControl import daq_control, DaqControl
 class CGWMainControl(QGroupBox) :
     """
     """
-    status_record = ['Begin', 'End']
+    status_record = ['Begin', 'End', 'Wait']
 
     def __init__(self, parent=None, parent_ctrl=None):
 
@@ -189,16 +189,34 @@ class CGWMainControl(QGroupBox) :
 
     def on_but_record(self) :
         txt = self.but_record.accessibleName()
-        logger.debug('TBD - on_but_record %s' % txt)
-        ind = self.status_record.index(txt)
-        ico = icon.icon_record_sym if ind==1 else\
+        logger.debug('CGWMainControl.on_but_record %s' % txt)
+        ind = self.status_record.index(txt) # 0/1/2 = Begin/End/Wait
+
+        daq_ctrl = daq_control()
+        if daq_ctrl is not None :
+            daq_ctrl.setRecord(ind==0) # switches button record state
+            logger.debug('CGWMainControl.on_but_record daq_control.setRecord("%s")' % (ind==0))
+        else :
+            logger.warning('CGWMainControl.on_but_record daq_control() is None')
+
+#--------------------
+
+    def set_but_record(self, recording=False) :
+        """ Callback from CGWMain.process_zmq_message is used to change button status
+        """
+        txt = self.but_record.accessibleName()
+        logger.debug('CGWMainTabUser.set_but_record status: %s request: %s' % (txt,recording))
+        ind = self.status_record.index(txt) # 0/1/2 = Begin/End/Wait
+
+        if ind==1 and recording       : return # recording state has not changed
+        if ind==0 and (not recording) : return # recording state has not changed
+
+        ico = icon.icon_record_sym if recording else\
               icon.icon_record
         self.but_record.setIcon(ico)
-        self.but_record.setAccessibleName(self.status_record[0 if ind==1 else 1])
-
-        s = '%s recording' % self.but_record.accessibleName()
-        self.but_record.setToolTip(s)
-        self.lab_record.setText(s+':')
+        self.but_record.setAccessibleName(self.status_record[0 if recording else 1])
+        self.set_tool_tips()
+#        self.lab_record.setText(s+':')
 
 #--------------------
 

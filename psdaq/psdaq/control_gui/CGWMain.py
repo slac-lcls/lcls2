@@ -338,8 +338,10 @@ class CGWMain(QWZMQListener) :
                     s_state        = body['state']
                     s_transition   = body['transition']
                     s_config_alias = body['config_alias']
+                    s_recording    = body['recording'] # True/False
                     #====self.wdetr.set_but_state (s_state)
                     self.wctrl.set_but_ctrls(s_state)
+                    self.wctrl.set_but_record(s_recording)
                     self.wctrl.set_transition(s_transition)
                     self.wconf.set_config_type(s_config_alias)
 

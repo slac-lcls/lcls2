@@ -207,10 +207,6 @@ public:
      set_data_buffer(a.data());
   }
 
-//-------------------
-//-------------------
-//-------------------
-//-------------------
 
 //-------------------
 /// CONST !!! *buf
@@ -294,7 +290,6 @@ public:
     return os;
   }
 
-
 //-------------------
 
 private:
@@ -302,10 +297,6 @@ private:
   T* _buf_ext;
   NON_CONST_T* _buf_own;
 
-public:
-  /// Copy constructor and assignment are disabled by default
-  //NDArray(const NDArray&);
-  //NDArray& operator = (const NDArray&);
 };
 
 } // namespace psalg
