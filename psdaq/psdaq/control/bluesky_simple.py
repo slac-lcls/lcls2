@@ -107,7 +107,7 @@ class MyDAQ:
                 # launch the step with 'daqstate(running)' (with the
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
-                errMsg = self.control.setState('running',{self.motor.name:self.motor.position})
+                errMsg = self.control.setState('running',{'beginstep':{self.motor.name:self.motor.position}})
                 if errMsg is not None:
                     print('*** error:', errMsg)
                     continue
@@ -125,7 +125,7 @@ class MyDAQ:
     def daq_monitor_thread(self):
         print('*** daq_monitor_thread')
         while True:
-            part1, part2, part3 = self.control.monitorStatus()
+            part1, part2, part3, part4 = self.control.monitorStatus()
             if part1 is None:
                 break
             elif part1 == 'error':
