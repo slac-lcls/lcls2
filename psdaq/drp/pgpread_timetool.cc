@@ -180,22 +180,22 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
     //***** writing xtc to buffer  ******
     //***********************************
     unsigned timestamp_val = 0;
-    Dgram& config = createTransition(TransitionId::Configure,timestamp_val);
+    Dgram& config = createTransition(TransitionId::Configure,timestamp_val);    //what are the arguments here?
 
     // append the config xtc info to the dgram
-    Xtc& jsonxtc = *(Xtc*)config_buf;
-    Xtc& xtc     = config.xtc;
-    memcpy(xtc.next(),jsonxtc.payload(),jsonxtc.sizeofPayload());
+    Xtc& jsonxtc = *(Xtc*)config_buf;                                           //config buf is global 
+    Xtc& xtc     = config.xtc;                                                  //
+    memcpy(xtc.next(),jsonxtc.payload(),jsonxtc.sizeofPayload());               //this line copies jsonxtc to the xtc object.
     xtc.alloc(jsonxtc.sizeofPayload());
 
     // append the metadata; which algorithm is needed to interpret bytes, the detector type, etc...
-    Alg ttAlg("timetool", 0, 0, 1);
+    Alg ttAlg("tt_algorithm_placeholder", 0, 0, 1);
 
     NamesId eventNamesId(nodeId,EventNamesIndex);
 
 
     unsigned segment = 0;
-    Names& eventNames = *new(xtc) Names("tmotimetool", ttAlg, "timetool", "detnum1235", eventNamesId, segment);
+    Names& eventNames = *new(xtc) Names("tt_detector_name_placeholder", ttAlg, "tt_detector_type_placeholder", "tt_detector_identification_placeholder", eventNamesId, segment);
     eventNames.add(xtc, TTDef);
     namesLookup[eventNamesId] = NameIndex(eventNames);
 
@@ -204,7 +204,7 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
     //***********************************
 
 
-
+    //xtc file will be corrupted if this is not written.
     if (fwrite(&config, sizeof(config) + config.xtc.sizeofPayload(), 1, xtcFile) != 1) {
         printf("Error writing to output xtc file.\n");
     }
@@ -244,7 +244,7 @@ int main(int argc, char* argv[])
 
     channel = 0;
     std::string device;
-    while((c = getopt(argc, argv, "c:d:t")) != EOF) {
+    while((c = getopt(argc, argv, "c:d:ts")) != EOF) {
         switch(c) {
             case 'd':
                 device = optarg;

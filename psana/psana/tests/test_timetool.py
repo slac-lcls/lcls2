@@ -8,10 +8,10 @@ def test_timetool():
     ds = DataSource(files=os.path.join(dir_path,'test_timetool.xtc2'))
 
     myrun = next(ds.runs())
-    det = myrun.Detector('tmotimetool')
+    det = myrun.Detector('tt_detector_name_placeholder')
 
     for nevt,evt in enumerate(myrun.events()):
-        image = det.timetool.image(evt)
+        image = det.tt_algorithm_placeholder.image(evt)
 
         #print("image shape = ",image.shape)
         assert image.shape == (2224,) or image.shape == (144,) or image.shape == (4304,)
