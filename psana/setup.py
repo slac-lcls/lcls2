@@ -265,7 +265,8 @@ if 'HSD' in BUILD_LIST :
 
 
 if 'NDARRAY' in BUILD_LIST :
-  ext = Extension("ndarray",
+  if(os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
+    ext = Extension("ndarray",
                   sources=["psana/hexanode/NDArray_ext.pyx",],
                   language="c++",
                   extra_compile_args = extra_compile_args,
@@ -275,8 +276,7 @@ if 'NDARRAY' in BUILD_LIST :
                   extra_link_args = extra_link_args,
                   )
 
-  setup(name="ndarray",
+    setup(name="ndarray",
         ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
-
 
 # ===== EOF ======
