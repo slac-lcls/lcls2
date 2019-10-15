@@ -11,15 +11,6 @@ using logging = Pds::SysLog;
 
 namespace Drp {
 
-MyDgram::MyDgram(XtcData::Dgram& dgram, uint64_t val, unsigned contributor_id)
-{
-    seq = dgram.seq;
-    env = dgram.env;
-    xtc = XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0), XtcData::Src(contributor_id));
-    _data = val;
-    xtc.alloc(sizeof(_data));
-}
-
 unsigned nextPowerOf2(unsigned n)
 {
     unsigned count = 0;
@@ -68,7 +59,7 @@ MemPool::MemPool(const Parameters& para)
 
 EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
-                       std::shared_ptr<MetricExporter>& exporter) :
+                       const std::shared_ptr<MetricExporter>& exporter) :
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
   m_mon(mon),
@@ -119,18 +110,16 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         if (transitionId != XtcData::TransitionId::SlowUpdate) {
             m_inprocSend.send(std::to_string(timingHeader->seq.pulseId().value()));
         }
-        logging::info("EbReceiver saw %s transition @ %014lx\n", XtcData::TransitionId::name(transitionId), timingHeader->seq.pulseId().value());
+        logging::debug("EbReceiver saw %s transition @ %014lx\n", XtcData::TransitionId::name(transitionId), timingHeader->seq.pulseId().value());
     }
 
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
-        printf("\033[0;31m");
-        logging::critical("jumping index %u  previous index %u  diff %d", index, m_lastIndex, index - m_lastIndex);
+        logging::critical("%sjumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
         logging::critical("evtCounter %u", timingHeader->evtCounter);
         logging::critical("pid = %014lx, env = %08x", timingHeader->seq.pulseId().value(), timingHeader->env);
         logging::critical("tid %s", XtcData::TransitionId::name(transitionId));
         logging::critical("lastevtCounter %u", m_lastEvtCounter);
         logging::critical("lastPid %014lx lastTid %s", m_lastPid, XtcData::TransitionId::name(m_lastTid));
-        printf("\033[0m");
     }
 
     if (timingHeader->seq.pulseId().value() != result.seq.pulseId().value()) {
@@ -208,29 +197,16 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
 DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     pool(para), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
 {
-    size_t maxSize = sizeof(MyDgram);
-    m_tPrms = { /* .ifAddr        = */ { }, // Network interface to use
-                /* .port          = */ { }, // Port served to TEBs
-                /* .partition     = */ para.partition,
-                /* .alias         = */ { }, // Unique name from cmd line
-                /* .id            = */ 0,
-                /* .builders      = */ 0,   // TEBs
-                /* .addrs         = */ { },
-                /* .ports         = */ { },
-                /* .maxInputSize  = */ maxSize,
-                /* .core          = */ { 18, 19 },
-                /* .verbose       = */ para.verbose,
-                /* .readoutGroup  = */ 0,
-                /* .contractor    = */ 0 };
+    m_tPrms.partition = para.partition;
+    m_tPrms.core[0]   = 18;
+    m_tPrms.core[1]   = 19;
+    m_tPrms.verbose   = para.verbose;
 
-    m_mPrms = { /* .addrs         = */ { },
-                /* .ports         = */ { },
-                /* .partition     = */ para.partition,
-                /* .id            = */ 0,
-                /* .maxEvents     = */ 8,    //mon_buf_cnt,
-                /* .maxEvSize     = */ pool.pebble.bufferSize(), //mon_buf_size,
-                /* .maxTrSize     = */ 256 * 1024, //mon_trSize,
-                /* .verbose       = */ para.verbose };
+    m_mPrms.partition = para.partition;
+    m_mPrms.maxEvents = 8;
+    m_mPrms.maxEvSize = pool.pebble.bufferSize();
+    m_mPrms.maxTrSize = 256 * 1024;
+    m_mPrms.verbose   = para.verbose;
 
     try {
         m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
@@ -268,6 +244,15 @@ std::string DrpBase::connect(const json& msg, size_t id)
 
     parseConnectionParams(msg["body"], id);
 
+    return std::string{};
+}
+
+std::string DrpBase::configure(const json& msg)
+{
+    if (setupTriggerPrimitives(msg["body"])) {
+        return std::string("Failed to set up TriggerPrimitive(s)");
+    }
+
     m_exporter = std::make_shared<MetricExporter>();
     if (m_exposer) {
         m_exposer->RegisterCollectable(m_exporter);
@@ -275,35 +260,13 @@ std::string DrpBase::connect(const json& msg, size_t id)
 
     // Create all the eb things and do the connections
     m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, m_exporter);
-
-    if (m_mPrms.addrs.size() != 0) {
-        m_meb = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, m_exporter);
-    }
-
-    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, m_meb.get(), m_exporter);
-
-    m_unconfigure = false;
-    return std::string{};
-}
-
-std::string DrpBase::configure(const json& msg)
-{
-    if (m_unconfigure) {
-        m_tebContributor->shutdown();
-        if (m_meb)  m_meb->shutdown();
-        m_unconfigure = false;
-    }
-
-    if (setupTriggerPrimitives(msg["body"])) {
-        return std::string("Failed to set up TriggerPrimitive(s)");
-    }
-
     int rc = m_tebContributor->configure(m_tPrms);
     if (rc) {
         return std::string{"TebContributor configure failed"};
     }
 
-    if (m_meb) {
+    if (m_mPrms.addrs.size() != 0) {
+        m_meb = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, m_exporter);
         void* poolBase = (void*)pool.pebble[0];
         size_t poolSize = pool.pebble.size();
         rc = m_meb->configure(m_mPrms, poolBase, poolSize);
@@ -312,6 +275,7 @@ std::string DrpBase::configure(const json& msg)
         }
     }
 
+    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, m_meb.get(), m_exporter);
     rc = m_ebRecv->configure(m_tPrms);
     if (rc) {
         return std::string{"EbReceiver configure failed"};
@@ -321,12 +285,6 @@ std::string DrpBase::configure(const json& msg)
     m_tebContributor->startup(*m_ebRecv);
 
     m_ebRecv->resetCounters();
-    return std::string{};
-}
-
-std::string DrpBase::unconfigure(const json& msg)
-{
-    m_unconfigure = true;
     return std::string{};
 }
 
@@ -367,6 +325,8 @@ int DrpBase::setupTriggerPrimitives(const json& body)
                 __PRETTY_FUNCTION__);
         return -1;
     }
+    m_tPrms.maxInputSize = sizeof(XtcData::Dgram) + m_triggerPrimitive->size();
+
     if (m_triggerPrimitive->configure(top, m_connectMsg, m_collectionId)) {
         fprintf(stderr, "%s:\n  Failed to configure TriggerPrimitive\n",
                 __PRETTY_FUNCTION__);
@@ -379,7 +339,7 @@ int DrpBase::setupTriggerPrimitives(const json& body)
 void DrpBase::parseConnectionParams(const json& body, size_t id)
 {
     std::string stringId = std::to_string(id);
-    logging::info("id %zu", id);
+    logging::debug("id %zu", id);
     m_tPrms.id = body["drp"][stringId]["drp_id"];
     m_nodeId = body["drp"][stringId]["drp_id"];
     const unsigned numPorts    = Pds::Eb::MAX_DRPS + Pds::Eb::MAX_TEBS + Pds::Eb::MAX_MEBS + Pds::Eb::MAX_MEBS;
@@ -397,7 +357,7 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     for (auto it : body["teb"].items()) {
         unsigned tebId = it.value()["teb_id"];
         std::string address = it.value()["connect_info"]["nic_ip"];
-        logging::info("TEB: %u  %s", tebId, address.c_str());
+        logging::debug("TEB: %u  %s", tebId, address.c_str());
         builders |= 1ul << tebId;
         m_tPrms.addrs.push_back(address);
         m_tPrms.ports.push_back(std::string(std::to_string(tebPortBase + tebId)));
@@ -420,7 +380,7 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
         for (auto it : body["meb"].items()) {
             unsigned mebId = it.value()["meb_id"];
             std::string address = it.value()["connect_info"]["nic_ip"];
-            logging::info("MEB: %u  %s", mebId, address.c_str());
+            logging::debug("MEB: %u  %s", mebId, address.c_str());
             m_mPrms.addrs.push_back(address);
             m_mPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
             unsigned count = it.value()["connect_info"]["buf_count"];

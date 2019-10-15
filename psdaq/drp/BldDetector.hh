@@ -58,6 +58,8 @@ private:
     std::unique_ptr<BldDescriptor> m_pvaDescriptor;
     XtcData::NameIndex m_nameIndex;
     std::atomic<bool> m_terminate;
+    std::shared_ptr<MetricExporter> m_exporter;
+    bool m_unconfigure;
 };
 
 }

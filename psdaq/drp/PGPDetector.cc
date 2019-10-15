@@ -41,7 +41,7 @@ bool checkPulseIds(MemPool& pool, PGPEvent* event)
             }
             else {
                 if (pulseId != timingHeader->seq.pulseId().value()) {
-                    logging::error("Wrong pulse id! expected %lu but got %lu instead\n",
+                    logging::error("Wrong pulse id! expected %lu but got %lu instead",
                            pulseId, timingHeader->seq.pulseId().value());
                     return false;
                 }
@@ -96,7 +96,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 det->event(*dgram, event);
                 // make sure the detector hasn't made the event too big
                 if (dgram->xtc.extent > pool.bufferSize()) {
-                    logging::error("L1Accept: buffer size (%d) too small for requested extent (%d)\n", pool.bufferSize(), dgram->xtc.extent);
+                    logging::error("L1Accept: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
                     exit(-1);
                 }
 
@@ -120,7 +120,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             }
             // make sure the transition isn't too big
             if (dgram->xtc.extent > pool.bufferSize()) {
-                logging::error("Transition: buffer size (%d) too small for requested extent (%d)\n", pool.bufferSize(), dgram->xtc.extent);
+                logging::error("Transition: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
                 exit(-1);
             }
         }
@@ -208,7 +208,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
             uint32_t lane = (dest[b] >> 8) & 7;
             bytes += size;
             if (unsigned(size) > m_pool.dmaSize()) {
-                logging::error("DMA buffer is too small: %d vs %d\n", size, m_pool.dmaSize());
+                logging::critical("DMA overflowed buffer: %d vs %d", size, m_pool.dmaSize());
                 exit(-1);
             }
 
@@ -227,11 +227,11 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 XtcData::TransitionId::Value transitionId = timingHeader->seq.service();
                 uint64_t pid = timingHeader->seq.pulseId().value();
                 if (transitionId != XtcData::TransitionId::L1Accept) {
-                    logging::info("PGPReader  saw %s transition @ %014lx", XtcData::TransitionId::name(transitionId), pid);
+                    logging::debug("PGPReader  saw %s transition @ %014lx", XtcData::TransitionId::name(transitionId), pid);
                 }
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-                    logging::critical("\033[0;31m" "Fatal: Jump in complete l1Count %u -> %u | difference %d, tid %s" "\033[0m",
-                           m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId));
+                    logging::critical("%sFatal: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
+                           RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
                     logging::critical("data: %08x %08x %08x %08x %08x %08x",
                            data[0], data[1], data[2], data[3], data[4], data[5]);
 
@@ -243,7 +243,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
 
                     for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
                         PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
-                        logging::error("broken event:  %08x\n", brokenEvent->mask);
+                        logging::error("broken event:  %08x", brokenEvent->mask);
                         brokenEvent->mask = 0;
 
                     }

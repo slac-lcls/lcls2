@@ -34,10 +34,13 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     } else {
         logging::info("output dir: %s", m_para.outputDir.c_str());
     }
+    logging::info("Ready for transitions");
 }
 
 void PGPDetectorApp::shutdown()
 {
+    m_exporter.reset();
+
     if (m_pgpDetector) {
         m_pgpDetector->shutdown();
         if (m_pgpThread.joinable()) {
@@ -46,6 +49,7 @@ void PGPDetectorApp::shutdown()
         if (m_collectorThread.joinable()) {
             m_collectorThread.join();
         }
+        m_pgpDetector.reset();
     }
     m_drp.shutdown();
 }
@@ -55,25 +59,15 @@ void PGPDetectorApp::handleConnect(const json& msg)
     json body = json({});
     std::string errorMsg = m_drp.connect(msg, getId());
     if (!errorMsg.empty()) {
-        std::cout<<"Error in DrpBase::connect\n";
-        std::cout<<errorMsg<<'\n';
+        logging::error("Error in DrpBase::connect");
+        logging::error("%s", errorMsg.c_str());
         body["err_info"] = errorMsg;
     }
 
     m_det->nodeId = m_drp.nodeId();
     m_det->connect(msg, std::to_string(getId()));
 
-    m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det);
-
-    auto exporter = std::make_shared<MetricExporter>();
-    if (m_drp.exposer()) {
-        m_drp.exposer()->RegisterCollectable(exporter);
-    }
-    m_pgpThread = std::thread{&PGPDetector::reader, std::ref(*m_pgpDetector), exporter,
-                              std::ref(m_drp.tebContributor())};
-    m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
-                                    std::ref(m_drp.tebContributor()));
-
+    m_unconfigure = false;
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
 }
@@ -88,7 +82,7 @@ void PGPDetectorApp::handleDisconnect(const json& msg)
 
 void PGPDetectorApp::handlePhase1(const json& msg)
 {
-    logging::info("handlePhase1 in PGPDetectorApp");
+    logging::debug("handlePhase1 in PGPDetectorApp");
 
     XtcData::Xtc& xtc = m_det->transitionXtc();
     XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
@@ -108,29 +102,41 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     std::string key = msg["header"]["key"];
 
     if (key == "configure") {
+        if (m_unconfigure) {
+            shutdown();
+            m_unconfigure = false;
+        }
+
         std::string errorMsg = m_drp.configure(msg);
         if (!errorMsg.empty()) {
             errorMsg = "Phase 1 error: " + errorMsg;
             body["err_info"] = errorMsg;
-            std::cout<<errorMsg<<'\n';
+            logging::error("%s", errorMsg.c_str());
         }
+
+        m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det);
+
+        m_exporter = std::make_shared<MetricExporter>();
+        if (m_drp.exposer()) {
+            m_drp.exposer()->RegisterCollectable(m_exporter);
+        }
+
+        m_pgpThread = std::thread{&PGPDetector::reader, std::ref(*m_pgpDetector), m_exporter,
+                                  std::ref(m_drp.tebContributor())};
+        m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
+                                        std::ref(m_drp.tebContributor()));
 
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc);
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::configure";
             body["err_info"] = errorMsg;
-            std::cout<<errorMsg<<'\n';
+            logging::error("%s", errorMsg.c_str());
         }
         m_pgpDetector->resetEventCounter();
     }
     else if (key == "unconfigure") {
-        std::string errorMsg = m_drp.unconfigure(msg);
-        if (!errorMsg.empty()) {
-            errorMsg = "Phase 1 error: " + errorMsg;
-            body["err_info"] = errorMsg;
-            std::cout<<errorMsg<<'\n';
-        }
+        m_unconfigure = true;
     }
     else if (key == "beginstep") {
         // see if we find some step information in phase 1 that needs to be
@@ -150,7 +156,7 @@ void PGPDetectorApp::handleReset(const json& msg)
 json PGPDetectorApp::connectionInfo()
 {
     std::string ip = getNicIp();
-    std::cout<<"nic ip  "<<ip<<'\n';
+    logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
     json info = m_det->connectionInfo();
     body["connect_info"].update(info);

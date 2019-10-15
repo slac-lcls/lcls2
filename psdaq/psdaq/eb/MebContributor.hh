@@ -23,7 +23,7 @@ namespace Pds {
     class MebContributor
     {
     public:
-      MebContributor(const MebCtrbParams&, std::shared_ptr<MetricExporter>&);
+      MebContributor(const MebCtrbParams&, std::shared_ptr<MetricExporter>);
     public:
       int  configure(const MebCtrbParams&, void* region, size_t size);
       void shutdown();

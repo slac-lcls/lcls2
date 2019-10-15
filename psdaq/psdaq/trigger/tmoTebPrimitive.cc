@@ -24,8 +24,7 @@ namespace Pds {
                    uint32_t            idx,
                    const XtcData::Xtc& ctrb,
                    XtcData::Xtc&       xtc) override;
-    public:
-      static size_t size() { return sizeof(TmoTebData); }
+      size_t size() const  { return sizeof(TmoTebData); }
     };
   };
 };

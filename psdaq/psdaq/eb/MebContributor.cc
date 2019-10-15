@@ -16,8 +16,8 @@ using namespace XtcData;
 using namespace Pds::Eb;
 
 
-MebContributor::MebContributor(const MebCtrbParams&             prms,
-                               std::shared_ptr<MetricExporter>& exporter) :
+MebContributor::MebContributor(const MebCtrbParams&            prms,
+                               std::shared_ptr<MetricExporter> exporter) :
   _maxEvSize (roundUpSize(prms.maxEvSize)),
   _maxTrSize (prms.maxTrSize),
   _trSize    (roundUpSize(TransitionId::NumberOf * _maxTrSize)),

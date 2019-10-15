@@ -44,7 +44,7 @@ unsigned interfaceAddress(const std::string& interface)
     strcpy(ifr.ifr_name, interface.c_str());
     ioctl(fd, SIOCGIFADDR, &ifr);
     close(fd);
-    printf("%s\n", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
+    logging::debug("%s", inet_ntoa(((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr));
     return ntohl(*(unsigned*)&(ifr.ifr_addr.sa_data[2]));
 }
 
@@ -62,7 +62,7 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
                 XtcData::Name::DataType type = xtype[scalar->getScalarType()];
                 vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type));
                 payloadSize += XtcData::Name::get_element_size(type);
-                std::cout<<"name: "<<names[i]<<"  "<<type<<'\n';
+                logging::debug("name: %s  %d", names[i].c_str(), type);
                 break;
             }
 
@@ -188,6 +188,10 @@ XtcData::Dgram* Pgp::handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
     int32_t size = dmaRet[m_current];
     uint32_t index = dmaIndex[m_current];
     uint32_t lane = (dest[m_current] >> 8) & 7;
+    if (unsigned(size) > m_pool.dmaSize()) {
+        logging::critical("DMA overflowed buffer: %d vs %d\n", size, m_pool.dmaSize());
+        exit(-1);
+    }
 
     const uint32_t* data = (uint32_t*)m_pool.dmaBuffers[index];
     uint32_t evtCounter = data[5] & 0xffffff;
@@ -199,7 +203,7 @@ XtcData::Dgram* Pgp::handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
     event->mask |= (1 << lane);
 
     // make new dgram in the pebble
-    XtcData::Dgram* dgram = (XtcData::Dgram*)m_pool.pebble[index];
+    XtcData::Dgram* dgram = (XtcData::Dgram*)m_pool.pebble[evtIndex];
     XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
     dgram->xtc.contains = tid;
     dgram->xtc.damage = 0;
@@ -262,10 +266,13 @@ BldApp::BldApp(Parameters& para) :
     m_para(para),
     m_terminate(false)
 {
+    logging::info("Ready for transitions");
 }
 
 void BldApp::shutdown()
 {
+    m_exporter.reset();
+
     m_terminate.store(true, std::memory_order_release);
     if (m_workerThread.joinable()) {
         m_workerThread.join();
@@ -276,7 +283,7 @@ void BldApp::shutdown()
 json BldApp::connectionInfo()
 {
     std::string ip = getNicIp();
-    std::cout<<"nic ip  "<<ip<<'\n';
+    logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
     json bufInfo = m_drp.connectionInfo();
     body["connect_info"].update(bufInfo); // Revisit: Should be in det_info
@@ -288,8 +295,8 @@ void BldApp::handleConnect(const nlohmann::json& msg)
     json body = json({});
     std::string errorMsg = m_drp.connect(msg, getId());
     if (!errorMsg.empty()) {
-        std::cout<<"Error in DrpBase::connect\n";
-        std::cout<<errorMsg<<'\n';
+        logging::error("Error in DrpBase::connect");
+        logging::error("%s", errorMsg.c_str());
         body["err_info"] = errorMsg;
     }
 
@@ -308,15 +315,7 @@ void BldApp::handleConnect(const nlohmann::json& msg)
 
     connectPgp(msg, std::to_string(getId()));
 
-    auto exporter = std::make_shared<MetricExporter>();
-    if (m_drp.exposer()) {
-        m_drp.exposer()->RegisterCollectable(exporter);
-    }
-
-    m_terminate.store(false, std::memory_order_release);
-
-    m_workerThread = std::thread{&BldApp::worker, this, exporter};
-
+    m_unconfigure = false;
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
 }
@@ -331,25 +330,34 @@ void BldApp::handleDisconnect(const json& msg)
 
 void BldApp::handlePhase1(const json& msg)
 {
-    logging::info("handlePhase1 in BldApp");
+    logging::debug("handlePhase1 in BldApp");
 
     json body = json({});
     std::string key = msg["header"]["key"];
     if (key == "configure") {
+        if (m_unconfigure) {
+            shutdown();
+            m_unconfigure = false;
+        }
+
         std::string errorMsg = m_drp.configure(msg);
         if (!errorMsg.empty()) {
             errorMsg = "Phase 1 error: " + errorMsg;
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
+
+        m_exporter = std::make_shared<MetricExporter>();
+        if (m_drp.exposer()) {
+            m_drp.exposer()->RegisterCollectable(m_exporter);
+        }
+
+        m_terminate.store(false, std::memory_order_release);
+
+        m_workerThread = std::thread{&BldApp::worker, this, m_exporter};
     }
     else if (key == "unconfigure") {
-        std::string errorMsg = m_drp.unconfigure(msg);
-        if (!errorMsg.empty()) {
-            errorMsg = "Phase 1 error: " + errorMsg;
-            body["err_info"] = errorMsg;
-            std::cout<<errorMsg<<'\n';
-        }
+        m_unconfigure = true;
     }
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
@@ -379,7 +387,7 @@ void BldApp::connectPgp(const json& json, const std::string& collectionId)
     dmaWriteRegister(fd, 0x00a00000, v);
     uint32_t w;
     dmaReadRegister(fd, 0x00a00000, &w);
-    logging::info("Configured readout group [%u], length [%u], links [%x]: [%x](%x)\n",
+    logging::info("Configured readout group [%u], length [%u], links [%x]: [%x](%x)",
            readoutGroup, length, links, v, w);
     for (unsigned i=0; i<4; i++) {
         if (links&(1<<i)) {
@@ -396,11 +404,11 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
 
     unsigned mcaddr = m_pvaAddr->getScalarAs<unsigned>();
     unsigned port = m_pvaPort->getScalarAs<unsigned>();
-    printf("addr %u  port %u\n", mcaddr, port);
+    logging::debug("addr %u  port %u", mcaddr, port);
 
     unsigned payloadSize;
     XtcData::VarDef bldDef = m_pvaDescriptor->get(payloadSize);
-    printf("payloadSize %u\n", payloadSize);
+    logging::debug("payloadSize %u", payloadSize);
 
     Bld bld(mcaddr, port);
     Pgp pgp(m_drp.pool, m_drp.nodeId(), 0xffff0000 | uint32_t(m_para.rogMask));
@@ -432,7 +440,7 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
                 XtcData::NamesId namesId(m_drp.nodeId(), 0);
                 switch (dgram->seq.service()) {
                     case XtcData::TransitionId::Configure: {
-                        printf("Configure transition\n");
+                        logging::info("BLD configure");
                         XtcData::Alg bldAlg("bldAlg", 1, 2, 3);
                         XtcData::Names& bldNames = *new(dgram->xtc) XtcData::Names("bld", bldAlg,
                             "bld", "bld1234", namesId, 0);
@@ -455,7 +463,7 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
             nevents++;
         }
     }
-    std::cout<<"Worker thread finished\n";
+    logging::info("Worker thread finished");
 }
 
 void BldApp::sentToTeb(XtcData::Dgram& dgram, uint32_t index)
@@ -520,8 +528,7 @@ int main(int argc, char* argv[])
     }
 
     switch (para.verbose) {
-      case 0:  logging::init(instrument, LOG_WARNING);  break;
-      case 1:  logging::init(instrument, LOG_INFO);     break;
+      case 0:  logging::init(instrument, LOG_INFO);     break;
       default: logging::init(instrument, LOG_DEBUG);    break;
     }
     logging::info("logging configured");

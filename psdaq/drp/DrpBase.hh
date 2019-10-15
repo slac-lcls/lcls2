@@ -14,21 +14,15 @@
 
 namespace Drp {
 
-#pragma pack(push, 4)
-class MyDgram : public XtcData::Dgram {
-public:
-    MyDgram(XtcData::Dgram& dgram, uint64_t val, unsigned contributor_id);
-private:
-    uint64_t _data;
-};
-#pragma pack(pop)
+static const char* const RED_ON  = "\033[0;31m";
+static const char* const RED_OFF = "\033[0m";
 
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
     EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
-               std::shared_ptr<MetricExporter>& exporter);
+               const std::shared_ptr<MetricExporter>& exporter);
     void process(const Pds::Eb::ResultDgram& result, const void* input) override;
 public:
     void resetCounters();
@@ -58,7 +52,6 @@ public:
     nlohmann::json connectionInfo();
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string configure(const nlohmann::json& msg);
-    std::string unconfigure(const nlohmann::json& msg);
     Pds::Eb::TebContributor& tebContributor() const {return *m_tebContributor;}
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
     prometheus::Exposer* exposer() {return m_exposer.get();}
@@ -81,7 +74,6 @@ private:
     size_t m_collectionId;
     Pds::Trg::Factory<Pds::Trg::TriggerPrimitive> m_trigPrimFactory;
     Pds::Trg::TriggerPrimitive* m_triggerPrimitive;
-    bool m_unconfigure;
 };
 
 }

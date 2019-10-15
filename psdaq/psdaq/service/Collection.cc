@@ -72,9 +72,9 @@ std::string getNicIp()
             int s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in),
                                  host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
             if (s != 0) {
-                printf("getnameinfo() failed: %s\n", gai_strerror(s));
+                logging::error("getnameinfo() failed: %s\n", gai_strerror(s));
             }
-            printf("address %s: <%s>\n", ifa->ifa_name, host);
+            logging::debug("Interface address %s: <%s>\n", ifa->ifa_name, host);
         }
     }
     freeifaddrs(ifaddr);
@@ -197,7 +197,7 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "all", 3);
     std::ostringstream ss;
     ss << std::string{"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)};
-    logging::info("%s", ss.str().c_str());
+    logging::debug("%s", ss.str().c_str());
     m_inprocRecv.bind("inproc://drp");
 
     // register callbacks
@@ -234,14 +234,14 @@ void CollectionApp::handleAlloc(const json &msg)
     // check if own id is in included in the msg
     auto it = std::find(msg["body"]["ids"].begin(), msg["body"]["ids"].end(), m_id);
     if (it != msg["body"]["ids"].end()) {
-        logging::info("%s", "subscribing to partition");
+        logging::debug("%s", "subscribing to partition");
         m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "partition", 9);
 
         json info = connectionInfo();
         json body = {{m_level, info}};
         std::ostringstream ss;
         ss << std::setw(4) << body;
-        logging::info("body handleAlloc  %s", ss.str().c_str());
+        logging::debug("body handleAlloc  %s", ss.str().c_str());
         json answer = createMsg("alloc", msg["header"]["msg_id"], m_id, body);
 
         reply(answer);
@@ -275,7 +275,7 @@ void CollectionApp::run()
             char* end = begin + frames[1].size();
             json msg = json::parse(begin, end);
             std::string topic((char*)frames[0].data(), frames[0].size());
-            logging::info("topic:  %s", topic.c_str());
+            logging::debug("topic:  %s", topic.c_str());
 
             std::string key = msg["header"]["key"];
             logging::info("received key = %s", key.c_str());
@@ -295,7 +295,7 @@ void CollectionApp::run()
             // forward message to contol system with pulseId as the message id
             std::string pulseId = m_inprocRecv.recv();
             uint64_t pid = std::stoul(pulseId);
-            logging::info("inproc message received  %014lx", pid);
+            logging::debug("inproc message received  %014lx", pid);
             json body;
             json answer = createMsg("timingTransition", pulseId, getId(), body);
             reply(answer);

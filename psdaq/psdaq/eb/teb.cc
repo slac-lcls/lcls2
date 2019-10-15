@@ -42,14 +42,9 @@ using json     = nlohmann::json;
 using logging  = Pds::SysLog;
 using string_t = std::string;
 
-static const int      CORE_0           = 18; // devXXX: 11, devXX:  7, accXX:  9
-static const int      CORE_1           = 19; // devXXX: 12, devXX: 19, accXX: 21
-static const size_t   HEADER_SIZE      = sizeof(Dgram);
-static const size_t   INPUT_EXTENT     = 2; // Revisit: Number of "L3" input  data words
-static const size_t   RESULT_EXTENT    = 2; // Revisit: Number of "L3" result data words
-static const size_t   MAX_CONTRIB_SIZE = HEADER_SIZE + INPUT_EXTENT  * sizeof(uint32_t);
-static const size_t   MAX_RESULT_SIZE  = HEADER_SIZE + RESULT_EXTENT * sizeof(uint32_t);
-static const string_t TRIGGER_DETNAME  = "tmoTeb";
+static const int      CORE_0          = 18; // devXXX: 11, devXX:  7, accXX:  9
+static const int      CORE_1          = 19; // devXXX: 12, devXX: 19, accXX: 21
+static const string_t TRIGGER_DETNAME = "tmoTeb";
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -79,7 +74,7 @@ namespace Pds {
     class Teb : public EbAppBase
     {
     public:
-      Teb(const EbParams& prms, std::shared_ptr<MetricExporter>& exporter);
+      Teb(const EbParams& prms, const std::shared_ptr<MetricExporter>& exporter);
     public:
       int      configure(const EbParams&, Trigger* object, unsigned prescale);
       void     run();
@@ -122,12 +117,12 @@ namespace Pds {
 
 using namespace Pds::Eb;
 
-Teb::Teb(const EbParams& prms, std::shared_ptr<MetricExporter>& exporter) :
+Teb::Teb(const EbParams& prms, const std::shared_ptr<MetricExporter>& exporter) :
   EbAppBase     (prms, BATCH_DURATION, MAX_ENTRIES, MAX_BATCHES),
   _l3Links      (),
   _mrqTransport (prms.verbose),
   _mrqLinks     (),
-  _batMan       (Trigger::size()), // Revisit: prms.maxResultSize),
+  _batMan       (prms.maxResultSize),
   _id           (-1),
   _verbose      (prms.verbose),
   //_trimmed      (0),
@@ -490,42 +485,10 @@ uint64_t Teb::_receivers(const Dgram& ctrb) const
 }
 
 
-static void _printGroups(unsigned groups, const u64arr_t& array)
-{
-  while (groups)
-  {
-    unsigned group = __builtin_ffs(groups) - 1;
-    groups &= ~(1 << group);
-
-    printf("%d: 0x%016lx  ", group, array[group]);
-  }
-  printf("\n");
-}
-
-static void _printParams(EbParams& prms, unsigned groups)
-{
-  printf("Parameters of TEB ID %d:\n",                        prms.id);
-  printf("  Thread core numbers:         %d, %d\n",           prms.core[0], prms.core[1]);
-  printf("  Partition:                   %d\n",               prms.partition);
-  printf("  Bit list of contributors:  0x%016lx, cnt: %zd\n", prms.contributors,
-                                                              std::bitset<64>(prms.contributors).count());
-  printf("  Readout group contractors:   ");                  _printGroups(groups, prms.contractors);
-  printf("  Readout group receivers:     ");                  _printGroups(groups, prms.receivers);
-  printf("  ConfigDb trigger detName:    %s\n",               prms.trgDetName.c_str());
-  printf("  Number of MEB requestors:    %d\n",               prms.numMrqs);
-  printf("  Batch duration:            0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
-  printf("  Batch pool depth:            %d\n",               MAX_BATCHES);
-  printf("  Max # of entries / batch:    %d\n",               MAX_ENTRIES);
-  printf("  # of contrib. buffers:       %d\n",               MAX_LATENCY);
-  printf("  Max result     Dgram size:   %zd\n",              prms.maxResultSize);
-  printf("  Max transition Dgram size:   %zd\n",              prms.maxTrSize[0]);
-  printf("\n");
-}
-
 class TebApp : public CollectionApp
 {
 public:
-  TebApp(const std::string& collSrv, EbParams&, std::shared_ptr<MetricExporter>&);
+  TebApp(const std::string& collSrv, EbParams&, const std::shared_ptr<MetricExporter>&);
   virtual ~TebApp();
 public:                                 // For CollectionApp
   json connectionInfo() override;
@@ -536,24 +499,29 @@ public:                                 // For CollectionApp
 private:
   int  _configure(const json& msg);
   int  _parseConnectionParams(const json& msg);
+  void _printParams(const EbParams& prms, unsigned groups) const;
+  void _printGroups(unsigned groups, const u64arr_t& array) const;
   void _buildContract(const Document& top);
 private:
-  EbParams&                  _prms;
-  Teb                        _teb;
-  std::thread                _appThread;
-  json                       _connectMsg;
-  Trg::Factory<Trg::Trigger> _factory;
-  uint16_t                   _groups;
+  EbParams&                              _prms;
+  const std::shared_ptr<MetricExporter>& _exporter;
+  std::unique_ptr<Teb>                   _teb;
+  std::thread                            _appThread;
+  json                                   _connectMsg;
+  Trg::Factory<Trg::Trigger>             _factory;
+  uint16_t                               _groups;
 };
 
-TebApp::TebApp(const std::string&               collSrv,
-               EbParams&                        prms,
-               std::shared_ptr<MetricExporter>& exporter) :
+TebApp::TebApp(const std::string&                     collSrv,
+               EbParams&                              prms,
+               const std::shared_ptr<MetricExporter>& exporter) :
   CollectionApp(collSrv, prms.partition, "teb", prms.alias),
   _prms        (prms),
-  _teb         (prms, exporter)
+  _exporter    (exporter)
 {
   Py_Initialize();
+
+  logging::info("Ready for transitions");
 }
 
 TebApp::~TebApp()
@@ -575,7 +543,7 @@ void TebApp::handleConnect(const json& msg)
   int  rc   = _parseConnectionParams(msg["body"]);
   if (rc)
   {
-    std::string errorMsg = "Error parsing connect message";
+    std::string errorMsg = "Error parsing connect parameters";
     body["err_info"] = errorMsg;
     logging::error("%s:\n  %s", __PRETTY_FUNCTION__, errorMsg.c_str());
   }
@@ -637,6 +605,7 @@ int TebApp::_configure(const json& msg)
                    __PRETTY_FUNCTION__);
     return -1;
   }
+  _prms.maxResultSize = trigger->size();
 
   if (trigger->configure(_connectMsg, top))
   {
@@ -655,7 +624,9 @@ int TebApp::_configure(const json& msg)
 
 # undef _FETCH
 
-  rc = _teb.configure(_prms, trigger, prescale);
+  if (_teb)  _teb.reset();
+  _teb = std::make_unique<Teb>(_prms, _exporter);
+  rc = _teb->configure(_prms, trigger, prescale);
 
   return rc;
 }
@@ -689,7 +660,7 @@ void TebApp::handlePhase1(const json& msg)
 
       lRunning = 1;
 
-      _appThread = std::thread(&Teb::run, std::ref(_teb));
+      _appThread = std::thread(&Teb::run, std::ref(*_teb));
     }
   }
 
@@ -779,7 +750,7 @@ int TebApp::_parseConnectionParams(const json& body)
 
   auto& vec =_prms.maxTrSize;
   vec.resize(body["drp"].size());
-  std::fill(vec.begin(), vec.end(), MAX_CONTRIB_SIZE); // Same for all contributors
+  std::fill(vec.begin(), vec.end(), sizeof(Dgram)); // Same for all contributors
 
   _prms.numMrqs = 0;
   if (body.find("meb") != body.end())
@@ -791,6 +762,38 @@ int TebApp::_parseConnectionParams(const json& body)
   }
 
   return 0;
+}
+
+void TebApp::_printGroups(unsigned groups, const u64arr_t& array) const
+{
+  while (groups)
+  {
+    unsigned group = __builtin_ffs(groups) - 1;
+    groups &= ~(1 << group);
+
+    printf("%d: 0x%016lx  ", group, array[group]);
+  }
+  printf("\n");
+}
+
+void TebApp::_printParams(const EbParams& prms, unsigned groups) const
+{
+  printf("Parameters of TEB ID %d:\n",                         prms.id);
+  printf("  Thread core numbers:        %d, %d\n",             prms.core[0], prms.core[1]);
+  printf("  Partition:                  %d\n",                 prms.partition);
+  printf("  Bit list of contributors:   0x%016lx, cnt: %zd\n", prms.contributors,
+                                                                std::bitset<64>(prms.contributors).count());
+  printf("  Readout group contractors:  ");                    _printGroups(groups, prms.contractors);
+  printf("  Readout group receivers:    ");                    _printGroups(groups, prms.receivers);
+  printf("  ConfigDb trigger detName:   %s\n",                 prms.trgDetName.c_str());
+  printf("  Number of MEB requestors:   %d\n",                 prms.numMrqs);
+  printf("  Batch duration:             0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
+  printf("  Batch pool depth:           %d\n",                 MAX_BATCHES);
+  printf("  Max # of entries / batch:   %d\n",                 MAX_ENTRIES);
+  printf("  # of contrib. buffers:      %d\n",                 MAX_LATENCY);
+  printf("  Max result     Dgram size:  %zd\n",                prms.maxResultSize);
+  printf("  Max transition Dgram size:  %zd\n",                prms.maxTrSize[0]);
+  printf("\n");
 }
 
 
@@ -835,23 +838,12 @@ int main(int argc, char **argv)
   int            op           = 0;
   char*          instrument   = NULL;
   std::string    collSrv;
-  EbParams       prms { /* .ifAddr        = */ { }, // Network interface to use
-                        /* .ebPort        = */ { },
-                        /* .mrqPort       = */ { },
-                        /* .partition     = */ NO_PARTITION,
-                        /* .alias         = */ { }, // Unique name passed on cmd line
-                        /* .id            = */ -1u,
-                        /* .contributors  = */ 0,   // DRPs
-                        /* .contractors   = */ { },
-                        /* .receivers     = */ { },
-                        /* .addrs         = */ { }, // Result dst addr served by Ctrbs
-                        /* .ports         = */ { }, // Result dst port served by Ctrbs
-                        /* .maxTrSize     = */ { }, // Filled in at connect
-                        /* .maxResultSize = */ MAX_RESULT_SIZE,
-                        /* .numMrqs       = */ 0,   // Number of Mon requestors
-                        /* .trgDetName    = */ { },
-                        /* .core          = */ { CORE_0, CORE_1 },
-                        /* .verbose       = */ 0 };
+  EbParams       prms;
+
+  prms.partition = NO_PARTITION;
+  prms.core[0]   = CORE_0;
+  prms.core[1]   = CORE_1;
+  prms.verbose   = 0;
 
   while ((op = getopt(argc, argv, "C:p:P:T::A:1:2:u:h?v")) != -1)
   {

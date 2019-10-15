@@ -26,8 +26,8 @@ using namespace XtcData;
 using namespace Pds::Eb;
 
 
-TebContributor::TebContributor(const TebCtrbParams&             prms,
-                               std::shared_ptr<MetricExporter>& exporter) :
+TebContributor::TebContributor(const TebCtrbParams&                   prms,
+                               const std::shared_ptr<MetricExporter>& exporter) :
   _prms        (prms),
   _batMan      (prms.maxInputSize),
   _transport   (prms.verbose),

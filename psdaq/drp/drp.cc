@@ -95,6 +95,7 @@ int main(int argc, char* argv[])
         logging::critical("-u: alias is mandatory");
         exit(1);
     }
+
     // Alias must be of form <detName>_<detSegment>
     size_t found = para.alias.rfind('_');
     if ((found == std::string::npos) || !isdigit(para.alias.back())) {

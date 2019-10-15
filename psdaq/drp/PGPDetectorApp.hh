@@ -5,6 +5,7 @@
 #include "PGPDetector.hh"
 #include "psdaq/trigger/TriggerPrimitive.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/MetricExporter.hh"
 
 namespace Drp {
 
@@ -26,6 +27,8 @@ private:
     std::unique_ptr<PGPDetector> m_pgpDetector;
     Detector* m_det;
     Pds::Trg::Factory<Pds::Trg::TriggerPrimitive> m_trigPrimFactory;
+    std::shared_ptr<MetricExporter> m_exporter;
+    bool m_unconfigure;
 };
 
 }

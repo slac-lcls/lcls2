@@ -123,10 +123,10 @@ namespace Pds {
     class EbCtrbIn : public EbCtrbInBase
     {
     public:
-      EbCtrbIn(const TebCtrbParams&             prms,
-               DrpSim&                          drpSim,
-               ZmqContext&                      context,
-               std::shared_ptr<MetricExporter>& exporter);
+      EbCtrbIn(const TebCtrbParams&                   prms,
+               DrpSim&                                drpSim,
+               ZmqContext&                            context,
+               const std::shared_ptr<MetricExporter>& exporter);
       virtual ~EbCtrbIn() {}
     public:
       int      configure(const TebCtrbParams&, MebContributor*);
@@ -143,8 +143,8 @@ namespace Pds {
     class EbCtrbApp : public TebContributor
     {
     public:
-      EbCtrbApp(const TebCtrbParams&             prms,
-                std::shared_ptr<MetricExporter>& exporter);
+      EbCtrbApp(const TebCtrbParams&                   prms,
+                const std::shared_ptr<MetricExporter>& exporter);
       ~EbCtrbApp() {}
     public:
       DrpSim&  drpSim() { return _drpSim; }
@@ -336,10 +336,10 @@ void DrpSim::release(const Input* input)
 }
 
 
-EbCtrbIn::EbCtrbIn(const TebCtrbParams&             prms,
-                   DrpSim&                          drpSim,
-                   ZmqContext&                      context,
-                   std::shared_ptr<MetricExporter>& exporter) :
+EbCtrbIn::EbCtrbIn(const TebCtrbParams&                   prms,
+                   DrpSim&                                drpSim,
+                   ZmqContext&                            context,
+                   const std::shared_ptr<MetricExporter>& exporter) :
   EbCtrbInBase(prms, exporter),
   _drpSim     (drpSim),
   _mebCtrb    (nullptr),
@@ -420,8 +420,8 @@ void EbCtrbIn::process(const ResultDgram& result, const void* appPrm)
 }
 
 
-EbCtrbApp::EbCtrbApp(const TebCtrbParams&             prms,
-                     std::shared_ptr<MetricExporter>& exporter) :
+EbCtrbApp::EbCtrbApp(const TebCtrbParams&                   prms,
+                     const std::shared_ptr<MetricExporter>& exporter) :
   TebContributor(prms, exporter),
   _drpSim       (prms.maxInputSize),
   _prms         (prms)
@@ -481,7 +481,10 @@ void EbCtrbApp::run(EbCtrbIn& in)
 class CtrbApp : public CollectionApp
 {
 public:
-  CtrbApp(const std::string& collSrv, TebCtrbParams&, MebCtrbParams&, std::shared_ptr<MetricExporter>&);
+  CtrbApp(const std::string& collSrv,
+          TebCtrbParams&,
+          MebCtrbParams&,
+          const std::shared_ptr<MetricExporter>&);
 public:                                 // For CollectionApp
   json connectionInfo() override;
   void handleConnect(const json& msg) override;
@@ -501,10 +504,10 @@ private:
   bool           _unconfigure;
 };
 
-CtrbApp::CtrbApp(const std::string&               collSrv,
-                 TebCtrbParams&                   tebPrms,
-                 MebCtrbParams&                   mebPrms,
-                 std::shared_ptr<MetricExporter>& exporter) :
+CtrbApp::CtrbApp(const std::string&                     collSrv,
+                 TebCtrbParams&                         tebPrms,
+                 MebCtrbParams&                         mebPrms,
+                 const std::shared_ptr<MetricExporter>& exporter) :
   CollectionApp(collSrv, tebPrms.partition, "drp", tebPrms.alias),
   _tebPrms(tebPrms),
   _mebPrms(mebPrms),
