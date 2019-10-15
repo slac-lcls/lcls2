@@ -354,17 +354,18 @@ int main(int argc, char* argv[])
                 unsigned nodeId = 0;
                 NamesId eventNamesId(nodeId,EventNamesIndex);
 
+                //this instantiates the dgram.xtc component.  Here's the path dgram takes before it gets written.  dgram is now contained within fex
                 CreateData fex(dgram.xtc, namesLookup, eventNamesId);
 
                 unsigned shape[MaxRank];
                 shape[0] = size;
-                Array<uint8_t> arrayT = fex.allocate<uint8_t>(TTDef::data,shape);
+                Array<uint8_t> arrayT = fex.allocate<uint8_t>(TTDef::data,shape);   //arrayT is now pointing at dgram.xtc
                 for(unsigned i=0; i<shape[0]; i++){
-                    arrayT(i) = raw_data[i];
+                    arrayT(i) = raw_data[i];                                        //this copies the data from raw_data to arrayT (where arrayT is really dgram.xtc)
                 };
 
 
-                
+                //here finally dgram is written to disk
                 if (fwrite(&dgram, sizeof(dgram) + dgram.xtc.sizeofPayload(), 1, xtcFile) != 1) {
                     printf("Error writing to output xtc file.\n");
                 }
