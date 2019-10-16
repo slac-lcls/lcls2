@@ -39,7 +39,7 @@ ctypedef fused dtypes2d :
 
 #----------
 
-cdef extern from "psalg/hexanode/ctest_utils.hh" namespace "psalg":
+cdef extern from "psalg/utils/ctest_utils.hh" namespace "psalg":
     void ctest_nda[T](T *arr, int r, int c) except +
 
 def test_nda_fused(dtypes2d nda):
@@ -48,7 +48,7 @@ def test_nda_fused(dtypes2d nda):
 
 #----------
 
-cdef extern from "psalg/hexanode/ctest_utils.hh" namespace "psalg":
+cdef extern from "psalg/utils/ctest_utils.hh" namespace "psalg":
     void ctest_nda_v2[T](T*, CSHAPE_T*, int&) except +
 
 def print_cnparr(dtypes2d nda):
@@ -72,7 +72,7 @@ def test_nda_fused_v2(dtypes2d nda):
 
 #----------
 
-cdef extern from "psalg/hexanode/ctest_utils.hh" namespace "psalg":
+cdef extern from "psalg/utils/ctest_utils.hh" namespace "psalg":
     double ctest_vector(vector[double] &v)
 
 def py_ctest_vector(v):

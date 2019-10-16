@@ -86,7 +86,7 @@ def fib(n):
 
 #------------------------------
 
-cdef extern from "psalg/hexanode/ctest_utils.hh" namespace "psalg":
+cdef extern from "psalg/utils/ctest_utils.hh" namespace "psalg":
     #void ctest_nda[T](T *arr, int r, int c) except +
     void ctest_nda_f8(double   *arr, int r, int c) except +
     void ctest_nda_i2(int16_t  *arr, int r, int c) except +

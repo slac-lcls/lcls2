@@ -13,6 +13,7 @@ install(FILES
     Utils.hh
     MacTimeFix.hh
     DirFileIterator.hh
+    ctest_utils.hh
     DESTINATION include/psalg/utils
 )
 
