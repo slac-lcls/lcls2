@@ -13,6 +13,6 @@ for nevt,evt in enumerate(dsource.events()):
    if wfs is None: continue
    print(wfs.shape,times.shape)
    smldata.event(waveforms=wfs,times=times)
-   if nevt>10: break
+   if nevt>100: break
 
 smldata.save()

@@ -29,10 +29,8 @@ for nevt,(wfs,times) in enumerate(zip(waveforms,times)):
     cydgram.addDet(nameinfo, alg, my_data)
     timestamp = nevt
     pulseid = nevt
-    if (nevt==0):
-        transitionid = 2  # Configure
-    else:
-        transitionid = 12 # L1Accept
+    if (nevt==0): transitionid = 2  # Configure
+    else:         transitionid = 12 # L1Accept
     xtc_bytes = cydgram.get(timestamp,pulseid,transitionid)
     f.write(xtc_bytes)
 f.close()
