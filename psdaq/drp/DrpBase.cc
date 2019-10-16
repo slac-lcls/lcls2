@@ -208,14 +208,6 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_mPrms.maxTrSize = 256 * 1024;
     m_mPrms.verbose   = para.verbose;
 
-    try {
-        m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
-    }
-    catch(const std::runtime_error& e) {
-        logging::warning("Could not start run-time monitoring server");
-        logging::warning("%s", e.what());
-    }
-
     m_inprocSend.connect("inproc://drp");
 }
 
@@ -251,6 +243,15 @@ std::string DrpBase::configure(const json& msg)
 {
     if (setupTriggerPrimitives(msg["body"])) {
         return std::string("Failed to set up TriggerPrimitive(s)");
+    }
+
+    if (m_exposer)  m_exposer.reset();
+    try {
+        m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
+    }
+    catch(const std::runtime_error& e) {
+        logging::warning("Could not start run-time monitoring server");
+        logging::warning("%s", e.what());
     }
 
     m_exporter = std::make_shared<MetricExporter>();

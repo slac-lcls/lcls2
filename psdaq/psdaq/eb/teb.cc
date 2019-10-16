@@ -488,7 +488,7 @@ uint64_t Teb::_receivers(const Dgram& ctrb) const
 class TebApp : public CollectionApp
 {
 public:
-  TebApp(const std::string& collSrv, EbParams&, const std::shared_ptr<MetricExporter>&);
+  TebApp(const std::string& collSrv, EbParams&);
   virtual ~TebApp();
 public:                                 // For CollectionApp
   json connectionInfo() override;
@@ -503,21 +503,20 @@ private:
   void _printGroups(unsigned groups, const u64arr_t& array) const;
   void _buildContract(const Document& top);
 private:
-  EbParams&                              _prms;
-  const std::shared_ptr<MetricExporter>& _exporter;
-  std::unique_ptr<Teb>                   _teb;
-  std::thread                            _appThread;
-  json                                   _connectMsg;
-  Trg::Factory<Trg::Trigger>             _factory;
-  uint16_t                               _groups;
+  EbParams&                            _prms;
+  std::unique_ptr<prometheus::Exposer> _exposer;
+  std::shared_ptr<MetricExporter>      _exporter;
+  std::unique_ptr<Teb>                 _teb;
+  std::thread                          _appThread;
+  json                                 _connectMsg;
+  Trg::Factory<Trg::Trigger>           _factory;
+  uint16_t                             _groups;
 };
 
-TebApp::TebApp(const std::string&                     collSrv,
-               EbParams&                              prms,
-               const std::shared_ptr<MetricExporter>& exporter) :
+TebApp::TebApp(const std::string& collSrv,
+               EbParams&          prms) :
   CollectionApp(collSrv, prms.partition, "teb", prms.alias),
-  _prms        (prms),
-  _exporter    (exporter)
+  _prms        (prms)
 {
   Py_Initialize();
 
@@ -623,6 +622,21 @@ int TebApp::_configure(const json& msg)
   unsigned prescale;  _FETCH("prescale", prescale);
 
 # undef _FETCH
+
+  if (_exposer)  _exposer.reset();
+  try
+  {
+    _exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
+  }
+  catch(const std::runtime_error& e)
+  {
+    logging::warning("Could not start run-time monitoring server");
+    logging::warning("%s", e.what());
+  }
+
+  if (_exporter)  _exporter.reset();
+  _exporter = std::make_shared<MetricExporter>();
+  if (_exposer)  _exposer->RegisterCollectable(_exporter);
 
   if (_teb)  _teb.reset();
   _teb = std::make_unique<Teb>(_prms, _exporter);
@@ -903,22 +917,7 @@ int main(int argc, char **argv)
   // Iterate over contributions in the batch
   // Event build them according to their trigger group
 
-  std::unique_ptr<prometheus::Exposer> exposer;
-  try
-  {
-    exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
-  }
-  catch(const std::runtime_error& e)
-  {
-    logging::warning("Could not start run-time monitoring server");
-    logging::warning("%s", e.what());
-  }
-
-  auto exporter = std::make_shared<MetricExporter>();
-
-  TebApp app(collSrv, prms, exporter);
-
-  if (exposer)  exposer->RegisterCollectable(exporter);
+  TebApp app(collSrv, prms);
 
   try
   {

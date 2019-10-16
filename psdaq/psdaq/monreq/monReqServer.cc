@@ -365,12 +365,11 @@ namespace Pds {
 class MebApp : public CollectionApp
 {
 public:
-  MebApp(const std::string&                     collSrv,
-         const char*                            tag,
-         unsigned                               numEvQueues,
-         bool                                   distribute,
-         MebParams&                             prms,
-         const std::shared_ptr<MetricExporter>& exporter);
+  MebApp(const std::string&              collSrv,
+         const char*                     tag,
+         unsigned                        numEvQueues,
+         bool                            distribute,
+         MebParams&                      prms);
 public:                                 // For CollectionApp
   json         connectionInfo() override;
   void         handleConnect(const json& msg) override;
@@ -384,29 +383,28 @@ private:
   void        _printParams(const EbParams& prms, unsigned groups) const;
   void        _printGroups(unsigned groups, const u64arr_t& array) const;
 private:
-  const char*                            _tag;
-  unsigned                               _numEvQueues;
-  bool                                   _distribute;
-  MebParams&                             _prms;
-  const std::shared_ptr<MetricExporter>& _exporter;
-  std::unique_ptr<Meb>                   _meb;
-  std::unique_ptr<MyXtcMonitorServer>    _apps;
-  std::thread                            _appThread;
-  uint16_t                               _groups;
+  const char*                          _tag;
+  unsigned                             _numEvQueues;
+  bool                                 _distribute;
+  MebParams&                           _prms;
+  std::unique_ptr<prometheus::Exposer> _exposer;
+  std::shared_ptr<MetricExporter>      _exporter;
+  std::unique_ptr<Meb>                 _meb;
+  std::unique_ptr<MyXtcMonitorServer>  _apps;
+  std::thread                          _appThread;
+  uint16_t                             _groups;
 };
 
-MebApp::MebApp(const std::string&                     collSrv,
-               const char*                            tag,
-               unsigned                               numEvQueues,
-               bool                                   distribute,
-               MebParams&                             prms,
-               const std::shared_ptr<MetricExporter>& exporter) :
+MebApp::MebApp(const std::string&              collSrv,
+               const char*                     tag,
+               unsigned                        numEvQueues,
+               bool                            distribute,
+               MebParams&                      prms) :
   CollectionApp(collSrv, prms.partition, "meb", prms.alias),
   _tag         (tag),
   _numEvQueues (numEvQueues),
   _distribute  (distribute),
-  _prms        (prms),
-  _exporter    (exporter)
+  _prms        (prms)
 {
   logging::info("Ready for transitions");
 }
@@ -446,6 +444,21 @@ void MebApp::handleConnect(const json &msg)
 
 std::string MebApp::_configure(const json &msg)
 {
+  if (_exposer)  _exposer.reset();
+  try
+  {
+    _exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
+  }
+  catch(const std::runtime_error& e)
+  {
+    logging::warning("Could not start run-time monitoring server");
+    logging::warning("%s", e.what());
+  }
+
+  if (_exporter)  _exporter.reset();
+  _exporter = std::make_shared<MetricExporter>();
+  if (_exposer)  _exposer->RegisterCollectable(_exporter);
+
   if (_meb)  _meb.reset();
   _meb = std::make_unique<Meb>(_prms, _exporter);
   int rc = _meb->configure(_prms);
@@ -771,22 +784,7 @@ int main(int argc, char** argv)
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
     logging::error("Failed to set up ^C handler");
 
-  std::unique_ptr<prometheus::Exposer> exposer;
-  try
-  {
-    exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
-  }
-  catch(const std::runtime_error& e)
-  {
-    logging::warning("Could not start run-time monitoring server");
-    logging::warning("%s", e.what());
-  }
-
-  auto exporter = std::make_shared<MetricExporter>();
-
-  MebApp app(collSrv, tag, nevqueues, ldist, prms, exporter);
-
-  if (exposer)  exposer->RegisterCollectable(exporter);
+  MebApp app(collSrv, tag, nevqueues, ldist, prms);
 
   try                        { app.run(); }
   catch (std::exception& e)  { logging::critical("%s", e.what()); }
