@@ -34,7 +34,7 @@ int load_file(std::string test_file, std::vector<uint8_t> &raw_data){
      if (file.is_open())
       {
         size = file.tellg();
-        printf("size = %i \n",size);
+        printf("size = %i \n",(int)size);
         memblock = new char [size];
         file.seekg (0, std::ios::beg);
         file.read (memblock, size);

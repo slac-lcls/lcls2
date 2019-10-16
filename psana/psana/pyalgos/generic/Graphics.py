@@ -315,7 +315,7 @@ def drawCenter(axes, xy0, s=10, linewidth=1, color='w', **kwargs) :
     line = lines.Line2D(arrx, arry, linewidth=linewidth, color=color, **kwargs)   
     axes.add_artist(line)
 
-def drawLine(axes, xarr, yarr, s=10, linewidth=1, color='w') : 
+def drawLine(axes, xarr, yarr, s=10, linewidth=1, color='w', **kwargs) : 
     line = lines.Line2D(xarr, yarr, linewidth=linewidth, color=color, **kwargs)   
     axes.add_artist(line)
 
