@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>                     // For sleep()...
 #include <assert.h>
 #include <chrono>
 
@@ -86,8 +85,6 @@ int EbLfClient::connect(EbLfCltLink** link,
     if (tmo && (dT > tmo))  break;
 
     ep->shutdown();               // Can't try to connect on an EP a 2nd time
-
-    usleep(10000);                // Short on human time scales
   }
   if ((ep->error_num() != FI_SUCCESS) || (tmo && (dT > tmo)))
   {
