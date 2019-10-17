@@ -5,7 +5,6 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
-#include "rapidjson/document.h"
 
 #include <vector>
 #include <stdio.h>
@@ -18,7 +17,6 @@
 #include <stdint.h>
 
 using namespace XtcData;
-using namespace rapidjson;
 
 #define BUFSIZE 0x4000000
 

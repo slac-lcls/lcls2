@@ -1,11 +1,9 @@
 #include <Python.h>
 #include <stdio.h>
 #include <assert.h>
+#include <iostream>
 #include "rapidjson/document.h"
 
-#include "xtcdata/xtc/Json2Xtc.hh"
-
-using namespace XtcData;
 using namespace rapidjson;
 
 static void check(PyObject* obj) {

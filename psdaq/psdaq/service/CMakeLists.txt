@@ -12,14 +12,17 @@ add_library(service SHARED
     Histogram.cc
     Dl.cc
     SysLog.cc
+    Json2Xtc.cc
 )
 
 target_include_directories(service PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${RAPIDJSON_INCLUDE_DIRS}
 )
 
 target_link_libraries(service PUBLIC
+    xtcdata::xtc
     dl
 )
 

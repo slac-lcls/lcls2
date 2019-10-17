@@ -11,7 +11,7 @@
 #include "xtcdata/xtc/TypeId.hh"
 #include "AxiBatcherParser.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
-#include "xtcdata/xtc/Json2Xtc.hh"
+#include "psdaq/service/Json2Xtc.hh"
 #include <unistd.h>
 #include <getopt.h>
 #include <time.h>
@@ -168,7 +168,7 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
     // convert to json to xtc
     unsigned nodeId = 0; //Fix me for real drp
     NamesId configNamesId(nodeId,ConfigNamesIndex);
-    unsigned len = translateJson2Xtc(json, config_buf, configNamesId);
+    unsigned len = Pds::translateJson2Xtc(json, config_buf, configNamesId);
     if (len>BUFSIZE) {
         throw "**** Config json output too large for buffer\n";
     }

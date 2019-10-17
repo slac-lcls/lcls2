@@ -48,15 +48,7 @@ target_link_libraries(smdwriter
     xtc
 )
 
-add_executable(json2xtc
-    json2xtc.cc
-)
-
-target_link_libraries(json2xtc
-    xtc
-)
-
-install(TARGETS xtcwriter smdwriter xtcreader json2xtc amiwriter
+install(TARGETS xtcwriter smdwriter xtcreader amiwriter
     EXPORT xtcdataTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

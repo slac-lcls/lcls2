@@ -3,7 +3,7 @@
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
-#include "xtcdata/xtc/Json2Xtc.hh"
+#include "psdaq/service/Json2Xtc.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "AxisDriver.h"
@@ -73,7 +73,7 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string&
     char* json = (char*)PyBytes_AsString(json_bytes);
 
     // convert to json to xtc
-    unsigned len = translateJson2Xtc(json, config_buf, configNamesId);
+    unsigned len = Pds::translateJson2Xtc(json, config_buf, configNamesId);
     if (len>BUFSIZE) {
         throw "**** Config json output too large for buffer\n";
     }
