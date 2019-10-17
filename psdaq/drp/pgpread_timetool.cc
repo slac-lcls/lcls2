@@ -146,7 +146,7 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
     printf("checking function \n");
     check(pFunc);
 
-    char const* m_connect_json_str = "\{\"body\": \{\"control\": \{\"0\": \{\"control_info\": \{\"instrument\": \"TMO\", \"cfg_dbase\": \"mcbrowne:psana@psdb-dev:9306/configDB\" } } } } }" ;
+    char const* m_connect_json_str = "\{\"body\": \{\"control\": \{\"0\": \{\"control_info\": \{\"instrument\": \"TMO\", \"cfg_dbase\": \"mcbrowne:psana@psdb-dev:9306/sioanDB\" } } } } }" ;
 
     PyObject* mybytes = PyObject_CallFunction(pFunc,"sssi",m_connect_json_str,"BEAM", "tmotimetool",0);
     check(mybytes);

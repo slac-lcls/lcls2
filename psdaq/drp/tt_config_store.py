@@ -1,6 +1,7 @@
 from psalg.configdb.typed_json import cdict
 import psalg.configdb.configdb as cdb
 import sys
+import IPython
 
 
 def write_scratch_pad(prescaling):
@@ -17,12 +18,14 @@ def write_scratch_pad(prescaling):
     #ID point to the actuall Mongo DB collection and document
 
     create = True
-    dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
+    dbname = 'sioanDB'     #this is the name of the database running on the server.  Only client care about this name.
     instrument = 'TMO'      #
 
     mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)    #mycdb.client.drop_database('configDB_szTest') will drop the configDB_szTest database
-    my_dict = mycdb.get_configuration("BEAM","tmotimetool")
-
+    #mycdb.client.drop_database('sioanDB')
+    mycdb.add_alias("BEAM")
+    mycdb.add_device_config('timetool')
+    
     top = cdict()
     top.setInfo('timetool', 'tmotimetool', 'serial1234', 'No comment')
     top.setAlg('timetoolConfig', [0,0,1])
@@ -45,6 +48,8 @@ def write_scratch_pad(prescaling):
 
     top.set("cl.Application.AppLane1.Prescale.ScratchPad",int(prescaling),'UINT32')
     mycdb.modify_device('BEAM', top)
+
+    #IPython.embed()
 
 
 if __name__ == "__main__":
