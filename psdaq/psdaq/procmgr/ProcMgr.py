@@ -306,7 +306,7 @@ def parse_cmd(cmd, expnum, expname):
 #
 # add_macro_config
 #
-def add_macro_config(procmgr_macro, oldfilename, newfilename):
+def add_macro_config(procmgr_macro, oldfilename, newfilename, platform):
 
   #
   # read old file into memory
@@ -332,6 +332,7 @@ def add_macro_config(procmgr_macro, oldfilename, newfilename):
       tmpfile.write('\n# DATE: %s\n' % strftime('%c'))
       for key in sorted(procmgr_macro.keys()):
         tmpfile.write('procmgr_macro[\'%s\'] = \'%s\'\n' % (key, procmgr_macro[key]))
+      tmpfile.write('platform = \'%d\'\n' % platform)
       tmpfile.write('# ----------------------------------------------------------------------------\n')
       tmpfile.write(oldfilecontents)
     except IOError:
