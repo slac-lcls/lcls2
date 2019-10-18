@@ -23,13 +23,14 @@ def run_smd0_task(run):
 
     smdr_man = SmdReaderManager(run)
     for i, batch_iter in enumerate(smdr_man):
-        run_smd_task(batch_iter, run, point=i)
+        batch_dict_list = [batch_dict for batch_dict in batch_iter]
+        run_smd_task(batch_dict_list, run, point=i)
     # Block before returning so that the caller can use this task's future for synchronization
     legion.execution_fence(block=True)
 
 @task(inner=True)
-def run_smd_task(batch_iter, run):
-    for i, batch_dict in enumerate(batch_iter):
+def run_smd_task(batch_dict_list, run):
+    for i, batch_dict in enumerate(batch_dict_list):
         batch, _ = batch_dict[0]
         run_bigdata_task(batch, run, point=i)
 

@@ -7,6 +7,7 @@ import zmq
 import zmq.utils.jsonapi as json
 from transitions import Machine, MachineError, State
 import argparse
+import requests
 import logging
 from psdaq.control.syslog import SysLog
 import string
@@ -489,7 +490,7 @@ def confirm_response(socket, wait_time, msg_id, ids, err_pub):
 
 
 class CollectionManager():
-    def __init__(self, platform, instrument, pv_base, xpm_master, alias, cfg_dbase, config_alias, slow_update_rate, phase2_timeout):
+    def __init__(self, platform, instrument, pv_base, xpm_master, alias, cfg_dbase, config_alias, slow_update_rate, phase2_timeout, run_dbase):
         self.platform = platform
         self.alias = alias
         self.config_alias = config_alias # e.g. BEAM/NOBEAM
@@ -509,6 +510,7 @@ class CollectionManager():
         self.slow_update_enabled = False
         self.slow_update_exit = Event()
         self.phase2_timeout = phase2_timeout
+        self.user, self.password, self.url = run_dbase
 
         if self.slow_update_rate:
             # initialize slow update thread
@@ -633,6 +635,7 @@ class CollectionManager():
         try:
             msg = self.front_rep.recv_json()
             key = msg['header']['key'].split(".")
+            logging.debug("service_requests: key = %s" % key)
             body = msg['body']
             if key[0] == 'setstate':
                 # handle_setstate() sends reply internally
@@ -803,8 +806,8 @@ class CollectionManager():
         return create_msg('status', body=body)
 
     def report_status(self):
-        logging.debug('status: state=%s transition=%s config_alias=%s' %
-                      (self.state, self.lastTransition, self.config_alias))
+        logging.debug('status: state=%s transition=%s config_alias=%s recording=%s' %
+                      (self.state, self.lastTransition, self.config_alias, self.recording))
         self.front_pub.send_json(self.status_msg())
 
     # check_answers - report and count errors in answers list
@@ -1185,7 +1188,9 @@ class CollectionManager():
         self.front_pub.send_json(error_msg(msg))
         return
 
-    def condition_common(self, transition, timeout, body={}):
+    def condition_common(self, transition, timeout, body=None):
+        if body is None:
+            body = {}
         retval = True
         # select procs with active flag set
         ids = self.filter_active_set(self.ids)
@@ -1436,6 +1441,10 @@ def main():
     parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
     parser.add_argument('-a', action='store_true', help='autoconnect')
     parser.add_argument('-v', action='store_true', help='be verbose')
+    parser.add_argument("--user", default="xppopr", help='run database user')
+    parser.add_argument("--password", default="pcds", help='run database password')
+    defaultURL = "https://pswww.slac.stanford.edu/ws-auth/devlgbk/"
+    parser.add_argument("--url", help="run database URL prefix. Defaults to " + defaultURL, default=defaultURL)
     args = parser.parse_args()
     platform = args.p
 
@@ -1448,7 +1457,8 @@ def main():
     logging.info('logging initialized')
 
     def manager():
-        manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d, args.C, args.S, args.T)
+        run_dbase = (args.user, args.password, args.url)
+        manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d, args.C, args.S, args.T, run_dbase)
 
     def client(i):
         c = Client(platform)

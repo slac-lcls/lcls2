@@ -1,6 +1,9 @@
-#include "xtcdata/xtc/Json2Xtc.hh"
+#include "Json2Xtc.hh"
 
-namespace XtcData {
+using namespace XtcData;
+using namespace rapidjson;
+
+namespace Pds {
 std::map<std::string, enum Name::DataType> JsonIterator::typeMap = {
     {"UINT8",    Name::UINT8},
     {"UINT16",   Name::UINT16},
@@ -355,4 +358,4 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, unsigned segment)
     return xtc->extent;
 }
 
-} // namespace XtcData
+} // namespace Pds

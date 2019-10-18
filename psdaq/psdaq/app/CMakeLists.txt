@@ -121,6 +121,22 @@ target_include_directories(pvcam PUBLIC
     $ENV{CONDA_PREFIX}/include
 )
 
+add_executable(json2xtc
+    json2xtc.cc
+)
+
+target_link_libraries(json2xtc
+    xtcdata::xtc
+    service
+    pthread
+)
+
+target_include_directories(json2xtc PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+    ${RAPIDJSON_INCLUDE_DIRS}
+)
+
 target_link_libraries(pvcam
    epicstools
    ${EPICS_PVACCESS_LIB}
@@ -141,6 +157,7 @@ install(TARGETS app
 		tprutil
                 pgpca
                 pvcam
+                json2xtc
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin

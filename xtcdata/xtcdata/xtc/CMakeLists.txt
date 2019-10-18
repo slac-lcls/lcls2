@@ -9,13 +9,11 @@ add_library(xtc SHARED
     src/NamesIter.cc
     src/ConfigIter.cc
     src/DataIter.cc
-    src/Json2Xtc.cc
 )
 
 target_include_directories(xtc PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
-    ${RAPIDJSON_INCLUDE_DIRS}
 )
 
 install(FILES
@@ -42,7 +40,6 @@ install(FILES
     Sequence.hh
     TypeId.hh
     VarDef.hh
-    Json2Xtc.hh
     DESTINATION include/xtcdata/xtc
 )
 

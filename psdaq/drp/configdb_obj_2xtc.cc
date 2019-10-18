@@ -4,7 +4,7 @@
 #include <getopt.h>
 #include "rapidjson/document.h"
 
-#include "xtcdata/xtc/Json2Xtc.hh"
+#include "psdaq/service/Json2Xtc.hh"
 #include "xtcdata/xtc/NamesId.hh"
 #include "xtcdata/xtc/TypeId.hh"
 
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
     printf("json: %s\n",json);
 
     NamesId namesid(0,1);
-    unsigned len = translateJson2Xtc(json, config_buf, namesid);
+    unsigned len = Pds::translateJson2Xtc(json, config_buf, namesid);
     if (len <= 0) {
         fprintf(stderr, "Parse errors, exiting.\n");
         exit(1);

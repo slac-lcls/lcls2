@@ -3,7 +3,7 @@
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
-#include "xtcdata/xtc/Json2Xtc.hh"
+#include "psdaq/service/Json2Xtc.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psalg/digitizer/Hsd.hh"
@@ -101,7 +101,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
     // convert to json to xtc
     const unsigned BUFSIZE = 1024*1024;
     char buffer[BUFSIZE];
-    unsigned len = translateJson2Xtc(json, buffer, configNamesId, m_para->detSegment);
+    unsigned len = Pds::translateJson2Xtc(json, buffer, configNamesId, m_para->detSegment);
     if (len>BUFSIZE) {
         throw "**** Config json output too large for buffer\n";
     }

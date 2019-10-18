@@ -1,6 +1,4 @@
 @PACKAGE_INIT@
 include(CMakeFindDependencyMacro)
 
-find_dependency(RapidJSON)
-
 include("${CMAKE_CURRENT_LIST_DIR}/xtcdataTargets.cmake")

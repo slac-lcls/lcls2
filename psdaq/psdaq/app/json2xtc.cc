@@ -1,7 +1,5 @@
-#include<cstdio>
-#include"xtcdata/xtc/Json2Xtc.hh"
-
-using namespace XtcData;
+#include <cstdio>
+#include "psdaq/service/Json2Xtc.hh"
 
 static char readBuffer[4*1024*1024];
 static char writeBuffer[4*1024*1024];
@@ -18,8 +16,8 @@ int main(int argc, char **argv)
         exit(0);
     }
     fclose(fp);
-    NamesId nid(1, 0);
-    int len = translateJson2Xtc(readBuffer, writeBuffer, nid);
+    XtcData::NamesId nid(1, 0);
+    unsigned len = Pds::translateJson2Xtc(readBuffer, writeBuffer, nid);
     if (len <= 0) {
         fprintf(stderr, "Parse errors, exiting.\n");
         exit(0);

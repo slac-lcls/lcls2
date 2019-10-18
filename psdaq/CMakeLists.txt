@@ -16,6 +16,7 @@ find_package(prometheus-cpp REQUIRED)
 find_package(ZeroMQ REQUIRED)
 find_package(epics REQUIRED)
 find_package(cpsw REQUIRED)
+find_package(RapidJSON REQUIRED)
 
 find_library(YAML_CPP_LIB yaml-cpp)
 
