@@ -35,7 +35,9 @@ from psdaq.control.control import DaqControl
 
 class Emulator :
     def __init__(self) :
-        self.wpart = self
+        #from psdaq.control_gui.CGConfigParameters import cp
+        #self.wpart = self # cp.cgwmainpartition
+        pass
 
     def set_buts_enable(self, s) :
         pass

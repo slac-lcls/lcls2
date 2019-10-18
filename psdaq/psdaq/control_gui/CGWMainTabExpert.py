@@ -50,11 +50,11 @@ class CGWMainTabExpert(QWidget) :
         logger.debug('In %s' % self._name)
 
         self.wpart = CGWMainPartition()
-        parent_ctrl.wpart = self.wpart
-        parent_ctrl.wcoll = self.wpart.wcoll
+        #parent_ctrl.wpart = self.wpart
+        #parent_ctrl.wcoll = self.wpart.wcoll
 
         self.wctrl = CGWMainControl(parent, parent_ctrl)
-        parent_ctrl.wctrl = self.wctrl 
+        #parent_ctrl.wctrl = self.wctrl 
 
         #self.wpart = QTextEdit('Txt 1')
         #self.wctrl = QTextEdit('Txt 2')

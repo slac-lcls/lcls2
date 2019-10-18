@@ -37,6 +37,7 @@ from psdaq.control_gui.QWIcons import icon
 from psdaq.control_gui.Styles import style
 from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_get_state,\
                                            daq_control_set_record, daq_control_get_status, DaqControl
+from psdaq.control_gui.CGConfigParameters import cp
 
 #--------------------
 
@@ -46,6 +47,8 @@ class CGWMainControl(QGroupBox) :
     def __init__(self, parent=None, parent_ctrl=None):
 
         QGroupBox.__init__(self, 'Control', parent)
+
+        cp.cgwmaincontrol = self
 
         self.parent_ctrl = parent_ctrl
 
@@ -249,7 +252,9 @@ class CGWMainControl(QGroupBox) :
         self.state = state 
         #self.but_state.setText('%s since %s' % (s.upper(), self.ts))
         self.but_ctrls.setText(state.upper())
-        self.parent_ctrl.wpart.set_buts_enable(state.upper()) # enable/disable button plat in other widget
+
+        wpart = cp.cgwmainpartition
+        if wpart is not None : wpart.set_buts_enable(state.upper()) # enable/disable button plat in other widget
 
         self.set_transition(transition)
 
@@ -288,6 +293,13 @@ class CGWMainControl(QGroupBox) :
         #ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
         #self.but_transition.setText('%s since %s' % (s.upper(), ts))
         self.but_transition.setText(s.upper())
+
+#--------------------
+
+    def closeEvent(self, e) :
+        #logger.debug('closeEvent')
+        QGroupBox.closeEvent(self, e)
+        cp.cgwmaincontrol = None
 
 #--------------------
 

@@ -34,6 +34,7 @@ from psdaq.control_gui.QWPopupTableCheck import QWPopupTableCheck
 #from psdaq.control_gui.CGWPartitionTable import CGWPartitionTable
 
 from psdaq.control_gui.CGWMainCollection import CGWMainCollection
+from psdaq.control_gui.CGConfigParameters import cp
 
 #--------------------
 
@@ -45,6 +46,7 @@ class CGWMainPartition(QGroupBox) :
     def __init__(self, parent=None):
 
         QGroupBox.__init__(self, 'Partition', parent)
+        cp.cgwmainpartition  = self
 
         self.but_roll_call = QPushButton('Roll call')
         self.but_select    = QPushButton('Select')
@@ -190,6 +192,13 @@ class CGWMainPartition(QGroupBox) :
         #if state in ('RESET', 'UNALLOCATED') and self.w_display is not None :
         #    self.w_display.close()
         #    self.w_display = None
+
+#--------------------
+
+    def closeEvent(self, e) :
+        #logger.debug('closeEvent')
+        QGroupBox.closeEvent(self, e)
+        cp.cgwmainpartition = None
 
 #--------------------
 

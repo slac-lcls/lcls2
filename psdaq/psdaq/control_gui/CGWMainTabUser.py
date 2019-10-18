@@ -52,20 +52,13 @@ class CGWMainTabUser(QGroupBox) :
     def __init__(self, **kwargs) :
 
         parent      = kwargs.get('parent', None)
-        parent_ctrl = kwargs.get('parent_ctrl', None)
 
         #QWidget.__init__(self, parent=None)
         QGroupBox.__init__(self, 'Control', parent)
 
         logger.debug('In %s' % self._name)
-
         icon.set_icons()
-
-        #self.hbox = self.hbox_test()
         self.hbox = self.hbox_buttons()
-
-        parent_ctrl.wctrl = self
-
         self.setLayout(self.hbox)
 
         self.set_style()
@@ -118,9 +111,9 @@ class CGWMainTabUser(QGroupBox) :
 #------------------------------
 
     def set_tool_tips(self) :
-        self.but_play  .setToolTip('%s running'  % self.but_play.accessibleName())
-        self.but_record.setToolTip('%s recording' % self.but_record.accessibleName())
-        self.but_stop  .setToolTip('%s running and request state "configured"' % self.but_stop.accessibleName())
+        self.but_play  .setToolTip('Start/Pause running')
+        self.but_record.setToolTip('ON/OFF recording')
+        self.but_stop  .setToolTip('Stop running')
 
 #--------------------
 

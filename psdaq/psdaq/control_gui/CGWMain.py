@@ -243,6 +243,8 @@ class CGWMain(QWZMQListener) :
 
         #print('Exit CGWMain.closeEvent')
 
+        cp.cgwmain = None
+
 #--------------------
         
 #    def __del__(self) :
@@ -328,6 +330,10 @@ class CGWMain(QWZMQListener) :
 
     def process_zmq_message(self, msg):
         #print('==== msg: %s' % str(msg))
+
+        wcoll = cp.cgwmaincollection
+        wctrl = cp.cgwmaincontrol
+
         try :
             for rec in msg :
                 jo = json.loads(rec)
@@ -342,9 +348,9 @@ class CGWMain(QWZMQListener) :
                     s_recording    = body['recording'] # True/False
                     #====
                     status = (s_transition, s_state, s_cfgtype, s_recording)
-                    self.wctrl.set_but_ctrls(status)
+                    if wctrl is not None : wctrl.set_but_ctrls(status)
                     self.wconf.set_config_type(s_cfgtype)
-                    self.wcoll.update_table()
+                    if wcoll is not None : wcoll.update_table()
                     logger.info('received state msg: %s and transition: %s' % (s_state, s_transition))
 
                 elif jo['header']['key'] == 'error' :
@@ -358,9 +364,9 @@ class CGWMain(QWZMQListener) :
                         return
 
                     transition, state, cfgtype, recording = status
-                    self.wctrl.set_but_ctrls(status)
+                    if wctrl is not None : wctrl.set_but_ctrls(status)
                     self.wconf.set_config_type(cfgtype)
-                    self.wcoll.update_table()
+                    if wcoll is not None : wcoll.update_table()
 
                 else :
                     sj = json.dumps(jo, indent=2, sort_keys=False)
