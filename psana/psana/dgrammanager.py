@@ -80,9 +80,9 @@ class DgramManager():
         return self
 
     def __next__(self):
-        return self.next()
-    
-    def next(self):
+#        return self.next()
+#    
+#    def next(self):
         """ only support sequential read - no event building"""
         if self.shmem:
             view = self.shmem.get(self.shmem_kwargs)

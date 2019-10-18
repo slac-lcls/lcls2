@@ -44,13 +44,13 @@ def _enumerate_attrs(obj):
     return found
 
 # FIXME: to support run.ds.Detector in cctbx. to be removed.
-class DsContainer(object):
+#class DsContainer(object):
 
-    def __init__(self, run):
-        self.run = run
+    #def __init__(self, run):
+    #    self.run = run
 
-    def Detector(self, dummy):
-        return self.run._det # return pre-created detector
+    #def Detector(self, dummy):
+    #    return self.run._det # return pre-created detector
 
 class Run(object):
     exp = None
@@ -71,7 +71,7 @@ class Run(object):
         self.batch_size = batch_size
         self.filter_callback = filter_callback
         self.destination = destination
-        self.ds = DsContainer(self) # FIXME: to support run.ds.Detector in cctbx. to be removed.
+        #self.ds = DsContainer(self) # FIXME: to support run.ds.Detector in cctbx. to be removed.
         RunHelper(self)
 
     def run(self):
