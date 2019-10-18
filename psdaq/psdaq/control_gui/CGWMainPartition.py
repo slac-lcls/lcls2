@@ -137,7 +137,6 @@ class CGWMainPartition(QGroupBox) :
 
         set_platform(dict_platf, list2d)
         # 2019-03-13 caf: If Select->Apply is successful, an Allocate transition should be triggered.
-        #self.parent_ctrl....
 
         list2d_active = list_active_procs(list2d)
 

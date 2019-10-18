@@ -75,7 +75,7 @@ class CGWMain(QWZMQListener) :
         #icon.set_icons()
 
         self.wconf = CGWMainConfiguration(parent_ctrl=self)
-        self.wtabs = CGWMainTabs(parent_ctrl=self)
+        self.wtabs = CGWMainTabs()
 
         self.vspl = QSplitter(Qt.Vertical)
         self.vspl.addWidget(self.wconf) 
@@ -104,6 +104,7 @@ class CGWMain(QWZMQListener) :
         if parser is None :
             self.loglevel = 'DEBUG'
             self.logdir   = 'logdir'
+            self.expert   = None
             return
 
         (popts, pargs) = parser.parse_args()
@@ -332,7 +333,8 @@ class CGWMain(QWZMQListener) :
         #print('==== msg: %s' % str(msg))
 
         wcoll = cp.cgwmaincollection
-        wctrl = cp.cgwmaincontrol
+        wctrl = cp.cgwmaintabuser if cp.cgwmaintabuser is not None else\
+                cp.cgwmaincontrol
 
         try :
             for rec in msg :

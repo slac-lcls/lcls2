@@ -273,7 +273,7 @@ if __name__ == "__main__" :
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
 
     app = QApplication(sys.argv)
-    kwargs = {'parent':None, 'parent_ctrl':Emulator()}
+    kwargs = {'parent':None}
     w = CGWMainTabs(**kwargs)
     w.setGeometry(10, 25, 400, 600)
     w.setWindowTitle('CGWMainTabs')

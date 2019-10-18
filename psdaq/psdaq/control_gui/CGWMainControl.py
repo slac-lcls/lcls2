@@ -44,13 +44,11 @@ from psdaq.control_gui.CGConfigParameters import cp
 class CGWMainControl(QGroupBox) :
     """
     """
-    def __init__(self, parent=None, parent_ctrl=None):
+    def __init__(self, parent=None):
 
         QGroupBox.__init__(self, 'Control', parent)
 
         cp.cgwmaincontrol = self
-
-        self.parent_ctrl = parent_ctrl
 
         self.lab_state = QLabel('Target State')
         self.lab_trans = QLabel('Last Transition')
@@ -323,7 +321,7 @@ if __name__ == "__main__" :
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
-    w = CGWMainControl(None, parent_ctrl=Emulator())
+    w = CGWMainControl(None)
     #w.connect_path_is_changed_to_recipient(w.test_signal_reception)
     w.show()
     app.exec_()

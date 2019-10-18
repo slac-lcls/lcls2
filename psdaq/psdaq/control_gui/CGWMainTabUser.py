@@ -37,6 +37,7 @@ from psdaq.control_gui.Styles import style
 
 from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_get_state,\
                                            daq_control_set_record, daq_control_get_status
+from psdaq.control_gui.CGConfigParameters import cp
 
 #------------------------------
 
@@ -55,6 +56,8 @@ class CGWMainTabUser(QGroupBox) :
 
         #QWidget.__init__(self, parent=None)
         QGroupBox.__init__(self, 'Control', parent)
+
+        cp.cgwmaintabuser = self
 
         logger.debug('In %s' % self._name)
         icon.set_icons()
@@ -98,8 +101,9 @@ class CGWMainTabUser(QGroupBox) :
         self.but_record.setIcon(icon.icon_record if recording else icon.icon_record_sym)
 
         self.set_but_play_enabled(True)   # unlock play button
-        self.set_but_stop_enabled(state in ('starting', 'paused', 'running'))
         self.set_but_record_enabled(state in ('reset','unallocated','allocated','connected','configured'))
+        #self.set_but_stop_enabled(state in ('starting', 'paused', 'running'))
+        self.but_stop.setVisible(state in ('starting', 'paused', 'running'))
 
 #------------------------------
 
@@ -266,6 +270,13 @@ class CGWMainTabUser(QGroupBox) :
         daq_control_set_state('configured')
         #self.set_but_stop_enabled(False) # set depending on state
 
+#--------------------
+
+    def closeEvent(self, e) :
+        #logger.debug('closeEvent')
+        QGroupBox.closeEvent(self, e)
+        cp.cgwmaintabuser = None
+
 #------------------------------
 #------------------------------
 #------------------------------
@@ -325,7 +336,7 @@ if __name__ == "__main__" :
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
 
-    kwargs = {'parent':None, 'parent_ctrl':Emulator()}
+    kwargs = {'parent':None}
     w = CGWMainTabUser(**kwargs)
     w.show()
     app.exec_()

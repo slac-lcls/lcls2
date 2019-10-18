@@ -57,6 +57,7 @@ class CGConfigParameters(ConfigParameters) :
         self.cgwmaincollection = None
         self.cgwmainpartition  = None
         self.cgwmaincontrol    = None
+        self.cgwmaintabuser    = None
 
 #------------------------------
         
