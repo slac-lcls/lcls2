@@ -35,7 +35,7 @@ from PyQt5.QtCore import Qt, QSize, QPoint
 from psdaq.control_gui.CGConfigParameters   import cp
 from psdaq.control_gui.CGWMainConfiguration import CGWMainConfiguration
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
-from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl
+from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl, daq_control_get_status
 from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
 from psdaq.control_gui.QWUtils              import confirm_or_cancel_dialog_box
 from psdaq.control_gui.CGWMainTabs          import CGWMainTabs
@@ -337,14 +337,12 @@ class CGWMain(QWZMQListener) :
                     body = jo['body']
                     s_state        = body['state']
                     s_transition   = body['transition']
-                    s_config_alias = body['config_alias']
+                    s_cfgtype      = body['config_alias']
                     s_recording    = body['recording'] # True/False
-                    #====self.wdetr.set_but_state (s_state)
-                    self.wctrl.set_but_ctrls(s_state)
-                    self.wctrl.set_but_record(s_recording)
-                    self.wctrl.set_transition(s_transition)
-                    self.wconf.set_config_type(s_config_alias)
-
+                    #====
+                    status = (s_transition, s_state, s_cfgtype, s_recording)
+                    self.wctrl.set_but_ctrls(status)
+                    self.wconf.set_config_type(s_cfgtype)
                     self.wcoll.update_table()
                     logger.info('received state msg: %s and transition: %s' % (s_state, s_transition))
 
@@ -352,11 +350,16 @@ class CGWMain(QWZMQListener) :
                     body = jo['body']
                     logger.error('received error msg: %s' % body['err_info'])
 
-                    # grab state directly (not from error message)
-                    state = daq_control().getState()
+                    # grab status directly (not from error message)
+                    status = daq_control_get_status()
+                    if status is None :
+                        logger.warning('process_zmq_message on error: STATUS IS NOT AVAILABLE')
+                        return
 
-                    self.wctrl.set_but_ctrls(state)   # ('error')
-                    self.wconf.set_config_type(state) # ('error')
+                    transition, state, cfgtype, recording = status
+                    self.wctrl.set_but_ctrls(status)
+                    self.wconf.set_config_type(cfgtype)
+                    self.wcoll.update_table()
 
                 else :
                     sj = json.dumps(jo, indent=2, sort_keys=False)

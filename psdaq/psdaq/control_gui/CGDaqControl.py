@@ -28,7 +28,7 @@ Created on 2019-02-01 by Mikhail Dubrovin
 
 import logging
 logger = logging.getLogger(__name__)
-
+from time import time
 from psdaq.control.control import DaqControl
 
 #----------
@@ -49,14 +49,15 @@ class DaqControlEmulator:
         self._name = 'DaqControlEmulator'
     def msg(self, s) : logger.warning('TEST PURPOSE ONLY DaqControlEmulator.%s' % s) 
     def getInstrument(self) :     self.msg('getInstrument');  return 'EMU'
-    def setConfig(self, c) :      self.msg('setConfig');      return None
-    def setState(self, s) :       self.msg('setState');
+    def setConfig(self, c) :      self.msg('setConfig %c'%c); return None
+    def setState(self, s) :       self.msg('setState %s'%s);
     def getState(self) :          self.msg('getState');       return 'emulator'
-    def getStatus(self) :         self.msg('getStatus');      return 'emulator', 'emulator', 'alias', 'emulator'
+    def getStatus(self) :         self.msg('getStatus');      return 'running', 'running', 'BEAM', False
     def setTransition(self, s) :  self.msg('setTransition');  return 'emulator' 
     def selectPlatform(self, s) : self.msg('selectPlatform'); return
     def getPlatform(self) :       self.msg('getPlatform');    return 'emulator'
     def setRecord(self, v) :      self.msg('setRecord %s'%v); return
+    def monitorStatus(self) :     self.msg('monitorStatus');  return 'emulator'
 
 #----------
 
@@ -91,6 +92,71 @@ def worker_set_state(dicio):
 def worker_get_state(dicio):
     dicio['state_out'] = daq_control().getState()
 
+#----------
+
+def get_daq_control(cmt='') :
+    daq_ctrl = daq_control()
+    if daq_ctrl is None :
+        logger.warning('%sdaq_control() is None' % cmt)
+    return daq_ctrl
+
+#----------
+
+def daq_control_set_state(s='configured') :
+    daq_ctrl = get_daq_control('in daq_control_set_state ')
+    if daq_ctrl is None : return False
+
+    daq_ctrl.setState(s)
+    logger.debug('daq_control_set_state("%s")' % s)
+    return True
+
+#----------
+
+def daq_control_get_state() :
+    daq_ctrl = get_daq_control('in daq_control_get_state ')
+    if daq_ctrl is None : return None
+    s = daq_ctrl.getState()
+    logger.debug('daq_control_get_state(): %s' % s)
+    return s
+
+#----------
+
+def daq_control_get_status() :
+
+    #t0_sec = time()
+    daq_ctrl = get_daq_control('in daq_control_get_status ')
+    if daq_ctrl is None : return None
+
+    transition, state, cfgtype, recording = daq_ctrl.getStatus()
+    logger.debug('daq_control_get_status transition:%s state:%s cfgtype:%s recording:%s'%\
+                 (str(transition), str(state), str(cfgtype), str(recording)))
+
+    #logger.debug('daq_control_get_status() time = %.6f sec' % (time()-t0_sec))
+
+    return transition.lower(), state.lower(), cfgtype, recording
+
+#----------
+
+#def daq_control_get_monitor_status() :
+#    daq_ctrl = get_daq_control('in daq_control_get_monitor_status ')
+#    if daq_ctrl is None : return None
+#    s = daq_ctrl.monitorStatus()
+#    logger.debug('daq_control_get_monitor_status:%s' % s)
+#    return status
+
+#----------
+
+def daq_control_set_record(do_record=True) :
+    daq_ctrl = get_daq_control('in daq_control_set_record ')
+    if daq_ctrl is None : return False
+
+    daq_ctrl.setRecord(do_record) # sets flag for recording
+    logger.debug('daq_control_set_record("%s")' % (do_record))
+    return True
+
+#----------
+#----------
+#----------
 #----------
 #----------
 #----------
