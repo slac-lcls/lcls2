@@ -124,6 +124,7 @@ class CGWMain(QWZMQListener) :
         self.timeout    = popts.timeout
         self.expname    = popts.expname
         self.uris       = popts.uris  # 'mcbrowne:psana@psdb-dev:9306'
+        self.expert     = popts.expert # bool
 
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)

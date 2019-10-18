@@ -54,6 +54,7 @@ def input_option_parser() :
     d_logdir     = None # '.' or './cm-logger' etc.
     d_expname    = 'tmo12345'
     d_uris       = 'mcbrowne:psana@psdb-dev:9306'
+    d_expert     = False  
 
     h_platform   = 'platform in range [0,7], default = %s' % d_platform
     h_host       = 'control host, default = %s' % d_host
@@ -62,6 +63,7 @@ def input_option_parser() :
     h_logdir     = 'logger directory, default = %s' % d_logdir
     h_expname    = 'experiment name, default = %s' % d_expname
     h_uris       = 'configuration DB URI suffix, default = %s' % d_uris
+    h_expert     = 'force start gui in expert mode, default = %s' % d_expert
 
     parser = OptionParser(description='DAQ Control GUI', usage=usage())
 
@@ -72,7 +74,7 @@ def input_option_parser() :
     parser.add_option('-L', '--logdir',     default=d_logdir,     action='store', type='string', help=h_logdir)
     parser.add_option('-e', '--expname',    default=d_expname,    action='store', type='string', help=h_expname)
     parser.add_option('-u', '--uris',       default=d_uris,       action='store', type='string', help=h_uris)
-    #parser.add_option('-v', '--verbose',    default=d_verbose,    action='store_false',          help=h_verbose)
+    parser.add_option('-E', '--expert',     default=d_expert,     action='store_true',           help=h_expert)
 
     return parser
   

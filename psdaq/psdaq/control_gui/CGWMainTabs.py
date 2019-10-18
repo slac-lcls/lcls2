@@ -20,6 +20,7 @@ from PyQt5.QtCore import Qt, QSize #, QPoint
 
 from psdaq.control_gui.CGWMainTabExpert import CGWMainTabExpert
 from psdaq.control_gui.CGWMainTabUser   import CGWMainTabUser
+from psdaq.control_gui.CGConfigParameters import cp
 
 #------------------------------
 
@@ -40,8 +41,13 @@ class CGWMainTabs(QWidget) :
         self.box_layout = QHBoxLayout()
 
         self.gui_win = None
-        self.make_tab_bar()
-        self.gui_selector(self.tab_names[1])
+
+        tab_ind = 1 if cp.cgwmain is None else\
+                  self.tab_ind_expert if cp.cgwmain.expert else\
+                  self.tab_ind_user
+
+        self.make_tab_bar(tab_ind)
+        self.gui_selector(self.tab_names[tab_ind])
 
         self.box = QVBoxLayout(self)
         self.box.addWidget(self.tab_bar)
@@ -102,7 +108,7 @@ class CGWMainTabs(QWidget) :
  
     #-------------------
 
-    def make_tab_bar(self) :
+    def make_tab_bar(self, tab_index=0) :
         self.tab_bar = QTabBar()
 
         #len(self.tab_names)
@@ -114,7 +120,6 @@ class CGWMainTabs(QWidget) :
         #self.tab_bar.setMovable(True)
         self.tab_bar.setShape(QTabBar.RoundedNorth)
 
-        tab_index = self.tab_ind_expert # self.tab_names.index(self.tab_names[self.tab_ind_expert])            
         self.tab_bar.setCurrentIndex(tab_index)
         logger.debug('make_tab_bar - set tab index: %d'%tab_index)
 
@@ -134,12 +139,12 @@ class CGWMainTabs(QWidget) :
 
         w_height = 100
 
-        if tab_name == self.tab_names[1] :
+        if tab_name == self.tab_names[self.tab_ind_expert] :
             self.gui_win = CGWMainTabExpert(**self.kwargs)
             self.setMinimumHeight(400)
             w_height = 350
 
-        elif tab_name == self.tab_names[0] :
+        elif tab_name == self.tab_names[self.tab_ind_user] :
             self.gui_win = CGWMainTabUser(**self.kwargs)
             #self.gui_win = QTextEdit(tab_name)
             self.setFixedHeight(110)
