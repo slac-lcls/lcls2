@@ -217,11 +217,11 @@ def deduce_platform(configfilename):
 #
 # RETURNS: Three values: platform number (or -1 on error), macros, and TESTRELDIR
 #
-def deduce_platform2(configfilename):
+def deduce_platform2(configfilename, platform=None):
     platform_rv = -1   # return -1 on error
     macro_rv = {}
     testreldir_rv = ''
-    cc = {'platform': None, 'procmgr_config': None, 'TESTRELDIR': '',
+    cc = {'platform': platform, 'procmgr_config': None, 'TESTRELDIR': '',
           'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host',
           'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': {}}
     try:
@@ -252,11 +252,11 @@ def deduce_platform2(configfilename):
 #
 # RETURNS: Three values: instrument name, station number, and currentexp command path.
 #
-def deduce_instrument(configfilename):
+def deduce_instrument(configfilename, platform=None):
     instr_name = ''
     currentexpcmd = ''
     station_number = 0
-    cc = {'instrument': None, 'platform': None, 'procmgr_config': None, 'TESTRELDIR': None,
+    cc = {'instrument': None, 'platform': platform, 'procmgr_config': None, 'TESTRELDIR': None,
           'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host',
           'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': {}, 'currentexpcmd': None}
 
@@ -474,7 +474,7 @@ class ProcMgr:
 
         # initialize the experiment
         # (only used by online_ami to get current experiment)
-        self.INSTRUMENT, self.STATION, self.CURRENTEXPCMD = deduce_instrument(configfilename)
+        self.INSTRUMENT, self.STATION, self.CURRENTEXPCMD = deduce_instrument(configfilename, self.PLATFORM)
         if self.INSTRUMENT not in self.valid_instruments:
             if self.INSTRUMENT != '':
               print('ERR: Invalid instrument ', self.INSTRUMENT)

@@ -268,7 +268,7 @@ if os.path.isfile(runconfig) and ((command == 'start') or (command == 'restart')
         print('%s: Error determining HOST and USER' % sys.argv[0])
         sys.exit(1)
     try:
-        ignore, run_macros, ignore2 = deduce_platform2(runconfig)
+        ignore, run_macros, ignore2 = deduce_platform2(runconfig, options.platform)
         macrohost = run_macros.get('HOST', None)
         macrouser = run_macros.get('USER', None)
     except:
