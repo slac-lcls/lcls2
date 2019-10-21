@@ -1,4 +1,5 @@
 #include <iostream>
+#include <bitset>
 #include "TimingHeader.hh"
 #include <DmaDriver.h>
 #include "DrpBase.hh"
@@ -282,6 +283,8 @@ std::string DrpBase::configure(const json& msg)
         return std::string{"EbReceiver configure failed"};
     }
 
+    printParams();
+
     // start eb receiver thread
     m_tebContributor->startup(*m_ebRecv);
 
@@ -398,6 +401,29 @@ json DrpBase::connectionInfo()
     json info = {{"max_ev_size", m_mPrms.maxEvSize},
                  {"max_tr_size", m_mPrms.maxTrSize}};
     return info;
+}
+
+void DrpBase::printParams() const
+{
+    using namespace Pds::Eb;
+
+    printf("\nParameters of Contributor ID %d:\n",               m_tPrms.id);
+    printf("  Thread core numbers:        %d, %d\n",             m_tPrms.core[0], m_tPrms.core[1]);
+    printf("  Partition:                  %d\n",                 m_tPrms.partition);
+    printf("  Readout group receipient:   0x%02x\n",             m_tPrms.readoutGroup);
+    printf("  Readout group contractor:   0x%02x\n",             m_tPrms.contractor);
+    printf("  Bit list of TEBs:           0x%016lx, cnt: %zd\n", m_tPrms.builders,
+                                                                 std::bitset<64>(m_tPrms.builders).count());
+    printf("  Number of MEBs:             %zd\n",                m_mPrms.addrs.size());
+    printf("  Batch duration:             0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
+    printf("  Batch pool depth:           %d\n",                 MAX_BATCHES);
+    printf("  Max # of entries / batch:   %d\n",                 MAX_ENTRIES);
+    printf("  # of TEB contrib. buffers:  %d\n",                 MAX_LATENCY);
+    printf("  Max TEB contribution size:  %zd\n",                m_tPrms.maxInputSize);
+    printf("  Max MEB contribution size:  %zd\n",                m_mPrms.maxEvSize);
+    printf("  Max MEB transition   size:  %zd\n",                m_mPrms.maxTrSize);
+    printf("  # of MEB contrib. buffers:  %d\n",                 m_mPrms.maxEvents);
+    printf("\n");
 }
 
 }

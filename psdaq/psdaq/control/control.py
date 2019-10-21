@@ -1227,7 +1227,7 @@ class CollectionManager():
 
     def condition_configure(self):
         # phase 1
-        ok = self.condition_common('configure', 15000,
+        ok = self.condition_common('configure', 150000,
                                    body={'config_alias': self.config_alias})
         if not ok:
             logging.error('condition_configure(): configure phase1 failed')
