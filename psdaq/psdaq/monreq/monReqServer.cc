@@ -183,33 +183,70 @@ namespace Pds {
       while (++ctrb != last);
     }
 
-    virtual void _deleteDatagram(Dgram* dg)
+    virtual void _deleteDatagram(Dgram* dg, int bufIdx)
     {
       //printf("_deleteDatagram @ %p: pid = %014lx\n",
       //       dg, dg->seq.pulseId().value());
 
-      unsigned idx = *(unsigned*)dg->xtc.next();
+      //if ((bufIdx < 0) || (size_t(bufIdx) >= _bufFreeList.size()))
+      //{
+      //  printf("deleteDatagram: Unexpected buffer index %d\n", bufIdx);
+      //}
+
+      unsigned idx = dg->env;
+      if (idx >= _bufFreeList.size())
+      {
+        printf("deleteDatagram: Unexpected index %d\n", idx);
+      }
+      //if (idx != bufIdx)
+      //{
+      //  printf("Buffer index mismatch: got %d, expected %d, dg %p, pid %014lx\n",
+      //         idx, bufIdx, dg, dg->seq.pulseId().value());
+      //}
+      for (unsigned i = 0; i < _bufFreeList.count(); ++i)
+      {
+        if (idx == _bufFreeList.peek(i))
+        {
+          printf("Attempted double free of list entry %d: idx %d, bufIdx %d, dg %p, pid %014lx\n",
+                 i, idx, bufIdx, dg, dg->seq.pulseId().value());
+          // Does the dg still need to be freed?  Apparently so.
+          Pool::free((void*)dg);
+          return;
+        }
+      }
       if (_bufFreeList.push(idx))
-        logging::error("_bufFreeList.push(%d) failed, count = %zd", idx, _bufFreeList.count());
-      //printf("_deleteDatagram: dg = %p, pid = %014lx, _bufFreeList.push(%d), count = %zd\n",
-      //       dg, dg->seq.pulseId().value(), idx, _bufFreeList.count());
+      {
+        logging::error("_bufFreeList.push(%d) failed, bufIdx %d, count = %zd", idx, bufIdx, _bufFreeList.count());
+        for (unsigned i = 0; i < _bufFreeList.size(); ++i)
+        {
+          printf("Free list entry %d: %d\n", i, _bufFreeList.peek(i));
+        }
+      }
+      //printf("_deleteDatagram: dg = %p, pid = %014lx, _bufFreeList.push(%d), bufIdx %d, count = %zd\n",
+      //       dg, dg->seq.pulseId().value(), idx, bufIdx, _bufFreeList.count());
 
       Pool::free((void*)dg);
     }
 
-    virtual void _requestDatagram()
+    virtual void _requestDatagram(int bufIdx)
     {
       //printf("_requestDatagram\n");
 
-      if (_bufFreeList.empty())
+      unsigned data;
+      if (_bufFreeList.pop(data))
       {
-        logging::warning("%s:\n  No free buffers available", __PRETTY_FUNCTION__);
+        logging::warning("%s:\n  No free buffers available: bufIdx %d", __PRETTY_FUNCTION__, bufIdx);
         return;
       }
 
-      unsigned data = _bufFreeList.front();
-      _bufFreeList.pop();
-      //printf("_requestDatagram: _bufFreeList.pop(): %08x, count = %zd\n", data, _bufFreeList.count());
+      //printf("_requestDatagram: _bufFreeList.pop(): %d, bufIdx %d, count = %zd\n", data, bufIdx, _bufFreeList.count());
+
+      //if ((bufIdx < 0) || (size_t(bufIdx) >= _bufFreeList.size()))
+      //{
+      //  printf("requestDatagram: Unexpected buffer index %d\n", bufIdx);
+      //}
+
+      data = ImmData::value(ImmData::Buffer, _id, data); // bufIdx);
 
       int rc = -1;
       for (unsigned i = 0; i < _mrqLinks.size(); ++i)
@@ -218,11 +255,7 @@ namespace Pds {
         unsigned iTeb = _iTeb++;
         if (_iTeb == _mrqLinks.size())  _iTeb = 0;
 
-        EbLfCltLink* link = _mrqLinks[iTeb];
-
-        data = ImmData::value(ImmData::Buffer, _id, data);
-
-        rc = link->post(nullptr, 0, data);
+        rc = _mrqLinks[iTeb]->post(nullptr, 0, data);
 
         //printf("_requestDatagram: Post %d EB[iTeb = %d], value = %08x, rc = %d\n",
         //       i, iTeb, data, rc);
@@ -231,7 +264,8 @@ namespace Pds {
       }
       if (rc)
       {
-        logging::error("%s:\n  Unable to post request to any TEB", __PRETTY_FUNCTION__);
+        logging::error("%s:\n  Unable to post request to any TEB: rc %d, data %d",
+                       __PRETTY_FUNCTION__, rc, data);
         // Revisit: Is this fatal or ignorable?
       }
     }
@@ -282,7 +316,7 @@ namespace Pds {
 
       // Create pool for transferring events to MyXtcMonitorServer
       unsigned    entries = std::bitset<64>(_prms.contributors).count();
-      size_t      size    = sizeof(Dgram) + entries * sizeof(Dgram*) + sizeof(unsigned);
+      size_t      size    = sizeof(Dgram) + entries * sizeof(Dgram*);
       GenericPool pool(size, _prms.numEvBuffers);
       _pool = &pool;
 
@@ -306,6 +340,12 @@ namespace Pds {
 
       EbAppBase::shutdown();
 
+      if (_pool)
+      {
+        printf("Directory datagram pool\n");
+        _pool->dump();
+      }
+
       _apps = nullptr;
       _pool = nullptr;
     }
@@ -323,18 +363,21 @@ namespace Pds {
       // Dgrams to the built event.  Reserve space at end for the buffer's index
       size_t   sz     = (event->end() - event->begin()) * sizeof(*(event->begin()));
       unsigned idx    = ImmData::idx(event->parameter());
-      void*    buffer = _pool->alloc(sizeof(Dgram) + sz + sizeof(idx));
+      void*    buffer = _pool->alloc(sizeof(Dgram) + sz);
       if (!buffer)
       {
         logging::critical("%s:\n  Dgram pool allocation of size %zd failed:",
-                          __PRETTY_FUNCTION__, sizeof(Dgram) + sz + sizeof(idx));
+                          __PRETTY_FUNCTION__, sizeof(Dgram) + sz);
+        printf("Directory datagram pool\n");
         _pool->dump();
+        printf("Meb::process event dump:\n");
+        event->dump(-1);
         abort();
       }
       Dgram*  dg  = new(buffer) Dgram(*(event->creator()));
       Dgram** buf = (Dgram**)dg->xtc.alloc(sz);
       memcpy(buf, event->begin(), sz);
-      *(unsigned*)dg->xtc.next() = idx; // Pass buffer's index to _deleteDatagram()
+      dg->env = idx;                // Pass buffer's index to _deleteDatagram()
 
       if (_prms.verbose >= VL_EVENT)
       {

@@ -94,7 +94,9 @@ namespace psalg {
       void _clearDest        (mqd_t);
     private:
       virtual void _copyDatagram  (XtcData::Dgram* dg, char*);
+      virtual void _deleteDatagram(XtcData::Dgram* dg, int idx);
       virtual void _deleteDatagram(XtcData::Dgram* dg);
+      virtual void _requestDatagram(int idx);
       virtual void _requestDatagram();
     private:
       const char*       _tag;               // name of the complete shared memory segment
