@@ -95,7 +95,7 @@ def _start(argv0, args, runconfig, lastconfig, configfile, options, procmgr_macr
             if (_start_rv == 0) and (dynamicCount > 0) and (not os.path.exists(runconfig)):
                 # copy macros + cnf to cnf.last, then link to cnf.running to cnf.last
                 try:
-                    add_macro_config(procmgr_macro, configfile, lastconfig)
+                    add_macro_config(procmgr_macro, configfile, lastconfig, options.platform)
                     # chmod a+rw
                     os.chmod(lastconfig, stat.S_IRUSR | stat.S_IWUSR |
                                          stat.S_IRGRP | stat.S_IWGRP |
@@ -268,7 +268,7 @@ if os.path.isfile(runconfig) and ((command == 'start') or (command == 'restart')
         print('%s: Error determining HOST and USER' % sys.argv[0])
         sys.exit(1)
     try:
-        ignore, run_macros, ignore2 = deduce_platform2(runconfig)
+        ignore, run_macros, ignore2 = deduce_platform2(runconfig, options.platform)
         macrohost = run_macros.get('HOST', None)
         macrouser = run_macros.get('USER', None)
     except:

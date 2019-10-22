@@ -263,7 +263,9 @@ void EbCtrbInBase::_pairUp(TebContributor&    ctrb,
 
     _deliver(ctrb, result, inputs);
 
-    pending.pop();
+    const Batch* ins;
+    pending.pop(ins);
+    //pending.pop();
     ctrb.release(inputs);      // Release input, and by proxy, result batches
     if (pending.empty())  break;
 

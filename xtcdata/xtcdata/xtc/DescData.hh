@@ -289,10 +289,10 @@ protected:
 
             if(index != _numentries)
                 {
-                    char error_string [100];
+                    char error_string [500];
                     const char * error_it_name = _nameindex.names().get(index).name();
 
-                    snprintf(error_string,100, "Item \"%s\" with index %d out of order",error_it_name, index);
+                    snprintf(error_string,sizeof(error_string), "Item \"%s\" with index %d out of order",error_it_name, index);
                     throw std::runtime_error(error_string);
                 }
 

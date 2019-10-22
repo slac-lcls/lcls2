@@ -20,7 +20,7 @@ namespace Pds
   public:
     void          clear();
     bool          push(const T& item);
-    void          pop();
+    bool          pop(T& item);
     T&            front();
     const T&      front() const;
     const T&      peek(size_t offset) const;
@@ -61,30 +61,31 @@ template <class T>
 inline
 bool Pds::Fifo<T>::push(const T& item)
 {
-  size_t sz   = size();
-  bool   full = _count >= sz;
-  if (!full)                         // Can't push when full
-  {
-    _tail = (_tail + 1) % sz;        // Optimized to & when size is a power-of-2
+  size_t sz = size();
+  if (_count >= sz)  return true;  // Can't push when full
 
-    _array[_tail] = item;
+  _tail = (_tail + 1) % sz;        // Optimized to & when size is a power-of-2
 
-    ++_count;
-  }
-  return full;
+  _array[_tail] = item;
+
+  ++_count;
+
+  return false;
 }
 
 template <class T>
 inline
-void Pds::Fifo<T>::pop()
+bool Pds::Fifo<T>::pop(T& item)
 {
-  size_t head(_head);
-  if (_count)
-  {
-    _head = (head + 1) % size();     // Optimized to & when size is a power-of-2
+  if (_count == 0)  return true;   // Can't pop when empty
 
-    --_count;
-  }
+  item = _array[_head];
+
+  _head = (_head + 1) % size();    // Optimized to & when size is a power-of-2
+
+  --_count;
+
+  return false;
 }
 
 template <class T>
@@ -155,7 +156,7 @@ namespace Pds
 #define           LCK                       std::lock_guard<L> lk(_lock)
     void          clear()                 { LCK;        Fifo<T>::clear();    }
     bool          push(const T& item)     { LCK; return Fifo<T>::push(item); }
-    void          pop()                   { LCK;        Fifo<T>::pop();      }
+    bool          pop(T& item)            { LCK; return Fifo<T>::pop(item);  }
     T&            front()                 { LCK; return Fifo<T>::front();    }
     const T&      front() const           { LCK; return Fifo<T>::front();    }
     const T&      peek(size_t ofs) const  { LCK; return Fifo<T>::peek(ofs);  }

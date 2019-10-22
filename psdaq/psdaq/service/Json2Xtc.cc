@@ -61,7 +61,7 @@ void JsonIterator::iterate(Value &val) {
 
 std::string JsonIterator::curname() {
     std::string result = "";
-    for (int i = 0; i < _names.size(); i++) {
+    for (unsigned i = 0; i < _names.size(); i++) {
         if (result == "")
             result += _names[i];
         else if (_isnum[i])
@@ -74,7 +74,7 @@ std::string JsonIterator::curname() {
 
 Value *JsonIterator::findJsonType() {
     Value *typ = &_types;
-    for (int i = 0; i < _names.size(); i++) {
+    for (unsigned i = 0; i < _names.size(); i++) {
         if (!_isnum[i])
             typ = &((*typ)[_names[i].c_str()]);
     }
@@ -143,22 +143,25 @@ public:
         case Name::DOUBLE:
             return (T) val.GetDouble();
             break;
-        case Name::CHARSTR:
-            /* Don't support this. */
+        default:
+            /* Don't support these. */
             break;
         }
+        // cpo: I think this shouldn't happen, but this avoids
+        // compiler warnings.
+        return (T)0;
     }
     template <typename T> void writeArray(Value &val, unsigned shape[MaxRank],
                                           unsigned size, Name::DataType typ) {
         Array<T> arrayT = _cd.allocate<T>(_cnt, shape);
         T *data = arrayT.data();
-        for (int i = 0; i < size; i++)
+        for (unsigned i = 0; i < size; i++)
             data[i] = getVal<T>(val[i], typ);
     }
     void process(Value &val) {
         Value *typ = findJsonType();
         if (typ->IsArray()) {
-            int i;
+            unsigned i;
             unsigned shape[MaxRank], size = 1;
             for (i = 1; i < (*typ).Size(); i++) {
                 unsigned dim = (*typ)[i].GetUint();
@@ -280,7 +283,7 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, unsigned segment)
     Document *d = new Document();
     d->Parse(in);
     if (d->HasParseError()) {
-        printf("Parse error: %s, location %d\n",
+        printf("Parse error: %s, location %zu\n",
                GetParseError_En(d->GetParseError()), d->GetErrorOffset());
         delete d;
         return -1;

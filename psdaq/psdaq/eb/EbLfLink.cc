@@ -376,12 +376,12 @@ int EbLfCltLink::post(const void* buf,
                       size_t      len,
                       uint64_t    immData)
 {
-  if (ssize_t rc = _ep->injectdata(buf, len, immData) < 0)
+  ssize_t rc;
+  if ( (rc = _ep->injectdata(buf, len, immData)) )
   {
     fprintf(stderr, "%s:\n  injectdata failed: %s\n",
             __PRETTY_FUNCTION__, _ep->error());
-    return rc;
   }
 
-  return 0;
+  return rc;
 }

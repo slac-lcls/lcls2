@@ -36,7 +36,7 @@ cdef class PyShmemClient:
         #this needs to be done with kwargs
         args['index'] = ev_index
         args['size'] = buf_size
-        args['cli'] = self.pclient
+        args['cli_cptr'] = self.pclient
 
         cview = <char[:buf_size]>buf
         

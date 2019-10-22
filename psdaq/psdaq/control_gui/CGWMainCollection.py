@@ -30,6 +30,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QGridLayout, QLab
 from PyQt5.QtCore import QSize
 from psdaq.control_gui.CGWPanelList import CGWPanelList
 from psdaq.control_gui.CGJsonUtils  import get_status
+from psdaq.control_gui.CGConfigParameters import cp
 
 #--------------------
 
@@ -41,6 +42,8 @@ class CGWMainCollection(QWidget) :
     def __init__(self, parent=None):
 
         QWidget.__init__(self, parent)
+
+        cp.cgwmaincollection = self
 
         self.grid = None
         self.update_table()
@@ -115,6 +118,13 @@ class CGWMainCollection(QWidget) :
         self.setMinimumSize(100, 40)
 
         self.layout().setContentsMargins(0,0,0,0)
+
+#--------------------
+
+    def closeEvent(self, e) :
+        #logger.debug('closeEvent')
+        QWidget.closeEvent(self, e)
+        cp.cgwmaincollection = None
 
 #--------------------
  

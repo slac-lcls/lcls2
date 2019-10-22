@@ -26,6 +26,9 @@ def launch_client(pid):
         assert(np.array_equal(cspad.raw.image(evt),np.vstack((padarray,padarray))))
         if evt._dgrams[0].seq.service() == 12:
             # immediately release datagram to server
+            # if this "del" isn't done then the client receives fewer
+            # datagrams, perhaps because the shmem buffer doesn't
+            # guarantee delivery of all dgrams, but I'm not certain - cpo
             del evt._dgrams[0]
             dg_count += 1
     return dg_count  

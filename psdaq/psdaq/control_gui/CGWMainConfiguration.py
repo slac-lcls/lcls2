@@ -244,7 +244,7 @@ class CGWMainConfiguration(QGroupBox) :
     def select_config_type_and_dev(self):
 
         wd = CGWConfigSelect(parent=self, type_def=self.but_type_text())
-        w = QWDialog(None, wd, is_frameless=True)
+        w = QWDialog(None, wd, is_frameless=False)
         w.but_apply.setText('Edit')
         w.but_apply.setEnabled(False)
         #w.setWindowTitle('Select to edit')

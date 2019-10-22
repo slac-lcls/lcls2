@@ -108,19 +108,26 @@ namespace psalg {
       */
 
       void free(int index, int size) {
-      XtcMonitorMsg myMsg = _myMsg;
-      myMsg.bufferIndex(index);
-      mqd_t* oq = _evqout;
-      unsigned ioq = _ev_index;
-      unsigned priority(0);
-      XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (size * index));
+          XtcMonitorMsg myMsg = _myMsg;
+          myMsg.bufferIndex(index);
+          mqd_t* oq = _evqout;
+          unsigned ioq = _ev_index;
+          unsigned priority(0);
+          XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (size * index));
 
-      if(dg->seq.service()==XtcData::TransitionId::L1Accept) {
+          if(dg->seq.service()==XtcData::TransitionId::L1Accept) {
 #ifdef DBUG
-        printf("ShmemClient DgramHandler free dgram index %d size %d\n",index,size);
+              printf("ShmemClient DgramHandler free dgram index %d size %d\n",index,size);
 #endif
-        mq_timedsend(oq[ioq], (const char *)&myMsg, sizeof(myMsg), priority, &_tmo);
-        }
+              mq_timedsend(oq[ioq], (const char *)&myMsg, sizeof(myMsg), priority, &_tmo);
+          } else {
+              if(::send(_trfd,(char*)&myMsg,sizeof(myMsg),0)<0) {
+                  // cpo: we can get an error if the server exits
+                  // not clear how we should handle this.  keep
+                  // the server alive? print a warning?
+                  perror("ShmemClient.cc: transition send error (can happen if server exits)");
+              }
+          }
       }
 
 
@@ -156,10 +163,6 @@ namespace psalg {
           index = i;
           size = myMsg.sizeOfBuffers();
           
-          if(::send(_trfd,(char*)&myMsg,sizeof(myMsg),0)<0) {
-            perror("transition send");
-            return NULL;
-            }
           return dg;
         }
         else {

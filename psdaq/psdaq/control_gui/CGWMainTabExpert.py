@@ -43,18 +43,13 @@ class CGWMainTabExpert(QWidget) :
     def __init__(self, **kwargs) :
 
         parent      = kwargs.get('parent', None)
-        parent_ctrl = kwargs.get('parent_ctrl', None)
 
         QWidget.__init__(self, parent=None)
 
         logger.debug('In %s' % self._name)
 
         self.wpart = CGWMainPartition()
-        parent_ctrl.wpart = self.wpart
-        parent_ctrl.wcoll = self.wpart.wcoll
-
-        self.wctrl = CGWMainControl(parent, parent_ctrl)
-        parent_ctrl.wctrl = self.wctrl 
+        self.wctrl = CGWMainControl(parent)
 
         #self.wpart = QTextEdit('Txt 1')
         #self.wctrl = QTextEdit('Txt 2')
@@ -129,7 +124,7 @@ if __name__ == "__main__" :
 
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
-    kwargs = {'parent':None, 'parent_ctrl':Emulator()}
+    kwargs = {'parent':None}
     w = CGWMainTabExpert(**kwargs)
     w.show()
     app.exec_()

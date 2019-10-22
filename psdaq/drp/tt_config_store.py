@@ -45,8 +45,39 @@ def write_scratch_pad(prescaling):
     ####### Keeping it simple.  Just what Giaccomo will need #############
     ######################################################################
 
+    ########################################
+    #####        prescaling          #######
+    ########################################
+    top.set("cl.Application.AppLane[0].Prescale.ScratchPad",int(prescaling),'UINT32')                     # testing ability to write to database
+    top.set("cl.Application.AppLane[0].Prescale.DialInPreScaling",12,'UINT32')                            # prescaled raw data 
+    top.set("cl.Application.AppLane[0].Fex.background_prescaler.DialInPreScaling",11,'UINT32')            # prescaled raw backgrounds (may consider accumulated backgrounds instead)
+    ########################################
+    #####      initial fir filter    #######
+    ########################################
+    top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet0","7f7f7f7f",'CHARSTR')                      #high part of step 
+    top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet1","7f7f7f7f",'CHARSTR')                      #high part of step 
+    top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet2","7f7f7f7f",'CHARSTR')                      #high part of step 
+    top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet3","7f7f7f7f",'CHARSTR')                      #high part of step 
+    top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet4","81818181",'CHARSTR')                      #low  part of step
+    top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet5","81818181",'CHARSTR')                      #low  part of step
+    top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet6","81818181",'CHARSTR')                      #low  part of step
+    top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet7","81818181",'CHARSTR')                      #low  part of step
 
-    top.set("cl.Application.AppLane1.Prescale.ScratchPad",int(prescaling),'UINT32')
+    #top.set("cl.Application.AppLane[0].Fex.FIR.LoadCoefficients",0,'CHARSTR')                             #low  part of step
+
+    ########################################
+    #####      time constants        #######
+    ########################################
+    top.set("cl.Application.AppLane[0].Fex.FrameIIR.TimeConstant",8,'UINT32')
+
+
+    ########################################
+    #####      subtraction enabled     #####
+    ########################################
+    top.set("cl.Application.AppLane[0].Fex.FrameSubtractor.SubtractionActive",0,'UINT32')                   #turn background subtract on
+
+
+
     mycdb.modify_device('BEAM', top)
 
     #IPython.embed()

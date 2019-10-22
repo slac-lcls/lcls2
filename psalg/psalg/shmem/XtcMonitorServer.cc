@@ -200,12 +200,12 @@ bool XtcMonitorServer::_send(Dgram* dg)
     ShMsg m(msg, dg);
     if (mq_timedsend(_shuffleQueue, (const char*)&m, sizeof(m), 0, &_tmo)) {
       printf("ShuffleQ timed out\n");
-      _deleteDatagram(dg);
+      _deleteDatagram(dg, msg.bufferIndex());
     }
   }
   else {
     // No shared memory buffer found.  Dropping new event.
-    _deleteDatagram(dg);
+    _deleteDatagram(dg, -1);
   }
   return true;
 }
@@ -387,7 +387,7 @@ void XtcMonitorServer::routine()
           if (mq_timedsend(_requestQueue, (const char*)&msg, sizeof(msg), 0, &_tmo))
             perror("Writing to requestQ");
           else
-            _requestDatagram();
+            _requestDatagram(msg.bufferIndex());
         }
       }
 
@@ -400,7 +400,7 @@ void XtcMonitorServer::routine()
           perror("mq_receive");
 
         _copyDatagram(m.dg(),_myShm+_sizeOfBuffers*m.msg().bufferIndex());
-        _deleteDatagram(m.dg());
+        _deleteDatagram(m.dg(), m.msg().bufferIndex());
 
         if (m.msg().serial()) {
           //
@@ -702,7 +702,11 @@ void XtcMonitorServer::_copyDatagram(Dgram* p, char* b)
   memcpy((char*)b, dg, sizeof(Dgram)+dg->xtc.sizeofPayload());
 }
 
+void XtcMonitorServer::_deleteDatagram(Dgram* p, int) { _deleteDatagram(p); }
+
 void XtcMonitorServer::_deleteDatagram(Dgram* p) {}
+
+void XtcMonitorServer::_requestDatagram(int) { _requestDatagram(); }
 
 void XtcMonitorServer::_requestDatagram() {}
 

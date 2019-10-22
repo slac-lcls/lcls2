@@ -35,20 +35,20 @@ from PyQt5.QtCore import Qt, QTimer, QSize # pyqtSignal, QRectF, QPointF
 
 from psdaq.control_gui.QWIcons import icon
 from psdaq.control_gui.Styles import style
-from psdaq.control_gui.CGDaqControl import daq_control, DaqControl
+from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_get_state,\
+                                           daq_control_set_record, daq_control_get_status, DaqControl
+from psdaq.control_gui.CGConfigParameters import cp
 
 #--------------------
 
 class CGWMainControl(QGroupBox) :
     """
     """
-    status_record = ['Begin', 'End', 'Wait']
-
-    def __init__(self, parent=None, parent_ctrl=None):
+    def __init__(self, parent=None):
 
         QGroupBox.__init__(self, 'Control', parent)
 
-        self.parent_ctrl = parent_ctrl
+        cp.cgwmaincontrol = self
 
         self.lab_state = QLabel('Target State')
         self.lab_trans = QLabel('Last Transition')
@@ -60,7 +60,6 @@ class CGWMainControl(QGroupBox) :
         icon.set_icons()
 
         self.but_record = QPushButton(icon.icon_record_sym, '') # icon.icon_record
-        self.but_record.setAccessibleName(self.status_record[0])
         self.lab_record = QLabel('Recording')
 
         self.box_state      = QComboBox()
@@ -123,14 +122,14 @@ class CGWMainControl(QGroupBox) :
         self.ts = 'N/A'
         self.check_state()
         self.check_transition()
+        self.set_but_ctrls()
 
 #--------------------
 
     def set_tool_tips(self) :
         self.setToolTip('Configuration') 
-        s = '%s recording' % self.but_record.accessibleName()
-        self.but_record.setToolTip(s)
-        self.lab_record.setText(s+':')
+        self.but_record.setToolTip('sets flag for recording')
+        self.lab_record.setText('Recording:')
         self.box_state.setToolTip('Select desirable state.')
         self.but_transition.setToolTip('Last transition info.')
         self.but_ctrls.setToolTip('State info.') 
@@ -158,10 +157,9 @@ class CGWMainControl(QGroupBox) :
     def on_box_state(self, ind) :
         if not ind : return
         state = self.states[ind]
-        logger.info('CGWMainDetector.on_box_state -> daq_control().setState %s' % state)
-        #self.parent_ctrl.kick_zmq()
-        daq_control().setState(state.lower())
-        logger.debug('command daq_control().setState is committed...')
+        logger.info('-> daq_control_set_state(%s)' % state)
+        if not daq_control_set_state(state.lower()):
+            logger.warning('on_box_state: STATE %s IS NOT SET' % state)
 
 #--------------------
  
@@ -188,53 +186,75 @@ class CGWMainControl(QGroupBox) :
 #--------------------
 
     def on_but_record(self) :
-        txt = self.but_record.accessibleName()
-        logger.debug('CGWMainControl.on_but_record %s' % txt)
-        ind = self.status_record.index(txt) # 0/1/2 = Begin/End/Wait
+        logger.debug('on_but_record')
 
-        daq_ctrl = daq_control()
-        if daq_ctrl is not None :
-            daq_ctrl.setRecord(ind==0) # switches button record state
-            logger.debug('CGWMainControl.on_but_record daq_control.setRecord("%s")' % (ind==0))
-        else :
-            logger.warning('CGWMainControl.on_but_record daq_control() is None')
+        s = daq_control_get_status()
+        if s is None :
+            logger.warning('on_but_record: STATUS IS NOT AVAILABLE')
+            return
+        transition, state, cfgtype, recording = s
+
+        if not daq_control_set_record(not recording) :
+            logger.warning('on_but_record: RECORDING FLAG IS NOT SET')
 
 #--------------------
 
-    def set_but_record(self, recording=False) :
-        """ Callback from CGWMain.process_zmq_message is used to change button status
-        """
-        txt = self.but_record.accessibleName()
-        logger.debug('CGWMainTabUser.set_but_record status: %s request: %s' % (txt,recording))
-        ind = self.status_record.index(txt) # 0/1/2 = Begin/End/Wait
-
-        if ind==1 and recording       : return # recording state has not changed
-        if ind==0 and (not recording) : return # recording state has not changed
-
-        ico = icon.icon_record_sym if recording else\
-              icon.icon_record
-        self.but_record.setIcon(ico)
-        self.but_record.setAccessibleName(self.status_record[0 if recording else 1])
-        self.set_tool_tips()
-#        self.lab_record.setText(s+':')
+#    def set_but_record(self, recording=None) :
+#        """ Callback from CGWMain.process_zmq_message is used to change button status
+#        """
+#        logger.debug('DEPRICATED set_but_record: %s' % recording)
 
 #--------------------
 
     def check_state(self) :
-        #logger.debug('CGWMainDetector.check_state -> daq_control().getState()')
-        state = daq_control().getState()
-        if state is None : return
-        if state == self.state : return
-        self.set_but_ctrls(state)
+        #logger.debug('check_state -> daq_control_get_state()')
+        s = daq_control_get_state()
+        if s is None :
+            logger.warning('check_state: STATE IS NOT AVAILABLE')
+            return
+        if s == self.state : return
+        self.set_but_ctrls()
 
 #--------------------
 
-    def set_but_ctrls(self, s) :
+    def set_but_enabled(self, but, is_enabled=True) :
+        but.setEnabled(is_enabled)
+        but.setFlat(not is_enabled)
+        #but.setVisible(is_enabled)
+
+    def set_but_record_enabled(self, is_enabled=True) :
+        self.set_but_enabled(self.but_record, is_enabled)
+
+#--------------------
+
+    def set_but_ctrls(self, s_status=None) :
+
+        logger.debug('in set_but_ctrls received status %s' % str(s_status))
+
+        s = daq_control_get_status() if s_status is None else s_status
+        if s is None :
+            logger.warning('set_but_ctrls: STATUS IS NOT AVAILABLE')
+            return
+
+        transition, state, cfgtype, recording = s
+
+        #state_zmq = str(s_state).lower() if s_state is not None else None
+        #if (s_state is not None) and state_zmq != state :
+        #    logger.debug('set_but_ctrls ZMQ msg state:%s inconsistent with current:%s'%\
+        #                 (state_zmq,state))
+
+        self.but_record.setIcon(icon.icon_record if recording else icon.icon_record_sym)
+        self.set_but_record_enabled(state in ('reset','unallocated','allocated','connected','configured'))
+
         self.ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
-        self.state = s 
+        self.state = state 
         #self.but_state.setText('%s since %s' % (s.upper(), self.ts))
-        self.but_ctrls.setText(s.upper())
-        self.parent_ctrl.wpart.set_buts_enable(s.upper()) # enable/disable button plat in other widget
+        self.but_ctrls.setText(state.upper())
+
+        wpart = cp.cgwmainpartition
+        if wpart is not None : wpart.set_buts_enable(state.upper()) # enable/disable button plat in other widget
+
+        self.set_transition(transition)
 
 #--------------------
  
@@ -248,14 +268,21 @@ class CGWMainControl(QGroupBox) :
 #--------------------
 
     def check_transition(self) :
-        """Uses getStatus() to get last transition and set the info button status.
+        """Uses daq_control_get_status() to get last transition and set the info button status.
         """
-        logger.debug('CGWMainDetector.check_transition')
+        logger.debug('check_transition')
         #t0_sec = time() # takes 0.001s
-        transition, state, config_alias, recording = daq_control().getStatus() # submits request to check transition, state, config_alias, and recording
-        logger.debug('CGWMainDetector.check_transition transition:%s state:%s config_alias:%s recording:%s' % (str(transition), str(state), str(config_alias), str(recording)))
+        s = daq_control_get_status()
+        if s is None :
+            logger.warning('check_transition: STATUS IS NOT AVAILABLE')
+            return
+
+        transition, state, cfgtype, recording = s
+
+        logger.debug('check_transition transition:%s state:%s cfgtype:%s recording:%s'%\
+                     (str(transition), str(state), str(cfgtype), str(recording)))
         self.but_transition.setText(transition.upper()) # + ' since %s' % self.ts)
-        #state = daq_control().getState()
+        #state = daq_control_get_state()
         #self.but_state.setText(state.upper() + ' since %s' % self.ts)
 
 #--------------------
@@ -264,6 +291,13 @@ class CGWMainControl(QGroupBox) :
         #ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
         #self.but_transition.setText('%s since %s' % (s.upper(), ts))
         self.but_transition.setText(s.upper())
+
+#--------------------
+
+    def closeEvent(self, e) :
+        #logger.debug('closeEvent')
+        QGroupBox.closeEvent(self, e)
+        cp.cgwmaincontrol = None
 
 #--------------------
 
@@ -287,7 +321,7 @@ if __name__ == "__main__" :
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
-    w = CGWMainControl(None, parent_ctrl=Emulator())
+    w = CGWMainControl(None)
     #w.connect_path_is_changed_to_recipient(w.test_signal_reception)
     w.show()
     app.exec_()

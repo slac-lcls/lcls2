@@ -61,8 +61,8 @@ class EventManager(object):
         for i, event_bytes in enumerate(self.smd_events):
             if event_bytes:
                 smd_evt = Event._from_bytes(self.smd_configs, event_bytes)
-                self.ofsz_batch[i,:,:] = np.asarray([[d.info[0].offsetAlg.intOffset, \
-                        d.info[0].offsetAlg.intDgramSize] \
+                self.ofsz_batch[i,:,:] = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
+                        d.smdinfo[0].offsetAlg.intDgramSize] \
                         for d in smd_evt])
 
         self.bigdata = [None] * self.n_smd_files
@@ -94,8 +94,8 @@ class EventManager(object):
         if self.filter_fn:
             smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events])
             self.cn_events += 1
-            ofsz = np.asarray([[d.info[0].offsetAlg.intOffset, \
-                    d.info[0].offsetAlg.intDgramSize] for d in smd_evt])
+            ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
+                    d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_evt])
             bd_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
             return bd_evt
         

@@ -53,7 +53,11 @@ class CGConfigParameters(ConfigParameters) :
         #self.printParameters()
 
         # Registration of widgets/objects
-        self.cgwmain     = None
+        self.cgwmain           = None
+        self.cgwmaincollection = None
+        self.cgwmainpartition  = None
+        self.cgwmaincontrol    = None
+        self.cgwmaintabuser    = None
 
 #------------------------------
         

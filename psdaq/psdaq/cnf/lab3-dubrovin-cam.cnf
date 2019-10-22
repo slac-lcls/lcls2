@@ -1,4 +1,4 @@
-platform = '6'
+if not platform: platform = '6'
 username = 'lcls2'
 expname  = 'expname'
 expnum   = 'expnum'
@@ -24,7 +24,7 @@ procmgr_config = [
  {                        id:'partca-'+platform, conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
  { host: collect_host,    id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -P TMO -B DAQ:LAB2 -x 2'},
- {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H'+collect_host},
+ {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H'+collect_host+' -E'},
  #{                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H'+collect_host+' -L logs'},
  # trigger event builder
  { host: 'drp-tst-dev001', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},

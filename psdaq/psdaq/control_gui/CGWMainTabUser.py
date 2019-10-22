@@ -32,11 +32,12 @@ from PyQt5.QtWidgets import QGroupBox, QPushButton, QHBoxLayout, QVBoxLayout, QS
 from PyQt5.QtCore import Qt, QSize
 
 from psdaq.control_gui.CGWMainPartition import CGWMainPartition
-#from psdaq.control_gui.CGWMainControl   import CGWMainControl
 from psdaq.control_gui.QWIcons import icon
 from psdaq.control_gui.Styles import style
 
-from psdaq.control_gui.CGDaqControl import daq_control
+from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_get_state,\
+                                           daq_control_set_record, daq_control_get_status
+from psdaq.control_gui.CGConfigParameters import cp
 
 #------------------------------
 
@@ -47,73 +48,76 @@ class CGWMainTabUser(QGroupBox) :
     s_running, s_paused = 'running', 'paused'
     s_play_start, s_play_pause, s_play_wait, s_play_stop = 'Start', 'Pause', 'Wait', 'Stop'
 
-    status_record = ['Begin', 'End', 'Wait']
+    #status_record = ['Begin', 'End', 'Wait']
 
     def __init__(self, **kwargs) :
 
         parent      = kwargs.get('parent', None)
-        parent_ctrl = kwargs.get('parent_ctrl', None)
 
         #QWidget.__init__(self, parent=None)
         QGroupBox.__init__(self, 'Control', parent)
 
+        cp.cgwmaintabuser = self
+
         logger.debug('In %s' % self._name)
-
         icon.set_icons()
-
-        #self.hbox = self.hbox_test()
         self.hbox = self.hbox_buttons()
-
-        parent_ctrl.wctrl = self
-
         self.setLayout(self.hbox)
 
         self.set_style()
         self.set_tool_tips()
+        self.set_but_ctrls()
 
 #------------------------------
 
-    def set_but_ctrls(self, s_state) :
-        """interface method called from CGWMain on zmq poll
+    def set_but_ctrls(self, s_status=None) :
+        """interface method sets button states,
+           is called from CGWMain on zmq poll and at initialization of the object.
         """
-        logger.debug('In %s.set_but_ctrls received state: %s' % (self._name, s_state))
-        state =  s_state.lower()
+        logger.debug('in set_but_ctrls received status %s' % str(s_status))
+
+        s = daq_control_get_status() if s_status is None else s_status
+        if s is None :
+            logger.warning('set_but_ctrls: STATUS IS NOT AVAILABLE')
+            return
+
+        transition, state, cfgtype, recording = s
+
+        #state_zmq = str(s_state).lower() if s_state is not None else None
+        #if (s_state is not None) and state_zmq != state :
+        #    logger.debug('set_but_ctrls ZMQ msg state:%s inconsistent with current:%s'%\
+        #                 (state_zmq,state))
 
         if state == self.s_running :
             self.but_play.setIcon(icon.icon_playback_pause_sym)
-            self.but_play.setAccessibleName(self.s_play_pause)
-
-        else : # elif state == self.s_paused :
+            #self.but_play.setAccessibleName(self.s_play_pause)
+        else :
             self.but_play.setIcon(icon.icon_playback_start_sym)
-            self.but_play.setAccessibleName(self.s_play_start)
+            #self.but_play.setAccessibleName(self.s_play_start)
 
         self.but_play.setIconSize(QSize(48, 48))
         self.set_tool_tips()
-        self.set_but_play_enabled(True) # unlock play button
 
-        self.set_but_stop_enabled(state in ('starting', 'paused', 'running'))
+        self.but_record.setIcon(icon.icon_record if recording else icon.icon_record_sym)
 
-        #daq_ctrl = daq_control()
-        #if daq_ctrl is not None :
-        #    transition, state, cfgtype, recording = daq_control.getStatus()
-        #    logger.debug('CGWMainTabUser.set_but_ctrls transition:%s state:%s config_alias:%s recording:%s'%\
-        #                 (str(transition), str(state), str(config_alias), str(recording)))
-        #else :
-        #    logger.warning('CGWMainTabUser.set_but_ctrls daq_control is None')
+        self.set_but_play_enabled(True)   # unlock play button
+        self.set_but_record_enabled(state in ('reset','unallocated','allocated','connected','configured'))
+        #self.set_but_stop_enabled(state in ('starting', 'paused', 'running'))
+        self.but_stop.setVisible(state in ('starting', 'paused', 'running'))
 
 #------------------------------
 
-    def set_transition(self, s_transition) :
-        """interface method called from CGWMain on zmq poll
-        """
-        logger.debug('In %s.set_transition received state: %s' % (self._name, s_transition))
+#    def set_transition(self, s_transition) :
+#        """interface method called from CGWMain on zmq poll
+#        """
+#        logger.debug('in set_transition received state: %s' % s_transition)
 
 #------------------------------
 
     def set_tool_tips(self) :
-        self.but_play  .setToolTip('%s running'  % self.but_play.accessibleName())
-        self.but_record.setToolTip('%s recording' % self.but_record.accessibleName())
-        self.but_stop  .setToolTip('%s running and request state "configured"' % self.but_stop.accessibleName())
+        self.but_play  .setToolTip('Start/Pause running')
+        self.but_record.setToolTip('ON/OFF recording')
+        self.but_stop  .setToolTip('Stop running')
 
 #--------------------
 
@@ -162,20 +166,28 @@ class CGWMainTabUser(QGroupBox) :
     def hbox_buttons(self) :
         hbox = QHBoxLayout()
 
-        daq_ctrl = daq_control()
-        state = daq_ctrl.getState() if daq_ctrl is not None else 'unknown'
-        logger.debug('current state is "%s"' % state)
-        is_running = state==self.s_running
+        #state = daq_control_get_state()
+        #logger.debug('current state is "%s"' % state)
 
-        self.but_play   = QPushButton(icon.icon_playback_pause_sym if is_running else\
-                                      icon.icon_playback_start_sym, '')
-        self.but_record = QPushButton(icon.icon_record_sym, '')         # icon.icon_record
+        #is_running = state==self.s_running
+
+        #self.but_play   = QPushButton(icon.icon_playback_pause_sym if is_running else\
+        #                              icon.icon_playback_start_sym, '')
+        #self.but_record = QPushButton(icon.icon_record_sym, '')         # icon.icon_record
+        #self.but_stop   = QPushButton(icon.icon_playback_stop_sym, '')
+
+        #self.but_play  .setAccessibleName(self.s_play_pause if is_running else\
+        #                                  self.s_play_start)
+        #self.but_record.setAccessibleName(self.status_record[0])
+        #self.but_stop  .setAccessibleName(self.s_play_stop)
+
+        self.but_play   = QPushButton(icon.icon_playback_pause_sym, '')
+        self.but_record = QPushButton(icon.icon_record_sym, '')
         self.but_stop   = QPushButton(icon.icon_playback_stop_sym, '')
 
-        self.but_play  .setAccessibleName(self.s_play_pause if is_running else\
-                                          self.s_play_start)
-        self.but_record.setAccessibleName(self.status_record[0])
-        self.but_stop  .setAccessibleName(self.s_play_stop)
+        self.but_play  .setAccessibleName('play')
+        self.but_record.setAccessibleName('record')
+        self.but_stop  .setAccessibleName('stop')
 
         self.but_play  .clicked.connect(self.on_but_play)
         self.but_record.clicked.connect(self.on_but_record)
@@ -184,6 +196,7 @@ class CGWMainTabUser(QGroupBox) :
         hbox.addWidget(self.but_play)
         hbox.addWidget(self.but_stop)
         hbox.addWidget(self.but_record)
+        hbox.addStretch(1) 
 
         #self.but_play.setStyleSheet('QPushButton{border: 0px solid;}')
         #self.but_record.setStyleSheet("background-image: url('image.jpg'); border: none;")
@@ -191,90 +204,78 @@ class CGWMainTabUser(QGroupBox) :
 
 
     def on_but_play(self) :
-        txt = self.but_play.accessibleName()
-        logger.debug('on_but_play %s' % txt)
-        #ind = self.status_play.index(txt)
-        #ico = icon.icon_playback_start_sym if txt==self.status_play_start else icon.icon_wait
-              #icon.icon_playback_pause_sym
+        #txt = self.but_play.accessibleName()
+        logger.debug('on_but_play')
 
+        # submit command for "running" or "pause"
+        s = daq_control_get_status()
+        if s is None :
+            logger.warning('on_but_play: STATUS IS NOT AVAILABLE')
+            return
+        transition, state, cfgtype, recording = s
+        cmd = self.s_paused if state==self.s_running else self.s_running
+        if not daq_control_set_state(cmd):
+            logger.warning('on_but_play: STATE %s IS NOT SET' % cmd)
+            return
+
+        # set WAIT temporary icon
         ico = icon.icon_wait
         self.but_play.setIconSize(QSize(32, 32) if ico == icon.icon_wait else QSize(48, 48))
-        self.but_play.setAccessibleName(self.s_play_wait)
-        #self.but_play.setAccessibleName(self.status_play[0 if ind==1 else 1])
-
+        #self.but_play.setAccessibleName(self.s_play_wait)
         self.but_play.setIcon(ico)
         self.set_tool_tips()
-
-        daq_ctrl = daq_control()
-        state = daq_ctrl.getState() if daq_ctrl is not None else 'unknown'
-        logger.debug('current state is %s' % state)
-
-        cmd = self.s_paused if txt==self.s_play_pause else self.s_running
-
-        daq_ctrl = daq_control()
-        if daq_ctrl is not None :
-            daq_ctrl.setState(cmd)
-            logger.debug('daq_control.setState("%s")' % cmd)
-        else :
-            logger.warning('daq_control() is None')
-
         self.set_but_play_enabled(False) # lock button untill RUNNING status is received
 
 
-    def set_but_enabled(self, but, is_enable=True) :
-        but.setEnabled(is_enable)
-        but.setFlat(not is_enable)
+    def set_but_enabled(self, but, is_enabled=True) :
+        but.setEnabled(is_enabled)
+        but.setFlat(not is_enabled)
+        #but.setVisible(is_enabled)
 
 
-    def set_but_play_enabled(self, is_running=True) :
-        self.set_but_enabled(self.but_play, is_running)
+    def set_but_play_enabled(self, is_enabled=True) :
+        self.set_but_enabled(self.but_play, is_enabled)
 
 
-    def set_but_stop_enabled(self, is_enable=True) :
-        self.set_but_enabled(self.but_stop, is_enable)
+    def set_but_stop_enabled(self, is_enabled=True) :
+        self.set_but_enabled(self.but_stop, is_enabled)
+
+
+    def set_but_record_enabled(self, is_enabled=True) :
+        self.set_but_enabled(self.but_record, is_enabled)
 
 
     def on_but_record(self) :
-        txt = self.but_record.accessibleName()
-        logger.debug('on_but_record %s' % txt)
-        ind = self.status_record.index(txt) # 0/1/2 = Begin/End/Wait
+        logger.debug('on_but_record')
 
-        daq_ctrl = daq_control()
-        if daq_ctrl is not None :
-            daq_ctrl.setRecord(ind==0) # switches button record state
-            logger.debug('on_but_record daq_control.setRecord("%s")' % (ind==0))
-        else :
-            logger.warning('on_but_record daq_control() is None')
+        s = daq_control_get_status()
+        if s is None :
+            logger.warning('on_but_record: STATUS IS NOT AVAILABLE')
+            return
+        transition, state, cfgtype, recording = s
+
+        if not daq_control_set_record(not recording) :
+            logger.warning('on_but_record: RECORDING FLAG IS NOT SET')
 
 
-    def set_but_record(self, recording=False) :
-        """ Callback from CGWMain.process_zmq_message is used to change button status
-        """
-        txt = self.but_record.accessibleName()
-        logger.debug('CGWMainTabUser.set_but_record status: %s request: %s' % (txt,recording))
-        ind = self.status_record.index(txt) # 0/1/2 = Begin/End/Wait
-
-        if ind==1 and recording       : return # recording state has not changed
-        if ind==0 and (not recording) : return # recording state has not changed
-
-        ico = icon.icon_record_sym if recording else\
-              icon.icon_record
-        self.but_record.setIcon(ico)
-        self.but_record.setAccessibleName(self.status_record[0 if recording else 1])
-        self.set_tool_tips()
+#    def set_but_record(self, recording=False) :
+#        """ Callback from CGWMain.process_zmq_message is used to change button status
+#        """
+#        logger.debug('DEPRICATED set_but_record to: %s' % recording)
 
 
     def on_but_stop(self) :
-        txt = self.but_stop.accessibleName()
-        logger.debug('on_but_stop %s' % txt)
-        cmd = 'configured'
-        daq_ctrl = daq_control()
-        if daq_ctrl is not None :
-            daq_ctrl.setState(cmd)
-            logger.debug('on_but_stop daq_control.setState("%s")' % cmd)
-        else :
-            logger.warning('on_but_stop daq_control() is None')
+        #txt = self.but_stop.accessibleName()
+        logger.debug('on_but_stop')
+        daq_control_set_state('configured')
         #self.set_but_stop_enabled(False) # set depending on state
+
+#--------------------
+
+    def closeEvent(self, e) :
+        #logger.debug('closeEvent')
+        QGroupBox.closeEvent(self, e)
+        cp.cgwmaintabuser = None
 
 #------------------------------
 #------------------------------
@@ -335,7 +336,7 @@ if __name__ == "__main__" :
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
 
-    kwargs = {'parent':None, 'parent_ctrl':Emulator()}
+    kwargs = {'parent':None}
     w = CGWMainTabUser(**kwargs)
     w.show()
     app.exec_()

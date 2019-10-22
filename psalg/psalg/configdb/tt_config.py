@@ -1,6 +1,9 @@
 from psalg.configdb.get_config import get_config
+import rogue
 import TimeToolDev
 import json
+import IPython
+from collections import deque
 
 #this function reads the data base and converts it into.... what sort of object?
 def read_database():
@@ -24,14 +27,20 @@ def tt_config(connect_str,cfgtype,detname,group):
 
 
     #################################################################
-    cl = TimeToolDev.TimeToolDev(
-        dev       = '/dev/datadev_0',
-        dataDebug = False,
-        version3  = False,
-        pollEn    = False,
-        initRead  = False,
-        enVcMask  = 0xD,
-    )
+    try:
+        cl = TimeToolDev.TimeToolDev(
+            dev       = '/dev/datadev_0',
+            dataDebug = False,
+            version3  = False,
+            pollEn    = False,
+            initRead  = False,
+            enVcMask  = 0xD,
+        )
+    except rogue.GeneralError:
+        #print("rogue.GeneralError: AxiStreamDma::AxiStreamDma: General Error: failed to open file /dev/datadev_0 with dest 0x0 terminate called after throwing an instance of 'char const*'")
+        print("ERROR: Close any other applications using rogue to communicate with AXI Lite registers ")
+        raise
+        
 
     #################################################################
 
@@ -39,10 +48,36 @@ def tt_config(connect_str,cfgtype,detname,group):
         raise ValueError(f'PGP Link is down' )
         
     #################################################################
-    
-    scratch_pad = (cfg['cl']['Application']['AppLane1']['Prescale']['ScratchPad'])
 
-    cl.Application.AppLane[0].Prescale.ScratchPad.set(scratch_pad)
+
+    ###############################################################################
+    ### traverse daq config database tree and print corresponding rogue value #####
+    ###############################################################################
+    # doing this means that fields can't manually be added to the daq config unless the person doing so knows what the axi lite registers are
+
+    depth = 0
+    path  = 'cl'
+    my_queue  =  deque([[path,depth,cl,cfg['cl']]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
+    while(my_queue):
+        path,depth,rogue_node, configdb_node = my_queue.pop()
+        if(dict is type(configdb_node)):
+            for i in configdb_node:
+                my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[i],configdb_node[i]])
+        
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
+            #print(path)
+            print(path+" = "+str(hex(rogue_node.get())))  
+    
+
+
+    ##############
+    #####
+    ##############
+
+    
+    scratch_pad = (cfg['cl']['Application']['AppLane[0]']['Prescale']['ScratchPad'])   
+
+    cl.Application.AppLane[0].Prescale.ScratchPad.set(scratch_pad)                       #writing to rogue register 
 
     print("scratch pad value = ",cl.Application.AppLane[0].Prescale.ScratchPad.get())
 
@@ -54,17 +89,36 @@ def tt_config(connect_str,cfgtype,detname,group):
 if __name__ == "__main__":
 
 
+    print(20*'_')
+    print(20*'_')
+    print("Executing main")
+    print(20*'_')
+    print(20*'_')
+
     connect_info = {}
     connect_info['body'] = {}
     connect_info['body']['control'] = {}
     connect_info['body']['control']['0'] = {}
     connect_info['body']['control']['0']['control_info'] = {}
     connect_info['body']['control']['0']['control_info']['instrument'] = 'TMO'
-    connect_info['body']['control']['0']['control_info']['cfg_dbase'] = 'mcbrowne:psana@psdb-dev:9306/configDB'
+    connect_info['body']['control']['0']['control_info']['cfg_dbase'] = 'mcbrowne:psana@psdb-dev:9306/sioanDB'
 
     mystring = json.dumps(connect_info)                             #paste this string into the pgpread_timetool.cc as parameter for the tt_config function call
     print(mystring)
+    print(20*'_')
+    print(20*'_')
+    print("Calling tt_config")
+    print(20*'_')
+    print(20*'_')
+
     my_config = tt_config(mystring,"BEAM", "tmotimetool",None)          
+
+    print(20*'_')
+    print(20*'_')
+    print("tt_config finished")
+    print(20*'_')
+    print(20*'_')
+
     print(my_config)
 
 """
