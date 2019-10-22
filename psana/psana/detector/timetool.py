@@ -20,4 +20,5 @@ class tt_detector_type_placeholder_tt_algorithm_placeholder_0_0_1(DetectorImpl):
         return segments[0].data[:16]
 
     #def edge_value(self,evt):              #speak with damiani for how to send back this data to ami
-    #def edge_uncertainty(self,evt):
+    #def edge_uncertainty(self,evt):        #needs _(underscore) to hide things AMI doesn't need to see.
+    #
