@@ -4,7 +4,7 @@ import sys
 import IPython
 
 
-def write_scratch_pad(prescaling):
+def write_to_daq_config_db(prescaling):
 
     #database contains collections which are sets of documents (aka json objects).
     #each type of device has a collection.  The elements of that collection are configurations of that type of device.
@@ -58,7 +58,7 @@ def write_scratch_pad(prescaling):
     top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet1","7f7f7f7f",'CHARSTR')                      #high part of step 
     top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet2","7f7f7f7f",'CHARSTR')                      #high part of step 
     top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet3","7f7f7f7f",'CHARSTR')                      #high part of step 
-    top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet4","81818181",'CHARSTR')                      #low  part of step
+    top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet4","81818182",'CHARSTR')                      #low  part of step
     top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet5","81818181",'CHARSTR')                      #low  part of step
     top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet6","81818181",'CHARSTR')                      #low  part of step
     top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet7","81818181",'CHARSTR')                      #low  part of step
@@ -77,6 +77,9 @@ def write_scratch_pad(prescaling):
     top.set("cl.Application.AppLane[0].Fex.FrameSubtractor.SubtractionActive",0,'UINT32')                   #turn background subtract on
 
 
+    #the object hierarchy paths (e.g. cl.Application.AppLane[0]... yadayadayada) for a device can be found by implementing
+    #pr.generateAddressMap where pr comes from "import rogue as pr".  For this to work, one has to be logged onto the machine hosting the firmware   
+    #that interacts with rogue.  This particular register map can be found in the lcls2-pcie-apps directory cloned from https://github.com/slaclab/lcls2-pcie-apps.
 
     mycdb.modify_device('BEAM', top)
 
@@ -84,4 +87,4 @@ def write_scratch_pad(prescaling):
 
 
 if __name__ == "__main__":
-    write_scratch_pad(sys.argv[1])
+    write_to_daq_config_db(sys.argv[1])

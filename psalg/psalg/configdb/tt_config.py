@@ -67,8 +67,12 @@ def tt_config(connect_str,cfgtype,detname,group):
         if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
             #print(path)
             print(path+", rogue value = "+str(hex(rogue_node.get()))+", daq config database = " +str(configdb_node))
-    
 
+            # this is where the magic happens.  I.e. this is where the rogue axi lite register is set to the daq config database value
+            # There's something uneasy about this
+            rogue_node.set(int(str(configdb_node),16))
+    
+            
 
     ##############
     #####
@@ -81,7 +85,7 @@ def tt_config(connect_str,cfgtype,detname,group):
 
     print("scratch pad value = ",cl.Application.AppLane[0].Prescale.ScratchPad.get())
 
-    cl.stop()   #gui.py should be able to run after this, but it's still using the axi lite resource.
+    cl.stop()   #gui.py should be able to run after this line, but it's still using the axi lite resource.
                 #deleting cl doesn't resolve this problem.
 
     return json.dumps(cfg)
