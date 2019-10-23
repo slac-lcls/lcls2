@@ -66,7 +66,7 @@ def tt_config(connect_str,cfgtype,detname,group):
         
         if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
             #print(path)
-            print(path+" = "+str(hex(rogue_node.get())))  
+            print(path+", rogue value = "+str(hex(rogue_node.get()))+", daq config database = " +str(configdb_node))
     
 
 
