@@ -538,8 +538,19 @@ class CollectionManager():
         self.cmstate = {}
         self.phase1Info = {}
         self.level_keys = {'drp', 'teb', 'meb', 'control'}
-        self.instrument = instrument
-        self.station = 0        # FIXME
+
+        # parse instrument_name[:station_number]
+        if ':' in instrument:
+            self.instrument, station_number = instrument.split(':', maxsplit=1)
+            try:
+                self.station = int(station_number)
+            except ValueError:
+                logging.error("Invalid station number '%s', using 0" % station_number)
+                self.station = 0
+        else:
+            self.instrument = instrument
+            self.station = 0
+        logging.debug('instrument=%s, station=%d' % (self.instrument, self.station))
         self.ids = set()
         self.handle_request = {
             'selectplatform': self.handle_selectplatform,
@@ -1522,7 +1533,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
     parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
-    parser.add_argument('-P', metavar='INSTRUMENT', required=True, help='instrument (e.g. TMO)')
+    parser.add_argument('-P', metavar='INSTRUMENT', required=True, help='instrument_name[:station_number]')
     parser.add_argument('-d', metavar='CFGDATABASE', default='mcbrowne:psana@psdb-dev:9306/configDB', help='configuration database connection')
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
