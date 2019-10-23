@@ -60,11 +60,14 @@ def main():
     else:
         if args.verbose >= 2:
             print("Response: %s" % resp.text)
-        if resp.json().get("success", None):
-            num = resp.json().get("value", {}).get("num", None)
-            print("run number: %s" % num)
+        if resp.status_code == requests.codes.ok:
+            if resp.json().get("success", None):
+                num = resp.json().get("value", {}).get("num", None)
+                print("run number: %s" % num)
+            else:
+                print("current_run failure")
         else:
-            print("current_run failure")
+            exit("Error: status code %d" % resp.status_code)
 
     if args.end:
         # end run
