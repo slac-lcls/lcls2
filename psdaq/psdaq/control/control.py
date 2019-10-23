@@ -8,6 +8,7 @@ import zmq.utils.jsonapi as json
 from transitions import Machine, MachineError, State
 import argparse
 import requests
+from requests.auth import HTTPBasicAuth
 import logging
 from psdaq.control.syslog import SysLog
 import string
@@ -538,6 +539,7 @@ class CollectionManager():
         self.phase1Info = {}
         self.level_keys = {'drp', 'teb', 'meb', 'control'}
         self.instrument = instrument
+        self.station = 0        # FIXME
         self.ids = set()
         self.handle_request = {
             'selectplatform': self.handle_selectplatform,
@@ -909,6 +911,21 @@ class CollectionManager():
         return True
 
     def condition_beginrun(self):
+        logging.debug('condition_beginrun(): self.recording = %s' % self.recording)
+
+        # run_info
+        if self.recording:
+            self.experiment_name = self.get_experiment()
+            if self.experiment_name:
+                # update runDB
+                run_number = self.start_run(self.experiment_name)
+                self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':run_number}}
+            else:
+                err_msg = 'condition_beginrun(): get_experiment() failed (instrument=\'%s\')' % self.instrument
+                logging.error(err_msg)
+                self.report_error(err_msg)
+                return False
+
         # phase 1
         ok = self.condition_common('beginrun', 6000)
         if not ok:
@@ -929,6 +946,12 @@ class CollectionManager():
         return True
 
     def condition_endrun(self):
+        logging.debug('condition_endrun(): self.recording = %s' % self.recording)
+
+        if self.recording and self.experiment_name:
+            # update runDB
+            self.end_run(self.experiment_name)
+
         # phase 1
         ok = self.condition_common('endrun', 6000)
         if not ok:
@@ -1065,7 +1088,7 @@ class CollectionManager():
 
     def handle_getinstrument(self, body):
         logging.debug('handle_getinstrument()')
-        body = {'instrument': self.instrument}
+        body = {'instrument': self.instrument, 'station': self.station}
         return create_msg('instrument', body=body)
 
     def handle_selectplatform(self, body):
@@ -1188,6 +1211,74 @@ class CollectionManager():
         self.front_pub.send_json(error_msg(msg))
         return
 
+    def start_run(self, experiment_name):
+        run_num = 0
+        serverURLPrefix = "{0}run_control/{1}/ws/".format(self.url + "/" if not self.url.endswith("/") else self.url, experiment_name)
+        logging.debug('serverURLPrefix = %s' % serverURLPrefix)
+        try:
+            resp = requests.post(serverURLPrefix + "start_run", auth=HTTPBasicAuth(self.user, self.password))
+        except Exception as ex:
+            logging.error('start_run error. HTTP request: %s' % ex)
+        else:
+            logging.debug("start_run response: %s" % resp.text)
+            if resp.status_code == requests.codes.ok:
+                if resp.json().get("success", None):
+                    logging.debug("start_run success")
+                    run_num = resp.json().get("value", {}).get("num", None)
+                else:
+                    logging.error("start_run failure")
+            else:
+                logging.error("start_run error: status code %d" % resp.status_code)
+
+        logging.debug("start_run: run number = %s" % run_num)
+        return run_num
+
+    def end_run(self, experiment_name):
+        run_num = 0
+        serverURLPrefix = "{0}run_control/{1}/ws/".format(self.url + "/" if not self.url.endswith("/") else self.url, experiment_name)
+        logging.debug('serverURLPrefix = %s' % serverURLPrefix)
+        try:
+            resp = requests.post(serverURLPrefix + "end_run", auth=HTTPBasicAuth(self.user, self.password))
+        except Exception as ex:
+            logging.error('end_run error. HTTP request: %s' % ex)
+        else:
+            logging.debug("Response: %s" % resp.text)
+            if resp.status_code == requests.codes.ok:
+                if resp.json().get("success", None):
+                    logging.debug("end_run success")
+                else:
+                    logging.error("end_run failure")
+            else:
+                logging.error("end_run error: status code %d" % resp.status_code)
+        return
+
+    def get_experiment(self):
+        logging.debug('get_experiment()')
+        experiment_name = None
+        instrument = self.instrument
+        try:
+            resp = requests.get((self.url + "/" if not self.url.endswith("/") else self.url) + "/lgbk/ws/activeexperiment_for_instrument_station",
+                                auth=HTTPBasicAuth(self.user, self.password),
+                                params={"instrument_name": instrument, "station": self.station})
+        except requests.exceptions.RequestException:
+            logging.error("get_experiment(): request exception")
+        else:
+            logging.debug("request response: %s" % resp.text)
+            if resp.status_code == requests.codes.ok:
+                logging.debug("headers: %s" % resp.headers)
+                if 'application/json' in resp.headers['Content-Type']:
+                    try:
+                        experiment_name = resp.json().get("value", {}).get("name", None)
+                    except json.decoder.JSONDecodeError:
+                        logging.error("Error: failed to decode JSON")
+                else:
+                    logging.error("Error: failed to receive JSON")
+            else:
+                logging.error("Error: status code %d" % resp.status_code)
+
+        # result of request, or None
+        return experiment_name
+
     def condition_common(self, transition, timeout, body=None):
         if body is None:
             body = {}
@@ -1197,6 +1288,7 @@ class CollectionManager():
         # include phase1 info in the msg, if it exists
         if transition in self.phase1Info.keys():
             body['phase1Info'] = self.phase1Info[transition]
+            logging.debug('condition_common(%s): body = %s' % (transition, body))
         msg = create_msg(transition, body=body)
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
         # now that the message has been sent, delete the phase1
@@ -1426,8 +1518,6 @@ class Client:
             self.back_push.send_json(reply)
 
 def main():
-    from multiprocessing import Process
-
     # Process arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
@@ -1439,7 +1529,6 @@ def main():
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')
     parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 0)')
     parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
-    parser.add_argument('-a', action='store_true', help='autoconnect')
     parser.add_argument('-v', action='store_true', help='be verbose')
     parser.add_argument("--user", default="xppopr", help='run database user')
     parser.add_argument("--password", default="pcds", help='run database password')
@@ -1456,46 +1545,11 @@ def main():
     logger = SysLog(instrument=args.P, level=level)
     logging.info('logging initialized')
 
-    def manager():
-        run_dbase = (args.user, args.password, args.url)
+    run_dbase = (args.user, args.password, args.url)
+    try:
         manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d, args.C, args.S, args.T, run_dbase)
-
-    def client(i):
-        c = Client(platform)
-
-    procs = [Process(target=manager)]
-    for i in range(2):
-        # procs.append(Process(target=client, args=(i,)))
-        pass
-
-    for p in procs:
-        p.start()
-        pass
-
-    if args.a:
-        # Commands
-        context = zmq.Context(1)
-        front_req = context.socket(zmq.REQ)
-        front_req.connect('tcp://localhost:%d' % front_rep_port(platform))
-        time.sleep(0.5)
-
-        msg = create_msg('rollcall')
-        front_req.send_json(msg)
-        print('Answer to rollcall:', front_req.recv_multipart())
-
-        msg = create_msg('alloc')
-        front_req.send_json(msg)
-        print('Answer to alloc:', front_req.recv_multipart())
-
-        msg = create_msg('connect')
-        front_req.send_json(msg)
-        print('Answer to connect:', front_req.recv_multipart())
-
-    for p in procs:
-        try:
-            p.join()
-        except KeyboardInterrupt:
-            pass
+    except KeyboardInterrupt:
+        logging.info('KeyboardInterrupt')
 
 if __name__ == '__main__':
     main()
