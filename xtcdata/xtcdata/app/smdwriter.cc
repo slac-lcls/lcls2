@@ -294,7 +294,7 @@ void addNames(Xtc& parent, NamesLookup& namesLookup, unsigned nodeId)
     CheckNamesIdIter checkNamesId(namesId);
     checkNamesId.iterate(&parent);
     
-    Names& offsetNames = *new(parent) Names("info", alg, "offset", "", namesId);
+    Names& offsetNames = *new(parent) Names("smdinfo", alg, "offset", "", namesId);
     offsetNames.add(parent,SmdDef);
     namesLookup[namesId] = NameIndex(offsetNames);
 }

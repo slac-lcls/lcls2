@@ -256,7 +256,10 @@ def deduce_instrument(configfilename, platform=None):
     instr_name = ''
     currentexpcmd = ''
     station_number = 0
-    cc = {'instrument': None, 'platform': platform, 'procmgr_config': None, 'TESTRELDIR': None,
+    xplatform = None
+    if platform is not None:
+      xplatform = str(platform)
+    cc = {'instrument': None, 'platform': xplatform, 'procmgr_config': None, 'TESTRELDIR': None,
           'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host',
           'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': {}, 'currentexpcmd': None}
 
