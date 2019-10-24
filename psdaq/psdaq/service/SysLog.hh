@@ -3,6 +3,9 @@
 
 #include <syslog.h>     // defines LOG_WARNING, etc
 
+#define SYSLOG_IDENT_MAX    32
+#define SYSLOG_FORMAT_MAX   4096
+
 namespace Pds {
 class SysLog
 {
