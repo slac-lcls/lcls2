@@ -8,6 +8,12 @@ except NameError:
     # Python 3
     QString = str
 
+try:
+    QChar = unichr
+except NameError:
+    # Python 3
+    QChar = chr
+
 logger = logging.getLogger(__name__)
 
 NBeamSeq = 16
