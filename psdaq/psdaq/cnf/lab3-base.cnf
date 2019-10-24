@@ -11,6 +11,8 @@ epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 shelf = '2'
 ip_addr = '10.0.'+shelf
 
+drp_nodes = ['001','002','003','004','005','008','009','011','013','014','015','017','018']
+
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
 #                "X" open xterm
@@ -46,3 +48,6 @@ procmgr_config = [
 ## procstat
  {                    id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
   ]
+
+for n in drp_nodes:
+    procmgr_config.append({host:'drp-tst-dev'+n, id:'pykcu-'+n, port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pykcu'})

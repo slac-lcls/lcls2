@@ -145,6 +145,7 @@ class Top(pr.Device):
             offset = 0x08800000,
         ))
 
+        
         for i in range(len(Top.mmcmParms)):
             self.add(xpm.MmcmPhaseLock(
                 memBase = self.srp,
@@ -152,12 +153,6 @@ class Top(pr.Device):
                 offset = Top.mmcmParms[i][1],
             ))
         
-        self.add(xpm.CuPhase(
-            memBase = self.srp,
-            name = 'CuPhase',
-            offset = 0x80050000,
-        ))
-
         hsrParms = [ ['HSRep0',0x09000000],
                      ['HSRep1',0x09010000],
                      ['HSRep2',0x09020000],
@@ -170,6 +165,16 @@ class Top(pr.Device):
                 name   = hsrParms[i][0],
                 offset = hsrParms[i][1],
             ))
+
+        self.amcs = []
+        for i in range(2):
+            amc = xpm.MpsSfpAmc(
+                memBase = self.srp,
+                name    = 'Amc%d'%i,
+                offset  = 0x09000000+(i+1)*0x100000,
+            )
+            self.add(amc)
+            self.amcs.append(amc)
 
         self.add(timing.GthRxAlignCheck(
             memBase = self.srp,
@@ -200,5 +205,17 @@ class Top(pr.Device):
             memBase = self.srp,
             name   = 'SeqEng_0',
             offset = 0x80020000,
+        ))
+
+#        self.add(xpm.CuPhase(
+#            memBase = self.srp,
+#            name = 'CuPhase',
+#            offset = 0x80050000,
+#        ))
+
+        self.add(xpm.XpmPhase(
+            memBase = self.srp,
+            name   = 'CuToScPhase',
+            offset = 0x80050000,
         ))
 

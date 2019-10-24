@@ -6,7 +6,7 @@ import io
 # these are the current default values, but put them here to be explicit
 create = False
 dbname = 'configDB'
-instrument = 'TMO'
+instrument = 'TST'
 
 mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)
 
