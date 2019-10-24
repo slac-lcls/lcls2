@@ -205,4 +205,9 @@ class MmcmPhaseLock(pr.Device):
             mode         = "RO",
         ))
 
-
+    def waveform(self):
+        w = [0]*2048
+        for i in range(2048):
+            self.ramAddr.set(i)
+            w[i] = self.ramData.get()
+        return w
