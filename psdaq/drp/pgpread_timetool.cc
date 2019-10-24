@@ -57,7 +57,6 @@ Dgram& createTransition(TransitionId::Value transId,
     uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
-    //void* buf = malloc(BUFSIZE);
 
     tv.tv_sec = 0;
     tv.tv_usec = timestamp_val;
@@ -75,7 +74,6 @@ unsigned dmaDest(unsigned lane, unsigned vc)
 void int_handler(int dummy)
 {
     terminate.store(true, std::memory_order_release);
-    // dmaUnMapDma();
 }
 
 int toggle_acquisition(int x)
@@ -83,10 +81,8 @@ int toggle_acquisition(int x)
     printf("starting prescaler config testing  \n");
 
     PyObject *pName, *pModule, *pFunc;
-    //PyObject *pArgs, *pValue;
 
     Py_Initialize();
-    //PyObject* sysPath = PySys_GetObject((char*)"path");
 
     pName = PyUnicode_DecodeFSDefault("toggle_prescaling");
 
@@ -112,11 +108,8 @@ int toggle_acquisition(int x)
                 PyErr_Print();
         }
 
-    //Py_XDECREF(pArgs);
-    //Py_XDECREF(pModule);
-    //Py_XDECREF(sysPath);
-    //Py_XDECREF(pValue);
-    //Py_XDECREF(pName);
+    Py_XDECREF(pModule);
+    Py_XDECREF(pName);
 
     printf("ending prescaler config testing \n ");
 
@@ -210,12 +203,8 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
     }
 
 
-    // FIXME: should uncomment these to avoid memory leak
-    //Py_XDECREF(pArgs);
-    //Py_XDECREF(pModule);
-    //Py_XDECREF(sysPath);
-    //Py_XDECREF(pValue);
-    //Py_XDECREF(pName);
+
+    Py_XDECREF(pModule);    
 
     printf("ending prescaler config testing \n ");
 
