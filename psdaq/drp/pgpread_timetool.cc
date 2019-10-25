@@ -335,14 +335,16 @@ int main(int argc, char* argv[])
                 //*****************************
                 //**** writing xtc to disk ****
                 //*****************************
-
-                Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(ts.tv_sec, ts.tv_nsec), PulseId(raw_counter,0));
-                TypeId tid(TypeId::Parent, 0);
-                unsigned env = 0;
-                Dgram& dgram = *new(dgram_buf) Dgram(Transition(seq, env), Xtc(tid));
+                //refer to this link https://docs.google.com/presentation/d/1KsTXafudKoDTHlqAQXOHSZRLQ1x734kTlrVniV3K-NI/edit#slide=id.g64c80c79d8_0_69 
+                //for a visual layout of how the data structures below create the object that gets stored to xtc.
                 unsigned nodeId = 0;
-                NamesId eventNamesId(nodeId,EventNamesIndex);
+                unsigned env    = 0;
 
+
+                Sequence   seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(ts.tv_sec, ts.tv_nsec), PulseId(raw_counter,0));
+                TypeId     tid(TypeId::Parent, 0);
+                Dgram&     dgram = *new(dgram_buf) Dgram(Transition(seq, env), Xtc(tid));
+                NamesId    eventNamesId(nodeId,EventNamesIndex);
                 //this instantiates the dgram.xtc component.  Here's the path dgram takes before it gets written.  dgram is now contained within fex
                 CreateData fex(dgram.xtc, namesLookup, eventNamesId);
 

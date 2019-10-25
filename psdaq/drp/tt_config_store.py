@@ -49,8 +49,8 @@ def write_to_daq_config_db(prescaling):
     #####        prescaling          #######
     ########################################
     top.set("cl.Application.AppLane[0].Prescale.ScratchPad",int(prescaling),'UINT32')                     # testing ability to write to database
-    top.set("cl.Application.AppLane[0].Prescale.DialInPreScaling",12,'UINT32')                            # prescaled raw data 
-    top.set("cl.Application.AppLane[0].Fex.background_prescaler.DialInPreScaling",11,'UINT32')            # prescaled raw backgrounds (may consider accumulated backgrounds instead)
+    top.set("cl.Application.AppLane[0].Prescale.DialInPreScaling",3,'UINT32')                            # prescaled raw data 
+    top.set("cl.Application.AppLane[0].Fex.background_prescaler.DialInPreScaling",2,'UINT32')            # prescaled raw backgrounds (may consider accumulated backgrounds instead)
     ########################################
     #####      initial fir filter    #######
     ########################################
