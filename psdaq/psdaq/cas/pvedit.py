@@ -460,8 +460,9 @@ class PvDblArray:
 
 class PvEditCmb(PvComboDisplay):
 
-    def __init__(self, pvname, choices):
+    def __init__(self, pvname, choices, cb=None):
         super(PvEditCmb, self).__init__(choices)
+        self.cb = cb
         self.connect_signal()
         self.currentIndexChanged.connect(self.setValue)
         initPvMon(self,pvname)
@@ -481,6 +482,8 @@ class PvEditCmb(PvComboDisplay):
             else:
                 self.setCurrentIndex(q)
                 self.valueSet.emit(q)
+            if self.cb != None:
+                self.cb()
         else:
             print(err)
 
@@ -708,10 +711,11 @@ class PvEditEvt(QtWidgets.QWidget):
 
 class PvDstTab(QtWidgets.QWidget):
 
-    def __init__(self, pvname):
+    def __init__(self, pvname, cb=None):
         super(PvDstTab,self).__init__()
 
-        self.pv = Pv(pvname)
+        self.cb = cb
+        initPvMon(self,pvname)
 
         self.chkBox = []
         layout = QtWidgets.QGridLayout()
@@ -719,27 +723,53 @@ class PvDstTab(QtWidgets.QWidget):
             layout.addWidget( QtWidgets.QLabel('D%d'%i), i/4, 2*(i%4) )
             chkB = QtWidgets.QCheckBox()
             layout.addWidget( chkB, i/4, 2*(i%4)+1 )
-            chkB.clicked.connect(self.update)
+            chkB.clicked.connect(self.setValue)
             self.chkBox.append(chkB)
         self.setLayout(layout)
 
-    def update(self):
+    def setValue(self):
         v = 0
         for i in range(NBeamSeq):
             if self.chkBox[i].isChecked():
                 v |= (1<<i)
         self.pv.put(v)
 
+    def update(self, err):
+        q = self.pv.__value__
+        if err is None:
+            if nogui:
+                print(self.pv.pvname,q)
+            else:
+                for i in range(NBeamSeq):
+                    self.chkBox[i].setChecked(q&(1<<i))
+            if self.cb != None:
+                self.cb()
+        else:
+            print(err)
+
 class PvEditDst(QtWidgets.QWidget):
 
     def __init__(self, pvname, idx):
         super(PvEditDst, self).__init__()
-        vbox = QtWidgets.QVBoxLayout()
-        selcmb = PvEditCmb(pvname,dstsel)
 
-        vbox.addWidget(selcmb)
-        vbox.addWidget(PvDstTab(pvname+'_Mask'))
+        self.ok_palette = QtGui.QPalette()
+        self.errpalette = QtGui.QPalette()
+        self.errpalette.setColor(QtGui.QPalette.Window, QtGui.QColor.fromRgb(255,0,0))
+
+        vbox = QtWidgets.QVBoxLayout()
+        self.selcmb = PvEditCmb(pvname,dstsel,self.validate)
+        vbox.addWidget(self.selcmb)
+        self.selmask = PvDstTab(pvname+'_Mask',self.validate)
+        vbox.addWidget(self.selmask)
         self.setLayout(vbox)
+
+    def validate(self):
+        if self.selcmb.pv.__value__==0 and self.selmask.pv.__value__==0:
+            self.selcmb .setPalette(self.errpalette)
+            self.selmask.setPalette(self.errpalette)
+        else:
+            self.selcmb .setPalette(self.ok_palette)
+            self.selmask.setPalette(self.ok_palette)
 
 class PvEditTS(PvEditCmb):
 
