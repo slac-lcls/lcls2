@@ -932,7 +932,7 @@ class CollectionManager():
                 run_number = self.start_run(self.experiment_name)
                 self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':run_number}}
             else:
-                err_msg = 'condition_beginrun(): get_experiment() failed (instrument=\'%s\')' % self.instrument
+                err_msg = 'condition_beginrun(): get_experiment() failed (instrument=\'%s\', station=%d)' % (self.instrument, self.station)
                 logging.error(err_msg)
                 self.report_error(err_msg)
                 return False

@@ -10,6 +10,14 @@ class SysLog:
 
     def __init__(self, *, instrument, level):
 
+        # If you define a level with the same numeric value, it overwrites the
+        # predefined value; the predefined name is lost.
+        logging.addLevelName(10, '<D>')    # DEBUG
+        logging.addLevelName(20, '<I>')    # INFO
+        logging.addLevelName(30, '<W>')    # WARNING
+        logging.addLevelName(40, '<E>')    # ERROR
+        logging.addLevelName(50, '<C>')    # CRITICAL
+
         root = logging.getLogger()
         root.setLevel(level)
         root.handlers = []
