@@ -19,7 +19,6 @@ setup(
                 'currentexp = psdaq.control.currentexp:main',
                 'testClient2 = psdaq.control.testClient2:main',
                 'testAsyncErr = psdaq.control.testAsyncErr:main',
-                'syslog = psdaq.control.syslog:main',
                 'getrun = psdaq.control.getrun:main',
                 'groupca = psdaq.cas.groupca:main',
                 'partca = psdaq.cas.partca:main',
