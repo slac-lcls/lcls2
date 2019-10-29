@@ -240,7 +240,7 @@ class GroupSetup(object):
         self._pv_L0Select   = addPV('L0Select'               ,self.put)
         self._pv_FixedRate  = addPV('L0Select_FixedRate'     ,self.put)
         self._pv_ACRate     = addPV('L0Select_ACRate'        ,self.put)
-        self._pv_ACTimeSlot = addPV('L0Select_ACTimeslot'    ,self.put)
+        self._pv_ACTimeslot = addPV('L0Select_ACTimeslot'    ,self.put)
         self._pv_Sequence   = addPV('L0Select_Sequence'      ,self.put)
         self._pv_SeqBit     = addPV('L0Select_SeqBit'        ,self.put)        
         self._pv_DstMode    = addPV('DstSelect'              ,self.put, 1)
