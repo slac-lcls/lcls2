@@ -129,7 +129,7 @@ int32_t Fmc134Ctrl::default_init(Fmc134Cpld& cpld, unsigned mode)
 
         dword &= 0xF00000; 
         if (dword != 0xF00000) {
-                printf("QPLLs NOT LOCKED!\n");
+          printf("QPLLs(0x%x) NOT LOCKED! [0x%x]\n",(dword>>20)&0xf,dword);
                 return FMC134_ERR_ADC_INIT;
         } else {
                 printf("QPLLs are locked.\n");

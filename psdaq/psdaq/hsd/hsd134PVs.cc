@@ -118,6 +118,7 @@ void StatsTimer::expired()
 void usage(const char* p) {
   printf("Usage: %s -d <device> [options]\n",p);
   printf("Options: -P <prefix>  (default: DAQ:LAB2:HSD)\n");
+  printf("         -E           (tolerate errors)\n");
 }
 
 int main(int argc, char** argv)
@@ -129,11 +130,14 @@ int main(int argc, char** argv)
 
   const char* dev    = 0;
   const char* prefix = "DAQ:LAB2:HSD";
+  bool lAbortOnErr = true;
 
-  while ( (c=getopt( argc, argv, "d:P:Ih")) != EOF ) {
+  while ( (c=getopt( argc, argv, "d:EP:Ih")) != EOF ) {
     switch(c) {
     case 'd':
       dev    = optarg;      break;
+    case 'E':
+      lAbortOnErr = false;  break;
     case 'P':
       prefix = optarg;      break;
     case '?':
@@ -179,7 +183,7 @@ int main(int argc, char** argv)
   }
 
   m->setup_timing();
-  m->setup_jesd();
+  m->setup_jesd(lAbortOnErr);
 
   m->set_local_id(strtoul(dev+strlen(dev)-2,NULL,16));
 

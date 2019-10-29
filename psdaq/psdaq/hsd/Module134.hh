@@ -51,7 +51,7 @@ namespace Pds {
       uint64_t device_dna() const;
 
       void     setup_timing();
-      void     setup_jesd  ();
+      void     setup_jesd  (bool lAbortOnErr=true);
       void     board_status();
 
       void     set_local_id(unsigned bus);

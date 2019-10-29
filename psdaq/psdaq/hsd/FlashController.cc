@@ -232,9 +232,9 @@ void FlashController::_read(std::vector<uint8_t>& v, unsigned nwords)
       v.push_back(d&0xff);
       v.push_back((d>>8)&0xff);
 
-      i++;
       if ((i%(nwords/10))==0)
         printf("Read %u%% complete [%lu B]\n",100*i/nwords, i*sizeof(uint16_t));
+      i++;
     }
     else {
       usleep(10);
