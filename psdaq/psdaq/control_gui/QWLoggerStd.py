@@ -24,7 +24,7 @@ Copied and modified from lcls2/psana/psana/grephqt/QWLoggerStd.py on 2019-01-28 
 
 import logging
 
-from psdaq.control.syslog import SysLog
+from psalg.utils.syslog import SysLog
 
 logger = logging.getLogger() # need in root to intercept messages from all other loggers
 #logger = logging.getLogger(__name__)
