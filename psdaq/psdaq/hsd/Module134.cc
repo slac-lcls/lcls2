@@ -118,18 +118,20 @@ void Module134::setup_timing()
   }
 }
 
-void Module134::setup_jesd()
+void Module134::setup_jesd(bool lAbortOnErr)
 {
   i2c_lock(I2cSwitch::PrimaryFmc);
   Fmc134Cpld* cpld = &i2c().fmc_cpld;
   Fmc134Ctrl* ctrl = &p->fmc_ctrl;
   vuint32_t* jesd0  = &p->surf_jesd0[0];
   vuint32_t* jesd1  = &p->surf_jesd1[0];
-  //  cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL);
-  if (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL))
-    abort();
+  if (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL))
+  //  if (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL))
+    if (lAbortOnErr)
+      abort();
   if (cpld->default_adc_init())
-    abort();
+    if (lAbortOnErr)
+      abort();
   jesd0[0] = 0xff;
   jesd1[0] = 0xff;
   jesd0[4] = 0x27;
@@ -138,7 +140,8 @@ void Module134::setup_jesd()
   jesd0[4] = 0x23;
   jesd1[4] = 0x23;
   if (ctrl->default_init(*cpld, 0))
-    abort();
+    if (lAbortOnErr)
+      abort();
   ctrl->dump();
   i2c_unlock();
 }

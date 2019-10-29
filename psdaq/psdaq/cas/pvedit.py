@@ -523,7 +523,7 @@ class PvIntTable(QtWidgets.QGroupBox):
 
 
 class PvCString(QtWidgets.QWidget):
-    def __init__(self, parent, pvbase, name, dName=None):
+    def __init__(self, parent, pvbase, name, dName=None, isStruct=False):
         super(PvCString,self).__init__()
         layout = QtWidgets.QHBoxLayout()
         layout.setContentsMargins(0,0,0,0)
@@ -539,10 +539,14 @@ class PvCString(QtWidgets.QWidget):
         parent.addWidget(self)
 
         pvname = pvbase+name
-        initPvMon(self,pvname)
+        initPvMon(self,pvname,isStruct)
 
     def update(self, err):
-        q = self.pv.get()
+        if self.pv.isStruct:
+            q = self.pv.get().value
+        else: 
+            q = self.pv.get()
+        print(q)
         if err is None:
             s = QString()
             slen = len(q)
@@ -580,12 +584,12 @@ class PvMask(object):
 
 class PvMaskTab(QtWidgets.QWidget):
 
-    def __init__(self, pvname, names):
+    def __init__(self, pvname, names, cb=None):
         super(PvMaskTab,self).__init__()
 
-        print('Pv '+pvname)
-        self.pv = Pv(pvname)
-
+        self.cb = cb
+        initPvMon(self,pvname)
+        
         self.chkBox = []
         layout = QtWidgets.QGridLayout()
         rows = (len(names)+3)/4
@@ -594,21 +598,34 @@ class PvMaskTab(QtWidgets.QWidget):
             layout.addWidget( QtWidgets.QLabel(names[i]), i/cols, 2*(i%cols) )
             chkB = QtWidgets.QCheckBox()
             layout.addWidget( chkB, i/cols, 2*(i%cols)+1 )
-            chkB.clicked.connect(self.update)
+            chkB.clicked.connect(self.setValue)
             self.chkBox.append(chkB)
         self.setLayout(layout)
 
-    def update(self):
+    def setValue(self):
         v = 0
         for i in range(len(self.chkBox)):
             if self.chkBox[i].isChecked():
                 v |= (1<<i)
         self.pv.put(v)
 
+    def update(self, err):
+        q = self.pv.__value__
+        if err is None:
+            if nogui:
+                print(self.pv.pvname,q)
+            else:
+                for i in range(len(self.chkBox)):
+                    self.chkBox[i].setChecked(q&(1<<i))
+            if self.cb != None:
+                self.cb()
+        else:
+            print(err)
+
     #  Reassert PV when window is shown
     def showEvent(self,QShowEvent):
 #        self.QWidget.showEvent()
-        self.update()
+        self.setValue()
 
 class PvDefSeq(QtWidgets.QWidget):
     valueSet = QtCore.pyqtSignal(int,name='valueSet')
@@ -677,12 +694,18 @@ class PvEvtTab(QtWidgets.QStackedWidget):
     def __init__(self, pvname, evtcmb):
         super(PvEvtTab,self).__init__()
 
+        self.ok_palette = QtGui.QPalette()
+        self.errpalette = QtGui.QPalette()
+        self.errpalette.setColor(QtGui.QPalette.Window, QtGui.QColor.fromRgb(255,0,0))
+
         self.addWidget(PvEditCmb(pvname+'_FixedRate',fixedRates))
 
+        self.evtcmb = evtcmb
         acw = QtWidgets.QWidget()
         acl = QtWidgets.QVBoxLayout()
-        acl.addWidget(PvEditCmb(pvname+'_ACRate',acRates))
-        acl.addWidget(PvMaskTab(pvname+'_ACTimeslot',acTS))
+        acl.addWidget(PvEditCmb(pvname+'_ACRate'    ,acRates))
+        self.actsmask = PvMaskTab(pvname+'_ACTimeslot',acTS   ,self.validate)
+        acl.addWidget(self.actsmask)
         acw.setLayout(acl)
         self.addWidget(acw)
 
@@ -697,6 +720,16 @@ class PvEvtTab(QtWidgets.QStackedWidget):
 
         self.setCurrentIndex(evtcmb.currentIndex())
         evtcmb.currentIndexChanged.connect(self.setCurrentIndex)
+
+    #
+    #  Validate the selections and indicate error if timeslot mask is required
+    #  and timeslot mask is empty
+    #
+    def validate(self,idx=None):
+        if self.actsmask.pv.__value__==0:
+            self.actsmask.setPalette(self.errpalette)
+        else:
+            self.actsmask.setPalette(self.ok_palette)
 
 class PvEditEvt(QtWidgets.QWidget):
 
@@ -763,6 +796,10 @@ class PvEditDst(QtWidgets.QWidget):
         vbox.addWidget(self.selmask)
         self.setLayout(vbox)
 
+    #
+    #  Validate the selections and indicate error if destination is required
+    #  and no destination is selected
+    #
     def validate(self):
         if self.selcmb.pv.__value__==0 and self.selmask.pv.__value__==0:
             self.selcmb .setPalette(self.errpalette)

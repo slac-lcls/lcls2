@@ -13,7 +13,7 @@
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/Dl.hh"
-#include "psdaq/service/SysLog.hh"
+#include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <stdio.h>
@@ -39,7 +39,7 @@ using namespace Pds;
 using namespace Pds::Trg;
 
 using json     = nlohmann::json;
-using logging  = Pds::SysLog;
+using logging  = psalg::SysLog;
 using string_t = std::string;
 
 static const int      CORE_0          = 18; // devXXX: 11, devXX:  7, accXX:  9

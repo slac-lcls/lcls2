@@ -185,8 +185,8 @@ class HsdEnv(QtWidgets.QWidget):
     def __init__(self, pvbase):
         super(HsdEnv, self).__init__()
         lo = QtWidgets.QVBoxLayout()
-        PvCString(lo, pvbase+':', 'FWBUILD')
-        PvCString(lo, pvbase+':', 'PADDR')
+        PvCString(lo, pvbase+':', 'FWBUILD',isStruct=True)
+        PvCString(lo, pvbase+':', 'PADDR',isStruct=True)
 #        buildpv = Pv(pvbase+':FWBUILD')
 #        lo.addWidget( QtWidgets.QLabel(buildpv.get().replace(',','\n')) )
 #        paddrpv = Pv(pvbase+':PADDR')

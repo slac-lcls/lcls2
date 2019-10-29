@@ -58,13 +58,9 @@ def DataSource(*args, **kwargs):
                 #    is global... and can interfere with other uses of MPI
                 #    (particularly shmem). Therefore we wish to isolate it
                 #    as much as possible.
-                from psana.psexp.node   import comms
+                from psana.psexp.node   import Communicators
                 from psana.psexp.mpi_ds import MPIDataSource
-
-                # ideally, we could do this, and pass it on to those who
-                # need it (keeping the namespaces local). Only global
-                # uses in node.py prevent this ATM
-                #comms = Communicators()
+                comms = Communicators()
 
                 smalldata_kwargs = {'server_group' : comms.srv_group(),
                                     'client_group' : comms.bd_group()}
