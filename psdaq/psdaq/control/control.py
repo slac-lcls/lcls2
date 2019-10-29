@@ -10,7 +10,7 @@ import argparse
 import requests
 from requests.auth import HTTPBasicAuth
 import logging
-from psdaq.control.syslog import SysLog
+from psalg.utils.syslog import SysLog
 import string
 from p4p.client.thread import Context
 from threading import Thread, Event
