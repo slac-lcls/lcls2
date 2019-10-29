@@ -6,7 +6,7 @@
 #define SYSLOG_IDENT_MAX    32
 #define SYSLOG_FORMAT_MAX   4096
 
-namespace Pds {
+namespace psalg {
 class SysLog
 {
 public:

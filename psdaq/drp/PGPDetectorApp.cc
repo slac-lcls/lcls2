@@ -8,10 +8,10 @@
 #include "Digitizer.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "PGPDetectorApp.hh"
-#include "psdaq/service/SysLog.hh"
+#include "psalg/utils/SysLog.hh"
 
 using json = nlohmann::json;
-using logging = Pds::SysLog;
+using logging = psalg::SysLog;
 
 namespace Drp {
 

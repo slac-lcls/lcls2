@@ -8,8 +8,8 @@
 #include <netinet/ether.h>
 #include <netdb.h>
 #include "Collection.hh"
-#include "psdaq/service/SysLog.hh"
-using logging = Pds::SysLog;
+#include "psalg/utils/SysLog.hh"
+using logging = psalg::SysLog;
 
 using json = nlohmann::json;
 

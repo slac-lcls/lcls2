@@ -4,6 +4,7 @@ add_executable(monReqServer
 
 target_link_libraries(monReqServer
     psalg::shmemsrv
+    psalg::utils
     eventBuilder
     collection
     exporter
