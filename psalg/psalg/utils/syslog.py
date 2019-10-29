@@ -49,16 +49,17 @@ def main():
     # Process arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', action='store_true', help='be verbose')
+    parser.add_argument('-P', metavar='INSTRUMENT', default='TST', help='instrument_name[:station_number]')
     args = parser.parse_args()
 
     # choose logging level
     if args.v:
         level=logging.DEBUG
     else:
-        level=logging.WARNING
+        level=logging.INFO
 
     # configure logging handlers
-    logger = SysLog(instrument='TST', level=level)
+    logger = SysLog(instrument=args.P, level=level)
 
     # log test messages
     logging.critical('this is a test critical message')
