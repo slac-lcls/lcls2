@@ -26,7 +26,7 @@ def global_except_hook(exctype, value, traceback):
     sys.__excepthook__(exctype, value, traceback)
 
 
-sys.excepthook = global_except_hook
+#sys.excepthook = global_except_hook
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -34,11 +34,20 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 
 
+global CALLBACK_OUTPUT
+CALLBACK_OUTPUT = []
+
+
 def gen_h5():
+
+    def test_callback(data_dict):
+        with open('callback.txt', 'a') as f:
+            CALLBACK_OUTPUT.append(data_dict['oneint'])
 
     xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
     ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=lambda x : True, batch_size=2)
-    smd = ds.smalldata(filename='smalldata_test.h5', batch_size=5)
+    smd = ds.smalldata(filename='smalldata_test.h5', batch_size=5,
+                       callbacks=[test_callback])
 
     run = next(ds.runs())
     for i,evt in enumerate(run.events()):
@@ -112,7 +121,8 @@ class SmallDataTest:
 
     # def test_missing_vds(self): return
 
-    
+
+
 # -----------------------
 
 def main():
@@ -120,6 +130,7 @@ def main():
     if rank == 0:
         for fn in glob(".?_smalldata_test.h5"):
             os.remove(fn)
+        os.remove('callback.txt')
     comm.barrier()
 
     gen_h5()
@@ -134,6 +145,8 @@ def main():
         testobj.test_arrint()
         testobj.test_arrfloat()
         testobj.test_every_other_missing()
+
+    assert CALLBACK_OUTPUT == [1,] * len(CALLBACK_OUTPUT), CALLBACK_OUTPUT
 
     return
 
