@@ -26,7 +26,7 @@ def global_except_hook(exctype, value, traceback):
     sys.__excepthook__(exctype, value, traceback)
 
 
-#sys.excepthook = global_except_hook
+sys.excepthook = global_except_hook
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -41,8 +41,7 @@ CALLBACK_OUTPUT = []
 def gen_h5():
 
     def test_callback(data_dict):
-        with open('callback.txt', 'a') as f:
-            CALLBACK_OUTPUT.append(data_dict['oneint'])
+        CALLBACK_OUTPUT.append(data_dict['oneint'])
 
     xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
     ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=lambda x : True, batch_size=2)
@@ -130,7 +129,6 @@ def main():
     if rank == 0:
         for fn in glob(".?_smalldata_test.h5"):
             os.remove(fn)
-        os.remove('callback.txt')
     comm.barrier()
 
     gen_h5()
