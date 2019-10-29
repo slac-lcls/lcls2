@@ -6,12 +6,12 @@
 #include "xtcdata/xtc/Dgram.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
-#include "psdaq/service/SysLog.hh"
+#include "psalg/utils/SysLog.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
 
-using logging = Pds::SysLog;
+using logging = psalg::SysLog;
 
 namespace Drp {
 

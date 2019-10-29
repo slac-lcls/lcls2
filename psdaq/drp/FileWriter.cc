@@ -5,9 +5,9 @@
 #include <cstring>
 #include <iostream>
 #include "FileWriter.hh"
-#include "psdaq/service/SysLog.hh"
+#include "psalg/utils/SysLog.hh"
 
-using logging = Pds::SysLog;
+using logging = psalg::SysLog;
 
 namespace Drp {
 

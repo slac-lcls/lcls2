@@ -1,10 +1,10 @@
 #include <stdio.h>
 #include <stdarg.h>
-#include "psdaq/service/SysLog.hh"
+#include "psalg/utils/SysLog.hh"
 
 extern char *program_invocation_short_name;
 
-using namespace Pds;
+using namespace psalg;
 
 void SysLog::init(const char *instrument, int level)
 {

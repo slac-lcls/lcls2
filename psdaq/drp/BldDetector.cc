@@ -12,13 +12,13 @@
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/eb/TebContributor.hh"
-#include "psdaq/service/SysLog.hh"
+#include "psalg/utils/SysLog.hh"
 #include <getopt.h>
 #include <Python.h>
 
 
 using json = nlohmann::json;
-using logging = Pds::SysLog;
+using logging = psalg::SysLog;
 
 namespace Drp {
 

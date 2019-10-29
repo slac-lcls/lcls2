@@ -11,7 +11,6 @@ add_library(service SHARED
     GenericPoolW.cc
     Histogram.cc
     Dl.cc
-    SysLog.cc
     Json2Xtc.cc
 )
 
@@ -31,6 +30,7 @@ add_library(collection SHARED
 )
 
 target_link_libraries(collection
+    psalg::utils
     libzmq
 )
 
