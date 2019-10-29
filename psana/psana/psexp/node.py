@@ -103,8 +103,6 @@ class Communicators(object):
     def node_type(self):
         return self._nodetype
 
-# Make the Communicators class global
-comms = Communicators()
 
 class UpdateManager(object):
     """ Keeps epics data and their send history. """
@@ -151,7 +149,7 @@ class Smd0(object):
     def __init__(self, run):
         self.smdr_man = SmdReaderManager(run)
         self.run = run
-        self.epics_man = UpdateManager(comms.smd_size, self.run.ssm.stores['epics'].n_files)
+        self.epics_man = UpdateManager(self.run.comms.smd_size, self.run.ssm.stores['epics'].n_files)
         self.run_mpi()
 
     def run_mpi(self):
@@ -168,7 +166,7 @@ class Smd0(object):
             # then send only unseen portion of data to the evtbuilder rank.
             update_pf = PacketFooter(view=update_chunk)
             self.epics_man.extend_buffers(update_pf.split_packets())
-            comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+            self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             epics_chunk = self.epics_man.get_buffer(rankreq[0])
 
             pf = PacketFooter(2)
@@ -176,11 +174,11 @@ class Smd0(object):
             pf.set_size(1, memoryview(epics_chunk).shape[0])
             chunk = smd_chunk + epics_chunk + pf.footer
 
-            comms.smd_comm.Send(chunk, dest=rankreq[0])
+            self.run.comms.smd_comm.Send(chunk, dest=rankreq[0])
 
-        for i in range(comms.n_smd_nodes):
-            comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-            comms.smd_comm.Send(bytearray(), dest=rankreq[0])
+        for i in range(self.run.comms.n_smd_nodes):
+            self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+            self.run.comms.smd_comm.Send(bytearray(), dest=rankreq[0])
 
 class SmdNode(object):
     """Handles both smd_0 and bd_nodes
@@ -202,11 +200,12 @@ class SmdNode(object):
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
         current_step_pos = 0
-        smd_comm = comms.smd_comm
-        n_bd_nodes = comms.bd_comm.Get_size() - 1
-        bd_comm = comms.bd_comm
-        smd_rank = comms.smd_rank
-        epics_man = UpdateManager(comms.bd_size, self.run.ssm.stores['epics'].n_files)
+        smd_comm   = self.run.comms.smd_comm
+        n_bd_nodes = self.run.comms.bd_comm.Get_size() - 1
+        bd_comm    = self.run.comms.bd_comm
+        smd_rank   = self.run.comms.smd_rank
+        epics_man  = UpdateManager(self.run.comms.bd_size, 
+                                   self.run.ssm.stores['epics'].n_files)
 
         cn = 0
         while True:
@@ -269,8 +268,8 @@ class BigDataNode(object):
         self.run = run
 
     def run_mpi(self):
-        bd_comm = comms.bd_comm
-        bd_rank = comms.bd_rank
+        bd_comm = self.run.comms.bd_comm
+        bd_rank = self.run.comms.bd_rank
         self.cn = 0 
         def get_smd():
             bd_comm.Send(np.array([bd_rank], dtype='i'), dest=0)
@@ -300,19 +299,4 @@ class BigDataNode(object):
             for evt in events:
                 if evt._dgrams[0].seq.service() == TransitionId.L1Accept:
                     yield evt
-        
-def run_node(run):
-    if comms._nodetype == 'smd0':
-        Smd0(run)
-    elif comms._nodetype == 'smd':
-        smd_node = SmdNode(run)
-        smd_node.run_mpi()
-    elif comms._nodetype == 'bd':
-        bd_node = BigDataNode(run)
-        for result in bd_node.run_mpi():
-            yield result
-    elif comms._nodetype == 'srv':
-        # tell the iterator to do nothing
-        return
-
-
+ 

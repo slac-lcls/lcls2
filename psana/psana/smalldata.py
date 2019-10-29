@@ -287,11 +287,11 @@ class SmallData: # (client)
             raise Exception('Attempting to run smalldata with no servers'
                             ' set env var PS_SRV_NODES to be 1 or more')
 
-        if self._server_group.rank != MPI.UNDEFINED: # if in server group TODO
+        if self._server_group.rank != MPI.UNDEFINED: # if in server group
             self._type = 'server'
             self._srv_color = self._server_group.rank
             self._srvcomm = self._smalldata_comm.Split(self._srv_color, 0) # rank=0
-        elif self._client_group.rank != MPI.UNDEFINED: # if in client group TODO
+        elif self._client_group.rank != MPI.UNDEFINED: # if in client group
             self._type = 'client'
             self._srv_color = self._client_group.rank % n_srv
             self._srvcomm = self._smalldata_comm.Split(self._srv_color, 

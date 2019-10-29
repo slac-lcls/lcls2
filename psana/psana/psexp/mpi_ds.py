@@ -5,12 +5,12 @@ from mpi4py import MPI
 from .tools import mode
 from .ds_base import DataSourceBase
 from .run import Run
-from .node import run_node
 
 from psana import dgram
 from psana.dgrammanager import DgramManager
 from psana.psexp.stepstore_manager import StepStoreManager
 from psana.psexp.event_manager import TransitionId
+from psana.psexp.node import Smd0, SmdNode, BigDataNode
 
 class InvalidEventBuilderCores(Exception): pass
 
@@ -19,7 +19,7 @@ class InvalidEventBuilderCores(Exception): pass
 class RunParallel(Run):
     """ Yields list of events from multiple smd/bigdata files using > 3 cores."""
 
-    def __init__(self, psana_comm, exp, run_no, run_src, **kwargs):
+    def __init__(self, comms, exp, run_no, run_src, **kwargs):
         """ Parallel read requires that rank 0 does the file system works.
         Configs and calib constants are sent to other ranks by MPI.
         
@@ -30,6 +30,9 @@ class RunParallel(Run):
                 destination=kwargs['destination'])
         xtc_files, smd_files, other_files = run_src
 
+        self.comms = comms
+        psana_comm = comms.psana_comm # TODO tjl and cpo to review
+    
         rank = psana_comm.Get_rank()
         size = psana_comm.Get_size()
 
@@ -69,14 +72,28 @@ class RunParallel(Run):
         self.ssm = StepStoreManager(self.configs, 'epics', 'scan')
     
     def events(self):
-        for evt in run_node(self):
+        for evt in self.run_node():
             if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
             yield evt
 
     def steps(self):
         self.scan = True
-        for step in run_node(self):
+        for step in self.run_node():
             yield step
+
+    def run_node(self):
+        if self.comms._nodetype == 'smd0':
+            Smd0(self)
+        elif self.comms._nodetype == 'smd':
+            smd_node = SmdNode(self)
+            smd_node.run_mpi()
+        elif self.comms._nodetype == 'bd':
+            bd_node = BigDataNode(self)
+            for result in bd_node.run_mpi():
+                yield result
+        elif self.comms._nodetype == 'srv':
+            # tell the iterator to do nothing
+            return
 
 
 class MPIDataSource(DataSourceBase):
@@ -110,7 +127,7 @@ class MPIDataSource(DataSourceBase):
 
     def runs(self):
         for run_no in self.run_dict:
-            run = RunParallel(self.comms.psana_comm, self.exp, run_no, self.run_dict[run_no], \
+            run = RunParallel(self.comms, self.exp, run_no, self.run_dict[run_no], \
                         max_events=self.max_events, batch_size=self.batch_size, \
                         filter_callback=self.filter, destination=self.destination)
             self.run = run # FIXME: provide support for cctbx code (ds.Detector). will be removed in next cctbx update.
