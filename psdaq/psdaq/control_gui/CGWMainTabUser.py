@@ -35,8 +35,8 @@ from psdaq.control_gui.CGWMainPartition import CGWMainPartition
 from psdaq.control_gui.QWIcons import icon
 from psdaq.control_gui.Styles import style
 
-from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_get_state,\
-                                           daq_control_set_record, daq_control_get_status
+from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_set_record
+                                           #, daq_control_get_status, daq_control_get_state
 from psdaq.control_gui.CGConfigParameters import cp
 
 #------------------------------
@@ -70,18 +70,20 @@ class CGWMainTabUser(QGroupBox) :
 
 #------------------------------
 
-    def set_but_ctrls(self, s_status=None) :
+    def set_but_ctrls(self) :
         """interface method sets button states,
            is called from CGWMain on zmq poll and at initialization of the object.
         """
-        logger.debug('in set_but_ctrls received status %s' % str(s_status))
+        transition, state, cfgtype, recording =\
+           cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording
 
-        s = daq_control_get_status() if s_status is None else s_status
-        if s is None :
-            logger.warning('set_but_ctrls: STATUS IS NOT AVAILABLE')
-            return
+        logger.debug('set_but_ctrls transition:%s state:%s config:%s recording:%s'%\
+                      (transition, state, cfgtype, recording))
 
-        transition, state, cfgtype, recording = s
+        #s = daq_control_get_status() if s_status is None else s_status
+        #if s is None :
+        #    logger.warning('set_but_ctrls: STATUS IS NOT AVAILABLE')
+        #    return
 
         #state_zmq = str(s_state).lower() if s_state is not None else None
         #if (s_state is not None) and state_zmq != state :
@@ -208,11 +210,9 @@ class CGWMainTabUser(QGroupBox) :
         logger.debug('on_but_play')
 
         # submit command for "running" or "pause"
-        s = daq_control_get_status()
-        if s is None :
-            logger.warning('on_but_play: STATUS IS NOT AVAILABLE')
-            return
-        transition, state, cfgtype, recording = s
+        transition, state, cfgtype, recording =\
+           cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording
+
         cmd = self.s_paused if state==self.s_running else self.s_running
         if not daq_control_set_state(cmd):
             logger.warning('on_but_play: STATE %s IS NOT SET' % cmd)
@@ -248,13 +248,9 @@ class CGWMainTabUser(QGroupBox) :
     def on_but_record(self) :
         logger.debug('on_but_record')
 
-        s = daq_control_get_status()
-        if s is None :
-            logger.warning('on_but_record: STATUS IS NOT AVAILABLE')
-            return
-        transition, state, cfgtype, recording = s
+        #cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording
 
-        if not daq_control_set_record(not recording) :
+        if not daq_control_set_record(not cp.s_recording) :
             logger.warning('on_but_record: RECORDING FLAG IS NOT SET')
 
 

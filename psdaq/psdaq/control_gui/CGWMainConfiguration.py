@@ -28,6 +28,7 @@ from PyQt5.QtWidgets import QGroupBox, QLabel, QPushButton, QHBoxLayout, QVBoxLa
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QCursor
 
+from psdaq.control_gui.CGConfigParameters import cp
 from psdaq.control_gui.CGWConfigEditor import CGWConfigEditor
 from psdaq.control_gui.QWPopupSelectItem import popup_select_item_from_list
 from psdaq.control_gui.CGConfigDBUtils import get_configdb
@@ -177,9 +178,7 @@ class CGWMainConfiguration(QGroupBox) :
  
     def set_config_type(self, config_type):
 
-        cfgtype = config_type
-        if config_type in ('error','init') :
-             transition, state, cfgtype, recording = daq_control().getStatus()
+        cfgtype = config_type if config_type in ('error','init') else cp.s_cfgtype
 
         if cfgtype == self.type_old : return
 
