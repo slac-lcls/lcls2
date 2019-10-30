@@ -10,7 +10,6 @@ target_link_libraries(peaks
     calib
 )
 
-
 target_include_directories(peaks PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>

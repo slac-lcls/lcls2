@@ -2,105 +2,163 @@
 #include "psalg/peaks/WFAlgos.hh"
 
 #include <list>
-#include <utility>  // pair
+#include <cstdint>  // uint32_t
+//#include <cstddef>  // size_t
+//#include <utility>  // pair
 //#include <iostream> // cout
+
+//---------
 
 namespace psalg {
 
-static void 
-_add_edge(NDArray<const double> v,
-          bool                  rising, // leading positive or trailing negative edge
-	  double                fraction_value,
-          double                deadtime,
-	  double                peak, 
-	  unsigned              start, 
-	  double&               last,
-	  std::list< std::pair<double,double> >&   result)
+//---------
+
+template <typename T>
+void 
+_add_edge_v2(
+  const std::vector<T>& v,
+  bool     rising, // leading positive or trailing negative edge
+  double   fraction,
+  double   deadtime,
+  T        peak, 
+  index_t  start, 
+  double&  last,
+  index_t& ipk,
+  T*       pkvals,
+  index_t* pkinds)
 {
+  if(false){
+    std::cout << "In WFAlgos.cc - _add_edge_v2 input parameters: "
+              << " ipk:" << ipk
+              << " rising:" << rising
+              << " fraction:" << fraction
+              << " deadtime:" << deadtime
+              << " peak:" << peak
+              << " start:" << start
+              << " last:" << last
+              << '\n';
+  }
+
   // find the edge
-  double edge_v = fraction_value;
-  unsigned i=start;
+  double edge_v = fraction;
+  index_t i=start;
   if (rising) {
-    while(v(i) < edge_v)
+    while(v[i] < edge_v)
       i++;
   }
   else { // trailing positive edge, or leading negative edge
-    while(v(i) > edge_v)
+    while(v[i] > edge_v)
       i++;
   }
   double edge = i>0 ? 
-    (edge_v-v(i))/(v(i)-v(i-1))
+    (edge_v-v[i])/(v[i]-v[i-1])
     + double(i) : 0;
 
   if (last < 0 || edge > last + deadtime) {
     //cout << "XXX add peak intensity:" << peak << " edge index:" << edge << '\n';
-    std::pair<double,double> a(peak, edge);
-    result.push_back(a);
+    pkvals[ipk] = peak;
+    pkinds[ipk] = (index_t)edge;
+    ipk ++;
     last = edge;
   }
 }
 
+//---------
 
 //find leading or trailing edges
-NDArray<double>*
-find_edges(NDArray<const double>& wf,
-           double                 baseline_value,
-           double                 threshold_value,
-           double                 fraction,
-           double                 deadtime,
-           bool                   leading_edge)
+template <typename T>
+index_t 
+find_edges_v2(
+  index_t  npkmax,
+  T*       pkvals,
+  index_t* pkinds,
+  const std::vector<T>& wf,
+  double   baseline_f8,
+  double   threshold_f8,
+  double   fraction,
+  double   deadtime,
+  bool     leading_edge)
 {
-  std::list< std::pair<double,double> > result;
-  double   peak   = threshold_value;
-  unsigned start  = 0;
+  //std::cout << "In WFAlgos.cc - find_edges_v2 wf: ";
+  //for(typename std::vector<T>::const_iterator i=wf.begin(); i<wf.end(); ++i) std::cout << *i << ' ';
+  if(false){
+    std::cout << "In WFAlgos.cc - find_edges_v2 input parameters: "
+              << " baseline:" << baseline_f8
+              << " threshold:" << threshold_f8
+              << " fraction:" << fraction
+              << " deadtime:" << deadtime
+              << " leading_edge:" << leading_edge
+              << " wf.size():" << wf.size()
+              << '\n';
+  }
+
+  T        baseline = (T)baseline_f8;   // because cython.... does not accept templeted/fused type...
+  T        threshold = (T)threshold_f8;
+  T        peak   = threshold;
   double   last   = -deadtime-1.0;
-  bool     rising = threshold_value > baseline_value;
-  bool     crossed=false;
-  for(unsigned k=0; k<wf.shape()[0]; k++) {
-    double y = wf(k);
+  bool     rising = threshold > baseline;
+  bool     crossed= false;
+  index_t  npk    = 0;
+
+  index_t  start  = 0;
+  index_t  k=0;
+  for(; k<wf.size(); k++) {
+    T y = wf[k];
     bool over = 
-      ( rising && y>threshold_value) ||
-      (!rising && y<threshold_value);
-    if (!crossed && over) {
+       (rising && y>threshold) ||
+      (!rising && y<threshold);
+
+    if(!crossed && over) {
       crossed = true;
       start   = k;
       peak    = y;
     }
-    else if (crossed && !over) {
-      _add_edge(wf, rising==leading_edge,
-                fraction*(peak+baseline_value),
-                deadtime,
-                peak, start, last, result);
+    else if(crossed && !over) {
+      // add peak if its width exceeds deadtime
+      if(double(k-start)>deadtime)
+        _add_edge_v2(wf, rising==leading_edge, fraction*(peak-baseline)+baseline,
+                     deadtime, peak, start, last, npk, pkvals, pkinds);
       crossed = false;
+      if(!(npk < npkmax)) break;
     }
-    else if (( rising && y>peak) ||
-             (!rising && y<peak)) {
+    else if(( rising && y>peak) ||
+            (!rising && y<peak)) {
       peak = y;
-      if (!leading_edge) // for a trailing edge, start at the peak!
+      if(!leading_edge) // for a trailing edge, start at the peak!
         start = k;
     }
   }
     
   // the last edge may not have fallen back below threshold
-  if (crossed) {
-    _add_edge(wf, rising==leading_edge,
-              fraction*(peak+baseline_value),
-              deadtime,
-              peak, start, last, result);
+  if(crossed && (npk < npkmax) && (double(k-start)>deadtime)) {
+    _add_edge_v2(wf, rising==leading_edge, fraction*(peak-baseline)+baseline,
+                 deadtime, peak, start, last, npk, pkvals, pkinds);
   }
 
-  types::shape_t shape[] = {(types::shape_t)result.size(),2};
-  NDArray<double>* p_edges = new NDArray<double>(shape, 2);
-  NDArray<double>& edges = *p_edges;
+  //std::cout << "\nIn WFAlgos.cc - find_edges_v2 found npk: " << npk << '\n'; 
+  //std::cout << "\n  - pkinds: "; for(index_t i=0; i<npk; ++i) std::cout << pkinds[i] << ' ';
+  //std::cout << "\n  - pkvals: "; for(index_t i=0; i<npk; ++i) std::cout << pkvals[i] << ' ';
+  //std::cout << '\n';
 
-  unsigned k=0;
-  for(std::list< std::pair<double,double> >::iterator it=result.begin();
-     it!=result.end(); it++,k++) {
-     edges(k,0) = (*it).first;
-     edges(k,1) = (*it).second;
-  }
-  //std::cout << "XXX edges: " << edges << '\n';
-  return p_edges;
+  return npk;
 }
+
+//---------
+
+#ifdef INST_FIND_EDGES_V2
+#undef INST_FIND_EDGES_V2
+#endif
+#define INST_FIND_EDGES_V2(T)\
+  template index_t find_edges_v2<T>\
+    (index_t,T*,index_t*,const std::vector<T>&,double,double,double,double,bool);
+
+INST_FIND_EDGES_V2(double)
+INST_FIND_EDGES_V2(float)
+INST_FIND_EDGES_V2(int)
+INST_FIND_EDGES_V2(int64_t)
+INST_FIND_EDGES_V2(int16_t)
+//INST_FIND_EDGES_V2(int32_t)// the same as int
+
+//---------
 
 } // namespace psalg

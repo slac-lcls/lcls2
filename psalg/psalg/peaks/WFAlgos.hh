@@ -2,6 +2,13 @@
 #define PSALG_PEAKS_WFALGOS_H
 
 #include "psalg/calib/NDArray.hh"
+#include <vector>
+
+//#include <utility>  // pair
+//#include "psalg/utils/Utils.hh" // Pair
+//typedef Pair<wfdata_t, index_t> Edge;
+//std::vector< std::pair<T, index_t> >& result);
+
   /**
    * @ingroup EdgeFinder
    *
@@ -28,13 +35,44 @@
 
 namespace psalg {
 
-NDArray<double>*
-find_edges(NDArray<const double>& waveform,
-           double baseline,
-           double threshold,
-           double fraction=0.5,
-           double deadtime=0,
-           bool   leading_edges=true);
+//---------
+
+typedef uint32_t index_t;
+typedef double wfdata_t;
+  
+//---------
+
+template <typename T>
+void 
+_add_edge_v2(
+  const std::vector<T>& v,
+  bool     rising,
+  double   fraction,
+  double   deadtime,
+  T        peak, 
+  index_t  start, 
+  double&  last,
+  index_t& ipk,
+  T*       pkvals,
+  index_t* pkinds);
+
+//---------
+
+template <typename T>
+index_t 
+find_edges_v2(
+  index_t  npkmax,
+  T*       pkvals,
+  index_t* pkinds,
+  const std::vector<T>& wf,
+  double   baseline,
+  double   threshold,
+  double   fraction,
+  double   deadtime,
+  bool     leading_edge
+);
+
+//---------
 
 } // namespace psalg
 

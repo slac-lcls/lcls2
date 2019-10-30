@@ -3,22 +3,23 @@
 
 import sys
 import psana
+from time import time
 import numpy as np
 from psana import DataSource
 
 import psana.pyalgos.generic.Graphics as gr
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 
-#import pyimgalgos.GlobalGraphics as gg
-#from pypsalg import find_edges
-#from time import time
+from ndarray import py_find_edges_v2
+#from ndarray import find_edges
+from ndarray import py_ndarray_double
 
 #--------------------
 
 BASE = 0.
-THR = -0.04 # -0.2
-CFR = 0.9
-DEADTIME = 5.0
+THR = -0.05
+CFR = 0.85
+DEADTIME = 10.0
 LEADINGEDGE = True # False # True
 
 BBAV=1000
@@ -44,17 +45,21 @@ EVENTS = 10 + EVSKIP
 def draw_times(ax, wf, wt) :
     #wf -= wf[0:1000].mean()
     t0_sec = time()
-    edges = find_edges(wf, BASE, THR, CFR, DEADTIME, LEADINGEDGE)
-    print('  consumed time = %10.6f(sec)' % (time()-t0_sec))
-    # pairs of (amplitude,sampleNumber)
-    print(' nhits:', edges.shape[0])
-    #print(' edges:', edges)
+    #wf  = np.array(WF, dtype=np.double)
+    pkvals = np.zeros((100,), dtype=np.double)
+    pkinds = np.zeros((100,), dtype=np.uint32)
+    npks = py_find_edges_v2(wf, BASE, THR, CFR, DEADTIME, LEADINGEDGE, pkvals, pkinds)
+
+    print('    wf proc  npks:%3d  time(sec) = %8.6f' % (npks, time()-t0_sec))
+
+    #edges = np.array(((100,5000),(200,10000)))
+    edges = zip(pkvals,pkinds)
 
     for (amp,ind) in edges :
         x0 = wt[int(ind)]
         xarr = (x0,x0)
         yarr = (amp,-amp)
-        gg.drawLine(ax, xarr, yarr, s=10, linewidth=1, color='k')
+        gr.drawLine(ax, xarr, yarr, s=10, linewidth=1, color='k')
 
 #--------------------
 
@@ -102,7 +107,7 @@ for n,evt in enumerate(myrun.events()):
         ax[i].set_ylabel(ylab[i], fontsize=14)
 
         ich = ch[i]
-        print('  == ch:', ich,)
+        print('  == ch:%2d %3s'%(ich,ylab[i]), end = '')
 
         wftot = wf[ich,:]
         wttot = wt[ich,:]
@@ -114,7 +119,7 @@ for n,evt in enumerate(myrun.events()):
         ax[i].plot(wtsel, wfsel, gfmt[i], linewidth=lw)
 
         gr.drawLine(ax[i], ax[i].get_xlim(), (THR,THR), s=10, linewidth=1, color='k')
-        ##draw_times(ax[i], wfsel, wtsel)
+        draw_times(ax[i], wfsel, wtsel)
 
     gr.draw_fig(fig)
     gr.show(mode='non-hold')

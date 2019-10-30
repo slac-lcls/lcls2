@@ -63,7 +63,20 @@ namespace psalg {
         closedir(dir);
     }
 
-//-------------------
+//---------
+
+/*
+template <typename T1, typename T2>
+struct Pair{
+  T1 val1;
+  T2 val2;
+  Pair(const T1& v1=0, const T2& v2=0) : val1(v1), val2(v2) {}
+  Pair(const Pair& o) : val1(o.val1), val2(o.val2) {}
+  Pair& operator=(const Pair& rhs) {val1 = rhs.val1; val2 = rhs.val2; return *this;}
+};
+*/
+
+//---------
 
 } // namespace psalg
 

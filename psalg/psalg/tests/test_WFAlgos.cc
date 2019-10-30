@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <iostream> // cout
 #include <sstream>
+//#include <vector>
 
 #include "psalg/calib/NDArray.hh"
 #include "psalg/peaks/WFAlgos.hh"
@@ -18,94 +19,99 @@ using namespace psalg;
 void print_hline(const uint nchars, const char c) {printf("%s\n", std::string(nchars,c).c_str());}
 
 //-------------------
+
+const double WFTESTDATA[] = {
+    1,
+   -1,
+    0,
+    1,
+   -2,
+   -5,
+  -15,
+  -85,
+ -100,
+ -101,
+ -102,
+ -103,
+ -104,
+ -102,
+ -100,
+  -55,
+  -35,
+  -25,
+  -20,
+  -15,
+  -10,
+   -9,
+   -5,
+    1,
+   -1,
+    0,
+    1,
+   -2,
+   -5,
+  -15,
+  -85,
+ -100,
+ -101,
+ -102,
+ -103,
+ -105,
+ -102,
+ -100,
+  -55,
+  -35,
+  -25,
+  -20,
+  -15,
+  -10,
+   -9,
+   -5,
+    1,
+   -1,
+    0,
+    1,
+   -1,
+    0,
+    1,
+   -1,
+    0,
+    1,
+    1,
+   -1,
+    0,
+    1,
+    1,
+    0,
+    1,
+    1,
+};
  
-void test_find_edges() {
-  printf("In test_find_edges\n");
-  const double data[] = {
-    1,
-   -1,
-    0,
-    1,
-   -2,
-   -5,
-  -15,
-  -85,
- -100,
- -101,
- -102,
- -103,
- -104,
- -102,
- -100,
-  -55,
-  -35,
-  -25,
-  -20,
-  -15,
-  -10,
-   -9,
-   -5,
-    1,
-   -1,
-    0,
-    1,
-   -2,
-   -5,
-  -15,
-  -85,
- -100,
- -101,
- -102,
- -103,
- -104,
- -102,
- -100,
-  -55,
-  -35,
-  -25,
-  -20,
-  -15,
-  -10,
-   -9,
-   -5,
-    1,
-   -1,
-    0,
-    1,
-   -1,
-    0,
-    1,
-   -1,
-    0,
-    1,
-    1,
-   -1,
-    0,
-    1,
-    1,
-    0,
-    1,
-    1,
-  };
+//-------------------
 
-  uint32_t sh[] = {sizeof(data)/sizeof(double),};
-  uint32_t ndim = 1;
+void test_find_edges_v2() {
+  printf("In test_WFAlgos::test_find_edges_v2\n");
 
-  // use external data buffer:
-  NDArray<const double> wf(sh, ndim, data);
-  std::cout << "wf: " << wf << '\n';
+  uint32_t n = sizeof(WFTESTDATA)/sizeof(WFTESTDATA[0]);
+  std::vector<double> waveform(WFTESTDATA, WFTESTDATA+n);
 
-  double baseline    = 0;
-  double threshold   =-5;
-  double fraction    = 0.85;
-  double deadtime    = 0;
-  bool leading_edges = true;
+  double   baseline = 0;
+  double   threshold=-5;
+  double   fraction = 0.5;
+  double   deadtime = 0;
+  bool     leading_edges=true;
+  uint32_t npkmax = 10;
+  double   pkvals[10];
+  uint32_t pkinds[10];
 
-  NDArray<double>* res = find_edges(wf, baseline, threshold, fraction, deadtime, leading_edges);
+  uint32_t npks = find_edges_v2(npkmax, pkvals, pkinds, waveform, baseline, threshold, fraction, deadtime, leading_edges);
 
-  std::cout << "res: " << *res << '\n';
-
-  delete res;
+  std::cout << "\nIn test_find_edges_v2 - find_edges_v2 found npk: " << npks << '\n'; 
+  std::cout << "\n  pkinds: ";
+  for(index_t i=0; i<npks; ++i) std::cout << pkinds[i] << ' ';
+  std::cout << "\n  pkvals: ";
+  for(index_t i=0; i<npks; ++i) std::cout << pkvals[i] << ' ';
+  std::cout << '\n';
 }
 
 //-------------------
@@ -130,8 +136,8 @@ std::string usage(const std::string& tname="")
 {
   std::stringstream ss;
   if (tname == "") ss << "Usage command> test_WFAlgos <test-number>\n  where test-number";
-  if (tname == "" || tname=="1"	) ss << "\n  1  - test_find_edges()";
-  if (tname == "" || tname=="2"	) ss << "\n  2  - test_cpp()";
+  if (tname == "" || tname=="1"	) ss << "\n  1  - test_cpp()";
+  if (tname == "" || tname=="2"	) ss << "\n  2  - test_find_edges_v2() - uses vectors for IO";
   ss << '\n';
   return ss.str();
 }
@@ -151,8 +157,8 @@ int main(int argc, char* argv[])
   std::string tname(argv[1]);
   cout << usage(tname); 
 
-  if      (tname=="1")  test_find_edges();
-  else if (tname=="2")  test_cpp();
+  if      (tname=="1")  test_cpp();
+  else if (tname=="2")  test_find_edges_v2();
   else MSG(WARNING, "Undefined test name \"" << tname << '\"');
  
   print_hline(80,'_');

@@ -266,7 +266,8 @@ if 'HSD' in BUILD_LIST :
 
 if 'NDARRAY' in BUILD_LIST :
     ext = Extension("ndarray",
-                  sources=["psana/pycalgos/NDArray_ext.pyx",],
+                  sources=["psana/pycalgos/NDArray_ext.pyx",
+                           "../psalg/psalg/peaks/src/WFAlgos.cc"],
                   language="c++",
                   extra_compile_args = extra_compile_args,
                   include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],

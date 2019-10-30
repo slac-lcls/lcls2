@@ -15,6 +15,9 @@
 # /reg/g/psdm/sw/conda2/inst/pkgs/roentdek-0.0.3-1/include/roentdek/resort64c.h
 # /reg/g/psdm/sw/conda2/inst/pkgs/roentdek-0.0.3-1/lib/libResort64c_x64.a
 
+# command to build this module only
+# ./build_all.sh -m -d -b HEXANODE
+
 # passing numpy arrays:
 # http://stackoverflow.com/questions/17855032/passing-and-returning-numpy-arrays-to-c-methods-via-cython
 
