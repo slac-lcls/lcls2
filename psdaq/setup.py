@@ -19,7 +19,6 @@ setup(
                 'currentexp = psdaq.control.currentexp:main',
                 'testClient2 = psdaq.control.testClient2:main',
                 'testAsyncErr = psdaq.control.testAsyncErr:main',
-                'syslog = psdaq.control.syslog:main',
                 'getrun = psdaq.control.getrun:main',
                 'groupca = psdaq.cas.groupca:main',
                 'partca = psdaq.cas.partca:main',
@@ -41,6 +40,7 @@ setup(
                 'bldcas = psdaq.cas.bldcas:main',
                 'hpsdbuscas = psdaq.cas.hpsdbuscas:main',
                 'pyxpm = psdaq.pyxpm.pyxpm:main',
+                'pykcu = psdaq.pykcu.pykcu:main',
                 'control_gui = psdaq.control_gui.app.control_gui:control_gui',
                 'bluesky_simple = psdaq.control.bluesky_simple:main',
               ]

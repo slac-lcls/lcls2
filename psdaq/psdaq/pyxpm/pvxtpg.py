@@ -116,7 +116,7 @@ class PVXTpg(object):
         self._mmcm = []
         for i in range(3,-1,-1):
             self._mmcm.append(PVMmcm(provider, name+':XTPG', i, xpm.find(name=devs[i][0])[0], self._mmcm.copy()))
-        self._cuPhase = PVCuPhase(provider, name+':XTPG', xpm.CuPhase)
+#        self._cuPhase = PVCuPhase(provider, name+':XTPG', xpm.CuPhase)
 
     def init(self):
         for v in self._mmcm:
@@ -124,12 +124,12 @@ class PVXTpg(object):
         timev = divmod(float(time.time_ns()), 1.0e9)
         for v in self._mmcm:
             v.update(timev)
-        self._cuPhase.update(timev)
+#        self._cuPhase.update(timev)
         
     def update(self):
         timev = divmod(float(time.time_ns()), 1.0e9)
         for v in self._mmcm:
             if v._update_required:
                 v.update(timev)
-        self._cuPhase.update(timev)
+#        self._cuPhase.update(timev)
             

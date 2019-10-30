@@ -2,6 +2,7 @@ import sys
 import time
 import traceback
 from p4p.nt import NTScalar
+from p4p.nt import NTTable
 from p4p.server.thread import SharedPV
 from psdaq.pyxpm.pvhandler import *
 
@@ -16,6 +17,70 @@ def addPV(name,ctype,init=0):
     provider.add(name, pv)
     return pv
                                 
+def toTable(t):
+    table = []
+    for v in t.items():
+        table.append((v[0],v[1][0][1:]))
+        n = len(v[1][1])
+    return table,n
+
+def toDict(t):
+    d = {}
+    for v in t.items():
+        d[v[0]] = v[1][1]
+    return d
+
+def toDictList(t,n):
+    l = []
+    for i in range(n):
+        d = {}
+        for v in t.items():
+            d[v[0]] = v[1][1][i]
+        l.append(d)
+    return l
+
+def addPVT(name,t):
+    table,n = toTable(t)
+    init    = toDictList(t,n)
+    pv = SharedPV(initial=NTTable(table).wrap(init),
+                  handler=DefaultPVHandler())
+    provider.add(name,pv)
+    return pv
+
+NFPLINKS = 14
+sfpStatus  = {'LossOfSignal' : ('ai',[0]*NFPLINKS),
+              'ModuleAbsent' : ('ai',[0]*NFPLINKS),
+              'TxPower'      : ('af',[0]*NFPLINKS),
+              'RxPower'      : ('af',[0]*NFPLINKS)}
+
+class SFPStatus(object):
+
+    def __init__(self, name, xpm):
+        self._xpm   = xpm
+        self._pv    = addPVT(name,sfpStatus)
+        self._value = toDict(sfpStatus)
+        self._link  = 0
+
+    def update(self):
+
+        amc = self._xpm.amcs[int(self._link/7)]
+        mod = amc.SfpSummary.modabs.get()
+        los = amc.SfpSummary.los.get()
+        j = self._link % 7
+        self._value['LossOfSignal'][self._link] = (los>>j)&1
+        self._value['ModuleAbsent'][self._link] = (mod>>j)&1
+        if ((mod>>j)&1)==0:
+            amc.I2cMux.set(j|(1<<3))
+            (self._value['TxPower'][self._link],
+             self._value['RxPower'][self._link]) = amc.SfpI2c.get_pwr()
+
+        self._link += 1
+        if self._link==14:
+            self._link = 0
+            value = self._pv.current()
+            value['value'] = self._value
+            value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
+            self._pv.post(value)
 
 class LinkStatus(object):
     def __init__(self, name, app, i):
@@ -156,16 +221,18 @@ class AmcPLLStatus(object):
         lock.release()
 
 class CuStatus(object):
-    def __init__(self, name, device):
+    def __init__(self, name, device, phase):
         self._device = device
+        self._phase  = phase
 
         self._pv_timeStamp    = addPV(name+':TimeStamp'   ,'L')
         self._pv_pulseId      = addPV(name+':PulseId'     ,'L')
         self._pv_fiducialIntv = addPV(name+':FiducialIntv','I')
         self._pv_fiducialErr  = addPV(name+':FiducialErr' ,'I')
+        self._pv_PhCuToSC     = addPV(name+':CuToSCPhase' ,'f')
 
     def update(self):
-
+        return
         def updatePv(pv,v):
             value = pv.current()
             value['value'] = v
@@ -177,6 +244,7 @@ class CuStatus(object):
         updatePv(self._pv_pulseId     , self._device.pulseId          .get())
         updatePv(self._pv_fiducialIntv, self._device.cuFiducialIntv   .get())
         updatePv(self._pv_fiducialErr , self._device.cuFiducialIntvErr.get())
+        updatePv(self._pv_PhCuToSC    , self._phase .phase())
 
 class MonClkStatus(object):
     def __init__(self, name, app):
@@ -306,7 +374,15 @@ class GroupStats(object):
         lock.release()
 
         self._timeval = timeval
+
+class PVMmcmPhaseLock(object):
+    def __init__(self, name, mmcm):
+        v = []
+        v.append( mmcm.delayValue.get() )
+        v.append( mmcm.waveform.get() )
+        self.pv   = addPV(name,'ai',v)
         
+
 class PVStats(object):
     def __init__(self, p, m, name, xpm):
         global provider
@@ -331,11 +407,16 @@ class PVStats(object):
 
         self._usTiming = TimingStatus(name+':Us',xpm.UsTiming)
         self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming)
-        self._cuGen    = CuStatus(name+':XTPG',xpm.CuGenerator)
+        self._cuGen    = CuStatus(name+':XTPG',xpm.CuGenerator,xpm.CuToScPhase)
         self._monClks  = MonClkStatus(name,self._app)
+        self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm)
 
         self.paddr   = addPV(name+':PAddr'  ,'I',self._app.paddr.get())
         self.fwbuild = addPV(name+':FwBuild','s',self._xpm.AxiVersion.BuildStamp.get())
+
+#        self._mmcm = []
+#        for i,m in enumerate(xpm.mmcms):
+#            self._mmcm.append(PVMmcmPhaseLock(name+':XTPG:MMCM%d'%i,m))
 
     def init(self):
         pass
@@ -353,6 +434,7 @@ class PVStats(object):
             self._cuTiming.update()
             self._cuGen   .update()
             self._monClks .update()
+            self._sfpStat .update()
         except:
             exc = sys.exc_info()
             if exc[0]==KeyboardInterrupt:

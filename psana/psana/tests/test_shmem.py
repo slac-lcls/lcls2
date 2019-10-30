@@ -11,7 +11,9 @@ dgram_count  = 64 # number of expected datagrams per client
 
 @pytest.mark.skipif(sys.platform == 'darwin', reason="shmem not supported on mac")
 class Test:
-    def launch_server(self,tmp_file,pid):
+
+    @staticmethod
+    def launch_server(tmp_file,pid):
         cmd_args = ['shmemServer','-c',str(client_count),'-n','10','-f',tmp_file,'-p','shmem_test_'+pid,'-s','0x80000']
         return subprocess.Popen(cmd_args)
 
@@ -20,7 +22,8 @@ class Test:
         cmd_args = ['python',shmem_file,pid]
         return subprocess.Popen(cmd_args)
                 
-    def setup_input_files(self, tmp_path):
+    @staticmethod
+    def setup_input_files(tmp_path):
         tmp_dir = tmp_path / 'shmem'
         tmp_dir.mkdir()
         tmp_file = tmp_dir / 'data_shmem.xtc2'

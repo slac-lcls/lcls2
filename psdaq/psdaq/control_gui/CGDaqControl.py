@@ -13,9 +13,21 @@ Usage ::
     daq_control.set_daq_control(DaqControl(host='localhost', platform=2, timeout=10000))
     #daq_control.set_daq_control(DaqControlEmulator())
 
-    daq_control.setstate('running') # DaqControl.states[5]
-    state = daq_control().getstate()
+    o = get_daq_control() # safe for daq_control()
 
+    daq_control().setstate('running') # DaqControl.states[5]
+    # or    
+    daq_control_set_state('configured')
+
+    state = daq_control().getState()
+    # or
+    state = daq_control_get_state()
+
+    transition, state, cfgtype, recording = daq_control_get_status()
+    instr = daq_control_get_instrument()
+    status = daq_control_get_status()
+
+    daq_control_set_record(do_record=True)
 
 See:
     - :class:`CGDaqControl`
@@ -119,6 +131,15 @@ def daq_control_get_state() :
     if daq_ctrl is None : return None
     s = daq_ctrl.getState()
     logger.debug('daq_control_get_state(): %s' % s)
+    return s
+
+#----------
+
+def daq_control_get_instrument() :
+    daq_ctrl = get_daq_control('in daq_control_get_instrument ')
+    if daq_ctrl is None : return None
+    s = daq_ctrl.getInstrument()
+    logger.debug('daq_control_get_instrument(): %s' % s)
     return s
 
 #----------

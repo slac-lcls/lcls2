@@ -12,7 +12,7 @@
 #include "psdaq/service/GenericPool.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
-#include "psdaq/service/SysLog.hh"
+#include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <signal.h>
@@ -35,7 +35,7 @@ using namespace psalg::shmem;
 using namespace Pds;
 
 using json    = nlohmann::json;
-using logging = Pds::SysLog;
+using logging = psalg::SysLog;
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;

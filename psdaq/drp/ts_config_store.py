@@ -2,11 +2,12 @@ from psalg.configdb.typed_json import cdict
 import psalg.configdb.configdb as cdb
 
 # these are the current default values, but I put them here to be explicit
-create = False
+create = True
 dbname = 'configDB'
-instrument = 'TMO'
+instrument = 'TST'
 
 mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)
+mycdb.add_alias("BEAM")
 
 # this needs to be called once per detType at the
 # "beginning of time" to create the collection name (same as detType

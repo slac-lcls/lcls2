@@ -19,7 +19,7 @@ def write_scratch_pad(prescaling):
 
     create = True
     dbname = 'sioanDB'     #this is the name of the database running on the server.  Only client care about this name.
-    instrument = 'TMO'      #
+    instrument = 'TST'      #
 
     mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)    #mycdb.client.drop_database('configDB_szTest') will drop the configDB_szTest database
     #mycdb.client.drop_database('sioanDB')

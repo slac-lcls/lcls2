@@ -3,11 +3,11 @@
 #include "TimingHeader.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
-#include "psdaq/service/SysLog.hh"
+#include "psalg/utils/SysLog.hh"
 
 using namespace XtcData;
 using json = nlohmann::json;
-using logging = Pds::SysLog;
+using logging = psalg::SysLog;
 
 namespace Drp {
 

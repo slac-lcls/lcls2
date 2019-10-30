@@ -59,6 +59,14 @@ class CGConfigParameters(ConfigParameters) :
         self.cgwmaincontrol    = None
         self.cgwmaintabuser    = None
 
+        # DAQ status cache
+        self.s_transition      = None
+        self.s_state           = None
+        self.s_cfgtype         = None
+        self.s_recording       = None
+
+        self.instr             = 'TST'
+
 #------------------------------
         
     def declareParameters(self) :

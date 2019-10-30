@@ -24,7 +24,7 @@ Copied and modified from lcls2/psana/psana/grephqt/QWLoggerStd.py on 2019-01-28 
 
 import logging
 
-from psdaq.control.syslog import SysLog
+from psalg.utils.syslog import SysLog
 
 logger = logging.getLogger() # need in root to intercept messages from all other loggers
 #logger = logging.getLogger(__name__)
@@ -41,19 +41,21 @@ import psdaq.control_gui.Utils as gu
 
 #------------------------------
 
-MSG_LEVEL_TO_BKGD_COLOR = {'CRITICAL': Qt.black, 
-                           'ERROR'   : Qt.yellow,
-                           'WARNING' : Qt.green,
-                           'INFO'    : Qt.white,
-                           'DEBUG'   : QColor(230, 230, 255),
-                           'NOTSET'  : QColor(255, 0, 255)}
+# 'CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG','NOTSET'
 
-MSG_LEVEL_TO_TEXT_COLOR = {'CRITICAL': Qt.gray, 
-                           'ERROR'   : Qt.red,
-                           'WARNING' : Qt.magenta,
-                           'INFO'    : Qt.black,
-                           'DEBUG'   : QColor(0, 0, 255),
-                           'NOTSET'  : QColor(255, 0, 255)}
+MSG_LEVEL_TO_BKGD_COLOR = {'<C>' : Qt.black, 
+                           '<E>' : Qt.yellow,
+                           '<W>' : Qt.green,
+                           '<I>' : Qt.white,
+                           '<D>' : QColor(230, 230, 255),
+                           '<N>' : QColor(255, 0, 255)}
+
+MSG_LEVEL_TO_TEXT_COLOR = {'<C>' : Qt.gray, 
+                           '<E>' : Qt.red,
+                           '<W>' : Qt.magenta,
+                           '<I>' : Qt.black,
+                           '<D>' : QColor(0, 0, 255),
+                           '<N>' : QColor(255, 0, 255)}
 
 #------------------------------
 

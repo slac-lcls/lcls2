@@ -35,8 +35,8 @@ from PyQt5.QtCore import Qt, QTimer, QSize # pyqtSignal, QRectF, QPointF
 
 from psdaq.control_gui.QWIcons import icon
 from psdaq.control_gui.Styles import style
-from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_get_state,\
-                                           daq_control_set_record, daq_control_get_status, DaqControl
+from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_set_record, DaqControl
+                                           #daq_control_get_state, daq_control_get_status
 from psdaq.control_gui.CGConfigParameters import cp
 
 #--------------------
@@ -188,13 +188,7 @@ class CGWMainControl(QGroupBox) :
     def on_but_record(self) :
         logger.debug('on_but_record')
 
-        s = daq_control_get_status()
-        if s is None :
-            logger.warning('on_but_record: STATUS IS NOT AVAILABLE')
-            return
-        transition, state, cfgtype, recording = s
-
-        if not daq_control_set_record(not recording) :
+        if not daq_control_set_record(not cp.s_recording) :
             logger.warning('on_but_record: RECORDING FLAG IS NOT SET')
 
 #--------------------
@@ -208,7 +202,7 @@ class CGWMainControl(QGroupBox) :
 
     def check_state(self) :
         #logger.debug('check_state -> daq_control_get_state()')
-        s = daq_control_get_state()
+        s = cp.s_state # daq_control_get_state()
         if s is None :
             logger.warning('check_state: STATE IS NOT AVAILABLE')
             return
@@ -227,16 +221,17 @@ class CGWMainControl(QGroupBox) :
 
 #--------------------
 
-    def set_but_ctrls(self, s_status=None) :
+    def set_but_ctrls(self) :
 
-        logger.debug('in set_but_ctrls received status %s' % str(s_status))
+        status = transition, state, cfgtype, recording =\
+             (cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording)
 
-        s = daq_control_get_status() if s_status is None else s_status
-        if s is None :
-            logger.warning('set_but_ctrls: STATUS IS NOT AVAILABLE')
-            return
+        logger.debug('in set_but_ctrls current status %s' % str(status))
 
-        transition, state, cfgtype, recording = s
+        #s = daq_control_get_status() if s_status is None else s_status
+        #if s is None :
+        #    logger.warning('set_but_ctrls: STATUS IS NOT AVAILABLE')
+        #    return
 
         #state_zmq = str(s_state).lower() if s_state is not None else None
         #if (s_state is not None) and state_zmq != state :
@@ -268,22 +263,11 @@ class CGWMainControl(QGroupBox) :
 #--------------------
 
     def check_transition(self) :
-        """Uses daq_control_get_status() to get last transition and set the info button status.
+        """Uses cp.cached parameters to get last transition and set the info button status.
         """
-        logger.debug('check_transition')
-        #t0_sec = time() # takes 0.001s
-        s = daq_control_get_status()
-        if s is None :
-            logger.warning('check_transition: STATUS IS NOT AVAILABLE')
-            return
-
-        transition, state, cfgtype, recording = s
-
         logger.debug('check_transition transition:%s state:%s cfgtype:%s recording:%s'%\
-                     (str(transition), str(state), str(cfgtype), str(recording)))
-        self.but_transition.setText(transition.upper()) # + ' since %s' % self.ts)
-        #state = daq_control_get_state()
-        #self.but_state.setText(state.upper() + ' since %s' % self.ts)
+                     (cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording))
+        self.but_transition.setText(cp.s_transition.upper())
 
 #--------------------
 

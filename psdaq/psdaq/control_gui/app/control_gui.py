@@ -49,7 +49,7 @@ def input_option_parser() :
 
     d_platform   = 6 # [0-7]
     d_host       = 'localhost'
-    d_timeout    = 10000 # ms
+    d_timeout    = 60000 # ms
     d_loglevel   = 'DEBUG'
     d_logdir     = None # '.' or './cm-logger' etc.
     d_expname    = 'tmo12345'

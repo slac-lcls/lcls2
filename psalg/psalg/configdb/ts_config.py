@@ -76,7 +76,8 @@ def ts_config(connect_json,cfgtype,detname):
         dstmask = 0
         for dstnum in range(16):
             dstval = grp['destination']['dest'+str(dstnum)]
-            dstmask |= 1<<dstval
+            if dstval:
+                dstmask |= 1<<dstnum
         mydict[str(group)+':DstSelect_Mask'] = dstmask
 
         # 4 InhEnable/InhInterval/InhLimit

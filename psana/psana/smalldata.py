@@ -98,11 +98,13 @@ class CacheArray:
 
 class Server: # (hdf5 handling)
 
-    def __init__(self, filename=None, smdcomm=None, cache_size=5):
+    def __init__(self, filename=None, smdcomm=None, cache_size=5,
+                 callbacks=[]):
 
         self.filename   = filename
         self.smdcomm    = smdcomm
         self.cache_size = cache_size
+        self.callbacks  = callbacks
 
         # dsets maps dataset_name --> (dtype, shape)
         self._dsets = {}
@@ -136,6 +138,8 @@ class Server: # (hdf5 handling)
         for event_data_dict in batch:
 
             # TODO > CALLBACKS HERE <
+            for cb in self.callbacks:
+                cb(event_data_dict)
 
             if self.filename is not None:
 
@@ -244,7 +248,8 @@ class Server: # (hdf5 handling)
 class SmallData: # (client)
 
     def __init__(self, server_group=None, client_group=None, 
-                 filename=None, batch_size=5, cache_size=5):
+                 filename=None, batch_size=5, cache_size=5,
+                 callbacks=[]):
 
         self.batch_size = batch_size
         self._batch = []
@@ -264,14 +269,16 @@ class SmallData: # (client)
             if self._type == 'server':
                 self._server = Server(filename=self._filename, 
                                       smdcomm=self._srvcomm, 
-                                      cache_size=cache_size)
+                                      cache_size=cache_size,
+                                      callbacks=callbacks)
                 self._server.recv_loop()
 
         elif MODE == 'SERIAL':
             self._filename = self._base_filename # dont hide file
             self._type = 'serial'
             self._server = Server(filename=self._filename,
-                                  cache_size=cache_size)
+                                  cache_size=cache_size,
+                                  callbacks=callbacks)
 
         return
 
@@ -287,11 +294,11 @@ class SmallData: # (client)
             raise Exception('Attempting to run smalldata with no servers'
                             ' set env var PS_SRV_NODES to be 1 or more')
 
-        if self._server_group.rank != MPI.UNDEFINED: # if in server group TODO
+        if self._server_group.rank != MPI.UNDEFINED: # if in server group
             self._type = 'server'
             self._srv_color = self._server_group.rank
             self._srvcomm = self._smalldata_comm.Split(self._srv_color, 0) # rank=0
-        elif self._client_group.rank != MPI.UNDEFINED: # if in client group TODO
+        elif self._client_group.rank != MPI.UNDEFINED: # if in client group
             self._type = 'client'
             self._srv_color = self._client_group.rank % n_srv
             self._srvcomm = self._smalldata_comm.Split(self._srv_color, 

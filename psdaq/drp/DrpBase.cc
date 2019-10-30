@@ -3,12 +3,12 @@
 #include "TimingHeader.hh"
 #include <DmaDriver.h>
 #include "DrpBase.hh"
-#include "psdaq/service/SysLog.hh"
+#include "psalg/utils/SysLog.hh"
 
 #include "rapidjson/document.h"
 
 using json = nlohmann::json;
-using logging = Pds::SysLog;
+using logging = psalg::SysLog;
 
 namespace Drp {
 

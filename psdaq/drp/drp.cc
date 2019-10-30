@@ -5,8 +5,8 @@
 #include "drp.hh"
 #include "PGPDetectorApp.hh"
 #include "rapidjson/document.h"
-#include "psdaq/service/SysLog.hh"
-using logging = Pds::SysLog;
+#include "psalg/utils/SysLog.hh"
+using logging = psalg::SysLog;
 using json = nlohmann::json;
 
 void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
