@@ -25,15 +25,15 @@ class SysLog:
         # syslog handler relies on syslog server to add timestamp
         syslog_handler = SysLogHandler('/dev/log')
         syslog_handler.setLevel(level)
-        syslog_formatter = logging.Formatter(instrument + '-%(module)s[%(process)d]: %(message)s')
+        syslog_formatter = logging.Formatter(instrument + '-%(module)s[%(process)d]: %(levelname)s %(message)s')
         syslog_handler.setFormatter(syslog_formatter)
         root.addHandler(syslog_handler)
 
         # console handler applies local timestamp
         console_handler = logging.StreamHandler(None)
         console_handler.setLevel(level)
-        console_formatter = logging.Formatter('%(levelname)s %(asctime)s ' + instrument +
-                                              '-%(module)s[%(process)d]: %(message)s')
+        console_formatter = logging.Formatter('%(asctime)s ' + instrument +
+                                              '-%(module)s[%(process)d]: %(levelname)s %(message)s')
         console_handler.setFormatter(console_formatter)
         root.addHandler(console_handler)
 
