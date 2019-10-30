@@ -83,8 +83,10 @@ class DaqControl:
             msg = create_msg('getstate')
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
+        except zmq.Again:
+            logging.error('getState() timeout (%.1f sec)' % (self.timeout / 1000.))
         except Exception as ex:
-            print('getState() Exception: %s' % ex)
+            logging.error('getState() Exception: %s' % ex)
         except KeyboardInterrupt:
             print('KeyboardInterrupt')
         else:
@@ -104,8 +106,10 @@ class DaqControl:
             msg = create_msg('getstate')
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
+        except zmq.Again:
+            logging.error('getPlatform() timeout (%.1f sec)' % (self.timeout / 1000.))
         except Exception as ex:
-            print('getPlatform() Exception: %s' % ex)
+            logging.error('getPlatform() Exception: %s' % ex)
         except KeyboardInterrupt:
             print('KeyboardInterrupt')
         else:
@@ -125,8 +129,10 @@ class DaqControl:
             msg = create_msg('selectplatform', body=body)
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
+        except zmq.Again:
+            logging.error('selectPlatform() timeout (%.1f sec)' % (self.timeout / 1000.))
         except Exception as ex:
-            print('selectPlatform(): %s' % ex)
+            logging.error('selectPlatform() Exception: %s' % ex)
         except KeyboardInterrupt:
             print('KeyboardInterrupt')
         else:
