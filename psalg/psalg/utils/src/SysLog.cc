@@ -2,7 +2,14 @@
 #include <stdarg.h>
 #include "psalg/utils/SysLog.hh"
 
-extern char *program_invocation_short_name;
+#undef GET_PROGRAM_NAME
+#ifdef __GLIBC__
+    extern char *program_invocation_short_name;
+#   define GET_PROGRAM_NAME() program_invocation_short_name
+#else /* *BSD and OS X */
+#   include <stdlib.h>
+#   define GET_PROGRAM_NAME() getprogname()
+#endif
 
 using namespace psalg;
 
@@ -10,9 +17,9 @@ void SysLog::init(const char *instrument, int level)
 {
     static char ident[SYSLOG_IDENT_MAX];
     if (instrument) {
-        snprintf(ident, sizeof(ident)-1, "%s-%s", instrument, program_invocation_short_name);
+        snprintf(ident, sizeof(ident)-1, "%s-%s", instrument, GET_PROGRAM_NAME());
     } else {
-        snprintf(ident, sizeof(ident)-1, "%s", program_invocation_short_name);
+        snprintf(ident, sizeof(ident)-1, "%s", GET_PROGRAM_NAME());
     }
     openlog(ident, LOG_PID | LOG_PERROR, LOG_USER);
     setlogmask(LOG_UPTO(level));
