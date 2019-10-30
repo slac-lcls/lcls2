@@ -26,7 +26,7 @@ def global_except_hook(exctype, value, traceback):
     sys.__excepthook__(exctype, value, traceback)
 
 
-#sys.excepthook = global_except_hook
+sys.excepthook = global_except_hook
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -173,7 +173,10 @@ def run_test(mode, tmp_path):
 # NOTE : could merge test_smalldata.py into this file
 def main(tmp_path):
     run_test('xtc', tmp_path)
-    run_test('shmem', tmp_path)
+    import platform
+    # don't test shmem on macOS
+    if platform.system()!='Darwin':
+        run_test('shmem', tmp_path)
     return
 
 # pytest byhand_mpi.py will call this section of the code (w/mpirun)
