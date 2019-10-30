@@ -13,7 +13,7 @@
 #include <sys/time.h>
 
 #include <mpi.h>
-#include "hdf5.h"
+#include <hdf5.h>
 #include "xtc_vol.h"
 #include "util_debug.h"
 
