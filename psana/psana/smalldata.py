@@ -3,7 +3,6 @@ import os
 import numpy as np
 import h5py
 import collections
-from glob import glob
 
 # -----------------------------------------------------------------------------
 
@@ -137,7 +136,6 @@ class Server: # (hdf5 handling)
 
         for event_data_dict in batch:
 
-            # TODO > CALLBACKS HERE <
             for cb in self.callbacks:
                 cb(event_data_dict)
 
@@ -265,7 +263,8 @@ class SmallData: # (client)
             self._client_group = client_group
 
             # hide intermediate files -- join later via VDS
-            self._hidden_filename = os.path.join(self._dirname,'.' + str(RANK) + '_' + self._basename)
+            self._hidden_filename = os.path.join(self._dirname,
+                                                 '.' + str(self._server_group.Get_rank()) + '_' + self._basename)
 
             self._comm_partition()
             if self._type == 'server':
@@ -385,7 +384,18 @@ class SmallData: # (client)
 
         joined_file = h5py.File(self._full_filename, 'w', libver='latest')
 
-        files = glob(os.path.join(self._dirname,'.*_' + self._basename))
+        # locate the hidden files we expect
+        files = []
+        for i in range(self._server_group.Get_size()):
+            hidden_fn = os.path.join(self._dirname,
+                                     '.' + str(i) + '_' + self._basename)
+            if os.path.exists(hidden_fn):
+                files.append(hidden_fn)
+            else:
+                print('!!! WARNING: expected hidden file:')
+                print(hidden_fn)
+                print('NOT FOUND. Trying to proceed with remaining data...')
+                print('This almost certainly means something went wrong.')
         print('Joining: %d files --> %s' % (len(files), self._basename))
 
         # h5py requires you declare the size of the VDS at creation
