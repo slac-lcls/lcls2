@@ -1,4 +1,13 @@
 
+"""
+Smalldata (v2)
+Parallel data analysis with MPI send/recv
+
+Analysis consists of two different process types:
+  1.
+
+"""
+
 import os
 import numpy as np
 import h5py
@@ -71,6 +80,10 @@ def _get_missing_value(dtype):
 # CLASS BASECLASS METHOD THEN HANDLES HDF5
 
 class CacheArray:
+    """
+    The CacheArray class provides for a *data cache* in
+    the server's memory.
+    """
 
     def __init__(self, singleton_shape, dtype, cache_size):
         
@@ -97,7 +110,7 @@ class CacheArray:
 
 class Server: # (hdf5 handling)
 
-    def __init__(self, filename=None, smdcomm=None, cache_size=5,
+    def __init__(self, filename=None, smdcomm=None, cache_size=100,
                  callbacks=[]):
 
         self.filename   = filename
@@ -184,7 +197,8 @@ class Server: # (hdf5 handling)
         dset = self.file_handle.create_dataset(dataset_name,
                                                (0,) + shape, # (0,) -> expand dim
                                                maxshape=maxshape,
-                                               dtype=dtype)
+                                               dtype=dtype,
+                                               chunks=(self.cache_size,) + shape)
 
         self.backfill(dataset_name, self.num_events_seen)
 
@@ -246,12 +260,23 @@ class Server: # (hdf5 handling)
 class SmallData: # (client)
 
     def __init__(self, server_group=None, client_group=None, 
-                 filename=None, batch_size=5, cache_size=5,
+                 filename=None, batch_size=100, cache_size=None,
                  callbacks=[]):
+        """
+        batch_size : number of events before send/recv
+        cache_size : number of events before write
+        """
 
         self.batch_size = batch_size
         self._batch = []
         self._previous_timestamp = -1
+
+        if cache_size is None:
+            cache_size = batch_size
+        if cache_size < batch_size:
+            print('Warning: `cache_size` smaller than `batch_size`')
+            print('setting cache_size -->', batch_size)
+            cache_size = batch_size
 
         self._full_filename = filename
         self._basename = os.path.basename(filename)
