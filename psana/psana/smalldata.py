@@ -255,7 +255,9 @@ class SmallData: # (client)
         self._batch = []
         self._previous_timestamp = -1
 
-        self._base_filename = filename
+        self._full_filename = filename
+        self._basename = os.path.basename(filename)
+        self._dirname  = os.path.dirname(filename)
 
         if MODE == 'PARALLEL':
 
@@ -263,20 +265,20 @@ class SmallData: # (client)
             self._client_group = client_group
 
             # hide intermediate files -- join later via VDS
-            self._filename = '.' + str(RANK) + '_' + filename
+            self._hidden_filename = os.path.join(self._dirname,'.' + str(RANK) + '_' + self._basename)
 
             self._comm_partition()
             if self._type == 'server':
-                self._server = Server(filename=self._filename, 
+                self._server = Server(filename=self._hidden_filename, 
                                       smdcomm=self._srvcomm, 
                                       cache_size=cache_size,
                                       callbacks=callbacks)
                 self._server.recv_loop()
 
         elif MODE == 'SERIAL':
-            self._filename = self._base_filename # dont hide file
+            self._hidden_filename = self._full_filename # dont hide file
             self._type = 'serial'
-            self._server = Server(filename=self._filename,
+            self._server = Server(filename=self._hidden_filename,
                                   cache_size=cache_size,
                                   callbacks=callbacks)
 
@@ -372,87 +374,84 @@ class SmallData: # (client)
             if self._type != 'other': # other = Mona
                 self._smalldata_comm.barrier()
                 if self._smalldata_comm.Get_rank() == 0:
-                    join_files(self._base_filename)
+                    self.join_files()
 
         return
 
 
-def join_files(base_filename):
-    """
-    """
+    def join_files(self):
+        """
+        """
 
-    joined_file = h5py.File(base_filename, 'w', libver='latest')
+        joined_file = h5py.File(self._full_filename, 'w', libver='latest')
 
-    files = glob('.*_' + base_filename)
-    print('Joining: %d files --> %s' % (len(files), base_filename))
+        files = glob(os.path.join(self._dirname,'.*_' + self._basename))
+        print('Joining: %d files --> %s' % (len(files), self._basename))
 
-    # h5py requires you declare the size of the VDS at creation
-    # so: we must first loop over each file to find # events
-    #     that come from each file
-    # then do a second loop to join the data together
+        # h5py requires you declare the size of the VDS at creation
+        # so: we must first loop over each file to find # events
+        #     that come from each file
+        # then do a second loop to join the data together
 
-    # part (1) : discover the size of the timestamps in each file
-    file_dsets = {}
+        # part (1) : discover the size of the timestamps in each file
+        file_dsets = {}
 
-    def assign_dset_info(name, obj):
-        # TODO check if name contains unaligned, if so ignore
-        if isinstance(obj, h5py.Dataset):
-            dsets[obj.name] = (obj.dtype, obj.shape)
+        def assign_dset_info(name, obj):
+            # TODO check if name contains unaligned, if so ignore
+            if isinstance(obj, h5py.Dataset):
+                dsets[obj.name] = (obj.dtype, obj.shape)
 
-    for fn in files:
-        dsets = {}
-        f = h5py.File(fn, 'r')
-        f.visititems(assign_dset_info)
-        file_dsets[fn] = dsets
-        f.close()
-
-    # part (2) : loop over datasets and combine them into a vds
-    for dset_name in dsets.keys():
-
-        # inspect the first file (w data) to get basic shape & dtype
-
-        total_events = 0
         for fn in files:
-            dsets = file_dsets[fn]
-            if dset_name in dsets.keys():
-                dtype, shape = dsets[dset_name]
-                total_events += shape[0]
+            dsets = {}
+            f = h5py.File(fn, 'r')
+            f.visititems(assign_dset_info)
+            file_dsets[fn] = dsets
+            f.close()
 
-            # we need to reserve space for missing data for aligned data
-            elif not is_unaligned(dset_name):
-                total_events += dsets['/timestamp'][1][0]
+        # part (2) : loop over datasets and combine them into a vds
+        for dset_name in dsets.keys():
 
-        combined_shape = (total_events,) + shape[1:]
+            # inspect the first file (w data) to get basic shape & dtype
 
-        layout = h5py.VirtualLayout(shape=combined_shape, 
-                                    dtype=dtype)
+            total_events = 0
+            for fn in files:
+                dsets = file_dsets[fn]
+                if dset_name in dsets.keys():
+                    dtype, shape = dsets[dset_name]
+                    total_events += shape[0]
 
-        # add data for "dset", from each file, in order
-        index_of_last_fill = 0
-        for fn in files:
+                # we need to reserve space for missing data for aligned data
+                elif not is_unaligned(dset_name):
+                    total_events += dsets['/timestamp'][1][0]
 
-            dsets = file_dsets[fn]
+            combined_shape = (total_events,) + shape[1:]
 
-            if dset_name in dsets.keys():
-                _, shape = dsets[dset_name]
-                vsource = h5py.VirtualSource(fn, dset_name, shape=shape)
-                layout[index_of_last_fill:index_of_last_fill+shape[0], ...] = vsource
-                index_of_last_fill += shape[0]
+            layout = h5py.VirtualLayout(shape=combined_shape, 
+                                        dtype=dtype)
 
-            else:
-                if is_unaligned(dset_name):
-                    pass
-                else: # should be aligned
-                    n_timestamps = dsets['/timestamp'][1][0]
-                    index_of_last_fill += n_timestamps
+            # add data for "dset", from each file, in order
+            index_of_last_fill = 0
+            for fn in files:
 
-        joined_file.create_virtual_dataset(dset_name,
-                                           layout,
-                                           fillvalue=_get_missing_value(dtype)) 
+                dsets = file_dsets[fn]
 
-    joined_file.close()
+                if dset_name in dsets.keys():
+                    _, shape = dsets[dset_name]
+                    vsource = h5py.VirtualSource(fn, dset_name, shape=shape)
+                    layout[index_of_last_fill:index_of_last_fill+shape[0], ...] = vsource
+                    index_of_last_fill += shape[0]
 
-    return
+                else:
+                    if is_unaligned(dset_name):
+                        pass
+                    else: # should be aligned
+                        n_timestamps = dsets['/timestamp'][1][0]
+                        index_of_last_fill += n_timestamps
 
+            joined_file.create_virtual_dataset(dset_name,
+                                               layout,
+                                               fillvalue=_get_missing_value(dtype)) 
 
+        joined_file.close()
 
+        return
