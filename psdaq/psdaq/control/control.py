@@ -1485,54 +1485,6 @@ class CollectionManager():
 
         logging.debug('slowupdate thread shutting down')
 
-class Client:
-    def __init__(self, platform):
-        self.context = zmq.Context(1)
-        self.back_push = self.context.socket(zmq.PUSH)
-        self.back_sub = self.context.socket(zmq.SUB)
-        self.back_push.connect('tcp://localhost:%d' % back_pull_port(platform))
-        self.back_sub.connect('tcp://localhost:%d' % back_pub_port(platform))
-        self.back_sub.setsockopt(zmq.SUBSCRIBE, b'')
-        handle_request = {
-            'rollcall': self.handle_rollcall,
-            'alloc': self.handle_alloc,
-            'connect': self.handle_connect
-        }
-        while True:
-            try:
-                msg = self.back_sub.recv_json()
-                key = msg['header']['key']
-                handle_request[key](msg)
-            except KeyError as ex:
-                logging.debug('KeyError: %s' % ex)
-
-            if key == 'connect':
-                break
-
-    def handle_rollcall(self, msg):
-        logging.debug('Client handle_rollcall()')
-        # time.sleep(1.5)
-        hostname = socket.gethostname()
-        pid = os.getpid()
-        self.id = hash(hostname+str(pid))
-        body = {'drp': {'proc_info': {
-                        'host': hostname,
-                        'pid': pid}}}
-        reply = create_msg('rollcall', msg['header']['msg_id'], self.id, body=body)
-        self.back_push.send_json(reply)
-
-    def handle_alloc(self, msg):
-        logging.debug('Client handle_alloc()')
-        body = {'drp': {'connect_info': {'infiniband': '123.456.789'}}}
-        reply = create_msg('alloc', msg['header']['msg_id'], self.id, body)
-        self.back_push.send_json(reply)
-        self.state = 'alloc'
-
-    def handle_connect(self, msg):
-        logging.debug('Client handle_connect()')
-        if self.state == 'alloc':
-            reply = create_msg('ok', msg['header']['msg_id'], self.id)
-            self.back_push.send_json(reply)
 
 def main():
     # Process arguments
