@@ -233,13 +233,13 @@ ctypedef fused dtypes1d :
 
 #----------
 #
-# There are few unresolved puzles about code of py_find_edges_v2
+# There are few unresolved puzles about code of wfpkfinder_cfd
 # 1. parameter vector[T] MUST go after T* pkvals, othervise type T is undefined...
 # 2. can't define tarameters double baseline and threshold as T ... event for fused type dtypesv
 #
 
 cdef extern from "psalg/peaks/WFAlgos.hh" namespace "psalg":
-    index_t find_edges_v2[T](
+    index_t find_edges[T](
         index_t npkmax,
         T* pkvals,
         index_t* pkinds,
@@ -250,19 +250,19 @@ cdef extern from "psalg/peaks/WFAlgos.hh" namespace "psalg":
         double deadtime,
         bool leading_edges) except +
 
-def py_find_edges_v2(wf, dtypesv baseline, dtypesv threshold, fraction, deadtime, leading_edges,\
+def wfpkfinder_cfd(wf, dtypesv baseline, dtypesv threshold, fraction, deadtime, leading_edges,\
                      dtypes1d pkvals,\
                      cnp.ndarray[cnp.uint32_t,ndim=1] pkinds):
                      #cnp.ndarray[cnp.double_t, ndim=1] pkvals,\
-    #print('In py_find_edges_v2 - wf:', wf)
-    #print('In py_find_edges_v2 - baseline, threshold, fraction, deadtime, leading_edges:',\
-    #                             baseline, threshold, fraction, deadtime, leading_edges)
+    #print('In wfpkfinder_cfd - wf:', wf)
+    #print('In wfpkfinder_cfd - baseline, threshold, fraction, deadtime, leading_edges:',\
+    #                           baseline, threshold, fraction, deadtime, leading_edges)
 
     npkmax = pkinds.size
-    #print 'In py_find_edges_v2 npkmax', npkmax
+    #print 'In wfpkfinder_cfd npkmax', npkmax
 
-    npeaks = find_edges_v2(npkmax, &pkvals[0], &pkinds[0], wf, baseline, threshold, fraction, deadtime, leading_edges)
-    #print 'In NDArray_ext::py_find_edges_v2 - npeaks: %d' % npeaks
+    npeaks = find_edges(npkmax, &pkvals[0], &pkinds[0], wf, baseline, threshold, fraction, deadtime, leading_edges)
+    #print 'In NDArray_ext::wfpkfinder_cfd - npeaks: %d' % npeaks
     return npeaks
 
 #----------

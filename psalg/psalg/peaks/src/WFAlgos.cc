@@ -1,11 +1,11 @@
+//---------
 
+#include <iostream> // cout
 #include "psalg/peaks/WFAlgos.hh"
 
-#include <list>
-#include <cstdint>  // uint32_t
+//#include <list>
 //#include <cstddef>  // size_t
 //#include <utility>  // pair
-//#include <iostream> // cout
 
 //---------
 
@@ -15,7 +15,7 @@ namespace psalg {
 
 template <typename T>
 void 
-_add_edge_v2(
+_add_edge(
   const std::vector<T>& v,
   bool     rising, // leading positive or trailing negative edge
   double   fraction,
@@ -27,8 +27,8 @@ _add_edge_v2(
   T*       pkvals,
   index_t* pkinds)
 {
-  if(false){
-    std::cout << "In WFAlgos.cc - _add_edge_v2 input parameters: "
+  /*
+    std::cout << "In WFAlgos.cc - _add_edge input parameters: "
               << " ipk:" << ipk
               << " rising:" << rising
               << " fraction:" << fraction
@@ -37,7 +37,7 @@ _add_edge_v2(
               << " start:" << start
               << " last:" << last
               << '\n';
-  }
+  */
 
   // find the edge
   double edge_v = fraction;
@@ -68,7 +68,7 @@ _add_edge_v2(
 //find leading or trailing edges
 template <typename T>
 index_t 
-find_edges_v2(
+find_edges(
   index_t  npkmax,
   T*       pkvals,
   index_t* pkinds,
@@ -79,10 +79,10 @@ find_edges_v2(
   double   deadtime,
   bool     leading_edge)
 {
-  //std::cout << "In WFAlgos.cc - find_edges_v2 wf: ";
+  //std::cout << "In WFAlgos.cc - find_edges wf: ";
   //for(typename std::vector<T>::const_iterator i=wf.begin(); i<wf.end(); ++i) std::cout << *i << ' ';
-  if(false){
-    std::cout << "In WFAlgos.cc - find_edges_v2 input parameters: "
+  /*
+    std::cout << "In WFAlgos.cc - find_edges input parameters: "
               << " baseline:" << baseline_f8
               << " threshold:" << threshold_f8
               << " fraction:" << fraction
@@ -90,7 +90,7 @@ find_edges_v2(
               << " leading_edge:" << leading_edge
               << " wf.size():" << wf.size()
               << '\n';
-  }
+  */
 
   T        baseline = (T)baseline_f8;   // because cython.... does not accept templeted/fused type...
   T        threshold = (T)threshold_f8;
@@ -116,7 +116,7 @@ find_edges_v2(
     else if(crossed && !over) {
       // add peak if its width exceeds deadtime
       if(double(k-start)>deadtime)
-        _add_edge_v2(wf, rising==leading_edge, fraction*(peak-baseline)+baseline,
+        _add_edge(wf, rising==leading_edge, fraction*(peak-baseline)+baseline,
                      deadtime, peak, start, last, npk, pkvals, pkinds);
       crossed = false;
       if(!(npk < npkmax)) break;
@@ -131,11 +131,11 @@ find_edges_v2(
     
   // the last edge may not have fallen back below threshold
   if(crossed && (npk < npkmax) && (double(k-start)>deadtime)) {
-    _add_edge_v2(wf, rising==leading_edge, fraction*(peak-baseline)+baseline,
+    _add_edge(wf, rising==leading_edge, fraction*(peak-baseline)+baseline,
                  deadtime, peak, start, last, npk, pkvals, pkinds);
   }
 
-  //std::cout << "\nIn WFAlgos.cc - find_edges_v2 found npk: " << npk << '\n'; 
+  //std::cout << "\nIn WFAlgos.cc - find_edges found npk: " << npk << '\n'; 
   //std::cout << "\n  - pkinds: "; for(index_t i=0; i<npk; ++i) std::cout << pkinds[i] << ' ';
   //std::cout << "\n  - pkvals: "; for(index_t i=0; i<npk; ++i) std::cout << pkvals[i] << ' ';
   //std::cout << '\n';
@@ -145,19 +145,19 @@ find_edges_v2(
 
 //---------
 
-#ifdef INST_FIND_EDGES_V2
-#undef INST_FIND_EDGES_V2
+#ifdef INST_FIND_EDGES
+#undef INST_FIND_EDGES
 #endif
-#define INST_FIND_EDGES_V2(T)\
-  template index_t find_edges_v2<T>\
+#define INST_FIND_EDGES(T)\
+  template index_t find_edges<T>\
     (index_t,T*,index_t*,const std::vector<T>&,double,double,double,double,bool);
 
-INST_FIND_EDGES_V2(double)
-INST_FIND_EDGES_V2(float)
-INST_FIND_EDGES_V2(int)
-INST_FIND_EDGES_V2(int64_t)
-INST_FIND_EDGES_V2(int16_t)
-//INST_FIND_EDGES_V2(int32_t)// the same as int
+INST_FIND_EDGES(double)
+INST_FIND_EDGES(float)
+INST_FIND_EDGES(int)
+INST_FIND_EDGES(int64_t)
+INST_FIND_EDGES(int16_t)
+//INST_FIND_EDGES(int32_t)// the same as int
 
 //---------
 

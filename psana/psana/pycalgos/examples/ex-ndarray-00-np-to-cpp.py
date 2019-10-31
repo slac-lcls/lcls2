@@ -72,8 +72,8 @@ def test_05() :
 #--------
 
 def test_06() :
-    print(50*'_', '\nTest of py_find_edges_v2')
-    from ndarray import py_find_edges_v2
+    print(50*'_', '\nTest of wfpkfinder_cfd')
+    from ndarray import wfpkfinder_cfd
     from ex_wf import WF # local import
     #print(WF)
     #wf  = np.arange(0, 20, 1, dtype=np.double)
@@ -81,7 +81,7 @@ def test_06() :
     pkvals = np.zeros((10,), dtype=np.double)
     pkinds = np.zeros((10,), dtype=np.uint32)
     baseline, threshold, fraction, deadtime, leading_edges = 0, -5, 0.5, 0, True
-    npks = py_find_edges_v2(wf, baseline, threshold, fraction, deadtime, leading_edges, pkvals, pkinds)
+    npks = wfpkfinder_cfd(wf, baseline, threshold, fraction, deadtime, leading_edges, pkvals, pkinds)
     print('  npks: %d' % npks)
     print_ndarr(pkvals, '  values : ')
     print_ndarr(pkinds, '  times  : ')
@@ -96,7 +96,7 @@ def usage(tname):
     if tname in ('0','3') : s+='\n 3 - test of py_ctest_vector'
     if tname in ('0','4') : s+='\n 4 - test of py_ndarray'
     if tname in ('0','5') : s+='\n 5 - void'
-    if tname in ('0','6') : s+='\n 6 - test of py_find_edges_v2 - uses vectors for IO'
+    if tname in ('0','6') : s+='\n 6 - test of wfpkfinder_cfd'
     return s
 
 #--------

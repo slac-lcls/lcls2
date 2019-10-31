@@ -89,8 +89,8 @@ const double WFTESTDATA[] = {
  
 //-------------------
 
-void test_find_edges_v2() {
-  printf("In test_WFAlgos::test_find_edges_v2\n");
+void test_find_edges() {
+  printf("In test_WFAlgos::test_find_edges\n");
 
   uint32_t n = sizeof(WFTESTDATA)/sizeof(WFTESTDATA[0]);
   std::vector<double> waveform(WFTESTDATA, WFTESTDATA+n);
@@ -104,9 +104,9 @@ void test_find_edges_v2() {
   double   pkvals[10];
   uint32_t pkinds[10];
 
-  uint32_t npks = find_edges_v2(npkmax, pkvals, pkinds, waveform, baseline, threshold, fraction, deadtime, leading_edges);
+  uint32_t npks = find_edges(npkmax, pkvals, pkinds, waveform, baseline, threshold, fraction, deadtime, leading_edges);
 
-  std::cout << "\nIn test_find_edges_v2 - find_edges_v2 found npk: " << npks << '\n'; 
+  std::cout << "\nIn test_find_edges - find_edges found npk: " << npks << '\n'; 
   std::cout << "\n  pkinds: ";
   for(index_t i=0; i<npks; ++i) std::cout << pkinds[i] << ' ';
   std::cout << "\n  pkvals: ";
@@ -137,7 +137,7 @@ std::string usage(const std::string& tname="")
   std::stringstream ss;
   if (tname == "") ss << "Usage command> test_WFAlgos <test-number>\n  where test-number";
   if (tname == "" || tname=="1"	) ss << "\n  1  - test_cpp()";
-  if (tname == "" || tname=="2"	) ss << "\n  2  - test_find_edges_v2() - uses vectors for IO";
+  if (tname == "" || tname=="2"	) ss << "\n  2  - test_find_edges() - uses vectors for IO";
   ss << '\n';
   return ss.str();
 }
@@ -158,7 +158,7 @@ int main(int argc, char* argv[])
   cout << usage(tname); 
 
   if      (tname=="1")  test_cpp();
-  else if (tname=="2")  test_find_edges_v2();
+  else if (tname=="2")  test_find_edges();
   else MSG(WARNING, "Undefined test name \"" << tname << '\"');
  
   print_hline(80,'_');

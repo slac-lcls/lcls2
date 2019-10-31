@@ -1,9 +1,12 @@
 #ifndef PSALG_PEAKS_WFALGOS_H
 #define PSALG_PEAKS_WFALGOS_H
 
-#include "psalg/calib/NDArray.hh"
-#include <vector>
+//---------
 
+#include <vector>
+#include <cstdint>  // uint32_t
+
+//#include "psalg/calib/NDArray.hh"
 //#include <utility>  // pair
 //#include "psalg/utils/Utils.hh" // Pair
 //typedef Pair<wfdata_t, index_t> Edge;
@@ -23,7 +26,7 @@
    * trailing edges are "rising".  In order for two pulses to be discriminated,
    * the waveform samples below the two pulses must fall below (or above for
    * negative pulses) the fractional value of the threshold; i.e. 
-   * waveform[i] < fraction*(threshold+baseline).
+   * waveform[i] < fraction*(threshold-baseline)+baseline.
    *
    * The results are stored in a 2D array such that result[i][0] is the time 
    * (waveform sample) of the i'th hit and result[i][1] is the maximum amplitude 
@@ -44,7 +47,7 @@ typedef double wfdata_t;
 
 template <typename T>
 void 
-_add_edge_v2(
+_add_edge(
   const std::vector<T>& v,
   bool     rising,
   double   fraction,
@@ -60,7 +63,7 @@ _add_edge_v2(
 
 template <typename T>
 index_t 
-find_edges_v2(
+find_edges(
   index_t  npkmax,
   T*       pkvals,
   index_t* pkinds,

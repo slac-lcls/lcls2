@@ -10,7 +10,7 @@ from psana import DataSource
 import psana.pyalgos.generic.Graphics as gr
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 
-from ndarray import py_find_edges_v2
+from ndarray import wfpkfinder_cfd
 #from ndarray import find_edges
 from ndarray import py_ndarray_double
 
@@ -48,7 +48,7 @@ def draw_times(ax, wf, wt) :
     #wf  = np.array(WF, dtype=np.double)
     pkvals = np.zeros((100,), dtype=np.double)
     pkinds = np.zeros((100,), dtype=np.uint32)
-    npks = py_find_edges_v2(wf, BASE, THR, CFR, DEADTIME, LEADINGEDGE, pkvals, pkinds)
+    npks = wfpkfinder_cfd(wf, BASE, THR, CFR, DEADTIME, LEADINGEDGE, pkvals, pkinds)
 
     print('    wf proc  npks:%3d  time(sec) = %8.6f' % (npks, time()-t0_sec))
 
