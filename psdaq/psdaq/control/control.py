@@ -69,10 +69,9 @@ class DaqControl:
         self.front_sub = self.context.socket(zmq.SUB)
         self.front_sub.connect('tcp://%s:%d' % (host, front_pub_port(platform)))
         self.front_sub.setsockopt(zmq.SUBSCRIBE, b'')
-        self.front_req = self.context.socket(zmq.REQ)
-        self.front_req.linger = 0
-        self.front_req.RCVTIMEO = timeout # in milliseconds
-        self.front_req.connect('tcp://%s:%d' % (host, front_rep_port(platform)))
+        self.front_req = None
+        self.front_req_endpoint = 'tcp://%s:%d' % (host, front_rep_port(platform))
+        self.front_req_init()
 
     #
     # DaqControl.getState - get current state
@@ -85,6 +84,8 @@ class DaqControl:
             reply = self.front_req.recv_json()
         except zmq.Again:
             logging.error('getState() timeout (%.1f sec)' % (self.timeout / 1000.))
+            logging.info('getState() reinitializing zmq socket')
+            self.front_req_init()
         except Exception as ex:
             logging.error('getState() Exception: %s' % ex)
         except KeyboardInterrupt:
@@ -108,6 +109,8 @@ class DaqControl:
             reply = self.front_req.recv_json()
         except zmq.Again:
             logging.error('getPlatform() timeout (%.1f sec)' % (self.timeout / 1000.))
+            logging.info('getPlatform() reinitializing zmq socket')
+            self.front_req_init()
         except Exception as ex:
             logging.error('getPlatform() Exception: %s' % ex)
         except KeyboardInterrupt:
@@ -131,6 +134,8 @@ class DaqControl:
             reply = self.front_req.recv_json()
         except zmq.Again:
             logging.error('selectPlatform() timeout (%.1f sec)' % (self.timeout / 1000.))
+            logging.info('selectPlatform() reinitializing zmq socket')
+            self.front_req_init()
         except Exception as ex:
             logging.error('selectPlatform() Exception: %s' % ex)
         except KeyboardInterrupt:
@@ -227,6 +232,10 @@ class DaqControl:
             msg = create_msg('setstate.' + state, body=phase1Info)
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
+        except zmq.Again:
+            errorMessage = 'setState() timeout (%.1f sec)' % (self.timeout / 1000.)
+            logging.info('setState() reinitializing zmq socket')
+            self.front_req_init()
         except Exception as ex:
             errorMessage = 'setState() Exception: %s' % ex
         else:
@@ -306,6 +315,19 @@ class DaqControl:
                 pass
 
         return errorMessage
+
+    #
+    # DaqControl.front_req_init - (re)initialize the front_req zmq socket
+    #
+    def front_req_init(self):
+        # if socket previouly created, close it
+        if self.front_req is not None:
+            self.front_req.close()
+        # create new socket
+        self.front_req = self.context.socket(zmq.REQ)
+        self.front_req.linger = 0
+        self.front_req.RCVTIMEO = self.timeout
+        self.front_req.connect(self.front_req_endpoint)
 
 next_dict = {
     'reset' :       { 'unallocated' : 'rollcall',
