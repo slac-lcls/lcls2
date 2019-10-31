@@ -73,6 +73,14 @@ class StepStore(object):
                 val.sort()
                 for v in val:
                     self.step_info.append((v, key))
+
+    @property
+    def epics_info(self):
+        epics_variables = self.step_variables['epics']
+        info = {}
+        for var in epics_variables:
+            info[(var,'epics')] = 'epics'
+        return info
     
     def alg_from_variable(self, variable_name):
         """ Returns algorithm name from the given step variable. """

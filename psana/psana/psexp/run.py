@@ -197,6 +197,7 @@ class RunSingleFile(Run):
         xtc_files, smd_files, epics_file = run_src
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
+        self.ssm = StepStoreManager(self.dm.configs, 'epics', 'scan')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
