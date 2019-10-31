@@ -195,10 +195,12 @@ class CGWMainTabUser(QGroupBox) :
         self.but_record.clicked.connect(self.on_but_record)
         self.but_stop  .clicked.connect(self.on_but_stop)
 
-        hbox.addWidget(self.but_play)
-        hbox.addWidget(self.but_stop)
-        hbox.addWidget(self.but_record)
-        hbox.addStretch(1) 
+        hbox.addSpacing(24) 
+        hbox.addWidget(self.but_play,   alignment=Qt.AlignLeft)
+        hbox.addWidget(self.but_stop,   alignment=Qt.AlignCenter)
+        hbox.addWidget(self.but_record, alignment=Qt.AlignRight)
+        hbox.addSpacing(24) 
+        #hbox.addStretch(1) 
 
         #self.but_play.setStyleSheet('QPushButton{border: 0px solid;}')
         #self.but_record.setStyleSheet("background-image: url('image.jpg'); border: none;")
