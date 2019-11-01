@@ -4,9 +4,50 @@ Smalldata (v2)
 Parallel data analysis with MPI send/recv
 
 Analysis consists of two different process types:
-  1.
 
-"""
+1. clients
+    > these perform per-event analysis
+    > are associted with one specific server
+    > after processing `batch_size` events, send a
+      dict of data over to their server
+
+  2. servers (srv)
+    > recv a batch of events from one of many clients
+    > add these batches to a `cache`
+    > when the cache is full, write to disk
+    > each server produces its OWN hdf5 file
+
+>> at the end of execution, rank 0 "joins" all the
+   individual hdf5 files together using HDF virtual
+   datasets -- this provides a "virtual", unified
+   view of all processed data
+
+
+             CLIENT                SRV
+         [ --------- ]       | [ --------- ]
+         [ -{event}- ]  send | [ --------- ]
+  batch  [ --------- ]  ~~~> | [ --------- ]
+         [ --------- ]       | [ --------- ]
+         [ --------- ]       | [ --------- ]
+                             | 
+                             | [ --------- ] 
+                             | [ --------- ]
+                             | [ --------- ]
+                             | [ --------- ]
+                             | [ --------- ]
+                             | -- cache
+
+
+  (I apologize for indulging in some ASCII art)
+
+Some Notes:
+  * the individual server's files are *hidden* with a
+    preceeding "."
+  * number of servers to use is set by PS_SRV_NODES
+    environment variable
+  * if running in psana parallel mode, clients ARE
+    BD nodes (they are the same processes)
+"""                          
 
 import os
 import numpy as np
@@ -263,8 +304,32 @@ class SmallData: # (client)
                  filename=None, batch_size=100, cache_size=None,
                  callbacks=[]):
         """
-        batch_size : number of events before send/recv
-        cache_size : number of events before write
+        Parameters
+        ----------
+        server_group : MPI.Group
+            The MPI group to allocate to server processes
+
+        client_group : MPI.Group
+            The MPI group to allocate to client processes
+
+        filename : str
+            The file path of the (new) HDF5 file to write data to,
+            will be overwritten if it exits -- if "None", data
+            will not be written to disk.
+
+        batch_size : int
+            Number of events before send/recv
+
+        cache_size : int
+            Number of events before write
+
+        callbacks : list of functions
+            Functions that get called on each server's data before
+            being written to disk. The functions should take as 
+            arguments a dictionary, where the keys are the data field
+            names and the values are the data themselves. Each event
+            processed will have it's own dictionary of this form
+            containing the data saved for that event.
         """
 
         self.batch_size = batch_size
