@@ -172,6 +172,7 @@ class DaqControl:
     #
     def getStatus(self):
         r1 = r2 = r3 = r4 = 'error'
+        r5 = {}
         try:
             msg = create_msg('getstatus')
             self.front_req.send_json(msg)
@@ -186,10 +187,11 @@ class DaqControl:
                 r2 = reply['body']['state']
                 r3 = reply['body']['config_alias']
                 r4 = reply['body']['recording']
+                r5 = reply['body']['platform']
             except KeyError:
                 pass
 
-        return (r1, r2, r3, r4)
+        return (r1, r2, r3, r4, r5)
 
     #
     # DaqControl.monitorStatus - monitor the status
@@ -843,6 +845,7 @@ class CollectionManager():
 
     def status_msg(self):
         body = {'state': self.state, 'transition': self.lastTransition,
+                'platform': self.cmstate_levels(),
                 'config_alias': str(self.config_alias), 'recording': self.recording}
         return create_msg('status', body=body)
 
