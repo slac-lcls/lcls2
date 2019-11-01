@@ -358,6 +358,8 @@ class CGWMain(QWZMQListener) :
                     cp.s_state      = body['state']
                     cp.s_cfgtype    = body['config_alias'] # BEAM/NO BEAM
                     cp.s_recording  = body['recording']    # True/False
+                    cp.s_platform   = body.get('platform', None) # dict
+
                     #====
                     if wctrl is not None : wctrl.set_but_ctrls()
                     self.wconf.set_config_type(cp.s_cfgtype)

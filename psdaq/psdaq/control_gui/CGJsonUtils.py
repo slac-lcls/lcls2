@@ -12,7 +12,7 @@ Usage::
 
     # global methods
     pname, pid, host, alias = _display_name(pname, dic)
-    v = dict_platform() # returns control.getPlatform() or None
+    v = dict_platform() # returns control.getPlatform() or cp.s_platform or None
 
 See:
     - :py:class:`CGJsonUtils`
@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 import json
 from psdaq.control_gui.CGDaqControl import daq_control #, DaqControl #, worker_set_state
+from psdaq.control_gui.CGConfigParameters import cp
 
 #from psana.pyalgos.generic.Utils import load_textfile
 from psdaq.control_gui.Utils import load_textfile
@@ -48,8 +49,10 @@ def _display_name(pname, v) :
 #--------------------
 
 def dict_platform():
-    """ returns control.getPlatform() or None
+    """ returns control.getPlatform() or cp.s_platform or None
     """
+    if cp.s_platform is not None : return cp.s_platform
+
     dict_platf = None
     try:
         dict_platf = daq_control().getPlatform() # returns dict
