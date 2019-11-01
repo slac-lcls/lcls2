@@ -23,9 +23,8 @@ Usage ::
     # or
     state = daq_control_get_state()
 
-    transition, state, cfgtype, recording = daq_control_get_status()
+    transition, state, cfgtype, recording, platform = daq_control_get_status()
     instr = daq_control_get_instrument()
-    status = daq_control_get_status()
 
     daq_control_set_record(do_record=True)
 
@@ -66,7 +65,7 @@ class DaqControlEmulator:
     def setConfig(self, c) :      self.msg('setConfig %c'%c); return None
     def setState(self, s) :       self.msg('setState %s'%s);
     def getState(self) :          self.msg('getState');       return 'emulator'
-    def getStatus(self) :         self.msg('getStatus');      return 'running', 'running', 'BEAM', False
+    def getStatus(self) :         self.msg('getStatus');      return 'running', 'running', 'BEAM', False, {}
     def setTransition(self, s) :  self.msg('setTransition');  return 'emulator' 
     def selectPlatform(self, s) : self.msg('selectPlatform'); return
     def getPlatform(self) :       self.msg('getPlatform');    return 'emulator'
@@ -150,13 +149,14 @@ def daq_control_get_status() :
     daq_ctrl = get_daq_control('in daq_control_get_status ')
     if daq_ctrl is None : return None
 
-    transition, state, cfgtype, recording = daq_ctrl.getStatus()
+    transition, state, cfgtype, recording, platform = daq_ctrl.getStatus()
     logger.debug('daq_control_get_status transition:%s state:%s cfgtype:%s recording:%s'%\
                  (str(transition), str(state), str(cfgtype), str(recording)))
+    logger.debug('daq_control_get_status platform:%s' % str(platform))
 
     #logger.debug('daq_control_get_status() time = %.6f sec' % (time()-t0_sec))
 
-    return transition.lower(), state.lower(), cfgtype, recording
+    return transition.lower(), state.lower(), cfgtype, recording, platform
 
 #----------
 

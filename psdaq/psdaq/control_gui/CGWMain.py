@@ -148,7 +148,7 @@ class CGWMain(QWZMQListener) :
 #------------------------------
 
     def init_daq_control_parameters(self) :
-        cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording = daq_control_get_status()
+        cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording, _platform = daq_control_get_status()
 
           #cp.instr = self.expname[:3].upper()
         cp.instr = daq_control_get_instrument()
