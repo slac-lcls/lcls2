@@ -8,6 +8,16 @@ class hsd_raw_0_0_0(DetectorImpl):
     def calib(self, evt) -> Array1d:
         return np.zeros((5))
 
+class hexanode_raw_0_0_1(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+    def waveforms(self, evt):
+        segments = self._segments(evt)
+        return segments[0].waveforms
+    def times(self, evt):
+        segments = self._segments(evt)
+        return segments[0].times
+
 class hsd_fex_4_5_6(DetectorImpl):
     def __init__(self, *args):
         super(hsd_fex_4_5_6, self).__init__(*args)
