@@ -19,6 +19,7 @@ target_link_libraries(utilities
   xtcdata::xtc
   service
   libfabric::fabric
+  psalg::utils
   ${PYTHON_LIBRARIES}
 )
 

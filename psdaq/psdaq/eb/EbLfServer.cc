@@ -3,6 +3,7 @@
 #include "Endpoint.hh"
 
 #include "psdaq/service/fast_monotonic_clock.hh"
+#include "psalg/utils/SysLog.hh"
 
 #include <chrono>
 #include <memory>
@@ -13,6 +14,7 @@
 using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
+using logging = psalg::SysLog;
 
 
 EbLfServer::EbLfServer(unsigned verbose) :
@@ -42,8 +44,8 @@ int EbLfServer::initialize(const std::string& addr,
   _pep = new PassiveEndpoint(addr.c_str(), port.c_str(), flags, txSize, rxSize);
   if (!_pep || (_pep->state() != EP_UP))
   {
-    fprintf(stderr, "%s:\n  Failed to create Passive Endpoint: %s\n",
-            __PRETTY_FUNCTION__, _pep ? _pep->error() : "No memory");
+    logging::error("%s:\n  Failed to create Passive Endpoint: %s",
+                   __PRETTY_FUNCTION__, _pep ? _pep->error() : "No memory");
     return _pep ? _pep->error_num(): ENOMEM;
   }
 
@@ -59,8 +61,8 @@ int EbLfServer::initialize(const std::string& addr,
   _eq = new EventQueue(fab, 0);
   if (!_eq)
   {
-    fprintf(stderr, "%s:\n  Failed to create Event Queue: %s\n",
-            __PRETTY_FUNCTION__, "No memory");
+    logging::error("%s:\n  Failed to create Event Queue: %s",
+                   __PRETTY_FUNCTION__, "No memory");
     return ENOMEM;
   }
 
@@ -71,19 +73,19 @@ int EbLfServer::initialize(const std::string& addr,
   _rxcq = new CompletionQueue(fab, cqSize);
   if (!_rxcq)
   {
-    fprintf(stderr, "%s:\n  Failed to create Rx Completion Queue: %s\n",
-            __PRETTY_FUNCTION__, "No memory");
+    logging::error("%s:\n  Failed to create Rx Completion Queue: %s",
+                   __PRETTY_FUNCTION__, "No memory");
     return ENOMEM;
   }
 
   if(!_pep->listen(nLinks))
   {
-    fprintf(stderr, "%s:\n  Failed to set Passive Endpoint to listening state: %s\n",
-            __PRETTY_FUNCTION__, _pep->error());
+    logging::error("%s:\n  Failed to set Passive Endpoint to listening state: %s",
+                   __PRETTY_FUNCTION__, _pep->error());
     return _pep->error_num();
   }
-  printf("EbLfServer is listening for %d client(s) on port %s\n",
-         nLinks, port.c_str());
+  logging::info("EbLfServer is listening for %d client(s) on port %s",
+                nLinks, port.c_str());
 
   return 0;
 }
