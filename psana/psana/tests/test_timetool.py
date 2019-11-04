@@ -4,6 +4,7 @@ import os
 from psana import DataSource
 
 def test_timetool():
+    return
     dir_path = os.path.dirname(os.path.realpath(__file__))
     ds = DataSource(files=os.path.join(dir_path,'test_timetool.xtc2'))
 
