@@ -122,9 +122,11 @@ if __name__ == "__main__" :
     import sys
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
 
+    from psdaq.control_gui.CGConfigParameters import cp
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
     kwargs = {'parent':None}
+    cp.test_cpinit()
     w = CGWMainTabExpert(**kwargs)
     w.show()
     app.exec_()

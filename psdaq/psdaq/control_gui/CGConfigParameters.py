@@ -70,6 +70,15 @@ class CGConfigParameters(ConfigParameters) :
 
 #------------------------------
         
+    def test_cpinit(self) :
+        self.s_transition = 'tst-transition'
+        self.s_state      = 'tst-state'
+        self.s_cfgtype    = 'tst-cfgtype'
+        self.s_recording  = 'tst-recording'
+        self.s_platform   = 'tst-platform'
+
+#------------------------------
+        
     def declareParameters(self) :
 
         # Possible typs for declaration : 'str', 'int', 'long', 'float', 'bool'

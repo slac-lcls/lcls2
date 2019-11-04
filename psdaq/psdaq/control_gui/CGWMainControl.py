@@ -59,7 +59,7 @@ class CGWMainControl(QGroupBox) :
 
         icon.set_icons()
 
-        self.but_record = QPushButton(icon.icon_record_sym, '') # icon.icon_record
+        self.but_record = QPushButton(icon.icon_record_start, '') # icon.icon_record_stop
         self.lab_record = QLabel('Recording')
 
         self.box_state      = QComboBox()
@@ -238,7 +238,7 @@ class CGWMainControl(QGroupBox) :
         #    logger.debug('set_but_ctrls ZMQ msg state:%s inconsistent with current:%s'%\
         #                 (state_zmq,state))
 
-        self.but_record.setIcon(icon.icon_record if recording else icon.icon_record_sym)
+        self.but_record.setIcon(icon.icon_record_stop if recording else icon.icon_record_start)
         self.set_but_record_enabled(state in ('reset','unallocated','allocated','connected','configured'))
 
         self.ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
@@ -305,6 +305,7 @@ if __name__ == "__main__" :
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
+    cp.test_cpinit()
     w = CGWMainControl(None)
     #w.connect_path_is_changed_to_recipient(w.test_signal_reception)
     w.show()

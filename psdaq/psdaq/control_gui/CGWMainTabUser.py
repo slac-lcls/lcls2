@@ -100,7 +100,7 @@ class CGWMainTabUser(QGroupBox) :
         self.but_play.setIconSize(QSize(48, 48))
         self.set_tool_tips()
 
-        self.but_record.setIcon(icon.icon_record if recording else icon.icon_record_sym)
+        self.but_record.setIcon(icon.icon_record_stop if recording else icon.icon_record_start)
 
         self.set_but_play_enabled(True)   # unlock play button
         self.set_but_record_enabled(state in ('reset','unallocated','allocated','connected','configured'))
@@ -175,7 +175,7 @@ class CGWMainTabUser(QGroupBox) :
 
         #self.but_play   = QPushButton(icon.icon_playback_pause_sym if is_running else\
         #                              icon.icon_playback_start_sym, '')
-        #self.but_record = QPushButton(icon.icon_record_sym, '')         # icon.icon_record
+        #self.but_record = QPushButton(icon.icon_record_start, '')         # icon.icon_record_stop
         #self.but_stop   = QPushButton(icon.icon_playback_stop_sym, '')
 
         #self.but_play  .setAccessibleName(self.s_play_pause if is_running else\
@@ -184,7 +184,7 @@ class CGWMainTabUser(QGroupBox) :
         #self.but_stop  .setAccessibleName(self.s_play_stop)
 
         self.but_play   = QPushButton(icon.icon_playback_pause_sym, '')
-        self.but_record = QPushButton(icon.icon_record_sym, '')
+        self.but_record = QPushButton(icon.icon_record_start, '')
         self.but_stop   = QPushButton(icon.icon_playback_stop_sym, '')
 
         self.but_play  .setAccessibleName('play')
@@ -294,8 +294,8 @@ class CGWMainTabUser(QGroupBox) :
         , icon.icon_playback_start_sym\
         , icon.icon_playback_stop\
         , icon.icon_playback_stop_sym\
-        , icon.icon_record\
-        , icon.icon_record_sym\
+        , icon.icon_record_stop\
+        , icon.icon_record_start\
         , icon.icon_seek_backward\
         , icon.icon_seek_backward_rtl\
         , icon.icon_seek_backward_sym_rtl\
