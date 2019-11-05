@@ -382,6 +382,7 @@ class SmallData: # (client)
 
         self._smalldata_group = MPI.Group.Union(self._server_group, self._client_group)
         self._smalldata_comm  = COMM.Create(self._smalldata_group)
+        self._client_comm     = COMM.Create(self._client_group)
 
         # partition into comms
         n_srv = self._server_group.size
@@ -448,8 +449,36 @@ class SmallData: # (client)
         return
 
 
-    def done(self):
+    def sum(self, value):
+        """
+        This function should be called to sum data across workers
+        sends final value to rank zero where it can be saved as
+        summary data via smd.done(...)
+        """
 
+        red_val = None
+
+        if self._type == 'client':
+            red_val = self._client_comm.reduce(value, MPI.SUM)
+            if red_val is not None:
+                self._smalldata_comm.send(red_val, dest=0, tag=1)
+
+        if self._type == 'server':
+            if self._smalldata_comm.Get_rank() == 0:
+                red_val = self._smalldata_comm.recv(tag=1)
+
+        return red_val
+
+
+    def done(self, *args, **kwargs):
+
+        # >> collect summary data
+        data_dict = {}
+        data_dict.update(kwargs)
+        for d in args:
+            data_dict.update( _flatten_dictionary(d) )
+
+        # >> finish communication
         if self._type == 'client':
             # we want to send the finish signal to the server
             if len(self._batch) > 0:
@@ -462,13 +491,28 @@ class SmallData: # (client)
         elif self._type == 'serial':
             self._server.handle(self._batch)
             self._server.done()
+            self._save_summary(self._full_filename, data_dict)
 
+        # stuff only one process should do in parallel mode
         if MODE == 'PARALLEL':
-            if self._type != 'other': # other = Mona
+            if self._type != 'other': # other = not smalldata (Mona)
                 self._smalldata_comm.barrier()
                 if self._smalldata_comm.Get_rank() == 0:
                     self.join_files()
+                    self._save_summary(self._full_filename, data_dict)
+                    
+        return
 
+
+    def _save_summary(self, filename, data_dict):
+        fh = h5py.File(filename, 'r+', libver='latest') # TODO
+        for dataset_name, data in data_dict.items():
+            if data is None:
+                print('Warning: dataset "%s" was passed value: None'
+                      '... ignoring that dataset' % dataset_name)
+            else:
+                fh[dataset_name] = data
+        fh.close()
         return
 
 
