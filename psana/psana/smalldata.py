@@ -41,8 +41,6 @@ Analysis consists of two different process types:
   (I apologize for indulging in some ASCII art)
 
 Some Notes:
-  * the individual server's files are *hidden* with a
-    preceeding "."
   * number of servers to use is set by PS_SRV_NODES
     environment variable
   * if running in psana parallel mode, clients ARE
@@ -116,6 +114,11 @@ def _get_missing_value(dtype):
     return missing_value
 
 
+def _format_srv_filename(dirname, basename, rank):
+    srv_basename = '%s_part%d.h5' % (basename.strip('.h5'), rank)
+    srv_fn = os.path.join(dirname, srv_basename)
+    return srv_fn
+
 # FOR NEXT TIME
 # CONSIDER MAKING A FileServer CLASS
 # CLASS BASECLASS METHOD THEN HANDLES HDF5
@@ -159,7 +162,7 @@ class Server: # (hdf5 handling)
         self.cache_size = cache_size
         self.callbacks  = callbacks
 
-        # dsets maps dataset_name --> (dtype, shape)
+        # maps dataset_name --> (dtype, shape)
         self._dsets = {}
 
         # maps dataset_name --> CacheArray()
@@ -353,21 +356,22 @@ class SmallData: # (client)
             self._client_group = client_group
 
             # hide intermediate files -- join later via VDS
-            self._hidden_filename = os.path.join(self._dirname,
-                                                 '.' + str(self._server_group.Get_rank()) + '_' + self._basename)
+            self._srv_filename = _format_srv_filename(self._dirname,
+                                                      self._basename,
+                                                      self._server_group.Get_rank())
 
             self._comm_partition()
             if self._type == 'server':
-                self._server = Server(filename=self._hidden_filename, 
+                self._server = Server(filename=self._srv_filename, 
                                       smdcomm=self._srvcomm, 
                                       cache_size=cache_size,
                                       callbacks=callbacks)
                 self._server.recv_loop()
 
         elif MODE == 'SERIAL':
-            self._hidden_filename = self._full_filename # dont hide file
+            self._srv_filename = self._full_filename # dont hide file
             self._type = 'serial'
-            self._server = Server(filename=self._hidden_filename,
+            self._server = Server(filename=self._srv_filename,
                                   cache_size=cache_size,
                                   callbacks=callbacks)
 
@@ -474,16 +478,17 @@ class SmallData: # (client)
 
         joined_file = h5py.File(self._full_filename, 'w', libver='latest')
 
-        # locate the hidden files we expect
+        # locate the srv (partial) files we expect
         files = []
         for i in range(self._server_group.Get_size()):
-            hidden_fn = os.path.join(self._dirname,
-                                     '.' + str(i) + '_' + self._basename)
-            if os.path.exists(hidden_fn):
-                files.append(hidden_fn)
+            srv_fn = _format_srv_filename(self._dirname,
+                                          self._basename,
+                                          i)
+            if os.path.exists(srv_fn):
+                files.append(srv_fn)
             else:
-                print('!!! WARNING: expected hidden file:')
-                print(hidden_fn)
+                print('!!! WARNING: expected partial (srv) file:')
+                print(srv_fn)
                 print('NOT FOUND. Trying to proceed with remaining data...')
                 print('This almost certainly means something went wrong.')
         print('Joining: %d files --> %s' % (len(files), self._basename))
