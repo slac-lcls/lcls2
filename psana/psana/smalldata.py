@@ -209,7 +209,8 @@ class Server: # (hdf5 handling)
                     self.append_to_cache(dataset_name, data)
 
                 for dataset_name in to_backfill:
-                    self.backfill(dataset_name, 1)
+                    if not is_unaligned(dataset_name):
+                        self.backfill(dataset_name, 1)
 
             self.num_events_seen += 1
 
@@ -241,7 +242,8 @@ class Server: # (hdf5 handling)
                                                dtype=dtype,
                                                chunks=(self.cache_size,) + shape)
 
-        self.backfill(dataset_name, self.num_events_seen)
+        if not is_unaligned(dataset_name):
+            self.backfill(dataset_name, self.num_events_seen)
 
         return
 
