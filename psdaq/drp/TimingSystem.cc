@@ -40,7 +40,7 @@ public:
 TimingSystem::TimingSystem(Parameters* para, MemPool* pool) :
     XpmDetector(para, pool),
     m_evtcount(0),
-    m_evtNamesId(nodeId, EventNamesIndex),
+    m_evtNamesId(-1, -1), // placeholder
     m_connect_json("")
 {
 }
@@ -132,6 +132,7 @@ void TimingSystem::connect(const json& connect_json, const std::string& collecti
 
 unsigned TimingSystem::configure(const std::string& config_alias, Xtc& xtc)
 {
+    m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     // set up the names for the configuration data
     NamesId configNamesId(nodeId,ConfigNamesIndex);
     _addJson(xtc, configNamesId, config_alias);

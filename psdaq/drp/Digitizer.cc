@@ -43,7 +43,7 @@ public:
 Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     Detector(para, pool),
     m_evtcount(0),
-    m_evtNamesId(nodeId, EventNamesIndex),
+    m_evtNamesId(-1, -1), // placeholder
     m_epics_name(para->kwargs["hsd_epics_prefix"])
 {
     printf("*** found epics name %s\n",m_epics_name.c_str());
@@ -165,6 +165,7 @@ unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc)
     close(fd);
 
     unsigned lane_mask;
+    m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     // set up the names for the configuration data
     NamesId configNamesId(nodeId,ConfigNamesIndex);
     lane_mask = Digitizer::_addJson(xtc, configNamesId);

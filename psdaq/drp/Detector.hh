@@ -17,7 +17,7 @@ struct Parameters;
 class Detector
 {
 public:
-    Detector(Parameters* para, MemPool* pool) : m_para(para), m_pool(pool) {}
+    Detector(Parameters* para, MemPool* pool) : nodeId(-1), m_para(para), m_pool(pool) {}
     virtual nlohmann::json connectionInfo() {return nlohmann::json({});}
     virtual void connect(const nlohmann::json&, const std::string& collectionId) {};
     virtual unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) = 0;
