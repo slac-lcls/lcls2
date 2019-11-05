@@ -3,6 +3,6 @@
 
 from hsd                    import *
 from .ts                    import ts_ts_1_2_3
-#from .timetool              import tt_detector_type_placeholder_tt_algorithm_placeholder_0_0_1
+from .timetool              import tt_detector_type_placeholder_tt_algorithm_placeholder_0_0_1
 from .test_detectors        import *
 
