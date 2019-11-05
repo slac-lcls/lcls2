@@ -50,7 +50,7 @@ Some Notes:
 import os
 import numpy as np
 import h5py
-import collections
+from collections.abc import MutableMapping
 
 # -----------------------------------------------------------------------------
 
@@ -92,7 +92,7 @@ def _flatten_dictionary(d, parent_key='', sep='/'):
     items = []
     for k, v in d.items():
         new_key = parent_key + sep + k if parent_key else k
-        if isinstance(v, collections.MutableMapping):
+        if isinstance(v, MutableMapping):
             items.extend(_flatten_dictionary(v, new_key, sep=sep).items())
         else:
             items.append((new_key, v))

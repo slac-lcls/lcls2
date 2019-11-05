@@ -75,9 +75,7 @@ def gen_h5(source='xtc', pid=None):
         if (rank % 2 == 0) and (smd._type == 'client'):
             smd.event(evt, missing_vds=1)
 
-    # smd.summary(...)
-
-    smd.done() # can we get rid of this?
+    smd.done({'summary_array' : np.arange(3)}, summary_int=1)
 
     return
 
@@ -91,7 +89,6 @@ class SmallDataTest:
         self.f = f
         return
         
-
     def test_int(self): 
         assert np.all(np.array(self.f['/oneint']) == 1)
         return
@@ -127,6 +124,12 @@ class SmallDataTest:
             assert np.sum((d == 2)) == 5, d
             assert np.sum((d == -99999)) == 5, d
         return
+
+    def test_summary(self):
+        d = np.array(self.f['/summary_array'])
+        assert np.all(d == np.arange(3))
+        d2 = np.array(self.f['/summary_int'])
+        assert d2 == 1
 
     # test that if one of the srv h5 files is
     # missing a dataset completely that it is filled
