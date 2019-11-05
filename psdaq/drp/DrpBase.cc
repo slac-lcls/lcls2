@@ -240,6 +240,18 @@ std::string DrpBase::connect(const json& msg, size_t id)
     return std::string{};
 }
 
+std::string DrpBase::beginrun(const json& msg)
+{
+    logging::debug("Entered %s", __PRETTY_FUNCTION__);
+    return std::string{};
+}
+
+std::string DrpBase::endrun(const json& msg)
+{
+    logging::debug("Entered %s", __PRETTY_FUNCTION__);
+    return std::string{};
+}
+
 std::string DrpBase::configure(const json& msg)
 {
     if (setupTriggerPrimitives(msg["body"])) {

@@ -52,6 +52,8 @@ public:
     nlohmann::json connectionInfo();
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string configure(const nlohmann::json& msg);
+    std::string beginrun(const nlohmann::json& msg);
+    std::string endrun(const nlohmann::json& msg);
     Pds::Eb::TebContributor& tebContributor() const {return *m_tebContributor;}
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
     prometheus::Exposer* exposer() {return m_exposer.get();}
