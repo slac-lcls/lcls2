@@ -25,7 +25,6 @@ def global_except_hook(exctype, value, traceback):
     mpi4py.MPI.COMM_WORLD.Abort(1)
     sys.__excepthook__(exctype, value, traceback)
 
-
 sys.excepthook = global_except_hook
 
 from mpi4py import MPI
@@ -70,7 +69,7 @@ def gen_h5(source='xtc', pid=None):
 
         if evt.timestamp % 2 == 0:
             smd.event(evt,
-                      # unaligned_int=3,
+                      unaligned_int=3,
                       every_other_missing=2)
 
         if (rank % 2 == 0) and (smd._type == 'client'):
@@ -115,14 +114,24 @@ class SmallDataTest:
         assert a.dtype == np.float, a
         return
 
-    # def test_unaligned(self): return
-
-    def test_every_other_missing(self):
-        d = np.array(self.f['/every_other_missing'])
-        assert np.sum((d == 2)) == 5, d
-        assert np.sum((d == -99999)) == 5, d
+    def test_unaligned(self, mode):
+        d = np.array(self.f['/unaligned_int'])
+        assert np.all(d == 3), d
+        if mode=='xtc':
+            assert d.shape == (5,), d
         return
 
+    def test_every_other_missing(self, mode):
+        d = np.array(self.f['/every_other_missing'])
+        if mode=='xtc':
+            assert np.sum((d == 2)) == 5, d
+            assert np.sum((d == -99999)) == 5, d
+        return
+
+    # test that if one of the srv h5 files is
+    # missing a dataset completely that it is filled
+    # in correctly by the h5 "missing data" feature
+    # ("fill_value")
     # def test_missing_vds(self): return
 
 
@@ -159,10 +168,10 @@ def run_test(mode, tmp_path):
         testobj.test_arrint()
         testobj.test_arrfloat()
 
-        # currently this test counts the number of events that are missing
+        # currently these tests count the number of events,
         # however, that number is not deterministic for shmem (depends on speed)
-        # need to update for shmem case
-        #testobj.test_every_other_missing()
+        testobj.test_every_other_missing(mode)
+        testobj.test_unaligned(mode)
 
     assert CALLBACK_OUTPUT == [1,] * len(CALLBACK_OUTPUT), CALLBACK_OUTPUT
 
