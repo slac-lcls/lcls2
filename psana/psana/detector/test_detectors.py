@@ -13,10 +13,10 @@ class hexanode_raw_0_0_1(DetectorImpl):
         super().__init__(*args)
     def waveforms(self, evt):
         segments = self._segments(evt)
-        return segments[0].waveforms
+        return segments[0].waveforms[2:7,...]
     def times(self, evt):
         segments = self._segments(evt)
-        return segments[0].times
+        return segments[0].times[2:7,...]
 
 class hsd_fex_4_5_6(DetectorImpl):
     def __init__(self, *args):
