@@ -12,6 +12,10 @@ int NamesIter::process(Xtc* xtc)
     case (TypeId::Names): {
         Names& names = *(Names*)xtc;
         NamesId& namesId = names.namesId();
+        if (_namesLookup.find(namesId) != _namesLookup.end()) {
+            printf("NamesIter.cc: Found duplicate namesId 0x%x\n",namesId);
+            throw "NamesIter.cc: Found duplicate namesId 0x%x";
+        }
         _namesLookup[namesId] = NameIndex(names);
         break;
     }
