@@ -439,7 +439,7 @@ class ProcMgr:
     CURRENTEXPCMD = ''
     
     valid_flag_list = ['X', 'x', 'k', 's', 'u', 'p'] 
-    valid_instruments = ['AMO','SXR','XPP','XCS','CXI','MEC','MFX','DET','TST']
+    valid_instruments = ['AMO','SXR','XPP','XCS','CXI','MEC','MFX','DET','TST','DIA']
 
     def __init__(self, configfilename, platform, Xterm_list=[], xterm_list=[], procmgr_macro={}, baseport=29000):
         self.pid = self.STRING_NOPID
