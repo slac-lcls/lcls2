@@ -20,7 +20,23 @@ using namespace XtcData;
 
 #define BUFSIZE 0x4000000
 
-enum MyNamesId {HsdRaw,HsdFex,Cspad,Epics,Scan,NumberOf};
+enum MyNamesId {HsdRaw,HsdFex,Cspad,Epics,Scan,RunInfo,NumberOf};
+
+class RunInfoDef:public VarDef
+{
+public:
+  enum index
+    {
+        EXPT,
+        RUNNUM
+    };
+
+  RunInfoDef()
+   {
+       NameVec.push_back({"expt",Name::CHARSTR,1});
+       NameVec.push_back({"runnum",Name::UINT32});
+   }
+} RunInfoDef;
 
 class EpicsDef:public VarDef
 {
@@ -524,6 +540,22 @@ void addScanData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned s
     scanExample(xtc, namesLookup, namesId);
 }
 
+void addRunInfoNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId) {
+    Alg runInfoAlg("runinfo",0,0,1);
+    NamesId namesId(nodeId,MyNamesId::RunInfo);
+    unsigned segment = 0;
+    Names& runInfoNames = *new(xtc) Names("runinfo", runInfoAlg, "runinfo", "", namesId, segment);
+    runInfoNames.add(xtc, RunInfoDef);
+    namesLookup[namesId] = NameIndex(runInfoNames);
+}
+
+void addRunInfoData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId) {
+    NamesId namesId(nodeId,MyNamesId::RunInfo);
+    CreateData runinfo(xtc, namesLookup, namesId);
+    runinfo.set_string(RunInfoDef::EXPT, "xpptut15");
+    runinfo.set_value(RunInfoDef::RUNNUM, (uint32_t)14);
+}
+
 
 #define MAX_FNAME_LEN 256
 
@@ -590,6 +622,7 @@ int main(int argc, char* argv[])
     NamesLookup namesLookup;
     unsigned nSegments=2;
     unsigned iseg = 0;
+    addRunInfoNames(config.xtc, namesLookup, nodeid1);
     // only add epics and scan info to the first stream
     if (starting_segment==0) {
         addEpicsNames(config.xtc, namesLookup, nodeid1, iseg);
@@ -608,6 +641,7 @@ int main(int argc, char* argv[])
     Dgram& beginRunTr = createTransition(TransitionId::BeginRun,
                                        counting_timestamps,
                                        timestamp_val);
+    addRunInfoData(beginRunTr.xtc, namesLookup, nodeid1);
     save(beginRunTr, xtcFile);
 
     for (unsigned istep=0; istep<nmotorsteps; istep++) {
