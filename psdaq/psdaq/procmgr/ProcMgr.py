@@ -266,7 +266,7 @@ def deduce_instrument(configfilename, platform=None):
     try:
       exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, cc)
       if cc['instrument'] != None:
-        tmplist = cc['instrument'].split(b":")
+        tmplist = cc['instrument'].split(":")
         instr_name = tmplist[0].upper()
         if len(tmplist) > 1:
           station_number = int(tmplist[1])
@@ -439,7 +439,7 @@ class ProcMgr:
     CURRENTEXPCMD = ''
     
     valid_flag_list = ['X', 'x', 'k', 's', 'u', 'p'] 
-    valid_instruments = ['AMO','SXR','XPP','XCS','CXI','MEC','MFX','DET']
+    valid_instruments = ['AMO','SXR','XPP','XCS','CXI','MEC','MFX','DET','TST']
 
     def __init__(self, configfilename, platform, Xterm_list=[], xterm_list=[], procmgr_macro={}, baseport=29000):
         self.pid = self.STRING_NOPID
