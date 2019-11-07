@@ -98,12 +98,12 @@ int main(int argc, char* argv[])
 
     int smallfd = open((xtcname+".smd.xtc2").c_str(), O_RDONLY);
     if (smallfd < 0) {
-        fprintf(stderr, "Unable to open smd file '%s'\n", xtcname);
+        fprintf(stderr, "Unable to open smd file '%s'\n", xtcname.c_str());
         exit(-1);
     }
     int bigfd = open((xtcname+".xtc2").c_str(), O_RDONLY);
     if (bigfd < 0) {
-        fprintf(stderr, "Unable to open big file '%s'\n", xtcname);
+        fprintf(stderr, "Unable to open big file '%s'\n", xtcname.c_str());
         exit(-1);
     }
 
