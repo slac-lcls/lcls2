@@ -413,6 +413,7 @@ int main(int argc, char* argv[])
     uint64_t pulseId = 0;
     unsigned nodeId=512; // choose a nodeId that the DAQ will not use.  this is checked in addNames()
     NamesLookup namesLookup;
+    NamesId namesId(nodeId,0);
 
     printf("\nStart writing offsets.\n"); 
     
@@ -421,6 +422,9 @@ int main(int argc, char* argv[])
         if (dgIn->seq.service() == TransitionId::Configure) {
             Dgram& dgOut = *dgIn;
             addNames(dgOut.xtc, namesLookup, nodeId);
+            CreateData smd(dgOut.xtc, namesLookup, namesId);
+            smd.set_value(SmdDef::intOffset, nowOffset);
+            smd.set_value(SmdDef::intDgramSize, nowDgramSize);
             save(dgOut, xtcFile);
         } else { 
             Dgram& dgOut = *(Dgram*)buf;
@@ -448,7 +452,6 @@ int main(int argc, char* argv[])
                 dgOut.seq = dgIn->seq;
             }
 
-            NamesId namesId(nodeId,0);
             CreateData smd(dgOut.xtc, namesLookup, namesId);
             smd.set_value(SmdDef::intOffset, nowOffset);
             smd.set_value(SmdDef::intDgramSize, nowDgramSize);

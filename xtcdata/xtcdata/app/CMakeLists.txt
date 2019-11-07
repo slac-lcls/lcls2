@@ -5,6 +5,13 @@ target_link_libraries(xtcreader
     xtc
 )
 
+add_executable(randomaccess
+    randomaccess.cc
+)
+target_link_libraries(randomaccess
+    xtc
+)
+
 add_executable(jungfrau
     jungfrau.cc
 )
