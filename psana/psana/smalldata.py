@@ -45,6 +45,18 @@ Some Notes:
     environment variable
   * if running in psana parallel mode, clients ARE
     BD nodes (they are the same processes)
+  * eventual time-stamp sorting would be doable with
+    code conceptually similar to this (but would need
+    to be optimized for performance):
+
+    import numpy as np
+    import h5py
+    f = h5py.File('smalldata_test.h5')
+    ts = f['timestamp'][:]
+    tsneg = f['tsneg']
+    for i in np.argsort(ts):
+        print(tsneg[i])
+
 """                          
 
 import os
@@ -54,13 +66,10 @@ from collections.abc import MutableMapping
 
 # -----------------------------------------------------------------------------
 
-from psana.psexp.tools import mode
-SIZE = 1
-if mode == 'mpi':
-    from mpi4py import MPI
-    COMM = MPI.COMM_WORLD
-    RANK = COMM.Get_rank()
-    SIZE = COMM.Get_size()
+from mpi4py import MPI
+COMM = MPI.COMM_WORLD
+RANK = COMM.Get_rank()
+SIZE = COMM.Get_size()
 
 if SIZE > 1:
     MODE = 'PARALLEL'
@@ -154,7 +163,7 @@ class CacheArray:
 
 class Server: # (hdf5 handling)
 
-    def __init__(self, filename=None, smdcomm=None, cache_size=100,
+    def __init__(self, filename=None, smdcomm=None, cache_size=10000,
                  callbacks=[]):
 
         self.filename   = filename
@@ -306,7 +315,7 @@ class Server: # (hdf5 handling)
 class SmallData: # (client)
 
     def __init__(self, server_group=None, client_group=None, 
-                 filename=None, batch_size=100, cache_size=None,
+                 filename=None, batch_size=10000, cache_size=None,
                  callbacks=[]):
         """
         Parameters
@@ -351,6 +360,7 @@ class SmallData: # (client)
         self._full_filename = filename
         self._basename = os.path.basename(filename)
         self._dirname  = os.path.dirname(filename)
+        self._first_open = True # filename has not been opened yet
 
         if MODE == 'PARALLEL':
 
@@ -396,11 +406,15 @@ class SmallData: # (client)
             self._type = 'server'
             self._srv_color = self._server_group.rank
             self._srvcomm = self._smalldata_comm.Split(self._srv_color, 0) # rank=0
+            if self._srvcomm.Get_size() == 1:
+                print('WARNING: server has no associated clients!')
+                print('This core is therefore idle... set PS_SRV_NODES')
+                print('to be smaller, or increase the number of mpi cores')
         elif self._client_group.rank != MPI.UNDEFINED: # if in client group
             self._type = 'client'
             self._srv_color = self._client_group.rank % n_srv
             self._srvcomm = self._smalldata_comm.Split(self._srv_color, 
-                                                 RANK+1) # keep rank order
+                                                       RANK+1) # keep rank order
         else:
             # we are some other node type
             self._type = 'other'
@@ -408,7 +422,35 @@ class SmallData: # (client)
         return
 
 
+    def _get_full_file_handle(self):
+        """
+        makes sure we overwrite on first open, but not after that
+        """
+
+        if MODE == 'PARALLEL':
+            if self._first_open == True:
+                fh = h5py.File(self._full_filename, 'w', libver='latest')
+                self._first_open = False
+            else:
+                fh = h5py.File(self._full_filename, 'r+', libver='latest')
+
+        elif MODE == 'SERIAL':
+            fh = self._server.file_handle
+
+        return fh
+
+
     def event(self, event, *args, **kwargs):
+        """
+        event: int, psana.event.Event
+        """
+
+        if type(event) is int:
+            timestamp = event
+        elif hasattr(event, 'timestamp'):
+            timestamp = int(event.timestamp)
+        else:
+            raise ValueError('`event` must have a timestamp attribute')
 
         # collect all new data to add
         event_data_dict = {}
@@ -417,14 +459,14 @@ class SmallData: # (client)
             event_data_dict.update( _flatten_dictionary(d) )
 
 
-        # check to see if the timestamp indicates a new event
+        # check to see if the timestamp indicates a new event...
 
-        # multiple calls to self.event(...), same event as before
-        if event.timestamp == self._previous_timestamp:
+        #   >> multiple calls to self.event(...), same event as before
+        if timestamp == self._previous_timestamp:
             self._batch[-1].update(event_data_dict)
 
-        # we have a new event
-        elif event.timestamp > self._previous_timestamp:
+        #   >> we have a new event
+        elif timestamp > self._previous_timestamp:
 
             # if we have a "batch_size", ship events
             # (this avoids splitting events if we have multiple
@@ -436,49 +478,110 @@ class SmallData: # (client)
                     self._srvcomm.send(self._batch, dest=0)
                 self._batch = []           
 
-            event_data_dict['timestamp'] = event.timestamp
-            self._previous_timestamp = event.timestamp
+            event_data_dict['timestamp'] = timestamp
+            self._previous_timestamp = timestamp
             self._batch.append(event_data_dict)
-
 
         else:
             raise IndexError('event data is "old", event timestamps'
                              ' must increase monotonically'
                              ' previous timestamp: %d, current: %d'
-                             '' % (previous_timestamp, event.timestamp))
+                             '' % (previous_timestamp, timestamp))
 
 
         return
 
 
+    @property
+    def summary(self):
+        """
+        This "flag" is required when you save summary data OR
+        do a "reduction" operation (e.g. sum) across MPI procs
+
+        >> if SmallData.summary:
+        >>     whole = SmallData.sum(part)
+        >>     SmallData.save_summary(mysum=whole)
+        """
+        r = False
+        if MODE == 'PARALLEL':
+            if self._type == 'client':
+                r = True
+        elif MODE == 'SERIAL':
+            r = True
+        else:
+            raise RuntimeError()
+        return r
+
+
     def sum(self, value):
+        return self._reduction(value, MPI.SUM)
+
+
+    def _reduction(self, value, op):
         """
-        This function should be called to sum data across workers
-        sends final value to rank zero where it can be saved as
-        summary data via smd.done(...)
+        perform a reduction across the worker MPI procs
         """
 
-        red_val = None
+        # because only client nodes may have certain summary
+        # variables, we collect the summary data on client
+        # rank 0 -- later, we need to remember this client
+        # is the one who needs to WRITE the summary data to disk!
 
-        if self._type == 'client':
-            red_val = self._client_comm.reduce(value, MPI.SUM)
-            if red_val is not None:
-                self._smalldata_comm.send(red_val, dest=0, tag=1)
+        if MODE == 'PARALLEL':
+            red_val = None
 
-        if self._type == 'server':
-            if self._smalldata_comm.Get_rank() == 0:
-                red_val = self._smalldata_comm.recv(tag=1)
+            if self._type == 'client':
+                red_val = self._client_comm.reduce(value, op)
+
+        elif MODE == 'SERIAL':
+            red_val = value # just pass it through...
 
         return red_val
 
 
-    def done(self, *args, **kwargs):
+    def save_summary(self, *args, **kwargs):
+        """
+        Save 'summary data', ie any data that is not per-event (typically 
+        slower, e.g. at the end of the job).
+
+        Interface is identical to SmallData.event()
+
+        Note: this function should be called in a SmallData.summary: block
+        """
+
+        # in parallel mode, only client rank 0 writes to file
+        if MODE == 'PARALLEL':
+            if self._client_comm.Get_rank() != 0:
+                return
 
         # >> collect summary data
         data_dict = {}
         data_dict.update(kwargs)
         for d in args:
             data_dict.update( _flatten_dictionary(d) )
+
+        # >> write to file
+        fh = self._get_full_file_handle()
+        for dataset_name, data in data_dict.items():
+            if data is None:
+                print('Warning: dataset "%s" was passed value: None'
+                      '... ignoring that dataset' % dataset_name)
+            else:
+                fh[dataset_name] = data
+
+        # we don't want to close the file in serial mode
+        # this file is the server's main (only) file
+        if MODE == 'PARALLEL':
+            fh.close()
+
+        return
+
+
+    def done(self):
+        """
+        Finish any final communication and join partial files
+        (in parallel mode).
+        """
 
         # >> finish communication
         if self._type == 'client':
@@ -493,28 +596,20 @@ class SmallData: # (client)
         elif self._type == 'serial':
             self._server.handle(self._batch)
             self._server.done()
-            self._save_summary(self._full_filename, data_dict)
 
         # stuff only one process should do in parallel mode
         if MODE == 'PARALLEL':
             if self._type != 'other': # other = not smalldata (Mona)
                 self._smalldata_comm.barrier()
-                if self._smalldata_comm.Get_rank() == 0:
-                    self.join_files()
-                    self._save_summary(self._full_filename, data_dict)
-                    
-        return
 
+                # CLIENT rank 0 does all final file writing
+                # this is because this client may write to the file
+                # during "save_summary(...)" calls, and we want
+                # ONE file owner
+                if self._type == 'client':
+                    if self._client_comm.Get_rank() == 0:
+                        self.join_files()
 
-    def _save_summary(self, filename, data_dict):
-        fh = h5py.File(filename, 'r+', libver='latest') # TODO
-        for dataset_name, data in data_dict.items():
-            if data is None:
-                print('Warning: dataset "%s" was passed value: None'
-                      '... ignoring that dataset' % dataset_name)
-            else:
-                fh[dataset_name] = data
-        fh.close()
         return
 
 
@@ -522,7 +617,7 @@ class SmallData: # (client)
         """
         """
 
-        joined_file = h5py.File(self._full_filename, 'w', libver='latest')
+        joined_file = self._get_full_file_handle()
 
         # locate the srv (partial) files we expect
         files = []
@@ -539,31 +634,36 @@ class SmallData: # (client)
                 print('This almost certainly means something went wrong.')
         print('Joining: %d files --> %s' % (len(files), self._basename))
 
-        # h5py requires you declare the size of the VDS at creation
-        # so: we must first loop over each file to find # events
-        #     that come from each file
-        # then do a second loop to join the data together
-
-        # part (1) : discover the size of the timestamps in each file
+        # discover all the dataset names
         file_dsets = {}
 
         def assign_dset_info(name, obj):
             # TODO check if name contains unaligned, if so ignore
             if isinstance(obj, h5py.Dataset):
-                dsets[obj.name] = (obj.dtype, obj.shape)
+                tmp_dsets[obj.name] = (obj.dtype, obj.shape)
 
+        all_dsets = []
         for fn in files:
-            dsets = {}
+            tmp_dsets = {}
             f = h5py.File(fn, 'r')
             f.visititems(assign_dset_info)
-            file_dsets[fn] = dsets
+            file_dsets[fn] = tmp_dsets
+            all_dsets += list(tmp_dsets.keys())
             f.close()
 
-        # part (2) : loop over datasets and combine them into a vds
-        for dset_name in dsets.keys():
+        all_dsets = set(all_dsets)
+ 
+        # h5py requires you declare the size of the VDS at creation
+        # (we have been told by Quincey Koziol that this is not
+        # necessary for the C++ version).
+        # so: we must first loop over each file to find # events
+        #     that come from each file
+        # then: do a second loop to join the data together
 
-            # inspect the first file (w data) to get basic shape & dtype
+        for dset_name in all_dsets:
 
+            # part (1) : loop over all files and get the total number
+            # of events for this dataset
             total_events = 0
             for fn in files:
                 dsets = file_dsets[fn]
@@ -571,16 +671,23 @@ class SmallData: # (client)
                     dtype, shape = dsets[dset_name]
                     total_events += shape[0]
 
-                # we need to reserve space for missing data for aligned data
+                # this happens if a dataset is completely missing in a file.
+                # to maintain alignment, we need to extend the length by the
+                # appropriate number and it will be filled in with the
+                # "fillvalue" argument below.  if it's unaligned, then
+                # we don't need to extend it at all.
                 elif not is_unaligned(dset_name):
-                    total_events += dsets['/timestamp'][1][0]
+                    if '/timestamp' in dsets:
+                        total_events += dsets['/timestamp'][1][0]
 
             combined_shape = (total_events,) + shape[1:]
 
             layout = h5py.VirtualLayout(shape=combined_shape, 
                                         dtype=dtype)
 
-            # add data for "dset", from each file, in order
+            # part (2): now that the number of events is known for this
+            # dataset, fill in the "soft link" that points from the
+            # master file to all the smaller files.
             index_of_last_fill = 0
             for fn in files:
 
@@ -593,11 +700,13 @@ class SmallData: # (client)
                     index_of_last_fill += shape[0]
 
                 else:
+                    # only need to pad aligned data with "fillvalue" argument below
                     if is_unaligned(dset_name):
                         pass
-                    else: # should be aligned
-                        n_timestamps = dsets['/timestamp'][1][0]
-                        index_of_last_fill += n_timestamps
+                    else:
+                        if '/timestamp' in dsets:
+                            n_timestamps = dsets['/timestamp'][1][0]
+                            index_of_last_fill += n_timestamps
 
             joined_file.create_virtual_dataset(dset_name,
                                                layout,
@@ -606,3 +715,5 @@ class SmallData: # (client)
         joined_file.close()
 
         return
+
+

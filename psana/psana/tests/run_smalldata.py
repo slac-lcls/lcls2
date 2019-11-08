@@ -68,14 +68,16 @@ def gen_h5(source='xtc', pid=None):
 
 
         if evt.timestamp % 2 == 0:
-            smd.event(evt,
+            smd.event(evt.timestamp, # make sure passing int works
                       unaligned_int=3,
                       every_other_missing=2)
 
         if (rank % 2 == 0) and (smd._type == 'client'):
             smd.event(evt, missing_vds=1)
 
-    smd.done({'summary_array' : np.arange(3)}, summary_int=1)
+    if smd.summary:
+        smd.save_summary({'summary_array' : np.arange(3)}, summary_int=1)
+    smd.done()
 
     return
 

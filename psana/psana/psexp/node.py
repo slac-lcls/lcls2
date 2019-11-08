@@ -52,12 +52,16 @@ class Communicators(object):
         self.world_size  = self.comm.Get_size()
         self.world_group = self.comm.Get_group()
 
-        if self.world_size < 3:
-            raise Exception('Too few MPI nodes to run parallel psana (min 3)')
-
         PS_SRV_NODES = int(os.environ.get('PS_SRV_NODES', 0))
         PS_SMD_NODES = int(os.environ.get('PS_SMD_NODES', 1))
         self.n_smd_nodes = PS_SMD_NODES
+
+        if (self.world_size - PS_SRV_NODES) < 3:
+            raise Exception('Too few MPI cores to run parallel psana.'
+                            '\nYou need 3 + #PS_SRV_NODES (currently: %d)'
+                            '\n\tCurrent cores:  %d'
+                            '\n\tRequired:       %d' 
+                            ''% (PS_SRV_NODES,self.world_size, PS_SRV_NODES+3))
 
         self.psana_group    = self.world_group.Excl(range(self.world_size-PS_SRV_NODES, self.world_size))
         self.psana_comm     = self.comm.Create(self.psana_group)
