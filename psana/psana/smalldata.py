@@ -539,31 +539,36 @@ class SmallData: # (client)
                 print('This almost certainly means something went wrong.')
         print('Joining: %d files --> %s' % (len(files), self._basename))
 
-        # h5py requires you declare the size of the VDS at creation
-        # so: we must first loop over each file to find # events
-        #     that come from each file
-        # then do a second loop to join the data together
-
-        # part (1) : discover the size of the timestamps in each file
+        # discover all the dataset names
         file_dsets = {}
 
         def assign_dset_info(name, obj):
             # TODO check if name contains unaligned, if so ignore
             if isinstance(obj, h5py.Dataset):
-                dsets[obj.name] = (obj.dtype, obj.shape)
+                tmp_dsets[obj.name] = (obj.dtype, obj.shape)
 
+        all_dsets = []
         for fn in files:
-            dsets = {}
+            tmp_dsets = {}
             f = h5py.File(fn, 'r')
             f.visititems(assign_dset_info)
-            file_dsets[fn] = dsets
+            file_dsets[fn] = tmp_dsets
+            all_dsets += list(tmp_dsets.keys())
             f.close()
 
-        # part (2) : loop over datasets and combine them into a vds
-        for dset_name in dsets.keys():
+        all_dsets = set(all_dsets)
+ 
+        # h5py requires you declare the size of the VDS at creation
+        # (we have been told by Quincey Koziol that this is not
+        # necessary for the C++ version).
+        # so: we must first loop over each file to find # events
+        #     that come from each file
+        # then: do a second loop to join the data together
 
-            # inspect the first file (w data) to get basic shape & dtype
+        for dset_name in all_dsets:
 
+            # part (1) : loop over all files and get the total number
+            # of events for this dataset
             total_events = 0
             for fn in files:
                 dsets = file_dsets[fn]
@@ -571,7 +576,11 @@ class SmallData: # (client)
                     dtype, shape = dsets[dset_name]
                     total_events += shape[0]
 
-                # we need to reserve space for missing data for aligned data
+                # this happens if a dataset is completely missing in a file.
+                # to maintain alignment, we need to extend the length by the
+                # appropriate number and it will be filled in with the
+                # "fillvalue" argument below.  if it's unaligned, then
+                # we don't need to extend it at all.
                 elif not is_unaligned(dset_name):
                     total_events += dsets['/timestamp'][1][0]
 
@@ -580,7 +589,9 @@ class SmallData: # (client)
             layout = h5py.VirtualLayout(shape=combined_shape, 
                                         dtype=dtype)
 
-            # add data for "dset", from each file, in order
+            # part (2): now that the number of events is known for this
+            # dataset, fill in the "soft link" that points from the
+            # master file to all the smaller files.
             index_of_last_fill = 0
             for fn in files:
 
@@ -593,9 +604,10 @@ class SmallData: # (client)
                     index_of_last_fill += shape[0]
 
                 else:
+                    # only need to pad aligned data with "fillvalue" argument below
                     if is_unaligned(dset_name):
                         pass
-                    else: # should be aligned
+                    else:
                         n_timestamps = dsets['/timestamp'][1][0]
                         index_of_last_fill += n_timestamps
 
