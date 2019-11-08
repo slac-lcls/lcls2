@@ -1,3 +1,4 @@
+import sys
 import os
 import numpy as np
 from mpi4py import MPI
@@ -112,7 +113,13 @@ class MPIDataSource(DataSourceBase):
             exp, run_dict = None, None
 
         nsmds = int(os.environ.get('PS_SMD_NODES', 1)) # No. of smd cores
-        assert size > (nsmds + 1) # MPI size must be more than no. of all workers
+        if not (size > (nsmds + 1)):
+            print('ERROR Too few MPI processes. MPI size must be more than '
+                  ' no. of all workers. '
+                  '\n\tTotal psana size: %d'
+                  '\n\tPS_SMD_NODES:     %d' % (size, nsmds))
+            sys.stdout.flush() # make sure error is printed
+            MPI.COMM_WORLD.Abort()
         
         if self.destination:
             if nsmds > 1:

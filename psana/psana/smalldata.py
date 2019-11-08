@@ -397,11 +397,15 @@ class SmallData: # (client)
             self._type = 'server'
             self._srv_color = self._server_group.rank
             self._srvcomm = self._smalldata_comm.Split(self._srv_color, 0) # rank=0
+            if self._srvcomm.Get_size() == 1:
+                print('WARNING: server has no associated clients!')
+                print('This core is therefore idle... set PS_SRV_NODES')
+                print('to be smaller, or increase the number of mpi cores')
         elif self._client_group.rank != MPI.UNDEFINED: # if in client group
             self._type = 'client'
             self._srv_color = self._client_group.rank % n_srv
             self._srvcomm = self._smalldata_comm.Split(self._srv_color, 
-                                                 RANK+1) # keep rank order
+                                                       RANK+1) # keep rank order
         else:
             # we are some other node type
             self._type = 'other'
@@ -654,7 +658,8 @@ class SmallData: # (client)
                 # "fillvalue" argument below.  if it's unaligned, then
                 # we don't need to extend it at all.
                 elif not is_unaligned(dset_name):
-                    total_events += dsets['/timestamp'][1][0]
+                    if '/timestamp' in dsets:
+                        total_events += dsets['/timestamp'][1][0]
 
             combined_shape = (total_events,) + shape[1:]
 
@@ -680,8 +685,9 @@ class SmallData: # (client)
                     if is_unaligned(dset_name):
                         pass
                     else:
-                        n_timestamps = dsets['/timestamp'][1][0]
-                        index_of_last_fill += n_timestamps
+                        if '/timestamp' in dsets:
+                            n_timestamps = dsets['/timestamp'][1][0]
+                            index_of_last_fill += n_timestamps
 
             joined_file.create_virtual_dataset(dset_name,
                                                layout,
