@@ -68,7 +68,7 @@ def gen_h5(source='xtc', pid=None):
 
 
         if evt.timestamp % 2 == 0:
-            smd.event(evt,
+            smd.event(evt.timestamp, # make sure passing int works
                       unaligned_int=3,
                       every_other_missing=2)
 

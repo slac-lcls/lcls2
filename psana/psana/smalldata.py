@@ -429,6 +429,16 @@ class SmallData: # (client)
 
 
     def event(self, event, *args, **kwargs):
+        """
+        event: int, psana.event.Event
+        """
+
+        if type(event) is int:
+            timestamp = event
+        elif hasattr(event, 'timestamp'):
+            timestamp = int(event.timestamp)
+        else:
+            raise ValueError('`event` must have a timestamp attribute')
 
         # collect all new data to add
         event_data_dict = {}
@@ -440,11 +450,11 @@ class SmallData: # (client)
         # check to see if the timestamp indicates a new event...
 
         #   >> multiple calls to self.event(...), same event as before
-        if event.timestamp == self._previous_timestamp:
+        if timestamp == self._previous_timestamp:
             self._batch[-1].update(event_data_dict)
 
         #   >> we have a new event
-        elif event.timestamp > self._previous_timestamp:
+        elif timestamp > self._previous_timestamp:
 
             # if we have a "batch_size", ship events
             # (this avoids splitting events if we have multiple
@@ -456,15 +466,15 @@ class SmallData: # (client)
                     self._srvcomm.send(self._batch, dest=0)
                 self._batch = []           
 
-            event_data_dict['timestamp'] = event.timestamp
-            self._previous_timestamp = event.timestamp
+            event_data_dict['timestamp'] = timestamp
+            self._previous_timestamp = timestamp
             self._batch.append(event_data_dict)
 
         else:
             raise IndexError('event data is "old", event timestamps'
                              ' must increase monotonically'
                              ' previous timestamp: %d, current: %d'
-                             '' % (previous_timestamp, event.timestamp))
+                             '' % (previous_timestamp, timestamp))
 
 
         return
