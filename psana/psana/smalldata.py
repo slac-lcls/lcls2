@@ -351,6 +351,7 @@ class SmallData: # (client)
         self._full_filename = filename
         self._basename = os.path.basename(filename)
         self._dirname  = os.path.dirname(filename)
+        self._first_open = True # filename has not been opened yet
 
         if MODE == 'PARALLEL':
 
@@ -451,34 +452,53 @@ class SmallData: # (client)
         return
 
 
+    @property
+    def summary(self):
+        r = False
+        if MODE == 'PARALLEL':
+            if self._type == 'client':
+                r = True
+        elif MODE == 'SERIAL':
+            r = True
+        else:
+            raise RuntimeError()
+        return r
+
+
     def sum(self, value):
+        return self._summary(value, MPI.SUM)
+
+
+    def _summary(self, value, op):
         """
         This function should be called to sum data across workers
         sends final value to rank zero where it can be saved as
         summary data via smd.done(...)
         """
 
-        red_val = None
+        # because only client nodes may have certain summary
+        # variables, we collect the summary data on client
+        # rank 0 -- later, we need to remember this client
+        # is the one who needs to WRITE the summary data to disk!
 
-        if self._type == 'client':
-            red_val = self._client_comm.reduce(value, MPI.SUM)
-            if red_val is not None:
-                self._smalldata_comm.send(red_val, dest=0, tag=1)
+        if MODE == 'PARALLEL':
+            red_val = None
 
-        if self._type == 'server':
-            if self._smalldata_comm.Get_rank() == 0:
-                red_val = self._smalldata_comm.recv(tag=1)
+            if self._type == 'client':
+                red_val = self._client_comm.reduce(value, op)
+                #if red_val is not None:
+                #    self._client_comm.send(red_val, dest=0, tag=1)
+                #
+                #if self._client_comm.Get_rank() == 0:
+                #    red_val = self._client_comm.recv(tag=1)
+
+        elif MODE == 'SERIAL':
+            red_val = value # just pass it through...
 
         return red_val
 
 
-    def done(self, *args, **kwargs):
-
-        # >> collect summary data
-        data_dict = {}
-        data_dict.update(kwargs)
-        for d in args:
-            data_dict.update( _flatten_dictionary(d) )
+    def done(self):
 
         # >> finish communication
         if self._type == 'client':
@@ -493,28 +513,63 @@ class SmallData: # (client)
         elif self._type == 'serial':
             self._server.handle(self._batch)
             self._server.done()
-            self._save_summary(self._full_filename, data_dict)
 
         # stuff only one process should do in parallel mode
         if MODE == 'PARALLEL':
             if self._type != 'other': # other = not smalldata (Mona)
                 self._smalldata_comm.barrier()
-                if self._smalldata_comm.Get_rank() == 0:
-                    self.join_files()
-                    self._save_summary(self._full_filename, data_dict)
+                #if self._smalldata_comm.Get_rank() == 0:
+                if self._type == 'client':
+                    if self._client_comm.Get_rank() == 0:
+                        self.join_files()
                     
         return
 
 
-    def _save_summary(self, filename, data_dict):
-        fh = h5py.File(filename, 'r+', libver='latest') # TODO
+    def _get_full_file_handle(self):
+        """
+        makes sure we overwrite on first open, but not after that
+        """
+
+        if MODE == 'PARALLEL':
+            if self._first_open == True:
+                fh = h5py.File(self._full_filename, 'w', libver='latest')
+                self._first_open = False
+            else:
+                fh = h5py.File(self._full_filename, 'r+', libver='latest')
+
+        elif MODE == 'SERIAL':
+            fh = self._server.file_handle
+
+        return fh
+
+
+    def save_summary(self, *args, **kwargs):
+
+
+        if MODE == 'PARALLEL':
+            if self._client_comm.Get_rank() != 0:
+                return
+
+        # >> collect summary data
+        data_dict = {}
+        data_dict.update(kwargs)
+        for d in args:
+            data_dict.update( _flatten_dictionary(d) )
+
+        fh = self._get_full_file_handle()
         for dataset_name, data in data_dict.items():
             if data is None:
                 print('Warning: dataset "%s" was passed value: None'
                       '... ignoring that dataset' % dataset_name)
             else:
                 fh[dataset_name] = data
-        fh.close()
+
+        # we don't want to close the file in serial mode
+        # this file is the server's main (only) file
+        if MODE == 'PARALLEL':
+            fh.close()
+
         return
 
 
@@ -522,7 +577,7 @@ class SmallData: # (client)
         """
         """
 
-        joined_file = h5py.File(self._full_filename, 'w', libver='latest')
+        joined_file = self._get_full_file_handle()
 
         # locate the srv (partial) files we expect
         files = []
@@ -606,3 +661,5 @@ class SmallData: # (client)
         joined_file.close()
 
         return
+
+
