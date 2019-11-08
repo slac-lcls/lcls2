@@ -58,8 +58,11 @@ Usage::
     resp = gu.text_sataus_of_lsf_hosts(farm='psnehfarm')
     resp = gu.ext_status_of_queues(lst_of_queues=['psanaq', 'psnehq', 'psfehq', 'psnehprioq', 'psfehprioq'])
 
+    gu.str_kwargs(kwargs, title='Input parameters:', fmt='\n%20s : %s'):
     gu.print_kwargs(kwargs)
     gu.print_parser(parser) # from optparse import OptionParser
+
+    s = do_print(nev) # returns true for sparcified event numbers.
 
 See:
     - :py:class:`Utils`
@@ -470,6 +473,14 @@ def text_status_of_queues(lst_of_queues=['psanaq', 'psnehq', 'psfehq', 'psnehpri
 
 #------------------------------
 
+def str_kwargs(kwargs, title='Input parameters:', fmt='\n%20s : %s'):
+    return title + ''.join([fmt % (k,str(v)) for k,v in kwargs.items()])
+
+#------------------------------
+
+#def print_kwargs(kwargs, title='Input parameters:', fmt='\n%20s : %s'):
+#    print(gu.str_kwargs(kwargs, title, fmt)
+
 def print_kwargs(kwargs) :
     print('%s\n  kwargs:' % (40*'_'))
     for k,v in kwargs.items() : print('  %10s : %10s' % (k,v))
@@ -488,6 +499,7 @@ def print_parser(parser) :
           '<key>      <value>          <default>')
     for k,v in opts.items() :
         print('%s %s %s' % (k.ljust(10), str(v).ljust(16), str(defs[k]).ljust(16)))
+
 #------------------------------
 
 def is_in_command_line(ptrn1=None, ptrn2=None) :
@@ -501,6 +513,16 @@ def is_in_command_line(ptrn1=None, ptrn2=None) :
             #logger.debug('option "%s" is found in CL' % ptrn2)
             return True
     return False
+
+#------------------------------
+
+def do_print(nev) :
+    """Returns true for sparcified event numbers.
+    """
+    return nev<10\
+       or (nev<50 and (not nev%10))\
+       or (nev<500 and (not nev%100))\
+       or not nev%1000
 
 #------------------------------
 

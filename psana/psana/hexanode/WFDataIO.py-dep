@@ -1,32 +1,33 @@
 """
-Class :py:class:`HexDataIO` a set of methods to access psana data of hexanode detector
+Class :py:class:`WFDataIO` a set of methods to access psana data of hexanode detector
 ======================================================================================
 
-HexDataIO - a set of methods to access data, resembling hexanode/src/LMF_IO.cpp
+WFDataIO - a set of methods to access data, resembling hexanode/src/LMF_IO.cpp
 
 Usage ::
 
     Create object and access methods
     --------------------------------
-    from expmon.HexDataIO import HexDataIO
+    from expmon.WFDataIO import WFDataIO
 
-    o = HexDataIO(srcchs={'AmoETOF.0:Acqiris.0':(6,7,8,9,10,11),'AmoITOF.0:Acqiris.0':(0,)}, numchs=7, numhits=16)
+    o = WFDataIO(srcchs={'AmoETOF.0:Acqiris.0':(6,7,8,9,10,11),'AmoITOF.0:Acqiris.0':(0,)}, numchs=7, numhits=16)
 
     o.open_input_dataset('exp=xpptut15:run=390')
 
     # OR:
-    o.open_input_h5file(ofname='./test.h5')
+    o.open_input_h5file(fname='./test.h5')
 
     # OR:
     ds = psana.MPIDataSource('exp=xpptut15:run=390')
-    o.use_psana_dataset(ds, pbits=1022)
+    o.use_psana_dataset(ds)
 
 
-    status = o.read_next_event()           # gets next event from dataset, returns True if event is available
+    status = o.next_event()           # gets next event from dataset, returns True if event is available
 
     nhits   = o.get_number_of_hits_array() # number of hits per channel, shape=(NUM_CHANNELS,)
     tdc_ns  = o.get_tdc_data_array()       # array of hit time [ns], shape=(NUM_CHANNELS, NUM_HITS)
     tdc_ind = o.get_tdc_index_array()      # array of hit index, shape=(NUM_CHANNELS, NUM_HITS)
+    tdc_int = o.get_tdc_intensity_array()  # array of hit intensity, shape=(NUM_CHANNELS, NUM_HITS)
     wf      = o.get_wf(channel=1)          # per channel array of intensities
     wt      = o.get_wt(channel=1)          # per channel array of times [s]
     nch     = o.get_number_of_channels()   # returns a number of channels
@@ -47,32 +48,44 @@ Usage ::
 
 Created on 2017-10-23 by Mikhail Dubrovin
 Adapted HDF5-part for LCLS2 on 2019-09-25 by Mikhail Dubrovin
-TODO: access to data through the detector interface 
+
+
+TODO: 
+1. get metadata from xtc2 file
+        self._tdc_resolution = 0.250 # ns
+        self._start_time_sec = 0    # env_time(self._env)
+        self._stop_time_sec  = 12345
+        self._exp            = 'test12345'
+        self._run            = 1234
+
+
 """
-#------------------------------
+#----------
+
+import logging
+logger = logging.getLogger(__name__)
 
 from time import time
 import numpy as np
-#import pyimgalgos.GlobalUtils as gu
+
+from psana.pyalgos.generic.NDArrUtils import print_ndarr
 import psana.pyalgos.generic.Utils as gu
+import psana.pyalgos.generic.PSUtils as psu
 
-#------------------------------
-from pypsalg import find_edges
+# t0_sec = time()
+# dt = time() - t0_sec
+# print('  detector access time (sec) = %.6f' % dt)
 
-from PSCalib.DCUtils import env_time, evt_time, evt_fiducials, str_tstamp
-from expmon.PSUtils import exp_run_from_dsname # event_time, 
+#----------
+#from pypsalg import find_edges
+from ndarray import wfpkfinder_cfd
 
-#------------------------------
+#from PSCalib.DCUtils import env_time, evt_time, evt_fiducials, str_tstamp
+#from expmon.PSUtils import exp_run_from_dsname # event_time, 
 
-def do_print(nev) :
-    return nev<10\
-       or (nev<50 and (not nev%10))\
-       or (nev<500 and (not nev%100))\
-       or not nev%1000
+#----------
 
-#------------------------------    
-
-class HexDataIO :
+class WFDataIO :
 
     def __init__(self, **kwargs) :
         """Parameters
@@ -94,6 +107,7 @@ class HexDataIO :
         self.t0_sec = time()
         self._size_increment = 4096
 
+        self._pbits = 0
         self.set_wf_hit_finder_parameters(**kwargs) 
         self._set_parameters(**kwargs)
         self._init_arrays()
@@ -102,77 +116,59 @@ class HexDataIO :
     def _set_parameters(self, **kwargs) :
         """Sets parameters from kwargs
         """
-        self.SRCCHS       = kwargs.get('srcchs', {'AmoETOF.0:Acqiris.0':(6,7,8,9,10,11),'AmoITOF.0:Acqiris.0':(0,)})
-        self.NUM_CHANNELS = kwargs.get('numchs',7) #  (int) - number 
+        #self.SRCCHS       = kwargs.get('srcchs', {''tmo_hexanode':(2,3,4,5,6), 'tmo_hexanode2':(5,6)})
+        self.SRCCHS       = kwargs.get('srcchs', {'tmo_hexanode':(2,3,4,5,6)})
+        self.NUM_CHANNELS = kwargs.get('numchs',5) #  (int) - number 
         self.NUM_HITS     = kwargs.get('numhits',16) # (int) - maximal
-        self.DSNAME       = kwargs.get('dsname', 'exp=xpptut15:run=390:smd')
+        self.DSNAME       = kwargs.get('dsname', '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
+        self.EVSKIP       = kwargs.get('evskip', 0)
+        self.EVENTS       = kwargs.get('events', self.EVSKIP + 10)
 
 
     def _init_arrays(self) :
         self._error_flag = 0
         self._event_is_processed = False
-        self._number_of_hits = np.zeros((self.NUM_CHANNELS),    dtype=np.int)
+        self._number_of_hits = np.zeros((self.NUM_CHANNELS), dtype=np.int)
         self._tdc_ns  = np.zeros((self.NUM_CHANNELS, self.NUM_HITS), dtype=np.double)
         self._tdc_ind = np.zeros((self.NUM_CHANNELS, self.NUM_HITS), dtype=np.int)
+        self._tdc_int = np.zeros((self.NUM_CHANNELS, self.NUM_HITS), dtype=np.double)
         self._dic_wf = {}
         self._dic_wt = {}
 
 
-    def open_input_data(self, **kwargs) :
-        dsname   = kwargs.get('dsname', 'exp=xpptut15:run=390:smd')
-        do_mpids = kwargs.get('do_mpids', False)
-        pbits    = kwargs.get('pbits', 0)
+    def open_input_data(self, *args, **kwargs) :
+        
+        dsname = args[0] if len(args)>0 else\
+                 kwargs.get('dsname', 'exp=xpptut15:run=390:smd')
 
-        if '.h5' in dsname : 
-            self.open_input_h5file(dsname)
-        else :
-            self.open_input_dataset(dsname, pbits, do_mpids)
-            # already done in __init__
-            #self.set_wf_hit_finder_parameters(**kwargs)
-            #self.print_wf_hit_finder_parameters()
+        if '.h5' in dsname : self.open_input_h5file(dsname)
+        else :               self.open_input_dataset(dsname)
 
 
-    def open_input_dataset(self, dsname='exp=xpptut15:run=390:smd', pbits=1022, do_mpids=False) :
-        import psana
-        ds = psana.MPIDataSource(dsname) if do_mpids else\
-             psana.DataSource(dsname)
-        self.use_psana_dataset(ds, pbits)
+    def open_input_dataset(self, dsname='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2') :
+        from psana import DataSource
+        ds = DataSource(files=dsname)
+        self.use_psana_dataset(ds)
 
 
-    def use_psana_dataset(self, ds, pbits=1022) :
+    def use_psana_dataset(self, ds) :
         """This method is used directly for external defenition of psana dataset and regular event loop.
         """
-        import Detector.PyDataAccess as pda
-        from Detector.WFDetector import WFDetector
-
+        logger.debug('use_psana_dataset ds=%s\n  SRCCHS: %s'%(ds, str(self.SRCCHS)))
         self.ds = ds
-        self._env = self.ds.env()
+        myrun = next(ds.runs())
+        self._events = myrun.events()
+        self.name_det_channels = [(k, myrun.Detector(k).raw, v) for k,v in self.SRCCHS.items()]
 
-        self._events = self.ds.events()
-        self._pbits = pbits
+        #METADATA presumably from configuration, which currently is not available
 
-        #nrun = evt.run()
-        #evt = ds.events().next()
-        #for key in evt.keys() : print key
+        self._tdc_resolution = 0.250 # ns sampling co.horiz().sampInterval() * 1e9 # sec -> ns
+        self._start_time_sec = 1600000000    # env_time(self._env)
+        self._stop_time_sec  = 1600001000 # self._start_time_sec + 1234
+        self._exp            = 'test12345'
+        self._run            = '1234'
 
-        self.sources  = self.SRCCHS.keys()
-        self.channels = self.SRCCHS.values()
-
-        self.wfdets = [WFDetector(src, self._env, pbits) for src in self.sources]
-        self.srcs_dets_channels = zip(self.sources, self.wfdets, self.channels)
-
-        if pbits & 1 :
-            for wfd in self.wfdets :
-                wfd.print_attributes()
-            self.print_wf_hit_finder_parameters()
-
-        co = pda.get_acqiris_config_object(self._env, self.wfdets[0].source)
-        self._tdc_resolution = co.horiz().sampInterval() * 1e9 # sec -> ns
-
-        self._start_time_sec = env_time(self._env)
-        self._stop_time_sec = self._start_time_sec + 1234
-
-        self._exp, self._run = exp_run_from_dsname(self.DSNAME)
+#        sys.exit('TEST EXIT')
 
 
     def open_output_h5file(self, fname='./test.h5') :
@@ -195,9 +191,9 @@ class HexDataIO :
                                                                maxshape=(None, self.NUM_CHANNELS, self.NUM_HITS))
 
 
-    def close_output_h5file(self, pbits=0) :
+    def close_output_h5file(self) :
         if self._oh5file is None : return
-        start_time_sec = env_time(self._env)
+        start_time_sec = psu.env_time(self._env)
         nevents = self.nevents_processed()
         self._resize_h5_datasets(nevents)
         self.h5ds_start_time[0] = self.start_time_sec()
@@ -209,7 +205,7 @@ class HexDataIO :
         self.h5ds_proc_time_sec[0] = time() - self.t0_sec
 
         if self._oh5file is None : return
-        if pbits : print('Close output file: %s' % self._oh5file.filename)
+        print('Close output file: %s' % self._oh5file.filename)
         self._oh5file.close()
         self._oh5file = None
 
@@ -235,8 +231,8 @@ class HexDataIO :
         self.h5ds_event_time[i] = evt_time(self._evt)
         self.h5ds_fiducials[i] = evt_fiducials(self._evt)
 
-        #gu.print_ndarr(self._number_of_hits, '  _number_of_hits')
-        #gu.print_ndarr(self._tdc_ns, '  _tdc_ns')
+        #print_ndarr(self._number_of_hits, '  _number_of_hits')
+        #print_ndarr(self._tdc_ns, '  _tdc_ns')
         #self.h5ds_nhits.attrs['events'] = i
 
 
@@ -312,12 +308,12 @@ class HexDataIO :
         """Returns (str) timestamp, e.g. '2017-10-23T17:00:00'
         """
         tsec = self.start_time_sec()
-        return str_tstamp(fmt='%Y-%m-%dT%H:%M:%S', time_sec=int(tsec))
+        return gu.str_tstamp(fmt='%Y-%m-%dT%H:%M:%S', time_sec=int(tsec))
 
 
     def stop_time(self) :
         tsec = self.stop_time_sec()
-        return str_tstamp(fmt='%Y-%m-%dT%H:%M:%S', time_sec=int(tsec))
+        return gu.str_tstamp(fmt='%Y-%m-%dT%H:%M:%S', time_sec=int(tsec))
 
 
     def proc_time_sec(self) :
@@ -337,7 +333,7 @@ class HexDataIO :
 
 
     def set_next_event(self, evt, nevent=None) :
-        """The same as read_next_event, but for external event loop
+        """The same as next_event, but for external event loop
         """
         if evt==self._evt : return  False # if call it twice
 
@@ -350,17 +346,13 @@ class HexDataIO :
         return True
 
 
-    def read_next_event(self) :
+    def next_event(self) :
         self._evnum += 1
 
         if self._ih5file is not None :
-            #if self._evt is None : 
-            #    self._init_arrays()
-            #    self._evt = self._events.next()
             return self.fetch_event_data_from_h5file()
 
-        self._init_arrays()
-        self._evt = self._events.next()
+        self._evt = next(self._events)
         return self._evt is not None
 
 
@@ -393,16 +385,19 @@ class HexDataIO :
         return self._tdc_ind
 
 
+    def get_tdc_intensity_array(self) :
+        self._proc_waveforms()
+        return self._tdc_int
+
+
     def get_wf(self, channel=0) :
         self._proc_waveforms()
-        #wf = self._dic_wf.get(channel, None)
-        #gu.print_ndarr(wf, '    XXX waveform')
         return self._dic_wf.get(channel,None)
 
 
     def get_wt(self, channel=0) :
         self._proc_waveforms()
-        return self._dic_wt.get(channel, None)
+        return self._dic_wt.get(channel,None)
 
 
     def _proc_waveforms(self) :
@@ -412,20 +407,24 @@ class HexDataIO :
         self._event_is_processed = True
 
 
+    def reset_event_processing(self):
+        self._event_is_processed = False
+
+
     def set_wf_hit_finder_parameters(self, **kwargs) :
         self.BASE        = kwargs.get('cfd_base',        0.)
-        self.THR         = kwargs.get('cfd_thr',        -0.04)
-        self.CFR         = kwargs.get('cfd_cfr',         0.9)
-        self.DEADTIME    = kwargs.get('cfd_deadtime',    5.0)
+        self.THR         = kwargs.get('cfd_thr',        -0.05)
+        self.CFR         = kwargs.get('cfd_cfr',         0.85)
+        self.DEADTIME    = kwargs.get('cfd_deadtime',    10.0)
         self.LEADINGEDGE = kwargs.get('cfd_leadingedge', True)
-        self.IOFFSETBEG  = kwargs.get('cfd_ioffsetbeg',  0)
-        self.IOFFSETEND  = kwargs.get('cfd_ioffsetend',  1000)
-        self.WFBINBEG    = kwargs.get('cfd_wfbinbeg',    0)
-        self.WFBINEND    = kwargs.get('cfd_wfbinend',    40000)
+        self.IOFFSETBEG  = kwargs.get('cfd_ioffsetbeg',  1000)
+        self.IOFFSETEND  = kwargs.get('cfd_ioffsetend',  2000)
+        self.WFBINBEG    = kwargs.get('cfd_wfbinbeg',    6000)
+        self.WFBINEND    = kwargs.get('cfd_wfbinend',    30000)
 
 
     def print_wf_hit_finder_parameters(self) :
-        msg = '%s\nIn HexDataIO.print_wf_hit_finder_parameters' % (50*'_')\
+        msg = '%s\nIn WFDataIO.print_wf_hit_finder_parameters' % (50*'_')\
             + '\nCFD parameters:'\
             + '\n  cfd_base         %.1f' % self.BASE\
             + '\n  cfd_thr          %.3f' % self.THR\
@@ -441,33 +440,37 @@ class HexDataIO :
 
 
     def proc_waveforms_for_evt(self, evt) :
+        self._init_arrays()
+        pkvals = np.zeros((self.NUM_HITS,), dtype=np.double)
+        pkinds = np.zeros((self.NUM_HITS,), dtype=np.uint32)
+ 
         ch_tdc = -1
-        for src, wfd, channels in self.srcs_dets_channels :
-            res = wfd.raw(evt)
-            if res is None : continue
-            wf,wt = res
-            #print('XXX src, wfd, channels', src, wfd, channels)
+        for detname, wfd_raw, channels in self.name_det_channels :
+            wf = wfd_raw.waveforms(evt)
+            wt = wfd_raw.times(evt)
+            #print('XXX detname, wfd_raw, channels', detname, wfd_raw, channels)
             for ch in channels :
                 #print('  XXX ch:', ch,)
                 ch_tdc+=1
                 if ch_tdc == self.NUM_CHANNELS :
-                    raise IOError('HexDataIO._proc_waveforms: input tdc_ns shape=%s ' % str(tdc_ns.shape)\
+                    raise IOError('WFDataIO._proc_waveforms: input tdc_ns shape=%s ' % str(tdc_ns.shape)\
                                   +' does not have enough rows for quad-/hex-anode channels')
 
                 offset = wf[ch,self.IOFFSETBEG:self.IOFFSETEND].mean()
-                wfch   = wf[ch,self.WFBINBEG:self.WFBINEND]
-                wfch  -= offset
+
+                #print('offset:', offset)
+                #continue
+
+                wfch = np.array(wf[ch,self.WFBINBEG:self.WFBINEND]) - offset # copy, because of modiffication -offset
                 self._dic_wf[ch_tdc] = wfch
                 self._dic_wt[ch_tdc] = wtch = wt[ch,self.WFBINBEG:self.WFBINEND] * 1e9 # sec -> ns
 
-                edges = find_edges(wfch, self.BASE, self.THR, self.CFR, self.DEADTIME, self.LEADINGEDGE)
-
-                nedges = len(edges)
+                nedges = wfpkfinder_cfd(wfch, self.BASE, self.THR, self.CFR, self.DEADTIME, self.LEADINGEDGE, pkvals, pkinds)
                 #print(' ch_tdc:', ch_tdc, ' nedges:', nedges)
 
                 if nedges >= self.NUM_HITS :
                     if self._pbits :
-                        msg = 'HexDataIO._proc_waveforms: input tdc_ns shape=%s ' % str(self._tdc_ns.shape)\
+                        msg = 'WFDataIO._proc_waveforms: input tdc_ns shape=%s ' % str(self._tdc_ns.shape)\
                             + ' does not have enough columns for %d time records,' % nedges\
                             + '\nWARNING: NUMBER OF SIGNAL TIME RECORDS TRANCATED'
                         print(msg)
@@ -477,35 +480,41 @@ class HexDataIO :
                 self._number_of_hits[ch_tdc] = nhits
 
                 for i in range(nhits):
-                    amp,ind = edges[i]
+                    amp,ind = pkvals[i], pkinds[i]
                     self._tdc_ind[ch_tdc, i] = int(ind)
                     self._tdc_ns [ch_tdc, i] = wtch[int(ind)]
+                    self._tdc_int[ch_tdc, i] = amp
+                #self._tdc_ns  = np.zeros((self.NUM_CHANNELS, self.NUM_HITS), dtype=np.double)
+                #self._tdc_ind = np.zeros((self.NUM_CHANNELS, self.NUM_HITS), dtype=np.int)
 
 
     def print_tdc_data(self) :
-        for src, wfd, channels in self.srcs_dets_channels :
-            print('source: %s channels: %s' % (src, str(channels)))
-            res = wfd.raw(self._evt)
-            if res is None : continue
-            wf,wt = res
-            gu.print_ndarr(wf, '    waveform')
-            gu.print_ndarr(wt, '    wavetime')
+        for detname, wfd_raw, channels in self.name_det_channels :
+            print('source: %s channels: %s' % (detname, str(channels)))
+            wf = wfd_raw.waveforms(self._evt)
+            wt = wfd_raw.times(self._evt)
+            print_ndarr(wf, '    waveform')
+            print_ndarr(wt, '    wavetime')
 
 
     def print_times(self) :
         arr_nhits   = self.get_number_of_hits_array()
         arr_tdc_ns  = self.get_tdc_data_array()
         arr_tdc_ind = self.get_tdc_index_array()
-        print('HexDataIO.print_times - event waveform times')
-        print('Ch.#   Nhits   Index/Time[ns]')
+        arr_tdc_int = self.get_tdc_intensity_array()
+        print('WFDataIO.print_times - event waveform times')
+        print('Ch.#   Nhits   Index/Time[ns]/Intensity')
         for ch in range(arr_nhits.size) :
             nhits = arr_nhits[ch]
-            print('%4d   %4d:' % (ch, nhits),)
+            print('%4d   %4d:' % (ch, nhits), end='')
             for ihit in range(nhits) :
-                print(' %9d' % (arr_tdc_ind[ch, ihit]),)
-            print('\n              ',)
+                print(' %9d' % (arr_tdc_ind[ch, ihit]), end='')
+            print('\n              ', end='')
             for ihit in range(nhits) :
-                print('  %8.1f' % (arr_tdc_ns[ch, ihit]),)
+                print('  %8.1f' % (arr_tdc_ns[ch, ihit]), end='')
+            print('\n              ', end='')
+            for ihit in range(nhits) :
+                print('  %8.3f' % (arr_tdc_int[ch, ihit]), end='')
             print('')
 
 
@@ -517,15 +526,12 @@ class HexDataIO :
         #self._error_flag = 0
         return 'no-error'
 
-#------------------------------
-#------------------------------
-#------------------------------
+#----------
+#----------
+#----------
 
     def calib_dir(self) :
         import PSCalib.GlobalUtils as gu; global gu
-        #ctype = 'hex_table'
-        #ctype = 'hex_config'        
-        #run = self.run()
         exp = self.experiment()
         return gu.calib_dir_for_exp(exp)
 
@@ -562,50 +568,70 @@ class HexDataIO :
         rnum = run if run is not None else self.runnum()
         return cff.make_calib_file_name(cdir, src, type, rnum, run_end=None, pbits=pbits)
 
-#------------------------------
-#------------ TEST ------------
-#------------------------------
+#----------
+#-- TEST --
+#----------
 
-def quaddataio(pbits=1022) :
-    o = HexDataIO(srcchs={'AmoEndstation.0:Acqiris.1':(2,3,4,5,6)}, numchs=5, numhits=16)
-    o.open_input_dataset('/reg/g/psdm/detector/data_test/hdf5/amox27716-r0100-e060000-single-node.h5', pbits)
-    #o.open_input_dataset('exp=amox27716:run=100', pbits)
+def quaddataio_xtc() :
+    o = WFDataIO(srcchs={'tmo_hexanode':(2,3,4,5,6)}, numchs=5, numhits=16)
+    o.open_input_data('/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
     return o
 
-#------------------------------
 
-def hexdataio(pbits=1022) :
-    o = HexDataIO(srcchs={'AmoETOF.0:Acqiris.0':(6,7,8,9,10,11),'AmoITOF.0:Acqiris.0':(0,)}, numchs=7, numhits=16)
-    o.open_input_dataset('exp=xpptut15:run=390', pbits)
+def quaddataio_h5() :
+    o = WFDataIO(srcchs={'AmoEndstation.0:Acqiris.1':(2,3,4,5,6)}, numchs=5, numhits=16)
+    o.open_input_data('/reg/g/psdm/detector/data_test/hdf5/amox27716-r0100-e060000-single-node.h5')
+    return o 
+
+#----------
+
+def hexdataio() :
+    o = WFDataIO(srcchs={'AmoETOF.0:Acqiris.0':(6,7,8,9,10,11),'AmoITOF.0:Acqiris.0':(0,)}, numchs=7, numhits=16)
+    o.open_input_dataset('exp=xpptut15:run=390')
     return o
 
-#------------------------------
+#----------
 
-def test_quaddataio(EVENTS=10) :
-    o = quaddataio()
+def test_quaddataio_xtc(EVENTS=90) :
+    o = quaddataio_xtc()
     while o.get_event_number() < EVENTS :
         print('%s\nEvent %d' % (80*'_', o.get_event_number()))
-        o.read_next_event()
+        if not o.next_event() :
+            print('next_event returns False')
+            continue
         o.print_tdc_data()
         nhits = o.get_number_of_hits_array()
-        gu.print_ndarr(nhits, '    nhits', first=0, last=7)
+        print_ndarr(nhits, '    nhits', first=0, last=7)
         print('\nTDC resolution [ns]: %.3f' % o.tdc_resolution())
         o.print_times()
 
-#------------------------------
+#----------
+
+def test_quaddataio_h5(EVENTS=10) :
+    o = quaddataio_h5()
+    while o.get_event_number() < EVENTS :
+        print('%s\nEvent %d' % (80*'_', o.get_event_number()))
+        o.next_event()
+        #o.print_tdc_data()
+        nhits = o.get_number_of_hits_array()
+        print_ndarr(nhits, '    nhits', first=0, last=7)
+        print('\nTDC resolution [ns]: %.3f' % o.tdc_resolution())
+        o.print_times()
+
+#----------
 
 def test_hexdataio(EVENTS=10) :
     o = hexdataio()
     while o.get_event_number() < EVENTS :
         print('%s\nEvent %d' % (80*'_', o.get_event_number()))
-        o.read_next_event()
+        o.next_event()
         o.print_tdc_data()
         nhits = o.get_number_of_hits_array()
-        gu.print_ndarr(nhits, '    nhits', first=0, last=7)
+        print_ndarr(nhits, '    nhits', first=0, last=7)
         print('\nTDC resolution [ns]: %.3f' % o.tdc_resolution())
         o.print_times()
 
-#------------------------------
+#----------
 
 def draw_times(ax, wf, wt, nhits, hit_inds) :
     print('nhits:%2d'%nhits,)
@@ -614,19 +640,22 @@ def draw_times(ax, wf, wt, nhits, hit_inds) :
         ti = wt[hi] # hit time
         ai = wf[hi] # hit intensity
         print(' %.1f' % ti,)
-        gg.drawLine(ax, (ti,ti), (ai,-ai), s=10, linewidth=1, color='k')
+        gr.drawLine(ax, (ti,ti), (ai,-ai), s=10, linewidth=1, color='k')
     print('')
 
-#------------------------------
+#----------
 
-def test_hexdataio_graph(EVENTS=10, EVSKIP=0) :
+def test_quaddataio_graph(EVENTS=3, EVSKIP=0) :
 
-    import pyimgalgos.Graphics       as gr; global gr
-    import pyimgalgos.GlobalGraphics as gg; global gg
+    import psana.pyalgos.generic.Graphics as gr; global gr
+    #import pyimgalgos.Graphics       as gr; global gr
+    #import pyimgalgos.GlobalGraphics as gg; global gg
 
     fig = gr.figure(figsize=(15,15), title='Image')
 
-    nchans = 7
+    TIME_RANGE = (2000,6000)
+
+    nchans = 5
     dy = 1./nchans
 
     lw = 1
@@ -635,59 +664,81 @@ def test_hexdataio_graph(EVENTS=10, EVSKIP=0) :
     x0, y0 = 0.07, 0.03
 
     gfmt = ('b-', 'r-', 'g-', 'k-', 'm-', 'y-', 'c-', )
-    ylab = ('Y1', 'Y2', 'Z1', 'Z2', 'X1', 'X2', 'MCP', )
+    #ylab = ('Y1', 'Y2', 'Z1', 'Z2', 'X1', 'X2', 'MCP', )
+    ylab = ('X1', 'X2', 'Y1', 'Y2', 'MCP', )
     ax = [gr.add_axes(fig, axwin=(x0, y0 + i*dy, w, h)) for i in range(nchans)]
 
-    o = hexdataio(pbits=0)
+    o = quaddataio_xtc()
     evnum = 0
     while evnum < EVENTS :
+        o.reset_event_processing()
+
         evnum = o.get_event_number()
         print('%s\nEvent %d' % (80*'_', evnum))
-        o.read_next_event()
+        o.next_event()
         if evnum < EVSKIP : continue
 
         o.print_times()
 
         nhits = o.get_number_of_hits_array()
         hit_inds = o.get_tdc_index_array()
-        gu.print_ndarr(nhits, 'nhits', first=0, last=7)
+        print_ndarr(nhits, 'nhits', first=0, last=7)
 
         for c in range(len(nhits)) :
-            gu.print_ndarr(o.get_wf(c), 'ch:%2d wf'%c, first=0, last=5)
-        gu.print_ndarr(o.get_wt(0), 'ch:%2d wt'%c, first=0, last=4)
+            print_ndarr(o.get_wf(c), 'ch:%2d wf'%c, first=0, last=5)
+        print_ndarr(o.get_wt(0), 'ch:%2d wt'%c, first=0, last=4)
 
         gr.set_win_title(fig, titwin='Event: %d' % o.get_event_number())
 
         for c in range(nchans) :
             ax[c].clear()
-            ax[c].set_xlim((2500,4500)) # [ns]
+            #ax[c].set_xlim((2500,4500)) # [ns]
+            ax[c].set_xlim(TIME_RANGE)
             ax[c].set_ylabel(ylab[c], fontsize=14)
  
             wt, wf = o.get_wt(c), o.get_wf(c)
-            if None in (wt, wf) : continue
+            if wt is None : continue
+            if wf is None : continue
             wtsel = wt[:-1]
             wfsel = wf[:-1]
 
             ax[c].plot(wtsel, wfsel, gfmt[c], linewidth=lw)
-            gg.drawLine(ax[c], ax[c].get_xlim(), (o.THR, o.THR), s=10, linewidth=1, color='k')
+            gr.drawLine(ax[c], ax[c].get_xlim(), (o.THR, o.THR), s=10, linewidth=1, color='k')
             draw_times(ax[c], wfsel, wtsel, nhits[c], hit_inds[c,:])
         gr.draw_fig(fig)
         gr.show(mode='non-hold')
     gr.show()
     o.print_wf_hit_finder_parameters()
 
-#------------------------------
+#--------
+
+def usage(tname):
+    s = '\nUsage: python %s <test-number>' % sys.argv[0]
+    if tname in ('0',)    : s+='\n 0 - test ALL'
+    if tname in ('0','1') : s+='\n 1 - test_quaddataio_xtc()'
+    if tname in ('0','2') : s+='\n 2 - test_quaddataio_h5()'
+    if tname in ('0','3') : s+='\n 3 - test_quaddataio_graph()'
+    if tname in ('0','4') : s+='\n 4 - test_hexdataio()'
+    return s
+
+#--------
 
 if __name__ == "__main__" :
-    import sys; global sys
     import numpy as np; global np
-    tname = sys.argv[1] if len(sys.argv) > 1 else '1'
-    print(50*'_', '\nTest %s' % tname)
-    if   tname == '1' : test_quaddataio()
-    elif tname == '2' : test_hexdataio()
-    elif tname == '3' : test_hexdataio_graph()
-    else : print('Not-recognized test name: %s' % tname)
-    sys.exit('End of Test %s' % tname)
+    import sys; global sys
+    fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s' # '%(message)s'
+    logging.basicConfig(format=fmt, datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
 
-#------------------------------
-#------------------------------
+    tname = sys.argv[1] if len(sys.argv) > 1 else '1'
+    s = 'End of Test %s' % tname
+    print('%s' % usage('0')) # tname
+    print(50*'_', '\nTest %s' % tname)
+    if tname in ('0','1') : test_quaddataio_xtc()
+    if tname in ('0','2') : test_quaddataio_h5()
+    if tname in ('0','3') : test_quaddataio_graph()
+    if tname in ('0','4') : test_hexdataio()
+    print('%s' % usage(tname))
+    print('%s' % usage('0')) # tname
+    sys.exit(s)
+
+#--------

@@ -25,8 +25,9 @@ LEADINGEDGE = True # False # True
 BBAV=1000
 BEAV=2000
 
+#TIME_RANGE=(0.0000000,0.0000111) # entire wf duration
 #TIME_RANGE=(0.000003,0.000005)
-TIME_RANGE=(0.0000000,0.0000111)
+TIME_RANGE=(0.0000014,0.0000056)
 
 BBEG=6000
 BEND=22000 # 44000-2
@@ -34,7 +35,7 @@ BEND=22000 # 44000-2
 #BEND=43000 # 44000-2
 
 EVSKIP = 0
-EVENTS = 10 + EVSKIP
+EVENTS = 5 + EVSKIP
 
 #dsname = 'exp=amox27716:run=100'
 #src1 = 'AmoEndstation.0:Acqiris.1' # 'ACQ1'
@@ -70,6 +71,10 @@ fig.clear()
 ##fig.canvas.manager.window.geometry('+200+100')
 
 naxes = 5
+ch = (0,1,2,3,4)
+gfmt = ('b-', 'r-', 'g-', 'k-', 'm-', 'y-', 'c-', )
+ylab = ('X1', 'X2', 'Y1', 'Y2', 'MCP', 'XX', 'YY', )
+
 dy = 1./naxes
 
 lw = 1
@@ -77,16 +82,14 @@ w = 0.87
 h = dy - 0.04
 x0, y0 = 0.07, 0.03
 
-ch = (2,3,4,5,6)
-
-gfmt = ('b-', 'r-', 'g-', 'k-', 'm-', 'y-', 'c-', )
-ylab = ('X1', 'X2', 'Y1', 'Y2', 'MCP', 'XX', 'YY', )
 ax = [gr.add_axes(fig, axwin=(x0, y0 + i*dy, w, h)) for i in range(naxes)]
 
 #--------------------
 
 ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
 myrun = next(ds.runs())
+det = myrun.Detector('tmo_hexanode')
+det_raw = det.raw
 
 for n,evt in enumerate(myrun.events()):
 
@@ -96,8 +99,8 @@ for n,evt in enumerate(myrun.events()):
     print(50*'_', '\n Event # %d' % n)
     gr.set_win_title(fig, titwin='Event: %d' % n)
 
-    wf = evt._dgrams[0].tmo_hexanode[0].raw.waveforms
-    wt = evt._dgrams[0].tmo_hexanode[0].raw.times
+    wf = det_raw.waveforms(evt)
+    wt = det_raw.times(evt)
     print_ndarr(wt, '  times : ')
     print_ndarr(wf, '  wforms: ')
 

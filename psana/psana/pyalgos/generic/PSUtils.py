@@ -254,6 +254,11 @@ cspad_ndarr_from_table8x8 = cspad_ndarr_from_table
 # See tests in Detector/examples/ex_ndarray_from_image.py
 
 #------------------------------
+
+def env_time(env) :
+    return 1585724400
+
+#------------------------------
 #----------- TEST -------------
 #------------------------------
 
