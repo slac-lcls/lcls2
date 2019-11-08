@@ -54,13 +54,10 @@ from collections.abc import MutableMapping
 
 # -----------------------------------------------------------------------------
 
-from psana.psexp.tools import mode
-SIZE = 1
-if mode == 'mpi':
-    from mpi4py import MPI
-    COMM = MPI.COMM_WORLD
-    RANK = COMM.Get_rank()
-    SIZE = COMM.Get_size()
+from mpi4py import MPI
+COMM = MPI.COMM_WORLD
+RANK = COMM.Get_rank()
+SIZE = COMM.Get_size()
 
 if SIZE > 1:
     MODE = 'PARALLEL'
@@ -154,7 +151,7 @@ class CacheArray:
 
 class Server: # (hdf5 handling)
 
-    def __init__(self, filename=None, smdcomm=None, cache_size=100,
+    def __init__(self, filename=None, smdcomm=None, cache_size=10000,
                  callbacks=[]):
 
         self.filename   = filename
@@ -306,7 +303,7 @@ class Server: # (hdf5 handling)
 class SmallData: # (client)
 
     def __init__(self, server_group=None, client_group=None, 
-                 filename=None, batch_size=100, cache_size=None,
+                 filename=None, batch_size=10000, cache_size=None,
                  callbacks=[]):
         """
         Parameters
