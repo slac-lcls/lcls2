@@ -409,6 +409,24 @@ class SmallData: # (client)
         return
 
 
+    def _get_full_file_handle(self):
+        """
+        makes sure we overwrite on first open, but not after that
+        """
+
+        if MODE == 'PARALLEL':
+            if self._first_open == True:
+                fh = h5py.File(self._full_filename, 'w', libver='latest')
+                self._first_open = False
+            else:
+                fh = h5py.File(self._full_filename, 'r+', libver='latest')
+
+        elif MODE == 'SERIAL':
+            fh = self._server.file_handle
+
+        return fh
+
+
     def event(self, event, *args, **kwargs):
 
         # collect all new data to add
@@ -418,13 +436,13 @@ class SmallData: # (client)
             event_data_dict.update( _flatten_dictionary(d) )
 
 
-        # check to see if the timestamp indicates a new event
+        # check to see if the timestamp indicates a new event...
 
-        # multiple calls to self.event(...), same event as before
+        #   >> multiple calls to self.event(...), same event as before
         if event.timestamp == self._previous_timestamp:
             self._batch[-1].update(event_data_dict)
 
-        # we have a new event
+        #   >> we have a new event
         elif event.timestamp > self._previous_timestamp:
 
             # if we have a "batch_size", ship events
@@ -441,7 +459,6 @@ class SmallData: # (client)
             self._previous_timestamp = event.timestamp
             self._batch.append(event_data_dict)
 
-
         else:
             raise IndexError('event data is "old", event timestamps'
                              ' must increase monotonically'
@@ -454,6 +471,14 @@ class SmallData: # (client)
 
     @property
     def summary(self):
+        """
+        This "flag" is required when you save summary data OR
+        do a "reduction" operation (e.g. sum) across MPI procs
+
+        >> if SmallData.summary:
+        >>     whole = SmallData.sum(part)
+        >>     SmallData.save_summary(mysum=whole)
+        """
         r = False
         if MODE == 'PARALLEL':
             if self._type == 'client':
@@ -466,14 +491,12 @@ class SmallData: # (client)
 
 
     def sum(self, value):
-        return self._summary(value, MPI.SUM)
+        return self._reduction(value, MPI.SUM)
 
 
-    def _summary(self, value, op):
+    def _reduction(self, value, op):
         """
-        This function should be called to sum data across workers
-        sends final value to rank zero where it can be saved as
-        summary data via smd.done(...)
+        perform a reduction across the worker MPI procs
         """
 
         # because only client nodes may have certain summary
@@ -486,11 +509,6 @@ class SmallData: # (client)
 
             if self._type == 'client':
                 red_val = self._client_comm.reduce(value, op)
-                #if red_val is not None:
-                #    self._client_comm.send(red_val, dest=0, tag=1)
-                #
-                #if self._client_comm.Get_rank() == 0:
-                #    red_val = self._client_comm.recv(tag=1)
 
         elif MODE == 'SERIAL':
             red_val = value # just pass it through...
@@ -498,7 +516,49 @@ class SmallData: # (client)
         return red_val
 
 
+    def save_summary(self, *args, **kwargs):
+        """
+        Save 'summary data', ie any data that is not per-event (typically 
+        slower, e.g. at the end of the job).
+
+        Interface is identical to SmallData.event()
+
+        Note: this function should be called in a SmallData.summary: block
+        """
+
+        # in parallel mode, only client rank 0 writes to file
+        if MODE == 'PARALLEL':
+            if self._client_comm.Get_rank() != 0:
+                return
+
+        # >> collect summary data
+        data_dict = {}
+        data_dict.update(kwargs)
+        for d in args:
+            data_dict.update( _flatten_dictionary(d) )
+
+        # >> write to file
+        fh = self._get_full_file_handle()
+        for dataset_name, data in data_dict.items():
+            if data is None:
+                print('Warning: dataset "%s" was passed value: None'
+                      '... ignoring that dataset' % dataset_name)
+            else:
+                fh[dataset_name] = data
+
+        # we don't want to close the file in serial mode
+        # this file is the server's main (only) file
+        if MODE == 'PARALLEL':
+            fh.close()
+
+        return
+
+
     def done(self):
+        """
+        Finish any final communication and join partial files
+        (in parallel mode).
+        """
 
         # >> finish communication
         if self._type == 'client':
@@ -518,57 +578,14 @@ class SmallData: # (client)
         if MODE == 'PARALLEL':
             if self._type != 'other': # other = not smalldata (Mona)
                 self._smalldata_comm.barrier()
-                #if self._smalldata_comm.Get_rank() == 0:
+
+                # CLIENT rank 0 does all final file writing
+                # this is because this client may write to the file
+                # during "save_summary(...)" calls, and we want
+                # ONE file owner
                 if self._type == 'client':
                     if self._client_comm.Get_rank() == 0:
                         self.join_files()
-                    
-        return
-
-
-    def _get_full_file_handle(self):
-        """
-        makes sure we overwrite on first open, but not after that
-        """
-
-        if MODE == 'PARALLEL':
-            if self._first_open == True:
-                fh = h5py.File(self._full_filename, 'w', libver='latest')
-                self._first_open = False
-            else:
-                fh = h5py.File(self._full_filename, 'r+', libver='latest')
-
-        elif MODE == 'SERIAL':
-            fh = self._server.file_handle
-
-        return fh
-
-
-    def save_summary(self, *args, **kwargs):
-
-
-        if MODE == 'PARALLEL':
-            if self._client_comm.Get_rank() != 0:
-                return
-
-        # >> collect summary data
-        data_dict = {}
-        data_dict.update(kwargs)
-        for d in args:
-            data_dict.update( _flatten_dictionary(d) )
-
-        fh = self._get_full_file_handle()
-        for dataset_name, data in data_dict.items():
-            if data is None:
-                print('Warning: dataset "%s" was passed value: None'
-                      '... ignoring that dataset' % dataset_name)
-            else:
-                fh[dataset_name] = data
-
-        # we don't want to close the file in serial mode
-        # this file is the server's main (only) file
-        if MODE == 'PARALLEL':
-            fh.close()
 
         return
 
