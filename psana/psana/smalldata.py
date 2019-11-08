@@ -45,6 +45,18 @@ Some Notes:
     environment variable
   * if running in psana parallel mode, clients ARE
     BD nodes (they are the same processes)
+  * eventual time-stamp sorting would be doable with
+    code conceptually similar to this (but would need
+    to be optimized for performance):
+
+    import numpy as np
+    import h5py
+    f = h5py.File('smalldata_test.h5')
+    ts = f['timestamp'][:]
+    tsneg = f['tsneg']
+    for i in np.argsort(ts):
+        print(tsneg[i])
+
 """                          
 
 import os
