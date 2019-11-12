@@ -1,6 +1,5 @@
 # LCLS II development repository [![Build Status](https://travis-ci.org/slac-lcls/lcls2.svg?branch=master)](https://travis-ci.org/slac-lcls/lcls2)
 
-
 ## Build instructions:
 ### Note: build on psbuild-rhel7 where redhat gcc7 compilers are installed
 
