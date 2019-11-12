@@ -55,38 +55,38 @@ public:
     
 
     static void checkType(uint8_t val, Name& name) {
-	assert(Name::UINT8==name.type());
+        assert(Name::UINT8==name.type());
     }
     static void checkType(uint16_t val, Name& name) {
-	assert(Name::UINT16==name.type());
+        assert(Name::UINT16==name.type());
     }
     static void checkType(uint32_t val, Name& name) {
-	assert(Name::UINT32==name.type());
+        assert(Name::UINT32==name.type());
     }
     static void checkType(uint64_t val, Name& name) {
-	assert(Name::UINT64==name.type());
+        assert(Name::UINT64==name.type());
     }
     static void checkType(int8_t val, Name& name) {
-	assert(Name::INT8==name.type());
+        assert(Name::INT8==name.type());
     }
     static void checkType(int16_t val, Name& name) {
-	assert(Name::INT16==name.type());
+        assert(Name::INT16==name.type());
     }
     static void checkType(int32_t val, Name& name) {
-	assert(Name::INT32==name.type() || Name::ENUMVAL==name.type() ||
+        assert(Name::INT32==name.type() || Name::ENUMVAL==name.type() ||
                Name::ENUMDICT==name.type());
     }
     static void checkType(int64_t val, Name& name) {
-	assert(Name::INT64==name.type());
+        assert(Name::INT64==name.type());
     }
     static void checkType(float val, Name& name) {
-	assert(Name::FLOAT==name.type());
+        assert(Name::FLOAT==name.type());
     }
     static void checkType(double val, Name& name) {
-	assert(Name::DOUBLE==name.type());
+        assert(Name::DOUBLE==name.type());
     }
     static void checkType(char val, Name& name) {
-	assert(Name::CHARSTR==name.type());
+        assert(Name::CHARSTR==name.type());
     }
 
 
@@ -103,19 +103,21 @@ public:
         return arrT;
     };
 
+    // a slower interface to access some data, because
+    // it looks it up in the nameMap.
     template <class T>
     T get_value(const char* name)
     {
         Data& data = _shapesdata.data();
-        unsigned index = _nameindex.nameMap()[name];
+        IndexMap& nameMap = _nameindex.nameMap();
+        assert(nameMap.find(name) != nameMap.end());
+        unsigned index = nameMap[name];
 
-        T val = *reinterpret_cast<T*>(data.payload() + _offset[index]);
-        checkType(val, _nameindex.names().get(index));
-        return val;
+        return get_value<T>(index);
     }
 
     template <class T>
-    T get_value(unsigned index) //, T& val)
+    T get_value(unsigned index)
     {
         assert(index <= _numentries);
         Data& data = _shapesdata.data();

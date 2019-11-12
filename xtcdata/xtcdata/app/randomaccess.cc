@@ -31,6 +31,7 @@ public:
         case (TypeId::Names): {
             Names& names = *(Names*)xtc;
             _namesLookup[names.namesId()] = NameIndex(names);
+            break;
         }
         case (TypeId::ShapesData): {
             ShapesData& shapesdata = *(ShapesData*)xtc;
@@ -46,8 +47,16 @@ public:
                 break;
             }
             DescData descdata(shapesdata, _namesLookup[namesId]);
-            offset    = descdata.get_value<uint64_t>("intOffset");
-            dgramSize = descdata.get_value<uint64_t>("intDgramSize");
+            // see if the offset is in this ShapesData xtc
+            Names& names = descdata.nameindex().names();
+            for (unsigned i = 0; i < names.num(); i++) {
+                Name& name = names.get(i);
+                if (strcmp(name.name(),"intOffset")==0) {
+                  offset    = descdata.get_value<uint64_t>(i);
+                } else if (strcmp(name.name(),"intDgramSize")==0) {
+                  dgramSize = descdata.get_value<uint64_t>(i);
+                }
+            }
             break;
         }
         default:
