@@ -1,9 +1,9 @@
-from psana.psexp.stepstore import StepStore
+from psana.psexp.envstore import EnvStore
 from psana.dgram import Dgram
 
-class StepStoreManager(object):
-    """ Manages stepStore.
-    Stores list of stepStores (created according to given keywords e.g 'epics')
+class EnvStoreManager(object):
+    """ Manages envStore.
+    Stores list of envStores (created according to given keywords e.g 'epics')
     and update the stores with list of views.
     """
     stores = {}
@@ -11,7 +11,7 @@ class StepStoreManager(object):
     def __init__(self, configs, *args):
         self.configs = configs
         for arg in args:
-            self.stores[arg] = StepStore(configs, arg)
+            self.stores[arg] = EnvStore(configs, arg)
     
     def update_by_event(self, evt):
         if not evt:

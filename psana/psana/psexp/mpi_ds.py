@@ -9,7 +9,7 @@ from .run import Run
 
 from psana import dgram
 from psana.dgrammanager import DgramManager
-from psana.psexp.stepstore_manager import StepStoreManager
+from psana.psexp.envstore_manager import EnvStoreManager
 from psana.psexp.event_manager import TransitionId
 from psana.psexp.node import Smd0, SmdNode, BigDataNode
 
@@ -70,7 +70,7 @@ class RunParallel(Run):
             self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
             self.dm = DgramManager(xtc_files, configs=self.configs)
         
-        self.ssm = StepStoreManager(self.configs, 'epics', 'scan')
+        self.esm = EnvStoreManager(self.configs, 'epics', 'scan')
     
     def events(self):
         for evt in self.run_node():
