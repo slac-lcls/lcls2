@@ -13,7 +13,15 @@ class StepStoreManager(object):
         for arg in args:
             self.stores[arg] = StepStore(configs, arg)
     
-    def update(self, views):
+    def update_by_event(self, evt):
+        if not evt:
+            return
+        for i, d in enumerate(evt._dgrams):
+            for key, val in d.__dict__.items():
+                if key in self.stores:
+                    self.stores[key].add_to(d, i)
+
+    def update_by_views(self, views):
         if not views:
             return
         for i in range(len(views)):
@@ -26,6 +34,7 @@ class StepStoreManager(object):
                         self.stores[key].add_to(d, i)
                     
                 offset += d._size
+                    
 
         
         

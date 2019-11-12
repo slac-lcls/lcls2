@@ -8,6 +8,7 @@ from psana.smdreader import SmdReader
 from psana.dgram import Dgram
 from setup_input_files import setup_input_files
 from psana import DataSource
+import numpy as np
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -61,13 +62,13 @@ def run_smd0(n_events):
 
     return result
 
-def filter_fn(evt):
+def my_filter(evt):
     return True
 
-def run_serial_read(n_events):
+def run_serial_read(n_events, batch_size=1, filter_fn=0):
     exp_xtc_dir = os.path.join(xtc_dir, '.tmp')
     os.environ['PS_SMD_N_EVENTS'] = str(n_events)
-    ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir, batch_size=1, filter=filter_fn)
+    ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir, batch_size=batch_size, filter=filter_fn)
     cn_steps = 0
     cn_events = 0
     result = {'evt_per_step':[], 'n_steps': 0, 'n_events':0}
@@ -117,12 +118,24 @@ if __name__ == "__main__":
     assert result == expected_result
     """
     # Test run.steps() 
-    expected_result = {'evt_per_step': [10, 10, 10], 'n_steps': 3, 'n_events': 30}
+    test_cases = [(51, 1, 0), (51, 1, my_filter), (51, 5, 0), (51, 5, my_filter), \
+            (20, 1, 0), (19, 1, 0)]
+    
+    for test_case in test_cases:
+        result = run_serial_read(test_case[0], batch_size=test_case[1], filter_fn=test_case[2])
+        result = comm.gather(result, root=0)
+        if rank == 0:
+            sum_events_per_step = np.zeros(3, dtype=np.int)
+            sum_events = 0
+            n_steps = 0
+            for i in range(size):
+                if result[i]['evt_per_step']:
+                    sum_events_per_step += np.asarray(result[i]['evt_per_step'], dtype=np.int)
+                sum_events += result[i]['n_events']
+                n_steps = np.max([n_steps, result[i]['n_steps']])
+            assert all(sum_events_per_step == [10,10,10]) 
+            assert sum_events == 30
+            assert n_steps == 3
 
-    results = []
-    results.append(run_serial_read(51))
-    results.append(run_serial_read(20))
-    results.append(run_serial_read(19))
-
-    if size == 1 or rank == 2:
-        check_results(results, expected_result)
+    
+    

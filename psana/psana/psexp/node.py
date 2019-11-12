@@ -6,6 +6,7 @@ from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.step import Step
 from psana.psexp.events import Events
 from psana.psexp.event_manager import TransitionId
+from psana.dgram import Dgram
 import os
 from mpi4py import MPI
 
@@ -108,8 +109,8 @@ class Communicators(object):
         return self._nodetype
 
 
-class UpdateManager(object):
-    """ Keeps epics data and their send history. """
+class StepHistory(object):
+    """ Keeps step data and their send history. """
     def __init__(self, client_size, n_smds):
         self.n_smds = n_smds
         self.bufs = [bytearray() for i in range(self.n_smds)]
@@ -120,30 +121,71 @@ class UpdateManager(object):
         for i in range(1, client_size):
             self.send_history.append([0]*self.n_smds)
 
-    def extend_buffers(self, views):
+    def extend_buffers(self, views, client_id):
+        """ Update step buffers for this node
+        and step history for the current client """
+        indexed_id = client_id - 1 # rank 0 has no send history.
         for i, view in enumerate(views):
             self.bufs[i].extend(view)
+            self.send_history[indexed_id][i] += view.nbytes
 
     def get_buffer(self, client_id):
-        """ Returns new epics data (if any) for this client
+        """ Returns new step data (if any) for this client
         then updates the sent record."""
-        update_chunk = bytearray()
-
-        if self.n_smds: # do nothing if no epics data found
+        views = []
+        
+        if self.n_smds: # do nothing if no step data found
             indexed_id = client_id - 1 # rank 0 has no send history.
-            pf = PacketFooter(self.n_smds)
             for i, buf in enumerate(self.bufs):
                 current_buf = self.bufs[i]
                 current_offset = self.send_history[indexed_id][i]
-                current_buf_size = memoryview(current_buf).shape[0]
-                pf.set_size(i, current_buf_size - current_offset)
-                update_chunk.extend(current_buf[current_offset:])
-                self.send_history[indexed_id][i] = current_buf_size
-            update_chunk.extend(pf.footer)
-        
-        return update_chunk
-        
+                current_buf_size = memoryview(current_buf).nbytes
+                if current_offset < current_buf_size:
+                    views.append(current_buf[current_offset:])
+                    self.send_history[indexed_id][i] = current_buf_size
 
+        return views
+        
+def repack(smd_chunk, step_views, configs):
+    """ Prepend missing step views (one event) to the smd_chunk """
+    if step_views:
+        batch_pf = PacketFooter(view=smd_chunk)
+        
+        # Create bytearray containing a list of events from step_views 
+        steps = bytearray()
+        n_smds = len(step_views)
+        offsets = [0] * n_smds
+        n_steps = 0
+        step_sizes = []
+        while offsets[0] < memoryview(step_views[0]).nbytes:
+            step_pf = PacketFooter(n_packets=n_smds)
+            step_size = 0
+            for i, (config, view) in enumerate(zip(configs, step_views)):
+                d = Dgram(config=config, view=view, offset=offsets[i])
+                steps.extend(d)
+                offsets[i] += d._size
+                step_size += d._size
+                step_pf.set_size(i, d._size)
+            
+            steps.extend(step_pf.footer)
+            step_sizes.append(step_size + memoryview(step_pf.footer).nbytes)
+            n_steps += 1
+       
+        # Create new batch with total_events = smd_chunk_events + step_events 
+        new_batch_pf = PacketFooter(n_packets = batch_pf.n_packets + n_steps)
+        for i in range(n_steps):
+            new_batch_pf.set_size(i, step_sizes[i])
+        
+        for i in range(n_steps, new_batch_pf.n_packets):
+            new_batch_pf.set_size(i, batch_pf.get_size(i-n_steps))
+
+        new_batch = bytearray()
+        new_batch.extend(steps)
+        new_batch.extend(smd_chunk[:memoryview(smd_chunk).nbytes-memoryview(batch_pf.footer).nbytes])
+        new_batch.extend(new_batch_pf.footer)
+        return new_batch
+    else:
+        return smd_chunk
 
 class Smd0(object):
     """ Sends blocks of smds to smd_node
@@ -153,13 +195,13 @@ class Smd0(object):
     def __init__(self, run):
         self.smdr_man = SmdReaderManager(run)
         self.run = run
-        self.epics_man = UpdateManager(self.run.comms.smd_size, self.run.ssm.stores['epics'].n_files)
+        self.step_hist = StepHistory(self.run.comms.smd_size, len(self.run.configs))
         self.run_mpi()
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
 
-        for (smd_chunk, update_chunk) in self.smdr_man.chunks():
+        for (smd_chunk, step_chunk) in self.smdr_man.chunks():
             # Creates a chunk from smd and epics data to send to SmdNode
             # Anatomy of a chunk (pf=packet_footer):
             # [ [smd0][smd1][smd2][pf] ][ [epics0][epics1][epics2][pf] ][ pf ]
@@ -168,17 +210,19 @@ class Smd0(object):
             
             # Read new epics data as available in the queue
             # then send only unseen portion of data to the evtbuilder rank.
-            update_pf = PacketFooter(view=update_chunk)
-            self.epics_man.extend_buffers(update_pf.split_packets())
             self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-            epics_chunk = self.epics_man.get_buffer(rankreq[0])
+            
+            # Check missing steps for the current client
+            missing_step_views = self.step_hist.get_buffer(rankreq[0])
 
-            pf = PacketFooter(2)
-            pf.set_size(0, memoryview(smd_chunk).shape[0])
-            pf.set_size(1, memoryview(epics_chunk).shape[0])
-            chunk = smd_chunk + epics_chunk + pf.footer
+            # Update this node's step buffers
+            step_pf = PacketFooter(view=step_chunk)
+            step_views = step_pf.split_packets()
+            self.step_hist.extend_buffers(step_views, rankreq[0])
+            
+            smd_chunk = repack(smd_chunk, missing_step_views, self.run.configs)
 
-            self.run.comms.smd_comm.Send(chunk, dest=rankreq[0])
+            self.run.comms.smd_comm.Send(smd_chunk, dest=rankreq[0])
 
         for i in range(self.run.comms.n_smd_nodes):
             self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
@@ -203,59 +247,49 @@ class SmdNode(object):
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
-        current_step_pos = 0
         smd_comm   = self.run.comms.smd_comm
         n_bd_nodes = self.run.comms.bd_comm.Get_size() - 1
         bd_comm    = self.run.comms.bd_comm
         smd_rank   = self.run.comms.smd_rank
-        epics_man  = UpdateManager(self.run.comms.bd_size, 
-                                   self.run.ssm.stores['epics'].n_files)
+        
+        step_hist = StepHistory(self.run.comms.bd_size, len(self.run.configs))
 
-        cn = 0
         while True:
             smd_comm.Send(np.array([smd_rank], dtype='i'), dest=0)
             info = MPI.Status()
             smd_comm.Probe(source=0, status=info)
             count = info.Get_elements(MPI.BYTE)
-            chunk = bytearray(count)
-            smd_comm.Recv(chunk, source=0)
-            if not chunk:
+            smd_chunk = bytearray(count)
+            smd_comm.Recv(smd_chunk, source=0)
+            if not smd_chunk:
                 break
            
-            # Unpack the chunk received from Smd0
-            pf = PacketFooter(view=chunk)
-            smd_chunk, step_chunk = pf.split_packets()
-            eb_man = EventBuilderManager(smd_chunk, self.run.configs, \
-                    batch_size=self.run.batch_size, filter_fn=self.run.filter_callback, \
-                    destination=self.run.destination)
+            eb_man = EventBuilderManager(smd_chunk, self.run) 
         
-            # Unpack step chunk and updates run's epics store and epics_manager  
-            step_pf = PacketFooter(view=step_chunk)
-            step_views = step_pf.split_packets()
-            self.run.ssm.update(step_views)
-            epics_man.extend_buffers(step_views)
-
             # Build batch of events
             for smd_batch_dict in eb_man.batches():
                 # If single item and dest_rank=0, send to any bigdata nodes.
                 if 0 in smd_batch_dict.keys():
                     smd_batch, _ = smd_batch_dict[0]
                     bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-                    epics_batch = epics_man.get_buffer(rankreq[0])
-                    batch = self.pack(smd_batch, epics_batch) 
+                    missing_step_views = step_hist.get_buffer(rankreq[0])
+                    step_pf = PacketFooter(view=eb_man.step_chunk())
+                    step_views = step_pf.split_packets()
+                    step_hist.extend_buffers(step_views, rankreq[0])
+                    batch = repack(smd_batch, missing_step_views, self.run.configs)
                     bd_comm.Send(batch, dest=rankreq[0])
-                    cn += 1
-
+                          
                 # With > 1 dest_rank, start looping until all dest_rank batches
                 # have been sent.
                 else:
                     while smd_batch_dict:
                         bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-
                         if rankreq[0] in smd_batch_dict:
                             smd_batch, _ = smd_batch_dict[rankreq[0]]
-                            epics_batch = epics_man.get_buffer(rankreq[0])
-                            batch = self.pack(smd_batch, epics_batch) 
+                            missing_step_views = step_hist.get_buffer(rankreq[0])
+                            step_pf = PacketFooter(view=eb_man.step_chunk())
+                            step_hist.extend_buffers(step_pf.split_packets(), rankreq[0])
+                            batch = repack(smd_batch, missing_step_views, self.run.configs)
                             bd_comm.Send(batch, dest=rankreq[0])
                             del smd_batch_dict[rankreq[0]] # done sending 
                         else:
@@ -265,42 +299,31 @@ class SmdNode(object):
         for i in range(n_bd_nodes):
             bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             bd_comm.Send(bytearray(), dest=rankreq[0])
-            cn += 1
 
 class BigDataNode(object):
     def __init__(self, run):
         self.run = run
 
     def run_mpi(self):
-        bd_comm = self.run.comms.bd_comm
-        bd_rank = self.run.comms.bd_rank
-        self.cn = 0 
+
         def get_smd():
+            bd_comm = self.run.comms.bd_comm
+            bd_rank = self.run.comms.bd_rank
             bd_comm.Send(np.array([bd_rank], dtype='i'), dest=0)
             info = MPI.Status()
             bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
             count = info.Get_elements(MPI.BYTE)
             chunk = bytearray(count)
             bd_comm.Recv(chunk, source=0)
-            self.cn += 1
-            
-            smd_chunk = bytearray()
-            if chunk:
-                pf = PacketFooter(view=chunk)
-                smd_chunk, step_chunk = pf.split_packets()
-            
-            return smd_chunk
+            return chunk
         
         events = Events(self.run, get_smd=get_smd)
         if self.run.scan:
-            n_step = 0
             for evt in events:
                 if evt._dgrams[0].seq.service() == TransitionId.BeginStep:
-                    n_step += 1
                     yield Step(evt, events)
-                    #exit()
+
         else:
             for evt in events:
                 if evt._dgrams[0].seq.service() == TransitionId.L1Accept:
                     yield evt
- 

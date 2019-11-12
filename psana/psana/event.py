@@ -69,7 +69,7 @@ class Event():
             for i in range(pf.n_packets):
                 if views[i].shape[0] > 0: # do not include any missing dgram
                     dgrams[i] = dgram.Dgram(config=configs[i], view=views[i])
-
+        
         evt = cls(dgrams)
         return evt
     

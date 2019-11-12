@@ -55,30 +55,60 @@ class EventManager(object):
             
     def _read_bigdata_in_chunk(self):
         """ Read bigdata chunks of 'size' bytes and store them in views
-        Note that views here then contain bigdata (and not smd) events.
+        Note that views here contain bigdata (and not smd) events.
+        All non L1 dgrams are copied from smd_events and prepend
+        directly to bigdata chunks.
         """
+        self.bigdata = []
+        for i in range(self.n_smd_files):
+            self.bigdata.append(bytearray())
+        
+        offsets = [0] * self.n_smd_files
+        sizes = [0] * self.n_smd_files
         self.ofsz_batch = np.zeros((self.n_events, self.n_smd_files, 2), dtype=np.intp)
+        
+        # Look for first L1 event - copy all non L1 to bigdata buffers
+        first_L1_pos = -1
         for i, event_bytes in enumerate(self.smd_events):
             if event_bytes:
                 smd_evt = Event._from_bytes(self.smd_configs, event_bytes)
-                self.ofsz_batch[i,:,:] = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
-                        d.smdinfo[0].offsetAlg.intDgramSize] \
-                        for d in smd_evt])
+                if smd_evt._dgrams[0].seq.service() == TransitionId.L1Accept:
+                    ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
+                            d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_evt._dgrams])
+                    offsets = ofsz[:,0]
+                    first_L1_pos = i
+                    break
+                else:
+                    ofsz = np.asarray([[0, memoryview(d).nbytes] for d in smd_evt._dgrams])
+                    for smd_id, d in enumerate(smd_evt._dgrams):
+                        self.bigdata[smd_id].extend(d)
 
-        self.bigdata = [None] * self.n_smd_files
+                if i > 0:
+                    self.ofsz_batch[i,:,0] = self.ofsz_batch[i-1,:,0] + self.ofsz_batch[i-1,:,1]
+                self.ofsz_batch[i,:,1] = ofsz[:,1]
+                
+        if first_L1_pos == -1: return
+
+        for i, event_bytes in enumerate(self.smd_events[first_L1_pos:]):
+            j = i + first_L1_pos
+            if event_bytes:
+                smd_evt = Event._from_bytes(self.smd_configs, event_bytes)
+                ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
+                        d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_evt._dgrams])
+
+                if j > 0:
+                    self.ofsz_batch[j,:,0] = self.ofsz_batch[j-1,:,0] + self.ofsz_batch[j-1,:,1]
+                self.ofsz_batch[j,:,1] = ofsz[:,1]
+
+                sizes += ofsz[:,1]
+        
         for i in range(self.n_smd_files):
             # If no data were filtered, we can assume that all bigdata
             # dgrams starting from the first offset are stored consecutively
             # in the file. We read a chunk of sum(all dgram sizes) and
             # store in a view.
-            offset = self.ofsz_batch[0, i, 0]
-            size = np.sum(self.ofsz_batch[:, i, 1])
-            
-            os.lseek(self.dm.fds[i], offset, 0)
-            self.bigdata[i] = os.read(self.dm.fds[i], size)
-
-            # Reset of the offsets 
-            self.ofsz_batch[:,i,0] -= offset
+            os.lseek(self.dm.fds[i], offsets[i], 0)
+            self.bigdata[i].extend(os.read(self.dm.fds[i], sizes[i]))
             
     def __iter__(self):
         return self
@@ -104,7 +134,6 @@ class EventManager(object):
         for j in range(self.n_smd_files):
             if ofsz[j,1]:
                 dgrams[j] = dgram.Dgram(view=self.bigdata[j], config=self.dm.configs[j], offset=ofsz[j,0])
-        
         bd_evt = Event(dgrams)
         self.cn_events += 1
         return bd_evt

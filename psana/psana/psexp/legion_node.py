@@ -30,9 +30,7 @@ def run_smd0_task(run):
 
 @task(inner=True)
 def run_smd_task(smd_chunk, run):
-    eb_man = EventBuilderManager(smd_chunk, run.configs, \
-            batch_size=run.batch_size, filter_fn=run.filter_callback, \
-            destination=run.destination)
+    eb_man = EventBuilderManager(smd_chunk, run)
     for i, smd_batch_dict in enumerate(eb_man.batches()):
         smd_batch, _ = smd_batch_dict[0]
         run_bigdata_task(smd_batch, run, point=i)

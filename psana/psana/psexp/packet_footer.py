@@ -51,3 +51,4 @@ class PacketFooter(object):
         self.footer[-self.n_bytes:-self.n_bytes] = bytearray(struct.pack("I", packet_size))
         self.footer[-self.n_bytes:] = struct.pack("I", self.n_packets)
 
+

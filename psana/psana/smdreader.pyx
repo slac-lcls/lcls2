@@ -18,7 +18,7 @@ cdef class SmdReader:
     cdef short v_service
     cdef unsigned long s_cntrl
     cdef unsigned long m_service
-    cdef Buffer* update_bufs
+    cdef Buffer* step_bufs
     
     def __init__(self, fds):
         self.got_events = 0
@@ -32,9 +32,9 @@ cdef class SmdReader:
         self.prl_reader = ParallelReader(fds)
         self.prl_reader.read() # fill up all buffers
         
-        # update-dgram buffers (epics, configs, etc.)
-        self.update_bufs = <Buffer *>malloc(sizeof(Buffer)*self.prl_reader.nfiles)
-        self._init_update_bufs()
+        # step dgram buffers (epics, configs, etc.)
+        self.step_bufs = <Buffer *>malloc(sizeof(Buffer)*self.prl_reader.nfiles)
+        self._init_step_bufs()
         
         # service calculation
         self.v_cntrl = 56
@@ -45,24 +45,24 @@ cdef class SmdReader:
         self.s_cntrl = (m_cntrl << self.v_cntrl)
         self.m_service = ((1 << k_service) - 1)
         
-    def _init_update_bufs(self):
+    def _init_step_bufs(self):
         cdef int idx
         for idx in range(self.prl_reader.nfiles):
-            self.update_bufs[idx].chunk = <char *>malloc(0x100000)
-            self.update_bufs[idx].offset = 0
-            self.update_bufs[idx].nevents = 0
+            self.step_bufs[idx].chunk = <char *>malloc(0x100000)
+            self.step_bufs[idx].offset = 0
+            self.step_bufs[idx].nevents = 0
 
-    def _reset_update_bufs(self):
+    def _reset_step_bufs(self):
         cdef int idx
         for idx in range(self.prl_reader.nfiles):
-            self.update_bufs[idx].offset = 0
-            self.update_bufs[idx].nevents = 0
+            self.step_bufs[idx].offset = 0
+            self.step_bufs[idx].nevents = 0
 
     def __dealloc__(self):
         cdef int idx
         for idx in range(self.prl_reader.nfiles):
-            free(self.update_bufs[idx].chunk)
-        free(self.update_bufs)
+            free(self.step_bufs[idx].chunk)
+        free(self.step_bufs)
 
     def get(self, unsigned n_events = 1):
         """ Identifies the boundary of each smd chunk so that all exporting
@@ -77,7 +77,7 @@ cdef class SmdReader:
         self.got_events = 0
         self.min_ts = 0
         self.prl_reader.reset_buffers()
-        self._reset_update_bufs()
+        self._reset_step_bufs()
 
         cdef Dgram* d
         cdef size_t dgram_offset = 0
@@ -125,9 +125,9 @@ cdef class SmdReader:
                                     buf.nevents += 1
                                     break
                                 elif payload > 0:
-                                    memcpy(self.update_bufs[i].chunk + self.update_bufs[i].offset, d, self.DGRAM_SIZE + payload)
-                                    self.update_bufs[i].offset += self.DGRAM_SIZE + payload
-                                    self.update_bufs[i].nevents += 1
+                                    memcpy(self.step_bufs[i].chunk + self.step_bufs[i].offset, d, self.DGRAM_SIZE + payload)
+                                    self.step_bufs[i].offset += self.DGRAM_SIZE + payload
+                                    self.step_bufs[i].nevents += 1
                             else:
                                 needs_reread = 1 # not enough payload
                                 break
@@ -166,24 +166,24 @@ cdef class SmdReader:
                 self.got_events = current_got_events
                 current_got_events = 0
 
-    def view(self, int buf_id, int update=0):
+    def view(self, int buf_id, int step=0):
         """ Returns memoryview of the buffer object.
 
-        Set update to True to view update events.
+        Set step to True to view step events.
         """
         assert buf_id < self.prl_reader.nfiles
         cdef char[:] view
         cdef size_t block_size
 
-        if update == 0:
+        if step == 0:
             block_size = self.prl_reader.bufs[buf_id].offset - self.prl_reader.bufs[buf_id].block_offset
             if self.prl_reader.bufs[buf_id].nevents == 0:
                 return 0
             view = <char [:block_size]> (self.prl_reader.bufs[buf_id].chunk + self.prl_reader.bufs[buf_id].block_offset)
         else:
-            if self.update_bufs[buf_id].nevents == 0:
+            if self.step_bufs[buf_id].nevents == 0:
                 return 0
-            view = <char [:self.update_bufs[buf_id].offset]> self.update_bufs[buf_id].chunk
+            view = <char [:self.step_bufs[buf_id].offset]> self.step_bufs[buf_id].chunk
 
         return view
 

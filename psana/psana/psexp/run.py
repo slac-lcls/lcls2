@@ -9,7 +9,6 @@ from psana.dgrammanager import DgramManager
 from psana.psexp.tools import run_from_id, RunHelper
 from psana.psexp import legion_node
 from psana.psexp.smdreader_manager import SmdReaderManager
-from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import EventManager
 from psana.psexp.stepstore_manager import StepStoreManager
 from psana.psexp.packet_footer import PacketFooter

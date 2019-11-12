@@ -8,7 +8,6 @@ class ShmemDataSource(DataSourceBase):
         self.exp, self.run_dict = self._setup_xtcs()
 
     def runs(self):
-        print(self.run_dict)
         for run_no in self.run_dict:
             run = RunShmem(self.exp, run_no, self.run_dict[run_no][0],  \
                         self.max_events, self.batch_size, self.filter, self.tag)

@@ -8,6 +8,10 @@ from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONT
 
 from dgramlite cimport Xtc, Sequence, Dgram
 
+from libc.stdlib cimport malloc, free
+from libc.string cimport memcpy
+from parallelreader cimport Buffer
+
 cdef class EventBuilder:
     """Builds a batch of events
     Takes memoryslice 'views' and identifies matching timestamp
@@ -32,10 +36,16 @@ cdef class EventBuilder:
     cdef array.array event_timestamps
     cdef list views
     cdef unsigned nevents
-    cdef size_t dgram_size
-    cdef size_t xtc_size
+    cdef size_t DGRAM_SIZE
+    cdef size_t XTC_SIZE
     cdef unsigned long min_ts
     cdef unsigned long max_ts
+    cdef unsigned L1_ACCEPT
+    cdef short v_cntrl
+    cdef short v_service
+    cdef unsigned long s_cntrl
+    cdef unsigned long m_service
+    cdef Buffer* step_bufs
 
     def __init__(self, views):
         self.nsmds = len(views)
@@ -47,8 +57,22 @@ cdef class EventBuilder:
         self.event_timestamps = array.array('L', [0]*self.nsmds)
         self.views = views
         self.nevents = 0
-        self.dgram_size = sizeof(Dgram)
-        self.xtc_size = sizeof(Xtc)
+        self.DGRAM_SIZE = sizeof(Dgram)
+        self.XTC_SIZE = sizeof(Xtc)
+        self.L1_ACCEPT = 12
+        
+        # step dgram buffers (epics, configs, etc.)
+        self.step_bufs = <Buffer *>malloc(sizeof(Buffer)*self.nsmds)
+        self._init_step_bufs()
+        
+        # service calculation
+        self.v_cntrl = 56
+        self.v_service = 0
+        k_cntrl = 8
+        k_service = 4
+        cdef unsigned long m_cntrl = ((1ULL << k_cntrl) - 1) 
+        self.s_cntrl = (m_cntrl << self.v_cntrl)
+        self.m_service = ((1 << k_service) - 1)
 
     def _has_more(self):
         for i in range(self.nsmds):
@@ -56,6 +80,25 @@ cdef class EventBuilder:
                 return True
         return False
 
+    def _init_step_bufs(self):
+        cdef int idx
+        for idx in range(self.nsmds):
+            self.step_bufs[idx].chunk = <char *>malloc(0x100000)
+            self.step_bufs[idx].offset = 0
+            self.step_bufs[idx].nevents = 0
+
+    def _reset_step_bufs(self):
+        cdef int idx
+        for idx in range(self.nsmds):
+            self.step_bufs[idx].offset = 0
+            self.step_bufs[idx].nevents = 0
+
+    def __dealloc__(self):
+        cdef int idx
+        for idx in range(self.nsmds):
+            free(self.step_bufs[idx].chunk)
+        free(self.step_bufs)
+    
     def build(self, batch_size=1, filter_fn=0, destination=0, limit_ts=-1):
         """
         Builds a list of batches.
@@ -99,6 +142,10 @@ cdef class EventBuilder:
         cdef unsigned evt_idx = 0
 
         cdef unsigned reach_limit_ts = 0
+        
+        # For checking step dgrams
+        cdef unsigned service = 0
+        self._reset_step_bufs()
 
         while got < batch_size and self._has_more() and not reach_limit_ts:
             array.zero(self.timestamps)
@@ -114,10 +161,16 @@ cdef class EventBuilder:
                     view_ptr = <char *>buf.buf
                     view_ptr += self.offsets[view_idx]
                     d = <Dgram *>(view_ptr)
-                    payload = d.xtc.extent - self.xtc_size
+                    payload = d.xtc.extent - self.XTC_SIZE
                     self.timestamps[view_idx] = <unsigned long>d.seq.high << 32 | d.seq.low
-                    self.dgram_sizes[view_idx] = self.dgram_size + payload
+                    self.dgram_sizes[view_idx] = self.DGRAM_SIZE + payload
                     raw_dgrams[view_idx] = <char[:self.dgram_sizes[view_idx]]>view_ptr
+                    # Copy to step buffers if non L1
+                    service = (( (d.seq.pulse_id & self.s_cntrl) >> self.v_cntrl ) >> self.v_service) & self.m_service
+                    if service != self.L1_ACCEPT and payload > 0: 
+                        memcpy(self.step_bufs[view_idx].chunk + self.step_bufs[view_idx].offset, d, self.DGRAM_SIZE + payload)
+                        self.step_bufs[view_idx].offset += self.DGRAM_SIZE + payload
+                        self.step_bufs[view_idx].nevents += 1
                     PyBuffer_Release(&buf)
 
             sorted_smd_id = np.argsort(self.timestamps)
@@ -150,22 +203,22 @@ cdef class EventBuilder:
                     view_ptr += self.offsets[view_idx]
                     d = <Dgram *>(view_ptr)
                     self.max_ts = <unsigned long>d.seq.high << 32 | d.seq.low
-                    payload = d.xtc.extent - self.xtc_size
+                    payload = d.xtc.extent - self.XTC_SIZE
                     while self.max_ts <= self.event_timestamps[smd_id]:
                         if self.max_ts == self.event_timestamps[smd_id]:
                             self.event_timestamps[view_idx] = self.max_ts
                             self.timestamps[view_idx] = 0
-                            event_dgrams[view_idx] = <char[:self.dgram_size+payload]>view_ptr
+                            event_dgrams[view_idx] = <char[:self.DGRAM_SIZE+payload]>view_ptr
 
-                        self.offsets[view_idx] += (self.dgram_size + payload)
+                        self.offsets[view_idx] += (self.DGRAM_SIZE + payload)
 
                         if self.offsets[view_idx] == self.sizes[view_idx]:
                             break
 
-                        view_ptr += (self.dgram_size + payload)
+                        view_ptr += (self.DGRAM_SIZE + payload)
                         d = <Dgram *>(view_ptr)
                         self.max_ts = <unsigned long>d.seq.high << 32 | d.seq.low
-                        payload = d.xtc.extent - self.xtc_size
+                        payload = d.xtc.extent - self.XTC_SIZE
                     
                     PyBuffer_Release(&buf)
                 
@@ -244,3 +297,15 @@ cdef class EventBuilder:
     @property
     def offsets(self):
         return self.offsets
+
+    def step_view(self, int buf_id):
+        """ Returns memoryview of the step buffer object."""
+        assert buf_id < self.nsmds
+        cdef char[:] view
+        cdef size_t block_size
+
+        if self.step_bufs[buf_id].nevents == 0:
+            return 0
+        view = <char [:self.step_bufs[buf_id].offset]> self.step_bufs[buf_id].chunk
+
+        return view
