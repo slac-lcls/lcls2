@@ -104,7 +104,7 @@ if __name__ == "__main__":
     connect_info['body']['control'] = {}
     connect_info['body']['control']['0'] = {}
     connect_info['body']['control']['0']['control_info'] = {}
-    connect_info['body']['control']['0']['control_info']['instrument'] = 'TMO'
+    connect_info['body']['control']['0']['control_info']['instrument'] = 'TST'
     connect_info['body']['control']['0']['control_info']['cfg_dbase'] = 'mcbrowne:psana@psdb-dev:9306/sioanDB'
 
     mystring = json.dumps(connect_info)                             #paste this string into the pgpread_timetool.cc as parameter for the tt_config function call
