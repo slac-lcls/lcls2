@@ -8,15 +8,18 @@ def test_timetool():
     ds = DataSource(files=os.path.join(dir_path,'test_timetool.xtc2'))
 
     myrun = next(ds.runs())
-    det = myrun.Detector('tt_detector_name_placeholder')
+    tt_detector_object = myrun.Detector('tt_detector_name_placeholder')
 
     for nevt,evt in enumerate(myrun.events()):
-        image = det.tt_algorithm_placeholder.image(evt)
+        parsed_frame_object = tt_detector_object.tt_algorithm_placeholder.parsed_frame(evt)
+
+
+        image = tt_detector_object.tt_algorithm_placeholder._image(evt)
 
         #print("image shape = ",image.shape)
-        assert image.shape == (2224,) or image.shape == (144,) or image.shape == (4304,)
+        assert image.shape == (2208,) or image.shape == (144,) or image.shape == (4272,)
 
-    assert nevt==5
+    assert nevt==598
 
 if __name__ == "__main__":
     test_timetool()

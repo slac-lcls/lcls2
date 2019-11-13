@@ -226,14 +226,15 @@ int main(int argc, char* argv[])
 
 
     NamesLookup namesLookup;
-
+    
     int c, channel;
+    int write_interval = 1;
 
     timespec ts; 
 
     channel = 0;
     std::string device;
-    while((c = getopt(argc, argv, "c:d:ts")) != EOF) {
+    while((c = getopt(argc, argv, "c:d:tf")) != EOF) {
         switch(c) {
             case 'd':
                 device = optarg;
@@ -244,7 +245,12 @@ int main(int argc, char* argv[])
             case 't':
                    printf("entering tt config \n");
                    tt_config(0,namesLookup,xtcFile);
-                   //toggle_acquisition(0);  
+                   break;
+                   //toggle_acquisition(0);                     
+            case 'f':
+                   printf("doing fast write \n");
+                   write_interval = 0;
+                   break;
         }
     }
 
@@ -322,7 +328,7 @@ int main(int argc, char* argv[])
             my_frame.load_frame( raw_vector );
             my_frame.parse_array();
             
-            if(last_time != ts.tv_sec){
+            if(ts.tv_sec - last_time  >= write_interval){
                 
                 
 

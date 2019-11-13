@@ -49,8 +49,8 @@ def write_to_daq_config_db(prescaling):
     #####        prescaling          #######
     ########################################
     top.set("cl.Application.AppLane[0].Prescale.ScratchPad",int(prescaling),'UINT32')                     # testing ability to write to database
-    top.set("cl.Application.AppLane[0].Prescale.DialInPreScaling",3,'UINT32')                            # prescaled raw data 
-    top.set("cl.Application.AppLane[0].Fex.background_prescaler.DialInPreScaling",2,'UINT32')            # prescaled raw backgrounds (may consider accumulated backgrounds instead)
+    top.set("cl.Application.AppLane[0].Prescale.DialInPreScaling",2,'UINT32')                            # prescaled raw data 
+    top.set("cl.Application.AppLane[0].Fex.background_prescaler.DialInPreScaling",3,'UINT32')            # prescaled raw backgrounds (may consider accumulated backgrounds instead)
     ########################################
     #####      initial fir filter    #######
     ########################################
@@ -58,12 +58,12 @@ def write_to_daq_config_db(prescaling):
     top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet1","7f7f7f7f",'CHARSTR')                      #high part of step 
     top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet2","7f7f7f7f",'CHARSTR')                      #high part of step 
     top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet3","7f7f7f7f",'CHARSTR')                      #high part of step 
-    top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet4","81818182",'CHARSTR')                      #low  part of step
+    top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet4","81818181",'CHARSTR')                      #low  part of step
     top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet5","81818181",'CHARSTR')                      #low  part of step
     top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet6","81818181",'CHARSTR')                      #low  part of step
     top.set("cl.Application.AppLane[0].Fex.FIR.CoefficientSet7","81818181",'CHARSTR')                      #low  part of step
 
-    #top.set("cl.Application.AppLane[0].Fex.FIR.LoadCoefficients",0,'CHARSTR')                             #low  part of step
+    top.set("cl.Application.AppLane[0].Fex.FIR.LoadCoefficients","1",'CHARSTR')                             #low  part of step.  Having a value of 1  causes a segfault in pgpread_timetool.cc.  But not in tt_config.py. 
 
     ########################################
     #####      time constants        #######
