@@ -130,7 +130,9 @@ class timeToolParser(eventBuilderParser):
 
         try:
             prescaled_frame_idx      = [i[0] for i in enumerate(self._tdest) if i[1]==2][0]
-            self.prescaled_frame     = self._frame_list[prescaled_frame_idx] 
+            #self.prescaled_frame    = self._frame_list[prescaled_frame_idx] 
+            self.prescaled_frame     = np.frombuffer(self._frame_list[prescaled_frame_idx],dtype = np.int8)
+            
         except IndexError:
             self.prescaled_frame     = None
             
