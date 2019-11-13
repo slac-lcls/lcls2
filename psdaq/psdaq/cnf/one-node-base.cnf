@@ -23,6 +23,9 @@ epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 procmgr_config = [
  { id:'pyxpm', port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.2.103 -P DAQ:LAB2:XPM:3'},
 
+## EPICS PV exporter
+ { id:'pvrtmon', port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -P DAQ:LAB2:XPM:2 -N DeadFrac'},
+
 ## procstat
  { id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
 ]

@@ -17,6 +17,10 @@ drp_cmd  = 'taskset 0xffbfeffbfe ' # Exclude cores 0, 10, 20, 30 (used by OS)
 drp_cmd += 'drp -P TMO -l 0x1 -d /dev/datadev_0 -C '+collect_host
 #drp_cmd += ' -o /ffb01/tstopr'
 
+drp_cmd  = 'taskset 0xffbfeffbfe ' # Exclude cores 0, 10, 20, 30 (used by OS)
+bld_cmd += 'drp_bld -P TMO -d /dev/datadev_0 -C '+collect_host
+#bld_cmd += ' -o /ffb01/tstopr'
+
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
 #
@@ -57,12 +61,12 @@ procmgr_config = [
 
  # Cams
  { host: 'drp-tst-dev002', id:'cam_2',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
- { host: 'drp-tst-dev003', id:'cam_3',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+# { host: 'drp-tst-dev003', id:'cam_3',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
  { host: 'drp-tst-dev004', id:'cam_4',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
  { host: 'drp-tst-dev005', id:'cam_5',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
  #{ host: 'drp-tst-dev007', id:'cam_7',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
- { host: 'drp-tst-dev008', id:'cam_8',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
- { host: 'drp-tst-dev009', id:'cam_9',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+# { host: 'drp-tst-dev008', id:'cam_8',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+# { host: 'drp-tst-dev009', id:'cam_9',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
  { host: 'drp-tst-dev011', id:'cam_11', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
  #{ host: 'drp-tst-dev012', id:'cam_12', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
  #{ host: 'drp-tst-dev013', id:'cam_13', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
@@ -71,7 +75,7 @@ procmgr_config = [
  { host: 'drp-tst-dev017', id:'cam_17', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
 
  # BLD
- { host: 'drp-tst-dev018', id:'bld_18', flags:'sxpu', conda:conda_rel, cmd: 'drp_bld -P TMO -d /dev/datadev_0 -C '+collect_host },
+ { host: 'drp-tst-dev018', id:'bld_18', flags:'sxpu', conda:conda_rel, cmd: bld_cmd },
 
  # procstat
  {                         id:'procstat', flags:'p',  conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
