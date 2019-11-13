@@ -3,11 +3,24 @@ from p4p.client.thread import Context
 
 import json
 import time
+import pprint
+
+class xpm_link:
+    def __init__(self,value):
+        self.value = value
+
+    def is_xpm(self):
+        return (int(self.value)>>24)&0xff == 0xff
+
+    def xpm_num(self):
+        return (int(self.value)>>8)&0xff
 
 class ts_connector:
     def __init__(self,json_connect_info):
         self.connect_info = json.loads(json_connect_info)
-        print('*** connect_info',self.connect_info)
+        print('*** connect_info')
+        pp = pprint.PrettyPrinter()
+        pp.pprint(self.connect_info)
 
         control_info=self.connect_info['body']['control']['0']['control_info']
         self.xpm_base = control_info['pv_base']+':XPM:'
@@ -57,25 +70,29 @@ class ts_connector:
             except KeyError:
                 pass
 
-    def xpm_link_disable_all(self):
-        # FIXME: need a mechanism to disable unused links in all
-        # downstream XPMs. For now, just clear out our readout
-        # groups from all the XPMs we know about from the collection,
-        # which comes from the "remote link id" info in the drp nodes.
-        xpms = [xpm_num for xpm_num,_,_ in self.xpm_info]
-        unique_xpms = set(xpms)
+    def xpm_link_disable(self, pv, groups):
         pv_names = []
-        for xpm_num in unique_xpms:
-            for xpm_port in range(24):
-                pv_names.append(self.xpm_base+str(xpm_num)+':'+'LinkGroupMask'+str(xpm_port))
-        current_group_masks = self.ctxt.get(pv_names)
+        for xpm_port in range(14):
+            pv_names.append(pv+'RemoteLinkId' +str(xpm_port))
+        link_ids = self.ctxt.get(pv_names)
 
-        print(current_group_masks)
-        # don't clear out group_mask 0xff (an indication that it's
-        # a downstream XPM link)
-        #pv_names_to_clear = [pv_name for (pv_name,group_mask) in zip(pv_names,current_group_masks) if (group_mask & self.readout_group_mask) and (group_mask != 0xff)]
-        #print('*** clearing xpm links',pv_names_to_clear)
-        #self.ctxt.put(pv_names_to_clear,len(pv_names_to_clear)*[0])
+        pv_names = []
+        for xpm_port in range(14):
+            pv_names.append(pv+'LinkGroupMask'+str(xpm_port))
+        link_masks = self.ctxt.get(pv_names)
+
+        for i in range(14):
+            xlink = xpm_link(link_ids[i])
+            if xlink.is_xpm():
+                self.xpm_link_disable(self.xpm_base+str(xlink.xpm_num())+':',groups)
+            else:
+                link_masks[i] &= ~groups
+
+        self.ctxt.put(pv_names,link_masks)
+        
+    def xpm_link_disable_all(self):
+        # Start from the master and recursively remove the groups from each downstream link
+        self.xpm_link_disable(self.master_xpm_pv, self.readout_group_mask)
 
     def xpm_link_enable(self):
         self.xpm_link_disable_all()
@@ -86,6 +103,7 @@ class ts_connector:
             pvname = self.xpm_base+str(xpm_num)+':'+'LinkGroupMask'+str(xpm_port)
             pv_names.append(pvname)
             values.append((1<<readout_group))
+
         print('*** setting xpm link enables',pv_names,values)
         self.ctxt.put(pv_names,values)
 

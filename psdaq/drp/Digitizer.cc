@@ -8,6 +8,7 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psalg/digitizer/Hsd.hh"
 #include "DataDriver.h"
+#include "psalg/utils/SysLog.hh"
 
 #include <Python.h>
 #include <stdint.h>
@@ -17,6 +18,7 @@
 
 using namespace XtcData;
 using namespace rapidjson;
+using logging = psalg::SysLog;
 
 using json = nlohmann::json;
 
@@ -44,7 +46,8 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     Detector(para, pool),
     m_evtcount(0),
     m_evtNamesId(-1, -1), // placeholder
-    m_epics_name(para->kwargs["hsd_epics_prefix"])
+    m_epics_name(para->kwargs["hsd_epics_prefix"]),
+    m_paddr     (_getPaddr())
 {
     printf("*** found epics name %s\n",m_epics_name.c_str());
 }
@@ -54,6 +57,64 @@ static void check(PyObject* obj) {
         PyErr_Print();
         throw "**** python error\n";
     }
+}
+
+unsigned Digitizer::_getPaddr()
+{
+    // returns new reference
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_connect");
+    check(pModule);
+
+    // returns borrowed reference
+    PyObject* pDict = PyModule_GetDict(pModule);
+    check(pDict);
+    // returns borrowed reference
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_connect");
+    check(pFunc);
+
+    // returns new reference
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"s",
+                                              m_epics_name.c_str());
+
+    check(mybytes);
+
+    PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
+    check(json_bytes);
+    char* json_str = (char*)PyBytes_AsString(json_bytes);
+
+    Document *d = new Document();
+    d->Parse(json_str);
+    if (d->HasParseError()) {
+        printf("Parse error: %s, location %zu\n",
+               GetParseError_En(d->GetParseError()), d->GetErrorOffset());
+        abort();
+    }
+    const Value& a = (*d)["paddr"];
+
+    unsigned reg = a.GetInt();
+    if (!reg) {
+        const char msg[] = "XPM Remote link id register is zero\n";
+        logging::error("%s", msg);
+        throw msg;
+    }
+
+    Py_DECREF(pModule);
+    Py_DECREF(mybytes);
+    Py_DECREF(json_bytes);
+
+    return reg;
+}
+
+json Digitizer::connectionInfo()
+{
+    unsigned reg = m_paddr;
+    int x = (reg >> 16) & 0xFF;
+    int y = (reg >> 8) & 0xFF;
+    int port = reg & 0xFF;
+    std::string xpmIp = {"10.0." + std::to_string(x) + '.' + std::to_string(y)};
+
+    json info = {{"xpm_ip", xpmIp}, {"xpm_port", port}};
+    return info;
 }
 
 unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
@@ -122,7 +183,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
     if (top.Parse(json).HasParseError())
         fprintf(stderr,"*** json parse error\n");
     else {
-      const Value& enable = top["enable"];
+      const Value& enable = top["paddr"];
       std::string enable_type = top[":types:"]["enable"][0].GetString();
       unsigned length = top[":types:"]["enable"][1].GetInt();
       for (unsigned i=0; i<length; i++) if (enable[i].GetInt()) lane_mask |= 1<< i;

@@ -192,10 +192,15 @@ int main(int argc, char** argv)
     for(unsigned i=0; i<2; i++) {
       std::string sprefix(prefix);
       sprefix += ":"+std::string(1,'A'+i)+":PADDR";
-      Pds_Epics::EpicsPVA pvPaddr(sprefix.c_str());
-      while(!pvPaddr.connected())
-        usleep(1000);
-      pvPaddr.putFrom(paddr); 
+      { Pds_Epics::EpicsPVA pvPaddr(sprefix.c_str());
+        while(!pvPaddr.connected())
+          usleep(1000);
+        pvPaddr.putFrom(paddr); }
+      sprefix += "_U";
+      { Pds_Epics::EpicsPVA pvPaddr(sprefix.c_str());
+        while(!pvPaddr.connected())
+          usleep(1000);
+        pvPaddr.putFrom(upaddr); }
     }
     printf("paddr [0x%x] [%s]\n", upaddr, paddr.c_str());
   }

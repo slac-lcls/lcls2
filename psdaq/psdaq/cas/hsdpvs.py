@@ -68,6 +68,8 @@ class ChipServer(object):
                                     handler=DefaultPVHandler())
         self.pAddr       = SharedPV(initial=NTScalar('s').wrap({'value':''}),
                                     handler=DefaultPVHandler())
+        self.pAddr_u     = SharedPV(initial=NTScalar('I').wrap({'value':0}),
+                                    handler=DefaultPVHandler())
         self.monTiming   = MySharedPV(monTiming)
         self.monPgp      = MySharedPV(monPgp)
         self.monRawBuf   = MySharedPV(monBuf)
@@ -80,6 +82,7 @@ class ChipServer(object):
 
         self.provider.add(prefix+':FWBUILD'   ,self.fwBuild)
         self.provider.add(prefix+':PADDR'     ,self.pAddr)
+        self.provider.add(prefix+':PADDR_U'   ,self.pAddr_u)
         self.provider.add(prefix+':MONTIMING' ,self.monTiming)
         self.provider.add(prefix+':MONPGP'    ,self.monPgp)
         self.provider.add(prefix+':MONRAWBUF' ,self.monRawBuf)
