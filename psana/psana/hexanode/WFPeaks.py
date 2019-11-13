@@ -16,6 +16,8 @@ Usage ::
     # Access methods
     #----------------
     # wfs,wts - input arrays of waveforms and sample times, shape=(nchannels, nsamples)
+    peaks.proc_waveforms(wfs, wts)
+
     # get all-in-one:
     nhits, pkinds, pkvals, pktns = peaks(wfs,wts)
 
@@ -44,7 +46,7 @@ class WFPeaks :
         """Waveform peak finder wrapper.
            - wf digitizer channels (0,1,2,3,4) should be ordered for u1,u2,v1,v2[,w1,w2],mcp, respectively
         """
-        logger.info(gu.str_kwargs(kwargs, title='WFPeaks input parameters:'))
+        logger.debug(gu.str_kwargs(kwargs, title='WFPeaks input parameters:'))
         self.set_wf_peak_finder_parameters(**kwargs)
 
         self._wfs_old = None

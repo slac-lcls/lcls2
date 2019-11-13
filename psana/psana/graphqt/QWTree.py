@@ -184,6 +184,7 @@ class QWTree(QTreeView) :
 
 
     def set_style(self):
+        self.header().hide()
         #from psana.graphqt.Styles import style
         self.setWindowIcon(icon.icon_monitor)
         self.setContentsMargins(0,0,0,0)
@@ -207,7 +208,6 @@ class QWTree(QTreeView) :
     def closeEvent(self, e):
         logger.debug('closeEvent')
         QTreeView.closeEvent(self, e)
-
         #try    : self.gui_win.close()
         #except : pass
 

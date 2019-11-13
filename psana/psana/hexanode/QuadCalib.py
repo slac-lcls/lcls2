@@ -4,7 +4,7 @@ Module :py:class:`QuadCalib` a set of generic methods for hexanode project
 =========================================================================
 
 Created on 2017-12-08 by Mikhail Dubrovin
-2019-11-05 adopted to LCLS2
+2019-11-08 adopted to LCLS2
 """
 #------------------------------
 
@@ -22,10 +22,10 @@ from time import time
 from math import sqrt
 
 from psana.pyalgos.generic.HBins import HBins
-from psana.hexanode.WFDataIO import WFDataIO, do_print
+from psana.hexanode.WFHDF5IO import open_input_h5file
 
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
-#import psana.pyalgos.generic.Utils as gu
+import psana.pyalgos.generic.Utils as gu
 #import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.Graphics import hist1d, show, move_fig, save_fig, move, save, plotImageLarge, plotGraph
 
@@ -36,7 +36,7 @@ class Store :
     """
 
     def set_parameters(self, **kwargs) :
-        print 'In set_parameters, **kwargs: %s' % str(kwargs)
+        print('In set_parameters, **kwargs: %s' % str(kwargs))
         self.PLOT_NHITS         = kwargs.get('PLOT_NHITS'        , True)
         self.PLOT_TIME_CH       = kwargs.get('PLOT_TIME_CH'      , True)
         self.PLOT_UVW           = kwargs.get('PLOT_UVW'          , True)
@@ -98,7 +98,7 @@ class Store :
             self.lst_Yvw = []
 
         if self.PLOT_MISC :
-            self.lst_Deviation = []
+            self.list_dr = []
             self.lst_consist_indicator = []
             self.lst_rec_method = []
 
@@ -146,9 +146,9 @@ sp = Store()
 
 def create_output_directory(prefix) :
     dirname = os.path.dirname(prefix)
-    print 'Output directory: "%s"' % dirname
+    print('Output directory: "%s"' % dirname)
     if dirname in ('', './', None) : return
-    gu.create_directory(dirname, mode=0775)
+    gu.create_directory(dirname, mode=0o775)
 
 #------------------------------
 
@@ -456,7 +456,7 @@ def plot_histograms(prefix='plot', do_save=True, hwin_x0y0=(0,400)) :
     #---------
     if sp.PLOT_MISC :
     #---------
-        h1d(np.array(sp.lst_Deviation), bins=160, amp_range=(0,40), log=True,\
+        h1d(np.array(sp.list_dr), bins=160, amp_range=(0,40), log=True,\
             title ='Deviation', xlabel='Deviation (mm)', ylabel='Events',\
             fnm='deviation_mm.png')
 
@@ -484,13 +484,16 @@ def plot_histograms(prefix='plot', do_save=True, hwin_x0y0=(0,400)) :
     #---------
         amp_limits = (0,5)
         imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax())
-        plot_image(sp.t1_vs_t0, amp_range=amp_limits, img_range=imrange, fnm='t1_vs_t0.png',  title='t1 vs t0', xlabel='t0 (ns)', ylabel='t1 (ns)', titwin='PIPICO', origin='lower')
+        plot_image(sp.t1_vs_t0, amp_range=amp_limits, img_range=imrange, fnm='t1_vs_t0.png',\
+                   title='t1 vs t0', xlabel='t0 (ns)', ylabel='t1 (ns)', titwin='PIPICO', origin='lower')
 
         imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.x_mm_bins.vmin(), sp.x_mm_bins.vmax())
-        plot_image(sp.x_vs_t0,  amp_range=amp_limits, img_range=imrange, fnm='x_vs_t0.png',  title='x vs t0', xlabel='t0 (ns)', ylabel='x (mm)', titwin='x vs t0', origin='lower')
+        plot_image(sp.x_vs_t0,  amp_range=amp_limits, img_range=imrange, fnm='x_vs_t0.png',\
+                   title='x vs t0', xlabel='t0 (ns)', ylabel='x (mm)', titwin='x vs t0', origin='lower')
 
         imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.y_mm_bins.vmin(), sp.y_mm_bins.vmax())
-        plot_image(sp.y_vs_t0,  amp_range=amp_limits, img_range=imrange, fnm='y_vs_t0.png',  title='y vs t0', xlabel='t0 (ns)', ylabel='y (mm)', titwin='y vs t0', origin='lower')
+        plot_image(sp.y_vs_t0,  amp_range=amp_limits, img_range=imrange, fnm='y_vs_t0.png',\
+                   title='y vs t0', xlabel='t0 (ns)', ylabel='y (mm)', titwin='y vs t0', origin='lower')
 
     #---------
     #if sp.PLOT_XY_RESOLUTION :
@@ -499,8 +502,8 @@ def plot_histograms(prefix='plot', do_save=True, hwin_x0y0=(0,400)) :
     #    npa_biny = np.array(sp.lst_biny)
     #    max_binx = npa_binx.max()
     #    max_biny = npa_biny.max()
-    #    print 'binx.min/max: %d %d' % (npa_binx.min(), max_binx)
-    #    print 'biny.min/max: %d %d' % (npa_biny.min(), max_biny)
+    #    print('binx.min/max: %d %d' % (npa_binx.min(), max_binx))
+    #    print('biny.min/max: %d %d' % (npa_biny.min(), max_biny))
     #    max_bins = max(max_binx, max_biny) + 1        
     #    sp.img_xy_res = np.zeros((max_bins, max_bins), dtype=np.float64)
     #    sp.img_xy_sta = np.zeros((max_bins, max_bins), dtype=np.int32)
@@ -512,15 +515,15 @@ def plot_histograms(prefix='plot', do_save=True, hwin_x0y0=(0,400)) :
 
 #------------------------------
 
-def print_tdc_ns(tdc_ns, cmt='  tdc_ns ', fmt=' %7.2f') :
+def print_tdc_ns(tdc_ns, cmt='  tdc_ns ', fmt=' %7.2f', offset='    ') :
     sh = tdc_ns.shape
-    print '%sshape=%s:' % (cmt, str(sh))
+    print('%sshape=%s %s' % (offset, str(sh), cmt), end='')
     for r in range(sh[0]) :
-        print '    ch %1d:' % r,
-        for c in range(min(5,sh[1])) :
-             print fmt % tdc_ns[r,c],
+        print('\n%sch %1d:' % (offset,r), end='')
+        for c in range(min(10,sh[1])) :
+             print(fmt % tdc_ns[r,c], end='')
         print
-    #print
+    print('\n%sexit print_tdc_ns\n' % offset)
 
 #------------------------------
 
@@ -530,59 +533,48 @@ def calib_on_data(**kwargs) :
     CTYPE_HEX_CONFIG = 'hex_config'
     CTYPE_HEX_TABLE  = 'hex_table'
 
-    print usage()
-
+    print(usage())
+    #SRCCHS    
+    #DSNAME       = kwargs.get('dsname', '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
     COMMAND      = kwargs.get('command', 0)
-    SRCCHS       = kwargs.get('srcchs', {'AmoETOF.0:Acqiris.0':(6,7,8,9,10,11),'AmoITOF.0:Acqiris.0':(0,)})
-    DSNAME       = kwargs.get('dsname', 'exp=xpptut15:run=390:smd')
+    IFNAME       = kwargs.get('ifname', '/reg/g/psdm/detector/data_test/hdf5/amox27716-r0100-e060000-single-node.h5')
+    DETNAME      = kwargs.get('detname', 'tmo_hexanode')
     EVSKIP       = kwargs.get('evskip', 0)
     EVENTS       = kwargs.get('events', 1000000) + EVSKIP
     OFPREFIX     = kwargs.get('ofprefix','./figs-hexanode/plot')
-    NUM_CHANNELS = kwargs.get('numchs', 7)
+    NUM_CHANNELS = kwargs.get('numchs', 5)
     NUM_HITS     = kwargs.get('numhits', 16)
     calibtab     = kwargs.get('calibtab', None)
     calibcfg     = kwargs.get('calibcfg', None)
     PLOT_HIS     = kwargs.get('plot_his', True)
     VERBOSE      = kwargs.get('verbose', False)
 
-    print 'Input parameters:'
-    for k,v in kwargs.iteritems() : print '%20s : %s' % (k,str(v))
+    print(gu.str_kwargs(kwargs, title='input parameters:'))
 
     sp.set_parameters(**kwargs) # save parameters in store for graphics
 
     #=====================
 
-    DIO = WFDataIO(srcchs=SRCCHS, numchs=NUM_CHANNELS, numhits=NUM_HITS)
-    DIO.open_input_data(**kwargs)
+    file = open_input_h5file(IFNAME)
 
     #=====================
 
-    CALIBTAB = calibtab if calibtab is not None else\
-               DIO.find_calib_file(type=CTYPE_HEX_TABLE)
-    CALIBCFG = calibcfg if calibcfg is not None else\
-               DIO.find_calib_file(type=CTYPE_HEX_CONFIG)
+    CALIBTAB = calibtab #if calibtab is not None else file.find_calib_file(type=CTYPE_HEX_TABLE)
+    CALIBCFG = calibcfg #if calibcfg is not None else file.find_calib_file(type=CTYPE_HEX_CONFIG)
 
     #=====================
 
-    print 'DIO experiment : %s' % DIO.experiment()
-    print 'DIO run        : %s' % DIO.run()
-    print 'DIO start time : %s' % DIO.start_time()
-    print 'DIO stop time  : %s' % DIO.stop_time()
-    print 'DIO tdc_resolution : %.3f' % DIO.tdc_resolution()
+    print('events in file : %s' % file.h5ds_nevents)
+    print('start time     : %s' % file.start_time())
+    print('stop time      : %s' % file.stop_time())
+    print('tdc_resolution : %s' % file.tdc_resolution())
+    print('CALIBTAB       : %s' % CALIBTAB)
+    print('CALIBCFG       : %s' % CALIBCFG)
 
-    print 'DIO calib_dir   : %s' % DIO.calib_dir()
-    print 'DIO calib_src   : %s' % DIO.calib_src()
-    print 'DIO calib_group : %s' % DIO.calib_group()
-    print 'DIO ctype_dir   : %s' % DIO.calibtype_dir()
-    print 'DIO find_calib_file config: %s' % CALIBCFG
-    print 'DIO find_calib_file  table: %s' % CALIBTAB
-
-    #=====================
-    #sys.exit('TEST EXIT')
-    #=====================
-
-    tdc_ns = np.zeros((NUM_CHANNELS, NUM_HITS), dtype=np.float64)
-    number_of_hits = np.zeros((NUM_CHANNELS,), dtype=np.int32)
+    #print('file calib_dir   : %s' % file.calib_dir())
+    #print('file calib_src   : %s' % file.calib_src())
+    #print('file calib_group : %s' % file.calib_group())
+    #print('file ctype_dir   : %s' % file.calibtype_dir())
 
     command = -1;
  
@@ -595,26 +587,26 @@ def calib_on_data(**kwargs) :
 #   // create the sorter:
     sorter = hexanode.py_sort_class()
     status, command_cfg, offset_sum_u, offset_sum_v, offset_sum_w, w_offset, pos_offset_x, pos_offset_y=\
-        hexanode.py_read_config_file(CALIBCFG, sorter)
+        hexanode.py_read_config_file(CALIBCFG.encode(), sorter)
     #command = COMMAND # command_cfg
     command = command_cfg
 
-    print 'read_config_file status, COMMAND, offset_sum_u, offset_sum_v, offset_sum_w, w_offset, pos_offset_x, pos_offset_y=',\
-                            status, command, offset_sum_u, offset_sum_v, offset_sum_w, w_offset, pos_offset_x, pos_offset_y
+    print('read_config_file status, COMMAND, offset_sum_u, offset_sum_v, offset_sum_w, w_offset, pos_offset_x, pos_offset_y=',\
+                            status, command, offset_sum_u, offset_sum_v, offset_sum_w, w_offset, pos_offset_x, pos_offset_y)
 
     if not status :
-        print "WARNING: can't read config file %s" % fname_cfg
+        print("WARNING: can't read config file %s" % fname_cfg)
         del sorter
         sys.exit(0)
 
-    print 'use_sum_correction', sorter.use_sum_correction
-    print 'use_pos_correction HEX ONLY', sorter.use_pos_correction
+    print('use_sum_correction', sorter.use_sum_correction)
+    print('use_pos_correction HEX ONLY', sorter.use_pos_correction)
     if sorter is not None :
         if sorter.use_sum_correction or sorter.use_pos_correction :
-            status = hexanode.py_read_calibration_tables(CALIBTAB, sorter)
+            status = hexanode.py_read_calibration_tables(CALIBTAB.encode(), sorter)
 
     if command == -1 :
-   	print "no config file was read. Nothing to do."
+        print("no config file was read. Nothing to do.")
         if sorter is not None : del sorter
         sys.exit(0)
 
@@ -625,23 +617,27 @@ def calib_on_data(**kwargs) :
     Cw1  = sorter.cw1 
     Cw2  = sorter.cw2 
     Cmcp = sorter.cmcp
-    print "Numeration of channels - u1:%i  u2:%i  v1:%i  v2:%i  w1:%i  w2:%i  mcp:%i"%\
-          (Cu1, Cu2, Cv1, Cv2, Cw1, Cw2, Cmcp)
+    print("Numeration of channels - u1:%i  u2:%i  v1:%i  v2:%i  w1:%i  w2:%i  mcp:%i"%\
+          (Cu1, Cu2, Cv1, Cv2, Cw1, Cw2, Cmcp))
 
     inds_of_channels    = (Cu1, Cu2, Cv1, Cv2, Cw1, Cw2)
     incr_of_consistence = (  1,   2,   4,   8,  16,  32)
     #inds_of_channels    = (Cu1, Cu2, Cv1, Cv2, Cmcp)
     #incr_of_consistence = (  1,   2,   4,   8,  16)
-    inds_incr = zip(inds_of_channels, incr_of_consistence)
+    inds_incr = list(zip(inds_of_channels, incr_of_consistence))
+
+    #print("chanel increments:", inds_incr)
     
     #=====================
     #=====================
     #=====================
 
-    print "init sorter... "
+    print("init sorter... ")
 
-    #sorter.set_tdc_resolution_ns(0.025)
-    sorter.set_tdc_resolution_ns(DIO.tdc_resolution())
+    tdc_ns = np.zeros((NUM_CHANNELS, NUM_HITS), dtype=np.float64)
+    number_of_hits = np.zeros((NUM_CHANNELS,), dtype=np.int32)
+
+    sorter.set_tdc_resolution_ns(file.tdc_resolution())
     sorter.set_tdc_array_row_length(NUM_HITS)
     sorter.set_count(number_of_hits)
     sorter.set_tdc_pointer(tdc_ns)
@@ -659,40 +655,40 @@ def calib_on_data(**kwargs) :
     error_code = sorter.init_after_setting_parameters()
 
     #=====================
-    # print 'ZZZ error_code:', error_code
+    # print('ZZZ error_code:', error_code)
     # sys.exit('TEST EXIT')
     #=====================
 
     if error_code :
-   	print "sorter could not be initialized\n"
+        print("sorter could not be initialized\n")
         error_text = sorter.get_error_text(error_code, 512)
-        print 'Error %d: %s' % (error_code, error_text)
+        print('Error %d: %s' % (error_code, error_text))
         sys.exit(0)
 
-    print "Calibration factors:\n  f_U (mm/ns) =%f\n  f_V (mm/ns) =%f\n  f_W (mm/ns) =%f\n  Offset on layer W (ns) =%f\n"%\
-          (2*sorter.fu, 2*sorter.fv, 2*sorter.fw, w_offset)
+    print("Calibration factors:\n  f_U (mm/ns) =%f\n  f_V (mm/ns) =%f\n  f_W (mm/ns) =%f\n  Offset on layer W (ns) =%f\n"%\
+          (2*sorter.fu, 2*sorter.fv, 2*sorter.fw, w_offset))
 
-    print "ok for sorter initialization\n"
+    print("ok for sorter initialization\n")
 
-    create_output_directory(OFPREFIX)
+    #create_output_directory(OFPREFIX)
 
-    print "reading event data... \n"
+    print("reading event data... \n")
 
     evnum = 0
     t_sec = time()
     t1_sec = time()
-    while DIO.read_next_event() :
-
-        #number_of_channels = DIO.get_number_of_channels()
-        evnum = DIO.get_event_number()
+    while file.next_event() :
+        evnum = file.event_number()
 
         if evnum < EVSKIP : continue
         if evnum > EVENTS : break
 
-        if do_print(evnum) :
+        if True : #gu.do_print(evnum) :
             t1 = time()
-            print 'Event: %06d, dt(sec): %.3f' % (evnum, t1 - t1_sec)
+            print('Event: %06d, dt(sec): %.3f' % (evnum, t1 - t1_sec))
             t1_sec = t1
+
+
 
 #   	//if (event_counter%10000 == 0) {if (my_kbhit()) break;}
 
@@ -702,29 +698,29 @@ def calib_on_data(**kwargs) :
 #   	// and fill the array tdc_ns[][] and number_of_hits[]
 
         #nhits = np.zeros((NUMBER_OF_CHANNELS,), dtype=np.int32)
-        DIO.get_number_of_hits_array(number_of_hits)
-        if DIO.error_flag() :
-            error_text = DIO.get_error_text(DIO.error_flag())
-            print "DIO Error %d: %s" % (DIO.error_flag(), error_text)
+        file.get_number_of_hits_array(number_of_hits, maxvalue=NUM_HITS)
+        if file.error_flag() :
+            error_text = file.get_error_text(file.error_flag())
+            print("file Error %d: %s" % (file.error_flag(), error_text))
             sys.exit(0)
 
-        if VERBOSE : print '====raw number_of_hits_array', number_of_hits[:8]
+        if VERBOSE : print('====raw number_of_hits_array', number_of_hits[:])
         #number_of_hits = np.array([n if n<NUM_HITS else NUM_HITS for n in number_of_hits])
-        #if VERBOSE : print '   number_of_hits_array constrained ', number_of_hits[:8]
+        #if VERBOSE : print('   number_of_hits_array constrained ', number_of_hits[:8])
 
-        DIO.get_tdc_data_array(tdc_ns)
+        file.get_tdc_data_array(tdc_ns, maxsize=NUM_HITS)
 
-        if DIO.error_flag() :
-            error_text = DIO.get_error_text(DIO.error_flag())
-            print "DIO Error %d: %s" % (DIO.error_flag(), error_text)
+        if file.error_flag() :
+            error_text = file.get_error_text(file.error_flag())
+            print("file Error %d: %s" % (file.error_flag(), error_text))
             sys.exit(0)
 
         conds = number_of_hits[:5]==0 
         if conds.any() : continue
 
 #   	// apply conversion to ns
-#        if False : # DIO returns tdc_ns already in [ns]
-#            tdc_ns *= DIO.tdc_resolution()
+#        if False : # file returns tdc_ns already in [ns]
+#            tdc_ns *= file.tdc_resolution()
 
 #       //==================================
         if sp.PLOT_NHITS :
@@ -735,6 +731,7 @@ def calib_on_data(**kwargs) :
             #sp.lst_nhits_w1 .append(number_of_hits[Cw1])
             #sp.lst_nhits_w2 .append(number_of_hits[Cw2])
             sp.lst_nhits_mcp.append(number_of_hits[Cmcp])
+
 
         if sp.PLOT_TIME_CH :
             sp.lst_u1 .append(tdc_ns[Cu1,0])
@@ -753,46 +750,46 @@ def calib_on_data(**kwargs) :
             #if number_of_hits[Cw2]>1 : sp.lst_refl_w1.append(tdc_ns[Cw2,1] - tdc_ns[Cw1,0])
             #if number_of_hits[Cw1]>1 : sp.lst_refl_w2.append(tdc_ns[Cw1,1] - tdc_ns[Cw2,0])
 
+
         #--------- preserve RAW time sums
         time_sum_u = deepcopy(tdc_ns[Cu1,0] + tdc_ns[Cu2,0] - 2*tdc_ns[Cmcp,0]) #deepcopy(...)
         time_sum_v = deepcopy(tdc_ns[Cv1,0] + tdc_ns[Cv2,0] - 2*tdc_ns[Cmcp,0])
         time_sum_w = 0 #tdc_ns[Cw1,0] + tdc_ns[Cw2,0] - 2*tdc_ns[Cmcp,0]
 
-        #print "RAW time_sum_u, time_sum_v:", time_sum_u, time_sum_v
+        #print("RAW time_sum_u, time_sum_v:", time_sum_u, time_sum_v)
         #---------
 
         if VERBOSE : print_tdc_ns(tdc_ns, cmt='  TDC raw data ')
 
         if sorter.use_hex :        
   	    # shift the time sums to zero:
-   	    sorter.shift_sums(+1, offset_sum_u, offset_sum_v, offset_sum_w)
+            sorter.shift_sums(+1, offset_sum_u, offset_sum_v, offset_sum_w)
    	    #shift layer w so that the middle lines of all layers intersect in one point:
-   	    sorter.shift_layer_w(+1, w_offset)
+            sorter.shift_layer_w(+1, w_offset)
         else :
             # shift the time sums to zero:
             sorter.shift_sums(+1, offset_sum_u, offset_sum_v)
 
         if VERBOSE : print_tdc_ns(tdc_ns, cmt='  TDC after shift_sums ')
 
-   	# shift all signals from the anode so that the center of the detector is at x=y=0:
-   	sorter.shift_position_origin(+1, pos_offset_x, pos_offset_y)
- 
-    	sorter.feed_calibration_data(True, w_offset) # for calibration of fv, fw, w_offset and correction tables
+        # shift all signals from the anode so that the center of the detector is at x=y=0:
+        sorter.shift_position_origin(+1, pos_offset_x, pos_offset_y)
+        sorter.feed_calibration_data(True, w_offset) # for calibration of fv, fw, w_offset and correction tables
 
         if VERBOSE : print_tdc_ns(tdc_ns, cmt='  TDC after feed_calibration_data ')
 
-        #print 'map_is_full_enough', hexanode.py_sorter_scalefactors_calibration_map_is_full_enough(sorter)
+        #print('map_is_full_enough', hexanode.py_sorter_scalefactors_calibration_map_is_full_enough(sorter))
 
         # NOT VALID FOR QUAD
         #sfco = hexanode.py_scalefactors_calibration_class(sorter) # NOT FOR QUAD
         # break loop if statistics is enough
         #if sfco :
         #    if sfco.map_is_full_enough() : 
-        #         print 'sfo.map_is_full_enough(): %s  event number: %06d' % (sfco.map_is_full_enough(), evnum)
+        #         print('sfo.map_is_full_enough(): %s  event number: %06d' % (sfco.map_is_full_enough(), evnum))
         #         break
 
         #if sp.PLOT_XY_RESOLUTION :
-        #    #print "    binx: %d  biny: %d  resolution(FWHM): %.6f" % (sfco.binx, sfco.biny, sfco.detector_map_resol_FWHM_fill)
+        #    #print("    binx: %d  biny: %d  resolution(FWHM): %.6f" % (sfco.binx, sfco.biny, sfco.detector_map_resol_FWHM_fill))
         #    if sfco.binx>=0 and sfco.biny>=0 :
         #        sp.lst_binx.append(sfco.binx)
         #        sp.lst_biny.append(sfco.biny)
@@ -800,19 +797,57 @@ def calib_on_data(**kwargs) :
 
         # Sort the TDC-Data and reconstruct missing signals and apply the time-sum- and NL-correction.
         # number_of_particles is the number of reconstructed particles
-   	number_of_particles = sorter.sort() if command == 1 else\
+
+
+
+
+
+
+
+
+        
+
+        #if evnum in (11,13,15,16) : continue
+        
+
+        continue
+
+
+
+        print('YYY Point A')
+        number_of_particles = sorter.sort() if command == 1 else\
                               sorter.run_without_sorting()
+        print('YYY Point B')
 
-        #DIO.get_tdc_data_array(tdc_ns)
-        if VERBOSE : print '   sorted number_of_hits_array', number_of_hits[:8]
-        if VERBOSE : print_tdc_ns(tdc_ns, cmt='    TDC sorted data ')
-        if VERBOSE : print "  Event %5i  number_of_particles: %i" % (evnum, number_of_particles)
 
-        if False : 
-   	    for i in range(number_of_particles) :
-                hco= hexanode.py_hit_class(sorter, i)
-   	        print "    p:%2i x:%7.3f y:%7.3f t:%7.3f met:%d" % (i, hco.x, hco.y, hco.time, hco.method)
-   	    print "    part1 u:%7.3f v:%7.3f w:%7.3f" % (u, v, w)
+
+
+
+
+
+
+        #file.get_tdc_data_array(tdc_ns, NUM_HITS)
+        if VERBOSE : print('   sorted number_of_hits_array', number_of_hits[:8])
+        if VERBOSE : print_tdc_ns(tdc_ns, cmt='  TDC sorted data ')
+        if VERBOSE : print("  Event %5i  number_of_particles: %i" % (evnum, number_of_particles))
+
+
+        print('XXX number_of_particles:', number_of_particles)
+        if number_of_particles :
+          if True :
+            for i in range(number_of_particles) :
+                hco = hexanode.py_hit_class(sorter, i)
+                print("    XXX p:%2i x:%7.3f y:%7.3f t:%7.3f met:%d" % (i, hco.x, hco.y, hco.time, hco.method))
+            #print("    part1 u:%7.3f v:%7.3f w:%7.3f" % (u, v, w))
+
+
+          print('    XXX number_of_particles:', number_of_particles)
+
+        #=====================
+        continue
+        #=====================
+
+
 
         # Discards most of events in command>1
         if number_of_particles<1 : continue
@@ -838,13 +873,11 @@ def calib_on_data(**kwargs) :
 
         dX = 0 # Xuv - Xvw
         dY = 0 # Yuv - Yvw
-        Deviation = 0 #sqrt(dX*dX + dY*dY)
+        dR = sqrt(dX*dX + dY*dY)
 
         time_sum_u_corr = tdc_ns[Cu1,0] + tdc_ns[Cu2,0] - 2*tdc_ns[Cmcp,0]
         time_sum_v_corr = tdc_ns[Cv1,0] + tdc_ns[Cv2,0] - 2*tdc_ns[Cmcp,0]
         time_sum_w_corr = 0 #tdc_ns[Cw1,0] + tdc_ns[Cw2,0] - 2*tdc_ns[Cmcp,0]
-
-        hco = hexanode.py_hit_class(sorter, 0)
 
         #---------
 
@@ -874,8 +907,11 @@ def calib_on_data(**kwargs) :
             sp.lst_Yuw.append(Yuw)
             sp.lst_Yvw.append(Yvw)
 
+
+        #hco = hexanode.py_hit_class(sorter, 0)
+
         if sp.PLOT_MISC :
-            sp.lst_Deviation.append(Deviation)
+            sp.list_dr.append(dR)
             
             # fill Consistence Indicator
             consistenceIndicator = 0
@@ -884,7 +920,7 @@ def calib_on_data(**kwargs) :
             sp.lst_consist_indicator.append(consistenceIndicator)
 
             sp.lst_rec_method.append(hco.method)
-            #print 'reconstruction method %d' % hco.method
+            #print('reconstruction method %d' % hco.method)
 
         if sp.PLOT_XY_2D :
 
@@ -929,35 +965,35 @@ def calib_on_data(**kwargs) :
 #   	// hco.method
 
 #   end of the while loop
-    print "end of the while loop... \n"
+    print("end of the while loop... \n")
 
     if command == 2 :
-        print "calibrating detector... "
+        print("calibrating detector... ")
         sorter.do_calibration()
-        print "ok - after do_calibration"
+        print("ok - after do_calibration")
 
         # QUAD SHOULD NOT USE: scalefactors_calibration_class
 
         #sfco = hexanode.py_scalefactors_calibration_class(sorter)
         #if sfco :
-        #    print "Good calibration factors are:\n  f_U =%f\n  f_V =%f\n  f_W =%f\n  Offset on layer W=%f\n"%\
-        #          (2*sorter.fu, 2*sfco.best_fv, 2*sfco.best_fw, sfco.best_w_offset)
+        #    print("Good calibration factors are:\n  f_U =%f\n  f_V =%f\n  f_W =%f\n  Offset on layer W=%f\n"%\
+        #          (2*sorter.fu, 2*sfco.best_fv, 2*sfco.best_fw, sfco.best_w_offset))
         #
-        #    print 'CALIBRATION: These parameters and time sum offsets from histograms should be set in the file\n  %s' % CALIBCFG
+        #    print('CALIBRATION: These parameters and time sum offsets from histograms should be set in the file\n  %s' % CALIBCFG)
 
-    if command == 3 : # generate and print correction tables for sum- and position-correction
+    if command == 3 : # generate and print(correction tables for sum- and position-correction
         CALIBTAB = calibtab if calibtab is not None else\
-                   DIO.make_calib_file_path(type=CTYPE_HEX_TABLE)
-        print "creating calibration table in file: %s" % CALIBTAB
+                   file.make_calib_file_path(type=CTYPE_HEX_TABLE)
+        print("creating calibration table in file: %s" % CALIBTAB)
         status = hexanode.py_create_calibration_tables(CALIBTAB, sorter)
 
-        print "CALIBRATION: finished creating calibration tables: %s status %s" % (CALIBTAB, status)
+        print("CALIBRATION: finished creating calibration tables: %s status %s" % (CALIBTAB, status))
 
         #=====================
         #sys.exit('TEST EXIT in QuadCalib')
         #=====================
 
-    print "consumed time (sec) = %.6f\n" % (time() - t_sec)
+    print("consumed time (sec) = %.6f\n" % (time() - t_sec))
 
     if sorter is not None : del sorter
 
@@ -965,12 +1001,16 @@ def calib_on_data(**kwargs) :
         plot_histograms(prefix=OFPREFIX, do_save=True, hwin_x0y0=(0,0))
         show()
 
+    #=====================
+    #sys.exit('TEST EXIT')
+    #=====================
+
 #------------------------------
 
 if __name__ == "__main__" :
-    print 50*'_'
-    print 'See example in hexanode/examples/ex-09-sort-graph-data.py'\
-          '\nand application expmon/app/hex_calib'
+    print(50*'_')
+    print('See example in hexanode/examples/ex-14-sort-graph-data.py'\
+          '\nand application expmon/app/hex_calib')
 
     #kwargs = {'events':1500,}
     #calib_on_data(**kwargs)

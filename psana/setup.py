@@ -106,6 +106,7 @@ if 'PSANA' in BUILD_LIST :
                 'proc_new_datasets   = psana.pscalib.app.proc_new_datasets:do_main',
                 'timeconverter       = psana.graphqt.app.timeconverter:timeconverter',
                 'calibman            = psana.graphqt.app.calibman:calibman_gui',
+                'hdf5explorer        = psana.graphqt.app.hdf5explorer:hdf5explorer_gui',
                 'detnames            = psana.app.detnames:detnames',
              ]
        },

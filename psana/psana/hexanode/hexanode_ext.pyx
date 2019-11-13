@@ -176,8 +176,8 @@ def ctest_resort():
 #------------------------------
 #------------------------------
 
-#cdef extern from "psalg/hexanode/resort64c.hh":
-cdef extern from "roentdek/resort64c.h":
+#cdef extern from "roentdek/resort64c.h":
+cdef extern from "psalg/hexanode/resort64c.hh":
     cdef cppclass hit_class:
         double x, y, time
         int32_t method
@@ -193,7 +193,7 @@ cdef class py_hit_class:
         self.cptr = sorter.cptr.output_hit_array[i]
 
     def __dealloc__(self):
-        print("In py_hit_class.__dealloc__")
+        #print("In py_hit_class.__dealloc__")
         del self.cptr
 
     @property
@@ -365,7 +365,7 @@ cdef class py_sort_class:
             raise MemoryError('In py_sort_class.__cinit__: Not enough memory.')
 
     def __dealloc__(self):
-        #print("In py_sort_class.__dealloc__")
+        print("In py_sort_class.__dealloc__")
         del self.cptr
 
     @property
@@ -545,12 +545,12 @@ cdef class py_sort_class:
 
 
     def sort(self) :
-        #ok print("In py_sort_class.sort")
+        print("In py_sort_class.sort")
         return self.cptr.sort()
 
 
     def run_without_sorting(self) :
-        #ok print("In py_sort_class.run_without_sorting")
+        print("In py_sort_class.run_without_sorting")
         return self.cptr.run_without_sorting()
 
 
