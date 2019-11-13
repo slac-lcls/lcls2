@@ -108,7 +108,6 @@ public:
     template <class T>
     T get_value(const char* name)
     {
-        Data& data = _shapesdata.data();
         IndexMap& nameMap = _nameindex.nameMap();
         assert(nameMap.find(name) != nameMap.end());
         unsigned index = nameMap[name];
