@@ -189,7 +189,7 @@ def main(tmp_path):
     # after Mona's commit on 11/12/2019 this test fails
     # on some MacOS versions.  We don't understand why.
     import platform
-    if platform.system()!='Darwin': return
+    if platform.system()=='Darwin': return
 
     run_test('xtc', tmp_path)
     # don't test shmem on macOS
