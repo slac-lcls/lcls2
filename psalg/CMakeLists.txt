@@ -15,6 +15,7 @@ set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 find_package(xtcdata REQUIRED)
+find_package(RapidJSON REQUIRED)
 find_package(CURL REQUIRED)
 find_package(OpenMP REQUIRED)
 # we don't have this package for all OS's, so make it optional
