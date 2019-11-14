@@ -40,8 +40,6 @@ elif [[ $OS == osx ]]; then
   export PYTHONPATH="$PWD/install/lib/python$PYVER/site-packages"
 
   ./build_all.sh -d -p install
-  # SOME DEBUG OF THE PARALLEL READER - DAN
-  otool -L psana/psana/parallelreader.*.so
   pytest psana/psana/tests
 else
   echo "Unknown OS type: ${OS}"
