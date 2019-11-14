@@ -60,10 +60,10 @@ int main(int argc, char* argv[])
     for (unsigned i = 0; i < nevents; i++) {
         dg = iter.next();
         printf("Event: %d\n", i);
-        printf("%s transition: time %d.%09d, pulseId 0x%lux, env 0x%lux, "
+        printf("%s transition: time %d.%09d, env 0x%lux, "
                "payloadSize %d\n",
-               TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
-               dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
+               TransitionId::name(dg->service()), dg->time.seconds(),
+               dg->time.nanoseconds(), 
                dg->env, dg->xtc.sizeofPayload());
         printf("*** dg xtc extent %d\n",dg->xtc.extent);
         printf("$$$$ %u %u %u\n", sizeof(*dg), sizeof(dg), sizeof(&dg));

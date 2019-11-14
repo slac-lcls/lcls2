@@ -180,8 +180,8 @@ Dgram& createTransition(TransitionId::Value transId, bool counting_timestamps,
         // convert to ns for the Timestamp
         tv.tv_usec *= 1000;
     }
-    Sequence seq(Sequence::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
-    return *new(buf) Dgram(Transition(seq, env), Xtc(tid));
+    Transition tr(Dgram::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), env);
+    return *new(buf) Dgram(tr, Xtc(tid));
 }
 
 void save(Dgram& dg, FILE* xtcFile) {
@@ -299,8 +299,8 @@ int main(int argc, char* argv[])
             // convert to ns for the Timestamp
             tv.tv_usec *= 1000;
         }
-        Sequence seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
-        Dgram& dgram = *new(buf) Dgram(Transition(seq, env), Xtc(tid));
+        Transition tr(Dgram::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), env);
+        Dgram& dgram = *new(buf) Dgram(tr, Xtc(tid));
 
         for (unsigned iseg=0; iseg<nSegments; iseg++) {
             addCspad(dgram.xtc, namesLookup, namesIdCspad[iseg], i);

@@ -306,10 +306,10 @@ void save(Dgram& dg, FILE* xtcFile) {
 }
 
 void show(Dgram& dg) {
-    printf("%s transition: time %d.%09d, pulseId 0x%lu, env 0x%lu, "
+    printf("%s transition: time %d.%09d, env 0x%lu, "
            "payloadSize %d extent %d\n",
-           TransitionId::name(dg.seq.service()), dg.seq.stamp().seconds(),
-           dg.seq.stamp().nanoseconds(), dg.seq.pulseId().value(),
+           TransitionId::name(dg.service()), dg.time.seconds(),
+           dg.time.nanoseconds(),
            dg.env, dg.xtc.sizeofPayload(),dg.xtc.extent);
     DebugIter dbgiter;
     dbgiter.iterate(&(dg.xtc));
@@ -419,7 +419,7 @@ int main(int argc, char* argv[])
     
     while ((dgIn = iter.next())) {
         nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload()); 
-        if (dgIn->seq.service() == TransitionId::Configure) {
+        if (dgIn->service() == TransitionId::Configure) {
             Dgram& dgOut = *dgIn;
             addNames(dgOut.xtc, namesLookup, nodeId);
             CreateData smd(dgOut.xtc, namesLookup, namesId);
@@ -428,7 +428,7 @@ int main(int argc, char* argv[])
             save(dgOut, xtcFile);
         } else { 
             Dgram& dgOut = *(Dgram*)buf;
-            if (dgIn->seq.service() == TransitionId::L1Accept) {
+            if (dgIn->service() == TransitionId::L1Accept) {
                 eventL1Id++;
             } else {
                 dgOut = *dgIn; 
@@ -442,14 +442,14 @@ int main(int argc, char* argv[])
 
             if (writeTs != 0) {
                 if (tsname != 0) {
-                    dgOut.seq = Sequence(TimeStamp(sec_arr[eventL1Id], nsec_arr[eventL1Id]), PulseId(pulseId));
+                    dgOut.time = TimeStamp(sec_arr[eventL1Id], nsec_arr[eventL1Id]);
                 } else {
                     gettimeofday(&tv, NULL);
-                    dgOut.seq = Sequence(TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId));
+                    dgOut.time = TimeStamp(tv.tv_sec, tv.tv_usec);
                     cout << "warning: new timestamp (not from bigdata xtc) " << tv.tv_sec << " " << tv.tv_usec << endl;
                 }
             } else {
-                dgOut.seq = dgIn->seq;
+                dgOut.time = dgIn->time;
             }
 
             CreateData smd(dgOut.xtc, namesLookup, namesId);
@@ -473,7 +473,7 @@ int main(int argc, char* argv[])
                     break;
                 }
             }
-        } // end else dgIn->seq.service() == TransitionId::Configure
+        } // end else dgIn->service() == TransitionId::Configure
         
         eventId++;
         nowOffset += nowDgramSize;

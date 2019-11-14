@@ -16,11 +16,8 @@ void usage(char* progname)
 }
 
 void writedgram(Dgram* dg, unsigned& count, FILE* outFile) {
-    TimeStamp& stamp = const_cast<TimeStamp&>(dg->seq.stamp());
+    TimeStamp& stamp = const_cast<TimeStamp&>(dg->time);
     stamp = TimeStamp(count,0);
-    PulseId& pulseid = const_cast<PulseId&>(dg->seq.pulseId());
-    unsigned control = pulseid.control();
-    pulseid = PulseId(count,control);
     count++;
 
     if (fwrite(dg, sizeof(*dg) + dg->xtc.sizeofPayload(), 1, outFile) != 1) {
