@@ -37,7 +37,6 @@ install(FILES
     PulseId.hh
     TransitionId.hh
     Dgram.hh
-    Sequence.hh
     TypeId.hh
     VarDef.hh
     DESTINATION include/xtcdata/xtc
