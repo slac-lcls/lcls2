@@ -38,14 +38,26 @@ print('-- psana.setup.py np.get_include()  : %s' % np.get_include())
 
 
 if sys.platform == 'darwin':
-    extra_compile_args = ['-std=c++11', '-mmacosx-version-min=10.9']
-    extra_link_args = ['-mmacosx-version-min=10.9']
+    # Flag -Wno-cpp hides warning:
+    #warning "Using deprecated NumPy API, disable it with " "#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION" [-W#warnings]
+    macos_sdk_version_arg = '-mmacosx-version-min=10.9'
+    extra_c_compile_args = ['-Wno-#warnings', macos_sdk_version_arg]
+    extra_cxx_compile_args = ['-std=c++11', '-Wno-#warnings', macos_sdk_version_arg]
+    extra_link_args = [macos_sdk_version_arg]
+    # Use libgomp instead of the version provided by the compiler. Passing plain -fopenmp uses the llvm version of OpenMP
+    # which appears to have a conflict with the numpy we use from conda. numpy uses Intel MKL which itself uses OpenMP,
+    # but this seems to cause crashes if you use the llvm OpenMP in the same process.
+    openmp_compile_args = ['-fopenmp=libgomp']
+    openmp_link_args = ['-fopenmp=libgomp']
 else:
-    #extra_compile_args=['-std=c++11']
     # Flag -Wno-cpp hides warning: 
     #warning "Using deprecated NumPy API, disable it with " "#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION" [-Wcpp]
-    extra_compile_args=['-std=c++11', '-Wno-cpp']
+    extra_c_compile_args=['-Wno-cpp']
+    extra_cxx_compile_args=['-std=c++11', '-Wno-cpp']
     extra_link_args = []
+    # Use the version of openmp provided by the compiler
+    openmp_compile_args = ['-fopenmp']
+    openmp_link_args = ['-fopenmp']
 
 extra_link_args_rpath = extra_link_args + ['-Wl,-rpath,'+ os.path.abspath(os.path.join(instdir, 'lib'))]
 
@@ -61,7 +73,7 @@ if 'PSANA' in BUILD_LIST :
                          include_dirs = ['src', np.get_include(), os.path.join(instdir, 'include')],
                          library_dirs = [os.path.join(instdir, 'lib')],
                          extra_link_args = extra_link_args_rpath,
-                         extra_compile_args = extra_compile_args)
+                         extra_compile_args = extra_cxx_compile_args)
 
   seq_module = Extension('psana.seq',
                          sources = ['src/seq.cc'],
@@ -69,7 +81,7 @@ if 'PSANA' in BUILD_LIST :
                          include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
                          library_dirs = [os.path.join(instdir, 'lib')],
                          extra_link_args = extra_link_args_rpath,
-                         extra_compile_args = extra_compile_args)
+                         extra_compile_args = extra_cxx_compile_args)
 
   container_module = Extension('psana.container',
                          sources = ['src/container.cc'],
@@ -77,7 +89,7 @@ if 'PSANA' in BUILD_LIST :
                          include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
                          library_dirs = [os.path.join(instdir, 'lib')],
                          extra_link_args = extra_link_args_rpath,
-                         extra_compile_args = extra_compile_args)
+                         extra_compile_args = extra_cxx_compile_args)
 
        #cmdclass = {'build': build_ext, 'build_ext': my_build_ext},
        #cmdclass={'build_ext': my_build_ext},
@@ -120,7 +132,7 @@ if 'SHMEM' in BUILD_LIST :
                 include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
                 library_dirs = [os.path.join(instdir, 'lib')],
                 language="c++",
-                extra_compile_args = extra_compile_args,
+                extra_compile_args = extra_cxx_compile_args,
                 extra_link_args = extra_link_args_rpath,
   )
 
@@ -134,7 +146,7 @@ if 'PEAKFINDER' in BUILD_LIST :
                          "../psalg/psalg/peaks/src/PeakFinderAlgos.cc",
                          "../psalg/psalg/peaks/src/LocalExtrema.cc"],
                 language="c++",
-                extra_compile_args = extra_compile_args,
+                extra_compile_args = extra_cxx_compile_args,
                 extra_link_args = extra_link_args,
                 include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
   )
@@ -155,7 +167,7 @@ if 'HEXANODE' in BUILD_LIST :
                              "../psalg/psalg/hexanode/src/SortUtils.cc",
                              "../psalg/psalg/hexanode/src/LMF_IO.cc"],
                     language="c++",
-                    extra_compile_args = extra_compile_args,
+                    extra_compile_args = extra_cxx_compile_args,
                     include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
                     library_dirs = [os.path.join(instdir, 'lib')],
                     libraries=['Resort64c_x64'],
@@ -173,7 +185,7 @@ if 'HEXANODE_TEST' in BUILD_LIST :
                              "../psalg/psalg/hexanode/src/LMF_IO.cc",
                              "../psalg/psalg/hexanode/src/cfib.cc"],
                     language="c++",
-                    extra_compile_args = extra_compile_args,
+                    extra_compile_args = extra_cxx_compile_args,
                     include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
                     library_dirs = [os.path.join(instdir, 'lib')],
                     extra_link_args = extra_link_args,
@@ -188,7 +200,8 @@ if 'CFD' in BUILD_LIST :
                 sources=["psana/constFracDiscrim/constFracDiscrim.pyx",
                          "../psalg/psalg/constFracDiscrim/src/ConstFracDiscrim.cc"],
                 language="c++",
-                extra_compile_args = extra_compile_args,
+                extra_compile_args = extra_cxx_compile_args,
+                extra_link_args = extra_link_args,
                 include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
   )
 
@@ -204,7 +217,7 @@ if 'DGRAM' in BUILD_LIST :
                 include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
                 library_dirs = [os.path.join(instdir, 'lib')],
                 language="c++",
-                extra_compile_args = extra_compile_args,
+                extra_compile_args = extra_cxx_compile_args,
                 extra_link_args = extra_link_args_rpath,
                 # include_dirs=[np.get_include(),
                               # "../install/include"]
@@ -217,6 +230,8 @@ if 'DGRAM' in BUILD_LIST :
       ext_modules = cythonize(Extension(
                     "psana.dgramchunk",
                     sources=["src/dgramchunk.pyx"],
+                    extra_compile_args=extra_c_compile_args,
+                    extra_link_args=extra_link_args,
       ), build_dir=CYT_BLD_DIR))
 
   setup(name='smdreader',
@@ -224,6 +239,8 @@ if 'DGRAM' in BUILD_LIST :
                     "psana.smdreader",
                     sources=["psana/smdreader.pyx"],
                     include_dirs=["psana"],
+                    extra_compile_args=extra_c_compile_args,
+                    extra_link_args=extra_link_args,
       ), build_dir=CYT_BLD_DIR))
 
   setup(name='eventbuilder', 
@@ -231,6 +248,8 @@ if 'DGRAM' in BUILD_LIST :
                     "psana.eventbuilder",                                 
                     sources=["psana/eventbuilder.pyx"],  
                     include_dirs=["psana"],
+                    extra_compile_args=extra_c_compile_args,
+                    extra_link_args=extra_link_args,
       ), build_dir=CYT_BLD_DIR))
 
   setup(name='parallelreader',
@@ -238,10 +257,8 @@ if 'DGRAM' in BUILD_LIST :
                     "psana.parallelreader",
                     sources=["psana/parallelreader.pyx"],
                     include_dirs=["psana"],
-                    extra_compile_args=['-fopenmp'], # This picks up system compiler and could potentially be
-                    extra_link_args=['-fopenmp'],    # bad when sys. comp. is linked with extra stuffs.
-                    #libraries = ['gomp'],             # Instead, tells compiler to use libgomp from conda directly.
-                    #library_dirs = [os.path.join(os.environ['CONDA_PREFIX'],'lib')],
+                    extra_compile_args=extra_c_compile_args + openmp_compile_args,
+                    extra_link_args=extra_link_args + openmp_link_args,
       ), build_dir=CYT_BLD_DIR))
 
 
@@ -252,7 +269,7 @@ if 'HSD' in BUILD_LIST :
                          "../psalg/psalg/peaks/src/LocalExtrema.cc"],
                 libraries=['xtc','psalg','digitizer'],
                 language="c++",
-                extra_compile_args=extra_compile_args,
+                extra_compile_args=extra_cxx_compile_args,
                 include_dirs=[np.get_include(),
                               "../install/include",
                               os.path.join(instdir, 'include')],
@@ -270,7 +287,7 @@ if 'NDARRAY' in BUILD_LIST :
                   sources=["psana/pycalgos/NDArray_ext.pyx",
                            "../psalg/psalg/peaks/src/WFAlgos.cc"],
                   language="c++",
-                  extra_compile_args = extra_compile_args,
+                  extra_compile_args = extra_cxx_compile_args,
                   include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
                   library_dirs = [os.path.join(instdir, 'lib')],
                   libraries=[],
