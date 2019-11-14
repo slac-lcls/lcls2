@@ -74,14 +74,6 @@ class EnvStore(object):
                 for v in val:
                     self.env_info.append((v, key))
 
-    @property
-    def epics_info(self):
-        epics_variables = self.env_variables['epics']
-        info = {}
-        for var in epics_variables:
-            info[(var,'epics')] = 'epics'
-        return info
-    
     def alg_from_variable(self, variable_name):
         """ Returns algorithm name from the given env variable. """
         for key, val in self.env_variables.items():

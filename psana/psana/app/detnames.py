@@ -16,6 +16,7 @@ def detnames():
   parser.add_argument("dsname", help="psana datasource experiment/run (e.g. exp=xppd7114,run=43) or xtc2 filename or shmem='my_shmem_identifier'")
   parser.add_argument('-r','--raw', dest='raw', action='store_true')
   parser.add_argument('-e','--epics', dest='epics', action='store_true')
+  parser.add_argument('-s','--scan', dest='scan', action='store_true')
   args = parser.parse_args()
 
   if '=' in args.dsname:
@@ -44,6 +45,10 @@ def detnames():
     headers = ['Name','Data Type']
     format_string = '{0:%d} | {1:%d}'
     names = myrun.epicsinfo
+  elif args.scan:
+    headers = ['Name','Data Type']
+    format_string = '{0:%d} | {1:%d}'
+    names = myrun.scaninfo
   else:
     headers = ['Name','Data Type']
     format_string = '{0:%d} | {1:%d}'
