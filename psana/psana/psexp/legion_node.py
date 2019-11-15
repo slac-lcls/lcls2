@@ -45,7 +45,7 @@ def run_bigdata_task(batch, run):
 
     events = Events(run, get_smd=get_smd)
     for evt in events:
-        if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
+        if evt._dgrams[0].service() != TransitionId.L1Accept: continue
         run.event_fn(evt, run.det)
     
 

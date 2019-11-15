@@ -430,6 +430,7 @@ int main(int argc, char* argv[])
             Dgram& dgOut = *(Dgram*)buf;
             if (dgIn->service() == TransitionId::L1Accept) {
                 eventL1Id++;
+                dgOut.env = dgIn->env;
             } else {
                 dgOut = *dgIn; 
                 eventUpdateId++;

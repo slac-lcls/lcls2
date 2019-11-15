@@ -16,7 +16,7 @@ class Events:
 
     def _get_evt_and_update_store(self):
         evt = next(self._evt_man)
-        if evt._dgrams[0].seq.service() != TransitionId.L1Accept:
+        if evt._dgrams[0].service() != TransitionId.L1Accept:
             self.run.ssm.update_by_event(evt)
         return evt
 

@@ -72,7 +72,7 @@ class EventManager(object):
         for i, event_bytes in enumerate(self.smd_events):
             if event_bytes:
                 smd_evt = Event._from_bytes(self.smd_configs, event_bytes)
-                if smd_evt._dgrams[0].seq.service() == TransitionId.L1Accept:
+                if smd_evt._dgrams[0].service() == TransitionId.L1Accept:
                     ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
                             d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_evt._dgrams])
                     offsets = ofsz[:,0]

@@ -75,17 +75,17 @@ class Event():
     
     @property
     def _seconds(self):
-        _high = (self._dgrams[0].seq.timestamp() >> 32) & 0xffffffff
+        _high = (self._dgrams[0].timestamp() >> 32) & 0xffffffff
         return _high
     
     @property
     def _nanoseconds(self):
-        _low = self._dgrams[0].seq.timestamp() & 0xffffffff
+        _low = self._dgrams[0].timestamp() & 0xffffffff
         return _low
 
     @property
     def timestamp(self):
-        return self._dgrams[0].seq.timestamp()
+        return self._dgrams[0].timestamp()
 
     def _run(self):
         return 0 # for psana1-cctbx compatibility

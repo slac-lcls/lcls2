@@ -74,7 +74,7 @@ class RunParallel(Run):
     
     def events(self):
         for evt in self.run_node():
-            if evt._dgrams[0].seq.service() != TransitionId.L1Accept: continue
+            if evt._dgrams[0].service() != TransitionId.L1Accept: continue
             yield evt
 
     def steps(self):

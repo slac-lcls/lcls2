@@ -320,10 +320,10 @@ class BigDataNode(object):
         events = Events(self.run, get_smd=get_smd)
         if self.run.scan:
             for evt in events:
-                if evt._dgrams[0].seq.service() == TransitionId.BeginStep:
+                if evt._dgrams[0].service() == TransitionId.BeginStep:
                     yield Step(evt, events)
 
         else:
             for evt in events:
-                if evt._dgrams[0].seq.service() == TransitionId.L1Accept:
+                if evt._dgrams[0].service() == TransitionId.L1Accept:
                     yield evt
