@@ -155,7 +155,6 @@ class DgramManager():
                         det_class_table[(det_name, drp_class_name)] = DetectorClass
                     else:
                         pass
-
         return det_class_table,xtc_info
 
     def get_timestamps(self):

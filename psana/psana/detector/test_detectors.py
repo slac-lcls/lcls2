@@ -77,20 +77,24 @@ class hsd_raw_2_3_42(DetectorImpl):
         else:
             return self._segments(evt)[0].waveform
 
-class EpicsImpl(DetectorImpl):
+class EnvImpl(DetectorImpl):
     def __init__(self, *args):
-        det_name, self._var_name, drp_class_name, configs, calibs, self._epics_store = args
-        super(EpicsImpl, self).__init__(det_name, drp_class_name, configs, calibs)
+        det_name, self._var_name, drp_class_name, configs, calibs, self._env_store = args
+        super(EnvImpl, self).__init__(det_name, drp_class_name, configs, calibs)
     def __call__(self, events):
         if isinstance(events, list):
-            return self._epics_store.values(events, self._var_name)
+            return self._env_store.values(events, self._var_name)
         else:
-            epics_values = self._epics_store.values([events], self._var_name)
-            return epics_values[0]
+            env_values = self._env_store.values([events], self._var_name)
+            return env_values[0]
 
-class epics_epics_0_0_0(EpicsImpl):
+class epics_epics_0_0_0(EnvImpl):
     def __init__(self, *args):
         super(epics_epics_0_0_0, self).__init__(*args)
+
+class scanDet_scan_2_3_42(EnvImpl):
+    def __init__(self, *args):
+        super(scanDet_scan_2_3_42, self).__init__(*args)
 
 # for early cctbx/psana2 development
 class cspad_raw_1_2_3(DetectorImpl):

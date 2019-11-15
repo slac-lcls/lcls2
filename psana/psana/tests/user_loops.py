@@ -33,13 +33,14 @@ ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
 for run in ds.runs():
     det = run.Detector('xppcspad')
     edet = run.Detector('HX2:DVD:GCC:01:PMON')
+    sdet = run.Detector('motor2')
     #beginRunCode
     for evt in run.events():
         padarray = vals.padarray
         # 4 segments, two per file
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
         assert edet(evt) is None or edet(evt) == 41.0
-
+        assert sdet(evt) == 42.0
     #endRunCode
 #endJobCode
 

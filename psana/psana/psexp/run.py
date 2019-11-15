@@ -10,7 +10,7 @@ from psana.psexp.tools import run_from_id, RunHelper
 from psana.psexp import legion_node
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.event_manager import EventManager
-from psana.psexp.stepstore_manager import StepStoreManager
+from psana.psexp.envstore_manager import EnvStoreManager
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.step import Step
 from psana.psexp.event_manager import TransitionId
@@ -92,22 +92,24 @@ class Run(object):
                 setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configs, self.calibs))
                 flag_found = True
         
-        # If no detector found, try epics 
-        # Epics det is identified by its keywords (e.g. 'XPP:VARS:FLOAT:02', etc).
-        # Here, epics store is passed to drp_class so that the keyword
-        # can be looked-up when evt is given (e.g. det(evt) returns value of
-        # the given epics keyword.
-        # Update 20190709 - there's only one algorithm (epics).
+        # If no detector found, try EnvStore.
+        # Environment values are identified by variable names (e.g. 'XPP:VARS:FLOAT:02', 'motor1').
+        # First we search for the store that has this name and pass it to drp_class so that the 
+        # varialbe name can be looked-up when evt is given (e.g. det(evt) returns value of
+        # the given epics keyword.)
+        # Current, there are two algorithms (epics and scan).  
         # d.epics[0].epics.HX2:DVD:GCC:01:PMON = 41.0
         # d.epics[0].epics.HX2:DVD:GPI:01:PMON = 'Test String'
         if not flag_found:
-            alg = self.ssm.stores['epics'].alg_from_variable(name)
+            #for alg, store in self.esm.stores.items():
+            #alg = self.esm.stores['epics'].alg_from_variable(name)
+            alg = self.esm.alg_from_variable(name)
             if alg:
-                det_name = 'epics'
+                det_name = alg
                 var_name = name
                 drp_class_name = alg
                 drp_class = self.dm.det_class_table[(det_name, drp_class_name)]
-                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibs, self.ssm.stores['epics'])
+                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibs, self.esm.stores[alg])
 
         return det
 
@@ -124,7 +126,11 @@ class Run(object):
 
     @property
     def epicsinfo(self):
-        return self.ssm.stores['epics'].epics_info
+        return self.esm.get_info('epics')
+    
+    @property
+    def scaninfo(self):
+        return self.esm.get_info('scan')
     
     @property
     def xtcinfo(self):
@@ -196,7 +202,7 @@ class RunSingleFile(Run):
         xtc_files, smd_files, epics_file = run_src
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
-        self.ssm = StepStoreManager(self.dm.configs, 'epics', 'scan')
+        self.esm = EnvStoreManager(self.dm.configs, 'epics', 'scan')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
@@ -218,7 +224,7 @@ class RunSerial(Run):
         self.smd_dm = DgramManager(smd_files)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
-        self.ssm = StepStoreManager(self.smd_dm.configs, 'epics', 'scan')
+        self.esm = EnvStoreManager(self.smd_dm.configs, 'epics', 'scan')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
@@ -247,7 +253,7 @@ class RunLegion(Run):
         self.smd_dm = DgramManager(smd_files)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
-        self.ssm = StepStoreManager(self.configs, 'epics', 'scan')
+        self.esm = EnvStoreManager(self.configs, 'epics', 'scan')
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = super(RunLegion, self)._get_calib(det_name)

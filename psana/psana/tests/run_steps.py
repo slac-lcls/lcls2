@@ -71,7 +71,7 @@ def run_serial_read(n_events, batch_size=1, filter_fn=0):
     ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir, batch_size=batch_size, filter=filter_fn)
     cn_steps = 0
     cn_events = 0
-    result = {'evt_per_step':[], 'n_steps': 0, 'n_events':0}
+    result = {'evt_per_step':[0,0,0], 'n_steps': 0, 'n_events':0}
     for run in ds.runs():
         for i, step in enumerate(run.steps()):
             cn_evt_per_step = 0
@@ -79,7 +79,7 @@ def run_serial_read(n_events, batch_size=1, filter_fn=0):
                 cn_evt_per_step += 1
                 cn_events += 1
             cn_steps +=1
-            result['evt_per_step'].append(cn_evt_per_step)
+            result['evt_per_step'][i] = cn_evt_per_step
     result['n_steps'] = cn_steps
     result['n_events'] = cn_events
     return result
@@ -118,7 +118,10 @@ if __name__ == "__main__":
     assert result == expected_result
     """
     # Test run.steps() 
-    test_cases = [(51, 1, 0), (51, 1, my_filter), (51, 5, 0), (51, 5, my_filter), \
+    test_cases = [(51, 1, 0), \
+            (51, 1, my_filter), \
+            (51, 5, 0), \
+            (51, 5, my_filter), \
             (20, 1, 0), (19, 1, 0)]
     
     for test_case in test_cases:
