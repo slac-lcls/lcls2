@@ -95,53 +95,42 @@ void EbReceiver::resetCounters()
 void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
 {
     unsigned index = (uintptr_t)appPrm;
-    PGPEvent* event = &m_pool.pgpEvents[index];
-
-    // get transitionId from the first lane in the event
-    int lane = __builtin_ffs(event->mask) - 1;
-    uint32_t dmaIndex = event->buffers[lane].index;
-    Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)m_pool.dmaBuffers[dmaIndex];
-    XtcData::TransitionId::Value transitionId = timingHeader->seq.service();
-    //printf("EbReceiver:  %u   index %u  tid %u  pid %014lx  env %08x\n",
-    //       timingHeader->evtCounter, index, transitionId, timingHeader->seq.pulseId().value(), timingHeader->env);
-
-    // pass everything except L1 accepts and slow updates to control level
-    if ((transitionId != XtcData::TransitionId::L1Accept)) {
-        // send pulseId to inproc so it gets forwarded to the collection
-        if (transitionId != XtcData::TransitionId::SlowUpdate) {
-            m_inprocSend.send(std::to_string(timingHeader->seq.pulseId().value()));
-        }
-        logging::debug("EbReceiver saw %s transition @ %014lx\n", XtcData::TransitionId::name(transitionId), timingHeader->seq.pulseId().value());
-    }
+    XtcData::Dgram* dgram = (XtcData::Dgram*)m_pool.pebble[index];
+    XtcData::TransitionId::Value transitionId = dgram->seq.service();
+    uint64_t pulseId = dgram->seq.pulseId().value();
 
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
         logging::critical("%sjumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
-        logging::critical("evtCounter %u", timingHeader->evtCounter);
-        logging::critical("pid = %014lx, env = %08x", timingHeader->seq.pulseId().value(), timingHeader->env);
-        logging::critical("tid %s", XtcData::TransitionId::name(transitionId));
-        logging::critical("lastevtCounter %u", m_lastEvtCounter);
-        logging::critical("lastPid %014lx lastTid %s", m_lastPid, XtcData::TransitionId::name(m_lastTid));
+        logging::critical("pid     %014lx, tid     %s, env %08x", pulseId, XtcData::TransitionId::name(transitionId), dgram->env);
+        logging::critical("lastPid %014lx, lastTid %s", m_lastPid, XtcData::TransitionId::name(m_lastTid));
     }
 
-    if (timingHeader->seq.pulseId().value() != result.seq.pulseId().value()) {
+    if (pulseId != result.seq.pulseId().value()) {
         logging::critical("timestamps don't match");
         logging::critical("index %u  previous index %u", index, m_lastIndex);
-        uint64_t tPid = timingHeader->seq.pulseId().value();
+        uint64_t tPid = pulseId;
         uint64_t rPid = result.seq.pulseId().value();
         logging::critical("pebble pulseId %014lx, result dgram pulseId %014lx, xor %014lx, diff %ld", tPid, rPid, tPid ^ rPid, tPid - rPid);
         exit(-1);
     }
 
     m_lastIndex = index;
-    m_lastEvtCounter = timingHeader->evtCounter;
-    m_lastPid = timingHeader->seq.pulseId().value();
-    m_lastTid = timingHeader->seq.service();
+    m_lastPid = pulseId;
+    m_lastTid = transitionId;
 
-    XtcData::Dgram* dgram = (XtcData::Dgram*)m_pool.pebble[index];
+    // pass everything except L1 accepts and slow updates to control level
+    if ((transitionId != XtcData::TransitionId::L1Accept)) {
+        // send pulseId to inproc so it gets forwarded to the collection
+        if (transitionId != XtcData::TransitionId::SlowUpdate) {
+            m_inprocSend.send(std::to_string(pulseId));
+        }
+        logging::debug("EbReceiver saw %s transition @ %014lx\n", XtcData::TransitionId::name(transitionId), pulseId);
+    }
+
     if (m_writing) {
         // write event to file if it passes event builder or if it's a transition
         if (result.persist() || result.prescale() || (transitionId != XtcData::TransitionId::L1Accept)) {
-            size_t size = sizeof(XtcData::Dgram) + dgram->xtc.sizeofPayload();
+            size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
             m_fileWriter.writeEvent(dgram, size);
 
             // small data writing
@@ -180,6 +169,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     }
 
     // return buffers and reset event
+    PGPEvent* event = &m_pool.pgpEvents[index];
     for (int i=0; i<4; i++) {
         if (event->mask & (1 << i)) {
             m_indices[m_count] = event->buffers[i].index;

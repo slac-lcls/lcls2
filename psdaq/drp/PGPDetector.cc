@@ -96,7 +96,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 det->event(*dgram, event);
                 // make sure the detector hasn't made the event too big
                 if (dgram->xtc.extent > pool.bufferSize()) {
-                    logging::error("L1Accept: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
+                    logging::critical("L1Accept: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
                     exit(-1);
                 }
 
@@ -114,14 +114,15 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 XtcData::Xtc& transitionXtc = det->transitionXtc();
                 memcpy(&dgram->xtc, &transitionXtc, transitionXtc.extent);
 
+                // make sure the transition isn't too big
+                if (dgram->xtc.extent > pool.bufferSize()) {
+                  logging::critical("Transition: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
+                  exit(-1);
+                }
+
                 if (event->l3InpBuf) { // else timed out
                     new(event->l3InpBuf) XtcData::Dgram(*dgram);
                 }
-            }
-            // make sure the transition isn't too big
-            if (dgram->xtc.extent > pool.bufferSize()) {
-                logging::error("Transition: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
-                exit(-1);
             }
         }
 
