@@ -14,7 +14,7 @@ def usage(): return 'Use command: python .../psana/hexanode/xxx.py'
 
 import os
 import sys
-from copy import deepcopy
+#from copy import deepcopy
 
 import hexanode
 import numpy as np
@@ -26,7 +26,6 @@ from psana.hexanode.WFHDF5IO import open_input_h5file
 
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 import psana.pyalgos.generic.Utils as gu
-#import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.Graphics import hist1d, show, move_fig, save_fig, move, save, plotImageLarge, plotGraph
 
 #------------------------------
@@ -71,6 +70,7 @@ class Store :
             self.lst_nhits_w1 = []
             self.lst_nhits_w2 = []
             self.lst_nhits_mcp= []
+            self.lst_nparts   = []
 
         if self.PLOT_UVW or self.PLOT_CORRELATIONS :
             self.lst_u_ns = []
@@ -208,8 +208,8 @@ def plot_histograms(prefix='plot', do_save=True, hwin_x0y0=(0,400)) :
     #---------
     if sp.PLOT_NHITS :
     #---------
-        nbins = 20
-        limits = (-0.5,19.5)
+        nbins = 16
+        limits = (-0.5,15.5)
         is_log = True
 
         h1d(np.array(sp.lst_nhits_u1), bins=nbins, amp_range=limits, log=is_log,\
@@ -239,6 +239,10 @@ def plot_histograms(prefix='plot', do_save=True, hwin_x0y0=(0,400)) :
         h1d(np.array(sp.lst_nhits_mcp), bins=nbins, amp_range=limits, log=is_log,\
             title ='Number of hits MCP', xlabel='Number of hits MCP', ylabel='Events',\
             fnm='nhits_mcp.png')
+
+        h1d(np.array(sp.lst_nparts), bins=10, amp_range=(-0.5,9.5), log=is_log,\
+            title ='Number of particles', xlabel='Number of particles', ylabel='Events',\
+            fnm='nparticles.png')
 
     #---------
     if sp.PLOT_TIME_CH :
@@ -547,6 +551,7 @@ def calib_on_data(**kwargs) :
     calibtab     = kwargs.get('calibtab', None)
     calibcfg     = kwargs.get('calibcfg', None)
     PLOT_HIS     = kwargs.get('plot_his', True)
+    SAVE_HIS     = kwargs.get('save_his', False)
     VERBOSE      = kwargs.get('verbose', False)
 
     print(gu.str_kwargs(kwargs, title='input parameters:'))
@@ -576,8 +581,7 @@ def calib_on_data(**kwargs) :
     #print('file calib_group : %s' % file.calib_group())
     #print('file ctype_dir   : %s' % file.calibtype_dir())
 
-    command = -1;
- 
+
 #   // The "command"-value is set in the first line of "sorter.txt"
 #   // 0 = only convert to new file format
 #   // 1 = sort and write new file 
@@ -620,10 +624,10 @@ def calib_on_data(**kwargs) :
     print("Numeration of channels - u1:%i  u2:%i  v1:%i  v2:%i  w1:%i  w2:%i  mcp:%i"%\
           (Cu1, Cu2, Cv1, Cv2, Cw1, Cw2, Cmcp))
 
-    inds_of_channels    = (Cu1, Cu2, Cv1, Cv2, Cw1, Cw2)
-    incr_of_consistence = (  1,   2,   4,   8,  16,  32)
-    #inds_of_channels    = (Cu1, Cu2, Cv1, Cv2, Cmcp)
-    #incr_of_consistence = (  1,   2,   4,   8,  16)
+    #inds_of_channels    = (Cu1, Cu2, Cv1, Cv2, Cw1, Cw2)
+    #incr_of_consistence = (  1,   2,   4,   8,  16,  32)
+    inds_of_channels    = (Cu1, Cu2, Cv1, Cv2, Cmcp)
+    incr_of_consistence = (  1,   2,   4,   8,  16)
     inds_incr = list(zip(inds_of_channels, incr_of_consistence))
 
     #print("chanel increments:", inds_incr)
@@ -654,11 +658,6 @@ def calib_on_data(**kwargs) :
 
     error_code = sorter.init_after_setting_parameters()
 
-    #=====================
-    # print('ZZZ error_code:', error_code)
-    # sys.exit('TEST EXIT')
-    #=====================
-
     if error_code :
         print("sorter could not be initialized\n")
         error_text = sorter.get_error_text(error_code, 512)
@@ -670,7 +669,7 @@ def calib_on_data(**kwargs) :
 
     print("ok for sorter initialization\n")
 
-    #create_output_directory(OFPREFIX)
+    create_output_directory(OFPREFIX)
 
     print("reading event data... \n")
 
@@ -683,7 +682,7 @@ def calib_on_data(**kwargs) :
         if evnum < EVSKIP : continue
         if evnum > EVENTS : break
 
-        if True : #gu.do_print(evnum) :
+        if gu.do_print(evnum) :
             t1 = time()
             print('Event: %06d, dt(sec): %.3f' % (evnum, t1 - t1_sec))
             t1_sec = t1
@@ -752,8 +751,10 @@ def calib_on_data(**kwargs) :
 
 
         #--------- preserve RAW time sums
-        time_sum_u = deepcopy(tdc_ns[Cu1,0] + tdc_ns[Cu2,0] - 2*tdc_ns[Cmcp,0]) #deepcopy(...)
-        time_sum_v = deepcopy(tdc_ns[Cv1,0] + tdc_ns[Cv2,0] - 2*tdc_ns[Cmcp,0])
+        #time_sum_u = deepcopy(tdc_ns[Cu1,0] + tdc_ns[Cu2,0] - 2*tdc_ns[Cmcp,0]) #deepcopy(...)
+        #time_sum_v = deepcopy(tdc_ns[Cv1,0] + tdc_ns[Cv2,0] - 2*tdc_ns[Cmcp,0])
+        time_sum_u = tdc_ns[Cu1,0] + tdc_ns[Cu2,0] - 2*tdc_ns[Cmcp,0]
+        time_sum_v = tdc_ns[Cv1,0] + tdc_ns[Cv2,0] - 2*tdc_ns[Cmcp,0]
         time_sum_w = 0 #tdc_ns[Cw1,0] + tdc_ns[Cw2,0] - 2*tdc_ns[Cmcp,0]
 
         #print("RAW time_sum_u, time_sum_v:", time_sum_u, time_sum_v)
@@ -798,59 +799,26 @@ def calib_on_data(**kwargs) :
         # Sort the TDC-Data and reconstruct missing signals and apply the time-sum- and NL-correction.
         # number_of_particles is the number of reconstructed particles
 
-
-
-
-
-
-
-
-        
-
-        #if evnum in (11,13,15,16) : continue
-        
-
-        continue
-
-
-
-        print('YYY Point A')
         number_of_particles = sorter.sort() if command == 1 else\
                               sorter.run_without_sorting()
-        print('YYY Point B')
-
-
-
-
-
-
-
 
         #file.get_tdc_data_array(tdc_ns, NUM_HITS)
-        if VERBOSE : print('   sorted number_of_hits_array', number_of_hits[:8])
+        if VERBOSE : print('    (un/)sorted number_of_hits_array', number_of_hits[:8])
         if VERBOSE : print_tdc_ns(tdc_ns, cmt='  TDC sorted data ')
-        if VERBOSE : print("  Event %5i  number_of_particles: %i" % (evnum, number_of_particles))
-
-
-        print('XXX number_of_particles:', number_of_particles)
-        if number_of_particles :
-          if True :
+        if VERBOSE : 
+            print("  Event %5i  number_of_particles: %i" % (evnum, number_of_particles))
             for i in range(number_of_particles) :
-                hco = hexanode.py_hit_class(sorter, i)
-                print("    XXX p:%2i x:%7.3f y:%7.3f t:%7.3f met:%d" % (i, hco.x, hco.y, hco.time, hco.method))
-            #print("    part1 u:%7.3f v:%7.3f w:%7.3f" % (u, v, w))
+                #### IT DID NOT WORK ON LCLS2 because pointer was deleted in py_hit_class.__dealloc__
+                hco = hexanode.py_hit_class(sorter, i) 
+                print("    p:%2i x:%7.3f y:%7.3f t:%7.3f met:%d" % (i, hco.x, hco.y, hco.time, hco.method))
 
-
-          print('    XXX number_of_particles:', number_of_particles)
-
-        #=====================
-        continue
-        #=====================
-
-
+        if sp.PLOT_NHITS :
+            sp.lst_nparts.append(number_of_particles)
 
         # Discards most of events in command>1
+        #=====================
         if number_of_particles<1 : continue
+        #=====================
 
 #       // TODO by end user..."
 
@@ -908,7 +876,7 @@ def calib_on_data(**kwargs) :
             sp.lst_Yvw.append(Yvw)
 
 
-        #hco = hexanode.py_hit_class(sorter, 0)
+        hco = hexanode.py_hit_class(sorter, 0)
 
         if sp.PLOT_MISC :
             sp.list_dr.append(dR)
@@ -921,6 +889,7 @@ def calib_on_data(**kwargs) :
 
             sp.lst_rec_method.append(hco.method)
             #print('reconstruction method %d' % hco.method)
+
 
         if sp.PLOT_XY_2D :
 
@@ -968,7 +937,7 @@ def calib_on_data(**kwargs) :
     print("end of the while loop... \n")
 
     if command == 2 :
-        print("calibrating detector... ")
+        print("sorter.do_calibration()... for command=2")
         sorter.do_calibration()
         print("ok - after do_calibration")
 
@@ -985,9 +954,8 @@ def calib_on_data(**kwargs) :
         CALIBTAB = calibtab if calibtab is not None else\
                    file.make_calib_file_path(type=CTYPE_HEX_TABLE)
         print("creating calibration table in file: %s" % CALIBTAB)
-        status = hexanode.py_create_calibration_tables(CALIBTAB, sorter)
-
-        print("CALIBRATION: finished creating calibration tables: %s status %s" % (CALIBTAB, status))
+        status = hexanode.py_create_calibration_tables(CALIBTAB.encode(), sorter)
+        print("CALIBRATION: finished creating calibration tables: status %s" % status)
 
         #=====================
         #sys.exit('TEST EXIT in QuadCalib')
@@ -998,7 +966,7 @@ def calib_on_data(**kwargs) :
     if sorter is not None : del sorter
 
     if PLOT_HIS :
-        plot_histograms(prefix=OFPREFIX, do_save=True, hwin_x0y0=(0,0))
+        plot_histograms(prefix=OFPREFIX, do_save=SAVE_HIS, hwin_x0y0=(0,0))
         show()
 
     #=====================

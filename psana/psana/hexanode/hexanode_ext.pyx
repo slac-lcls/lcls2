@@ -193,8 +193,9 @@ cdef class py_hit_class:
         self.cptr = sorter.cptr.output_hit_array[i]
 
     def __dealloc__(self):
+        pass
         #print("In py_hit_class.__dealloc__")
-        del self.cptr
+        #del self.cptr ## !!!! DO NOT DELETE POINTER, BECAUSE IT BELONGS TO ARRAY IN sorter !!!!
 
     @property
     def x(self) : return self.cptr.x
@@ -250,8 +251,9 @@ cdef class py_scalefactors_calibration_class:
         #st = self.cptr.clone(self.cptc)
 
     def __dealloc__(self):
-        print("In py_scalefactors_calibration_class.__dealloc__")
-        del self.cptr
+        pass
+        #print("In py_scalefactors_calibration_class.__dealloc__")
+        #del self.cptr # !!!!! DO NOT DELETE, BELONGS TO sorter!!!!
 
     @property
     def best_fv(self) : return self.cptr.best_fv
@@ -359,7 +361,7 @@ cdef class py_sort_class:
     cdef sort_class* cptr  # holds a C++ instance
 
     def __cinit__(self):
-        #print("In py_sort_class.__cinit__")
+        print("In py_sort_class.__cinit__")
         self.cptr = new sort_class();
         if self.cptr == NULL:
             raise MemoryError('In py_sort_class.__cinit__: Not enough memory.')
@@ -545,18 +547,18 @@ cdef class py_sort_class:
 
 
     def sort(self) :
-        print("In py_sort_class.sort")
+        #print("    In py_sort_class.sort")
         return self.cptr.sort()
 
 
     def run_without_sorting(self) :
-        print("In py_sort_class.run_without_sorting")
+        #print("    In py_sort_class.run_without_sorting")
         return self.cptr.run_without_sorting()
 
 
     def init_after_setting_parameters(self) :
         """Returns (int) error_code"""
-        print("In py_sort_class.init_after_setting_parameters")
+        #print("In py_sort_class.init_after_setting_parameters")
         return self.cptr.init_after_setting_parameters()
 
 
@@ -628,12 +630,12 @@ def py_read_config_file(const char* fname, py_sort_class sorter) :
 
 
 def py_read_calibration_tables(const char* fname, py_sort_class sorter) :
-    print("In py_read_calibration_tables from file %s" % fname)
+    #print("In py_read_calibration_tables from file %s" % fname)
     return read_calibration_tables(fname, sorter.cptr)
 
 
 def py_create_calibration_tables(const char* fname, py_sort_class sorter) :
-    print("In py_create_calibration_tables in file %s" % fname)
+    #print("In py_create_calibration_tables in file %s" % fname)
     return create_calibration_tables(fname, sorter.cptr)
 
 

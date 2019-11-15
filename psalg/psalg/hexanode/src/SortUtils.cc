@@ -230,7 +230,7 @@ bool read_calibration_tables(const char * filename, sort_class * sorter)
 
 bool create_calibration_tables(const char* filename, sort_class* sorter) 
 {
-        printf("In create_calibration_tables file: %s\n", filename);
+        //printf("In create_calibration_tables file: %s\n", filename);
 
 	if (!sorter) return false;
 	if (!filename) return false;

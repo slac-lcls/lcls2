@@ -71,6 +71,8 @@ import matplotlib.pyplot  as plt
 import matplotlib.lines   as lines
 import matplotlib.patches as patches
 
+plt.rcParams.update({'figure.max_open_warning': 0}) #get rid of warning: More than 20 figures have been opened.
+
 #------------------------------
 
 def figure(figsize=(13,12), title='Image', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=None, **kwargs) :

@@ -20,20 +20,22 @@ if __name__ == "__main__" :
     print(50*'_')
 
     # Parameters for initialization of the data source, channels, number of events etc.
-    kwargs = {#'dsname'   : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2',
+    #'dsname' : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2',
+    kwargs = {
               'ifname' : '/reg/g/psdm/detector/data_test/hdf5/amox27716-r0100-e060000-single-node.h5',
               'detname'  : 'tmo_hexanode',
               'numchs'   : 5,
-              'numhits'  : 6,
+              'numhits'  : 16,
               'evskip'   : 7,
-              'events'   : 1000,
+              'events'   : 60000,
               'ofprefix' : './tst',
               'run'      : 100,
               'exp'      : 'amox27716',
               'calibcfg' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/configuration_quad.txt',
               'calibtab' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/calibration_table_data.txt',
               'plot_his' : True,
-              'verbose'  : True,
+              'save_his' : False,
+              'verbose'  : False,
              }
 
     # Parameters of the CFD descriminator for hit time finding algotithm
@@ -52,13 +54,13 @@ if __name__ == "__main__" :
     plotpars={'PLOT_NHITS'         : True,
               'PLOT_TIME_CH'       : False,
               'PLOT_REFLECTIONS'   : False,
-              'PLOT_UVW'           : False,
-              'PLOT_TIME_SUMS'     : False,
-              'PLOT_CORRELATIONS'  : False,
+              'PLOT_UVW'           : True,
+              'PLOT_TIME_SUMS'     : True,
+              'PLOT_CORRELATIONS'  : True,
               'PLOT_XY_COMPONENTS' : False,
-              'PLOT_XY_2D'         : False,
               'PLOT_PHYSICS'       : False,
               'PLOT_MISC'          : False,
+              'PLOT_XY_2D'         : True,
              }
 
     kwargs.update(cfdpars)
