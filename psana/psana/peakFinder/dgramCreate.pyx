@@ -130,7 +130,7 @@ class parse_xtc():
 cdef extern from 'xtcdata/xtc/BlockDgram.hh' namespace "XtcData":
 
     cdef cppclass BlockDgram:
-        BlockDgram(void* buffdgram, cnp.uint64_t tstamp, cnp.uint64_t pulseId, unsigned transitionId)
+        BlockDgram(void* buffdgram, cnp.uint64_t tstamp, unsigned transitionId)
 
         void addNamesBlock(cnp.uint8_t* name_block, size_t block_elems, unsigned nodeId, unsigned namesId)
         void addShapesDataBlock(cnp.uint8_t* shape_block, cnp.uint8_t* data_block,\
@@ -175,15 +175,14 @@ cdef class PyBlockDgram:
     cdef cnp.uint8_t* addBuff
     cdef size_t block_elems
     cdef cnp.uint64_t tstamp
-    cdef cnp.uint64_t pulseId
     cdef unsigned transitionId
 
 
-    def __cinit__(self, tstamp, pulseId, transitionId):
+    def __cinit__(self, tstamp, transitionId):
 
         self.buffer_size =0x4000000
         self.buffer  = <cnp.uint8_t*> malloc(self.buffer_size)
-        self.cptr = new BlockDgram(self.buffer, tstamp, pulseId, transitionId)
+        self.cptr = new BlockDgram(self.buffer, tstamp, transitionId)
 
     def addNamesBlock(self, PyNameBlock pyn, nodeId, namesId):
         self.cptr.addNamesBlock(pyn.cptr_start, pyn.ct, nodeId, namesId)
@@ -363,11 +362,11 @@ class CyDgram():
         self.config_block.append([py_name, py_shapes, py_data, nameinfo.namesId])
 
     # the user calls this via get() which constructs the datagram header
-    # with the specified timestamp, pulseId and transitionId.
+    # with the specified timestamp and transitionId.
     # header, adds in the Names block if it's the first time ("configure")
     # and then adds the Shapes and Data blocks
-    def constructBlock(self, tstamp, pulseId, transitionId):
-        self.pydgram = PyBlockDgram(tstamp, pulseId, transitionId)
+    def constructBlock(self, tstamp, transitionId):
+        self.pydgram = PyBlockDgram(tstamp, transitionId)
 
         # this line restricts us to writing out files that do not
         # have event-built datagrams (where the nodeId's must
@@ -387,12 +386,12 @@ class CyDgram():
      #        self.config_block = []
      #    self.pydgram.writeToFile(self.filename)
 
-    def get(self, timestamp, pulseId, transitionId):
-        self.constructBlock(timestamp, pulseId, transitionId)
+    def get(self, timestamp, transitionId):
+        self.constructBlock(timestamp, transitionId)
         self.config_block = []
         return self.pydgram.retByArr().tobytes()
 
-    def getArray(self, timestamp, pulseId, transitionId):
-        self.constructBlock(timestamp, pulseId, transitionId)
+    def getArray(self, timestamp, transitionId):
+        self.constructBlock(timestamp, transitionId)
         self.config_block = []
         return self.pydgram.retByArr()

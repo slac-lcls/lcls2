@@ -75,14 +75,6 @@ if 'PSANA' in BUILD_LIST :
                          extra_link_args = extra_link_args_rpath,
                          extra_compile_args = extra_cxx_compile_args)
 
-  seq_module = Extension('psana.seq',
-                         sources = ['src/seq.cc'],
-                         libraries = ['xtc'],
-                         include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
-                         library_dirs = [os.path.join(instdir, 'lib')],
-                         extra_link_args = extra_link_args_rpath,
-                         extra_compile_args = extra_cxx_compile_args)
-
   container_module = Extension('psana.container',
                          sources = ['src/container.cc'],
                          libraries = ['xtc'],
@@ -105,7 +97,7 @@ if 'PSANA' in BUILD_LIST :
        package_data={'graphqt': ['data/icons/*.png','data/icons/*.gif'],
        },
        #cmdclass={'build_ext': my_build_ext},
-       ext_modules = [dgram_module, seq_module, container_module],
+       ext_modules = [dgram_module, container_module],
        entry_points={
             'console_scripts': [
                 'convert_npy_to_txt  = psana.pyalgos.app.convert_npy_to_txt:do_main',

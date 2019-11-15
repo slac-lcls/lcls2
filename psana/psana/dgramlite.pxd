@@ -3,7 +3,6 @@ cdef struct Xtc:
     unsigned extent
 
 cdef struct Sequence:
-    unsigned long pulse_id
     unsigned low
     unsigned high
 
