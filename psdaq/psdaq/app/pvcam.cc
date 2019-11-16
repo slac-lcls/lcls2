@@ -87,7 +87,7 @@ int main(int argc, char* argv[])
   //
   //  Open the timing receiver
   //
-  tpr = new Pds::Tpr::Client("/dev/tpra");
+  tpr = new Pds::Tpr::Client("/dev/tpra",0);
 
   struct sigaction sa;
   sa.sa_handler = sigHandler;
@@ -99,6 +99,7 @@ int main(int argc, char* argv[])
   sigaction(SIGSEGV,&sa,NULL);
 
   tpr->start(Pds::Tpr::TprBase::FixedRate(rate));
+  tpr->release();
 
   uint16_t image[128];
   pvd::shared_vector<const uint16_t> pimage(image,0,128);

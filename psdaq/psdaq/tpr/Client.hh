@@ -13,7 +13,8 @@ namespace Pds {
 
     class Client {
     public:
-      Client(const char* devname);
+      Client(const char* devname,
+             unsigned    channel = 0);
       ~Client();
     public:
       //  Enable the trigger
@@ -22,6 +23,8 @@ namespace Pds {
       void start(TprBase::FixedRate rate=TprBase::FixedRate::_1M);
       //  Disable the trigger
       void stop();
+      //  Release control
+      void release(); 
       //
       //  Seek timing frame by pulseId
       //  Return address on success or 0
@@ -32,6 +35,9 @@ namespace Pds {
       //
       const Pds::Tpr::Frame* advance();
     private:
+      void _dump() const;
+    private:
+      unsigned          _channel;
       int               _fd;
       Pds::Tpr::TprReg* _dev;
       int               _fdsh;

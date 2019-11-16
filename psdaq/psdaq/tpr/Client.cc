@@ -8,7 +8,9 @@
 
 using namespace Pds::Tpr;
 
-Client::Client(const char* devname)
+Client::Client(const char* devname,
+               unsigned    channel) :
+  _channel(channel)
 {
   _fd = ::open(devname, O_RDWR);
   if (_fd<0) {
@@ -35,7 +37,7 @@ Client::Client(const char* devname)
     ring.dumpFrames(); }
 
   char dev[16];
-  sprintf(dev,"%s%c",devname,'0');
+  sprintf(dev,"%s%x",devname,_channel);
   
   _fdsh = open(dev, O_RDWR);
   if (_fdsh < 0) {
@@ -53,43 +55,53 @@ Client::Client(const char* devname)
 
 }
 
-Client::~Client() { close(_fd); }
+Client::~Client() { release(); }
+
+void Client::release() { 
+  if (_fd>=0) {
+    close(_fd); 
+    munmap(_dev,sizeof(Pds::Tpr::TprReg));
+  }
+  _fd=-1; 
+}
+
+void Client::_dump() const 
+{
+  printf("TprBase::channel[%u] evtsel %08x control %x\n",
+         _channel,
+         _dev->base.channel[_channel].evtSel,
+         _dev->base.channel[_channel].control);
+}
 
   //  Enable the trigger
 void Client::start(unsigned partn)
 {
-  printf("TprBase::channel[0] evtsel %08x control %x\n",
-         _dev->base.channel[0].evtSel,
-         _dev->base.channel[0].control);
+  _dump();
   //  _dev->base.setupDaq(0,partn);
-  _dev->base.setupChannel(0, TprBase::Any, (TprBase::FixedRate)partn, 0, 0, 0);
-  printf("TprBase::channel[0] evtsel %08x control %x\n",
-         _dev->base.channel[0].evtSel,
-         _dev->base.channel[0].control);
+  _dev->base.setupChannel(_channel, TprBase::Any, (TprBase::FixedRate)partn, 0, 0, 0);
+  _dump();
+
   char buff[32];
   read(_fdsh, &buff, 32 );
-  _rp = _queues->allwp[0];
+  _rp = _queues->allwp[_channel];
 }
 
 //  Enable the trigger
 void Client::start(TprBase::FixedRate rate)
 {
-  printf("TprBase::channel[0] evtsel %08x control %x\n",
-         _dev->base.channel[0].evtSel,
-         _dev->base.channel[0].control);
-  _dev->base.setupChannel(0, TprBase::Any, rate, 0, 0, 1);
-  printf("TprBase::channel[0] evtsel %08x control %x\n",
-         _dev->base.channel[0].evtSel,
-         _dev->base.channel[0].control);
+  _dump();
+  _dev->base.setupChannel(_channel, TprBase::Any, rate, 0, 0, 1);
+  _dump();
+
   char buff[32];
   read(_fdsh, &buff, 32 );
-  _rp = _queues->allwp[0];
+  _rp = _queues->allwp[_channel];
 }
 
 //  Disable the trigger
 void Client::stop()
 {
-  _dev->base.channel[0].control = 0;
+  _dev->base.channel[_channel].control = 0;
 }
 
   //
@@ -102,8 +114,8 @@ const Pds::Tpr::Frame* Client::advance(uint64_t pulseId)
   const Pds::Tpr::Queues& q = *_queues;
   const Pds::Tpr::Frame* f=0;
   while(1) {
-    while (_rp < q.allwp[0]) {
-      f = reinterpret_cast<const Pds::Tpr::Frame*>(&q.allq [ q.allrp[0].idx[_rp &(MAX_TPR_ALLQ-1)] & (MAX_TPR_ALLQ-1)]);
+    while (_rp < q.allwp[_channel]) {
+      f = reinterpret_cast<const Pds::Tpr::Frame*>(&q.allq [ q.allrp[_channel].idx[_rp &(MAX_TPR_ALLQ-1)] & (MAX_TPR_ALLQ-1)]);
       if (f->pulseId >  pulseId) return 0;
       _rp++;
       if (f->pulseId == pulseId) return f;
@@ -119,8 +131,8 @@ const Pds::Tpr::Frame* Client::advance()
   const Pds::Tpr::Queues& q = *_queues;
   const Pds::Tpr::Frame* f=0;
   while(1) {
-    while (_rp < q.allwp[0]) {
-      f = reinterpret_cast<const Pds::Tpr::Frame*>(&q.allq [ q.allrp[0].idx[_rp &(MAX_TPR_ALLQ-1)] & (MAX_TPR_ALLQ-1)]);
+    while (_rp < q.allwp[_channel]) {
+      f = reinterpret_cast<const Pds::Tpr::Frame*>(&q.allq [ q.allrp[_channel].idx[_rp &(MAX_TPR_ALLQ-1)] & (MAX_TPR_ALLQ-1)]);
       _rp++;
       return f;
     }

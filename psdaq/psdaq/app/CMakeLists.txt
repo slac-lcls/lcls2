@@ -37,6 +37,20 @@ target_link_libraries(hpsBldClient
    rt
 )
 
+add_executable(lclsBldServer lclsBldServer.cc)
+
+target_include_directories(lclsBldServer PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(lclsBldServer
+   app
+   tpr
+   dl
+   pthread
+   rt
+)
 
 #
 #  tprioc
@@ -152,6 +166,7 @@ target_link_libraries(pvcam
 install(TARGETS app
 		hpsBldServer
 		hpsBldClient
+                lclsBldServer
 		tprioc
 		tprsh
 		tprutil
