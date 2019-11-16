@@ -52,7 +52,7 @@ class Branch(Instruction):
     def _word(self, a):
         w = a & 0x7ff
         if len(self.args)>2:
-            w = ((self.args[1]&0x3)<<27) | (1<<24) | ((self.args[2]&0xff)<<16) | w
+            w = ((self.args[2]&0x3)<<27) | (1<<24) | ((self.args[3]&0xff)<<16) | w
         return int(w)
 
     @classmethod
