@@ -127,7 +127,7 @@ class AutoParentAlloc : public Xtc
 {
 public:
     AutoParentAlloc(TypeId typeId) : Xtc(typeId) {}
-    AutoParentAlloc(TypeId typeId, NamesId& namesId) : Xtc(typeId,namesId) {}
+    AutoParentAlloc(TypeId typeId, const NamesId& namesId) : Xtc(typeId,namesId) {}
     void* alloc(uint32_t size, Xtc& parent) {
         parent.alloc(size);
         return Xtc::alloc(size);
@@ -177,7 +177,7 @@ class Names : public AutoParentAlloc
 public:
 
 
-    Names(const char* detName, Alg& alg, const char* detType, const char* detId, NamesId& namesId, unsigned segment=0) :
+    Names(const char* detName, Alg& alg, const char* detType, const char* detId, const NamesId& namesId, unsigned segment=0) :
         AutoParentAlloc(TypeId(TypeId::Names,0),namesId),
         _NameInfo(detName, alg, detType, detId, segment)
     {
