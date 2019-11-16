@@ -47,9 +47,6 @@ procmgr_config = [
 
 ## EPICS PV exporter
  { host: epics_host,  id:'pvrtmon', port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -P DAQ:LAB2:XPM:2 -N DeadFrac'},
-
-## procstat
- {                    id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
   ]
 
 for n in drp_nodes:
