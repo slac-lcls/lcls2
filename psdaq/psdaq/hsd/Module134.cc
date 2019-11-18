@@ -125,13 +125,14 @@ void Module134::setup_jesd(bool lAbortOnErr)
   Fmc134Ctrl* ctrl = &p->fmc_ctrl;
   vuint32_t* jesd0  = &p->surf_jesd0[0];
   vuint32_t* jesd1  = &p->surf_jesd1[0];
-  if (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL))
-  //  if (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL))
+  //  if (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL))
+  if (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL))
     if (lAbortOnErr)
       abort();
   if (cpld->default_adc_init())
     if (lAbortOnErr)
       abort();
+  cpld->dump();
   jesd0[0] = 0xff;
   jesd1[0] = 0xff;
   jesd0[4] = 0x27;
