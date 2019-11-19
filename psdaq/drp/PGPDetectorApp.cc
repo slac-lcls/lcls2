@@ -143,6 +143,14 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         // to be attached to the xtc
         m_det->beginstep(xtc, stepInfo);
     }
+    else if (key == "beginrun") {
+        unsigned error = m_det->beginrun(xtc, stepInfo);
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::beginrun";
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        }
+    }
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);
