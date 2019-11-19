@@ -169,7 +169,7 @@ if 'HEXANODE' in BUILD_LIST :
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
+                    library_dirs = [os.path.join(instdir, 'lib'), os.path.join(sys.prefix, 'lib')],
                     libraries=['Resort64c_x64'],
                     extra_link_args = extra_link_args,
                     )
