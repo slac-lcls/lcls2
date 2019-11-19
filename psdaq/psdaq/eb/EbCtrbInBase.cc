@@ -160,7 +160,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
 {
   int rc;
 
-  // Pend for a result batch (a set of Dgrams) and process it.
+  // Pend for a result batch (a set of EbDgrams) and process it.
   uint64_t  data;
   const int tmo = 100;                  // milliseconds
   if ( (rc = _transport.pend(&data, tmo)) < 0)  return rc;
@@ -169,7 +169,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
   unsigned           idx = ImmData::idx(data);
   EbLfSvrLink*       lnk = _links[src];
   const ResultDgram* bdg = reinterpret_cast<const ResultDgram*>(lnk->lclAdx(idx * _maxBatchSize));
-  uint64_t           pid = bdg->seq.pulseId().value();
+  uint64_t           pid = bdg->pulseId();
   if ( (rc = lnk->postCompRecv()) )
   {
     fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
@@ -178,7 +178,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
 
   if (_prms.verbose >= VL_BATCH)
   {
-    unsigned   ctl     = bdg->seq.pulseId().control();
+    unsigned   ctl     = bdg->pulseId();
     unsigned   env     = bdg->env;
     BatchFifo& pending = ctrb.pending();
     printf("CtrbIn  rcvd        %6ld result  [%5d] @ "
@@ -218,7 +218,7 @@ void EbCtrbInBase::_pairUp(TebContributor&    ctrb,
       {
         fprintf(stderr, "%s:\n  No input batch for result: empty pending FIFO timeout:\n"
                 "    new result   idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
-                idx, result->seq.pulseId().value());
+                idx, result->pulseId());
         return;
       }
     }
@@ -237,9 +237,9 @@ void EbCtrbInBase::_pairUp(TebContributor&    ctrb,
               "    looked up batch idx %08x, pid %014lx\n"
               "    unhandled result              pid %014lx\n"
               "    pending head    idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
-              idx, result->seq.pulseId().value(),
+              idx, result->pulseId(),
               batch->index(), batch->id(),
-              batch->result()->seq.pulseId().value(),
+              batch->result()->pulseId(),
               inputs->index(), inputs->id());
       abort();
     }
@@ -252,7 +252,7 @@ void EbCtrbInBase::_pairUp(TebContributor&    ctrb,
   while (result)
   {
     uint64_t iPid = inputs->id();
-    uint64_t rPid = result->seq.pulseId().value();
+    uint64_t rPid = result->pulseId();
     if (unlikely((iPid ^ rPid) & ~(BATCH_DURATION - 1))) // Include bits above index()
     {
       fprintf(stderr, "%s:\n  Result / Input batch mismatch: "
@@ -279,11 +279,11 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
                             const Batch*       inputs)
 {
   const ResultDgram* result = results;
-  const Dgram*       input  = static_cast<const Dgram*>(inputs->buffer());
+  const EbDgram*     input  = static_cast<const EbDgram*>(inputs->buffer());
   const size_t       iSize  = inputs->size();
   const size_t       rSize  = _maxBatchSize / MAX_ENTRIES;
-  uint64_t           rPid   = result->seq.pulseId().value();
-  uint64_t           iPid   = input->seq.pulseId().value();
+  uint64_t           rPid   = result->pulseId();
+  uint64_t           iPid   = input->pulseId();
   unsigned           rCnt   = MAX_ENTRIES;
   unsigned           iCnt   = MAX_ENTRIES;
   do
@@ -299,8 +299,8 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
       unsigned    idx    = inputs->index();
       unsigned    env    = result->env;
       unsigned    src    = result->xtc.src.value();
-      unsigned    ctl    = result->seq.pulseId().control();
-      const char* svc    = TransitionId::name(result->seq.service());
+      unsigned    ctl    = result->control();
+      const char* svc    = TransitionId::name(result->service());
       size_t      extent = sizeof(*result) + result->xtc.sizeofPayload();
       printf("CtrbIn  found  [%5d]  %15s    @ "
              "%16p, ctl %02x, pid %014lx, sz %6zd, TEB %2d, env %08x, deliver %c [%014lx]\n",
@@ -313,15 +313,15 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
 
       ++_eventCount;                    // Don't count events not meant for us
 
-      input = reinterpret_cast<const Dgram*>(reinterpret_cast<const char*>(input) + iSize);
+      input = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(input) + iSize);
 
-      iPid = input->seq.pulseId().value();
+      iPid = input->pulseId();
       if (!--iCnt || !iPid)  break;     // Handle full list faster
     }
 
     result = reinterpret_cast<const ResultDgram*>(reinterpret_cast<const char*>(result) + rSize);
 
-    rPid = result->seq.pulseId().value();
+    rPid = result->pulseId();
   }
   while (--rCnt && rPid);               // Handle full list faster
 
@@ -333,7 +333,7 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
     result = results;
     for (unsigned i = 0; i < MAX_ENTRIES; ++i)
     {
-      uint64_t pid = result->seq.pulseId().value();
+      uint64_t pid = result->pulseId();
       printf("  %2d: pid %014lx, appPrm %p\n", i, pid, inputs->retrieve(pid));
       if (pid == 0ul)  break;
       result = reinterpret_cast<const ResultDgram*>(reinterpret_cast<const char*>(result) + rSize);

@@ -11,8 +11,6 @@
 
 namespace XtcData {
   class Xtc;
-  class Dgram;
-  class Damage;
 };
 
 namespace Drp {

@@ -2,8 +2,6 @@
 #include "DataDriver.h"
 #include "xtcdata/xtc/Dgram.hh"
 using XtcData::Transition;
-using XtcData::Sequence;
-using XtcData::PulseId;
 
 using namespace Pds::Kcu;
 
@@ -145,15 +143,15 @@ const Transition* Client::advance(uint64_t pulseId)
     int x = _current;
     int last = _dmaRet[x];
     if (last > 0) {
-      const Transition* b = reinterpret_cast<const Transition*>
+      const XtcData::EbDgram* b = reinterpret_cast<const XtcData::EbDgram*>
         (_dmaBuffers[_dmaIndex[x]]);
-      if (b->seq.pulseId().value() == pulseId) {
+      if (b->pulseId() == pulseId) {
         _current++;
         result = b;
         break;
       }
-      if (b->seq.pulseId().value() > pulseId) {
-        _next = b->seq.pulseId().value();
+      if (b->pulseId() > pulseId) {
+        _next = b->pulseId();
         break;
       }
     }

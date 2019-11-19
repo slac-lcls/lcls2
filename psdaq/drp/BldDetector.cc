@@ -169,9 +169,9 @@ public:
         dmaSetMaskBytes(pool.fd(), mask);
     }
 
-    XtcData::Dgram* next(uint64_t pulseId, uint32_t& evtIndex);
+    XtcData::EbDgram* next(uint64_t pulseId, uint32_t& evtIndex);
 private:
-    XtcData::Dgram* handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex);
+    XtcData::EbDgram* handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex);
     MemPool& m_pool;
     unsigned m_nodeId;
     uint32_t m_envMask;
@@ -183,7 +183,7 @@ private:
     uint32_t dest[MAX_RET_CNT_C];
 };
 
-XtcData::Dgram* Pgp::handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
+XtcData::EbDgram* Pgp::handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
 {
     int32_t size = dmaRet[m_current];
     uint32_t index = dmaIndex[m_current];
@@ -203,15 +203,15 @@ XtcData::Dgram* Pgp::handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
     event->mask |= (1 << lane);
 
     // make new dgram in the pebble
-    XtcData::Dgram* dgram = (XtcData::Dgram*)m_pool.pebble[evtIndex];
+    XtcData::EbDgram* dgram = (XtcData::EbDgram*)m_pool.pebble[evtIndex];
     XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
     dgram->xtc.contains = tid;
     dgram->xtc.damage = 0;
     dgram->xtc.extent = sizeof(XtcData::Xtc);
 
     // fill in dgram header
-    dgram->seq = timingHeader->seq;
-    dgram->env = timingHeader->env & m_envMask;
+    dgram->time = timingHeader->time;
+    dgram->env = ((timingHeader->env) & m_envMask) | ((timingHeader->timing_control())<<24);
 
     // set the src field for the event builders
     dgram->xtc.src = XtcData::Src(m_nodeId);
@@ -219,7 +219,7 @@ XtcData::Dgram* Pgp::handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
     return dgram;
 }
 
-XtcData::Dgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex)
+XtcData::EbDgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex)
 {
     // get new buffers
     if (m_current == m_available) {
@@ -244,14 +244,14 @@ XtcData::Dgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex)
     Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)m_pool.dmaBuffers[dmaIndex[m_current]];
 
     // return dgram if bld pulseId matches pgp pulseId or if its a transition
-    if ((pulseId == timingHeader->seq.pulseId().value()) || (timingHeader->seq.service() != XtcData::TransitionId::L1Accept)) {
-        XtcData::Dgram* dgram = handle(timingHeader, evtIndex);
+    if ((pulseId == timingHeader->pulseId()) || (timingHeader->service() != XtcData::TransitionId::L1Accept)) {
+        XtcData::EbDgram* dgram = handle(timingHeader, evtIndex);
         m_current++;
         return dgram;
     }
     // Missed BLD data so mark event as damaged
-    else if (pulseId > timingHeader->seq.pulseId().value()) {
-        XtcData::Dgram* dgram = handle(timingHeader, evtIndex);
+    else if (pulseId > timingHeader->pulseId()) {
+        XtcData::EbDgram* dgram = handle(timingHeader, evtIndex);
         dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
         m_current++;
         return dgram;
@@ -429,16 +429,16 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
         uint8_t* bldPayload;
         uint64_t pulseId = bld.next(payloadSize, &bldPayload);
         uint32_t index;
-        XtcData::Dgram* dgram = pgp.next(pulseId, index);
+        XtcData::EbDgram* dgram = pgp.next(pulseId, index);
         if (dgram) {
             if (dgram->xtc.damage.value()) {
                 ++nmissed;
                 //printf("Missed bld data!!\n");
-                //printf("pulseId bld %016lx  | pgp %016lx\n", pulseId, dgram->seq.pulseId().value());
+                //printf("pulseId bld %016lx  | pgp %016lx\n", pulseId, dgram->pulseId());
             }
             else {
                 XtcData::NamesId namesId(m_drp.nodeId(), 0);
-                switch (dgram->seq.service()) {
+                switch (dgram->service()) {
                     case XtcData::TransitionId::Configure: {
                         logging::info("BLD configure");
                         XtcData::Alg bldAlg("bldAlg", 1, 2, 3);
@@ -466,14 +466,14 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
     logging::info("Worker thread finished");
 }
 
-void BldApp::sentToTeb(XtcData::Dgram& dgram, uint32_t index)
+void BldApp::sentToTeb(XtcData::EbDgram& dgram, uint32_t index)
 {
     void* buffer = m_drp.tebContributor().allocate(&dgram, (void*)((uintptr_t)index));
     if (buffer) { // else timed out
         PGPEvent* event = &m_drp.pool.pgpEvents[index];
         event->l3InpBuf = buffer;
-        XtcData::Dgram* l3InpDg = new(buffer) XtcData::Dgram(dgram);
-        if (dgram.seq.isEvent()) {
+        XtcData::EbDgram* l3InpDg = new(buffer) XtcData::EbDgram(dgram);
+        if (dgram.isEvent()) {
             if (m_drp.triggerPrimitive()) {// else this DRP doesn't provide input
                 m_drp.triggerPrimitive()->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc); // Produce
             }

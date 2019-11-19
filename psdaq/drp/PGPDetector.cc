@@ -37,17 +37,17 @@ bool checkPulseIds(MemPool& pool, PGPEvent* event)
             uint32_t index = event->buffers[i].index;
             Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(pool.dmaBuffers[index]);
             if (pulseId == 0) {
-                pulseId = timingHeader->seq.pulseId().value();
+                pulseId = timingHeader->pulseId();
             }
             else {
-                if (pulseId != timingHeader->seq.pulseId().value()) {
+                if (pulseId != timingHeader->pulseId()) {
                     logging::error("Wrong pulse id! expected %lu but got %lu instead",
-                           pulseId, timingHeader->seq.pulseId().value());
+                           pulseId, timingHeader->pulseId());
                     return false;
                 }
             }
             // check bit 7 in pulseId for error
-            bool error = timingHeader->seq.pulseId().control() & (1 << 7);
+            bool error = timingHeader->control() & (1 << 7);
             if (error) {
                 logging::error("Error bit in pulseId is set");
             }
@@ -62,7 +62,9 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     Batch batch;
     MemPool& pool = drp.pool;
     const unsigned nbuffers = pool.nbuffers();
-    uint32_t envMask = 0xffff0000 | uint32_t(para.rogMask);
+    // only save the readout groups we're interested in for
+    // this partition, and leave top 8 bits free for "control"
+    uint32_t envMask = uint32_t(para.rogMask);
     while (true) {
         if (!inputQueue.pop(batch)) {
             break;
@@ -74,7 +76,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             checkPulseIds(pool, event);
 
             // make new dgram in the pebble
-            XtcData::Dgram* dgram = (XtcData::Dgram*)pool.pebble[index];
+            XtcData::EbDgram* dgram = (XtcData::EbDgram*)pool.pebble[index];
             XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
             dgram->xtc.src = XtcData::Src(det->nodeId); // set the src field for the event builders
             dgram->xtc.damage = 0;
@@ -85,11 +87,11 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             int lane = __builtin_ffs(event->mask) - 1;
             uint32_t dmaIndex = event->buffers[lane].index;
             Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)pool.dmaBuffers[dmaIndex];
-            XtcData::TransitionId::Value transitionId = timingHeader->seq.service();
+            XtcData::TransitionId::Value transitionId = timingHeader->service();
 
             // fill in dgram header
-            dgram->seq = timingHeader->seq;
-            dgram->env = timingHeader->env & envMask; // Ignore other partitions' RoGs
+            dgram->time = timingHeader->time;
+            dgram->env = timingHeader->env&envMask;
 
             // Event
             if (transitionId == XtcData::TransitionId::L1Accept) {
@@ -101,7 +103,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 }
 
                 if (event->l3InpBuf) {  // else timed out
-                    XtcData::Dgram* l3InpDg = new(event->l3InpBuf) XtcData::Dgram(*dgram);
+                    XtcData::EbDgram* l3InpDg = new(event->l3InpBuf) XtcData::EbDgram(*dgram);
                     if (drp.triggerPrimitive()) { // else this DRP doesn't provide input
                         drp.triggerPrimitive()->event(pool, index, dgram->xtc, l3InpDg->xtc);
                     }
@@ -115,7 +117,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 memcpy(&dgram->xtc, &transitionXtc, transitionXtc.extent);
 
                 if (event->l3InpBuf) { // else timed out
-                    new(event->l3InpBuf) XtcData::Dgram(*dgram);
+                    new(event->l3InpBuf) XtcData::EbDgram(*dgram);
                 }
             }
             // make sure the transition isn't too big
@@ -212,7 +214,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 exit(-1);
             }
 
-            const uint32_t* data = (uint32_t*)m_pool.dmaBuffers[index];
+            uint32_t* data = (uint32_t*)m_pool.dmaBuffers[index];
             uint32_t evtCounter = data[5] & 0xffffff;
             uint32_t current = evtCounter & bufferMask;
             PGPEvent* event = &m_pool.pgpEvents[current];
@@ -223,11 +225,14 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
             event->mask |= (1 << lane);
 
             if (event->mask == m_para.laneMask) {
-                const Pds::TimingHeader* timingHeader = reinterpret_cast<const Pds::TimingHeader*>(data);
-                XtcData::TransitionId::Value transitionId = timingHeader->seq.service();
-                uint64_t pid = timingHeader->seq.pulseId().value();
+                Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(data);
+                // move the control bits from the pulseId into the
+                // top 8 bits of env.
+                unsigned control = timingHeader->timing_control();
+                timingHeader->env = (timingHeader->env&0xffffff)|(control<<24);
+                XtcData::TransitionId::Value transitionId = timingHeader->service();
                 if (transitionId != XtcData::TransitionId::L1Accept) {
-                    logging::debug("PGPReader  saw %s transition @ %014lx", XtcData::TransitionId::name(transitionId), pid);
+                    logging::debug("PGPReader  saw %s transition @ %014lx", XtcData::TransitionId::name(transitionId), timingHeader->pulseId());
                 }
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
                     logging::critical("%sFatal: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
@@ -255,17 +260,17 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 nevents++;
                 m_batch.size++;
 
-                event->l3InpBuf = tebContributor.allocate(timingHeader, (void*)((uintptr_t)current));
+                event->l3InpBuf = tebContributor.allocate(reinterpret_cast<const XtcData::EbDgram*>(timingHeader), (void*)((uintptr_t)current));
 
                 // send batch to worker if batch is full or if it's a transition
-                if (((batchId ^ pid) & ~(m_para.batchSize - 1)) ||
+                if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) ||
                     ((transitionId != XtcData::TransitionId::L1Accept) &&
                      (transitionId != XtcData::TransitionId::SlowUpdate))) {
                     m_workerInputQueues[worker % m_para.nworkers].push(m_batch);
                     worker++;
                     m_batch.start = evtCounter + 1;
                     m_batch.size = 0;
-                    batchId = pid;
+                    batchId = timingHeader->pulseId();
                 }
             }
         }
@@ -287,7 +292,7 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
             PGPEvent* event = &m_pool.pgpEvents[index];
             if (event->l3InpBuf) // else timed out
             {
-                XtcData::Dgram* dgram = static_cast<XtcData::Dgram*>(event->l3InpBuf);
+                XtcData::EbDgram* dgram = static_cast<XtcData::EbDgram*>(event->l3InpBuf);
                 tebContributor.process(dgram);
             }
         }

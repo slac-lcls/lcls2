@@ -153,21 +153,21 @@ namespace Pds {
     }
 
   private:
-    virtual void _copyDatagram(Dgram* dg, char* buf)
+    virtual void _copyDatagram(EbDgram* dg, char* buf)
     {
       //printf("_copyDatagram:   dg = %p, pid = %014lx to %p\n",
-      //       dg, dg->seq.pulseId().value(), buf);
+      //       dg, dg->pulseId(), buf);
 
-      Dgram* odg = new((void*)buf) Dgram(*dg);
+      EbDgram* odg = new((void*)buf) EbDgram(*dg);
 
       // The dg payload is a directory of contributions to the built event.
       // Iterate over the directory and construct, in shared memory, the event
       // datagram (odg) from the contribution XTCs
-      const Dgram** const  last = (const Dgram**)dg->xtc.next();
-      const Dgram*  const* ctrb = (const Dgram**)dg->xtc.payload();
+      const EbDgram** const  last = (const EbDgram**)dg->xtc.next();
+      const EbDgram*  const* ctrb = (const EbDgram**)dg->xtc.payload();
       do
       {
-        const Dgram* idg = *ctrb;
+        const EbDgram* idg = *ctrb;
 
         buf = (char*)odg->xtc.alloc(idg->xtc.extent);
 
@@ -183,10 +183,10 @@ namespace Pds {
       while (++ctrb != last);
     }
 
-    virtual void _deleteDatagram(Dgram* dg, int bufIdx)
+    virtual void _deleteDatagram(EbDgram* dg, int bufIdx)
     {
       //printf("_deleteDatagram @ %p: pid = %014lx\n",
-      //       dg, dg->seq.pulseId().value());
+      //       dg, dg->pulseId());
 
       //if ((bufIdx < 0) || (size_t(bufIdx) >= _bufFreeList.size()))
       //{
@@ -201,14 +201,14 @@ namespace Pds {
       //if (idx != bufIdx)
       //{
       //  printf("Buffer index mismatch: got %d, expected %d, dg %p, pid %014lx\n",
-      //         idx, bufIdx, dg, dg->seq.pulseId().value());
+      //         idx, bufIdx, dg, dg->pulseId());
       //}
       for (unsigned i = 0; i < _bufFreeList.count(); ++i)
       {
         if (idx == _bufFreeList.peek(i))
         {
           printf("Attempted double free of list entry %d: idx %d, bufIdx %d, dg %p, pid %014lx\n",
-                 i, idx, bufIdx, dg, dg->seq.pulseId().value());
+                 i, idx, bufIdx, dg, dg->pulseId());
           // Does the dg still need to be freed?  Apparently so.
           Pool::free((void*)dg);
           return;
@@ -223,7 +223,7 @@ namespace Pds {
         }
       }
       //printf("_deleteDatagram: dg = %p, pid = %014lx, _bufFreeList.push(%d), bufIdx %d, count = %zd\n",
-      //       dg, dg->seq.pulseId().value(), idx, bufIdx, _bufFreeList.count());
+      //       dg, dg->pulseId(), idx, bufIdx, _bufFreeList.count());
 
       Pool::free((void*)dg);
     }
@@ -316,7 +316,7 @@ namespace Pds {
 
       // Create pool for transferring events to MyXtcMonitorServer
       unsigned    entries = std::bitset<64>(_prms.contributors).count();
-      size_t      size    = sizeof(Dgram) + entries * sizeof(Dgram*);
+      size_t      size    = sizeof(EbDgram) + entries * sizeof(EbDgram*);
       GenericPool pool(size, _prms.numEvBuffers);
       _pool = &pool;
 
@@ -359,30 +359,30 @@ namespace Pds {
       }
       ++_eventCount;
 
-      // Create a Dgram with a payload that is a directory of contribution
-      // Dgrams to the built event.  Reserve space at end for the buffer's index
+      // Create a EbDgram with a payload that is a directory of contribution
+      // EbDgrams to the built event.  Reserve space at end for the buffer's index
       size_t   sz     = (event->end() - event->begin()) * sizeof(*(event->begin()));
       unsigned idx    = ImmData::idx(event->parameter());
-      void*    buffer = _pool->alloc(sizeof(Dgram) + sz);
+      void*    buffer = _pool->alloc(sizeof(EbDgram) + sz);
       if (!buffer)
       {
-        logging::critical("%s:\n  Dgram pool allocation of size %zd failed:",
-                          __PRETTY_FUNCTION__, sizeof(Dgram) + sz);
+        logging::critical("%s:\n  EbDgram pool allocation of size %zd failed:",
+                          __PRETTY_FUNCTION__, sizeof(EbDgram) + sz);
         printf("Directory datagram pool\n");
         _pool->dump();
         printf("Meb::process event dump:\n");
         event->dump(-1);
         abort();
       }
-      Dgram*  dg  = new(buffer) Dgram(*(event->creator()));
-      Dgram** buf = (Dgram**)dg->xtc.alloc(sz);
+      EbDgram*  dg  = new(buffer) EbDgram(*(event->creator()));
+      EbDgram** buf = (EbDgram**)dg->xtc.alloc(sz);
       memcpy(buf, event->begin(), sz);
       dg->env = idx;                // Pass buffer's index to _deleteDatagram()
 
       if (_prms.verbose >= VL_EVENT)
       {
-        uint64_t pid = dg->seq.pulseId().value();
-        unsigned ctl = dg->seq.pulseId().control();
+        uint64_t pid = dg->pulseId();
+        unsigned ctl = dg->control();
         size_t   sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
         unsigned src = dg->xtc.src.value();
         unsigned env = dg->env;

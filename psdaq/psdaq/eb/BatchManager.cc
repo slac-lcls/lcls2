@@ -33,7 +33,7 @@ BatchManager::BatchManager(size_t maxSize) :
   }
   if (maxSize % sizeof(uint64_t) != 0)
   {
-    fprintf(stderr, "%s: Warning: Make max Dgram buffer size (%zd) divisible "
+    fprintf(stderr, "%s: Warning: Make max EbDgram buffer size (%zd) divisible "
             "by %zd to avoid alignment issues",
             __func__, maxSize, sizeof(uint64_t));
   }

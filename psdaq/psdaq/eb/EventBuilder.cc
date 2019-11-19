@@ -22,10 +22,10 @@ EventBuilder::EventBuilder(unsigned epochs,
                            uint64_t duration,
                            unsigned verbose) :
   _pending(),
-  _mask(PulseId(~(duration - 1), 0).value()),
+  _mask(~PulseId(duration - 1).pulseId()),
   _epochFreelist(sizeof(EbEpoch), epochs, CLS),
   _epochLut(epochs),
-  _eventFreelist(sizeof(EbEvent) + sources * sizeof(Dgram*), epochs * entries, CLS),
+  _eventFreelist(sizeof(EbEvent) + sources * sizeof(EbDgram*), epochs * entries, CLS),
   _eventLut(epochs * entries),
   _due(nullptr),
   _verbose(verbose),
@@ -182,9 +182,9 @@ EbEpoch* EventBuilder::_match(uint64_t inKey)
   return _epoch(key, epoch);
 }
 
-EbEvent* EventBuilder::_event(const Dgram* ctrb,
-                              EbEvent*     after,
-                              unsigned     prm)
+EbEvent* EventBuilder::_event(const EbDgram* ctrb,
+                              EbEvent*       after,
+                              unsigned       prm)
 {
   void* buffer = _eventFreelist.alloc(sizeof(EbEvent));
   if (buffer)
@@ -193,7 +193,7 @@ EbEvent* EventBuilder::_event(const Dgram* ctrb,
                                               after,
                                               ctrb,
                                               prm);
-    unsigned  index  = _evIndex(ctrb->seq.pulseId().value());
+    unsigned  index  = _evIndex(ctrb->pulseId());
     _eventLut[index] = event;
     //EbEvent*& entry = _eventLut[index];
     //if (!entry)  entry = event;
@@ -211,12 +211,12 @@ EbEvent* EventBuilder::_event(const Dgram* ctrb,
   abort();
 }
 
-EbEvent* EventBuilder::_insert(EbEpoch*     epoch,
-                               const Dgram* ctrb,
-                               EbEvent*     after,
-                               unsigned     prm)
+EbEvent* EventBuilder::_insert(EbEpoch*       epoch,
+                               const EbDgram* ctrb,
+                               EbEvent*       after,
+                               unsigned       prm)
 {
-  const uint64_t key = ctrb->seq.pulseId().value();
+  const uint64_t key = ctrb->pulseId();
 
   EbEvent* event = _eventLut[_evIndex(key)];
   if (event && (event->sequence() == key))  return event->_add(ctrb);
@@ -412,12 +412,12 @@ void EventBuilder::expired()            // Periodically called upon a timeout
 ** --
 */
 
-void EventBuilder::process(const Dgram* ctrb,
-                           const size_t size,
-                           unsigned     maxEntries,
-                           unsigned     prm)
+void EventBuilder::process(const EbDgram* ctrb,
+                           const size_t   size,
+                           unsigned       maxEntries,
+                           unsigned       prm)
 {
-  uint64_t       pid   = ctrb->seq.pulseId().value();
+  uint64_t       pid   = ctrb->pulseId();
   EbEpoch*       epoch = _match(pid);
   EbEvent*       event = epoch->pending.forward();
   const EbEvent* due   = nullptr;
@@ -431,7 +431,7 @@ void EventBuilder::process(const Dgram* ctrb,
     if (_verbose >= VL_EVENT)
     {
       unsigned  env = ctrb->env;
-      unsigned  ctl = ctrb->seq.pulseId().control();
+      unsigned  ctl = ctrb->control();
       uint32_t* pld = reinterpret_cast<uint32_t*>(ctrb->xtc.payload());
       size_t    sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
       unsigned  src = ctrb->xtc.src.value();
@@ -440,9 +440,9 @@ void EventBuilder::process(const Dgram* ctrb,
              ctrb, ctl, pid, sz, src, env, pld[0], pld[1], prm, due ? due->sequence() : 0ul);
     }
 
-    ctrb = reinterpret_cast<const Dgram*>(reinterpret_cast<const char*>(ctrb) + size);
+    ctrb = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(ctrb) + size);
 
-    pid = ctrb->seq.pulseId().value();
+    pid = ctrb->pulseId();
   }
   while (--cnt && pid);                 // Handle full list faster
 

@@ -34,7 +34,6 @@ install(FILES
     DescData.hh
     TimeStamp.hh
     XtcIterator.hh
-    PulseId.hh
     TransitionId.hh
     Dgram.hh
     TypeId.hh

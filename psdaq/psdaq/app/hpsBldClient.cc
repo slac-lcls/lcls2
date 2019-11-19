@@ -121,10 +121,10 @@ static Dgram* write_config( NameIndex&       nameIndex,
                             char*            buff )
 {
   timespec tv; clock_gettime(CLOCK_REALTIME,&tv);
-  Dgram& dg = *new (buff) Dgram( Transition( Sequence( Sequence::Event,
-                                                       TransitionId::Configure,
-                                                       TimeStamp(tv.tv_sec,tv.tv_nsec),
-                                                       PulseId(0,0)), 0 ),
+  Dgram& dg = *new (buff) Dgram( Transition( Dgram::Event,
+                                             TransitionId::Configure,
+                                             TimeStamp(tv.tv_sec,tv.tv_nsec),
+                                             0 ),
                                  Xtc( TypeId(TypeId::Parent, 0) ) );
     
   Alg     bldAlg    ("bldAlg", 1, 2, 3);
@@ -263,10 +263,10 @@ int main(int argc, char* argv[])
     //
     //  Prepare event buffer
     //
-    Dgram* dgram = new (eventb) Dgram( Transition( Sequence( Sequence::Event,
-                                                             TransitionId::L1Accept,
-                                                             TimeStamp(0,0),
-                                                             PulseId(0,0)), 0 ),
+    Dgram* dgram = new (eventb) Dgram( Transition( Dgram::Event,
+                                                   TransitionId::L1Accept,
+                                                   TimeStamp(0,0),
+                                                   0 ),
                                        Xtc( TypeId(TypeId::Parent, 0) ) );
     
     Xtc&   xtc   = dgram->xtc;
@@ -306,10 +306,9 @@ int main(int argc, char* argv[])
         event++;
         bytes += sizeof(XtcData::Dgram)+payloadSz;
         if (lverbose)
-          printf(" %9u.%09u %016lx extent 0x%x payload %08x %08x...\n",
-                 dgram->seq.stamp().seconds(),
-                 dgram->seq.stamp().nanoseconds(),
-                 dgram->seq.pulseId().value(),
+          printf(" %9u.%09u extent 0x%x payload %08x %08x...\n",
+                 dgram->time.seconds(),
+                 dgram->time.nanoseconds(),
                  dgram->xtc.extent,
                  reinterpret_cast<uint32_t*>(dgram->xtc.payload())[0],
                  reinterpret_cast<uint32_t*>(dgram->xtc.payload())[1]);

@@ -9,7 +9,7 @@
 namespace Pds {
   namespace Eb {
 
-    class ResultDgram : public XtcData::Dgram
+    class ResultDgram : public XtcData::EbDgram
     {
       /* bit field access enums
        *       v is the index of the rightmost bit
@@ -35,13 +35,13 @@ namespace Pds {
              ((s_prescale << 0*4) | (s_prescale << 1*4) | (s_prescale << 2*4) | (s_prescale << 3*4) |
               (s_prescale << 4*4) | (s_prescale << 5*4) | (s_prescale << 6*4) | (s_prescale << 7*4)) };
     public:
-      ResultDgram(const XtcData::Transition& transition_, unsigned id) :
-        XtcData::Dgram(transition_, XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0),
-                                                 XtcData::Src(id, XtcData::Level::Event))),
+      ResultDgram(uint64_t pulseId, const XtcData::Transition& transition_, unsigned id) :
+        XtcData::EbDgram(pulseId, XtcData::Dgram(transition_, XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0),
+                                                                           XtcData::Src(id, XtcData::Level::Event)))),
         _data(0),
         _monBufNo(0)
       {
-        xtc.alloc(sizeof(ResultDgram) - sizeof(XtcData::Dgram));
+        xtc.alloc(sizeof(ResultDgram) - sizeof(XtcData::EbDgram));
       }
     public:
       void     persist (unsigned line, bool value) { if (value) _data |=   s_persist  << (4 * line);

@@ -11,16 +11,6 @@
 namespace XtcData
 {
 
-class PulseId {
-public:
-    PulseId(unsigned value) : _value(value) {}
-    // mask off 56 bits, since upper 8 bits can have
-    // "control" information from the timing system
-    uint64_t pulseId() {return _value&0xfffffffffffffff;}
-private:
-    uint64_t _value;
-};
-
 class Transition {
 public:
     enum Type { Event = 0, Occurrence = 1, Marker = 2 };
@@ -40,8 +30,6 @@ public:
     uint32_t env;
 };
 
-class EbDgram;
-
 class Dgram : public Transition {
 public:
     static const unsigned MaxSize = 0x1000000;
@@ -50,14 +38,24 @@ public:
         Transition(transition_) { }
     Dgram(const Transition& transition_, const Xtc& xtc_) :
         Transition(transition_), xtc(xtc_)  { }
-    // should be used only in the DAQ to give the online EB access
-    // to the pulseId.  This "backs up the pointer" to include pulseid.
-    EbDgram& _ebDgram() const {return *(EbDgram*)((char*)this-sizeof(PulseId));}
 public:
     Xtc xtc;
 };
 
+// PulseId and EbDgram should move to psdaq
+
+class PulseId {
+public:
+    PulseId(unsigned value) : _value(value) {}
+    // mask off 56 bits, since upper 8 bits can have
+    // "control" information from the timing system
+    uint64_t pulseId() const {return _value&0x00ffffffffffffff;}
+protected:
+    uint64_t _value;
+};
+
 class EbDgram : public PulseId, public Dgram {
+public:
     EbDgram(unsigned value, Dgram dgram) : PulseId(value), Dgram(dgram) {}
 };
 

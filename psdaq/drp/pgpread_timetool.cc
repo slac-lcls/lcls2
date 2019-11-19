@@ -54,7 +54,6 @@ public:
 Dgram& createTransition(TransitionId::Value transId,
                         unsigned& timestamp_val) {
     TypeId tid(TypeId::Parent, 0);
-    uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
 
@@ -62,8 +61,8 @@ Dgram& createTransition(TransitionId::Value transId,
     tv.tv_usec = timestamp_val;
     timestamp_val++;
 
-    Sequence seq(Sequence::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
-    return *new(dgram_buf) Dgram(Transition(seq, env), Xtc(tid));
+    Transition tr(Dgram::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), env);
+    return *new(dgram_buf) Dgram(tr, Xtc(tid));
 }
 
 unsigned dmaDest(unsigned lane, unsigned vc)
@@ -341,9 +340,9 @@ int main(int argc, char* argv[])
                 unsigned env    = 0;
 
 
-                Sequence   seq(Sequence::Event, TransitionId::L1Accept, TimeStamp(ts.tv_sec, ts.tv_nsec), PulseId(raw_counter,0));
+                Transition tr(Dgram::Event, TransitionId::L1Accept, TimeStamp(ts.tv_sec, ts.tv_nsec), env);
                 TypeId     tid(TypeId::Parent, 0);
-                Dgram&     dgram = *new(dgram_buf) Dgram(Transition(seq, env), Xtc(tid));
+                Dgram&     dgram = *new(dgram_buf) Dgram(tr, Xtc(tid));
                 NamesId    eventNamesId(nodeId,EventNamesIndex);
                 //this instantiates the dgram.xtc component.  Here's the path dgram takes before it gets written.  dgram is now contained within fex
                 CreateData fex(dgram.xtc, namesLookup, eventNamesId);
@@ -385,11 +384,8 @@ int main(int argc, char* argv[])
             expected_next_count = (raw_data[1]+1)%256;
 
             //Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(dmaBuffers[index]);
-            //XtcData::TransitionId::Value transition_id = event_header->seq.service();
+            //XtcData::TransitionId::Value transition_id = event_header->service();
 
-            //printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u | index %u\n",
-            //       size, dest, transition_id, event_header->seq.pulseId().value(), event_header->evtCounter, index);
-            //printf("env %08x\n", event_header->env);
         }
 	    if ( ret > 0 ) dmaRetIndexes(fd, ret, dmaIndex);
 	    //sleep(0.1)

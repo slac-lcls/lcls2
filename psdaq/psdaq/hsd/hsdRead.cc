@@ -226,7 +226,7 @@ int main (int argc, char **argv) {
   }
 
   RawStream::verbose( (lvalidate>>28)&7 );
-  const EventHeader* event = reinterpret_cast<const EventHeader*>(data);
+  const Pds::HSD::EventHeader* event = reinterpret_cast<const Pds::HSD::EventHeader*>(data);
   RawStream* raw = 0;
 
   unsigned nextCount[8];

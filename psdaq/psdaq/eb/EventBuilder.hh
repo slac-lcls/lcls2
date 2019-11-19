@@ -8,7 +8,7 @@
 #include "psdaq/service/GenericPool.hh"
 
 namespace XtcData {
-  class Dgram;
+  class EbDgram;
 };
 
 namespace Pds {
@@ -28,16 +28,16 @@ namespace Pds {
                    unsigned verbose);
       virtual ~EventBuilder();
     public:
-      virtual void       fixup(EbEvent*, unsigned srcId)       = 0;
-      virtual void       process(EbEvent*)                     = 0;
-      virtual uint64_t   contract(const XtcData::Dgram*) const = 0;
+      virtual void       fixup(EbEvent*, unsigned srcId)         = 0;
+      virtual void       process(EbEvent*)                       = 0;
+      virtual uint64_t   contract(const XtcData::EbDgram*) const = 0;
     public:
       void               expired();
     public:
-      void               process(const XtcData::Dgram* dgrams,
-                                 const size_t          bufSize,
-                                 unsigned              maxEntries,
-                                 unsigned              prm);
+      void               process(const XtcData::EbDgram* dgrams,
+                                 const size_t            bufSize,
+                                 unsigned                maxEntries,
+                                 unsigned                prm);
     public:
       void               clear();
       void               dump(unsigned detail) const;
@@ -55,13 +55,13 @@ namespace Pds {
       void              _flushBefore(EbEpoch*);
       EbEpoch*          _discard(EbEpoch*);
       void              _fixup(EbEvent*);
-      EbEvent*          _event(const XtcData::Dgram*, EbEvent* after, unsigned prm);
+      EbEvent*          _event(const XtcData::EbDgram*, EbEvent* after, unsigned prm);
       bool              _lookAhead(const EbEpoch*,
                                    const EbEvent*,
                                    const EbEvent* const due) const;
       const EbEvent*    _flush(const EbEvent* const due);
       void              _retire(EbEvent*);
-      EbEvent*          _insert(EbEpoch*, const XtcData::Dgram*, EbEvent*, unsigned prm);
+      EbEvent*          _insert(EbEpoch*, const XtcData::EbDgram*, EbEvent*, unsigned prm);
     private:
       friend class EbEvent;
     private:

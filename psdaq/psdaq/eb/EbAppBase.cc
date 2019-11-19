@@ -189,7 +189,7 @@ int EbAppBase::process()
   size_t       ofs = (ImmData::buf(flg) == ImmData::Buffer)
                    ? (_trRegSize[src] + idx * _maxBufSize[src])
                    : (idx * _maxTrSize[src]);
-  const Dgram* idg = static_cast<Dgram*>(lnk->lclAdx(ofs));
+  const EbDgram* idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));
   if ( (rc = lnk->postCompRecv()) )
   {
     fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
@@ -199,9 +199,9 @@ int EbAppBase::process()
   if (_verbose >= VL_BATCH)
   {
     unsigned    env = idg->env;
-    uint64_t    pid = idg->seq.pulseId().value();
-    unsigned    ctl = idg->seq.pulseId().control();
-    const char* knd = TransitionId::name(idg->seq.service());
+    uint64_t    pid = idg->pulseId();
+    unsigned    ctl = idg->control();
+    const char* knd = TransitionId::name(idg->service());
     printf("EbAp rcvd %9ld %15s[%5d]   @ "
            "%16p, ctl %02x, pid %014lx,            src %2d, env %08x, data %08lx, ext %4d\n",
            _bufferCnt, knd, idx, idg, ctl, pid, lnk->id(), env, data, idg->xtc.extent);
@@ -225,7 +225,7 @@ void EbAppBase::trim(unsigned dst)
   }
 }
 
-uint64_t EbAppBase::contract(const Dgram* ctrb) const
+uint64_t EbAppBase::contract(const EbDgram* ctrb) const
 {
   // This method is called when the event is created, which happens when the event
   // builder recognizes the first contribution.  This contribution contains

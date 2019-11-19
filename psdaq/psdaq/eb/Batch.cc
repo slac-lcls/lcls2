@@ -39,22 +39,22 @@ void Batch::dump() const
     unsigned cnt = 0;
     while (true)
     {
-      const Dgram* dg  = reinterpret_cast<const Dgram*>(buffer);
-      const char*  svc = TransitionId::name(dg->seq.service());
-      unsigned     ctl = dg->seq.pulseId().control();
-      uint64_t     pid = dg->seq.pulseId().value();
-      size_t       sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
-      unsigned     src = dg->xtc.src.value();
-      unsigned     env = dg->env;
-      uint32_t*    inp = (uint32_t*)dg->xtc.payload();
+      const EbDgram* dg  = reinterpret_cast<const EbDgram*>(buffer);
+      const char*    svc = TransitionId::name(dg->service());
+      unsigned       ctl = dg->control();
+      uint64_t       pid = dg->pulseId();
+      size_t         sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
+      unsigned       src = dg->xtc.src.value();
+      unsigned       env = dg->env;
+      uint32_t*      inp = (uint32_t*)dg->xtc.payload();
       printf("  %2d, %15s  dg @ "
              "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, inp [%08x, %08x], appPrm %p\n",
              cnt, svc, dg, ctl, pid, sz, src, env, inp[0], inp[1], retrieve(pid));
 
       buffer += _size;
-      dg      = reinterpret_cast<const Dgram*>(buffer);
+      dg      = reinterpret_cast<const EbDgram*>(buffer);
 
-      pid = dg->seq.pulseId().value();
+      pid = dg->pulseId();
       if ((++cnt == MAX_ENTRIES) || !pid)  break;
     }
   }

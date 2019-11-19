@@ -82,9 +82,9 @@ namespace Pds {
       virtual
       void     process(EbEvent* event);
     private:
-      void     _tryPost(const Dgram& dg);
+      void     _tryPost(const EbDgram& dg);
       void     _post(const Batch&);
-      uint64_t _receivers(const Dgram& ctrb) const;
+      uint64_t _receivers(const EbDgram& ctrb) const;
       void     _shutdown();
     private:
       std::vector<EbLfCltLink*>    _l3Links;
@@ -307,12 +307,12 @@ void Teb::process(EbEvent* event)
   }
   ++_eventCount;
 
-  const Dgram& dg = *event->creator();
+  const EbDgram& dg = *event->creator();
 
   if (ImmData::rsp(ImmData::flg(event->parameter())) == ImmData::Response)
   {
     Batch*       batch = _batMan.fetch(dg);
-    ResultDgram& rdg   = *new(batch->allocate()) ResultDgram(dg, dg.xtc.src.value());
+    ResultDgram& rdg   = *new(batch->allocate()) ResultDgram(dg.pulseId(), dg, dg.xtc.src.value());
 
     rdg.xtc.damage.increase(event->damage().value());
 
@@ -320,7 +320,7 @@ void Teb::process(EbEvent* event)
     batch->accumRcvrs(_receivers(dg));
     batch->accumRogs(dg);
 
-    if (dg.seq.isEvent())
+    if (dg.isEvent())
     {
       // Present event contributions to "user" code for building a result datagram
       _trigger->event(event->begin(), event->end(), rdg); // Consume
@@ -360,9 +360,9 @@ void Teb::process(EbEvent* event)
 
     if (_verbose >= VL_EVENT) // || rdg.monitor())
     {
-      uint64_t  pid = rdg.seq.pulseId().value();
+      uint64_t  pid = rdg.pulseId();
       unsigned  idx = Batch::batchNum(pid);
-      unsigned  ctl = rdg.seq.pulseId().control();
+      unsigned  ctl = rdg.control();
       size_t    sz  = sizeof(rdg) + rdg.xtc.sizeofPayload();
       unsigned  src = rdg.xtc.src.value();
       unsigned  env = rdg.env;
@@ -375,12 +375,12 @@ void Teb::process(EbEvent* event)
   _tryPost(dg);
 }
 
-void Teb::_tryPost(const Dgram& dg)
+void Teb::_tryPost(const EbDgram& dg)
 {
-  const auto pid   = dg.seq.pulseId().value();
+  const auto pid   = dg.pulseId();
   const auto idx   = Batch::batchNum(pid);
   auto       cur   = _batMan.batch(idx);
-  bool       flush = !(dg.seq.isEvent() || (dg.seq.service() == TransitionId::SlowUpdate));
+  bool       flush = !(dg.isEvent() || (dg.service() == TransitionId::SlowUpdate));
 
   for (auto it = _batchList.cbegin(); it != _batchList.cend(); )
   {
@@ -460,7 +460,7 @@ void Teb::_post(const Batch& batch)
   _batMan.release(&batch);
 }
 
-uint64_t Teb::_receivers(const Dgram& ctrb) const
+uint64_t Teb::_receivers(const EbDgram& ctrb) const
 {
   // This method is called when the event is processed, which happens when the
   // event builder has built the event.  The supplied contribution contains
@@ -764,7 +764,7 @@ int TebApp::_parseConnectionParams(const json& body)
 
   auto& vec =_prms.maxTrSize;
   vec.resize(body["drp"].size());
-  std::fill(vec.begin(), vec.end(), sizeof(Dgram)); // Same for all contributors
+  std::fill(vec.begin(), vec.end(), sizeof(EbDgram)); // Same for all contributors
 
   _prms.numMrqs = 0;
   if (body.find("meb") != body.end())
@@ -799,14 +799,14 @@ void TebApp::_printParams(const EbParams& prms, unsigned groups) const
                                                                 std::bitset<64>(prms.contributors).count());
   printf("  Readout group contractors:  ");                    _printGroups(groups, prms.contractors);
   printf("  Readout group receivers:    ");                    _printGroups(groups, prms.receivers);
-  printf("  ConfigDb trigger detName:   %s\n",                 prms.trgDetName.c_str());
-  printf("  Number of MEB requestors:   %d\n",                 prms.numMrqs);
-  printf("  Batch duration:             0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
-  printf("  Batch pool depth:           %d\n",                 MAX_BATCHES);
-  printf("  Max # of entries / batch:   %d\n",                 MAX_ENTRIES);
-  printf("  # of contrib. buffers:      %d\n",                 MAX_LATENCY);
-  printf("  Max result     Dgram size:  %zd\n",                prms.maxResultSize);
-  printf("  Max transition Dgram size:  %zd\n",                prms.maxTrSize[0]);
+  printf("  ConfigDb trigger detName:     %s\n",                 prms.trgDetName.c_str());
+  printf("  Number of MEB requestors:     %d\n",                 prms.numMrqs);
+  printf("  Batch duration:               0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
+  printf("  Batch pool depth:             %d\n",                 MAX_BATCHES);
+  printf("  Max # of entries / batch:     %d\n",                 MAX_ENTRIES);
+  printf("  # of contrib. buffers:        %d\n",                 MAX_LATENCY);
+  printf("  Max result     EbDgram size:  %zd\n",                prms.maxResultSize);
+  printf("  Max transition EbDgram size:  %zd\n",                prms.maxTrSize[0]);
   printf("\n");
 }
 

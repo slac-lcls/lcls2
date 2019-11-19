@@ -46,6 +46,7 @@ namespace Pds {
     public:
       EventHeader() {}
     public:
+      unsigned eventType () const { return service(); }
       uint64_t timeStamp () const { return time.value(); }
       unsigned samples   () const { return _info[0]&0xfffff; }
       unsigned streams   () const { return (_info[0]>>20)&0xf; }
