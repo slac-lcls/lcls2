@@ -40,6 +40,7 @@ from libcpp.string cimport string
 #from libcpp cimport bool
 
 from libc.time cimport time_t, ctime
+from libc.math cimport sqrt # sin, cos, acos, exp, fabs, M_PI
 
 import numpy as np
 cimport numpy as np
@@ -204,6 +205,21 @@ cdef class py_hit_class:
     def y(self) : return self.cptr.y
 
     @property
+    def r(self) :
+        x, y = self.cptr.x, self.cptr.y
+        return sqrt(x*x + y*y)
+
+    @property
+    def r_sign_x(self) :
+        x,r=self.x(),self.r()
+        return r if x>0 else -r
+
+    @property
+    def r_sign_y(self) :
+        y,r=self.y(),self.r()
+        return r if y>0 else -r
+
+    @property
     def time(self) : return self.cptr.time
 
     @property
@@ -315,6 +331,8 @@ cdef extern from "psalg/hexanode/resort64c.hh":
         double dead_time_anode
         double dead_time_mcp
         #* sum_corrector_U
+
+        int32_t* output_hit_array_counter # number_of_hits
         hit_class** output_hit_array  # pointer to the hit array [max_number_of_hits]
  
         scalefactors_calibration_class* scalefactors_calibrator
@@ -359,12 +377,14 @@ cdef class py_sort_class:
     """ Python wrapper for C++ class sort_class from resort64c.h. 
     """
     cdef sort_class* cptr  # holds a C++ instance
+    cdef int32_t number_of_output_hits
 
     def __cinit__(self):
         print("In py_sort_class.__cinit__")
         self.cptr = new sort_class();
         if self.cptr == NULL:
             raise MemoryError('In py_sort_class.__cinit__: Not enough memory.')
+        self.number_of_output_hits = 0
 
     def __dealloc__(self):
         print("In py_sort_class.__dealloc__")
@@ -478,6 +498,9 @@ cdef class py_sort_class:
     @property
     def w2_reflection_half_width_at_base(self) : return self.cptr.w2_reflection_half_width_at_base
 
+    @property
+    def output_number_of_hits(self) : return self.number_of_output_hits
+
 #    @property
 #    def output_hit_array(self) : return self.cptr.output_hit_array
 
@@ -494,6 +517,44 @@ cdef class py_sort_class:
 #    @???.setter
 #    def ???(self): 
 #       def __set__(self, v): self.cptr.??? = v
+
+    def t_list(self) :
+        oha = self.cptr.output_hit_array
+        return [oha[i].time for i in range(self.number_of_output_hits)]
+ 
+    def x_list(self) :
+        oha = self.cptr.output_hit_array
+        return [oha[i].x for i in range(self.number_of_output_hits)]
+
+    def y_list(self) :
+        oha = self.cptr.output_hit_array
+        return [oha[i].y for i in range(self.number_of_output_hits)]
+
+    def xy_list(self) :
+        oha = self.cptr.output_hit_array
+        return [(oha[i].x,oha[i].y) for i in range(self.number_of_output_hits)]
+
+    def r_list(self) :
+        return [sqrt(x*x+y*y) for x,y in self.xy_list()]
+	
+    def xyt_list(self) :
+        oha = self.cptr.output_hit_array
+        return [(oha[i].x,oha[i].y,oha[i].time) for i in range(self.number_of_output_hits)]
+
+    def xyr_list(self) :
+        return [(x,y,sqrt(x*x+y*y)) for x,y in self.xy_list()]
+
+    def rt_list(self) :
+        return [(sqrt(x*x+y*y),t) for x,y,t in self.xyt_list()]
+
+    def xyrt_list(self) :
+        return [(x,y,sqrt(x*x+y*y),t) for x,y,t in self.xyt_list()]
+
+    def r_sign_x_list(self) :
+        return [(r if x>0 else -r) for x,y,r in self.xyr_list()]
+
+    def r_sign_y_list(self) :
+        return [(r if y>0 else -r) for x,y,r in self.xyr_list()]
 
 #------------------------------
 #------------------------------
@@ -548,12 +609,14 @@ cdef class py_sort_class:
 
     def sort(self) :
         #print("    In py_sort_class.sort")
-        return self.cptr.sort()
+        self.number_of_output_hits = self.cptr.sort()
+        return self.number_of_output_hits
 
 
     def run_without_sorting(self) :
         #print("    In py_sort_class.run_without_sorting")
-        return self.cptr.run_without_sorting()
+        self.number_of_output_hits = self.cptr.run_without_sorting()
+        return self.number_of_output_hits
 
 
     def init_after_setting_parameters(self) :

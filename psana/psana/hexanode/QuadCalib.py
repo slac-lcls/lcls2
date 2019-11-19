@@ -129,14 +129,22 @@ class Store :
         if self.PLOT_PHYSICS :
             t_ns_nbins = 300
             self.t_ns_bins = HBins((1400., 2900.), t_ns_nbins, vtype=np.float32)
-            self.t1_vs_t0 = np.zeros((t_ns_nbins, t_ns_nbins), dtype=np.float32)
+            #self.t1_vs_t0 = np.zeros((t_ns_nbins, t_ns_nbins), dtype=np.float32)
+
+            self.ti_vs_tj = np.zeros((t_ns_nbins, t_ns_nbins), dtype=np.float32)
+            self.t_all = np.zeros((t_ns_nbins,), dtype=np.float32)
+            self.lst_t_all = []
 
             x_mm_nbins = 200
             y_mm_nbins = 200
+            r_mm_nbins = 200
             self.x_mm_bins = HBins((-50., 50.), x_mm_nbins, vtype=np.float32)
             self.y_mm_bins = HBins((-50., 50.), y_mm_nbins, vtype=np.float32)
-            self.x_vs_t0 = np.zeros((x_mm_nbins, t_ns_nbins), dtype=np.float32)
-            self.y_vs_t0 = np.zeros((y_mm_nbins, t_ns_nbins), dtype=np.float32)
+            self.r_mm_bins = HBins((-50., 50.), r_mm_nbins, vtype=np.float32)
+            #self.x_vs_t0 = np.zeros((x_mm_nbins, t_ns_nbins), dtype=np.float32)
+            #self.y_vs_t0 = np.zeros((y_mm_nbins, t_ns_nbins), dtype=np.float32)
+            self.rsx_vs_t  = np.zeros((r_mm_nbins, t_ns_nbins), dtype=np.float32)
+            self.rsy_vs_t  = np.zeros((r_mm_nbins, t_ns_nbins), dtype=np.float32)
 
 #------------------------------
 
@@ -240,7 +248,7 @@ def plot_histograms(prefix='plot', do_save=True, hwin_x0y0=(0,400)) :
             title ='Number of hits MCP', xlabel='Number of hits MCP', ylabel='Events',\
             fnm='nhits_mcp.png')
 
-        h1d(np.array(sp.lst_nparts), bins=10, amp_range=(-0.5,9.5), log=is_log,\
+        h1d(np.array(sp.lst_nparts), bins=nbins, amp_range=limits, log=is_log,\
             title ='Number of particles', xlabel='Number of particles', ylabel='Events',\
             fnm='nparticles.png')
 
@@ -488,16 +496,41 @@ def plot_histograms(prefix='plot', do_save=True, hwin_x0y0=(0,400)) :
     #---------
         amp_limits = (0,5)
         imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax())
-        plot_image(sp.t1_vs_t0, amp_range=amp_limits, img_range=imrange, fnm='t1_vs_t0.png',\
-                   title='t1 vs t0', xlabel='t0 (ns)', ylabel='t1 (ns)', titwin='PIPICO', origin='lower')
+        #plot_image(sp.t1_vs_t0, amp_range=amp_limits, img_range=imrange, fnm='t1_vs_t0.png',\
+        #           title='t1 vs t0', xlabel='t0 (ns)', ylabel='t1 (ns)', titwin='PIPICO', origin='lower')
 
-        imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.x_mm_bins.vmin(), sp.x_mm_bins.vmax())
-        plot_image(sp.x_vs_t0,  amp_range=amp_limits, img_range=imrange, fnm='x_vs_t0.png',\
-                   title='x vs t0', xlabel='t0 (ns)', ylabel='x (mm)', titwin='x vs t0', origin='lower')
+        plot_image(sp.ti_vs_tj, amp_range=amp_limits, img_range=imrange, fnm='ti_vs_tj.png',\
+                   title='ti vs tj', xlabel='ti (ns)', ylabel='tj (ns)', titwin='PIPICO', origin='lower')
 
-        imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.y_mm_bins.vmin(), sp.y_mm_bins.vmax())
-        plot_image(sp.y_vs_t0,  amp_range=amp_limits, img_range=imrange, fnm='y_vs_t0.png',\
-                   title='y vs t0', xlabel='t0 (ns)', ylabel='y (mm)', titwin='y vs t0', origin='lower')
+        np.save('ti_vs_tj.npy', sp.ti_vs_tj)
+        np.save('t_all.npy', sp.t_all)
+
+        limits = sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax()
+        h1d(np.array(sp.lst_t_all), bins=sp.t_ns_bins.nbins(), amp_range=limits, log=True,\
+            title ='t_all', xlabel='t_all (ns)', ylabel='Events',\
+            fnm='t_all.png')
+
+
+        #imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.x_mm_bins.vmin(), sp.x_mm_bins.vmax())
+        #plot_image(sp.x_vs_t0,  amp_range=amp_limits, img_range=imrange, fnm='x_vs_t0.png',\
+        #           title='x0 vs t0', xlabel='t0 (ns)', ylabel='x0 (mm)', titwin='x0 vs t0', origin='lower')
+
+        #imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.y_mm_bins.vmin(), sp.y_mm_bins.vmax())
+        #plot_image(sp.y_vs_t0,  amp_range=amp_limits, img_range=imrange, fnm='y_vs_t0.png',\
+        #           title='y0 vs t0', xlabel='t0 (ns)', ylabel='y0 (mm)', titwin='y0 vs t0', origin='lower')
+
+        imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.r_mm_bins.vmin(), sp.r_mm_bins.vmax())
+        plot_image(sp.rsx_vs_t,  amp_range=amp_limits, img_range=imrange, fnm='rsx_vs_t.png',\
+                   title='r*sign(x) vs t (All hits)', xlabel='t (ns)', ylabel='r*sign(x) (mm)', titwin='r vs t (All hits)', origin='lower',\
+                   figsize=(12,5))
+
+        plot_image(sp.rsy_vs_t,  amp_range=amp_limits, img_range=imrange, fnm='rsy_vs_t.png',\
+                   title='r*sign(y) vs t (All hits)', xlabel='t (ns)', ylabel='r*sign(y) (mm)', titwin='r vs t (All hits)', origin='lower',\
+                   figsize=(12,5))
+
+        
+
+
 
     #---------
     #if sp.PLOT_XY_RESOLUTION :
@@ -811,6 +844,9 @@ def calib_on_data(**kwargs) :
                 #### IT DID NOT WORK ON LCLS2 because pointer was deleted in py_hit_class.__dealloc__
                 hco = hexanode.py_hit_class(sorter, i) 
                 print("    p:%2i x:%7.3f y:%7.3f t:%7.3f met:%d" % (i, hco.x, hco.y, hco.time, hco.method))
+ 
+        #print_tdc_ns(tdc_ns, cmt='  TDC sorted data ')
+        #print('    XXX sorter.time_list', sorter.t_list())
 
         if sp.PLOT_NHITS :
             sp.lst_nparts.append(number_of_particles)
@@ -912,14 +948,48 @@ def calib_on_data(**kwargs) :
 
         if sp.PLOT_PHYSICS :
           if number_of_hits[Cmcp]>1 :
-            t0, t1 = tdc_ns[Cmcp,:2]
-            it0, it1 = sp.t_ns_bins.bin_indexes((t0, t1))
-            sp.t1_vs_t0[it1, it0] += 1
+            #t0, t1 = tdc_ns[Cmcp,:2]
+            #it0, it1 = sp.t_ns_bins.bin_indexes((t0, t1))
+            #sp.t1_vs_t0[it1, it0] += 1
 
-            ix, iy = sp.x_mm_bins.bin_indexes((Xuv,Yuv))
-            #iy = sp.y_mm_bins.bin_indexes((Yuv,))
-            sp.x_vs_t0[ix, it0] += 1
-            sp.y_vs_t0[iy, it0] += 1
+            #ix, iy = sp.x_mm_bins.bin_indexes((Xuv,Yuv))
+            #sp.x_vs_t0[ix, it0] += 1
+            #sp.y_vs_t0[iy, it0] += 1
+
+            #print("  Event %5i  number_of_particles: %i" % (evnum, number_of_particles))
+            #for i in range(number_of_particles) :
+            #    hco = hexanode.py_hit_class(sorter, i) 
+            #    #print("    p:%2i x:%7.3f y:%7.3f t:%7.3f met:%d" % (i, hco.x, hco.y, hco.time, hco.method))
+            #    x,y,t = hco.x, hco.y, hco.time
+            #    r = sqrt(x*x+y*y)
+            #    if x<0 : r=-r
+            #    ir = sp.r_mm_bins.bin_indexes((r,))
+            #    it = sp.t_ns_bins.bin_indexes((t,))
+            #    sp.r_vs_t[ir, it] += 1
+
+
+            for x,y,r,t in sorter.xyrt_list() :
+                irx, iry = sp.r_mm_bins.bin_indexes((r if x>0 else -r, r if y>0 else -r))
+                it = sp.t_ns_bins.bin_indexes((t,))
+                sp.rsx_vs_t[irx, it] += 1
+                sp.rsy_vs_t[iry, it] += 1
+
+            times = sorter.t_list()
+            tinds = sp.t_ns_bins.bin_indexes(times) # INDEXES SHOULD BE np.array
+            #print_ndarr(times, '\n    XXX times')
+            #print_ndarr(tinds, '\n    XXX tinds')
+
+            # accumulate times in the list
+            for t in times :
+                sp.lst_t_all.append(t)
+
+            # accumulate times directly in histogram to evaluate average
+            sp.t_all[tinds] += 1
+
+            # accumulate times in correlation matrix
+            for i in tinds :
+                sp.ti_vs_tj[i,tinds] += 1
+
 
 #   	// write the results into a new data file.
 #   	// the variable "number_of_particles" contains the number of reconstructed particles.

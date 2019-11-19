@@ -28,13 +28,13 @@ if __name__ == "__main__" :
               'numhits'  : 16,
               'evskip'   : 7,
               'events'   : 60000,
-              'ofprefix' : './tst',
+              'ofprefix' : '../figs-quad/tst',
               'run'      : 100,
               'exp'      : 'amox27716',
               'calibcfg' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/configuration_quad.txt',
               'calibtab' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/calibration_table_data.txt',
               'plot_his' : True,
-              'save_his' : False,
+              'save_his' : True,
               'verbose'  : False,
              }
 
@@ -52,15 +52,15 @@ if __name__ == "__main__" :
 
     # On/Off graphics parameters
     plotpars={'PLOT_NHITS'         : True,
-              'PLOT_TIME_CH'       : False,
+              'PLOT_TIME_CH'       : True,
               'PLOT_REFLECTIONS'   : False,
-              'PLOT_UVW'           : True,
-              'PLOT_TIME_SUMS'     : True,
-              'PLOT_CORRELATIONS'  : True,
+              'PLOT_UVW'           : False,
+              'PLOT_TIME_SUMS'     : False,
+              'PLOT_CORRELATIONS'  : False,
               'PLOT_XY_COMPONENTS' : False,
-              'PLOT_PHYSICS'       : False,
+              'PLOT_XY_2D'         : False,
+              'PLOT_PHYSICS'       : True,
               'PLOT_MISC'          : False,
-              'PLOT_XY_2D'         : True,
              }
 
     kwargs.update(cfdpars)
