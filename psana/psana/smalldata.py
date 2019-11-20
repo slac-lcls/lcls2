@@ -358,8 +358,9 @@ class SmallData: # (client)
             cache_size = batch_size
 
         self._full_filename = filename
-        self._basename = os.path.basename(filename)
-        self._dirname  = os.path.dirname(filename)
+        if (filename is not None):
+            self._basename = os.path.basename(filename)
+            self._dirname  = os.path.dirname(filename)
         self._first_open = True # filename has not been opened yet
 
         if MODE == 'PARALLEL':
@@ -368,9 +369,12 @@ class SmallData: # (client)
             self._client_group = client_group
 
             # hide intermediate files -- join later via VDS
-            self._srv_filename = _format_srv_filename(self._dirname,
-                                                      self._basename,
-                                                      self._server_group.Get_rank())
+            if filename is not None:
+                self._srv_filename = _format_srv_filename(self._dirname,
+                                                          self._basename,
+                                                          self._server_group.Get_rank())
+            else:
+                self._srv_filename = None
 
             self._comm_partition()
             if self._type == 'server':
@@ -428,7 +432,7 @@ class SmallData: # (client)
         """
 
         if MODE == 'PARALLEL':
-            if self._first_open == True:
+            if self._first_open == True and self._full_filename is not None:
                 fh = h5py.File(self._full_filename, 'w', libver='latest')
                 self._first_open = False
             else:
@@ -548,6 +552,9 @@ class SmallData: # (client)
 
         Note: this function should be called in a SmallData.summary: block
         """
+        if self._full_filename is None:
+            print('Warning: smalldata not saving summary since no h5 filename specified')
+            return
 
         # in parallel mode, only client rank 0 writes to file
         if MODE == 'PARALLEL':
@@ -606,7 +613,7 @@ class SmallData: # (client)
                 # this is because this client may write to the file
                 # during "save_summary(...)" calls, and we want
                 # ONE file owner
-                if self._type == 'client':
+                if self._type == 'client' and self._full_filename is not None:
                     if self._client_comm.Get_rank() == 0:
                         self.join_files()
 

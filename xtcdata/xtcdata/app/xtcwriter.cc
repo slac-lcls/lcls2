@@ -498,7 +498,7 @@ Dgram& createTransition(TransitionId::Value transId, bool counting_timestamps,
     struct timeval tv;
     void* buf = malloc(BUFSIZE);
     if (counting_timestamps) {
-        tv.tv_sec = 0;
+        tv.tv_sec = 1;
         tv.tv_usec = timestamp_val;
         timestamp_val++;
     } else {
@@ -665,7 +665,7 @@ int main(int argc, char* argv[])
                 if (ievt>0 and ievt%epicsPeriod==0) {
                     // make a SlowUpdate with epics data
                     if (counting_timestamps) {
-                        tv.tv_sec = 0;
+                        tv.tv_sec = 1;
                         tv.tv_usec = timestamp_val;
                         timestamp_val++;
                     } else {
@@ -683,7 +683,7 @@ int main(int argc, char* argv[])
 
             // generate a normal L1
             if (counting_timestamps) {
-                tv.tv_sec = 0;
+                tv.tv_sec = 1;
                 tv.tv_usec = timestamp_val;
                 timestamp_val++;
             } else {
