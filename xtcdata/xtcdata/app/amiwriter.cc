@@ -161,7 +161,7 @@ void addHsdConfigNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId) {
 
 void usage(char* progname)
 {
-    fprintf(stderr, "Usage: %s [-f <filename> -n <numEvents> -t -h]\n", progname);
+    fprintf(stderr, "Usage: %s [-f <filename> -n <numEvents> -t -c -p -h]\n", progname);
 }
 
 Dgram& createTransition(TransitionId::Value transId, bool counting_timestamps,
@@ -197,6 +197,7 @@ int main(int argc, char* argv[])
     int c;
     int parseErr = 0;
     unsigned nevents = 2;
+    unsigned timestamp_period = 0; // time in us
     char xtcname[MAX_FNAME_LEN];
     strncpy(xtcname, "ami.xtc2", MAX_FNAME_LEN);
     unsigned starting_segment = 0;
@@ -205,7 +206,7 @@ int main(int argc, char* argv[])
     bool counting_timestamps = false;
     bool add_fake_configs = false;
 
-    while ((c = getopt(argc, argv, "hf:n:s:tc")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:s:tcp:")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
@@ -222,7 +223,9 @@ int main(int argc, char* argv[])
             case 't':
                 counting_timestamps = true;
                 break;
-
+            case 'p':
+                timestamp_period = atoi(optarg);
+                break;
             case 'c':
                 add_fake_configs = true;
                 break;
@@ -295,6 +298,7 @@ int main(int argc, char* argv[])
             tv.tv_usec = timestamp_val;
             timestamp_val++;
         } else {
+            usleep(timestamp_period);
             gettimeofday(&tv, NULL);
             // convert to ns for the Timestamp
             tv.tv_usec *= 1000;
