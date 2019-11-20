@@ -5,6 +5,7 @@ from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from dgramlite cimport Xtc, Sequence, Dgram
 from parallelreader cimport Buffer, ParallelReader
+from libc.stdint cimport uint32_t, uint64_t
 
 cdef class SmdReader:
     cdef unsigned got_events
@@ -109,7 +110,7 @@ cdef class SmdReader:
                             d = <Dgram *>(buf.chunk + buf.offset)
                             payload = d.xtc.extent - self.XTC_SIZE
                             buf.offset += self.DGRAM_SIZE
-                            buf.timestamp = <unsigned long>d.seq.high << 32 | d.seq.low
+                            buf.timestamp = <uint64_t>d.seq.high << 32 | d.seq.low
                             
                             # check if this a non L1
                             pulse_id = d.seq.pulse_id

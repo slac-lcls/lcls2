@@ -11,6 +11,7 @@ from dgramlite cimport Xtc, Sequence, Dgram
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from parallelreader cimport Buffer
+from libc.stdint cimport uint32_t, uint64_t
 
 cdef class EventBuilder:
     """Builds a batch of events
@@ -162,7 +163,7 @@ cdef class EventBuilder:
                     view_ptr += self.offsets[view_idx]
                     d = <Dgram *>(view_ptr)
                     payload = d.xtc.extent - self.XTC_SIZE
-                    self.timestamps[view_idx] = <unsigned long>d.seq.high << 32 | d.seq.low
+                    self.timestamps[view_idx] = <uint64_t>d.seq.high << 32 | d.seq.low
                     self.dgram_sizes[view_idx] = self.DGRAM_SIZE + payload
                     raw_dgrams[view_idx] = <char[:self.dgram_sizes[view_idx]]>view_ptr
                     # Copy to step buffers if non L1
