@@ -119,6 +119,7 @@ if 'PSANA' in BUILD_LIST :
                 'timeconverter       = psana.graphqt.app.timeconverter:timeconverter',
                 'calibman            = psana.graphqt.app.calibman:calibman_gui',
                 'hdf5explorer        = psana.graphqt.app.hdf5explorer:hdf5explorer_gui',
+                'screengrabber       = psana.graphqt.ScreenGrabberQt5:run_GUIScreenGrabber',
                 'detnames            = psana.app.detnames:detnames',
              ]
        },
