@@ -153,6 +153,9 @@ XtcMonitorServer::~XtcMonitorServer()
   delete [] _pfd;
 }
 
+//
+//  Must be called once
+//
 void XtcMonitorServer::distribute(bool l)
 {
   _myMsg.return_queue( l ? _numberOfEvQueues : 0 );
@@ -160,6 +163,7 @@ void XtcMonitorServer::distribute(bool l)
   _flushQueue(_myInputEvQueue);
   _flushQueue(_requestQueue);
   for(unsigned i=0; i<_numberOfEvBuffers; i++) {
+    _msgDest[i]=-1;
     _myMsg.bufferIndex(i);
     if (mq_timedsend(_myInputEvQueue, (const char*)&_myMsg, sizeof(_myMsg), 0, &_tmo)<0)
       perror("XtcMonitorServer distribute failed to queue buffers to input");
@@ -557,13 +561,6 @@ int XtcMonitorServer::_init()
 
   XtcMonitorMsg::eventOutputQueue(p,_numberOfEvQueues-1,toQname);
   _flushQueue(_myInputEvQueue  = _openQueue(toQname,q_attr));
-
-  for(unsigned i=0; i<_numberOfEvBuffers; i++) {
-    _myMsg.bufferIndex(i);
-    _msgDest[i]=-1;
-    if (mq_timedsend(_myInputEvQueue, (const char*)&_myMsg, sizeof(_myMsg), 0, &_tmo)<0)
-      perror("Failed to queue buffer to input queue (initialize)");
-  }
 
   q_attr.mq_maxmsg  = _numberOfEvBuffers / _numberOfEvQueues;
   q_attr.mq_msgsize = (long int)sizeof(XtcMonitorMsg);
