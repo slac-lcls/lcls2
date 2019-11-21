@@ -89,6 +89,7 @@ namespace psalg {
       void _flushQueue       (mqd_t q);
       void _flushQueue       (mqd_t q, char* m, unsigned sz);
       void _moveQueue        (mqd_t iq, mqd_t oq);
+      void _replQueue        (mqd_t q, unsigned rq);
       bool _send             (XtcData::Dgram*);
       void _update           (int, XtcData::TransitionId::Value);
       void _clearDest        (mqd_t);
