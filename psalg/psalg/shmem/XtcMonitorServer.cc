@@ -155,15 +155,11 @@ XtcMonitorServer::~XtcMonitorServer()
 
 void XtcMonitorServer::distribute(bool l)
 {
-  _myMsg.return_queue( l ? _numberOfEvQueues : 0 );
+  unsigned rq = l ? _numberOfEvQueues : 0;
+  _myMsg.return_queue( rq );
 
-  _flushQueue(_myInputEvQueue);
-  _flushQueue(_requestQueue);
-  for(unsigned i=0; i<_numberOfEvBuffers; i++) {
-    _myMsg.bufferIndex(i);
-    if (mq_timedsend(_myInputEvQueue, (const char*)&_myMsg, sizeof(_myMsg), 0, &_tmo)<0)
-      perror("XtcMonitorServer distribute failed to queue buffers to input");
-  }
+  _replQueue(_requestQueue  , rq);
+  _replQueue(_myInputEvQueue, rq);
 }
 
 bool XtcMonitorServer::_send(Dgram* dg)
@@ -784,6 +780,21 @@ void XtcMonitorServer::_moveQueue(mqd_t iq, mqd_t oq)
         _msgDest[m.bufferIndex()]=-1;
     }
   } while (attr.mq_curmsgs);
+}
+
+void XtcMonitorServer::_replQueue(mqd_t q, unsigned rq)
+{
+  timespec tmo; tmo.tv_sec = 0; tmo.tv_nsec = 0;
+  struct mq_attr attr;
+  mq_getattr(q,&attr);
+  printf("Replacing %u entries\n",attr.mq_curmsgs);
+  while(attr.mq_curmsgs--) {
+    XtcMonitorMsg m;
+    mq_timedreceive(q, reinterpret_cast<char*>(&m), sizeof(m), NULL, &tmo);
+    m.return_queue(rq);
+    _msgDest[m.bufferIndex()] = -1;
+    mq_timedsend   (q, reinterpret_cast<const char*>(&m), sizeof(m), 0, &tmo);
+  }
 }
 
 void XtcMonitorServer::unlink()

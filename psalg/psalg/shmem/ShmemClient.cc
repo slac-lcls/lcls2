@@ -364,13 +364,13 @@ printf("Connected to %08x.%d [%d] from %08x.%d\n",
     XtcMonitorMsg::eventOutputQueue(tag,ev_index,qname);
     myOutputEvQueues[ev_index] = _openQueue(qname, O_WRONLY, PERMS_OUT);
     if (myOutputEvQueues[ev_index] == (mqd_t)-1)
-  error++;
+      error++;
   }
   else {
     XtcMonitorMsg::eventInputQueue(tag,myMsg.return_queue(),qname);
-    myOutputEvQueues[0] = _openQueue(qname, O_WRONLY, PERMS_OUT);
-    if (myOutputEvQueues[0] == (mqd_t)-1)
-  error++;
+    myOutputEvQueues[ev_index] = _openQueue(qname, O_WRONLY, PERMS_OUT);
+    if (myOutputEvQueues[ev_index] == (mqd_t)-1)
+      error++;
   }
 
   if (error) {
