@@ -72,12 +72,11 @@ def proc_data(**kwargs):
         print_ndarr(wts,   '  times          : ', last=4)
         print_ndarr(nhits, '  number_of_hits : ')
         print_ndarr(pktns, '  peak_times_ns  : ', last=4)
-        print('XXX 1')
-        proc.event_proc(nevt, nhits, pktns)
-        print('XXX 2')
 
-        #for i,(x,y,r,t) in enumerate(proc.xyrt_list(nevt, nhits, pktns)) :
-        #    print('  hit:%1d  x:%5.3f  y:%5.3f  r:%5.3f  t:%5.3f' % (i,x,y,r,t))
+        #proc.event_proc(nevt, nhits, pktns)
+
+        for i,(x,y,r,t) in enumerate(proc.xyrt_list(nevt, nhits, pktns)) :
+            print('        hit:%2d x:%7.3f y:%7.3f t:%8.3f r:%7.3f' % (i,x,y,t,r))
 
 #----------
 #----------
@@ -103,8 +102,10 @@ if __name__ == "__main__" :
               'exp'      : 'amox27716',
               'calibcfg' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/configuration_quad.txt',
               'calibtab' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/calibration_table_data.txt',
+              'verbose'  :  False,
              }
 
+    # Parameters of the CFD descriminator for hit time finding algotithm
     cfdpars= {'cfd_base'       :  0.,
               'cfd_thr'        : -0.05,
               'cfd_cfr'        :  0.85,
@@ -116,7 +117,21 @@ if __name__ == "__main__" :
               'cfd_wfbinend'   : 22000,
              }
 
+    # On/Off statistical parameters
+    statpars={'STAT_NHITS'         : False,
+              'STAT_TIME_CH'       : False,
+              'STAT_REFLECTIONS'   : False,
+              'STAT_UVW'           : False,
+              'STAT_TIME_SUMS'     : False,
+              'STAT_CORRELATIONS'  : False,
+              'STAT_XY_COMPONENTS' : False,
+              'STAT_XY_2D'         : False,
+              'STAT_PHYSICS'       : False,
+              'STAT_MISC'          : False,
+             }
+
     kwargs.update(cfdpars)
+    kwargs.update(statpars)
 
     proc_data(**kwargs)
 

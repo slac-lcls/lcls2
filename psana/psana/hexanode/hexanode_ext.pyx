@@ -501,6 +501,11 @@ cdef class py_sort_class:
     @property
     def output_number_of_hits(self) : return self.number_of_output_hits
 
+    @property
+    def channel_indexes(self) :
+        p = self.cptr
+        return p.Cu1, p.Cu2, p.Cv1, p.Cv2, p.Cw1, p.Cw2, p.Cmcp
+
 #    @property
 #    def output_hit_array(self) : return self.cptr.output_hit_array
 
