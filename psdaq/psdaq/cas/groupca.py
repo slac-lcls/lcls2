@@ -223,6 +223,8 @@ class Ui_MainWindow(object):
 def main():
     print(QtCore.PYQT_VERSION_STR)
 
+#    setCuMode(True)
+
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()

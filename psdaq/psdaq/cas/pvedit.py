@@ -20,8 +20,7 @@ NBeamSeq = 16
 
 interval   = 14./13.
 dstsel     = ['Include','DontCare']
-evtselSc   = ['Fixed Rate','AC Rate','Sequence']
-evtselCu   = ['Fixed Rate','AC Rate','EventCodes']
+evtsel     = ['Fixed Rate','AC Rate','EventCode','Sequence']
 fixedRates  = ['929kHz','71.4kHz','10.2kHz','1.02kHz','102Hz','10.2Hz','1.02Hz']
 acRates     = ['60Hz','30Hz','10Hz','5Hz','1Hz']
 acTS        = ['TS%u'%(i+1) for i in range(6)]
@@ -31,7 +30,7 @@ seqIdxs     = ['s%u'%i for i in range(18)]
 seqBursts   = ['%u x %.2fus'%(2<<(i%4),float(int(i/4+1))*interval) for i in range(16)]
 seqRates    = ['%u0kHz'%(i+1) for i in range(16)]
 seqLocal    = ['%u0kHz'%(4*i+4) for i in range(16)]
-seqGlobal   = ['GLT %d'%(i) for i in range(17)]
+seqGlobal   = ['GLT %d'%(i) for i in range(16)]
 
 frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
@@ -460,15 +459,18 @@ class PvDblArray:
 
 class PvEditCmb(PvComboDisplay):
 
-    def __init__(self, pvname, choices, cb=None):
+    def __init__(self, pvname, choices, cb=None, imap=None):
         super(PvEditCmb, self).__init__(choices)
         self.cb = cb
+        self.imap = imap
         self.connect_signal()
         self.currentIndexChanged.connect(self.setValue)
         initPvMon(self,pvname)
 
     def setValue(self):
         value = self.currentIndex()
+        if self.imap is not None:
+            value = self.imap[value]
         if self.pv.__value__ != value:
             self.pv.put(value)
         else:
@@ -665,6 +667,14 @@ class PvDefSeq(QtWidgets.QWidget):
         else:
             print(err)
 
+class MonFwd(object):
+    def __init__(self,parent,pvname):
+        self._parent = parent
+        initPvMon(self,pvname)
+
+    def update(self,err):
+        self._parent.update(err)
+
 class PvDefCuSeq(QtWidgets.QWidget):
     valueSet = QtCore.pyqtSignal(int,name='valueSet')
 
@@ -681,11 +691,22 @@ class PvDefCuSeq(QtWidgets.QWidget):
         self.pvseq = Pv(pvname+'_Sequence')
         self.pvbit = Pv(pvname+'_SeqBit')
 
+        self.monseq = MonFwd(self,pvname+'_Sequence')
+        self.monbit = MonFwd(self,pvname+'_SeqBit')
+
+    def update(self,err):
+        try:
+            q = (self.monseq.pv.__value__*16) + self.monbit.pv.__value__
+            if err is None:
+                self.ecsel.setText(str(int(q)))
+        except:
+            pass
+
     def setValue(self):
         try:
             value = int(self.ecsel.text())
-            self.pvseq.put(value/16)
-            self.pvbit.put(value%16)
+            self.monseq.pv.put(int(value/16))
+            self.monbit.pv.put(value%16)
         except:
             pass
 
@@ -715,8 +736,8 @@ class PvEvtTab(QtWidgets.QStackedWidget):
 ##        sql.addWidget(PvEditCmb(pvname+'_SeqBit',seqBits))
 #        sql.addWidget(PvEditCmb(pvname+'_SeqBit'  ,seqRates))
 #        sqw.setLayout(sql)
-        sqw = PvDefSeq(pvname) if xtpg==False else PvDefCuSeq(pvname)
-        self.addWidget(sqw)
+        self.addWidget(PvDefCuSeq(pvname))
+        self.addWidget(PvDefSeq  (pvname))
 
         self.setCurrentIndex(evtcmb.currentIndex())
         evtcmb.currentIndexChanged.connect(self.setCurrentIndex)
@@ -736,8 +757,7 @@ class PvEditEvt(QtWidgets.QWidget):
     def __init__(self, pvname, idx):
         super(PvEditEvt, self).__init__()
         vbox = QtWidgets.QVBoxLayout()
-        print('xtpg',xtpg)
-        evtcmb = PvEditCmb(pvname,evtselSc if xtpg==False else evtselCu)
+        evtcmb = PvEditCmb(pvname,evtsel,imap=[0,1,2,2])
         vbox.addWidget(evtcmb)
         vbox.addWidget(PvEvtTab(pvname,evtcmb))
         self.setLayout(vbox)
