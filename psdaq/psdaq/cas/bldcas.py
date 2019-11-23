@@ -22,6 +22,7 @@ def main():
 
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for HPS diagnostic bus')
 
+    parser.add_argument('services', metavar='S', type=str, nargs='+', help='BLD services')
     parser.add_argument('-P', required=True, help='DAQ:SIM', metavar='PREFIX')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
@@ -38,8 +39,10 @@ def main():
     #     a multicast address for data delivery
     #     a structure description of the payload
     #       field names, types, sizes
-    pvdb['HPSEX:ADDR'   ] = {'type'  : 'int', 'value' : 0xefff8001}
-    pvdb['HPSEX:PORT'   ] = {'type'  : 'int', 'value' : 11001}
+    addr = 0xefff8001
+    for i,v in enumerate(args.services):
+        pvdb[v+':ADDR'   ] = {'type'  : 'int', 'value' : addr+i}
+        pvdb[v+':PORT'   ] = {'type'  : 'int', 'value' : 11001}
 
     # printDb(pvdb, prefix)
     printDb()

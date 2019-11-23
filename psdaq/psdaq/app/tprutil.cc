@@ -302,9 +302,9 @@ void frame_rates(TprReg& reg, bool lcls2)
 
 void frame_capture(TprReg& reg, char tprid, bool lcls2)
 {
-  int idx=0;
+  int idx=11;
   char dev[16];
-  sprintf(dev,"/dev/tpr%c%u",tprid,idx);
+  sprintf(dev,"/dev/tpr%c%x",tprid,idx);
 
   int fd = open(dev, O_RDONLY);
   if (fd<0) {

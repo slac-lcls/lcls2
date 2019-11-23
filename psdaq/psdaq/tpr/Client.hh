@@ -17,6 +17,9 @@ namespace Pds {
              unsigned    channel = 0);
       ~Client();
     public:
+      //  Setup the trigger channel
+      enum Polarity { Falling=0, Rising=1 };
+      void setup(unsigned output, unsigned delay, unsigned width, unsigned polarity=Rising);
       //  Enable the trigger
       void start(unsigned partn);
       //  Enable the trigger (full rate)

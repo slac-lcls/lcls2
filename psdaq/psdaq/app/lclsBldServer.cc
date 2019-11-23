@@ -144,6 +144,7 @@ int main(int argc, char** argv) {
 
     Client client(evrdev,1);
 
+    client.setup(0, 0, 1);
     client.start(TprBase::FixedRate(rate));
     client.release();
 

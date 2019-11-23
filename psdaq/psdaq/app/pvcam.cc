@@ -114,10 +114,8 @@ int main(int argc, char* argv[])
       ts >>= 16;
     }
       
-    //    pvd::TimeStamp ts(frame->timeStamp>>32, frame->timeStamp&0xffffffff);
     channel.put(cpv)
       .set<const uint16_t>("value",pimage)
-      //      .set<const pvd::TimeStamp>("timeStamp",ts)
       .exec();
 
     if (verbose)

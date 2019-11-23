@@ -37,6 +37,116 @@ static const XtcData::Name::DataType xtype[] = {
     XtcData::Name::CHARSTR, // pvString
 };
 
+BldFactory::BldFactory() :
+  _alg       ("bldAlg", 0, 0, 1)
+{
+}
+
+BldFactory::BldFactory(const char* name,
+                       const char* pvname) :
+  _name       (name),
+  _alg        ("bldAlg", 0, 0, 1)
+{
+  logging::debug("BldFactory::BldFactory %s %s", name, pvname);
+
+  if (strchr(name,':'))
+    _name = std::string(strrchr(name,':')+1);
+
+  _mcport     = 12148;
+  _pvaPayload = 0;
+
+  unsigned payloadSize = 0;
+  //
+  //  Make static configuration of BLD  :(
+  //
+  if (strlen(pvname)==0) {
+    if      (strcmp("ebeam",name)==0) {
+      _mcaddr = 0xefff1800;
+      _alg    = XtcData::Alg((_name+"Alg").c_str(), 0, 7, 1);
+      _varDef.NameVec.push_back(XtcData::Name("damageMask"       , XtcData::Name::UINT32));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamCharge"      , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamL3Energy"    , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamLTUPosX"     , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamLTUPosY"     , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamLUTAngX"     , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamLTUAngY"     , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamPkCurrBC2"   , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamEnergyBC2"   , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamPkCurrBC1"   , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamEnergyBC1"   , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamUndPosX"     , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamUndPosY"     , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamUndAngX"     , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamUndAngY"     , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamXTCAVAmpl"   , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamXTCAVPhase"  , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamDumpCharge"  , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamPhotonEnergy", XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamLTU250"      , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("ebeamLTU450"      , XtcData::Name::DOUBLE));
+      payloadSize = 164;
+    }
+    else if (strcmp("gasdet",name)==0) {
+      _mcaddr = 0xefff1802;
+      _alg    = XtcData::Alg((_name+"Alg").c_str(), 0, 1, 1);
+      _varDef.NameVec.push_back(XtcData::Name("f_11_ENRC"      , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("f_12_ENRC"      , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("f_21_ENRC"      , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("f_22_ENRC"      , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("f_63_ENRC"      , XtcData::Name::DOUBLE));
+      _varDef.NameVec.push_back(XtcData::Name("f_64_ENRC"      , XtcData::Name::DOUBLE));
+      payloadSize = 24;
+    }
+    else {
+      throw std::string("BLD name ")+name+" not recognized";
+    }
+    _handler = std::make_unique<Bld>(_mcaddr, _mcport, Bld::DgramPulseIdPos, Bld::DgramHeaderSize, payloadSize);
+  }
+  else {
+    std::string sname(pvname);
+    Pds_Epics::PVBase* pvaAddr    = new Pds_Epics::PVBase((sname+":ADDR"   ).c_str());
+    Pds_Epics::PVBase* pvaPort    = new Pds_Epics::PVBase((sname+":PORT"   ).c_str());
+    _pvaPayload                   = std::make_unique<BldDescriptor>    ((sname+":PAYLOAD").c_str());
+    while(1) {
+      if (pvaAddr    ->connected() &&
+          pvaPort    ->connected() &&
+          _pvaPayload->connected()) {
+        break;
+      }
+      usleep(100000);
+    }
+    _mcaddr = pvaAddr->getScalarAs<unsigned>();
+    _mcport = pvaPort->getScalarAs<unsigned>();
+    _varDef = _pvaPayload->get(payloadSize);
+    delete pvaAddr;
+    delete pvaPort;
+
+    if (_name == "hpsex" || _name == "hpscp") {
+      _alg = XtcData::Alg(_name.c_str(), 0, 0, 1);
+      //  validate _varDef against version here
+    }
+    else {
+      throw std::string("BLD name ")+_name+" not recognized";
+    }
+    _handler = std::make_unique<Bld>(_mcaddr, _mcport, Bld::PulseIdPos, Bld::HeaderSize, payloadSize);
+  }
+}
+
+Bld& BldFactory::handler()
+{
+    return *_handler;
+}
+
+XtcData::NameIndex BldFactory::addToXtc  (XtcData::Xtc& xtc, 
+                                          const XtcData::NamesId& namesId)
+{
+  XtcData::Names& bldNames = *new(xtc) XtcData::Names(_name.c_str(), _alg,
+                                                      _name.c_str(), _name.c_str(), 
+                                                      namesId, 0);
+  bldNames.add(xtc, _varDef);
+  return XtcData::NameIndex(bldNames);
+}
+
 unsigned interfaceAddress(const std::string& interface)
 {
     int fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -53,6 +163,9 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
     payloadSize = 0;
     XtcData::VarDef vd;
     const pvd::StructureConstPtr& structure = _strct->getStructure();
+    if (!structure)
+      throw std::string("BLD with no payload.  Is FieldMask empty?");
+
     const pvd::StringArray& names = structure->getFieldNames();
     const pvd::FieldConstPtrArray& fields = structure->getFields();
     for (unsigned i=0; i<fields.size(); i++) {
@@ -77,7 +190,13 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
 }
 
 
-Bld::Bld(unsigned mcaddr, unsigned port) : m_bufferSize(0), m_position(0), m_first(true),  m_buffer(Bld::MTU)
+Bld::Bld(unsigned mcaddr, 
+         unsigned port,
+         unsigned pulseIdPos, 
+         unsigned headerSize,
+         unsigned payloadSize) : 
+  m_pulseIdPos(pulseIdPos), m_headerSize(headerSize), m_payloadSize(payloadSize),
+  m_bufferSize(0), m_position(0), m_first(true),  m_buffer(Bld::MTU), m_payload(m_buffer.data())
 {
     m_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (m_sockfd < 0) {
@@ -136,21 +255,21 @@ uint32_t pulseIdOffset
 uint8_t payload[]
 
 */
-uint64_t Bld::next(unsigned payloadSize, uint8_t** payload)
+uint64_t Bld::next()
 {
     uint64_t pulseId;
     // get new multicast if buffer is empty
-    if ((m_position + payloadSize + 4) > m_bufferSize) {
+    if ((m_position + m_payloadSize + 4) > m_bufferSize) {
         m_bufferSize = recv(m_sockfd, m_buffer.data(), Bld::MTU, 0);
         pulseId = headerPulseId();
-        *payload = &m_buffer[Bld::HeaderSize];
-        m_position = Bld::HeaderSize + payloadSize;
+        m_payload = &m_buffer[m_headerSize];
+        m_position = m_headerSize + m_payloadSize;
     }
     else {
         uint32_t pulseIdOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position) >> 20;
         pulseId = headerPulseId() + pulseIdOffset;
-        *payload = &m_buffer[m_position + 4];
-        m_position += 4 + payloadSize;
+        m_payload = &m_buffer[m_position + 4];
+        m_position += 4 + m_payloadSize;
     }
     return pulseId;
 }
@@ -262,8 +381,9 @@ XtcData::Dgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex)
 
 BldApp::BldApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp(para, context()),
-    m_para(para),
+    m_drp      (para, context()),
+    m_para     (para),
+    m_config   (0),
     m_terminate(false)
 {
     logging::info("Ready for transitions");
@@ -282,11 +402,35 @@ void BldApp::shutdown()
 
 json BldApp::connectionInfo()
 {
+  //
+  //  Copied from XpmDetector
+  //
+    int fd = open(m_para.device.c_str(), O_RDWR);
+    if (fd < 0) {
+        logging::error("Error opening %s", m_para.device.c_str());
+        return json();
+    }
+    uint32_t reg;
+    dmaReadRegister(fd, 0x00a00008, &reg);
+    close(fd);
+
+    if (!reg) {
+        const char msg[] = "XPM Remote link id register is zero\n";
+        logging::error("%s", msg);
+        throw msg;
+    }
+    int x = (reg >> 16) & 0xFF;
+    int y = (reg >> 8) & 0xFF;
+    int port = reg & 0xFF;
+    std::string xpmIp = {"10.0." + std::to_string(x) + '.' + std::to_string(y)};
+    json info = {{"xpm_ip", xpmIp}, {"xpm_port", port}};
+
     std::string ip = getNicIp();
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
     json bufInfo = m_drp.connectionInfo();
     body["connect_info"].update(bufInfo); // Revisit: Should be in det_info
+    body["connect_info"].update(info);
     return body;
 }
 
@@ -300,17 +444,26 @@ void BldApp::handleConnect(const nlohmann::json& msg)
         body["err_info"] = errorMsg;
     }
 
-    m_pvaAddr = std::make_unique<Pds_Epics::PVBase>("DAQ:LAB2:HPSEX:ADDR");
-    m_pvaPort = std::make_unique<Pds_Epics::PVBase>("DAQ:LAB2:HPSEX:PORT");
-    m_pvaDescriptor = std::make_unique<BldDescriptor>("DAQ:LAB2:HPSEX:PAYLOAD");
-
-    while(1) {
-        if (m_pvaAddr->connected() &&
-            m_pvaPort->connected() &&
-            m_pvaDescriptor->connected()) {
-            break;
-        }
-        usleep(100000);
+    m_config.erase(m_config.begin(),m_config.end());
+    
+    std::string s(m_para.detectorType);
+    logging::debug("Parsing %s",s.c_str());
+    for(size_t curr = 0, next = 0; next != std::string::npos; curr = next+1) {
+      next  = s.find(',',curr+1);
+      size_t pvpos = s.find('+',curr+1);
+      logging::debug("(%d,%d,%d)",curr,pvpos,next);
+      if (next == std::string::npos) {
+        if (pvpos > curr)
+          m_config.push_back(BldFactory(s.substr(curr,pvpos-curr).c_str(),
+                                        s.substr(pvpos+1,-1).c_str()));
+        else
+          m_config.push_back(BldFactory(s.substr(curr,next).c_str()));
+      }
+      else if (pvpos > curr && pvpos < next)
+        m_config.push_back(BldFactory(s.substr(curr,pvpos-curr).c_str(),
+                                      s.substr(pvpos+1,next-pvpos-1).c_str()));
+      else
+        m_config.push_back(BldFactory(s.substr(curr,next-curr).c_str()));
     }
 
     connectPgp(msg, std::to_string(getId()));
@@ -401,16 +554,8 @@ void BldApp::connectPgp(const json& json, const std::string& collectionId)
 
 void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
 {
+    std::vector<XtcData::NameIndex> nameIndex(m_config.size());
 
-    unsigned mcaddr = m_pvaAddr->getScalarAs<unsigned>();
-    unsigned port = m_pvaPort->getScalarAs<unsigned>();
-    logging::debug("addr %u  port %u", mcaddr, port);
-
-    unsigned payloadSize;
-    XtcData::VarDef bldDef = m_pvaDescriptor->get(payloadSize);
-    logging::debug("payloadSize %u", payloadSize);
-
-    Bld bld(mcaddr, port);
     Pgp pgp(m_drp.pool, m_drp.nodeId(), 0xffff0000 | uint32_t(m_para.rogMask));
 
     uint64_t nevents = 0L;
@@ -422,36 +567,47 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
     exporter->add("bld_miss_count", labels, MetricType::Counter,
                   [&](){return nmissed;});
 
+    uint64_t nextId = -1ULL;
+    std::vector<uint64_t> pulseId(m_config.size());
+    for(unsigned i=0; i<m_config.size(); i++) {
+      if ((pulseId[i] = m_config[i].handler().next()) < nextId)
+        nextId = pulseId[i];
+      logging::debug("BldApp::worker nextId 0x%" PRIx64 "  pulseId[%d] 0x%" PRIx64,
+                     nextId, i, pulseId[i]);
+    }
+
     while (1) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
         }
-        uint8_t* bldPayload;
-        uint64_t pulseId = bld.next(payloadSize, &bldPayload);
         uint32_t index;
-        XtcData::Dgram* dgram = pgp.next(pulseId, index);
+        XtcData::Dgram* dgram = pgp.next(nextId, index);
         if (dgram) {
             if (dgram->xtc.damage.value()) {
                 ++nmissed;
-                //printf("Missed bld data!!\n");
-                //printf("pulseId bld %016lx  | pgp %016lx\n", pulseId, dgram->seq.pulseId().value());
+                // printf("Missed bld data!!\n");
+                // printf("pulseId bld %016lx  | pgp %016lx\n", pulseId, dgram->seq.pulseId().value());
             }
             else {
-                XtcData::NamesId namesId(m_drp.nodeId(), 0);
                 switch (dgram->seq.service()) {
                     case XtcData::TransitionId::Configure: {
                         logging::info("BLD configure");
-                        XtcData::Alg bldAlg("bldAlg", 1, 2, 3);
-                        XtcData::Names& bldNames = *new(dgram->xtc) XtcData::Names("bld", bldAlg,
-                            "bld", "bld1234", namesId, 0);
-                        bldNames.add(dgram->xtc, bldDef);
-                        m_nameIndex = XtcData::NameIndex(bldNames);
+                        for(unsigned i=0; i<m_config.size(); i++) {
+                            XtcData::NamesId namesId(m_drp.nodeId(), i);
+                            nameIndex[i] = m_config[i].addToXtc(dgram->xtc, namesId);
+                        }
                         break;
                     }
                     case XtcData::TransitionId::L1Accept: {
-                        XtcData::DescribedData desc(dgram->xtc, m_nameIndex, namesId);
-                        memcpy(desc.data(), bldPayload, payloadSize);
-                        desc.set_data_length(payloadSize);
+                        for(unsigned i=0; i<m_config.size(); i++) {
+                            if (pulseId[i] == nextId) {
+                                XtcData::NamesId namesId(m_drp.nodeId(), i);
+                                const Bld& bld = m_config[i].handler();
+                                XtcData::DescribedData desc(dgram->xtc, nameIndex[i], namesId);
+                                memcpy(desc.data(), bld.payload(), bld.payloadSize());
+                                desc.set_data_length(bld.payloadSize());
+                            }
+                        }
                         break;
                     }
                     default: {
@@ -461,6 +617,19 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
             }
             sentToTeb(*dgram, index);
             nevents++;
+        }
+
+        nextId++;
+        for(unsigned i=0; i<m_config.size(); i++) {
+            if (pulseId[i] < nextId)
+                pulseId[i] = m_config[i].handler().next();
+        }
+
+
+        nextId = -1ULL;
+        for(unsigned i=0; i<m_config.size(); i++) {
+            if (pulseId[i] < nextId)
+                nextId = pulseId[i];
         }
     }
     logging::info("Worker thread finished");
@@ -496,10 +665,13 @@ int main(int argc, char* argv[])
     para.verbose = 0;
     char *instrument = NULL;
     int c;
-    while((c = getopt(argc, argv, "p:o:C:d:u:P:T::v")) != EOF) {
+    while((c = getopt(argc, argv, "l:p:o:C:b:d:D:u:P:T::v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
+                break;
+            case 'l':
+                para.laneMask = strtoul(optarg,NULL,0);
                 break;
             case 'o':
                 para.outputDir = optarg;
@@ -507,8 +679,14 @@ int main(int argc, char* argv[])
             case 'C':
                 para.collectionHost = optarg;
                 break;
+            case 'b':
+                para.detName = optarg;
+                break;
             case 'd':
                 para.device = optarg;
+                break;
+            case 'D':
+                para.detectorType = optarg;
                 break;
             case 'u':
                 para.alias = optarg;
@@ -555,7 +733,7 @@ int main(int argc, char* argv[])
         logging::critical("-u: alias must have _N suffix");
         exit(1);
     }
-    para.detName = para.alias.substr(0, found);
+    //    para.detName = para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
     Py_Initialize(); // for use by configuration

@@ -73,6 +73,12 @@ void Client::_dump() const
          _dev->base.channel[_channel].control);
 }
 
+//  Setup the trigger channel
+void Client::setup(unsigned output, unsigned delay, unsigned width, unsigned polarity)
+{
+  _dev->base.setupTrigger(output, 1<<_channel, polarity, delay, width, 0);
+}
+
   //  Enable the trigger
 void Client::start(unsigned partn)
 {

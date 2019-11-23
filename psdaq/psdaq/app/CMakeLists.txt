@@ -37,6 +37,23 @@ target_link_libraries(hpsBldClient
    rt
 )
 
+add_executable(hpsBldCopy hpsBldCopy.cc)
+
+target_include_directories(hpsBldCopy PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(hpsBldCopy
+   app
+   bld
+   epicstools
+   xtcdata::xtc
+   dl
+   pthread
+   rt
+)
+
 add_executable(lclsBldServer lclsBldServer.cc)
 
 target_include_directories(lclsBldServer PUBLIC
@@ -45,6 +62,21 @@ target_include_directories(lclsBldServer PUBLIC
 )
 
 target_link_libraries(lclsBldServer
+   app
+   tpr
+   dl
+   pthread
+   rt
+)
+
+add_executable(tprtrig tprtrig.cc)
+
+target_include_directories(tprtrig PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(tprtrig
    app
    tpr
    dl
@@ -166,7 +198,9 @@ target_link_libraries(pvcam
 install(TARGETS app
 		hpsBldServer
 		hpsBldClient
+		hpsBldCopy
                 lclsBldServer
+                tprtrig
 		tprioc
 		tprsh
 		tprutil

@@ -6,6 +6,7 @@ Any change to the diagnostic bus description (field names, mask) results in an u
 import sys
 import logging
 import time
+import calendar
 
 from p4p.nt import NTScalar
 from p4p.server import Server, StaticProvider
@@ -20,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 # pv_fieldname, pv_fieldtype, default_value, mmap_address, bit_size, bit_shift
 
+#t_base = time.mktime((1990, 1, 1, 0, 0, 0, 0, 0, -1))
+t_base = calendar.timegm((1990, 1, 1, 0, 0, 0, 0, 0, -1))
+
 class DefaultPVHandler(object):
     type = None
 
@@ -29,8 +33,12 @@ class DefaultPVHandler(object):
     def put(self, pv, op):
         postedval = op.value()
         image = postedval['value']
-        postedval['timeStamp.secondsPastEpoch'] = int(image[2]) + (int(image[3])<<16)
-        postedval['timeStamp.nanoseconds'     ]  = int(image[0]) + (int(image[1])<<16)
+        postedval['timeStamp.secondsPastEpoch'] = float(int(image[2]) + (int(image[3])<<16)) + t_base
+        postedval['timeStamp.nanoseconds'     ] = float(int(image[0]) + (int(image[1])<<16))
+
+#        print('image {} {:x} {:x}'.format(image[0:4], 
+#                                          postedval['timeStamp.secondsPastEpoch'],
+#                                          postedval['timeStamp.nanoseconds']))
         pv.post(postedval)
         op.done()
         if self.callback is not None:
