@@ -50,6 +50,7 @@ add_executable(drp_pva
 
 target_link_libraries(drp_pva
     drpbase
+    trigger
     epicstools
 )
 
@@ -114,7 +115,7 @@ add_executable(AxiBatcherParserTest
     AxiBatcherParser.cc
 )
 target_include_directories(AxiBatcherParserTest PUBLIC
-    
+
     ../psdaq/pgp/aes-stream-drivers/include
     ../psdaq/drp
     ${PYTHON_INCLUDE_DIRS}
@@ -135,7 +136,7 @@ target_include_directories(drp_validate PUBLIC
      pthread
  )
 
-install(TARGETS drp drp_bld
+install(TARGETS drp drp_bld drp_pva
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
