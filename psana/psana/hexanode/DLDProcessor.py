@@ -83,7 +83,7 @@ class DLDProcessor :
 
 #------------------------------
 
-        gu.create_directory(OFPREFIX.split('/')[0])
+        gu.create_directory(OFPREFIX.split('/')[0], mode=0o775)
 
         logger.info('TDC_RESOLUTION : %s' % TDC_RESOLUTION)
         logger.info('CALIBTAB       : %s' % CALIBTAB)
@@ -175,7 +175,7 @@ class DLDProcessor :
 
         self.number_of_hits[:NUM_CHANNELS] = nhits[:NUM_CHANNELS]
         for c in range(NUM_CHANNELS) :
-            self.tdc_ns[c,:nhits[c]] = pktsec[c,:nhits[c]] * 10**9 # convert sec -> ns
+            self.tdc_ns[c,:nhits[c]] = pktsec[c,:nhits[c]] * 1E9 # convert sec -> ns
 
         #logger.info(info_ndarr(self.number_of_hits, 'number_of_hits'))
         #logger.info(info_ndarr(self.tdc_ns,         'tdc_ns'))

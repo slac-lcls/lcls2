@@ -34,11 +34,12 @@ Usage ::
     while f.next_event() :
         # Access methods
         #----------------
-        nhits  = f.number_of_hits()
-        tdc_ns = f.tdc_ns()
         nevts  = f.events_in_h5file()
         i      = f.event_number()
-
+        tdcsec = f.tdcsec()
+        tdc_ns = f.tdc_ns()
+        nhits  = f.number_of_hits()
+        nhits, tdcsec = f.peak_arrays()
 
 Created on 2019-11-07 by Mikhail Dubrovin
 """
@@ -86,10 +87,10 @@ class WFHDF5IO :
         self.h5ds_nevents       = self._of.create_dataset('nevents',      (1,), dtype='i')
         self.h5ds_event_number  = self._of.create_dataset('event_number', (self._nevmax,), dtype='i', maxshape=(None,))
         self.h5ds_event_time    = self._of.create_dataset('event_time',   (self._nevmax,), dtype='f', maxshape=(None,))
-        self.h5ds_nhits = self._of.create_dataset('nhits', (self._nevmax, self.NUM_CHANNELS),\
-                                                  dtype='i', maxshape=(None, self.NUM_CHANNELS))
-        self.h5ds_tdcns = self._of.create_dataset('tdcns', (self._nevmax, self.NUM_CHANNELS, self.NUM_HITS),\
-                                                  dtype='f', maxshape=(None, self.NUM_CHANNELS, self.NUM_HITS))
+        self.h5ds_nhits  = self._of.create_dataset('nhits', (self._nevmax, self.NUM_CHANNELS),\
+                                                   dtype='i', maxshape=(None, self.NUM_CHANNELS))
+        self.h5ds_tdcsec = self._of.create_dataset('tdcsec', (self._nevmax, self.NUM_CHANNELS, self.NUM_HITS),\
+                                                   dtype='f', maxshape=(None, self.NUM_CHANNELS, self.NUM_HITS))
         self._start_time_sec = time()
 
 
@@ -114,7 +115,7 @@ class WFHDF5IO :
         self._nevmax = self._nevmax + self._size_increment if size is None else size
         self._of.flush()
         self.h5ds_nhits       .resize(self._nevmax, axis=0)   # or dset.resize((20,1024))
-        self.h5ds_tdcns       .resize(self._nevmax, axis=0)   # or dset.resize((20,1024))
+        self.h5ds_tdcsec      .resize(self._nevmax, axis=0)   # or dset.resize((20,1024))
         self.h5ds_event_number.resize(self._nevmax, axis=0) 
         self.h5ds_event_time  .resize(self._nevmax, axis=0) 
 
@@ -124,7 +125,7 @@ class WFHDF5IO :
                "waveforms need to be processed before calling add_event_to_h5file()"
         i = self._nev
         self.h5ds_nhits       [i] = self._wfpeaks._number_of_hits
-        self.h5ds_tdcns       [i] = self._wfpeaks._pkt_ns
+        self.h5ds_tdcsec      [i] = self._wfpeaks._pktsec
         self.h5ds_event_number[i] = i
         self.h5ds_event_time  [i] = time()
         self._nev += 1
@@ -134,15 +135,16 @@ class WFHDF5IO :
     def open_input_h5file(self, fname='./test.h5') :
         self._error_flag = 0
         self._nev = 0
-        self._if = h5py.File(fname,'r')
-        self.h5ds_nhits      = self._if['nhits']
-        self.h5ds_tdcns      = self._if['tdcns']
-        self.h5ds_nevents    = self._if['nevents'][0]
-        self.EXP             = self._if['experiment'][0]
-        self.RUN             = self._if['run'][0]
-        self.TDC_RESOLUTION  = self._if['tdc_res_ns'][0]
-        self._start_time_sec = self._if['start_time'][0]
-        self._stop_time_sec  = self._if['stop_time'][0]
+        self._if = f = h5py.File(fname,'r')
+        self.h5ds_nhits      = f['nhits']
+        self.h5ds_tdcsec     = f.get('tdcsec', None) # f['tdcsec'] if 'tdcsec' in f.keys() else None
+        self.h5ds_tdc_ns     = f.get('tdcns', None)  # f['tdcns']  if 'tdcns'  in f.keys() else None
+        self.h5ds_nevents    = f['nevents'][0]
+        self.EXP             = f['experiment'][0]
+        self.RUN             = f['run'][0]
+        self.TDC_RESOLUTION  = f['tdc_res_ns'][0]
+        self._start_time_sec = f['start_time'][0]
+        self._stop_time_sec  = f['stop_time'][0]
         logger.debug('File %s has %d records' % (fname, self.h5ds_nevents))
 
 
@@ -158,13 +160,16 @@ class WFHDF5IO :
         if i>self.h5ds_nevents-1 : 
              return False
         self._number_of_hits = self.h5ds_nhits[i]
-        self._tdc_ns         = self.h5ds_tdcns[i]
+        self._tdcsec         = self.h5ds_tdcsec[i] if self.h5ds_tdcsec is not None else\
+                               self.h5ds_tdc_ns[i] * 1E-9 if self.h5ds_tdc_ns is not None else None
         self._nev += 1
         return True
 
 
+    def peak_arrays(self)      : return self._number_of_hits, self._tdcsec
     def number_of_hits(self)   : return self._number_of_hits
-    def tdc_ns(self)           : return self._tdc_ns
+    def tdc_ns(self)           : return self._tdcsec*1E9
+    def tdcsec(self)           : return self._tdcsec
     def tdc_resolution(self)   : return self.TDC_RESOLUTION
     def events_in_h5file(self) : return self.h5ds_nevents
     def event_number(self)     : return self._nev - 1
@@ -176,7 +181,7 @@ class WFHDF5IO :
         for i,v in enumerate(self._number_of_hits) :
             arr[i] = v if v<maxvalue else maxvalue
 
-    def get_tdc_data_array(self, arr, maxsize=-1) : arr[:,0:maxsize] = self._tdc_ns[:,0:maxsize]
+    def get_tdc_data_array(self, arr, maxsize=-1) : arr[:,0:maxsize] = self._tdcsec[:,0:maxsize]
 
     def error_flag(self) : return self._error_flag
     def get_error_text(self, error_flag) : return 'no-error: flag=%d' % self._error_flag

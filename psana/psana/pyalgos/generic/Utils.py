@@ -195,7 +195,7 @@ def log_rec_on_start() :
 
 #------------------------------
 
-def create_directory(dir, mode=0o377) :
+def create_directory(dir, mode=0o777) :
     """Creates directory and sets its mode
     """
     if os.path.exists(dir) :
@@ -207,7 +207,7 @@ def create_directory(dir, mode=0o377) :
 
 #------------------------------
 
-def create_path(path, depth=6, mode=0o377) : 
+def create_path(path, depth=6, mode=0o777) : 
     """Creates missing path of specified depth from the beginning
        e.g. for '/reg/g/psdm/logs/calibman/2016/07/log-file-name.txt'
        or '/reg/d/psdm/cxi/cxi11216/calib/Jungfrau::CalibV1/CxiEndstation.0:Jungfrau.0/pedestals/9-end.data'

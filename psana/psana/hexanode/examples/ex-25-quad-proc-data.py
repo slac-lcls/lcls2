@@ -51,6 +51,7 @@ def proc_data(**kwargs):
     DETNAME      = kwargs.get('detname','tmo_hexanode')
     EVSKIP       = kwargs.get('evskip', 0)
     EVENTS       = kwargs.get('events', 10) + EVSKIP
+    VERBOSE      = kwargs.get('verbose', False)
 
     peaks = WFPeaks(**kwargs)
     proc  = DLDProcessor(**kwargs)
@@ -71,11 +72,12 @@ def proc_data(**kwargs):
 
         nhits, pkinds, pkvals, pktsec = peaks(wfs,wts) # ACCESS TO PEAK INFO
 
-        print("  waveforms processing time = %.6f sec" % (time()-t0_sec))
-        print_ndarr(wfs,    '  waveforms      : ', last=4)
-        print_ndarr(wts,    '  times          : ', last=4)
-        print_ndarr(nhits,  '  number_of_hits : ')
-        #print_ndarr(pktsec, '  peak_times_sec : ', last=4)
+        if VERBOSE :
+            print("  waveforms processing time = %.6f sec" % (time()-t0_sec))
+            print_ndarr(wfs,    '  waveforms      : ', last=4)
+            print_ndarr(wts,    '  times          : ', last=4)
+            print_ndarr(nhits,  '  number_of_hits : ')
+            print_ndarr(pktsec, '  peak_times_sec : ', last=4)
 
         for i,(x,y,r,t) in enumerate(proc.xyrt_list(nev, nhits, pktsec)) :
             print('    hit:%2d x:%7.3f y:%7.3f t:%10.5g r:%7.3f' % (i,x,y,t,r))

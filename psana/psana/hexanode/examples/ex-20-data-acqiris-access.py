@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #----------
-"""Loop over events of psana dataset (xtc2 file) and 
-   print raw acqiris waveforms and associated sample times
+"""- loop over events of psana dataset (xtc2 file) and 
+   - print raw acqiris waveforms and associated sample times
 """
 
 from psana import DataSource
@@ -11,10 +11,9 @@ ds   = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r010
 orun = next(ds.runs())
 det  = orun.Detector('tmo_hexanode')
 
-myrun = next(ds.runs())
-for n,evt in enumerate(orun.events()):
-    if n>10 : break
-    print('Event %d'%n)
+for nev,evt in enumerate(orun.events()):
+    if nev>10 : break
+    print('Event %d'%nev)
     print_ndarr(det.raw.times(evt),     '  times : ', last=4)
     print_ndarr(det.raw.waveforms(evt), '  wforms: ', last=4)
 

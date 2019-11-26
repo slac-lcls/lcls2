@@ -421,41 +421,40 @@ def draw_plots(sp, prefix='plot', do_save=True, hwin_x0y0=(0,400)) :
     #---------
     if sp.STAT_PHYSICS :
     #---------
+            #sp.t_ns_bins = HBins((1400., 2900.), t_ns_nbins, vtype=np.float32)
+        ht = sp.t_ns_bins
         amp_limits = (0,5)
-        imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax())
-        #plot_image(sp.t1_vs_t0, amp_range=amp_limits, img_range=imrange, fnm='t1_vs_t0.png',\
-        #           title='t1 vs t0', xlabel='t0 (ns)', ylabel='t1 (ns)', titwin='PIPICO', origin='lower',\
-        #           hwin_x0y0=hwin_x0y0, prefix=prefix, do_save=do_save)
+        imrange=(ht.vmin(), ht.vmax(), ht.vmin(), ht.vmax())
 
         plot_image(sp.ti_vs_tj, amp_range=amp_limits, img_range=imrange, fnm='ti_vs_tj.png',\
-                   title='ti vs tj', xlabel='ti (ns)', ylabel='tj (ns)', titwin='PIPICO', origin='lower',\
+                   title='ti vs tj correlations', xlabel='tj (ns)', ylabel='ti (ns)', titwin='PIPICO', origin='lower',\
                    hwin_x0y0=hwin_x0y0, prefix=prefix, do_save=do_save)
 
-        limits = sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax()
-        h1d(np.array(sp.lst_t_all), bins=sp.t_ns_bins.nbins(), amp_range=limits, log=True,\
-            title ='t_all', xlabel='t_all (ns)', ylabel='Events',\
+        limits = ht.vmin(), ht.vmax()
+        t_arr = np.array(sp.lst_t_all)
+        h1d(t_arr, bins=ht.nbins(), amp_range=limits, log=True,\
+            title ='time of all hits', xlabel='t_all (ns)', ylabel='Events',\
             fnm='t_all.png', hwin_x0y0=hwin_x0y0, prefix=prefix, do_save=do_save)
 
+        t_all = ht.bin_count(t_arr)
 
-        #imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.x_mm_bins.vmin(), sp.x_mm_bins.vmax())
-        #plot_image(sp.x_vs_t0,  amp_range=amp_limits, img_range=imrange, fnm='x_vs_t0.png',\
-        #           title='x0 vs t0', xlabel='t0 (ns)', ylabel='x0 (mm)', titwin='x0 vs t0', origin='lower',\
-        #           hwin_x0y0=hwin_x0y0, prefix=prefix, do_save=do_save)
+        sum_bkg = t_all.sum()
+        sum_cor = sp.ti_vs_tj.sum()
 
-        #imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.y_mm_bins.vmin(), sp.y_mm_bins.vmax())
-        #plot_image(sp.y_vs_t0,  amp_range=amp_limits, img_range=imrange, fnm='y_vs_t0.png',\
-        #           title='y0 vs t0', xlabel='t0 (ns)', ylabel='y0 (mm)', titwin='y0 vs t0', origin='lower',\
-        #           hwin_x0y0=hwin_x0y0, prefix=prefix, do_save=do_save)
+        print('number of entries for 1-d ti   (bkg):', sum_bkg)
+        print('number of entries for ti vs tj (cor):', sum_cor)
 
-        imrange=(sp.t_ns_bins.vmin(), sp.t_ns_bins.vmax(), sp.r_mm_bins.vmin(), sp.r_mm_bins.vmax())
-        #plot_image(sp.rsx_vs_t,  amp_range=amp_limits, img_range=imrange, fnm='rsx_vs_t.png',\
-        #           title='r*sign(x) vs t (All hits)', xlabel='t (ns)', ylabel='r*sign(x) (mm)', titwin='r vs t (All hits)',\
-        #           origin='lower', figsize=(12,5), axwin=(0.10, 0.10, 0.88, 0.86),\
-        #           hwin_x0y0=hwin_x0y0, prefix=prefix, do_save=do_save)
+        bkg = np.outer(t_all,t_all)/sum_bkg
+        print_ndarr(bkg, 'bkg:\n')
 
+        plot_image(bkg, amp_range=amp_limits, img_range=imrange, fnm='t_corr_bkg.png',\
+                   title='ti vs tj background', xlabel='tj (ns)', ylabel='ti (ns)', titwin='PIPICO', origin='lower',\
+                   hwin_x0y0=hwin_x0y0, prefix=prefix, do_save=do_save)
+
+        imrange=(ht.vmin(), ht.vmax(), sp.r_mm_bins.vmin(), sp.r_mm_bins.vmax())
         plot_image(sp.rsy_vs_t,  amp_range=amp_limits, img_range=imrange, fnm='rsy_vs_t.png',\
                    title='r*sign(y) vs t (All hits)', xlabel='t (ns)', ylabel='r*sign(y) (mm)', titwin='r vs t (All hits)',\
-                   origin='lower', figsize=(12,5), axwin=(0.10, 0.10, 0.88, 0.86),\
+                   origin='lower', figsize=(12,5), axwin=(0.08, 0.10, 0.95, 0.84),\
                    hwin_x0y0=hwin_x0y0, prefix=prefix, do_save=do_save)
     #=========
     #=========

@@ -1,20 +1,22 @@
 #!/usr/bin/env python
 #----------
-"""Loop over events of psana dataset (xtc2 file), 
-   draw acqiris waveforms in selected ROI for all quad-DLD channels,
-   for each waveform run peakfinder peaks(wfs,wts), and
-   draw peak times as vertical lines.
+"""
+   See example at the end of this file in __main__:
+
+   - loop over events of psana dataset (xtc2 file), 
+   - draw acqiris waveforms in selected ROI for all quad-DLD channels,
+   - for each waveform run peakfinder peaks(wfs,wts) and
+     draw peak times as vertical lines.
 """
 
 from time import time
 import numpy as np
 
 from psana import DataSource
-
+from psana.hexanode.WFPeaks import WFPeaks
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 import psana.pyalgos.generic.Graphics as gr
 
-from psana.hexanode.WFPeaks import WFPeaks
 #----------
 
 # parameters for CFD descriminator - waveform processing algorithm

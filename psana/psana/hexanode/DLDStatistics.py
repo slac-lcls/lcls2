@@ -159,8 +159,8 @@ class DLDStatistics :
 #----------
 
     def fill_data(self, number_of_hits, tdc_sec) :
-        self.fill_raw_data(number_of_hits, tdc_sec) 
-        self.fill_corrected_data()
+        if self.fill_corrected_data() :
+           self.fill_raw_data(number_of_hits, tdc_sec) 
 
 #----------
 
@@ -209,7 +209,8 @@ class DLDStatistics :
         if self.STAT_TIME_SUMS or self.STAT_CORRELATIONS :
            self.lst_time_sum_u.append(time_sum_u)
            self.lst_time_sum_v.append(time_sum_v)
-           self.lst_time_sum_w.append(time_sum_w)
+           if sorter.use_hex :        
+              self.lst_time_sum_w.append(time_sum_w)
 
         #if self.STAT_XY_RESOLUTION :
         # NOT VALID FOR QUAD
@@ -235,7 +236,7 @@ class DLDStatistics :
         #=====================
         if number_of_particles<1 :
             logger.debug('no hits found in event ')
-            return
+            return False
         #=====================
 
         tdc_ns = self.proc.tdc_ns
@@ -260,7 +261,7 @@ class DLDStatistics :
 
         time_sum_u_corr = tdc_ns[Cu1,0] + tdc_ns[Cu2,0] - 2*tdc_ns[Cmcp,0]
         time_sum_v_corr = tdc_ns[Cv1,0] + tdc_ns[Cv2,0] - 2*tdc_ns[Cmcp,0]
-        time_sum_w_corr = 0 #tdc_ns[Cw1,0] + tdc_ns[Cw2,0] - 2*tdc_ns[Cmcp,0]
+        time_sum_w_corr = 0 # tdc_ns[Cw1,0] + tdc_ns[Cw2,0] - 2*tdc_ns[Cmcp,0]
 
         if sorter.use_hex :        
             w_ns = tdc_ns[Cw1,0] - tdc_ns[Cw2,0]
@@ -383,6 +384,8 @@ class DLDStatistics :
             # accumulate times in correlation matrix
             for i in tinds :
                 self.ti_vs_tj[i,tinds] += 1
+
+        return True
 
 #----------
 
