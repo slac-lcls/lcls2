@@ -379,15 +379,17 @@ cdef class py_sort_class:
     cdef sort_class* cptr  # holds a C++ instance
     cdef int32_t number_of_output_hits
 
+    NS_TO_SEC = 1E-9
+
     def __cinit__(self):
-        print("In py_sort_class.__cinit__")
+        #print("In py_sort_class.__cinit__")
         self.cptr = new sort_class();
         if self.cptr == NULL:
             raise MemoryError('In py_sort_class.__cinit__: Not enough memory.')
         self.number_of_output_hits = 0
 
     def __dealloc__(self):
-        print("In py_sort_class.__dealloc__")
+        #print("In py_sort_class.__dealloc__")
         del self.cptr
 
     @property
@@ -525,7 +527,7 @@ cdef class py_sort_class:
 
     def t_list(self) :
         oha = self.cptr.output_hit_array
-        return [oha[i].time for i in range(self.number_of_output_hits)]
+        return [oha[i].time*self.NS_TO_SEC for i in range(self.number_of_output_hits)]
  
     def x_list(self) :
         oha = self.cptr.output_hit_array
@@ -544,12 +546,15 @@ cdef class py_sort_class:
 	
     def xyt_list(self) :
         oha = self.cptr.output_hit_array
-        return [(oha[i].x,oha[i].y,oha[i].time) for i in range(self.number_of_output_hits)]
+        return [(oha[i].x,oha[i].y,oha[i].time*self.NS_TO_SEC) for i in range(self.number_of_output_hits)]
 
     def xyr_list(self) :
         return [(x,y,sqrt(x*x+y*y)) for x,y in self.xy_list()]
 
     def rt_list(self) :
+        return [(sqrt(x*x+y*y),t) for x,y,t in self.xyt_list()]
+
+    def rt_ns_list(self) :
         return [(sqrt(x*x+y*y),t) for x,y,t in self.xyt_list()]
 
     def xyrt_list(self) :

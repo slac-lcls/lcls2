@@ -16,8 +16,8 @@ Module :py:class:`DLDProcessor` for MCP with DLD for COLTRIMS experiments
     for nevt,evt in enumerate(orun.events()):
         wts = det.raw.times(evt)     
         wfs = det.raw.waveforms(evt)
-        nhits, pkinds, pkvals, pktns = peaks(wfs,wts) # ACCESS TO PEAK INFO
-        xyrt = o.xyrt_list(nevt, nhits, pktns)
+        nhits, pkinds, pkvals, pktsec = peaks(wfs,wts) # ACCESS TO PEAK INFO
+        xyrt = o.xyrt_list(nevt, nhits, pktsec)
 
 Created on 2019-11-20 by Mikhail Dubrovin
 """
@@ -71,7 +71,7 @@ class DLDProcessor :
         #EVENTS       = kwargs.get('events', 1000000) + EVSKIP
         NUM_CHANNELS      = kwargs.get('numchs', 5)
         NUM_HITS          = kwargs.get('numhits', 16)
-        OFPREFIX          = kwargs.get('ofprefix','./figs-hexanode/plot')
+        OFPREFIX          = kwargs.get('ofprefix','./figs-DLD/plot')
         
         self.VERBOSE      = kwargs.get('verbose', False)
         calibtab          = kwargs.get('calibtab', None)
@@ -83,7 +83,7 @@ class DLDProcessor :
 
 #------------------------------
 
-        #create_output_directory(OFPREFIX)
+        gu.create_directory(OFPREFIX.split('/')[0])
 
         logger.info('TDC_RESOLUTION : %s' % TDC_RESOLUTION)
         logger.info('CALIBTAB       : %s' % CALIBTAB)
@@ -131,9 +131,6 @@ class DLDProcessor :
         logger.info("Numeration of channels - u1:%i  u2:%i  v1:%i  v2:%i  w1:%i  w2:%i  mcp:%i"%\
               (Cu1, Cu2, Cv1, Cv2, Cw1, Cw2, Cmcp))
 
-        self.inds_incr = ((Cu1,1), (Cu2,2), (Cv1,4), (Cv2,8), (Cw1,16), (Cw2,32), (Cmcp,64)) if sorter.use_hex else\
-                         ((Cu1,1), (Cu2,2), (Cv1,4), (Cv2,8), (Cmcp,16))
-
         #logger.info("chanel increments:", self.inds_incr)
     
         #=====================
@@ -169,7 +166,7 @@ class DLDProcessor :
 
 
 
-    def set_data_arrays(self, nhits, pktns) :
+    def set_data_arrays(self, nhits, pktsec) :
         NUM_CHANNELS, NUM_HITS = self.tdc_ns.shape
         conds = nhits[:NUM_CHANNELS]==0 
         if conds.any() :
@@ -178,15 +175,15 @@ class DLDProcessor :
 
         self.number_of_hits[:NUM_CHANNELS] = nhits[:NUM_CHANNELS]
         for c in range(NUM_CHANNELS) :
-            self.tdc_ns[c,:nhits[c]] = pktns[c,:nhits[c]]
+            self.tdc_ns[c,:nhits[c]] = pktsec[c,:nhits[c]] * 10**9 # convert sec -> ns
 
-        logger.info(info_ndarr(self.number_of_hits, 'number_of_hits'))
-        logger.info(info_ndarr(self.tdc_ns,         'tdc_ns'))
+        #logger.info(info_ndarr(self.number_of_hits, 'number_of_hits'))
+        #logger.info(info_ndarr(self.tdc_ns,         'tdc_ns'))
 
         return True
 
 
-    def event_proc(self, evnum, nhits, pktns) :
+    def event_proc(self, evnum, nhits, pktsec) :
         """
            TODO by end user:
            Here you must read in a data block from your data file
@@ -195,13 +192,13 @@ class DLDProcessor :
         if evnum == self.evnum_old : return
         self.evnum_old = evnum
 
-        if not self.set_data_arrays(nhits, pktns) : return
+        if not self.set_data_arrays(nhits, pktsec) : return
 
         sorter, number_of_hits, tdc_ns  = self.sorter, self.number_of_hits, self.tdc_ns
 
         Cu1, Cu2, Cv1, Cv2, Cw1, Cw2, Cmcp = sorter.channel_indexes
 
-        if self.VERBOSE : print_tdc_ns(tdc_ns, cmt='  TDC raw data ')
+        if self.VERBOSE : print_tdc_ns(tdc_ns, cmt='  TDC raw data -> ns ')
 
         if sorter.use_hex :        
   	    # shift the time sums to zero:
@@ -250,13 +247,13 @@ class DLDProcessor :
         #logger.info('    XXX sorter.time_list', sorter.t_list())
 
 
-    def xyrt_list(self, evnum, nhits, pktns) :
-        if evnum != self.evnum_old : self.event_proc(evnum, nhits, pktns)
+    def xyrt_list(self, evnum, nhits, pktsec) :
+        if evnum != self.evnum_old : self.event_proc(evnum, nhits, pktsec)
         return self.sorter.xyrt_list()
 
 
-    def xyt_list(self, evnum, nhits, pktns) :
-        if evnum != self.evnum_old : self.event_proc(evnum, nhits, pktns)
+    def xyt_list(self, evnum, nhits, pktsec) :
+        if evnum != self.evnum_old : self.event_proc(evnum, nhits, pktsec)
         return self.sorter.xyt_list()
 
 

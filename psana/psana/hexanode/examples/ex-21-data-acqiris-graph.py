@@ -1,21 +1,23 @@
 #!/usr/bin/env python
-#--------------------
+#----------
+"""Loop over events of psana dataset (xtc2 file), 
+   draw acqiris waveforms in selected ROI for all quad-DLD channels,
+   for each waveform run peakfinder peaks(wfs,wts), and
+   draw peak times as vertical lines.
+"""
 
-import sys
-import psana
 from time import time
 import numpy as np
+
 from psana import DataSource
 
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 import psana.pyalgos.generic.Graphics as gr
 
-#from ndarray import wfpkfinder_cfd
 from psana.hexanode.WFPeaks import WFPeaks
+#----------
 
-#--------------------
-
-# Parameters of the CFD descriminator for hit time finding algotithm
+# parameters for CFD descriminator - waveform processing algorithm
 cfdpars= {'cfd_base'       :  0.,
           'cfd_thr'        : -0.05,
           'cfd_cfr'        :  0.85,
@@ -27,114 +29,110 @@ cfdpars= {'cfd_base'       :  0.,
           'cfd_wfbinend'   : 22000,
          }
 
-peaks = WFPeaks(**cfdpars) # algorithm
+# algorithm initialization in global scope
+peaks = WFPeaks(**cfdpars)
 
+#----------
+# global parameters for graphics
 
-#TIME_RANGE=(0.0000000,0.0000111) # entire wf duration
-#TIME_RANGE=(0.000003,0.000005)
-TIME_RANGE=(0.0000014,0.0000056)
+time_range_sec=(0.0000014,0.0000056)
+#time_range_sec=(0.0000000,0.0000111) # entire wf duration in this experiment
 
-EVSKIP = 0
-EVENTS = 5 + EVSKIP
+naxes = 5 # 5 for quad- or 7 for hex-anode
+# assumes that lcls2 detector data returns channels 
+# in desired order for u1, u2, v1, v2, [w1, w2,] mcp
 
-#--------------------
-
-def draw_times(ax, wt, pkvals, pkinds) :
-
-    #edges = np.array(((100,5000),(200,10000)))
-    edges = zip(pkvals,pkinds)
-
-    for (amp,ind) in edges :
-        x0 = wt[int(ind)]
-        xarr = (x0,x0)
-        yarr = (amp,-amp)
-        gr.drawLine(ax, xarr, yarr, s=10, linewidth=1, color='k')
-
-#--------------------
-
-fig = gr.figure(figsize=(15,15), title='Image')
-fig.clear()
-
-#gr.move_fig(fig, 200, 100)
-##fig.canvas.manager.window.geometry('+200+100')
-
-naxes = 5
-ch = (0,1,2,3,4,5,6)
 gfmt = ('b-', 'r-', 'g-', 'k-', 'm-', 'y-', 'c-', )
 ylab = ('X1', 'X2', 'Y1', 'Y2', 'MCP', 'XX', 'YY', )
 
 dy = 1./naxes
-
 lw = 1
 w = 0.87
 h = dy - 0.04
 x0, y0 = 0.07, 0.03
 
+fig = gr.figure(figsize=(15,15), title='Image')
+fig.clear()
 ax = [gr.add_axes(fig, axwin=(x0, y0 + i*dy, w, h)) for i in range(naxes)]
 
-#--------------------
+#----------
 
-def draw_waveforms(wfs, wts) :
-
+def draw_waveforms(wfs, wts, nev) :
+    """Draws all waveforms on figure axes, one waveform per axis.
+       Parameters:
+       - wfs [np.array] shape=(NUM_CHANNELS, NUM_SAMPLES) - waveform intensities
+       - wts [np.array] shape=(NUM_CHANNELS, NUM_SAMPLES) - waveform times
+    """
     t0_sec = time()
-    nhits, pkinds, pkvals, pktns = peaks(wfs,wts)
-    print('    wf proc time(sec) = %8.6f' % (time()-t0_sec))
 
-    p = peaks
+    #======== peak-finding algorithm ============
+    nhits, pkinds, pkvals, pktsec = peaks(wfs,wts)
+    dt_sec = time()-t0_sec
+    wfssel,wtssel = peaks.waveforms_preprocessed(wfs, wts) # selected time range and subtracted offset
+    thr = peaks.THR
 
-    print_ndarr(nhits, '  nhits: ', last=10)
+    #============================================
 
-    for i in range(naxes) :
-        ax[i].clear()
-        ax[i].set_xlim(TIME_RANGE)
-        ax[i].set_ylabel(ylab[i], fontsize=14)
+    print_ndarr(wtssel,'  wtssel: ', last=4)
+    print('  wf processing time(sec) = %8.6f' % dt_sec)
+    print_ndarr(nhits, '  nhits : ', last=10)
+    print_ndarr(pkinds,'  pkinds: ', last=4)
+    print_ndarr(pktsec,'  pktsec: ', last=4)
+    print_ndarr(pkvals,'  pkvals: ', last=4)
 
-        ich = ch[i]
-        print('  == ch:%2d %3s'%(ich,ylab[i]), end = '')
+    for ch in range(naxes) :
+        ax[ch].clear()
+        ax[ch].set_xlim(time_range_sec)
+        ax[ch].set_ylabel(ylab[ch], fontsize=14)
 
-        wftot = wfs[ich,:]
-        wttot = wts[ich,:]
+        # draw waveform
+        ax[ch].plot(wtssel[ch], wfssel[ch], gfmt[ch], linewidth=lw)
 
-        wfsel = np.copy(wftot[p.WFBINBEG:p.WFBINEND])
-        wtsel = np.copy(wttot[p.WFBINBEG:p.WFBINEND])
+        # draw line for threshold level
+        gr.drawLine(ax[ch], ax[ch].get_xlim(), (thr,thr), s=10, linewidth=1, color='k')
 
-        wfsel -= wftot[peaks.IOFFSETBEG:peaks.IOFFSETEND].mean()
-        ax[i].plot(wtsel, wfsel, gfmt[i], linewidth=lw)
+        # draw lines for peak times
+        draw_times(ax[ch], pkvals[ch], pkinds[ch], wtssel[ch])
 
-        gr.drawLine(ax[i], ax[i].get_xlim(), (p.THR,p.THR), s=10, linewidth=1, color='k')
-        draw_times(ax[i], wtsel, pkvals[i], pkinds[i])
-
+    gr.set_win_title(fig, 'Event: %d' % nev)
     gr.draw_fig(fig)
     gr.show(mode='non-hold')
 
-#--------------------
-#---- Event loop ----
-#--------------------
+#----------
 
+def draw_times(axis, pkvals, pkinds, wt) :
+    """Adds to figure axis a set of vertical lines for found peaks.
+       Parameters:
+       - axis - figure axis to draw a single waveform
+       - pkvals [np.array] - 1-d peak values 
+       - pkinds [np.array] - 1-d peak indexes in wt
+       - wt [np.array] - 1-d waveform sample times - is used to get time [sec] from pkinds
+    """
+    for v,i in zip(pkvals,pkinds) :
+        t = wt[i]
+        gr.drawLine(axis, (t,t), (-v,v), s=10, linewidth=1, color='k')
 
+#----------
 
-ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
-orun = next(ds.runs())
-det = orun.Detector('tmo_hexanode')
-det_raw = det.raw
+if __name__ == "__main__" :
 
-for n,evt in enumerate(orun.events()):
+    EVSKIP = 0
+    EVENTS = 5 + EVSKIP
 
-    if n<EVSKIP : continue
-    if n>EVENTS : break
+    ds   = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
+    orun = next(ds.runs())
+    det  = orun.Detector('tmo_hexanode')
 
-    print(50*'_', '\n Event # %d' % n)
-    gr.set_win_title(fig, titwin='Event: %d' % n)
+    for n,evt in enumerate(orun.events()):
+        if n<EVSKIP : continue
+        if n>EVENTS : break
+        print('%s\nEvent # %d' % (50*'_',n))
 
-    wfs = det_raw.waveforms(evt); print_ndarr(wfs, '  wforms: ', last=4)
-    wts = det_raw.times(evt);     print_ndarr(wts, '  wtimes: ', last=4)
+        wfs = det.raw.waveforms(evt); print_ndarr(wfs, '  wforms: ', last=4)
+        wts = det.raw.times(evt);     print_ndarr(wts, '  wtimes: ', last=4)
 
-    draw_waveforms(wfs, wts)
+        draw_waveforms(wfs, wts, n)
 
-gr.show()
+    gr.show()
 
-#--------------------
-
-sys.exit(0)
-
-#--------------------
+#----------

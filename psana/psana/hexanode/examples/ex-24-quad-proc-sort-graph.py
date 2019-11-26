@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 """
     See example in proc_data(**kwargs)
 
@@ -20,6 +21,14 @@
       get and use sorted hit information
           proc = DLDProcessor(**kwargs)
           for x,y,r,t in proc.xyrt_list(nev, nhits, pktsec) :
+
+    - accumulate per event DLDProcessor internal info in 
+          stats = DLDStatistics(proc,**kwargs)
+          stats.fill_data(nhits, pktsec)
+
+    - plot DLDStatistics arrays at the end of the event loop
+          from psana.hexanode.DLDGraphics import draw_plots
+          draw_plots(stats, prefix=OFPREFIX, do_save=True, hwin_x0y0=(0,10))
 """
 
 #----------
@@ -32,7 +41,9 @@ from time import time
 
 from psana import DataSource
 from psana.hexanode.WFPeaks import WFPeaks
-from psana.hexanode.DLDProcessor import DLDProcessor
+from psana.hexanode.DLDProcessor  import DLDProcessor
+from psana.hexanode.DLDStatistics import DLDStatistics
+from psana.hexanode.DLDGraphics   import draw_plots
 
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 from psana.pyalgos.generic.Utils import str_kwargs, do_print
@@ -51,9 +62,12 @@ def proc_data(**kwargs):
     DETNAME      = kwargs.get('detname','tmo_hexanode')
     EVSKIP       = kwargs.get('evskip', 0)
     EVENTS       = kwargs.get('events', 10) + EVSKIP
+    OFPREFIX     = kwargs.get('ofprefix','./')
+    VERBOSE      = kwargs.get('verbose', False)
 
     peaks = WFPeaks(**kwargs)
     proc  = DLDProcessor(**kwargs)
+    stats = DLDStatistics(proc,**kwargs)
 
     ds    = DataSource(files=DSNAME)
     orun  = next(ds.runs())
@@ -71,19 +85,31 @@ def proc_data(**kwargs):
 
         nhits, pkinds, pkvals, pktsec = peaks(wfs,wts) # ACCESS TO PEAK INFO
 
-        print("  waveforms processing time = %.6f sec" % (time()-t0_sec))
-        print_ndarr(wfs,    '  waveforms      : ', last=4)
-        print_ndarr(wts,    '  times          : ', last=4)
-        print_ndarr(nhits,  '  number_of_hits : ')
-        #print_ndarr(pktsec, '  peak_times_sec : ', last=4)
+        if VERBOSE :
+            print("  waveforms processing time = %.6f sec" % (time()-t0_sec))
+            print_ndarr(wfs,    '  waveforms      : ', last=4)
+            print_ndarr(wts,    '  times          : ', last=4)
+            print_ndarr(nhits,  '  number_of_hits : ')
+            print_ndarr(pktsec, '  peak_times_sec : ', last=4)
 
-        for i,(x,y,r,t) in enumerate(proc.xyrt_list(nev, nhits, pktsec)) :
-            print('    hit:%2d x:%7.3f y:%7.3f t:%10.5g r:%7.3f' % (i,x,y,t,r))
+        proc.event_proc(nev, nhits, pktsec)
 
+        stats.fill_data(nhits, pktsec) 
+
+        if VERBOSE :
+            for i,(x,y,r,t) in enumerate(proc.xyrt_list(nev, nhits, pktsec)) :
+                 print('    hit:%2d x:%7.3f y:%7.3f t:%10.5g r:%7.3f' % (i,x,y,t,r))
+
+    draw_plots(stats, prefix=OFPREFIX, do_save=True, hwin_x0y0=(0,10))
+
+#----------
+#----------
+#----------
 #----------
 
 if __name__ == "__main__" :
 
+    #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
     logging.basicConfig(format='%(levelname)s: %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
@@ -94,8 +120,8 @@ if __name__ == "__main__" :
               'numchs'   : 5,
               'numhits'  : 16,
               'evskip'   : 0,
-              'events'   : 10,
-              'ofprefix' : './',
+              'events'   : 100,
+              'ofprefix' : 'figs-DLD/plot',
               'run'      : 100,
               'exp'      : 'amox27716',
               'calibcfg' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/configuration_quad.txt',
@@ -115,11 +141,25 @@ if __name__ == "__main__" :
               'cfd_wfbinend'   : 22000,
              }
 
+    # On/Off statistical parameters
+    statpars={'STAT_NHITS'         : True,
+              'STAT_TIME_CH'       : False,
+              'STAT_REFLECTIONS'   : False,
+              'STAT_UVW'           : False,
+              'STAT_TIME_SUMS'     : True,
+              'STAT_CORRELATIONS'  : False,
+              'STAT_XY_COMPONENTS' : False,
+              'STAT_XY_2D'         : False,
+              'STAT_PHYSICS'       : True,
+              'STAT_MISC'          : False,
+             }
+
     kwargs.update(cfdpars)
+    kwargs.update(statpars)
 
     proc_data(**kwargs)
 
-    print('\n%s' % USAGE)
+    print('\n', USAGE)
     sys.exit('End of %s' % sys.argv[0])
 
 #----------

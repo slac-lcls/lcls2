@@ -1,8 +1,8 @@
 #----------
 
 """
-Class :py:class:`WFPeaks` a set of methods to use peakfinder
-===============================================================
+Class :py:class:`WFPeaks` a set of methods to find peaks in waveforms
+========================================================================
 
 Usage ::
 
@@ -19,11 +19,11 @@ Usage ::
     peaks.proc_waveforms(wfs, wts)
 
     # get all-in-one:
-    nhits, pkinds, pkvals, pktns = peaks(wfs,wts)
+    nhits, pkinds, pkvals, pktsec = peaks(wfs,wts)
 
     # or get individually:
     nhits = peaks.number_of_hits(wfs, wts)
-    pktns = peaks.peak_times_ns(wfs, wts)
+    pktsec = peaks.peak_times_ns(wfs, wts)
     pkvals = peaks.peak_values(wfs, wts)
     pkinds = peaks.peak_indexes(wfs, wts)
 
@@ -74,7 +74,7 @@ class WFPeaks :
         self._number_of_hits = np.zeros((self.NUM_CHANNELS), dtype=np.int)
         self._pkvals = np.zeros((self.NUM_CHANNELS,self.NUM_HITS), dtype=np.double)
         self._pkinds = np.zeros((self.NUM_CHANNELS,self.NUM_HITS), dtype=np.uint32)
-        self._pkt_ns = np.zeros((self.NUM_CHANNELS,self.NUM_HITS), dtype=np.uint32)
+        self._pktsec = np.zeros((self.NUM_CHANNELS,self.NUM_HITS), dtype=np.double)
 
 #----------
 
@@ -90,21 +90,35 @@ class WFPeaks :
         assert (self.NUM_CHANNELS==wfs.shape[0]),\
                'expected number of channels in not consistent with waveforms array shape'
 
-        for ch in range(self.NUM_CHANNELS) :
-            offset = wfs[ch,self.IOFFSETBEG:self.IOFFSETEND].mean()
-            #print('  XXX ch:%2d offset: %.3f' % (ch, offset), end='')
+        offsets = wfs[:,self.IOFFSETBEG:self.IOFFSETEND].mean(axis=1)
+        #print('  XXX offsets: %s' % str(offsets))
 
-            wfch = wfs[ch,self.WFBINBEG:self.WFBINEND] - offset # subtract wf-offset
-            wtch = wts[ch,self.WFBINBEG:self.WFBINEND] * 1e9 # sec -> ns
+        self.wfsprep = wfs[:,self.WFBINBEG:self.WFBINEND] - offsets.reshape(-1, 1) # subtract wf-offset
+        self.wtsprep = wts[:,self.WFBINBEG:self.WFBINEND] # sec
+
+        for ch in range(self.NUM_CHANNELS) :
+
+            wfch = self.wfsprep[ch,:]
+            wtch = self.wtsprep[ch,:]
 
             npeaks = wfpkfinder_cfd(wfch, self.BASE, self.THR, self.CFR, self.DEADTIME, self.LEADINGEDGE,\
                                     self._pkvals[ch,:], self._pkinds[ch,:])
             #print(' npeaks:', npeaks)
             assert (npeaks<self.NUM_HITS), 'number of found peaks exceeds reserved array shape'
             self._number_of_hits[ch] = npeaks
-            self._pkt_ns[ch, :npeaks] = wtch[self._pkinds[ch, :npeaks]]
+            self._pktsec[ch, :npeaks] = wtch[self._pkinds[ch, :npeaks]] #sec
 
         self._wfs_old = wfs
+
+#----------
+
+    def waveforms_preprocessed(self, wfs, wts) :
+        """Returns preprocessed waveforms for selected range [WFBINBEG:WFBINEND];
+           wfsprep[NUM_CHANNELS,WFBINBEG:WFBINEND] - intensities with subtracted mean evaluated
+           wtsprep[NUM_CHANNELS,WFBINBEG:WFBINEND] - times in [sec] like raw data 
+        """
+        self.proc_waveforms(wfs, wts)
+        return self.wfsprep, self.wtsprep
 
 #----------
 
@@ -112,9 +126,9 @@ class WFPeaks :
         self.proc_waveforms(wfs, wts)
         return self._number_of_hits
 
-    def peak_times_ns(self, wfs, wts) :
+    def peak_times_sec(self, wfs, wts) :
         self.proc_waveforms(wfs, wts)
-        return self._pkt_ns
+        return self._pktsec
 
     def peak_indexes(self, wfs, wts) :
         self.proc_waveforms(wfs, wts)
@@ -129,7 +143,7 @@ class WFPeaks :
         return self._number_of_hits,\
                self._pkinds,\
                self._pkvals,\
-               self._pkt_ns
+               self._pktsec
 #----------
 
     def __del__(self) :
