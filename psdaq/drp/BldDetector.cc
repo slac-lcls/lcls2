@@ -137,11 +137,11 @@ Bld& BldFactory::handler()
     return *_handler;
 }
 
-XtcData::NameIndex BldFactory::addToXtc  (XtcData::Xtc& xtc, 
+XtcData::NameIndex BldFactory::addToXtc  (XtcData::Xtc& xtc,
                                           const XtcData::NamesId& namesId)
 {
   XtcData::Names& bldNames = *new(xtc) XtcData::Names(_name.c_str(), _alg,
-                                                      _name.c_str(), _name.c_str(), 
+                                                      _name.c_str(), _name.c_str(),
                                                       namesId, 0);
   bldNames.add(xtc, _varDef);
   return XtcData::NameIndex(bldNames);
@@ -190,11 +190,11 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
 }
 
 
-Bld::Bld(unsigned mcaddr, 
+Bld::Bld(unsigned mcaddr,
          unsigned port,
-         unsigned pulseIdPos, 
+         unsigned pulseIdPos,
          unsigned headerSize,
-         unsigned payloadSize) : 
+         unsigned payloadSize) :
   m_pulseIdPos(pulseIdPos), m_headerSize(headerSize), m_payloadSize(payloadSize),
   m_bufferSize(0), m_position(0), m_first(true),  m_buffer(Bld::MTU), m_payload(m_buffer.data())
 {
@@ -445,7 +445,7 @@ void BldApp::handleConnect(const nlohmann::json& msg)
     }
 
     m_config.erase(m_config.begin(),m_config.end());
-    
+
     std::string s(m_para.detectorType);
     logging::debug("Parsing %s",s.c_str());
     for(size_t curr = 0, next = 0; next != std::string::npos; curr = next+1) {
@@ -524,8 +524,8 @@ void BldApp::handleReset(const nlohmann::json& msg)
 
 void BldApp::connectPgp(const json& json, const std::string& collectionId)
 {
-    // FIXME not sure what the size should since for the bld we except to pgp payload
-    int length = 4;
+    // FIXME not sure what the size should be since for the bld we expect no pgp payload
+    int length = 0;
     int links = m_para.laneMask;
 
     int fd = open(m_para.device.c_str(), O_RDWR);

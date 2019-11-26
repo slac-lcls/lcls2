@@ -47,6 +47,15 @@ public:
         }
     }
 
+    bool try_push(T value)
+    {
+        if (!is_full()) {
+            push(value);
+            return true;
+        }
+        return false;
+    }
+
     // blocking read from queue
     bool pop(T& value)
     {
@@ -84,10 +93,28 @@ public:
         return true;
     }
 
+    // non blocking read from queue
+    bool peek(T& value)
+    {
+        int64_t index = m_read_index.load(std::memory_order_relaxed);
+
+        // check if queue is empty
+        if (index == m_write_index.load(std::memory_order_acquire)) {
+            return false;
+        }
+        value = m_ring_buffer[index & m_buffer_mask];
+        return true;
+    }
+
     bool is_empty()
     {
         return m_read_index.load(std::memory_order_acquire) ==
                m_write_index.load(std::memory_order_acquire);
+    }
+
+    bool is_full()
+    {
+        return guess_size() >= m_capacity;
     }
 
     int guess_size()
