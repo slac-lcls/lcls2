@@ -1,19 +1,13 @@
-#include "psalg/digitizer/Hsd.hh"
+#include "psalg/digitizer/HsdPython.hh"
 
 #include <stdio.h>
 #include <ctype.h>
 
 using namespace Pds::HSD;
-using namespace psalg;
 
-Channel::Channel(Allocator *allocator, const uint32_t *evtheader, const uint8_t* data)
-: m_allocator(allocator)
-, numPixels(0)
-, numFexPeaks(0)
-, waveform(allocator, maxSize)
-, sPos(allocator, maxSize)
-, len(allocator, maxSize)
-, fexPtr(allocator, maxSize)
+void ChannelPython::fill_arrays(const uint32_t *evtheader, const uint8_t *data,
+                                uint16_t* waveform, uint16_t* sPos,
+                                uint16_t* len, uint16_t** fexPtr)
 {
     // find out if we have raw/fex or both
     unsigned streams((evtheader[0]>>20)&0x3);
@@ -21,10 +15,10 @@ Channel::Channel(Allocator *allocator, const uint32_t *evtheader, const uint8_t*
     while(streams) {
         const StreamHeader& s = *reinterpret_cast<const StreamHeader*>(p);
         if (s.stream_id() == 0) {
-            _parse_waveform(s);
+            _parse_waveform(s, waveform);
         }
         if (s.stream_id() == 1) {
-            _parse_peaks(s);
+            _parse_peaks(s, sPos, len, fexPtr);
         }
         if (!s.num_samples()) {
             printf("hsd found zero samples in stream. exiting\n");

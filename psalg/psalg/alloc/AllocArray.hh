@@ -1,7 +1,7 @@
 #ifndef ALLOCARRAY__H
 #define ALLOCARRAY__H
 
-#include <assert.h>
+#include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Array.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "Allocator.hh"
@@ -16,8 +16,8 @@ public:
 
     AllocArray(Allocator& allocator, size_t maxElem, uint32_t rank):_allocator(allocator){
         void *ptr = _allocator.malloc(sizeof(Shape) +
-                                            sizeof(*_refCntPtr) +
-                                            maxElem*sizeof(T)); // shape + refcnt + data
+                                      sizeof(*_refCntPtr) +
+                                      maxElem*sizeof(T)); // shape + refcnt + data
         Array<T>::_shape = reinterpret_cast<uint32_t*>(ptr);
         _refCntPtr = reinterpret_cast<uint32_t*>(Array<T>::_shape+MaxRank);
         Array<T>::_data = reinterpret_cast<T*>(_refCntPtr+1);
@@ -32,29 +32,33 @@ public:
             this->_data = other._data;
             this->_rank = other._rank;
             this->_refCntPtr = other._refCntPtr;
-            refCnt()++; // increment reference count in the original object
+            incRefCnt(); // increment reference count in the original object
         }
     }
 
     AllocArray<T>& operator=(const AllocArray<T>& other){ // assignment operator
         if (this != &other) {
-            refCnt()--;
-            if (refCnt() == 0) _allocator.free(this->_shape);
+            decRefCnt();
+            if (_refCnt() == 0) {
+                _allocator.free(this->_shape);
+            }
 
             this->_shape = other._shape;
             this->_data = other._data;
             this->_rank = other._rank;
             this->_refCntPtr = other._refCntPtr;
             this->_allocator = other._allocator;
-            refCnt()++; // increment reference count in the original object
+            incRefCnt(); // increment reference count in the original object
         }
         return *this;
     }
 
     virtual ~AllocArray(){
-        assert(refCnt()>0);
-        refCnt()--;
-        if(refCnt()==0) {
+        if (_refCnt()<=0) {
+            psalg::SysLog::error("AllocArray::~AllocArray: reference count <= 0: %d",_refCnt());
+        }
+        decRefCnt();
+        if(_refCnt()==0) {
             for(unsigned i = 0; i < Array<T>::num_elem(); i++) {
             // call the destructor of everything we contain
             // this could include decrementing reference counts if we are
@@ -65,18 +69,23 @@ public:
         }
     }
 
-    uint32_t& refCnt(){
-        return *_refCntPtr;
+    void incRefCnt(){
+        _refCnt()++;
     }
 
-    void incRefCnt(){
-        refCnt()++;
+    void decRefCnt(){
+        _refCnt()--;
+    }
+
+    // unfortunately need to make this public so cython can access it
+    // in peakFinder.pyx:PyAllocArray1D
+    uint32_t& _refCnt(){
+        return *_refCntPtr;
     }
 
 protected:
     uint32_t *_refCntPtr;
     Allocator& _allocator;
-
 };
 
 
@@ -109,7 +118,10 @@ public:
     // ----- std::vector-like methods
 
     void push_back(const T& i){
-        assert(AllocArray<T>::_shape[0] < _maxShape);
+        if (AllocArray<T>::_shape[0] >= _maxShape) {
+            psalg::SysLog::error("AllocArray: maxShape exceeded: %d >= %d\n",
+                                 AllocArray<T>::_shape[0],_maxShape);
+        }
         new(AllocArray<T>::_data+AllocArray<T>::_shape[0]) T(i);
         AllocArray<T>::_shape[0]++;
     }

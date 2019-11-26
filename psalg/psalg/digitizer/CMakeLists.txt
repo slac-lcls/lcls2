@@ -1,5 +1,6 @@
 add_library(digitizer SHARED
     src/Hsd.cc
+    src/HsdPython.cc
     src/Stream.cc
 )
 
@@ -15,6 +16,7 @@ target_include_directories(digitizer PUBLIC
 
 install(FILES
     Hsd.hh
+    HsdPython.hh
     Stream.hh
     DESTINATION include/psalg/digitizer
 )

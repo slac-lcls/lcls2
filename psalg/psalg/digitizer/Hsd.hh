@@ -54,8 +54,6 @@
 #include "psalg/alloc/Allocator.hh"
 #include "psalg/alloc/AllocArray.hh"
 
-using namespace psalg;
-
 namespace Pds {
   namespace HSD {
 
@@ -70,17 +68,17 @@ namespace Pds {
         }
 
     public:
-        unsigned maxSize = 10000;
+        unsigned maxSize = 1000000;
         Allocator *m_allocator;
         unsigned numPixels;
         unsigned numFexPeaks;
         unsigned content;
         uint16_t* rawPtr; // pointer to raw data
 
-        AllocArray1D<uint16_t> waveform;
-        AllocArray1D<uint16_t> sPos; // maxLength
-        AllocArray1D<uint16_t> len; // maxLength
-        AllocArray1D<uint16_t*> fexPtr; // maxLength
+        psalg::AllocArray1D<uint16_t> waveform;
+        psalg::AllocArray1D<uint16_t> sPos; // maxLength
+        psalg::AllocArray1D<uint16_t> len; // maxLength
+        psalg::AllocArray1D<uint16_t*> fexPtr; // maxLength
 
     private:
         void _parse_waveform(const StreamHeader& s) {

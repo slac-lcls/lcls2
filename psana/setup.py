@@ -146,10 +146,12 @@ if 'PEAKFINDER' in BUILD_LIST :
                 sources=["psana/peakFinder/peakFinder.pyx",
                          "../psalg/psalg/peaks/src/PeakFinderAlgos.cc",
                          "../psalg/psalg/peaks/src/LocalExtrema.cc"],
+                libraries = ['utils'], # for SysLog
                 language="c++",
                 extra_compile_args = extra_cxx_compile_args,
-                extra_link_args = extra_link_args,
+                extra_link_args = extra_link_args_rpath,
                 include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
+                library_dirs = [os.path.join(instdir, 'lib')],
   )
 
   setup(name="peakFinder",
