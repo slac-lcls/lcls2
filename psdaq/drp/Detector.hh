@@ -25,14 +25,15 @@ public:
     virtual void beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) {};
     virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
     XtcData::Xtc& transitionXtc() {return *(XtcData::Xtc*)m_xtcbuf;}
+    XtcData::NamesLookup& namesLookup() {return m_namesLookup;}
     unsigned nodeId;
-    static const unsigned char NAMES_INDEX_RUNINFO      = 1;
-    static const unsigned char NAMES_INDEX_BASE         = 64;
-    XtcData::NamesLookup m_namesLookup;
+    static const unsigned char NAMES_INDEX_RUNINFO      = 255;
+    static const unsigned char NAMES_INDEX_BASE         = 0;
 protected:
     Parameters* m_para;
     MemPool* m_pool;
     std::vector<XtcData::NamesId> m_namesId;
+    XtcData::NamesLookup m_namesLookup;
     uint8_t m_xtcbuf[XtcData::Dgram::MaxSize];
 };
 
