@@ -11,6 +11,7 @@
 
 #include "psdaq/tpr/Client.hh"
 #include "psdaq/tpr/Frame.hh"
+#include "psdaq/app/AppUtils.hh"
 
 #include <string>
 
@@ -22,9 +23,11 @@ extern int optind;
 
 static void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
-  printf("          -d <dev>  : <tpr a/b>\n");
-  printf("          -b <type> : simulate BLD type\n");
-  printf("          -a <addr> : MC address\n");
+  printf("          -d <dev>       : <tpr a/b>    [default: a]\n");
+  printf("          -b <type>      : BLD type     [default: ebeam]\n");
+  printf("          -a <addr>      : MC address   [default: 0xefff1801]\n");
+  printf("          -i <addr/name> : MC interface [no default] \n");
+  printf("          -r <rate>      : update rate  [default: 5 = 10Hz]\n");
 }
 
 int main(int argc, char** argv) {
@@ -58,7 +61,7 @@ int main(int argc, char** argv) {
       mcaddr = strtoul(optarg,NULL,0);
       break;
     case 'i':
-      mcintf = strtoul(optarg,NULL,0);
+      mcintf = Psdaq::AppUtils::parse_interface(optarg);
       break;
     case 'r':
       rate = strtoul(optarg,NULL,0);
@@ -75,6 +78,11 @@ int main(int argc, char** argv) {
 
   if (optind < argc) {
     printf("%s: invalid argument -- %s\n",argv[0], argv[optind]);
+    lUsage = true;
+  }
+
+  if (!mcintf) {
+    printf("%s: MC interface not set\n",argv[0]);
     lUsage = true;
   }
 
@@ -129,13 +137,13 @@ int main(int argc, char** argv) {
     payload[ 5] = 0; // damage
     payload[ 6] = (1<<16) | 1; // typeid = Xtc v1
     payload[ 7] = (6<<24) | (pid&0xffffff);
-    payload[ 8] = 0; // ebeam
-    payload[ 9] = 204;
-    payload[10] = 0; // damage
+    payload[ 8] = 0;   // ebeam
+    payload[ 9] = 204; // extent
+    payload[10] = 0;   // damage
     payload[11] = (7<<16) | 15; // typeid = EBeam v7
     payload[12] = (6<<24) | (pid&0xffffff);
-    payload[13] = 0; // ebeam
-    payload[14] = 184;
+    payload[13] = 0;   // ebeam
+    payload[14] = 184; // extent
     for(unsigned i=0; i<41; i++)
       payload[15+i] = i;
 

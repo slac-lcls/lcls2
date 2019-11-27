@@ -169,8 +169,8 @@ int main(int argc, char* argv[])
   //  Open the bld receiver
   //
   Pds::Bld::Client  input(intf, 
-                            inpAddr->getScalarAs<unsigned>(), 
-                            inpPort->getScalarAs<unsigned>());
+                          inpAddr->getScalarAs<unsigned>(), 
+                          inpPort->getScalarAs<unsigned>());
 
   Psdaq::MonitorArgs monitor_args;
   monitor_args.add("Events","Hz" ,event);
@@ -254,7 +254,7 @@ int setup_mc(unsigned addr, unsigned port, unsigned interface)
   sockaddr_in sa;
   sa.sin_family = AF_INET;
   sa.sin_addr.s_addr = htonl(interface);
-  sa.sin_port = 0;
+  sa.sin_port = htons(0);
   printf("Binding to %x.%u\n", ntohl(sa.sin_addr.s_addr),ntohs(sa.sin_port));
   if (::bind(fd_mc, (sockaddr*)&sa, sizeof(sa)) < 0) {
     perror("bind");

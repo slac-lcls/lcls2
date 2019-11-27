@@ -21,10 +21,11 @@ public:
 class Bld
 {
 public:
-    Bld(unsigned mcaddr, unsigned port, unsigned pulseIdPos, unsigned headerSize, unsigned payloadSize);
+    Bld(unsigned mcaddr, unsigned port, unsigned interface, 
+        unsigned pulseIdPos, unsigned headerSize, unsigned payloadSize);
     ~Bld();
 public:
-    static const unsigned MTU = 8192;
+    static const unsigned MTU = 9000;
     static const unsigned PulseIdPos      =  0; // LCLS-II style
     static const unsigned HeaderSize      = 20;
     static const unsigned DgramPulseIdPos =  8; // LCLS-I style
@@ -50,7 +51,8 @@ class BldFactory
 {
 public:
     BldFactory();
-    BldFactory(const char* name, const char* pvname=NULL);
+    BldFactory(const char* name, unsigned interface);
+    BldFactory(const char* name, const char* pvname, unsigned interface);
 public:
     Bld&               handler   ();
     XtcData::NameIndex addToXtc  (XtcData::Xtc&, 

@@ -31,6 +31,12 @@ Client::Client(unsigned interface,
     throw std::string("Failed to setsockopt SO_RCVBUF");
   }
 
+  int y = 1;
+  if(setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, (const void*)&y, sizeof(y)) == -1) {
+    perror("set reuseaddr");
+    throw std::string("set reuseaddr");
+  }
+
   sockaddr_in saddr;
   saddr.sin_family = AF_INET;
   saddr.sin_addr.s_addr = htonl(mcaddr);
@@ -42,12 +48,6 @@ Client::Client(unsigned interface,
     throw std::string("bind");
   }
     
-  int y = 1;
-  if(setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, (const void*)&y, sizeof(y)) == -1) {
-    perror("set reuseaddr");
-    throw std::string("set reuseaddr");
-  }
-
   struct ip_mreq ipMreq;
   bzero ((char*)&ipMreq, sizeof(ipMreq));
   ipMreq.imr_multiaddr.s_addr = htonl(mcaddr);
