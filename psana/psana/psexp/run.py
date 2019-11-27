@@ -137,7 +137,10 @@ class Run(object):
         return self.dm.xtc_info
 
     def _get_calib(self, det_name):
-        return {} # temporary cpo hack while database is down
+        # this routine is hacked for Mona for exafel.  it has
+        # (at least) datagram/segment numbers that have been hardwired
+        # to zero. - cpo
+
         gain_mask, pedestals, geometry_string, common_mode = None, None, None, None
         if self.exp and det_name:
             calib_dir = os.environ.get('PS_CALIB_DIR')
@@ -146,7 +149,7 @@ class Run(object):
                     gain_mask = pickle.load(open(os.path.join(calib_dir,'gain_mask.pickle'), 'r'))
 
             from psana.pscalib.calib.MDBWebUtils import calib_constants
-            det = eval('self.configs[0].software.%s'%(det_name))
+            det = eval('self.configs[0].software.%s[0]'%(det_name))
 
             # calib_constants takes det string (e.g. cspad_0001) with requested calib type.
             # as a hack (until detid in xtc files have been changed
