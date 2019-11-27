@@ -149,7 +149,10 @@ class Run(object):
                     gain_mask = pickle.load(open(os.path.join(calib_dir,'gain_mask.pickle'), 'r'))
 
             from psana.pscalib.calib.MDBWebUtils import calib_constants
-            det = eval('self.configs[0].software.%s[0]'%(det_name))
+            try:
+                det = eval('self.configs[0].software.%s[0]'%(det_name))
+            except:
+                return {}
 
             # calib_constants takes det string (e.g. cspad_0001) with requested calib type.
             # as a hack (until detid in xtc files have been changed
