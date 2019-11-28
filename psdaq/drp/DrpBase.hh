@@ -2,6 +2,7 @@
 
 #include "drp.hh"
 #include "FileWriter.hh"
+#include "Detector.hh"
 #include "psdaq/trigger/TriggerPrimitive.hh"
 #include "psdaq/trigger/utilities.hh"
 #include "psdaq/service/json.hpp"
@@ -11,6 +12,7 @@
 #include "psdaq/eb/ResultDgram.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 
 namespace Drp {
 
@@ -52,7 +54,7 @@ public:
     nlohmann::json connectionInfo();
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string configure(const nlohmann::json& msg);
-    std::string beginrun(const nlohmann::json& msg);
+    std::string beginrun(const nlohmann::json& phase1Info, XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
     std::string endrun(const nlohmann::json& msg);
     Pds::Eb::TebContributor& tebContributor() const {return *m_tebContributor;}
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}

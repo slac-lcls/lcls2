@@ -9,11 +9,15 @@
 #include "psdaq/service/MetricExporter.hh"
 #include "PGPDetectorApp.hh"
 #include "psalg/utils/SysLog.hh"
+#include "xtcdata/xtc/VarDef.hh"
+#include "RunInfoDef.hh"
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 
 namespace Drp {
+
+static RunInfoDef myRunInfoDef;
 
 PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
@@ -91,10 +95,10 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     xtc.contains = tid;
     xtc.extent = sizeof(XtcData::Xtc);
 
-    json stepInfo{ "" };
+    json phase1Info{ "" };
     if (msg.find("body") != msg.end()) {
         if (msg["body"].find("phase1Info") != msg["body"].end()) {
-            stepInfo = msg["body"]["phase1Info"];
+            phase1Info = msg["body"]["phase1Info"];
         }
     }
 
@@ -128,6 +132,15 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc);
+
+        // beginrun support
+        unsigned segment = 0;
+        XtcData::Alg runInfoAlg("runinfo",0,0,1);
+        XtcData::NamesId runInfoNamesId(m_det->nodeId, Drp::Detector::NAMES_INDEX_RUNINFO);
+        XtcData::Names& runInfoNames = *new(xtc) XtcData::Names("runinfo", runInfoAlg, "runinfo", "", runInfoNamesId, segment);
+        runInfoNames.add(xtc, myRunInfoDef);
+        m_det->namesLookup()[runInfoNamesId] = XtcData::NameIndex(runInfoNames);
+
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::configure";
             body["err_info"] = errorMsg;
@@ -136,17 +149,17 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         m_pgpDetector->resetEventCounter();
     }
     else if (key == "unconfigure") {
+        m_det->namesLookup().clear();   // erase all elements
         m_unconfigure = true;
     }
     else if (key == "beginstep") {
         // see if we find some step information in phase 1 that needs to be
         // to be attached to the xtc
-        m_det->beginstep(xtc, stepInfo);
+        m_det->beginstep(xtc, phase1Info);
     }
     else if (key == "beginrun") {
-        unsigned error = m_det->beginrun(xtc, stepInfo);
-        if (error) {
-            std::string errorMsg = "Phase 1 error in Detector::beginrun";
+        std::string errorMsg = m_drp.beginrun(phase1Info, xtc, m_det->namesLookup());
+        if (!errorMsg.empty()) {
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }

@@ -43,24 +43,6 @@ public:
 };
 static RawDef myRawDef;
 
-class RunInfoDef : public VarDef
-{
-public:
-  enum index
-    {
-        EXPT,
-        RUNNUM
-    };
-
-  RunInfoDef()
-   {
-       NameVec.push_back({"expt",Name::CHARSTR,1});
-       NameVec.push_back({"runnum",Name::UINT32});
-   }
-};
-
-static RunInfoDef myRunInfoDef;
-
 AreaDetector::AreaDetector(Parameters* para, MemPool* pool) :
     XpmDetector(para, pool), m_evtcount(0)
 {
@@ -85,40 +67,12 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc)
     rawNames.add(xtc, myRawDef);
     m_namesLookup[rawNamesId] = NameIndex(rawNames);
 
-    // beginrun support
-    Alg runInfoAlg("runinfo",0,0,1);
-    NamesId runInfoNamesId(nodeId, RunInfoNamesIndex);
-    Names& runInfoNames = *new(xtc) Names("runinfo", runInfoAlg, "runinfo", "", runInfoNamesId, segment);
-    runInfoNames.add(xtc, myRunInfoDef);
-    m_namesLookup[runInfoNamesId] = NameIndex(runInfoNames);
-
     return 0;
 }
 
 unsigned AreaDetector::beginrun(XtcData::Xtc& xtc, const json& runInfo)
 {
     logging::info("AreaDetector beginrun");
-
-    std::string experiment_name;
-    unsigned int run_number = 0;
-    if (runInfo.find("run_info") != runInfo.end()) {
-        if (runInfo["run_info"].find("experiment_name") != runInfo["run_info"].end()) {
-            experiment_name = runInfo["run_info"]["experiment_name"];
-        }
-        if (runInfo["run_info"].find("run_number") != runInfo["run_info"].end()) {
-            run_number = runInfo["run_info"]["run_number"];
-        }
-    }
-    logging::debug("%s: expt=\"%s\" runnum=%u",
-                   __PRETTY_FUNCTION__, experiment_name.c_str(), run_number);
-
-    if (run_number > 0) {
-        // runinfo data
-        NamesId runInfoNamesId(nodeId, RunInfoNamesIndex);
-        CreateData runinfo(xtc, m_namesLookup, runInfoNamesId);
-        runinfo.set_string(RunInfoDef::EXPT, experiment_name.c_str());
-        runinfo.set_value(RunInfoDef::RUNNUM, (uint32_t)run_number);
-    }
     return 0;
 }
 
