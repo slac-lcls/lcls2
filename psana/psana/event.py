@@ -19,11 +19,12 @@ class Event():
     """
     Event holds list of dgrams
     """
-    def __init__(self, dgrams):
+    def __init__(self, dgrams, run=None):
         self._dgrams = dgrams
         self._size = len(dgrams)
         self._complete()
         self._position = 0
+        self._run = run
 
     def __iter__(self):
         return self
@@ -56,7 +57,7 @@ class Event():
         return event_bytes
 
     @classmethod
-    def _from_bytes(cls, configs, event_bytes):
+    def _from_bytes(cls, configs, event_bytes, run=None):
         dgrams = []
         if event_bytes:
             pf = PacketFooter(view=event_bytes)
@@ -70,7 +71,7 @@ class Event():
                 if views[i].shape[0] > 0: # do not include any missing dgram
                     dgrams[i] = dgram.Dgram(config=configs[i], view=views[i])
         
-        evt = cls(dgrams)
+        evt = cls(dgrams, run=run)
         return evt
     
     @property
@@ -87,8 +88,8 @@ class Event():
     def timestamp(self):
         return self._dgrams[0].seq.timestamp()
 
-    def _run(self):
-        return 0 # for psana1-cctbx compatibility
+    def run(self):
+        return self._run
 
     def _assign_det_segments(self):
         """

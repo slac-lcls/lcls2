@@ -4,7 +4,6 @@ import dgramCreate as dc
 import base64
 import zmq
 
-from psana.dgrammanager import DgramManager
 from psana import DataSource
 
 import sys, os

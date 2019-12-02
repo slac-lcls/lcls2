@@ -1,4 +1,3 @@
-from psana.event import Event
 from psana.psexp.packet_footer import PacketFooter
 import numpy as np
 from collections import defaultdict

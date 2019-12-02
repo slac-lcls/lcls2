@@ -71,7 +71,7 @@ class EventManager(object):
         first_L1_pos = -1
         for i, event_bytes in enumerate(self.smd_events):
             if event_bytes:
-                smd_evt = Event._from_bytes(self.smd_configs, event_bytes)
+                smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.run())
                 if smd_evt._dgrams[0].seq.service() == TransitionId.L1Accept:
                     ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
                             d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_evt._dgrams])
@@ -92,7 +92,7 @@ class EventManager(object):
         for i, event_bytes in enumerate(self.smd_events[first_L1_pos:]):
             j = i + first_L1_pos
             if event_bytes:
-                smd_evt = Event._from_bytes(self.smd_configs, event_bytes)
+                smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.run())
                 ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
                         d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_evt._dgrams])
 
@@ -117,12 +117,12 @@ class EventManager(object):
         if self.cn_events == self.n_events: 
             raise StopIteration
         if len(self.dm.xtc_files) == 0:
-            smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events])
+            smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.run())
             self.cn_events += 1
             return smd_evt
         
         if self.filter_fn:
-            smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events])
+            smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.run())
             self.cn_events += 1
             ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
                     d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_evt])
@@ -134,7 +134,7 @@ class EventManager(object):
         for j in range(self.n_smd_files):
             if ofsz[j,1]:
                 dgrams[j] = dgram.Dgram(view=self.bigdata[j], config=self.dm.configs[j], offset=ofsz[j,0])
-        bd_evt = Event(dgrams)
+        bd_evt = Event(dgrams, run=self.dm.run())
         self.cn_events += 1
         return bd_evt
         

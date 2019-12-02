@@ -38,8 +38,8 @@ class RunParallel(Run):
         size = psana_comm.Get_size()
 
         if rank == 0:
-            self.smd_dm = DgramManager(smd_files)
-            self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
+            self.smd_dm = DgramManager(smd_files, run=self)
+            self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs, run=self)
             self.configs = self.dm.configs
             nbytes = np.array([memoryview(config).shape[0] for config in self.configs], \
                             dtype='i')
@@ -68,7 +68,7 @@ class RunParallel(Run):
         if rank > 0:
             # Create dgram objects using views from rank 0 (no disk operation).
             self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
-            self.dm = DgramManager(xtc_files, configs=self.configs)
+            self.dm = DgramManager(xtc_files, configs=self.configs, run=self)
         
         self.esm = EnvStoreManager(self.configs, 'epics', 'scan')
     

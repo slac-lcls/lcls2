@@ -25,7 +25,7 @@ FN_L = 200
 
 class DgramManager():
     
-    def __init__(self, xtc_files, configs=[], tag=None):
+    def __init__(self, xtc_files, configs=[], tag=None, run=None):
         """ Opens xtc_files and stores configs."""
         self.xtc_files = []
         self.shmem_cli = None
@@ -33,6 +33,7 @@ class DgramManager():
         self.configs = []
         self.fds = []
         self._timestamps = [] # built when iterating 
+        self._run = run
 
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
@@ -81,9 +82,6 @@ class DgramManager():
         return self
 
     def __next__(self):
-#        return self.next()
-#    
-#    def next(self):
         """ only support sequential read - no event building"""
         if self.shmem_cli:
             view = self.shmem_cli.get(self.shmem_kwargs)
@@ -101,7 +99,7 @@ class DgramManager():
         else:
             dgrams = [dgram.Dgram(config=config) for config in self.configs]
  
-        evt = Event(dgrams)
+        evt = Event(dgrams, run=self.run())
         self._timestamps += [evt.timestamp]
         return evt
 
@@ -115,7 +113,7 @@ class DgramManager():
             d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
             dgrams += [d]
         
-        evt = Event(dgrams)
+        evt = Event(dgrams, run=self.run())
         return evt
 
     def get_det_class_table(self):
@@ -159,6 +157,9 @@ class DgramManager():
 
     def get_timestamps(self):
         return np.asarray(self._timestamps, dtype=np.uint64) # return numpy array for easy search later
+
+    def run(self):
+        return self._run
 
 
 def parse_command_line():
