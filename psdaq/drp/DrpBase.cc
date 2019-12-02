@@ -15,6 +15,8 @@ using namespace XtcData;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 
+static void local_mkdir (const char * path);
+
 namespace Drp {
 
 unsigned nextPowerOf2(unsigned n)
@@ -83,7 +85,12 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
         std::cout << "Opening file " << fileName << std::endl;
         logging::info("Opening file '%s'", fileName.c_str());
         m_fileWriter.open(fileName);
-        m_smdWriter.open({para.outputDir + "/data-" + std::to_string(tPrms.id) + ".smd.xtc2"});
+        // smalldata
+        std::string smalldataDir = {para.outputDir + "/smalldata"};
+        local_mkdir(smalldataDir.c_str());
+        std::string smalldataFileName = {smalldataDir + "/data-" + std::to_string(tPrms.id) + ".smd.xtc2"};
+        logging::info("Opening file '%s'", smalldataFileName.c_str());
+        m_smdWriter.open(smalldataFileName);
         m_writing = true;
     }
     else {
@@ -453,4 +460,18 @@ void DrpBase::printParams() const
     printf("\n");
 }
 
+}
+
+#include <sys/stat.h>
+#include <sys/types.h>
+
+static void local_mkdir (const char * path)
+{
+    struct stat64 buf;
+
+    if (path && (stat64(path, &buf) != 0)) {
+        if (mkdir(path, 0777)) {
+            logging::critical("mkdir %s: %m", path);
+        }
+    }
 }
