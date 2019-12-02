@@ -1076,6 +1076,7 @@ class CollectionManager():
         # set XPM PV
         for pv in self.pvListXPM:
             if not self.pv_put(pv, 1):
+                self.report_error('connect: failed to put PV \'%s\'' % pv)
                 connect_ok = False
                 break
 
