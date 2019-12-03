@@ -23,7 +23,7 @@ namespace Drp {
 static const XtcData::Name::DataType xtype[] = {
     XtcData::Name::UINT8 , // pvBoolean
     XtcData::Name::INT8  , // pvByte
-    XtcData::Name::UINT16, // pvShort
+    XtcData::Name::INT16 , // pvShort
     XtcData::Name::INT32 , // pvInt
     XtcData::Name::INT64 , // pvLong
     XtcData::Name::UINT8 , // pvUByte
@@ -41,8 +41,8 @@ void PvaMonitor::printStructure()
     const pvd::StringArray& names = structure->getFieldNames();
     const pvd::FieldConstPtrArray& fields = structure->getFields();
     for (unsigned i=0; i<names.size(); i++) {
-      logging::info("FieldName:  %s  FieldType:  %s",
-                    names[i].c_str(), pvd::TypeFunc::name(fields[i]->getType()));
+      logging::info("%s: FieldName:  %s  FieldType:  %s",
+                    name().c_str(), names[i].c_str(), pvd::TypeFunc::name(fields[i]->getType()));
     }
 }
 
@@ -54,30 +54,61 @@ XtcData::VarDef PvaMonitor::get(size_t& payloadSize)
     const pvd::StringArray& names = structure->getFieldNames();
     const pvd::FieldConstPtrArray& fields = structure->getFields();
     for (unsigned i=0; i<fields.size(); i++) {
+        if (names[i] != "value")  continue;
+        std::string fullName(name() + "." + names[i]);
         switch (fields[i]->getType()) {
             case pvd::scalar: {
                 const pvd::Scalar* scalar = static_cast<const pvd::Scalar*>(fields[i].get());
                 XtcData::Name::DataType type = xtype[scalar->getScalarType()];
                 vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type));
                 payloadSize += XtcData::Name::get_element_size(type);
-                logging::info("name: %s  type: %d", names[i].c_str(), type);
+                logging::info("name: %s  type: %d", fullName.c_str(), type);
+                switch (scalar->getScalarType()) {
+                    case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int32_t >(data, length); };  break;
+                    case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int64_t >(data, length); };  break;
+                    case pvd::pvUInt:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint32_t>(data, length); };  break;
+                    case pvd::pvULong:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint64_t>(data, length); };  break;
+                    case pvd::pvFloat:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<float   >(data, length); };  break;
+                    case pvd::pvDouble: getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<double  >(data, length); };  break;
+                    default: {
+                        logging::critical("%s: Unsupported Scalar type %d",
+                                          fullName.c_str(),
+                                          scalar->getScalarType());
+                        throw "Unsupported scalar type";
+                        break;
+                    }
+                }
                 break;
             }
             case pvd::scalarArray: {
                 const pvd::ScalarArray* array = static_cast<const pvd::ScalarArray*>(fields[i].get());
                 XtcData::Name::DataType type = xtype[array->getElementType()];
-                size_t length = _strct->getSubField<pvd::PVArray>("value")->getLength();
-                vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type));
+                size_t length = _strct->getSubField<pvd::PVArray>(names[i].c_str())->getLength();
+                vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type, 1));
                 payloadSize += length * XtcData::Name::get_element_size(type);
-                logging::info("name: %s  type: %d  length: %zd", names[i].c_str(), type, length);
+                logging::info("name: %s  type: %d  length: %zd", fullName.c_str(), type, length);
+                switch (array->getElementType()) {
+                    case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int32_t >(data, length); };  break;
+                    case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int64_t >(data, length); };  break;
+                    case pvd::pvUInt:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint32_t>(data, length); };  break;
+                    case pvd::pvULong:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint64_t>(data, length); };  break;
+                    case pvd::pvFloat:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<float   >(data, length); };  break;
+                    case pvd::pvDouble: getData = [&](void* data, size_t& length) -> size_t { return _getDataT<double  >(data, length); };  break;
+                    default: {
+                        logging::critical("%s: Unsupported ScalarArray type %d",
+                                          fullName.c_str(),
+                                          array->getElementType());
+                        throw "Unsupported ScalarArray type";
+                        break;
+                    }
+                }
                 break;
             }
             default: {
-                std::string msg("PV type '");
-                msg = msg+pvd::TypeFunc::name(fields[i]->getType())+
-                                "' for field '"+names[i]+"' not supported";
-                logging::critical("%s", msg.c_str());
-                //throw msg;
+                logging::critical("%s: Unsupported field type '%s'",
+                                  fullName.c_str(),
+                                  pvd::TypeFunc::name(fields[i]->getType()));
+                throw "Unsupported field type";
                 break;
             }
         }
@@ -192,6 +223,7 @@ PvaApp::PvaApp(Parameters& para, const std::string& pvName) :
     m_para(para),
     m_pvName(pvName),
     m_inputQueue(m_drp.pool.nbuffers()),
+    m_swept(false),
     m_terminate(false)
 {
     logging::info("Ready for transitions");
@@ -294,11 +326,13 @@ void PvaApp::handlePhase1(const json& msg)
             m_drp.exposer()->RegisterCollectable(m_exporter);
         }
 
+        m_swept.store(false, std::memory_order_release);
         m_terminate.store(false, std::memory_order_release);
 
         m_workerThread = std::thread{&PvaApp::_worker, this, m_exporter};
     }
     else if (key == "unconfigure") {
+        // Delay unconfiguration until after phase 2 of unconfigure has completed
         m_unconfigure = true;
     }
 
@@ -385,6 +419,10 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
         XtcData::Dgram* dgram = pgp.next(index);
         if (dgram) {
             switch (dgram->seq.service()) {
+                case XtcData::TransitionId::L1Accept: {
+                    m_inputQueue.push(index);
+                    break;
+                }
                 case XtcData::TransitionId::Configure: {
                     logging::info("PVA configure");
                     XtcData::NamesId namesId(m_drp.nodeId(), 0);
@@ -398,19 +436,27 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
                     m_nEvents++;
                     break;
                 }
-                case XtcData::TransitionId::Disable: // Sweep out L1As
-                case XtcData::TransitionId::L1Accept: {
-                    while (true) {
-                        if (m_terminate.load(std::memory_order_relaxed)) {
-                            break;
-                        }
-                        if (m_inputQueue.try_push(index)) {
-                            break;
+                case XtcData::TransitionId::Disable: { // Sweep out L1As
+                    m_inputQueue.push(index);
+                    std::unique_lock<std::mutex> lock(_lock);
+                    std::chrono::milliseconds tmo(100);
+                    _cv.wait_for(lock, tmo, [this] { return m_swept.load(std::memory_order_relaxed); });
+                    if (!m_swept.load(std::memory_order_relaxed)) { // If timed out
+                        while (true) { // Post everything still on the queue
+                            uint32_t idx;
+                            if (!m_inputQueue.try_pop(idx)) {
+                                break;
+                            }
+                            XtcData::Dgram* dg = (XtcData::Dgram*)m_drp.pool.pebble[idx];
+                            _sendToTeb(*dg, idx);
+                            m_nEvents++;
                         }
                     }
+                    _sendToTeb(*dgram, index); // Post the Disable
+                    m_nEvents++;
                     break;
                 }
-                default: {
+                default: {              // Handle other transitions
                     _sendToTeb(*dgram, index);
                     m_nEvents++;
                     break;
@@ -427,7 +473,6 @@ void PvaApp::process(const PvaMonitor& pva)
     unsigned nanoseconds = pva.getScalarAs<unsigned>("timeStamp.nanoseconds");
     XtcData::TimeStamp timestamp(seconds - (20*365+5)*24*3600, // Convert from 1/1/70 to 1/1/90 epoch with 5 leap years
                                  nanoseconds);
-    //printf("seconds: %u nanoseconds %u\n", timestamp.seconds(), timestamp.nanoseconds());
     ++m_nUpdates;
     bool retried = false;
     while (true) {
@@ -435,35 +480,55 @@ void PvaApp::process(const PvaMonitor& pva)
         if (!m_inputQueue.peek(index)) {
             retried = true;
             if (m_terminate.load(std::memory_order_relaxed)) {
-                return;                 // index is not valid
+                return;                 // Return b/c index is not valid
             }
             continue;
         }
         if (retried) {
-            ++m_nMissed;
+            ++m_nMissed;      // Count number of times a PV had to wait for PGP
             retried = false;
         }
 
         XtcData::Dgram* dgram = (XtcData::Dgram*)m_drp.pool.pebble[index];
-        if ((timestamp == dgram->seq.stamp()) || (dgram->seq.service() != XtcData::TransitionId::L1Accept)) {
+        if (!dgram->seq.isEvent()) {
             uint32_t idx;
             m_inputQueue.try_pop(idx);  // Actually consume the element
             assert(idx == index);
-            if (idx != index)  printf("A: idx %d != index %d\n", idx, index);
+
+            std::lock_guard<std::mutex> lock(_lock);
+            m_swept.store(true, std::memory_order_release);
+            _cv.notify_one();
+            break;
+        }
+        else if (timestamp == dgram->seq.stamp()) {
+            uint32_t idx;
+            m_inputQueue.try_pop(idx);  // Actually consume the element
+            assert(idx == index);
 
             logging::debug("PVA matches PGP!!\n"
                            "TimeStamp PVA %08x %08x | PGP %08x %08x\n",
                            timestamp.seconds(), timestamp.nanoseconds(),
                            dgram->seq.stamp().seconds(), dgram->seq.stamp().nanoseconds());
 
-            if (dgram->seq.isEvent()) {
-                XtcData::NamesId namesId(m_drp.nodeId(), 0);
-                XtcData::DescribedData desc(dgram->xtc, m_nameIndex, namesId);
-                pvd::shared_vector<const uint16_t> vec; // Revisit: Avoid allocating memory
-                pva.getVectorAs<uint16_t>(vec);         // Revisit: Avoid memcpy by loading in place
-                memcpy(desc.data(), vec.data(), vec.size() * sizeof(uint16_t)); // Revisit: Use serialize()?
-                desc.set_data_length(vec.size() * sizeof(uint16_t));
-            }
+            XtcData::NamesId namesId(m_drp.nodeId(), 0);
+            XtcData::DescribedData desc(dgram->xtc, m_nameIndex, namesId);
+            size_t length;
+            size_t size = pva.getData(desc.data(), length);
+            desc.set_data_length(size);
+            unsigned shape[] = { unsigned(length) };
+            desc.set_array_shape(0, shape);
+            //size_t sz = (sizeof(*dgram) + dgram->xtc.sizeofPayload()) >> 2;
+            //uint32_t* payload = (uint32_t*)dgram->xtc.payload();
+            //printf("sz = %zd, size = %zd, extent = %d, szofPyld = %d, pyldIdx = %ld\n", sz, size, dgram->xtc.extent, dgram->xtc.sizeofPayload(), payload - (uint32_t*)dgram);
+            //uint32_t* buf = (uint32_t*)dgram;
+            //for (unsigned i = 0; i < sz; ++i) {
+            //  if (&buf[i] == (uint32_t*)dgram)        printf(  "dgram:   ");
+            //  if (&buf[i] == (uint32_t*)payload)      printf("\npayload: ");
+            //  if (&buf[i] == (uint32_t*)desc.data())  printf("\ndata:    ");
+            //  printf("%08x ", buf[i]);
+            //}
+            //printf("\n");
+
             _sendToTeb(*dgram, index);
             m_nEvents++;
             break;
@@ -473,7 +538,9 @@ void PvaApp::process(const PvaMonitor& pva)
             uint32_t idx;
             m_inputQueue.try_pop(idx);  // Actually consume the element
             assert(idx == index);
-            if (idx != index)  printf("B: idx %d != index %d\n", idx, index);
+
+            // No PVA data so mark event as damaged
+            dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
 
             ++m_nEmpty;
             logging::debug("No PVA data!!\n"

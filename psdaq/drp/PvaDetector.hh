@@ -3,6 +3,9 @@
 #include <thread>
 #include <atomic>
 #include <string>
+#include <functional>
+#include <mutex>
+#include <condition_variable>
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
 #include "psdaq/service/Collection.hh"
@@ -19,6 +22,22 @@ public:
     void printStructure();
     XtcData::VarDef get(size_t& payloadSize);
     void updated() override;
+public:
+    std::function<size_t(void* data, size_t& length)> getData;
+private:
+    template<typename T> size_t _getDatumT(void* data, size_t& length) {
+        *static_cast<T*>(data) = getScalarAs<T>();
+        length = 1;
+        return sizeof(T);
+    }
+  template<typename T> size_t _getDataT(void* data, size_t& length) {
+        pvd::shared_vector<const T> vec;
+        getVectorAs<T>(vec);
+        length = vec.size();
+        size_t size = length * sizeof(T);
+        memcpy(data, vec.data(), size);
+        return size;
+    }
 private:
     PvaApp& m_app;
 };
@@ -47,6 +66,9 @@ private:
     SPSCQueue<uint32_t> m_inputQueue;
     std::unique_ptr<PvaMonitor> m_pvaMonitor;
     XtcData::NameIndex m_nameIndex;
+    mutable std::mutex _lock;
+    std::condition_variable _cv;
+    std::atomic<bool> m_swept;
     std::atomic<bool> m_terminate;
     std::shared_ptr<MetricExporter> m_exporter;
     bool m_unconfigure;
