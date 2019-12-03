@@ -980,7 +980,7 @@ class ProcMgr:
         connected = False
         telnetCount = 0
         host = key2host(key)
-        while (not connected) and (telnetCount < 2):
+        while (not connected) and (telnetCount < 3):
             telnetCount += 1
             try:
                 self.telnet.open(host, value[self.DICT_CTRL])
@@ -1000,7 +1000,7 @@ class ProcMgr:
             self.telnet.write(b"\x12");
 
             # wait for restart message
-            response = self.telnet.read_until(self.MSG_RESTART, 1)
+            response = self.telnet.read_until(self.MSG_RESTART, 3)
             if not response.count(self.MSG_RESTART):
                 print('ERR: no restart message... ')
             else:
