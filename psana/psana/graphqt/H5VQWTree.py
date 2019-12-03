@@ -74,15 +74,15 @@ class H5VQWTree(QWTree) :
         # initialization at 1-st call
         if g is None : # on first call
             self.clear_model()
-            print('Open file: %s' % self.fname)
+            logger.debug('Open file: %s' % self.fname)
             self.model.setHorizontalHeaderLabels(('.../%s'%name_in_path(self.fname),))
             g=h5py.File(self.fname, 'r')
             self.fill_tree_model(g)
             return # !!!
 
         if isinstance(g, h5py.File) :
-            print('(File)', g.filename, g.name)
-            #print(g.__dir__())
+            logger.debug('(File) %s %s' % (g.filename, g.name))
+            #logger.debug(g.__dir__())
             root_item = self.model.invisibleRootItem()
             item = QStandardItem('(file) %s'%g.name)
             #item.setCheckable(True) 
@@ -91,7 +91,7 @@ class H5VQWTree(QWTree) :
             root_item.appendRow(item)
         
         elif isinstance(g,h5py.Group) :
-            print('(Group)', g.name)
+            logger.debug('(Group) %s' % g.name)
             item = QStandardItem(name_in_path(g.name))
             #item.setCheckable(True) 
             item.setIcon(icon.icon_folder_closed)
@@ -99,7 +99,7 @@ class H5VQWTree(QWTree) :
             parent_item.appendRow(item)
 
         elif isinstance(g,h5py.Dataset) :
-            print('(Dataset)', g.name, '    len =', g.shape, g.dtype) #, g.dtype
+            logger.debug('(Dataset) %s   len=%s   dtype=%s' % (g.name, g.shape, g.dtype)) #, g.dtype
             item = QStandardItem('%s: %s %s' % (name_in_path(g.name), g.shape, g.dtype))
             item.setIcon(icon.icon_table)
             item.setCheckable(True) 
@@ -114,7 +114,7 @@ class H5VQWTree(QWTree) :
             #if item is None : return
             for k,v in dict(g).items() :
                 subg = v
-                #print('    k:',k, ' v:',v) #,"   ", subg.name #, val, subg.len(), type(subg),
+                #logger.debug('    k: %s v: %s' % (k, str(v))) #,"   ", subg.name #, val, subg.len(), type(subg),
                 self.fill_tree_model(subg, item)
             return
 
@@ -147,7 +147,7 @@ class H5VQWTree(QWTree) :
         #logger.debug('moveEvent') 
         #self.position = self.mapToGlobal(self.pos())
         #self.position = self.pos()
-        #logger.debug('moveEvent - pos:' + str(self.position), __name__)       
+        #logger.debug('moveEvent - pos:' + str(self.position) + __name__)       
         #pass
 
 

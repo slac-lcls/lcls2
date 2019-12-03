@@ -3,6 +3,17 @@
 Module :py:class:`QuadCalib` a set of generic methods for hexanode project
 =========================================================================
 
+QuadCalib is DEPRICATED
+
+This big script is split for a few compact modules 
+DLDProcessor.py
+DLDStatistics.py
+DLDGraphics.py
+
+See also:
+WFPeaks.py
+WFHDF5IO.py
+
 Created on 2017-12-08 by Mikhail Dubrovin
 2019-11-08 adopted to LCLS2
 """

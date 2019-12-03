@@ -7,18 +7,19 @@
 #My simple ?simulation script? is below.  Thanks for thinking about it...
 #chris
 
+from psana.pyalgos.generic.NDArrUtils import np, print_ndarr
+#import numpy as np
 
-import numpy as np
 odd = np.array([1,0,1,0],dtype=float)
-odd /= np.sum(odd)
+#odd /= np.sum(odd)
 even = np.array([0,1,0,1],dtype=float)
-even /= np.sum(even)
+#even /= np.sum(even)
 both = odd+even
-both /= np.sum(both)
+#both /= np.sum(both)
 
-nlist = 10
+nlist = 5
 
-all_list = [odd,even,both]*nlist
+all_list = [odd,even,odd,odd,even,both]*nlist
 all_arr = np.vstack(all_list)
 print('all_arr:\n', all_arr)
 
@@ -34,16 +35,27 @@ for i,wf in enumerate(all_arr):
         cov += np.outer(wf,wf)
         avg += wf
 
-nevt = len(all_arr)
-cov/=nevt
-avg/=nevt
-#avg = np.sum(all_arr,axis=0)/nevt
-bkg = np.outer(avg,avg)*nlist/nevt
-#bkg = np.outer(avg,avg)
+nevts = len(all_arr)
 
-print('nevt',nevt)
+nentries = avg.sum()
+nentcov  = cov.sum()
+
+print_ndarr('avg',avg)
+print('nentcov :',nentcov)
+print('nentries:',nentries)
+
+#cov/=nevts
+#cov/=len(avg)
+#avg/=nevts
+#avg = np.sum(all_arr,axis=0)/nevts
+#bkg = np.outer(avg,avg)*nlist/nevts
+#bkg = np.outer(avg,avg)/nevts
+bkg = np.outer(avg,avg)/nentries
+
+print('nevts',nevts)
 print('avg:\n',avg)
+print('len(avg):\n',len(avg))
 print('cov:\n',cov)
 print('bkg:\n',bkg)
-print('cov-bkg:\n',cov-bkg)
 print('cov/bkg:\n',cov/bkg)
+print('cov-bkg:\n',cov-bkg)

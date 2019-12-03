@@ -78,13 +78,12 @@ class QWLoggerStd(QWidget) :
 
         QWidget.__init__(self, parent=None)
 
-        self.log_level = cp.log_level
-        self.log_prefix  = cp.log_prefix
-        self.log_file  = cp.log_file # DEPRICATED
+        self.save_log_at_exit = cp.save_log_at_exit.value()
+        self.log_level  = cp.log_level
+        self.log_prefix = cp.log_prefix
+        self.log_file   = cp.log_file # DEPRICATED
 
         log_fname = log_file_name(self.log_prefix.value())
-        depth = 6 if log_fname[0]=='/' else 1
-        gu.create_path(log_fname, depth, mode=0o0777)
         #print('Log file: %s' % log_fname)
 
         self.show_buttons = show_buttons
@@ -132,33 +131,7 @@ class QWLoggerStd(QWidget) :
         self.config_logger(log_fname)
 
 
-    def config_logger_v0(self, log_fname='cm-log.txt') :
-        self.append_qwlogger('Configure logger')
-
-        fmt = '%(asctime)s %(name)s %(levelname)s: %(message)s'
-        tsfmt='%Y-%m-%dT%H:%M:%S'
-
-        level = self.dict_name_to_level[self.log_level.value()] # e.g. logging.DEBUG
-
-        self.formatter = logging.Formatter(fmt, datefmt=tsfmt)
-        #self.handler = logging.StreamHandler()
-        self.handler = logging.FileHandler(log_fname, 'w')
-        self.handler.setLevel(logging.NONSET)
-        self.handler.addFilter(QWFilter(self))
-        self.handler.setFormatter(self.formatter)
-
-        logging.basicConfig(format=fmt,\
-                            datefmt=tsfmt,\
-                            level=level,\
-                            handlers=[self.handler,]
-        ) 
-        #                    filename=log_fname, filemode='w',\
-        ## if filename is not specified - all messages go to sys.tty
-
-        #self.set_level(self.log_level.value()) # pass level name
-
-
-    def config_logger(self, log_fname='cm-log.txt') :
+    def config_logger(self, log_fname='log.txt') :
 
         self.append_qwlogger('Start logger\nLog file: %s' % log_fname)
 
@@ -175,8 +148,14 @@ class QWLoggerStd(QWidget) :
         #logger.addFilter(QWFilter(self)) # register self for callback from filter
 
         # TRICK: add filter to handler to intercept ALL messages
-        #self.handler = logging.StreamHandler()
-        self.handler = logging.FileHandler(log_fname, 'w')
+
+        if self.save_log_at_exit : 
+            depth = 6 if log_fname[0]=='/' else 1
+            gu.create_path(log_fname, depth, mode=0o0777)
+            self.handler = logging.FileHandler(log_fname, 'w')
+        else :
+            self.handler = logging.StreamHandler()
+
         self.handler.addFilter(QWFilter(self))
         #self.handler.setLevel(logging.NOTSET) # level
         self.handler.setFormatter(self.formatter)
