@@ -17,7 +17,7 @@
 
 using namespace Pds::Tpr;
 
-static bool     verbose = false;
+//static bool     verbose = false;
 
 extern int optind;
 
@@ -37,13 +37,13 @@ int main(int argc, char** argv) {
 
   int c;
   bool lUsage = false;
-  const char* bldType = 0;
+  //const char* bldType = 0;
   unsigned mcaddr = 0xefff1800;
   unsigned mcintf = 0;
   unsigned short port = 12148;
   unsigned rate = 5;
 
-  char* endptr;
+  //char* endptr;
 
   while ( (c=getopt( argc, argv, "d:a:b:i:r:h?")) != EOF ) {
     switch(c) {
@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
       }
       break;
     case 'b':
-      bldType = optarg;
+      //bldType = optarg;
       break;
     case 'a':
       mcaddr = strtoul(optarg,NULL,0);

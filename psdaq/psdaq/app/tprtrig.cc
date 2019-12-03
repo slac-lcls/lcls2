@@ -15,7 +15,7 @@
 
 using namespace Pds::Tpr;
 
-static bool     verbose = false;
+//static bool     verbose = false;
 
 extern int optind;
 
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
   unsigned delay   = 0;
   unsigned width   = 1;
 
-  char* endptr;
+  //char* endptr;
 
   while ( (c=getopt( argc, argv, "c:d:w:o:t:r:h?")) != EOF ) {
     switch(c) {
