@@ -47,15 +47,6 @@ public:
         }
     }
 
-    bool try_push(T value)
-    {
-        if (!is_full()) {
-            push(value);
-            return true;
-        }
-        return false;
-    }
-
     // blocking read from queue
     bool pop(T& value)
     {
@@ -110,11 +101,6 @@ public:
     {
         return m_read_index.load(std::memory_order_acquire) ==
                m_write_index.load(std::memory_order_acquire);
-    }
-
-    bool is_full()
-    {
-        return guess_size() >= m_capacity;
     }
 
     int guess_size()
