@@ -425,12 +425,13 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
                 }
                 case XtcData::TransitionId::Configure: {
                     logging::info("PVA configure");
-                    XtcData::NamesId namesId(m_drp.nodeId(), 0);
+                    unsigned segment = 0;
+                    XtcData::NamesId pvaNamesId(m_drp.nodeId(), PvaNamesIndex);
                     XtcData::Alg pvaAlg("pvaAlg", 1, 2, 3);
                     XtcData::Names& pvaNames = *new(dgram->xtc) XtcData::Names("pva", pvaAlg,
-                                                                               "pva", "pva1234", namesId, 0);
+                                                                               "pva", "pva1234", pvaNamesId, segment);
                     pvaNames.add(dgram->xtc, pvaDef);
-                    m_nameIndex = XtcData::NameIndex(pvaNames);
+                    m_namesLookup[pvaNamesId] = XtcData::NameIndex(pvaNames);
 
                     _sendToTeb(*dgram, index);
                     m_nEvents++;
@@ -510,8 +511,8 @@ void PvaApp::process(const PvaMonitor& pva)
                            timestamp.seconds(), timestamp.nanoseconds(),
                            dgram->seq.stamp().seconds(), dgram->seq.stamp().nanoseconds());
 
-            XtcData::NamesId namesId(m_drp.nodeId(), 0);
-            XtcData::DescribedData desc(dgram->xtc, m_nameIndex, namesId);
+            XtcData::NamesId namesId(m_drp.nodeId(), PvaNamesIndex);
+            XtcData::DescribedData desc(dgram->xtc, m_namesLookup, namesId);
             size_t length;
             size_t size = pva.getData(desc.data(), length);
             desc.set_data_length(size);

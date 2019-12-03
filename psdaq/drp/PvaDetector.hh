@@ -31,6 +31,7 @@ private:
         return sizeof(T);
     }
   template<typename T> size_t _getDataT(void* data, size_t& length) {
+        //pvd::shared_vector<const T> vec((T*)data, [](void*){}, 0, 128); // Doesn't work
         pvd::shared_vector<const T> vec;
         getVectorAs<T>(vec);
         length = vec.size();
@@ -59,13 +60,14 @@ private:
     void _shutdown();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 
+    enum { PvaNamesIndex };
     DrpBase m_drp;
     Parameters& m_para;
     const std::string& m_pvName;
     std::thread m_workerThread;
     SPSCQueue<uint32_t> m_inputQueue;
     std::unique_ptr<PvaMonitor> m_pvaMonitor;
-    XtcData::NameIndex m_nameIndex;
+    XtcData::NamesLookup m_namesLookup;
     mutable std::mutex _lock;
     std::condition_variable _cv;
     std::atomic<bool> m_swept;
