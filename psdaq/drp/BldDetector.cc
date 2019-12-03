@@ -25,7 +25,7 @@ namespace Drp {
 static const XtcData::Name::DataType xtype[] = {
     XtcData::Name::UINT8 , // pvBoolean
     XtcData::Name::INT8  , // pvByte
-    XtcData::Name::UINT16, // pvShort
+    XtcData::Name::INT16,  // pvShort
     XtcData::Name::INT32 , // pvInt
     XtcData::Name::INT64 , // pvLong
     XtcData::Name::UINT8 , // pvUByte
