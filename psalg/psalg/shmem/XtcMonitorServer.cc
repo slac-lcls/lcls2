@@ -787,7 +787,7 @@ void XtcMonitorServer::_replQueue(mqd_t q, unsigned rq)
   timespec tmo; tmo.tv_sec = 0; tmo.tv_nsec = 0;
   struct mq_attr attr;
   mq_getattr(q,&attr);
-  printf("Replacing %u entries\n",attr.mq_curmsgs);
+  printf("Replacing %lu entries\n",attr.mq_curmsgs);
   while(attr.mq_curmsgs--) {
     XtcMonitorMsg m;
     mq_timedreceive(q, reinterpret_cast<char*>(&m), sizeof(m), NULL, &tmo);
