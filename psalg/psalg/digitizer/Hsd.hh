@@ -34,9 +34,9 @@
  *
  * Immediately following the EventHeader in the dma buffer are the stream
  * headers (raw and fex) and their associated data:
- * Both raw/fex streamheaders are present on every event, even if their
- * associated data is missing (e.g. if prescale is not set to 1).
- * Per-channel structure:
+ * Note: if raw or fex data is missing, then the associated header is also
+ * missing (e.g. if prescale is not set to 1).
+ * Per-channel structure, if both raw/fex data are present:
  *
  * streamheader raw
  * raw data

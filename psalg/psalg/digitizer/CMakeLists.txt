@@ -1,6 +1,5 @@
 add_library(digitizer SHARED
     src/Hsd.cc
-    src/HsdPython.cc
     src/Stream.cc
 )
 

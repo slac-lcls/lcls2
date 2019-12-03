@@ -33,6 +33,7 @@ cdef extern from "psalg/digitizer/HsdPython.hh" namespace "Pds::HSD":
         ChannelPython()
         ChannelPython(const evthdr_t *evtheader, const si.uint8_t *data)
         si.uint16_t* waveform(unsigned &numsamples)
+        unsigned next_peak(unsigned &sPos, si.uint16_t** peakPtr)
 
 cdef class PyChannelPython:
     cdef public cnp.ndarray waveform
@@ -41,6 +42,10 @@ cdef class PyChannelPython:
         cdef si.uint16_t* wf_ptr
         cdef ChannelPython chanpy
         cdef unsigned numsamples = 0
+        cdef unsigned startSample = 0
+        cdef unsigned startPos = 0
+        cdef unsigned peakLen = 0
+        cdef si.uint16_t* peakPtr
         chanpy = ChannelPython(&evtheader[0], &chan[0])
         wf_ptr = chanpy.waveform(numsamples)
         shape[0] = numsamples
@@ -48,6 +53,11 @@ cdef class PyChannelPython:
             self.waveform = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16, wf_ptr)
             self.waveform.base = <PyObject*> dgram
             Py_INCREF(dgram)
+
+        while True:
+            peakLen = chanpy.next_peak(startPos,&peakPtr)
+            if not peakLen: break
+            print startPos,peakLen
 
 class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
 
