@@ -148,10 +148,12 @@ cdef class cyhsd_base_1_2_3:
                         self._wvDict[iseg][chanNum] = pychan.waveform
                         self._peaksDict[iseg]={}
                         self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
-        # check that we have all segments in the event
-        # FIXME: also check that we have all the channels we expect
-        seglist.sort()
-        if seglist != self._config_segments: return None
+        # maybe check that we have all segments in the event?
+        # FIXME: also check that we have all the channels we expect?
+        # unclear how to flag this.  maybe return None to the user
+        # from the det xface?
+        #seglist.sort()
+        #if seglist != self._config_segments: 
 
     # adding this decorator allows access to the signature information of the function in python
     # this is used for AMI type safety
