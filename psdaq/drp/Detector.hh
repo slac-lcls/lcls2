@@ -32,7 +32,6 @@ public:
 protected:
     Parameters* m_para;
     MemPool* m_pool;
-    std::vector<XtcData::NamesId> m_namesId;
     XtcData::NamesLookup m_namesLookup;
     uint8_t m_xtcbuf[XtcData::Dgram::MaxSize];
 };
