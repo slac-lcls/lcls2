@@ -115,9 +115,13 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 memcpy(&dgram->xtc, &transitionXtc, transitionXtc.extent);
 
                 // make sure the transition isn't too big
+                if (transitionXtc.extent > XtcData::Dgram::MaxSize) {
+                    logging::critical("Transition: XTC with extent %d overflowed buffer of size %d", transitionXtc.extent, XtcData::Dgram::MaxSize);
+                    exit(-1);
+                }
                 if (dgram->xtc.extent > pool.bufferSize()) {
-                  logging::critical("Transition: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
-                  exit(-1);
+                    logging::critical("Transition: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
+                    exit(-1);
                 }
 
                 if (event->l3InpBuf) { // else timed out
