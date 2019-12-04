@@ -24,16 +24,16 @@ public:
     void get_value(int i, Name& name, DescData& descdata){
         int data_rank = name.rank();
         int data_type = name.type();
-        printf("%d: %s rank %d, type %d\n", i, name.name(), data_rank, data_type);
+        printf("%d: '%s' rank %d, type %d\n", i, name.name(), data_rank, data_type);
 
         switch(name.type()){
         case(Name::UINT8):{
             if(data_rank > 0){
                 Array<uint8_t> arrT = descdata.get_array<uint8_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("'%s': %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint8_t>(i));
+                printf("'%s': %d\n",name.name(),descdata.get_value<uint8_t>(i));
             }
             break;
         }
@@ -41,10 +41,10 @@ public:
         case(Name::UINT16):{
             if(data_rank > 0){
                 Array<uint16_t> arrT = descdata.get_array<uint16_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("'%s': %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint16_t>(i));
+                printf("'%s': %d\n",name.name(),descdata.get_value<uint16_t>(i));
             }
             break;
         }
@@ -52,10 +52,10 @@ public:
         case(Name::UINT32):{
             if(data_rank > 0){
                 Array<uint32_t> arrT = descdata.get_array<uint32_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("'%s': %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint32_t>(i));
+                printf("'%s': %d\n",name.name(),descdata.get_value<uint32_t>(i));
             }
             break;
         }
@@ -63,10 +63,10 @@ public:
         case(Name::UINT64):{
             if(data_rank > 0){
                 Array<uint64_t> arrT = descdata.get_array<uint64_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("'%s': %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint64_t>(i));
+                printf("'%s': %d\n",name.name(),descdata.get_value<uint64_t>(i));
             }
             break;
         }
@@ -74,10 +74,10 @@ public:
         case(Name::INT8):{
             if(data_rank > 0){
                 Array<int8_t> arrT = descdata.get_array<int8_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("'%s': %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int8_t>(i));
+                printf("'%s': %d\n",name.name(),descdata.get_value<int8_t>(i));
             }
             break;
         }
@@ -85,10 +85,10 @@ public:
         case(Name::INT16):{
             if(data_rank > 0){
                 Array<int16_t> arrT = descdata.get_array<int16_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("'%s': %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int16_t>(i));
+                printf("'%s': %d\n",name.name(),descdata.get_value<int16_t>(i));
             }
             break;
         }
@@ -96,10 +96,10 @@ public:
         case(Name::INT32):{
             if(data_rank > 0){
                 Array<int32_t> arrT = descdata.get_array<int32_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("'%s': %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+                printf("'%s': %d\n",name.name(),descdata.get_value<int32_t>(i));
             }
             break;
         }
@@ -107,10 +107,10 @@ public:
         case(Name::INT64):{
             if(data_rank > 0){
                 Array<int64_t> arrT = descdata.get_array<int64_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("'%s': %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int64_t>(i));
+                printf("'%s': %d\n",name.name(),descdata.get_value<int64_t>(i));
             }
             break;
         }
@@ -118,10 +118,10 @@ public:
         case(Name::FLOAT):{
             if(data_rank > 0){
                 Array<float> arrT = descdata.get_array<float>(i);
-                printf("%s: %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1]);
+                printf("'%s': %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1]);
                     }
             else{
-                printf("%s: %f\n",name.name(),descdata.get_value<float>(i));
+                printf("'%s': %f\n",name.name(),descdata.get_value<float>(i));
             }
             break;
         }
@@ -129,10 +129,10 @@ public:
         case(Name::DOUBLE):{
             if(data_rank > 0){
                 Array<double> arrT = descdata.get_array<double>(i);
-                printf("%s: %f, %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("'%s': %f, %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %f\n",name.name(),descdata.get_value<double>(i));
+                printf("'%s': %f\n",name.name(),descdata.get_value<double>(i));
             }
             break;
         }
@@ -140,10 +140,10 @@ public:
         case(Name::CHARSTR):{
             if(data_rank > 0){
                 Array<char> arrT = descdata.get_array<char>(i);
-                printf("%s: \"%s\"\n",name.name(),arrT.data());
+                printf("'%s': \"%s\"\n",name.name(),arrT.data());
                     }
             else{
-                printf("%s: string with no rank?!?\n",name.name());
+                printf("'%s': string with no rank?!?\n",name.name());
             }
             break;
         }
@@ -151,19 +151,19 @@ public:
         case(Name::ENUMVAL):{
             if(data_rank > 0){
                 Array<int32_t> arrT = descdata.get_array<int32_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("'%s': %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+                printf("'%s': %d\n",name.name(),descdata.get_value<int32_t>(i));
             }
             break;
         }
 
         case(Name::ENUMDICT):{
             if(data_rank > 0){
-                printf("%s: enumdict with rank?!?\n", name.name());
+                printf("'%s': enumdict with rank?!?\n", name.name());
             } else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+                printf("'%s': %d\n",name.name(),descdata.get_value<int32_t>(i));
             }
             break;
         }
@@ -187,9 +187,9 @@ public:
 
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
-                printf("Name: %s Type: %d Rank: %d\n",name.name(),name.type(), name.rank());
+                printf("Name: '%s' Type: %d Rank: %d\n",name.name(),name.type(), name.rank());
             }
-            
+
             break;
         }
         case (TypeId::ShapesData): {
@@ -220,7 +220,7 @@ public:
         }
         return Continue;
     }
-    
+
 private:
     NamesLookup _namesLookup;
 };
@@ -228,7 +228,7 @@ private:
 
 void usage(char* progname)
 {
-    fprintf(stderr, "Usage: %s -f <filename> [-h]\n", progname);
+    fprintf(stderr, "Usage: %s -f <filename> [-d] [-n <nEvents>] [-h]\n", progname);
 }
 
 int main(int argc, char* argv[])
@@ -276,7 +276,7 @@ int main(int argc, char* argv[])
     while ((dg = iter.next())) {
         if (nevent>=neventreq) break;
         nevent++;
-        printf("event %d, %s transition: time %d.%09d, pulseId 0x%lu, env 0x%lu, "
+        printf("event %d, %11s transition: time %d.%09d, pulseId 0x%014lx, env 0x%08x, "
                "payloadSize %d extent %d\n",
                nevent,
                TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
