@@ -270,7 +270,7 @@ if 'HSD' in BUILD_LIST :
                 sources=["psana/hsd/hsd.pyx",
                          "../psalg/psalg/peaks/src/PeakFinderAlgos.cc",
                          "../psalg/psalg/peaks/src/LocalExtrema.cc"],
-                libraries=['xtc','psalg','digitizer'],
+                libraries=['xtc','psalg','digitizer','utils'],
                 language="c++",
                 extra_compile_args=extra_cxx_compile_args,
                 include_dirs=[np.get_include(),
