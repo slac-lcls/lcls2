@@ -37,6 +37,8 @@ cdef extern from "psalg/digitizer/HsdPython.hh" namespace "Pds::HSD":
 
 cdef class PyChannelPython:
     cdef public cnp.ndarray waveform
+    cdef public list peakList
+    cdef public list startPosList
     def __init__(self, cnp.ndarray[evthdr_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan, dgram):
         cdef cnp.npy_intp shape[1]
         cdef si.uint16_t* wf_ptr
@@ -45,25 +47,38 @@ cdef class PyChannelPython:
         cdef unsigned startSample = 0
         cdef unsigned startPos = 0
         cdef unsigned peakLen = 0
-        cdef si.uint16_t* peakPtr
+        cdef si.uint16_t* peakPtr = <si.uint16_t*>0
+        cdef cnp.ndarray peak
+
         chanpy = ChannelPython(&evtheader[0], &chan[0])
+
         wf_ptr = chanpy.waveform(numsamples)
         shape[0] = numsamples
         if numsamples:
             self.waveform = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16, wf_ptr)
             self.waveform.base = <PyObject*> dgram
             Py_INCREF(dgram)
+        else:
+            self.waveform = None
 
+        self.peakList = []
+        self.startPosList = []
         while True:
-            peakLen = chanpy.next_peak(startPos,&peakPtr)
-            if not peakLen: break
-            print startPos,peakLen
+            shape[0] = chanpy.next_peak(startPos,&peakPtr)
+            if not shape[0]: break
+            peak = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16, peakPtr)
+            peak.base = <PyObject*> dgram
+            Py_INCREF(dgram)
+            self.peakList.append(peak)
+            self.startPosList.append(startPos)
 
 class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
 
     def __init__(self, *args):
         DetectorImpl.__init__(self, *args)
         cyhsd_base_1_2_3.__init__(self)
+
+    # this routine is used by ami/data.py
     def _seg_chans(self):
         """
         returns a dictionary with segment numbers as the key, and a list
@@ -92,7 +107,6 @@ class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
 
 cdef class cyhsd_base_1_2_3:
     cdef dict _wvDict
-    cdef list _chanList
     cdef list _fexPeaks
     cdef dict _peaksDict
 
@@ -101,17 +115,10 @@ cdef class cyhsd_base_1_2_3:
 
     def __init__(self):
         self._wvDict = {}
-        self._chanList = []
+        self._fexPeaks = []
+        self._peaksDict = {}
         self._evt = None
         self._hsdsegments = None
-        self._peaksDict = {}
-        self._fexPeaks = []
-        self.chan = {}
-
-    def _setChan(self, iseg, chanNum, cnp.ndarray[evthdr_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan, dgram):
-        index = iseg*16+chanNum
-        self.chan[index] = PyChannelPython(evtheader, chan, dgram)
-        self._chanList.append((iseg,chanNum))
 
     def _isNewEvt(self, evt):
         if self._evt == None or not (evt._nanoseconds == self._evt._nanoseconds and evt._seconds == self._evt._seconds):
@@ -121,18 +128,30 @@ cdef class cyhsd_base_1_2_3:
 
     def _parseEvt(self, evt):
         self._wvDict = {}
-        self._chanList = []
         self._peaksDict = {}
         self._fexPeaks = []
         self._hsdsegments = self._segments(evt)
         self._evt = evt
+        seglist = []
         for iseg in self._hsdsegments:
+            seglist.append(iseg)
             for chanNum in xrange(16): # Maximum channels: 16
                 chanName = 'chan'+'{num:02d}'.format(num=chanNum) # e.g. chan16
                 if hasattr(self._hsdsegments[iseg], chanName):
                     chan = eval('self._hsdsegments[iseg].'+chanName)
                     if chan.size > 0:
-                        self._setChan(iseg, chanNum, self._hsdsegments[iseg].eventHeader, chan, self._hsdsegments[iseg])
+                        pychan = PyChannelPython(self._hsdsegments[iseg].eventHeader, chan, self._hsdsegments[iseg])
+                        self._wvDict[iseg] = {}
+                        # FIXME: this needs to be put in units of seconds
+                        # perhaps both for 5GHz and 6GHz models
+                        self._wvDict[iseg]["times"] = np.arange(len(pychan.waveform))
+                        self._wvDict[iseg][chanNum] = pychan.waveform
+                        self._peaksDict[iseg]={}
+                        self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
+        # check that we have all segments in the event
+        # FIXME: also check that we have all the channels we expect
+        seglist.sort()
+        if seglist != self._config_segments: return None
 
     # adding this decorator allows access to the signature information of the function in python
     # this is used for AMI type safety
@@ -148,47 +167,12 @@ cdef class cyhsd_base_1_2_3:
         cdef cnp.ndarray wv # TODO: make readonly
         if self._isNewEvt(evt):
             self._parseEvt(evt)
-        seglist = []
-        for (iseg, chanNum) in self._chanList:
-            # cpo kludged this line
-            if hasattr(self.chan[iseg*16+chanNum],'waveform'):
-                seglist.append(iseg)
-                self._wvDict[iseg] = {}
-                self._wvDict[iseg]["times"] = np.arange(len(self.chan[iseg*16+chanNum].waveform))
-                self._wvDict[iseg][chanNum] = self.chan[iseg*16+chanNum].waveform
-        # check that we have all segments in the event
-        # FIXME: also check that we have all the channels we expect
-        seglist.sort()
-        if seglist != self._config_segments: return None
         return self._wvDict
-
-    def _channelPeaks(self, iseg, chanNum):
-        pass
-        # cdef list listOfPeaks, listOfPos # TODO: check whether this helps with speed
-        # listOfPeaks = []
-        # listOfPos = []
-        # cdef cnp.ndarray peak
-        # cdef cnp.npy_intp shape[1]
-        # try:
-        #     for i in range(self.chan[iseg*16+chanNum].numFexPeaks): # TODO: disable bounds, wraparound check
-        #         shape[0] = <cnp.npy_intp> self.chan[iseg*16+chanNum].len(i) # len
-        #         peak = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16,
-        #                            <cnp.uint16_t*>self.chptr[iseg*16+chanNum].fexPtr(i))
-        #         peak.base = <PyObject*> self._fexPeaks
-        #         Py_INCREF(self._fexPeaks)
-        #         listOfPeaks.append(peak)
-        #         listOfPos.append(self.chptr[iseg*16+chanNum].sPos(i))
-        # except ValueError:
-        #     print("No such channel exists")
-        #     listOfPeaks = None
-        #     listOfPos = None
-        # return (listOfPos, listOfPeaks)
 
     # adding this decorator allows access to the signature information of the function in python
     # this is used for AMI type safety
     @cython.binding(True)
     def peaks(self, evt) -> HSDPeaks:
-        return {}
         """Return a dictionary of available peaks found in the event.
         0:    tuple of beginning of peaks and array of peak intensities from channel 0
         1:    tuple of beginning of peaks and array of peak intensities from channel 1
@@ -197,29 +181,4 @@ cdef class cyhsd_base_1_2_3:
         """
         if self._isNewEvt(evt):
             self._parseEvt(evt)
-        seglist = []
-        for (iseg, chanNum) in self._chanList:
-            if iseg not in self._peaksDict:
-                self._peaksDict[iseg]={}
-                seglist.append(iseg)
-            self._peaksDict[iseg][chanNum] = self._channelPeaks(iseg,chanNum)
-        # check that we have all segments in the event
-        # FIXME: also check that we have all the channels we expect
-        seglist.sort()
-        if seglist != self._config_segments: return None
         return self._peaksDict
-
-    # adding this decorator allows access to the signature information of the function in python
-    # this is used for AMI type safety
-    @cython.binding(True)
-    def assem(self, evt) -> HSDAssemblies:
-        """Return a dictionary of available peaks assembled as waveforms.
-        0:  peak intensities assembled into a waveform from channel 0
-        1:  peak intensities assembled into a waveform from channel 1
-        ...
-        16: peak intensities assembled into a waveform from channel 16
-        times:  time axis (s)
-        """
-        # TODO: compare self.evt and evt
-        # TODO: assemble peaks into waveforms
-        return self._assemDict

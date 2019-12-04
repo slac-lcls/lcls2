@@ -59,7 +59,6 @@ namespace Pds {
                     _totWidth += _width;
                     if (_in) {
                         peakLen = _width;
-                        printf("found peakLen %d\n",peakLen);
                         _startSample = i+1; // remember where to start for next call
                         return peakLen;
                     }
@@ -69,7 +68,6 @@ namespace Pds {
                     if (!_in) {
                         startPos = _ns+_totWidth;
                         *peakPtr = (uint16_t *) (q+i);
-                        printf("found pos/peakptr %d %p\n",startPos,peakPtr);
                     }
                     for (unsigned j=0; j<4; j++, i++) {
                         _width++;
@@ -81,7 +79,6 @@ namespace Pds {
                 // I think this case happens when the last peak includes
                 // the very last uint16_t in sh_fex payload.
                 peakLen = _width;
-                printf("found peakLen2 %d\n",peakLen);
             }
             // these two lines will cause the iterator to return 0
             // on the next call, ending the iteration.
