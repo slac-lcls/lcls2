@@ -143,6 +143,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         m_pgpDetector->resetEventCounter();
     }
     else if (key == "unconfigure") {
+        // Delay unconfiguration until after phase 2 of unconfigure has completed
         m_unconfigure = true;
     }
     else if (key == "beginstep") {
