@@ -456,15 +456,13 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
                         logging::critical("Transition: buffer size (%d) too small for requested extent (%d)", m_drp.pool.bufferSize(), dgram->xtc.extent);
                         exit(-1);
                     }
-
-                    _sendToTeb(*dgram, index);
-                    m_nEvents++;
                     break;
                 }
                 case XtcData::TransitionId::BeginRun: {
                     if (m_runInfo.runNumber > 0) {
                         m_drp.runInfoData(dgram->xtc, m_namesLookup, m_runInfo);
                     }
+                    break;
                 }
                 case XtcData::TransitionId::Disable: { // Sweep out L1As
                     m_inputQueue.push(index);
@@ -482,15 +480,15 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
                             m_nEvents++;
                         }
                     }
-                    _sendToTeb(*dgram, index); // Post the Disable
-                    m_nEvents++;
                     break;
                 }
                 default: {              // Handle other transitions
-                    _sendToTeb(*dgram, index);
-                    m_nEvents++;
                     break;
                 }
+            }
+            if (!dgram->seq.isEvent()) {
+                _sendToTeb(*dgram, index);
+                m_nEvents++;
             }
         }
     }
