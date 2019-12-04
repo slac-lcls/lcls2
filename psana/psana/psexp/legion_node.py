@@ -27,7 +27,7 @@ def smd_chunks(run):
 def run_smd0_task(run):
     global_procs = legion.Tunable.select(legion.Tunable.GLOBAL_PYS).get()
 
-    for i, smd_chunk in enumerate(smd0_chunks(run)):
+    for i, smd_chunk in enumerate(smd_chunks(run)):
         run_smd_task(smd_chunk, run, point=i)
     # Block before returning so that the caller can use this task's future for synchronization
     legion.execution_fence(block=True)
@@ -56,7 +56,7 @@ def batch_events(smd_batch, run):
 
 @task
 def run_bigdata_task(batch, run):
-    for evt in batch_events(smd_batch, run):
+    for evt in batch_events(batch, run):
         run.event_fn(evt, run.det)
 
 run_to_process = []
