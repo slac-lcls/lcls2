@@ -4,6 +4,7 @@ add_library(digitizer SHARED
 )
 
 target_link_libraries(digitizer
+    utils
     xtcdata::xtc
 )
 
