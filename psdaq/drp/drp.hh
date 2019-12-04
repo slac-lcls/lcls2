@@ -7,6 +7,12 @@
 
 namespace Drp {
 
+enum NamesIndex
+{
+   RUNINFO      = 255,
+   BASE         = 0,
+};
+
 struct DmaBuffer
 {
     int32_t size;

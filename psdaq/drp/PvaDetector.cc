@@ -6,6 +6,7 @@
 #include <iostream>
 #include "DataDriver.h"
 #include "TimingHeader.hh"
+#include "RunInfoDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
@@ -239,6 +240,7 @@ void PvaApp::_shutdown()
     }
     m_pvaMonitor.reset();
     m_drp.shutdown();
+    m_namesLookup.clear();   // erase all elements
 }
 
 json PvaApp::connectionInfo()
@@ -305,8 +307,17 @@ void PvaApp::handleDisconnect(const json& msg)
 
 void PvaApp::handlePhase1(const json& msg)
 {
+    json phase1Info{ "" };
+    if (msg.find("body") != msg.end()) {
+        if (msg["body"].find("phase1Info") != msg["body"].end()) {
+            phase1Info = msg["body"]["phase1Info"];
+        }
+    }
+
+    json body = json({});
     std::string key = msg["header"]["key"];
     logging::debug("handlePhase1 for %s in PvaApp", key.c_str());
+
     if (key == "configure") {
         if (m_unconfigure) {
             _shutdown();
@@ -318,25 +329,31 @@ void PvaApp::handlePhase1(const json& msg)
             errorMsg = "Phase 1 error: " + errorMsg;
             _error(key, msg, errorMsg);
             logging::error("%s", errorMsg.c_str());
-            return;
         }
+        else {
+            m_exporter = std::make_shared<MetricExporter>();
+            if (m_drp.exposer()) {
+                m_drp.exposer()->RegisterCollectable(m_exporter);
+            }
 
-        m_exporter = std::make_shared<MetricExporter>();
-        if (m_drp.exposer()) {
-            m_drp.exposer()->RegisterCollectable(m_exporter);
+            m_swept.store(false, std::memory_order_release);
+            m_terminate.store(false, std::memory_order_release);
+
+            m_workerThread = std::thread{&PvaApp::_worker, this, m_exporter};
         }
-
-        m_swept.store(false, std::memory_order_release);
-        m_terminate.store(false, std::memory_order_release);
-
-        m_workerThread = std::thread{&PvaApp::_worker, this, m_exporter};
     }
     else if (key == "unconfigure") {
         // Delay unconfiguration until after phase 2 of unconfigure has completed
         m_unconfigure = true;
     }
+    else if (key == "beginrun") {
+        std::string errorMsg = m_drp.beginrun(phase1Info, m_runInfo);
+        if (!errorMsg.empty()) {
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        }
+    }
 
-    json body = json({});
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);
 }
@@ -425,17 +442,29 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
                 }
                 case XtcData::TransitionId::Configure: {
                     logging::info("PVA configure");
-                    unsigned segment = 0;
-                    XtcData::NamesId pvaNamesId(m_drp.nodeId(), PvaNamesIndex);
+
                     XtcData::Alg pvaAlg("pvaAlg", 1, 2, 3);
+                    XtcData::NamesId pvaNamesId(m_drp.nodeId(), PvaNamesIndex);
                     XtcData::Names& pvaNames = *new(dgram->xtc) XtcData::Names("pva", pvaAlg,
-                                                                               "pva", "pva1234", pvaNamesId, segment);
+                                                                               "pva", "pva1234", pvaNamesId);
                     pvaNames.add(dgram->xtc, pvaDef);
                     m_namesLookup[pvaNamesId] = XtcData::NameIndex(pvaNames);
+
+                    m_drp.runInfoSupport(dgram->xtc, m_namesLookup);
+
+                    if (dgram->xtc.extent > m_drp.pool.bufferSize()) {
+                        logging::critical("Transition: buffer size (%d) too small for requested extent (%d)", m_drp.pool.bufferSize(), dgram->xtc.extent);
+                        exit(-1);
+                    }
 
                     _sendToTeb(*dgram, index);
                     m_nEvents++;
                     break;
+                }
+                case XtcData::TransitionId::BeginRun: {
+                    if (m_runInfo.runNumber > 0) {
+                        m_drp.runInfoData(dgram->xtc, m_namesLookup, m_runInfo);
+                    }
                 }
                 case XtcData::TransitionId::Disable: { // Sweep out L1As
                     m_inputQueue.push(index);

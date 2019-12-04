@@ -9,15 +9,13 @@
 #include "psdaq/service/MetricExporter.hh"
 #include "PGPDetectorApp.hh"
 #include "psalg/utils/SysLog.hh"
-#include "xtcdata/xtc/VarDef.hh"
 #include "RunInfoDef.hh"
+
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 
 namespace Drp {
-
-static RunInfoDef myRunInfoDef;
 
 PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
@@ -56,6 +54,8 @@ void PGPDetectorApp::shutdown()
         m_pgpDetector.reset();
     }
     m_drp.shutdown();
+
+    m_det->namesLookup().clear();   // erase all elements
 }
 
 void PGPDetectorApp::handleConnect(const json& msg)
@@ -133,13 +133,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc);
 
-        // beginrun support
-        unsigned segment = 0;
-        XtcData::Alg runInfoAlg("runinfo",0,0,1);
-        XtcData::NamesId runInfoNamesId(m_det->nodeId, Drp::Detector::NAMES_INDEX_RUNINFO);
-        XtcData::Names& runInfoNames = *new(xtc) XtcData::Names("runinfo", runInfoAlg, "runinfo", "", runInfoNamesId, segment);
-        runInfoNames.add(xtc, myRunInfoDef);
-        m_det->namesLookup()[runInfoNamesId] = XtcData::NameIndex(runInfoNames);
+        m_drp.runInfoSupport(xtc, m_det->namesLookup());
 
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::configure";
@@ -149,7 +143,6 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         m_pgpDetector->resetEventCounter();
     }
     else if (key == "unconfigure") {
-        m_det->namesLookup().clear();   // erase all elements
         m_unconfigure = true;
     }
     else if (key == "beginstep") {
@@ -158,10 +151,14 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         m_det->beginstep(xtc, phase1Info);
     }
     else if (key == "beginrun") {
-        std::string errorMsg = m_drp.beginrun(phase1Info, xtc, m_det->namesLookup());
+        RunInfo runInfo;
+        std::string errorMsg = m_drp.beginrun(phase1Info, runInfo);
         if (!errorMsg.empty()) {
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
+        }
+        else if (runInfo.runNumber > 0) {
+            m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
         }
     }
 

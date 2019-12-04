@@ -21,7 +21,7 @@ private:
     unsigned _addJson(XtcData::Xtc& xtc, XtcData::NamesId& configNamesId);
     unsigned _getPaddr();
 private:
-    enum {ConfigNamesIndex = NAMES_INDEX_BASE, EventNamesIndex};
+    enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex};
     unsigned          m_evtcount;
     unsigned          m_readoutGroup;
     XtcData::NamesId  m_evtNamesId;

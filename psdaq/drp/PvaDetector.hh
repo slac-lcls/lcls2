@@ -60,9 +60,10 @@ private:
     void _shutdown();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 
-    enum { PvaNamesIndex };
+    enum { PvaNamesIndex = NamesIndex::BASE};
     DrpBase m_drp;
     Parameters& m_para;
+    RunInfo m_runInfo;
     const std::string& m_pvName;
     std::thread m_workerThread;
     SPSCQueue<uint32_t> m_inputQueue;

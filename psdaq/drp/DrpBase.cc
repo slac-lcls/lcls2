@@ -3,13 +3,10 @@
 #include "TimingHeader.hh"
 #include <DmaDriver.h>
 #include "DrpBase.hh"
+#include "RunInfoDef.hh"
 #include "psalg/utils/SysLog.hh"
 
 #include "rapidjson/document.h"
-
-#include "xtcdata/xtc/VarDef.hh"
-#include "RunInfoDef.hh"
-#include "xtcdata/xtc/DescData.hh"
 
 using namespace XtcData;
 using json = nlohmann::json;
@@ -242,30 +239,44 @@ std::string DrpBase::connect(const json& msg, size_t id)
     return std::string{};
 }
 
-std::string DrpBase::beginrun(const json& runInfo, XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup)
+std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
 {
     std::string experiment_name;
     unsigned int run_number = 0;
-    if (runInfo.find("run_info") != runInfo.end()) {
-        if (runInfo["run_info"].find("experiment_name") != runInfo["run_info"].end()) {
-            experiment_name = runInfo["run_info"]["experiment_name"];
+    if (phase1Info.find("run_info") != phase1Info.end()) {
+        if (phase1Info["run_info"].find("experiment_name") != phase1Info["run_info"].end()) {
+            experiment_name = phase1Info["run_info"]["experiment_name"];
         }
-        if (runInfo["run_info"].find("run_number") != runInfo["run_info"].end()) {
-            run_number = runInfo["run_info"]["run_number"];
+        if (phase1Info["run_info"].find("run_number") != phase1Info["run_info"].end()) {
+            run_number = phase1Info["run_info"]["run_number"];
         }
     }
+    runInfo.experimentName = experiment_name;
+    runInfo.runNumber = run_number;
+
     logging::debug("%s: expt=\"%s\" runnum=%u",
                    __PRETTY_FUNCTION__, experiment_name.c_str(), run_number);
 
-    if (run_number > 0) {
-        // runinfo data
-        NamesId runInfoNamesId(m_nodeId, Drp::Detector::NAMES_INDEX_RUNINFO);
-        CreateData runinfo(xtc, namesLookup, runInfoNamesId);
-        runinfo.set_string(RunInfoDef::EXPT, experiment_name.c_str());
-        runinfo.set_value(RunInfoDef::RUNNUM, (uint32_t)run_number);
-    }
-
     return std::string{};
+}
+
+void DrpBase::runInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
+{
+    XtcData::Alg runInfoAlg("runinfo", 0, 0, 1);
+    XtcData::NamesId runInfoNamesId(m_nodeId, NamesIndex::RUNINFO);
+    XtcData::Names& runInfoNames = *new(xtc) XtcData::Names("runinfo", runInfoAlg,
+                                                            "runinfo", "", runInfoNamesId);
+    RunInfoDef myRunInfoDef;
+    runInfoNames.add(xtc, myRunInfoDef);
+    namesLookup[runInfoNamesId] = XtcData::NameIndex(runInfoNames);
+}
+
+void DrpBase::runInfoData(Xtc& xtc, NamesLookup& namesLookup, const RunInfo& runInfo)
+{
+    XtcData::NamesId runInfoNamesId(m_nodeId, NamesIndex::RUNINFO);
+    XtcData::CreateData runinfo(xtc, namesLookup, runInfoNamesId);
+    runinfo.set_string(RunInfoDef::EXPT, runInfo.experimentName.c_str());
+    runinfo.set_value(RunInfoDef::RUNNUM, runInfo.runNumber);
 }
 
 std::string DrpBase::endrun(const json& msg)

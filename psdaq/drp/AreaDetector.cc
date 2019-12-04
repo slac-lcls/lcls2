@@ -16,7 +16,7 @@ class FexDef : public VarDef
 public:
     enum index
     {
-      array_fex
+        array_fex
     };
 
     FexDef()
@@ -25,14 +25,13 @@ public:
         NameVec.push_back({"array_fex", Name::UINT16, 2, fex});
     }
 };
-static FexDef myFexDef;
 
 class RawDef : public VarDef
 {
 public:
     enum index
     {
-      array_raw
+        array_raw
     };
 
     RawDef()
@@ -41,7 +40,6 @@ public:
         NameVec.push_back({"array_raw", Name::UINT16, 2, raw});
     }
 };
-static RawDef myRawDef;
 
 AreaDetector::AreaDetector(Parameters* para, MemPool* pool) :
     XpmDetector(para, pool), m_evtcount(0)
@@ -56,14 +54,16 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc)
     unsigned segment = 0;
     NamesId fexNamesId(nodeId,FexNamesIndex);
     Names& fexNames = *new(xtc) Names("xppcspad", cspadFexAlg, "cspad",
-                                            "detnum1234", fexNamesId, segment);
+                                      "detnum1234", fexNamesId, segment);
+    FexDef myFexDef;
     fexNames.add(xtc, myFexDef);
     m_namesLookup[fexNamesId] = NameIndex(fexNames);
 
     Alg cspadRawAlg("cspadRawAlg", 1, 2, 3);
     NamesId rawNamesId(nodeId,RawNamesIndex);
     Names& rawNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad",
-                                            "detnum1234", rawNamesId, segment);
+                                      "detnum1234", rawNamesId, segment);
+    RawDef myRawDef;
     rawNames.add(xtc, myRawDef);
     m_namesLookup[rawNamesId] = NameIndex(rawNames);
 

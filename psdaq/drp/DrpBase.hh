@@ -46,6 +46,12 @@ private:
     unsigned m_nodeId;
 };
 
+struct RunInfo
+{
+    std::string experimentName;
+    uint32_t runNumber;
+};
+
 class DrpBase
 {
 public:
@@ -54,8 +60,10 @@ public:
     nlohmann::json connectionInfo();
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string configure(const nlohmann::json& msg);
-    std::string beginrun(const nlohmann::json& phase1Info, XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
+    std::string beginrun(const nlohmann::json& phase1Info, RunInfo& runInfo);
     std::string endrun(const nlohmann::json& msg);
+    void runInfoSupport(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
+    void runInfoData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, const RunInfo& runInfo);
     Pds::Eb::TebContributor& tebContributor() const {return *m_tebContributor;}
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
     prometheus::Exposer* exposer() {return m_exposer.get();}
