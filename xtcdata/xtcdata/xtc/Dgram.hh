@@ -46,17 +46,24 @@ public:
 
 class PulseId {
 public:
-    PulseId(unsigned value) : _value(value) {}
+    PulseId(uint64_t value) : _value(value) {}
     // mask off 56 bits, since upper 8 bits can have
     // "control" information from the timing system
+    // give methods "timing_" prefix to avoid conflict with
+    // methods in Transition
+    unsigned timing_control() const {return (_value>>56)&0xff;}
+    XtcData::TransitionId::Value timing_service() const {return (XtcData::TransitionId::Value)(timing_control()&0xf);}
     uint64_t pulseId() const {return _value&0x00ffffffffffffff;}
-protected:
+public:
+    // FIXME: take away "public" and rename (cpo)
     uint64_t _value;
 };
 
+// FIXME: move into psdaq (cpo)
 class EbDgram : public PulseId, public Dgram {
 public:
-    EbDgram(unsigned value, Dgram dgram) : PulseId(value), Dgram(dgram) {}
+    EbDgram(uint64_t value, Dgram dgram) : PulseId(value), Dgram(dgram) {}
+    EbDgram(uint64_t value) : PulseId(value) {}
 };
 
 class L1Dgram : public Dgram {

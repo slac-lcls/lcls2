@@ -75,23 +75,21 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             PGPEvent* event = &pool.pgpEvents[index];
             checkPulseIds(pool, event);
 
-            // make new dgram in the pebble
-            XtcData::EbDgram* dgram = (XtcData::EbDgram*)pool.pebble[index];
-            XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-            dgram->xtc.src = XtcData::Src(det->nodeId); // set the src field for the event builders
-            dgram->xtc.damage = 0;
-            dgram->xtc.contains = tid;
-            dgram->xtc.extent = sizeof(XtcData::Xtc);
-
             // get transitionId from the first lane in the event
             int lane = __builtin_ffs(event->mask) - 1;
             uint32_t dmaIndex = event->buffers[lane].index;
             Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)pool.dmaBuffers[dmaIndex];
             XtcData::TransitionId::Value transitionId = timingHeader->service();
 
-            // fill in dgram header
+            // make new dgram in the pebble
+            XtcData::EbDgram* dgram = new(pool.pebble[index]) XtcData::EbDgram(timingHeader->_value);
+            XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
+            dgram->xtc.src = XtcData::Src(det->nodeId); // set the src field for the event builders
+            dgram->xtc.damage = 0;
+            dgram->xtc.contains = tid;
+            dgram->xtc.extent = sizeof(XtcData::Xtc);
             dgram->time = timingHeader->time;
-            dgram->env = timingHeader->env&envMask;
+            dgram->env = (timingHeader->env&envMask) | (timingHeader->service()<<24);
 
             // Event
             if (transitionId == XtcData::TransitionId::L1Accept) {
