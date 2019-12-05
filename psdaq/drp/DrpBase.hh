@@ -19,15 +19,25 @@ namespace Drp {
 static const char* const RED_ON  = "\033[0;31m";
 static const char* const RED_OFF = "\033[0m";
 
+struct RunInfo
+{
+    std::string experimentName;
+    uint32_t runNumber;
+};
+
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
     EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
                const std::shared_ptr<MetricExporter>& exporter);
+    ~EbReceiver();
     void process(const Pds::Eb::ResultDgram& result, const void* input) override;
 public:
     void resetCounters();
+    std::string openFiles(const Parameters& para, const RunInfo& runInfo);
+private:
+    void _writeDgram(XtcData::Dgram* dgram);
 private:
     MemPool& m_pool;
     Pds::Eb::MebContributor* m_mon;
@@ -44,12 +54,7 @@ private:
     XtcData::TransitionId::Value m_lastTid;
     uint64_t m_offset;
     unsigned m_nodeId;
-};
-
-struct RunInfo
-{
-    std::string experimentName;
-    uint32_t runNumber;
+    XtcData::Dgram* m_configureDgram;
 };
 
 class DrpBase
