@@ -5,7 +5,7 @@ import numpy as np
 
 # cpo found this on the web as a way to get mpirun to exit when
 # one of the ranks has an exception
-from psana.tools import mode
+from psana.psexp.tools import mode
 if mode == 'mpi':
     import sys
     # Global error handler
