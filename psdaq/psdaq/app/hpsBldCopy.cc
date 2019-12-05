@@ -3,6 +3,7 @@
 //
 #include <stdio.h>
 #include <unistd.h>
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <time.h>
@@ -98,11 +99,10 @@ int main(int argc, char* argv[])
   unsigned intf = 0;
   const char* bldInput = 0;
   const char* bldOutput = 0;
-  bool lverbose = false;
   unsigned nprint = 10;
   unsigned delay = 0;
   
-  while ( (c=getopt( argc, argv, "i:I:o:O:v#:")) != EOF ) {
+  while ( (c=getopt( argc, argv, "i:I:o:O:#:")) != EOF ) {
     switch(c) {
     case 'i':
       intf = Psdaq::AppUtils::parse_interface(optarg);
@@ -115,9 +115,6 @@ int main(int argc, char* argv[])
       break;
     case 'O':
       bldOutput = optarg;
-      break;
-    case 'v':
-      lverbose = true;
       break;
     case '#':
       nprint = strtoul(optarg,NULL,0);
@@ -141,9 +138,9 @@ int main(int argc, char* argv[])
   PVBase* inpPort      = new PVBase((std::string(bldInput)+":PORT"   ).c_str());
 
   while(1) {
-    if (inpPayload   ->connected() &&
-        inpAddr      ->connected() &&
-        inpPort      ->connected())
+    if (inpPayload   ->ready() &&
+        inpAddr      ->ready() &&
+        inpPort      ->ready())
       break;
     usleep(100000);
   }
@@ -152,8 +149,8 @@ int main(int argc, char* argv[])
   PVBase* outPort      = new PVBase((std::string(bldOutput)+":PORT"   ).c_str());
 
   while(1) {
-    if (outAddr      ->connected() &&
-        outPort      ->connected())
+    if (outAddr      ->ready() &&
+        outPort      ->ready())
       break;
     usleep(100000);
   }
@@ -201,16 +198,20 @@ int main(int argc, char* argv[])
 
     char* payload = new char[payloadSz];
 
+    uint64_t opid = 0;
+
     while(1) {
 
       //  First, fetch INPUT component
       //    uint64_t pulseId = 0;
       uint64_t pulseId = input.fetch(payload,payloadSz);
+      assert(pulseId);
 
-      if (lverbose && nprint) {
-        printf("input pid 0x%lx\n", pulseId);
-        nprint--;
+      if (opid && (opid+1) != pulseId && nprint) {
+        printf("PulseId jump 0x%" PRIx64 " to 0x%" PRIx64 "\n",
+               opid, pulseId);
       }
+      opid = pulseId;
 
       if (delay)
         delay--;

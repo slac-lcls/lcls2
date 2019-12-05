@@ -17,6 +17,7 @@
 #include <time.h>
 #include <arpa/inet.h>
 #include <signal.h>
+#include <inttypes.h>
 
 #include <string>
 #include <new>
@@ -216,10 +217,24 @@ int main(int argc, char* argv[])
   sigaction(SIGKILL,&sa,NULL);
   sigaction(SIGSEGV,&sa,NULL);
 
+#define HANDLE_ERR(str) {                       \
+  perror(str);                                  \
+  throw std::string(str); }
+
   int fd = ::socket(AF_INET, SOCK_DGRAM, 0);
-  if (fd < 0) {
-    perror("Open socket");
-    return -1;
+  if (fd < 0)
+    HANDLE_ERR("Open socket");
+
+  { unsigned skbSize = 0x1000000;
+    if (setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &skbSize, sizeof(skbSize)) == -1) 
+      HANDLE_ERR("set so_rcvbuf");
+
+    socklen_t sz = sizeof(skbSize);
+    unsigned skbRead;
+    if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &skbRead, &sz) == -1) 
+      HANDLE_ERR("get so_rcvbuf");
+
+    printf("rcvbuf = 0x%x (0x%x)",skbRead,skbSize);
   }
 
   sockaddr_in saddr;
@@ -266,10 +281,10 @@ int main(int argc, char* argv[])
     PVBase*            pvaPort = new PVBase((std::string(bldname)+":PORT").c_str());
   
     while(1) {
-      if (pvaCntl      ->connected() &&
-          //          pvaPayl      ->connected() &&
-          pvaAddr      ->connected() &&
-          pvaPort      ->connected())
+      if (pvaCntl      ->ready() &&
+          //          pvaPayl      ->ready() &&
+          pvaAddr      ->ready() &&
+          pvaPort      ->ready())
         break;
       usleep(100000);
     }
@@ -359,6 +374,9 @@ void handle_data(void* args)
 
   Pds::Bld::Server bldServer(fd_mc);
 
+  uint64_t opid = 0;
+  unsigned nprint = 20;
+
   do {
     ssize_t ret = read(fd,buff,buffsize);
     if (ret < 0) break;
@@ -380,7 +398,13 @@ void handle_data(void* args)
         //  Generate BLD out
         bldServer.publish( ev.pulseId, ev.timeStamp, 
                            (char*)&ev.valid, sizeof(uint32_t)*(1+it.nchannels()) );
-      
+
+        if (opid && (opid+1) != ev.pulseId && nprint) {
+          printf("PulseId jump 0x%" PRIx64 " to 0x%" PRIx64 "\n",
+                 opid, ev.pulseId);
+        }
+        opid = ev.pulseId;
+          
       } while(it.next());
 
       //  Force BLD out

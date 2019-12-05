@@ -193,9 +193,9 @@ int main(int argc, char* argv[])
   PVBase* pvaPort      = new PVBase((std::string(bldName)+":PORT"   ).c_str());
 
   while(1) {
-    if (pvaPayload   ->connected() &&
-        pvaAddr      ->connected() &&
-        pvaPort      ->connected())
+    if (pvaPayload   ->ready() &&
+        pvaAddr      ->ready() &&
+        pvaPort      ->ready())
       break;
     usleep(100000);
   }
