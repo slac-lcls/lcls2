@@ -1,6 +1,6 @@
 #include "Client.hh"
 #include "DataDriver.h"
-#include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/EbDgram.hh"
 using XtcData::Transition;
 
 using namespace Pds::Kcu;
@@ -143,7 +143,7 @@ const Transition* Client::advance(uint64_t pulseId)
     int x = _current;
     int last = _dmaRet[x];
     if (last > 0) {
-      const XtcData::EbDgram* b = reinterpret_cast<const XtcData::EbDgram*>
+      const Pds::EbDgram* b = reinterpret_cast<const Pds::EbDgram*>
         (_dmaBuffers[_dmaIndex[x]]);
       if (b->pulseId() == pulseId) {
         _current++;

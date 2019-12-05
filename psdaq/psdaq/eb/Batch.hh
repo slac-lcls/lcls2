@@ -3,7 +3,7 @@
 
 #include "eb.hh"
 
-#include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/EbDgram.hh"
 
 #ifdef NDEBUG
 //#undef NDEBUG
@@ -34,8 +34,8 @@ namespace Pds {
     public:
       static uint64_t    batchNum(uint64_t pid);
     public:
-      XtcData::EbDgram*  allocate();
-      Batch*             initialize(const XtcData::EbDgram&);
+      Pds::EbDgram*  allocate();
+      Batch*             initialize(const Pds::EbDgram&);
       void               accumRogs(const XtcData::Transition&);
       uint16_t           rogsRem(const XtcData::Transition&);
       uint16_t           rogs() const;
@@ -118,7 +118,7 @@ const bool Pds::Eb::Batch::empty() const
 }
 
 inline
-Pds::Eb::Batch* Pds::Eb::Batch::initialize(const XtcData::EbDgram& hdr)
+Pds::Eb::Batch* Pds::Eb::Batch::initialize(const Pds::EbDgram& hdr)
 {
   // Multiple batches can exist with the same BatchNum, but different PIDs
   _id        = hdr.pulseId(); // Full PID, not BatchNum
@@ -168,11 +168,11 @@ void Pds::Eb::Batch::release()
 }
 
 inline
-XtcData::EbDgram* Pds::Eb::Batch::allocate()
+Pds::EbDgram* Pds::Eb::Batch::allocate()
 {
   char* buf = static_cast<char*>(_buffer) + _extent;
   _extent += _size;
-  return reinterpret_cast<XtcData::EbDgram*>(buf);
+  return reinterpret_cast<Pds::EbDgram*>(buf);
 }
 
 inline
@@ -184,9 +184,9 @@ size_t Pds::Eb::Batch::terminate()
   if (_extent < MAX_ENTRIES * _size)
   {
     char*             buf = static_cast<char*>(_buffer) + _extent;
-    XtcData::EbDgram* dg  = reinterpret_cast<XtcData::EbDgram*>(buf);
+    Pds::EbDgram* dg  = reinterpret_cast<Pds::EbDgram*>(buf);
     dg->time = XtcData::TimeStamp();
-    _extent += sizeof(XtcData::PulseId); // for a null terminator to a list
+    _extent += sizeof(Pds::PulseId); // for a null terminator to a list
   }
 
   return _extent;

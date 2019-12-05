@@ -1,7 +1,7 @@
 #ifndef Pds_Eb_ResultDgram_hh
 #define Pds_Eb_ResultDgram_hh
 
-#include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/EbDgram.hh"
 
 #include <cstdint>
 
@@ -9,7 +9,7 @@
 namespace Pds {
   namespace Eb {
 
-    class ResultDgram : public XtcData::EbDgram
+    class ResultDgram : public Pds::EbDgram
     {
       /* bit field access enums
        *       v is the index of the rightmost bit
@@ -36,12 +36,12 @@ namespace Pds {
               (s_prescale << 4*4) | (s_prescale << 5*4) | (s_prescale << 6*4) | (s_prescale << 7*4)) };
     public:
       ResultDgram(uint64_t pulseId, const XtcData::Transition& transition_, unsigned id) :
-        XtcData::EbDgram(pulseId, XtcData::Dgram(transition_, XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0),
+        Pds::EbDgram(pulseId, XtcData::Dgram(transition_, XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0),
                                                                            XtcData::Src(id, XtcData::Level::Event)))),
         _data(0),
         _monBufNo(0)
       {
-        xtc.alloc(sizeof(ResultDgram) - sizeof(XtcData::EbDgram));
+        xtc.alloc(sizeof(ResultDgram) - sizeof(Pds::EbDgram));
       }
     public:
       void     persist (unsigned line, bool value) { if (value) _data |=   s_persist  << (4 * line);

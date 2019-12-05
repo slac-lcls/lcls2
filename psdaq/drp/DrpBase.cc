@@ -1,6 +1,6 @@
 #include <iostream>
 #include <bitset>
-#include "TimingHeader.hh"
+#include "psdaq/service/EbDgram.hh"
 #include <DmaDriver.h>
 #include "DrpBase.hh"
 #include "psalg/utils/SysLog.hh"
@@ -137,7 +137,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     m_lastPid = timingHeader->pulseId();
     m_lastTid = timingHeader->service();
 
-    XtcData::EbDgram* ebdgram = (XtcData::EbDgram*)m_pool.pebble[index];
+    Pds::EbDgram* ebdgram = (Pds::EbDgram*)m_pool.pebble[index];
     if (m_writing) {
         // write event to file if it passes event builder or if it's a transition
         if (result.persist() || result.prescale() || (transitionId != XtcData::TransitionId::L1Accept)) {

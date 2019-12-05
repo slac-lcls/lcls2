@@ -11,7 +11,7 @@
 
 class MetricExporter;
 
-namespace XtcData {
+namespace Pds {
   class EbDgram;
 };
 
@@ -28,8 +28,8 @@ namespace Pds {
       int  configure(const MebCtrbParams&, void* region, size_t size);
       void shutdown();
     public:
-      int  post(const XtcData::EbDgram* dataDatagram); // Transitions
-      int  post(const XtcData::EbDgram* dataDatagram,
+      int  post(const Pds::EbDgram* dataDatagram); // Transitions
+      int  post(const Pds::EbDgram* dataDatagram,
                 uint32_t                destination);  // L1Accepts
     private:
       size_t                    _maxEvSize;

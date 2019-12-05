@@ -42,30 +42,6 @@ public:
     Xtc xtc;
 };
 
-// PulseId and EbDgram should move to psdaq
-
-class PulseId {
-public:
-    PulseId(uint64_t value) : _value(value) {}
-    // mask off 56 bits, since upper 8 bits can have
-    // "control" information from the timing system
-    // give methods "timing_" prefix to avoid conflict with
-    // methods in Transition
-    unsigned timing_control() const {return (_value>>56)&0xff;}
-    XtcData::TransitionId::Value timing_service() const {return (XtcData::TransitionId::Value)(timing_control()&0xf);}
-    uint64_t pulseId() const {return _value&0x00ffffffffffffff;}
-public:
-    // FIXME: take away "public" and rename (cpo)
-    uint64_t _value;
-};
-
-// FIXME: move into psdaq (cpo)
-class EbDgram : public PulseId, public Dgram {
-public:
-    EbDgram(uint64_t value, Dgram dgram) : PulseId(value), Dgram(dgram) {}
-    EbDgram(uint64_t value) : PulseId(value) {}
-};
-
 class L1Dgram : public Dgram {
 public:
     // 8 reserved bits.  Perhaps for future trigger lines?

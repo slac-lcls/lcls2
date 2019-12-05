@@ -6,7 +6,7 @@
 #include "utilities.hh"
 
 #include "psdaq/service/MetricExporter.hh"
-#include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/EbDgram.hh"
 
 #include <string.h>
 #include <cstdint>

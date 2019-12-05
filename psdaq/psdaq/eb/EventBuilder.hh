@@ -7,7 +7,7 @@
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/GenericPool.hh"
 
-namespace XtcData {
+namespace Pds {
   class EbDgram;
 };
 
@@ -30,11 +30,11 @@ namespace Pds {
     public:
       virtual void       fixup(EbEvent*, unsigned srcId)         = 0;
       virtual void       process(EbEvent*)                       = 0;
-      virtual uint64_t   contract(const XtcData::EbDgram*) const = 0;
+      virtual uint64_t   contract(const Pds::EbDgram*) const = 0;
     public:
       void               expired();
     public:
-      void               process(const XtcData::EbDgram* dgrams,
+      void               process(const Pds::EbDgram* dgrams,
                                  const size_t            bufSize,
                                  unsigned                maxEntries,
                                  unsigned                prm);
@@ -55,13 +55,13 @@ namespace Pds {
       void              _flushBefore(EbEpoch*);
       EbEpoch*          _discard(EbEpoch*);
       void              _fixup(EbEvent*);
-      EbEvent*          _event(const XtcData::EbDgram*, EbEvent* after, unsigned prm);
+      EbEvent*          _event(const Pds::EbDgram*, EbEvent* after, unsigned prm);
       bool              _lookAhead(const EbEpoch*,
                                    const EbEvent*,
                                    const EbEvent* const due) const;
       const EbEvent*    _flush(const EbEvent* const due);
       void              _retire(EbEvent*);
-      EbEvent*          _insert(EbEpoch*, const XtcData::EbDgram*, EbEvent*, unsigned prm);
+      EbEvent*          _insert(EbEpoch*, const Pds::EbDgram*, EbEvent*, unsigned prm);
     private:
       friend class EbEvent;
     private:

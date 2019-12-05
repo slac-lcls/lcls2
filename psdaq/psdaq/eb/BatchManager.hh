@@ -24,7 +24,7 @@ namespace Pds {
     public:
       void            stop();
       void            shutdown();
-      Batch*          fetch(const XtcData::EbDgram&);
+      Batch*          fetch(const Pds::EbDgram&);
       void            release(const Batch*);
       Batch*          batch(unsigned idx);
       const Batch*    batch(unsigned idx) const;
@@ -92,7 +92,7 @@ size_t Pds::Eb::BatchManager::maxBatchSize() const
 }
 
 inline
-Pds::Eb::Batch* Pds::Eb::BatchManager::fetch(const XtcData::EbDgram& hdr)
+Pds::Eb::Batch* Pds::Eb::BatchManager::fetch(const Pds::EbDgram& hdr)
 {
   const auto pid = hdr.pulseId();
   const auto idx = Pds::Eb::Batch::batchNum(pid);

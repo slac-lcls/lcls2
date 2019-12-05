@@ -6,7 +6,7 @@
 #include <AxisDriver.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "TimingHeader.hh"
+#include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/TypeId.hh"
 #include "AxiBatcherParser.hh"

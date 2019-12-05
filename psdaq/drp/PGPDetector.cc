@@ -2,7 +2,7 @@
 #include <fstream>
 #include <limits.h>
 #include "DataDriver.h"
-#include "TimingHeader.hh"
+#include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
@@ -62,9 +62,6 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     Batch batch;
     MemPool& pool = drp.pool;
     const unsigned nbuffers = pool.nbuffers();
-    // only save the readout groups we're interested in for
-    // this partition, and leave top 8 bits free for "control"
-    uint32_t envMask = uint32_t(para.rogMask);
     while (true) {
         if (!inputQueue.pop(batch)) {
             break;
@@ -82,14 +79,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             XtcData::TransitionId::Value transitionId = timingHeader->service();
 
             // make new dgram in the pebble
-            XtcData::EbDgram* dgram = new(pool.pebble[index]) XtcData::EbDgram(timingHeader->_value);
-            XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-            dgram->xtc.src = XtcData::Src(det->nodeId); // set the src field for the event builders
-            dgram->xtc.damage = 0;
-            dgram->xtc.contains = tid;
-            dgram->xtc.extent = sizeof(XtcData::Xtc);
-            dgram->time = timingHeader->time;
-            dgram->env = (timingHeader->env&envMask) | (timingHeader->service()<<24);
+            Pds::EbDgram* dgram = new(pool.pebble[index]) Pds::EbDgram(*timingHeader, XtcData::Src(det->nodeId));
 
             // Event
             if (transitionId == XtcData::TransitionId::L1Accept) {
@@ -101,7 +91,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 }
 
                 if (event->l3InpBuf) {  // else timed out
-                    XtcData::EbDgram* l3InpDg = new(event->l3InpBuf) XtcData::EbDgram(*dgram);
+                    Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(*dgram);
                     if (drp.triggerPrimitive()) { // else this DRP doesn't provide input
                         drp.triggerPrimitive()->event(pool, index, dgram->xtc, l3InpDg->xtc);
                     }
@@ -115,7 +105,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 memcpy(&dgram->xtc, &transitionXtc, transitionXtc.extent);
 
                 if (event->l3InpBuf) { // else timed out
-                    new(event->l3InpBuf) XtcData::EbDgram(*dgram);
+                    new(event->l3InpBuf) Pds::EbDgram(*dgram);
                 }
             }
             // make sure the transition isn't too big
@@ -258,7 +248,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 nevents++;
                 m_batch.size++;
 
-                event->l3InpBuf = tebContributor.allocate(reinterpret_cast<const XtcData::EbDgram*>(timingHeader), (void*)((uintptr_t)current));
+                event->l3InpBuf = tebContributor.allocate(reinterpret_cast<const Pds::EbDgram*>(timingHeader), (void*)((uintptr_t)current));
 
                 // send batch to worker if batch is full or if it's a transition
                 if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) ||
@@ -290,7 +280,7 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
             PGPEvent* event = &m_pool.pgpEvents[index];
             if (event->l3InpBuf) // else timed out
             {
-                XtcData::EbDgram* dgram = static_cast<XtcData::EbDgram*>(event->l3InpBuf);
+                Pds::EbDgram* dgram = static_cast<Pds::EbDgram*>(event->l3InpBuf);
                 tebContributor.process(dgram);
             }
         }

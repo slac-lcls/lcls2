@@ -13,7 +13,6 @@
 
 
 namespace XtcData {
-  class EbDgram;
   class TimeStamp;
 };
 
@@ -45,7 +44,7 @@ namespace Pds {
       void             trim(unsigned dst);
     public:                            // For EventBuilder
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
-      virtual uint64_t contract(const XtcData::EbDgram* contrib) const;
+      virtual uint64_t contract(const Pds::EbDgram* contrib) const;
     private:                           // Arranged in order of access frequency
       u64arr_t                  _contract;
       Pds::Eb::EbLfServer       _transport;

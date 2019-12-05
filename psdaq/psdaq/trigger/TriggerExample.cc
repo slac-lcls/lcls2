@@ -20,8 +20,8 @@ namespace Pds {
     public:
       int  configure(const json&     connectMsg,
                      const Document& top) override;
-      void event(const XtcData::EbDgram* const* start,
-                 const XtcData::EbDgram**       end,
+      void event(const Pds::EbDgram* const* start,
+                 const Pds::EbDgram**       end,
                  Pds::Eb::ResultDgram&          result) override;
     private:
       void  _mapIdToDet(const json&     connectMsg,
@@ -85,11 +85,11 @@ int Pds::Trg::TriggerExample::configure(const json&     connectMsg,
   return rc;
 }
 
-void Pds::Trg::TriggerExample::event(const XtcData::EbDgram* const* start,
-                                     const XtcData::EbDgram**       end,
+void Pds::Trg::TriggerExample::event(const Pds::EbDgram* const* start,
+                                     const Pds::EbDgram**       end,
                                      Pds::Eb::ResultDgram&          result)
 {
-  const XtcData::EbDgram* const* ctrb = start;
+  const Pds::EbDgram* const* ctrb = start;
   bool                           wrt  = 0;
   bool                           mon  = 0;
 

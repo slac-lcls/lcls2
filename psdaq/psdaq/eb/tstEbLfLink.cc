@@ -12,7 +12,7 @@
 
 #include "utilities.hh"
 
-#include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
 #include <signal.h>
