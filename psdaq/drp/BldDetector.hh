@@ -15,6 +15,7 @@ class BldDescriptor : public Pds_Epics::PVBase
 {
 public:
     BldDescriptor(const char* channelName) : Pds_Epics::PVBase(channelName) {}
+    ~BldDescriptor();
     XtcData::VarDef get(unsigned& payloadSize);
 };
 
@@ -23,6 +24,7 @@ class Bld
 public:
     Bld(unsigned mcaddr, unsigned port, unsigned interface, 
         unsigned pulseIdPos, unsigned headerSize, unsigned payloadSize);
+    Bld(const Bld&);
     ~Bld();
 public:
     static const unsigned MTU = 9000;
@@ -42,29 +44,44 @@ private:
     int      m_sockfd;
     unsigned m_bufferSize;
     unsigned m_position;
-    bool     m_first;
     std::vector<uint8_t> m_buffer;
     uint8_t* m_payload;
+};
+
+class BldPVA 
+{
+public:
+    BldPVA(const char* name,
+           const char* pvname,
+           unsigned    interface);
+    ~BldPVA();
+public:
+    std::string                        _name;
+    unsigned                           _interface;
+    std::shared_ptr<Pds_Epics::PVBase> _pvaAddr;
+    std::shared_ptr<Pds_Epics::PVBase> _pvaPort;
+    std::shared_ptr<BldDescriptor>     _pvaPayload;
 };
 
 class BldFactory
 {
 public:
-    BldFactory();
+    BldFactory(const BldPVA& pva);
     BldFactory(const char* name, unsigned interface);
-    BldFactory(const char* name, const char* pvname, unsigned interface);
+    BldFactory(const char* name, unsigned interface, 
+               unsigned addr, unsigned port, std::shared_ptr<BldDescriptor>);
+    BldFactory(const BldFactory&);
+    ~BldFactory();
 public:
     Bld&               handler   ();
     XtcData::NameIndex addToXtc  (XtcData::Xtc&, 
                                   const XtcData::NamesId&);
 private:
-    std::string        _name;
-    unsigned           _mcaddr;
-    unsigned           _mcport;
-    XtcData::Alg       _alg;
-    XtcData::VarDef    _varDef;
-    std::unique_ptr<BldDescriptor> _pvaPayload;
-    std::unique_ptr<Bld          > _handler;
+    std::string                    _name;
+    XtcData::Alg                   _alg;
+    XtcData::VarDef                _varDef;
+    std::shared_ptr<BldDescriptor> _pvaPayload;
+    std::shared_ptr<Bld          > _handler;
 };
 
 class BldApp : public CollectionApp
@@ -84,8 +101,10 @@ private:
 
     DrpBase                                    m_drp;
     Parameters&                                m_para;
+    RunInfo                                    m_runInfo;
+    XtcData::NamesLookup                       m_namesLookup;
     std::thread                                m_workerThread;
-    std::vector<BldFactory>                    m_config;
+    std::vector<std::shared_ptr<BldFactory> >  m_config;
     std::atomic<bool>                          m_terminate;
     std::shared_ptr<MetricExporter>            m_exporter;
     bool                                       m_unconfigure;

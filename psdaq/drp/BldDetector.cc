@@ -7,6 +7,7 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include "DataDriver.h"
+#include "RunInfoDef.hh"
 #include "TimingHeader.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/ShapesData.hh"
@@ -37,11 +38,25 @@ static const XtcData::Name::DataType xtype[] = {
     XtcData::Name::CHARSTR, // pvString
 };
 
-BldFactory::BldFactory() :
-  _alg       ("bldAlg", 0, 0, 1)
+BldPVA::BldPVA(const char* name,
+               const char* pvname,
+               unsigned    interface) : _name(name), _interface(interface)
+{
+    std::string sname(pvname);
+    _pvaAddr    = std::make_shared<Pds_Epics::PVBase>((sname+":ADDR"   ).c_str());
+    _pvaPort    = std::make_shared<Pds_Epics::PVBase>((sname+":PORT"   ).c_str());
+    _pvaPayload = std::make_shared<BldDescriptor>((sname+":PAYLOAD").c_str());
+
+    logging::info("BldPVA::BldPVA looking up multicast parameters for %s from %s", name, pvname);
+}
+
+BldPVA::~BldPVA()
 {
 }
 
+  //
+  //  LCLS-I Style
+  //
 BldFactory::BldFactory(const char* name,
                        unsigned    interface) :
   _name       (name),
@@ -52,15 +67,16 @@ BldFactory::BldFactory(const char* name,
     if (strchr(name,':'))
         _name = std::string(strrchr(name,':')+1);
 
-    _mcport     = 12148;
     _pvaPayload = 0;
 
     unsigned payloadSize = 0;
+    unsigned mcaddr = 0;
+    unsigned mcport = 12148;
     //
     //  Make static configuration of BLD  :(
     //
     if      (strcmp("ebeam",name)==0) {
-        _mcaddr = 0xefff1800;
+        mcaddr = 0xefff1800;
         _alg    = XtcData::Alg((_name+"Alg").c_str(), 0, 7, 1);
         _varDef.NameVec.push_back(XtcData::Name("damageMask"       , XtcData::Name::UINT32));
         _varDef.NameVec.push_back(XtcData::Name("ebeamCharge"      , XtcData::Name::DOUBLE));
@@ -86,7 +102,7 @@ BldFactory::BldFactory(const char* name,
         payloadSize = 164;
     }
     else if (strcmp("gasdet",name)==0) {
-        _mcaddr = 0xefff1802;
+        mcaddr = 0xefff1802;
         _alg    = XtcData::Alg((_name+"Alg").c_str(), 0, 1, 1);
         _varDef.NameVec.push_back(XtcData::Name("f_11_ENRC"      , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("f_12_ENRC"      , XtcData::Name::DOUBLE));
@@ -99,47 +115,34 @@ BldFactory::BldFactory(const char* name,
     else {
         throw std::string("BLD name ")+name+" not recognized";
     }
-    _handler = std::make_unique<Bld>(_mcaddr, _mcport, interface, Bld::DgramPulseIdPos, Bld::DgramHeaderSize, payloadSize);
+    _handler = std::make_shared<Bld>(mcaddr, mcport, interface, Bld::DgramPulseIdPos, Bld::DgramHeaderSize, payloadSize);
 }
 
-BldFactory::BldFactory(const char* name,
-                       const char* pvname,
-                       unsigned    interface) :
-  _name       (name),
-  _alg        ("bldAlg", 0, 0, 1)
+  //
+  //  LCLS-II Style
+  //
+BldFactory::BldFactory(const BldPVA& pva) :
+    _name       (pva._name),
+    _alg        ("bldAlg", 0, 0, 1),
+    _pvaPayload (pva._pvaPayload)
 {
-    if (strchr(name,':'))
-        _name = std::string(strrchr(name,':')+1);
-
-    _pvaPayload = 0;
-
-    unsigned payloadSize = 0;
-
-    std::string sname(pvname);
-    Pds_Epics::PVBase* pvaAddr    = new Pds_Epics::PVBase((sname+":ADDR"   ).c_str());
-    Pds_Epics::PVBase* pvaPort    = new Pds_Epics::PVBase((sname+":PORT"   ).c_str());
-    _pvaPayload                   = std::make_unique<BldDescriptor>    ((sname+":PAYLOAD").c_str());
-
-    logging::info("BldFactory::BldFactory looking up multicast parameters for %s from %s", name, pvname);
+    size_t pos = pva._name.rfind(':');
+    if (pos != std::string::npos)
+        _name = pva._name.substr(pos+1);
 
     while(1) {
-        if (pvaAddr    ->connected() &&
-            pvaPort    ->connected() &&
-            _pvaPayload->connected()) {
+        if (pva._pvaAddr   ->ready() &&
+            pva._pvaPort   ->ready() &&
+            pva._pvaPayload->ready())
             break;
-        }
-        usleep(100000);
+        usleep(10000);
     }
-    _mcaddr = pvaAddr->getScalarAs<unsigned>();
-    _mcport = pvaPort->getScalarAs<unsigned>();
-    _varDef = _pvaPayload->get(payloadSize);
 
-    delete pvaAddr;
-    delete pvaPort;
+    unsigned mcaddr = pva._pvaAddr->getScalarAs<unsigned>();
+    unsigned mcport = pva._pvaPort->getScalarAs<unsigned>();
 
-    { in_addr ia;
-      ia.s_addr = htonl(_mcaddr);
-      logging::info("BldFactory::BldFactory using multicast addr %s port %u", inet_ntoa(ia), _mcport); }
+    unsigned payloadSize = 0;
+    _varDef = pva._pvaPayload->get(payloadSize);
 
     if (_name == "hpsex" ||
         _name == "hpscp" ||
@@ -150,7 +153,20 @@ BldFactory::BldFactory(const char* name,
     else {
         throw std::string("BLD name ")+_name+" not recognized";
     }
-    _handler = std::make_unique<Bld>(_mcaddr, _mcport, interface, Bld::PulseIdPos, Bld::HeaderSize, payloadSize);
+    _handler = std::make_shared<Bld>(mcaddr, mcport, pva._interface, Bld::PulseIdPos, Bld::HeaderSize, payloadSize);
+}
+
+  BldFactory::BldFactory(const BldFactory& o) :
+    _name       (o._name),
+    _alg        (o._alg),
+    _pvaPayload (o._pvaPayload)
+{
+    logging::error("BldFactory copy ctor called");
+}
+
+BldFactory::~BldFactory()
+{
+  logging::debug("BldFactory::~BldFactory [%s]", _name.c_str());
 }
 
 Bld& BldFactory::handler()
@@ -162,8 +178,8 @@ XtcData::NameIndex BldFactory::addToXtc  (XtcData::Xtc& xtc,
                                           const XtcData::NamesId& namesId)
 {
   XtcData::Names& bldNames = *new(xtc) XtcData::Names(_name.c_str(), _alg,
-                                                      _name.c_str(), _name.c_str(),
-                                                      namesId, 0);
+                                                      _name.c_str(), _name.c_str(), namesId);
+
   bldNames.add(xtc, _varDef);
   return XtcData::NameIndex(bldNames);
 }
@@ -179,13 +195,20 @@ unsigned interfaceAddress(const std::string& interface)
     return ntohl(*(unsigned*)&(ifr.ifr_addr.sa_data[2]));
 }
 
+BldDescriptor::~BldDescriptor()
+{
+    logging::debug("~BldDescriptor");
+}
+
 XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
 {
     payloadSize = 0;
     XtcData::VarDef vd;
     const pvd::StructureConstPtr& structure = _strct->getStructure();
-    if (!structure)
-      throw std::string("BLD with no payload.  Is FieldMask empty?");
+    if (!structure) {
+        logging::error("BLD with no payload.  Is FieldMask empty?");
+        throw std::string("BLD with no payload.  Is FieldMask empty?");
+    }
 
     const pvd::StringArray& names = structure->getFieldNames();
     const pvd::FieldConstPtrArray& fields = structure->getFields();
@@ -196,7 +219,6 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
                 XtcData::Name::DataType type = xtype[scalar->getScalarType()];
                 vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type));
                 payloadSize += XtcData::Name::get_element_size(type);
-                logging::debug("name: %s  %d", names[i].c_str(), type);
                 break;
             }
 
@@ -207,9 +229,18 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
             }
         }
     }
+
+    std::string fnames("fields: ");
+    for(auto & elem: vd.NameVec)
+        fnames += std::string(elem.name()) + "[" + elem.str_type() + "],";
+    logging::debug("%s",fnames.c_str());
+
     return vd;
 }
 
+#define HANDLE_ERR(str) {                       \
+  perror(str);                                  \
+  throw std::string(str); }
 
 Bld::Bld(unsigned mcaddr,
          unsigned port,
@@ -218,45 +249,47 @@ Bld::Bld(unsigned mcaddr,
          unsigned headerSize,
          unsigned payloadSize) :
   m_pulseIdPos(pulseIdPos), m_headerSize(headerSize), m_payloadSize(payloadSize),
-  m_bufferSize(0), m_position(0), m_first(true),  m_buffer(Bld::MTU), m_payload(m_buffer.data())
+  m_bufferSize(0), m_position(0),  m_buffer(Bld::MTU), m_payload(m_buffer.data())
 {
-    logging::debug("Bld listening for %x.%d",mcaddr,port);
+    logging::debug("Bld listening for %x.%d with payload size %u",mcaddr,port,payloadSize);
 
     m_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (m_sockfd < 0) {
-        perror("Open socket");
-        throw std::string("Open socket");
-    }
+    if (m_sockfd < 0) 
+        HANDLE_ERR("Open socket");
 
-    unsigned skbSize = 0x1000000;
-    setsockopt(m_sockfd, SOL_SOCKET, SO_RCVBUF, &skbSize, sizeof(skbSize));
+    { unsigned skbSize = 0x1000000;
+      if (setsockopt(m_sockfd, SOL_SOCKET, SO_RCVBUF, &skbSize, sizeof(skbSize)) == -1) 
+          HANDLE_ERR("set so_rcvbuf");
+    }
 
     struct sockaddr_in saddr;
     saddr.sin_family = AF_INET;
     saddr.sin_addr.s_addr = htonl(mcaddr);
     saddr.sin_port = htons(port);
     memset(saddr.sin_zero, 0, sizeof(saddr.sin_zero));
-    if (bind(m_sockfd, (sockaddr*)&saddr, sizeof(saddr)) < 0) {
-        perror("bind");
-        throw std::string("bind");
-    }
+    if (bind(m_sockfd, (sockaddr*)&saddr, sizeof(saddr)) < 0)
+        HANDLE_ERR("bind");
 
     int y = 1;
-    if (setsockopt(m_sockfd, SOL_SOCKET, SO_REUSEADDR, &y, sizeof(y)) == -1) {
-        perror("set reuseaddr");
-        throw std::string("set reuseaddr");
-    }
+    if (setsockopt(m_sockfd, SOL_SOCKET, SO_REUSEADDR, &y, sizeof(y)) == -1) 
+        HANDLE_ERR("set reuseaddr");
 
     ip_mreq ipmreq;
     bzero(&ipmreq, sizeof(ipmreq));
     ipmreq.imr_multiaddr.s_addr = htonl(mcaddr);
     ipmreq.imr_interface.s_addr = htonl(interface);
     if (setsockopt(m_sockfd, IPPROTO_IP, IP_ADD_MEMBERSHIP,
-                   &ipmreq, sizeof(ipmreq)) == -1) {
+                   &ipmreq, sizeof(ipmreq)) == -1)
+        HANDLE_ERR("mcast join");
+}
 
-        perror("mcast_join");
-        throw std::string("mcast_join");
-    }
+Bld::Bld(const Bld& o) :
+    m_pulseIdPos  (o.m_pulseIdPos),
+    m_headerSize  (o.m_headerSize),
+    m_payloadSize (o.m_payloadSize),
+    m_sockfd      (o.m_sockfd)
+{
+    logging::error("Bld copy ctor called");
 }
 
 Bld::~Bld()
@@ -277,22 +310,26 @@ uint32_t pulseIdOffset
 uint8_t payload[]
 
 */
+
 uint64_t Bld::next()
 {
-    uint64_t pulseId;
+    uint64_t pulseId(0L);
     // get new multicast if buffer is empty
     if ((m_position + m_payloadSize + 4) > m_bufferSize) {
         m_bufferSize = recv(m_sockfd, m_buffer.data(), Bld::MTU, 0);
-        pulseId = headerPulseId();
-        m_payload = &m_buffer[m_headerSize];
-        m_position = m_headerSize + m_payloadSize;
+        pulseId      = headerPulseId();
+        m_payload    = &m_buffer[m_headerSize];
+        m_position   = m_headerSize + m_payloadSize;
     }
     else {
         uint32_t pulseIdOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position) >> 20;
-        pulseId = headerPulseId() + pulseIdOffset;
-        m_payload = &m_buffer[m_position + 4];
+        pulseId     = headerPulseId() + pulseIdOffset;
+        m_payload   = &m_buffer[m_position + 4];
         m_position += 4 + m_payloadSize;
     }
+    // if (pulseId==0L) {
+    //   logging::debug("pulseId is 0");
+    // }
     return pulseId;
 }
 
@@ -300,7 +337,7 @@ class Pgp
 {
 public:
     Pgp(MemPool& pool, unsigned nodeId, uint32_t envMask) :
-        m_pool(pool), m_nodeId(nodeId), m_envMask(envMask), m_available(0), m_current(0)
+        m_pool(pool), m_nodeId(nodeId), m_envMask(envMask), m_available(0), m_current(0), m_next(0)
     {
         uint8_t mask[DMA_MASK_SIZE];
         dmaInitMaskBytes(mask);
@@ -318,6 +355,7 @@ private:
     uint32_t m_envMask;
     int32_t m_available;
     int32_t m_current;
+    uint64_t m_next;
     static const int MAX_RET_CNT_C = 100;
     int32_t dmaRet[MAX_RET_CNT_C];
     uint32_t dmaIndex[MAX_RET_CNT_C];
@@ -360,8 +398,14 @@ XtcData::Dgram* Pgp::handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
     return dgram;
 }
 
+static const unsigned _skip_intv = 10000;
+
 XtcData::Dgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex)
 {
+    //  Fast forward to _next pulseId
+    if (pulseId < m_next)
+        return nullptr;
+
     // get new buffers
     if (m_current == m_available) {
         m_current = 0;
@@ -379,7 +423,7 @@ XtcData::Dgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex)
             auto now = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
             if (elapsed > 10) {
-                // printf("pgp timeout\n");
+                m_next = pulseId + _skip_intv;
                 return nullptr;
             }
         }
@@ -391,6 +435,7 @@ XtcData::Dgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex)
     if ((pulseId == timingHeader->seq.pulseId().value()) || (timingHeader->seq.service() != XtcData::TransitionId::L1Accept)) {
         XtcData::Dgram* dgram = handle(timingHeader, evtIndex);
         m_current++;
+        m_next = timingHeader->seq.pulseId().value();
         return dgram;
     }
     // Missed BLD data so mark event as damaged
@@ -423,6 +468,7 @@ void BldApp::shutdown()
         m_workerThread.join();
     }
     m_drp.shutdown();
+    m_namesLookup.clear();
 }
 
 json BldApp::connectionInfo()
@@ -468,47 +514,22 @@ void BldApp::handleConnect(const nlohmann::json& msg)
         logging::error("%s", errorMsg.c_str());
         body["err_info"] = errorMsg;
     }
-    
-    m_config.erase(m_config.begin(),m_config.end());
-    
+
+    //  Check for proper command-line parameters
     std::map<std::string,std::string>::iterator it = m_para.kwargs.find("interface");
     if (it == m_para.kwargs.end()) {
         logging::error("Error in BldApp::handleConnect");
         logging::error("No multicast interface specified");
-        body["err_info"] = "No multicast interface specified";
+        body["err_info"] = std::string("No multicast interface specified");
     }
 
     unsigned interface = interfaceAddress(it->second);
     if (!interface) {
         logging::error("Error in BldApp::handleConnect");
         logging::error("Failed to lookup multicast interface %s",it->second.c_str());
-        body["err_info"] = "Failed to lookup multicast interface";
+        body["err_info"] = std::string("Failed to lookup multicast interface");
     }
-
-    std::string s(m_para.detectorType);
-    logging::debug("Parsing %s",s.c_str());
-    for(size_t curr = 0, next = 0; next != std::string::npos; curr = next+1) {
-      next  = s.find(',',curr+1);
-      size_t pvpos = s.find('+',curr+1);
-      logging::debug("(%d,%d,%d)",curr,pvpos,next);
-      if (next == std::string::npos) {
-        if (pvpos != std::string::npos)
-          m_config.push_back(BldFactory(s.substr(curr,pvpos-curr).c_str(),
-                                        s.substr(pvpos+1,-1).c_str(),
-                                        interface));
-        else
-          m_config.push_back(BldFactory(s.substr(curr,next).c_str(),
-                                        interface));
-      }
-      else if (pvpos > curr && pvpos < next)
-        m_config.push_back(BldFactory(s.substr(curr,pvpos-curr).c_str(),
-                                      s.substr(pvpos+1,next-pvpos-1).c_str(),
-                                      interface));
-      else
-        m_config.push_back(BldFactory(s.substr(curr,next-curr).c_str(),
-                                      interface));
-    }
-
+    
     connectPgp(msg, std::to_string(getId()));
 
     m_unconfigure = false;
@@ -526,14 +547,28 @@ void BldApp::handleDisconnect(const json& msg)
 
 void BldApp::handlePhase1(const json& msg)
 {
-    logging::debug("handlePhase1 in BldApp");
+    json phase1Info{ "" }; 
+    if (msg.find("body") != msg.end()) {
+        if (msg["body"].find("phase1Info") != msg["body"].end()) {
+            phase1Info = msg["body"]["phase1Info"];
+        }
+    }
 
     json body = json({});
     std::string key = msg["header"]["key"];
+
+    logging::debug("handlePhase1 for %s in BldApp",key.c_str());
+
     if (key == "configure") {
         if (m_unconfigure) {
             shutdown();
             m_unconfigure = false;
+        }
+        else {
+            m_exporter = std::make_shared<MetricExporter>();
+            if (m_drp.exposer()) {
+                m_drp.exposer()->RegisterCollectable(m_exporter);
+            }
         }
 
         std::string errorMsg = m_drp.configure(msg);
@@ -543,17 +578,19 @@ void BldApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
 
-        m_exporter = std::make_shared<MetricExporter>();
-        if (m_drp.exposer()) {
-            m_drp.exposer()->RegisterCollectable(m_exporter);
-        }
-
         m_terminate.store(false, std::memory_order_release);
 
         m_workerThread = std::thread{&BldApp::worker, this, m_exporter};
     }
     else if (key == "unconfigure") {
         m_unconfigure = true;
+    }
+    else if (key == "beginrun") {
+        std::string errorMsg = m_drp.beginrun(phase1Info, m_runInfo); 
+        if (!errorMsg.empty()) {
+            body["errInfo"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        }
     }
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
@@ -597,7 +634,42 @@ void BldApp::connectPgp(const json& json, const std::string& collectionId)
 
 void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
 {
-    std::vector<XtcData::NameIndex> nameIndex(m_config.size());
+    //
+    //  Setup the multicast receivers
+    //  
+    m_config.erase(m_config.begin(),m_config.end());
+    
+    unsigned interface = interfaceAddress(m_para.kwargs["interface"]);
+
+    std::vector<std::shared_ptr<BldPVA> > bldPva(0);
+    std::string s(m_para.detectorType);
+    logging::debug("Parsing %s",s.c_str());
+    for(size_t curr = 0, next = 0; next != std::string::npos; curr = next+1) {
+        next  = s.find(',',curr+1);
+        size_t pvpos = s.find('+',curr+1);
+        logging::debug("(%d,%d,%d)",curr,pvpos,next);
+        if (next == std::string::npos) {
+            if (pvpos != std::string::npos)
+                bldPva.push_back(std::make_shared<BldPVA>(s.substr(curr,pvpos-curr).c_str(),
+                                                          s.substr(pvpos+1,-1).c_str(),
+                                                          interface));
+            else
+                m_config.push_back(std::make_shared<BldFactory>(s.substr(curr,next).c_str(),
+                                                                interface));
+        }
+        else if (pvpos > curr && pvpos < next)
+            bldPva.push_back(std::make_shared<BldPVA>(s.substr(curr,pvpos-curr).c_str(),
+                                                      s.substr(pvpos+1,next-pvpos-1).c_str(),
+                                                      interface));
+        else
+            m_config.push_back(std::make_shared<BldFactory>(s.substr(curr,next-curr).c_str(),
+                                                            interface));
+    }
+
+    for(unsigned i=0; i<bldPva.size(); i++)
+        m_config.push_back(std::make_shared<BldFactory>(*bldPva[i].get()));
+
+    //    std::vector<XtcData::NameIndex> nameIndex(m_config.size());
 
     Pgp pgp(m_drp.pool, m_drp.nodeId(), 0xffff0000 | uint32_t(m_para.rogMask));
 
@@ -613,12 +685,13 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
     uint64_t nextId = -1ULL;
     std::vector<uint64_t> pulseId(m_config.size());
     for(unsigned i=0; i<m_config.size(); i++) {
-      logging::info("BldApp::worker initial read of BLD group %d", i);
-      if ((pulseId[i] = m_config[i].handler().next()) < nextId)
-        nextId = pulseId[i];
-      logging::debug("BldApp::worker nextId 0x%" PRIx64 "  pulseId[%d] 0x%" PRIx64,
-                     nextId, i, pulseId[i]);
+        pulseId[i] = m_config[i]->handler().next();
+        if (pulseId[i] < nextId)
+            nextId = pulseId[i];
+        logging::info("BldApp::worker Initial pulseId[%d] 0x%" PRIx64, i, pulseId[i]);
     }
+
+    bool lMissing = false;
 
     while (1) {
         if (m_terminate.load(std::memory_order_relaxed)) {
@@ -631,9 +704,12 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
             if (dgram->xtc.damage.value()) {
                 ++nmissed;
                 if (dgram->seq.pulseId().value() < nextId)
-                  lHold=true;
-                logging::debug("Missed next bld: pgp %016lx  bld %016lx",
-                               dgram->seq.pulseId().value(), nextId);
+                    lHold=true;
+                if (!lMissing) {
+                    lMissing = true;
+                    logging::debug("Missed next bld: pgp %016lx  bld %016lx",
+                                   dgram->seq.pulseId().value(), nextId);
+                }
             }
             else {
                 switch (dgram->seq.service()) {
@@ -641,9 +717,22 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
                         logging::info("BLD configure");
                         for(unsigned i=0; i<m_config.size(); i++) {
                             XtcData::NamesId namesId(m_drp.nodeId(), i);
-                            nameIndex[i] = m_config[i].addToXtc(dgram->xtc, namesId);
+                            m_namesLookup[namesId] = m_config[i]->addToXtc(dgram->xtc, namesId);
                         }
+                        m_drp.runInfoSupport(dgram->xtc, m_namesLookup);
+
+                        if (dgram->xtc.extent > m_drp.pool.bufferSize()) {
+                            logging::critical("Transition: buffer size (%d) too small for requested extent (%d)", m_drp.pool.bufferSize(), dgram->xtc.extent);
+                            exit(-1)
+                        }
+
                         lHold=true;
+                        break;
+                    }
+                    case XtcData::TransitionId::BeginRun: {
+                        if (m_runInfo.runNumber > 0) {
+                            m_drp.runInfoData(dgram->xtc, m_namesLookup, m_runInfo);
+                        }
                         break;
                     }
                     case XtcData::TransitionId::L1Accept: {
@@ -651,19 +740,27 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
                         for(unsigned i=0; i<m_config.size(); i++) {
                             if (pulseId[i] == nextId) {
                                 XtcData::NamesId namesId(m_drp.nodeId(), i);
-                                const Bld& bld = m_config[i].handler();
-                                XtcData::DescribedData desc(dgram->xtc, nameIndex[i], namesId);
+                                const Bld& bld = m_config[i]->handler();
+                                XtcData::DescribedData desc(dgram->xtc, m_namesLookup, namesId);
                                 memcpy(desc.data(), bld.payload(), bld.payloadSize());
                                 desc.set_data_length(bld.payloadSize());
                             }
                             else {
                               lMissed = true;
-                              dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
-                              logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx",
-                                             i, nextId, pulseId[i]);
+                              if (!lMissing)
+                                logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx",
+                                               i, nextId, pulseId[i]);
                             }
                         }
-                        if (lMissed) nmissed++;
+                        if (lMissed) {
+                            lMissing = true;
+                            nmissed++;
+                            dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
+                        }
+                        else if (lMissing) {
+                            lMissing = false;
+                            logging::debug("Missing ends: pgp %016lx", nextId);
+                        }
                         break;
                     }
                     default: {
@@ -679,7 +776,7 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
             nextId++;
             for(unsigned i=0; i<m_config.size(); i++) {
                 if (pulseId[i] < nextId)
-                  pulseId[i] = m_config[i].handler().next();
+                  pulseId[i] = m_config[i]->handler().next();
             }
 
 
