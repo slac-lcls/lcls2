@@ -723,7 +723,7 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
 
                         if (dgram->xtc.extent > m_drp.pool.bufferSize()) {
                             logging::critical("Transition: buffer size (%d) too small for requested extent (%d)", m_drp.pool.bufferSize(), dgram->xtc.extent);
-                            exit(-1)
+                            exit(-1);
                         }
 
                         lHold=true;
