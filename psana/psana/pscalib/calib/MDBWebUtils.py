@@ -67,6 +67,12 @@ def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
     query_string=str(query).replace("'",'"')
     logger.debug('find_docs query: %s' % query_string)
     r = request('%s/%s/%s'%(url,dbname,colname),{"query_string": query_string})
+    try:
+        myjson = r.json()
+    except:
+        print('**** dbase conversion to json failed:')
+        print('****',r)
+        
     return r.json()
 
 #------------------------------
@@ -82,7 +88,9 @@ def find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
         return None
 
     if len(docs)==0 :
-        logger.warning('find_docs returns list of length 0 for query: %s' % query)
+        # commented out by cpo since this happens routinely the way
+        # that Mona is fetching calibration constants in psana.
+        #logger.warning('find_docs returns list of length 0 for query: %s' % query)
         return None
 
     qkeys = query.keys()
@@ -163,7 +171,9 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
     dbname = db_det if exp is None else db_exp
     doc = find_doc(dbname, colname, query, url)
     if doc is None :
-        logger.warning('document is not available for query: %s' % str(query))
+        # commented out by cpo since this happens routinely the way
+        # that Mona is fetching calibration constants in psana.
+        #logger.warning('document is not available for query: %s' % str(query))
         return (None, None)
     return (get_data_for_doc(dbname, colname, doc, url), doc)
 
