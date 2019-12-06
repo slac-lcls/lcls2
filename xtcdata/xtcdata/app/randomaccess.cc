@@ -130,9 +130,9 @@ int main(int argc, char* argv[])
         printf("Small event %d, %s transition: time %d.%09d, "
                "extent %d offset 0x%x dgramSize 0x%x\n",
                nevent,
-               TransitionId::name(smalldg->seq.service()),
-               smalldg->seq.stamp().seconds(),
-               smalldg->seq.stamp().nanoseconds(), smalldg->xtc.extent,
+               TransitionId::name(smalldg->service()),
+               smalldg->time.seconds(),
+               smalldg->time.nanoseconds(), smalldg->xtc.extent,
                smditer.offset,smditer.dgramSize);
         if (smditer.dgramSize>bigdgBufferSize) {
             printf("Big dgram too large %s\n",smditer.dgramSize);
@@ -149,8 +149,8 @@ int main(int argc, char* argv[])
         printf("Big   event %d, %s transition: time %d.%09d, "
                "extent %d\n",
                nevent,
-               TransitionId::name(bigdg->seq.service()), bigdg->seq.stamp().seconds(),
-               bigdg->seq.stamp().nanoseconds(), bigdg->xtc.extent);
+               TransitionId::name(bigdg->service()), bigdg->time.seconds(),
+               bigdg->time.nanoseconds(), bigdg->xtc.extent);
         
     }
 

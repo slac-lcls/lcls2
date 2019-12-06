@@ -19,7 +19,7 @@ add_library(hsd SHARED
   QABase.cc
   TprCore.cc
   Tps2481.cc
-  Validator.cc
+  #Validator.cc
 
   Fmc134Ctrl.cc
   Fmc134Cpld.cc
@@ -95,24 +95,24 @@ target_link_libraries(hsd_sim
     hsd
 )
 
-add_executable(hsd_validate hsd_validate.cc)
+#add_executable(hsd_validate hsd_validate.cc)
 
-target_include_directories(hsd_validate PUBLIC
-    ../pgp/aes-stream-drivers/include
-)
+#target_include_directories(hsd_validate PUBLIC
+#    ../pgp/aes-stream-drivers/include
+#)
 
-target_link_libraries(hsd_validate
-    pthread
-    hsd
-    mmhw
-    rt
-)
+#target_link_libraries(hsd_validate
+#    pthread
+#    hsd
+#    mmhw
+#    rt
+#)
 
-add_executable(hsd_validate_sim hsd_validate_sim.cc)
+#add_executable(hsd_validate_sim hsd_validate_sim.cc)
 
-target_link_libraries(hsd_validate_sim
-    hsd
-)
+#target_link_libraries(hsd_validate_sim
+#    hsd
+#)
 
 
 add_executable(hsdRead hsdRead.cc ../../../psalg/psalg/digitizer/src/Stream.cc)

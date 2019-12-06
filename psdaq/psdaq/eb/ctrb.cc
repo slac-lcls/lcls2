@@ -35,7 +35,7 @@ using json = nlohmann::json;
 static const unsigned CLS              = 64;   // Cache Line Size
 static const int      CORE_0           = 18;   // devXXX: 11, devXX:  7, accXX:  9
 static const int      CORE_1           = 19;   // devXXX: 12, devXX: 19, accXX: 21
-static const size_t   HEADER_SIZE      = sizeof(Dgram);
+static const size_t   HEADER_SIZE      = sizeof(EbDgram);
 static const size_t   INPUT_EXTENT     = 2;    // Revisit: Number of "L3" input  data words
 static const size_t   RESULT_EXTENT    = 2;    // Revisit: Number of "L3" result data words
 static const size_t   MAX_CONTRIB_SIZE = HEADER_SIZE + INPUT_EXTENT  * sizeof(uint32_t);
@@ -69,21 +69,21 @@ namespace Pds {
 
     enum { WRT_IDX, MON_IDX };          // Indexes of trigger decision results
 
-    class Input : public Dgram
+    class Input : public EbDgram
     {
     public:
-      Input() : Dgram() {}
-      Input(const uint16_t readoutGroup, const Sequence& seq_, const Xtc& xtc_) :
-        Dgram()
+      Input() : EbDgram() {}
+        Input(uint64_t pulse_id, const TimeStamp& time_, const Xtc& xtc_) :
+        EbDgram()
       {
-        seq = seq_;
-        env = readoutGroup;
-        xtc = xtc_;
+        time = time_;
+        xtc  = xtc_;
+        _value = pulse_id
       }
     public:
       PoolDeclare;
     public:
-      uint64_t id() const { return seq.pulseId().value(); }
+      uint64_t id() const { return pulseId(); }
     };
 
     class DrpSim
@@ -96,7 +96,7 @@ namespace Pds {
       void            stop();
       int             transition(TransitionId::Value transition, uint64_t pid);
     public:
-      const Dgram*    generate();
+      const EbDgram*  generate();
       void            release(const Input*);
     public:
       const uint64_t& allocPending() const { return _allocPending; }
@@ -232,7 +232,7 @@ int DrpSim::transition(TransitionId::Value transition, uint64_t pid)
   return 0;
 }
 
-const Dgram* DrpSim::generate()
+const EbDgram* DrpSim::generate()
 {
   if (_trId != TransitionId::L1Accept)
   {
@@ -282,13 +282,13 @@ const Dgram* DrpSim::generate()
   ++_allocPending;
   void* buffer = _pool->alloc(sizeof(Input));
   --_allocPending;
-  if (!buffer)  return (Dgram*)buffer;
+  if (!buffer)  return (EbDgram*)buffer;
 
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
-  const Sequence seq(Sequence::Event, _trId, TimeStamp(ts), PulseId(_pid));
+  const Transition tr(Dgram::Event, _trId, TimeStamp(ts), _readoutGroup);
 
-  Input* idg = ::new(buffer) Input(_readoutGroup, seq, _xtc);
+  Input* idg = ::new(buffer) Input(_pid, TimeStamp(ts), _xtc);
 
   size_t inputSize = INPUT_EXTENT * sizeof(uint32_t);
 
@@ -366,7 +366,7 @@ void EbCtrbIn::shutdown()
 void EbCtrbIn::process(const ResultDgram& result, const void* appPrm)
 {
   const Input* input = (const Input*)appPrm;
-  uint64_t     pid   = result.seq.pulseId().value();
+  uint64_t     pid   = result.pulseId();
 
   assert(input);
 
@@ -376,10 +376,10 @@ void EbCtrbIn::process(const ResultDgram& result, const void* appPrm)
   //          __PRETTY_FUNCTION__, pid, result.xtc.damage.value());
   //}
 
-  if (pid != input->seq.pulseId().value())
+  if (pid != input->pulseId())
   {
     fprintf(stderr, "%s:\n  Result, Input pulse Id mismatch - expected: %014lx, got: %014lx\n",
-            __PRETTY_FUNCTION__, input->seq.pulseId().value(), pid);
+            __PRETTY_FUNCTION__, input->pulseId(), pid);
     return;
   }
 
@@ -455,7 +455,7 @@ void EbCtrbApp::run(EbCtrbIn& in)
     //}
     //while (std::chrono::duration_cast<ns_t>(now - then).count() < 2);
 
-    const Dgram* input = _drpSim.generate();
+    const EbDgram* input = _drpSim.generate();
     if (!input)  continue;
 
     void* buffer = allocate(input, input); // 2nd arg is returned with the result
@@ -464,7 +464,7 @@ void EbCtrbApp::run(EbCtrbIn& in)
       // Copy entire datagram into the batch (copy ctor doesn't copy payload)
       memcpy(buffer, input, sizeof(*input) + input->xtc.sizeofPayload());
 
-      process(static_cast<Dgram*>(buffer));
+      process(static_cast<EbDgram*>(buffer));
     }
   }
 

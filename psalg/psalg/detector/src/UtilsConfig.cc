@@ -28,25 +28,12 @@ namespace detector {
 
 //-------------------
 
-/*
-void print_dg_info(const Dgram* dg) {
-      printf(" ==== transition: %s of type: %d time %d.%09d, pulseId %lux, env %ux, "
-             "payloadSize %d extent %d\n",
-             TransitionId::name(dg->seq.service()), dg->seq.type(), dg->seq.stamp().seconds(),
-             dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
-             dg->env, dg->xtc.sizeofPayload(), dg->xtc.extent);
-}
-*/
-
-//-------------------
-
 std::string str_dg_info(const Dgram* dg) {
   std::stringstream ss;
-  ss << " ==== transition: " << TransitionId::name(dg->seq.service())
-     << " of type: "   << dg->seq.type()
-     << " time "       << dg->seq.stamp().seconds() 
-     << '.' << std::setw(9) << setfill('0') << dg->seq.stamp().nanoseconds()
-     << " pulseId "    << dg->seq.pulseId().value()
+  ss << " ==== transition: " << TransitionId::name(dg->service())
+     << " of type: "   << dg->type()
+     << " time "       << dg->time.seconds() 
+     << '.' << std::setw(9) << setfill('0') << dg->time.nanoseconds()
      << " env "        << dg->env
      << " payloadSize "<< dg->xtc.sizeofPayload()
      << " extent "     << dg->xtc.extent;

@@ -212,12 +212,12 @@ XtcMonitorServer::Result XtcMonitorServer::events(Dgram* dg)
   // Revisit: Moves to _copyDatagram() since dg describes the Dgram but isn't it
   //if (sizeof(dgrm)+dgrm.xtc.sizeofPayload() > _sizeOfBuffers) {
   //  printf("XtcMonitorServer skipping %s with payload size %d - too large\n",
-  //         TransitionId::name(dgrm.seq.service()), dgrm.xtc.sizeofPayload());
+  //         TransitionId::name(dgrm.service()), dgrm.xtc.sizeofPayload());
   //  //    return Handled;
   //  exit(1);
   //}
 
-  TransitionId::Value trid = dgrm.seq.service();
+  TransitionId::Value trid = dgrm.service();
 
   if (trid == TransitionId::L1Accept) {
     _send(dg);
@@ -447,7 +447,7 @@ void XtcMonitorServer::routine()
                 if (r > 0) {
                   int itr=msg.bufferIndex()-_numberOfEvBuffers;
                   if (_transitionCache->deallocate(itr,q))
-                    _update(q,reinterpret_cast<Dgram*>(_myShm+_sizeOfBuffers*msg.bufferIndex())->seq.service());
+                    _update(q,reinterpret_cast<Dgram*>(_myShm+_sizeOfBuffers*msg.bufferIndex())->service());
                 }
                 else { // retire client
                   printf("Retiring client %d [%d]\n",q,_pfd[i].fd);
@@ -680,7 +680,7 @@ void XtcMonitorServer::_update(int iclient,
   while(!tr.empty()) {
     int itr = tr.top(); tr.pop();
     int ib  = itr+_numberOfEvBuffers;
-    if (reinterpret_cast<const Dgram*>(_myShm+_sizeOfBuffers*ib)->seq.service()>=next) {
+    if (reinterpret_cast<const Dgram*>(_myShm+_sizeOfBuffers*ib)->service()>=next) {
       _myMsg.bufferIndex(ib);
 
       if (_transitionCache->allocate(itr,iclient))

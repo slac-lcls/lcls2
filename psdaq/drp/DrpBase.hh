@@ -54,7 +54,7 @@ private:
     XtcData::TransitionId::Value m_lastTid;
     uint64_t m_offset;
     unsigned m_nodeId;
-    XtcData::Dgram* m_configureDgram;
+    Pds::EbDgram* m_configureDgram;
 };
 
 class DrpBase

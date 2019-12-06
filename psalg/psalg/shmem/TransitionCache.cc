@@ -16,10 +16,10 @@ TransitionCache::TransitionCache(char* p, size_t sz, unsigned nbuff) :
 
   for(unsigned i=0; i<_numberofTrBuffers; i++) {
     Dgram* dg = new (p + _szShm*i) Dgram;
-    dg->seq = Sequence(Sequence::Event, TransitionId::Reset,
-                       TimeStamp(0,0),
-                       PulseId(0));
-    dg->env = 0;
+    unsigned env = 0;
+    Transition tr(Dgram::Event, TransitionId::Reset,
+                  TimeStamp(0,0), env);
+    new(dg) Dgram(tr);
     _freeTr.push_back(i);
   }
 }
@@ -35,10 +35,10 @@ void TransitionCache::dump() const {
   printf("\tBuffers:\n");
   for(unsigned i=0; i<_numberofTrBuffers; i++) {
     const Dgram& odg = *reinterpret_cast<const Dgram*>(_pShm + _szShm*i);
-    time_t t=odg.seq.stamp().seconds();
+    time_t t=odg.time.seconds();
     char cbuf[64]; ctime_r(&t,cbuf); strtok(cbuf,"\n");
     printf ("%15.15s : %s : %08x\n",
-            TransitionId::name(odg.seq.service()),
+            TransitionId::name(odg.service()),
             cbuf,
             _allocated[i]);
   }
@@ -104,7 +104,7 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
       }
       else {
         const Dgram& odg = *reinterpret_cast<const Dgram*>(_pShm + _szShm*_cachedTr.top());
-        TransitionId::Value oid = odg.seq.service();
+        TransitionId::Value oid = odg.service();
         if (id == oid+2) {       // Next begin transition
           _freeTr.remove(ibuffer);
           _cachedTr.push(ibuffer);
@@ -144,7 +144,7 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
               do {
                 int ib=_cachedTr.top();
                 _freeTr.push_back(ib);
-                oid = reinterpret_cast<const Dgram*>(_pShm + _szShm*ib)->seq.service();
+                oid = reinterpret_cast<const Dgram*>(_pShm + _szShm*ib)->service();
                 _cachedTr.pop();
               } while(oid > id);
               _freeTr.remove(ibuffer);
@@ -159,7 +159,7 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
               _cachedTr.pop();
               if (_cachedTr.empty()) break;
               oid = reinterpret_cast<const Dgram*>(_pShm + _szShm*_cachedTr.top())
-                ->seq.service();
+                ->service();
             }
           }
         }
@@ -170,7 +170,7 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
         for(unsigned itr=0; itr<_numberofTrBuffers; itr++) {
           if (itr==ibuffer) continue;
           const Dgram& odg = *reinterpret_cast<const Dgram*>(_pShm + _szShm*itr);
-          if (odg.seq.service()==TransitionId::Enable)
+          if (odg.service()==TransitionId::Enable)
             not_ready |= _allocated[itr];
         }
 
@@ -210,12 +210,12 @@ bool TransitionCache::allocate  (int ibuffer, unsigned client) {
     for(unsigned i=0; i<_numberofTrBuffers; i++)
       if (_allocated[i] & (1<<client)) {
         TransitionId::Value td =
-          reinterpret_cast<const Dgram*>(_pShm + _szShm*i)->seq.service();
+          reinterpret_cast<const Dgram*>(_pShm + _szShm*i)->service();
         if ((td&1)==1 && td<last) last=td;
       }
 
     TransitionId::Value id =
-      reinterpret_cast<const Dgram*>(_pShm + _szShm*ibuffer)->seq.service();
+      reinterpret_cast<const Dgram*>(_pShm + _szShm*ibuffer)->service();
     if (!((id&1)==1 && id<last))
       result=false;
   }

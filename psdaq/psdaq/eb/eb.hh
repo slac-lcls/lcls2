@@ -82,8 +82,8 @@ namespace Pds {
       u64arr_t  receivers;         // Ctrbs expecting Results per readout group
       vecstr_t  addrs;             // Contributor addresses
       vecstr_t  ports;             // Contributor ports
-      vecsize_t maxTrSize;         // Max non-event Dgram size for each Ctrb
-      size_t    maxResultSize;     // Max result Dgram size
+      vecsize_t maxTrSize;         // Max non-event EbDgram size for each Ctrb
+      size_t    maxResultSize;     // Max result EbDgram size
       unsigned  numMrqs;           // Number of Mon request servers
       string_t  trgDetName;        // Trigger 'detName' for ConfigDb
       int       core[2];           // Cores to pin threads to

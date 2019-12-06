@@ -12,7 +12,7 @@
 
 #include "utilities.hh"
 
-#include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
 #include <signal.h>
@@ -49,7 +49,7 @@ static size_t* _trSpace(size_t* size)
   for (unsigned tr = 0; tr < TransitionId::NumberOf; ++tr)
   {
     trOffset[tr] = sz;
-    sz += sizeof(Dgram) + (3 + tr) * sizeof(uint64_t); // 3 = min payload size
+    sz += sizeof(EbDgram) + (3 + tr) * sizeof(uint64_t); // 3 = min payload size
   }
   *size = roundUpSize(sz);
 

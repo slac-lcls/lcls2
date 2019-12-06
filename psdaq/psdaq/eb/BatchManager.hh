@@ -24,7 +24,7 @@ namespace Pds {
     public:
       void            stop();
       void            shutdown();
-      Batch*          fetch(const XtcData::Transition&);
+      Batch*          fetch(const Pds::EbDgram&);
       void            release(const Batch*);
       Batch*          batch(unsigned idx);
       const Batch*    batch(unsigned idx) const;
@@ -92,9 +92,9 @@ size_t Pds::Eb::BatchManager::maxBatchSize() const
 }
 
 inline
-Pds::Eb::Batch* Pds::Eb::BatchManager::fetch(const XtcData::Transition& hdr)
+Pds::Eb::Batch* Pds::Eb::BatchManager::fetch(const Pds::EbDgram& hdr)
 {
-  const auto pid = hdr.seq.pulseId().value();
+  const auto pid = hdr.pulseId();
   const auto idx = Pds::Eb::Batch::batchNum(pid);
 
   if (_freelist.isAllocated(idx))
@@ -106,7 +106,7 @@ Pds::Eb::Batch* Pds::Eb::BatchManager::fetch(const XtcData::Transition& hdr)
 
   auto bat = _freelist.allocate(idx);   // This can block
 
-  if (bat)  bat->initialize(hdr);       // Null means allocate timed out
+  if (bat)  bat->initialize(hdr);   // Null means allocate timed out
 
   return bat;
 }

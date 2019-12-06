@@ -88,6 +88,7 @@ add_executable(pgpread
     pgpread.cc
 )
 target_include_directories(pgpread PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     ../psdaq/pgp/aes-stream-drivers/include
 )
 target_link_libraries(pgpread

@@ -15,10 +15,6 @@ cdef class SmdReader:
     cdef unsigned long min_ts # minimum timestamp of the output chunks
     cdef ParallelReader prl_reader
     cdef unsigned L1_ACCEPT
-    cdef short v_cntrl
-    cdef short v_service
-    cdef unsigned long s_cntrl
-    cdef unsigned long m_service
     cdef Buffer* step_bufs
     
     def __init__(self, fds):
@@ -36,16 +32,7 @@ cdef class SmdReader:
         # step dgram buffers (epics, configs, etc.)
         self.step_bufs = <Buffer *>malloc(sizeof(Buffer)*self.prl_reader.nfiles)
         self._init_step_bufs()
-        
-        # service calculation
-        self.v_cntrl = 56
-        self.v_service = 0
-        k_cntrl = 8
-        k_service = 4
-        cdef unsigned long m_cntrl = ((1ULL << k_cntrl) - 1) 
-        self.s_cntrl = (m_cntrl << self.v_cntrl)
-        self.m_service = ((1 << k_service) - 1)
-        
+
     def _init_step_bufs(self):
         cdef int idx
         for idx in range(self.prl_reader.nfiles):
@@ -92,8 +79,6 @@ cdef class SmdReader:
         
         cdef size_t remaining = 0
         cdef size_t payload = 0
-        cdef unsigned long pulse_id = 0
-        cdef unsigned control = 0
         cdef unsigned service = 0
         cdef Buffer* buf
         
@@ -113,9 +98,7 @@ cdef class SmdReader:
                             buf.timestamp = <uint64_t>d.seq.high << 32 | d.seq.low
                             
                             # check if this a non L1
-                            pulse_id = d.seq.pulse_id
-                            control = (pulse_id & self.s_cntrl) >> self.v_cntrl
-                            service = (control >> self.v_service) & self.m_service
+                            service = (d.env>>24)&0xf
 
                             remaining = buf.got - buf.offset
                             if payload <= remaining:

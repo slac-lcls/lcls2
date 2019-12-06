@@ -221,10 +221,10 @@ int test_all(const char* fname="data-xpptut15-r0430-e000010-jungfrau.xtc2") {
 
         DataIter datao(&(dg->xtc));
 
-        printf("evt:%04d ==== transition: %s of type: %d time %d.%09d, pulseId %lux, env %ux, "
+        printf("evt:%04d ==== transition: %s of type: %d time %d.%09d, env %ux, "
                "payloadSize %d extent %d\n", nevent,
-               TransitionId::name(dg->seq.service()), dg->seq.type(), dg->seq.stamp().seconds(),
-               dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
+               TransitionId::name(dg->service()), dg->type(), dg->time.seconds(),
+               dg->time.nanoseconds(),
                dg->env, dg->xtc.sizeofPayload(), dg->xtc.extent);
 
         //DESC_VALUE(desc_data, datao, namesLookup);

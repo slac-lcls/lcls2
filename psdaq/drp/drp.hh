@@ -40,7 +40,7 @@ struct Parameters
     std::string detectorType;
     std::string collectionHost;
     std::map<std::string,std::string> kwargs;
-    uint16_t rogMask;
+    uint32_t rogMask;
     std::string trgDetName;
     unsigned verbose;
 };

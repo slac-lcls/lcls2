@@ -29,12 +29,11 @@ def test_py2xtc(tmp_path):
 
         cydgram.addDet(nameinfo, alg, my_data)
         timestamp = i
-        pulseid = i
         if (i==0):
             transitionid = 2  # Configure
         else:
             transitionid = 12 # L1Accept
-        xtc_bytes = cydgram.get(timestamp,pulseid,transitionid)
+        xtc_bytes = cydgram.get(timestamp,transitionid)
         f.write(xtc_bytes)
     f.close()
 

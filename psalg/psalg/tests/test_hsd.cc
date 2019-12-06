@@ -133,14 +133,14 @@ int main (int argc, char* argv[]) {
         printf("####################################################\n");
         printf("Event: %u\n", counter++);
 
-        printf("%s transition: time %d.%09d, pulseId 0x%" PRIx64 ", env 0x%x"
+        printf("%s transition: time %d.%09d, env 0x%x"
                "payloadSize %d\n",
-               TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
-               dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
+               TransitionId::name(dg->service()), dg->time.seconds(),
+               dg->time.nanoseconds(),
                dg->env, dg->xtc.sizeofPayload());
         printf("*** dg xtc extent %d\n",dg->xtc.extent);
 
-        if (dg->seq.isEvent()) { // FIXME: this is always false
+        if (dg->isEvent()) { // FIXME: this is always false
             printf("Found event\n");
         }
 

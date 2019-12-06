@@ -38,4 +38,3 @@ class Test:
         env['PS_SRV_NODES'] = '2'
         run_smalldata = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_smalldata.py')
         subprocess.check_call(['mpirun','-n','6','python',run_smalldata], env=env)
-

@@ -12,11 +12,13 @@ static bool _interleave = false;
 static unsigned _lverbose = 0;
 
 RawStream::RawStream(const EventHeader& event, const StreamHeader& strm) :
-  _pid  (event.pulseId()),
+  _pid  (0), // hack by cpo since the dgram no longer has pid, used to be event.pulseId()
   _adc  (reinterpret_cast<const uint16_t*>(&strm+1)[strm.boffs()]),
   _baddr(strm.baddr()),
   _eaddr(strm.eaddr())
 {
+    printf("cpo set pulseid to zero because he thinks this code is no longer used");
+    throw ("cpo set pulseid to zero because he thinks this code is no longer used");
 }
 
 void RawStream::interleave(bool v)     { _interleave=v; }
@@ -24,7 +26,9 @@ void RawStream::verbose   (unsigned v) { _lverbose  =v; }
 
 bool RawStream::validate(const EventHeader& event, const StreamHeader& next) const {
   if (next.samples()==0) return true;
-  uint16_t adc = adcVal(event.pulseId());
+  // hacked by cpo since Dgram no longer has pulseId
+  // uint16_t adc = adcVal(event.pulseId());
+  uint16_t adc = adcVal(0);
   unsigned i=next.boffs();
   unsigned nerror(0);
   unsigned ntest (0);
@@ -33,7 +37,7 @@ bool RawStream::validate(const EventHeader& event, const StreamHeader& next) con
   if (p[i] != adc) {
     ++nerror;
     if (_lverbose) {
-      printf("DPID = %" PRIu64 "\n", (event.pulseId()-_pid)&0xffffffff);
+      // printf("DPID = %" PRIu64 "\n", (event.pulseId()-_pid)&0xffffffff);
       printf("=== ERROR: Mismatch at first sample: adc [%x]  expected [%x]  delta[%d]\n",
              p[i], adc, (p[i]-adc)&0x7ff);
     }    
@@ -48,7 +52,7 @@ bool RawStream::validate(const EventHeader& event, const StreamHeader& next) con
       ++nerror;
       if (_lverbose && nerror < 10) {
         if (nerror==1)
-          printf("DPID = %" PRIu64 "\n", (event.pulseId()-_pid)&0xffffffff);
+          // printf("DPID = %" PRIu64 "\n", (event.pulseId()-_pid)&0xffffffff);
         printf("=== ERROR: Mismatch at index %u : adc [%x]  expected [%x]\n",
                i, p[i], adc);
       }

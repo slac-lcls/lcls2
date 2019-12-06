@@ -18,9 +18,9 @@ namespace Pds {
     public:
       int  configure(const json&     connectMsg,
                      const Document& top) override;
-      void event(const XtcData::Dgram* const* start,
-                 const XtcData::Dgram**       end,
-                 Pds::Eb::ResultDgram&        result) override;
+      void event(const Pds::EbDgram* const* start,
+                 const Pds::EbDgram**       end,
+                 Pds::Eb::ResultDgram&          result) override;
     private:
       uint32_t _wrtValue;
       uint32_t _monValue;
@@ -47,13 +47,13 @@ int Pds::Trg::TmoTeb::configure(const json&     connectMsg,
   return rc;
 }
 
-void Pds::Trg::TmoTeb::event(const XtcData::Dgram* const* start,
-                             const XtcData::Dgram**       end,
-                             Pds::Eb::ResultDgram&        result)
+void Pds::Trg::TmoTeb::event(const Pds::EbDgram* const* start,
+                             const Pds::EbDgram**       end,
+                             Pds::Eb::ResultDgram&          result)
 {
-  const XtcData::Dgram* const* ctrb = start;
-  bool                         wrt  = 0;
-  bool                         mon  = 0;
+  const Pds::EbDgram* const* ctrb = start;
+  bool                           wrt  = 0;
+  bool                           mon  = 0;
 
   // Accumulate each contribution's input into some sort of overall summary
   do
@@ -64,11 +64,11 @@ void Pds::Trg::TmoTeb::event(const XtcData::Dgram* const* start,
     mon |= data->monitor == _monValue;
 
     //printf("%s: pid %014lx, input %016lx, wrt %d, mon %d\n",
-    //       __PRETTY_FUNCTION__, (*ctrb)->seq.pulseId().value(), input, wrt, mon);
+    //       __PRETTY_FUNCTION__, (*ctrb)->pulseId(), input, wrt, mon);
   }
   while (++ctrb != end);
 
-  // Insert the trigger values into a Result Dgram
+  // Insert the trigger values into a Result EbDgram
   unsigned line = 0;                    // Revisit: For future expansion
   result.persist(line, wrt);
   result.monitor(line, mon);

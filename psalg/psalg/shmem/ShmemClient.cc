@@ -115,7 +115,7 @@ namespace psalg {
           unsigned priority(0);
           XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (size * index));
 
-          if(dg->seq.service()==XtcData::TransitionId::L1Accept) {
+          if(dg->service()==XtcData::TransitionId::L1Accept) {
 #ifdef DBUG
               printf("ShmemClient DgramHandler free dgram index %d size %d\n",index,size);
 #endif
@@ -158,7 +158,7 @@ namespace psalg {
         if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
           XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
 #ifdef DBUG2
-          printf("*** received transition id %d\n",dg->seq.service());
+          printf("*** received transition id %d\n",dg->service());
 #endif
           index = i;
           size = myMsg.sizeOfBuffers();
@@ -200,7 +200,7 @@ namespace psalg {
           if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
             XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
 #ifdef DBUG2
-            printf("*** received event id %d\n",dg->seq.service());
+            printf("*** received event id %d\n",dg->service());
 #endif
             index = i;
             size = myMsg.sizeOfBuffers();

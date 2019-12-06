@@ -6,7 +6,7 @@
 #include "utilities.hh"
 
 #include "psdaq/service/MetricExporter.hh"
-#include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/EbDgram.hh"
 
 #include <string.h>
 #include <cstdint>
@@ -80,7 +80,7 @@ void MebContributor::shutdown()
   _id = -1;
 }
 
-int MebContributor::post(const Dgram* ddg, uint32_t destination)
+int MebContributor::post(const EbDgram* ddg, uint32_t destination)
 {
   unsigned     dst    = ImmData::src(destination);
   uint32_t     idx    = ImmData::idx(destination);
@@ -99,8 +99,8 @@ int MebContributor::post(const Dgram* ddg, uint32_t destination)
 
   if (_verbose >= VL_BATCH)
   {
-    uint64_t pid    = ddg->seq.pulseId().value();
-    unsigned ctl    = ddg->seq.pulseId().control();
+    uint64_t pid    = ddg->pulseId();
+    unsigned ctl    = ddg->control();
     void*    rmtAdx = (void*)link->rmtAdx(offset);
     printf("MebCtrb posts %9ld    monEvt [%5d]  @ "
            "%16p, ctl %02d, pid %014lx, sz %6zd, MEB %2d @ %16p, data %08x\n",
@@ -114,10 +114,10 @@ int MebContributor::post(const Dgram* ddg, uint32_t destination)
   return 0;
 }
 
-int MebContributor::post(const Dgram* ddg)
+int MebContributor::post(const EbDgram* ddg)
 {
   size_t              sz  = sizeof(*ddg) + ddg->xtc.sizeofPayload();
-  TransitionId::Value tr  = ddg->seq.service();
+  TransitionId::Value tr  = ddg->service();
   uint64_t            ofs = tr * _maxTrSize;
 
   if (sz > _maxTrSize)
@@ -135,8 +135,8 @@ int MebContributor::post(const Dgram* ddg)
 
     if (_verbose >= VL_BATCH)
     {
-      uint64_t pid    = ddg->seq.pulseId().value();
-      unsigned ctl    = ddg->seq.pulseId().control();
+      uint64_t pid    = ddg->pulseId();
+      unsigned ctl    = ddg->control();
       void*    rmtAdx = (void*)link->rmtAdx(ofs);
       printf("MebCtrb posts %9ld      trId [%5d]  @ "
              "%16p, ctl %02x, pid %014lx, sz %6zd, MEB %2d @ %16p, data %08x\n",

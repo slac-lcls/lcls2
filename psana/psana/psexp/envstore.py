@@ -36,7 +36,7 @@ class EnvManager(object):
 
     def add(self, d):
         self.dgrams.append(d)
-        self.timestamps.append(d.seq.timestamp())
+        self.timestamps.append(d.timestamp())
         self.n_items += 1
     
     def alg_from_variable(self, variable_name):

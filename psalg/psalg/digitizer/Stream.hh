@@ -46,9 +46,8 @@ namespace Pds {
     public:
       EventHeader() {}
     public:
-      uint64_t pulseId   () const { return seq.pulseId().value(); }
-      unsigned eventType () const { return seq.pulseId().control(); }
-      uint64_t timeStamp () const { return seq.stamp().value(); }//nanoseconds() | (uint64_t)(seq.stamp().seconds())<<32; }
+      unsigned eventType () const { return service(); }
+      uint64_t timeStamp () const { return time.value(); }
       unsigned samples   () const { return _info[0]&0xfffff; }
       unsigned streams   () const { return (_info[0]>>20)&0xf; }
       unsigned channels  () const { return (_info[0]>>24)&0xff; }
@@ -60,8 +59,8 @@ namespace Pds {
         uint32_t* word = (uint32_t*) this;
         for(unsigned i=0; i<8; i++)
           printf("[%d] %08x ", i, word[i]);//, i<7 ? '.' : '\n');
-        printf("pID [%016llx]  time [%u.%09u]  trig [%04x]  sync [%u]\n",
-               (unsigned long long) pulseId(), seq.stamp().seconds(), seq.stamp().nanoseconds(),
+        printf("time [%u.%09u]  trig [%04x]  sync [%u]\n",
+               time.seconds(), time.nanoseconds(),
                readoutGroups(), sync());
         printf("####@ 0x%x 0x%x 0x%x %u %u %u %llu\n", env, _info[0], _info[1], samples(), streams(), channels(), (unsigned long long) timeStamp());
       }

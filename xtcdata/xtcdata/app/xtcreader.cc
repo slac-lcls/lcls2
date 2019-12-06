@@ -276,11 +276,11 @@ int main(int argc, char* argv[])
     while ((dg = iter.next())) {
         if (nevent>=neventreq) break;
         nevent++;
-        printf("event %d, %11s transition: time %d.%09d, pulseId 0x%014lx, env 0x%08x, "
+        printf("event %d, %11s transition: time %d.%09d, env 0x%08x, "
                "payloadSize %d extent %d\n",
                nevent,
-               TransitionId::name(dg->seq.service()), dg->seq.stamp().seconds(),
-               dg->seq.stamp().nanoseconds(), dg->seq.pulseId().value(),
+               TransitionId::name(dg->service()), dg->time.seconds(),
+               dg->time.nanoseconds(),
                dg->env, dg->xtc.sizeofPayload(),dg->xtc.extent);
         if (debugprint) dbgiter.iterate(&(dg->xtc));
     }

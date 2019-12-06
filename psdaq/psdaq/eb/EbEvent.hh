@@ -5,7 +5,7 @@
 
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/Pool.hh"
-#include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/EbDgram.hh"
 
 
 namespace Pds {
@@ -21,10 +21,10 @@ namespace Pds {
     public:
       PoolDeclare;
     public:
-      EbEvent(uint64_t              contract,
-              EbEvent*              after,
-              const XtcData::Dgram* ctrb,
-              unsigned              prm);
+      EbEvent(uint64_t                contract,
+              EbEvent*                after,
+              const Pds::EbDgram* ctrb,
+              unsigned                prm);
       ~EbEvent();
     public:
       unsigned        parameter() const;
@@ -35,26 +35,26 @@ namespace Pds {
       XtcData::Damage damage()    const;
       void            damage(XtcData::Damage::Value);
     public:
-      const XtcData::Dgram*  const  creator() const;
-      const XtcData::Dgram*  const* begin()   const;
-      const XtcData::Dgram** const  end()     const;
+      const Pds::EbDgram*  const  creator() const;
+      const Pds::EbDgram*  const* begin()   const;
+      const Pds::EbDgram** const  end()     const;
     public:
       void     dump(int number);
     private:
       friend class EventBuilder;
     private:
-      EbEvent* _add(const XtcData::Dgram*);
-      void     _insert(const XtcData::Dgram*);
+      EbEvent* _add(const Pds::EbDgram*);
+      void     _insert(const Pds::EbDgram*);
       bool     _alive();
     private:
-      size_t                 _size;            // Total contribution size (in bytes)
-      uint64_t               _remaining;       // List of clients which have contributed
-      const uint64_t         _contract;        // -> potential list of contributors
-      int                    _living;          // Aging counter
-      unsigned               _prm;             // An application level free parameter
-      XtcData::Damage        _damage;          // Accumulate damage about this event
-      const XtcData::Dgram** _last;            // Pointer into the contributions array
-      const XtcData::Dgram*  _contributions[]; // Array of contributions
+      size_t                   _size;            // Total contribution size (in bytes)
+      uint64_t                 _remaining;       // List of clients which have contributed
+      const uint64_t           _contract;        // -> potential list of contributors
+      int                      _living;          // Aging counter
+      unsigned                 _prm;             // An application level free parameter
+      XtcData::Damage          _damage;          // Accumulate damage about this event
+      const Pds::EbDgram** _last;            // Pointer into the contributions array
+      const Pds::EbDgram*  _contributions[]; // Array of contributions
     };
   };
 };
@@ -82,7 +82,7 @@ inline unsigned Pds::Eb::EbEvent::parameter() const
 
 inline uint64_t Pds::Eb::EbEvent::sequence() const
 {
-  return creator()->seq.pulseId().value();
+  return creator()->pulseId();
 }
 
 /*
@@ -165,17 +165,17 @@ inline void Pds::Eb::EbEvent::damage(XtcData::Damage::Value value)
 ** --
 */
 
-inline const XtcData::Dgram* const Pds::Eb::EbEvent::creator() const
+inline const Pds::EbDgram* const Pds::Eb::EbEvent::creator() const
 {
   return _contributions[0];
 }
 
-inline const XtcData::Dgram* const* Pds::Eb::EbEvent::begin() const
+inline const Pds::EbDgram* const* Pds::Eb::EbEvent::begin() const
 {
   return _contributions;
 }
 
-inline const XtcData::Dgram** const Pds::Eb::EbEvent::end() const
+inline const Pds::EbDgram** const Pds::Eb::EbEvent::end() const
 {
   return _last;
 }

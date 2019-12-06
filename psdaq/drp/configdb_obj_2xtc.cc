@@ -94,12 +94,11 @@ int main(int argc, char* argv[]) {
 
     // make a fake dgram
     TypeId tid(TypeId::Parent, 0);
-    uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    Sequence seq(Sequence::Event, TransitionId::Configure, TimeStamp(tv.tv_sec, tv.tv_usec), PulseId(pulseId,0));
-    Dgram& dg = *new(&dgbuf) Dgram(Transition(seq, env), Xtc(tid));
+    Transition tr(Dgram::Event, TransitionId::Configure, TimeStamp(tv.tv_sec, tv.tv_usec), env);
+    Dgram& dg = *new(&dgbuf) Dgram(tr, Xtc(tid));
 
     // copy over the names/shapesdata xtc's (translateJson2Xtc puts
     // a Parent Xtc on the top level so we can copy over both

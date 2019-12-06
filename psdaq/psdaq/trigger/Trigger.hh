@@ -22,9 +22,9 @@ namespace Pds {
     public:
       virtual int  configure(const nlohmann::json&      connectMsg,
                              const rapidjson::Document& top) = 0;
-      virtual void event(const XtcData::Dgram* const* start,
-                         const XtcData::Dgram**       end,
-                         Pds::Eb::ResultDgram&        result) = 0;
+      virtual void event(const Pds::EbDgram* const* start,
+                         const Pds::EbDgram**       end,
+                         Pds::Eb::ResultDgram&          result) = 0;
     public:
       static size_t size() { return sizeof(Pds::Eb::ResultDgram); }
     };

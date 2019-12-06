@@ -1,6 +1,6 @@
 
 #include "AreaDetector.hh"
-#include "TimingHeader.hh"
+#include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "psalg/utils/SysLog.hh"

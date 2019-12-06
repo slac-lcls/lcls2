@@ -1,6 +1,6 @@
 #include <iostream>
 #include <bitset>
-#include "TimingHeader.hh"
+#include "psdaq/service/EbDgram.hh"
 #include <DmaDriver.h>
 #include "DrpBase.hh"
 #include "RunInfoDef.hh"
@@ -76,7 +76,7 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_offset(0),
   m_nodeId(tPrms.id)
 {
-    m_configureDgram = reinterpret_cast<XtcData::Dgram*>(new uint8_t[XtcData::Dgram::MaxSize]);
+    m_configureDgram = reinterpret_cast<Pds::EbDgram*>(new uint8_t[XtcData::Dgram::MaxSize]);
     if (!m_configureDgram) {
         logging::critical("No space found for Configure Dgram cache buffer");
         exit(-1);
@@ -125,13 +125,14 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
 
     // small data writing
     XtcData::Dgram& smdDgram = *(XtcData::Dgram*)m_smdWriter.buffer;
-    smdDgram.seq = dgram->seq;
+    smdDgram.time = dgram->time;
+    smdDgram.env = dgram->env;
     XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
     smdDgram.xtc.contains = tid;
     smdDgram.xtc.damage = 0;
     smdDgram.xtc.extent = sizeof(XtcData::Xtc);
 
-    if (dgram->seq.service() == XtcData::TransitionId::Configure) {
+    if (dgram->service() == XtcData::TransitionId::Configure) {
         m_smdWriter.addNames(smdDgram.xtc, m_nodeId);
     }
 
@@ -147,21 +148,21 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
 void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
 {
     unsigned index = (uintptr_t)appPrm;
-    XtcData::Dgram* dgram = (XtcData::Dgram*)m_pool.pebble[index];
-    XtcData::TransitionId::Value transitionId = dgram->seq.service();
-    uint64_t pulseId = dgram->seq.pulseId().value();
+    Pds::EbDgram* ebdgram = (Pds::EbDgram*)m_pool.pebble[index];
+    XtcData::TransitionId::Value transitionId = ebdgram->service();
+    uint64_t pulseId = ebdgram->pulseId();
 
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
         logging::critical("%sjumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
-        logging::critical("pid     %014lx, tid     %s, env %08x", pulseId, XtcData::TransitionId::name(transitionId), dgram->env);
+        logging::critical("pid     %014lx, tid     %s, env %08x", pulseId, XtcData::TransitionId::name(transitionId), ebdgram->env);
         logging::critical("lastPid %014lx, lastTid %s", m_lastPid, XtcData::TransitionId::name(m_lastTid));
     }
 
-    if (pulseId != result.seq.pulseId().value()) {
+    if (pulseId != result.pulseId()) {
         logging::critical("timestamps don't match");
         logging::critical("index %u  previous index %u", index, m_lastIndex);
         uint64_t tPid = pulseId;
-        uint64_t rPid = result.seq.pulseId().value();
+        uint64_t rPid = result.pulseId();
         logging::critical("pebble pulseId %014lx, result dgram pulseId %014lx, xor %014lx, diff %ld", tPid, rPid, tPid ^ rPid, tPid - rPid);
         exit(-1);
     }
@@ -175,9 +176,9 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         if (transitionId != XtcData::TransitionId::SlowUpdate) {
             if (transitionId == XtcData::TransitionId::Configure) {
                 // Cache Configure Dgram for writing out after files are opened
-                size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+                size_t size = sizeof(*ebdgram) + ebdgram->xtc.sizeofPayload();
                 if (size < XtcData::Dgram::MaxSize) {
-                    memcpy(m_configureDgram, dgram, size);
+                    memcpy(m_configureDgram, ebdgram, size);
                 }
                 else {
                   logging::critical("Configure Dgram of size %zd is too large for cache buffer (%d)", size, XtcData::Dgram::MaxSize);
@@ -196,20 +197,20 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
             if (transitionId == XtcData::TransitionId::BeginRun) {
                 _writeDgram(m_configureDgram);
             }
-            _writeDgram(dgram);
+            _writeDgram(ebdgram);
         }
     }
 
     if (m_mon) {
         // L1Accept
-        if (result.seq.isEvent()) {
+        if (result.isEvent()) {
             if (result.monitor()) {
-                m_mon->post(dgram, result.monBufNo());
+                m_mon->post(ebdgram, result.monBufNo());
             }
         }
         // Other Transition
         else {
-            m_mon->post(dgram);
+            m_mon->post(ebdgram);
         }
     }
 
@@ -459,7 +460,7 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     m_tPrms.readoutGroup = 1 << unsigned(body["drp"][stringId]["det_info"]["readout"]);
     m_tPrms.contractor = 0;             // Overridden during Configure
 
-    m_para.rogMask = 0; // Build readout group mask for ignoring other partitions' RoGs
+    m_para.rogMask = 0xffff0000; // Build readout group mask for ignoring other partitions' RoGs
     for (auto it : body["drp"].items()) {
         m_para.rogMask |= 1 << unsigned(it.value()["det_info"]["readout"]);
     }

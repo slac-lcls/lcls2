@@ -1,22 +1,3 @@
-/*
-** ++
-**  Package:
-**
-**  Abstract:
-**
-**
-**  Author:
-**      Michael Huffer, SLAC, (415) 926-4269
-**
-**  Creation Date:
-**	000 - June 1,1998
-**
-**  Revision History:
-**	None.
-**
-** --
-*/
-
 #ifndef Eb_EbEpoch_hh
 #define Eb_EbEpoch_hh
 

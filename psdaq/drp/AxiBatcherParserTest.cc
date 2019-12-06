@@ -11,7 +11,7 @@
 #include <cstdio>
 #include <AxisDriver.h>
 #include <stdlib.h>
-#include "TimingHeader.hh"
+#include "psdaq/service/EbDgram.hh"
 #include "AxiBatcherParser.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include <unistd.h>

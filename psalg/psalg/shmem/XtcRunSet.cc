@@ -18,9 +18,9 @@ using namespace std;
 
 static void printTransition(const Dgram* dg) {
   printf("%18s transition: time %08x/%08x, payloadSize 0x%08x dmg 0x%x\n",
-         TransitionId::name(dg->seq.service()),
-         dg->seq.stamp().seconds(),
-         dg->seq.stamp().nanoseconds(),
+         TransitionId::name(dg->service()),
+         dg->time.seconds(),
+         dg->time.nanoseconds(),
          dg->xtc.sizeofPayload(),
          dg->xtc.damage.value());
 }
@@ -76,8 +76,9 @@ public:
   void insert(TransitionId::Value tr) {
     Dgram* dg = _pool.front();
     _pool.pop();
-    new((void*)&dg->seq) Sequence(Sequence::Event, tr, TimeStamp(0,0), PulseId(0) );
-    new((char*)&dg->xtc) Xtc(TypeId(TypeId::Data,0),ProcInfo(Level::Event,0,0));
+    unsigned env = 0;
+    new(dg) Dgram(Transition(Dgram::Event, tr, TimeStamp(0,0), env),
+                  Xtc(TypeId(TypeId::Data,0),ProcInfo(Level::Event,0,0)));
     ::printTransition(dg);
     events(dg);
     _pool.push(dg);
@@ -250,7 +251,7 @@ void XtcRunSet::run() {
     clock_gettime(CLOCK, &dgStart);
     dgCount++;
     _server->events(dg);
-    if (dg->seq.service() != TransitionId::L1Accept) {
+    if (dg->service() != TransitionId::L1Accept) {
       if(_verbose) printTransition(dg);
       clock_gettime(CLOCK, &loopStart);
       dgCount = 0;
@@ -259,8 +260,8 @@ void XtcRunSet::run() {
       clock_gettime(CLOCK, &now);
       double hz = double(dgCount) / (timeDiff(&now, &loopStart) / 1.e9);
       printf("%18s transition: time %08x/%08x, payloadSize 0x%08x, avg rate %8.3f Hz%c",
-             TransitionId::name(dg->seq.service()),
-             dg->seq.stamp().seconds(),dg->seq.stamp().nanoseconds(),
+             TransitionId::name(dg->service()),
+             dg->time.seconds(),dg->time.nanoseconds(),
              dg->xtc.sizeofPayload(), hz,
              _veryverbose ? '\n' : '\r');
     }

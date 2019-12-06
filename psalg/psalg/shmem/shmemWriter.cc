@@ -17,7 +17,7 @@ public:
   int processDgram(Dgram* dg) {
     bool lclose=false;
     bool lerror=false;
-    switch(dg->seq.service()) {
+    switch(dg->service()) {
     case TransitionId::Unconfigure:
       break;
     case TransitionId::Configure:  // cache the configuration
@@ -45,7 +45,7 @@ public:
       }
     }
 
-    lclose |= dg->seq.service()==TransitionId::Unconfigure;
+    lclose |= dg->service()==TransitionId::Unconfigure;
 
     if (lclose)
       fclose(_f);
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
     Dgram *dgram = (Dgram*)myClient.get(ev_index,buf_size);
     if(!dgram) break;
     if(verbose)
-      printf("shmemWriter dgram trId %d index %d size %d\n",dgram->seq.service(),ev_index,buf_size);
+      printf("shmemWriter dgram trId %d index %d size %d\n",dgram->service(),ev_index,buf_size);
     myClient.processDgram(dgram);
     myClient.free(ev_index,buf_size);
     }

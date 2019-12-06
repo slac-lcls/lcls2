@@ -27,8 +27,9 @@ public:
     }
     if(_verbose)
       printf("%-15s transition: time 0x%014" PRIx64 ", payloadSize 0x%x\n",
-             TransitionId::name(dg->seq.service()),
-             dg->seq.pulseId().value(),dg->xtc.sizeofPayload());
+             TransitionId::name(dg->service()),
+             dg->time.value(),
+             dg->xtc.sizeofPayload());
     return 0;       
   }
 private:
@@ -129,10 +130,10 @@ int main(int argc, char* argv[]) {
     Dgram *dgram = (Dgram*)myClient.get(ev_index,buf_size);
     if(!dgram) break;
     if(veryverbose)
-      printf("shmemClient dgram trId %d index %d size %d\n",dgram->seq.service(),ev_index,buf_size);
+      printf("shmemClient dgram trId %d index %d size %d\n",dgram->service(),ev_index,buf_size);
     if(!timing)
       myClient.processDgram(dgram);
-    if(dgram->seq.service() == TransitionId::L1Accept)
+    if(dgram->service() == TransitionId::L1Accept)
       {
       if(!accept && timing)
         {

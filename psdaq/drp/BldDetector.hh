@@ -97,7 +97,7 @@ private:
     void handlePhase1(const nlohmann::json& msg) override;
     void connectPgp(const nlohmann::json& json, const std::string& collectionId);
     void worker(std::shared_ptr<MetricExporter> exporter);
-    void sentToTeb(XtcData::Dgram& dgram, uint32_t index);
+    void sentToTeb(Pds::EbDgram& dgram, uint32_t index);
 
     DrpBase                                    m_drp;
     Parameters&                                m_para;

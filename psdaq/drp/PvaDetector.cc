@@ -5,11 +5,11 @@
 #include <unistd.h>
 #include <iostream>
 #include "DataDriver.h"
-#include "TimingHeader.hh"
 #include "RunInfoDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
+#include "psdaq/service/EbDgram.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
 #include <getopt.h>
@@ -139,9 +139,9 @@ public:
         dmaSetMaskBytes(pool.fd(), mask);
     }
 
-    XtcData::Dgram* next(uint32_t& evtIndex);
+    Pds::EbDgram* next(uint32_t& evtIndex);
 private:
-    XtcData::Dgram* _handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex);
+    Pds::EbDgram* _handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex);
     MemPool& m_pool;
     unsigned m_nodeId;
     uint32_t m_envMask;
@@ -153,7 +153,7 @@ private:
     uint32_t dest[MAX_RET_CNT_C];
 };
 
-XtcData::Dgram* Pgp::_handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
+Pds::EbDgram* Pgp::_handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
 {
     int32_t size = dmaRet[m_current];
     uint32_t index = dmaIndex[m_current];
@@ -173,23 +173,12 @@ XtcData::Dgram* Pgp::_handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex
     event->mask |= (1 << lane);
 
     // make new dgram in the pebble
-    XtcData::Dgram* dgram = (XtcData::Dgram*)m_pool.pebble[evtIndex];
-    XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-    dgram->xtc.contains = tid;
-    dgram->xtc.damage = 0;
-    dgram->xtc.extent = sizeof(XtcData::Xtc);
-
-    // fill in dgram header
-    dgram->seq = timingHeader->seq;
-    dgram->env = timingHeader->env & m_envMask;
-
-    // set the src field for the event builders
-    dgram->xtc.src = XtcData::Src(m_nodeId);
+    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_envMask);
 
     return dgram;
 }
 
-XtcData::Dgram* Pgp::next(uint32_t& evtIndex)
+Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
 {
     // get new buffers
     if (m_current == m_available) {
@@ -213,7 +202,7 @@ XtcData::Dgram* Pgp::next(uint32_t& evtIndex)
 
     Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)m_pool.dmaBuffers[dmaIndex[m_current]];
 
-    XtcData::Dgram* dgram = _handle(timingHeader, evtIndex);
+    Pds::EbDgram* dgram = _handle(timingHeader, evtIndex);
     m_current++;
     return dgram;
 }
@@ -433,9 +422,9 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
 
         // Drain PGP to avoid inducing backpressure
         uint32_t index;
-        XtcData::Dgram* dgram = pgp.next(index);
+        Pds::EbDgram* dgram = pgp.next(index);
         if (dgram) {
-            switch (dgram->seq.service()) {
+            switch (dgram->service()) {
                 case XtcData::TransitionId::L1Accept: {
                     m_inputQueue.push(index);
                     break;
@@ -475,7 +464,7 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
                             if (!m_inputQueue.try_pop(idx)) {
                                 break;
                             }
-                            XtcData::Dgram* dg = (XtcData::Dgram*)m_drp.pool.pebble[idx];
+                            Pds::EbDgram* dg = (Pds::EbDgram*)m_drp.pool.pebble[idx];
                             _sendToTeb(*dg, idx);
                             m_nEvents++;
                         }
@@ -486,7 +475,7 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
                     break;
                 }
             }
-            if (!dgram->seq.isEvent()) {
+            if (!dgram->isEvent()) {
                 _sendToTeb(*dgram, index);
                 m_nEvents++;
             }
@@ -517,8 +506,8 @@ void PvaApp::process(const PvaMonitor& pva)
             retried = false;
         }
 
-        XtcData::Dgram* dgram = (XtcData::Dgram*)m_drp.pool.pebble[index];
-        if (!dgram->seq.isEvent()) {
+        Pds::EbDgram* dgram = (Pds::EbDgram*)m_drp.pool.pebble[index];
+        if (!dgram->isEvent()) {
             uint32_t idx;
             m_inputQueue.try_pop(idx);  // Actually consume the element
             assert(idx == index);
@@ -528,7 +517,7 @@ void PvaApp::process(const PvaMonitor& pva)
             _cv.notify_one();
             break;
         }
-        else if (timestamp == dgram->seq.stamp()) {
+        else if (timestamp == dgram->time) {
             uint32_t idx;
             m_inputQueue.try_pop(idx);  // Actually consume the element
             assert(idx == index);
@@ -536,7 +525,7 @@ void PvaApp::process(const PvaMonitor& pva)
             logging::debug("PVA matches PGP!!\n"
                            "TimeStamp PVA %08x %08x | PGP %08x %08x\n",
                            timestamp.seconds(), timestamp.nanoseconds(),
-                           dgram->seq.stamp().seconds(), dgram->seq.stamp().nanoseconds());
+                           dgram->time.seconds(), dgram->time.nanoseconds());
 
             XtcData::NamesId namesId(m_drp.nodeId(), PvaNamesIndex);
             XtcData::DescribedData desc(dgram->xtc, m_namesLookup, namesId);
@@ -562,7 +551,7 @@ void PvaApp::process(const PvaMonitor& pva)
             break;
         }
         // No PVA data for PGP timestamp so forward empty event
-        else if (timestamp > dgram->seq.stamp()) {
+        else if (timestamp > dgram->time) {
             uint32_t idx;
             m_inputQueue.try_pop(idx);  // Actually consume the element
             assert(idx == index);
@@ -574,7 +563,7 @@ void PvaApp::process(const PvaMonitor& pva)
             logging::debug("No PVA data!!\n"
                            "TimeStamp PVA %08x %08x | PGP %08x %08x\n",
                            timestamp.seconds(), timestamp.nanoseconds(),
-                           dgram->seq.stamp().seconds(), dgram->seq.stamp().nanoseconds());
+                           dgram->time.seconds(), dgram->time.nanoseconds());
             _sendToTeb(*dgram, index);
             m_nEvents++;
             // Keep processing PGP events until a match is found
@@ -585,20 +574,20 @@ void PvaApp::process(const PvaMonitor& pva)
             logging::debug("PVA timestamp is older than oldest PGP event!!\n"
                            "TimeStamp PVA %08x %08x | PGP %08x %08x\n",
                            timestamp.seconds(), timestamp.nanoseconds(),
-                           dgram->seq.stamp().seconds(), dgram->seq.stamp().nanoseconds());
+                           dgram->time.seconds(), dgram->time.nanoseconds());
             break;
         }
     }
 }
 
-void PvaApp::_sendToTeb(XtcData::Dgram& dgram, uint32_t index)
+void PvaApp::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
 {
     void* buffer = m_drp.tebContributor().allocate(&dgram, (void*)((uintptr_t)index));
     if (buffer) { // else timed out
         PGPEvent* event = &m_drp.pool.pgpEvents[index];
         event->l3InpBuf = buffer;
-        XtcData::Dgram* l3InpDg = new(buffer) XtcData::Dgram(dgram);
-        if (dgram.seq.isEvent()) {
+        Pds::EbDgram* l3InpDg = new(buffer) Pds::EbDgram(dgram);
+        if (dgram.isEvent()) {
             if (m_drp.triggerPrimitive()) {// else this DRP doesn't provide input
                 m_drp.triggerPrimitive()->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc); // Produce
             }

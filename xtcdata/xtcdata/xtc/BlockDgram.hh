@@ -12,11 +12,12 @@ namespace XtcData {
 class BlockDgram : public Xtc
 {
 public:
-    BlockDgram(uint8_t* buffdgram, uint64_t tstamp, uint64_t pulseId,
+    BlockDgram(uint8_t* buffdgram, uint64_t tstamp,
                unsigned control):
         _dgram(*new(buffdgram) Dgram())
     {
-        _dgram.seq = Sequence(TimeStamp(tstamp),PulseId(pulseId,control));
+        _dgram.time = TimeStamp(tstamp);
+        _dgram.env = control<<24;
         TypeId tid(TypeId::Parent, 0);
         _dgram.xtc.contains = tid;
         _dgram.xtc.damage = 0;

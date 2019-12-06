@@ -17,7 +17,7 @@
 class MetricExporter;
 
 namespace XtcData {
-  class Dgram;
+  class EbDgram;
   class TimeStmp;
 };
 
@@ -39,14 +39,14 @@ namespace Pds {
       void       startup(EbCtrbInBase&);
       void       shutdown();
     public:
-      void*      allocate(const XtcData::Transition* header, const void* appPrm);
-      void       process(const XtcData::Dgram* datagram);
+      void*      allocate(const Pds::EbDgram* header, const void* appPrm);
+      void       process(const Pds::EbDgram* datagram);
     public:
       void       release(const Batch* batch) { _batMan.release(batch); }
       BatchFifo& pending()                   { return _pending; }
       Batch*     batch(unsigned idx)         { return _batMan.batch(idx); }
     private:
-      void       _post(const XtcData::Dgram* nonEvent) const;
+      void       _post(const Pds::EbDgram* nonEvent) const;
       void       _post(const Batch* input) const;
     private:
       const TebCtrbParams&      _prms;

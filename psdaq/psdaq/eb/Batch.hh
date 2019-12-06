@@ -3,7 +3,7 @@
 
 #include "eb.hh"
 
-#include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/EbDgram.hh"
 
 #ifdef NDEBUG
 //#undef NDEBUG
@@ -34,8 +34,8 @@ namespace Pds {
     public:
       static uint64_t    batchNum(uint64_t pid);
     public:
-      XtcData::Dgram*    allocate();
-      Batch*             initialize(const XtcData::Transition&);
+      Pds::EbDgram*  allocate();
+      Batch*             initialize(const Pds::EbDgram&);
       void               accumRogs(const XtcData::Transition&);
       uint16_t           rogsRem(const XtcData::Transition&);
       uint16_t           rogs() const;
@@ -118,10 +118,10 @@ const bool Pds::Eb::Batch::empty() const
 }
 
 inline
-Pds::Eb::Batch* Pds::Eb::Batch::initialize(const XtcData::Transition& hdr)
+Pds::Eb::Batch* Pds::Eb::Batch::initialize(const Pds::EbDgram& hdr)
 {
   // Multiple batches can exist with the same BatchNum, but different PIDs
-  _id        = hdr.seq.pulseId().value(); // Full PID, not BatchNum
+  _id        = hdr.pulseId(); // Full PID, not BatchNum
   _rogs      = hdr.readoutGroups();
   _receivers = 0;
   _extent    = 0;
@@ -168,11 +168,11 @@ void Pds::Eb::Batch::release()
 }
 
 inline
-XtcData::Dgram* Pds::Eb::Batch::allocate()
+Pds::EbDgram* Pds::Eb::Batch::allocate()
 {
   char* buf = static_cast<char*>(_buffer) + _extent;
   _extent += _size;
-  return reinterpret_cast<XtcData::Dgram*>(buf);
+  return reinterpret_cast<Pds::EbDgram*>(buf);
 }
 
 inline
@@ -183,10 +183,10 @@ size_t Pds::Eb::Batch::terminate()
   // No NULL termination needed for a full batch
   if (_extent < MAX_ENTRIES * _size)
   {
-    char*           buf = static_cast<char*>(_buffer) + _extent;
-    XtcData::Dgram* dg  = reinterpret_cast<XtcData::Dgram*>(buf);
-    dg->seq  = XtcData::Sequence(XtcData::TimeStamp(), XtcData::PulseId());
-    _extent += sizeof(XtcData::PulseId);
+    char*             buf = static_cast<char*>(_buffer) + _extent;
+    Pds::EbDgram* dg  = reinterpret_cast<Pds::EbDgram*>(buf);
+    dg->time = XtcData::TimeStamp();
+    _extent += sizeof(Pds::PulseId); // for a null terminator to a list
   }
 
   return _extent;

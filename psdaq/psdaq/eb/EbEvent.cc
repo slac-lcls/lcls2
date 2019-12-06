@@ -34,10 +34,10 @@ static const int MaxTimeouts = 50;     // In units of transport.pend() timeouts
 ** --
 */
 
-EbEvent::EbEvent(uint64_t      contract,
-                 EbEvent*      after,
-                 const Dgram*  cdg,
-                 unsigned      prm) :
+EbEvent::EbEvent(uint64_t        contract,
+                 EbEvent*        after,
+                 const EbDgram*  cdg,
+                 unsigned        prm) :
   _contract (contract),
   _living   (MaxTimeouts),
   _prm      (prm),
@@ -78,7 +78,7 @@ Pds::Eb::EbEvent::~EbEvent()
 ** --
 */
 
-void EbEvent::_insert(const Dgram* dummy)
+void EbEvent::_insert(const EbDgram* dummy)
 {
   *_last++ = dummy;
 }
@@ -97,7 +97,7 @@ void EbEvent::_insert(const Dgram* dummy)
 ** --
 */
 
-EbEvent* EbEvent::_add(const Dgram* cdg)
+EbEvent* EbEvent::_add(const EbDgram* cdg)
 {
   *_last++   = cdg;
 
@@ -134,9 +134,9 @@ void EbEvent::dump(int number)
          _remaining, _contract);
   printf("    Total size (in bytes) = %zd\n", _size);
 
-  const Dgram** const  last    = end();
-  const Dgram*  const* current = begin();
-  const Dgram*         contrib = *current;
+  const EbDgram** const  last    = end();
+  const EbDgram*  const* current = begin();
+  const EbDgram*         contrib = *current;
 
   printf("    Creator (%p) was @ source %02x with an environment of 0x%08x\n",
          contrib,
@@ -150,7 +150,7 @@ void EbEvent::dump(int number)
     printf("     %p: src %02x seq %014lx size %08x env 0x%08x\n",
            contrib,
            contrib->xtc.src.value(),
-           contrib->seq.pulseId().value(),
+           contrib->pulseId(),
            contrib->xtc.sizeofPayload(),
            contrib->env);
   }

@@ -42,10 +42,6 @@ cdef class EventBuilder:
     cdef unsigned long min_ts
     cdef unsigned long max_ts
     cdef unsigned L1_ACCEPT
-    cdef short v_cntrl
-    cdef short v_service
-    cdef unsigned long s_cntrl
-    cdef unsigned long m_service
     cdef Buffer* step_bufs
 
     def __init__(self, views):
@@ -65,15 +61,6 @@ cdef class EventBuilder:
         # step dgram buffers (epics, configs, etc.)
         self.step_bufs = <Buffer *>malloc(sizeof(Buffer)*self.nsmds)
         self._init_step_bufs()
-        
-        # service calculation
-        self.v_cntrl = 56
-        self.v_service = 0
-        k_cntrl = 8
-        k_service = 4
-        cdef unsigned long m_cntrl = ((1ULL << k_cntrl) - 1) 
-        self.s_cntrl = (m_cntrl << self.v_cntrl)
-        self.m_service = ((1 << k_service) - 1)
 
     def _has_more(self):
         for i in range(self.nsmds):
@@ -167,7 +154,7 @@ cdef class EventBuilder:
                     self.dgram_sizes[view_idx] = self.DGRAM_SIZE + payload
                     raw_dgrams[view_idx] = <char[:self.dgram_sizes[view_idx]]>view_ptr
                     # Copy to step buffers if non L1
-                    service = (( (d.seq.pulse_id & self.s_cntrl) >> self.v_cntrl ) >> self.v_service) & self.m_service
+                    service = (d.env>>24)&0xf
                     if service != self.L1_ACCEPT and payload > 0: 
                         memcpy(self.step_bufs[view_idx].chunk + self.step_bufs[view_idx].offset, d, self.DGRAM_SIZE + payload)
                         self.step_bufs[view_idx].offset += self.DGRAM_SIZE + payload
