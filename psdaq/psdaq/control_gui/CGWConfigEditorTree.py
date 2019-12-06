@@ -73,7 +73,6 @@ class CGWConfigEditorTree(QWTree) :
 
         parent = kwargs.get('parent',None)
         self.dictj        = kwargs.get('dictj', {'i_test':12345,'o_test':0o377,'h_test':0xffea,'b_test':12345})
-        self.parent_ctrl  = kwargs.get('parent_ctrl',None)
         self.list_max_len = kwargs.get('list_max_len',5)
 
         QWTree.__init__(self, parent)

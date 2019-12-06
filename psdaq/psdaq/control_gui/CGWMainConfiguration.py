@@ -48,11 +48,11 @@ class CGWMainConfiguration(QGroupBox) :
     """
     list_of_aliases = ['NOBEAM', 'BEAM']
 
-    def __init__(self, parent=None, parent_ctrl=None):
+    def __init__(self, parent=None):
 
         QGroupBox.__init__(self, 'Configuration', parent)
 
-        self.parent_ctrl = parent_ctrl
+        cp.cgwmainconfiguration = self
 
         self.lab_type = QLabel('Type')
         self.but_type = QPushButton('Select %s' % char_expand)
@@ -118,9 +118,8 @@ class CGWMainConfiguration(QGroupBox) :
 #--------------------
  
     def inst_configdb(self, msg=''):
-        parent = self.parent_ctrl
-        uris = getattr(parent, 'uris', 'mcbrowne:psana@psdb-dev:9306')
-        inst = getattr(parent, 'inst', 'TMO')
+        uris = getattr(cp.cgwmain, 'uris', 'mcbrowne:psana@psdb-dev:9306')
+        inst = getattr(cp,         'inst', 'TST')
         logger.debug('%sconnect to configdb(uri_suffix=%s, inst=%s)' % (msg, uris, inst))
         return inst, get_configdb(uri_suffix=uris, inst=inst)
 
@@ -160,7 +159,7 @@ class CGWMainConfiguration(QGroupBox) :
             list_of_aliases = self.list_of_aliases # ['NOBEAM', 'BEAM']
             logger.warning('List of configdb-s IS EMPTY... Use default: %s' % str(list_of_aliases))
 
-        selected = popup_select_item_from_list(self.but_type, list_of_aliases, dx=-46, dy=-33)
+        selected = popup_select_item_from_list(self.but_type, list_of_aliases, dx=-46, dy=-33) #, use_cursor_pos=True)
 
         msg = 'selected %s of the list %s' % (selected, str(list_of_aliases))
         logger.debug(msg)
@@ -274,12 +273,18 @@ class CGWMainConfiguration(QGroupBox) :
             self.device = dev
 
             inst, confdb = self.inst_configdb('on_but_edit: ')
-            self.config = confdb.get_configuration(cfgtype, dev, hutch=inst)
+
+            try :
+                self.config = confdb.get_configuration(cfgtype, dev, hutch=inst)
+            except ValueError as err:
+                logger.error('ValueError: %s' % err)
+                return
+
             msg = 'get_configuration(%s, %s, %s):\n' % (cfgtype, dev, inst)\
                 + '%s\n    type(config): %s'%(str_json(self.config), type(self.config))
             logger.debug(msg)
 
-            self.w_edit = CGWConfigEditor(dictj=self.config, parent_ctrl=self)
+            self.w_edit = CGWConfigEditor(dictj=self.config)
             self.w_edit.move(self.mapToGlobal(QPoint(self.width()+10,0)))
             self.w_edit.show()
 
@@ -301,7 +306,7 @@ class CGWMainConfiguration(QGroupBox) :
                 + '%s\n    type(config): %s'%(str_json(self.config), type(self.config))
             logger.debug(msg)
 
-            self.w_edit = CGWConfigEditor(dictj=self.config, parent_ctrl=self)
+            self.w_edit = CGWConfigEditor(dictj=self.config)
             self.w_edit.move(self.mapToGlobal(QPoint(self.width()+10,0)))
             self.w_edit.show()
 
@@ -321,6 +326,7 @@ class CGWMainConfiguration(QGroupBox) :
         if self.w_edit is not None :
            self.w_edit.close()
         QGroupBox.closeEvent(self, e)
+        cp.cgwmainconfiguration = None
 
 #--------------------
  

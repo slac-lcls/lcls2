@@ -31,6 +31,7 @@ from psdaq.control_gui.CGWConfigEditor import CGWConfigEditor
 from psdaq.control_gui.QWPopupSelectItem import popup_select_item_from_list
 from psdaq.control_gui.CGConfigDBUtils import get_configdb
 from psdaq.control_gui.CGJsonUtils import str_json
+from psdaq.control_gui.CGConfigParameters import cp
 
 #from psdaq.control_gui.QWUtils import confirm_or_cancel_dialog_box
 
@@ -40,11 +41,9 @@ char_expand  = u' \u25BC' # down-head triangle
 class CGWConfigSelect(QGroupBox) :
     """
     """
-    def __init__(self, parent=None, parent_ctrl=None, type_def='Select', dev_def='Select'):
+    def __init__(self, parent=None, type_def='Select', dev_def='Select'):
 
         QGroupBox.__init__(self, 'Edit configuration', parent)
-
-        self.parent_ctrl = parent_ctrl
 
         self.but_apply = None
 
@@ -115,11 +114,10 @@ class CGWConfigSelect(QGroupBox) :
 #--------------------
  
     def inst_configdb(self, msg=''):
-        parent = self.parent_ctrl
-        uris = getattr(parent, 'uris', 'mcbrowne:psana@psdb-dev:9306')
-        inst = getattr(parent, 'inst', 'TMO')
+        uris = getattr(cp.cgwmain, 'uris', 'mcbrowne:psana@psdb-dev:9306')
+        inst = getattr(cp, 'instr', 'TMO')
         logger.debug('%sconnect to configdb(uri_suffix=%s, inst=%s)' % (msg, uris, inst))
-        return inst, get_configdb(uri_suffix=uris, inst=inst)
+        return inst, get_configdb(uris, inst)
 
 #--------------------
  
