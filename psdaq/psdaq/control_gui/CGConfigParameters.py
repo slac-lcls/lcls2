@@ -7,6 +7,7 @@ This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
 Usage ::
+    from psdaq.control_gui.CGConfigParameters import cp
 
     cp.readParametersFromFile()
     cp.printParameters()
@@ -58,6 +59,7 @@ class CGConfigParameters(ConfigParameters) :
         self.cgwmainpartition  = None
         self.cgwmaincontrol    = None
         self.cgwmaintabuser    = None
+        self.cgwmainconfiguration = None
 
         # DAQ status cache
         self.s_transition      = None

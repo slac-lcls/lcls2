@@ -34,6 +34,7 @@ from psdaq.control_gui.Utils import save_textfile, path_to_test_data
 from psdaq.control_gui.CGJsonUtils import load_json_from_file, str_json, json_from_str
 
 from psdaq.control_gui.QWUtils import help_dialog_box
+from psdaq.control_gui.CGConfigParameters import cp
 
 #--------------------
 
@@ -48,11 +49,10 @@ class CGWConfigEditor(QWidget) :
     MORE_OPTIONS = ('More','Load','Save','Help')
     EDITOR_TYPES = ('Text','Tree')
 
-    def __init__(self, parent=None, parent_ctrl=None, dictj=None):
+    def __init__(self, parent=None, dictj=None):
 
         #QGroupBox.__init__(self, 'Partition', parent)
         QWidget.__init__(self, parent)
-        self.parent_ctrl = parent_ctrl
 
         # I/O files
         self.ifname_json = '%s/json2xtc_test.json' % path_to_test_data() # input file
@@ -70,7 +70,7 @@ class CGWConfigEditor(QWidget) :
 
         self.box_type.addItems(self.EDITOR_TYPES)
         self.box_type.setCurrentIndex(1)
-        self.wedi = CGWConfigEditorTree(parent_ctrl=self, dictj=self.dictj)
+        self.wedi = CGWConfigEditorTree(dictj=self.dictj)
 
         self.box_more = QComboBox(self)
         self.box_more.addItems(self.MORE_OPTIONS)
@@ -234,11 +234,11 @@ class CGWConfigEditor(QWidget) :
         sj = str_json(dj)
         logger.info('on_but_apply jason/dict:\n%s' % sj)
 
-        if self.parent_ctrl is None :
+        if cp.cgwmainconfiguration is None :
             logger.warning("parent (ctrl) is None - changes can't be applied to DB")
             return
         else :
-            self.parent_ctrl.save_dictj_in_db(dj, msg='CGWConfigEditor: ')
+            cp.cgwmainconfiguration.save_dictj_in_db(dj, msg='CGWConfigEditor: ')
 
 #--------------------
  
@@ -285,7 +285,7 @@ class CGWConfigEditor(QWidget) :
         self.but_expn.setVisible(is_tree_editor)
         if is_tree_editor : self.but_expn.setText('Expand %s'%char_expand)
 
-        kwargs = {'parent':None, 'parent_ctrl':self, 'dictj':self.dictj}
+        kwargs = {'parent':None, 'dictj':self.dictj}
 
         if   edi_type == self.EDITOR_TYPES[0] : return CGWConfigEditorText(**kwargs)
         elif edi_type == self.EDITOR_TYPES[1] : return CGWConfigEditorTree(**kwargs)
@@ -309,8 +309,8 @@ class CGWConfigEditor(QWidget) :
     def closeEvent(self, e):
         QWidget.closeEvent(self, e)
         logger.debug('closeEvent')
-        if self.parent_ctrl is not None :
-           self.parent_ctrl.w_edit = None
+        if cp.cgwmainconfiguration is not None :
+           cp.cgwmainconfiguration.w_edit = None
         if self.help_box is not None : self.help_box.close()
 
 #--------------------

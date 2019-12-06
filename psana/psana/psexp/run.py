@@ -218,6 +218,11 @@ class RunSingleFile(Run):
             if evt._dgrams[0].service() != TransitionId.L1Accept: continue
             yield evt
 
+    def steps(self):
+        for evt in self.dm:
+            if evt._dgrams[0].seq.service() == TransitionId.BeginStep: 
+                yield Step(evt, self.dm)
+
 
 class RunSerial(Run):
     """ Yields list of events from multiple smd/bigdata files using single core."""

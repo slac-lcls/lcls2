@@ -13,17 +13,17 @@ using namespace psalg;
 namespace detector {
 
 AreaDetector::AreaDetector(const std::string& detname, ConfigIter& config) : 
-  Detector(detname, AREA_DETECTOR), _shape(0), _pconfig(&config), _ind_data(-1), _calib_pars(0) {
+  Detector(detname, AREA_DETECTOR), _shape(0), _pconfit(&config), _ind_data(-1), _calib_pars(0) {
   MSG(DEBUG, "In c-tor AreaDetector(detname, config) for " << detname);
 }
 
 AreaDetector::AreaDetector(const std::string& detname) : 
-  Detector(detname, AREA_DETECTOR), _shape(0), _pconfig(NULL), _ind_data(-1), _calib_pars(0) {
+  Detector(detname, AREA_DETECTOR), _shape(0), _pconfit(NULL), _ind_data(-1), _calib_pars(0) {
   MSG(DEBUG, "In c-tor AreaDetector(detname) for " << detname);
 }
 
 AreaDetector::AreaDetector() : 
-  Detector(), _shape(0), _pconfig(NULL), _ind_data(-1), _calib_pars(0) {
+  Detector(), _shape(0), _pconfit(NULL), _ind_data(-1), _calib_pars(0) {
   MSG(DEBUG, "Default c-tor AreaDetector()");
 }
 
@@ -39,21 +39,21 @@ void AreaDetector::_default_msg(const std::string& msg) const {
 
 //-------------------
 
-void AreaDetector::set_indexes_config(XtcData::ConfigIter& configiter) {
-    _default_msg("set_indexes_config");
+void AreaDetector::_set_indexes_config(XtcData::ConfigIter& configiter) {
+    _default_msg("_set_indexes_config");
 }
 
 //-------------------
 
-void AreaDetector::set_indexes_data(XtcData::DataIter& dataiter) {
-    _default_msg("set_indexes_data");
+void AreaDetector::_set_indexes_data(XtcData::DataIter& dataiter) {
+    _default_msg("_set_indexes_data");
 }
 
 //-------------------
 
 void AreaDetector::process_config() {
 
-  ConfigIter& ci = *_pconfig;
+  ConfigIter& ci = *_pconfit;
   NamesId& namesId = ci.shape().namesId();
   Names& names = configNames(ci);
 
@@ -94,7 +94,7 @@ void AreaDetector::process_data(XtcData::DataIter& di) {
 
     //MSG(DEBUG, "In AreaDetector::process_data");
 
-    ConfigIter& ci = *_pconfig;
+    ConfigIter& ci = *_pconfit;
     NamesLookup& namesLookup = ci.namesLookup();
 
     DescData& descdata = di.desc_value(namesLookup);
@@ -170,9 +170,9 @@ template void AreaDetector::raw<uint16_t>(XtcData::DescData&, uint16_t*&, const 
 
 template<typename T>
 void AreaDetector::raw(XtcData::DataIter& di, T*& pdata, const char* dataname) {
-  //ConfigIter& ci = *_pconfig;
+  //ConfigIter& ci = *_pconfit;
   //NamesLookup& namesLookup = ci.namesLookup();
-    DescData& ddata = di.desc_value(_pconfig->namesLookup());
+    DescData& ddata = di.desc_value(_pconfit->namesLookup());
     raw<T>(ddata, pdata, dataname);
 }
 
@@ -204,7 +204,7 @@ void AreaDetector::raw(XtcData::DescData& dd, NDArray<T>& nda, const char* datan
 
 template<typename T>
 void AreaDetector::raw(XtcData::DataIter& di, NDArray<T>& nda, const char* dataname) {
-    DescData& ddata = di.desc_value(_pconfig->namesLookup());
+    DescData& ddata = di.desc_value(_pconfit->namesLookup());
     raw<T>(ddata, nda, dataname);
 }
 

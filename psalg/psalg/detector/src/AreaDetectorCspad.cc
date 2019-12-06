@@ -105,7 +105,7 @@ const NDArray<pixel_size_t>&  image_yaxis(const event_t&) = 0;
 
 void AreaDetectorCspad::process_config() {
 
-  XtcData::ConfigIter& configo = *_pconfig;
+  XtcData::ConfigIter& configo = *_pconfit;
   //XtcData::NamesId& namesId = configo.shape().namesId();
   XtcData::Names& names = configNames(configo);
 
@@ -185,7 +185,7 @@ const void AreaDetectorCspad::print_config() {
 
 void AreaDetectorCspad::process_data(XtcData::DataIter& datao) {
 
-    ConfigIter& configo = *_pconfig;
+    ConfigIter& configo = *_pconfit;
     NamesLookup& namesLookup = configo.namesLookup();
     DescData& descdata = datao.desc_value(namesLookup);
     Names& names = descdata.nameindex().names();
@@ -258,7 +258,7 @@ NDArray<raw_cspad_t>& AreaDetectorCspad::raw(XtcData::DescData& ddata) {
 //-------------------
 
 NDArray<raw_cspad_t>& AreaDetectorCspad::raw(XtcData::DataIter& datao) {
-    DescData&  ddata = datao.desc_value(_pconfig->namesLookup());
+    DescData&  ddata = datao.desc_value(_pconfit->namesLookup());
     return raw(ddata);
 }
 

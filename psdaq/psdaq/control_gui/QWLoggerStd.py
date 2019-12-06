@@ -107,7 +107,7 @@ class QWLoggerStd(QWidget) :
 
         self.log_level    = kwargs.get('log_level', 'DEBUG')
         self.show_buttons = kwargs.get('show_buttons', True)
-        self.instrument   = kwargs.get('instrument', 'TST')
+        self.instrument   = kwargs.get('instrument', 'NonDefined')
         self.log_fname    = log_file_name(kwargs.get('log_prefix', '.'))
 
         if self.log_level=='DEBUG' :

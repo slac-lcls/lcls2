@@ -39,7 +39,7 @@ void print_hline(const unsigned nchars, const char c) {printf("%s\n", std::strin
 class TestXtcIterator : public XtcData::XtcIterator
 {
 public:
-    enum { Stop, Continue };
+    enum {Stop, Continue};
     TestXtcIterator(XtcData::Xtc* xtc) : XtcData::XtcIterator(xtc) {} // {iterate();}
     TestXtcIterator() : XtcData::XtcIterator() {}
 
@@ -75,9 +75,9 @@ void dump(const char* comment, DescData& descdata) {
     static const char* _names[] = {"Configuration", "Data"};
 
   //NameIndex& nameIndex   = descdata.nameindex();
+    Names& names           = descdata.nameindex().names();
     ShapesData& shapesData = descdata.shapesdata();
     NamesId& namesId       = shapesData.namesId();
-    Names& names           = descdata.nameindex().names();
 
     unsigned trans_ind = namesId.namesId();
     const char* transition  = _names[trans_ind];
@@ -105,7 +105,7 @@ void dump(const char* comment, DescData& descdata) {
 	    printf("%02d name %-32s not-implemented in dump(...) scalar type: %s\n", i, name.name(), name.str_type());
         }
         else if(name.rank() > 0) {
-          //enum DataType { UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE, CHARSTR, ENUMVAL, ENUMDICT};
+          ////enum DataType { UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE, CHARSTR, ENUMVAL, ENUMDICT};
           if(name.type()==Name::UINT16) {
 	    psalg::NDArray<uint16_t> nda(descdata.get_array<uint16_t>(i));
 	    std::stringstream ss; ss << nda;
@@ -128,6 +128,11 @@ void dump(const char* comment, DescData& descdata) {
 	  }
           else if(name.type()==Name::DOUBLE) {
 	    psalg::NDArray<double> nda(descdata.get_array<double>(i));
+	    std::stringstream ss; ss << nda;
+	    printf("%02d name %-32s Array %s\n", i, name.name(), ss.str().c_str());
+	  }
+          else if(name.type()==Name::UINT8) {
+	    psalg::NDArray<uint8_t> nda(descdata.get_array<uint8_t>(i));
 	    std::stringstream ss; ss << nda;
 	    printf("%02d name %-32s Array %s\n", i, name.name(), ss.str().c_str());
 	  }
@@ -242,14 +247,23 @@ std::string usage(const std::string& tname="")
 {
   std::stringstream ss;
   if (tname == "") ss << "Usage command> test_xtc_data <test-number>\n  where test-number";
-  if (tname == "" || tname=="0")  ss << "\n  0  - test_xtc_content(jungfrau) - demo of ...";
-  if (tname == "" || tname=="1")  ss << "\n  1  - test_all(jungfrau)         - demo of ...";
+  if (tname == "" || tname=="0")  ss << "\n   0 - test_xtc_content(jungfrau)  - demo of ...";
+  if (tname == "" || tname=="1")  ss << "\n   1 - test_all(jungfrau)          - demo of ...";
 
-  if (tname == "" || tname=="10") ss << "\n  10 - test_xtc_content(cspad)    - demo of ...";
-  if (tname == "" || tname=="11") ss << "\n  11 - test_all(cspad)            - demo of ...";
+  if (tname == "" || tname=="10") ss << "\n  10 - test_xtc_content(cspad)     - demo of ...";
+  if (tname == "" || tname=="11") ss << "\n  11 - test_all(cspad)             - demo of ...";
 
-  if (tname == "" || tname=="20") ss << "\n  20 - test_xtc_content(pnccd)    - demo of ...";
-  if (tname == "" || tname=="21") ss << "\n  21 - test_all(pnccd)            - demo of ...";
+  if (tname == "" || tname=="20") ss << "\n  20 - test_xtc_content(pnccd)     - demo of ...";
+  if (tname == "" || tname=="21") ss << "\n  21 - test_all(pnccd)             - demo of ...";
+
+  if (tname == "" || tname=="30") ss << "\n  30 - test_xtc_content(opal1k)    - demo of ...";
+  if (tname == "" || tname=="31") ss << "\n  31 - test_all(opal1k)            - demo of ...";
+					      
+  if (tname == "" || tname=="40") ss << "\n  40 - test_xtc_content(opal4k)    - demo of ...";
+  if (tname == "" || tname=="41") ss << "\n  41 - test_all(opal4k)            - demo of ...";
+					      
+  if (tname == "" || tname=="50") ss << "\n  50 - test_xtc_content(opal8k)    - demo of ...";
+  if (tname == "" || tname=="51") ss << "\n  51 - test_all(opal8k)            - demo of ...";
   ss << '\n';
   return ss.str();
 }
@@ -275,8 +289,14 @@ int main(int argc, char **argv) {
   else if (tname=="20") test_xtc_content("data-xpptut15-r0450-e000010-pnccd.xtc2");
   else if (tname=="21") test_all("data-xpptut15-r0450-e000010-pnccd.xtc2");
 
-  //else if (tname=="20") test_xtc_content("");
-  //else if (tname=="21") test_all("");
+  else if (tname=="30") test_xtc_content("data-xppl1316-r0193-e000010-opal1k.xtc2");  // opal1k
+  else if (tname=="31") test_all("data-xppl1316-r0193-e000010-opal1k.xtc2");
+
+  else if (tname=="40") test_xtc_content("data-mfxm5116-r0020-e000010-opal4k.xtc2"); // opal4k
+  else if (tname=="41") test_all("data-mfxm5116-r0020-e000010-opal4k.xtc2");
+
+  else if (tname=="50") test_xtc_content("data-meca6013-r0009-e000010-opal8k.xtc2");  // opal8k
+  else if (tname=="51") test_all("data-meca6013-r0009-e000010-opal8k.xtc2");
 
   else printf("WARNING: Undefined test name: %s", tname.c_str());
 

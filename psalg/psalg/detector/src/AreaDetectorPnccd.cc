@@ -108,8 +108,8 @@ const NDArray<pixel_size_t>&  image_yaxis(const event_t&) = 0;
 
 //-------------------
 
-void AreaDetectorPnccd::set_indexes_config(XtcData::ConfigIter& configiter) {
-  _pconfig = &configiter;
+void AreaDetectorPnccd::_set_indexes_config(XtcData::ConfigIter& configiter) {
+  _pconfit = &configiter;
   XtcData::Names& names = configNames(configiter);
   MSG(DEBUG, str_config_names(configiter));
 
@@ -153,8 +153,8 @@ void AreaDetectorPnccd::set_indexes_config(XtcData::ConfigIter& configiter) {
 
 //-------------------
 
-void AreaDetectorPnccd::set_indexes_data(XtcData::DataIter& dataiter) {
-    ConfigIter& configo = *_pconfig;
+void AreaDetectorPnccd::_set_indexes_data(XtcData::DataIter& dataiter) {
+    ConfigIter& configo = *_pconfit;
     NamesLookup& namesLookup = configo.namesLookup();
     DescData& descdata = dataiter.desc_value(namesLookup);
     Names& names = descdata.nameindex().names();

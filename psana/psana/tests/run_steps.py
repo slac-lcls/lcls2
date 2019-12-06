@@ -89,6 +89,25 @@ def check_results(results, expected_result):
     for result in results:
         assert result == expected_result
 
+def test_runsinglefile_steps():
+    ds = DataSource(files=os.path.join(xtc_dir,'.tmp','data-r0001-s00.xtc2'))
+    cn_steps = 0
+    cn_events = 0
+    result = {'evt_per_step':[0,0,0], 'n_steps': 0, 'n_events':0}
+    for run in ds.runs():
+        for i, step in enumerate(run.steps()):
+            cn_evt_per_step = 0
+            for j, evt in enumerate(step.events()):
+                cn_evt_per_step += 1
+                cn_events += 1
+            cn_steps +=1
+            result['evt_per_step'][i] = cn_evt_per_step
+        
+    result['n_steps'] = cn_steps
+    result['n_events'] = cn_events
+    return result
+
+
 if __name__ == "__main__":
     import pathlib
     p = pathlib.Path(xtc_dir)
@@ -142,3 +161,9 @@ if __name__ == "__main__":
             assert all(sum_events_per_step == [10,10,10]) 
             assert sum_events == 30
             assert n_steps == 3
+    
+    # Test run.steps() for RunSingleFile
+    if size == 1:
+        result = test_runsinglefile_steps()
+        assert result == {'evt_per_step': [10, 10, 10], 'n_steps': 3, 'n_events': 30}        
+

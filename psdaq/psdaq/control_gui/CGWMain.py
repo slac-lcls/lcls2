@@ -62,7 +62,7 @@ class CGWMain(QWZMQListener) :
         self.wlogr = QWLoggerStd(log_level=self.loglevel, instrument=cp.instr,\
                                  log_prefix=self.logdir, show_buttons=False)
  
-        logger.debug('logger started with log_level:%s instrument:%s' % (self.loglevel,cp.instr))
+        logger.debug('logger started with log_level:%s instrument:%s' % (self.loglevel, cp.instr))
 
         cp.cgwmain = self
 
@@ -73,7 +73,7 @@ class CGWMain(QWZMQListener) :
 
         #icon.set_icons()
 
-        self.wconf = CGWMainConfiguration(parent_ctrl=self)
+        self.wconf = CGWMainConfiguration()
         self.wtabs = CGWMainTabs()
 
         self.vspl = QSplitter(Qt.Vertical)

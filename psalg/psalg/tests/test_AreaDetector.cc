@@ -32,6 +32,7 @@
 
 #include "psalg/detector/AreaDetectorJungfrau.hh"
 #include "psalg/detector/AreaDetectorPnccd.hh"
+#include "psalg/detector/AreaDetectorOpal.hh"
 //#include "psalg/detector/AreaDetectorCspad.hh"
 
 using namespace calib;
@@ -373,7 +374,7 @@ void test_AreaDetectorPnccd(int argc, char* argv[]) {
 
   det.load_calib_constants();
 
-  det.set_indexes_config(ci);
+  det._set_indexes_config(ci);
   det.print_config_indexes();
 
   std::cout << str_config_names(ci) << '\n';
@@ -393,7 +394,7 @@ void test_AreaDetectorPnccd(int argc, char* argv[]) {
 
       if(first_entrance) {
         first_entrance = false;
-        det.set_indexes_data(di);
+        det._set_indexes_data(di);
         det.print_data_indexes();
       }
 
@@ -415,6 +416,81 @@ void test_AreaDetectorPnccd(int argc, char* argv[]) {
 }
 
 //-------------------
+
+void test_AreaDetectorOpal(int argc, char* argv[]) {
+  MSG(INFO, "In test_AreaDetectorOpal");
+
+  int fd = file_descriptor("data-xppl1316-r0193-e000010-opal1k.xtc2");
+  XtcFileIterator xfi(fd, 0x4000000);
+
+  Dgram* dg = xfi.next();
+  ConfigIter ci(&(dg->xtc));
+
+  AreaDetectorOpal det("opal_0001", ci);
+  det._class_msg("some string");
+
+  // set parameters to get calib files.
+  // In future this info should be supplied directly from xtc file...
+  det.set_expname("xppl1316");
+  det.set_runnum(193);
+
+  std::cout << "== det.expname     : " << det.expname() << '\n';
+  std::cout << "== det.runnum      : " << det.runnum()  << '\n';
+  std::cout << "== det.detname     : " << det.detname() << '\n';
+  std::cout << "== det.query       : " << det.query()   << '\n';
+
+
+  //det.load_calib_constants();
+
+  det._set_indexes_config(ci);
+  det.print_config_indexes();
+
+  std::cout << str_config_names(ci) << '\n';
+  det.print_config();
+
+  //===========================
+  std::cout << "TEST EXIT\n";
+  exit(0);
+  //===========================
+
+
+  unsigned neventreq=5;
+  unsigned nevent=0;
+  bool first_entrance = true;
+  while ((dg = xfi.next())) {
+      if (nevent>=neventreq) break;
+
+      printf("evt:%04d\n", nevent);
+
+      print_dg_info(dg);
+
+      DataIter di(&(dg->xtc));
+
+      if(first_entrance) {
+        first_entrance = false;
+        det._set_indexes_data(di);
+        det.print_data_indexes();
+      }
+
+      det.print_data(di);
+
+      NDArray<opal_raw_t>& nda1 = det.raw(di);
+      std::cout << "  ==   raw data nda for DataIter: " << nda1 << '\n';
+
+      //DescData& dd = di.desc_value(ci.namesLookup());
+      //NDArray<opal_raw_t>& nda2 = det.raw(dd);
+      //std::cout << "  ==   raw data nda for DescData: " << nda2 << '\n';
+
+      NDArray<opal_calib_t>& nda3 = det.calib(di);
+      std::cout << "  == calib data nda for DataIter: " << nda3 << '\n';
+      nevent++;
+  }
+
+  ::close(fd);
+}
+
+//-------------------
+//-------------------
 //-------------------
 //-------------------
 
@@ -427,7 +503,7 @@ std::string usage(const std::string& tname="")
   if (tname == "" || tname=="2"	) ss << "\n  2  - test_AreaDetector_mix()     - demo of mixed output of different objects";
   if (tname == "" || tname=="3"	) ss << "\n  3  - test_AreaDetectorJungfrau() - demo of jungfrau specific methods";
   if (tname == "" || tname=="4"	) ss << "\n  4  - test_AreaDetectorPnccd()    - demo of pnccd specific methods";
-  //if (tname == "" || tname=="5"	) ss << "\n  5  - test_AreaDetectorCspad()    - demo of cspad specific methods";
+  if (tname == "" || tname=="5"	) ss << "\n  5  - test_AreaDetectorOpal()     - demo of opal specific methods";
   if (tname == "" || tname=="9"	) ss << "\n  9  - test_getAreaDetector()";
   ss << '\n';
   return ss.str();
@@ -452,7 +528,7 @@ int main(int argc, char **argv) {
   else if (tname=="2") test_AreaDetector_mix(argc, argv);
   else if (tname=="3") test_AreaDetectorJungfrau(argc, argv);
   else if (tname=="4") test_AreaDetectorPnccd(argc, argv);
-  //else if (tname=="5") test_AreaDetectorCspad(argc, argv);
+  else if (tname=="5") test_AreaDetectorOpal(argc, argv);
   else if (tname=="9") test_getAreaDetector();
   else MSG(WARNING, "Undefined test name: " << tname);
 

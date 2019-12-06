@@ -8,6 +8,7 @@ add_library(detector SHARED
     src/AreaDetector.cc
     src/AreaDetectorJungfrau.cc
     src/AreaDetectorPnccd.cc
+    src/AreaDetectorOpal.cc
     src/AreaDetectorEpix100a.cc
     #src/AreaDetectorCspad.cc
     src/AreaDetectorStore.cc
@@ -33,6 +34,7 @@ install(FILES
     AreaDetectorStore.hh
     AreaDetectorJungfrau.hh
     AreaDetectorPnccd.hh
+    AreaDetectorOpal.hh
     AreaDetectorEpix100a.hh
     #AreaDetectorCspad.hh
     DataSourceSimulator.hh

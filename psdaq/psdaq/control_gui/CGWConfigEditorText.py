@@ -35,13 +35,12 @@ class CGWConfigEditorText(QWidget) :
 #class CGWConfigEditorText(QGroupBox) :
     """Text-like configuration editor widget
     """
-    def __init__(self, parent=None, parent_ctrl=None, dictj={'a_test':0,'b_test':1}) :
+    def __init__(self, parent=None, dictj={'a_test':0,'b_test':1}) :
 
         self.dictj = dictj # is used in fill_tree_model which is called at superclass initialization
 
         #QGroupBox.__init__(self, 'Partition', parent)
         QWidget.__init__(self, parent)
-        self.parent_ctrl = parent_ctrl
 
         self.edi_txt = QTextEdit('Json in text is here...')
         #self.but_save = QPushButton('Save')
@@ -135,7 +134,7 @@ if __name__ == "__main__" :
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
-    w = CGWConfigEditorText(parent=None, parent_ctrl=None, dictj=dictj_test)
+    w = CGWConfigEditorText(parent=None, dictj=dictj_test)
     #w.connect_path_is_changed_to_recipient(w.test_signal_reception)
     w.show()
     app.exec_()
