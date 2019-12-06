@@ -47,6 +47,10 @@ void XpmDetector::connect(const json& json, const std::string& collectionId)
     logging::info("XpmDetector connect");
     // FIXME make configureable
     int length = 100;
+    std::map<std::string,std::string>::iterator it = m_para->kwargs.find("sim_length");
+    if (it != m_para->kwargs.end())
+        length = stoi(it->second);
+
     int links = m_para->laneMask;
 
     int fd = open(m_para->device.c_str(), O_RDWR);

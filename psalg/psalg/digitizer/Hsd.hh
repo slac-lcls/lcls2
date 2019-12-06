@@ -34,9 +34,9 @@
  *
  * Immediately following the EventHeader in the dma buffer are the stream
  * headers (raw and fex) and their associated data:
- * Both raw/fex streamheaders are present on every event, even if their
- * associated data is missing (e.g. if prescale is not set to 1).
- * Per-channel structure:
+ * Note: if raw or fex data is missing, then the associated header is also
+ * missing (e.g. if prescale is not set to 1).
+ * Per-channel structure, if both raw/fex data are present:
  *
  * streamheader raw
  * raw data
@@ -54,8 +54,6 @@
 #include "psalg/alloc/Allocator.hh"
 #include "psalg/alloc/AllocArray.hh"
 
-using namespace psalg;
-
 namespace Pds {
   namespace HSD {
 
@@ -70,17 +68,17 @@ namespace Pds {
         }
 
     public:
-        unsigned maxSize = 10000;
+        unsigned maxSize = 1000000;
         Allocator *m_allocator;
         unsigned numPixels;
         unsigned numFexPeaks;
         unsigned content;
         uint16_t* rawPtr; // pointer to raw data
 
-        AllocArray1D<uint16_t> waveform;
-        AllocArray1D<uint16_t> sPos; // maxLength
-        AllocArray1D<uint16_t> len; // maxLength
-        AllocArray1D<uint16_t*> fexPtr; // maxLength
+        psalg::AllocArray1D<uint16_t> waveform;
+        psalg::AllocArray1D<uint16_t> sPos; // maxLength
+        psalg::AllocArray1D<uint16_t> len; // maxLength
+        psalg::AllocArray1D<uint16_t*> fexPtr; // maxLength
 
     private:
         void _parse_waveform(const StreamHeader& s) {

@@ -27,12 +27,9 @@ public:
     XtcData::Xtc& transitionXtc() {return *(XtcData::Xtc*)m_xtcbuf;}
     XtcData::NamesLookup& namesLookup() {return m_namesLookup;}
     unsigned nodeId;
-    static const unsigned char NAMES_INDEX_RUNINFO      = 255;
-    static const unsigned char NAMES_INDEX_BASE         = 0;
 protected:
     Parameters* m_para;
     MemPool* m_pool;
-    std::vector<XtcData::NamesId> m_namesId;
     XtcData::NamesLookup m_namesLookup;
     uint8_t m_xtcbuf[XtcData::Dgram::MaxSize];
 };

@@ -19,15 +19,25 @@ namespace Drp {
 static const char* const RED_ON  = "\033[0;31m";
 static const char* const RED_OFF = "\033[0m";
 
+struct RunInfo
+{
+    std::string experimentName;
+    uint32_t runNumber;
+};
+
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
     EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
                const std::shared_ptr<MetricExporter>& exporter);
+    ~EbReceiver();
     void process(const Pds::Eb::ResultDgram& result, const void* input) override;
 public:
     void resetCounters();
+    std::string openFiles(const Parameters& para, const RunInfo& runInfo);
+private:
+    void _writeDgram(XtcData::Dgram* dgram);
 private:
     MemPool& m_pool;
     Pds::Eb::MebContributor* m_mon;
@@ -44,6 +54,7 @@ private:
     XtcData::TransitionId::Value m_lastTid;
     uint64_t m_offset;
     unsigned m_nodeId;
+    XtcData::Dgram* m_configureDgram;
 };
 
 class DrpBase
@@ -54,8 +65,10 @@ public:
     nlohmann::json connectionInfo();
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string configure(const nlohmann::json& msg);
-    std::string beginrun(const nlohmann::json& phase1Info, XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
+    std::string beginrun(const nlohmann::json& phase1Info, RunInfo& runInfo);
     std::string endrun(const nlohmann::json& msg);
+    void runInfoSupport(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
+    void runInfoData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, const RunInfo& runInfo);
     Pds::Eb::TebContributor& tebContributor() const {return *m_tebContributor;}
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
     prometheus::Exposer* exposer() {return m_exposer.get();}

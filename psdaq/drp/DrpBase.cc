@@ -3,13 +3,10 @@
 #include "TimingHeader.hh"
 #include <DmaDriver.h>
 #include "DrpBase.hh"
+#include "RunInfoDef.hh"
 #include "psalg/utils/SysLog.hh"
 
 #include "rapidjson/document.h"
-
-#include "xtcdata/xtc/VarDef.hh"
-#include "RunInfoDef.hh"
-#include "xtcdata/xtc/DescData.hh"
 
 using namespace XtcData;
 using json = nlohmann::json;
@@ -73,12 +70,32 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_mon(mon),
   m_fileWriter(4194304),
   m_smdWriter(1048576),
+  m_writing(false),
   m_inprocSend(inprocSend),
   m_count(0),
-  m_offset(0)
+  m_offset(0),
+  m_nodeId(tPrms.id)
 {
-    if (!para.outputDir.empty()) {
-        std::string fileName = {para.outputDir + "/data-" + std::to_string(tPrms.id) + ".xtc2"};
+    m_configureDgram = reinterpret_cast<XtcData::Dgram*>(new uint8_t[XtcData::Dgram::MaxSize]);
+    if (!m_configureDgram) {
+        logging::critical("No space found for Configure Dgram cache buffer");
+        exit(-1);
+    }
+}
+
+EbReceiver::~EbReceiver()
+{
+  if (m_configureDgram) {
+      delete[] m_configureDgram;
+      m_configureDgram = nullptr;
+  }
+}
+
+std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo)
+{
+    if (runInfo.runNumber) {
+        std::string runName = {std::to_string(runInfo.runNumber) + "-" + std::to_string(m_nodeId)};
+        std::string fileName = {para.outputDir + "/" + runName + ".xtc2"};
         // cpo suggests leaving this print statement in because
         // filesystems can hang in ways we can't timeout/detect
         // and this print statement may speed up debugging significantly.
@@ -88,20 +105,43 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
         // smalldata
         std::string smalldataDir = {para.outputDir + "/smalldata"};
         local_mkdir(smalldataDir.c_str());
-        std::string smalldataFileName = {smalldataDir + "/data-" + std::to_string(tPrms.id) + ".smd.xtc2"};
+        std::string smalldataFileName = {smalldataDir + "/" + runName + ".smd.xtc2"};
         logging::info("Opening file '%s'", smalldataFileName.c_str());
         m_smdWriter.open(smalldataFileName);
         m_writing = true;
     }
-    else {
-        m_writing = false;
-    }
-    m_nodeId = tPrms.id;
+    return std::string{};
 }
 
 void EbReceiver::resetCounters()
 {
     m_lastIndex = 0;
+}
+
+void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
+{
+    size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+    m_fileWriter.writeEvent(dgram, size);
+
+    // small data writing
+    XtcData::Dgram& smdDgram = *(XtcData::Dgram*)m_smdWriter.buffer;
+    smdDgram.seq = dgram->seq;
+    XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
+    smdDgram.xtc.contains = tid;
+    smdDgram.xtc.damage = 0;
+    smdDgram.xtc.extent = sizeof(XtcData::Xtc);
+
+    if (dgram->seq.service() == XtcData::TransitionId::Configure) {
+        m_smdWriter.addNames(smdDgram.xtc, m_nodeId);
+    }
+
+    XtcData::NamesId namesId(m_nodeId, 0);
+    XtcData::CreateData smd(smdDgram.xtc, m_smdWriter.namesLookup, namesId);
+    smd.set_value(SmdDef::intOffset, m_offset);
+    smd.set_value(SmdDef::intDgramSize, size);
+    m_smdWriter.writeEvent(&smdDgram, sizeof(XtcData::Dgram) + smdDgram.xtc.sizeofPayload());
+
+    m_offset += size;
 }
 
 void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
@@ -132,38 +172,31 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
 
     // pass everything except L1 accepts and slow updates to control level
     if ((transitionId != XtcData::TransitionId::L1Accept)) {
-        // send pulseId to inproc so it gets forwarded to the collection
         if (transitionId != XtcData::TransitionId::SlowUpdate) {
+            if (transitionId == XtcData::TransitionId::Configure) {
+                // Cache Configure Dgram for writing out after files are opened
+                size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+                if (size < XtcData::Dgram::MaxSize) {
+                    memcpy(m_configureDgram, dgram, size);
+                }
+                else {
+                  logging::critical("Configure Dgram of size %zd is too large for cache buffer (%d)", size, XtcData::Dgram::MaxSize);
+                  exit(-1);
+                }
+            }
+            // send pulseId to inproc so it gets forwarded to the collection
             m_inprocSend.send(std::to_string(pulseId));
         }
         logging::debug("EbReceiver saw %s transition @ %014lx\n", XtcData::TransitionId::name(transitionId), pulseId);
     }
 
-    if (m_writing) {
+    if (m_writing) {                    // Won't ever be true for Configure
         // write event to file if it passes event builder or if it's a transition
         if (result.persist() || result.prescale() || (transitionId != XtcData::TransitionId::L1Accept)) {
-            size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
-            m_fileWriter.writeEvent(dgram, size);
-
-            // small data writing
-            XtcData::Dgram& smdDgram = *(XtcData::Dgram*)m_smdWriter.buffer;
-            smdDgram.seq = dgram->seq;
-            XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-            smdDgram.xtc.contains = tid;
-            smdDgram.xtc.damage = 0;
-            smdDgram.xtc.extent = sizeof(XtcData::Xtc);
-
-            if (transitionId == XtcData::TransitionId::Configure) {
-                m_smdWriter.addNames(smdDgram.xtc, m_nodeId);
+            if (transitionId == XtcData::TransitionId::BeginRun) {
+                _writeDgram(m_configureDgram);
             }
-
-            XtcData::NamesId namesId(m_nodeId, 0);
-            XtcData::CreateData smd(smdDgram.xtc, m_smdWriter.namesLookup, namesId);
-            smd.set_value(SmdDef::intOffset, m_offset);
-            smd.set_value(SmdDef::intDgramSize, size);
-            m_smdWriter.writeEvent(&smdDgram, sizeof(XtcData::Dgram) + smdDgram.xtc.sizeofPayload());
-
-            m_offset += size;
+            _writeDgram(dgram);
         }
     }
 
@@ -242,30 +275,50 @@ std::string DrpBase::connect(const json& msg, size_t id)
     return std::string{};
 }
 
-std::string DrpBase::beginrun(const json& runInfo, XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup)
+std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
 {
+    if (m_para.outputDir.empty()) {
+        return "Cannot record due to missing output directory";
+    }
+
     std::string experiment_name;
     unsigned int run_number = 0;
-    if (runInfo.find("run_info") != runInfo.end()) {
-        if (runInfo["run_info"].find("experiment_name") != runInfo["run_info"].end()) {
-            experiment_name = runInfo["run_info"]["experiment_name"];
+    if (phase1Info.find("run_info") != phase1Info.end()) {
+        if (phase1Info["run_info"].find("experiment_name") != phase1Info["run_info"].end()) {
+            experiment_name = phase1Info["run_info"]["experiment_name"];
         }
-        if (runInfo["run_info"].find("run_number") != runInfo["run_info"].end()) {
-            run_number = runInfo["run_info"]["run_number"];
+        if (phase1Info["run_info"].find("run_number") != phase1Info["run_info"].end()) {
+            run_number = phase1Info["run_info"]["run_number"];
         }
     }
+    runInfo.experimentName = experiment_name;
+    runInfo.runNumber = run_number;
+
     logging::debug("%s: expt=\"%s\" runnum=%u",
                    __PRETTY_FUNCTION__, experiment_name.c_str(), run_number);
 
-    if (run_number > 0) {
-        // runinfo data
-        NamesId runInfoNamesId(m_nodeId, Drp::Detector::NAMES_INDEX_RUNINFO);
-        CreateData runinfo(xtc, namesLookup, runInfoNamesId);
-        runinfo.set_string(RunInfoDef::EXPT, experiment_name.c_str());
-        runinfo.set_value(RunInfoDef::RUNNUM, (uint32_t)run_number);
-    }
+    std::string msg = m_ebRecv->openFiles(m_para, runInfo);
 
-    return std::string{};
+    return msg;
+}
+
+void DrpBase::runInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
+{
+    XtcData::Alg runInfoAlg("runinfo", 0, 0, 1);
+    XtcData::NamesId runInfoNamesId(m_nodeId, NamesIndex::RUNINFO);
+    XtcData::Names& runInfoNames = *new(xtc) XtcData::Names("runinfo", runInfoAlg,
+                                                            "runinfo", "", runInfoNamesId);
+    RunInfoDef myRunInfoDef;
+    runInfoNames.add(xtc, myRunInfoDef);
+    namesLookup[runInfoNamesId] = XtcData::NameIndex(runInfoNames);
+}
+
+void DrpBase::runInfoData(Xtc& xtc, NamesLookup& namesLookup, const RunInfo& runInfo)
+{
+    XtcData::NamesId runInfoNamesId(m_nodeId, NamesIndex::RUNINFO);
+    XtcData::CreateData runinfo(xtc, namesLookup, runInfoNamesId);
+    runinfo.set_string(RunInfoDef::EXPT, runInfo.experimentName.c_str());
+    runinfo.set_value(RunInfoDef::RUNNUM, runInfo.runNumber);
 }
 
 std::string DrpBase::endrun(const json& msg)

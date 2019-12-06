@@ -24,7 +24,7 @@ cdef extern from "psalg/alloc/AllocArray.hh" namespace "psalg":
         Array() except+
         cnp.uint32_t *shape()
         T *data()
-        void incRefCnt()
+        cnp.uint32_t& _refCnt()
         T& operator()(unsigned i)
     cdef cppclass AllocArray[T](Array[T]):
         pass
@@ -46,15 +46,19 @@ from cpython cimport PyObject, Py_INCREF
 # _always_ do that, or you will have segfaults
 cnp.import_array()
 
-# We need to build an array-wrapper class to deallocate our array when
-# the Python object is deleted.
+# An AllocArray1D python class that deallocates our C AllocArray1D
+# (by decrementing its reference count) when the Python numpy array (returned
+# from init()) is deleted.
 
 ctypedef fused arrf:
     AllocArray1D[float]
     AllocArray1D[cnp.uint8_t]
     AllocArray1D[cnp.uint16_t]
 
+# this follows the example here:
+# https://gist.github.com/GaelVaroquaux/1249305
 cdef class PyAllocArray1D:
+    cdef cnp.uint32_t* refcnt_ptr
     cdef void* shape_ptr
     cdef void* data_ptr
     cdef int size
@@ -62,12 +66,13 @@ cdef class PyAllocArray1D:
     cdef cnp.ndarray arr
 
     cdef init(self, arrf* carr, int size, int typenum):
+        self.refcnt_ptr = &(carr._refCnt())
         self.shape_ptr = carr.shape()
         self.data_ptr  = carr.data()
         self.size = size
         self.typenum = typenum
-        # Increment the reference count of C array, so that C knows not to free memory.
-        carr.incRefCnt()
+        # Increment the reference count of C array
+        self.refcnt_ptr[0] += 1
         # Convert to numpy array, which calls __array__
         arr = np.array(self, copy=False)
         return arr
@@ -87,9 +92,10 @@ cdef class PyAllocArray1D:
         return ndarray
 
     def __dealloc__(self):
-        """ Frees the array. This is called by Python when all the
+        """ This is called by Python when all the
         references to the object are gone. """
-        free(<void*>self.shape_ptr)
+        # Decrement the reference count of C array
+        self.refcnt_ptr[0] -= 1
 
 ################# Peak Finder ######################
 

@@ -1,5 +1,7 @@
 import sys
 import logging
+import struct
+import socket
 
 from psdaq.epicstools.PVAServer import PVAServer
 import argparse
@@ -24,6 +26,7 @@ def main():
 
     parser.add_argument('services', metavar='S', type=str, nargs='+', help='BLD services')
     parser.add_argument('-P', required=True, help='DAQ:SIM', metavar='PREFIX')
+    parser.add_argument('-A', type=str, help='MC start address', metavar='ADDR', default='239.255.128.1')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
@@ -39,7 +42,11 @@ def main():
     #     a multicast address for data delivery
     #     a structure description of the payload
     #       field names, types, sizes
-    addr = 0xefff8001
+    ia = socket.inet_aton(args.A)
+    ha = struct.unpack('I',ia)[0]
+    addr = socket.ntohl(ha)
+    print('addr [{:x}]'.format(addr))
+
     for i,v in enumerate(args.services):
         pvdb[v+':ADDR'   ] = {'type'  : 'int', 'value' : addr+i}
         pvdb[v+':PORT'   ] = {'type'  : 'int', 'value' : 11001}

@@ -348,7 +348,7 @@ next_dict = {
                       'paused' :      'alloc',
                       'running' :     'alloc' },
 
-    'allocated' :   { 'reset' :       'dealloc',
+    'allocated' :   { 'reset' :       'reset',
                       'unallocated' : 'dealloc',
                       'connected' :   'connect',
                       'configured' :  'connect',
@@ -356,7 +356,7 @@ next_dict = {
                       'paused' :      'connect',
                       'running' :     'connect' },
 
-    'connected' :   { 'reset' :       'disconnect',
+    'connected' :   { 'reset' :       'reset',
                       'unallocated' : 'disconnect',
                       'allocated' :   'disconnect',
                       'configured' :  'configure',
@@ -364,7 +364,7 @@ next_dict = {
                       'paused' :      'configure',
                       'running' :     'configure' },
 
-    'configured' :  { 'reset' :       'unconfigure',
+    'configured' :  { 'reset' :       'reset',
                       'unallocated' : 'unconfigure',
                       'allocated' :   'unconfigure',
                       'connected' :   'unconfigure',
@@ -372,7 +372,7 @@ next_dict = {
                       'paused' :      'beginrun',
                       'running' :     'beginrun' },
 
-    'starting' :    { 'reset' :       'endrun',
+    'starting' :    { 'reset' :       'reset',
                       'unallocated' : 'endrun',
                       'allocated' :   'endrun',
                       'connected' :   'endrun',
@@ -380,7 +380,7 @@ next_dict = {
                       'paused' :      'beginstep',
                       'running' :     'beginstep' },
 
-    'paused' :      { 'reset' :       'endstep',
+    'paused' :      { 'reset' :       'reset',
                       'unallocated' : 'endstep',
                       'allocated' :   'endstep',
                       'connected' :   'endstep',
@@ -388,7 +388,7 @@ next_dict = {
                       'starting' :    'endstep',
                       'running' :     'enable' },
 
-    'running' :     { 'reset' :       'disable',
+    'running' :     { 'reset' :       'reset',
                       'unallocated' : 'disable',
                       'allocated' :   'disable',
                       'connected' :   'disable',

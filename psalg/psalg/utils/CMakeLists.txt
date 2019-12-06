@@ -1,7 +1,6 @@
 add_library(utils SHARED
     src/Logger.cc
     src/DirFileIterator.cc
-    src/SysLog.cc
 )
 
 target_include_directories(utils PUBLIC

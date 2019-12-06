@@ -80,6 +80,7 @@ def run_serial_read(n_events, batch_size=1, filter_fn=0):
                 cn_events += 1
             cn_steps +=1
             result['evt_per_step'][i] = cn_evt_per_step
+        
     result['n_steps'] = cn_steps
     result['n_events'] = cn_events
     return result
@@ -122,7 +123,9 @@ if __name__ == "__main__":
             (51, 1, my_filter), \
             (51, 5, 0), \
             (51, 5, my_filter), \
-            (20, 1, 0), (19, 1, 0)]
+            (20, 1, 0), (19, 1, 0), \
+            (1, 1, my_filter), (1, 1, 0), \
+            (3, 4, my_filter), (3, 4, 0)]
     
     for test_case in test_cases:
         result = run_serial_read(test_case[0], batch_size=test_case[1], filter_fn=test_case[2])
@@ -139,6 +142,3 @@ if __name__ == "__main__":
             assert all(sum_events_per_step == [10,10,10]) 
             assert sum_events == 30
             assert n_steps == 3
-
-    
-    

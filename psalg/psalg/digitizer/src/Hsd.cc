@@ -4,6 +4,7 @@
 #include <ctype.h>
 
 using namespace Pds::HSD;
+using namespace psalg;
 
 Channel::Channel(Allocator *allocator, const uint32_t *evtheader, const uint8_t* data)
 : m_allocator(allocator)

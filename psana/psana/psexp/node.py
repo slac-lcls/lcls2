@@ -145,11 +145,31 @@ class StepHistory(object):
                     self.send_history[indexed_id][i] = current_buf_size
 
         return views
-        
-def repack(smd_chunk, step_views, configs):
-    """ Prepend missing step views (one event) to the smd_chunk """
+
+def repack_for_eb(smd_chunk, step_views, configs):
+    """ Smd0 uses this to prepend missing step views
+    to the smd_chunk (just data with the same limit timestamp from all
+    smd files - not event-built yet). 
+    """
     if step_views:
-        batch_pf = PacketFooter(view=smd_chunk)
+        smd_chunk_pf = PacketFooter(view=smd_chunk)
+        new_chunk_pf = PacketFooter(n_packets=smd_chunk_pf.n_packets)
+        new_chunk = bytearray()
+        for i, (smd_view, step_view) in enumerate(zip(smd_chunk_pf.split_packets(), step_views)):
+            new_chunk.extend(step_view+bytearray(smd_view))
+            new_chunk_pf.set_size(i, memoryview(step_view).nbytes + smd_view.nbytes)
+        new_chunk.extend(new_chunk_pf.footer)
+        return new_chunk
+    else:
+        return smd_chunk 
+
+
+def repack_for_bd(smd_batch, step_views, configs):
+    """ EventBuilder Node uses this to prepend missing step views 
+    to the smd_batch. Unlike repack_for_eb (used by Smd0), this output 
+    chunk contains list of pre-built events."""
+    if step_views:
+        batch_pf = PacketFooter(view=smd_batch)
         
         # Create bytearray containing a list of events from step_views 
         steps = bytearray()
@@ -171,7 +191,7 @@ def repack(smd_chunk, step_views, configs):
             step_sizes.append(step_size + memoryview(step_pf.footer).nbytes)
             n_steps += 1
        
-        # Create new batch with total_events = smd_chunk_events + step_events 
+        # Create new batch with total_events = smd_batch_events + step_events 
         new_batch_pf = PacketFooter(n_packets = batch_pf.n_packets + n_steps)
         for i in range(n_steps):
             new_batch_pf.set_size(i, step_sizes[i])
@@ -181,11 +201,11 @@ def repack(smd_chunk, step_views, configs):
 
         new_batch = bytearray()
         new_batch.extend(steps)
-        new_batch.extend(smd_chunk[:memoryview(smd_chunk).nbytes-memoryview(batch_pf.footer).nbytes])
+        new_batch.extend(smd_batch[:memoryview(smd_batch).nbytes-memoryview(batch_pf.footer).nbytes])
         new_batch.extend(new_batch_pf.footer)
         return new_batch
     else:
-        return smd_chunk
+        return smd_batch
 
 class Smd0(object):
     """ Sends blocks of smds to smd_node
@@ -210,6 +230,8 @@ class Smd0(object):
             
             # Read new epics data as available in the queue
             # then send only unseen portion of data to the evtbuilder rank.
+            if not smd_chunk: break
+
             self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             
             # Check missing steps for the current client
@@ -219,11 +241,10 @@ class Smd0(object):
             step_pf = PacketFooter(view=step_chunk)
             step_views = step_pf.split_packets()
             self.step_hist.extend_buffers(step_views, rankreq[0])
-            
-            smd_chunk = repack(smd_chunk, missing_step_views, self.run.configs)
 
-            self.run.comms.smd_comm.Send(smd_chunk, dest=rankreq[0])
-
+            smd_extended = repack_for_eb(smd_chunk, missing_step_views, self.run.configs)
+            self.run.comms.smd_comm.Send(smd_extended, dest=rankreq[0])
+        
         for i in range(self.run.comms.n_smd_nodes):
             self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             self.run.comms.smd_comm.Send(bytearray(), dest=rankreq[0])
@@ -276,7 +297,7 @@ class SmdNode(object):
                     step_pf = PacketFooter(view=eb_man.step_chunk())
                     step_views = step_pf.split_packets()
                     step_hist.extend_buffers(step_views, rankreq[0])
-                    batch = repack(smd_batch, missing_step_views, self.run.configs)
+                    batch = repack_for_bd(smd_batch, missing_step_views, self.run.configs)
                     bd_comm.Send(batch, dest=rankreq[0])
                           
                 # With > 1 dest_rank, start looping until all dest_rank batches
@@ -289,12 +310,12 @@ class SmdNode(object):
                             missing_step_views = step_hist.get_buffer(rankreq[0])
                             step_pf = PacketFooter(view=eb_man.step_chunk())
                             step_hist.extend_buffers(step_pf.split_packets(), rankreq[0])
-                            batch = repack(smd_batch, missing_step_views, self.run.configs)
+                            batch = repack_for_bd(smd_batch, missing_step_views, self.run.configs)
                             bd_comm.Send(batch, dest=rankreq[0])
                             del smd_batch_dict[rankreq[0]] # done sending 
                         else:
                             bd_comm.Send(bytearray(b'wait'), dest=rankreq[0])
-
+        
         # Done - kill all alive bigdata nodes
         for i in range(n_bd_nodes):
             bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)

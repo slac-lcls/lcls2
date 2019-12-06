@@ -15,7 +15,7 @@ public:
     unsigned beginrun(XtcData::Xtc& xtc, const nlohmann::json& runInfo) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:
-    enum {RawNamesIndex = NAMES_INDEX_BASE, FexNamesIndex};
+    enum {RawNamesIndex = NamesIndex::BASE, FexNamesIndex};
     unsigned m_evtcount;
 };
 

@@ -1,0 +1,80 @@
+platform = '0'
+username = 'lcls2'
+expname  = 'expname'
+expnum   = 'expnum'
+
+epics_host = 'daq-tst-dev02'
+epics_env  = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
+conda_rel  = 'ps-2.0.3'
+
+shelf = '2'
+ip_addr = '10.0.'+shelf
+collect_host = 'drp-tst-acc06'
+groups = '0'
+
+drp_cmd = 'drp -l 0x1 -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/weaver'
+#drp_cmd = 'drp -l 0x1 -d /dev/datadev_0 -C '+collect_host
+
+bld_nodes = ['drp-tst-dev021','drp-tst-dev020']
+
+bld_cp = []
+for c in range(15):
+    bld_cp.append('HPSCP%c'%chr(ord('A')+c))
+
+bld_pv = bld_cp+['HPSEX']
+
+bld_set = []
+for pv in bld_pv:
+    bld_set.append('hpsex+DAQ:LAB2:'+pv)
+
+bldcas_str = ' '.join(bld_pv)
+
+bld_str = ','.join(bld_set)
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#                "X" open xterm
+#                "s" send signal to child when stopping
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+bld_config = [
+ # BLD Generators
+ { host: 'daq-tst-dev03',  id:'lclsbldsvc'  , flags:'s', conda:conda_rel, env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4'},
+
+ # BLD DRP
+ { host: 'drp-tst-dev018', id:'bld_0', flags:'sxpu', conda:conda_rel, env:epics_env, cmd: 'drp_bld -l 2 -P TMO -d /dev/datadev_0 -k interface=eno2 -D '+bld_str+' -C '+collect_host+' -v -o /ffb01/weaver'},
+]
+
+bld_config.append({ host: epics_host,  id:'bldcas'           , flags:'s', conda:conda_rel, env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str})
+
+for inode,pv in enumerate(bld_pv):
+    bld_config.append({ host:epics_host, id:'hpsdbuscas-hpscp%c'%chr(ord('a')+inode), conda:conda_rel, env:epics_env, cmd:'hpsdbuscas -P DAQ:LAB2:'+pv})
+
+bld_config.append({ host: 'drp-tst-dev020',  id:'hpsbldsvc'  , flags:'s', conda:conda_rel, env:epics_env, cmd:'hpsBldServer -i eno2 -n DAQ:LAB2:HPSEX -p 0x1e0 -a 10.0.3.105'})
+
+for inode,pv in enumerate(bld_cp):
+    bld_config.append({ host: bld_nodes[inode%len(bld_nodes)], id:'hpsbldcp%c'%chr(ord('a')+inode), flags:'s', conda:conda_rel, env:epics_env, cmd:'hpsBldCopy -i eno2 -I DAQ:LAB2:HPSEX -O DAQ:LAB2:'+pv+' -o %d'%(inode*200)})
+
+base_config = [
+
+ {                        id:'groupca' , flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
+ {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+
+ { host: 'drp-tst-dev019', id:'teb19'    , flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
+ { host: 'drp-tst-dev016', id:'meb16',       flags:'spu', conda:conda_rel, cmd:'monReqServer -P TMO -d -q 4 -C '+collect_host},
+
+ { host: 'drp-tst-dev001', id:'xppts_0' , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D TimingSystem'},
+
+ { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P TMO'},
+ {                        flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
+]
+
+procmgr_config = base_config+bld_config
