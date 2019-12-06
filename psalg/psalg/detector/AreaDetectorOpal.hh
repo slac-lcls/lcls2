@@ -27,8 +27,8 @@ public:
 
   virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
 
-  virtual void set_indexes_config(XtcData::ConfigIter&);
-  virtual void set_indexes_data(XtcData::DataIter&);
+  virtual void _set_indexes_config(XtcData::ConfigIter&);
+  virtual void _set_indexes_data(XtcData::DataIter&);
 
   virtual const void print_config_indexes();
   virtual const void print_data_indexes();
@@ -89,28 +89,28 @@ public:
   */
 
   // CONFIGURATION values, arrays specific for AreaDetectorOpal
-  inline int64_t Version                        () {return config_value_for_index<int64_t>(*_pconfig, _Version);}
-  inline int64_t TypeId                         () {return config_value_for_index<int64_t>(*_pconfig, _TypeId);}
-  inline int64_t defect_pixel_correction_enabled() {return config_value_for_index<int64_t>(*_pconfig, _defect_pixel_correction_enabled);}
-  inline int64_t number_of_defect_pixels        () {return config_value_for_index<int64_t>(*_pconfig, _number_of_defect_pixels        );}
-  inline int64_t output_offset                  () {return config_value_for_index<int64_t>(*_pconfig, _output_offset                  );}
-  inline int64_t gain_percent                   () {return config_value_for_index<int64_t>(*_pconfig, _gain_percent                   );}
-  inline int64_t Column_Pixels                  () {return config_value_for_index<int64_t>(*_pconfig, _Column_Pixels                  );}
-  inline int64_t Row_Pixels                     () {return config_value_for_index<int64_t>(*_pconfig, _Row_Pixels                     );}
-  inline int64_t Mirroring                      () {return config_value_for_index<int64_t>(*_pconfig, _Mirroring                      );}
-  inline int64_t output_mirroring               () {return config_value_for_index<int64_t>(*_pconfig, _output_mirroring               );}
-  inline int64_t vertical_binning               () {return config_value_for_index<int64_t>(*_pconfig, _vertical_binning               );}
-  inline int64_t Depth                          () {return config_value_for_index<int64_t>(*_pconfig, _Depth                          );}
-  inline int64_t Output_LUT_Size                () {return config_value_for_index<int64_t>(*_pconfig, _Output_LUT_Size                );}
-  inline int64_t Binning                        () {return config_value_for_index<int64_t>(*_pconfig, _Binning                        );}
-  inline int64_t output_resolution              () {return config_value_for_index<int64_t>(*_pconfig, _output_resolution              );}
-  inline int64_t output_resolution_bits         () {return config_value_for_index<int64_t>(*_pconfig, _output_resolution_bits         );}
-  inline int64_t vertical_remapping             () {return config_value_for_index<int64_t>(*_pconfig, _vertical_remapping             );}
-  inline int64_t LUT_Size                       () {return config_value_for_index<int64_t>(*_pconfig, _LUT_Size                       );}
-  inline int64_t output_lookup_table_enabled    () {return config_value_for_index<int64_t>(*_pconfig, _output_lookup_table_enabled    );}
-  inline int64_t black_level                    () {return config_value_for_index<int64_t>(*_pconfig, _black_level                    );}
+  inline int64_t Version                        () {return config_value_for_index<int64_t>(_Version);}
+  inline int64_t TypeId                         () {return config_value_for_index<int64_t>(_TypeId);}
+  inline int64_t defect_pixel_correction_enabled() {return config_value_for_index<int64_t>(_defect_pixel_correction_enabled);}
+  inline int64_t number_of_defect_pixels        () {return config_value_for_index<int64_t>(_number_of_defect_pixels        );}
+  inline int64_t output_offset                  () {return config_value_for_index<int64_t>(_output_offset                  );}
+  inline int64_t gain_percent                   () {return config_value_for_index<int64_t>(_gain_percent                   );}
+  inline int64_t Column_Pixels                  () {return config_value_for_index<int64_t>(_Column_Pixels                  );}
+  inline int64_t Row_Pixels                     () {return config_value_for_index<int64_t>(_Row_Pixels                     );}
+  inline int64_t Mirroring                      () {return config_value_for_index<int64_t>(_Mirroring                      );}
+  inline int64_t output_mirroring               () {return config_value_for_index<int64_t>(_output_mirroring               );}
+  inline int64_t vertical_binning               () {return config_value_for_index<int64_t>(_vertical_binning               );}
+  inline int64_t Depth                          () {return config_value_for_index<int64_t>(_Depth                          );}
+  inline int64_t Output_LUT_Size                () {return config_value_for_index<int64_t>(_Output_LUT_Size                );}
+  inline int64_t Binning                        () {return config_value_for_index<int64_t>(_Binning                        );}
+  inline int64_t output_resolution              () {return config_value_for_index<int64_t>(_output_resolution              );}
+  inline int64_t output_resolution_bits         () {return config_value_for_index<int64_t>(_output_resolution_bits         );}
+  inline int64_t vertical_remapping             () {return config_value_for_index<int64_t>(_vertical_remapping             );}
+  inline int64_t LUT_Size                       () {return config_value_for_index<int64_t>(_LUT_Size                       );}
+  inline int64_t output_lookup_table_enabled    () {return config_value_for_index<int64_t>(_output_lookup_table_enabled    );}
+  inline int64_t black_level                    () {return config_value_for_index<int64_t>(_black_level                    );}
 
-  inline Array<uint16_t> output_lookup_table    () {return config_array_for_index<uint16_t>(*_pconfig, _output_lookup_table);}
+  inline Array<uint16_t> output_lookup_table    () {return config_array_for_index<uint16_t>(_output_lookup_table);}
 
   //DATA values, arrays specific for AreaDetectorOpal
   inline int64_t data_Version(XtcData::DataIter& di) {return data_value_for_index<int64_t>(di, _data_Version);}

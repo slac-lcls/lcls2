@@ -23,8 +23,8 @@ using namespace psalg;
 
 namespace detector {
 
-typedef unsigned index_t; // index of data in the xtc data types
-typedef int64_t cfg_int64_t;
+typedef uint64_t index_t; // index of data in the xtc data types
+typedef int64_t cfg_int64_t; // DEPRICATED
 
 //-----------------------------
 
@@ -39,8 +39,8 @@ public:
 
   void _default_msg(const std::string& msg=std::string()) const;
 
-  virtual void set_indexes_config(XtcData::ConfigIter&);
-  virtual void set_indexes_data(XtcData::DataIter&);
+  virtual void _set_indexes_config(XtcData::ConfigIter&);
+  virtual void _set_indexes_data(XtcData::DataIter&);
 
   //-------------------
 
@@ -54,10 +54,22 @@ public:
     return ci.desc_shape().get_array<T>(i);
   }
 
+  template <typename T>
+  inline T config_value_for_index(index_t i) {
+    assert(_pconfit > 0);
+    return _pconfit->desc_shape().get_value<T>(i);
+  }
+
+  template <typename T>
+  inline Array<T> config_array_for_index(index_t i) {
+    assert(_pconfit > 0);
+    return _pconfit->desc_shape().get_array<T>(i);
+  }
+
   //-------------------
 
   inline DescData& descdata(XtcData::DataIter& di) {
-    ConfigIter& ci = *_pconfig;
+    ConfigIter& ci = *_pconfit;
     NamesLookup& namesLookup = ci.namesLookup();
     return di.desc_value(namesLookup);
   }
@@ -174,15 +186,16 @@ public:
 
   //---------------------------
 
-  cfg_int64_t maxModulesPerDetector;
-  cfg_int64_t numberOfModules;
-  cfg_int64_t numberOfRows;
-  cfg_int64_t numberOfColumns;
-  cfg_int64_t numberOfPixels;
+  int64_t maxModulesPerDetector;
+  int64_t numberOfModules;
+  int64_t numberOfRows;
+  int64_t numberOfColumns;
+  int64_t numberOfPixels;
 
 protected:
   shape_t*                _shape;
-  ConfigIter*             _pconfig;
+  ConfigIter*             _pconfit = 0;
+  DataIter*               _pdataiter = 0;
   int                     _ind_data;
   void _set_index_data(XtcData::DescData& ddata, const char* dataname);
 

@@ -27,8 +27,8 @@ public:
 
   virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector 
 
-  virtual void set_indexes_config(XtcData::ConfigIter&);
-  virtual void set_indexes_data(XtcData::DataIter&);
+  virtual void _set_indexes_config(XtcData::ConfigIter&);
+  virtual void _set_indexes_data(XtcData::DataIter&);
 
   virtual const void print_config_indexes();
   virtual const void print_data_indexes();
@@ -91,19 +91,19 @@ public:
   enum {MAX_NUMBER_OF_MODULES=4};
 
   // convenience methods of AreaDetectorPnccd ONLY!
-  inline cfg_int64_t Version             () {return config_value_for_index<cfg_int64_t>(*_pconfig, _Version);}
-  inline cfg_int64_t TypeId              () {return config_value_for_index<cfg_int64_t>(*_pconfig, _TypeId);}
-  inline cfg_int64_t numLinks            () {return config_value_for_index<cfg_int64_t>(*_pconfig, _numLinks);}
-  inline cfg_int64_t numChannels         () {return config_value_for_index<cfg_int64_t>(*_pconfig, _numChannels);}
-  inline cfg_int64_t camexMagic          () {return config_value_for_index<cfg_int64_t>(*_pconfig, _camexMagic);}
-  inline cfg_int64_t numRows             () {return config_value_for_index<cfg_int64_t>(*_pconfig, _numRows);}
-  inline cfg_int64_t numSubmoduleRows    () {return config_value_for_index<cfg_int64_t>(*_pconfig, _numSubmoduleRows);}
-  inline cfg_int64_t payloadSizePerLink  () {return config_value_for_index<cfg_int64_t>(*_pconfig, _payloadSizePerLink);}
-  inline cfg_int64_t numSubmoduleChannels() {return config_value_for_index<cfg_int64_t>(*_pconfig, _numSubmoduleChannels);}
-  inline cfg_int64_t numSubmodules       () {return config_value_for_index<cfg_int64_t>(*_pconfig, _numSubmodules);}
+  inline cfg_int64_t Version             () {return config_value_for_index<cfg_int64_t>(*_pconfit, _Version);}
+  inline cfg_int64_t TypeId              () {return config_value_for_index<cfg_int64_t>(*_pconfit, _TypeId);}
+  inline cfg_int64_t numLinks            () {return config_value_for_index<cfg_int64_t>(*_pconfit, _numLinks);}
+  inline cfg_int64_t numChannels         () {return config_value_for_index<cfg_int64_t>(*_pconfit, _numChannels);}
+  inline cfg_int64_t camexMagic          () {return config_value_for_index<cfg_int64_t>(*_pconfit, _camexMagic);}
+  inline cfg_int64_t numRows             () {return config_value_for_index<cfg_int64_t>(*_pconfit, _numRows);}
+  inline cfg_int64_t numSubmoduleRows    () {return config_value_for_index<cfg_int64_t>(*_pconfit, _numSubmoduleRows);}
+  inline cfg_int64_t payloadSizePerLink  () {return config_value_for_index<cfg_int64_t>(*_pconfit, _payloadSizePerLink);}
+  inline cfg_int64_t numSubmoduleChannels() {return config_value_for_index<cfg_int64_t>(*_pconfit, _numSubmoduleChannels);}
+  inline cfg_int64_t numSubmodules       () {return config_value_for_index<cfg_int64_t>(*_pconfit, _numSubmodules);}
 
-  inline Array<cfg_int64_t> info_shape()        {return config_array_for_index<cfg_int64_t>(*_pconfig, _info_shape);}
-  inline Array<cfg_int64_t> timingFName_shape() {return config_array_for_index<cfg_int64_t>(*_pconfig, _timingFName_shape);}
+  inline Array<cfg_int64_t> info_shape()        {return config_array_for_index<cfg_int64_t>(*_pconfit, _info_shape);}
+  inline Array<cfg_int64_t> timingFName_shape() {return config_array_for_index<cfg_int64_t>(*_pconfit, _timingFName_shape);}
 
   //data values, arrays
   inline cfg_int64_t data_Version (XtcData::DataIter& di) {return data_value_for_index<cfg_int64_t>(di, _data_Version);}

@@ -2,6 +2,10 @@
 #define PSALG_DETECTORSTORE_H
 //-----------------------------
 
+/** This factory does not have too much sense, because Detector base class does not cover any 
+ *  useful methods for any of underlying detectors, but other detector methods are not accessible...
+ */
+
 /** Usage
  *
  * #include "psalg/detector/DetectorStore.hh"

@@ -108,8 +108,8 @@ const NDArray<pixel_size_t>&  image_yaxis(const event_t&) = 0;
 
 //-------------------
 
-void AreaDetectorOpal::set_indexes_config(XtcData::ConfigIter& configiter) {
-  _pconfig = &configiter;
+void AreaDetectorOpal::_set_indexes_config(XtcData::ConfigIter& configiter) {
+  _pconfit = &configiter;
   XtcData::Names& names = configNames(configiter);
   MSG(DEBUG, str_config_names(configiter));
 
@@ -153,8 +153,8 @@ void AreaDetectorOpal::set_indexes_config(XtcData::ConfigIter& configiter) {
 
 //-------------------
 
-void AreaDetectorOpal::set_indexes_data(XtcData::DataIter& dataiter) {
-    ConfigIter& configo = *_pconfig;
+void AreaDetectorOpal::_set_indexes_data(XtcData::DataIter& dataiter) {
+    ConfigIter& configo = *_pconfit;
     NamesLookup& namesLookup = configo.namesLookup();
     DescData& descdata = dataiter.desc_value(namesLookup);
     Names& names = descdata.nameindex().names();
@@ -184,13 +184,29 @@ void AreaDetectorOpal::set_indexes_data(XtcData::DataIter& dataiter) {
 const void AreaDetectorOpal::print_config() {
 
   std::cout << "\n\n==== Attributes of configuration ====\n";
-  std::cout << "detname              : " << detname()              << '\n';
-  std::cout << "dettype              : " << dettype()              << '\n';
-  std::cout << "Version              : " << Version()              << '\n';
-  std::cout << "TypeId               : " << TypeId()               << '\n';
-
-  //std::cout << "info_shape        nda: " << (NDArray<int64_t>)info_shape() << '\n';
-  //std::cout << "timingFName_shape nda: " << (NDArray<int64_t>)timingFName_shape() << '\n';
+  std::cout << "detname                         : " << detname()                               << '\n';
+  std::cout << "dettype                         : " << dettype()                               << '\n';
+  std::cout << "Version                         : " << Version()                               << '\n';
+  std::cout << "TypeId                          : " << TypeId()                                << '\n';
+  std::cout << "defect_pixel_correction_enabled : " << defect_pixel_correction_enabled()       << '\n';
+  std::cout << "number_of_defect_pixels         : " << number_of_defect_pixels()               << '\n';
+  std::cout << "output_offset                   : " << output_offset()                         << '\n';
+  std::cout << "gain_percent                    : " << gain_percent()                          << '\n';
+  std::cout << "Column_Pixels                   : " << Column_Pixels()                         << '\n';
+  std::cout << "Row_Pixels                      : " << Row_Pixels()                            << '\n';
+  std::cout << "Mirroring                       : " << Mirroring()                             << '\n';
+  std::cout << "output_mirroring                : " << output_mirroring()                      << '\n';
+  std::cout << "vertical_binning                : " << vertical_binning()                      << '\n';
+  std::cout << "Depth                           : " << Depth()                                 << '\n';
+  std::cout << "Output_LUT_Size                 : " << Output_LUT_Size()                       << '\n';
+  std::cout << "Binning                         : " << Binning()                               << '\n';
+  std::cout << "output_resolution               : " << output_resolution()                     << '\n';
+  std::cout << "output_resolution_bits          : " << output_resolution_bits()                << '\n';
+  std::cout << "vertical_remapping              : " << vertical_remapping()                    << '\n';
+  std::cout << "LUT_Size                        : " << LUT_Size()                              << '\n';
+  std::cout << "output_lookup_table_enabled     : " << output_lookup_table_enabled()           << '\n';
+  std::cout << "black_level                     : " << black_level()                           << '\n';
+  std::cout << "output_lookup_table             : " << (NDArray<uint16_t>)output_lookup_table()<< '\n';
 
   std::cout << "\n==== Derived values ====\n";
   std::cout << "numberOfModules      : " << numberOfModules        << '\n';
@@ -240,17 +256,16 @@ const void AreaDetectorOpal::print_config_indexes() {
 const void AreaDetectorOpal::print_data(XtcData::DataIter& di) {
     std::cout << "\n==== Data ====\n";
     std::cout << "data_Version      : " << data_Version(di) << '\n';
-    std::cout << "data_TypeId       : " << data_TypeId(di) << '\n';
-    std::cout << "height            : " << height         (di) << '\n';
-    std::cout << "width             : " << width          (di) << '\n';
-    std::cout << "depth             : " << depth          (di) << '\n';
-    std::cout << "offset            : " << offset         (di) << '\n';
-    std::cout << "depth_bytes       : " << depth_bytes    (di) << '\n';
+    std::cout << "data_TypeId       : " << data_TypeId(di)  << '\n';
+    std::cout << "height            : " << height(di)       << '\n';
+    std::cout << "width             : " << width(di)        << '\n';
+    std::cout << "depth             : " << depth(di)        << '\n';
+    std::cout << "offset            : " << offset(di)       << '\n';
+    std::cout << "depth_bytes       : " << depth_bytes(di)  << '\n';
 
     std::cout << "_int_pixel_data   : " << (NDArray<uint8_t>)_int_pixel_data(di) << '\n';
     std::cout << "data8             : " << (NDArray<uint8_t>)data8(di)           << '\n';
     std::cout << "data16            : " << (NDArray<uint16_t>)data16(di)         << '\n';
-
 }
 
 //-------------------
