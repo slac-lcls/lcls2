@@ -183,9 +183,8 @@ size_t Pds::Eb::Batch::terminate()
   // No NULL termination needed for a full batch
   if (_extent < MAX_ENTRIES * _size)
   {
-    char*             buf = static_cast<char*>(_buffer) + _extent;
-    Pds::EbDgram* dg  = reinterpret_cast<Pds::EbDgram*>(buf);
-    dg->time = XtcData::TimeStamp();
+    char*         buf = static_cast<char*>(_buffer) + _extent;
+    *(uint64_t*)  buf = 0; // terminate the batch with 0
     _extent += sizeof(Pds::PulseId); // for a null terminator to a list
   }
 
