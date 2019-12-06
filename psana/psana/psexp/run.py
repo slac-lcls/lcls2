@@ -220,7 +220,7 @@ class RunSingleFile(Run):
 
     def steps(self):
         for evt in self.dm:
-            if evt._dgrams[0].seq.service() == TransitionId.BeginStep: 
+            if evt._dgrams[0].service() == TransitionId.BeginStep: 
                 yield Step(evt, self.dm)
 
 
