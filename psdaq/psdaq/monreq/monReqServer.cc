@@ -158,13 +158,12 @@ namespace Pds {
       //printf("_copyDatagram:   dg = %p, pid = %014lx to %p\n",
       //       dg, dg->seq.pulseId().value(), buf);
 
-      Dgram* odg = new((void*)buf) Dgram(*dg);
-
       // The dg payload is a directory of contributions to the built event.
       // Iterate over the directory and construct, in shared memory, the event
       // datagram (odg) from the contribution XTCs
       const Dgram** const  last = (const Dgram**)dg->xtc.next();
       const Dgram*  const* ctrb = (const Dgram**)dg->xtc.payload();
+      Dgram*               odg  = new((void*)buf) Dgram(**ctrb);
       do
       {
         const Dgram* idg = *ctrb;
