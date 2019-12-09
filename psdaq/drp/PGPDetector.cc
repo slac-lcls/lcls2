@@ -99,18 +99,16 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             }
             // transitions
             else {
-                // copy the temporary xtc created on phase 1 of the transition
-                // into the real location
-                XtcData::Xtc& transitionXtc = det->transitionXtc();
-                memcpy(&dgram->xtc, &transitionXtc, transitionXtc.extent);
-
-                // make sure the transition isn't too big
-                if (transitionXtc.extent > XtcData::Dgram::MaxSize) {
-                    logging::critical("Transition: XTC with extent %d overflowed buffer of size %d", transitionXtc.extent, XtcData::Dgram::MaxSize);
-                    exit(-1);
-                }
-                if (dgram->xtc.extent > pool.bufferSize()) {
-                    logging::critical("Transition: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
+                // Since the Transition Dgram's XTC was already created on
+                // phase1 of the transition, fix up the Dgram header with the
+                // real one while taking care not to touch the XTC
+                // Revisit: Delay this until EbReceiver time?
+                XtcData::Dgram* trDgram = pool.transitionDgram();
+                memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                // make sure the detector hasn't made the transition too big
+                size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();
+                if (size > para.maxTrSize) {
+                    logging::critical("Transition: buffer size (%zd) too small for Dgram (%zd)", para.maxTrSize, size);
                     exit(-1);
                 }
 

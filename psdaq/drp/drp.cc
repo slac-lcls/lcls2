@@ -109,6 +109,7 @@ int main(int argc, char* argv[])
 
     para.nworkers = 10;
     para.batchSize = 32; // Must be a power of 2
+    para.maxTrSize = 256 * 1024;
     Py_Initialize(); // for use by configuration
     Drp::PGPDetectorApp app(para);
     app.run();

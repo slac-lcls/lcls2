@@ -24,14 +24,13 @@ public:
     virtual unsigned beginrun(XtcData::Xtc& xtc, const nlohmann::json& runInfo) {return 0;}
     virtual void beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) {};
     virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
-    XtcData::Xtc& transitionXtc() {return *(XtcData::Xtc*)m_xtcbuf;}
+    XtcData::Xtc& transitionXtc() {return m_pool->transitionDgram()->xtc;}
     XtcData::NamesLookup& namesLookup() {return m_namesLookup;}
     unsigned nodeId;
 protected:
     Parameters* m_para;
     MemPool* m_pool;
     XtcData::NamesLookup m_namesLookup;
-    uint8_t m_xtcbuf[XtcData::Dgram::MaxSize];
 };
 
 template <typename T>

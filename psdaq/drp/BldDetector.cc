@@ -254,11 +254,11 @@ Bld::Bld(unsigned mcaddr,
     logging::debug("Bld listening for %x.%d with payload size %u",mcaddr,port,payloadSize);
 
     m_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (m_sockfd < 0) 
+    if (m_sockfd < 0)
         HANDLE_ERR("Open socket");
 
     { unsigned skbSize = 0x1000000;
-      if (setsockopt(m_sockfd, SOL_SOCKET, SO_RCVBUF, &skbSize, sizeof(skbSize)) == -1) 
+      if (setsockopt(m_sockfd, SOL_SOCKET, SO_RCVBUF, &skbSize, sizeof(skbSize)) == -1)
           HANDLE_ERR("set so_rcvbuf");
     }
 
@@ -271,7 +271,7 @@ Bld::Bld(unsigned mcaddr,
         HANDLE_ERR("bind");
 
     int y = 1;
-    if (setsockopt(m_sockfd, SOL_SOCKET, SO_REUSEADDR, &y, sizeof(y)) == -1) 
+    if (setsockopt(m_sockfd, SOL_SOCKET, SO_REUSEADDR, &y, sizeof(y)) == -1)
         HANDLE_ERR("set reuseaddr");
 
     ip_mreq ipmreq;
@@ -517,7 +517,7 @@ void BldApp::handleConnect(const nlohmann::json& msg)
         logging::error("Failed to lookup multicast interface %s",it->second.c_str());
         body["err_info"] = std::string("Failed to lookup multicast interface");
     }
-    
+
     connectPgp(msg, std::to_string(getId()));
 
     m_unconfigure = false;
@@ -535,7 +535,7 @@ void BldApp::handleDisconnect(const json& msg)
 
 void BldApp::handlePhase1(const json& msg)
 {
-    json phase1Info{ "" }; 
+    json phase1Info{ "" };
     if (msg.find("body") != msg.end()) {
         if (msg["body"].find("phase1Info") != msg["body"].end()) {
             phase1Info = msg["body"]["phase1Info"];
@@ -574,7 +574,7 @@ void BldApp::handlePhase1(const json& msg)
         m_unconfigure = true;
     }
     else if (key == "beginrun") {
-        std::string errorMsg = m_drp.beginrun(phase1Info, m_runInfo); 
+        std::string errorMsg = m_drp.beginrun(phase1Info, m_runInfo);
         if (!errorMsg.empty()) {
             body["errInfo"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
@@ -624,9 +624,9 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
 {
     //
     //  Setup the multicast receivers
-    //  
+    //
     m_config.erase(m_config.begin(),m_config.end());
-    
+
     unsigned interface = interfaceAddress(m_para.kwargs["interface"]);
 
     std::vector<std::shared_ptr<BldPVA> > bldPva(0);
@@ -700,59 +700,67 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
                 }
             }
             else {
-                switch (dgram->service()) {
-                    case XtcData::TransitionId::Configure: {
-                        logging::info("BLD configure");
-                        for(unsigned i=0; i<m_config.size(); i++) {
+                if (dgram->seq.service() == XtcData::TransitionId::L1Accept) {
+                    bool lMissed = false;
+                    for(unsigned i=0; i<m_config.size(); i++) {
+                        if (pulseId[i] == nextId) {
                             XtcData::NamesId namesId(m_drp.nodeId(), i);
-                            m_namesLookup[namesId] = m_config[i]->addToXtc(dgram->xtc, namesId);
+                            const Bld& bld = m_config[i]->handler();
+                            XtcData::DescribedData desc(dgram->xtc, m_namesLookup, namesId);
+                            memcpy(desc.data(), bld.payload(), bld.payloadSize());
+                            desc.set_data_length(bld.payloadSize());
                         }
-                        m_drp.runInfoSupport(dgram->xtc, m_namesLookup);
-
-                        if (dgram->xtc.extent > m_drp.pool.bufferSize()) {
-                            logging::critical("Transition: buffer size (%d) too small for requested extent (%d)", m_drp.pool.bufferSize(), dgram->xtc.extent);
-                            exit(-1);
+                        else {
+                          lMissed = true;
+                          if (!lMissing)
+                            logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx",
+                                           i, nextId, pulseId[i]);
                         }
-
-                        lHold=true;
-                        break;
                     }
-                    case XtcData::TransitionId::BeginRun: {
-                        if (m_runInfo.runNumber > 0) {
-                            m_drp.runInfoData(dgram->xtc, m_namesLookup, m_runInfo);
-                        }
-                        break;
+                    if (lMissed) {
+                        lMissing = true;
+                        nmissed++;
+                        dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
                     }
-                    case XtcData::TransitionId::L1Accept: {
-                        bool lMissed = false;
-                        for(unsigned i=0; i<m_config.size(); i++) {
-                            if (pulseId[i] == nextId) {
+                    else if (lMissing) {
+                        lMissing = false;
+                        logging::debug("Missing ends: pgp %016lx", nextId);
+                    }
+                }
+                else {
+                    // Construct the transition in its own buffer from the PGP Dgram
+                    XtcData::Dgram* trDgram = m_drp.pool.transitionDgram();
+                    *trDgram = *dgram;
+
+                    switch (dgram->seq.service()) {
+                        case XtcData::TransitionId::Configure: {
+                            logging::info("BLD configure");
+
+                            for(unsigned i=0; i<m_config.size(); i++) {
                                 XtcData::NamesId namesId(m_drp.nodeId(), i);
-                                const Bld& bld = m_config[i]->handler();
-                                XtcData::DescribedData desc(dgram->xtc, m_namesLookup, namesId);
-                                memcpy(desc.data(), bld.payload(), bld.payloadSize());
-                                desc.set_data_length(bld.payloadSize());
+                                m_namesLookup[namesId] = m_config[i]->addToXtc(trDgram->xtc, namesId);
                             }
-                            else {
-                              lMissed = true;
-                              if (!lMissing)
-                                logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx",
-                                               i, nextId, pulseId[i]);
+                            m_drp.runInfoSupport(trDgram->xtc, m_namesLookup);
+
+                            lHold=true;
+                            break;
+                        }
+                        case XtcData::TransitionId::BeginRun: {
+                            if (m_runInfo.runNumber > 0) {
+                                m_drp.runInfoData(trDgram->xtc, m_namesLookup, m_runInfo);
                             }
+                            break;
                         }
-                        if (lMissed) {
-                            lMissing = true;
-                            nmissed++;
-                            dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
+                        default: {      // Handle other transitions
+                            break;
                         }
-                        else if (lMissing) {
-                            lMissing = false;
-                            logging::debug("Missing ends: pgp %016lx", nextId);
-                        }
-                        break;
                     }
-                    default: {
-                        break;
+
+                    // Make sure the transition didn't get too big
+                    size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();
+                    if (size > m_para.maxTrSize) {
+                        logging::critical("Transition: buffer size (%zd) too small for Dgram (%zd)", m_para.maxTrSize, size);
+                        exit(-1);
                     }
                 }
             }
@@ -900,6 +908,8 @@ int main(int argc, char* argv[])
     //    para.detName = para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
     get_kwargs(para, kwargs_str);
+
+    para.maxTrSize = 256 * 1024;
 
     Py_Initialize(); // for use by configuration
     Drp::BldApp app(para);

@@ -38,6 +38,7 @@ public:
     std::string openFiles(const Parameters& para, const RunInfo& runInfo);
 private:
     void _writeDgram(XtcData::Dgram* dgram);
+    XtcData::Dgram* _configureDgram() {return static_cast<XtcData::Dgram*>(m_configureBuffer);}
 private:
     MemPool& m_pool;
     Pds::Eb::MebContributor* m_mon;
@@ -54,7 +55,7 @@ private:
     XtcData::TransitionId::Value m_lastTid;
     uint64_t m_offset;
     unsigned m_nodeId;
-    Pds::EbDgram* m_configureDgram;
+    void* m_configureBuffer;
 };
 
 class DrpBase

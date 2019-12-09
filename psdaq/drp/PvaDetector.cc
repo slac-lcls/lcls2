@@ -424,58 +424,63 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
         uint32_t index;
         Pds::EbDgram* dgram = pgp.next(index);
         if (dgram) {
-            switch (dgram->service()) {
-                case XtcData::TransitionId::L1Accept: {
-                    m_inputQueue.push(index);
-                    break;
-                }
-                case XtcData::TransitionId::Configure: {
-                    logging::info("PVA configure");
-
-                    XtcData::Alg pvaAlg("pvaAlg", 1, 2, 3);
-                    XtcData::NamesId pvaNamesId(m_drp.nodeId(), PvaNamesIndex);
-                    XtcData::Names& pvaNames = *new(dgram->xtc) XtcData::Names("pva", pvaAlg,
-                                                                               "pva", "pva1234", pvaNamesId);
-                    pvaNames.add(dgram->xtc, pvaDef);
-                    m_namesLookup[pvaNamesId] = XtcData::NameIndex(pvaNames);
-
-                    m_drp.runInfoSupport(dgram->xtc, m_namesLookup);
-
-                    if (dgram->xtc.extent > m_drp.pool.bufferSize()) {
-                        logging::critical("Transition: buffer size (%d) too small for requested extent (%d)", m_drp.pool.bufferSize(), dgram->xtc.extent);
-                        exit(-1);
-                    }
-                    break;
-                }
-                case XtcData::TransitionId::BeginRun: {
-                    if (m_runInfo.runNumber > 0) {
-                        m_drp.runInfoData(dgram->xtc, m_namesLookup, m_runInfo);
-                    }
-                    break;
-                }
-                case XtcData::TransitionId::Disable: { // Sweep out L1As
-                    m_inputQueue.push(index);
-                    std::unique_lock<std::mutex> lock(_lock);
-                    std::chrono::milliseconds tmo(100);
-                    _cv.wait_for(lock, tmo, [this] { return m_swept.load(std::memory_order_relaxed); });
-                    if (!m_swept.load(std::memory_order_relaxed)) { // If timed out
-                        while (true) { // Post everything still on the queue
-                            uint32_t idx;
-                            if (!m_inputQueue.try_pop(idx)) {
-                                break;
-                            }
-                            Pds::EbDgram* dg = (Pds::EbDgram*)m_drp.pool.pebble[idx];
-                            _sendToTeb(*dg, idx);
-                            m_nEvents++;
-                        }
-                    }
-                    break;
-                }
-                default: {              // Handle other transitions
-                    break;
-                }
+            if (dgram->seq.service() == XtcData::TransitionId::L1Accept) {
+                m_inputQueue.push(index);
             }
-            if (!dgram->isEvent()) {
+            else {
+                // Construct the transition in its own buffer from the PGP Dgram
+                XtcData::Dgram* trDgram = m_drp.pool.transitionDgram();
+                *trDgram = *dgram;
+
+                switch (dgram->seq.service()) {
+                    case XtcData::TransitionId::Configure: {
+                        logging::info("PVA configure");
+
+                        XtcData::Alg pvaAlg("pvaAlg", 1, 2, 3);
+                        XtcData::NamesId pvaNamesId(m_drp.nodeId(), PvaNamesIndex);
+                        XtcData::Names& pvaNames = *new(trDgram->xtc) XtcData::Names("pva", pvaAlg,
+                                                                                     "pva", "pva1234", pvaNamesId);
+                        pvaNames.add(trDgram->xtc, pvaDef);
+                        m_namesLookup[pvaNamesId] = XtcData::NameIndex(pvaNames);
+
+                        m_drp.runInfoSupport(trDgram->xtc, m_namesLookup);
+                        break;
+                    }
+                    case XtcData::TransitionId::BeginRun: {
+                        if (m_runInfo.runNumber > 0) {
+                            m_drp.runInfoData(trDgram->xtc, m_namesLookup, m_runInfo);
+                        }
+                        break;
+                    }
+                    case XtcData::TransitionId::Disable: { // Sweep out L1As
+                        m_inputQueue.push(index);
+                        std::unique_lock<std::mutex> lock(_lock);
+                        std::chrono::milliseconds tmo(100);
+                        _cv.wait_for(lock, tmo, [this] { return m_swept.load(std::memory_order_relaxed); });
+                        if (!m_swept.load(std::memory_order_relaxed)) { // If timed out
+                            while (true) { // Post everything still on the queue
+                                uint32_t idx;
+                                if (!m_inputQueue.try_pop(idx)) {
+                                    break;
+                                }
+                                XtcData::Dgram* dg = (XtcData::Dgram*)m_drp.pool.pebble[idx];
+                                _sendToTeb(*dg, idx);
+                                m_nEvents++;
+                            }
+                        }
+                        break;
+                    }
+                    default: {              // Handle other transitions
+                        break;
+                    }
+                }
+
+                // Make sure the transition didn't get too big
+                size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();
+                if (size > m_para.maxTrSize) {
+                    logging::critical("Transition: buffer size (%zd) too small for Dgram (%zd)", m_para.maxTrSize, size);
+                    exit(-1);
+                }
                 _sendToTeb(*dgram, index);
                 m_nEvents++;
             }
@@ -678,6 +683,8 @@ int main(int argc, char* argv[])
         logging::critical("A PV name is mandatory");
         exit(1);
     }
+
+    para.maxTrSize = 256 * 1024;
 
     Py_Initialize(); // for use by configuration
     Drp::PvaApp app(para, pvName);

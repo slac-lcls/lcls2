@@ -32,7 +32,9 @@ unsigned nextPowerOf2(unsigned n)
     return 1 << count;
 }
 
-MemPool::MemPool(const Parameters& para)
+MemPool::MemPool(const Parameters& para) :
+    transitionBuffer(nullptr),
+    m_maxTransitionSize(0)
 {
     m_fd = open(para.device.c_str(), O_RDWR);
     if (m_fd < 0) {
@@ -59,8 +61,22 @@ MemPool::MemPool(const Parameters& para)
     logging::info("nbuffer %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
 
     pgpEvents.resize(m_nbuffers);
+
+    transitionBuffer = new uint8_t[para.maxTrSize];
+    if (!transitionBuffer) {
+        logging::critical("Failed to allocate transition buffer of size %zd", para.maxTrSize);
+        throw "Failed to allocate transition buffer";
+    }
 }
 
+MemPool::~MemPool()
+{
+    if (transitionBuffer) {
+        delete[] static_cast<char*>(transitionBuffer);
+        transitionBuffer = nullptr;
+        m_maxTransitionSize = 0;
+    }
+}
 
 EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
@@ -76,19 +92,19 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_offset(0),
   m_nodeId(tPrms.id)
 {
-    m_configureDgram = reinterpret_cast<Pds::EbDgram*>(new uint8_t[XtcData::Dgram::MaxSize]);
-    if (!m_configureDgram) {
-        logging::critical("No space found for Configure Dgram cache buffer");
-        exit(-1);
+    m_configureBuffer = new uint8_t[para.maxTrSize];
+    if (!m_configureBuffer) {
+        logging::critical("Failed to allocate Configure buffer of size %zd", para.maxTrSize);
+        throw "Failed to allocate Configure buffer";
     }
 }
 
 EbReceiver::~EbReceiver()
 {
-  if (m_configureDgram) {
-      delete[] m_configureDgram;
-      m_configureDgram = nullptr;
-  }
+    if (m_configureBuffer) {
+        delete[] static_cast<char*>(m_configureBuffer);
+        m_configureBuffer = nullptr;
+    }
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo)
@@ -179,14 +195,9 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         if (transitionId != XtcData::TransitionId::SlowUpdate) {
             if (transitionId == XtcData::TransitionId::Configure) {
                 // Cache Configure Dgram for writing out after files are opened
-                size_t size = sizeof(*ebdgram) + ebdgram->xtc.sizeofPayload();
-                if (size < XtcData::Dgram::MaxSize) {
-                    memcpy(m_configureDgram, ebdgram, size);
-                }
-                else {
-                  logging::critical("Configure Dgram of size %zd is too large for cache buffer (%d)", size, XtcData::Dgram::MaxSize);
-                  exit(-1);
-                }
+                XtcData::Dgram* configDgram = m_pool.transitionDgram();
+                size_t size = sizeof(*configDgram) + configDgram->xtc.sizeofPayload();
+                memcpy(m_configureBuffer, configDgram, size);
             }
             // send pulseId to inproc so it gets forwarded to the collection
             m_inprocSend.send(std::to_string(pulseId));
@@ -196,11 +207,14 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
 
     if (m_writing) {                    // Won't ever be true for Configure
         // write event to file if it passes event builder or if it's a transition
-        if (result.persist() || result.prescale() || (transitionId != XtcData::TransitionId::L1Accept)) {
-            if (transitionId == XtcData::TransitionId::BeginRun) {
-                _writeDgram(m_configureDgram);
-            }
+        if (result.persist() || result.prescale()) {
             _writeDgram(ebdgram);
+        }
+        else if (transitionId != XtcData::TransitionId::L1Accept) {
+            if (transitionId == XtcData::TransitionId::BeginRun) {
+                _writeDgram(_configureDgram());
+            }
+            _writeDgram(m_pool.transitionDgram());
         }
     }
 
@@ -213,7 +227,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         }
         // Other Transition
         else {
-            m_mon->post(ebdgram);
+          m_mon->post(m_pool.transitionDgram());
         }
     }
 
@@ -245,7 +259,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_mPrms.partition = para.partition;
     m_mPrms.maxEvents = 8;
     m_mPrms.maxEvSize = pool.pebble.bufferSize();
-    m_mPrms.maxTrSize = 256 * 1024;
+    m_mPrms.maxTrSize = para.maxTrSize;
     m_mPrms.verbose   = para.verbose;
 
     m_inprocSend.connect("inproc://drp");

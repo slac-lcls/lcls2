@@ -5,6 +5,10 @@
 #include <cstdint>
 #include <map>
 
+namespace XtcData {
+    class Dgram;
+};
+
 namespace Drp {
 
 enum NamesIndex
@@ -43,6 +47,7 @@ struct Parameters
     uint32_t rogMask;
     std::string trgDetName;
     unsigned verbose;
+    size_t maxTrSize;
 };
 
 class Pebble
@@ -70,17 +75,22 @@ class MemPool
 {
 public:
     MemPool(const Parameters& para);
+    ~MemPool();
     Pebble pebble;
     std::vector<PGPEvent> pgpEvents;
     void** dmaBuffers;
+    void* transitionBuffer;
     unsigned nbuffers() const {return m_nbuffers;}
     unsigned bufferSize() const {return m_bufferSize;}
     unsigned dmaSize() const {return m_dmaSize;}
+    size_t maxTransitionSize() const {return m_maxTransitionSize;}
     int fd () const {return m_fd;}
+    XtcData::Dgram* transitionDgram() {return static_cast<XtcData::Dgram*>(transitionBuffer);}
 private:
     unsigned m_nbuffers;
     unsigned m_bufferSize;
     unsigned m_dmaSize;
+    size_t m_maxTransitionSize;
     int m_fd;
 };
 
