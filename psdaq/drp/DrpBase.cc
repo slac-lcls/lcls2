@@ -150,6 +150,9 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     unsigned index = (uintptr_t)appPrm;
     Pds::EbDgram* ebdgram = (Pds::EbDgram*)m_pool.pebble[index];
     XtcData::TransitionId::Value transitionId = ebdgram->service();
+    if (transitionId == 0) {
+        logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
+    }
     uint64_t pulseId = ebdgram->pulseId();
 
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
@@ -278,10 +281,7 @@ std::string DrpBase::connect(const json& msg, size_t id)
 
 std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
 {
-    if (m_para.outputDir.empty()) {
-        return "Cannot record due to missing output directory";
-    }
-
+    std::string msg;
     std::string experiment_name;
     unsigned int run_number = 0;
     if (phase1Info.find("run_info") != phase1Info.end()) {
@@ -298,8 +298,15 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
     logging::debug("%s: expt=\"%s\" runnum=%u",
                    __PRETTY_FUNCTION__, experiment_name.c_str(), run_number);
 
-    std::string msg = m_ebRecv->openFiles(m_para, runInfo);
-
+    // if run_number is nonzero then we are recording
+    if (run_number) {
+        logging::debug("Recording to directory '%s'", m_para.outputDir.c_str());
+        if (m_para.outputDir.empty()) {
+            msg = "Cannot record due to missing output directory";
+        } else {
+            msg = m_ebRecv->openFiles(m_para, runInfo);
+        }
+    }
     return msg;
 }
 
