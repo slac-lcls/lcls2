@@ -47,7 +47,7 @@ bool checkPulseIds(MemPool& pool, PGPEvent* event)
                 }
             }
             // check bit 7 in pulseId for error
-            bool error = timingHeader->control() & (1 << 7);
+            bool error = timingHeader->timing_control() & (1 << 7);
             if (error) {
                 logging::error("Error bit in pulseId is set");
             }
@@ -76,10 +76,10 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             int lane = __builtin_ffs(event->mask) - 1;
             uint32_t dmaIndex = event->buffers[lane].index;
             Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)pool.dmaBuffers[dmaIndex];
-            XtcData::TransitionId::Value transitionId = timingHeader->service();
 
             // make new dgram in the pebble
             Pds::EbDgram* dgram = new(pool.pebble[index]) Pds::EbDgram(*timingHeader, XtcData::Src(det->nodeId), para.rogMask);
+            XtcData::TransitionId::Value transitionId = dgram->service();
 
             // Event
             if (transitionId == XtcData::TransitionId::L1Accept) {

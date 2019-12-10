@@ -1,4 +1,3 @@
-
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/DescData.hh"
 
@@ -549,13 +548,15 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
 ssize_t read_with_retries(int fd, char* buf, size_t count, size_t offset)
 {
-    ssize_t readSuccess = 0;
+    size_t readSuccess = 0;
     for (int i=0; i<MAXRETRIES; i++) {
         if (offset == 0) {
             readSuccess = read(fd, buf, count);
         } else {
             readSuccess = pread(fd, buf, count, offset);
         }
+        // see if we read all the bytes we wanted
+        if (readSuccess != count) readSuccess=0;
 
         // sleep if reads return 0 - mona: add way to find out if end
         // of file is reached.
@@ -582,6 +583,7 @@ static int dgram_read(PyDgramObject* self, int sequential)
             readSuccess = 1;
         }
         if (readSuccess <= 0) {
+            printf("dgram.cc: timeout reading datagram, raising StopIteration.\n");
             snprintf(s, TMPSTRINGSIZE, "loading dgram was unsuccessful -- %s", strerror(errno));
             PyErr_SetString(PyExc_StopIteration, s);
             return -1;

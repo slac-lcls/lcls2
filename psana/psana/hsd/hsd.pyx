@@ -61,11 +61,15 @@ cdef class PyChannelPython:
         else:
             self.waveform = None
 
-        self.peakList = []
-        self.startPosList = []
+        self.peakList = None
+        self.startPosList = None
         while True:
             shape[0] = chanpy.next_peak(startPos,&peakPtr)
             if not shape[0]: break
+            if self.peakList is None:
+                # we've found a peak so initialize the arrays
+                self.peakList = []
+                self.startPosList = []
             peak = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16, peakPtr)
             peak.base = <PyObject*> dgram
             Py_INCREF(dgram)
@@ -144,10 +148,12 @@ cdef class cyhsd_base_1_2_3:
                         self._wvDict[iseg] = {}
                         # FIXME: this needs to be put in units of seconds
                         # perhaps both for 5GHz and 6GHz models
-                        self._wvDict[iseg]["times"] = np.arange(len(pychan.waveform))
-                        self._wvDict[iseg][chanNum] = pychan.waveform
+                        if pychan.waveform is not None:
+                            self._wvDict[iseg]["times"] = np.arange(len(pychan.waveform))
+                            self._wvDict[iseg][chanNum] = pychan.waveform
                         self._peaksDict[iseg]={}
-                        self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
+                        if pychan.peakList is not None:
+                            self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
         # maybe check that we have all segments in the event?
         # FIXME: also check that we have all the channels we expect?
         # unclear how to flag this.  maybe return None to the user
