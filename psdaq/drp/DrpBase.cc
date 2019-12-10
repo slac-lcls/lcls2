@@ -202,7 +202,9 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
             // send pulseId to inproc so it gets forwarded to the collection
             m_inprocSend.send(std::to_string(pulseId));
         }
-        logging::debug("EbReceiver saw %s transition @ %014lx\n", XtcData::TransitionId::name(transitionId), pulseId);
+        logging::debug("EbReceiver saw %s transition @ %d.%09d (%014lx)\n",
+                       XtcData::TransitionId::name(transitionId),
+                       dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
     }
 
     if (m_writing) {                    // Won't ever be true for Configure
@@ -529,7 +531,7 @@ void DrpBase::printParams() const
     printf("  Max # of entries / batch:   %d\n",                 MAX_ENTRIES);
     printf("  # of TEB contrib. buffers:  %d\n",                 MAX_LATENCY);
     printf("  Max TEB contribution size:  %zd\n",                m_tPrms.maxInputSize);
-    printf("  Max MEB contribution size:  %zd\n",                m_mPrms.maxEvSize);
+    printf("  Max MEB L1Accept     size:  %zd\n",                m_mPrms.maxEvSize);
     printf("  Max MEB transition   size:  %zd\n",                m_mPrms.maxTrSize);
     printf("  # of MEB contrib. buffers:  %d\n",                 m_mPrms.maxEvents);
     printf("\n");

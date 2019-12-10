@@ -223,7 +223,10 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 timingHeader->env = (timingHeader->env&0xffffff)|(control<<24);
                 XtcData::TransitionId::Value transitionId = timingHeader->service();
                 if (transitionId != XtcData::TransitionId::L1Accept) {
-                    logging::debug("PGPReader  saw %s transition @ %014lx", XtcData::TransitionId::name(transitionId), timingHeader->pulseId());
+                    logging::debug("PGPReader  saw %s transition @ %d.%09d (%014lx)",
+                                   XtcData::TransitionId::name(transitionId),
+                                   timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                                   timingHeader->pulseId());
                 }
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
                     logging::critical("%sFatal: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",

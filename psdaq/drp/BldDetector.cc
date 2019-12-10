@@ -435,7 +435,7 @@ Pds::EbDgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex)
     // Missed BLD data so mark event as damaged
     else if (pulseId > timingHeader->pulseId()) {
         Pds::EbDgram* dgram = handle(timingHeader, evtIndex);
-        dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
+        dgram->xtc.damage.increase(XtcData::Damage::MissingData);
         m_current++;
         return dgram;
     }

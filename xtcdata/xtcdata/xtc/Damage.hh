@@ -10,11 +10,12 @@ class Damage
 {
 public:
     enum Value {
-        OutOfOrder =  1,
-        OutOfSynch =  2,
-        Corrupted  =  3,
-        DroppedContribution = 4,
-        UserDefined = 12
+        OutOfOrder          =  1,
+        OutOfSynch          =  2,
+        Corrupted           =  3,
+        DroppedContribution =  4,
+        MissingData         =  5,
+        UserDefined         = 12
     };
     // reserve the top byte to augment user defined errors
     enum { UserBitMask  = 0xf000, UserBitShift = 12 };

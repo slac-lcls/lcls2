@@ -430,7 +430,9 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
         uint32_t index;
         Pds::EbDgram* dgram = pgp.next(index);
         if (dgram) {
-            if (dgram->service() == XtcData::TransitionId::L1Accept) {
+            XtcData::TransitionId::Value service = dgram->service();
+            if ((service == XtcData::TransitionId::L1Accept) ||
+                (service == XtcData::TransitionId::SlowUpdate)) {
                 m_inputQueue.push(index);
             }
             else {
@@ -438,7 +440,7 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
                 Pds::EbDgram* trDgram = m_drp.pool.transitionDgram();
                 *trDgram = *dgram;
 
-                switch (dgram->service()) {
+                switch (service) {
                     case XtcData::TransitionId::Configure: {
                         logging::info("PVA configure");
 
@@ -519,7 +521,7 @@ void PvaApp::process(const PvaMonitor& pva)
         }
 
         Pds::EbDgram* dgram = (Pds::EbDgram*)m_drp.pool.pebble[index];
-        if (!dgram->isEvent()) {
+        if (dgram->service() == XtcData::TransitionId::Disable) {
             uint32_t idx;
             m_inputQueue.try_pop(idx);  // Actually consume the element
             assert(idx == index);
@@ -534,8 +536,8 @@ void PvaApp::process(const PvaMonitor& pva)
             m_inputQueue.try_pop(idx);  // Actually consume the element
             assert(idx == index);
 
-            logging::debug("PVA matches PGP!!\n"
-                           "TimeStamp PVA %08x %08x | PGP %08x %08x\n",
+            logging::debug("PV matches PGP!!  "
+                           "TimeStamp PV %d.%09d | PGP %d.%09d\n",
                            timestamp.seconds(), timestamp.nanoseconds(),
                            dgram->time.seconds(), dgram->time.nanoseconds());
 
@@ -569,11 +571,11 @@ void PvaApp::process(const PvaMonitor& pva)
             assert(idx == index);
 
             // No PVA data so mark event as damaged
-            dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
+            dgram->xtc.damage.increase(XtcData::Damage::MissingData);
 
             ++m_nEmpty;
-            logging::debug("No PVA data!!\n"
-                           "TimeStamp PVA %08x %08x | PGP %08x %08x\n",
+            logging::debug("No PV data!!      "
+                           "TimeStamp PV %d.%09d | PGP %d.%09d\n",
                            timestamp.seconds(), timestamp.nanoseconds(),
                            dgram->time.seconds(), dgram->time.nanoseconds());
             _sendToTeb(*dgram, index);
@@ -583,8 +585,8 @@ void PvaApp::process(const PvaMonitor& pva)
         // The PVA timestamp is older than the earliest PGP event, so skip
         else {
             ++m_nTooOld;
-            logging::debug("PVA timestamp is older than oldest PGP event!!\n"
-                           "TimeStamp PVA %08x %08x | PGP %08x %08x\n",
+            logging::debug("PV too old!!      "
+                           "TimeStamp PV %d.%09d | PGP %d.%09d\n",
                            timestamp.seconds(), timestamp.nanoseconds(),
                            dgram->time.seconds(), dgram->time.nanoseconds());
             break;
