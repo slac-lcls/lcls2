@@ -164,16 +164,16 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
 void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
 {
     unsigned index = (uintptr_t)appPrm;
-    Pds::EbDgram* ebdgram = (Pds::EbDgram*)m_pool.pebble[index];
-    XtcData::TransitionId::Value transitionId = ebdgram->service();
+    Pds::EbDgram* dgram = (Pds::EbDgram*)m_pool.pebble[index];
+    XtcData::TransitionId::Value transitionId = dgram->service();
     if (transitionId == 0) {
         logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
     }
-    uint64_t pulseId = ebdgram->pulseId();
+    uint64_t pulseId = dgram->pulseId();
 
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
         logging::critical("%sjumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
-        logging::critical("pid     %014lx, tid     %s, env %08x", pulseId, XtcData::TransitionId::name(transitionId), ebdgram->env);
+        logging::critical("pid     %014lx, tid     %s, env %08x", pulseId, XtcData::TransitionId::name(transitionId), dgram->env);
         logging::critical("lastPid %014lx, lastTid %s", m_lastPid, XtcData::TransitionId::name(m_lastTid));
     }
 
@@ -208,7 +208,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     if (m_writing) {                    // Won't ever be true for Configure
         // write event to file if it passes event builder or if it's a transition
         if (result.persist() || result.prescale()) {
-            _writeDgram(ebdgram);
+            _writeDgram(dgram);
         }
         else if (transitionId != XtcData::TransitionId::L1Accept) {
             if (transitionId == XtcData::TransitionId::BeginRun) {
@@ -222,7 +222,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         // L1Accept
         if (result.isEvent()) {
             if (result.monitor()) {
-                m_mon->post(ebdgram, result.monBufNo());
+                m_mon->post(dgram, result.monBufNo());
             }
         }
         // Other Transition

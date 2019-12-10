@@ -5,8 +5,8 @@
 #include <cstdint>
 #include <map>
 
-namespace XtcData {
-    class Dgram;
+namespace Pds {
+    class EbDgram;
 };
 
 namespace Drp {
@@ -85,7 +85,7 @@ public:
     unsigned dmaSize() const {return m_dmaSize;}
     size_t maxTransitionSize() const {return m_maxTransitionSize;}
     int fd () const {return m_fd;}
-    XtcData::Dgram* transitionDgram() {return static_cast<XtcData::Dgram*>(transitionBuffer);}
+    Pds::EbDgram* transitionDgram() {return static_cast<Pds::EbDgram*>(transitionBuffer);}
 private:
     unsigned m_nbuffers;
     unsigned m_bufferSize;

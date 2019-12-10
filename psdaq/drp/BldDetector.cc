@@ -376,10 +376,16 @@ Pds::EbDgram* Pgp::handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
     uint32_t evtCounter = data[5] & 0xffffff;
     evtIndex = evtCounter & (m_pool.nbuffers() - 1);
     PGPEvent* event = &m_pool.pgpEvents[evtIndex];
+
     DmaBuffer* buffer = &event->buffers[lane];
     buffer->size = size;
     buffer->index = index;
     event->mask |= (1 << lane);
+
+    // move the control bits from the pulseId into the
+    // top 8 bits of env.
+    unsigned control = timingHeader->timing_control();
+    timingHeader->env = (timingHeader->env&0xffffff)|(control<<24);
 
     // make new dgram in the pebble
     Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_envMask);
@@ -700,7 +706,7 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
                 }
             }
             else {
-                if (dgram->seq.service() == XtcData::TransitionId::L1Accept) {
+                if (dgram->service() == XtcData::TransitionId::L1Accept) {
                     bool lMissed = false;
                     for(unsigned i=0; i<m_config.size(); i++) {
                         if (pulseId[i] == nextId) {
@@ -729,10 +735,10 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
                 }
                 else {
                     // Construct the transition in its own buffer from the PGP Dgram
-                    XtcData::Dgram* trDgram = m_drp.pool.transitionDgram();
+                    Pds::EbDgram* trDgram = m_drp.pool.transitionDgram();
                     *trDgram = *dgram;
 
-                    switch (dgram->seq.service()) {
+                    switch (dgram->service()) {
                         case XtcData::TransitionId::Configure: {
                             logging::info("BLD configure");
 

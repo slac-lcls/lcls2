@@ -103,7 +103,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 // phase1 of the transition, fix up the Dgram header with the
                 // real one while taking care not to touch the XTC
                 // Revisit: Delay this until EbReceiver time?
-                XtcData::Dgram* trDgram = pool.transitionDgram();
+                Pds::EbDgram* trDgram = pool.transitionDgram();
                 memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
                 // make sure the detector hasn't made the transition too big
                 size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();

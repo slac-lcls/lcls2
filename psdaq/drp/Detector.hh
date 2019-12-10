@@ -1,13 +1,13 @@
 #pragma once
 
-#include "xtcdata/xtc/Dgram.hh"
+#include "drp.hh"
 #include "xtcdata/xtc/NamesId.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
+#include "psdaq/service/EbDgram.hh"
 
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include "drp.hh"
 #include "psdaq/service/json.hpp"
 
 namespace Drp {
