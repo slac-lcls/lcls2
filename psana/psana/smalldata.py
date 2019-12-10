@@ -66,10 +66,15 @@ from collections.abc import MutableMapping
 
 # -----------------------------------------------------------------------------
 
-from mpi4py import MPI
-COMM = MPI.COMM_WORLD
-RANK = COMM.Get_rank()
-SIZE = COMM.Get_size()
+from psana.psexp.tools import mode
+
+if mode == 'mpi':
+    from mpi4py import MPI
+    COMM = MPI.COMM_WORLD
+    RANK = COMM.Get_rank()
+    SIZE = COMM.Get_size()
+else:
+    SIZE = 1
 
 if SIZE > 1:
     MODE = 'PARALLEL'
