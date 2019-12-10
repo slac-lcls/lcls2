@@ -37,7 +37,7 @@ public:
             xtc.contains = tid;
             xtc.extent = sizeof(XtcData::Xtc);
             time = th.time;
-            env = th.env & envRogMask; // filter out other partition ROGs
+            env = (th.env & envRogMask) | (th.timing_service()<<24); // filter out other partition ROGs
     }
 };
 
