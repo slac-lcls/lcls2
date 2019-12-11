@@ -18,6 +18,7 @@
 #include <unistd.h> // close
 #include <stdint.h>  // uint8_t, uint32_t, etc.
 
+#include <bitset>   
 
 //#include "xtcdata/xtc/ShapesData.hh"
 //#include "xtcdata/xtc/DescData.hh"
@@ -114,7 +115,7 @@ int file_descriptor(const char* fname="data-xpptut15-r0430-e000010-jungfrau.xtc2
   //const char* path = "/reg/neh/home/cpo/git/lcls2/psana/psana/dgramPort/jungfrau.xtc2";
   //const char* path = "/reg/g/psdm/detector/data2_test/xtc/data-cxid9114-r0089-e000010-cspad.xtc2";
   //const char* path = "/reg/g/psdm/detector/data2_test/xtc/data-xpptut15-r0430-e000010-jungfrau.xtc2";
-  string path(dname); path += fname;
+    string path(dname); path += fname;
     std::cout << "xtc file name: " << path.c_str() << '\n';
     int fd = open(path.c_str(), O_RDONLY);
     if (fd < 0) {
@@ -327,6 +328,7 @@ void test_AreaDetectorCspad(int argc, char* argv[]) {
   unsigned nevent=0;
   while ((dg = xfi.next())) {
       if (nevent>=neventreq) break;
+      nevent++;
 
       printf("evt:%04d\n", nevent);
       //print_dg_info(dg);
@@ -340,7 +342,6 @@ void test_AreaDetectorCspad(int argc, char* argv[]) {
       NDArray<raw_jungfrau_t>& nda2 = det.raw(ddata);
       std::cout << "  == raw data nda for DescData: " << nda2 << '\n';
 
-      nevent++;
   }
   ::close(fd);
 }
@@ -427,7 +428,7 @@ void test_AreaDetectorOpal(int argc, char* argv[]) {
   ConfigIter ci(&(dg->xtc));
 
   AreaDetectorOpal det("opal_0001", ci);
-  det._class_msg("some string");
+  det._class_msg("XXXX just a test string");
 
   // set parameters to get calib files.
   // In future this info should be supplied directly from xtc file...
@@ -439,26 +440,23 @@ void test_AreaDetectorOpal(int argc, char* argv[]) {
   std::cout << "== det.detname     : " << det.detname() << '\n';
   std::cout << "== det.query       : " << det.query()   << '\n';
 
-
   //det.load_calib_constants();
 
-  det._set_indexes_config(ci);
   det.print_config_indexes();
 
-  std::cout << str_config_names(ci) << '\n';
+  std::cout << "XXXX str_config_names(ci):\n" << str_config_names(ci) << '\n';
   det.print_config();
 
   //===========================
-  std::cout << "TEST EXIT\n";
-  exit(0);
+  //exit(0);
   //===========================
-
 
   unsigned neventreq=5;
   unsigned nevent=0;
   bool first_entrance = true;
   while ((dg = xfi.next())) {
       if (nevent>=neventreq) break;
+      nevent++;
 
       printf("evt:%04d\n", nevent);
 
@@ -469,7 +467,7 @@ void test_AreaDetectorOpal(int argc, char* argv[]) {
       if(first_entrance) {
         first_entrance = false;
         det._set_indexes_data(di);
-        det.print_data_indexes();
+        det.print_data_indexes(di);
       }
 
       det.print_data(di);
@@ -481,12 +479,44 @@ void test_AreaDetectorOpal(int argc, char* argv[]) {
       //NDArray<opal_raw_t>& nda2 = det.raw(dd);
       //std::cout << "  ==   raw data nda for DescData: " << nda2 << '\n';
 
-      NDArray<opal_calib_t>& nda3 = det.calib(di);
-      std::cout << "  == calib data nda for DataIter: " << nda3 << '\n';
-      nevent++;
+      //NDArray<opal_calib_t>& nda3 = det.calib(di);
+      //std::cout << "  == calib data nda for DataIter: " << nda3 << '\n';
+
   }
 
   ::close(fd);
+}
+
+
+//-------------------
+
+void test_misc(int argc, char* argv[]) {
+
+  MSG(INFO, "In test_misc");
+  int fd = file_descriptor("data-xppl1316-r0193-e000010-opal1k.xtc2");
+  //XtcFileIterator xfi(fd, 0x4000000);
+  std::cout << "file_descriptor: " << fd << '\n';
+
+  static std::size_t size = 100;
+  char buf[size];
+  ssize_t sz = ::read(fd, &buf[0], size);
+  std::cout << "size of read: " << sz << '\n';
+
+  std::cout << "raw content: " << '\n';
+  unsigned i=25; char* p=&buf[i];
+  for(; i<55; i++, p++) 
+      std::cout << i << " p:" << (void*) p << " v:" << std::bitset<8>(*p) << '\n';
+
+  ::close(fd);
+
+  
+  std::cout << "sizeof(float)        : " << sizeof(float) << '\n';
+  std::cout << "sizeof(double)       : " << sizeof(double) << '\n';
+  std::cout << "sizeof(int)          : " << sizeof(int) << '\n';
+  std::cout << "sizeof(unsigned)     : " << sizeof(unsigned) << '\n';
+  std::cout << "sizeof(char*)        : " << sizeof(char*) << '\n';
+  std::cout << "sizeof(std::size_t)  : " << sizeof(std::size_t) << '\n';
+  std::cout << "sizeof()             : " << sizeof(int) << '\n';
 }
 
 //-------------------
@@ -500,11 +530,12 @@ std::string usage(const std::string& tname="")
   if (tname == "") ss << "Usage command> test_AreaDetector <test-number>\n  where test-number";
   if (tname == "" || tname=="0"	) ss << "\n  0  - test_AreaDetector()         - demo of derived AreaDetectorJungfrau methods";
   if (tname == "" || tname=="1"	) ss << "\n  1  - test_AreaDetector_base()    - demo of generic methods of the base class";
-  if (tname == "" || tname=="2"	) ss << "\n  2  - test_AreaDetector_mix()     - demo of mixed output of different objects";
+  if (tname == "" || tname=="2"	) ss << "\n  2  - test_AreaDetector_mix()     - demo of mixed output of different objects" ;
   if (tname == "" || tname=="3"	) ss << "\n  3  - test_AreaDetectorJungfrau() - demo of jungfrau specific methods";
   if (tname == "" || tname=="4"	) ss << "\n  4  - test_AreaDetectorPnccd()    - demo of pnccd specific methods";
   if (tname == "" || tname=="5"	) ss << "\n  5  - test_AreaDetectorOpal()     - demo of opal specific methods";
-  if (tname == "" || tname=="9"	) ss << "\n  9  - test_getAreaDetector()";
+  if (tname == "" || tname=="9" ) ss << "\n  9  - test_getAreaDetector()";
+  if (tname == "" || tname=="50") ss << "\n 50  - test_misc()";
   ss << '\n';
   return ss.str();
 }
@@ -529,7 +560,7 @@ int main(int argc, char **argv) {
   else if (tname=="3") test_AreaDetectorJungfrau(argc, argv);
   else if (tname=="4") test_AreaDetectorPnccd(argc, argv);
   else if (tname=="5") test_AreaDetectorOpal(argc, argv);
-  else if (tname=="9") test_getAreaDetector();
+  else if (tname=="50") test_misc(argc, argv);
   else MSG(WARNING, "Undefined test name: " << tname);
 
   print_hline(80,'_');

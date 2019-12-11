@@ -195,7 +195,7 @@ public:
 protected:
   shape_t*                _shape;
   ConfigIter*             _pconfit = 0;
-  DataIter*               _pdataiter = 0;
+  DataIter*               _pdatait = 0;
   int                     _ind_data;
   void _set_index_data(XtcData::DescData& ddata, const char* dataname);
 

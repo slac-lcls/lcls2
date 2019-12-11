@@ -15,6 +15,7 @@ install(FILES
     DirFileIterator.hh
     ctest_utils.hh
     SysLog.hh
+    NDArrayGenerators.hh
     DESTINATION include/psalg/utils
 )
 

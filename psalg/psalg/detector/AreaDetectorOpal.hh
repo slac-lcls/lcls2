@@ -21,7 +21,7 @@ public:
   //------------------------------
 
   AreaDetectorOpal(const std::string& detname, XtcData::ConfigIter& configiter);
-  AreaDetectorOpal(const std::string& detname);
+  AreaDetectorOpal(const std::string& detname); // needs in det._set_indexes_config(ci);
   AreaDetectorOpal();
   virtual ~AreaDetectorOpal();
 
@@ -29,19 +29,20 @@ public:
 
   virtual void _set_indexes_config(XtcData::ConfigIter&);
   virtual void _set_indexes_data(XtcData::DataIter&);
+  //virtual void _set_indexes_data(XtcData::DescData&);
 
   virtual const void print_config_indexes();
-  virtual const void print_data_indexes();
   virtual const void print_config();
+  virtual const void print_data_indexes(XtcData::DataIter&);
   virtual const void print_data(XtcData::DataIter&);
 
   void _class_msg(const std::string& msg=std::string());
 
   virtual NDArray<opal_raw_t>& raw(XtcData::DescData&);
-  virtual NDArray<opal_raw_t>& raw(XtcData::DataIter& di) {return raw(descdata(di));}
+  virtual NDArray<opal_raw_t>& raw(XtcData::DataIter& di) {_set_indexes_data(di); return raw(descdata(di));}
 
   virtual NDArray<opal_calib_t>& calib(XtcData::DescData&);
-  virtual NDArray<opal_calib_t>& calib(XtcData::DataIter& di) {return calib(descdata(di));}
+  virtual NDArray<opal_calib_t>& calib(XtcData::DataIter& di) {_set_indexes_data(di); return calib(descdata(di));}
 
   virtual void load_calib_constants();
 

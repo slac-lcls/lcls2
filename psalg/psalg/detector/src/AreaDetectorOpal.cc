@@ -15,10 +15,11 @@ namespace detector {
 
 //-----------------------------
 
-AreaDetectorOpal::AreaDetectorOpal(const std::string& detname, XtcData::ConfigIter& configo)
-  : AreaDetector(detname, configo) {
+AreaDetectorOpal::AreaDetectorOpal(const std::string& detname, XtcData::ConfigIter& ci)
+  : AreaDetector(detname, ci) {
   MSG(DEBUG, "In c-tor AreaDetectorOpal(detname, configo) for " << detname);
   //process_config();
+  _set_indexes_config(ci);
 }
 
 AreaDetectorOpal::AreaDetectorOpal(const std::string& detname)
@@ -109,7 +110,10 @@ const NDArray<pixel_size_t>&  image_yaxis(const event_t&) = 0;
 //-------------------
 
 void AreaDetectorOpal::_set_indexes_config(XtcData::ConfigIter& configiter) {
+
+  if(!_pconfit) return;
   _pconfit = &configiter;
+
   XtcData::Names& names = configNames(configiter);
   MSG(DEBUG, str_config_names(configiter));
 
@@ -154,6 +158,9 @@ void AreaDetectorOpal::_set_indexes_config(XtcData::ConfigIter& configiter) {
 //-------------------
 
 void AreaDetectorOpal::_set_indexes_data(XtcData::DataIter& dataiter) {
+    if(_pdatait) return;
+    _pdatait = &dataiter;
+
     ConfigIter& configo = *_pconfit;
     NamesLookup& namesLookup = configo.namesLookup();
     DescData& descdata = dataiter.desc_value(namesLookup);
@@ -166,16 +173,16 @@ void AreaDetectorOpal::_set_indexes_data(XtcData::DataIter& dataiter) {
         printf("  %02d name: %-32s rank: %d type: %d : %s\n", i, name.name(), name.rank(), name.type(), name.str_type());
 
         const char* cname = name.name();
-        if     (strcmp(cname, "data_Version")      ==0) _data_Version    = i;
-        else if(strcmp(cname, "data_TypeId")       ==0) _data_TypeId     = i;
-        else if(strcmp(cname, "height")            ==0) _height          = i;
-        else if(strcmp(cname, "width")             ==0) _width           = i;
-        else if(strcmp(cname, "depth")             ==0) _depth           = i;
-        else if(strcmp(cname, "offset")            ==0) _offset          = i;
-        else if(strcmp(cname, "depth_bytes")       ==0) _depth_bytes     = i;
-        else if(strcmp(cname, "_int_pixel_data")   ==0) __int_pixel_data = i;
-        else if(strcmp(cname, "data8")             ==0) _data8           = i;
-        else if(strcmp(cname, "data16")            ==0) _data16          = i;
+        if     (strcmp(cname, "data_Version")    ==0) _data_Version    = i;
+        else if(strcmp(cname, "data_TypeId")     ==0) _data_TypeId     = i;
+        else if(strcmp(cname, "height")          ==0) _height          = i;
+        else if(strcmp(cname, "width")           ==0) _width           = i;
+        else if(strcmp(cname, "depth")           ==0) _depth           = i;
+        else if(strcmp(cname, "offset")          ==0) _offset          = i;
+        else if(strcmp(cname, "depth_bytes")     ==0) _depth_bytes     = i;
+        else if(strcmp(cname, "_int_pixel_data") ==0) __int_pixel_data = i;
+        else if(strcmp(cname, "data8")           ==0) _data8           = i;
+        else if(strcmp(cname, "data16")          ==0) _data16          = i;
     }
 }
 
@@ -254,18 +261,21 @@ const void AreaDetectorOpal::print_config_indexes() {
 */
 
 const void AreaDetectorOpal::print_data(XtcData::DataIter& di) {
-    std::cout << "\n==== Data ====\n";
-    std::cout << "data_Version      : " << data_Version(di) << '\n';
-    std::cout << "data_TypeId       : " << data_TypeId(di)  << '\n';
-    std::cout << "height            : " << height(di)       << '\n';
-    std::cout << "width             : " << width(di)        << '\n';
-    std::cout << "depth             : " << depth(di)        << '\n';
-    std::cout << "offset            : " << offset(di)       << '\n';
-    std::cout << "depth_bytes       : " << depth_bytes(di)  << '\n';
 
-    std::cout << "_int_pixel_data   : " << (NDArray<uint8_t>)_int_pixel_data(di) << '\n';
-    std::cout << "data8             : " << (NDArray<uint8_t>)data8(di)           << '\n';
-    std::cout << "data16            : " << (NDArray<uint16_t>)data16(di)         << '\n';
+  if(!_pdatait) _set_indexes_data(di);
+
+  std::cout << "\n==== Data ====\n";
+  std::cout << "data_Version      : " << data_Version(di) << '\n';
+  std::cout << "data_TypeId       : " << data_TypeId(di)  << '\n';
+  std::cout << "height            : " << height(di)       << '\n';
+  std::cout << "width             : " << width(di)        << '\n';
+  std::cout << "depth             : " << depth(di)        << '\n';
+  std::cout << "offset            : " << offset(di)       << '\n';
+  std::cout << "depth_bytes       : " << depth_bytes(di)  << '\n';
+
+  std::cout << "_int_pixel_data   : " << (NDArray<uint8_t>)_int_pixel_data(di) << '\n';
+  std::cout << "data8             : " << (NDArray<uint8_t>)data8(di)           << '\n';
+  std::cout << "data16            : " << (NDArray<uint16_t>)data16(di)         << '\n';
 }
 
 //-------------------
@@ -277,7 +287,10 @@ const void AreaDetectorOpal::print_data(XtcData::DataIter& di) {
  LONG_STRING2(_cbuf1[m], _frameNumber[m])
 */
 
-const void AreaDetectorOpal::print_data_indexes() {
+const void AreaDetectorOpal::print_data_indexes(XtcData::DataIter& di) {
+
+  if(!_pdatait) _set_indexes_data(di);
+
   std::cout << "\n\n==== indecses for names in data ====\n";
   std::cout << setfill(' ');
   std::cout << "Version         : " << std::right << std::setw(2) << _Version         << '\n';

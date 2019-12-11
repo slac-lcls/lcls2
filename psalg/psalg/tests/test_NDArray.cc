@@ -4,6 +4,7 @@
 #include <sstream>
 
 #include "psalg/calib/NDArray.hh"
+#include "psalg/utils/NDArrayGenerators.hh"
 
 using namespace psalg;
 
@@ -71,6 +72,36 @@ void test_cpp() {
   int vnc=6;
   test_met_signature(v);
   test_met_signature(vnc);
+  cout << '\n'; 
+}
+//-------------------
+
+void test_NDArrayGenerators() {
+
+  typedef psalg::types::shape_t shape_t; // uint32_t
+  typedef psalg::types::size_t  size_t;  // uint32_t
+
+  shape_t sh[] = {3,4};
+  size_t  nd = 2;
+  NDArray<double> a(sh, nd);
+  std::cout << "  NDArray (raw)   : " << a << '\n';
+
+  double v = 8;
+  fill_ndarray_const<double>(a, v);
+  std::cout << "  NDArray (const): " << a.string_ndarray(20) << '\n';
+
+  NDArray<int> a2(sh, nd);
+  int range=100;
+  //srand(12345); // initialization of random numbers
+  srand(time(0)); // initialization of random numbers
+  fill_ndarray_random(a2, range);
+  std::cout << "  NDArray (random): " << a2.string_ndarray(12) << '\n';
+
+  NDArray<double> a3(sh, nd);
+  double mean=0;
+  double stddev=1;
+  fill_ndarray_normal(a3, mean, stddev);
+  std::cout << "  NDArray (normal): " << a3.string_ndarray(12) << '\n';
 }
 
 //-------------------
@@ -81,6 +112,7 @@ std::string usage(const std::string& tname="")
   if (tname == "") ss << "Usage command> test_NDArray <test-number>\n  where test-number";
   if (tname == "" || tname=="1"	) ss << "\n  1  - test_NDArray()";
   if (tname == "" || tname=="2"	) ss << "\n  2  - test_cpp()";
+  if (tname == "" || tname=="3"	) ss << "\n  3  - test_NDArrayGenerators()";
   ss << '\n';
   return ss.str();
 }
@@ -99,6 +131,7 @@ int main(int argc, char* argv[])
 
   if      (tname=="1")  test_NDArray();
   else if (tname=="2")  test_cpp();
+  else if (tname=="3")  test_NDArrayGenerators();
   else cout << "Undefined test name \"" << tname << '\"';
  
   print_hline(80,'_');
