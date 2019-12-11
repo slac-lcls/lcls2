@@ -57,6 +57,13 @@ fig = gr.figure(figsize=(15,15), title='Image')
 fig.clear()
 ax = [gr.add_axes(fig, axwin=(x0, y0 + i*dy, w, h)) for i in range(naxes)]
 
+
+#----------
+
+def array_of_selected_channels(a, ch = (2,3,4,5,6)) :
+    """converts shape:(8, 44000) -> shape:(5, 44000)"""
+    return a[ch,:]
+
 #----------
 
 def draw_waveforms(wfs, wts, nev) :
@@ -68,6 +75,7 @@ def draw_waveforms(wfs, wts, nev) :
     t0_sec = time()
 
     #======== peak-finding algorithm ============
+    #wfs, wts = array_of_selected_channels(wfs), array_of_selected_channels(wts)
     nhits, pkinds, pkvals, pktsec = peaks(wfs,wts)
     dt_sec = time()-t0_sec
     wfssel,wtssel = peaks.waveforms_preprocessed(wfs, wts) # selected time range and subtracted offset
