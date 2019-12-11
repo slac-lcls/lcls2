@@ -274,6 +274,27 @@ public:
 
 //-------------------
 
+  std::string string_ndarray(const size_t max_nvalues=5) 
+  {
+    const NDArray<T>& o = *this; 
+    std::stringstream ss("");
+    size_t nd = o.ndim();
+    if(nd) {
+      shape_t* sh = o.shape();
+      ss << "typeid=" << typeid(T).name() << " ndim=" << nd << " size=" << o.size() << " shape=(";
+      for(size_t i=0; i<nd; i++) {ss << sh[i]; if(i != (nd-1)) ss << ", ";}
+      ss << ") data=";
+      size_t nvals = min((size_t)max_nvalues, o.size());
+      const T* d = o.const_data();
+      size_t i=0;
+      for(; i<nvals; i++, d++) {ss << *d; if(i<o.size()-1) ss <<  ", ";}
+      if(i<o.size()) ss << "...";
+    }
+    return ss.str();
+  }
+
+//-------------------
+
   friend std::ostream& 
   operator << (std::ostream& os, const NDArray<T>& o) 
   {
@@ -285,7 +306,9 @@ public:
       os << ") data=";
       size_t nvals = min((size_t)4, o.size());
       const T* d = o.const_data();
-      for(size_t i=0; i<nvals; i++, d++) {os << *d; if(i<nvals) os << ", ";} if(nvals>1) os << "...";
+      size_t i=0;
+      for(; i<nvals; i++, d++) {os << *d; if(i<o.size()-1) os << ", ";}
+      if(i<o.size()) os << "...";
     }
     return os;
   }
@@ -296,7 +319,6 @@ private:
   shape_t _shape[MAXNDIM];
   T* _buf_ext;
   NON_CONST_T* _buf_own;
-
 };
 
 } // namespace psalg
