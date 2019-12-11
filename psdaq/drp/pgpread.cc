@@ -84,8 +84,8 @@ int main(int argc, char* argv[])
             uint32_t index = dmaIndex[b];
             uint32_t size = dmaRet[b];
             uint32_t dest = dmaDest[b] >> 8;
-            Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(dmaBuffers[index]);
-            XtcData::TransitionId::Value transition_id = event_header->timing_service();
+            const Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(dmaBuffers[index]);
+            XtcData::TransitionId::Value transition_id = event_header->service();
 
             printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u | index %u\n",
                    size, dest, transition_id, event_header->pulseId(), event_header->evtCounter, index);

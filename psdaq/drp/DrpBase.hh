@@ -74,6 +74,7 @@ public:
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
     prometheus::Exposer* exposer() {return m_exposer.get();}
     unsigned nodeId() const {return m_nodeId;}
+    const Pds::Eb::TebCtrbParams& tebPrms() const {return m_tPrms;}
     MemPool pool;
 private:
     int setupTriggerPrimitives(const nlohmann::json& body);

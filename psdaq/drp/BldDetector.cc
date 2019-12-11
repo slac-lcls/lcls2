@@ -349,7 +349,7 @@ public:
 
     Pds::EbDgram* next(uint64_t pulseId, uint32_t& evtIndex);
 private:
-    Pds::EbDgram* handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex);
+    Pds::EbDgram* handle(const Pds::TimingHeader& timingHeader, uint32_t& evtIndex);
     MemPool& m_pool;
     unsigned m_nodeId;
     uint32_t m_envMask;
@@ -362,7 +362,7 @@ private:
     uint32_t dest[MAX_RET_CNT_C];
 };
 
-Pds::EbDgram* Pgp::handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
+Pds::EbDgram* Pgp::handle(const Pds::TimingHeader& timingHeader, uint32_t& evtIndex)
 {
     int32_t size = dmaRet[m_current];
     uint32_t index = dmaIndex[m_current];
@@ -382,13 +382,8 @@ Pds::EbDgram* Pgp::handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
     buffer->index = index;
     event->mask |= (1 << lane);
 
-    // move the control bits from the pulseId into the
-    // top 8 bits of env.
-    unsigned control = timingHeader->timing_control();
-    timingHeader->env = (timingHeader->env&0xffffff)|(control<<24);
-
     // make new dgram in the pebble
-    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_envMask);
+    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(timingHeader, XtcData::Src(m_nodeId), m_envMask);
 
     return dgram;
 }
@@ -423,18 +418,18 @@ Pds::EbDgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex)
         }
     }
 
-    Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)m_pool.dmaBuffers[dmaIndex[m_current]];
+    const Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(m_pool.dmaBuffers[dmaIndex[m_current]]);
 
     // return dgram if bld pulseId matches pgp pulseId or if its a transition
     if ((pulseId == timingHeader->pulseId()) || (timingHeader->service() != XtcData::TransitionId::L1Accept)) {
-        Pds::EbDgram* dgram = handle(timingHeader, evtIndex);
+        Pds::EbDgram* dgram = handle(*timingHeader, evtIndex);
         m_current++;
         m_next = timingHeader->pulseId();
         return dgram;
     }
     // Missed BLD data so mark event as damaged
     else if (pulseId > timingHeader->pulseId()) {
-        Pds::EbDgram* dgram = handle(timingHeader, evtIndex);
+        Pds::EbDgram* dgram = handle(*timingHeader, evtIndex);
         dgram->xtc.damage.increase(XtcData::Damage::MissingData);
         m_current++;
         return dgram;
@@ -665,7 +660,7 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
 
     //    std::vector<XtcData::NameIndex> nameIndex(m_config.size());
 
-    Pgp pgp(m_drp.pool, m_drp.nodeId(), 0xffff0000 | uint32_t(m_para.rogMask));
+    Pgp pgp(m_drp.pool, m_drp.nodeId(), m_para.rogMask);
 
     uint64_t nevents = 0L;
     std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};
@@ -802,6 +797,11 @@ void BldApp::sentToTeb(Pds::EbDgram& dgram, uint32_t index)
         if (dgram.isEvent()) {
             if (m_drp.triggerPrimitive()) {// else this DRP doesn't provide input
                 m_drp.triggerPrimitive()->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc); // Produce
+                size_t size = sizeof(*l3InpDg) + l3InpDg->xtc.sizeofPayload();
+                if (size > m_drp.tebPrms().maxInputSize) { // Revisit: where to get tPrms from?
+                    logging::critical("L3 Input Dgram of size %zd overflowed buffer of size %zd", size, m_drp.tebPrms().maxInputSize);
+                    exit(-1);
+                }
             }
         }
         m_drp.tebContributor().process(l3InpDg);

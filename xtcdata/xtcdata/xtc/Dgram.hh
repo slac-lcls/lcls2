@@ -11,23 +11,32 @@
 namespace XtcData
 {
 
-class Transition {
+class TransitionBase {
 public:
     enum Type { Event = 0, Occurrence = 1, Marker = 2 };
     enum { NumberOfTypes = 3 };
-    Transition() {}
-    Transition(Type type_, TransitionId::Value tid_,
-               const TimeStamp& time_, uint32_t env_) :
+    TransitionBase() {}
+    TransitionBase(Type type_, TransitionId::Value tid_,
+                   const TimeStamp& time_, uint32_t env_) :
         time(time_), env((type_<<28)|(tid_<<24)|(env_&0xffffff)) {}
 public:
-    uint16_t readoutGroups()      const { return (env)&0xffff; }
-    unsigned control()            const { return (env>>24)&0xff; }
-    Type type()                   const { return Type((control()>>4)&0x3); }
-    TransitionId::Value service() const { return TransitionId::Value(control()&0xf); }
-    bool isEvent()                const { return service()==TransitionId::L1Accept; }
+    uint16_t readoutGroups() const { return (env)&0xffff; }
 public:
     TimeStamp time;
     uint32_t env;
+};
+
+class Transition : public TransitionBase {
+public:
+    Transition() {}
+    Transition(Type type_, TransitionId::Value tid_,
+               const TimeStamp& time_, uint32_t env_) :
+      TransitionBase(type_, tid_, time_, env_) {}
+public:
+    unsigned control()            const { return (env>>24)&0xff; }
+    TransitionId::Value service() const { return TransitionId::Value(control()&0xf); }
+    Type type()                   const { return Type((control()>>4)&0x3); }
+    bool isEvent()                const { return service()==TransitionId::L1Accept; }
 };
 
 class Dgram : public Transition {

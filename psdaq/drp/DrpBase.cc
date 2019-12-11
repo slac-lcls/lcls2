@@ -440,7 +440,7 @@ int DrpBase::setupTriggerPrimitives(const json& body)
                 __PRETTY_FUNCTION__);
         return -1;
     }
-    m_tPrms.maxInputSize = sizeof(XtcData::Dgram) + m_triggerPrimitive->size();
+    m_tPrms.maxInputSize = sizeof(Pds::EbDgram) + m_triggerPrimitive->size();
 
     if (m_triggerPrimitive->configure(top, m_connectMsg, m_collectionId)) {
         fprintf(stderr, "%s:\n  Failed to configure TriggerPrimitive\n",
@@ -483,9 +483,16 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     m_tPrms.readoutGroup = 1 << unsigned(body["drp"][stringId]["det_info"]["readout"]);
     m_tPrms.contractor = 0;             // Overridden during Configure
 
-    m_para.rogMask = 0xffff0000; // Build readout group mask for ignoring other partitions' RoGs
+    // Build readout group mask for ignoring other partitions' RoGs
+    m_para.rogMask = 0x00ff0000 | ((1 << Pds::Eb::NUM_READOUT_GROUPS) - 1);
     for (auto it : body["drp"].items()) {
-        m_para.rogMask |= 1 << unsigned(it.value()["det_info"]["readout"]);
+        unsigned rog = unsigned(it.value()["det_info"]["readout"]);
+        if (rog < Pds::Eb::NUM_READOUT_GROUPS - 1) {
+            m_para.rogMask |= 1 << rog;
+        }
+        else {
+          logging::error("Ignoring Readout Group %d > max (%d)", rog, Pds::Eb::NUM_READOUT_GROUPS - 1);
+        }
     }
 
     m_mPrms.addrs.clear();
@@ -501,7 +508,7 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
             unsigned count = it.value()["connect_info"]["buf_count"];
             if (!m_mPrms.maxEvents)  m_mPrms.maxEvents = count;
             if (count != m_mPrms.maxEvents) {
-                logging::error("Error: maxEvents must be the same for all MEBs");
+                logging::error("maxEvents must be the same for all MEBs");
             }
         }
     }

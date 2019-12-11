@@ -141,7 +141,7 @@ public:
 
     Pds::EbDgram* next(uint32_t& evtIndex);
 private:
-    Pds::EbDgram* _handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex);
+    Pds::EbDgram* _handle(const Pds::TimingHeader& timingHeader, uint32_t& evtIndex);
     MemPool& m_pool;
     unsigned m_nodeId;
     uint32_t m_envMask;
@@ -153,7 +153,7 @@ private:
     uint32_t dest[MAX_RET_CNT_C];
 };
 
-Pds::EbDgram* Pgp::_handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
+Pds::EbDgram* Pgp::_handle(const Pds::TimingHeader& timingHeader, uint32_t& evtIndex)
 {
     int32_t size = dmaRet[m_current];
     uint32_t index = dmaIndex[m_current];
@@ -173,13 +173,8 @@ Pds::EbDgram* Pgp::_handle(Pds::TimingHeader* timingHeader, uint32_t& evtIndex)
     buffer->index = index;
     event->mask |= (1 << lane);
 
-    // move the control bits from the pulseId into the
-    // top 8 bits of env.
-    unsigned control = timingHeader->timing_control();
-    timingHeader->env = (timingHeader->env&0xffffff)|(control<<24);
-
     // make new dgram in the pebble
-    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_envMask);
+    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(timingHeader, XtcData::Src(m_nodeId), m_envMask);
 
     return dgram;
 }
@@ -206,9 +201,9 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
         }
     }
 
-    Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)m_pool.dmaBuffers[dmaIndex[m_current]];
+    const Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(m_pool.dmaBuffers[dmaIndex[m_current]]);
 
-    Pds::EbDgram* dgram = _handle(timingHeader, evtIndex);
+    Pds::EbDgram* dgram = _handle(*timingHeader, evtIndex);
     m_current++;
     return dgram;
 }
@@ -399,7 +394,7 @@ void PvaApp::_worker(std::shared_ptr<MetricExporter> exporter)
         exit(-1);
     }
 
-    Pgp pgp(m_drp.pool, m_drp.nodeId(), 0xffff0000 | uint32_t(m_para.rogMask));
+    Pgp pgp(m_drp.pool, m_drp.nodeId(), m_para.rogMask);
 
     std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};
     m_nEvents = 0;
@@ -604,6 +599,11 @@ void PvaApp::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
         if (dgram.isEvent()) {
             if (m_drp.triggerPrimitive()) {// else this DRP doesn't provide input
                 m_drp.triggerPrimitive()->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc); // Produce
+                size_t size = sizeof(*l3InpDg) + l3InpDg->xtc.sizeofPayload();
+                if (size > m_drp.tebPrms().maxInputSize) {
+                    logging::critical("L3 Input Dgram of size %zd overflowed buffer of size %zd", size, m_drp.tebPrms().maxInputSize);
+                    exit(-1);
+                }
             }
         }
         m_drp.tebContributor().process(l3InpDg);

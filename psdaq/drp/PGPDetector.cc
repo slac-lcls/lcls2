@@ -35,7 +35,7 @@ bool checkPulseIds(MemPool& pool, PGPEvent* event)
     for (int i=0; i<4; i++) {
         if (event->mask & (1 << i)) {
             uint32_t index = event->buffers[i].index;
-            Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(pool.dmaBuffers[index]);
+            const Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(pool.dmaBuffers[index]);
             if (pulseId == 0) {
                 pulseId = timingHeader->pulseId();
             }
@@ -47,7 +47,7 @@ bool checkPulseIds(MemPool& pool, PGPEvent* event)
                 }
             }
             // check bit 7 in pulseId for error
-            bool error = timingHeader->timing_control() & (1 << 7);
+            bool error = timingHeader->control() & (1 << 7);
             if (error) {
                 logging::error("Error bit in pulseId is set");
             }
@@ -72,13 +72,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             PGPEvent* event = &pool.pgpEvents[index];
             checkPulseIds(pool, event);
 
-            // get transitionId from the first lane in the event
-            int lane = __builtin_ffs(event->mask) - 1;
-            uint32_t dmaIndex = event->buffers[lane].index;
-            Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)pool.dmaBuffers[dmaIndex];
-
-            // make new dgram in the pebble
-            Pds::EbDgram* dgram = new(pool.pebble[index]) Pds::EbDgram(*timingHeader, XtcData::Src(det->nodeId), para.rogMask);
+            Pds::EbDgram* dgram = reinterpret_cast<Pds::EbDgram*>(pool.pebble[index]);
             XtcData::TransitionId::Value transitionId = dgram->service();
 
             // Event
@@ -94,6 +88,11 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                     Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(*dgram);
                     if (drp.triggerPrimitive()) { // else this DRP doesn't provide input
                         drp.triggerPrimitive()->event(pool, index, dgram->xtc, l3InpDg->xtc);
+                        size_t size = sizeof(*l3InpDg) + l3InpDg->xtc.sizeofPayload();
+                        if (size > drp.tebPrms().maxInputSize) {
+                            logging::critical("L3 Input Dgram of size %zd overflowed buffer of size %zd", size, drp.tebPrms().maxInputSize);
+                            exit(-1);
+                        }
                     }
                 }
             }
@@ -216,11 +215,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
             event->mask |= (1 << lane);
 
             if (event->mask == m_para.laneMask) {
-                Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(data);
-                // move the control bits from the pulseId into the
-                // top 8 bits of env.
-                unsigned control = timingHeader->timing_control();
-                timingHeader->env = (timingHeader->env&0xffffff)|(control<<24);
+                const Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(data);
                 XtcData::TransitionId::Value transitionId = timingHeader->service();
                 if (transitionId != XtcData::TransitionId::L1Accept) {
                     logging::debug("PGPReader  saw %s transition @ %d.%09d (%014lx)",
@@ -254,7 +249,13 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 nevents++;
                 m_batch.size++;
 
-                event->l3InpBuf = tebContributor.allocate(reinterpret_cast<const Pds::EbDgram*>(timingHeader), (void*)((uintptr_t)current));
+                // make new dgram in the pebble
+                Pds::EbDgram* dgram = new(m_pool.pebble[current]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_para.rogMask);
+
+                // To ensure L3 Input Dgrams appear in the batch in sequenctial
+                // order, entry allocation must occur here rather than in the
+                // worker threads, the excecution order of which may get scrambled
+                event->l3InpBuf = tebContributor.allocate(dgram, (void*)((uintptr_t)current));
 
                 // send batch to worker if batch is full or if it's a transition
                 if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) ||
@@ -280,7 +281,6 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
         if (!m_workerOutputQueues[worker % m_para.nworkers].pop(batch)) {
             break;
         }
-        //std::cout<<"collector:  "<<batch.start<<"  "<<batch.size<<'\n';
         for (unsigned i=0; i<batch.size; i++) {
             unsigned index = (batch.start + i) % nbuffers;
             PGPEvent* event = &m_pool.pgpEvents[index];
@@ -296,7 +296,7 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
 
 void PGPDetector::resetEventCounter()
 {
-    m_lastComplete = 0; // 0xffffff;
+    m_lastComplete = 0;
     m_batch.start = 1;
     m_batch.size = 0;
 }
