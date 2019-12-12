@@ -10,11 +10,14 @@ Usage ::
     _ = wu.collection_names(dbname, url=cc.URL)
     _ = wu.find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL)
     _ = wu.find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL)
+    _ = wu.select_latest_doc(docs, query) :
     _ = wu.get_doc_for_docid(dbname, colname, docid, url=cc.URL)
     _ = wu.get_data_for_id(dbname, dataid, url=cc.URL)
     _ = wu.get_data_for_docid(dbname, colname, docid, url=cc.URL)
     _ = wu.get_data_for_doc(dbname, colname, doc, url=cc.URL)
     data,doc = wu.calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL)
+    d = wu.calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL)
+    d = {ctype:(data,doc),}
 
     test_*()
 """
@@ -68,12 +71,12 @@ def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
     logger.debug('find_docs query: %s' % query_string)
     r = request('%s/%s/%s'%(url,dbname,colname),{"query_string": query_string})
     try:
-        myjson = r.json()
+        return r.json()
     except:
-        print('**** dbase conversion to json failed:')
-        print('****',r)
-        
-    return r.json()
+        msg = '**** find_docs responce: %s' % str(r)\
+            + '\n     conversion to json failed, return None for query: %s' % str(query)
+        logger.warning(msg)
+        return None
 
 #------------------------------
 
@@ -83,10 +86,15 @@ def find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
        2. select the latest for run or time_sec
     """
     docs = find_docs(dbname, colname, query, url)
-    if docs is None :
-        logger.warning('find_docs returns None for query: %s' % query)
-        return None
+    if docs is None : return None
 
+    return select_latest_doc(docs, query)
+
+#------------------------------
+
+def select_latest_doc(docs, query) :
+    """Returns a single document for query selected by time_sec (if available) or run
+    """
     if len(docs)==0 :
         # commented out by cpo since this happens routinely the way
         # that Mona is fetching calibration constants in psana.
@@ -96,7 +104,7 @@ def find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL) :
     qkeys = query.keys()
     key_sort = 'time_sec' if 'time_sec' in qkeys else 'run'
 
-    logger.debug('find_doc query: %s\nfind_doc key_sort: %s' % (str(query), key_sort))
+    logger.debug('select_latest_doc: %s\nkey_sort: %s' % (str(query), key_sort))
     vals = [int(d[key_sort]) for d in docs]
     vals.sort(reverse=True)
     logger.debug('find_doc values: %s' % str(vals))
@@ -176,6 +184,31 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
         #logger.warning('document is not available for query: %s' % str(query))
         return (None, None)
     return (get_data_for_doc(dbname, colname, doc, url), doc)
+
+#------------------------------
+
+def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL) :
+    """ returns constants for all ctype-s
+    """
+    ctype=None
+    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
+    dbname = db_det if exp is None else db_exp
+    docs = find_docs(dbname, colname, query, url)
+    #logger.debug('find_docs: number of docs found: %d' % len(docs))
+    if docs is None : return None
+
+    ctypes = set([d.get('ctype',None) for d in docs])
+    ctypes.discard(None)
+    logger.debug('calib_constants_all_types - found ctypes: %s' % str(ctypes))
+
+    resp = {}
+    for ct in ctypes :
+        docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
+        doc = select_latest_doc(docs_for_type, query)
+        if doc is None : continue
+        resp[ct] = (get_data_for_doc(dbname, colname, doc, url), doc)
+
+    return resp
 
 #------------------------------
 #---------  TESTS  ------------
@@ -270,6 +303,11 @@ if __name__ == "__main__" :
     print('==== test_calib_constants_text data:', data)
     print('==== doc: %s' % str(doc))
 
+    det = 'tmo_quadanode'
+    data, doc = calib_constants(det, exp='amox27716', ctype='calibcfg', run=100, time_sec=None, vers=None) #, url=cc.URL)
+    print('==== test_calib_constants_text data:', data)
+    print('==== doc: %s' % str(doc))
+
 #------------------------------
 
   def test_calib_constants_dict() :
@@ -280,6 +318,21 @@ if __name__ == "__main__" :
     print('XXXX ==== type(data)', type(data))
     print('XXXX ==== type(doc) ', type(doc))
     print('==== doc: %s' % doc)
+
+#------------------------------
+
+  def test_calib_constants_all_types() :
+    #resp = calib_constants_all_types('tmo_quadanode', exp='amox27716', run=100, time_sec=None, vers=None) #, url=cc.URL)
+
+    resp = calib_constants_all_types('pnccd_0001', exp='amo86615', run=200, time_sec=None, vers=None) #, url=cc.URL)
+    print('==== test_calib_constants_text data:') #, resp)
+
+    for k,v in resp.items() :
+        print('ctype:%16s    data and meta:' % k, type(v[0]), type(v[1]))
+
+    import pickle
+    s = pickle.dumps(resp)
+    print('IF YOU SEE THIS, dict FOR ctypes SHOULD BE pickle-d')
 
 #------------------------------
 
@@ -295,7 +348,8 @@ if __name__ == "__main__" :
            + '\n  6: test_dbnames_collection_query'\
            + '\n  7: test_calib_constants'\
            + '\n  8: test_calib_constants_text'\
-           + '\n  9: test_calib_constants_dict'
+           + '\n  9: test_calib_constants_dict'\
+           + '\n 10: test_calib_constants_all_types'
 
 #------------------------------
 
@@ -319,6 +373,7 @@ if __name__ == "__main__" :
     elif tname == '7' : test_calib_constants();
     elif tname == '8' : test_calib_constants_text();
     elif tname == '9' : test_calib_constants_dict();
+    elif tname =='10' : test_calib_constants_all_types();
     else : logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 
