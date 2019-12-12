@@ -72,7 +72,14 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             PGPEvent* event = &pool.pgpEvents[index];
             checkPulseIds(pool, event);
 
-            Pds::EbDgram* dgram = reinterpret_cast<Pds::EbDgram*>(pool.pebble[index]);
+            // get transitionId from the first lane in the event
+            int lane = __builtin_ffs(event->mask) - 1;
+            uint32_t dmaIndex = event->buffers[lane].index;
+            const Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)pool.dmaBuffers[dmaIndex];
+
+            // make new dgram in the pebble
+            // It must be an EbDgram in order to be able to send it to the MEB
+            Pds::EbDgram* dgram = new(pool.pebble[index]) Pds::EbDgram(*timingHeader, XtcData::Src(det->nodeId), para.rogMask);
             XtcData::TransitionId::Value transitionId = dgram->service();
 
             // Event
@@ -249,13 +256,10 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 nevents++;
                 m_batch.size++;
 
-                // make new dgram in the pebble
-                Pds::EbDgram* dgram = new(m_pool.pebble[current]) Pds::EbDgram(*timingHeader, XtcData::Src(m_nodeId), m_para.rogMask);
-
-                // To ensure L3 Input Dgrams appear in the batch in sequenctial
+                // To ensure L3 Input Dgrams appear in the batch in sequential
                 // order, entry allocation must occur here rather than in the
-                // worker threads, the excecution order of which may get scrambled
-                event->l3InpBuf = tebContributor.allocate(dgram, (void*)((uintptr_t)current));
+                // worker threads, the execution order of which may get scrambled
+                event->l3InpBuf = tebContributor.allocate(*timingHeader, (void*)((uintptr_t)current));
 
                 // send batch to worker if batch is full or if it's a transition
                 if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) ||

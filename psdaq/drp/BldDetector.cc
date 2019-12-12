@@ -336,8 +336,8 @@ uint64_t Bld::next()
 class Pgp
 {
 public:
-    Pgp(MemPool& pool, unsigned nodeId, uint32_t envMask) :
-        m_pool(pool), m_nodeId(nodeId), m_envMask(envMask), m_available(0), m_current(0), m_next(0)
+    Pgp(MemPool& pool, Pds::Eb::TebContributor& tebContributor, unsigned nodeId, uint32_t envMask) :
+        m_pool(pool), m_tebContributor(tebContributor), m_nodeId(nodeId), m_envMask(envMask), m_available(0), m_current(0), m_next(0)
     {
         uint8_t mask[DMA_MASK_SIZE];
         dmaInitMaskBytes(mask);
@@ -351,6 +351,7 @@ public:
 private:
     Pds::EbDgram* handle(const Pds::TimingHeader& timingHeader, uint32_t& evtIndex);
     MemPool& m_pool;
+    Pds::Eb::TebContributor& m_tebContributor;
     unsigned m_nodeId;
     uint32_t m_envMask;
     int32_t m_available;
@@ -382,7 +383,10 @@ Pds::EbDgram* Pgp::handle(const Pds::TimingHeader& timingHeader, uint32_t& evtIn
     buffer->index = index;
     event->mask |= (1 << lane);
 
+    event->l3InpBuf = m_tebContributor.allocate(timingHeader, (void*)((uintptr_t)evtIndex));
+
     // make new dgram in the pebble
+    // It must be an EbDgram in order to be able to send it to the MEB
     Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(timingHeader, XtcData::Src(m_nodeId), m_envMask);
 
     return dgram;
@@ -660,7 +664,7 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
 
     //    std::vector<XtcData::NameIndex> nameIndex(m_config.size());
 
-    Pgp pgp(m_drp.pool, m_drp.nodeId(), m_para.rogMask);
+    Pgp pgp(m_drp.pool, m_drp.tebContributor(), m_drp.nodeId(), m_para.rogMask);
 
     uint64_t nevents = 0L;
     std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};
@@ -789,16 +793,15 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
 
 void BldApp::sentToTeb(Pds::EbDgram& dgram, uint32_t index)
 {
-    void* buffer = m_drp.tebContributor().allocate(&dgram, (void*)((uintptr_t)index));
+    PGPEvent* event = &m_drp.pool.pgpEvents[index];
+    void* buffer = event->l3InpBuf;
     if (buffer) { // else timed out
-        PGPEvent* event = &m_drp.pool.pgpEvents[index];
-        event->l3InpBuf = buffer;
         Pds::EbDgram* l3InpDg = new(buffer) Pds::EbDgram(dgram);
         if (dgram.isEvent()) {
             if (m_drp.triggerPrimitive()) {// else this DRP doesn't provide input
                 m_drp.triggerPrimitive()->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc); // Produce
                 size_t size = sizeof(*l3InpDg) + l3InpDg->xtc.sizeofPayload();
-                if (size > m_drp.tebPrms().maxInputSize) { // Revisit: where to get tPrms from?
+                if (size > m_drp.tebPrms().maxInputSize) {
                     logging::critical("L3 Input Dgram of size %zd overflowed buffer of size %zd", size, m_drp.tebPrms().maxInputSize);
                     exit(-1);
                 }

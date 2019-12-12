@@ -311,8 +311,9 @@ void Teb::process(EbEvent* event)
 
   if (ImmData::rsp(ImmData::flg(event->parameter())) == ImmData::Response)
   {
-    Batch*       batch = _batMan.fetch(dg);
-    ResultDgram& rdg   = *new(batch->allocate()) ResultDgram(dg.pulseId(), dg, dg.xtc.src.value());
+    auto         pid   = dg.pulseId();
+    Batch*       batch = _batMan.fetch(pid);
+    ResultDgram& rdg   = *new(batch->allocate()) ResultDgram(pid, dg, dg.xtc.src.value());
 
     rdg.xtc.damage.increase(event->damage().value());
 
