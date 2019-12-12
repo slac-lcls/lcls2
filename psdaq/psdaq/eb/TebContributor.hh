@@ -39,7 +39,7 @@ namespace Pds {
       void       startup(EbCtrbInBase&);
       void       shutdown();
     public:
-      void*      allocate(const Pds::EbDgram* header, const void* appPrm);
+      void*      allocate(const Pds::TimingHeader& header, const void* appPrm);
       void       process(const Pds::EbDgram* datagram);
     public:
       void       release(const Batch* batch) { _batMan.release(batch); }

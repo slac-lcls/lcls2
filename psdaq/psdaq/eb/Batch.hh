@@ -34,8 +34,8 @@ namespace Pds {
     public:
       static uint64_t    batchNum(uint64_t pid);
     public:
-      Pds::EbDgram*  allocate();
-      Batch*             initialize(const Pds::EbDgram&);
+      Pds::EbDgram*      allocate();
+      Batch*             initialize(uint64_t pid);
       void               accumRogs(const XtcData::Transition&);
       uint16_t           rogsRem(const XtcData::Transition&);
       uint16_t           rogs() const;
@@ -118,11 +118,11 @@ const bool Pds::Eb::Batch::empty() const
 }
 
 inline
-Pds::Eb::Batch* Pds::Eb::Batch::initialize(const Pds::EbDgram& hdr)
+Pds::Eb::Batch* Pds::Eb::Batch::initialize(uint64_t pid)
 {
   // Multiple batches can exist with the same BatchNum, but different PIDs
-  _id        = hdr.pulseId(); // Full PID, not BatchNum
-  _rogs      = hdr.readoutGroups();
+  _id        = pid;                     // Full PID, not BatchNum
+  _rogs      = 0;
   _receivers = 0;
   _extent    = 0;
 

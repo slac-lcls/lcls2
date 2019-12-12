@@ -120,25 +120,25 @@ void TebContributor::shutdown()
   _id = -1;
 }
 
-void* TebContributor::allocate(const EbDgram* hdr, const void* appPrm)
+void* TebContributor::allocate(const TimingHeader& hdr, const void* appPrm)
 {
+  auto pid = hdr.pulseId();
+
   if (_prms.verbose >= VL_EVENT)
   {
-    const char* svc = TransitionId::name(hdr->service());
-    unsigned    ctl = hdr->control();
-    uint64_t    pid = hdr->pulseId();
-    unsigned    env = hdr->env;
+    const char* svc = TransitionId::name(hdr.service());
+    unsigned    ctl = hdr.control();
+    unsigned    env = hdr.env;
     printf("Batching  %15s  dg              @ "
            "%16p, ctl %02x, pid %014lx,                    env %08x, prm %p\n",
-           svc, hdr, ctl, pid, env, appPrm);
+           svc, &hdr, ctl, pid, env, appPrm);
   }
 
-  auto batch = _batMan.fetch(*hdr);
+  auto batch = _batMan.fetch(pid);
   if (batch)                            // Null when terminating
   {
     ++_eventCount;                      // Only count events handled
 
-    auto pid = hdr->pulseId();
     batch->store(pid, appPrm);          // Save the appPrm for _every_ event
 
     return batch->allocate();
