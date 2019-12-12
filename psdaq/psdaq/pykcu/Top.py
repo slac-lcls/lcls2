@@ -101,6 +101,13 @@ class QSFPMonitor(pr.Device):
         ))
 
         self.add(pr.RemoteVariable(
+            name      = 'TmpVccBlock',
+            offset    = (22<<2),
+            bitSize   = 32*6,
+            mode      = 'RO'
+        ))
+
+        self.add(pr.RemoteVariable(
             name      = 'RxPwrBlock',
             offset    = (34<<2),
             bitSize   = 32*8,
@@ -113,6 +120,37 @@ class QSFPMonitor(pr.Device):
             bitSize   = 32*8,
             mode      = 'RO'
         ))
+
+        self.add(pr.RemoteVariable(
+            name      = 'BaseIdBlock',
+            offset    = (128<<2),
+            bitSize   = 32*3,
+            mode      = 'RO'
+        ))
+
+        self.add(pr.RemoteVariable(
+            name      = 'DateBlock',
+            offset    = (212<<2),
+            bitSize   = 32*6,
+            mode      = 'RO'
+        ))
+
+        self.add(pr.RemoteVariable(
+            name      = 'DiagnType',
+            offset    = (220<<2),
+            bitSize   = 32,
+            mode      = 'RO'
+        ))
+
+
+    def getDate(self):
+        self.page.set(0)
+        v = self.DateBlock.get()
+        def toChar(sh,w=v):
+            return (w>>(32*sh))&0xff
+
+        r = '{:c}{:c}/{:c}{:c}/20{:c}{:c}'.format(toChar(2),toChar(3),toChar(4),toChar(5),toChar(0),toChar(1))
+        return r
 
     def getRxPwr(self):  #mW
         self.page.set(0)

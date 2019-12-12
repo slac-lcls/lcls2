@@ -125,6 +125,13 @@ def main():
     if args.hsd:
         kcu.I2cBus.selectDevice('QSFP0')
         print(kcu.I2cBus.QSFP0.getRxPwr())
+        print('I2cMux: {:x}'.format(kcu.I2cBus.select.get()))
+        print('RxPwrBlk: {:x}'.format(kcu.I2cBus.QSFP0.RxPwrBlock.get()))
+        print('page: {:x}'.format(kcu.I2cBus.QSFP0.page.get()))
+        print('BaseId: {:x}'.format(kcu.I2cBus.QSFP0.BaseIdBlock.get()))
+        print('DiagnType: {:x}'.format(kcu.I2cBus.QSFP0.DiagnType.get()))
+        print('DateBlock: {:x}'.format(kcu.I2cBus.QSFP0.DateBlock.get()))
+        print(kcu.I2cBus.QSFP0.getDate())
     else:
         print(kcu.TDetTiming.getClkRates())
         print(kcu.TDetSemi.getRTT())

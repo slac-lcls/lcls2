@@ -12,7 +12,7 @@ ip_addr = '10.0.'+shelf
 collect_host = 'drp-tst-acc06'
 groups = '0'
 
-drp_cmd = 'drp -l 0x1 -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/weaver'
+drp_cmd = 'drp -P TST -l 0x1 -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/weaver'
 #drp_cmd = 'drp -l 0x1 -d /dev/datadev_0 -C '+collect_host
 
 bld_nodes = ['drp-tst-dev021','drp-tst-dev020']
@@ -50,7 +50,7 @@ bld_config = [
  { host: 'daq-tst-dev03',  id:'lclsbldsvc'  , flags:'s', conda:conda_rel, env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4'},
 
  # BLD DRP
- { host: 'drp-tst-dev018', id:'bld_0', flags:'sxpu', conda:conda_rel, env:epics_env, cmd: 'drp_bld -l 2 -P TMO -d /dev/datadev_0 -k interface=eno2 -D '+bld_str+' -C '+collect_host+' -v -o /ffb01/weaver'},
+ { host: 'drp-tst-dev018', id:'bld_0', flags:'sxpu', conda:conda_rel, env:epics_env, cmd: 'drp_bld -l 2 -P TST -d /dev/datadev_0 -k interface=eno2 -D '+bld_str+' -C '+collect_host+' -v -o /ffb01/weaver'},
 ]
 
 bld_config.append({ host: epics_host,  id:'bldcas'           , flags:'s', conda:conda_rel, env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str})
@@ -69,11 +69,11 @@ base_config = [
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
 
  { host: 'drp-tst-dev019', id:'teb19'    , flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
- { host: 'drp-tst-dev016', id:'meb16',       flags:'spu', conda:conda_rel, cmd:'monReqServer -P TMO -d -q 4 -C '+collect_host},
+ { host: 'drp-tst-dev016', id:'meb16',       flags:'spu', conda:conda_rel, cmd:'monReqServer -P TST -d -q 4 -C '+collect_host},
 
  { host: 'drp-tst-dev001', id:'xppts_0' , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D TimingSystem'},
 
- { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P TMO'},
+ { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P TST'},
  {                        flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 ]
 
