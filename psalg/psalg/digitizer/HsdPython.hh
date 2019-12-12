@@ -60,6 +60,8 @@ namespace Pds {
                     if (_in) {
                         peakLen = _width;
                         _startSample = i+1; // remember where to start for next call
+                        _width = 0;
+                        _in = false;
                         return peakLen;
                     }
                     _width = 0;

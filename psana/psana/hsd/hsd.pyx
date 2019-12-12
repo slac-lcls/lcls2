@@ -145,14 +145,16 @@ cdef class cyhsd_base_1_2_3:
                     chan = eval('self._hsdsegments[iseg].'+chanName)
                     if chan.size > 0:
                         pychan = PyChannelPython(self._hsdsegments[iseg].eventHeader, chan, self._hsdsegments[iseg])
-                        self._wvDict[iseg] = {}
-                        # FIXME: this needs to be put in units of seconds
-                        # perhaps both for 5GHz and 6GHz models
                         if pychan.waveform is not None:
-                            self._wvDict[iseg]["times"] = np.arange(len(pychan.waveform))
+                            if iseg not in self._wvDict.keys():
+                                self._wvDict[iseg] = {}
+                                # FIXME: this needs to be put in units of seconds
+                                # perhaps both for 5GHz and 6GHz models
+                                self._wvDict[iseg]["times"] = np.arange(len(pychan.waveform))
                             self._wvDict[iseg][chanNum] = pychan.waveform
-                        self._peaksDict[iseg]={}
                         if pychan.peakList is not None:
+                            if iseg not in self._peaksDict.keys():
+                                self._peaksDict[iseg]={}
                             self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
         # maybe check that we have all segments in the event?
         # FIXME: also check that we have all the channels we expect?
@@ -175,7 +177,10 @@ cdef class cyhsd_base_1_2_3:
         cdef cnp.ndarray wv # TODO: make readonly
         if self._isNewEvt(evt):
             self._parseEvt(evt)
-        return self._wvDict
+        if not self._wvDict:
+            return None
+        else:
+            return self._wvDict
 
     # adding this decorator allows access to the signature information of the function in python
     # this is used for AMI type safety
@@ -189,4 +194,7 @@ cdef class cyhsd_base_1_2_3:
         """
         if self._isNewEvt(evt):
             self._parseEvt(evt)
-        return self._peaksDict
+        if not self._peaksDict:
+            return None
+        else: 
+            return self._peaksDict
