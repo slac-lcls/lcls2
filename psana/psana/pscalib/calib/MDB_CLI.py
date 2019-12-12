@@ -242,13 +242,14 @@ class MDB_CLI :
         kwargs = self.kwargs
         fname = kwargs.get('iofname', 'None')
         ctype = kwargs.get('ctype', 'None')
+        dtype = kwargs.get('dtype', 'None')
         verb  = self.loglevel == 'DEBUG'
         assert os.path.exists(fname), 'File "%s" DOES NOT EXIST' % fname
 
         ext = os.path.splitext(fname)[-1]
-        data = gu.load_textfile(fname, verb=verb) if ctype == 'geometry' else\
+        data = gu.load_textfile(fname, verb=verb) if ctype == 'geometry' or dtype in ('txt', 'str') else\
                np.load(fname) if ext == '.npy' else\
-               load_txt(fname)
+               load_txt(fname) # input NDArrIO 
 
         dbu.insert_calib_data(data, **kwargs)
 

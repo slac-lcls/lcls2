@@ -322,7 +322,7 @@ def database_names(client) :
     """Returns list of database names for client.
     """
     if not is_valid_client(client) : return None
-    return client.database_names()
+    return client.list_database_names()
 
 #------------------------------
 
@@ -330,7 +330,7 @@ def collection_names(db, include_system_collections=False) :
     """Returns list of collection names.
     """
     if not is_valid_database(db) : return []
-    return db.collection_names(include_system_collections)
+    return db.list_collection_names(include_system_collections)
 
 #------------------------------
 
@@ -1037,10 +1037,9 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     """
     cond = (run is not None) or (time_sec is not None) or (vers is not None)
     assert cond, 'Not sufficeint info for query: run, time_sec, and vers are None'
-    query={'detector':det, 'ctype':ctype}
-    if run is not None : 
-        query['run']     = {'$lte' : run}
-        #query['run_end'] = {'$gte' : run}
+    query={'detector':det,} # 'ctype':ctype}
+    if ctype is not None : query['ctype'] = ctype
+    if run is not None : query['run']     = {'$lte' : run} #query['run_end'] = {'$gte' : run}
     if time_sec is not None : query['time_sec'] = {'$lte' : int(time_sec)}
     if vers is not None : query['version'] = vers
     logger.debug('query: %s' % str(query))
@@ -1060,7 +1059,10 @@ def find_docs(col, query={'ctype':'pedestals'}) :
         return None
 
     docs = col.find(query)
-    if docs.count() == 0 :
+    ndocs = col.count_documents(query)
+    #print('XXX ndocs', ndocs)
+
+    if ndocs==0 :
         logger.warning('col: %s query: %s is not consistent with any document...' % (col.name, query))
         return None
     else : return docs
@@ -1075,9 +1077,10 @@ def find_doc(col, query={'ctype':'pedestals'}) :
         return None
 
     docs = find_docs(col, query)
+    ndocs = col.count_documents(query)
 
     if (docs is None)\
-    or (docs.count()==0) :
+    or ndocs==0 :
         logger.warning('DB %s collection %s does not have document for query %s'%\
                        (col.database.name, col.name, str(query)))
         return None
@@ -1558,9 +1561,14 @@ if __name__ == "__main__" :
 #------------------------------
 
   def test_calib_constants_text() :
-    det = 'cspad_0001'
-    data, doc = calib_constants(det, exp='cxic0415', ctype='geometry', run=50, time_sec=None, vers=None)
-    print('==== test_calib_constants_text data:', data)
+    #det = 'cspad_0001'
+    #data, doc = calib_constants(det, exp='cxic0415', ctype='geometry', run=50, time_sec=None, vers=None)
+    #print('==== test_calib_constants_text data:', data)
+    #print('==== doc: %s' % str(doc))
+
+    det = 'tmo_quadanode'
+    data, doc = calib_constants(det, exp='amox27716', ctype='calibcfg', run=100)
+    print('==== test_calib_constants_text data:\n', data)
     print('==== doc: %s' % str(doc))
 
 #--------------------
