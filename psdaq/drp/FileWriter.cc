@@ -31,6 +31,22 @@ void BufferedFileWriter::open(const std::string& fileName)
     }
 }
 
+int BufferedFileWriter::close()
+{
+    int rv = 0;
+    if (m_fd > 0) {
+        logging::debug("Closing fd %d", m_fd);
+        rv = ::close(m_fd);
+    }
+    if (rv == -1) {
+        // %m will be replaced by the string strerror(errno)
+        logging::error("Error closing fd %d: %m", m_fd);
+    } else {
+        m_fd = 0;
+    }
+    return rv;
+}
+
 void BufferedFileWriter::writeEvent(void* data, size_t size)
 {
     // cpo: uncomment these two lines to get "unbuffered" writing
