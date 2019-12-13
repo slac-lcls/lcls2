@@ -52,29 +52,26 @@ namespace Pds {
 
             unsigned i;
             for(i=_startSample; i<_sh_fex->num_samples();) {
-                if (q[i]&0x8000) {
+                if (q[i]&0x8000) { // are we a "skip" sample?
                     for (unsigned j=0; j<4; j++, i++) {
-                        _ns += (q[i]&0x7fff);
+                        _ns += (q[i]&0x7fff); // increment the number-of-skips
                     }
-                    _totWidth += _width;
-                    if (_in) {
+                    _totWidth += _width; // add the width of the last peak to the cumulative sum
+                    if (_in) { // if we were previously in a peak, this completes that peak
                         peakLen = _width;
                         _startSample = i; // remember where to start for next call
-                        _width = 0;
-                        _in = false;
+                        _in = false; // we're not in a peak anymore
                         return peakLen;
                     }
-                    _width = 0;
-                    _in = false;
                 } else {
-                    if (!_in) {
-                        startPos = _ns+_totWidth;
-                        *peakPtr = (uint16_t *) (q+i);
+                    if (!_in) { // we weren't previously in a peak, so start a new one
+                        _width = 0;
+                        startPos = _ns+_totWidth; // the index into the raw waveform: number-of-skips plus width of all previous peaks
+                        *peakPtr = (uint16_t *) (q+i); // pointer to the start of the peak array
                     }
-                    for (unsigned j=0; j<4; j++, i++) {
-                        _width++;
-                    }
-                    _in = true;
+                    i += 4; // move to the next (interleaved) sample
+                    _width += 4; // increment the width of this peak
+                    _in = true; // we are in a peak
                 }
             }
             if (_in) {
