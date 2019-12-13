@@ -50,6 +50,9 @@ def tt_config(connect_str,cfgtype,detname,group):
     #################################################################
 
 
+    cl.StopRun()
+    cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.SendEscape()
+
     ###############################################################################
     ### traverse daq config database tree and print corresponding rogue value #####
     ###############################################################################
@@ -68,11 +71,12 @@ def tt_config(connect_str,cfgtype,detname,group):
             #print(path)
 
             if("UartPiranha4" in path):
-                UartPiranhaCode  = path.split(".")[-1]
-                UartValue = cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4._tx.sendString("get '"+UartPiranhaCode)
-                print(path+", rogue value = "+str(UartValue)+", daq config database = " +str(configdb_node))
-                #rogue_node.set(int(str(configdb_node),10))
-                IPython.embed()
+                #UartPiranhaCode  = (path.split(".")[-1]).lower()
+                #UartValue = cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4._tx.sendString("get '"+UartPiranhaCode)
+                #print(path+", rogue value = "+str(UartValue)+", daq config database = " +str(configdb_node))
+                rogue_node.set(int(str(configdb_node),10))
+                pass
+                
 
             else:
                 print(path+", rogue value = "+str(hex(rogue_node.get()))+", daq config database = " +str(configdb_node))
@@ -93,6 +97,8 @@ def tt_config(connect_str,cfgtype,detname,group):
     cl.Application.AppLane[0].Prescale.ScratchPad.set(scratch_pad)                       #writing to rogue register 
 
     print("scratch pad value = ",cl.Application.AppLane[0].Prescale.ScratchPad.get())
+
+    cl.StartRun()
 
     cl.stop()   #gui.py should be able to run after this line, but it's still using the axi lite resource.
                 #deleting cl doesn't resolve this problem.
