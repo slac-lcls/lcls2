@@ -77,7 +77,8 @@ class CGWMainConfiguration(QGroupBox) :
         #self.box_seq.currentIndexChanged[int].connect(self.on_box_seq)
         #self.cbx_seq.stateChanged[int].connect(self.on_cbx_seq)
 
-        self.device = None
+        self.device_edit = None
+        self.cfgtype_edit = None
         self.w_edit = None
         self.type_old = None
         self.set_config_type('init')
@@ -198,7 +199,7 @@ class CGWMainConfiguration(QGroupBox) :
 #--------------------
 
     def cfgtype_and_device(self):
-        return self.but_type_text(), self.device #self.but_dev_text()
+        return self.cfgtype_edit, self.device_edit #self.but_dev_text()
 
 #--------------------
  
@@ -270,7 +271,8 @@ class CGWMainConfiguration(QGroupBox) :
             resp = self.select_config_type_and_dev()
             if resp is None : return
             cfgtype, dev = resp
-            self.device = dev
+            self.device_edit = dev
+            self.cfgtype_edit = cfgtype
 
             inst, confdb = self.inst_configdb('on_but_edit: ')
 
@@ -290,27 +292,6 @@ class CGWMainConfiguration(QGroupBox) :
 
         else :
             logger.debug("Close configuration editor window")
-            self.w_edit.close()
-            self.w_edit = None
-
-#--------------------
- 
-    def on_but_edit_v0(self):
-        #logger.debug('on_but_edit')
-        if self.w_edit is None :
-            inst, confdb = self.inst_configdb('on_but_edit: ')
-            cfgtype = self.but_type_text()
-            dev     = self.but_dev_text()
-            self.config = confdb.get_configuration(cfgtype, dev, hutch=inst)
-            msg = 'get_configuration(%s, %s, %s):\n' % (cfgtype, dev, inst)\
-                + '%s\n    type(config): %s'%(str_json(self.config), type(self.config))
-            logger.debug(msg)
-
-            self.w_edit = CGWConfigEditor(dictj=self.config)
-            self.w_edit.move(self.mapToGlobal(QPoint(self.width()+10,0)))
-            self.w_edit.show()
-
-        else :
             self.w_edit.close()
             self.w_edit = None
 
