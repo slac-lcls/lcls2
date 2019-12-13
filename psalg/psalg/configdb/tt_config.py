@@ -61,11 +61,15 @@ def tt_config(connect_str,cfgtype,detname,group):
     depth = 0
     path  = 'cl'
     my_queue  =  deque([[path,depth,cl,cfg['cl']]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
+    cludge_dict = {"AppLane0":"AppLane[0]","ClinkFeb0":"ClinkFeb[0]","Ch0":"Ch[0]", "ROI0":"ROI[0]","ROI1":"ROI[1]","SAD0":"SAD[0]","SAD1":"SAD[1]","SAD2":"SAD[2]"}
     while(my_queue):
         path,depth,rogue_node, configdb_node = my_queue.pop()
         if(dict is type(configdb_node)):
             for i in configdb_node:
-                my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[i],configdb_node[i]])
+                if i in cludge_dict:
+                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[cludge_dict[i]],configdb_node[i]])
+                else:
+                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[i],configdb_node[i]])
         
         if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
             #print(path)
@@ -92,7 +96,7 @@ def tt_config(connect_str,cfgtype,detname,group):
     ##############
 
     
-    scratch_pad = (cfg['cl']['Application']['AppLane[0]']['Prescale']['ScratchPad'])   
+    scratch_pad = (cfg['cl']['Application']['AppLane0']['Prescale']['ScratchPad'])   
 
     cl.Application.AppLane[0].Prescale.ScratchPad.set(scratch_pad)                       #writing to rogue register 
 
