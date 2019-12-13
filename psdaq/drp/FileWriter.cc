@@ -35,6 +35,11 @@ int BufferedFileWriter::close()
 {
     int rv = 0;
     if (m_fd > 0) {
+        if (m_count > 0) {
+            logging::debug("Flushing %zu bytes to fd %d", m_count, m_fd);
+            write(m_fd, m_buffer.data(), m_count);
+            m_count = 0;
+        }
         logging::debug("Closing fd %d", m_fd);
         rv = ::close(m_fd);
     }
