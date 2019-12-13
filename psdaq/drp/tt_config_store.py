@@ -18,7 +18,7 @@ def write_to_daq_config_db(prescaling):
     #ID point to the actuall Mongo DB collection and document
 
     create = True
-    dbname = 'sioanDB'     #this is the name of the database running on the server.  Only client care about this name.
+    dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
     instrument = 'TST'      #
 
     mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)    #mycdb.client.drop_database('configDB_szTest') will drop the configDB_szTest database
