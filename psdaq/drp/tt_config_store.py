@@ -77,6 +77,45 @@ def write_to_daq_config_db(prescaling):
     top.set("cl.Application.AppLane[0].Fex.FrameSubtractor.SubtractionActive",0,'UINT32')                   #turn background subtract on
 
 
+    ########################################
+    #####      Piranha Settings        #####
+    ########################################
+    #commands can be sent manually using cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4._tx.sendString('GCP') 
+    #to manually querry a camera hardware setting cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4._tx.sendString('get 'stm') 
+
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.cls",0,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.clm",2,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.dst",0,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.ffm",0,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.frs",2,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.lpc",0,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.roi[0]",1,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.roi[1]",2048,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.sac",1,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.sad[0]",1,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.sad[1]",1,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.sad[2]",2048,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.sam",0,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.sbh",1,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.sbr",9600,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.sbv",1,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.scd",0,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.sem",0,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.set",5000,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.smm",0,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.spf",0,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.ssb",0,'UINT32')    
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.ssf",2,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.ssg",1,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.stf",2,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.stm",1,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.svm",0,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.usd",1,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.usl",1,'UINT32')
+    top.set("cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.uss",1,'UINT32')
+    
+
+
     #the object hierarchy paths (e.g. cl.Application.AppLane[0]... yadayadayada) for a device can be found by implementing
     #pr.generateAddressMap where pr comes from "import rogue as pr".  For this to work, one has to be logged onto the machine hosting the firmware   
     #that interacts with rogue.  This particular register map can be found in the lcls2-pcie-apps directory cloned from https://github.com/slaclab/lcls2-pcie-apps.

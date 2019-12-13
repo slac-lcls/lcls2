@@ -66,11 +66,20 @@ def tt_config(connect_str,cfgtype,detname,group):
         
         if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
             #print(path)
-            print(path+", rogue value = "+str(hex(rogue_node.get()))+", daq config database = " +str(configdb_node))
 
-            # this is where the magic happens.  I.e. this is where the rogue axi lite register is set to the daq config database value
-            # There's something uneasy about this
-            rogue_node.set(int(str(configdb_node),16))
+            if("UartPiranha4" in path):
+                UartPiranhaCode  = path.split(".")[-1]
+                UartValue = cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4._tx.sendString("get '"+UartPiranhaCode)
+                print(path+", rogue value = "+str(UartValue)+", daq config database = " +str(configdb_node))
+                #rogue_node.set(int(str(configdb_node),10))
+                IPython.embed()
+
+            else:
+                print(path+", rogue value = "+str(hex(rogue_node.get()))+", daq config database = " +str(configdb_node))
+
+                # this is where the magic happens.  I.e. this is where the rogue axi lite register is set to the daq config database value
+                # There's something uneasy about this
+                rogue_node.set(int(str(configdb_node),16))
     
             
 
@@ -124,6 +133,7 @@ if __name__ == "__main__":
     print(20*'_')
 
     print(my_config)
+    IPython.embed()
 
 """
 (lcls2daq_ttdep) [sioan@lcls-pc83236 lcls2]$ python psalg/psalg/configdb/tt_config.py 
