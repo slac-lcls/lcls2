@@ -134,6 +134,16 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
     return std::string{};
 }
 
+std::string EbReceiver::closeFiles()
+{
+    if (m_writing) {
+        m_writing = false;
+        m_fileWriter.close();
+        m_smdWriter.close();
+    }
+    return std::string{};
+}
+
 void EbReceiver::resetCounters()
 {
     m_lastIndex = 0;
@@ -350,10 +360,10 @@ void DrpBase::runInfoData(Xtc& xtc, NamesLookup& namesLookup, const RunInfo& run
     runinfo.set_value(RunInfoDef::RUNNUM, runInfo.runNumber);
 }
 
-std::string DrpBase::endrun(const json& msg)
+std::string DrpBase::endrun(const json& phase1Info)
 {
-    logging::debug("Entered %s", __PRETTY_FUNCTION__);
-    return std::string{};
+    std::string msg = m_ebRecv->closeFiles();
+    return msg;
 }
 
 std::string DrpBase::configure(const json& msg)

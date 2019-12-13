@@ -162,6 +162,13 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
         }
     }
+    else if (key == "endrun") {
+        std::string errorMsg = m_drp.endrun(phase1Info);
+        if (!errorMsg.empty()) {
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        }
+    }
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);

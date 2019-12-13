@@ -36,6 +36,7 @@ public:
 public:
     void resetCounters();
     std::string openFiles(const Parameters& para, const RunInfo& runInfo);
+    std::string closeFiles();
 private:
     void _writeDgram(XtcData::Dgram* dgram);
     XtcData::Dgram* _configureDgram() {return static_cast<XtcData::Dgram*>(m_configureBuffer);}
@@ -67,7 +68,7 @@ public:
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string configure(const nlohmann::json& msg);
     std::string beginrun(const nlohmann::json& phase1Info, RunInfo& runInfo);
-    std::string endrun(const nlohmann::json& msg);
+    std::string endrun(const nlohmann::json& phase1Info);
     void runInfoSupport(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
     void runInfoData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, const RunInfo& runInfo);
     Pds::Eb::TebContributor& tebContributor() const {return *m_tebContributor;}
