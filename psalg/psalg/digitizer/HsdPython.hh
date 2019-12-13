@@ -59,7 +59,7 @@ namespace Pds {
                     _totWidth += _width;
                     if (_in) {
                         peakLen = _width;
-                        _startSample = i+1; // remember where to start for next call
+                        _startSample = i; // remember where to start for next call
                         _width = 0;
                         _in = false;
                         return peakLen;
@@ -84,7 +84,7 @@ namespace Pds {
             }
             // these two lines will cause the iterator to return 0
             // on the next call, ending the iteration.
-            _startSample = i+1;
+            _startSample = i;
             _in = false;
             return peakLen;
         }

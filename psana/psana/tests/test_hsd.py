@@ -38,11 +38,9 @@ def test_hsd():
                     if (wfs):
                         for npeak,(start,peak) in enumerate(zip(startpos,peaks)):
                             peaklen = len(peak)
-                            raw = wfs[digitizer][channel][start:start+peaklen]
-                            #print('---',digitizer,channel,npeak)
-                            #if not (peak==raw).all():
-                            #    print(peak,raw)
-                            #assert (peak==raw).all(), (peak, raw)
+                            # FIXME: need to remove the +4 (cpo)
+                            raw = wfs[digitizer][channel][start+4:start+4+peaklen]
+                            assert (peak==raw).all(), (peak, raw)
                 assert nfex == 0, nfex # enumerate counting from zero
             assert ndigi == 1, ndigi # enumerate counting from zero
         if nevt == 20: break # stop early since this xtc file has incomplete dg
