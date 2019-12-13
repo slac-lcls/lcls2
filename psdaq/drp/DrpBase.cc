@@ -1,5 +1,7 @@
+#include <unistd.h>                     // gethostname()
 #include <iostream>
 #include <bitset>
+#include <climits>                      // HOST_NAME_MAX
 #include "psdaq/service/EbDgram.hh"
 #include <DmaDriver.h>
 #include "DrpBase.hh"
@@ -15,6 +17,9 @@ using logging = psalg::SysLog;
 static void local_mkdir (const char * path);
 
 namespace Drp {
+
+static const unsigned PROM_PORT_BASE  = 9200;
+static const unsigned MAX_PROM_PORTS  = 100;
 
 unsigned nextPowerOf2(unsigned n)
 {
@@ -358,12 +363,36 @@ std::string DrpBase::configure(const json& msg)
     }
 
     if (m_exposer)  m_exposer.reset();
-    try {
-        m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
-    }
-    catch(const std::runtime_error& e) {
-        logging::warning("Could not start run-time monitoring server");
-        logging::warning("%s", e.what());
+    unsigned port = 0;
+    for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
+        try {
+            port = PROM_PORT_BASE + i;
+            m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
+            if (i > 0) {
+                if ((i < MAX_PROM_PORTS) && !m_para.prometheusDir.empty()) {
+                    char hostname[HOST_NAME_MAX];
+                    gethostname(hostname, HOST_NAME_MAX);
+                    std::string fileName = m_para.prometheusDir + "/drpmon_" + std::string(hostname) + "_" + std::to_string(i) + ".yaml";
+                    FILE* file = fopen(fileName.c_str(), "w");
+                    if (file) {
+                        fprintf(file, "- targets:\n    - '%s:%d'\n", hostname, port);
+                        fclose(file);
+                    }
+                    else {
+                        // %m will be replaced by the string strerror(errno)
+                        logging::error("Error creating file %s: %m", fileName.c_str());
+                    }
+                }
+                else {
+                    logging::warning("Could not start run-time monitoring server");
+                }
+            }
+            break;
+        }
+        catch(const std::runtime_error& e) {
+            logging::debug("Could not start run-time monitoring server on port %d", port);
+            logging::debug("%s", e.what());
+        }
     }
 
     m_exporter = std::make_shared<MetricExporter>();

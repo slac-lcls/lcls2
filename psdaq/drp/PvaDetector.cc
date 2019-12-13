@@ -626,7 +626,7 @@ int main(int argc, char* argv[])
     para.verbose = 0;
     char *instrument = NULL;
     int c;
-    while((c = getopt(argc, argv, "p:o:C:d:u:P:T::v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:C:d:u:P:T::M:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -648,6 +648,9 @@ int main(int argc, char* argv[])
                 break;
             case 'T':
                 para.trgDetName = optarg ? optarg : "trigger";
+                break;
+            case 'M':
+                para.prometheusDir = optarg;
                 break;
             case 'v':
                 ++para.verbose;

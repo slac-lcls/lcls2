@@ -43,6 +43,7 @@ struct Parameters
     std::string outputDir;
     std::string detectorType;
     std::string collectionHost;
+    std::string prometheusDir;
     std::map<std::string,std::string> kwargs;
     uint32_t rogMask;
     std::string trgDetName;

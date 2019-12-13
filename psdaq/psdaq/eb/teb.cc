@@ -17,9 +17,9 @@
 #include "xtcdata/xtc/Dgram.hh"
 
 #include <stdio.h>
-#include <unistd.h>                     // For getopt()
+#include <unistd.h>                     // For getopt(), gethostname()
 #include <cstring>
-#include <climits>
+#include <climits>                      // For HOST_NAME_MAX
 #include <csignal>
 #include <bitset>
 #include <atomic>
@@ -45,6 +45,8 @@ using string_t = std::string;
 static const int      CORE_0          = 18; // devXXX: 11, devXX:  7, accXX:  9
 static const int      CORE_1          = 19; // devXXX: 12, devXX: 19, accXX: 21
 static const string_t TRIGGER_DETNAME = "tmoTeb";
+static const unsigned PROM_PORT_BASE  = 9200; // Prometheus port
+static const unsigned MAX_PROM_PORTS  = 100;
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -625,14 +627,36 @@ int TebApp::_configure(const json& msg)
 # undef _FETCH
 
   if (_exposer)  _exposer.reset();
-  try
-  {
-    _exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
-  }
-  catch(const std::runtime_error& e)
-  {
-    logging::warning("Could not start run-time monitoring server");
-    logging::warning("%s", e.what());
+  unsigned port = 0;
+  for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
+    try {
+      port = PROM_PORT_BASE + i;
+      _exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
+      if (i > 0) {
+        if ((i < MAX_PROM_PORTS) && !_prms.prometheusDir.empty()) {
+          char hostname[HOST_NAME_MAX];
+          gethostname(hostname, HOST_NAME_MAX);
+          std::string fileName = _prms.prometheusDir + "/drpmon_" + std::string(hostname) + "_" + std::to_string(i) + ".yaml";
+          FILE* file = fopen(fileName.c_str(), "w");
+          if (file) {
+            fprintf(file, "- targets:\n    - '%s:%d'\n", hostname, port);
+            fclose(file);
+          }
+          else {
+            // %m will be replaced by the string strerror(errno)
+            logging::error("Error creating file %s: %m", fileName.c_str());
+          }
+        }
+        else {
+          logging::warning("Could not start run-time monitoring server");
+        }
+      }
+      break;
+    }
+    catch(const std::runtime_error& e) {
+      logging::debug("Could not start run-time monitoring server on port %d", port);
+      logging::debug("%s", e.what());
+    }
   }
 
   if (_exporter)  _exporter.reset();
@@ -837,6 +861,8 @@ static void usage(char *name, char *desc, const EbParams& prms)
           " ", "(-T without arg gives system default; n.b. no space between -T and arg)");
   fprintf(stderr, " %-23s %s (required)\n",           "-u <alias>",
           "Alias for teb process");
+  fprintf(stderr, " %-23s %s\n",                      "-M <directory>",
+          "Prometheus config file directory");
   fprintf(stderr, " %-23s %s (default: %d)\n",        "-1 <core>",
           "Core number for pinning App thread to",    CORE_0);
   fprintf(stderr, " %-23s %s (default: %d)\n",        "-2 <core>",
@@ -860,19 +886,20 @@ int main(int argc, char **argv)
   prms.core[1]   = CORE_1;
   prms.verbose   = 0;
 
-  while ((op = getopt(argc, argv, "C:p:P:T::A:1:2:u:h?v")) != -1)
+  while ((op = getopt(argc, argv, "C:p:P:T::A:1:2:u:M:h?v")) != -1)
   {
     switch (op)
     {
-      case 'C':  collSrv         = optarg;                       break;
-      case 'p':  prms.partition  = std::stoi(optarg);            break;
-      case 'P':  instrument      = optarg;                       break;
-      case 'T':  prms.trgDetName = optarg ? optarg : "trigger";  break;
-      case 'A':  prms.ifAddr     = optarg;                       break;
-      case '1':  prms.core[0]    = atoi(optarg);                 break;
-      case '2':  prms.core[1]    = atoi(optarg);                 break;
-      case 'u':  prms.alias      = optarg;                       break;
-      case 'v':  ++prms.verbose;                                 break;
+      case 'C':  collSrv            = optarg;                       break;
+      case 'p':  prms.partition     = std::stoi(optarg);            break;
+      case 'P':  instrument         = optarg;                       break;
+      case 'T':  prms.trgDetName    = optarg ? optarg : "trigger";  break;
+      case 'A':  prms.ifAddr        = optarg;                       break;
+      case '1':  prms.core[0]       = atoi(optarg);                 break;
+      case '2':  prms.core[1]       = atoi(optarg);                 break;
+      case 'u':  prms.alias         = optarg;                       break;
+      case 'M':  prms.prometheusDir = optarg;                       break;
+      case 'v':  ++prms.verbose;                                    break;
       case '?':
       case 'h':
       default:

@@ -843,7 +843,7 @@ int main(int argc, char* argv[])
     std::string kwargs_str;
     char *instrument = NULL;
     int c;
-    while((c = getopt(argc, argv, "l:p:o:C:b:d:D:u:P:T::k:v")) != EOF) {
+    while((c = getopt(argc, argv, "l:p:o:C:b:d:D:u:P:T::k:M:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -877,6 +877,9 @@ int main(int argc, char* argv[])
                 break;
             case 'k':
                 kwargs_str = std::string(optarg);
+                break;
+            case 'M':
+                para.prometheusDir = optarg;
                 break;
             case 'v':
                 ++para.verbose;

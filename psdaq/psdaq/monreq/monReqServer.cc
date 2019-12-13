@@ -17,17 +17,20 @@
 
 #include <signal.h>
 #include <errno.h>
-#include <unistd.h>                     // For getopt()
+#include <unistd.h>                     // For getopt(), gethostname()
 #include <string.h>
 #include <vector>
 #include <bitset>
 #include <iostream>
 #include <atomic>
+#include <climits>                      // For HOST_NAME_MAX
 
 static const int      CORE_0               = 18; // devXXX: 18, devXX:  7, accXX:  9
 static const int      CORE_1               = 19; // devXXX: 19, devXX: 19, accXX: 21
 static const unsigned EPOCH_DURATION       = 8;  // Revisit: 1 per xferBuffer
 static const unsigned NUMBEROF_XFERBUFFERS = 8;  // Value corresponds to ctrb:maxEvents
+static const unsigned PROM_PORT_BASE       = 9200; // Prometheus port
+static const unsigned MAX_PROM_PORTS       = 100;
 
 using namespace XtcData;
 using namespace Pds::Eb;
@@ -487,14 +490,36 @@ void MebApp::handleConnect(const json &msg)
 std::string MebApp::_configure(const json &msg)
 {
   if (_exposer)  _exposer.reset();
-  try
-  {
-    _exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:9200", "/metrics", 1);
-  }
-  catch(const std::runtime_error& e)
-  {
-    logging::warning("Could not start run-time monitoring server");
-    logging::warning("%s", e.what());
+  unsigned port = 0;
+  for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
+    try {
+      port = PROM_PORT_BASE + i;
+      _exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
+      if (i > 0) {
+        if ((i < MAX_PROM_PORTS) && !_prms.prometheusDir.empty()) {
+          char hostname[HOST_NAME_MAX];
+          gethostname(hostname, HOST_NAME_MAX);
+          std::string fileName = _prms.prometheusDir + "/drpmon_" + std::string(hostname) + "_" + std::to_string(i) + ".yaml";
+          FILE* file = fopen(fileName.c_str(), "w");
+          if (file) {
+            fprintf(file, "- targets:\n    - '%s:%d'\n", hostname, port);
+            fclose(file);
+          }
+          else {
+            // %m will be replaced by the string strerror(errno)
+            logging::error("Error creating file %s: %m", fileName.c_str());
+          }
+        }
+        else {
+          logging::warning("Could not start run-time monitoring server");
+        }
+      }
+      break;
+    }
+    catch(const std::runtime_error& e) {
+      logging::debug("Could not start run-time monitoring server on port %d", port);
+      logging::debug("%s", e.what());
+    }
   }
 
   if (_exporter)  _exporter.reset();
@@ -709,6 +734,7 @@ void usage(char* progname)
                   "[-A <interface addr>] "
                   "[-1 <core to pin App thread to>]"
                   "[-2 <core to pin other threads to>]" // Revisit: None?
+                  "[-M <Prometheus config file directory>]"
                   "[-v] "
                   "[-h] "
                   "\n", progname);
@@ -735,6 +761,7 @@ int main(int argc, char** argv)
                           /* .maxResultSize = */ 0,   // Unused here
                           /* .numMrqs       = */ 0,   // Unused here
                           /* .trgDetName    = */ { }, // Unused here
+                          /* .prometheusDir = */ { }, // Optionally filled in below
                           /* .core          = */ { CORE_0, CORE_1 },
                           /* .verbose       = */ 0 },
                         /* .maxBufferSize = */ 0,     // Filled in @ connect
@@ -743,7 +770,7 @@ int main(int argc, char** argv)
   bool           ldist     = false;
 
   int c;
-  while ((c = getopt(argc, argv, "p:P:n:t:q:dA:C:1:2:u:vh")) != -1)
+  while ((c = getopt(argc, argv, "p:P:n:t:q:dA:C:1:2:u:M:vh")) != -1)
   {
     errno = 0;
     char* endPtr;
@@ -767,12 +794,13 @@ int main(int argc, char** argv)
       case 'd':
         ldist = true;
         break;
-      case 'A':  prms.ifAddr       = optarg;                       break;
-      case 'C':  collSrv           = optarg;                       break;
-      case '1':  prms.core[0]      = atoi(optarg);                 break;
-      case '2':  prms.core[1]      = atoi(optarg);                 break;
-      case 'u':  prms.alias        = optarg;                       break;
-      case 'v':  ++prms.verbose;                                   break;
+      case 'A':  prms.ifAddr        = optarg;        break;
+      case 'C':  collSrv            = optarg;        break;
+      case '1':  prms.core[0]       = atoi(optarg);  break;
+      case '2':  prms.core[1]       = atoi(optarg);  break;
+      case 'u':  prms.alias         = optarg;        break;
+      case 'M':  prms.prometheusDir = optarg;        break;
+      case 'v':  ++prms.verbose;                     break;
       case 'h':                         // help
         usage(argv[0]);
         return 0;

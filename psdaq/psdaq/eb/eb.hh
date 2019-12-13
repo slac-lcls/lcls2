@@ -86,6 +86,7 @@ namespace Pds {
       size_t    maxResultSize;     // Max result EbDgram size
       unsigned  numMrqs;           // Number of Mon request servers
       string_t  trgDetName;        // Trigger 'detName' for ConfigDb
+      string_t  prometheusDir;     // Run-time monitoring prometheus config file
       int       core[2];           // Cores to pin threads to
       unsigned  verbose;           // Level of detail to print
     };
