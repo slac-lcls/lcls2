@@ -575,11 +575,11 @@ class CollectionManager():
             try:
                 self.station = int(station_number)
             except ValueError:
-                logging.error("Invalid station number '%s', using 0" % station_number)
-                self.station = 0
+                logging.error("Invalid station number '%s', using platform" % station_number)
+                self.station = self.platform
         else:
             self.instrument = instrument
-            self.station = 0
+            self.station = self.platform
         logging.debug('instrument=%s, station=%d' % (self.instrument, self.station))
         self.ids = set()
         self.handle_request = {
