@@ -17,7 +17,7 @@ public:
     void writeEvent(void* data, size_t size);
 private:
     int m_fd;
-    int m_count;
+    size_t m_count;
     std::vector<uint8_t> m_buffer;
 };
 
