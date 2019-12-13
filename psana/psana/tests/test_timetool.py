@@ -12,7 +12,7 @@ def twos_complement(hexstr,bits):
 
 def get_fir_coefficients(myrun):
     my_kernel = []
-    my_dict = myrun.configs[0].tmotimetool[0].timetoolConfig.cl.Application.__dict__["AppLane[0]"].Fex.FIR.__dict__
+    my_dict = myrun.configs[0].tmotimetool[0].timetoolConfig.cl.Application.AppLane0.Fex.FIR.__dict__
     for key in my_dict:
         mystring = my_dict[key]
         my_kernel.extend([twos_complement(mystring[i:i+2],8) for i in range(0,len(mystring),2)])
@@ -57,7 +57,7 @@ def test_timetool():
 
     my_cov = np.cov(firmware_edges,software_edges)  #need to separate out clusters of outliers here.
     print("covariance  = ",my_cov[0,1]/my_cov[0,0])
-    assert nevt==598
+    assert nevt==1324
 
 if __name__ == "__main__":
     test_timetool()
