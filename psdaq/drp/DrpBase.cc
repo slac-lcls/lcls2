@@ -1,5 +1,6 @@
 #include <unistd.h>                     // gethostname()
 #include <iostream>
+#include <iomanip>
 #include <bitset>
 #include <climits>                      // HOST_NAME_MAX
 #include "psdaq/service/EbDgram.hh"
@@ -115,7 +116,12 @@ EbReceiver::~EbReceiver()
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo)
 {
     if (runInfo.runNumber) {
-        std::string runName = {std::to_string(runInfo.runNumber) + "-" + std::to_string(m_nodeId)};
+        std::ostringstream ss;
+        ss << runInfo.experimentName <<
+              "-r" << std::setfill('0') << std::setw(4) << runInfo.runNumber <<
+              "-s" << std::setw(3) << m_nodeId <<
+              "-c000";
+        std::string runName = ss.str();
         std::string fileName = {para.outputDir + "/" + runName + ".xtc2"};
         // cpo suggests leaving this print statement in because
         // filesystems can hang in ways we can't timeout/detect

@@ -1,9 +1,9 @@
 import numpy as np
 from psana.detector.detector_impl import DetectorImpl
 
-class tt_detector_type_placeholder_tt_algorithm_placeholder_0_0_1(DetectorImpl):
+class ttdet_ttalg_0_0_1(DetectorImpl):
     def __init__(self, *args):
-        super(tt_detector_type_placeholder_tt_algorithm_placeholder_0_0_1, self).__init__(*args)
+        super(ttdet_ttalg_0_0_1, self).__init__(*args)
 
     def _image(self,evt):
         # check for missing data

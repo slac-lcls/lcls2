@@ -181,13 +181,13 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
     xtc.alloc(jsonxtc.sizeofPayload());
 
     // append the metadata; which algorithm is needed to interpret bytes, the detector type, etc...
-    Alg ttAlg("tt_algorithm_placeholder", 0, 0, 1);
+    Alg ttAlg("ttalg", 0, 0, 1);
 
     NamesId eventNamesId(nodeId,EventNamesIndex);
 
 
     unsigned segment = 0;
-    Names& eventNames = *new(xtc) Names("tt_detector_name_placeholder", ttAlg, "tt_detector_type_placeholder", "tt_detector_identification_placeholder", eventNamesId, segment);
+    Names& eventNames = *new(xtc) Names("tmott", ttAlg, "ttdet", "tt_detector_identification_placeholder", eventNamesId, segment);
     eventNames.add(xtc, TTDef);
     namesLookup[eventNamesId] = NameIndex(eventNames);
 
