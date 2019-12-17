@@ -420,12 +420,12 @@ int main(int argc, char* argv[])
     while ((dgIn = iter.next())) {
         nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload()); 
         if (dgIn->service() == TransitionId::Configure) {
-            Dgram& dgOut = *dgIn;
-            addNames(dgOut.xtc, namesLookup, nodeId);
-            CreateData smd(dgOut.xtc, namesLookup, namesId);
-            smd.set_value(SmdDef::intOffset, nowOffset);
-            smd.set_value(SmdDef::intDgramSize, nowDgramSize);
-            save(dgOut, xtcFile);
+            Dgram *config;
+            config = (Dgram*)buf;
+            memcpy(config, dgIn, sizeof(*dgIn));
+            memcpy(config->xtc.payload(), dgIn->xtc.payload(), dgIn->xtc.sizeofPayload());
+            addNames(config->xtc, namesLookup, nodeId);
+            save(*config, xtcFile);
         } else { 
             Dgram& dgOut = *(Dgram*)buf;
             if (dgIn->service() == TransitionId::L1Accept) {
