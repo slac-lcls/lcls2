@@ -41,34 +41,38 @@ class RunParallel(Run):
             self.smd_dm = DgramManager(smd_files, run=self)
             self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs, run=self)
             self.configs = self.dm.configs
+            super()._get_runinfo()
             nbytes = np.array([memoryview(config).shape[0] for config in self.configs], \
                             dtype='i')
             self.calibs = {}
             for det_name in self.detnames:
                 self.calibs[det_name] = super(RunParallel, self)._get_calib(det_name)
+            self.bcast_packets = {'calibs': self.calibs, \
+                    'expt': self.expt, 'runnum': self.runnum}
             
         else:
             self.smd_dm = None
             self.dm = None
             self.configs = None
-            self.calibs = None
             nbytes = np.empty(len(smd_files), dtype='i')
+            self.bcast_packets = None
         
+        # Send configs without pickling
         psana_comm.Bcast(nbytes, root=0) # no. of bytes is required for mpich
-        
-        # create empty views of known size
         if rank > 0:
             self.configs = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
-        
+       
         for i in range(len(self.configs)):
             psana_comm.Bcast([self.configs[i], nbytes[i], MPI.BYTE], root=0)
         
-        self.calibs = psana_comm.bcast(self.calibs, root=0)
-
+        # Send other small things using small-case bcast
+        self.bcast_packets = psana_comm.bcast(self.bcast_packets, root=0)
         if rank > 0:
-            # Create dgram objects using views from rank 0 (no disk operation).
             self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
             self.dm = DgramManager(xtc_files, configs=self.configs, run=self)
+            self.calibs = self.bcast_packets['calibs']
+            self.expt = self.bcast_packets['expt']
+            self.runnum = self.bcast_packets['runnum']
         
         self.esm = EnvStoreManager(self.configs, 'epics', 'scan')
     

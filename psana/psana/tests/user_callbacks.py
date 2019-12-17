@@ -32,4 +32,6 @@ def event_fn(event, det):
 for run in ds.runs():
     det = run.Detector('xppcspad')
     edet = run.Detector('HX2:DVD:GCC:01:PMON')
+    assert run.expt == 'xpptut15'
+    assert run.runnum == 14
     run.analyze(event_fn=event_fn, det=det)
