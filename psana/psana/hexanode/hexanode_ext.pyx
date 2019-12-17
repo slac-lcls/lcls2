@@ -370,6 +370,7 @@ cdef extern from "psalg/hexanode/resort64c.hh":
 
         bint are_all_single()
 #        bint clone(sort_class *clone)
+        signal_corrector_class *signal_corrector;
 
 #------------------------------
 
@@ -394,114 +395,188 @@ cdef class py_sort_class:
 
     @property
     def cu1(self) : return self.cptr.Cu1
+    @cu1.setter
+    def cu1(self, v) : self.cptr.Cu1 = v
 
     @property
     def cu2(self) : return self.cptr.Cu2
+    @cu2.setter
+    def cu2(self, v) : self.cptr.Cu2 = v
 
     @property
     def cv1(self) : return self.cptr.Cv1
+    @cv1.setter
+    def cv1(self, v) : self.cptr.Cv1 = v
 
     @property
     def cv2(self) : return self.cptr.Cv2
+    @cv2.setter
+    def cv2(self, v) : self.cptr.Cv2 = v
 
     @property
     def cw1(self) : return self.cptr.Cw1
+    @cw1.setter
+    def cw1(self, v) : self.cptr.Cw1 = v
 
     @property
     def cw2(self) : return self.cptr.Cw2
+    @cw2.setter
+    def cw2(self, v) : self.cptr.Cw2 = v
 
     @property
     def cmcp(self) : return self.cptr.Cmcp
+    @cmcp.setter
+    def cmcp(self, v) : self.cptr.Cmcp = v
 
     @property
     def use_sum_correction(self) : return self.cptr.use_sum_correction
+    @use_sum_correction.setter
+    def use_sum_correction(self, v) : self.cptr.use_sum_correction = v
 
     @property
     def use_pos_correction(self) : return self.cptr.use_pos_correction
+    @use_pos_correction.setter
+    def use_pos_correction(self, v) : self.cptr.use_pos_correction = v
 
     @property
     def runtime_u(self) : return self.cptr.runtime_u
+    @runtime_u.setter
+    def runtime_u(self, v) : self.cptr.runtime_u = v
 
     @property
     def runtime_v(self) : return self.cptr.runtime_v
+    @runtime_v.setter
+    def runtime_v(self, v) : self.cptr.runtime_v = v
 
     @property
     def runtime_w(self) : return self.cptr.runtime_w
+    @runtime_w.setter
+    def runtime_w(self, v) : self.cptr.runtime_w = v
 
     @property
     def fu(self) : return self.cptr.fu
+    @fu.setter
+    def fu(self, v) : self.cptr.fu = v
 
     @property
     def fv(self) : return self.cptr.fv
+    @fv.setter
+    def fv(self, v) : self.cptr.fv = v
 
     @property
     def fw(self) : return self.cptr.fw
+    @fw.setter
+    def fw(self, v) : self.cptr.fw = v
 
     @property
     def common_start_mode(self) : return self.cptr.common_start_mode
+    @common_start_mode.setter
+    def common_start_mode(self, v) : self.cptr.common_start_mode = v
 
     @property
     def use_hex(self) : return self.cptr.use_HEX
+    @use_hex.setter
+    def use_hex(self, v) : self.cptr.use_HEX = v
 
     @property
     def use_mcp(self) : return self.cptr.use_MCP
+    @use_mcp.setter
+    def use_mcp(self, v) : self.cptr.use_MCP = v
 
     @property
     def mcp_radius(self) : return self.cptr.MCP_radius
+    @mcp_radius.setter
+    def mcp_radius(self, v) : self.cptr.MCP_radius = v
 
     @property
     def uncorrected_time_sum_half_width_u(self) : return self.cptr.uncorrected_time_sum_half_width_u
+    @uncorrected_time_sum_half_width_u.setter
+    def uncorrected_time_sum_half_width_u(self, v) : self.cptr.uncorrected_time_sum_half_width_u = v
 
     @property
     def uncorrected_time_sum_half_width_v(self) : return self.cptr.uncorrected_time_sum_half_width_v
+    @uncorrected_time_sum_half_width_v.setter
+    def uncorrected_time_sum_half_width_v(self, v) : self.cptr.uncorrected_time_sum_half_width_v = v
 
     @property
     def uncorrected_time_sum_half_width_w(self) : return self.cptr.uncorrected_time_sum_half_width_w
+    @uncorrected_time_sum_half_width_w.setter
+    def uncorrected_time_sum_half_width_w(self, v) : self.cptr.uncorrected_time_sum_half_width_w = v
 
     @property
     def dead_time_anode(self) : return self.cptr.dead_time_anode
+    @dead_time_anode.setter
+    def dead_time_anode(self, v) : self.cptr.dead_time_anode = v
 
     @property
     def dead_time_mcp(self) : return self.cptr.dead_time_mcp
+    @dead_time_mcp.setter
+    def dead_time_mcp(self, v) : self.cptr.dead_time_mcp = v
 
     @property
     def u1_reflection_time_position(self) : return self.cptr.u1_reflection_time_position
+    @u1_reflection_time_position.setter
+    def u1_reflection_time_position(self, v) : self.cptr.u1_reflection_time_position = v
 
     @property
     def u2_reflection_time_position(self) : return self.cptr.u2_reflection_time_position
+    @u2_reflection_time_position.setter
+    def u2_reflection_time_position(self, v) : self.cptr.u2_reflection_time_position = v
 
     @property
     def v1_reflection_time_position(self) : return self.cptr.v1_reflection_time_position
+    @v1_reflection_time_position.setter
+    def v1_reflection_time_position(self, v) : self.cptr.v1_reflection_time_position = v
 
     @property
     def v2_reflection_time_position(self) : return self.cptr.v2_reflection_time_position
+    @v2_reflection_time_position.setter
+    def v2_reflection_time_position(self, v) : self.cptr.v2_reflection_time_position = v
 
     @property
     def w1_reflection_time_position(self) : return self.cptr.w1_reflection_time_position
+    @w1_reflection_time_position.setter
+    def w1_reflection_time_position(self, v) : self.cptr.w1_reflection_time_position = v
 
     @property
     def w2_reflection_time_position(self) : return self.cptr.w2_reflection_time_position
+    @w2_reflection_time_position.setter
+    def w2_reflection_time_position(self, v) : self.cptr.w2_reflection_time_position = v
 
     @property
     def u1_reflection_half_width_at_base(self) : return self.cptr.u1_reflection_half_width_at_base
+    @u1_reflection_half_width_at_base.setter
+    def u1_reflection_half_width_at_base(self, v) : self.cptr.u1_reflection_half_width_at_base = v
 
     @property
     def u2_reflection_half_width_at_base(self) : return self.cptr.u2_reflection_half_width_at_base
+    @u2_reflection_half_width_at_base.setter
+    def u2_reflection_half_width_at_base(self, v) : self.cptr.u2_reflection_half_width_at_base = v
 
     @property
     def v1_reflection_half_width_at_base(self) : return self.cptr.v1_reflection_half_width_at_base
+    @v1_reflection_half_width_at_base.setter
+    def v1_reflection_half_width_at_base(self, v) : self.cptr.v1_reflection_half_width_at_base = v
 
     @property
     def v2_reflection_half_width_at_base(self) : return self.cptr.v2_reflection_half_width_at_base
+    @v2_reflection_half_width_at_base.setter
+    def v2_reflection_half_width_at_base(self, v) : self.cptr.v2_reflection_half_width_at_base = v
 
     @property
     def w1_reflection_half_width_at_base(self) : return self.cptr.w1_reflection_half_width_at_base
+    @w1_reflection_half_width_at_base.setter
+    def w1_reflection_half_width_at_base(self, v) : self.cptr.w1_reflection_half_width_at_base = v
 
     @property
     def w2_reflection_half_width_at_base(self) : return self.cptr.w2_reflection_half_width_at_base
+    @w2_reflection_half_width_at_base.setter
+    def w2_reflection_half_width_at_base(self, v) : self.cptr.w2_reflection_half_width_at_base = v
 
     @property
     def output_number_of_hits(self) : return self.number_of_output_hits
+    #@output_number_of_hits.setter
+    #def output_number_of_hits(self, v) : self.number_of_output_hits = v
 
     @property
     def channel_indexes(self) :
@@ -670,7 +745,7 @@ cdef class py_sort_class:
 
 #------------------------------
 #------------------------------
-#--------- SortUtils.hh --------
+#-------- SortUtils.hh --------
 #------------------------------
 #------------------------------
 
@@ -716,31 +791,84 @@ def py_sorter_scalefactors_calibration_map_is_full_enough(py_sort_class sorter) 
     return sorter_scalefactors_calibration_map_is_full_enough(sorter.cptr)
 
 #------------------------------
+#------------- NEW ------------
+#------ interpolate_class -----
 #------------------------------
+#------------------------------
+
+cdef extern from "psalg/hexanode/resort64c.hh":
+    cdef cppclass interpolate_class:
+
+        #friend class sort_class
+        #bool is_sorted
+        #void reset()
+        void set_point(double x, double y)
+        interpolate_class() except +
+
+cdef class py_interpolate_class:
+    """ Python wrapper for C++ class interpolate_class from resort64c.h. 
+    """
+    cdef interpolate_class* cptr # holds a C++ instance
+
+    def __cinit__(self):
+        #print("In py_interpolate_class.__cinit__")
+        self.cptr = new interpolate_class()
+
+    def __dealloc__(self):
+        pass
+        #print("In py_interpolate_class.__dealloc__")
+        #del self.cptr ## ??? 
+
+    def set_point(self, x, y):
+        self.cptr.set_point(x, y)
+
+#    @property
+#    def is_sorted(self) : return self.cptr.is_sorted
+
+
+#------------------------------
+#------------ NEW -------------
 #--- signal_corrector_class ---
 #------------------------------
 #------------------------------
 
-#cdef extern from "roentdek/resort64c.h":
 cdef extern from "psalg/hexanode/resort64c.hh":
     cdef cppclass signal_corrector_class:
-        signal_corrector_class()
+
+        interpolate_class * sum_corrector_U
+        interpolate_class * sum_corrector_V
+        interpolate_class * sum_corrector_W
+    
+        interpolate_class * pos_corrector_U
+        interpolate_class * pos_corrector_V
+        interpolate_class * pos_corrector_W
+
+        signal_corrector_class() except +
 
 
 cdef class py_signal_corrector_class:
     """ Python wrapper for C++ class sort_class from resort64c.h. 
     """
-
     cdef signal_corrector_class* cptr  # holds a C++ instance which we're wrapping
 
     def __cinit__(self):
-        print("In py_signal_corrector_class.__cinit__"\
-              " - direct test of methods from roentdek/resort64c.h in hexanode_ext.class py_signal_corrector_class")
-        self.cptr = new signal_corrector_class();
+        print("In py_signal_corrector_class.__cinit__")
+        self.cptr = new signal_corrector_class()
 
     def __dealloc__(self):
-        print("In py_signal_corrector_class.__dealloc__")
-        del self.cptr
+        print("In py_signal_corrector_class.__dealloc__ DO NOTING?")
+        #del self.cptr
+
+    def sum_corrector_U_set_point(self, x, y) : self.cptr.sum_corrector_U.set_point(x, y)
+    def sum_corrector_V_set_point(self, x, y) : self.cptr.sum_corrector_V.set_point(x, y)
+    def sum_corrector_W_set_point(self, x, y) : self.cptr.sum_corrector_W.set_point(x, y)
+
+    def pos_corrector_U_set_point(self, x, y) : self.cptr.pos_corrector_U.set_point(x, y)
+    def pos_corrector_V_set_point(self, x, y) : self.cptr.pos_corrector_V.set_point(x, y)
+    def pos_corrector_W_set_point(self, x, y) : self.cptr.pos_corrector_W.set_point(x, y)
+
+    #@property
+    #def sum_corrector_U(self) : return self.cptr.sum_corrector_U
 
 #------------------------------
 #------------------------------

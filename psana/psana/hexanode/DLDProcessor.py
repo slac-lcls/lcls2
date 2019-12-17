@@ -35,6 +35,8 @@ from time import time
 from math import sqrt
 import numpy as np
 
+from psana.hexanode.DLDUtils import load_config_pars, load_calibration_tables, text_data
+
 from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
 import psana.pyalgos.generic.Utils as gu
 import hexanode
@@ -95,21 +97,32 @@ class DLDProcessor :
         #logger.info('file ctype_dir   : %s' % file.calibtype_dir())
 
 
-#       // The "command"-value is set in the first line of "sorter.txt"
+#   // create the sorter:
+        self.sorter = sorter = hexanode.py_sort_class()
+
+        #status, command_cfg, self.offset_sum_u, self.offset_sum_v, self.offset_sum_w,\
+        #self.w_offset, self.pos_offset_x, self.pos_offset_y=\
+        #    hexanode.py_read_config_file(CALIBCFG.encode(), sorter)
+
+        txt_cfg = text_data(CALIBCFG)
+        status, command_cfg, self.offset_sum_u, self.offset_sum_v, self.offset_sum_w,\
+        self.w_offset, self.pos_offset_x, self.pos_offset_y=\
+            load_config_pars(txt_cfg, sorter, **kwargs)
+
+#       // The "command"-value is set in the first line of "config.txt" or CLI parameter
 #       // 0 = only convert to new file format
 #       // 1 = sort and write new file 
 #       // 2 = calibrate fv, fw, w_offset
 #       // 3 = create calibration table files
 
-#   // create the sorter:
-        self.sorter = sorter = hexanode.py_sort_class()
-        status, command_cfg, self.offset_sum_u, self.offset_sum_v, self.offset_sum_w, self.w_offset, self.pos_offset_x, self.pos_offset_y=\
-            hexanode.py_read_config_file(CALIBCFG.encode(), sorter)
-
         self.command = command = command_cfg
         
-        logger.info('read_config_file status:%s COMMAND:%d offset_sum_u:%.3f offset_sum_v:%.3f offset_sum_w:%.3f w_offset:%.3f pos_offset_x:%.3f pos_offset_y:%.3f',\
-                    status, command, self.offset_sum_u, self.offset_sum_v, self.offset_sum_w, self.w_offset, self.pos_offset_x, self.pos_offset_y)
+        msg = 'read_config_file status:%s COMMAND:%d'%(status, command)\
+            + '\n      offset_sum_u:%.3f offset_sum_v:%.3f offset_sum_w:%.3f'%\
+             (self.offset_sum_u, self.offset_sum_v, self.offset_sum_w)\
+            + '\n      w_offset:%.3f pos_offset_x:%.3f pos_offset_y:%.3f'%\
+             (self.w_offset, self.pos_offset_x, self.pos_offset_y)
+        logger.info(msg)
 
         if not status :
             logger.info("WARNING: can't read config file %s" % CALIBCFG)
@@ -120,7 +133,9 @@ class DLDProcessor :
         logger.info('use_pos_correction HEX ONLY %s' % sorter.use_pos_correction)
         if sorter is not None :
             if sorter.use_sum_correction or sorter.use_pos_correction :
-                status = hexanode.py_read_calibration_tables(CALIBTAB.encode(), sorter)
+                #status = hexanode.py_read_calibration_tables(CALIBTAB.encode(), sorter)
+                txt_calib = text_data(CALIBTAB)
+                status = load_calibration_tables(txt_calib, sorter=None)
 
         if command == -1 :
             logger.info("no config file was read. Nothing to do.")

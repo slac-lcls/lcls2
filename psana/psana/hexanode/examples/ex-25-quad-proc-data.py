@@ -103,6 +103,7 @@ if __name__ == "__main__" :
               'calibcfg' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/configuration_quad.txt',
               'calibtab' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/calibration_table_data.txt',
               'verbose'  :  False,
+              'command'  :  1, # if != 1 - overrides command from configuration file
              }
 
     # Parameters of the CFD descriminator for hit time finding algotithm

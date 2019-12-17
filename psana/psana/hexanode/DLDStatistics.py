@@ -247,7 +247,7 @@ class DLDStatistics :
 
         u = u_ns * sorter.fu
         v = v_ns * sorter.fv
-        w = 0 #(w_ns + self.w_offset) * sorter.fw
+        w = 0 #(w_ns + self.proc.w_offset) * sorter.fw
 
         Xuv = u
         Xuw = 0 #u
@@ -265,7 +265,7 @@ class DLDStatistics :
 
         if sorter.use_hex :        
             w_ns = tdc_ns[Cw1,0] - tdc_ns[Cw2,0]
-            w = (w_ns + self.w_offset) * sorter.fw
+            w = (w_ns + self.proc.w_offset) * sorter.fw
             
             Xuw = u
             Xvw = v + w

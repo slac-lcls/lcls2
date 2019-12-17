@@ -3,14 +3,20 @@
 Module :py:class:`DLDUtils` 
 =========================================================================
 
-    from psana.hexanode.DLDUtils import ...
+    from psana.hexanode.DLDUtils import load_config_pars, load_calibration_tables, text_data
 
+    txt = text_data(file_name.txt)
+
+    status, command, offset_sum_u, offset_sum_v, offset_sum_w, w_offset, pos_offset_x, pos_offset_y=\
+    load_config_pars(txt, sorter, **kwargs) # if in kwargs command=1, it is taken from file
+
+    status = load_calibration_tables(txt, sorter)
 
 Created on 2019-12-12 by Mikhail Dubrovin
 """
 #----------
 
-USAGE = 'Run example: python .../psana/hexanode/examples/ex-16-proc-data.py'
+USAGE = 'Run example: python .../psana/hexanode/examples/ex-25-quad-proc-data.py'
 
 #----------
 
@@ -18,8 +24,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import sys
-#from time import time
-#import numpy as np
+import psana.pyalgos.generic.Utils as gu
 
 #----------
 
@@ -36,18 +41,23 @@ def load_double_couple(line) :
     return float(flds[0]), float(flds[1])
 
 
-def load_config_pars(txt_config, sorter=None) :
+def load_config_pars(txt_config, sorter=None, **kwargs) :
     """in stead of py_read_config_file"""
 
-    if not txt_config : return False
+    if not txt_config : return False, None, None, None, None, None, None, None
 
     lines = txt_config.split('\n')
     lins = [l for l in lines if l] # discard empty lines
 
     #for line in lins : print('==:', line)
 
+    COMMAND = kwargs.get('command',1)
     command = load_int(lins[0])
-    if command == -1 : return False
+
+    # CLI 'command' argument has higher priority then in configuration file
+    if COMMAND!=1 : command = COMMNAD 
+
+    if command == -1 : return False, None, None, None, None, None, None, None
 
     use_hex           = load_int(lins[1]) > 0
     common_start_mode = load_int(lins[2]) == 0
@@ -88,67 +98,87 @@ def load_config_pars(txt_config, sorter=None) :
 
     check_input = load_int(lins[30])
 
-    print('offset_sum_u: %6.1f' % offset_sum_u)
-    print('offset_sum_v: %6.1f' % offset_sum_v)
-    print('offset_sum_w: %6.1f' % offset_sum_w)
+    msg = 'Configuration constants loaded:'\
+        + '\n  command:            %d' % command\
+        + '\n  use_hex:            %s' % use_hex\
+        + '\n  common_start_mode:  %s' % common_start_mode\
+        + '\n  channels u1,cu2,cv1,cv2,cw1,cw2,cmcp: %2d %2d %2d %2d %2d %2d %2d'%(cu1,cu2,cv1,cv2,cw1,cw2,cmcp)\
+        + '\n  use_mcp:            %s' % use_mcp\
+        + '\n  offset_sum_u:    %6.1f' % offset_sum_u\
+        + '\n  offset_sum_v:    %6.1f' % offset_sum_v\
+        + '\n  offset_sum_w:    %6.1f' % offset_sum_w\
+        + '\n  pos_offset_x:    %6.1f' % pos_offset_x\
+        + '\n  pos_offset_y:    %6.1f' % pos_offset_y\
+        + '\n  uncorrected_time_sum_half_width_u: %4.1f' % uncorrected_time_sum_half_width_u\
+        + '\n  uncorrected_time_sum_half_width_v: %4.1f' % uncorrected_time_sum_half_width_v\
+        + '\n  uncorrected_time_sum_half_width_w: %4.1f' % uncorrected_time_sum_half_width_w\
+        + '\n  fu:              %6.3f' % fu\
+        + '\n  fv:              %6.3f' % fv\
+        + '\n  fw:              %6.3f' % fw\
+        + '\n  w_offset:        %6.1f' % w_offset\
+        + '\n  runtime_u:       %6.1f' % runtime_u\
+        + '\n  runtime_v:       %6.1f' % runtime_v\
+        + '\n  runtime_w:       %6.1f' % runtime_w\
+        + '\n  mcp_radius:      %6.2f' % mcp_radius\
+        + '\n  dead_time_anode: %6.3f' % dead_time_anode\
+        + '\n  dead_time_mcp:   %6.3f' % dead_time_mcp\
+        + '\n  use_sum_correction: %s' % use_sum_correction\
+        + '\n  use_pos_correction: %s' % use_pos_correction\
+        + '\n  check_input:        %d' % check_input
 
-    print('uncorrected_time_sum_half_width_u: %4.1f' % uncorrected_time_sum_half_width_u)
-    print('uncorrected_time_sum_half_width_v: %4.1f' % uncorrected_time_sum_half_width_v)
-    print('uncorrected_time_sum_half_width_w: %4.1f' % uncorrected_time_sum_half_width_w)
-
-    print('runtime_u: %6.1f' % runtime_u)
-    print('runtime_v: %6.1f' % runtime_v)
-    print('runtime_w: %6.1f' % runtime_w)
-
-    print('use_sum_correction: %s' % use_sum_correction)
-    print('use_pos_correction: %s' % use_pos_correction)
+    logger.info(msg)
 
     if check_input != 88888 : 
         logger.warning("Configuration file was not correctly read.")
         # close file
         # delete sorter
-        return sys.exit("Configuration file was not correctly read.")
+        sys.exit("Configuration file was not correctly read.")
 
     if sorter is not None:
+        sorter.use_hex = use_hex
+
         # pass values to sorter sorter
-        sorter.Cu1 = cu1
-        sorter.Cu2 = cu2
-        sorter.Cv1 = cv1
-        sorter.Cv2 = cv2
-        sorter.Cw1 = cw1
-        sorter.Cw2 = cw2
-        sorter.Cmcp= cmcp
-        sorter.use_MCP = use_mcp
+        sorter.cu1 = cu1
+        sorter.cu2 = cu2
+        sorter.cv1 = cv1
+        sorter.cv2 = cv2
+        sorter.cw1 = cw1
+        sorter.cw2 = cw2
+        sorter.cmcp = cmcp
+        sorter.use_mcp = use_mcp
+
+        sorter.uncorrected_time_sum_half_width_u = uncorrected_time_sum_half_width_u
+        sorter.uncorrected_time_sum_half_width_v = uncorrected_time_sum_half_width_v
+        sorter.uncorrected_time_sum_half_width_w = uncorrected_time_sum_half_width_w
 
         sorter.fu = fu
         sorter.fv = fv
         sorter.fw = fw
-        sorter.w_offset = w_offset
 
         sorter.runtime_u = runtime_u
         sorter.runtime_v = runtime_v
         sorter.runtime_w = runtime_w
-        sorter.MCP_radius = mcp_radius
+        sorter.mcp_radius = mcp_radius
 
         sorter.dead_time_anode = dead_time_anode
         sorter.dead_time_mcp = dead_time_mcp
         sorter.use_sum_correction = use_sum_correction
         sorter.use_pos_correction = use_pos_correction
 
-    return command, offset_sum_u, offset_sum_v, offset_sum_w,\
+    return True, command, offset_sum_u, offset_sum_v, offset_sum_w,\
            w_offset, pos_offset_x, pos_offset_y
 
 #----------
 
 def load_calibration_group(lins, il, cmt='') :
     points = load_int(lins[il])
-    print('points: %d for %s' % (points, cmt))
+    logger.info('DLDUtils.load_calibration_group - %2d points for %s' % (points, cmt))
 
     list_of_pairs = []
     for i in range(points) :
         il += 1
         x,y = load_double_couple(lins[il])
-        print('l:%2d x=%8.3f y=%8.3f' % (i,x,y))
+        #print('l:%2d x=%8.3f y=%8.3f' % (i,x,y))
     il += 1
     return list_of_pairs, il
 
@@ -166,57 +196,60 @@ def load_calibration_tables(txt_calib, sorter=None) :
     sum_corrector_U, il = load_calibration_group(lins, il, cmt='sum_corrector_U')
     sum_corrector_V, il = load_calibration_group(lins, il, cmt='sum_corrector_V')
     sum_corrector_W, il = load_calibration_group(lins, il, cmt='sum_corrector_W')\
-      if sorter is not None and sorter.use_HEX else ([],il)
+        if sorter is not None and sorter.use_hex else ([],il)
 
     pos_corrector_U, il = load_calibration_group(lins, il, cmt='pos_corrector_U')
     pos_corrector_V, il = load_calibration_group(lins, il, cmt='pos_corrector_V')
     pos_corrector_W, il = load_calibration_group(lins, il, cmt='pos_corrector_W')\
-      if sorter is not None and sorter.use_HEX else ([],il) 
+        if sorter is not None and sorter.use_hex else ([],il) 
 
-    print('MOVE INPUT TO sorter if needed')
+    #logger.debug('MOVE INPUT TO sorter if needed')
     if sorter is not None  and sorter.use_sum_correction :
-        for x,y in sum_corrector_U : sorter.signal_corrector.sum_corrector_U.set_point(x,y)
-        for x,y in sum_corrector_V : sorter.signal_corrector.sum_corrector_V.set_point(x,y)
-        for x,y in sum_corrector_W : sorter.signal_corrector.sum_corrector_W.set_point(x,y)
+        for x,y in sum_corrector_U : sorter.signal_corrector.sum_corrector_U_set_point(x,y)
+        for x,y in sum_corrector_V : sorter.signal_corrector.sum_corrector_V_set_point(x,y)
+        for x,y in sum_corrector_W : sorter.signal_corrector.sum_corrector_W_set_point(x,y)
 
     if sorter is not None  and sorter.use_pos_correction :
-        for x,y in pos_corrector_U : sorter.signal_corrector.pos_corrector_U.set_point(x,y)
-        for x,y in pos_corrector_V : sorter.signal_corrector.pos_corrector_V.set_point(x,y)
-        for x,y in pos_corrector_W : sorter.signal_corrector.pos_corrector_W.set_point(x,y)
+        for x,y in pos_corrector_U : sorter.signal_corrector.pos_corrector_U_set_point(x,y)
+        for x,y in pos_corrector_V : sorter.signal_corrector.pos_corrector_V_set_point(x,y)
+        for x,y in pos_corrector_W : sorter.signal_corrector.pos_corrector_W_set_point(x,y)
 
     return True
 
 #----------
+
+def text_data(fname) :
+    logger.info('DLDUtils.text_data from file') #: %s' % fname)        
+    data = gu.load_textfile(fname, verb=True)
+    logger.debug(data)
+    return data
+
 #----------
 #----------
 #----------
 
 if __name__ == "__main__" :
 
-    import psana.pyalgos.generic.Utils as gu
+    #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s' # '%(message)s'
+    fmt='%(levelname)s: %(message)s'
+    logging.basicConfig(format=fmt, datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG) #.INFO)
+
+    CDIR ='/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/'
 
     class sorter_proxy() :
         def __init__(self) :
             pass
 
 
-    def text_data(fname, do_print=False,\
-                  cdir='/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/') :
-        path = cdir + fname
-        if do_print : print('data file: %s' % path)        
-        data = gu.load_textfile(path, verb=True)
-        if do_print : print(data)
-        return data
-
-
     def test_load_config_pars() :
-        txt = text_data('configuration_quad.txt', do_print=True)
+        txt = text_data(CDIR + 'configuration_quad.txt')
+        status, command, offset_sum_u, offset_sum_v, offset_sum_w, w_offset, pos_offset_x, pos_offset_y=\
         load_config_pars(txt, sorter=None)
 
 
     def test_load_calibration_tables() :
-        txt = text_data('calibration_table_data.txt', do_print=True)
-        load_calibration_tables(txt, sorter=None)
+        txt = text_data(CDIR + 'calibration_table_data.txt')
+        status = load_calibration_tables(txt, sorter=None)
 
 
     #print('%s\n%s'%(50*'_', USAGE))
