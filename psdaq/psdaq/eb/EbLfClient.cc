@@ -95,9 +95,7 @@ int EbLfClient::connect(EbLfCltLink** link,
     return (rc != FI_SUCCESS) ? rc : -FI_ETIMEDOUT;
   }
 
-  size_t injectSize = info->tx_attr->inject_size;
-  if (_verbose)  printf("EbLfClient: tx_attr.inject_size = %zd\n", injectSize);
-  *link = new EbLfCltLink(ep, injectSize, _verbose, _pending);
+  *link = new EbLfCltLink(ep, _verbose, _pending);
   if (!*link)
   {
     fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);

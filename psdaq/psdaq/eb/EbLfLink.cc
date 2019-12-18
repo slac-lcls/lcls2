@@ -232,11 +232,9 @@ int EbLfSvrLink::_postCompRecv(int count)
 // ---
 
 EbLfCltLink::EbLfCltLink(Endpoint* ep,
-                         size_t    injectSize,
                          unsigned  verbose,
                          uint64_t& pending) :
   EbLfLink(ep, verbose),
-  _injectSize(injectSize),
   _pending(pending)
 {
 }
@@ -318,15 +316,9 @@ int EbLfCltLink::post(const void* buf,
 
   while (true)
   {
-    if (len > _injectSize)
-    {
-      rc = _ep->writedata(buf, len, &ra, ctx, immData, _mr);
-    }
-    else
-    {
-      rc = _ep->inject_writedata(buf, len, &ra, immData);
-    }
-    if (!rc)  break;
+    // writedata() will do (the equivalent of) inject_writedata() if the size
+    // is less than the inject_size, so there is no need to duplicate that here
+    if ( !(rc = _ep->writedata(buf, len, &ra, ctx, immData, _mr)) )  break;
 
     if (rc != -FI_EAGAIN)
     {

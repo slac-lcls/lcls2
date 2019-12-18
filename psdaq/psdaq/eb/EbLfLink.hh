@@ -59,7 +59,7 @@ namespace Pds {
     class EbLfCltLink : public EbLfLink
     {
     public:
-      EbLfCltLink(Fabrics::Endpoint*, size_t injectSize, unsigned verbose, uint64_t& pending);
+      EbLfCltLink(Fabrics::Endpoint*, unsigned verbose, uint64_t& pending);
     public:
       int exchangeIds(unsigned id);
       int prepare();
@@ -78,7 +78,6 @@ namespace Pds {
                size_t      len,
                uint64_t    immData);
     private:                          // Arranged in order of access frequency
-      const size_t _injectSize;       // Max inject_writedata() size for post()
       uint64_t&    _pending;          // Bit list of IDs currently posting
     };
   };
