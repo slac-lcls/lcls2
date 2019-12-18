@@ -35,9 +35,9 @@ namespace Pds {
              ((s_prescale << 0*4) | (s_prescale << 1*4) | (s_prescale << 2*4) | (s_prescale << 3*4) |
               (s_prescale << 4*4) | (s_prescale << 5*4) | (s_prescale << 6*4) | (s_prescale << 7*4)) };
     public:
-      ResultDgram(uint64_t pulseId, const XtcData::Transition& transition_, unsigned id) :
-        Pds::EbDgram(pulseId, XtcData::Dgram(transition_, XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0),
-                                                                           XtcData::Src(id, XtcData::Level::Event)))),
+      ResultDgram(const Pds::EbDgram& dgram, unsigned id) :
+        Pds::EbDgram(dgram, XtcData::Dgram(dgram, XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0),
+                                                               XtcData::Src(id, XtcData::Level::Event)))),
         _data(0),
         _monBufNo(0)
       {
