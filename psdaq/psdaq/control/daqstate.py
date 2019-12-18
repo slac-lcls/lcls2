@@ -78,6 +78,8 @@ def main():
                 break
             elif part1 == 'error':
                 print('error: %s' % part2)
+            elif part1 == 'fileReport':
+                print('data file: %s' % part2)
             else:
                 print('transition: %-11s  state: %-11s  config: %s  recording: %s' % (part1, part2, part3, part4))
 
