@@ -38,15 +38,22 @@
   if (!function)            \
     return false;
 
-#define CHECK_MR(buf, len, mr, cmd)                                                                                                 \
-  if (!mr) {                                                                                                                        \
-    mr = _fabric->lookup_memory(buf, len);                                                                                          \
-    if (!mr) {                                                                                                                      \
-      set_custom_error("%s: requested buffer starting at %p with len %lu is not within a registered memory region", cmd, buf, len); \
-      ssize_t rret = -FI_EINVAL;                                                                                                    \
-      _errno = rret;                                                                                                                \
-      return rret;                                                                                                                  \
-    }                                                                                                                               \
+#define CHECK_MR(buf, len, mr, cmd)                                                                                                                                 \
+  if (mr) {                                                                                                                                                         \
+    if (!mr->contains(buf, len)) {                                                                                                                                  \
+      set_custom_error("%s: requested buffer starting at %p with len %zu is not within given memory region %p, len %zd", cmd, buf, len, mr->start(), mr->length()); \
+      ssize_t rret = -FI_EINVAL;                                                                                                                                    \
+      _errno = rret;                                                                                                                                                \
+      return rret;                                                                                                                                                  \
+    }                                                                                                                                                               \
+  } else {                                                                                                                                                          \
+    mr = _fabric->lookup_memory(buf, len);                                                                                                                          \
+    if (!mr) {                                                                                                                                                      \
+      set_custom_error("%s: requested buffer starting at %p with len %zu is not within a registered memory region", cmd, buf, len);                                 \
+      ssize_t rret = -FI_EINVAL;                                                                                                                                    \
+      _errno = rret;                                                                                                                                                \
+     return rret;                                                                                                                                                   \
+    }                                                                                                                                                               \
   }
 
 #define CHECK_MR_IOVEC(iov, cmd)                                                                        \
