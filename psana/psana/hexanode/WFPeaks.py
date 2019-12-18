@@ -104,7 +104,8 @@ class WFPeaks :
             npeaks = wfpkfinder_cfd(wfch, self.BASE, self.THR, self.CFR, self.DEADTIME, self.LEADINGEDGE,\
                                     self._pkvals[ch,:], self._pkinds[ch,:])
             #print(' npeaks:', npeaks)
-            assert (npeaks<self.NUM_HITS), 'number of found peaks exceeds reserved array shape'
+            #assert (npeaks<self.NUM_HITS), 'number of found peaks exceeds reserved array shape'
+            if npeaks>=self.NUM_HITS : npeaks = self.NUM_HITS
             self._number_of_hits[ch] = npeaks
             self._pktsec[ch, :npeaks] = wtch[self._pkinds[ch, :npeaks]] #sec
 

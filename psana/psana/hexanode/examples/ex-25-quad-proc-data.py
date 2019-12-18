@@ -91,7 +91,8 @@ if __name__ == "__main__" :
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     print('%s\nTEST %s' % (50*'_', tname))
 
-    kwargs = {'dsname'   : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2',
+    kwargs = {#'dsname'   : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2',
+              'dsname'   : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2',
               'detname'  : 'tmo_hexanode',
               'numchs'   : 5,
               'numhits'  : 16,

@@ -11,10 +11,16 @@
 
 from psana import *
 
-dsource = MPIDataSource('exp=amox27716:run=100:smd')
+EVENTS = 100
+
+dsname = 'exp=amox27716:run=100:smd'
+ofname = 'hexanode.h5' # '/reg/data/ana03/scratch/dubrovin/hexanode.h5'
+print 'Input dataset: %s\nOutput file: %s' % (dsname, ofname)
+
+dsource = MPIDataSource(dsname)
 acq = Detector('ACQ1')
 
-smldata = dsource.small_data('hexanode.h5',gather_interval=100)
+smldata = dsource.small_data(ofname,gather_interval=100)
 
 for nevt,evt in enumerate(dsource.events()):
    wfs = acq.waveform(evt)
@@ -26,6 +32,6 @@ for nevt,evt in enumerate(dsource.events()):
    print 'shapes of wfs:', wfs.shape, ' times:', times.shape
    smldata.event(waveforms=wfs,times=times)
 
-   if nevt>100: break
+   if nevt>EVENTS: break
 
 smldata.save()

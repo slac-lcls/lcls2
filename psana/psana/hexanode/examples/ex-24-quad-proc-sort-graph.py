@@ -61,7 +61,7 @@ def proc_data(**kwargs):
     DSNAME       = kwargs.get('dsname', '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
     DETNAME      = kwargs.get('detname','tmo_hexanode')
     EVSKIP       = kwargs.get('evskip', 0)
-    EVENTS       = kwargs.get('events', 10) + EVSKIP
+    EVENTS       = kwargs.get('events', 100) + EVSKIP
     OFPREFIX     = kwargs.get('ofprefix','./')
     VERBOSE      = kwargs.get('verbose', False)
 
@@ -115,18 +115,18 @@ if __name__ == "__main__" :
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     print('%s\nTEST %s' % (50*'_', tname))
 
-    kwargs = {'dsname'   : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2',
+    kwargs = {'dsname'   : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2',
               'detname'  : 'tmo_hexanode',
               'numchs'   : 5,
               'numhits'  : 16,
               'evskip'   : 0,
-              'events'   : 100,
+              'events'   : 1000,
               'ofprefix' : 'figs-DLD/plot',
               'run'      : 100,
               'exp'      : 'amox27716',
               'calibcfg' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/configuration_quad.txt',
               'calibtab' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/calibration_table_data.txt',
-              'verbose'  :  False,
+              'verbose'  : False,
              }
 
     # Parameters of the CFD descriminator for hit time finding algotithm
