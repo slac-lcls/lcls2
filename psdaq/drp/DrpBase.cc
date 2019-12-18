@@ -62,26 +62,19 @@ MemPool::MemPool(const Parameters& para) :
 
     // make the size of the pebble buffer that will contain the datagram equal
     // to the dmaSize times the number of lanes
+    // Also include space in the pebble that can hold the worst case transition
+    // so that it will be part of the memory region that can be RDMAed to the MEB
     m_bufferSize = __builtin_popcount(para.laneMask) * m_dmaSize;
-    pebble.resize(m_nbuffers, m_bufferSize);
+    pebble.resize(m_nbuffers, m_bufferSize, para.maxTrSize);
     logging::info("nbuffer %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
 
     pgpEvents.resize(m_nbuffers);
 
-    transitionBuffer = new uint8_t[para.maxTrSize];
-    if (!transitionBuffer) {
-        logging::critical("Failed to allocate transition buffer of size %zd", para.maxTrSize);
-        throw "Failed to allocate transition buffer";
-    }
+    transitionBuffer = pebble[m_nbuffers]; // Put it at the end of the pebble
 }
 
 MemPool::~MemPool()
 {
-    if (transitionBuffer) {
-        delete[] static_cast<char*>(transitionBuffer);
-        transitionBuffer = nullptr;
-        m_maxTransitionSize = 0;
-    }
 }
 
 EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
@@ -413,6 +406,7 @@ std::string DrpBase::configure(const json& msg)
 
     m_exporter = std::make_shared<MetricExporter>();
     if (m_exposer) {
+        logging::info("Providing run-time monitoring data on port %d", port);
         m_exposer->RegisterCollectable(m_exporter);
     }
 

@@ -54,10 +54,10 @@ struct Parameters
 class Pebble
 {
 public:
-    void resize(unsigned nbuffers, size_t bufferSize)
+    void resize(unsigned nbuffers, size_t bufferSize, size_t trBufSize = 0)
     {
         m_bufferSize = bufferSize;
-        size_t size = nbuffers*m_bufferSize;
+        size_t size = nbuffers*m_bufferSize + trBufSize;
         m_buffer.resize(size);
     }
 
