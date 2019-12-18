@@ -21,8 +21,7 @@ alg = dc.alg('raw',[0,0,1])
 
 cydgram = dc.CyDgram()
 
-#dirtmp = './'
-dirtmp = '/reg/data/ana03/scratch/dubrovin/'
+dirtmp =  './' #'/reg/data/ana03/scratch/dubrovin/'
 ifname = dirtmp + 'hexanode.h5'
 ofname = dirtmp + 'hexanode.xtc2'
 print('Input file: %s\nOutput file: %s' % (ifname,ofname))
