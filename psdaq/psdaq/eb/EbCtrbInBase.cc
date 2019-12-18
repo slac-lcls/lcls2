@@ -178,12 +178,12 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
 
   if (_prms.verbose >= VL_BATCH)
   {
-    unsigned   ctl     = bdg->pulseId();
+    unsigned   ctl     = bdg->control();
     unsigned   env     = bdg->env;
     BatchFifo& pending = ctrb.pending();
     printf("CtrbIn  rcvd        %6ld result  [%5d] @ "
-           "%16p, ctl %02x, pid %014lx,            src %2d, env %08x, empty %c, cnt %zd, result %p\n",
-           _batchCount, idx, bdg, ctl, pid, lnk->id(), env, pending.empty() ? 'Y' : 'N',
+           "%16p, ctl %02x, pid %014lx, env %08x,            src %2d, empty %c, cnt %zd, result %p\n",
+           _batchCount, idx, bdg, ctl, pid, env, lnk->id(), pending.empty() ? 'Y' : 'N',
            pending.count(), ctrb.batch(idx)->result());
   }
 
@@ -303,8 +303,8 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
       const char* svc    = TransitionId::name(result->service());
       size_t      extent = sizeof(*result) + result->xtc.sizeofPayload();
       printf("CtrbIn  found  [%5d]  %15s    @ "
-             "%16p, ctl %02x, pid %014lx, sz %6zd, TEB %2d, env %08x, deliver %c [%014lx]\n",
-             idx, svc, result, ctl, rPid, extent, src, env, rPid == iPid ? 'Y' : 'N', iPid);
+             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2d, deliver %c [%014lx]\n",
+             idx, svc, result, ctl, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid);
     }
 
     if (rPid == iPid)
