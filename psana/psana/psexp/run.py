@@ -198,6 +198,7 @@ class Run(object):
         if hasattr(beginrun_evt._dgrams[0], 'runinfo'): # some xtc2 do not have BeginRun
             self.expt = beginrun_evt._dgrams[0].runinfo[0].runinfo.expt 
             self.runnum = beginrun_evt._dgrams[0].runinfo[0].runinfo.runnum
+            self.timestamp = beginrun_evt.timestamp
 
 
 class RunShmem(Run):

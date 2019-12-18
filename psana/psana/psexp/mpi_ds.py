@@ -48,7 +48,7 @@ class RunParallel(Run):
             for det_name in self.detnames:
                 self.calibs[det_name] = super(RunParallel, self)._get_calib(det_name)
             self.bcast_packets = {'calibs': self.calibs, \
-                    'expt': self.expt, 'runnum': self.runnum}
+                    'expt': self.expt, 'runnum': self.runnum, 'timestamp': self.timestamp}
             
         else:
             self.smd_dm = None
@@ -73,6 +73,7 @@ class RunParallel(Run):
             self.calibs = self.bcast_packets['calibs']
             self.expt = self.bcast_packets['expt']
             self.runnum = self.bcast_packets['runnum']
+            self.timestamp = self.bcast_packets['timestamp']
         
         self.esm = EnvStoreManager(self.configs, 'epics', 'scan')
     

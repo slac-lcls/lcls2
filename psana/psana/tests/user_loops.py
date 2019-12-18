@@ -43,6 +43,7 @@ for run in ds.runs():
         assert sdet(evt) == 42.0
     assert run.expt == 'xpptut15' # this is from xtc file
     assert run.runnum == 14
+    assert run.timestamp == 4294967297
     #endRunCode
 #endJobCode
 
