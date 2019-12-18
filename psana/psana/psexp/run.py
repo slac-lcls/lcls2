@@ -181,13 +181,34 @@ class Run(object):
     def __reduce__(self):
         return (run_from_id, (self.id,))
 
+    def _get_runinfo(self):
+        """ Gets runinfo from BeginRun event"""
+        beginrun_evt = None
+        if hasattr(self.dm.configs[0].software, 'smdinfo'):
+            # This run has smd files - use offset to get BeginRun dgram
+            smd_beginrun_evt = next(self.smd_dm)
+            ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
+                    d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_beginrun_evt])
+            beginrun_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
+        elif hasattr(self.dm.configs[0].software, 'runinfo'):
+            beginrun_evt = next(self.dm)
+        
+        if not beginrun_evt: return
+
+        if hasattr(beginrun_evt._dgrams[0], 'runinfo'): # some xtc2 do not have BeginRun
+            self.expt = beginrun_evt._dgrams[0].runinfo[0].runinfo.expt 
+            self.runnum = beginrun_evt._dgrams[0].runinfo[0].runinfo.runnum
+            self.timestamp = beginrun_evt.timestamp
+
+
 class RunShmem(Run):
     """ Yields list of events from a shared memory client (no event building routine). """
     
     def __init__(self, exp, run_no, xtc_files, max_events, batch_size, filter_callback, tag):
         super(RunShmem, self).__init__(exp, run_no, max_events=max_events, batch_size=batch_size, filter_callback=filter_callback)
         self.dm = DgramManager(xtc_files,tag=tag)
-        self.configs = self.dm.configs
+        self.configs = self.dm.configs 
+        super()._get_runinfo()
         self.calibs = {}
         for det_name in self.detnames:
             self.calibs[det_name] = self._get_calib(det_name)
@@ -208,6 +229,7 @@ class RunSingleFile(Run):
         xtc_files, smd_files, epics_file = run_src
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
+        super()._get_runinfo()
         self.esm = EnvStoreManager(self.dm.configs, 'epics', 'scan')
         self.calibs = {}
         for det_name in self.detnames:
@@ -222,8 +244,7 @@ class RunSingleFile(Run):
         for evt in self.dm:
             if evt._dgrams[0].service() == TransitionId.BeginStep: 
                 yield Step(evt, self.dm)
-
-
+    
 class RunSerial(Run):
     """ Yields list of events from multiple smd/bigdata files using single core."""
 
@@ -235,6 +256,7 @@ class RunSerial(Run):
         self.smd_dm = DgramManager(smd_files)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
+        super()._get_runinfo()
         self.esm = EnvStoreManager(self.smd_dm.configs, 'epics', 'scan')
         self.calibs = {}
         for det_name in self.detnames:
@@ -253,7 +275,6 @@ class RunSerial(Run):
             if evt._dgrams[0].service() == TransitionId.BeginStep:
                 yield Step(evt, events)
 
-
 class RunLegion(Run):
 
     def __init__(self, exp, run_no, run_src, **kwargs):
@@ -264,6 +285,7 @@ class RunLegion(Run):
         self.smd_dm = DgramManager(smd_files)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
+        super()._get_runinfo()
         self.esm = EnvStoreManager(self.configs, 'epics', 'scan')
         self.calibs = {}
         for det_name in self.detnames:

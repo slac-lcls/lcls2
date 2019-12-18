@@ -41,6 +41,9 @@ for run in ds.runs():
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
         assert edet(evt) is None or edet(evt) == 41.0
         assert sdet(evt) == 42.0
+    assert run.expt == 'xpptut15' # this is from xtc file
+    assert run.runnum == 14
+    assert run.timestamp == 4294967297
     #endRunCode
 #endJobCode
 
@@ -57,13 +60,26 @@ ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
 for evt in ds.events():
     pass
 
-# Usecase#3: looping through configUpdates
+# Usecase#3: looping through steps
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
 for run in ds.runs():
     det = run.Detector('xppcspad')
-    edet = run.Detector('HX2:DVD:GCC:01:PMON')
     for step in run.steps():
         for evt in step.events():
             padarray = vals.padarray
             assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
             
+# Usecase#4: singlefile ds
+ds = DataSource(files=os.path.join(xtc_dir,'data-r0001-s00.xtc2'))
+for run in ds.runs():
+    det = run.Detector('xppcspad')
+    edet = run.Detector('HX2:DVD:GCC:01:PMON') # mona TODO
+    sdet = run.Detector('motor2') # mona TODO
+    for step in run.steps():
+        for evt in step.events():
+            calib = det.raw.calib(evt)
+            assert calib.shape == (2,3,6)
+    assert run.expt == 'xpptut15'
+    assert run.runnum == 14
+
+

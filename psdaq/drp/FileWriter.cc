@@ -24,10 +24,26 @@ BufferedFileWriter::~BufferedFileWriter()
 
 void BufferedFileWriter::open(const std::string& fileName)
 {
+    struct flock flk;
+    flk.l_type   = F_WRLCK;
+    flk.l_whence = SEEK_SET;
+    flk.l_start  = 0;
+    flk.l_len    = 0;
+
     m_fd = ::open(fileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
     if (m_fd == -1) {
         // %m will be replaced by the string strerror(errno)
         logging::error("Error creating file %s: %m", fileName.c_str());
+    } else {
+        // establish write lock on the file
+        int rc;
+        do {
+            rc = fcntl(m_fd, F_SETLKW, &flk);
+        } while (rc<0 && errno==EINTR);
+        if (rc<0) {
+            // %m will be replaced by the string strerror(errno)
+            logging::error("Error locking file %s: %m", fileName.c_str());
+        }
     }
 }
 
