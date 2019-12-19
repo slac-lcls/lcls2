@@ -40,7 +40,7 @@ public:
 
 class EbDgram : public PulseId, public XtcData::Dgram {
 public:
-    EbDgram(uint64_t value, const Dgram& dgram) : PulseId(value), Dgram(dgram) {}
+    EbDgram(const PulseId& pulseId, const Dgram& dgram) : PulseId(pulseId), Dgram(dgram) {}
     EbDgram(const TimingHeader& th, const XtcData::Src src, uint32_t envRogMask) : PulseId(th) {
         XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
         xtc.src = src; // set the src field for the event builders

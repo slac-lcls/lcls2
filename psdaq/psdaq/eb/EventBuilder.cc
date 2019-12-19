@@ -436,8 +436,8 @@ void EventBuilder::process(const EbDgram* ctrb,
       size_t    sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
       unsigned  src = ctrb->xtc.src.value();
       printf("EB found a ctrb                              @ "
-             "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, pld [%08x, %08x], prm %08x, due %014lx\n",
-             ctrb, ctl, pid, sz, src, env, pld[0], pld[1], prm, due ? due->sequence() : 0ul);
+             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d, pld [%08x, %08x], prm %08x, due %014lx\n",
+             ctrb, ctl, pid, env, sz, src, pld[0], pld[1], prm, due ? due->sequence() : 0ul);
     }
 
     ctrb = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(ctrb) + size);

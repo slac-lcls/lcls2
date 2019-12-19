@@ -93,7 +93,7 @@ int EbAppBase::configure(const EbParams& prms)
 
     if (_verbose)  printf("Inbound link with Ctrb ID %d connected\n", rmtId);
 
-    size_t       regSize;
+    size_t regSize;
     if ( (rc = link->prepare(&regSize)) )
     {
       fprintf(stderr, "%s:\n  Failed to prepare link with Ctrb ID %d\n",
@@ -203,8 +203,8 @@ int EbAppBase::process()
     unsigned    ctl = idg->control();
     const char* knd = TransitionId::name(idg->service());
     printf("EbAp rcvd %9ld %15s[%5d]   @ "
-           "%16p, ctl %02x, pid %014lx,            src %2d, env %08x, data %08lx, ext %4d\n",
-           _bufferCnt, knd, idx, idg, ctl, pid, lnk->id(), env, data, idg->xtc.extent);
+           "%16p, ctl %02x, pid %014lx, env %08x,            src %2d, data %08lx, ext %4d\n",
+           _bufferCnt, knd, idx, idg, ctl, pid, env, lnk->id(), data, idg->xtc.extent);
   }
 
   // Tr space bufSize value is irrelevant since maxEntries will be 1 for that case

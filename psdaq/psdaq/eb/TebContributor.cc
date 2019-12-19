@@ -130,7 +130,7 @@ void* TebContributor::allocate(const TimingHeader& hdr, const void* appPrm)
     unsigned    ctl = hdr.control();
     unsigned    env = hdr.env;
     printf("Batching  %15s  dg              @ "
-           "%16p, ctl %02x, pid %014lx,                    env %08x, prm %p\n",
+           "%16p, ctl %02x, pid %014lx, env %08x,                    prm %p\n",
            svc, &hdr, ctl, pid, env, appPrm);
   }
 
@@ -208,7 +208,7 @@ void TebContributor::_post(const Batch* batch) const
       uint64_t pid    = batch->id();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
       printf("CtrbOut posts %9ld    batch[%5d]    @ "
-             "%16p,         pid %014lx, sz %6zd, TEB %2d @ %16p, data %08x\n",
+             "%16p,         pid %014lx,               sz %6zd, TEB %2d @ %16p, data %08x\n",
              _batchCount, idx, buffer, pid, extent, dst, rmtAdx, data);
     }
 
@@ -243,8 +243,8 @@ void TebContributor::_post(const EbDgram* dgram) const
         const char* svc    = TransitionId::name(dgram->service());
         void*       rmtAdx = (void*)link->rmtAdx(offset);
         printf("CtrbOut posts    %15s           @ "
-               "%16p, ctl %02x, pid %014lx, sz %6zd, TEB %2d, env %08x @ %16p, data %08x\n",
-               svc, dgram, ctl, pid, extent, link->id(), env, rmtAdx, data);
+               "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2d @ %16p, data %08x\n",
+               svc, dgram, ctl, pid, env, extent, link->id(), rmtAdx, data);
       }
 
       link->post(dgram, extent, offset, data); // Not a batch

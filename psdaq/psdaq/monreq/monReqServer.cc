@@ -156,17 +156,17 @@ namespace Pds {
     }
 
   private:
-    virtual void _copyDatagram(EbDgram* dg, char* buf)
+    virtual void _copyDatagram(Dgram* dg, char* buf)
     {
-      //printf("_copyDatagram:   dg = %p, pid = %014lx to %p\n",
-      //       dg, dg->pulseId(), buf);
+      //printf("_copyDatagram:   dg = %p, ts = %d.%09d to %p\n",
+      //       dg, dg->time.seconds(), dg->time.nanoseconds(), buf);
 
       // The dg payload is a directory of contributions to the built event.
       // Iterate over the directory and construct, in shared memory, the event
       // datagram (odg) from the contribution XTCs
       const EbDgram** const  last = (const EbDgram**)dg->xtc.next();
       const EbDgram*  const* ctrb = (const EbDgram**)dg->xtc.payload();
-      EbDgram*               odg = new((void*)buf) EbDgram(*dg);
+      Dgram*                 odg  = new((void*)buf) Dgram(**ctrb); // Not an EbDgram!
       do
       {
         const EbDgram* idg = *ctrb;
@@ -185,20 +185,20 @@ namespace Pds {
       while (++ctrb != last);
     }
 
-    virtual void _deleteDatagram(EbDgram* dg, int bufIdx)
+    virtual void _deleteDatagram(Dgram* dg, int bufIdx)
     {
-      //printf("_deleteDatagram @ %p: pid = %014lx\n",
-      //       dg, dg->pulseId());
+      //printf("_deleteDatagram @ %p: ts = %d.%09d\n",
+      //       dg, dg->time.seconds(), dg->time.nanoseconds());
 
       //if ((bufIdx < 0) || (size_t(bufIdx) >= _bufFreeList.size()))
       //{
       //  printf("deleteDatagram: Unexpected buffer index %d\n", bufIdx);
       //}
 
-      unsigned idx = dg->env;
+      unsigned idx = (dg->env >> 16) & 0xff;
       if (idx >= _bufFreeList.size())
       {
-        printf("deleteDatagram: Unexpected index %d\n", idx);
+        printf("deleteDatagram: Unexpected index %08x\n", idx);
       }
       //if (idx != bufIdx)
       //{
@@ -209,8 +209,8 @@ namespace Pds {
       {
         if (idx == _bufFreeList.peek(i))
         {
-          printf("Attempted double free of list entry %d: idx %d, bufIdx %d, dg %p, pid %014lx\n",
-                 i, idx, bufIdx, dg, dg->pulseId());
+          printf("Attempted double free of list entry %d: idx %d, bufIdx %d, dg %p, ts %d.%09d\n",
+                 i, idx, bufIdx, dg, dg->time.seconds(), dg->time.nanoseconds());
           // Does the dg still need to be freed?  Apparently so.
           Pool::free((void*)dg);
           return;
@@ -318,7 +318,7 @@ namespace Pds {
 
       // Create pool for transferring events to MyXtcMonitorServer
       unsigned    entries = std::bitset<64>(_prms.contributors).count();
-      size_t      size    = sizeof(EbDgram) + entries * sizeof(EbDgram*);
+      size_t      size    = sizeof(Dgram) + entries * sizeof(Dgram*);
       GenericPool pool(size, _prms.numEvBuffers);
       _pool = &pool;
 
@@ -361,36 +361,41 @@ namespace Pds {
       }
       ++_eventCount;
 
-      // Create a EbDgram with a payload that is a directory of contribution
-      // EbDgrams to the built event.  Reserve space at end for the buffer's index
+      // Create a Dgram with a payload that is a directory of contribution
+      // Dgrams to the built event in order to avoid first assembling the
+      // datagram from its contributions in a temporary buffer, only to then
+      // copy it into shmem in _copyDatagram() above.  Since the contributions,
+      // and thus the full datagram, can be quite large, this would amount to
+      // a lot of copying
       size_t   sz     = (event->end() - event->begin()) * sizeof(*(event->begin()));
       unsigned idx    = ImmData::idx(event->parameter());
-      void*    buffer = _pool->alloc(sizeof(EbDgram) + sz);
+      void*    buffer = _pool->alloc(sizeof(Dgram) + sz);
       if (!buffer)
       {
-        logging::critical("%s:\n  EbDgram pool allocation of size %zd failed:",
-                          __PRETTY_FUNCTION__, sizeof(EbDgram) + sz);
+        logging::critical("%s:\n  Dgram pool allocation of size %zd failed:",
+                          __PRETTY_FUNCTION__, sizeof(Dgram) + sz);
         printf("Directory datagram pool\n");
         _pool->dump();
         printf("Meb::process event dump:\n");
         event->dump(-1);
         abort();
       }
-      EbDgram*  dg  = new(buffer) EbDgram(*(event->creator()));
-      EbDgram** buf = (EbDgram**)dg->xtc.alloc(sz);
+
+      Dgram* dg  = new(buffer) Dgram(*(event->creator()));
+      void*  buf = dg->xtc.alloc(sz);
       memcpy(buf, event->begin(), sz);
-      dg->env = idx;                // Pass buffer's index to _deleteDatagram()
+      dg->env = (dg->env & 0xff00ffff) | (idx << 16); // Pass buffer's index to _deleteDatagram()
 
       if (_prms.verbose >= VL_EVENT)
       {
-        uint64_t pid = dg->pulseId();
+        uint64_t pid = event->creator()->pulseId();
         unsigned ctl = dg->control();
         size_t   sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
         unsigned src = dg->xtc.src.value();
         unsigned env = dg->env;
         printf("MEB processed  %5ld          event  [%5d] @ "
-               "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x\n",
-               _eventCount, idx, dg, ctl, pid, sz, src, env);
+               "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d\n",
+               _eventCount, idx, dg, ctl, pid, env, sz, src);
       }
 
       if (_apps->events(dg) == XtcMonitorServer::Handled)
@@ -524,7 +529,10 @@ std::string MebApp::_configure(const json &msg)
 
   if (_exporter)  _exporter.reset();
   _exporter = std::make_shared<MetricExporter>();
-  if (_exposer)  _exposer->RegisterCollectable(_exporter);
+  if (_exposer) {
+    logging::info("Providing run-time monitoring data on port %d", port);
+    _exposer->RegisterCollectable(_exporter);
+  }
 
   if (_meb)  _meb.reset();
   _meb = std::make_unique<Meb>(_prms, _exporter);
@@ -842,6 +850,13 @@ int main(int argc, char** argv)
 
   if (prms.numEvBuffers < NUMBEROF_XFERBUFFERS)
     prms.numEvBuffers = NUMBEROF_XFERBUFFERS;
+  if (prms.numEvBuffers > 255)
+  {
+    // The problem is that there are only 8 bits available in the env
+    // Could use the lower 24 bits, but then we have a nonstandard env
+    logging::critical("%s:\n  Number of event buffers > 255 is currently not supported: got %d\n", prms.numEvBuffers);
+    return 1;
+  }
 
   if (!tag)  tag = partitionTag.c_str();
   logging::info("Partition Tag: '%s'", tag);

@@ -313,9 +313,8 @@ void Teb::process(EbEvent* event)
 
   if (ImmData::rsp(ImmData::flg(event->parameter())) == ImmData::Response)
   {
-    auto         pid   = dg.pulseId();
-    Batch*       batch = _batMan.fetch(pid);
-    ResultDgram& rdg   = *new(batch->allocate()) ResultDgram(pid, dg, dg.xtc.src.value());
+    Batch*       batch = _batMan.fetch(dg.pulseId());
+    ResultDgram& rdg   = *new(batch->allocate()) ResultDgram(dg, _id);
 
     rdg.xtc.damage.increase(event->damage().value());
 
@@ -369,9 +368,10 @@ void Teb::process(EbEvent* event)
       size_t    sz  = sizeof(rdg) + rdg.xtc.sizeofPayload();
       unsigned  src = rdg.xtc.src.value();
       unsigned  env = rdg.env;
+      uint32_t* pld = reinterpret_cast<uint32_t*>(rdg.xtc.payload());
       printf("TEB processed                result  [%5d] @ "
-             "%16p, ctl %02x, pid %014lx, sz %6zd, src %2d, env %08x, res [%08x, %08x]\n",
-             idx, &rdg, ctl, pid, sz, src, env, rdg.persist(), rdg.monitor());
+             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d, res [%08x, %08x]\n",
+             idx, &rdg, ctl, pid, env, sz, src, pld[0], pld[1]);
     }
   }
 
@@ -436,7 +436,7 @@ void Teb::_post(const Batch& batch)
       uint64_t pid    = batch.id();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
       printf("TEB posts          %9ld result  [%5d] @ "
-             "%16p,         pid %014lx, sz %6zd, dst %2d @ %16p\n",
+             "%16p,         pid %014lx,               sz %6zd, dst %2d @ %16p\n",
              _batchCount, idx, buffer, pid, extent, dst, rmtAdx);
     }
 
@@ -661,7 +661,10 @@ int TebApp::_configure(const json& msg)
 
   if (_exporter)  _exporter.reset();
   _exporter = std::make_shared<MetricExporter>();
-  if (_exposer)  _exposer->RegisterCollectable(_exporter);
+  if (_exposer) {
+    logging::info("Providing run-time monitoring data on port %d", port);
+    _exposer->RegisterCollectable(_exporter);
+  }
 
   if (_teb)  _teb.reset();
   _teb = std::make_unique<Teb>(_prms, _exporter);
