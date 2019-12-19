@@ -164,7 +164,6 @@ class Run(object):
     def _get_runinfo(self):
         """ Gets runinfo from BeginRun event"""
         beginrun_evt = None
-        print(len(self.dm.configs))
         if hasattr(self.dm.configs[0].software, 'smdinfo'):
             # This run has smd files - use offset to get BeginRun dgram
             smd_beginrun_evt = next(self.smd_dm)
