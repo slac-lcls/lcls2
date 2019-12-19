@@ -15,6 +15,7 @@ from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.step import Step
 from psana.psexp.event_manager import TransitionId
 from psana.psexp.events import Events
+import psana.pscalib.calib.MDBWebUtils as wu
 
 from psana.psexp.tools import mode
 
@@ -52,8 +53,10 @@ def _enumerate_attrs(obj):
     #    return self.run._det # return pre-created detector
 
 class Run(object):
-    exp = None
+    exp = None # FIXME: consolidate with below
     run_no = None
+    expt = 0
+    runnum = 0 
     dm = None
     configs = None
     smd_dm = None
@@ -89,7 +92,11 @@ class Run(object):
         flag_found = False
         for (det_name,drp_class_name),drp_class in self.dm.det_class_table.items():
             if det_name == name:
-                setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configs, self.calibs))
+                setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configs, self.calibconst[det_name]))
+                setattr(det,'_configs', self.configs)
+                setattr(det,'_calibconst', self.calibconst[det_name])
+                setattr(det,'_dettype', self.dm.det_info_table[det_name][0])
+                setattr(det,'_detid', self.dm.det_info_table[det_name][1])
                 flag_found = True
         
         # If no detector found, try EnvStore.
@@ -109,7 +116,7 @@ class Run(object):
                 var_name = name
                 drp_class_name = alg
                 drp_class = self.dm.det_class_table[(det_name, drp_class_name)]
-                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibs, self.esm.stores[alg])
+                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibconst, self.esm.stores[alg])
 
         return det
 
@@ -136,42 +143,15 @@ class Run(object):
     def xtcinfo(self):
         return self.dm.xtc_info
 
-    def _get_calib(self, det_name):
-        # this routine is hacked for Mona for exafel.  it has
-        # (at least) datagram/segment numbers that have been hardwired
-        # to zero. - cpo
+    def _set_calibconst(self):
+        self.calibconst = {}
+        for det_name, (dettype, detid) in self.dm.det_info_table.items():
+            det_str = dettype + '_' + detid
+            if self.expt:
+                self.calibconst[det_name] = wu.calib_constants_all_types(det_str, exp=self.expt, run=self.runnum)
+            else:
+                self.calibconst[det_name] = None
 
-        gain_mask, pedestals, geometry_string, common_mode = None, None, None, None
-        if self.exp and det_name:
-            calib_dir = os.environ.get('PS_CALIB_DIR')
-            if calib_dir:
-                if os.path.exists(os.path.join(calib_dir,'gain_mask.pickle')):
-                    gain_mask = pickle.load(open(os.path.join(calib_dir,'gain_mask.pickle'), 'r'))
-
-            from psana.pscalib.calib.MDBWebUtils import calib_constants
-            try:
-                det = eval('self.configs[0].software.%s[0]'%(det_name))
-            except:
-                return {}
-
-            # calib_constants takes det string (e.g. cspad_0001) with requested calib type.
-            # as a hack (until detid in xtc files have been changed
-            det_str = det.dettype + '_' + det.detid
-            pedestals, _ = calib_constants(det_str, exp=self.exp, ctype='pedestals', run=self.run_no)
-            geometry_string, _ = calib_constants(det_str, exp=self.exp, ctype='geometry', run=self.run_no)
-
-            # python2 sees geometry_string as unicode (use str to check for compatibility py2/py3)
-            # - convert to str accordingly
-            if not isinstance(geometry_string, str) and geometry_string is not None:
-                import unicodedata
-                geometry_string = unicodedata.normalize('NFKD', geometry_string).encode('ascii','ignore')
-            common_mode, _ = calib_constants(det_str, exp=self.exp, ctype='common_mode', run=self.run_no)
-
-        calib = {'gain_mask': gain_mask,
-                 'pedestals': pedestals,
-                 'geometry_string': geometry_string,
-                 'common_mode': common_mode}
-        return calib
 
     def analyze(self, event_fn=None, det=None):
         for event in self.events():
@@ -184,6 +164,7 @@ class Run(object):
     def _get_runinfo(self):
         """ Gets runinfo from BeginRun event"""
         beginrun_evt = None
+        print(len(self.dm.configs))
         if hasattr(self.dm.configs[0].software, 'smdinfo'):
             # This run has smd files - use offset to get BeginRun dgram
             smd_beginrun_evt = next(self.smd_dm)
@@ -209,10 +190,8 @@ class RunShmem(Run):
         self.dm = DgramManager(xtc_files,tag=tag)
         self.configs = self.dm.configs 
         super()._get_runinfo()
-        self.calibs = {}
-        for det_name in self.detnames:
-            self.calibs[det_name] = self._get_calib(det_name)
-        self.dm.calibs = self.calibs
+        super()._set_calibconst()
+        self.dm.calibconst = self.calibconst
 
     def events(self):
         for evt in self.dm:
@@ -230,10 +209,8 @@ class RunSingleFile(Run):
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
         super()._get_runinfo()
+        super()._set_calibconst()
         self.esm = EnvStoreManager(self.dm.configs, 'epics', 'scan')
-        self.calibs = {}
-        for det_name in self.detnames:
-            self.calibs[det_name] = self._get_calib(det_name)
 
     def events(self):
         for evt in self.dm:
@@ -257,10 +234,8 @@ class RunSerial(Run):
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
         super()._get_runinfo()
+        super()._set_calibconst()
         self.esm = EnvStoreManager(self.smd_dm.configs, 'epics', 'scan')
-        self.calibs = {}
-        for det_name in self.detnames:
-            self.calibs[det_name] = self._get_calib(det_name)
         
     def events(self):
         events = Events(self)
@@ -286,11 +261,8 @@ class RunLegion(Run):
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
         super()._get_runinfo()
+        super()._set_calibconst()
         self.esm = EnvStoreManager(self.configs, 'epics', 'scan')
-        self.calibs = {}
-        for det_name in self.detnames:
-            self.calibs[det_name] = super(RunLegion, self)._get_calib(det_name)
 
     def analyze(self, **kwargs):
         return legion_node.analyze(self, **kwargs)
-

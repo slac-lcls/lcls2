@@ -1,9 +1,9 @@
 class DetectorImpl(object):
-    def __init__(self, det_name, drp_class_name, configs, calibs):
+    def __init__(self, det_name, drp_class_name, configs, calibconst):
         self._det_name       = det_name
         self._drp_class_name = drp_class_name
         self._configs        = configs
-        self._calibs         = calibs
+        self._calibconst     = calibconst
 
         self._config_segments = []
         for config in self._configs:
@@ -31,3 +31,4 @@ class DetectorImpl(object):
                 return evt._det_segments[key]
         else:
             return None
+

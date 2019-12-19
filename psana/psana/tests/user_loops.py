@@ -15,7 +15,7 @@ def global_except_hook(exctype, value, traceback):
     import mpi4py.MPI
     mpi4py.MPI.COMM_WORLD.Abort(1)
     sys.__excepthook__(exctype, value, traceback)
-sys.excepthook = global_except_hook
+#sys.excepthook = global_except_hook
 
 import os
 import vals
@@ -31,16 +31,24 @@ xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
 #beginJobCode
 for run in ds.runs():
+    #beginRunCode
+    # Detector interface identified by detector name
     det = run.Detector('xppcspad')
+
+    # Calibration constants of the specified detector name
+    calib_const = det._calibconst
+    
+    # Environment values are accessed also through detector interface
     edet = run.Detector('HX2:DVD:GCC:01:PMON')
     sdet = run.Detector('motor2')
-    #beginRunCode
+    
     for evt in run.events():
         padarray = vals.padarray
         # 4 segments, two per file
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
         assert edet(evt) is None or edet(evt) == 41.0
         assert sdet(evt) == 42.0
+    
     assert run.expt == 'xpptut15' # this is from xtc file
     assert run.runnum == 14
     assert run.timestamp == 4294967297
@@ -73,8 +81,8 @@ for run in ds.runs():
 ds = DataSource(files=os.path.join(xtc_dir,'data-r0001-s00.xtc2'))
 for run in ds.runs():
     det = run.Detector('xppcspad')
-    edet = run.Detector('HX2:DVD:GCC:01:PMON') # mona TODO
-    sdet = run.Detector('motor2') # mona TODO
+    edet = run.Detector('HX2:DVD:GCC:01:PMON') 
+    sdet = run.Detector('motor2') 
     for step in run.steps():
         for evt in step.events():
             calib = det.raw.calib(evt)

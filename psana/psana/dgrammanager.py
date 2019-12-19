@@ -70,8 +70,8 @@ class DgramManager():
                 d = dgram.Dgram(file_descriptor=self.fds[-1])
                 self.configs += [d]
 
-        self.det_class_table, self.xtc_info = self.get_det_class_table()
-        self.calibs = {} # initialize to empty dict - will be populated by run class
+        self.det_class_table, self.xtc_info, self.det_info_table = self.get_det_class_table()
+        self.calibconst = {} # initialize to empty dict - will be populated by run class
 
     def __del__(self):
         if self.fds:
@@ -119,11 +119,13 @@ class DgramManager():
     def get_det_class_table(self):
         """
         this function gets the version number for a (det, drp_class) combo
-        maps (dettype,software,version) to associated python class
+        maps (dettype,software,version) to associated python class and 
+        detector info for a det_name maps to dettype, detid tuple.
         """
 
         det_class_table = {}
         xtc_info = []
+        det_info_table = {} 
 
         # loop over the dgrams in the configuration
         # if a detector/drp_class combo exists in two cfg dgrams
@@ -135,11 +137,21 @@ class DgramManager():
                 # they should all be identical
                 first_key = next(iter(det_dict.keys()))
                 det = det_dict[first_key]
+                
+                dettype, detid = (None, None)
                 for drp_class_name, drp_class in det.__dict__.items():
 
+                    # collect detname maps to dettype and detid
+                    if drp_class_name == 'dettype': 
+                        dettype = drp_class
+                        continue
+                    
+                    if drp_class_name == 'detid': 
+                        detid = drp_class
+                        continue
+                    
                     # FIXME: we want to skip '_'-prefixed drp_classes
                     #        but this needs to be fixed upstream
-                    if drp_class_name in ['dettype', 'detid']: continue
                     if drp_class_name.startswith('_'): continue
 
                     # use this info to look up the desired Detector class
@@ -153,7 +165,10 @@ class DgramManager():
                         det_class_table[(det_name, drp_class_name)] = DetectorClass
                     else:
                         pass
-        return det_class_table,xtc_info
+                
+                det_info_table[det_name] = (dettype, detid)
+        
+        return det_class_table,xtc_info,det_info_table
 
     def get_timestamps(self):
         return np.asarray(self._timestamps, dtype=np.uint64) # return numpy array for easy search later

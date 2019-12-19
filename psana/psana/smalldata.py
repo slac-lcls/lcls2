@@ -492,10 +492,17 @@ class SmallData: # (client)
             self._batch.append(event_data_dict)
 
         else:
+            # FIXME: cpo
+            print('event data is "old", event timestamps'
+                             ' must increase monotonically'
+                             ' previous timestamp: %d, current: %d'
+                             '' % (self._previous_timestamp, timestamp))
+            """
             raise IndexError('event data is "old", event timestamps'
                              ' must increase monotonically'
                              ' previous timestamp: %d, current: %d'
-                             '' % (previous_timestamp, timestamp))
+                             '' % (self._previous_timestamp, timestamp))
+            """
 
 
         return
