@@ -59,8 +59,8 @@ class DLDProcessor :
     """
     """
     OSQRT3 = 1./sqrt(3.)
-    CTYPE_HEX_CONFIG = 'hex_config'
-    CTYPE_HEX_TABLE  = 'hex_table'
+    CTYPE_CALIBCFG = 'calibcfg'
+    CTYPE_CALIBTAB = 'calibtab'
         
     def __init__(self, **kwargs) :
         logger.info('__init__, **kwargs: %s' % str(kwargs))
@@ -71,17 +71,17 @@ class DLDProcessor :
         #DETNAME      = kwargs.get('detname', 'tmo_hexanode')
         #EVSKIP       = kwargs.get('evskip', 0)
         #EVENTS       = kwargs.get('events', 1000000) + EVSKIP
-        NUM_CHANNELS      = kwargs.get('numchs', 5)
-        NUM_HITS          = kwargs.get('numhits', 16)
-        OFPREFIX          = kwargs.get('ofprefix','./figs-DLD/plot')
-        
-        self.VERBOSE      = kwargs.get('verbose', False)
-        calibtab          = kwargs.get('calibtab', None)
-        calibcfg          = kwargs.get('calibcfg', None)
-        CALIBCFG          = calibcfg #if calibcfg is not None else file.find_calib_file(type=self.CTYPE_HEX_CONFIG)
-        CALIBTAB          = calibtab #if calibtab is not None else file.find_calib_file(type=self.CTYPE_HEX_TABLE)
-
+        NUM_CHANNELS   = kwargs.get('numchs', 5)
+        NUM_HITS       = kwargs.get('numhits', 16)
+        OFPREFIX       = kwargs.get('ofprefix','./figs-DLD/plot')
         TDC_RESOLUTION = kwargs.get('tdc_resolution', 0.250) # ns !!! SHOULD BE TAKEN FROM DETECTOR CONFIGURATION 
+        
+        self.VERBOSE   = kwargs.get('verbose', False)
+        calibtab       = kwargs.get('calibtab', None)
+        calibcfg       = kwargs.get('calibcfg', None)
+        CALIBCFG       = calibcfg #if calibcfg is not None else file.find_calib_file(type=self.CTYPE_CALIBCFG)
+        CALIBTAB       = calibtab #if calibtab is not None else file.find_calib_file(type=self.CTYPE_CALIBTAB)
+        DETOBJ         = kwargs.get('detobj', None)
 
 #------------------------------
 
@@ -96,28 +96,37 @@ class DLDProcessor :
         #logger.info('file calib_group : %s' % file.calib_group())
         #logger.info('file ctype_dir   : %s' % file.calibtype_dir())
 
+        # load config & calib constants distributed for detector or from file
+        txt_cfg   = None
+        txt_calib = None
+        if DETOBJ is not None :
+            det_consts = DETOBJ.raw._calib_constants()
+            txt_cfg   = det_consts.get(CTYPE_CALIBCFG, None)
+            txt_calib = det_consts.get(CTYPE_CALIBTAB, None)
+        else :
+            txt_cfg   = text_data(CALIBCFG) # str object (from file) with configuration constants
+            txt_calib = text_data(CALIBTAB) # ... with calibration constants
 
-#   // create the sorter:
+        # create the sorter:
         self.sorter = sorter = hexanode.py_sort_class()
 
         #status, command_cfg, self.offset_sum_u, self.offset_sum_v, self.offset_sum_w,\
         #self.w_offset, self.pos_offset_x, self.pos_offset_y=\
         #    hexanode.py_read_config_file(CALIBCFG.encode(), sorter)
 
-        txt_cfg = text_data(CALIBCFG)
         status, command_cfg, self.offset_sum_u, self.offset_sum_v, self.offset_sum_w,\
         self.w_offset, self.pos_offset_x, self.pos_offset_y=\
             load_config_pars(txt_cfg, sorter, **kwargs)
 
-#       // The "command"-value is set in the first line of "config.txt" or CLI parameter
-#       // 0 = only convert to new file format
-#       // 1 = sort and write new file 
-#       // 2 = calibrate fv, fw, w_offset
-#       // 3 = create calibration table files
+        # The "command"-value is set in the first line of "config.txt" or CLI parameter
+        # 0 = only convert to new file format
+        # 1 = sort and write new file 
+        # 2 = calibrate fv, fw, w_offset
+        # 3 = create calibration table files
 
         self.command = command = command_cfg
         
-        msg = 'read_config_file status:%s COMMAND:%d'%(status, command)\
+        msg = 'load_config_pars status:%s COMMAND:%d'%(status, command)\
             + '\n      offset_sum_u:%.3f offset_sum_v:%.3f offset_sum_w:%.3f'%\
              (self.offset_sum_u, self.offset_sum_v, self.offset_sum_w)\
             + '\n      w_offset:%.3f pos_offset_x:%.3f pos_offset_y:%.3f'%\
@@ -125,7 +134,7 @@ class DLDProcessor :
         logger.info(msg)
 
         if not status :
-            logger.info("WARNING: can't read config file %s" % CALIBCFG)
+            logger.info("WARNING: can't load config parameters %s" % CALIBCFG)
             del sorter
             sys.exit(0)
 
@@ -134,7 +143,6 @@ class DLDProcessor :
         if sorter is not None :
             if sorter.use_sum_correction or sorter.use_pos_correction :
                 #status = hexanode.py_read_calibration_tables(CALIBTAB.encode(), sorter)
-                txt_calib = text_data(CALIBTAB)
                 status = load_calibration_tables(txt_calib, sorter=None)
 
         if command == -1 :
@@ -299,7 +307,7 @@ class DLDProcessor :
     def _on_command_3_end(self) :
       if self.command == 3 : # generate and logger.info(correction tables for sum- and position-correction
         CALIBTAB = calibtab if calibtab is not None else\
-                   file.make_calib_file_path(type=CTYPE_HEX_TABLE)
+                   file.make_calib_file_path(type=CTYPE_CALIBTAB)
         logger.info("creating calibration table in file: %s" % CALIBTAB)
         status = hexanode.py_create_calibration_tables(CALIBTAB.encode(), sorter)
         logger.info("CALIBRATION: finished creating calibration tables: status %s" % status)

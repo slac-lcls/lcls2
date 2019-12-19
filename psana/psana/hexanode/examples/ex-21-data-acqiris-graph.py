@@ -127,7 +127,7 @@ def draw_times(axis, pkvals, pkinds, wt) :
 if __name__ == "__main__" :
 
     EVSKIP = 0
-    EVENTS = 5 + EVSKIP
+    EVENTS = 10 + EVSKIP
 
     #ds   = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
     ds   = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2')

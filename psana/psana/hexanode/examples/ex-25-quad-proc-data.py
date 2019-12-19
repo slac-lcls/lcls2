@@ -53,12 +53,12 @@ def proc_data(**kwargs):
     EVENTS       = kwargs.get('events', 10) + EVSKIP
     VERBOSE      = kwargs.get('verbose', False)
 
-    peaks = WFPeaks(**kwargs)
-    proc  = DLDProcessor(**kwargs)
-
     ds    = DataSource(files=DSNAME)
     orun  = next(ds.runs())
     det   = orun.Detector(DETNAME)
+
+    peaks = WFPeaks(**kwargs)
+    proc  = DLDProcessor(**kwargs) #detobj=det to get cfg/calib constants
 
     for nev,evt in enumerate(orun.events()):
         if nev<EVSKIP : continue
@@ -103,8 +103,9 @@ if __name__ == "__main__" :
               'exp'      : 'amox27716',
               'calibcfg' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/configuration_quad.txt',
               'calibtab' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/calibration_table_data.txt',
-              'verbose'  :  False,
-              'command'  :  1, # if != 1 - overrides command from configuration file
+              'verbose'  : False,
+              'command'  : 1, # if != 1 - overrides command from configuration file
+              'detobj'   : None # get cfg & calib constants from detector object if specified
              }
 
     # Parameters of the CFD descriminator for hit time finding algotithm
