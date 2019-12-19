@@ -44,9 +44,9 @@ target_include_directories(kcuSim PUBLIC
 
 #add_executable(kcuSimProxy xSimProxy.cpp)
 
-target_include_directories(kcuSimProxy PUBLIC
-    ../../aes-stream-drivers/include
-)
+#target_include_directories(kcuSimProxy PUBLIC
+#    ../../aes-stream-drivers/include
+#)
 
 add_executable(kcuSimValid xSimValid.cpp)
 
