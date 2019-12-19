@@ -41,6 +41,7 @@ setup(
                 'bldcas = psdaq.cas.bldcas:main',
                 'hpsdbuscas = psdaq.cas.hpsdbuscas:main',
                 'pyxpm = psdaq.pyxpm.pyxpm:main',
+                'amccpromload = psdaq.pyxpm.amccpromload:main',
                 'pykcu = psdaq.pykcu.pykcu:main',
                 'control_gui = psdaq.control_gui.app.control_gui:control_gui',
                 'bluesky_simple = psdaq.control.bluesky_simple:main',
