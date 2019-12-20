@@ -1141,12 +1141,12 @@ class ProcMgr:
                   name = key2uniqueid(key)
 
                 # look for condaProcServ in the same directory as this file
-                prefix = os.path.dirname(os.path.realpath(__file__))
-                if not os.path.exists(prefix+'/condaProcServ'):
+                condaProcServCmd = shutil.which('condaProcServ')
+                if not condaProcServCmd:
                   print('ERR: %s/condaProcServ not found' % prefix)
                   continue
 
-                startcmd = prefix + '/condaProcServ %s %s %s %s %s %s %s %d %s %s %s' % \
+                startcmd = condaProcServCmd+' %s %s %s %s %s %s %s %d %s %s %s' % \
                        (rcFile, \
                         value[self.DICT_CONDA], \
                         value[self.DICT_ENV], \
