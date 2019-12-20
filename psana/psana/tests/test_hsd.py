@@ -33,18 +33,16 @@ def test_hsd():
             for ndigi,(digitizer,fexdata) in enumerate(fex.items()):
                 for nfex,(channel,fexchan) in enumerate(fexdata.items()):
                     startpos,peaks = fexchan
-                    assert len(startpos)==2, startpos
                     # check consistency with raw data
                     if (wfs):
                         for npeak,(start,peak) in enumerate(zip(startpos,peaks)):
                             peaklen = len(peak)
-                            # FIXME: need to remove the +4 (cpo)
-                            raw = wfs[digitizer][channel][start+4:start+4+peaklen]
+                            raw = wfs[digitizer][channel][start:start+peaklen]
                             assert (peak==raw).all(), (peak, raw)
                 assert nfex == 0, nfex # enumerate counting from zero
             assert ndigi == 1, ndigi # enumerate counting from zero
         if nevt == 20: break # stop early since this xtc file has incomplete dg
-    assert(nevt==20) # make sure we received events
+    assert(nevt>0) # make sure we received events
 
 if __name__ == "__main__":
     test_hsd()
