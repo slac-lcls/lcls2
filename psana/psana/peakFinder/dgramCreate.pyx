@@ -306,6 +306,7 @@ cdef class PyDataBlock:
 
 def parse_type(data_arr):
     dat_type = data_arr.dtype
+    # should match the order of Name::DataType in xtcdata/xtc/ShapesData.hh
     types = ['uint8','uint16','uint32','uint64','int8','int16','int32','int64','float32','float64']
     nptypes = list(map(lambda x: np.dtype(x), types))
     type_dict = dict(zip(nptypes, range(len(nptypes))))
@@ -330,15 +331,23 @@ class CyDgram():
 
         num_arrays = 0
         for name, array in event_dict.items():
+            tmparray = array # make a copy, because we may modify if it's a str
+
+            # convert strings to bytes, including null character
+            if isinstance(array,str):
+                mybyteslist = [ord(c) for c in array]
+                mybyteslist.append(0) # null character
+                tmparray = np.array(mybyteslist,dtype=np.uint8)
+
             try:
-                array_alg = bool(type(array[1]) == type(alg))
+                array_alg = bool(type(tmparray[1]) == type(alg))
             except (IndexError,TypeError):
                 array_alg = False
             if array_alg:
-                arr = np.asarray(array[0])
-                pyalg = PyAlg(array[1].algname,array[1].major, array[1].minor, array[1].micro)
+                arr = np.asarray(tmparray[0])
+                pyalg = PyAlg(tmparray[1].algname,tmparray[1].major, tmparray[1].minor, tmparray[1].micro)
             else:
-                arr = np.asarray(array)
+                arr = np.asarray(tmparray)
                 pyalg = basealg
 
             # Deduce the shape of the data
@@ -347,7 +356,10 @@ class CyDgram():
 
             array_size_pad = np.array(np.r_[array_size, (5-array_rank)*[0]], dtype=np.uint32)
             # Find the type of the data
-            data_type = parse_type(arr)
+            if isinstance(array,str):
+                data_type = 10 # from xtcdata/xtc/ShapesData Name::DataType::CHARSTR
+            else:
+                data_type = parse_type(arr) # uint8, int32, etc...
             # Copy the name to the block
             py_name.addName(fix_encoding(name), pyalg, data_type, array_rank)
 
