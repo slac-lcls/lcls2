@@ -7,9 +7,13 @@ import pprint
 def hsd_connect(epics_prefix):
 
     # Retrieve connection information from EPICS
+    # PVA Server may not be up yet, so poll
     ctxt = Context('pva')
-    values = ctxt.get(epics_prefix+':PADDR_U')
-    print(values)
+    for i in range(5):
+        values = ctxt.get(epics_prefix+':PADDR_U')
+        if values!=0:
+            break
+        time.sleep(0.1)
 
     ctxt.close()
 
