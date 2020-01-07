@@ -45,6 +45,5 @@ class Test:
         for i in range(client_count):
           cli[i].wait()
           nevents += cli[i].returncode
-        # FIXME: travis doesn't see any shmem events for some reason - cpo
-        #assert nevents == dgram_count,'incorrect number of l1accepts. found/expected: '+str(nevents)+'/'+str(dgram_count)
+        assert nevents == dgram_count,'incorrect number of l1accepts. found/expected: '+str(nevents)+'/'+str(dgram_count)
         srv.wait()
