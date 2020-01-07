@@ -4,8 +4,6 @@ import sys, os
 import pytest
 from psana import DataSource
 
-# FIXME cpo: we've been seeing intermittent segfaults with 4 clients.
-# kludge it by going to 2 for the moment.
 client_count = 4  # number of clients in test
 dgram_count  = 64 # number of expected datagrams per client
 
@@ -27,7 +25,7 @@ class Test:
         tmp_dir = tmp_path / 'shmem'
         tmp_dir.mkdir()
         tmp_file = tmp_dir / 'data_shmem.xtc2'
-        subprocess.call(['xtcwriter','-n',str(dgram_count),'-f',str(tmp_file)])
+        subprocess.call(['xtcwriter','-t','-n',str(dgram_count),'-f',str(tmp_file)])
         return tmp_file
         
     def test_shmem(self, tmp_path):
@@ -43,8 +41,9 @@ class Test:
         except:
             srv.kill()
             raise
+        nevents = 0
         for i in range(client_count):
           cli[i].wait()
-          #FIXME: cpo
-          #assert cli[i].returncode == dgram_count,"client "+str(i)+" failure"
+          nevents += cli[i].returncode
+        assert nevents == dgram_count,'incorrect number of l1accepts. found/expected: '+str(nevents)+'/'+str(dgram_count)
         srv.wait()

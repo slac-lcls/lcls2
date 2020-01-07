@@ -53,6 +53,16 @@ public:
                      numberofClients) {
     _init();
 
+    // when reading from files, this is the mode that makes the most
+    // sense (one event distributed to one client instead of the
+    // default mode where one event is broadcast to all clients).
+    // it has a side benefit where the server won't start until the
+    // first client has connected: in the broadcast mode the server
+    // would start sending events before all clients had connected
+    // which caused some to be dropped, which complicated the tests
+    // (where we count the number of dgrams received by the client). - cpo
+    distribute(true);
+
     unsigned depth = 4;
     for(unsigned i=0; i<depth; i++)
       _pool.push(reinterpret_cast<Dgram*>(new char[sizeofBuffers]));
