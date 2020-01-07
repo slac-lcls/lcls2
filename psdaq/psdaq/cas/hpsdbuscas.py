@@ -41,7 +41,7 @@ class PVAServer(object):
         self.fieldTypes = SharedPV(initial=NTScalar('aB').wrap({'value' : [ord('i')]*31}),
                                    handler=DefaultPVHandler(self))
 
-        self.fieldMask  = SharedPV(initial=NTScalar('I').wrap({'value' : 0x1}),
+        self.fieldMask  = SharedPV(initial=NTScalar('I').wrap({'value' : 0x8000}),
                                    handler=DefaultPVHandler(self))
 
         self.payload    = SharedPV(initial=Value(Type([]),{}), 

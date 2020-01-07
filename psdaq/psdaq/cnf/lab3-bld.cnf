@@ -23,13 +23,16 @@ for c in range(15):
 
 bld_pv = bld_cp+['HPSEX']
 
+#
+#  drp_bld command-line argument is '<detName0>+<detType0>+<PV0>,<detName1>+<detType1>+<PV1>,...'
+#
 bld_set = []
 for pv in bld_pv:
-    bld_set.append('hpsex+DAQ:LAB2:'+pv)
+    bld_set.append(pv+'+hpsex+DAQ:LAB2:'+pv)
 
 bldcas_str = ' '.join(bld_pv)
 
-bld_str = ','.join(bld_set)
+bld_str = ','.join(bld_set)+',ebeam'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.

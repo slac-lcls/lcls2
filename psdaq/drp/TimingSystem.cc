@@ -28,12 +28,39 @@ class TSDef : public VarDef
 {
 public:
     enum index {
-        data
+      pulseId,
+      timeStamp,
+      fixedRates,
+      acRates,
+      timeSlot,
+      timeSlotPhase,
+      ebeamPresent,
+      ebeamDestn,
+      ebeamCharge,
+      ebeamEnergy,
+      xWavelength,
+      dmod5,
+      mpsLimits,
+      mpsPowerClass,
+      sequenceValues,
     };
     TSDef()
     {
-        Alg alg("raw", 1, 2, 3);
-        NameVec.push_back({"data", Name::UINT8, 1});
+        NameVec.push_back({"pulseId"       , Name::UINT64, 0});
+        NameVec.push_back({"timeStamp"     , Name::UINT64, 0});
+        NameVec.push_back({"fixedRates"    , Name::UINT8 , 1});
+        NameVec.push_back({"acRates"       , Name::UINT8 , 1});
+        NameVec.push_back({"timeSlot"      , Name::UINT8 , 0});
+        NameVec.push_back({"timeSlotPhase" , Name::UINT16, 0});
+        NameVec.push_back({"ebeamPresent"  , Name::UINT8 , 0});
+        NameVec.push_back({"ebeamDestn"    , Name::UINT8 , 0});
+        NameVec.push_back({"ebeamCharge"   , Name::UINT16, 0});
+        NameVec.push_back({"ebeamEnergy"   , Name::UINT16, 1});
+        NameVec.push_back({"xWavelength"   , Name::UINT16, 1});
+        NameVec.push_back({"dmod5"         , Name::UINT16, 0});
+        NameVec.push_back({"mpsLimits"     , Name::UINT8 , 1});
+        NameVec.push_back({"mpsPowerClass" , Name::UINT8 , 1});
+        NameVec.push_back({"sequenceValues", Name::UINT16, 1});
     }
 } TSDef;
 
@@ -138,7 +165,7 @@ unsigned TimingSystem::configure(const std::string& config_alias, Xtc& xtc)
     _addJson(xtc, configNamesId, config_alias);
 
     // set up the names for L1Accept data
-    Alg tsAlg("ts", 1, 2, 3); // TODO: should this be configured by tsconfig.py?
+    Alg tsAlg("ts", 0, 0, 1);
     Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), tsAlg, "ts", "detnum1235", m_evtNamesId, m_para->detSegment);
     eventNames.add(xtc, TSDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
@@ -153,16 +180,25 @@ void TimingSystem::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
     m_evtcount+=1;
 
-    CreateData ts(dgram.xtc, m_namesLookup, m_evtNamesId);
+    DescribedData ts(dgram.xtc, m_namesLookup, m_evtNamesId);
 
     int lane = __builtin_ffs(event->mask) - 1;
     // there should be only one lane of data in the timing system
-    uint32_t dmaIndex = event->buffers[lane].index;
-    unsigned data_size = event->buffers[lane].size - sizeof(Pds::TimingHeader);
-    unsigned shape[MaxRank];
-    shape[0] = data_size;
-    Array<uint8_t> arrayT = ts.allocate<uint8_t>(TSDef::data, shape);
-    memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
+    uint32_t dmaIndex  = event->buffers[lane].index;
+    //    unsigned data_size = event->buffers[lane].size - sizeof(Pds::TimingHeader);
+    // DMA is padded to workaround firmware problem; only copy relevant part.
+    unsigned data_size = 968/8;
+    
+    memcpy(ts.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
+    ts.set_data_length(data_size);
+
+    ts.set_array_shape(TSDef::fixedRates    ,(const unsigned[MaxRank]){10});
+    ts.set_array_shape(TSDef::acRates       ,(const unsigned[MaxRank]){ 6});
+    ts.set_array_shape(TSDef::ebeamEnergy   ,(const unsigned[MaxRank]){ 4});
+    ts.set_array_shape(TSDef::xWavelength   ,(const unsigned[MaxRank]){ 2});
+    ts.set_array_shape(TSDef::mpsLimits     ,(const unsigned[MaxRank]){16});
+    ts.set_array_shape(TSDef::mpsPowerClass ,(const unsigned[MaxRank]){16});
+    ts.set_array_shape(TSDef::sequenceValues,(const unsigned[MaxRank]){18});
 }
 
 }

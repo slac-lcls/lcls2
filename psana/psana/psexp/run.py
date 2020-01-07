@@ -128,7 +128,8 @@ class Run(object):
     def detinfo(self):
         info = {}
         for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
-            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
+#            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
+            info[(detname,det_xface_name)] = _enumerate_attrs(getattr(self.Detector(detname),det_xface_name))
         return info
 
     @property
@@ -191,6 +192,7 @@ class RunShmem(Run):
         super()._get_runinfo()
         super()._set_calibconst()
         self.dm.calibconst = self.calibconst
+        self.esm = EnvStoreManager(self.dm.configs, 'epics', 'scan')
 
     def events(self):
         for evt in self.dm:

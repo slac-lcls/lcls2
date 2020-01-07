@@ -166,7 +166,7 @@ protected:
         _offset[0]=0;
         _numentries=0;
     }
-    void set_array_shape(unsigned index, unsigned shapeIndex, unsigned shape[MaxRank]) {
+    void set_array_shape(unsigned index, unsigned shapeIndex, const unsigned shape[MaxRank]) {
 
         unsigned rank = _nameindex.names().get(index).rank();
 
@@ -210,7 +210,7 @@ protected:
             _shapesdata.data().alloc(size, _shapesdata, _parent);
         }
 
-        void set_array_shape(unsigned index, unsigned shape[MaxRank]) {
+        void set_array_shape(unsigned index, const unsigned shape[MaxRank]) {
             if (_numarrays==0) {
                 // add the xtc that will hold the shapes of arrays
                 Shapes& shapes = *new (&_shapesdata) Shapes(_parent);
