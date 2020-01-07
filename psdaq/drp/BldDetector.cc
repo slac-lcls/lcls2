@@ -38,16 +38,30 @@ static const XtcData::Name::DataType xtype[] = {
     XtcData::Name::CHARSTR, // pvString
 };
 
-BldPVA::BldPVA(const char* name,
-               const char* pvname,
-               unsigned    interface) : _name(name), _interface(interface)
+BldPVA::BldPVA(std::string det,
+               unsigned    interface) : _interface(interface)
 {
-    std::string sname(pvname);
+    //
+    //  Parse '+' separated list of detName, detType, detId
+    //
+    size_t p1 = det.find('+',0);
+    if (p1 == std::string::npos) {
+    }
+    size_t p2 = det.find('+',p1+1);
+    if (p2 == std::string::npos) {
+    }
+
+    _detName = det.substr(   0,     p1).c_str();
+    _detType = det.substr(p1+1,p2-p1-1).c_str();
+    _detId   = det.substr(p2+1).c_str();
+  
+    std::string sname(_detId);
     _pvaAddr    = std::make_shared<Pds_Epics::PVBase>((sname+":ADDR"   ).c_str());
     _pvaPort    = std::make_shared<Pds_Epics::PVBase>((sname+":PORT"   ).c_str());
-    _pvaPayload = std::make_shared<BldDescriptor>((sname+":PAYLOAD").c_str());
+    _pvaPayload = std::make_shared<BldDescriptor>    ((sname+":PAYLOAD").c_str());
 
-    logging::info("BldPVA::BldPVA looking up multicast parameters for %s from %s", name, pvname);
+    logging::info("BldPVA::BldPVA looking up multicast parameters for %s/%s from %s", 
+                  _detName.c_str(), _detType.c_str(), _detId.c_str());
 }
 
 BldPVA::~BldPVA()
@@ -59,13 +73,16 @@ BldPVA::~BldPVA()
   //
 BldFactory::BldFactory(const char* name,
                        unsigned    interface) :
-  _name       (name),
   _alg        ("bldAlg", 0, 0, 1)
 {
     logging::debug("BldFactory::BldFactory %s", name);
 
     if (strchr(name,':'))
-        _name = std::string(strrchr(name,':')+1);
+        name = strrchr(name,':')+1;
+
+    _detName = std::string(name);
+    _detType = std::string(name);
+    _detId   = std::string(name);
 
     _pvaPayload = 0;
 
@@ -77,7 +94,7 @@ BldFactory::BldFactory(const char* name,
     //
     if      (strcmp("ebeam",name)==0) {
         mcaddr = 0xefff1800;
-        _alg    = XtcData::Alg((_name+"Alg").c_str(), 0, 7, 1);
+        _alg    = XtcData::Alg((_detType+"Alg").c_str(), 0, 7, 1);
         _varDef.NameVec.push_back(XtcData::Name("damageMask"       , XtcData::Name::UINT32));
         _varDef.NameVec.push_back(XtcData::Name("ebeamCharge"      , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("ebeamL3Energy"    , XtcData::Name::DOUBLE));
@@ -103,7 +120,7 @@ BldFactory::BldFactory(const char* name,
     }
     else if (strcmp("gasdet",name)==0) {
         mcaddr = 0xefff1802;
-        _alg    = XtcData::Alg((_name+"Alg").c_str(), 0, 1, 1);
+        _alg    = XtcData::Alg((_detType+"Alg").c_str(), 0, 1, 1);
         _varDef.NameVec.push_back(XtcData::Name("f_11_ENRC"      , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("f_12_ENRC"      , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("f_21_ENRC"      , XtcData::Name::DOUBLE));
@@ -122,14 +139,12 @@ BldFactory::BldFactory(const char* name,
   //  LCLS-II Style
   //
 BldFactory::BldFactory(const BldPVA& pva) :
-    _name       (pva._name),
+    _detName    (pva._detName),
+    _detType    (pva._detType),
+    _detId      (pva._detId),
     _alg        ("bldAlg", 0, 0, 1),
     _pvaPayload (pva._pvaPayload)
 {
-    size_t pos = pva._name.rfind(':');
-    if (pos != std::string::npos)
-        _name = pva._name.substr(pos+1);
-
     while(1) {
         if (pva._pvaAddr   ->ready() &&
             pva._pvaPort   ->ready() &&
@@ -144,20 +159,22 @@ BldFactory::BldFactory(const BldPVA& pva) :
     unsigned payloadSize = 0;
     _varDef = pva._pvaPayload->get(payloadSize);
 
-    if (_name == "hpsex" ||
-        _name == "hpscp" ||
-        _name == "hpscpb") {
-        _alg = XtcData::Alg(_name.c_str(), 0, 0, 1);
+    if (_detType == "hpsex" ||
+        _detType == "hpscp" ||
+        _detType == "hpscpb") {
+        _alg = XtcData::Alg(_detType.c_str(), 0, 0, 1);
         //  validate _varDef against version here
     }
     else {
-        throw std::string("BLD name ")+_name+" not recognized";
+        throw std::string("BLD type ")+_detType+" not recognized";
     }
     _handler = std::make_shared<Bld>(mcaddr, mcport, pva._interface, Bld::PulseIdPos, Bld::HeaderSize, payloadSize);
 }
 
   BldFactory::BldFactory(const BldFactory& o) :
-    _name       (o._name),
+    _detName    (o._detName),
+    _detType    (o._detType),
+    _detId      (o._detId),
     _alg        (o._alg),
     _pvaPayload (o._pvaPayload)
 {
@@ -166,7 +183,6 @@ BldFactory::BldFactory(const BldPVA& pva) :
 
 BldFactory::~BldFactory()
 {
-  logging::debug("BldFactory::~BldFactory [%s]", _name.c_str());
 }
 
 Bld& BldFactory::handler()
@@ -177,8 +193,8 @@ Bld& BldFactory::handler()
 XtcData::NameIndex BldFactory::addToXtc  (XtcData::Xtc& xtc,
                                           const XtcData::NamesId& namesId)
 {
-  XtcData::Names& bldNames = *new(xtc) XtcData::Names(_name.c_str(), _alg,
-                                                      _name.c_str(), _name.c_str(), namesId);
+  XtcData::Names& bldNames = *new(xtc) XtcData::Names(_detName.c_str(), _alg,
+                                                      _detType.c_str(), _detId.c_str(), namesId);
 
   bldNames.add(xtc, _varDef);
   return XtcData::NameIndex(bldNames);
@@ -641,7 +657,11 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
 
     unsigned interface = interfaceAddress(m_para.kwargs["interface"]);
 
+    //
+    //  Cache the BLD types that require lookup
+    //
     std::vector<std::shared_ptr<BldPVA> > bldPva(0);
+
     std::string s(m_para.detectorType);
     logging::debug("Parsing %s",s.c_str());
     for(size_t curr = 0, next = 0; next != std::string::npos; curr = next+1) {
@@ -650,16 +670,14 @@ void BldApp::worker(std::shared_ptr<MetricExporter> exporter)
         logging::debug("(%d,%d,%d)",curr,pvpos,next);
         if (next == std::string::npos) {
             if (pvpos != std::string::npos)
-                bldPva.push_back(std::make_shared<BldPVA>(s.substr(curr,pvpos-curr).c_str(),
-                                                          s.substr(pvpos+1,-1).c_str(),
-                                                          interface));
+              bldPva.push_back(std::make_shared<BldPVA>(s.substr(curr,next),
+                                                        interface));
             else
                 m_config.push_back(std::make_shared<BldFactory>(s.substr(curr,next).c_str(),
                                                                 interface));
         }
         else if (pvpos > curr && pvpos < next)
-            bldPva.push_back(std::make_shared<BldPVA>(s.substr(curr,pvpos-curr).c_str(),
-                                                      s.substr(pvpos+1,next-pvpos-1).c_str(),
+            bldPva.push_back(std::make_shared<BldPVA>(s.substr(curr,next-curr),
                                                       interface));
         else
             m_config.push_back(std::make_shared<BldFactory>(s.substr(curr,next-curr).c_str(),

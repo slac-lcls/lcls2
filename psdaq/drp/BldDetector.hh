@@ -4,6 +4,7 @@
 
 #include <thread>
 #include <atomic>
+#include <string>
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
 #include "psdaq/service/Collection.hh"
@@ -51,12 +52,13 @@ private:
 class BldPVA 
 {
 public:
-    BldPVA(const char* name,
-           const char* pvname,
+    BldPVA(std::string det,
            unsigned    interface);
     ~BldPVA();
 public:
-    std::string                        _name;
+    std::string                        _detName;
+    std::string                        _detType;
+    std::string                        _detId;
     unsigned                           _interface;
     std::shared_ptr<Pds_Epics::PVBase> _pvaAddr;
     std::shared_ptr<Pds_Epics::PVBase> _pvaPort;
@@ -77,7 +79,9 @@ public:
     XtcData::NameIndex addToXtc  (XtcData::Xtc&, 
                                   const XtcData::NamesId&);
 private:
-    std::string                    _name;
+    std::string                    _detName;
+    std::string                    _detType;
+    std::string                    _detId;
     XtcData::Alg                   _alg;
     XtcData::VarDef                _varDef;
     std::shared_ptr<BldDescriptor> _pvaPayload;
