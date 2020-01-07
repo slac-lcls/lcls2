@@ -114,7 +114,7 @@ class RegArrayH(PVHandler):
         self._valreg   = valreg
 
     def cmd(self,pv,val):
-        for reg in self._valreg:
+        for reg in self._valreg.values():
             reg.post(val)
         
     def handle(self, pv, val):
@@ -172,23 +172,26 @@ class LinkCtrls(object):
 class CuGenCtrls(object):
     def __init__(self, name, xpm):
 
-        def addPV(label, init, handler):
+        def addPV(label, init, reg):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
-                          handler=handler)
+                          handler=RegH(reg))
             provider.add(name+':'+label,pv)
+            reg.set(init)
             return pv
 
-        xbar = xpm.AxiSy56040.find(name='OutputConfig[\*]')
-        self._pv_cuDelay    = addPV('CuDelay'   , 200*800, CmdH(xpm.CuGenerator.cuDelay))
-        self._pv_cuBeamCode = addPV('CuBeamCode',     140, CmdH(xpm.CuGenerator.cuBeamCode))
-        self._pv_cuInput    = addPV('CuInput'   ,       1, RegArrayH(xbar))
-        self._pv_clearErr   = addPV('ClearErr'  ,       0, RegH(xpm.CuGenerator.cuFiducialIntv))
+        self._pv_cuDelay    = addPV('CuDelay'   , 200*800, xpm.CuGenerator.cuDelay)
+        self._pv_cuBeamCode = addPV('CuBeamCode',     140, xpm.CuGenerator.cuBeamCode)
+        self._pv_clearErr   = addPV('ClearErr'  ,       0, xpm.CuGenerator.cuFiducialIntvErr)
 
-        #  initialization
-        xpm.CuGenerator.cuDelay   .set(200*800)
-        xpm.CuGenerator.cuBeamCode.set(140)
-        for reg in xbar:
-            reg.set(0)
+        def addPV(label, init, reg):
+            pv = SharedPV(initial=NTScalar('I').wrap(init), 
+                          handler=RegArrayH(reg))
+            provider.add(name+':'+label,pv)
+            for r in reg.values():
+                r.set(init)
+            return pv
+
+        self._pv_cuInput    = addPV('CuInput'   ,       1, xpm.AxiSy56040.OutputConfig)
 
 class PVInhibit(object):
     def __init__(self, name, app, inh, group, idx):
@@ -279,6 +282,7 @@ class GroupSetup(object):
         self._pv_MsgConfigKey = addPV('MsgConfigKey')
 
         self._inhibits = []
+##  Remove temporarily while we test Ben's xpm
         self._inhibits.append(PVInhibit(name, app, app.inh_0, group, 0))
         self._inhibits.append(PVInhibit(name, app, app.inh_1, group, 1))
         self._inhibits.append(PVInhibit(name, app, app.inh_2, group, 2))
@@ -429,6 +433,7 @@ class GroupCtrls(object):
         for i in range(8):
             self._groups.append(GroupSetup(name+':PART:%d'%i, app, i, stats[i]))
 
+
 class PVCtrls(object):
 
     def __init__(self, p, m, name, ip, xpm, stats):
@@ -448,7 +453,7 @@ class PVCtrls(object):
         self._links = []
         for i in range(24):
             self._links.append(LinkCtrls(name, xpm, i))
-            
+
         app = xpm.XpmApp
 
         self._pv_amcDumpPLL = []
@@ -462,11 +467,20 @@ class PVCtrls(object):
 
         self._group = GroupCtrls(name, app, stats)
 
+##  Remove sequencer while we test Ben's image
         self._seq = PVSeq(provider, name+':SEQENG:0', ip, Engine(0, xpm.SeqEng_0))
 
         self._pv_dumpSeq = SharedPV(initial=NTScalar('I').wrap(0), 
                                     handler=CmdH(self._seq._eng.dump))
         provider.add(name+':DumpSeq',self._pv_dumpSeq)
+
+        self._pv_usRxReset = SharedPV(initial=NTScalar('I').wrap(0),
+                                      handler=CmdH(xpm.UsTiming.C_RxReset))
+        provider.add(name+':Us:RxReset',self._pv_usRxReset)
+
+        self._pv_cuRxReset = SharedPV(initial=NTScalar('I').wrap(0),
+                                      handler=CmdH(xpm.CuTiming.C_RxReset))
+        provider.add(name+':Cu:RxReset',self._pv_cuRxReset)
 
         self._thread = threading.Thread(target=self.notify)
         self._thread.start()
