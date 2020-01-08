@@ -15,7 +15,7 @@ def global_except_hook(exctype, value, traceback):
     import mpi4py.MPI
     mpi4py.MPI.COMM_WORLD.Abort(1)
     sys.__excepthook__(exctype, value, traceback)
-#sys.excepthook = global_except_hook
+sys.excepthook = global_except_hook
 
 import os
 import vals
@@ -35,9 +35,6 @@ for run in ds.runs():
     # Detector interface identified by detector name
     det = run.Detector('xppcspad')
 
-    # Calibration constants of the specified detector name
-    calib_const = det._calibconst
-    
     # Environment values are accessed also through detector interface
     edet = run.Detector('HX2:DVD:GCC:01:PMON')
     sdet = run.Detector('motor2')
@@ -89,5 +86,3 @@ for run in ds.runs():
             assert calib.shape == (2,3,6)
     assert run.expt == 'xpptut15'
     assert run.runnum == 14
-
-

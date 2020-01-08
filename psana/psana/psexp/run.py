@@ -149,7 +149,7 @@ class Run(object):
         for det_name, (dettype, detid) in self.dm.det_info_table.items():
             det_str = dettype + '_' + detid
             if self.expt:
-                self.calibconst[det_name] = wu.calib_constants_all_types(det_str, exp=self.expt, run=self.runnum)
+                self.calibconst[det_name] = wu.calib_constants_all_types(det_name, exp=self.expt, run=self.runnum)
             else:
                 self.calibconst[det_name] = None
 
