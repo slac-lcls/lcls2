@@ -22,8 +22,9 @@ BufferedFileWriter::~BufferedFileWriter()
     m_count = 0;
 }
 
-void BufferedFileWriter::open(const std::string& fileName)
+int BufferedFileWriter::open(const std::string& fileName)
 {
+    int rv = -1;
     struct flock flk;
     flk.l_type   = F_WRLCK;
     flk.l_whence = SEEK_SET;
@@ -43,8 +44,11 @@ void BufferedFileWriter::open(const std::string& fileName)
         if (rc<0) {
             // %m will be replaced by the string strerror(errno)
             logging::error("Error locking file %s: %m", fileName.c_str());
+        } else {
+            rv = 0;     // return OK
         }
     }
+    return rv;
 }
 
 int BufferedFileWriter::close()

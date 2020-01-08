@@ -12,7 +12,7 @@ class BufferedFileWriter
 public:
     BufferedFileWriter(size_t bufferSize);
     ~BufferedFileWriter();
-    void open(const std::string& fileName);
+    int open(const std::string& fileName);
     int close();
     void writeEvent(void* data, size_t size);
 private:

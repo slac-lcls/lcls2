@@ -290,15 +290,25 @@ void CollectionApp::run()
             }
         }
 
-        // received inproc message from timing system
+        // received inproc message
+        // ex 1: {"body":{"pulseId":2463859721849},"key":"pulseId"}
         if (items[1].revents & ZMQ_POLLIN) {
-            // forward message to contol system with pulseId as the message id
-            std::string pulseId = m_inprocRecv.recv();
-            uint64_t pid = std::stoul(pulseId);
-            logging::debug("inproc message received  %014lx", pid);
-            json body;
-            json answer = createMsg("timingTransition", pulseId, getId(), body);
-            reply(answer);
+            json msg = m_inprocRecv.recvJson();
+            logging::debug("inproc json received  %s", msg.dump().c_str());
+            std::string key = msg["key"];
+            logging::debug("inproc '%s' message received", key.c_str());
+            if (key == "pulseId") {
+                // forward message to control system with pulseId as the message id
+                uint64_t pid = msg["body"]["pulseId"];
+                logging::debug("inproc pulseId received  %014lx", pid);
+                json body;
+                json answer = createMsg("timingTransition", std::to_string(pid), getId(), body);
+                reply(answer);
+            } else if ((key == "fileReport") || (key == "error")) {
+                json answer = createMsg(key.c_str(), "0", 0, msg["body"]);
+                logging::debug("reply %s: %s", key.c_str(), answer.dump().c_str());
+                reply(answer);
+            }
         }
     }
 }

@@ -460,7 +460,7 @@ def get_readout_group_mask(body):
                 pass
     return mask
 
-def wait_for_answers(socket, wait_time, msg_id, err_pub):
+def wait_for_answers(socket, wait_time, msg_id, pub_socket):
     """
     Wait and return all messages from socket that match msg_id
     Parameters
@@ -485,10 +485,15 @@ def wait_for_answers(socket, wait_time, msg_id, err_pub):
             try:
                 errMsg = msg['body']['err_info']
                 logging.error(errMsg)
-                if err_pub is not None:
-                    err_pub.send_json(error_msg(errMsg))
+                if pub_socket is not None:
+                    pub_socket.send_json(error_msg(errMsg))
             except Exception:
                 pass
+            continue
+
+        # if key is fileReport then this is not a reply
+        if msg['header']['key'] == 'fileReport':
+            logging.debug('wait_for_answers(): dropping \'fileReport\' message')
             continue
 
         # if msg_id is none take the msg_id of the first message as reference
@@ -503,10 +508,10 @@ def wait_for_answers(socket, wait_time, msg_id, err_pub):
         remaining = max(0, int(wait_time - 1000*(time.time() - start)))
 
 
-def confirm_response(socket, wait_time, msg_id, ids, err_pub):
+def confirm_response(socket, wait_time, msg_id, ids, pub_socket):
     logging.debug('confirm_response(): ids = %s' % ids)
     msgs = []
-    for msg in wait_for_answers(socket, wait_time, msg_id, err_pub):
+    for msg in wait_for_answers(socket, wait_time, msg_id, pub_socket):
         if msg['header']['sender_id'] in ids:
             msgs.append(msg)
             ids.remove(msg['header']['sender_id'])
@@ -722,13 +727,17 @@ class CollectionManager():
         if answer is not None:
             self.front_rep.send_json(answer)
 
-    # process asynchronous error reports
+    # process asynchronous reports
     def service_status(self):
         msg = self.back_pull.recv_json()
+        logging.debug('service_status() received msg \'%s\'' % msg)
         try:
-            self.report_error(msg['body']['err_info'])
-        except Exception:
-            pass
+            if msg['header']['key'] == 'fileReport':
+                logging.debug('service_status(): dropping \'fileReport\' message')
+            elif msg['header']['key'] == 'error':
+                self.report_error(msg['body']['err_info'])
+        except KeyError as ex:
+            logging.error('service_status() KeyError: %s' % ex)
 
     def run(self):
         try:

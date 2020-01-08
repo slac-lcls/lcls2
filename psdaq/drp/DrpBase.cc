@@ -16,6 +16,9 @@ using json = nlohmann::json;
 using logging = psalg::SysLog;
 
 static void local_mkdir (const char * path);
+static json createFileReportMsg(std::string path, timespec create_time, timespec modify_time, size_t size);
+static json createPulseIdMsg(uint64_t pulseId);
+static json createErrorMsg(std::string message);
 
 namespace Drp {
 
@@ -121,13 +124,29 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
         // and this print statement may speed up debugging significantly.
         std::cout << "Opening file " << fileName << std::endl;
         logging::info("Opening file '%s'", fileName.c_str());
-        m_fileWriter.open(fileName);
+        if (m_fileWriter.open(fileName) == 0) {
+            timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
+            json msg = createFileReportMsg(fileName, tt, tt, 0);
+            m_inprocSend.send(msg.dump());
+        } else {
+            std::string message = {"Failed to open file '" + fileName + "'"};
+            json msg = createErrorMsg(message);
+            m_inprocSend.send(msg.dump());
+        }
         // smalldata
         std::string smalldataDir = {para.outputDir + "/smalldata"};
         local_mkdir(smalldataDir.c_str());
         std::string smalldataFileName = {smalldataDir + "/" + runName + ".smd.xtc2"};
         logging::info("Opening file '%s'", smalldataFileName.c_str());
-        m_smdWriter.open(smalldataFileName);
+        if (m_smdWriter.open(smalldataFileName) == 0) {
+            timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
+            json msg = createFileReportMsg(smalldataFileName, tt, tt, 0);
+            m_inprocSend.send(msg.dump());
+        } else {
+            std::string message = {"Failed to open file '" + smalldataFileName + "'"};
+            json msg = createErrorMsg(message);
+            m_inprocSend.send(msg.dump());
+        }
         m_writing = true;
     }
     return std::string{};
@@ -214,7 +233,8 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
                 memcpy(m_configureBuffer, configDgram, size);
             }
             // send pulseId to inproc so it gets forwarded to the collection
-            m_inprocSend.send(std::to_string(pulseId));
+            json msg = createPulseIdMsg(pulseId);
+            m_inprocSend.send(msg.dump());
         }
         logging::debug("EbReceiver saw %s transition @ %d.%09d (%014lx)\n",
                        XtcData::TransitionId::name(transitionId),
@@ -587,6 +607,7 @@ void DrpBase::printParams() const
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <ctime>
 
 static void local_mkdir (const char * path)
 {
@@ -597,4 +618,38 @@ static void local_mkdir (const char * path)
             logging::critical("mkdir %s: %m", path);
         }
     }
+}
+
+static json createFileReportMsg(std::string path, timespec create_time, timespec modify_time, size_t size)
+{
+    char buf[100];
+    json msg, body;
+
+    msg["key"] = "fileReport";
+    body["path"] = path;
+    std::strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&create_time.tv_sec));
+    body["create_timestamp"] = buf;
+    std::strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&modify_time.tv_sec));
+    body["modify_timestamp"] = buf;
+    body["size"] = size;
+    msg["body"] = body;
+    return msg;
+}
+
+static json createPulseIdMsg(uint64_t pulseId)
+{
+    json msg, body;
+    msg["key"] = "pulseId";
+    body["pulseId"] = pulseId;
+    msg["body"] = body;
+    return msg;
+}
+
+static json createErrorMsg(std::string message)
+{
+    json msg, body;
+    msg["key"] = "error";
+    body["err_info"] = message;
+    msg["body"] = body;
+    return msg;
 }
