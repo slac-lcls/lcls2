@@ -5,7 +5,7 @@ OS=${1:-linux}
 set -e
 
 
-printenv
+export LCLS_TRAVIS=1
 if [[ $OS == linux ]]; then
   source activate $CONDA_ENV
 

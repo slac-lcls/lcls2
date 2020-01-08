@@ -7,7 +7,7 @@ from psana import DataSource
 client_count = 4  # number of clients in test
 dgram_count  = 64 # number of expected datagrams per client
 
-@pytest.mark.skipif(sys.platform == 'darwin' or os.getenv('TRAVIS') is not None, reason="shmem not supported on mac and centos7 failing in travis for unknown reasons")
+@pytest.mark.skipif(sys.platform == 'darwin' or os.getenv('LCLS_TRAVIS') is not None, reason="shmem not supported on mac and centos7 failing in travis for unknown reasons")
 class Test:
 
     @staticmethod

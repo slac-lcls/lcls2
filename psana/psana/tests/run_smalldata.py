@@ -191,7 +191,7 @@ def main(tmp_path):
 
     run_test('xtc', tmp_path)
     # don't test shmem on macOS, and centos7 in TRAVIS is failing for not-understood reasons
-    if platform.system()!='Darwin' and os.getenv('TRAVIS') is None:
+    if platform.system()!='Darwin' and os.getenv('LCLS_TRAVIS') is None:
         run_test('shmem', tmp_path)
     return
 
