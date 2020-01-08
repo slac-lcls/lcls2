@@ -12,7 +12,7 @@ def launch_client(pid):
     cspad = run.Detector('xppcspad')
     hsd = run.Detector('xpphsd')
     for evt in run.events():
-        print(evt._dgrams[0].hex(timestamp()))
+        print(hex(evt._dgrams[0].timestamp()))
         assert(hsd.raw.calib(evt).shape==(5,))
         assert(hsd.fex.calib(evt).shape==(6,))
         padarray = vals.padarray

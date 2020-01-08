@@ -36,7 +36,7 @@ class Test:
         assert srv != None,"server launch failure"
         # cpo: attempt to debug travis race condition
         import time
-        time.sleep(2)
+        time.sleep(5)
         try:
             for i in range(client_count):
               cli.append(self.launch_client(pid))
