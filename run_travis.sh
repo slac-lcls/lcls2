@@ -5,6 +5,7 @@ OS=${1:-linux}
 set -e
 
 
+printenv
 if [[ $OS == linux ]]; then
   source activate $CONDA_ENV
 
