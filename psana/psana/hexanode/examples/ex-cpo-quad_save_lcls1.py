@@ -14,7 +14,8 @@ from psana import *
 EVENTS = 100
 
 dsname = 'exp=amox27716:run=100:smd'
-ofname = 'hexanode.h5' # '/reg/data/ana03/scratch/dubrovin/hexanode.h5'
+ofname = 'hexanode.h5'
+#ofname = '/reg/data/ana03/scratch/dubrovin/hexanode.h5'
 print 'Input dataset: %s\nOutput file: %s' % (dsname, ofname)
 
 dsource = MPIDataSource(dsname)

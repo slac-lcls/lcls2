@@ -55,7 +55,11 @@ def proc_data(**kwargs):
 
     ds    = DataSource(files=DSNAME)
     orun  = next(ds.runs())
+
+    print('\nruninfo expt: %s  runnum: %d' % (orun.expt, orun.runnum))
+
     det   = orun.Detector(DETNAME)
+    kwargs['detobj'] = det
 
     peaks = WFPeaks(**kwargs)
     proc  = DLDProcessor(**kwargs) #detobj=det to get cfg/calib constants

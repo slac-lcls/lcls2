@@ -100,12 +100,15 @@ class DLDProcessor :
         txt_cfg   = None
         txt_calib = None
         if DETOBJ is not None :
-            det_consts = DETOBJ.raw._calib_constants()
-            txt_cfg   = det_consts.get(CTYPE_CALIBCFG, None)
-            txt_calib = det_consts.get(CTYPE_CALIBTAB, None)
+            det_consts = DETOBJ._calibconst
+            txt_cfg,   meta_cfg   = det_consts.get(self.CTYPE_CALIBCFG, None)
+            txt_calib, meta_calib = det_consts.get(self.CTYPE_CALIBTAB, None)
         else :
             txt_cfg   = text_data(CALIBCFG) # str object (from file) with configuration constants
             txt_calib = text_data(CALIBTAB) # ... with calibration constants
+
+        s = 'from DB' if DETOBJ is not None else 'default'
+        logger.info('>>>> configuration and calibration %s' % s)
 
         # create the sorter:
         self.sorter = sorter = hexanode.py_sort_class()
