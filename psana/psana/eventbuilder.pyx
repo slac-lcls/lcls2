@@ -155,7 +155,7 @@ cdef class EventBuilder:
                     raw_dgrams[view_idx] = <char[:self.dgram_sizes[view_idx]]>view_ptr
                     # Copy to step buffers if non L1
                     service = (d.env>>24)&0xf
-                    if service != self.L1_ACCEPT and payload > 0: 
+                    if service != self.L1_ACCEPT: 
                         memcpy(self.step_bufs[view_idx].chunk + self.step_bufs[view_idx].offset, d, self.DGRAM_SIZE + payload)
                         self.step_bufs[view_idx].offset += self.DGRAM_SIZE + payload
                         self.step_bufs[view_idx].nevents += 1

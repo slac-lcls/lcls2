@@ -419,22 +419,22 @@ int main(int argc, char* argv[])
     
     while ((dgIn = iter.next())) {
         nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload()); 
-        if (dgIn->service() == TransitionId::Configure) {
-            Dgram *config;
-            config = (Dgram*)buf;
-            memcpy(config, dgIn, sizeof(*dgIn));
-            memcpy(config->xtc.payload(), dgIn->xtc.payload(), dgIn->xtc.sizeofPayload());
-            addNames(config->xtc, namesLookup, nodeId);
-            save(*config, xtcFile);
-        } else { 
-            Dgram& dgOut = *(Dgram*)buf;
-            if (dgIn->service() == TransitionId::L1Accept) {
-                eventL1Id++;
-                dgOut.env = dgIn->env;
+        if (dgIn->service() != TransitionId::L1Accept) {
+            Dgram *dgOut;
+            dgOut = (Dgram*)buf;
+            memcpy(dgOut, dgIn, sizeof(*dgIn));
+            memcpy(dgOut->xtc.payload(), dgIn->xtc.payload(), dgIn->xtc.sizeofPayload());
+            
+            if (dgIn->service() == TransitionId::Configure) {
+                addNames(dgOut->xtc, namesLookup, nodeId);
             } else {
-                dgOut = *dgIn; 
                 eventUpdateId++;
             }
+            save(*dgOut, xtcFile);
+        } else { 
+            Dgram& dgOut = *(Dgram*)buf;
+            eventL1Id++;
+            dgOut.env = dgIn->env;
             
             TypeId tid(TypeId::Parent, 0);
             dgOut.xtc.contains = tid;

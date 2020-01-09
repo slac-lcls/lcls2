@@ -93,8 +93,11 @@ class EventManager(object):
             j = i + first_L1_pos
             if event_bytes:
                 smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.run())
-                ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
-                        d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_evt._dgrams])
+                if smd_evt._dgrams[0].service() == TransitionId.L1Accept:
+                    ofsz = np.asarray([[0, d.smdinfo[0].offsetAlg.intDgramSize] \
+                            for d in smd_evt._dgrams])
+                else:
+                    ofsz = np.asarray([[0, d._size] for d in smd_evt._dgrams])
 
                 if j > 0:
                     self.ofsz_batch[j,:,0] = self.ofsz_batch[j-1,:,0] + self.ofsz_batch[j-1,:,1]
@@ -124,9 +127,13 @@ class EventManager(object):
         if self.filter_fn:
             smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.run())
             self.cn_events += 1
-            ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
-                    d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_evt])
-            bd_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
+            if smd_evt._dgrams[0].service() == TransitionId.L1Accept:
+                ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
+                        d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_evt])
+                bd_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
+            else:
+                bd_evt = smd_evt
+
             return bd_evt
         
         dgrams = [None] * self.n_smd_files

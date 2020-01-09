@@ -166,11 +166,8 @@ class Run(object):
         """ Gets runinfo from BeginRun event"""
         beginrun_evt = None
         if hasattr(self.dm.configs[0].software, 'smdinfo'):
-            # This run has smd files - use offset to get BeginRun dgram
-            smd_beginrun_evt = next(self.smd_dm)
-            ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
-                    d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_beginrun_evt])
-            beginrun_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
+            # This run has smd files 
+            beginrun_evt = next(self.smd_dm) 
         elif hasattr(self.dm.configs[0].software, 'runinfo'):
             beginrun_evt = next(self.dm)
         
