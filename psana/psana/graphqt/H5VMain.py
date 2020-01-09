@@ -1,13 +1,14 @@
 #------------------------------
-"""Class :py:class:`QWTree` is a QTreeView->QWidget for tree model
-===================================================================
+"""Class :py:class:`H5VMain` is a QWidget for main window of hdf5viewer 
+========================================================================
 
 Usage ::
 
-    # Run test: python lcls2/psana/psana/graphqt/QWTree.py
+    # Run test: python lcls2/psana/psana/graphqt/H5VMain.py
 
-    from psana.graphqt.QWTree import QWTree
-    w = QWTree()
+    from psana.graphqt.H5VMain import H5VMain
+
+See method: hdf5explorer
 
 Created on 2019-11-12 by Mikhail Dubrovin
 """
@@ -20,6 +21,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from psana.graphqt.QWLoggerStd import QWLoggerStd#, QWFilter
 
+from psana.graphqt.H5VControl import H5VControl
 from psana.graphqt.H5VQWTree import Qt, H5VQWTree
 from psana.graphqt.H5VConfigParameters import cp
 from psana.pyalgos.generic.Utils import print_kwargs, is_in_command_line
@@ -36,11 +38,13 @@ class H5VMain(QWidget) :
         QWidget.__init__(self, parent=None)
         #self._name = self.__class__.__name__
 
+        cp.h5vmain = self
+
         self.proc_kwargs(**kwargs)
 
         self.wlog = QWLoggerStd(cp, show_buttons=False)
-
         self.wtree = H5VQWTree(**kwargs)
+        self.wctrl = H5VControl(**kwargs)
         #self.wtext = QTextEdit('Some text')
 
         self.hspl = QSplitter(Qt.Horizontal)
@@ -48,9 +52,15 @@ class H5VMain(QWidget) :
         self.hspl.addWidget(self.wlog)
         #self.hspl.addWidget(self.wtext)
 
-        self.hbox = QHBoxLayout() 
-        self.hbox.addWidget(self.hspl)
-        self.setLayout(self.hbox)
+        #self.hbox = QHBoxLayout() 
+        #self.hbox.addWidget(self.hspl)
+
+        self.vbox = QVBoxLayout() 
+        self.vbox.addWidget(self.wctrl)
+        self.vbox.addWidget(self.hspl)
+        #self.vbox.addLayout(self.hspl)
+
+        self.setLayout(self.vbox)
 
         self.set_style()
         self.set_tool_tips()
@@ -115,6 +125,18 @@ class H5VMain(QWidget) :
         #self.butFBrowser.setVisible(False)
 
         #self.but1.raise_()
+
+    def closeEvent(self, e):
+        #logger.debug('closeEvent')
+        QWidget.closeEvent(self, e)
+
+        cp.h5vmain = None
+
+        #try    : self.gui_win.close()
+        #except : pass
+
+        #try    : del self.gui_win
+        #except : pass
 
 #------------------------------
 

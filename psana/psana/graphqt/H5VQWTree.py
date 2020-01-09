@@ -130,6 +130,18 @@ class H5VQWTree(QWTree) :
         self.header().show()
         self.setMinimumSize(400, 900)
 
+
+    def on_item_selected(self, selected, deselected):
+        itemsel = self.model.itemFromIndex(selected)
+        if itemsel is not None :
+            parent = itemsel.parent()
+            parname = parent.text() if parent is not None else None
+            msg = 'selected item: %s row: %d parent: %s' % (itemsel.text(), selected.row(), parname) 
+            logger.debug(msg)
+            msg = 'data.value:\n%s' % str(itemsel.data().value)
+            logger.debug(msg)
+
+
     #def set_style(self):
     #    #from psana.graphqt.Styles import style
     #    self.setWindowIcon(icon.icon_monitor)
