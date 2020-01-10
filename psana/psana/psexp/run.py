@@ -149,7 +149,11 @@ class Run(object):
         for det_name, (dettype, detid) in self.dm.det_info_table.items():
             det_str = dettype + '_' + detid
             if self.expt:
-                self.calibconst[det_name] = wu.calib_constants_all_types(det_name, exp=self.expt, run=self.runnum)
+                if self.expt == "cxid9114": # mona: hack for cctbx
+                    det_query = "cspad_0002"
+                else:
+                    det_query = det_name
+                self.calibconst[det_name] = wu.calib_constants_all_types(det_query, exp=self.expt, run=self.runnum)
             else:
                 self.calibconst[det_name] = None
 

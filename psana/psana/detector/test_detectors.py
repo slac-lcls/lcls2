@@ -115,43 +115,40 @@ class cspad_raw_1_2_3(DetectorImpl):
         return self._segments(evt)[0].photonEnergy
 
     def calib(self, evt):
-        run = evt.run()
         data = self.raw(evt)
         data = data.astype(np.float64) # convert raw photon counts to float for other math operations.
-        data -= self.pedestals(run)
-        self.common_mode_apply(run, data, None)
-        gain_mask = self.gain_mask(run)
+        data -= self.pedestals()
+        self.common_mode_apply(data, None)
+        gain_mask = self.gain_mask()
         if gain_mask is not None:
             data *= gain_mask
-        data *= self.gain(run)
+        data *= self.gain()
         return data
 
     def image(self, data, verbose=0): print("cspad.image")
 
-    def _fetch(self, key, run):
+    def _fetch(self, key):
         val = None
-        if self._det_name in run.calibs:
-            calib = run.calibs[self._det_name]
-            if key in calib:
-                val = calib[key]
+        if key in self._calibconst:
+            val, _ = self._calibconst[key]
         return val
 
-    def pedestals(self, run):
-        return self._fetch('pedestals', run)
+    def pedestals(self):
+        return self._fetch('pedestals')
 
-    def gain_mask(self, run, gain=0):
-        return self._fetch('gain_mask', run)
+    def gain_mask(self, gain=0):
+        return self._fetch('gain_mask')
 
-    def common_mode_apply(self, run, data, common_mode):
+    def common_mode_apply(self, data, common_mode):
         # FIXME: apply common_mode
         return data
 
-    def gain(self, run):
+    def gain(self):
         # default gain is set to 1.0 (FIXME)
         return 1.0
 
-    def geometry(self, run):
-        geometry_string = self._fetch('geometry_string', run)
+    def geometry(self):
+        geometry_string = self._fetch('geometry')
         geometry_access = None
         if geometry_string is not None:
             from psana.pscalib.geometry.GeometryAccess import GeometryAccess
