@@ -108,7 +108,7 @@ cdef class SmdReader:
                                 if service == self.L1_ACCEPT:
                                     buf.nevents += 1
                                     break
-                                elif payload > 0:
+                                else:
                                     memcpy(self.step_bufs[i].chunk + self.step_bufs[i].offset, d, self.DGRAM_SIZE + payload)
                                     self.step_bufs[i].offset += self.DGRAM_SIZE + payload
                                     self.step_bufs[i].nevents += 1

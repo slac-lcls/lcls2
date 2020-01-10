@@ -138,13 +138,16 @@ if __name__ == "__main__":
     assert result == expected_result
     """
     # Test run.steps() 
-    test_cases = [(51, 1, 0), \
+    test_cases = [\
+            (51, 1, 0), \
             (51, 1, my_filter), \
             (51, 5, 0), \
             (51, 5, my_filter), \
-            (20, 1, 0), (19, 1, 0), \
+            (20, 1, 0), \
+            (19, 1, 0), \
             (1, 1, my_filter), (1, 1, 0), \
-            (3, 4, my_filter), (3, 4, 0)]
+            (3, 4, my_filter), (3, 4, 0), \
+             ]
     
     for test_case in test_cases:
         result = run_serial_read(test_case[0], batch_size=test_case[1], filter_fn=test_case[2])
