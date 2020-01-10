@@ -20,8 +20,12 @@ def detnames():
   args = parser.parse_args()
 
   if '=' in args.dsname:
+    if ':' in args.dsname:
+      print('Error: DataSource fields in psana2 must be split with "," not ":"')
+      sys.exit(-1)
+
     # experiment/run specified, or shmem
-    ds_split = args.dsname.split(':')
+    ds_split = args.dsname.split(',')
     kwargs = {}
     for kwarg in ds_split:
       kwarg_split = kwarg.split('=')
@@ -31,7 +35,6 @@ def detnames():
       except ValueError:
         val = kwarg_split[1]
       kwargs[kwarg_split[0]] = val
-    print('***',kwargs)
     ds = DataSource(**kwargs)
   else:
     # filename specified
