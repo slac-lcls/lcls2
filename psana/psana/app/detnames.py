@@ -21,7 +21,7 @@ def detnames():
 
   if '=' in args.dsname:
     # experiment/run specified, or shmem
-    ds_split = args.dsname.split(',')
+    ds_split = args.dsname.split(':')
     kwargs = {}
     for kwarg in ds_split:
       kwarg_split = kwarg.split('=')
@@ -31,6 +31,7 @@ def detnames():
       except ValueError:
         val = kwarg_split[1]
       kwargs[kwarg_split[0]] = val
+    print('***',kwargs)
     ds = DataSource(**kwargs)
   else:
     # filename specified
