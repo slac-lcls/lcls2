@@ -59,7 +59,7 @@ def proc_data(**kwargs):
     logger.info(str_kwargs(kwargs, title='Input parameters:'))
 
     DSNAME       = kwargs.get('dsname', '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
-    DETNAME      = kwargs.get('detname','tmo_hexanode')
+    DETNAME      = kwargs.get('detname','tmo_quadanode')
     EVSKIP       = kwargs.get('evskip', 0)
     EVENTS       = kwargs.get('events', 100) + EVSKIP
     OFPREFIX     = kwargs.get('ofprefix','./')
@@ -116,7 +116,7 @@ if __name__ == "__main__" :
     print('%s\nTEST %s' % (50*'_', tname))
 
     kwargs = {'dsname'   : '/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2',
-              'detname'  : 'tmo_hexanode',
+              'detname'  : 'tmo_quadanode',
               'numchs'   : 5,
               'numhits'  : 16,
               'evskip'   : 0,

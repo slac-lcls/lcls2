@@ -13,7 +13,7 @@ import psana.pscalib.calib.MDBWebUtils as wu
 
 def test_calibconst() :
 
-    DETNAME = 'tmo_hexanode'
+    DETNAME = 'tmo_quadanode'
 
     ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
     orun = next(ds.runs())

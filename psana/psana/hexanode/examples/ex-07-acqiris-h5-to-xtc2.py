@@ -1,16 +1,44 @@
+#!/usr/bin/env python
+
+"""Reds Acqiris data from hdf5 file created by previous script and saves data and runinfo in xtc2 file.
+"""
 
 # command to run
 # on psana node
 # cd .../lcls2
 # . setup_env.sh
-# python lcls2/psana/psana/hexanode/examples/ex-cpo-quad_to_xtc2.py
+# python lcls2/psana/psana/hexanode/examples/ex-07-acqiris-h5-to-xtc2.py
+
 #----------
 
-#DIRTMP =  '/reg/data/ana03/scratch/dubrovin/'
-DIRTMP =  './'
-FNAME_HDF5 = DIRTMP + 'hexanode.h5'
-FNAME_XTC2 = DIRTMP + 'hexanode.xtc2'
-DETNAME = 'tmo_hexanode'
+def usage() :
+    return '\nUsage:'\
+      + '\n  in LCLS2 environment after'\
+      + '\n  cd .../lcls2; . setup_env.sh'\
+      + '\n  lcls2/psana/psana/hexanode/examples/ex-07-acqiris-h5-to-xtc2.py'\
+      + '\n    or with positional arguments:'\
+      + '\n  lcls2/psana/psana/hexanode/examples/ex-07-acqiris-h5-to-xtc2.py <IFNAME> <OFNAME> <DIRTMP> <DETNAME> <EXPNAME> <RUNNUM> <DETTYPE> <SERNUM> <NAMESID>'\
+      + '\n  lcls2/psana/psana/hexanode/examples/ex-07-acqiris-h5-to-xtc2.py acqiris_data.h5 acqiris_data.xtc2 /reg/data/ana03/scratch/dubrovin/ amox27716 100 quadanode 1234 0'\
+      + '\n'
+
+#----------
+
+import sys
+
+nargs = len(sys.argv)
+
+IFNAME  = 'acqiris_data.h5'   if nargs <= 1 else sys.argv[1]
+OFNAME  = 'acqiris_data.xtc2' if nargs <= 2 else sys.argv[2]
+DIRTMP  = './'                if nargs <= 3 else sys.argv[3] # '/reg/data/ana03/scratch/dubrovin/'
+DETNAME = 'tmo_quadanode'     if nargs <= 4 else sys.argv[4]
+EXPNAME = 'amox27716'         if nargs <= 5 else sys.argv[5]
+RUNNUM  = 100                 if nargs <= 6 else int(sys.argv[6])
+DETTYPE = 'hexanode'          if nargs <= 7 else sys.argv[7]
+SERNUM  = '1234'              if nargs <= 8 else sys.argv[8]
+NAMESID = 0                   if nargs <= 9 else int(sys.argv[9])
+
+FNAME_HDF5 = DIRTMP + IFNAME
+FNAME_XTC2 = DIRTMP + OFNAME
 
 def convert_hdf5_to_xtc2_with_runinfo() :
 
@@ -19,12 +47,8 @@ def convert_hdf5_to_xtc2_with_runinfo() :
     import os
     import h5py
     
-    dettype = 'hexanode'
-    serial_number = '1234'
-    namesid = 0
-    
-    nameinfo = dc.nameinfo(DETNAME,dettype,serial_number,namesid)
-    alg = dc.alg('raw',[0,0,1])
+    nameinfo = dc.nameinfo(DETNAME, DETTYPE, SERNUM, NAMESID)
+    alg = dc.alg('raw', [0,0,1])
     
     cydgram = dc.CyDgram()
     
@@ -32,15 +56,12 @@ def convert_hdf5_to_xtc2_with_runinfo() :
     
     runinfo_detname = 'runinfo'
     runinfo_dettype = 'runinfo'
-    runinfo_detid = ''
+    runinfo_detid   = ''
     runinfo_namesid = 1
-    runinfo_nameinfo = dc.nameinfo(runinfo_detname,runinfo_dettype,
-                                   runinfo_detid,runinfo_namesid)
-    runinfo_alg = dc.alg('runinfo',[0,0,1])
-    runinfo_data = {
-    'expt': 'amox27716',
-    'runnum': 100
-    }
+    runinfo_nameinfo = dc.nameinfo(runinfo_detname, runinfo_dettype,
+                                   runinfo_detid, runinfo_namesid)
+    runinfo_alg = dc.alg('runinfo', [0,0,1])
+    runinfo_data = {'expt': EXPNAME, 'runnum': RUNNUM}
     
     #----------
     
@@ -102,5 +123,6 @@ def test_xtc2_runinfo() :
 if __name__ == "__main__":
     convert_hdf5_to_xtc2_with_runinfo()
     test_xtc2_runinfo()
+    print(usage())
 
 #----------
