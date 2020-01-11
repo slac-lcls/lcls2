@@ -118,7 +118,10 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
               "-s" << std::setw(3) << m_nodeId <<
               "-c000";
         std::string runName = ss.str();
-        std::string fileName = {para.outputDir + "/" + runName + ".xtc2"};
+        // data
+        std::string dataDir = {para.outputDir + "/" + runInfo.experimentName + "/xtc"};
+        local_mkdir(dataDir.c_str());
+        std::string fileName = {dataDir + "/" + runName + ".xtc2"};
         // cpo suggests leaving this print statement in because
         // filesystems can hang in ways we can't timeout/detect
         // and this print statement may speed up debugging significantly.
@@ -134,7 +137,7 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
             m_inprocSend.send(msg.dump());
         }
         // smalldata
-        std::string smalldataDir = {para.outputDir + "/smalldata"};
+        std::string smalldataDir = {para.outputDir + "/" + runInfo.experimentName + "/xtc/smalldata"};
         local_mkdir(smalldataDir.c_str());
         std::string smalldataFileName = {smalldataDir + "/" + runName + ".smd.xtc2"};
         logging::info("Opening file '%s'", smalldataFileName.c_str());
