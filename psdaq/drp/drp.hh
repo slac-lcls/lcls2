@@ -41,6 +41,7 @@ struct Parameters
     std::string detName;
     std::string device;
     std::string outputDir;
+    std::string instrument;
     std::string detectorType;
     std::string collectionHost;
     std::string prometheusDir;

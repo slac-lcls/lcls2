@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
                 kwargs_str = std::string(optarg);
                 break;
             case 'P':
-                instrument = optarg;
+                para.instrument = optarg;
                 break;
             case 'T':
                 para.trgDetName = optarg ? optarg : "trigger";
@@ -78,14 +78,15 @@ int main(int argc, char* argv[])
     }
 
     switch (para.verbose) {
-      case 0:  logging::init(instrument, LOG_INFO);     break;
-      default: logging::init(instrument, LOG_DEBUG);    break;
+      case 0:  logging::init(para.instrument.c_str(), LOG_INFO);     break;
+      default: logging::init(para.instrument.c_str(), LOG_DEBUG);    break;
     }
     logging::info("logging configured");
-    if (!instrument) {
-        logging::warning("-P: instrument name is missing");
-    }
     // Check required parameters
+    if (para.instrument.empty()) {
+        logging::critical("-P: instrument name is mandatory");
+        exit(1);
+    }
     if (para.partition == unsigned(-1)) {
         logging::critical("-p: partition is mandatory");
         exit(1);

@@ -16,7 +16,8 @@ using json = nlohmann::json;
 using logging = psalg::SysLog;
 
 static void local_mkdir (const char * path);
-static json createFileReportMsg(std::string path, timespec create_time, timespec modify_time, size_t size);
+static json createFileReportMsg(std::string path, std::string absolute_path,
+                                timespec create_time, timespec modify_time);
 static json createPulseIdMsg(uint64_t pulseId);
 static json createErrorMsg(std::string message);
 
@@ -119,34 +120,36 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
               "-c000";
         std::string runName = ss.str();
         // data
-        std::string dataDir = {para.outputDir + "/" + runInfo.experimentName + "/xtc"};
+        std::string dataDir = {para.outputDir + "/" + para.instrument + "/" + runInfo.experimentName + "/xtc"};
         local_mkdir(dataDir.c_str());
-        std::string fileName = {dataDir + "/" + runName + ".xtc2"};
+        std::string path = {para.instrument + "/" + runInfo.experimentName + "/xtc/" + runName + ".xtc2"};
+        std::string absolute_path = {para.outputDir + "/" + path};
         // cpo suggests leaving this print statement in because
         // filesystems can hang in ways we can't timeout/detect
         // and this print statement may speed up debugging significantly.
-        std::cout << "Opening file " << fileName << std::endl;
-        logging::info("Opening file '%s'", fileName.c_str());
-        if (m_fileWriter.open(fileName) == 0) {
+        std::cout << "Opening file " << absolute_path << std::endl;
+        logging::info("Opening file '%s'", absolute_path.c_str());
+        if (m_fileWriter.open(absolute_path) == 0) {
             timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
-            json msg = createFileReportMsg(fileName, tt, tt, 0);
+            json msg = createFileReportMsg(path, absolute_path, tt, tt);
             m_inprocSend.send(msg.dump());
         } else {
-            std::string message = {"Failed to open file '" + fileName + "'"};
+            std::string message = {"Failed to open file '" + absolute_path + "'"};
             json msg = createErrorMsg(message);
             m_inprocSend.send(msg.dump());
         }
         // smalldata
-        std::string smalldataDir = {para.outputDir + "/" + runInfo.experimentName + "/xtc/smalldata"};
+        std::string smalldataDir = {para.outputDir + "/" + para.instrument + "/" + runInfo.experimentName + "/xtc/smalldata"};
         local_mkdir(smalldataDir.c_str());
-        std::string smalldataFileName = {smalldataDir + "/" + runName + ".smd.xtc2"};
-        logging::info("Opening file '%s'", smalldataFileName.c_str());
-        if (m_smdWriter.open(smalldataFileName) == 0) {
+        std::string smalldata_path = {para.instrument + "/" + runInfo.experimentName + "/xtc/smalldata/" + runName + ".smd.xtc2"};
+        std::string smalldata_absolute_path = {para.outputDir + "/" + smalldata_path};
+        logging::info("Opening file '%s'", smalldata_absolute_path.c_str());
+        if (m_smdWriter.open(smalldata_absolute_path) == 0) {
             timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
-            json msg = createFileReportMsg(smalldataFileName, tt, tt, 0);
+            json msg = createFileReportMsg(smalldata_path, smalldata_absolute_path, tt, tt);
             m_inprocSend.send(msg.dump());
         } else {
-            std::string message = {"Failed to open file '" + smalldataFileName + "'"};
+            std::string message = {"Failed to open file '" + smalldata_absolute_path + "'"};
             json msg = createErrorMsg(message);
             m_inprocSend.send(msg.dump());
         }
@@ -623,18 +626,19 @@ static void local_mkdir (const char * path)
     }
 }
 
-static json createFileReportMsg(std::string path, timespec create_time, timespec modify_time, size_t size)
+static json createFileReportMsg(std::string path, std::string absolute_path,
+                                timespec create_time, timespec modify_time)
 {
     char buf[100];
     json msg, body;
 
     msg["key"] = "fileReport";
     body["path"] = path;
+    body["absolute_path"] = absolute_path;
     std::strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&create_time.tv_sec));
     body["create_timestamp"] = buf;
     std::strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&modify_time.tv_sec));
     body["modify_timestamp"] = buf;
-    body["size"] = size;
     msg["body"] = body;
     return msg;
 }

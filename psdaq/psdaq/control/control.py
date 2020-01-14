@@ -18,6 +18,8 @@ from threading import Thread, Event
 PORT_BASE = 29980
 POSIX_TIME_AT_EPICS_EPOCH = 631152000
 
+report_keys = ['error', 'fileReport']
+
 class DaqControl:
     'Base class for controlling data acquisition'
 
@@ -210,6 +212,10 @@ class DaqControl:
                 elif msg['header']['key'] == 'error':
                     # return 'error', error message, 'error', 'error'
                     return 'error', msg['body']['err_info'], 'error', 'error'
+
+                elif msg['header']['key'] == 'fileReport':
+                    # return 'fileReport', path, 'error', 'error'
+                    return 'fileReport', msg['body']['path'], 'error', 'error'
 
             except KeyboardInterrupt:
                 break
@@ -438,6 +444,10 @@ def error_msg(message):
     body = {'err_info': message}
     return create_msg('error', body=body)
 
+def fileReport_msg(path):
+    body = {'path': path}
+    return create_msg('fileReport', body=body)
+
 def back_pull_port(platform):
     return PORT_BASE + platform
 
@@ -460,7 +470,7 @@ def get_readout_group_mask(body):
                 pass
     return mask
 
-def wait_for_answers(socket, wait_time, msg_id, pub_socket):
+def wait_for_answers(socket, wait_time, msg_id):
     """
     Wait and return all messages from socket that match msg_id
     Parameters
@@ -469,6 +479,7 @@ def wait_for_answers(socket, wait_time, msg_id, pub_socket):
     wait_time: int, wait time in milliseconds
     msg_id: int or None, expected msg_id of received messages
     """
+    global report_keys
     remaining = wait_time
     start = time.time()
     while socket.poll(remaining) == zmq.POLLIN:
@@ -480,20 +491,9 @@ def wait_for_answers(socket, wait_time, msg_id, pub_socket):
         else:
             logging.debug('recv_json(): %s' % msg)
 
-        # if key is error then this is an async error message, not a reply
-        if msg['header']['key'] == 'error':
-            try:
-                errMsg = msg['body']['err_info']
-                logging.error(errMsg)
-                if pub_socket is not None:
-                    pub_socket.send_json(error_msg(errMsg))
-            except Exception:
-                pass
-            continue
-
-        # if key is fileReport then this is not a reply
-        if msg['header']['key'] == 'fileReport':
-            logging.debug('wait_for_answers(): dropping \'fileReport\' message')
+        # handle async reports
+        if msg['header']['key'] in report_keys:
+            yield msg
             continue
 
         # if msg_id is none take the msg_id of the first message as reference
@@ -508,11 +508,15 @@ def wait_for_answers(socket, wait_time, msg_id, pub_socket):
         remaining = max(0, int(wait_time - 1000*(time.time() - start)))
 
 
-def confirm_response(socket, wait_time, msg_id, ids, pub_socket):
+def confirm_response(socket, wait_time, msg_id, ids):
+    global report_keys
     logging.debug('confirm_response(): ids = %s' % ids)
     msgs = []
-    for msg in wait_for_answers(socket, wait_time, msg_id, pub_socket):
-        if msg['header']['sender_id'] in ids:
+    reports = []
+    for msg in wait_for_answers(socket, wait_time, msg_id):
+        if msg['header']['key'] in report_keys:
+            reports.append(msg)
+        elif msg['header']['sender_id'] in ids:
             msgs.append(msg)
             ids.remove(msg['header']['sender_id'])
             logging.debug('confirm_response(): removed %s from ids' % msg['header']['sender_id'])
@@ -522,31 +526,34 @@ def confirm_response(socket, wait_time, msg_id, ids, pub_socket):
             break
     for ii in ids:
         logging.debug('id %s did not respond' % ii)
-    return ids, msgs
+    return ids, msgs, reports
 
 
 class CollectionManager():
-    def __init__(self, platform, instrument, pv_base, xpm_master, alias, cfg_dbase, config_alias, slow_update_rate, phase2_timeout, run_dbase):
-        self.platform = platform
-        self.alias = alias
-        self.config_alias = config_alias # e.g. BEAM/NOBEAM
-        self.cfg_dbase = cfg_dbase
-        self.xpm_master = xpm_master
-        self.pv_base = pv_base
+    def __init__(self, args):
+        self.platform = args.p
+        self.alias = args.u
+        self.config_alias = args.C  # e.g. BEAM/NOBEAM
+        self.cfg_dbase = args.d
+        self.xpm_master = args.x
+        self.pv_base = args.B
         self.context = zmq.Context(1)
         self.back_pull = self.context.socket(zmq.PULL)
         self.back_pub = self.context.socket(zmq.PUB)
         self.front_rep = self.context.socket(zmq.REP)
         self.front_pub = self.context.socket(zmq.PUB)
-        self.back_pull.bind('tcp://*:%d' % back_pull_port(platform))
-        self.back_pub.bind('tcp://*:%d' % back_pub_port(platform))
-        self.front_rep.bind('tcp://*:%d' % front_rep_port(platform))
-        self.front_pub.bind('tcp://*:%d' % front_pub_port(platform))
-        self.slow_update_rate = slow_update_rate
+        self.back_pull.bind('tcp://*:%d' % back_pull_port(args.p))
+        self.back_pub.bind('tcp://*:%d' % back_pub_port(args.p))
+        self.front_rep.bind('tcp://*:%d' % front_rep_port(args.p))
+        self.front_pub.bind('tcp://*:%d' % front_pub_port(args.p))
+        self.slow_update_rate = args.S
         self.slow_update_enabled = False
         self.slow_update_exit = Event()
-        self.phase2_timeout = phase2_timeout
-        self.user, self.password, self.url = run_dbase
+        self.phase2_timeout = args.T
+        self.user = args.user
+        self.password = args.password
+        self.url = args.url
+        self.experiment_name = None
 
         if self.slow_update_rate:
             # initialize slow update thread
@@ -563,7 +570,7 @@ class CollectionManager():
         # name PVs
         self.pvListMsgHeader = []   # filled in at alloc
         self.pvListXPM = []         # filled in at alloc
-        self.pv_xpm_base = pv_base + ':XPM:%d' % xpm_master
+        self.pv_xpm_base = self.pv_base + ':XPM:%d' % self.xpm_master
         self.pvGroupL0Enable =  self.pv_xpm_base+':GroupL0Enable'
         self.pvGroupL0Disable = self.pv_xpm_base+':GroupL0Disable'
         self.pvGroupMsgInsert = self.pv_xpm_base+':GroupMsgInsert'
@@ -575,15 +582,15 @@ class CollectionManager():
         self.level_keys = {'drp', 'teb', 'meb', 'control'}
 
         # parse instrument_name[:station_number]
-        if ':' in instrument:
-            self.instrument, station_number = instrument.split(':', maxsplit=1)
+        if ':' in args.P:
+            self.instrument, station_number = args.P.split(':', maxsplit=1)
             try:
                 self.station = int(station_number)
             except ValueError:
                 logging.error("Invalid station number '%s', using platform" % station_number)
                 self.station = self.platform
         else:
-            self.instrument = instrument
+            self.instrument = args.P
             self.station = self.platform
         logging.debug('instrument=%s, station=%d' % (self.instrument, self.station))
         self.ids = set()
@@ -727,17 +734,57 @@ class CollectionManager():
         if answer is not None:
             self.front_rep.send_json(answer)
 
-    # process asynchronous reports
+    #
+    # register_file -
+    #
+    def register_file(self, body):
+        if self.experiment_name is None:
+            logging.error('register_file(): experiment_name is None')
+            return
+
+        path = body['path']
+        logging.info('data file: %s' % path)
+        self.front_pub.send_json(fileReport_msg(path))
+
+        # register the file
+        # url prefix:     https://pswww.slac.stanford.edu/ws-auth/devlgbk/
+        serverURLPrefix = "{0}lgbk/{1}/ws/".format(self.url, self.experiment_name)
+
+        logging.debug('serverURLPrefix = %s' % serverURLPrefix)
+        try:
+            resp = requests.post(serverURLPrefix + "register_file", json=body,
+                                 auth=HTTPBasicAuth(self.user, self.password))
+        except Exception as ex:
+            logging.error('register_file error. HTTP request: %s' % ex)
+        else:
+            logging.debug("register_file response: %s" % resp.text)
+            if resp.status_code == requests.codes.ok:
+                if resp.json().get("success", None):
+                    logging.debug("register_file success")
+                else:
+                    logging.error("register_file failure")
+            else:
+                logging.error("register_file error: status code %d" % resp.status_code)
+
+        return
+
+    #
+    # process_reports
+    #
+    def process_reports(self, report_list):
+        for msg in report_list:
+            try:
+                if msg['header']['key'] == 'fileReport':
+                    self.register_file(msg['body'])
+                elif msg['header']['key'] == 'error':
+                    self.report_error(msg['body']['err_info'])
+            except KeyError as ex:
+                logging.error('process_reports() KeyError: %s' % ex)
+
     def service_status(self):
         msg = self.back_pull.recv_json()
         logging.debug('service_status() received msg \'%s\'' % msg)
-        try:
-            if msg['header']['key'] == 'fileReport':
-                logging.debug('service_status(): dropping \'fileReport\' message')
-            elif msg['header']['key'] == 'error':
-                self.report_error(msg['body']['err_info'])
-        except KeyError as ex:
-            logging.error('service_status() KeyError: %s' % ex)
+        self.process_reports([msg])
 
     def run(self):
         try:
@@ -883,7 +930,8 @@ class CollectionManager():
         ids = self.filter_active_set(self.ids)
         ids = self.filter_level('drp', ids)
         # make sure all the clients respond to transition before timeout
-        missing, answers = confirm_response(self.back_pull, self.phase2_timeout, None, ids, self.front_pub)
+        missing, answers, reports = confirm_response(self.back_pull, self.phase2_timeout, None, ids)
+        self.process_reports(reports)
         if missing:
             logging.error('%s phase2 failed' % transition)
             for alias in self.get_aliases(missing):
@@ -898,7 +946,8 @@ class CollectionManager():
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
 
         # make sure all the clients respond to alloc message with their connection info
-        retlist, answers = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids, self.front_pub)
+        retlist, answers, reports = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
+        self.process_reports(reports)
         ret = len(retlist)
         if ret:
             for alias in self.get_aliases(retlist):
@@ -1097,7 +1146,8 @@ class CollectionManager():
             msg = create_msg('connect', body=self.filter_active_dict(self.cmstate_levels()))
             self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
-            retlist, answers = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids, self.front_pub)
+            retlist, answers, reports = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids)
+            self.process_reports(reports)
             connect_ok = (self.check_answers(answers) == 0)
             ret = len(retlist)
             if ret:
@@ -1116,7 +1166,8 @@ class CollectionManager():
         msg = create_msg('disconnect')
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
-        retlist, answers = confirm_response(self.back_pull, 30000, msg['header']['msg_id'], ids, self.front_pub)
+        retlist, answers, reports = confirm_response(self.back_pull, 30000, msg['header']['msg_id'], ids)
+        self.process_reports(reports)
         disconnect_ok = (self.check_answers(answers) == 0)
         ret = len(retlist)
         if ret:
@@ -1174,11 +1225,15 @@ class CollectionManager():
         return
 
     def condition_rollcall(self):
+        global report_keys
         self.cmstate.clear()
         self.ids.clear()
         msg = create_msg('rollcall')
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
-        for answer in wait_for_answers(self.back_pull, 1000, msg['header']['msg_id'], self.front_pub):
+        for answer in wait_for_answers(self.back_pull, 1000, msg['header']['msg_id']):
+            if answer['header']['key'] in report_keys:
+                self.process_reports([answer])
+                continue
             for level, item in answer['body'].items():
                 if level not in self.cmstate:
                     self.cmstate[level] = {}
@@ -1355,7 +1410,8 @@ class CollectionManager():
             return True
 
         # make sure all the clients respond to transition before timeout
-        retlist, answers = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids, self.front_pub)
+        retlist, answers, reports = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids)
+        self.process_reports(reports)
         answers_ok = (self.check_answers(answers) == 0)
         ret = len(retlist)
         if ret:
@@ -1539,7 +1595,6 @@ def main():
     defaultURL = "https://pswww.slac.stanford.edu/ws-auth/devlgbk/"
     parser.add_argument("--url", help="run database URL prefix. Defaults to " + defaultURL, default=defaultURL)
     args = parser.parse_args()
-    platform = args.p
 
     # configure logging handlers
     if args.v:
@@ -1549,9 +1604,8 @@ def main():
     logger = SysLog(instrument=args.P, level=level)
     logging.info('logging initialized')
 
-    run_dbase = (args.user, args.password, args.url)
     try:
-        manager = CollectionManager(platform, args.P, args.B, args.x, args.u, args.d, args.C, args.S, args.T, run_dbase)
+        manager = CollectionManager(args)
     except KeyboardInterrupt:
         logging.info('KeyboardInterrupt')
 
