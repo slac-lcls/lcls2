@@ -122,8 +122,8 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
         // data
         std::string dataDir = {para.outputDir + "/" + para.instrument + "/" + runInfo.experimentName + "/xtc"};
         local_mkdir(dataDir.c_str());
-        std::string path = {para.instrument + "/" + runInfo.experimentName + "/xtc/" + runName + ".xtc2"};
-        std::string absolute_path = {para.outputDir + "/" + path};
+        std::string path = {"/" + para.instrument + "/" + runInfo.experimentName + "/xtc/" + runName + ".xtc2"};
+        std::string absolute_path = {para.outputDir + path};
         // cpo suggests leaving this print statement in because
         // filesystems can hang in ways we can't timeout/detect
         // and this print statement may speed up debugging significantly.
@@ -141,8 +141,8 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
         // smalldata
         std::string smalldataDir = {para.outputDir + "/" + para.instrument + "/" + runInfo.experimentName + "/xtc/smalldata"};
         local_mkdir(smalldataDir.c_str());
-        std::string smalldata_path = {para.instrument + "/" + runInfo.experimentName + "/xtc/smalldata/" + runName + ".smd.xtc2"};
-        std::string smalldata_absolute_path = {para.outputDir + "/" + smalldata_path};
+        std::string smalldata_path = {"/" + para.instrument + "/" + runInfo.experimentName + "/xtc/smalldata/" + runName + ".smd.xtc2"};
+        std::string smalldata_absolute_path = {para.outputDir + smalldata_path};
         logging::info("Opening file '%s'", smalldata_absolute_path.c_str());
         if (m_smdWriter.open(smalldata_absolute_path) == 0) {
             timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
