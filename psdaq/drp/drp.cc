@@ -32,6 +32,7 @@ int main(int argc, char* argv[])
     para.partition = -1;
     para.detSegment = 0;
     std::string kwargs_str;
+    std::string::size_type ii = 0;
     para.verbose = 0;
     char *instrument = NULL;
     while((c = getopt(argc, argv, "p:o:l:D:C:d:u:k:P:T::M:v")) != EOF) {
@@ -62,6 +63,11 @@ int main(int argc, char* argv[])
                 break;
             case 'P':
                 para.instrument = optarg;
+                // remove station number suffix, if present
+                ii = para.instrument.find(":");
+                if (ii != std::string::npos) {
+                    para.instrument.erase(ii, std::string::npos);
+                }
                 break;
             case 'T':
                 para.trgDetName = optarg ? optarg : "trigger";
