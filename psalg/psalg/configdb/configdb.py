@@ -39,7 +39,9 @@ class configdb(object):
     #     drop   - If True, the root database will be dropped.
     #     create - If True, try to create the database and collections
     #              for the hutch, device configurations, and counters.
-    def __init__(self, server, h=None, create=False, root="configDB"):
+    def __init__(self, server, h=None, create=False, root="NONE"):
+        if root == "NONE":
+            raise Exception("configdb: Must specify root!")
         if self.client == None:
             self.client = MongoClient("mongodb://" + server)
             self.cdb = self.client.get_database(root)

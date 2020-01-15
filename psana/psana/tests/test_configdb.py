@@ -8,7 +8,7 @@ import pytest
 import pprint
 
 class mongo_configdb(object):
-    def __init__(self, server=None, hutch=None, create=False, root="configDB"):
+    def __init__(self, server=None, hutch=None, create=False, root="NONE"):
         self.mongod = None
         self.port = None
         self.server = server
