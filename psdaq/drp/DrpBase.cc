@@ -19,7 +19,6 @@ static void local_mkdir (const char * path);
 static json createFileReportMsg(std::string path, std::string absolute_path,
                                 timespec create_time, timespec modify_time);
 static json createPulseIdMsg(uint64_t pulseId);
-static json createErrorMsg(std::string message);
 
 namespace Drp {
 
@@ -112,6 +111,7 @@ EbReceiver::~EbReceiver()
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo)
 {
+    std::string retVal = std::string{};     // return empty string on success
     if (runInfo.runNumber) {
         std::ostringstream ss;
         ss << runInfo.experimentName <<
@@ -133,10 +133,8 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
             timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
             json msg = createFileReportMsg(path, absolute_path, tt, tt);
             m_inprocSend.send(msg.dump());
-        } else {
-            std::string message = {"Failed to open file '" + absolute_path + "'"};
-            json msg = createErrorMsg(message);
-            m_inprocSend.send(msg.dump());
+        } else if (retVal.empty()) {
+            retVal = {"Failed to open file '" + absolute_path + "'"};
         }
         // smalldata
         std::string smalldataDir = {para.outputDir + "/" + para.instrument + "/" + runInfo.experimentName + "/xtc/smalldata"};
@@ -148,14 +146,14 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
             timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
             json msg = createFileReportMsg(smalldata_path, smalldata_absolute_path, tt, tt);
             m_inprocSend.send(msg.dump());
-        } else {
-            std::string message = {"Failed to open file '" + smalldata_absolute_path + "'"};
-            json msg = createErrorMsg(message);
-            m_inprocSend.send(msg.dump());
+        } else if (retVal.empty()) {
+            retVal = {"Failed to open file '" + smalldata_absolute_path + "'"};
         }
-        m_writing = true;
+        if (retVal.empty()) {
+            m_writing = true;
+        }
     }
-    return std::string{};
+    return retVal;
 }
 
 std::string EbReceiver::closeFiles()
@@ -648,15 +646,6 @@ static json createPulseIdMsg(uint64_t pulseId)
     json msg, body;
     msg["key"] = "pulseId";
     body["pulseId"] = pulseId;
-    msg["body"] = body;
-    return msg;
-}
-
-static json createErrorMsg(std::string message)
-{
-    json msg, body;
-    msg["key"] = "error";
-    body["err_info"] = message;
     msg["body"] = body;
     return msg;
 }
