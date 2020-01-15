@@ -9,6 +9,7 @@ add_library(xtc SHARED
     src/NamesIter.cc
     src/ConfigIter.cc
     src/DataIter.cc
+    src/Smd.cc
 )
 
 target_include_directories(xtc PUBLIC
@@ -38,6 +39,7 @@ install(FILES
     Dgram.hh
     TypeId.hh
     VarDef.hh
+    Smd.hh
     DESTINATION include/xtcdata/xtc
 )
 

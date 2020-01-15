@@ -13,8 +13,9 @@ namespace Drp {
 
 enum NamesIndex
 {
-   RUNINFO      = 255,
    BASE         = 0,
+   OFFSETINFO   = 254,
+   RUNINFO      = 255,
 };
 
 struct DmaBuffer

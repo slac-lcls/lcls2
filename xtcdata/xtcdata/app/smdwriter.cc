@@ -12,16 +12,13 @@
 
 // additions from xtc writer
 #include <type_traits>
-
 #include "xtcdata/xtc/XtcFileIterator.hh"
 #include "xtcdata/xtc/VarDef.hh"
-
-// additions from xtc writer
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/TypeId.hh"
-
 #include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/Smd.hh"
 
 using namespace XtcData;
 using std::string;
@@ -235,70 +232,6 @@ private:
     NamesLookup _namesLookup;
 };
 
-
-class CheckNamesIdIter : public XtcIterator
-{
-public:
-    enum { Stop, Continue };
-    CheckNamesIdIter(NamesId offset_namesId) : XtcIterator(),
-                                               _offset_namesId(offset_namesId) {}
-
-    int process(Xtc* xtc)
-    {
-        switch (xtc->contains.id()) {
-        case (TypeId::Parent): {
-            iterate(xtc);
-            break;
-        }
-        case (TypeId::Names): {
-            Names& names = *(Names*)xtc;
-            if (names.namesId() == _offset_namesId) {
-                printf ("Error: smd names id in use\n");
-                throw ("smd names id in use");
-            }
-            break;
-        }
-        default:
-            break;
-        }
-        return Continue;
-    }
-
-private:
-    NamesId _offset_namesId;
-};
-
-
-class SmdDef:public VarDef
-{
-public:
-  enum index
-    {
-      intOffset,
-      intDgramSize
-    };
-
-   SmdDef()
-   {
-     NameVec.push_back({"intOffset", Name::UINT64});
-     NameVec.push_back({"intDgramSize", Name::UINT64});
-   }
-} SmdDef;
-
-void addNames(Xtc& parent, NamesLookup& namesLookup, unsigned nodeId)
-{
-    Alg alg("offsetAlg",0,0,0);
-    NamesId namesId(nodeId,0);
-
-    // check that our chose namesId isn't already in use
-    CheckNamesIdIter checkNamesId(namesId);
-    checkNamesId.iterate(&parent);
-    
-    Names& offsetNames = *new(parent) Names("smdinfo", alg, "offset", "", namesId);
-    offsetNames.add(parent,SmdDef);
-    namesLookup[namesId] = NameIndex(offsetNames);
-}
-
 void save(Dgram& dg, FILE* xtcFile) {
     if (fwrite(&dg, sizeof(dg) + dg.xtc.sizeofPayload(), 1, xtcFile) != 1) {
         printf("Error writing to output xtc file.\n");
@@ -404,85 +337,35 @@ int main(int argc, char* argv[])
 
     // Writing out data
     void* buf = malloc(BUFSIZE);
-    unsigned eventL1Id = 0;
-    unsigned eventUpdateId = 0;
     unsigned eventId = 0;
     uint64_t nowOffset = 0;
     uint64_t nowDgramSize = 0;
-    struct timeval tv;
-    uint64_t pulseId = 0;
     unsigned nodeId=512; // choose a nodeId that the DAQ will not use.  this is checked in addNames()
     NamesLookup namesLookup;
-    NamesId namesId(nodeId,0);
-
+    NamesId namesId(nodeId, 0);
+    
     printf("\nStart writing offsets.\n"); 
     
+    Smd smd;
+    Dgram* dgOut;
     while ((dgIn = iter.next())) {
         nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload()); 
-        if (dgIn->service() != TransitionId::L1Accept) {
-            Dgram *dgOut;
-            dgOut = (Dgram*)buf;
-            memcpy(dgOut, dgIn, sizeof(*dgIn));
-            memcpy(dgOut->xtc.payload(), dgIn->xtc.payload(), dgIn->xtc.sizeofPayload());
-            
-            if (dgIn->service() == TransitionId::Configure) {
-                addNames(dgOut->xtc, namesLookup, nodeId);
-            } else {
-                eventUpdateId++;
-            }
-            save(*dgOut, xtcFile);
-        } else { 
-            Dgram& dgOut = *(Dgram*)buf;
-            eventL1Id++;
-            dgOut.env = dgIn->env;
-            
-            TypeId tid(TypeId::Parent, 0);
-            dgOut.xtc.contains = tid;
-            dgOut.xtc.damage = 0;
-            dgOut.xtc.extent = sizeof(Xtc);
-
-            if (writeTs != 0) {
-                if (tsname != 0) {
-                    dgOut.time = TimeStamp(sec_arr[eventL1Id], nsec_arr[eventL1Id]);
-                } else {
-                    gettimeofday(&tv, NULL);
-                    dgOut.time = TimeStamp(tv.tv_sec, tv.tv_usec);
-                    cout << "warning: new timestamp (not from bigdata xtc) " << tv.tv_sec << " " << tv.tv_usec << endl;
-                }
-            } else {
-                dgOut.time = dgIn->time;
-            }
-
-            CreateData smd(dgOut.xtc, namesLookup, namesId);
-            smd.set_value(SmdDef::intOffset, nowOffset);
-            smd.set_value(SmdDef::intDgramSize, nowDgramSize);
-
-            if (nowOffset < 0) {
-                cout << "Error offset value (offset=" << nowOffset << ")" << endl;
-                return -1;
-            }
-            if (nowDgramSize <= 0) {
-                cout << "Error size value (size=" << nowDgramSize << ")" << endl;
-                return -1;
-            }
-
-            save(dgOut, xtcFile);
-
-            if (n_events > 0) {
-                if (eventL1Id - 1 >= n_events) {
-                    cout << "Stop writing. The option -n (no. of events) was set to " << n_events << endl;
-                    break;
-                }
-            }
-        } // end else dgIn->service() == TransitionId::Configure
-        
+        dgOut = smd.generate(dgIn, buf, nowOffset, nowDgramSize, namesLookup, namesId);
+        save(*dgOut, xtcFile);
         eventId++;
         nowOffset += nowDgramSize;
+        if (n_events > 0) {
+            if (eventId - 1 >= n_events) {
+                cout << "Stop writing. The option -n (no. of events) was set to " << n_events << endl;
+                break;
+            }
+        }
     }// end while((dgIn...
 
-  cout << "Finished writing smd for " << eventL1Id - 1 << " L1 events and " << eventUpdateId << " update events. Big data file has " << eventId << " events with size (B): " << nowOffset << endl;
+  cout << "Finished writing smd for " << eventId << " events with size (B): " << nowOffset << endl;
   fclose(xtcFile);
   ::close(fd);
+  free(buf);
   
   return 0;
 

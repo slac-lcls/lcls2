@@ -8,6 +8,7 @@
 #include "DrpBase.hh"
 #include "RunInfoDef.hh"
 #include "psalg/utils/SysLog.hh"
+#include "xtcdata/xtc/Smd.hh"
 
 #include "rapidjson/document.h"
 
@@ -177,24 +178,11 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
     m_fileWriter.writeEvent(dgram, size);
 
     // small data writing
-    XtcData::Dgram& smdDgram = *(XtcData::Dgram*)m_smdWriter.buffer;
-    smdDgram.time = dgram->time;
-    smdDgram.env = dgram->env;
-    XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
-    smdDgram.xtc.contains = tid;
-    smdDgram.xtc.damage = 0;
-    smdDgram.xtc.extent = sizeof(XtcData::Xtc);
-
-    if (dgram->service() == XtcData::TransitionId::Configure) {
-        m_smdWriter.addNames(smdDgram.xtc, m_nodeId);
-    }
-
-    XtcData::NamesId namesId(m_nodeId, 0);
-    XtcData::CreateData smd(smdDgram.xtc, m_smdWriter.namesLookup, namesId);
-    smd.set_value(SmdDef::intOffset, m_offset);
-    smd.set_value(SmdDef::intDgramSize, size);
-    m_smdWriter.writeEvent(&smdDgram, sizeof(XtcData::Dgram) + smdDgram.xtc.sizeofPayload());
-
+    Smd smd;
+    XtcData::NamesId namesId(m_nodeId, NamesIndex::OFFSETINFO);
+    XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, m_offset, size,
+            m_smdWriter.namesLookup, namesId);
+    m_smdWriter.writeEvent(smdDgram, sizeof(XtcData::Dgram) + smdDgram->xtc.sizeofPayload());
     m_offset += size;
 }
 
@@ -252,6 +240,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         }
         else if (transitionId != XtcData::TransitionId::L1Accept) {
             if (transitionId == XtcData::TransitionId::BeginRun) {
+                m_offset = 0; // reset offset when writing out a new file 
                 _writeDgram(_configureDgram());
             }
             _writeDgram(m_pool.transitionDgram());
