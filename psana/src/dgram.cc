@@ -546,7 +546,7 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
-ssize_t read_with_retries(int fd, char* buf, size_t count, size_t offset)
+ssize_t read_with_retries(int fd, void* buf, size_t count, size_t offset)
 {
     size_t readSuccess = 0;
     for (int i=0; i<MAXRETRIES; i++) {
@@ -579,6 +579,10 @@ static int dgram_read(PyDgramObject* self, int sequential)
         unsigned sizeofPayload = self->dgram->xtc.sizeofPayload();
         if (sizeofPayload>0) {
             readSuccess = read_with_retries(self->file_descriptor, self->dgram->xtc.payload(), sizeofPayload, 0);
+            if (readSuccess <= 0) {
+                PyErr_SetString(PyExc_StopIteration, "Problem reading dgram payload.");
+                return -1;
+            }
         } else {
             readSuccess = 1;
         }
@@ -685,9 +689,9 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             // For (3), size is already given.
             if (self->size == 0) {
                 // For (1) and (2), obtain dgram_header from fd then extract size
-                int readSuccess = read(self->file_descriptor, &dgram_header, sizeof(Dgram));
+                int readSuccess = read_with_retries(self->file_descriptor, &dgram_header, sizeof(Dgram), 0);
                 if (readSuccess <= 0) {
-                    PyErr_SetString(PyExc_StopIteration, "Can't retrieve dgram size. Problem reading dgram header.");
+                    PyErr_SetString(PyExc_StopIteration, "Problem reading dgram header.");
                     return -1;
                 }
                 
