@@ -1,7 +1,5 @@
 platform = '0'
 username = 'lcls2'
-expname  = 'expname'
-expnum   = 'expnum'
 
 epics_host = 'daq-tst-dev02'
 epics_env  = 'EPICS_PVA_ADDR_LIST=172.21.151.255'

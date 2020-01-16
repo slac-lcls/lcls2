@@ -1,7 +1,5 @@
 platform = '0'
 username = 'lcls2'
-expname  = 'expname'
-expnum   = 'expnum'
 
 epics_host = 'daq-xcs-xtpg'
 

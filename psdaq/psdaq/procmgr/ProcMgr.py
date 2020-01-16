@@ -55,59 +55,8 @@ def getConfigFileNames(argconfig, partition):
     run_name = 'p%d.cnf.running' % partition
     last_name = 'p%d.cnf.last' % partition
 
-    # prepend directory name if necessary
-#    if ('/' in argconfig):
-#        run_name = os.path.dirname(argconfig) + '/' + run_name
-#        last_name = os.path.dirname(argconfig) + '/' + last_name
-
     # return filenames
     return (run_name, last_name)
-
-#
-# getCurrentExperiment
-#
-# This function returns the current experiment ID from the
-# offline database based on the instrument (AMO, SXR, CXI:0, CXI:1, etc.)
-#
-# RETURNS:  Two values:  experiment number, experiment name
-#
-
-def getCurrentExperiment(exp, cmd, station):
-
-    exp_id = int(-1)
-    exp_name = ''
-
-    if (cmd):
-      returnCode = 0
-      fullCommand = '%s %s:%u' % (cmd, exp.upper(), station)
-      p = Popen([fullCommand],
-                           shell = True,
-                           stdin = PIPE,
-                           stdout = PIPE,
-                           stderr = PIPE,
-                           close_fds = True)
-      out, err = Popen.communicate(p)
-      if (p.returncode):
-        returnCode = p.returncode
-     
-      if len(err) == 0 and len(out) != 0:
-        out = out.strip()
-        try:
-          exp_name = out.split()[1]
-          exp_id = int(out.split()[2])
-        except:
-          exp_id = int(-1)
-          exp_name = ''
-          err = 'failed to parse \"%s\"' % out
-
-      if returnCode != 0:
-        print("Unable to get current experiment ID")
-        if len(err) != 0:
-          print("Error from '%s': %s" % (fullCommand, err))
-        exp_id = int(-1)
-        exp_name = ''
-
-    return (exp_id, exp_name)
 
 #
 # getUser
@@ -241,71 +190,6 @@ def deduce_platform2(configfilename, platform=None):
 
     return platform_rv, macro_rv, testreldir_rv
 
-
-#
-# deduce_instrument - deduce instrument (AMO, SXR, etc) from contents of config file
-#
-# An optional station number is supported.  For example, CXI:1 translates to CXI station 1.
-#
-# The default instrument name is ''.  The default station number is 0.
-# The default currentexp command path is ''.
-#
-# RETURNS: Three values: instrument name, station number, and currentexp command path.
-#
-def deduce_instrument(configfilename, platform=None):
-    instr_name = ''
-    currentexpcmd = ''
-    station_number = 0
-    xplatform = None
-    if platform is not None:
-      xplatform = str(platform)
-    cc = {'instrument': None, 'platform': xplatform, 'procmgr_config': None, 'TESTRELDIR': None,
-          'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host',
-          'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': {}, 'currentexpcmd': None}
-
-    try:
-      exec(compile(open(configfilename).read(), configfilename, 'exec'), {}, cc)
-      if cc['instrument'] != None:
-        tmplist = cc['instrument'].split(":")
-        instr_name = tmplist[0].upper()
-        if len(tmplist) > 1:
-          station_number = int(tmplist[1])
-        if cc['currentexpcmd'] != None:
-          currentexpcmd = cc['currentexpcmd']
-    except:
-      print('deduce_instrument Error:', sys.exc_info()[1])        
-      instr_name = ''
-      currentexpcmd = ''
-      station_number = 0
-
-    return instr_name, station_number, currentexpcmd
-
-#
-# parse_cmd
-#
-# Parse the cmd string looking for -E, -e, or -f and replacing
-# 'expname' and 'expnum' with current experiment name and number
-# from database
-#
-# Caution:  If the string 'expname' or 'expnum' appears anywhere
-# else in the command, it will also be replaced
-#
-def parse_cmd(cmd, expnum, expname):
-    # if -E (experiment name) is passed in, replace 'expname' with current
-    if cmd.find('-E') != -1 and cmd.find('expname') != -1:
-        cmd = cmd.replace('expname',expname)
-
-    # if -e (experiment number) is passed in, replace 'expnum' with current
-    if cmd.find('-e') != -1 and cmd.find('expnum') != -1:
-        cmd = cmd.replace('expnum', str(expnum))
-
-    # if -f (filename) and 'expname' are passed in, replace 'expname' with current
-    if cmd.find('-f') != -1 and cmd.find('expname') != -1:
-        fname = cmd.split(b'-f')[1].strip()
-        newfname = fname.replace('expname', expname)
-        cmd = cmd.replace(fname, newfname)
-    return cmd
-
 #
 # add_macro_config
 #
@@ -433,13 +317,7 @@ class ProcMgr:
     # platform initialized in __init__
     PLATFORM = -1
 
-    # instrument and station initialized in __init__
-    INSTRUMENT = ''
-    STATION = 0
-    CURRENTEXPCMD = ''
-    
     valid_flag_list = ['X', 'x', 'k', 's', 'u', 'p'] 
-    valid_instruments = ['AMO','SXR','XPP','XCS','CXI','MEC','MFX','DET','TST','DIA']
 
     def __init__(self, configfilename, platform, Xterm_list=[], xterm_list=[], procmgr_macro={}, baseport=29000):
         self.pid = self.STRING_NOPID
@@ -474,19 +352,6 @@ class ProcMgr:
 
         if (self.PLATFORM > 0):
             self.EXECMGRCTRL += (self.PLATFORM * 100)
-
-        # initialize the experiment
-        # (only used by online_ami to get current experiment)
-        self.INSTRUMENT, self.STATION, self.CURRENTEXPCMD = deduce_instrument(configfilename, self.PLATFORM)
-        if self.INSTRUMENT not in self.valid_instruments:
-            if self.INSTRUMENT != '':
-              print('ERR: Invalid instrument ', self.INSTRUMENT)
-            (expnum, expname) = (-1, '')
-        elif self.STATION < 0:
-            print('ERR: Invalid station ', self.STATION)
-            (expnum, expname) = (-1, '')
-        elif self.CURRENTEXPCMD != '':
-            (expnum, expname) = getCurrentExperiment(self.INSTRUMENT, self.CURRENTEXPCMD, self.STATION)
 
         # set HOST and USER macros
         try:
@@ -580,12 +445,7 @@ class ProcMgr:
             # use os.path.realpath() to resolve any symbolic links
             cmdSplit = entry['cmd'].split(None, 1)
             cmdZero = os.path.expanduser(cmdSplit[0])
-
-            if self.CURRENTEXPCMD != '':
-              # Do something special if -E, -e, or -f appear in cmd string
-              self.cmd = parse_cmd(entry['cmd'], expnum, expname)
-            else:
-              self.cmd = entry['cmd']
+            self.cmd = entry['cmd']
           else:
             raise ConfigFileError("procmgr_config entry %s missing cmd" % entry)
             self.cmd = 'error'
@@ -1623,23 +1483,3 @@ if __name__ == '__main__':
     procMgr.show(0)
 
     print('-------- done')
-
-# get string suitable for use by procmgr to set environment for a
-# test release, if a test release exists
-def getRelEnvString():
-    import platform
-    import os
-    #if 'RELDIR' not in os.environ:
-    #    raise Exception('Environment variable RELDIR must be defined')
-    #reldir = os.environ['RELDIR']
-    #if 'TESTRELDIR' not in os.environ:
-    #    return ' PATH='+os.path.join(reldir,'bin')+' '
-
-    testreldir = os.environ['TESTRELDIR']
-    #relEnvString = ' PATH='+os.path.join(testreldir,'bin')+':'+os.path.join(reldir,'bin')+' '
-    relEnvString = ' PATH='+os.path.join(testreldir,'bin')
-    relEnvString += ' LD_LIBRARY_PATH='+os.path.join(testreldir,'lib')+' '
-    pythonver = platform.python_version().split('.')
-    relEnvString += 'PYTHONPATH='+os.path.join(testreldir,'lib/python'+pythonver[0]+'.'+pythonver[1]+'/site-packages'+' ')
-
-    return relEnvString

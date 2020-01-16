@@ -3,8 +3,6 @@ bins_path = '/reg/neh/home/weaver/lcls2/psdaq/psdaq/scripts/'
 
 platform = '1'
 username = 'lcls2'
-expname  = 'expname'
-expnum   = 'expnum'
 
 #epics_host = daq_tst_dev02
 epics_host = 'daq-tst-dev02'
