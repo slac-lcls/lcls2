@@ -76,8 +76,6 @@ void addNames(Xtc& parent, NamesLookup& namesLookup, NamesId namesId)
 Dgram* Smd::generate(Dgram* dgIn, void* buf, uint64_t offset, uint64_t size,
         NamesLookup& namesLookup, NamesId namesId)
 {
-    cout << "generate smd with offset: " << offset << " size: " << size << endl;
-
     if (dgIn->service() != TransitionId::L1Accept) {
         Dgram *dgOut;
         dgOut = (Dgram*)buf;
