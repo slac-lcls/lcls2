@@ -20,11 +20,11 @@ import numpy as np
 
 def numpy_scalar_types():
     """np.sctypes = 
-    {'int': [numpy.int8, numpy.int16, numpy.int32, numpy.int64],
-     'uint': [numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64],
-     'float': [numpy.float16, numpy.float32, numpy.float64, numpy.float128],
-     'complex': [numpy.complex64, numpy.complex128, numpy.complex256],
-     'others': [bool, object, bytes, str, numpy.void]}
+    {'int': [np.int8, np.int16, np.int32, np.int64],
+     'uint': [np.uint8, np.uint16, np.uint32, np.uint64],
+     'float': [np.float16, np.float32, np.float64, np.float128],
+     'complex': [np.complex64, np.complex128, np.complex256],
+     'others': [bool, object, bytes, str, np.void]}
     np.sctypeDict ??
     """
     return tuple(np.sctypes['int'] + np.sctypes['uint'] + np.sctypes['float'] + np.sctypes['complex'])
@@ -37,7 +37,7 @@ TYPES_OF_FLOAT = ('float', 'float16', 'float32', 'float64','float128')
 
 def compare_dicts(d1, d2, gap='  '):
     print('%sCompare two dictionaries:'%gap)
-    allowed = [dict, int, float, str, bytes, numpy.ndarray, numpy.int64, numpy.float64]
+    allowed = [dict, int, float, str, bytes, np.ndarray, np.int64, np.float64]
     for k1,v1 in d1.items() :
         s_type = '"%s"' % str(type(v1)).split("'")[1]
         s_key = '%skey: %s values of type %s' % (gap, k1.ljust(20), s_type.ljust(16))
@@ -47,7 +47,7 @@ def compare_dicts(d1, d2, gap='  '):
         if isinstance(v1, dict) : 
             print(s_key)
             compare_dicts(v1,v2,gap='%s  '%gap)
-        elif isinstance(v1, numpy.ndarray) : print('%s are equal: %s' % (s_key, numpy.array_equal(v1, v2)))
+        elif isinstance(v1, np.ndarray) : print('%s are equal: %s' % (s_key, np.array_equal(v1, v2)))
         else : print('%s are equal: %s' % (s_key, v1 == v2))
 
 #--------------------
@@ -147,7 +147,7 @@ def serialize_dict(d):
         if   isinstance(v, str)                 : continue
         elif isinstance(v, dict)                : serialize_dict(v)
         elif isinstance(v, np.ndarray)          : d[k] = serialize_numpy_array(v)
-        elif isinstance(v, bytes)               : d[k] = str(v)
+        elif isinstance(v, bytes)               : d[k] = v
         elif isinstance(v, (int,float,str,bool)): d[k] = serialize_value(v)
         elif isinstance(v, NUMPY_SCALAR_TYPES)  : d[k] = serialize_numpy_value(v)
         elif not isinstance(v, str)             : d[k] = str(v)
