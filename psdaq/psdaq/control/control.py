@@ -1014,17 +1014,20 @@ class CollectionManager():
         logging.debug('condition_beginrun(): self.recording = %s' % self.recording)
 
         # run_info
+        self.experiment_name = self.get_experiment()
+        if not self.experiment_name:
+            err_msg = 'condition_beginrun(): get_experiment() failed (instrument=\'%s\', station=%d)' % (self.instrument, self.station)
+            logging.error(err_msg)
+            self.report_error(err_msg)
+            return False
+
         if self.recording:
-            self.experiment_name = self.get_experiment()
-            if self.experiment_name:
-                # update runDB
-                run_number = self.start_run(self.experiment_name)
-                self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':run_number}}
-            else:
-                err_msg = 'condition_beginrun(): get_experiment() failed (instrument=\'%s\', station=%d)' % (self.instrument, self.station)
-                logging.error(err_msg)
-                self.report_error(err_msg)
-                return False
+            # RECORDING: update runDB
+            run_number = self.start_run(self.experiment_name)
+            self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':run_number}}
+        else:
+            # NOT RECORDING: by convention, run_number == 0
+            self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':0}}
 
         # phase 1
         ok = self.condition_common('beginrun', 6000)
