@@ -3,6 +3,10 @@ Comparison of original xtcav calibration constants from file
 with the same constants existing in CDB, created by the command like 
   > kinit
   > cdb convert -e xcsm9816 -u dubrovin
+
+  > l /reg/d/psdm/xcs/*/calib/*/*/lasingoffreference # xcsm9816
+  > l /reg/d/psdm/xpp/*/calib/*/*/lasingoffreference # xpph6015, xpptut15, xppx22715, xppz0216
+  > l /reg/d/psdm/amo/*/calib/*/*/lasingoffreference # amoz0116, amox23616, amon0816, amolr9316, amolr2516, ...
 """
 import sys
 
@@ -23,10 +27,10 @@ def compare_for(tname) :
     fname1 = '/reg/d/psdm/XCS/xcsm9816/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/499-end.data'
     fname2 = '/reg/d/psdm/XPP/xpptut15/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/lasingoffreference/300-302.data'
     fname3 = '/reg/d/psdm/XPP/xpptut15/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/101-102.data'
-    return ((fname0, 'xcsm9816', 'opal1000_0059', 500, 'lasingoffreference', None),\
-            (fname1, 'xcsm9816', 'opal1000_0059', 500, 'pedestals',          None),\
-            (fname2, 'xpptut15', 'opal1000_0059', 302, 'lasingoffreference', None),\
-            (fname3, 'xpptut15', 'opal1000_0059', 101, 'pedestals',          None))[int(tname)]
+    return (fname0, 'xcsm9816', 'opal1000_0059', 500, 'lasingoffreference', None) if tname=='0' else\
+           (fname1, 'xcsm9816', 'opal1000_0059', 500, 'pedestals',          None) if tname=='1' else\
+           (fname2, 'xpptut15', 'opal1000_0059', 302, 'lasingoffreference', None) if tname=='2' else\
+           (fname3, 'xpptut15', 'opal1000_0059', 101, 'pedestals',          None)
 
 #------------------------------
 
@@ -53,5 +57,6 @@ if __name__ == "__main__":
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     test_xtcav_calib_constants(tname)
     usage()
+    sys.exit('END OF TEST %s'%tname)
 
 #------------------------------
