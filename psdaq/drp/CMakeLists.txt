@@ -13,6 +13,7 @@ target_link_libraries(drpbase
     contributor
     exporter
     collection
+    xtcdata::xtc
 )
 
 add_executable(drp
