@@ -6,7 +6,7 @@ setup(
        description = 'LCLS II DAQ package',
 
        packages = find_packages(),
-       package_data={'control_gui': ['data/icons/*.png','data/icons/*.gif'],},
+       package_data={'psdaq.control_gui': ['data/icons/*.png','data/icons/*.gif'],},
 
        scripts = ['psdaq/procmgr/procmgr','psdaq/procmgr/procstat','psdaq/procmgr/condaProcServ'],
 
