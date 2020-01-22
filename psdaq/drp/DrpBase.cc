@@ -244,6 +244,10 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
                 _writeDgram(_configureDgram());
             }
             _writeDgram(m_pool.transitionDgram());
+            if (transitionId == XtcData::TransitionId::EndRun) {
+                logging::debug("%s calling closeFiles()", __PRETTY_FUNCTION__);
+                closeFiles();
+            }
         }
     }
 
@@ -374,8 +378,7 @@ void DrpBase::runInfoData(Xtc& xtc, NamesLookup& namesLookup, const RunInfo& run
 
 std::string DrpBase::endrun(const json& phase1Info)
 {
-    std::string msg = m_ebRecv->closeFiles();
-    return msg;
+    return std::string{};
 }
 
 std::string DrpBase::configure(const json& msg)
