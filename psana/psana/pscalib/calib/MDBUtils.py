@@ -1039,7 +1039,8 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     assert cond, 'Not sufficeint info for query: run, time_sec, and vers are None'
     query={'detector':det,} # 'ctype':ctype}
     if ctype is not None : query['ctype'] = ctype
-    if run is not None : query['run']     = {'$lte' : run} #query['run_end'] = {'$gte' : run}
+    runq = run if not(run in (0,None)) else 9999 # by cpo request on 2020-01-16
+    query['run'] = {'$lte' : runq} #query['run_end'] = {'$gte' : runq}
     if time_sec is not None : query['time_sec'] = {'$lte' : int(time_sec)}
     if vers is not None : query['version'] = vers
     logger.debug('query: %s' % str(query))
