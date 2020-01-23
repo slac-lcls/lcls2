@@ -214,7 +214,6 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_handleMap["endstep"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
     m_handleMap["enable"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
     m_handleMap["disable"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
-    m_handleMap["configUpdate"] = std::bind(&CollectionApp::handlePhase1, this, std::placeholders::_1);
 }
 
 void CollectionApp::handleRollcall(const json &msg)
