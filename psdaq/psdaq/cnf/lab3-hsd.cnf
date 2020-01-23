@@ -10,7 +10,7 @@ shelf = '2'
 ip_addr = '10.0.'+shelf
 collect_host = 'drp-tst-acc06'
 groups = '0'
-hutch = 'TST'
+hutch = 'tst'
 
 drp_cmd = 'drp -P '+hutch+' -l 0x1 -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/weaver'
 

@@ -164,7 +164,7 @@ def main():
         parser = argparse.ArgumentParser()
         parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
         parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost', help='collection host (default localhost)')
-        parser.add_argument('-P', metavar='INSTRUMENT', default='TST', help='instrument (default TST)')
+        parser.add_argument('-P', metavar='INSTRUMENT', default='tst', help='instrument (default tst)')
         parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
         parser.add_argument('-v', action='store_true', help='be verbose')
         args = parser.parse_args()

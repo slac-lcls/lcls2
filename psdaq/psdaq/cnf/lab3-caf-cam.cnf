@@ -1,6 +1,6 @@
 if not platform: platform = '1'
 username = 'lcls2'
-instr    = 'TST'
+instr    = 'tst'
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 conda_rel = 'ps-2.0.5'
