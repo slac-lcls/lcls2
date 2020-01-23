@@ -4,9 +4,9 @@ import os
 import io
 
 # these are the current default values, but I put them here to be explicit
-create = False
+create = True
 dbname = 'configDB'
-instrument = 'TST'
+instrument = 'tst'
 
 mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)
 print('Configs:')

@@ -4,7 +4,7 @@ import psalg.configdb.configdb as cdb
 # these are the current default values, but I put them here to be explicit
 create = True
 dbname = 'configDB'
-instrument = 'TST'
+instrument = 'tst'
 
 mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)
 mycdb.add_alias("BEAM")
