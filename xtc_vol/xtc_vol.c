@@ -17,9 +17,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <fcntl.h>
 /* Public HDF5 file */
-#include "hdf5.h"
+#include <hdf5.h>
 
 /* This connector's header */
 #include "xtc_vol.h"
@@ -45,9 +45,22 @@
 /************/
 
 /* The xtc VOL info object */
+typedef enum Object_type{
+    XTC_FILE,
+    XTC_GROUP,
+    XTC_DS,
+    XTC_LEAVE,
+}Object_type;
 typedef struct H5VL_xtc_t {
     hid_t  under_vol_id;        /* ID for underlying VOL connector */
     void   *under_object;       /* Info object for underlying VOL connector */
+
+    char *obj_path;
+    Object_type obj_type;
+    void *xtc_it;
+    /*    Points to a Xtc/Dgram object, used to keep the handle for iterate(xtc_it) in xtc_io_api.cc
+     *
+     */
 } H5VL_xtc_t;
 
 /* The xtc VOL wrapper context */
@@ -1613,6 +1626,12 @@ H5VL_xtc_file_open(const char *name, unsigned flags, hid_t fapl_id,
 
     /* Open the file with the underlying VOL connector */
     under = H5VLfile_open(name, flags, under_fapl_id, dxpl_id, req);
+
+    int fd = open(name, O_RDONLY);
+
+
+
+
     if(under) {
         file = H5VL_xtc_new_obj(under, info->under_vol_id);
 

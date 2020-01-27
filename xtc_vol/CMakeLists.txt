@@ -1,13 +1,27 @@
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 project(xtc_vol)
-
-set(HDF5_HOME "YOUR_HDF5_HOME_DIR")
+find_package(MPI REQUIRED)
+include_directories(SYSTEM /usr/local/include)#for MPI
+find_library(XTC_LIB xtc HINTS /usr/local)
+set(HDF5_HOME "/Users/tonglin/nersc_dev_sync/hdf5_build/hdf5")
+include_directories(/./usr/local/include)
 include_directories(${HDF5_HOME}/include .)
 link_directories(${HDF5_HOME}/lib .)
+
 add_library(h5xtc xtc_vol.c)
-
 add_executable(testcase_xtc_vol testcase_xtc_vol.c)
-target_link_libraries(testcase_xtc_vol h5xtc hdf5 mpi z)
+target_link_libraries(testcase_xtc_vol h5xtc hdf5 z MPI::MPI_C)
 
-add_executable(xtc_io_test	xtc_io_api.cc)
-target_link_libraries(xtc_io_test	xtc)
+#   XTC API in C
+add_library(xtc_clib SHARED xtc_io_api.cc)
+target_link_libraries(xtc_clib ${XTC_LIB})
+
+add_executable(xtc_clib_test xtc_clib_test.c)
+target_link_libraries(xtc_clib_test PUBLIC xtc_clib ${XTC_LIB})
+
+# Function testing for iterators
+add_executable(xtc_io_test xtc_io_test.cc)
+target_link_libraries(xtc_io_test PUBLIC xtc_clib ${XTC_LIB})
+
+#target_link_libraries(xtc_clib_test xtc_clib)
+#target_link_libraries(xtc_io_test PUBLIC ${XTC_LIB})
