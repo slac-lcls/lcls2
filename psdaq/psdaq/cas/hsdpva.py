@@ -256,6 +256,8 @@ class Ui_MainWindow(object):
                         'Buffers' )
         maintab.addTab( PvArrayTable(title+':MONRAWDET','Raw Buffers',monBufDetail,vertical=True), 
                         'Detail' )
+        maintab.addTab( PvScalarBox(title+':MONFLOW','Flow',monFlow),
+                        'Flow' )
         maintab.addTab( HsdEnv          (title),
                         'Env' )
         maintab.addTab( PvScalarBox(title+':MONADC','Adc',monAdc),

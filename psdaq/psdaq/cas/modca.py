@@ -305,6 +305,7 @@ def addTiming(self,pvbase):
     PvLabel(self,lor, pvbase, "FIDs"       )
     PvLabel(self,lor, pvbase, "SOFs"       )
     PvLabel(self,lor, pvbase, "EOFs"       )
+    LblPushButtonX( lor, pvbase, "RxReset" )
     lor.addWidget( PvRxAlign(pvbase+'RxAlign','RxAlign') )
     lor.addStretch()
     w = QtWidgets.QWidget()
