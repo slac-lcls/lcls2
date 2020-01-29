@@ -77,6 +77,17 @@ target_link_libraries(kcuRead
    rt
 )
 
+add_executable(kcuReadBulk xReadBulk.cpp)
+
+target_include_directories(kcuReadBulk PUBLIC
+    ../../aes-stream-drivers/include
+)
+
+target_link_libraries(kcuReadBulk
+   pthread
+   rt
+)
+
 add_executable(kcuWrite xWrite.cpp)
 
 target_include_directories(kcuWrite PUBLIC
