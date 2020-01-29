@@ -12,7 +12,10 @@ collect_host = 'drp-tst-acc06'
 groups = '0'
 hutch = 'tst'
 
-drp_cmd = 'drp -P '+hutch+' -l 0x1 -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/weaver'
+drp_cmd  = 'drp -P '+hutch+' -l 0x1 -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/weaver'
+drp_cmdb = 'drp -P '+hutch+' -l 0x1 -d /dev/datadev_1 -C '+collect_host+' -o /ffb01/weaver'
+#verbosity = ' -vvvv'
+verbosity = ' '
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -30,14 +33,15 @@ drp_cmd = 'drp -P '+hutch+' -l 0x1 -d /dev/datadev_0 -C '+collect_host+' -o /ffb
 
 procmgr_config = [
 
-#  6.4 GS/s digitizer (DEV06_3E)
- {                        id:'hsdpvs_3e_a', port:'29074', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+hsd_epics_dev06+'_3E:A'},
- {                        id:'hsdpvs_3e_b', port:'29075', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+hsd_epics_dev06+'_3E:B'},
-# {                        id:'hsdpva_3e', flags:'x', conda:conda_rel, env:epics_env, cmd:'hsdpva '+hsd_epics_dev06+'_3E:A'},
-# {                        id:'hsdpvb_3e', flags:'x', conda:conda_rel, env:epics_env, cmd:'hsdpva '+hsd_epics_dev06+'_3E:B'},
- { host: 'daq-tst-dev06', id:'hsdioc_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P '+hsd_epics_dev06+'_3E -d /dev/pcie_adc_3e'},
- { host: 'drp-tst-dev022', id:'xpphsd_0', flags:'pu', conda:conda_rel, cmd:drp_cmd+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3E:A'},
- { host: 'drp-tst-dev023', id:'xpphsd_1', flags:'pu', conda:conda_rel, cmd:drp_cmd+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3E:B'},
+#  6.4 GS/s digitizer (DEV06_3D)
+ {                        id:'hsdpvs_3d_a', port:'29074', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+hsd_epics_dev06+'_3D:A'},
+ {                        id:'hsdpvs_3d_b', port:'29075', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+hsd_epics_dev06+'_3D:B'},
+ {                        id:'hsdpva_3d', flags:'x', conda:conda_rel, env:epics_env, cmd:'hsdpva '+hsd_epics_dev06+'_3D:A'},
+ {                        id:'hsdpvb_3d', flags:'x', conda:conda_rel, env:epics_env, cmd:'hsdpva '+hsd_epics_dev06+'_3D:B'},
+ { host: 'daq-tst-dev06', id:'hsdioc_3d', flags:'', conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P '+hsd_epics_dev06+'_3D -d /dev/pcie_adc_3d'},
+# { host: 'drp-tst-dev022', id:'xpphsd_0', flags:'pu', conda:conda_rel, cmd:drp_cmd+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3D:A'},
+ { host: 'drp-tst-dev023', id:'xpphsd_0', flags:'pu', conda:conda_rel, cmd:drp_cmd +' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3D:A'},
+ { host: 'drp-tst-dev023', id:'xpphsd_1', flags:'pu', conda:conda_rel, cmd:drp_cmdb+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3D:B'},
 
 #  5.0 GS/s digitizer (DEV06_88)
 # {                        id:'hsdpvs_88'  , port:'29076', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+hsd_epics_dev06+'_88'},
@@ -63,10 +67,11 @@ procmgr_config = [
  {                        id:'groupca' , flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
 
- { host: 'drp-tst-dev019', id:'teb19'    , flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
- { host: 'drp-tst-dev016', id:'meb16',       flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host},
+ { host: 'drp-tst-dev019', id:'teb19'   , flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host+verbosity},
+ { host: 'drp-tst-dev016', id:'meb16'   , flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host+verbosity},
+# { host: 'drp-tst-dev021', id:'meb21'   , flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host+verbosity},
 
- { host: 'drp-tst-dev001', id:'xppts_0' , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D TimingSystem'},
+ { host: 'drp-tst-dev001', id:'xppts_0' , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D TimingSystem'+verbosity},
  { host: 'drp-tst-dev011', id:'cam_11'  , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D AreaDetector -k sim_length=14'},
 
  { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch},
