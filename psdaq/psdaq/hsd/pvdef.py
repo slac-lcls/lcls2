@@ -21,7 +21,8 @@ daqConfig = {'readoutGroup':('i', 0),
 daqReset   = {'timrxrst'    :('i', 0),
               'timpllrst'   :('i', 0),
               'pgploopback' :('i', 0),
-              'reset'       :('i', 0) }
+              'reset'       :('i', 0),
+              'jesdclear'   :('i', 0)}
 
 monTiming = {'timframecnt':('i', 0),
              'timpausecnt':('i', 0),
@@ -37,7 +38,9 @@ monTiming = {'timframecnt':('i', 0),
              'headercntl0':('i', 0),
              'headercntof':('i', 0),
              'headerfifow':('i', 0),
-             'headerfifor':('i', 0) }
+             'headerfifor':('i', 0),
+             'fulltotrig' :('i', 0),
+             'nfulltotrig':('i', 0) }
 
 monPgp    = {'loclinkrdy' :('ai', [0]*4),
              'remlinkrdy' :('ai', [0]*4),
@@ -60,6 +63,18 @@ monBufDetail = {'bufstate' : ('ai',[0]*16),
                 'bufbeg'   : ('ai',[0]*16),
                 'bufend'   : ('ai',[0]*16) }
 
+monFlow   = {'fmask'   :('i', 0),
+             'fcurr'   :('i', 0),
+             'frdy'    :('i', 0),
+             'srdy'    :('i', 0),
+             'mrdy'    :('i', 0),
+             'raddr'   :('i', 0),
+             'npend'   :('i', 0),
+             'ntrig'   :('i', 0),
+             'nread'   :('i', 0),
+             'pkoflow' :('i', 0),
+             'oflow'   :('i', 0) }
+ 
 monEnv    = {'local12v' :('f',0),
              'edge12v'  :('f',0),
              'aux12v'   :('f',0),

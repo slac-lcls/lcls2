@@ -16,7 +16,7 @@ ModuleBase* ModuleBase::create(int fd)
     return 0;
   }
 
-  ModuleBase* m = new ModuleBase;
+  ModuleBase* m = new(ptr) ModuleBase;
 
   Pds::Mmhw::RegProxy::initialize(m, m->regProxy);
   

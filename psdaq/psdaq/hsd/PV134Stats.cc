@@ -48,6 +48,7 @@ namespace Pds {
            _monRawBuf,
            _monFexBuf,
            _monRawDet,
+           _monFlow,
            _monJesd,
            _monEnv,
            _monAdc,
@@ -74,6 +75,7 @@ namespace Pds {
       PV_ADD (monRawBuf);
       PV_ADD (monFexBuf);
       PV_ADD (monRawDet);
+      PV_ADD (monFlow);
       PV_ADD (monJesd);
       PV_ADD (monEnv);
       PV_ADD (monAdc);
@@ -121,6 +123,8 @@ namespace Pds {
           v.headercntof = (reg.headerCnt>>24)&0xff;
           v.headerfifow = (reg.headerFifo>> 0)&0xf;
           v.headerfifor = (reg.headerFifo>> 4)&0xf;
+          v.fulltotrig  = (reg.fullToTrig>> 0)&0xfff;
+          v.nfulltotrig = (reg.fullToTrig>>16)&0xfff;
           PVPUT(monTiming); }
 
         { MonPgp v;
@@ -169,6 +173,22 @@ namespace Pds {
             v.bufend  [j] = (addr >>16)&0xffff;
           }
           PVPUT(monRawDet); }
+        
+        { MonFlow v;
+          v.pkoflow = fex._oflow&0xff;
+          uint32_t flowstatus = fex._flowstatus;
+          v.fmask = (flowstatus>>0)&0x7;
+          v.fcurr = (flowstatus>>4)&0xf;
+          v.frdy  = (flowstatus>>8)&0xf;
+          v.srdy  = (flowstatus>>12)&0x1;
+          v.mrdy  = (flowstatus>>13)&0x7;
+          v.raddr = (flowstatus>>16)&0xffff;
+          uint32_t flowidxs = fex._flowidxs;
+          v.npend = (flowidxs>> 0)&0x1f;
+          v.ntrig = (flowidxs>> 5)&0x1f;
+          v.nread = (flowidxs>>10)&0x1f;
+          v.oflow = (flowidxs>>16)&0xff;
+          PVPUT(monFlow); }
 
         // JESD Status
         { MonJesd v;

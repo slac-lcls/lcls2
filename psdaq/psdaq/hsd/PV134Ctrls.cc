@@ -117,6 +117,10 @@ namespace Pds {
         usleep(10000);
         tpr.resetCounts();
       }
+      if (PVGET(jesdclear)) {
+        for(unsigned j=0; j<8; j++) 
+          _m.jesd(i).clearErrors();
+      }
     }
     void PV134Ctrls::loopback(bool v) {
       std::vector<Pgp*> pgp = _m.pgp();

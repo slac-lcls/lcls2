@@ -9,8 +9,8 @@ namespace Pds {
     public:
       vuint32_t _streams;
       vuint32_t _oflow;
-      vuint32_t _test_pattern_errors;      
-      vuint32_t _test_pattern_errbits;
+      vuint32_t _flowstatus;
+      vuint32_t _flowidxs;
 
       class StreamBase {
       public:

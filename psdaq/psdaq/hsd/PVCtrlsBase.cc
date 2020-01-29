@@ -145,7 +145,7 @@ namespace Pds {
         fex._stream[1].parms[2].v=PVGET(fex_xpre);
         fex._stream[1].parms[3].v=PVGET(fex_xpost);
       }
-      fex._streams= streamMask;
+      fex._streams= streamMask | (fullEvt<<4);
     
 #define PRINT_FEX_FIELD(title,arg,op) {         \
         printf("%12.12s:",title);               \

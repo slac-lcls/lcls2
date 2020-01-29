@@ -84,6 +84,8 @@ namespace Pds {
       vuint32_t localId;
       vuint32_t upstreamId;
       vuint32_t dnstreamId[4];
+
+      vuint32_t fullToTrig;
       //
       //      vuint32_t status;
       //      vuint32_t statusCount[32];

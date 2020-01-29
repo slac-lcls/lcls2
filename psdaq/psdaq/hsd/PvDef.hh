@@ -23,6 +23,8 @@ namespace Pds {
       int32_t headercntof;
       int32_t headerfifow;
       int32_t headerfifor;
+      int32_t fulltotrig;
+      int32_t nfulltotrig;
     };
 
     class MonTimingCalc {
@@ -63,6 +65,21 @@ namespace Pds {
       int32_t bufend  [16];
     };
 
+    class MonFlow {
+    public:
+      uint32_t fmask;
+      uint32_t fcurr;
+      uint32_t frdy;
+      uint32_t srdy;
+      uint32_t mrdy;
+      uint32_t raddr;
+      uint32_t npend;
+      uint32_t ntrig;
+      uint32_t nread;
+      uint32_t pkoflow;
+      uint32_t oflow;
+    };
+
     class MonEnv {
     public:
       float local12v;
@@ -98,6 +115,7 @@ namespace Pds {
     static const unsigned _sz_monRawBuf[] = {0};
     static const unsigned _sz_monFexBuf[] = {0};
     static const unsigned _sz_monRawDet[] = {16,16,16,16,};
+    static const unsigned _sz_monFlow  [] = {0};
     static const unsigned _sz_monJesd  [] = {112,5,};
     static const unsigned _sz_monEnv   [] = {0};
     static const unsigned _sz_monAdc   [] = {0};
