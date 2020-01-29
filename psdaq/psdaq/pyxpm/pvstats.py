@@ -454,7 +454,7 @@ class PVStats(object):
             self._cuGen   .update()
             self._monClks .update()
 ##  Remove while we test Ben's image
-            self._sfpStat .update()
+#            self._sfpStat .update()
         except:
             exc = sys.exc_info()
             if exc[0]==KeyboardInterrupt:

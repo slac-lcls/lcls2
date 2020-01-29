@@ -23,6 +23,10 @@ class RateSel(object):
     ACRate    = 1
     Sequence  = 2
 
+def pipelinedepth_from_delay(value):
+    v = value &0xffff
+    return ((v*200)&0xffff) | (v<<16)
+
 def forceUpdate(reg):
     reg.get()
 
@@ -77,6 +81,13 @@ class IdxRegH(PVHandler):
 
     def handle(self, pv, value):
         retry_wlock(self.cmd,pv,value)
+
+class L0DelayH(IdxRegH):
+    def __init__(self, valreg, idxreg, idx):
+        super(L0DelayH,self).__init__(valreg, idxreg, idx)
+
+    def handle(self, pv, value):
+        retry_wlock(self.cmd,pv,pipelinedepth_from_delay(value))
 
 class CmdH(PVHandler):
 
@@ -266,9 +277,19 @@ class GroupSetup(object):
                 reg.set(init)
             return pv
         
-        self._pv_L0Delay    = addPV('L0Delay'   , app.l0Delay, 90, set=True)
         self._pv_MsgHeader  = addPV('MsgHeader' , app.msgHdr ,  0, set=True)
         self._pv_MsgPayload = addPV('MsgPayload', app.msgPayl,  0, set=True)
+
+        def addPV(label,reg,init=0,set=False):
+            pv = SharedPV(initial=NTScalar('I').wrap(init), 
+                          handler=L0DelayH(reg,self._app.partition,group))
+            provider.add(name+':'+label,pv)
+            if set:
+                self._app.partition.set(group)
+                reg.set(pipelinedepth_from_delay(init))
+            return pv
+
+        self._pv_L0Delay    = addPV('L0Delay'   , app.pipelineDepth, 90, set=True)
 
         #  initialize
         self.put(None,None)
