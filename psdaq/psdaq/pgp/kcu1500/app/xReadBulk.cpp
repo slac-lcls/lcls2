@@ -57,7 +57,6 @@ int main (int argc, char **argv) {
   int           numb;
   bool          print = false;
   uint          maxSize;
-  uint          *data;
   char          err[128];
   char          pgpcard[128]              = "";
   int                 maxPrint            = 1024;
@@ -159,7 +158,6 @@ int main (int argc, char **argv) {
 
   // Allocate a buffer
   maxSize = 1024*256;
-  data = (uint *)malloc(sizeof(uint)*maxSize);
 
   pthread_attr_t tattr;
   pthread_attr_init(&tattr);

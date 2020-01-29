@@ -119,7 +119,7 @@ namespace Pds {
       }
       if (PVGET(jesdclear)) {
         for(unsigned j=0; j<8; j++) 
-          _m.jesd(i).clearErrors();
+          _m.jesd(j).clearErrors();
       }
     }
     void PV134Ctrls::loopback(bool v) {
