@@ -1,0 +1,31 @@
+platform = '7'
+username = 'lcls2'
+
+conda_rel = 'ps-2.0.9'
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#                "X" open xterm
+#                "s" send signal to child when stopping
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+ { id:'pyxpm',   port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.0.103 -P DAQ:ASC:XPM:0'},
+
+## EPICS PV exporter
+ { id:'pvrtmon', port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -P DAQ:ASC:XPM:0 -N DeadFrac'},
+
+ { id:'pykcu',   port:'29471', flags:'s', conda:conda_rel, env:epics_env, cmd:'pykcu'},
+
+## procstat
+ { id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+]
