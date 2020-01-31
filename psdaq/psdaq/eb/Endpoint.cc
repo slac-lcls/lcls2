@@ -882,6 +882,7 @@ EndpointBase::~EndpointBase()
   shutdown();
   if (_fab_owner) {
     delete _fabric;
+    _fabric = 0;
   }
 }
 
@@ -1022,7 +1023,11 @@ void Endpoint::shutdown()
     _ep = 0;
   }
 
-  EndpointBase::shutdown();
+  // Application should call EndpointBase::shutdown() if wanted
+  // This allows the state to be unwound to the point that connect()/accept()
+  // can be called again without reallocating underlying objects
+
+  _state = EP_INIT;
 }
 
 bool Endpoint::complete_connect(int timeout)
@@ -1597,7 +1602,11 @@ void PassiveEndpoint::shutdown()
     _pep = 0;
   }
 
-  EndpointBase::shutdown();
+  // Application should call EndpointBase::shutdown() if wanted
+  // This allows the state to be unwound to the point that listen()
+  // can be called again without reallocating underlying objects
+
+  _state = EP_INIT;
 }
 
 bool PassiveEndpoint::listen(int backlog)
@@ -1609,7 +1618,6 @@ bool PassiveEndpoint::listen(int backlog)
   CHECK_ERR(fi_listen(_pep), "fi_listen");
 
   _state = EP_LISTEN;
-
 
   return true;
 }
