@@ -27,7 +27,7 @@ using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
-static const unsigned port_base     = 54321; // Base port number
+static const unsigned port_base     = 1024; // Pick from range 1024 - 49152
 static const unsigned default_size  = 4096;
 static const unsigned default_iters = 1000;
 static const unsigned default_core  = 10;
@@ -183,9 +183,9 @@ int main(int argc, char **argv)
     }
     printf("EbLfClient (ID %d) connected\n", svrLink->id());
 
-    const unsigned tmo(120);
+    const unsigned msTmo(120000);
     clt = new EbLfClient(verbose);
-    if ( (rc = clt->connect(&cltLink, cltAddr.c_str(), cltPort.c_str(), id, tmo)) )
+    if ( (rc = clt->connect(&cltLink, cltAddr.c_str(), cltPort.c_str(), id, msTmo)) )
     {
       fprintf(stderr, "Error connecting to server\n");
       return rc;
@@ -199,9 +199,9 @@ int main(int argc, char **argv)
   }
   else
   {
-    const unsigned tmo(120);
+    const unsigned msTmo(120000);
     clt = new EbLfClient(verbose);
-    if ( (rc = clt->connect(&cltLink, cltAddr.c_str(), cltPort.c_str(), id, tmo)) )
+    if ( (rc = clt->connect(&cltLink, cltAddr.c_str(), cltPort.c_str(), id, msTmo)) )
     {
       fprintf(stderr, "Error connecting to server\n");
       return rc;
@@ -260,8 +260,8 @@ int main(int argc, char **argv)
   while (rcnt < iters || scnt < iters)
   {
     fi_cq_data_entry wc;
-    const int tmo = 5000;               // milliseconds
-    if ( (rc = svr->pend(&wc, tmo)) < 0 )
+    const int msTmo = 5000;
+    if ( (rc = svr->pend(&wc, msTmo)) < 0 )
     {
       fprintf(stderr, "Failed pending for a buffer: %s(%d)\n",
               fi_strerror(-rc), rc);
