@@ -3,6 +3,7 @@ import time
 import copy
 import socket
 from datetime import datetime, timezone
+import json as oldjson
 import zmq
 import zmq.utils.jsonapi as json
 from transitions import Machine, MachineError, State
@@ -124,6 +125,26 @@ class DaqControl:
                 pass
 
         return retval
+
+    #
+    # DaqControl.getJsonConfig - get json configuration
+    #
+    def getJsonConfig(self):
+        src = self.getPlatform()
+        dst = {"collection": {}}
+        for level, item1 in src.items():
+            if level == "control":
+                continue    # skip
+            if level not in dst["collection"]:
+                dst["collection"][level] = {}
+            for xx, item2 in item1.items():
+                alias = item2["proc_info"]["alias"]
+                dst["collection"][level][alias] = {}
+                if "det_info" in item2:
+                    dst["collection"][level][alias]["det_info"] = item2["det_info"].copy()
+                dst["collection"][level][alias]["active"] = item2["active"]
+
+        return oldjson.dumps(dst, sort_keys=True, indent=4)
 
     #
     # DaqControl.selectPlatform - select platform
