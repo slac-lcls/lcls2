@@ -63,7 +63,7 @@ logger = logging.getLogger('Graphics')
 #------------------------------
 
 import numpy as np
-
+from time import time, localtime, strftime
 from math import log10
 import math
 import matplotlib
@@ -86,6 +86,11 @@ def figure(figsize=(13,12), title='Image', dpi=80, facecolor='w', edgecolor='w',
     fig.canvas.set_window_title(title, **kwargs)
     if move is not None : move_fig(fig, x0=move[0], y0=move[1])
     return fig
+
+#------------------------------
+
+def set_win_title(fig, titwin='Image', **kwargs) :
+    fig.canvas.set_window_title(titwin, **kwargs)
 
 #------------------------------
 
@@ -129,11 +134,6 @@ def fig_img_cbar_axes(fig=None,\
 
 #------------------------------
 
-def set_win_title(fig, titwin='Image', **kwargs) :
-    fig.canvas.set_window_title(titwin, **kwargs)
-
-#------------------------------
-
 def add_title_labels_to_axes(axes, title=None, xlabel=None, ylabel=None, fslab=14, fstit=20, color='k', **kwargs) :
     if title  is not None : axes.set_title(title, color=color, fontsize=fstit, **kwargs)
     if xlabel is not None : axes.set_xlabel(xlabel, fontsize=fslab, **kwargs)
@@ -165,9 +165,13 @@ def save_plt(fname='img.png', verb=True, **kwargs) :
 
 #------------------------------
 
-def save_fig(fig, fname='img.png', verb=True, **kwargs) :
-    if verb : print('Save figure in file: %s' % fname)
-    fig.savefig(fname, **kwargs)
+def save_fig(fig, fname='img.png', prefix=None, suffix='.png', verb=True, **kwargs) :
+    path = fname
+    if prefix is not None :
+        ts = strftime('%Y-%m-%dT%H%M%S', localtime(time()))
+        path='%s%s%s' % (prefix,ts,suffix)
+    if verb : print('Save figure in file: %s' % path)
+    fig.savefig(path, **kwargs)
 
 #------------------------------
 
@@ -235,180 +239,6 @@ def add_stat_text(axhi, weights, bins) :
     if axhi.get_yscale() is 'log' :
         #print 'axhi.get_yscale():', axhi.get_yscale()
         log_yb, log_ye = math
-import matplotlib
-import matplotlib.pyplot  as plt
-import matplotlib.lines   as lines
-import matplotlib.patches as patches
-
-#------------------------------
-
-def figure(figsize=(13,12), title='Image', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=None, **kwargs) :
-    """ Creates and returns figure
-    """
-    fig = plt.figure(figsize=figsize,\
-                     dpi=dpi,\
-                     facecolor=facecolor,\
-                     edgecolor=edgecolor,\
-                     frameon=frameon, **kwargs)
-    fig.canvas.set_window_title(title, **kwargs)
-    if move is not None : move_fig(fig, x0=move[0], y0=move[1])
-    return fig
-
-#------------------------------
-
-def move_fig(fig, x0=200, y0=100) :
-    fig.canvas.manager.window.move(x0, y0)
-    #fig.canvas.manager.window.geometry('+%d+%d' % (x0, y0)) # in previous version of matplotlib
-
-#------------------------------
-
-def move(x0=200,y0=100) :
-    plt.get_current_fig_manager().window.move(x0, y0)
-    #plt.get_current_fig_manager().window.geometry('+%d+%d' % (x0, y0))
-
-#------------------------------
-
-def add_axes(fig, axwin=(0.05, 0.03, 0.87, 0.93), **kwargs) :
-    """Add axes to figure from input list of windows.
-    """
-    return fig.add_axes(axwin, **kwargs)
-
-#------------------------------
-
-def fig_img_axes(fig=None, win_axim=(0.08, 0.05, 0.89, 0.93), **kwargs) :
-    """ Returns figure and image axes
-    """
-    _fig = figure(figsize=(6,5)) if fig is None else fig
-    axim = _fig.add_axes(win_axim, **kwargs)
-    return _fig, axim
-
-#------------------------------
-
-def fig_img_cbar_axes(fig=None,\
-             win_axim=(0.05,  0.05, 0.87, 0.93),\
-             win_axcb=(0.923, 0.05, 0.02, 0.93), **kwargs) :
-    """ Returns figure and axes for image and color bar
-    """
-    _fig = figure() if fig is None else fig
-    axim = _fig.add_axes(win_axim, **kwargs)
-    axcb = _fig.add_axes(win_axcb, **kwargs)
-    return _fig, axim, axcb
-
-#------------------------------
-
-def set_win_title(fig, titwin='Image', **kwargs) :
-    fig.canvas.set_window_title(titwin, **kwargs)
-
-#------------------------------
-
-def add_title_labels_to_axes(axes, title=None, xlabel=None, ylabel=None, fslab=14, fstit=20, color='k', **kwargs) :
-    if title  is not None : axes.set_title(title, color=color, fontsize=fstit, **kwargs)
-    if xlabel is not None : axes.set_xlabel(xlabel, fontsize=fslab, **kwargs)
-    if ylabel is not None : axes.set_ylabel(ylabel, fontsize=fslab, **kwargs)
-
-#------------------------------
-
-def show(mode=None) :
-    if mode is None : plt.ioff() # hold contraol at show() (connect to keyboard for controllable re-drawing)
-    else            : plt.ion()  # do not hold control
-    plt.pause(0.001) # hack to make it work... othervise show() does not work...
-    plt.show()
-
-#------------------------------
-
-def draw() :
-    plt.draw()
-
-#------------------------------
-
-def draw_fig(fig) :
-    fig.canvas.draw()
-
-#------------------------------
-
-def save_plt(fname='img.png', verb=True, **kwargs) :
-    if verb : print('Save plot in file: %s' % fname)
-    plt.savefig(fname, **kwargs)
-
-#------------------------------
-
-def save_fig(fig, fname='img.png', verb=True, **kwargs) :
-    if verb : print('Save figure in file: %s' % fname)
-    fig.savefig(fname, **kwargs)
-
-#------------------------------
-
-def save(fname='img.png', do_save=True, verb=True, **kwargs) :
-    if not do_save : return
-    save_plt(fname, verb, **kwargs)
-
-#--------------------
-
-def proc_stat(weights, bins) :
-    center = np.array([0.5*(bins[i] + bins[i+1]) for i,w in enumerate(weights)])
-
-    sum_w  = weights.sum()
-    if sum_w <= 0 : return  0, 0, 0, 0, 0, 0, 0, 0, 0
-    
-    sum_w2 = (weights*weights).sum()
-    neff   = sum_w*sum_w/sum_w2 if sum_w2>0 else 0
-    sum_1  = (weights*center).sum()
-    mean = sum_1/sum_w
-    d      = center - mean
-    d2     = d * d
-    wd2    = weights*d2
-    m2     = (wd2)   .sum() / sum_w
-    m3     = (wd2*d) .sum() / sum_w
-    m4     = (wd2*d2).sum() / sum_w
-
-    #sum_2  = (weights*center*center).sum()
-    #err2 = sum_2/sum_w - mean*mean
-    #err  = math.sqrt(err2)
-
-    rms  = math.sqrt(m2) if m2>0 else 0
-    rms2 = m2
-    
-    err_mean = rms/math.sqrt(neff)
-    err_rms  = err_mean/math.sqrt(2)    
-
-    skew, kurt, var_4 = 0, 0, 0
-
-    if rms>0 and rms2>0 :
-        skew  = m3/(rms2 * rms) 
-        kurt  = m4/(rms2 * rms2) - 3
-        var_4 = (m4 - rms2*rms2*(neff-3)/(neff-1))/neff if neff>1 else 0
-    err_err = math.sqrt(math.sqrt(var_4)) if var_4>0 else 0 
-    #print  'mean:%f, rms:%f, err_mean:%f, err_rms:%f, neff:%f' % (mean, rms, err_mean, err_rms, neff)
-    #print  'skew:%f, kurt:%f, err_err:%f' % (skew, kurt, err_err)
-    return mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w
-
-#--------------------
-
-def add_stat_text(axhi, weights, bins) :
-    #mean, rms, err_mean, err_rms, neff = proc_stat(weights,bins)
-    mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w = proc_stat(weights,bins)
-    pm = r'$\pm$' 
-    txt  = 'Entries=%d\nMean=%.2f%s%.2f\nRMS=%.2f%s%.2f\n' % (sum_w, mean, pm, err_mean, rms, pm, err_rms)
-    txt += r'$\gamma1$=%.3f  $\gamma2$=%.3f' % (skew, kurt)
-    #txt += '\nErr of err=%8.2f' % (err_err)
-    xb,xe = axhi.get_xlim()     
-    yb,ye = axhi.get_ylim()     
-    #x = xb + (xe-xb)*0.84
-    #y = yb + (ye-yb)*0.66
-    #axhi.text(x, y, txt, fontsize=10, color='k', ha='center', rotation=0)
-    x = xb + (xe-xb)*0.98
-    y = yb + (ye-yb)*0.95
-
-    if axhi.get_yscale() is 'log' :
-        #print 'axhi.get_yscale():', axhi.get_yscale()
-        log_yb, log_ye = log10(yb), log10(ye)
-        log_y = log_yb + (log_ye-log_yb)*0.95
-        y = 10**log_y
-
-    axhi.text(x, y, txt, fontsize=10, color='k',
-              horizontalalignment='right',
-              verticalalignment='top',
-              rotation=0)
 
 #------------------------------
 

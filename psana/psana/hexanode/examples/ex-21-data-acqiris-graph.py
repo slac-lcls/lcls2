@@ -9,6 +9,7 @@
      draw peak times as vertical lines.
 """
 
+import sys
 from time import time
 import numpy as np
 
@@ -18,26 +19,66 @@ from psana.pyalgos.generic.NDArrUtils import print_ndarr
 import psana.pyalgos.generic.Graphics as gr
 
 #----------
+tname = sys.argv[1] if len(sys.argv) > 1 else '1'
+#----------
+
+binmin, binmax = 6000, 22000 # (7500,26500)
+#  (7500,26500)  if tname == '1' else\
+#  (8500,15500)  if tname == '2' else\
+#  (10600,11600) if tname == '3' else\
+#  (0,44000)
 
 # parameters for CFD descriminator - waveform processing algorithm
-cfdpars= {'cfd_base'       :  0.,
-          'cfd_thr'        : -0.05,
-          'cfd_cfr'        :  0.85,
-          'cfd_deadtime'   :  10.0,
-          'cfd_leadingedge':  True,
-          'cfd_ioffsetbeg' :  1000,
-          'cfd_ioffsetend' :  2000,
-          'cfd_wfbinbeg'   :  6000,
-          'cfd_wfbinend'   : 22000,
+kwargs = {'numchs'   :  5,
+          'numhits'  : 50,
          }
 
+if tname == '2' :
+    kwargs.update({'version':      2,
+           'pf2_sigmabins'  :      3,
+           'pf2_nstdthr'    :     -3,
+           'pf2_deadbins'   :   10.0,
+           'pf2_ioffsetbeg' :   1000,
+           'pf2_ioffsetend' :   2000,
+           'pf2_wfbinbeg'   : binmin,
+           'pf2_wfbinend'   : binmax,
+          })
+
+elif tname == '3' :
+    kwargs.update({'version':      3,
+           'pf3_sigmabins'  :      3,
+           'pf3_basebins'   :    100,
+           'pf3_nstdthr'    :      6,
+           'pf3_gapbins'    :    200,
+           'pf3_deadbins'   :     10,
+           'pf3_ioffsetbeg' :   1000,
+           'pf3_ioffsetend' :   2000,
+           'pf3_wfbinbeg'   : binmin,
+           'pf3_wfbinend'   : binmax,
+            })
+
+else :
+    kwargs.update({'version':      1,
+          'cfd_base'        :      0,
+          'cfd_thr'         :  -0.05,
+          'cfd_cfr'         :   0.85,
+          'cfd_deadtime'    :   10.0,
+          'cfd_leadingedge' :   True,
+          'cfd_ioffsetbeg'  :   1000,
+          'cfd_ioffsetend'  :   2000,
+          'cfd_wfbinbeg'    : binmin,
+          'cfd_wfbinend'    : binmax,
+         })
+
 # algorithm initialization in global scope
-peaks = WFPeaks(**cfdpars)
+peaks = WFPeaks(**kwargs)
 
 #----------
 # global parameters for graphics
 
-time_range_sec=(0.0000014,0.0000056)
+tbin_ns = 0.25*1e-9
+#time_range_sec=(0.0000014,0.0000056)
+time_range_sec=(binmin*tbin_ns, binmax*tbin_ns)
 #time_range_sec=(0.0000000,0.0000111) # entire wf duration in this experiment
 
 naxes = 5 # 5 for quad- or 7 for hex-anode
@@ -56,7 +97,6 @@ x0, y0 = 0.07, 0.03
 fig = gr.figure(figsize=(15,15), title='Image')
 fig.clear()
 ax = [gr.add_axes(fig, axwin=(x0, y0 + i*dy, w, h)) for i in range(naxes)]
-
 
 #----------
 
@@ -120,7 +160,7 @@ def draw_times(axis, pkvals, pkinds, wt) :
     """
     for v,i in zip(pkvals,pkinds) :
         t = wt[i]
-        gr.drawLine(axis, (t,t), (-v,v), s=10, linewidth=1, color='k')
+        gr.drawLine(axis, (t,t), (0,v), s=10, linewidth=2, color='b')
 
 #----------
 
@@ -128,6 +168,8 @@ if __name__ == "__main__" :
 
     EVSKIP = 0
     EVENTS = 10 + EVSKIP
+    EVSAVE = EVENTS
+    ofname = 'waveforms-amox27716-r0100-e%06d.npy'
 
     #ds   = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
     ds   = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2')
@@ -143,7 +185,11 @@ if __name__ == "__main__" :
         wts = det.raw.times(evt);     print_ndarr(wts, '  wtimes: ', last=4)
 
         draw_waveforms(wfs, wts, n)
-
+        if n==EVSAVE :
+            np.save(ofname%n, wfs)
+            print('File saved: %s' % (ofname%n))
+        
+    gr.save((ofname%(n-1)).replace('.npy','.png'))
     gr.show()
 
 #----------
