@@ -35,7 +35,7 @@ public:
     void process(const Pds::Eb::ResultDgram& result, const void* input) override;
 public:
     void resetCounters();
-    std::string openFiles(const Parameters& para, const RunInfo& runInfo);
+    std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname);
     std::string closeFiles();
 private:
     void _writeDgram(XtcData::Dgram* dgram);
@@ -95,6 +95,7 @@ private:
     size_t m_collectionId;
     Pds::Trg::Factory<Pds::Trg::TriggerPrimitive> m_trigPrimFactory;
     Pds::Trg::TriggerPrimitive* m_triggerPrimitive;
+    std::string m_hostname;
 };
 
 }

@@ -18,7 +18,8 @@ using logging = psalg::SysLog;
 
 static void local_mkdir (const char * path);
 static json createFileReportMsg(std::string path, std::string absolute_path,
-                                timespec create_time, timespec modify_time);
+                                timespec create_time, timespec modify_time,
+                                unsigned run_num, std::string hostname);
 static json createPulseIdMsg(uint64_t pulseId);
 
 namespace Drp {
@@ -110,7 +111,7 @@ EbReceiver::~EbReceiver()
     }
 }
 
-std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo)
+std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname)
 {
     std::string retVal = std::string{};     // return empty string on success
     if (runInfo.runNumber) {
@@ -132,7 +133,7 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
         logging::info("Opening file '%s'", absolute_path.c_str());
         if (m_fileWriter.open(absolute_path) == 0) {
             timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
-            json msg = createFileReportMsg(path, absolute_path, tt, tt);
+            json msg = createFileReportMsg(path, absolute_path, tt, tt, runInfo.runNumber, hostname);
             m_inprocSend.send(msg.dump());
         } else if (retVal.empty()) {
             retVal = {"Failed to open file '" + absolute_path + "'"};
@@ -145,7 +146,7 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
         logging::info("Opening file '%s'", smalldata_absolute_path.c_str());
         if (m_smdWriter.open(smalldata_absolute_path) == 0) {
             timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
-            json msg = createFileReportMsg(smalldata_path, smalldata_absolute_path, tt, tt);
+            json msg = createFileReportMsg(smalldata_path, smalldata_absolute_path, tt, tt, runInfo.runNumber, hostname);
             m_inprocSend.send(msg.dump());
         } else if (retVal.empty()) {
             retVal = {"Failed to open file '" + smalldata_absolute_path + "'"};
@@ -296,6 +297,10 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_mPrms.verbose   = para.verbose;
 
     m_inprocSend.connect("inproc://drp");
+
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+    m_hostname = std::string(hostname);
 }
 
 void DrpBase::shutdown()
@@ -351,7 +356,7 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
         if (m_para.outputDir.empty()) {
             msg = "Cannot record due to missing output directory";
         } else {
-            msg = m_ebRecv->openFiles(m_para, runInfo);
+            msg = m_ebRecv->openFiles(m_para, runInfo, m_hostname);
         }
     }
     return msg;
@@ -395,12 +400,10 @@ std::string DrpBase::configure(const json& msg)
             m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
             if (i > 0) {
                 if ((i < MAX_PROM_PORTS) && !m_para.prometheusDir.empty()) {
-                    char hostname[HOST_NAME_MAX];
-                    gethostname(hostname, HOST_NAME_MAX);
-                    std::string fileName = m_para.prometheusDir + "/drpmon_" + std::string(hostname) + "_" + std::to_string(i) + ".yaml";
+                    std::string fileName = m_para.prometheusDir + "/drpmon_" + m_hostname + "_" + std::to_string(i) + ".yaml";
                     FILE* file = fopen(fileName.c_str(), "w");
                     if (file) {
-                        fprintf(file, "- targets:\n    - '%s:%d'\n", hostname, port);
+                        fprintf(file, "- targets:\n    - '%s:%d'\n", m_hostname.c_str(), port);
                         fclose(file);
                     }
                     else {
@@ -617,7 +620,8 @@ static void local_mkdir (const char * path)
 }
 
 static json createFileReportMsg(std::string path, std::string absolute_path,
-                                timespec create_time, timespec modify_time)
+                                timespec create_time, timespec modify_time,
+                                unsigned run_num, std::string hostname)
 {
     char buf[100];
     json msg, body;
@@ -629,6 +633,9 @@ static json createFileReportMsg(std::string path, std::string absolute_path,
     body["create_timestamp"] = buf;
     std::strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&modify_time.tv_sec));
     body["modify_timestamp"] = buf;
+    body["hostname"] = hostname;
+    body["gen"] = 2;                // 2 == LCLS-II
+    body["run_num"] = run_num;
     msg["body"] = body;
     return msg;
 }
