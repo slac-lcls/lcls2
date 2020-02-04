@@ -129,8 +129,10 @@ class QWIcons() :
         self.path_icon_lcls                   = '%s/lcls.png'                                       % path_icon
         self.path_icon_wait                   = '%s/hourglass.png'                                  % path_icon
         #self.path_icon_circle_green           = '%s/circle-green-wide.png'                          % path_icon
-        self.path_icon_heckbox_empty          = '%s/checkbox-empty.png'                             % path_icon
+        self.path_icon_checkbox_empty         = '%s/checkbox-empty.png'                             % path_icon
         self.path_icon_checkbox_red           = '%s/checkbox-checked-red.png'                       % path_icon
+        self.path_icon_data_green             = '%s/icon-data-green.png'                            % path_icon
+        self.path_icon_data_red_cross         = '%s/icon-data-red-cross.png'                        % path_icon
         #self.path_icon_checkbox_black         = '%s/checkbox-checked-black.png'                     % path_icon
 
         self.icon_contents      = QIcon(self.path_icon_contents     )
@@ -164,8 +166,11 @@ class QWIcons() :
         #self.icon_circle_green  = QIcon(self.path_icon_circle_green )
         #self.icon_ring_red      = QIcon(self.path_icon_record_ring_red)
         #self.icon_ring_black    = QIcon(self.path_icon_record_ring_black)
-        self.icon_checkbox_empty= QIcon(self.path_icon_heckbox_empty)
+        self.icon_checkbox_empty= QIcon(self.path_icon_checkbox_empty)
         self.icon_checkbox_check= QIcon(self.path_icon_checkbox_red )
+
+        self.icon_data_green    = QIcon(self.path_icon_data_green)
+        self.icon_data_red_cross= QIcon(self.path_icon_data_red_cross)
 
         self.icon_data          = self.icon_table
         self.icon_apply         = self.icon_button_ok
@@ -174,8 +179,10 @@ class QWIcons() :
         self.icon_expand        = self.icon_folder_open
         self.icon_collapse      = self.icon_folder_closed
         self.icon_print         = self.icon_contents
-        self.icon_record_stop   = self.icon_checkbox_check
-        self.icon_record_start  = self.icon_checkbox_empty # icon_circle_green
+        self.icon_record_stop   = self.icon_data_green
+        self.icon_record_start  = self.icon_data_red_cross # icon_circle_green
+        #self.icon_record_stop   = self.icon_checkbox_check
+        #self.icon_record_start  = self.icon_checkbox_empty # icon_circle_green
         #self.icon_record_stop   = self.icon_ring_red
         #self.icon_record_start  = self.icon_circle_green
 
