@@ -131,18 +131,18 @@ class DaqControl:
     #
     def getJsonConfig(self):
         src = self.getPlatform()
-        dst = {"collection": {}}
+        dst = {"activedet": {}}
         for level, item1 in src.items():
             if level == "control":
                 continue    # skip
-            if level not in dst["collection"]:
-                dst["collection"][level] = {}
+            if level not in dst["activedet"]:
+                dst["activedet"][level] = {}
             for xx, item2 in item1.items():
                 alias = item2["proc_info"]["alias"]
-                dst["collection"][level][alias] = {}
+                dst["activedet"][level][alias] = {}
                 if "det_info" in item2:
-                    dst["collection"][level][alias]["det_info"] = item2["det_info"].copy()
-                dst["collection"][level][alias]["active"] = item2["active"]
+                    dst["activedet"][level][alias]["det_info"] = item2["det_info"].copy()
+                dst["activedet"][level][alias]["active"] = item2["active"]
 
         return oldjson.dumps(dst, sort_keys=True, indent=4)
 
@@ -323,7 +323,7 @@ class DaqControl:
         return errorMessage
 
     #
-    # DaqControl.setBypass - set bypass_rcfile flag
+    # DaqControl.setBypass - set bypass_activedet flag
     #   True or False
     #
     def setBypass(self, bypassIn):
@@ -603,20 +603,20 @@ class CollectionManager():
         self.url = args.url
         self.experiment_name = None
         self.rollcall_timeout = 30
-        self.bypass_rcfile = False
+        self.bypass_activedet = False
 
         if args.r:
-            # rcfile from command line
-            self.rcfilename = args.r
+            # active detectors file from command line
+            self.activedetfilename = args.r
         else:
-            # default rcfile
+            # default active detectors file
             homedir = os.path.expanduser('~')
-            self.rcfilename = '%s/.psdaq/p%d.collection.json' % (homedir, self.platform)
+            self.activedetfilename = '%s/.psdaq/p%d.activedet.json' % (homedir, self.platform)
 
-        if self.rcfilename == '/dev/null':
-            # rcfile bypassed
-            self.bypass_rcfile = True
-            logging.warning("rcfile disabled. Default settings will be used.")
+        if self.activedetfilename == '/dev/null':
+            # active detectors file bypassed
+            self.bypass_activedet = True
+            logging.warning("active detectors file disabled. Default settings will be used.")
 
         if self.slow_update_rate:
             # initialize slow update thread
@@ -974,14 +974,14 @@ class CollectionManager():
         logging.debug('handle_setbypass(\'%s\') in state %s' % (newbypass, self.state))
 
         if self.state != 'reset' and self.state != 'unallocated':
-            errMsg = 'cannot change bypass_rcfile setting in state \'%s\' -- deallocate first' % self.state
+            errMsg = 'cannot change bypass_activedet setting in state \'%s\' -- deallocate first' % self.state
             logging.error(errMsg)
             answer = create_msg('error', body={'err_info': errMsg})
             # reply 'error'
             self.front_rep.send_json(answer)
         else:
-            if newbypass != self.bypass_rcfile:
-                self.bypass_rcfile = newbypass
+            if newbypass != self.bypass_activedet:
+                self.bypass_activedet = newbypass
                 self.report_status()
             answer = create_msg('ok')
             # reply 'ok'
@@ -990,12 +990,12 @@ class CollectionManager():
     def status_msg(self):
         body = {'state': self.state, 'transition': self.lastTransition,
                 'platform': self.cmstate_levels(),
-                'config_alias': str(self.config_alias), 'recording': self.recording, 'bypass_rcfile': self.bypass_rcfile}
+                'config_alias': str(self.config_alias), 'recording': self.recording, 'bypass_activedet': self.bypass_activedet}
         return create_msg('status', body=body)
 
     def report_status(self):
-        logging.debug('status: state=%s transition=%s config_alias=%s recording=%s bypass_rcfile=%s' %
-                      (self.state, self.lastTransition, self.config_alias, self.recording, self.bypass_rcfile))
+        logging.debug('status: state=%s transition=%s config_alias=%s recording=%s bypass_activedet=%s' %
+                      (self.state, self.lastTransition, self.config_alias, self.recording, self.bypass_activedet))
         self.front_pub.send_json(self.status_msg())
 
     # check_answers - report and count errors in answers list
@@ -1333,16 +1333,16 @@ class CollectionManager():
             with open(filename) as fd:
                 json_data = oldjson.load(fd)
         except FileNotFoundError as ex:
-            self.report_error('Error opening rcfile: %s' % ex)
+            self.report_error('Error opening active detectors file: %s' % ex)
             return {}
         except Exception as ex:
-            self.report_error('Error reading rcfile %s: %s' % (filename, ex))
+            self.report_error('Error reading active detectors file %s: %s' % (filename, ex))
             return {}
         return json_data
 
     def get_required_set(self, d):
         retval = set()
-        for level, item1 in d["collection"].items():
+        for level, item1 in d["activedet"].items():
             for alias, item2 in item1.items():
                 retval.add(level + "/" + alias)
         return retval
@@ -1352,18 +1352,18 @@ class CollectionManager():
         retval = False
         required_set = set()
 
-        if not self.bypass_rcfile:
-            # determine which clients are required by reading the rcfile
-            json_data = self.read_json_file(self.rcfilename)
+        if not self.bypass_activedet:
+            # determine which clients are required by reading the active detectors file
+            json_data = self.read_json_file(self.activedetfilename)
             if len(json_data) > 0:
-                if "collection" in json_data.keys():
+                if "activedet" in json_data.keys():
                     required_set = self.get_required_set(json_data)
                 else:
-                    self.report_error('Missing "collection" key in rcfile %s' % self.rcfilename)
+                    self.report_error('Missing "activedet" key in active detectors file %s' % self.activedetfilename)
             if not required_set:
-                self.report_error('Failed to read configuration from rcfile. The set of processes may be incomplete.')
+                self.report_error('Failed to read configuration from active detectors file %s' % self.activedetfilename)
 
-        logging.debug('rollcall: bypass_rcfile = %s' % self.bypass_rcfile)
+        logging.debug('rollcall: bypass_activedet = %s' % self.bypass_activedet)
         missing_set = required_set.copy()
         ignored_set = set()
         self.cmstate.clear()
@@ -1379,11 +1379,11 @@ class CollectionManager():
                     continue
                 for level, item in answer['body'].items():
                     alias = item['proc_info']['alias']
-                    if not self.bypass_rcfile:
+                    if not self.bypass_activedet:
                         responder = level + '/' + alias
                         if responder not in required_set:
                             if responder not in ignored_set:
-                                self.report_error('Ignoring response from %s, it does not appear in rcfile' % responder)
+                                self.report_error('Ignoring response from %s, it does not appear in active detectors file' % responder)
                                 ignored_set.add(responder)
                             continue
                         if responder not in missing_set:
@@ -1393,17 +1393,17 @@ class CollectionManager():
                         self.cmstate[level] = {}
                     id = answer['header']['sender_id']
                     self.cmstate[level][id] = item
-                    if self.bypass_rcfile:
-                        # no rcfile: use default values
+                    if self.bypass_activedet:
+                        # no active detectors file: use default values
                         self.cmstate[level][id]['active'] = DaqControl.default_active
                         if level == 'drp':
                             self.cmstate[level][id]['det_info'] = {}
                             self.cmstate[level][id]['det_info']['readout'] = self.platform
                     else:
-                        # copy values from rcfile
-                        self.cmstate[level][id]['active'] = json_data['collection'][level][alias]['active']
+                        # copy values from active detectors file
+                        self.cmstate[level][id]['active'] = json_data['activedet'][level][alias]['active']
                         if level == 'drp':
-                            self.cmstate[level][id]['det_info'] = json_data['collection'][level][alias]['det_info'].copy()
+                            self.cmstate[level][id]['det_info'] = json_data['activedet'][level][alias]['det_info'].copy()
                     self.ids.add(id)
             self.subtract_clients(missing_set)
             if not missing_set:
@@ -1759,8 +1759,8 @@ def main():
     parser.add_argument("--password", default="pcds", help='run database password')
     defaultURL = "https://pswww.slac.stanford.edu/ws-auth/devlgbk/"
     parser.add_argument("--url", help="run database URL prefix. Defaults to " + defaultURL, default=defaultURL)
-    defaultRcfile = "~/.psdaq/p<platform>.collection.json"
-    parser.add_argument('-r', metavar='RCFILE', help="run control file. Defaults to " + defaultRcfile)
+    defaultActiveDetFile = "~/.psdaq/p<platform>.activedet.json"
+    parser.add_argument('-r', metavar='ACTIVEDETFILE', help="active detectors file. Defaults to " + defaultActiveDetFile)
     args = parser.parse_args()
 
     # configure logging handlers
