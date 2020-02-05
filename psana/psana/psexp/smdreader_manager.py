@@ -1,7 +1,7 @@
 from psana.smdreader import SmdReader
 from psana.psexp.packet_footer import PacketFooter
 from psana.eventbuilder import EventBuilder
-import os
+import os, time
 
 class BatchIterator(object):
     """ Iterates over batches of events.
@@ -70,7 +70,7 @@ class SmdReaderManager(object):
             cn_retries += 1
             if cn_retries == max_retries:
                 break
-            sleep(sleep_secs)
+            time.sleep(sleep_secs)
 
         self.got_events = self.smdr.got_events
         self.processed_events += self.got_events
