@@ -781,6 +781,8 @@ uint32_t Fabric::version() const
   }
 }
 
+struct addrinfo* Fabric::addrInfo() const { return _addrInfo; }
+
 struct fi_info* Fabric::info() const { return _info; }
 
 struct fid_fabric* Fabric::fabric() const { return _fabric; }
@@ -794,6 +796,21 @@ bool Fabric::initialize(const char* node, const char* service, uint64_t flags, s
     if (!_hints) {
       _errno = -FI_ENOMEM;
       set_error("fi_allocinfo");
+      return false;
+    }
+
+    struct addrinfo aihints;
+    memset(&aihints, 0, sizeof aihints);
+    aihints.ai_flags = AI_PASSIVE;
+    int ret = getaddrinfo(node, service, &aihints, &_addrInfo);
+    if (ret == EAI_SYSTEM) {
+      set_custom_error("getaddrinfo for %s:%s: %s",
+                       node, service, strerror(errno));
+      _errno = -errno;
+      return false;
+    } else if (ret) {
+      set_custom_error("getaddrinfo: %s", gai_strerror(ret));
+      _errno = -FI_ENODATA;
       return false;
     }
 
@@ -1616,6 +1633,27 @@ bool PassiveEndpoint::listen(int backlog)
   // Attempt to set the backlog parameter of the pep and ignore the failure if the provider doesn't support it.
   CHECK_ERR_EX(fi_control(&_pep->fid, FI_BACKLOG, &backlog), "fi_control(FI_BACKLOG)", FI_ENOSYS);
   CHECK_ERR(fi_listen(_pep), "fi_listen");
+
+  _state = EP_LISTEN;
+
+  return true;
+}
+
+bool PassiveEndpoint::listen(int backlog, uint16_t& port)
+{
+  struct addrinfo* ai = _fabric->addrInfo();
+
+  CHECK_ERR(fi_passive_ep(_fabric->fabric(), _fabric->info(), &_pep, NULL), "fi_passive_ep");
+  CHECK_ERR(fi_setname(&_pep->fid, ai->ai_addr, ai->ai_addrlen), "fi_setname");
+  CHECK_ERR(fi_pep_bind(_pep, &_eq->eq()->fid, 0), "fi_pep_bind(eq)");
+  // Attempt to set the backlog parameter of the pep and ignore the failure if the provider doesn't support it.
+  CHECK_ERR_EX(fi_control(&_pep->fid, FI_BACKLOG, &backlog), "fi_control(FI_BACKLOG)", FI_ENOSYS);
+  CHECK_ERR(fi_listen(_pep), "fi_listen");
+
+  struct sockaddr_in bound_addr;
+  size_t bound_addr_len = sizeof(bound_addr);
+  CHECK_ERR(fi_getname(&_pep->fid, &bound_addr, &bound_addr_len), "fi_getname");
+  port = ntohs(bound_addr.sin_port);
 
   _state = EP_LISTEN;
 

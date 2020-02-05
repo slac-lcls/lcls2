@@ -77,7 +77,7 @@ int EbLfServer::initialize(const std::string& addr,
     return ENOMEM;
   }
 
-  if(!_pep->listen(nLinks))
+  if (!_pep->listen(nLinks))
   {
     printf("%s:\n  Failed to set Passive Endpoint to listening state: %s\n",
            __PRETTY_FUNCTION__, _pep->error());

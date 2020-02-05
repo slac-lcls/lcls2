@@ -9,6 +9,8 @@
 #include <vector>
 #include <poll.h>
 #include <sys/uio.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 namespace Pds {
   namespace Fabrics {
@@ -186,6 +188,7 @@ namespace Pds {
       const char* name() const;
       const char* provider() const;
       uint32_t version() const;
+      struct addrinfo* addrInfo() const;
       struct fi_info* info() const;
       struct fid_fabric* fabric() const;
       struct fid_domain* domain() const;
@@ -194,6 +197,7 @@ namespace Pds {
       void shutdown();
     private:
       bool                        _up;
+      struct addrinfo*            _addrInfo;
       struct fi_info*             _hints;
       struct fi_info*             _info;
       struct fid_fabric*          _fabric;
@@ -306,6 +310,7 @@ namespace Pds {
     public:
       void shutdown();
       bool listen(int backlog=0);
+      bool listen(int backlog, uint16_t& port);
       Endpoint* accept(int timeout=-1, EventQueue* eq=0, CompletionQueue* txcq=0, uint64_t txFlags=0, CompletionQueue* rxcq=0, uint64_t rxFlags=0, void* context=NULL);
       bool reject(int timeout=-1);
       bool close(Endpoint* endpoint);
