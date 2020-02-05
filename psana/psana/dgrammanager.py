@@ -31,7 +31,7 @@ class DgramManager():
         self.shmem_cli = None
         self.shmem_kwargs = {'index':-1,'size':0,'cli_cptr':None}
         self.configs = []
-        self.fds = []
+        self.fds = np.zeros(len(xtc_files), dtype=np.int32)
         self._timestamps = [] # built when iterating 
         self._run = run
 
@@ -64,17 +64,16 @@ class DgramManager():
             self.configs = configs
         
         for i, xtcdata_filename in enumerate(self.xtc_files):
-            self.fds.append(os.open(xtcdata_filename,
-                            os.O_RDONLY))
+            self.fds[i] = os.open(xtcdata_filename, os.O_RDONLY)
             if not given_configs: 
-                d = dgram.Dgram(file_descriptor=self.fds[-1])
+                d = dgram.Dgram(file_descriptor=self.fds[i])
                 self.configs += [d]
 
         self.det_class_table, self.xtc_info, self.det_info_table = self.get_det_class_table()
         self.calibconst = {} # initialize to empty dict - will be populated by run class
 
     def __del__(self):
-        if self.fds:
+        if self.fds.shape[0] > 0:
             for fd in self.fds:
                 os.close(fd)
 
@@ -110,7 +109,10 @@ class DgramManager():
         assert len(offsets) > 0 and len(sizes) > 0
         dgrams = []
         for fd, config, offset, size in zip(self.fds, self.configs, offsets, sizes):
-            d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
+            if offset==0 and size==0:
+                d = None
+            else:
+                d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
             dgrams += [d]
         
         evt = Event(dgrams, run=self.run())

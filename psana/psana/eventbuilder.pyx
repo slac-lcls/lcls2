@@ -210,6 +210,7 @@ cdef class EventBuilder:
                     
                     PyBuffer_Release(&buf)
                 
+                
                 # Put this event in the correct batch (determined by destionation callback). 
                 # If destination() is not specifed, use batch 0.
                 dest_rank = 0

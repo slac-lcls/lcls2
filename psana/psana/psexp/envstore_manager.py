@@ -17,6 +17,7 @@ class EnvStoreManager(object):
         if not evt:
             return
         for i, d in enumerate(evt._dgrams):
+            if not d: continue
             for key, val in d.__dict__.items():
                 if key in self.stores:
                     self.stores[key].add_to(d, i)

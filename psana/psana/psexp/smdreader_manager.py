@@ -12,8 +12,14 @@ class BatchIterator(object):
         self.batch_size = batch_size
         self.filter_fn = filter_fn
         self.destination = destination
-        self.eb = None
-        if all(views) == 0:
+        
+        empty_view = True
+        for view in views:
+            if view:
+                empty_view = False
+                break
+
+        if empty_view:
             self.eb = None
         else:
             self.eb = EventBuilder(views)
@@ -38,24 +44,50 @@ class SmdReaderManager(object):
         self.n_files = len(run.smd_dm.fds)
         assert self.n_files > 0
         self.run = run
-        self.smdr = SmdReader(run.smd_dm.fds)
-        self.n_events = int(os.environ.get('PS_SMD_N_EVENTS', 1000))
-        self.processed_events = 0
+        
+        self.n_events = int(os.environ.get('PS_SMD_N_EVENTS', 20))
         if self.run.max_events:
             if self.run.max_events < self.n_events:
                 self.n_events = self.run.max_events
+        
+        self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x1000))
+        self.smdr = SmdReader(run.smd_dm.fds, self.chunksize, self.n_events)
+        self.processed_events = 0
         self.got_events = -1
 
     def __iter__(self):
         return self
 
-    def __next__(self):
-        if self.got_events == 0: raise StopIteration
+    def _read(self):
+        max_retries = int(os.environ.get('PS_SMD_MAX_RETRIES', '5'))
+        sleep_secs = int(os.environ.get('PS_SMD_SLEEP_SECS', '1'))
+        
+        self.smdr.get()
+        
+        cn_retries = 0
+        while self.smdr.got_events==0:
+            self.smdr.get()
+            cn_retries += 1
+            if cn_retries == max_retries:
+                break
+            sleep(sleep_secs)
 
-        self.smdr.get(self.n_events)
         self.got_events = self.smdr.got_events
         self.processed_events += self.got_events
-        views = [self.smdr.view(i) for i in range(self.n_files)]
+        
+    def __next__(self):
+        self._read()
+        
+        if self.got_events == 0: raise StopIteration
+
+        views =[]
+        for i in range(self.n_files):
+            view = self.smdr.view(i)
+            if view:
+                views.append(view)
+            else:
+                views.append(memoryview(bytearray()))
+        
         batch_iter = BatchIterator(views, batch_size=self.run.batch_size, \
                 filter_fn=self.run.filter_callback, destination=self.run.destination)
         
@@ -67,12 +99,8 @@ class SmdReaderManager(object):
 
     def chunks(self):
         """ Generates a tuple of smd and step dgrams """
-        got_events = -1
-        while got_events != 0:
-            self.smdr.get(self.n_events)
-            got_events = self.smdr.got_events
-            self.processed_events += got_events
-            
+        self._read()
+        while self.got_events > 0:
             smd_view = bytearray()
             smd_pf = PacketFooter(n_packets=self.n_files)
             step_view = bytearray()
@@ -99,6 +127,8 @@ class SmdReaderManager(object):
             if self.run.max_events:
                 if self.processed_events >= self.run.max_events:
                     break
+
+            self._read()
     
     @property
     def min_ts(self):

@@ -115,9 +115,9 @@ class StepHistory(object):
         self.n_smds = n_smds
         self.bufs = [bytearray() for i in range(self.n_smds)]
         self.send_history = []
-        # Initialize no. of sent bytes to 0 for evtbuilder
+        # Initialize no. of sent bytes to 0 for clients
         # [[offset_update0, offset_update1, ], [offset_update0, offset_update1, ], ...]
-        # [ ---------evtbuilder0------------ ,  ---------evtbuilder1------------ ,
+        # [ -----------client 0------------- ,  ----------- client 1------------ ,
         for i in range(1, client_size):
             self.send_history.append([0]*self.n_smds)
 
@@ -136,14 +136,15 @@ class StepHistory(object):
         
         if self.n_smds: # do nothing if no step data found
             indexed_id = client_id - 1 # rank 0 has no send history.
+            views = [bytearray() for i in range(self.n_smds)]
             for i, buf in enumerate(self.bufs):
                 current_buf = self.bufs[i]
                 current_offset = self.send_history[indexed_id][i]
                 current_buf_size = memoryview(current_buf).nbytes
                 if current_offset < current_buf_size:
-                    views.append(current_buf[current_offset:])
+                    views[i].extend(current_buf[current_offset:])
                     self.send_history[indexed_id][i] = current_buf_size
-
+        
         return views
 
 def repack_for_eb(smd_chunk, step_views, configs):
@@ -243,6 +244,28 @@ class Smd0(object):
             self.step_hist.extend_buffers(step_views, rankreq[0])
 
             smd_extended = repack_for_eb(smd_chunk, missing_step_views, self.run.configs)
+
+
+            """
+            MONA keeps this code for debugging StepHistory
+            from psana.psexp.event_manager import EventManager
+            eb_man = EventBuilderManager(smd_chunk, self.run) 
+            # Build batch of events
+            txt = f'smd0 sent'
+            for smd_batch_dict in eb_man.batches():
+                smd_batch, _ = smd_batch_dict[0]
+                evt_man = EventManager(smd_batch, self.run.configs, \
+                        self.run.dm, filter_fn=self.run.filter_callback)
+                for evt in evt_man:
+                    for d in evt:
+                        if d:
+                            txt += f' {d.timestamp()}:{d.service()}, '
+                        else:
+                            txt += ' None:None, '
+            txt += f'to {rankreq[0]}'
+            print(txt)
+            """
+
             self.run.comms.smd_comm.Send(smd_extended, dest=rankreq[0])
         
         for i in range(self.run.comms.n_smd_nodes):
@@ -324,6 +347,7 @@ class SmdNode(object):
 class BigDataNode(object):
     def __init__(self, run):
         self.run = run
+        self.step_max_ts = 0
 
     def run_mpi(self):
 
@@ -341,10 +365,12 @@ class BigDataNode(object):
         events = Events(self.run, get_smd=get_smd)
         if self.run.scan:
             for evt in events:
-                if evt._dgrams[0].service() == TransitionId.BeginStep:
-                    yield Step(evt, events)
+                if evt.service() == TransitionId.BeginStep:
+                    if evt.timestamp > self.step_max_ts:
+                        self.step_max_ts = evt.timestamp
+                        yield Step(evt, events)
 
         else:
             for evt in events:
-                if evt._dgrams[0].service() == TransitionId.L1Accept:
+                if evt.service() == TransitionId.L1Accept:
                     yield evt

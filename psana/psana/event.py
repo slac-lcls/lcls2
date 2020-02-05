@@ -3,7 +3,8 @@
 
 from psana import dgram
 from psana.psexp.packet_footer import PacketFooter
-
+import numpy as np
+from psana.psexp.TransitionId import TransitionId
 
 # TO DO
 # 1) remove comments
@@ -76,17 +77,23 @@ class Event():
     
     @property
     def _seconds(self):
-        _high = (self._dgrams[0].timestamp() >> 32) & 0xffffffff
+        _high = (self.timestamp >> 32) & 0xffffffff
         return _high
     
     @property
     def _nanoseconds(self):
-        _low = self._dgrams[0].timestamp() & 0xffffffff
+        _low = self.timestamp & 0xffffffff
         return _low
 
     @property
     def timestamp(self):
-        return self._dgrams[0].timestamp()
+        ts = None
+        for d in self._dgrams:
+            if d:
+                ts = self._dgrams[0].timestamp()
+                break
+        assert ts
+        return ts
 
     def run(self):
         return self._run
@@ -97,20 +104,23 @@ class Event():
 
         self._det_segments = {}
         for evt_dgram in self._dgrams:
-            # detector name (e.g. "xppcspad")
-            for det_name, segment_dict in evt_dgram.__dict__.items():
 
-                # drp class name (e.g. "raw", "fex")
-                for segment, det in segment_dict.items():
-                    for drp_class_name, drp_class in det.__dict__.items():
-                        class_identifier = (det_name,drp_class_name)
-                    
-                        if class_identifier not in self._det_segments.keys():
-                            self._det_segments[class_identifier] = {}
-                        segs = self._det_segments[class_identifier]
-                        # comment out for performance, but maybe doesn't matter
-                        #assert segment not in segs, 'Found duplicate segment: '+str(segment)
-                        segs[segment] = drp_class
+            if evt_dgram: # dgram can be None (missing) in an event
+
+                # detector name (e.g. "xppcspad")
+                for det_name, segment_dict in evt_dgram.__dict__.items():
+
+                    # drp class name (e.g. "raw", "fex")
+                    for segment, det in segment_dict.items():
+                        for drp_class_name, drp_class in det.__dict__.items():
+                            class_identifier = (det_name,drp_class_name)
+                        
+                            if class_identifier not in self._det_segments.keys():
+                                self._det_segments[class_identifier] = {}
+                            segs = self._det_segments[class_identifier]
+                            # comment out for performance, but maybe doesn't matter
+                            #assert segment not in segs, 'Found duplicate segment: '+str(segment)
+                            segs[segment] = drp_class
 
         return
 
@@ -122,3 +132,25 @@ class Event():
     @property
     def _has_offset(self):
         return hasattr(self._dgrams[0], "info")
+
+    def service(self):
+        service = None
+        for d in self._dgrams:
+            if d:
+                service = d.service()
+                break
+        assert service
+
+        return service
+
+    def get_offsets_and_sizes(self):
+        ofsz = np.zeros((self._size, 2), dtype=np.int)
+        for i, d in enumerate(self._dgrams):
+            if d:
+                if self.service() == TransitionId.L1Accept:
+                    ofsz[i,:] = [d.smdinfo[0].offsetAlg.intOffset, \
+                            d.smdinfo[0].offsetAlg.intDgramSize]
+                else:
+                    ofsz[i,1] = d._size
+        return ofsz
+

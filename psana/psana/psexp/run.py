@@ -197,7 +197,7 @@ class RunShmem(Run):
 
     def events(self):
         for evt in self.dm:
-            if evt._dgrams[0].service() != TransitionId.L1Accept: continue
+            if evt.service() != TransitionId.L1Accept: continue
             yield evt
 
 class RunSingleFile(Run):
@@ -216,12 +216,12 @@ class RunSingleFile(Run):
 
     def events(self):
         for evt in self.dm:
-            if evt._dgrams[0].service() != TransitionId.L1Accept: continue
+            if evt.service() != TransitionId.L1Accept: continue
             yield evt
 
     def steps(self):
         for evt in self.dm:
-            if evt._dgrams[0].service() == TransitionId.BeginStep: 
+            if evt.service() == TransitionId.BeginStep: 
                 yield Step(evt, self.dm)
     
 class RunSerial(Run):
@@ -242,14 +242,14 @@ class RunSerial(Run):
     def events(self):
         events = Events(self)
         for evt in events:
-            if evt._dgrams[0].service() == TransitionId.L1Accept:
+            if evt.service() == TransitionId.L1Accept:
                 yield evt
     
     def steps(self):
         """ Generates events between steps. """
         events = Events(self)
         for evt in events:
-            if evt._dgrams[0].service() == TransitionId.BeginStep:
+            if evt.service() == TransitionId.BeginStep:
                 yield Step(evt, events)
 
 class RunLegion(Run):
