@@ -45,12 +45,12 @@ class SmdReaderManager(object):
         assert self.n_files > 0
         self.run = run
         
-        self.n_events = int(os.environ.get('PS_SMD_N_EVENTS', 20))
+        self.n_events = int(os.environ.get('PS_SMD_N_EVENTS', 1000))
         if self.run.max_events:
             if self.run.max_events < self.n_events:
                 self.n_events = self.run.max_events
         
-        self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x1000))
+        self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x100000))
         self.smdr = SmdReader(run.smd_dm.fds, self.chunksize, self.n_events)
         self.processed_events = 0
         self.got_events = -1
