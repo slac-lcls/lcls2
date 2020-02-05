@@ -23,6 +23,7 @@ def main():
     group.add_argument('--monitor', action="store_true")
     group.add_argument('--config', metavar='ALIAS', help='configuration alias')
     group.add_argument('--record', type=int, choices=range(0, 2), help='recording flag')
+    group.add_argument('--bypass', type=int, choices=range(0, 2), help='bypass rcfile flag')
     group.add_argument('-B', action="store_true", help='shortcut for --config BEAM')
     args = parser.parse_args()
 
@@ -67,6 +68,15 @@ def main():
             rv = control.setRecord(False)
         else:
             rv = control.setRecord(True)
+        if rv is not None:
+            print('Error: %s' % rv)
+
+    elif args.bypass is not None:
+        # rcfile bypass flag request
+        if args.bypass == 0:
+            rv = control.setBypass(False)
+        else:
+            rv = control.setBypass(True)
         if rv is not None:
             print('Error: %s' % rv)
 

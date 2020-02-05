@@ -323,6 +323,34 @@ class DaqControl:
         return errorMessage
 
     #
+    # DaqControl.setBypass - set bypass_rcfile flag
+    #   True or False
+    #
+    def setBypass(self, bypassIn):
+        errorMessage = None
+        if type(bypassIn) == type(True):
+            if bypassIn:
+                bypass = '1'
+            else:
+                bypass = '0'
+
+            try:
+                msg = create_msg('setbypass.' + bypass)
+                self.front_req.send_json(msg)
+                reply = self.front_req.recv_json()
+            except Exception as ex:
+                errorMessage = 'setBypass() Exception: %s' % ex
+            else:
+                try:
+                    errorMessage = reply['body']['err_info']
+                except KeyError:
+                    pass
+        else:
+            errorMessage = 'setBypass() requires True or False'
+
+        return errorMessage
+
+    #
     # DaqControl.setTransition - trigger a transition
     # The optional second argument is a dictionary containing
     # information that will be put into the phase1-json of the transition.
@@ -549,7 +577,6 @@ def confirm_response(socket, wait_time, msg_id, ids):
         logging.debug('id %s did not respond' % ii)
     return ids, msgs, reports
 
-
 class CollectionManager():
     def __init__(self, args):
         self.platform = args.p
@@ -575,6 +602,21 @@ class CollectionManager():
         self.password = args.password
         self.url = args.url
         self.experiment_name = None
+        self.rollcall_timeout = 30
+        self.bypass_rcfile = False
+
+        if args.r:
+            # rcfile from command line
+            self.rcfilename = args.r
+        else:
+            # default rcfile
+            homedir = os.path.expanduser('~')
+            self.rcfilename = '%s/.psdaq/p%d.collection.json' % (homedir, self.platform)
+
+        if self.rcfilename == '/dev/null':
+            # rcfile bypassed
+            self.bypass_rcfile = True
+            logging.warning("rcfile disabled. Default settings will be used.")
 
         if self.slow_update_rate:
             # initialize slow update thread
@@ -705,6 +747,7 @@ class CollectionManager():
         #  setstate.STATE
         #  setconfig.CONFIG_ALIAS
         #  setrecord.RECORD_FLAG
+        #  setbypass.BYPASS_FLAG
         #  TRANSITION
         #  REQUEST
         answer = None
@@ -728,6 +771,13 @@ class CollectionManager():
                     self.handle_setrecord(False)
                 else:
                     self.handle_setrecord(True)
+                answer = None
+            elif key[0] == 'setbypass':
+                # handle_setbypass() sends reply internally
+                if key[1] == '0':
+                    self.handle_setbypass(False)
+                else:
+                    self.handle_setbypass(True)
                 answer = None
             elif key[0] in DaqControl.transitions:
                 # is body dict not-empty?
@@ -920,15 +970,32 @@ class CollectionManager():
             # reply 'ok'
             self.front_rep.send_json(answer)
 
+    def handle_setbypass(self, newbypass):
+        logging.debug('handle_setbypass(\'%s\') in state %s' % (newbypass, self.state))
+
+        if self.state != 'reset' and self.state != 'unallocated':
+            errMsg = 'cannot change bypass_rcfile setting in state \'%s\' -- deallocate first' % self.state
+            logging.error(errMsg)
+            answer = create_msg('error', body={'err_info': errMsg})
+            # reply 'error'
+            self.front_rep.send_json(answer)
+        else:
+            if newbypass != self.bypass_rcfile:
+                self.bypass_rcfile = newbypass
+                self.report_status()
+            answer = create_msg('ok')
+            # reply 'ok'
+            self.front_rep.send_json(answer)
+
     def status_msg(self):
         body = {'state': self.state, 'transition': self.lastTransition,
                 'platform': self.cmstate_levels(),
-                'config_alias': str(self.config_alias), 'recording': self.recording}
+                'config_alias': str(self.config_alias), 'recording': self.recording, 'bypass_rcfile': self.bypass_rcfile}
         return create_msg('status', body=body)
 
     def report_status(self):
-        logging.debug('status: state=%s transition=%s config_alias=%s recording=%s' %
-                      (self.state, self.lastTransition, self.config_alias, self.recording))
+        logging.debug('status: state=%s transition=%s config_alias=%s recording=%s bypass_rcfile=%s' %
+                      (self.state, self.lastTransition, self.config_alias, self.recording, self.bypass_rcfile))
         self.front_pub.send_json(self.status_msg())
 
     # check_answers - report and count errors in answers list
@@ -1248,30 +1315,104 @@ class CollectionManager():
         self.ids.clear()
         return
 
+    def subtract_clients(self, missing_set):
+        if missing_set:
+            for level, item in self.cmstate_levels().items():
+                for xid in item.keys():
+                    try:
+                        alias = item[xid]['proc_info']['alias']
+                    except KeyError as ex:
+                        logging.error('KeyError: %s' % ex)
+                    else:
+                        missing_set -= set(['%s/%s' % (level, alias)])
+        return
+
+    def read_json_file(self, filename):
+        json_data = {}
+        try:
+            with open(filename) as fd:
+                json_data = oldjson.load(fd)
+        except FileNotFoundError as ex:
+            self.report_error('Error opening rcfile: %s' % ex)
+            return {}
+        except Exception as ex:
+            self.report_error('Error reading rcfile %s: %s' % (filename, ex))
+            return {}
+        return json_data
+
+    def get_required_set(self, d):
+        retval = set()
+        for level, item1 in d["collection"].items():
+            for alias, item2 in item1.items():
+                retval.add(level + "/" + alias)
+        return retval
+
     def condition_rollcall(self):
         global report_keys
+        retval = False
+        required_set = set()
+
+        if not self.bypass_rcfile:
+            # determine which clients are required by reading the rcfile
+            json_data = self.read_json_file(self.rcfilename)
+            if len(json_data) > 0:
+                if "collection" in json_data.keys():
+                    required_set = self.get_required_set(json_data)
+                else:
+                    self.report_error('Missing "collection" key in rcfile %s' % self.rcfilename)
+            if not required_set:
+                self.report_error('Failed to read configuration from rcfile. The set of processes may be incomplete.')
+
+        logging.debug('rollcall: bypass_rcfile = %s' % self.bypass_rcfile)
+        missing_set = required_set.copy()
+        ignored_set = set()
         self.cmstate.clear()
         self.ids.clear()
         msg = create_msg('rollcall')
-        self.back_pub.send_multipart([b'all', json.dumps(msg)])
-        for answer in wait_for_answers(self.back_pull, 1000, msg['header']['msg_id']):
-            if answer['header']['key'] in report_keys:
-                self.process_reports([answer])
-                continue
-            for level, item in answer['body'].items():
-                if level not in self.cmstate:
-                    self.cmstate[level] = {}
-                id = answer['header']['sender_id']
-                self.cmstate[level][id] = item
-                self.cmstate[level][id]['active'] = DaqControl.default_active
-                if level == 'drp':
-                    if 'det_info' not in self.cmstate[level][id]:
-                        self.cmstate[level][id]['det_info'] = {}
-                    self.cmstate[level][id]['det_info']['readout'] = self.platform
-                self.ids.add(id)
-        if len(self.ids) == 0:
-            self.report_error('no clients responded to rollcall')
-            retval = False
+        poll_time = begin_time = datetime.now(timezone.utc)
+        while (poll_time - begin_time).total_seconds() < self.rollcall_timeout:
+            self.back_pub.send_multipart([b'all', json.dumps(msg)])
+            time.sleep(1.0)
+            for answer in wait_for_answers(self.back_pull, 1, msg['header']['msg_id']):
+                if answer['header']['key'] in report_keys:
+                    self.process_reports([answer])
+                    continue
+                for level, item in answer['body'].items():
+                    alias = item['proc_info']['alias']
+                    if not self.bypass_rcfile:
+                        responder = level + '/' + alias
+                        if responder not in required_set:
+                            if responder not in ignored_set:
+                                self.report_error('Ignoring response from %s, it does not appear in rcfile' % responder)
+                                ignored_set.add(responder)
+                            continue
+                        if responder not in missing_set:
+                            # ignore duplicate response
+                            continue
+                    if level not in self.cmstate:
+                        self.cmstate[level] = {}
+                    id = answer['header']['sender_id']
+                    self.cmstate[level][id] = item
+                    if self.bypass_rcfile:
+                        # no rcfile: use default values
+                        self.cmstate[level][id]['active'] = DaqControl.default_active
+                        if level == 'drp':
+                            self.cmstate[level][id]['det_info'] = {}
+                            self.cmstate[level][id]['det_info']['readout'] = self.platform
+                    else:
+                        # copy values from rcfile
+                        self.cmstate[level][id]['active'] = json_data['collection'][level][alias]['active']
+                        if level == 'drp':
+                            self.cmstate[level][id]['det_info'] = json_data['collection'][level][alias]['det_info'].copy()
+                    self.ids.add(id)
+            self.subtract_clients(missing_set)
+            if not missing_set:
+                break
+            poll_time = datetime.now(timezone.utc)
+
+        if missing_set:
+            for client in missing_set:
+                self.report_error(client + ' did not respond to rollcall')
         else:
             retval = True
             self.lastTransition = 'rollcall'
@@ -1618,6 +1759,8 @@ def main():
     parser.add_argument("--password", default="pcds", help='run database password')
     defaultURL = "https://pswww.slac.stanford.edu/ws-auth/devlgbk/"
     parser.add_argument("--url", help="run database URL prefix. Defaults to " + defaultURL, default=defaultURL)
+    defaultRcfile = "~/.psdaq/p<platform>.collection.json"
+    parser.add_argument('-r', metavar='RCFILE', help="run control file. Defaults to " + defaultRcfile)
     args = parser.parse_args()
 
     # configure logging handlers
