@@ -31,3 +31,4 @@ link_directories(${CMAKE_PREFIX_PATH}/lib)
 
 add_subdirectory(psdaq)
 add_subdirectory(drp)
+add_subdirectory(epicsArch)
