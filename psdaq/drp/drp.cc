@@ -34,7 +34,6 @@ int main(int argc, char* argv[])
     std::string kwargs_str;
     std::string::size_type ii = 0;
     para.verbose = 0;
-    char *instrument = NULL;
     while((c = getopt(argc, argv, "p:o:l:D:C:d:u:k:P:T::M:v")) != EOF) {
         switch(c) {
             case 'p':
