@@ -18,7 +18,7 @@ namespace Pds {
     const unsigned MAX_MEBS       = 64;         // Maximum possible number of Monitors
     const unsigned MAX_PORTS      = MAX_DRPS + MAX_TEBS + MAX_MRQS + MAX_MEBS;
 
-    const unsigned OUR_PORT_BASE  = 1024;       // Pick from range 1024 - 49152
+    const unsigned OUR_PORT_BASE  = 1024;       // Pick from range 1024 - 32768, 61000 - 65535
     const unsigned TEB_PORT_BASE  = OUR_PORT_BASE;             // TEB to receive L3 contributions
     const unsigned DRP_PORT_BASE  = TEB_PORT_BASE + MAX_TEBS;  // TEB to send    results
     const unsigned MRQ_PORT_BASE  = DRP_PORT_BASE + MAX_DRPS;  // TEB to receive monitor requests

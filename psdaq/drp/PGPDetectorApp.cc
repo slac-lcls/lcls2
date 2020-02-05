@@ -129,16 +129,15 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                                   std::ref(m_drp.tebContributor())};
         m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
                                         std::ref(m_drp.tebContributor()));
-
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc);
-
-        m_drp.runInfoSupport(xtc, m_det->namesLookup());
-
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::configure";
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
+        }
+        else {
+            m_drp.runInfoSupport(xtc, m_det->namesLookup());
         }
         m_pgpDetector->resetEventCounter();
     }
