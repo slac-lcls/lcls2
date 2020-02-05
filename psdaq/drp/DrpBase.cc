@@ -236,12 +236,13 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
 
     if (m_writing) {                    // Won't ever be true for Configure
         // write event to file if it passes event builder or if it's a transition
-        if (result.persist() || result.prescale()) {
+        if (result.persist() || result.prescale() ||
+            (transitionId == XtcData::TransitionId::SlowUpdate)) {
             _writeDgram(dgram);
         }
         else if (transitionId != XtcData::TransitionId::L1Accept) {
             if (transitionId == XtcData::TransitionId::BeginRun) {
-                m_offset = 0; // reset offset when writing out a new file 
+                m_offset = 0; // reset offset when writing out a new file
                 _writeDgram(_configureDgram());
             }
             _writeDgram(m_pool.transitionDgram());
