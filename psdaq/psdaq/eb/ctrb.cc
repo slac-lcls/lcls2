@@ -434,7 +434,12 @@ void EbCtrbApp::run(EbCtrbIn& in)
 {
   TebContributor::startup(in);
 
-  pinThread(pthread_self(), _prms.core[0]);
+  int rc = pinThread(pthread_self(), _prms.core[0]);
+  if (rc != 0)
+  {
+    fprintf(stderr, "%s:\n  Error from pinThread:\n  %s\n",
+            __PRETTY_FUNCTION__, strerror(rc));
+  }
 
 #ifdef SINGLE_EVENTS
   printf("Hit <return> for an event\n");

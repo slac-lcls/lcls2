@@ -248,7 +248,12 @@ int Teb::configure(const EbParams& prms,
 
 void Teb::run()
 {
-  pinThread(pthread_self(), _prms.core[0]);
+  int rc = pinThread(pthread_self(), _prms.core[0]);
+  if (rc != 0)
+  {
+    logging::debug("%s:\n  Error from pinThread:\n  %s",
+                   __PRETTY_FUNCTION__, strerror(rc));
+  }
 
   logging::info("TEB thread is starting");
 
@@ -820,13 +825,13 @@ void TebApp::_printGroups(unsigned groups, const u64arr_t& array) const
 
 void TebApp::_printParams(const EbParams& prms, unsigned groups) const
 {
-  printf("Parameters of TEB ID %d:\n",                         prms.id);
-  printf("  Thread core numbers:        %d, %d\n",             prms.core[0], prms.core[1]);
-  printf("  Partition:                  %d\n",                 prms.partition);
-  printf("  Bit list of contributors:   0x%016lx, cnt: %zd\n", prms.contributors,
-                                                                std::bitset<64>(prms.contributors).count());
-  printf("  Readout group contractors:  ");                    _printGroups(groups, prms.contractors);
-  printf("  Readout group receivers:    ");                    _printGroups(groups, prms.receivers);
+  printf("Parameters of TEB ID %d:\n",                           prms.id);
+  printf("  Thread core numbers:          %d, %d\n",             prms.core[0], prms.core[1]);
+  printf("  Partition:                    %d\n",                 prms.partition);
+  printf("  Bit list of contributors:     0x%016lx, cnt: %zd\n", prms.contributors,
+                                                                 std::bitset<64>(prms.contributors).count());
+  printf("  Readout group contractors:    ");                    _printGroups(groups, prms.contractors);
+  printf("  Readout group receivers:      ");                    _printGroups(groups, prms.receivers);
   printf("  ConfigDb trigger detName:     %s\n",                 prms.trgDetName.c_str());
   printf("  Number of MEB requestors:     %d\n",                 prms.numMrqs);
   printf("  Batch duration:               0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);

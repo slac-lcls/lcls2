@@ -310,9 +310,14 @@ namespace Pds {
   public:
     void run(MyXtcMonitorServer& apps)
     {
-      pinThread(pthread_self(), _prms.core[0]);
-
       logging::info("MEB thread is starting");
+
+      int rc = pinThread(pthread_self(), _prms.core[0]);
+      if (rc != 0)
+      {
+        logging::debug("%s:\n  Error from pinThread:\n  %s",
+                       __PRETTY_FUNCTION__, strerror(rc));
+      }
 
       _apps = &apps;
 

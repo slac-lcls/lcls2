@@ -126,7 +126,12 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
 
 void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
 {
-  pinThread(pthread_self(), _prms.core[1]);
+  int rc = pinThread(pthread_self(), _prms.core[1]);
+  if (rc && _prms.verbose)
+  {
+    fprintf(stderr, "%s:\n  Error from pinThread:\n  %s\n",
+            __PRETTY_FUNCTION__, strerror(rc));
+  }
 
   printf("Receiver thread is starting\n");
 

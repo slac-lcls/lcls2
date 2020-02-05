@@ -27,7 +27,7 @@ using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
-static const unsigned port_base     = 1024; // Pick from range 1024 - 49152
+static const unsigned port_base     = 1024; // Pick from range 1024 - 32768, 61000 - 65535
 static const unsigned default_size  = 4096;
 static const unsigned default_iters = 1000;
 static const unsigned default_core  = 10;
@@ -128,7 +128,12 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  pinThread(pthread_self(), core);
+  rc = pinThread(pthread_self(), core);
+  if (rc != 0)
+  {
+    fprintf(stderr, "%s:\n  Error from pinThread:\n  %s\n",
+            __PRETTY_FUNCTION__, strerror(rc));
+  }
 
   size_t alignment = sysconf(_SC_PAGESIZE);
   size_t srcSize   = alignment * ((size + alignment - 1) / alignment);
