@@ -1352,6 +1352,12 @@ class CollectionManager():
         retval = False
         required_set = set()
 
+        if not self.bypass_activedet and not os.path.isfile(self.activedetfilename):
+            self.report_error('Missing active detectors file %s' % self.activedetfilename)
+            logging.warning("active detectors file disabled. Default settings will be used.")
+            # active detectors file bypassed
+            self.bypass_activedet = True
+
         if not self.bypass_activedet:
             # determine which clients are required by reading the active detectors file
             json_data = self.read_json_file(self.activedetfilename)
