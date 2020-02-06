@@ -1,0 +1,88 @@
+if not platform: platform = '3'
+username = 'lcls2'
+
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
+conda_rel = 'ps-2.0.5'
+hsd_epics_dev02 = 'DAQ:LAB2:HSD:DEV02'
+hsd_epics_dev06 = 'DAQ:LAB2:HSD:DEV06'
+
+shelf = '2'
+ip_addr = '10.0.'+shelf
+collect_host = 'drp-tst-acc06'
+groups = platform + ' 7'
+prom_cfg_dir = '/reg/g/psdm/psdatmgr/etc/config/prom'
+data_dir = '/ffb01/claus'
+
+task_set = 'taskset 0xffbfeffbfe '
+std_opts = '-P tst -d /dev/datadev_0 -C '+collect_host+' -M '+prom_cfg_dir+' -o '+data_dir
+
+drp_cmd = task_set+'drp '+std_opts+' -l 0x1'
+bld_cmd = task_set+'drp_bld '+std_opts
+pva_cmd = task_set+'drp_pva '+std_opts+' DAQ:LAB2:PVCAM'
+ea_cmd  = task_set+'epicsArch '+std_opts+' /reg/neh/home/claus/lclsii/daq/runs/eb/epicsArch.txt'
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+ {                         id:'groupca',     flags:'s',   conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
+ {                         id:'modca1',                   conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:1'},
+ {                         id:'modca2',                   conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
+ { host: collect_host,     id:'control',     flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P tst -S 1'},
+ {                         id:'control_gui', flags:'p',   conda:conda_rel,                cmd:'control_gui -H '+collect_host},
+
+ # TEB
+ { host: 'drp-tst-dev016', id:'teb16',       flags:'sxpu', conda:conda_rel, cmd:'teb -P tst -C '+collect_host+' -M '+prom_cfg_dir},
+
+ # MEB
+ { host: 'drp-tst-dev019', id:'meb19',       flags:'sxpu', conda:conda_rel, cmd:'monReqServer -P tst -d -q 4 -C '+collect_host+' -M '+prom_cfg_dir},
+
+ # BLD
+ #{ host: 'drp-tst-dev018', id:'bld_18',       flags:'xpu', conda:conda_rel, env:epics_env, cmd:bld_cmd},
+
+ # PVA
+ #{ host: 'drp-tst-dev015', id:'pva_15',       flags:'xpu', conda:conda_rel, env:epics_env, cmd:pva_cmd},
+
+ # EpicsArch
+ { host: 'drp-tst-dev015', id:'ea_15',        flags:'xpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
+
+ # HSD: 6.4 GS/s digitizer (DEV06_3E)
+ #{ port:'29074',           id:'hsdpvs_3e_a', flags:'s',   conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+hsd_epics_dev06+'_3E:A'},
+ #{ port:'29075',           id:'hsdpvs_3e_b', flags:'s',   conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+hsd_epics_dev06+'_3E:B'},
+ #{                         id:'hsdpva_3e',   flags:'',    conda:conda_rel, env:epics_env, cmd:'hsdpva '+hsd_epics_dev06+'_3E:A'},
+ #{                         id:'hsdpvb_3e',   flags:'',    conda:conda_rel, env:epics_env, cmd:'hsdpva '+hsd_epics_dev06+'_3E:B'},
+ #{ host: 'daq-tst-dev06',  id:'hsdioc_3e',   flags:'x',   conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P '+hsd_epics_dev06+'_3E -d /dev/pcie_adc_3e'},
+ #
+ #{ host: 'drp-tst-dev022', id:'xpphsd_0',    flags:'xpu', conda:conda_rel, cmd:drp_cmd+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3E:A'},
+ #{ host: 'drp-tst-dev023', id:'xpphsd_1',    flags:'xpu', conda:conda_rel, cmd:drp_cmd+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3E:B'},
+
+ # Timing System
+ #{ host: 'drp-tst-dev003', id:'xppts_0', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D TimingSystem' },
+
+ # Cams
+ #{ host: 'drp-tst-dev001', id:'cam_1',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ #{ host: 'drp-tst-dev002', id:'cam_2',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ #{ host: 'drp-tst-dev004', id:'cam_4',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ #{ host: 'drp-tst-dev005', id:'cam_5',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ #{ host: 'drp-tst-dev008', id:'cam_8',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ #{ host: 'drp-tst-dev009', id:'cam_9',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ #{ host: 'drp-tst-dev011', id:'cam_11', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ #{ host: 'drp-tst-dev012', id:'cam_12', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ #{ host: 'drp-tst-dev013', id:'cam_13', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ #{ host: 'drp-tst-dev014', id:'cam_14', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ #{ host: 'drp-tst-dev015', id:'cam_15', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ #{ host: 'drp-tst-dev017', id:'cam_17', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ #{ host: 'drp-tst-dev018', id:'cam_18', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+
+ # procstat
+ {                         id:'procstat',    flags:'p',   conda:conda_rel,                cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+]

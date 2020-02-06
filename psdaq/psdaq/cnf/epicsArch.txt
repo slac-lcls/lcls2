@@ -1,0 +1,11 @@
+# A test CA PV
+*a_test_CA_PV
+claus:ca:arch:vec1   ca
+
+# A test PVA PV
+*a_test_PVA_PV
+claus:pva:arch:vec1  pva
+
+# Test with a changing PVA PV
+*LAB3_XPM_1_RecClk
+DAQ:LAB2:XPM:1:RecClk pva

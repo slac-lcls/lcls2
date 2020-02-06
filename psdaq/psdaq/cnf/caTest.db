@@ -1,0 +1,5 @@
+record(waveform, "claus:ca:arch:vec1") {
+  info("archiver", "scan;10")
+  field(NELM, "32")
+  field(FTVL, "DOUBLE")
+}
