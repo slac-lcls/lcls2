@@ -77,14 +77,14 @@ class hsd_raw_2_3_42(DetectorImpl):
         else:
             return self._segments(evt)[0].waveform
 
-class xtcav_raw_4_5_6(DetectorImpl):
+class camera_raw_0_0_1(DetectorImpl):
     def __init__(self, *args):
-        super(xtcav_raw_4_5_6, self).__init__(*args)
-    def raw(self, evt) -> Array2d:
+        super(camera_raw_0_0_1, self).__init__(*args)
+    def array(self, evt) -> Array2d:
         if self._segments(evt) is None:
             return None
         else:
-            return self._segments(evt)[0].raw
+            return self._segments(evt)[0].array
 
 class EnvImpl(DetectorImpl):
     def __init__(self, *args):
