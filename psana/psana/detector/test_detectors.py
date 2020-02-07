@@ -77,6 +77,15 @@ class hsd_raw_2_3_42(DetectorImpl):
         else:
             return self._segments(evt)[0].waveform
 
+class xtcav_raw_4_5_6(DetectorImpl):
+    def __init__(self, *args):
+        super(xtcav_raw_4_5_6, self).__init__(*args)
+    def raw(self, evt) -> Array2d:
+        if self._segments(evt) is None:
+            return None
+        else:
+            return self._segments(evt)[0].raw
+
 class EnvImpl(DetectorImpl):
     def __init__(self, *args):
         det_name, self._var_name, drp_class_name, configs, calibs, self._env_store = args
