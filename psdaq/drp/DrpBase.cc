@@ -196,6 +196,10 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
     }
     uint64_t pulseId = dgram->pulseId();
+    if (pulseId == 0) {
+      logging::critical("%spulseId %14lx, ts %d.%09d, tid %d, env %08x%s\n",
+                        RED_ON, pulseId, dgram->time.seconds(), dgram->time.nanoseconds(), dgram->service(), dgram->env, RED_OFF);
+    }
 
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
         logging::critical("%sjumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
@@ -204,7 +208,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     }
 
     if (pulseId != result.pulseId()) {
-        logging::critical("timestamps don't match");
+        logging::critical("pulseIds don't match");
         logging::critical("index %u  previous index %u", index, m_lastIndex);
         uint64_t tPid = pulseId;
         uint64_t rPid = result.pulseId();
@@ -543,7 +547,8 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     m_tPrms.contractor = 0;             // Overridden during Configure
 
     // Build readout group mask for ignoring other partitions' RoGs
-    m_para.rogMask = 0x00ff0000 | ((1 << Pds::Eb::NUM_READOUT_GROUPS) - 1);
+    // Also prepare the mask for placing the service bits at the top of Env
+    m_para.rogMask = 0x00ff0000;
     for (auto it : body["drp"].items()) {
         unsigned rog = unsigned(it.value()["det_info"]["readout"]);
         if (rog < Pds::Eb::NUM_READOUT_GROUPS - 1) {
