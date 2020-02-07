@@ -147,6 +147,32 @@ class DaqControl:
         return oldjson.dumps(dst, sort_keys=True, indent=4)
 
     #
+    # DaqControl.storeJsonConfig - store json configuration
+    #
+    def storeJsonConfig(self, json_data):
+        retval = {}
+        body = {"json_data": json_data}
+        try:
+            msg = create_msg('storejsonconfig', body=body)
+            self.front_req.send_json(msg)
+            reply = self.front_req.recv_json()
+        except zmq.Again:
+            logging.error('storeJsonConfig() timeout (%.1f sec)' % (self.timeout / 1000.))
+            logging.info('storeJsonConfig() reinitializing zmq socket')
+            self.front_req_init()
+        except Exception as ex:
+            logging.error('storeJsonConfig() Exception: %s' % ex)
+        except KeyboardInterrupt:
+            print('KeyboardInterrupt')
+        else:
+            try:
+                retval = reply['body']
+            except KeyError:
+                pass
+
+        return retval
+
+    #
     # DaqControl.selectPlatform - select platform
     #
     def selectPlatform(self, body):
@@ -661,6 +687,7 @@ class CollectionManager():
             'selectplatform': self.handle_selectplatform,
             'getinstrument': self.handle_getinstrument,
             'getstate': self.handle_getstate,
+            'storejsonconfig': self.handle_storejsonconfig,
             'getstatus': self.handle_getstatus
         }
         self.lastTransition = 'reset'
@@ -1279,6 +1306,17 @@ class CollectionManager():
     def handle_getstatus(self, body):
         logging.debug('handle_getstatus()')
         return self.status_msg()
+
+    def handle_storejsonconfig(self, body):
+        logging.debug('handle_storejsonconfig()')
+        try:
+            with open(self.activedetfilename, 'w') as f:
+                print('%s' % body["json_data"], file=f)
+        except Exception as ex:
+            msg = 'handle_storejsonconfig(): %s' % ex
+            logging.error(msg)
+            return error_msg(msg)
+        return {}
 
     def handle_getinstrument(self, body):
         logging.debug('handle_getinstrument()')
