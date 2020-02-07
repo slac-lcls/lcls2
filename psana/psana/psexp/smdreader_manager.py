@@ -45,7 +45,7 @@ class SmdReaderManager(object):
         assert self.n_files > 0
         self.run = run
         
-        self.n_events = int(os.environ.get('PS_SMD_N_EVENTS', 1000))
+        self.n_events = int(os.environ.get('PS_SMD_N_EVENTS', 15000))
         if self.run.max_events:
             if self.run.max_events < self.n_events:
                 self.n_events = self.run.max_events
