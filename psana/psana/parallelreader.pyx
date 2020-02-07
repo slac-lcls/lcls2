@@ -44,8 +44,6 @@ cdef class ParallelReader:
     
     cdef void _reset_buffers(self, Buffer* bufs):
         cdef Py_ssize_t i
-        #cdef uint64_t[:] ts_view
-        #cdef uint64_t[:] next_offset_view
         cdef Buffer* buf
         for i in range(self.nfiles):
             buf = &(bufs[i])
@@ -55,10 +53,6 @@ cdef class ParallelReader:
             buf.timestamp = 0
             buf.needs_reread = 0
             buf.lastget_offset = 0
-            #ts_view = buf.ts_arr
-            #ts_view[:] = 0
-            #next_offset_view = buf.next_offset_arr
-            #next_offset_view[:] = 0
 
     cdef void just_read(self):
         cdef Py_ssize_t i = 0
