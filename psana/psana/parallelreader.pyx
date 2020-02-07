@@ -67,8 +67,7 @@ cdef class ParallelReader:
         
         self._reset_buffers(self.step_bufs) # step buffers always get reset when read
 
-        #for i in prange(self.nfiles, nogil=True):
-        for i in range(self.nfiles):
+        for i in prange(self.nfiles, nogil=True):
             buf = &(self.bufs[i])
             step_buf = &(self.step_bufs[i])
             
