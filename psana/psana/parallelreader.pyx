@@ -34,38 +34,31 @@ cdef class ParallelReader:
 
     cdef void _init_buffers(self):
         cdef Py_ssize_t i
-        self._reset_buffers()
+        self._reset_buffers(self.bufs)
+        self._reset_buffers(self.step_bufs)
         for i in prange(self.nfiles, nogil=True):
             self.bufs[i].chunk = <char *>malloc(self.chunksize)
             self.step_bufs[i].chunk = <char *>malloc(self.chunksize)
             self.bufs[i].got = read(self.file_descriptors[i], self.bufs[i].chunk, self.chunksize)
 
     
-    cdef void _reset_buffers(self):
+    cdef void _reset_buffers(self, Buffer* bufs):
         cdef Py_ssize_t i
-        cdef uint64_t[:] ts_view
-        cdef uint64_t[:] next_offset_view
+        #cdef uint64_t[:] ts_view
+        #cdef uint64_t[:] next_offset_view
+        cdef Buffer* buf
         for i in range(self.nfiles):
-            self.bufs[i].got = 0
-            self.bufs[i].offset = 0
-            self.bufs[i].nevents = 0
-            self.bufs[i].timestamp = 0
-            self.bufs[i].needs_reread = 0
-            self.bufs[i].lastget_offset = 0
-            ts_view = self.bufs[i].ts_arr
-            ts_view[:] = 0
-            next_offset_view = self.bufs[i].next_offset_arr
-            next_offset_view[:] = 0
-            self.step_bufs[i].got = 0
-            self.step_bufs[i].offset = 0
-            self.step_bufs[i].nevents = 0
-            self.step_bufs[i].timestamp = 0
-            self.step_bufs[i].needs_reread = 0
-            self.step_bufs[i].lastget_offset = 0
-            ts_view = self.step_bufs[i].ts_arr
-            ts_view[:] = 0
-            next_offset_view = self.step_bufs[i].next_offset_arr
-            next_offset_view[:] = 0
+            buf = &(bufs[i])
+            buf.got = 0
+            buf.offset = 0
+            buf.nevents = 0
+            buf.timestamp = 0
+            buf.needs_reread = 0
+            buf.lastget_offset = 0
+            #ts_view = buf.ts_arr
+            #ts_view[:] = 0
+            #next_offset_view = buf.next_offset_arr
+            #next_offset_view[:] = 0
 
     cdef void just_read(self):
         cdef Py_ssize_t i = 0
@@ -77,8 +70,11 @@ cdef class ParallelReader:
         cdef Buffer* step_buf
         cdef uint64_t payload = 0
         cdef unsigned service = 0
+        
+        self._reset_buffers(self.step_bufs) # step buffers always get reset when read
 
-        for i in prange(self.nfiles, nogil=True):
+        #for i in prange(self.nfiles, nogil=True):
+        for i in range(self.nfiles):
             buf = &(self.bufs[i])
             step_buf = &(self.step_bufs[i])
             
@@ -89,8 +85,14 @@ cdef class ParallelReader:
             if buf.needs_reread == 1:
                 remaining = buf.got - buf.offset
                 memcpy(buf.chunk, buf.chunk + buf.offset, remaining)
+                
+                # MONA: TODO there's a chance that below read will be wrong,
+                # if the next part of the dgram cannot be read out in one retry (1s).
+                # The next read will replace the remaining - possible segfault
+                # when try to create Dgram.
                 got = read(self.file_descriptors[i], buf.chunk + remaining, \
                         self.chunksize - remaining)
+                
                 buf.got = remaining + got
                 buf.needs_reread = 0
                 buf.offset = 0

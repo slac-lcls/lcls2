@@ -66,7 +66,7 @@ class SmdReaderManager(object):
         
         cn_retries = 0
         while self.smdr.got_events==0:
-            self.smdr.get()
+            self.smdr.retry()
             cn_retries += 1
             if cn_retries == max_retries:
                 break

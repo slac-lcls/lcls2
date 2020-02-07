@@ -244,28 +244,7 @@ class Smd0(object):
             self.step_hist.extend_buffers(step_views, rankreq[0])
 
             smd_extended = repack_for_eb(smd_chunk, missing_step_views, self.run.configs)
-
-
-            """
-            MONA keeps this code for debugging StepHistory
-            from psana.psexp.event_manager import EventManager
-            eb_man = EventBuilderManager(smd_chunk, self.run) 
-            # Build batch of events
-            txt = f'smd0 sent'
-            for smd_batch_dict in eb_man.batches():
-                smd_batch, _ = smd_batch_dict[0]
-                evt_man = EventManager(smd_batch, self.run.configs, \
-                        self.run.dm, filter_fn=self.run.filter_callback)
-                for evt in evt_man:
-                    for d in evt:
-                        if d:
-                            txt += f' {d.timestamp()}:{d.service()}, '
-                        else:
-                            txt += ' None:None, '
-            txt += f'to {rankreq[0]}'
-            print(txt)
-            """
-
+            
             self.run.comms.smd_comm.Send(smd_extended, dest=rankreq[0])
         
         for i in range(self.run.comms.n_smd_nodes):

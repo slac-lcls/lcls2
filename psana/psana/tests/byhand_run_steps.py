@@ -24,7 +24,7 @@ class Test:
 
         # MONA: FIXME commented this out until StepHistory is working properly
         # Test multiple EventBuilder with multiple Bigata cores
-        #env['PS_SMD_NODES'] = '2'
-        #run_steps = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_steps.py')
-        #subprocess.check_call(['mpirun','-n','7','python',run_steps], env=env)
+        env['PS_SMD_NODES'] = '2'
+        run_steps = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_steps.py')
+        subprocess.check_call(['mpirun','-n','7','python',run_steps], env=env)
 

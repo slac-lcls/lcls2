@@ -146,7 +146,8 @@ if __name__ == "__main__":
             (20, 1, 0), \
             (19, 1, 0), \
             (1, 1, my_filter), (1, 1, 0), \
-            (3, 4, my_filter), (3, 4, 0), \
+            (3, 4, my_filter), 
+            (3, 4, 0), \
              ]
     
     for test_case in test_cases:

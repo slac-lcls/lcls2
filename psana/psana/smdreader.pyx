@@ -46,17 +46,6 @@ cdef class SmdReader:
             self.min_ts = self.prl_reader.bufs[winner].ts_arr[0]
             self.max_ts = self.prl_reader.bufs[winner].ts_arr[self.got_events-1]
         
-        """
-        MONA keeps this code for debugging
-        for i in range(self.prl_reader.nfiles):
-            min_ts = 0
-            max_ts = 0
-            if self.prl_reader.bufs[i].nevents > 0:
-                min_ts = self.prl_reader.bufs[i].ts_arr[0]
-                max_ts = self.prl_reader.bufs[i].ts_arr[self.prl_reader.bufs[i].nevents-1]
-            print(f'smdreader buf[{i}] #evt={self.prl_reader.bufs[i].nevents} min_ts={min_ts} max_ts={max_ts}')
-        """
-        
     def view(self, int buf_id, int step=0):
         """ Returns memoryview of the buffer object.
 
@@ -94,3 +83,10 @@ cdef class SmdReader:
     @property
     def max_ts(self):
         return self.max_ts
+    
+    def retry(self):
+        self.prl_reader._reset_buffers(self.prl_reader.bufs)
+        cdef int i
+        for i in range(self.prl_reader.nfiles):
+            self.prl_reader.bufs[i].needs_reread = 1
+        self.get()
