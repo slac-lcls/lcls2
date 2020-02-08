@@ -30,7 +30,7 @@ Created on 2019-03-25 by Mikhail Dubrovin
 from psalg.configdb.configdb import configdb
 
 def get_configdb(uri_suffix="mcbrowne:psana@psdb-dev:9306", inst='TMO') :
-    return configdb(uri_suffix, inst)
+    return configdb(uri_suffix, inst, root='configDB')
 
 #--------------------
 

@@ -176,14 +176,14 @@ void EbReceiver::resetCounters()
 void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
 {
     size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
-    m_fileWriter.writeEvent(dgram, size);
+    m_fileWriter.writeEvent(dgram, size, dgram->time);
 
     // small data writing
     Smd smd;
     XtcData::NamesId namesId(m_nodeId, NamesIndex::OFFSETINFO);
     XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, m_offset, size,
             m_smdWriter.namesLookup, namesId);
-    m_smdWriter.writeEvent(smdDgram, sizeof(XtcData::Dgram) + smdDgram->xtc.sizeofPayload());
+    m_smdWriter.writeEvent(smdDgram, sizeof(XtcData::Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
     m_offset += size;
 }
 

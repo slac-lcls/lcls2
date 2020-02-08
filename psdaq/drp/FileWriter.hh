@@ -4,6 +4,7 @@
 #include <vector>
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/TimeStamp.hh"
 
 namespace Drp {
 
@@ -14,10 +15,11 @@ public:
     ~BufferedFileWriter();
     int open(const std::string& fileName);
     int close();
-    void writeEvent(void* data, size_t size);
+    void writeEvent(void* data, size_t size, XtcData::TimeStamp ts);
 private:
     int m_fd;
     size_t m_count;
+    XtcData::TimeStamp m_batch_starttime;
     std::vector<uint8_t> m_buffer;
 };
 

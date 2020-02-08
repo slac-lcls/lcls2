@@ -631,7 +631,6 @@ int main(int argc, char* argv[])
     para.detName = "pva";               // Revisit: Should come from alias?
     para.detSegment = 0;
     para.verbose = 0;
-    char *instrument = NULL;
     int c;
     while((c = getopt(argc, argv, "p:o:C:d:u:P:T::M:v")) != EOF) {
         switch(c) {
@@ -651,7 +650,7 @@ int main(int argc, char* argv[])
                 para.alias = optarg;
                 break;
             case 'P':
-                instrument = optarg;
+                para.instrument = optarg;
                 break;
             case 'T':
                 para.trgDetName = optarg ? optarg : "trigger";
@@ -668,11 +667,11 @@ int main(int argc, char* argv[])
     }
 
     switch (para.verbose) {
-        case 0:  logging::init(instrument, LOG_INFO);     break;
-        default: logging::init(instrument, LOG_DEBUG);    break;
+      case 0:  logging::init(para.instrument.c_str(), LOG_INFO);     break;
+      default: logging::init(para.instrument.c_str(), LOG_DEBUG);    break;
     }
     logging::info("logging configured");
-    if (!instrument) {
+    if (para.instrument.empty()) {
         logging::warning("-P: instrument name is missing");
     }
     // Check required parameters
