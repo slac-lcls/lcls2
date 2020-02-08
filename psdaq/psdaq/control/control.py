@@ -693,39 +693,40 @@ class CollectionManager():
         self.lastTransition = 'reset'
         self.recording = False
 
-        self.collectMachine = Machine(self, DaqControl.states, initial='reset', finalize_event='report_status')
+        self.collectMachine = Machine(self, DaqControl.states, initial='reset')
 
         self.collectMachine.add_transition('reset', '*', 'reset',
-                                           conditions='condition_reset')
+                                           conditions='condition_reset', after='report_status')
         self.collectMachine.add_transition('rollcall', ['reset', 'unallocated'], 'unallocated',
-                                           conditions='condition_rollcall')
+                                           conditions='condition_rollcall', after='report_status')
         self.collectMachine.add_transition('alloc', 'unallocated', 'allocated',
-                                           conditions='condition_alloc')
+                                           conditions='condition_alloc', after='report_status')
         self.collectMachine.add_transition('dealloc', 'allocated', 'unallocated',
-                                           conditions='condition_dealloc')
+                                           conditions='condition_dealloc', after='report_status')
         self.collectMachine.add_transition('connect', 'allocated', 'connected',
-                                           conditions='condition_connect')
+                                           conditions='condition_connect', after='report_status')
         self.collectMachine.add_transition('disconnect', 'connected', 'allocated',
-                                           conditions='condition_disconnect')
+                                           conditions='condition_disconnect', after='report_status')
         self.collectMachine.add_transition('configure', 'connected', 'configured',
-                                           conditions='condition_configure')
+                                           conditions='condition_configure', after='report_status')
         self.collectMachine.add_transition('unconfigure', 'configured', 'connected',
-                                           conditions='condition_unconfigure')
+                                           conditions='condition_unconfigure', after='report_status')
         self.collectMachine.add_transition('beginrun', 'configured', 'starting',
-                                           conditions='condition_beginrun')
+                                           conditions='condition_beginrun', after='report_status')
         self.collectMachine.add_transition('endrun', 'starting', 'configured',
-                                           conditions='condition_endrun')
+                                           conditions='condition_endrun', after='report_status')
         self.collectMachine.add_transition('beginstep', 'starting', 'paused',
-                                           conditions='condition_beginstep')
+                                           conditions='condition_beginstep', after='report_status')
         self.collectMachine.add_transition('endstep', 'paused', 'starting',
-                                           conditions='condition_endstep')
+                                           conditions='condition_endstep', after='report_status')
         self.collectMachine.add_transition('enable', 'paused', 'running',
-                                           after='after_enable',
+                                           after=['after_enable', 'report_status'],
                                            conditions='condition_enable')
         self.collectMachine.add_transition('disable', 'running', 'paused',
                                            before='before_disable',
-                                           conditions='condition_disable')
+                                           conditions='condition_disable', after='report_status')
         # slowupdate is an internal transition
+        # do not report status after slowupdate transition
         self.collectMachine.add_transition('slowupdate', 'running', None,
                                            conditions='condition_slowupdate')
 
