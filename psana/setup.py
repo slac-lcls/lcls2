@@ -23,7 +23,7 @@ sys.argv.remove(arg[0])
 
 # Shorter BUILD_LIST can be used to speedup development loop.
 #Command example: ./build_all.sh -b PEAKFINDER:HEXANODE:CFD -md
-BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY')
+BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY')# ,'XTCAV')
 arg = [arg for arg in sys.argv if arg.startswith('--ext_list')]
 if arg:
     s_exts = arg[0].split('=')[1]
@@ -112,6 +112,10 @@ if 'PSANA' in BUILD_LIST :
                 'hdf5explorer        = psana.graphqt.app.hdf5explorer:hdf5explorer_gui',
                 'screengrabber       = psana.graphqt.ScreenGrabberQt5:run_GUIScreenGrabber',
                 'detnames            = psana.app.detnames:detnames',
+                'xtcavDark           = psana.xtcav.app.xtcavDark',
+                'xtcavLasingOff      = psana.xtcav.app.xtcavLasingOff',
+                'xtcavLasingOn       = psana.xtcav.app.xtcavLasingOn',
+                'xtcavDisplay        = psana.xtcav.app.xtcavDisplay',
              ]
        },
    )
