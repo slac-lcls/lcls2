@@ -51,6 +51,9 @@ def main():
     pvdb[prefix+':FRAMERATE' ] = {'type' : 'float', 'value': 0}
     pvdb[prefix+':RXCLKRATE' ] = {'type' : 'float', 'value': 0}
 
+    pvdb[prefix+':IRQENA' ] = {'type' : 'int', 'value': 0}
+    pvdb[prefix+':EVTCNT' ] = {'type' : 'int', 'value': 0}
+
     for i in range(12):
         prefix = ':CH%u'%i
         pvdb[prefix+':MODE'  ] = {'type' : 'int', 'value': 0}

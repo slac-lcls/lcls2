@@ -30,6 +30,10 @@ static void frame_rates        (TprReg&, bool lcls2);
 static void frame_capture      (TprReg&, char, bool lcls2);
 static void dump_frame         (const uint32_t*);
 static bool parse_frame        (const uint32_t*, uint64_t&, uint64_t&);
+static bool parse_bsa_event    (const uint32_t*, uint64_t&, uint64_t&, 
+                                uint64_t&, uint64_t&, uint64_t&);
+static bool parse_bsa_control  (const uint32_t*, uint64_t&, uint64_t&, 
+                                uint64_t&, uint64_t&, uint64_t&);
 static void generate_triggers  (TprReg&, bool lcls2);
 
 static void usage(const char* p) {
@@ -319,7 +323,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2)
     return;
   }
 
-  unsigned _channel = 0;
+  unsigned _channel = idx;
   unsigned ucontrol = reg.base.channel[_channel].control;
   reg.base.channel[_channel].control = 0;
 
@@ -342,6 +346,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2)
   char* buff = new char[32];
 
   int64_t allrp = q.allwp[idx];
+  int64_t bsarp = q.bsawp;
 
   read(fd, buff, 32);
   usleep(lcls2 ? 20 : 100000);
@@ -378,6 +383,39 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2)
     read(fd, buff, 32);
   } while(1);
 
+
+  uint64_t active, avgdn, update, init, minor, major;
+  nframes = 0;
+  do {
+    while(bsarp < q.bsawp && nframes<10) {
+      const uint32_t* p = reinterpret_cast<const uint32_t*>
+        (&q.bsaq[bsarp &(MAX_TPR_BSAQ-1)].word[0]);
+      if (parse_bsa_control(p, pulseId, timeStamp, init, minor, major)) {
+        printf(" 0x%016llx %9u.%09u I%016llx m%016llx M%016llx\n",
+               (unsigned long long)pulseId, 
+               unsigned(timeStamp>>32), 
+               unsigned(timeStamp&0xffffffff),
+               (unsigned long long)init,
+               (unsigned long long)minor,
+               (unsigned long long)major);
+      }
+      if (parse_bsa_event(p, pulseId, timeStamp, active, avgdn, update)) {
+        printf(" 0x%016llx %9u.%09u A%016llx D%016llx U%016llx\n",
+               (unsigned long long)pulseId, 
+               unsigned(timeStamp>>32), 
+               unsigned(timeStamp&0xffffffff),
+               (unsigned long long)active,
+               (unsigned long long)avgdn,
+               (unsigned long long)update);
+        nframes++;
+      }
+      bsarp++;
+    }
+    if (nframes>=10) 
+      break;
+    read(fd, buff, 32);
+  } while(1);
+
   munmap(ptr, sizeof(Queues));
   close(fd);
 }
@@ -400,10 +438,41 @@ bool parse_frame(const uint32_t* p,
                  uint64_t& pulseId, uint64_t& timeStamp)
 {
   //  char m = p[0]&(0x808<<20) ? 'D':' ';
-  if (((p[0]>>16)&0xf)==0) {
+  if (((p[0]>>16)&0xf)==0) { // EVENT_TAG
     const uint64_t* pl = reinterpret_cast<const uint64_t*>(p+2);
     pulseId = pl[0];
     timeStamp = pl[1];
+    return true;
+  }
+  return false;
+}
+
+bool parse_bsa_event(const uint32_t* p,
+                     uint64_t& pulseId, uint64_t& timeStamp, 
+                     uint64_t& active, uint64_t& avgdone, uint64_t& update)
+{
+  if (((p[0]>>16)&0xf)==2) { // BSAEVNT_TAG
+    const uint64_t* pl = reinterpret_cast<const uint64_t*>(p+1);
+    pulseId   = pl[0];
+    active    = pl[1];
+    avgdone   = pl[2];
+    timeStamp = pl[3];
+    return true;
+  }
+  return false;
+}
+
+bool parse_bsa_control(const uint32_t* p,
+                       uint64_t& pulseId, uint64_t& timeStamp, 
+                       uint64_t& init, uint64_t& minor, uint64_t& major)
+{
+  if (((p[0]>>16)&0xf)==1) { // BSACNTL_TAG
+    const uint64_t* pl = reinterpret_cast<const uint64_t*>(p+1);
+    pulseId   = pl[0];
+    timeStamp = pl[1];
+    init      = pl[2];
+    minor     = pl[3];
+    major     = pl[4];
     return true;
   }
   return false;

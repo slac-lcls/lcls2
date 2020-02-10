@@ -2,6 +2,13 @@ add_library(app SHARED
     AppUtils.cc
 )
 
+add_executable(nulltest nulltest.cc)
+
+target_include_directories(nulltest PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
 add_executable(hpsBldServer hpsBldServer.cc)
 
 target_include_directories(hpsBldServer PUBLIC

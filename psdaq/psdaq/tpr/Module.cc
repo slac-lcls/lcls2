@@ -25,32 +25,29 @@ void TprCsr::dump() const {
 }
 
 void TprBase::dump() const {
-  static const unsigned NChan=12;
-  printf("channel0  [%p]\n",&channel[0].control);
-  printf("control : ");
-  for(unsigned i=0; i<NChan; i++)      printf("%08x ",channel[i].control);
-  printf("\nevtCount: ");
-  for(unsigned i=0; i<NChan; i++)      printf("%08x ",channel[i].evtCount);
-  printf("\nbsaCount: ");
-  for(unsigned i=0; i<NChan; i++)      printf("%08x ",channel[i].bsaCount);
-  printf("\nevtSel  : ");
-  for(unsigned i=0; i<NChan; i++)      printf("%08x ",channel[i].evtSel);
-  printf("\nbsaDelay: ");
-  for(unsigned i=0; i<NChan; i++)      printf("%08x ",channel[i].bsaDelay);
-  printf("\nbsaWidth: ");
-  for(unsigned i=0; i<NChan; i++)      printf("%08x ",channel[i].bsaWidth);
-  //  printf("\nframeCnt: %08x\n",frameCount);
-  //  printf("bsaCnCnt: %08x\n",bsaCntlCount);
+  static const unsigned NChan=14;
+  static const unsigned NTrig=12;
+  printf("\nchannel0  [%p]\n",&channel[0].control);
+#define CHAN_REG(reg) {                                                 \
+    printf("%s: ",#reg);                                                \
+    for(unsigned i=0; i<NChan; i++)    printf("%08x ",channel[i].reg);  \
+    printf("\n"); }
+  CHAN_REG(control);
+  CHAN_REG(evtCount);
+  CHAN_REG(bsaCount);
+  CHAN_REG(evtSel);
+  CHAN_REG(bsaDelay);
+  CHAN_REG(bsaWidth);
   printf("\ntrigger0  [%p]\n",&trigger[0].control);
-  printf("trgCntrl: ");
-  for(unsigned i=0; i<NChan; i++)      printf("%08x ",trigger[i].control);
-  printf("\ntrgDelay: ");
-  for(unsigned i=0; i<NChan; i++)      printf("%08x ",trigger[i].delay);
-  printf("\ntrgWidth: ");
-  for(unsigned i=0; i<NChan; i++)      printf("%08x ",trigger[i].width);
-  printf("\ntrgDelayTap: ");
-  for(unsigned i=0; i<NChan; i++)      printf("%08x ",trigger[i].delayTap);
-  printf("\n");
+#define TRIG_REG(reg) {                                                 \
+    printf("%s: ",#reg);                                                \
+    for(unsigned i=0; i<NTrig; i++)    printf("%08x ",trigger[i].reg);  \
+    printf("\n"); }
+  TRIG_REG(control);
+  TRIG_REG(delay);
+  TRIG_REG(width);
+  TRIG_REG(delayTap);
+#undef TRIG_REG
 }
 
 void TprCsr::setupDma    (unsigned fullThr) {
