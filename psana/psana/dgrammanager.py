@@ -31,13 +31,12 @@ class DgramManager():
         self.shmem_cli = None
         self.shmem_kwargs = {'index':-1,'size':0,'cli_cptr':None}
         self.configs = []
-        self.fds = np.zeros(len(xtc_files), dtype=np.int32)
+        self.fds = np.ones(len(xtc_files), dtype=np.int32) * -1
         self._timestamps = [] # built when iterating 
         self._run = run
 
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
-            assert len(self.xtc_files) > 0
         elif isinstance(xtc_files, (list, np.ndarray)):
             if len(xtc_files) > 0: # handles smalldata-only case
                 if xtc_files[0] == 'shmem':
@@ -56,7 +55,6 @@ class DgramManager():
                     self.configs += [d]
                 else:    
                     self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
-                    assert len(self.xtc_files) > 0
             
         given_configs = True if len(configs) > 0 else False
         
@@ -75,6 +73,7 @@ class DgramManager():
     def __del__(self):
         if self.fds.shape[0] > 0:
             for fd in self.fds:
+                if fd < 0: continue
                 os.close(fd)
 
     def __iter__(self):
