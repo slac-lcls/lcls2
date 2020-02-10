@@ -85,6 +85,9 @@ class camera_raw_0_0_1(DetectorImpl):
             return None
         else:
             return self._segments(evt)[0].array
+    def __call__(self, evt) -> Array2d:
+        """Alias for self.raw(evt)"""
+        return self.array(evt)
 
 class EnvImpl(DetectorImpl):
     def __init__(self, *args):
