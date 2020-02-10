@@ -107,14 +107,7 @@ class EventManager(object):
             smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.run())
             self.cn_events += 1
             if smd_evt.service() == TransitionId.L1Accept:
-                offset_and_size_array = np.zeros((smd_evt._size,2), dtype=np.uint64)
-                for i, d in enumerate(smd_evt):
-                    if d is not None:
-                        offset_and_size_array[i,:] = [d.smdinfo[0].offsetAlg.intOffset, \
-                                d.smdinfo[0].offsetAlg.intDgramSize]
-                    else:
-                        offset_and_size_array[i,:] = [0, 0]
-
+                offset_and_size_array = smd_evt.get_offsets_and_sizes()
                 bd_evt = self.dm.jump(offset_and_size_array[:,0], offset_and_size_array[:,1])
             else:
                 bd_evt = smd_evt
