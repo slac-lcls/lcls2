@@ -32,7 +32,7 @@ logger = logging.getLogger() # need in root to intercept messages from all other
 from random import randint
 
 from PyQt5.QtWidgets import QWidget, QTextEdit, QLabel, QPushButton, QComboBox,\
-                            QHBoxLayout, QVBoxLayout, QFileDialog, QSizePolicy
+                            QHBoxLayout, QVBoxLayout, QFileDialog, QSizePolicy, QSplitter
 from PyQt5.QtGui import QTextCursor, QColor
 from PyQt5.QtCore import Qt, QSize
 from psdaq.control_gui.Styles import style
@@ -59,6 +59,10 @@ MSG_LEVEL_TO_TEXT_COLOR = {'<C>' : Qt.gray,
 
 #------------------------------
 
+def is_error_msg(rec) :
+    return rec.levelname == '<E>'
+
+
 def log_file_name(lfpath='.') :
     """Returns (str) log file name like /reg/g/psdm/logs/calibman/lcls2/20180518T122407-dubrovin.txt
     """
@@ -84,6 +88,7 @@ class QWFilter(logging.Filter) :
         msg = self.qwl.formatter.format(rec)
         self.qwl.set_msg_style(rec.levelname)
         self.qwl.append_qwlogger(msg)
+        if is_error_msg(rec) : self.qwl.append_qwlogger_err(msg)
         #self.print_filter_attributes(rec)
         return True
 
@@ -95,7 +100,6 @@ class QWFilter(logging.Filter) :
         #print('dir(syslog): %s'%dir(self.syslog))
         print(rec.created, rec.name, rec.levelname, rec.msg)
 
-#------------------------------
 #------------------------------
 
 class QWLoggerStd(QWidget) :
@@ -128,7 +132,8 @@ class QWLoggerStd(QWidget) :
         self.dict_name_to_level = logging._nameToLevel
         self.level_names = list(logging._levelToName.values())
         
-        self.edi_txt   = QTextEdit('Logger window')
+        self.edi_txt   = QTextEdit('ALL messages')
+        self.edi_err   = QTextEdit('Error messages')
         self.lab_level = QLabel('Log level:')
         self.but_close = QPushButton('&Close') 
         self.but_save  = QPushButton('&Save log-file') 
@@ -137,9 +142,6 @@ class QWLoggerStd(QWidget) :
         self.cmb_level.addItems(self.level_names)
         self.cmb_level.setCurrentIndex(self.level_names.index(self.log_level))
         
-        self.hboxM = QHBoxLayout()
-        self.hboxM.addWidget(self.edi_txt)
-
         self.hboxB = QHBoxLayout()
         self.hboxB.addStretch(4)     
         self.hboxB.addWidget(self.lab_level)
@@ -149,8 +151,12 @@ class QWLoggerStd(QWidget) :
         self.hboxB.addWidget(self.but_save)
         self.hboxB.addWidget(self.but_close)
 
+        self.vspl = QSplitter(Qt.Vertical)
+        self.vspl.addWidget(self.edi_txt)
+        self.vspl.addWidget(self.edi_err)
+
         self.vbox = QVBoxLayout()
-        self.vbox.addLayout(self.hboxM)
+        self.vbox.addWidget(self.vspl)
         self.vbox.addLayout(self.hboxB)
         self.setLayout(self.vbox)
 
@@ -173,7 +179,7 @@ class QWLoggerStd(QWidget) :
             print('XXX handler:', str(h))
 
         tsfmt='%Y-%m-%dT%H:%M:%S'
-        fmt = '%(levelname)s %(name)s: %(message)s' if level==logging.DEBUG else\
+        fmt = '%(levelname)s %(asctime)s %(name)s: %(message)s' if level==logging.DEBUG else\
               '%(asctime)s %(levelname)s: %(message)s'
               #'%(asctime)s %(levelname)s %(name)s: %(message)s'
 
@@ -250,7 +256,8 @@ class QWLoggerStd(QWidget) :
 
     def set_tool_tips(self):
         #self           .setToolTip('This GUI is for browsing log messages')
-        self.edi_txt    .setToolTip('Window for log messages')
+        self.edi_txt    .setToolTip('Window for ALL messages')
+        self.edi_err    .setToolTip('Window for ERROR messages')
         self.but_close  .setToolTip('Close this window')
         self.but_save   .setToolTip('Save logger content in file')#: '+os.path.basename(self.fname_log.value()))
         self.but_rand   .setToolTip('Inject random message')
@@ -267,6 +274,8 @@ class QWLoggerStd(QWidget) :
         self.cmb_level .setStyleSheet(style.styleButton) 
         self.edi_txt   .setReadOnly(True)
         self.edi_txt   .setStyleSheet(style.styleWhiteFixed) 
+        self.edi_err   .setReadOnly(True)
+        self.edi_err   .setStyleSheet(style.styleYellowish) 
         #self.edi_txt   .ensureCursorVisible()
         #self.lab_title.setAlignment(QtCore.Qt.AlignCenter)
         #self.titTitle.setBold()
@@ -278,9 +287,15 @@ class QWLoggerStd(QWidget) :
         self.but_close .setVisible(self.show_buttons)
 
         #if not self.show_buttons : 
-        self.layout().setContentsMargins(0,0,0,0)
-        self.setMinimumSize(200, 200)
+        self.layout().setContentsMargins(2,2,2,2)
+
+        self.edi_err.setMinimumHeight(50)
+        self.edi_err.setTextColor(MSG_LEVEL_TO_TEXT_COLOR['<E>'])
+
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
+
+        edi_err_hight = 100
+        self.vspl.setSizes((self.vspl.height()-edi_err_hight, edi_err_hight,))
 
 #--------------------
 
@@ -378,6 +393,11 @@ class QWLoggerStd(QWidget) :
 
     def append_qwlogger(self, msg='...'):
         self.edi_txt.append(msg)
+        self.scrollDown()
+
+
+    def append_qwlogger_err(self, msg='...'):
+        self.edi_err.append(msg)
         self.scrollDown()
 
 
