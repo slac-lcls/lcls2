@@ -54,12 +54,12 @@ void ChipAdcReg::setChannels(unsigned ch)
 
 void ChipAdcReg::setupDaq(unsigned partition)
 {
-  acqSelect = (1<<30) | (3<<11) | partition;  // obsolete
-  { unsigned v = control;
-    v &= ~(0xff << 16);
-    v |= (partition&0xf) << 16;
-    v |= (partition&0xf) << 20;
-    control = v; }
+  //  acqSelect = (1<<30) | (3<<11) | partition;  // obsolete
+  // { unsigned v = control;
+  //   v &= ~(0xff << 16);
+  //   v |= (partition&0xf) << 16;
+  //   v |= (partition&0xf) << 20;
+  //   control = v; }
   unsigned v = csr & ~(1<<0);
   csr = v | (1<<0);
 }
@@ -107,21 +107,25 @@ void ChipAdcReg::resetFbPLL()
   usleep(10);
 }
 
-void ChipAdcReg::setLocalId(unsigned v) { localId = v; }
+void ChipAdcReg::setLocalId(unsigned v) 
+{ 
+  //  localId = v; 
+  printf("*** ChipAdcReg::setLocalId deprecated ***\n");
+}
 
 void ChipAdcReg::dump() const
 {
 #define PR(r) printf("%9.9s: %08x\n",#r, r)
 
-  PR(localId);
-  PR(upstreamId);
-  PR(dnstreamId[0]);
+  //  PR(localId);
+  //  PR(upstreamId);
+  //  PR(dnstreamId[0]);
   PR(irqEnable);
   PR(irqStatus);
-  PR(partitionAddr);
+  //  PR(partitionAddr);
   PR(dmaFullThr);
   PR(csr);
-  PR(acqSelect);
+  //  PR(acqSelect);
   PR(control);
   PR(samples);
   PR(prescale);
@@ -130,8 +134,8 @@ void ChipAdcReg::dump() const
   PR(countEnable);
   PR(countInhibit);
   PR(countRead);
-  PR(countStart);
-  PR(countQueue);
+  //  PR(countStart);
+  //  PR(countQueue);
 
 #undef PR
 }

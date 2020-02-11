@@ -3,10 +3,15 @@
 #include "AxisDriver.h"
 #include <unistd.h>
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/mmhw/TriggerEventManager.hh"
 
 using namespace XtcData;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+
+static void dmaReadRegister (int, uint32_t*, uint32_t*);
+static void dmaWriteRegister(int, uint32_t*, uint32_t);
+static bool lverbose = true;
 
 namespace Drp {
 
@@ -22,8 +27,11 @@ json XpmDetector::connectionInfo()
         logging::error("Error opening %s", m_para->device.c_str());
         return json();
     }
+
+    Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
+
     uint32_t reg;
-    dmaReadRegister(fd, 0x00a00008, &reg);
+    dmaReadRegister(fd, &tem->xma().rxId, &reg);
     close(fd);
     // there is currently a failure mode where the register reads
     // back as zero (incorrectly). This is not the best longterm
@@ -60,22 +68,44 @@ void XpmDetector::connect(const json& json, const std::string& collectionId)
     }
 
     int readoutGroup = json["body"]["drp"][collectionId]["det_info"]["readout"];
-    uint32_t v = ((readoutGroup&0xf)<<0) |
-                  ((length&0xffffff)<<4) |
-                  (links<<28);
+
+    Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
+    for(unsigned i=0, l=links; l; i++) {
+      Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
+      if (l&(1<<i)) {
+        dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
+        dmaWriteRegister(fd, &b.group , readoutGroup);
+        dmaWriteRegister(fd, &b.enable, 3           );  // enable
+        l &= ~(1<<i);
+      }
+    }
+
+    dmaWriteRegister(fd, 0x00a00000, (1<<3));   // clear
+
+    uint32_t v = ((length&0xffffff)<<4) | ((links&0xf)<<28);
     dmaWriteRegister(fd, 0x00a00000, v);
+
     uint32_t w;
     dmaReadRegister(fd, 0x00a00000, &w);
     logging::info("Configured readout group [%u], length [%u], links [%x]: [%x](%x)\n",
                   readoutGroup, length, links, v, w);
-    for (unsigned i=0; i<4; i++) {
-        if (links&(1<<i)) {
-            // this is the threshold to assert deadtime (high water mark) for every link
-            // 0x1f00 corresponds to 0x1f free buffers
-            dmaWriteRegister(fd, 0x00800084+32*i, 0x1f00);
-        }
-    }
     close(fd);
 }
 
+}
+
+void dmaReadRegister (int fd, uint32_t* addr, uint32_t* valp)
+{
+  uintptr_t addri = (uintptr_t)addr;
+  dmaReadRegister(fd, addri&0xffffffff, valp);
+  if (lverbose)
+    printf("[%08x] = %08x\n",addri,*valp);
+}
+
+void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
+{
+  uintptr_t addri = (uintptr_t)addr;
+  dmaWriteRegister(fd, addri&0xffffffff, val);
+  if (lverbose)
+    printf("[%08x] %08x\n",addri,val);
 }

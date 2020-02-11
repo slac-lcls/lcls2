@@ -11,6 +11,7 @@
 #include "Jesd204b.hh"
 #include "TprCore.hh"
 
+#include "psdaq/mmhw/TriggerEventManager.hh"
 #include "psdaq/epicstools/EpicsPVA.hh"
 
 #include <algorithm>
@@ -79,15 +80,15 @@ namespace Pds {
           for(unsigned i=4*fmc; i<4*(fmc+1); i++)
             pgp[i]->resetCounts(); }
 
-        unsigned group = PVGET(readoutGroup);
-        reg.setupDaq(group);
-
         _configure_fex(fmc,fex);
 
         printf("Configure done for chip %d\n",fmc);
 
         reg.setChannels(1);
         reg.start();
+
+        unsigned group = PVGET(readoutGroup);
+        _m.tem().det(fmc).start(group);
       }
 
       _ready[fmc]->putFrom<unsigned>(1);
