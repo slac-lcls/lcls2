@@ -59,7 +59,6 @@ class DaqControl:
         'running'
     ]
 
-    default_active = 1
     # default readout group is self.platform
 
     def __init__(self, *, host, platform, timeout):
@@ -1410,7 +1409,7 @@ class CollectionManager():
 
         logging.debug('rollcall: bypass_activedet = %s' % self.bypass_activedet)
         missing_set = required_set.copy()
-        ignored_set = set()
+        newfound_set = set()
         self.cmstate.clear()
         self.ids.clear()
         msg = create_msg('rollcall')
@@ -1424,23 +1423,28 @@ class CollectionManager():
                     continue
                 for level, item in answer['body'].items():
                     alias = item['proc_info']['alias']
+                    responder = level + '/' + alias
                     if not self.bypass_activedet:
-                        responder = level + '/' + alias
                         if responder not in required_set:
-                            if responder not in ignored_set:
-                                self.report_error('Ignoring response from %s, it does not appear in active detectors file' % responder)
-                                ignored_set.add(responder)
-                            continue
-                        if responder not in missing_set:
-                            # ignore duplicate response
-                            continue
+                            if responder not in newfound_set:
+                                logging.info('Received response from %s, it does not appear in active detectors file' % responder)
+                                newfound_set.add(responder)
+                            elif responder not in missing_set:
+                                # ignore duplicate response
+                                continue
                     if level not in self.cmstate:
                         self.cmstate[level] = {}
                     id = answer['header']['sender_id']
                     self.cmstate[level][id] = item
                     if self.bypass_activedet:
-                        # no active detectors file: use default values
-                        self.cmstate[level][id]['active'] = DaqControl.default_active
+                        # active detectors file disabled: default to active=1
+                        self.cmstate[level][id]['active'] = 1
+                        if level == 'drp':
+                            self.cmstate[level][id]['det_info'] = {}
+                            self.cmstate[level][id]['det_info']['readout'] = self.platform
+                    elif responder in newfound_set:
+                        # new detector + active detectors file enabled: default to active=0
+                        self.cmstate[level][id]['active'] = 0
                         if level == 'drp':
                             self.cmstate[level][id]['det_info'] = {}
                             self.cmstate[level][id]['det_info']['readout'] = self.platform
