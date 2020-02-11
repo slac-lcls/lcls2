@@ -17,6 +17,7 @@ from psana.psexp.event_manager import TransitionId
 from psana.psexp.events import Events
 from psana.psexp.ds_base import XtcFileNotFound
 import psana.pscalib.calib.MDBWebUtils as wu
+from psana.pyalgos.generic.edgefinder import EdgeFinder
 
 from psana.psexp.tools import mode
 
@@ -120,6 +121,13 @@ class Run(object):
                 det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibconst, self.esm.stores[alg])
 
         return det
+
+    def Algorithm(self, name):
+        alg = None
+        if name == "edgefinder":
+            alg = EdgeFinder(self)
+        return alg
+
 
     @property
     def detnames(self):
