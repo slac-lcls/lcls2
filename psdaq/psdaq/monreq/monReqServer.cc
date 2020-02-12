@@ -158,7 +158,7 @@ namespace Pds {
   private:
     virtual void _copyDatagram(Dgram* dg, char* buf)
     {
-      //printf("_copyDatagram:   dg = %p, ts = %d.%09d to %p\n",
+      //printf("_copyDatagram:   dg = %p, ts = %u.%09u to %p\n",
       //       dg, dg->time.seconds(), dg->time.nanoseconds(), buf);
 
       // The dg payload is a directory of contributions to the built event.
@@ -185,9 +185,9 @@ namespace Pds {
       while (++ctrb != last);
     }
 
-    virtual void _deleteDatagram(Dgram* dg, int bufIdx)
+    virtual void _deleteDatagram(Dgram* dg, int bufIdx) // Not called for transitions
     {
-      //printf("_deleteDatagram @ %p: ts = %d.%09d\n",
+      //printf("_deleteDatagram @ %p: ts = %u.%09u\n",
       //       dg, dg->time.seconds(), dg->time.nanoseconds());
 
       //if ((bufIdx < 0) || (size_t(bufIdx) >= _bufFreeList.size()))
@@ -209,7 +209,7 @@ namespace Pds {
       {
         if (idx == _bufFreeList.peek(i))
         {
-          printf("Attempted double free of list entry %d: idx %d, bufIdx %d, dg %p, ts %d.%09d\n",
+          printf("Attempted double free of list entry %d: idx %d, bufIdx %d, dg %p, ts %u.%09u\n",
                  i, idx, bufIdx, dg, dg->time.seconds(), dg->time.nanoseconds());
           // Does the dg still need to be freed?  Apparently so.
           Pool::free((void*)dg);
@@ -324,7 +324,7 @@ namespace Pds {
       // Create pool for transferring events to MyXtcMonitorServer
       unsigned    entries = std::bitset<64>(_prms.contributors).count();
       size_t      size    = sizeof(Dgram) + entries * sizeof(Dgram*);
-      GenericPool pool(size, _prms.numEvBuffers);
+      GenericPool pool(size, 1 + _prms.numEvBuffers); // +1 for Transitions
       _pool = &pool;
 
       _eventCount = 0;
@@ -399,13 +399,13 @@ namespace Pds {
         unsigned src = dg->xtc.src.value();
         unsigned env = dg->env;
         printf("MEB processed  %5ld          event  [%5d] @ "
-               "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d\n",
-               _eventCount, idx, dg, ctl, pid, env, sz, src);
+               "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d, ts %u.%09u\n",
+               _eventCount, idx, dg, ctl, pid, env, sz, src, dg->time.seconds(), dg->time.nanoseconds());
       }
 
       if (_apps->events(dg) == XtcMonitorServer::Handled)
       {
-        Pool::free((void*)dg);
+        Pool::free((void*)dg);          // Handled means _deleteDatagram() won't be called
       }
     }
   private:

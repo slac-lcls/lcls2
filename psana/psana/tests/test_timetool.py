@@ -59,8 +59,31 @@ def test_timetool():
     print("covariance  = ",my_cov[0,1]/my_cov[0,0])
     assert nevt==1324
 
+
+def test_timetool_psana():
+    firmware_edges = []
+    software_edges = []
+
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    ds = DataSource(files=os.path.join(dir_path,'test_timetool.xtc2'))
+
+    myrun = next(ds.runs())
+    edge_finder = myrun.Algorithm('edgefinder')
+    
+    for nevt,evt in enumerate(myrun.events()):
+        firmware_edge, software_edge = edge_finder(evt)
+        if firmware_edge:
+            firmware_edges.append(firmware_edge)
+            software_edges.append(software_edge)
+
+    my_cov = np.cov(firmware_edges,software_edges)  #need to separate out clusters of outliers here.
+    print("covariance  = ",my_cov[0,1]/my_cov[0,0])
+    assert nevt==1324
+
+
 if __name__ == "__main__":
     test_timetool()
+    test_timetool_psana()
 
 """
 import numpy as np

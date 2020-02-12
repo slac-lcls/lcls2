@@ -15,7 +15,9 @@ from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.step import Step
 from psana.psexp.event_manager import TransitionId
 from psana.psexp.events import Events
+from psana.psexp.ds_base import XtcFileNotFound
 import psana.pscalib.calib.MDBWebUtils as wu
+from psana.pyalgos.generic.edgefinder import EdgeFinder
 
 from psana.psexp.tools import mode
 
@@ -120,6 +122,13 @@ class Run(object):
 
         return det
 
+    def Algorithm(self, name):
+        alg = None
+        if name == "edgefinder":
+            alg = EdgeFinder(self)
+        return alg
+
+
     @property
     def detnames(self):
         return set([x[0] for x in self.dm.det_class_table.keys()])
@@ -168,18 +177,25 @@ class Run(object):
 
     def _get_runinfo(self):
         """ Gets runinfo from BeginRun event"""
+
+        if not self.configs:
+            err = "Empty configs. It's likely that the location of xtc files is incorrect. Check path of the dir argument in DataSource."
+            raise XtcFileNotFound(err)
+
+        config = self.configs[0]
         beginrun_evt = None
-        if hasattr(self.dm.configs[0].software, 'smdinfo'):
+        if hasattr(config.software, 'smdinfo'):
             # This run has smd files 
             beginrun_evt = next(self.smd_dm) 
-        elif hasattr(self.dm.configs[0].software, 'runinfo'):
+        elif hasattr(config.software, 'runinfo'):
             beginrun_evt = next(self.dm)
         
         if not beginrun_evt: return
 
-        if hasattr(beginrun_evt._dgrams[0], 'runinfo'): # some xtc2 do not have BeginRun
-            self.expt = beginrun_evt._dgrams[0].runinfo[0].runinfo.expt 
-            self.runnum = beginrun_evt._dgrams[0].runinfo[0].runinfo.runnum
+        beginrun_dgram = beginrun_evt._dgrams[0]
+        if hasattr(beginrun_dgram, 'runinfo'): # some xtc2 do not have BeginRun
+            self.expt = beginrun_dgram.runinfo[0].runinfo.expt 
+            self.runnum = beginrun_dgram.runinfo[0].runinfo.runnum
             self.timestamp = beginrun_evt.timestamp
 
 
