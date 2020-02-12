@@ -324,7 +324,7 @@ namespace Pds {
       // Create pool for transferring events to MyXtcMonitorServer
       unsigned    entries = std::bitset<64>(_prms.contributors).count();
       size_t      size    = sizeof(Dgram) + entries * sizeof(Dgram*);
-      GenericPool pool(size, TransitionId::NumberOf + _prms.numEvBuffers);
+      GenericPool pool(size, 1 + _prms.numEvBuffers); // +1 for Transitions
       _pool = &pool;
 
       _eventCount = 0;
