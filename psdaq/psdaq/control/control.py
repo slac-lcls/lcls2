@@ -2,7 +2,7 @@ import os
 import time
 import copy
 import socket
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import json as oldjson
 import zmq
 import zmq.utils.jsonapi as json
@@ -263,6 +263,10 @@ class DaqControl:
                     # return 'fileReport', path, 'error', 'error'
                     return 'fileReport', msg['body']['path'], 'error', 'error'
 
+                elif msg['header']['key'] == 'progress':
+                    # return 'progress', transition, elapsed, total
+                    return 'progress', msg['body']['transition'], msg['body']['elapsed'], msg['body']['total']
+
             except KeyboardInterrupt:
                 break
 
@@ -521,6 +525,10 @@ def error_msg(message):
 def fileReport_msg(path):
     body = {'path': path}
     return create_msg('fileReport', body=body)
+
+def progress_msg(transition, elapsed, total):
+    body = {'transition': transition, 'elapsed': int(elapsed), 'total': int(total)}
+    return create_msg('progress', body=body)
 
 def back_pull_port(platform):
     return PORT_BASE + platform
@@ -1385,6 +1393,12 @@ class CollectionManager():
                 retval.add(level + "/" + alias)
         return retval
 
+    def progressReport(self, transition, begin_time, end_time):
+        elapsed = (datetime.now(timezone.utc) - begin_time).total_seconds()
+        total   = (end_time - begin_time).total_seconds()
+        self.front_pub.send_json(progress_msg(transition, elapsed, total))
+        return
+
     def condition_rollcall(self):
         global report_keys
         retval = False
@@ -1413,8 +1427,9 @@ class CollectionManager():
         self.cmstate.clear()
         self.ids.clear()
         msg = create_msg('rollcall')
-        poll_time = begin_time = datetime.now(timezone.utc)
-        while (poll_time - begin_time).total_seconds() < self.rollcall_timeout:
+        begin_time = datetime.now(timezone.utc)
+        end_time = begin_time + timedelta(seconds=self.rollcall_timeout)
+        while datetime.now(timezone.utc) < end_time:
             self.back_pub.send_multipart([b'all', json.dumps(msg)])
             time.sleep(1.0)
             for answer in wait_for_answers(self.back_pull, 1, msg['header']['msg_id']):
@@ -1457,7 +1472,7 @@ class CollectionManager():
             self.subtract_clients(missing_set)
             if not missing_set:
                 break
-            poll_time = datetime.now(timezone.utc)
+            self.progressReport('rollcall', begin_time, end_time)
 
         if missing_set:
             for client in missing_set:

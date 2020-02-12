@@ -90,6 +90,8 @@ def main():
                 print('error: %s' % part2)
             elif part1 == 'fileReport':
                 print('data file: %s' % part2)
+            elif part1 == 'progress':
+                print('progress: %s (%d/%d)' % (part2, part3, part4))
             else:
                 print('transition: %-11s  state: %-11s  config: %s  recording: %s' % (part1, part2, part3, part4))
 
