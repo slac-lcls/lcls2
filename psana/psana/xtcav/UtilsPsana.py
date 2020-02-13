@@ -58,15 +58,22 @@ def getXTCAVImageROI(evt):
 
     for i in range(len(Constants.ROI_SIZE_X_names)):
         try:
-            roiXN=psana.Detector(Constants.ROI_SIZE_X_names[i])
-            roiX=psana.Detector(Constants.ROI_START_X_names[i])
-            roiYN=psana.Detector(Constants.ROI_SIZE_Y_names[i])
-            roiY=psana.Detector(Constants.ROI_START_Y_names[i])
+            # LCLS1:
 
-            xN = roiXN(evt)  #Size of the image in X                           
-            x0 = roiX(evt)    #Position of the first pixel in x
-            yN = roiYN(evt)  #Size of the image in Y 
-            y0 = roiY(evt)    #Position of the first pixel in y
+            #roiXN=psana.Detector(Constants.ROI_SIZE_X_names[i])
+            #roiX=psana.Detector(Constants.ROI_START_X_names[i])
+            #roiYN=psana.Detector(Constants.ROI_SIZE_Y_names[i])
+            #roiY=psana.Detector(Constants.ROI_START_Y_names[i])
+
+            #xN = roiXN(evt)  #Size of the image in X                           
+            #x0 = roiX(evt)   #Position of the first pixel in x
+            #yN = roiYN(evt)  #Size of the image in Y 
+            #y0 = roiY(evt)   #Position of the first pixel in y
+
+            xN = Constants.ROI_SIZE_X  #Size of the image in X                           
+            x0 = Constants.ROI_START_X #Position of the first pixel in x
+            yN = Constants.ROI_SIZE_Y  #Size of the image in Y 
+            y0 = Constants.ROI_START_Y #Position of the first pixel in y
             x = x0+np.arange(0, xN) 
             y = y0+np.arange(0, yN) 
 

@@ -15,13 +15,13 @@ import warnings
 import psana.xtcav.Utils as xtu
 import psana.xtcav.UtilsPsana as xtup
 import psana.xtcav.SplittingUtils as su
-import psana.xtcav.Constants
+import psana.xtcav.Constants as Constants
 from   psana.xtcav.DarkBackgroundReference import *
 from   psana.xtcav.LasingOffReference import *
 from   psana.xtcav.CalibrationPaths import *
 
 
-class LasingOnCharacterization(object):
+class LasingOnCharacterization():
 
     """
     Class that can be used to reconstruct the full X-Ray power time profile for single or multiple bunches, relying on the presence of a dark background reference, and a lasing off reference. (See GenerateDarkBackground and Generate LasingOffReference for more information)

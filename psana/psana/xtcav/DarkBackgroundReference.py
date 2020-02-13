@@ -1,7 +1,12 @@
+
+import logging
+logger = logging.getLogger(__name__)
+
 import copy
 import os
 import time
-import psana
+#import psana
+from psana import DataSource
 import numpy as np
 import glob
 import sys
@@ -11,8 +16,9 @@ import psana.xtcav.UtilsPsana as xtup
 from psana.xtcav.FileInterface import Load as constLoad
 from psana.xtcav.FileInterface import Save as constSave
 from psana.xtcav.CalibrationPaths import *
-import psana.xtcav.Constants as Cn
+import psana.xtcav.Constants as cons
 from psana.xtcav.Utils import namedtuple, ROIMetrics  
+from psana.pyalgos.generic.NDArrUtils import info_ndarr
 """
     Class that generates a dark background image for XTCAV reconstruction purposes. Essentially takes valid
     dark reference images and averages them to find the "average" camera background. It is recommended to use a 
@@ -26,15 +32,21 @@ from psana.xtcav.Utils import namedtuple, ROIMetrics
         first run number used to generate the reference and the last run.
 """
 
-class DarkBackgroundReference(object):
+class DarkBackgroundReference():
     def __init__(self, 
-        experiment='amoc8114', 
-        max_shots=401, 
-        run_number='86', 
+        fname='/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0104-e000400-xtcav.xtc2',
+        experiment='amox23616', 
+        run_number='104', 
+        max_shots=400, 
         start_image=0,
         validity_range=None, 
         calibration_path='',
         save_to_file=True):
+
+        #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s' # '%(message)s'
+        fmt='[%(levelname).1s] L%(lineno)04d : %(message)s'
+        logging.basicConfig(format=fmt, datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
+
 
         self.image=None
         self.ROI=None
@@ -44,7 +56,6 @@ class DarkBackgroundReference(object):
             experiment = experiment, max_shots = max_shots, run_number = run_number, 
             validity_range = validity_range, calibration_path = calibration_path)
 
-        
         warnings.filterwarnings('always',module='Utils',category=UserWarning)
         warnings.filterwarnings('ignore',module='Utils',category=RuntimeWarning, message="invalid value encountered in divide")
         
@@ -52,44 +63,49 @@ class DarkBackgroundReference(object):
         After setting all the parameters, this method has to be called to generate the dark reference and 
         save it in the proper location. 
         """
-        print('dark background reference')
-        print('\t Experiment: %s' % self.parameters.experiment)
-        print('\t Run: %s' % self.parameters.run_number)
-        print('\t Valid shots to process: %d' % self.parameters.max_shots)
+        logger.info('dark background reference')
+        logger.info('\t Data file: %s' % fname)
+        logger.info('\t Experiment: %s' % self.parameters.experiment)
+        logger.info('\t Run: %s' % self.parameters.run_number)
+        logger.info('\t Valid shots to process: %d' % self.parameters.max_shots)
+        logger.info('\t Detector name: %s' % cons.SRC)
         
         #Loading the dataset from the "dark" run, this way of working should be compatible with both xtc and hdf5 files
-        dataSource=psana.DataSource("exp=%s:run=%s:idx" % (self.parameters.experiment, self.parameters.run_number))
+        ds=DataSource(files=fname)
         
+        run = next(ds.runs())
         #Camera and type for the xtcav images
-        xtcav_camera = psana.Detector(Cn.SRC)
-        
+        xtcav_camera = run.Detector(cons.SRC)
+        logger.info('\t RunInfo expt: %s runnum: %d\n' % (run.expt, run.runnum))
+
         #Stores for environment variables    
-        configStore=dataSource.env().configStore()
-        epicsStore=dataSource.env().epicsStore()
+        #configStore=dataSource.env().configStore()
+        #epicsStore=dataSource.env().epicsStore()
 
-        n=0  #Counter for the total number of xtcav images processed 
-        run = dataSource.runs().next()     
-        
         roi_xtcav, first_image = self._getCalibrationValues(run, xtcav_camera, start_image)
+        logger.info('\t roi_xtcav: '+str(roi_xtcav))
         accumulator_xtcav = np.zeros((roi_xtcav.yN, roi_xtcav.xN), dtype=np.float64)
-        
-        times = run.times()  
-        for t in range(first_image, len(times)):
-            evt=run.event(times[t])
-            img = xtcav_camera.image(evt)
 
-            # skip if empty image
-            if img is None: 
-                continue
-          
+        n=0 #Counter for the total number of xtcav images processed 
+        for nev,evt in enumerate(run.events()):
+
+            #print('Event %03d'%nev, end='')
+
+            img = xtcav_camera.raw(evt)
+            if img is None: continue
+
+            #logger.info(info_ndarr(img, '  img:'))
+
             accumulator_xtcav += img 
             n += 1
                 
             if n % 5 == 0:
-                sys.stdout.write('\r%.1f %% done, %d / %d' % (float(n) / self.parameters.max_shots*100, n, self.parameters.max_shots ))
+                sys.stdout.write('\r%.1f %% done, %d / %d' % (float(n) / self.parameters.max_shots*100, n, self.parameters.max_shots))
                 sys.stdout.flush()   
-            if n >= self.parameters.max_shots:                    #After a certain number of shots we stop (Ideally this would be an argument, rather than a hardcoded value)
+            if n >= self.parameters.max_shots:
                 break                          
+
+
         #At the end of the program the total accumulator is saved 
         sys.stdout.write('\nMaximum number of images processed\n') 
         self.image=accumulator_xtcav/n
@@ -99,42 +115,60 @@ class DarkBackgroundReference(object):
             self.parameters = self.parameters._replace(validity_range=(self.parameters.run_number, 'end'))
         elif len(self.parameters.validity_range) == 1:
             self.parameters = self.parameters._replace(validity_range=(self.parameters.validity_range[0], 'end'))
-            
-        if save_to_file:
-            cp = CalibrationPaths(dataSource.env(), self.parameters.calibration_path)
-            file = cp.newCalFileName(Cn.DB_FILE_NAME, self.parameters.validity_range[0], self.parameters.validity_range[1])
-            self.save(file)
 
+        logger.info(info_ndarr(self.image, 'averaged raw:'))
+
+        logger.info('self.parameters: %s' % str(self.parameters))
+
+        if save_to_file:
+            #cp = CalibrationPaths(dataSource.env(), self.parameters.calibration_path)
+            #fname = cp.newCalFileName(cons.DB_FILE_NAME, self.parameters.validity_range[0], self.parameters.validity_range[1])
+            fname = 'cons-%s-%04d-%s-dark.data' % (run.expt, run.runnum, cons.SRC)
+            self.save(fname)
+
+        logger.info('Saved file %s' % fname)
+
+        ###=======================
+        sys.exit('TEST EXIT OK')
+        ###=======================
+            
     
     @staticmethod
     def _getCalibrationValues(run, xtcav_camera, start_image):
         roi_xtcav = None
-        times = run.times()
+        end_of_images = 1e6 # len(times)
 
-        end_of_images = len(times)
-        for t in range(start_image,end_of_images):
-            evt = run.event(times[t])
-            img = xtcav_camera.image(evt)
-            # skip if empty image
-            if img is None: 
-                continue
+        for nev,evt in enumerate(run.events()):
+            logger.info('C-loop event %03d'%nev)
+            img = xtcav_camera.raw(evt)
+            if img is None: continue
+            #logger.info(info_ndarr(img, '  img:'))
             roi_xtcav = xtup.getXTCAVImageROI(evt)
-            
-            if not roi_xtcav:
-                continue
+            if not roi_xtcav : continue
+            return roi_xtcav, nev
 
-            return roi_xtcav, t
-
+        sys.exit('ABORT : _getCalibrationValues detector configuration is not available in the dataset')
         return roi_xtcav, end_of_images
 
 
-    def save(self,path): 
+    def save(self, path): 
         instance = copy.deepcopy(self)
+
+        # LCLS1:
+        #if instance.ROI:
+        #    instance.ROI = dict(vars(instance.ROI))
+        #    instance.parameters = dict(vars(instance.parameters))
+
         if instance.ROI:
-            instance.ROI = dict(vars(instance.ROI))
-            instance.parameters = dict(vars(instance.parameters))
-        constSave(instance,path)
-        
+            instance.ROI = dict(instance.ROI._asdict())
+            instance.parameters = dict(instance.parameters._asdict())
+
+            print('XXX instance.ROI:', instance.ROI)
+            print('XXX instance.parameters:', instance.parameters)
+
+        constSave(instance, path)
+
+
     @staticmethod    
     def load(path):        
         obj = constLoad(path)
@@ -142,7 +176,7 @@ class DarkBackgroundReference(object):
             obj.ROI = ROIMetrics(**obj.ROI)
             obj.parameters = DarkBackgroundParameters(**obj.parameters)
         except (AttributeError, TypeError):
-            print("Could not load Dark Reference with path "+ path+". Try recreating dark reference " +\
+            logger.info("Could not load Dark Reference with path "+ path+". Try recreating dark reference " +\
             "to ensure compatability between versions")
             return None
         return obj
@@ -153,3 +187,7 @@ DarkBackgroundParameters = namedtuple('DarkBackgroundParameters',
      'run_number', 
      'validity_range', 
      'calibration_path'])
+
+#----------
+#----------
+#----------

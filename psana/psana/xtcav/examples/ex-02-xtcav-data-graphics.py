@@ -2,10 +2,11 @@
 """
 """
 from psana.xtcav.examples.ex_utils import data_file, sys
-
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 from psana import DataSource
 import psana.pyalgos.generic.Graphics as gr
+
+print('e.g.: [python] %s [test-number]' % sys.argv[0])
 
 #----------
 
@@ -27,8 +28,8 @@ def test_xtcav_data_access() :
         if nev>10 : break
         print('Event %03d'%nev, end='')
 
-        nda = det.raw.array(evt)
-        print_ndarr(nda, '  det.raw.array(evt):')
+        nda = det.raw(evt)
+        print_ndarr(nda, '  det.raw(evt):')
 
         mean, std = nda.mean(), nda.std()
         aran = (mean-3*std, mean+5*std)

@@ -2,10 +2,10 @@ import h5py
 import numpy
 import logging
 
-class Default(object):
+class Default():
     pass
 
-class ConstantsStore(object):
+class ConstantsStore():
     def __init__(self,obj,file):
         self.f = h5py.File(file,'w')
         self.cwd = ''
@@ -74,7 +74,7 @@ class ConstantsStore(object):
             else:
                 logging.warning('XTCAV FileInterface.py: variable "'+name+'" of type "'+type(obj).__name__+'" not supported')
 
-class ConstantsLoad(object):
+class ConstantsLoad():
     def __init__(self,file):
         self.obj = Default()
         self.f = h5py.File(file,'r')
@@ -130,7 +130,7 @@ def Save(obj,file):
     
     c = ConstantsStore(obj,file)
 
-class ConstTest(object):
+class ConstTest():
     def __init__(self):
         self.parameters= {
             'version' : 0,

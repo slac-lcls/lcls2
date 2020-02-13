@@ -1,7 +1,7 @@
 """
 Detector Names
 """
-SRC = 'XrayTransportDiagnostic.0:Opal1000.0'
+SRC = 'xtcav' # 'XrayTransportDiagnostic.0:Opal1000.0'
 CALIB_GROUP = 'Xtcav::CalibV1' 
 ANALYSIS_VERSION = 'XTCAV_Analysis_Version'
 
@@ -13,6 +13,10 @@ ROI_SIZE_Y_names = ['XTCAV_ROI_sizeY', 'ROI_Y_Length', 'OTRS:DMP1:695:SizeY']
 ROI_START_X_names = ['XTCAV_ROI_startX', 'ROI_X_Offset', 'OTRS:DMP1:695:MinX']
 ROI_START_Y_names = ['XTCAV_ROI_startY', 'ROI_Y_Offset', 'OTRS:DMP1:695:MinY']
 
+ROI_SIZE_X=1024
+ROI_SIZE_Y=1024
+ROI_START_X=0
+ROI_START_Y=0
 
 UM_PER_PIX_names = ['XTCAV_calib_umPerPx','OTRS:DMP1:695:RESOLUTION']
 STR_STRENGTH_names = ['XTCAV_strength_par_S','Streak_Strength','OTRS:DMP1:695:TCAL_X']

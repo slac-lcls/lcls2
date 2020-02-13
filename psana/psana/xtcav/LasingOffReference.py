@@ -12,7 +12,7 @@ import warnings
 import psana.xtcav.Utils as xtu
 import psana.xtcav.UtilsPsana as xtup
 import psana.xtcav.SplittingUtils as su
-import psana.xtcav.Constants
+import psana.xtcav.Constants as Constants
 from   psana.xtcav.CalibrationPaths import *
 from   psana.xtcav.DarkBackgroundReference import *
 from   psana.xtcav.FileInterface import Load as constLoad
@@ -43,7 +43,7 @@ size = comm.Get_size()
         island_split_method (str): island splitting algorithm. Set to 'scipylabel' or 'contourLabel'  The defaults parameter is 'scipylabel'.
 """
 
-class LasingOffReference(object):
+class LasingOffReference():
 
     def __init__(self,
             experiment='amoc8114',  #Experiment label
