@@ -96,7 +96,7 @@ class Run(object):
             if det_name == name:
                 setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configs, self.calibconst[det_name]))
                 setattr(det,'_configs', self.configs)
-                setattr(det,'_calibconst', self.calibconst[det_name])
+                setattr(det,'calibconst', self.calibconst[det_name])
                 setattr(det,'_dettype', self.dm.det_info_table[det_name][0])
                 setattr(det,'_detid', self.dm.det_info_table[det_name][1])
                 flag_found = True
@@ -118,7 +118,7 @@ class Run(object):
                 var_name = name
                 drp_class_name = alg
                 drp_class = self.dm.det_class_table[(det_name, drp_class_name)]
-                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibconst, self.esm.stores[alg])
+                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibconst[det_name], self.esm.stores[alg])
 
         return det
 

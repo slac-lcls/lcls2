@@ -100,7 +100,7 @@ class DLDProcessor :
         txt_cfg   = None
         txt_calib = None
         if DETOBJ is not None :
-            det_consts = DETOBJ._calibconst
+            det_consts = DETOBJ.calibconst
             txt_cfg,   meta_cfg   = det_consts.get(self.CTYPE_CALIBCFG, None)
             txt_calib, meta_calib = det_consts.get(self.CTYPE_CALIBTAB, None)
         else :

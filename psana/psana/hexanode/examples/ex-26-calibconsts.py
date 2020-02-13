@@ -24,8 +24,8 @@ def test_calibconst() :
 
     det = orun.Detector(DETNAME)
 
-    cc = det._calibconst
-    print(' >>>> det._calibconst:\n', cc)
+    cc = det.calibconst
+    print(' >>>> det.calibconst:\n', cc)
 
     for nev,evt in enumerate(orun.events()):
         if nev>2 : break

@@ -141,8 +141,8 @@ class cspad_raw_1_2_3(DetectorImpl):
 
     def _fetch(self, key):
         val = None
-        if key in self._calibconst:
-            val, _ = self._calibconst[key]
+        if key in self.calibconst:
+            val, _ = self.calibconst[key]
         return val
 
     def pedestals(self):
