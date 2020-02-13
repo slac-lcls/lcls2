@@ -18,6 +18,7 @@
 
     - process found peaktimes using Roentdec library algorithms,
       get and use sorted hit information
+          kwargs = {'consts':det.calibconst, 'events':1500, ...}
           proc = DLDProcessor(**kwargs)
           for x,y,r,t in proc.xyrt_list(nev, nhits, pktsec) :
 """
@@ -59,7 +60,8 @@ def proc_data(**kwargs):
     print('\nruninfo expt: %s  runnum: %d' % (orun.expt, orun.runnum))
 
     det   = orun.Detector(DETNAME)
-    kwargs['detobj'] = det
+    #kwargs['detobj'] = det
+    kwargs['consts'] = det.calibconst
 
     peaks = WFPeaks(**kwargs)
     proc  = DLDProcessor(**kwargs) #detobj=det to get cfg/calib constants
