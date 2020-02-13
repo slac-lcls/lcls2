@@ -13,21 +13,25 @@ class ConstantsStore():
             subobj = getattr(obj,name)
             self.dispatch(subobj,name)
         self.f.close()
+
     def pushdir(self,dir):
         '''move down a level and keep track of what hdf directory level we are in'''    
-        
         self.cwd += '/'+dir
        
     def popdir(self):
         '''move up a level and keep track of what hdf directory level we are in'''
         self.cwd = self.cwd[:self.cwd.rfind('/')]
+
     def typeok(self,obj,name):
         '''check if we support serializing this type to hdf'''
         allowed = [dict, int, float, str, list, tuple, numpy.ndarray]
         return type(obj) in allowed
+
     def storevalue(self,v,name):
         '''persist one of the supported types to the hdf file'''
+        #print('XXXXXX:', self.cwd+'/'+name, '  v:', v, '  type(v):', type(v))
         self.f[self.cwd+'/'+name] = v
+
     def dict(self,d,name):
         '''called for every dictionary level to create a new hdf group name.
         it then looks into the dictionary to see if other groups need to
@@ -49,7 +53,6 @@ class ConstantsStore():
         for k in d.keys():
             self.dispatch(d[k],k)
         self.popdir()
-
 
     def dispatch(self,obj,name):
         '''either persist a supported object, or look into a dictionary

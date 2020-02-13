@@ -112,9 +112,9 @@ class DarkBackgroundReference():
         self.ROI=roi_xtcav
         
         if not self.parameters.validity_range or not type(self.parameters.validity_range) == tuple:
-            self.parameters = self.parameters._replace(validity_range=(self.parameters.run_number, 'end'))
+            self.parameters = self.parameters._replace(validity_range=(self.parameters.run_number, 9999)) #'end'))
         elif len(self.parameters.validity_range) == 1:
-            self.parameters = self.parameters._replace(validity_range=(self.parameters.validity_range[0], 'end'))
+            self.parameters = self.parameters._replace(validity_range=(self.parameters.validity_range[0], 9999)) #'end'))
 
         logger.info(info_ndarr(self.image, 'averaged raw:'))
 
@@ -124,12 +124,11 @@ class DarkBackgroundReference():
             #cp = CalibrationPaths(dataSource.env(), self.parameters.calibration_path)
             #fname = cp.newCalFileName(cons.DB_FILE_NAME, self.parameters.validity_range[0], self.parameters.validity_range[1])
             fname = 'cons-%s-%04d-%s-dark.data' % (run.expt, run.runnum, cons.SRC)
+
             self.save(fname)
 
-        logger.info('Saved file %s' % fname)
-
         ###=======================
-        sys.exit('TEST EXIT OK')
+        #sys.exit('TEST EXIT OK')
         ###=======================
             
     
@@ -152,6 +151,7 @@ class DarkBackgroundReference():
 
 
     def save(self, path): 
+
         instance = copy.deepcopy(self)
 
         # LCLS1:
@@ -162,11 +162,18 @@ class DarkBackgroundReference():
         if instance.ROI:
             instance.ROI = dict(instance.ROI._asdict())
             instance.parameters = dict(instance.parameters._asdict())
-
-            print('XXX instance.ROI:', instance.ROI)
-            print('XXX instance.parameters:', instance.parameters)
+            #logger.debug('XXX instance.ROI:\n%s' % str(instance.ROI))
+            #logger.debug('XXX instance.parameters:\n%s' % str(instance.parameters))
+            logger.debug('XXX instance.__dict__:\n%s' % str(instance.__dict__))
 
         constSave(instance, path)
+
+        logger.info('%s\n\t    Saved file: %s' % (50*'_', path))
+        logger.info('command to check file: hdf5explorer %s' % path)
+
+        d = instance.parameters
+        s = 'cdb add -e %s -d %s -c pedestals -r %s -f %s -i txt -u <user>' % (d['experiment'], cons.SRC, d['run_number'], path)
+        logger.info('command to deploy: %s' % s)
 
 
     @staticmethod    
