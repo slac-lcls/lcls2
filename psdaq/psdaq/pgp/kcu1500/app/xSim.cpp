@@ -63,7 +63,7 @@
 
 #define CLIENTS(i)       (0x00800080 + i*0x20)
 #define DMA_LANES(i)     (0x00800100 + i*0x20)
-#define PGP_LANES(i)     (0x00C00000 + i*0x10000)
+#define TRG_LANES(i)     (0x00C20100 + i*0x100)
 #define SI570(i)         (0x00e00800 +i*4)
 
 
@@ -529,8 +529,15 @@ int main(int argc, char* argv[])
       printf("Configured partition [%u], length [%u], links [%x]: [%x](%x)\n",
              partition, length, links, v, w);
       for(unsigned i=0; i<4; i++)
-        if (links&(1<<i))
+        if (links&(1<<i)) {
           set_reg32( 0x00800084+32*i, 0x1f00);
+          set_reg32( TRG_LANES(i)+4, partition);
+          set_reg32( TRG_LANES(i)+8, 16);
+          set_reg32( TRG_LANES(i)+0, 3);
+        }
+        else {
+          set_reg32( TRG_LANES(i), 0);
+        }
     }
 
     return 0;
