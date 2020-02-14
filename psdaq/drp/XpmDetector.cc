@@ -74,6 +74,7 @@ void XpmDetector::connect(const json& json, const std::string& collectionId)
       Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
       if (l&(1<<i)) {
         dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
+        dmaWriteRegister(fd, &b.pauseThresh, 16     );
         dmaWriteRegister(fd, &b.group , readoutGroup);
         dmaWriteRegister(fd, &b.enable, 3           );  // enable
         l &= ~(1<<i);
