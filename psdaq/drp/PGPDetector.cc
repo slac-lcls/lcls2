@@ -221,6 +221,12 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
             buffer->index = index;
             event->mask |= (1 << lane);
 
+            logging::debug("PGPReader  lane %d  size %d  hdr %016lx.%016lx.%08x",
+                           lane, size, 
+                           reinterpret_cast<uint64_t*>(data)[0],
+                           reinterpret_cast<uint64_t*>(data)[1],
+                           reinterpret_cast<uint32_t*>(data)[4]);
+
             if (event->mask == m_para.laneMask) {
                 const Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(data);
                 XtcData::TransitionId::Value transitionId = timingHeader->service();

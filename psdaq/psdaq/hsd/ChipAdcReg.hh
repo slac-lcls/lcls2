@@ -18,12 +18,13 @@ namespace Pds {
       void resetDma   ();
       void resetFb    ();
       void resetFbPLL ();
-      void setLocalId (unsigned v);
+      void setLocalId (unsigned v); // deprecated
       void dump() const;
     public:
       vuint32_t irqEnable;
       vuint32_t irqStatus;
-      vuint32_t partitionAddr;
+      //      vuint32_t partitionAddr; // deprecated
+      uint32_t  rsvd_08;
       vuint32_t dmaFullThr;
       vuint32_t csr; 
       //   CSR
@@ -36,7 +37,8 @@ namespace Pds {
       // [ 6:6]  fb pll reset
       // [ 8:15] trigger bit mask shift
       // [31:31] acqEnable
-      vuint32_t acqSelect;
+      //      vuint32_t acqSelect; [ deprecated ]
+      uint32_t  rsvd_20;
       //   AcqSelect
       // [12: 0]  rateSel  :   [7:0] eventCode
       // [31:13]  destSel
@@ -44,7 +46,7 @@ namespace Pds {
       //   Control
       // [7:0] channel enable mask
       // [8:8] interleave
-      // [19:16] readout group
+      // [19:16] readout group [ deprecated ]
       // [20]  inhibit
       vuint32_t samples;       //  Must be a multiple of 16 [v1 only]
       vuint32_t prescale;      //  Sample prescaler [v1 only]
@@ -68,24 +70,25 @@ namespace Pds {
       vuint32_t countEnable;
       vuint32_t countInhibit;
       vuint32_t countRead;
-      vuint32_t countStart;
-      vuint32_t countQueue;
+      //      vuint32_t countStart;    // [ deprecated ]
+      //      vuint32_t countQueue;    // [ deprecated ]
+      uint32_t  rsvd_52[2];
       //
       vuint32_t cacheSel;
       vuint32_t cacheState;
       vuint32_t cacheAddr;
 
-      vuint32_t msgDelay;
-      vuint32_t headerCnt;
-      vuint32_t headerFifo;
+      // vuint32_t msgDelay;       // [ deprecated ]
+      // vuint32_t headerCnt;      // [ deprecated ]
+      // vuint32_t headerFifo;     // [ deprecated ]
 
-      vuint32_t rsvd_88[4];
+      // vuint32_t rsvd_88[4];
 
-      vuint32_t localId;
-      vuint32_t upstreamId;
-      vuint32_t dnstreamId[4];
+      // vuint32_t localId;        // [ deprecated ]
+      // vuint32_t upstreamId;     // [ deprecated ]
+      // vuint32_t dnstreamId[4];  // [ deprecated ]
 
-      vuint32_t fullToTrig;
+      // vuint32_t fullToTrig;     // [ deprecated ]
       //
       //      vuint32_t status;
       //      vuint32_t statusCount[32];

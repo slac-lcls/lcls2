@@ -259,13 +259,7 @@ class GroupSetup(object):
         self._pv_SeqBit     = addPV('L0Select_SeqBit'        ,self.put)        
         self._pv_DstMode    = addPV('DstSelect'              ,self.put, 1)
         self._pv_DstMask    = addPV('DstSelect_Mask'         ,self.put)
-        self._pv_ResetL0    = addPV('ResetL0'                ,self.resetL0, set=True)
         self._pv_Run        = addPV('Run'                    ,self.run    , set=True)
-        self._pv_MsgInsert  = addPV('MsgInsert'              ,self.msgInsert)
-        self._pv_MsgConfig  = addPV('MsgConfig'              ,self.msgConfig)
-        self._pv_MsgEnable  = addPV('MsgEnable'              ,self.msgEnable)
-        self._pv_MsgDisable = addPV('MsgDisable'             ,self.msgDisable)
-        self._pv_MsgClear   = addPV('MsgClear'               ,self.msgClear)
         self._pv_Master     = addPV('Master'                 ,self.master, set=True)
 
         def addPV(label,reg,init=0,set=False):
@@ -339,7 +333,6 @@ class GroupSetup(object):
         lock.acquire()
         self._app.partition.set(self._group)
         forceUpdate(self._app.l0Master)
-        self._resetL0(val)
 
         if val==0:
             self._app.l0Master.set(0)
@@ -373,20 +366,6 @@ class GroupSetup(object):
         self.dump()
         lock.release()
             
-    def resetL0(self, pv, val):
-        if val:
-            lock.acquire()
-            self._app.partition.set(self._group)
-            self._resetL0(val)
-            lock.release()
-            
-    def _resetL0(self,val):
-        if val:
-            forceUpdate(self._app.l0Reset)
-            self._app.l0Reset.set(1)
-            time.sleep(1e-6)
-            self._app.l0Reset.set(0)
-    
     def run(self, pv, val):
         lock.acquire()
         self._app.partition.set(self._group)
@@ -396,45 +375,6 @@ class GroupSetup(object):
         self.dump()
         lock.release()
 
-    def msgInsert(self, pv, val):
-        lock.acquire()
-        self._app.partition.set(self._group)
-        self._app.msgHdr .set(self._pv_MsgHeader .current()['value'])
-        self._app.msgPayl.set(self._pv_MsgPayload.current()['value'])
-        self._app.msgIns .set(1)
-        lock.release()
-
-    def msgInsertId(self, id):
-        print('msgInsertId ',id)
-        lock.acquire()
-        self._app.partition.set(self._group)
-        self._app.msgPayl.set(0)
-        self._app.msgHdr.set(id)
-        self._app.msgIns.set(1)
-        self._app.msgIns.set(0)
-        lock.release()
-
-    def msgConfig(self, pv, val):
-        if val>0:
-            lock.acquire()
-            self._app.partition.set(self._group)
-            self._app.msgPayl.set(self._pv_MsgConfigKey.current()['value'])
-            self._app.msgHdr.set(TransitionId.Config)
-            self._app.msgIns.set(1)
-            self._app.msgIns.set(0)
-            lock.release()
-
-    def msgEnable(self, pv, val):
-        if val>0:
-            self.msgInsertId(TransitionId.Enable)
-
-    def msgDisable(self, pv, val):
-        if val>0:
-            self.msgInsertId(TransitionId.Disable)
-
-    def msgClear(self, pv, val):
-        if val>0:
-            self.msgInsertId(TransitionId.Clear)
 
 class GroupCtrls(object):
     def __init__(self, name, app, stats):

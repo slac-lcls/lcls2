@@ -48,7 +48,11 @@
 //      0x1c.0  cntRdFifo
 //      0x1c.16 msgDelay
 //
-//  TimingCore
+//  TimingCore (0x00c00000)
+//
+//  TimingGtCore (0x00c10000)
+//
+//  TriggerEventManager (0x00c20000)
 //
 //  I2C Devices
 //    0x000-0x3FC I2C Mux
@@ -59,7 +63,7 @@
 
 #define CLIENTS(i)       (0x00800080 + i*0x20)
 #define DMA_LANES(i)     (0x00800100 + i*0x20)
-#define PGP_LANES(i)     (0x00C00000 + i*0x10000)
+#define TRG_LANES(i)     (0x00C20100 + i*0x100)
 #define SI570(i)         (0x00e00800 +i*4)
 
 
@@ -351,7 +355,7 @@ int main(int argc, char* argv[])
 
       unsigned id = 0xfb000000 | 
         (ntohl(saddr->sin_addr.s_addr)&0xffff);
-      set_reg32( 0x00a00004, id);
+      set_reg32( 0x00c20020, id);
     }
 
     //
@@ -447,25 +451,22 @@ int main(int argc, char* argv[])
       print_clk_rate("migB       ",12);
 
       // TDetSemi
-      print_field("partition", 0x00a00000,  0, 0xf);
       print_field("length"   , 0x00a00000,  4, 0xffffff);
       print_field("enable"   , 0x00a00000, 28, 0xf);
-      print_field("localid"  , 0x00a00004,  0, 0xffffffff);
-      print_field("remoteid" , 0x00a00008,  0, 0xffffffff);
 
-      print_lane("cntL0"      , 0x00a00010,  0, 16, 0xffffff);
-      print_lane("cntOF"      , 0x00a00010, 24, 16, 0xff);
-      print_lane("cntL1A"     , 0x00a00014,  0, 16, 0xffffff);
-      print_lane("cntL1R"     , 0x00a00018,  0, 16, 0xffffff);
-      print_lane("cntWrFifo"  , 0x00a0001c,  0, 16, 0xff);
-      print_lane("cntRdFifo"  , 0x00a0001c,  8, 16, 0xff);
-      print_lane("cntMsgDelay", 0x00a0001c, 16, 16, 0xffff);
-      print_lane("fullToTrig" , 0x00a00050,  0,  4, 0xfff);
-      print_lane("nfullToTrig", 0x00a00050, 16,  4, 0xfff);
-      print_lane("txLocked"   , 0x00a00050, 28,  4, 0x1);
-      print_lane("resetDone"  , 0x00a00050, 29,  4, 0x1);
-      print_lane("buffByDone" , 0x00a00050, 30,  4, 0x1);
-      print_lane("buffByErr"  , 0x00a00050, 31,  4, 0x1);
+      print_field("localid"  , 0x00c20020,  0, 0xffffffff);
+      print_field("remoteid" , 0x00c20024,  0, 0xffffffff);
+
+      print_lane("enable"     , 0x00c20100,  0, 256, 0x7);
+      print_lane("partition"  , 0x00c20104,  0, 256, 0xf);
+      print_lane("cntL0"      , 0x00c20114,  0, 256, 0xffffffff);
+      print_lane("cntL1A"     , 0x00c20118,  0, 256, 0xffffffff);
+      print_lane("cntL1R"     , 0x00c2011c,  0, 256, 0xffffffff);
+      print_lane("cntTra"     , 0x00c20120,  0, 256, 0xffffffff);
+      print_lane("cntFrame"   , 0x00c20124,  0, 256, 0xffffffff);
+      print_lane("cntTrig"    , 0x00c20128,  0, 256, 0xffffffff);
+      print_lane("fullToTrig" , 0x00c20138,  0, 256, 0xfff);
+      print_lane("nfullToTrig", 0x00c2013c,  0, 256, 0xfff);
 
       if (core_pcie) {
         // TDetTiming
@@ -528,8 +529,15 @@ int main(int argc, char* argv[])
       printf("Configured partition [%u], length [%u], links [%x]: [%x](%x)\n",
              partition, length, links, v, w);
       for(unsigned i=0; i<4; i++)
-        if (links&(1<<i))
+        if (links&(1<<i)) {
           set_reg32( 0x00800084+32*i, 0x1f00);
+          set_reg32( TRG_LANES(i)+4, partition);
+          set_reg32( TRG_LANES(i)+8, 16);
+          set_reg32( TRG_LANES(i)+0, 3);
+        }
+        else {
+          set_reg32( TRG_LANES(i), 0);
+        }
     }
 
     return 0;

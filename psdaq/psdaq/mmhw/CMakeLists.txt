@@ -6,6 +6,7 @@ add_library(mmhw SHARED
     RegProxy.cc
     RingBuffer.cc
     GthEyeScan.cc
+    TriggerEventManager.cc
     Xvc.cc
 )
 

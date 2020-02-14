@@ -11,10 +11,12 @@
 #include "OptFmc.hh"
 
 #include "psdaq/mmhw/Pgp3Axil.hh"
+#include "psdaq/mmhw/TriggerEventManager.hh"
 
 using Pds::Mmhw::AxiVersion;
 using Pds::Mmhw::Pgp3Axil;
 using Pds::Mmhw::RingBuffer;
+using Pds::Mmhw::TriggerEventManager;
 
 #include <string>
 #include <unistd.h>
@@ -39,7 +41,9 @@ namespace Pds {
       //  Core registers
       ModuleBase  base                ; // 0
       //  App registers
-      ChipAdcCore chip[2]             ; // 0x80000, 0x84000
+      ChipAdcCore chip[2]             ; // 0x80000, 0x82000
+      TriggerEventManager tem         ; // 0x84000
+      uint32_t    rsvd_88000[(0x4000-sizeof(tem))>>2];
       Fmc134Ctrl  fmc_ctrl            ; // 0x88000
       uint32_t    rsvd_88800[(0x800-sizeof(fmc_ctrl))>>2];
       Mmcm        mmcm                ; // 0x88800
@@ -260,10 +264,10 @@ void Module134::disable_test_pattern()
 
 void Module134::set_local_id(unsigned bus)
 {
-  chip(0).reg.setLocalId(ModuleBase::local_id(bus));
+  p->tem.xma().txId = ModuleBase::local_id(bus);
 }
 
-unsigned Module134::remote_id() const { return p->chip[0].reg.partitionAddr; }
+unsigned Module134::remote_id() const { return p->tem.xma().rxId; }
 
 void Module134::board_status()
 {
@@ -338,6 +342,8 @@ std::vector<Pgp*> Module134::pgp() {
   }
   return v;
 }
+
+TriggerEventManager& Module134::tem() { return p->tem; }
 
 Fmc134Ctrl& Module134::jesdctl() { return p->fmc_ctrl; }
 

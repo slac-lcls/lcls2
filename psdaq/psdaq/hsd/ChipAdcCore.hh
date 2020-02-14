@@ -11,9 +11,9 @@ namespace Pds {
     class ChipAdcCore {
     public:
       ChipAdcReg   reg;
-      uint32_t     rsvd0[0x800-sizeof(reg)/4];
+      uint32_t     rsvd0[(0x1000-sizeof(reg))>>2];
       FexCfg       fex;
-      uint32_t     rsvd1[0x800-sizeof(fex)/4];
+      uint32_t     rsvd1[(0x1000-sizeof(fex))>>2];
     };
   };
 };

@@ -9,8 +9,9 @@ namespace Pds {
     public:
       vuint32_t _streams;
       vuint32_t _oflow;
-      vuint32_t _flowstatus;
-      vuint32_t _flowidxs;
+      // vuint32_t _flowstatus;
+      // vuint32_t _flowidxs;
+      uint32_t  _rsvd_08[2];
 
       class StreamBase {
       public:
@@ -30,13 +31,13 @@ namespace Pds {
         vuint32_t _free;
       } _base  [4];
 
-      vuint32_t _rsvd_50[0x20>>2];
-      vuint32_t _bram_wr_errors;
-      vuint32_t _bram_wr_sample;
-      vuint32_t _bram_rd_errors;
-      vuint32_t _bram_rd_sample;
+      vuint32_t _rsvd_50[0xb0>>2];
+      // vuint32_t _bram_wr_errors;
+      // vuint32_t _bram_wr_sample;
+      // vuint32_t _bram_rd_errors;
+      // vuint32_t _bram_rd_sample;
 
-      vuint32_t _rsvd_80[0x80>>2];
+      // vuint32_t _rsvd_80[0x80>>2];
 
       class Stream {
       public:
@@ -49,9 +50,6 @@ namespace Pds {
           vuint32_t rsvd;
         } parms[30];
       } _stream[4];
-
-    private:
-      vuint32_t _rsvd3[(0x1000-0x500)>>2];
     };
   };
 };
