@@ -3,6 +3,7 @@ import os
 import IPython
 
 from psana import DataSource
+from psana.pyalgos.generic.edgefinder import EdgeFinder
 
 def twos_complement(hexstr,bits):
     value = int(hexstr,16)
@@ -18,6 +19,7 @@ def get_fir_coefficients(myrun):
         my_kernel.extend([twos_complement(mystring[i:i+2],8) for i in range(0,len(mystring),2)])
 
     return my_kernel
+
 def test_timetool():
 
     firmware_edges = []
@@ -33,7 +35,6 @@ def test_timetool():
 
     for nevt,evt in enumerate(myrun.events()):
         parsed_frame_object = tt_detector_object.ttalg.parsed_frame(evt)
-
 
         image = tt_detector_object.ttalg._image(evt)
 
@@ -65,13 +66,16 @@ def test_timetool_psana():
     software_edges = []
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    ds = DataSource(files=os.path.join(dir_path,'test_timetool.xtc2'))
+    ds = DataSource(files=os.path.join(dir_path,'test_timetool_psana.xtc2'))
 
     myrun = next(ds.runs())
-    edge_finder = myrun.Algorithm('edgefinder')
+    det = myrun.Detector('tmott')
+    edge_finder = EdgeFinder(det.calibconst)
     
     for nevt,evt in enumerate(myrun.events()):
-        firmware_edge, software_edge = edge_finder(evt)
+        parsed_frame_object = det.ttalg.parsed_frame(evt)
+        image = det.ttalg._image(evt)
+        firmware_edge, software_edge = edge_finder(image, parsed_frame_object)
         if firmware_edge:
             firmware_edges.append(firmware_edge)
             software_edges.append(software_edge)
@@ -79,7 +83,6 @@ def test_timetool_psana():
     my_cov = np.cov(firmware_edges,software_edges)  #need to separate out clusters of outliers here.
     print("covariance  = ",my_cov[0,1]/my_cov[0,0])
     assert nevt==1324
-
 
 if __name__ == "__main__":
     test_timetool()
