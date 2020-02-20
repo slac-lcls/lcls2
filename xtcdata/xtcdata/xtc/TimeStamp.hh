@@ -12,7 +12,7 @@ public:
     TimeStamp();
     TimeStamp(const TimeStamp& t);
     TimeStamp(const ::timespec& ts);
-    TimeStamp(const double sec);
+    TimeStamp(double sec);
     TimeStamp(unsigned sec, unsigned nsec);
     TimeStamp(uint64_t stamp);
 
@@ -57,14 +57,14 @@ XtcData::TimeStamp::TimeStamp(unsigned sec, unsigned nsec) : _low(nsec), _high(s
 inline
 XtcData::TimeStamp::TimeStamp(uint64_t stamp)
 {
-    _low  =  stamp        & 0xffffffff;
-    _high = (stamp >> 32) & 0xffffffff;
+    _low  = stamp % 1000000000;
+    _high = stamp / 1000000000;
 }
 
 inline
 uint64_t XtcData::TimeStamp::value() const
 {
-    return ((uint64_t)_high << 32) | _low;
+    return ((uint64_t)_high * 1000000000) + _low;
 }
 
 inline
