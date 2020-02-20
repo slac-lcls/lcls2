@@ -1403,7 +1403,7 @@ class CollectionManager():
 
     def progressReport(self, begin_time, end_time, *, progress_txt):
         elapsed = (datetime.now(timezone.utc) - begin_time).total_seconds()
-        if elapsed > 0.5:
+        if elapsed >= 1.0:
             total   = (end_time - begin_time).total_seconds()
             self.front_pub.send_json(progress_msg(progress_txt, elapsed, total))
         return
