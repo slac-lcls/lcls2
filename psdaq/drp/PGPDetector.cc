@@ -1,5 +1,4 @@
 #include <iostream>
-#include <fstream>
 #include <limits.h>
 #include "DataDriver.h"
 #include "psdaq/service/EbDgram.hh"
@@ -15,20 +14,6 @@ using logging = psalg::SysLog;
 
 namespace Drp {
 
-long readInfinibandCounter(const std::string& counter)
-{
-    std::string path{"/sys/class/infiniband/mlx5_0/ports/1/counters/" + counter};
-    std::ifstream in(path);
-    if (in.is_open()) {
-        std::string line;
-        std::getline(in, line);
-        return stol(line);
-    }
-    else {
-        return 0;
-    }
-}
-
 bool checkPulseIds(MemPool& pool, PGPEvent* event)
 {
     uint64_t pulseId = 0;
@@ -41,8 +26,8 @@ bool checkPulseIds(MemPool& pool, PGPEvent* event)
             }
             else {
                 if (pulseId != timingHeader->pulseId()) {
-                    logging::error("Wrong pulse id! expected %lu but got %lu instead",
-                           pulseId, timingHeader->pulseId());
+                    logging::error("Wrong pulse id! expected %014lx but got %014lx instead",
+                                   pulseId, timingHeader->pulseId());
                     return false;
                 }
             }
@@ -171,12 +156,6 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
     exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
                   [&](){return bytes;});
 
-    exporter->add("drp_port_rcv_rate", labels, MetricType::Rate,
-                  [](){return 4*readInfinibandCounter("port_rcv_data");});
-
-    exporter->add("drp_port_xmit_rate", labels, MetricType::Rate,
-                  [](){return 4*readInfinibandCounter("port_xmit_data");});
-
     auto queueLength = [](std::vector<SPSCQueue<Batch> >& vec) {
         size_t sum = 0;
         for (auto& q: vec) {
@@ -231,7 +210,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 const Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(data);
                 XtcData::TransitionId::Value transitionId = timingHeader->service();
                 if (transitionId != XtcData::TransitionId::L1Accept) {
-                    logging::debug("PGPReader  saw %s transition @ %d.%09d (%014lx)",
+                    logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",
                                    XtcData::TransitionId::name(transitionId),
                                    timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                    timingHeader->pulseId());

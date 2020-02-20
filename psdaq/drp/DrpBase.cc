@@ -1,5 +1,6 @@
 #include <unistd.h>                     // gethostname()
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <bitset>
 #include <climits>                      // HOST_NAME_MAX
@@ -27,7 +28,21 @@ namespace Drp {
 static const unsigned PROM_PORT_BASE  = 9200;
 static const unsigned MAX_PROM_PORTS  = 100;
 
-unsigned nextPowerOf2(unsigned n)
+static long readInfinibandCounter(const std::string& counter)
+{
+    std::string path{"/sys/class/infiniband/mlx5_0/ports/1/counters/" + counter};
+    std::ifstream in(path);
+    if (in.is_open()) {
+        std::string line;
+        std::getline(in, line);
+        return stol(line);
+    }
+    else {
+        return 0;
+    }
+}
+
+static unsigned nextPowerOf2(unsigned n)
 {
     unsigned count = 0;
 
@@ -197,7 +212,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     }
     uint64_t pulseId = dgram->pulseId();
     if (pulseId == 0) {
-      logging::critical("%spulseId %14lx, ts %d.%09d, tid %d, env %08x%s\n",
+      logging::critical("%spulseId %14lx, ts %u.%09u, tid %d, env %08x%s\n",
                         RED_ON, pulseId, dgram->time.seconds(), dgram->time.nanoseconds(), dgram->service(), dgram->env, RED_OFF);
     }
 
@@ -233,7 +248,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
             json msg = createPulseIdMsg(pulseId);
             m_inprocSend.send(msg.dump());
         }
-        logging::debug("EbReceiver saw %s transition @ %d.%09d (%014lx)\n",
+        logging::debug("EbReceiver saw %s transition @ %u.%09u (%014lx)\n",
                        XtcData::TransitionId::name(transitionId),
                        dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
     }
@@ -264,9 +279,12 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
                 m_mon->post(dgram, result.monBufNo());
             }
         }
+        else if (transitionId == XtcData::TransitionId::SlowUpdate) {
+            m_mon->post(dgram);
+        }
         // Other Transition
         else {
-          m_mon->post(m_pool.transitionDgram());
+            m_mon->post(m_pool.transitionDgram());
         }
     }
 
@@ -397,6 +415,7 @@ std::string DrpBase::configure(const json& msg)
         return std::string("Failed to set up TriggerPrimitive(s)");
     }
 
+    // Find and register a port to use with Prometheus for run-time monitoring
     if (m_exposer)  m_exposer.reset();
     unsigned port = 0;
     for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
@@ -433,6 +452,13 @@ std::string DrpBase::configure(const json& msg)
         logging::info("Providing run-time monitoring data on port %d", port);
         m_exposer->RegisterCollectable(m_exporter);
     }
+
+    std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};
+    m_exporter->add("drp_port_rcv_rate", labels, MetricType::Rate,
+                    [](){return 4*readInfinibandCounter("port_rcv_data");});
+
+    m_exporter->add("drp_port_xmit_rate", labels, MetricType::Rate,
+                    [](){return 4*readInfinibandCounter("port_xmit_data");});
 
     // Create all the eb things and do the connections
     m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, m_exporter);
