@@ -100,7 +100,7 @@ void dmaReadRegister (int fd, uint32_t* addr, uint32_t* valp)
   uintptr_t addri = (uintptr_t)addr;
   dmaReadRegister(fd, addri&0xffffffff, valp);
   if (lverbose)
-    printf("[%08x] = %08x\n",addri,*valp);
+    printf("[%08lx] = %08x\n",addri,*valp);
 }
 
 void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
@@ -108,5 +108,5 @@ void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
   uintptr_t addri = (uintptr_t)addr;
   dmaWriteRegister(fd, addri&0xffffffff, val);
   if (lverbose)
-    printf("[%08x] %08x\n",addri,val);
+    printf("[%08lx] %08x\n",addri,val);
 }
