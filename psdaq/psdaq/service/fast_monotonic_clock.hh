@@ -1,4 +1,6 @@
 // From: https://stackoverflow.com/questions/26003413/stdchrono-or-boostchrono-support-for-clock-monotonic-coarse
+#ifndef Pds_FastMonotonicClock_hh
+#define Pds_FastMonotonicClock_hh
 
 #include <cassert>
 #include <chrono>
@@ -60,3 +62,5 @@ inline auto Pds::fast_monotonic_clock::get_resolution() noexcept -> duration {
     assert(result == 0);
     return convert(t);
 }
+
+#endif
