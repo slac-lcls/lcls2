@@ -590,26 +590,6 @@ def wait_for_answers(socket, wait_time, msg_id):
         remaining = max(0, int(wait_time - 1000*(time.time() - start)))
 
 
-def confirm_response(socket, wait_time, msg_id, ids):
-    global report_keys
-    logging.debug('confirm_response(): ids = %s' % ids)
-    msgs = []
-    reports = []
-    for msg in wait_for_answers(socket, wait_time, msg_id):
-        if msg['header']['key'] in report_keys:
-            reports.append(msg)
-        elif msg['header']['sender_id'] in ids:
-            msgs.append(msg)
-            ids.remove(msg['header']['sender_id'])
-            logging.debug('confirm_response(): removed %s from ids' % msg['header']['sender_id'])
-        else:
-            logging.debug('confirm_response(): %s not in ids' % msg['header']['sender_id'])
-        if len(ids) == 0:
-            break
-    for ii in ids:
-        logging.debug('id %s did not respond' % ii)
-    return ids, msgs, reports
-
 class CollectionManager():
     def __init__(self, args):
         self.platform = args.p
@@ -875,6 +855,34 @@ class CollectionManager():
         return
 
     #
+    # confirm_response -
+    #
+    def confirm_response(self, socket, wait_time, msg_id, ids, *, progress_txt=None):
+        global report_keys
+        logging.debug('confirm_response(): ids = %s' % ids)
+        msgs = []
+        reports = []
+        begin_time = datetime.now(timezone.utc)
+        end_time = begin_time + timedelta(milliseconds=wait_time)
+        while len(ids) > 0 and datetime.now(timezone.utc) < end_time:
+            for msg in wait_for_answers(socket, 1000, msg_id):
+                if msg['header']['key'] in report_keys:
+                    reports.append(msg)
+                elif msg['header']['sender_id'] in ids:
+                    msgs.append(msg)
+                    ids.remove(msg['header']['sender_id'])
+                    logging.debug('confirm_response(): removed %s from ids' % msg['header']['sender_id'])
+                else:
+                    logging.debug('confirm_response(): %s not in ids' % msg['header']['sender_id'])
+                if len(ids) == 0:
+                    break
+                if progress_txt is not None:
+                    self.progressReport(begin_time, end_time, progress_txt=progress_txt)
+        for ii in ids:
+            logging.debug('id %s did not respond' % ii)
+        return ids, msgs, reports
+
+    #
     # process_reports
     #
     def process_reports(self, report_list):
@@ -1053,7 +1061,7 @@ class CollectionManager():
         ids = self.filter_active_set(self.ids)
         ids = self.filter_level('drp', ids)
         # make sure all the clients respond to transition before timeout
-        missing, answers, reports = confirm_response(self.back_pull, self.phase2_timeout, None, ids)
+        missing, answers, reports = self.confirm_response(self.back_pull, self.phase2_timeout, None, ids)
         self.process_reports(reports)
         if missing:
             logging.error('%s phase2 failed' % transition)
@@ -1069,7 +1077,7 @@ class CollectionManager():
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
 
         # make sure all the clients respond to alloc message with their connection info
-        retlist, answers, reports = confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
+        retlist, answers, reports = self.confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
         self.process_reports(reports)
         ret = len(retlist)
         if ret:
@@ -1272,7 +1280,7 @@ class CollectionManager():
             msg = create_msg('connect', body=self.filter_active_dict(self.cmstate_levels()))
             self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
-            retlist, answers, reports = confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids)
+            retlist, answers, reports = self.confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids, progress_txt='connect')
             self.process_reports(reports)
             connect_ok = (self.check_answers(answers) == 0)
             ret = len(retlist)
@@ -1292,7 +1300,7 @@ class CollectionManager():
         msg = create_msg('disconnect')
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
-        retlist, answers, reports = confirm_response(self.back_pull, 30000, msg['header']['msg_id'], ids)
+        retlist, answers, reports = self.confirm_response(self.back_pull, 30000, msg['header']['msg_id'], ids, progress_txt='disconnect')
         self.process_reports(reports)
         disconnect_ok = (self.check_answers(answers) == 0)
         ret = len(retlist)
@@ -1393,10 +1401,11 @@ class CollectionManager():
                 retval.add(level + "/" + alias)
         return retval
 
-    def progressReport(self, transition, begin_time, end_time):
+    def progressReport(self, begin_time, end_time, *, progress_txt):
         elapsed = (datetime.now(timezone.utc) - begin_time).total_seconds()
-        total   = (end_time - begin_time).total_seconds()
-        self.front_pub.send_json(progress_msg(transition, elapsed, total))
+        if elapsed > 0.5:
+            total   = (end_time - begin_time).total_seconds()
+            self.front_pub.send_json(progress_msg(progress_txt, elapsed, total))
         return
 
     def condition_rollcall(self):
@@ -1431,8 +1440,7 @@ class CollectionManager():
         end_time = begin_time + timedelta(seconds=self.rollcall_timeout)
         while datetime.now(timezone.utc) < end_time:
             self.back_pub.send_multipart([b'all', json.dumps(msg)])
-            time.sleep(1.0)
-            for answer in wait_for_answers(self.back_pull, 1, msg['header']['msg_id']):
+            for answer in wait_for_answers(self.back_pull, 1000, msg['header']['msg_id']):
                 if answer['header']['key'] in report_keys:
                     self.process_reports([answer])
                     continue
@@ -1472,7 +1480,7 @@ class CollectionManager():
             self.subtract_clients(missing_set)
             if not missing_set:
                 break
-            self.progressReport('rollcall', begin_time, end_time)
+            self.progressReport(begin_time, end_time, progress_txt='rollcall')
 
         if missing_set:
             for client in missing_set:
@@ -1639,7 +1647,7 @@ class CollectionManager():
             return True
 
         # make sure all the clients respond to transition before timeout
-        retlist, answers, reports = confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids)
+        retlist, answers, reports = self.confirm_response(self.back_pull, timeout, msg['header']['msg_id'], ids, progress_txt=transition)
         self.process_reports(reports)
         answers_ok = (self.check_answers(answers) == 0)
         ret = len(retlist)
