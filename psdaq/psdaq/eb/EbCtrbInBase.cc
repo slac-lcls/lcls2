@@ -32,6 +32,7 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
   _maxBatchSize(0),
   _batchCount  (0),
   _eventCount  (0),
+  _deliverCount(0),
   _prms        (prms),
   _region      (nullptr)
 {
@@ -39,12 +40,14 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
   exporter->add("TCtbI_RxPdg", labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
   exporter->add("TCtbI_BatCt", labels, MetricType::Counter, [&](){ return _batchCount;          });
   exporter->add("TCtbI_EvtCt", labels, MetricType::Counter, [&](){ return _eventCount;          });
+  exporter->add("TCtbI_DlrCt", labels, MetricType::Counter, [&](){ return _deliverCount;        });
 }
 
 int EbCtrbInBase::configure(const TebCtrbParams& prms)
 {
-  _batchCount = 0;
-  _eventCount = 0;
+  _batchCount   = 0;
+  _eventCount   = 0;
+  _deliverCount = 0;
 
   unsigned numEbs = std::bitset<64>(prms.builders).count();
   _links.resize(numEbs);
@@ -312,11 +315,13 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
              idx, svc, result, ctl, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid);
     }
 
+    ++_eventCount;
+
     if (rPid == iPid)
     {
       process(*result, inputs->retrieve(iPid));
 
-      ++_eventCount;                    // Don't count events not meant for us
+      ++_deliverCount;                  // Don't count events not meant for us
 
       input = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(input) + iSize);
 
