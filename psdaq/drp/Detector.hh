@@ -24,6 +24,7 @@ public:
     virtual unsigned beginrun(XtcData::Xtc& xtc, const nlohmann::json& runInfo) {return 0;}
     virtual void beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) {};
     virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
+    virtual void shutdown() {};
     XtcData::Xtc& transitionXtc() {return m_pool->transitionDgram()->xtc;}
     XtcData::NamesLookup& namesLookup() {return m_namesLookup;}
     unsigned nodeId;
