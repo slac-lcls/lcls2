@@ -37,14 +37,14 @@ procmgr_config = [
  {                         id:'groupca',     flags:'s',   conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
  {                         id:'modca1',                   conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:1'},
  {                         id:'modca2',                   conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
- { host: collect_host,     id:'control',     flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P tst -S 1'},
+ { host: collect_host,     id:'control',     flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P tst -r /dev/null'},
  {                         id:'control_gui', flags:'p',   conda:conda_rel,                cmd:'control_gui -H '+collect_host},
 
  # TEB
- { host: 'drp-tst-dev016', id:'teb16',       flags:'sxpu', conda:conda_rel, cmd:'teb -P tst -C '+collect_host+' -M '+prom_cfg_dir},
+ #{ host: 'drp-tst-dev016', id:'teb16',       flags:'sxpu', conda:conda_rel, cmd:'teb -P tst -C '+collect_host+' -M '+prom_cfg_dir},
 
  # MEB
- { host: 'drp-tst-dev019', id:'meb19',       flags:'sxpu', conda:conda_rel, cmd:'monReqServer -P tst -d -q 4 -C '+collect_host+' -M '+prom_cfg_dir},
+ #{ host: 'drp-tst-dev016', id:'meb16',       flags:'sxpu', conda:conda_rel, cmd:'monReqServer -P tst -d -q 4 -C '+collect_host+' -M '+prom_cfg_dir},
 
  # BLD
  #{ host: 'drp-tst-dev018', id:'bld_18',       flags:'xpu', conda:conda_rel, env:epics_env, cmd:bld_cmd},
@@ -53,7 +53,7 @@ procmgr_config = [
  #{ host: 'drp-tst-dev015', id:'pva_15',       flags:'xpu', conda:conda_rel, env:epics_env, cmd:pva_cmd},
 
  # EpicsArch
- { host: 'drp-tst-dev015', id:'ea_15',        flags:'xpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
+ #{ host: 'drp-tst-dev015', id:'ea_15',        flags:'xpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
 
  # HSD: 6.4 GS/s digitizer (DEV06_3E)
  #{ port:'29074',           id:'hsdpvs_3e_a', flags:'s',   conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+hsd_epics_dev06+'_3E:A'},

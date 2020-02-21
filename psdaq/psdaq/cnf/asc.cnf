@@ -23,7 +23,7 @@ prom_cfg_dir = '/reg/g/psdm/psdatmgr/etc/config/prom'
 procmgr_config = [
  { id:'modca',                     conda:conda_rel, env:epics_env, cmd:'modca DAQ:ASC:XPM:'+xpm},
  { id:'groupca',     flags:'s',    conda:conda_rel, env:epics_env, cmd:'groupca DAQ:ASC '+xpm+' '+platform},
- { id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:ASC -x '+xpm+' -P asc'},
+ { id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:ASC -x '+xpm+' -P asc -r /dev/null'},
  { id:'control_gui', flags:'p',    conda:conda_rel,                cmd:'control_gui -H '+collect_host},
 
  # Trigger event builder
