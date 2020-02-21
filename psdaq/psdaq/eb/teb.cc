@@ -631,6 +631,7 @@ int TebApp::_configure(const json& msg)
 
 # undef _FETCH
 
+    // Find and register a port to use with Prometheus for run-time monitoring
   if (_exposer)  _exposer.reset();
   unsigned port = 0;
   for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
