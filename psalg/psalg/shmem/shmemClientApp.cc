@@ -26,11 +26,13 @@ public:
       nanosleep(&ts,0);
     }
     if(_verbose)
-      printf("%-15s transition: time 0x%014" PRIx64 ", payloadSize 0x%x\n",
+      printf("%-15s transition: time 0x%016" PRIx64 " = %u.%09u, damage %04x, payloadSize 0x%x\n",
              TransitionId::name(dg->service()),
              dg->time.value(),
+             dg->time.seconds(), dg->time.nanoseconds(),
+             dg->xtc.damage.value(),
              dg->xtc.sizeofPayload());
-    return 0;       
+    return 0;
   }
 private:
   int _rate;
@@ -146,11 +148,11 @@ int main(int argc, char* argv[]) {
     myClient.free(ev_index,buf_size);
     }
 
-  if(timing)    
+  if(timing)
     clock_gettime(CLOCK_REALTIME, &tv);
-    
+
   printf("shmemClient received %d L1 dgrams %d payload bytes",events,bytes);
-  
+
   if(timing)
     {
     timespec df = tsdiff(ptv,tv);
