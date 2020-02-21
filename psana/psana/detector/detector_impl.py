@@ -6,7 +6,7 @@ class DetectorImpl(object):
         self._det_name       = det_name
         self._drp_class_name = drp_class_name
         self._configs        = configs
-        self._calibconst     = calibconst
+        self._calibconst     = calibconst # only my calibconst (equivalent to det.calibconst['det_name'])
 
         self._config_segments = []
         for config in self._configs:
