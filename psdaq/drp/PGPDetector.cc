@@ -201,7 +201,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
             event->mask |= (1 << lane);
 
             logging::debug("PGPReader  lane %d  size %d  hdr %016lx.%016lx.%08x",
-                           lane, size, 
+                           lane, size,
                            reinterpret_cast<uint64_t*>(data)[0],
                            reinterpret_cast<uint64_t*>(data)[1],
                            reinterpret_cast<uint32_t*>(data)[4]);
@@ -216,7 +216,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                                    timingHeader->pulseId());
                 }
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-                    logging::critical("%sFatal: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
+                    logging::critical("%PGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
                            RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
                     logging::critical("data: %08x %08x %08x %08x %08x %08x",
                            data[0], data[1], data[2], data[3], data[4], data[5]);

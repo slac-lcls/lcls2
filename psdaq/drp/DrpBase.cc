@@ -217,7 +217,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     }
 
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
-        logging::critical("%sjumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
+        logging::critical("%sEbReceiver: jumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
         logging::critical("pid     %014lx, tid     %s, env %08x", pulseId, XtcData::TransitionId::name(transitionId), dgram->env);
         logging::critical("lastPid %014lx, lastTid %s", m_lastPid, XtcData::TransitionId::name(m_lastTid));
     }

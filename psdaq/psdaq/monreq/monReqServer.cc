@@ -393,14 +393,15 @@ namespace Pds {
 
       if (_prms.verbose >= VL_EVENT)
       {
-        uint64_t pid = event->creator()->pulseId();
-        unsigned ctl = dg->control();
-        size_t   sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
-        unsigned src = dg->xtc.src.value();
-        unsigned env = dg->env;
-        printf("MEB processed  %5ld          event  [%5d] @ "
+        uint64_t    pid = event->creator()->pulseId();
+        unsigned    ctl = dg->control();
+        unsigned    env = dg->env;
+        size_t      sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
+        unsigned    src = dg->xtc.src.value();
+        const char* knd = TransitionId::name(dg->service());
+        printf("MEB processed %5ld %15s  [%5d] @ "
                "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d, ts %u.%09u\n",
-               _eventCount, idx, dg, ctl, pid, env, sz, src, dg->time.seconds(), dg->time.nanoseconds());
+               _eventCount, knd, idx, dg, ctl, pid, env, sz, src, dg->time.seconds(), dg->time.nanoseconds());
       }
 
       if (_apps->events(dg) == XtcMonitorServer::Handled)
