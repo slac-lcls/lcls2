@@ -413,10 +413,9 @@ void PvaDetector::_worker()
                 const unsigned msTmo = 100;
                 if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
                 {
+                    XtcData::TimeStamp timestamp;
                     const unsigned nsTmo = msTmo * 1000000;
-                    uint64_t nsec = dgram->time.to_ns() - nsTmo;
-                    XtcData::TimeStamp timestamp(XtcData::TimeStamp::from_ns(nsec));
-                    _timeout(timestamp);
+                    _timeout(timestamp.from_ns(dgram->time.to_ns() - nsTmo));
 
                     t0 = Pds::fast_monotonic_clock::now();
                 }
