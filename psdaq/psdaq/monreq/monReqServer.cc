@@ -25,8 +25,8 @@
 #include <atomic>
 #include <climits>                      // For HOST_NAME_MAX
 
-static const int      CORE_0               = 18; // devXXX: 18, devXX:  7, accXX:  9
-static const int      CORE_1               = 19; // devXXX: 19, devXX: 19, accXX: 21
+static const int      CORE_0               = -1; // devXXX: 18, devXX:  7, accXX:  9
+static const int      CORE_1               = -1; // devXXX: 19, devXX: 19, accXX: 21
 static const unsigned EPOCH_DURATION       = 8;  // Revisit: 1 per xferBuffer
 static const unsigned NUMBEROF_XFERBUFFERS = 8;  // Value corresponds to ctrb:maxEvents
 static const unsigned PROM_PORT_BASE       = 9200; // Prometheus port

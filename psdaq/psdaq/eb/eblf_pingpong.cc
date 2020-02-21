@@ -30,7 +30,7 @@ using namespace Pds::Eb;
 static const unsigned port_base     = 1024; // Pick from range 1024 - 32768, 61000 - 65535
 static const unsigned default_size  = 4096;
 static const unsigned default_iters = 1000;
-static const unsigned default_core  = 10;
+static const int      default_core  = -1;
 
 typedef std::chrono::microseconds us_t;
 
@@ -74,7 +74,7 @@ int main(int argc, char **argv)
   unsigned    portBase = port_base;
   size_t      size     = default_size;
   unsigned    iters    = default_iters;
-  unsigned    core     = default_core;
+  int         core     = default_core;
   bool        start    = false;
   unsigned    verbose  = 0;
 
@@ -128,11 +128,14 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  rc = pinThread(pthread_self(), core);
-  if (rc != 0)
+  if (core != -1)
   {
-    fprintf(stderr, "%s:\n  Error from pinThread:\n  %s\n",
-            __PRETTY_FUNCTION__, strerror(rc));
+    rc = pinThread(pthread_self(), core);
+    if (rc != 0)
+    {
+      fprintf(stderr, "%s:\n  Error from pinThread:\n  %s\n",
+              __PRETTY_FUNCTION__, strerror(rc));
+    }
   }
 
   size_t alignment = sysconf(_SC_PAGESIZE);

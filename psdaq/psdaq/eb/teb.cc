@@ -42,8 +42,8 @@ using json     = nlohmann::json;
 using logging  = psalg::SysLog;
 using string_t = std::string;
 
-static const int      CORE_0          = 18; // devXXX: 11, devXX:  7, accXX:  9
-static const int      CORE_1          = 19; // devXXX: 12, devXX: 19, accXX: 21
+static const int      CORE_0          = -1; // devXXX: 18, devXX:  7, accXX:  9
+static const int      CORE_1          = -1; // devXXX: 19, devXX: 19, accXX: 21
 static const string_t TRIGGER_DETNAME = "tmoTeb";
 static const unsigned PROM_PORT_BASE  = 9200; // Prometheus port
 static const unsigned MAX_PROM_PORTS  = 100;
