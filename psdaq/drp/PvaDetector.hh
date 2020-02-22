@@ -94,7 +94,6 @@ private:
     DrpBase m_drp;
     Parameters& m_para;
     std::unique_ptr<Detector> m_det;
-    RunInfo m_runInfo;
     bool m_unconfigure;
 };
 

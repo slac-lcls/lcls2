@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <sstream>
 #include <iostream>
+#include <map>
 #include <Python.h>
 #include "DataDriver.h"
 #include "RunInfoDef.hh"
@@ -480,7 +481,7 @@ void PvaDetector::process(const PvaMonitor& pva)
                            timestamp.seconds(), timestamp.nanoseconds(),
                            dgram->time.seconds(), dgram->time.nanoseconds());
 
-            PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
+            PGPEvent* pgpEvent = nullptr; // Not needed in this case
             event(*dgram, pgpEvent);
 
             _sendToTeb(*dgram, index);
