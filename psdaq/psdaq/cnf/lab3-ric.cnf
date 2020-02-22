@@ -53,7 +53,7 @@ procmgr_config = [
  #{ host: 'drp-tst-dev018', id:'bld_18',       flags:'xpu', conda:conda_rel, env:epics_env, cmd:bld_cmd},
 
  # PVA
- { host: 'drp-tst-dev015', id:'pva_15',       flags:'xpu', conda:conda_rel, env:epics_env, cmd:pva_cmd},
+ #{ host: 'drp-tst-dev015', id:'pva_15',       flags:'xpu', conda:conda_rel, env:epics_env, cmd:pva_cmd},
 
  # EpicsArch
  #{ host: 'drp-tst-dev015', id:'ea_15',        flags:'xpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},

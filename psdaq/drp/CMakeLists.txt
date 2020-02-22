@@ -1,6 +1,7 @@
 find_package(PythonLibs REQUIRED)
 
 add_library(drpbase
+    XpmDetector.cc
     DrpBase.cc
     FileWriter.cc
 )
@@ -17,7 +18,6 @@ target_link_libraries(drpbase
 )
 
 add_executable(drp
-    XpmDetector.cc
     AreaDetector.cc
     Digitizer.cc
     TimingSystem.cc
@@ -46,7 +46,6 @@ target_link_libraries(drp_bld
 )
 
 add_executable(drp_pva
-    XpmDetector.cc
     PvaDetector.cc
 )
 

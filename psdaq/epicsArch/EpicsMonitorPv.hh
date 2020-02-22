@@ -24,7 +24,7 @@ namespace Pds
     int  release();
     bool ready(const std::string& request);
     int  printPv() const;
-    int  addDef(EpicsArchDef& def);
+    int  addDef(EpicsArchDef& def, size_t& payloadSize);
     void addNames(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId);
     int  addToXtc(bool& stale, char *pcXtcMem, size_t& iSizeXtc, size_t& iLength);
 

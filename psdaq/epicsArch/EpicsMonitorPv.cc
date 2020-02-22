@@ -61,7 +61,7 @@ namespace Pds
     return getComplete(!_bProviderType ? CA : PVA, request);
   }
 
-  int EpicsMonitorPv::addDef(EpicsArchDef& def)
+  int EpicsMonitorPv::addDef(EpicsArchDef& def, size_t& payloadSize)
   {
     const pvd::StructureConstPtr& structure = _strct->getStructure();
     if (!structure) {
@@ -71,67 +71,69 @@ namespace Pds
     }
     const pvd::StringArray& names = structure->getFieldNames();
     const pvd::FieldConstPtrArray& fields = structure->getFields();
-    for (unsigned i=0; i<fields.size(); i++) {
-      std::string fullName(name() + "." + names[i]);
-      if (names[i] != "value") {
-        logging::debug("EpicsMonitorPv::addDef: Skipping field '%s'", names[i].c_str());
-        continue;
+    unsigned i;
+    for (i=0; i<fields.size(); i++) {
+      if (names[i] == "value")  break;
+    }
+    std::string fullName(name() + "." + names[i]);
+    switch (fields[i]->getType()) {
+      case pvd::scalar: {
+        const pvd::Scalar* scalar = static_cast<const pvd::Scalar*>(fields[i].get());
+        XtcData::Name::DataType type = xtype[scalar->getScalarType()];
+        def.NameVec.push_back(XtcData::Name(name().c_str(), type));
+        payloadSize = XtcData::Name::get_element_size(type);
+        _pData = calloc(1, payloadSize);
+        logging::info("name: %s  type: %d", fullName.c_str(), type);
+        switch (scalar->getScalarType()) {
+          case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int32_t >(data, length); };  break;
+          case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int64_t >(data, length); };  break;
+          case pvd::pvUInt:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint32_t>(data, length); };  break;
+          case pvd::pvULong:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint64_t>(data, length); };  break;
+          case pvd::pvFloat:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<float   >(data, length); };  break;
+          case pvd::pvDouble: getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<double  >(data, length); };  break;
+          default: {
+            logging::critical("%s: Unsupported Scalar type %d",
+                              fullName.c_str(),
+                              scalar->getScalarType());
+            throw "Unsupported scalar type";
+            break;
+          }
+        }
+        break;
       }
-      switch (fields[i]->getType()) {
-        case pvd::scalar: {
-          const pvd::Scalar* scalar = static_cast<const pvd::Scalar*>(fields[i].get());
-          XtcData::Name::DataType type = xtype[scalar->getScalarType()];
-          def.NameVec.push_back(XtcData::Name(name().c_str(), type));
-          _pData = calloc(1, XtcData::Name::get_element_size(type));
-          switch (scalar->getScalarType()) {
-            case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int32_t >(data, length); };  break;
-            case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int64_t >(data, length); };  break;
-            case pvd::pvUInt:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint32_t>(data, length); };  break;
-            case pvd::pvULong:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint64_t>(data, length); };  break;
-            case pvd::pvFloat:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<float   >(data, length); };  break;
-            case pvd::pvDouble: getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<double  >(data, length); };  break;
-            default: {
-              logging::critical("%s: Unsupported Scalar type %d",
-                                fullName.c_str(),
-                                scalar->getScalarType());
-              throw "Unsupported scalar type";
-              break;
-            }
-          }
-          break;
-        }
 
-        case pvd::scalarArray: {
-          const pvd::ScalarArray* array = static_cast<const pvd::ScalarArray*>(fields[i].get());
-          XtcData::Name::DataType type = xtype[array->getElementType()];
-          size_t nelem = _strct->getSubField<pvd::PVArray>(names[i].c_str())->getLength();
-          def.NameVec.push_back(XtcData::Name(name().c_str(), type, 1));
-          _pData = calloc(1, nelem * XtcData::Name::get_element_size(type));
-          switch (array->getElementType()) {
-            case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int32_t >(data, length); };  break;
-            case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int64_t >(data, length); };  break;
-            case pvd::pvUInt:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint32_t>(data, length); };  break;
-            case pvd::pvULong:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint64_t>(data, length); };  break;
-            case pvd::pvFloat:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<float   >(data, length); };  break;
-            case pvd::pvDouble: getData = [&](void* data, size_t& length) -> size_t { return _getDataT<double  >(data, length); };  break;
-            default: {
-              logging::critical("%s: Unsupported ScalarArray type %d",
-                                fullName.c_str(),
-                                array->getElementType());
-              throw "Unsupported ScalarArray type";
-              break;
-            }
+      case pvd::scalarArray: {
+        const pvd::ScalarArray* array = static_cast<const pvd::ScalarArray*>(fields[i].get());
+        XtcData::Name::DataType type = xtype[array->getElementType()];
+        size_t nelem = _strct->getSubField<pvd::PVArray>(names[i].c_str())->getLength();
+        def.NameVec.push_back(XtcData::Name(name().c_str(), type, 1));
+        payloadSize = nelem * XtcData::Name::get_element_size(type);
+        _pData = calloc(1, payloadSize);
+        logging::info("name: %s  type: %d  length: %zd", fullName.c_str(), type, nelem);
+        switch (array->getElementType()) {
+          case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int32_t >(data, length); };  break;
+          case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int64_t >(data, length); };  break;
+          case pvd::pvUInt:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint32_t>(data, length); };  break;
+          case pvd::pvULong:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint64_t>(data, length); };  break;
+          case pvd::pvFloat:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<float   >(data, length); };  break;
+          case pvd::pvDouble: getData = [&](void* data, size_t& length) -> size_t { return _getDataT<double  >(data, length); };  break;
+          default: {
+            logging::critical("%s: Unsupported ScalarArray type %d",
+                              fullName.c_str(),
+                              array->getElementType());
+            throw "Unsupported ScalarArray type";
+            break;
           }
-          break;
         }
+        break;
+      }
 
-        default: {
-          std::string msg("PV '"+name()+"' type '"+pvd::TypeFunc::name(fields[i]->getType())+
-                          "' for field '"+names[i]+"' not supported");
-          logging::warning("%s:  %s", __PRETTY_FUNCTION__, msg.c_str());
-          //throw msg;
-          break;
-        }
+      default: {
+        std::string msg("PV '"+name()+"' type '"+pvd::TypeFunc::name(fields[i]->getType())+
+                        "' for field '"+names[i]+"' not supported");
+        logging::warning("%s:  %s", __PRETTY_FUNCTION__, msg.c_str());
+        //throw msg;
+        break;
       }
     }
 

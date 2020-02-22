@@ -85,12 +85,15 @@ void EpicsArchMonitor::close()
   EpicsMonitorPv::close();
 }
 
-void EpicsArchMonitor::initDef()
+void EpicsArchMonitor::initDef(size_t& payloadSize)
 {
+  payloadSize = 0;
   for (unsigned iPvName = 0; iPvName < _lpvPvList.size(); iPvName++)
   {
     EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
-    epicsPvCur.addDef(_epicsArchDef);
+    size_t size;
+    epicsPvCur.addDef(_epicsArchDef, size);
+    payloadSize += size;
   }
 }
 
