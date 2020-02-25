@@ -3,8 +3,7 @@ import psalg.configdb.configdb as cdb
 import sys
 import IPython
 
-
-def write_to_daq_config_db(prescaling):
+def write_to_daq_config_db():
 
     #database contains collections which are sets of documents (aka json objects).
     #each type of device has a collection.  The elements of that collection are configurations of that type of device.
@@ -18,7 +17,7 @@ def write_to_daq_config_db(prescaling):
     #ID point to the actuall Mongo DB collection and document
 
     create = True
-    dbname = 'sioanDB'     #this is the name of the database running on the server.  Only client care about this name.
+    dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
     instrument = 'tst'      #
 
     mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)    #mycdb.client.drop_database('configDB_szTest') will drop the configDB_szTest database
@@ -48,33 +47,33 @@ def write_to_daq_config_db(prescaling):
     ########################################
     #####        prescaling          #######
     ########################################
-    top.set("cl.Application.AppLane0.Prescale.ScratchPad",int(prescaling),'UINT32')                     # testing ability to write to database
-    top.set("cl.Application.AppLane0.Prescale.DialInPreScaling",2,'UINT32')                            # prescaled raw data 
-    top.set("cl.Application.AppLane0.Fex.background_prescaler.DialInPreScaling",3,'UINT32')            # prescaled raw backgrounds (may consider accumulated backgrounds instead)
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Prescale.ScratchPad",1,'UINT32')                     # testing ability to write to database
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Prescale.DialInPreScaling",2,'UINT32')                            # prescaled raw data 
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.background_prescaler.DialInPreScaling",3,'UINT32')            # prescaled raw backgrounds (may consider accumulated backgrounds instead)
     ########################################
     #####      initial fir filter    #######
     ########################################
-    top.set("cl.Application.AppLane0.Fex.FIR.CoefficientSet0","7f7f7f7f",'CHARSTR')                      #high part of step 
-    top.set("cl.Application.AppLane0.Fex.FIR.CoefficientSet1","7f7f7f7f",'CHARSTR')                      #high part of step 
-    top.set("cl.Application.AppLane0.Fex.FIR.CoefficientSet2","7f7f7f7f",'CHARSTR')                      #high part of step 
-    top.set("cl.Application.AppLane0.Fex.FIR.CoefficientSet3","7f7f7f7f",'CHARSTR')                      #high part of step 
-    top.set("cl.Application.AppLane0.Fex.FIR.CoefficientSet4","81818181",'CHARSTR')                      #low  part of step
-    top.set("cl.Application.AppLane0.Fex.FIR.CoefficientSet5","81818181",'CHARSTR')                      #low  part of step
-    top.set("cl.Application.AppLane0.Fex.FIR.CoefficientSet6","81818181",'CHARSTR')                      #low  part of step
-    top.set("cl.Application.AppLane0.Fex.FIR.CoefficientSet7","81818181",'CHARSTR')                      #low  part of step
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet0","7f7f7f7f",'CHARSTR')                      #high part of step
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet1","7f7f7f7f",'CHARSTR')                      #high part of step
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet2","7f7f7f7f",'CHARSTR')                      #high part of step
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet3","7f7f7f7f",'CHARSTR')                      #high part of step
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet4","81818181",'CHARSTR')                      #low  part of step
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet5","81818181",'CHARSTR')                      #low  part of step
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet6","81818181",'CHARSTR')                      #low  part of step
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet7","81818181",'CHARSTR')                      #low  part of step
 
-    top.set("cl.Application.AppLane0.Fex.FIR.LoadCoefficients","1",'CHARSTR')                             #low  part of step.  Having a value of 1  causes a segfault in pgpread_timetool.cc.  But not in tt_config.py. 
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.LoadCoefficients","1",'CHARSTR')                             #low  part of step.  Having a value of 1  causes a segfault in pgpread_timetool.cc.  But not in tt_config.py.
 
     ########################################
     #####      time constants        #######
     ########################################
-    top.set("cl.Application.AppLane0.Fex.FrameIIR.TimeConstant",8,'UINT32')
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FrameIIR.TimeConstant",8,'UINT32')
 
 
     ########################################
     #####      subtraction enabled     #####
     ########################################
-    top.set("cl.Application.AppLane0.Fex.FrameSubtractor.SubtractionActive",0,'UINT32')                   #turn background subtract on
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FrameSubtractor.SubtractionActive",0,'UINT32')                   #turn background subtract on
 
 
     ########################################
@@ -113,10 +112,8 @@ def write_to_daq_config_db(prescaling):
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.USD",1,'UINT32')
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.USL",1,'UINT32')
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.USS",1,'UINT32')
-    
 
-
-    #the object hierarchy paths (e.g. cl.Application.AppLane0... yadayadayada) for a device can be found by implementing
+    #the object hierarchy paths (e.g. cl.TimeToolKcu1500.Application.AppLane0... yadayadayada) for a device can be found by implementing
     #pr.generateAddressMap where pr comes from "import rogue as pr".  For this to work, one has to be logged onto the machine hosting the firmware   
     #that interacts with rogue.  This particular register map can be found in the lcls2-pcie-apps directory cloned from https://github.com/slaclab/lcls2-pcie-apps.
 
@@ -126,4 +123,4 @@ def write_to_daq_config_db(prescaling):
 
 
 if __name__ == "__main__":
-    write_to_daq_config_db(sys.argv[1])
+    write_to_daq_config_db()

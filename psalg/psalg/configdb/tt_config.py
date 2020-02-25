@@ -1,6 +1,6 @@
 from psalg.configdb.get_config import get_config
 import rogue
-import TimeToolDev
+import lcls2_timetool
 import json
 import IPython
 from collections import deque
@@ -18,20 +18,17 @@ def database_object_calculations_2rogue():
 def write_to_rogue():
     return 0
 
-def tt_config(connect_str,cfgtype,detname,group):
-
+def tt_config(connect_str,cfgtype,detname):
     cfg = get_config(connect_str,cfgtype,detname)
-
 
     #toggle_prescaling()
 
-
     #################################################################
     try:
-        cl = TimeToolDev.TimeToolDev(
+        cl = lcls2_timetool.TimeToolKcu1500Root(
             dev       = '/dev/datadev_0',
             dataDebug = False,
-            version3  = False,
+            pgp3      = False,
             pollEn    = False,
             initRead  = False,
             enVcMask  = 0xD,
@@ -41,10 +38,9 @@ def tt_config(connect_str,cfgtype,detname,group):
         print("ERROR: Close any other applications using rogue to communicate with AXI Lite registers ")
         raise
         
-
     #################################################################
 
-    if(cl.Hardware.PgpMon[0].RxRemLinkReady.get() != 1):
+    if(cl.TimeToolKcu1500.Kcu1500Hsio.PgpMon[0].RxRemLinkReady.get() != 1):
         raise ValueError(f'PGP Link is down' )
         
     #################################################################
@@ -61,13 +57,13 @@ def tt_config(connect_str,cfgtype,detname,group):
     depth = 0
     path  = 'cl'
     my_queue  =  deque([[path,depth,cl,cfg['cl']]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
-    cludge_dict = {"AppLane0":"AppLane[0]","ClinkFeb0":"ClinkFeb[0]","Ch0":"Ch[0]", "ROI0":"ROI[0]","ROI1":"ROI[1]","SAD0":"SAD[0]","SAD1":"SAD[1]","SAD2":"SAD[2]"}
+    kludge_dict = {"AppLane0":"AppLane[0]","ClinkFeb0":"ClinkFeb[0]","Ch0":"Ch[0]", "ROI0":"ROI[0]","ROI1":"ROI[1]","SAD0":"SAD[0]","SAD1":"SAD[1]","SAD2":"SAD[2]"}
     while(my_queue):
         path,depth,rogue_node, configdb_node = my_queue.pop()
         if(dict is type(configdb_node)):
             for i in configdb_node:
-                if i in cludge_dict:
-                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[cludge_dict[i]],configdb_node[i]])
+                if i in kludge_dict:
+                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[kludge_dict[i]],configdb_node[i]])
                 else:
                     my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[i],configdb_node[i]])
         
@@ -102,9 +98,9 @@ def tt_config(connect_str,cfgtype,detname,group):
 
     print("scratch pad value = ",cl.Application.AppLane[0].Prescale.ScratchPad.get())
 
-    cl.StartRun()
+    #cl.StartRun()
 
-    cl.stop()   #gui.py should be able to run after this line, but it's still using the axi lite resource.
+    #cl.stop()   #gui.py should be able to run after this line, but it's still using the axi lite resource.
                 #deleting cl doesn't resolve this problem.
 
     return json.dumps(cfg)
@@ -134,7 +130,7 @@ if __name__ == "__main__":
     print(20*'_')
     print(20*'_')
 
-    my_config = tt_config(mystring,"BEAM", "tmotimetool",None)          
+    my_config = tt_config(mystring,"BEAM", "tmotimetool")
 
     print(20*'_')
     print(20*'_')
@@ -143,22 +139,3 @@ if __name__ == "__main__":
     print(20*'_')
 
     print(my_config)
-    IPython.embed()
-
-"""
-(lcls2daq_ttdep) [sioan@lcls-pc83236 lcls2]$ python psalg/psalg/configdb/tt_config.py 
-Traceback (most recent call last):
-  File "psalg/psalg/configdb/tt_config.py", line 16, in <module>
-    my_string = tt_config("mcbrowne:psana@psdb-dev:9306",'BEAM', 'tmotimetool',None)
-  File "psalg/psalg/configdb/tt_config.py", line 7, in tt_config
-    cfg = get_config(connect_str,cfgtype,detname)
-  File "/u1/sioan/miniconda3/envs/lcls2daq_ttdep/lib/python3.7/site-packages/psalg/configdb/get_config.py", line 25, in get_config
-    connect_info = json.loads(connect_json)
-  File "/u1/sioan/miniconda3/envs/lcls2daq_ttdep/lib/python3.7/json/__init__.py", line 348, in loads
-    return _default_decoder.decode(s)
-  File "/u1/sioan/miniconda3/envs/lcls2daq_ttdep/lib/python3.7/json/decoder.py", line 337, in decode
-    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
-  File "/u1/sioan/miniconda3/envs/lcls2daq_ttdep/lib/python3.7/json/decoder.py", line 355, in raw_decode
-    raise JSONDecodeError("Expecting value", s, err.value) from None
-json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
-"""

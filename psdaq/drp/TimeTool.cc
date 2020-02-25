@@ -49,7 +49,7 @@ static void check(PyObject* obj) {
     }
 }
 
-void TimeTool::_addJson(Xtc& xtc, NamesId& configNamesId) {
+void TimeTool::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& config_alias) {
 
     // returns new reference
     PyObject* pModule = PyImport_ImportModule("psalg.configdb.tt_config");
@@ -60,11 +60,10 @@ void TimeTool::_addJson(Xtc& xtc, NamesId& configNamesId) {
     // returns borrowed reference
     PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"tt_config");
     check(pFunc);
-    // need to get the dbase connection info via collection
     // returns new reference
-    // FIXME: should get "HSD:DEV02" from drp cmd line, and "BEAM" from config phase1.
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssss",m_connect_json.c_str(),"HSD:DEV02", "BEAM", m_para->detName.c_str());
+    PyObject* mybytes = PyObject_CallFunction(pFunc, "sss", m_connect_json.c_str(), config_alias.c_str(), m_para->detName.c_str());
     check(mybytes);
+
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
     check(json_bytes);
@@ -92,12 +91,17 @@ void TimeTool::_addJson(Xtc& xtc, NamesId& configNamesId) {
 
 }
 
+void TimeTool::connect(const json& connect_json, const std::string& collectionId)
+{
+  m_connect_json = connect_json.dump();
+}
+
 unsigned TimeTool::configure(const std::string& config_alias, Xtc& xtc)
 {
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     // set up the names for the configuration data
     NamesId configNamesId(nodeId,ConfigNamesIndex);
-    _addJson(xtc, configNamesId);
+    _addJson(xtc, configNamesId, config_alias);
 
     // set up the names for L1Accept data
     Alg ttAlg("tt", 1, 2, 3); // TODO: should this be configured by ttconfig.py?
