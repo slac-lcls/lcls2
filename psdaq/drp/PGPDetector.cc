@@ -46,10 +46,8 @@ bool checkPulseIds(const Parameters& para, MemPool& pool, PGPEvent* event)
                     return false;
                 }
             }
-            // check bit 7 in pulseId for error
-            bool error = timingHeader->control() & (1 << 7);
-            if (error) {
-                logging::error("Error bit in pulseId is set");
+            if (timingHeader->error()) {
+                logging::error("Timing header error bit is set");
             }
         }
     }

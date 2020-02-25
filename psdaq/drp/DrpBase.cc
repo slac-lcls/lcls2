@@ -262,7 +262,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         else if (transitionId != XtcData::TransitionId::L1Accept) {
             if (transitionId == XtcData::TransitionId::BeginRun) {
                 m_offset = 0; // reset offset when writing out a new file
-                _writeDgram(_configureDgram());
+                _writeDgram(static_cast<XtcData::Dgram*>(m_configureBuffer));
             }
             _writeDgram(m_pool.transitionDgram());
             if (transitionId == XtcData::TransitionId::EndRun) {

@@ -192,10 +192,8 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
                    reinterpret_cast<const uint32_t*>(data)[4]);
 
     const Pds::TimingHeader* timingHeader = reinterpret_cast<const Pds::TimingHeader*>(data);
-    // Revisit: Check bit 7 in pulseId for error
-    bool error = timingHeader->control() & (1 << 7);
-    if (error) {
-        logging::error("Error bit in pulseId is set");
+    if (timingHeader->error()) {
+        logging::error("Timing header error bit is set");
     }
     XtcData::TransitionId::Value transitionId = timingHeader->service();
     if (transitionId != XtcData::TransitionId::L1Accept) {

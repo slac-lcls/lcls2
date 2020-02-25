@@ -7,6 +7,8 @@ namespace Pds {
 
 #pragma pack(push,4)
 
+class TimingHeader;
+
 class PulseId {
 public:
     PulseId(uint64_t value) : _pulseIdAndControl(value) {}
@@ -15,7 +17,8 @@ public:
     // give methods "timing_" prefix to avoid conflict with
     // methods in Transition
     uint64_t                     pulseId()        const {return _pulseIdAndControl&0x00ffffffffffffff;}
-protected:
+private:
+    friend TimingHeader;
     unsigned                     timing_control() const {return (_pulseIdAndControl>>56)&0xff;}
     XtcData::TransitionId::Value timing_service() const {return (XtcData::TransitionId::Value)(timing_control()&0xf);}
 protected:
@@ -33,6 +36,7 @@ public:
     XtcData::TransitionBase::Type type()    const { return XtcData::TransitionBase::Type((control()>>4)&0x3); }
     XtcData::TransitionId::Value  service() const { return timing_service(); }
     bool                          isEvent() const { return service()==XtcData::TransitionId::L1Accept; }
+    bool                          error()   const { return control() & (1 << 7); }
 public:
     uint32_t evtCounter;
     uint32_t _opaque[2];
@@ -40,8 +44,8 @@ public:
 
 class EbDgram : public PulseId, public XtcData::Dgram {
 public:
-    EbDgram(const PulseId& pulseId, const Dgram& dgram) : PulseId(pulseId), Dgram(dgram) {}
-    EbDgram(const TimingHeader& th, const XtcData::Src src, uint32_t envRogMask) : PulseId(th) {
+    EbDgram(const PulseId& pulseId, const Dgram& dgram) : PulseId(pulseId.pulseId()), Dgram(dgram) {}
+    EbDgram(const TimingHeader& th, const XtcData::Src src, uint32_t envRogMask) : PulseId(th.pulseId()) {
         XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
         xtc.src = src; // set the src field for the event builders
         xtc.damage = 0;

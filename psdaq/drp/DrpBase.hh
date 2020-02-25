@@ -39,7 +39,6 @@ public:
     std::string closeFiles();
 private:
     void _writeDgram(XtcData::Dgram* dgram);
-    XtcData::Dgram* _configureDgram() {return static_cast<XtcData::Dgram*>(m_configureBuffer);}
 private:
     MemPool& m_pool;
     Pds::Eb::MebContributor* m_mon;
