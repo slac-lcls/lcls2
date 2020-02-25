@@ -30,10 +30,10 @@ class Events:
                 return self._get_evt_and_update_store()
             except StopIteration: 
                 try:
-                    batch_dict = next(self._batch_iter)
+                    batch_dict, _ = next(self._batch_iter)
                 except StopIteration: 
-                    self._batch_iter = next(self._smdr_man) 
-                    batch_dict = next(self._batch_iter)
+                    self._batch_iter = next(self._smdr_man)
+                    batch_dict, _ = next(self._batch_iter)
 
                 self._evt_man = EventManager(batch_dict[0][0], self.run.configs, \
                         self.run.dm, filter_fn=self.run.filter_callback)
@@ -44,10 +44,15 @@ class Events:
                 return self._get_evt_and_update_store()
             except StopIteration: 
                 smd_batch = self.get_smd()
+
+                # With destination callback, this node has to wait
+                # until it either receives some data or empty bytearray.
+                while smd_batch == bytearray(b'wait'):
+                    smd_batch = self.get_smd()
+
                 if smd_batch == bytearray():
                     self.flag_empty_smd_batch = True
                     raise StopIteration
-
                 else:
                     self._evt_man = EventManager(smd_batch, self.run.configs, \
                             self.run.dm, filter_fn=self.run.filter_callback)

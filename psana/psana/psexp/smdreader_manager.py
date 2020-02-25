@@ -33,10 +33,10 @@ class BatchIterator(object):
         # while updating offsets of each smd memoryview
         if not self.eb: raise StopIteration
 
-        batch_dict = self.eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn, \
+        batch_dict, step_dict = self.eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn, \
                 destination=self.destination)
-        if self.eb.nevents == 0: raise StopIteration
-        return batch_dict
+        if self.eb.nevents == 0 and self.eb.nsteps == 0: raise StopIteration
+        return batch_dict, step_dict
 
 class SmdReaderManager(object):
 

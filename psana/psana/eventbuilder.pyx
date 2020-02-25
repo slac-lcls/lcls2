@@ -10,7 +10,6 @@ from dgramlite cimport Xtc, Sequence, Dgram
 
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
-from parallelreader cimport Buffer
 from libc.stdint cimport uint32_t, uint64_t
 
 cdef class EventBuilder:
@@ -37,12 +36,12 @@ cdef class EventBuilder:
     cdef array.array event_timestamps
     cdef list views
     cdef unsigned nevents
+    cdef unsigned nsteps
     cdef size_t DGRAM_SIZE
     cdef size_t XTC_SIZE
     cdef unsigned long min_ts
     cdef unsigned long max_ts
     cdef unsigned L1_ACCEPT
-    cdef Buffer* step_bufs
 
     def __init__(self, views):
         self.nsmds = len(views)
@@ -54,39 +53,17 @@ cdef class EventBuilder:
         self.event_timestamps = array.array('L', [0]*self.nsmds)
         self.views = views
         self.nevents = 0
+        self.nsteps = 0
         self.DGRAM_SIZE = sizeof(Dgram)
         self.XTC_SIZE = sizeof(Xtc)
         self.L1_ACCEPT = 12
         
-        # step dgram buffers (epics, configs, etc.)
-        self.step_bufs = <Buffer *>malloc(sizeof(Buffer)*self.nsmds)
-        self._init_step_bufs()
-
     def _has_more(self):
         for i in range(self.nsmds):
             if self.offsets[i] < self.sizes[i]:
                 return True
         return False
 
-    def _init_step_bufs(self):
-        cdef int idx
-        for idx in range(self.nsmds):
-            self.step_bufs[idx].chunk = <char *>malloc(0x100000)
-            self.step_bufs[idx].offset = 0
-            self.step_bufs[idx].nevents = 0
-
-    def _reset_step_bufs(self):
-        cdef int idx
-        for idx in range(self.nsmds):
-            self.step_bufs[idx].offset = 0
-            self.step_bufs[idx].nevents = 0
-
-    def __dealloc__(self):
-        cdef int idx
-        for idx in range(self.nsmds):
-            free(self.step_bufs[idx].chunk)
-        free(self.step_bufs)
-    
     def build(self, batch_size=1, filter_fn=0, destination=0, limit_ts=-1):
         """
         Builds a list of batches.
@@ -102,7 +79,9 @@ cdef class EventBuilder:
         destination: takes a timestamp and return rank no.
         """
         cdef unsigned got = 0
+        cdef unsigned got_step = 0
         batch_dict = {} # keeps list of batches (w/o destination callback, only one batch is returned at index 0)
+        step_dict = {}
         self.min_ts = 0
         self.max_ts = 0
 
@@ -122,6 +101,8 @@ cdef class EventBuilder:
         evt_footer_view[-1] = self.nsmds
         cdef array.array batch_footer= array.clone(int_array_template, batch_size + 1, zero=True)
         cdef unsigned[:] batch_footer_view = batch_footer
+        cdef array.array step_batch_footer= array.clone(int_array_template, batch_size + 1, zero=True)
+        cdef unsigned[:] step_batch_footer_view = step_batch_footer
         
         # Use typed variables for performance
         cdef unsigned evt_size = 0
@@ -133,11 +114,11 @@ cdef class EventBuilder:
         
         # For checking step dgrams
         cdef unsigned service = 0
-        self._reset_step_bufs()
 
         while got < batch_size and self._has_more() and not reach_limit_ts:
             array.zero(self.timestamps)
             array.zero(self.dgram_sizes)
+            service = 0
             
             # Get dgrams for all smd files then
             # collect their timestamps and sizes for sorting.
@@ -153,12 +134,7 @@ cdef class EventBuilder:
                     self.timestamps[view_idx] = <uint64_t>d.seq.high << 32 | d.seq.low
                     self.dgram_sizes[view_idx] = self.DGRAM_SIZE + payload
                     raw_dgrams[view_idx] = <char[:self.dgram_sizes[view_idx]]>view_ptr
-                    # Copy to step buffers if non L1
                     service = (d.env>>24)&0xf
-                    if service != self.L1_ACCEPT: 
-                        memcpy(self.step_bufs[view_idx].chunk + self.step_bufs[view_idx].offset, d, self.DGRAM_SIZE + payload)
-                        self.step_bufs[view_idx].offset += self.DGRAM_SIZE + payload
-                        self.step_bufs[view_idx].nevents += 1
                     PyBuffer_Release(&buf)
 
             sorted_smd_id = np.argsort(self.timestamps)
@@ -222,25 +198,39 @@ cdef class EventBuilder:
                         batch_dict[dest_rank] = (bytearray(), []) # (events as bytes, event sizes)
                 else:
                     batch_dict[dest_rank] = (bytearray(), [])
-
                 batch, evt_sizes = batch_dict[dest_rank]
+
+                if step_dict:
+                    if dest_rank not in step_dict:
+                        step_dict[dest_rank] = (bytearray(), [])
+                else:
+                    step_dict[dest_rank] = (bytearray(), [])
+                step_batch, step_sizes = step_dict[dest_rank] 
 
                 # Extend this batch bytearray to include this event and collect
                 # the size of this event for batch footer.
                 evt_size = 0
+                evt_bytes = bytearray()
                 for dgram_idx in range(self.nsmds):
                     dgram = event_dgrams[dgram_idx]
+                    evt_footer_view[dgram_idx] = 0
                     if dgram: 
-                        batch.extend(bytearray(dgram))
                         evt_footer_view[dgram_idx] = dgram.nbytes
-                    else:
-                        evt_footer_view[dgram_idx] = 0
-
+                        evt_bytes.extend(bytearray(dgram))
                     evt_size += evt_footer_view[dgram_idx]
-                
+
+                batch.extend(evt_bytes)
                 batch.extend(evt_footer_view)
                 evt_sizes.append(evt_size + evt_footer_size)
-               
+                got += 1
+                
+                # Add step
+                if service != self.L1_ACCEPT:
+                    step_batch.extend(evt_bytes)
+                    step_batch.extend(evt_footer_view)
+                    step_sizes.append(evt_size + evt_footer_size)
+                    got_step += 1
+
                 # mona removed evt._complete() - I think smd events do not
                 # need det interface. The evt._complete() is called in def _from_bytes()
                 # and this is how bigdata events are created.
@@ -252,28 +242,46 @@ cdef class EventBuilder:
                     if self.max_ts >= limit_ts:
                         reach_limit_ts = 1
                         break
-                
-                got += 1
+
                 if got == batch_size:
                     break
 
         
         self.nevents = got
+        self.nsteps = got_step
         
         # Add packet_footer for all events in each batch
         for _, val in batch_dict.items():
             batch, evt_sizes = val
+            
+            if memoryview(batch).nbytes == 0: continue
+
             for evt_idx in range(len(evt_sizes)):
                 batch_footer_view[evt_idx] = evt_sizes[evt_idx]
             batch_footer_view[-1] = evt_idx + 1
             batch.extend(batch_footer_view[:evt_idx+1])
             batch.extend(batch_footer_view[batch_size:]) # when convert to bytearray negative index doesn't work
+
+        for _, val in step_dict.items():
+            step_batch, step_sizes = val
+
+            if memoryview(step_batch).nbytes ==0: continue
+
+            for evt_idx in range(len(step_sizes)):
+                step_batch_footer_view[evt_idx] = step_sizes[evt_idx]
+            step_batch_footer_view[-1] = evt_idx + 1
+            step_batch.extend(step_batch_footer_view[:evt_idx+1])
+            step_batch.extend(step_batch_footer_view[batch_size:])
         
-        return batch_dict
+        return batch_dict, step_dict
 
     @property
     def nevents(self):
         return self.nevents
+
+    @property
+    def nsteps(self):
+        return self.nsteps
 
     @property
     def min_ts(self):
@@ -287,14 +295,3 @@ cdef class EventBuilder:
     def offsets(self):
         return self.offsets
 
-    def step_view(self, int buf_id):
-        """ Returns memoryview of the step buffer object."""
-        assert buf_id < self.nsmds
-        cdef char[:] view
-        cdef size_t block_size
-
-        if self.step_bufs[buf_id].nevents == 0:
-            return 0
-        view = <char [:self.step_bufs[buf_id].offset]> self.step_bufs[buf_id].chunk
-
-        return view

@@ -15,25 +15,10 @@ class EventBuilderManager(object):
         self.eb = EventBuilder(views)
 
     def batches(self):
-        batch = self.eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn, destination=self.destination)
-        while self.eb.nevents:
+        batch_dict, step_dict = self.eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn, destination=self.destination)
+        while self.eb.nevents or self.eb.nsteps:
             self.min_ts = self.eb.min_ts
             self.max_ts = self.eb.max_ts
-            yield batch
-            batch = self.eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn, destination=self.destination)
+            yield batch_dict, step_dict
+            batch_dict, step_dict = self.eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn, destination=self.destination)
 
-    def step_chunk(self):
-        """ Returns list of steps in all smd files."""
-        step_view = bytearray()
-        step_pf = PacketFooter(n_packets=self.n_files)
-        
-        for i in range(self.n_files):
-            _step_view = self.eb.step_view(i)
-            if _step_view != 0:
-                step_view.extend(_step_view)
-                step_pf.set_size(i, memoryview(_step_view).shape[0])
-
-        if step_view:
-            step_view.extend(step_pf.footer)
-
-        return step_view

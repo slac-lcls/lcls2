@@ -17,13 +17,9 @@ class EventManager(object):
     """
     def __init__(self, view, smd_configs, dm, filter_fn=0):
         if view:
-            if view == bytearray(b'wait'): # RunParallel (unused bigdata nodes get this wait msg)
-                self.smd_events = None
-                self.n_events = 0
-            else:
-                pf = PacketFooter(view=view)
-                self.smd_events = pf.split_packets()
-                self.n_events = pf.n_packets
+            pf = PacketFooter(view=view)
+            self.smd_events = pf.split_packets()
+            self.n_events = pf.n_packets
         else:
             self.smd_events = None
             self.n_events = 0
