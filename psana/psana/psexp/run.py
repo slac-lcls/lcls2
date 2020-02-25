@@ -92,6 +92,7 @@ class Run(object):
         # make them attributes of the container
         flag_found = False
         for (det_name,drp_class_name),drp_class in self.dm.det_class_table.items():
+            if det_name == 'epics' or det_name == 'scan': continue
             if det_name == name:
                 setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configs, self.calibconst[det_name]))
                 setattr(det,'_configs', self.configs)
@@ -130,6 +131,7 @@ class Run(object):
         info = {}
         for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
 #            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
+            if detname == 'epics' or detname == 'scan': continue
             info[(detname,det_xface_name)] = _enumerate_attrs(getattr(self.Detector(detname),det_xface_name))
         return info
 
