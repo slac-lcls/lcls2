@@ -85,6 +85,7 @@ class ts_connector:
             xlink = xpm_link(link_ids[i])
             if xlink.is_xpm():
                 self.xpm_link_disable(self.xpm_base+str(xlink.xpm_num())+':',groups)
+                link_masks[i] = 0xff   # xpm to xpm links should be enabled for everything
             else:
                 link_masks[i] &= ~groups
 
