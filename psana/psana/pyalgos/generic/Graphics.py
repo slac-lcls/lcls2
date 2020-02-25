@@ -238,7 +238,14 @@ def add_stat_text(axhi, weights, bins) :
 
     if axhi.get_yscale() is 'log' :
         #print 'axhi.get_yscale():', axhi.get_yscale()
-        log_yb, log_ye = math
+        log_yb, log_ye = log10(yb), log10(ye)
+        log_y = log_yb + (log_ye-log_yb)*0.95
+        y = 10**log_y
+
+    axhi.text(x, y, txt, fontsize=10, color='k',
+              horizontalalignment='right',
+              verticalalignment='top',
+              rotation=0)
 
 #------------------------------
 

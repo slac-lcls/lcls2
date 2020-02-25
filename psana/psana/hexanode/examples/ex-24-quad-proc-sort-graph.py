@@ -65,13 +65,15 @@ def proc_data(**kwargs):
     OFPREFIX     = kwargs.get('ofprefix','./')
     VERBOSE      = kwargs.get('verbose', False)
 
-    peaks = WFPeaks(**kwargs)
-    proc  = DLDProcessor(**kwargs)
-    stats = DLDStatistics(proc,**kwargs)
-
     ds    = DataSource(files=DSNAME)
     orun  = next(ds.runs())
     det   = orun.Detector(DETNAME)
+
+    kwargs['consts'] = det.calibconst
+
+    peaks = WFPeaks(**kwargs)
+    proc  = DLDProcessor(**kwargs)
+    stats = DLDStatistics(proc,**kwargs)
 
     for nev,evt in enumerate(orun.events()):
         if nev<EVSKIP : continue
