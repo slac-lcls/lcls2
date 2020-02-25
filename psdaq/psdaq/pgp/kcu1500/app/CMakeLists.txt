@@ -30,6 +30,16 @@ target_link_libraries(kcuStatus
     kcu
 )
 
+add_executable(kcuPgpStatus xPgpStatus.cpp)
+
+target_include_directories(kcuPgpStatus PUBLIC
+    ../../aes-stream-drivers/include
+)
+
+target_link_libraries(kcuPgpStatus 
+    kcu
+)
+
 add_executable(kcuHist xHist.cpp)
 
 target_include_directories(kcuHist PUBLIC
