@@ -17,7 +17,9 @@ namespace Pds {
 
     class Xvc {
     public:
-      static void* launch(Jtag*,bool lverbose=false);
+      static void* launch(Jtag*,
+                          unsigned short port=2542,
+                          bool           lverbose=false);
     };
   };
 };

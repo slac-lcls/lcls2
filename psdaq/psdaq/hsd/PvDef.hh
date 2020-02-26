@@ -52,9 +52,9 @@ namespace Pds {
 
     class MonBuf {
     public:
-      int32_t freesz;
-      int32_t freeevt;
-      int32_t fifoof;
+      uint32_t freesz;
+      uint32_t freeevt;
+      uint32_t fifoof;
     };
 
     class MonBufDetail {

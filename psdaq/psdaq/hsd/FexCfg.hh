@@ -19,10 +19,15 @@ namespace Pds {
       public:
         void setGate(unsigned begin, unsigned length) { _gate = (begin&0xffff) | (length<<16); }
         void setFull(unsigned rows, unsigned events) { _full = (rows&0xffff) | (events<<16); }
-        void getFree(unsigned& rows, unsigned& events) {
+        void getFree(unsigned& rows, unsigned& events, unsigned& oflow) {
+#if 1   // machine check exception
           unsigned v = _free;
-          rows   = v&0xffff;
-          events = (v>>16)&0xff;
+#else
+          unsigned v = 0;
+#endif 
+          rows   = (v>> 0)&0xffff;
+          events = (v>>16)&0x1f;
+          oflow  = (v>>24)&0xff;
         }
       public:
         vuint32_t _prescale;

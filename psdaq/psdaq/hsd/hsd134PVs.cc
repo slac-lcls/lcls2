@@ -10,6 +10,7 @@
 
 #include "Module134.hh"
 #include "ChipAdcCore.hh"
+#include "Pgp3.hh"
 #include "PV134Stats.hh"
 #include "PV134Ctrls.hh"
 
@@ -127,10 +128,11 @@ int main(int argc, char** argv)
 
   int c;
   bool lUsage = false;
-
+  
   const char* dev    = 0;
   const char* prefix = "DAQ:LAB2:HSD";
   bool lAbortOnErr = true;
+  unsigned    busId  = 0;
 
   while ( (c=getopt( argc, argv, "d:EP:Ih")) != EOF ) {
     switch(c) {
@@ -185,8 +187,10 @@ int main(int argc, char** argv)
   m->setup_timing();
   m->setup_jesd(lAbortOnErr);
 
-  m->set_local_id(strtoul(dev+strlen(dev)-2,NULL,16));
+  busId = strtoul(dev+strlen(dev)-2,NULL,16);
+  m->set_local_id(busId);
 
+  //  Name the remote partner on the timing link
   { unsigned upaddr = m->remote_id();
     std::string paddr = Psdaq::AppUtils::parse_paddr(upaddr);
     for(unsigned i=0; i<2; i++) {
@@ -195,14 +199,29 @@ int main(int argc, char** argv)
       { Pds_Epics::EpicsPVA pvPaddr(sprefix.c_str());
         while(!pvPaddr.connected())
           usleep(1000);
-        pvPaddr.putFrom(paddr); }
+        pvPaddr.putFrom(paddr); 
+        usleep(100000); }
       sprefix += "_U";
       { Pds_Epics::EpicsPVA pvPaddr(sprefix.c_str());
         while(!pvPaddr.connected())
           usleep(1000);
-        pvPaddr.putFrom(upaddr); }
+        pvPaddr.putFrom(upaddr);
+        usleep(100000); }
     }
     printf("paddr [0x%x] [%s]\n", upaddr, paddr.c_str());
+  }
+
+  //  Name the remote partner on the PGP link
+  for(unsigned i=0; i<2; i++) {
+    unsigned uplink = m->pgp()[i*4]->remoteLinkId();
+    std::string sprefix(prefix);
+    sprefix += ":"+std::string(1,'A'+i)+":PLINK";
+    Pds_Epics::EpicsPVA pvPaddr(sprefix.c_str());
+    while(!pvPaddr.connected())
+      usleep(1000);
+    pvPaddr.putFrom(uplink);
+    printf("plink [0x%x]\n", uplink);
+    usleep(100000);
   }
 
   StatsTimer* timer = new StatsTimer(*m);
@@ -212,7 +231,7 @@ int main(int argc, char** argv)
   timer->allocate(prefix);
   timer->start();
 
-  //  Pds::Mmhw::Xvc::launch( m->xvc(), false );
+  Pds::Mmhw::Xvc::launch( &m->xvc(), 11000+busId, false );
   while(1)
     sleep(1);                    // Seems to help prevent a crash in cpsw on exit
 

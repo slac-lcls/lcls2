@@ -18,7 +18,7 @@ unsigned Pgp3::txErrCount   () const { return _axi.txFrameErrCnt; }
 unsigned Pgp3::rxOpCodeCount() const { return (_axi.rxOpCodeCnt>>24); }
 uint64_t Pgp3::rxOpCodeLast () const 
 {
-  uint64_t v = _axi.rxOpCodeCnt&0xffffff;
+  uint64_t v = _axi.rxOpCodeNum&0xffff;
   v <<= 32;
   v |= _axi.rxOpCodeLast;
   return v;

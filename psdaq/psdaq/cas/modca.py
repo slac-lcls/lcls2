@@ -59,7 +59,7 @@ class PvPAddr(QtWidgets.QWidget):
             if qs[0:8]=='ffffffff':
                 s = 'XTPG'
             elif qs[0:2]=='ff':
-                shelf = int(qs[2:4],16)
+                shelf = int(qs[2:3],16)
                 port  = int(qs[6:8],16)
                 s = 'XPM:%d:AMC%d-%d'%(shelf,port/7,port%7)
             self.__display.valueSet.emit(s)
@@ -154,7 +154,10 @@ class PvLinkId:
     def update(self, err):
         value = self.pv.__value__
         itype = (int(value)>>24)&0xff
-        self.linkType.setText(linkType[itype])
+        if (itype == 0xff):
+            self.linkType.setText(linkType[itype]+':%d'%((int(value)>>20)&0xf))
+        else:
+            self.linkType.setText(linkType[itype])
         if (itype == 0xfb or itype == 0xfc) and (value&0xffff)!=0:
             ip_addr = '172.21'+'.%u'%((int(value)>>8)&0xff)+'.%u'%((int(value)>>0)&0xff)
             host = socket.gethostbyaddr(ip_addr)[0].split('.')[0].split('-')[-1]
@@ -163,7 +166,7 @@ class PvLinkId:
             self.linkSrc.setText(host)
         else:
             if itype > 0xfc:
-                ip_addr = '10.%u'%((int(value)>>16)&0xff)+'.%u'%((int(value)>>8)&0xff)+'.%u'%((int(value)>>0)&0xff)
+                ip_addr = '10.0.%u'%((int(value)>>16)&0xf)+'.%u'%((int(value)>>8)&0xff)
                 self.linkSrc.setText(ip_addr)
             else:
                 self.linkSrc.setText('0x%x'%(value&0xffffff))

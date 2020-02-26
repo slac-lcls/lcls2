@@ -154,14 +154,10 @@ namespace Pds {
         //
         if ((reg.csr&0x10)==0) {
           { MonBuf v;
-            v.freesz  = (fex._base[0]._free>> 0)&0xffff;
-            v.freeevt = (fex._base[0]._free>>16)&0x1f;
-            v.fifoof  = (fex._base[0]._free>>24)&0xff;
+            fex._base[0].getFree(v.freesz,v.freeevt,v.fifoof);
             PVPUT(monRawBuf); }
           { MonBuf v;
-            v.freesz  = (fex._base[1]._free>> 0)&0xffff;
-            v.freeevt = (fex._base[1]._free>>16)&0x1f;
-            v.fifoof  = (fex._base[1]._free>>24)&0xff;
+            fex._base[1].getFree(v.freesz,v.freeevt,v.fifoof);
             PVPUT(monFexBuf); }
         }
 
