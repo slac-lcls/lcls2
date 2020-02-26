@@ -358,7 +358,10 @@ class GroupStats(object):
                     linkInhEv = []
                     for i in range(32):
                         linkInh = (linkInhEvReg>>(32*i))&0xffffffff
-                        linkInhEv.append((linkInh - self._linkInhEv[i])/dnumL0)
+                        if dnumL0:
+                            linkInhEv.append((linkInh - self._linkInhEv[i])/dnumL0)
+                        else:
+                            linkInhEv.append(0)
                         self._linkInhEv[i] = linkInh
                     updatePv(self._pv_deadFLink, linkInhEv)
                 else:
