@@ -1,6 +1,7 @@
 import sys
 import argparse
 import logging
+import socket
 import numpy
 from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import *
@@ -113,6 +114,38 @@ class PvJesd(object):
             for i,v in enumerate(q['clks']):
                 self.clockWidgets[i].setText(QString('{0:.4f}'.format(v)))
 
+class PvPLink(QtWidgets.QWidget):
+    def __init__( self, parent, pvbase, name ):
+        super(PvPLink,self).__init__()
+        layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(0,0,0,0)
+        label  = QtWidgets.QLabel(name)
+        label.setMinimumWidth(100)
+        layout.addWidget(label)
+        self.__display = PvDisplay()
+        self.__display.setWordWrap(True)
+        self.__display.connect_signal()
+        layout.addWidget(self.__display)
+        self.setLayout(layout)
+        parent.addWidget(self)
+
+        pvname = pvbase+name
+        initPvMon(self,pvname,True)
+
+    def update(self,err):
+        q = self.pv.get().value
+        # transform q into s
+        s = 'Unknown'
+        itype = (int(q)>>24)&0xff
+        if (itype == 0xfb) and (q&0xffff)!=0:
+            ip_addr = '172.21'+'.%u'%((int(q)>>8)&0xff)+'.%u'%((int(q)>>0)&0xff)
+            host = socket.gethostbyaddr(ip_addr)[0].split('.')[0].split('-')[-1]
+            s = host+':{:}'.format((q>>16)&0xff)
+        if err is None:
+            self.__display.valueSet.emit(s)
+        else:
+            print(err)
+
 class HsdConfig(QtWidgets.QWidget):
 
     def __init__(self, pvbase):
@@ -187,6 +220,7 @@ class HsdEnv(QtWidgets.QWidget):
         lo = QtWidgets.QVBoxLayout()
         PvCString(lo, pvbase+':', 'FWBUILD',isStruct=True)
         PvCString(lo, pvbase+':', 'PADDR',isStruct=True)
+        PvPLink  (lo, pvbase+':', 'PLINK')
 #        buildpv = Pv(pvbase+':FWBUILD')
 #        lo.addWidget( QtWidgets.QLabel(buildpv.get().replace(',','\n')) )
 #        paddrpv = Pv(pvbase+':PADDR')

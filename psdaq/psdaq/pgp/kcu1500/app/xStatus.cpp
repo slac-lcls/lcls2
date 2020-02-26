@@ -283,7 +283,27 @@ int main (int argc, char **argv) {
   PRINTERR(txOpCodeCnt, 0xa0);
   PRINTREG(txOpCodeLst, 0xa4);
 
+#define PRINTID(name) {                         \
+    uint64_t v;                                 \
+    uint32_t reg;                               \
+    printf("%20.20s :", #name);                 \
+    for(unsigned i=0; i<8; i++) {               \
+      int ifd = fd[i>>2];                       \
+      if (ifd>=0) {                                             \
+        READREG(name,0x38+base+(i&3)*0x10000);                  \
+        v = reg;                                                \
+        v <<= 32;                                               \
+        READREG(name,0x34+base+(i&3)*0x10000);                  \
+        v |= reg;                                               \
+        printf(" 8x", (v>>16)&0xffffffff);                      \
+      }                                                         \
+    }                                                           \
+  }
+
+  PRINTID(rxLinkId);
+
   base = 0x00a40000;
+#undef PRINTID
 #define PRINTID(name, addr) {                                   \
     uint32_t reg;                                               \
     printf("%20.20s :", #name);                                 \
@@ -295,7 +315,6 @@ int main (int argc, char **argv) {
       }                                                         \
     }                                                           \
     printf("\n"); }
-  PRINTID(rxLinkId, 0);
   PRINTID(txLinkId, 0x10);
 
   close(fd[0]);

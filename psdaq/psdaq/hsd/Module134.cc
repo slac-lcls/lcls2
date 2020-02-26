@@ -12,6 +12,7 @@
 
 #include "psdaq/mmhw/Pgp3Axil.hh"
 #include "psdaq/mmhw/TriggerEventManager.hh"
+#include "psdaq/mmhw/Xvc.hh"
 
 using Pds::Mmhw::AxiVersion;
 using Pds::Mmhw::Pgp3Axil;
@@ -67,6 +68,8 @@ Module134* Module134::create(int fd)
     perror("Failed to map");
     return 0;
   }
+
+  printf("Module134 mapped at %p\n", ptr);
 
   Module134* m = new Module134;
   m->p = reinterpret_cast<Module134::PrivateData*>(ptr);
@@ -404,3 +407,8 @@ void Module134::i2c_lock  (I2cSwitch::Port port) const
   const_cast<Module134*>(this)->i2c().i2c_sw_control.select(port);
 }
 void Module134::i2c_unlock() const { _sem_i2c.give(); }
+
+Pds::Mmhw::Jtag& Module134::xvc()
+{
+  return p->base.xvc;
+}

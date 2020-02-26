@@ -48,7 +48,8 @@ namespace Pds {
       Jesd204b&                    jesd   (unsigned ch);
       OptFmc&                      optfmc ();
       void*                        reg    ();
- 
+      Pds::Mmhw::Jtag&             xvc    ();
+
       //  Accessors
       uint64_t device_dna() const;
 

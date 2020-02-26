@@ -187,7 +187,9 @@ static int handle_data(int fd, volatile jtag_t* ptr) {
   return 0;
 }
 
-void* Pds::Mmhw::Xvc::launch(Pds::Mmhw::Jtag* ptr, bool lverbose)
+void* Pds::Mmhw::Xvc::launch(Pds::Mmhw::Jtag* ptr, 
+                             unsigned short   port,
+                             bool             lverbose)
 {
   verbose = lverbose ? 1:0;
    
@@ -204,7 +206,7 @@ void* Pds::Mmhw::Xvc::launch(Pds::Mmhw::Jtag* ptr, bool lverbose)
   setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &i, sizeof i);
 
   address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port = htons(2542);
+  address.sin_port = htons(port);
   address.sin_family = AF_INET;
   
   if (bind(s, (struct sockaddr*) &address, sizeof(address)) < 0) {
