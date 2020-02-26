@@ -55,6 +55,9 @@ public:
         // move the control bits from the pulseId into the top 8 bits of env.
         env = (th.control()<<24) | (th.env & envRogMask); // filter out other partition ROGs
     }
+public:
+    void setEOL() { _pulseIdAndControl |= 1ULL << (6 + 56); }
+    bool isEOL() const { return (_pulseIdAndControl & (1ULL << (6 + 56))) != 0; }
 };
 
 #pragma pack(pop)

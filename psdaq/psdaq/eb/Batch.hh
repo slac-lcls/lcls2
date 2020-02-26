@@ -41,7 +41,7 @@ namespace Pds {
       uint16_t           rogs() const;
       void               accumRcvrs(uint64_t receivers);
       uint64_t           receivers() const;
-      size_t             terminate();
+      void               terminate();
       void               release();
       void               store(uint64_t pid, const void* appPrm);
       const void*        retrieve(uint64_t pid) const;
@@ -176,19 +176,13 @@ Pds::EbDgram* Pds::Eb::Batch::allocate()
 }
 
 inline
-size_t Pds::Eb::Batch::terminate()
+void Pds::Eb::Batch::terminate()
 {
   assert(_extent <= MAX_ENTRIES * _size);
 
-  // No NULL termination needed for a full batch
-  if (_extent < MAX_ENTRIES * _size)
-  {
-    char*         buf = static_cast<char*>(_buffer) + _extent;
-    *(uint64_t*)  buf = 0; // terminate the batch with 0
-    _extent += sizeof(Pds::PulseId); // for a null terminator to a list
-  }
-
-  return _extent;
+  char* buf = static_cast<char*>(_buffer) + _extent - _size;
+  Pds::EbDgram* dg = reinterpret_cast<Pds::EbDgram*>(buf);
+  dg->setEOL();
 }
 
 inline
