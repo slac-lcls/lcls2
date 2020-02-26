@@ -295,7 +295,8 @@ int main (int argc, char **argv) {
         v <<= 32;                                               \
         READREG(name,0x34+base+(i&3)*0x10000);                  \
         v |= reg;                                               \
-        printf(" %8x", (v>>16)&0xffffffff);                     \
+        unsigned id = (v>>16)&0xffffffff;                       \
+        printf(" %8x", id);                                     \
       }                                                         \
     }                                                           \
     printf("\n"); }
