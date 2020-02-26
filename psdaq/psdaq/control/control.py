@@ -615,7 +615,7 @@ class CollectionManager():
         self.password = args.password
         self.url = args.url
         self.experiment_name = None
-        self.rollcall_timeout = 30
+        self.rollcall_timeout = args.rollcall_timeout
         self.bypass_activedet = False
 
         if args.r:
@@ -1826,6 +1826,7 @@ def main():
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')
     parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 0)')
     parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
+    parser.add_argument('--rollcall_timeout', type=int, default=30, help='rollcall timeout sec (default 30)')
     parser.add_argument('-v', action='store_true', help='be verbose')
     parser.add_argument("--user", default="xppopr", help='run database user')
     parser.add_argument("--password", default="pcds", help='run database password')
