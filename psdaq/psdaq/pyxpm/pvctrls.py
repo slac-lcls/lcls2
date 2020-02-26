@@ -405,7 +405,8 @@ class PVCtrls(object):
 
         # Assign transmit link ID
         ip_comp = ip.split('.')
-        v = (0xff0000 | (int(ip_comp[2])<<8) | int(ip_comp[3]))<<4
+        xpm_num = name.rsplit(':',1)[1]
+        v = 0xff00000 | ((int(xpm_num)&0xf)<<16) | ((int(ip_comp[2])&0xf)<<12) | ((int(ip_comp[3])&0xff)<< 4)
         xpm.XpmApp.paddr.set(v)
         print('Set PADDR to 0x{:x}'.format(v))
 

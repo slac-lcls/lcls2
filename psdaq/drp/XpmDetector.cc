@@ -41,11 +41,9 @@ json XpmDetector::connectionInfo()
         logging::error("%s", msg);
         throw msg;
     }
-    int x = (reg >> 16) & 0xFF;
-    int y = (reg >> 8) & 0xFF;
-    int port = reg & 0xFF;
-    std::string xpmIp = {"10.0." + std::to_string(x) + '.' + std::to_string(y)};
-    json info = {{"xpm_ip", xpmIp}, {"xpm_port", port}};
+    int xpm  = (reg >> 20) & 0x0F;
+    int port = (reg >>  0) & 0xFF;
+    json info = {{"xpm_id", xpm}, {"xpm_port", port}};
     return info;
 }
 

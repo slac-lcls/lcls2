@@ -3,6 +3,7 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 #include <netinet/ip.h>
+#include <netdb.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -53,13 +54,29 @@ std::string AppUtils::parse_paddr(unsigned v)
   if (v==0xffffffff)
     sprintf(buff,"XTPG");
   else if ((v>>24)==0xff) {
-    unsigned shelf = (v>>16)&0xff;
+    unsigned shelf = (v>>20)&0xf;
     unsigned port  = (v>> 0)&0xff;
     sprintf(buff,"XPM:%d:AMC%d-%d",shelf,port/7,port%7);
   }    
   else
     sprintf(buff,"Unknown");
   return std::string(buff);
+}
+
+std::string AppUtils::parse_plink(unsigned v) {
+  char chost[32];
+  sockaddr_in saddr;
+  saddr.sin_addr.s_addr = htonl(0xac150000 | (v&0xffff));
+  saddr.sin_port        = 0;
+  socklen_t   slen = sizeof(saddr);
+  if (getnameinfo(reinterpret_cast<sockaddr*>(&saddr), slen, chost, sizeof(chost), NULL, 0, 0)) {
+    printf("lookup of host %08x [%08x] failed\n",saddr.sin_addr.s_addr,v);
+    strcpy(chost,"Unknown");
+  }
+  else {
+    sprintf(chost+strlen(chost),":%u",(v>>16)&0xff);
+  }
+  return std::string(chost);
 }
 
 static void* countThread(void* args)
