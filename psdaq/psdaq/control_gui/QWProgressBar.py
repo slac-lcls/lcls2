@@ -59,6 +59,7 @@ class QWProgressBar(QWidget) :
             self.plab = QLabel(label)
             self.hbox.addWidget(self.plab)
             #self.hbox.addStretch(1)
+        else : self.plab = None
 
         self.pbar = QProgressBar(self)
         self.hbox.addWidget(self.pbar)
@@ -84,7 +85,7 @@ class QWProgressBar(QWidget) :
 
         self.pbar.setTextVisible(True)
         #self.plab.setAlignment(Qt.AlignCenter)
-        self.plab.setStyleSheet('text-align: center;')
+        if self.plab is not None : self.plab.setStyleSheet('text-align: center;')
 
         styleDefault = ""
         #styleGray = "background-color: rgb(230, 240, 230); color: rgb(0, 0, 0);" # Gray

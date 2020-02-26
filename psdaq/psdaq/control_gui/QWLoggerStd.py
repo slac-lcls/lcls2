@@ -391,14 +391,23 @@ class QWLoggerStd(QWidget) :
         #self.edi_txt.setTextBackgroundColor(bkgdcolor)
         #bkgdcolor = MSG_LEVEL_TO_BKGD_COLOR.get(levelname, Qt.magenta)
 
+
     def append_qwlogger(self, msg='...'):
         self.edi_txt.append(msg)
         self.scrollDown()
 
 
+    def add_separator(self, sep='\n\n\n\n\n%s'%(50*'_')):
+        self.append_qwlogger(msg=sep)
+
+
     def append_qwlogger_err(self, msg='...'):
         self.edi_err.append(msg)
         self.scrollDown()
+
+
+    def add_separator_err(self, sep='\n\n\n\n\n%s'%(50*'_')):
+        self.append_qwlogger_err(msg=sep)
 
 
     def scrollDown(self):
@@ -409,6 +418,30 @@ class QWLoggerStd(QWidget) :
         self.edi_txt.repaint()
         #self.raise_()
         #self.edi_txt.update()
+
+    if __name__ == "__main__" :
+
+      def key_usage(self) :
+        return 'Keys:'\
+               '\n  ESC - exit'\
+               '\n  A - add separator in main logger window'\
+               '\n  S - add separator in error logger window'\
+               '\n'
+
+
+      def keyPressEvent(self, e) :
+        #logger.info('keyPressEvent, key=', e.key())
+        if   e.key() == Qt.Key_Escape :
+            self.close()
+
+        elif e.key() == Qt.Key_S : 
+            self.add_separator_err()
+
+        elif e.key() == Qt.Key_A : 
+            self.add_separator()
+
+        else :
+            logger.info(self.key_usage())
 
 #------------------------------
 

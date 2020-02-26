@@ -382,6 +382,13 @@ class CGWMain(QWZMQListener) :
                     #self.wconf.set_config_type(cfgtype)
                     #if wcoll is not None : wcoll.update_table()
 
+                elif jo['header']['key'] == 'progress' :
+                    body = jo['body']
+                    logger.debug('received progress msg: %s' % str(body))
+                    if wctrl is not None and wctrl != cp.cgwmaintabuser : 
+                        v = body['elapsed'] / body['total']
+                        wctrl.update_progress_bar(v, is_visible=True)
+
                 else :
                     sj = json.dumps(jo, indent=2, sort_keys=False)
                     logger.debug('received jason:\n%s' % sj)

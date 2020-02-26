@@ -38,6 +38,7 @@ from psdaq.control_gui.Styles import style
 from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_set_record, DaqControl
                                            #daq_control_get_state, daq_control_get_status
 from psdaq.control_gui.CGConfigParameters import cp
+from psdaq.control_gui.QWProgressBar import QWProgressBar
 
 #--------------------
 
@@ -65,9 +66,12 @@ class CGWMainControl(QGroupBox) :
         self.box_state      = QComboBox()
         self.but_transition = QPushButton('Unknown')
         self.but_ctrls      = QPushButton('Ready')
+        self.bar_progress   = QWProgressBar(label=None)
 
         self.states = ['Select',] + [s.upper() for s in DaqControl.states]
         self.box_state.addItems(self.states)
+
+        self.state_is_after_reset = False
 
         if False :
             self.hbox1 = QHBoxLayout() 
@@ -83,6 +87,7 @@ class CGWMainControl(QGroupBox) :
         
             self.hbox3 = QHBoxLayout() 
             self.hbox3.addWidget(self.box_state, 0, Qt.AlignCenter)
+            self.hbox3.addWidget(self.bar_progress, 0, Qt.AlignCenter)
             self.hbox3.addStretch(1)
             self.hbox3.addWidget(self.but_transition, 0, Qt.AlignCenter)
         
@@ -100,6 +105,7 @@ class CGWMainControl(QGroupBox) :
             self.grid.addWidget(self.lab_state,       1, 0, 1, 1)
             self.grid.addWidget(self.lab_trans,       1, 9, 1, 1)
             self.grid.addWidget(self.box_state,       2, 0, 1, 1)
+            self.grid.addWidget(self.bar_progress,    2, 4, 1, 3)
             self.grid.addWidget(self.but_transition,  2, 9, 1, 1)
             self.grid.addWidget(self.lab_ctrls,       3, 0, 1, 1)
             self.grid.addWidget(self.but_ctrls,       4, 0, 1,10)
@@ -141,11 +147,18 @@ class CGWMainControl(QGroupBox) :
         self.lab_record.setFixedWidth(100)
         self.but_record.setFixedSize(50, 50)
         self.but_record.setIconSize(QSize(48, 48))
-
+        self.bar_progress.setFixedWidth(50)
+        self.bar_progress.setVisible(False)
         self.but_ctrls.setStyleSheet(style.styleButtonGood)
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
         self.layout().setContentsMargins(4,4,4,4)
         self.setMinimumSize(270,140)
+
+#--------------------
+
+    def update_progress_bar(self, value=0.3, is_visible=False) :
+        self.bar_progress.setVisible(is_visible)
+        self.bar_progress.set_value(value)
 
 #--------------------
 
@@ -157,9 +170,13 @@ class CGWMainControl(QGroupBox) :
     def on_box_state(self, ind) :
         if not ind : return
         state = self.states[ind]
+
+        if self.state_is_after_reset : cp.cgwmain.wlogr.add_separator_err()
+
         logger.info('-> daq_control_set_state(%s)' % state)
         if not daq_control_set_state(state.lower()):
             logger.warning('on_box_state: STATE %s IS NOT SET' % state)
+        self.state_is_after_reset = (state=='RESET')
 
 #--------------------
  
