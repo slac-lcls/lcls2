@@ -14,6 +14,26 @@
 static int fd;
 std::atomic<bool> terminate;
 
+#pragma pack(push,1)
+// see https://confluence.slac.stanford.edu/display/ppareg/AxiStream+Batcher+Protocol+Version+1
+class EvtBatcherHeader {
+public:
+    unsigned version:4;
+    unsigned width:4;
+    uint8_t  sequence_count;
+    uint8_t  _unused[14]; // set for width==3
+};
+class EvtBatcherSubFrameTail {
+public:
+    uint32_t size;
+    uint8_t  tdest;
+    uint8_t  tuser_first;
+    uint8_t  tuser_last;
+    uint8_t  width;
+    uint8_t  _unused[8]; // set for width==3
+};
+#pragma pack(pop)
+
 unsigned dmaDest(unsigned lane, unsigned vc)
 {
     return (lane<<8) | vc;
@@ -32,13 +52,17 @@ int main(int argc, char* argv[])
     channel = 0;
     std::string device;
     bool lverbose = false;
-    while((c = getopt(argc, argv, "c:d:v")) != EOF) {
+    bool lrogue = false;
+    while((c = getopt(argc, argv, "c:d:vr")) != EOF) {
         switch(c) {
             case 'd':
                 device = optarg;
                 break;
             case 'c':
                 channel = atoi(optarg);
+                break;
+            case 'r':
+                lrogue = true;
                 break;
             case 'v':
                 lverbose = true;
@@ -88,7 +112,15 @@ int main(int argc, char* argv[])
             uint32_t index = dmaIndex[b];
             uint32_t size = dmaRet[b];
             uint32_t dest = dmaDest[b] >> 8;
-            const Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(dmaBuffers[index]);
+            const Pds::TimingHeader* event_header;
+            if (!lrogue)
+                event_header = reinterpret_cast<Pds::TimingHeader*>(dmaBuffers[index]);
+            else {
+                event_header = reinterpret_cast<Pds::TimingHeader*>((char*)(dmaBuffers[index])+sizeof(EvtBatcherHeader));
+                EvtBatcherHeader& ebh = *(EvtBatcherHeader*)(dmaBuffers[index]);
+                EvtBatcherSubFrameTail& ebsft = *(EvtBatcherSubFrameTail*)((char*)(dmaBuffers[index])+size-sizeof(EvtBatcherSubFrameTail));
+                printf("EventBatcherHeader: vers %d seq %d width %d sfsize %d\n",ebh.version,ebh.sequence_count,ebh.width,ebsft.size);
+            }
             XtcData::TransitionId::Value transition_id = event_header->service();
 
             printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u | index %u\n",
