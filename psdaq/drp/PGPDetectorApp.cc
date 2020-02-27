@@ -25,8 +25,12 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     Factory<Detector> f;
     f.register_type<TimingSystem>("TimingSystem");
     f.register_type<Digitizer>("Digitizer");
-    f.register_type<TimeTool>("TimeTool");
     f.register_type<AreaDetector>("AreaDetector");
+    f.register_type<TimeTool>("TimeTool");
+    if (m_para.detectorType=="TimeTool") {
+        m_para.rogueDet=true;
+        m_para.virtChan=1;
+    }
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {
         logging::error("Error !! Could not create Detector object");

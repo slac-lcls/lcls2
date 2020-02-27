@@ -9,18 +9,33 @@
 #include "psdaq/eb/TebContributor.hh"
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
+#include "EventBatcher.hh"
 
 using logging = psalg::SysLog;
 
-namespace Drp {
+using namespace Drp;
 
-bool checkPulseIds(MemPool& pool, PGPEvent* event)
+const Pds::TimingHeader* getTimingHeader(const Parameters& para, MemPool& pool, uint32_t index) {
+    if (para.rogueDet) {
+        EvtBatcherHeader& ebh = *(EvtBatcherHeader*)(pool.dmaBuffers[index]);
+        if(ebh.width!=3) {
+            printf("Found invalid rogue bus width\n");
+            throw("Found invalid rogue bus width");
+        }
+        // skip past the event-batcher header
+        return reinterpret_cast<Pds::TimingHeader*>((&ebh)+1);
+    } else {
+        return reinterpret_cast<Pds::TimingHeader*>(pool.dmaBuffers[index]);
+    }
+}
+
+bool checkPulseIds(const Parameters& para, MemPool& pool, PGPEvent* event)
 {
     uint64_t pulseId = 0;
     for (int i=0; i<4; i++) {
         if (event->mask & (1 << i)) {
             uint32_t index = event->buffers[i].index;
-            const Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(pool.dmaBuffers[index]);
+            const Pds::TimingHeader* timingHeader = getTimingHeader(para, pool,index);
             if (pulseId == 0) {
                 pulseId = timingHeader->pulseId();
             }
@@ -55,12 +70,12 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         for (unsigned i=0; i<batch.size; i++) {
             unsigned index = (batch.start + i) % nbuffers;
             PGPEvent* event = &pool.pgpEvents[index];
-            checkPulseIds(pool, event);
+            checkPulseIds(para, pool, event);
 
             // get transitionId from the first lane in the event
             int lane = __builtin_ffs(event->mask) - 1;
             uint32_t dmaIndex = event->buffers[lane].index;
-            const Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)pool.dmaBuffers[dmaIndex];
+            const Pds::TimingHeader* timingHeader = getTimingHeader(para, pool,dmaIndex);
 
             // make new dgram in the pebble
             // It must be an EbDgram in order to be able to send it to the MEB
@@ -122,7 +137,7 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
     for (int i=0; i<4; i++) {
         if (para.laneMask & (1 << i)) {
             logging::info("setting lane  %d", i);
-            dmaAddMaskBytes(mask, dmaDest(i, 0));
+            dmaAddMaskBytes(mask, dmaDest(i, para.virtChan));
         }
     }
     dmaSetMaskBytes(drp.pool.fd(), mask);
@@ -190,7 +205,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 exit(-1);
             }
 
-            uint32_t* data = (uint32_t*)m_pool.dmaBuffers[index];
+            uint32_t* data = (uint32_t*)getTimingHeader(m_para, m_pool, index);
             uint32_t evtCounter = data[5] & 0xffffff;
             uint32_t current = evtCounter & bufferMask;
             PGPEvent* event = &m_pool.pgpEvents[current];
@@ -304,6 +319,4 @@ void PGPDetector::shutdown()
     for (unsigned i = 0; i < m_para.nworkers; i++) {
         m_workerOutputQueues[i].shutdown();
     }
-}
-
 }

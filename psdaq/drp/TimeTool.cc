@@ -88,7 +88,6 @@ void TimeTool::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& con
     Py_DECREF(pModule);
     Py_DECREF(mybytes);
     Py_DECREF(json_bytes);
-
 }
 
 void TimeTool::connect(const json& connect_json, const std::string& collectionId)

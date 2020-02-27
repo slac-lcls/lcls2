@@ -31,7 +31,16 @@ json XpmDetector::connectionInfo()
     Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
 
     uint32_t reg;
-    dmaReadRegister(fd, &tem->xma().rxId, &reg);
+    if (m_para->detectorType=="TimeTool") {
+        // cpo: this is a hack that is specific for timetool.
+        // the address comes from pyrogue rootDevice.saveAddressMap('fname')
+        // perhaps ideally we would call detector-specific rogue python. this
+        // is the rogue hierarchy for this register in the timetool:
+        // TimeToolKcu1500Root.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId
+        dmaReadRegister(fd, 0x940024, &reg);
+    } else {
+        dmaReadRegister(fd, &tem->xma().rxId, &reg);
+    }
     close(fd);
     // there is currently a failure mode where the register reads
     // back as zero (incorrectly). This is not the best longterm

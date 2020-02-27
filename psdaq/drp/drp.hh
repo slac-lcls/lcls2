@@ -37,6 +37,7 @@ struct Parameters
     unsigned nworkers;
     unsigned batchSize;
     unsigned detSegment;
+    unsigned virtChan;
     uint8_t laneMask;
     std::string alias;
     std::string detName;
@@ -50,6 +51,7 @@ struct Parameters
     uint32_t rogMask;
     std::string trgDetName;
     unsigned verbose;
+    bool rogueDet;
     size_t maxTrSize;
 };
 

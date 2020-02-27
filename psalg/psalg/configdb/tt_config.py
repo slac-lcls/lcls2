@@ -21,89 +21,69 @@ def write_to_rogue():
 def tt_config(connect_str,cfgtype,detname):
     cfg = get_config(connect_str,cfgtype,detname)
 
-    #toggle_prescaling()
+    myargs = { 'dev'         : '/dev/datadev_0',
+               'pgp3'        : False,
+               'pollEn'      : False,
+               'initRead'    : True,
+               'dataCapture' : False,
+               'dataDebug'   : False,}
 
-    #################################################################
-    try:
-        cl = lcls2_timetool.TimeToolKcu1500Root(
-            dev       = '/dev/datadev_0',
-            dataDebug = False,
-            pgp3      = False,
-            pollEn    = False,
-            initRead  = False,
-            enVcMask  = 0xD,
-        )
-    except rogue.GeneralError:
-        #print("rogue.GeneralError: AxiStreamDma::AxiStreamDma: General Error: failed to open file /dev/datadev_0 with dest 0x0 terminate called after throwing an instance of 'char const*'")
-        print("ERROR: Close any other applications using rogue to communicate with AXI Lite registers ")
-        raise
+    # in older versions we didn't have to use the "with" statement
+    # but now the register accesses don't seem to work without it -cpo
+    with lcls2_timetool.TimeToolKcu1500Root(**myargs) as cl:
+
+        if(cl.TimeToolKcu1500.Kcu1500Hsio.PgpMon[0].RxRemLinkReady.get() != 1):
+            raise ValueError(f'PGP Link is down' )
         
-    #################################################################
+        cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.SendEscape()
 
-    if(cl.TimeToolKcu1500.Kcu1500Hsio.PgpMon[0].RxRemLinkReady.get() != 1):
-        raise ValueError(f'PGP Link is down' )
+        # traverse daq config database tree and print corresponding
+        # rogue value
+        # doing this means that fields can't manually be added to the
+        # daq config unless the person doing so knows what the axi
+        # lite registers are
+
+        depth = 0
+        path  = 'cl'
+        my_queue  =  deque([[path,depth,cl,cfg['cl']]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
+        kludge_dict = {"AppLane0":"AppLane[0]","ClinkFeb0":"ClinkFeb[0]","Ch0":"Ch[0]", "ROI0":"ROI[0]","ROI1":"ROI[1]","SAD0":"SAD[0]","SAD1":"SAD[1]","SAD2":"SAD[2]"}
+        while(my_queue):
+            path,depth,rogue_node, configdb_node = my_queue.pop()
+            if(dict is type(configdb_node)):
+                for i in configdb_node:
+                    if i in kludge_dict:
+                        my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[kludge_dict[i]],configdb_node[i]])
+                    else:
+                        my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[i],configdb_node[i]])
         
-    #################################################################
+            if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
 
+                if("UartPiranha4" in path):
+                    #UartPiranhaCode  = (path.split(".")[-1]).lower()
+                    #UartValue = cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4._tx.sendString("get '"+UartPiranhaCode)
+                    #print(path+", rogue value = "+str(UartValue)+", daq config database = " +str(configdb_node))
+                    rogue_node.set(int(str(configdb_node),10))
+                    pass
 
-    cl.StopRun()
-    cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.SendEscape()
-
-    ###############################################################################
-    ### traverse daq config database tree and print corresponding rogue value #####
-    ###############################################################################
-    # doing this means that fields can't manually be added to the daq config unless the person doing so knows what the axi lite registers are
-
-    depth = 0
-    path  = 'cl'
-    my_queue  =  deque([[path,depth,cl,cfg['cl']]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
-    kludge_dict = {"AppLane0":"AppLane[0]","ClinkFeb0":"ClinkFeb[0]","Ch0":"Ch[0]", "ROI0":"ROI[0]","ROI1":"ROI[1]","SAD0":"SAD[0]","SAD1":"SAD[1]","SAD2":"SAD[2]"}
-    while(my_queue):
-        path,depth,rogue_node, configdb_node = my_queue.pop()
-        if(dict is type(configdb_node)):
-            for i in configdb_node:
-                if i in kludge_dict:
-                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[kludge_dict[i]],configdb_node[i]])
                 else:
-                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[i],configdb_node[i]])
-        
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
-            #print(path)
+                    print(path+", rogue value = "+str(hex(rogue_node.get()))+", daq config database = " +str(configdb_node))
 
-            if("UartPiranha4" in path):
-                #UartPiranhaCode  = (path.split(".")[-1]).lower()
-                #UartValue = cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4._tx.sendString("get '"+UartPiranhaCode)
-                #print(path+", rogue value = "+str(UartValue)+", daq config database = " +str(configdb_node))
-                rogue_node.set(int(str(configdb_node),10))
-                pass
-                
-
-            else:
-                print(path+", rogue value = "+str(hex(rogue_node.get()))+", daq config database = " +str(configdb_node))
-
-                # this is where the magic happens.  I.e. this is where the rogue axi lite register is set to the daq config database value
-                # There's something uneasy about this
-                rogue_node.set(int(str(configdb_node),16))
+                    # this is where the magic happens.  I.e. this is where the rogue axi lite register is set to the daq config database value
+                    # There's something uneasy about this
+                    rogue_node.set(int(str(configdb_node),16))
     
-            
+        scratch_pad = (cfg['cl']['TimeToolKcu1500']['Application']['AppLane0']['Prescale']['ScratchPad'])
 
-    ##############
-    #####
-    ##############
+        cl.TimeToolKcu1500.Application.AppLane[0].Prescale.ScratchPad.set(scratch_pad)
 
-    
-    scratch_pad = (cfg['cl']['Application']['AppLane0']['Prescale']['ScratchPad'])   
+        print("scratch pad value = ",cl.TimeToolKcu1500.Application.AppLane[0].Prescale.ScratchPad.get())
 
-    cl.Application.AppLane[0].Prescale.ScratchPad.set(scratch_pad)                       #writing to rogue register 
+        #cl.StartRun()
 
-    print("scratch pad value = ",cl.Application.AppLane[0].Prescale.ScratchPad.get())
+        #cl.stop()   #gui.py should be able to run after this line, but it's still using the axi lite resource.
+        #deleting cl doesn't resolve this problem.
 
-    #cl.StartRun()
-
-    #cl.stop()   #gui.py should be able to run after this line, but it's still using the axi lite resource.
-                #deleting cl doesn't resolve this problem.
-
-    return json.dumps(cfg)
+        return json.dumps(cfg)
 
 if __name__ == "__main__":
 
