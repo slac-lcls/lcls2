@@ -76,18 +76,12 @@ void XpmDetector::connect(const json& json, const std::string& collectionId)
         dmaWriteRegister(fd, &b.group , readoutGroup);
         dmaWriteRegister(fd, &b.enable, 3           );  // enable
         l &= ~(1<<i);
+
+        dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
+        dmaWriteRegister(fd, 0x00a00000+4*(i&3), (length&0xffffff) | (1<<31));  // enable
       }
     }
 
-    dmaWriteRegister(fd, 0x00a00000, (1<<3));   // clear
-
-    uint32_t v = ((length&0xffffff)<<4) | ((links&0xf)<<28);
-    dmaWriteRegister(fd, 0x00a00000, v);
-
-    uint32_t w;
-    dmaReadRegister(fd, 0x00a00000, &w);
-    logging::info("Configured readout group [%u], length [%u], links [%x]: [%x](%x)\n",
-                  readoutGroup, length, links, v, w);
     close(fd);
 }
 

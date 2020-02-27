@@ -451,8 +451,9 @@ int main(int argc, char* argv[])
       print_clk_rate("migB       ",12);
 
       // TDetSemi
-      print_field("length"   , 0x00a00000,  4, 0xffffff);
-      print_field("enable"   , 0x00a00000, 28, 0xf);
+      print_lane("length"    , 0x00a00000,  0, 4, 0xffffff);
+      print_lane("clear"     , 0x00a00000, 30, 4, 0x1);
+      print_lane("enable"    , 0x00a00000, 31, 4, 0x1);
 
       print_field("localid"  , 0x00c20020,  0, 0xffffffff);
       print_field("remoteid" , 0x00c20024,  0, 0xffffffff);
