@@ -66,7 +66,7 @@ class CGWMainControl(QGroupBox) :
         self.box_state      = QComboBox()
         self.but_transition = QPushButton('Unknown')
         self.but_ctrls      = QPushButton('Ready')
-        self.bar_progress   = QWProgressBar(label=None)
+        self.bar_progress   = QWProgressBar(label=None) # vmin=0, vmax=100
 
         self.states = ['Select',] + [s.upper() for s in DaqControl.states]
         self.box_state.addItems(self.states)

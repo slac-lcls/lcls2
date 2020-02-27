@@ -146,7 +146,8 @@ class QWProgressBar(QWidget) :
         if value > self.pbar.maximum() :
             self.timer.stop()
             self.timer.timeout.disconnect(self.on_timeout)
-            
+
+        print('Set progress bar value:', value)
         self.pbar.setValue(value)
         self.timer.start(timeout_msec)
 

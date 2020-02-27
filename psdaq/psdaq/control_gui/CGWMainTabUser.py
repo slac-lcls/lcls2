@@ -261,6 +261,12 @@ class CGWMainTabUser(QGroupBox) :
 #        """
 #        logger.debug('DEPRICATED set_but_record to: %s' % recording)
 
+    def update_progress_bar(self, value=0, is_visible=False) :
+        """ is used in CGWMainControl ONLY
+        """
+        pass 
+        #self.bar_progress.setVisible(is_visible)
+        #self.bar_progress.set_value(value)
 
     def on_but_stop(self) :
         #txt = self.but_stop.accessibleName()
