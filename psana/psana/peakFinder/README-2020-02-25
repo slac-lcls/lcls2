@@ -1,0 +1,23 @@
+2020-02-25
+----------
+peak-finder examples are copied from LCLS1 psalgos/examples
+~/LCLS/con-psalgos/psalgos/examples
+
+2020-02-26
+----------
+LCLS2 modules psana/peakFinder/peakFinder.pyx and psana/peakFinder/psalgos1.pyx
+
+are converted from LCLS1 psalgos/psalgos_ext.pyx
+LCLS1 c++ code in psalgos/src and psalgos/include (LocalExtrema.h, PeakFinderAlgos.h, Types.h)
+
+LCLS2 c++ code in lcls2/p/psalg/psalg/peaks (LocalExtrema.hh, PeakFinderAlgos.hh, PeakFinderAlgosLCLS1.hh, Types.hh)
+
+peakFinder.pyx was modified by Chuck for DRP
+  - uses AllocArray1D in stead of vector
+  - peak_finder_v3r3_d2 ONLY
+
+psalg_ext.pyx is modified by M.D.
+  - resembles LCLS1 original version of psalgos/psalgos_ext.pyx
+    - peak_finder_v3r3_d2 - ranker        with flood filling in range
+    - peak_finder_v4r3_d2 - two-threshold with flood filling in range
+

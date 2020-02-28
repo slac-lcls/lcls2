@@ -152,6 +152,22 @@ if 'PEAKFINDER' in BUILD_LIST :
   setup(name="peakFinder",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
+  # direct LCLS1 version of peak-finders
+  ext = Extension("psalg_ext",
+                sources=["psana/peakFinder/psalg_ext.pyx",
+                         "../psalg/psalg/peaks/src/PeakFinderAlgosLCLS1.cc",
+                         "../psalg/psalg/peaks/src/LocalExtrema.cc"],
+                libraries = ['utils'], # for SysLog
+                language="c++",
+                extra_compile_args = extra_cxx_compile_args,
+                extra_link_args = extra_link_args_rpath,
+                include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
+                library_dirs = [os.path.join(instdir, 'lib')],
+  )
+
+  setup(name="psalg_ext",
+      ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
+
 
 if 'HEXANODE' in BUILD_LIST :
   # ugly: only build hexanode apps if the roentdek software exists.

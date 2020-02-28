@@ -1,6 +1,7 @@
 add_library(peaks SHARED
     src/LocalExtrema.cc
     src/PeakFinderAlgos.cc
+    src/PeakFinderAlgosLCLS1.cc
     src/WFAlgos.cc
 )
 
@@ -18,6 +19,7 @@ target_include_directories(peaks PUBLIC
 install(FILES
     LocalExtrema.hh
     PeakFinderAlgos.hh
+    PeakFinderAlgosLCLS1.hh
     Types.hh
     WFAlgos.hh
     DESTINATION include/psalg/peaks
