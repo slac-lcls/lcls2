@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import time
 import sys
 
-doPlot = int(sys.argv[1]) if len(sys.argv) > 1 else '1'
+doPlot = True # if len(sys.argv) > 1 else False
 
 data = np.array([[  4.46530676e+00,   1.92752438e+01,   1.88353024e+01,
            2.29152584e+01,   1.43527770e+00,   2.69853268e+01,
@@ -50,32 +50,32 @@ data = np.array([[  4.46530676e+00,   1.92752438e+01,   1.88353024e+01,
 mask = np.ones_like(data, dtype=np.uint16)
 
 # step 1
-pfalgos = peak_finder_algos(pbits=0)#, lim_peaks=2048)
+algos = peak_finder_algos(pbits=0)#, lim_peaks=2048)
 
 # step 2
-pfalgos.set_peak_selection_parameters(npix_min=2, npix_max=100, amax_thr=200, atot_thr=600, son_min=7)
+algos.set_peak_selection_parameters(npix_min=2, npix_max=100, amax_thr=200, atot_thr=600, son_min=7)
 
-peaks = pfalgos.peak_finder_v4r3_d2(data, mask, thr_low=1, thr_high=10, rank=5, r0=4, dr=2)
-print('XXX pfalgos.peak_finder_v4r3_d2:', peaks)
+peaks = algos.peak_finder_v4r3_d2(data, mask, thr_low=1, thr_high=10, rank=5, r0=4, dr=2)
+print('XXX algos.peak_finder_v4r3_d2:', peaks)
 
 if len(peaks)>0 : print('dir(peaks[0]):', dir(peaks[0]))
 for p in peaks :
-    #print('  pfalgos:', p.parameters())
+    #print('  algos:', p.parameters())
     print('  row:%4d, col:%4d, npix:%4d, son:%4.1f amp_tot:%4.1f' % (p.row, p.col, p.npix, p.son, p.amp_tot))
 
 #====================
-sys.exit('TEST EXIT')
+sys.exit('TEST EXIT, NEEDS TBD')
 #====================
 
 # step 3
 rows, cols, intens = \
-pfalgos.peak_finder_v3r3_d2(data, mask, rank=3, r0=4, dr=2, nsigm=0)
+algos.peak_finder_v3r3_d2(data, mask, rank=3, r0=4, dr=2, nsigm=0)
 print("Peaks found (rows, cols, intens): ", rows, cols, intens)
 assert(len(rows)==1)
 assert(intens[0]>1500)
 
 rows1, cols1, intens1 = \
-pfalgos.peak_finder_v3r3_d2(data+6, mask, rank=3, r0=4, dr=2, nsigm=0)
+algos.peak_finder_v3r3_d2(data+6, mask, rank=3, r0=4, dr=2, nsigm=0)
 
 print("intens:",intens)
 print("intens1:",intens1)
@@ -95,7 +95,7 @@ tr[0] = 888
 
 for i in range(10):
     rows, cols, intens = \
-        pfalgos.peak_finder_v3r3_d2(data, mask, rank=3, r0=4, dr=2, nsigm=0)
+        algos.peak_finder_v3r3_d2(data, mask, rank=3, r0=4, dr=2, nsigm=0)
     print("Peaks found (rows, cols, intens): ", rows, cols, intens)
 print("intens:",intens)
 print("temp:",temp)

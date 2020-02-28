@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#------------------------------
+#----------
 """ test for local_minima_1d and local_maxima_1d for 1-d data array folded in 2-d image
 """
 #from psalg_ext import local_minima_1d, local_maxima_1d,\
@@ -10,10 +10,10 @@ import numpy as np
 from time import time
 import psalg_ext as algos
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
-import psana.pyalgos.generic.Graphics as gg
+import psana.pyalgos.generic.Graphics as gr
 
 
-#------------------------------
+#----------
 
 def test01(tname='1', NUMBER_OF_EVENTS=10, DO_PRINT=False) :
 
@@ -21,10 +21,10 @@ def test01(tname='1', NUMBER_OF_EVENTS=10, DO_PRINT=False) :
                              else 'maximums'))
 
     #sh, fs = (200,200), (11,10)
-    sh, fs = (50,50), (6,5)
+    sh, fs = (50,50), (7,6)
     #sh, fs = (185,388), (11,5)
-    fig1, axim1, axcb1 = gg.fig_img_cbar_axes(gg.figure(figsize=fs))
-    fig2, axim2, axcb2 = gg.fig_img_cbar_axes(gg.figure(figsize=fs))
+    fig1, axim1, axcb1 = gr.fig_img_cbar_axes(gr.figure(figsize=fs))
+    fig2, axim2, axcb2 = gr.fig_img_cbar_axes(gr.figure(figsize=fs))
     imsh1 = None
     imsh2 = None
 
@@ -72,25 +72,24 @@ def test01(tname='1', NUMBER_OF_EVENTS=10, DO_PRINT=False) :
         
         ave, rms = img1.mean(), img1.std()
         amin, amax = ave-1*rms, ave+5*rms
-        imsh1,cbar1=\
-          gg.imshow_cbar(fig1, axim1, axcb1, img1, amin=amin, amax=amax, extent=None,\
-                         interpolation='nearest', aspect='auto', origin='upper',\
-                         orientation='vertical', cmap='inferno')
+        #imsh1,cbar1=\
+        gr.imshow_cbar(fig1, axim1, axcb1, img1, amin=amin, amax=amax, extent=None,\
+                       interpolation='nearest', aspect='auto', origin='upper',\
+                       orientation='vertical', cmap='inferno')
         fig1.canvas.set_window_title('Event: %d Random data'%evnum)
-        gg.move_fig(fig1, x0=480, y0=30)
+        gr.move_fig(fig1, x0=560, y0=30)
         
-        #gg.plot_imgcb(fig2, axim2, axcb2, imsh2, img2, amin=0, amax=5, title='Event: %d, Local extrema'%evnum, cmap='inferno')
-        imsh1,cbar1=\
-          gg.imshow_cbar(fig2, axim2, axcb2, img2, amin=0, amax=5, extent=None,\
-                         interpolation='nearest', aspect='auto', origin='upper',\
-                         orientation='vertical', cmap='inferno')
+        #imsh2,cbar2=\
+        gr.imshow_cbar(fig2, axim2, axcb2, img2, amin=0, amax=5, extent=None,\
+                       interpolation='nearest', aspect='auto', origin='upper',\
+                       orientation='vertical', cmap='inferno')
         fig2.canvas.set_window_title('Event: %d Local extrema (1d-folded in image)'%evnum)
-        gg.move_fig(fig2, x0=0, y0=30)
+        gr.move_fig(fig2, x0=0, y0=30)
         
-        gg.show(mode='DO_NOT_HOLD')
-    gg.show()
+        gr.show(mode='DO_NOT_HOLD')
+    gr.show()
 
-#------------------------------
+#----------
 def usage() :
     msg = 'Usage: python psalgos/examples/ex-07-localextrema-1d.py <test-number>'\
           '\n  where <test-number> ='\
@@ -100,10 +99,10 @@ def usage() :
           '\n  4 - local_maxima_1d for constant image'
     print(msg)
 
-#------------------------------
-#------------------------------
-#------------------------------
-#------------------------------
+#----------
+#----------
+#----------
+#----------
 
 if __name__ == "__main__" :
     import sys; global sys
@@ -113,4 +112,4 @@ if __name__ == "__main__" :
     else : usage(); sys.exit('Test %s is not implemented' % tname)
     sys.exit('End of test %s' % tname)
 
-#------------------------------
+#----------
