@@ -71,11 +71,12 @@ def test_timetool_psana():
     myrun = next(ds.runs())
     det = myrun.Detector('tmott')
     edge_finder = EdgeFinder(det.calibconst)
+    edet = myrun.Detector('IIR')
     
     for nevt,evt in enumerate(myrun.events()):
         parsed_frame_object = det.ttalg.parsed_frame(evt)
         image = det.ttalg._image(evt)
-        firmware_edge, software_edge = edge_finder(image, parsed_frame_object)
+        firmware_edge, software_edge = edge_finder(image, parsed_frame_object, edet(evt))
         if firmware_edge:
             firmware_edges.append(firmware_edge)
             software_edges.append(software_edge)

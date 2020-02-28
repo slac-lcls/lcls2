@@ -206,9 +206,17 @@ class RunShmem(Run):
         self.esm = EnvStoreManager(self.dm.configs, 'epics', 'scan')
 
     def events(self):
-        for evt in self.dm:
-            if evt.service() != TransitionId.L1Accept: continue
-            yield evt
+        events = Events(self, dm=self.dm)
+        for evt in events:
+            if evt.service() == TransitionId.L1Accept:
+                yield evt
+    
+    def steps(self):
+        """ Generates events between steps. """
+        events = Events(self, dm=self.dm)
+        for evt in events:
+            if evt.service() == TransitionId.BeginStep:
+                yield Step(evt, events)
 
 class RunSingleFile(Run):
     """ Yields list of events from a single bigdata file. """
@@ -225,14 +233,17 @@ class RunSingleFile(Run):
         self.esm = EnvStoreManager(self.dm.configs, 'epics', 'scan')
 
     def events(self):
-        for evt in self.dm:
-            if evt.service() != TransitionId.L1Accept: continue
-            yield evt
-
+        events = Events(self, dm=self.dm)
+        for evt in events:
+            if evt.service() == TransitionId.L1Accept:
+                yield evt
+    
     def steps(self):
-        for evt in self.dm:
-            if evt.service() == TransitionId.BeginStep: 
-                yield Step(evt, self.dm)
+        """ Generates events between steps. """
+        events = Events(self, dm=self.dm)
+        for evt in events:
+            if evt.service() == TransitionId.BeginStep:
+                yield Step(evt, events)
     
 class RunSerial(Run):
     """ Yields list of events from multiple smd/bigdata files using single core."""
