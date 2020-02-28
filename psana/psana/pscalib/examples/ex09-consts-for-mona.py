@@ -15,7 +15,7 @@ def fir_coefficients() :
 #----------
 
 def delayed_denom() : 
-    return np.ones((2208,), dtype=np.uint8), 'delayed_denom'
+    return np.ones((2048,), dtype=np.uint8), 'delayed_denom'
 
 #----------
 
