@@ -39,7 +39,7 @@ procmgr_config = [
  { host: 'daq-tst-dev04', id:'camcfg-us5', flags:'s', cmd:bin_path+'psdaq/pgp/pgpGen4Daq/app/qLoopTest -T 0x80 -s %d'%cam_size+' -d /dev/pgpdaq0 -L 0x0f'},
 
  {                       id:'partca-'+platform ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/partca.py DAQ:LAB2:PART:'+platform},
- {                       id:'modca'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/xpmca.py DAQ:LAB2:XPM:'+shelf},
+ {                       id:'xpmpva'  ,flags:'s', cmd:'xpmpva DAQ:LAB2:XPM:'+shelf},
  {                       id:'deadca-'+platform  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/deadca.py DAQ:LAB2 '+platform+' '+shelf},
  {                       id:'dtica'  ,flags:'s', cmd:bins_path+'/launch_py '+bins_path+'/dtica.py DAQ:LAB2:DTI:'+shelf},
 

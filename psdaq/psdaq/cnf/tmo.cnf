@@ -71,7 +71,7 @@ procmgr_config = [
  { host: 'drp-tst-dev001', id:'teb1'    , flags:'sxpu', conda:conda_rel, cmd:'teb -C '+collect_host},
  { host: 'drp-tst-dev004', id:'meb4',       flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host},
 
- {                        id:'modca2'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
+ {                        id:'xpmpva2'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:2'},
 
  #{ host: 'drp-tst-dev011', id:'cam_11'  , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D AreaDetector -k sim_length=14'},
 

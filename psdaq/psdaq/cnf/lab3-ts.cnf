@@ -7,7 +7,7 @@ conda_rel = 'ps-2.0.5'
 collect_host = 'drp-tst-acc06'
 groups = '0'
 hutch = 'tst'
-drp_cmd  = 'drp -P '+hutch+' -l 0x1 -d /dev/datadev_1 -C '+collect_host+' -o /ffb01/weaver -v'
+drp_cmd  = 'drp -P '+hutch+' -l 0x1 -d /dev/datadev_1 -C '+collect_host+' -o /ffb01/weaver'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -27,9 +27,9 @@ procmgr_config = [
  {                        id:'groupca',flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
 
- { host: 'drp-tst-dev016', id:'meb16'   , flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host},
  { host: 'drp-tst-dev019', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
- { host: 'drp-tst-dev003', id:'xppts_0', flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D TimingSystem'},
+ { host: 'drp-tst-dev002', id:'xppts_0', flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D TimingSystem'},
  { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -B DAQ:LAB2 -x 2 -C BEAM -P '+hutch},
  {                        flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 ]
+

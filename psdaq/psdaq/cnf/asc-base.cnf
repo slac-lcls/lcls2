@@ -24,7 +24,7 @@ procmgr_config = [
 ## EPICS PV exporter
  { id:'pvrtmon', port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -P DAQ:ASC:XPM:0 -N DeadFrac'},
 
- { id:'pykcu',   port:'29471', flags:'s', conda:conda_rel, env:epics_env, cmd:'pykcu'},
+# { id:'pykcu',   port:'29471', flags:'s', conda:conda_rel, env:epics_env, cmd:'pykcu'},
 
 ## procstat
  { id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},

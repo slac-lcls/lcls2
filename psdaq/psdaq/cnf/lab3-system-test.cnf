@@ -38,8 +38,8 @@ pva_cmd += ' -o /ffb01/tstopr'
 
 procmgr_config = [
  {                         id:'groupca',     flags:'s',   conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
- {                         id:'modca1',                   conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:1'},
- {                         id:'modca2',                   conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
+ {                         id:'xpmpva1',                  conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1'},
+ {                         id:'xpmpva2',                  conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:2'},
  { host: collect_host,     id:'control',     flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P tst'},
  {                         id:'control_gui', flags:'p',   conda:conda_rel,                cmd:'control_gui -t 20000 -H '+collect_host},
 

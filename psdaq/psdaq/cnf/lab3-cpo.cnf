@@ -43,7 +43,7 @@ procmgr_config = [
 
  { host: 'drp-tst-dev002', id:'teb1'    , flags:'sxpu', conda:conda_rel, cmd:'teb -C '+collect_host},
 
- {                        id:'modca2'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
+ {                        id:'xpmpva'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:2'},
 
  { host: collect_host, id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P TMO'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},

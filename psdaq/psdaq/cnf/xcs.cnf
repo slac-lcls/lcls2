@@ -24,11 +24,9 @@ ip_addr = '10.0.'+shelf
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- { host: epics_host,  id:'modcas' , port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'modcas -P DAQ:XCS:XPM:'+shelf},
- {                    id:'modca'  ,               flags:'s', conda:conda_rel, env:epics_env, cmd:'modca -x DAQ:XCS:XPM:'+shelf},
- {                    id:'xpmioc' , port:'29452', flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmPVs -a '+ip_addr+'.102 -P DAQ:XCS'},
+ {                    id:'xpmpva'  ,               flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmpva -x DAQ:XCS:XPM:'+shelf},
+ {                    id:'xpmioc' , port:'29452', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip '+ip_addr+'.102 -P DAQ:XCS'},
 
- { host: epics_host,  id:'partcas', port:'29450', flags:'s', conda:conda_rel, env:epics_env, cmd:'partcas -P DAQ:XCS'},
  {                    id:'partca' ,               flags:'s', conda:conda_rel, env:epics_env, cmd:'partca -x DAQ:XCS:PART:0'},
 
  { host: epics_host,  id:'tprcas' , port:'29453', flags:'s', conda:conda_rel, env:epics_env, cmd:'tprcas -P DAQ:XCS:TPR'},
