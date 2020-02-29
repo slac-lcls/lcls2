@@ -121,7 +121,7 @@ namespace psalg {
 #endif
               mq_timedsend(oq[ioq], (const char *)&myMsg, sizeof(myMsg), priority, &_tmo);
           } else {
-              if(::send(_trfd,(char*)&myMsg,sizeof(myMsg),0)<0) {
+              if(::send(_trfd,(char*)&myMsg,sizeof(myMsg),MSG_NOSIGNAL)<0) {
                   // cpo: we can get an error if the server exits
                   // not clear how we should handle this.  keep
                   // the server alive? print a warning?
