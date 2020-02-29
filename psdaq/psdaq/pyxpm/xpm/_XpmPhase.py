@@ -42,5 +42,5 @@ class XpmPhase(pr.Device):
         n = (v>> 0)&m
         e = (v>>32)&m
         l = (v>>96)&m
-        return e/(e+l)*8/119e6
+        return e/(e+l)*8/119e6 if l>0 else 0
 

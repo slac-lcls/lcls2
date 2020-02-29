@@ -124,8 +124,9 @@ namespace Pds {
           v.msgdelayset = _m.tem().xma().messageDelay[group];
           //          v.msgdelayget = (reg.msgDelay>>16)&0xff;
           v.headercntl0 = teb.l0Count;
-          v.headercntof = (teb.status>>0)&5;
-          v.headerfifow = (teb.status>>3)&0x1f;
+          v.headercntof = (teb.status>>0)&0xf;
+          v.headerfifow = (teb.status>>4)&0x1f;
+          v.headerfifor = (teb.pauseThresh>>0)&0x1f;
           //          v.headerfifor = (reg.headerFifo>> 4)&0xf;
           v.fulltotrig  = (teb.fullToTrig>> 0)&0xfff;
           v.nfulltotrig = (teb.nfullToTrig>>0)&0xfff;

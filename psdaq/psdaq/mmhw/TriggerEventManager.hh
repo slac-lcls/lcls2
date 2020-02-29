@@ -39,7 +39,8 @@ namespace Pds {
       uint64_t currPartitionWord0;
       uint32_t fullToTrig;
       uint32_t nfullToTrig;
-      uint32_t reserved_40[(0x100-0x40)>>2];
+      uint32_t resetCounters;
+      uint32_t reserved_44[(0x100-0x44)>>2];
     };
 
     class TriggerEventManager {

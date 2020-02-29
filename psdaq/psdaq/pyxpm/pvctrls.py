@@ -394,6 +394,9 @@ class GroupCtrls(object):
         for i in range(8):
             self._groups.append(GroupSetup(name+':PART:%d'%i, app, i, stats[i]))
 
+        #  This is necessary in XTPG
+        app.groupL0Reset.set(0xff)
+        app.groupL0Reset.set(0)
 
 class PVCtrls(object):
 
@@ -430,11 +433,12 @@ class PVCtrls(object):
         self._group = GroupCtrls(name, app, stats)
 
 ##  Remove sequencer while we test Ben's image
-        self._seq = PVSeq(provider, name+':SEQENG:0', ip, Engine(0, xpm.SeqEng_0))
+        if True:
+            self._seq = PVSeq(provider, name+':SEQENG:0', ip, Engine(0, xpm.SeqEng_0))
 
-        self._pv_dumpSeq = SharedPV(initial=NTScalar('I').wrap(0), 
-                                    handler=CmdH(self._seq._eng.dump))
-        provider.add(name+':DumpSeq',self._pv_dumpSeq)
+            self._pv_dumpSeq = SharedPV(initial=NTScalar('I').wrap(0), 
+                                        handler=CmdH(self._seq._eng.dump))
+            provider.add(name+':DumpSeq',self._pv_dumpSeq)
 
         self._pv_usRxReset = SharedPV(initial=NTScalar('I').wrap(0),
                                       handler=CmdH(xpm.UsTiming.C_RxReset))
