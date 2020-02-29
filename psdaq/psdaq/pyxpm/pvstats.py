@@ -354,16 +354,21 @@ class GroupStats(object):
                     l0InpRate = dnumL0/dt
                     l0AccRate = dnumL0Acc/dt
                     updatePv(self._pv_deadTime, dL0Inh/dL0Ena)
-                    linkInhEvReg = self._app.inhEvCnt.get()
-                    linkInhEv = []
-                    for i in range(32):
-                        linkInh = (linkInhEvReg>>(32*i))&0xffffffff
-                        if dnumL0:
-                            linkInhEv.append((linkInh - self._linkInhEv[i])/dnumL0)
-                        else:
-                            linkInhEv.append(0)
-                        self._linkInhEv[i] = linkInh
-                    updatePv(self._pv_deadFLink, linkInhEv)
+                    #   
+                    #  Choose the time based calculation instead
+                    #    More intuitive, updates when not running
+                    #
+                    if False:
+                        linkInhEvReg = self._app.inhEvCnt.get()
+                        linkInhEv = []
+                        for i in range(32):
+                            linkInh = (linkInhEvReg>>(32*i))&0xffffffff
+                            if dnumL0:
+                                linkInhEv.append((linkInh - self._linkInhEv[i])/dnumL0)
+                            else:
+                                linkInhEv.append(0)
+                            self._linkInhEv[i] = linkInh
+                        updatePv(self._pv_deadFLink, linkInhEv)
                 else:
                     l0InpRate = 0
                     l0AccRate = 0
@@ -383,7 +388,8 @@ class GroupStats(object):
                 self._numL0Acc= numL0Acc
                 self._numL0Inh= numL0Inh
                 
-        else:
+        #else:
+        if True:
             nfid = (timeval - self._timeval)/FID_PERIOD_NS
             linkInhTmReg = self._app.inhTmCnt.get()
             if linkInhTmReg is not None:

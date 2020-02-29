@@ -274,40 +274,50 @@ class HsdJesd(QtWidgets.QWidget):
         self.setLayout(vlo)
 
 class Ui_MainWindow(object):
-    def setupUi(self, MainWindow, title):
+    def setupUi(self, MainWindow, titles):
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
 
-        maintab = QtWidgets.QTabWidget()
-        maintab.addTab( PvScalarBox(title+':CONFIG','Config',daqConfig,edit=True),
-                        'Config' )
-        maintab.addTab( PvScalarBox(title+':MONTIMING','Timing',monTiming),
-                        'Timing' )
-        maintab.addTab( PvArrayTable(title+':MONPGP','Pgp',monPgp),
-                        'PGP' )
-        maintab.addTab( HsdBufferSummary(title), 
-                        'Buffers' )
-        maintab.addTab( PvArrayTable(title+':MONRAWDET','Raw Buffers',monBufDetail,vertical=True), 
-                        'Detail' )
-        maintab.addTab( PvScalarBox(title+':MONFLOW','Flow',monFlow),
-                        'Flow' )
-        maintab.addTab( HsdEnv          (title),
-                        'Env' )
-        maintab.addTab( PvScalarBox(title+':MONADC','Adc',monAdc),
-                        'Adc' )
-        maintab.addTab( HsdJesd         (title), 
-                        'Jesd' )
-        maintab.addTab( PvScalarBox(title+':RESET','Reset',daqReset,edit=True),
-                        'Reset' )
+        tabsel = QtWidgets.QComboBox()
+        tabsel.addItems(titles)
+
+        stack = QtWidgets.QStackedWidget()
+        
+        for title in titles:
+            maintab = QtWidgets.QTabWidget()
+            maintab.addTab( PvScalarBox(title+':CONFIG','Config',daqConfig,edit=True),
+                            'Config' )
+            maintab.addTab( PvScalarBox(title+':MONTIMING','Timing',monTiming),
+                            'Timing' )
+            maintab.addTab( PvArrayTable(title+':MONPGP','Pgp',monPgp),
+                            'PGP' )
+            maintab.addTab( HsdBufferSummary(title), 
+                            'Buffers' )
+            maintab.addTab( PvArrayTable(title+':MONRAWDET','Raw Buffers',monBufDetail,vertical=True), 
+                            'Detail' )
+            maintab.addTab( PvScalarBox(title+':MONFLOW','Flow',monFlow),
+                            'Flow' )
+            maintab.addTab( HsdEnv          (title),
+                            'Env' )
+            maintab.addTab( PvScalarBox(title+':MONADC','Adc',monAdc),
+                            'Adc' )
+            maintab.addTab( HsdJesd         (title), 
+                            'Jesd' )
+            maintab.addTab( PvScalarBox(title+':RESET','Reset',daqReset,edit=True),
+                            'Reset' )
+            stack.addWidget(maintab)
 
         lo = QtWidgets.QVBoxLayout()
-        lo.addWidget(maintab)
+        lo.addWidget(tabsel)
+        lo.addWidget(stack)
 
         self.centralWidget.setLayout(lo)
 
+        tabsel.currentIndexChanged.connect(stack.setCurrentIndex)
+        
         MainWindow.resize(500,550)
-        MainWindow.setWindowTitle(title)
+        MainWindow.setWindowTitle("hsdpva")
         MainWindow.setCentralWidget(self.centralWidget)
 
 def main():
@@ -318,7 +328,7 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
-    parser.add_argument("base", help="pv base to monitor", default="DAQ:LAB2:HSD:DEV06_3E:A")
+    parser.add_argument("base", help="pv base to monitor", nargs='+', default="DAQ:LAB2:HSD:DEV06_3E:A")
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     args = parser.parse_args()
 

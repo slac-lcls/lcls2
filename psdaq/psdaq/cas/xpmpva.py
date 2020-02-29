@@ -180,6 +180,7 @@ class PvLinkIdV(QtWidgets.QWidget):
         layout = QtWidgets.QVBoxLayout()
         layout.addWidget(self.pvlink.linkType)
         layout.addWidget(self.pvlink.linkSrc)
+        layout.setContentsMargins(0,11,0,11)
         self.setLayout(layout)
 
 class PvLinkIdG:
@@ -389,17 +390,22 @@ def addCuTab(self,pvbase):
     return w
     
 class Ui_MainWindow(object):
-    def setupUi(self, MainWindow, title):
+    def setupUi(self, MainWindow, titles):
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
         self.centralWidget.setObjectName("centralWidget")
         self._pvlabels = []
 
-        pvbase = title + ':'
-        lol = QtWidgets.QVBoxLayout()
+        tabsel = QtWidgets.QComboBox()
+        tabsel.addItems(titles)
 
-        tw  = QtWidgets.QTabWidget()
-        if True:
+        stack = QtWidgets.QStackedWidget()
+
+        for title in titles:
+            pvbase = title + ':'
+
+            tw  = QtWidgets.QTabWidget()
+
             tb  = QtWidgets.QWidget()
             hl  = QtWidgets.QVBoxLayout()
             #        PvLabel  (hl, pvbase, "PARTITIONS"  )
@@ -425,40 +431,44 @@ class Ui_MainWindow(object):
             if getCuMode()==True:
                 tw.addTab( addCuTab (self,pvbase      ), "CuTiming")
 
-        tw.addTab(FrontPanelAMC(pvbase,0),"AMC0")
-        tw.addTab(FrontPanelAMC(pvbase,1),"AMC1")
+            tw.addTab(FrontPanelAMC(pvbase,0),"AMC0")
+            tw.addTab(FrontPanelAMC(pvbase,1),"AMC1")
 
-        bpbox  = QtWidgets.QWidget()
-        bplo   = QtWidgets.QVBoxLayout()
-        LblPushButtonX(bplo, pvbase, "TxLinkReset16",    1, 16, 0)
-        LblCheckBox   (bplo, pvbase, "LinkTxReady16",    1, 16, 0, enable=False)
+            bpbox  = QtWidgets.QWidget()
+            bplo   = QtWidgets.QVBoxLayout()
+            LblPushButtonX(bplo, pvbase, "TxLinkReset16",    1, 16, 0)
+            LblCheckBox   (bplo, pvbase, "LinkTxReady16",    1, 16, 0, enable=False)
 
-#        LblPushButtonX(bplo, pvbase, "TxLinkReset",    5, 17, 3)
-        LblPushButtonX(bplo, pvbase, "RxLinkReset",    5, 17, 3)
-#        LblCheckBox   (bplo, pvbase, "LinkEnable",     5, 17, 3)
-        LblCheckBox   (bplo, pvbase, "LinkRxReady",    5, 17, 3, enable=False)
-#        LblCheckBox  (bplo, pvbase, "LinkTxReady",    5, 17, 3, enable=False)
-#        LblCheckBox  (bplo, pvbase, "LinkIsXpm",      5, 17, 3, enable=False)
-#        LblCheckBox  (bplo, pvbase, "LinkLoopback",   5, 17, 3)
-        LblEditIntX   (bplo, pvbase, "LinkRxErr",      5, 17, 3, enable=False)
-        LblEditIntX   (bplo, pvbase, "LinkRxRcv",      5, 17, 3, enable=False)
-        bplo.addStretch()
-        bpbox.setLayout(bplo)
-        tw.addTab(bpbox,"Bp")
+            #LblPushButtonX(bplo, pvbase, "TxLinkReset",    5, 17, 3)
+            LblPushButtonX(bplo, pvbase, "RxLinkReset",    5, 17, 3)
+            #LblCheckBox   (bplo, pvbase, "LinkEnable",     5, 17, 3)
+            LblCheckBox   (bplo, pvbase, "LinkRxReady",    5, 17, 3, enable=False)
+            #LblCheckBox  (bplo, pvbase, "LinkTxReady",    5, 17, 3, enable=False)
+            #LblCheckBox  (bplo, pvbase, "LinkIsXpm",      5, 17, 3, enable=False)
+            #LblCheckBox  (bplo, pvbase, "LinkLoopback",   5, 17, 3)
+            LblEditIntX   (bplo, pvbase, "LinkRxErr",      5, 17, 3, enable=False)
+            LblEditIntX   (bplo, pvbase, "LinkRxRcv",      5, 17, 3, enable=False)
+            bplo.addStretch()
+            bpbox.setLayout(bplo)
+            tw.addTab(bpbox,"Bp")
 
-        pllbox  = QtWidgets.QWidget()
-        pllvbox = QtWidgets.QVBoxLayout() 
-        LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
-        LblEditIntX  (pllvbox, pvbase, "PLL_LOSCNT",     NAmcs, enable=False)
-        LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)
-        LblEditIntX  (pllvbox, pvbase, "PLL_LOLCNT",     NAmcs, enable=False)
-        pllvbox.addStretch()
-        pllbox.setLayout(pllvbox)
-        tw.addTab(pllbox,"PLLs")
+            pllbox  = QtWidgets.QWidget()
+            pllvbox = QtWidgets.QVBoxLayout() 
+            LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
+            LblEditIntX  (pllvbox, pvbase, "PLL_LOSCNT",     NAmcs, enable=False)
+            LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)
+            LblEditIntX  (pllvbox, pvbase, "PLL_LOLCNT",     NAmcs, enable=False)
+            pllvbox.addStretch()
+            pllbox.setLayout(pllvbox)
+            tw.addTab(pllbox,"PLLs")
 
-        tw.addTab(DeadTime(pvbase,self),"DeadTime")
+            tw.addTab(DeadTime(pvbase,self),"DeadTime")
 
-        lol.addWidget(tw)
+            stack.addWidget(tw)
+
+        lol = QtWidgets.QVBoxLayout()
+        lol.addWidget(tabsel)
+        lol.addWidget(stack)
 
         ltable = QtWidgets.QWidget()
         ltable.setLayout(lol)
@@ -472,8 +482,10 @@ class Ui_MainWindow(object):
         self.centralWidget.setLayout(layout)
         self.centralWidget.resize(720,600)
 
+        tabsel.currentIndexChanged.connect(stack.setCurrentIndex)
+
         MainWindow.resize(720,600)
-        MainWindow.setWindowTitle(title)
+        MainWindow.setWindowTitle('xpmpva')
         MainWindow.setCentralWidget(self.centralWidget)
 
 def main():
@@ -481,14 +493,14 @@ def main():
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
     parser.add_argument('-x', '--xtpg_mode', action='store_true', help='xtpg in Cu mode')
-    parser.add_argument("pv", help="pv to monitor")
+    parser.add_argument("pvs", help="pvs to monitor",nargs='+')
     args = parser.parse_args()
     setCuMode(args.xtpg_mode)
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
-    ui.setupUi(MainWindow,args.pv)
+    ui.setupUi(MainWindow,args.pvs)
     MainWindow.updateGeometry()
 
     MainWindow.show()
