@@ -66,7 +66,7 @@ class CGWMainControl(QGroupBox) :
         self.box_state      = QComboBox()
         self.but_transition = QPushButton('Unknown')
         self.but_ctrls      = QPushButton('Ready')
-        self.bar_progress   = QWProgressBar(label=None) # vmin=0, vmax=100
+        self.bar_progress   = QWProgressBar() # label='', vmin=0, vmax=100
 
         self.states = ['Select',] + [s.upper() for s in DaqControl.states]
         self.box_state.addItems(self.states)
@@ -147,7 +147,7 @@ class CGWMainControl(QGroupBox) :
         self.lab_record.setFixedWidth(100)
         self.but_record.setFixedSize(50, 50)
         self.but_record.setIconSize(QSize(48, 48))
-        self.bar_progress.setFixedWidth(50)
+        self.bar_progress.setFixedWidth(100)
         self.bar_progress.setVisible(False)
         self.but_ctrls.setStyleSheet(style.styleButtonGood)
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
@@ -156,9 +156,10 @@ class CGWMainControl(QGroupBox) :
 
 #--------------------
 
-    def update_progress_bar(self, value=0.3, is_visible=False) :
+    def update_progress_bar(self, value=0.3, is_visible=False, trans_name='') :
         self.bar_progress.setVisible(is_visible)
         self.bar_progress.set_value(value)
+        self.bar_progress.set_label(trans_name)
 
 #--------------------
 

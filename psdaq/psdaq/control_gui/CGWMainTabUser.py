@@ -38,6 +38,7 @@ from psdaq.control_gui.Styles import style
 from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_set_record
                                            #, daq_control_get_status, daq_control_get_state
 from psdaq.control_gui.CGConfigParameters import cp
+from psdaq.control_gui.QWProgressBar import QWProgressBar
 
 #------------------------------
 
@@ -146,6 +147,9 @@ class CGWMainTabUser(QGroupBox) :
         self.but_record.setIconSize(QSize(48, 48))
         self.but_stop  .setIconSize(QSize(64, 64))
 
+        self.bar_progress.setFixedWidth(100)
+        self.bar_progress.setVisible(False)
+
 
     def closeEvent(self, e) :
         logger.debug('%s.closeEvent' % self._name)
@@ -186,6 +190,7 @@ class CGWMainTabUser(QGroupBox) :
         self.but_play   = QPushButton(icon.icon_playback_pause_sym, '')
         self.but_record = QPushButton(icon.icon_record_start, '')
         self.but_stop   = QPushButton(icon.icon_playback_stop_sym, '')
+        self.bar_progress = QWProgressBar()
 
         self.but_play  .setAccessibleName('play')
         self.but_record.setAccessibleName('record')
@@ -196,9 +201,10 @@ class CGWMainTabUser(QGroupBox) :
         self.but_stop  .clicked.connect(self.on_but_stop)
 
         hbox.addSpacing(24) 
-        hbox.addWidget(self.but_play,   alignment=Qt.AlignLeft)
-        hbox.addWidget(self.but_stop,   alignment=Qt.AlignCenter)
-        hbox.addWidget(self.but_record, alignment=Qt.AlignRight)
+        hbox.addWidget(self.but_play,     alignment=Qt.AlignLeft)
+        hbox.addWidget(self.bar_progress, 0, alignment=Qt.AlignCenter)
+        hbox.addWidget(self.but_stop,     alignment=Qt.AlignCenter)
+        hbox.addWidget(self.but_record,   alignment=Qt.AlignRight)
         hbox.addSpacing(24) 
         #hbox.addStretch(1) 
 
@@ -261,12 +267,14 @@ class CGWMainTabUser(QGroupBox) :
 #        """
 #        logger.debug('DEPRICATED set_but_record to: %s' % recording)
 
-    def update_progress_bar(self, value=0, is_visible=False) :
-        """ is used in CGWMainControl ONLY
-        """
-        pass 
-        #self.bar_progress.setVisible(is_visible)
-        #self.bar_progress.set_value(value)
+#--------------------
+
+    def update_progress_bar(self, value=0.3, is_visible=False, trans_name='') :
+        self.bar_progress.setVisible(is_visible)
+        self.bar_progress.set_value(value)
+        self.bar_progress.set_label(trans_name)
+
+#--------------------
 
     def on_but_stop(self) :
         #txt = self.but_stop.accessibleName()

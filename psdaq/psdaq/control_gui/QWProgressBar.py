@@ -46,7 +46,7 @@ class QWProgressBar(QWidget) :
         vmin        = kwargs.get('vmin', 0)
         vmax        = kwargs.get('vmax', 100)
         value       = kwargs.get('value', 50)
-        label       = kwargs.get('label', None)
+        label       = kwargs.get('label', '')
 
         QWidget.__init__(self, parent)
         if win_title is not None : self.setWindowTitle(win_title)
@@ -55,7 +55,8 @@ class QWProgressBar(QWidget) :
 
         self.hbox = QHBoxLayout()
 
-        if label is not None :
+        #if label is not None :
+        if True :
             self.plab = QLabel(label)
             self.hbox.addWidget(self.plab)
             #self.hbox.addStretch(1)
@@ -85,7 +86,9 @@ class QWProgressBar(QWidget) :
 
         self.pbar.setTextVisible(True)
         #self.plab.setAlignment(Qt.AlignCenter)
-        if self.plab is not None : self.plab.setStyleSheet('text-align: center;')
+        if self.plab is not None : 
+            self.plab.setStyleSheet('text-align: center;')
+            self.plab.setFixedWidth(60)
 
         styleDefault = ""
         #styleGray = "background-color: rgb(230, 240, 230); color: rgb(0, 0, 0);" # Gray
@@ -112,6 +115,9 @@ class QWProgressBar(QWidget) :
 
     def set_value(self, value):
         self.pbar.setValue(value)
+
+    def set_label(self, s):
+        self.plab.setText(s)
 
     def set_icons(self):
         try :
