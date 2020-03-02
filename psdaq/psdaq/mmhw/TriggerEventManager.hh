@@ -20,7 +20,7 @@ namespace Pds {
       TriggerEventBuffer() {}
     public:
       void start  (unsigned group,
-                   unsigned triggerDelay=0,
+                   unsigned triggerDelay=10,
                    unsigned pauseThresh=16);
       void stop   ();
     public:

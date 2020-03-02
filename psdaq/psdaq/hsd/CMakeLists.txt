@@ -6,6 +6,7 @@ add_library(hsd SHARED
   ClkSynth.cc
   DmaCore.cc
   FlashController.cc
+  FexCfg.cc
   FmcCore.cc
   FmcSpi.cc
   Histogram.cc

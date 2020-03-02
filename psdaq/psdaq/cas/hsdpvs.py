@@ -51,11 +51,13 @@ class DefaultPVHandler(object):
             self.callback(postedval)
 
 class ChipServer(object):
-    def __init__(self, provider, prefix):
+    def __init__(self, provider, prefix, start):
         self.provider = provider
         self.prefix = prefix
 
         #  Make configuration one PV access for each readout channel
+        if start:
+            daqConfig['enable'] = ('i',1)
         self.daqConfig      = MySharedPV(daqConfig,self.updateDaqConfig)
         self.ready          = SharedPV(initial=NTScalar('I').wrap({'value' : 0}),
                                        handler=DefaultPVHandler())
@@ -109,9 +111,9 @@ class ChipServer(object):
         pass
 
 class PVAServer(object):
-    def __init__(self, provider_name, prefix):
+    def __init__(self, provider_name, prefix, start):
         self.provider = StaticProvider(provider_name)
-        self.chip     = ChipServer(self.provider, prefix)
+        self.chip     = ChipServer(self.provider, prefix, start)
 
     def forever(self):
         Server.forever(providers=[self.provider])
@@ -124,14 +126,14 @@ def main():
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for High Speed Digitizer')
 
     parser.add_argument('-P', required=True, help='DAQ:LAB2:HSD:DEV06_3E', metavar='PREFIX')
-#    parser.add_argument('-d', required=True, help='device filename', metavar='DEV')
+    parser.add_argument('-s', '--start', action='store_true', help='start acq')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    server = PVAServer(__name__, args.P)
+    server = PVAServer(__name__, args.P, args.start)
 
     try:
         # process PVA transactions

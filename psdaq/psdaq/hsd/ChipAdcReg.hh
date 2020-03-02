@@ -70,9 +70,9 @@ namespace Pds {
       vuint32_t countAcquire;  // [0x2c]
       vuint32_t countInhibit;  // [0x30]
       vuint32_t countRead;     // [0x34]
-      //      vuint32_t countStart;    // [ deprecated ]
+      vuint32_t countStart;    // [0x38]
       //      vuint32_t countQueue;    // [ deprecated ]
-      uint32_t  rsvd_52[2];
+      uint32_t  rsvd_60[1];
       //
       vuint32_t cacheSel;
       vuint32_t cacheState;

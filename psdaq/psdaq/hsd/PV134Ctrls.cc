@@ -50,6 +50,9 @@ namespace Pds {
 
       Pds_Epics::EpicsPVA& pv = *_pv[fmc];
 
+      unsigned group = PVGET(readoutGroup);
+      _m.tem().det(fmc).stop();
+
       ChipAdcReg& reg = _m.chip(fmc).reg;
       reg.stop();
 
@@ -87,8 +90,10 @@ namespace Pds {
         reg.setChannels(1);
         reg.start();
 
-        unsigned group = PVGET(readoutGroup);
         _m.tem().det(fmc).start(group);
+      }
+      else {
+        fex.disable();
       }
 
       _ready[fmc]->putFrom<unsigned>(1);

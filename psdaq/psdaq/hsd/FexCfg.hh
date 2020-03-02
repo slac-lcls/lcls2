@@ -7,11 +7,12 @@ namespace Pds {
   namespace HSD {
     class FexCfg {
     public:
+      void disable();
+    public:
       vuint32_t _streams;
       vuint32_t _oflow;
-      // vuint32_t _flowstatus;
-      // vuint32_t _flowidxs;
-      uint32_t  _rsvd_08[2];
+      vuint32_t _flowstatus;
+      vuint32_t _flowidxs;
 
       class StreamBase {
       public:
