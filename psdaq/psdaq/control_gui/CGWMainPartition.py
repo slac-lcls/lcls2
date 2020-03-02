@@ -188,7 +188,7 @@ class CGWMainPartition(QGroupBox) :
         """By Chris F. logistics sets buttons un/visible.
         """
         logger.debug('set_buts_enable for state %s' % s)
-        self.state = state = s.upper()
+        self.state = state = s.upper() if s is not None else 'None'
         self.but_roll_call.setEnabled(state in ('RESET', 'UNALLOCATED'))
         self.but_select.setEnabled(not(state in ('RESET',)))
         #self.but_display.setEnabled(not(state in ('RESET','UNALLOCATED')))

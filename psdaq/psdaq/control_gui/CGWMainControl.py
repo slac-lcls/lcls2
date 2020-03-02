@@ -261,10 +261,10 @@ class CGWMainControl(QGroupBox) :
         self.ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
         self.state = state 
         #self.but_state.setText('%s since %s' % (s.upper(), self.ts))
-        self.but_ctrls.setText(state.upper())
+        self.but_ctrls.setText(state.upper() if state is not None else 'None')
 
         wpart = cp.cgwmainpartition
-        if wpart is not None : wpart.set_buts_enable(state.upper()) # enable/disable button plat in other widget
+        if wpart is not None : wpart.set_buts_enable(state) # enable/disable button plat in other widget
 
         self.set_transition(transition)
 
@@ -284,14 +284,14 @@ class CGWMainControl(QGroupBox) :
         """
         logger.debug('check_transition transition:%s state:%s cfgtype:%s recording:%s'%\
                      (cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording))
-        self.but_transition.setText(cp.s_transition.upper())
+        self.but_transition.setText(cp.s_transition.upper() if cp.s_transition is not None else 'None')
 
 #--------------------
 
     def set_transition(self, s) :
         #ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
         #self.but_transition.setText('%s since %s' % (s.upper(), ts))
-        self.but_transition.setText(s.upper())
+        self.but_transition.setText(s.upper() if s is not None else None)
 
 #--------------------
 
