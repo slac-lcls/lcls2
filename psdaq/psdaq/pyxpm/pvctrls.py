@@ -21,7 +21,8 @@ class TransitionId(object):
 class RateSel(object):
     FixedRate = 0
     ACRate    = 1
-    Sequence  = 2
+    EventCode = 2
+    Sequence  = 3
 
 def pipelinedepth_from_delay(value):
     v = value &0xffff
@@ -356,6 +357,8 @@ class GroupSetup(object):
             self.setFixedRate()
         elif mode == RateSel.ACRate:
             self.setACRate()
+        elif mode == RateSel.EventCode:
+            self.setSequence()
         elif mode == RateSel.Sequence:
             self.setSequence()
         else:

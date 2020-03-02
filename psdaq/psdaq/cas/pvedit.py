@@ -757,7 +757,7 @@ class PvEditEvt(QtWidgets.QWidget):
     def __init__(self, pvname, idx):
         super(PvEditEvt, self).__init__()
         vbox = QtWidgets.QVBoxLayout()
-        evtcmb = PvEditCmb(pvname,evtsel,imap=[0,1,2,2])
+        evtcmb = PvEditCmb(pvname,evtsel)
         vbox.addWidget(evtcmb)
         vbox.addWidget(PvEvtTab(pvname,evtcmb))
         self.setLayout(vbox)

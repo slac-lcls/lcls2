@@ -31,6 +31,7 @@ setup(
                 'hsdcas = psdaq.cas.hsdcas:main',
                 'hsdpva = psdaq.cas.hsdpva:main',
                 'hsdpvs = psdaq.cas.hsdpvs:main',
+                'pvatable = psdaq.cas.pvatable:main',
                 'campvs = psdaq.cas.campvs:main',
                 'tprca = psdaq.cas.tprca:main',
                 'tprcas = psdaq.cas.tprcas:main',
