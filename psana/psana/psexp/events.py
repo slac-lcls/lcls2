@@ -32,11 +32,6 @@ class Events:
             except StopIteration: 
                 smd_batch = self.get_smd()
 
-                # With destination callback, this node has to wait
-                # until it either receives some data or empty bytearray.
-                while smd_batch == bytearray(b'wait'):
-                    smd_batch = self.get_smd()
-
                 if smd_batch == bytearray():
                     self.flag_empty_smd_batch = True
                     raise StopIteration

@@ -274,6 +274,8 @@ class SmdNode(object):
     this np array to bd_nodes that are registered to it."""
     def __init__(self, run):
         self.run = run
+        self.step_hist = StepHistory(self.run.comms.bd_size, len(self.run.configs))
+        self.waiting_bds = []
 
     def pack(self, *args):
         pf = PacketFooter(len(args))
@@ -284,6 +286,20 @@ class SmdNode(object):
         batch += pf.footer
         return batch
 
+    def _send_to_dest(self, dest_rank, smd_batch_dict, step_batch_dict, eb_man):
+        bd_comm = self.run.comms.bd_comm
+        smd_batch, _ = smd_batch_dict[dest_rank]
+        missing_step_views = self.step_hist.get_buffer(dest_rank)
+        batch = repack_for_bd(smd_batch, missing_step_views, self.run.configs, client=dest_rank)
+        bd_comm.Send(batch, dest=dest_rank)
+        del smd_batch_dict[dest_rank] # done sending
+        
+        step_batch, _ = step_batch_dict[dest_rank]
+        if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:  
+            step_pf = PacketFooter(view=step_batch)
+            self.step_hist.extend_buffers(step_pf.split_packets(), dest_rank, as_event=True)
+        del step_batch_dict[dest_rank] # done adding
+
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
         smd_comm   = self.run.comms.smd_comm
@@ -291,8 +307,6 @@ class SmdNode(object):
         bd_comm    = self.run.comms.bd_comm
         smd_rank   = self.run.comms.smd_rank
         
-        step_hist = StepHistory(self.run.comms.bd_size, len(self.run.configs))
-
         while True:
             smd_comm.Send(np.array([smd_rank], dtype='i'), dest=0)
             info = MPI.Status()
@@ -314,40 +328,44 @@ class SmdNode(object):
                     step_batch, _ = step_batch_dict[0]
                     bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
                     
-                    missing_step_views = step_hist.get_buffer(rankreq[0])
+                    missing_step_views = self.step_hist.get_buffer(rankreq[0])
                     batch = repack_for_bd(smd_batch, missing_step_views, self.run.configs, client=rankreq[0])
                     bd_comm.Send(batch, dest=rankreq[0])
                     
                     if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:  
                         step_pf = PacketFooter(view=step_batch)
-                        step_hist.extend_buffers(step_pf.split_packets(), rankreq[0], as_event=True)
+                        self.step_hist.extend_buffers(step_pf.split_packets(), rankreq[0], as_event=True)
                     
                           
                 # With > 1 dest_rank, start looping until all dest_rank batches
                 # have been sent.
                 else:
                     while smd_batch_dict:
-                        bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-                        dest_rank = rankreq[0]
-
-                        if dest_rank in smd_batch_dict:
-                            smd_batch, _ = smd_batch_dict[dest_rank]
-                            missing_step_views = step_hist.get_buffer(dest_rank)
-                            batch = repack_for_bd(smd_batch, missing_step_views, self.run.configs, client=dest_rank)
-                            bd_comm.Send(batch, dest=dest_rank)
-                            del smd_batch_dict[dest_rank] # done sending
-                            
-                            step_batch, _ = step_batch_dict[dest_rank]
-                            if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:  
-                                step_pf = PacketFooter(view=step_batch)
-                                step_hist.extend_buffers(step_pf.split_packets(), dest_rank, as_event=True)
-                            del step_batch_dict[dest_rank] # done adding
-                        else:
-                            bd_comm.Send(bytearray(b'wait'), dest=dest_rank)
+                        sent = False
+                        if self.waiting_bds: # Check first if there are bd nodes waiting
+                            copied_waiting_bds = self.waiting_bds[:]
+                            for dest_rank in copied_waiting_bds:
+                                if dest_rank in smd_batch_dict:
+                                    self._send_to_dest(dest_rank, smd_batch_dict, step_batch_dict, eb_man)
+                                    self.waiting_bds.remove(dest_rank)
+                                    sent = True
+                        
+                        if not sent:
+                            bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+                            dest_rank = rankreq[0]
+                            if dest_rank in smd_batch_dict:
+                                self._send_to_dest(dest_rank, smd_batch_dict, step_batch_dict, eb_man)
+                            else:
+                                self.waiting_bds.append(dest_rank)
                         
 
-        # Done - kill all alive bigdata nodes
-        for i in range(n_bd_nodes):
+        # Done 
+        # - kill idling nodes
+        for dest_rank in self.waiting_bds:
+            bd_comm.Send(bytearray(), dest=dest_rank)
+        
+        # - kill all other nodes
+        for i in range(n_bd_nodes-len(self.waiting_bds)):
             bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             bd_comm.Send(bytearray(), dest=rankreq[0])
 

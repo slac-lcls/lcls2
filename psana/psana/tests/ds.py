@@ -137,7 +137,7 @@ def test_select_detectors():
         assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
 
 def destination(timestamp):
-    n_bd_nodes = size - 2
+    n_bd_nodes = 2 # previously = size - 2 but want to test waiting nodes in queue in mpirun -n 5
     dest = (timestamp % n_bd_nodes) + 1
     return dest 
 
