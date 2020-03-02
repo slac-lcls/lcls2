@@ -1603,9 +1603,9 @@ class CollectionManager():
         try:
             resp = requests.get((self.url + "/" if not self.url.endswith("/") else self.url) + "/lgbk/ws/activeexperiment_for_instrument_station",
                                 auth=HTTPBasicAuth(self.user, self.password),
-                                params={"instrument_name": instrument, "station": self.station})
-        except requests.exceptions.RequestException:
-            logging.error("get_experiment(): request exception")
+                                params={"instrument_name": instrument, "station": self.station}, timeout=10)
+        except requests.exceptions.RequestException as ex:
+            logging.error("get_experiment(): request exception: %s" % ex)
         else:
             logging.debug("request response: %s" % resp.text)
             if resp.status_code == requests.codes.ok:

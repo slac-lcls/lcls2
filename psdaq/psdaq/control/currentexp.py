@@ -32,9 +32,9 @@ def main():
 
     try:
         resp = requests.get((args.url + "/" if not args.url.endswith("/") else args.url) + "/lgbk/ws/activeexperiment_for_instrument_station",
-                            params={"instrument_name": instrument_name, "station": station})
-    except requests.exceptions.RequestException:
-        exit("Error: request exception")
+                            params={"instrument_name": instrument_name, "station": station}, timeout=10)
+    except requests.exceptions.RequestException as ex:
+        exit("Error: request exception: %s" % ex)
 
     if args.verbose >= 2:
         print("response: %s" % resp.text)
