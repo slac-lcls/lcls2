@@ -16,11 +16,6 @@
 
 class MetricExporter;
 
-namespace XtcData {
-  class EbDgram;
-  class TimeStmp;
-};
-
 namespace Pds {
   namespace Eb {
 
