@@ -115,9 +115,7 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
           _freeTr.push_back(ib);
         }
         else if (oid == TransitionId::SlowUpdate && id == TransitionId::SlowUpdate) {
-          // SlowUpdate -> SlowUpdate: replace top entry
-          _cachedTr.pop();
-          _cachedTr.push(ibuffer);
+          // SlowUpdate -> SlowUpdate: do nothing
         }
         else if (oid == TransitionId::SlowUpdate && id == TransitionId::Disable) {
           // SlowUpdate -> Disable: pop two entries
