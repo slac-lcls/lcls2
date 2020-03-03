@@ -19,6 +19,7 @@ namespace Drp {
         uint8_t  width;
         uint8_t  _unused[8]; // set for width==3
     };
+#pragma pack(pop)
     class EvtBatcherIterator {
     public:
         EvtBatcherIterator(EvtBatcherHeader* ebh, size_t bytes) :
@@ -48,5 +49,4 @@ namespace Drp {
         char* _next;
         char* _end;
     };
-#pragma pack(pop)
 };

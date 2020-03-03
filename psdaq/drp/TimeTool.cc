@@ -1,4 +1,5 @@
 #include "TimeTool.hh"
+#include "EventBatcher.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -119,11 +120,17 @@ void TimeTool::event(XtcData::Dgram& dgram, PGPEvent* event)
     int lane = __builtin_ffs(event->mask) - 1;
     // there should be only one lane of data in the timing system
     uint32_t dmaIndex = event->buffers[lane].index;
-    unsigned data_size = event->buffers[lane].size - sizeof(Pds::TimingHeader);
-    unsigned shape[MaxRank];
-    shape[0] = data_size;
-    Array<uint8_t> arrayT = tt.allocate<uint8_t>(TTDef::data, shape);
-    memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
+    unsigned data_size = event->buffers[lane].size;
+    // unsigned shape[MaxRank];
+    // shape[0] = data_size;
+    // Array<uint8_t> arrayT = tt.allocate<uint8_t>(TTDef::data, shape);
+    // memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
+    EvtBatcherIterator ebit = EvtBatcherIterator((EvtBatcherHeader*)m_pool->dmaBuffers[dmaIndex], data_size);
+    EvtBatcherSubFrameTail* ebsft;
+    while ((ebsft=ebit.next())) {
+        printf("sft width %d size %d tdest %d\n",ebsft->width,ebsft->size,ebsft->tdest);
+
+    }
 }
 
 }
