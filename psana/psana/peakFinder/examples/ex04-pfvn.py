@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Test of the psana/peakFinder/psalg_ext.pyx
+Test of peak-finders from psana/peakFinder/psalg_ext.pyx on random images
 """
 #----------
 import sys
@@ -13,7 +13,7 @@ from psana.pyalgos.generic.NDArrGenerators import random_standard, add_random_pe
 from psana.pyalgos.generic.NDArrUtils import print_ndarr, reshape_to_2d
 import psana.pyalgos.generic.Graphics as gr
 
-from utils_peak_graphics import plot_peaks_on_img
+from utils import plot_peaks_on_img
 
 #----------
 
@@ -23,8 +23,12 @@ def plot_image(img, img_range=None, amp_range=None, figsize=(12,10)) :
 
 #----------
 
-def image_with_random_peaks(shape=(500, 500)) : 
+def image_with_random_peaks(shape=(500, 500), add_water_ring=True) : 
     img = random_standard(shape, mu=0, sigma=10)
+    if add_water_ring : 
+        rad = 0.3*shape[0]
+        sigm = rad/4
+        add_ring(img, amp=20, row=shape[0]/2, col=shape[1]/2, rad=rad, sigma=sigm) 
     peaks = add_random_peaks(img, npeaks=10, amean=100, arms=50, wmean=1.5, wrms=0.3)
     return img, peaks
 
@@ -233,14 +237,13 @@ def ex_image_with_random_peaks() :
 
 #----------
 
-def usage() :
-    msg = 'Usage: [python] %s <test-number>'%(sys.argv[0])\
-        + '\n  where <test-number> ='\
-          '\n  0 - images'\
-          '\n  3 - peak-finder V3'\
-          '\n  4 - peak-finder V4'
-    print(msg)
- 
+USAGE =\
+    'Usage: [python] %s <test-number>'\
+    '\n  where <test-number> ='\
+    '\n  0 - images'\
+    '\n  3 - peak-finder V3 - ranker'\
+    '\n  4 - peak-finder V4 - two-threshold'%(sys.argv[0])
+
 #----------
 
 if __name__ == "__main__" :
@@ -248,7 +251,7 @@ if __name__ == "__main__" :
     print(50*'_', '\nTest %s:' % tname)
     if   tname == '0' : ex_image_with_random_peaks()
     elif tname in ('1','2','3','4') : test_pf(tname)
-    else : usage(); sys.exit('Test %s is not implemented' % tname)
+    else : print(USAGE); sys.exit('Test %s is not implemented' % tname)
     sys.exit('End of test %s' % tname)
  
 #----------

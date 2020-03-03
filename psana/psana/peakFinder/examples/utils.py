@@ -1,6 +1,6 @@
 #----------
 """
-from utils_peak_graphics import plot_peaks_on_img
+    from utils import plot_peaks_on_img, data_hdf5_v0
 """
 
 import matplotlib.patches as patches 
@@ -33,5 +33,27 @@ def plot_peaks_on_img(peaks, axim, iX, iY, color='w', pbits=0, lw=2) :
         r0  = 5
         circ = patches.Circle(xyc, radius=r0, linewidth=lw, color=color, fill=False)
         axim.add_artist(circ)
+
+#----------
+
+class data_hdf5_v0() :
+    def __init__(self, fname='/reg/g/psdm/tutorials/ami2/tmo/amox27716_run100.h5') :
+        import h5py
+        f=h5py.File(fname, 'r')
+        self.images = f['img']
+        self.nevmax = self.images.shape[0]
+        self.counter=-1
+        print('hdf5: %s\n  data shape: %s' % (fname, str(self.images.shape)))
+
+    def next_image(self) :
+        self.counter += 1
+        if not(self.counter < self.nevmax) :
+            print('WARNING counter reached its max value: %d' % self.nevmax)
+            self.counter -= 1
+        return self.images[self.counter,:,:]
+
+    def print_images(self, nev_begin=0, nev_end=10) :
+        for nevt in range(min(nev_begin, self.nevmax), min(nev_end, self.nevmax)) :
+            print_ndarr(self.images[nevt,:,:], 'Ev:%3d'%nevt) 
 
 #----------

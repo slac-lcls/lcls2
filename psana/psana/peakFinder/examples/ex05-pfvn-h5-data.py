@@ -1,19 +1,16 @@
 #!/usr/bin/env python
-"""
-######## Test of the psana/peakFinder/psalg_ext.pyx
+
+"""Test of peak-finders from psana/peakFinder/psalg_ext.pyx on hdf5 images
 """
 
 #----------
 import sys
-import h5py
-
-#from time import time
 import numpy as np
 
 from psalg_ext import peak_finder_algos
 from psana.pyalgos.generic.NDArrUtils import print_ndarr, reshape_to_2d
 import psana.pyalgos.generic.Graphics as gr
-from utils_peak_graphics import plot_peaks_on_img
+from utils import plot_peaks_on_img, data_hdf5_v0
 
 #----------
 
@@ -26,31 +23,9 @@ V4 = 4 # DROPLET v4r3
 
 #----------
 
-class data_hdf5_v0() :
-    def __init__(self, fname=FNAME) :
-        f=h5py.File(fname, 'r')
-        self.images = f['img']
-        self.nevmax = self.images.shape[0]
-        self.counter=-1
-        print('hdf5: %s\n  data shape: %s' % (fname, str(self.images.shape)))
-
-    def next_image(self) :
-        self.counter += 1
-        if self.counter >= self.nevmax :
-            print('WARNING counter reached its max value: %d' % self.nevmax)
-            self.counter-=1
-        return self.images[self.counter,:,:]
-
-    def print_images(self, nev_begin=0, nev_end=EVTMAX) :
-        for nevt in range(min(nev_begin, self.nevmax), min(nev_end, self.nevmax)) :
-            print_ndarr(self.images[nevt,:,:], 'Ev:%3d'%nevt) 
-
-#----------
-
 def test01(tname) :
 
     PF = V3 if tname == '3' else V4
-
     SHOW_PEAKS = tname != '0'
 
     ds = data_hdf5_v0(FNAME)
@@ -99,21 +74,18 @@ def test01(tname) :
 
 #----------
 
-def usage() :
-    msg = 'Usage: [python] %s <test-number>'%(sys.argv[0])\
-        + '\n  where <test-number> ='\
-          '\n  0 - images'\
-          '\n  3 - peak-finder V3'\
-          '\n  4 - peak-finder V4'
-    print(msg)
+USAGE =\
+    'Usage: [python] %s <test-number>'\
+    '\n  where <test-number> ='\
+    '\n  0 - images'\
+    '\n  3 - peak-finder V3 - ranker'\
+    '\n  4 - peak-finder V4 - two-threshold'%(sys.argv[0])
  
-#----------
-
 if __name__ == "__main__" :
     tname = sys.argv[1] if len(sys.argv) > 1 else '4'
     print(50*'_', '\nTest %s:' % tname)
     if tname in ('0','3','4') : test01(tname)
-    else : usage(); sys.exit('Test %s is not implemented' % tname)
+    else : print(USAGE); sys.exit('Test %s is not implemented' % tname)
     sys.exit('End of test %s' % tname)
  
 #----------

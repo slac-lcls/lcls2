@@ -819,28 +819,32 @@ mapOfThresholdMaximums(const T *data
       else if(data[irc] < -_thr_low)  _thr_maxima[irc] |= 16; // a<-thr_low
       else if(data[irc] <  _thr_low)  _thr_maxima[irc] |= 1;  // a<thr_low - for background
       else if(data[irc] <  _thr_high) _thr_maxima[irc] |= 2;  // a>=thr_low, but a<thr_high
-      else {                          _thr_maxima[irc] |= 12; // +4: a<thr_high, +8: candidate to local maximum 
+      else {                          _thr_maxima[irc] |= 12; // +4: a>=thr_high, +8: candidate to local maximum 
 
-    //----- check if pixel has maximal intensity in rank-square region
-    int rrmin = max(0,         int(r-rank));
-    int rrmax = min(int(rmax), int(r+rank+1));
-        int rcmin = max(0,         int(c-rank));
-    int rcmax = min(int(cmax), int(c+rank+1));
+        //----- check if pixel has maximal intensity in rank-square region
+	int rrmin = max(0,         int(r-rank));
+	int rrmax = min(int(rmax), int(r+rank+1));
+	int rcmin = max(0,         int(c-rank));
+	int rcmax = min(int(cmax), int(c+rank+1));
 
-    counter ++;
+        //cout << "  candidate r:" << r << " c:" << c << " map[irc]:" << _thr_maxima[irc]  << " data:" << data[irc] << '\n';
+
+        counter ++;
         for(int rr = rrmin; rr<rrmax; rr++) {
           for(int rc = rcmin; rc<rcmax; rc++) {
             rrc  = rr*cols+rc;
-            if(! mask[irc]) continue;  
-            if(data[irc]<data[rrc]) {
-              _thr_maxima[irc] &= ~8; // a>=thr_high, but NOT a local maximum in rank
+            if(rrc==irc or !mask[rrc] or _thr_maxima[rrc]==4) continue; 
+            if(!(data[irc]>data[rrc])) {
+              _thr_maxima[irc] = 4; // a>=thr_high, but NOT a local maximum in rank
+              //_thr_maxima[irc] &= ~8; // a>=thr_high, but NOT a local maximum in rank
+
               counter --;
               rr = rrmax; // termenate rr loop
               break;      // termenate rc loop
             }
           }
         }
-    //-----
+        //-----
       }
     }
   }
