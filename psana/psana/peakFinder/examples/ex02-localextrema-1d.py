@@ -5,6 +5,8 @@
 #from psalg_ext import local_minima_1d, local_maxima_1d,\
 #                      local_minimums, local_maximums,\
 #                      local_maximums_rank1_cross, threshold_maximums
+
+import sys
 import numpy as np
 
 from time import time
@@ -91,8 +93,8 @@ def test01(tname='1', NUMBER_OF_EVENTS=10, DO_PRINT=False) :
 
 #----------
 def usage() :
-    msg = 'Usage: python psalgos/examples/ex-07-localextrema-1d.py <test-number>'\
-          '\n  where <test-number> ='\
+    msg = 'Usage: [python] %s <test-number>'%(sys.argv[0])\
+        + '\n  where <test-number> ='\
           '\n  1 - local_minima_1d for random image'\
           '\n  2 - local_minima_1d for constant image'\
           '\n  3 - local_maxima_1d for random image'\
@@ -105,7 +107,6 @@ def usage() :
 #----------
 
 if __name__ == "__main__" :
-    import sys; global sys
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     print(50*'_', '\nTest %s:' % tname)
     if tname in ('1','2','3','4') : test01(tname)

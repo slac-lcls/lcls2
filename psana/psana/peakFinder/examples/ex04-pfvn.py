@@ -1,26 +1,23 @@
-### #!/usr/bin/env python
+#!/usr/bin/env python
 """
 Test of the psana/peakFinder/psalg_ext.pyx
-
-   peaks = alg.peak_finder_v3r3... !!! USE REVISION r3 in stead of previous r2 !!!
-   peaks = alg.peak_finder_v4r3... !!! USE REVISION r3 in stead of previous r2 !!!
 """
 #----------
 import sys
 from time import time
 import numpy as np
 
-#import psalg_ext as algos
 from psalg_ext import peak_finder_algos
 
 from psana.pyalgos.generic.NDArrGenerators import random_standard, add_random_peaks, add_ring
 from psana.pyalgos.generic.NDArrUtils import print_ndarr, reshape_to_2d
 import psana.pyalgos.generic.Graphics as gr
 
+from utils_peak_graphics import plot_peaks_on_img
+
 #----------
 
 def plot_image(img, img_range=None, amp_range=None, figsize=(12,10)) : 
-    #import pyimgalgos.GlobalGraphics as gr
     axim = gr.plotImageLarge(img, img_range, amp_range, figsize)
     gr.show() 
 
@@ -30,43 +27,6 @@ def image_with_random_peaks(shape=(500, 500)) :
     img = random_standard(shape, mu=0, sigma=10)
     peaks = add_random_peaks(img, npeaks=10, amean=100, arms=50, wmean=1.5, wrms=0.3)
     return img, peaks
-
-#----------
-
-import matplotlib.patches as patches 
-
-def plot_peaks_on_img(peaks, axim, iX, iY, color='w', pbits=0, lw=2) :  
-    """ Draws peaks on the top of image axes (axim)
-        Plots peaks from array as circles in coordinates of image.
-        - peaks - 2-d list/tuple of peaks; first 6 values in each peak record should be (s, r, c, amax, atot, npix)  
-        - axim - image axes
-        - iX - array of x-coordinate indexes for all pixels addressed as [s, r, c] - segment, row, column
-        - iX - array of y-coordinate indexes for all pixels addressed as [s, r, c] - segment, row, column
-        - color - peak-ring color
-        - pbits - verbosity; print 0 - nothing, +1 - peak parameters, +2 - x, y peak coordinate indexes
-    """
-
-    if peaks is None : return
-
-    #anorm = np.average(peaks,axis=0)[4] if len(peaks)>1 else peaks[0][4] if peaks.size>0 else 100    
-    for p in peaks :
-        #s, r, c, amax, atot, npix = p[0:6]
-        s, r, c, amax, atot, npix = 0, p.row, p.col, p.amp_max, p.amp_tot, p.npix
-
-        if pbits & 1 : print('s, r, c, amax, atot, npix=', s, r, c, amax, atot, npix)
-        inds = (int(s),int(r),int(c)) if iX.ndim>2 else (int(r),int(c))
-        x=iX[inds]
-        y=iY[inds]
-        if pbits & 2 : print(' x,y=',x,y)
-        xyc = (y,x)
-        #r0  = 2+3*atot/anorm
-        r0  = 5
-        circ = patches.Circle(xyc, radius=r0, linewidth=lw, color=color, fill=False)
-        axim.add_artist(circ)
-
-
-
-
 
 #----------
 
@@ -96,7 +56,7 @@ def test_pf(tname) :
     if tname == '4' : PF = V4
 
     SKIP   = 0
-    EVTMAX = 5 + SKIP
+    EVTMAX = 10 + SKIP
 
     DO_PLOT_IMAGE           = True
     DO_PLOT_PIXEL_STATUS    = False  #True if PF in (V2,V4) else False
@@ -273,12 +233,22 @@ def ex_image_with_random_peaks() :
 
 #----------
 
+def usage() :
+    msg = 'Usage: [python] %s <test-number>'%(sys.argv[0])\
+        + '\n  where <test-number> ='\
+          '\n  0 - images'\
+          '\n  3 - peak-finder V3'\
+          '\n  4 - peak-finder V4'
+    print(msg)
+ 
+#----------
+
 if __name__ == "__main__" :
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     print(50*'_', '\nTest %s:' % tname)
     if   tname == '0' : ex_image_with_random_peaks()
     elif tname in ('1','2','3','4') : test_pf(tname)
-    else : print('Not-recognized test name: %s' % tname)
+    else : usage(); sys.exit('Test %s is not implemented' % tname)
     sys.exit('End of test %s' % tname)
  
 #----------
