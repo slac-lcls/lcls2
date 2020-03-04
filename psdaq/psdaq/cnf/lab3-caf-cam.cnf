@@ -4,7 +4,7 @@ instr    = 'tst'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 conda_rel = 'ps-2.0.5'
 
-collect_host = 'drp-tst-dev001'
+collect_host = 'drp-tst-dev002'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -25,6 +25,8 @@ procmgr_config = [
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -E -t 30000 -l WARNING -H '+collect_host},
  # trigger event builder
  { host: 'drp-tst-dev009', id:'teb1', flags:'xpu', conda:conda_rel, cmd:'teb -P '+instr+' -C '+collect_host},
+ # meb
+ { host: 'drp-tst-dev009', id:'meb1', flags:'sxpu', conda:conda_rel, cmd:'monReqServer -P '+instr+' -d -q 4 -C '+collect_host},
  # drp
  { host: 'drp-tst-dev009', id:'cam_0', flags:'sxpu', conda:conda_rel, cmd:'drp -o /ffb01/data -l 0xf -D AreaDetector -d /dev/datadev_1 -P '+instr+' -C '+collect_host}
 ]
