@@ -17,7 +17,7 @@ using namespace std;
 vector<string> str_tok(const char* str, const char* delimiters_str);
 string tok_to_str(vector<string> token_list);
 void print_path(vector<string>vec);
-
+void cc_extern_test_root(void* root_obj);
 //xtc_object* xtc_obj_new(int fd, //const
 //      XtcFileIterator* fileIter, //const
 //      DebugIter* dbgiter, //const

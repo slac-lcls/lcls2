@@ -20,13 +20,14 @@
 
 /* Public HDF5 file */
 #include <hdf5.h>
+//#include <H5LTpublic.h>
 
 /* This connector's header */
 #include "xtc_vol.h"
 
 #include "xtc_io_api_c.h"
 
-#define DEBUG_PRINT printf("%s():%d\n", __func__, __LINE__);
+#define DEBUG_PRINT //printf("%s():%d\n", __func__, __LINE__);
 /**********/
 /* Macros */
 /**********/
@@ -60,7 +61,7 @@ typedef struct H5VL_xtc_t {
 
     char *obj_path;
     xtc_object_type_t xtc_obj_type;
-    xtc_object* xtc_helper;//one per file.
+    xtc_object* xtc_obj;//one per file.
     /*    Points to a Xtc/Dgram object, used to keep the handle for iterate(xtc_it) in xtc_io_api.cc
      *
      */
@@ -103,10 +104,10 @@ static herr_t H5VL_xtc_str_to_info(const char *str, void **info);
 /* VOL object wrap / retrieval callbacks */
 static void *H5VL_xtc_get_object(const void *obj);
 static herr_t H5VL_xtc_get_wrap_ctx(const void *obj, void **wrap_ctx);
-static void *H5VL_xtc_wrap_object(void *obj, H5I_type_t obj_type,
+static void *H5VL_xtc_wrap_object(void *base_obj, H5I_type_t obj_type,
     void *wrap_ctx);
-static void *H5VL_xtc_unwrap_object(void *obj);
-static herr_t H5VL_xtc_free_wrap_ctx(void *obj);
+static void *H5VL_xtc_unwrap_object(void *base_obj);
+static herr_t H5VL_xtc_free_wrap_ctx(void *base_obj);
 
 /* Attribute callbacks */
 static void *H5VL_xtc_attr_create(void *obj, const H5VL_loc_params_t *loc_params, const char *name, hid_t type_id, hid_t space_id, hid_t acpl_id, hid_t aapl_id, hid_t dxpl_id, void **req);
@@ -307,13 +308,14 @@ static hid_t H5VL_XTC_g = H5I_INVALID_HID;
 H5PL_type_t H5PLget_plugin_type(void) {return H5PL_TYPE_VOL;}
 const void *H5PLget_plugin_info(void) {return &H5VL_xtc_g;}
 
+hid_t type_convert(xtc_data_type xtc_type);
 
-unsigned long new_xtc_token(H5O_token_t* token) {
+unsigned long new_xtc_h5token(H5O_token_t* token) {
     assert(token);
-    return xtc_token_new((xtc_token_t*)token, H5O_MAX_TOKEN_SIZE);
+    return xtc_h5token_new(&token, H5O_MAX_TOKEN_SIZE);
 }
 
-int xtc_token_cmp(H5O_token_t* t1, H5O_token_t* t2){
+int xtc_h5token_cmp(H5O_token_t* t1, H5O_token_t* t2){
     assert(t1&&t2);
     for(int i = 0; i < H5O_MAX_TOKEN_SIZE; i++){
         if(t1->__data[i] != t2->__data[i])
@@ -322,7 +324,7 @@ int xtc_token_cmp(H5O_token_t* t1, H5O_token_t* t2){
     return 0;
 }
 
-char* xtc_token_to_str(H5O_token_t* t){
+char* xtc_h5token_to_str(H5O_token_t* t){
     assert(t);
     // token sample: 123-46-789-1
     char* str = (char*)calloc(1, 18 * sizeof(char));
@@ -331,12 +333,83 @@ char* xtc_token_to_str(H5O_token_t* t){
     return str;
 }
 
-int token_copy(H5O_token_t* dst, H5O_token_t* src){
-    assert(dst && src);
+int token_copy(H5O_token_t** dst_in_out, H5O_token_t* src_in){
+    assert(*dst_in_out && src_in);
     for(int i = 0; i < H5O_MAX_TOKEN_SIZE; i++)
-        dst->__data[i] = src->__data[i];
+        (*dst_in_out)->__data[i] = src_in->__data[i];
     return 0;
 }
+
+H5VL_xtc_t* _internal_obj_lookup_by_name(H5VL_xtc_t *base_obj, const char* path){
+    H5VL_xtc_t* ret_obj = NULL;
+    assert(base_obj && path && strlen(path) > 0);
+    if(strlen(path) == 1){// . or /
+        //case '.' for relative path points to self.
+        if(path[0] == '.'){
+            assert(base_obj->xtc_obj && base_obj->xtc_obj->obj_path_abs);
+            ret_obj = base_obj;
+        } else if(path[0] == '/') {
+            assert(strcmp(base_obj->xtc_obj->obj_path_abs, "/") == 0);
+            ret_obj = base_obj;
+        } else {
+            assert(0 && "_internal_obj_lookup_by_name(): Not implemented.");
+        }
+        return ret_obj;
+    }
+
+    //assert(base_obj->xtc_obj_type = XTC_GROUP);
+    char* abs_path = NULL;
+    if(path[0] == '.' && path[1] == '/'){//relative path.
+        int size = strlen(base_obj->xtc_obj->obj_path_abs) + strlen(path) + 3;
+        abs_path = (char*)calloc(1, size*sizeof(char));
+        sprintf(abs_path, "%s/%s", base_obj->obj_path, path);
+    }
+
+    if(path[0] == '/'){//absolute path.
+        abs_path = path;
+    }
+    //printf("%s:  absolute path = %s\n", __func__, abs_path);
+    DEBUG_PRINT
+    xtc_object* obj = xtc_obj_find(base_obj->xtc_obj, abs_path);
+    ret_obj = H5VL_xtc_new_obj(obj);
+    return ret_obj;
+}
+
+H5VL_xtc_t* _object_lookup(H5VL_xtc_t *base_obj, const H5VL_loc_params_t *loc_params){
+    H5VL_xtc_t* target = NULL;
+    switch(loc_params->type){
+        case H5VL_OBJECT_BY_SELF:
+            //printf("%s:%d: loc_type = H5VL_OBJECT_BY_SELF\n", __func__, __LINE__);// "/"
+            target = base_obj;
+            break;
+
+        case H5VL_OBJECT_BY_NAME:
+//            printf("%s:%d: loc_type = H5VL_OBJECT_BY_NAME, name = %s, loc_obj_type = %d, base_obj_type = %d\n",
+//                    __func__, __LINE__, loc_params->loc_data.loc_by_name.name, loc_params->obj_type, base_obj->xtc_obj->obj_type);
+            //need to handle relative/absolute and find the correct obj
+            //base_obj is the obj that's used to start on, search key is in loc_params.
+            target = _internal_obj_lookup_by_name(base_obj, loc_params->loc_data.loc_by_name.name);
+            break;
+
+        case H5VL_OBJECT_BY_IDX:
+            printf("%s:%d: loc_type = H5VL_OBJECT_BY_IDX\n", __func__, __LINE__);
+            assert(0 && "Not implemented");
+            break;
+
+        case H5VL_OBJECT_BY_TOKEN:
+            printf("%s:%d: loc_type = H5VL_OBJECT_BY_TOKEN\n", __func__, __LINE__);
+            assert(0 && "Not implemented");
+            break;
+
+        default:
+            printf("%s:%d: type = Unknown loc_type: %d \n", __func__, loc_params->type, __LINE__);
+            break;
+    }
+    return target;
+}
+
+
+
 /*-------------------------------------------------------------------------
  * Function:    H5VL__xtc_new_obj
  *
@@ -351,20 +424,22 @@ int token_copy(H5O_token_t* dst, H5O_token_t* src){
  *-------------------------------------------------------------------------
  */
 static H5VL_xtc_t *
-H5VL_xtc_new_obj(xtc_object* helper_in)
+H5VL_xtc_new_obj(xtc_object* obj_in)
 {
     DEBUG_PRINT
     //assert(0 && "breakpoint");
-    assert(helper_in);
+    assert(obj_in);
     H5VL_xtc_t *new_obj;
-    DEBUG_PRINT
+    //DEBUG_PRINT
     new_obj = (H5VL_xtc_t *)calloc(1, sizeof(H5VL_xtc_t));
 
     //new_obj->under_vol_id = under_vol_id;
 
-    new_obj->xtc_helper = helper_in;//use global var for now.
-    new_obj->xtc_helper->ref_cnt++;
-
+    new_obj->xtc_obj = obj_in;//use global var for now.
+    new_obj->xtc_obj->ref_cnt++;
+    new_obj->xtc_obj_type = obj_in->obj_type;
+    assert(obj_in->obj_path_abs);
+    new_obj->obj_path = obj_in->obj_path_abs;
     //new_obj->under_object = under_obj;//terminal, no under obj, points to self
 
     //H5Iinc_ref(vol_id);//new_obj->under_vol_id
@@ -392,23 +467,21 @@ H5VL_xtc_new_obj(xtc_object* helper_in)
 static herr_t
 H5VL_xtc_free_obj(H5VL_xtc_t *obj)
 {
-    DEBUG_PRINT
+
     //assert(0 && "breakpoint");
     //hid_t err_id;
 
     //err_id = H5Eget_current_stack();
-    assert(obj && obj->xtc_helper);
-    obj->xtc_helper->ref_cnt--;
-    DEBUG_PRINT
+    assert(obj && obj->xtc_obj);
+    obj->xtc_obj->ref_cnt--;
     //H5Idec_ref(obj->under_vol_id);
 
     //H5Eset_current_stack(err_id);
-    if(obj->xtc_helper->ref_cnt == 0){
+    if(obj->xtc_obj->ref_cnt == 0){
         //Do nothing, helper is freed on file_close.
     }
     DEBUG_PRINT
     free(obj);
-    DEBUG_PRINT
     return 0;
 } /* end H5VL__xtc_free_obj() */
 
@@ -916,17 +989,6 @@ H5VL_xtc_attr_create(void *obj, const H5VL_loc_params_t *loc_params,
     printf("------- XTC VOL ATTRIBUTE Create\n");
 #endif
 
-//    under = H5VLattr_create(o->under_object, loc_params, o->under_vol_id, name, type_id, space_id, acpl_id, aapl_id, dxpl_id, req);
-//    if(under) {
-//        attr = H5VL_xtc_new_obj(under, o->under_vol_id);
-//
-//        /* Check for async request */
-//        if(req && *req)
-//            *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-//    } /* end if */
-//    else
-//        attr = NULL;
-
     return (void*)attr;
 } /* end H5VL_xtc_attr_create() */
 
@@ -954,18 +1016,6 @@ H5VL_xtc_attr_open(void *obj, const H5VL_loc_params_t *loc_params,
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL ATTRIBUTE Open\n");
 #endif
-
-//    under = H5VLattr_open(o->under_object, loc_params, o->under_vol_id, name, aapl_id, dxpl_id, req);
-//    if(under) {
-//        attr = H5VL_xtc_new_obj(under, o->under_vol_id);
-//
-//        /* Check for async request */
-//        if(req && *req)
-//            *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-//    } /* end if */
-//    else
-//        attr = NULL;
-
     return (void *)attr;
 } /* end H5VL_xtc_attr_open() */
 
@@ -992,13 +1042,6 @@ H5VL_xtc_attr_read(void *attr, hid_t mem_type_id, void *buf,
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL ATTRIBUTE Read\n");
 #endif
-
-//    ret_value = H5VLattr_read(o->under_object, o->under_vol_id, mem_type_id, buf, dxpl_id, req);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-
     return ret_value;
 } /* end H5VL_xtc_attr_read() */
 
@@ -1026,12 +1069,6 @@ H5VL_xtc_attr_write(void *attr, hid_t mem_type_id, const void *buf,
     printf("------- XTC VOL ATTRIBUTE Write\n");
 #endif
 
-//    ret_value = H5VLattr_write(o->under_object, o->under_vol_id, mem_type_id, buf, dxpl_id, req);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-
     return ret_value;
 } /* end H5VL_xtc_attr_write() */
 
@@ -1058,13 +1095,6 @@ H5VL_xtc_attr_get(void *obj, H5VL_attr_get_t get_type, hid_t dxpl_id,
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL ATTRIBUTE Get\n");
 #endif
-
-//    ret_value = H5VLattr_get(o->under_object, o->under_vol_id, get_type, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-
     return ret_value;
 } /* end H5VL_xtc_attr_get() */
 
@@ -1084,19 +1114,31 @@ H5VL_xtc_attr_specific(void *obj, const H5VL_loc_params_t *loc_params,
     H5VL_attr_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     DEBUG_PRINT
-    assert(0 && "breakpoint");
-    H5VL_xtc_t *o = (H5VL_xtc_t *)obj;
+    //assert(0 && "breakpoint");
+    H5VL_xtc_t *o = (H5VL_xtc_t *)obj;//???is obj xtc_obj or a h5vl type?
     herr_t ret_value;
+    H5VL_xtc_t* target = _object_lookup(o, loc_params);
 
+    switch(specific_type){
+        case H5VL_ATTR_ITER:                         /* H5Aiterate(_by_name)                */
+            //printf("specific_type = H5VL_ATTR_ITER\n");
+            //assert(0 && "breakpoint");
+            //assume no attributes added for xtc.
+            break;
+        case H5VL_ATTR_DELETE:                       /* H5Adelete(_by_name/idx)             */
+        case H5VL_ATTR_EXISTS:                       /* H5Aexists(_by_name)                 */
+            //printf("specific_type = H5VL_ATTR_EXISTS\n");
+            break;
+        case H5VL_ATTR_RENAME:
+        default:
+            assert(0 && "H5VL_xtc_attr_specific: Not implemented");
+            break;
+    }
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL ATTRIBUTE Specific\n");
 #endif
 
 //    ret_value = H5VLattr_specific(o->under_object, loc_params, o->under_vol_id, specific_type, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
 
     return ret_value;
 } /* end H5VL_xtc_attr_specific() */
@@ -1124,13 +1166,6 @@ H5VL_xtc_attr_optional(void *obj, H5VL_attr_optional_t opt_type, hid_t dxpl_id,
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL ATTRIBUTE Optional\n");
 #endif
-
-//    ret_value = H5VLattr_optional(o->under_object, o->under_vol_id, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-
     return ret_value;
 } /* end H5VL_xtc_attr_optional() */
 
@@ -1156,17 +1191,6 @@ H5VL_xtc_attr_close(void *attr, hid_t dxpl_id, void **req)
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL ATTRIBUTE Close\n");
 #endif
-
-//    ret_value = H5VLattr_close(o->under_object, o->under_vol_id, dxpl_id, req);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-//
-//    /* Release our wrapper, if underlying attribute was closed */
-//    if(ret_value >= 0)
-//        H5VL_xtc_free_obj(o);
-
     return ret_value;
 } /* end H5VL_xtc_attr_close() */
 
@@ -1195,18 +1219,6 @@ H5VL_xtc_dataset_create(void *obj, const H5VL_loc_params_t *loc_params,
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL DATASET Create\n");
 #endif
-
-//    under = H5VLdataset_create(o->under_object, loc_params, o->under_vol_id, name, lcpl_id, type_id, space_id, dcpl_id,  dapl_id, dxpl_id, req);
-//    if(under) {
-//        dset = H5VL_xtc_new_obj(under, o->under_vol_id);
-//
-//        /* Check for async request */
-//        if(req && *req)
-//            *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-//    } /* end if */
-//    else
-//        dset = NULL;
-
     return (void *)dset;
 } /* end H5VL_xtc_dataset_create() */
 
@@ -1234,18 +1246,6 @@ H5VL_xtc_dataset_open(void *obj, const H5VL_loc_params_t *loc_params,
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL DATASET Open\n");
 #endif
-
-//    under = H5VLdataset_open(o->under_object, loc_params, o->under_vol_id, name, dapl_id, dxpl_id, req);
-//    if(under) {
-//        dset = H5VL_xtc_new_obj(under, o->under_vol_id);
-//
-//        /* Check for async request */
-//        if(req && *req)
-//            *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-//    } /* end if */
-//    else
-//        dset = NULL;
-
     return (void *)dset;
 } /* end H5VL_xtc_dataset_open() */
 
@@ -1260,24 +1260,93 @@ H5VL_xtc_dataset_open(void *obj, const H5VL_loc_params_t *loc_params,
  *
  *-------------------------------------------------------------------------
  */
+//H5VL_dataset_read(vol_obj, mem_type_id, mem_space_id, file_space_id, dxpl_id, buf, H5_REQUEST_NULL)
 static herr_t 
 H5VL_xtc_dataset_read(void *dset, hid_t mem_type_id, hid_t mem_space_id,
     hid_t file_space_id, hid_t plist_id, void *buf, void **req)
+
+/*
+ * mem_space_id: h5 native type
+ * file_sapce_id: user set it to specify select range
+ *
+ * */
 {
     DEBUG_PRINT
-    assert(0 && "breakpoint");
     H5VL_xtc_t *o = (H5VL_xtc_t *)dset;
+    assert(o->xtc_obj);
+
+    hid_t h5_ds_type = type_convert(o->xtc_obj->ds_info->type);
+
+    char type_name[200] = "";
+    int name_len = 0;
+    //H5LTdtype_to_text(mem_type_id, type_name, H5LT_DDL, &name_len);
+    printf("h5_ds_type = %d, mem_type_id = %d, H5T_C_S1 = %d\n", h5_ds_type, mem_type_id, H5T_C_S1);
+
+    //assert(h5_ds_type == mem_type_id);
+
+    //H5Tenum_nameof(mem_type_id, );
+    hsize_t size = H5Tget_size(mem_type_id);
+    printf("mem_type_id size = %d, ");
+    hid_t t_class = H5Tget_class(mem_type_id);
+    switch(t_class){
+        printf("mem_type_id class: H5T_INTEGER\n");
+        case H5T_INTEGER:
+            break;
+        case H5T_FLOAT:
+            printf("mem_type_id class: H5T_FLOAT\n");
+            break;
+        case H5T_STRING:
+            printf("mem_type_id class: H5T_STRING\n");
+            break;
+        case H5T_BITFIELD:
+            printf("mem_type_id class: H5T_BITFIELD\n");
+            break;
+        case H5T_OPAQUE:
+            printf("mem_type_id class: H5T_OPAQUE\n");
+            break;
+        case H5T_VLEN:
+            printf("mem_type_id class: H5T_VLEN\n");
+            break;
+        case H5T_COMPOUND:
+            printf("mem_type_id class: H5T_COMPOUND\n");
+            break;
+        case H5T_REFERENCE:
+            printf("mem_type_id class: H5T_REFERENCE\n");
+            break;
+        case H5T_ENUM:
+            printf("mem_type_id class: H5T_ENUM\n");
+            break;
+        case H5T_ARRAY:
+            printf("mem_type_id class: H5T_ARRAY\n");
+            break;
+        default:
+            break;
+    }
+
+    H5S_sel_type select_type = H5Sget_select_type(mem_space_id);
+    switch(select_type){
+        case H5S_SEL_NONE:
+            assert(0 && "H5S_SEL_NONE");
+            break;
+        case H5S_SEL_POINTS:
+            assert(0 && "H5S_SEL_POINTS");
+            break;
+        case H5S_SEL_HYPERSLABS:
+            assert(0 && "H5S_SEL_HYPERSLABS");
+            break;
+        case H5S_SEL_ALL:
+            assert(0 && "H5S_SEL_ALL");
+            break;
+        default:
+            break;
+    }
+
     herr_t ret_value;
 
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL DATASET Read\n");
 #endif
-
-//    ret_value = H5VLdataset_read(o->under_object, o->under_vol_id, mem_type_id, mem_space_id, file_space_id, plist_id, buf, req);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
+    assert(0 && "breakpoint");
 
     return ret_value;
 } /* end H5VL_xtc_dataset_read() */
@@ -1326,24 +1395,165 @@ H5VL_xtc_dataset_write(void *dset, hid_t mem_type_id, hid_t mem_space_id,
  *
  *-------------------------------------------------------------------------
  */
+
+//xtc2 to HDF5 native type mapping
+hid_t type_convert(xtc_data_type xtc_type){
+    switch(xtc_type){
+        case UINT8:
+            printf("return type: UINT8");
+            return H5T_NATIVE_UINT8;
+            break;
+        case UINT16:
+            printf("return type: UINT16");
+            return H5T_NATIVE_UINT16;
+            break;
+        case UINT32:
+            printf("return type: UINT32");
+            return H5T_NATIVE_UINT32;
+            break;
+        case UINT64:
+            printf("return type: UINT64");
+            return H5T_NATIVE_UINT64;
+            break;
+        case INT8:
+            printf("return type: INT8");
+            return H5T_NATIVE_INT8;
+            break;
+        case INT16:
+            printf("return type: INT16");
+            return H5T_NATIVE_INT16;
+            break;
+        case INT32:
+            printf("return type: INT32");
+            return H5T_NATIVE_INT32;
+            break;
+        case INT64:
+            printf("return type: INT64");
+            return H5T_NATIVE_INT64;
+            break;
+        case FLOAT:
+            printf("return type: FLOAT");
+            return H5T_NATIVE_FLOAT;
+            break;
+        case DOUBLE:
+            printf("return type: DOUBLE");
+            return H5T_NATIVE_DOUBLE;
+            break;
+
+        case CHARSTR:
+            printf("%s:%d: xtc_type = CHARSTR, return H5T_C_S1\n", __func__, __LINE__);
+            return H5T_C_S1; //C-specific string datatype
+            //assert(0 && "Unsupported type.");
+            break;
+
+        case ENUMVAL:
+            printf("%s:%d: xtc_type = ENUMVAL, return  H5T_NATIVE_UINT8\n",  __func__, __LINE__);
+            return H5T_NATIVE_UINT8;
+
+            //assert(0 && "Unsupported type.");
+            break;
+
+        case ENUMDICT:
+            printf("%s:%d: xtc_type = ENUMDICT, unknown, return H5T_NATIVE_UINT8 for now.\n",  __func__, __LINE__);
+            //assert(0 && "Unsupported type.");
+            break;
+
+         default:
+             printf("Unsupported type: %d\n", xtc_type);
+            assert(0 && "Unknown type.");
+            break;
+    }
+    return -1;
+}
+
 static herr_t 
 H5VL_xtc_dataset_get(void *dset, H5VL_dataset_get_t get_type,
     hid_t dxpl_id, void **req, va_list arguments)
 {
     DEBUG_PRINT
-    assert(0 && "breakpoint");
+    //assert(0 && "breakpoint");
     H5VL_xtc_t *o = (H5VL_xtc_t *)dset;
-    herr_t ret_value;
 
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL DATASET Get\n");
-//#endif
-//
-//    ret_value = H5VLdataset_get(o->under_object, o->under_vol_id, get_type, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
+
+    herr_t ret_value;
+    xtc_object* obj = o->xtc_obj;
+
+    //hbool_t recursive = va_arg(arguments, hbool_t);
+
+    switch(get_type){
+        case H5VL_DATASET_GET_DAPL:                  /* access property list                */
+            //printf("%s:%d: H5VL_DATASET_GET_DAPL\n", __func__, __LINE__);
+            ;
+            hid_t* ret_dapl = va_arg(arguments, hid_t*);
+            *ret_dapl = H5P_DEFAULT;
+            //assert(0 && "DS not implemented: get dapl");
+            break;
+        case H5VL_DATASET_GET_DCPL:                  /* creation property list              */
+            ;
+            hid_t dcpl = H5Pcreate (H5P_DATASET_CREATE);
+            hid_t* ret_dcpl = va_arg(arguments, hid_t*);
+            *ret_dcpl = dcpl;
+            //assert(0 && "DS not implemented: get dcpl");
+            break;
+        case H5VL_DATASET_GET_OFFSET:                /* offset                              */
+            printf("%s:%d: H5VL_DATASET_GET_OFFSET\n", __func__, __LINE__);
+            assert(0 && "DS not implemented: get offset");
+            break;
+        case H5VL_DATASET_GET_SPACE:                /* dataspace                           */
+            //DEBUG_PRINT
+            //printf("%s:%d: H5VL_DATASET_GET_SPACE\n", __func__, __LINE__);
+            //H5VL_dataset_get(vol_obj, H5VL_DATASET_GET_SPACE, H5P_DATASET_XFER_DEFAULT, H5_REQUEST_NULL, &ret_value)
+            //H5Screate create a dataspace and assign the hid to ret_val;
+            assert(obj->ds_info);
+
+            hid_t sid = H5Screate_simple(obj->ds_info->dim_cnt, obj->ds_info->current_dims, obj->ds_info->maximum_dims);
+            hid_t* ret_sid = va_arg(arguments, hid_t*);
+            *ret_sid = sid;
+            break;
+        case H5VL_DATASET_GET_SPACE_STATUS:          /* space status                        */
+            printf("%s:%d: H5VL_DATASET_GET_SPACE_STATUS\n", __func__, __LINE__);
+            assert(0 && "DS not implemented: get space status");
+            break;
+        case H5VL_DATASET_GET_STORAGE_SIZE:
+            ;
+            //H5VL_dataset_get(vol_obj, H5VL_DATASET_GET_STORAGE_SIZE, H5P_DATASET_XFER_DEFAULT, H5_REQUEST_NULL, &ret_value) ;
+            int s_size = obj->ds_info->element_cnt * obj->ds_info->element_size;
+            //printf("%s:%d: H5VL_DATASET_GET_STORAGE_SIZE: storage size = %d\n", __func__, __LINE__, s_size);
+            hsize_t* size = va_arg(arguments, hsize_t*);
+            *size = s_size;
+            //assert(0 && "DS not implemented: get storage size");
+            break;
+        case H5VL_DATASET_GET_TYPE:
+            //printf("%s:%d: H5VL_DATASET_GET_TYPE\n", __func__, __LINE__);
+            ;
+            hid_t type = type_convert(obj->ds_info->type);
+            hid_t* ret_tid = va_arg(arguments, hid_t*);
+            *ret_tid = type;
+            //assert(0 && "H5VL_DATASET_GET_TYPE not implemented");
+            DEBUG_PRINT
+            break;
+        default:
+            printf("%s:%d: Unknown get_type = %d\n", __func__, __LINE__, get_type);
+            break;
+    }
+    //get_dcpl
+    //get_dataspace
+
+    /* sys metadata for ds
+     *     H5Dget_space
+
+        Data:
+        H5Dread
+
+        Metadata:
+        H5Aiterate2: no attributes, 0.
+        H5Dget_create_plist: copy the default
+        H5Dget_type
+        H5Dget_storage_size:  n * sizeof(type)
+
+        Object:
+        H5Oget_comment: no comment.
+    */
 
     return ret_value;
 } /* end H5VL_xtc_dataset_get() */
@@ -1369,20 +1579,6 @@ H5VL_xtc_dataset_specific(void *obj, H5VL_dataset_specific_t specific_type,
     hid_t under_vol_id;
     herr_t ret_value;
 
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL H5Dspecific\n");
-//#endif
-//
-//    // Save copy of underlying VOL connector ID and prov helper, in case of
-//    // refresh destroying the current object
-//    under_vol_id = o->under_vol_id;
-//
-//    ret_value = H5VLdataset_specific(o->under_object, o->under_vol_id, specific_type, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, under_vol_id);
-
     return ret_value;
 } /* end H5VL_xtc_dataset_specific() */
 
@@ -1398,7 +1594,8 @@ H5VL_xtc_dataset_specific(void *obj, H5VL_dataset_specific_t specific_type,
  *-------------------------------------------------------------------------
  */
 static herr_t 
-H5VL_xtc_dataset_optional(void *obj, H5VL_dataset_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+H5VL_xtc_dataset_optional(void *obj, H5VL_dataset_optional_t opt_type,
+        hid_t dxpl_id, void **req, va_list arguments)
 {
     DEBUG_PRINT
     assert(0 && "breakpoint");
@@ -1433,7 +1630,7 @@ static herr_t
 H5VL_xtc_dataset_close(void *dset, hid_t dxpl_id, void **req)
 {
     DEBUG_PRINT
-    assert(0 && "breakpoint");
+    //assert(0 && "breakpoint");
     H5VL_xtc_t *o = (H5VL_xtc_t *)dset;
     herr_t ret_value;
 
@@ -1616,7 +1813,8 @@ H5VL_xtc_datatype_specific(void *obj, H5VL_datatype_specific_t specific_type,
  *-------------------------------------------------------------------------
  */
 static herr_t 
-H5VL_xtc_datatype_optional(void *obj, H5VL_datatype_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+H5VL_xtc_datatype_optional(void *obj, H5VL_datatype_optional_t opt_type,
+        hid_t dxpl_id, void **req, va_list arguments)
 {
     DEBUG_PRINT
     assert(0 && "breakpoint");
@@ -1746,40 +1944,23 @@ H5VL_xtc_file_open(const char *name, unsigned flags, hid_t fapl_id,
     hid_t dxpl_id, void **req)
 {
     DEBUG_PRINT
-    //H5VL_xtc_info_t *info;
-
-    //hid_t under_fapl_id;
-    //void *under;
-    //assert(0 && "H5VL_xtc_file_open() not done.");
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL FILE Open\n");
 #endif
 
-    /* Get copy of our VOL info from FAPL */
-    //H5Pget_vol_info(fapl_id, (void **)&info);
-
-    /* Copy the FAPL */
-    //under_fapl_id = H5Pcopy(fapl_id);
-    DEBUG_PRINT
-    /* Set the VOL ID and info for the underlying FAPL */
-    //H5Pset_vol(under_fapl_id, info->under_vol_id, info->under_vol_info);
-
     /* Open the file with the underlying VOL connector */
-    xtc_object* helper = xtc_file_open(name);
-    if(helper->ref_cnt != 0){
+    xtc_object* head_obj = xtc_file_open(name);
+    if(head_obj->ref_cnt != 0){
         printf("Calling xtc_file_open() failed, ref_cnt checking error!\n");
         return NULL;
     }
 
-    H5VL_xtc_t *file = H5VL_xtc_new_obj(helper);
+    H5VL_xtc_t *file = H5VL_xtc_new_obj(head_obj);
     file->obj_path = name;
-
-    /* Close underlying FAPL */
-    //H5Pclose(under_fapl_id);
-
-    /* Release copy of our VOL info */
+    file->xtc_obj_type = XTC_FILE;
+    file->obj_path = strdup("/"); //assume all files are root groups
     //H5VL_xtc_info_free(info);
-
+    DEBUG_PRINT
     return (void *)file;
 } /* end H5VL_xtc_file_open() */
 
@@ -1802,16 +1983,6 @@ H5VL_xtc_file_get(void *file, H5VL_file_get_t get_type, hid_t dxpl_id,
     assert(0 && "breakpoint");
     H5VL_xtc_t *o = (H5VL_xtc_t *)file;
     herr_t ret_value;
-
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL FILE Get\n");
-//#endif
-//
-//    ret_value = H5VLfile_get(o->under_object, o->under_vol_id, get_type, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
 
     return ret_value;
 } /* end H5VL_xtc_file_get() */
@@ -1864,91 +2035,6 @@ H5VL_xtc_file_specific(void *file, H5VL_file_specific_t specific_type,
     H5VL_xtc_t *o = (H5VL_xtc_t *)file;
     hid_t under_vol_id = -1;
     herr_t ret_value;
-//
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL FILE Specific\n");
-//#endif
-//
-//    /* Unpack arguments to get at the child file pointer when mounting a file */
-//    if(specific_type == H5VL_FILE_MOUNT) {
-//        H5I_type_t loc_type;
-//        const char *name;
-//        H5VL_xtc_t *child_file;
-//        hid_t plist_id;
-//
-//        /* Retrieve parameters for 'mount' operation, so we can unwrap the child file */
-//        loc_type = (H5I_type_t)va_arg(arguments, int); /* enum work-around */
-//        name = va_arg(arguments, const char *);
-//        child_file = (H5VL_xtc_t *)va_arg(arguments, void *);
-//        plist_id = va_arg(arguments, hid_t);
-//
-//        /* Keep the correct underlying VOL ID for possible async request token */
-//        under_vol_id = o->under_vol_id;
-//
-//        /* Re-issue 'file specific' call, using the unwrapped pieces */
-//        ret_value = H5VL_xtc_file_specific_reissue(o->under_object, o->under_vol_id, specific_type, dxpl_id, req, (int)loc_type, name, child_file->under_object, plist_id);
-//    } /* end if */
-//    else if(specific_type == H5VL_FILE_IS_ACCESSIBLE || specific_type == H5VL_FILE_DELETE) {
-//        H5VL_xtc_info_t *info;
-//        hid_t fapl_id, under_fapl_id;
-//        const char *name;
-//        htri_t *ret;
-//
-//        /* Get the arguments for the 'is accessible' check */
-//        fapl_id = va_arg(arguments, hid_t);
-//        name    = va_arg(arguments, const char *);
-//        ret     = va_arg(arguments, htri_t *);
-//
-//        /* Get copy of our VOL info from FAPL */
-//        H5Pget_vol_info(fapl_id, (void **)&info);
-//
-//        /* Copy the FAPL */
-//        under_fapl_id = H5Pcopy(fapl_id);
-//
-//        /* Set the VOL ID and info for the underlying FAPL */
-//        H5Pset_vol(under_fapl_id, info->under_vol_id, info->under_vol_info);
-//
-//        /* Keep the correct underlying VOL ID for possible async request token */
-//        under_vol_id = info->under_vol_id;
-//
-//        /* Re-issue 'file specific' call */
-//        ret_value = H5VL_xtc_file_specific_reissue(NULL, info->under_vol_id, specific_type, dxpl_id, req, under_fapl_id, name, ret);
-//
-//        /* Close underlying FAPL */
-//        H5Pclose(under_fapl_id);
-//
-//        /* Release copy of our VOL info */
-//        H5VL_xtc_info_free(info);
-//    } /* end else-if */
-//    else {
-//        va_list my_arguments;
-//
-//        /* Make a copy of the argument list for later, if reopening */
-//        if(specific_type == H5VL_FILE_REOPEN)
-//            va_copy(my_arguments, arguments);
-//
-//        /* Keep the correct underlying VOL ID for possible async request token */
-//        under_vol_id = o->under_vol_id;
-//
-//        ret_value = H5VLfile_specific(o->under_object, o->under_vol_id, specific_type, dxpl_id, req, arguments);
-//
-//        /* Wrap file struct pointer, if we reopened one */
-//        if(specific_type == H5VL_FILE_REOPEN) {
-//            if(ret_value >= 0) {
-//                void      **ret = va_arg(my_arguments, void **);
-//
-//                if(ret && *ret)
-//                    *ret = H5VL_xtc_new_obj(*ret, o->under_vol_id);
-//            } /* end if */
-//
-//            /* Finish use of copied vararg list */
-//            va_end(my_arguments);
-//        } /* end if */
-//    } /* end else */
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, under_vol_id);
 
     return ret_value;
 } /* end H5VL_xtc_file_specific() */
@@ -1965,7 +2051,8 @@ H5VL_xtc_file_specific(void *file, H5VL_file_specific_t specific_type,
  *-------------------------------------------------------------------------
  */
 static herr_t 
-H5VL_xtc_file_optional(void *obj, H5VL_file_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+H5VL_xtc_file_optional(void *obj, H5VL_file_optional_t opt_type,
+        hid_t dxpl_id, void **req, va_list arguments)
 {
     DEBUG_PRINT
     assert(0 && "breakpoint");
@@ -1975,12 +2062,6 @@ H5VL_xtc_file_optional(void *obj, H5VL_file_optional_t opt_type, hid_t dxpl_id, 
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL File Optional\n");
 #endif
-//
-//    ret_value = H5VLfile_optional(o->under_object, o->under_vol_id, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
 
     return ret_value;
 } /* end H5VL_xtc_file_optional() */
@@ -2007,11 +2088,10 @@ H5VL_xtc_file_close(void *file, hid_t dxpl_id, void **req)
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL FILE Close\n");
 #endif
-    xtc_object* helper = o->xtc_helper;
-    H5VL_xtc_free_obj(o);
-    DEBUG_PRINT
+    xtc_object* helper = o->xtc_obj;
+    //H5VL_xtc_free_obj(o);
     xtc_file_close(helper);
-    DEBUG_PRINT
+
 
 //    ret_value = H5VLfile_close(o->under_object, o->under_vol_id, dxpl_id, req);
 //
@@ -2023,7 +2103,7 @@ H5VL_xtc_file_close(void *file, hid_t dxpl_id, void **req)
 //    if(ret_value >= 0)
 //        H5VL_xtc_free_obj(o);
 
-    //if(0 == XTC_HELPER->ref_cnt){
+    //if(0 == xtc_obj->ref_cnt){
 
     //}
     return ret_value;
@@ -2050,21 +2130,6 @@ H5VL_xtc_group_create(void *obj, const H5VL_loc_params_t *loc_params,
     H5VL_xtc_t *group;
     H5VL_xtc_t *o = (H5VL_xtc_t *)obj;
     void *under;
-//
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL GROUP Create\n");
-//#endif
-//
-//    under = H5VLgroup_create(o->under_object, loc_params, o->under_vol_id, name, lcpl_id, gcpl_id,  gapl_id, dxpl_id, req);
-//    if(under) {
-//        group = H5VL_xtc_new_obj(under, o->under_vol_id);
-//
-//        /* Check for async request */
-//        if(req && *req)
-//            *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-//    } /* end if */
-//    else
-//        group = NULL;
 
     return (void *)group;
 } /* end H5VL_xtc_group_create() */
@@ -2085,31 +2150,12 @@ H5VL_xtc_group_open(void *obj, const H5VL_loc_params_t *loc_params,
     const char *name, hid_t gapl_id, hid_t dxpl_id, void **req)
 {
     DEBUG_PRINT
-    //assert(0 && "breakpoint");
-    printf("%s: name = %s\n", __func__, name);
-    H5VL_xtc_t *file = (H5VL_xtc_t *)obj;//opened file obj
-    DEBUG_PRINT
+    H5VL_xtc_t* target = _object_lookup(obj, loc_params);
+    xtc_object* group = target->xtc_obj;
 
-    xtc_object *group = xtc_path_search(file->xtc_helper, name);
-    H5VL_xtc_t* group_rt = calloc(1, sizeof(H5VL_xtc_t));
-    group_rt->obj_path = name;
-    group_rt->xtc_obj_type = XTC_GROUP;
-    group_rt->xtc_helper = group;
+    H5VL_xtc_t* group_rt = H5VL_xtc_new_obj(group);//calloc(1, sizeof(H5VL_xtc_t));
+    group_rt->xtc_obj = group;
     DEBUG_PRINT
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL GROUP Open\n");
-//#endif
-//
-//    under = H5VLgroup_open(o->under_object, loc_params, o->under_vol_id, name, gapl_id, dxpl_id, req);
-//    if(under) {
-//        group = H5VL_xtc_new_obj(under, o->under_vol_id);
-//
-//        /* Check for async request */
-//        if(req && *req)
-//            *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-//    } /* end if */
-//    else
-//        group = NULL;
 
     return (void *)group_rt;
 } /* end H5VL_xtc_group_open() */
@@ -2133,17 +2179,6 @@ H5VL_xtc_group_get(void *obj, H5VL_group_get_t get_type, hid_t dxpl_id,
     assert(0 && "breakpoint");
     H5VL_xtc_t *o = (H5VL_xtc_t *)obj;
     herr_t ret_value;
-
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL GROUP Get\n");
-//#endif
-//
-//    ret_value = H5VLgroup_get(o->under_object, o->under_vol_id, get_type, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-
     return ret_value;
 } /* end H5VL_xtc_group_get() */
 
@@ -2168,20 +2203,6 @@ H5VL_xtc_group_specific(void *obj, H5VL_group_specific_t specific_type,
     hid_t under_vol_id;
     herr_t ret_value;
 
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL GROUP Specific\n");
-//#endif
-//
-//    // Save copy of underlying VOL connector ID and prov helper, in case of
-//    // refresh destroying the current object
-//    under_vol_id = o->under_vol_id;
-//
-//    ret_value = H5VLgroup_specific(o->under_object, o->under_vol_id, specific_type, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, under_vol_id);
-
     return ret_value;
 } /* end H5VL_xtc_group_specific() */
 
@@ -2197,7 +2218,8 @@ H5VL_xtc_group_specific(void *obj, H5VL_group_specific_t specific_type,
  *-------------------------------------------------------------------------
  */
 static herr_t 
-H5VL_xtc_group_optional(void *obj, H5VL_group_optional_t opt_type, hid_t dxpl_id, void **req, va_list arguments)
+H5VL_xtc_group_optional(void *obj, H5VL_group_optional_t opt_type,
+        hid_t dxpl_id, void **req, va_list arguments)
 {
     DEBUG_PRINT
     assert(0 && "breakpoint");
@@ -2232,23 +2254,9 @@ static herr_t
 H5VL_xtc_group_close(void *grp, hid_t dxpl_id, void **req)
 {
     DEBUG_PRINT
-    assert(0 && "breakpoint");
+    //assert(0 && "breakpoint");
     H5VL_xtc_t *o = (H5VL_xtc_t *)grp;
-    herr_t ret_value;
-
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL H5Gclose\n");
-//#endif
-//
-//    ret_value = H5VLgroup_close(o->under_object, o->under_vol_id, dxpl_id, req);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-//
-//    /* Release our wrapper, if underlying file was closed */
-//    if(ret_value >= 0)
-//        H5VL_xtc_free_obj(o);
+    herr_t ret_value = 0;
 
     return ret_value;
 } /* end H5VL_xtc_group_close() */
@@ -2274,6 +2282,11 @@ H5VL_xtc_link_create_reissue(H5VL_link_create_type_t create_type,
     assert(0 && "breakpoint");
     va_list arguments;
     herr_t ret_value;
+
+
+    H5VL_xtc_t* target = _object_lookup(obj, loc_params);
+    xtc_object* xtc_obj = target->xtc_obj;
+
 
     va_start(arguments, req);
     ret_value = H5VLlink_create(create_type, obj, loc_params, connector_id, lcpl_id, lapl_id, dxpl_id, req, arguments);
@@ -2302,43 +2315,6 @@ H5VL_xtc_link_create(H5VL_link_create_type_t create_type, void *obj,
     H5VL_xtc_t *o = (H5VL_xtc_t *)obj;
     hid_t under_vol_id = -1;
     herr_t ret_value;
-
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL LINK Create\n");
-//#endif
-//
-//    /* Try to retrieve the "under" VOL id */
-//    if(o)
-//        under_vol_id = o->under_vol_id;
-//
-//    /* Fix up the link target object for hard link creation */
-//    if(H5VL_LINK_CREATE_HARD == create_type) {
-//        void         *cur_obj;
-//        H5VL_loc_params_t *cur_params;
-//
-//        /* Retrieve the object & loc params for the link target */
-//        cur_obj = va_arg(arguments, void *);
-//        cur_params = va_arg(arguments, H5VL_loc_params_t *);
-//
-//        /* If it's a non-NULL pointer, find the 'under object' and re-set the property */
-//        if(cur_obj) {
-//            /* Check if we still need the "under" VOL ID */
-//            if(under_vol_id < 0)
-//                under_vol_id = ((H5VL_xtc_t *)cur_obj)->under_vol_id;
-//
-//            /* Set the object for the link target */
-//            cur_obj = ((H5VL_xtc_t *)cur_obj)->under_object;
-//        } /* end if */
-//
-//        /* Re-issue 'link create' call, using the unwrapped pieces */
-//        ret_value = H5VL_xtc_link_create_reissue(create_type, (o ? o->under_object : NULL), loc_params, under_vol_id, lcpl_id, lapl_id, dxpl_id, req, cur_obj, cur_params);
-//    } /* end if */
-//    else
-//        ret_value = H5VLlink_create(create_type, (o ? o->under_object : NULL), loc_params, under_vol_id, lcpl_id, lapl_id, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, under_vol_id);
 
     return ret_value;
 } /* end H5VL_xtc_link_create() */
@@ -2370,24 +2346,7 @@ H5VL_xtc_link_copy(void *src_obj, const H5VL_loc_params_t *loc_params1,
     H5VL_xtc_t *o_dst = (H5VL_xtc_t *)dst_obj;
     hid_t under_vol_id = -1;
     herr_t ret_value;
-//
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL LINK Copy\n");
-//#endif
-//
-//    /* Retrieve the "under" VOL id */
-//    if(o_src)
-//        under_vol_id = o_src->under_vol_id;
-//    else if(o_dst)
-//        under_vol_id = o_dst->under_vol_id;
-//    assert(under_vol_id > 0);
-//
-//    ret_value = H5VLlink_copy((o_src ? o_src->under_object : NULL), loc_params1, (o_dst ? o_dst->under_object : NULL), loc_params2, under_vol_id, lcpl_id, lapl_id, dxpl_id, req);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, under_vol_id);
-            
+
     return ret_value;
 } /* end H5VL_xtc_link_copy() */
 
@@ -2419,23 +2378,6 @@ H5VL_xtc_link_move(void *src_obj, const H5VL_loc_params_t *loc_params1,
     hid_t under_vol_id = -1;
     herr_t ret_value;
 
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL LINK Move\n");
-//#endif
-//
-//    /* Retrieve the "under" VOL id */
-//    if(o_src)
-//        under_vol_id = o_src->under_vol_id;
-//    else if(o_dst)
-//        under_vol_id = o_dst->under_vol_id;
-//    assert(under_vol_id > 0);
-//
-//    ret_value = H5VLlink_move((o_src ? o_src->under_object : NULL), loc_params1, (o_dst ? o_dst->under_object : NULL), loc_params2, under_vol_id, lcpl_id, lapl_id, dxpl_id, req);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, under_vol_id);
-
     return ret_value;
 } /* end H5VL_xtc_link_move() */
 
@@ -2459,6 +2401,9 @@ H5VL_xtc_link_get(void *obj, const H5VL_loc_params_t *loc_params,
     H5VL_xtc_t *o = (H5VL_xtc_t *)obj;
     herr_t ret_value;
 
+    H5VL_xtc_t* target = _object_lookup(o, loc_params);
+    xtc_object* xtc_obj = target->xtc_obj;
+
 //#ifdef ENABLE_XTC_LOGGING
 //    printf("------- XTC VOL LINK Get\n");
 //#endif
@@ -2472,7 +2417,6 @@ H5VL_xtc_link_get(void *obj, const H5VL_loc_params_t *loc_params,
     return ret_value;
 } /* end H5VL_xtc_link_get() */
 
-
 /*-------------------------------------------------------------------------
  * Function:    H5VL_xtc_link_specific
  *
@@ -2483,29 +2427,101 @@ H5VL_xtc_link_get(void *obj, const H5VL_loc_params_t *loc_params,
  *
  *-------------------------------------------------------------------------
  */
+int loop_children(bool recursive, xtc_object* xtc_obj, H5L_iterate2_t* op, void* op_data){
+    DEBUG_PRINT
+    if(!xtc_obj){
+        printf("%s: null xtc_obj. return.\n", __func__);
+        return 0;
+    }
+    int ret = 0;
+    int n_children = 0;
+    xtc_object** children = xtc_get_children_list(xtc_obj, &n_children);
+
+    if(n_children == 0)
+        return H5_ITER_CONT;
+
+    hid_t gid = H5VLwrap_register(xtc_obj, H5I_GROUP);//obj
+    assert(children && *children);
+
+    for(int i = 0; i < n_children; i++){// iterate xtc_obj group
+        char* link_name = children[i]->obj_path_abs;
+        //printf("        Link_name = %s, type = %d\n", link_name, children[i]->obj_type);
+        H5L_info2_t linfo;
+        linfo.type = H5L_TYPE_HARD;
+        linfo.corder_valid = false;
+        linfo.corder = 0;
+        linfo.cset = 0; //US ASCII
+        linfo.u.token = *(H5O_token_t*)(children[i]->obj_token);
+
+        //herr_t (*H5L_iterate2_t)(hid_t group, const char *name, const H5L_info2_t *info, void *op_data);
+        //Implementation: h5ls:traverse_cb at h5trav.c:181
+        //(trav_ud_traverse_t*)op_data;
+        DEBUG_PRINT
+        int op_ret =  (*op)(gid, link_name, &linfo, op_data);
+        DEBUG_PRINT
+        if(op_ret != H5_ITER_CONT){
+            return op_ret;
+        }
+        if(children[i]->obj_type == XTC_GROUP){
+            if(recursive){
+                int children_cnt = 0;
+                xtc_object** sub_children = xtc_get_children_list(children[i], &children_cnt);
+                if(children_cnt > 0){
+                    for(int j = 0; j < children_cnt; j++){
+                        int r = loop_children(recursive, sub_children[j], op, op_data);//2nd arg not right
+                        if(r != H5_ITER_CONT){
+                            return r;
+                        }
+                    }
+                }
+            }
+        } else {
+//            printf("Find non-group object: type = %d\n", children[i]->obj_type);
+        }
+    }
+    H5Idec_ref(gid);
+    return H5_ITER_CONT;
+}
 static herr_t 
 H5VL_xtc_link_specific(void *obj, const H5VL_loc_params_t *loc_params,
     H5VL_link_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
 {
     DEBUG_PRINT
-    assert(0 && "breakpoint");
+    //assert(0 && "breakpoint");
     H5VL_xtc_t *o = (H5VL_xtc_t *)obj;
+
     herr_t ret_value;
 
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL LINK Specific\n");
-//#endif
-//
-//    ret_value = H5VLlink_specific(o->under_object, loc_params, o->under_vol_id, specific_type, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
+    H5VL_xtc_t* target = _object_lookup(o, loc_params);
+    assert(target);
+    xtc_object* target_obj = target->xtc_obj;
 
+    switch(specific_type){
+        case H5VL_LINK_DELETE:
+            printf("specific_type = H5VL_LINK_DELETE \n");
+            assert(0 && "Not implemented");
+            break;
+        case H5VL_LINK_EXISTS:
+            printf("specific_type = H5VL_LINK_EXISTS \n");
+            assert(0 && "Not implemented");
+            break;
+        case H5VL_LINK_ITER: {
+            hbool_t recursive = va_arg(arguments, hbool_t);
+            H5_index_t idx_type = va_arg(arguments, H5_index_t);
+            H5_iter_order_t order = va_arg(arguments, H5_iter_order_t);
+            hsize_t* idx_p = va_arg(arguments, hsize_t*);
+            H5L_iterate2_t op = va_arg(arguments, H5L_iterate2_t);
+            void* op_data = va_arg(arguments, void*);
+            ret_value = loop_children(recursive, target->xtc_obj, &op, op_data);
+        }
+            break;
+        default:
+            assert(0 && "Not Implemented");
+            break;
+    }//switch(specific_type)
     return ret_value;
 } /* end H5VL_xtc_link_specific() */
 
-
 /*-------------------------------------------------------------------------
  * Function:    H5VL_xtc_link_optional
  *
@@ -2523,16 +2539,6 @@ H5VL_xtc_link_optional(void *obj, H5VL_link_optional_t opt_type, hid_t dxpl_id, 
     assert(0 && "breakpoint");
     H5VL_xtc_t *o = (H5VL_xtc_t *)obj;
     herr_t ret_value;
-
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL LINK Optional\n");
-//#endif
-//
-//    ret_value = H5VLlink_optional(o->under_object, o->under_vol_id, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
 
     return ret_value;
 } /* end H5VL_xtc_link_optional() */
@@ -2552,28 +2558,53 @@ static void *
 H5VL_xtc_object_open(void *obj, const H5VL_loc_params_t *loc_params,
     H5I_type_t *opened_type, hid_t dxpl_id, void **req)
 {
+    printf("\n");
     DEBUG_PRINT
-    assert(0 && "breakpoint");
-    H5VL_xtc_t *new_obj;
+
     H5VL_xtc_t *o = (H5VL_xtc_t *)obj;
-    void *under;
 
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL OBJECT Open\n");
-//#endif
-//
-//    under = H5VLobject_open(o->under_object, loc_params, o->under_vol_id, opened_type, dxpl_id, req);
-//    if(under) {
-//        new_obj = H5VL_xtc_new_obj(under, o->under_vol_id);
-//
-//        /* Check for async request */
-//        if(req && *req)
-//            *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-//    } /* end if */
-//    else
-//        new_obj = NULL;
+    H5VL_xtc_t* target = _object_lookup(o, loc_params);
 
-    return (void *)new_obj;
+    switch(target->xtc_obj_type){
+        case XTC_FILE:
+            *opened_type = H5I_FILE;
+            //printf("%s:%d type = XTC_FILE: %d, not implemented. \n", __func__, __LINE__, target->xtc_obj_type);
+            break;
+        case XTC_HEAD:
+        case XTC_GROUP:
+            *opened_type = H5I_GROUP;
+            break;
+        case XTC_DS:
+            //printf("%s: find a dataset, path = %s, loc...name = %s\n", target->xtc_obj->obj_path_abs, loc_params->loc_data.loc_by_name.name);
+            *opened_type = H5I_DATASET;
+            break;
+        default:
+            printf("%s: type = Unknown o->xtc_obj_type : %d, not implemented. \n", __func__, target->xtc_obj_type);
+            break;
+    }
+
+    switch(*opened_type){
+        case H5I_FILE:
+            //printf("%s: opened_type = H5I_FILE: %d\n", __func__, *opened_type);
+            break;
+        case H5I_GROUP:
+            //printf("%s: opened_type = H5I_GROUP: %d \n", __func__, *opened_type);
+            break;
+        case H5I_DATATYPE:
+            //printf("%s: opened_type = H5I_DATATYPE: %d.\n", __func__, *opened_type);
+            break;
+        case H5I_DATASPACE:
+            //printf("%s: opened_type = H5I_DATASPACE: %d, not implemented. \n", __func__, *opened_type);
+            break;
+        case H5I_DATASET:
+            //printf("%s: opened_type = H5I_DATASET: %d, not implemented. \n", __func__, *opened_type);
+            break;
+        default:
+            //printf("%s: type = Unknown opened_type type: %d \n", __func__, *opened_type);
+            break;
+    }
+
+    return (void *)target;
 } /* end H5VL_xtc_object_open() */
 
 
@@ -2598,16 +2629,6 @@ H5VL_xtc_object_copy(void *src_obj, const H5VL_loc_params_t *src_loc_params,
     H5VL_xtc_t *o_src = (H5VL_xtc_t *)src_obj;
     H5VL_xtc_t *o_dst = (H5VL_xtc_t *)dst_obj;
     herr_t ret_value;
-//
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL OBJECT Copy\n");
-//#endif
-//
-//    ret_value = H5VLobject_copy(o_src->under_object, src_loc_params, src_name, o_dst->under_object, dst_loc_params, dst_name, o_src->under_vol_id, ocpypl_id, lcpl_id, dxpl_id, req);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o_src->under_vol_id);
 
     return ret_value;
 } /* end H5VL_xtc_object_copy() */
@@ -2624,106 +2645,104 @@ H5VL_xtc_object_copy(void *src_obj, const H5VL_loc_params_t *src_loc_params,
  *-------------------------------------------------------------------------
  */
 
-int _xtc_object_get_info(H5VL_xtc_t* xtc_obj, H5O_info2_t* oinfo_out){
+int _xtc_object_get_info(H5VL_xtc_t* xtc_obj, H5O_info2_t* oinfo_out, unsigned fields){
     DEBUG_PRINT
     assert(xtc_obj && oinfo_out);
-    // XTC_FILE, XTC_GROUP, XTC_DS, XTC_LEAVE,
-    //H5O_type_t:   H5O_TYPE_GROUP, H5O_TYPE_DATASET, H5O_TYPE_UNKNOWN,
-    //              H5O_TYPE_NAMED_DATATYPE, H5O_TYPE_MAP, H5O_TYPE_NTYPES
-    switch(xtc_obj->xtc_obj_type){
-        case XTC_FILE:
-            oinfo_out->type = H5O_TYPE_GROUP;
-            break;
-        case XTC_GROUP:
-            oinfo_out->type = H5O_TYPE_GROUP;
-            break;
-        case XTC_DS:
-            oinfo_out->type = H5O_TYPE_DATASET;
-            break;
-        default:
-            printf("Unknown xtc_obj type: %d\n", xtc_obj->xtc_obj_type);
-            assert(0);
-            break;
+    if(fields & H5O_INFO_BASIC){//meaning fields is H5O_INFO_BASIC
+        switch(xtc_obj->xtc_obj_type){
+            case XTC_FILE:
+                oinfo_out->type = H5O_TYPE_GROUP;
+                break;
+            case XTC_HEAD:
+            case XTC_GROUP:
+                oinfo_out->type = H5O_TYPE_GROUP;
+                break;
+            case XTC_DS:
+                oinfo_out->type = H5O_TYPE_DATASET;
+                break;
+            default:
+                printf("Unknown xtc_obj type: %d\n", xtc_obj->xtc_obj_type);
+                assert(0);
+                break;
+        }
+        oinfo_out->fileno = xtc_obj->xtc_obj->fd;//fd
+        oinfo_out->rc = 1;//keep it to 1.
+        assert(xtc_obj->xtc_obj->obj_token);
+        oinfo_out->token = *(H5O_token_t*)(xtc_obj->xtc_obj->obj_token);// Unique ID for xtc object in current runtime scope.
     }
 
-    oinfo_out->fileno = xtc_obj->xtc_helper->fd;//fd
-    oinfo_out->num_attrs = 0;
-    oinfo_out->rc = 1;
+    if(fields & H5O_INFO_TIME){
+        oinfo_out->atime = 0;
+        oinfo_out->btime = 0;
+        oinfo_out->ctime = 0;
+        oinfo_out->mtime = 0;
+    }
 
-    oinfo_out->token = *(H5O_token_t*)(xtc_obj->xtc_helper->obj_token);// Unique ID for xtc object in current runtime scope.
-    token_copy(&(oinfo_out->token), (H5O_token_t*)(xtc_obj->xtc_helper->obj_token));
-
-    oinfo_out->atime = 0;
-    oinfo_out->btime = 0;
-    oinfo_out->ctime = 0;
-    oinfo_out->mtime = 0;
-    DEBUG_PRINT
+    if(fields & H5O_INFO_NUM_ATTRS){
+        oinfo_out->num_attrs = 0;
+    }
     return 0;
 }
 
-static herr_t 
+static herr_t
 H5VL_xtc_object_get(void *obj, const H5VL_loc_params_t *loc_params, H5VL_object_get_t get_type,
         hid_t dxpl_id, void **req, va_list arguments)
 {
     //assert(0 && "breakpoint");
     DEBUG_PRINT
-    H5VL_xtc_t *o = (H5VL_xtc_t *)obj;
-    herr_t ret_value;
 
-    switch(loc_params->type){
-        case H5VL_OBJECT_BY_SELF:
-            printf("%s: loc_type = H5VL_OBJECT_BY_SELF\n", __func__);
+    herr_t ret_value;
+    H5VL_xtc_t* input_obj = NULL;
+
+    switch(loc_params->obj_type){
+        case H5I_FILE:
+            DEBUG_PRINT
+            input_obj = (H5VL_xtc_t *)obj;//H5VL_xtc_new_obj(h5vl_file_obj->xtc_obj); //or obj itself IS this input_obj?
             break;
-        case H5VL_OBJECT_BY_NAME:
-            printf("%s: loc_type = H5VL_OBJECT_BY_NAME, name = %s\n", __func__, loc_params->loc_data.loc_by_name.name);
+        case H5I_GROUP:
+            DEBUG_PRINT
+            //Parameter obj is the xtc_obj used to generate gid and wrap to a vol_obj, and xtc_obj is the vol_obj->data
+            input_obj = H5VL_xtc_new_obj((xtc_object*)obj);
             break;
-        case H5VL_OBJECT_BY_IDX:
-            printf("%s: loc_type = H5VL_OBJECT_BY_IDX\n", __func__);
-            break;
-        case H5VL_OBJECT_BY_TOKEN:
-            printf("%s: loc_type = H5VL_OBJECT_BY_TOKEN\n", __func__);
+        case H5I_DATASET:
+            DEBUG_PRINT
+            assert(0 && "DS not implemented.");
+            //input_obj = (H5VL_xtc_t *)obj;
+            input_obj = H5VL_xtc_new_obj((xtc_object*)obj);
             break;
         default:
-            printf("%s: type = Unknown loc_type: %d \n", __func__, get_type);
+            printf("%s: Unsupported type: %d \n", __func__, loc_params->obj_type);
+            assert(0 && "Unsupported type not implemented.");
             break;
-
     }
-
-
-
-    //ret_value = H5VLobject_get(obj, loc_params, , get_type, dxpl_id, req, arguments);
+    H5VL_xtc_t* target = _object_lookup(input_obj, loc_params);
+    assert(target);
     switch(get_type){
         case H5VL_OBJECT_GET_FILE:
             printf("%s: type = H5VL_OBJECT_GET_FILE\n", __func__);
+            assert(0 && "Not implemented");
             break;
         case H5VL_OBJECT_GET_NAME:
             printf("%s: type = H5VL_OBJECT_GET_NAME\n", __func__);
+            assert(0 && "Not implemented");
             break;
         case H5VL_OBJECT_GET_TYPE:
             printf("%s: type = H5VL_OBJECT_GET_TYPE\n", __func__);
+            assert(0 && "Not implemented");
             break;
         case H5VL_OBJECT_GET_INFO:
-            printf("%s: type = H5VL_OBJECT_GET_INFO\n", __func__);
-            H5O_info2_t* oinfo = va_arg(arguments, H5O_info2_t*);//get param FROM va_list
-            _xtc_object_get_info(o, oinfo);
+            ;
+            H5O_info2_t* target_oinfo = va_arg(arguments, H5O_info2_t*);//get param FROM va_list
             unsigned fields = va_arg(arguments, unsigned);
-            DEBUG_PRINT
+
+            _xtc_object_get_info(target, target_oinfo, fields);  //
             break;
         default:
             printf("%s: type = Unknown get type: %d \n", __func__, get_type);
+            assert(0 && "Not implemented");
             break;
     }
     DEBUG_PRINT
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL OBJECT Get\n");
-//#endif
-//
-    //ret_value = H5VLobject_get(o->under_object, loc_params, o->under_vol_id, get_type, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-
     return ret_value;
 } /* end H5VL_xtc_object_get() */
 
@@ -2749,19 +2768,18 @@ H5VL_xtc_object_specific(void *obj, const H5VL_loc_params_t *loc_params,
     hid_t under_vol_id;
     herr_t ret_value;
 
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL OBJECT Specific\n");
-//#endif
-//
-//    // Save copy of underlying VOL connector ID and prov helper, in case of
-//    // refresh destroying the current object
-//    under_vol_id = o->under_vol_id;
-//
-//    ret_value = H5VLobject_specific(o->under_object, loc_params, o->under_vol_id, specific_type, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, under_vol_id);
+    H5VL_xtc_t* target = _object_lookup(o, loc_params);
+    xtc_object* xtc_obj = target->xtc_obj;
+
+    switch(specific_type){
+        case H5VL_OBJECT_LOOKUP:
+        case H5VL_OBJECT_VISIT:
+        case H5VL_OBJECT_EXISTS:
+        default:
+            printf("%s:%d:  specific_type = %d\n", __func__, __LINE__, specific_type);
+            assert(0 && "Not implemented");
+            break;
+    }
 
     return ret_value;
 } /* end H5VL_xtc_object_specific() */
@@ -2784,16 +2802,6 @@ H5VL_xtc_object_optional(void *obj, H5VL_object_optional_t opt_type, hid_t dxpl_
     DEBUG_PRINT
     H5VL_xtc_t *o = (H5VL_xtc_t *)obj;
     herr_t ret_value;
-
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL OBJECT Optional\n");
-//#endif
-//
-    //ret_value = H5VLobject_optional(o->under_object, o->under_vol_id, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
 
     return ret_value;
 } /* end H5VL_xtc_object_optional() */
@@ -2949,125 +2957,6 @@ H5VL_xtc_request_specific(void *obj, H5VL_request_specific_t specific_type,
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL REQUEST Specific\n");
 #endif
-
-//    if(H5VL_REQUEST_WAITANY == specific_type ||
-//            H5VL_REQUEST_WAITSOME == specific_type ||
-//            H5VL_REQUEST_WAITALL == specific_type) {
-//        va_list tmp_arguments;
-//        size_t req_count;
-//
-//        /* Sanity check */
-//        assert(obj == NULL);
-//
-//        /* Get enough info to call the underlying connector */
-//        va_copy(tmp_arguments, arguments);
-//        req_count = va_arg(tmp_arguments, size_t);
-//
-//        /* Can only use a request to invoke the underlying VOL connector when there's >0 requests */
-//        if(req_count > 0) {
-//            void **req_array;
-//            void **under_req_array;
-//            uint64_t timeout;
-//            H5VL_xtc_t *o;
-//            size_t u;               /* Local index variable */
-//
-//            /* Get the request array */
-//            req_array = va_arg(tmp_arguments, void **);
-//
-//            /* Get a request to use for determining the underlying VOL connector */
-//            o = (H5VL_xtc_t *)req_array[0];
-//
-//            /* Create array of underlying VOL requests */
-//            under_req_array = (void **)malloc(req_count * sizeof(void **));
-//            for(u = 0; u < req_count; u++)
-//                under_req_array[u] = ((H5VL_xtc_t *)req_array[u])->under_object;
-//
-//            /* Remove the timeout value from the vararg list (it's used in all the calls below) */
-//            timeout = va_arg(tmp_arguments, uint64_t);
-//
-//            /* Release requests that have completed */
-//            if(H5VL_REQUEST_WAITANY == specific_type) {
-//                size_t *index;          /* Pointer to the index of completed request */
-//                H5ES_status_t *status;  /* Pointer to the request's status */
-//
-//                /* Retrieve the remaining arguments */
-//                index = va_arg(tmp_arguments, size_t *);
-//                assert(*index <= req_count);
-//                status = va_arg(tmp_arguments, H5ES_status_t *);
-//
-//                /* Reissue the WAITANY 'request specific' call */
-//                ret_value = H5VL_xtc_request_specific_reissue(o->under_object, o->under_vol_id, specific_type, req_count, under_req_array, timeout, index, status);
-//
-//                /* Release the completed request, if it completed */
-//                if(ret_value >= 0 && *status != H5ES_STATUS_IN_PROGRESS) {
-//                    H5VL_xtc_t *tmp_o;
-//
-//                    tmp_o = (H5VL_xtc_t *)req_array[*index];
-//                    H5VL_xtc_free_obj(tmp_o);
-//                } /* end if */
-//            } /* end if */
-//            else if(H5VL_REQUEST_WAITSOME == specific_type) {
-//                size_t *outcount;               /* # of completed requests */
-//                unsigned *array_of_indices;     /* Array of indices for completed requests */
-//                H5ES_status_t *array_of_statuses; /* Array of statuses for completed requests */
-//
-//                /* Retrieve the remaining arguments */
-//                outcount = va_arg(tmp_arguments, size_t *);
-//                assert(*outcount <= req_count);
-//                array_of_indices = va_arg(tmp_arguments, unsigned *);
-//                array_of_statuses = va_arg(tmp_arguments, H5ES_status_t *);
-//
-//                /* Reissue the WAITSOME 'request specific' call */
-//                ret_value = H5VL_xtc_request_specific_reissue(o->under_object, o->under_vol_id, specific_type, req_count, under_req_array, timeout, outcount, array_of_indices, array_of_statuses);
-//
-//                /* If any requests completed, release them */
-//                if(ret_value >= 0 && *outcount > 0) {
-//                    unsigned *idx_array;    /* Array of indices of completed requests */
-//
-//                    /* Retrieve the array of completed request indices */
-//                    idx_array = va_arg(tmp_arguments, unsigned *);
-//
-//                    /* Release the completed requests */
-//                    for(u = 0; u < *outcount; u++) {
-//                        H5VL_xtc_t *tmp_o;
-//
-//                        tmp_o = (H5VL_xtc_t *)req_array[idx_array[u]];
-//                        H5VL_xtc_free_obj(tmp_o);
-//                    } /* end for */
-//                } /* end if */
-//            } /* end else-if */
-//            else {      /* H5VL_REQUEST_WAITALL == specific_type */
-//                H5ES_status_t *array_of_statuses; /* Array of statuses for completed requests */
-//
-//                /* Retrieve the remaining arguments */
-//                array_of_statuses = va_arg(tmp_arguments, H5ES_status_t *);
-//
-//                /* Reissue the WAITALL 'request specific' call */
-//                ret_value = H5VL_xtc_request_specific_reissue(o->under_object, o->under_vol_id, specific_type, req_count, under_req_array, timeout, array_of_statuses);
-//
-//                /* Release the completed requests */
-//                if(ret_value >= 0) {
-//                    for(u = 0; u < req_count; u++) {
-//                        if(array_of_statuses[u] != H5ES_STATUS_IN_PROGRESS) {
-//                            H5VL_xtc_t *tmp_o;
-//
-//                            tmp_o = (H5VL_xtc_t *)req_array[u];
-//                            H5VL_xtc_free_obj(tmp_o);
-//                        } /* end if */
-//                    } /* end for */
-//                } /* end if */
-//            } /* end else */
-//
-//            /* Release array of requests for underlying connector */
-//            free(under_req_array);
-//        } /* end if */
-//
-//        /* Finish use of copied vararg list */
-//        va_end(tmp_arguments);
-//    } /* end if */
-//    else
-//        assert(0 && "Unknown 'specific' operation");
-
     return ret_value;
 } /* end H5VL_xtc_request_specific() */
 
@@ -3145,9 +3034,6 @@ static herr_t H5VL_xtc_introspect_opt_query(void *obj, H5VL_subclass_t cls, int 
     //assert(0 && "breakpoint");
     assert(supported);
 
-    switch(0){//on cls, opt_type
-
-    }
     *supported = false;
     return 0;
 }
@@ -3236,10 +3122,13 @@ herr_t H5VL_xtc_token_cmp(void *obj, const H5O_token_t *token1, const H5O_token_
     assert(0 && "breakpoint");
     return 0;
 }
+
 herr_t H5VL_xtc_token_to_str(void *obj, H5I_type_t obj_type, const H5O_token_t *token, char **token_str){
-    assert(0 && "breakpoint");
+    //assert(0 && "breakpoint");
+    *token_str = xtc_h5token_to_str(token);
     return 0;
 }
+
 herr_t H5VL_xtc_token_from_str(void *obj, H5I_type_t obj_type, const char *token_str, H5O_token_t *token){
     assert(0 && "breakpoint");
     return 0;

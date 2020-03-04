@@ -11,7 +11,7 @@ using namespace std;
 
 int test_tree(){
     xtc_node* root = new_test_node("/");
-    root->my_obj->obj_type = XTC_ROOT_GROUP;
+    root->my_obj->obj_type = XTC_HEAD;
     xtc_node* obj_0 = new_test_node("/usr");
     xtc_node* obj_1 = new_test_node("/usr/local");
     xtc_node* obj_10 = new_test_node("/usr/lib");
@@ -42,6 +42,25 @@ int test_tree(){
 
     printf("\n\n\n");
     print_tree(root);
+
+    printf("\n\n\n");
+    xtc_node* o1 = find_xtc_node(root, "/usr/local/bin");
+    printf("Find end-node o1: /usr/local/bin...\n");
+    print_tree_node(o1);
+    printf("\n\n\n");
+
+    printf("Find non-exist node o2: /usr/local/non_exist ...\n");
+    xtc_node* o2 = find_xtc_node(root, "/usr/local/non_exist");
+    if(o2 == NULL){
+        printf("PASS: can't find a non_exist node.\n");
+    } else
+        printf("FAILED: should not find a non_exist node.\n");
+
+    printf("\n\n\n");
+
+    printf("Find mid-level virtual node o3: /usr/local/include/hdf5/tools ...\n");
+    xtc_node* o3 = find_xtc_node(root, "/usr/local/include/hdf5/tools");
+    print_tree_node(o3);
     return 0;
 }
 
