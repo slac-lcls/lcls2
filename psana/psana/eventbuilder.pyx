@@ -34,6 +34,7 @@ cdef class EventBuilder:
     cdef array.array dgram_sizes
     cdef array.array dgram_timestamps
     cdef array.array event_timestamps
+    cdef array.array services
     cdef list views
     cdef unsigned nevents
     cdef unsigned nsteps
@@ -51,6 +52,7 @@ cdef class EventBuilder:
         self.dgram_sizes = array.array('I', [0]*self.nsmds)
         self.dgram_timestamps = array.array('L', [0]*self.nsmds)
         self.event_timestamps = array.array('L', [0]*self.nsmds)
+        self.services = array.array('i', [0]*self.nsmds)
         self.views = views
         self.nevents = 0
         self.nsteps = 0
@@ -118,6 +120,7 @@ cdef class EventBuilder:
         while got < batch_size and self._has_more() and not reach_limit_ts:
             array.zero(self.timestamps)
             array.zero(self.dgram_sizes)
+            array.zero(self.services)
             service = 0
             
             # Get dgrams for all smd files then
@@ -133,8 +136,8 @@ cdef class EventBuilder:
                     payload = d.xtc.extent - self.XTC_SIZE
                     self.timestamps[view_idx] = <uint64_t>d.seq.high << 32 | d.seq.low
                     self.dgram_sizes[view_idx] = self.DGRAM_SIZE + payload
+                    self.services[view_idx] = (d.env>>24)&0xf
                     raw_dgrams[view_idx] = <char[:self.dgram_sizes[view_idx]]>view_ptr
-                    service = (d.env>>24)&0xf
                     PyBuffer_Release(&buf)
 
             sorted_smd_id = np.argsort(self.timestamps)
@@ -151,6 +154,7 @@ cdef class EventBuilder:
                 self.event_timestamps[smd_id] = self.timestamps[smd_id]
                 self.offsets[smd_id] += self.dgram_sizes[smd_id]
                 event_dgrams[smd_id] = raw_dgrams[smd_id] # this is the selected dgram
+                service = self.services[smd_id]
                 
                 if self.min_ts == 0:
                     self.min_ts = self.event_timestamps[smd_id] # records first timestamp
