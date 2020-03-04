@@ -1,4 +1,5 @@
 SET(MY_CC_FLAGS "-g")
+set(CMAKE_CXX_FLAGS_DEBUG  "-g")
 SET(CMAKE_CXX_FLAGS  "${MY_CC_FLAGS} ${CMAKE_CXX_FLAGS}")
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 project(xtc_vol)

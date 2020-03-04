@@ -26,12 +26,14 @@ struct XTC_Tree_Node{
     vector<string> path_abs; //tokenized path
     xtc_node* parent;//NULL for root
     vector<xtc_node*> children;
+    int is_virtual;
 };
 
 xtc_node* new_xtc_node(xtc_object* obj);
-xtc_node* new_test_node(char* path);
+xtc_node* new_test_node(const char* path);
 int add_xtc_node(xtc_node* root, xtc_node* new_node);
-
+xtc_node* find_xtc_node(xtc_node* root, const char* path);
+xtc_object** get_children_obj(xtc_object* group, int* num_out);
 int print_tree_node(xtc_node* n);
 int print_tree(xtc_node* root);
 

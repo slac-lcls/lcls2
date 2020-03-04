@@ -15,7 +15,7 @@
 #include <vector>
 #include <sys/time.h>
 #include "xtc_io_api_c.h" //for extern C
-#include "xtc_io_api_cpp.hh";
+#include "xtc_io_api_cpp.hh"
 #include "xtc_tree.hh"
 
 using namespace XtcData;
@@ -30,7 +30,7 @@ typedef struct MappingLayer {
 }mapping;
 
 
-#define DEBUG_PRINT printf("%s():%d\n", __func__, __LINE__);
+#define DEBUG_PRINT //printf("%s():%d\n", __func__, __LINE__);
 //H5 utility function prototype
 //H5 name to xtc name, second
 char* name_convert(const char* h5_name){
@@ -58,17 +58,194 @@ public:
     enum { Stop, Continue };
     DebugIter() : XtcIterator()
     {
-    }
 
-    void get_ds_info(int i, Name& name, DescData& descdata){
-        int array_size = name.rank();
-        int data_type = name.type();
-        name.name();//variable name
-        name.str_type();//type name
+    }
+    //enum DataType {UINT8, UINT16, UINT32, UINT64, INT8, INT16, INT32, INT64, FLOAT, DOUBLE, CHARSTR, ENUMVAL, ENUMDICT};
+//    xtc_data_type to_xtc_type(Name::DataType native_type){
+//        return native_type;
+//    }
+
+    xtc_ds_info* get_ds_info( Name& name, DescData& descdata){//int i
+        xtc_ds_info* dspace = (xtc_ds_info*)calloc(1, sizeof(xtc_ds_info));
+        dspace->type = (xtc_data_type)(int)(name.type());
+        dspace->dim_cnt = 1; //always 1 dimension array.
+        dspace->element_cnt = name.rank();
+        dspace->element_size = name.get_element_size(name.type());
+        //TODO: set current_dims.
+        dspace->current_dims = (h5_size_t*) calloc(dspace->dim_cnt, sizeof(h5_size_t));//num of records
+        dspace->current_dims[0] = name.rank();//array_size
+
+        dspace->maximum_dims = NULL;
+        //dspace->data_ptr = get_data(i, name, descdata);
+        //name.name();//variable name
+        //name.str_type();//type name
+        return dspace;
     }
 
     void get_ds_data(int i, Name& name, DescData& descdata){
 
+    }
+
+    void* get_data(int i, Name& name, DescData& descdata){
+        int data_rank = name.rank();
+        int data_type = name.type();
+        printf("get_value() terminal data entry ==============  %d: %s rank %d, type %d\n", i, name.name(),
+                data_rank, data_type);
+        //printf("get_value() token = %s\n", name.name());
+        void* ret = NULL;
+        switch(name.type()){
+        case(Name::UINT8):{
+            if(data_rank > 0){
+                Array<uint8_t> arrT = descdata.get_array<uint8_t>(i);
+                printf("type uint8_t: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                ret = arrT.data();
+                    }
+            else{
+                printf("type uint8_t:  %s: %d\n",name.name(),descdata.get_value<uint8_t>(i));
+
+            }
+            break;
+        }
+
+        case(Name::UINT16):{
+            if(data_rank > 0){
+                Array<uint16_t> arrT = descdata.get_array<uint16_t>(i);
+                printf("type uint16_t:  %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                ret = arrT.data();
+                    }
+            else{
+                printf("type uint16_t: %s: %d\n",name.name(),descdata.get_value<uint16_t>(i));
+            }
+            break;
+        }
+
+        case(Name::UINT32):{
+            if(data_rank > 0){
+                Array<uint32_t> arrT = descdata.get_array<uint32_t>(i);
+                printf("type uint32_t: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                ret = arrT.data();
+                    }
+            else{
+                printf("type uint32_t: %s: %d\n",name.name(),descdata.get_value<uint32_t>(i));
+            }
+            break;
+        }
+
+        case(Name::UINT64):{
+            if(data_rank > 0){
+                Array<uint64_t> arrT = descdata.get_array<uint64_t>(i);
+                printf("type uint64_t: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                ret = arrT.data();
+                    }
+            else{
+                printf("type uint64_t %s: %d\n",name.name(),descdata.get_value<uint64_t>(i));
+            }
+            break;
+        }
+
+        case(Name::INT8):{
+            if(data_rank > 0){
+                Array<int8_t> arrT = descdata.get_array<int8_t>(i);
+                printf("type int8:  %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                ret = arrT.data();
+                    }
+            else{
+                printf("type int8: %s: %d\n",name.name(),descdata.get_value<int8_t>(i));
+            }
+            break;
+        }
+
+        case(Name::INT16):{
+            if(data_rank > 0){
+                Array<int16_t> arrT = descdata.get_array<int16_t>(i);
+                printf("type int16: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("type int16: %s: %d\n",name.name(),descdata.get_value<int16_t>(i));
+            }
+            break;
+        }
+
+        case(Name::INT32):{
+            if(data_rank > 0){
+                Array<int32_t> arrT = descdata.get_array<int32_t>(i);
+                printf("type int32: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("type int32:   %s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+            }
+            break;
+        }
+
+        case(Name::INT64):{
+            if(data_rank > 0){
+                Array<int64_t> arrT = descdata.get_array<int64_t>(i);
+                printf("type int64:  %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("type int64:   %s: %d\n",name.name(),descdata.get_value<int64_t>(i));
+            }
+            break;
+        }
+
+        case(Name::FLOAT):{
+            if(data_rank > 0){
+                Array<float> arrT = descdata.get_array<float>(i);
+                printf("type float:  %s: %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1]);
+                    }
+            else{
+                printf("type float:  %s: %f\n",name.name(),descdata.get_value<float>(i));
+            }
+            break;
+        }
+
+        case(Name::DOUBLE):{
+            if(data_rank > 0){
+                Array<double> arrT = descdata.get_array<double>(i);
+                printf("type double: %s: %f, %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                printf("type double: %s: %f\n",name.name(),descdata.get_value<double>(i));
+            }
+            break;
+        }
+
+        case(Name::CHARSTR):{
+            if(data_rank > 0){
+                Array<char> arrT = descdata.get_array<char>(i);
+                printf("type charstr:  %s: \"%s\"\n",name.name(),arrT.data());
+                ret = arrT.data();
+                    }
+            else{
+                printf("type charstr: %s: string with no rank?!?\n",name.name());
+                ret = NULL;
+            }
+            break;
+        }
+
+        case(Name::ENUMVAL):{
+            if(data_rank > 0){
+                Array<int32_t> arrT = descdata.get_array<int32_t>(i);
+                printf("type ENUMVAL: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                ret = arrT.data();
+                    }
+            else{
+                printf("type ENUMVAL %s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+            }
+            break;
+        }
+
+        case(Name::ENUMDICT):{
+            if(data_rank > 0){
+                printf("type ENUMDICT %s: enumdict with rank?!?\n", name.name());
+                ret = NULL;
+            } else{
+                printf("type ENUMDICT  %s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+            }
+            break;
+        }
+        }
+        return NULL;
     }
 
     void get_value(int i, Name& name, DescData& descdata){
@@ -298,7 +475,7 @@ public:
                 ret = process_search(xtc);
                 break;
             case LIST_W_DEPTH:
-                ret = process_list_with_depth(xtc);
+                assert(0 && "LIST_W_DEPTH Not implemented.");
                 break;
 
             default:
@@ -310,7 +487,6 @@ public:
 
     int process_list_all(Xtc* xtc)
     {
-        printf("\nStarting new Xtc: xtc.extent = %lu\n", xtc->extent);
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
             printf("Found TypeID == Parent, iterating...\n");
@@ -321,13 +497,12 @@ public:
             Names& names = *(Names*)xtc;
             _namesLookup[names.namesId()] = NameIndex(names);
             Alg& alg = names.alg();
-//      printf("===============================\n");
-      printf("***  Per names metadata: DetName: %s, Segment %d, DetType: %s, Alg: %s, "
-              "Version: 0x%6.6x, namesid: 0x%x, Names:\n",
-                   names.detName(), names.segment(), names.detType(),
-                   alg.name(), alg.version(), (int)names.namesId());
+//      printf("***  Per names metadata: DetName: %s, Segment %d, DetType: %s, Alg: %s, "
+//              "Version: 0x%6.6x, namesid: 0x%x, Names:\n",
+//                   names.detName(), names.segment(), names.detType(),
+//                   alg.name(), alg.version(), (int)names.namesId());
       //printf("process(): TypeId::Names: current token = %s\n", names.detName());
-      //_CURRENT_PATH_TOKENS.push_back(names.detName());
+
       string token = names.detName();
       token += "_";
       token += names.detType();
@@ -339,24 +514,15 @@ public:
       xtc_tree_node_add(new_xtc_node(new_obj));
         for (unsigned i = 0; i < names.num(); i++) {
             Name& name = names.get(i);
-//            if (strcmp(name.name(),"intOffset")==0) {
-//                uint64_t offset    = descdata.get_value<uint64_t>(i);
-//                printf("Type=Names  offset = 0x%x\n", offset);
-//            }
-            //printf("      process() level 2 token = %s\n", name.name());
-
             append_token(name.name());
             //print_local_path();
             string path_str = get_current_path();
             xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, path_str.c_str());
             xtc_tree_node_add(new_xtc_node(new_obj));
-            cout<<"Output path = " << path_str <<endl;
-            //printf("      Name: %s, Type: %d, Rank: %d.\n",name.name(),name.type(), name.rank());
             pop_token();
         }
-        pop_token();
-        pop_token();
-
+        pop_token();//segment
+        pop_token();//detName_detType_alg
             break;
         }
         case (TypeId::ShapesData): {
@@ -377,8 +543,7 @@ public:
             Names& names = descdata.nameindex().names();
             Data& data = shapesdata.data();
 
-            printf("===============================\n");
-      //printf("ShapesData group:Found %d names, the token is detName = [%s]\n",names.num(), names.detName());
+            //printf("ShapesData group:Found %d names, the token is detName = [%s]\n",names.num(), names.detName());
             string token = names.detName();
             token += "_";
             token += names.detType();
@@ -386,154 +551,32 @@ public:
             token += names.alg().name();
             append_token(token);
             append_token(to_string(names.segment()));
+            string time_stamp_str = to_string(((Dgram*)CURRENT_LOCATION->dg)->time.asDouble());
+            append_token(time_stamp_str);
 
             xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, get_current_path().c_str());
             xtc_tree_node_add(new_xtc_node(new_obj));
-      //append_token(names.detName());
+
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
                 if (strcmp(name.name(),"intOffset")==0) {
                     uint64_t offset    = descdata.get_value<uint64_t>(i);
-                    printf("Type=ShapesData  offset = 0x%x\n", offset);
+                    //printf("Type=ShapesData  offset = 0x%x\n", offset);
                 }
                 append_token(name.name());
-                printf("\n");
-                //print_local_path();
+                //printf("\n");
+                print_local_path();
                 string path_str = get_current_path();
-
                 xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, get_current_path().c_str());
                 new_obj->obj_type = XTC_DS;
+                new_obj->ds_info = get_ds_info(name, descdata);
                 xtc_tree_node_add(new_xtc_node(new_obj));
-
-                cout<<"Output path = " << path_str <<endl;
                 get_value(i, name, descdata);
                 pop_token();
             }
-        pop_token();
-        pop_token();
-            break;
-        }
-        default:
-            break;
-        }
-        return Continue;
-    }
-
-    int process_list_with_depth(Xtc* xtc)
-    {
-        switch (xtc->contains.id()) {
-        case (TypeId::Parent): {
-            DEBUG_PRINT
-            printf("Found TypeID == Parent, iterating...\n");
-            iterate(xtc);
-            break;
-        }
-        case (TypeId::Names): {
-            Names& names = *(Names*)xtc;
-            DEBUG_PRINT
-            _namesLookup[names.namesId()] = NameIndex(names);
-            Alg& alg = names.alg();
-        //printf("===============================\n");
-        //printf("***  Per names metadata: DetName: %s, Segment %d, DetType: %s, Alg: %s,
-            //Version: 0x%6.6x, namesid: 0x%x, Names:\n",
-        //           names.detName(), names.segment(), names.detType(),
-        //           alg.name(), alg.version(), (int)names.namesId());
-        string candidate_str = names.detName();
-        printf("process(): TypeId::Names: current token = [%s]\n", candidate_str.c_str());
-        DEBUG_PRINT
-        append_token(candidate_str);
-        DEBUG_PRINT
-        if(1){//always list config
-
-            printf("\n=============================== Names:: Found 2nd token match: str = %s, index = %d\n",
-                    candidate_str.c_str(), _scan_index);
-            //print_input_path();
-            //print_local_path();
-//            for (unsigned i = 0; i < names.num(); i++) {
-//                Name& name = names.get(i);
-//                printf("      process() level 2 token = %s\n", name.name());
-//                candidate_str = name.name();
-//                append_token(candidate_str);
-//                if(1){
-//
-//                    printf("\n=============================== Terminal token match: str = %s, index = %d\n",
-//                            candidate_str.c_str(), _scan_index);
-//                    print_input_path();
-//                    print_local_path();
-//                    printf("      Name: %s, Type: %d, Rank: %d.\n",name.name(),name.type(), name.rank());
-//                    printf("===============================\n\n");
-//
-//                }
-//                print_local_path();
-//
-//                pop_token();
-//            }
-            printf("===============================\n\n");
-
-        }
-        pop_token();
-
-            break;
-        }
-        case (TypeId::ShapesData): {
-            printf("get_index() = %d, SCAN_DEPTH = %d\n", get_index(), SCAN_DEPTH);
-            DEBUG_PRINT
-            ShapesData& shapesdata = *(ShapesData*)xtc;
-            // lookup the index of the names we are supposed to use
-            NamesId namesId = shapesdata.namesId();
-            // protect against the fact that this namesid
-            // may not have a NamesLookup.  cpo thinks this
-            // should be fatal, since it is a sign the xtc is "corrupted",
-            // in some sense.
-            DEBUG_PRINT
-            if (_namesLookup.count(namesId)<=0) {
-                printf("*** Corrupt xtc: namesid 0x%x not found in NamesLookup\n",(int)namesId);
-                throw "invalid namesid";
-                break;
-            }
-            DEBUG_PRINT
-            DescData descdata(shapesdata, _namesLookup[namesId]);
-            Names& names = descdata.nameindex().names();
-            Data& data = shapesdata.data();
-            //printf("===============================\n");
-        //printf("ShapesData group:Found %d names, the token is detName = %s\n",names.num(), names.detName());
-
-        string candidate_str = names.detName();
-        append_token(candidate_str);
-        //index_increment();
-//        if(get_index() <= SCAN_DEPTH){
-//
-//            printf("\n=============================== ShapesData:: Found 2nd token match: str = %s, index = %d\n",
-//                    candidate_str.c_str(), _scan_index);
-//            print_input_path();
-//            print_local_path();
-//            for (unsigned i = 0; i < names.num(); i++) {
-//                Name& name = names.get(i);
-//                candidate_str = name.name();
-//                append_token(candidate_str);
-//                print_local_path();
-//
-//                printf("      process() level 2 token = %s\n", name.name());
-//                //index_increment();
-//                if(get_index() <= SCAN_DEPTH){
-//
-//                    printf("\n=============================== Found terminal token match: str = %s, index = %d\n",
-//                            candidate_str.c_str(), _scan_index);
-//                    print_input_path();
-//                    print_local_path();
-//                    get_value(i, name, descdata); //this should be the terminal.
-//                    printf("===============================\n\n");
-//
-//                }
-//                //index_decrement();
-//                pop_token();
-//            }
-//            printf("===============================\n\n");
-//
-//        }
-        //index_decrement();
-
-        pop_token();
+        pop_token();//timestamp
+        pop_token();//segment
+        pop_token();//detName_detType_alg
             break;
         }
         default:
@@ -546,7 +589,7 @@ public:
     {
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
-            //printf("Found TypeID == Parent, iterating...\n");
+
             iterate(xtc);
             break;
         }
@@ -555,13 +598,6 @@ public:
             DEBUG_PRINT
             _namesLookup[names.namesId()] = NameIndex(names);
             Alg& alg = names.alg();
-        //printf("===============================\n");
-        //printf("***  Per names metadata: DetName: %s, Segment %d, DetType: %s, Alg: %s,
-        //Version: 0x%6.6x, namesid: 0x%x, Names:\n",
-        //           names.detName(), names.segment(), names.detType(),
-        //           alg.name(), alg.version(), (int)names.namesId());
-//        string candidate_str = names.detName();
-//        printf("process(): TypeId::Names: current token = [%s]\n", candidate_str.c_str());
 
 
         string candidate_str = names.detName();
@@ -607,12 +643,8 @@ public:
                     //return 0;
                     printf("      Name: %s, Type: %d, Rank: %d.\n",name.name(),name.type(), name.rank());
                     printf("===============================\n\n");
-
                 }
-
             }
-            //printf("===============================\n\n");
-
         } else if(match == 0 ) {//all match.
             printf("Find target group: ");
             print_local_path();
@@ -622,11 +654,8 @@ public:
             printf("Scanned too much: ");
             print_local_path();
         }
-//        index_decrement();
-
         pop_token();
         pop_token();
-
             break;
         }
         case (TypeId::ShapesData): {
@@ -648,8 +677,6 @@ public:
             DescData descdata(shapesdata, _namesLookup[namesId]);
             Names& names = descdata.nameindex().names();
             Data& data = shapesdata.data();
-            //printf("===============================\n");
-        //printf("ShapesData group:Found %d names, the token is detName = %s\n",names.num(), names.detName());
 
             string candidate_str = names.detName();
             candidate_str += "_";
@@ -660,10 +687,8 @@ public:
             append_token(to_string(names.segment()));
 
             int match = compare_input_path();//1: continue to scan, -1 mismatch, 0 all match.
-            //printf("Compare: canditate_str = %s, input_path_token[%d] = %s, match = %d\n",
-            //candidate_str.c_str(), _scan_index , _INPUT_PATH_TOKENS[_scan_index].c_str(), match);
+
             if(match == 1 ){
-                //candidate_str.compare(_INPUT_PATH_TOKENS[_scan_index]) == 0
                 printf("\n=============================== ShapesData:: Found 2nd token match: str = %s, index = %d\n",
                         candidate_str.c_str(), _scan_index);
                 print_input_path();
@@ -714,16 +739,12 @@ public:
     void append_token(string str){
         _CURRENT_PATH_TOKENS.push_back(str);
         _index_increment();
-        //cout << "After append: input token:"<< _INPUT_PATH_TOKENS[_scan_index] << ", index = "<< _scan_index <<endl;
-        //index_print();
     }
     void set_input_path(vector<string> str_vec){
         _INPUT_PATH_TOKENS = str_vec;
     }
 
     int compare_input_path(){
-        //_INPUT_PATH_TOKENS;
-        //_CURRENT_PATH_TOKENS;
         for(int i = 0; i < min(_INPUT_PATH_TOKENS.size(), _CURRENT_PATH_TOKENS.size()); i++){
             if(_INPUT_PATH_TOKENS[i].compare(_CURRENT_PATH_TOKENS[i]) != 0)
                 return -1;
@@ -739,8 +760,6 @@ public:
     void pop_token(){
         _CURRENT_PATH_TOKENS.pop_back();
         _index_decrement();
-        //cout << "After pop: input token:"<< _INPUT_PATH_TOKENS[_scan_index] << ", index = "<< _scan_index <<endl;
-        //index_print();
     }
     void print_input_path(){
         printf("input path = ");
@@ -749,16 +768,11 @@ public:
     void print_local_path(void){
         printf("current local");
         print_path(_CURRENT_PATH_TOKENS);
-//        printf("current input_path index = %d, segment = ", _scan_index);
-//        for(int i = 0; i <= _scan_index; i++){
-//            printf("/%s", _INPUT_PATH_TOKENS[i].c_str());
-//        }
         printf("\n");
     }
 
     string get_current_path(){
         string ret("/");
-        //_CURRENT_PATH_TOKENS
         for(int i = 0; i < _CURRENT_PATH_TOKENS.size(); i++ ){
             ret += _CURRENT_PATH_TOKENS[i];
             if(i != _CURRENT_PATH_TOKENS.size() - 1)
@@ -782,25 +796,34 @@ public:
     ItType get_iterator_type(){
         return iterator_type;
     }
-    int _scan_index; //mark which token to compare
+
 
     vector<string> _INPUT_PATH_TOKENS;
 
     void xtc_tree_init(xtc_object* root_obj){
         ROOT_NODE = new_xtc_node(root_obj);
+        ROOT_NODE->parent = NULL;
+        (*root_obj).tree_node = (void*)ROOT_NODE;
     }
     void xtc_tree_init(int fd){
         xtc_object* root_obj = (xtc_object*)calloc(1, sizeof(xtc_object));
         root_obj->fd = fd;
         root_obj->obj_path_abs = strdup("/");
-        xtc_token_new((xtc_token_t*)(root_obj->obj_token), 16);
+        xtc_h5token_new((xtc_token_t**)&(root_obj->obj_token), 16);
         ROOT_NODE = new_xtc_node(root_obj);
+        ROOT_NODE->parent = NULL;
     }
 
     int xtc_tree_node_add(xtc_node* node){
         return add_xtc_node(ROOT_NODE, node);
     }
 
+    xtc_node* xtc_tree_node_find(const char* target_path){
+        return find_xtc_node(ROOT_NODE, target_path);
+    }
+    xtc_node* get_root(){
+        return ROOT_NODE;
+    }
     int xtc_tree_print(){
         return print_tree(ROOT_NODE);
     }
@@ -820,9 +843,7 @@ public:
     }
 
     xtc_location* CURRENT_LOCATION;
-
     vector<string> _CURRENT_PATH_TOKENS;
-
 
 private:
     ItType iterator_type;
@@ -830,15 +851,14 @@ private:
 
     xtc_object* extern_helper;
     xtc_node* ROOT_NODE;
+    int _scan_index; //mark which token to compare
 
     int _index_increment(){
         _scan_index++;
-        //cout<<"after increment: index = "<<_scan_index<<endl;
         return _scan_index;
     }
     int _index_decrement(){
         _scan_index--;
-        //cout<<"after decrement: index = "<<_scan_index<<endl;
         return _scan_index;
     }
 };
@@ -855,6 +875,7 @@ void print_path(vector<string>vec)
 }
 
 vector<string> str_tok(const char* str, const char* delimiters_str){
+    assert(str && delimiters_str);
     char* str_mod = strdup(str);
     vector<string> res;
     char * pch;
@@ -942,86 +963,62 @@ Dgram* iterate_with_depth(int fd, int depth){
     return it;
 }
 
-Dgram* iterate_list_all(int fd){
+xtc_object* iterate_list_all(int fd){
 
-
-    Dgram* it = NULL;
-
-
-    XtcFileIterator iter(fd, 0x4000000);
-    Dgram* dg;
+    XtcFileIterator* iter = new XtcFileIterator(fd, 0x4000000);
+    Dgram* dg = new Dgram();
     unsigned nevent=0;
-    DebugIter dbgiter;
+    DebugIter* dbgiter = new DebugIter();
     bool debugprint = true;
 
     //location init
-    dbgiter.CURRENT_LOCATION = (xtc_location*)calloc(1, sizeof(xtc_location));
-    dbgiter.CURRENT_LOCATION->fd = fd;
-    dbgiter.CURRENT_LOCATION->fileIter = (void*)(&iter);
-    dbgiter.CURRENT_LOCATION->dbgiter = (void*)(&dbgiter);
-    dbgiter.CURRENT_LOCATION->dg = NULL;
+    dbgiter->CURRENT_LOCATION = (xtc_location*)calloc(1, sizeof(xtc_location));
+    dbgiter->CURRENT_LOCATION->fd = fd;
+    dbgiter->CURRENT_LOCATION->fileIter = (void*)(iter);
+    dbgiter->CURRENT_LOCATION->dbgiter = (void*)(dbgiter);
+    dbgiter->CURRENT_LOCATION->dg = NULL;
 
-    dbgiter.index_init();//-1
-    dbgiter.set_iterator_type(DebugIter::LIST_ALL);
+    dbgiter->index_init();//-1
+    dbgiter->set_iterator_type(DebugIter::LIST_ALL);
     int i = 0;
 
-    dg = iter.next();//first dg, for configure transition.
-    dbgiter.CURRENT_LOCATION->dg = dg;
-    //int fd, XtcFileIterator* fileIter, DebugIter* dbgiter, Dgram* dg
-    xtc_object* head_obj = xtc_obj_new(fd, &iter, &dbgiter, dg, "/");
+    dg = iter->next();//first dg, for configure transition.
+    dbgiter->CURRENT_LOCATION->dg = dg;
+    xtc_object* head_obj = xtc_obj_new(fd, iter, dbgiter, dg, "/");
 
-    head_obj->obj_type = XTC_ROOT_GROUP;
-    dbgiter.xtc_tree_init(head_obj);
+    head_obj->obj_type = XTC_HEAD;
+    dbgiter->xtc_tree_init(head_obj);
 
     string candidate_str = string(TransitionId::name(dg->service()));
-    //candidate_str += "_";
-    //candidate_str += to_string(dg->time.asDouble());
-    dbgiter.append_token(candidate_str);
-    dbgiter.print_local_path();
 
-    //
-    dbgiter.iterate(&(dg->xtc));
-    dbgiter.pop_token();
+    dbgiter->append_token(candidate_str);
+    dbgiter->iterate(&(dg->xtc));
+    dbgiter->pop_token();
     int L1accept_cnt = 0;
     printf("\n=============================== Configure transition completed. ===============================\n");
-    while ((dg = iter.next())) {//each data item in the file
-        dbgiter.CURRENT_LOCATION->dg = dg;
+    while ((dg = iter->next())) {//each data item in the file
+        dbgiter->CURRENT_LOCATION->dg = dg;
         i++;
         nevent++;
 
         DEBUG_PRINT
         string candidate_str = string(TransitionId::name(dg->service()));
-        candidate_str += "/";
-        candidate_str += to_string(dg->time.asDouble());
-//        if(candidate_str.compare("L1Accept") == 0){
-//            L1accept_cnt++;
-//            candidate_str += "_";
-//            candidate_str += to_string(L1accept_cnt);
-//        }
-
-        dbgiter.append_token(candidate_str);
-        dbgiter.print_local_path();
-
-        xtc_object* xtc_obj = xtc_obj_new(fd, &iter, &dbgiter, dg, dbgiter.get_current_path().c_str());
-        dbgiter.xtc_tree_node_add(new_xtc_node(xtc_obj));
+        dbgiter->append_token(candidate_str);
+        xtc_object* xtc_obj = xtc_obj_new(fd, iter, dbgiter, dg, dbgiter->get_current_path().c_str());
+        dbgiter->xtc_tree_node_add(new_xtc_node(xtc_obj));
 
         DEBUG_PRINT
         if (debugprint) {
-            dbgiter.iterate(&(dg->xtc));
+            dbgiter->iterate(&(dg->xtc));
         }
-        //if false, dg->xtc need to move to the next block.
 
-        DEBUG_PRINT
-        dbgiter.pop_token();
+        dbgiter->pop_token();
     }
     printf("\n\n\n\n");
-    dbgiter.xtc_tree_print();
 
-    return it;
+    return head_obj;
 
 }
-
-
 
 xtc_object* xtc_obj_new(int fd, void* fileIter, void* dbgiter, void* dg, const char* obj_path_abs){
     xtc_object* ret = (xtc_object*)calloc(1, sizeof(xtc_object));
@@ -1036,7 +1033,7 @@ xtc_object* xtc_obj_new(int fd, void* fileIter, void* dbgiter, void* dg, const c
     ret->obj_type = XTC_GROUP;
     ret->obj_token = calloc(1, sizeof(xtc_token_t));
     ret->obj_path_abs = strdup(obj_path_abs);
-    xtc_token_new((xtc_token_t*)ret->obj_token, 16);
+    xtc_h5token_new((xtc_token_t**)&(ret->obj_token), 16);
     return ret;
 }
 
@@ -1047,12 +1044,8 @@ xtc_object* xtc_obj_new(xtc_location* location, const char* obj_path_abs){
     return obj;
 }
 xtc_object* _target_open(xtc_object* helper_in, const char* obj_vol_path){
-
     assert(helper_in && obj_vol_path);
-
-    //int new_fd = open("data.xtc2", O_RDONLY);
     int fd = helper_in->fd;
-    //cout<<"received fd = "<< fd <<", new_fd = "<<new_fd<<endl;
 
     //XtcFileIterator iter(fd, 0x4000000);
     if(0 == strcmp(obj_vol_path, "/")){
@@ -1071,17 +1064,6 @@ xtc_object* _target_open(xtc_object* helper_in, const char* obj_vol_path){
     dbgiter->index_init();//set to -1;
     dbgiter->set_iterator_type(DebugIter::SEARCH);
     dbgiter->print_input_path();
-//    int i =0;
-//    DEBUG_PRINT
-//    dg = iter->next();//first dg, for configure transition.
-//    string candidate_str = string(TransitionId::name(dg->service()));
-//    DEBUG_PRINT
-//    dbgiter->append_token(candidate_str);
-//    dbgiter->print_local_path();
-//    DEBUG_PRINT
-//    dbgiter->iterate(&(dg->xtc));
-//    DEBUG_PRINT
-//    dbgiter->pop_token();
 
     printf("\n=============================== Configure transition completed. ===============================\n");
     while ((dg = iter->next())) {//each data item in the file
@@ -1091,7 +1073,7 @@ xtc_object* _target_open(xtc_object* helper_in, const char* obj_vol_path){
         dbgiter->append_token(candidate_str);
         bool token_match = (candidate_str.compare(dbgiter->_INPUT_PATH_TOKENS[0]) == 0);//dbgiter->_scan_index
         if(token_match){
-            printf("========= Transition match (%s), _scan_index = %d =========\n", candidate_str.c_str(), dbgiter->_scan_index);
+            printf("========= Transition match (%s), _scan_index = %d =========\n", candidate_str.c_str(), dbgiter->get_index());
             DEBUG_PRINT
             debugprint = true;
         }
@@ -1118,9 +1100,9 @@ xtc_object* _target_open(xtc_object* helper_in, const char* obj_vol_path){
 }
 
 
-unsigned long xtc_token_new(xtc_token_t* token, unsigned int h5_token_size) {
-    if(!token)
-        token = (xtc_token_t*)calloc(1, sizeof(xtc_token_t));
+unsigned long xtc_h5token_new(xtc_token_t** token, unsigned int h5_token_size) {
+    if(!*token)
+        *token = (xtc_token_t*)calloc(1, sizeof(xtc_token_t));
 
     struct timeval tp;
     gettimeofday(&tp, NULL);
@@ -1128,68 +1110,93 @@ unsigned long xtc_token_new(xtc_token_t* token, unsigned int h5_token_size) {
     int n = sizeof(int32_t)/sizeof(uint8_t);
     for(int i = 0; i < h5_token_size; i++){//16
         if(i < n)
-            token->__data[i] = *(uint8_t*)(&tval + i * sizeof(uint8_t));
+            (*token)->__data[i] = *(uint8_t*)(&tval + i * sizeof(uint8_t));
         else
-            token->__data[i] = 0;
+            (*token)->__data[i] = 0;
     }
     return tval;
 }
 
 
-xtc_object* xtc_helper_new(){
-    xtc_object* ret = (xtc_object*)calloc(1, sizeof(xtc_object));
-    ret->obj_token = calloc(1, sizeof(xtc_token_t));
-    return ret;
+//xtc_object* _file_open(int fd){
+////    XtcFileIterator* fileIter = new XtcFileIterator(fd, 0x4000000);
+////    DebugIter* dbgiter = new DebugIter();
+////    bool debugprint = true;
+////    DEBUG_PRINT
+////    dbgiter->index_init();//-1
+////    dbgiter->set_iterator_type(DebugIter::LIST_ALL);//LIST_W_DEPTH
+////    dbgiter->SCAN_DEPTH = 1;
+////    int i = 0;
+////    DEBUG_PRINT
+////    Dgram* dg = new Dgram();
+////    DEBUG_PRINT
+////    dg = fileIter->next();//first dg, for configure transition.
+////    DEBUG_PRINT
+////    string candidate_str = string(TransitionId::name(dg->service()));
+////    DEBUG_PRINT
+////    dbgiter->append_token(candidate_str);
+////    //dbgiter->print_local_path();
+////    DEBUG_PRINT
+////    dbgiter->iterate(&(dg->xtc));
+////    dbgiter->pop_token();
+////    DEBUG_PRINT
+////    xtc_object* head_obj = xtc_obj_new(fd, fileIter, dbgiter, dg, "/");
+//????  start after initial scan for configure transitions
+////
+////    printf("\n=========================== Configure transition completed. ===========================\n");
+////    DEBUG_PRINT
+//    return head_obj;
+//
+//}
+
+void cc_extern_test_root(void* root_obj){
+    DEBUG_PRINT
+    return extern_test_root((xtc_object*)root_obj);
 }
 
-xtc_object* _file_open(int fd){
-    XtcFileIterator* fileIter = new XtcFileIterator(fd, 0x4000000);
-    DebugIter* dbgiter = new DebugIter();
-    bool debugprint = true;
-    DEBUG_PRINT
-    dbgiter->index_init();//-1
-    dbgiter->set_iterator_type(DebugIter::LIST_ALL);//LIST_W_DEPTH
-    dbgiter->SCAN_DEPTH = 1;
-    int i = 0;
-    DEBUG_PRINT
-    Dgram* dg = new Dgram();
-    DEBUG_PRINT
-    dg = fileIter->next();//first dg, for configure transition.
-    DEBUG_PRINT
-    string candidate_str = string(TransitionId::name(dg->service()));
-    DEBUG_PRINT
-    dbgiter->append_token(candidate_str);
-    //dbgiter->print_local_path();
-    DEBUG_PRINT
-    dbgiter->iterate(&(dg->xtc));
-    dbgiter->pop_token();
-    DEBUG_PRINT
-    xtc_object* head_obj = xtc_obj_new(fd, fileIter, dbgiter, dg, "/");//????  start after initial scan for configure transitions
-
-    printf("\n=========================== Configure transition completed. ===========================\n");
-    DEBUG_PRINT
-    return head_obj;
-
+EXTERNC void extern_test_root(xtc_object* root_obj){
+    assert(root_obj);
+    assert(root_obj->location);
+    printf("%s:%d:  xtc_obj = %p, dbg = %p, dbg->get_root() = %p\n",
+            __func__, __LINE__, root_obj, root_obj->location->dbgiter,
+            ((DebugIter*)(root_obj->location->dbgiter))->get_root());
 }
 
+EXTERNC xtc_object* xtc_obj_find(xtc_object* root_obj, const char* path){
+    DEBUG_PRINT
+//    printf("%s:%d:  xtc_obj = %p, dbg = %p\n", __func__, __LINE__, root_obj, root_obj->location->dbgiter);
+    assert(root_obj && path);
+    assert(root_obj->location);
+    if(strcmp(path, "/") == 0){
+        return root_obj;
+    }
 
+    assert(((DebugIter*)(root_obj->location->dbgiter))->get_root());
+    xtc_node* node = ((DebugIter*)(root_obj->location->dbgiter))->xtc_tree_node_find(path);
+    //xtc_node* root_node = (xtc_node*)(root_obj->tree_node);
+    if(node)
+        return node->my_obj;
+    else
+        return NULL;
+}
 
-EXTERNC xtc_object* xtc_file_open(char* file_path){
-    printf("xtc_file_open() is called\n");
+EXTERNC xtc_object* xtc_file_open(const char* file_path){
     int fd = open(file_path, O_RDONLY);
-    xtc_object* ret = _file_open(fd);//finished config reading
-    ret->ref_cnt = 0;// leave ref_cnt to VOL.
-    return ret;
+    xtc_object* head_obj = iterate_list_all(fd);
+    return head_obj;//contains a pointer to root node.
+}
+EXTERNC xtc_object** xtc_get_children_list(xtc_object* group_in, int* num_out){
+    return get_children_obj(group_in, num_out);//NULL if no children
 }
 
 //
-EXTERNC xtc_object* xtc_path_search(xtc_object* file, char* path){
-    assert(file && file->location->dbgiter);
-    cout <<"Searching path: "<< path <<endl;
-    xtc_object* path_obj = _target_open(file, path);
-    path_obj->ref_cnt = 0;
-    return path_obj;
-}
+//EXTERNC xtc_object* outdated_xtc_path_search(xtc_object* file, char* path){
+//    assert(file && file->location->dbgiter);
+//    cout <<"Searching path: "<< path <<endl;
+//    xtc_object* path_obj = _target_open(file, path);
+//    path_obj->ref_cnt = 0;
+//    return path_obj;
+//}
 //open it and what's next?
 EXTERNC xtc_func_t xtc_it_open(void* param){
     xtc_object* p = (xtc_object*)param;
@@ -1212,11 +1219,11 @@ EXTERNC xtc_func_t xtc_it_open(void* param){
 }
 
 EXTERNC void xtc_file_close(xtc_object* helper){
-    assert(helper->ref_cnt == 0);
+//    assert(helper->ref_cnt == 0);
     close(helper->fd);
     //delete helper->dbgiter;
     //delete (Dgram*)(helper->target_it);
-    free(helper);
+//    free(helper);
 }
 void usage(char* progname)
 {
