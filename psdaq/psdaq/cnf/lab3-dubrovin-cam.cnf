@@ -25,7 +25,7 @@ procmgr_config = [
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -t 30000 -H'+collect_host+' -E'},
  #{                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H'+collect_host+' -L logs'},
  # trigger event builder
- { host: 'drp-tst-dev001', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
+ { host: 'drp-tst-dev011', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
  # cameras
  { host: 'drp-tst-dev011', id:'cam1_0', flags:'spux', conda:conda_rel, cmd:'drp -l 0xf -D AreaDetector -d /dev/datadev_1  -P tst -C '+collect_host}
 ]
