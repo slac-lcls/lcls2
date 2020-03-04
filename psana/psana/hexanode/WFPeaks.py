@@ -40,7 +40,6 @@ from ndarray import wfpkfinder_cfd # from psana.pycalgos
 from psana.hexanode.WFUtils import peak_finder_v2, peak_finder_v3
 from psana.hexanode.PyCFD import PyCFD
 
-
 #----------
 
 class WFPeaks :
@@ -53,6 +52,8 @@ class WFPeaks :
         self.set_wf_peak_finder_parameters(**kwargs)
 
         self._wfs_old = None
+
+        self.tbins = None # need it in V4 to convert _pktsec to _pkinds and _pkvals
 
 #----------
 
@@ -95,13 +96,10 @@ class WFPeaks :
             self.WFBINEND    = kwargs.get('pf3_wfbinend',   30000)
             
         if self.VERSION == 4 :
-            self.PyCFDs = {}
-            self.paramsCFD = kwargs.get('paramsCFD',   {})
+            self.paramsCFD = kwargs.get('paramsCFD', {})
             self.cnls = ['mcp','x1','x2','y1','y2']#for QUAD only
             self.cnls_map = {4:'mcp',0:'x1',1:'x2',2:'y1',3:'y2'}
-            for cnl in self.cnls: 
-                self.PyCFDs[cnl] = PyCFD(self.paramsCFD[cnl])
-                
+            self.PyCFDs = {cnl:PyCFD(self.paramsCFD[cnl]) for cnl in self.cnls}
                 
 #----------
 
@@ -148,11 +146,15 @@ class WFPeaks :
                 self.THR = self.NSTDTHR*std[ch]
                 npeaks = peak_finder_v2(wf, self.SIGMABINS, self.THR, self.DEADBINS,\
                                         self._pkvals[ch,:], self._pkinds[ch,:])
-            elif self.VERSION == 4:
+            elif self.VERSION == 4 :
                 t_list = self.PyCFDs[self.cnls_map[ch]].CFD(wf,wt)
                 npeaks = self._pkinds[ch,:].size if self._pkinds[ch,:].size<=len(t_list) else len(t_list)
-                
-            else :
+                # need it in V4 to convert _pktsec to _pkinds and _pkvals
+                if self.tbins is None :
+                    from psana.pyalgos.generic.HBins import HBins
+                    self.tbins = HBins(list(wt))
+
+            else : # self.VERSION == 1
                 npeaks = wfpkfinder_cfd(wf, self.BASE, self.THR, self.CFR, self.DEADTIME, self.LEADINGEDGE,\
                                         self._pkvals[ch,:], self._pkinds[ch,:])
 
@@ -160,9 +162,9 @@ class WFPeaks :
             #assert (npeaks<self.NUM_HITS), 'number of found peaks exceeds reserved array shape'
             if npeaks>=self.NUM_HITS : npeaks = self.NUM_HITS
             self._number_of_hits[ch] = npeaks
-            if self.VERSION == 4:
+            if self.VERSION == 4 :
                 self._pktsec[ch, :npeaks] = np.array(t_list)[:npeaks]
-            else:    
+            else:
                 self._pktsec[ch, :npeaks] = wt[self._pkinds[ch, :npeaks]] #sec
 
         self._wfs_old = wfs
@@ -194,6 +196,19 @@ class WFPeaks :
     def peak_values(self, wfs, wts) :
         self.proc_waveforms(wfs, wts)
         return self._pkvals
+
+    def peak_indexes_values(self, wfs, wts) :
+        """ added for V4 to convert _pktsec to _pkinds and _pkvals
+        """
+        self.proc_waveforms(wfs, wts)
+        if self.VERSION == 4 :
+          # This is SLOW for V4 graphics...
+          for ch in range(self.NUM_CHANNELS) :
+            npeaks = self._number_of_hits[ch]
+            wf = self.wfsprep[ch,:]
+            self._pkinds[ch, :npeaks] = self.tbins.bin_indexes(self._pktsec[ch, :npeaks])
+            self._pkvals[ch, :npeaks] = wf[self._pkinds[ch, :npeaks]]
+        return self._pkinds, self._pkvals
 
     def __call__(self, wfs, wts) :
         self.proc_waveforms(wfs, wts)

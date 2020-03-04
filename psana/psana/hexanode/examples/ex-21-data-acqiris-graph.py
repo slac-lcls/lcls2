@@ -57,6 +57,55 @@ elif tname == '3' :
            'pf3_wfbinend'   : binmax,
             })
 
+elif tname == '4' :
+    kwargs.update({'version' : 4,
+                  'paramsCFD': {
+ 'mcp': {'delay': 3.068e-09,
+  'fraction': 0.35,
+  'offset': 0.054470544805354439,
+  'polarity': 'Negative',
+  'sample_interval': 2.5e-10,
+  'threshold': 0.056374120466532174,
+  'timerange_high': 1e-05,
+  'timerange_low': 1e-06,
+  'walk': 0},
+ 'x1': {'delay': 3.997500000000001e-09,
+  'fraction': 0.35,
+  'offset': 0.032654320557811034,
+  'polarity': 'Negative',
+  'sample_interval': 2.5e-10,
+  'threshold': 0.048439800379417808,
+  'timerange_high': 1e-05,
+  'timerange_low': 1e-06,
+  'walk': 0},
+ 'x2': {'delay': 4.712500000000001e-09,
+  'fraction': 0.35,
+  'offset': 0.058295909692775157,
+  'polarity': 'Negative',
+  'sample_interval': 2.5e-10,
+  'threshold': 0.062173077232695384,
+  'timerange_high': 1e-05,
+  'timerange_low': 1e-06,
+  'walk': 0},
+ 'y1': {'delay': 4.5435e-09,
+  'fraction': 0.35,
+  'offset': 0.01740340726630819,
+  'polarity': 'Negative',
+  'sample_interval': 2.5e-10,
+  'threshold': 0.035850750860370109,
+  'timerange_high': 1e-05,
+  'timerange_low': 1e-06,
+  'walk': 0},
+ 'y2': {'delay': 4.140500000000001e-09,
+  'fraction': 0.35,
+  'offset': 0.0088379291811293368,
+  'polarity': 'Negative',
+  'sample_interval': 2.5e-10,
+  'threshold': 0.035254198205580331,
+  'timerange_high': 1e-05,
+  'timerange_low': 1e-06,
+  'walk': 0}}})
+
 else :
     kwargs.update({'version':      1,
           'cfd_base'        :      0,
@@ -69,6 +118,10 @@ else :
           'cfd_wfbinbeg'    : binmin,
           'cfd_wfbinend'    : binmax,
          })
+
+from psana.pyalgos.generic.Utils import str_kwargs
+print(str_kwargs(kwargs, title='Input parameters:'))
+
 
 # algorithm initialization in global scope
 peaks = WFPeaks(**kwargs)
@@ -85,7 +138,8 @@ naxes = 5 # 5 for quad- or 7 for hex-anode
 # assumes that lcls2 detector data returns channels 
 # in desired order for u1, u2, v1, v2, [w1, w2,] mcp
 
-gfmt = ('b-', 'r-', 'g-', 'k-', 'm-', 'y-', 'c-', )
+#gfmt = ('b-', 'r-', 'g-', 'k-', 'm-', 'y-', 'c-', )
+gfmt = ('b-', 'b-', 'b-', 'b-', 'm-', 'b-', 'b-', )
 ylab = ('X1', 'X2', 'Y1', 'Y2', 'MCP', 'XX', 'YY', )
 
 dy = 1./naxes
@@ -117,6 +171,8 @@ def draw_waveforms(wfs, wts, nev) :
     #======== peak-finding algorithm ============
     #wfs, wts = array_of_selected_channels(wfs), array_of_selected_channels(wts)
     nhits, pkinds, pkvals, pktsec = peaks(wfs,wts)
+    pkinds, pkvals = peaks.peak_indexes_values(wfs, wts) # massaging for V4
+
     dt_sec = time()-t0_sec
     wfssel,wtssel = peaks.waveforms_preprocessed(wfs, wts) # selected time range and subtracted offset
     thr = peaks.THR
@@ -160,7 +216,8 @@ def draw_times(axis, pkvals, pkinds, wt) :
     """
     for v,i in zip(pkvals,pkinds) :
         t = wt[i]
-        gr.drawLine(axis, (t,t), (0,v), s=10, linewidth=2, color='b')
+        vend = v if v<-0.1 else -1
+        gr.drawLine(axis, (t,t), (0,vend), s=10, linewidth=2, color='r')
 
 #----------
 
