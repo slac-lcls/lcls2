@@ -1,12 +1,10 @@
 #pragma once
 
-#pragma once
-
 #include <thread>
 #include <atomic>
 #include <string>
 #include "DrpBase.hh"
-#include "PGPDetector.hh"
+#include "XpmDetector.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/epicstools/PVBase.hh"
 
@@ -23,7 +21,7 @@ public:
 class Bld
 {
 public:
-    Bld(unsigned mcaddr, unsigned port, unsigned interface, 
+    Bld(unsigned mcaddr, unsigned port, unsigned interface,
         unsigned pulseIdPos, unsigned headerSize, unsigned payloadSize);
     Bld(const Bld&);
     ~Bld();
@@ -49,7 +47,7 @@ private:
     uint8_t* m_payload;
 };
 
-class BldPVA 
+class BldPVA
 {
 public:
     BldPVA(std::string det,
@@ -70,13 +68,13 @@ class BldFactory
 public:
     BldFactory(const BldPVA& pva);
     BldFactory(const char* name, unsigned interface);
-    BldFactory(const char* name, unsigned interface, 
+    BldFactory(const char* name, unsigned interface,
                unsigned addr, unsigned port, std::shared_ptr<BldDescriptor>);
     BldFactory(const BldFactory&);
     ~BldFactory();
 public:
     Bld&               handler   ();
-    XtcData::NameIndex addToXtc  (XtcData::Xtc&, 
+    XtcData::NameIndex addToXtc  (XtcData::Xtc&,
                                   const XtcData::NamesId&);
 private:
     std::string                    _detName;
@@ -88,30 +86,61 @@ private:
     std::shared_ptr<Bld          > _handler;
 };
 
+
+class Pgp
+{
+public:
+    Pgp(Parameters& para, DrpBase& drp, Detector* det);
+
+    Pds::EbDgram* next(uint64_t pulseId, uint32_t& evtIndex, uint64_t& bytes);
+    void worker(std::shared_ptr<MetricExporter> exporter);
+    void shutdown();
+private:
+    Pds::EbDgram* _handle(uint32_t& evtIndex, uint64_t& bytes);
+    void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);
+private:
+    enum {BldNamesIndex = NamesIndex::BASE}; // Revisit: This belongs in BldDetector
+    Parameters&                                m_para;
+    DrpBase&                                   m_drp;
+    Detector*                                  m_det;
+    static const int MAX_RET_CNT_C = 100;
+    int32_t                                    dmaRet[MAX_RET_CNT_C];
+    uint32_t                                   dmaIndex[MAX_RET_CNT_C];
+    uint32_t                                   dest[MAX_RET_CNT_C];
+    std::vector<std::shared_ptr<BldFactory> >  m_config;
+    std::atomic<bool>                          m_terminate;
+    bool                                       m_running;
+    int32_t                                    m_available;
+    int32_t                                    m_current;
+    uint32_t                                   m_lastComplete;
+    XtcData::TransitionId::Value               m_lastTid;
+    uint32_t                                   m_lastData[6];
+    unsigned                                   m_nodeId;
+    uint64_t                                   m_next;
+};
+
+
 class BldApp : public CollectionApp
 {
 public:
     BldApp(Parameters& para);
-    void shutdown();
-    nlohmann::json connectionInfo() override;
+    ~BldApp() override;
     void handleReset(const nlohmann::json& msg) override;
 private:
+    nlohmann::json connectionInfo() override;
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
-    void connectPgp(const nlohmann::json& json, const std::string& collectionId);
-    void worker(std::shared_ptr<MetricExporter> exporter);
-    void sentToTeb(Pds::EbDgram& dgram, uint32_t index);
+    void _shutdown();
+    void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 
-    DrpBase                                    m_drp;
-    Parameters&                                m_para;
-    RunInfo                                    m_runInfo;
-    XtcData::NamesLookup                       m_namesLookup;
-    std::thread                                m_workerThread;
-    std::vector<std::shared_ptr<BldFactory> >  m_config;
-    std::atomic<bool>                          m_terminate;
-    std::shared_ptr<MetricExporter>            m_exporter;
-    bool                                       m_unconfigure;
+    DrpBase                         m_drp;
+    Parameters&                     m_para;
+    std::thread                     m_workerThread;
+    std::unique_ptr<Pgp>            m_pgp;
+    Detector*                       m_det;
+    std::shared_ptr<MetricExporter> m_exporter;
+    bool                            m_unconfigure;
 };
 
 }
