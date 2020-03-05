@@ -149,13 +149,9 @@ class CGWMain(QWZMQListener) :
 
     def init_daq_control_parameters(self) :
         cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording, _platform = daq_control_get_status()
-
-          #cp.instr = self.expname[:3].upper()
         cp.instr = daq_control_get_instrument()
-
-        print('XXXXXX daq_control_get_instrument(): %s' % cp.instr)
-
-        if cp.instr is None : cp.instr = 'TST'
+        logger.debug('daq_control_get_instrument(): %s' % cp.instr)
+        if cp.instr is None : logger.warning('instrument is None')
 
 #------------------------------
 

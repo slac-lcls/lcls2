@@ -6,8 +6,8 @@
 Usage::
 
     # Import and make configdb object with non-default parameters:
-    from psdaq.control_gui.CGConfigDBUtils import get_configdb
-    confdb = get_configdb(uri_suffix="mcbrowne:psana@psdb-dev:9306", hutch='TMO')
+    from psdaq.control_gui.CGConfigDBUtils import get_configdb, URI_CONFIGDB, ROOT_CONFIGDB
+    confdb = get_configdb(uri_suffix=URI_CONFIGDB, inst=INSTRUMENT, root=ROOT_CONFIGDB)
 
     # Methods - see :py:class:`CGWMainPartition`
 
@@ -25,12 +25,16 @@ Created on 2019-03-25 by Mikhail Dubrovin
 #import logging
 #logger = logging.getLogger(__name__)
 
+URI_CONFIGDB = "mcbrowne:psana@psdb-dev:9306"
+ROOT_CONFIGDB = 'configDB'
+
 #--------------------
 
 from psalg.configdb.configdb import configdb
 
-def get_configdb(uri_suffix="mcbrowne:psana@psdb-dev:9306", inst='TMO') :
-    return configdb(uri_suffix, inst, root='configDB')
+def get_configdb(uri_suffix=URI_CONFIGDB, inst=None, root=ROOT_CONFIGDB) :
+    #print('XXX get_configdb', uri_suffix, inst, root)
+    return configdb(uri_suffix, inst, root=root)
 
 #--------------------
 
@@ -42,15 +46,18 @@ if __name__ == "__main__" :
 
     # Access the configuration database using:
     #from psalg.configdb.configdb import configdb
-    confdb = configdb("mcbrowne:psana@psdb-dev:9306", 'TMO')
+
+    INSTRUMENT = 'TMO'
+
+    confdb = get_configdb(URI_CONFIGDB, INSTRUMENT)
               # <psalg.configdb.configdb.configdb at 0x7fab765ebf98>
 
     # Find the hutches in the database:
-    list_of_hutch_names = confdb.get_hutches() # ['TMO', 'CXI']
+    list_of_hutch_names = confdb.get_hutches() # ['TMO', 'CXI', etc.]
     print('list_of_hutch_names:', list_of_hutch_names)
 
     # Find the aliases in a hutch:
-    list_of_alias_names = confdb.get_aliases(hutch='TMO') # ['NOBEAM', 'BEAM']
+    list_of_alias_names = confdb.get_aliases(hutch=INSTRUMENT) # ['NOBEAM', 'BEAM']
     print('list_of_alias_names:', list_of_alias_names)
 
     # Find the device configurations available for all hutches:
@@ -58,20 +65,20 @@ if __name__ == "__main__" :
     print('list_of_device_configuration_names:', list_of_device_configuration_names)
 
     #Find the devices in an alias in a hutch:
-    list_of_device_names_beam   = confdb.get_devices('BEAM', hutch='TMO') # ['testdev0']
+    list_of_device_names_beam   = confdb.get_devices('BEAM', hutch=INSTRUMENT) # ['testdev0']
     print('list_of_device_names_beam:', list_of_device_names_beam)
 
-    list_of_device_names_nobeam = confdb.get_devices('NOBEAM', hutch='TMO') # ['testdev0']
+    list_of_device_names_nobeam = confdb.get_devices('NOBEAM', hutch=INSTRUMENT) # ['testdev0']
     print('list_of_device_names_nobeam:', list_of_device_names_nobeam)
 
     #Retrieve a configuration for a device:
-    config = confdb.get_configuration('BEAM', 'testdev0', hutch='TMO')
+    config = confdb.get_configuration('BEAM', 'testdev0', hutch=INSTRUMENT)
     print('config:\n', config)
     #    The config is a dictionary: keys are device configuration names, and
     #    values are typed JSON dictionaries.
 
     #Modify a configuration for a device:
-    #new_key = confdb.modify_device('BEAM', 'testdev0', config, hutch='TMO')
+    #new_key = confdb.modify_device('BEAM', 'testdev0', config, hutch=INSTRUMENT)
     #    The config is a dictionary in the form retrieved from
     #    get_configuration, *not* a typed JSON dictionary!  If successful,
     #    this returns an integer key that can be used to refer to the new

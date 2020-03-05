@@ -68,7 +68,7 @@ class CGConfigParameters(ConfigParameters) :
         self.s_recording       = None
         self.s_platform        = None
 
-        self.instr             = 'TST'
+        self.instr             = None
 
 #------------------------------
         
