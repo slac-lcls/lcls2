@@ -250,7 +250,7 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
             auto now = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
             if (elapsed > 10) {
-                if (m_running)  logging::debug("pgp timeout");
+                //if (m_running)  logging::debug("pgp timeout");
                 return nullptr;
             }
         }
@@ -455,7 +455,7 @@ void PvaDetector::process(const PvaMonitor& pva)
 
     if (m_running) {
         ++m_nUpdates;
-        logging::debug("%s updated @ %u.%09u", pva.name().c_str(), seconds, nanoseconds);
+        //logging::debug("%s updated @ %u.%09u", pva.name().c_str(), seconds, nanoseconds);
     }
 
     while (true) {

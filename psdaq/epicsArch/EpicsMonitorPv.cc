@@ -147,7 +147,7 @@ namespace Pds
 
   void EpicsMonitorPv::updated()
   {
-    logging::debug("EpicsMonitorPv::updated(): Called for '%s'", name().c_str());
+    //logging::debug("EpicsMonitorPv::updated(): Called for '%s'", name().c_str());
 
     _bUpdated = true;
   }

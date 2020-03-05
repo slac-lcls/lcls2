@@ -145,7 +145,7 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
             auto now = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
             if (elapsed > 10) {
-                if (m_running)  logging::debug("pgp timeout");
+                //if (m_running)  logging::debug("pgp timeout");
                 return nullptr;
             }
         }
