@@ -455,6 +455,12 @@ int main(int argc, char* argv[])
       print_lane("clear"     , 0x00a00000, 30, 4, 0x1);
       print_lane("enable"    , 0x00a00000, 31, 4, 0x1);
 
+      { printf("%20.20s", "messagedelay");
+        for(unsigned i=0; i<8; i++) {
+          uint32_t reg = get_reg32( 0x00c20000+i*4);
+          printf(" %8x", reg & 0xff); }
+        printf("\n"); }
+
       print_field("localid"  , 0x00c20020,  0, 0xffffffff);
       print_field("remoteid" , 0x00c20024,  0, 0xffffffff);
 
