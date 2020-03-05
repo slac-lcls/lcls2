@@ -91,8 +91,7 @@ class Run(object):
         # (e.g. (xppcspad,raw) or (xppcspad,fex)
         # make them attributes of the container
         flag_found = False
-        for (det_name,drp_class_name),drp_class in self.dm.det_class_table.items():
-            if det_name == 'epics' or det_name == 'scan': continue
+        for (det_name,drp_class_name),drp_class in self.dm.det_classes['normal'].items():
             if det_name == name:
                 setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configs, self.calibconst[det_name]))
                 setattr(det,'_configs', self.configs)
@@ -111,27 +110,26 @@ class Run(object):
         # d.epics[0].epics.HX2:DVD:GPI:01:PMON = 'Test String'
         if not flag_found:
             #for alg, store in self.esm.stores.items():
-            #alg = self.esm.stores['epics'].alg_from_variable(name)
             alg = self.esm.alg_from_variable(name)
             if alg:
                 det_name = alg
                 var_name = name
                 drp_class_name = alg
-                drp_class = self.dm.det_class_table[(det_name, drp_class_name)]
+                det_class_table = self.dm.det_classes[det_name]
+                drp_class = det_class_table[(det_name, drp_class_name)]
                 det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibconst[det_name], self.esm.stores[alg])
 
         return det
 
     @property
     def detnames(self):
-        return set([x[0] for x in self.dm.det_class_table.keys()])
+        return set([x[0] for x in self.dm.det_classes['normal'].keys()])
 
     @property
     def detinfo(self):
         info = {}
-        for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
+        for ((detname,det_xface_name),det_xface_class) in self.dm.det_classes['normal'].items():
 #            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
-            if detname == 'epics' or detname == 'scan': continue
             info[(detname,det_xface_name)] = _enumerate_attrs(getattr(self.Detector(detname),det_xface_name))
         return info
 

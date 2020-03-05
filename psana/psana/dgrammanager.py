@@ -67,7 +67,7 @@ class DgramManager():
                 d = dgram.Dgram(file_descriptor=self.fds[i])
                 self.configs += [d]
 
-        self.det_class_table, self.xtc_info, self.det_info_table = self.get_det_class_table()
+        self.det_classes, self.xtc_info, self.det_info_table = self.get_det_class_table()
         self.calibconst = {} # initialize to empty dict - will be populated by run class
 
     def __del__(self):
@@ -123,8 +123,8 @@ class DgramManager():
         maps (dettype,software,version) to associated python class and 
         detector info for a det_name maps to dettype, detid tuple.
         """
+        det_classes = {'epics': {}, 'scan': {}, 'normal': {}}
 
-        det_class_table = {}
         xtc_info = []
         det_info_table = {} 
 
@@ -138,6 +138,12 @@ class DgramManager():
                 # they should all be identical
                 first_key = next(iter(det_dict.keys()))
                 det = det_dict[first_key]
+                
+                if det_name not in det_classes:
+                    det_class_table = det_classes['normal']
+                else:
+                    det_class_table = det_classes[det_name]
+
                 
                 dettype, detid = (None, None)
                 for drp_class_name, drp_class in det.__dict__.items():
@@ -169,7 +175,7 @@ class DgramManager():
                 
                 det_info_table[det_name] = (dettype, detid)
         
-        return det_class_table,xtc_info,det_info_table
+        return det_classes, xtc_info, det_info_table
 
     def get_timestamps(self):
         return np.asarray(self._timestamps, dtype=np.uint64) # return numpy array for easy search later
