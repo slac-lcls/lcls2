@@ -1,6 +1,7 @@
 if not platform: platform = '3'
 username = 'lcls2'
 
+epics_host = 'daq-tst-dev02'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 conda_rel = 'ps-2.0.5'
 hsd_epics_dev02 = 'DAQ:LAB2:HSD:DEV02'
@@ -10,19 +11,26 @@ shelf = '2'
 ip_addr = '10.0.'+shelf
 collect_host = 'drp-tst-acc06'
 groups = platform + ' 7'
-prom_cfg_dir = '/reg/g/psdm/psdatmgr/etc/config/prom'
+hutch = 'tst'
+
+prom_dir = '/reg/g/psdm/psdatmgr/etc/config/prom' # Prometheus
 data_dir = '/ffb01/claus'
 
 task_set = 'taskset 0xffbfeffbfe '
-std_opts = '-P tst -d /dev/datadev_1 -C '+collect_host+' -M '+prom_cfg_dir+' -o '+data_dir
+std_opts = '-P '+hutch+' -d /dev/datadev_1 -C '+collect_host+' -M '+prom_dir+' -o '+data_dir
+
+bld_str = 'ebeam'
+bldcas_str = 'HPSEX'
+pva_pv = 'DAQ:LAB2:PVCAM'
+ea_cfg = '/reg/neh/home/claus/lclsii/daq/runs/eb/epicsArch.txt'
 
 drp_cmd = task_set+'drp '+std_opts+' -l 0x1'
-bld_cmd = task_set+'drp_bld '+std_opts
-pva_cmd = task_set+'drp_pva '+std_opts+' DAQ:LAB2:PVCAM'
-ea_cmd  = task_set+'epicsArch '+std_opts+' /reg/neh/home/claus/lclsii/daq/runs/eb/epicsArch.txt'
+bld_cmd = task_set+'drp_bld '+std_opts+' -l 0x1 -k interface=eno2 -D '+bld_str
+pva_cmd = task_set+'drp_pva '+std_opts+' '+pva_pv
+ea_cmd  = task_set+'epicsArch '+std_opts+' '+ea_cfg
 
-teb_cmd = task_set+'teb -P tst -C '+collect_host+' -M '+prom_cfg_dir
-meb_cmd = task_set+'monReqServer -P tst -C '+collect_host+' -M '+prom_cfg_dir+' -d -q 4'
+teb_cmd = task_set+'teb -P tst -C '+collect_host+' -M '+prom_dir #+' -1 18 -2 19'
+meb_cmd = task_set+'monReqServer -P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -d -q 4' #+' -1 16 -2 17'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -38,9 +46,8 @@ meb_cmd = task_set+'monReqServer -P tst -C '+collect_host+' -M '+prom_cfg_dir+' 
 
 procmgr_config = [
  {                         id:'groupca',     flags:'s',   conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
- {                         id:'xpmpva1',                  conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1'},
- {                         id:'xpmpva2',                  conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:2'},
- { host: collect_host,     id:'control',     flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P tst -r /dev/null -S 1'},
+ {                         id:'xpmpva',      flags:'s',   conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1 DAQ:LAB2:XPM:2'},
+ { host: collect_host,     id:'control',     flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' -r /dev/null -S 1'},
  {                         id:'control_gui', flags:'p',   conda:conda_rel,                cmd:'control_gui -H '+collect_host},
 
  # TEB
@@ -49,14 +56,16 @@ procmgr_config = [
  # MEB
  { host: 'drp-tst-dev016', id:'meb16',       flags:'sxpu', conda:conda_rel, cmd:meb_cmd},
 
- # BLD
- #{ host: 'drp-tst-dev018', id:'bld_18',       flags:'xpu', conda:conda_rel, env:epics_env, cmd:bld_cmd},
+ # BLD - must currently run on dev018 since that's where the bld enet xface is
+ #{ host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    conda:conda_rel, env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4'},
+ #{ host: epics_host,       id:'bldcas',      flags:'s',    conda:conda_rel, env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str},
+ #{ host: 'drp-tst-dev018', id:'bld_18',      flags:'xpu', conda:conda_rel, env:epics_env, cmd:bld_cmd},
 
  # PVA
- #{ host: 'drp-tst-dev015', id:'pva_15',       flags:'xpu', conda:conda_rel, env:epics_env, cmd:pva_cmd},
+ #{ host: 'drp-tst-dev015', id:'pva_17',      flags:'xpu', conda:conda_rel, env:epics_env, cmd:pva_cmd},
 
  # EpicsArch
- #{ host: 'drp-tst-dev015', id:'ea_15',        flags:'xpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
+ #{ host: 'drp-tst-dev015', id:'ea_15',       flags:'xpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
 
  # HSD: 6.4 GS/s digitizer (DEV06_3E)
  #{ port:'29074',           id:'hsdpvs_3e_a', flags:'s',   conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+hsd_epics_dev06+'_3E:A'},

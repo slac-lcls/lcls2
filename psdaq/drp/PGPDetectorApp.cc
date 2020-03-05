@@ -6,6 +6,7 @@
 #include "TimeTool.hh"
 #include "AreaDetector.hh"
 #include "Digitizer.hh"
+#include "Wave8.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "PGPDetectorApp.hh"
 #include "psalg/utils/SysLog.hh"
@@ -27,7 +28,9 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     f.register_type<Digitizer>("Digitizer");
     f.register_type<AreaDetector>("AreaDetector");
     f.register_type<TimeTool>("TimeTool");
-    if (m_para.detectorType=="TimeTool") {
+    f.register_type<TimeTool>("Wave8");
+    if ((m_para.detectorType=="TimeTool") ||
+        (m_para.detectorType=="Wave8")) {
         m_para.rogueDet=true;
         m_para.virtChan=1;
     }

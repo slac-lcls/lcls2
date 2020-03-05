@@ -1,0 +1,25 @@
+#pragma once
+
+#include "drp.hh"
+#include "XpmDetector.hh"
+#include "xtcdata/xtc/Xtc.hh"
+#include "xtcdata/xtc/NamesId.hh"
+
+namespace Drp {
+
+class Wave8 : public XpmDetector
+{
+public:
+    Wave8(Parameters* para, MemPool* pool);
+    void connect(const nlohmann::json&, const std::string& collectionId) override;
+    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
+    void event(XtcData::Dgram& dgram, PGPEvent* event) override;
+private:
+    void _addJson(XtcData::Xtc& xtc, XtcData::NamesId& configNamesId, const std::string& config_alias);
+    enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex};
+    unsigned          m_evtcount;
+    XtcData::NamesId  m_evtNamesId;
+    std::string       m_connect_json;
+};
+
+}

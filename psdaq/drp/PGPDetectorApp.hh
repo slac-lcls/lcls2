@@ -26,7 +26,6 @@ private:
     std::thread m_collectorThread;
     std::unique_ptr<PGPDetector> m_pgpDetector;
     Detector* m_det;
-    Pds::Trg::Factory<Pds::Trg::TriggerPrimitive> m_trigPrimFactory;
     std::shared_ptr<MetricExporter> m_exporter;
     bool m_unconfigure;
 };

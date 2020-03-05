@@ -294,7 +294,7 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
   uint64_t           iPid   = input->pulseId();
   unsigned           rCnt   = MAX_ENTRIES;
   unsigned           iCnt   = MAX_ENTRIES;
-  do
+  while (true)
   {
     // Ignore results for which there is no input
     // This can happen due to this Ctrb being in a different readout group than
@@ -323,19 +323,21 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
 
       ++_deliverCount;                  // Don't count events not meant for us
 
+      if (!--iCnt || input->isEOL())  break; // Handle full list faster
+
       input = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(input) + iSize);
 
       iPid = input->pulseId();
-      if (!--iCnt || !iPid)  break;     // Handle full list faster
     }
+
+    if (!--rCnt || result->isEOL())  break; // Handle full list faster
 
     result = reinterpret_cast<const ResultDgram*>(reinterpret_cast<const char*>(result) + rSize);
 
     rPid = result->pulseId();
   }
-  while (--rCnt && rPid);               // Handle full list faster
 
-  if (iCnt && iPid)
+  if (iCnt && !input->isEOL())
   {
     fprintf(stderr, "%s:\n  Not all inputs received results, inp: %d %014lx res: %d %014lx\n",
             __PRETTY_FUNCTION__, MAX_ENTRIES - iCnt, iPid, MAX_ENTRIES - rCnt, rPid);
@@ -345,7 +347,7 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
     {
       uint64_t pid = result->pulseId();
       printf("  %2d: pid %014lx, appPrm %p\n", i, pid, inputs->retrieve(pid));
-      if (pid == 0ul)  break;
+      if (result->isEOL())  break;
       result = reinterpret_cast<const ResultDgram*>(reinterpret_cast<const char*>(result) + rSize);
     }
     printf("Inputs:\n");
