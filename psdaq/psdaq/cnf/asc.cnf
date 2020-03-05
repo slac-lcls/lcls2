@@ -36,5 +36,5 @@ procmgr_config = [
  { id:'drp_1',       flags:'sxpu', conda:conda_rel, cmd: 'drp -l 0x1 -D AreaDetector -d /dev/datadev_0 -o /u2/'+username+' -P asc -C '+collect_host+' -M '+prom_cfg_dir},
 
  # Start this guy last so that it finds the above processes
- { id:'procstat',    flags:'p',    conda:conda_rel,                cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ { id:'procstat',    flags:'p',    conda:conda_rel,                cmd:'procstat p'+platform+'.cnf.last'},
 ]

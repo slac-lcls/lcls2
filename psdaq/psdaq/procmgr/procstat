@@ -16,7 +16,7 @@ from psdaq.procmgr.ProcMgr import ProcMgr, deduce_platform
 from psdaq.procmgr import ui_procStat
 import subprocess
 
-__version__ = "0.5"
+__version__ = "0.6"
 
 # OutDir Full Path Example: daq-sxr-ana01: /u2/pcds/pds/sxr/e19/e19-r0026-s00-c00.xtc
 sOutDirPrefix1 = "/u2/pcds/pds/"
@@ -30,50 +30,7 @@ class CustomIOError(Exception):
   pass
 
 def getOutputFileName(iExperiment, sExpType,eventNodes):
-  if iExperiment < 0:
-    return []
-  if eventNodes is None:
-    return []
-
-  sExpSubDir = "e%d" % (iExperiment)
-  formFileStatusDatabase = []
-  zeroFilesFlag = False
-
-  noOfEventNodes = len(eventNodes)
-
-
-  for sIndex in range(noOfEventNodes):
-
-    # form filepath, command, and ssh to remote event nodes
-    sExpDir = os.path.join( sOutDirPrefix1,sExpType, sExpSubDir )
-    sshCommand = '/usr/bin/ssh %(host)s ls -rtlB   %(dir)s | /usr/bin/tail -1' %   {'host': eventNodes[sIndex], 'dir': sExpDir}
-    process = subprocess.Popen(sshCommand, shell=True,stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    output,stderr = process.communicate()
-    status = process.poll()
-    zeroFilesFlag = False
-    if b"No such file or directory" in output:
-      zeroFilesFlag = True
-    elif b"total 0\n" in output:
-      zeroFilesFlag = True
-    elif len(output.split()) < 5:
-      print('getOutputFileName: sshCommand (%s)' % sshCommand)
-      print('getOutputFileName: output too short (%s)' % output)
-      zeroFilesFlag = True
-
-    # extract the output and arrange it for graphical interface
-    if not zeroFilesFlag:
-      splittedOutput = output.split()
-      try:
-        extractFileName = splittedOutput[-1].decode()
-      except:
-        print('ERROR:: %s' % output)
-        raise CustomIOError
-      completeFilePath = '%(host)s: %(dirPath)s/%(file)s '% {'host':eventNodes[sIndex], 'dirPath':sExpDir,'file':extractFileName}
-      extractTime = splittedOutput[-4]+b'  '+splittedOutput[-3]+b'  '+splittedOutput[-2]
-      extractSize = splittedOutput[-5]
-      formFileStatusDatabase.append( { "fn": completeFilePath, "size": extractSize, "mtime": extractTime } )
-
-  return formFileStatusDatabase
+  return []
 
 def printStackTrace():
   print( "---- Printing program call stacks for debug ----" )
@@ -263,28 +220,6 @@ class WinProcStat(QtWidgets.QMainWindow, ui_procStat.Ui_mainWindow):
     if itemCur != None:
       self.tableProcStat.setCurrentItem( itemCur )
 
-    if ldOutputFileStatus:
-      sOutputStatus = ""
-      for dOutputFileStatus in ldOutputFileStatus:
-        sOutputStatus += """
-<p><b>Filename:</b
-> %s <br>
-<b>Size:</b> %s Bytes <br>
-<b>Last Modification Time:</b> %s
-""" % ( dOutputFileStatus["fn"], dOutputFileStatus["size"].decode(), dOutputFileStatus["mtime"].decode() )
-
-      # save the scrollar positions
-      hVal = self.textBrowser.horizontalScrollBar().value()
-      vVal = self.textBrowser.verticalScrollBar().value()
-
-      self.textBrowser.setHtml( sOutputStatus )
-
-      # restore the scrollar positions
-      self.textBrowser.horizontalScrollBar().setValue(hVal)
-      self.textBrowser.verticalScrollBar().setValue(vVal)
-    else:
-      self.textBrowser.setHtml( "No output file is found for experiment type <b>%s</b> id <b>%d</b>" % (sExpType, iExperiment) )
-
     self.statusbar.clearMessage()
     return
 
@@ -436,20 +371,17 @@ class WinProcStat(QtWidgets.QMainWindow, ui_procStat.Ui_mainWindow):
 
 def showUsage():
   print( """\
-Usage: %s  [-e | --experiment <Experiment Id>]  [-t | --type <Experiment Type>]  [-p | --platform <Platform Id>]  [-i | --interval <ProcMgr Query Interval>]  <Config file>
-  -e | --experiment <Experiment Id>*               Set experiment id (default: No id, and no output file status displayed)
-  -t | --type       <Experiment Type>*             Set experiment type (default: amo)
+Usage: %s  [-p | --platform <Platform Id>]  [-i | --interval <ProcMgr Query Interval>]  <Config file>
   -p | --platform   <Platform Id>                  Set platform id (default: id is deduced from config file)
-  -i | --interval   <ProcMgr Query Interval>       Query interval in seconds (default: 3 seconds)
-  -n | --eventnodes <eventNode0+eventNode1+...>*   Names of Event Nodes conected with '+' sign
+  -i | --interval   <ProcMgr Query Interval>       Query interval in seconds (default: 5 seconds)
 
 Program Version %s\
 """ % ( __file__, __version__ ) )
   return
 
 def main():
-  iExperiment = 0
-  sExpType = "amo"
+  iExperiment = 0       # obsolete
+  sExpType = "amo"      # obsolete
   iPlatform = -1
   fProcmgrQueryInterval = 5.0
   eventNodes = []
@@ -479,13 +411,6 @@ def main():
       iPlatform = int(sArg)
     elif sOpt in ('-i', '--interval' ):
       fProcmgrQueryInterval = float(sArg)
-
-
-  if not exptTypeDefined:
-    print('Expt Type Not Defined -- using default value \''+sExpType+'\'')
-  if not exptIdDefined:
-    print('Expt ID Not Defined -- using default value \'%d\'' % iExperiment)
-
 
   if len(lsRemainder) < 1:
     print( __file__ + ": Config file is not specified" )

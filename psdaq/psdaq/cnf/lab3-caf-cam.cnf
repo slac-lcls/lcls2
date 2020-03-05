@@ -20,7 +20,7 @@ collect_host = 'drp-tst-dev002'
 
 procmgr_config = [
  {                        id:'groupca',flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 1 5'},
- {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -n none p'+platform+'.cnf.last'},
+ {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
  { host: collect_host,    id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -P '+instr+' -B DAQ:LAB2 -x 2'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -E -t 30000 -l WARNING -H '+collect_host},
  # trigger event builder
