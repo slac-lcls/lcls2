@@ -20,6 +20,7 @@ Usage ::
 
     # get all-in-one:
     nhits, pkinds, pkvals, pktsec = peaks(wfs,wts)
+    pkinds, pkvals = peaks.peak_indexes_values(wfs, wts) # for V4
 
     # or get individually:
     nhits = peaks.number_of_hits(wfs, wts)

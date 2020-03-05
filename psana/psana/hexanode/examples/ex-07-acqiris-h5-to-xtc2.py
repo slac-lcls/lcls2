@@ -18,7 +18,7 @@ def usage() :
       + '\n  lcls2/psana/psana/hexanode/examples/ex-07-acqiris-h5-to-xtc2.py'\
       + '\n    or with positional arguments:'\
       + '\n  lcls2/psana/psana/hexanode/examples/ex-07-acqiris-h5-to-xtc2.py <IFNAME> <OFNAME> <DIRTMP> <DETNAME> <EXPNAME> <RUNNUM> <DETTYPE> <SERNUM> <NAMESID>'\
-      + '\n  lcls2/psana/psana/hexanode/examples/ex-07-acqiris-h5-to-xtc2.py acqiris_data.h5 acqiris_data.xtc2 /reg/data/ana03/scratch/dubrovin/ amox27716 100 quadanode 1234 0'\
+      + '\n  lcls2/psana/psana/hexanode/examples/ex-07-acqiris-h5-to-xtc2.py acqiris_data.h5 acqiris_data.xtc2 /reg/data/ana03/scratch/dubrovin/ tmo_quadanode amox27716 100 hexanode 1234 0'\
       + '\n'
 
 #----------
@@ -113,8 +113,11 @@ def test_xtc2_runinfo() :
     det = orun.Detector(DETNAME)
 
     for nev,evt in enumerate(orun.events()):
-        if nev>10 : break
+        if nev>100 : break
         print('Event %d'%nev)
+        if getattr(det, 'raw', None) is None :
+            print('    --- ev:%d det has no attribute raw...'%nev)
+            continue
         print_ndarr(det.raw.times(evt),     '  times : ', last=4)
         print_ndarr(det.raw.waveforms(evt), '  wforms: ', last=4)
 

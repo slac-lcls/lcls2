@@ -216,7 +216,7 @@ def draw_times(axis, pkvals, pkinds, wt) :
     """
     for v,i in zip(pkvals,pkinds) :
         t = wt[i]
-        vend = v if v<-0.1 else -1
+        vend = v if abs(v)>0.05 else -0.5
         gr.drawLine(axis, (t,t), (0,vend), s=10, linewidth=2, color='r')
 
 #----------
@@ -228,8 +228,8 @@ if __name__ == "__main__" :
     EVSAVE = EVENTS
     ofname = 'waveforms-amox27716-r0100-e%06d.npy'
 
-    #ds   = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e000100.xtc2')
     ds   = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0100-acqiris-e001000.xtc2')
+    #ds   = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0085-acqiris-e001000.xtc2')
     orun = next(ds.runs())
     det  = orun.Detector('tmo_quadanode') # 'tmo_hexanode'
 

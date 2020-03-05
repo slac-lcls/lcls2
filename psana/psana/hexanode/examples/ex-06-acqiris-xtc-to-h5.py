@@ -23,6 +23,7 @@ def usage() :
       + '\n    or with positional arguments:'\
       + '\n  python lcls2/psana/psana/hexanode/examples/ex-06-acqiris-xtc-to-h5.py <EVENTS> <OFNAME> <DSNAME> <DETNAME>'\
       + '\n  lcls2/psana/psana/hexanode/examples/ex-06-acqiris-xtc-to-h5.py 100 /reg/data/ana03/scratch/dubrovin/acqiris_data.h5 exp=amox27716:run=100:smd ACQ1'\
+      + '\n  lcls2/psana/psana/hexanode/examples/ex-06-acqiris-xtc-to-h5.py 100 /reg/data/ana03/scratch/dubrovin/acqiris_data.h5 exp=amox27716:run=85:smd ACQ1'\
       + '\n'
 
 #----------
