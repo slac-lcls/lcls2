@@ -1482,6 +1482,9 @@ class CollectionManager():
                 break
             self.progressReport(begin_time, end_time, progress_txt='rollcall')
 
+        for dup in self.check_for_dups():
+            self.report_error('duplicate alias responded to rollcall: %s' % dup)
+
         if missing_set:
             for client in missing_set:
                 self.report_error(client + ' did not respond to rollcall')
@@ -1507,6 +1510,21 @@ class CollectionManager():
         logging.debug('cmstate after rollcall:\n%s' % self.cmstate)
         logging.debug('condition_rollcall() returning %s' % retval)
         return retval
+
+    # check_for_dups - check for duplicate aliases
+    def check_for_dups(self):
+        aliases = set()
+        dups = set()
+        for level, item in self.cmstate_levels().items():
+            for xid in item:
+                alias = self.cmstate[level][xid]['proc_info']['alias']
+                if alias in aliases:
+                    dups.add(level + '/' + alias)
+                else:
+                    aliases.add(alias)
+        if len(dups) > 0:
+            logging.debug('duplicate aliases: %s' % dups)
+        return dups
 
     # filter_active_set - return subset of ids which have 'active' flag set
     def filter_active_set(self, ids):
