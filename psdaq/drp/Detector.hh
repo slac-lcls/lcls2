@@ -17,7 +17,7 @@ struct Parameters;
 class Detector
 {
 public:
-    Detector(Parameters* para, MemPool* pool) : nodeId(-1), m_para(para), m_pool(pool) {}
+    Detector(Parameters* para, MemPool* pool) : nodeId(-1), m_para(para), m_pool(pool), m_xtcbuf(para->maxTrSize) {}
     virtual ~Detector() {}
     virtual nlohmann::json connectionInfo() {return nlohmann::json({});}
     virtual void connect(const nlohmann::json&, const std::string& collectionId) {};
@@ -26,13 +26,14 @@ public:
     virtual void beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) {};
     virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
     virtual void shutdown() {};
-    XtcData::Xtc& transitionXtc() {return m_pool->transitionDgram()->xtc;}
+    XtcData::Xtc& transitionXtc() {return *(XtcData::Xtc*)m_xtcbuf.data();}
     XtcData::NamesLookup& namesLookup() {return m_namesLookup;}
     unsigned nodeId;
 protected:
     Parameters* m_para;
     MemPool* m_pool;
     XtcData::NamesLookup m_namesLookup;
+    std::vector<uint8_t> m_xtcbuf;
 };
 
 template <typename T>

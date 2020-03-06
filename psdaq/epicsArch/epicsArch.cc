@@ -267,27 +267,30 @@ void EaDetector::_worker()
             logging::debug("EAWorker saw %s transition @ %d.%09d (%014lx)\n",
                            XtcData::TransitionId::name(service),
                            dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
-            if (service == XtcData::TransitionId::SlowUpdate) {
-                m_nUpdates++;
+            if (service != XtcData::TransitionId::L1Accept) {
+                // Allocate a transition dgram from the pool and initialize its header
+                Pds::EbDgram* trDgram = m_pool->allocateTr();
+                *trDgram = *dgram;
+                PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
+                pgpEvent->transitionDgram = trDgram;
 
-                // SlowUpdates are not synchronous like other tranisitions,
-                // so treat them like L1Accepts (i.e., use dgram vs trDgram)
-                PGPEvent* pgpEvent = nullptr; // Not needed in this case
-                event(*dgram, pgpEvent);
-            }
-            else if (service != XtcData::TransitionId::L1Accept) {
-                // Since the Transition Dgram's XTC was already created on
-                // phase1 of the transition, fix up the Dgram header with the
-                // real one while taking care not to touch the XTC
-                // Revisit: Delay this until EbReceiver time?
-                Pds::EbDgram* trDgram = m_drp.pool.transitionDgram();
-                memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                if (service == XtcData::TransitionId::SlowUpdate) {
+                    m_nUpdates++;
 
-                if (service == XtcData::TransitionId::Enable) {
-                    m_running = true;
+                    event(*trDgram, pgpEvent);
                 }
-                else if (service == XtcData::TransitionId::Disable) {
-                    m_running = false;
+                else {
+                    // copy the temporary xtc created on phase 1 of the transition
+                    // into the real location
+                    XtcData::Xtc& trXtc = transitionXtc();
+                    memcpy(&trDgram->xtc, &trXtc, trXtc.extent);
+
+                    if (service == XtcData::TransitionId::Enable) {
+                        m_running = true;
+                    }
+                    else if (service == XtcData::TransitionId::Disable) {
+                        m_running = false;
+                    }
                 }
             }
 
@@ -626,6 +629,9 @@ int main(int argc, char* argv[])
     }
 
     para.maxTrSize = 256 * 1024;
+    para.nTrBuffers = 8; // Power of 2 greater than the maximum number of
+                         // transitions in the system at any given time, e.g.,
+                         // MAX_LATENCY * (SlowUpdate rate), in same units
 
     Py_Initialize(); // for use by configuration
     Drp::EpicsArchApp app(para, pvCfgFile);

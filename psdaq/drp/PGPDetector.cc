@@ -103,12 +103,13 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             }
             // transitions
             else {
-                // Since the Transition Dgram's XTC was already created on
-                // phase1 of the transition, fix up the Dgram header with the
-                // real one while taking care not to touch the XTC
-                // Revisit: Delay this until EbReceiver time?
-                Pds::EbDgram* trDgram = pool.transitionDgram();
+                // Allocate a transition dgram from the pool and initialize its header
+                Pds::EbDgram* trDgram = pool.allocateTr();
                 memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                // copy the temporary xtc created on phase 1 of the transition
+                // into the real location
+                XtcData::Xtc& trXtc = det->transitionXtc();
+                memcpy(&trDgram->xtc, &trXtc, trXtc.extent);
                 // make sure the detector hasn't made the transition too big
                 size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();
                 if (size > para.maxTrSize) {
@@ -119,6 +120,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 if (event->l3InpBuf) { // else timed out
                     new(event->l3InpBuf) Pds::EbDgram(*dgram);
                 }
+                event->transitionDgram = trDgram;
             }
         }
 

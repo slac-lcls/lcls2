@@ -31,7 +31,6 @@ public:
     EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
                const std::shared_ptr<MetricExporter>& exporter);
-    ~EbReceiver();
     void process(const Pds::Eb::ResultDgram& result, const void* input) override;
 public:
     void resetCounters();
@@ -55,7 +54,7 @@ private:
     XtcData::TransitionId::Value m_lastTid;
     uint64_t m_offset;
     unsigned m_nodeId;
-    void* m_configureBuffer;
+    std::vector<uint8_t> m_configureBuffer;
 };
 
 class DrpBase

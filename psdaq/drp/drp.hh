@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <map>
 
+#include "spscqueue.hh"
+
 namespace Pds {
     class EbDgram;
 };
@@ -29,6 +31,7 @@ struct PGPEvent
     DmaBuffer buffers[4];
     uint8_t mask = 0;
     void* l3InpBuf;
+    Pds::EbDgram* transitionDgram;
 };
 
 struct Parameters
@@ -53,15 +56,16 @@ struct Parameters
     unsigned verbose;
     bool rogueDet;
     size_t maxTrSize;
+    unsigned nTrBuffers;
 };
 
 class Pebble
 {
 public:
-    void resize(unsigned nbuffers, size_t bufferSize, size_t trBufSize = 0)
+    void resize(unsigned nbuffers, size_t bufferSize, unsigned nTrBuffers, size_t trBufSize)
     {
         m_bufferSize = bufferSize;
-        size_t size = nbuffers*m_bufferSize + trBufSize;
+        size_t size = nbuffers*m_bufferSize + nTrBuffers*trBufSize;
         m_buffer.resize(size);
     }
 
@@ -80,23 +84,21 @@ class MemPool
 {
 public:
     MemPool(const Parameters& para);
-    ~MemPool();
     Pebble pebble;
     std::vector<PGPEvent> pgpEvents;
     void** dmaBuffers;
-    void* transitionBuffer;
     unsigned nbuffers() const {return m_nbuffers;}
     unsigned bufferSize() const {return m_bufferSize;}
     unsigned dmaSize() const {return m_dmaSize;}
-    size_t maxTransitionSize() const {return m_maxTransitionSize;}
     int fd () const {return m_fd;}
-    Pds::EbDgram* transitionDgram() {return static_cast<Pds::EbDgram*>(transitionBuffer);}
+    Pds::EbDgram* allocateTr();
+    void freeTr(Pds::EbDgram* dgram) { m_transitionBuffers.push(dgram); }
 private:
     unsigned m_nbuffers;
     unsigned m_bufferSize;
     unsigned m_dmaSize;
-    size_t m_maxTransitionSize;
     int m_fd;
+    SPSCQueue<void*> m_transitionBuffers;
 };
 
 }

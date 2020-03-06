@@ -620,12 +620,15 @@ void Pgp::worker(std::shared_ptr<MetricExporter> exporter)
                     }
                 }
                 else {
-                    // Since the Transition Dgram's XTC was already created on
-                    // phase1 of the transition, fix up the Dgram header with the
-                    // real one while taking care not to touch the XTC
-                    // Revisit: Delay this until EbReceiver time?
-                    Pds::EbDgram* trDgram = m_drp.pool.transitionDgram();
+                    // Allocate a transition dgram from the pool and initialize its header
+                    Pds::EbDgram* trDgram = m_drp.pool.allocateTr();
                     memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                    // copy the temporary xtc created on phase 1 of the transition
+                    // into the real location
+                    XtcData::Xtc& trXtc = m_det->transitionXtc();
+                    memcpy(&trDgram->xtc, &trXtc, trXtc.extent);
+                    PGPEvent* pgpEvent = &m_drp.pool.pgpEvents[index];
+                    pgpEvent->transitionDgram = trDgram;
 
                     switch (dgram->service()) {
                         case XtcData::TransitionId::Configure: {
@@ -925,7 +928,6 @@ int main(int argc, char* argv[])
     para.detSegment = 0;
     para.verbose = 0;
     std::string kwargs_str;
-    char *instrument = NULL;
     int c;
     while((c = getopt(argc, argv, "l:p:o:C:b:d:D:u:P:T::k:M:v")) != EOF) {
         switch(c) {
@@ -954,7 +956,7 @@ int main(int argc, char* argv[])
                 para.alias = optarg;
                 break;
             case 'P':
-                instrument = optarg;
+                para.instrument = optarg;
                 break;
             case 'T':
                 para.trgDetName = optarg ? optarg : "trigger";
@@ -974,11 +976,11 @@ int main(int argc, char* argv[])
     }
 
     switch (para.verbose) {
-      case 0:  logging::init(instrument, LOG_INFO);     break;
-      default: logging::init(instrument, LOG_DEBUG);    break;
+      case 0:  logging::init(para.instrument.c_str(), LOG_INFO);   break;
+      default: logging::init(para.instrument.c_str(), LOG_DEBUG);  break;
     }
     logging::info("logging configured");
-    if (!instrument) {
+    if (para.instrument.empty()) {
         logging::warning("-P: instrument name is missing");
     }
     // Check required parameters
@@ -1006,6 +1008,9 @@ int main(int argc, char* argv[])
     get_kwargs(para, kwargs_str);
 
     para.maxTrSize = 256 * 1024;
+    para.nTrBuffers = 8; // Power of 2 greater than the maximum number of
+                         // transitions in the system at any given time, e.g.,
+                         // MAX_LATENCY * (SlowUpdate rate), in same units
 
     Py_Initialize(); // for use by configuration
     Drp::BldApp app(para);

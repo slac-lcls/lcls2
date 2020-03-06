@@ -121,6 +121,9 @@ int main(int argc, char* argv[])
     para.nworkers = 10;
     para.batchSize = 32; // Must be a power of 2
     para.maxTrSize = 256 * 1024;
+    para.nTrBuffers = 8; // Power of 2 greater than the maximum number of
+                         // transitions in the system at any given time, e.g.,
+                         // MAX_LATENCY * (SlowUpdate rate), in same units
     Py_Initialize(); // for use by configuration
     Drp::PGPDetectorApp app(para);
     app.run();

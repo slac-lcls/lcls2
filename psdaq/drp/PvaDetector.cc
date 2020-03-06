@@ -400,6 +400,7 @@ void PvaDetector::_worker()
         Pds::EbDgram* dgram = pgp.next(index, bytes);
         if (dgram) {
             XtcData::TransitionId::Value service = dgram->service();
+            // Also queue SlowUpdates to keep things in time order
             if ((service == XtcData::TransitionId::L1Accept) ||
                 (service == XtcData::TransitionId::SlowUpdate)) {
                 m_inputQueue.push(index);
@@ -420,12 +421,15 @@ void PvaDetector::_worker()
                 }
             }
             else {
-                // Since the Transition Dgram's XTC was already created on
-                // phase1 of the transition, fix up the Dgram header with the
-                // real one while taking care not to touch the XTC
-                // Revisit: Delay this until EbReceiver time?
-                Pds::EbDgram* trDgram = m_pool->transitionDgram();
+                // Allocate a transition dgram from the pool and initialize its header
+                Pds::EbDgram* trDgram = m_pool->allocateTr();
                 memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                // copy the temporary xtc created on phase 1 of the transition
+                // into the real location
+                XtcData::Xtc& trXtc = transitionXtc();
+                memcpy(&trDgram->xtc, &trXtc, trXtc.extent);
+                PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
+                pgpEvent->transitionDgram = trDgram;
 
                 if (service == XtcData::TransitionId::Enable) {
                     m_running = true;
@@ -479,9 +483,17 @@ void PvaDetector::process(const PvaMonitor& pva)
                            timestamp.seconds(), timestamp.nanoseconds(),
                            dgram->time.seconds(), dgram->time.nanoseconds());
 
-            PGPEvent* pgpEvent = nullptr; // Not needed in this case
-            event(*dgram, pgpEvent);
-
+            if (dgram->isEvent()) {
+                PGPEvent* pgpEvent = nullptr; // Not needed in this case
+                event(*dgram, pgpEvent);
+            }
+            else {
+                // Allocate a transition dgram from the pool and initialize its header
+                Pds::EbDgram* trDgram = m_pool->allocateTr();
+                *trDgram = *dgram;
+                PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
+                pgpEvent->transitionDgram = trDgram;
+            }
             _sendToTeb(*dgram, index);
             break;
         }
@@ -491,7 +503,7 @@ void PvaDetector::process(const PvaMonitor& pva)
             m_inputQueue.try_pop(idx);  // Actually consume the element
             assert(idx == index);
 
-            if (dgram->service() != XtcData::TransitionId::SlowUpdate) {
+            if (dgram->isEvent()) {
                 // No PVA data so mark event as damaged
                 dgram->xtc.damage.increase(XtcData::Damage::MissingData);
 
@@ -501,12 +513,19 @@ void PvaDetector::process(const PvaMonitor& pva)
                                timestamp.seconds(), timestamp.nanoseconds(),
                                dgram->time.seconds(), dgram->time.nanoseconds());
             }
+            else {
+                // Allocate a transition dgram from the pool and initialize its header
+                Pds::EbDgram* trDgram = m_pool->allocateTr();
+                *trDgram = *dgram;
+                PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
+                pgpEvent->transitionDgram = trDgram;
+            }
             _sendToTeb(*dgram, index);
             // Keep processing PGP events until a match is found
         }
         // The PV is older than the event, so go await an update
         else {
-            if (dgram->service() != XtcData::TransitionId::SlowUpdate) {
+          if (dgram->isEvent()) {
                 ++m_nTooOld;
                 logging::debug("PV too old!!      "
                                "TimeStamps: PV %u.%09u < PGP %u.%09u\n",
@@ -840,6 +859,9 @@ int main(int argc, char* argv[])
     }
 
     para.maxTrSize = 256 * 1024;
+    para.nTrBuffers = 8; // Power of 2 greater than the maximum number of
+                         // transitions in the system at any given time, e.g.,
+                         // MAX_LATENCY * (SlowUpdate rate), in same units
 
     Py_Initialize(); // for use by configuration
     Drp::PvaApp app(para, pvName);

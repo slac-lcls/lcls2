@@ -59,8 +59,7 @@ static unsigned nextPowerOf2(unsigned n)
 }
 
 MemPool::MemPool(const Parameters& para) :
-    transitionBuffer(nullptr),
-    m_maxTransitionSize(0)
+    m_transitionBuffers(para.nTrBuffers)
 {
     m_fd = open(para.device.c_str(), O_RDWR);
     if (m_fd < 0) {
@@ -82,20 +81,33 @@ MemPool::MemPool(const Parameters& para) :
 
     // make the size of the pebble buffer that will contain the datagram equal
     // to the dmaSize times the number of lanes
-    // Also include space in the pebble that can hold the worst case transition
-    // so that it will be part of the memory region that can be RDMAed to the MEB
+    // Also include space in the pebble for a pool of transition buffers of
+    // worst case size so that they will be part of the memory region that can
+    // be RDMAed from to the MEB
     m_bufferSize = __builtin_popcount(para.laneMask) * m_dmaSize;
-    pebble.resize(m_nbuffers, m_bufferSize, para.maxTrSize);
-    logging::info("nbuffer %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
+    pebble.resize(m_nbuffers, m_bufferSize, para.nTrBuffers, para.maxTrSize);
+    logging::info("nbuffers %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
 
     pgpEvents.resize(m_nbuffers);
 
-    transitionBuffer = pebble[m_nbuffers]; // Put it at the end of the pebble
+    // Put the transition buffer pool at the end of the pebble buffers
+    uint8_t* buffer = pebble[m_nbuffers];
+    for (unsigned i = 0; i < para.nTrBuffers; i++) {
+        m_transitionBuffers.push(&buffer[i * para.maxTrSize]);
+    }
 }
 
-MemPool::~MemPool()
+Pds::EbDgram* MemPool::allocateTr()
 {
+    void* dgram = nullptr;
+    if (!m_transitionBuffers.try_pop(dgram)) {
+        // See comment for setting para.nTrBuffers in drp.cc
+        logging::critical("Empty transition buffer pool");
+        throw "Empty transition buffer pool";
+    }
+    return static_cast<Pds::EbDgram*>(dgram);
 }
+
 
 EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
@@ -109,21 +121,9 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_inprocSend(inprocSend),
   m_count(0),
   m_offset(0),
-  m_nodeId(tPrms.id)
+  m_nodeId(tPrms.id),
+  m_configureBuffer(para.maxTrSize)
 {
-    m_configureBuffer = new uint8_t[para.maxTrSize];
-    if (!m_configureBuffer) {
-        logging::critical("Failed to allocate Configure buffer of size %zd", para.maxTrSize);
-        throw "Failed to allocate Configure buffer";
-    }
-}
-
-EbReceiver::~EbReceiver()
-{
-    if (m_configureBuffer) {
-        delete[] static_cast<char*>(m_configureBuffer);
-        m_configureBuffer = nullptr;
-    }
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname)
@@ -240,9 +240,9 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         if (transitionId != XtcData::TransitionId::SlowUpdate) {
             if (transitionId == XtcData::TransitionId::Configure) {
                 // Cache Configure Dgram for writing out after files are opened
-                XtcData::Dgram* configDgram = m_pool.transitionDgram();
+                XtcData::Dgram* configDgram = m_pool.pgpEvents[index].transitionDgram;
                 size_t size = sizeof(*configDgram) + configDgram->xtc.sizeofPayload();
-                memcpy(m_configureBuffer, configDgram, size);
+                memcpy(m_configureBuffer.data(), configDgram, size);
             }
             // send pulseId to inproc so it gets forwarded to the collection
             json msg = createPulseIdMsg(pulseId);
@@ -255,16 +255,15 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
 
     if (m_writing) {                    // Won't ever be true for Configure
         // write event to file if it passes event builder or if it's a transition
-        if (result.persist() || result.prescale() ||
-            (transitionId == XtcData::TransitionId::SlowUpdate)) {
+        if (result.persist() || result.prescale()) {
             _writeDgram(dgram);
         }
         else if (transitionId != XtcData::TransitionId::L1Accept) {
             if (transitionId == XtcData::TransitionId::BeginRun) {
                 m_offset = 0; // reset offset when writing out a new file
-                _writeDgram(static_cast<XtcData::Dgram*>(m_configureBuffer));
+                _writeDgram(reinterpret_cast<XtcData::Dgram*>(m_configureBuffer.data()));
             }
-            _writeDgram(m_pool.transitionDgram());
+            _writeDgram(m_pool.pgpEvents[index].transitionDgram);
             if (transitionId == XtcData::TransitionId::EndRun) {
                 logging::debug("%s calling closeFiles()", __PRETTY_FUNCTION__);
                 closeFiles();
@@ -279,19 +278,21 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
                 m_mon->post(dgram, result.monBufNo());
             }
         }
-        else if (transitionId == XtcData::TransitionId::SlowUpdate) {
-            m_mon->post(dgram);
-        }
         // Other Transition
         else {
-            m_mon->post(m_pool.transitionDgram());
+            m_mon->post(m_pool.pgpEvents[index].transitionDgram);
         }
     }
 
-    // return buffers and reset event
+    // Return buffers and reset event.  Careful with order here!
+    // index could be reused as soon as dmaRetIndexes() completes
     PGPEvent* event = &m_pool.pgpEvents[index];
+    if (!dgram->isEvent()) {
+        m_pool.freeTr(event->transitionDgram);
+    }
     for (int i=0; i<4; i++) {
-        if (event->mask & (1 << i)) {
+        if (event->mask &  (1 << i)) {
+            event->mask ^= (1 << i);    // Zero out mask before dmaRetIndexes()
             m_indices[m_count] = event->buffers[i].index;
             m_count++;
             if (m_count == m_size) {
@@ -301,7 +302,6 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
             }
         }
     }
-    event->mask = 0;
 }
 
 
