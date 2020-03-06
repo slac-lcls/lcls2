@@ -56,22 +56,22 @@ procmgr_config = [
  {                         id:'control_gui', flags:'p',    conda:conda_rel,                cmd:'control_gui -H '+collect_host},
 
  # TEB
- { host: 'drp-tst-dev016', id:'teb16',       flags:'sxpu', conda:conda_rel, cmd:teb_cmd},
+ { host: 'drp-tst-dev016', id:'teb0',        flags:'sxpu', conda:conda_rel, cmd:teb_cmd},
 
  # MEB
- { host: 'drp-tst-dev016', id:'meb1' ,       flags:'sxpu', conda:conda_rel, cmd:meb_cmd},
- #{ host: 'drp-tst-dev015', id:'meb2',        flags:'sxpu', conda:conda_rel, cmd:meb_cmd},
+ { host: 'drp-tst-dev016', id:'meb0' ,       flags:'sxpu', conda:conda_rel, cmd:meb_cmd},
+ #{ host: 'drp-tst-dev015', id:'meb1',        flags:'sxpu', conda:conda_rel, cmd:meb_cmd},
 
  # PVA
- { host: 'drp-tst-dev002', id:'pva_2',       flags:'sxpu', conda:conda_rel, cmd: pva_cmd },
+ { host: 'drp-tst-dev002', id:'pva_0',       flags:'sxpu', conda:conda_rel, cmd: pva_cmd },
 
  # EpicsArch
- { host: 'drp-tst-dev004', id:'ea_4',        flags:'sxpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
+ { host: 'drp-tst-dev004', id:'ea_0',        flags:'sxpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
 
  # BLD - must currently run on dev018 since that's where the bld enet xface is
  { host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    conda:conda_rel, env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4'},
  { host: epics_host,       id:'bldcas',      flags:'s',    conda:conda_rel, env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str},
- { host: 'drp-tst-dev018', id:'bld_18',      flags:'xpu',  conda:conda_rel, env:epics_env, cmd:bld_cmd},
+ { host: 'drp-tst-dev018', id:'bld_0',       flags:'xpu',  conda:conda_rel, env:epics_env, cmd:bld_cmd},
 
 #  6.4 GS/s digitizer (DEV06_3D)
 # { port:'29074',           id:'hsdpvs_3d_a', flags:'s',    conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+hsd_epics_dev06+'_3D:A'},
@@ -81,13 +81,13 @@ procmgr_config = [
 # { host: 'drp-tst-dev023', id:'tmohsd_1',    flags:'pu',   conda:conda_rel,                cmd:drp_cmd+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3D:B -d /dev/datadev_1'},
 
  # TimeTool
-# { host: 'drp-tst-dev012', id:'timetool_12', flags:'xpu',  conda:conda_rel, cmd:drp_cmd+' -D TimeTool -d /dev/datadev_0'},
+# { host: 'drp-tst-dev012', id:'timetool_0', flags:'xpu',  conda:conda_rel, cmd:drp_cmd+' -D TimeTool -d /dev/datadev_0'},
 
  # Timing System DRP
- { host: 'drp-tst-dev013', id:'tmots_13',    flags:'sxpu', conda:conda_rel, cmd:drp_cmd+' -D TimingSystem' },
+ { host: 'drp-tst-dev013', id:'tmots_0',     flags:'sxpu', conda:conda_rel, cmd:drp_cmd+' -D TimingSystem' },
 
  # Cam
- { host: 'drp-tst-dev014', id:'cam_14',      flags:'sxpu', conda:conda_rel, cmd:drp_cmd+' -D AreaDetector -k sim_length=14'},
+ { host: 'drp-tst-dev014', id:'cam_0',       flags:'sxpu', conda:conda_rel, cmd:drp_cmd+' -D AreaDetector -k sim_length=14'},
 
  {                         id:'procstat',    flags:'p',    conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
 ]
