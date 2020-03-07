@@ -66,7 +66,7 @@ procmgr_config = [
  { host: 'drp-tst-dev002', id:'pva_0',       flags:'sxpu', conda:conda_rel, cmd: pva_cmd },
 
  # EpicsArch
- { host: 'drp-tst-dev004', id:'ea_0',        flags:'sxpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
+ { host: 'drp-tst-dev004', id:'epics_0',     flags:'sxpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
 
  # BLD - must currently run on dev018 since that's where the bld enet xface is
  { host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    conda:conda_rel, env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4'},

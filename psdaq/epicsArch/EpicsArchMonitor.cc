@@ -99,10 +99,10 @@ void EpicsArchMonitor::initDef(size_t& payloadSize)
 
 void EpicsArchMonitor::addNames(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId)
 {
-  XtcData::Alg alg("EpicsArch", 0, 0, 1);
+  XtcData::Alg alg("epics", 0, 0, 1);
   XtcData::NamesId namesId(nodeId, iNamesIndex);
-  XtcData::Names& names = *new(xtc) XtcData::Names("EpicsArch", alg,
-                                                   "EpicsArch", "ea1234", namesId);
+  XtcData::Names& names = *new(xtc) XtcData::Names("epics", alg,
+                                                   "epics", "epics1234", namesId);
   names.add(xtc, _epicsArchDef);
   namesLookup[namesId] = XtcData::NameIndex(names);
 }
