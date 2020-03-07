@@ -120,6 +120,10 @@ class epics_epics_0_0_0(EnvImpl):
     def __init__(self, *args):
         super(epics_epics_0_0_0, self).__init__(*args)
 
+class epics_epics_0_0_1(EnvImpl):
+    def __init__(self, *args):
+        super(epics_epics_0_0_1, self).__init__(*args)
+
 class scanDet_scan_2_3_42(EnvImpl):
     def __init__(self, *args):
         super(scanDet_scan_2_3_42, self).__init__(*args)
