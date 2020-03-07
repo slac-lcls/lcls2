@@ -24,6 +24,22 @@ class hsd_fex_4_5_6(DetectorImpl):
     def calib(self, evt) -> Array1d:
         return np.zeros((6))
 
+# for the fake cameras in the teststand
+class cspad_cspadRawAlg_1_2_3(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+    def raw(self, evt) -> Array2d:
+        segs = self._segments(evt)
+        return segs[0].array_raw
+
+# for the fake cameras in the teststand
+class pva_pvaAlg_1_2_3(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+    def raw(self, evt) -> Array2d:
+        segs = self._segments(evt)
+        return segs[0].value
+
 class cspad_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(cspad_raw_2_3_42, self).__init__(*args)
