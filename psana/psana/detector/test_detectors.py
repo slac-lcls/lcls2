@@ -36,7 +36,7 @@ class cspad_cspadRawAlg_1_2_3(DetectorImpl):
 class pva_pvaAlg_1_2_3(DetectorImpl):
     def __init__(self, *args):
         super().__init__(*args)
-    def raw(self, evt) -> Array2d:
+    def raw(self, evt) -> Array1d:
         segs = self._segments(evt)
         return segs[0].value
 
