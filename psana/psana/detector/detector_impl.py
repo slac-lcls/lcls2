@@ -62,5 +62,9 @@ class DetectorImpl(object):
                     fd = getattr(seg_dict,field)
                     # fd._type, fd._rank
                     def func(evt, field=field) -> self._return_types(fd._type,fd._rank):
-                        return getattr(self._info(evt),field)
+                        info = self._info(evt)
+                        if info is None:
+                            return None
+                        else:
+                            return getattr(info,field)
                     setattr(self, field, func)
