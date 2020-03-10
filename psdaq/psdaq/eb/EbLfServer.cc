@@ -43,8 +43,8 @@ int EbLfServer::initialize(const std::string& addr,
   _pep = new PassiveEndpoint(addr.c_str(), port.c_str(), flags, txSize, rxSize);
   if (!_pep || (_pep->state() != EP_UP))
   {
-    printf("%s:\n  Failed to create Passive Endpoint: %s\n",
-           __PRETTY_FUNCTION__, _pep ? _pep->error() : "No memory");
+    fprintf(stderr, "%s:\n  Failed to create Passive Endpoint: %s\n",
+            __PRETTY_FUNCTION__, _pep ? _pep->error() : "No memory");
     return _pep ? _pep->error_num(): ENOMEM;
   }
 
@@ -60,8 +60,8 @@ int EbLfServer::initialize(const std::string& addr,
   _eq = new EventQueue(fab, 0);
   if (!_eq)
   {
-    printf("%s:\n  Failed to create Event Queue: %s\n",
-           __PRETTY_FUNCTION__, "No memory");
+    fprintf(stderr, "%s:\n  Failed to create Event Queue: %s\n",
+            __PRETTY_FUNCTION__, "No memory");
     return ENOMEM;
   }
 
@@ -72,15 +72,15 @@ int EbLfServer::initialize(const std::string& addr,
   _rxcq = new CompletionQueue(fab, cqSize);
   if (!_rxcq)
   {
-    printf("%s:\n  Failed to create Rx Completion Queue: %s\n",
-           __PRETTY_FUNCTION__, "No memory");
+    fprintf(stderr, "%s:\n  Failed to create Rx Completion Queue: %s\n",
+            __PRETTY_FUNCTION__, "No memory");
     return ENOMEM;
   }
 
   if (!_pep->listen(nLinks))
   {
-    printf("%s:\n  Failed to set Passive Endpoint to listening state: %s\n",
-           __PRETTY_FUNCTION__, _pep->error());
+    fprintf(stderr, "%s:\n  Failed to set Passive Endpoint to listening state: %s\n",
+            __PRETTY_FUNCTION__, _pep->error());
     return _pep->error_num();
   }
   printf("EbLfServer is listening for %d client(s) on port %s\n",

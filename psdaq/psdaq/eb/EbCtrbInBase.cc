@@ -60,9 +60,8 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
     return rc;
   }
 
-  size_t size = 0;
+  size_t regSize = 0;
 
-  // Since each EB handles a specific batch, one region can be shared by all
   for (unsigned i = 0; i < _links.size(); ++i)
   {
     EbLfSvrLink*   link;
@@ -78,26 +77,18 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
 
     if (_prms.verbose)  printf("Inbound link with TEB ID %d connected\n", rmtId);
 
-    size_t regSize;
-    if ( (rc = link->prepare(&regSize)) )
+    size_t size;
+    if ( (rc = link->prepare(&size)) )
     {
       fprintf(stderr, "%s:\n  Failed to prepare link with TEB ID %d\n",
               __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
 
-    if (!size)
+    // Since each EB handles a specific batch, one region can be shared by all
+    if (!regSize)
     {
-      size          = regSize;
-      _maxBatchSize = regSize / MAX_BATCHES;
-
-      _region = allocRegion(regSize);
-      if (_region == nullptr)
-      {
-        fprintf(stderr, "%s:\n  No memory found for a Result MR of size %zd\n",
-                __PRETTY_FUNCTION__, regSize);
-        return ENOMEM;
-      }
+      regSize = size;
     }
     else if (regSize != size)
     {
@@ -105,6 +96,23 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
               "(%zd from Id %d)\n", __PRETTY_FUNCTION__, size, regSize, rmtId);
       return -1;
     }
+  }
+
+  _maxBatchSize = regSize / MAX_BATCHES;
+
+  _region = allocRegion(regSize);
+  if (_region == nullptr)
+  {
+    fprintf(stderr, "%s:\n  No memory found for a Result MR of size %zd\n",
+            __PRETTY_FUNCTION__, regSize);
+    return ENOMEM;
+  }
+
+  // Note that this loop can't be combined with the one above due to the exchange protocol
+  for (unsigned i = 0; i < _links.size(); ++i)
+  {
+    EbLfSvrLink* link = _links[i];
+    unsigned     rmtId = link->id();
 
     if ( (rc = link->setupMr(_region, regSize)) )
     {

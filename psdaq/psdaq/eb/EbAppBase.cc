@@ -116,6 +116,7 @@ int EbAppBase::configure(const EbParams& prms)
     return ENOMEM;
   }
 
+  // Note that this loop can't be combined with the one above due to the exchange protocol
   char* region = reinterpret_cast<char*>(_region);
   for (unsigned rmtId = 0; rmtId < _links.size(); ++rmtId)
   {

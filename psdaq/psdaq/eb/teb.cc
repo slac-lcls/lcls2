@@ -233,6 +233,14 @@ int Teb::configure(const EbParams& prms,
                      __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
+  }
+
+  // Note that this loop can't be combined with the one above due to the exchange protocol
+  for (unsigned i = 0; i < _mrqLinks.size(); ++i)
+  {
+    EbLfSvrLink* link  = _mrqLinks[i];
+    unsigned     rmtId = link->id();
+
     if (link->postCompRecv())
     {
       logging::error("%s:\n  Failed to post CQ buffers for Mon Requestor ID %d",

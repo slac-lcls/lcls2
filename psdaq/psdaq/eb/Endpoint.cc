@@ -1967,9 +1967,13 @@ ssize_t CompletionQueue::check_completion(int context, unsigned flags, uint64_t*
           if (data)
             *data = comp.data;
           return FI_SUCCESS;
+        } else {
+          set_custom_error("Wrong completion: comp.op_context value is %d, expected %d", *(int*)comp.op_context, context);
+          dump_cq_data_entry(comp);
+          return -EFAULT;
         }
       } else {
-        set_error("nullptr provided for comp.op_context");
+        set_custom_error("Wrong completion: comp.op_context is %p, expected %d", comp.op_context, context);
         dump_cq_data_entry(comp);
         return -EFAULT;
       }
