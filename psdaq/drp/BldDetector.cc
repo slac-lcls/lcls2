@@ -620,6 +620,8 @@ void Pgp::worker(std::shared_ptr<MetricExporter> exporter)
                     }
                 }
                 else {
+                    lHold=true;         // Hold off BLD for all transitions
+
                     // Allocate a transition dgram from the pool and initialize its header
                     Pds::EbDgram* trDgram = m_drp.pool.allocateTr();
                     memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
@@ -639,8 +641,6 @@ void Pgp::worker(std::shared_ptr<MetricExporter> exporter)
                                 XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
                                 namesLookup[namesId] = m_config[i]->addToXtc(trDgram->xtc, namesId);
                             }
-
-                            lHold=true;
                             break;
                         }
                         case XtcData::TransitionId::Enable: {
