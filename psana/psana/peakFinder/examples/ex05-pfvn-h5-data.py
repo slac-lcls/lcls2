@@ -83,9 +83,10 @@ USAGE =\
  
 if __name__ == "__main__" :
     tname = sys.argv[1] if len(sys.argv) > 1 else '4'
+    print(USAGE)
     print(50*'_', '\nTest %s:' % tname)
     if tname in ('0','3','4') : test01(tname)
-    else : print(USAGE); sys.exit('Test %s is not implemented' % tname)
+    else : sys.exit('Test %s is not implemented' % tname)
     sys.exit('End of test %s' % tname)
  
 #----------

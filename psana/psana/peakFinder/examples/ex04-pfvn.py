@@ -247,11 +247,12 @@ USAGE =\
 #----------
 
 if __name__ == "__main__" :
-    tname = sys.argv[1] if len(sys.argv) > 1 else '0'
+    tname = sys.argv[1] if len(sys.argv) > 1 else '3'
+    print(USAGE)
     print(50*'_', '\nTest %s:' % tname)
-    if   tname == '0' : ex_image_with_random_peaks()
+    if   tname == '0' : ex_image_with_random_peaks(); print(USAGE)
     elif tname in ('1','2','3','4') : test_pf(tname)
-    else : print(USAGE); sys.exit('Test %s is not implemented' % tname)
+    else : sys.exit('Test %s is not implemented' % tname)
     sys.exit('End of test %s' % tname)
  
 #----------
