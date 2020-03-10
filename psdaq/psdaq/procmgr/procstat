@@ -29,9 +29,6 @@ localIdList = []
 class CustomIOError(Exception):
   pass
 
-def getOutputFileName(iExperiment, sExpType,eventNodes):
-  return []
-
 def printStackTrace():
   print( "---- Printing program call stacks for debug ----" )
   traceback.print_exc(file=sys.stdout)
@@ -54,6 +51,7 @@ def procMgrThreadWrapper(win, sConfigFile, iExperiment, sExpType, iPlatform, fQu
 def procMgrThread(win, sConfigFile, iExperiment, sExpType, iPlatform, fQueryInterval, evgProcMgr,eventNodes ):
 
   locale.setlocale( locale.LC_ALL, "" ) # set locale for printing formatted numbers later
+  fileStatusDatabase = []
 
   while True:
     # refresh ProcMgr status
@@ -76,27 +74,9 @@ def procMgrThread(win, sConfigFile, iExperiment, sExpType, iPlatform, fQueryInte
       # Send out the signal to notify the main window
       win.ProcMgrGeneralError.emit(sConfigFile, iPlatform )
 
-    fileStatusDatabase = None  # set default value
-    try:
-      fileStatusDatabase = getOutputFileName( iExperiment, sExpType,eventNodes )
-
-    except CustomIOError:
-      print( "Error in ssh or Output Directory::(%s)" % (sOutDirPrefix1) )
-      printStackTrace()
-      win.OutputDirError.emit(sOutDirPrefix1 )    # Send out the signal to notify the main window
-      
-    except:
-      sErrorReport = "procMgrThread(): getOutputFileName() failed due to a general error, possibly caused by filesystem disconnection\n"
-      print( sErrorReport )
-      printStackTrace()
-      # Send out the signal to notify the main window
-      win.ThreadGeneralError.emit(sErrorReport)
-
-    if fileStatusDatabase != None:
+    if True:
       # Send out the signal to notify the main window
       win.Updated.emit(ldProcStatus, fileStatusDatabase, iExperiment, sExpType)
-    else:
-      print( "No file status available -- skipping update" )
     time.sleep(fQueryInterval )
 
   return
