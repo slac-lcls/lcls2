@@ -5,6 +5,7 @@
 
 namespace Pds {
   namespace HSD {
+    class ChipAdcReg;
     // PV structures - must match the server's definition (see pvdef.py)
     class MonTiming {
     public:
@@ -37,17 +38,17 @@ namespace Pds {
 
     class MonPgp {
     public:
-      int32_t loclinkrdy [4];
-      int32_t remlinkrdy [4];
-      float   txclkfreq  [4];
-      float   rxclkfreq  [4];
-      int32_t txcnt      [4];
-      int32_t txcntsum   [4];
-      int32_t txerrcntsum[4];
-      int32_t rxcnt      [4];
-      int32_t rxlast     [4];
-      int32_t rempause   [4];
-      int32_t remlinkid  [4];
+      uint32_t loclinkrdy [4];
+      uint32_t remlinkrdy [4];
+      float    txclkfreq  [4];
+      float    rxclkfreq  [4];
+      uint32_t txcnt      [4];
+      uint32_t txcntsum   [4];
+      uint32_t txerrcntsum[4];
+      uint32_t rxcnt      [4];
+      uint32_t rxlast     [4];
+      uint32_t rempause   [4];
+      uint32_t remlinkid  [4];
     };
 
     class MonBuf {
@@ -59,10 +60,15 @@ namespace Pds {
 
     class MonBufDetail {
     public:
+      MonBufDetail() {}
+      MonBufDetail(ChipAdcReg&,unsigned);
+    public:
       int32_t bufstate[16];
       int32_t trgstate[16];
-      int32_t bufbeg  [16];
-      int32_t bufend  [16];
+      //int32_t bufbeg  [16];
+      //int32_t bufend  [16];
+      float bufbeg  [16];
+      float bufend  [16];
     };
 
     class MonFlow {
@@ -115,6 +121,7 @@ namespace Pds {
     static const unsigned _sz_monRawBuf[] = {0};
     static const unsigned _sz_monFexBuf[] = {0};
     static const unsigned _sz_monRawDet[] = {16,16,16,16,};
+    static const unsigned _sz_monFexDet[] = {16,16,16,16,};
     static const unsigned _sz_monFlow  [] = {0};
     static const unsigned _sz_monJesd  [] = {112,5,};
     static const unsigned _sz_monEnv   [] = {0};

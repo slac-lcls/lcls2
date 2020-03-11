@@ -90,6 +90,8 @@ class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
         """
         channels = {}
         for config in self._configs:
+            if not hasattr(config,self._det_name):
+                continue
             seg_dict = getattr(config,self._det_name)
             for seg,seg_config in seg_dict.items():
                 # currently the hsd only has 1 channel (zero)

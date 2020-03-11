@@ -50,6 +50,10 @@ void PGPDetectorApp::shutdown()
 {
     m_exporter.reset();
 
+    if (m_det) {
+      m_det->shutdown();
+    }
+
     if (m_pgpDetector) {
         m_pgpDetector->shutdown();
         if (m_pgpThread.joinable()) {

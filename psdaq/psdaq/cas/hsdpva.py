@@ -38,6 +38,8 @@ class PvScalarBox(QtWidgets.QGroupBox):
             else:
                 w = QtWidgets.QLabel('-')
             glo.addWidget(w,i,1)
+            if len(struct[ttl])>2:
+                glo.addWidget(QtWidgets.QLabel(struct[ttl][2]),i,2)
             self.widgets.append(w)
 
         if edit:
@@ -73,6 +75,7 @@ class PvBuf(PvScalarBox):
 class PvArrayTable(QtWidgets.QGroupBox):
     def __init__( self, pvname, title, struct, vertical=False):
         super(PvArrayTable,self).__init__(title)
+        self.struct = struct
         glo = QtWidgets.QGridLayout()
         self.widgets = []
         for i,ttl in enumerate(struct):
@@ -98,7 +101,10 @@ class PvArrayTable(QtWidgets.QGroupBox):
             q = self.pv.__value__.todict()
             for i,v in enumerate(q):
                 for j,w in enumerate(q[v]):
-                    self.widgets[i][j].setText(QString(w))
+                    if len(self.struct[v])>2:
+                        self.widgets[i][j].setText(QString(self.struct[v][2].format(w)))
+                    else:
+                        self.widgets[i][j].setText(QString(w))
 
 class PvJesd(object):
     def __init__( self, pvname, statWidgets, clockWidgets):
@@ -295,7 +301,9 @@ class Ui_MainWindow(object):
             maintab.addTab( HsdBufferSummary(title), 
                             'Buffers' )
             maintab.addTab( PvArrayTable(title+':MONRAWDET','Raw Buffers',monBufDetail,vertical=True), 
-                            'Detail' )
+                            'RawDetail' )
+            maintab.addTab( PvArrayTable(title+':MONFEXDET','Fex Buffers',monBufDetail,vertical=True), 
+                            'FexDetail' )
             maintab.addTab( PvScalarBox(title+':MONFLOW','Flow',monFlow),
                             'Flow' )
             maintab.addTab( HsdEnv          (title),
