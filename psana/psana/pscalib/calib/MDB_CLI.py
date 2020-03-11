@@ -10,6 +10,7 @@ from psana.pyalgos.generic.Utils import print_kwargs, print_parser, is_in_comman
 import psana.pyalgos.generic.Utils as gu
 from psana.pyalgos.generic.NDArrUtils import info_ndarr #, print_ndarr
 from psana.pscalib.calib.NDArrIO import load_txt, save_txt
+from psana.pscalib.calib.XtcavUtils import load_xtcav_calib_file
 
 import psana.pscalib.calib.MDBUtils as dbu # insert_constants, time_and_timestamp
 import numpy as np
@@ -248,6 +249,7 @@ class MDB_CLI :
 
         ext = os.path.splitext(fname)[-1]
         data = gu.load_textfile(fname, verb=verb) if ctype == 'geometry' or dtype in ('txt', 'str') else\
+               load_xtcav_calib_file(fname) if dtype == 'xtcav' else\
                np.load(fname) if ext == '.npy' else\
                load_txt(fname) # input NDArrIO 
 
