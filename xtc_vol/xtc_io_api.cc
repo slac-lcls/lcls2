@@ -29,7 +29,7 @@ typedef struct MappingLayer {
     void* iteration_stack; //
 }mapping;
 
-
+#define TIMESTAMP_DS_NAME "timestamps"
 #define DEBUG_PRINT //printf("%s():%d\n", __func__, __LINE__);
 //H5 utility function prototype
 //H5 name to xtc name, second
@@ -65,16 +65,15 @@ public:
 //        return native_type;
 //    }
 
-    xtc_ds_info* get_ds_info( Name& name, DescData& descdata){//int i
+    xtc_ds_info* get_ds_info(Name& name, DescData& descdata){//int i
         xtc_ds_info* dspace = (xtc_ds_info*)calloc(1, sizeof(xtc_ds_info));
         dspace->type = (xtc_data_type)(int)(name.type());
-        dspace->dim_cnt = 1; //always 1 dimension array.
-        dspace->element_cnt = name.rank();
-        dspace->element_size = name.get_element_size(name.type());
-        //TODO: set current_dims.
-        dspace->current_dims = (h5_size_t*) calloc(dspace->dim_cnt, sizeof(h5_size_t));//num of records
-        dspace->current_dims[0] = name.rank();//array_size
-
+        dspace->dim_cnt = name.rank();//# of dimension: 0-5, how many dimensions of the shape:
+        dspace->element_cnt = name.get_element_size(name.type());// how many elements
+        uint32_t* shape = descdata.shape(name);
+        printf("shape dimensions: %d, %d, %d, %d, %d, %d\n", shape[0], shape[1], shape[2], shape[3], shape[4], shape[5]);
+        for(int i = 0; i < 6; i++)
+            dspace->current_dims[i] = shape[i];
         dspace->maximum_dims = NULL;
         //dspace->data_ptr = get_data(i, name, descdata);
         //name.name();//variable name
@@ -86,22 +85,31 @@ public:
 
     }
 
-    void* get_data(int i, Name& name, DescData& descdata){
+    void* get_data(int index, Name& name, DescData& descdata){
         int data_rank = name.rank();
         int data_type = name.type();
-        printf("get_value() terminal data entry ==============  %d: %s rank %d, type %d\n", i, name.name(),
+        printf("get_value() terminal data entry ==============  %d: %s rank %d, type %d\n", index, name.name(),
                 data_rank, data_type);
         //printf("get_value() token = %s\n", name.name());
         void* ret = NULL;
         switch(name.type()){
         case(Name::UINT8):{
             if(data_rank > 0){
-                Array<uint8_t> arrT = descdata.get_array<uint8_t>(i);
+                Array<uint8_t> arrT = descdata.get_array<uint8_t>(index);
+                //
+                /*
+                auto t = arrT.shape();
+                //rank == 3 5*6*7 is to describe the shape dimension of a element
+                t[0] = 5
+                  t[1]=6
+                    t[2]=7
+                  */
+                //
                 printf("type uint8_t: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                 ret = arrT.data();
                     }
             else{
-                printf("type uint8_t:  %s: %d\n",name.name(),descdata.get_value<uint8_t>(i));
+                printf("type uint8_t:  %s: %d\n",name.name(),descdata.get_value<uint8_t>(index));
 
             }
             break;
@@ -109,110 +117,110 @@ public:
 
         case(Name::UINT16):{
             if(data_rank > 0){
-                Array<uint16_t> arrT = descdata.get_array<uint16_t>(i);
+                Array<uint16_t> arrT = descdata.get_array<uint16_t>(index);
                 printf("type uint16_t:  %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                 ret = arrT.data();
                     }
             else{
-                printf("type uint16_t: %s: %d\n",name.name(),descdata.get_value<uint16_t>(i));
+                printf("type uint16_t: %s: %d\n",name.name(),descdata.get_value<uint16_t>(index));
             }
             break;
         }
 
         case(Name::UINT32):{
             if(data_rank > 0){
-                Array<uint32_t> arrT = descdata.get_array<uint32_t>(i);
+                Array<uint32_t> arrT = descdata.get_array<uint32_t>(index);
                 printf("type uint32_t: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                 ret = arrT.data();
                     }
             else{
-                printf("type uint32_t: %s: %d\n",name.name(),descdata.get_value<uint32_t>(i));
+                printf("type uint32_t: %s: %d\n",name.name(),descdata.get_value<uint32_t>(index));
             }
             break;
         }
 
         case(Name::UINT64):{
             if(data_rank > 0){
-                Array<uint64_t> arrT = descdata.get_array<uint64_t>(i);
+                Array<uint64_t> arrT = descdata.get_array<uint64_t>(index);
                 printf("type uint64_t: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                 ret = arrT.data();
                     }
             else{
-                printf("type uint64_t %s: %d\n",name.name(),descdata.get_value<uint64_t>(i));
+                printf("type uint64_t %s: %d\n",name.name(),descdata.get_value<uint64_t>(index));
             }
             break;
         }
 
         case(Name::INT8):{
             if(data_rank > 0){
-                Array<int8_t> arrT = descdata.get_array<int8_t>(i);
+                Array<int8_t> arrT = descdata.get_array<int8_t>(index);
                 printf("type int8:  %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                 ret = arrT.data();
                     }
             else{
-                printf("type int8: %s: %d\n",name.name(),descdata.get_value<int8_t>(i));
+                printf("type int8: %s: %d\n",name.name(),descdata.get_value<int8_t>(index));
             }
             break;
         }
 
         case(Name::INT16):{
             if(data_rank > 0){
-                Array<int16_t> arrT = descdata.get_array<int16_t>(i);
+                Array<int16_t> arrT = descdata.get_array<int16_t>(index);
                 printf("type int16: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("type int16: %s: %d\n",name.name(),descdata.get_value<int16_t>(i));
+                printf("type int16: %s: %d\n",name.name(),descdata.get_value<int16_t>(index));
             }
             break;
         }
 
         case(Name::INT32):{
             if(data_rank > 0){
-                Array<int32_t> arrT = descdata.get_array<int32_t>(i);
+                Array<int32_t> arrT = descdata.get_array<int32_t>(index);
                 printf("type int32: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("type int32:   %s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+                printf("type int32:   %s: %d\n",name.name(),descdata.get_value<int32_t>(index));
             }
             break;
         }
 
         case(Name::INT64):{
             if(data_rank > 0){
-                Array<int64_t> arrT = descdata.get_array<int64_t>(i);
+                Array<int64_t> arrT = descdata.get_array<int64_t>(index);
                 printf("type int64:  %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("type int64:   %s: %d\n",name.name(),descdata.get_value<int64_t>(i));
+                printf("type int64:   %s: %d\n",name.name(),descdata.get_value<int64_t>(index));
             }
             break;
         }
 
         case(Name::FLOAT):{
             if(data_rank > 0){
-                Array<float> arrT = descdata.get_array<float>(i);
+                Array<float> arrT = descdata.get_array<float>(index);
                 printf("type float:  %s: %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1]);
                     }
             else{
-                printf("type float:  %s: %f\n",name.name(),descdata.get_value<float>(i));
+                printf("type float:  %s: %f\n",name.name(),descdata.get_value<float>(index));
             }
             break;
         }
 
         case(Name::DOUBLE):{
             if(data_rank > 0){
-                Array<double> arrT = descdata.get_array<double>(i);
+                Array<double> arrT = descdata.get_array<double>(index);
                 printf("type double: %s: %f, %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("type double: %s: %f\n",name.name(),descdata.get_value<double>(i));
+                printf("type double: %s: %f\n",name.name(),descdata.get_value<double>(index));
             }
             break;
         }
 
         case(Name::CHARSTR):{
             if(data_rank > 0){
-                Array<char> arrT = descdata.get_array<char>(i);
+                Array<char> arrT = descdata.get_array<char>(index);
                 printf("type charstr:  %s: \"%s\"\n",name.name(),arrT.data());
                 ret = arrT.data();
                     }
@@ -225,12 +233,12 @@ public:
 
         case(Name::ENUMVAL):{
             if(data_rank > 0){
-                Array<int32_t> arrT = descdata.get_array<int32_t>(i);
+                Array<int32_t> arrT = descdata.get_array<int32_t>(index);
                 printf("type ENUMVAL: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                 ret = arrT.data();
                     }
             else{
-                printf("type ENUMVAL %s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+                printf("type ENUMVAL %s: %d\n",name.name(),descdata.get_value<int32_t>(index));
             }
             break;
         }
@@ -240,7 +248,7 @@ public:
                 printf("type ENUMDICT %s: enumdict with rank?!?\n", name.name());
                 ret = NULL;
             } else{
-                printf("type ENUMDICT  %s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+                printf("type ENUMDICT  %s: %d\n",name.name(),descdata.get_value<int32_t>(index));
             }
             break;
         }
@@ -465,6 +473,7 @@ public:
         }
         return Continue;
     }
+
     int process(Xtc* xtc){
         int ret = -1;;
         switch(get_iterator_type()){
@@ -503,26 +512,27 @@ public:
 //                   alg.name(), alg.version(), (int)names.namesId());
       //printf("process(): TypeId::Names: current token = %s\n", names.detName());
 
-      string token = names.detName();
-      token += "_";
-      token += names.detType();
-      token += "_";
-      token += alg.name();
-      append_token(token);
-      append_token(to_string(names.segment()));
-      xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, get_current_path().c_str());
-      xtc_tree_node_add(new_xtc_node(new_obj));
-        for (unsigned i = 0; i < names.num(); i++) {
-            Name& name = names.get(i);
-            append_token(name.name());
-            //print_local_path();
-            string path_str = get_current_path();
-            xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, path_str.c_str());
+            string token = names.detName();
+            token += "_";
+            token += names.detType();
+            token += "_";
+            token += alg.name();
+            append_token(token);
+            append_token(to_string(names.segment()));
+            xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, get_current_path().c_str());
             xtc_tree_node_add(new_xtc_node(new_obj));
-            pop_token();
-        }
-        pop_token();//segment
-        pop_token();//detName_detType_alg
+
+            for (unsigned i = 0; i < names.num(); i++) {
+                Name& name = names.get(i);
+                append_token(name.name());
+                //print_local_path();
+                string path_str = get_current_path();
+                xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, path_str.c_str());
+                xtc_tree_node_add(new_xtc_node(new_obj));
+                pop_token();
+            }
+            pop_token();//segment
+            pop_token();//detName_detType_alg
             break;
         }
         case (TypeId::ShapesData): {
@@ -551,11 +561,54 @@ public:
             token += names.alg().name();
             append_token(token);
             append_token(to_string(names.segment()));
-            string time_stamp_str = to_string(((Dgram*)CURRENT_LOCATION->dg)->time.asDouble());
-            append_token(time_stamp_str);
 
-            xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, get_current_path().c_str());
-            xtc_tree_node_add(new_xtc_node(new_obj));
+            string time_stamp_str = to_string(((Dgram*)CURRENT_LOCATION->dg)->time.asDouble());
+
+//            append_token(string("tmp_str"));
+            //check DS holder group existence.
+            string cur_path = get_current_path();
+            printf("search cur_path = %s\n", cur_path.c_str());
+            xtc_node* group_ds_holder = xtc_tree_node_find(&cur_path); //the direct holder group of datasets
+            if(!group_ds_holder){
+                printf("Create group_ds_holder: %s\n", cur_path.c_str());
+                xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, get_current_path().c_str());
+                xtc_tree_node_add(new_xtc_node(new_obj));
+            } //do nothing if group exists.
+
+            //  Store time stamps in a virtual dataset
+            cur_path += "/";
+            cur_path += TIMESTAMP_DS_NAME;
+            xtc_node* timestamp_ds_node = xtc_tree_node_find(&cur_path);
+            double time_stamp = ((Dgram*)CURRENT_LOCATION->dg)->time.asDouble();
+
+            //append_token(TIMESTAMP_DS_NAME);
+            if(!timestamp_ds_node){// create timestamp dataset
+                printf("Create timestamp_ds: %s\n", cur_path.c_str());
+                append_token(TIMESTAMP_DS_NAME);
+                xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, get_current_path().c_str());
+                new_obj->obj_type = XTC_TIME_DS;//XTC_TIME_DS
+                vector<double>* tsv = new vector<double>();
+                tsv->push_back(time_stamp);
+                new_obj->data = (void*) tsv;
+                xtc_ds_info* ds_info = (xtc_ds_info*)calloc(1, sizeof(xtc_ds_info));
+                ds_info->current_dims[0] = 1;
+                ds_info->type = DOUBLE;
+                ds_info->element_cnt = 1;
+                ds_info->dim_cnt = 1; //1D array
+                ds_info->maximum_dims = NULL;
+
+                new_obj->ds_info = ds_info;
+                xtc_tree_node_add(new_xtc_node(new_obj));
+                pop_token();//ds name
+            } else {//add timestamp to dataset
+                assert(timestamp_ds_node->my_obj);
+                assert(timestamp_ds_node->my_obj->data);
+                ((vector<double>*)(timestamp_ds_node->my_obj->data))->push_back(time_stamp);
+                timestamp_ds_node->my_obj->ds_info->element_cnt =
+                        ((vector<double>*)(timestamp_ds_node->my_obj->data))->size();
+            }
+            //pop_token();//TIMESTAMP_DS_NAME
+
 
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
@@ -563,8 +616,7 @@ public:
                     uint64_t offset    = descdata.get_value<uint64_t>(i);
                     //printf("Type=ShapesData  offset = 0x%x\n", offset);
                 }
-                append_token(name.name());
-                //printf("\n");
+                append_token(name.name());//ds name
                 print_local_path();
                 string path_str = get_current_path();
                 xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, get_current_path().c_str());
@@ -572,9 +624,10 @@ public:
                 new_obj->ds_info = get_ds_info(name, descdata);
                 xtc_tree_node_add(new_xtc_node(new_obj));
                 get_value(i, name, descdata);
-                pop_token();
+                pop_token();//ds name
             }
-        pop_token();//timestamp
+
+//        pop_token();//tmp_str
         pop_token();//segment
         pop_token();//detName_detType_alg
             break;
@@ -821,6 +874,9 @@ public:
     xtc_node* xtc_tree_node_find(const char* target_path){
         return find_xtc_node(ROOT_NODE, target_path);
     }
+    xtc_node* xtc_tree_node_find(string* target_path_in){
+        return xtc_tree_node_find(target_path_in->c_str());
+    }
     xtc_node* get_root(){
         return ROOT_NODE;
     }
@@ -1016,6 +1072,8 @@ xtc_object* iterate_list_all(int fd){
     }
     printf("\n\n\n\n");
 
+    dbgiter->xtc_tree_print();
+    printf("\n\n\n\n");
     return head_obj;
 
 }
