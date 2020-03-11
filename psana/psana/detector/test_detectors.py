@@ -30,14 +30,18 @@ class cspad_cspadRawAlg_1_2_3(DetectorImpl):
         super().__init__(*args)
     def raw(self, evt) -> Array2d:
         segs = self._segments(evt)
+        if segs is None: return None
+        if segs[0] is None: return None
         return segs[0].array_raw
 
-# for the fake cameras in the teststand
+# for the pva detector in the teststand
 class pva_pvaAlg_1_2_3(DetectorImpl):
     def __init__(self, *args):
         super().__init__(*args)
     def raw(self, evt) -> Array1d:
         segs = self._segments(evt)
+        if segs is None: return None
+        if segs[0] is None: return None
         return segs[0].value
 
 class cspad_raw_2_3_42(DetectorImpl):
