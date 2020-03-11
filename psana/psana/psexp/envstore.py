@@ -22,30 +22,27 @@ class EnvManager(object):
         the software field, then this is an empty EnvManager object.
         The env_list of EnvStore still has this empty EnvManager
         as a place holder to maintain the order of input smd files.
+        
+        env_variables = {alg: {segment_id: ['var1','var2']}, }
         """
         self.env_variables = {}
         if hasattr(self.config.software, self.env_name):
-            envs = getattr(self.config.software, self.env_name)[0]  # only supporting segment 0
-            self.algs = list(vars(envs).keys())
-            self.algs.remove('dettype')
-            self.algs.remove('detid')
-            for alg in self.algs:
-                self.env_variables[alg] = list(vars(getattr(envs, alg)))
-                self.env_variables[alg].remove('version')
-                self.env_variables[alg].remove('software')
+            envs = getattr(self.config.software, self.env_name)
+            for segment_id, env in envs.items(): # check each segment 
+                algs = list(vars(env).keys())
+                algs.remove('dettype')
+                algs.remove('detid')
+                for alg in algs:
+                    env_vars = list(vars(getattr(envs[segment_id], alg)))
+                    env_vars.remove('version')
+                    env_vars.remove('software')
+                    self.env_variables[alg] = {segment_id: env_vars}
 
     def add(self, d):
         self.dgrams.append(d)
         self.timestamps.append(d.timestamp())
         self.n_items += 1
     
-    def alg_from_variable(self, variable_name):
-        """ Returns algorithm name from the given env variable. """
-        for key, val in self.env_variables.items():
-            if variable_name in val:
-                return key
-        return None
-
     def is_empty(self):
         return self.env_variables
 
@@ -63,21 +60,33 @@ class EnvStore(object):
             self.n_files = len(configs)
             self.env_managers = [EnvManager(config, env_name) for config in configs]
 
-            for env in self.env_managers:
-                for key, val in env.env_variables.items(): 
-                    self.env_variables[key] += val
-            
-            self.env_info = []
-            for key, val in self.env_variables.items():
-                val.sort()
-                for v in val:
-                    self.env_info.append((v, key))
+            # EnvStore has env_variables from all the env_managers
+            for envm in self.env_managers:
+                for alg, env_dict in envm.env_variables.items(): 
+                    if alg not in self.env_variables:
+                        self.env_variables[alg] = env_dict
+                    else:
+                        for segment_id, var_list in env_dict.items():
+                            if segment_id not in self.env_variables[alg][segment_id]:
+                                self.env_variables[alg] = {segment_id: var_list}
+                            else:
+                                self.env_variables[alg][segment_id] += var_list
 
-    def alg_from_variable(self, variable_name):
-        """ Returns algorithm name from the given env variable. """
-        for key, val in self.env_variables.items():
-            if variable_name in val:
-                return key
+            self.env_info = []
+            for alg, env_dict in self.env_variables.items():
+                all_var_list = []
+                for segment_id, var_list in env_dict.items():
+                    all_var_list.extend(var_list)
+                all_var_list.sort()
+                for v in all_var_list:
+                    self.env_info.append((v, alg))
+
+    def locate_variable(self, variable_name):
+        """ Returns algorithm name and segment_id from the given env variable. """
+        for alg, envs in self.env_variables.items():
+            for segment_id, env_vars in envs.items():
+                if variable_name in env_vars:
+                    return alg, segment_id
         return None
     
     def add_to(self, dgram, env_manager_idx):
@@ -105,19 +114,20 @@ class EnvStore(object):
         
         PS_N_STEP_SEARCH_STEPS = int(os.environ.get("PS_N_STEP_SEARCH_STEPS", "10"))
         env_values = []
-        for i, env in enumerate(self.env_managers):
-            alg = env.alg_from_variable(env_variable)
-            if alg: 
+        for i, env_man in enumerate(self.env_managers):
+            env_var_loc = self.locate_variable(env_variable)
+            if env_var_loc:
+                alg, segment_id = env_var_loc
                 event_timestamps = np.asarray([evt.timestamp for evt in events], dtype=np.uint64)
 
-                found_positions = np.searchsorted(env.timestamps, event_timestamps)
+                found_positions = np.searchsorted(env_man.timestamps, event_timestamps)
                 found_positions -= 1 # return the env event before the found position.
                 for pos in found_positions:
                     val = None
                     for p in range(pos, pos - PS_N_STEP_SEARCH_STEPS, -1):
                         if p < 0:
                             break
-                        envs = getattr(env.dgrams[p], self.env_name)[0]
+                        envs = getattr(env_man.dgrams[p], self.env_name)[segment_id]
                         if hasattr(envs, alg):
                             val = getattr(getattr(envs, alg), env_variable)
                             break

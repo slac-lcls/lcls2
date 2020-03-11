@@ -107,17 +107,16 @@ class Run(object):
         # the given epics keyword.)
         # Current, there are two algorithms (epics and scan).  
         # d.epics[0].epics.HX2:DVD:GCC:01:PMON = 41.0
-        # d.epics[0].epics.HX2:DVD:GPI:01:PMON = 'Test String'
+        # Above example is d.env_name[0].alg.variable
         if not flag_found:
-            #for alg, store in self.esm.stores.items():
-            alg = self.esm.alg_from_variable(name)
-            if alg:
-                det_name = alg
+            env_name = self.esm.env_from_variable(name) # assumes that variable name is unique
+            if env_name:
+                det_name = env_name
                 var_name = name
-                drp_class_name = alg
+                drp_class_name = env_name
                 det_class_table = self.dm.det_classes[det_name]
                 drp_class = det_class_table[(det_name, drp_class_name)]
-                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibconst[det_name], self.esm.stores[alg])
+                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibconst[det_name], self.esm.stores[env_name])
 
         return det
 

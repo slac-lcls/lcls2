@@ -36,11 +36,12 @@ class EnvStoreManager(object):
                     
                 offset += d._size
                     
-    def alg_from_variable(self, variable_name):
-        for alg, store in self.stores.items():
-            found_alg = store.alg_from_variable(variable_name)
-            if found_alg:
-                return found_alg
+    def env_from_variable(self, variable_name):
+        for env_name, store in self.stores.items():
+            for alg, env_dict in store.env_variables.items():
+                for segment_id, var_list in env_dict.items():
+                    if variable_name in var_list:
+                        return env_name
         return None
 
     def get_info(self, alg):
