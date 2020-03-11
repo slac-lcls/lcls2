@@ -9,6 +9,7 @@
 #include <time.h>
 
 #include "psdaq/tpr/Client.hh"
+#include "psdaq/tpr/Module.hh"
 #include "psdaq/tpr/Frame.hh"
 
 #include <string>
@@ -23,7 +24,7 @@ static void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
   printf("          -t <dev>  : <tpr a/b>\n");
   printf("          -c <chan> : logic channel\n");
-  printf("          -o <outp> : output\n");
+  printf("          -o <outp> : bit mask of outputs\n");
   printf("          -d <clks> : delay\n");
   printf("          -w <clks> : width\n");
   printf("          -r <rate> : fixed rate\n");
@@ -93,8 +94,14 @@ int main(int argc, char** argv) {
 
   Client client(evrdev,channel);
 
-  client.setup(output, delay, width);
+  for(unsigned i=0; output; i++) {
+    if (output & (1<<i)) {
+      client.setup(i, delay, width);
+      output &= ~(1<<i);
+    }
+  }
   client.start(TprBase::FixedRate(rate));
+  client.reg().base.dump();
   client.release();
 
   return 0;

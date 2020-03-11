@@ -76,7 +76,7 @@ void Client::_dump() const
 //  Setup the trigger channel
 void Client::setup(unsigned output, unsigned delay, unsigned width, unsigned polarity)
 {
-  _dev->base.setupTrigger(output, 1<<_channel, polarity, delay, width, 0);
+  _dev->base.setupTrigger(output, _channel, polarity, delay, width, 0);
 }
 
   //  Enable the trigger
