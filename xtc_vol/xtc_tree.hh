@@ -29,6 +29,11 @@ struct XTC_Tree_Node{
     int is_virtual;
 };
 
+typedef struct XTC_DS_Node ds_node;
+struct XTC_DS_Node{
+
+};
+
 xtc_node* new_xtc_node(xtc_object* obj);
 xtc_node* new_test_node(const char* path);
 int add_xtc_node(xtc_node* root, xtc_node* new_node);

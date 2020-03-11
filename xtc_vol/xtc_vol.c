@@ -427,8 +427,10 @@ static H5VL_xtc_t *
 H5VL_xtc_new_obj(xtc_object* obj_in)
 {
     DEBUG_PRINT
-    //assert(0 && "breakpoint");
-    assert(obj_in);
+
+    //assert(obj_in);
+    if(!obj_in)
+        return NULL;
     H5VL_xtc_t *new_obj;
     //DEBUG_PRINT
     new_obj = (H5VL_xtc_t *)calloc(1, sizeof(H5VL_xtc_t));
@@ -1447,15 +1449,15 @@ hid_t type_convert(xtc_data_type xtc_type){
             break;
 
         case ENUMVAL:
-            printf("%s:%d: xtc_type = ENUMVAL, return  H5T_NATIVE_UINT8\n",  __func__, __LINE__);
-            return H5T_NATIVE_UINT8;
+            printf("%s:%d: xtc_type = ENUMVAL, return  H5T_NATIVE_INT32\n",  __func__, __LINE__);
+            return H5T_NATIVE_INT32;
 
             //assert(0 && "Unsupported type.");
             break;
 
         case ENUMDICT:
-            printf("%s:%d: xtc_type = ENUMDICT, unknown, return H5T_NATIVE_UINT8 for now.\n",  __func__, __LINE__);
-            //assert(0 && "Unsupported type.");
+            printf("%s:%d: xtc_type = ENUMDICT, return H5T_NATIVE_INT32\n",  __func__, __LINE__);
+            return H5T_NATIVE_INT32;
             break;
 
          default:
@@ -1486,52 +1488,48 @@ H5VL_xtc_dataset_get(void *dset, H5VL_dataset_get_t get_type,
             ;
             hid_t* ret_dapl = va_arg(arguments, hid_t*);
             *ret_dapl = H5P_DEFAULT;
-            //assert(0 && "DS not implemented: get dapl");
             break;
+
         case H5VL_DATASET_GET_DCPL:                  /* creation property list              */
             ;
             hid_t dcpl = H5Pcreate (H5P_DATASET_CREATE);
             hid_t* ret_dcpl = va_arg(arguments, hid_t*);
             *ret_dcpl = dcpl;
-            //assert(0 && "DS not implemented: get dcpl");
             break;
+
         case H5VL_DATASET_GET_OFFSET:                /* offset                              */
             printf("%s:%d: H5VL_DATASET_GET_OFFSET\n", __func__, __LINE__);
             assert(0 && "DS not implemented: get offset");
             break;
+
         case H5VL_DATASET_GET_SPACE:                /* dataspace                           */
-            //DEBUG_PRINT
-            //printf("%s:%d: H5VL_DATASET_GET_SPACE\n", __func__, __LINE__);
-            //H5VL_dataset_get(vol_obj, H5VL_DATASET_GET_SPACE, H5P_DATASET_XFER_DEFAULT, H5_REQUEST_NULL, &ret_value)
-            //H5Screate create a dataspace and assign the hid to ret_val;
             assert(obj->ds_info);
 
             hid_t sid = H5Screate_simple(obj->ds_info->dim_cnt, obj->ds_info->current_dims, obj->ds_info->maximum_dims);
             hid_t* ret_sid = va_arg(arguments, hid_t*);
             *ret_sid = sid;
             break;
+
         case H5VL_DATASET_GET_SPACE_STATUS:          /* space status                        */
             printf("%s:%d: H5VL_DATASET_GET_SPACE_STATUS\n", __func__, __LINE__);
             assert(0 && "DS not implemented: get space status");
             break;
+
         case H5VL_DATASET_GET_STORAGE_SIZE:
             ;
-            //H5VL_dataset_get(vol_obj, H5VL_DATASET_GET_STORAGE_SIZE, H5P_DATASET_XFER_DEFAULT, H5_REQUEST_NULL, &ret_value) ;
             int s_size = obj->ds_info->element_cnt * obj->ds_info->element_size;
-            //printf("%s:%d: H5VL_DATASET_GET_STORAGE_SIZE: storage size = %d\n", __func__, __LINE__, s_size);
             hsize_t* size = va_arg(arguments, hsize_t*);
             *size = s_size;
-            //assert(0 && "DS not implemented: get storage size");
             break;
+
         case H5VL_DATASET_GET_TYPE:
-            //printf("%s:%d: H5VL_DATASET_GET_TYPE\n", __func__, __LINE__);
             ;
             hid_t type = type_convert(obj->ds_info->type);
             hid_t* ret_tid = va_arg(arguments, hid_t*);
             *ret_tid = type;
-            //assert(0 && "H5VL_DATASET_GET_TYPE not implemented");
             DEBUG_PRINT
             break;
+
         default:
             printf("%s:%d: Unknown get_type = %d\n", __func__, __LINE__, get_type);
             break;
@@ -2226,16 +2224,6 @@ H5VL_xtc_group_optional(void *obj, H5VL_group_optional_t opt_type,
     H5VL_xtc_t *o = (H5VL_xtc_t *)obj;
     herr_t ret_value;
 
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL GROUP Optional\n");
-//#endif
-//
-//    ret_value = H5VLgroup_optional(o->under_object, o->under_vol_id, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
-
     return ret_value;
 } /* end H5VL_xtc_group_optional() */
 
@@ -2403,16 +2391,6 @@ H5VL_xtc_link_get(void *obj, const H5VL_loc_params_t *loc_params,
 
     H5VL_xtc_t* target = _object_lookup(o, loc_params);
     xtc_object* xtc_obj = target->xtc_obj;
-
-//#ifdef ENABLE_XTC_LOGGING
-//    printf("------- XTC VOL LINK Get\n");
-//#endif
-//
-//    ret_value = H5VLlink_get(o->under_object, loc_params, o->under_vol_id, get_type, dxpl_id, req, arguments);
-//
-//    /* Check for async request */
-//    if(req && *req)
-//        *req = H5VL_xtc_new_obj(*req, o->under_vol_id);
             
     return ret_value;
 } /* end H5VL_xtc_link_get() */
@@ -2433,55 +2411,38 @@ int loop_children(bool recursive, xtc_object* xtc_obj, H5L_iterate2_t* op, void*
         printf("%s: null xtc_obj. return.\n", __func__);
         return 0;
     }
-    int ret = 0;
     int n_children = 0;
     xtc_object** children = xtc_get_children_list(xtc_obj, &n_children);
-
-    if(n_children == 0)
-        return H5_ITER_CONT;
-
     hid_t gid = H5VLwrap_register(xtc_obj, H5I_GROUP);//obj
+    if(n_children == 0 || !children)
+        return H5_ITER_CONT;
     assert(children && *children);
 
     for(int i = 0; i < n_children; i++){// iterate xtc_obj group
         char* link_name = children[i]->obj_path_abs;
-        //printf("        Link_name = %s, type = %d\n", link_name, children[i]->obj_type);
         H5L_info2_t linfo;
         linfo.type = H5L_TYPE_HARD;
         linfo.corder_valid = false;
         linfo.corder = 0;
         linfo.cset = 0; //US ASCII
         linfo.u.token = *(H5O_token_t*)(children[i]->obj_token);
+        hid_t gid2 = H5VLwrap_register(xtc_obj, H5I_GROUP);//obj
 
-        //herr_t (*H5L_iterate2_t)(hid_t group, const char *name, const H5L_info2_t *info, void *op_data);
-        //Implementation: h5ls:traverse_cb at h5trav.c:181
-        //(trav_ud_traverse_t*)op_data;
-        DEBUG_PRINT
-        int op_ret =  (*op)(gid, link_name, &linfo, op_data);
-        DEBUG_PRINT
+        int op_ret =  (*op)(gid, link_name, &linfo, op_data);//list metadata of children[i]
+
         if(op_ret != H5_ITER_CONT){
             return op_ret;
         }
-        if(children[i]->obj_type == XTC_GROUP){
-            if(recursive){
-                int children_cnt = 0;
-                xtc_object** sub_children = xtc_get_children_list(children[i], &children_cnt);
-                if(children_cnt > 0){
-                    for(int j = 0; j < children_cnt; j++){
-                        int r = loop_children(recursive, sub_children[j], op, op_data);//2nd arg not right
-                        if(r != H5_ITER_CONT){
-                            return r;
-                        }
-                    }
-                }
-            }
-        } else {
-//            printf("Find non-group object: type = %d\n", children[i]->obj_type);
+
+        op_ret = loop_children(recursive, children[i], op, op_data);
+        if(op_ret != H5_ITER_CONT){
+            return op_ret;
         }
-    }
+    }//end for(children)
     H5Idec_ref(gid);
     return H5_ITER_CONT;
 }
+
 static herr_t 
 H5VL_xtc_link_specific(void *obj, const H5VL_loc_params_t *loc_params,
     H5VL_link_specific_t specific_type, hid_t dxpl_id, void **req, va_list arguments)
@@ -2558,24 +2519,23 @@ static void *
 H5VL_xtc_object_open(void *obj, const H5VL_loc_params_t *loc_params,
     H5I_type_t *opened_type, hid_t dxpl_id, void **req)
 {
-    printf("\n");
+    //printf("\n");
     DEBUG_PRINT
 
     H5VL_xtc_t *o = (H5VL_xtc_t *)obj;
 
     H5VL_xtc_t* target = _object_lookup(o, loc_params);
-
+    assert(target);
     switch(target->xtc_obj_type){
         case XTC_FILE:
             *opened_type = H5I_FILE;
-            //printf("%s:%d type = XTC_FILE: %d, not implemented. \n", __func__, __LINE__, target->xtc_obj_type);
             break;
         case XTC_HEAD:
         case XTC_GROUP:
             *opened_type = H5I_GROUP;
             break;
+        case XTC_TIME_DS:
         case XTC_DS:
-            //printf("%s: find a dataset, path = %s, loc...name = %s\n", target->xtc_obj->obj_path_abs, loc_params->loc_data.loc_by_name.name);
             *opened_type = H5I_DATASET;
             break;
         default:
@@ -2583,26 +2543,26 @@ H5VL_xtc_object_open(void *obj, const H5VL_loc_params_t *loc_params,
             break;
     }
 
-    switch(*opened_type){
-        case H5I_FILE:
-            //printf("%s: opened_type = H5I_FILE: %d\n", __func__, *opened_type);
-            break;
-        case H5I_GROUP:
-            //printf("%s: opened_type = H5I_GROUP: %d \n", __func__, *opened_type);
-            break;
-        case H5I_DATATYPE:
-            //printf("%s: opened_type = H5I_DATATYPE: %d.\n", __func__, *opened_type);
-            break;
-        case H5I_DATASPACE:
-            //printf("%s: opened_type = H5I_DATASPACE: %d, not implemented. \n", __func__, *opened_type);
-            break;
-        case H5I_DATASET:
-            //printf("%s: opened_type = H5I_DATASET: %d, not implemented. \n", __func__, *opened_type);
-            break;
-        default:
-            //printf("%s: type = Unknown opened_type type: %d \n", __func__, *opened_type);
-            break;
-    }
+//    switch(*opened_type){
+//        case H5I_FILE:
+//            //printf("%s: opened_type = H5I_FILE: %d\n", __func__, *opened_type);
+//            break;
+//        case H5I_GROUP:
+//            //printf("%s: opened_type = H5I_GROUP: %d \n", __func__, *opened_type);
+//            break;
+//        case H5I_DATATYPE:
+//            //printf("%s: opened_type = H5I_DATATYPE: %d.\n", __func__, *opened_type);
+//            break;
+//        case H5I_DATASPACE:
+//            //printf("%s: opened_type = H5I_DATASPACE: %d, not implemented. \n", __func__, *opened_type);
+//            break;
+//        case H5I_DATASET:
+//            //printf("%s: opened_type = H5I_DATASET: %d, not implemented. \n", __func__, *opened_type);
+//            break;
+//        default:
+//            //printf("%s: type = Unknown opened_type type: %d \n", __func__, *opened_type);
+//            break;
+//    }
 
     return (void *)target;
 } /* end H5VL_xtc_object_open() */
@@ -2657,6 +2617,7 @@ int _xtc_object_get_info(H5VL_xtc_t* xtc_obj, H5O_info2_t* oinfo_out, unsigned f
             case XTC_GROUP:
                 oinfo_out->type = H5O_TYPE_GROUP;
                 break;
+            case XTC_TIME_DS:
             case XTC_DS:
                 oinfo_out->type = H5O_TYPE_DATASET;
                 break;

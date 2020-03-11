@@ -150,7 +150,7 @@ int print_tree_node(xtc_node* n){
         //printf("Can not traverse non-group node, return.\n");
         return 0;
     }
-    printf("node path = %s, path len = %d, ", tok_to_str(n->path_abs).c_str(), n->path_abs.size());//tok_to_str(n->path_abs).c_str(), n->my_obj->obj_path_abs
+    printf("node path = %s, type = %d, ", tok_to_str(n->path_abs).c_str(), n->my_obj->obj_type);//tok_to_str(n->path_abs).c_str(), n->my_obj->obj_path_abs
 
 
     if(n->parent)
@@ -158,7 +158,7 @@ int print_tree_node(xtc_node* n){
     else
         printf("%d children:\n", n->children.size());
     for(auto i:n->children){
-        printf("        child path = %s, path len = %d\n", i->my_obj->obj_path_abs, i->path_abs.size());//tok_to_str(i->path_abs).c_str()
+        printf("        child path = %s, type = %d\n", i->my_obj->obj_path_abs, i->my_obj->obj_type);//tok_to_str(i->path_abs).c_str()
     }
     printf("---------------\n");
     return 0;
@@ -166,15 +166,20 @@ int print_tree_node(xtc_node* n){
 
 xtc_object** get_children_obj(xtc_object* group, int* num_out){
     assert(group);
+    if(group->obj_type != XTC_GROUP && group->obj_type != XTC_HEAD){
+        *num_out = 0;
+        return NULL;
+    }
+
     xtc_node* node = (xtc_node*)(group->tree_node);
     assert(node);
+
     int n = node->children.size();
     *num_out = n;
     if(n == 0){
         *num_out = 0;
         return NULL;
     }
-
 
     xtc_object** children = (xtc_object**)calloc(n, sizeof(xtc_object*));
     for(int i = 0; i < n; i++){
@@ -187,7 +192,7 @@ xtc_object** get_children_obj(xtc_object* group, int* num_out){
 
 xtc_node* find_xtc_node(xtc_node* root, const char* path){//search start from root
     assert(root && path);
-    if(strcmp(path, "/")==0)
+    if(strcmp(path, "/")==0 )//|| strcmp(path, "//")==0
         return root;
     //assert(root->my_obj && !(root->parent));
     assert(root->my_obj && !(root->parent));

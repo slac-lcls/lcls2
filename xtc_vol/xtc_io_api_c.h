@@ -40,6 +40,7 @@ EXTERNC typedef enum XTC_Object_type{
     XTC_HEAD,//root group
     XTC_GROUP,
     XTC_DS,
+    XTC_TIME_DS, // virtual dataset for time stamps
     XTC_LEAVE,
 }xtc_object_type_t;
 
@@ -67,7 +68,7 @@ EXTERNC typedef unsigned long long h5_size_t;
 EXTERNC typedef struct XTC_DS_info {
     xtc_data_type type; //data type
     int dim_cnt;// for rank in H5Screate(rank, ), n of dimensions of dataspace.
-    h5_size_t* current_dims; //1D array of size cnt_dimes,
+    h5_size_t current_dims[6]; //1D array of size cnt_dimes,
     h5_size_t* maximum_dims; //Optional, maximum size of each dimension
     int element_size;//similar to sizeof(type)
     int element_cnt;
@@ -81,16 +82,11 @@ EXTERNC typedef struct XTC_C_API_HELPER {
     char* obj_path_seg;
     exec_ret exec_state;//enum
     xtc_object_type_t obj_type;
-
-//    void* target_it;//
-//    void* dbgiter;
-//    void* fileIterator;//XtcFileIterator
     xtc_location* location;
     xtc_ds_info* ds_info;//info of dataset. Null for non-data-set objects.
     void* obj_token;//h5token, used as an UUID for this obj.
     void* tree_node;//points to it's node location in the tree
-    //void* root_obj;//type xtc_obj, all the same for every obj, all point to the root.
-    //void* xtc_file_iterator;
+    void* data; //for timestamp DS now, but can be used for any additional data
 }xtc_object;
 
 //C API definition starts here
