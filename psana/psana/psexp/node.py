@@ -340,6 +340,12 @@ class SmdNode(object):
                 # With > 1 dest_rank, start looping until all dest_rank batches
                 # have been sent.
                 else:
+                    # Check if destinations are valid 
+                    destinations = np.asarray(list(smd_batch_dict.keys()))
+                    if any(destinations > n_bd_nodes):
+                        print(f"Found invalid destination ({destinations}). Must be <= {n_bd_nodes} (#big data nodes)")
+                        break
+
                     while smd_batch_dict:
                         sent = False
                         if self.waiting_bds: # Check first if there are bd nodes waiting
