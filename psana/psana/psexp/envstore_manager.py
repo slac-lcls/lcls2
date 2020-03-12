@@ -18,9 +18,13 @@ class EnvStoreManager(object):
             return
         for i, d in enumerate(evt._dgrams):
             if not d: continue
+
+            # This releases the original dgram object (friendly
+            # with shared memory which has limited capacity).
+            new_d = Dgram(view=d, config=self.configs[i], offset=0)
             for key, val in d.__dict__.items():
                 if key in self.stores:
-                    self.stores[key].add_to(d, i)
+                    self.stores[key].add_to(new_d, i)
 
     def update_by_views(self, views):
         if not views:

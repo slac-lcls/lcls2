@@ -23,6 +23,10 @@ class Test:
         subprocess.check_call(['mpirun','-n','3','python',callback_based], env=env)
         
         loop_exhaustive_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ds.py')
+        subprocess.check_call(['mpirun','-n','3','python',loop_exhaustive_based], env=env)
+        
+        # Test more than 1 bigdata node
+        loop_exhaustive_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ds.py')
         subprocess.check_call(['mpirun','-n','5','python',loop_exhaustive_based], env=env)
         
         run_smalldata = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_mixed_rate.py')

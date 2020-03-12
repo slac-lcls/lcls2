@@ -81,6 +81,63 @@ void    Fmc134Ctrl::remote_sync ()
         unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x08, 0x0); 
 }
 
+int32_t Fmc134Ctrl::reset()
+{
+        uint32_t dword = 0;
+
+        // Assert DIV2 Reset
+        unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x01, 0x1FF02); 
+
+        // Release DIV2 Reset
+        unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x01, 0x1FF00);
+
+        unitapi_read_register(fmc_unit,   FMC134Offset::AddrCtrl+0x02, &dword);
+
+        dword &= 0xF00000; 
+        if (dword != 0xF00000) {
+          printf("QPLLs(0x%x) NOT LOCKED! [0x%x]\n",(dword>>20)&0xf,dword);
+                return FMC134_ERR_ADC_INIT;
+        } else {
+                printf("QPLLs are locked.\n");
+        }
+
+        // Enable transceiver alignment
+        unitapi_write_register(fmc_unit,  FMC134Offset::AddrCtrl+0x01, 0x1FF10);
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Check for JESD ADC to be stable
+        unitapi_read_register(fmc_unit,   FMC134Offset::AddrCtrl + 0x02, &dword);
+
+        if (((dword >> 16) & 0x3) == 0x3)
+                printf("ADC0 Aligned\n");
+        else {
+                printf("ADC0 Failed Bit Alignment!\n");
+                return FMC134_ERR_ADC_INIT;
+        }
+
+        if (((dword >> 18) & 0x3) == 0x3)
+                printf("ADC1 Aligned\n");
+        else {
+                printf("ADC1 Failed Bit Alignment!\n");
+                return FMC134_ERR_ADC_INIT;
+        }
+
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Check for JESD multiframe alignment
+        unitapi_read_register(fmc_unit,   FMC134Offset::AddrCtrl+0x03, &dword);
+
+        if (dword == 0xF) {
+                printf("Initial Lane Alignment Complete\n");
+        }
+        else {
+                printf("\n\nADC Initial Lane Alignment Failed!\n");
+                printf("reg7 = 0x%X\n\n", dword);
+                return FMC134_ERR_ADC_INIT;
+        }
+
+        return FMC134_ERR_OK;
+}
+
 int32_t Fmc134Ctrl::default_init(Fmc134Cpld& cpld, unsigned mode)
 {
         uint32_t dword = 0;

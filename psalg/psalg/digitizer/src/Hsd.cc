@@ -26,10 +26,11 @@ Channel::Channel(Allocator *allocator, const uint32_t *evtheader, const uint8_t*
         if (s.stream_id() == 1) {
             _parse_peaks(s);
         }
-        if (!s.num_samples()) {
-            printf("hsd found zero samples in stream. exiting\n");
-            abort();
-        }
+        //  This is legal now.
+        // if (!s.num_samples()) {
+        //     printf("hsd found zero samples in stream. exiting\n");
+        //     abort();
+        // }
         p += sizeof(StreamHeader)+s.num_samples()*2;
         streams &= ~(1<<s.stream_id());
       }

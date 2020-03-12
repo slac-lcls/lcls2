@@ -10,6 +10,7 @@ namespace Pds {
     public:
       void    remote_sync ();
       int32_t default_init(Fmc134Cpld&, unsigned mode=0);
+      int32_t reset       ();
       void dump();
     public:
       vuint32_t info;

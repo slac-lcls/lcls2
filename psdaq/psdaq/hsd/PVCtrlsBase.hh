@@ -10,7 +10,7 @@ namespace Pds {
   class Task;
   namespace HSD {
 
-    enum Action { Unconfigure, Reset, ConfigureA, ConfigureB };
+    enum Action { Unconfigure, ResetA, ResetB, ConfigureA, ConfigureB };
     class FexCfg;
 
     class PVCtrlsBase
@@ -22,7 +22,7 @@ namespace Pds {
       void allocate(const std::string& title);
       void call    (Action);
     public:
-      virtual void reset     () = 0;
+      virtual void reset     (unsigned) = 0;
       virtual void configure (unsigned) = 0;
       virtual void loopback  (bool) = 0;
     private:

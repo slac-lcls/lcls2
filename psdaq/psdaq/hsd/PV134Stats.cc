@@ -6,6 +6,7 @@
 #include "ChipAdcCore.hh"
 #include "OptFmc.hh"
 #include "TprCore.hh"
+#include "Fmc134Ctrl.hh"
 
 #include "psdaq/mmhw/TriggerEventManager.hh"
 
@@ -50,6 +51,7 @@ namespace Pds {
            _monRawBuf,
            _monFexBuf,
            _monRawDet,
+           _monFexDet,
            _monFlow,
            _monJesd,
            _monEnv,
@@ -77,6 +79,7 @@ namespace Pds {
       PV_ADD (monRawBuf);
       PV_ADD (monFexBuf);
       PV_ADD (monRawDet);
+      PV_ADD (monFexDet);
       PV_ADD (monFlow);
       PV_ADD (monJesd);
       PV_ADD (monEnv);
@@ -143,7 +146,7 @@ namespace Pds {
             v.txcnt      [j] = v.txcntsum[j] - _v_monPgp[i].txcntsum[j];
             v.txerrcntsum[j] = pgp.txErrCount();
             v.rxcnt      [j] = pgp.rxOpCodeCount();
-            v.rxlast     [j] = pgp.rxOpCodeLast();
+            v.rxlast     [j] = pgp.rxOpCodeLast() & 0xff;
             v.rempause   [j] = pgp.remPause();
             v.remlinkid  [j] = pgp.remoteLinkId();
           }
@@ -162,19 +165,12 @@ namespace Pds {
             PVPUT(monFexBuf); }
         }
 
-        { MonBufDetail v;
-          for(unsigned j=0; j<16; j++) {
-            reg.cacheSel = j;
-            usleep(1);
-            unsigned state = reg.cacheState;
-            unsigned addr  = reg.cacheAddr;
-            v.bufstate[j] = (state>>0)&0xf;
-            v.trgstate[j] = (state>>4)&0xf;
-            v.bufbeg  [j] = (addr >> 0)&0xffff;
-            v.bufend  [j] = (addr >>16)&0xffff;
-          }
+        { MonBufDetail v(reg,0);
           PVPUT(monRawDet); }
-        
+
+        { MonBufDetail v(reg,1);
+          PVPUT(monFexDet); }
+
         { MonFlow v;
           v.pkoflow = fex._oflow&0xff;
           uint32_t flowstatus = fex._flowstatus;
@@ -184,20 +180,32 @@ namespace Pds {
           v.srdy  = (flowstatus>>12)&0x1;
           v.mrdy  = (flowstatus>>13)&0x7;
           v.raddr = (flowstatus>>16)&0xffff;
-          // uint32_t flowidxs = fex._flowidxs;
-          // v.npend = (flowidxs>> 0)&0x1f;
-          // v.ntrig = (flowidxs>> 5)&0x1f;
-          // v.nread = (flowidxs>>10)&0x1f;
-          // v.oflow = (flowidxs>>16)&0xff;
+          uint32_t flowidxs = fex._flowidxs;
+          v.npend = (flowidxs>> 0)&0x1f;
+          v.ntrig = (flowidxs>> 5)&0x1f;
+          v.nread = (flowidxs>>10)&0x1f;
+          v.oflow = (flowidxs>>16)&0xff;
           PVPUT(monFlow); }
 
         // JESD Status
         { MonJesd v;
-          for(unsigned j=0; j<8; j++) 
-            reinterpret_cast<Jesd204bStatus*>(v.stat)[j] = _m.jesd(i).status(j);
+          bool rxreset = false;
+          for(unsigned j=0; j<8; j++) {
+            Jesd204bStatus* stat = reinterpret_cast<Jesd204bStatus*>(v.stat);
+            stat[j] = _m.jesd(i).status(j);
+            if (stat[j].syncDone==0)
+              ; // rxreset = true;
+          }
           for(unsigned j=0; j<5; j++)
             v.clks[j] = float(_m.optfmc().clks[j]&0x1fffffff)*1.e-6;
           PVPUT(monJesd); 
+
+          if (rxreset) {
+            printf("--JESD RESET--\n");
+            unsigned u = _m.jesdctl().xcvr;
+            _m.jesdctl().xcvr = u | (1<<0);
+            _m.jesdctl().xcvr = u;
+          }
         }
 
         // ADC Monitoring

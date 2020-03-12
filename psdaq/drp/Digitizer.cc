@@ -253,6 +253,10 @@ void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
     Pds::TimingHeader* timing_header = (Pds::TimingHeader*)m_pool->dmaBuffers[dmaIndex];
     arrayH(0) = timing_header->_opaque[0];
     arrayH(1) = timing_header->_opaque[1];
+
+    if ((timing_header->_opaque[1] & (1<<31))==0)  // check JESD status bit
+      dgram.xtc.damage.increase(Damage::UserDefined);
+
     for (int i=0; i<4; i++) {
         if (event->mask & (1 << i)) {
             data_size = event->buffers[i].size - sizeof(Pds::TimingHeader);
@@ -268,5 +272,24 @@ void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
          }
     }
 }
-  
+
+void Digitizer::shutdown()
+{
+    // returns new reference
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
+    check(pModule);
+
+    // returns borrowed reference
+    PyObject* pDict = PyModule_GetDict(pModule);
+    check(pDict);
+    // returns borrowed reference
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_unconfig");
+    check(pFunc);
+
+    // returns new reference
+    PyObject_CallFunction(pFunc,"s",
+                          m_epics_name.c_str());
+    Py_DECREF(pModule);
+}  
+
 }

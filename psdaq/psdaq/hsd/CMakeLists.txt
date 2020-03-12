@@ -17,6 +17,7 @@ add_library(hsd SHARED
   Pgp2b.cc
   Pgp3.cc
   PhyCore.cc
+  PvDef.cc
   QABase.cc
   TprCore.cc
   Tps2481.cc

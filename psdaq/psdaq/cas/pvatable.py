@@ -19,17 +19,50 @@ except NameError:
     # Python 3
     QChar = chr
 
+class PvBase(object):
+    def __init__(self, name, field):
+        self.fields = [field]
+        initPvMon(self,name,isStruct=True)
+
+    def add(self, field):
+        self.fields.append(field)
+
+    def update(self, err):
+        if err is None:
+            q = self.pv.__value__.todict()
+            for f in self.fields:
+                f.update(q,err)
+
+class PvManager(object):
+    def __init__(self):
+        self.names = {}
+    
+    def add(self,pvname,field):
+        if pvname in self.names:
+            self.names[pvname].add(field)
+        else:
+            self.names[pvname] = PvBase(pvname,field)
+
+pvmanager = PvManager()
+
 class PvField(QtWidgets.QLabel):
     def __init__(self, base, field):
         super(QtWidgets.QLabel,self).__init__('-')
-        self.field = field.split('.')[1]
+        args = field.split('.')[1].split('[')
+        self.field = args[0]
+        if len(args)>1:
+            self.index = int(args[1].split(']')[0])
+        else:
+            self.index = -1
         pvname = base+':'+field.split('.')[0]
-        initPvMon(self,pvname,isStruct=True)
+        pvmanager.add(pvname,self)
 
-    def update(self,err):
+    def update(self,q,err):
         if err is None:
-            q = self.pv.__value__.todict()
-            f = q[self.field]
+            if self.index>=0:
+                f = q[self.field][self.index]
+            else:
+                f = q[self.field]
             try:
                 s = QString(int(f))
             except:
