@@ -31,7 +31,7 @@ int BufferedFileWriter::open(const std::string& fileName)
     flk.l_start  = 0;
     flk.l_len    = 0;
 
-    m_fd = ::open(fileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC);
+    m_fd = ::open(fileName.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IRGRP);
     if (m_fd == -1) {
         // %m will be replaced by the string strerror(errno)
         logging::error("Error creating file %s: %m", fileName.c_str());
