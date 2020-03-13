@@ -1,22 +1,29 @@
 import typing
 import amitypes
+from psana.dgram import Dgram
+
+class Container(object):
+    def __init__(self):
+        pass
 
 class DetectorImpl(object):
-    def __init__(self, det_name, drp_class_name, configs, calibconst):
+    def __init__(self, det_name, drp_class_name, all_det_configs, calibconst):
         self._det_name       = det_name
         self._drp_class_name = drp_class_name
-        self._configs        = configs
-        self._calibconst     = calibconst # only my calibconst (equivalent to det.calibconst['det_name'])
 
+        # Setup a new config list - for configs missing this detector,
+        # add blank dictionary as a placeholder.
+        self._configs = [Dgram(view=config) for config in all_det_configs]
         self._config_segments = []
         for config in self._configs:
-            # mona put this in since epics right now only exists
-            # in one xtc file.
-            if hasattr(config.software,self._det_name):
-                seg_dict = getattr(config.software,self._det_name)
+            if hasattr(config.software, self._det_name): 
+                seg_dict = getattr(config.software, self._det_name)
                 self._config_segments += list(seg_dict.keys())
+            else:
+                config.__dict__ = {self._det_name: {}}
         self._config_segments.sort()
-        return
+
+        self._calibconst     = calibconst # only my calibconst (equivalent to det.calibconst['det_name'])
 
     def _segments(self,evt):
         """
