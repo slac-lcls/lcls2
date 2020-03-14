@@ -1,0 +1,32 @@
+if not platform: platform = '5'
+username = 'lcls2'
+
+heartbeat_period = 1000 # units are ms
+
+ami_workers_per_node = 4
+#ami_worker_nodes = ["drp-tst-acc%02d" % i for i in range(1, 5) if i != 2 and i != 3]
+ami_worker_nodes = ["drp-tst-dev016", "drp-tst-dev015"]
+ami_num_workers = len(ami_worker_nodes)
+ami_manager_node = "drp-tst-acc05"
+
+conda_rel = 'ps-2.0.5'
+
+procmgr_config_global = [
+  { 'host': ami_manager_node, 'id':'ami-global',  'flags':'s', 'conda':conda_rel, 'cmd':f'ami-global -N 0 -n {ami_num_workers}'},
+  { 'host': ami_manager_node, 'id':'ami-manager', 'flags':'s', 'conda':conda_rel, 'cmd':'ami-manager'},
+  {                           'id':'ami-client',  'flags':'s', 'conda':conda_rel, 'cmd':f'ami-client -H {ami_manager_node}'},
+  ## procstat
+  {                           'id':'procstat',   'flags':'sp', 'conda':conda_rel, 'cmd':'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+]
+
+procmgr_config_worker = []
+
+for N, worker_node in enumerate(ami_worker_nodes):
+    for n in range(ami_workers_per_node):
+      procmgr_config_worker.append({ 'host': worker_node, 'id': f'ami-worker_{N}_{n}', 'flags':'sx', 'conda':conda_rel,
+      				     'cmd': f'ami-worker -N {n} -n {ami_num_workers} -b {heartbeat_period} -H {ami_manager_node} psana:////reg/neh/home/claus/lclsii/daq/lcls2/psdaq/psdaq/cnf/worker.json'})
+
+    procmgr_config_worker.append({ 'host': worker_node, 'id': f'ami-node_{N}', 'flags':'s', 'conda':conda_rel,
+    				   'cmd': f'ami-node -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level debug'})
+
+procmgr_config = procmgr_config_worker + procmgr_config_global
