@@ -1,11 +1,14 @@
 import numpy as np
 import json
+from scipy.linalg import toeplitz
+from scipy.linalg import inv
 
 class EdgeFinder(object):
 
-    def __init__(self, calibconst):
+    def __init__(self, calibconst, good_image=None, bgs=None):
         self.calibconst = calibconst
         self.kernel = self._get_fir_coefficients() 
+        #self.kernel = self._calc_filter_weights(good_image, bgs)
         self.delayed_denominator, _ = self.calibconst['delayed_denom']
 
     def __call__(self, image, parsed_frame_object, IIR):
@@ -52,3 +55,33 @@ class EdgeFinder(object):
             my_kernel.extend([self._twos_complement(mystring[i:i+2],8) for i in range(0,len(mystring),2)])
         return my_kernel
     
+    def _calc_filter_weights(self, good_image, bgs):
+        """ Calculated weighted image from a given good image and
+        a list of backgrounds.
+        detail here: https://confluence.slac.stanford.edu/display/PSDM/TimeTool
+        """
+        # Step 3: Normalize backgrounds
+        bg_avg = np.average(bgs[:])
+        bgs /= bg_avg
+        results = np.zeros(bgs.shape)
+        for i, bg in enumerate(bgs):
+            result = np.correlate(bg, bg, mode='full')
+            # Auto correlation is the second half in 'full mode' for np.correlate. 
+            # See https://stackoverflow.com/questions/643699/how-can-i-use-numpy-correlate-to-do-autocorrelation
+            results[i] = result[int(result.size/2):]
+        
+        # Step 4: auto-correlation function (acf) is the average of all those products
+        acf = np.average(results, axis=0)
+        
+        # Step 5: Collect your best averaged ratio (selected "good_image" 
+        # divided by averaged background) with signal; this averaging smooths 
+        # out any non-physics features
+        acfm = toeplitz(acf)
+        acfm_inv = inv(acfm)
+        w = np.dot(acfm_inv, good_image)
+        weights = np.flip(w) # filter weight is inverted (for computing convolution)
+        norm = np.dot(weights, good_image) 
+        weights = weights * 1.00 / norm
+        
+        return weights
+        
