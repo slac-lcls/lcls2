@@ -10,7 +10,7 @@ from psana import DataSource
 import numpy as np
 import glob
 import sys
-import getopt
+#import getopt
 import warnings
 import psana.xtcav.UtilsPsana as xtup
 from psana.xtcav.FileInterface import Load as constLoad
@@ -19,12 +19,13 @@ from psana.xtcav.CalibrationPaths import *
 import psana.xtcav.Constants as cons
 from psana.xtcav.Utils import namedtuple, ROIMetrics  
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
+
 """
     Class that generates a dark background image for XTCAV reconstruction purposes. Essentially takes valid
     dark reference images and averages them to find the "average" camera background. It is recommended to use a 
     large number of shots so that spikes in energy levels can get rounded out. 
     Arguments:
-        experiment (str): String with the experiment reference to use. E.g. 'amoc8114'
+        experiment (str): String with the experiment reference to use. E.g. 'amox23616'
         run (str): String with a run number. E.g. '123' 
         max_shots (int): Maximum number of images to use for the reference.
         calibration_path (str): Custom calibration directory in case the default is not intended to be used.
@@ -33,13 +34,13 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr
 """
 
 class DarkBackgroundReference():
-    def __init__(self, 
+    def __init__(self,
         fname='/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0104-e000400-xtcav.xtc2',
-        experiment='amox23616', 
-        run_number='104', 
-        max_shots=400, 
+        experiment='amox23616',
+        run_number='104',
+        max_shots=400,
         start_image=0,
-        validity_range=None, 
+        validity_range=None,
         calibration_path='',
         save_to_file=True):
 
@@ -142,7 +143,7 @@ class DarkBackgroundReference():
             img = xtcav_camera.raw(evt)
             if img is None: continue
             #logger.info(info_ndarr(img, '  img:'))
-            roi_xtcav = xtup.getXTCAVImageROI(evt)
+            roi_xtcav = xtup.getXTCAVImageROI(run, evt)
             if not roi_xtcav : continue
             return roi_xtcav, nev
 
@@ -172,7 +173,7 @@ class DarkBackgroundReference():
         logger.info('command to check file: hdf5explorer %s' % path)
 
         d = instance.parameters
-        s = 'cdb add -e %s -d %s -c pedestals -r %s -f %s -i txt -u <user>' % (d['experiment'], cons.SRC, d['run_number'], path)
+        s = 'cdb add -e %s -d %s -c pedestals -r %s -f %s -i xtcav -u <user>' % (d['experiment'], cons.SRC, d['run_number'], path)
         logger.info('command to deploy: %s' % s)
 
 

@@ -1,15 +1,19 @@
 #(c) Coded by Alvaro Sanchez-Gonzalez 2014
 
 #Script for the retrieval of the pulses shot to shot
+
+import logging
+logger = logging.getLogger(__name__)
+
 import os
 import time
 import psana
 import numpy as np
-import glob
-import pdb
-import IPython
+#import glob
+#import pdb
+#import IPython
 import sys
-import getopt
+#import getopt
 import math
 import warnings
 import psana.xtcav.Utils as xtu
@@ -48,7 +52,13 @@ class LasingOnCharacterization():
         lasingoff_reference_path=None,
         calibration_path=''
         ):
-            
+
+
+        #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s' # '%(message)s'
+        fmt='[%(levelname).1s] L%(lineno)04d : %(message)s'
+        logging.basicConfig(format=fmt, datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
+
+
         #Handle warnings
         warnings.filterwarnings('always',module='Utils',category=UserWarning)
         warnings.filterwarnings('ignore',module='Utils',category=RuntimeWarning, message="invalid value encountered in divide")

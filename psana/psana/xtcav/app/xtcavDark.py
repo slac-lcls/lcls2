@@ -2,7 +2,7 @@
 
 import sys
 
-usage = 'E.g.: %s amox23616 104' % sys.argv[0]
+usage = 'E.g.: %s amox23616 104' % sys.argv[0].rsplit('/')[-1]
 print(usage)
 
 import argparse

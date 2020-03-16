@@ -3,11 +3,20 @@ import psana
 import warnings
 import time
 from psana.xtcav.Utils import ROIMetrics, GlobalCalibration, ShotToShotParameters
-import psana.xtcav.Constants as Constants
+import psana.xtcav.Constants as cons
+
+from psana.xtcav.Simulators import\
+  SimulatorDetector
+#  SimulatorEBeam,\
+#  SimulatorGasDetector,\
+#  SimulatorEventId,\
+#  SimulatorEnvironment
+
+
 
 def getCameraSaturationValue(evt):
     try:
-        analysis_version = psana.Detector(Constants.ANALYSIS_VERSION)
+        analysis_version = SimulatorDetector(cons.ANALYSIS_VERSION)
         if analysis_version(evt) is not None:
             return (1<<12)-1
     except:
@@ -16,7 +25,7 @@ def getCameraSaturationValue(evt):
     return (1<<14)-1
     
 
-def getGlobalXTCAVCalibration(evt):
+def getGlobalXTCAVCalibration(run, evt):
     """
     Obtain the global XTCAV calibration form the epicsStore
     Arguments:
@@ -28,8 +37,8 @@ def getGlobalXTCAVCalibration(evt):
     def getCalibrationValues(possible_detector_names):
         for i in range(len(possible_detector_names)):
             try:
-                det = psana.Detector(possible_detector_names[i])
-                val = det(evt)
+                det = SimulatorDetector(possible_detector_names[i])
+                val = det()
                 if abs(val) < 1e-100:
                     continue
                 return val 
@@ -38,15 +47,15 @@ def getGlobalXTCAVCalibration(evt):
         return None
 
     global_calibration = GlobalCalibration(
-        umperpix=getCalibrationValues(Constants.UM_PER_PIX_names), 
-        strstrength=getCalibrationValues(Constants.STR_STRENGTH_names), 
-        rfampcalib=getCalibrationValues(Constants.RF_AMP_CALIB_names), 
-        rfphasecalib=getCalibrationValues(Constants.RF_PHASE_CALIB_names), 
-        dumpe=getCalibrationValues(Constants.DUMP_E_names), 
-        dumpdisp=getCalibrationValues(Constants.DUMP_DISP_names)
+        umperpix    =getCalibrationValues(cons.UM_PER_PIX_names), 
+        strstrength =getCalibrationValues(cons.STR_STRENGTH_names), 
+        rfampcalib  =getCalibrationValues(cons.RF_AMP_CALIB_names), 
+        rfphasecalib=getCalibrationValues(cons.RF_PHASE_CALIB_names), 
+        dumpe       =getCalibrationValues(cons.DUMP_E_names), 
+        dumpdisp    =getCalibrationValues(cons.DUMP_DISP_names)
     )
         
-    for k,v in global_calibration._asdict().iteritems():
+    for k,v in global_calibration._asdict().items():
         if not v:
             warnings.warn_explicit('No XTCAV Calibration for epics variable ' + k, UserWarning,'XTCAV',0)
             return None
@@ -54,26 +63,25 @@ def getGlobalXTCAVCalibration(evt):
     return global_calibration
                           
 
-def getXTCAVImageROI(evt):
+def getXTCAVImageROI(run, evt):
 
-    for i in range(len(Constants.ROI_SIZE_X_names)):
+    for i in range(len(cons.ROI_SIZE_X_names)):
         try:
-            # LCLS1:
+            roiXN=SimulatorDetector(cons.ROI_SIZE_X_names[i])
+            roiX =SimulatorDetector(cons.ROI_START_X_names[i])
+            roiYN=SimulatorDetector(cons.ROI_SIZE_Y_names[i])
+            roiY =SimulatorDetector(cons.ROI_START_Y_names[i])
 
-            #roiXN=psana.Detector(Constants.ROI_SIZE_X_names[i])
-            #roiX=psana.Detector(Constants.ROI_START_X_names[i])
-            #roiYN=psana.Detector(Constants.ROI_SIZE_Y_names[i])
-            #roiY=psana.Detector(Constants.ROI_START_Y_names[i])
+            xN = roiXN(evt)  #Size of the image in X                           
+            x0 = roiX(evt)   #Position of the first pixel in x
+            yN = roiYN(evt)  #Size of the image in Y 
+            y0 = roiY(evt)   #Position of the first pixel in y
 
-            #xN = roiXN(evt)  #Size of the image in X                           
-            #x0 = roiX(evt)   #Position of the first pixel in x
-            #yN = roiYN(evt)  #Size of the image in Y 
-            #y0 = roiY(evt)   #Position of the first pixel in y
+            #xN = cons.ROI_SIZE_X  #Size of the image in X                           
+            #x0 = cons.ROI_START_X #Position of the first pixel in x
+            #yN = cons.ROI_SIZE_Y  #Size of the image in Y 
+            #y0 = cons.ROI_START_Y #Position of the first pixel in y
 
-            xN = Constants.ROI_SIZE_X  #Size of the image in X                           
-            x0 = Constants.ROI_START_X #Position of the first pixel in x
-            yN = Constants.ROI_SIZE_Y  #Size of the image in Y 
-            y0 = Constants.ROI_START_Y #Position of the first pixel in y
             x = x0+np.arange(0, xN) 
             y = y0+np.arange(0, yN) 
 
@@ -93,13 +101,13 @@ def getShotToShotParameters(ebeam, gasdetector, evt_id):
     unixtime = int((sec<<32)|nsec)
     fiducial = evt_id.fiducials()
 
-    energydetector = Constants.ENERGY_DETECTOR
+    energydetector = cons.ENERGY_DETECTOR
  
     if ebeam:    
         ebeamcharge=ebeam.ebeamCharge()
         xtcavrfamp=ebeam.ebeamXTCAVAmpl()
         xtcavrfphase=ebeam.ebeamXTCAVPhase()
-        dumpecharge=ebeam.ebeamDumpCharge()*Constants.E_CHARGE #In C 
+        dumpecharge=ebeam.ebeamDumpCharge()*cons.E_CHARGE #In C 
         
         if gasdetector:
             energydetector=(gasdetector.f_11_ENRC()+gasdetector.f_12_ENRC())/2 
