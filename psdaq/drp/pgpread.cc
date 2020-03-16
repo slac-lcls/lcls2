@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
                 event_header = reinterpret_cast<Pds::TimingHeader*>((char*)(dmaBuffers[index])+sizeof(EvtBatcherHeader));
                 EvtBatcherHeader& ebh = *(EvtBatcherHeader*)(dmaBuffers[index]);
                 EvtBatcherSubFrameTail& ebsft = *(EvtBatcherSubFrameTail*)((char*)(dmaBuffers[index])+size-sizeof(EvtBatcherSubFrameTail));
-                printf("EventBatcherHeader: vers %d seq %d width %d sfsize %d\n",ebh.version,ebh.sequence_count,ebh.width,ebsft.size);
+                printf("EventBatcherHeader: vers %d seq %d width %d sfsize %d\n",ebh.version,ebh.sequence_count,ebh.width,ebsft.size());
             }
             XtcData::TransitionId::Value transition_id = event_header->service();
 

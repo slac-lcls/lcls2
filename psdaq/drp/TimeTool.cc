@@ -128,7 +128,7 @@ void TimeTool::event(XtcData::Dgram& dgram, PGPEvent* event)
     EvtBatcherIterator ebit = EvtBatcherIterator((EvtBatcherHeader*)m_pool->dmaBuffers[dmaIndex], data_size);
     EvtBatcherSubFrameTail* ebsft;
     while ((ebsft=ebit.next())) {
-        printf("sft width %d size %d tdest %d\n",ebsft->width,ebsft->size,ebsft->tdest);
+        printf("sft width %d size %d tdest %d\n",ebsft->width(),ebsft->size(),ebsft->tdest());
 
     }
 }

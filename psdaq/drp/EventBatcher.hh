@@ -47,7 +47,7 @@ namespace Drp {
             if (!save) return save; // no more subframes
             if (_next-(save->size()) < _end) {
                 // we've jumped backwards too far
-                printf("*** corrupt EvtBatcherOutput: %d %d\n",_next-_end,save->size());
+                printf("*** corrupt EvtBatcherOutput: %li %d\n",_next-_end,save->size());
                 throw "*** corrupt EvtBatcherOutput";
             }
             // compute the next subframe ptr
