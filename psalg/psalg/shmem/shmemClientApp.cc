@@ -93,9 +93,10 @@ int main(int argc, char* argv[]) {
   bool verbose = false;
   bool veryverbose = false;
   bool accept = false;
+  bool reconnect = false;
   timespec ptv,tv;
 
-  while ((c = getopt(argc, argv, "?hvVti:p:r:")) != -1) {
+  while ((c = getopt(argc, argv, "?hvVti:p:r:R")) != -1) {
     switch (c) {
     case '?':
     case 'h':
@@ -113,6 +114,9 @@ int main(int argc, char* argv[]) {
     case 't':
       timing = true;
       break;
+    case 'R':
+      reconnect = true;
+      break;
     case 'V':
       veryverbose = true;
     case 'v':
@@ -123,31 +127,36 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  MyShmemClient myClient(rate,verbose);
-  myClient.connect(partitionTag,index);
-
   while(1)
     {
-    int ev_index,buf_size;
-    Dgram *dgram = (Dgram*)myClient.get(ev_index,buf_size);
-    if(!dgram) break;
-    if(veryverbose)
-      printf("shmemClient dgram trId %d index %d size %d\n",dgram->service(),ev_index,buf_size);
-    if(!timing)
-      myClient.processDgram(dgram);
-    if(dgram->service() == TransitionId::L1Accept)
+    MyShmemClient myClient(rate,verbose);
+    myClient.connect(partitionTag,index);
+    while(1)
       {
-      if(!accept && timing)
+      int ev_index,buf_size;
+      Dgram *dgram = (Dgram*)myClient.get(ev_index,buf_size);
+      if(!dgram) break;
+      if(veryverbose)
+        printf("shmemClient dgram trId %d index %d size %d\n",dgram->service(),ev_index,buf_size);
+      if(!timing)
+        myClient.processDgram(dgram);
+      if(dgram->service() == TransitionId::L1Accept)
         {
-        accept = true;
-        clock_gettime(CLOCK_REALTIME, &ptv);
+        if(!accept && timing)
+          {
+          accept = true;
+          clock_gettime(CLOCK_REALTIME, &ptv);
+          }
+        ++events;
+        bytes+=dgram->xtc.sizeofPayload();
         }
-      ++events;
-      bytes+=dgram->xtc.sizeofPayload();
+      myClient.free(ev_index,buf_size);
       }
-    myClient.free(ev_index,buf_size);
+    if(timing || !reconnect)
+      break;
+    printf("shmemClient's server appears to have disconnected"
+           " - attempting to reconnect\n");
     }
-
   if(timing)
     clock_gettime(CLOCK_REALTIME, &tv);
 

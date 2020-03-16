@@ -72,7 +72,10 @@ def test_timetool_psana():
     det = myrun.Detector('tmott')
     edge_finder = EdgeFinder(det.calibconst)
     edet = myrun.Detector('IIR')
+
+    # TODO: Add first pass get all the backgrounds
     
+    # Second pass - finding edges from given backgrounds and good image
     for nevt,evt in enumerate(myrun.events()):
         parsed_frame_object = det.ttalg.parsed_frame(evt)
         image = det.ttalg._image(evt)

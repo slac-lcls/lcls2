@@ -13,7 +13,6 @@
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
-#include "psdaq/service/fast_monotonic_clock.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
@@ -46,7 +45,7 @@ void PvaMonitor::printStructure()
     const pvd::StringArray& names = structure->getFieldNames();
     const pvd::FieldConstPtrArray& fields = structure->getFields();
     for (unsigned i=0; i<names.size(); i++) {
-        logging::info("%s: FieldName:  %s  FieldType:  %s",
+        logging::info("PV Name: %s  FieldName: %s  FieldType: %s",
                       name().c_str(), names[i].c_str(), pvd::TypeFunc::name(fields[i]->getType()));
     }
 }
@@ -66,9 +65,13 @@ XtcData::VarDef PvaMonitor::get(size_t& payloadSize)
         case pvd::scalar: {
             const pvd::Scalar* scalar = static_cast<const pvd::Scalar*>(fields[i].get());
             XtcData::Name::DataType type = xtype[scalar->getScalarType()];
-            vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type));
+            vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type)); // Name must resolve to a name that psana recognizes: i.e. 'value'
             payloadSize = XtcData::Name::get_element_size(type);
-            logging::info("name: %s  type: %d", fullName.c_str(), type);
+            logging::info("PV name: %s  %s type: %s (%d)",
+                          fullName.c_str(),
+                          pvd::TypeFunc::name(fields[i]->getType()),
+                          pvd::ScalarTypeFunc::name(scalar->getScalarType()),
+                          type);
             switch (scalar->getScalarType()) {
                 case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int32_t >(data, length); };  break;
                 case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int64_t >(data, length); };  break;
@@ -77,8 +80,10 @@ XtcData::VarDef PvaMonitor::get(size_t& payloadSize)
                 case pvd::pvFloat:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<float   >(data, length); };  break;
                 case pvd::pvDouble: getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<double  >(data, length); };  break;
                 default: {
-                    logging::critical("%s: Unsupported Scalar type %d",
+                    logging::critical("%s: Unsupported %s type %s (%d)",
                                       fullName.c_str(),
+                                      pvd::TypeFunc::name(fields[i]->getType()),
+                                      pvd::ScalarTypeFunc::name(scalar->getScalarType()),
                                       scalar->getScalarType());
                     throw "Unsupported scalar type";
                 }
@@ -89,9 +94,13 @@ XtcData::VarDef PvaMonitor::get(size_t& payloadSize)
             const pvd::ScalarArray* array = static_cast<const pvd::ScalarArray*>(fields[i].get());
             XtcData::Name::DataType type = xtype[array->getElementType()];
             size_t length = _strct->getSubField<pvd::PVArray>(names[i].c_str())->getLength();
-            vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type, 1));
+            vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type, 1)); // Name must resolve to a name that psana recognizes: i.e. 'value'
             payloadSize = length * XtcData::Name::get_element_size(type);
-            logging::info("name: %s  type: %d  length: %zd", fullName.c_str(), type, length);
+            logging::info("PV name: %s  %s type: %s (%d)  length: %zd",
+                          fullName.c_str(),
+                          pvd::TypeFunc::name(fields[i]->getType()),
+                          pvd::ScalarTypeFunc::name(array->getElementType()),
+                          type, length);
             switch (array->getElementType()) {
                 case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int32_t >(data, length); };  break;
                 case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int64_t >(data, length); };  break;
@@ -100,10 +109,12 @@ XtcData::VarDef PvaMonitor::get(size_t& payloadSize)
                 case pvd::pvFloat:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<float   >(data, length); };  break;
                 case pvd::pvDouble: getData = [&](void* data, size_t& length) -> size_t { return _getDataT<double  >(data, length); };  break;
                 default: {
-                    logging::critical("%s: Unsupported ScalarArray type %d",
+                    logging::critical("%s: Unsupported %s type '%s' (%d)",
                                       fullName.c_str(),
+                                      pvd::TypeFunc::name(fields[i]->getType()),
+                                      pvd::ScalarTypeFunc::name(array->getElementType()),
                                       array->getElementType());
-                    throw "Unsupported ScalarArray type";
+                    throw "Unsupported scalarArray type";
                 }
             }
             break;
@@ -390,7 +401,7 @@ void PvaDetector::_worker()
 
     m_terminate.store(false, std::memory_order_release);
 
-    auto t0 = Pds::fast_monotonic_clock::now();
+    auto t0 = std::chrono::steady_clock::now();
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
@@ -409,7 +420,7 @@ void PvaDetector::_worker()
                 // events.  If the PV is updating, _timeout() never finds
                 // anything to do.  Delay avoids queue head contention.
                 using ms_t = std::chrono::milliseconds;
-                auto  t1   = Pds::fast_monotonic_clock::now();
+                auto  t1   = std::chrono::steady_clock::now();
                 const unsigned msTmo = 100;
                 if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
                 {
@@ -417,7 +428,7 @@ void PvaDetector::_worker()
                     const unsigned nsTmo = msTmo * 1000000;
                     _timeout(timestamp.from_ns(dgram->time.to_ns() - nsTmo));
 
-                    t0 = Pds::fast_monotonic_clock::now();
+                    t0 = std::chrono::steady_clock::now();
                 }
             }
             else {
@@ -447,6 +458,9 @@ void PvaDetector::_worker()
     logging::info("Worker thread finished");
 }
 
+//static std::chrono::steady_clock::time_point tMissed;
+//static std::chrono::steady_clock::time_point tEmpty;
+
 void PvaDetector::process(const PvaMonitor& pva)
 {
     // Prevent _timeout() from interfering
@@ -463,7 +477,30 @@ void PvaDetector::process(const PvaMonitor& pva)
     }
 
     while (true) {
+        // Retry for a short time to avoid unnecessary dropped contributions
         uint32_t index;
+        //auto t0 = std::chrono::steady_clock::now();
+        //while (!m_inputQueue.peek(index)) {
+        //    using us_t = std::chrono::microseconds;
+        //    auto  t1   = std::chrono::steady_clock::now();
+        //
+        //    if (std::chrono::duration_cast<us_t>(t1 - t0).count() > 0) {
+        //        if (m_running) {
+        //            ++m_nMissed;
+        //            printf("Missed PGP: PV ts %u.%09u, now %ld, d %ld, pd %ld / %ld, is_steady %c\n",
+        //                   timestamp.seconds(), timestamp.nanoseconds(),
+        //                   t0.time_since_epoch().count(),
+        //                   std::chrono::duration_cast<us_t>(t0 - tMissed).count(),
+        //                   std::chrono::steady_clock::period::num,
+        //                   std::chrono::steady_clock::period::den,
+        //                   std::chrono::steady_clock::is_steady ? 'y' : 'n');
+        //            tMissed = t0;
+        //        }
+        //        return;
+        //    }
+        //    std::this_thread::yield();
+        //}
+
         if (!m_inputQueue.peek(index)) {
             if (m_running) {
                 ++m_nMissed;
@@ -508,6 +545,13 @@ void PvaDetector::process(const PvaMonitor& pva)
                 dgram->xtc.damage.increase(XtcData::Damage::MissingData);
 
                 ++m_nEmpty;
+                //using us_t = std::chrono::microseconds;
+                //printf("Missed PV: PGP ts %u.%09u, now %ld, d %ld, diff %ld\n",
+                //       dgram->time.seconds(), dgram->time.nanoseconds(),
+                //       t0.time_since_epoch().count(),
+                //       std::chrono::duration_cast<us_t>(t0 - tMissed).count(),
+                //       std::chrono::duration_cast<us_t>(t0 - tEmpty).count());
+                //tEmpty = t0;
                 logging::debug("No PV data!!      "
                                "TimeStamps: PV %u.%09u > PGP %u.%09u\n",
                                timestamp.seconds(), timestamp.nanoseconds(),
