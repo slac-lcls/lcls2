@@ -109,6 +109,8 @@ class Event():
 
                 # detector name (e.g. "xppcspad")
                 for det_name, segment_dict in evt_dgram.__dict__.items():
+                    # skip hidden dgram attributes
+                    if det_name.startswith('_'): continue
 
                     # drp class name (e.g. "raw", "fex")
                     for segment, det in segment_dict.items():

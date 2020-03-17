@@ -128,6 +128,22 @@ static void addObjHierarchy(PyObject* parent, PyObject* pycontainertype,
     }
 }
 
+// add _xtc (_ prefix hides this from the detector interface)
+// and its attributes to dgram object
+static void setXtc(PyDgramObject* self) {
+    PyObject* pycontainertype = self->contInfo.pycontainertype;
+    PyObject* xtc;
+    xtc = PyObject_CallObject(pycontainertype, NULL);
+    int fail = PyObject_SetAttrString((PyObject*)self, "_xtc", xtc);
+    if (fail) throw "setXtc: failed to set container attribute\n";
+    Py_DECREF(xtc);
+    
+    uint16_t damage = self->dgram->xtc.damage.value();
+    PyObject* pyDamage = Py_BuildValue("H", damage);
+
+    addObjToPyObj(xtc, "damage", pyDamage, pycontainertype);
+}
+
 static void setAlg(PyObject* parent, PyObject* pycontainertype, const char* baseName, Alg& alg, unsigned segment) {
     const char* algName = alg.name();
     const uint32_t _v = alg.version();
@@ -766,6 +782,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     }
     
     assignDict(self, (PyDgramObject*)configDgram);
+    setXtc(self);
 
     return 0;
 }
