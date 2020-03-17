@@ -7,6 +7,7 @@
 #include "psdaq/service/Json2Xtc.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
+#include "psalg/utils/SysLog.hh"
 #include "AxisDriver.h"
 
 #include <fcntl.h>
@@ -17,6 +18,7 @@
 
 using namespace XtcData;
 using namespace rapidjson;
+using logging = psalg::SysLog;
 
 using json = nlohmann::json;
 
@@ -26,12 +28,12 @@ class TTDef : public VarDef
 {
 public:
     enum index {
-        data
+        image
     };
     TTDef()
     {
-        Alg alg("raw", 1, 2, 3);
-        NameVec.push_back({"data", Name::UINT8, 1});
+        Alg alg("tt", 2, 0, 0);
+        NameVec.push_back({"image", Name::UINT8, 1});
     }
 } TTDef;
 
@@ -104,7 +106,7 @@ unsigned TimeTool::configure(const std::string& config_alias, Xtc& xtc)
     _addJson(xtc, configNamesId, config_alias);
 
     // set up the names for L1Accept data
-    Alg ttAlg("tt", 1, 2, 3); // TODO: should this be configured by ttconfig.py?
+    Alg ttAlg("tt", 2, 0, 0);
     Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), ttAlg, "tt", "detnum1235", m_evtNamesId, m_para->detSegment);
     eventNames.add(xtc, TTDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
@@ -121,16 +123,30 @@ void TimeTool::event(XtcData::Dgram& dgram, PGPEvent* event)
     // there should be only one lane of data in the timing system
     uint32_t dmaIndex = event->buffers[lane].index;
     unsigned data_size = event->buffers[lane].size;
-    // unsigned shape[MaxRank];
-    // shape[0] = data_size;
-    // Array<uint8_t> arrayT = tt.allocate<uint8_t>(TTDef::data, shape);
-    // memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
     EvtBatcherIterator ebit = EvtBatcherIterator((EvtBatcherHeader*)m_pool->dmaBuffers[dmaIndex], data_size);
     EvtBatcherSubFrameTail* ebsft;
+    void*  image=0;
+    size_t imageSize=0;
+    void*  header=0;
+    size_t headerSize=0;
     while ((ebsft=ebit.next())) {
-        printf("sft width %d size %d tdest %d\n",ebsft->width(),ebsft->size(),ebsft->tdest());
-
+        //printf("sft width %d size %d tdest %d\n",ebsft->width(),ebsft->size(),ebsft->tdest());
+        if (ebsft->tdest()==0) {
+            header = ebsft->data();
+            headerSize = ebsft->size();
+        }
+        if (ebsft->tdest()==2) {
+            image = ebsft->data();
+            imageSize = ebsft->size();
+        }
     }
+    if (!header or !image) logging::critical("*** missing timetool header %p and/or image %p\n",header,image);
+    if (headerSize!=32) logging::critical("*** incorrect header size %d\n",headerSize);
+
+    unsigned shape[MaxRank];
+    shape[0] = imageSize;
+    Array<uint8_t> arrayT = tt.allocate<uint8_t>(TTDef::image, shape);
+    memcpy(arrayT.data(), image, imageSize);
 }
 
 }

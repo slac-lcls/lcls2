@@ -18,10 +18,7 @@ using namespace Drp;
 const Pds::TimingHeader* getTimingHeader(const Parameters& para, MemPool& pool, uint32_t index) {
     if (para.rogueDet) {
         EvtBatcherHeader& ebh = *(EvtBatcherHeader*)(pool.dmaBuffers[index]);
-        if(ebh.width!=3) {
-            printf("Found invalid rogue bus width\n");
-            throw("Found invalid rogue bus width");
-        }
+        if(ebh.width!=3) logging::critical("Found invalid rogue bus width %d",ebh.width);
         // skip past the event-batcher header
         return reinterpret_cast<Pds::TimingHeader*>((&ebh)+1);
     } else {

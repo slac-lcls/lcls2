@@ -1,6 +1,7 @@
 // see https://confluence.slac.stanford.edu/display/ppareg/AxiStream+Batcher+Protocol+Version+1
 
 #include <stdint.h>
+#include "psalg/utils/SysLog.hh"
 
 namespace Drp {
 #pragma pack(push,1)
@@ -13,19 +14,18 @@ namespace Drp {
     };
     class EvtBatcherSubFrameTail {
     public:
-        void* data() {return (void*)((char*)(this)-size());}
+        void* data() {return (void*)((char*)(this)-_totSize());}
         unsigned width() {return _width;}
         unsigned tdest() {return _tdest;}
-        unsigned size() {
+        unsigned size() {return _size;}
+    private:
+        friend class EvtBatcherIterator;
+        unsigned _totSize() {
             // round up the size to the nearest "line boundary",
             // which depends on the "width" parameter.
-            if (_size==0) {
-                printf("*** Error: EventBatcher found corrupt size=0\n");
-                throw "*** Error: EventBatcher found corrupt size=0\n";
-            }
+            if (_size==0) psalg::SysLog::critical("*** Error: EventBatcher found corrupt size=0");
             return ((_size-1)/16)*16+16; // for width==3 only
         }
-    private:
         uint32_t _size;
         uint8_t  _tdest;
         uint8_t  _tuser_first;
@@ -45,17 +45,14 @@ namespace Drp {
         EvtBatcherSubFrameTail* next() {
             EvtBatcherSubFrameTail* save = (EvtBatcherSubFrameTail*)_next;
             if (!save) return save; // no more subframes
-            if (_next-(save->size()) < _end) {
-                // we've jumped backwards too far
-                printf("*** corrupt EvtBatcherOutput: %li %d\n",_next-_end,save->size());
-                throw "*** corrupt EvtBatcherOutput";
-            }
+            // see if we've jumped backwards too far
+            if (_next-(save->_totSize()) < _end) psalg::SysLog::critical("*** corrupt EvtBatcherOutput: %li %d\n",_next-_end,save->_totSize());
             // compute the next subframe ptr
-            if (_next-(save->size()) == _end) {
+            if (_next-(save->_totSize()) == _end) {
                 // indicates this is the last one
                 _next = 0;
             } else {
-                _next -= (save->size()+sizeof(EvtBatcherSubFrameTail));
+                _next -= (save->_totSize()+sizeof(EvtBatcherSubFrameTail));
             }
             return save;
         }
