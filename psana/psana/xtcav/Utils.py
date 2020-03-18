@@ -1,5 +1,9 @@
 #(c) Coded by Alvaro Sanchez-Gonzalez 2014
 #Functions related with the XTCAV pulse retrieval
+
+import logging
+logger = logging.getLogger(__name__)
+
 import numpy as np
 import scipy.interpolate
 import time
@@ -7,12 +11,14 @@ import warnings
 import cv2
 import scipy.io
 import math
-import psana.xtcav.Constants as Constants
+import psana.xtcav.Constants as cons
 import collections
 import psana.xtcav.SplittingUtils as su
 import psana.xtcav.ClusteringUtils as cu
 #import collections
 
+from psana.pscalib.calib.XtcavUtils import xtcav_calib_object_from_dict
+from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
 
 def getImageStatistics(image, ROI):
     """
@@ -76,7 +82,6 @@ def getCenterOfMass(image,x,y):
     x0 = np.dot(profilex, np.transpose(x))/np.sum(profilex)
     profiley = np.sum(image, axis=1);     
     y0 = np.dot(profiley, y)/np.sum(profiley)
-    
     return x0,y0
     
     
@@ -95,7 +100,8 @@ def subtractBackground(image, ROI, dark_background):
     #This only contemplates the case when the ROI of the darkbackground is larger than the ROI of the image. Other cases should be contemplated in the future
     if dark_background:
         image_db = dark_background.image
-        ROI_db = dark_background.ROI
+        ROI_db = xtcav_calib_object_from_dict(dark_background.ROI)
+
         minX = ROI.x0 - ROI_db.x0
         maxX = (ROI.x0+ROI.xN-1)-ROI_db.x0
         minY = ROI.y0-ROI_db.y0
@@ -104,7 +110,8 @@ def subtractBackground(image, ROI, dark_background):
         try:    
             image = image-image_db[minY:(maxY+1),minX:(maxX+1)]
         except ValueError:
-            warnings.warn_explicit('Dark background ROI not large enough for image. Image will not be background subtracted',UserWarning,'XTCAV',0)
+            #warnings.warn_explicit('Dark background ROI not large enough for image. Image will not be background subtracted',UserWarning,'XTCAV',0)
+            logger.warning('Dark background ROI not large enough for image. Image will not be background subtracted')
        
     return image
 
@@ -130,8 +137,8 @@ def denoiseImage(image, snrfilter, roi_fraction):
         return None, None
     
     #Obtaining the mean and the standard deviation of the noise by using pixels only on the border
-    mean = np.mean(filtered[0:Constants.SNR_BORDER,0:Constants.SNR_BORDER])
-    std = np.std(filtered[0:Constants.SNR_BORDER,0:Constants.SNR_BORDER])
+    mean = np.mean(filtered[0:cons.SNR_BORDER,0:cons.SNR_BORDER])
+    std = np.std(filtered[0:cons.SNR_BORDER,0:cons.SNR_BORDER])
 
     #Create a mask for the true image that allows us to zero out all noise portions of image
     mask = cv2.threshold(filtered.astype(np.float32), mean + snrfilter*std, 1, cv2.THRESH_BINARY)[1]
@@ -220,7 +227,8 @@ def calculatePhyscialUnits(ROI, center, shot_to_shot, global_calibration):
 
     #If the cosine of phase was too close to 0, we return warning and error
     if np.abs(cosphasediff) < 0.5:
-        warnings.warn_explicit('The phase of the bunch with the RF field is far from 0 or 180 degrees',UserWarning,'XTCAV',0)
+        #warnings.warn_explicit('The phase of the bunch with the RF field is far from 0 or 180 degrees',UserWarning,'XTCAV',0)
+        logger.warning('The phase of the bunch with the RF field is far from 0 or 180 degrees')
         valid=0
 
     signflip = np.sign(cosphasediff); #It may need to be flipped depending on the phase
@@ -236,44 +244,62 @@ def calculatePhyscialUnits(ROI, center, shot_to_shot, global_calibration):
 def processImage(img, parameters, dark_background, global_calibration, 
         saturation_value, roi, shot_to_shot):
         """
-        Run decomposition algorithms on xtcav image. This method is called automatically and should not be called by the user unless he has a knowledge of the operation done by this class internally
+        Run decomposition algorithms on xtcav image. 
+        This method is called automatically and should not be called by the user unless 
+        he has a knowledge of the operation done by this class internally
 
         Returns:
-            ImageProfile ( image_stats,  roi, shot_to_shot, physical_units)
+            ImageProfile(image_stats, roi, shot_to_shot, physical_units)
             processed image
         """
         # skip if empty image or saturated
-        if img is None: 
+        if img is None:
+            logger.warning('image is None')
             return None, None
 
         if np.max(img) >= saturation_value:
-            warnings.warn_explicit('Saturated Image',UserWarning,'XTCAV',0)
+            #warnings.warn_explicit('Saturated Image',UserWarning,'XTCAV',0)
+            logger.warning('Saturated Image')
             return None, None
 
         #Subtract the dark background, taking into account properly possible different ROIs, if it is available
         img_db = subtractBackground(img, roi, dark_background) 
         croppedimg =  img_db[roi.y0:roi.y0+roi.yN-1,roi.x0:roi.x0+roi.xN-1]
+        #logger.debug(info_ndarr(croppedimg, 'processImage croppedimg'))
 
-        mask, mean = denoiseImage(croppedimg, parameters.snr_filter, parameters.roi_fraction)           #Remove noise from the image and normalize it
+        #Remove noise from the image and normalize it
+        mask, mean = denoiseImage(croppedimg, parameters.snr_filter, parameters.roi_fraction)
         if mask is None:   #If there is nothing in the image we skip the event  
+            logger.warning('mask is None')
             return None, None
+        #logger.debug(info_ndarr(mask, 'processImage mask'))
 
         masks = su.splitImage(mask, parameters.num_bunches, parameters.island_split_method, 
-            parameters.island_split_par1, parameters.island_split_par2)#new
+            parameters.island_split_par1, parameters.island_split_par2)
 
         if masks is None:  #If there is nothing in the image we skip the event  
+            logger.warning('masks is None')
             return None, None
+
+        #logger.debug(info_ndarr(masks, 'processImage after su.splitImage masks'))
 
         num_bunches_found = masks.shape[0]
         if parameters.num_bunches != num_bunches_found:
-            warnings.warn_explicit('Incorrect number of bunches detected in image.', UserWarning, 'XTCAV',0)
+            logger.warning('Incorrect number of bunches detected in image.')
             return None, None
 
-        masks, roi = findROI(masks, roi, parameters.roi_expand)                  #Crop the image, the ROI struct is changed. It also add an extra dimension to the image so the array can store multiple images corresponding to different bunches
-        processed_image = adjustImage(img_db, mean, masks, roi)                 # adjust image based on mean and newly found roi
-        image_stats = getImageStatistics(processed_image, roi)          #Obtain the different properties and profiles from the trace               
+        # Crop the image, the ROI struct is changed. It also add an extra dimension to the image 
+        # so the array can store multiple images corresponding to different bunches
+        masks, roi = findROI(masks, roi, parameters.roi_expand) 
+        processed_image = adjustImage(img_db, mean, masks, roi) # Adjust image based on mean and newly found roi
+        image_stats = getImageStatistics(processed_image, roi)  # Obtain the different properties and profiles from the trace  
+
+        #print('image_stats', image_stats)
+        print('roi', roi)
+
         physical_units = calculatePhyscialUnits(roi,(image_stats[0].xCOM,image_stats[0].yCOM), shot_to_shot, global_calibration)   
         if not physical_units.valid:
+            logger.warning('not physical_units.valid')
             return None, None
 
         #If the step in time is negative, we mirror the x axis to make it ascending and consequently mirror the profiles
@@ -309,7 +335,7 @@ def processLasingSingleShot(image_profile, nolasing_averaged_profiles):
     dt = (t[-1]-t[0])/(t.size-1)
     
              #Electron charge in coulombs
-    Nelectrons = shot_to_shot.dumpecharge/Constants.E_CHARGE   #Total number of electrons in the bunch    
+    Nelectrons = shot_to_shot.dumpecharge/cons.E_CHARGE   #Total number of electrons in the bunch    
     
     #Create the the arrays for the outputs, first index is always bunch number
     bunchdelay=np.zeros(num_bunches, dtype=np.float64);                       #Delay from each bunch with respect to the first one in fs
@@ -343,7 +369,7 @@ def processLasingSingleShot(image_profile, nolasing_averaged_profiles):
         
         dt_old=physical_units.xfs[1]-physical_units.xfs[0] # dt before interpolation 
         
-        eCurrent=image_stats[j].xProfile/(dt_old*Constants.FS_TO_S)*Nelectrons                        #Electron current in number of electrons per second, the original xProfile already was normalized to have a total sum of one for the all the bunches together
+        eCurrent=image_stats[j].xProfile/(dt_old*cons.FS_TO_S)*Nelectrons                        #Electron current in number of electrons per second, the original xProfile already was normalized to have a total sum of one for the all the bunches together
         
         eCOMslice=(image_stats[j].yCOMslice-image_stats[j].yCOM)*physical_units.yMeVPerPix       #Center of mass in energy for each t converted to the right units        
         eRMSslice=image_stats[j].yRMSslice*physical_units.yMeVPerPix                               #Energy dispersion for each t converted to the right units
@@ -391,25 +417,25 @@ def processLasingSingleShot(image_profile, nolasing_averaged_profiles):
         nolasingERMS[j,ind1:ind2]=nolasing_averaged_profiles.eRMSslice[j][groupnum[j],ind1:ind2]
         
         #First calculation of the power based on center of masses and dispersion for each bunch
-        powerECOM[j,:]=((nolasingECOM[j]-lasingECOM[j])*Constants.E_CHARGE*1e6)*eCurrent    #In J/s
+        powerECOM[j,:]=((nolasingECOM[j]-lasingECOM[j])*cons.E_CHARGE*1e6)*eCurrent    #In J/s
         powerERMS[j,:]=(lasingERMS[j]**2-nolasingERMS[j]**2)*(eCurrent**(2.0/3.0)) 
 
     powerrawECOM=powerECOM*1e-9 
     powerrawERMS=powerERMS.copy()
     #Calculate the normalization constants to have a total energy compatible with the energy detected in the gas detector
-    eoffsetfactor=(shot_to_shot.xrayenergy-(np.sum(powerECOM[powerECOM > 0])*dt*Constants.FS_TO_S))/Nelectrons   #In J                           
-    escalefactor=np.sum(powerERMS[powerERMS > 0])*dt*Constants.FS_TO_S                 #in J
+    eoffsetfactor=(shot_to_shot.xrayenergy-(np.sum(powerECOM[powerECOM > 0])*dt*cons.FS_TO_S))/Nelectrons   #In J                           
+    escalefactor=np.sum(powerERMS[powerERMS > 0])*dt*cons.FS_TO_S                 #in J
 
     #Apply the corrections to each bunch and calculate the final energy distribution and power agreement
     for j in range(num_bunches):                 
-        powerECOM[j,:]=((nolasingECOM[j,:]-lasingECOM[j,:])*Constants.E_CHARGE*1e6+eoffsetfactor)*lasingECurrent[j,:]*1e-9   #In GJ/s (GW)
+        powerECOM[j,:]=((nolasingECOM[j,:]-lasingECOM[j,:])*cons.E_CHARGE*1e6+eoffsetfactor)*lasingECurrent[j,:]*1e-9   #In GJ/s (GW)
         powerERMS[j,:]=shot_to_shot.xrayenergy*powerERMS[j,:]/escalefactor*1e-9   #In GJ/s (GW) 
         #Set all negative power to 0
         powerECOM[j,:][powerECOM[j,:] < 0] = 0
         powerERMS[j,:][powerERMS[j,:] < 0] = 0       
         powerAgreement[j]=1-np.sum((powerECOM[j,:]-powerERMS[j,:])**2)/(np.sum((powerECOM[j,:]-np.mean(powerECOM[j,:]))**2)+np.sum((powerERMS[j,:]-np.mean(powerERMS[j,:]))**2))
-        eBunchCOM[j]=np.sum(powerECOM[j,:])*dt*Constants.FS_TO_S*1e9
-        eBunchRMS[j]=np.sum(powerERMS[j,:])*dt*Constants.FS_TO_S*1e9
+        eBunchCOM[j]=np.sum(powerECOM[j,:])*dt*cons.FS_TO_S*1e9
+        eBunchRMS[j]=np.sum(powerERMS[j,:])*dt*cons.FS_TO_S*1e9
                     
     return PulseCharacterization(t, powerrawECOM, powerrawERMS, powerECOM, 
         powerERMS, powerAgreement, bunchdelay, bunchdelaychange, shot_to_shot.xrayenergy, 
@@ -442,7 +468,7 @@ def averageXTCAVProfilesGroups(list_image_profiles, num_groups=0, method='hierar
     mindt = np.amin([np.abs(l.xfsPerPix) for l in list_physical_units])
 
     #Obtain the number of electrons in each shot
-    num_electrons = np.array([x.dumpecharge/Constants.E_CHARGE for x in list_shot_to_shot])
+    num_electrons = np.array([x.dumpecharge/cons.E_CHARGE for x in list_shot_to_shot])
 
     #To be safe with the master time, we set it to have a step half the minumum step
     dt=mindt/2
@@ -523,7 +549,7 @@ def averageXTCAVProfilesGroups(list_image_profiles, num_groups=0, method='hierar
             
             for i in range(num_in_cluster):
                 dt_old=sublist_physical_units[i].xfs[1]-sublist_physical_units[i].xfs[0] # dt before interpolation   
-                eCurrent=sublist_image_stats[i][j].xProfile/(dt_old*Constants.FS_TO_S)*num_electrons[i]                              #Electron current in electrons/s   
+                eCurrent=sublist_image_stats[i][j].xProfile/(dt_old*cons.FS_TO_S)*num_electrons[i]                              #Electron current in electrons/s   
 
                 eCOMslice=(sublist_image_stats[i][j].yCOMslice-sublist_image_stats[i][j].yCOM)*sublist_physical_units[i].yMeVPerPix #Center of mass in energy for each t converted to the right units
                 eRMSslice=sublist_image_stats[i][j].yRMSslice*sublist_physical_units[i].yMeVPerPix                                 #Energy dispersion for each t converted to the right units
@@ -580,11 +606,11 @@ ShotToShotParameters = namedtuple('ShotToShotParameters',
     'unixtime',
     'fiducial',
     'valid'],
-    {'ebeamcharge': Constants.E_BEAM_CHARGE,
-    'dumpecharge': Constants.DUMP_E_CHARGE,
-    'xtcavrfphase': Constants.XTCAV_RFPHASE,
-    'xtcavrfamp': Constants.XTCAV_RFAMP,
-    'xrayenergy': 1e-3*Constants.ENERGY_DETECTOR,
+    {'ebeamcharge': cons.E_BEAM_CHARGE,
+    'dumpecharge': cons.DUMP_E_CHARGE,
+    'xtcavrfphase': cons.XTCAV_RFPHASE,
+    'xtcavrfamp': cons.XTCAV_RFAMP,
+    'xrayenergy': 1e-3*cons.ENERGY_DETECTOR,
     'valid': 1}
     )
 

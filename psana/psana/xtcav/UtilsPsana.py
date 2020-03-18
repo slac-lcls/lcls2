@@ -12,8 +12,6 @@ from psana.xtcav.Simulators import\
 #  SimulatorEventId,\
 #  SimulatorEnvironment
 
-
-
 def getCameraSaturationValue(evt):
     try:
         analysis_version = SimulatorDetector(cons.ANALYSIS_VERSION)
@@ -104,10 +102,10 @@ def getShotToShotParameters(ebeam, gasdetector, evt_id):
     energydetector = cons.ENERGY_DETECTOR
  
     if ebeam:    
-        ebeamcharge=ebeam.ebeamCharge()
-        xtcavrfamp=ebeam.ebeamXTCAVAmpl()
-        xtcavrfphase=ebeam.ebeamXTCAVPhase()
-        dumpecharge=ebeam.ebeamDumpCharge()*cons.E_CHARGE #In C 
+        ebeamcharge = ebeam.ebeamCharge()
+        xtcavrfamp  = ebeam.ebeamXTCAVAmpl()
+        xtcavrfphase= ebeam.ebeamXTCAVPhase()
+        dumpecharge = ebeam.ebeamDumpCharge()*cons.E_CHARGE #In C 
         
         if gasdetector:
             energydetector=(gasdetector.f_11_ENRC()+gasdetector.f_12_ENRC())/2 
@@ -125,20 +123,21 @@ def getShotToShotParameters(ebeam, gasdetector, evt_id):
         
 
 
-def divideImageTasks(first_image, last_image, rank, size):
-    """
-    Split image numbers among cores based on number of cores and core ID
-    The run will be segmented into chunks of 4 shots, with each core alternatingly assigned to each.
-    e.g. Core 1 | Core 2 | Core 3 | Core 1 | Core 2 | Core 3 | ....
-    """
-    num_shots = last_image - first_image
-    if num_shots <= 0:
-        return np.empty()
-    tiling = np.arange(rank*4, rank*4+4,1) #  returns [0, 1, 2, 3] if e.g. rank == 0 and size == 4:
-    comb1 = np.tile(tiling, np.ceil(num_shots/(4.*size)).astype(int))  # returns [0, 1, 2, 3, 0, 1, 2, 3, ...]        
-    comb2 = np.repeat(np.arange(0, np.ceil(num_shots/(4.*size)), 1), 4) # returns [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, ...]
-            #  list of shot numbers assigned to this core
-    main = comb2*4*size + comb1  + first_image # returns [  0.   1.   2.   3.  16.  17.  18.  19.  32.  33. ... ]
-    main = np.delete(main, np.where(main>=last_image) )  # remove element if greater or equal to maximum number of shots in run
-    return main.astype(int)
+#def divideImageTasks(first_image, last_image, rank, size):
+#    """
+#    DEPRICATED
+#    Split image numbers among cores based on number of cores and core ID
+#    The run will be segmented into chunks of 4 shots, with each core alternatingly assigned to each.
+#    e.g. Core 1 | Core 2 | Core 3 | Core 1 | Core 2 | Core 3 | ....
+#    """
+#    num_shots = last_image - first_image
+#    if num_shots <= 0:
+#        return np.empty()
+#    tiling = np.arange(rank*4, rank*4+4,1) #  returns [0, 1, 2, 3] if e.g. rank == 0 and size == 4:
+#    comb1 = np.tile(tiling, np.ceil(num_shots/(4.*size)).astype(int))  # returns [0, 1, 2, 3, 0, 1, 2, 3, ...]        
+#    comb2 = np.repeat(np.arange(0, np.ceil(num_shots/(4.*size)), 1), 4) # returns [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, ...]
+#            #  list of shot numbers assigned to this core
+#    main = comb2*4*size + comb1  + first_image # returns [  0.   1.   2.   3.  16.  17.  18.  19.  32.  33. ... ]
+#    main = np.delete(main, np.where(main>=last_image) )  # remove element if greater or equal to maximum number of shots in run
+#    return main.astype(int)
 

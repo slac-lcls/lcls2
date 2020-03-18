@@ -24,16 +24,35 @@ import psana.xtcav.Constants as cons
 class SimulatorEBeam(Simulator) :
     def __init__(self) :
         Simulator.__init__(self, 'EBeam')
+    def ebeamCharge(self) :     return cons.E_BEAM_CHARGE # 5
+    def ebeamXTCAVAmpl(self) :  return cons.XTCAV_RFAMP   # 20
+    def ebeamXTCAVPhase(self) : return cons.XTCAV_RFPHASE # 90
+    def ebeamDumpCharge(self) : return cons.DUMP_E_CHARGE # 175E-12 #IN C
 
 
 class SimulatorGasDetector(Simulator) :
     def __init__(self) :
         Simulator.__init__(self, 'GasDetector')
+    def f_11_ENRC(self) : return 6011
+    def f_12_ENRC(self) : return 6012
 
 
 class SimulatorEventId(Simulator) :
     def __init__(self) :
+        from time import time
         Simulator.__init__(self, 'EventId')
+        self.count_time_sec = int(time())
+        self.count_time_nsec = 0
+        self.count_fiducials = 0
+
+    def time(self) :
+        self.count_time_sec += 1
+        self.count_time_nsec += 1
+        return [self.count_time_sec, self.count_time_nsec]
+
+    def fiducials(self) :
+        self.count_fiducials += 1
+        return self.count_fiducials
 
 
 class SimulatorEnvironment(Simulator) :

@@ -21,6 +21,9 @@ from   psana.xtcav.DarkBackgroundReference import *
 from   psana.xtcav.FileInterface import Load as constLoad
 from   psana.xtcav.FileInterface import Save as constSave
 
+from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
+
+
 from psana.xtcav.Simulators import\
   SimulatorEBeam,\
   SimulatorGasDetector,\
@@ -117,17 +120,29 @@ class LasingOffReference():
 
         #Ebeam type
         ebeam_data = SimulatorEBeam() # psana.Detector(cons.EBEAM)
+        event_id = SimulatorEventId() # evt.get(psana.EventId)
 
         #Gas detectors for the pulse energies
         gasdetector_data = SimulatorGasDetector() # psana.Detector(cons.GAS_DETECTOR)
 
-        #Empty list for the statistics obtained from each image, the shot to shot properties, and the ROI of each image (although this ROI is initially the same for each shot, it becomes different when the image is cropped around the trace)
-        list_image_profiles= []
+        # Empty list for the statistics obtained from each image, the shot to shot properties,
+        # and the ROI of each image (although this ROI is initially the same for each shot,
+        # it becomes different when the image is cropped around the trace)
+        list_image_profiles = []
 
         #dark_background = self._getDarkBackground(env)
         dark_data, dark_meta = xtcav_camera.calibconst.get('pedestals')
-        print('==== dark_data:\n%s'% str(dark_data))
+
+        dark_background = xtu.xtcav_calib_object_from_dict(dark_data)
+        print('==== dark_background:\n%s'% str(dark_background))
         logger.info('==== dark_meta:\n%s' % str(dark_meta))
+
+
+
+        #====================
+        #sys.exit('TEST EXIT') ### <<<<<<<<<<<<<<<<
+        #====================
+
 
         #Calibration values needed to process images. first_event is the index of the first event with valid data
         roi_xtcav, global_calibration, saturation_value, first_event = self._getCalibrationValues(run, xtcav_camera, start_image)
@@ -135,37 +150,35 @@ class LasingOffReference():
               (str(roi_xtcav), str(global_calibration), str(saturation_value), str(first_event))
         #print(msg)
         logger.info(msg)
-       
 
-        #====================
-        sys.exit('TEST EXIT') ### <<<<<<<<<<<<<<<<
-        #====================
+        #times = run.times()
+        #image_numbers = xtup.divideImageTasks(first_event, len(times), rank, size)
 
+        num_processed = 0 #Counter for the total number of xtcav images processed within the run
 
+        for nev,evt in enumerate(run.events()):
+            logger.info('Event %03d'%nev)
+            img = xtcav_camera.raw(evt)
+            if img is None: continue
 
-        times = run.times()
-        image_numbers = xtup.divideImageTasks(first_event, len(times), rank, size)
-
-        num_processed = 0 #Counter for the total number of xtcav images processed within the run 
-        for t in image_numbers: 
-            t1 = time.time()
-            evt = run.event(times[t])
             ebeam = ebeam_data.get(evt)
             gasdetector = gasdetector_data.get(evt)
 
-            shot_to_shot = xtup.getShotToShotParameters(ebeam, gasdetector, evt.get(psana.EventId)) #Obtain the shot to shot parameters necessary for the retrieval of the x and y axis in time and energy units
+            #Obtain the shot to shot parameters necessary for the retrieval of the x and y axis in time and energy units
+            shot_to_shot = xtup.getShotToShotParameters(ebeam, gasdetector, event_id)
+            #logger.debug('  shot_to_shot: %s' % str(shot_to_shot))
         
-            if not shot_to_shot.valid: #If the information is not good, we skip the event
-                continue 
+            if not shot_to_shot.valid: continue
 
-            img = xtcav_camera.image(evt)
-            image_profile, _ = xtu.processImage(img, self.parameters, dark_background, global_calibration, 
-                                                    saturation_value, roi_xtcav, shot_to_shot)
+            image_profile, _ = xtu.processImage(img, self.parameters, dark_background, global_calibration,
+                                                saturation_value, roi_xtcav, shot_to_shot)
+
+            logger.debug(info_ndarr(image_profile, 'LasingOffReference image_profile'))
 
             if not image_profile:
                 continue
-            
-            #Append only image profile, omit processed image                                                                                                                                                              
+
+            #Append only image profile, omit processed image
             list_image_profiles.append(image_profile)     
             num_processed += 1
 
@@ -173,6 +186,12 @@ class LasingOffReference():
 
             if num_processed >= np.ceil(self.parameters.max_shots/float(size)):
                 break
+
+        #====================
+        sys.exit('TEST EXIT') ### <<<<<<<<<<<<<<<<
+        #====================
+
+
 
         # here gather all shots in one core, add all lists
         image_profiles = comm.gather(list_image_profiles, root=0)
