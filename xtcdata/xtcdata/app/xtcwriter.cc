@@ -621,11 +621,11 @@ int main(int argc, char* argv[])
     unsigned nodeid2 = 2;
     NamesLookup namesLookup;
     unsigned nSegments=2;
-    unsigned iseg = 0;
+    unsigned iseg = 1; // add to 2nd segment for testing
     addRunInfoNames(config.xtc, namesLookup, nodeid1);
     // only add epics and scan info to the first stream
     if (starting_segment==0) {
-        addEpicsNames(config.xtc, namesLookup, nodeid1, iseg);
+        addEpicsNames(config.xtc, namesLookup, nodeid1, iseg); 
         addScanNames(config.xtc, namesLookup, nodeid1, iseg);
     }
     for (unsigned iseg=0; iseg<nSegments; iseg++) {
@@ -674,7 +674,7 @@ int main(int argc, char* argv[])
                     Transition tr(Dgram::Event, TransitionId::SlowUpdate, TimeStamp(tv.tv_sec, tv.tv_usec), env);
                     Dgram& dgram = *new(buf) Dgram(tr, Xtc(tid));
 
-                    unsigned iseg = 0;
+                    unsigned iseg = 1; // add epics to second segment
                     // only add epics to the first stream
                     if (starting_segment==0) addEpicsData(dgram.xtc, namesLookup, nodeid1, iseg);
                     save(dgram,xtcFile);
