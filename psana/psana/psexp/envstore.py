@@ -45,6 +45,14 @@ class EnvManager(object):
     
     def is_empty(self):
         return self.env_variables
+    
+    def locate_variable(self, variable_name):
+        """ Returns algorithm name and segment_id from the given env variable. """
+        for alg, envs in self.env_variables.items():
+            for segment_id, env_vars in envs.items():
+                if variable_name in env_vars:
+                    return alg, segment_id
+        return None
 
 class EnvStore(object):
     """ Manages Env data 
@@ -114,26 +122,26 @@ class EnvStore(object):
         
         PS_N_STEP_SEARCH_STEPS = int(os.environ.get("PS_N_STEP_SEARCH_STEPS", "10"))
         env_values = []
-        for i, env_man in enumerate(self.env_managers):
-            env_var_loc = self.locate_variable(env_variable)
-            if env_var_loc:
-                alg, segment_id = env_var_loc
-                event_timestamps = np.asarray([evt.timestamp for evt in events], dtype=np.uint64)
-
-                found_positions = np.searchsorted(env_man.timestamps, event_timestamps)
-                found_positions -= 1 # return the env event before the found position.
-                for pos in found_positions:
-                    val = None
-                    for p in range(pos, pos - PS_N_STEP_SEARCH_STEPS, -1):
+        
+        for evt in events:
+            event_timestamp = np.array([evt.timestamp], dtype=np.uint64)
+            for i, env_man in enumerate(self.env_managers):
+                val = None
+                env_var_loc = env_man.locate_variable(env_variable) # check if this xtc has the variable
+                if env_var_loc:
+                    alg, segment_id = env_var_loc
+                    found_pos = np.searchsorted(env_man.timestamps, event_timestamp)[0]
+                    found_pos -= 1 # return the env event before the found position.
+                    for p in range(found_pos, found_pos - PS_N_STEP_SEARCH_STEPS, -1):
                         if p < 0:
                             break
                         envs = getattr(env_man.dgrams[p], self.env_name)[segment_id]
                         if hasattr(envs, alg):
                             val = getattr(getattr(envs, alg), env_variable)
                             break
-                    env_values.append(val)
-
-                break
+                    
+                    if val is not None: break # found the value from this env manager
+            env_values.append(val)
         
         return env_values
     
