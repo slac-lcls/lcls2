@@ -220,10 +220,12 @@ def findROI(masks, ROI, expandfactor=1):
 def calculatePhyscialUnits(ROI, center, shot_to_shot, global_calibration):
     valid=1
     yMeVPerPix = global_calibration.umperpix*global_calibration.dumpe/global_calibration.dumpdisp*1e-3          #Spacing of the y axis in MeV
-    
+    logger.debug('  XXX yMeVPerPix %f'% yMeVPerPix)
     xfsPerPix = -global_calibration.umperpix*global_calibration.rfampcalib/(0.3*global_calibration.strstrength*shot_to_shot.xtcavrfamp)     #Spacing of the x axis in fs (this can be negative)
+    logger.debug('  XXX xfsPerPix %f'% xfsPerPix)
     
     cosphasediff=math.cos((global_calibration.rfphasecalib-shot_to_shot.xtcavrfphase)*math.pi/180)
+    logger.debug('  XXX cosphasediff %f'% cosphasediff)
 
     #If the cosine of phase was too close to 0, we return warning and error
     if np.abs(cosphasediff) < 0.5:
@@ -295,7 +297,7 @@ def processImage(img, parameters, dark_background, global_calibration,
         image_stats = getImageStatistics(processed_image, roi)  # Obtain the different properties and profiles from the trace  
 
         #print('image_stats', image_stats)
-        print('roi', roi)
+        #print('   roi:\n', roi)
 
         physical_units = calculatePhyscialUnits(roi,(image_stats[0].xCOM,image_stats[0].yCOM), shot_to_shot, global_calibration)   
         if not physical_units.valid:

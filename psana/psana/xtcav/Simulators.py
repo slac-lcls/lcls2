@@ -25,9 +25,9 @@ class SimulatorEBeam(Simulator) :
     def __init__(self) :
         Simulator.__init__(self, 'EBeam')
     def ebeamCharge(self) :     return cons.E_BEAM_CHARGE # 5
+    def ebeamDumpCharge(self) : return cons.DUMP_E_CHARGE # 175E-12 #IN C
     def ebeamXTCAVAmpl(self) :  return cons.XTCAV_RFAMP   # 20
     def ebeamXTCAVPhase(self) : return cons.XTCAV_RFPHASE # 90
-    def ebeamDumpCharge(self) : return cons.DUMP_E_CHARGE # 175E-12 #IN C
 
 
 class SimulatorGasDetector(Simulator) :

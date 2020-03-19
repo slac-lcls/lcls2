@@ -139,7 +139,7 @@ class H5VQWTree(QWTree) :
             msg = 'selected item: %s row: %d parent: %s' % (itemsel.text(), selected.row(), parname) 
             logger.debug(msg)
             if isinstance(itemsel.data(), h5py.Dataset) :
-                msg = 'data.value:\n%s' % str(itemsel.data().value)
+                msg = 'data.value:\n%s' % str(itemsel.data()[()]) #.value)
                 logger.debug(msg)
 
 
