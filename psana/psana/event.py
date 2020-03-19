@@ -90,7 +90,7 @@ class Event():
         ts = None
         for d in self._dgrams:
             if d:
-                ts = self._dgrams[0].timestamp()
+                ts = d.timestamp()
                 break
         assert ts
         return ts
