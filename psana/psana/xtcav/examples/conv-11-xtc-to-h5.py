@@ -73,10 +73,11 @@ def print_group_xtcav_values(evt) :
 
 nargs = len(sys.argv)
 
-EVENTS  = 10                          if nargs <= 1 else int(sys.argv[1])
+EVENTS  = 20                          if nargs <= 1 else int(sys.argv[1])
 OFNAME  = 'tmp-data.h5'               if nargs <= 2 else sys.argv[2]
 DSNAME  = 'exp=amox23616:run=131:smd' if nargs <= 3 else sys.argv[3] 
-DETNAME = 'xtcav'                     if nargs <= 4 else sys.argv[4] # XrayTransportDiagnostic.0:Opal1000.0
+DETNAME = 'xtcav'                     if nargs <= 4 else sys.argv[4]
+EXPNAME = 'amox23616'                 if nargs <= 5 else sys.argv[5]
 
 print 'Input dataset: %s\nNumber of events: %d\nOutput file: %s\nDetector name: %s' % (DSNAME, EVENTS, OFNAME, DETNAME)
 
@@ -107,7 +108,9 @@ ebeam_L3Energy   = ebeam_gr.create_dataset('L3Energy',   (EVENTS+1,), dtype='f8'
 
 #'fiducials', 'idxtime', 'run', 'ticks', 'time', 'vector'
 eventid_gr = h5out.create_group('EventId')
-eventid_fiducials = eventid_gr.create_dataset('fiducials', (EVENTS+1,), dtype='i4', chunks=(chsize,), maxshape=(None,))
+eventid_exp       = eventid_gr.create_dataset('experiment',(EVENTS+1,),  dtype='S10')
+eventid_run       = eventid_gr.create_dataset('run',       (EVENTS+1,),  dtype='i4', chunks=(chsize,), maxshape=(None,))
+eventid_fiducials = eventid_gr.create_dataset('fiducials', (EVENTS+1,),  dtype='i4', chunks=(chsize,), maxshape=(None,))
 eventid_time      = eventid_gr.create_dataset('time',      (EVENTS+1,2), dtype='i8', chunks=(chsize,2), maxshape=(None,2))
 
 # 'f_11_ENRC', 'f_12_ENRC', 'f_21_ENRC', 'f_22_ENRC', 'f_63_ENRC', 'f_64_ENRC'
@@ -185,6 +188,8 @@ for nevt,evt in enumerate(ds.events()):
    ebeam_PkCurrBC2[nevt]  = getattr(ebeam, 'ebeamPkCurrBC2', None)()
    ebeam_L3Energy[nevt]   = getattr(ebeam, 'ebeamL3Energy', None)()
 
+   eventid_exp[nevt]      = EXPNAME
+   eventid_run[nevt]      = getattr(eventId, 'run', None)()
    eventid_time[nevt]     = getattr(eventId, 'time', None)()
    eventid_fiducials[nevt]= getattr(eventId, 'fiducials', None)()
 

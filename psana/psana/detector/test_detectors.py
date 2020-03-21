@@ -57,9 +57,57 @@ class cspad_raw_2_3_42(DetectorImpl):
         segs = self._segments(evt)
         return np.vstack([segs[i].arrayRaw for i in range(len(segs))])
 
+
+class eventid_valseid_0_0_1(DetectorImpl):
+    def __init__(self, *args):
+        super(eventid_valseid_0_0_1, self).__init__(*args)
+    def experiment(self, evt):
+        return self._segments(evt)[0].experiment if self._segments(evt) is not None else None
+    def run(self, evt):
+        return self._segments(evt)[0].run        if self._segments(evt) is not None else None
+    def fiducials(self, evt):
+        return self._segments(evt)[0].fiducials  if self._segments(evt) is not None else None
+    def time(self, evt): 
+        return self._segments(evt)[0].time       if self._segments(evt) is not None else None
+
+
+class gasdetector_valsgd_0_0_1(DetectorImpl):
+    def __init__(self, *args):
+        super(gasdetector_valsgd_0_0_1, self).__init__(*args)
+    def f_11_ENRC(self, evt):
+        return self._segments(evt)[0].f_11_ENRC if self._segments(evt) is not None else None
+    def f_12_ENRC(self, evt):
+        return self._segments(evt)[0].f_12_ENRC if self._segments(evt) is not None else None
+    def f_21_ENRC(self, evt):
+        return self._segments(evt)[0].f_21_ENRC if self._segments(evt) is not None else None
+    def f_22_ENRC(self, evt):
+        return self._segments(evt)[0].f_22_ENRC if self._segments(evt) is not None else None
+    def f_63_ENRC(self, evt):
+        return self._segments(evt)[0].f_63_ENRC if self._segments(evt) is not None else None
+    def f_64_ENRC(self, evt):
+        return self._segments(evt)[0].f_64_ENRC if self._segments(evt) is not None else None
+
+
+class ebeam_valsebm_0_0_1(DetectorImpl):
+    def __init__(self, *args):
+        super(ebeam_valsebm_0_0_1, self).__init__(*args)
+    def Charge(self, evt):
+        return self._segments(evt)[0].Charge     if self._segments(evt) is not None else None
+    def DumpCharge(self, evt):
+        return self._segments(evt)[0].DumpCharge if self._segments(evt) is not None else None
+    def XTCAVAmpl(self, evt):
+        return self._segments(evt)[0].XTCAVAmpl  if self._segments(evt) is not None else None
+    def XTCAVPhase(self, evt):
+        return self._segments(evt)[0].XTCAVPhase if self._segments(evt) is not None else None
+    def PkCurrBC2(self, evt):
+        return self._segments(evt)[0].PkCurrBC2  if self._segments(evt) is not None else None
+    def L3Energy(self, evt):
+        return self._segments(evt)[0].L3Energy   if self._segments(evt) is not None else None
+
+
 class ebeam_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
-        super(ebeam_ebeamalg_2_3_42, self).__init__(*args)
+        super(ebeam_raw_2_3_42, self).__init__(*args)
     def energy(self, evt):
         return self._segments(evt)[0].energy
 
