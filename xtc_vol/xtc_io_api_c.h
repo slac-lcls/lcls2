@@ -27,7 +27,8 @@ typedef void* xtc_func_t;
 //} target_type;
 
 /* The xtc VOL info object */
-EXTERNC typedef enum XTC_Data_type{//definition is same with xtc DataType.
+//enum definition is identical with XtcData::DataType.
+EXTERNC typedef enum XTC_Data_type{
     UINT8, UINT16, UINT32, UINT64,
     INT8, INT16, INT32, INT64,
     FLOAT, DOUBLE,
@@ -55,6 +56,8 @@ typedef struct XTC_token {
     uint8_t __data[16];
 } xtc_token_t;
 
+EXTERNC typedef unsigned long long h5_size_t;
+
 EXTERNC typedef struct Xtc_Location {
     int fd;
     void* fileIter; //XtcFileIterator* const
@@ -63,7 +66,12 @@ EXTERNC typedef struct Xtc_Location {
     void* root_node; //used in xtc_io_api.cc.
 }xtc_location;
 
-EXTERNC typedef unsigned long long h5_size_t;
+//Used for dataset read
+EXTERNC typedef struct Xtc_dataset_handle{
+    int index;
+    void* names;     //XtcData::Names
+    void* xtc_ptr; //Xtc* xtc, can be casted to descdata, shapesdata
+}xtc_data_handle;
 
 EXTERNC typedef struct XTC_DS_info {
     xtc_data_type type; //data type
@@ -72,7 +80,9 @@ EXTERNC typedef struct XTC_DS_info {
     h5_size_t* maximum_dims; //Optional, maximum size of each dimension
     int element_size;//similar to sizeof(type)
     int element_cnt;
+    xtc_data_handle* data_handle;
     void* data_ptr;
+    int isTimestampsDS;//bool
 }xtc_ds_info;
 
 EXTERNC typedef struct XTC_C_API_HELPER {
@@ -96,6 +106,7 @@ EXTERNC xtc_object* xtc_file_open(const char* path);//returns xtc_c_helper*
 EXTERNC xtc_func_t xtc_it_open(void* param);// takes xtc_c_helper*
 EXTERNC void xtc_file_close(xtc_object* helper);
 
+EXTERNC size_t dataset_read_all(xtc_object* obj, void* buf_out);
 //the parameter obj can be any valid obj in the tree.
 EXTERNC xtc_object* xtc_obj_find(xtc_object* obj, const char* path);
 EXTERNC xtc_object** xtc_get_children_list(xtc_object* group, int* num_out);
