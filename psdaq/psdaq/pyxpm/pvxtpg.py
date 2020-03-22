@@ -82,6 +82,7 @@ class PVMmcm(PVHandler):
         print('delay end     {}'.format(self._dev.delayEnd  .get()))
         print('external lock {}'.format(self._dev.externalLock.get()))
         print('nready        {}'.format(self._dev.nready.get()))
+        print('status        {:x}'.format(self._dev.status.get()))
 
 
 class PVCuPhase(object):

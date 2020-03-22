@@ -28,7 +28,7 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     f.register_type<Digitizer>("Digitizer");
     f.register_type<AreaDetector>("AreaDetector");
     f.register_type<TimeTool>("TimeTool");
-    f.register_type<TimeTool>("Wave8");
+    f.register_type<Wave8>("Wave8");
     if ((m_para.detectorType=="TimeTool") ||
         (m_para.detectorType=="Wave8")) {
         m_para.rogueDet=true;

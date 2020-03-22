@@ -99,9 +99,9 @@ int main(int argc, char* argv[])
             if (!lrogue)
                 event_header = reinterpret_cast<Pds::TimingHeader*>(dmaBuffers[index]);
             else {
-                event_header = reinterpret_cast<Pds::TimingHeader*>((char*)(dmaBuffers[index])+sizeof(EvtBatcherHeader));
                 EvtBatcherHeader& ebh = *(EvtBatcherHeader*)(dmaBuffers[index]);
-                EvtBatcherSubFrameTail& ebsft = *(EvtBatcherSubFrameTail*)((char*)(dmaBuffers[index])+size-sizeof(EvtBatcherSubFrameTail));
+                event_header = reinterpret_cast<Pds::TimingHeader*>(ebh.next());
+                EvtBatcherSubFrameTail& ebsft = *(EvtBatcherSubFrameTail*)((char*)(dmaBuffers[index])+size-ebh.lineWidth(ebh.width));
                 printf("EventBatcherHeader: vers %d seq %d width %d sfsize %d\n",ebh.version,ebh.sequence_count,ebh.width,ebsft.size());
             }
             XtcData::TransitionId::Value transition_id = event_header->service();

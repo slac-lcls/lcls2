@@ -38,6 +38,7 @@ setup(
                 'xpmioc = psdaq.cas.xpmioc:main',
                 'bldcas = psdaq.cas.bldcas:main',
                 'hpsdbuscas = psdaq.cas.hpsdbuscas:main',
+                'wave8pvs = psdaq.cas.wave8pvs:main',
                 'pyxpm = psdaq.pyxpm.pyxpm:main',
                 'amccpromload = psdaq.pyxpm.amccpromload:main',
                 'pykcu = psdaq.pykcu.pykcu:main',

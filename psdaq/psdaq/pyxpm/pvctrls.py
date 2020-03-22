@@ -203,7 +203,7 @@ class CuGenCtrls(object):
                 r.set(init)
             return pv
 
-        self._pv_cuInput    = addPV('CuInput'   ,       1, xpm.AxiSy56040.OutputConfig)
+        self._pv_cuInput    = addPV('CuInput'   ,       2, xpm.AxiSy56040.OutputConfig)
 
 class PVInhibit(object):
     def __init__(self, name, app, inh, group, idx):
@@ -256,6 +256,7 @@ class GroupSetup(object):
         self._pv_FixedRate  = addPV('L0Select_FixedRate'     ,self.put)
         self._pv_ACRate     = addPV('L0Select_ACRate'        ,self.put)
         self._pv_ACTimeslot = addPV('L0Select_ACTimeslot'    ,self.put)
+        self._pv_EventCode  = addPV('L0Select_EventCode'     ,self.put)
         self._pv_Sequence   = addPV('L0Select_Sequence'      ,self.put)
         self._pv_SeqBit     = addPV('L0Select_SeqBit'        ,self.put)        
         self._pv_DstMode    = addPV('DstSelect'              ,self.put, 1)
@@ -318,6 +319,11 @@ class GroupSetup(object):
         rateVal = (1<<14) | ((acTS&0x3f)<<3) | (acRate&0x7)
         self._app.l0RateSel.set(rateVal)
 
+    def setEventCode(self):
+        code   = self._pv_EventCode.current()['value']
+        rateVal = (2<<14) | ((code&0xf0)<<4) | (code&0xf)
+        self._app.l0RateSel.set(rateVal)
+
     def setSequence(self):
         seqIdx = self._pv_Sequence.current()['value']
         seqBit = self._pv_SeqBit  .current()['value']
@@ -358,7 +364,7 @@ class GroupSetup(object):
         elif mode == RateSel.ACRate:
             self.setACRate()
         elif mode == RateSel.EventCode:
-            self.setSequence()
+            self.setEventCode()
         elif mode == RateSel.Sequence:
             self.setSequence()
         else:
