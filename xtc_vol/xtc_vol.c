@@ -27,7 +27,7 @@
 
 #include "xtc_io_api_c.h"
 
-#define DEBUG_PRINT //printf("%s():%d\n", __func__, __LINE__);
+#define DEBUG_PRINT printf("%s():%d\n", __func__, __LINE__);
 /**********/
 /* Macros */
 /**********/
@@ -312,7 +312,7 @@ hid_t type_convert(xtc_data_type xtc_type);
 
 unsigned long new_xtc_h5token(H5O_token_t* token) {
     assert(token);
-    return xtc_h5token_new(&token, H5O_MAX_TOKEN_SIZE);
+    return xtc_h5token_new((xtc_token_t**)(&token), H5O_MAX_TOKEN_SIZE);
 }
 
 int xtc_h5token_cmp(H5O_token_t* t1, H5O_token_t* t2){
@@ -324,7 +324,7 @@ int xtc_h5token_cmp(H5O_token_t* t1, H5O_token_t* t2){
     return 0;
 }
 
-char* xtc_h5token_to_str(H5O_token_t* t){
+char* xtc_h5token_to_str(const H5O_token_t* t){
     assert(t);
     // token sample: 123-46-789-1
     char* str = (char*)calloc(1, 18 * sizeof(char));
@@ -366,7 +366,7 @@ H5VL_xtc_t* _internal_obj_lookup_by_name(H5VL_xtc_t *base_obj, const char* path)
     }
 
     if(path[0] == '/'){//absolute path.
-        abs_path = path;
+        abs_path = (char*)path;
     }
     //printf("%s:  absolute path = %s\n", __func__, abs_path);
     DEBUG_PRINT
@@ -1266,89 +1266,131 @@ H5VL_xtc_dataset_open(void *obj, const H5VL_loc_params_t *loc_params,
 static herr_t 
 H5VL_xtc_dataset_read(void *dset, hid_t mem_type_id, hid_t mem_space_id,
     hid_t file_space_id, hid_t plist_id, void *buf, void **req)
-
-/*
- * mem_space_id: h5 native type
- * file_sapce_id: user set it to specify select range
- *
- * */
 {
-    DEBUG_PRINT
-    H5VL_xtc_t *o = (H5VL_xtc_t *)dset;
-    assert(o->xtc_obj);
-
-    hid_t h5_ds_type = type_convert(o->xtc_obj->ds_info->type);
-
-    char type_name[200] = "";
-    int name_len = 0;
-    //H5LTdtype_to_text(mem_type_id, type_name, H5LT_DDL, &name_len);
-    printf("h5_ds_type = %d, mem_type_id = %d, H5T_C_S1 = %d\n", h5_ds_type, mem_type_id, H5T_C_S1);
-
-    //assert(h5_ds_type == mem_type_id);
-
-    //H5Tenum_nameof(mem_type_id, );
-    hsize_t size = H5Tget_size(mem_type_id);
-    printf("mem_type_id size = %d, ");
-    hid_t t_class = H5Tget_class(mem_type_id);
-    switch(t_class){
-        printf("mem_type_id class: H5T_INTEGER\n");
-        case H5T_INTEGER:
-            break;
-        case H5T_FLOAT:
-            printf("mem_type_id class: H5T_FLOAT\n");
-            break;
-        case H5T_STRING:
-            printf("mem_type_id class: H5T_STRING\n");
-            break;
-        case H5T_BITFIELD:
-            printf("mem_type_id class: H5T_BITFIELD\n");
-            break;
-        case H5T_OPAQUE:
-            printf("mem_type_id class: H5T_OPAQUE\n");
-            break;
-        case H5T_VLEN:
-            printf("mem_type_id class: H5T_VLEN\n");
-            break;
-        case H5T_COMPOUND:
-            printf("mem_type_id class: H5T_COMPOUND\n");
-            break;
-        case H5T_REFERENCE:
-            printf("mem_type_id class: H5T_REFERENCE\n");
-            break;
-        case H5T_ENUM:
-            printf("mem_type_id class: H5T_ENUM\n");
-            break;
-        case H5T_ARRAY:
-            printf("mem_type_id class: H5T_ARRAY\n");
-            break;
-        default:
-            break;
-    }
-
-    H5S_sel_type select_type = H5Sget_select_type(mem_space_id);
-    switch(select_type){
-        case H5S_SEL_NONE:
-            assert(0 && "H5S_SEL_NONE");
-            break;
-        case H5S_SEL_POINTS:
-            assert(0 && "H5S_SEL_POINTS");
-            break;
-        case H5S_SEL_HYPERSLABS:
-            assert(0 && "H5S_SEL_HYPERSLABS");
-            break;
-        case H5S_SEL_ALL:
-            assert(0 && "H5S_SEL_ALL");
-            break;
-        default:
-            break;
-    }
-
+    /*
+     * mem_space_id: h5 native type
+     * file_sapce_id: user set it to specify select range
+     *
+     * */
     herr_t ret_value;
+    H5VL_xtc_t *obj = (H5VL_xtc_t *)dset;
+    assert(obj->xtc_obj);
+    hid_t h5_ds_type = type_convert(obj->xtc_obj->ds_info->type);
+    //printf("\n h5_ds_type = %d, mem_type_id = %d, H5T_C_S1 = %d\n", h5_ds_type, mem_type_id, H5T_C_S1);
+
+    DEBUG_PRINT
+    hsize_t varsize, stride_ind0;
+    H5S_sel_type mem_select_type, file_select_type;
+    hsize_t npoints, npoints_mem, nblocks_file, nblocks_mem;
+
+    //Verify mem_type_id
+    hsize_t dataTypeSize = H5Tget_size(mem_type_id);
+
+    hid_t t_class = H5Tget_class(mem_type_id);
+    H5T_sign_t sign = H5Tget_sign(mem_type_id);
+    if (mem_space_id != 0) {
+        mem_select_type = H5Sget_select_type(mem_space_id);
+    }
+    //Verify mem_space_id
+
+    if (file_space_id != 0) {
+        file_select_type = H5Sget_select_type(file_space_id);
+    }
+
+    if ((mem_select_type == H5S_SEL_NONE) || (file_select_type == H5S_SEL_NONE)) {
+        /* Nothing was selected, do nothing */
+        return 0;
+    }
+
+    if(file_select_type == H5S_SEL_ALL){
+        //assert(0 && "H5S_SEL_ALL");
+
+        dataset_read_all(obj->xtc_obj, buf);
+
+    } else if(file_select_type == H5S_SEL_HYPERSLABS) {
+
+        /* Generate arrays of flattened positions for each point in the selection.
+         * The H5_posMap type will have an index (posCompact), and a position in
+         * file or memory space (posInSource).  The position is the element index
+         * for a flattened representation of the selection.
+         */
+
+        npoints = H5Sget_select_npoints(file_space_id);
+        int dim_cnt = obj->xtc_obj->ds_info->dim_cnt;
+        assert(dim_cnt >= 0 && dim_cnt <= 5);
+        int total_pixel_cnt = 1;
+        for(int i = 0; i < dim_cnt; i++){
+            total_pixel_cnt *= obj->xtc_obj->ds_info->current_dims[i];
+        }
+
+        if(total_pixel_cnt == npoints){//case H5S_SEL_ALL
+            //read all data
+            //assert(0 && "H5S_SEL_ALL");
+            dataset_read_all(obj->xtc_obj, buf);
+            //buf
+        } else { //real hyperslab read
+            assert(0 && "H5S_SEL_HYPERSLABS");
+            hsize_t sel_block_cnt = H5Sget_select_hyper_nblocks(file_space_id);
+            hsize_t *blockinfo = (hsize_t *)calloc(1, sizeof(hsize_t) * 2 * dim_cnt * sel_block_cnt);//???
+            herr_t status = H5Sget_select_hyper_blocklist(file_space_id, (hsize_t)0, sel_block_cnt, blockinfo);
+            assert(status >= 0);//otherwise failed.
+            // <"start" coordinate>, immediately followed by <"opposite" corner coordinate>, followed by
+            // the next "start" and "opposite" coordinates, until end.
+
+
+        }
+    } else if(file_select_type == H5S_SEL_POINTS){
+        assert(0 && "H5S_SEL_POINTS");
+    } else {
+        assert(0 && "Unknown file_select_type");
+    }
+
+
+
+//    switch(t_class){
+//        printf("mem_type_id class: H5T_INTEGER\n");
+//        case H5T_INTEGER:
+//            break;
+//        case H5T_FLOAT:
+//            printf("mem_type_id class: H5T_FLOAT\n");
+//            break;
+//        case H5T_STRING:
+//            printf("mem_type_id class: H5T_STRING\n");
+//            break;
+//        case H5T_BITFIELD:
+//            printf("mem_type_id class: H5T_BITFIELD\n");
+//            break;
+//        case H5T_OPAQUE:
+//            printf("mem_type_id class: H5T_OPAQUE\n");
+//            break;
+//        case H5T_VLEN:
+//            printf("mem_type_id class: H5T_VLEN\n");
+//            break;
+//        case H5T_COMPOUND:
+//            printf("mem_type_id class: H5T_COMPOUND\n");
+//            break;
+//        case H5T_REFERENCE:
+//            printf("mem_type_id class: H5T_REFERENCE\n");
+//            break;
+//        case H5T_ENUM:
+//            printf("mem_type_id class: H5T_ENUM\n");
+//            break;
+//        case H5T_ARRAY:
+//            printf("mem_type_id class: H5T_ARRAY\n");
+//            break;
+//        default:
+//            break;
+//    }
+
+
+
+
+
 
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL DATASET Read\n");
 #endif
-    assert(0 && "breakpoint");
+    //assert(0 && "breakpoint");
 
     return ret_value;
 } /* end H5VL_xtc_dataset_read() */
@@ -1400,72 +1442,89 @@ H5VL_xtc_dataset_write(void *dset, hid_t mem_type_id, hid_t mem_space_id,
 
 //xtc2 to HDF5 native type mapping
 hid_t type_convert(xtc_data_type xtc_type){
+    char* xtc_type_name = "";
+    char* h5_type_name = "";
+    hid_t ret;
+
     switch(xtc_type){
         case UINT8:
-            printf("return type: UINT8");
-            return H5T_NATIVE_UINT8;
+            xtc_type_name = "UINT8";
+            ret =  H5T_NATIVE_UINT8;
+            h5_type_name = "H5T_NATIVE_UINT8";
             break;
         case UINT16:
-            printf("return type: UINT16");
-            return H5T_NATIVE_UINT16;
+            xtc_type_name = "UINT16";
+            ret = H5T_NATIVE_UINT16;
+            h5_type_name = "H5T_NATIVE_UINT16";
             break;
         case UINT32:
-            printf("return type: UINT32");
-            return H5T_NATIVE_UINT32;
+            xtc_type_name = "UINT32";
+            ret = H5T_NATIVE_UINT32;
+            h5_type_name = "H5T_NATIVE_UINT32";
             break;
         case UINT64:
-            printf("return type: UINT64");
-            return H5T_NATIVE_UINT64;
+            xtc_type_name = "UINT64";
+            ret = H5T_NATIVE_UINT64;
+            h5_type_name = "H5T_NATIVE_UINT64";
             break;
         case INT8:
-            printf("return type: INT8");
-            return H5T_NATIVE_INT8;
+            xtc_type_name = "INT8";
+            ret = H5T_NATIVE_INT8;
+            h5_type_name = "H5T_NATIVE_INT8";
             break;
         case INT16:
-            printf("return type: INT16");
-            return H5T_NATIVE_INT16;
+            xtc_type_name = "INT16";
+            ret = H5T_NATIVE_INT16;
+            h5_type_name = "H5T_NATIVE_INT16";
             break;
         case INT32:
-            printf("return type: INT32");
-            return H5T_NATIVE_INT32;
+            xtc_type_name = "INT32";
+            ret = H5T_NATIVE_INT32;
+            h5_type_name = "H5T_NATIVE_INT32";
             break;
         case INT64:
-            printf("return type: INT64");
-            return H5T_NATIVE_INT64;
+            xtc_type_name = "INT64";
+            ret = H5T_NATIVE_INT64;
+            h5_type_name = "H5T_NATIVE_INT64";
             break;
         case FLOAT:
-            printf("return type: FLOAT");
-            return H5T_NATIVE_FLOAT;
+            xtc_type_name = "FLOAT";
+            ret = H5T_NATIVE_FLOAT;
+            h5_type_name = "H5T_NATIVE_FLOAT";
             break;
         case DOUBLE:
-            printf("return type: DOUBLE");
-            return H5T_NATIVE_DOUBLE;
+            xtc_type_name = "DOUBLE";
+            ret = H5T_NATIVE_DOUBLE;
+            h5_type_name = "H5T_NATIVE_DOUBLE";
             break;
 
         case CHARSTR:
-            printf("%s:%d: xtc_type = CHARSTR, return H5T_C_S1\n", __func__, __LINE__);
-            return H5T_C_S1; //C-specific string datatype
-            //assert(0 && "Unsupported type.");
+            xtc_type_name = "CHARSTR";
+            ret = H5T_C_S1; //C-specific string datatype
+            h5_type_name = "H5T_C_S1";
             break;
 
         case ENUMVAL:
-            printf("%s:%d: xtc_type = ENUMVAL, return  H5T_NATIVE_INT32\n",  __func__, __LINE__);
-            return H5T_NATIVE_INT32;
-
-            //assert(0 && "Unsupported type.");
+            xtc_type_name = "ENUMVAL";
+            ret = H5T_NATIVE_INT32;
+            h5_type_name = "H5T_NATIVE_INT32";
             break;
 
         case ENUMDICT:
-            printf("%s:%d: xtc_type = ENUMDICT, return H5T_NATIVE_INT32\n",  __func__, __LINE__);
-            return H5T_NATIVE_INT32;
+            xtc_type_name = "ENUMDICT";
+            ret = H5T_NATIVE_INT32;
+            h5_type_name = "H5T_NATIVE_INT32";
             break;
 
          default:
              printf("Unsupported type: %d\n", xtc_type);
+             ret = -1;
             assert(0 && "Unknown type.");
             break;
     }
-    return -1;
+
+    //printf("xtc_type = %s, return type: %s\n", xtc_type_name, h5_type_name);
+    return ret;
 }
 
 static herr_t 
@@ -1476,22 +1535,20 @@ H5VL_xtc_dataset_get(void *dset, H5VL_dataset_get_t get_type,
     //assert(0 && "breakpoint");
     H5VL_xtc_t *o = (H5VL_xtc_t *)dset;
 
-
     herr_t ret_value;
     xtc_object* obj = o->xtc_obj;
 
-    //hbool_t recursive = va_arg(arguments, hbool_t);
-
     switch(get_type){
         case H5VL_DATASET_GET_DAPL:                  /* access property list                */
-            //printf("%s:%d: H5VL_DATASET_GET_DAPL\n", __func__, __LINE__);
             ;
+            DEBUG_PRINT
             hid_t* ret_dapl = va_arg(arguments, hid_t*);
             *ret_dapl = H5P_DEFAULT;
             break;
 
         case H5VL_DATASET_GET_DCPL:                  /* creation property list              */
             ;
+            DEBUG_PRINT
             hid_t dcpl = H5Pcreate (H5P_DATASET_CREATE);
             hid_t* ret_dcpl = va_arg(arguments, hid_t*);
             *ret_dcpl = dcpl;
@@ -1504,8 +1561,9 @@ H5VL_xtc_dataset_get(void *dset, H5VL_dataset_get_t get_type,
 
         case H5VL_DATASET_GET_SPACE:                /* dataspace                           */
             assert(obj->ds_info);
-
-            hid_t sid = H5Screate_simple(obj->ds_info->dim_cnt, obj->ds_info->current_dims, obj->ds_info->maximum_dims);
+            DEBUG_PRINT
+            hid_t sid = H5Screate_simple(obj->ds_info->dim_cnt,
+                    obj->ds_info->current_dims, obj->ds_info->maximum_dims);
             hid_t* ret_sid = va_arg(arguments, hid_t*);
             *ret_sid = sid;
             break;
@@ -1517,9 +1575,11 @@ H5VL_xtc_dataset_get(void *dset, H5VL_dataset_get_t get_type,
 
         case H5VL_DATASET_GET_STORAGE_SIZE:
             ;
+            DEBUG_PRINT
             int s_size = obj->ds_info->element_cnt * obj->ds_info->element_size;
             hsize_t* size = va_arg(arguments, hsize_t*);
             *size = s_size;
+            DEBUG_PRINT
             break;
 
         case H5VL_DATASET_GET_TYPE:
@@ -1954,7 +2014,6 @@ H5VL_xtc_file_open(const char *name, unsigned flags, hid_t fapl_id,
     }
 
     H5VL_xtc_t *file = H5VL_xtc_new_obj(head_obj);
-    file->obj_path = name;
     file->xtc_obj_type = XTC_FILE;
     file->obj_path = strdup("/"); //assume all files are root groups
     //H5VL_xtc_info_free(info);
@@ -2406,7 +2465,6 @@ H5VL_xtc_link_get(void *obj, const H5VL_loc_params_t *loc_params,
  *-------------------------------------------------------------------------
  */
 int loop_children(bool recursive, xtc_object* xtc_obj, H5L_iterate2_t* op, void* op_data){
-    DEBUG_PRINT
     if(!xtc_obj){
         printf("%s: null xtc_obj. return.\n", __func__);
         return 0;
@@ -2414,8 +2472,10 @@ int loop_children(bool recursive, xtc_object* xtc_obj, H5L_iterate2_t* op, void*
     int n_children = 0;
     xtc_object** children = xtc_get_children_list(xtc_obj, &n_children);
     hid_t gid = H5VLwrap_register(xtc_obj, H5I_GROUP);//obj
+
     if(n_children == 0 || !children)
         return H5_ITER_CONT;
+
     assert(children && *children);
 
     for(int i = 0; i < n_children; i++){// iterate xtc_obj group
@@ -2426,6 +2486,7 @@ int loop_children(bool recursive, xtc_object* xtc_obj, H5L_iterate2_t* op, void*
         linfo.corder = 0;
         linfo.cset = 0; //US ASCII
         linfo.u.token = *(H5O_token_t*)(children[i]->obj_token);
+
         hid_t gid2 = H5VLwrap_register(xtc_obj, H5I_GROUP);//obj
 
         int op_ret =  (*op)(gid, link_name, &linfo, op_data);//list metadata of children[i]
@@ -2435,11 +2496,15 @@ int loop_children(bool recursive, xtc_object* xtc_obj, H5L_iterate2_t* op, void*
         }
 
         op_ret = loop_children(recursive, children[i], op, op_data);
+
         if(op_ret != H5_ITER_CONT){
             return op_ret;
         }
+
     }//end for(children)
+
     H5Idec_ref(gid);
+
     return H5_ITER_CONT;
 }
 

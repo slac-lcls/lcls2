@@ -30,7 +30,7 @@ typedef struct MappingLayer {
 }mapping;
 
 #define TIMESTAMP_DS_NAME "timestamps"
-#define DEBUG_PRINT //printf("%s():%d\n", __func__, __LINE__);
+#define DEBUG_PRINT printf("%s():%d\n", __func__, __LINE__);
 //H5 utility function prototype
 //H5 name to xtc name, second
 char* name_convert(const char* h5_name){
@@ -49,6 +49,8 @@ char* name_convert(const char* h5_name){
 
 //==============================================
 
+
+
 xtc_object* xtc_obj_new(int fd, void* fileIter, void* dbgiter, void* dg, const char* obj_path_abs);
 xtc_object* xtc_obj_new(xtc_location* location, const char* obj_path_abs);
 
@@ -65,33 +67,59 @@ public:
 //        return native_type;
 //    }
 
-    xtc_ds_info* get_ds_info(Name& name, DescData& descdata){//int i
-        xtc_ds_info* dspace = (xtc_ds_info*)calloc(1, sizeof(xtc_ds_info));
-        dspace->type = (xtc_data_type)(int)(name.type());
-        dspace->dim_cnt = name.rank();//# of dimension: 0-5, how many dimensions of the shape:
-        dspace->element_cnt = name.get_element_size(name.type());// how many elements
+    xtc_ds_info* get_ds_info(int index, Xtc* xtc){//int i Names& names,
+        ShapesData& shapesdata = *(ShapesData*)xtc;
+        DescData descdata(shapesdata, _namesLookup[shapesdata.namesId()]);
+
+        Names& names = descdata.nameindex().names();
+
+
+        xtc_ds_info* dataset_info = (xtc_ds_info*)calloc(1, sizeof(xtc_ds_info));
+        Name& name = names.get(index);
+        dataset_info->type = (xtc_data_type)(int)(name.type());
+        dataset_info->dim_cnt = name.rank();//# of dimension: 0-5, how many dimensions of the shape:
+
+        dataset_info->element_cnt = name.get_element_size(name.type());// how many elements
+
+        //dataset_info->element_size = ;
+        dataset_info->maximum_dims = NULL;
+
         uint32_t* shape = descdata.shape(name);
-        printf("shape dimensions: %d, %d, %d, %d, %d, %d\n", shape[0], shape[1], shape[2], shape[3], shape[4], shape[5]);
-        for(int i = 0; i < 6; i++)
-            dspace->current_dims[i] = shape[i];
-        dspace->maximum_dims = NULL;
-        //dspace->data_ptr = get_data(i, name, descdata);
+        for(int i = 0; i < name.rank(); i++)
+            dataset_info->current_dims[i] = shape[i];
+        //printf("dimesntion cnt = %d, shape dimensions: %d, %d, %d, %d, %d, %d\n", name.rank(), shape[0], shape[1], shape[2], shape[3], shape[4], shape[5]);
+
+        dataset_info->data_handle = (xtc_data_handle*)calloc(1, sizeof(xtc_data_handle));
+        dataset_info->data_handle->index = index;
+
+        dataset_info->data_handle->xtc_ptr = (void*)(xtc);
+        dataset_info->data_handle->names = NULL;//(void*)(std::addressof(names));
+        dataset_info->isTimestampsDS = 0;
+//        printf("data_handle: descdata = %p, names = %p\n",
+//                dataset_info->data_handle->descdata, dataset_info->data_handle->names);
+        //dataset_info->data_ptr = get_data(i, name, descdata);
         //name.name();//variable name
         //name.str_type();//type name
-        return dspace;
+        return dataset_info;
     }
 
-    void get_ds_data(int i, Name& name, DescData& descdata){
-
-    }
-
-    void* get_data(int index, Name& name, DescData& descdata){
+    //Names* parameter is not used.
+    size_t get_data(int index, Xtc* xtc, void** ret_data){//Names* namesd,
+        size_t pixel_size_out = 0;
+        ShapesData& shapesdata =  *(ShapesData*)xtc;
+        NamesId namesId = shapesdata.namesId();
+        DescData descdata = DescData(shapesdata, _namesLookup[namesId]);
+        Names& names = descdata.nameindex().names();
+        Name& name = names.get(index);
         int data_rank = name.rank();
         int data_type = name.type();
-        printf("get_value() terminal data entry ==============  %d: %s rank %d, type %d\n", index, name.name(),
+        DEBUG_PRINT
+        printf("get_data() terminal data entry ==============  %d: %s rank %d, type %d\n", index, name.name(),
                 data_rank, data_type);
         //printf("get_value() token = %s\n", name.name());
-        void* ret = NULL;
+        DEBUG_PRINT
+        //void* ret_data = NULL;
+        DEBUG_PRINT
         switch(name.type()){
         case(Name::UINT8):{
             if(data_rank > 0){
@@ -106,12 +134,16 @@ public:
                   */
                 //
                 printf("type uint8_t: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
-                ret = arrT.data();
+                *ret_data = arrT.data();
                     }
             else{
                 printf("type uint8_t:  %s: %d\n",name.name(),descdata.get_value<uint8_t>(index));
-
+                uint8_t val = descdata.get_value<uint8_t>(index);
+                *ret_data = &val;
             }
+            printf("%d: pixel_size_out = %d\n", __LINE__, pixel_size_out);
+            pixel_size_out = sizeof(uint8_t);
+            printf("pixel_size_out = %d, sizeof(uint8_t) = %d\n", pixel_size_out, sizeof(uint8_t));
             break;
         }
 
@@ -119,11 +151,15 @@ public:
             if(data_rank > 0){
                 Array<uint16_t> arrT = descdata.get_array<uint16_t>(index);
                 printf("type uint16_t:  %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
-                ret = arrT.data();
+                *ret_data =arrT.data();
                     }
             else{
                 printf("type uint16_t: %s: %d\n",name.name(),descdata.get_value<uint16_t>(index));
+                uint16_t val = descdata.get_value<uint16_t>(index);
+                *ret_data =&val;
             }
+            pixel_size_out = sizeof(uint16_t);
+            printf("pixel_size_out = %d, sizeof(uint16_t) = %d\n", pixel_size_out, sizeof(uint16_t));
             break;
         }
 
@@ -131,11 +167,15 @@ public:
             if(data_rank > 0){
                 Array<uint32_t> arrT = descdata.get_array<uint32_t>(index);
                 printf("type uint32_t: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
-                ret = arrT.data();
+                *ret_data =arrT.data();
                     }
             else{
-                printf("type uint32_t: %s: %d\n",name.name(),descdata.get_value<uint32_t>(index));
+                printf("type uint32_t: %s: %d\n",name.name(), descdata.get_value<uint32_t>(index));
+                uint32_t val = descdata.get_value<uint32_t>(index);
+                *ret_data =&val;
             }
+            pixel_size_out = sizeof(uint32_t);
+            printf("pixel_size_out = %d, sizeof(uint32_t) = %d\n", pixel_size_out, sizeof(uint32_t));
             break;
         }
 
@@ -143,11 +183,15 @@ public:
             if(data_rank > 0){
                 Array<uint64_t> arrT = descdata.get_array<uint64_t>(index);
                 printf("type uint64_t: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
-                ret = arrT.data();
+                *ret_data =arrT.data();
                     }
             else{
                 printf("type uint64_t %s: %d\n",name.name(),descdata.get_value<uint64_t>(index));
+                uint64_t val = descdata.get_value<uint64_t>(index);
+                *ret_data =&val;
             }
+            pixel_size_out = sizeof(uint64_t);
+            printf("pixel_size_out = %d, sizeof(uint64_t) = %d\n", pixel_size_out, sizeof(uint64_t));
             break;
         }
 
@@ -155,11 +199,15 @@ public:
             if(data_rank > 0){
                 Array<int8_t> arrT = descdata.get_array<int8_t>(index);
                 printf("type int8:  %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
-                ret = arrT.data();
+                *ret_data =arrT.data();
                     }
             else{
                 printf("type int8: %s: %d\n",name.name(),descdata.get_value<int8_t>(index));
+                int8_t val = descdata.get_value<int8_t>(index);
+                *ret_data =&val;
             }
+            pixel_size_out = sizeof(int8_t);
+            printf("pixel_size_out = %d, sizeof(int8_t) = %d\n", pixel_size_out, sizeof(int8_t));
             break;
         }
 
@@ -167,10 +215,15 @@ public:
             if(data_rank > 0){
                 Array<int16_t> arrT = descdata.get_array<int16_t>(index);
                 printf("type int16: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                *ret_data =arrT.data();
                     }
             else{
                 printf("type int16: %s: %d\n",name.name(),descdata.get_value<int16_t>(index));
+                int16_t val = descdata.get_value<int16_t>(index);
+                *ret_data =&val;
             }
+            pixel_size_out = sizeof(int16_t);
+            printf("pixel_size_out = %d, sizeof(int16_t) = %d\n", pixel_size_out, sizeof(int16_t));
             break;
         }
 
@@ -178,10 +231,15 @@ public:
             if(data_rank > 0){
                 Array<int32_t> arrT = descdata.get_array<int32_t>(index);
                 printf("type int32: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                *ret_data =arrT.data();
                     }
             else{
                 printf("type int32:   %s: %d\n",name.name(),descdata.get_value<int32_t>(index));
+                int32_t val = descdata.get_value<int32_t>(index);
+                *ret_data =&val;
             }
+            pixel_size_out = sizeof(int32_t);
+            printf("pixel_size_out = %d, sizeof(int32_t) = %d\n", pixel_size_out, sizeof(int32_t));
             break;
         }
 
@@ -189,45 +247,86 @@ public:
             if(data_rank > 0){
                 Array<int64_t> arrT = descdata.get_array<int64_t>(index);
                 printf("type int64:  %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                *ret_data =arrT.data();
                     }
             else{
                 printf("type int64:   %s: %d\n",name.name(),descdata.get_value<int64_t>(index));
+                int64_t val = descdata.get_value<int64_t>(index);
+                *ret_data =&val;
             }
+            pixel_size_out = sizeof(int64_t);
+            printf("pixel_size_out = %d, sizeof(int64_t) = %d\n", pixel_size_out, sizeof(int64_t));
             break;
         }
 
         case(Name::FLOAT):{
+            DEBUG_PRINT
             if(data_rank > 0){
+                DEBUG_PRINT
                 Array<float> arrT = descdata.get_array<float>(index);
                 printf("type float:  %s: %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1]);
+                DEBUG_PRINT
+                *ret_data =arrT.data();
+                DEBUG_PRINT
                     }
             else{
+                DEBUG_PRINT
                 printf("type float:  %s: %f\n",name.name(),descdata.get_value<float>(index));
+                DEBUG_PRINT
+                float val = descdata.get_value<float>(index);
+                DEBUG_PRINT
+                *ret_data =&val;
+                DEBUG_PRINT
             }
+            DEBUG_PRINT
+            pixel_size_out = sizeof(float);
+            printf("pixel_size_out = %d, sizeof(float) = %d, \n", pixel_size_out,sizeof(float));
+            DEBUG_PRINT
             break;
         }
 
         case(Name::DOUBLE):{
+            DEBUG_PRINT
             if(data_rank > 0){
+                DEBUG_PRINT
                 Array<double> arrT = descdata.get_array<double>(index);
                 printf("type double: %s: %f, %f, %f\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                DEBUG_PRINT
+                *ret_data =arrT.data();
                     }
             else{
+                DEBUG_PRINT
                 printf("type double: %s: %f\n",name.name(),descdata.get_value<double>(index));
+                double val = descdata.get_value<double>(index);
+                *ret_data =&val;
             }
+            DEBUG_PRINT
+            pixel_size_out = sizeof(double);
+            printf("pixel_size_out = %d, sizeof(double) = %d\n", pixel_size_out, sizeof(double));
+            DEBUG_PRINT
             break;
         }
 
         case(Name::CHARSTR):{
             if(data_rank > 0){
+                DEBUG_PRINT
                 Array<char> arrT = descdata.get_array<char>(index);
-                printf("type charstr:  %s: \"%s\"\n",name.name(),arrT.data());
-                ret = arrT.data();
+                DEBUG_PRINT
+                printf("type charstr: rank = %d, num_elem = %lu,   name = [%s], str = [%s], data() = %p \n",
+                        arrT.rank(), arrT.num_elem(), name.name(), arrT.data(), arrT.data());
+                DEBUG_PRINT
+                *ret_data =arrT.data();
+                DEBUG_PRINT
                     }
             else{
                 printf("type charstr: %s: string with no rank?!?\n",name.name());
-                ret = NULL;
+                char val = descdata.get_value<char>(index);
+                *ret_data =&val;
             }
+            DEBUG_PRINT
+
+            pixel_size_out = sizeof(char);
+            printf("pixel_size_out = %d, sizeof(char) = %d\n", pixel_size_out, sizeof(char));
             break;
         }
 
@@ -235,31 +334,44 @@ public:
             if(data_rank > 0){
                 Array<int32_t> arrT = descdata.get_array<int32_t>(index);
                 printf("type ENUMVAL: %s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
-                ret = arrT.data();
+                *ret_data =arrT.data();
                     }
             else{
                 printf("type ENUMVAL %s: %d\n",name.name(),descdata.get_value<int32_t>(index));
+                int32_t val = descdata.get_value<int32_t>(index);
+                *ret_data =&val;
             }
+            pixel_size_out = sizeof(int32_t);
+            printf("pixel_size_out = %d, sizeof(int32_t) = %d\n", pixel_size_out, sizeof(int32_t));
             break;
         }
 
         case(Name::ENUMDICT):{
             if(data_rank > 0){
                 printf("type ENUMDICT %s: enumdict with rank?!?\n", name.name());
-                ret = NULL;
+                *ret_data =NULL;
             } else{
                 printf("type ENUMDICT  %s: %d\n",name.name(),descdata.get_value<int32_t>(index));
+                int32_t val = descdata.get_value<int32_t>(index);
+                *ret_data =&val;
             }
+            pixel_size_out = sizeof(int32_t);
+            printf("pixel_size_out = %d, sizeof(int32_t) = %d\n", pixel_size_out, sizeof(int32_t));
             break;
         }
+        default:
+            assert(0 && "Unsupported type.");
+            break;
         }
-        return NULL;
+        DEBUG_PRINT
+        printf("Final pixel_size_out = %d\n", pixel_size_out);
+        return pixel_size_out;
     }
 
     void get_value(int i, Name& name, DescData& descdata){
         int data_rank = name.rank();
         int data_type = name.type();
-        printf("get_value() terminal data entry ==============  %d: %s rank %d, type %d\n", i, name.name(),
+        printf("get_value() terminal data entry ==============  %d: name:[%s], rank = %d, type = %d\n", i, name.name(),
                 data_rank, data_type);
         //printf("get_value() token = %s\n", name.name());
         switch(name.type()){
@@ -376,10 +488,11 @@ public:
         case(Name::CHARSTR):{
             if(data_rank > 0){
                 Array<char> arrT = descdata.get_array<char>(i);
-                printf("type charstr:  %s: \"%s\"\n",name.name(),arrT.data());
+                printf("type charstr:  rank = %d, num_elem = %lu, name = [%s], str = [%s], data() = %p \n",
+                        arrT.rank(), arrT.num_elem(), name.name(), arrT.data(), arrT.data());
                     }
             else{
-                printf("type charstr: %s: string with no rank?!?\n",name.name());
+                printf("type charstr: %s: string with 0 rank?!?\n",name.name());
             }
             break;
         }
@@ -550,6 +663,7 @@ public:
                 break;
             }
             DescData descdata(shapesdata, _namesLookup[namesId]);
+
             Names& names = descdata.nameindex().names();
             Data& data = shapesdata.data();
 
@@ -596,6 +710,7 @@ public:
                 ds_info->element_cnt = 1;
                 ds_info->dim_cnt = 1; //1D array
                 ds_info->maximum_dims = NULL;
+                ds_info->isTimestampsDS = 1;
 
                 new_obj->ds_info = ds_info;
                 xtc_tree_node_add(new_xtc_node(new_obj));
@@ -621,7 +736,7 @@ public:
                 string path_str = get_current_path();
                 xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, get_current_path().c_str());
                 new_obj->obj_type = XTC_DS;
-                new_obj->ds_info = get_ds_info(name, descdata);
+                new_obj->ds_info = get_ds_info(i, xtc);
                 xtc_tree_node_add(new_xtc_node(new_obj));
                 get_value(i, name, descdata);
                 pop_token();//ds name
@@ -919,6 +1034,57 @@ private:
     }
 };
 
+size_t dataset_read_all(xtc_object* obj, void* buf_out){
+    size_t read_size = 0;
+    assert(obj->location && obj->ds_info &&
+            (obj->obj_type == XTC_DS || obj->obj_type == XTC_TIME_DS));
+
+    obj->location->dbgiter;
+
+    DebugIter* dbgit = (DebugIter*)(obj->location->dbgiter);
+
+    if(obj->ds_info->isTimestampsDS){//timestamps dataset
+        vector<double>* time_stamps_ds = (vector<double>*) obj->data;
+        read_size = time_stamps_ds->size()* sizeof(double);
+        *buf_out;// = calloc(1, read_size);
+        for(int i = 0; i < time_stamps_ds->size(); i++){
+            double ts = time_stamps_ds->at(i);
+            memcpy((char*)buf_out + (i * sizeof(double)), &ts, sizeof(double));
+            printf("dataset_read_all: timestamp = %lf\n", ts);
+        }
+        //*buf_out = (void*)ts_data;
+    } else {//regular xtc2 dataset
+        //XtcData::Names* names = (XtcData::Names*)(obj->ds_info->data_handle->names);
+        Xtc* xtc = (Xtc*)(obj->ds_info->data_handle->xtc_ptr);
+        int index = obj->ds_info->data_handle->index;
+        int dim_cnt = obj->ds_info->dim_cnt;
+        assert(dim_cnt >= 0 && dim_cnt <= 5);
+
+        int total_pixel_cnt = 1;
+        if(dim_cnt > 0){
+            printf("dim_cnt = %d, dimensions val: ", dim_cnt);
+            for(int i = 0; i < dim_cnt; i++){
+                total_pixel_cnt *= obj->ds_info->current_dims[i];
+                printf("%d, ", obj->ds_info->current_dims[i]);
+            }
+            printf("\n");
+        }//dim_cnt == 0
+        DEBUG_PRINT
+        void* data = NULL;
+        size_t sizeof_pixel = dbgit->get_data(index, xtc, &data);
+        DEBUG_PRINT
+        read_size = total_pixel_cnt * sizeof_pixel;
+        DEBUG_PRINT
+        printf("total_pixel_cnt = %d, ds_info.element_cnt(images_cnt) = %d, sizeof_pixel = %d, \n",
+                total_pixel_cnt, obj->ds_info->element_cnt, sizeof_pixel);
+        printf("data = [%s], data = %p, read_size = %d\n", (char*)data, data, read_size);
+        memcpy(buf_out, data, read_size);
+        DEBUG_PRINT
+    }
+    DEBUG_PRINT
+    return read_size;
+}
+
 void print_path(vector<string>vec)
 {
     if(vec.size()==0)
@@ -927,7 +1093,6 @@ void print_path(vector<string>vec)
     for(vector<string>::iterator it = vec.begin(); it != vec.end(); ++it){
         printf("/%s", (*it).c_str());
     }
-    //printf("\n");
 }
 
 vector<string> str_tok(const char* str, const char* delimiters_str){
@@ -1072,7 +1237,7 @@ xtc_object* iterate_list_all(int fd){
     }
     printf("\n\n\n\n");
 
-    dbgiter->xtc_tree_print();
+    //dbgiter->xtc_tree_print();
     printf("\n\n\n\n");
     return head_obj;
 
@@ -1224,14 +1389,18 @@ EXTERNC xtc_object* xtc_obj_find(xtc_object* root_obj, const char* path){
     DEBUG_PRINT
 //    printf("%s:%d:  xtc_obj = %p, dbg = %p\n", __func__, __LINE__, root_obj, root_obj->location->dbgiter);
     assert(root_obj && path);
+    //DEBUG_PRINT
     assert(root_obj->location);
+    //DEBUG_PRINT
     if(strcmp(path, "/") == 0){
         return root_obj;
     }
-
+    //DEBUG_PRINT
     assert(((DebugIter*)(root_obj->location->dbgiter))->get_root());
+    //DEBUG_PRINT
     xtc_node* node = ((DebugIter*)(root_obj->location->dbgiter))->xtc_tree_node_find(path);
     //xtc_node* root_node = (xtc_node*)(root_obj->tree_node);
+    //DEBUG_PRINT
     if(node)
         return node->my_obj;
     else
