@@ -88,6 +88,15 @@ class gasdetector_valsgd_0_0_1(DetectorImpl):
         return self._segments(evt)[0].f_64_ENRC if self._segments(evt) is not None else None
 
 
+class xtcavpars_valsxtp_0_0_1(DetectorImpl):
+    def __init__(self, *args):
+        super(xtcavpars_valsxtp_0_0_1, self).__init__(*args)
+    def XTCAV_Beam_energy_dump_GeV(self, evt):
+        return self._segments(evt)[0].XTCAV_Beam_energy_dump_GeV   if self._segments(evt) is not None else None
+    def XTCAV_calib_disp_posToEnergy(self, evt):
+        return self._segments(evt)[0].XTCAV_calib_disp_posToEnergy if self._segments(evt) is not None else None
+
+
 class ebeam_valsebm_0_0_1(DetectorImpl):
     def __init__(self, *args):
         super(ebeam_valsebm_0_0_1, self).__init__(*args)
@@ -110,6 +119,7 @@ class ebeam_raw_2_3_42(DetectorImpl):
         super(ebeam_raw_2_3_42, self).__init__(*args)
     def energy(self, evt):
         return self._segments(evt)[0].energy
+
 
 class cspad_raw_2_3_43(cspad_raw_2_3_42):
     def __init__(self, *args):
