@@ -50,10 +50,11 @@ class EnvStoreManager(object):
 
     def get_info(self, alg):
         store = self.stores[alg]
-        variables = store.env_variables[alg]
+        segment_dict = store.env_variables[alg]
         info = {}
-        for var in variables:
-            info[(var, alg)] = alg
+        for segment_id, var_list in segment_dict.items():
+            for var in var_list:
+                info[(var, alg)] = alg
         return info
     
 
