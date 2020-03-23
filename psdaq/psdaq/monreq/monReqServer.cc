@@ -167,9 +167,13 @@ namespace Pds {
       const EbDgram** const  last = (const EbDgram**)dg->xtc.next();
       const EbDgram*  const* ctrb = (const EbDgram**)dg->xtc.payload();
       Dgram*                 odg  = new((void*)buf) Dgram(**ctrb); // Not an EbDgram!
+      odg->xtc.src      = XtcData::Src(XtcData::Level::Event);
+      odg->xtc.contains = XtcData::TypeId(XtcData::TypeId::Parent, 0);
       do
       {
         const EbDgram* idg = *ctrb;
+
+        odg->xtc.damage.increase(idg->xtc.damage.value());
 
         buf = (char*)odg->xtc.alloc(idg->xtc.extent);
 
