@@ -5,6 +5,8 @@ import time
 
 def epics_names_values(group,pvtable,cfg,d):
     for k, v1 in pvtable.items():
+        if k not in cfg:
+            continue
         v2 = cfg[k]
         if isinstance(v1, dict):
             epics_names_values(group,v1,v2,d)
