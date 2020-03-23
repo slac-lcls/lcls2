@@ -513,8 +513,9 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     }
 
     if ((detName != dummy) && !top.HasMember(m_para.detName.c_str())) {
-        printf("%s:\n  Trigger data not contributed: '%s' not found in ConfigDb for %s\n",
-               __PRETTY_FUNCTION__, m_para.detName.c_str(), detName.c_str());
+        logging::warning("This DRP is not contributing trigger input data: "
+                         "'%s' not found in ConfigDb for %s\n",
+                         m_para.detName.c_str(), detName.c_str());
         m_tPrms.contractor = 0;    // This DRP won't provide trigger input data
         m_triggerPrimitive = nullptr;
         return 0;
@@ -525,15 +526,15 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     if (detName != dummy)  symbol +=  "_" + m_para.detName;
     m_triggerPrimitive = m_trigPrimFactory.create(top, detName, symbol);
     if (!m_triggerPrimitive) {
-        fprintf(stderr, "%s:\n  Failed to create TriggerPrimitive\n",
-                __PRETTY_FUNCTION__);
+        logging::error("%s:\n  Failed to create TriggerPrimitive\n",
+                       __PRETTY_FUNCTION__);
         return -1;
     }
     m_tPrms.maxInputSize = sizeof(Pds::EbDgram) + m_triggerPrimitive->size();
 
     if (m_triggerPrimitive->configure(top, m_connectMsg, m_collectionId)) {
-        fprintf(stderr, "%s:\n  Failed to configure TriggerPrimitive\n",
-                __PRETTY_FUNCTION__);
+        logging::error("%s:\n  Failed to configure TriggerPrimitive\n",
+                       __PRETTY_FUNCTION__);
         return -1;
     }
 
