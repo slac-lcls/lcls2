@@ -61,6 +61,9 @@ class DetectorImpl(object):
 
     def _add_fields(self):
         for config in self._configs:
+            # cpo: temporary hack: ignore configs that have
+            # had an empty placeholder put in them in __init__
+            if not hasattr(config,'software'): continue
             if hasattr(config.software,self._det_name):
                 seg      = getattr(config.software,self._det_name)
                 seg_dict = getattr(seg[0],self._drp_class_name)
