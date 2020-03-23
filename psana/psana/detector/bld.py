@@ -40,3 +40,7 @@ class ebeam_ebeamAlg_0_7_1(DetectorImpl):
         segments = self._segments(evt)
         if segments is None: return None
         return segments[0]
+
+class ebeam_raw_2_0_0(ebeam_ebeamAlg_0_7_1):
+    def __init__(self, *args):
+        super().__init__(*args)

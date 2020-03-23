@@ -33,6 +33,9 @@ class cspad_cspadRawAlg_1_2_3(DetectorImpl):
         if segs is None: return None
         if segs[0] is None: return None
         return segs[0].array_raw
+class fakecam_raw_2_0_0(cspad_cspadRawAlg_1_2_3):
+    def __init__(self, *args):
+        super().__init__(*args)
 
 # for the pva detector in the teststand
 class pva_pvaAlg_1_2_3(DetectorImpl):
@@ -172,29 +175,6 @@ class camera_raw_0_0_1(DetectorImpl):
     def __call__(self, evt) -> Array2d:
         """Alias for self.raw(evt)"""
         return self.array(evt)
-
-class EnvImpl(DetectorImpl):
-    def __init__(self, *args):
-        det_name, self._var_name, drp_class_name, configs, calibs, self._env_store = args
-        super(EnvImpl, self).__init__(det_name, drp_class_name, configs, calibs)
-    def __call__(self, events):
-        if isinstance(events, list):
-            return self._env_store.values(events, self._var_name)
-        else:
-            env_values = self._env_store.values([events], self._var_name)
-            return env_values[0]
-
-class epics_epics_0_0_0(EnvImpl):
-    def __init__(self, *args):
-        super(epics_epics_0_0_0, self).__init__(*args)
-
-class epics_epics_0_0_1(EnvImpl):
-    def __init__(self, *args):
-        super(epics_epics_0_0_1, self).__init__(*args)
-
-class scanDet_scan_2_3_42(EnvImpl):
-    def __init__(self, *args):
-        super(scanDet_scan_2_3_42, self).__init__(*args)
 
 # for early cctbx/psana2 development
 class cspad_raw_1_2_3(DetectorImpl):
