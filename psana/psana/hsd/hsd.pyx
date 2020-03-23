@@ -200,3 +200,8 @@ cdef class cyhsd_base_1_2_3:
             return None
         else: 
             return self._peaksDict
+
+class hsd_raw_2_0_0(hsd_hsd_1_2_3):
+
+    def __init__(self, *args):
+        hsd_hsd_1_2_3.__init__(self, *args)
