@@ -96,7 +96,7 @@ class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
             for seg,seg_config in seg_dict.items():
                 # currently the hsd only has 1 channel (zero)
                 # will have to revisit in the future
-                enable = getattr(getattr(seg_config,'hsdConfig'),'enable')
+                enable = getattr(getattr(seg_config,'config'),'enable')
                 # user could make an error and have two identical segments
                 assert seg not in channels
                 if hasattr(enable,'value'):
