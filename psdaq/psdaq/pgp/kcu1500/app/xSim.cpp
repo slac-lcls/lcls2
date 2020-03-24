@@ -528,9 +528,9 @@ int main(int argc, char* argv[])
     }
 
     if (partition >= 0) {
-      unsigned v = ((partition&0xf)<<0) |
-        ((length&0xffffff)<<4) |
-        (links<<28);
+      unsigned v =
+        ((length&0xffffff)<<0) |
+        (1<<31);
       set_reg32( 0x00a00000, v);
       unsigned w = get_reg32( 0x00a00000);
       printf("Configured partition [%u], length [%u], links [%x]: [%x](%x)\n",

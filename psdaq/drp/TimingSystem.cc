@@ -135,7 +135,7 @@ void TimingSystem::connect(const json& connect_json, const std::string& collecti
     dmaReadRegister(fd, 0x00a00000, &val);
     // zero out the "length" field which changes the behaviour of the
     // firmware from fake-camera mode to timing-system mode
-    val&=0xf000000f;
+    val&=0xf0000000;
     dmaWriteRegister(fd, 0x00a00000, val);
     close(fd);
 

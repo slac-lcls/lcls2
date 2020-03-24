@@ -1,0 +1,41 @@
+platform = '0'
+username = 'lcls2'
+
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.255'
+conda_rel = 'ps-2.0.5'
+
+#collect_host = os.uname()[1]
+collect_host = 'drp-neh-cmp001'
+
+groups = '0'
+hutch = 'tst'
+drp_cmd  = 'drp -P '+hutch+' -d /dev/datadev_1 -C '+collect_host+' -o /u1'
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#                "X" open xterm
+#                "s" send signal to child when stopping
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+# { id:'pyxpmg' , port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.1.102 -P DAQ:NEH:XPM:1'}, # AmcCarrierEmpty 
+ { id:'pyxpm'  , port:'29452', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.1.103 -P DAQ:NEH:XPM:0'},  # XTPG
+# { id:'xpmpva' , flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmpva -x DAQ:NEH:XPM:0'},
+ { id:'groupca', flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups},
+ { id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+
+ { id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host+' -P '+hutch},
+ { id:'meb1', flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host},
+ { id:'xppts_0', flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D TimingSystem -l 0x1 -ksim_length=4'},
+ { id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -B DAQ:NEH -x 0 -C BEAM -P '+hutch},
+ { flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
+]
+
