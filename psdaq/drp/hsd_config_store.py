@@ -21,7 +21,7 @@ mycdb.add_device_config('hsd')
 top = cdict()
 
 top.setInfo('hsd', 'tmohsd', 'serial1234', 'No comment')
-top.setAlg('hsdConfig', [0,0,1])
+top.setAlg('config', [2,0,0])
 
 # this should be an array of enums, but not yet supported
 top.set('enable', 1*[1], 'UINT32')

@@ -50,7 +50,7 @@ public:
 
     T* create(Parameters* para, MemPool* pool)
     {
-        std::string name = para->detectorType;
+        std::string name = para->detType;
         auto it = m_create_funcs.find(name);
         if (it != m_create_funcs.end()) {
             return it->second(para, pool);

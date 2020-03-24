@@ -97,12 +97,13 @@ void EpicsArchMonitor::initDef(size_t& payloadSize)
   }
 }
 
-void EpicsArchMonitor::addNames(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId)
+void EpicsArchMonitor::addNames(const std::string& detName, const std::string& detType, const std::string& serNo,
+                                XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId)
 {
-  XtcData::Alg alg("epics", 0, 0, 1);
+  XtcData::Alg alg("raw", 2, 0, 0);
   XtcData::NamesId namesId(nodeId, iNamesIndex);
-  XtcData::Names& names = *new(xtc) XtcData::Names("epics", alg,
-                                                   "epics", "epics1234", namesId);
+  XtcData::Names& names = *new(xtc) XtcData::Names(detName.c_str(), alg,
+                                                   detType.c_str(), serNo.c_str(), namesId);
   names.add(xtc, _epicsArchDef);
   namesLookup[namesId] = XtcData::NameIndex(names);
 }

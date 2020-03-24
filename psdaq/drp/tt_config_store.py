@@ -9,11 +9,11 @@ def write_to_daq_config_db():
     #each type of device has a collection.  The elements of that collection are configurations of that type of device.
     #e.g. there will be OPAL, EVR, and YUNGFRAU will be collections.  How they are configured will be a document contained within that collection
     #Each hutch is also a collection.  Documents contained within these collection have an index, alias, and list of devices with configuration IDs
-    #How is the configuration of a state is described by the hutch and the alias found.  E.g. TMO and BEAM.  TMO is a collection.  
-    #BEAM is an alias of some of the documents in that collection. The document with the matching alias and largest index is the current 
-    #configuration for that hutch and alias.  
+    #How is the configuration of a state is described by the hutch and the alias found.  E.g. TMO and BEAM.  TMO is a collection.
+    #BEAM is an alias of some of the documents in that collection. The document with the matching alias and largest index is the current
+    #configuration for that hutch and alias.
     #When a device is configured, the device has a unique name OPAL7.  Need to search through document for one that has an NAME called OPAL7.  This will have
-    #have two fields "collection" and ID field (note how collection here is a field. ID points to a unique document).  This collection field and 
+    #have two fields "collection" and ID field (note how collection here is a field. ID points to a unique document).  This collection field and
     #ID point to the actuall Mongo DB collection and document
 
     create = True
@@ -24,10 +24,10 @@ def write_to_daq_config_db():
     #mycdb.client.drop_database('sioanDB')
     mycdb.add_alias("BEAM")
     mycdb.add_device_config('timetool')
-    
+
     top = cdict()
-    top.setInfo('timetool', 'tmotimetool', 'serial1234', 'No comment')
-    top.setAlg('timetoolConfig', [0,0,1])
+    top.setInfo('timetool', 'tmott', 'serial1234', 'No comment')
+    top.setAlg('config', [2,0,0])
 
     #There are many rogue fields, but only a handful need to be configured.  what are they?
     #1)  the FIR coefficients.  after accounting for parabolic fitting detection
@@ -48,7 +48,7 @@ def write_to_daq_config_db():
     #####        prescaling          #######
     ########################################
     top.set("cl.TimeToolKcu1500.Application.AppLane0.Prescale.ScratchPad",1,'UINT32')                     # testing ability to write to database
-    top.set("cl.TimeToolKcu1500.Application.AppLane0.Prescale.DialInPreScaling",2,'UINT32')                            # prescaled raw data 
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Prescale.DialInPreScaling",2,'UINT32')                            # prescaled raw data
     top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.background_prescaler.DialInPreScaling",3,'UINT32')            # prescaled raw backgrounds (may consider accumulated backgrounds instead)
     ########################################
     #####      initial fir filter    #######
@@ -79,8 +79,8 @@ def write_to_daq_config_db():
     ########################################
     #####      Piranha Settings        #####
     ########################################
-    #commands can be sent manually using cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4._tx.sendString('GCP') 
-    #to manually querry a camera hardware setting cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4._tx.sendString('get 'stm') 
+    #commands can be sent manually using cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4._tx.sendString('GCP')
+    #to manually querry a camera hardware setting cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4._tx.sendString('get 'stm')
 
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.CLS",0,'UINT32')
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.CLM",2,'UINT32')
@@ -103,7 +103,7 @@ def write_to_daq_config_db():
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.SET",5000,'UINT32')
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.SMM",0,'UINT32')
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.SPF",0,'UINT32')
-    top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.SSB",0,'UINT32')    
+    top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.SSB",0,'UINT32')
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.SSF",2,'UINT32')
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.SSG",1,'UINT32')
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.STG",2,'UINT32')
@@ -114,7 +114,7 @@ def write_to_daq_config_db():
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.USS",1,'UINT32')
 
     #the object hierarchy paths (e.g. cl.TimeToolKcu1500.Application.AppLane0... yadayadayada) for a device can be found by implementing
-    #pr.generateAddressMap where pr comes from "import rogue as pr".  For this to work, one has to be logged onto the machine hosting the firmware   
+    #pr.generateAddressMap where pr comes from "import rogue as pr".  For this to work, one has to be logged onto the machine hosting the firmware
     #that interacts with rogue.  This particular register map can be found in the lcls2-pcie-apps directory cloned from https://github.com/slaclab/lcls2-pcie-apps.
 
     mycdb.modify_device('BEAM', top)

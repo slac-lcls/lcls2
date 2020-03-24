@@ -207,13 +207,14 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
     size_t payloadSize;
     m_monitor->initDef(payloadSize);
     logging::debug("payloadSize %zd", payloadSize);
-    if (payloadSize > m_pool->pebble.bufferSize()) {
+    if (payloadSize > m_pool->bufferSize()) {
         logging::error("Event buffer size (%zd) is too small for payload (%zd)",
-                       m_pool->pebble.bufferSize(), payloadSize);
+                       m_pool->bufferSize(), payloadSize);
         return 1;
     }
 
-    m_monitor->addNames(xtc, m_namesLookup, nodeId);
+    m_monitor->addNames(m_para->detName, m_para->detType, m_para->serNo,
+                        xtc, m_namesLookup, nodeId);
 
     m_workerThread = std::thread{&EaDetector::_worker, this};
 
@@ -542,11 +543,7 @@ static void usage(const char* name)
 int main(int argc, char* argv[])
 {
     Drp::Parameters para;
-    para.partition = -1;
-    para.laneMask = 0x1;
-    para.detSegment = 0;
     std::string kwargs_str;
-    para.verbose = 0;
     int c;
     while((c = getopt(argc, argv, "p:o:C:d:u:k:P:T::M:vh")) != EOF) {
         switch(c) {
@@ -628,6 +625,9 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
+    para.laneMask = 0x1;
+    para.detName = "epics";
+    para.detType = "epics";
     para.maxTrSize = 256 * 1024;
     para.nTrBuffers = 8; // Power of 2 greater than the maximum number of
                          // transitions in the system at any given time, e.g.,

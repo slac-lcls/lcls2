@@ -26,7 +26,8 @@ namespace Pds
     ~EpicsArchMonitor();
   public:
     void     initDef(size_t& payloadSize);
-    void     addNames(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId);
+    void     addNames(const std::string& detName, const std::string& detType, const std::string& serNo,
+                      XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId);
     void     getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId);
     unsigned validate(unsigned& iPvCount);
 

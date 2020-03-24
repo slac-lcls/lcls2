@@ -18,7 +18,7 @@ mycdb.add_device_config('ts')
 top = cdict()
 
 top.setInfo('ts', 'tmots', 'serial1234', 'No comment')
-top.setAlg('tsConfig', [0,1,1])
+top.setAlg('config', [2,0,0])
 
 top.define_enum('trigModeEnum', {key:val for val,key in enumerate(
     ['FixedRate', 'ACRate', 'Sequence', 'EventCode'])})

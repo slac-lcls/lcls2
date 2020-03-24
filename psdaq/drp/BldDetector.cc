@@ -73,7 +73,7 @@ BldPVA::~BldPVA()
   //
 BldFactory::BldFactory(const char* name,
                        unsigned    interface) :
-  _alg        ("bldAlg", 0, 0, 1)
+  _alg        ("raw", 2, 0, 0)
 {
     logging::debug("BldFactory::BldFactory %s", name);
 
@@ -94,7 +94,7 @@ BldFactory::BldFactory(const char* name,
     //
     if      (strcmp("ebeam",name)==0) {
         mcaddr = 0xefff1800;
-        _alg    = XtcData::Alg((_detType+"Alg").c_str(), 0, 7, 1);
+        _alg    = XtcData::Alg("raw", 2, 0, 0);
         _varDef.NameVec.push_back(XtcData::Name("damageMask"       , XtcData::Name::UINT32));
         _varDef.NameVec.push_back(XtcData::Name("ebeamCharge"      , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("ebeamL3Energy"    , XtcData::Name::DOUBLE));
@@ -120,7 +120,7 @@ BldFactory::BldFactory(const char* name,
     }
     else if (strcmp("gasdet",name)==0) {
         mcaddr = 0xefff1802;
-        _alg    = XtcData::Alg((_detType+"Alg").c_str(), 0, 1, 1);
+        _alg    = XtcData::Alg("raw", 2, 0, 0);
         _varDef.NameVec.push_back(XtcData::Name("f_11_ENRC"      , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("f_12_ENRC"      , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("f_21_ENRC"      , XtcData::Name::DOUBLE));
@@ -142,7 +142,7 @@ BldFactory::BldFactory(const BldPVA& pva) :
     _detName    (pva._detName),
     _detType    (pva._detType),
     _detId      (pva._detId),
-    _alg        ("bldAlg", 0, 0, 1),
+    _alg        ("raw", 2, 0, 0),
     _pvaPayload (pva._pvaPayload)
 {
     while(1) {
@@ -162,7 +162,7 @@ BldFactory::BldFactory(const BldPVA& pva) :
     if (_detType == "hpsex" ||
         _detType == "hpscp" ||
         _detType == "hpscpb") {
-        _alg = XtcData::Alg(_detType.c_str(), 0, 0, 1);
+        _alg = XtcData::Alg("raw", 2, 0, 0);
         //  validate _varDef against version here
     }
     else {
@@ -531,7 +531,7 @@ void Pgp::worker(std::shared_ptr<MetricExporter> exporter)
     //
     std::vector<std::shared_ptr<BldPVA> > bldPva(0);
 
-    std::string s(m_para.detectorType);
+    std::string s(m_para.detType);
     logging::debug("Parsing %s",s.c_str());
     for(size_t curr = 0, next = 0; next != std::string::npos; curr = next+1) {
         next  = s.find(',',curr+1);
@@ -922,11 +922,6 @@ static void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
 int main(int argc, char* argv[])
 {
     Drp::Parameters para;
-    para.partition = -1;
-    para.laneMask = 0x1;
-    para.detName = "bld";               // Revisit: Should come from alias?
-    para.detSegment = 0;
-    para.verbose = 0;
     std::string kwargs_str;
     int c;
     while((c = getopt(argc, argv, "l:p:o:C:b:d:D:u:P:T::k:M:v")) != EOF) {
@@ -950,7 +945,7 @@ int main(int argc, char* argv[])
                 para.device = optarg;
                 break;
             case 'D':
-                para.detectorType = optarg;
+                para.detType = optarg;
                 break;
             case 'u':
                 para.alias = optarg;
@@ -1003,7 +998,7 @@ int main(int argc, char* argv[])
         logging::critical("-u: alias must have _N suffix");
         exit(1);
     }
-    //    para.detName = para.alias.substr(0, found);
+    para.detName = "bld";  //para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
     get_kwargs(para, kwargs_str);
 

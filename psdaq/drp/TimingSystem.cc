@@ -124,7 +124,7 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string&
 void TimingSystem::connect(const json& connect_json, const std::string& collectionId)
 {
     XpmDetector::connect(connect_json, collectionId);
-    
+
     int fd = open(m_para->device.c_str(), O_RDWR);
     if (fd < 0) {
         std::cout<<"Error opening "<< m_para->device << '\n';
@@ -165,8 +165,9 @@ unsigned TimingSystem::configure(const std::string& config_alias, Xtc& xtc)
     _addJson(xtc, configNamesId, config_alias);
 
     // set up the names for L1Accept data
-    Alg tsAlg("ts", 0, 0, 1);
-    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), tsAlg, "ts", "detnum1235", m_evtNamesId, m_para->detSegment);
+    Alg alg("raw", 2, 0, 0);
+    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
+                                        m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
     eventNames.add(xtc, TSDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
     return 0;
@@ -188,7 +189,7 @@ void TimingSystem::event(XtcData::Dgram& dgram, PGPEvent* event)
     //    unsigned data_size = event->buffers[lane].size - sizeof(Pds::TimingHeader);
     // DMA is padded to workaround firmware problem; only copy relevant part.
     unsigned data_size = 968/8;
-    
+
     memcpy(ts.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
     ts.set_data_length(data_size);
 

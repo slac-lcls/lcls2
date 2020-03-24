@@ -43,6 +43,8 @@ TimeTool::TimeTool(Parameters* para, MemPool* pool) :
     m_evtNamesId(-1, -1), // placeholder
     m_connect_json("")
 {
+    para->rogueDet=true;
+    para->virtChan=1;
 }
 
 static void check(PyObject* obj) {
@@ -106,8 +108,9 @@ unsigned TimeTool::configure(const std::string& config_alias, Xtc& xtc)
     _addJson(xtc, configNamesId, config_alias);
 
     // set up the names for L1Accept data
-    Alg ttAlg("tt", 2, 0, 0);
-    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), ttAlg, "tt", "detnum1235", m_evtNamesId, m_para->detSegment);
+    Alg alg("raw", 2, 0, 0);
+    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
+                                        m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
     eventNames.add(xtc, TTDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
     return 0;

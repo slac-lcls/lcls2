@@ -315,7 +315,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
     m_mPrms.partition = para.partition;
     m_mPrms.maxEvents = 8;
-    m_mPrms.maxEvSize = pool.pebble.bufferSize();
+    m_mPrms.maxEvSize = pool.bufferSize();
     m_mPrms.maxTrSize = para.maxTrSize;
     m_mPrms.verbose   = para.verbose;
 

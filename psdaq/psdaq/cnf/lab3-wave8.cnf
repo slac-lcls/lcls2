@@ -24,7 +24,7 @@ procmgr_config = [
  { host: 'drp-tst-dev016', id:'meb16'   , flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+'P0 -d -q 4 -C '+collect_host+verbosity},
 
  { host: 'drp-tst-dev005', id:'wave8pvs', flags:'s', conda:conda_rel, cmd:'wave8pvs --l 0'},
- { host: 'drp-tst-dev005', id:'tmowave8_0' , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -l 0x2 -D Wave8 -k epics_prefix=DAQ:WAVE8 '+verbosity},
+ { host: 'drp-tst-dev005', id:'tmowave8_0' , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -l 0x2 -D wave8 -k epics_prefix=DAQ:WAVE8 '+verbosity},
 
  { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch},
  {                        flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},

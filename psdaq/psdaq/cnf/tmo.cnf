@@ -16,11 +16,6 @@ hutch = 'tst'
 prom_dir = '/reg/g/psdm/psdatmgr/etc/config/prom' # Prometheus
 data_dir = '/ffb01/data'
 
-task_set  = 'taskset 0xffbfeffbfe '
-std_opts  = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir
-std_opts0 = std_opts+' -d /dev/datadev_0'
-std_opts1 = std_opts+' -d /dev/datadev_1'
-
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
 #                "X" open xterm
@@ -34,6 +29,10 @@ std_opts1 = std_opts+' -d /dev/datadev_1'
 #        'x' or 'X'  -> xterm: open small or large xterm for process console
 #        's'         -> stop: sends ctrl-c to process
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+task_set  = 'taskset 0xffbfeffbfe '
+std_opts  = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir
+std_opts0 = std_opts+' -d /dev/datadev_0'
+std_opts1 = std_opts+' -d /dev/datadev_1'
 
 # temporary bld server stuff (will be moved elsewhere)
 bld_str = 'ebeam'
@@ -44,6 +43,7 @@ drp_cmd = task_set+'drp '+std_opts1+' -l 0x1'
 bld_cmd = task_set+'drp_bld '+std_opts1+' -l 0x1 -k interface=eno2 -D '+bld_str
 pva_cmd = task_set+'drp_pva '+std_opts1+' '
 ea_cmd  = task_set+'epicsArch '+std_opts1+' '+ea_cfg
+wv8_cmd = task_set+'drp '+std_opts0+' -l 0x2 -D wave8 -k epics_prefix=DAQ:WAVE8'
 
 teb_cmd = task_set+'teb -P tst -C '+collect_host+' -M '+prom_dir
 meb_cmd = task_set+'monReqServer -P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -d -q 4'
@@ -78,6 +78,10 @@ procmgr_config = [
 
  # Timing System
  { host: 'drp-tst-dev013', id:'tmots_0',     flags:'sxpu', conda:conda_rel, cmd:drp_cmd+' -D ts' },
+
+ # Wave8
+ #{ host: 'drp-tst-dev005', id:'wave8pvs',    flags:'s',    conda:conda_rel, cmd:'wave8pvs --l 0'},
+ #{ host: 'drp-tst-dev005', id:'tmowave8_0',  flags:'spu',  conda:conda_rel, cmd:wv8_cmd},
 
  # Cam
  { host: 'drp-tst-dev014', id:'tmocam_0',    flags:'sxpu', conda:conda_rel, cmd:drp_cmd+' -D fakecam -k sim_length=14'},

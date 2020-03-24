@@ -143,7 +143,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
     PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssi",
                                               m_connect_json.c_str(),
                                               m_epics_name.c_str(),
-                                              "BEAM", 
+                                              "BEAM",
                                               m_para->detName.c_str(),
                                               m_readoutGroup);
 
@@ -229,8 +229,9 @@ unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc)
     lane_mask = Digitizer::_addJson(xtc, configNamesId);
 
     // set up the names for L1Accept data
-    Alg hsdAlg("hsd", 1, 2, 3);
-    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), hsdAlg, "hsd", "detnum1235", m_evtNamesId, m_para->detSegment);
+    Alg alg("raw", 2, 0, 0);
+    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
+                                        m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
     HsdDef myHsdDef(lane_mask);
     eventNames.add(xtc, myHsdDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
@@ -290,6 +291,6 @@ void Digitizer::shutdown()
     PyObject_CallFunction(pFunc,"s",
                           m_epics_name.c_str());
     Py_DECREF(pModule);
-}  
+}
 
 }

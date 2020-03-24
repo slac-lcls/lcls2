@@ -29,14 +29,9 @@ int main(int argc, char* argv[])
 {
     Drp::Parameters para;
     int c;
-    para.partition = -1;
-    para.detSegment = 0;
-    para.virtChan = 0;
     std::string kwargs_str;
     std::string::size_type ii = 0;
-    para.verbose = 0;
-    para.rogueDet = false;
-    while((c = getopt(argc, argv, "p:o:l:D:C:d:u:k:P:T::M:v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:T::M:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -48,7 +43,10 @@ int main(int argc, char* argv[])
                 para.laneMask = std::stoul(optarg, nullptr, 16);
                 break;
             case 'D':
-                para.detectorType = optarg;
+                para.detType = optarg;
+                break;
+            case 'S':
+                para.serNo = optarg;
                 break;
             case 'u':
                 para.alias = optarg;

@@ -24,16 +24,13 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     m_para(para)
 {
     Factory<Detector> f;
-    f.register_type<TimingSystem>("TimingSystem");
-    f.register_type<Digitizer>("Digitizer");
-    f.register_type<AreaDetector>("AreaDetector");
-    f.register_type<TimeTool>("TimeTool");
-    f.register_type<Wave8>("Wave8");
-    if ((m_para.detectorType=="TimeTool") ||
-        (m_para.detectorType=="Wave8")) {
-        m_para.rogueDet=true;
-        m_para.virtChan=1;
-    }
+    f.register_type<TimingSystem>("ts");
+    f.register_type<Digitizer>("hsd");
+    f.register_type<AreaDetector>("fakecam");
+    f.register_type<AreaDetector>("cspad");
+    f.register_type<TimeTool>("tt");
+    f.register_type<Wave8>("wave8");
+
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {
         logging::error("Error !! Could not create Detector object");

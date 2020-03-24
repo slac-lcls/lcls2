@@ -36,6 +36,15 @@ struct PGPEvent
 
 struct Parameters
 {
+    Parameters() :
+        partition(-1),
+        detSegment(0),
+        virtChan(0),
+        laneMask(0x1),
+        verbose(0),
+        rogueDet(false)
+    {
+    }
     unsigned partition;
     unsigned nworkers;
     unsigned batchSize;
@@ -47,7 +56,8 @@ struct Parameters
     std::string device;
     std::string outputDir;
     std::string instrument;
-    std::string detectorType;
+    std::string detType;
+    std::string serNo;
     std::string collectionHost;
     std::string prometheusDir;
     std::map<std::string,std::string> kwargs;
@@ -74,7 +84,6 @@ public:
         return &m_buffer[offset];
     }
     size_t size() const {return m_buffer.size();}
-    size_t bufferSize() const {return m_bufferSize;}
 private:
     size_t m_bufferSize;
     std::vector<uint8_t> m_buffer;

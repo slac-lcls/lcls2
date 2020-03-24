@@ -31,7 +31,7 @@ json XpmDetector::connectionInfo()
     Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
 
     uint32_t reg;
-    if (m_para->detectorType=="TimeTool") {
+    if (m_para->detType=="tt") {
         // cpo: this is a hack that is specific for timetool.
         // the address comes from pyrogue rootDevice.saveAddressMap('fname')
         // perhaps ideally we would call detector-specific rogue python. this
