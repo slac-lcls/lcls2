@@ -56,7 +56,9 @@ public:
 private:
     void _worker();
     void _timeout(const XtcData::TimeStamp& timestamp);
-    void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);
+    void _defer(const XtcData::TimeStamp& timestamp);
+    bool _handle(const XtcData::TimeStamp& timestamp, unsigned index, const XtcData::Dgram* deferred);
+    void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
     enum {PvaNamesIndex = NamesIndex::BASE};
     const std::string& m_pvName;
@@ -64,9 +66,12 @@ private:
     std::unique_ptr<PvaMonitor> m_pvaMonitor;
     std::thread m_workerThread;
     SPSCQueue<uint32_t> m_inputQueue;
+    SPSCQueue<XtcData::Dgram*> m_deferredQueue;
+    SPSCQueue<XtcData::Dgram*> m_deferredFreelist;
+    std::vector<uint8_t> m_deferredBuffer;
     mutable std::mutex m_lock;
     std::atomic<bool> m_terminate;
-    bool m_running;
+    std::atomic<bool> m_running;
     std::shared_ptr<MetricExporter> m_exporter;
     uint64_t m_nEvents;
     uint64_t m_nUpdates;
