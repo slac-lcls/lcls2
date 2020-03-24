@@ -46,6 +46,9 @@ class pva_pvaAlg_1_2_3(DetectorImpl):
         if segs is None: return None
         if segs[0] is None: return None
         return segs[0].value
+class andor_raw_0_0_1(pva_pvaAlg_1_2_3):
+    def __init__(self, *args):
+        super().__init__(*args)
 
 class cspad_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
