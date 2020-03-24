@@ -21,7 +21,7 @@ def usage() :
       + '\n  cd .../lcls2; . setup_env.sh'\
       + '\n  %s' % scrname\
       + '\n    or with positional arguments:'\
-      + '\n  %s <IFNAME> <OFNAME> <DIRTMP> <EXPNAME> <RUNNUM> <DETNAME> <DETTYPE> <SERNUM> <NAMESID>' % scrname\
+      + '\n  %s <IFNAME> <OFNAME> <DIRTMP> <EXPNAME> <RUNNUM> <DETNAME> <DETTYPE> <SERNUM> <NAMESID> <EVENTS>' % scrname\
       + '\n  %s amox23616-r0104-e400-xtcav.h5 data-amox23616-r0104-e000400-xtcav.xtc2 /reg/data/ana03/scratch/dubrovin/ amox23616 104 xtcav camera 1234 0' % scrname\
       + '\n  %s amox23616-r0131-e200-xtcav.h5 data-amox23616-r0131-e000200-xtcav.xtc2 /reg/data/ana03/scratch/dubrovin/ amox23616 131 xtcav camera 1234 0' % scrname\
       + '\n  %s amox23616-r0137-e100-xtcav.h5 data-amox23616-r0137-e000100-xtcav.xtc2 /reg/data/ana03/scratch/dubrovin/ amox23616 137 xtcav camera 1234 0' % scrname\
@@ -31,10 +31,12 @@ def usage() :
 
 def time_stamp(t_sec_nsec) :
     t_sec, t_nsec = t_sec_nsec
-    return (t_sec << 32) | t_nsec
+    tstamp = t_sec<<32 | t_nsec
+    #print('TIME_STAMP', t_sec, t_nsec, tstamp)
+    return tstamp
 
 #----------
-#exp=amox23616:run=104
+#exp=amox23616:run=104, 131, 137
 
 nargs = len(sys.argv)
 
@@ -47,9 +49,8 @@ DETNAME = 'xtcav'             if nargs <= 6 else sys.argv[6]
 DETTYPE = 'camera'            if nargs <= 7 else sys.argv[7]
 SERNUM  = '1234'              if nargs <= 8 else sys.argv[8]
 NAMESID = 0                   if nargs <= 9 else int(sys.argv[9])
-
+EVENTS  = 100000              if nargs <= 10 else int(sys.argv[10])
 EVSKIP  = 0
-EVENTS  = 10 + EVSKIP
 
 FNAME_HDF5 = os.path.join(DIRTMP,IFNAME)
 FNAME_XTC2 = os.path.join(DIRTMP,OFNAME)
@@ -74,34 +75,28 @@ def convert_hdf5_to_xtc2_with_runinfo() :
     
     if RAW in LIST_SAVE :
         #xxxxxx_nameinfo = dc.nameinfo(DETNAME, DETTYPE, SERNUM, NAMESID)
-        #---- raw
         #raw_nameinfo = dc.nameinfo(DETNAME, DETTYPE, SERNUM, NAMESID)
-        raw_nameinfo = dc.nameinfo('xtcav', 'camera', '1234', 0)
+        raw_nameinfo = dc.nameinfo('xtcav', 'camera', '1234', RAW)
         raw_alg = dc.alg('raw', [0,0,1])
     
     if RUNINFO in LIST_SAVE :
-        #---- runinfo
-        runinfo_nameinfo = dc.nameinfo('runinfo', 'runinfo', '11', 1)
+        runinfo_nameinfo = dc.nameinfo('runinfo', 'runinfo', '', RUNINFO)
         runinfo_alg = dc.alg('runinfo', [0,0,1])
     
     if EBEAM in LIST_SAVE :
-        #---- ebeam
-        ebeam_nameinfo = dc.nameinfo('ebeam', 'ebeam', '22', 2)
+        ebeam_nameinfo = dc.nameinfo('ebeam', 'ebeam', '', EBEAM)
         ebeam_alg = dc.alg('valsebm', [0,0,1])
     
     if EVENTID in LIST_SAVE :
-        #---- eventid
-        eventid_nameinfo = dc.nameinfo('eventid', 'eventid', '33', 3)
+        eventid_nameinfo = dc.nameinfo('eventid', 'eventid', '', EVENTID)
         eventid_alg = dc.alg('valseid', [0,0,1])
     
     if GASDET in LIST_SAVE :
-        #---- gasdetector
-        gasdet_nameinfo = dc.nameinfo('gasdetector', 'gasdetector', '44', 4)
+        gasdet_nameinfo = dc.nameinfo('gasdetector', 'gasdetector', '', GASDET)
         gasdet_alg = dc.alg('valsgd', [0,0,1])
     
     if XTCAVPARS in LIST_SAVE :
-        #---- xtcav
-        xtcav_nameinfo = dc.nameinfo('xtcavpars', 'xtcavpars', '55', 5)
+        xtcav_nameinfo = dc.nameinfo('xtcavpars', 'xtcavpars', '', XTCAVPARS)
         xtcav_alg = dc.alg('valsxtp', [0,0,1])
 
     #----------
@@ -122,33 +117,36 @@ def convert_hdf5_to_xtc2_with_runinfo() :
 
     for nevt,nda in enumerate(raw):
 
-        #if do_print(nevt) : print('Event %3d'%nevt, ' nda.shape:', nda.shape)
+        if nevt > EVENTS :
+            print('Reached maximum number of events %s' % EVENTS)
+            break
 
-        print('Event %3d'%nevt, ' nda.shape:', nda.shape)
-
-        #if nevt<EVSKIP :
+        #if nevt < EVSKIP :
         #   print('  - skip event')
         #   continue
 
-        print('       -> RUNINFO    EXPNAME    :', EXPNAME)
-        print('       -> RUNINFO    RUNNUM     :', RUNNUM)
-        print('  HDF5 -> EVENTID    exp        :', eventid['experiment'][nevt].decode())
-        print('  HDF5 -> EVENTID    run        :', eventid['run'       ][nevt])
-        print('  HDF5 -> EVENTID    time       :', eventid['time'      ][nevt])
-        print('  HDF5 -> EBEAM      charge     :', ebeam['Charge'      ][nevt])
-        print('  HDF5 -> EBEAM      dumpcharge :', ebeam['DumpCharge'  ][nevt])
-        print('  HDF5 -> GASDET     f_11_ENRC  :', gasdet['f_11_ENRC'  ][nevt])
-        print('  HDF5 -> XTCAVPARS  Beam_energy:', xtcav['XTCAV_Beam_energy_dump_GeV'][nevt])
-        print_ndarr(nda, '  HDF5 RAW raw:')
+        #print('Event %3d'%nevt, ' nda.shape:', nda.shape)
+
+        if do_print(nevt) :
+            print('Event %3d'%nevt, ' nda.shape:', nda.shape)
+
+            print('       -> RUNINFO    EXPNAME    :', EXPNAME)
+            print('       -> RUNINFO    RUNNUM     :', RUNNUM)
+            print('  HDF5 -> EVENTID    exp        :', eventid['experiment'][nevt].decode())
+            print('  HDF5 -> EVENTID    run        :', eventid['run'       ][nevt])
+            print('  HDF5 -> EVENTID    time       :', eventid['time'      ][nevt])
+            print('  HDF5 -> EBEAM      charge     :', ebeam['Charge'      ][nevt])
+            print('  HDF5 -> EBEAM      dumpcharge :', ebeam['DumpCharge'  ][nevt])
+            print('  HDF5 -> GASDET     f_11_ENRC  :', gasdet['f_11_ENRC'  ][nevt])
+            print('  HDF5 -> XTCAVPARS  Beam_energy:', xtcav['XTCAV_Beam_energy_dump_GeV'][nevt])
+            print_ndarr(nda, '  HDF5 RAW raw:')
 
         if RUNINFO in LIST_SAVE :
-            #---------- for runinfo
             if nevt<2 : 
                 runinfo_data = {'expt': EXPNAME, 'runnum': RUNNUM}
                 cydgram.addDet(runinfo_nameinfo, runinfo_alg, runinfo_data)
     
         if EBEAM in LIST_SAVE :
-          #if ebeam['Charge'][nevt] > 0 :
             cydgram.addDet(ebeam_nameinfo, ebeam_alg, {\
               'Charge'    : ebeam['Charge'    ][nevt],\
               'DumpCharge': ebeam['DumpCharge'][nevt],\
@@ -156,6 +154,7 @@ def convert_hdf5_to_xtc2_with_runinfo() :
               'XTCAVPhase': ebeam['XTCAVPhase'][nevt],\
               'PkCurrBC2' : ebeam['PkCurrBC2' ][nevt],\
               'L3Energy'  : ebeam['L3Energy'  ][nevt],\
+              #'cpohack'   : np.array([3]),\
             })
     
         if EVENTID in LIST_SAVE :
@@ -167,7 +166,6 @@ def convert_hdf5_to_xtc2_with_runinfo() :
             })
     
         if GASDET in LIST_SAVE :
-          #if gasdet['f_11_ENRC'][nevt] > 0 :
             cydgram.addDet(gasdet_nameinfo, gasdet_alg, {\
               'f_11_ENRC': gasdet['f_11_ENRC'][nevt],\
               'f_12_ENRC': gasdet['f_12_ENRC'][nevt],\
@@ -202,10 +200,9 @@ def convert_hdf5_to_xtc2_with_runinfo() :
             cydgram.addDet(raw_nameinfo, raw_alg, {'array': nda})
 
         t_sec_nsec = eventid['time'][nevt]
+        timestamp = time_stamp(t_sec_nsec)
         t_sec, t_nsec = t_sec_nsec
-        #timestamp = nevt
-        #timestamp = t_sec_nsec #time_stamp(t_sec_nsec)
-        timestamp = t_sec + nevt #time_stamp(t_sec_nsec)
+        timestamp = timestamp if t_sec else nevt
 
         transitionid = None
         if   (nevt==0): transitionid = 2  # Configure
@@ -235,7 +232,7 @@ def test_xtc2_runinfo() :
     #print('dir(det)', dir(det))
 
     for nev,evt in enumerate(orun.events()):
-        if nev>EVENTS : break
+        if nev > EVENTS : break
         print('Event %d'%nev, end='')
         #print('=== dir(orun):\n', dir(orun))
 
@@ -283,7 +280,8 @@ def test_xtc2_runinfo() :
           print('  YYYY f_11_ENRC :', ogd.valsgd.f_11_ENRC(evt) if o is not None else 'None')
 
         if XTCAVPARS in LIST_SAVE :
-          print('  YYYY XTCAV_Beam_energy_dump_GeV :', oxp.valsxtp.XTCAV_Beam_energy_dump_GeV(evt))
+          print('  YYYY XTCAV_Beam_energy_dump_GeV   :', oxp.valsxtp.XTCAV_Beam_energy_dump_GeV(evt))
+          print('  YYYY XTCAV_calib_disp_posToEnergy :', oxp.valsxtp.XTCAV_calib_disp_posToEnergy(evt))
 
         if RAW in LIST_SAVE :
           print_ndarr(det.raw.array(evt), '  YYYY raw:')

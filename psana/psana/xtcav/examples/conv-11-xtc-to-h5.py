@@ -28,9 +28,9 @@ def usage() :
       + '\n    source /reg/g/psdm/etc/psconda.sh'\
       + '\n  run script with positional arguments:'\
       + '\n    %s <EVENTS> <OFNAME> <DSNAME> <DETNAME>' % scrname\
-      + '\n    %s 400 /reg/data/ana03/scratch/dubrovin/amox23616-r0104-e400-xtcav.h5 exp=amox23616:run=104:smd xtcav' % scrname\
-      + '\n    %s 200 /reg/data/ana03/scratch/dubrovin/amox23616-r0131-e200-xtcav.h5 exp=amox23616:run=131:smd xtcav' % scrname\
-      + '\n    %s 100 /reg/data/ana03/scratch/dubrovin/amox23616-r0137-e100-xtcav.h5 exp=amox23616:run=137:smd xtcav' % scrname\
+      + '\n    %s 400 /reg/data/ana03/scratch/dubrovin/amox23616-r0104-e400-xtcav.h5 exp=amox23616:run=104 xtcav' % scrname\
+      + '\n    %s 200 /reg/data/ana03/scratch/dubrovin/amox23616-r0131-e200-xtcav.h5 exp=amox23616:run=131 xtcav' % scrname\
+      + '\n    %s 100 /reg/data/ana03/scratch/dubrovin/amox23616-r0137-e100-xtcav.h5 exp=amox23616:run=137 xtcav' % scrname\
       + '\n'
 
 #--------------------
