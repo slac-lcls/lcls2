@@ -545,13 +545,16 @@ int main(int argc, char* argv[])
     Drp::Parameters para;
     std::string kwargs_str;
     int c;
-    while((c = getopt(argc, argv, "p:o:C:d:u:k:P:T::M:vh")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:C:d:u:k:P:T::M:vh")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
                 break;
             case 'o':
                 para.outputDir = optarg;
+                break;
+            case 'l':
+                para.laneMask = std::stoul(optarg, nullptr, 16);
                 break;
             case 'C':
                 para.collectionHost = optarg;
@@ -625,7 +628,6 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    para.laneMask = 0x1;
     para.detName = "epics";
     para.detType = "epics";
     para.maxTrSize = 256 * 1024;
