@@ -41,17 +41,17 @@ int EbLfClient::connect(EbLfCltLink** link,
     return fab ? fab->error_num() : -FI_ENOMEM;
   }
 
-  if (_verbose)
+  if (_verbose > 1)
   {
     void* data = fab;                   // Something since data can't be NULL
-    printf("EbLfClient is using LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
+    printf("LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
            fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
   }
 
   struct fi_info*  info   = fab->info();
   size_t           cqSize = info->tx_attr->size;
-  if (_verbose)  printf("EbLfClient: rx_attr.size = %zd, tx_attr.size = %zd\n",
-                        info->rx_attr->size, info->tx_attr->size);
+  if (_verbose > 1)  printf("EbLfClient: rx_attr.size = %zd, tx_attr.size = %zd\n",
+                            info->rx_attr->size, info->tx_attr->size);
   CompletionQueue* txcq   = new CompletionQueue(fab, cqSize);
   if (!txcq)
   {
@@ -60,7 +60,8 @@ int EbLfClient::connect(EbLfCltLink** link,
     return -FI_ENOMEM;
   }
 
-  printf("EbLfClient is waiting %d ms for server %s:%s\n", msTmo, peer, port);
+  if (_verbose)
+    printf("EbLfClient is waiting %d ms for server %s:%s\n", msTmo, peer, port);
 
   EventQueue*      eq   = nullptr;
   CompletionQueue* rxcq = nullptr;
@@ -119,7 +120,8 @@ int EbLfClient::connect(EbLfCltLink** link,
 
 int EbLfClient::disconnect(EbLfCltLink* link)
 {
-  printf("Disconnecting from EbLfServer %d\n", link->id());
+  if (_verbose)
+    printf("Disconnecting from EbLfServer %d\n", link->id());
 
   Endpoint* ep = link->endpoint();
   if (ep)

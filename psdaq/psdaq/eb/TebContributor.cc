@@ -7,6 +7,7 @@
 
 #include "utilities.hh"
 
+#include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
@@ -24,6 +25,7 @@
 
 using namespace XtcData;
 using namespace Pds::Eb;
+using logging  = psalg::SysLog;
 
 
 TebContributor::TebContributor(const TebCtrbParams&                   prms,
@@ -70,23 +72,23 @@ int TebContributor::configure(const TebCtrbParams& prms)
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _transport.connect(&link, addr, port, _id, tmo)) )
     {
-      fprintf(stderr, "%s:\n  Error connecting to TEB at %s:%s\n",
-              __PRETTY_FUNCTION__, addr, port);
+      logging::error("%s:\n  Error connecting to TEB at %s:%s\n",
+                     __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
     unsigned rmtId = link->id();
     _links[rmtId] = link;
 
-    if (_prms.verbose)  printf("Outbound link with TEB ID %d connected\n", rmtId);
+    if (_prms.verbose)  logging::info("Outbound link with TEB ID %d connected\n", rmtId);
 
     if ( (rc = link->prepare(region, regSize)) )
     {
-      fprintf(stderr, "%s:\n  Failed to prepare link with TEB ID %d\n",
-              __PRETTY_FUNCTION__, rmtId);
+      logging::error("%s:\n  Failed to prepare link with TEB ID %d\n",
+                     __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
 
-    printf("Outbound link with TEB ID %d connected and configured\n", rmtId);
+    logging::info("Outbound link with TEB ID %d connected and configured\n", rmtId);
   }
 
   return 0;

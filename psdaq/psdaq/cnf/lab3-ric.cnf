@@ -17,7 +17,9 @@ prom_dir = '/reg/g/psdm/psdatmgr/etc/config/prom' # Prometheus
 data_dir = '/ffb01/data'
 
 task_set = 'taskset 0xffbfeffbfe '
-std_opts = '-P '+hutch+' -d /dev/datadev_1 -C '+collect_host+' -M '+prom_dir+' -o '+data_dir
+std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir
+std_opts0 = std_opts+' -d /dev/datadev_0'
+std_opts1 = std_opts+' -d /dev/datadev_1'
 
 bld_str = 'ebeam'
 bldcas_str = 'HPSEX'
@@ -92,22 +94,22 @@ procmgr_config = [
 ]
 
 # HSD: 6.4 GS/s digitizer (DEV07_1B, 1A)
-#node = 0
-#bus  = 1
-#pv   = 2
-#drp  = 3
-#hsds = [
-#
-#    {node:'daq-tst-dev07',bus:'1b',pv:'DAQ:LAB2:HSD:DEV07_1B',drp:'drp-tst-dev008'},
-#    {node:'daq-tst-dev07',bus:'1a',pv:'DAQ:LAB2:HSD:DEV07_1A',drp:'drp-tst-dev010'},
-#]
-#
-#hsd_cmd0 = 'drp -P '+hutch+' -l 0x1 -d /dev/datadev_0 -C '+collect_host+' -M '+prom_dir+' -o '+data_dir
-#hsd_cmd1 = 'drp -P '+hutch+' -l 0x1 -d /dev/datadev_1 -C '+collect_host+' -M '+prom_dir+' -o '+data_dir
-#
-#port=29174
-#segm=0
-#pvlist = []
+node = 0
+bus  = 1
+pv   = 2
+drp  = 3
+hsds = [
+
+    {node:'daq-tst-dev07',bus:'1b',pv:'DAQ:LAB2:HSD:DEV07_1B',drp:'drp-tst-dev008'},
+    {node:'daq-tst-dev07',bus:'1a',pv:'DAQ:LAB2:HSD:DEV07_1A',drp:'drp-tst-dev010'},
+]
+
+hsd_cmd0 = task_set+'drp '+std_opts0+' -l 0x1'
+hsd_cmd1 = task_set+'drp '+std_opts1+' -l 0x1'
+
+port=29074 + 100*int(platform)
+segm=0
+pvlist = []
 #for e in hsds:
 #    procmgr_config.append({id:'hsdpvs_%s_a'%e[bus], port:'%d'%port, flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':A'})
 #    port += 1
@@ -118,3 +120,7 @@ procmgr_config = [
 #    segm += 1
 #    procmgr_config.append({ host: e[drp], id:'tmohsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:hsd_cmd1+' -D hsd -k hsd_epics_prefix='+e[pv]+':B'})
 #    segm += 1
+#    pvlist.append(e[pv]+':A')
+#    pvlist.append(e[pv]+':B')
+#
+#procmgr_config.append({id:'hsdpva', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdpva '+' '.join(pvlist)})

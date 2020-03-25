@@ -8,6 +8,7 @@
 
 #include "utilities.hh"
 
+#include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
@@ -23,6 +24,7 @@
 
 using namespace XtcData;
 using namespace Pds::Eb;
+using logging  = psalg::SysLog;
 
 
 EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
@@ -55,8 +57,8 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
   int rc;
   if ( (rc = _transport.initialize(prms.ifAddr, prms.port, numEbs)) )
   {
-    fprintf(stderr, "%s:\n  Failed to initialize EbLfServer\n",
-            __PRETTY_FUNCTION__);
+    logging::error("%s:\n  Failed to initialize EbLfServer\n",
+                   __PRETTY_FUNCTION__);
     return rc;
   }
 
@@ -68,20 +70,20 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _transport.connect(&link, prms.id, tmo)) )
     {
-      fprintf(stderr, "%s:\n  Error connecting to TEB %d\n",
-              __PRETTY_FUNCTION__, i);
+      logging::error("%s:\n  Error connecting to TEB %d\n",
+                     __PRETTY_FUNCTION__, i);
       return rc;
     }
     unsigned rmtId = link->id();
     _links[rmtId] = link;
 
-    if (_prms.verbose)  printf("Inbound link with TEB ID %d connected\n", rmtId);
+    if (_prms.verbose)  logging::info("Inbound link with TEB ID %d connected\n", rmtId);
 
     size_t size;
     if ( (rc = link->prepare(&size)) )
     {
-      fprintf(stderr, "%s:\n  Failed to prepare link with TEB ID %d\n",
-              __PRETTY_FUNCTION__, rmtId);
+      logging::error("%s:\n  Failed to prepare link with TEB ID %d\n",
+                     __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
 
@@ -92,8 +94,8 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
     }
     else if (regSize != size)
     {
-      fprintf(stderr, "%s:\n  Error: Result MR size (%zd) cannot differ between TEBs "
-              "(%zd from Id %d)\n", __PRETTY_FUNCTION__, size, regSize, rmtId);
+      logging::error("%s:\n  Error: Result MR size (%zd) cannot differ between TEBs "
+                     "(%zd from Id %d)\n", __PRETTY_FUNCTION__, size, regSize, rmtId);
       return -1;
     }
   }
@@ -103,8 +105,8 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
   _region = allocRegion(regSize);
   if (_region == nullptr)
   {
-    fprintf(stderr, "%s:\n  No memory found for a Result MR of size %zd\n",
-            __PRETTY_FUNCTION__, regSize);
+    logging::error("%s:\n  No memory found for a Result MR of size %zd\n",
+                   __PRETTY_FUNCTION__, regSize);
     return ENOMEM;
   }
 
@@ -117,19 +119,19 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
     if ( (rc = link->setupMr(_region, regSize)) )
     {
       char* region = static_cast<char*>(_region);
-      fprintf(stderr, "%s:\n  Failed to set up Result MR for TEB ID %d, %p:%p, size %zd\n",
-              __PRETTY_FUNCTION__, rmtId, region, region + regSize, regSize);
+      logging::error("%s:\n  Failed to set up Result MR for TEB ID %d, %p:%p, size %zd\n",
+                     __PRETTY_FUNCTION__, rmtId, region, region + regSize, regSize);
       if (_region)  free(_region);
       _region = nullptr;
       return rc;
     }
     if (link->postCompRecv())
     {
-      fprintf(stderr, "%s:\n  Failed to post CQ buffers for Ctrb ID %d\n",
-              __PRETTY_FUNCTION__, rmtId);
+      logging::warning("%s:\n  Failed to post CQ buffers for Ctrb ID %d\n",
+                       __PRETTY_FUNCTION__, rmtId);
     }
 
-    printf("Inbound link with TEB ID %d connected and configured\n", rmtId);
+    logging::info("Inbound link with TEB ID %d connected and configured\n", rmtId);
   }
 
   return 0;
@@ -140,11 +142,11 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
   int rc = pinThread(pthread_self(), _prms.core[1]);
   if (rc && _prms.verbose)
   {
-    fprintf(stderr, "%s:\n  Error from pinThread:\n  %s\n",
-            __PRETTY_FUNCTION__, strerror(rc));
+    logging::error("%s:\n  Error from pinThread:\n  %s\n",
+                   __PRETTY_FUNCTION__, strerror(rc));
   }
 
-  printf("Receiver thread is starting\n");
+  logging::info("Receiver thread is starting\n");
 
   while (running.load(std::memory_order_relaxed))
   {
@@ -156,7 +158,7 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
 
   _shutdown();
 
-  printf("Receiver thread is exiting\n");
+  logging::info("Receiver thread is exiting\n");
 }
 
 void EbCtrbInBase::_shutdown()
@@ -188,8 +190,8 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
   uint64_t           pid = bdg->pulseId();
   if ( (rc = lnk->postCompRecv()) )
   {
-    fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
-            __PRETTY_FUNCTION__, rc);
+    logging::warning("%s:\n  Failed to post CQ buffers: %d\n",
+                     __PRETTY_FUNCTION__, rc);
   }
 
   if (_prms.verbose >= VL_BATCH)
@@ -232,9 +234,9 @@ void EbCtrbInBase::_pairUp(TebContributor&    ctrb,
 
       if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
       {
-        fprintf(stderr, "%s:\n  No input batch for result: empty pending FIFO timeout:\n"
-                "    new result   idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
-                idx, result->pulseId());
+        logging::warning("%s:\n  No Input batch for Result: empty pending FIFO timeout:\n"
+                         "    new result   idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
+                         idx, result->pulseId());
         return;
       }
     }
@@ -248,15 +250,16 @@ void EbCtrbInBase::_pairUp(TebContributor&    ctrb,
 
     if (unlikely(batch->result()))
     {
-      fprintf(stderr, "%s:\n  Unhandled result found:\n"
-              "    new result      idx %08x, pid %014lx\n"
-              "    looked up batch idx %08x, pid %014lx\n"
-              "    unhandled result              pid %014lx\n"
-              "    pending head    idx %08x, pid %014lx\n", __PRETTY_FUNCTION__,
-              idx, result->pulseId(),
-              batch->index(), batch->id(),
-              batch->result()->pulseId(),
-              inputs->index(), inputs->id());
+      logging::critical("%s:\n  Unhandled result found:\n"
+                        "    new result      idx %08x, pid %014lx\n"
+                        "    looked up batch idx %08x, pid %014lx\n"
+                        "    unhandled result              pid %014lx\n"
+                        "    pending head    idx %08x, pid %014lx\n",
+                        __PRETTY_FUNCTION__,
+                        idx, result->pulseId(),
+                        batch->index(), batch->id(),
+                        batch->result()->pulseId(),
+                        inputs->index(), inputs->id());
       abort();
     }
 
@@ -271,9 +274,9 @@ void EbCtrbInBase::_pairUp(TebContributor&    ctrb,
     uint64_t rPid = result->pulseId();
     if (unlikely((iPid ^ rPid) & ~(BATCH_DURATION - 1))) // Include bits above index()
     {
-      fprintf(stderr, "%s:\n  Result / Input batch mismatch: "
-              "Input pid %014lx, Result pid %014lx, xor %014lx, diff %ld\n",
-              __PRETTY_FUNCTION__, iPid, rPid, iPid ^ rPid, iPid - rPid);
+      logging::critical("%s:\n  Result / Input batch mismatch: "
+                        "Input pid %014lx, Result pid %014lx, xor %014lx, diff %ld\n",
+                        __PRETTY_FUNCTION__, iPid, rPid, iPid ^ rPid, iPid - rPid);
       abort();
     }
 
@@ -347,8 +350,8 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
 
   if (iCnt && !input->isEOL())
   {
-    fprintf(stderr, "%s:\n  Not all inputs received results, inp: %d %014lx res: %d %014lx\n",
-            __PRETTY_FUNCTION__, MAX_ENTRIES - iCnt, iPid, MAX_ENTRIES - rCnt, rPid);
+    logging::warning("%s:\n  Not all Inputs received Results, inp: %d %014lx res: %d %014lx\n",
+                     __PRETTY_FUNCTION__, MAX_ENTRIES - iCnt, iPid, MAX_ENTRIES - rCnt, rPid);
     printf("Results:\n");
     result = results;
     for (unsigned i = 0; i < MAX_ENTRIES; ++i)

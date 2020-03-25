@@ -7,6 +7,7 @@
 
 #include "utilities.hh"
 
+#include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
 #ifndef _GNU_SOURCE
@@ -29,6 +30,7 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
+using logging  = psalg::SysLog;
 
 
 EbAppBase::EbAppBase(const EbParams& prms,
@@ -73,8 +75,8 @@ int EbAppBase::configure(const EbParams& prms)
   int rc;
   if ( (rc = _transport.initialize(prms.ifAddr, prms.ebPort, nCtrbs)) )
   {
-    fprintf(stderr, "%s:\n  Failed to initialize Ctrb EbLfServer\n",
-            __PRETTY_FUNCTION__);
+    logging::error("%s:\n  Failed to initialize Ctrb EbLfServer\n",
+                   __PRETTY_FUNCTION__);
     return rc;
   }
 
@@ -84,20 +86,20 @@ int EbAppBase::configure(const EbParams& prms)
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _transport.connect(&link, _id, tmo)) )
     {
-      fprintf(stderr, "%s:\n  Error connecting to a Ctrb\n",
-              __PRETTY_FUNCTION__);
+      logging::error("%s:\n  Error connecting to a Ctrb\n",
+                     __PRETTY_FUNCTION__);
       return rc;
     }
     unsigned rmtId = link->id();
     _links[rmtId] = link;
 
-    if (_verbose)  printf("Inbound link with Ctrb ID %d connected\n", rmtId);
+    if (_verbose)  logging::info("Inbound link with Ctrb ID %d connected\n", rmtId);
 
     size_t regSize;
     if ( (rc = link->prepare(&regSize)) )
     {
-      fprintf(stderr, "%s:\n  Failed to prepare link with Ctrb ID %d\n",
-              __PRETTY_FUNCTION__, rmtId);
+      logging::error("%s:\n  Failed to prepare link with Ctrb ID %d\n",
+                     __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
     _maxTrSize[rmtId]  = prms.maxTrSize[rmtId];
@@ -111,8 +113,8 @@ int EbAppBase::configure(const EbParams& prms)
   _region = allocRegion(sumSize);
   if (!_region)
   {
-    fprintf(stderr, "%s:\n  No memory found for Input MR of size %zd\n",
-            __PRETTY_FUNCTION__, sumSize);
+    logging::error("%s:\n  No memory found for Input MR of size %zd\n",
+                   __PRETTY_FUNCTION__, sumSize);
     return ENOMEM;
   }
 
@@ -123,9 +125,9 @@ int EbAppBase::configure(const EbParams& prms)
     EbLfSvrLink* link = _links[rmtId];
     if ( (rc = link->setupMr(region, regSizes[rmtId])) )
     {
-      fprintf(stderr, "%s:\n  Failed to set up Input MR for Ctrb ID %d, "
-              "%p:%p, size %zd\n", __PRETTY_FUNCTION__,
-              rmtId, region, region + regSizes[rmtId], regSizes[rmtId]);
+      logging::error("%s:\n  Failed to set up Input MR for Ctrb ID %d, "
+                     "%p:%p, size %zd\n", __PRETTY_FUNCTION__,
+                     rmtId, region, region + regSizes[rmtId], regSizes[rmtId]);
       if (_region)  free(_region);
       _region = nullptr;
       return rc;
@@ -133,13 +135,13 @@ int EbAppBase::configure(const EbParams& prms)
 
     if (link->postCompRecv())
     {
-      fprintf(stderr, "%s:\n  Failed to post CQ buffers for Ctrb ID %d\n",
-              __PRETTY_FUNCTION__, rmtId);
+      logging::warning("%s:\n  Failed to post CQ buffers for Ctrb ID %d\n",
+                       __PRETTY_FUNCTION__, rmtId);
     }
 
     region += regSizes[rmtId];
 
-    printf("Inbound link with Ctrb ID %d connected and configured\n", rmtId);
+    logging::info("Inbound link with Ctrb ID %d connected and configured\n", rmtId);
   }
 
   return 0;
@@ -193,8 +195,8 @@ int EbAppBase::process()
   const EbDgram* idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));
   if ( (rc = lnk->postCompRecv()) )
   {
-    fprintf(stderr, "%s:\n  Failed to post CQ buffers: %d\n",
-            __PRETTY_FUNCTION__, rc);
+    logging::warning("%s:\n  Failed to post CQ buffers: %d\n",
+                     __PRETTY_FUNCTION__, rc);
   }
 
   if (_verbose >= VL_BATCH)
@@ -255,8 +257,8 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 
   if (_verbose >= VL_EVENT)
   {
-    fprintf(stderr, "%s:\n  Fixup event %014lx, size %zu, for source %d\n",
-            __PRETTY_FUNCTION__, event->sequence(), event->size(), srcId);
+    printf("Fixup event %014lx, size %zu, for source %d\n",
+           event->sequence(), event->size(), srcId);
   }
 
   event->damage(Damage::DroppedContribution);

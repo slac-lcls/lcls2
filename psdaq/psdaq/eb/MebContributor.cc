@@ -5,6 +5,7 @@
 
 #include "utilities.hh"
 
+#include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/EbDgram.hh"
 
@@ -14,6 +15,7 @@
 
 using namespace XtcData;
 using namespace Pds::Eb;
+using logging  = psalg::SysLog;
 
 
 MebContributor::MebContributor(const MebCtrbParams&            prms,
@@ -51,19 +53,19 @@ int MebContributor::configure(const MebCtrbParams& prms,
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _transport.connect(&link, addr, port, _id, tmo)) )
     {
-      fprintf(stderr, "%s:\n  Error connecting to MEB at %s:%s\n",
-              __PRETTY_FUNCTION__, addr, port);
+      logging::error("%s:\n  Error connecting to MEB at %s:%s\n",
+                     __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
     if ( (rc = link->prepare(region, size, regSize)) )
     {
-      fprintf(stderr, "%s:\n  Failed to prepare link with MEB at %s:%s\n",
-              __PRETTY_FUNCTION__, addr, port);
+      logging::error("%s:\n  Failed to prepare link with MEB at %s:%s\n",
+                     __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
     _links[link->id()] = link;
 
-    printf("Outbound link with MEB ID %d connected\n", link->id());
+    logging::info("Outbound link with MEB ID %d connected\n", link->id());
   }
 
   return 0;
@@ -91,8 +93,8 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
 
   if (sz > _maxEvSize)
   {
-    fprintf(stderr, "%s:\n  L1Accept of size %zd is too big for target buffer of size %zd\n",
-            __PRETTY_FUNCTION__, sz, _maxEvSize);
+    logging::critical("%s:\n  L1Accept of size %zd is too big for target buffer of size %zd\n",
+                      __PRETTY_FUNCTION__, sz, _maxEvSize);
     abort();
     return -1;
   }
@@ -123,8 +125,8 @@ int MebContributor::post(const EbDgram* ddg)
 
   if (sz > _maxTrSize)
   {
-    fprintf(stderr, "%s:\n  %s transition of size %zd is too big for target buffer of size %zd\n",
-            __PRETTY_FUNCTION__, TransitionId::name(tr), sz, _maxTrSize);
+    logging::critical("%s:\n  %s transition of size %zd is too big for target buffer of size %zd\n",
+                      __PRETTY_FUNCTION__, TransitionId::name(tr), sz, _maxTrSize);
     abort();
     return -1;
   }

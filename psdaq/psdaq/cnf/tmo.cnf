@@ -48,10 +48,20 @@ wv8_cmd = task_set+'drp '+std_opts0+' -l 0x2 -D wave8 -k epics_prefix=DAQ:WAVE8'
 teb_cmd = task_set+'teb -P tst -C '+collect_host+' -M '+prom_dir
 meb_cmd = task_set+'monReqServer -P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -d -q 4'
 
+fields = [
+               'RawBuffers:TrigCnt',
+               'RawBuffers:FifoPauseCnt','RawBuffers:FifoPauseThreshold',
+               'Integrators:IntFifoPauseCnt' ,'Integrators:IntFifoPauseThreshold',
+               'Integrators:ProcFifoPauseCnt','Integrators:ProcFifoPauseThreshold',
+               'TriggerEventManager:TriggerEventBuffer[0]:FifoWrCnt',
+               'TriggerEventManager:TriggerEventBuffer[0]:PauseThreshold',
+]
+
 procmgr_config = [
  {                         id:'groupca',     flags:'s',    conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
  {                         id:'xpmpva',      flags:'s',    conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1 DAQ:LAB2:XPM:2'},
- { host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' -r /dev/null'}, # -S 1'},
+ #{ host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' -r ~/.psdaq/tmo.activeDet.json -S 1'},
+ { host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' -r /dev/null -S 1'},
  {                         id:'control_gui', flags:'p',    conda:conda_rel,                cmd:'control_gui -H '+collect_host},
 
  # TEB
@@ -62,11 +72,12 @@ procmgr_config = [
  { host: 'drp-tst-dev015', id:'meb1',        flags:'spu',  conda:conda_rel, cmd:meb_cmd},
 
  # PVA
- { host: 'drp-tst-dev002', id:'tmoandor_0', flags:'sxpu', conda:conda_rel, cmd: pva_cmd+'-D andor '+'DAQ:LAB2:PVCAM'},
+ { host: 'drp-tst-dev002', id:'tmoandor_0', flags:'sxpu', conda:conda_rel, cmd: pva_cmd+'-l 0x2 -D andor '+'DAQ:LAB2:PVCAM'},
  #{ host: 'drp-tst-dev002', id:'tmoxtcav_0', flags:'sxpu', conda:conda_rel, cmd: pva_cmd+'-D xtcav '+'DAQ:LAB2:PVCAM'},
 
  # EpicsArch
- { host: 'drp-tst-dev004', id:'epics_0',     flags:'sxpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
+ #{ host: 'drp-tst-dev004', id:'epics_0',     flags:'sxpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
+ { host: 'drp-tst-dev002', id:'epics_0',     flags:'sxpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
 
  # BLD - must currently run on dev018 since that's where the bld enet xface is
  { host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    conda:conda_rel, env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4'},
@@ -82,6 +93,7 @@ procmgr_config = [
  # Wave8
  #{ host: 'drp-tst-dev005', id:'wave8pvs',    flags:'s',    conda:conda_rel, cmd:'wave8pvs --l 0'},
  #{ host: 'drp-tst-dev005', id:'tmowave8_0',  flags:'spu',  conda:conda_rel, cmd:wv8_cmd},
+ #{                         id:'pvant',       flags:'s',    conda:conda_rel, env:epics_env, cmd:'pvant --bases DAQ:WAVE8:Top --fields '+' '.join(fields)},
 
  # Cam
  { host: 'drp-tst-dev014', id:'tmocam_0',    flags:'sxpu', conda:conda_rel, cmd:drp_cmd+' -D fakecam -k sim_length=14'},
@@ -103,16 +115,20 @@ hsds = [
 hsd_cmd0 = task_set+'drp '+std_opts0+' -l 0x1'
 hsd_cmd1 = task_set+'drp '+std_opts1+' -l 0x1'
 
-port=29174
+port=29074 + 100*int(platform)
 segm=0
 pvlist = []
-for e in hsds:
-    procmgr_config.append({id:'hsdpvs_%s_a'%e[bus], port:'%d'%port, flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':A'})
-    port += 1
-    procmgr_config.append({id:'hsdpvs_%s_b'%e[bus], port:'%d'%port, flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':B'})
-    port += 1
-    procmgr_config.append({ host: e[node], id:'hsdioc_%s'%e[bus], flags:'', conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P '+e[pv]+' -d /dev/pcie_adc_%s'%e[bus]})
-    procmgr_config.append({ host: e[drp], id:'tmohsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:hsd_cmd0+' -D hsd -k hsd_epics_prefix='+e[pv]+':A'})
-    segm += 1
-    procmgr_config.append({ host: e[drp], id:'tmohsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:hsd_cmd1+' -D hsd -k hsd_epics_prefix='+e[pv]+':B'})
-    segm += 1
+#for e in hsds:
+#    procmgr_config.append({id:'hsdpvs_%s_a'%e[bus], port:'%d'%port, flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':A'})
+#    port += 1
+#    procmgr_config.append({id:'hsdpvs_%s_b'%e[bus], port:'%d'%port, flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':B'})
+#    port += 1
+#    procmgr_config.append({ host: e[node], id:'hsdioc_%s'%e[bus], flags:'', conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P '+e[pv]+' -d /dev/pcie_adc_%s'%e[bus]})
+#    procmgr_config.append({ host: e[drp], id:'tmohsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:hsd_cmd0+' -D hsd -k hsd_epics_prefix='+e[pv]+':A'})
+#    segm += 1
+#    procmgr_config.append({ host: e[drp], id:'tmohsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:hsd_cmd1+' -D hsd -k hsd_epics_prefix='+e[pv]+':B'})
+#    segm += 1
+#    pvlist.append(e[pv]+':A')
+#    pvlist.append(e[pv]+':B')
+#
+#procmgr_config.append({id:'hsdpva', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdpva '+' '.join(pvlist)})

@@ -116,7 +116,7 @@ namespace Pds {
         unsigned rmtId = link->id();
         _mrqLinks[rmtId] = link;
 
-        logging::debug("Outbound link with TEB ID %d connected", rmtId);
+        logging::info("Outbound link with TEB ID %d connected", rmtId);
 
         if ( (rc = link->prepare()) )
         {
@@ -133,9 +133,10 @@ namespace Pds {
       for (unsigned i = 0; i < numBuffers; ++i)
       {
         if (_bufFreeList.push(i))
+        {
           logging::error("%s:\n  _bufFreeList.push(%d) failed", __PRETTY_FUNCTION__, i);
-        //printf("%s:\n  _bufFreeList.push(%d), count = %zd\n",
-        //       __PRETTY_FUNCTION__, i, _bufFreeList.count());
+          return -1;
+        }
       }
 
       _init();
@@ -202,7 +203,7 @@ namespace Pds {
       unsigned idx = (dg->env >> 16) & 0xff;
       if (idx >= _bufFreeList.size())
       {
-        printf("deleteDatagram: Unexpected index %08x\n", idx);
+        logging::warning("deleteDatagram: Unexpected index %08x\n", idx);
       }
       //if (idx != bufIdx)
       //{
@@ -213,8 +214,8 @@ namespace Pds {
       {
         if (idx == _bufFreeList.peek(i))
         {
-          printf("Attempted double free of list entry %d: idx %d, bufIdx %d, dg %p, ts %u.%09u\n",
-                 i, idx, bufIdx, dg, dg->time.seconds(), dg->time.nanoseconds());
+          logging::error("Attempted double free of list entry %d: idx %d, bufIdx %d, dg %p, ts %u.%09u\n",
+                         i, idx, bufIdx, dg, dg->time.seconds(), dg->time.nanoseconds());
           // Does the dg still need to be freed?  Apparently so.
           Pool::free((void*)dg);
           return;
@@ -241,7 +242,7 @@ namespace Pds {
       unsigned data;
       if (_bufFreeList.pop(data))
       {
-        logging::warning("%s:\n  No free buffers available: bufIdx %d", __PRETTY_FUNCTION__, bufIdx);
+        logging::error("%s:\n  No free buffers available: bufIdx %d", __PRETTY_FUNCTION__, bufIdx);
         return;
       }
 
@@ -319,7 +320,7 @@ namespace Pds {
       int rc = pinThread(pthread_self(), _prms.core[0]);
       if (rc != 0)
       {
-        logging::debug("%s:\n  Error from pinThread:\n  %s",
+        logging::error("%s:\n  Error from pinThread:\n  %s",
                        __PRETTY_FUNCTION__, strerror(rc));
       }
 
@@ -864,7 +865,7 @@ int main(int argc, char** argv)
   {
     // The problem is that there are only 8 bits available in the env
     // Could use the lower 24 bits, but then we have a nonstandard env
-    logging::critical("%s:\n  Number of event buffers > 255 is currently not supported: got %d\n", prms.numEvBuffers);
+    logging::critical("%s:\n  Number of event buffers > 255 is not supported: got %d\n", prms.numEvBuffers);
     return 1;
   }
 
@@ -877,7 +878,7 @@ int main(int argc, char** argv)
   sigAction.sa_flags   = SA_RESTART;
   sigemptyset(&sigAction.sa_mask);
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
-    logging::error("Failed to set up ^C handler");
+    logging::warning("Failed to set up ^C handler");
 
   MebApp app(collSrv, tag, nevqueues, ldist, prms);
 

@@ -50,7 +50,7 @@ int EbLfServer::initialize(const std::string& addr,
 
   Fabric* fab = _pep->fabric();
 
-  if (_verbose)
+  if (_verbose > 1)
   {
     void* data = fab;                   // Something since data can't be NULL
     printf("EbLfServer is using LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
@@ -67,8 +67,8 @@ int EbLfServer::initialize(const std::string& addr,
 
   struct fi_info* info   = fab->info();
   size_t          cqSize = nLinks * info->rx_attr->size;
-  if (_verbose)  printf("EbLfServer: rx_attr.size = %zd, tx_attr.size = %zd\n",
-                        info->rx_attr->size, info->tx_attr->size);
+  if (_verbose > 1)  printf("EbLfServer: rx_attr.size = %zd, tx_attr.size = %zd\n",
+                            info->rx_attr->size, info->tx_attr->size);
   _rxcq = new CompletionQueue(fab, cqSize);
   if (!_rxcq)
   {
@@ -83,8 +83,10 @@ int EbLfServer::initialize(const std::string& addr,
             __PRETTY_FUNCTION__, _pep->error());
     return _pep->error_num();
   }
-  printf("EbLfServer is listening for %d client(s) on port %s\n",
-         nLinks, port.c_str());
+
+  if (_verbose)
+    printf("EbLfServer is listening for %d client(s) on port %s\n",
+           nLinks, port.c_str());
 
   return 0;
 }
@@ -102,7 +104,7 @@ int EbLfServer::connect(EbLfSvrLink** link, unsigned id, int msTmo)
   }
 
   int rxDepth = _pep->fabric()->info()->rx_attr->size;
-  if (_verbose)  printf("EbLfServer: rx_attr.size = %d\n", rxDepth);
+  if (_verbose > 1)  printf("EbLfServer: rx_attr.size = %d\n", rxDepth);
   *link = new EbLfSvrLink(ep, rxDepth, _verbose);
   if (!*link)
   {
@@ -137,7 +139,8 @@ int EbLfServer::pollEQ()
       if (_linkByEp.find(ep) != _linkByEp.end())
       {
         EbLfSvrLink* link = _linkByEp[ep];
-        printf("EbLfClient %d disconnected\n", link->id());
+        if (_verbose)
+          printf("EbLfClient %d disconnected\n", link->id());
         _linkByEp.erase(ep);
         rc = (_linkByEp.size() == 0) ? -FI_ENOTCONN : FI_SUCCESS;
       }
@@ -180,7 +183,8 @@ int EbLfServer::pollEQ()
 
 int EbLfServer::disconnect(EbLfSvrLink* link)
 {
-  printf("Disconnecting from EbLfClient %d\n", link->id());
+  if (_verbose)
+    printf("Disconnecting from EbLfClient %d\n", link->id());
 
   Endpoint* ep = link->endpoint();
   if (!ep)  return -FI_ENOTCONN;

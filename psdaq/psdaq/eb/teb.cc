@@ -243,8 +243,8 @@ int Teb::configure(const EbParams& prms,
 
     if (link->postCompRecv())
     {
-      logging::error("%s:\n  Failed to post CQ buffers for Mon Requestor ID %d",
-                     __PRETTY_FUNCTION__, rmtId);
+      logging::warning("%s:\n  Failed to post CQ buffers for Mon Requestor ID %d",
+                       __PRETTY_FUNCTION__, rmtId);
     }
 
     logging::info("Inbound link with Mon Requestor ID %d connected and configured",
@@ -366,8 +366,8 @@ void Teb::process(EbEvent* event)
           rc = _mrqLinks[ImmData::src(data)]->postCompRecv();
           if (rc)
           {
-            logging::error("%s:\n  Failed to post CQ buffers: %d",
-                           __PRETTY_FUNCTION__, rc);
+            logging::warning("%s:\n  Failed to post CQ buffers: %d",
+                             __PRETTY_FUNCTION__, rc);
           }
         }
       }
