@@ -100,20 +100,19 @@ class Run(object):
                 setattr(det,'_detid', self.dm.det_info_table[det_name][1])
                 flag_found = True
         
-        # If no detector found, try EnvStore.
-        # Environment values are identified by variable names (e.g. 'XPP:VARS:FLOAT:02', 'motor1').
-        # First we search for the store that has this name and pass it to drp_class so that the 
-        # varialbe name can be looked-up when evt is given (e.g. det(evt) returns value of
-        # the given epics keyword.)
-        # Current, there are two algorithms (epics and scan).  
-        # d.epics[0].epics.HX2:DVD:GCC:01:PMON = 41.0
-        # Above example is d.env_name[0].alg.variable
+        # If no detector found, EnvStore variable is assumed to have been passed in.
+        # Environment values are identified by variable names (e.g. 'XPP:VARS:FLOAT:02').
+        # From d.epics[0].raw.HX2:DVD:GCC:01:PMON = 41.0
+        # (d.env_name[0].alg.variable),
+        # EnvStoreManager searches all the stores assuming that the variable name is
+        # unique and returns env_name ('epics' or 'scan') and algorithm. 
         if not flag_found:
-            env_name = self.esm.env_from_variable(name) # assumes that variable name is unique
-            if env_name:
+            found = self.esm.env_from_variable(name) # assumes that variable name is unique
+            if found is not None:
+                env_name, alg = found
                 det_name = env_name
                 var_name = name
-                drp_class_name = env_name
+                drp_class_name = alg
                 det_class_table = self.dm.det_classes[det_name]
                 drp_class = det_class_table[(det_name, drp_class_name)]
                 det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibconst[det_name], self.esm.stores[env_name])
@@ -134,11 +133,11 @@ class Run(object):
 
     @property
     def epicsinfo(self):
-        return self.esm.get_info('epics')
+        return self.esm.stores['epics'].get_info()
     
     @property
     def scaninfo(self):
-        return self.esm.get_info('scan')
+        return self.esm.stores['scan'].get_info()
     
     @property
     def xtcinfo(self):

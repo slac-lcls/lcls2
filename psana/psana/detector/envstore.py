@@ -26,3 +26,8 @@ class epics_raw_2_0_0(EnvImpl):
 class scanDet_scan_2_3_42(EnvImpl):
     def __init__(self, *args):
         super().__init__(*args)
+
+class scan_raw_2_0_0(EnvImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+

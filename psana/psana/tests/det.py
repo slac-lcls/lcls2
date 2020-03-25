@@ -55,15 +55,15 @@ class MyCustomArgs(object):
 
 def detnames_cmd(dsname):
     args = MyCustomArgs(dsname, "-r")
-    check_against = [('xppcspad', 'cspad', 'raw', '2_3_42'), ('xpphsd', 'hsd', 'fex', '4_5_6'), ('xpphsd', 'hsd', 'raw', '0_0_0'), ('epics', 'epics', 'epics', '0_0_0'), ('runinfo', 'runinfo', 'runinfo', '0_0_1'), ('scan', 'scanDet', 'scan', '2_3_42')]
+    check_against = [('xppcspad', 'cspad', 'raw', '2_3_42'), ('xpphsd', 'hsd', 'fex', '4_5_6'), ('xpphsd', 'hsd', 'raw', '0_0_0'), ('epics', 'epics', 'raw', '2_0_0'), ('runinfo', 'runinfo', 'runinfo', '0_0_1'), ('scan', 'scan', 'raw', '2_0_0')]
     detnames(args, check_against)
 
     args = MyCustomArgs(dsname, "-e")
-    check_against = {('HX2:DVD:GCC:01:PMON', 'epics'): 'epics', ('HX2:DVD:GPI:01:PMON', 'epics'): 'epics'}
+    check_against = {('HX2:DVD:GCC:01:PMON', 'raw'): 'raw', ('HX2:DVD:GPI:01:PMON', 'raw'): 'raw'}
     detnames(args, check_against)
 
     args = MyCustomArgs(dsname, "-s")
-    check_against = {('motor1', 'scan'): 'scan', ('motor2', 'scan'): 'scan'}
+    check_against = {('motor1', 'raw'): 'raw', ('motor2', 'raw'): 'raw'}
     detnames(args, check_against)
 
 

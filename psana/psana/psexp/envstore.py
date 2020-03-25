@@ -4,7 +4,11 @@ from collections import defaultdict
 import os
 
 class EnvManager(object):
-    """ Store list of Env dgrams, timestamps, and variables """
+    """ Store list of Env dgrams, timestamps, and variables 
+    for a single smd file. EnvStore own the objects created
+    from this class (e.g. if you have two smd files, there will
+    be two EnvManagers stored in EnvStore.
+    """
     
     def __init__(self, config, env_name):
         self.config = config
@@ -47,7 +51,8 @@ class EnvManager(object):
         return self.env_variables
     
     def locate_variable(self, variable_name):
-        """ Returns algorithm name and segment_id from the given env variable. """
+        """ Returns algorithm name and segment_id from the given env variable
+        specifically for this config."""
         for alg, envs in self.env_variables.items():
             for segment_id, env_vars in envs.items():
                 if variable_name in env_vars:
@@ -144,5 +149,11 @@ class EnvStore(object):
             env_values.append(val)
         
         return env_values
-    
 
+    def get_info(self):
+        info = {}
+        for alg, segment_dict in self.env_variables.items():
+            for segment_id, var_list in segment_dict.items():
+                for var in var_list:
+                    info[(var, alg)] = alg
+        return info

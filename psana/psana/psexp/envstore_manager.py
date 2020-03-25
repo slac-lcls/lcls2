@@ -42,20 +42,12 @@ class EnvStoreManager(object):
                     
     def env_from_variable(self, variable_name):
         for env_name, store in self.stores.items():
-            for alg, env_dict in store.env_variables.items():
-                for segment_id, var_list in env_dict.items():
-                    if variable_name in var_list:
-                        return env_name
+            found = store.locate_variable(variable_name)
+            if found is not None:
+                alg, _ = found
+                return env_name, alg
         return None
 
-    def get_info(self, alg):
-        store = self.stores[alg]
-        segment_dict = store.env_variables[alg]
-        info = {}
-        for segment_id, var_list in segment_dict.items():
-            for var in var_list:
-                info[(var, alg)] = alg
-        return info
     
 
 

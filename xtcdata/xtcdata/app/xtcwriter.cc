@@ -515,7 +515,7 @@ void save(Dgram& dg, FILE* xtcFile) {
 }
 
 void addEpicsNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
-    Alg xppEpicsAlg("epics",0,0,0);
+    Alg xppEpicsAlg("raw",2,0,0);
     NamesId namesId(nodeId,MyNamesId::Epics+MyNamesId::NumberOf*segment);
     Names& epicsNames = *new(xtc) Names("epics", xppEpicsAlg, "epics","detnum1234", namesId, segment);
     epicsNames.add(xtc, EpicsDef);
@@ -528,9 +528,9 @@ void addEpicsData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned 
 }
 
 void addScanNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
-    Alg scanAlg("scan",2,3,42);
+    Alg scanAlg("raw",2,0,0);
     NamesId namesId(nodeId,MyNamesId::Scan+MyNamesId::NumberOf*segment);
-    Names& scanNames = *new(xtc) Names("scan", scanAlg, "scanDet", "detnum1234", namesId, segment);
+    Names& scanNames = *new(xtc) Names("scan", scanAlg, "scan", "detnum1234", namesId, segment);
     scanNames.add(xtc, ScanDef);
     namesLookup[namesId] = NameIndex(scanNames);
 }
