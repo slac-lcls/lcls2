@@ -67,7 +67,7 @@ def w8_config(connect_str,prefix,cfgtype,detname,group):
     prescale = raw['prescale']
     if prescale>0:  
         prescale -= 1
-    ctxt.put(epics_prefix+'RawBuffers:TrigPrescale'    , raw['prescale'], wait=False)
+    ctxt.put(epics_prefix+'RawBuffers:TrigPrescale' , prescale, wait=False)
 
     ctxt.put(epics_prefix+'Integrators:TrigDelay'   , fexTrigDelay, wait=False)  # 250 MHz clocks
     # Firmware needs a value one less        

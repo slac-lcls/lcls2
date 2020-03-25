@@ -4,6 +4,7 @@ import pyrogue.utilities.prbs
 import pyrogue.utilities.fileio
 import pyrogue.protocols.epicsV4
 import threading
+import socket
 import signal
 import atexit
 import yaml
@@ -74,6 +75,11 @@ def main():
         initRead = True,
         timeout  = 5.0,    
     )
+
+    # Set the timing link txId
+    ip = socket.inet_aton(socket.gethostbyname(socket.gethostname()))
+    id = (0xfa<<24) | (ip[2]<<8) | (ip[3])
+    Wave8Board.TriggerEventManager.XpmMessageAligner.TxId.set(id)
 
     # Start EPICS
     epics.start()

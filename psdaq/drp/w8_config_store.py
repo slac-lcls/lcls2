@@ -28,7 +28,8 @@ def write_to_daq_config_db():
     top.setInfo('wave8', 'tmowave8', 'serial1234', 'No comment')
     top.setAlg('config', [0,0,1])
 
-    top.define_enum('baselineEnum', {'%d samples'%(2**key):key for key in range(8)})
+    top.define_enum('baselineEnum', {'%d samples'%(2**key):key for key in range(1,8)})
+    top.define_enum('quadrantEnum', {'Even':0, 'Odd':1})
 
     #  Split configuration into two sections { User and Expert }
     #  Expert configuration is the basis, and User configuration overrides 
@@ -38,8 +39,8 @@ def write_to_daq_config_db():
     top.set("user.raw.nsamples"            ,100,'UINT32')   # [250 MHz ADC samples]
     for i in range(8):
         top.set("user.raw.enable[%d]"%i    ,  1,'UINT8')    # record channel
-    top.set("user.raw.prescale"            , 11,'UINT32')   # record 1 out of N events
-    top.set("user.fex.baseline"            ,  0,'baselineEnum')  # [log2 of 250 MHz ADC samples]
+    top.set("user.raw.prescale"            ,  1,'UINT32')   # record 1 out of N events
+    top.set("user.fex.baseline"            ,  1,'baselineEnum')  # [log2 of 250 MHz ADC samples]
     top.set("user.fex.start_ns"            ,107892,'UINT32')   # [ns from timing fiducial]
     top.set("user.fex.nsamples"            , 50,'UINT32')   # [250 MHz ADC samples]
     for i in range(4):
@@ -65,6 +66,7 @@ def write_to_daq_config_db():
     top.set("expert.Top.Integrators.TrigDelay"             ,    0,'UINT32')  # user config
     top.set("expert.Top.Integrators.IntegralSize"          ,    0,'UINT32')  # user config
     top.set("expert.Top.Integrators.BaselineSize"          ,    0,'UINT8')  # user config
+    top.set("expert.Top.Integrators.QuadrantSel"           ,    0,'quadrantEnum')  # user config
     for i in range(4):
         top.set("expert.Top.Integrators.CorrCoefficientFloat64[%d]"%i, 1.0, 'DOUBLE')  # user config
     top.set("expert.Top.Integrators.CntRst"                ,    0,'UINT8')
@@ -84,18 +86,18 @@ def write_to_daq_config_db():
 
     #  TriggerEventBuffer[x] - x should be hidden from application
     top.set("expert.Top.TriggerEventManager.TriggerEventBuffer[0].Partition"     , 0,'UINT8')
-    top.set("expert.Top.TriggerEventManager.TriggerEventBuffer[0].PauseThreshold", 0,'UINT8')
+    top.set("expert.Top.TriggerEventManager.TriggerEventBuffer[0].PauseThreshold",16,'UINT8')
     top.set("expert.Top.TriggerEventManager.TriggerEventBuffer[0].TriggerDelay"  , 0,'UINT32')  # user config
     top.set("expert.Top.TriggerEventManager.TriggerEventBuffer[0].MasterEnable"  , 0,'UINT8')
 
-    dlyAlane = [ [ 0x10,0x10,0x12,0x13,0x14,0x14,0x15,0x10],
-                 [ 0x0f,0x0c,0x11,0x10,0x12,0x10,0x10,0x12],
-                 [ 0x15,0x15,0x15,0x15,0x15,0x14,0x15,0x15],
-                 [ 0x14,0x13,0x14,0x12,0x12,0x16,0x16,0x17] ]
-    dlyBlane = [ [ 0x13,0x12,0x14,0x14,0x13,0x14,0x0e,0x0e],
-                 [ 0x0f,0x0f,0x11,0x10,0x12,0x11,0x11,0x10],
-                 [ 0x16,0x16,0x16,0x15,0x16,0x14,0x13,0x14],
-                 [ 0x17,0x17,0x17,0x16,0x16,0x16,0x16,0x16] ]
+    dlyAlane = [ [ 0x0c,0x0b,0x0e,0x0e,0x10,0x10,0x12,0x0b ],
+                 [ 0x0a,0x08,0x0c,0x0b,0x0d,0x0c,0x0b,0x0c ],
+                 [ 0x12,0x13,0x13,0x13,0x13,0x13,0x13,0x13 ],
+                 [ 0x0d,0x0c,0x0d,0x0b,0x0a,0x12,0x12,0x13 ] ]
+    dlyBlane = [ [ 0x11,0x11,0x12,0x12,0x10,0x11,0x0b,0x0b ],
+                 [ 0x0a,0x0a,0x0c,0x0c,0x0c,0x0b,0x0b,0x0a ],
+                 [ 0x14,0x14,0x14,0x14,0x14,0x12,0x10,0x11 ],
+                 [ 0x13,0x12,0x13,0x12,0x12,0x11,0x12,0x11 ] ]
 
     for iadc in range(4):
         base = 'expert.Top.AdcReadout[%d]'%iadc
@@ -103,19 +105,19 @@ def write_to_daq_config_db():
             top.set(base+'.DelayAdcALane[%d]'%lane, dlyAlane[iadc][lane], 'UINT8')
         for lane in range(8):
             top.set(base+'.DelayAdcBLane[%d]'%lane, dlyBlane[iadc][lane], 'UINT8')
-        top.set(base+'.DMode'  , 0, 'UINT8')
+        top.set(base+'.DMode'  , 3, 'UINT8')
         top.set(base+'.Invert' , 0, 'UINT8')
-        top.set(base+'.Convert', 0, 'UINT8')
+        top.set(base+'.Convert', 3, 'UINT8')
 
     for iadc in range(4):
         base = 'expert.Top.AdcConfig[%d]'%iadc
         zeroregs = [7,8,0xb,0xc,0xf,0x10,0x11,0x12,0x12,0x13,0x14,0x16,0x17,0x18,0x20]
         for r in zeroregs:
             top.set(base+'.AdcReg_0x%04X'%r,    0, 'UINT8')
-            top.set(base+'.AdcReg_0x0006'  , 0x80, 'UINT8')
-            top.set(base+'.AdcReg_0x000D'  , 0x6c, 'UINT8')
-            top.set(base+'.AdcReg_0x0015'  ,    1, 'UINT8')
-            top.set(base+'.AdcReg_0x001F'  , 0xff, 'UINT8')
+        top.set(base+'.AdcReg_0x0006'  , 0x80, 'UINT8')
+        top.set(base+'.AdcReg_0x000D'  , 0x6c, 'UINT8')
+        top.set(base+'.AdcReg_0x0015'  ,    1, 'UINT8')
+        top.set(base+'.AdcReg_0x001F'  , 0xff, 'UINT8')
 
     top.set('expert.Top.AdcPatternTester.Channel', 0, 'UINT8' )
     top.set('expert.Top.AdcPatternTester.Mask'   , 0, 'UINT8' )

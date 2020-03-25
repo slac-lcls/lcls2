@@ -15,8 +15,16 @@ drp_cmdb = 'drp -P '+hutch+' -d /dev/datadev_1 -C '+collect_host+' -o /ffb01/wea
 #verbosity = ' -vvvv'
 verbosity = ' '
 
-procmgr_config = [
+fields = [
+               'RawBuffers:TrigCnt',
+               'RawBuffers:FifoPauseCnt','RawBuffers:FifoPauseThreshold',
+               'Integrators:IntFifoPauseCnt' ,'Integrators:IntFifoPauseThreshold',
+               'Integrators:ProcFifoPauseCnt','Integrators:ProcFifoPauseThreshold',
+               'TriggerEventManager:TriggerEventBuffer[0]:FifoWrCnt',
+               'TriggerEventManager:TriggerEventBuffer[0]:PauseThreshold',
+]
 
+procmgr_config = [
  {                        id:'groupca' , flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
 
@@ -26,6 +34,7 @@ procmgr_config = [
  { host: 'drp-tst-dev005', id:'wave8pvs', flags:'s', conda:conda_rel, cmd:'wave8pvs --l 0'},
  { host: 'drp-tst-dev005', id:'tmowave8_0' , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -l 0x2 -D wave8 -k epics_prefix=DAQ:WAVE8 '+verbosity},
 
+ {                        id:'pvant', flags:'s', conda:conda_rel, env:epics_env, cmd:'pvant --bases DAQ:WAVE8:Top --fields '+' '.join(fields)},
  { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch},
  {                        flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 ]
