@@ -4,7 +4,7 @@ import sys
 import pytest
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 from xtc import xtc
-from det import det
+from det import det, detnames_cmd
 
 import hashlib
 from psana import DataSource
@@ -121,4 +121,5 @@ class Test:
 
     def test_det(self, xtc_file):
         det(xtc_file)
+        detnames_cmd(xtc_file)
 

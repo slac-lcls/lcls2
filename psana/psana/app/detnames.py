@@ -3,7 +3,7 @@ from psana import DataSource
 import argparse
 import sys
 
-def detnames():
+def detnames(args=None, check_against=None):
 
   # this argument parsing doesn't feel ideal.  ideally user should
   # be able to pass in the "python code" specifying the datasource
@@ -12,12 +12,13 @@ def detnames():
   # that and then parsing it appropriately feels challenging.  So only
   # support single runs, shmem, and filenames using standard sys.argv.
 
-  parser = argparse.ArgumentParser()
-  parser.add_argument("dsname", help="psana datasource experiment/run (e.g. exp=xppd7114,run=43) or xtc2 filename or shmem='my_shmem_identifier'")
-  parser.add_argument('-r','--raw', dest='raw', action='store_true')
-  parser.add_argument('-e','--epics', dest='epics', action='store_true')
-  parser.add_argument('-s','--scan', dest='scan', action='store_true')
-  args = parser.parse_args()
+  if args is None:
+      parser = argparse.ArgumentParser()
+      parser.add_argument("dsname", help="psana datasource experiment/run (e.g. exp=xppd7114,run=43) or xtc2 filename or shmem='my_shmem_identifier'")
+      parser.add_argument('-r','--raw', dest='raw', action='store_true')
+      parser.add_argument('-e','--epics', dest='epics', action='store_true')
+      parser.add_argument('-s','--scan', dest='scan', action='store_true')
+      args = parser.parse_args()
 
   if '=' in args.dsname:
     if ':' in args.dsname:
@@ -72,3 +73,8 @@ def detnames():
   for n in names: 
     print(template.format(*n))
   print('-'*len(header))
+
+  if check_against is not None:
+      assert names == check_against
+
+

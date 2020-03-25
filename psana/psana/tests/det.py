@@ -2,6 +2,7 @@ import sys
 from psana import DataSource
 import numpy as np
 import vals
+from psana.app.detnames import detnames
 
 def det(files):
     ds = DataSource(files=files)
@@ -37,6 +38,33 @@ def calib():
             geometry_string = unicodedata.normalize('NFKD', geometry_string).encode('ascii','ignore')
     except Exception as e:
         raise("Error getting geometry from calib_constants: %s"%e)
+
+
+class MyCustomArgs(object):
+    raw = False
+    epics = False
+    scan = False
+    def __init__(self, dsname, option):
+        self.dsname = dsname
+        if option == "-r":
+            self.raw = True
+        elif option == "-e":
+            self.epics = True
+        elif option == "-s":
+            self.scan = True
+
+def detnames_cmd(dsname):
+    args = MyCustomArgs(dsname, "-r")
+    check_against = [('xppcspad', 'cspad', 'raw', '2_3_42'), ('xpphsd', 'hsd', 'fex', '4_5_6'), ('xpphsd', 'hsd', 'raw', '0_0_0'), ('epics', 'epics', 'epics', '0_0_0'), ('runinfo', 'runinfo', 'runinfo', '0_0_1'), ('scan', 'scanDet', 'scan', '2_3_42')]
+    detnames(args, check_against)
+
+    args = MyCustomArgs(dsname, "-e")
+    check_against = {('HX2:DVD:GCC:01:PMON', 'epics'): 'epics', ('HX2:DVD:GPI:01:PMON', 'epics'): 'epics'}
+    detnames(args, check_against)
+
+    args = MyCustomArgs(dsname, "-s")
+    check_against = {('motor1', 'scan'): 'scan', ('motor2', 'scan'): 'scan'}
+    detnames(args, check_against)
 
 
 if __name__ == '__main__':
