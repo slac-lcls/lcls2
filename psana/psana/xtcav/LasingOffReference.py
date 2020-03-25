@@ -24,11 +24,11 @@ from   psana.xtcav.FileInterface import Save as constSave
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
 
 
-from psana.xtcav.Simulators import\
-  SimulatorEBeam,\
-  SimulatorGasDetector,\
-  SimulatorEventId,\
-  SimulatorEnvironment
+#from psana.xtcav.Simulators import\
+  #SimulatorEBeam,\
+  #SimulatorGasDetector,\
+  #SimulatorEventId,\
+  #SimulatorEnvironment
 
 ## PP imports
 #from mpi4py import MPI
@@ -112,18 +112,16 @@ class LasingOffReference():
 
         ds=DataSource(files=fname)
         run = next(ds.runs()) # run = ds.runs().next()
-        env = SimulatorEnvironment() # ds.env()
+        #env = SimulatorEnvironment() # ds.env()
 
         #Camera for the xtcav images
-        xtcav_camera = run.Detector(cons.SRC)
-        #xtcav_camera = psana.Detector(cons.SRC)
+        xtcav_camera = run.Detector(cons.SRC) # psana.Detector(cons.SRC)
 
-        #Ebeam type
-        ebeam_data = SimulatorEBeam() # psana.Detector(cons.EBEAM)
-        event_id = SimulatorEventId() # evt.get(psana.EventId)
-
-        #Gas detectors for the pulse energies
-        gasdetector_data = SimulatorGasDetector() # psana.Detector(cons.GAS_DETECTOR)
+        #Ebeam type, event_id, gas detectors
+        ebeam_data       = run.Detector(cons.EBEAM)        #SimulatorEBeam() # psana.Detector(cons.EBEAM)
+        event_id         = run.Detector(cons.EVENTID)      #SimulatorEventId() # evt.get(psana.EventId)
+        gasdetector_data = run.Detector(cons.GAS_DETECTOR) #SimulatorGasDetector() # psana.Detector(cons.GAS_DETECTOR)
+        #xtcavpars        = run.Detector(cons.XTCAVPARS)
 
         # Empty list for the statistics obtained from each image, the shot to shot properties,
         # and the ROI of each image (although this ROI is initially the same for each shot,
@@ -133,16 +131,14 @@ class LasingOffReference():
         #dark_background = self._getDarkBackground(env)
         dark_data, dark_meta = xtcav_camera.calibconst.get('pedestals')
 
-        dark_background = xtu.xtcav_calib_object_from_dict(dark_data)
-        print('==== dark_background:\n%s'% str(dark_background))
         logger.info('==== dark_meta:\n%s' % str(dark_meta))
 
+        dark_background = xtu.xtcav_calib_object_from_dict(dark_data)
+        print('==== dir(dark_background):\n%s'% str(dir(dark_background)))
+        print('==== dark_background.ROI:\n%s'% str(dark_background.ROI))
+        print('==== dark_background.image:\n%s'% str(dark_background.image))
 
-
-        #====================
-        #sys.exit('TEST EXIT') ### <<<<<<<<<<<<<<<<
-        #====================
-
+        print('\n',100*'_','\n')
 
         #Calibration values needed to process images. first_event is the index of the first event with valid data
         roi_xtcav, global_calibration, saturation_value, first_event = self._getCalibrationValues(run, xtcav_camera, start_image)
@@ -150,6 +146,12 @@ class LasingOffReference():
               (str(roi_xtcav), str(global_calibration), str(saturation_value), str(first_event))
         #print(msg)
         logger.info(msg)
+
+
+        #====================
+        sys.exit('TEST EXIT') ### <<<<<<<<<<<<<<<<
+        #====================
+
 
         #times = run.times()
         #image_numbers = xtup.divideImageTasks(first_event, len(times), rank, size)

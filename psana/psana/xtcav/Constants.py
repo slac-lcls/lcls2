@@ -1,15 +1,17 @@
 """
 Detector Names
 """
-SRC = 'xtcav' # 'XrayTransportDiagnostic.0:Opal1000.0'
 CALIB_GROUP = 'Xtcav::CalibV1' 
 ANALYSIS_VERSION = 'XTCAV_Analysis_Version'
 
-EBEAM = 'EBeam'
-GAS_DETECTOR = 'FEEGasDetEnergy'
+SRC          = 'xtcav'       # XrayTransportDiagnostic.0:Opal1000.0
+EVENTID      = 'eventid'     # EventId
+EBEAM        = 'ebeam'       # EBeam
+GAS_DETECTOR = 'gasdetector' # FEEGasDetEnergy
+XTCAVPARS    = 'xtcavpars'
 
-ROI_SIZE_X_names = ['XTCAV_ROI_sizeX', 'ROI_X_Length', 'OTRS:DMP1:695:SizeX']
-ROI_SIZE_Y_names = ['XTCAV_ROI_sizeY', 'ROI_Y_Length', 'OTRS:DMP1:695:SizeY']
+ROI_SIZE_X_names  = ['XTCAV_ROI_sizeX',  'ROI_X_Length', 'OTRS:DMP1:695:SizeX']
+ROI_SIZE_Y_names  = ['XTCAV_ROI_sizeY',  'ROI_Y_Length', 'OTRS:DMP1:695:SizeY']
 ROI_START_X_names = ['XTCAV_ROI_startX', 'ROI_X_Offset', 'OTRS:DMP1:695:MinX']
 ROI_START_Y_names = ['XTCAV_ROI_startY', 'ROI_Y_Offset', 'OTRS:DMP1:695:MinY']
 
