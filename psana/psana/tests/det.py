@@ -53,18 +53,13 @@ class MyCustomArgs(object):
         elif option == "-s":
             self.scan = True
 
-def detnames_cmd(dsname):
-    args = MyCustomArgs(dsname, "-r")
-    check_against = [('xppcspad', 'cspad', 'raw', '2_3_42'), ('xpphsd', 'hsd', 'fex', '4_5_6'), ('xpphsd', 'hsd', 'raw', '0_0_0'), ('epics', 'epics', 'raw', '2_0_0'), ('runinfo', 'runinfo', 'runinfo', '0_0_1'), ('scan', 'scan', 'raw', '2_0_0')]
-    detnames(args, check_against)
+def detnames(xtc_file):
+    ds = DataSource(files=xtc_file)
+    myrun = next(ds.runs())
 
-    args = MyCustomArgs(dsname, "-e")
-    check_against = {('HX2:DVD:GCC:01:PMON', 'raw'): 'raw', ('HX2:DVD:GPI:01:PMON', 'raw'): 'raw'}
-    detnames(args, check_against)
-
-    args = MyCustomArgs(dsname, "-s")
-    check_against = {('motor1', 'raw'): 'raw', ('motor2', 'raw'): 'raw'}
-    detnames(args, check_against)
+    assert ('xppcspad', 'cspad', 'raw', '2_3_42') in myrun.xtcinfo
+    assert myrun.epicsinfo[('HX2:DVD:GCC:01:PMON', 'raw')] == 'raw'
+    assert myrun.scaninfo[('motor1', 'raw')] == 'raw'
 
 
 if __name__ == '__main__':
