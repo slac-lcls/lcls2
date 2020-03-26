@@ -65,6 +65,17 @@ args = parser.parse_args()
 # Set base
 Wave8Board = w8.Top(hwType='datadev', dev=args.dev, lane=args.l, hvBay0En=args.hvBay0En, hvBay1En=args.hvBay1En, dataCapture=False)
 
+# Add problematic registers to a special group
+noPVA = [Wave8Board.AxiVersion.GitHash._groups]
+for v in noPVA:
+    if 'NoPVA' not in v:
+        v.append('NoPVA')
+
+# Set poll interval for important registers
+pollRegs = [Wave8Board.TriggerEventManager.XpmMessageAligner.RxId]
+for v in pollRegs:
+    v._pollInterval = 1
+
 epics = pyrogue.protocols.epicsV4.EpicsPvServer(base=args.base,root=Wave8Board,incGroups=None,excGroups=['NoPVA'])
 
 def main():

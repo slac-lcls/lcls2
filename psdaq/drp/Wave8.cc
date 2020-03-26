@@ -177,6 +177,8 @@ Wave8::Wave8(Parameters* para, MemPool* pool) :
     m_epics_name(para->kwargs["epics_prefix"]),
     m_paddr     (_getPaddr())
 {
+    para->rogueDet=true;
+    para->virtChan=1;
     printf("*** found epics name %s\n",m_epics_name.c_str());
 }
 
