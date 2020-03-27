@@ -1,6 +1,15 @@
 import numpy as np
 from psana.detector.detector_impl import DetectorImpl
+from amitypes import Array1d
 
+class tt_raw_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+    def image(self, evt) -> Array1d:
+        return self._segments(evt)[0].image
+
+# leftover from when we wrote out the EventBatcher format.
+# still used at the moment in the self-tests
 class ttdet_ttalg_0_0_1(DetectorImpl):
     def __init__(self, *args):
         super(ttdet_ttalg_0_0_1, self).__init__(*args)

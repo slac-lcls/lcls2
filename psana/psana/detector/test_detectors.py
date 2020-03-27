@@ -164,12 +164,6 @@ class laser_raw_2_3_42(DetectorImpl):
     def laserOn(self, evt) -> int:
         return self._segments(evt)[0].laserOn
 
-class tt_tt_2_0_0(DetectorImpl):
-    def __init__(self, *args):
-        super().__init__(*args)
-    def image(self, evt) -> Array1d:
-        return self._segments(evt)[0].image
-
 class hsd_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(hsd_raw_2_3_42, self).__init__(*args)
