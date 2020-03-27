@@ -1,3 +1,7 @@
+
+import logging
+logger = logging.getLogger(__name__)
+
 import numpy as np
 import psana
 import warnings
@@ -12,9 +16,20 @@ from psana.xtcav.Simulators import\
 #  SimulatorEventId,\
 #  SimulatorEnvironment
 
-def getCameraSaturationValue(evt):
+def get_attribute(o, aname='valsxtp'):
+    """ wrapper for getattr bwith message to the logger.
+    """
+    oat = getattr(o, aname, None)
+    if oat is None : 
+        logger.warning('Object %s does not contain attribute %s' % (str(o), attrname))
+        return None
+    logger.debug('XXX dir(oat): %s' % str(dir(oat)))
+    return oat
+
+
+def getCameraSaturationValue(valsxtp, evt):
     try:
-        analysis_version = SimulatorDetector(cons.ANALYSIS_VERSION)
+        analysis_version = get_attribute(valsxtp, 'valsxtp') #SimulatorDetector(cons.ANALYSIS_VERSION)
         if analysis_version(evt) is not None:
             return (1<<12)-1
     except:
@@ -23,57 +38,61 @@ def getCameraSaturationValue(evt):
     return (1<<14)-1
     
 
-def getGlobalXTCAVCalibration(run, evt):
+def getGlobalXTCAVCalibration(ovals, evt):
     """
     Obtain the global XTCAV calibration form the epicsStore
     Arguments:
-      epicsStore
+      xtcavpars, evt
     Output:
       globalCalibration: struct with the parameters
       ok: if all the data was retrieved correctly
     """
-    def getCalibrationValues(possible_detector_names):
-        for i in range(len(possible_detector_names)):
-            try:
-                det = SimulatorDetector(possible_detector_names[i])
-                val = det()
-                if abs(val) < 1e-100:
-                    continue
-                return val 
-            except KeyError:
-                continue
+    def getCalibrationValue(ovals, parnames, evt):
+        val = None
+        for pname in parnames:
+            ov = getattr(ovals, pname, None)
+            #print('parameter name: %s object value %s' % (pname, str(ov)))
+            if ov is None : continue
+            val = ov(evt)
+            if abs(val) < 1e-100 : continue
+            return val
+        if val is None :
+            logger.warning('XTCAV variable/s %s is/are not found in the xtc event' % str(parnames))
         return None
 
     global_calibration = GlobalCalibration(
-        umperpix    =getCalibrationValues(cons.UM_PER_PIX_names), 
-        strstrength =getCalibrationValues(cons.STR_STRENGTH_names), 
-        rfampcalib  =getCalibrationValues(cons.RF_AMP_CALIB_names), 
-        rfphasecalib=getCalibrationValues(cons.RF_PHASE_CALIB_names), 
-        dumpe       =getCalibrationValues(cons.DUMP_E_names), 
-        dumpdisp    =getCalibrationValues(cons.DUMP_DISP_names)
+        umperpix    =getCalibrationValue(ovals, cons.UM_PER_PIX_names, evt), 
+        strstrength =getCalibrationValue(ovals, cons.STR_STRENGTH_names, evt), 
+        rfampcalib  =getCalibrationValue(ovals, cons.RF_AMP_CALIB_names, evt), 
+        rfphasecalib=getCalibrationValue(ovals, cons.RF_PHASE_CALIB_names, evt), 
+        dumpe       =getCalibrationValue(ovals, cons.DUMP_E_names, evt), 
+        dumpdisp    =getCalibrationValue(ovals, cons.DUMP_DISP_names, evt)
     )
-        
+
+    #self check
     for k,v in global_calibration._asdict().items():
         if not v:
-            warnings.warn_explicit('No XTCAV Calibration for epics variable ' + k, UserWarning,'XTCAV',0)
+            logger.warning('No XTCAV Calibration for epics variable ', k)
             return None
 
     return global_calibration
                           
 
-def getXTCAVImageROI(run, evt):
+def getXTCAVImageROI(ovals, evt):
+    """TBD: need to implement loop over list of variable names, like in original version.
+    """
 
     for i in range(len(cons.ROI_SIZE_X_names)):
         try:
-            roiXN=SimulatorDetector(cons.ROI_SIZE_X_names[i])
-            roiX =SimulatorDetector(cons.ROI_START_X_names[i])
-            roiYN=SimulatorDetector(cons.ROI_SIZE_Y_names[i])
-            roiY =SimulatorDetector(cons.ROI_START_Y_names[i])
+            #roiXN=SimulatorDetector(cons.ROI_SIZE_X_names[i])
+            #roiX =SimulatorDetector(cons.ROI_START_X_names[i])
+            #roiYN=SimulatorDetector(cons.ROI_SIZE_Y_names[i])
+            #roiY =SimulatorDetector(cons.ROI_START_Y_names[i])
 
-            xN = roiXN(evt)  #Size of the image in X                           
-            x0 = roiX(evt)   #Position of the first pixel in x
-            yN = roiYN(evt)  #Size of the image in Y 
-            y0 = roiY(evt)   #Position of the first pixel in y
+            xN = ovals.XTCAV_ROI_sizeX(evt)   # roiXN(evt)  #Size of the image in X                           
+            x0 = ovals.XTCAV_ROI_startX(evt)  # roiX(evt)   #Position of the first pixel in x
+            yN = ovals.XTCAV_ROI_sizeY(evt)   # roiYN(evt)  #Size of the image in Y 
+            y0 = ovals.XTCAV_ROI_startY(evt)  # roiY(evt)   #Position of the first pixel in y
 
             #xN = cons.ROI_SIZE_X  #Size of the image in X                           
             #x0 = cons.ROI_START_X #Position of the first pixel in x
@@ -88,7 +107,7 @@ def getXTCAVImageROI(run, evt):
         except KeyError:
             continue
         
-    warnings.warn_explicit('No XTCAV ROI info',UserWarning,'XTCAV',0)
+    warnings.warn_explicit('No XTCAV ROI info 2',UserWarning,'XTCAV',0)
     return None
 
 
