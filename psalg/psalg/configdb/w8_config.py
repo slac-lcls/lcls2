@@ -28,7 +28,6 @@ def w8_config(connect_str,prefix,cfgtype,detname,group):
     #                                   RawBuffLen             |  RawDataBuffer End
 
     epics_prefix = prefix + ':Top:'
-#    partitionDelay = ctxt.get(epics_prefix+'TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]'%group).raw.value
     partitionDelay = ctxt.get(epics_prefix+'TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]'%group)
     raw            = cfg['user']['raw']
     rawStart       = raw['start_ns']
@@ -80,9 +79,13 @@ def w8_config(connect_str,prefix,cfgtype,detname,group):
     ctxt.put(epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:Partition', group, wait=False)
     ctxt.put(epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable', 1, wait=True)
 
+    cfg['firmwareVersion'] = ctxt.get(epics_prefix+'AxiVersion:FpgaVersion').raw.value
+    cfg['firmwareBuild'  ] = ctxt.get(epics_prefix+'AxiVersion:BuildStamp').raw.value
+    
     ctxt.close()
 
-    return json.dumps(cfg)
+    v = json.dumps(cfg)
+    return v
 
 def w8_unconfig(epics_prefix):
 

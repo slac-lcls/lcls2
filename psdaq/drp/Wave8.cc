@@ -237,6 +237,9 @@ unsigned Wave8::_getPaddr()
 
 json Wave8::connectionInfo()
 {
+    // Exclude connection info until Wave8 timingTxLink is fixed
+    return json({});
+
     unsigned reg = m_paddr;
     int xpm  = (reg >> 20) & 0xF;
     int port = (reg >>  0) & 0xFF;
