@@ -19,7 +19,7 @@ import warnings
 import psana.xtcav.Utils as xtu
 import psana.xtcav.UtilsPsana as xtup
 import psana.xtcav.SplittingUtils as su
-import psana.xtcav.Constants as Constants
+import psana.xtcav.Constants as cons
 from   psana.xtcav.DarkBackgroundReference import *
 from   psana.xtcav.LasingOffReference import *
 from   psana.xtcav.CalibrationPaths import *
@@ -95,9 +95,9 @@ class LasingOnCharacterization():
             #warnings.warn_explicit('Data source not set yet. Initialize data source before starting analysis',UserWarning,'XTCAV',0)
             return
 
-        self._xtcav_camera = psana.Detector(Constants.SRC)
-        self._ebeam_data = psana.Detector(Constants.EBEAM)
-        self._gasdetector_data = psana.Detector(Constants.GAS_DETECTOR)
+        self._xtcav_camera = psana.Detector(cons.DETNAME)
+        self._ebeam_data = psana.Detector(cons.EBEAM)
+        self._gasdetector_data = psana.Detector(cons.GAS_DETECTOR)
         self._ebeam = None
         self._gasdetector = None
         
@@ -136,7 +136,7 @@ class LasingOnCharacterization():
                 return 
 
             cp = CalibrationPaths(self._env, self.calibration_path)       
-            self.dark_reference_path = cp.findCalFileName(Constants.DB_FILE_NAME, self._currentrun)
+            self.dark_reference_path = cp.findCalFileName(cons.DB_FILE_NAME, self._currentrun)
             #If we could not find it, we just wont use it, and return False
             if not self.dark_reference_path:
                 warnings.warn_explicit('Dark reference for run %d not found, image will not be background substracted' % self._currentevent.run(),UserWarning,'XTCAV',0)
@@ -157,7 +157,7 @@ class LasingOnCharacterization():
                 return 
 
             cp = CalibrationPaths(self._env, self.calibration_path)     
-            self.lasingoff_reference_path = cp.findCalFileName(Constants.LOR_FILE_NAME,  self._currentrun)
+            self.lasingoff_reference_path = cp.findCalFileName(cons.LOR_FILE_NAME,  self._currentrun)
             
             if self.lasingoff_reference_path:
                 self._lasingoffreference = LasingOffReference.load(self.lasingoff_reference_path)
@@ -181,9 +181,9 @@ class LasingOnCharacterization():
         if not self.roi_expand:
             self.roi_expand=2.5 
         if not self.roi_fraction:
-            self.roi_fraction=Constants.ROI_PIXEL_FRACTION    
+            self.roi_fraction=cons.ROI_PIXEL_FRACTION    
         if not self.island_split_method:
-            self.island_split_method=Constants.DEFAULT_SPLIT_METHOD       
+            self.island_split_method=cons.DEFAULT_SPLIT_METHOD       
         if not self.island_split_par1:        
             self.island_split_par1=3.0
         if not self.island_split_par2:        

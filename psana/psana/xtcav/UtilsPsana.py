@@ -72,7 +72,7 @@ def getGlobalXTCAVCalibration(ovals, evt):
     #self check
     for k,v in global_calibration._asdict().items():
         if not v:
-            logger.warning('No XTCAV Calibration for epics variable ', k)
+            logger.warning('No XTCAV Calibration for epics variable %s' % k)
             return None
 
     return global_calibration
@@ -111,34 +111,25 @@ def getXTCAVImageROI(ovals, evt):
     return None
 
 
-def getShotToShotParameters(ebeam, gasdetector, evt_id):
-    time = evt_id.time()
-    sec  = time[0]
-    nsec = time[1]
-    unixtime = int((sec<<32)|nsec)
-    fiducial = evt_id.fiducials()
+def getShotToShotParameters(evt, valsebm, valsgd, valseid) :
+    sec, nsec      = valseid.time(evt)
+    unixtime       = int((sec<<32)|nsec)
+    fiducial       = valseid.fiducials(evt)
+    ebeamcharge    = valsebm.Charge(evt)
+    xtcavrfamp     = valsebm.XTCAVAmpl(evt)
+    xtcavrfphase   = valsebm.XTCAVPhase(evt)
+    dumpecharge    = valsebm.DumpCharge(evt)*cons.E_CHARGE #In C 
+    energydetector = (valsgd.f_11_ENRC(evt)+valsgd.f_12_ENRC(evt))/2 # cons.ENERGY_DETECTOR
 
-    energydetector = cons.ENERGY_DETECTOR
- 
-    if ebeam:    
-        ebeamcharge = ebeam.ebeamCharge()
-        xtcavrfamp  = ebeam.ebeamXTCAVAmpl()
-        xtcavrfphase= ebeam.ebeamXTCAVPhase()
-        dumpecharge = ebeam.ebeamDumpCharge()*cons.E_CHARGE #In C 
-        
-        if gasdetector:
-            energydetector=(gasdetector.f_11_ENRC()+gasdetector.f_12_ENRC())/2 
-            return ShotToShotParameters(ebeamcharge = ebeamcharge, 
-                xtcavrfphase = xtcavrfphase, xtcavrfamp = xtcavrfamp, 
-                dumpecharge = dumpecharge, xrayenergy = 1e-3*energydetector, 
-                unixtime = unixtime, fiducial = fiducial)     
-        else:   
-            warnings.warn_explicit('No gas detector info',UserWarning,'XTCAV',0)
-                
-    else:    
-        warnings.warn_explicit('No ebeamv info',UserWarning,'XTCAV',0)
-    
-    return ShotToShotParameters(unixtime = unixtime, fiducial = fiducial, valid = 0)
+    return ShotToShotParameters(\
+        ebeamcharge  = ebeamcharge,\
+        xtcavrfphase = xtcavrfphase,\
+        xtcavrfamp   = xtcavrfamp,\
+        dumpecharge  = dumpecharge,\
+        xrayenergy   = 1e-3*energydetector,\
+        unixtime     = unixtime,\
+        fiducial     = fiducial)
+    #return ShotToShotParameters(unixtime = unixtime, fiducial = fiducial, valid = 0)
         
 
 

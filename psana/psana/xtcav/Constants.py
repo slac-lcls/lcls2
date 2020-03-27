@@ -4,7 +4,7 @@ Detector Names
 CALIB_GROUP = 'Xtcav::CalibV1' 
 ANALYSIS_VERSION = 'XTCAV_Analysis_Version'
 
-SRC          = 'xtcav'       # XrayTransportDiagnostic.0:Opal1000.0
+DETNAME      = 'xtcav'       # XrayTransportDiagnostic.0:Opal1000.0
 EVENTID      = 'eventid'     # EventId
 EBEAM        = 'ebeam'       # EBeam
 GAS_DETECTOR = 'gasdetector' # FEEGasDetEnergy

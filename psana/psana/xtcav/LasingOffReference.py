@@ -39,6 +39,8 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
 ##sys.stdout.flush()
 
 rank = 0
+size = 1
+
 """
     Class that generates a set of lasing off references for XTCAV reconstruction purposes
     Attributes:
@@ -93,7 +95,6 @@ class LasingOffReference():
             island_split_par2 = island_split_par2, island_split_par1=island_split_par1, 
             calibration_path=calibration_path, fname=fname, version=1)
 
-
         warnings.filterwarnings('always',module='Utils',category=UserWarning)
         warnings.filterwarnings('ignore',module='Utils',category=RuntimeWarning, message="invalid value encountered in divide")
         
@@ -110,16 +111,16 @@ class LasingOffReference():
 
         #ds = psana.DataSource("exp=%s:run=%s:idx" % (self.parameters.experiment, self.parameters.run_number))
 
-        ds=DataSource(files=fname)
+        ds = DataSource(files=fname)
         run = next(ds.runs()) # run = ds.runs().next()
         #env = SimulatorEnvironment() # ds.env()
 
         #Camera for the xtcav images, Ebeam type, eventid, gas detectors
-        xtcav_camera     = run.Detector(cons.SRC)          # psana.Detector(cons.SRC)
-        ebeam_data       = run.Detector(cons.EBEAM)        #SimulatorEBeam() # psana.Detector(cons.EBEAM)
-        eventid          = run.Detector(cons.EVENTID)      #SimulatorEventId() # evt.get(psana.EventId)
-        gasdetector_data = run.Detector(cons.GAS_DETECTOR) #SimulatorGasDetector() # psana.Detector(cons.GAS_DETECTOR)
-        xtcavpars        = run.Detector(cons.XTCAVPARS)
+        camera      = run.Detector(cons.DETNAME)      # psana.Detector(cons.DETNAME)
+        ebeam       = run.Detector(cons.EBEAM)        #SimulatorEBeam() # psana.Detector(cons.EBEAM)
+        eventid     = run.Detector(cons.EVENTID)      #SimulatorEventId() # evt.get(psana.EventId)
+        gasdetector = run.Detector(cons.GAS_DETECTOR) #SimulatorGasDetector() # psana.Detector(cons.GAS_DETECTOR)
+        xtcavpars   = run.Detector(cons.XTCAVPARS)
 
         # Empty list for the statistics obtained from each image, the shot to shot properties,
         # and the ROI of each image (although this ROI is initially the same for each shot,
@@ -127,29 +128,39 @@ class LasingOffReference():
         list_image_profiles = []
 
         #dark_background = self._getDarkBackground(env)
-        dark_data, dark_meta = xtcav_camera.calibconst.get('pedestals')
+        dark_data, dark_meta = camera.calibconst.get('pedestals')
 
         logger.debug('==== dark_meta:\n%s' % str(dark_meta))
 
         dark_background = xtu.xtcav_calib_object_from_dict(dark_data)
         logger.debug('==== dir(dark_background):\n%s'% str(dir(dark_background)))
         logger.debug('==== dark_background.ROI:\n%s'% str(dark_background.ROI))
-        logger.debug('==== dark_background.image:\n%s'% str(dark_background.image))
+        logger.debug(info_ndarr(dark_background.image, '==== dark_background.image:'))
 
         print('\n',100*'_','\n')
 
+        camraw  = xtup.get_attribute(camera,      'raw')
+        valsxtp = xtup.get_attribute(xtcavpars,   'valsxtp')
+        valsebm = xtup.get_attribute(ebeam,       'valsebm')
+        valseid = xtup.get_attribute(eventid,     'valseid')
+        valsgd  = xtup.get_attribute(gasdetector, 'valsgd')
+
+        if None in (camraw, valsxtp, valsebm, eventid, valsgd) : 
+            sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
+
         #Calibration values needed to process images. first_event is the index of the first event with valid data
-        roi_xtcav, global_calibration, saturation_value, first_event = self._getCalibrationValues(run, xtcav_camera, xtcavpars, start_image)
-        msg = '\n==== roi_xtcav:%s  global_calibration:%s  saturation_value:%s  first_event:%s'%\
+        roi_xtcav, global_calibration, saturation_value, first_event = self._getCalibrationValues(run, camraw, valsxtp, start_image)
+        msg = ('_getCalibrationValues returns'\
+              '\n    roi_xtcav: %s'\
+              '\n    global_calibration: %s'\
+              '\n    saturation_value: %s  first_event: %s')%\
               (str(roi_xtcav), str(global_calibration), str(saturation_value), str(first_event))
         #print(msg)
-        logger.info(msg)
+        logger.debug(msg)
 
-
-        #====================
-        sys.exit('TEST EXIT') ### <<<<<<<<<<<<<<<<
-        #====================
-
+        #=======================
+        #sys.exit('TEST EXIT')
+        #=======================
 
         #times = run.times()
         #image_numbers = xtup.divideImageTasks(first_event, len(times), rank, size)
@@ -157,23 +168,20 @@ class LasingOffReference():
         num_processed = 0 #Counter for the total number of xtcav images processed within the run
 
         for nev,evt in enumerate(run.events()):
-            logger.info('Event %03d'%nev)
-            img = xtcav_camera.raw(evt)
+            #logger.info('Event %03d'%nev)
+            img = camraw(evt)
             if img is None: continue
 
-            ebeam = ebeam_data.get(evt)
-            gasdetector = gasdetector_data.get(evt)
-
             #Obtain the shot to shot parameters necessary for the retrieval of the x and y axis in time and energy units
-            shot_to_shot = xtup.getShotToShotParameters(ebeam, gasdetector, eventid)
-            #logger.debug('  shot_to_shot: %s' % str(shot_to_shot))
-        
+            shot_to_shot = xtup.getShotToShotParameters(evt, valsebm, valsgd, valseid)
+            #logger.debug('shot_to_shot: %s' % str(shot_to_shot))
+
             if not shot_to_shot.valid: continue
 
             image_profile, _ = xtu.processImage(img, self.parameters, dark_background, global_calibration,
                                                 saturation_value, roi_xtcav, shot_to_shot)
 
-            logger.debug(info_ndarr(image_profile, 'LasingOffReference image_profile'))
+            #logger.debug(info_ndarr(image_profile, 'LasingOffReference image_profile'))
 
             if not image_profile:
                 continue
@@ -184,6 +192,10 @@ class LasingOffReference():
 
             self._printProgressStatements(num_processed)
 
+            #====================
+            #sys.exit('TEST EXIT') ### <<<<<<<<<<<<<<<<
+            #====================
+        
             if num_processed >= np.ceil(self.parameters.max_shots/float(size)):
                 break
 
@@ -195,9 +207,9 @@ class LasingOffReference():
 
         # here gather all shots in one core, add all lists
         image_profiles = comm.gather(list_image_profiles, root=0)
+        #image_profiles = list_image_profiles
         
-        if rank != 0:
-            return
+        if rank != 0: return
 
         sys.stdout.write('\n')
         # Flatten gathered arrays
@@ -249,7 +261,7 @@ class LasingOffReference():
 
 
     @staticmethod
-    def _getCalibrationValues(run, xtcav_camera, xtcavpars, start_image):
+    def _getCalibrationValues(run, camraw, valsxtp, start_image):
         """
         Internal method. Sets calibration parameters for image processing
         Returns:
@@ -259,18 +271,15 @@ class LasingOffReference():
             first_image: index of first valid shot in run
         """
         roi_xtcav, global_calibration, saturation_value = None, None, None
-        end_of_images = 1e6
-
-        valsxtp = xtup.get_attribute(xtcavpars, 'valsxtp')
-        if valsxtp is None : return None, None, None, None
+        first_good_evnum = 1e6
 
         for nev,evt in enumerate(run.events()):
             logger.info('C-loop event %03d'%nev)
-            img = xtcav_camera.raw(evt)
+            img = camraw(evt)
             if img is None: continue
 
             roi_xtcav = xtup.getXTCAVImageROI(valsxtp, evt)
-            logger.debug('roi_xtcav:\n%s' % str(roi_xtcav))
+            logger.debug('roi_xtcav: %s' % str(roi_xtcav))
 
             global_calibration = xtup.getGlobalXTCAVCalibration(valsxtp, evt)
             logger.debug('global_calibration: %s' % str(global_calibration))
@@ -281,8 +290,10 @@ class LasingOffReference():
             if not roi_xtcav or not global_calibration or not saturation_value:
                 continue
 
-            return roi_xtcav, global_calibration, saturation_value, nev
-        return roi_xtcav, global_calibration, saturation_value, end_of_images
+            first_good_evnum = nev
+            break
+
+        return roi_xtcav, global_calibration, saturation_value, first_good_evnum
 
 
     def save(self, path):
@@ -305,6 +316,7 @@ class LasingOffReference():
             return None
         return lor
 
+#----------
 
 LasingOffParameters = xtu.namedtuple('LasingOffParameters', 
     ['experiment', 
@@ -330,3 +342,4 @@ LasingOffParameters = xtu.namedtuple('LasingOffParameters',
     'roi_fraction':cons.ROI_PIXEL_FRACTION,
     'island_split_method': cons.DEFAULT_SPLIT_METHOD})
 
+#----------

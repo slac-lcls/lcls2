@@ -2,13 +2,13 @@ from psana import *
 #from PSCalib.CalibFileFinder import CalibFile, CalibFileFinder
 from psana.pscalib.calib.CalibFileFinder import CalibFile, CalibFileFinder
 import os
-import psana.xtcav.Constants as Constants
+import psana.xtcav.Constants as cons
 
 class CalibrationPaths:
     def __init__(self,env,calibdir=''):
         self.env = env
-        self.calibgroup = Constants.CALIB_GROUP
-        self.src  = Constants.SRC
+        self.calibgroup = cons.CALIB_GROUP
+        self.src  = cons.DETNAME
         self.cdir = calibdir if calibdir else self.env.calibDir()
         
 

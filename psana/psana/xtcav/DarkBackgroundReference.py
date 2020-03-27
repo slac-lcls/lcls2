@@ -69,14 +69,14 @@ class DarkBackgroundReference():
         logger.info('\t Experiment: %s' % self.parameters.experiment)
         logger.info('\t Run: %s' % self.parameters.run_number)
         logger.info('\t Valid shots to process: %d' % self.parameters.max_shots)
-        logger.info('\t Detector name: %s' % cons.SRC)
+        logger.info('\t Detector name: %s' % cons.DETNAME)
         
         #Loading the dataset from the "dark" run, this way of working should be compatible with both xtc and hdf5 files
         ds=DataSource(files=fname)
         
         run = next(ds.runs())
         #Camera and type for the xtcav images
-        xtcav_camera = run.Detector(cons.SRC)
+        xtcav_camera = run.Detector(cons.DETNAME)
         logger.info('\t RunInfo expt: %s runnum: %d\n' % (run.expt, run.runnum))
 
         #Stores for environment variables    
@@ -124,7 +124,7 @@ class DarkBackgroundReference():
         if save_to_file:
             #cp = CalibrationPaths(dataSource.env(), self.parameters.calibration_path)
             #fname = cp.newCalFileName(cons.DB_FILE_NAME, self.parameters.validity_range[0], self.parameters.validity_range[1])
-            fname = 'cons-%s-%04d-%s-dark.data' % (run.expt, run.runnum, cons.SRC)
+            fname = 'cons-%s-%04d-%s-dark.data' % (run.expt, run.runnum, cons.DETNAME)
 
             self.save(fname)
 
@@ -173,7 +173,7 @@ class DarkBackgroundReference():
         logger.info('command to check file: hdf5explorer %s' % path)
 
         d = instance.parameters
-        s = 'cdb add -e %s -d %s -c pedestals -r %s -f %s -i xtcav -u <user>' % (d['experiment'], cons.SRC, d['run_number'], path)
+        s = 'cdb add -e %s -d %s -c pedestals -r %s -f %s -i xtcav -u <user>' % (d['experiment'], cons.DETNAME, d['run_number'], path)
         logger.info('command to deploy: %s' % s)
 
 
