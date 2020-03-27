@@ -28,6 +28,9 @@ def write_to_daq_config_db():
     top.setInfo('wave8', 'tmowave8', 'serial1234', 'No comment')
     top.setAlg('config', [0,0,1])
 
+    top.set("firmwareVersion:RO"          , 0,'UINT32')
+    top.set("firmwareBuild:RO"            ,'','CHARSTR')
+
     top.define_enum('baselineEnum', {'%d samples'%(2**key):key for key in range(1,8)})
     top.define_enum('quadrantEnum', {'Even':0, 'Odd':1})
 

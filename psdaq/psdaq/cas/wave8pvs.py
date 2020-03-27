@@ -72,9 +72,32 @@ for v in noPVA:
         v.append('NoPVA')
 
 # Set poll interval for important registers
-pollRegs = [Wave8Board.TriggerEventManager.XpmMessageAligner.RxId]
+pollRegs = ['TriggerEventManager.XpmMessageAligner.RxId',
+            'TriggerEventManager.TriggerEventBuffer[0].XpmPause',
+            'TriggerEventManager.TriggerEventBuffer[0].XpmOverflow',
+            'TriggerEventManager.TriggerEventBuffer[0].FifoPause',
+            'TriggerEventManager.TriggerEventBuffer[0].FifoOverflow',
+            'TriggerEventManager.TriggerEventBuffer[0].PauseToTrig',
+            'TriggerEventManager.TriggerEventBuffer[0].NotPauseToTrig',
+            'RawBuffers.TrigCnt',
+            'RawBuffers.FifoPauseCnt',
+            'Integrators.IntFifoPauseCnt',
+            'Integrators.ProcFifoPauseCnt',
+]
+for i in range(8):
+    pollRegs.append('RawBuffers.OvflCntBuff[%d]'%i)
+
+# handle [x] in attribute names
+def setPollInterval(top,regname,value):
+    path = regname.split('.')
+    v = top
+    for arg in path:
+        v = getattr(v,arg)
+    v.pollInterval = value
+
+print(pollRegs)    
 for v in pollRegs:
-    v._pollInterval = 1
+    setPollInterval(Wave8Board,v,1)
 
 epics = pyrogue.protocols.epicsV4.EpicsPvServer(base=args.base,root=Wave8Board,incGroups=None,excGroups=['NoPVA'])
 
