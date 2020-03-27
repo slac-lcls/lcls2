@@ -48,15 +48,15 @@ meb_cmd = task_set+'monReqServer -P '+hutch+' -C '+collect_host+' -M '+prom_dir+
 procmgr_config = [
  {                         id:'groupca',     flags:'s',   conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
  {                         id:'xpmpva',      flags:'s',   conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1 DAQ:LAB2:XPM:2'},
-    { host: collect_host,     id:'control',     flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' -r /dev/null'}, # -S 1'},
+ { host: collect_host,     id:'control',     flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' -r /dev/null'}, # -S 1'},
  {                         id:'control_gui', flags:'p',   conda:conda_rel,                cmd:'control_gui -H '+collect_host},
 
  # TEB
- { host: 'drp-tst-dev016', id:'teb0',        flags:'sxpu', conda:conda_rel, cmd:teb_cmd},
+ #{ host: 'drp-tst-dev016', id:'teb0',        flags:'sxpu', conda:conda_rel, cmd:teb_cmd},
  #{ host: 'drp-tst-dev015', id:'teb1',        flags:'sxpu', conda:conda_rel, cmd:teb_cmd},
 
  # MEB
- { host: 'drp-tst-dev016', id:'meb0',        flags:'sxpu', conda:conda_rel, cmd:meb_cmd},
+ #{ host: 'drp-tst-dev016', id:'meb0',        flags:'sxpu', conda:conda_rel, cmd:meb_cmd},
  #{ host: 'drp-tst-dev015', id:'meb1',        flags:'sxpu', conda:conda_rel, cmd:meb_cmd},
 
  # PVA
@@ -74,7 +74,7 @@ procmgr_config = [
  #{ host: 'drp-tst-dev012', id:'tmott_0', flags:'xpu',  conda:conda_rel, cmd:drp_cmd+' -vvv -D tt -d /dev/datadev_0'},
 
  # Timing System
- { host: 'drp-tst-dev013', id:'tmots_0', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D ts' },
+ #{ host: 'drp-tst-dev013', id:'tmots_0', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D ts' },
 
  # Cams
  #{ host: 'drp-tst-dev002', id:'cam_0',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },

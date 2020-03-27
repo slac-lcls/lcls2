@@ -22,7 +22,7 @@ MebContributor::MebContributor(const MebCtrbParams&            prms,
                                std::shared_ptr<MetricExporter> exporter) :
   _maxEvSize (roundUpSize(prms.maxEvSize)),
   _maxTrSize (prms.maxTrSize),
-  _trSize    (roundUpSize(TransitionId::NumberOf * _maxTrSize)),
+  _bufRegSize(prms.maxEvents * _maxEvSize),
   _transport (prms.verbose),
   _links     (),
   _id        (-1),
@@ -38,15 +38,13 @@ int MebContributor::configure(const MebCtrbParams& prms,
                               void*                region,
                               size_t               size)
 {
-  int    rc;
-  size_t regSize = prms.maxEvents * _maxEvSize;
-
   _id         = prms.id;
   _eventCount = 0;
   _links.resize(prms.addrs.size());
 
   for (unsigned i = 0; i < prms.addrs.size(); ++i)
   {
+    int            rc;
     const char*    addr = prms.addrs[i].c_str();
     const char*    port = prms.ports[i].c_str();
     EbLfCltLink*   link;
@@ -57,7 +55,7 @@ int MebContributor::configure(const MebCtrbParams& prms,
                      __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
-    if ( (rc = link->prepare(region, size, regSize)) )
+    if ( (rc = link->prepare(region, size, _bufRegSize)) )
     {
       logging::error("%s:\n  Failed to prepare link with MEB at %s:%s\n",
                      __PRETTY_FUNCTION__, addr, port);
@@ -87,7 +85,7 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
   unsigned     dst    = ImmData::src(destination);
   uint32_t     idx    = ImmData::idx(destination);
   size_t       sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
-  unsigned     offset = _trSize + idx * _maxEvSize;
+  unsigned     offset = idx * _maxEvSize;
   EbLfCltLink* link   = _links[dst];
   uint32_t     data   = ImmData::value(ImmData::Buffer, _id, idx);
 
@@ -119,9 +117,9 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
 
 int MebContributor::post(const EbDgram* ddg)
 {
-  size_t              sz  = sizeof(*ddg) + ddg->xtc.sizeofPayload();
-  TransitionId::Value tr  = ddg->service();
-  uint64_t            ofs = tr * _maxTrSize;
+  size_t              sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
+  TransitionId::Value tr     = ddg->service();
+  uint64_t            offset = _bufRegSize + tr * _maxTrSize;
 
   if (sz > _maxTrSize)
   {
@@ -141,13 +139,13 @@ int MebContributor::post(const EbDgram* ddg)
       uint64_t pid    = ddg->pulseId();
       unsigned ctl    = ddg->control();
       uint32_t env    = ddg->env;
-      void*    rmtAdx = (void*)link->rmtAdx(ofs);
+      void*    rmtAdx = (void*)link->rmtAdx(offset);
       printf("MebCtrb posts %9ld      trId [%5d]  @ "
              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2d @ %16p - %16p, data %08x\n",
              _eventCount, tr, ddg, ctl, pid, env, sz, link->id(), rmtAdx, (char*)rmtAdx + sz, data);
     }
 
-    if (int rc = link->post(ddg, sz, ofs, data) < 0)  return rc;
+    if (int rc = link->post(ddg, sz, offset, data) < 0)  return rc;
   }
 
   return 0;

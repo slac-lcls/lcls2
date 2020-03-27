@@ -60,7 +60,7 @@ int EbAppBase::configure(const EbParams& prms)
   unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
 
   _links.resize(nCtrbs);
-  _trRegSize.resize(nCtrbs);
+  _bufRegSize.resize(nCtrbs);
   _maxTrSize.resize(nCtrbs);
   _maxBufSize.resize(nCtrbs);
   _id           = prms.id;
@@ -102,10 +102,10 @@ int EbAppBase::configure(const EbParams& prms)
                      __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
-    _maxTrSize[rmtId]  = prms.maxTrSize[rmtId];
-    _trRegSize[rmtId]  = roundUpSize(TransitionId::NumberOf * _maxTrSize[rmtId]);
+    _bufRegSize[rmtId] = regSize;
     _maxBufSize[rmtId] = regSize / _maxBuffers;
-    regSize           += _trRegSize[rmtId];  // Ctrbs don't have a transition space
+    _maxTrSize[rmtId]  = prms.maxTrSize[rmtId];
+    regSize           += roundUpSize(TransitionId::NumberOf * _maxTrSize[rmtId]);  // Ctrbs don't have a transition space
     regSizes[rmtId]    = regSize;
     sumSize           += regSize;
   }
@@ -162,9 +162,9 @@ void EbAppBase::shutdown()
   if (_region)  free(_region);
   _region = nullptr;
 
-  _trRegSize.clear();
-  _maxTrSize.clear();
+  _bufRegSize.clear();
   _maxBufSize.clear();
+  _maxTrSize.clear();
   _contributors = 0;
   _id           = -1;
   _contract.fill(0);
@@ -185,13 +185,13 @@ int EbAppBase::process()
 
   ++_bufferCnt;
 
-  unsigned     flg = ImmData::flg(data);
-  unsigned     src = ImmData::src(data);
-  unsigned     idx = ImmData::idx(data);
-  EbLfSvrLink* lnk = _links[src];
-  size_t       ofs = (ImmData::buf(flg) == ImmData::Buffer)
-                   ? (_trRegSize[src] + idx * _maxBufSize[src])
-                   : (idx * _maxTrSize[src]);
+  unsigned       flg = ImmData::flg(data);
+  unsigned       src = ImmData::src(data);
+  unsigned       idx = ImmData::idx(data);
+  EbLfSvrLink*   lnk = _links[src];
+  size_t         ofs = (ImmData::buf(flg) == ImmData::Buffer)
+                     ? (                   idx * _maxBufSize[src]) // In batch/buffer region
+                     : (_bufRegSize[src] + idx * _maxTrSize[src]); // Tr region for non-selected EB is after batch/buffer region
   const EbDgram* idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));
   if ( (rc = lnk->postCompRecv()) )
   {
@@ -205,9 +205,10 @@ int EbAppBase::process()
     uint64_t    pid = idg->pulseId();
     unsigned    ctl = idg->control();
     const char* knd = TransitionId::name(idg->service());
+    size_t      sz  = sizeof(*idg) + idg->xtc.sizeofPayload();
     printf("EbAp rcvd %9ld %15s[%5d]   @ "
-           "%16p, ctl %02x, pid %014lx, env %08x,            src %2d, data %08lx, ext %4d\n",
-           _bufferCnt, knd, idx, idg, ctl, pid, env, lnk->id(), data, idg->xtc.extent);
+           "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d, data %08lx\n",
+           _bufferCnt, knd, idx, idg, ctl, pid, env, sz, lnk->id(), data);
   }
 
   // Tr space bufSize value is irrelevant since maxEntries will be 1 for that case

@@ -51,7 +51,6 @@ namespace Pds {
       unsigned                  _id;
       unsigned                  _numEbs;
       BatchFifo                 _pending; // Time ordered list of completed Batches
-      size_t                    _batchBase;
       Batch*                    _batch;
     private:
       mutable uint64_t          _eventCount;

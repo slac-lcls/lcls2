@@ -62,8 +62,9 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
     return rc;
   }
 
-  size_t regSize = 0;
+  size_t size = 0;
 
+  // Since each EB handles a specific batch, one region can be shared by all
   for (unsigned i = 0; i < _links.size(); ++i)
   {
     EbLfSvrLink*   link;
@@ -77,20 +78,28 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
     unsigned rmtId = link->id();
     _links[rmtId] = link;
 
-    if (_prms.verbose)  logging::info("Inbound link with TEB ID %d connected\n", rmtId);
+    logging::debug("Inbound link with TEB ID %d connected\n", rmtId);
 
-    size_t size;
-    if ( (rc = link->prepare(&size)) )
+    size_t regSize;
+    if ( (rc = link->prepare(&regSize)) )
     {
       logging::error("%s:\n  Failed to prepare link with TEB ID %d\n",
                      __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
 
-    // Since each EB handles a specific batch, one region can be shared by all
-    if (!regSize)
+    if (!size)
     {
-      regSize = size;
+      size          = regSize;
+      _maxBatchSize = regSize / MAX_BATCHES;
+
+      _region = allocRegion(regSize);
+      if (_region == nullptr)
+      {
+        logging::error("%s:\n  No memory found for a Result MR of size %zd\n",
+                       __PRETTY_FUNCTION__, regSize);
+        return ENOMEM;
+      }
     }
     else if (regSize != size)
     {
@@ -98,23 +107,6 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
                      "(%zd from Id %d)\n", __PRETTY_FUNCTION__, size, regSize, rmtId);
       return -1;
     }
-  }
-
-  _maxBatchSize = regSize / MAX_BATCHES;
-
-  _region = allocRegion(regSize);
-  if (_region == nullptr)
-  {
-    logging::error("%s:\n  No memory found for a Result MR of size %zd\n",
-                   __PRETTY_FUNCTION__, regSize);
-    return ENOMEM;
-  }
-
-  // Note that this loop can't be combined with the one above due to the exchange protocol
-  for (unsigned i = 0; i < _links.size(); ++i)
-  {
-    EbLfSvrLink* link = _links[i];
-    unsigned     rmtId = link->id();
 
     if ( (rc = link->setupMr(_region, regSize)) )
     {

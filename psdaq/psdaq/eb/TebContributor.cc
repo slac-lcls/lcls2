@@ -37,7 +37,6 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
   _id          (-1),
   _numEbs      (0),
   _pending     (MAX_BATCHES),
-  _batchBase   (roundUpSize(TransitionId::NumberOf * prms.maxInputSize)),
   _batch       (nullptr),
   _eventCount  (0),
   _batchCount  (0)
@@ -202,7 +201,7 @@ void TebContributor::_post(const Batch* batch) const
     EbLfCltLink* link   = _links[dst];
     uint32_t     data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
     size_t       extent = batch->extent();
-    unsigned     offset = _batchBase + idx * _batMan.maxBatchSize();
+    unsigned     offset = idx * _batMan.maxBatchSize();
     const void*  buffer = batch->buffer();
 
     if (_prms.verbose >= VL_BATCH)
@@ -230,8 +229,8 @@ void TebContributor::_post(const EbDgram* dgram) const
   unsigned dst    = idx % _numEbs;
   unsigned tr     = dgram->service();
   uint32_t data   = ImmData::value(ImmData::Transition | ImmData::NoResponse, _id, tr);
-  size_t   extent = sizeof(*dgram) + dgram->xtc.sizeofPayload();
-  unsigned offset = tr * sizeof(*dgram);
+  size_t   extent = sizeof(*dgram);  assert(dgram->xtc.sizeofPayload() == 0);
+  unsigned offset = _batMan.batchRegionSize() + tr * sizeof(*dgram);
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {

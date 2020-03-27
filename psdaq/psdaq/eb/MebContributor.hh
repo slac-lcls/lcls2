@@ -34,7 +34,7 @@ namespace Pds {
     private:
       size_t                    _maxEvSize;
       size_t                    _maxTrSize;
-      size_t                    _trSize;
+      size_t                    _bufRegSize;
       EbLfClient                _transport;
       std::vector<EbLfCltLink*> _links;
       unsigned                  _id;
