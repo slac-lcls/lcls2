@@ -98,6 +98,7 @@ void TimeTool::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& con
 void TimeTool::connect(const json& connect_json, const std::string& collectionId)
 {
   m_connect_json = connect_json.dump();
+  XpmDetector::connect(connect_json, collectionId);
 }
 
 unsigned TimeTool::configure(const std::string& config_alias, Xtc& xtc)

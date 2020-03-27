@@ -40,19 +40,15 @@ def write_to_daq_config_db():
     #8)  camera rate and soft or hard trigger. The soft trigger is for offline testing.  For users or just for me?
     #9)  the batcher bypass so soft trigger doesn't halt.
 
-    ######################################################################
-    ####### Keeping it simple.  Just what Giaccomo will need #############
-    ######################################################################
+    # timing system
+    top.set('cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.PauseThreshold',16,'UINT32')
+    top.set('cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.TriggerDelay',42,'UINT32')
 
-    ########################################
-    #####        prescaling          #######
-    ########################################
-    top.set("cl.TimeToolKcu1500.Application.AppLane0.Prescale.ScratchPad",1,'UINT32')                     # testing ability to write to database
+    # prescaling
     top.set("cl.TimeToolKcu1500.Application.AppLane0.Prescale.DialInPreScaling",2,'UINT32')                            # prescaled raw data
     top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.background_prescaler.DialInPreScaling",3,'UINT32')            # prescaled raw backgrounds (may consider accumulated backgrounds instead)
-    ########################################
-    #####      initial fir filter    #######
-    ########################################
+
+    # initial fir filter
     top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet0","7f7f7f7f",'CHARSTR')                      #high part of step
     top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet1","7f7f7f7f",'CHARSTR')                      #high part of step
     top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet2","7f7f7f7f",'CHARSTR')                      #high part of step
@@ -62,25 +58,17 @@ def write_to_daq_config_db():
     top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet6","81818181",'CHARSTR')                      #low  part of step
     top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.CoefficientSet7","81818181",'CHARSTR')                      #low  part of step
 
-    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.LoadCoefficients","1",'CHARSTR')                             #low  part of step.  Having a value of 1  causes a segfault in pgpread_timetool.cc.  But not in tt_config.py.
+    top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FIR.LoadCoefficients","1",'CHARSTR')                            #low  part of step.  Having a value of 1  causes a segfault in pgpread_timetool.cc.  But not in tt_config.py.
 
-    ########################################
-    #####      time constants        #######
-    ########################################
+    # time constants
     top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FrameIIR.TimeConstant",8,'UINT32')
 
-
-    ########################################
-    #####      subtraction enabled     #####
-    ########################################
+    # subtraction enabled
     top.set("cl.TimeToolKcu1500.Application.AppLane0.Fex.FrameSubtractor.SubtractionActive",0,'UINT32')                   #turn background subtract on
 
-
-    ########################################
-    #####      Piranha Settings        #####
-    ########################################
+    # Piranha Settings
     #commands can be sent manually using cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4._tx.sendString('GCP')
-    #to manually querry a camera hardware setting cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4._tx.sendString('get 'stm')
+    #to manually query a camera hardware setting cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4._tx.sendString('get stm')
 
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.CLS",0,'UINT32')
     top.set("cl.ClinkFeb0.ClinkTop.Ch0.UartPiranha4.CLM",2,'UINT32')

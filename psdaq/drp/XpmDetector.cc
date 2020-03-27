@@ -77,17 +77,25 @@ void XpmDetector::connect(const json& json, const std::string& collectionId)
     int readoutGroup = json["body"]["drp"][collectionId]["det_info"]["readout"];
 
     Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
-    for(unsigned i=0, l=links; l; i++) {
-      Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
-      if (l&(1<<i)) {
-        dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
-        dmaWriteRegister(fd, &b.pauseThresh, 16     );
-        dmaWriteRegister(fd, &b.group , readoutGroup);
-        dmaWriteRegister(fd, &b.enable, 3           );  // enable
-        l &= ~(1<<i);
+    if (m_para->detType=="tt") {
+      // cpo: this is a hack that is specific for timetool.
+      // the address comes from pyrogue rootDevice.saveAddressMap('fname')
+      // perhaps ideally we would call detector-specific rogue python
+      // or use the new rogue version 5 c++ interface.
+      dmaWriteRegister(fd, 0x940104, readoutGroup);
+    } else {
+      for(unsigned i=0, l=links; l; i++) {
+        Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
+        if (l&(1<<i)) {
+          dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
+          dmaWriteRegister(fd, &b.pauseThresh, 16     );
+          dmaWriteRegister(fd, &b.group , readoutGroup);
+          dmaWriteRegister(fd, &b.enable, 3           );  // enable
+          l &= ~(1<<i);
 
-        dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
-        dmaWriteRegister(fd, 0x00a00000+4*(i&3), (length&0xffffff) | (1<<31));  // enable
+          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
+          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (length&0xffffff) | (1<<31));  // enable
+        }
       }
     }
 

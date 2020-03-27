@@ -46,7 +46,7 @@ def tt_config(connect_str,cfgtype,detname):
         depth = 0
         path  = 'cl'
         my_queue  =  deque([[path,depth,cl,cfg['cl']]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
-        kludge_dict = {"AppLane0":"AppLane[0]","ClinkFeb0":"ClinkFeb[0]","Ch0":"Ch[0]", "ROI0":"ROI[0]","ROI1":"ROI[1]","SAD0":"SAD[0]","SAD1":"SAD[1]","SAD2":"SAD[2]"}
+        kludge_dict = {"TriggerEventBuffer0":"TriggerEventBuffer[0]","AppLane0":"AppLane[0]","ClinkFeb0":"ClinkFeb[0]","Ch0":"Ch[0]", "ROI0":"ROI[0]","ROI1":"ROI[1]","SAD0":"SAD[0]","SAD1":"SAD[1]","SAD2":"SAD[2]"}
         while(my_queue):
             path,depth,rogue_node, configdb_node = my_queue.pop()
             if(dict is type(configdb_node)):
@@ -72,11 +72,8 @@ def tt_config(connect_str,cfgtype,detname):
                     # There's something uneasy about this
                     rogue_node.set(int(str(configdb_node),16))
     
-        scratch_pad = (cfg['cl']['TimeToolKcu1500']['Application']['AppLane0']['Prescale']['ScratchPad'])
-
-        cl.TimeToolKcu1500.Application.AppLane[0].Prescale.ScratchPad.set(scratch_pad)
-
-        print("scratch pad value = ",cl.TimeToolKcu1500.Application.AppLane[0].Prescale.ScratchPad.get())
+        cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
+        cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(True)
 
         #cl.StartRun()
 
