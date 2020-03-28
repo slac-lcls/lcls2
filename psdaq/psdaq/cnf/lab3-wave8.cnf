@@ -1,0 +1,41 @@
+platform = '0'
+username = 'lcls2'
+
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
+conda_rel = 'ps-2.1.2'
+
+shelf = '2'
+ip_addr = '10.0.'+shelf
+collect_host = 'drp-tst-acc06'
+groups = '0'
+hutch = 'tst'
+
+drp_cmd  = 'drp -P '+hutch+' -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/weaver'
+drp_cmdb = 'drp -P '+hutch+' -d /dev/datadev_1 -C '+collect_host+' -o /ffb01/weaver'
+#verbosity = ' -vvvv'
+verbosity = ' '
+
+fields = [
+               'RawBuffers:TrigCnt',
+               'RawBuffers:FifoPauseCnt','RawBuffers:FifoPauseThreshold',
+               'Integrators:IntFifoPauseCnt' ,'Integrators:IntFifoPauseThreshold',
+               'Integrators:ProcFifoPauseCnt','Integrators:ProcFifoPauseThreshold',
+               'TriggerEventManager:TriggerEventBuffer[0]:FifoWrCnt',
+               'TriggerEventManager:TriggerEventBuffer[0]:PauseThreshold',
+]
+
+procmgr_config = [
+ {                        id:'groupca' , flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
+ {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+
+ { host: 'drp-tst-dev024', id:'teb1'   , flags:'spu', conda:conda_rel, cmd:'teb -P '+hutch+' -C '+collect_host+' '+verbosity},
+ { host: 'drp-tst-dev016', id:'meb16'   , flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+'P0 -d -q 4 -C '+collect_host+verbosity},
+
+ { host: 'drp-tst-dev005', id:'wave8pvs', flags:'s', conda:conda_rel, cmd:'wave8pvs --l 0'},
+ { host: 'drp-tst-dev005', id:'tmowave8_0' , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -l 0x2 -D wave8 -k epics_prefix=DAQ:WAVE8 '+verbosity},
+
+ {                        id:'pvant', flags:'s', conda:conda_rel, env:epics_env, cmd:'pvant --bases DAQ:WAVE8:Top --fields '+' '.join(fields)},
+ { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch},
+ {                        flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
+]
+

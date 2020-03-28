@@ -13,15 +13,15 @@ groups = platform
 prom_cfg_dir = '/reg/g/psdm/psdatmgr/etc/config/prom'
 
 drp_cmd  = 'taskset 0xffbfeffbfe ' # Exclude cores 0, 10, 20, 30 (used by OS)
-drp_cmd += 'drp -P TST -l 0x1 -d /dev/datadev_0 -C '+collect_host+' -M '+prom_cfg_dir
+drp_cmd += 'drp -P tst -l 0x1 -d /dev/datadev_0 -C '+collect_host+' -M '+prom_cfg_dir
 drp_cmd += ' -o /ffb01/tstopr'
 
 bld_cmd  = 'taskset 0xffbfeffbfe ' # Exclude cores 0, 10, 20, 30 (used by OS)
-bld_cmd += 'drp_bld -P TST -d /dev/datadev_0 -C '+collect_host+' -M '+prom_cfg_dir
+bld_cmd += 'drp_bld -P tst -d /dev/datadev_0 -C '+collect_host+' -M '+prom_cfg_dir
 bld_cmd += ' -o /ffb01/tstopr'
 
 pva_cmd  = 'taskset 0xffbfeffbfe ' # Exclude cores 0, 10, 20, 30 (used by OS)
-pva_cmd += 'drp_pva -P TST -d /dev/datadev_0 -C '+collect_host+' -M '+prom_cfg_dir+' DAQ:LAB2:PVCAM'
+pva_cmd += 'drp_pva -P tst -d /dev/datadev_0 -C '+collect_host+' -M '+prom_cfg_dir+' DAQ:LAB2:PVCAM'
 pva_cmd += ' -o /ffb01/tstopr'
 
 # procmgr FLAGS: <port number> static port number to keep executable
@@ -38,16 +38,16 @@ pva_cmd += ' -o /ffb01/tstopr'
 
 procmgr_config = [
  {                         id:'groupca',     flags:'s',   conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
- {                         id:'modca1',                   conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:1'},
- {                         id:'modca2',                   conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
- { host: collect_host,     id:'control',     flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P TST'},
+ {                         id:'xpmpva1',                  conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1'},
+ {                         id:'xpmpva2',                  conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:2'},
+ { host: collect_host,     id:'control',     flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P tst'},
  {                         id:'control_gui', flags:'p',   conda:conda_rel,                cmd:'control_gui -t 20000 -H '+collect_host},
 
  # TEB
- { host: 'drp-tst-dev016', id:'teb16',       flags:'sxpu', conda:conda_rel, cmd:'teb -P TST -C '+collect_host+' -M '+prom_cfg_dir},
+ { host: 'drp-tst-dev016', id:'teb16',       flags:'sxpu', conda:conda_rel, cmd:'teb -P tst -C '+collect_host+' -M '+prom_cfg_dir},
 
  # MEB
- { host: 'drp-tst-dev013', id:'meb13',       flags:'sxpu', conda:conda_rel, cmd:'monReqServer -P TST -d -q 4 -C '+collect_host+' -M '+prom_cfg_dir},
+ { host: 'drp-tst-dev013', id:'meb13',       flags:'sxpu', conda:conda_rel, cmd:'monReqServer -P tst -d -q 4 -C '+collect_host+' -M '+prom_cfg_dir},
 
  # HSD: 6.4 GS/s digitizer (DEV06_3E)
  { port:'29074',           id:'hsdpvs_3e_a', flags:'s',   conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+hsd_epics_dev06+'_3E:A'},

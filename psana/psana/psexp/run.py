@@ -15,6 +15,7 @@ from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.step import Step
 from psana.psexp.event_manager import TransitionId
 from psana.psexp.events import Events
+from psana.psexp.ds_base import XtcFileNotFound
 import psana.pscalib.calib.MDBWebUtils as wu
 
 from psana.psexp.tools import mode
@@ -90,55 +91,53 @@ class Run(object):
         # (e.g. (xppcspad,raw) or (xppcspad,fex)
         # make them attributes of the container
         flag_found = False
-        for (det_name,drp_class_name),drp_class in self.dm.det_class_table.items():
+        for (det_name,drp_class_name),drp_class in self.dm.det_classes['normal'].items():
             if det_name == name:
                 setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configs, self.calibconst[det_name]))
                 setattr(det,'_configs', self.configs)
-                setattr(det,'_calibconst', self.calibconst[det_name])
+                setattr(det,'calibconst', self.calibconst[det_name])
                 setattr(det,'_dettype', self.dm.det_info_table[det_name][0])
                 setattr(det,'_detid', self.dm.det_info_table[det_name][1])
                 flag_found = True
         
-        # If no detector found, try EnvStore.
-        # Environment values are identified by variable names (e.g. 'XPP:VARS:FLOAT:02', 'motor1').
-        # First we search for the store that has this name and pass it to drp_class so that the 
-        # varialbe name can be looked-up when evt is given (e.g. det(evt) returns value of
-        # the given epics keyword.)
-        # Current, there are two algorithms (epics and scan).  
-        # d.epics[0].epics.HX2:DVD:GCC:01:PMON = 41.0
-        # d.epics[0].epics.HX2:DVD:GPI:01:PMON = 'Test String'
+        # If no detector found, EnvStore variable is assumed to have been passed in.
+        # Environment values are identified by variable names (e.g. 'XPP:VARS:FLOAT:02').
+        # From d.epics[0].raw.HX2:DVD:GCC:01:PMON = 41.0
+        # (d.env_name[0].alg.variable),
+        # EnvStoreManager searches all the stores assuming that the variable name is
+        # unique and returns env_name ('epics' or 'scan') and algorithm. 
         if not flag_found:
-            #for alg, store in self.esm.stores.items():
-            #alg = self.esm.stores['epics'].alg_from_variable(name)
-            alg = self.esm.alg_from_variable(name)
-            if alg:
-                det_name = alg
+            found = self.esm.env_from_variable(name) # assumes that variable name is unique
+            if found is not None:
+                env_name, alg = found
+                det_name = env_name
                 var_name = name
                 drp_class_name = alg
-                drp_class = self.dm.det_class_table[(det_name, drp_class_name)]
-                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibconst, self.esm.stores[alg])
+                det_class_table = self.dm.det_classes[det_name]
+                drp_class = det_class_table[(det_name, drp_class_name)]
+                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibconst[det_name], self.esm.stores[env_name])
 
         return det
 
     @property
     def detnames(self):
-        return set([x[0] for x in self.dm.det_class_table.keys()])
+        return set([x[0] for x in self.dm.det_classes['normal'].keys()])
 
     @property
     def detinfo(self):
         info = {}
-        for ((detname,det_xface_name),det_xface_class) in self.dm.det_class_table.items():
+        for ((detname,det_xface_name),det_xface_class) in self.dm.det_classes['normal'].items():
 #            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
             info[(detname,det_xface_name)] = _enumerate_attrs(getattr(self.Detector(detname),det_xface_name))
         return info
 
     @property
     def epicsinfo(self):
-        return self.esm.get_info('epics')
+        return self.esm.stores['epics'].get_info()
     
     @property
     def scaninfo(self):
-        return self.esm.get_info('scan')
+        return self.esm.stores['scan'].get_info()
     
     @property
     def xtcinfo(self):
@@ -168,18 +167,25 @@ class Run(object):
 
     def _get_runinfo(self):
         """ Gets runinfo from BeginRun event"""
+
+        if not self.configs:
+            err = "Empty configs. It's likely that the location of xtc files is incorrect. Check path of the dir argument in DataSource."
+            raise XtcFileNotFound(err)
+
+        config = self.configs[0]
         beginrun_evt = None
-        if hasattr(self.dm.configs[0].software, 'smdinfo'):
+        if hasattr(config.software, 'smdinfo'):
             # This run has smd files 
             beginrun_evt = next(self.smd_dm) 
-        elif hasattr(self.dm.configs[0].software, 'runinfo'):
+        elif hasattr(config.software, 'runinfo'):
             beginrun_evt = next(self.dm)
         
         if not beginrun_evt: return
 
-        if hasattr(beginrun_evt._dgrams[0], 'runinfo'): # some xtc2 do not have BeginRun
-            self.expt = beginrun_evt._dgrams[0].runinfo[0].runinfo.expt 
-            self.runnum = beginrun_evt._dgrams[0].runinfo[0].runinfo.runnum
+        beginrun_dgram = beginrun_evt._dgrams[0]
+        if hasattr(beginrun_dgram, 'runinfo'): # some xtc2 do not have BeginRun
+            self.expt = beginrun_dgram.runinfo[0].runinfo.expt 
+            self.runnum = beginrun_dgram.runinfo[0].runinfo.runnum
             self.timestamp = beginrun_evt.timestamp
 
 
@@ -196,9 +202,17 @@ class RunShmem(Run):
         self.esm = EnvStoreManager(self.dm.configs, 'epics', 'scan')
 
     def events(self):
-        for evt in self.dm:
-            if evt._dgrams[0].service() != TransitionId.L1Accept: continue
-            yield evt
+        events = Events(self, dm=self.dm)
+        for evt in events:
+            if evt.service() == TransitionId.L1Accept:
+                yield evt
+    
+    def steps(self):
+        """ Generates events between steps. """
+        events = Events(self, dm=self.dm)
+        for evt in events:
+            if evt.service() == TransitionId.BeginStep:
+                yield Step(evt, events)
 
 class RunSingleFile(Run):
     """ Yields list of events from a single bigdata file. """
@@ -215,14 +229,17 @@ class RunSingleFile(Run):
         self.esm = EnvStoreManager(self.dm.configs, 'epics', 'scan')
 
     def events(self):
-        for evt in self.dm:
-            if evt._dgrams[0].service() != TransitionId.L1Accept: continue
-            yield evt
-
+        events = Events(self, dm=self.dm)
+        for evt in events:
+            if evt.service() == TransitionId.L1Accept:
+                yield evt
+    
     def steps(self):
-        for evt in self.dm:
-            if evt._dgrams[0].service() == TransitionId.BeginStep: 
-                yield Step(evt, self.dm)
+        """ Generates events between steps. """
+        events = Events(self, dm=self.dm)
+        for evt in events:
+            if evt.service() == TransitionId.BeginStep:
+                yield Step(evt, events)
     
 class RunSerial(Run):
     """ Yields list of events from multiple smd/bigdata files using single core."""
@@ -242,14 +259,14 @@ class RunSerial(Run):
     def events(self):
         events = Events(self)
         for evt in events:
-            if evt._dgrams[0].service() == TransitionId.L1Accept:
+            if evt.service() == TransitionId.L1Accept:
                 yield evt
     
     def steps(self):
         """ Generates events between steps. """
         events = Events(self)
         for evt in events:
-            if evt._dgrams[0].service() == TransitionId.BeginStep:
+            if evt.service() == TransitionId.BeginStep:
                 yield Step(evt, events)
 
 class RunLegion(Run):

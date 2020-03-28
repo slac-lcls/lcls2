@@ -15,6 +15,18 @@
 
 extern int optind;
 
+namespace Pds {
+  namespace Tpr {
+    class TA {
+    public:
+      TA(void* _ptr, int _fd) : ptr(_ptr), fd(_fd) {}
+    public:
+      void* ptr;
+      int   fd;
+    };
+  }
+}
+
 using namespace Pds::Tpr;
 
 static bool lverbose = false;
@@ -28,7 +40,7 @@ static void dumpFrame(const uint32_t* p)
     printf("\n");
   }
 
-  const uint64_t* pl = reinterpret_cast<const uint64_t*>(p);
+  const uint64_t* pl;
   char m = p[0]&(1<<30) ? 'D':' ';
   unsigned mtyp = (p[0]>>16)&0x3;
   //
@@ -36,16 +48,19 @@ static void dumpFrame(const uint32_t* p)
   //
   switch(mtyp) {
   case 0:
+    pl = reinterpret_cast<const uint64_t*>(p+2);
     printf("EVENT [x%x]: %16lx %16lx %16lx %16lx %16lx %c\n",
            (p[1]>>16)&0xffff,pl[0],pl[1],pl[2],pl[3],pl[4],m);
     break;
   case 1:
-    printf("BSA_CNTL : %16lx %16lx %16lx %16lx %c\n",
-           pl[0],pl[1],pl[2],pl[3],m);
+    pl = reinterpret_cast<const uint64_t*>(p+1);
+    printf("BSA_CNTL : %u.%09u %16lx I%16lx m%16lx M%16lx %c\n",
+           p[4],p[3],pl[0],pl[2],pl[3],pl[4],m);
     break;
   case 2:
-    printf("BSA_CHN [x%x]: %16lx %16lx %16lx %16lx %c\n",
-           (p[1]>>16)&0xff,pl[0],pl[1],pl[2],pl[3],m);
+    pl = reinterpret_cast<const uint64_t*>(p+1);
+    printf("BSA_CHN [x%x]: %u.%09u %16lx A%16lx D%16lx U%16lx %c\n",
+           (p[1]>>16)&0xff,p[8],p[7],pl[0],pl[1],pl[2],pl[4],m);
     break;
   default:
     break;
@@ -70,6 +85,7 @@ static void countFrame(const uint32_t* p)
     break;
   case 1:
     bsaControlFrames++;
+    dumpFrame(p);
     break;
   case 2:
     bsaChannelFrames++;
@@ -79,6 +95,7 @@ static void countFrame(const uint32_t* p)
   }
 }
 static void* read_thread(void*);
+static void* bsa_thread (void*);
 
 void usage(const char* p) {
   printf("Usage: %s -r <a/b> -i <channel> [-v]\n",p);
@@ -88,7 +105,7 @@ int main(int argc, char** argv) {
 
   extern char* optarg;
   char tprid='a';
-  int idx=0;
+  int idx=-1;
 
   int c;
   bool lUsage = false;
@@ -128,12 +145,20 @@ int main(int argc, char** argv) {
   }
 
   {
+    const char* sfx[] = {"0","1","2","3","4","5","6","7","8","9","a","b","c","d",NULL};
     char dev[16];
-    sprintf(dev,"/dev/tpr%c%c",tprid,idx<0 ? 'b': (idx<10 ? '0'+idx : 'a'+(idx-10)));
+    sprintf(dev,"/dev/tpr%c%s",tprid,idx<0 ? "BSA":sfx[idx]);
     printf("Using tpr %s\n",dev);
 
     int fd = open(dev, O_RDWR);
     if (fd<0) {
+      perror("Could not open");
+      return -1;
+    }
+
+    sprintf(dev,"/dev/tpr%cBSA",tprid);
+    int fd_bsa = open(dev, O_RDWR);
+    if (fd_bsa<0) {
       perror("Could not open");
       return -1;
     }
@@ -150,6 +175,15 @@ int main(int argc, char** argv) {
       pthread_t tid;
       if (pthread_create(&tid, &tattr, &read_thread, 0))
         perror("Error creating read thread");
+    }
+
+    if (!lverbose) {
+      pthread_attr_t tattr;
+      pthread_attr_init(&tattr);
+      pthread_t tid;
+      TA* arg = new TA(ptr, fd_bsa);
+      if (pthread_create(&tid, &tattr, &bsa_thread, arg))
+        perror("Error creating bsa thread");
     }
 
     Pds::Tpr::Queues& q = *(Pds::Tpr::Queues*)ptr;
@@ -209,4 +243,22 @@ void* read_thread(void* arg)
   }
 
   return 0;
+}
+
+void* bsa_thread(void* arg)
+{
+  TA* ta = (TA*)arg;
+  Pds::Tpr::Queues& q = *(Pds::Tpr::Queues*)ta->ptr;
+  int fd = ta->fd;
+  char* buff = new char[32];
+
+  int64_t rp = q.bsawp;
+  while(1) {
+    read(fd, buff, 32);
+    while(rp < q.bsawp) {
+      long long qi = rp%MAX_TPR_BSAQ;
+      countFrame(reinterpret_cast<const uint32_t*>(&q.bsaq[qi].word[0]));
+      rp++;
+    }
+  }
 }

@@ -1,5 +1,5 @@
 # NOTE:
-# To test on 'real' bigdata: 
+# To test on 'real' bigdata:
 # xtc_dir = "/reg/d/psdm/xpp/xpptut15/scratch/mona/test"
 # >bsub -n 64 -q psfehq -o log.txt mpirun python user_loops.py
 
@@ -38,14 +38,14 @@ for run in ds.runs():
     # Environment values are accessed also through detector interface
     edet = run.Detector('HX2:DVD:GCC:01:PMON')
     sdet = run.Detector('motor2')
-    
+
     for evt in run.events():
         padarray = vals.padarray
         # 4 segments, two per file
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
         assert edet(evt) is None or edet(evt) == 41.0
         assert sdet(evt) == 42.0
-    
+
     assert run.expt == 'xpptut15' # this is from xtc file
     assert run.runnum == 14
     assert run.timestamp == 4294967297
@@ -60,7 +60,7 @@ for run in ds.runs():
         padarray = vals.padarray
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
 
-# Usecase 2: one iterator 
+# Usecase 2: one iterator
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
 for evt in ds.events():
     pass
@@ -73,13 +73,13 @@ for run in ds.runs():
         for evt in step.events():
             padarray = vals.padarray
             assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
-            
+
 # Usecase#4: singlefile ds
 ds = DataSource(files=os.path.join(xtc_dir,'data-r0001-s00.xtc2'))
 for run in ds.runs():
     det = run.Detector('xppcspad')
-    edet = run.Detector('HX2:DVD:GCC:01:PMON') 
-    sdet = run.Detector('motor2') 
+    edet = run.Detector('HX2:DVD:GCC:01:PMON')
+    sdet = run.Detector('motor2')
     for step in run.steps():
         for evt in step.events():
             calib = det.raw.calib(evt)

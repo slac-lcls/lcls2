@@ -24,6 +24,32 @@ class hsd_fex_4_5_6(DetectorImpl):
     def calib(self, evt) -> Array1d:
         return np.zeros((6))
 
+# for the fake cameras in the teststand
+class cspad_cspadRawAlg_1_2_3(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+    def raw(self, evt) -> Array2d:
+        segs = self._segments(evt)
+        if segs is None: return None
+        if segs[0] is None: return None
+        return segs[0].array_raw
+class fakecam_raw_2_0_0(cspad_cspadRawAlg_1_2_3):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+# for the pva detector in the teststand
+class pva_pvaAlg_1_2_3(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+    def raw(self, evt) -> Array1d:
+        segs = self._segments(evt)
+        if segs is None: return None
+        if segs[0] is None: return None
+        return segs[0].value
+class andor_raw_0_0_1(pva_pvaAlg_1_2_3):
+    def __init__(self, *args):
+        super().__init__(*args)
+
 class cspad_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
         super(cspad_raw_2_3_42, self).__init__(*args)
@@ -37,11 +63,82 @@ class cspad_raw_2_3_42(DetectorImpl):
         segs = self._segments(evt)
         return np.vstack([segs[i].arrayRaw for i in range(len(segs))])
 
+
+class eventid_valseid_0_0_1(DetectorImpl):
+    def __init__(self, *args):
+        DetectorImpl.__init__(self, *args)
+    def experiment(self, evt):
+        return self._segments(evt)[0].experiment if self._segments(evt) is not None else None
+    def run(self, evt):
+        return self._segments(evt)[0].run        if self._segments(evt) is not None else None
+    def fiducials(self, evt):
+        return self._segments(evt)[0].fiducials  if self._segments(evt) is not None else None
+    def time(self, evt): 
+        return self._segments(evt)[0].time       if self._segments(evt) is not None else None
+
+
+class gasdetector_valsgd_0_0_1(DetectorImpl):
+    def __init__(self, *args):
+        DetectorImpl.__init__(self, *args)
+    def f_11_ENRC(self, evt):
+        return self._segments(evt)[0].f_11_ENRC if self._segments(evt) is not None else None
+    def f_12_ENRC(self, evt):
+        return self._segments(evt)[0].f_12_ENRC if self._segments(evt) is not None else None
+    def f_21_ENRC(self, evt):
+        return self._segments(evt)[0].f_21_ENRC if self._segments(evt) is not None else None
+    def f_22_ENRC(self, evt):
+        return self._segments(evt)[0].f_22_ENRC if self._segments(evt) is not None else None
+    def f_63_ENRC(self, evt):
+        return self._segments(evt)[0].f_63_ENRC if self._segments(evt) is not None else None
+    def f_64_ENRC(self, evt):
+        return self._segments(evt)[0].f_64_ENRC if self._segments(evt) is not None else None
+
+
+class xtcavpars_valsxtp_0_0_1(DetectorImpl):
+    def __init__(self, *args):
+        DetectorImpl.__init__(self, *args)
+    def XTCAV_Analysis_Version      (self, evt): return self._segments(evt)[0].XTCAV_Analysis_Version       if self._segments(evt) is not None else None
+    def XTCAV_ROI_sizeX             (self, evt): return self._segments(evt)[0].XTCAV_ROI_sizeX              if self._segments(evt) is not None else None
+    def XTCAV_ROI_sizeY             (self, evt): return self._segments(evt)[0].XTCAV_ROI_sizeY              if self._segments(evt) is not None else None
+    def XTCAV_ROI_startX            (self, evt): return self._segments(evt)[0].XTCAV_ROI_startX             if self._segments(evt) is not None else None
+    def XTCAV_ROI_startY            (self, evt): return self._segments(evt)[0].XTCAV_ROI_startY             if self._segments(evt) is not None else None
+    def XTCAV_calib_umPerPx         (self, evt): return self._segments(evt)[0].XTCAV_calib_umPerPx          if self._segments(evt) is not None else None
+    def OTRS_DMP1_695_RESOLUTION    (self, evt): return self._segments(evt)[0].OTRS_DMP1_695_RESOLUTION     if self._segments(evt) is not None else None
+    def XTCAV_strength_par_S        (self, evt): return self._segments(evt)[0].XTCAV_strength_par_S         if self._segments(evt) is not None else None
+    def OTRS_DMP1_695_TCAL_X        (self, evt): return self._segments(evt)[0].OTRS_DMP1_695_TCAL_X         if self._segments(evt) is not None else None
+    def XTCAV_Amp_Des_calib_MV      (self, evt): return self._segments(evt)[0].XTCAV_Amp_Des_calib_MV       if self._segments(evt) is not None else None
+    def SIOC_SYS0_ML01_AO214        (self, evt): return self._segments(evt)[0].SIOC_SYS0_ML01_AO214         if self._segments(evt) is not None else None
+    def XTCAV_Phas_Des_calib_deg    (self, evt): return self._segments(evt)[0].XTCAV_Phas_Des_calib_deg     if self._segments(evt) is not None else None
+    def SIOC_SYS0_ML01_AO215        (self, evt): return self._segments(evt)[0].SIOC_SYS0_ML01_AO215         if self._segments(evt) is not None else None
+    def XTCAV_Beam_energy_dump_GeV  (self, evt): return self._segments(evt)[0].XTCAV_Beam_energy_dump_GeV   if self._segments(evt) is not None else None
+    def REFS_DMP1_400_EDES          (self, evt): return self._segments(evt)[0].REFS_DMP1_400_EDES           if self._segments(evt) is not None else None
+    def XTCAV_calib_disp_posToEnergy(self, evt): return self._segments(evt)[0].XTCAV_calib_disp_posToEnergy if self._segments(evt) is not None else None
+    def SIOC_SYS0_ML01_AO216        (self, evt): return self._segments(evt)[0].SIOC_SYS0_ML01_AO216         if self._segments(evt) is not None else None
+
+
+class ebeam_valsebm_0_0_1(DetectorImpl):
+    def __init__(self, *args):
+        DetectorImpl.__init__(self, *args)
+    def Charge(self, evt):
+        return self._segments(evt)[0].Charge     if self._segments(evt) is not None else None
+    def DumpCharge(self, evt):
+        return self._segments(evt)[0].DumpCharge if self._segments(evt) is not None else None
+    def XTCAVAmpl(self, evt):
+        return self._segments(evt)[0].XTCAVAmpl  if self._segments(evt) is not None else None
+    def XTCAVPhase(self, evt):
+        return self._segments(evt)[0].XTCAVPhase if self._segments(evt) is not None else None
+    def PkCurrBC2(self, evt):
+        return self._segments(evt)[0].PkCurrBC2  if self._segments(evt) is not None else None
+    def L3Energy(self, evt):
+        return self._segments(evt)[0].L3Energy   if self._segments(evt) is not None else None
+
+
 class ebeam_raw_2_3_42(DetectorImpl):
     def __init__(self, *args):
-        super(ebeam_ebeamalg_2_3_42, self).__init__(*args)
+        super(ebeam_raw_2_3_42, self).__init__(*args)
     def energy(self, evt):
         return self._segments(evt)[0].energy
+
 
 class cspad_raw_2_3_43(cspad_raw_2_3_42):
     def __init__(self, *args):
@@ -77,24 +174,17 @@ class hsd_raw_2_3_42(DetectorImpl):
         else:
             return self._segments(evt)[0].waveform
 
-class EnvImpl(DetectorImpl):
+class camera_raw_0_0_1(DetectorImpl):
     def __init__(self, *args):
-        det_name, self._var_name, drp_class_name, configs, calibs, self._env_store = args
-        super(EnvImpl, self).__init__(det_name, drp_class_name, configs, calibs)
-    def __call__(self, events):
-        if isinstance(events, list):
-            return self._env_store.values(events, self._var_name)
+        DetectorImpl.__init__(self, *args)
+    def array(self, evt) -> Array2d:
+        if self._segments(evt) is None:
+            return None
         else:
-            env_values = self._env_store.values([events], self._var_name)
-            return env_values[0]
-
-class epics_epics_0_0_0(EnvImpl):
-    def __init__(self, *args):
-        super(epics_epics_0_0_0, self).__init__(*args)
-
-class scanDet_scan_2_3_42(EnvImpl):
-    def __init__(self, *args):
-        super(scanDet_scan_2_3_42, self).__init__(*args)
+            return self._segments(evt)[0].array
+    def __call__(self, evt) -> Array2d:
+        """Alias for self.raw(evt)"""
+        return self.array(evt)
 
 # for early cctbx/psana2 development
 class cspad_raw_1_2_3(DetectorImpl):

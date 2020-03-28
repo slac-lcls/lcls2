@@ -3,11 +3,13 @@ import os
 import glob
 import abc
 import numpy as np
+import pathlib
 
 from psana.dgrammanager import DgramManager
 from psana.smalldata import SmallData
 
 class InvalidFileType(Exception): pass
+class XtcFileNotFound(Exception): pass
 
 class DataSourceBase(abc.ABC):
 
@@ -53,7 +55,7 @@ class DataSourceBase(abc.ABC):
                 setattr(self, 'run_num', int(kwargs['run']))
 
             if not self.live:
-                os.environ['PS_R_MAX_RETRIES'] = '1' # only try reading once in live mode
+                os.environ['PS_SMD_MAX_RETRIES'] = '1' # do not retry when not in live mode
 
         assert self.batch_size > 0
 
@@ -87,8 +89,17 @@ class DataSourceBase(abc.ABC):
             read_exp = True
         elif self.files:
             if isinstance(self.files, (str)):
+                f = pathlib.Path(self.files)
+                if not f.exists():
+                    err = f"File {self.files} not found" 
+                    raise XtcFileNotFound(err)
                 xtc_files = [self.files]
             elif isinstance(self.files, (list, np.ndarray)):
+                for xtc_file in self.files:
+                    f = pathlib.Path(xtc_file)
+                    if not f.exists():
+                        err = f"File {xtc_file} not found"
+                        raise XtcFileNotFound(err)
                 xtc_files = self.files
             else:
                 raise InvalidFileType("Only accept filename string or list of files.")

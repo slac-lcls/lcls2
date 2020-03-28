@@ -6,7 +6,8 @@ from sequser import *
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='simple exp seq setup')
-    parser.add_argument('--pv' , help="TPG pv base", default='TPG:SYS2:2')
+#    parser.add_argument('--pv' , help="TPG pv base", default='TPG:SYS2:2')
+    parser.add_argument('--pv' , help="TPG/XPM pv base", default='DAQ:LAB2:XPM:2:SEQENG:0')
     args = parser.parse_args()
 
     sync_marker = 6

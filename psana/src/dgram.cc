@@ -128,6 +128,44 @@ static void addObjHierarchy(PyObject* parent, PyObject* pycontainertype,
     }
 }
 
+// add _xtc (_ prefix hides this from the detector interface)
+// and its attributes to dgram object
+static void setXtc(PyObject* parent, PyObject* pycontainertype, Xtc* myXtc) {
+
+    int fail = 0;
+    PyObject* pyXtc;
+    pyXtc = PyObject_CallObject(pycontainertype, NULL);
+    fail = PyObject_SetAttrString(parent, "_xtc", pyXtc);
+    if (fail) throw "setXtc: failed to set container _xtc attribute\n";
+    Py_DECREF(pyXtc);
+    
+    uint16_t damage = myXtc->damage.value();
+    PyObject* pyDamage = Py_BuildValue("H", damage);
+    fail = PyObject_SetAttrString(pyXtc, "damage", pyDamage);
+    if (fail) throw "setXtc: failed to set container damage attribute\n";
+    Py_DECREF(pyDamage);
+}
+
+// add _xtc to each segment of det_name dictionary object
+static void setXtcForSegment(PyObject* parent, PyObject* pycontainertype, 
+        const char* detName, unsigned segment, Xtc* myXtc) {
+    PyObject* dict;
+    dict = PyObject_GetAttrString(parent, detName);
+    Py_DECREF(dict); // transfer ownership to parent
+    
+    // get segment container for this segment
+    PyObject* pySeg = Py_BuildValue("i", segment);
+    PyObject* container;
+    container = PyDict_GetItem(dict, pySeg);
+    Py_DECREF(pySeg);
+
+    const char* xtcLabel = "_xtc";
+    int hasXtcLabel = PyObject_HasAttrString(container, xtcLabel);
+    if (hasXtcLabel == 1) return;
+
+    setXtc(container, pycontainertype, myXtc);
+}
+
 static void setAlg(PyObject* parent, PyObject* pycontainertype, const char* baseName, Alg& alg, unsigned segment) {
     const char* algName = alg.name();
     const uint32_t _v = alg.version();
@@ -261,9 +299,10 @@ static PyObject* createEnum(const char* enumname, PyDgramObject* pyDgram, DescDa
     return parent;
 }
 
-static void dictAssign(PyDgramObject* pyDgram, DescData& descdata)
+static void dictAssign(PyDgramObject* pyDgram, DescData& descdata, Xtc* myXtc)
 {
     Names& names = descdata.nameindex().names();
+
 
     char keyName[TMPSTRINGSIZE];
     char tempName[TMPSTRINGSIZE];
@@ -442,6 +481,7 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata)
                      names.detName(),PyNameDelim,names.alg().name(),
                      PyNameDelim,varName);
             addObjHierarchy((PyObject*)pyDgram, pyDgram->contInfo.pycontainertype, keyName, newobj, names.segment());
+            setXtcForSegment((PyObject*)pyDgram, pyDgram->contInfo.pycontainertype, names.detName(), names.segment(), myXtc);
         }
     }
 }
@@ -472,7 +512,7 @@ public:
             // in some sense.
             if (_namesLookup.count(namesId)>0) {
                 DescData descdata(shapesdata, _namesLookup[namesId]);
-                dictAssign(_pyDgram, descdata);
+                dictAssign(_pyDgram, descdata, xtc);
             } else {
                 printf("*** Corrupt xtc: namesid 0x%x not found in NamesLookup\n",(int)namesId);
                 throw "invalid namesid";
@@ -766,6 +806,9 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     }
     
     assignDict(self, (PyDgramObject*)configDgram);
+    
+    // Add top level xtc container and its attributes
+    setXtc((PyObject*)self, self->contInfo.pycontainertype, &(self->dgram->xtc));
 
     return 0;
 }

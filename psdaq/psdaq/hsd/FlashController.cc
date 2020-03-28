@@ -68,10 +68,11 @@ void FlashController::_write(const std::vector<uint8_t>& data)
       if (nfifo > FIFO_AFULL) {
         if (luseFifo) {
           nfifo = _prog_fifo_cnt;
-          //        printf("nfifo at 0x%x\n",nfifo);
+          if (lverbose)
+            printf("nfifo at 0x%x\n",nfifo);
           while (nfifo > FIFO_AFULL) {
-          usleep(10);
-          nfifo = _prog_fifo_cnt;
+            usleep(10);
+            nfifo = _prog_fifo_cnt;
           }
         }
         else {
@@ -249,4 +250,19 @@ std::vector<uint8_t> FlashController::read(unsigned nwords)
   std::vector<uint8_t> v;
   _read(v,nwords);
   return v;
+}
+
+void FlashController::test()
+{
+
+  printf("Writing _command (%p) = 1\n", &_command);
+  _command = 1; // reset
+  usleep(10);
+  _command = 0;
+  usleep(250000);
+  while(1) {
+    unsigned v = _prog_fifo_cnt;
+    printf("prog_fifo_cnt 0x%x\n", v);
+    usleep(100000);
+  }
 }

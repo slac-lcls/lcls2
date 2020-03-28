@@ -43,15 +43,17 @@ static bool lReset = false;
 
 static void check_program_clock(int ifd, const AxiVersion& vsn) 
 {
-  if (vsn.userValues[61] == 0 && (lInit || lReset)) {
-    //  Set the I2C Mux
-    dmaWriteRegister(ifd, 0x00e00000, (1<<2));
-    //  Configure the Si570
-    Kcu::Si570 s(ifd, 0x00e00800);
-    if (lReset)
-      s.reset();
-    else
-      s.program();
+  if (lInit || lReset) {
+    if (vsn.userValues[2] == 0) {
+      //  Set the I2C Mux
+      dmaWriteRegister(ifd, 0x00e00000, (1<<2));
+      //  Configure the Si570
+      Kcu::Si570 s(ifd, 0x00e00800);
+      if (lReset)
+        s.reset();
+      else
+        s.program();
+    }
     //  Reset the QPLL
     //uint32_t reg;
     dmaWriteRegister(ifd, 0x00a40024, 1);
@@ -93,28 +95,33 @@ int main (int argc, char **argv) {
     }
   }
 
-  if ( (fd[0] = open("/dev/datadev_0", O_RDWR)) <= 0 ) {
-    cout << "Error opening /dev/datadev_0" << endl;
-    return(1);
-  }
-
-  if ( (fd[1] = open("/dev/datadev_1", O_RDWR)) <= 0 ) {
+  if ( (fd[0] = open("/dev/datadev_1", O_RDWR)) <= 0 ) {
     cout << "Error opening /dev/datadev_1" << endl;
     //    return(1);
   }
 
+  if ( (fd[1] = open("/dev/datadev_0", O_RDWR)) <= 0 ) {
+    cout << "Error opening /dev/datadev_0" << endl;
+    //    return(1);
+  }
+
   { AxiVersion vsn;
-    if (axiVersionGet(fd[0], &vsn)>=0) {
-      printf("-- Core Axi Version --\n");
-      printf("firmwareVersion : %x\n", vsn.firmwareVersion);
-      printf("upTimeCount     : %u\n", vsn.upTimeCount);
-      printf("deviceId        : %x\n", vsn.deviceId);
-      printf("buildString     : %s\n", vsn.buildString); 
-      printf("corePcie[0:3]   : %c\n", (vsn.userValues[61] == 0) ? 'T':'F');
-      check_program_clock(fd[0], vsn);
-      if (fd[1]>=0 && axiVersionGet(fd[1], &vsn)>=0) {
-        printf("corePcie[4:7]   : %c\n", (vsn.userValues[61] == 0) ? 'T':'F');
-        check_program_clock(fd[1], vsn);
+    for(unsigned i=0; i<2; i++) {
+      int ifd = fd[i];
+      if (ifd >= 0 && axiVersionGet(ifd, &vsn)>=0) {
+        printf("-- Core Axi Version --\n");
+        printf("firmwareVersion : %x\n", vsn.firmwareVersion);
+        printf("upTimeCount     : %u\n", vsn.upTimeCount);
+        printf("deviceId        : %x\n", vsn.deviceId);
+        printf("buildString     : %s\n", vsn.buildString); 
+        printf("corePcie        : %c\n", (vsn.userValues[2] == 0) ? 'T':'F');
+        printf("dmaSize         : %u\n", vsn.userValues[0]);
+        printf("dmaClkFreq      : %u\n", vsn.userValues[4]);
+        printf("axiAddrWidth    : %u\n", (vsn.userValues[7]>>24)&0xff);
+        printf("axiDataWidth    : %u\n", (vsn.userValues[7]>>16)&0xff);
+        printf("axiIdBits       : %u\n", (vsn.userValues[7]>> 8)&0xff);
+        printf("axiLenBits      : %u\n", (vsn.userValues[7]>> 0)&0xff);
+        check_program_clock(ifd, vsn);
       }
     }
   }
@@ -208,9 +215,15 @@ int main (int argc, char **argv) {
 #define PRINTCLK(name, addr) {                                          \
     uint32_t reg;                                                       \
     printf("%20.20s :", #name);                                         \
-    dmaReadRegister(fd[0], addr, &reg);                                 \
-    printf(" %8.3f MHz", float(reg&0x1fffffff)*1.e-6);                  \
-    printf(" (%s)\n", (reg&(1<<31)) ? "Locked":"Not Locked");           \
+    for(unsigned i=0; i<2; i++) {                                       \
+      int ifd = fd[i];                                                  \
+      if (ifd >= 0) {                                                   \
+        dmaReadRegister(ifd, addr, &reg);                               \
+        printf(" %8.3f MHz", float(reg&0x1fffffff)*1.e-6);              \
+        printf(" (%s)", (reg&(1<<31)) ? "Locked":"Not Locked");         \
+      }                                                                 \
+    }                                                                   \
+    printf("\n");                                                       \
   }                                                                     \
 
   PRINTCLK(axilClk, 0x800100);
@@ -218,8 +231,27 @@ int main (int argc, char **argv) {
   PRINTCLK(clk200 , 0x800108);
   PRINTCLK(pgpClk , 0x80010c);
   { uint32_t v;
-    dmaReadRegister(fd[0], 0x00a40020, &v);
-    printf("qPllLock: %s\n", (v&1) ? "Locked" : "Not Locked"); }
+    printf("qPllLock:");
+    for(unsigned i=0; i<2; i++) {
+      int ifd = fd[i];
+      if (ifd >= 0) {
+        dmaReadRegister(ifd, 0x00a40020, &v);
+        printf(" %s", (v&1) ? "Locked" : "Not Locked");
+      }
+    }
+    printf("\n");
+  }
+  { uint32_t v;
+    printf("phyReset:");
+    for(unsigned i=0; i<2; i++) {
+      int ifd = fd[i];
+      if (ifd >= 0) {
+        dmaReadRegister(ifd, 0x00a40024, &v);
+        printf(" %x", v&7);
+      }
+    }
+    printf("\n");
+  }
 
   printf("-- PgpAxiL Registers --\n");
   PRINTFIELD(loopback , 0x08, 0, 0x7);
@@ -251,7 +283,28 @@ int main (int argc, char **argv) {
   PRINTERR(txOpCodeCnt, 0xa0);
   PRINTREG(txOpCodeLst, 0xa4);
 
+#define PRINTID(name) {                         \
+    uint64_t v;                                 \
+    uint32_t reg;                               \
+    printf("%20.20s :", #name);                 \
+    for(unsigned i=0; i<8; i++) {               \
+      int ifd = fd[i>>2];                       \
+      if (ifd>=0) {                                             \
+        READREG(name,0x38+base+(i&3)*0x10000);                  \
+        v = reg;                                                \
+        v <<= 32;                                               \
+        READREG(name,0x34+base+(i&3)*0x10000);                  \
+        v |= reg;                                               \
+        unsigned id = (v>>16)&0xffffffff;                       \
+        printf(" %8x", id);                                     \
+      }                                                         \
+    }                                                           \
+    printf("\n"); }
+
+  PRINTID(rxLinkId);
+
   base = 0x00a40000;
+#undef PRINTID
 #define PRINTID(name, addr) {                                   \
     uint32_t reg;                                               \
     printf("%20.20s :", #name);                                 \
@@ -263,7 +316,6 @@ int main (int argc, char **argv) {
       }                                                         \
     }                                                           \
     printf("\n"); }
-  PRINTID(rxLinkId, 0);
   PRINTID(txLinkId, 0x10);
 
   close(fd[0]);

@@ -11,6 +11,7 @@
 #include "Jesd204b.hh"
 #include "TprCore.hh"
 
+#include "psdaq/mmhw/TriggerEventManager.hh"
 #include "psdaq/epicstools/EpicsPVA.hh"
 
 #include <algorithm>
@@ -49,6 +50,9 @@ namespace Pds {
 
       Pds_Epics::EpicsPVA& pv = *_pv[fmc];
 
+      unsigned group = PVGET(readoutGroup);
+      _m.tem().det(fmc).stop();
+
       ChipAdcReg& reg = _m.chip(fmc).reg;
       reg.stop();
 
@@ -72,6 +76,8 @@ namespace Pds {
 
       if (PVGET(enable)==1) {
 
+        _m.jesd(fmc).clearErrors();
+
         reg.init();
         reg.resetCounts();
 
@@ -79,24 +85,26 @@ namespace Pds {
           for(unsigned i=4*fmc; i<4*(fmc+1); i++)
             pgp[i]->resetCounts(); }
 
-        unsigned group = PVGET(readoutGroup);
-        reg.setupDaq(group);
-
         _configure_fex(fmc,fex);
 
         printf("Configure done for chip %d\n",fmc);
 
         reg.setChannels(1);
         reg.start();
+
+        _m.tem().det(fmc).start(group);
+      }
+      else {
+        fex.disable();
       }
 
       _ready[fmc]->putFrom<unsigned>(1);
     }
 
-    void PV134Ctrls::reset() {
-      Pds_Epics::EpicsPVA& pv = *_pv[_pv.size()-1];
+    void PV134Ctrls::reset(unsigned fmc) {
+      Pds_Epics::EpicsPVA& pv = *_pv[2+fmc];
       if (PVGET(reset)) {
-        for(unsigned i=0; i<2; i++) {
+        { unsigned i=fmc;
           ChipAdcReg& reg = _m.chip(i).reg;
           reg.resetFbPLL();
           usleep(1000000);
@@ -116,6 +124,27 @@ namespace Pds {
         tpr.resetRx();
         usleep(10000);
         tpr.resetCounts();
+      }
+      if (PVGET(jesdclear)) {
+        printf("--jesdclear\n");
+        for(unsigned j=0; j<8; j++) 
+          _m.jesd(j).clearErrors();
+      }
+      if (PVGET(jesdsetup)) {
+        printf("--jesdsetup\n");
+        _m.setup_jesd(false);
+      }
+      if (PVGET(jesdinit)) {
+        printf("--jesdinit\n");
+        _m.i2c_lock(I2cSwitch::PrimaryFmc);
+        _m.jesdctl().default_init(_m.i2c().fmc_cpld,0);
+        _m.i2c_unlock();
+      }
+      if (PVGET(jesdadcinit)) {
+        _m.i2c_lock(I2cSwitch::PrimaryFmc);
+        printf("--jesdadcinit\n");
+        _m.jesdctl().reset();
+        _m.i2c_unlock();
       }
     }
     void PV134Ctrls::loopback(bool v) {

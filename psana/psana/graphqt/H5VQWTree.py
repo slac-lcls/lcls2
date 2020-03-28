@@ -138,8 +138,9 @@ class H5VQWTree(QWTree) :
             parname = parent.text() if parent is not None else None
             msg = 'selected item: %s row: %d parent: %s' % (itemsel.text(), selected.row(), parname) 
             logger.debug(msg)
-            msg = 'data.value:\n%s' % str(itemsel.data().value)
-            logger.debug(msg)
+            if isinstance(itemsel.data(), h5py.Dataset) :
+                msg = 'data.value:\n%s' % str(itemsel.data()[()]) #.value)
+                logger.debug(msg)
 
 
     #def set_style(self):

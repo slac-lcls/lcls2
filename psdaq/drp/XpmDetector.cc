@@ -3,10 +3,15 @@
 #include "AxisDriver.h"
 #include <unistd.h>
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/mmhw/TriggerEventManager.hh"
 
 using namespace XtcData;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+
+static void dmaReadRegister (int, uint32_t*, uint32_t*);
+static void dmaWriteRegister(int, uint32_t*, uint32_t);
+static bool lverbose = true;
 
 namespace Drp {
 
@@ -22,8 +27,20 @@ json XpmDetector::connectionInfo()
         logging::error("Error opening %s", m_para->device.c_str());
         return json();
     }
+
+    Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
+
     uint32_t reg;
-    dmaReadRegister(fd, 0x00a00008, &reg);
+    if (m_para->detType=="tt") {
+        // cpo: this is a hack that is specific for timetool.
+        // the address comes from pyrogue rootDevice.saveAddressMap('fname')
+        // perhaps ideally we would call detector-specific rogue python. this
+        // is the rogue hierarchy for this register in the timetool:
+        // TimeToolKcu1500Root.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId
+        dmaReadRegister(fd, 0x940024, &reg);
+    } else {
+        dmaReadRegister(fd, &tem->xma().rxId, &reg);
+    }
     close(fd);
     // there is currently a failure mode where the register reads
     // back as zero (incorrectly). This is not the best longterm
@@ -33,11 +50,9 @@ json XpmDetector::connectionInfo()
         logging::error("%s", msg);
         throw msg;
     }
-    int x = (reg >> 16) & 0xFF;
-    int y = (reg >> 8) & 0xFF;
-    int port = reg & 0xFF;
-    std::string xpmIp = {"10.0." + std::to_string(x) + '.' + std::to_string(y)};
-    json info = {{"xpm_ip", xpmIp}, {"xpm_port", port}};
+    int xpm  = (reg >> 20) & 0x0F;
+    int port = (reg >>  0) & 0xFF;
+    json info = {{"xpm_id", xpm}, {"xpm_port", port}};
     return info;
 }
 
@@ -60,22 +75,47 @@ void XpmDetector::connect(const json& json, const std::string& collectionId)
     }
 
     int readoutGroup = json["body"]["drp"][collectionId]["det_info"]["readout"];
-    uint32_t v = ((readoutGroup&0xf)<<0) |
-                  ((length&0xffffff)<<4) |
-                  (links<<28);
-    dmaWriteRegister(fd, 0x00a00000, v);
-    uint32_t w;
-    dmaReadRegister(fd, 0x00a00000, &w);
-    logging::info("Configured readout group [%u], length [%u], links [%x]: [%x](%x)\n",
-                  readoutGroup, length, links, v, w);
-    for (unsigned i=0; i<4; i++) {
-        if (links&(1<<i)) {
-            // this is the threshold to assert deadtime (high water mark) for every link
-            // 0x1f00 corresponds to 0x1f free buffers
-            dmaWriteRegister(fd, 0x00800084+32*i, 0x1f00);
+
+    Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
+    if (m_para->detType=="tt") {
+      // cpo: this is a hack that is specific for timetool.
+      // the address comes from pyrogue rootDevice.saveAddressMap('fname')
+      // perhaps ideally we would call detector-specific rogue python
+      // or use the new rogue version 5 c++ interface.
+      dmaWriteRegister(fd, 0x940104, readoutGroup);
+    } else {
+      for(unsigned i=0, l=links; l; i++) {
+        Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
+        if (l&(1<<i)) {
+          dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
+          dmaWriteRegister(fd, &b.pauseThresh, 16     );
+          dmaWriteRegister(fd, &b.group , readoutGroup);
+          dmaWriteRegister(fd, &b.enable, 3           );  // enable
+          l &= ~(1<<i);
+
+          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
+          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (length&0xffffff) | (1<<31));  // enable
         }
+      }
     }
+
     close(fd);
 }
 
+}
+
+void dmaReadRegister (int fd, uint32_t* addr, uint32_t* valp)
+{
+  uintptr_t addri = (uintptr_t)addr;
+  dmaReadRegister(fd, addri&0xffffffff, valp);
+  if (lverbose)
+    printf("[%08lx] = %08x\n",addri,*valp);
+}
+
+void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
+{
+  uintptr_t addri = (uintptr_t)addr;
+  dmaWriteRegister(fd, addri&0xffffffff, val);
+  if (lverbose)
+    printf("[%08lx] %08x\n",addri,val);
 }

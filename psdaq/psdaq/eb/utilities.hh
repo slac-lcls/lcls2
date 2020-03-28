@@ -17,7 +17,7 @@ namespace Pds
   {
     size_t roundUpSize(size_t size);
     void*  allocRegion(size_t size);
-    void   pinThread(const pthread_t& th, int cpu);
+    int    pinThread(const pthread_t& th, int cpu);
 
     class ImmData
     {

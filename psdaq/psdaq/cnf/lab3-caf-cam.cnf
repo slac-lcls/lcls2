@@ -1,12 +1,10 @@
 if not platform: platform = '1'
-username = 'lcls2'
-instr    = 'TST'
+instr    = 'tst'
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 conda_rel = 'ps-2.0.5'
 
-shelf = '1'
-collect_host = 'drp-tst-dev001'
+collect_host = 'drp-tst-dev002'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -22,12 +20,13 @@ collect_host = 'drp-tst-dev001'
 
 procmgr_config = [
  {                        id:'groupca',flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 1 5'},
- {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
  { host: collect_host,    id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -P '+instr+' -B DAQ:LAB2 -x 2'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -E -t 30000 -l WARNING -H '+collect_host},
  # trigger event builder
  { host: 'drp-tst-dev009', id:'teb1', flags:'xpu', conda:conda_rel, cmd:'teb -P '+instr+' -C '+collect_host},
+ # meb
+ { host: 'drp-tst-dev009', id:'meb1', flags:'sxpu', conda:conda_rel, cmd:'monReqServer -P '+instr+' -d -q 4 -C '+collect_host},
  # drp
- { host: 'drp-tst-dev008', id:'cam_0', flags:'sxpu', conda:conda_rel, cmd:'drp -v -o /ffb01/data -l 0xf -D AreaDetector -d /dev/datadev_0 -P '+instr+' -C '+collect_host},
- { host: 'drp-tst-dev009', id:'cam_1', flags:'sxpu', conda:conda_rel, cmd:'drp -v -o /ffb01/data -l 0xf -D AreaDetector -d /dev/datadev_0 -P '+instr+' -C '+collect_host}
+ { host: 'drp-tst-dev009', id:'cam_0', flags:'sxpu', conda:conda_rel, cmd:'drp -o /ffb01/data -l 0xf -D AreaDetector -d /dev/datadev_1 -P '+instr+' -C '+collect_host}
 ]

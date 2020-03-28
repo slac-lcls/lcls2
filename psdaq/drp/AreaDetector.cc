@@ -1,4 +1,3 @@
-
 #include "AreaDetector.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
@@ -50,19 +49,19 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc)
 {
     logging::info("AreaDetector configure");
 
-    Alg cspadFexAlg("cspadFexAlg", 1, 2, 3);
+    Alg fexAlg("fex", 2, 0, 0);
     unsigned segment = 0;
     NamesId fexNamesId(nodeId,FexNamesIndex);
-    Names& fexNames = *new(xtc) Names("xppcspad", cspadFexAlg, "cspad",
-                                      "detnum1234", fexNamesId, segment);
+    Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), fexAlg,
+                                      m_para->detType.c_str(), m_para->serNo.c_str(), fexNamesId, segment);
     FexDef myFexDef;
     fexNames.add(xtc, myFexDef);
     m_namesLookup[fexNamesId] = NameIndex(fexNames);
 
-    Alg cspadRawAlg("cspadRawAlg", 1, 2, 3);
+    Alg rawAlg("raw", 2, 0, 0);
     NamesId rawNamesId(nodeId,RawNamesIndex);
-    Names& rawNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad",
-                                      "detnum1234", rawNamesId, segment);
+    Names& rawNames = *new(xtc) Names(m_para->detName.c_str(), rawAlg,
+                                      m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId, segment);
     RawDef myRawDef;
     rawNames.add(xtc, myRawDef);
     m_namesLookup[rawNamesId] = NameIndex(rawNames);

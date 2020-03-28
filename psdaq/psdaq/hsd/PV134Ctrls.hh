@@ -16,7 +16,7 @@ namespace Pds {
     public:
       Module134& module() { return _m; }
     public:
-      void reset     ();
+      void reset     (unsigned);
       void configure (unsigned);
       void loopback  (bool);
     private:

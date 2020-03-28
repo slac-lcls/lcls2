@@ -1,0 +1,47 @@
+2020-02-06
+----------
+
+https://confluence.slac.stanford.edu/display/PSDM/New+XTCAV+Documentation
+https://confluence.slac.stanford.edu/display/PSDM/Old+XTCAV+Documentation?preview=/181536250/181699034/xtcav-users-v0p4.pdf
+
+Dark Runs
+xtcavDark amox23616 104 --max_shots 400
+
+Lasing Off Runs
+xtcavLasingOff amox23616 131 --max_shots 200
+
+Lasing On Runs
+xtcavLasingOn amox23616 137 --max_shots 5
+
+lcls2/psana/psana/hexanode/examples/
+conv-01-xtc1-to-json.py
+conv-02-json-to-xtc2.py
+
+DIRTMP = '/reg/data/ana03/scratch/dubrovin/'
+
+/reg/d/psdm/amo/amox23616/xtc/e1114-r0127-s00-c00.xtc
+
+Available now
+/reg/d/psdm/amo/amox23616/xtc/
+Restoring on disk from tapes amox23616 104, 131, 137
+e1114-r0104-s00-c00.xtc
+e1114-r0131-s00-c00.xtc
+e1114-r0137-s00-c00.xtc
+
+
+
+exp=amox23616:run=127
+
+event_keys -d exp=amox23616:run=104 -m3 
+
+EventKey(type=psana.Camera.FrameV1, src='DetInfo(XrayTransportDiagnostic.0:Opal1000.0)', alias='xtcav')
+EventKey(type=psana.Camera.FrameFexConfigV1, src='DetInfo(XrayTransportDiagnostic.0:Opal1000.0)', alias='xtcav')
+EventKey(type=psana.Opal1k.ConfigV1, src='DetInfo(XrayTransportDiagnostic.0:Opal1000.0)', alias='xtcav')
+
+python psana/psana/xtcav/examples/conv-01-xtc1-to-json.py 10 # 11 or 12
+python psana/psana/xtcav/examples/conv-02-json-to-xtc2.py 10 # 11 or 12
+
+Move files:
+mv /reg/data/ana03/scratch/dubrovin/*.xtc2 /reg/g/psdm/detector/data2_test/xtc/
+
+----------

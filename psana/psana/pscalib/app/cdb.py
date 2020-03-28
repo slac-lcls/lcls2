@@ -34,6 +34,7 @@ def usage():
            '  cdb add -e exp12345 -d detector_1234 -c pedestals -r 123 -f mypeds.data -u dubrovin\n'\
            '  cdb add -e new55555 -d detnew_5555   -c pedestals -r 123 -f mypeds.data -u dubrovin\n'\
            '  cdb add -e amox27716 -d tmo_quadanode -c calibcfg -r 100 -f configuration_quad.txt -i txt -u dubrovin\n'\
+           '  cdb add -e amox23616 -d xtcav -c pedestals -r 104 -f xtcav_peds.data -i xtcav -u dubrovin\n'\
            '  cdb deldoc -e exp12345 -d detector_1234 -c pedestals -r 123 -v 05 -u <username> -p <password> -C\n'\
            '  cdb deldoc -e cxix25615 -d cspad_0001 -c pedestals -r 125 -u <username> -p <password> -C\n'\
            '  cdb deldoc -e cxix25615 -d cspad_0001 -c pedestals -s 1520977960 -u <username> -p <password> -C\n'\
@@ -107,7 +108,7 @@ def input_option_parser() :
     h_experiment = 'experiment name, default = %s' % d_experiment 
     h_detector   = 'detector name, default = %s' % d_detector
     h_ctype      = 'calibration constant type, default = %s' % d_ctype 
-    h_dtype      = 'input file data type (None - array, txt - for text file), default = %s' % d_dtype 
+    h_dtype      = 'input file data type (None - array, txt - for text file, xtcav), default = %s' % d_dtype 
     h_run        = 'run number (begin), default = %s' % str(d_run) 
     h_run_end    = 'run number (end), default = %s' % str(d_run_end)
     h_time_stamp = 'time stamp, default = %s' % d_time_stamp 

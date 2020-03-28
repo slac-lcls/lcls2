@@ -20,6 +20,7 @@ Usage ::
 
     # get all-in-one:
     nhits, pkinds, pkvals, pktsec = peaks(wfs,wts)
+    pkinds, pkvals = peaks.peak_indexes_values(wfs, wts) # for V4
 
     # or get individually:
     nhits = peaks.number_of_hits(wfs, wts)
@@ -36,7 +37,9 @@ logger = logging.getLogger(__name__)
 import numpy as np
 import psana.pyalgos.generic.Utils as gu
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
-from ndarray import wfpkfinder_cfd
+from ndarray import wfpkfinder_cfd # from psana.pycalgos
+from psana.hexanode.WFUtils import peak_finder_v2, peak_finder_v3
+from psana.hexanode.PyCFD import PyCFD
 
 #----------
 
@@ -51,23 +54,54 @@ class WFPeaks :
 
         self._wfs_old = None
 
+        self.tbins = None # need it in V4 to convert _pktsec to _pkinds and _pkvals
+
 #----------
 
     def set_wf_peak_finder_parameters(self, **kwargs) :
 
-        self.BASE        = kwargs.get('cfd_base',          0.)
-        self.THR         = kwargs.get('cfd_thr',        -0.05)
-        self.CFR         = kwargs.get('cfd_cfr',         0.85)
-        self.DEADTIME    = kwargs.get('cfd_deadtime',    10.0)
-        self.LEADINGEDGE = kwargs.get('cfd_leadingedge', True)
-        self.IOFFSETBEG  = kwargs.get('cfd_ioffsetbeg',  1000)
-        self.IOFFSETEND  = kwargs.get('cfd_ioffsetend',  2000)
-        self.WFBINBEG    = kwargs.get('cfd_wfbinbeg',    6000)
-        self.WFBINEND    = kwargs.get('cfd_wfbinend',   30000)
-
-        self.NUM_CHANNELS= kwargs.get('numchs',5)
+        self.NUM_CHANNELS= kwargs.get('numchs',  5)
         self.NUM_HITS    = kwargs.get('numhits',16)
+        self.VERSION     = kwargs.get('version', 1)
 
+        if True :
+            self.BASE        = kwargs.get('cfd_base',          0.)
+            self.THR         = kwargs.get('cfd_thr',        -0.05)
+            self.CFR         = kwargs.get('cfd_cfr',         0.85)
+            self.DEADTIME    = kwargs.get('cfd_deadtime',    10.0)
+            self.LEADINGEDGE = kwargs.get('cfd_leadingedge', True)
+            self.IOFFSETBEG  = kwargs.get('cfd_ioffsetbeg',  1000)
+            self.IOFFSETEND  = kwargs.get('cfd_ioffsetend',  2000)
+            self.WFBINBEG    = kwargs.get('cfd_wfbinbeg',    6000)
+            self.WFBINEND    = kwargs.get('cfd_wfbinend',   30000)
+
+        if self.VERSION == 2 :
+            self.SIGMABINS   = kwargs.get('pf2_sigmabins',      3)
+            self.NSTDTHR     = kwargs.get('pf2_nstdthr',       -5)
+            self.DEADBINS    = kwargs.get('pf2_deadbins',      10)
+            self.IOFFSETBEG  = kwargs.get('pf2_ioffsetbeg',  1000)
+            self.IOFFSETEND  = kwargs.get('pf2_ioffsetend',  2000)
+            self.WFBINBEG    = kwargs.get('pf2_wfbinbeg',    6000)
+            self.WFBINEND    = kwargs.get('pf2_wfbinend',   30000)
+
+        if self.VERSION == 3 :
+            self.SIGMABINS   = kwargs.get('pf3_sigmabins',      3)
+            self.BASEBINS    = kwargs.get('pf3_basebins',     100)
+            self.NSTDTHR     = kwargs.get('pf3_nstdthr',        5)
+            self.GAPBINS     = kwargs.get('pf3_gapbins',      200)
+            self.DEADBINS    = kwargs.get('pf3_deadbins',      10)
+            # used in proc_waveforms
+            self.IOFFSETBEG  = kwargs.get('pf3_ioffsetbeg',  1000)
+            self.IOFFSETEND  = kwargs.get('pf3_ioffsetend',  2000)
+            self.WFBINBEG    = kwargs.get('pf3_wfbinbeg',    6000)
+            self.WFBINEND    = kwargs.get('pf3_wfbinend',   30000)
+            
+        if self.VERSION == 4 :
+            self.paramsCFD = kwargs.get('paramsCFD', {})
+            self.cnls = ['mcp','x1','x2','y1','y2']#for QUAD only
+            self.cnls_map = {4:'mcp',0:'x1',1:'x2',2:'y1',3:'y2'}
+            self.PyCFDs = {cnl:PyCFD(self.paramsCFD[cnl]) for cnl in self.cnls}
+                
 #----------
 
     def _init_arrays(self) :
@@ -93,21 +127,46 @@ class WFPeaks :
         offsets = wfs[:,self.IOFFSETBEG:self.IOFFSETEND].mean(axis=1)
         #print('  XXX offsets: %s' % str(offsets))
 
+        if self.VERSION == 2 : std = wfs[:,self.IOFFSETBEG:self.IOFFSETEND].std(axis=1)
+
+
         self.wfsprep = wfs[:,self.WFBINBEG:self.WFBINEND] - offsets.reshape(-1, 1) # subtract wf-offset
         self.wtsprep = wts[:,self.WFBINBEG:self.WFBINEND] # sec
 
         for ch in range(self.NUM_CHANNELS) :
 
-            wfch = self.wfsprep[ch,:]
-            wtch = self.wtsprep[ch,:]
+            wf = self.wfsprep[ch,:]
+            wt = self.wtsprep[ch,:]
 
-            npeaks = wfpkfinder_cfd(wfch, self.BASE, self.THR, self.CFR, self.DEADTIME, self.LEADINGEDGE,\
-                                    self._pkvals[ch,:], self._pkinds[ch,:])
+            npeaks = None
+            if self.VERSION == 3 :
+                npeaks, self.wfgi, self.wff, self.wfg, self.thrg, self.edges =\
+                peak_finder_v3(wf, self.SIGMABINS, self.BASEBINS, self.NSTDTHR, self.GAPBINS, self.DEADBINS,\
+                                        self._pkvals[ch,:], self._pkinds[ch,:])
+            elif self.VERSION == 2 :
+                self.THR = self.NSTDTHR*std[ch]
+                npeaks = peak_finder_v2(wf, self.SIGMABINS, self.THR, self.DEADBINS,\
+                                        self._pkvals[ch,:], self._pkinds[ch,:])
+            elif self.VERSION == 4 :
+                t_list = self.PyCFDs[self.cnls_map[ch]].CFD(wf,wt)
+                npeaks = self._pkinds[ch,:].size if self._pkinds[ch,:].size<=len(t_list) else len(t_list)
+                # need it in V4 to convert _pktsec to _pkinds and _pkvals
+                if self.tbins is None :
+                    from psana.pyalgos.generic.HBins import HBins
+                    self.tbins = HBins(list(wt))
+
+            else : # self.VERSION == 1
+                npeaks = wfpkfinder_cfd(wf, self.BASE, self.THR, self.CFR, self.DEADTIME, self.LEADINGEDGE,\
+                                        self._pkvals[ch,:], self._pkinds[ch,:])
+
             #print(' npeaks:', npeaks)
             #assert (npeaks<self.NUM_HITS), 'number of found peaks exceeds reserved array shape'
             if npeaks>=self.NUM_HITS : npeaks = self.NUM_HITS
             self._number_of_hits[ch] = npeaks
-            self._pktsec[ch, :npeaks] = wtch[self._pkinds[ch, :npeaks]] #sec
+            if self.VERSION == 4 :
+                self._pktsec[ch, :npeaks] = np.array(t_list)[:npeaks]
+            else:
+                self._pktsec[ch, :npeaks] = wt[self._pkinds[ch, :npeaks]] #sec
 
         self._wfs_old = wfs
 
@@ -139,6 +198,19 @@ class WFPeaks :
         self.proc_waveforms(wfs, wts)
         return self._pkvals
 
+    def peak_indexes_values(self, wfs, wts) :
+        """ added for V4 to convert _pktsec to _pkinds and _pkvals
+        """
+        self.proc_waveforms(wfs, wts)
+        if self.VERSION == 4 :
+          # This is SLOW for V4 graphics...
+          for ch in range(self.NUM_CHANNELS) :
+            npeaks = self._number_of_hits[ch]
+            wf = self.wfsprep[ch,:]
+            self._pkinds[ch, :npeaks] = self.tbins.bin_indexes(self._pktsec[ch, :npeaks])
+            self._pkvals[ch, :npeaks] = wf[self._pkinds[ch, :npeaks]]
+        return self._pkinds, self._pkvals
+
     def __call__(self, wfs, wts) :
         self.proc_waveforms(wfs, wts)
         return self._number_of_hits,\
@@ -159,9 +231,10 @@ if __name__ == "__main__" :
     print(50*'_')
     kwargs = {'numchs'   : 5,
               'numhits'  : 16,
+              'version'  : 1,
              }
-    cfdpars= {'cfd_base'       :  0.,
-              'cfd_thr'        : -0.05,
+
+    cfdpars= {'cfd_thr'        : -0.05,
               'cfd_cfr'        :  0.85,
               'cfd_deadtime'   :  10.0,
               'cfd_leadingedge':  True,
@@ -171,6 +244,24 @@ if __name__ == "__main__" :
               'cfd_wfbinend'   : 22000,
              }
     kwargs.update(cfdpars)
+
+    pf2pars= {'pf2_sigmabins'  :     3,
+              'pf2_nstdthr'    :    -5,
+              'pf2_deadbins'   :    10,
+              'pf2_ioffsetbeg' :  1000,
+              'pf2_ioffsetend' :  2000,
+              'pf2_wfbinbeg'   :  6000,
+              'pf2_wfbinend'   : 22000,
+             }
+    kwargs.update(pf2pars)
+
+    pf3pars= {'pf3_sigmabins'  :     3,
+              'pf3_basebins'   :   100,
+              'pf3_nstdthr'    :     5,
+              'pf3_gapbins'    :   100,
+              'pf3_deadbins'   :    20,
+             }
+    kwargs.update(pf3pars)
 
     o = WFPeaks(**kwargs)
 

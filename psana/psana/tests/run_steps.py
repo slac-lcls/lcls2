@@ -73,6 +73,8 @@ def run_serial_read(n_events, batch_size=1, filter_fn=0):
     cn_events = 0
     result = {'evt_per_step':[0,0,0], 'n_steps': 0, 'n_events':0}
     for run in ds.runs():
+        edet = run.Detector('HX2:DVD:GCC:01:PMON')
+        sdet = run.Detector('motor2')
         for i, step in enumerate(run.steps()):
             cn_evt_per_step = 0
             for j, evt in enumerate(step.events()):
@@ -145,8 +147,10 @@ if __name__ == "__main__":
             (51, 5, my_filter), \
             (20, 1, 0), \
             (19, 1, 0), \
-            (1, 1, my_filter), (1, 1, 0), \
-            (3, 4, my_filter), (3, 4, 0), \
+            (1, 1, my_filter), \
+            (1, 1, 0), \
+            (3, 4, my_filter), 
+            (3, 4, 0), \
              ]
     
     for test_case in test_cases:
@@ -161,6 +165,7 @@ if __name__ == "__main__":
                     sum_events_per_step += np.asarray(result[i]['evt_per_step'], dtype=np.int)
                 sum_events += result[i]['n_events']
                 n_steps = np.max([n_steps, result[i]['n_steps']])
+            
             assert all(sum_events_per_step == [10,10,10]) 
             assert sum_events == 30
             assert n_steps == 3

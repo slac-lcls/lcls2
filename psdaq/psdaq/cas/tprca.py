@@ -320,6 +320,12 @@ class Ui_MainWindow(object):
         layout.addWidget( QtWidgets.QLabel('RXCLK RATE [MHz]'), row, 0 )
         layout.addWidget( PvDbl(pvname+':RXCLKRATE'), row, 1 )
         row += 1
+        layout.addWidget( QtWidgets.QLabel('IRQENA'), row, 0 )
+        layout.addWidget( PvEditInt(pvname+':IRQENA'), row, 1 )
+        row += 1
+        layout.addWidget( QtWidgets.QLabel('EVTCNT'), row, 0 )
+        layout.addWidget( PvEditInt(pvname+':EVTCNT'), row, 1 )
+        row += 1
         layout.setColumnStretch(2,1)
         layout.setRowStretch(row,1)
 

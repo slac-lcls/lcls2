@@ -42,8 +42,8 @@ using json     = nlohmann::json;
 using logging  = psalg::SysLog;
 using string_t = std::string;
 
-static const int      CORE_0          = 18; // devXXX: 11, devXX:  7, accXX:  9
-static const int      CORE_1          = 19; // devXXX: 12, devXX: 19, accXX: 21
+static const int      CORE_0          = -1; // devXXX: 18, devXX:  7, accXX:  9
+static const int      CORE_1          = -1; // devXXX: 19, devXX: 19, accXX: 21
 static const string_t TRIGGER_DETNAME = "tmoTeb";
 static const unsigned PROM_PORT_BASE  = 9200; // Prometheus port
 static const unsigned MAX_PROM_PORTS  = 100;
@@ -233,6 +233,14 @@ int Teb::configure(const EbParams& prms,
                      __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
+  }
+
+  // Note that this loop can't be combined with the one above due to the exchange protocol
+  for (unsigned i = 0; i < _mrqLinks.size(); ++i)
+  {
+    EbLfSvrLink* link  = _mrqLinks[i];
+    unsigned     rmtId = link->id();
+
     if (link->postCompRecv())
     {
       logging::error("%s:\n  Failed to post CQ buffers for Mon Requestor ID %d",
@@ -248,7 +256,12 @@ int Teb::configure(const EbParams& prms,
 
 void Teb::run()
 {
-  pinThread(pthread_self(), _prms.core[0]);
+  int rc = pinThread(pthread_self(), _prms.core[0]);
+  if (rc != 0)
+  {
+    logging::debug("%s:\n  Error from pinThread:\n  %s",
+                   __PRETTY_FUNCTION__, strerror(rc));
+  }
 
   logging::info("TEB thread is starting");
 
@@ -626,6 +639,7 @@ int TebApp::_configure(const json& msg)
 
 # undef _FETCH
 
+    // Find and register a port to use with Prometheus for run-time monitoring
   if (_exposer)  _exposer.reset();
   unsigned port = 0;
   for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
@@ -820,13 +834,13 @@ void TebApp::_printGroups(unsigned groups, const u64arr_t& array) const
 
 void TebApp::_printParams(const EbParams& prms, unsigned groups) const
 {
-  printf("Parameters of TEB ID %d:\n",                         prms.id);
-  printf("  Thread core numbers:        %d, %d\n",             prms.core[0], prms.core[1]);
-  printf("  Partition:                  %d\n",                 prms.partition);
-  printf("  Bit list of contributors:   0x%016lx, cnt: %zd\n", prms.contributors,
-                                                                std::bitset<64>(prms.contributors).count());
-  printf("  Readout group contractors:  ");                    _printGroups(groups, prms.contractors);
-  printf("  Readout group receivers:    ");                    _printGroups(groups, prms.receivers);
+  printf("Parameters of TEB ID %d:\n",                           prms.id);
+  printf("  Thread core numbers:          %d, %d\n",             prms.core[0], prms.core[1]);
+  printf("  Partition:                    %d\n",                 prms.partition);
+  printf("  Bit list of contributors:     0x%016lx, cnt: %zd\n", prms.contributors,
+                                                                 std::bitset<64>(prms.contributors).count());
+  printf("  Readout group contractors:    ");                    _printGroups(groups, prms.contractors);
+  printf("  Readout group receivers:      ");                    _printGroups(groups, prms.receivers);
   printf("  ConfigDb trigger detName:     %s\n",                 prms.trgDetName.c_str());
   printf("  Number of MEB requestors:     %d\n",                 prms.numMrqs);
   printf("  Batch duration:               0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);

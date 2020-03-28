@@ -108,3 +108,7 @@ class ts_ts_0_0_1(DetectorImpl):
         if segments is None: return None
 
         return segments[0]
+
+class ts_raw_2_0_0(ts_ts_0_0_1):
+    def __init__(self, *args):
+        super().__init__(*args)

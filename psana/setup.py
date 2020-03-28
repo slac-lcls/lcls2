@@ -23,7 +23,7 @@ sys.argv.remove(arg[0])
 
 # Shorter BUILD_LIST can be used to speedup development loop.
 #Command example: ./build_all.sh -b PEAKFINDER:HEXANODE:CFD -md
-BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY')
+BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY')# ,'XTCAV')
 arg = [arg for arg in sys.argv if arg.startswith('--ext_list')]
 if arg:
     s_exts = arg[0].split('=')[1]
@@ -93,8 +93,7 @@ if 'PSANA' in BUILD_LIST :
          'numpy',
        ],
        packages = find_packages(),
-       include_package_data = True,
-       package_data={'graphqt': ['data/icons/*.png','data/icons/*.gif'],
+       package_data={'psana.graphqt': ['data/icons/*.png','data/icons/*.gif'],
        },
        #cmdclass={'build_ext': my_build_ext},
        ext_modules = [dgram_module, container_module],
@@ -113,6 +112,10 @@ if 'PSANA' in BUILD_LIST :
                 'hdf5explorer        = psana.graphqt.app.hdf5explorer:hdf5explorer_gui',
                 'screengrabber       = psana.graphqt.ScreenGrabberQt5:run_GUIScreenGrabber',
                 'detnames            = psana.app.detnames:detnames',
+                'xtcavDark           = psana.xtcav.app.xtcavDark',
+                'xtcavLasingOff      = psana.xtcav.app.xtcavLasingOff',
+                'xtcavLasingOn       = psana.xtcav.app.xtcavLasingOn',
+                'xtcavDisplay        = psana.xtcav.app.xtcavDisplay',
              ]
        },
    )
@@ -147,6 +150,22 @@ if 'PEAKFINDER' in BUILD_LIST :
   )
 
   setup(name="peakFinder",
+      ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
+
+  # direct LCLS1 version of peak-finders
+  ext = Extension("psalg_ext",
+                sources=["psana/peakFinder/psalg_ext.pyx",
+                         "../psalg/psalg/peaks/src/PeakFinderAlgosLCLS1.cc",
+                         "../psalg/psalg/peaks/src/LocalExtrema.cc"],
+                libraries = ['utils'], # for SysLog
+                language="c++",
+                extra_compile_args = extra_cxx_compile_args,
+                extra_link_args = extra_link_args_rpath,
+                include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
+                library_dirs = [os.path.join(instdir, 'lib')],
+  )
+
+  setup(name="psalg_ext",
       ext_modules=cythonize(ext, build_dir=CYT_BLD_DIR))
 
 

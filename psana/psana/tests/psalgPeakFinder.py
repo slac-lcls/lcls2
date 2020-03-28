@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import time
 import sys
 
-doPlot = int(sys.argv[1])
+doPlot = int(sys.argv[1]) if len(sys.argv) > 1 else '1'
+
 data = np.array([[  4.46530676e+00,   1.92752438e+01,   1.88353024e+01,
            2.29152584e+01,   1.43527770e+00,   2.69853268e+01,
            3.34531188e+00,  -1.46735292e-02,   2.40352535e+01,
@@ -58,8 +59,6 @@ assert(intens[0]>1500)
 
 rows1, cols1, intens1 = \
 pk.peak_finder_v3r3_d2(data+6, mask, rank=3, r0=4, dr=2, nsigm=0)
-
-
 
 print("intens:",intens)
 print("intens1:",intens1)

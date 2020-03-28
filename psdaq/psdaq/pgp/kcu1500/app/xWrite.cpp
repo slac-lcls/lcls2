@@ -143,7 +143,7 @@ int main (int argc, char **argv) {
 
   data = (uint *)malloc(sizeof(uint)*size);
   for (x=0; x<size; x++) {
-    data[x] = random();
+    data[x] = (random() & 0xffff0000) | (x & 0xffff);
     if (!lquiet) {
       cout << " 0x" << setw(8) << setfill('0') << hex << data[x];
       if ( ((x+1)%10) == 0 ) cout << endl << "   ";

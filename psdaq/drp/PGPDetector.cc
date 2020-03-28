@@ -1,5 +1,4 @@
 #include <iostream>
-#include <fstream>
 #include <limits.h>
 #include "DataDriver.h"
 #include "psdaq/service/EbDgram.hh"
@@ -10,46 +9,41 @@
 #include "psdaq/eb/TebContributor.hh"
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
+#include "EventBatcher.hh"
 
 using logging = psalg::SysLog;
 
-namespace Drp {
+using namespace Drp;
 
-long readInfinibandCounter(const std::string& counter)
-{
-    std::string path{"/sys/class/infiniband/mlx5_0/ports/1/counters/" + counter};
-    std::ifstream in(path);
-    if (in.is_open()) {
-        std::string line;
-        std::getline(in, line);
-        return stol(line);
-    }
-    else {
-        return 0;
+const Pds::TimingHeader* getTimingHeader(const Parameters& para, MemPool& pool, uint32_t index) {
+    if (para.rogueDet) {
+        EvtBatcherHeader& ebh = *(EvtBatcherHeader*)(pool.dmaBuffers[index]);
+        // skip past the event-batcher header
+        return reinterpret_cast<Pds::TimingHeader*>(ebh.next());
+    } else {
+        return reinterpret_cast<Pds::TimingHeader*>(pool.dmaBuffers[index]);
     }
 }
 
-bool checkPulseIds(MemPool& pool, PGPEvent* event)
+bool checkPulseIds(const Parameters& para, MemPool& pool, PGPEvent* event)
 {
     uint64_t pulseId = 0;
     for (int i=0; i<4; i++) {
         if (event->mask & (1 << i)) {
             uint32_t index = event->buffers[i].index;
-            const Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(pool.dmaBuffers[index]);
+            const Pds::TimingHeader* timingHeader = getTimingHeader(para, pool,index);
             if (pulseId == 0) {
                 pulseId = timingHeader->pulseId();
             }
             else {
                 if (pulseId != timingHeader->pulseId()) {
-                    logging::error("Wrong pulse id! expected %lu but got %lu instead",
-                           pulseId, timingHeader->pulseId());
+                    logging::error("Wrong pulse id! expected %014lx but got %014lx instead",
+                                   pulseId, timingHeader->pulseId());
                     return false;
                 }
             }
-            // check bit 7 in pulseId for error
-            bool error = timingHeader->control() & (1 << 7);
-            if (error) {
-                logging::error("Error bit in pulseId is set");
+            if (timingHeader->error()) {
+                logging::error("Timing header error bit is set");
             }
         }
     }
@@ -70,12 +64,12 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         for (unsigned i=0; i<batch.size; i++) {
             unsigned index = (batch.start + i) % nbuffers;
             PGPEvent* event = &pool.pgpEvents[index];
-            checkPulseIds(pool, event);
+            checkPulseIds(para, pool, event);
 
             // get transitionId from the first lane in the event
             int lane = __builtin_ffs(event->mask) - 1;
             uint32_t dmaIndex = event->buffers[lane].index;
-            const Pds::TimingHeader* timingHeader = (Pds::TimingHeader*)pool.dmaBuffers[dmaIndex];
+            const Pds::TimingHeader* timingHeader = getTimingHeader(para, pool,dmaIndex);
 
             // make new dgram in the pebble
             // It must be an EbDgram in order to be able to send it to the MEB
@@ -105,12 +99,13 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             }
             // transitions
             else {
-                // Since the Transition Dgram's XTC was already created on
-                // phase1 of the transition, fix up the Dgram header with the
-                // real one while taking care not to touch the XTC
-                // Revisit: Delay this until EbReceiver time?
-                Pds::EbDgram* trDgram = pool.transitionDgram();
+                // Allocate a transition dgram from the pool and initialize its header
+                Pds::EbDgram* trDgram = pool.allocateTr();
                 memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                // copy the temporary xtc created on phase 1 of the transition
+                // into the real location
+                XtcData::Xtc& trXtc = det->transitionXtc();
+                memcpy(&trDgram->xtc, &trXtc, trXtc.extent);
                 // make sure the detector hasn't made the transition too big
                 size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();
                 if (size > para.maxTrSize) {
@@ -121,6 +116,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 if (event->l3InpBuf) { // else timed out
                     new(event->l3InpBuf) Pds::EbDgram(*dgram);
                 }
+                event->transitionDgram = trDgram;
             }
         }
 
@@ -137,7 +133,7 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
     for (int i=0; i<4; i++) {
         if (para.laneMask & (1 << i)) {
             logging::info("setting lane  %d", i);
-            dmaAddMaskBytes(mask, dmaDest(i, 0));
+            dmaAddMaskBytes(mask, dmaDest(i, para.virtChan));
         }
     }
     dmaSetMaskBytes(drp.pool.fd(), mask);
@@ -170,12 +166,6 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
 
     exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
                   [&](){return bytes;});
-
-    exporter->add("drp_port_rcv_rate", labels, MetricType::Rate,
-                  [](){return 4*readInfinibandCounter("port_rcv_data");});
-
-    exporter->add("drp_port_xmit_rate", labels, MetricType::Rate,
-                  [](){return 4*readInfinibandCounter("port_xmit_data");});
 
     auto queueLength = [](std::vector<SPSCQueue<Batch> >& vec) {
         size_t sum = 0;
@@ -211,7 +201,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
                 exit(-1);
             }
 
-            uint32_t* data = (uint32_t*)m_pool.dmaBuffers[index];
+            uint32_t* data = (uint32_t*)getTimingHeader(m_para, m_pool, index);
             uint32_t evtCounter = data[5] & 0xffffff;
             uint32_t current = evtCounter & bufferMask;
             PGPEvent* event = &m_pool.pgpEvents[current];
@@ -221,17 +211,23 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
             buffer->index = index;
             event->mask |= (1 << lane);
 
+            logging::debug("PGPReader  lane %d  size %d  hdr %016lx.%016lx.%08x",
+                           lane, size,
+                           reinterpret_cast<uint64_t*>(data)[0],
+                           reinterpret_cast<uint64_t*>(data)[1],
+                           reinterpret_cast<uint32_t*>(data)[4]);
+
             if (event->mask == m_para.laneMask) {
                 const Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(data);
                 XtcData::TransitionId::Value transitionId = timingHeader->service();
                 if (transitionId != XtcData::TransitionId::L1Accept) {
-                    logging::debug("PGPReader  saw %s transition @ %d.%09d (%014lx)",
+                    logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",
                                    XtcData::TransitionId::name(transitionId),
                                    timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                    timingHeader->pulseId());
                 }
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-                    logging::critical("%sFatal: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
+                    logging::critical("%PGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
                            RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
                     logging::critical("data: %08x %08x %08x %08x %08x %08x",
                            data[0], data[1], data[2], data[3], data[4], data[5]);
@@ -319,6 +315,4 @@ void PGPDetector::shutdown()
     for (unsigned i = 0; i < m_para.nworkers; i++) {
         m_workerOutputQueues[i].shutdown();
     }
-}
-
 }

@@ -4,10 +4,11 @@ with the same constants saved and retrieved in CDB.
 """
 import sys
 #from psana.pscalib.calib.XtcavConstants import Load, dict_from_xtcav_calib_object, compare_dicts
-from psana.pscalib.calib.XtcavUtils import Load, dict_from_xtcav_calib_object, compare_dicts
+from psana.pscalib.calib.XtcavUtils import Load, dict_from_xtcav_calib_object
 import psana.pscalib.calib.MDBUtils as dbu
 from psana.pscalib.calib.CalibUtils import parse_calib_file_name #history_dict_for_file, history_list_of_dicts
 from psana.pscalib.calib.MDBConvertLCLS1 import detname_conversion
+from psana.pscalib.calib.MDBConvertUtils import compare_dicts
 from psana.pscalib.calib.CalibConstants import HOST, PORT
 
 #------------------------------
@@ -100,8 +101,9 @@ if __name__ == "__main__":
     #path='/reg/d/psdm/XCS/xcsm9816/calib/Xtcav::CalibV1/XrayTransportDiagnostic.0:Opal1000.0/pedestals/30-end.data'
 
     fname = sys.argv[1] if len(sys.argv) > 1 else path
+    add_consts_to_cdb = True if len(sys.argv) > 2 else False
 
-    test_xtcav_calib_constants(fname)
+    test_xtcav_calib_constants(fname, add_consts_to_cdb)
     usage(path)
 
 #------------------------------

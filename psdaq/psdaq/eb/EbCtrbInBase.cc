@@ -32,6 +32,7 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
   _maxBatchSize(0),
   _batchCount  (0),
   _eventCount  (0),
+  _deliverCount(0),
   _prms        (prms),
   _region      (nullptr)
 {
@@ -39,12 +40,14 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
   exporter->add("TCtbI_RxPdg", labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
   exporter->add("TCtbI_BatCt", labels, MetricType::Counter, [&](){ return _batchCount;          });
   exporter->add("TCtbI_EvtCt", labels, MetricType::Counter, [&](){ return _eventCount;          });
+  exporter->add("TCtbI_DlrCt", labels, MetricType::Counter, [&](){ return _deliverCount;        });
 }
 
 int EbCtrbInBase::configure(const TebCtrbParams& prms)
 {
-  _batchCount = 0;
-  _eventCount = 0;
+  _batchCount   = 0;
+  _eventCount   = 0;
+  _deliverCount = 0;
 
   unsigned numEbs = std::bitset<64>(prms.builders).count();
   _links.resize(numEbs);
@@ -57,9 +60,8 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
     return rc;
   }
 
-  size_t size = 0;
+  size_t regSize = 0;
 
-  // Since each EB handles a specific batch, one region can be shared by all
   for (unsigned i = 0; i < _links.size(); ++i)
   {
     EbLfSvrLink*   link;
@@ -75,26 +77,18 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
 
     if (_prms.verbose)  printf("Inbound link with TEB ID %d connected\n", rmtId);
 
-    size_t regSize;
-    if ( (rc = link->prepare(&regSize)) )
+    size_t size;
+    if ( (rc = link->prepare(&size)) )
     {
       fprintf(stderr, "%s:\n  Failed to prepare link with TEB ID %d\n",
               __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
 
-    if (!size)
+    // Since each EB handles a specific batch, one region can be shared by all
+    if (!regSize)
     {
-      size          = regSize;
-      _maxBatchSize = regSize / MAX_BATCHES;
-
-      _region = allocRegion(regSize);
-      if (_region == nullptr)
-      {
-        fprintf(stderr, "%s:\n  No memory found for a Result MR of size %zd\n",
-                __PRETTY_FUNCTION__, regSize);
-        return ENOMEM;
-      }
+      regSize = size;
     }
     else if (regSize != size)
     {
@@ -102,6 +96,23 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
               "(%zd from Id %d)\n", __PRETTY_FUNCTION__, size, regSize, rmtId);
       return -1;
     }
+  }
+
+  _maxBatchSize = regSize / MAX_BATCHES;
+
+  _region = allocRegion(regSize);
+  if (_region == nullptr)
+  {
+    fprintf(stderr, "%s:\n  No memory found for a Result MR of size %zd\n",
+            __PRETTY_FUNCTION__, regSize);
+    return ENOMEM;
+  }
+
+  // Note that this loop can't be combined with the one above due to the exchange protocol
+  for (unsigned i = 0; i < _links.size(); ++i)
+  {
+    EbLfSvrLink* link = _links[i];
+    unsigned     rmtId = link->id();
 
     if ( (rc = link->setupMr(_region, regSize)) )
     {
@@ -126,7 +137,12 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
 
 void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
 {
-  pinThread(pthread_self(), _prms.core[1]);
+  int rc = pinThread(pthread_self(), _prms.core[1]);
+  if (rc && _prms.verbose)
+  {
+    fprintf(stderr, "%s:\n  Error from pinThread:\n  %s\n",
+            __PRETTY_FUNCTION__, strerror(rc));
+  }
 
   printf("Receiver thread is starting\n");
 
@@ -286,7 +302,7 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
   uint64_t           iPid   = input->pulseId();
   unsigned           rCnt   = MAX_ENTRIES;
   unsigned           iCnt   = MAX_ENTRIES;
-  do
+  while (true)
   {
     // Ignore results for which there is no input
     // This can happen due to this Ctrb being in a different readout group than
@@ -307,25 +323,29 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
              idx, svc, result, ctl, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid);
     }
 
+    ++_eventCount;
+
     if (rPid == iPid)
     {
       process(*result, inputs->retrieve(iPid));
 
-      ++_eventCount;                    // Don't count events not meant for us
+      ++_deliverCount;                  // Don't count events not meant for us
+
+      if (!--iCnt || input->isEOL())  break; // Handle full list faster
 
       input = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(input) + iSize);
 
       iPid = input->pulseId();
-      if (!--iCnt || !iPid)  break;     // Handle full list faster
     }
+
+    if (!--rCnt || result->isEOL())  break; // Handle full list faster
 
     result = reinterpret_cast<const ResultDgram*>(reinterpret_cast<const char*>(result) + rSize);
 
     rPid = result->pulseId();
   }
-  while (--rCnt && rPid);               // Handle full list faster
 
-  if (iCnt && iPid)
+  if (iCnt && !input->isEOL())
   {
     fprintf(stderr, "%s:\n  Not all inputs received results, inp: %d %014lx res: %d %014lx\n",
             __PRETTY_FUNCTION__, MAX_ENTRIES - iCnt, iPid, MAX_ENTRIES - rCnt, rPid);
@@ -335,7 +355,7 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
     {
       uint64_t pid = result->pulseId();
       printf("  %2d: pid %014lx, appPrm %p\n", i, pid, inputs->retrieve(pid));
-      if (pid == 0ul)  break;
+      if (result->isEOL())  break;
       result = reinterpret_cast<const ResultDgram*>(reinterpret_cast<const char*>(result) + rSize);
     }
     printf("Inputs:\n");

@@ -1,5 +1,5 @@
 daqConfig = {'readoutGroup':('i', 0),
-             'full_event'  :('i', 4),
+             'full_event'  :('i', 8),
              'full_size'   :('i', 2048),
              'test_pattern':('i', 0),
              'fs_range_vpp':('i', 0xa000),
@@ -8,11 +8,11 @@ daqConfig = {'readoutGroup':('i', 0),
              'sync_ph_odd' :('i',  1450),
              'enable'      :('i', 0),
              'raw_start'   :('i', 4),
-             'raw_gate'    :('i', 20),
-             'raw_prescale':('i', 1),
+             'raw_gate'    :('i', 54),
+             'raw_prescale':('i', 0),
              'fex_start'   :('i', 4),
-             'fex_gate'    :('i', 20),
-             'fex_prescale':('i', 0),
+             'fex_gate'    :('i', 40),
+             'fex_prescale':('i', 1),
              'fex_ymin'    :('i', 2040),
              'fex_ymax'    :('i', 2056),
              'fex_xpre'    :('i', 1),
@@ -21,7 +21,11 @@ daqConfig = {'readoutGroup':('i', 0),
 daqReset   = {'timrxrst'    :('i', 0),
               'timpllrst'   :('i', 0),
               'pgploopback' :('i', 0),
-              'reset'       :('i', 0) }
+              'reset'       :('i', 0),
+              'jesdsetup'   :('i', 0),
+              'jesdinit'    :('i', 0),
+              'jesdadcinit' :('i', 0),
+              'jesdclear'   :('i', 0)}
 
 monTiming = {'timframecnt':('i', 0),
              'timpausecnt':('i', 0),
@@ -37,7 +41,9 @@ monTiming = {'timframecnt':('i', 0),
              'headercntl0':('i', 0),
              'headercntof':('i', 0),
              'headerfifow':('i', 0),
-             'headerfifor':('i', 0) }
+             'headerfifor':('i', 0),
+             'fulltotrig' :('i', 0),
+             'nfulltotrig':('i', 0) }
 
 monPgp    = {'loclinkrdy' :('ai', [0]*4),
              'remlinkrdy' :('ai', [0]*4),
@@ -47,9 +53,9 @@ monPgp    = {'loclinkrdy' :('ai', [0]*4),
              'txcntsum'   :('ai', [0]*4),
              'txerrcntsum':('ai', [0]*4),
              'rxcnt'      :('ai', [0]*4),
-             'rxlast'     :('ai', [0]*4),
+             'rxlast'     :('ai', [0]*4, '{:x}'),
              'rempause'   :('ai', [0]*4),
-             'remlinkid'  :('ai', [0]*4) }
+             'remlinkid'  :('ai', [0]*4, '{:08x}') }
 
 monBuf    = {'freesz'  :('i', 0),
              'freeevt' :('i', 0),
@@ -57,9 +63,21 @@ monBuf    = {'freesz'  :('i', 0),
 
 monBufDetail = {'bufstate' : ('ai',[0]*16),
                 'trgstate' : ('ai',[0]*16),
-                'bufbeg'   : ('ai',[0]*16),
-                'bufend'   : ('ai',[0]*16) }
+                'bufbeg'   : ('af',[0]*16),
+                'bufend'   : ('af',[0]*16) }
 
+monFlow   = {'fmask'   :('i', 0, 'remaining streams'),
+             'fcurr'   :('i', 0, 'current stream'),
+             'frdy'    :('i', 0, 'ready streams'),
+             'srdy'    :('i', 0, 'slave ready'),
+             'mrdy'    :('i', 0, 'master ready'),
+             'raddr'   :('i', 0),
+             'npend'   :('i', 0),
+             'ntrig'   :('i', 0),
+             'nread'   :('i', 0),
+             'pkoflow' :('i', 0),
+             'oflow'   :('i', 0) }
+ 
 monEnv    = {'local12v' :('f',0),
              'edge12v'  :('f',0),
              'aux12v'   :('f',0),

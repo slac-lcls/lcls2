@@ -4,14 +4,14 @@ import os
 import io
 
 # these are the current default values, but I put them here to be explicit
-create = False
+create = True
 dbname = 'configDB'
-instrument = 'TST'
+instrument = 'tst'
 
 mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)
-print('Configs:')
-mycdb.print_configs()
-print(70*'-')
+#print('Configs:')
+#mycdb.print_configs()
+#print(70*'-')
 # this needs to be called once per detType at the
 # "beginning of time" to create the collection name (same as detType
 # in top.setInfo).  It doesn't hurt to call it again if the collection
@@ -20,8 +20,8 @@ mycdb.add_device_config('hsd')
 
 top = cdict()
 
-top.setInfo('hsd', 'xpphsd', 'serial1234', 'No comment')
-top.setAlg('hsdConfig', [0,0,1])
+top.setInfo('hsd', 'tmohsd', 'serial1234', 'No comment')
+top.setAlg('config', [2,0,0])
 
 # this should be an array of enums, but not yet supported
 top.set('enable', 1*[1], 'UINT32')
@@ -47,6 +47,12 @@ top.set('expert.fsrange', 65535, 'UINT32')
 top.set('expert.trigshift', 0, 'UINT32')
 top.set('expert.synce', 0, 'UINT32')
 top.set('expert.synco', 0, 'UINT32')
+
+aliases = mycdb.get_aliases()
+print('aliases {:}'.format(aliases))
+
+if not 'BEAM' in aliases:
+    mycdb.add_alias('BEAM')
 
 mycdb.modify_device('BEAM', top)
 mycdb.print_configs()

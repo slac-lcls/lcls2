@@ -11,10 +11,13 @@
 #include "OptFmc.hh"
 
 #include "psdaq/mmhw/Pgp3Axil.hh"
+#include "psdaq/mmhw/TriggerEventManager.hh"
+#include "psdaq/mmhw/Xvc.hh"
 
 using Pds::Mmhw::AxiVersion;
 using Pds::Mmhw::Pgp3Axil;
 using Pds::Mmhw::RingBuffer;
+using Pds::Mmhw::TriggerEventManager;
 
 #include <string>
 #include <unistd.h>
@@ -39,7 +42,9 @@ namespace Pds {
       //  Core registers
       ModuleBase  base                ; // 0
       //  App registers
-      ChipAdcCore chip[2]             ; // 0x80000, 0x84000
+      ChipAdcCore chip[2]             ; // 0x80000, 0x82000
+      TriggerEventManager tem         ; // 0x84000
+      uint32_t    rsvd_88000[(0x4000-sizeof(tem))>>2];
       Fmc134Ctrl  fmc_ctrl            ; // 0x88000
       uint32_t    rsvd_88800[(0x800-sizeof(fmc_ctrl))>>2];
       Mmcm        mmcm                ; // 0x88800
@@ -63,6 +68,8 @@ Module134* Module134::create(int fd)
     perror("Failed to map");
     return 0;
   }
+
+  printf("Module134 mapped at %p\n", ptr);
 
   Module134* m = new Module134;
   m->p = reinterpret_cast<Module134::PrivateData*>(ptr);
@@ -126,12 +133,18 @@ void Module134::setup_jesd(bool lAbortOnErr)
   vuint32_t* jesd0  = &p->surf_jesd0[0];
   vuint32_t* jesd1  = &p->surf_jesd1[0];
   //  if (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_CLKSRC_INTERNAL))
-  if (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL))
+  while (cpld->default_clocktree_init(Fmc134Cpld::CLOCKTREE_REFSRC_EXTERNAL)) {
     if (lAbortOnErr)
       abort();
-  if (cpld->default_adc_init())
+    usleep(1000);
+  }
+
+  while (cpld->default_adc_init()) {
     if (lAbortOnErr)
       abort();
+    usleep(1000);
+  }
+
   cpld->dump();
   jesd0[0] = 0xff;
   jesd1[0] = 0xff;
@@ -140,9 +153,13 @@ void Module134::setup_jesd(bool lAbortOnErr)
   usleep(100);
   jesd0[4] = 0x23;
   jesd1[4] = 0x23;
-  if (ctrl->default_init(*cpld, 0))
+
+  while (ctrl->default_init(*cpld, 0)) {
     if (lAbortOnErr)
       abort();
+    usleep(1000);
+  }
+
   ctrl->dump();
   i2c_unlock();
 }
@@ -260,10 +277,10 @@ void Module134::disable_test_pattern()
 
 void Module134::set_local_id(unsigned bus)
 {
-  chip(0).reg.setLocalId(ModuleBase::local_id(bus));
+  p->tem.xma().txId = ModuleBase::local_id(bus);
 }
 
-unsigned Module134::remote_id() const { return p->chip[0].reg.partitionAddr; }
+unsigned Module134::remote_id() const { return p->tem.xma().rxId; }
 
 void Module134::board_status()
 {
@@ -339,6 +356,8 @@ std::vector<Pgp*> Module134::pgp() {
   return v;
 }
 
+TriggerEventManager& Module134::tem() { return p->tem; }
+
 Fmc134Ctrl& Module134::jesdctl() { return p->fmc_ctrl; }
 
 OptFmc&     Module134::optfmc() { return *reinterpret_cast<OptFmc*>(p->opt_fmc); }
@@ -398,3 +417,8 @@ void Module134::i2c_lock  (I2cSwitch::Port port) const
   const_cast<Module134*>(this)->i2c().i2c_sw_control.select(port);
 }
 void Module134::i2c_unlock() const { _sem_i2c.give(); }
+
+Pds::Mmhw::Jtag& Module134::xvc()
+{
+  return p->base.xvc;
+}

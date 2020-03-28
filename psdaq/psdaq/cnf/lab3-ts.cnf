@@ -1,12 +1,13 @@
-platform = '4'
+platform = '0'
 username = 'lcls2'
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 conda_rel = 'ps-2.0.5'
 
-shelf = '2'
-ip_addr = '10.0.'+shelf
-collect_host = 'daq-tst-dev02'
+collect_host = 'drp-tst-acc06'
+groups = '0'
+hutch = 'tst'
+drp_cmd  = 'drp -P '+hutch+' -l 0x1 -d /dev/datadev_1 -C '+collect_host+' -o /ffb01/weaver'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -23,12 +24,12 @@ collect_host = 'daq-tst-dev02'
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
-# {                        id:'partca',flags:'s', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
- {                        id:'groupca',flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+platform},
+ {                        id:'groupca',flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
- {                        id:'xpmca'  ,flags:'', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:'+shelf},
- { host: 'drp-tst-dev002', id:'teb1', flags:'sxpu', conda:conda_rel, cmd:'teb -C '+collect_host},
- { host: 'drp-tst-dev003', id:'xppts_0', flags:'xpu', conda:conda_rel, cmd:'drp -o /ffb01/tstopr -l 0x1 -D TimingSystem -d /dev/datadev_0 -C '+collect_host},
- { host: collect_host, id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -B DAQ:LAB2 -x 2 -P TST -C BEAM'},
- {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
+
+ { host: 'drp-tst-dev019', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
+ { host: 'drp-tst-dev002', id:'xppts_0', flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D TimingSystem'},
+ { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -B DAQ:LAB2 -x 2 -C BEAM -P '+hutch},
+ {                        flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 ]
+

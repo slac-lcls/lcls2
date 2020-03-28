@@ -188,10 +188,7 @@ cdef class PyBlockDgram:
         self.cptr.addNamesBlock(pyn.cptr_start, pyn.ct, nodeId, namesId)
 
     def addShapesDataBlock(self, PyShapesBlock pys, PyDataBlock pyd, nodeId, namesId):
-        if pys.ct>0:
-            self.cptr.addShapesDataBlock(pys.cptr_start, pyd.cptr_start, pyd.get_bytes(), pys.ct, nodeId, namesId)
-        else:
-            self.cptr.addDataBlock(pyd.cptr_start, pyd.get_bytes())
+        self.cptr.addShapesDataBlock(pys.cptr_start, pyd.cptr_start, pyd.get_bytes(), pys.ct, nodeId, namesId)
 
     def writeToFile(self, filename):
         cdef FILE *f = fopen(filename, 'a')
@@ -360,6 +357,7 @@ class CyDgram():
                 data_type = 10 # from xtcdata/xtc/ShapesData Name::DataType::CHARSTR
             else:
                 data_type = parse_type(arr) # uint8, int32, etc...
+            print '$$$ name',name,'array',array,'arralg',array_alg,'arrsize',array_size,'arrrank',array_rank,'datatype',data_type,'arr',arr
             # Copy the name to the block
             py_name.addName(fix_encoding(name), pyalg, data_type, array_rank)
 

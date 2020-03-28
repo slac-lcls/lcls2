@@ -40,16 +40,24 @@ static mqd_t _openQueue(const char* name, unsigned flags, unsigned perms,
 {
   struct mq_attr mymq_attr;
   mqd_t queue;
+  bool first = true;
   while(1) {
     queue = mq_open(name, flags, perms, &mymq_attr);
     if (queue == (mqd_t)-1) {
-      char b[128];
-      sprintf(b,"mq_open %s\n",name);
-      printf(b);
+      if (first) {
+        first = false;
+        printf("mq_open %s",name);
+      }
+      else {
+        printf(".");
+      }
+      fflush(stdout);
       sleep(1);
       if (!lwait) break;
     }
     else {
+      if (!first)
+        printf("\n");
       printf("Opened queue %s (%d)\n",name,queue);
       break;
     }
@@ -121,7 +129,7 @@ namespace psalg {
 #endif
               mq_timedsend(oq[ioq], (const char *)&myMsg, sizeof(myMsg), priority, &_tmo);
           } else {
-              if(::send(_trfd,(char*)&myMsg,sizeof(myMsg),0)<0) {
+              if(::send(_trfd,(char*)&myMsg,sizeof(myMsg),MSG_NOSIGNAL)<0) {
                   // cpo: we can get an error if the server exits
                   // not clear how we should handle this.  keep
                   // the server alive? print a warning?
@@ -162,7 +170,7 @@ namespace psalg {
 #endif
           index = i;
           size = myMsg.sizeOfBuffers();
-          
+
           return dg;
         }
         else {

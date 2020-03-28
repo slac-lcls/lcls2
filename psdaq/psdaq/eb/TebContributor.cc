@@ -229,7 +229,7 @@ void TebContributor::_post(const EbDgram* dgram) const
   unsigned tr     = dgram->service();
   uint32_t data   = ImmData::value(ImmData::Transition | ImmData::NoResponse, _id, tr);
   size_t   extent = sizeof(*dgram) + dgram->xtc.sizeofPayload();
-  unsigned offset = tr * _prms.maxInputSize;
+  unsigned offset = tr * sizeof(*dgram);
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {

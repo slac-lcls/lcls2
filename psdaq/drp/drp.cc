@@ -29,13 +29,9 @@ int main(int argc, char* argv[])
 {
     Drp::Parameters para;
     int c;
-    para.partition = -1;
-    para.detSegment = 0;
     std::string kwargs_str;
     std::string::size_type ii = 0;
-    para.verbose = 0;
-    char *instrument = NULL;
-    while((c = getopt(argc, argv, "p:o:l:D:C:d:u:k:P:T::M:v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:T::M:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -47,7 +43,10 @@ int main(int argc, char* argv[])
                 para.laneMask = std::stoul(optarg, nullptr, 16);
                 break;
             case 'D':
-                para.detectorType = optarg;
+                para.detType = optarg;
+                break;
+            case 'S':
+                para.serNo = optarg;
                 break;
             case 'u':
                 para.alias = optarg;
@@ -120,6 +119,9 @@ int main(int argc, char* argv[])
     para.nworkers = 10;
     para.batchSize = 32; // Must be a power of 2
     para.maxTrSize = 256 * 1024;
+    para.nTrBuffers = 8; // Power of 2 greater than the maximum number of
+                         // transitions in the system at any given time, e.g.,
+                         // MAX_LATENCY * (SlowUpdate rate), in same units
     Py_Initialize(); // for use by configuration
     Drp::PGPDetectorApp app(para);
     app.run();

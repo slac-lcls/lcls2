@@ -131,8 +131,8 @@ namespace Pds {
       _ready[fmc]->putFrom<unsigned>(1);
     }
 
-    void PV126Ctrls::reset() {
-      Pds_Epics::EpicsPVA& pv = *_pv[_pv.size()-1];
+    void PV126Ctrls::reset(unsigned fmc) {
+      Pds_Epics::EpicsPVA& pv = *_pv[fmc];
       if (PVGET(reset)) {
         QABase& base = *reinterpret_cast<QABase*>((char*)_m.reg()+0x80000);
         base.resetFbPLL();

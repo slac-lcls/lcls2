@@ -16,6 +16,7 @@ def main():
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=2000,
                         help='timeout msec (default 2000)')
     parser.add_argument('-v', action='store_true', help='be verbose')
+    parser.add_argument('--json', action='store_true', help='JSON configuration')
     args = parser.parse_args()
     platform = args.p
 
@@ -31,50 +32,58 @@ def main():
     if instrument is None:
         return
 
-    try:
-        body = control.getPlatform()
-    except Exception as ex:
-        print('getPlatform() Exception: %s' % ex)
-    else:
-        displayList = []
+    if args.json:
         try:
-            for level in body:
-                for k, v in body[level].items():
-                    host = v['proc_info']['host']
-                    if v['active'] == 1:
-                        host = host + ' *'
-                    alias = v['proc_info']['alias']
-                    pid = v['proc_info']['pid']
-                    if level == 'drp' and v['active'] == 1:
-                        display_tuple = (level, alias,
-                                         "%-16s %s/%s/%-16s\n%42s: %s" % \
-                                         (alias, level, pid, host,       \
-                                          'readout group', v['det_info']['readout']))
-                    else:
-                        display_tuple = (level, alias,
-                                         "%-16s %s/%s/%-16s" % (alias, level, pid, host))
-                    displayList.append(display_tuple)
-        except Exception:
-            print('----- body -----')
-            pprint.pprint(body)
-            raise
+            body = control.getJsonConfig()
+        except Exception as ex:
+            print('getJsonConfig() Exception: %s' % ex)
         else:
-            if args.v:
-                print('getPlatform() reply:')
+            print(body)
+    else:
+        try:
+            body = control.getPlatform()
+        except Exception as ex:
+            print('getPlatform() Exception: %s' % ex)
+        else:
+            displayList = []
+            try:
+                for level in body:
+                    for k, v in body[level].items():
+                        host = v['proc_info']['host']
+                        if v['active'] == 1:
+                            host = host + ' *'
+                        alias = v['proc_info']['alias']
+                        pid = v['proc_info']['pid']
+                        if level == 'drp' and v['active'] == 1:
+                            display_tuple = (level, alias,
+                                             "%-16s %s/%s/%-16s\n%42s: %s" % \
+                                             (alias, level, pid, host,       \
+                                              'readout group', v['det_info']['readout']))
+                        else:
+                            display_tuple = (level, alias,
+                                             "%-16s %s/%s/%-16s" % (alias, level, pid, host))
+                        displayList.append(display_tuple)
+            except Exception:
+                print('----- body -----')
                 pprint.pprint(body)
-            print("Partition|         Node")
-            print("id/name  | alias            level/pid/host (* = active)")
-            print("---------+-----------------------------------------------------")
-            print("%s/%-8s " % (platform, instrument), end='')
-            firstLine = True
-            for nn in sorted(displayList, key=itemgetter(0,1)):
+                raise
+            else:
+                if args.v:
+                    print('getPlatform() reply:')
+                    pprint.pprint(body)
+                print("Partition|         Node")
+                print("id/name  | alias            level/pid/host (* = active)")
+                print("---------+-----------------------------------------------------")
+                print("%s/%-8s " % (platform, instrument), end='')
+                firstLine = True
+                for nn in sorted(displayList, key=itemgetter(0,1)):
+                    if firstLine:
+                        print(nn[2])
+                        firstLine = False
+                    else:
+                        print("          ", nn[2])
                 if firstLine:
-                    print(nn[2])
-                    firstLine = False
-                else:
-                    print("          ", nn[2])
-            if firstLine:
-                print()
+                    print()
 
 if __name__ == '__main__':
     main()

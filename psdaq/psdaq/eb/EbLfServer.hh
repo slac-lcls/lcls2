@@ -114,17 +114,13 @@ int Pds::Eb::EbLfServer::pend(uint64_t* data, int msTmo)
 inline
 int Pds::Eb::EbLfServer::poll(uint64_t* data)
 {
-  if (_rxcq)                            // Revisit: why is this here?
-  {
-    const uint64_t   flags = FI_MSG | FI_RECV | FI_REMOTE_CQ_DATA;
-    fi_cq_data_entry cqEntry;
+  const uint64_t   flags = FI_MSG | FI_RECV | FI_REMOTE_CQ_DATA;
+  fi_cq_data_entry cqEntry;
 
-    int rc = _poll(&cqEntry, flags);
-    *data = cqEntry.data;
+  int rc = _poll(&cqEntry, flags);
+  *data = cqEntry.data;
 
-    return rc;
-  }
-  return -1;
+  return rc;
 }
 
 #endif

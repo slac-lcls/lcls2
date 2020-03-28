@@ -1,0 +1,17 @@
+[Unit]
+Description=KCU1500 Device Manager
+Requires=multi-user.target
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/kcuStatus -I
+ExecStartPost=/sbin/insmod /usr/local/sbin/datadev.ko cfgTxCount=4 cfgRxCount=65536 cfgSize=131072 cfgMode=0x2
+ExecStop=
+KillMode=process
+IgnoreSIGPIPE=no
+StandardOutput=syslog
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target

@@ -29,7 +29,8 @@ from PyQt5.QtCore import Qt, QPoint
 
 from psdaq.control_gui.CGWConfigEditor import CGWConfigEditor
 from psdaq.control_gui.QWPopupSelectItem import popup_select_item_from_list
-from psdaq.control_gui.CGConfigDBUtils import get_configdb
+from psdaq.control_gui.CGConfigDBUtils import get_configdb, URI_CONFIGDB
+from psdaq.control_gui.CGDaqControl import daq_control_get_instrument
 from psdaq.control_gui.CGJsonUtils import str_json
 from psdaq.control_gui.CGConfigParameters import cp
 
@@ -114,8 +115,9 @@ class CGWConfigSelect(QGroupBox) :
 #--------------------
  
     def inst_configdb(self, msg=''):
-        uris = getattr(cp.cgwmain, 'uris', 'mcbrowne:psana@psdb-dev:9306')
-        inst = getattr(cp, 'instr', 'TMO')
+        uris = getattr(cp.cgwmain, 'uris', URI_CONFIGDB)
+        inst = getattr(cp, 'instr', None)
+        if inst is None : inst = daq_control_get_instrument()
         logger.debug('%sconnect to configdb(uri_suffix=%s, inst=%s)' % (msg, uris, inst))
         return inst, get_configdb(uris, inst)
 

@@ -4,6 +4,7 @@
 from .bld                   import *
 from hsd                    import *
 from .ts                    import *
-from .timetool              import ttdet_ttalg_0_0_1
+from .envstore              import *
+from .timetool              import *
+from .wave8                 import *
 from .test_detectors        import *
-

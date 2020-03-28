@@ -478,9 +478,6 @@ def str_kwargs(kwargs, title='Input parameters:', fmt='\n%20s : %s'):
 
 #------------------------------
 
-#def print_kwargs(kwargs, title='Input parameters:', fmt='\n%20s : %s'):
-#    print(gu.str_kwargs(kwargs, title, fmt)
-
 def print_kwargs(kwargs) :
     print('%s\n  kwargs:' % (40*'_'))
     for k,v in kwargs.items() : print('  %10s : %10s' % (k,v))

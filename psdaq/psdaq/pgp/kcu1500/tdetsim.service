@@ -1,0 +1,17 @@
+[Unit]
+Description=SimCam Device Manager
+Requires=multi-user.target
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/kcuSim -s -d /dev/datadev_0
+ExecStartPost=/sbin/insmod /usr/local/sbin/datadev.ko cfgTxCount=4 cfgRxCount=32768 cfgSize=262144 cfgMode=0x2
+ExecStop=
+KillMode=process
+IgnoreSIGPIPE=no
+StandardOutput=syslog
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target

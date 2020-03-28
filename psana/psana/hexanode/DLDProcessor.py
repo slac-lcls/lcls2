@@ -5,13 +5,13 @@ Module :py:class:`DLDProcessor` for MCP with DLD for COLTRIMS experiments
 
     from psana.hexanode.DLDProcessor import DLDProcessor
 
-    kwargs = {'events':1500,...}
-    peaks = WFPeaks(**kwargs)
-    o  = DLDProcessor(**kwargs)
-
     ds    = DataSource(files=DSNAME)
     orun  = next(ds.runs())
     det   = orun.Detector(DETNAME)
+
+    kwargs = {'consts':det.calibconst, 'events':1500, ...} # OR: 'detobj':det in stear of 'consts':det.calibconst
+    peaks = WFPeaks(**kwargs)
+    o = DLDProcessor(**kwargs)
 
     for nevt,evt in enumerate(orun.events()):
         wts = det.raw.times(evt)     
@@ -23,7 +23,7 @@ Created on 2019-11-20 by Mikhail Dubrovin
 """
 #----------
 
-USAGE = 'Run example: python .../psana/hexanode/examples/ex-16-proc-data.py'
+USAGE = 'Run example: python .../psana/hexanode/examples/ex-25-quad-proc-data.py'
 
 #----------
 
@@ -81,6 +81,7 @@ class DLDProcessor :
         calibcfg       = kwargs.get('calibcfg', None)
         CALIBCFG       = calibcfg #if calibcfg is not None else file.find_calib_file(type=self.CTYPE_CALIBCFG)
         CALIBTAB       = calibtab #if calibtab is not None else file.find_calib_file(type=self.CTYPE_CALIBTAB)
+        CONSTS         = kwargs.get('consts', None)
         DETOBJ         = kwargs.get('detobj', None)
 
 #------------------------------
@@ -99,15 +100,16 @@ class DLDProcessor :
         # load config & calib constants distributed for detector or from file
         txt_cfg   = None
         txt_calib = None
-        if DETOBJ is not None :
-            det_consts = DETOBJ._calibconst
+        det_consts = CONSTS if CONSTS is not None else DETOBJ.calibconst
+
+        if det_consts is not None :
             txt_cfg,   meta_cfg   = det_consts.get(self.CTYPE_CALIBCFG, None)
             txt_calib, meta_calib = det_consts.get(self.CTYPE_CALIBTAB, None)
         else :
             txt_cfg   = text_data(CALIBCFG) # str object (from file) with configuration constants
             txt_calib = text_data(CALIBTAB) # ... with calibration constants
 
-        s = 'from DB' if DETOBJ is not None else 'default'
+        s = 'from DB' if det_consts is not None else 'default'
         logger.info('>>>> configuration and calibration %s' % s)
 
         # create the sorter:

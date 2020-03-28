@@ -15,6 +15,7 @@ public:
         Corrupted           =  3,
         DroppedContribution =  4,
         MissingData         =  5,
+        TimedOut            =  6,
         UserDefined         = 12
     };
     // reserve the top byte to augment user defined errors

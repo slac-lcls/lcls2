@@ -6,6 +6,9 @@
 #include "ChipAdcCore.hh"
 #include "OptFmc.hh"
 #include "TprCore.hh"
+#include "Fmc134Ctrl.hh"
+
+#include "psdaq/mmhw/TriggerEventManager.hh"
 
 #include "psdaq/epicstools/EpicsPVA.hh"
 using Pds_Epics::EpicsPVA;
@@ -48,6 +51,8 @@ namespace Pds {
            _monRawBuf,
            _monFexBuf,
            _monRawDet,
+           _monFexDet,
+           _monFlow,
            _monJesd,
            _monEnv,
            _monAdc,
@@ -74,6 +79,8 @@ namespace Pds {
       PV_ADD (monRawBuf);
       PV_ADD (monFexBuf);
       PV_ADD (monRawDet);
+      PV_ADD (monFexDet);
+      PV_ADD (monFlow);
       PV_ADD (monJesd);
       PV_ADD (monEnv);
       PV_ADD (monAdc);
@@ -104,6 +111,7 @@ namespace Pds {
         ChipAdcReg&  reg  = chip.reg;
         FexCfg&      fex  = chip.fex;
         TprCore& tpr  = _m.tpr();
+        Pds::Mmhw::TriggerEventBuffer& teb = _m.tem().det(i);
 
         { MonTiming v;
           v.timframecnt = DELT(reg.countEnable , _p_monTiming[i].timframeprv);
@@ -113,14 +121,18 @@ namespace Pds {
           v.trigcntsum  = reg.countAcquire;
           v.readcntsum  = reg.countRead;
           v.startcntsum = reg.countStart;
-          v.queuecntsum = reg.countQueue;
+          // v.queuecntsum = reg.countQueue;
           v.trigcnt     = v.trigcntsum - _v_monTiming[i].trigcntsum;
-          v.msgdelayset = reg.msgDelay&0xff;
-          v.msgdelayget = (reg.msgDelay>>16)&0xff;
-          v.headercntl0 = reg.headerCnt&0xffff;
-          v.headercntof = (reg.headerCnt>>24)&0xff;
-          v.headerfifow = (reg.headerFifo>> 0)&0xf;
-          v.headerfifor = (reg.headerFifo>> 4)&0xf;
+          unsigned group = teb.group&0xf;
+          v.msgdelayset = _m.tem().xma().messageDelay[group];
+          //          v.msgdelayget = (reg.msgDelay>>16)&0xff;
+          v.headercntl0 = teb.l0Count;
+          v.headercntof = (teb.status>>0)&0xf;
+          v.headerfifow = (teb.status>>4)&0x1f;
+          v.headerfifor = (teb.pauseThresh>>0)&0x1f;
+          //          v.headerfifor = (reg.headerFifo>> 4)&0xf;
+          v.fulltotrig  = (teb.fullToTrig>> 0)&0xfff;
+          v.nfulltotrig = (teb.nfullToTrig>>0)&0xfff;
           PVPUT(monTiming); }
 
         { MonPgp v;
@@ -134,7 +146,7 @@ namespace Pds {
             v.txcnt      [j] = v.txcntsum[j] - _v_monPgp[i].txcntsum[j];
             v.txerrcntsum[j] = pgp.txErrCount();
             v.rxcnt      [j] = pgp.rxOpCodeCount();
-            v.rxlast     [j] = pgp.rxOpCodeLast();
+            v.rxlast     [j] = pgp.rxOpCodeLast() & 0xff;
             v.rempause   [j] = pgp.remPause();
             v.remlinkid  [j] = pgp.remoteLinkId();
           }
@@ -146,37 +158,54 @@ namespace Pds {
         //
         if ((reg.csr&0x10)==0) {
           { MonBuf v;
-            v.freesz  = (fex._base[0]._free>> 0)&0xffff;
-            v.freeevt = (fex._base[0]._free>>16)&0x1f;
-            v.fifoof  = (fex._base[0]._free>>24)&0xff;
+            fex._base[0].getFree(v.freesz,v.freeevt,v.fifoof);
             PVPUT(monRawBuf); }
           { MonBuf v;
-            v.freesz  = (fex._base[1]._free>> 0)&0xffff;
-            v.freeevt = (fex._base[1]._free>>16)&0x1f;
-            v.fifoof  = (fex._base[1]._free>>24)&0xff;
+            fex._base[1].getFree(v.freesz,v.freeevt,v.fifoof);
             PVPUT(monFexBuf); }
         }
 
-        { MonBufDetail v;
-          for(unsigned j=0; j<16; j++) {
-            reg.cacheSel = j;
-            usleep(1);
-            unsigned state = reg.cacheState;
-            unsigned addr  = reg.cacheAddr;
-            v.bufstate[j] = (state>>0)&0xf;
-            v.trgstate[j] = (state>>4)&0xf;
-            v.bufbeg  [j] = (addr >> 0)&0xffff;
-            v.bufend  [j] = (addr >>16)&0xffff;
-          }
+        { MonBufDetail v(reg,0);
           PVPUT(monRawDet); }
+
+        { MonBufDetail v(reg,1);
+          PVPUT(monFexDet); }
+
+        { MonFlow v;
+          v.pkoflow = fex._oflow&0xff;
+          uint32_t flowstatus = fex._flowstatus;
+          v.fmask = (flowstatus>>0)&0x7;
+          v.fcurr = (flowstatus>>4)&0xf;
+          v.frdy  = (flowstatus>>8)&0xf;
+          v.srdy  = (flowstatus>>12)&0x1;
+          v.mrdy  = (flowstatus>>13)&0x7;
+          v.raddr = (flowstatus>>16)&0xffff;
+          uint32_t flowidxs = fex._flowidxs;
+          v.npend = (flowidxs>> 0)&0x1f;
+          v.ntrig = (flowidxs>> 5)&0x1f;
+          v.nread = (flowidxs>>10)&0x1f;
+          v.oflow = (flowidxs>>16)&0xff;
+          PVPUT(monFlow); }
 
         // JESD Status
         { MonJesd v;
-          for(unsigned j=0; j<8; j++) 
-            reinterpret_cast<Jesd204bStatus*>(v.stat)[j] = _m.jesd(i).status(j);
+          bool rxreset = false;
+          for(unsigned j=0; j<8; j++) {
+            Jesd204bStatus* stat = reinterpret_cast<Jesd204bStatus*>(v.stat);
+            stat[j] = _m.jesd(i).status(j);
+            if (stat[j].syncDone==0)
+              ; // rxreset = true;
+          }
           for(unsigned j=0; j<5; j++)
             v.clks[j] = float(_m.optfmc().clks[j]&0x1fffffff)*1.e-6;
           PVPUT(monJesd); 
+
+          if (rxreset) {
+            printf("--JESD RESET--\n");
+            unsigned u = _m.jesdctl().xcvr;
+            _m.jesdctl().xcvr = u | (1<<0);
+            _m.jesdctl().xcvr = u;
+          }
         }
 
         // ADC Monitoring

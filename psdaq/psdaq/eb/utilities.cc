@@ -39,15 +39,14 @@ void* Pds::Eb::allocRegion(size_t size)
   return region;
 }
 
-void Pds::Eb::pinThread(const pthread_t& th, int cpu)
+int Pds::Eb::pinThread(const pthread_t& th, int cpu)
 {
-  cpu_set_t cpuset;
-  CPU_ZERO(&cpuset);
-  CPU_SET(cpu, &cpuset);
-  int rc = pthread_setaffinity_np(th, sizeof(cpu_set_t), &cpuset);
-  if (rc != 0)
+  if (cpu > 0)
   {
-    fprintf(stderr, "%s:\n  Error from pthread_setaffinity_np:\n  %s\n",
-            __PRETTY_FUNCTION__, strerror(rc));
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpu, &cpuset);
+    return pthread_setaffinity_np(th, sizeof(cpu_set_t), &cpuset);
   }
+  return 0;
 }

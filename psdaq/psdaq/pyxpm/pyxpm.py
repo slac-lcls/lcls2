@@ -18,6 +18,7 @@ from psdaq.pyxpm.xpm.Top import *
 from psdaq.pyxpm.pvstats import *
 from psdaq.pyxpm.pvctrls import *
 from psdaq.pyxpm.pvxtpg  import *
+from psdaq.pyxpm.pvhandler import *
 
 class NoLock(object):
     def __init__(self):
@@ -48,7 +49,8 @@ def main():
 
     args = parser.parse_args()
     if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
+#        logging.basicConfig(level=logging.DEBUG)
+        setVerbose(True)
 
     # Set base
     base = pr.Root(name='AMCc',description='') 

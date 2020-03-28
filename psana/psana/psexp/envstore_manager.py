@@ -17,9 +17,14 @@ class EnvStoreManager(object):
         if not evt:
             return
         for i, d in enumerate(evt._dgrams):
+            if not d: continue
+
+            # This releases the original dgram object (friendly
+            # with shared memory which has limited capacity).
+            new_d = Dgram(view=d, config=self.configs[i], offset=0)
             for key, val in d.__dict__.items():
                 if key in self.stores:
-                    self.stores[key].add_to(d, i)
+                    self.stores[key].add_to(new_d, i)
 
     def update_by_views(self, views):
         if not views:
@@ -35,20 +40,14 @@ class EnvStoreManager(object):
                     
                 offset += d._size
                     
-    def alg_from_variable(self, variable_name):
-        for alg, store in self.stores.items():
-            found_alg = store.alg_from_variable(variable_name)
-            if found_alg:
-                return found_alg
+    def env_from_variable(self, variable_name):
+        for env_name, store in self.stores.items():
+            found = store.locate_variable(variable_name)
+            if found is not None:
+                alg, _ = found
+                return env_name, alg
         return None
 
-    def get_info(self, alg):
-        store = self.stores[alg]
-        variables = store.env_variables[alg]
-        info = {}
-        for var in variables:
-            info[(var, alg)] = alg
-        return info
     
 
 

@@ -7,8 +7,8 @@ class Step(object):
         self.evt = step_evt
     
     def events(self):
-        for evt in self._events:
-            if evt._dgrams[0].service() == TransitionId.EndStep: return
-            if evt._dgrams[0].service() == TransitionId.L1Accept: yield evt
+        for j, evt in enumerate(self._events):
+            if evt.service() == TransitionId.EndStep: return
+            if evt.service() == TransitionId.L1Accept: yield evt
 
             

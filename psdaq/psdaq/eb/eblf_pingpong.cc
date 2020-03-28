@@ -27,10 +27,10 @@ using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
-static const unsigned port_base     = 54321; // Base port number
+static const unsigned port_base     = 1024; // Pick from range 1024 - 32768, 61000 - 65535
 static const unsigned default_size  = 4096;
 static const unsigned default_iters = 1000;
-static const unsigned default_core  = 10;
+static const int      default_core  = -1;
 
 typedef std::chrono::microseconds us_t;
 
@@ -74,7 +74,7 @@ int main(int argc, char **argv)
   unsigned    portBase = port_base;
   size_t      size     = default_size;
   unsigned    iters    = default_iters;
-  unsigned    core     = default_core;
+  int         core     = default_core;
   bool        start    = false;
   unsigned    verbose  = 0;
 
@@ -128,7 +128,15 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  pinThread(pthread_self(), core);
+  if (core != -1)
+  {
+    rc = pinThread(pthread_self(), core);
+    if (rc != 0)
+    {
+      fprintf(stderr, "%s:\n  Error from pinThread:\n  %s\n",
+              __PRETTY_FUNCTION__, strerror(rc));
+    }
+  }
 
   size_t alignment = sysconf(_SC_PAGESIZE);
   size_t srcSize   = alignment * ((size + alignment - 1) / alignment);
@@ -183,9 +191,9 @@ int main(int argc, char **argv)
     }
     printf("EbLfClient (ID %d) connected\n", svrLink->id());
 
-    const unsigned tmo(120);
+    const unsigned msTmo(120000);
     clt = new EbLfClient(verbose);
-    if ( (rc = clt->connect(&cltLink, cltAddr.c_str(), cltPort.c_str(), id, tmo)) )
+    if ( (rc = clt->connect(&cltLink, cltAddr.c_str(), cltPort.c_str(), id, msTmo)) )
     {
       fprintf(stderr, "Error connecting to server\n");
       return rc;
@@ -199,9 +207,9 @@ int main(int argc, char **argv)
   }
   else
   {
-    const unsigned tmo(120);
+    const unsigned msTmo(120000);
     clt = new EbLfClient(verbose);
-    if ( (rc = clt->connect(&cltLink, cltAddr.c_str(), cltPort.c_str(), id, tmo)) )
+    if ( (rc = clt->connect(&cltLink, cltAddr.c_str(), cltPort.c_str(), id, msTmo)) )
     {
       fprintf(stderr, "Error connecting to server\n");
       return rc;
@@ -260,8 +268,8 @@ int main(int argc, char **argv)
   while (rcnt < iters || scnt < iters)
   {
     fi_cq_data_entry wc;
-    const int tmo = 5000;               // milliseconds
-    if ( (rc = svr->pend(&wc, tmo)) < 0 )
+    const int msTmo = 5000;
+    if ( (rc = svr->pend(&wc, msTmo)) < 0 )
     {
       fprintf(stderr, "Failed pending for a buffer: %s(%d)\n",
               fi_strerror(-rc), rc);

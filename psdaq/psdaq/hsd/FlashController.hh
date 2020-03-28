@@ -13,6 +13,7 @@ namespace Pds {
       void write (const char*);
       void verify(const char*);
       std::vector<uint8_t> read(unsigned nwords);
+      void test  ();
       static void verbose(bool);
       static void useFifo(bool);
     public:

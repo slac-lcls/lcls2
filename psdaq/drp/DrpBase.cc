@@ -1,5 +1,6 @@
 #include <unistd.h>                     // gethostname()
 #include <iostream>
+#include <fstream>
 #include <iomanip>
 #include <bitset>
 #include <climits>                      // HOST_NAME_MAX
@@ -18,7 +19,8 @@ using logging = psalg::SysLog;
 
 static void local_mkdir (const char * path);
 static json createFileReportMsg(std::string path, std::string absolute_path,
-                                timespec create_time, timespec modify_time);
+                                timespec create_time, timespec modify_time,
+                                unsigned run_num, std::string hostname);
 static json createPulseIdMsg(uint64_t pulseId);
 
 namespace Drp {
@@ -26,7 +28,21 @@ namespace Drp {
 static const unsigned PROM_PORT_BASE  = 9200;
 static const unsigned MAX_PROM_PORTS  = 100;
 
-unsigned nextPowerOf2(unsigned n)
+static long readInfinibandCounter(const std::string& counter)
+{
+    std::string path{"/sys/class/infiniband/mlx5_0/ports/1/counters/" + counter};
+    std::ifstream in(path);
+    if (in.is_open()) {
+        std::string line;
+        std::getline(in, line);
+        return stol(line);
+    }
+    else {
+        return 0;
+    }
+}
+
+static unsigned nextPowerOf2(unsigned n)
 {
     unsigned count = 0;
 
@@ -43,8 +59,7 @@ unsigned nextPowerOf2(unsigned n)
 }
 
 MemPool::MemPool(const Parameters& para) :
-    transitionBuffer(nullptr),
-    m_maxTransitionSize(0)
+    m_transitionBuffers(para.nTrBuffers)
 {
     m_fd = open(para.device.c_str(), O_RDWR);
     if (m_fd < 0) {
@@ -66,20 +81,33 @@ MemPool::MemPool(const Parameters& para) :
 
     // make the size of the pebble buffer that will contain the datagram equal
     // to the dmaSize times the number of lanes
-    // Also include space in the pebble that can hold the worst case transition
-    // so that it will be part of the memory region that can be RDMAed to the MEB
+    // Also include space in the pebble for a pool of transition buffers of
+    // worst case size so that they will be part of the memory region that can
+    // be RDMAed from to the MEB
     m_bufferSize = __builtin_popcount(para.laneMask) * m_dmaSize;
-    pebble.resize(m_nbuffers, m_bufferSize, para.maxTrSize);
-    logging::info("nbuffer %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
+    pebble.resize(m_nbuffers, m_bufferSize, para.nTrBuffers, para.maxTrSize);
+    logging::info("nbuffers %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
 
     pgpEvents.resize(m_nbuffers);
 
-    transitionBuffer = pebble[m_nbuffers]; // Put it at the end of the pebble
+    // Put the transition buffer pool at the end of the pebble buffers
+    uint8_t* buffer = pebble[m_nbuffers];
+    for (unsigned i = 0; i < para.nTrBuffers; i++) {
+        m_transitionBuffers.push(&buffer[i * para.maxTrSize]);
+    }
 }
 
-MemPool::~MemPool()
+Pds::EbDgram* MemPool::allocateTr()
 {
+    void* dgram = nullptr;
+    if (!m_transitionBuffers.try_pop(dgram)) {
+        // See comment for setting para.nTrBuffers in drp.cc
+        logging::critical("Empty transition buffer pool");
+        throw "Empty transition buffer pool";
+    }
+    return static_cast<Pds::EbDgram*>(dgram);
 }
+
 
 EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
@@ -93,24 +121,12 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_inprocSend(inprocSend),
   m_count(0),
   m_offset(0),
-  m_nodeId(tPrms.id)
+  m_nodeId(tPrms.id),
+  m_configureBuffer(para.maxTrSize)
 {
-    m_configureBuffer = new uint8_t[para.maxTrSize];
-    if (!m_configureBuffer) {
-        logging::critical("Failed to allocate Configure buffer of size %zd", para.maxTrSize);
-        throw "Failed to allocate Configure buffer";
-    }
 }
 
-EbReceiver::~EbReceiver()
-{
-    if (m_configureBuffer) {
-        delete[] static_cast<char*>(m_configureBuffer);
-        m_configureBuffer = nullptr;
-    }
-}
-
-std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo)
+std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname)
 {
     std::string retVal = std::string{};     // return empty string on success
     if (runInfo.runNumber) {
@@ -132,7 +148,7 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
         logging::info("Opening file '%s'", absolute_path.c_str());
         if (m_fileWriter.open(absolute_path) == 0) {
             timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
-            json msg = createFileReportMsg(path, absolute_path, tt, tt);
+            json msg = createFileReportMsg(path, absolute_path, tt, tt, runInfo.runNumber, hostname);
             m_inprocSend.send(msg.dump());
         } else if (retVal.empty()) {
             retVal = {"Failed to open file '" + absolute_path + "'"};
@@ -145,7 +161,7 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
         logging::info("Opening file '%s'", smalldata_absolute_path.c_str());
         if (m_smdWriter.open(smalldata_absolute_path) == 0) {
             timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
-            json msg = createFileReportMsg(smalldata_path, smalldata_absolute_path, tt, tt);
+            json msg = createFileReportMsg(smalldata_path, smalldata_absolute_path, tt, tt, runInfo.runNumber, hostname);
             m_inprocSend.send(msg.dump());
         } else if (retVal.empty()) {
             retVal = {"Failed to open file '" + smalldata_absolute_path + "'"};
@@ -175,14 +191,14 @@ void EbReceiver::resetCounters()
 void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
 {
     size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
-    m_fileWriter.writeEvent(dgram, size);
+    m_fileWriter.writeEvent(dgram, size, dgram->time);
 
     // small data writing
     Smd smd;
     XtcData::NamesId namesId(m_nodeId, NamesIndex::OFFSETINFO);
     XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, m_offset, size,
             m_smdWriter.namesLookup, namesId);
-    m_smdWriter.writeEvent(smdDgram, sizeof(XtcData::Dgram) + smdDgram->xtc.sizeofPayload());
+    m_smdWriter.writeEvent(smdDgram, sizeof(XtcData::Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
     m_offset += size;
 }
 
@@ -195,15 +211,19 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
     }
     uint64_t pulseId = dgram->pulseId();
+    if (pulseId == 0) {
+      logging::critical("%spulseId %14lx, ts %u.%09u, tid %d, env %08x%s\n",
+                        RED_ON, pulseId, dgram->time.seconds(), dgram->time.nanoseconds(), dgram->service(), dgram->env, RED_OFF);
+    }
 
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
-        logging::critical("%sjumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
+        logging::critical("%sEbReceiver: jumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
         logging::critical("pid     %014lx, tid     %s, env %08x", pulseId, XtcData::TransitionId::name(transitionId), dgram->env);
         logging::critical("lastPid %014lx, lastTid %s", m_lastPid, XtcData::TransitionId::name(m_lastTid));
     }
 
     if (pulseId != result.pulseId()) {
-        logging::critical("timestamps don't match");
+        logging::critical("pulseIds don't match");
         logging::critical("index %u  previous index %u", index, m_lastIndex);
         uint64_t tPid = pulseId;
         uint64_t rPid = result.pulseId();
@@ -220,15 +240,15 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         if (transitionId != XtcData::TransitionId::SlowUpdate) {
             if (transitionId == XtcData::TransitionId::Configure) {
                 // Cache Configure Dgram for writing out after files are opened
-                XtcData::Dgram* configDgram = m_pool.transitionDgram();
+                XtcData::Dgram* configDgram = m_pool.pgpEvents[index].transitionDgram;
                 size_t size = sizeof(*configDgram) + configDgram->xtc.sizeofPayload();
-                memcpy(m_configureBuffer, configDgram, size);
+                memcpy(m_configureBuffer.data(), configDgram, size);
             }
             // send pulseId to inproc so it gets forwarded to the collection
             json msg = createPulseIdMsg(pulseId);
             m_inprocSend.send(msg.dump());
         }
-        logging::debug("EbReceiver saw %s transition @ %d.%09d (%014lx)\n",
+        logging::debug("EbReceiver saw %s transition @ %u.%09u (%014lx)\n",
                        XtcData::TransitionId::name(transitionId),
                        dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
     }
@@ -240,10 +260,14 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         }
         else if (transitionId != XtcData::TransitionId::L1Accept) {
             if (transitionId == XtcData::TransitionId::BeginRun) {
-                m_offset = 0; // reset offset when writing out a new file 
-                _writeDgram(_configureDgram());
+                m_offset = 0; // reset offset when writing out a new file
+                _writeDgram(reinterpret_cast<XtcData::Dgram*>(m_configureBuffer.data()));
             }
-            _writeDgram(m_pool.transitionDgram());
+            _writeDgram(m_pool.pgpEvents[index].transitionDgram);
+            if (transitionId == XtcData::TransitionId::EndRun) {
+                logging::debug("%s calling closeFiles()", __PRETTY_FUNCTION__);
+                closeFiles();
+            }
         }
     }
 
@@ -256,14 +280,19 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         }
         // Other Transition
         else {
-          m_mon->post(m_pool.transitionDgram());
+            m_mon->post(m_pool.pgpEvents[index].transitionDgram);
         }
     }
 
-    // return buffers and reset event
+    // Return buffers and reset event.  Careful with order here!
+    // index could be reused as soon as dmaRetIndexes() completes
     PGPEvent* event = &m_pool.pgpEvents[index];
+    if (!dgram->isEvent()) {
+        m_pool.freeTr(event->transitionDgram);
+    }
     for (int i=0; i<4; i++) {
-        if (event->mask & (1 << i)) {
+        if (event->mask &  (1 << i)) {
+            event->mask ^= (1 << i);    // Zero out mask before dmaRetIndexes()
             m_indices[m_count] = event->buffers[i].index;
             m_count++;
             if (m_count == m_size) {
@@ -273,7 +302,6 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
             }
         }
     }
-    event->mask = 0;
 }
 
 
@@ -287,11 +315,15 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
     m_mPrms.partition = para.partition;
     m_mPrms.maxEvents = 8;
-    m_mPrms.maxEvSize = pool.pebble.bufferSize();
+    m_mPrms.maxEvSize = pool.bufferSize();
     m_mPrms.maxTrSize = para.maxTrSize;
     m_mPrms.verbose   = para.verbose;
 
     m_inprocSend.connect("inproc://drp");
+
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+    m_hostname = std::string(hostname);
 }
 
 void DrpBase::shutdown()
@@ -347,7 +379,7 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
         if (m_para.outputDir.empty()) {
             msg = "Cannot record due to missing output directory";
         } else {
-            msg = m_ebRecv->openFiles(m_para, runInfo);
+            msg = m_ebRecv->openFiles(m_para, runInfo, m_hostname);
         }
     }
     return msg;
@@ -374,8 +406,7 @@ void DrpBase::runInfoData(Xtc& xtc, NamesLookup& namesLookup, const RunInfo& run
 
 std::string DrpBase::endrun(const json& phase1Info)
 {
-    std::string msg = m_ebRecv->closeFiles();
-    return msg;
+    return std::string{};
 }
 
 std::string DrpBase::configure(const json& msg)
@@ -384,6 +415,7 @@ std::string DrpBase::configure(const json& msg)
         return std::string("Failed to set up TriggerPrimitive(s)");
     }
 
+    // Find and register a port to use with Prometheus for run-time monitoring
     if (m_exposer)  m_exposer.reset();
     unsigned port = 0;
     for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
@@ -392,12 +424,10 @@ std::string DrpBase::configure(const json& msg)
             m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
             if (i > 0) {
                 if ((i < MAX_PROM_PORTS) && !m_para.prometheusDir.empty()) {
-                    char hostname[HOST_NAME_MAX];
-                    gethostname(hostname, HOST_NAME_MAX);
-                    std::string fileName = m_para.prometheusDir + "/drpmon_" + std::string(hostname) + "_" + std::to_string(i) + ".yaml";
+                    std::string fileName = m_para.prometheusDir + "/drpmon_" + m_hostname + "_" + std::to_string(i) + ".yaml";
                     FILE* file = fopen(fileName.c_str(), "w");
                     if (file) {
-                        fprintf(file, "- targets:\n    - '%s:%d'\n", hostname, port);
+                        fprintf(file, "- targets:\n    - '%s:%d'\n", m_hostname.c_str(), port);
                         fclose(file);
                     }
                     else {
@@ -422,6 +452,13 @@ std::string DrpBase::configure(const json& msg)
         logging::info("Providing run-time monitoring data on port %d", port);
         m_exposer->RegisterCollectable(m_exporter);
     }
+
+    std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};
+    m_exporter->add("drp_port_rcv_rate", labels, MetricType::Rate,
+                    [](){return 4*readInfinibandCounter("port_rcv_data");});
+
+    m_exporter->add("drp_port_xmit_rate", labels, MetricType::Rate,
+                    [](){return 4*readInfinibandCounter("port_xmit_data");});
 
     // Create all the eb things and do the connections
     m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, m_exporter);
@@ -476,8 +513,9 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     }
 
     if ((detName != dummy) && !top.HasMember(m_para.detName.c_str())) {
-        printf("%s:\n  Trigger data not contributed: '%s' not found in ConfigDb for %s\n",
-               __PRETTY_FUNCTION__, m_para.detName.c_str(), detName.c_str());
+        logging::warning("This DRP is not contributing trigger input data: "
+                         "'%s' not found in ConfigDb for %s\n",
+                         m_para.detName.c_str(), detName.c_str());
         m_tPrms.contractor = 0;    // This DRP won't provide trigger input data
         m_triggerPrimitive = nullptr;
         return 0;
@@ -488,15 +526,15 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     if (detName != dummy)  symbol +=  "_" + m_para.detName;
     m_triggerPrimitive = m_trigPrimFactory.create(top, detName, symbol);
     if (!m_triggerPrimitive) {
-        fprintf(stderr, "%s:\n  Failed to create TriggerPrimitive\n",
-                __PRETTY_FUNCTION__);
+        logging::error("%s:\n  Failed to create TriggerPrimitive\n",
+                       __PRETTY_FUNCTION__);
         return -1;
     }
     m_tPrms.maxInputSize = sizeof(Pds::EbDgram) + m_triggerPrimitive->size();
 
     if (m_triggerPrimitive->configure(top, m_connectMsg, m_collectionId)) {
-        fprintf(stderr, "%s:\n  Failed to configure TriggerPrimitive\n",
-                __PRETTY_FUNCTION__);
+        logging::error("%s:\n  Failed to configure TriggerPrimitive\n",
+                       __PRETTY_FUNCTION__);
         return -1;
     }
 
@@ -536,7 +574,8 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     m_tPrms.contractor = 0;             // Overridden during Configure
 
     // Build readout group mask for ignoring other partitions' RoGs
-    m_para.rogMask = 0x00ff0000 | ((1 << Pds::Eb::NUM_READOUT_GROUPS) - 1);
+    // Also prepare the mask for placing the service bits at the top of Env
+    m_para.rogMask = 0x00ff0000;
     for (auto it : body["drp"].items()) {
         unsigned rog = unsigned(it.value()["det_info"]["readout"]);
         if (rog < Pds::Eb::NUM_READOUT_GROUPS - 1) {
@@ -614,7 +653,8 @@ static void local_mkdir (const char * path)
 }
 
 static json createFileReportMsg(std::string path, std::string absolute_path,
-                                timespec create_time, timespec modify_time)
+                                timespec create_time, timespec modify_time,
+                                unsigned run_num, std::string hostname)
 {
     char buf[100];
     json msg, body;
@@ -626,6 +666,9 @@ static json createFileReportMsg(std::string path, std::string absolute_path,
     body["create_timestamp"] = buf;
     std::strftime(buf, sizeof buf, "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&modify_time.tv_sec));
     body["modify_timestamp"] = buf;
+    body["hostname"] = hostname;
+    body["gen"] = 2;                // 2 == LCLS-II
+    body["run_num"] = run_num;
     msg["body"] = body;
     return msg;
 }

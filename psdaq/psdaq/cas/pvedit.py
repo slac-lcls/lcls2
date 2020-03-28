@@ -676,39 +676,16 @@ class MonFwd(object):
         self._parent.update(err)
 
 class PvDefCuSeq(QtWidgets.QWidget):
-    valueSet = QtCore.pyqtSignal(int,name='valueSet')
 
     def __init__(self, pvname):
         super(PvDefCuSeq,self).__init__()
 
         lo = QtWidgets.QHBoxLayout()
-        lo.addWidget(QtWidgets.QLabel('EventCode'))
-        self.ecsel = QtWidgets.QLineEdit('-')
-        self.ecsel.editingFinished.connect(self.setValue)
-        lo.addWidget(self.ecsel)
+        lo.addWidget(PvEditInt(pvname+'_EventCode','EventCode'))
         self.setLayout(lo)
 
-        self.pvseq = Pv(pvname+'_Sequence')
-        self.pvbit = Pv(pvname+'_SeqBit')
-
-        self.monseq = MonFwd(self,pvname+'_Sequence')
-        self.monbit = MonFwd(self,pvname+'_SeqBit')
-
     def update(self,err):
-        try:
-            q = (self.monseq.pv.__value__*16) + self.monbit.pv.__value__
-            if err is None:
-                self.ecsel.setText(str(int(q)))
-        except:
-            pass
-
-    def setValue(self):
-        try:
-            value = int(self.ecsel.text())
-            self.monseq.pv.put(int(value/16))
-            self.monbit.pv.put(value%16)
-        except:
-            pass
+        pass
 
 class PvEvtTab(QtWidgets.QStackedWidget):
 
@@ -757,7 +734,7 @@ class PvEditEvt(QtWidgets.QWidget):
     def __init__(self, pvname, idx):
         super(PvEditEvt, self).__init__()
         vbox = QtWidgets.QVBoxLayout()
-        evtcmb = PvEditCmb(pvname,evtsel,imap=[0,1,2,2])
+        evtcmb = PvEditCmb(pvname,evtsel)
         vbox.addWidget(evtcmb)
         vbox.addWidget(PvEvtTab(pvname,evtcmb))
         self.setLayout(vbox)

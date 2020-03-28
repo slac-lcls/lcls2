@@ -546,6 +546,7 @@ class XpmApp(pr.Device):
         def pipelineSet(deps):
             def pipelineSetValue(var, value, write):
                 val = ((value*200)&0xffff) | (value<<16)
+                print('Setting pipeline reg to 0x{:x}'.format(val))
                 deps[0].set(val,write)
             return pipelineSetValue
 

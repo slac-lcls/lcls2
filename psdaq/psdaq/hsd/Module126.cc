@@ -716,10 +716,12 @@ void Module126::flash_write(const char* fname)
 FlashController& Module126::flash() { return p->mbase.flash; }
 
 void Module126::clear_test_pattern_errors() {
+#if 0   // removed from hsd/v3 
   for(unsigned i=0; i<4; i++) {
     p->fex_chan[i]._test_pattern_errors  = 0;
     p->fex_chan[i]._test_pattern_errbits = 0;
   }
+#endif
 }
 
 void Module126::setAdcMux(unsigned channels)

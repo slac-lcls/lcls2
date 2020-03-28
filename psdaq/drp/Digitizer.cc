@@ -108,12 +108,9 @@ unsigned Digitizer::_getPaddr()
 json Digitizer::connectionInfo()
 {
     unsigned reg = m_paddr;
-    int x = (reg >> 16) & 0xFF;
-    int y = (reg >> 8) & 0xFF;
-    int port = reg & 0xFF;
-    std::string xpmIp = {"10.0." + std::to_string(x) + '.' + std::to_string(y)};
-
-    json info = {{"xpm_ip", xpmIp}, {"xpm_port", port}};
+    int xpm  = (reg >> 20) & 0xF;
+    int port = (reg >>  0) & 0xFF;
+    json info = {{"xpm_id", xpm}, {"xpm_port", port}};
     return info;
 }
 
@@ -146,7 +143,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
     PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssi",
                                               m_connect_json.c_str(),
                                               m_epics_name.c_str(),
-                                              "BEAM", 
+                                              "BEAM",
                                               m_para->detName.c_str(),
                                               m_readoutGroup);
 
@@ -232,8 +229,9 @@ unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc)
     lane_mask = Digitizer::_addJson(xtc, configNamesId);
 
     // set up the names for L1Accept data
-    Alg hsdAlg("hsd", 1, 2, 3);
-    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), hsdAlg, "hsd", "detnum1235", m_evtNamesId, m_para->detSegment);
+    Alg alg("raw", 2, 0, 0);
+    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
+                                        m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
     HsdDef myHsdDef(lane_mask);
     eventNames.add(xtc, myHsdDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
@@ -256,6 +254,10 @@ void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
     Pds::TimingHeader* timing_header = (Pds::TimingHeader*)m_pool->dmaBuffers[dmaIndex];
     arrayH(0) = timing_header->_opaque[0];
     arrayH(1) = timing_header->_opaque[1];
+
+    if ((timing_header->_opaque[1] & (1<<31))==0)  // check JESD status bit
+      dgram.xtc.damage.increase(Damage::UserDefined);
+
     for (int i=0; i<4; i++) {
         if (event->mask & (1 << i)) {
             data_size = event->buffers[i].size - sizeof(Pds::TimingHeader);
@@ -271,5 +273,24 @@ void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
          }
     }
 }
-  
+
+void Digitizer::shutdown()
+{
+    // returns new reference
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
+    check(pModule);
+
+    // returns borrowed reference
+    PyObject* pDict = PyModule_GetDict(pModule);
+    check(pDict);
+    // returns borrowed reference
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_unconfig");
+    check(pFunc);
+
+    // returns new reference
+    PyObject_CallFunction(pFunc,"s",
+                          m_epics_name.c_str());
+    Py_DECREF(pModule);
+}
+
 }

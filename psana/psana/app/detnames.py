@@ -72,3 +72,4 @@ def detnames():
   for n in names: 
     print(template.format(*n))
   print('-'*len(header))
+

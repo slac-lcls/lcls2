@@ -75,3 +75,28 @@ def hsd_config(connect_str,epics_prefix,cfgtype,detname,group):
     ctxt.close()
 
     return json.dumps(cfg)
+
+def hsd_unconfig(epics_prefix):
+
+    ctxt = Context('pva')
+    values = ctxt.get(epics_prefix+':CONFIG')
+    values['enable'] = 0
+    print(values)
+    print(epics_prefix)
+    ctxt.put(epics_prefix+':CONFIG',values,wait=True)
+
+    #  This handshake seems to be necessary, or at least the .get()
+    complete = False
+    for i in range(100):
+        complete = ctxt.get(epics_prefix+':READY')!=0
+        if complete: break
+        print('hsd_unconfig wait for complete',i)
+        time.sleep(0.1)
+    if complete:
+        print('hsd config complete')
+    else:
+        raise Exception('timed out waiting for hsd_unconfig')
+
+    ctxt.close()
+
+    return None;

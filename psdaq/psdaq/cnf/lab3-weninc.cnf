@@ -15,8 +15,7 @@ procmgr_config = [
  #{ id:'partca-' + platform ,flags: 's', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
  { id:'groupca', flags: 's', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 2'},
  { id:'procstat', flags: 'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
- { id:'modca1', flags: 's', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:1'},
- { id:'modca2', flags: 's', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
+ { id:'xpmpva', flags: 's', conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1 DAQ:LAB2:XPM:2'},
  { host: collect_host, id: 'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P TMO'},
  { id:'control_gui', flags: 'xp', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 

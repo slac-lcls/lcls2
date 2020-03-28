@@ -515,7 +515,7 @@ void save(Dgram& dg, FILE* xtcFile) {
 }
 
 void addEpicsNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
-    Alg xppEpicsAlg("epics",0,0,0);
+    Alg xppEpicsAlg("raw",2,0,0);
     NamesId namesId(nodeId,MyNamesId::Epics+MyNamesId::NumberOf*segment);
     Names& epicsNames = *new(xtc) Names("epics", xppEpicsAlg, "epics","detnum1234", namesId, segment);
     epicsNames.add(xtc, EpicsDef);
@@ -528,9 +528,9 @@ void addEpicsData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned 
 }
 
 void addScanNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
-    Alg scanAlg("scan",2,3,42);
+    Alg scanAlg("raw",2,0,0);
     NamesId namesId(nodeId,MyNamesId::Scan+MyNamesId::NumberOf*segment);
-    Names& scanNames = *new(xtc) Names("scan", scanAlg, "scanDet", "detnum1234", namesId, segment);
+    Names& scanNames = *new(xtc) Names("scan", scanAlg, "scan", "detnum1234", namesId, segment);
     scanNames.add(xtc, ScanDef);
     namesLookup[namesId] = NameIndex(scanNames);
 }
@@ -621,11 +621,11 @@ int main(int argc, char* argv[])
     unsigned nodeid2 = 2;
     NamesLookup namesLookup;
     unsigned nSegments=2;
-    unsigned iseg = 0;
+    unsigned iseg = 1; // add to 2nd segment for testing
     addRunInfoNames(config.xtc, namesLookup, nodeid1);
     // only add epics and scan info to the first stream
     if (starting_segment==0) {
-        addEpicsNames(config.xtc, namesLookup, nodeid1, iseg);
+        addEpicsNames(config.xtc, namesLookup, nodeid1, iseg); 
         addScanNames(config.xtc, namesLookup, nodeid1, iseg);
     }
     for (unsigned iseg=0; iseg<nSegments; iseg++) {
@@ -674,7 +674,7 @@ int main(int argc, char* argv[])
                     Transition tr(Dgram::Event, TransitionId::SlowUpdate, TimeStamp(tv.tv_sec, tv.tv_usec), env);
                     Dgram& dgram = *new(buf) Dgram(tr, Xtc(tid));
 
-                    unsigned iseg = 0;
+                    unsigned iseg = 1; // add epics to second segment
                     // only add epics to the first stream
                     if (starting_segment==0) addEpicsData(dgram.xtc, namesLookup, nodeid1, iseg);
                     save(dgram,xtcFile);

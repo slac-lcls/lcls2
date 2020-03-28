@@ -25,8 +25,8 @@
 #include <atomic>
 #include <climits>                      // For HOST_NAME_MAX
 
-static const int      CORE_0               = 18; // devXXX: 18, devXX:  7, accXX:  9
-static const int      CORE_1               = 19; // devXXX: 19, devXX: 19, accXX: 21
+static const int      CORE_0               = -1; // devXXX: 18, devXX:  7, accXX:  9
+static const int      CORE_1               = -1; // devXXX: 19, devXX: 19, accXX: 21
 static const unsigned EPOCH_DURATION       = 8;  // Revisit: 1 per xferBuffer
 static const unsigned NUMBEROF_XFERBUFFERS = 8;  // Value corresponds to ctrb:maxEvents
 static const unsigned PROM_PORT_BASE       = 9200; // Prometheus port
@@ -158,7 +158,7 @@ namespace Pds {
   private:
     virtual void _copyDatagram(Dgram* dg, char* buf)
     {
-      //printf("_copyDatagram:   dg = %p, ts = %d.%09d to %p\n",
+      //printf("_copyDatagram:   dg = %p, ts = %u.%09u to %p\n",
       //       dg, dg->time.seconds(), dg->time.nanoseconds(), buf);
 
       // The dg payload is a directory of contributions to the built event.
@@ -167,9 +167,13 @@ namespace Pds {
       const EbDgram** const  last = (const EbDgram**)dg->xtc.next();
       const EbDgram*  const* ctrb = (const EbDgram**)dg->xtc.payload();
       Dgram*                 odg  = new((void*)buf) Dgram(**ctrb); // Not an EbDgram!
+      odg->xtc.src      = XtcData::Src(XtcData::Level::Event);
+      odg->xtc.contains = XtcData::TypeId(XtcData::TypeId::Parent, 0);
       do
       {
         const EbDgram* idg = *ctrb;
+
+        odg->xtc.damage.increase(idg->xtc.damage.value());
 
         buf = (char*)odg->xtc.alloc(idg->xtc.extent);
 
@@ -185,9 +189,9 @@ namespace Pds {
       while (++ctrb != last);
     }
 
-    virtual void _deleteDatagram(Dgram* dg, int bufIdx)
+    virtual void _deleteDatagram(Dgram* dg, int bufIdx) // Not called for transitions
     {
-      //printf("_deleteDatagram @ %p: ts = %d.%09d\n",
+      //printf("_deleteDatagram @ %p: ts = %u.%09u\n",
       //       dg, dg->time.seconds(), dg->time.nanoseconds());
 
       //if ((bufIdx < 0) || (size_t(bufIdx) >= _bufFreeList.size()))
@@ -209,7 +213,7 @@ namespace Pds {
       {
         if (idx == _bufFreeList.peek(i))
         {
-          printf("Attempted double free of list entry %d: idx %d, bufIdx %d, dg %p, ts %d.%09d\n",
+          printf("Attempted double free of list entry %d: idx %d, bufIdx %d, dg %p, ts %u.%09u\n",
                  i, idx, bufIdx, dg, dg->time.seconds(), dg->time.nanoseconds());
           // Does the dg still need to be freed?  Apparently so.
           Pool::free((void*)dg);
@@ -310,16 +314,21 @@ namespace Pds {
   public:
     void run(MyXtcMonitorServer& apps)
     {
-      pinThread(pthread_self(), _prms.core[0]);
-
       logging::info("MEB thread is starting");
+
+      int rc = pinThread(pthread_self(), _prms.core[0]);
+      if (rc != 0)
+      {
+        logging::debug("%s:\n  Error from pinThread:\n  %s",
+                       __PRETTY_FUNCTION__, strerror(rc));
+      }
 
       _apps = &apps;
 
       // Create pool for transferring events to MyXtcMonitorServer
       unsigned    entries = std::bitset<64>(_prms.contributors).count();
       size_t      size    = sizeof(Dgram) + entries * sizeof(Dgram*);
-      GenericPool pool(size, _prms.numEvBuffers);
+      GenericPool pool(size, 1 + _prms.numEvBuffers); // +1 for Transitions
       _pool = &pool;
 
       _eventCount = 0;
@@ -388,19 +397,20 @@ namespace Pds {
 
       if (_prms.verbose >= VL_EVENT)
       {
-        uint64_t pid = event->creator()->pulseId();
-        unsigned ctl = dg->control();
-        size_t   sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
-        unsigned src = dg->xtc.src.value();
-        unsigned env = dg->env;
-        printf("MEB processed  %5ld          event  [%5d] @ "
-               "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d\n",
-               _eventCount, idx, dg, ctl, pid, env, sz, src);
+        uint64_t    pid = event->creator()->pulseId();
+        unsigned    ctl = dg->control();
+        unsigned    env = dg->env;
+        size_t      sz  = sizeof(*dg) + dg->xtc.sizeofPayload();
+        unsigned    src = dg->xtc.src.value();
+        const char* knd = TransitionId::name(dg->service());
+        printf("MEB processed %5ld %15s  [%5d] @ "
+               "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d, ts %u.%09u\n",
+               _eventCount, knd, idx, dg, ctl, pid, env, sz, src, dg->time.seconds(), dg->time.nanoseconds());
       }
 
       if (_apps->events(dg) == XtcMonitorServer::Handled)
       {
-        Pool::free((void*)dg);
+        Pool::free((void*)dg);          // Handled means _deleteDatagram() won't be called
       }
     }
   private:

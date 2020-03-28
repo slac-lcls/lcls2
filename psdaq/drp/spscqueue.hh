@@ -113,6 +113,11 @@ public:
         return ret;
     }
 
+    size_t size()
+    {
+        return m_ring_buffer.size();
+    }
+
     void shutdown()
     {
         {

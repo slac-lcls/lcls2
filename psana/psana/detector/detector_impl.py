@@ -1,22 +1,29 @@
 import typing
 import amitypes
+from psana.dgram import Dgram
+
+class Container(object):
+    def __init__(self):
+        pass
 
 class DetectorImpl(object):
-    def __init__(self, det_name, drp_class_name, configs, calibconst):
+    def __init__(self, det_name, drp_class_name, all_det_configs, calibconst):
         self._det_name       = det_name
         self._drp_class_name = drp_class_name
-        self._configs        = configs
-        self._calibconst     = calibconst
 
+        # Setup a new config list - for configs missing this detector,
+        # add blank dictionary as a placeholder.
+        self._configs = [Dgram(view=config) for config in all_det_configs]
         self._config_segments = []
         for config in self._configs:
-            # mona put this in since epics right now only exists
-            # in one xtc file.
-            if hasattr(config.software,self._det_name):
-                seg_dict = getattr(config.software,self._det_name)
+            if hasattr(config.software, self._det_name): 
+                seg_dict = getattr(config.software, self._det_name)
                 self._config_segments += list(seg_dict.keys())
+            else:
+                config.__dict__ = {self._det_name: {}}
         self._config_segments.sort()
-        return
+
+        self._calibconst     = calibconst # only my calibconst (equivalent to det.calibconst['det_name'])
 
     def _segments(self,evt):
         """
@@ -54,6 +61,9 @@ class DetectorImpl(object):
 
     def _add_fields(self):
         for config in self._configs:
+            # cpo: temporary hack: ignore configs that have
+            # had an empty placeholder put in them in __init__
+            if not hasattr(config,'software'): continue
             if hasattr(config.software,self._det_name):
                 seg      = getattr(config.software,self._det_name)
                 seg_dict = getattr(seg[0],self._drp_class_name)
@@ -62,5 +72,9 @@ class DetectorImpl(object):
                     fd = getattr(seg_dict,field)
                     # fd._type, fd._rank
                     def func(evt, field=field) -> self._return_types(fd._type,fd._rank):
-                        return getattr(self._info(evt),field)
+                        info = self._info(evt)
+                        if info is None:
+                            return None
+                        else:
+                            return getattr(info,field)
                     setattr(self, field, func)

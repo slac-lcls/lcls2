@@ -7,10 +7,12 @@ namespace Pds {
   namespace HSD {
     class FexCfg {
     public:
+      void disable();
+    public:
       vuint32_t _streams;
       vuint32_t _oflow;
-      vuint32_t _test_pattern_errors;      
-      vuint32_t _test_pattern_errbits;
+      vuint32_t _flowstatus;
+      vuint32_t _flowidxs;
 
       class StreamBase {
       public:
@@ -18,10 +20,15 @@ namespace Pds {
       public:
         void setGate(unsigned begin, unsigned length) { _gate = (begin&0xffff) | (length<<16); }
         void setFull(unsigned rows, unsigned events) { _full = (rows&0xffff) | (events<<16); }
-        void getFree(unsigned& rows, unsigned& events) {
+        void getFree(unsigned& rows, unsigned& events, unsigned& oflow) {
+#if 1   // machine check exception
           unsigned v = _free;
-          rows   = v&0xffff;
-          events = (v>>16)&0xff;
+#else
+          unsigned v = 0;
+#endif 
+          rows   = (v>> 0)&0xffff;
+          events = (v>>16)&0x1f;
+          oflow  = (v>>24)&0xff;
         }
       public:
         vuint32_t _prescale;
@@ -30,13 +37,13 @@ namespace Pds {
         vuint32_t _free;
       } _base  [4];
 
-      vuint32_t _rsvd_50[0x20>>2];
-      vuint32_t _bram_wr_errors;
-      vuint32_t _bram_wr_sample;
-      vuint32_t _bram_rd_errors;
-      vuint32_t _bram_rd_sample;
+      vuint32_t _rsvd_50[0xb0>>2];
+      // vuint32_t _bram_wr_errors;
+      // vuint32_t _bram_wr_sample;
+      // vuint32_t _bram_rd_errors;
+      // vuint32_t _bram_rd_sample;
 
-      vuint32_t _rsvd_80[0x80>>2];
+      // vuint32_t _rsvd_80[0x80>>2];
 
       class Stream {
       public:
@@ -49,9 +56,6 @@ namespace Pds {
           vuint32_t rsvd;
         } parms[30];
       } _stream[4];
-
-    private:
-      vuint32_t _rsvd3[(0x1000-0x500)>>2];
     };
   };
 };

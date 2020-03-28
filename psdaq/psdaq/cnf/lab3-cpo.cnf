@@ -39,11 +39,11 @@ procmgr_config = [
  { host: 'drp-tst-dev023', id:'xpphsd_1', flags:'xpu', conda:conda_rel, cmd:drp_cmd+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3E:B'},
 
  {                        id:'groupca' , flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
- {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
 
  { host: 'drp-tst-dev002', id:'teb1'    , flags:'sxpu', conda:conda_rel, cmd:'teb -C '+collect_host},
 
- {                        id:'modca2'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
+ {                        id:'xpmpva'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:2'},
 
  { host: collect_host, id:'control', flags:'sxpu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P TMO'},
  {                        flags:'xp', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},

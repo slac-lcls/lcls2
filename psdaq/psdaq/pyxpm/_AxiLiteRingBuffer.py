@@ -92,8 +92,8 @@ class AxiLiteRingBuffer(pr.Device):
             mask  = (1<<self._datawidth)-1
             cmask = (self._datawidth+3)/4
             len_  = self.blen.get()
-            if len_ > 512: 
-                len_ = 256
+            if len_ > 0x3ff: 
+                len_ = 0x3ff
 
             buff = []
             for i in range(len_):
@@ -104,4 +104,5 @@ class AxiLiteRingBuffer(pr.Device):
                 print(fmt.format(buff[i]),end='')
                 if (i&0xf)==0xf:
                     print()
-
+            if (len_&0xf)!=0:
+                print()

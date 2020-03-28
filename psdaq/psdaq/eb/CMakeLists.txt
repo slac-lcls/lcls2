@@ -57,7 +57,7 @@ target_link_libraries(eventBuilder
   utilities
 )
 
-#add_executable(ft_pingpong ft_pingpong.cc fiTransport.cc)
+add_executable(ft_pingpong ft_pingpong.cc fiTransport.cc)
 
 add_executable(ft_publish         ft_publish.cc)
 add_executable(ft_sub             ft_sub.cc)
@@ -97,9 +97,9 @@ target_include_directories(teb PUBLIC
 #  $ENV{CONDA_PREFIX}/include
 #)
 
-#target_link_libraries(ft_pingpong
-#  utilities
-#)
+target_link_libraries(ft_pingpong
+  utilities
+)
 
 target_link_libraries(ft_publish
   utilities

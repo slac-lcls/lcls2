@@ -37,6 +37,8 @@ namespace Pds {
       //  Return next timing frame
       //
       const Pds::Tpr::Frame* advance();
+      //
+      const Pds::Tpr::TprReg& reg() const { return *_dev; }
     private:
       void _dump() const;
     private:

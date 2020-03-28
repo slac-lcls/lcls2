@@ -75,13 +75,13 @@ int EbLfLink::setupMr(void*          region,
   return 0;
 }
 
-int EbLfLink::recvU32(uint32_t*     u32,
-                      const char*   name)
+int EbLfLink::recvU32(uint32_t*   u32,
+                      const char* name)
 {
   ssize_t rc;
   void*   buf = _bufMr->start();
 
-  if ((rc = _ep->recv_sync(buf, sizeof(u32), _bufMr)) < 0)
+  if ((rc = _ep->recv_sync(buf, sizeof(*u32), _bufMr)) < 0)
   {
     fprintf(stderr, "%s:\n  Failed to receive %s from peer: %s\n",
             __PRETTY_FUNCTION__, name, _ep->error());
@@ -94,8 +94,8 @@ int EbLfLink::recvU32(uint32_t*     u32,
   return 0;
 }
 
-int EbLfLink::sendU32(uint32_t      u32,
-                      const char*   name)
+int EbLfLink::sendU32(uint32_t    u32,
+                      const char* name)
 {
   ssize_t      rc;
   void*        buf = _bufMr->start();

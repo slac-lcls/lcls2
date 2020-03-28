@@ -3,23 +3,7 @@ from psana import dgram
 from psana.psexp.packet_footer import PacketFooter
 import numpy as np
 import os
-
-class TransitionId(object):
-    ClearReadout=0
-    Reset       =1
-    Configure   =2
-    Unconfigure =3
-    BeginRun    =4
-    EndRun      =5
-    BeginStep   =6
-    EndStep     =7
-    Enable      =8
-    Disable     =9
-    SlowUpdate  =10
-    Unused_11   =11
-    L1Accept    =12 
-    NumberOf    =13
-    
+from psana.psexp.TransitionId import TransitionId
 
 class EventManager(object):
     """ Return an event from the received smalldata memoryview (view)
@@ -33,13 +17,9 @@ class EventManager(object):
     """
     def __init__(self, view, smd_configs, dm, filter_fn=0):
         if view:
-            if view == bytearray(b'wait'): # RunParallel (unused bigdata nodes get this wait msg)
-                self.smd_events = None
-                self.n_events = 0
-            else:
-                pf = PacketFooter(view=view)
-                self.smd_events = pf.split_packets()
-                self.n_events = pf.n_packets
+            pf = PacketFooter(view=view)
+            self.smd_events = pf.split_packets()
+            self.n_events = pf.n_packets
         else:
             self.smd_events = None
             self.n_events = 0
@@ -72,15 +52,14 @@ class EventManager(object):
         for i, event_bytes in enumerate(self.smd_events):
             if event_bytes:
                 smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.run())
-                if smd_evt._dgrams[0].service() == TransitionId.L1Accept:
-                    ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
-                            d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_evt._dgrams])
+                ofsz = smd_evt.get_offsets_and_sizes() 
+                if smd_evt.service() == TransitionId.L1Accept:
                     offsets = ofsz[:,0]
                     first_L1_pos = i
                     break
                 else:
-                    ofsz = np.asarray([[0, memoryview(d).nbytes] for d in smd_evt._dgrams])
                     for smd_id, d in enumerate(smd_evt._dgrams):
+                        if not d: continue
                         self.bigdata[smd_id].extend(d)
 
                 if i > 0:
@@ -93,11 +72,7 @@ class EventManager(object):
             j = i + first_L1_pos
             if event_bytes:
                 smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.run())
-                if smd_evt._dgrams[0].service() == TransitionId.L1Accept:
-                    ofsz = np.asarray([[0, d.smdinfo[0].offsetAlg.intDgramSize] \
-                            for d in smd_evt._dgrams])
-                else:
-                    ofsz = np.asarray([[0, d._size] for d in smd_evt._dgrams])
+                ofsz = smd_evt.get_offsets_and_sizes()
 
                 if j > 0:
                     self.ofsz_batch[j,:,0] = self.ofsz_batch[j-1,:,0] + self.ofsz_batch[j-1,:,1]
@@ -127,10 +102,9 @@ class EventManager(object):
         if self.filter_fn:
             smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.run())
             self.cn_events += 1
-            if smd_evt._dgrams[0].service() == TransitionId.L1Accept:
-                ofsz = np.asarray([[d.smdinfo[0].offsetAlg.intOffset, \
-                        d.smdinfo[0].offsetAlg.intDgramSize] for d in smd_evt])
-                bd_evt = self.dm.jump(ofsz[:,0], ofsz[:,1])
+            if smd_evt.service() == TransitionId.L1Accept:
+                offset_and_size_array = smd_evt.get_offsets_and_sizes()
+                bd_evt = self.dm.jump(offset_and_size_array[:,0], offset_and_size_array[:,1])
             else:
                 bd_evt = smd_evt
 

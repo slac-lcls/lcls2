@@ -1,0 +1,40 @@
+platform = '0'
+username = 'lcls2'
+
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
+conda_rel = 'ps-2.0.9'
+
+collect_host = 'localhost'
+xpm          = '0'
+prom_cfg_dir = '/reg/g/psdm/psdatmgr/etc/config/prom'
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+ { id:'xpmpva',                     conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:ASC:XPM:'+xpm},
+ { id:'groupca',     flags:'s',    conda:conda_rel, env:epics_env, cmd:'groupca DAQ:ASC '+xpm+' '+platform},
+ { id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:ASC -x '+xpm+' -P asc -r /dev/null'},
+ { id:'control_gui', flags:'p',    conda:conda_rel,                cmd:'control_gui -H '+collect_host},
+
+ # Trigger event builder
+ { id:'teb',         flags:'sxpu', conda:conda_rel, cmd:'teb -P asc -C '+collect_host+' -M '+prom_cfg_dir},
+
+ # Monitor event builder
+ { id:'meb',         flags:'sxpu', conda:conda_rel, cmd:'monReqServer -d -q 4 -P asc -C '+collect_host+' -M '+prom_cfg_dir},
+
+ # Contributors
+ { id:'drp_1',       flags:'sxpu', conda:conda_rel, cmd: 'drp -l 0x1 -D AreaDetector -d /dev/datadev_0 -o /u2/'+username+' -P asc -C '+collect_host+' -M '+prom_cfg_dir},
+
+ # Start this guy last so that it finds the above processes
+ { id:'procstat',    flags:'p',    conda:conda_rel,                cmd:'procstat p'+platform+'.cnf.last'},
+]

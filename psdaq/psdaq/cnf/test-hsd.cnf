@@ -1,0 +1,53 @@
+platform = '0'
+username = 'lcls2'
+
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
+conda_rel = 'ps-2.0.5'
+
+groups = '0'
+
+procmgr_config = [
+ {                        id:'groupca' , flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
+ {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+]
+
+node=0
+bus =1
+pv  =2
+drp =3
+hsds = [
+    {node:'daq-tst-dev07',bus:'88',pv:'DAQ:LAB2:HSD:DEV07_88',drp:'drp-tst-dev019'},
+    {node:'daq-tst-dev07',bus:'89',pv:'DAQ:LAB2:HSD:DEV07_89',drp:'drp-tst-dev020'},
+    {node:'daq-tst-dev07',bus:'b1',pv:'DAQ:LAB2:HSD:DEV07_B1',drp:'drp-tst-dev021'},
+    {node:'daq-tst-dev07',bus:'b2',pv:'DAQ:LAB2:HSD:DEV07_B2',drp:'drp-tst-dev022'},
+    {node:'daq-tst-dev07',bus:'5e',pv:'DAQ:LAB2:HSD:DEV07_5E',drp:'drp-tst-dev024'},
+    {node:'daq-tst-dev07',bus:'1b',pv:'DAQ:LAB2:HSD:DEV07_1B',drp:'drp-tst-dev008'},
+    {node:'daq-tst-dev07',bus:'1a',pv:'DAQ:LAB2:HSD:DEV07_1A',drp:'drp-tst-dev010'},
+#    {node:'daq-tst-dev06',bus:'3d',pv:'DAQ:LAB2:HSD:DEV06_3D',drp:'drp-tst-dev023'},
+]
+
+port=29074
+pvlist = []
+for e in hsds:
+    procmgr_config.append({id:'hsdpvs_%s_a'%e[bus], port:'%d'%port, flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':A -s'})
+    port += 1
+    procmgr_config.append({id:'hsdpvs_%s_b'%e[bus], port:'%d'%port, flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':B -s'})
+    port += 1
+    procmgr_config.append({ host: e[node], id:'hsdioc_%s'%e[bus], flags:'', conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P '+e[pv]+' -d /dev/pcie_adc_%s'%e[bus]})
+    pvlist.append(e[pv]+':A')
+    pvlist.append(e[pv]+':B')
+
+fields = [
+       'MONTIMING.trigcntsum',
+       'MONTIMING.readcntsum',
+       'MONTIMING.startcntsum',
+       'MONTIMING.headercntl0',
+       'MONTIMING.headerfifow',
+       'MONPGP.txcntsum',
+       'MONRAWBUF.freesz',
+       'MONRAWBUF.freeevt',
+]
+
+procmgr_config.append({id:'hsdpva', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdpva '+' '.join(pvlist)})
+procmgr_config.append({id:'pvatab', flags:'', conda:conda_rel, env:epics_env, cmd:'pvatable --bases '+' '.join(pvlist)+' --fields '+' '.join(fields)})
+

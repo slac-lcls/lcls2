@@ -1,6 +1,7 @@
 find_package(PythonLibs REQUIRED)
 
 add_library(drpbase
+    XpmDetector.cc
     DrpBase.cc
     FileWriter.cc
 )
@@ -13,14 +14,15 @@ target_link_libraries(drpbase
     contributor
     exporter
     collection
+    xtcdata::xtc
 )
 
 add_executable(drp
-    XpmDetector.cc
     AreaDetector.cc
     Digitizer.cc
     TimingSystem.cc
     TimeTool.cc
+    Wave8.cc
     PGPDetector.cc
     PGPDetectorApp.cc
     drp.cc

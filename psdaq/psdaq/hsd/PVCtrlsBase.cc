@@ -29,7 +29,8 @@ namespace Pds {
         switch(_a) {
         case ConfigureA : _pvc.configure(0); break;
         case ConfigureB : _pvc.configure(1); break;
-        case Reset      : _pvc.reset     (); break;
+        case ResetA     : _pvc.reset    (0); break;
+        case ResetB     : _pvc.reset    (1); break;
         default: break;
         }
       }
@@ -68,7 +69,8 @@ namespace Pds {
       connectedBody                                                     \
         }
     
-    CPV(Reset       ,{_ctrl.call(Reset     );}, {})
+    CPV(ResetA      ,{_ctrl.call(ResetA    );}, {})
+    CPV(ResetB      ,{_ctrl.call(ResetB    );}, {})
     CPV(ConfigA     ,{_ctrl.call(ConfigureA);}, {})
     CPV(ConfigB     ,{_ctrl.call(ConfigureB);}, {})
 
@@ -108,7 +110,8 @@ namespace Pds {
         break;
       }
 
-      NPV(Reset    ,"RESET");
+      NPV(ResetA   ,"A:RESET");
+      NPV(ResetB   ,"B:RESET");
 
       _allocate();
 
@@ -145,7 +148,7 @@ namespace Pds {
         fex._stream[1].parms[2].v=PVGET(fex_xpre);
         fex._stream[1].parms[3].v=PVGET(fex_xpost);
       }
-      fex._streams= streamMask;
+      fex._streams= streamMask | (fullEvt<<4);
     
 #define PRINT_FEX_FIELD(title,arg,op) {         \
         printf("%12.12s:",title);               \

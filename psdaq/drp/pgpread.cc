@@ -6,6 +6,7 @@
 #include <AxisDriver.h>
 #include <stdlib.h>
 #include "psdaq/service/EbDgram.hh"
+#include "EventBatcher.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include <unistd.h>
 #include <getopt.h>
@@ -13,6 +14,8 @@
 #define MAX_RET_CNT_C 1000
 static int fd;
 std::atomic<bool> terminate;
+
+using namespace Drp;
 
 unsigned dmaDest(unsigned lane, unsigned vc)
 {
@@ -27,17 +30,25 @@ void int_handler(int dummy)
 
 int main(int argc, char* argv[])
 {
-    int c, channel;
+    int c, virtChan;
 
-    channel = 0;
+    virtChan = 0;
     std::string device;
-    while((c = getopt(argc, argv, "c:d:")) != EOF) {
+    bool lverbose = false;
+    bool lrogue = false;
+    while((c = getopt(argc, argv, "c:d:vr")) != EOF) {
         switch(c) {
             case 'd':
                 device = optarg;
                 break;
             case 'c':
-                channel = atoi(optarg);
+                virtChan = atoi(optarg);
+                break;
+            case 'r':
+                lrogue = true;
+                break;
+            case 'v':
+                lverbose = true;
                 break;
         }
     }
@@ -48,7 +59,7 @@ int main(int argc, char* argv[])
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
     for (unsigned i=0; i<4; i++) {
-        dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, channel));
+        dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, virtChan));
     }
 
     std::cout<<"device  "<<device<<'\n';
@@ -84,12 +95,24 @@ int main(int argc, char* argv[])
             uint32_t index = dmaIndex[b];
             uint32_t size = dmaRet[b];
             uint32_t dest = dmaDest[b] >> 8;
-            const Pds::TimingHeader* event_header = reinterpret_cast<Pds::TimingHeader*>(dmaBuffers[index]);
+            const Pds::TimingHeader* event_header;
+            if (!lrogue)
+                event_header = reinterpret_cast<Pds::TimingHeader*>(dmaBuffers[index]);
+            else {
+                EvtBatcherHeader& ebh = *(EvtBatcherHeader*)(dmaBuffers[index]);
+                event_header = reinterpret_cast<Pds::TimingHeader*>(ebh.next());
+                EvtBatcherSubFrameTail& ebsft = *(EvtBatcherSubFrameTail*)((char*)(dmaBuffers[index])+size-ebh.lineWidth(ebh.width));
+                printf("EventBatcherHeader: vers %d seq %d width %d sfsize %d\n",ebh.version,ebh.sequence_count,ebh.width,ebsft.size());
+            }
             XtcData::TransitionId::Value transition_id = event_header->service();
 
             printf("Size %u B | Dest %u | Transition id %d | pulse id %lu | event counter %u | index %u\n",
                    size, dest, transition_id, event_header->pulseId(), event_header->evtCounter, index);
             printf("env %08x\n", event_header->env);
+            if (lverbose) {
+              for(unsigned i=0; i<((size+3)>>2); i++)
+                printf("%08x%c",reinterpret_cast<uint32_t*>(dmaBuffers[index])[i], (i&7)==7 ? '\n':' ');
+            }
         }
 	    if ( ret > 0 ) dmaRetIndexes(fd, ret, dmaIndex);
 	    //sleep(0.1)

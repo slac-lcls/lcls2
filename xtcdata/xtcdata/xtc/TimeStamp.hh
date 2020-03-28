@@ -12,17 +12,18 @@ public:
     TimeStamp();
     TimeStamp(const TimeStamp& t);
     TimeStamp(const ::timespec& ts);
-    TimeStamp(const double sec);
+    TimeStamp(double sec);
     TimeStamp(unsigned sec, unsigned nsec);
     TimeStamp(uint64_t stamp);
 
 public:
-    uint64_t value() const;
-    unsigned seconds() const;
-    unsigned nanoseconds() const;
-    double   asDouble() const;
-    bool     isZero() const;
-
+    uint64_t   value() const;
+    unsigned   seconds() const;
+    unsigned   nanoseconds() const;
+    double     asDouble() const;
+    bool       isZero() const;
+    uint64_t   to_ns() const;
+    TimeStamp& from_ns(uint64_t nsec);
 public:
     TimeStamp& operator=(const TimeStamp&);
     bool       operator>(const TimeStamp&) const;
@@ -65,6 +66,21 @@ inline
 uint64_t XtcData::TimeStamp::value() const
 {
     return ((uint64_t)_high << 32) | _low;
+}
+
+inline
+XtcData::TimeStamp& XtcData::TimeStamp::from_ns(uint64_t nsec)
+{
+    _low  = nsec % 1000000000;
+    _high = nsec / 1000000000;
+
+    return *this;
+}
+
+inline
+uint64_t XtcData::TimeStamp::to_ns() const
+{
+    return ((uint64_t)_high * 1000000000) + _low;
 }
 
 inline

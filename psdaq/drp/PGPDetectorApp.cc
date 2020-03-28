@@ -6,6 +6,7 @@
 #include "TimeTool.hh"
 #include "AreaDetector.hh"
 #include "Digitizer.hh"
+#include "Wave8.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "PGPDetectorApp.hh"
 #include "psalg/utils/SysLog.hh"
@@ -23,10 +24,13 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     m_para(para)
 {
     Factory<Detector> f;
-    f.register_type<TimingSystem>("TimingSystem");
-    f.register_type<Digitizer>("Digitizer");
-    f.register_type<TimeTool>("TimeTool");
-    f.register_type<AreaDetector>("AreaDetector");
+    f.register_type<TimingSystem>("ts");
+    f.register_type<Digitizer>("hsd");
+    f.register_type<AreaDetector>("fakecam");
+    f.register_type<AreaDetector>("cspad");
+    f.register_type<TimeTool>("tt");
+    f.register_type<Wave8>("wave8");
+
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {
         logging::error("Error !! Could not create Detector object");
@@ -42,6 +46,10 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
 void PGPDetectorApp::shutdown()
 {
     m_exporter.reset();
+
+    if (m_det) {
+      m_det->shutdown();
+    }
 
     if (m_pgpDetector) {
         m_pgpDetector->shutdown();
@@ -129,16 +137,15 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                                   std::ref(m_drp.tebContributor())};
         m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
                                         std::ref(m_drp.tebContributor()));
-
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc);
-
-        m_drp.runInfoSupport(xtc, m_det->namesLookup());
-
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::configure";
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
+        }
+        else {
+            m_drp.runInfoSupport(xtc, m_det->namesLookup());
         }
         m_pgpDetector->resetEventCounter();
     }

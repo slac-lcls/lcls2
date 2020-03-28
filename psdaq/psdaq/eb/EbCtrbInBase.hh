@@ -48,6 +48,7 @@ namespace Pds
       size_t                    _maxBatchSize;
       uint64_t                  _batchCount;
       uint64_t                  _eventCount;
+      uint64_t                  _deliverCount;
       const TebCtrbParams&      _prms;
       void*                     _region;
     };

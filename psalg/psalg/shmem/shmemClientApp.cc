@@ -26,11 +26,13 @@ public:
       nanosleep(&ts,0);
     }
     if(_verbose)
-      printf("%-15s transition: time 0x%014" PRIx64 ", payloadSize 0x%x\n",
+      printf("%-15s transition: time 0x%016" PRIx64 " = %u.%09u, damage %04x, payloadSize 0x%x\n",
              TransitionId::name(dg->service()),
              dg->time.value(),
+             dg->time.seconds(), dg->time.nanoseconds(),
+             dg->xtc.damage.value(),
              dg->xtc.sizeofPayload());
-    return 0;       
+    return 0;
   }
 private:
   int _rate;
@@ -91,9 +93,10 @@ int main(int argc, char* argv[]) {
   bool verbose = false;
   bool veryverbose = false;
   bool accept = false;
+  bool reconnect = false;
   timespec ptv,tv;
 
-  while ((c = getopt(argc, argv, "?hvVti:p:r:")) != -1) {
+  while ((c = getopt(argc, argv, "?hvVti:p:r:R")) != -1) {
     switch (c) {
     case '?':
     case 'h':
@@ -111,6 +114,9 @@ int main(int argc, char* argv[]) {
     case 't':
       timing = true;
       break;
+    case 'R':
+      reconnect = true;
+      break;
     case 'V':
       veryverbose = true;
     case 'v':
@@ -121,36 +127,41 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  MyShmemClient myClient(rate,verbose);
-  myClient.connect(partitionTag,index);
-
   while(1)
     {
-    int ev_index,buf_size;
-    Dgram *dgram = (Dgram*)myClient.get(ev_index,buf_size);
-    if(!dgram) break;
-    if(veryverbose)
-      printf("shmemClient dgram trId %d index %d size %d\n",dgram->service(),ev_index,buf_size);
-    if(!timing)
-      myClient.processDgram(dgram);
-    if(dgram->service() == TransitionId::L1Accept)
+    MyShmemClient myClient(rate,verbose);
+    myClient.connect(partitionTag,index);
+    while(1)
       {
-      if(!accept && timing)
+      int ev_index,buf_size;
+      Dgram *dgram = (Dgram*)myClient.get(ev_index,buf_size);
+      if(!dgram) break;
+      if(veryverbose)
+        printf("shmemClient dgram trId %d index %d size %d\n",dgram->service(),ev_index,buf_size);
+      if(!timing)
+        myClient.processDgram(dgram);
+      if(dgram->service() == TransitionId::L1Accept)
         {
-        accept = true;
-        clock_gettime(CLOCK_REALTIME, &ptv);
+        if(!accept && timing)
+          {
+          accept = true;
+          clock_gettime(CLOCK_REALTIME, &ptv);
+          }
+        ++events;
+        bytes+=dgram->xtc.sizeofPayload();
         }
-      ++events;
-      bytes+=dgram->xtc.sizeofPayload();
+      myClient.free(ev_index,buf_size);
       }
-    myClient.free(ev_index,buf_size);
+    if(timing || !reconnect)
+      break;
+    printf("shmemClient's server appears to have disconnected"
+           " - attempting to reconnect\n");
     }
-
-  if(timing)    
+  if(timing)
     clock_gettime(CLOCK_REALTIME, &tv);
-    
+
   printf("shmemClient received %d L1 dgrams %d payload bytes",events,bytes);
-  
+
   if(timing)
     {
     timespec df = tsdiff(ptv,tv);

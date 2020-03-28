@@ -5,6 +5,8 @@ import time
 
 def epics_names_values(group,pvtable,cfg,d):
     for k, v1 in pvtable.items():
+        if k not in cfg:
+            continue
         v2 = cfg[k]
         if isinstance(v1, dict):
             epics_names_values(group,v1,v2,d)
@@ -42,12 +44,13 @@ def ts_config(connect_json,cfgtype,detname):
         grp_prefix = 'group'+str(group)
         grp = cfg[grp_prefix]
 
-        pvtable[grp_prefix] = {'trigMode':'L0Select',
-                               'delay':'L0Delay',
-                               'fixed' : {'rate'    : 'L0Select_FixedRate'},
-                               'ac' : {'rate'    : 'L0Select_ACRate'},
-                               'seq' : {'mode'   : 'L0Select_Sequence'},
-                               'destination' : {'select'   : 'DstSelect'},
+        pvtable[grp_prefix] = {'trigMode'    :'L0Select',
+                               'delay'       :'L0Delay',
+                               'fixed'       : {'rate'   : 'L0Select_FixedRate'},
+                               'ac'          : {'rate'   : 'L0Select_ACRate'},
+                               'eventcode'   : 'L0Select_EventCode',
+                               'seq'         : {'mode'   : 'L0Select_Sequence'},
+                               'destination' : {'select' : 'DstSelect'},
                   }
 
         epics_names_values(group,pvtable,cfg,mydict)

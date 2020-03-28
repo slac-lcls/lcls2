@@ -149,13 +149,9 @@ class CGWMain(QWZMQListener) :
 
     def init_daq_control_parameters(self) :
         cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording, _platform = daq_control_get_status()
-
-          #cp.instr = self.expname[:3].upper()
         cp.instr = daq_control_get_instrument()
-
-        print('XXXXXX daq_control_get_instrument(): %s' % cp.instr)
-
-        if cp.instr is None : cp.instr = 'TST'
+        logger.debug('daq_control_get_instrument(): %s' % cp.instr)
+        if cp.instr is None : logger.warning('instrument is None')
 
 #------------------------------
 
@@ -362,6 +358,7 @@ class CGWMain(QWZMQListener) :
 
                     #====
                     if wctrl is not None : wctrl.set_but_ctrls()
+                    if wctrl is not None : wctrl.update_progress_bar(0, is_visible=False)
                     self.wconf.set_config_type(cp.s_cfgtype)
                     if wcoll is not None : wcoll.update_table()
                     logger.info('zmq msg transition:%s state:%s config:%s recording:%s'%\
@@ -370,6 +367,8 @@ class CGWMain(QWZMQListener) :
                 elif jo['header']['key'] == 'error' :
                     body = jo['body']
                     logger.error('received error msg: %s' % body['err_info'])
+                    if wctrl is not None : wctrl.update_progress_bar(0, is_visible=False)
+                    if wctrl is not None : wctrl.set_but_ctrls()
 
                     ## grab status directly (not from error message)
                     #status = daq_control_get_status()
@@ -378,13 +377,20 @@ class CGWMain(QWZMQListener) :
                     #    return
 
                     #transition, state, cfgtype, recording = status
-                    #if wctrl is not None : wctrl.set_but_ctrls()
                     #self.wconf.set_config_type(cfgtype)
                     #if wcoll is not None : wcoll.update_table()
+
+                elif jo['header']['key'] == 'progress' :
+                    body = jo['body']
+                    logger.debug('received progress msg: %s' % str(body))
+                    if wctrl is not None : 
+                        v = 100*body['elapsed'] / body['total']
+                        wctrl.update_progress_bar(v, is_visible=True, trans_name=body['transition'])
 
                 else :
                     sj = json.dumps(jo, indent=2, sort_keys=False)
                     logger.debug('received jason:\n%s' % sj)
+                    if wctrl is not None : wctrl.update_progress_bar(0, is_visible=False)
 
         except KeyError as ex:
              logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex))

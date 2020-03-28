@@ -43,6 +43,13 @@ import math
 
 #-----------------------------
 
+def set_random_state(seed=1234567) :
+    """seed : {None, int, array_like} Can be any integer between 0 and 2**32 - 1"""
+    #return np.random.RandomState(seed)
+    np.random.seed(seed)
+
+#-----------------------------
+
 def random_standard(shape=(40,60), mu=200, sigma=25, dtype=np.float) :
     """Returns numpy array of requested shape and type filled with normal distribution for mu and sigma.
     """
@@ -192,6 +199,8 @@ def cspad_ndarr(n2x1=32, dtype=np.float32) :
 if __name__ == '__main__':
 
     from psana.pyalgos.generic.NDArrUtils import print_ndarr
+
+    set_random_state()
 
     print_ndarr(random_exponential(), 'random_exponential')
     print_ndarr(random_standard(), 'random_standard')

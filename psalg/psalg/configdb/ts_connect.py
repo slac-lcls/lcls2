@@ -13,7 +13,8 @@ class xpm_link:
         return (int(self.value)>>24)&0xff == 0xff
 
     def xpm_num(self):
-        return (int(self.value)>>8)&0xff
+        print('xpm_num {:x} {:}'.format(self.value,(int(self.value)>>20)&0xf))
+        return (int(self.value)>>20)&0xf
 
 class ts_connector:
     def __init__(self,json_connect_info):
@@ -63,7 +64,7 @@ class ts_connector:
             try:
                 # FIXME: should have a better method to map xpm ip
                 # address to xpm number (used to create pv names)
-                xpm_id = int(node_info['connect_info']['xpm_ip'].split('.')[2])
+                xpm_id = int(node_info['connect_info']['xpm_id'])
                 xpm_port = node_info['connect_info']['xpm_port']
                 readout_group = node_info['det_info']['readout']
                 self.xpm_info.append((xpm_id,xpm_port,readout_group))
@@ -74,6 +75,7 @@ class ts_connector:
         pv_names = []
         for xpm_port in range(14):
             pv_names.append(pv+'RemoteLinkId' +str(xpm_port))
+        print('link_ids: {:}'.format(pv_names))
         link_ids = self.ctxt.get(pv_names)
 
         pv_names = []
@@ -85,6 +87,7 @@ class ts_connector:
             xlink = xpm_link(link_ids[i])
             if xlink.is_xpm():
                 self.xpm_link_disable(self.xpm_base+str(xlink.xpm_num())+':',groups)
+                link_masks[i] = 0xff   # xpm to xpm links should be enabled for everything
             else:
                 link_masks[i] &= ~groups
 

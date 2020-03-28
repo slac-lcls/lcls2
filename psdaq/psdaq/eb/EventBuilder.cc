@@ -423,7 +423,7 @@ void EventBuilder::process(const EbDgram* ctrb,
   const EbEvent* due   = nullptr;
   unsigned       cnt   = maxEntries;
 
-  do
+  while (true)
   {
     event = _insert(epoch, ctrb, event, prm);
     if (!event->_remaining)  due = event;
@@ -432,6 +432,7 @@ void EventBuilder::process(const EbDgram* ctrb,
     {
       unsigned  env = ctrb->env;
       unsigned  ctl = ctrb->control();
+      uint64_t  pid = ctrb->pulseId();
       uint32_t* pld = reinterpret_cast<uint32_t*>(ctrb->xtc.payload());
       size_t    sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
       unsigned  src = ctrb->xtc.src.value();
@@ -440,11 +441,10 @@ void EventBuilder::process(const EbDgram* ctrb,
              ctrb, ctl, pid, env, sz, src, pld[0], pld[1], prm, due ? due->sequence() : 0ul);
     }
 
-    ctrb = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(ctrb) + size);
+    if (!--cnt || ctrb->isEOL())  break; // Handle full list faster
 
-    pid = ctrb->pulseId();
+    ctrb = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(ctrb) + size);
   }
-  while (--cnt && pid);                 // Handle full list faster
 
   if (due)
   {

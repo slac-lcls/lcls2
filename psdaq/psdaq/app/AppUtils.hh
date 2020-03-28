@@ -21,6 +21,7 @@ namespace Psdaq {
     static unsigned    parse_ip(const char* ipString);
     static unsigned    parse_interface(const char* interfaceString);
     static std::string parse_paddr(unsigned);
+    static std::string parse_plink(unsigned);
     static pthread_t   monitor(const MonitorArgs&);
   };
 };

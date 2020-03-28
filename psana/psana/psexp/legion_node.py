@@ -34,7 +34,7 @@ def run_smd0_task(run):
 
 def smd_batches(smd_chunk, run):
     eb_man = EventBuilderManager(smd_chunk, run)
-    for smd_batch_dict in eb_man.batches():
+    for smd_batch_dict, step_batch_dict in eb_man.batches():
         smd_batch, _ = smd_batch_dict[0]
         yield smd_batch
 
@@ -51,7 +51,7 @@ def batch_events(smd_batch, run):
 
     events = Events(run, get_smd=get_smd)
     for evt in events:
-        if evt._dgrams[0].service() != TransitionId.L1Accept: continue
+        if evt.service() != TransitionId.L1Accept: continue
         yield evt
 
 @task

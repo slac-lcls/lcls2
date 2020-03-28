@@ -51,11 +51,13 @@ class DefaultPVHandler(object):
             self.callback(postedval)
 
 class ChipServer(object):
-    def __init__(self, provider, prefix):
+    def __init__(self, provider, prefix, start):
         self.provider = provider
         self.prefix = prefix
 
         #  Make configuration one PV access for each readout channel
+        if start:
+            daqConfig['enable'] = ('i',1)
         self.daqConfig      = MySharedPV(daqConfig,self.updateDaqConfig)
         self.ready          = SharedPV(initial=NTScalar('I').wrap({'value' : 0}),
                                        handler=DefaultPVHandler())
@@ -70,11 +72,15 @@ class ChipServer(object):
                                     handler=DefaultPVHandler())
         self.pAddr_u     = SharedPV(initial=NTScalar('I').wrap({'value':0}),
                                     handler=DefaultPVHandler())
+        self.pLink       = SharedPV(initial=NTScalar('I').wrap({'value':0}),
+                                    handler=DefaultPVHandler())
         self.monTiming   = MySharedPV(monTiming)
         self.monPgp      = MySharedPV(monPgp)
         self.monRawBuf   = MySharedPV(monBuf)
         self.monFexBuf   = MySharedPV(monBuf)
         self.monRawDet   = MySharedPV(monBufDetail)
+        self.monFexDet   = MySharedPV(monBufDetail)
+        self.monFlow     = MySharedPV(monFlow)
         self.monEnv      = MySharedPV(monEnv)
         self.monAdc      = MySharedPV(monAdc)
         self.monJesd     = MySharedPV(monJesd)
@@ -83,11 +89,14 @@ class ChipServer(object):
         self.provider.add(prefix+':FWBUILD'   ,self.fwBuild)
         self.provider.add(prefix+':PADDR'     ,self.pAddr)
         self.provider.add(prefix+':PADDR_U'   ,self.pAddr_u)
+        self.provider.add(prefix+':PLINK'     ,self.pLink)
         self.provider.add(prefix+':MONTIMING' ,self.monTiming)
         self.provider.add(prefix+':MONPGP'    ,self.monPgp)
         self.provider.add(prefix+':MONRAWBUF' ,self.monRawBuf)
         self.provider.add(prefix+':MONFEXBUF' ,self.monFexBuf)
         self.provider.add(prefix+':MONRAWDET' ,self.monRawDet)
+        self.provider.add(prefix+':MONFEXDET' ,self.monFexDet)
+        self.provider.add(prefix+':MONFLOW'   ,self.monFlow)
         self.provider.add(prefix+':MONENV'    ,self.monEnv)
         self.provider.add(prefix+':MONADC'    ,self.monAdc)
         self.provider.add(prefix+':MONJESD'   ,self.monJesd)
@@ -104,9 +113,9 @@ class ChipServer(object):
         pass
 
 class PVAServer(object):
-    def __init__(self, provider_name, prefix):
+    def __init__(self, provider_name, prefix, start):
         self.provider = StaticProvider(provider_name)
-        self.chip     = ChipServer(self.provider, prefix)
+        self.chip     = ChipServer(self.provider, prefix, start)
 
     def forever(self):
         Server.forever(providers=[self.provider])
@@ -119,14 +128,14 @@ def main():
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for High Speed Digitizer')
 
     parser.add_argument('-P', required=True, help='DAQ:LAB2:HSD:DEV06_3E', metavar='PREFIX')
-#    parser.add_argument('-d', required=True, help='device filename', metavar='DEV')
+    parser.add_argument('-s', '--start', action='store_true', help='start acq')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    server = PVAServer(__name__, args.P)
+    server = PVAServer(__name__, args.P, args.start)
 
     try:
         # process PVA transactions

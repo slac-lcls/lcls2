@@ -31,15 +31,13 @@ public:
     EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
                const std::shared_ptr<MetricExporter>& exporter);
-    ~EbReceiver();
     void process(const Pds::Eb::ResultDgram& result, const void* input) override;
 public:
     void resetCounters();
-    std::string openFiles(const Parameters& para, const RunInfo& runInfo);
+    std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname);
     std::string closeFiles();
 private:
     void _writeDgram(XtcData::Dgram* dgram);
-    XtcData::Dgram* _configureDgram() {return static_cast<XtcData::Dgram*>(m_configureBuffer);}
 private:
     MemPool& m_pool;
     Pds::Eb::MebContributor* m_mon;
@@ -56,7 +54,7 @@ private:
     XtcData::TransitionId::Value m_lastTid;
     uint64_t m_offset;
     unsigned m_nodeId;
-    void* m_configureBuffer;
+    std::vector<uint8_t> m_configureBuffer;
 };
 
 class DrpBase
@@ -95,6 +93,7 @@ private:
     size_t m_collectionId;
     Pds::Trg::Factory<Pds::Trg::TriggerPrimitive> m_trigPrimFactory;
     Pds::Trg::TriggerPrimitive* m_triggerPrimitive;
+    std::string m_hostname;
 };
 
 }

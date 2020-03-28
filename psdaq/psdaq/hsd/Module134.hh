@@ -13,6 +13,7 @@ namespace Pds {
   namespace Mmhw {
     class AxiVersion;
     class Jtag;
+    class TriggerEventManager;
   };
   namespace HSD {
     class TprCore;
@@ -38,6 +39,7 @@ namespace Pds {
       const Pds::Mmhw::AxiVersion& version() const;
       I2c134&                      i2c    ();
       ChipAdcCore&                 chip   (unsigned ch);
+      Pds::Mmhw::TriggerEventManager& tem    ();
       Fmc134Ctrl&                  jesdctl();
       Mmcm&                        mmcm   ();
       TprCore&                     tpr    ();
@@ -46,7 +48,8 @@ namespace Pds {
       Jesd204b&                    jesd   (unsigned ch);
       OptFmc&                      optfmc ();
       void*                        reg    ();
- 
+      Pds::Mmhw::Jtag&             xvc    ();
+
       //  Accessors
       uint64_t device_dna() const;
 

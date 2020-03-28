@@ -31,13 +31,12 @@ class DgramManager():
         self.shmem_cli = None
         self.shmem_kwargs = {'index':-1,'size':0,'cli_cptr':None}
         self.configs = []
-        self.fds = []
+        self.fds = np.ones(len(xtc_files), dtype=np.int32) * -1
         self._timestamps = [] # built when iterating 
         self._run = run
 
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
-            assert len(self.xtc_files) > 0
         elif isinstance(xtc_files, (list, np.ndarray)):
             if len(xtc_files) > 0: # handles smalldata-only case
                 if xtc_files[0] == 'shmem':
@@ -56,7 +55,6 @@ class DgramManager():
                     self.configs += [d]
                 else:    
                     self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
-                    assert len(self.xtc_files) > 0
             
         given_configs = True if len(configs) > 0 else False
         
@@ -64,18 +62,18 @@ class DgramManager():
             self.configs = configs
         
         for i, xtcdata_filename in enumerate(self.xtc_files):
-            self.fds.append(os.open(xtcdata_filename,
-                            os.O_RDONLY))
+            self.fds[i] = os.open(xtcdata_filename, os.O_RDONLY)
             if not given_configs: 
-                d = dgram.Dgram(file_descriptor=self.fds[-1])
+                d = dgram.Dgram(file_descriptor=self.fds[i])
                 self.configs += [d]
 
-        self.det_class_table, self.xtc_info, self.det_info_table = self.get_det_class_table()
+        self.det_classes, self.xtc_info, self.det_info_table = self.get_det_class_table()
         self.calibconst = {} # initialize to empty dict - will be populated by run class
 
     def __del__(self):
-        if self.fds:
+        if self.fds.shape[0] > 0:
             for fd in self.fds:
+                if fd < 0: continue
                 os.close(fd)
 
     def __iter__(self):
@@ -110,7 +108,10 @@ class DgramManager():
         assert len(offsets) > 0 and len(sizes) > 0
         dgrams = []
         for fd, config, offset, size in zip(self.fds, self.configs, offsets, sizes):
-            d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
+            if offset==0 and size==0:
+                d = None
+            else:
+                d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)   
             dgrams += [d]
         
         evt = Event(dgrams, run=self.run())
@@ -122,8 +123,8 @@ class DgramManager():
         maps (dettype,software,version) to associated python class and 
         detector info for a det_name maps to dettype, detid tuple.
         """
+        det_classes = {'epics': {}, 'scan': {}, 'normal': {}}
 
-        det_class_table = {}
         xtc_info = []
         det_info_table = {} 
 
@@ -137,6 +138,12 @@ class DgramManager():
                 # they should all be identical
                 first_key = next(iter(det_dict.keys()))
                 det = det_dict[first_key]
+                
+                if det_name not in det_classes:
+                    det_class_table = det_classes['normal']
+                else:
+                    det_class_table = det_classes[det_name]
+
                 
                 dettype, detid = (None, None)
                 for drp_class_name, drp_class in det.__dict__.items():
@@ -168,7 +175,7 @@ class DgramManager():
                 
                 det_info_table[det_name] = (dettype, detid)
         
-        return det_class_table,xtc_info,det_info_table
+        return det_classes, xtc_info, det_info_table
 
     def get_timestamps(self):
         return np.asarray(self._timestamps, dtype=np.uint64) # return numpy array for easy search later

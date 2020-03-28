@@ -84,9 +84,9 @@ class ConstantsLoad(object):
                 self.setval(remainder,getattr(obj,dictname))
         else:
             if type(obj) is dict:
-                obj[name]=self.f[self.fullname].value
+                obj[name]=self.f[self.fullname][()] #.value
             else:
-                setattr(obj,name,self.f[self.fullname].value)
+                setattr(obj,name,self.f[self.fullname][()]) #.value)
     def loadCallBack(self,name,obj):
         '''called back by h5py routine visititems for each
         item (group/dataset) in the h5 file'''
