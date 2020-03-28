@@ -227,11 +227,15 @@ public:
 
         size_t pixel_size_out = 0;
         //ShapesData& shapesdata =  *(ShapesData*)xtc;
-        NamesId namesId = shapesdata->namesId();
 
+        NamesId namesId = shapesdata->namesId();
+        DEBUG_PRINT
         DescData descdata = DescData(*shapesdata, _namesLookup[namesId]);
+        DEBUG_PRINT
         Names& names = descdata.nameindex().names();
+        DEBUG_PRINT
         Name& name = names.get(index);
+        DEBUG_PRINT
         int data_rank = name.rank();
         int data_type = name.type();
         void* ret_data = NULL;
@@ -1403,6 +1407,7 @@ int check_update_dgram(int fd, xtc_dgram_info* dg_info, Dgram* current_dgram_in_
             printf("lseek error\n");
             return -1;
         }
+        printf("Load dgram: id = %llu, dgram_size = %llu\n", dg_info->dgram_id, dg_info->dgram_size);
         if (::read(fd, current_dgram_in_out, dg_info->dgram_size) == 0) {//read from the offset to bigdg
             printf("Big dgram read error\n");
             return -1;
@@ -1410,7 +1415,6 @@ int check_update_dgram(int fd, xtc_dgram_info* dg_info, Dgram* current_dgram_in_
         printf(" done. Current dgram id = %llu\n", (current_dgram_in_out)->time.value());
         return 0;
     }
-
     return 0;
 }
 
@@ -1426,6 +1430,7 @@ unordered_map<uint64_t, xtc_dgram_info>* load_index(int index_fd){
         info.dgram_id = smalldg->time.value();
         info.dgram_offset = smditer.offset;
         info.dgram_size = smditer.dgramSize;
+        printf("load_index: dgram_id = %llu, dgram_size = %llu\n", info.dgram_id, info.dgram_size);
         index_map->insert(pair<uint64_t, xtc_dgram_info>(info.dgram_id, info));
     }
     return index_map;
@@ -1492,8 +1497,8 @@ xtc_object* iterate_list_all(int fd, int index_fd){
 //            isConfigureTransition = false;
 //            printf("\n=============================== Configure transition completed. ===============================\n");
 //        }
-        printf("%s:%d:  dbgiter = %p, dbgiter->_current_dgram = %p\n",
-                __func__, __LINE__, dbgiter, dbgiter->_current_dgram);
+        printf("%s:%d:  dbgiter = %p, dbgiter->_current_dgram = %p, id = %llu\n",
+                __func__, __LINE__, dbgiter, dbgiter->_current_dgram, dbgiter->_current_dgram->time.value());
         dbgiter->CURRENT_LOCATION->dg = dbgiter->_current_dgram; //no use?
         i++;
         nevent++;
