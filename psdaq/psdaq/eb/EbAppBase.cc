@@ -205,8 +205,8 @@ int EbAppBase::process()
     uint64_t    pid = idg->pulseId();
     unsigned    ctl = idg->control();
     const char* knd = TransitionId::name(idg->service());
-    size_t      sz  = sizeof(*idg) + idg->xtc.sizeofPayload();
-    printf("EbAp rcvd %9ld %15s[%5d]   @ "
+    size_t      sz  = sizeof(*idg) + idg->xtc.sizeofPayload(); // Just the first dg size, not the batch size
+    printf("EbAp rcvd %9ld %15s[%8d]   @ "
            "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d, data %08lx\n",
            _bufferCnt, knd, idx, idg, ctl, pid, env, sz, lnk->id(), data);
   }

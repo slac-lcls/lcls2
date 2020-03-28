@@ -123,19 +123,20 @@ void TebContributor::shutdown()
 
 void* TebContributor::allocate(const TimingHeader& hdr, const void* appPrm)
 {
-  auto pid = hdr.pulseId();
+  auto pid   = hdr.pulseId();
+  auto batch = _batMan.fetch(pid);
 
   if (_prms.verbose >= VL_EVENT)
   {
     const char* svc = TransitionId::name(hdr.service());
+    unsigned    idx = batch ? batch->index() : -1;
     unsigned    ctl = hdr.control();
     unsigned    env = hdr.env;
-    printf("Batching  %15s  dg              @ "
+    printf("Batching  %15s  dg  [%8d]     @ "
            "%16p, ctl %02x, pid %014lx, env %08x,                    prm %p\n",
-           svc, &hdr, ctl, pid, env, appPrm);
+           svc, idx, &hdr, ctl, pid, env, appPrm);
   }
 
-  auto batch = _batMan.fetch(pid);
   if (batch)                            // Null when terminating
   {
     ++_eventCount;                      // Only count events handled
@@ -208,7 +209,7 @@ void TebContributor::_post(const Batch* batch) const
     {
       uint64_t pid    = batch->id();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
-      printf("CtrbOut posts %9ld    batch[%5d]    @ "
+      printf("CtrbOut posts %9ld    batch[%8d]    @ "
              "%16p,         pid %014lx,               sz %6zd, TEB %2d @ %16p, data %08x\n",
              _batchCount, idx, buffer, pid, extent, dst, rmtAdx, data);
     }
@@ -243,7 +244,7 @@ void TebContributor::_post(const EbDgram* dgram) const
         unsigned    ctl    = dgram->control();
         const char* svc    = TransitionId::name(dgram->service());
         void*       rmtAdx = (void*)link->rmtAdx(offset);
-        printf("CtrbOut posts    %15s           @ "
+        printf("CtrbOut posts    %15s              @ "
                "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2d @ %16p, data %08x\n",
                svc, dgram, ctl, pid, env, extent, link->id(), rmtAdx, data);
       }

@@ -25,10 +25,11 @@ bld_str = 'ebeam'
 bldcas_str = 'HPSEX'
 ea_cfg = '/reg/neh/home/claus/lclsii/daq/runs/eb/epicsArch.txt'
 
-drp_cmd = task_set+'drp '+std_opts+' -l 0x1'
-bld_cmd = task_set+'drp_bld '+std_opts+' -l 0x1 -k interface=eno2 -D '+bld_str
-pva_cmd = task_set+'drp_pva '+std_opts+' '
-ea_cmd  = task_set+'epicsArch '+std_opts+' '+ea_cfg
+drp_cmd = task_set+'drp '+std_opts1+' -l 0x1'
+bld_cmd = task_set+'drp_bld '+std_opts1+' -l 0x1 -k interface=eno2 -D '+bld_str
+pva_cmd = task_set+'drp_pva '+std_opts1+' '
+ea_cmd  = task_set+'epicsArch '+std_opts1+' '+ea_cfg
+wv8_cmd = task_set+'drp '+std_opts0+' -l 0x2 -D wave8 -k epics_prefix=DAQ:WAVE8'
 
 teb_cmd = task_set+'teb -P tst -C '+collect_host+' -M '+prom_dir #+' -1 18 -2 19'
 meb_cmd = task_set+'monReqServer -P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -d -q 4' #+' -1 16 -2 17'
@@ -75,6 +76,11 @@ procmgr_config = [
 
  # Timing System
  #{ host: 'drp-tst-dev013', id:'tmots_0', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D ts' },
+
+ # Wave8
+ #{ host: 'drp-tst-dev005', id:'wave8pvs',    flags:'s',    conda:conda_rel, cmd:'wave8pvs --l 0'},
+ #{ host: 'drp-tst-dev005', id:'tmowave8_0',  flags:'spu',  conda:conda_rel, cmd:wv8_cmd},
+ #{                         id:'pvant',       flags:'s',    conda:conda_rel, env:epics_env, cmd:'pvant --bases DAQ:WAVE8:Top --fields '+' '.join(fields)},
 
  # Cams
  #{ host: 'drp-tst-dev002', id:'cam_0',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },

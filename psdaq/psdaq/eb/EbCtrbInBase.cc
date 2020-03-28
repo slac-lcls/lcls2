@@ -191,7 +191,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     unsigned   ctl     = bdg->control();
     unsigned   env     = bdg->env;
     BatchFifo& pending = ctrb.pending();
-    printf("CtrbIn  rcvd        %6ld result  [%5d] @ "
+    printf("CtrbIn  rcvd        %6ld result  [%8d] @ "
            "%16p, ctl %02x, pid %014lx, env %08x,            src %2d, empty %c, cnt %zd, result %p\n",
            _batchCount, idx, bdg, ctl, pid, env, lnk->id(), pending.empty() ? 'Y' : 'N',
            pending.count(), ctrb.batch(idx)->result());
@@ -313,9 +313,9 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
       unsigned    ctl    = result->control();
       const char* svc    = TransitionId::name(result->service());
       size_t      extent = sizeof(*result) + result->xtc.sizeofPayload();
-      printf("CtrbIn  found  [%5d]  %15s    @ "
+      printf("CtrbIn  found  %15s  [%8d]    @ "
              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2d, deliver %c [%014lx]\n",
-             idx, svc, result, ctl, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid);
+             svc, idx, result, ctl, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid);
     }
 
     ++_eventCount;

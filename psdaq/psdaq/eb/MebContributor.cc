@@ -103,7 +103,7 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
     unsigned ctl    = ddg->control();
     uint32_t env    = ddg->env;
     void*    rmtAdx = (void*)link->rmtAdx(offset);
-    printf("MebCtrb posts %9ld    monEvt [%5d]  @ "
+    printf("MebCtrb posts %9ld    monEvt [%8d]  @ "
            "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2d @ %16p, data %08x\n",
            _eventCount, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data);
   }
@@ -140,7 +140,7 @@ int MebContributor::post(const EbDgram* ddg)
       unsigned ctl    = ddg->control();
       uint32_t env    = ddg->env;
       void*    rmtAdx = (void*)link->rmtAdx(offset);
-      printf("MebCtrb posts %9ld      trId [%5d]  @ "
+      printf("MebCtrb posts %9ld      trId [%8d]  @ "
              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2d @ %16p - %16p, data %08x\n",
              _eventCount, tr, ddg, ctl, pid, env, sz, link->id(), rmtAdx, (char*)rmtAdx + sz, data);
     }

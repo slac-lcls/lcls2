@@ -22,9 +22,9 @@ namespace Pds
     class ImmData
     {
     private:
-      enum { v_flg = 28, k_flg =  2 };  // Modifier flags (see Flags enum below)
-      enum { v_src = 16, k_src =  6 };  // Limit to 64 Ctrbs (expandable to 2048)
-      enum { v_idx =  0, k_idx = 16 };  // Multiplied by batch duration gives time range
+      enum { v_flg = 30, k_flg =  2 };  // Modifier flags (see Flags enum below)
+      enum { v_src = 24, k_src =  6 };  // Limit to 64 Ctrbs
+      enum { v_idx =  0, k_idx = 24 };  // Multiplied by pulseId tick gives time range
     private:
       enum { m_flg = ((1 << k_flg) - 1), s_flg = (m_flg << v_flg) };
       enum { m_src = ((1 << k_src) - 1), s_src = (m_src << v_src) };
