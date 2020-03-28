@@ -5,6 +5,7 @@
  *      Author: tonglin
  */
 
+ #include <stdint.h>
 
 #ifndef XTC_IO_API_H_
 #define XTC_IO_API_H_
@@ -67,9 +68,22 @@ EXTERNC typedef struct Xtc_Location {
 }xtc_location;
 
 //Used for dataset read
+EXTERNC typedef struct dgram_info{
+    uint64_t dgram_id;//Use timestamp as ID
+    uint64_t dgram_offset;
+    uint64_t dgram_size;
+}xtc_dgram_info;
+
 EXTERNC typedef struct Xtc_dataset_handle{
+    //uint64_t dgram_offset;
+    uint64_t dgram_id;//Use timestamp as ID
+    //uint64_t dgram_size;
     int index;
-    void* names;     //XtcData::Names
+    void* dgram;
+    void* shapesData;
+    void* namesLookup;
+    //void* name;     //XtcData::Names
+    //void* descdata;
     void* xtc_ptr; //Xtc* xtc, can be casted to descdata, shapesdata
 }xtc_data_handle;
 
@@ -78,8 +92,10 @@ EXTERNC typedef struct XTC_DS_info {
     int dim_cnt;// for rank in H5Screate(rank, ), n of dimensions of dataspace.
     h5_size_t current_dims[6]; //1D array of size cnt_dimes,
     h5_size_t* maximum_dims; //Optional, maximum size of each dimension
+    size_t total_pixel_cnt;
+
     int element_size;//similar to sizeof(type)
-    int element_cnt;
+    int element_cnt; //image cnt
     xtc_data_handle* data_handle;
     void* data_ptr;
     int isTimestampsDS;//bool

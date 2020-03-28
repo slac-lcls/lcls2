@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <vector>
-
+#include <string>
 #include "xtc_io_api_c.h"
 
 using namespace std;

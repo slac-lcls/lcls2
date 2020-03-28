@@ -27,7 +27,7 @@
 
 #include "xtc_io_api_c.h"
 
-#define DEBUG_PRINT printf("%s():%d\n", __func__, __LINE__);
+#define DEBUG_PRINT //printf("%s():%d\n", __func__, __LINE__);
 /**********/
 /* Macros */
 /**********/
@@ -1500,8 +1500,10 @@ hid_t type_convert(xtc_data_type xtc_type){
 
         case CHARSTR:
             xtc_type_name = "CHARSTR";
-            ret = H5T_C_S1; //C-specific string datatype
+            //ret = H5T_C_S1; //C-specific string datatype
             h5_type_name = "H5T_C_S1";
+            ret = H5Tcopy(H5T_C_S1);
+			H5Tset_size(ret, H5T_VARIABLE);
             break;
 
         case ENUMVAL:
@@ -2145,9 +2147,9 @@ H5VL_xtc_file_close(void *file, hid_t dxpl_id, void **req)
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL FILE Close\n");
 #endif
-    xtc_object* helper = o->xtc_obj;
+    xtc_object* head = o->xtc_obj;
     //H5VL_xtc_free_obj(o);
-    xtc_file_close(helper);
+    xtc_file_close(head);
 
 
 //    ret_value = H5VLfile_close(o->under_object, o->under_vol_id, dxpl_id, req);
@@ -2469,12 +2471,15 @@ int loop_children(bool recursive, xtc_object* xtc_obj, H5L_iterate2_t* op, void*
         printf("%s: null xtc_obj. return.\n", __func__);
         return 0;
     }
+
     int n_children = 0;
     xtc_object** children = xtc_get_children_list(xtc_obj, &n_children);
     hid_t gid = H5VLwrap_register(xtc_obj, H5I_GROUP);//obj
 
-    if(n_children == 0 || !children)
+    if(n_children == 0 || !children){
+        H5Idec_ref(gid);
         return H5_ITER_CONT;
+    }
 
     assert(children && *children);
 
@@ -2487,20 +2492,20 @@ int loop_children(bool recursive, xtc_object* xtc_obj, H5L_iterate2_t* op, void*
         linfo.cset = 0; //US ASCII
         linfo.u.token = *(H5O_token_t*)(children[i]->obj_token);
 
-        hid_t gid2 = H5VLwrap_register(xtc_obj, H5I_GROUP);//obj
-
         int op_ret =  (*op)(gid, link_name, &linfo, op_data);//list metadata of children[i]
 
         if(op_ret != H5_ITER_CONT){
+            H5Idec_ref(gid);
             return op_ret;
         }
 
-        op_ret = loop_children(recursive, children[i], op, op_data);
-
-        if(op_ret != H5_ITER_CONT){
-            return op_ret;
+        if( children[i]->obj_type == XTC_GROUP){
+            op_ret = loop_children(recursive, children[i], op, op_data);
+            if(op_ret != H5_ITER_CONT){
+                H5Idec_ref(gid);
+                return op_ret;
+            }
         }
-
     }//end for(children)
 
     H5Idec_ref(gid);
@@ -2538,7 +2543,12 @@ H5VL_xtc_link_specific(void *obj, const H5VL_loc_params_t *loc_params,
             hsize_t* idx_p = va_arg(arguments, hsize_t*);
             H5L_iterate2_t op = va_arg(arguments, H5L_iterate2_t);
             void* op_data = va_arg(arguments, void*);
-            ret_value = loop_children(recursive, target->xtc_obj, &op, op_data);
+            if(target->xtc_obj->obj_type == XTC_GROUP || target->xtc_obj->obj_type ==XTC_HEAD){
+                ret_value = loop_children(recursive, target->xtc_obj, &op, op_data);
+            } else {
+                assert(0 && "DO NOT loop through a non-group link!");
+            }
+
         }
             break;
         default:

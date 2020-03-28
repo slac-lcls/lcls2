@@ -4,6 +4,9 @@
  *  Created on: Feb 14, 2020
  *      Author: tonglin
  */
+#include <string.h>
+#include <assert.h>
+#include <stdlib.h>
 #include <iostream>
 #include "util_debug.h"
 #include "xtc_io_api_cpp.hh"
