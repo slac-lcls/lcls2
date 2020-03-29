@@ -52,9 +52,7 @@ public:
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
                 if (strcmp(name.name(),"intOffset")==0) {
-                  offset    = descdata.get_value<uint64_t>(i);
-                } else if (strcmp(name.name(),"intDgramSize")==0) {
-                  dgramSize = descdata.get_value<uint64_t>(i);
+                    offset = descdata.get_value<uint64_t>(i);
                 }
             }
             break;
@@ -64,8 +62,8 @@ public:
         }
         return Continue;
     }
-    uint64_t offset;
-    uint64_t dgramSize;
+    void reset() {offset=-1;}
+    int64_t offset;
     
 private:
     NamesLookup _namesLookup;
@@ -126,24 +124,31 @@ int main(int argc, char* argv[])
     while ((smalldg = iter.next())) {
         if (nevent>=neventreq) break;
         nevent++;
+        smditer.reset();
         smditer.iterate(&(smalldg->xtc));
         printf("Small event %d, %s transition: time %d.%09d, "
-               "extent %d offset 0x%x dgramSize 0x%x\n",
+               "extent %d offset 0x%llx\n",
                nevent,
                TransitionId::name(smalldg->service()),
                smalldg->time.seconds(),
                smalldg->time.nanoseconds(), smalldg->xtc.extent,
-               smditer.offset,smditer.dgramSize);
-        if (smditer.dgramSize>bigdgBufferSize) {
-            printf("Big dgram too large %s\n",smditer.dgramSize);
-            exit(-1);
-        }
+               smditer.offset);
+        if (smditer.offset<=0) continue; // non-L1 transitions are stored in smd
         if (lseek(bigfd, (off_t)smditer.offset, SEEK_SET) < 0) {
             printf("lseek error\n");
             exit(-1);
         }
-        if (::read(bigfd, bigdg, smditer.dgramSize) == 0) {
-            printf("Big dgram read error\n");
+        if (::read(bigfd, bigdg, sizeof(Dgram)) == 0) {
+            printf("Big dgram header read error\n");
+            exit(-1);
+        }
+        unsigned bigdgsize = sizeof(Dgram)+bigdg->xtc.extent;
+        if (bigdgsize>bigdgBufferSize) {
+            printf("Big dgram too large %s\n",bigdgsize);
+            exit(-1);
+        }
+        if (::read(bigfd, bigdg->xtc.payload(), bigdg->xtc.extent) == 0) {
+            printf("Big dgram payload read error\n");
             exit(-1);
         }
         printf("Big   event %d, %s transition: time %d.%09d, "
@@ -151,7 +156,6 @@ int main(int argc, char* argv[])
                nevent,
                TransitionId::name(bigdg->service()), bigdg->time.seconds(),
                bigdg->time.nanoseconds(), bigdg->xtc.extent);
-        
     }
 
     ::close(smallfd);

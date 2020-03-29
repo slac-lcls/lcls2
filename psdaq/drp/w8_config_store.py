@@ -160,6 +160,7 @@ def write_to_daq_config_db(detname,fn=None):
     top.init('expert','Top.AdcPatternTester.Samples', 0, 'UINT32' )
     top.init('expert','Top.AdcPatternTester.Request', 0, 'UINT8' )
 
+    mycdb.add_alias('BEAM')
     mycdb.modify_device('BEAM', top)
 
 
