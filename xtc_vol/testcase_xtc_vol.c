@@ -122,66 +122,43 @@ unsigned long group_test(int benchmark_type, const char* file_name, hid_t fapl, 
 int main(int argc, char* argv[])
 {
     hid_t fapl;
-    const char* file_name = "xtc_test.h5";
-
+    const char* file_name = "data.xtc2";
+    const char* group_name = "/Configure/xpphsd_hsd_fex";
     MPI_Init(NULL, NULL);
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
 
     printf("HDF5 XTC VOL test start...pid = %d, rank = %d\n", getpid(), my_rank);
     MY_RANK_DEBUG = my_rank;
-    int benchmark_type = 0;
-    unsigned long time_window = 50;
-    //printf("1\n");
-
-    //printf("1.2, time_window = %lu\n", time_window);
-    /* Create a new file using default properties. */
 
     fapl = H5Pcreate(H5P_FILE_ACCESS);
-    //printf("1.3\n");
 
-    H5Pset_fapl_mpio(fapl, MPI_COMM_WORLD, MPI_INFO_NULL);
-    //printf("1.4\n");
+    //H5Pset_fapl_mpio(fapl, MPI_COMM_WORLD, MPI_INFO_NULL);
+
+   // Register VOL connector: terminal VOL, doesn't have a under_vol/under_vol_id
+    //extern const H5VL_class_t H5VL_xtc_g;
+    hid_t xtc_vol_id = H5VLregister_connector(&H5VL_xtc_g, H5P_DEFAULT);
+    printf("1.5, xtc_vol_id = %llx\n", xtc_vol_id);
+    H5Pset_vol(fapl, xtc_vol_id, NULL);//set xtc_vol_info to NULL for nothing to pass to vol.
+    //printf("1.6\n");
 
 
-    {//XTC_VOL
-        //hid_t xtc_vol_id = H5VLregister_connector_by_name("xtc_vol", H5P_DEFAULT);
-
-        extern const H5VL_class_t H5VL_xtc_g;
-       	hid_t xtc_vol_id = H5VLregister_connector(&H5VL_xtc_g, H5P_DEFAULT);
-        printf("1.5, xtc_vol_id = %llx\n", xtc_vol_id);
-        H5VL_xtc_info_t xtc_vol_info;
-
-        //hid_t baseline_vol_id = H5VLregister_connector_by_value(0, H5P_DEFAULT);
-
-        xtc_vol_info.under_vol_id = H5VLregister_connector_by_value(0, H5P_DEFAULT);
-        // printf("1.52, xtc_vol_info.under_vol_id = %llx\n", xtc_vol_info.under_vol_id);
-
-        xtc_vol_info.under_vol_info = NULL;
-//        xtc_vol_info.mpi_comm = MPI_COMM_WORLD;
-//        xtc_vol_info.mpi_info = MPI_INFO_NULL;
-//        xtc_vol_info.time_window_size = time_window;
-//        xtc_vol_info.mode = benchmark_type;
-//        xtc_vol_info.world_size = comm_size;
-//        xtc_vol_info.my_rank = my_rank;
-        H5Pset_vol(fapl, xtc_vol_id, &xtc_vol_info);
-        //printf("1.6\n");
-
-        H5VLclose(xtc_vol_id);
-    }
+    DEBUG_PRINT
 
     int num_ops = 1;
     //========================  Sub Test cases  ======================
     unsigned long t;
-    t = ds_test(benchmark_type, file_name, fapl, num_ops);
-    printf("HDF5 XTC VOL test done. ds_test take %lu usec, avg = %lu\n", t, (t / num_ops));
-
-    t = group_test(benchmark_type, file_name, fapl, num_ops);
-    printf("HDF5 XTC VOL test done. group_test took %lu usec, avg = %lu\n", t, (t / num_ops));
-
+    DEBUG_PRINT
+    hid_t file_id = H5Fopen(file_name, H5F_ACC_RDONLY, fapl);
+    DEBUG_PRINT
+    hid_t group_id = H5Gopen2(file_id, group_name, H5P_DEFAULT);
+    H5Gclose(group_id);
+    H5Fclose(file_id);
+    DEBUG_PRINT
     //=================================================================
     H5Pclose(fapl);
-
+    DEBUG_PRINT
+    H5VLclose(xtc_vol_id);
     H5close();
     //rintf("HDF5 library shut down.\n");
 

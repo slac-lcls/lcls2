@@ -19,21 +19,24 @@
 
 /* Public headers needed by this file */
 #include "H5VLpublic.h"        /* Virtual Object Layer                 */
-
+#include "xtc_io_api_c.h"
 /* Identifier for the xtc VOL connector */
 #define XTC_VOL	(H5VL_xtc_register())
 
 /* Characteristics of the xtc VOL connector */
 #define XTC_VOL_NAME        "xtc_vol"
-#define XTC_VOL_VALUE       507           /* VOL connector ID */
+#define XTC_VOL_VALUE       1003           /* VOL connector ID */
 #define XTC_VOL_VERSION     0
 
 /* XTC VOL connector info */
+//This is a terminal VOL: no under_vol, under_* members are place holders to satisfy compiler.
 typedef struct H5VL_xtc_info_t {
     hid_t under_vol_id;         /* VOL ID for under VOL */
     void *under_vol_info;       /* VOL info for under VOL */
 } H5VL_xtc_info_t;
 
+extern const H5VL_class_t H5VL_xtc_g;
+//One helper per file.
 
 #ifdef __cplusplus
 extern "C" {
