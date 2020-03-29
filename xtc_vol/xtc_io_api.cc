@@ -1407,8 +1407,9 @@ int check_update_dgram(int fd, xtc_dgram_info* dg_info, Dgram* current_dgram_in_
             printf("lseek error\n");
             return -1;
         }
+        //dg_info->dgram_size
         printf("Load dgram: id = %llu, dgram_size = %llu\n", dg_info->dgram_id, dg_info->dgram_size);
-        if (::read(fd, current_dgram_in_out, dg_info->dgram_size) == 0) {//read from the offset to bigdg
+        if (::read(fd, current_dgram_in_out, 0x100) == 0) {//read from the offset to bigdg
             printf("Big dgram read error\n");
             return -1;
         }
