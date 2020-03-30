@@ -74,8 +74,11 @@ def DataSource(*args, **kwargs):
         elif mode == 'legion':
             return LegionDataSource(*args, **kwargs)
 
+        elif mode == 'none':
+            return SerialDataSource(*args, **kwargs)
+
         else:
-            raise InvalidDataSource("Incorrect mode. DataSource mode only supports either mpi or legion.")
+            raise InvalidDataSource("Incorrect mode. DataSource mode only supports either mpi, legion, or none (non parallel mode).")
     
     # ==== from XTC file(s) ====
     elif 'files' in kwargs: # list of files
