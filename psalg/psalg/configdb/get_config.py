@@ -25,7 +25,7 @@ def get_config(connect_json,cfgtype,detname):
     connect_info = json.loads(connect_json)
     control_info = connect_info['body']['control']['0']['control_info']
     instrument = control_info['instrument']
-    cfg_dbase = control_info['cfg_dbase'].split('/')
+    cfg_dbase = control_info['cfg_dbase'].rsplit('/', 1)
     db_url = cfg_dbase[0]
     db_name =cfg_dbase[1]
     return get_config_with_params(db_url, instrument, db_name, cfgtype, detname)
