@@ -1,4 +1,5 @@
 import requests
+from .typed_json import cdict
 
 class configdb(object):
 
@@ -49,3 +50,32 @@ class configdb(object):
         xx = requests.get(self.prefix + 'get_devices/' + hutch + '/' +
                           alias + '/').json()
         return xx
+
+    # Modify the current configuration for a specific device, adding it if
+    # necessary.  name is the device and value is a json dictionary for the
+    # configuration.  Return the new configuration key if successful and
+    # raise an error if we fail.
+    def modify_device(self, alias, value, hutch=None):
+        if hutch is None:
+            hutch = self.hutch
+
+        if isinstance(value, cdict):
+            value = value.typed_json()
+        if not isinstance(value, dict):
+            raise TypeError("modify_device: value is not a dictionary!")
+        if not "detType:RO" in value.keys():
+            raise ValueError("modify_device: value has no detType set!")
+        if not "detName:RO" in value.keys():
+            raise ValueError("modify_device: value has no detName set!")
+
+        device = value.get('detName:RO')
+        xx = requests.get(self.prefix + 'modify_device/' + hutch + '/' +
+                          alias + '/' + device + '/', json=value).json()
+        return xx
+
+    # Print all of the configurations for the hutch.
+    def print_configs(self, hutch=None):
+        if hutch is None:
+            hutch = self.hutch
+        xx = requests.get(self.prefix + 'print_configs/' + hutch + '/').json()
+        print(xx.strip())
