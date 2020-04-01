@@ -75,14 +75,13 @@ def test_timetool_psana(plot=False):
     
     # Second pass - finding edges from given backgrounds and good image
     for nevt,evt in enumerate(myrun.events()):
-        parsed_frame_object = det.ttalg.parsed_frame(evt)
-        if parsed_frame_object.prescaled_frame is None: continue
-
-        image = det.ttalg._image(evt)
-        result = edge_finder(image, parsed_frame_object, edet(evt))
+        image = det.ttalg.image(evt)
+        
+        if image is None: continue
+        result = edge_finder(image, edet(evt))
         
         if plot:
-            plt.plot(parsed_frame_object.prescaled_frame/np.max(parsed_frame_object.prescaled_frame), label="signal")
+            plt.plot(image/np.max(image), label="signal")
             plt.plot(result.convolved, label="convolution result")
             plt.plot(result.edge, result.amplitude, "x")
             plt.hlines(*result.results_half[1:], color="C2")
@@ -97,7 +96,7 @@ def test_timetool_psana(plot=False):
 
 if __name__ == "__main__":
     test_timetool()
-    test_timetool_psana()
+    test_timetool_psana(plot)
 
 """
 import numpy as np

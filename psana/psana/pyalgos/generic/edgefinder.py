@@ -20,27 +20,20 @@ class EdgeFinder(object):
         #self.kernel = self._calc_filter_weights(good_image, bgs)
         self.delayed_denominator, _ = self.calibconst['delayed_denom']
 
-    def __call__(self, image, parsed_frame_object, IIR):
-
-        #known good length values that a raw frame can take
-        assert image.shape == (2208,) or image.shape == (144,) or image.shape == (4272,)
-        
-        #make sure the edge position falls within the pixel range
-        assert parsed_frame_object.edge_position >=0 and parsed_frame_object.edge_position <= 2047
-        
+    def __call__(self, image, IIR):
         result = None
 
         #validating that we're getting the correct number of pixels
-        if(parsed_frame_object.prescaled_frame is not None):
-            assert len(parsed_frame_object.prescaled_frame) == 2048
+        if(image is not None):
+            assert len(image) == 2048
 
             # check if IIR exists 
             if IIR is None:
-                IIR = np.zeros(parsed_frame_object.prescaled_frame.shape, dtype=parsed_frame_object.prescaled_frame.dtype)
+                IIR = np.zeros(image.shape, dtype=image.dtype)
 
             # do the matchy filter and normalize
             convolved = np.convolve( \
-                (parsed_frame_object.prescaled_frame-IIR)/ self.delayed_denominator, \
+                (image-IIR)/ self.delayed_denominator, \
                 self.kernel)
             convolved /= np.max(convolved)
 
@@ -72,12 +65,6 @@ class EdgeFinder(object):
                     convolved=convolved, \
                     results_half=results_half)
 
-
-
-        if(parsed_frame_object.background_frame is not None):
-            #validating that we're getting the correct number of pixels from the firmware
-            assert len(parsed_frame_object.background_frame) == 2048
-        
         return result
 
     def _twos_complement(self, hexstr,bits):
