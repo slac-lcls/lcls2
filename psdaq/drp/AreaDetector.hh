@@ -16,7 +16,6 @@ public:
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:
     enum {RawNamesIndex = NamesIndex::BASE, FexNamesIndex};
-    unsigned m_evtcount;
 };
 
 }

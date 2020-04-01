@@ -134,7 +134,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
 
         m_pgpThread = std::thread{&PGPDetector::reader, std::ref(*m_pgpDetector), m_exporter,
-                                  std::ref(m_drp.tebContributor())};
+                                  std::ref(m_det), std::ref(m_drp.tebContributor())};
         m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
                                         std::ref(m_drp.tebContributor()));
         std::string config_alias = msg["body"]["config_alias"];

@@ -15,23 +15,13 @@ using logging = psalg::SysLog;
 
 using namespace Drp;
 
-const Pds::TimingHeader* getTimingHeader(const Parameters& para, MemPool& pool, uint32_t index) {
-    if (para.rogueDet) {
-        EvtBatcherHeader& ebh = *(EvtBatcherHeader*)(pool.dmaBuffers[index]);
-        // skip past the event-batcher header
-        return reinterpret_cast<Pds::TimingHeader*>(ebh.next());
-    } else {
-        return reinterpret_cast<Pds::TimingHeader*>(pool.dmaBuffers[index]);
-    }
-}
-
-bool checkPulseIds(const Parameters& para, MemPool& pool, PGPEvent* event)
+bool checkPulseIds(const Detector* det, PGPEvent* event)
 {
     uint64_t pulseId = 0;
     for (int i=0; i<4; i++) {
         if (event->mask & (1 << i)) {
             uint32_t index = event->buffers[i].index;
-            const Pds::TimingHeader* timingHeader = getTimingHeader(para, pool,index);
+            const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
             if (pulseId == 0) {
                 pulseId = timingHeader->pulseId();
             }
@@ -64,12 +54,12 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         for (unsigned i=0; i<batch.size; i++) {
             unsigned index = (batch.start + i) % nbuffers;
             PGPEvent* event = &pool.pgpEvents[index];
-            checkPulseIds(para, pool, event);
+            checkPulseIds(det, event);
 
             // get transitionId from the first lane in the event
             int lane = __builtin_ffs(event->mask) - 1;
             uint32_t dmaIndex = event->buffers[lane].index;
-            const Pds::TimingHeader* timingHeader = getTimingHeader(para, pool,dmaIndex);
+            const Pds::TimingHeader* timingHeader = det->getTimingHeader(dmaIndex);
 
             // make new dgram in the pebble
             // It must be an EbDgram in order to be able to send it to the MEB
@@ -133,7 +123,7 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
     for (int i=0; i<4; i++) {
         if (para.laneMask & (1 << i)) {
             logging::info("setting lane  %d", i);
-            dmaAddMaskBytes(mask, dmaDest(i, para.virtChan));
+            dmaAddMaskBytes(mask, dmaDest(i, det->virtChan));
         }
     }
     dmaSetMaskBytes(drp.pool.fd(), mask);
@@ -146,15 +136,15 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
 
     for (unsigned i = 0; i < para.nworkers; i++) {
         m_workerThreads.emplace_back(workerFunc,
-                                   std::ref(para),
-                                   std::ref(drp),
-                                   det,
-                                   std::ref(m_workerInputQueues[i]),
-                                   std::ref(m_workerOutputQueues[i]));
+                                     std::ref(para),
+                                     std::ref(drp),
+                                     det,
+                                     std::ref(m_workerInputQueues[i]),
+                                     std::ref(m_workerOutputQueues[i]));
     }
 }
 
-void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
+void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter, Detector* det,
                          Pds::Eb::TebContributor& tebContributor)
 {
     // setup monitoring
@@ -196,13 +186,13 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
             uint32_t index = dmaIndex[b];
             uint32_t lane = (dest[b] >> 8) & 7;
             bytes += size;
-            if (unsigned(size) > m_pool.dmaSize()) {
-                logging::critical("DMA overflowed buffer: %d vs %d", size, m_pool.dmaSize());
+            if (size > m_pool.dmaSize()) {
+                logging::critical("DMA overflowed buffer: %u vs %u", size, m_pool.dmaSize());
                 exit(-1);
             }
 
-            uint32_t* data = (uint32_t*)getTimingHeader(m_para, m_pool, index);
-            uint32_t evtCounter = data[5] & 0xffffff;
+            const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
+            uint32_t evtCounter = timingHeader->evtCounter & 0xffffff;
             uint32_t current = evtCounter & bufferMask;
             PGPEvent* event = &m_pool.pgpEvents[current];
 
@@ -211,14 +201,14 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter,
             buffer->index = index;
             event->mask |= (1 << lane);
 
-            logging::debug("PGPReader  lane %d  size %d  hdr %016lx.%016lx.%08x",
+            const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
+            logging::debug("PGPReader  lane %u  size %u  hdr %016lx.%016lx.%08x",
                            lane, size,
-                           reinterpret_cast<uint64_t*>(data)[0],
-                           reinterpret_cast<uint64_t*>(data)[1],
-                           reinterpret_cast<uint32_t*>(data)[4]);
+                           reinterpret_cast<const uint64_t*>(data)[0],
+                           reinterpret_cast<const uint64_t*>(data)[1],
+                           reinterpret_cast<const uint32_t*>(data)[4]);
 
             if (event->mask == m_para.laneMask) {
-                const Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(data);
                 XtcData::TransitionId::Value transitionId = timingHeader->service();
                 if (transitionId != XtcData::TransitionId::L1Accept) {
                     logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",

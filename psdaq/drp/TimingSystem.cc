@@ -66,7 +66,6 @@ public:
 
 TimingSystem::TimingSystem(Parameters* para, MemPool* pool) :
     XpmDetector(para, pool),
-    m_evtcount(0),
     m_evtNamesId(-1, -1), // placeholder
     m_connect_json("")
 {
@@ -179,8 +178,6 @@ void TimingSystem::beginstep(XtcData::Xtc& xtc, const json& stepInfo) {
 
 void TimingSystem::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
-    m_evtcount+=1;
-
     DescribedData ts(dgram.xtc, m_namesLookup, m_evtNamesId);
 
     int lane = __builtin_ffs(event->mask) - 1;

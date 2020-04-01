@@ -1,5 +1,4 @@
 #include "Wave8.hh"
-#include "EventBatcher.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -58,7 +57,7 @@ namespace Drp {
                 v.NameVec.push_back(XtcData::Name(name, XtcData::Name::UINT16));
             }
         }
-      
+
         static void createData(CreateData& cd, unsigned& index,
                                void* segptr, unsigned segsize) {
             IntegralStream& p = *new(segptr) IntegralStream;
@@ -122,12 +121,13 @@ namespace Drp {
     };
     class Streams {
     public:
-        static void defineData(Xtc& xtc, const char* detName, const char* detNum,
+        static void defineData(Xtc& xtc, const char* detName,
+                               const char* detType, const char* detNum,
                                NamesLookup& lookup, NamesId& raw, NamesId& fex) {
           // set up the names for L1Accept data
           { Alg alg("raw", 0, 0, 1);
-            Names& eventNames = *new(xtc) Names(detName, alg, 
-                                                "wave8", detNum, raw);
+            Names& eventNames = *new(xtc) Names(detName, alg,
+                                                detType, detNum, raw);
             VarDef v;
             for(unsigned i=0; i<8; i++)
                 RawStream::varDef(v,i);
@@ -135,8 +135,8 @@ namespace Drp {
             lookup[raw] = NameIndex(eventNames); }
 #if 1
           { Alg alg("fex", 0, 0, 1);
-            Names& eventNames = *new(xtc) Names(detName, alg, 
-                                                "wave8", detNum, fex);
+            Names& eventNames = *new(xtc) Names(detName, alg,
+                                                detType, detNum, fex);
             VarDef v;
             IntegralStream::varDef(v);
             ProcStream    ::varDef(v);
@@ -144,7 +144,7 @@ namespace Drp {
             lookup[fex] = NameIndex(eventNames); }
 #endif
         }
-        static void createData(XtcData::Xtc&         xtc, 
+        static void createData(XtcData::Xtc&         xtc,
                                XtcData::NamesLookup& lookup,
                                XtcData::NamesId&     rawId,
                                XtcData::NamesId&     fexId,
@@ -171,14 +171,12 @@ namespace Drp {
 
 Wave8::Wave8(Parameters* para, MemPool* pool) :
     Detector(para, pool),
-    m_evtcount(0),
     m_evtNamesRaw(-1, -1), // placeholder
     m_evtNamesFex(-1, -1), // placeholder
     m_epics_name(para->kwargs["epics_prefix"]),
     m_paddr     (_getPaddr())
 {
-    para->rogueDet=true;
-    para->virtChan=1;
+    virtChan = 1;
     printf("*** found epics name %s\n",m_epics_name.c_str());
 }
 
@@ -354,7 +352,8 @@ unsigned Wave8::configure(const std::string& config_alias, Xtc& xtc)
 
     m_evtNamesRaw = NamesId(nodeId, EventNamesIndex+0);
     m_evtNamesFex = NamesId(nodeId, EventNamesIndex+1);
-    W8::Streams::defineData(xtc,m_para->detName.c_str(),"detnum1235",
+    W8::Streams::defineData(xtc,m_para->detName.c_str(),
+                            m_para->detType.c_str(),m_para->serNo.c_str(),
                             m_namesLookup,m_evtNamesRaw,m_evtNamesFex);
     printf("--Configure complete--\n");
     return 0;
@@ -362,8 +361,6 @@ unsigned Wave8::configure(const std::string& config_alias, Xtc& xtc)
 
 void Wave8::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
-    m_evtcount+=1;
-
     int lane = __builtin_ffs(event->mask) - 1;
     uint32_t dmaIndex = event->buffers[lane].index;
     unsigned data_size = event->buffers[lane].size;
@@ -377,7 +374,7 @@ void Wave8::event(XtcData::Dgram& dgram, PGPEvent* event)
         segptr [ebsft->tdest()] = ebsft->data();
     }
 
-    W8::Streams::createData(dgram.xtc, m_namesLookup, m_evtNamesRaw, m_evtNamesFex, 
+    W8::Streams::createData(dgram.xtc, m_namesLookup, m_evtNamesRaw, m_evtNamesFex,
                             &segptr[2], &segsize[2]);  // stream 0 is event header
 }
 
@@ -398,6 +395,6 @@ void Wave8::shutdown()
     PyObject_CallFunction(pFunc,"s",
                           m_epics_name.c_str());
     Py_DECREF(pModule);
-}  
+}
 
 }
