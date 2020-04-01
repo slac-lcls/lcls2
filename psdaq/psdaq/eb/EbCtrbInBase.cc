@@ -57,8 +57,8 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
   int rc;
   if ( (rc = _transport.initialize(prms.ifAddr, prms.port, numEbs)) )
   {
-    logging::error("%s:\n  Failed to initialize EbLfServer\n",
-                   __PRETTY_FUNCTION__);
+    logging::error("%s:\n  Failed to initialize EbLfServer on %s:%s\n",
+                   __PRETTY_FUNCTION__, prms.ifAddr, prms.port);
     return rc;
   }
 
@@ -119,7 +119,7 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
     }
     if (link->postCompRecv())
     {
-      logging::warning("%s:\n  Failed to post CQ buffers for Ctrb ID %d\n",
+      logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d\n",
                        __PRETTY_FUNCTION__, rmtId);
     }
 
@@ -182,8 +182,8 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
   uint64_t           pid = bdg->pulseId();
   if ( (rc = lnk->postCompRecv()) )
   {
-    logging::warning("%s:\n  Failed to post CQ buffers: %d\n",
-                     __PRETTY_FUNCTION__, rc);
+    logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d\n",
+                     __PRETTY_FUNCTION__, src);
   }
 
   if (_prms.verbose >= VL_BATCH)
@@ -300,7 +300,7 @@ void EbCtrbInBase::_deliver(TebContributor&    ctrb,
   while (true)
   {
     // Ignore results for which there is no input
-    // This can happen due to this Ctrb being in a different readout group than
+    // This can happen due to this DRP being in a different readout group than
     // the one for which the result is for, or having missed a contribution that
     // was subsequently fixed up by the TEB.  In both cases there is no
     // input corresponding to the result.

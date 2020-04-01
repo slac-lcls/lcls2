@@ -55,15 +55,20 @@ int MebContributor::configure(const MebCtrbParams& prms,
                      __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
+    unsigned rmtId = link->id();
+    _links[rmtId] = link;
+
+    logging::debug("Outbound link with MEB ID %d connected\n", rmtId);
+
     if ( (rc = link->prepare(region, size, _bufRegSize)) )
     {
-      logging::error("%s:\n  Failed to prepare link with MEB at %s:%s\n",
-                     __PRETTY_FUNCTION__, addr, port);
+      logging::error("%s:\n  Failed to prepare link with MEB ID %d\n",
+                     __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
-    _links[link->id()] = link;
 
-    logging::info("Outbound link with MEB ID %d connected\n", link->id());
+    logging::info("Outbound link with MEB ID %d connected and configured\n",
+                  rmtId);
   }
 
   return 0;

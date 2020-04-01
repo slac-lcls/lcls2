@@ -58,13 +58,13 @@ int TebContributor::configure(const TebCtrbParams& prms)
   _numEbs  = std::bitset<64>(prms.builders).count();
   _pending.clear();
 
-  int    rc;
   void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
   size_t regSize = _batMan.batchRegionSize(); // No need to add Tr space size here
 
   _links.resize(prms.addrs.size());
   for (unsigned i = 0; i < _links.size(); ++i)
   {
+    int            rc;
     const char*    addr = prms.addrs[i].c_str();
     const char*    port = prms.ports[i].c_str();
     EbLfCltLink*   link;
@@ -78,7 +78,7 @@ int TebContributor::configure(const TebCtrbParams& prms)
     unsigned rmtId = link->id();
     _links[rmtId] = link;
 
-    if (_prms.verbose)  logging::info("Outbound link with TEB ID %d connected\n", rmtId);
+    logging::debug("Outbound link with TEB ID %d connected\n", rmtId);
 
     if ( (rc = link->prepare(region, regSize)) )
     {

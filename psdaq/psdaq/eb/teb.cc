@@ -184,30 +184,30 @@ int Teb::configure(const EbParams& prms,
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _l3Transport.connect(&link, addr, port, _id, tmo)) )
     {
-      logging::error("%s:\n  Error connecting to Ctrb at %s:%s",
+      logging::error("%s:\n  Error connecting to DRP at %s:%s",
                      __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
     unsigned rmtId = link->id();
     _l3Links[rmtId] = link;
 
-    logging::debug("Outbound link with Ctrb ID %d connected", rmtId);
+    logging::debug("Outbound link with DRP ID %d connected", rmtId);
 
     if ( (rc = link->prepare(region, regSize)) )
     {
-      logging::error("%s:\n  Failed to prepare link with Ctrb ID %d",
+      logging::error("%s:\n  Failed to prepare link with DRP ID %d",
                      __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
 
-    logging::info("Outbound link with Ctrb ID %d connected and configured",
+    logging::info("Outbound link with DRP ID %d connected and configured",
                   rmtId);
   }
 
   if ( (rc = _mrqTransport.initialize(prms.ifAddr, prms.mrqPort, prms.numMrqs)) )
   {
-    logging::error("%s:\n  Failed to initialize MonReq EbLfServer",
-                   __PRETTY_FUNCTION__);
+    logging::error("%s:\n  Failed to initialize MonReq EbLfServer on %s:%s",
+                   __PRETTY_FUNCTION__, prms.ifAddr, prms.mrqPort);
     return rc;
   }
 
@@ -363,11 +363,12 @@ void Teb::process(EbEvent* event)
         {
           rdg.monBufNo(data);
 
-          rc = _mrqLinks[ImmData::src(data)]->postCompRecv();
+          unsigned src = ImmData::src(data);
+          rc = _mrqLinks[src]->postCompRecv();
           if (rc)
           {
-            logging::warning("%s:\n  Failed to post CQ buffers: %d",
-                             __PRETTY_FUNCTION__, rc);
+            logging::warning("%s:\n  Failed to post CQ buffers for Mon Requestor ID %d",
+                             __PRETTY_FUNCTION__, src);
           }
         }
       }

@@ -116,7 +116,7 @@ namespace Pds {
         unsigned rmtId = link->id();
         _mrqLinks[rmtId] = link;
 
-        logging::info("Outbound link with TEB ID %d connected", rmtId);
+        logging::debug("Outbound link with TEB ID %d connected", rmtId);
 
         if ( (rc = link->prepare()) )
         {
