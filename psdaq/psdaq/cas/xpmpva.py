@@ -3,6 +3,7 @@ import socket
 import argparse
 from PyQt5 import QtCore, QtGui, QtWidgets
 from psdaq.cas.pvedit import *
+from .xpm_utils import *
 
 try:
     QString = unicode
@@ -23,39 +24,6 @@ Masks       = ['None','0','1','2','3','4','5','6','7','All']
 
 frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
-
-def atcaIp(v):
-    return '10.0.{:}.{:}'.format((int(v)>>16)&0xf,(int(v)>>8)&0xff)
-
-def hostName(v):
-    ip = '172.21.{:d}.{:d}'.format((int(v)>>8)&0xff,(int(v)>>0)&0xff)
-    return socket.gethostbyaddr(ip)[0].split('.')[0].split('-')[-1]
-
-def nameLinkXpm(v):
-    return ('XPM:{:}'.format((int(v)>>20)&0xf), atcaIp(v))
-
-def nameLinkDti(v):
-    return ('DTI', atcaIp(v))
-
-def nameLinkDrp(v):
-    return ('TDetSim', hostName(v))
-
-def nameLinkHsd(v):
-    return ('HSD', '{:}.{:x}'.format(hostName(v),(v>>16)&0xff))
-
-def nameLinkTDet(v):
-    return ('TDetSim', hostName(v))
-
-def nameLinkWave8(v):
-    return ('Wave8', hostName(v))
-
-linkType = {}
-linkType[0xff] = nameLinkXpm
-linkType[0xfe] = nameLinkDti
-linkType[0xfd] = nameLinkDrp
-linkType[0xfc] = nameLinkHsd
-linkType[0xfb] = nameLinkTDet
-linkType[0xfa] = nameLinkWave8
 
 
 class PvPAddr(QtWidgets.QWidget):
@@ -176,12 +144,7 @@ class PvLinkId:
 
     def update(self, err):
         value = self.pv.__value__
-        itype = (int(value)>>24)&0xff
-        names = None
-        if itype in linkType:
-            names = linkType[itype](value)
-        else:
-            names = ('undef','{:x}'.format(value))
+        names = xpmLinkId(int(value))
         self.linkType.setText(names[0])
         self.linkSrc .setText(names[1])
 
