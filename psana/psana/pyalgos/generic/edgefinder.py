@@ -51,7 +51,7 @@ class EdgeFinder(object):
             
             # find more peaks by looking at anything > 25% of the first peak amplitude
             height = self.height * convolved[first_peak]
-            peaks, _  = find_peaks(convolved, height=height, distance=first_fwhms[0]*2)
+            peaks, _  = find_peaks(convolved, height=height, distance=first_fwhms[0][0]*2)
             peaks_amp = convolved[peaks]
             sort_indices = np.flip(np.argsort(peaks_amp))
             peaks_sort = peaks[sort_indices]
@@ -66,7 +66,7 @@ class EdgeFinder(object):
             # gather result
             result = EdgeFinderResult(edge=peaks_sort[0], \
                     amplitude=peaks_amp_sort[0], \
-                    fwhm=results_half[1][0], \
+                    fwhm=first_fwhms[0][0], \
                     amplitude_next=amplitude_next, \
                     ref_amplitude=np.mean(IIR), \
                     convolved=convolved, \
