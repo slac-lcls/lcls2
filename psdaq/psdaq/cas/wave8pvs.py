@@ -99,6 +99,12 @@ print(pollRegs)
 for v in pollRegs:
     setPollInterval(Wave8Board,v,1)
 
+# Some registers cannot be controlled reliably when polling
+noPollRegs = ['TriggerEventManager.TriggerEventBuffer[0].MasterEnable',
+              'BatcherEventBuilder.Blowoff']
+for v in noPollRegs:
+    setPollInterval(Wave8Board,v,0)
+
 epics = pyrogue.protocols.epicsV4.EpicsPvServer(base=args.base,root=Wave8Board,incGroups=None,excGroups=['NoPVA'])
 
 def main():
@@ -109,6 +115,10 @@ def main():
         initRead = True,
         timeout  = 5.0,    
     )
+
+    # Enable components for PVA
+    Wave8Board.BatcherEventBuilder.enable.set(True)
+    getattr(Wave8Board.TriggerEventManager,'TriggerEventBuffer[0]').enable.set(True)
 
     # Set the timing link txId
     ip = socket.inet_aton(socket.gethostbyname(socket.gethostname()))

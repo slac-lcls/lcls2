@@ -217,7 +217,7 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter, Detector* det
                                    timingHeader->pulseId());
                 }
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-                    logging::critical("%PGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
+                    logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
                            RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
                     logging::critical("data: %08x %08x %08x %08x %08x %08x",
                            data[0], data[1], data[2], data[3], data[4], data[5]);

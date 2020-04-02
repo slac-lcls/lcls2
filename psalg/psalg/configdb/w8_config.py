@@ -57,7 +57,15 @@ def w8_config(connect_str,prefix,cfgtype,detname,group):
     epics_put(cfg['expert'],prefix+':',names,values)
     ctxt.put(names,values)
 
-    ctxt.put(epics_prefix+'BatcherEventBuilder:Blowoff', 1, wait=True)
+    #  Assert clears
+    names = [epics_prefix+'BatcherEventBuilder:Blowoff',
+             epics_prefix+'TimingFrameRx:RxCountReset',
+             epics_prefix+'RawBuffers:CntRst',
+             epics_prefix+'Integrators:CntRst']
+    values = [1]*len(names)
+    print('names {:}'.format(names))
+    ctxt.put(names,values)
+
     ctxt.put(epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay, wait=False) # 186 MHz clocks
     for i in range(8):
         ctxt.put(epics_prefix+'RawBuffers:BuffEn[%d]'%i, raw['enable[%d]'%i], wait=False)
@@ -77,8 +85,14 @@ def w8_config(connect_str,prefix,cfgtype,detname,group):
     for i in range(4):
         ctxt.put(epics_prefix+'Integrators:CorrCoefficientFloat64[%d]'%i, fex['coeff[%d]'%i], wait=False)
 
-    ctxt.put(epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:Partition', group, wait=False)
-    ctxt.put(epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable', 1, wait=False)
+    ctxt.put(epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:Partition', group, wait=True)
+    ctxt.put(epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable', 1, wait=True)
+
+    time.sleep(0.2)
+
+    #  Deassert clears
+    values = [0]*len(names)
+    ctxt.put(names,values)
     ctxt.put(epics_prefix+'BatcherEventBuilder:Blowoff', 0, wait=True)
 
     cfg['firmwareVersion'] = ctxt.get(epics_prefix+'AxiVersion:FpgaVersion').raw.value
