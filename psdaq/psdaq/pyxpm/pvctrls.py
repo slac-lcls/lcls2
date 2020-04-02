@@ -8,9 +8,15 @@ from p4p.nt import NTScalar
 from p4p.server.thread import SharedPV
 from psdaq.pyxpm.pvseq import *
 from psdaq.pyxpm.pvhandler import *
+# db support
+from psalg.configdb.typed_json import cdict
+import psalg.configdb.configdb as cdb
+from psalg.configdb.get_config import get_config_with_params
 
 provider = None
 lock     = None
+countdn  = 0
+countrst = 60
 
 class TransitionId(object):
     Clear   = 0
@@ -57,15 +63,19 @@ class RetryWLock(object):
         retry_wlock(self.func, pv, value)
 
 class RegH(PVHandler):
-    def __init__(self, valreg):
+    def __init__(self, valreg, archive=False):
         super(RegH,self).__init__(self.handle)
         self._valreg   = valreg
+        self._archive  = archive
 
     def cmd(self,pv,value):
         self._valreg.post(value)
 
     def handle(self, pv, value):
+        global countdn
         retry(self.cmd,pv,value)
+        if self._archive:
+            countdn = countrst
 
     
 class IdxRegH(PVHandler):
@@ -88,7 +98,9 @@ class L0DelayH(IdxRegH):
         super(L0DelayH,self).__init__(valreg, idxreg, idx)
 
     def handle(self, pv, value):
+        global countdn
         retry_wlock(self.cmd,pv,pipelinedepth_from_delay(value))
+        countdn = countrst
 
 class CmdH(PVHandler):
 
@@ -121,13 +133,17 @@ class IdxCmdH(PVHandler):
             
 class RegArrayH(PVHandler):
 
-    def __init__(self, valreg):
+    def __init__(self, valreg, archive=False):
         super(RegArrayH,self).__init__(self.handle)
         self._valreg   = valreg
+        self._archive  = archive
 
     def cmd(self,pv,val):
+        global countdn
         for reg in self._valreg.values():
             reg.post(val)
+        if self._archive:
+            countdn = countrst
         
     def handle(self, pv, val):
         retry(self.cmd,pv,val)
@@ -182,28 +198,28 @@ class LinkCtrls(object):
             self._ringb.Dump()
 
 class CuGenCtrls(object):
-    def __init__(self, name, xpm):
+    def __init__(self, name, xpm, init=None):
 
-        def addPV(label, init, reg):
+        def addPV(label, init, reg, archive):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
-                          handler=RegH(reg))
+                          handler=RegH(reg,archive=archive))
             provider.add(name+':'+label,pv)
             reg.set(init)
             return pv
 
-        self._pv_cuDelay    = addPV('CuDelay'   , 200*800, xpm.CuGenerator.cuDelay)
-        self._pv_cuBeamCode = addPV('CuBeamCode',     140, xpm.CuGenerator.cuBeamCode)
-        self._pv_clearErr   = addPV('ClearErr'  ,       0, xpm.CuGenerator.cuFiducialIntvErr)
+        self._pv_cuDelay    = addPV('CuDelay'   , init['CuDelay']    if init else 200*800, xpm.CuGenerator.cuDelay          , True)
+        self._pv_cuBeamCode = addPV('CuBeamCode', init['CuBeamCode'] if init else     140, xpm.CuGenerator.cuBeamCode       , True)
+        self._pv_clearErr   = addPV('ClearErr'  ,       0, xpm.CuGenerator.cuFiducialIntvErr, False)
 
-        def addPV(label, init, reg):
+        def addPV(label, init, reg, archive):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
-                          handler=RegArrayH(reg))
+                          handler=RegArrayH(reg, archive=archive))
             provider.add(name+':'+label,pv)
             for r in reg.values():
                 r.set(init)
             return pv
 
-        self._pv_cuInput    = addPV('CuInput'   ,       2, xpm.AxiSy56040.OutputConfig)
+        self._pv_cuInput    = addPV('CuInput'   , init['CuInput'] if init else   2, xpm.AxiSy56040.OutputConfig, True)
 
 class PVInhibit(object):
     def __init__(self, name, app, inh, group, idx):
@@ -239,7 +255,7 @@ class PVInhibit(object):
         self._inh.inhEn.set(value)
 
 class GroupSetup(object):
-    def __init__(self, name, app, group, stats):
+    def __init__(self, name, app, group, stats, init=None):
         self._group = group
         self._app   = app
         self._stats = stats
@@ -285,7 +301,7 @@ class GroupSetup(object):
                 reg.set(pipelinedepth_from_delay(init))
             return pv
 
-        self._pv_L0Delay    = addPV('L0Delay'   , app.pipelineDepth, 90, set=True)
+        self._pv_L0Delay    = addPV('L0Delay'   , app.pipelineDepth, init['L0Delay'][group] if init else 90, set=True)
 
         #  initialize
         self.put(None,None)
@@ -386,7 +402,7 @@ class GroupSetup(object):
 
 
 class GroupCtrls(object):
-    def __init__(self, name, app, stats):
+    def __init__(self, name, app, stats, init=None):
 
         def addPV(label,reg):
             pv = SharedPV(initial=NTScalar('I').wrap(0), 
@@ -401,7 +417,7 @@ class GroupCtrls(object):
 
         self._groups = []
         for i in range(8):
-            self._groups.append(GroupSetup(name+':PART:%d'%i, app, i, stats[i]))
+            self._groups.append(GroupSetup(name+':PART:%d'%i, app, i, stats[i], init=init['PART'] if init else None))
 
         #  This is necessary in XTPG
         app.groupL0Reset.set(0xff)
@@ -409,7 +425,7 @@ class GroupCtrls(object):
 
 class PVCtrls(object):
 
-    def __init__(self, p, m, name, ip, xpm, stats):
+    def __init__(self, p, m, name=None, ip=None, xpm=None, stats=None, db=None):
         global provider
         provider = p
         global lock
@@ -422,7 +438,21 @@ class PVCtrls(object):
         xpm.XpmApp.paddr.set(v)
         print('Set PADDR to 0x{:x}'.format(v))
 
+        self._name  = name
         self._ip    = ip
+        self._xpm   = xpm
+        self._db    = db
+
+        init = None
+        try:
+            db_url, db_name, db_instrument, db_alias = db.split(',',4)
+            print('db {:}'.format(db))
+            print('url {:}  name {:}  instr {:}  alias {:}'.format(db_url,db_name,db_instrument,db_alias))
+            print('device {:}'.format(name))
+            init = get_config_with_params(db_url, db_instrument, db_name, db_alias, name)
+            print('cfg {:}'.format(init))
+        except:
+            print('Caught exception reading configdb [{:}]'.format(db))
 
         self._links = []
         for i in range(24):
@@ -437,9 +467,9 @@ class PVCtrls(object):
             provider.add(name+':DumpPll%d'%i,pv)
             self._pv_amcDumpPLL.append(pv)
 
-        self._cu    = CuGenCtrls(name+':XTPG', xpm)
+        self._cu    = CuGenCtrls(name+':XTPG', xpm, init=init['XTPG'])
 
-        self._group = GroupCtrls(name, app, stats)
+        self._group = GroupCtrls(name, app, stats, init=init)
 
 ##  Remove sequencer while we test Ben's image
         if True:
@@ -460,7 +490,36 @@ class PVCtrls(object):
         self._thread = threading.Thread(target=self.notify)
         self._thread.start()
 
+    def update(self):
+        global countdn
+        # check for config save
+        if countdn > 0:
+            countdn -= 1
+            if countdn == 0 and self._db:
+                # save config
+                db_url, db_name, db_instrument, db_alias = self._db.split(',',4)
+                mycdb = cdb.configdb(db_url, db_instrument, True, db_name)
+                mycdb.add_device_config('xpm')
 
+                top = cdict()
+                top.setInfo('xpm', self._name, 'serial1234', 'No comment')
+                top.setAlg('config', [0,0,0])
+
+                lock.acquire()
+                top.set('XTPG.CuDelay'   , self._xpm.CuGenerator.cuDelay.get()       , 'UINT32')
+                top.set('XTPG.CuBeamCode', self._xpm.CuGenerator.cuBeamCode.get()    , 'UINT8')
+                top.set('XTPG.CuInput'   , self._xpm.AxiSy56040.OutputConfig[0].get(), 'UINT8')
+                v = []
+                for i in range(8):
+                    self._xpm.XpmApp.partition.set(i)
+                    v.append( self._xpm.XpmApp.l0Delay.get() )
+                top.set('PART.L0Delay', v, 'UINT32')
+                lock.release()
+
+                if not db_alias in mycdb.get_aliases():
+                    mycdb.add_alias(db_alias)
+                mycdb.modify_device(db_alias, top)
+                
     def notify(self):
         client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         client.connect((self._ip,8197))

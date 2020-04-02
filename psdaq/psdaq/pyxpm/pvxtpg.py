@@ -7,9 +7,10 @@ provider = None
 lock     = None
 
 class PVMmcm(PVHandler):
-    def __init__(self, provider, name, idx, dev, chd):
+    def __init__(self, provider, name, idx, dev, chd, cuMode=False):
         self._dev = dev
         self._chd = chd
+        self._cuMode = cuMode
 
         pv = SharedPV(initial=NTScalar('aI').wrap([0*2049]), handler=DefaultPVHandler())
         provider.add(name+':MMCM%d'%idx, pv)
@@ -30,7 +31,7 @@ class PVMmcm(PVHandler):
         self._reset = pv
 
     def update(self,timev):
-        while self._dev.nready.get()==1:
+        while self._dev.nready.get()==1 and self._cuMode:
             print('Waiting for phase lock: {}',self._dev)
             time.sleep(1)
 
@@ -108,7 +109,7 @@ class PVCuPhase(object):
 
 class PVXTpg(object):
 
-    def __init__(self, p, m, name, xpm, devs):
+    def __init__(self, p, m, name, xpm, devs, cuMode=False):
         global provider
         provider = p
         global lock
@@ -116,7 +117,9 @@ class PVXTpg(object):
 
         self._mmcm = []
         for i in range(3,-1,-1):
-            self._mmcm.append(PVMmcm(provider, name+':XTPG', i, xpm.find(name=devs[i][0])[0], self._mmcm.copy()))
+            self._mmcm.append(PVMmcm(provider, name+':XTPG', i, xpm.find(name=devs[i][0])[0], self._mmcm.copy(), cuMode=cuMode))
+            if not cuMode:
+                break
 #        self._cuPhase = PVCuPhase(provider, name+':XTPG', xpm.CuPhase)
 
     def init(self):
