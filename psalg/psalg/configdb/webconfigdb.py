@@ -13,8 +13,10 @@ class configdb(object):
         if root == "NONE":
             raise Exception("configdb: Must specify root!")
         self.hutch  = hutch
-        self.create = create
-        self.prefix = url + '/' + root + '/'
+        self.prefix = url.strip('/') + '/' + root + '/'
+
+        if create:
+            requests.get(self.prefix + 'create_collections/' + hutch + '/')
 
     # Retrieve the configuration of the device with the specified alias.
     # This returns a dictionary where the keys are the collection names and the 
@@ -37,6 +39,13 @@ class configdb(object):
             hutch = self.hutch
         xx = requests.get(self.prefix + 'get_aliases/' + hutch + '/').json()
         return xx
+
+    # Create a new alias in the hutch, if it doesn't already exist.
+    def add_alias(self, alias):
+        xx = requests.get(self.prefix + 'add_alias/' + self.hutch + '/' +
+                          alias + '/').json()
+        return xx
+
 
     # Return a list of all device configurations.
     def get_device_configs(self):
