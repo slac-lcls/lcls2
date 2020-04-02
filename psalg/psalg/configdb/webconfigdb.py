@@ -46,6 +46,11 @@ class configdb(object):
                           alias + '/').json()
         return xx
 
+    # Create a new device_configuration if it doesn't already exist!
+    # Note: session is ignored
+    def add_device_config(self, cfg, session=None):
+        xx = requests.get(self.prefix + 'add_device_config/' + cfg + '/').json()
+        return xx
 
     # Return a list of all device configurations.
     def get_device_configs(self):
@@ -81,6 +86,12 @@ class configdb(object):
         xx = requests.get(self.prefix + 'modify_device/' + hutch + '/' +
                           alias + '/' + device + '/', json=value).json()
         return xx
+
+    # Print all of the device configurations, or all of the configurations
+    # for a specified device.
+    def print_device_configs(self, name="device_configurations"):
+        xx = requests.get(self.prefix + 'print_device_configs/' + name + '/').json()
+        print(xx.strip())
 
     # Print all of the configurations for the hutch.
     def print_configs(self, hutch=None):
