@@ -2,16 +2,14 @@
 import logging
 logger = logging.getLogger(__name__)
 
+import warnings
+
 import os
+import sys
 import time
 from psana import DataSource
 import numpy as np
-#import glob
-#import pdb
-#import IPython
-import sys
 
-import warnings
 import psana.xtcav.Utils as xtu
 import psana.xtcav.UtilsPsana as xtup
 import psana.xtcav.SplittingUtils as su
@@ -19,10 +17,14 @@ import psana.xtcav.Constants as cons
 from   psana.xtcav.CalibrationPaths import *
 from   psana.xtcav.DarkBackgroundReference import *
 from   psana.xtcav.FileInterface import Load as constLoad
+
 from   psana.xtcav.FileInterface import Save as constSave
+#from psana.pscalib.calib.XtcavUtils import Save as constSave
+#from psana.pscalib.calib.XtcavUtils import dict_from_xtcav_calib_object
 
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
 
+import psana.pyalgos.generic.Graphics as gr
 
 #from psana.xtcav.Simulators import\
   #SimulatorEBeam,\
@@ -63,30 +65,36 @@ class LasingOffReference():
 
     def __init__(self,
             fname='/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0131-e000200-xtcav-v2.xtc2',
-            experiment='amox23616',  #Experiment label
-            max_shots=401,           #Maximum number of valid shots to process
-            run_number='131',        #Run number
-            start_image=0,          #Starting image in run
+            experiment='amox23616',   #Experiment label
+            max_shots=401,            #Maximum number of valid shots to process
+            run_number=131,           #Run number
+            start_image=0,            #Starting image in run
             validity_range=None,
             dark_reference_path=None, #Dark reference information
-            num_bunches=1,                   #Number of bunches
-            num_groups=None,        #Number of profiles to average together
-            snr_filter=10,           #Number of sigmas for the noise threshold
-            roi_expand=1,          #Parameter for the roi location
+            num_bunches=1,            #Number of bunches
+            num_groups=None,          #Number of profiles to average together
+            snr_filter=10,            #Number of sigmas for the noise threshold
+            roi_expand=1,             #Parameter for the roi location
             roi_fraction=cons.ROI_PIXEL_FRACTION,
-            island_split_method = cons.DEFAULT_SPLIT_METHOD,      #Method for island splitting
+            island_split_method = cons.DEFAULT_SPLIT_METHOD, #Method for island splitting
             island_split_par1 = 3.0,  #Ratio between number of pixels between largest and second largest groups when calling scipy.label
             island_split_par2 = 5.,   #Ratio between number of pixels between second/third largest groups when calling scipy.label
             calibration_path='',
             save_to_file=True):
 
+        PLOT_IMAGE = False
+
+        if PLOT_IMAGE :
+            self.fig, self.axim, self.axcb = gr.fig_img_cbar_axes(fig=None,\
+            win_axim=(0.05,  0.05, 0.87, 0.93),\
+            win_axcb=(0.923, 0.05, 0.02, 0.93)) #, **kwargs)
+
         #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s' # '%(message)s'
         fmt='[%(levelname).1s] L%(lineno)04d : %(message)s'
         logging.basicConfig(format=fmt, datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
 
-    
-        if type(run_number) == int:
-            run_number = str(run_number)
+        #if type(run_number) == int:
+        #    run_number = str(run_number)
 
         self.parameters = LasingOffParameters(experiment = experiment,
             max_shots = max_shots, run_number = run_number, start_image = start_image, validity_range = validity_range, 
@@ -95,8 +103,8 @@ class LasingOffReference():
             island_split_par2 = island_split_par2, island_split_par1=island_split_par1, 
             calibration_path=calibration_path, fname=fname, version=1)
 
-        warnings.filterwarnings('always',module='Utils',category=UserWarning)
-        warnings.filterwarnings('ignore',module='Utils',category=RuntimeWarning, message="invalid value encountered in divide")
+        #warnings.filterwarnings('always',module='Utils',category=UserWarning)
+        #warnings.filterwarnings('ignore',module='Utils',category=RuntimeWarning, message="invalid value encountered in divide")
         
         if rank == 0:
             print('Lasing off reference')
@@ -158,10 +166,6 @@ class LasingOffReference():
         #print(msg)
         logger.debug(msg)
 
-        #=======================
-        #sys.exit('TEST EXIT')
-        #=======================
-
         #times = run.times()
         #image_numbers = xtup.divideImageTasks(first_event, len(times), rank, size)
 
@@ -192,28 +196,38 @@ class LasingOffReference():
 
             self._printProgressStatements(num_processed)
 
-            #====================
-            #sys.exit('TEST EXIT') ### <<<<<<<<<<<<<<<<
-            #====================
-        
             if num_processed >= np.ceil(self.parameters.max_shots/float(size)):
                 break
 
-        #====================
-        #sys.exit('TEST EXIT') ### <<<<<<<<<<<<<<<<
-        #====================
+            if PLOT_IMAGE :
 
+                nda = img
 
+                mean, std = nda.mean(), nda.std()
+                aran = (mean-3*std, mean+5*std)
+                
+                self.axim.clear()
+                self.axcb.clear()
+                imsh = gr.imshow(self.axim, nda, amp_range=aran, extent=None, interpolation='nearest',\
+                                 aspect='auto', origin='upper', orientation='horizontal', cmap='inferno')
+                cbar = gr.colorbar(self.fig, imsh, self.axcb, orientation='vertical', amp_range=aran)
+                
+                gr.set_win_title(self.fig, 'Event: %d' % nev)
+                gr.draw_fig(self.fig)
+                gr.show(mode='non-hold')
 
         # here gather all shots in one core, add all lists
-        image_profiles = comm.gather(list_image_profiles, root=0)
-        #image_profiles = list_image_profiles
-        
+        #image_profiles = comm.gather(list_image_profiles, root=0)
+        image_profiles = list_image_profiles
+
         if rank != 0: return
 
         sys.stdout.write('\n')
         # Flatten gathered arrays
-        image_profiles = [item for sublist in image_profiles for item in sublist]
+        #image_profiles = [item for sublist in image_profiles for item in sublist]
+
+        #for i,ipf in enumerate(image_profiles) :
+        #  print('XXX image_profiles %d:\n  %s'%(i,str(ipf)))
 
         #Since there are 12 cores it is possible that there are more references than needed. In that case we discard some
         if len(image_profiles) > self.parameters.max_shots:
@@ -225,17 +239,25 @@ class LasingOffReference():
         self.averaged_profiles, num_groups=averaged_profiles
         self.n=num_processed
         self.parameters = self.parameters._replace(num_groups=num_groups)   
-        
-        # Set validity range for reference runs
+
+        print('ZZZ self.parameters.validity_range', self.parameters.validity_range, ' type:', type(self.parameters.validity_range))
+        print('ZZZ self.parameters.run_number', self.parameters.run_number, ' type:', type(self.parameters.run_number))
+
+        # Set validity range, replace 'end' -> 9999 othervise save does not work...
         if not self.parameters.validity_range or not type(self.parameters.validity_range) == tuple:
-            self.parameters = self.parameters._replace(validity_range=(self.parameters.run_number, 'end'))
+            self.parameters = self.parameters._replace(validity_range=(self.parameters.run_number, 9999)) # IT WAS 'end'))
         elif len(self.parameters.validity_range) == 1:
-            self.parameters = self.parameters._replace(validity_range=(self.parameters.validity_range[0], 'end'))
+            self.parameters = self.parameters._replace(validity_range=(self.parameters.validity_range[0], 9999)) # 'end'))
+
+        #=====================
+        #sys.exit('TEST EXIT')
+        #=====================
 
         if save_to_file:
-            cp = CalibrationPaths(env, self.parameters.calibration_path)
-            file = cp.newCalFileName(cons.LOR_FILE_NAME, self.parameters.validity_range[0], self.parameters.validity_range[1])
-            self.save(file)
+            #cp = CalibrationPaths(env, self.parameters.calibration_path)
+            #file = cp.newCalFileName(cons.LOR_FILE_NAME, self.parameters.validity_range[0], self.parameters.validity_range[1])
+            fname = 'cons-%s-%04d-%s-lasingoffreference.data' % (run.expt, run.runnum, cons.DETNAME)
+            self.save(fname)
 
 
     def _printProgressStatements(self, num_processed):
@@ -295,14 +317,36 @@ class LasingOffReference():
 
         return roi_xtcav, global_calibration, saturation_value, first_good_evnum
 
+# LCLS1:
+#    def save(self, path):
+#        ###Move this to file interface folder...
+#        instance = copy.deepcopy(self)
+#        instance.parameters = dict(vars(self.parameters))
+#        instance.averaged_profiles = dict(vars(self.averaged_profiles))
+#        constSave(instance,path)
 
     def save(self, path):
-
-        ###Move this to file interface folder...
         instance = copy.deepcopy(self)
-        instance.parameters = dict(vars(self.parameters))
-        instance.averaged_profiles = dict(vars(self.averaged_profiles))
-        constSave(instance,path)
+        instance.parameters        = dict(self.parameters._asdict())
+        instance.averaged_profiles = dict(self.averaged_profiles._asdict())
+
+        #instance = dict_from_xtcav_calib_object(instance)
+
+        #logger.debug('XXX instance.parameters:\n%s' % str(instance.parameters))
+        #logger.debug('XXX instance.__dict__:\n%s' % str(instance.__dict__))
+        logger.debug('XXX self instance:\n%s' % str(instance))
+        logger.debug('XXX dir(self):\n%s' % dir(self))
+
+        constSave(instance, path)
+
+        logger.info('%s\n\t    Saved file: %s' % (50*'_', path))
+        logger.info('command to check file: hdf5explorer %s' % path)
+
+        if True :
+            d = instance.parameters
+            s = 'cdb add -e %s -d %s -c lasingoffreference -r %d -f %s -i xtcav -u <user>'%\
+                (d['experiment'], cons.DETNAME, d['run_number'], path)
+            logger.info('command to deploy: %s' % s)
 
     @staticmethod
     def load(path):
