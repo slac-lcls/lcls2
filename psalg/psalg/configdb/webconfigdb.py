@@ -82,9 +82,8 @@ class configdb(object):
         if not "detName:RO" in value.keys():
             raise ValueError("modify_device: value has no detName set!")
 
-        device = value.get('detName:RO')
         xx = requests.get(self.prefix + 'modify_device/' + hutch + '/' +
-                          alias + '/' + device + '/', json=value).json()
+                          alias + '/', json=value).json()
         return xx
 
     # Print all of the device configurations, or all of the configurations
@@ -99,3 +98,18 @@ class configdb(object):
             hutch = self.hutch
         xx = requests.get(self.prefix + 'print_configs/' + hutch + '/').json()
         print(xx.strip())
+
+    # Transfer a configuration from another hutch to the current hutch,
+    # returning the new key.
+    def transfer_config(self, oldhutch, oldalias, olddevice, newalias,
+                        newdevice):
+        # read configuration from old location
+        value = self.get_configuration(oldalias, olddevice, hutch=oldhutch)
+
+        # set detName
+        value['detName:RO'] = newdevice 
+
+        # write configuration to new location
+        key = self.modify_device(newalias, value, hutch=self.hutch)
+
+        return key
