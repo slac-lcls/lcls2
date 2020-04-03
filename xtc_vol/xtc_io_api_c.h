@@ -67,25 +67,39 @@ EXTERNC typedef struct Xtc_Location {
     void* root_node; //used in xtc_io_api.cc.
 }xtc_location;
 
+EXTERNC typedef enum Dataset_TYPE{
+    DS_TIMESTAMP,
+    DS_NON_L1,
+    DS_L1
+}ds_type;
+
 //Used for dataset read
 EXTERNC typedef struct dgram_info{
     uint64_t dgram_id;//Use timestamp as ID
-    uint64_t dgram_offset;
-    uint64_t dgram_size;
+    int64_t dgram_offset;
+    int shapesdata_offset;//pointer offset
+    int isL1;
+    void* nonL1Dgram;
+    ds_type ds_type;
+    //uint64_t dgram_size;
 }xtc_dgram_info;
 
 EXTERNC typedef struct Xtc_dataset_handle{
     //uint64_t dgram_offset;
     uint64_t dgram_id;//Use timestamp as ID
+
     //uint64_t dgram_size;
     int index;
-    void* dgram;
+    //void* dgram;
     void* shapesData;
     void* namesLookup;
+    xtc_dgram_info* dgram_info;
     //void* name;     //XtcData::Names
     //void* descdata;
     void* xtc_ptr; //Xtc* xtc, can be casted to descdata, shapesdata
 }xtc_data_handle;
+
+
 
 EXTERNC typedef struct XTC_DS_info {
     xtc_data_type type; //data type
@@ -98,6 +112,7 @@ EXTERNC typedef struct XTC_DS_info {
     int element_cnt; //image cnt
     xtc_data_handle* data_handle;
     void* data_ptr;
+    ds_type ds_type;
     int isTimestampsDS;//bool
 }xtc_ds_info;
 
