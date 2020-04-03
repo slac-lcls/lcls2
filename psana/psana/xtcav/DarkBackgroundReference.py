@@ -35,7 +35,7 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr
 
 class DarkBackgroundReference():
     def __init__(self,
-        fname='/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0104-e000400-xtcav.xtc2',
+        fname='/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0104-e000400-xtcav-v2.xtc2',
         experiment='amox23616',
         run_number=104,
         max_shots=400,
@@ -75,16 +75,37 @@ class DarkBackgroundReference():
         ds=DataSource(files=fname)
         
         run = next(ds.runs())
-        #Camera and type for the xtcav images
-        xtcav_camera = run.Detector(cons.DETNAME)
         logger.info('\t RunInfo expt: %s runnum: %d\n' % (run.expt, run.runnum))
+
+        #Camera and type for the xtcav images
+        camera = run.Detector(cons.DETNAME)
+        #ebeam       = run.Detector(cons.EBEAM)
+        #eventid     = run.Detector(cons.EVENTID)
+        #gasdetector = run.Detector(cons.GAS_DETECTOR)
+        xtcavpars   = run.Detector(cons.XTCAVPARS)
 
         #Stores for environment variables    
         #configStore=dataSource.env().configStore()
         #epicsStore=dataSource.env().epicsStore()
+        print('\n',100*'_','\n')
 
-        roi_xtcav, first_image = self._getCalibrationValues(run, xtcav_camera, start_image)
+        camraw  = xtup.get_attribute(camera,      'raw')
+        valsxtp = xtup.get_attribute(xtcavpars,   'valsxtp')
+        #valsebm = xtup.get_attribute(ebeam,       'valsebm')
+        #valseid = xtup.get_attribute(eventid,     'valseid')
+        #valsgd  = xtup.get_attribute(gasdetector, 'valsgd')
+
+        if None in (camraw, valsxtp) : # valsebm, eventid, valsgd) : 
+            sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
+
+        roi_xtcav, first_image = self._getCalibrationValues(run, camraw, valsxtp, start_image)
         logger.info('\t roi_xtcav: '+str(roi_xtcav))
+
+
+        ###=======================
+        #sys.exit('TEST EXIT 1')
+        ###=======================
+
         accumulator_xtcav = np.zeros((roi_xtcav.yN, roi_xtcav.xN), dtype=np.float64)
 
         n=0 #Counter for the total number of xtcav images processed 
@@ -92,7 +113,7 @@ class DarkBackgroundReference():
 
             #print('Event %03d'%nev, end='')
 
-            img = xtcav_camera.raw(evt)
+            img = camera.raw(evt)
             if img is None: continue
 
             #logger.info(info_ndarr(img, '  img:'))
@@ -131,24 +152,27 @@ class DarkBackgroundReference():
         ###=======================
         #sys.exit('TEST EXIT OK')
         ###=======================
-            
-    
+
     @staticmethod
-    def _getCalibrationValues(run, xtcav_camera, start_image):
+    def _getCalibrationValues(run, camraw, valsxtp, start_image):
         roi_xtcav = None
-        end_of_images = 1e6 # len(times)
+        first_good_evnum = 1e6 # len(times)
 
         for nev,evt in enumerate(run.events()):
             logger.info('C-loop event %03d'%nev)
-            img = xtcav_camera.raw(evt)
+            img = camraw(evt)
+            logger.debug(info_ndarr(img, '  img:'))
             if img is None: continue
-            #logger.info(info_ndarr(img, '  img:'))
-            roi_xtcav = xtup.getXTCAVImageROI(run, evt)
-            if not roi_xtcav : continue
-            return roi_xtcav, nev
 
-        sys.exit('ABORT : _getCalibrationValues detector configuration is not available in the dataset')
-        return roi_xtcav, end_of_images
+            roi_xtcav = xtup.getXTCAVImageROI(valsxtp, evt)
+            #logger.debug('roi_xtcav: %s' % str(roi_xtcav))
+            if roi_xtcav is None : continue
+            #if 0 in (roi_xtcav.xN, roi_xtcav.yN) : continue
+
+            first_good_evnum = nev
+            break
+
+        return roi_xtcav, first_good_evnum
 
 
     def save(self, path): 
