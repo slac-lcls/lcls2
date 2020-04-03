@@ -1,5 +1,5 @@
 // see https://confluence.slac.stanford.edu/display/ppareg/AxiStream+Batcher+Protocol+Version+1
-
+#pragma once
 #include <stdint.h>
 #include "psalg/utils/SysLog.hh"
 

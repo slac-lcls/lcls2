@@ -309,8 +309,8 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     pool(para), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
 {
     m_tPrms.partition = para.partition;
-    m_tPrms.core[0]   = 18;
-    m_tPrms.core[1]   = 19;
+    m_tPrms.core[0]   = -1;
+    m_tPrms.core[1]   = -1;
     m_tPrms.verbose   = para.verbose;
 
     m_mPrms.partition = para.partition;

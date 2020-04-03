@@ -44,7 +44,6 @@ public:
 
 Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     Detector(para, pool),
-    m_evtcount(0),
     m_evtNamesId(-1, -1), // placeholder
     m_epics_name(para->kwargs["hsd_epics_prefix"]),
     m_paddr     (_getPaddr())
@@ -240,7 +239,6 @@ unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc)
 
 void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
-    m_evtcount+=1;
     CreateData hsd(dgram.xtc, m_namesLookup, m_evtNamesId);
 
     // HSD data includes two uint32_t "event header" words

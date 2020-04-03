@@ -45,7 +45,7 @@ def ts_config(connect_json,cfgtype,detname):
         grp = cfg[grp_prefix]
 
         pvtable[grp_prefix] = {'trigMode'    :'L0Select',
-                               'delay'       :'L0Delay',
+                               #'delay'       :'L0Delay',
                                'fixed'       : {'rate'   : 'L0Select_FixedRate'},
                                'ac'          : {'rate'   : 'L0Select_ACRate'},
                                'eventcode'   : 'L0Select_EventCode',

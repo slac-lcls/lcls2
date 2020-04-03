@@ -39,17 +39,14 @@ struct Parameters
     Parameters() :
         partition(-1),
         detSegment(0),
-        virtChan(0),
         laneMask(0x1),
-        verbose(0),
-        rogueDet(false)
+        verbose(0)
     {
     }
     unsigned partition;
     unsigned nworkers;
     unsigned batchSize;
     unsigned detSegment;
-    unsigned virtChan;
     uint8_t laneMask;
     std::string alias;
     std::string detName;
@@ -64,7 +61,6 @@ struct Parameters
     uint32_t rogMask;
     std::string trgDetName;
     unsigned verbose;
-    bool rogueDet;
     size_t maxTrSize;
     unsigned nTrBuffers;
 };

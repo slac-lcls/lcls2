@@ -24,12 +24,12 @@ class ConstantsStore():
 
     def typeok(self,obj,name):
         '''check if we support serializing this type to hdf'''
-        allowed = [dict, int, float, str, list, tuple, numpy.ndarray]
+        allowed = [dict, int, float, bool, str, list, tuple, numpy.ndarray]
         return type(obj) in allowed
 
     def storevalue(self,v,name):
         '''persist one of the supported types to the hdf file'''
-        #print('XXXXXX:', self.cwd+'/'+name, '  v:', v, '  type(v):', type(v))
+        print('XXXXXX:', self.cwd+'/'+name, '  value:', v, '  type(v):', type(v))
         self.f[self.cwd+'/'+name] = v
 
     def dict(self,d,name):

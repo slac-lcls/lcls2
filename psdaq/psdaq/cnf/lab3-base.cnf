@@ -11,6 +11,8 @@ ip_addr = '10.0.'+shelf
 
 drp_nodes = ['001','002','003','004','005','008','009','011','013','014','015','017','018']
 
+pyxpm_opts = '--db mcbrowne:psana@psdb-dev:9306,configDB,Lab2,PROD -P DAQ:LAB2:XPM:%d'
+
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
 #                "X" open xterm
@@ -26,9 +28,9 @@ drp_nodes = ['001','002','003','004','005','008','009','011','013','014','015','
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- { host: epics_host,  id:'pyxpm-2'  , port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.2.102 -P DAQ:LAB2:XPM:2'},
- { host: epics_host,  id:'pyxpm-1'  , port:'29452', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.1.103 -P DAQ:LAB2:XPM:1'},
- { host: epics_host,  id:'pyxpm-3'  , port:'29453', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.2.107 -P DAQ:LAB2:XPM:3'},
+ { host: epics_host,  id:'pyxpm-2'  , port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.2.102 '+pyxpm_opts%2},
+ { host: epics_host,  id:'pyxpm-1'  , port:'29452', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.1.103 '+pyxpm_opts%1},
+ { host: epics_host,  id:'pyxpm-3'  , port:'29453', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.2.107 '+pyxpm_opts%3},
 
 ## EPICS camera
  { host: epics_host,  id:'pvcamcas', port:'29465', flags:'s', conda:conda_rel, env:epics_env, cmd:'campvs -P DAQ:LAB2:PVCAM'},

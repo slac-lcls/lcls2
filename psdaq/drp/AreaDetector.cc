@@ -41,7 +41,7 @@ public:
 };
 
 AreaDetector::AreaDetector(Parameters* para, MemPool* pool) :
-    XpmDetector(para, pool), m_evtcount(0)
+    XpmDetector(para, pool)
 {
 }
 
@@ -77,8 +77,6 @@ unsigned AreaDetector::beginrun(XtcData::Xtc& xtc, const json& runInfo)
 
 void AreaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
-    m_evtcount+=1;
-
     // fex data
     NamesId fexNamesId(nodeId,FexNamesIndex);
     CreateData fex(dgram.xtc, m_namesLookup, fexNamesId);

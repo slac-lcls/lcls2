@@ -49,7 +49,7 @@ namespace Pds {
       u64arr_t                  _contract;
       Pds::Eb::EbLfServer       _transport;
       std::vector<EbLfSvrLink*> _links;
-      std::vector<size_t>       _trRegSize;
+      std::vector<size_t>       _bufRegSize;
       std::vector<size_t>       _maxTrSize;
       std::vector<size_t>       _maxBufSize;
       const unsigned            _maxEntries;

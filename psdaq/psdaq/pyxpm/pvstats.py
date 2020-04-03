@@ -437,7 +437,7 @@ class PVStats(object):
         self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming)
         self._cuGen    = CuStatus(name+':XTPG',xpm.CuGenerator,xpm.CuToScPhase)
         self._monClks  = MonClkStatus(name,self._app)
-        self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm)
+        #self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm)
 
         self.paddr   = addPV(name+':PAddr'  ,'I',self._app.paddr.get())
         self.fwbuild = addPV(name+':FwBuild','s',self._xpm.AxiVersion.BuildStamp.get())
@@ -462,8 +462,7 @@ class PVStats(object):
             self._cuTiming.update()
             self._cuGen   .update()
             self._monClks .update()
-##  Remove while we test Ben's image
-#            self._sfpStat .update()
+            #self._sfpStat .update()
         except:
             exc = sys.exc_info()
             if exc[0]==KeyboardInterrupt:

@@ -9,7 +9,7 @@ ami_worker_nodes = ["drp-tst-dev016", "drp-tst-dev015"]
 ami_num_workers = len(ami_worker_nodes)
 ami_manager_node = "drp-tst-acc05"
 
-conda_rel = 'ps-2.1.1'
+conda_rel = 'ps-2.1.2'
 
 procmgr_config_global = [
   { 'host': ami_manager_node, 'id':'ami-global',  'flags':'s', 'conda':conda_rel, 'cmd':f'ami-global -N 0 -n {ami_num_workers}'},

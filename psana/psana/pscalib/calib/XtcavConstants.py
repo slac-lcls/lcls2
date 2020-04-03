@@ -27,7 +27,7 @@ class ConstantsStore(object):
         self.cwd = self.cwd[:self.cwd.rfind('/')]
     def typeok(self,obj,name):
         '''check if we support serializing this type to hdf'''
-        allowed = [dict,int,float,str,numpy.ndarray]
+        allowed = [dict,int,float,bool,str,numpy.ndarray]
         return type(obj) in allowed
     def storevalue(self,v,name):
         '''persist one of the supported types to the hdf file'''

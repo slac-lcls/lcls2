@@ -853,13 +853,16 @@ int main(int argc, char* argv[])
     Drp::Parameters para;
     std::string kwargs_str;
     int c;
-    while((c = getopt(argc, argv, "p:o:D:S:C:d:u:k:P:T::M:v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:T::M:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
                 break;
             case 'o':
                 para.outputDir = optarg;
+                break;
+            case 'l':
+                para.laneMask = std::stoul(optarg, nullptr, 16);
                 break;
             case 'D':
                 para.detType = optarg;
@@ -937,7 +940,6 @@ int main(int argc, char* argv[])
         exit(1);
     }
 
-    para.laneMask = 0x1;
     para.maxTrSize = 256 * 1024;
     para.nTrBuffers = 8; // Power of 2 greater than the maximum number of
                          // transitions in the system at any given time, e.g.,

@@ -35,6 +35,10 @@ class ttdet_ttalg_0_0_1(DetectorImpl):
 
         return pFrame
 
+    def image(self, evt):
+        parsed_frame_object = self.parsed_frame(evt)
+        return parsed_frame_object.prescaled_frame
+
     #def edge_value(self,evt):              #speak with damiani for how to send back this data to ami
     #def edge_uncertainty(self,evt):        #needs _(underscore) to hide things AMI doesn't need to see.
     #

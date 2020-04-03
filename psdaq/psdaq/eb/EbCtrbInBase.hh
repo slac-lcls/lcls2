@@ -28,7 +28,6 @@ namespace Pds
     public:
       int      configure(const TebCtrbParams&);
     public:
-      size_t   maxBatchSize() const { return _maxBatchSize; }
       void     receiver(TebContributor&, std::atomic<bool>& running);
     public:
       virtual void process(const ResultDgram& result, const void* input) = 0;

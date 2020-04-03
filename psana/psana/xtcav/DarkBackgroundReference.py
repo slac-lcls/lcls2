@@ -2,16 +2,16 @@
 import logging
 logger = logging.getLogger(__name__)
 
-import copy
-import os
-import time
-#import psana
-from psana import DataSource
-import numpy as np
-import glob
-import sys
-#import getopt
 import warnings
+
+import os
+import sys
+import time
+import copy
+import numpy as np
+
+from psana import DataSource
+
 import psana.xtcav.UtilsPsana as xtup
 from psana.xtcav.FileInterface import Load as constLoad
 from psana.xtcav.FileInterface import Save as constSave
@@ -37,7 +37,7 @@ class DarkBackgroundReference():
     def __init__(self,
         fname='/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0104-e000400-xtcav.xtc2',
         experiment='amox23616',
-        run_number='104',
+        run_number=104,
         max_shots=400,
         start_image=0,
         validity_range=None,
@@ -124,7 +124,7 @@ class DarkBackgroundReference():
         if save_to_file:
             #cp = CalibrationPaths(dataSource.env(), self.parameters.calibration_path)
             #fname = cp.newCalFileName(cons.DB_FILE_NAME, self.parameters.validity_range[0], self.parameters.validity_range[1])
-            fname = 'cons-%s-%04d-%s-dark.data' % (run.expt, run.runnum, cons.DETNAME)
+            fname = 'cons-%s-%04d-%s-pedestals.data' % (run.expt, run.runnum, cons.DETNAME)
 
             self.save(fname)
 

@@ -31,16 +31,8 @@ json XpmDetector::connectionInfo()
     Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
 
     uint32_t reg;
-    if (m_para->detType=="tt") {
-        // cpo: this is a hack that is specific for timetool.
-        // the address comes from pyrogue rootDevice.saveAddressMap('fname')
-        // perhaps ideally we would call detector-specific rogue python. this
-        // is the rogue hierarchy for this register in the timetool:
-        // TimeToolKcu1500Root.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId
-        dmaReadRegister(fd, 0x940024, &reg);
-    } else {
-        dmaReadRegister(fd, &tem->xma().rxId, &reg);
-    }
+    dmaReadRegister(fd, &tem->xma().rxId, &reg);
+
     close(fd);
     // there is currently a failure mode where the register reads
     // back as zero (incorrectly). This is not the best longterm
@@ -57,7 +49,7 @@ json XpmDetector::connectionInfo()
 }
 
 // setup up device to receive data over pgp
-void XpmDetector::connect(const json& json, const std::string& collectionId)
+void XpmDetector::connect(const json& connect_json, const std::string& collectionId)
 {
     logging::info("XpmDetector connect");
     // FIXME make configureable
@@ -74,30 +66,22 @@ void XpmDetector::connect(const json& json, const std::string& collectionId)
         return;
     }
 
-    int readoutGroup = json["body"]["drp"][collectionId]["det_info"]["readout"];
+    int readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
 
     Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
-    if (m_para->detType=="tt") {
-      // cpo: this is a hack that is specific for timetool.
-      // the address comes from pyrogue rootDevice.saveAddressMap('fname')
-      // perhaps ideally we would call detector-specific rogue python
-      // or use the new rogue version 5 c++ interface.
-      dmaWriteRegister(fd, 0x940104, readoutGroup);
-    } else {
-      for(unsigned i=0, l=links; l; i++) {
+    for(unsigned i=0, l=links; l; i++) {
         Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
         if (l&(1<<i)) {
-          dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
-          dmaWriteRegister(fd, &b.pauseThresh, 16     );
-          dmaWriteRegister(fd, &b.group , readoutGroup);
-          dmaWriteRegister(fd, &b.enable, 3           );  // enable
-          l &= ~(1<<i);
+            dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
+            dmaWriteRegister(fd, &b.pauseThresh, 16     );
+            dmaWriteRegister(fd, &b.group , readoutGroup);
+            dmaWriteRegister(fd, &b.enable, 3           );  // enable
+            l &= ~(1<<i);
 
-          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
-          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (length&0xffffff) | (1<<31));  // enable
-        }
+            dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
+            dmaWriteRegister(fd, 0x00a00000+4*(i&3), (length&0xffffff) | (1<<31));  // enable
+          }
       }
-    }
 
     close(fd);
 }

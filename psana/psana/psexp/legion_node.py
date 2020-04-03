@@ -1,17 +1,15 @@
 from .tools import mode
 
 legion = None
-if mode == 'mpi':
+if mode == 'legion':
+    import legion
+    from legion import task
+else:
     # Nop when not using Legion
     def task(fn=None, **kwargs):
         if fn is None:
             return lambda fn: fn
         return fn
-elif mode == 'legion':
-    import legion
-    from legion import task
-else:
-    raise Exception('Unrecognized value of PS_PARALLEL %s' % mode)
 
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager

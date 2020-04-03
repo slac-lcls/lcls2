@@ -1,5 +1,4 @@
 #include "TimeTool.hh"
-#include "EventBatcher.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -38,13 +37,11 @@ public:
 } TTDef;
 
 TimeTool::TimeTool(Parameters* para, MemPool* pool) :
-    XpmDetector(para, pool),
-    m_evtcount(0),
+    Detector(para, pool),
     m_evtNamesId(-1, -1), // placeholder
     m_connect_json("")
 {
-    para->rogueDet=true;
-    para->virtChan=1;
+    virtChan = 1;
 }
 
 static void check(PyObject* obj) {
@@ -52,6 +49,36 @@ static void check(PyObject* obj) {
         PyErr_Print();
         throw "**** python error\n";
     }
+}
+
+json TimeTool::connectionInfo()
+{
+    int fd = open(m_para->device.c_str(), O_RDWR);
+    if (fd < 0) {
+        logging::error("Error opening %s", m_para->device.c_str());
+        return json();
+    }
+
+    // the address comes from pyrogue rootDevice.saveAddressMap('fname')
+    // perhaps ideally we would call detector-specific rogue python. this
+    // is the rogue hierarchy for this register in the timetool:
+    // TimeToolKcu1500Root.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId
+    uint32_t reg;
+    dmaReadRegister(fd, 0x940024, &reg);
+
+    close(fd);
+    // there is currently a failure mode where the register reads
+    // back as zero (incorrectly). This is not the best longterm
+    // fix, but throw here to highlight the problem. - cpo
+    if (!reg) {
+        const char msg[] = "XPM Remote link id register is zero\n";
+        logging::error("%s", msg);
+        throw msg;
+    }
+    int xpm  = (reg >> 20) & 0x0F;
+    int port = (reg >>  0) & 0xFF;
+    json info = {{"xpm_id", xpm}, {"xpm_port", port}};
+    return info;
 }
 
 void TimeTool::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& config_alias) {
@@ -97,8 +124,23 @@ void TimeTool::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& con
 
 void TimeTool::connect(const json& connect_json, const std::string& collectionId)
 {
-  m_connect_json = connect_json.dump();
-  XpmDetector::connect(connect_json, collectionId);
+    logging::info("TimeTool connect");
+    m_connect_json = connect_json.dump();
+
+    int fd = open(m_para->device.c_str(), O_RDWR);
+    if (fd < 0) {
+        logging::error("Error opening %s", m_para->device.c_str());
+        return;
+    }
+
+    int readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
+
+    // the address comes from pyrogue rootDevice.saveAddressMap('fname')
+    // perhaps ideally we would call detector-specific rogue python
+    // or use the new rogue version 5 c++ interface.
+    dmaWriteRegister(fd, 0x940104, readoutGroup);
+
+    close(fd);
 }
 
 unsigned TimeTool::configure(const std::string& config_alias, Xtc& xtc)
@@ -119,8 +161,6 @@ unsigned TimeTool::configure(const std::string& config_alias, Xtc& xtc)
 
 void TimeTool::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
-    m_evtcount+=1;
-
     CreateData tt(dgram.xtc, m_namesLookup, m_evtNamesId);
 
     int lane = __builtin_ffs(event->mask) - 1;

@@ -23,7 +23,6 @@ private:
     unsigned _getPaddr();
 private:
     enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex};
-    unsigned          m_evtcount;
     unsigned          m_readoutGroup;
     XtcData::NamesId  m_evtNamesId;
     std::string       m_connect_json;

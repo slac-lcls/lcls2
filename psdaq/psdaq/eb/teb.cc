@@ -184,30 +184,30 @@ int Teb::configure(const EbParams& prms,
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _l3Transport.connect(&link, addr, port, _id, tmo)) )
     {
-      logging::error("%s:\n  Error connecting to Ctrb at %s:%s",
+      logging::error("%s:\n  Error connecting to DRP at %s:%s",
                      __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
     unsigned rmtId = link->id();
     _l3Links[rmtId] = link;
 
-    logging::debug("Outbound link with Ctrb ID %d connected", rmtId);
+    logging::debug("Outbound link with DRP ID %d connected", rmtId);
 
     if ( (rc = link->prepare(region, regSize)) )
     {
-      logging::error("%s:\n  Failed to prepare link with Ctrb ID %d",
+      logging::error("%s:\n  Failed to prepare link with DRP ID %d",
                      __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
 
-    logging::info("Outbound link with Ctrb ID %d connected and configured",
+    logging::info("Outbound link with DRP ID %d connected and configured",
                   rmtId);
   }
 
   if ( (rc = _mrqTransport.initialize(prms.ifAddr, prms.mrqPort, prms.numMrqs)) )
   {
-    logging::error("%s:\n  Failed to initialize MonReq EbLfServer",
-                   __PRETTY_FUNCTION__);
+    logging::error("%s:\n  Failed to initialize MonReq EbLfServer on %s:%s",
+                   __PRETTY_FUNCTION__, prms.ifAddr, prms.mrqPort);
     return rc;
   }
 
@@ -243,8 +243,8 @@ int Teb::configure(const EbParams& prms,
 
     if (link->postCompRecv())
     {
-      logging::error("%s:\n  Failed to post CQ buffers for Mon Requestor ID %d",
-                     __PRETTY_FUNCTION__, rmtId);
+      logging::warning("%s:\n  Failed to post CQ buffers for Mon Requestor ID %d",
+                       __PRETTY_FUNCTION__, rmtId);
     }
 
     logging::info("Inbound link with Mon Requestor ID %d connected and configured",
@@ -363,11 +363,12 @@ void Teb::process(EbEvent* event)
         {
           rdg.monBufNo(data);
 
-          rc = _mrqLinks[ImmData::src(data)]->postCompRecv();
+          unsigned src = ImmData::src(data);
+          rc = _mrqLinks[src]->postCompRecv();
           if (rc)
           {
-            logging::error("%s:\n  Failed to post CQ buffers: %d",
-                           __PRETTY_FUNCTION__, rc);
+            logging::warning("%s:\n  Failed to post CQ buffers for Mon Requestor ID %d",
+                             __PRETTY_FUNCTION__, src);
           }
         }
       }
@@ -382,7 +383,7 @@ void Teb::process(EbEvent* event)
       unsigned  src = rdg.xtc.src.value();
       unsigned  env = rdg.env;
       uint32_t* pld = reinterpret_cast<uint32_t*>(rdg.xtc.payload());
-      printf("TEB processed                result  [%5d] @ "
+      printf("TEB processed                result  [%8d] @ "
              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d, res [%08x, %08x]\n",
              idx, &rdg, ctl, pid, env, sz, src, pld[0], pld[1]);
     }
@@ -448,7 +449,7 @@ void Teb::_post(const Batch& batch)
     {
       uint64_t pid    = batch.id();
       void*    rmtAdx = (void*)link->rmtAdx(offset);
-      printf("TEB posts          %9ld result  [%5d] @ "
+      printf("TEB posts          %9ld result  [%8d] @ "
              "%16p,         pid %014lx,               sz %6zd, dst %2d @ %16p\n",
              _batchCount, idx, buffer, pid, extent, dst, rmtAdx);
     }

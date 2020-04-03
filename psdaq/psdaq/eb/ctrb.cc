@@ -539,6 +539,7 @@ CtrbApp::CtrbApp(const std::string&                     collSrv,
   _mebCtrb(mebPrms, exporter),
   _inbound(tebPrms, _tebCtrb.drpSim(), context(), exporter)
 {
+  printf("Ready for transitions\n");
 }
 
 json CtrbApp::connectionInfo()
