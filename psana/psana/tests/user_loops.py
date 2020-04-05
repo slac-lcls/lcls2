@@ -37,7 +37,9 @@ for run in ds.runs():
 
     # Environment values are accessed also through detector interface
     edet = run.Detector('HX2:DVD:GCC:01:PMON')
+    assert edet.dtype == float
     sdet = run.Detector('motor2')
+    assert sdet.dtype == float
 
     for evt in run.events():
         padarray = vals.padarray

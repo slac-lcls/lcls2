@@ -2,6 +2,7 @@ from psana.psexp.packet_footer import PacketFooter
 import numpy as np
 from collections import defaultdict
 import os
+from psana.detector.detector_impl import DetectorImpl
 
 class EnvManager(object):
     """ Store list of Env dgrams, timestamps, and variables 
@@ -19,15 +20,11 @@ class EnvManager(object):
         self._init_env_variables()
 
     def _init_env_variables(self):
-        """ From the given config, build a list of keywords from
+        """ From the given config, build a list of variables from
         config.software.env_name.[alg].[] fields.
         
-        If the given config does not have attribute env_name in
-        the software field, then this is an empty EnvManager object.
-        The env_list of EnvStore still has this empty EnvManager
-        as a place holder to maintain the order of input smd files.
-        
-        env_variables = {alg: {segment_id: ['var1','var2']}, }
+        env_variables = {alg: {segment_id: {var_name: var_type, }, }, }
+        where Var contains name and type for the variables.
         """
         self.env_variables = {}
         if hasattr(self.config.software, self.env_name):
@@ -37,9 +34,14 @@ class EnvManager(object):
                 algs.remove('dettype')
                 algs.remove('detid')
                 for alg in algs:
-                    env_vars = list(vars(getattr(envs[segment_id], alg)))
-                    env_vars.remove('version')
-                    env_vars.remove('software')
+                    seg_alg = getattr(envs[segment_id], alg)
+                    env_vars = {}
+                    for var_name in vars(seg_alg):
+                        if var_name in ('version', 'software') : continue
+                        var_obj = getattr(seg_alg, var_name)
+                        var_type = DetectorImpl._return_types(var_obj._type, var_obj._rank)
+                        env_vars[var_name] = var_type
+                        
                     self.env_variables[alg] = {segment_id: env_vars}
 
     def add(self, d):
@@ -50,12 +52,12 @@ class EnvManager(object):
     def is_empty(self):
         return self.env_variables
     
-    def locate_variable(self, variable_name):
+    def locate_variable(self, var_name):
         """ Returns algorithm name and segment_id from the given env variable
         specifically for this config."""
         for alg, envs in self.env_variables.items():
-            for segment_id, env_vars in envs.items():
-                if variable_name in env_vars:
+            for segment_id, var_dict in envs.items():
+                if var_name in var_dict:
                     return alg, segment_id
         return None
 
@@ -79,26 +81,27 @@ class EnvStore(object):
                     if alg not in self.env_variables:
                         self.env_variables[alg] = env_dict
                     else:
-                        for segment_id, var_list in env_dict.items():
+                        for segment_id, var_dict in env_dict.items():
                             if segment_id not in self.env_variables[alg][segment_id]:
-                                self.env_variables[alg] = {segment_id: var_list}
+                                self.env_variables[alg] = {segment_id: var_dict}
                             else:
-                                self.env_variables[alg][segment_id] += var_list
+                                self.env_variables[alg][segment_id].update(var_dict)
 
             self.env_info = []
             for alg, env_dict in self.env_variables.items():
-                all_var_list = []
-                for segment_id, var_list in env_dict.items():
-                    all_var_list.extend(var_list)
-                all_var_list.sort()
-                for v in all_var_list:
+                var_names = []
+                for segment_id, var_dict in env_dict.items():
+                    for var_name, _ in var_dict.items():
+                        var_names.append(var_name)
+                var_names.sort()
+                for v in var_names:
                     self.env_info.append((v, alg))
 
-    def locate_variable(self, variable_name):
+    def locate_variable(self, var_name):
         """ Returns algorithm name and segment_id from the given env variable. """
         for alg, envs in self.env_variables.items():
-            for segment_id, env_vars in envs.items():
-                if variable_name in env_vars:
+            for segment_id, var_dict in envs.items():
+                if var_name in var_dict:
                     return alg, segment_id
         return None
     
@@ -153,7 +156,17 @@ class EnvStore(object):
     def get_info(self):
         info = {}
         for alg, segment_dict in self.env_variables.items():
-            for segment_id, var_list in segment_dict.items():
-                for var in var_list:
-                    info[(var, alg)] = alg
+            for segment_id, var_dict in segment_dict.items():
+                for var_name, _ in var_dict.items():
+                    info[(var_name, alg)] = alg
         return info
+
+    def dtype(self, var_name):
+        var_loc = self.locate_variable(var_name)
+        if var_loc:
+            alg, segment_id = var_loc
+            var_dict = self.env_variables[alg][segment_id]
+            if var_name in var_dict:
+                return var_dict[var_name]
+        return None
+
