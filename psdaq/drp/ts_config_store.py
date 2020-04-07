@@ -58,6 +58,24 @@ seqLocal = ['%u0kHz'%(4*i+4) for i in range(16)]
 top.define_enum('seqLocalEnum', {key:val for val,key in enumerate(seqLocal)})
 top.define_enum('destSelectEnum', {'Include': 0, 'DontCare': 1})
 
+help_str  = "-- user --"
+help_str += "\nLINAC        : Timing System source (Cu/SC)"
+help_str += "\n-- user.groupN (Cu mode) --"
+help_str += "\neventcode    : Trigger eventcode"
+help_str += "\n-- user.groupN (SC mode) --"
+help_str += "\ntrigger is a combination of rate and destn selection"
+help_str += "\nfixed.rate   : fixed period trigger rate"
+help_str += "\nac.rate      : AC power syncd trigger rate per timeslot"
+help_str += "\nac.ts[6]     : include timeslot in trigger rate"
+help_str += "\nseq.mode     : choice of event sequencer"
+help_str += "\nseq.channel  : choice channel within sequencer"
+help_str += "\ndestn.select : qualifier for following destn masks"
+help_str += "\n   Inclusive : trigger when beam to one of destns" 
+help_str += "\n   Exclusive : trigger when not beam to one of destns" 
+help_str += "\n   DontCare  : ignore destn"
+help_str += "\ndestn.destN  : add destN to trigger consideration"
+top.set('help:RO', help_str, 'CHARSTR')
+
 top.set('user.LINAC', 0, 'linacEnum')
 
 for group in range(8):
