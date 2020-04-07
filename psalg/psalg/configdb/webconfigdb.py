@@ -46,8 +46,13 @@ class configdb(object):
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
-            xx = dict()
-        return xx
+            return dict()
+
+        if not xx['success']:
+            logging.error('%s' % xx['msg'])
+            return dict()
+        else:
+            return xx['value']
 
     # Get the history of the device configuration for the variables 
     # in plist.  The variables are dot-separated names with the first
@@ -66,28 +71,33 @@ class configdb(object):
             xx = []
 
         # try to clean up superfluous keys from serialization
-        try:
-            for item in xx:
-                bad_keys = []
-                for kk in item.keys():
-                    if not kk.isalnum():
-                        bad_keys += kk
-                for bb in bad_keys:
-                    item.pop(bb, None)
-        except Exception:
-            pass
+        if 'value' in xx:
+            try:
+                for item in xx['value']:
+                    bad_keys = []
+                    for kk in item.keys():
+                        if not kk.isalnum():
+                            bad_keys += kk
+                    for bb in bad_keys:
+                        item.pop(bb, None)
+            except Exception:
+                pass
 
         return xx
 
-    # Return a list of all hutches.
-    def get_hutches(self):
+    # Return version as a dictionary.
+    # On error return an empty dictionary.
+    def get_version(self):
         try:
-            xx = requests.get(self.prefix + 'get_hutches/',
+            xx = requests.get(self.prefix + 'get_version/',
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
-            xx = []
-        return xx
+            return {}
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+        return xx['value']
 
     # Return the highest key for the specified alias, or highest + 1 for all
     # aliases in the hutch if not specified.
@@ -105,8 +115,26 @@ class configdb(object):
                                   timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
-            xx = []
-        return xx
+            return []
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+        return xx['value']
+
+    # Return a list of all hutches available in the config db.
+    # On error return an empty list.
+    def get_hutches(self):
+        try:
+            xx = requests.get(self.prefix + 'get_hutches/',
+                              timeout=self.timeout).json()
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            return []
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+
+        return xx['value']
 
     # Return a list of all aliases in the hutch.
     # On error return an empty list.
@@ -118,8 +146,12 @@ class configdb(object):
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
-            xx = []
-        return xx
+            return []
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+
+        return xx['value']
 
     # Create a new alias in the hutch, if it doesn't already exist.
     def add_alias(self, alias):
@@ -128,8 +160,10 @@ class configdb(object):
                               alias + '/', timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
-            xx = "ERROR"
-        return xx
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+        return
 
     # Create a new device_configuration if it doesn't already exist!
     # Note: session is ignored
@@ -139,13 +173,23 @@ class configdb(object):
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
-            xx = "ERROR"
-        return xx
+            return
+
+        if not xx['success']:
+            logging.error('%s' % xx['msg'])
+        return
 
     # Return a list of all device configurations.
     def get_device_configs(self):
-        xx = requests.get(self.prefix + 'get_device_configs/').json()
-        return xx
+        try:
+            xx = requests.get(self.prefix + 'get_device_configs/').json()
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            return []
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+        return xx['value']
 
     # Return a list of all devices in an alias/hutch.
     def get_devices(self, alias, hutch=None):
@@ -156,8 +200,11 @@ class configdb(object):
                               alias + '/', timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
-            xx = []
-        return xx
+            return []
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+        return xx['value']
 
     # Modify the current configuration for a specific device, adding it if
     # necessary.  name is the device and value is a json dictionary for the
@@ -167,6 +214,10 @@ class configdb(object):
         if hutch is None:
             hutch = self.hutch
 
+        alist = self.get_aliases()
+        if not alias in alist:
+            raise NameError("modify_device: %s is not a configuration name!"
+                            % alias)
         if isinstance(value, cdict):
             value = value.typed_json()
         if not isinstance(value, dict):
@@ -183,7 +234,11 @@ class configdb(object):
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
             raise
-        return xx
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+
+        return xx['value']
 
     # Print all of the device configurations, or all of the configurations
     # for a specified device.
@@ -193,8 +248,12 @@ class configdb(object):
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
-            xx = ''
-        print(xx.strip())
+            return
+
+        if not xx['success']:
+            logging.error('%s' % xx['msg'])
+        else:
+            print(xx['value'].strip())
 
     # Print all of the configurations for the hutch.
     def print_configs(self, hutch=None):
@@ -205,20 +264,34 @@ class configdb(object):
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
-            xx = ''
-        print(xx.strip())
+            return
+
+        if not xx['success']:
+            logging.error('%s' % xx['msg'])
+        else:
+            print(xx['value'].strip())
 
     # Transfer a configuration from another hutch to the current hutch,
     # returning the new key.
+    # On error return zero.
     def transfer_config(self, oldhutch, oldalias, olddevice, newalias,
                         newdevice):
-        # read configuration from old location
-        value = self.get_configuration(oldalias, olddevice, hutch=oldhutch)
+        try:
+            # read configuration from old location
+            read_val = self.get_configuration(oldalias, olddevice, hutch=oldhutch)
 
-        # set detName
-        value['detName:RO'] = newdevice 
+            # check for errors
+            if not read_val:
+                logging.error('get_configuration returned empty eonfig.')
+                return 0
 
-        # write configuration to new location
-        key = self.modify_device(newalias, value, hutch=self.hutch)
+            # set detName
+            read_val['detName:RO'] = newdevice 
 
-        return key
+            # write configuration to new location
+            write_val = self.modify_device(newalias, read_val, hutch=self.hutch)
+        except Exception as ex:
+            logging.error('%s' % ex)
+            return 0
+
+        return write_val
