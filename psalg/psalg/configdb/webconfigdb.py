@@ -214,7 +214,7 @@ class configdb(object):
         if hutch is None:
             hutch = self.hutch
 
-        alist = self.get_aliases()
+        alist = self.get_aliases(hutch)
         if not alias in alist:
             raise NameError("modify_device: %s is not a configuration name!"
                             % alias)
