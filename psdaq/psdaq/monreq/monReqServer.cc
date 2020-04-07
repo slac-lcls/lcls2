@@ -304,10 +304,6 @@ namespace Pds {
       exporter->add("MEB_EpFrCt", labels, MetricType::Counter, [&](){ return  epochFreeCnt();  });
       exporter->add("MEB_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt(); });
       exporter->add("MEB_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();  });
-      exporter->add("MEB_RxPdg",  labels, MetricType::Gauge,   [&](){ return  rxPending();     });
-      exporter->add("MEB_BufCt",  labels, MetricType::Counter, [&](){ return  bufferCnt();     });
-      exporter->add("MEB_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();      });
-      exporter->add("MEB_ToEvCt", labels, MetricType::Counter, [&](){ return  tmoEvtCnt();     });
     }
     virtual ~Meb()
     {
@@ -547,7 +543,7 @@ std::string MebApp::_configure(const json &msg)
 
   if (_meb)  _meb.reset();
   _meb = std::make_unique<Meb>(_prms, _exporter);
-  int rc = _meb->configure(_prms);
+  int rc = _meb->configure("MEB", _prms, _exporter);
   if (rc)  return std::string("Failed to configure MEB");
 
   _apps = std::make_unique<MyXtcMonitorServer>(_tag, _numEvQueues, _prms);

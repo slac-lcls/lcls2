@@ -5,6 +5,8 @@
 #include "EventBuilder.hh"
 #include "EbLfServer.hh"
 
+#include "psdaq/service/MetricExporter.hh"
+
 #include <cstdint>
 #include <cstddef>
 #include <string>
@@ -33,12 +35,11 @@ namespace Pds {
                 const unsigned  maxBuffers);
       virtual ~EbAppBase() {}
     public:
-      const uint64_t&  rxPending() const { return _transport.pending(); }
-      const uint64_t&  bufferCnt() const { return _bufferCnt; }
-      const uint64_t&  fixupCnt()  const { return _fixupCnt; }
       int              checkEQ()  { return _transport.pollEQ(); }
     public:
-      int              configure(const EbParams&);
+      int              configure(const std::string& pfx,
+                                 const EbParams&,
+                                 const std::shared_ptr<MetricExporter>&);
       void             shutdown();
       int              process();
       void             trim(unsigned dst);
@@ -58,6 +59,8 @@ namespace Pds {
       const unsigned            _verbose;
       uint64_t                  _bufferCnt;
       uint64_t                  _fixupCnt;
+      Pds::PromHistogram*       _fixupSrc;
+      Pds::PromHistogram*       _ctrbSrc;
     private:
       void*                     _region;
       uint64_t                  _contributors;

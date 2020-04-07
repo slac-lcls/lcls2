@@ -30,7 +30,7 @@ class EbReceiver : public Pds::Eb::EbCtrbInBase
 public:
     EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
                ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
-               const std::shared_ptr<MetricExporter>& exporter);
+               const std::shared_ptr<Pds::MetricExporter>& exporter);
     void process(const Pds::Eb::ResultDgram& result, const void* input) override;
 public:
     void resetCounters();
@@ -87,7 +87,7 @@ private:
     std::unique_ptr<Pds::Eb::MebContributor> m_meb;
     std::unique_ptr<EbReceiver> m_ebRecv;
     std::unique_ptr<prometheus::Exposer> m_exposer;
-    std::shared_ptr<MetricExporter> m_exporter;
+    std::shared_ptr<Pds::MetricExporter> m_exporter;
     ZmqSocket m_inprocSend;
     nlohmann::json m_connectMsg;
     size_t m_collectionId;

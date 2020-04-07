@@ -29,7 +29,7 @@ private:
     std::thread m_workerThread;
     std::atomic<bool> m_terminate;
     bool m_running;
-    std::shared_ptr<MetricExporter> m_exporter;
+    std::shared_ptr<Pds::MetricExporter> m_exporter;
     uint64_t m_nEvents;
     uint64_t m_nUpdates;
     uint64_t m_nConnected;

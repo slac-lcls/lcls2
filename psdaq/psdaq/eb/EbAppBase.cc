@@ -25,6 +25,7 @@
 #include <bitset>
 #include <atomic>
 #include <thread>
+#include <map>
 
 using namespace XtcData;
 using namespace Pds;
@@ -55,7 +56,9 @@ EbAppBase::EbAppBase(const EbParams& prms,
 {
 }
 
-int EbAppBase::configure(const EbParams& prms)
+int EbAppBase::configure(const std::string&                     pfx,
+                         const EbParams&                        prms,
+                         const std::shared_ptr<MetricExporter>& exporter)
 {
   unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
 
@@ -68,6 +71,15 @@ int EbAppBase::configure(const EbParams& prms)
   _contract     = prms.contractors;
   _bufferCnt    = 0;
   _fixupCnt     = 0;
+
+  std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
+  exporter->add(pfx+"_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
+  exporter->add(pfx+"_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
+  exporter->add(pfx+"_FxUpCt", labels, MetricType::Counter, [&](){ return _fixupCnt;            });
+  exporter->add(pfx+"_ToEvCt", labels, MetricType::Counter, [&](){ return  tmoEvtCnt();         });
+
+  _fixupSrc = &exporter->add(pfx+"_FxUpSc", labels, nCtrbs);
+  _ctrbSrc  = &exporter->add(pfx+"_CtrbSc", labels, nCtrbs); // Revisit: For testing
 
   std::vector<size_t> regSizes(nCtrbs);
   size_t              sumSize = 0;
@@ -199,6 +211,8 @@ int EbAppBase::process()
                      __PRETTY_FUNCTION__, src);
   }
 
+  _ctrbSrc->observe(double(src));       // Revisit: For testing
+
   if (_verbose >= VL_BATCH)
   {
     unsigned    env = idg->env;
@@ -255,6 +269,7 @@ uint64_t EbAppBase::contract(const EbDgram* ctrb) const
 void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
   ++_fixupCnt;
+  _fixupSrc->observe(double(srcId));
 
   if (_verbose >= VL_EVENT)
   {

@@ -78,7 +78,7 @@ namespace Pds {
     public:
       Teb(const EbParams& prms, const std::shared_ptr<MetricExporter>& exporter);
     public:
-      int      configure(const EbParams&, Trigger* object, unsigned prescale);
+      int      configure(Trigger* object, unsigned prescale);
       void     run();
     public:                         // For EventBuilder
       virtual
@@ -111,6 +111,7 @@ namespace Pds {
       uint64_t                     _prescaleCount;
     private:
       const EbParams&              _prms;
+      const std::shared_ptr<MetricExporter>& _exporter;
       EbLfClient                   _l3Transport;
     };
   };
@@ -135,6 +136,7 @@ Teb::Teb(const EbParams& prms, const std::shared_ptr<MetricExporter>& exporter) 
   _monitorCount (0),
   _prescaleCount(0),
   _prms         (prms),
+  _exporter     (exporter),
   _l3Transport  (prms.verbose)
 {
   std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
@@ -149,24 +151,19 @@ Teb::Teb(const EbParams& prms, const std::shared_ptr<MetricExporter>& exporter) 
   exporter->add("TEB_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt();        });
   exporter->add("TEB_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();         });
   exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.pending();  });
-  exporter->add("TEB_RxPdg",  labels, MetricType::Gauge,   [&](){ return  rxPending();            });
-  exporter->add("TEB_BtInCt", labels, MetricType::Counter, [&](){ return  bufferCnt();            }); // Inbound
-  exporter->add("TEB_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();             });
-  exporter->add("TEB_ToEvCt", labels, MetricType::Counter, [&](){ return  tmoEvtCnt();            });
   exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return  _writeCount;            });
   exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return  _monitorCount;          });
   exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return  _prescaleCount;         });
 }
 
-int Teb::configure(const EbParams& prms,
-                   Trigger*        object,
-                   unsigned        prescale)
+int Teb::configure(Trigger* object,
+                   unsigned prescale)
 {
-  _id    = prms.id;
-  _rcvrs = prms.receivers;
+  _id    = _prms.id;
+  _rcvrs = _prms.receivers;
 
   int rc;
-  if ( (rc = EbAppBase::configure(prms)) )  return rc;
+  if ( (rc = EbAppBase::configure("TEB", _prms, _exporter)) )  return rc;
 
   _trigger    = object;
   _prescale   = prescale - 1;           // Be zero based
@@ -175,11 +172,11 @@ int Teb::configure(const EbParams& prms,
   void*  region  = _batMan.batchRegion();
   size_t regSize = _batMan.batchRegionSize();
 
-  _l3Links.resize(prms.addrs.size());
+  _l3Links.resize(_prms.addrs.size());
   for (unsigned i = 0; i < _l3Links.size(); ++i)
   {
-    const char*    addr = prms.addrs[i].c_str();
-    const char*    port = prms.ports[i].c_str();
+    const char*    addr = _prms.addrs[i].c_str();
+    const char*    port = _prms.ports[i].c_str();
     EbLfCltLink*   link;
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _l3Transport.connect(&link, addr, port, _id, tmo)) )
@@ -204,14 +201,14 @@ int Teb::configure(const EbParams& prms,
                   rmtId);
   }
 
-  if ( (rc = _mrqTransport.initialize(prms.ifAddr, prms.mrqPort, prms.numMrqs)) )
+  if ( (rc = _mrqTransport.initialize(_prms.ifAddr, _prms.mrqPort, _prms.numMrqs)) )
   {
     logging::error("%s:\n  Failed to initialize MonReq EbLfServer on %s:%s",
-                   __PRETTY_FUNCTION__, prms.ifAddr, prms.mrqPort);
+                   __PRETTY_FUNCTION__, _prms.ifAddr, _prms.mrqPort);
     return rc;
   }
 
-  _mrqLinks.resize(prms.numMrqs);
+  _mrqLinks.resize(_prms.numMrqs);
   for (unsigned i = 0; i < _mrqLinks.size(); ++i)
   {
     EbLfSvrLink*   link;
@@ -640,7 +637,7 @@ int TebApp::_configure(const json& msg)
 
 # undef _FETCH
 
-    // Find and register a port to use with Prometheus for run-time monitoring
+  // Find and register a port to use with Prometheus for run-time monitoring
   if (_exposer)  _exposer.reset();
   unsigned port = 0;
   for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
@@ -683,7 +680,7 @@ int TebApp::_configure(const json& msg)
 
   if (_teb)  _teb.reset();
   _teb = std::make_unique<Teb>(_prms, _exporter);
-  rc = _teb->configure(_prms, trigger, prescale);
+  rc = _teb->configure(trigger, prescale);
 
   return rc;
 }

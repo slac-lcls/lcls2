@@ -9,13 +9,10 @@
 #include <vector>
 
 
-class MetricExporter;
-
 namespace Pds {
   class EbDgram;
-};
+  class MetricExporter;
 
-namespace Pds {
   namespace Eb {
 
     class EbLfCltLink;

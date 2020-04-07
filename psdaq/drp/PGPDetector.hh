@@ -7,8 +7,10 @@
 #include "drp.hh"
 #include "spscqueue.hh"
 
-class MetricExporter;
-namespace Pds {namespace Eb { class TebContributor;}};
+namespace Pds {
+    class MetricExporter;
+    namespace Eb { class TebContributor;}
+};
 
 namespace Drp {
 
@@ -24,7 +26,7 @@ class PGPDetector
 {
 public:
     PGPDetector(const Parameters& para, DrpBase& drp, Detector* det);
-    void reader(std::shared_ptr<MetricExporter> exporter, Detector* det, Pds::Eb::TebContributor& tebContributor);
+    void reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector* det, Pds::Eb::TebContributor& tebContributor);
     void collector(Pds::Eb::TebContributor& tebContributor);
     void resetEventCounter();
     void shutdown();

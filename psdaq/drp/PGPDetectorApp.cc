@@ -128,7 +128,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
         m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det);
 
-        m_exporter = std::make_shared<MetricExporter>();
+        m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {
             m_drp.exposer()->RegisterCollectable(m_exporter);
         }

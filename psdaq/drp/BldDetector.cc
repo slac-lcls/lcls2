@@ -505,18 +505,18 @@ void Pgp::shutdown()
     m_det->namesLookup().clear();   // erase all elements
 }
 
-void Pgp::worker(std::shared_ptr<MetricExporter> exporter)
+void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
 {
     // setup monitoring
     uint64_t nevents = 0L;
     std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};
-    exporter->add("drp_event_rate", labels, MetricType::Rate,
+    exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                   [&](){return nevents;});
     uint64_t bytes = 0L;
-    exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
+    exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
                   [&](){return bytes;});
     uint64_t nmissed = 0L;
-    exporter->add("bld_miss_count", labels, MetricType::Counter,
+    exporter->add("bld_miss_count", labels, Pds::MetricType::Counter,
                   [&](){return nmissed;});
 
     //
@@ -846,7 +846,7 @@ void BldApp::handlePhase1(const json& msg)
 
         m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det);
 
-        m_exporter = std::make_shared<MetricExporter>();
+        m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {
             m_drp.exposer()->RegisterCollectable(m_exporter);
         }

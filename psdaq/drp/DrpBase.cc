@@ -111,7 +111,7 @@ Pds::EbDgram* MemPool::allocateTr()
 
 EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
-                       const std::shared_ptr<MetricExporter>& exporter) :
+                       const std::shared_ptr<Pds::MetricExporter>& exporter) :
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
   m_mon(mon),
@@ -447,17 +447,17 @@ std::string DrpBase::configure(const json& msg)
         }
     }
 
-    m_exporter = std::make_shared<MetricExporter>();
+    m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_exposer) {
         logging::info("Providing run-time monitoring data on port %d", port);
         m_exposer->RegisterCollectable(m_exporter);
     }
 
     std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};
-    m_exporter->add("drp_port_rcv_rate", labels, MetricType::Rate,
+    m_exporter->add("drp_port_rcv_rate", labels, Pds::MetricType::Rate,
                     [](){return 4*readInfinibandCounter("port_rcv_data");});
 
-    m_exporter->add("drp_port_xmit_rate", labels, MetricType::Rate,
+    m_exporter->add("drp_port_xmit_rate", labels, Pds::MetricType::Rate,
                     [](){return 4*readInfinibandCounter("port_xmit_data");});
 
     // Create all the eb things and do the connections
