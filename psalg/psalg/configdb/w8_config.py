@@ -12,10 +12,10 @@ def epics_put(cfg,epics_prefix,names,values):
             names.append(epics_prefix+key)
             values.append(val)
         
-def w8_config(connect_str,prefix,cfgtype,detname,group):
+def w8_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     global ctxt
 
-    cfg = get_config(connect_str,cfgtype,detname)
+    cfg = get_config(connect_str,cfgtype,detname,detsegm)
 
     ctxt = Context('pva')
 
@@ -36,8 +36,10 @@ def w8_config(connect_str,prefix,cfgtype,detname,group):
         print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
         raise ValueError('triggerDelay computes to < 0')
 
-    if raw['nsamples']>256:
-        raise ValueError('raw.nsamples > 256')
+    rawNsamples = int(raw['gate_ns']*0.25)
+    if rawNsamples>256:
+        raise ValueError('raw.gate_ns > 1020')
+    raw['nsamples'] = rawNsamples
 
     fex           = cfg['user']['fex']
     intStart      = fex['start_ns']
@@ -49,50 +51,55 @@ def w8_config(connect_str,prefix,cfgtype,detname,group):
     if fexTrigDelay > 255:
         raise ValueError('fex.start_ns > raw.start_ns + 1020')
 
-    if fex['nsamples']>256:
-        raise ValueError('fex.nsamples > 256')
+    fexNsamples = int(fex['gate_ns']*0.25)
+    if fexNsamples>255:
+        raise ValueError('fex.gate_ns > 1020')
+    fex['nsamples'] = rawNsamples
+
+    #  Assert clears
+    names_clr = [epics_prefix+'BatcherEventBuilder:Blowoff',
+                 epics_prefix+'TimingFrameRx:RxCountReset',
+                 epics_prefix+'RawBuffers:CntRst',
+                 epics_prefix+'Integrators:CntRst']
+    values = [1]*len(names_clr)
+    print('names {:}'.format(names_clr))
+    ctxt.put(names_clr,values)
+
+    expert = cfg['expert']['Top']
+    expert['TriggerEventManager']['TriggerEventBuffer[0]']['TriggerDelay'] = triggerDelay
+    for i in range(8):
+        expert['RawBuffers']['BuffEn[%d]'%i] = raw['enable[%d]'%i]
+
+    # Firmware needs a value one less        
+    expert['RawBuffers']['BuffLen'] = rawNsamples-1
+    # Firmware needs a value one less
+    prescale = raw['prescale']
+    if prescale>0:  
+        prescale -= 1
+    expert['RawBuffers']['TrigPrescale'] = prescale
+
+    expert['Integrators']['TrigDelay'] = fexTrigDelay
+    # Firmware needs a value one less        
+    expert['Integrators']['IntegralSize'] = fexNsamples-1
+    expert['Integrators']['BaselineSize'] = fex['baseline']
+    
+    for i in range(4):
+        expert['Integrators']['CorrCoefficientFloat64[%d]'%i] = fex['coeff[%d]'%i]
+
+    expert['TriggerEventManager']['TriggerEventBuffer[0]']['Partition'] = group
 
     names  = []
     values = []
     epics_put(cfg['expert'],prefix+':',names,values)
     ctxt.put(names,values)
 
-    #  Assert clears
-    names = [epics_prefix+'BatcherEventBuilder:Blowoff',
-             epics_prefix+'TimingFrameRx:RxCountReset',
-             epics_prefix+'RawBuffers:CntRst',
-             epics_prefix+'Integrators:CntRst']
-    values = [1]*len(names)
-    print('names {:}'.format(names))
-    ctxt.put(names,values)
-
-    ctxt.put(epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay, wait=False) # 186 MHz clocks
-    for i in range(8):
-        ctxt.put(epics_prefix+'RawBuffers:BuffEn[%d]'%i, raw['enable[%d]'%i], wait=False)
-    # Firmware needs a value one less        
-    ctxt.put(epics_prefix+'RawBuffers:BuffLen'         , raw['nsamples']-1, wait=False)
-    # Firmware needs a value one less
-    prescale = raw['prescale']
-    if prescale>0:  
-        prescale -= 1
-    ctxt.put(epics_prefix+'RawBuffers:TrigPrescale' , prescale, wait=False)
-
-    ctxt.put(epics_prefix+'Integrators:TrigDelay'   , fexTrigDelay, wait=False)  # 250 MHz clocks
-    # Firmware needs a value one less        
-    ctxt.put(epics_prefix+'Integrators:IntegralSize', fex['nsamples']-1, wait=False)
-    ctxt.put(epics_prefix+'Integrators:BaselineSize', fex['baseline'], wait=False)
-    
-    for i in range(4):
-        ctxt.put(epics_prefix+'Integrators:CorrCoefficientFloat64[%d]'%i, fex['coeff[%d]'%i], wait=False)
-
-    ctxt.put(epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:Partition', group, wait=True)
     ctxt.put(epics_prefix+'TriggerEventManager:TriggerEventBuffer[0]:MasterEnable', 1, wait=True)
 
     time.sleep(0.2)
 
     #  Deassert clears
-    values = [0]*len(names)
-    ctxt.put(names,values)
+    values = [0]*len(names_clr)
+    ctxt.put(names_clr,values)
     ctxt.put(epics_prefix+'BatcherEventBuilder:Blowoff', 0, wait=True)
 
     cfg['firmwareVersion'] = ctxt.get(epics_prefix+'AxiVersion:FpgaVersion').raw.value

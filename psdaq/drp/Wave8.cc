@@ -271,11 +271,12 @@ unsigned Wave8::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& co
     CHECK_TIME(PyDict_Get);
 
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssi",
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssii",
                                               m_connect_json.c_str(),
                                               m_epics_name.c_str(),
                                               config_alias.c_str(),
                                               m_para->detName.c_str(),
+                                              m_para->detSegment,
                                               m_readoutGroup);
 
     CHECK_TIME(PyObj_Call);
@@ -296,7 +297,7 @@ unsigned Wave8::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& co
     // convert to json to xtc
     const unsigned BUFSIZE = 1024*1024;
     char buffer[BUFSIZE];
-    unsigned len = Pds::translateJson2Xtc(json, buffer, configNamesId, m_para->detSegment);
+    unsigned len = Pds::translateJson2Xtc(json, buffer, configNamesId, m_para->detName.c_str(), m_para->detSegment);
     if (len>BUFSIZE) {
         throw "**** Config json output too large for buffer\n";
     }

@@ -24,7 +24,7 @@ if args.store:
 
     top = cdict()
 
-    top.setInfo('xpm', args.name, 'serial1234', 'No comment')
+    top.setInfo('xpm', args.name, detSegm=None, 'serial1234', 'No comment')
     top.setAlg('config', [0,0,0])
 
     top.set('XTPG.CuDelay'   , 160000, 'UINT32')

@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
     printf("json: %s\n",json);
 
     NamesId namesid(0,1);
-    unsigned len = Pds::translateJson2Xtc(json, config_buf, namesid);
+    unsigned len = Pds::translateJson2Xtc(json, config_buf, namesid, detname);
     if (len <= 0) {
         fprintf(stderr, "Parse errors, exiting.\n");
         exit(1);

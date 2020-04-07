@@ -68,6 +68,8 @@ class ChipServer(object):
         #  Monitoring
         self.fwBuild     = SharedPV(initial=NTScalar('s').wrap({'value':''}),
                                     handler=DefaultPVHandler())
+        self.fwVersion   = SharedPV(initial=NTScalar('I').wrap({'value':0}),
+                                    handler=DefaultPVHandler())
         self.pAddr       = SharedPV(initial=NTScalar('s').wrap({'value':''}),
                                     handler=DefaultPVHandler())
         self.pAddr_u     = SharedPV(initial=NTScalar('I').wrap({'value':0}),
@@ -87,6 +89,7 @@ class ChipServer(object):
         self.monJesdTtl  = MySharedPV(monJesdTtl)
 
         self.provider.add(prefix+':FWBUILD'   ,self.fwBuild)
+        self.provider.add(prefix+':FWVERSION' ,self.fwVersion)
         self.provider.add(prefix+':PADDR'     ,self.pAddr)
         self.provider.add(prefix+':PADDR_U'   ,self.pAddr_u)
         self.provider.add(prefix+':PLINK'     ,self.pLink)

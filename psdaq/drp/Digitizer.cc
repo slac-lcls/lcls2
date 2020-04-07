@@ -113,7 +113,7 @@ json Digitizer::connectionInfo()
     return info;
 }
 
-unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
+unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& config_alias) {
 
   timespec tv_b; clock_gettime(CLOCK_REALTIME,&tv_b);
 
@@ -139,11 +139,12 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
     CHECK_TIME(PyDict_Get);
 
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssi",
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssii",
                                               m_connect_json.c_str(),
                                               m_epics_name.c_str(),
-                                              "BEAM",
+                                              config_alias.c_str(),
                                               m_para->detName.c_str(),
+                                              m_para->detSegment,
                                               m_readoutGroup);
 
     CHECK_TIME(PyObj_Call);
@@ -158,7 +159,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
     // convert to json to xtc
     const unsigned BUFSIZE = 1024*1024;
     char buffer[BUFSIZE];
-    unsigned len = Pds::translateJson2Xtc(json, buffer, configNamesId, m_para->detSegment);
+    unsigned len = Pds::translateJson2Xtc(json, buffer, configNamesId, m_para->detName.c_str(), m_para->detSegment);
     if (len>BUFSIZE) {
         throw "**** Config json output too large for buffer\n";
     }
@@ -174,17 +175,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId) {
     xtc.alloc(jsonxtc.sizeofPayload());
 
     // get the lane mask from the json
-    unsigned lane_mask = 0;
-    Document top;
-    if (top.Parse(json).HasParseError())
-        fprintf(stderr,"*** json parse error\n");
-    else {
-      const Value& enable = top["paddr"];
-      std::string enable_type = top[":types:"]["enable"][0].GetString();
-      unsigned length = top[":types:"]["enable"][1].GetInt();
-      for (unsigned i=0; i<length; i++) if (enable[i].GetInt()) lane_mask |= 1<< i;
-    }
-    lane_mask = 1; // override temporarily!
+    unsigned lane_mask = 1;
     printf("hsd lane_mask is 0x%x\n",lane_mask);
 
     Py_DECREF(pModule);
@@ -225,7 +216,7 @@ unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc)
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     // set up the names for the configuration data
     NamesId configNamesId(nodeId,ConfigNamesIndex);
-    lane_mask = Digitizer::_addJson(xtc, configNamesId);
+    lane_mask = Digitizer::_addJson(xtc, configNamesId, config_alias);
 
     // set up the names for L1Accept data
     Alg alg("raw", 2, 0, 0);
