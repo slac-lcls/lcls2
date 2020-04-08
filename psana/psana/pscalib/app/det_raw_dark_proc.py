@@ -111,7 +111,7 @@ def command_line_parser() :
 
 #----------
 
-if __name__ == "__main__" :
+def do_main() :
 
     print('Command   :', ' '.join(sys.argv))
     print('Arguments :')
@@ -130,5 +130,10 @@ if __name__ == "__main__" :
     #print(usage())
 
     sys.exit('END OF %s' % SCRNAME)
+
+#----------
+
+if __name__ == "__main__" :
+    do_main()
 
 #----------
