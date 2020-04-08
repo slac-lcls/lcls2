@@ -55,6 +55,7 @@ private:
     uint64_t m_offset;
     unsigned m_nodeId;
     std::vector<uint8_t> m_configureBuffer;
+    uint64_t m_damage;
 };
 
 class DrpBase
