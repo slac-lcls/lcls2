@@ -7,8 +7,6 @@
 import logging
 logger = logging.getLogger(__name__)
 
-import warnings
-
 import os
 import sys
 import time
@@ -62,9 +60,6 @@ class DarkBackgroundReference():
             experiment = experiment, max_shots = max_shots, run_number = run_number, 
             validity_range = validity_range, calibration_path = calibration_path)
 
-        warnings.filterwarnings('always',module='Utils',category=UserWarning)
-        warnings.filterwarnings('ignore',module='Utils',category=RuntimeWarning, message="invalid value encountered in divide")
-        
         """
         After setting all the parameters, this method has to be called to generate the dark reference and 
         save it in the proper location. 

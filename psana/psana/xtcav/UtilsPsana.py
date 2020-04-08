@@ -3,8 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import numpy as np
-import psana
-#import warnings
+#import psana
 import time
 from psana.xtcav.Utils import ROIMetrics, GlobalCalibration, ShotToShotParameters
 import psana.xtcav.Constants as cons

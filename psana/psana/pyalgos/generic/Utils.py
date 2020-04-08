@@ -96,8 +96,16 @@ else:
 
 import logging
 logger = logging.getLogger('__name__')
+DICT_NAME_TO_LEVEL = logging._nameToLevel
+STR_LEVEL_NAMES = ', '.join(DICT_NAME_TO_LEVEL.keys())
 
-TSFORMAT = '%Y-%m-%dT%H:%M:%S%z'
+TSFORMAT = '%Y-%m-%dT%H:%M:%S' #%z'
+# from psana.pyalgos.generic.Utils import init_logger, STR_LEVEL_NAMES, DIC_NAME_TO_LEVEL
+
+def init_logger(loglev_name='DEBUG', fmt='[%(levelname).1s] L%(lineno)04d : %(message)s', datefmt=TSFORMAT) :
+    #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s' # '%(message)s'
+    logging.basicConfig(format=fmt, datefmt=datefmt, level=DICT_NAME_TO_LEVEL[loglev_name])
+    logger.debug('Logger is initialized for level %s' % loglev_name)
 
 #------------------------------
 

@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 import numpy as np
 import scipy.interpolate
 import time
-import warnings
+
 import cv2
 import scipy.io
 import math
@@ -110,7 +110,6 @@ def subtractBackground(image, ROI, dark_background):
         try:    
             image = image-image_db[minY:(maxY+1),minX:(maxX+1)]
         except ValueError:
-            #warnings.warn_explicit('Dark background ROI not large enough for image. Image will not be background subtracted',UserWarning,'XTCAV',0)
             logger.warning('Dark background ROI not large enough for image. Image will not be background subtracted')
        
     return image
@@ -133,7 +132,7 @@ def denoiseImage(image, snrfilter, roi_fraction):
     filtered = cv2.GaussianBlur(image, (5, 5), 0)
 
     if np.sum(filtered) <= 0:
-        warnings.warn_explicit('Image Completely Empty After Backgroud Subtraction', UserWarning,'XTCAV',0)
+        logger.warning('Image Completely Empty After Backgroud Subtraction')
         return None, None
     
     #Obtaining the mean and the standard deviation of the noise by using pixels only on the border
@@ -143,11 +142,11 @@ def denoiseImage(image, snrfilter, roi_fraction):
     #Create a mask for the true image that allows us to zero out all noise portions of image
     mask = cv2.threshold(filtered.astype(np.float32), mean + snrfilter*std, 1, cv2.THRESH_BINARY)[1]
     if np.sum(mask) == 0:
-        warnings.warn_explicit('Image Completely Empty After Denoising',UserWarning,'XTCAV',0)
+        logger.warning('Image Completely Empty After Denoising')
         return None, None
      #We make sure it is not just noise by checking that at least .1% of pixels are not empty
     if float(np.count_nonzero(mask))/np.size(mask) < roi_fraction: 
-        warnings.warn_explicit('< %.4f %% of pixels are non-zero after denoising. Image will not be used' %roi_fraction*10,UserWarning,'XTCAV',0)
+        logger.warning('< %.4f %% of pixels are non-zero after denoising. Image will not be used' %roi_fraction*10)
         return None, None
 
     return mask, mean
@@ -229,7 +228,6 @@ def calculatePhyscialUnits(ROI, center, shot_to_shot, global_calibration):
 
     #If the cosine of phase was too close to 0, we return warning and error
     if np.abs(cosphasediff) < 0.5:
-        #warnings.warn_explicit('The phase of the bunch with the RF field is far from 0 or 180 degrees',UserWarning,'XTCAV',0)
         logger.warning('The phase of the bunch with the RF field is far from 0 or 180 degrees')
         valid=0
 
@@ -260,7 +258,6 @@ def processImage(img, parameters, dark_background, global_calibration,
             return None, None
 
         if np.max(img) >= saturation_value:
-            #warnings.warn_explicit('Saturated Image',UserWarning,'XTCAV',0)
             logger.warning('Saturated Image')
             return None, None
 
@@ -331,7 +328,7 @@ def processLasingSingleShot(image_profile, nolasing_averaged_profiles):
     num_bunches = len(image_stats)              #Number of bunches
     
     if (num_bunches != nolasing_averaged_profiles.num_bunches):
-        warnings.warn_explicit('Different number of bunches in the reference',UserWarning,'XTCAV',0)
+        logger.warning('Different number of bunches in the reference')
     
     t = nolasing_averaged_profiles.t   #Master time obtained from the no lasing references
     dt = (t[-1]-t[0])/(t.size-1)

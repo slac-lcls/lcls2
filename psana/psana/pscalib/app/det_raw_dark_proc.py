@@ -1,22 +1,13 @@
 #!/usr/bin/env python
 
 #----------
+
 import logging
 logger = logging.getLogger(__name__)
+from psana.pyalgos.generic.Utils import init_logger, STR_LEVEL_NAMES
+
 import sys
-
 SCRNAME = sys.argv[0].rsplit('/')[-1]
-
-DICT_NAME_TO_LEVEL = logging._nameToLevel
-STR_LEVEL_NAMES = ', '.join(DICT_NAME_TO_LEVEL.keys())
-
-#----------
-
-def init_logger(loglev_name) :
-    #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s' # '%(message)s'
-    fmt='[%(levelname).1s] L%(lineno)04d : %(message)s'
-    logging.basicConfig(format=fmt, datefmt='%Y-%m-%dT%H:%M:%S', level=logging._nameToLevel[loglev_name])
-    logger.debug('Logger is initialized for level %s' % loglev_name)
 
 #----------
 
@@ -117,9 +108,9 @@ def do_main() :
     print('Arguments :')
     parser = command_line_parser()
     args = parser.parse_args()
-    for k,v in args.__dict__.items() : print('   %s : %s' % (k, str(v)))
+    for k,v in vars(args).items() : print('   %s : %s' % (k, str(v)))
 
-    init_logger(args.loglev)
+    init_logger(args.loglev, fmt='[%(levelname).1s] L%(lineno)04d : %(message)s', datefmt='%Y-%m-%dT%H:%M:%S')
 
     #sys.exit('TEST EXIT %s' % SCRNAME)
     ##================================

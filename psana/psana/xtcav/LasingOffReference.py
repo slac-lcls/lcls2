@@ -7,8 +7,6 @@
 import logging
 logger = logging.getLogger(__name__)
 
-import warnings
-
 import os
 import sys
 import time
@@ -108,9 +106,6 @@ class LasingOffReference():
             island_split_par2 = island_split_par2, island_split_par1=island_split_par1, 
             calibration_path=calibration_path, fname=fname, version=1)
 
-        #warnings.filterwarnings('always',module='Utils',category=UserWarning)
-        #warnings.filterwarnings('ignore',module='Utils',category=RuntimeWarning, message="invalid value encountered in divide")
-        
         if rank == 0:
             print('Lasing off reference')
             print('\t File name: %s' % self.parameters.fname)
