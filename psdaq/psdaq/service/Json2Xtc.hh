@@ -29,7 +29,7 @@ namespace Pds
         std::vector<bool>        _isnum;
     };
 
-    int translateJson2Xtc(char *in, char *out, XtcData::NamesId namesID, unsigned segment=0);
+    int translateJson2Xtc(char *in, char *out, XtcData::NamesId namesID, const char* detname=0, unsigned segment=0);
 
 }; // namespace Pds
 

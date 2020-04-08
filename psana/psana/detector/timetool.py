@@ -5,8 +5,13 @@ from amitypes import Array1d
 class tt_raw_2_0_0(DetectorImpl):
     def __init__(self, *args):
         super().__init__(*args)
-    def image(self, evt) -> Array1d:
-        return self._segments(evt)[0].image
+        self._add_fields()
+
+    def _info(self,evt):
+        # check for missing data
+        segments = self._segments(evt)
+        if segments is None: return None
+        return segments[0]
 
 # leftover from when we wrote out the EventBatcher format.
 # still used at the moment in the self-tests

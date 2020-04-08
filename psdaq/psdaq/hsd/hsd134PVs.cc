@@ -174,7 +174,8 @@ int main(int argc, char** argv)
 
   std::string buildStamp = m->version().buildStamp();
   printf("BuildStamp: %s\n",buildStamp.c_str());
-  
+  unsigned buildVersion = m->version().FpgaVersion;
+
   for(unsigned i=0; i<2; i++) {
     std::string sprefix(prefix);
     sprefix += (i==0) ? ":A:FWBUILD" : ":B:FWBUILD";
@@ -182,6 +183,15 @@ int main(int argc, char** argv)
     while(!pvBuild.connected())
       usleep(1000);
     pvBuild.putFrom(buildStamp); 
+  }
+
+  for(unsigned i=0; i<2; i++) {
+    std::string sprefix(prefix);
+    sprefix += (i==0) ? ":A:FWVERSION" : ":B:FWVERSION";
+    Pds_Epics::EpicsPVA pvBuild(sprefix.c_str());
+    while(!pvBuild.connected())
+      usleep(1000);
+    pvBuild.putFrom(buildVersion); 
   }
 
   m->setup_timing();

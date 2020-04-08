@@ -20,7 +20,8 @@ def remove_read_only(cfg):
             new[k.replace(':RO', '')] = v
     return new
 
-def get_config(connect_json,cfgtype,detname):
+# this interface requires the detector segment
+def get_config(connect_json,cfgtype,detname,detsegm):
 
     connect_info = json.loads(connect_json)
     control_info = connect_info['body']['control']['0']['control_info']
@@ -28,7 +29,7 @@ def get_config(connect_json,cfgtype,detname):
     cfg_dbase = control_info['cfg_dbase'].rsplit('/', 1)
     db_url = cfg_dbase[0]
     db_name =cfg_dbase[1]
-    return get_config_with_params(db_url, instrument, db_name, cfgtype, detname)
+    return get_config_with_params(db_url, instrument, db_name, cfgtype, detname+'_%d'%detsegm)
 
 def get_config_with_params(db_url, instrument, db_name, cfgtype, detname):
     create = False

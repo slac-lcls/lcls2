@@ -57,7 +57,7 @@ import re
 #                             to a name does not change the assigned value, but
 #                             modifying the contents of an ndarray does.)
 #
-#          setInfo(detType=None, detName=None, detId=None, doc=None)
+#          setInfo(detType=None, detName=None, detSegm=None, detId=None, doc=None)
 #                           - Sets the additional information for a top-level
 #                             clist.
 #          setAlg(alg, version=[0,0,0], doc="")
@@ -709,9 +709,10 @@ class cdict(object):
             else:
                 self.dict[name] = value
 
-    def setInfo(self, detType=None, detName=None, detId=None, doc=None):
+    def setInfo(self, detType=None, detName=None, detSegm=None, detId=None, doc=None):
         self.setString("detType:RO", detType)
         self.setString("detName:RO", detName)
+        self.setString("detName:RO", detName if detSegm is None else detName+'_%d'%detSegm)
         self.setString("detId:RO", detId)
         self.setString("doc:RO", doc)
 

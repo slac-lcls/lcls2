@@ -91,7 +91,8 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string&
     check(pFunc);
     // need to get the dbase connection info via collection
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"sss",m_connect_json.c_str(), config_alias.c_str(), m_para->detName.c_str());
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssi",m_connect_json.c_str(), config_alias.c_str(), 
+                                              m_para->detName.c_str(), m_para->detSegment);
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
@@ -99,7 +100,7 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string&
     char* json = (char*)PyBytes_AsString(json_bytes);
 
     // convert to json to xtc
-    unsigned len = Pds::translateJson2Xtc(json, config_buf, configNamesId);
+    unsigned len = Pds::translateJson2Xtc(json, config_buf, configNamesId, m_para->detName.c_str(), m_para->detSegment);
     if (len>BUFSIZE) {
         throw "**** Config json output too large for buffer\n";
     }

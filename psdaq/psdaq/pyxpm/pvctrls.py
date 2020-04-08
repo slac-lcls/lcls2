@@ -502,7 +502,7 @@ class PVCtrls(object):
                 mycdb.add_device_config('xpm')
 
                 top = cdict()
-                top.setInfo('xpm', self._name, 'serial1234', 'No comment')
+                top.setInfo('xpm', self._name, detSegm=None, 'serial1234', 'No comment')
                 top.setAlg('config', [0,0,0])
 
                 lock.acquire()

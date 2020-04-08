@@ -19,7 +19,7 @@ public:
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
     void shutdown() override;
 private:
-    unsigned _addJson(XtcData::Xtc& xtc, XtcData::NamesId& configNamesId);
+    unsigned _addJson(XtcData::Xtc& xtc, XtcData::NamesId& configNamesId, const std::string& config_alias);
     unsigned _getPaddr();
 private:
     enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex};
