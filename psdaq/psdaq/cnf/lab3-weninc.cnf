@@ -9,7 +9,7 @@ ip_addr = '10.0.'+shelf
 collect_host = 'drp-tst-acc06'
 
 # -o /ffb01/weninc
-drp_cmd = 'drp -D AreaDetector -l 0x1 -d /dev/datadev_0 -C ' + collect_host
+drp_cmd = 'drp -D fakecam -l 0x1 -d /dev/datadev_0 -C ' + collect_host
 
 procmgr_config = [
  #{ id:'partca-' + platform ,flags: 's', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},

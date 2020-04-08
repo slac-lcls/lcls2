@@ -72,7 +72,7 @@ procmgr_config = [
  #{ host: 'drp-tst-dev018', id:'bld_0',       flags:'xpu', conda:conda_rel, env:epics_env, cmd:bld_cmd},
 
  # TimeTool
- #{ host: 'drp-tst-dev012', id:'tmott_0', flags:'xpu',  conda:conda_rel, cmd:drp_cmd+' -vvv -D tt -d /dev/datadev_0'},
+ #{ host: 'drp-tst-dev012', id:'tmott_0', flags:'xpu',  conda:conda_rel, cmd:drp_cmd+' -D tt -d /dev/datadev_0'},
 
  # Timing System
  #{ host: 'drp-tst-dev013', id:'tmots_0', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D ts' },
