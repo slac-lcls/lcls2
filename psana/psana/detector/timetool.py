@@ -40,7 +40,7 @@ class ttdet_ttalg_0_0_1(DetectorImpl):
 
         return pFrame
 
-    def image(self, evt): -> Array1d
+    def image(self, evt) -> Array1d:
         parsed_frame_object = self.parsed_frame(evt)
         return parsed_frame_object.prescaled_frame
 
