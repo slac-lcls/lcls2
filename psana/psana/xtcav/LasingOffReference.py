@@ -1,4 +1,9 @@
 
+"""
+  2014 cteated by a bunch of ananymous authors
+  2020-04-03 adopted to LCLS2 by Mikhail Dubrovin
+"""
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -136,7 +141,7 @@ class LasingOffReference():
         list_image_profiles = []
 
         #dark_background = self._getDarkBackground(env)
-        dark_data, dark_meta = camera.calibconst.get('pedestals')
+        dark_data, dark_meta = camera.calibconst.get('xtcav_pedestals')
 
         logger.debug('==== dark_meta:\n%s' % str(dark_meta))
 
@@ -256,7 +261,7 @@ class LasingOffReference():
         if save_to_file:
             #cp = CalibrationPaths(env, self.parameters.calibration_path)
             #file = cp.newCalFileName(cons.LOR_FILE_NAME, self.parameters.validity_range[0], self.parameters.validity_range[1])
-            fname = 'cons-%s-%04d-%s-lasingoffreference.data' % (run.expt, run.runnum, cons.DETNAME)
+            fname = 'cons-%s-%04d-xtcav-lasingoff.data' % (run.expt, run.runnum) # , cons.DETNAME)
             self.save(fname)
 
 
@@ -344,7 +349,7 @@ class LasingOffReference():
 
         if True :
             d = instance.parameters
-            s = 'cdb add -e %s -d %s -c lasingoffreference -r %d -f %s -i xtcav -u <user>'%\
+            s = 'cdb add -e %s -d %s -c xtcav_lasingoff -r %d -f %s -i xtcav -u <user>'%\
                 (d['experiment'], cons.DETNAME, d['run_number'], path)
             logger.info('command to deploy: %s' % s)
 
@@ -385,5 +390,10 @@ LasingOffParameters = xtu.namedtuple('LasingOffParameters',
     'roi_expand':1,          
     'roi_fraction':cons.ROI_PIXEL_FRACTION,
     'island_split_method': cons.DEFAULT_SPLIT_METHOD})
+
+#----------
+
+if __name__ == "__main__" :
+    sys.exit('run it by command: xtcavLasingOff')
 
 #----------

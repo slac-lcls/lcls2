@@ -1,9 +1,11 @@
 #!/usr/bin/env python
+
 import sys
 import argparse
 
-usage = '\nE.g. : %s amox23616 131' % sys.argv[0].rsplit('/')[-1]\
-      + '\n  or : %s amox23616 131 --max_shots 200 --num_bunches 1\n' % sys.argv[0].rsplit('/')[-1]
+scrname = sys.argv[0].rsplit('/')[-1]
+usage = '\nE.g. : %s amox23616 131' % scrname\
+      + '\n  or : %s amox23616 131 --max_shots 200 --num_bunches 1\n' % scrname
 print(usage)
 
 parser = argparse.ArgumentParser()
@@ -14,22 +16,26 @@ parser.add_argument('--num_bunches', nargs='?', const=1,   type=int,   default=1
 parser.add_argument('--num_groups',  nargs='?', const=12,  type=int,   default=12)
 parser.add_argument('--snr_filter',  nargs='?', const=10,  type=int,   default=10)
 parser.add_argument('--roi_expand',  nargs='?', const=1.0, type=float, default=1.0)
-parser.add_argument('-f', '--fname', type=str, default='/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0131-e000200-xtcav-v2.xtc2', help='xtc2 file')
-args = parser.parse_args()
+parser.add_argument('-f', '--fname', type=str, default=\
+  '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0131-e000200-xtcav-v2.xtc2', help='xtc2 file')
 
+args = parser.parse_args()
 print('parser.parse_args()', args)
 
 from psana.xtcav.LasingOffReference import LasingOffReference
 
 lor = LasingOffReference(
-    experiment=args.experiment, 
-    run_number=args.run, 
-    max_shots=args.max_shots,
-    num_bunches=args.num_bunches,
-    num_groups=args.num_groups,        
-    snr_filter=args.snr_filter,           
-    roi_expand=args.roi_expand,
-    fname=args.fname)
+  experiment  = args.experiment, 
+  run_number  = args.run, 
+  max_shots   = args.max_shots,
+  num_bunches = args.num_bunches,
+  num_groups  = args.num_groups,        
+  snr_filter  = args.snr_filter,           
+  roi_expand  = args.roi_expand,
+  fname       = args.fname)
 
-sys.exit('END OF xtcavLasingOff')
+sys.exit('END OF %s' % scrname)
+
+#----------
+
 

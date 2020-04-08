@@ -1,4 +1,9 @@
 
+"""
+  2014 cteated by a bunch of ananymous authors
+  2020-03-24 adopted to LCLS2 by Mikhail Dubrovin
+"""
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -145,7 +150,7 @@ class DarkBackgroundReference():
         if save_to_file:
             #cp = CalibrationPaths(dataSource.env(), self.parameters.calibration_path)
             #fname = cp.newCalFileName(cons.DB_FILE_NAME, self.parameters.validity_range[0], self.parameters.validity_range[1])
-            fname = 'cons-%s-%04d-%s-pedestals.data' % (run.expt, run.runnum, cons.DETNAME)
+            fname = 'cons-%s-%04d-xtcav-pedestals.data' % (run.expt, run.runnum) #, cons.DETNAME)
 
             self.save(fname)
 
@@ -197,7 +202,7 @@ class DarkBackgroundReference():
         logger.info('command to check file: hdf5explorer %s' % path)
 
         d = instance.parameters
-        s = 'cdb add -e %s -d %s -c pedestals -r %s -f %s -i xtcav -u <user>' % (d['experiment'], cons.DETNAME, d['run_number'], path)
+        s = 'cdb add -e %s -d %s -c xtcav_pedestals -r %s -f %s -i xtcav -u <user>' % (d['experiment'], cons.DETNAME, d['run_number'], path)
         logger.info('command to deploy: %s' % s)
 
 
@@ -221,5 +226,8 @@ DarkBackgroundParameters = namedtuple('DarkBackgroundParameters',
      'calibration_path'])
 
 #----------
-#----------
+
+if __name__ == "__main__" :
+    sys.exit('run it by command: xtcavDark')
+
 #----------

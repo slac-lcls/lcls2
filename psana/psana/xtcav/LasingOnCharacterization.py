@@ -1,21 +1,21 @@
-#(c) Coded by Alvaro Sanchez-Gonzalez 2014
 
-#Script for the retrieval of the pulses shot to shot
+""" (c) Coded by Alvaro Sanchez-Gonzalez 2014
+    2020-04-06 adopted to LCLS2 by Mikhail Dubrovin
+"""
 
 import logging
 logger = logging.getLogger(__name__)
 
 import os
-import time
-import psana
-import numpy as np
-#import glob
-#import pdb
-#import IPython
 import sys
-#import getopt
+import time
+import numpy as np
 import math
 import warnings
+
+#import psana
+from psana import DataSource
+
 import psana.xtcav.Utils as xtu
 import psana.xtcav.UtilsPsana as xtup
 import psana.xtcav.SplittingUtils as su
@@ -24,11 +24,9 @@ from   psana.xtcav.DarkBackgroundReference import *
 from   psana.xtcav.LasingOffReference import *
 from   psana.xtcav.CalibrationPaths import *
 
-
 class LasingOnCharacterization():
-
     """
-    Class that can be used to reconstruct the full X-Ray power time profile for single or multiple bunches, relying on the presence of a dark background reference, and a lasing off reference. (See GenerateDarkBackground and Generate LasingOffReference for more information)
+    Class reconstructs the full X-Ray power time profile for single or multiple bunches, relying on the presence of a dark background reference, and a lasing off reference. (See DarkBackgroundReference and LasingOffReference for more information)
     Attributes:
         calibration_path (str): Custom calibration directory in case the default is not intended to be used.
         start_image (int): image in run to start from
@@ -40,6 +38,7 @@ class LasingOnCharacterization():
 
     def __init__(self, 
         #all parameters defaulted to None since code handles filling parameters later
+        args, 
         num_bunches = None, 
         start_image = 0,
         snr_filter=None,
@@ -53,16 +52,16 @@ class LasingOnCharacterization():
         calibration_path=''
         ):
 
-
         #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s' # '%(message)s'
         fmt='[%(levelname).1s] L%(lineno)04d : %(message)s'
         logging.basicConfig(format=fmt, datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
-
 
         #Handle warnings
         warnings.filterwarnings('always',module='Utils',category=UserWarning)
         warnings.filterwarnings('ignore',module='Utils',category=RuntimeWarning, message="invalid value encountered in divide")
         
+        self.args = args
+
         self.num_bunches = num_bunches              #Number of bunches
         self.start_image = start_image
         self.snr_filter = snr_filter                  #Number of sigmas for the noise threshold
@@ -84,6 +83,8 @@ class LasingOnCharacterization():
         self._loadDarkReference()
         self._loadLasingOffReference()
 
+        self.procEvents()
+
             
     def _setDataSource(self):
         """
@@ -95,7 +96,7 @@ class LasingOnCharacterization():
             #warnings.warn_explicit('Data source not set yet. Initialize data source before starting analysis',UserWarning,'XTCAV',0)
             return
 
-        self._xtcav_camera = psana.Detector(cons.DETNAME)
+        self._camera = psana.Detector(cons.DETNAME)
         self._ebeam_data = psana.Detector(cons.EBEAM)
         self._gasdetector_data = psana.Detector(cons.GAS_DETECTOR)
         self._ebeam = None
@@ -249,7 +250,7 @@ class LasingOnCharacterization():
         if not shot_to_shot.valid: #If the information is not good, we skip the event
             return False 
        
-        self._rawimage = self._xtcav_camera.image(evt)
+        self._rawimage = self._camera.image(evt)
 
         if self._rawimage is None: 
             warnings.warn_explicit('Could not retrieve image',UserWarning,'XTCAV',0)
@@ -687,6 +688,38 @@ class LasingOnCharacterization():
                        
         return np.mean(self._pulse_characterization.powerAgreement)  
 
+
+    def processImage(self):
+        t, power  = self.xRayPower()  
+        agreement = self.reconstructionAgreement()
+        pulse     = self.pulseDelay()
+        print('Agreement: %g%%; Maximum power: %g; GW Pulse Delay: %g '%\
+              (agreement*100,np.amax(power), pulse[0]))
+
+
+    def procEvents(self) :
+
+        ds = DataSource(files=self.args.fname)
+        run = next(ds.runs())
+    
+        nimgs=0
+        for nev,evt in enumerate(run.events()):
+            logger.info('Event %03d'%nev)
+            #img = camraw(evt)
+            #if img is None: continue
+
+            #=======================
+            continue 
+            #=======================    
+
+            if not self.processEvent(evt):
+                continue
+            self.processImage()
+            nimgs += 1
+            if nimgs>=self.args.max_shots: 
+                break
+
+
 LasingOnParameters = xtu.namedtuple('LasingOnParameters', 
     ['num_bunches', 
     'snr_filter', 
@@ -696,3 +729,9 @@ LasingOnParameters = xtu.namedtuple('LasingOnParameters',
     'island_split_par1', 
     'island_split_par2'])   
         
+#----------
+
+if __name__ == "__main__" :
+    sys.exit('run it by command: xtcavLasingOn')
+
+#----------
