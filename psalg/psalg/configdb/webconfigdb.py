@@ -1,4 +1,5 @@
 import requests
+from requests.auth import HTTPBasicAuth
 import json
 import logging
 from .typed_json import cdict
@@ -14,21 +15,26 @@ class JSONEncoder(json.JSONEncoder):
 class configdb(object):
 
     # Parameters:
-    #     url    - e.g. "http://localhost:5000/ws"
+    #     url    - e.g. "https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws"
     #     hutch  - Instrument name, e.g. "tmo"
     #     create - If True, try to create the database and collections
     #              for the hutch, device configurations, and counters.
     #     root   - Database name, usually "configDB"
-    def __init__(self, url, hutch, create=False, root="NONE"):
+    #     user   - User for HTTP authentication
+    #     password - Password for HTTP authentication
+    def __init__(self, url, hutch, create=False, root="NONE", user="xppopr", password="pcds"):
         if root == "NONE":
             raise Exception("configdb: Must specify root!")
         self.hutch  = hutch
         self.prefix = url.strip('/') + '/' + root + '/'
         self.timeout = 3.05     # timeout for http requests
+        self.user = user
+        self.password = password
 
         if create:
             try:
                 requests.get(self.prefix + 'create_collections/' + hutch + '/',
+                             auth=HTTPBasicAuth(self.user, self.password),
                              timeout=self.timeout)
             except requests.exceptions.RequestException as ex:
                 logging.error('Web server error: %s' % ex)
@@ -43,6 +49,7 @@ class configdb(object):
         try:
             xx = requests.get(self.prefix + 'get_configuration/' + hutch + '/' +
                               alias + '/' + device + '/',
+                              auth=HTTPBasicAuth(self.user, self.password),
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
@@ -64,6 +71,7 @@ class configdb(object):
         try:
             xx = requests.get(self.prefix + 'get_history/' + hutch + '/' +
                               alias + '/' + device + '/',
+                              auth=HTTPBasicAuth(self.user, self.password),
                               json=value,
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
@@ -90,6 +98,7 @@ class configdb(object):
     def get_version(self):
         try:
             xx = requests.get(self.prefix + 'get_version/',
+                              auth=HTTPBasicAuth(self.user, self.password),
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
@@ -108,10 +117,12 @@ class configdb(object):
         try:
             if alias is None:
                 xx = requests.get(self.prefix + 'get_key/' + hutch + '/',
+                                  auth=HTTPBasicAuth(self.user, self.password),
                                   timeout=self.timeout).json()
             else:
                 xx = requests.get(self.prefix + 'get_key/' + hutch + '/' +
                                   '?alias=%s' % alias,
+                                  auth=HTTPBasicAuth(self.user, self.password),
                                   timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
@@ -126,6 +137,7 @@ class configdb(object):
     def get_hutches(self):
         try:
             xx = requests.get(self.prefix + 'get_hutches/',
+                              auth=HTTPBasicAuth(self.user, self.password),
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
@@ -143,6 +155,7 @@ class configdb(object):
             hutch = self.hutch
         try:
             xx = requests.get(self.prefix + 'get_aliases/' + hutch + '/',
+                              auth=HTTPBasicAuth(self.user, self.password),
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
@@ -157,7 +170,9 @@ class configdb(object):
     def add_alias(self, alias):
         try:
             xx = requests.get(self.prefix + 'add_alias/' + self.hutch + '/' +
-                              alias + '/', timeout=self.timeout).json()
+                              alias + '/',
+                              auth=HTTPBasicAuth(self.user, self.password),
+                              timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
         else:
@@ -170,6 +185,7 @@ class configdb(object):
     def add_device_config(self, cfg, session=None):
         try:
             xx = requests.get(self.prefix + 'add_device_config/' + cfg + '/',
+                              auth=HTTPBasicAuth(self.user, self.password),
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
@@ -197,7 +213,9 @@ class configdb(object):
             hutch = self.hutch
         try:
             xx = requests.get(self.prefix + 'get_devices/' + hutch + '/' +
-                              alias + '/', timeout=self.timeout).json()
+                              alias + '/',
+                              auth=HTTPBasicAuth(self.user, self.password),
+                              timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
             return []
@@ -230,6 +248,7 @@ class configdb(object):
         try:
             xx = requests.get(self.prefix + 'modify_device/' + hutch + '/' +
                               alias + '/', timeout=self.timeout,
+                              auth=HTTPBasicAuth(self.user, self.password),
                               json=value).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
@@ -245,6 +264,7 @@ class configdb(object):
     def print_device_configs(self, name="device_configurations"):
         try:
             xx = requests.get(self.prefix + 'print_device_configs/' + name + '/',
+                              auth=HTTPBasicAuth(self.user, self.password),
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
@@ -261,6 +281,7 @@ class configdb(object):
             hutch = self.hutch
         try:
             xx = requests.get(self.prefix + 'print_configs/' + hutch + '/',
+                              auth=HTTPBasicAuth(self.user, self.password),
                               timeout=self.timeout).json()
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
