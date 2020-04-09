@@ -524,8 +524,7 @@ void PvaDetector::_defer(const XtcData::TimeStamp& timestamp)
     XtcData::Dgram* deferred;
     if (m_deferredFreelist.try_pop(deferred)) { // If a deferred buffer is available...
         deferred->time = timestamp;             //   Save the PV's timestamp
-        deferred->xtc.damage = XtcData::Damage(0);
-        deferred->xtc.extent = sizeof(XtcData::Xtc);
+        deferred->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
         event(*deferred, nullptr);              //   Opt to create the XTC now rather than later
         m_deferredQueue.push(deferred);         //   Queue the deferred buffer for later handling
     }
@@ -672,6 +671,9 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
             }
         }
         m_drp.tebContributor().process(l3InpDg);
+    }
+    else {
+        logging::error("Attempted to send to TEB without an Input buffer\n");
     }
 }
 

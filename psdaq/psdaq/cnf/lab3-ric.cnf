@@ -3,7 +3,7 @@ username = 'lcls2'
 
 epics_host = 'daq-tst-dev02'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
-conda_rel = 'ps-2.1.1'
+conda_rel = 'ps-2.1.2'
 hsd_epics_dev02 = 'DAQ:LAB2:HSD:DEV02'
 hsd_epics_dev06 = 'DAQ:LAB2:HSD:DEV06'
 
@@ -61,7 +61,7 @@ procmgr_config = [
  #{ host: 'drp-tst-dev015', id:'meb1',        flags:'sxpu', conda:conda_rel, cmd:meb_cmd},
 
  # PVA
- { host: 'drp-tst-dev002', id:'pvcam_0',     flags:'xpu', conda:conda_rel, env:epics_env, cmd:pva_cmd+'-l 0x4 -D pvcam '+'DAQ:LAB2:PVCAM'},
+ { host: 'drp-tst-dev002', id:'tmoandor_0',     flags:'xpu', conda:conda_rel, env:epics_env, cmd:pva_cmd+'-l 0x4 -D andor '+'DAQ:LAB2:PVCAM'},
 
  # EpicsArch
  #{ host: 'drp-tst-dev004', id:'epics_0',     flags:'xpu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
@@ -83,17 +83,17 @@ procmgr_config = [
  #{                         id:'pvant',       flags:'s',    conda:conda_rel, env:epics_env, cmd:'pvant --bases DAQ:WAVE8:Top --fields '+' '.join(fields)},
 
  # Cams
- #{ host: 'drp-tst-dev002', id:'cam_0',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
- #{ host: 'drp-tst-dev004', id:'cam_1',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
- #{ host: 'drp-tst-dev005', id:'cam_2',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
- #{ host: 'drp-tst-dev008', id:'cam_3',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
- #{ host: 'drp-tst-dev009', id:'cam_4',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
- #{ host: 'drp-tst-dev011', id:'cam_5',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
- #{ host: 'drp-tst-dev012', id:'cam_6',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
- #{ host: 'drp-tst-dev013', id:'cam_7',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
- { host: 'drp-tst-dev014', id:'cam_8',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
- { host: 'drp-tst-dev015', id:'cam_9',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
- { host: 'drp-tst-dev017', id:'cam_10', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ #{ host: 'drp-tst-dev002', id:'tmocam_0',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ #{ host: 'drp-tst-dev004', id:'tmocam_1',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ #{ host: 'drp-tst-dev005', id:'tmocam_2',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ #{ host: 'drp-tst-dev008', id:'tmocam_3',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ #{ host: 'drp-tst-dev009', id:'tmocam_4',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ #{ host: 'drp-tst-dev011', id:'tmocam_5',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ #{ host: 'drp-tst-dev012', id:'tmocam_6',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ #{ host: 'drp-tst-dev013', id:'tmocam_7',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ { host: 'drp-tst-dev014', id:'tmocam_0',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ { host: 'drp-tst-dev015', id:'tmocam_1',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ { host: 'drp-tst-dev017', id:'tmocam_2',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
 
  # procstat
  {                         id:'procstat',    flags:'p',   conda:conda_rel,                cmd:'procstat p'+platform+'.cnf.last'},
