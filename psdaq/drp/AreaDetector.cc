@@ -50,10 +50,9 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc)
     logging::info("AreaDetector configure");
 
     Alg fexAlg("fex", 2, 0, 0);
-    unsigned segment = 0;
     NamesId fexNamesId(nodeId,FexNamesIndex);
     Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), fexAlg,
-                                      m_para->detType.c_str(), m_para->serNo.c_str(), fexNamesId, segment);
+                                      m_para->detType.c_str(), m_para->serNo.c_str(), fexNamesId, m_para->detSegment);
     FexDef myFexDef;
     fexNames.add(xtc, myFexDef);
     m_namesLookup[fexNamesId] = NameIndex(fexNames);
@@ -61,7 +60,7 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc)
     Alg rawAlg("raw", 2, 0, 0);
     NamesId rawNamesId(nodeId,RawNamesIndex);
     Names& rawNames = *new(xtc) Names(m_para->detName.c_str(), rawAlg,
-                                      m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId, segment);
+                                      m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId, m_para->detSegment);
     RawDef myRawDef;
     rawNames.add(xtc, myRawDef);
     m_namesLookup[rawNamesId] = NameIndex(rawNames);
