@@ -222,7 +222,7 @@ DarkBackgroundParameters = namedtuple('DarkBackgroundParameters',
 
 #----------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     sys.exit('run it by command: xtcavDark')
 
 #----------

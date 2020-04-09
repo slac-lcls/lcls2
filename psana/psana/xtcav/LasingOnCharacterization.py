@@ -18,9 +18,11 @@ import psana.xtcav.Utils as xtu
 import psana.xtcav.UtilsPsana as xtup
 import psana.xtcav.SplittingUtils as su
 import psana.xtcav.Constants as cons
-from   psana.xtcav.DarkBackgroundReference import *
-from   psana.xtcav.LasingOffReference import *
-from   psana.xtcav.CalibrationPaths import *
+from   psana.xtcav.DarkBackgroundReference import DarkBackgroundReference
+from   psana.xtcav.LasingOffReference import LasingOffReference
+from   psana.xtcav.CalibrationPaths import CalibrationPaths
+#from psana.pscalib.calib.XtcavUtils import dict_from_xtcav_calib_object, xtcav_calib_object_from_dict
+from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
 
 class LasingOnCharacterization():
     """
@@ -35,83 +37,61 @@ class LasingOnCharacterization():
     """
 
     def __init__(self, args, run):
+        """
+           Arguments:
+           - args (argparse.Namespace): container of input parameters as attributes
+           - run  (psana.psexp.run.RunSingleFile): object for single run
+        """
 
         self.args = args
         self.run  = run
 
         #all parameters defaulted to None since code handles filling parameters later
-        self.num_bunches         = getattr(args, 'num_bunches', None)         #Number of bunches
+        self.num_bunches         = getattr(args, 'num_bunches', None)
         self.start_image         = getattr(args, 'start_image', 0)
         self.snr_filter          = getattr(args, 'snr_filter', None)          #Number of sigmas for the noise threshold
         self.roi_expand          = getattr(args, 'roi_expand', None)          #Parameter for the roi location
-        self.roi_fraction        = getattr(args, 'roi_fraction', None)               
+        self.roi_fraction        = getattr(args, 'roi_fraction', None)
         self.island_split_method = getattr(args, 'island_split_method', None) #Method for island splitting
         self.island_split_par1   = getattr(args, 'island_split_par1', None)
         self.island_split_par2   = getattr(args, 'island_split_par2', None)
-        #self.calibration_path    = getattr(args, 'calibration_path', '')
         self.dark_reference_path = getattr(args, 'dark_reference_path', None) #Dark reference file path
-        self.lasingoff_ref_path  = getattr(args, 'lasingoff_reference_path', None) #Lasing off reference file path 
-        
-        #self._envset = False
-        self._calibrationsset = False
+        self.lasingoff_ref_path  = getattr(args, 'lasingoff_reference_path', None) #Lasing off reference file path
+        #self.calibration_path   = getattr(args, 'calibration_path', '')
 
-        self._setDataSource()
+        self._setDataSources()
         self._loadDarkReference()
         self._loadLasingOffReference()
 
+        self._calibrationsset = False
+
         #=====================
-        sys.exit('TEST EXIT')
+        #sys.exit('TEST EXIT')
         #=====================
 
             
-    def _setDataSource(self):
-        """ Method that uses detector interface to gather data source info. 
+    def _setDataSources(self):
+        """ initializes access to detectr data
         """
-        #try:
-        #    self._env = psana.det_interface._getEnv()
-        #except RuntimeError:
-        #    logger.error('Data source not set yet. Initialize data source before starting analysis')
-        #    return
-
         run = self.run
         self._camera      = run.Detector(cons.DETNAME)
         self._ebeam       = run.Detector(cons.EBEAM)
         self._gasdetector = run.Detector(cons.GAS_DETECTOR)
         self._eventid     = run.Detector(cons.EVENTID)
-        #self._xtcavpars   = run.Detector(cons.XTCAVPARS)
+        self._xtcavpars   = run.Detector(cons.XTCAVPARS)
 
         self._camraw   = xtup.get_attribute(self._camera,      'raw')
         self._valsebm  = xtup.get_attribute(self._ebeam,       'valsebm')
         self._valsgd   = xtup.get_attribute(self._gasdetector, 'valsgd')
         self._valseid  = xtup.get_attribute(self._eventid,     'valseid')
-        #self._valsxtp = xtup.get_attribute(self._xtcavpars,   'valsxtp')
+        self._valsxtp  = xtup.get_attribute(self._xtcavpars,    'valsxtp')
 
-        if None in (self._camraw, self._valsebm, self._valsgd) : 
+        if None in (self._camraw, self._valsebm, self._valsgd, self._valseid, self._valsxtp) : 
             sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
-
-        #self._envset = True
-
-
-    def _setCalibrations(self, evt):
-        """ Method that sets the xtcav calibration values for a given run.
-        """
-        self._currentrun = evt.run()
-        if not self._darkreference: self._loadDarkReference()
-        if not self._lasingoffreference: self._loadLasingOffReference()
-
-        self._roixtcav = xtup.getXTCAVImageROI(evt)
-        self._global_calibration = xtup.getGlobalXTCAVCalibration(evt)
-        self._saturation_value = xtup.getCameraSaturationValue(evt)
-        if self._roixtcav and self._global_calibration and self._saturation_value:
-            self._calibrationsset = True
-
-        #Only reason to do this is to allow us to use same 'processImage' function across lasing on/off shots
-        self.parameters = LasingOnParameters(self.num_bunches, self.snr_filter,  self.roi_expand,
-            self.roi_fraction, self.island_split_method, self.island_split_par1, self.island_split_par2 )
 
 
     def _loadDarkReference(self):
-        """ Method that loads the dark reference.
+        """ Loads the dark reference from file or DB.
         """
         self._darkreference = None
         if self.dark_reference_path :
@@ -129,13 +109,13 @@ class LasingOnCharacterization():
 
                 
     def _loadLasingOffReference(self):
-        """ Method that loads the lasing off reference.
+        """ Loads the lasing off reference parameters from file or DB or set them to default.
         """
         self._lasingoffreference = None
             
         if self.lasingoff_ref_path:
             self._lasingoffreference = LasingOffReference.load(self.lasingoff_ref_path)
-            logger.info('Using file ' + self.lasingoff_ref_path.split('/')[-1] + ' for lasing off reference')
+            logger.info('Using lasing off reference from file %s'%self.lasingoff_ref_path.split('/')[-1])
             self._setLasingOffReferenceParameters()
             return
 
@@ -151,7 +131,7 @@ class LasingOnCharacterization():
             return
 
         if not self._lasingoffreference:
-            logger.warning('Lasing off reference for run %d not found, using set or default values for image processing' % self._currentevent.run())
+            logger.warning('Lasing off reference for run %d not found, using default values' % self._currentevent.run())
             self._setDefaultProcessingParameters()
 
             
@@ -172,24 +152,50 @@ class LasingOnCharacterization():
         """ Method that sets processing parameters from the lasing off reference in case they have not been explicitly set by the user
             (except for the number of bunches. That one is must match).
         """
-        if self.num_bunches and self.num_bunches != self._lasingoffreference.parameters.num_bunches:
-            logger.warning('Number of bunches input (%d) differs from number of bunches found in lasing off reference (%d). Overwriting input value.'%\
-                           (self.num_bunches,self._lasingoffreference.parameters.num_bunches))
-        self.num_bunches=self._lasingoffreference.parameters.num_bunches
-        if not self.snr_filter:
-            self.snr_filter=self._lasingoffreference.parameters.snr_filter
-        if not self.roi_expand:
-            self.roi_expand=self._lasingoffreference.parameters.roi_expand
-        if not self.roi_fraction:
-            self.roi_fraction=self._lasingoffreference.parameters.roi_fraction
-        if not self.dark_reference_path:
-            self.dark_reference_path=self._lasingoffreference.parameters.dark_reference_path
-        if not self.island_split_method:
-            self.island_split_method=self._lasingoffreference.parameters.island_split_method
-        if not self.island_split_par1:        
-            self.island_split_par1=self._lasingoffreference.parameters.island_split_par1
-        if not self.island_split_par2:        
-            self.island_split_par2=self._lasingoffreference.parameters.island_split_par2 
+        logger.debug('_lasingoffreference.parameters: %s' % str(self._lasingoffreference.parameters))
+
+        pars = xtu.xtcav_calib_object_from_dict(self._lasingoffreference.parameters)
+        pars_num_bunches = pars.num_bunches
+
+        if self.num_bunches and self.num_bunches != pars_num_bunches:
+            logger.warning('Number of bunches input (%d) differs from number of bunches found in lasing off reference (%d).'\
+                           'Overwriting input value.'%(self.num_bunches, pars_num_bunches))
+        self.num_bunches=pars_num_bunches
+        if not self.snr_filter          : self.snr_filter          = pars.snr_filter
+        if not self.roi_expand          : self.roi_expand          = pars.roi_expand
+        if not self.roi_fraction        : self.roi_fraction        = pars.roi_fraction
+        if not self.island_split_method : self.island_split_method = pars.island_split_method
+        if not self.island_split_par1   : self.island_split_par1   = pars.island_split_par1
+        if not self.island_split_par2   : self.island_split_par2   = pars.island_split_par2 
+        if not self.dark_reference_path : self.dark_reference_path = getattr(pars, 'dark_reference_path', '')
+
+
+    def _setCalibrations(self, evt):
+        """ Method that sets the xtcav calibration values for a given run.
+        """
+        # DONE in __init__
+        #if not self._camera: self._setDataSources()
+        #if not self._darkreference: self._loadDarkReference()
+        #if not self._lasingoffreference: self._loadLasingOffReference()
+
+        self._roixtcav = xtup.getXTCAVImageROI(self._valsxtp, evt)
+        logger.debug('_roixtcav: %s' % str(self._roixtcav))
+
+        self._global_calibration = xtup.getGlobalXTCAVCalibration(self._valsxtp, evt)
+        logger.debug('_global_calibration: %s' % str(self._global_calibration))
+
+        self._saturation_value = xtup.getCameraSaturationValue(self._valsxtp, evt)
+        logger.debug('_saturation_value: %d' % self._saturation_value)
+
+        if self._roixtcav and self._global_calibration and self._saturation_value:
+            #Only reason to do this is to allow us to use same 'processImage' function
+            #across lasing on/off shots
+            self.parameters = LasingOnParameters(\
+                self.num_bunches, self.snr_filter,\
+                self.roi_expand, self.roi_fraction,\
+                self.island_split_method, self.island_split_par1,\
+                self.island_split_par2)
+            self._calibrationsset = True
 
 
     def processEvent(self, evt):
@@ -201,36 +207,38 @@ class LasingOnCharacterization():
             True: All the input form detectors necessary for a good reconstruction are present in the event. 
             False: The information from some detectors is missing for that event. It may still be possible to get information.
         """
+
         self._currentevent = evt
-         #Reset image results
         self._pulse_characterization = None
         self._image_profile = None
         self._processed_image = None
 
-        if not self._envset:
-            self._setDataSource()
-
-        if not self._envset:
-            logger.warning('Data source not set yet. Initialize data source before starting analysis')
-            return False
-
-
         if not self._calibrationsset:
             self._setCalibrations(evt)
             if not self._calibrationsset:
+                logger.warning('CALIBRATION IS NOT SET YET..., try next event')
                 return False
+
 
         #Obtain the shot to shot parameters necessary for the retrieval of the x and y axis in time and energy units
         shot_to_shot = xtup.getShotToShotParameters(evt, self._valsebm, self._valsgd, self._valseid)
+        logger.debug('shot_to_shot: %s' % str(shot_to_shot))
         
-        if not shot_to_shot.valid: #If the information is not good, we skip the event
+        if not shot_to_shot.valid:
+            logger.warning('shot_to_shot info is not valid')
             return False 
-       
-        self._rawimage = self._camera.image(evt)
+
+        self._rawimage = self._camraw(evt)
+        logger.info(info_ndarr(self._rawimage, 'camera raw:'))
 
         if self._rawimage is None: 
             logger.warning('Could not retrieve image')
             return False
+
+        #=====================================
+        sys.exit('TEST EXIT in processEvent')
+        #=====================================
+
 
         self._image_profile, self._processed_image =  xtu.processImage(self._rawimage, self.parameters, self._darkreference, self._global_calibration, 
                                                     self._saturation_value, self._roixtcav, shot_to_shot)
@@ -244,7 +252,10 @@ class LasingOnCharacterization():
 
         #Using all the available data, perform the retrieval for that given shot        
         self._pulse_characterization = xtu.processLasingSingleShot(self._image_profile, self._lasingoffreference.averaged_profiles) 
-        return True if self._pulse_characterization else False
+        if not self._pulse_characterization : return False
+
+        self.processImage()
+        return True
 
         
     def physicalUnits(self):
@@ -683,7 +694,7 @@ LasingOnParameters = xtu.namedtuple('LasingOnParameters',
     'island_split_par2'])   
         
 
-def procEvents(args) :
+def procEvents(args):
 
     fname     = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0137-e000100-xtcav-v2.xtc2')
     max_shots = getattr(args, 'max_shots', 200)
@@ -696,24 +707,20 @@ def procEvents(args) :
 
     nimgs=0
     for nev,evt in enumerate(run.events()):
-        logger.info('Event %03d'%nev)
-        #img = camraw(evt)
-        #if img is None: continue
 
-        #=======================
-        continue 
-        #=======================    
+        img = lon._camraw(evt)
+        logger.info('Event %03d    %s' % (nev, info_ndarr(img, 'camera raw:')))
+        if img is None: continue
 
         if not lon.processEvent(evt): continue
 
-        lon.processImage()
         nimgs += 1
         if nimgs>=max_shots: 
             break
 
 #----------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     sys.exit('run it by command: xtcavLasingOn')
 
 #----------
