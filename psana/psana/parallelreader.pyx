@@ -9,10 +9,9 @@ from dgramlite cimport Xtc, Sequence, Dgram
 
 cdef class ParallelReader:
     
-    def __cinit__(self, int[:] file_descriptors, size_t chunksize, int max_events):
+    def __cinit__(self, int[:] file_descriptors, size_t chunksize):
         self.file_descriptors = file_descriptors
         self.chunksize = chunksize
-        self.max_events = max_events
         self.nfiles = self.file_descriptors.shape[0]
         self.L1Accept = 12
         self.bufs = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
@@ -54,7 +53,12 @@ cdef class ParallelReader:
             buf.needs_reread = 0
             buf.lastget_offset = 0
 
-    cdef void just_read(self):
+    cdef void just_read(self, int how_many):
+        """
+        Reads to fill up the buffer and sets the offset and timestamp to the
+        last dgram. If no. of requested events (how_many) is specified, sets
+        the offset and timestamp to the the last dgram of these requested events.
+        """
         cdef Py_ssize_t i = 0
         cdef uint64_t remaining = 0
         cdef uint64_t got = 0
@@ -102,6 +106,7 @@ cdef class ParallelReader:
                     if remaining >= sizeof(Dgram) + payload:
                         buf.ts_arr[buf.nevents] = <uint64_t>d.seq.high << 32 | d.seq.low
                         buf.next_offset_arr[buf.nevents] = buf.offset + sizeof(Dgram) + payload
+
                         
                         # check if this a non L1
                         service = (d.env>>24)&0xf
@@ -117,7 +122,7 @@ cdef class ParallelReader:
                         buf.offset += sizeof(Dgram) + payload
                         buf.nevents += 1
 
-                        if buf.nevents == self.max_events:
+                        if buf.nevents == how_many:
                             buf.timestamp = <uint64_t>d.seq.high << 32 | d.seq.low
                             break
                     else:
@@ -127,9 +132,9 @@ cdef class ParallelReader:
                     buf.needs_reread = 1
                     break
             
-            if buf.nevents < self.max_events:
+            if buf.nevents < how_many:
                 if buf.nevents > 0:
-                    buf.timestamp = <uint64_t>d.seq.high << 32 | d.seq.low
+                    buf.timestamp = buf.ts_arr[buf.nevents-1]
 
     cdef void _rewind_buffer(self, Buffer* buf, uint64_t max_ts):
         cdef Py_ssize_t found_pos
@@ -138,20 +143,15 @@ cdef class ParallelReader:
 
         found_pos = np.searchsorted(ts_view[:buf.nevents], max_ts, side='right')
         if found_pos == 0:
-            if ts_view[found_pos] == max_ts:
-                buf.offset = buf.next_offset_arr[found_pos]
-                buf.timestamp = buf.ts_arr[found_pos]
-                buf.nevents = 1
-            else:
-                buf.offset = buf.lastget_offset
-                buf.timestamp = 0
-                buf.nevents = 0
-        else:
-            if found_pos < buf.nevents:
-                found_pos -= 1
-                buf.offset = buf.next_offset_arr[found_pos]
-                buf.timestamp = buf.ts_arr[found_pos]
-                buf.nevents = found_pos + 1
+            # This buffer doesn't have events within this max_ts
+            buf.offset = buf.lastget_offset
+            buf.timestamp = 0
+            buf.nevents = 0
+        else: 
+            # All the events before found_pos are within max_ts
+            buf.offset = buf.next_offset_arr[found_pos-1]
+            buf.timestamp = buf.ts_arr[found_pos-1]
+            buf.nevents = found_pos
             
 
     cdef void rewind(self, uint64_t max_ts, int winner):

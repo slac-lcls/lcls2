@@ -12,8 +12,8 @@ cdef class SmdReader:
     cdef uint64_t min_ts, max_ts
     cdef ParallelReader prl_reader
     
-    def __init__(self, int[:] fds, int chunksize, int max_events):
-        self.prl_reader = ParallelReader(fds, chunksize, max_events)
+    def __init__(self, int[:] fds, int chunksize):
+        self.prl_reader = ParallelReader(fds, chunksize)
         self._reset()
         
     def _reset(self):
@@ -21,9 +21,9 @@ cdef class SmdReader:
         self.min_ts = 0
         self.max_ts = 0
 
-    def get(self):
+    def get(self, how_many=0):
         self._reset()
-        self.prl_reader.just_read()
+        self.prl_reader.just_read(how_many)
         
         cdef int i
         
