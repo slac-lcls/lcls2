@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from scipy import interpolate,ndimage
+from scipy import interpolate
 from sklearn.neighbors import NearestNeighbors
 
 def GenerateCartGrid(Rmax):

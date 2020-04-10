@@ -23,9 +23,9 @@ def GetQuadrant(img,X0,Y0,Rmax,s=[1,1,1,1]):
         if s[1] == 1:
             Qs[i] = np.fliplr(img[Y0-Rmax+1:Y0+1,X0-Rmax+1:X0+1]); i += 1
         if s[2] == 1:
-            Qs[i] = np.flipud(img[Y0:Y0+Rmax,X0:X0+Rmax]); i += 1            
+            Qs[i] = np.flipud(np.fliplr(img[Y0:Y0+Rmax,X0-Rmax+1:X0+1])); i += 1            
         if s[3] == 1:
-            Qs[i] = np.flipud(np.fliplr(img[Y0:Y0+Rmax,X0-Rmax+1:X0+1]))
+            Qs[i] = np.flipud(img[Y0:Y0+Rmax,X0:X0+Rmax])
         
     elif img.shape[1] % 2 == 0:
         if s[0] == 1:

@@ -1,19 +1,34 @@
 import numpy as np
 import pickle
-from Proj import GenerateRBFs
-from Legendre import Legendre
-from Quadrant import GetCenterR, GetQuadrant, Quadrant2img
-from CartPolar import GenerateCartGrid, GeneratePolarGrid, FindNbrs, Cart2Polar, Polar2Cart
+from psana.pop.Proj import GenerateRBFs
+from psana.pop.Legendre import Legendre
+from psana.pop.Quadrant import GetCenterR, GetQuadrant, Quadrant2img
+from psana.pop.CartPolar import GenerateCartGrid, GeneratePolarGrid, FindNbrs, Cart2Polar, Polar2Cart
 
 class POP:
     def __init__(self, lmax=4,reg=0,img=None,X0=None,Y0=None,Rmax=None,RBFs_fnm=None,edge_w=10):
+    
+        print('Start initialization......')                          
         lnum = int(lmax/2 + 1)         
         ls = np.arange(0,lnum)*2 
         self.reg = reg           
                      
-        self.X0, self.Y0, self.Rmax = GetCenterR(img,X0,Y0,Rmax)            
+        self.X0, self.Y0, self.Rmax = GetCenterR(img,X0,Y0,Rmax) 
+        
+        if RBFs_fnm is not None:
+            print('Loading RBFs......')
+            with open(RBFs_fnm, 'rb') as f:
+                self.RBFs = pickle.load(f)            
+        else:
+            print('Generating RBFs......')
+            fnm = 'RBFs_5e6_'+str(self.Rmax)+'.pkl'
+            self.RBFs = GenerateRBFs(self.Rmax,num = int(5e6),fnm=fnm)
+            print('RBFs saved to fnm.')
+        print('RBFs loaded.')    
+                  
+        print('Continue initialization......')                      
         XYs_cart = GenerateCartGrid(self.Rmax)
-        self.Rarr, self.num_elms_at_R, self.num_elms, self.Rarrs, self.Angles, XYs_polar = GeneratePolarGrid(self.Rmax)      
+        self.Rarr, self.num_elms_at_R, num_elms, self.Rarrs, self.Angles, XYs_polar = GeneratePolarGrid(self.Rmax)      
         
         self.inds_cart,self.cs_cart = FindNbrs(XYs_cart,XYs_polar,n_neighbors=4,algorithm='ball_tree',metric='euclidean')  
         self.inds_polar,self.cs_polar = FindNbrs(XYs_polar,XYs_cart,n_neighbors=4,algorithm='ball_tree',metric='euclidean')  
@@ -25,23 +40,16 @@ class POP:
         
         self.rbins = np.arange(0,self.Rmax+1)
         self.scf = np.sin(self.Angles)*np.sqrt(self.Rarrs)
-                        
-        if RBFs_fnm is not None:
-            print('Loading RBFs.')
-            with open(RBFs_fnm, 'rb') as f:
-                self.RBFs = pickle.load(f)            
-        else:
-            print('Generating RBFs.')
-            fnm = 'RBFs_5e6_'+str(self.Rmax)+'.pkl'
-            self.RBFs = GenerateRBFs(self.Rmax,num = int(5e6),fnm=fnm)
-            print('RBFs saved to fnm.')
-        print('Initialization completed!')
         
-    def Peel(self, img):
+        self.Q_polar_3D_slice_fit = np.zeros((num_elms,))          
+        self.Q_polar = np.zeros((num_elms,))         
+        print('Initialization completed, ready to peel!')
+        
+    def Peel(self, img, s=[1,1,1,1]):
     
-        Q_cart = GetQuadrant(img,self.X0, self.Y0, self.Rmax,s=[1,1,1,1])        
-        Q_polar = Cart2Polar(Q_cart,self.inds_cart,self.cs_cart)        
-        Q_polar_3D_slice_fit = np.zeros((self.num_elms,))  
+        Q_cart = GetQuadrant(img,self.X0, self.Y0, self.Rmax,s=s)        
+        self.Q_polar = Cart2Polar(Q_cart,self.inds_cart,self.cs_cart)        
+
         
         ind = 0          
         for i, num in enumerate(self.num_elms_at_R[:-1]):
@@ -49,31 +57,44 @@ class POP:
                      np.dot(np.linalg.inv(self.LegMatS_lst[i]**2 +\
                                           self.reg*np.identity(self.LegMatS_lst[i].shape[0])), 
                      np.dot(self.LegMatS_lst[i], 
-                     np.dot(self.LegMatUt_lst[i], Q_polar[ind:(ind+num)]))))
-                 
+                     np.dot(self.LegMatUt_lst[i], self.Q_polar[ind:(ind+num)]))))             
        
-            Q_polar_3D_slice_fit[ind:(ind+num)] = np.dot(self.LegMat_lst[i], c_arr_i)
+            self.Q_polar_3D_slice_fit[ind:(ind+num)] = np.dot(self.LegMat_lst[i], c_arr_i)
        
             rbf = np.repeat((num/self.num_elms_at_R[(i+1):])*self.RBFs[self.Rmax-i][1:],\
                             self.num_elms_at_R[(i+1):])            
             ImgPolarFit_3D_i_proj = rbf*np.dot(self.LegMat_Rr_lst[i],c_arr_i)
             
-            Q_polar[(ind+num):] -= ImgPolarFit_3D_i_proj
-            Q_polar[(ind+num):][Q_polar[(ind+num):]<0]=0
+            self.Q_polar[(ind+num):] -= ImgPolarFit_3D_i_proj
+            self.Q_polar[(ind+num):][self.Q_polar[(ind+num):]<0]=0
             ind += num
             
-        Q_polar[self.inds_ext] = 0
-        Q_polar_3D_slice_fit[self.inds_ext] = 0
-        Q_cart_3D_slice_fit = Polar2Cart(Q_polar_3D_slice_fit,self.inds_polar,self.cs_polar) 
-        DistR,_ = np.histogram(self.Rarrs,bins = self.rbins,weights=Q_polar_3D_slice_fit*self.scf)
-        
-        slice_Q = np.reshape(Q_cart_3D_slice_fit,(self.Rmax,self.Rmax))
-        slice_Q[np.isnan(slice_Q)] = 0
-        slice_Q[slice_Q<0] = 0
-        slice_Q = slice_Q/slice_Q.max() 
-        slice_img = Quadrant2img(slice_Q)              
+        self.Q_polar[self.inds_ext] = 0
+        self.Q_polar_3D_slice_fit[self.inds_ext] = 0            
                  
-        return slice_img, DistR, Q_polar, Q_polar_3D_slice_fit       
+        
+    def GetSlice(self,tp='fit'):
+    
+        if tp=='fit':
+            Qp = self.Q_polar_3D_slice_fit    
+        elif tp=='left_over':
+            Qp = self.Q_polar
+        else:
+            raise ValueError('Please set <tp> to be either "fit" or "left_over".')
+            
+        Qc = Polar2Cart(Qp,self.inds_polar,self.cs_polar)         
+        Q = np.reshape(Qc,(self.Rmax,self.Rmax))
+        Q[np.isnan(Q)] = 0
+        Q[Q<0] = 0
+        Q = Q/Q.max() 
+        slice_img = Quadrant2img(Q)    
+        
+        return slice_img  
+    
+    
+    def GetRadialDist(self):
+        DistR,_ = np.histogram(self.Rarrs,bins = self.rbins,weights=self.Q_polar_3D_slice_fit*self.scf)    
+        return DistR
     
         
     def LegendreMat_SVD(self, lnum, ls):
