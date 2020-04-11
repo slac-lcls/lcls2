@@ -31,6 +31,15 @@ if arg:
     if s_exts : BUILD_LIST = s_exts.split(':')
     #print('Build c++ python-extensions: %s' % s_exts)
 
+
+# allows a version number to be passed to the setup
+VERSION = '0.0.0'
+arg = [arg for arg in sys.argv if arg.startswith('--version')]
+if arg:
+    VERSION = arg[0].split('=')[1]
+    sys.argv.remove(arg[0])
+
+
 print('-- psana.setup.py build extensions  : %s' % ' '.join(BUILD_LIST))
 print('-- psana.setup.py install directory : %s' % instdir)
 print('-- psana.setup.py include sys.prefix: %s' % sys.prefix)
@@ -290,6 +299,7 @@ if 'NDARRAY' in BUILD_LIST :
 
 setup(
     name = 'psana',
+    version = VERSION,
     license = 'LCLS II',
     description = 'LCLS II analysis package',
     install_requires = INSTALL_REQS,
