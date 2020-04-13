@@ -16,7 +16,7 @@ args = parser.parse_args()
 create = True
 dbname = 'configDB'
 
-mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', args.inst, create, dbname)
+mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create, dbname)
 mycdb.add_device_config('hsd')
 
 top = cdict()

@@ -15,7 +15,7 @@ create = True
 dbname = 'configDB'
 instrument = args.inst
 
-mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)
+mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', instrument, create, dbname)
 mycdb.add_alias(args.alias)
 
 # this needs to be called once per detType at the

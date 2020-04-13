@@ -140,7 +140,7 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
     printf("checking function \n");
     check(pFunc);
 
-    char const* m_connect_json_str = "\{\"body\": \{\"control\": \{\"0\": \{\"control_info\": \{\"instrument\": \"TST\", \"cfg_dbase\": \"mcbrowne:psana@psdb-dev:9306/sioanDB\" } } } } }" ;
+    char const* m_connect_json_str = "\{\"body\": \{\"control\": \{\"0\": \{\"control_info\": \{\"instrument\": \"tst\", \"cfg_dbase\": \"https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/configDB\" } } } } }" ;
 
     PyObject* mybytes = PyObject_CallFunction(pFunc,"sssi",m_connect_json_str,"BEAM", detname, 0);
     check(mybytes);
