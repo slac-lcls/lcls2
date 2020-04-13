@@ -54,7 +54,7 @@ def input_option_parser() :
     d_loglevel   = 'DEBUG'
     d_logdir     = None # '.' or './cm-logger' etc.
     d_expname    = 'tmo12345'
-    d_uris       = URI_CONFIGDB # 'mcbrowne:psana@psdb-dev:9306'
+    d_uris       = URI_CONFIGDB # 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/'
     d_expert     = False  
 
     h_platform   = 'platform in range [0,7], default = %s' % d_platform

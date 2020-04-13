@@ -16,7 +16,7 @@ args = parser.parse_args()
 create = False
 dbname = 'configDB'
 
-mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', args.inst, create, dbname)
+mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create, dbname)
 
 # this needs to be called once per detType at the
 # "beginning of time" to create the collection name (same as detType

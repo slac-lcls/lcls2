@@ -46,7 +46,7 @@ def main():
     parser.add_argument('-P', required=True, help='e.g. DAQ:LAB2:XPM:1', metavar='PREFIX')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('--ip', type=str, required=True, help="IP address" )
-    parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [mcbrowne:psana@psdb-dev:9306,configDB,LAB2,PROD]")
+    parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,LAB2,PROD]")
 
     args = parser.parse_args()
     if args.verbose:

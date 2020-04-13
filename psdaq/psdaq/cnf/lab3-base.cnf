@@ -11,7 +11,7 @@ ip_addr = '10.0.'+shelf
 
 drp_nodes = ['001','002','003','004','005','008','009','011','013','014','015','017','018']
 
-pyxpm_opts = '--db mcbrowne:psana@psdb-dev:9306,configDB,Lab2,PROD -P DAQ:LAB2:XPM:%d'
+pyxpm_opts = '--db https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,Lab2,PROD -P DAQ:LAB2:XPM:%d'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.

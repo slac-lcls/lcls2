@@ -52,7 +52,7 @@ def write_to_daq_config_db(args):
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
     instrument = args.inst
 
-    mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)    #mycdb.client.drop_database('configDB_szTest') will drop the configDB_szTest database
+    mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', instrument, create, dbname)    #mycdb.client.drop_database('configDB_szTest') will drop the configDB_szTest database
     mycdb.add_alias(args.alias)
     mycdb.add_device_config('wave8')
     

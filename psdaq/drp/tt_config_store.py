@@ -20,7 +20,7 @@ def write_to_daq_config_db(args):
     create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
-    mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', args.inst, create, dbname)
+    mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create, dbname)
     mycdb.add_alias(args.alias)
     mycdb.add_device_config('timetool')
 

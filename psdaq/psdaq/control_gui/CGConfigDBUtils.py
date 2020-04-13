@@ -25,9 +25,7 @@ Created on 2019-03-25 by Mikhail Dubrovin
 #import logging
 #logger = logging.getLogger(__name__)
 
-#URI_CONFIGDB = "mcbrowne:psana@psdb-dev:9306"
 URI_CONFIGDB = "https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/"
-
 ROOT_CONFIGDB = 'configDB'
 
 #--------------------
