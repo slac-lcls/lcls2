@@ -1,6 +1,6 @@
 from pymongo import *
 from psalg.configdb.typed_json import *
-import psalg.configdb.configdb as cdb
+import psalg.configdb.mongoconfigdb as cdb
 import subprocess, os, time, sys
 import tempfile
 import shutil
