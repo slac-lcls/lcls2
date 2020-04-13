@@ -25,12 +25,15 @@ Created on 2019-03-25 by Mikhail Dubrovin
 #import logging
 #logger = logging.getLogger(__name__)
 
-URI_CONFIGDB = "mcbrowne:psana@psdb-dev:9306"
+#URI_CONFIGDB = "mcbrowne:psana@psdb-dev:9306"
+URI_CONFIGDB = "https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/"
+
 ROOT_CONFIGDB = 'configDB'
 
 #--------------------
 
-from psalg.configdb.configdb import configdb
+#from psalg.configdb.configdb import configdb
+from psalg.configdb.webconfigdb import configdb
 
 def get_configdb(uri_suffix=URI_CONFIGDB, inst=None, root=ROOT_CONFIGDB) :
     #print('XXX get_configdb', uri_suffix, inst, root)

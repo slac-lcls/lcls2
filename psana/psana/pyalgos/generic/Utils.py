@@ -42,6 +42,10 @@ Usage::
     arr  = gu.load_textfile(path)
     gu.save_textfile(text, path, mode='w') # mode: 'w'-write, 'a'-append 
 
+    jo = gu.load_json(fname)
+    gu.save_json(jo, fname)
+    o = gu.load_pickle(fname)
+    gu.save_pickle(o, fname)
 
     # Save image in file
     # ==================
@@ -333,6 +337,45 @@ def load_textfile(path, verb=False) :
     recs = f.read() # f.readlines()
     f.close() 
     return recs
+
+#------------------------------
+
+def load_json(fname) :
+    """Load json object from file.
+    """
+    logger.debug('load_json %s' % fname)
+    import json
+    return json.load(open(fname,'rb'))
+    # or
+    #with open(fname) as f: jo = json.load(f)
+    #return jo
+
+#------------------------------
+
+def save_json(jo, fname, mode='w') :
+    """Saves json object in file.
+    """
+    logger.debug('save_json %s' % fname)
+    import json
+    with open(fname, mode) as f: json.dump(jo, f)
+
+#------------------------------
+
+def load_pickle(fname, mode='rb') :
+    """Returns object from packed in file.
+    """
+    logger.debug('load_pickle %s' % fname)
+    import pickle
+    return pickle.load(open(fname, mode))
+
+#------------------------------
+
+def save_pickle(o, fname, mode='wb') :
+    """Saves object in the pickle file.
+    """
+    logger.debug('save_pickle %s' % fname)
+    import pickle
+    with open(fname, mode) as f: pickle.dump(o, f)
 
 #------------------------------
 

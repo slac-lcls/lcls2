@@ -21,7 +21,7 @@ def test_01() :
     run = next(ds.runs()) 
 
     xtcav_camera = run.Detector('xtcav')
-    dark_data, dark_meta = xtcav_camera.calibconst.get('pedestals')
+    dark_data, dark_meta = xtcav_camera.calibconst.get('xtcav_pedestals')
 
     dark_background = xtu.xtcav_calib_object_from_dict(dark_data)
 
@@ -38,7 +38,7 @@ def test_01() :
 
 def test_02() :
     from psana.pscalib.calib.MDBWebUtils import calib_constants
-    data, doc = calib_constants('xtcav', exp='amox23616', ctype='pedestals', run=131) #, time_sec=t0_sec, vers=None)
+    data, doc = calib_constants('xtcav', exp='amox23616', ctype='xtcav_pedestals', run=131) #, time_sec=t0_sec, vers=None)
 
     print('data:', data)
     print('metadata:')

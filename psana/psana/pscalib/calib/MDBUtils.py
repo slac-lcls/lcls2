@@ -620,6 +620,7 @@ def docdic(data, dataid, **kwargs) :
           'run_end'    : kwargs.get('run_end', 'end'),
           'detector'   : kwargs.get('detector', None),
           'ctype'      : kwargs.get('ctype', None),
+          'dtype'      : kwargs.get('dtype', None),
           'time_sec'   : kwargs.get('time_sec', None),
           'time_stamp' : kwargs.get('time_stamp', None),
           'version'    : kwargs.get('version', 'v00'),
@@ -641,9 +642,6 @@ def docdic(data, dataid, **kwargs) :
     elif isinstance(data, str) :
         doc['data_type']  = 'str'
         doc['data_size']  = '%d' % len(data)
-
-#    elif isinstance(data, dict) :
-#        doc['data_type']  = 'dict'
 
     else :
         doc['data_type']  = 'any'
@@ -719,13 +717,17 @@ def insert_data(data, fs) :
     s = None # should be replaced by serrialized data
     if   isinstance(data, np.ndarray) : s = data.tobytes()
     elif isinstance(data, str) :        s = str.encode(data)
-    #elif isinstance(data, dict) :
     #    from psana.pscalib.calib.MDBConvertUtils import serialize_dict
     #    s = dict(data)
     #    serialize_dict(s)
     else :
         logger.warning('DATA TYPE "%s" IS NOT "str" OR "numpy.ndarray" CONVERTED BY pickle.dumps ...'%\
                        type(data).__name__)        
+
+        #===================================
+        #sys.exit('TEST EXIT in insert_data')
+        #===================================
+
         s = pickle.dumps(data)
         
     try :
@@ -977,7 +979,7 @@ def object_from_data_string(s, doc) :
 
     if data_type == 'str' :
         data = s.decode()
-        if doc.get('ctype', None) in ('lasingoffreference', 'pedestals') : # conversion of xtcav constants
+        if doc.get('ctype', None) in ('xtcav_lasingoff', 'xtcav_pedestals', 'lasingoffreference', 'pedestals') :
             return dict_from_data_string(data)
         return data
 
@@ -986,13 +988,6 @@ def object_from_data_string(s, doc) :
         nda = np.frombuffer(s, dtype=str_dtype)
         nda.shape = eval(doc.get('data_shape', None)) # eval converts string shape to tuple
         return nda
-
-#    elif data_type == 'dict' :
-#        #print('XXXX object_from_data_string data_type==dict:', type(s), s)
-#        #return None
-#        d = dict_from_data_string(str(s))
-#        print('XXXX object_from_data_string data_type==dict:', d)
-#        return d
 
     elif data_type == 'any' : 
         import pickle
@@ -1032,13 +1027,14 @@ def get_data_for_doc(fs, doc) :
 
 #------------------------------
 
-def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None) :
+def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, dtype=None) :
     """Returns dbnames for detector, experiment, collection name, and query.
     """
     cond = (run is not None) or (time_sec is not None) or (vers is not None)
     assert cond, 'Not sufficeint info for query: run, time_sec, and vers are None'
     query={'detector':det,} # 'ctype':ctype}
     if ctype is not None : query['ctype'] = ctype
+    if dtype is not None : query['dtype'] = dtype
     runq = run if not(run in (0,None)) else 9999 # by cpo request on 2020-01-16
     query['run'] = {'$lte' : runq} #query['run_end'] = {'$gte' : runq}
     if time_sec is not None : query['time_sec'] = {'$lte' : int(time_sec)}
@@ -1333,6 +1329,7 @@ def save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' 
 
     data_type = doc.get('data_type', None)
     ctype     = doc.get('ctype', None)
+    dtype     = doc.get('dtype', None)
     verb      = doc.get('vebous', False)
 
     logger.debug('Save in file(s) "%s" data and document metadata:\n%s' % (prefix, msg))
@@ -1347,7 +1344,6 @@ def save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' 
             logger.info('saved file: %s' % fname)
             fname = '%s.npy' % prefix
             np.save(fname, data, allow_pickle=False)
-            logger.info('saved file: %s' % fname)
 
         elif ctype == 'geometry' : 
             gu.save_textfile(data, fname, mode='w', verb=verb)
@@ -1358,15 +1354,20 @@ def save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' 
             s = dict(data)
             serialize_dict(s)
             gu.save_textfile(str(s), fname, mode='w', verb=verb)
-            logger.info('saved file: %s' % fname)
+
+        elif dtype in ('pkl', 'pickle') :
+            gu.save_pickle(data, fname, mode='wb')
+
+        elif dtype == 'json' :
+            gu.save_json(data, fname, mode='w')
 
         elif data_type == 'any' :
             gu.save_textfile(str(data), fname, mode='w', verb=verb)
-            logger.info('saved file: %s' % fname)
 
         else :
             gu.save_textfile(str(data), fname, mode='w', verb=verb)
-            logger.info('saved file: %s' % fname)
+            
+        logger.info('saved file: %s' % fname)
 
     if control['meta'] : 
         fname = '%s.meta' % prefix

@@ -248,9 +248,11 @@ class MDB_CLI :
         assert os.path.exists(fname), 'File "%s" DOES NOT EXIST' % fname
 
         ext = os.path.splitext(fname)[-1]
-        data = gu.load_textfile(fname, verb=verb) if ctype == 'geometry' or dtype in ('txt', 'str') else\
-               load_xtcav_calib_file(fname) if dtype == 'xtcav' else\
-               np.load(fname) if ext == '.npy' else\
+        data = gu.load_textfile(fname, verb=verb) if ctype == 'geometry' or dtype in ('str', 'txt', 'text') else\
+               load_xtcav_calib_file(fname)       if dtype == 'xtcav' else\
+               np.load(fname)                     if ext == '.npy' else\
+               gu.load_json(fname)                if ext == '.json' or dtype == 'json' else\
+               gu.load_pickle(fname)              if ext == '.pkl' or dtype in ('pkl', 'pickle') else\
                load_txt(fname) # input NDArrIO 
 
         dbu.insert_calib_data(data, **kwargs)
@@ -266,6 +268,7 @@ class MDB_CLI :
         exp    = kwargs.get('experiment', None)
         det    = kwargs.get('detector', None)
         ctype  = kwargs.get('ctype', None)
+        dtype  = kwargs.get('dtype', None)
         run    = kwargs.get('run', None)
         run_end= kwargs.get('run_end', None)
         tsec   = kwargs.get('time_sec', None)   if is_in_command_line('-s', '--time_sec')   else None
@@ -274,7 +277,7 @@ class MDB_CLI :
         prefix = kwargs.get('iofname', None)
         verb   = self.loglevel == 'DEBUG'
 
-        db_det, db_exp, colname, query = dbu.dbnames_collection_query(det, exp, ctype, run, tsec, vers)
+        db_det, db_exp, colname, query = dbu.dbnames_collection_query(det, exp, ctype, run, tsec, vers, dtype)
         logger.debug('get: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
         dbname = db_det if exp is None else db_exp
 
