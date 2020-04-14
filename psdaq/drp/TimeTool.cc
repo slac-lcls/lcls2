@@ -93,7 +93,9 @@ void TimeTool::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& con
     PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"tt_config");
     check(pFunc);
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc, "sss", m_connect_json.c_str(), config_alias.c_str(), m_para->detName.c_str());
+    PyObject* mybytes = PyObject_CallFunction(pFunc, "sssii", 
+                                              m_connect_json.c_str(), config_alias.c_str(), 
+                                              m_para->detName.c_str(), m_para->detSegment, m_readoutGroup);
     check(mybytes);
 
     // returns new reference
@@ -104,7 +106,7 @@ void TimeTool::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& con
     // convert to json to xtc
     const unsigned BUFSIZE = 1024*1024;
     char buffer[BUFSIZE];
-    unsigned len = Pds::translateJson2Xtc(json, buffer, configNamesId);
+    unsigned len = Pds::translateJson2Xtc(json, buffer, configNamesId, m_para->detName.c_str(), m_para->detSegment);
     if (len>BUFSIZE) {
         throw "**** Config json output too large for buffer\n";
     }
@@ -133,12 +135,12 @@ void TimeTool::connect(const json& connect_json, const std::string& collectionId
         return;
     }
 
-    int readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
+    m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
 
     // the address comes from pyrogue rootDevice.saveAddressMap('fname')
     // perhaps ideally we would call detector-specific rogue python
     // or use the new rogue version 5 c++ interface.
-    dmaWriteRegister(fd, 0x940104, readoutGroup);
+    dmaWriteRegister(fd, 0x940104, m_readoutGroup);
 
     close(fd);
 }

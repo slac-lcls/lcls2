@@ -72,7 +72,7 @@ private:
     mutable std::mutex m_lock;
     std::atomic<bool> m_terminate;
     std::atomic<bool> m_running;
-    std::shared_ptr<MetricExporter> m_exporter;
+    std::shared_ptr<Pds::MetricExporter> m_exporter;
     uint64_t m_nEvents;
     uint64_t m_nUpdates;
     uint64_t m_nMissed;

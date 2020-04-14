@@ -18,8 +18,8 @@ def database_object_calculations_2rogue():
 def write_to_rogue():
     return 0
 
-def tt_config(connect_str,cfgtype,detname):
-    cfg = get_config(connect_str,cfgtype,detname)
+def tt_config(connect_str,cfgtype,detname,detsegm,group):
+    cfg = get_config(connect_str,cfgtype,detname,detsegm)
 
     myargs = { 'dev'         : '/dev/datadev_0',
                'pgp3'        : False,
@@ -34,6 +34,17 @@ def tt_config(connect_str,cfgtype,detname):
 
         if(cl.TimeToolKcu1500.Kcu1500Hsio.PgpMon[0].RxRemLinkReady.get() != 1):
             raise ValueError(f'PGP Link is down' )
+
+        # TimeToolKcu1500Root.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId
+        partitionDelay = getattr(cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
+        rawStart       = cfg['user']['start_ns']
+        triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
+        print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+        if triggerDelay < 0:
+            print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+            raise ValueError('triggerDelay computes to < 0')
+            
+        cfg['cl']['TimeToolKcu1500']['Kcu1500Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer0']['TriggerDelay'] = triggerDelay
         
         cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.SendEscape()
 
@@ -75,6 +86,10 @@ def tt_config(connect_str,cfgtype,detname):
         cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
         cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(True)
 
+        #  Capture the firmware version to persist in the xtc
+        cfg['firmwareVersion'] = cl.TimeToolKcu1500.AxiPcieCore.AxiVersion.FpgaVersion.get()
+        cfg['firmwareBuild'  ] = cl.TimeToolKcu1500.AxiPcieCore.AxiVersion.BuildStamp.get()
+
         #cl.StartRun()
 
         #cl.stop()   #gui.py should be able to run after this line, but it's still using the axi lite resource.
@@ -96,8 +111,8 @@ if __name__ == "__main__":
     connect_info['body']['control'] = {}
     connect_info['body']['control']['0'] = {}
     connect_info['body']['control']['0']['control_info'] = {}
-    connect_info['body']['control']['0']['control_info']['instrument'] = 'TST'
-    connect_info['body']['control']['0']['control_info']['cfg_dbase'] = 'mcbrowne:psana@psdb-dev:9306/sioanDB'
+    connect_info['body']['control']['0']['control_info']['instrument'] = 'tst'
+    connect_info['body']['control']['0']['control_info']['cfg_dbase'] = 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/configDB'
 
     mystring = json.dumps(connect_info)                             #paste this string into the pgpread_timetool.cc as parameter for the tt_config function call
     print(mystring)

@@ -56,26 +56,26 @@ procmgr_config = [
  {                         id:'hsdpvb_3e',   flags:'',    conda:conda_rel, env:epics_env, cmd:'hsdpva '+hsd_epics_dev06+'_3E:B'},
  { host: 'daq-tst-dev06',  id:'hsdioc_3e',   flags:'x',   conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P '+hsd_epics_dev06+'_3E -d /dev/pcie_adc_3e'},
 
- { host: 'drp-tst-dev022', id:'xpphsd_0',    flags:'xpu', conda:conda_rel, cmd:drp_cmd+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3E:A'},
- { host: 'drp-tst-dev023', id:'xpphsd_1',    flags:'xpu', conda:conda_rel, cmd:drp_cmd+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3E:B'},
+ { host: 'drp-tst-dev022', id:'xpphsd_0',    flags:'xpu', conda:conda_rel, cmd:drp_cmd+' -D hsd -k hsd_epics_prefix='+hsd_epics_dev06+'_3E:A'},
+ { host: 'drp-tst-dev023', id:'xpphsd_1',    flags:'xpu', conda:conda_rel, cmd:drp_cmd+' -D hsd -k hsd_epics_prefix='+hsd_epics_dev06+'_3E:B'},
 
  # Timing System
- { host: 'drp-tst-dev001', id:'xppts_0', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D TimingSystem' },
+ { host: 'drp-tst-dev001', id:'xppts_0', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D ts' },
 
  # Cams
- { host: 'drp-tst-dev002', id:'cam_2',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
-# { host: 'drp-tst-dev003', id:'cam_3',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
- { host: 'drp-tst-dev004', id:'cam_4',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
- { host: 'drp-tst-dev005', id:'cam_5',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
- #{ host: 'drp-tst-dev007', id:'cam_7',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
-# { host: 'drp-tst-dev008', id:'cam_8',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
-# { host: 'drp-tst-dev009', id:'cam_9',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
- { host: 'drp-tst-dev011', id:'cam_11', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
- #{ host: 'drp-tst-dev012', id:'cam_12', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
- #{ host: 'drp-tst-dev013', id:'cam_13', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
- { host: 'drp-tst-dev014', id:'cam_14', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
- { host: 'drp-tst-dev015', id:'cam_15', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
- { host: 'drp-tst-dev017', id:'cam_17', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D AreaDetector' },
+ { host: 'drp-tst-dev002', id:'cam_2',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+# { host: 'drp-tst-dev003', id:'cam_3',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ { host: 'drp-tst-dev004', id:'cam_4',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ { host: 'drp-tst-dev005', id:'cam_5',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ #{ host: 'drp-tst-dev007', id:'cam_7',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+# { host: 'drp-tst-dev008', id:'cam_8',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+# { host: 'drp-tst-dev009', id:'cam_9',  flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ { host: 'drp-tst-dev011', id:'cam_11', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ #{ host: 'drp-tst-dev012', id:'cam_12', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ #{ host: 'drp-tst-dev013', id:'cam_13', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ { host: 'drp-tst-dev014', id:'cam_14', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ { host: 'drp-tst-dev015', id:'cam_15', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
+ { host: 'drp-tst-dev017', id:'cam_17', flags:'sxpu', conda:conda_rel, cmd: drp_cmd+' -D fakecam' },
 
  # BLD
  { host: 'drp-tst-dev018', id:'bld_18', flags:'sxpu', conda:conda_rel, cmd: bld_cmd },

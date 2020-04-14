@@ -33,7 +33,8 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
 
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {
-        logging::error("Error !! Could not create Detector object");
+        logging::error("Error !! Could not create Detector object for %s", m_para.detType);
+        throw "Could not create Detector object for " + m_para.detType;
     }
     if (m_para.outputDir.empty()) {
         logging::info("output dir: n/a");
@@ -128,7 +129,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
         m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det);
 
-        m_exporter = std::make_shared<MetricExporter>();
+        m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {
             m_drp.exposer()->RegisterCollectable(m_exporter);
         }

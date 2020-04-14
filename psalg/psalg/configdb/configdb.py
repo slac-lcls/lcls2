@@ -1,162 +1,230 @@
-from pymongo import *
+import requests
+from requests.auth import HTTPBasicAuth
+import json
+import logging
 from .typed_json import cdict
-import datetime
-import time, re, sys
 
-# Note: This was originally written with mongodb transactions in mind, 
-# which is why we are passing "session" all over the place.  However,
-# these are really only used in three places:
-#     add_alias: When we need to get a new key and then insert a new
-#                record with this key.
-#     modify_device: When we save a bunch of configurations, then
-#                get a new key and insert a new record with this key.
-#     transfer_config: After retrieving the desired configuration, we
-#                get a new key and insert a new record with this key.
-# Now in modify_device, it is annoying but harmless to save configurations
-# and then have other saves or the insert potentially fail, leaving a
-# bunch of unused configurations in the database, but we can live with this.
-# 
-# In these three functions, I have changed:
-#     with self.client.start_session() as session:
-#         with session.start_transaction():
-# to:
-#     if True:
-#             session = None
-# (Yes, the indenting is ugly, but just in case we ever decide to go back.)
-#
-# get_key changes to do the counter magic as well.
+class JSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, float) and not math.isfinite(o):
+            return str(o)
+        elif isinstance(o, datetime):
+            return o.isoformat()
+        return json.JSONEncoder.default(self, o)
 
 class configdb(object):
-    client = None
-    cdb = None
-    cfg_coll = None
 
     # Parameters:
-    #     server - The MongoDB string: "user:password@host:port" or 
-    #              "host:port" if no authentication.
-    #     h      - The current hutch name.
-    #     root   - The root database name, usually "configDB"
-    #     drop   - If True, the root database will be dropped.
+    #     url    - e.g. "https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws"
+    #     hutch  - Instrument name, e.g. "tmo"
     #     create - If True, try to create the database and collections
     #              for the hutch, device configurations, and counters.
-    def __init__(self, server, h=None, create=False, root="NONE"):
+    #     root   - Database name, usually "configDB"
+    #     user   - User for HTTP authentication
+    #     password - Password for HTTP authentication
+    def __init__(self, url, hutch, create=False, root="NONE", user="xppopr", password="pcds"):
         if root == "NONE":
             raise Exception("configdb: Must specify root!")
-        if self.client == None:
-            self.client = MongoClient("mongodb://" + server)
-            self.cdb = self.client.get_database(root)
-            self.cfg_coll = self.cdb.device_configurations
-            if create:
-                try:
-                    self.cdb.create_collection("device_configurations")
-                except:
-                    pass
-                try:
-                    self.cdb.create_collection("counters")
-                except:
-                    pass
-            self.set_hutch(h, create=create)
+        self.hutch  = hutch
+        self.prefix = url.strip('/') + '/' + root + '/'
+        self.timeout = 3.05     # timeout for http requests
+        self.user = user
+        self.password = password
 
-    # Change to the specified hutch, creating it if necessary.
-    def set_hutch(self, h, create=False):
-        self.hutch = h
-        if h is None:
-            self.hutch_coll = None
+        if create:
+            try:
+                xx = self._get_response('create_collections/' + hutch + '/')
+            except requests.exceptions.RequestException as ex:
+                logging.error('Web server error: %s' % ex)
+            else:
+                if not xx['success']:
+                    logging.error('%s' % xx['msg'])
+
+    # Return json response.
+    # Raise exception on error.
+    def _get_response(self, cmd, *, json=None):
+        resp = requests.get(self.prefix + cmd,
+                            auth=HTTPBasicAuth(self.user, self.password),
+                            json=json,
+                            timeout=self.timeout)
+        # raise exception if status is not ok
+        resp.raise_for_status()
+        return resp.json()
+
+    # Retrieve the configuration of the device with the specified alias.
+    # This returns a dictionary where the keys are the collection names and the 
+    # values are typed JSON objects representing the device configuration(s).
+    # On error return an empty dictionary.
+    def get_configuration(self, alias, device, hutch=None):
+        if hutch is None:
+            hutch = self.hutch
+        try:
+            xx = self._get_response('get_configuration/' + hutch + '/' +
+                                    alias + '/' + device + '/')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            return dict()
+
+        if not xx['success']:
+            logging.error('%s' % xx['msg'])
+            return dict()
         else:
-            self.hutch_coll = self.cdb[h]
-        if create and h is not None:
+            return xx['value']
+
+    # Get the history of the device configuration for the variables 
+    # in plist.  The variables are dot-separated names with the first
+    # component being the the device configuration name.
+    def get_history(self, alias, device, plist, hutch=None):
+        if hutch is None:
+            hutch = self.hutch
+        value = JSONEncoder().encode(plist)
+        try:
+            xx = self._get_response('get_history/' + hutch + '/' +
+                                    alias + '/' + device + '/',
+                                    json=value)
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            xx = []
+
+        # try to clean up superfluous keys from serialization
+        if 'value' in xx:
             try:
-                self.cdb.create_collection(h)
-            except:
+                for item in xx['value']:
+                    bad_keys = []
+                    for kk in item.keys():
+                        if not kk.isalnum():
+                            bad_keys += kk
+                    for bb in bad_keys:
+                        item.pop(bb, None)
+            except Exception:
                 pass
-            try:
-                if not self.cdb.counters.find_one({'hutch': h}):
-                    self.cdb.counters.insert_one({'hutch': h, 'seq': -1})
-            except:
-                pass
+
+        return xx
+
+    # Return version as a dictionary.
+    # On error return an empty dictionary.
+    def get_version(self):
+        try:
+            xx = self._get_response('get_version/')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            return dict()
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+                return dict()
+        return xx['value']
 
     # Return the highest key for the specified alias, or highest + 1 for all
     # aliases in the hutch if not specified.
+    # On error return an empty list.
     def get_key(self, alias=None, hutch=None, session=None):
         if hutch is None:
             hutch = self.hutch
         try:
-            if isinstance(alias, str) or (sys.version_info.major == 2 and
-                                          isinstance(alias, unicode)):
-                d = self.cdb[hutch].find({'alias' : alias}, session=session).sort('key', DESCENDING).limit(1)[0]
-                return d['key']
+            if alias is None:
+                xx = self._get_response('get_key/' + hutch + '/')
             else:
-                d = self.cdb.counters.find_one_and_update({'hutch': hutch},
-                                                          {'$inc': {'seq': 1}},
-                                                          session=session,
-                                                          return_document=ReturnDocument.AFTER)
-                return d['seq']
-        except:
-            raise NameError('Failed to get key for alias/hutch:'+alias+' '+hutch)
-
-    # Return the current entry (with the highest key) for the specified alias.
-    def get_current(self, alias, hutch=None, session=None):
-        if hutch is None:
-            hc = self.hutch_coll
+                xx = self._get_response('get_key/' + hutch + '/?alias=%s' % alias)
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            return []
         else:
-            hc = self.cdb[hutch]
-        try:
-            return hc.find({"alias": alias}, session=session).sort('key', DESCENDING).limit(1)[0]
-        except:
-            raise NameError('Failed to get current key for alias/hutch:'+alias+' '+hutch)
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+        return xx['value']
 
+    # Return a list of all hutches available in the config db.
+    # On error return an empty list.
+    def get_hutches(self):
+        try:
+            xx = self._get_response('get_hutches/')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            return []
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+                return []
+        return xx['value']
+
+    # Return a list of all aliases in the hutch.
+    # On error return an empty list.
+    def get_aliases(self, hutch=None):
+        if hutch is None:
+            hutch = self.hutch
+        try:
+            xx = self._get_response('get_aliases/' + hutch + '/')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            return []
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+                return []
+        return xx['value']
 
     # Create a new alias in the hutch, if it doesn't already exist.
     def add_alias(self, alias):
-        if True:
-                session = None
-                if self.hutch_coll.find_one({'alias': alias},
-                                            session=session) is None:
-                    kn = self.get_key(session=session)
-                    self.hutch_coll.insert_one({
-                        "date": datetime.datetime.utcnow(),
-                        "alias": alias, "key": kn,
-                        "devices": []}, session=session)
+        try:
+            xx = self._get_response('add_alias/' + self.hutch + '/' + alias + '/')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+        return
 
     # Create a new device_configuration if it doesn't already exist!
+    # Note: session is ignored
     def add_device_config(self, cfg, session=None):
-        # Validate name?
-        if self.cdb[cfg].count_documents({}) != 0:
+        try:
+            xx = self._get_response('add_device_config/' + cfg + '/')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
             return
+
+        if not xx['success']:
+            logging.error('%s' % xx['msg'])
+        return
+
+    # Return a list of all device configurations.
+    def get_device_configs(self):
         try:
-            self.cdb.create_collection(cfg)
-        except:
-            pass
-        self.cdb[cfg].insert_one({'config': {}}, session=session)
-        self.cfg_coll.insert_one({'collection': cfg}, session=session)
+            xx = self._get_response('get_device_configs/')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            return []
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+                return []
+        return xx['value']
 
-    # Save a device configuration and return an object ID.  Try to find it if 
-    # it already exists! Value should be a typed json dictionary.
-    def save_device_config(self, cfg, value, session=None):
-        if self.cdb[cfg].count_documents({}, session=session) == 0:
-            raise NameError("save_device_config: No documents found for %s." % cfg)
+    # Return a list of all devices in an alias/hutch.
+    def get_devices(self, alias, hutch=None):
+        if hutch is None:
+            hutch = self.hutch
         try:
-            d = self.cdb[cfg].find_one({'config': value}, session=session)
-            return d['_id']
-        except:
-            pass
-
-        r = self.cdb[cfg].insert_one({'config': value}, session=session)
-        return r.inserted_id
-
+            xx = self._get_response('get_devices/' + hutch + '/' + alias + '/')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            return []
+        else:
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+        return xx['value']
 
     # Modify the current configuration for a specific device, adding it if
-    # necessary.  name is the device and value is a json dictionary for the 
-    # configuration.  Return the new configuration key if successful and 
+    # necessary.  name is the device and value is a json dictionary for the
+    # configuration.  Return the new configuration key if successful and
     # raise an error if we fail.
     def modify_device(self, alias, value, hutch=None):
-        device = value.get('detName:RO')
         if hutch is None:
-            hc = self.hutch_coll
-        else:
-            hc = self.cdb[hutch]
-        c = self.get_current(alias, hutch)
-        if c is None:
+            hutch = self.hutch
+
+        alist = self.get_aliases(hutch)
+        if not alias in alist:
             raise NameError("modify_device: %s is not a configuration name!"
                             % alias)
         if isinstance(value, cdict):
@@ -165,152 +233,165 @@ class configdb(object):
             raise TypeError("modify_device: value is not a dictionary!")
         if not "detType:RO" in value.keys():
             raise ValueError("modify_device: value has no detType set!")
-        if True:
-                session = None
-                collection = value["detType:RO"]
-                cfg = {'_id': self.save_device_config(collection, 
-                                                      value, session),
-                       'collection': collection}
-                del c['_id']
-                for l in c['devices']:
-                    if l['device'] == device:
-                        if l['configs'] == [cfg]:
-                            raise ValueError("modify_device error: No config values changed.")
-                        c['devices'].remove(l)
-                        break
-                kn = self.get_key(session=session, hutch=hutch)
-                c['key'] = kn
-                c['devices'].append({'device': device, 'configs': [cfg]})
-                c['devices'].sort(key=lambda x: x['device'])
-                c['date'] = datetime.datetime.utcnow()
-                hc.insert_one(c, session=session)
-        return kn
-    
-    # Retrieve the configuration of the device with the specified key or alias.
-    # This returns a dictionary where the keys are the collection names and the 
-    # values are typed JSON objects representing the device configuration(s).
-    def get_configuration(self, key_or_alias, device, hutch=None):
-        if hutch is None:
-            hc = self.hutch_coll
-        else:
-            hc = self.cdb[hutch]
-        if isinstance(key_or_alias, str) or (sys.version_info.major == 2 and
-                                             isinstance(key_or_alias, unicode)):
-            key = self.get_key(key_or_alias, hutch)
-        else:
-            key = key_or_alias
-        #try:
-        if True:
-            c = hc.find_one({"key": key})
-            cfg = None
-            for l in c["devices"]:
-                if l['device'] == device:
-                    cfg = l['configs']
-                    break
-            if cfg is None:
-                raise ValueError("get_configuration: No device %s!" % device)
-            cname = cfg[0]['collection']
-            r = self.cdb[cname].find_one({"_id" : cfg[0]['_id']})
-            return r['config']
-        #except:
-        #    return None
+        if not "detName:RO" in value.keys():
+            raise ValueError("modify_device: value has no detName set!")
 
-    # Return a list of all hutches.
-    def get_hutches(self):
-        return [v['hutch'] for v in self.cdb.counters.find()]
-
-    # Return a list of all aliases in the hutch.
-    def get_aliases(self, hutch=None):
-        if hutch is None:
-            hc = self.hutch_coll
+        try:
+            xx = self._get_response('modify_device/' + hutch + '/' + alias + '/',
+                                    json=value)
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            raise
         else:
-            hc = self.cdb[hutch]
-        return [v['_id'] for  v in hc.aggregate([{"$group": 
-                                                  {"_id" : "$alias"}}])] 
+            if not xx['success']:
+                logging.error('%s' % xx['msg'])
+                raise Exception("modify_device: operation failed!")
 
-    # Return a list of all device configurations.
-    def get_device_configs(self):
-        return [v['collection'] for v in self.cfg_coll.find()]
+        return xx['value']
 
-    # Return a list of all devices in an alias/hutch.
-    def get_devices(self, key_or_alias, hutch=None):
-        if hutch is None:
-            hc = self.hutch_coll
+    # Print all of the device configurations, or all of the configurations
+    # for a specified device.
+    def print_device_configs(self, name="device_configurations"):
+        try:
+            xx = self._get_response('print_device_configs/' + name + '/')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            return
+
+        if not xx['success']:
+            logging.error('%s' % xx['msg'])
         else:
-            hc = self.cdb[hutch]
-        if isinstance(key_or_alias, str) or (sys.version_info.major == 2 and
-                                             isinstance(key_or_alias, unicode)):
-            key = self.get_key(key_or_alias, hutch)
-        else:
-            key = key_or_alias
-        c = hc.find_one({"key": key})
-        return [l['device'] for l in c["devices"]]
+            print(xx['value'].strip())
 
     # Print all of the configurations for the hutch.
     def print_configs(self, hutch=None):
         if hutch is None:
-            hc = self.hutch_coll
-        else:
-            hc = self.cdb[hutch]
-        for v in hc.find():
-            print(v)
+            hutch = self.hutch
+        try:
+            xx = self._get_response('print_configs/' + hutch + '/')
+        except requests.exceptions.RequestException as ex:
+            logging.error('Web server error: %s' % ex)
+            return
 
-    # Print all of the device configurations, or all of the configurations 
-    # for a specified device.
-    def print_device_configs(self, name="device_configurations"):
-        for v in self.cdb[name].find():
-            print(v)
+        if not xx['success']:
+            logging.error('%s' % xx['msg'])
+        else:
+            print(xx['value'].strip())
 
     # Transfer a configuration from another hutch to the current hutch,
     # returning the new key.
+    # On error return zero.
     def transfer_config(self, oldhutch, oldalias, olddevice, newalias,
                         newdevice):
-        k = self.get_key(oldalias, oldhutch)
-        pipeline = [
-            {"$unwind": "$devices"},
-            {"$match": {'key': k, 'devices.device': olddevice}}
-        ]
-        cfg = next(self.cdb[oldhutch].aggregate(pipeline))['devices']['configs']
-        cnew = self.get_current(newalias)
-        if True:
-                session = None
-                kn = self.get_key(session=session)
-                cnew['key'] = kn
-                del cnew['_id']
-                for l in cnew['devices']:
-                    if l['device'] == newdevice:
-                        if l['configs'][0]['collection'] != cfg[0]['collection']:
-                            raise ValueError("transfer_config: Different collections!")
-                        if l['configs'] == cfgs:
-                            raise ValueError("transfer_config: No change!")
-                        cnew['devices'].remove(l)
-                        break
-                cnew['devices'].append({'device': newdevice, 'configs': cfg})
-                cnew['devices'].sort(key=lambda x: x['device'])
-                cnew['date'] = datetime.datetime.utcnow()
-                self.hutch_coll.insert_one(cnew, session=session)
-        return kn
+        try:
+            # read configuration from old location
+            read_val = self.get_configuration(oldalias, olddevice, hutch=oldhutch)
 
-    # Get the history of the device configuration for the variables 
-    # in plist.  The variables are dot-separated names with the first
-    # component being the the device configuration name.
-    def get_history(self, alias, device, plist, hutch=None):
-        if hutch is None:
-            hc = self.hutch_coll
-        else:
-            hc = self.cdb[hutch]
-        pipeline = [
-            {"$unwind": "$devices"},
-            {"$match": {'alias': alias, 'devices.device': device}},
-            {"$sort":  {'key': ASCENDING}}
-        ]
-        l = []
-        for c in list(hc.aggregate(pipeline)):
-            d = {'date': c['date'], 'key': c['key']}
-            cfg = c['devices']['configs'][0]
-            r = self.cdb[cfg['collection']].find_one({"_id" : cfg["_id"]})
-            cl = cdict(r['config'])
-            for p in plist:
-                d[p] = cl.get(p)
-            l.append(d)
-        return l
+            # check for errors
+            if not read_val:
+                logging.error('get_configuration returned empty eonfig.')
+                return 0
+
+            # set detName
+            read_val['detName:RO'] = newdevice 
+
+            # write configuration to new location
+            write_val = self.modify_device(newalias, read_val, hutch=self.hutch)
+        except Exception as ex:
+            logging.error('%s' % ex)
+            return 0
+
+        return write_val
+
+# ------------------------------------------------------------------------------
+# configdb CLI
+# ------------------------------------------------------------------------------
+
+import sys
+import argparse
+import pprint
+
+# Parse a device name into 4 elements.
+# Input format: <hutch>/<alias>/<device>_<segment>
+# Returns: hutch, alias, device, segment
+# On error raises NameError.
+def _parse_device4(name):
+    error_txt = 'Name \'%s\' does not match <hutch>/<alias>/<device>_<segment>' % name
+    try:
+        split1 = name.rsplit('_', maxsplit=1)
+        segment = int(split1[1])
+    except Exception:
+        raise NameError(error_txt)
+
+    if len(split1) != 2:
+        raise NameError(error_txt)
+
+    split2 = split1[0].split('/')
+    if len(split2) != 3:
+        raise NameError(error_txt)
+
+    return (split2[0], split2[1], split2[2], segment)
+
+def _cat(args):
+    try:
+        hutch, alias, dev, seg = _parse_device4(args.src)
+    except NameError as ex:
+        print('%s' % ex) 
+        sys.exit(1)
+
+    # get configuration and pretty print it
+    mycdb = configdb(args.url, hutch, root=args.root)
+    xx = mycdb.get_configuration(alias, '%s_%d' % (dev, seg), hutch)
+    if len(xx) > 0:
+        pprint.pprint(xx)
+
+def _cp(args):
+    try:
+        oldhutch, oldalias, olddev, oldseg = _parse_device4(args.src)
+        newhutch, newalias, newdev, newseg = _parse_device4(args.dst)
+    except NameError as ex:
+        print('%s' % ex) 
+        sys.exit(1)
+
+    # transfer configuration
+    mycdb = configdb(args.url, newhutch, create=args.create, root=args.root)
+    if args.create:
+        mycdb.add_alias(newalias)
+    retval = mycdb.transfer_config(oldhutch, oldalias, '%s_%d' % (olddev, oldseg),
+                                   newalias, '%s_%d' % (newdev, newseg))
+    if retval == 0:
+        print('failed to transfer configuration')
+        sys.exit(1)
+
+def main():
+
+    # create the top-level parser
+    parser = argparse.ArgumentParser(description='configuration database CLI')
+    parser.add_argument('--url', default='https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/',
+                        help='configuration database connection')
+    parser.add_argument('--root', default='configDB', help='configuration database root (default: configDB)')
+    subparsers = parser.add_subparsers()
+
+    # create the parser for the "cat" command
+    parser_cat = subparsers.add_parser('cat', help='print a configuration')
+    parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
+    parser_cat.set_defaults(func=_cat)
+   
+    # create the parser for the "cp" command
+    parser_cp = subparsers.add_parser('cp', help='copy a configuration')
+    parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
+    parser_cp.add_argument('dst', help='destination: <hutch>/<alias>/<device>_<segment>')
+    parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
+    parser_cp.set_defaults(func=_cp)
+
+    # parse the args and call whatever function was selected
+    args = parser.parse_args()
+    try:
+        subcommand = args.func
+    except Exception:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+    subcommand(args)
+
+if __name__ == '__main__':
+    main()

@@ -1,3 +1,7 @@
+
+import logging
+logger = logging.getLogger(__name__)
+
 import numpy as np
 from psana.xtcav.Utils import *
 
@@ -12,7 +16,7 @@ def splitImage(image, n, islandsplitmethod, par1, par2):
     """
 
     if islandsplitmethod == 'contourLabel' or islandsplitmethod == 'autothreshold':    #For one bunch, just the same image
-        warnings.warn_explicit('Method ' + islandsplitmethod + ' not currently implemented in this version of xtcav', UserWarning,'XTCAV',0)
+        logger.warning('Method ' + islandsplitmethod + ' not currently implemented in this version of xtcav')
         outimages=np.zeros((n,image.shape[0],image.shape[1]))
         outimages[0,:,:]=image    
     
@@ -23,7 +27,7 @@ def splitImage(image, n, islandsplitmethod, par1, par2):
         n_groups, groups = cv2.connectedComponents(transform)
 
         if n_groups == 1:
-            warnings.warn_explicit('No region of interest found', UserWarning,'XTCAV',0)
+            logger.warning('No region of interest found')
             return None 
         
         #Structure for the areas and the images

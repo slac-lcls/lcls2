@@ -96,19 +96,8 @@ class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
             for seg,seg_config in seg_dict.items():
                 # currently the hsd only has 1 channel (zero)
                 # will have to revisit in the future
-                enable = getattr(getattr(seg_config,'config'),'enable')
-                # user could make an error and have two identical segments
-                assert seg not in channels
-                if hasattr(enable,'value'):
-                    # the 5GHz hsd case with one enable stored as an enum
-                    if enable.value==1: channels[seg] = [0]
-                else:
-                    # the 6GHz has case with enables stored as an array
-                    # this is imperfect: should be array of enum's, but
-                    # not currently supported in xtc
-                    channels[seg] = []
-                    for ichan,en in enumerate(enable):
-                        if en==1: channels[seg].append(ichan)
+                channels[seg] = [0]
+
         return channels
 
 cdef class cyhsd_base_1_2_3:

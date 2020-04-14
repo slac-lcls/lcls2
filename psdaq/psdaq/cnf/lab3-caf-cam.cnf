@@ -28,5 +28,5 @@ procmgr_config = [
  # meb
  { host: 'drp-tst-dev009', id:'meb1', flags:'sxpu', conda:conda_rel, cmd:'monReqServer -P '+instr+' -d -q 4 -C '+collect_host},
  # drp
- { host: 'drp-tst-dev009', id:'cam_0', flags:'sxpu', conda:conda_rel, cmd:'drp -o /ffb01/data -l 0xf -D AreaDetector -d /dev/datadev_1 -P '+instr+' -C '+collect_host}
+ { host: 'drp-tst-dev009', id:'cam_0', flags:'sxpu', conda:conda_rel, cmd:'drp -o /ffb01/data -l 0xf -D fakecam -d /dev/datadev_1 -P '+instr+' -C '+collect_host}
 ]

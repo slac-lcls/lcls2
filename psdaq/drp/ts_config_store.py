@@ -1,13 +1,22 @@
 from psalg.configdb.typed_json import cdict
 import psalg.configdb.configdb as cdb
+import argparse
+
+parser = argparse.ArgumentParser(description='Write a new timing system configuration into the database')
+parser.add_argument('--inst', help='instrument', type=str, default='tst')
+parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
+parser.add_argument('--name', help='detector name', type=str, default='tstts')
+parser.add_argument('--segm', help='detector segment', type=int, default=0)
+parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
+args = parser.parse_args()
 
 # these are the current default values, but I put them here to be explicit
 create = True
 dbname = 'configDB'
-instrument = 'tst'
+instrument = args.inst
 
-mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)
-mycdb.add_alias("BEAM")
+mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', instrument, create, dbname)
+mycdb.add_alias(args.alias)
 
 # this needs to be called once per detType at the
 # "beginning of time" to create the collection name (same as detType
@@ -17,11 +26,14 @@ mycdb.add_device_config('ts')
 
 top = cdict()
 
-top.setInfo('ts', 'tmots', 'serial1234', 'No comment')
+top.setInfo('ts', args.name, args.segm, args.id, 'No comment')
 top.setAlg('config', [2,0,0])
 
+top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
+top.set("firmwareVersion:RO",   0, 'UINT32')
+
 top.define_enum('trigModeEnum', {key:val for val,key in enumerate(
-    ['FixedRate', 'ACRate', 'Sequence', 'EventCode'])})
+    ['FixedRate', 'ACRate', 'EventCode', 'Sequence'])})
 top.define_enum('fixedRateEnum', {key:val for val,key in enumerate(
     ['929kHz', '71_4kHz', '10_2kHz', '1_02kHz', '102Hz', '10_2Hz', '1_02Hz'])})
 top.define_enum('acRateEnum', {key:val for val,key in enumerate(
@@ -33,6 +45,7 @@ seqBurstNames = []
 for j in range(16):
     seqBurstNames.append('%dx%dns'%(2**(1+(j%4)),1080*(j/4)))
 
+top.define_enum('linacEnum', {'Cu': 0, 'SC': 1})
 top.define_enum('seqBurstEnum', {key:val for val,key in enumerate(seqBurstNames)})
 
 seqFixedRateNames = []
@@ -45,9 +58,31 @@ seqLocal = ['%u0kHz'%(4*i+4) for i in range(16)]
 top.define_enum('seqLocalEnum', {key:val for val,key in enumerate(seqLocal)})
 top.define_enum('destSelectEnum', {'Include': 0, 'DontCare': 1})
 
-for group in range(8):
-    grp_prefix = 'group'+str(group)+'.'
+help_str  = "-- user --"
+help_str += "\nLINAC        : Timing System source (Cu/SC)"
+help_str += "\n-- user.groupN (Cu mode) --"
+help_str += "\neventcode    : Trigger eventcode"
+help_str += "\n-- user.groupN (SC mode) --"
+help_str += "\ntrigger is a combination of rate and destn selection"
+help_str += "\nfixed.rate   : fixed period trigger rate"
+help_str += "\nac.rate      : AC power syncd trigger rate per timeslot"
+help_str += "\nac.ts[6]     : include timeslot in trigger rate"
+help_str += "\nseq.mode     : choice of event sequencer"
+help_str += "\nseq.channel  : choice channel within sequencer"
+help_str += "\ndestn.select : qualifier for following destn masks"
+help_str += "\n   Inclusive : trigger when beam to one of destns" 
+help_str += "\n   Exclusive : trigger when not beam to one of destns" 
+help_str += "\n   DontCare  : ignore destn"
+help_str += "\ndestn.destN  : add destN to trigger consideration"
+top.set('help:RO', help_str, 'CHARSTR')
 
+top.set('user.LINAC', 0, 'linacEnum')
+
+for group in range(8):
+    grp_prefix = 'user.Cu.group'+str(group)+'_'
+    top.set(grp_prefix+'eventcode', 40, 'UINT8')
+
+    grp_prefix = 'user.SC.group'+str(group)+'.'
     top.set(grp_prefix+'trigMode', 0, 'trigModeEnum') # default to fixed rate
     top.set(grp_prefix+'delay', 98, 'UINT32')
     top.set(grp_prefix+'fixed.rate', 6, 'fixedRateEnum') # default 1Hz
@@ -56,9 +91,7 @@ for group in range(8):
     for tsnum in range(6):
         top.set(grp_prefix+'ac.ts'+str(tsnum), 0, 'boolEnum')
 
-    top.set(grp_prefix+'eventcode', 0, 'UINT8')
-
-    top.set(grp_prefix+'seq.mode', 15, 'seqEnum')
+    top.set(grp_prefix+'seq.mode'      ,15, 'seqEnum')
     top.set(grp_prefix+'seq.burst.mode', 0, 'seqBurstEnum')
     top.set(grp_prefix+'seq.fixed.rate', 0, 'seqFixedRateEnum')
     top.set(grp_prefix+'seq.local.rate', 0, 'seqLocalEnum')
@@ -67,10 +100,11 @@ for group in range(8):
     for destnum in range(16):
         top.set(grp_prefix+'destination.dest'+str(destnum), 0, 'boolEnum')
 
+    grp_prefix = 'expert.group'+str(group)+'.'
     for inhnum in range(4):
         top.set(grp_prefix+'inhibit'+str(inhnum)+'.enable', 0, 'boolEnum')
         top.set(grp_prefix+'inhibit'+str(inhnum)+'.interval',1,'UINT32')
         top.set(grp_prefix+'inhibit'+str(inhnum)+'.limit',1,'UINT32')
 
-mycdb.modify_device('BEAM', top)
-mycdb.print_configs()
+mycdb.modify_device(args.alias, top)
+#mycdb.print_configs()

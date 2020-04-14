@@ -8,10 +8,10 @@
 #include <atomic>
 
 
-class MetricExporter;
-
 namespace Pds
 {
+  class MetricExporter;
+
   namespace Eb
   {
     class TebCtrbParams;

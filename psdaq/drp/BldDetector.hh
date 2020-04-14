@@ -93,7 +93,7 @@ public:
     Pgp(Parameters& para, DrpBase& drp, Detector* det);
 
     Pds::EbDgram* next(uint64_t pulseId, uint32_t& evtIndex, uint64_t& bytes);
-    void worker(std::shared_ptr<MetricExporter> exporter);
+    void worker(std::shared_ptr<Pds::MetricExporter> exporter);
     void shutdown();
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex, uint64_t& bytes);
@@ -134,13 +134,13 @@ private:
     void _shutdown();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 
-    DrpBase                         m_drp;
-    Parameters&                     m_para;
-    std::thread                     m_workerThread;
-    std::unique_ptr<Pgp>            m_pgp;
-    Detector*                       m_det;
-    std::shared_ptr<MetricExporter> m_exporter;
-    bool                            m_unconfigure;
+    DrpBase                              m_drp;
+    Parameters&                          m_para;
+    std::thread                          m_workerThread;
+    std::unique_ptr<Pgp>                 m_pgp;
+    Detector*                            m_det;
+    std::shared_ptr<Pds::MetricExporter> m_exporter;
+    bool                                 m_unconfigure;
 };
 
 }

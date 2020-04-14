@@ -111,7 +111,7 @@ Pds::EbDgram* MemPool::allocateTr()
 
 EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
                        MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
-                       const std::shared_ptr<MetricExporter>& exporter) :
+                       const std::shared_ptr<Pds::MetricExporter>& exporter) :
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
   m_mon(mon),
@@ -122,8 +122,11 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_count(0),
   m_offset(0),
   m_nodeId(tPrms.id),
-  m_configureBuffer(para.maxTrSize)
+  m_configureBuffer(para.maxTrSize),
+  m_damage(0)
 {
+    std::map<std::string, std::string> labels{{"partition", std::to_string(para.partition)}};
+    exporter->add("DRP_Damage", labels, Pds::MetricType::Gauge, [&](){ return m_damage; });
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname)
@@ -186,6 +189,7 @@ std::string EbReceiver::closeFiles()
 void EbReceiver::resetCounters()
 {
     m_lastIndex = 0;
+    m_damage = 0;
 }
 
 void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
@@ -234,6 +238,12 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     m_lastIndex = index;
     m_lastPid = pulseId;
     m_lastTid = transitionId;
+
+    // Transfer Result damage to the datagram
+    dgram->xtc.damage.increase(result.xtc.damage.value());
+    if (dgram->xtc.damage.value()) {
+        m_damage++;
+    }
 
     // pass everything except L1 accepts and slow updates to control level
     if ((transitionId != XtcData::TransitionId::L1Accept)) {
@@ -447,17 +457,17 @@ std::string DrpBase::configure(const json& msg)
         }
     }
 
-    m_exporter = std::make_shared<MetricExporter>();
+    m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_exposer) {
         logging::info("Providing run-time monitoring data on port %d", port);
         m_exposer->RegisterCollectable(m_exporter);
     }
 
     std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};
-    m_exporter->add("drp_port_rcv_rate", labels, MetricType::Rate,
+    m_exporter->add("drp_port_rcv_rate", labels, Pds::MetricType::Rate,
                     [](){return 4*readInfinibandCounter("port_rcv_data");});
 
-    m_exporter->add("drp_port_xmit_rate", labels, MetricType::Rate,
+    m_exporter->add("drp_port_xmit_rate", labels, Pds::MetricType::Rate,
                     [](){return 4*readInfinibandCounter("port_xmit_data");});
 
     // Create all the eb things and do the connections

@@ -175,7 +175,7 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
 {
     logging::info("EpicsArch configure");
 
-    m_exporter = std::make_shared<MetricExporter>();
+    m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_drp.exposer()) {
         m_drp.exposer()->RegisterCollectable(m_exporter);
     }
@@ -243,13 +243,13 @@ void EaDetector::_worker()
     // setup monitoring
     std::map<std::string, std::string> labels{{"partition", std::to_string(m_para->partition)}};
     m_nEvents = 0;
-    m_exporter->add("drp_event_rate", labels, MetricType::Rate,
+    m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});
     uint64_t bytes = 0L;
-    m_exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
+    m_exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
                     [&](){return bytes;});
     m_nUpdates = 0;
-    m_exporter->add("ea_update_count", labels, MetricType::Counter,
+    m_exporter->add("ea_update_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nUpdates;});
 
     Pgp pgp(*m_para, m_drp, m_running);

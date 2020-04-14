@@ -2,8 +2,9 @@ from psalg.configdb.typed_json import cdict
 import psalg.configdb.configdb as cdb
 import sys
 import IPython
+import argparse
 
-def write_to_daq_config_db():
+def write_to_daq_config_db(args):
 
     #database contains collections which are sets of documents (aka json objects).
     #each type of device has a collection.  The elements of that collection are configurations of that type of device.
@@ -18,16 +19,28 @@ def write_to_daq_config_db():
 
     create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
-    instrument = 'tst'      #
 
-    mycdb = cdb.configdb('mcbrowne:psana@psdb-dev:9306', instrument, create, dbname)    #mycdb.client.drop_database('configDB_szTest') will drop the configDB_szTest database
-    #mycdb.client.drop_database('sioanDB')
-    mycdb.add_alias("BEAM")
+    mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create, dbname)
+    mycdb.add_alias(args.alias)
     mycdb.add_device_config('timetool')
 
     top = cdict()
-    top.setInfo('timetool', 'tmott', 'serial1234', 'No comment')
+    top.setInfo('timetool', args.name, args.segm, args.id, 'No comment')
     top.setAlg('config', [2,0,0])
+
+    top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
+    top.set("firmwareVersion:RO",   0, 'UINT32')
+
+    help_str  = "-- user interface --"
+    help_str += "\nstart_ns : nanoseconds from fiducial to exposure start"
+    top.set("help:RO", help_str, 'CHARSTR')
+
+    #Create a user interface that is an abstraction of the common inputs
+    top.set("user.start_ns", 107649, 'UINT32')
+    #top.set("user.raw.prescale"    , 2, 'UINT32')
+    #top.set("user.fex.prescale_bkg", 3, 'UINT32')
+    #top.set("user.fex.prescale_bkg", 3, 'UINT32')
+    #top.set("user.fex.fir_coeff0"", 1., 'DOUBLE')
 
     #There are many rogue fields, but only a handful need to be configured.  what are they?
     #1)  the FIR coefficients.  after accounting for parabolic fitting detection
@@ -105,10 +118,17 @@ def write_to_daq_config_db():
     #pr.generateAddressMap where pr comes from "import rogue as pr".  For this to work, one has to be logged onto the machine hosting the firmware
     #that interacts with rogue.  This particular register map can be found in the lcls2-pcie-apps directory cloned from https://github.com/slaclab/lcls2-pcie-apps.
 
-    mycdb.modify_device('BEAM', top)
+    mycdb.modify_device(args.alias, top)
 
     #IPython.embed()
 
 
 if __name__ == "__main__":
-    write_to_daq_config_db()
+    parser = argparse.ArgumentParser(description='Write a new TimeTool configuration into the database')
+    parser.add_argument('--inst', help='instrument', type=str, default='tst')
+    parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
+    parser.add_argument('--name', help='detector name', type=str, default='tsttt')
+    parser.add_argument('--segm', help='detector segment', type=int, default=0)
+    parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
+    args = parser.parse_args()
+    write_to_daq_config_db(args)

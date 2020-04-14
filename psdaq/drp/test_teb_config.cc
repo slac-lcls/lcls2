@@ -25,7 +25,7 @@ int main() {
     PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"get_config_json");
     check(pFunc);
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssss","mcbrowne:psana@psdb-dev:9306", "configDB", "TMO", "BEAM", "tmoteb");
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssss","https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/", "configDB", "TMO", "BEAM", "tmoteb");
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);

@@ -3,8 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import numpy as np
-import psana
-import warnings
+#import psana
 import time
 from psana.xtcav.Utils import ROIMetrics, GlobalCalibration, ShotToShotParameters
 import psana.xtcav.Constants as cons
@@ -23,7 +22,7 @@ def get_attribute(o, aname='valsxtp'):
     if oat is None : 
         logger.warning('Object %s does not contain attribute %s' % (str(o), attrname))
         return None
-    logger.debug('XXX dir(oat): %s' % str(dir(oat)))
+    #logger.debug('XXX get_attribute dir(oat) for %s: %s' % (aname,str(dir(oat))))
     return oat
 
 
@@ -78,37 +77,50 @@ def getGlobalXTCAVCalibration(ovals, evt):
     return global_calibration
                           
 
+def attribute_and_name_from_list(ovals, names):
+    atr = None
+    for name in names:
+        atr = get_attribute(ovals, name)
+        if atr is not None : break
+    return atr, name
+
+
+def get_attribute_value(evt, atr, name, default):
+    if atr is None :
+        logger.warning('attribute "%s" is set to default value %d' % (name, default))
+        return default
+    else : 
+        return atr(evt)
+    
+
 def getXTCAVImageROI(ovals, evt):
-    """TBD: need to implement loop over list of variable names, like in original version.
     """
+    """
+    #logger.debug('ZZZZ getXTCAVImageROI dir(ovals):\n%s' % str(dir(ovals)))
 
-    for i in range(len(cons.ROI_SIZE_X_names)):
-        try:
-            #roiXN=SimulatorDetector(cons.ROI_SIZE_X_names[i])
-            #roiX =SimulatorDetector(cons.ROI_START_X_names[i])
-            #roiYN=SimulatorDetector(cons.ROI_SIZE_Y_names[i])
-            #roiY =SimulatorDetector(cons.ROI_START_Y_names[i])
+    roiXN, nameXN = attribute_and_name_from_list(ovals, cons.ROI_SIZE_X_names)
+    roiYN, nameYN = attribute_and_name_from_list(ovals, cons.ROI_SIZE_Y_names)
+    roiX0, nameX0 = attribute_and_name_from_list(ovals, cons.ROI_START_X_names)
+    roiY0, nameY0 = attribute_and_name_from_list(ovals, cons.ROI_START_Y_names)
 
-            xN = ovals.XTCAV_ROI_sizeX(evt)   # roiXN(evt)  #Size of the image in X                           
-            x0 = ovals.XTCAV_ROI_startX(evt)  # roiX(evt)   #Position of the first pixel in x
-            yN = ovals.XTCAV_ROI_sizeY(evt)   # roiYN(evt)  #Size of the image in Y 
-            y0 = ovals.XTCAV_ROI_startY(evt)  # roiY(evt)   #Position of the first pixel in y
+    xN = get_attribute_value(evt, roiXN, nameXN, cons.ROI_SIZE_X)  # Size of the image in X
+    yN = get_attribute_value(evt, roiYN, nameYN, cons.ROI_SIZE_Y)  # Size of the image in Y
+    x0 = get_attribute_value(evt, roiX0, nameX0, cons.ROI_START_X) # Position of the first pixel in x
+    y0 = get_attribute_value(evt, roiY0, nameY0, cons.ROI_START_Y) # Position of the first pixel in y
 
-            #xN = cons.ROI_SIZE_X  #Size of the image in X                           
-            #x0 = cons.ROI_START_X #Position of the first pixel in x
-            #yN = cons.ROI_SIZE_Y  #Size of the image in Y 
-            #y0 = cons.ROI_START_Y #Position of the first pixel in y
+    if None in (xN, yN, x0, y0) : return None
+    if all(v==0 for v in (xN, yN, x0, y0)) : return None
 
-            x = x0+np.arange(0, xN) 
-            y = y0+np.arange(0, yN) 
+    x = x0+np.arange(0, xN) 
+    y = y0+np.arange(0, yN) 
 
-            return ROIMetrics(xN, x0, yN, y0, x, y) 
+    return ROIMetrics(xN, x0, yN, y0, x, y) 
 
-        except KeyError:
-            continue
-        
-    warnings.warn_explicit('No XTCAV ROI info 2',UserWarning,'XTCAV',0)
-    return None
+    #    try:
+    #    except KeyError:
+    #        continue        
+    #logger.warning('No XTCAV ROI info 2')
+    #return None
 
 
 def getShotToShotParameters(evt, valsebm, valsgd, valseid) :

@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
     PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"get_config_json_with_params");
     check(pFunc);
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssss","mcbrowne:psana@psdb-dev:9306", "TMO", "configDB", "BEAM", detname);
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssss","https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/", "TMO", "configDB", "BEAM", detname);
     check(mybytes);
     // returns new reference
     PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
     printf("json: %s\n",json);
 
     NamesId namesid(0,1);
-    unsigned len = Pds::translateJson2Xtc(json, config_buf, namesid);
+    unsigned len = Pds::translateJson2Xtc(json, config_buf, namesid, detname);
     if (len <= 0) {
         fprintf(stderr, "Parse errors, exiting.\n");
         exit(1);

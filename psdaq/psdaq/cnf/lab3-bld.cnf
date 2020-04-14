@@ -72,7 +72,7 @@ base_config = [
  { host: 'drp-tst-dev019', id:'teb19'    , flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
  { host: 'drp-tst-dev016', id:'meb16',       flags:'spu', conda:conda_rel, cmd:'monReqServer -P tst -d -q 4 -C '+collect_host},
 
- { host: 'drp-tst-dev001', id:'xppts_0' , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D TimingSystem'},
+ { host: 'drp-tst-dev001', id:'xppts_0' , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D ts'},
 
  { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P tst'},
  {                        flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},

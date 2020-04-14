@@ -289,7 +289,7 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
 {
     logging::info("PVA configure");
 
-    m_exporter = std::make_shared<MetricExporter>();
+    m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_drp.exposer()) {
         m_drp.exposer()->RegisterCollectable(m_exporter);
     }
@@ -381,31 +381,31 @@ void PvaDetector::_worker()
     std::map<std::string, std::string> labels{{"partition", std::to_string(m_para->partition)},
                                               {"PV", m_pvaMonitor->name()}};
     m_nEvents = 0;
-    m_exporter->add("drp_event_rate", labels, MetricType::Rate,
+    m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});
     uint64_t bytes = 0L;
-    m_exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
+    m_exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
                     [&](){return bytes;});
     m_nUpdates = 0;
-    m_exporter->add("pva_update_rate", labels, MetricType::Rate,
+    m_exporter->add("pva_update_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nUpdates;});
     m_nMatch = 0;
-    m_exporter->add("pva_match_count", labels, MetricType::Counter,
+    m_exporter->add("pva_match_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nMatch;});
     m_nEmpty = 0;
-    m_exporter->add("pva_empty_count", labels, MetricType::Counter,
+    m_exporter->add("pva_empty_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nEmpty;});
     m_nMissed = 0;
-    m_exporter->add("pva_miss_count", labels, MetricType::Counter,
+    m_exporter->add("pva_miss_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nMissed;});
     m_nTooOld = 0;
-    m_exporter->add("pva_tooOld_count", labels, MetricType::Counter,
+    m_exporter->add("pva_tooOld_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nTooOld;});
     m_nTimedOut = 0;
-    m_exporter->add("pva_timeout_count", labels, MetricType::Counter,
+    m_exporter->add("pva_timeout_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nTimedOut;});
 
-    m_exporter->add("drp_worker_input_queue", labels, MetricType::Gauge,
+    m_exporter->add("drp_worker_input_queue", labels, Pds::MetricType::Gauge,
                     [&](){return m_inputQueue.guess_size();});
 
     Pgp pgp(*m_para, m_drp, m_running);
@@ -524,8 +524,7 @@ void PvaDetector::_defer(const XtcData::TimeStamp& timestamp)
     XtcData::Dgram* deferred;
     if (m_deferredFreelist.try_pop(deferred)) { // If a deferred buffer is available...
         deferred->time = timestamp;             //   Save the PV's timestamp
-        deferred->xtc.damage = XtcData::Damage(0);
-        deferred->xtc.extent = sizeof(XtcData::Xtc);
+        deferred->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
         event(*deferred, nullptr);              //   Opt to create the XTC now rather than later
         m_deferredQueue.push(deferred);         //   Queue the deferred buffer for later handling
     }
@@ -672,6 +671,9 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
             }
         }
         m_drp.tebContributor().process(l3InpDg);
+    }
+    else {
+        logging::error("Attempted to send to TEB without an Input buffer\n");
     }
 }
 

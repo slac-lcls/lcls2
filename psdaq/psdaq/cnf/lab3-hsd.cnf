@@ -40,15 +40,15 @@ procmgr_config = [
 # {                        id:'hsdpva_3d', flags:'x', conda:conda_rel, env:epics_env, cmd:'hsdpva '+hsd_epics_dev06+'_3D:A'},
 # {                        id:'hsdpvb_3d', flags:'x', conda:conda_rel, env:epics_env, cmd:'hsdpva '+hsd_epics_dev06+'_3D:B'},
 # { host: 'daq-tst-dev06', id:'hsdioc_3d', flags:'', conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P '+hsd_epics_dev06+'_3D -d /dev/pcie_adc_3d'},
-# { host: 'drp-tst-dev022', id:'xpphsd_0', flags:'pu', conda:conda_rel, cmd:drp_cmd+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3D:A'},
-# { host: 'drp-tst-dev023', id:'xpphsd_0', flags:'pu', conda:conda_rel, cmd:drp_cmd +' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3D:A'},
-# { host: 'drp-tst-dev023', id:'xpphsd_1', flags:'pu', conda:conda_rel, cmd:drp_cmdb+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_3D:B'},
+# { host: 'drp-tst-dev022', id:'xpphsd_0', flags:'pu', conda:conda_rel, cmd:drp_cmd+' -D hsd -k hsd_epics_prefix='+hsd_epics_dev06+'_3D:A'},
+# { host: 'drp-tst-dev023', id:'xpphsd_0', flags:'pu', conda:conda_rel, cmd:drp_cmd +' -D hsd -k hsd_epics_prefix='+hsd_epics_dev06+'_3D:A'},
+# { host: 'drp-tst-dev023', id:'xpphsd_1', flags:'pu', conda:conda_rel, cmd:drp_cmdb+' -D hsd -k hsd_epics_prefix='+hsd_epics_dev06+'_3D:B'},
 
 #  5.0 GS/s digitizer (DEV06_88)(B1)(DA)
 # {                        id:'hsdpvs_88'  , port:'29076', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+hsd_epics_dev06+'_88'},
 # {                        id:'hsdpva_88', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdpva '+hsd_epics_dev06+'_88'},
 # { host: 'daq-tst-dev06', id:'hsdioc_88', flags:'', conda:conda_rel, env:epics_env, cmd:'hsd126PVs -P '+hsd_epics_dev06+'_88 -d /dev/pcie_adc_88'},
-# { host: 'drp-tst-dev021', id:'xpphsd_2', flags:'pu', conda:conda_rel, cmd:drp_cmd+' -D Digitizer -k hsd_epics_prefix='+hsd_epics_dev06+'_88'},
+# { host: 'drp-tst-dev021', id:'xpphsd_2', flags:'pu', conda:conda_rel, cmd:drp_cmd+' -D hsd -k hsd_epics_prefix='+hsd_epics_dev06+'_88'},
 
 #  TTL trigger (signal) on input channels
  { host: 'daq-tst-dev03', id:'ttl'     , flags:'s', conda:conda_rel, cmd:'tprtrig -r 1'},
@@ -59,7 +59,7 @@ procmgr_config = [
  { host: 'drp-tst-dev024', id:'teb1'   , flags:'xspu', conda:conda_rel, cmd:'teb -P '+hutch+' -C '+collect_host+' '+verbosity},
  { host: 'drp-tst-dev016', id:'meb16'   , flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host+verbosity},
 
- { host: 'drp-tst-dev005', id:'xppts_0' , flags:'xspu', conda:conda_rel, cmd:drp_cmdb+' -D TimingSystem'+verbosity},
+ { host: 'drp-tst-dev005', id:'xppts_0' , flags:'xspu', conda:conda_rel, cmd:drp_cmdb+' -D ts'+verbosity},
 
  { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch},
  {                        flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
@@ -89,9 +89,9 @@ for e in hsds:
     procmgr_config.append({id:'hsdpvs_%s_b'%e[bus], port:'%d'%port, flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':B'})
     port += 1
     procmgr_config.append({ host: e[node], id:'hsdioc_%s'%e[bus], flags:'', conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P '+e[pv]+' -d /dev/pcie_adc_%s'%e[bus]})
-    procmgr_config.append({ host: e[drp], id:'xpphsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:drp_cmd+' -D Digitizer -k hsd_epics_prefix='+e[pv]+':A'})
+    procmgr_config.append({ host: e[drp], id:'xpphsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:drp_cmd+' -D hsd -k hsd_epics_prefix='+e[pv]+':A'})
     segm += 1
-    procmgr_config.append({ host: e[drp], id:'xpphsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:drp_cmdb +' -D Digitizer -k hsd_epics_prefix='+e[pv]+':B'})
+    procmgr_config.append({ host: e[drp], id:'xpphsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:drp_cmdb +' -D hsd -k hsd_epics_prefix='+e[pv]+':B'})
     segm += 1
     pvlist.append(e[pv]+':A')
     pvlist.append(e[pv]+':B')

@@ -1,7 +1,6 @@
 import numpy as np
 import scipy.interpolate
 import time
-import warnings
 import cv2
 import scipy.io
 import math

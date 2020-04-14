@@ -42,7 +42,8 @@ class DetectorImpl(object):
         else:
             return None
 
-    def _return_types(self,rtype,rrank):
+    @staticmethod
+    def _return_types(rtype,rrank):
         rval = typing.Any
         if rtype<8:
             if rrank==0:

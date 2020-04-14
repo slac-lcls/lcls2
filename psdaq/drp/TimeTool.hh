@@ -26,6 +26,7 @@ private:
     void _addJson(XtcData::Xtc& xtc, XtcData::NamesId& configNamesId, const std::string& config_alias);
 private:
     enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex};
+    unsigned          m_readoutGroup;
     XtcData::NamesId  m_evtNamesId;
     std::string       m_connect_json;
 };

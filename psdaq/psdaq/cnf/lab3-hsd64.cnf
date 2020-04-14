@@ -30,10 +30,10 @@ procmgr_config = [
  {                        id:'hsdca_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdca DAQ:LAB2:HSD:DEV06_3E -d'},
  { host: 'daq-tst-dev06', id:'hsdioc_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsd64PVs -P DAQ:LAB2:HSD:DEV06_3E -d /dev/pcie_adc_3e -I'},
 
-# { host: 'drp-tst-dev022', id:'hsd', flags:'xp', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -n xpphsd -o /ffb01/tstopr'},
-# { host: 'drp-tst-dev022', id:'hsd', flags:'xp', conda:conda_rel, cmd:'drp -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -n xpphsd'},
+# { host: 'drp-tst-dev022', id:'hsd', flags:'xp', conda:conda_rel, cmd:'drp -l 0x1 -D hsd -d /dev/datadev_0 -C '+collect_host+' -n xpphsd -o /ffb01/tstopr'},
+# { host: 'drp-tst-dev022', id:'hsd', flags:'xp', conda:conda_rel, cmd:'drp -l 0x1 -D hsd -d /dev/datadev_0 -C '+collect_host+' -n xpphsd'},
 #  can't handle two configurators yet
-# { host: 'drp-tst-dev023', id:'hsd1', flags:'xp', conda:conda_rel, cmd:'drp -o /ffb01/tstopr -l 0x1 -D Digitizer -d /dev/datadev_0 -C '+collect_host+' -u hsd1'},
+# { host: 'drp-tst-dev023', id:'hsd1', flags:'xp', conda:conda_rel, cmd:'drp -o /ffb01/tstopr -l 0x1 -D hsd -d /dev/datadev_0 -C '+collect_host+' -u hsd1'},
 
 # { host: 'drp-tst-dev002', id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host},
 # { host: 'drp-tst-dev023', id:'meb1', flags:'spu', conda:conda_rel, cmd:'monReqServer -P TMO -d -q 4 -s 0x40000 -C '+collect_host+' -v'},

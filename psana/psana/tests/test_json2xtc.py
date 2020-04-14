@@ -53,7 +53,7 @@ class Test_JSON2XTC:
 
     def test_one(self, tmp_path):
         c = cdict()
-        c.setInfo("test", "test1", "serial1234", "No comment")
+        c.setInfo("test", "test1", None, "serial1234", "No comment")
         c.setAlg("raw", [1,2,3])
         # Scalars
         c.set("aa", -5, "INT8")

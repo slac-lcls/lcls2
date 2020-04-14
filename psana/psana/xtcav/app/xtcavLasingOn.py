@@ -1,55 +1,41 @@
 #!/usr/bin/env python
 
+import sys
 import argparse
-parser = argparse.ArgumentParser()
-parser.add_argument("experiment", help="psana experiment string (e.g. 'xppd7114')")
-parser.add_argument("run", type=int, help="run number")
-parser.add_argument('--mode', nargs='?', const='idx', default='idx')
+
+import logging
+logger = logging.getLogger(__name__)
+from psana.pyalgos.generic.Utils import init_logger, STR_LEVEL_NAMES
+
+scrname = sys.argv[0].rsplit('/')[-1]
+
+usage = '\nE.g. : %s amox23616 137' % scrname\
+      + '\n  or : %s amox23616 137 --max_shots 200 -f fname.xtc2\n' % scrname
+print(usage)
+
+parser = argparse.ArgumentParser(description='XTCAV data processing') # , usage=usage())
+parser.add_argument('experiment', help='psana experiment string (e.g. "amox23616")')
+parser.add_argument('run', type=int, help='run number')
 parser.add_argument('--max_shots', nargs='?', const=200, type=int, default=200)
 parser.add_argument('--num_bunches', nargs='?', const=1, type=int, default=1)
-#parser.add_argument('--validity_range', nargs='?', const=None, type=tuple, default=None)
 parser.add_argument('--snr_filter', nargs='?', const=10, type=int, default=10)
 parser.add_argument('--roi_expand', nargs='?', const=1.0, type=float, default=1.0)
+parser.add_argument('--mode', nargs='?', const='smd', default='smd', type=str, help='data access mode "smd" or "idx"')
+parser.add_argument('-f', '--fname', type=str, default=\
+  '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0137-e000100-xtcav-v2.xtc2', help='xtc2 file')
+#parser.add_argument('--validity_range', nargs='?', const=None, type=tuple, default=None)
+parser.add_argument('-l', '--loglev', default='DEBUG', type=str, help='logging level name, one of %s' % STR_LEVEL_NAMES)
+
 args = parser.parse_args()
 
-import psana
-from xtcav2.LasingOnCharacterization import *
-import numpy as np
+print('Arguments of type %s as %s' % (type(args), type(vars(args))))
+for k,v in vars(args).items() : print('  %12s : %s' % (k, str(v)))
 
-data_source = psana.DataSource("exp=%s:run=%s:%s" % (args.experiment, str(args.run), args.mode))
-XTCAVRetrieval=LasingOnCharacterization() 
+init_logger(args.loglev, fmt='[%(levelname).1s] L%(lineno)04d : %(message)s', datefmt='%Y-%m-%dT%H:%M:%S')
 
-n_r=0  #Counter for the total number of xtcav images processed within the run
+from psana.xtcav.LasingOnCharacterization import procEvents
+procEvents(args) 
 
-def processImage():
-    t, power = XTCAVRetrieval.xRayPower()  
-    agreement = XTCAVRetrieval.reconstructionAgreement()
-    pulse = XTCAVRetrieval.pulseDelay()
-    print 'Agreement: %g%%; Maximum power: %g; GW Pulse Delay: %g ' %(agreement*100,np.amax(power), pulse[0])
-    
+sys.exit('END OF %s' % scrname)
 
-if args.mode == 'idx':
-    run = data_source.runs().next()
-    times = run.times()
-    for t in times: 
-        evt = run.event(t)
-        if not XTCAVRetrieval.processEvent(evt):
-            continue
-        processImage()
-        n_r += 1
-        if n_r>=args.max_shots: 
-            break
-
-elif args.mode == 'smd':
-    for evt in data_source.events():
-        if not XTCAVRetrieval.processEvent(evt):
-            continue
-        processImage()
-        n_r += 1
-        if n_r>=args.max_shots: 
-            break
-
-else:
-    print "Mode not supported"
-
-
+#----------

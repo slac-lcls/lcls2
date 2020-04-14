@@ -10,6 +10,10 @@ class EnvImpl(DetectorImpl):
         else:
             env_values = self._env_store.values([events], self._var_name)
             return env_values[0]
+    @property
+    def dtype(self):
+        return self._env_store.dtype(self._var_name)
+
 
 class epics_epics_0_0_0(EnvImpl):
     def __init__(self, *args):

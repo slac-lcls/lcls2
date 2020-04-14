@@ -144,17 +144,17 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
     }
 }
 
-void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter, Detector* det,
+void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector* det,
                          Pds::Eb::TebContributor& tebContributor)
 {
     // setup monitoring
     uint64_t nevents = 0L;
     uint64_t bytes = 0L;
     std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};
-    exporter->add("drp_event_rate", labels, MetricType::Rate,
+    exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                   [&](){return nevents;});
 
-    exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
+    exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
                   [&](){return bytes;});
 
     auto queueLength = [](std::vector<SPSCQueue<Batch> >& vec) {
@@ -164,10 +164,10 @@ void PGPDetector::reader(std::shared_ptr<MetricExporter> exporter, Detector* det
         }
         return sum;
     };
-    exporter->add("drp_worker_input_queue", labels, MetricType::Gauge,
+    exporter->add("drp_worker_input_queue", labels, Pds::MetricType::Gauge,
                   [&](){return queueLength(m_workerInputQueues);});
 
-    exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
+    exporter->add("drp_worker_output_queue", labels, Pds::MetricType::Gauge,
                    [&](){return queueLength(m_workerOutputQueues);});
 
 

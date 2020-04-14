@@ -14,9 +14,9 @@
 #include <thread>
 
 
-class MetricExporter;
-
 namespace Pds {
+  class MetricExporter;
+
   namespace Eb {
 
     using BatchFifo = FifoMT<const Pds::Eb::Batch*>;

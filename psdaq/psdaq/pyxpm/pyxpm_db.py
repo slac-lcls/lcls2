@@ -8,7 +8,7 @@ import argparse
 create = True
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--url',type=str,default='mcbrowne:psana@psdb-dev:9306',help='DB URL')
+parser.add_argument('--url',type=str,default='https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/',help='DB URL')
 parser.add_argument('--inst',type=str,default='Lab2',help='instrument')
 parser.add_argument('--alias',type=str,default='PROD',help='alias')
 parser.add_argument('--db',type=str,default='configDB',help='database')
@@ -24,7 +24,7 @@ if args.store:
 
     top = cdict()
 
-    top.setInfo('xpm', args.name, 'serial1234', 'No comment')
+    top.setInfo('xpm', args.name, detSegm=None, 'serial1234', 'No comment')
     top.setAlg('config', [0,0,0])
 
     top.set('XTPG.CuDelay'   , 160000, 'UINT32')
