@@ -302,3 +302,96 @@ class configdb(object):
             return 0
 
         return write_val
+
+# ------------------------------------------------------------------------------
+# configdb CLI
+# ------------------------------------------------------------------------------
+
+import sys
+import argparse
+import pprint
+
+# Parse a device name into 4 elements.
+# Input format: <hutch>/<alias>/<device>_<segment>
+# Returns: hutch, alias, device, segment
+# On error raises NameError.
+def _parse_device4(name):
+    error_txt = 'Name \'%s\' does not match <hutch>/<alias>/<device>_<segment>' % name
+    try:
+        split1 = name.rsplit('_', maxsplit=1)
+        segment = int(split1[1])
+    except Exception:
+        raise NameError(error_txt)
+
+    if len(split1) != 2:
+        raise NameError(error_txt)
+
+    split2 = split1[0].split('/')
+    if len(split2) != 3:
+        raise NameError(error_txt)
+
+    return (split2[0], split2[1], split2[2], segment)
+
+def _cat(args):
+    try:
+        hutch, alias, dev, seg = _parse_device4(args.src)
+    except NameError as ex:
+        print('%s' % ex) 
+        sys.exit(1)
+
+    # get configuration and pretty print it
+    mycdb = configdb(args.url, hutch, root=args.root)
+    xx = mycdb.get_configuration(alias, '%s_%d' % (dev, seg), hutch)
+    if len(xx) > 0:
+        pprint.pprint(xx)
+
+def _cp(args):
+    try:
+        oldhutch, oldalias, olddev, oldseg = _parse_device4(args.src)
+        newhutch, newalias, newdev, newseg = _parse_device4(args.dst)
+    except NameError as ex:
+        print('%s' % ex) 
+        sys.exit(1)
+
+    # transfer configuration
+    mycdb = configdb(args.url, newhutch, create=args.create, root=args.root)
+    if args.create:
+        mycdb.add_alias(newalias)
+    retval = mycdb.transfer_config(oldhutch, oldalias, '%s_%d' % (olddev, oldseg),
+                                   newalias, '%s_%d' % (newdev, newseg))
+    if retval == 0:
+        print('failed to transfer configuration')
+        sys.exit(1)
+
+def main():
+
+    # create the top-level parser
+    parser = argparse.ArgumentParser(description='configuration database CLI')
+    parser.add_argument('--url', default='https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/',
+                        help='configuration database connection')
+    parser.add_argument('--root', default='configDB', help='configuration database root (default: configDB)')
+    subparsers = parser.add_subparsers()
+
+    # create the parser for the "cat" command
+    parser_cat = subparsers.add_parser('cat', help='print a configuration')
+    parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
+    parser_cat.set_defaults(func=_cat)
+   
+    # create the parser for the "cp" command
+    parser_cp = subparsers.add_parser('cp', help='copy a configuration')
+    parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
+    parser_cp.add_argument('dst', help='destination: <hutch>/<alias>/<device>_<segment>')
+    parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
+    parser_cp.set_defaults(func=_cp)
+
+    # parse the args and call whatever function was selected
+    args = parser.parse_args()
+    try:
+        subcommand = args.func
+    except Exception:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
+    subcommand(args)
+
+if __name__ == '__main__':
+    main()
