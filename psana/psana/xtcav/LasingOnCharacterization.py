@@ -84,7 +84,7 @@ class LasingOnCharacterization():
         self._valsebm  = xtup.get_attribute(self._ebeam,       'valsebm')
         self._valsgd   = xtup.get_attribute(self._gasdetector, 'valsgd')
         self._valseid  = xtup.get_attribute(self._eventid,     'valseid')
-        self._valsxtp  = xtup.get_attribute(self._xtcavpars,    'valsxtp')
+        self._valsxtp  = xtup.get_attribute(self._xtcavpars,   'valsxtp')
 
         if None in (self._camraw, self._valsebm, self._valsgd, self._valseid, self._valsxtp) : 
             sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
@@ -119,7 +119,7 @@ class LasingOnCharacterization():
             self._setLasingOffReferenceParameters()
             return
 
-        if self._lasingoffreference is None :
+        if self._lasingoffreference is None:
             lofr_data, lofr_meta = self._camera.calibconst.get('xtcav_lasingoff')
             self._lasingoffreference = xtu.xtcav_calib_object_from_dict(lofr_data)
             logger.debug('==== lofr_meta:\n%s' % str(lofr_meta))
@@ -240,7 +240,7 @@ class LasingOnCharacterization():
         #=====================================
 
 
-        self._image_profile, self._processed_image =  xtu.processImage(self._rawimage, self.parameters, self._darkreference, self._global_calibration, 
+        self._image_profile, self._processed_image = xtu.processImage(self._rawimage, self.parameters, self._darkreference, self._global_calibration, 
                                                     self._saturation_value, self._roixtcav, shot_to_shot)
         if not self._image_profile:
             logger.warning('Cannot create image profile')

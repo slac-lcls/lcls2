@@ -37,20 +37,18 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr
 """
 
 class DarkBackgroundReference():
-    def __init__(self,
-        fname='/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0104-e000400-xtcav-v2.xtc2',
-        experiment='amox23616',
-        run_number=104,
-        max_shots=400,
-        start_image=0,
-        validity_range=None,
-        calibration_path='',
-        save_to_file=True):
+    def __init__(self, args):
 
-        #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s' # '%(message)s'
-        fmt='[%(levelname).1s] L%(lineno)04d : %(message)s'
-        logging.basicConfig(format=fmt, datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
+        self.args = args
 
+        fname = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0104-e000400-xtcav-v2.xtc2')
+        experiment       = getattr(args, 'experiment', 'amox23616')
+        run_number       = getattr(args, 'run_number', 104)
+        max_shots        = getattr(args, 'max_shots', 400)
+        validity_range   = getattr(args, 'validity_range', None)
+        save_to_file     = getattr(args, 'save_to_file', True)
+        calibration_path = getattr(args, 'calibration_path', '')
+        start_image      = getattr(args, 'start_image', 0)
 
         self.image=None
         self.ROI=None
