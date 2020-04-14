@@ -30,8 +30,7 @@ ROOT_CONFIGDB = 'configDB'
 
 #--------------------
 
-#from psalg.configdb.configdb import configdb
-from psalg.configdb.webconfigdb import configdb
+from psalg.configdb.configdb import configdb
 
 def get_configdb(uri_suffix=URI_CONFIGDB, inst=None, root=ROOT_CONFIGDB) :
     #print('XXX get_configdb', uri_suffix, inst, root)

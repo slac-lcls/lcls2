@@ -112,7 +112,7 @@ if __name__ == "__main__":
     connect_info['body']['control']['0'] = {}
     connect_info['body']['control']['0']['control_info'] = {}
     connect_info['body']['control']['0']['control_info']['instrument'] = 'tst'
-    connect_info['body']['control']['0']['control_info']['cfg_dbase'] = 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/sioanDB'
+    connect_info['body']['control']['0']['control_info']['cfg_dbase'] = 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/configDB'
 
     mystring = json.dumps(connect_info)                             #paste this string into the pgpread_timetool.cc as parameter for the tt_config function call
     print(mystring)
