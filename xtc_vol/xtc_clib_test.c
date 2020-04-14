@@ -13,6 +13,6 @@
 
 int main(int argc, char* argv[] ){
     xtc_object* helper = xtc_file_open(argv[1]);
-    xtc_it_open(helper);
+    //xtc_it_open(helper);
     return 0;
 }

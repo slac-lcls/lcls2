@@ -2208,6 +2208,7 @@ static void *
 H5VL_xtc_group_open(void *obj, const H5VL_loc_params_t *loc_params,
     const char *name, hid_t gapl_id, hid_t dxpl_id, void **req)
 {
+    //assert(0);
     DEBUG_PRINT
     H5VL_xtc_t* target = _object_lookup(obj, loc_params);
     xtc_object* group = target->xtc_obj;
@@ -2499,7 +2500,7 @@ int loop_children(bool recursive, xtc_object* xtc_obj, H5L_iterate2_t* op, void*
             return op_ret;
         }
 
-        if( children[i]->obj_type == XTC_GROUP){
+        if(recursive && children[i]->obj_type == XTC_GROUP){
             op_ret = loop_children(recursive, children[i], op, op_data);
             if(op_ret != H5_ITER_CONT){
                 H5Idec_ref(gid);

@@ -23,12 +23,6 @@ using namespace XtcData;
 using namespace std;
 using std::string;
 
-typedef struct MappingLayer {
-    void* xtc_root_it; //file root
-    void* cur_it; //current xtc it, points to a xtc node.
-    char* cur_it_name; // something like "/grp_l1/grp_l2/"
-    void* iteration_stack; //
-}mapping;
 
 #define TIMESTAMP_DS_NAME "timestamps"
 #define DEBUG_PRINT printf("%s():%d\n", __func__, __LINE__);
@@ -40,18 +34,11 @@ char* name_convert(const char* h5_name){
     return xtc_name_surfix;
 }
 
-//vector<string> _CURRENT_PATH_TOKENS;
-
-
-// show name: xtc it -> h5 name string
-
-
-// search/open: h5 name string -> xtc it BFS/DFS combined.
-
-//==============================================
-
 int check_update_dgram(int fd, xtc_dgram_info* dg_info, Dgram* current_dgram_in_out);
 
+/**
+ * SMD iterator, used to read smd file that stores metadata and transition/dgram offset information of the original xtc2 file.
+ */
 class SmdIter : public XtcIterator
 {
 public:
@@ -111,6 +98,10 @@ private:
 xtc_object* xtc_obj_new(int fd, void* fileIter, void* dbgiter, void* dg, const char* obj_path_abs);
 xtc_object* xtc_obj_new(xtc_location* location, const char* obj_path_abs);
 
+/**
+ * Customized XTC iterator, it's the core part to read xtc2 file.
+ * It read the file, and extract hierarchy information and store in a index tree.
+ */
 class DebugIter : public XtcIterator
 {
 public:
@@ -119,14 +110,16 @@ public:
     {
 
     }
-
+    /**
+     * Collect dataset information and build structures for HDF5 VOL to build data space,
+     * also includes the position info in the xtc2 file.
+     */
     xtc_ds_info* get_ds_info(int index, ShapesData* shapesdata, xtc_dgram_info &dgram_info){//int i Names& names,
         NamesId namesId = shapesdata->namesId();
 
         DescData descdata(*shapesdata, _namesLookup[namesId]);
         DEBUG_PRINT
         Names& names = descdata.nameindex().names();
-
 
         xtc_ds_info* dataset_info = (xtc_ds_info*)calloc(1, sizeof(xtc_ds_info));
         Name& name = names.get(index);
@@ -196,7 +189,10 @@ public:
         return dataset_info;
     }
 
-    //Only work with valid current Dgram, need to check before calling this, must be non-timestamp dataset.
+    /**
+     * Get data from nested and recursive xtc data structure and give it to dataset_read_all().
+     * Only work with valid current Dgram, need to check the type before calling this, must be non-timestamp dataset.
+     */
     size_t get_data(xtc_object* xtc_obj, size_t pixel_cnt, void* data_out){//Names* namesd,
         xtc_data_handle* data_handle = xtc_obj->ds_info->data_handle;
         assert(data_handle);
@@ -444,6 +440,9 @@ public:
         return read_size;
     }
 
+    /**
+     * Print data value, used for demo and debugging.
+     */
     void get_value(int i, Name& name, DescData& descdata){
         int data_rank = name.rank();
         int data_type = name.type();
@@ -595,6 +594,9 @@ public:
         }
     }
 
+    /**
+     * This function is an implementation of Xtc::iterate() interface.
+     */
     int process(Xtc* xtc){
         int ret = -1;;
         switch(get_iterator_type()){
@@ -608,6 +610,9 @@ public:
         return ret;
     }
 
+    /**
+     * Currently the only scan type is to scan all to build the hierarchy.
+     */
     int process_list_all(Xtc* xtc)
     {
         assert(this->_current_dgram);
@@ -833,6 +838,10 @@ public:
 
     vector<string> _INPUT_PATH_TOKENS;
 
+    /**
+     * The tree-related functions below are used to build and access the metadata index tree,
+     * in which each node represents a path and a location in the HDF5 virtual file hierarchy.
+     */
     void xtc_tree_init(xtc_object* root_obj){
         ROOT_NODE = new_xtc_node(root_obj);
         ROOT_NODE->parent = NULL;
@@ -890,7 +899,9 @@ public:
         printf("set_current_dgram: resulting id = %llu\n", this->_current_dgram->time.value());
     }
 
-    //find dgram_id
+    /** Find the dgram_info object by dgram_id from the dgram index map.
+     *  Important info fields include dgram offset in the xtc2 file, transition type and presetned dataset type.
+     */
     int find_index(uint64_t dgram_id, xtc_dgram_info* dgram_info_out){
         assert(dgram_info_out);
         auto it = this->_index_map->find(dgram_id);
@@ -907,7 +918,9 @@ public:
         }
     }
 
-    //Load smd file and fill index the map
+    /** Read the smd file and fill the dgram index in the map
+     *
+     */
     int load_index(int index_fd){
         XtcFileIterator iter(index_fd, 0x4000000);
         unordered_map<uint64_t, xtc_dgram_info>* index_map = new unordered_map<uint64_t, xtc_dgram_info>;
@@ -959,7 +972,9 @@ public:
         return 0;
     }
 
-    //Check if the current dgram is the target, if not, load dgram.
+    /**
+     * Check if the current dgram is the target, if not, load dgram from xtc2 file.
+     */
     int check_update_dgram(int fd, xtc_dgram_info* dg_info, Dgram* current_dgram_in_out){
         assert(dg_info && current_dgram_in_out);
         static const unsigned bigdgBufferSize = 0x4000000;
@@ -1043,7 +1058,9 @@ private:
     }
 };
 
-
+/**
+ * Read and return the whole dataset for HDF5 dataset_read() call.
+ */
 size_t dataset_read_all(xtc_object* obj, void* buf_out){
     size_t read_size = 0;
     assert(obj->location && obj->ds_info &&
@@ -1134,6 +1151,10 @@ int verifyDgram(Dgram* dgram){
     return -1;
 }
 
+/**
+ * The entry point of iterating the xtc2 file, it read the file,
+ * build metadata index tree and dgram index map for later faster access.
+ */
 xtc_object* iterate_list_all(int fd, int index_fd){
     static const unsigned bigdgBufferSize = 0x4000000;
 
