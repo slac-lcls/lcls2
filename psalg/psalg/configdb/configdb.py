@@ -339,8 +339,11 @@ def _cat(args):
         print('%s' % ex) 
         sys.exit(1)
 
+    # authentication is not required, adjust url accordingly
+    url = args.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
+
     # get configuration and pretty print it
-    mycdb = configdb(args.url, hutch, root=args.root)
+    mycdb = configdb(url, hutch, root=args.root)
     xx = mycdb.get_configuration(alias, '%s_%d' % (dev, seg), hutch)
     if len(xx) > 0:
         pprint.pprint(xx)
@@ -354,7 +357,8 @@ def _cp(args):
         sys.exit(1)
 
     # transfer configuration
-    mycdb = configdb(args.url, newhutch, create=args.create, root=args.root)
+    mycdb = configdb(args.url, newhutch, create=args.create, root=args.root,
+                     user=args.user, password=args.password)
     if args.create:
         mycdb.add_alias(newalias)
     retval = mycdb.transfer_config(oldhutch, oldalias, '%s_%d' % (olddev, oldseg),
@@ -381,6 +385,8 @@ def main():
     parser_cp = subparsers.add_parser('cp', help='copy a configuration')
     parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
     parser_cp.add_argument('dst', help='destination: <hutch>/<alias>/<device>_<segment>')
+    parser_cp.add_argument('--user', default='xppopr', help='default: xppopr')
+    parser_cp.add_argument('--password', default='pcds', help='default: pcds')
     parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
     parser_cp.set_defaults(func=_cp)
 
