@@ -6,16 +6,12 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from psana.pop.POP import POP
 import pickle
 
-import sys
-from psana.pyalgos.generic.NDArrUtils import print_ndarr
-from psana import DataSource
-
 
 fnm = '/reg/d/psdm/AMO/amox27716/results/xiangli/pop_files/img.pkl'
 with open(fnm, 'rb') as f:
     img = pickle.load(f)  
     
-pop = POP(lmax=4,reg=0,alpha=4e-4,img=img,X0=None,Y0=None,Rmax=None,RBFs_db = True,RBFs_fnm=None,edge_w=10)    
+pop = POP(lmax=4,reg=0,alpha=4e-4,img=img,X0=None,Y0=None,Rmax=None,RBFs_db = False,RBFs_fnm='/reg/d/psdm/AMO/amox27716/results/xiangli/pop_files/RBFs512.pkl',edge_w=10)    
 print('Peel...')
 pop.Peel(img)
 slice_img = pop.GetSlice()
