@@ -89,6 +89,8 @@ unsigned TimeTool::_getPaddr() {
     Py_DECREF(pModule);
     Py_DECREF(mybytes);
     Py_DECREF(json_bytes);
+
+    return reg;
 }
 
 json TimeTool::connectionInfo()
