@@ -239,8 +239,8 @@ class LasingOffReference():
         self.n=num_processed
         self.parameters = self.parameters._replace(num_groups=num_groups)   
 
-        print('ZZZ self.parameters.validity_range', self.parameters.validity_range, ' type:', type(self.parameters.validity_range))
-        print('ZZZ self.parameters.run_number', self.parameters.run_number, ' type:', type(self.parameters.run_number))
+        logger.debug('self.parameters.validity_range: %s  type: %s' % (self.parameters.validity_range, type(self.parameters.validity_range)))
+        logger.debug('self.parameters.run_number: %d  type: %s' % (self.parameters.run_number, type(self.parameters.run_number)))
 
         # Set validity range, replace 'end' -> 9999 othervise save does not work...
         if not self.parameters.validity_range or not type(self.parameters.validity_range) == tuple:

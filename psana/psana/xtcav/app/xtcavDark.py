@@ -8,7 +8,7 @@ from psana.pyalgos.generic.Utils import init_logger, STR_LEVEL_NAMES
 
 scrname = sys.argv[0].rsplit('/')[-1]
 usage = 'E.g.: %s amox23616 104' % scrname\
-      + '\n  or: %s -f fname.xtc2 amox23616 104' % scrname
+      + '\n  or: %s amox23616 104 -f fname.xtc2' % scrname
 print(usage)
 
 d_fname = '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0104-e000400-xtcav-v2.xtc2'

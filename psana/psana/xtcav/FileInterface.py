@@ -1,6 +1,7 @@
 import h5py
 import numpy
 import logging
+logger = logging.getLogger(__name__)
 
 class Default():
     pass
@@ -29,7 +30,7 @@ class ConstantsStore():
 
     def storevalue(self,v,name):
         '''persist one of the supported types to the hdf file'''
-        print('XXXXXX:', self.cwd+'/'+name, '  value:', v, '  type(v):', type(v))
+        logger.debug('  %s/%s   value: %s  type(v): %s' % (self.cwd, name, str(v), str(type(v))))
         self.f[self.cwd+'/'+name] = v
 
     def dict(self,d,name):
