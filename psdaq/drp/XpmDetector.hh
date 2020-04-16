@@ -18,6 +18,8 @@ protected:
     XpmDetector(Parameters* para, MemPool* pool);
     nlohmann::json connectionInfo() override;
     void connect(const nlohmann::json&, const std::string& collectionId) override;
+protected:
+    unsigned m_length;
 };
 
 }

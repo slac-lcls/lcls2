@@ -23,6 +23,7 @@ add_executable(drp
     TimingSystem.cc
     TimeTool.cc
     Wave8.cc
+    Opal.cc
     PGPDetector.cc
     PGPDetectorApp.cc
     drp.cc

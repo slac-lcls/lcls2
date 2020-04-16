@@ -39,7 +39,8 @@ public:
 TimeTool::TimeTool(Parameters* para, MemPool* pool) :
     Detector(para, pool),
     m_evtNamesId(-1, -1), // placeholder
-    m_connect_json("")
+    m_connect_json(""),
+    m_paddr       (_getPaddr())
 {
     virtChan = 1;
 }
@@ -51,25 +52,48 @@ static void check(PyObject* obj) {
     }
 }
 
-json TimeTool::connectionInfo()
-{
-    int fd = open(m_para->device.c_str(), O_RDWR);
-    if (fd < 0) {
-        logging::error("Error opening %s", m_para->device.c_str());
-        return json();
+unsigned TimeTool::_getPaddr() {
+    // returns new reference
+    PyObject* pModule = PyImport_ImportModule("psalg.config.tt_config");
+    check(pModule);
+    // returns borrowed reference
+    PyObject* pDict = PyModule_GetDict(pModule);
+    check(pDict);
+    // returns borrowed reference
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"tt_connect");
+    check(pFunc);
+    // returns new reference
+    PyObject* mybytes = PyObject_CallFunction(pFunc, "i", 0);
+    check(mybytes);
+    // returns new reference
+    PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
+    check(json_bytes);
+    char* json_str = (char*)PyBytes_AsString(json_bytes);
+
+    Document *d = new Document();
+    d->Parse(json_str);
+    if (d->HasParseError()) {
+        printf("Parse error: %s, location %zu\n",
+               GetParseError_En(d->GetParseError()), d->GetErrorOffset());
+        abort();
+    }
+    const Value& a = (*d)["paddr"];
+
+    unsigned reg = a.GetInt();
+    if (!reg) {
+        const char msg[] = "XPM Remote link id register is zero\n";
+        logging::error("%s", msg);
+        throw msg;
     }
 
-    // the address comes from pyrogue rootDevice.saveAddressMap('fname')
-    // perhaps ideally we would call detector-specific rogue python. this
-    // is the rogue hierarchy for this register in the timetool:
-    // TimeToolKcu1500Root.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId
-    uint32_t reg;
-    dmaReadRegister(fd, 0x940024, &reg);
+    Py_DECREF(pModule);
+    Py_DECREF(mybytes);
+    Py_DECREF(json_bytes);
+}
 
-    close(fd);
-    // there is currently a failure mode where the register reads
-    // back as zero (incorrectly). This is not the best longterm
-    // fix, but throw here to highlight the problem. - cpo
+json TimeTool::connectionInfo()
+{
+    unsigned reg = m_paddr;
     if (!reg) {
         const char msg[] = "XPM Remote link id register is zero\n";
         logging::error("%s", msg);

@@ -46,7 +46,7 @@ namespace Drp {
             char name[32];
             // v.NameVec.push_back(XtcData::Name("integralSize", XtcData::Name::UINT8));
             // v.NameVec.push_back(XtcData::Name("trigDelay"   , XtcData::Name::UINT8));
-            v.NameVec.push_back(XtcData::Name("trigCount"   , XtcData::Name::UINT16));
+            v.NameVec.push_back(XtcData::Name("itrigCount"   , XtcData::Name::UINT16));
             // v.NameVec.push_back(XtcData::Name("baselineSize", XtcData::Name::UINT16));
             for(unsigned i=0; i<8; i++) {
                 sprintf(name,"integral_%d",i);
@@ -61,7 +61,7 @@ namespace Drp {
         static void createData(CreateData& cd, unsigned& index,
                                void* segptr, unsigned segsize) {
             IntegralStream& p = *new(segptr) IntegralStream;
-            cd.set_value(index++, p._trigCount);
+            cd.set_value(index++, p._itrigCount);
             for(unsigned i=0; i<8; i++) {
                 uint32_t v = p._integral[i];
                 if (v & (1<<23))   // sign-extend
@@ -75,8 +75,8 @@ namespace Drp {
         IntegralStream() {}
     private:
         void _dump() const {
-          printf("integralSize %02x  trigDelay %02x  trigCount %04x  baseSize %04x\n",
-                 _integralSize, _trigDelay, _trigCount, _baselineSize);
+          printf("integralSize %02x  trigDelay %02x  itrigCount %04x  baseSize %04x\n",
+                 _integralSize, _trigDelay, _itrigCount, _baselineSize);
           for(unsigned i=0; i<8; i++)
               printf(" %d/%u", _integral[i], _base[i]);
           printf("\n");
@@ -84,7 +84,7 @@ namespace Drp {
         uint8_t  _integralSize;
         uint8_t  _trigDelay;
         uint16_t _reserved;
-        uint16_t _trigCount;
+        uint16_t _itrigCount;
         uint16_t _baselineSize;
         int32_t  _integral[8];
         uint16_t _base[8];
@@ -93,16 +93,16 @@ namespace Drp {
     public:
         static void varDef(VarDef& v) {
             // v.NameVec.push_back(XtcData::Name("quadrantSel", XtcData::Name::UINT32));
-            v.NameVec.push_back(XtcData::Name("trigCount"  , XtcData::Name::UINT32));
-            v.NameVec.push_back(XtcData::Name("integral"   , XtcData::Name::DOUBLE));
+            v.NameVec.push_back(XtcData::Name("ptrigCount" , XtcData::Name::UINT32));
+            v.NameVec.push_back(XtcData::Name("intensity"  , XtcData::Name::DOUBLE));
             v.NameVec.push_back(XtcData::Name("posX"       , XtcData::Name::DOUBLE));
             v.NameVec.push_back(XtcData::Name("posY"       , XtcData::Name::DOUBLE));
         }
         static void createData(CreateData& cd, unsigned& index,
                                void* segptr, unsigned segsize) {
             ProcStream& p = *new(segptr) ProcStream;
-            cd.set_value(index++, p._trigCount);
-            cd.set_value(index++, p._integral);
+            cd.set_value(index++, p._ptrigCount);
+            cd.set_value(index++, p._intensity);
             cd.set_value(index++, p._posX);
             cd.set_value(index++, p._posY);
             //            p._dump();
@@ -110,12 +110,12 @@ namespace Drp {
         ProcStream() {}
     private:
         void _dump() const {
-            printf("quadrantSel %08x  trigCount %08x  integral %f  posX %f  posY %f\n",
-                   _quadrantSel, _trigCount, _integral, _posX, _posY);
+            printf("quadrantSel %08x  ptrigCount %08x  intensity %f  posX %f  posY %f\n",
+                   _quadrantSel, _ptrigCount, _intensity, _posX, _posY);
         }
         uint32_t _quadrantSel;
-        uint32_t _trigCount;
-        double   _integral;
+        uint32_t _ptrigCount;
+        double   _intensity;
         double   _posX;
         double   _posY;
     };
@@ -236,6 +236,7 @@ unsigned Wave8::_getPaddr()
 json Wave8::connectionInfo()
 {
     // Exclude connection info until Wave8 timingTxLink is fixed
+    logging::error("Returning NO XPM link; implementation incomplete");
     return json({});
 
     unsigned reg = m_paddr;

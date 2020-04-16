@@ -18,6 +18,26 @@ def database_object_calculations_2rogue():
 def write_to_rogue():
     return 0
 
+def tt_connect(txId):
+
+    myargs = { 'dev'         : '/dev/datadev_0',
+               'pgp3'        : False,
+               'pollEn'      : False,
+               'initRead'    : True,
+               'dataCapture' : False,
+               'dataDebug'   : False,}
+
+    # in older versions we didn't have to use the "with" statement
+    # but now the register accesses don't seem to work without it -cpo
+    with lcls2_timetool.TimeToolKcu1500Root(**myargs) as cl:
+
+        rxId = cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
+        cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.put(txId)
+        
+    d = {}
+    d['paddr'] = rxId
+    return json.dumps(d)
+
 def tt_config(connect_str,cfgtype,detname,detsegm,group):
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
 
@@ -69,19 +89,12 @@ def tt_config(connect_str,cfgtype,detname,detsegm,group):
         
             if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
 
-                if("UartPiranha4" in path):
-                    #UartPiranhaCode  = (path.split(".")[-1]).lower()
-                    #UartValue = cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4._tx.sendString("get '"+UartPiranhaCode)
-                    #print(path+", rogue value = "+str(UartValue)+", daq config database = " +str(configdb_node))
-                    rogue_node.set(int(str(configdb_node),10))
-                    pass
-
-                else:
+                #  All FIR parameters are stored in configdb as hex strings (I don't know why)
+                if ".FIR." in path:
                     print(path+", rogue value = "+str(hex(rogue_node.get()))+", daq config database = " +str(configdb_node))
-
-                    # this is where the magic happens.  I.e. this is where the rogue axi lite register is set to the daq config database value
-                    # There's something uneasy about this
                     rogue_node.set(int(str(configdb_node),16))
+                else:
+                    rogue_node.set(configdb_node)
     
         cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
         cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(True)

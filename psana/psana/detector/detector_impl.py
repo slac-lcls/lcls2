@@ -57,6 +57,9 @@ class DetectorImpl(object):
         else:
             return None
 
+    def _info(self,evt):
+        return self._segments(evt)[0]
+
     @staticmethod
     def _return_types(rtype,rrank):
         rval = typing.Any
@@ -77,8 +80,6 @@ class DetectorImpl(object):
 
     def _add_fields(self):
         for config in self._configs:
-            # cpo: temporary hack: ignore configs that have
-            # had an empty placeholder put in them in __init__
             if not hasattr(config,'software'): continue
             if hasattr(config.software,self._det_name):
                 seg      = getattr(config.software,self._det_name)
@@ -94,3 +95,4 @@ class DetectorImpl(object):
                         else:
                             return getattr(info,field)
                     setattr(self, field, func)
+

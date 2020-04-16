@@ -53,10 +53,10 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
 {
     logging::info("XpmDetector connect");
     // FIXME make configureable
-    int length = 100;
+    m_length = 100;
     std::map<std::string,std::string>::iterator it = m_para->kwargs.find("sim_length");
     if (it != m_para->kwargs.end())
-        length = stoi(it->second);
+        m_length = stoi(it->second);
 
     int links = m_para->laneMask;
 
@@ -79,7 +79,7 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
             l &= ~(1<<i);
 
             dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
-            dmaWriteRegister(fd, 0x00a00000+4*(i&3), (length&0xffffff) | (1<<31));  // enable
+            dmaWriteRegister(fd, 0x00a00000+4*(i&3), (m_length&0xffffff) | (1<<31));  // enable
           }
       }
 
