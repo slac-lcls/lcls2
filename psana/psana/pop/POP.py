@@ -1,22 +1,27 @@
 import numpy as np
 import pickle
-from psana.pop.Proj import GenerateRBFs
+from psana.pop.Projection import GenerateRBFs
 from psana.pop.Legendre import Legendre
 from psana.pop.Quadrant import GetCenterR, GetQuadrant, Quadrant2img
 from psana.pop.CartPolar import GenerateCartGrid, GeneratePolarGrid, FindNbrs, Cart2Polar, Polar2Cart
+from psana.pscalib.calib.MDBWebUtils import calib_constants
 
 class POP:
-    def __init__(self, lmax=4,reg=0,img=None,X0=None,Y0=None,Rmax=None,RBFs_fnm=None,edge_w=10):
+    def __init__(self, lmax=4,reg=0,alpha=1,img=None,X0=None,Y0=None,Rmax=None,RBFs_db = False,RBFs_fnm=None,edge_w=10):
     
         print('Start initialization......')                          
         lnum = int(lmax/2 + 1)         
         ls = np.arange(0,lnum)*2 
-        self.reg = reg           
+        self.reg = reg 
+        self.alpha = alpha         
                      
         self.X0, self.Y0, self.Rmax = GetCenterR(img,X0,Y0,Rmax) 
         
-        if RBFs_fnm is not None:
-            print('Loading RBFs......')
+        if RBFs_db is True:
+            print('Loading RBFs from DB......')
+            self.RBFs, doc = calib_constants('ele_opal', exp='amox27716', ctype='pop_rbfs', run=85)
+        elif RBFs_fnm is not None:
+            print('Loading RBFs from '+RBFs_fnm+'......')
             with open(RBFs_fnm, 'rb') as f:
                 self.RBFs = pickle.load(f)            
         else:
@@ -39,6 +44,7 @@ class POP:
         self.LegendreMat_SVD(lnum, ls)   
         
         self.rbins = np.arange(0,self.Rmax+1)
+        self.Ebins = np.linspace(0,self.alpha*(self.Rmax+1)**2,int(len(self.rbins)/2))
         self.scf = np.sin(self.Angles)*np.sqrt(self.Rarrs)
         
         self.Q_polar_3D_slice_fit = np.zeros((num_elms,))          
@@ -94,7 +100,11 @@ class POP:
     
     def GetRadialDist(self):
         DistR,_ = np.histogram(self.Rarrs,bins = self.rbins,weights=self.Q_polar_3D_slice_fit*self.scf)    
-        return DistR
+        return self.rbins,DistR
+        
+    def GetEnergyDist(self):
+        DistE,_ = np.histogram(self.alpha*self.Rarrs**2,bins = self.Ebins,weights=self.Q_polar_3D_slice_fit*self.scf)    
+        return self.Ebins,DistE        
     
         
     def LegendreMat_SVD(self, lnum, ls):
