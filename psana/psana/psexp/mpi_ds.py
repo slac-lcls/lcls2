@@ -44,6 +44,7 @@ class RunParallel(Run):
             super()._get_runinfo()
             nbytes = np.array([memoryview(config).shape[0] for config in self.configs], \
                             dtype='i')
+            super()._set_configinfo()
             super()._set_calibconst()
             self.bcast_packets = {'calibconst': self.calibconst, \
                     'expt': self.expt, 'runnum': self.runnum, 'timestamp': self.timestamp}
@@ -68,6 +69,7 @@ class RunParallel(Run):
         if rank > 0:
             self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
             self.dm = DgramManager(xtc_files, configs=self.configs, run=self)
+            super()._set_configinfo() # after creating a dgrammanger, we can setup config info
             self.calibconst = self.bcast_packets['calibconst']
             self.expt = self.bcast_packets['expt']
             self.runnum = self.bcast_packets['runnum']
