@@ -7,38 +7,16 @@ class Container(object):
         pass
 
 class DetectorImpl(object):
-    def __init__(self, det_name, drp_class_name, all_det_configs, calibconst):
+    def __init__(self, det_name, drp_class_name, configinfo, calibconst):
         self._det_name       = det_name
         self._drp_class_name = drp_class_name
 
-        # Setup a new config list - for configs missing this detector,
-        # add blank dictionary as a placeholder.
-        self._configs = [Dgram(view=config) for config in all_det_configs]
-        self._config_segments = []
-        # a dictionary of the ids (a.k.a. serial-number) of each segment
-        self._segids = {}
-        for config in self._configs:
-            if hasattr(config.software, self._det_name): 
-                seg_dict = getattr(config.software, self._det_name)
-                self._config_segments += list(seg_dict.keys())
-                #e.g. self._configs[0].software.xpphsd[0].detid
-                seg_dict = getattr(config.software, self._det_name)
-                for segment, det in seg_dict.items():
-                    self._segids[segment]=det.detid
-                    self._dettype=det.dettype
-            else:
-                config.__dict__ = {self._det_name: {}}
-        self._config_segments.sort()
-
-        self._get_uniqueid()
-
+        self._configs = configinfo.configs # configs for only this detector
+        self._sorted_segment_ids = configinfo.sorted_segment_ids
+        self._uniqueid = configinfo.uniqueid
+        self._dettype = configinfo.dettype
+        
         self._calibconst     = calibconst # only my calibconst (equivalent to det.calibconst['det_name'])
-
-    def _get_uniqueid(self):
-        segids = self._segids
-        self._uniqueid = self._dettype
-        for sorted_segid in sorted(segids):
-            self._uniqueid+='_'+segids[sorted_segid]
 
     def _segments(self,evt):
         """
@@ -50,7 +28,7 @@ class DetectorImpl(object):
             # check that all promised segments have been received
             evt_segments = list(evt._det_segments[key].keys())
             evt_segments.sort()
-            if evt_segments != self._config_segments:
+            if evt_segments != self._sorted_segment_ids:
                 return None
             else:
                 return evt._det_segments[key]

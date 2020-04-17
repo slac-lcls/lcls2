@@ -96,7 +96,7 @@ def test_timetool_psana(plot=False):
 
 if __name__ == "__main__":
     test_timetool()
-    test_timetool_psana(plot)
+    test_timetool_psana(plot=False)
 
 """
 import numpy as np

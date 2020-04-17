@@ -44,15 +44,6 @@ def _enumerate_attrs(obj):
     mygetattr(obj)
     return found
 
-# FIXME: to support run.ds.Detector in cctbx. to be removed.
-#class DsContainer(object):
-
-    #def __init__(self, run):
-    #    self.run = run
-
-    #def Detector(self, dummy):
-    #    return self.run._det # return pre-created detector
-
 class Run(object):
     exp = None # FIXME: consolidate with below
     run_no = None
@@ -74,13 +65,60 @@ class Run(object):
         self.batch_size = batch_size
         self.filter_callback = filter_callback
         self.destination = destination
-        #self.ds = DsContainer(self) # FIXME: to support run.ds.Detector in cctbx. to be removed.
         RunHelper(self)
 
     def run(self):
         """ Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
         return self.run_no
+
+    def _set_configinfo(self):
+        """ From configs, we generate a dictionary lookup with det_name as a key.
+        The information stored the value field contains:
+        
+        - configs specific to that detector
+        (if the config doesn't have this detector, a blank dictionary is inserted
+        as a place holder in the config's __dict__ attribute - FIXME: mona)
+        - sorted_segment_ids
+        used by Detector cls for checking if an event has correct no. of segments
+        - detid_dict
+        has segment_id as a key
+        - dettype
+        - uniqueid
+        """
+        self.configinfo_dict = {}
+
+        for _, det_class in self.dm.det_classes.items(): # det_class is either normal or envstore
+            for (det_name, _), _ in det_class.items():
+                # Create a copy of list of configs
+                det_configs = [dgram.Dgram(view=config) for config in self.dm.configs]
+                sorted_segment_ids = []
+                # a dictionary of the ids (a.k.a. serial-number) of each segment
+                detid_dict = {}
+                dettype = ""
+                uniqueid = ""
+                for config in det_configs:
+                    if hasattr(config.software, det_name): 
+                        seg_dict = getattr(config.software, det_name)
+                        sorted_segment_ids += list(seg_dict.keys())
+                        for segment, det in seg_dict.items():
+                            detid_dict[segment] = det.detid
+                            dettype = det.dettype
+                    else:
+                        config.__dict__ = {det_name: {}}
+                
+                sorted_segment_ids.sort()
+                
+                uniqueid = dettype
+                for segid in sorted_segment_ids:
+                    uniqueid += '_'+detid_dict[segid]
+
+                self.configinfo_dict[det_name] = type("ConfigInfo", (), {\
+                        "configs": det_configs, \
+                        "sorted_segment_ids": sorted_segment_ids, \
+                        "detid_dict": detid_dict, \
+                        "dettype": dettype, \
+                        "uniqueid": uniqueid})
 
     def Detector(self,name):
         class Container:
@@ -93,7 +131,7 @@ class Run(object):
         flag_found = False
         for (det_name,drp_class_name),drp_class in self.dm.det_classes['normal'].items():
             if det_name == name:
-                setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configs, self.calibconst[det_name]))
+                setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configinfo_dict[det_name], self.calibconst[det_name]))
                 setattr(det,'_configs', self.configs)
                 setattr(det,'calibconst', self.calibconst[det_name])
                 setattr(det,'_dettype', self.dm.det_info_table[det_name][0])
@@ -115,7 +153,7 @@ class Run(object):
                 drp_class_name = alg
                 det_class_table = self.dm.det_classes[det_name]
                 drp_class = det_class_table[(det_name, drp_class_name)]
-                det = drp_class(det_name, var_name, drp_class_name, self.dm.configs, self.calibconst[det_name], self.esm.stores[env_name])
+                det = drp_class(det_name, var_name, drp_class_name, self.configinfo_dict[det_name], self.calibconst[det_name], self.esm.stores[env_name])
 
         return det
 
@@ -145,13 +183,12 @@ class Run(object):
 
     def _set_calibconst(self):
         self.calibconst = {}
-        for det_name, (dettype, detid) in self.dm.det_info_table.items():
-            det_str = dettype + '_' + detid
+        for det_name, configinfo in self.configinfo_dict.items():
             if self.expt:
                 if self.expt == "cxid9114": # mona: hack for cctbx
                     det_query = "cspad_0002"
                 else:
-                    det_query = det_name
+                    det_query = configinfo.uniqueid
                 self.calibconst[det_name] = wu.calib_constants_all_types(det_query, exp=self.expt, run=self.runnum)
             else:
                 self.calibconst[det_name] = None
@@ -197,6 +234,7 @@ class RunShmem(Run):
         self.dm = DgramManager(xtc_files,tag=tag)
         self.configs = self.dm.configs 
         super()._get_runinfo()
+        super()._set_configinfo()
         super()._set_calibconst()
         self.dm.calibconst = self.calibconst
         self.esm = EnvStoreManager(self.dm.configs, 'epics', 'scan')
@@ -225,6 +263,7 @@ class RunSingleFile(Run):
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs
         super()._get_runinfo()
+        super()._set_configinfo()
         super()._set_calibconst()
         self.esm = EnvStoreManager(self.dm.configs, 'epics', 'scan')
 
@@ -253,6 +292,7 @@ class RunSerial(Run):
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
         super()._get_runinfo()
+        super()._set_configinfo()
         super()._set_calibconst()
         self.esm = EnvStoreManager(self.smd_dm.configs, 'epics', 'scan')
         
@@ -280,6 +320,7 @@ class RunLegion(Run):
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         self.configs = self.dm.configs
         super()._get_runinfo()
+        super()._set_configinfo()
         super()._set_calibconst()
         self.esm = EnvStoreManager(self.configs, 'epics', 'scan')
 
