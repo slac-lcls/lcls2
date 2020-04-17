@@ -20,7 +20,8 @@ def write_to_daq_config_db(args):
     create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
-    mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create, dbname)
+    mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create,
+                         root=dbname, user=args.user, password=args.password)
     mycdb.add_alias(args.alias)
     mycdb.add_device_config('timetool')
 
@@ -130,5 +131,7 @@ if __name__ == "__main__":
     parser.add_argument('--name', help='detector name', type=str, default='tsttt')
     parser.add_argument('--segm', help='detector segment', type=int, default=0)
     parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
+    parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
+    parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
     args = parser.parse_args()
     write_to_daq_config_db(args)

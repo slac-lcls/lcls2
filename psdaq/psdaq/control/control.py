@@ -1838,7 +1838,7 @@ def main():
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
     parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
     parser.add_argument('-P', metavar='INSTRUMENT', required=True, help='instrument_name[:station_number]')
-    parser.add_argument('-d', metavar='CFGDATABASE', default='https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/configDB', help='configuration database connection')
+    parser.add_argument('-d', metavar='CFGDATABASE', default='https://pswww.slac.stanford.edu/ws/devconfigdb/ws/configDB', help='configuration database connection')
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')

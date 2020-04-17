@@ -84,7 +84,7 @@ class LasingOnCharacterization():
         self._valsebm  = xtup.get_attribute(self._ebeam,       'valsebm')
         self._valsgd   = xtup.get_attribute(self._gasdetector, 'valsgd')
         self._valseid  = xtup.get_attribute(self._eventid,     'valseid')
-        self._valsxtp  = xtup.get_attribute(self._xtcavpars,    'valsxtp')
+        self._valsxtp  = xtup.get_attribute(self._xtcavpars,   'valsxtp')
 
         if None in (self._camraw, self._valsebm, self._valsgd, self._valseid, self._valsxtp) : 
             sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
@@ -119,7 +119,7 @@ class LasingOnCharacterization():
             self._setLasingOffReferenceParameters()
             return
 
-        if self._lasingoffreference is None :
+        if self._lasingoffreference is None:
             lofr_data, lofr_meta = self._camera.calibconst.get('xtcav_lasingoff')
             self._lasingoffreference = xtu.xtcav_calib_object_from_dict(lofr_data)
             logger.debug('==== lofr_meta:\n%s' % str(lofr_meta))
@@ -146,6 +146,7 @@ class LasingOnCharacterization():
         if not self.island_split_method: self.island_split_method=cons.DEFAULT_SPLIT_METHOD       
         if not self.island_split_par1:   self.island_split_par1=3.0
         if not self.island_split_par2:   self.island_split_par2=5.0
+        if not self.dark_reference_path: self.dark_reference_path = ''
 
 
     def _setLasingOffReferenceParameters(self):
@@ -154,8 +155,11 @@ class LasingOnCharacterization():
         """
         logger.debug('_lasingoffreference.parameters: %s' % str(self._lasingoffreference.parameters))
 
-        pars = xtu.xtcav_calib_object_from_dict(self._lasingoffreference.parameters)
+        #pars = xtu.xtcav_calib_object_from_dict(self._lasingoffreference.parameters)
+        pars = self._lasingoffreference.parameters
         pars_num_bunches = pars.num_bunches
+
+        #self._lasingoffreference.parameters = pars
 
         if self.num_bunches and self.num_bunches != pars_num_bunches:
             logger.warning('Number of bunches input (%d) differs from number of bunches found in lasing off reference (%d).'\
@@ -229,19 +233,24 @@ class LasingOnCharacterization():
             return False 
 
         self._rawimage = self._camraw(evt)
-        logger.info(info_ndarr(self._rawimage, 'camera raw:'))
+        logger.debug(info_ndarr(self._rawimage, 'camera raw:'))
 
         if self._rawimage is None: 
             logger.warning('Could not retrieve image')
             return False
 
-        #=====================================
-        sys.exit('TEST EXIT in processEvent')
-        #=====================================
+        self._image_profile, self._processed_image = xtu.processImage(\
+            self._rawimage,\
+            self.parameters,\
+            self._darkreference,\
+            self._global_calibration,\
+            self._saturation_value,\
+            self._roixtcav,\
+            shot_to_shot)
 
+        logger.debug('After xtu.processImage: _image_profile:\n%s' % xtu.info_xtcav_object(self._image_profile))
+        logger.debug('After xtu.processImage: _processed_image:\n%s' % info_ndarr(self._processed_image))
 
-        self._image_profile, self._processed_image =  xtu.processImage(self._rawimage, self.parameters, self._darkreference, self._global_calibration, 
-                                                    self._saturation_value, self._roixtcav, shot_to_shot)
         if not self._image_profile:
             logger.warning('Cannot create image profile')
             return False
@@ -252,9 +261,10 @@ class LasingOnCharacterization():
 
         #Using all the available data, perform the retrieval for that given shot        
         self._pulse_characterization = xtu.processLasingSingleShot(self._image_profile, self._lasingoffreference.averaged_profiles) 
+        logger.debug('After xtu.processLasingSingleShot: _pulse_characterization:\n%s', xtu.info_xtcav_object(self._pulse_characterization))
+
         if not self._pulse_characterization : return False
 
-        self.processImage()
         return True
 
         
@@ -676,12 +686,16 @@ class LasingOnCharacterization():
         return np.mean(self._pulse_characterization.powerAgreement)  
 
 
-    def processImage(self):
+    def resultsProcessImage(self):
         t, power  = self.xRayPower()  
         agreement = self.reconstructionAgreement()
         pulse     = self.pulseDelay()
-        print('Agreement: %g%%; Maximum power: %g; GW Pulse Delay: %g '%\
-              (agreement*100,np.amax(power), pulse[0]))
+        return t, power, agreement, pulse
+
+
+    def printProcessImageResults(self):
+        t, power, agr, pulse = self.resultsProcessImage()
+        logger.info('%sAgreement: %.3f%%  Max power: %g  GW Pulse Delay: %.3f '%(12*' ', agr*100,np.amax(power), pulse[0]))
 
 
 LasingOnParameters = xtu.namedtuple('LasingOnParameters', 
@@ -709,10 +723,14 @@ def procEvents(args):
     for nev,evt in enumerate(run.events()):
 
         img = lon._camraw(evt)
-        logger.info('Event %03d    %s' % (nev, info_ndarr(img, 'camera raw:')))
+        logger.info('Event %03d' % nev)
+        logger.debug(info_ndarr(img, 'camera raw:'))
         if img is None: continue
 
         if not lon.processEvent(evt): continue
+
+        t, power, agr, pulse = lon.resultsProcessImage()
+        print('%sAgreement:%7.3f%%  Max power: %g  GW Pulse Delay: %.3f '%(12*' ', agr*100,np.amax(power), pulse[0]))
 
         nimgs += 1
         if nimgs>=max_shots: 

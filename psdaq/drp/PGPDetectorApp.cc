@@ -6,6 +6,7 @@
 #include "TimeTool.hh"
 #include "AreaDetector.hh"
 #include "Digitizer.hh"
+#include "Opal.hh"
 #include "Wave8.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "PGPDetectorApp.hh"
@@ -30,6 +31,7 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     f.register_type<AreaDetector>("cspad");
     f.register_type<TimeTool>("tt");
     f.register_type<Wave8>("wave8");
+    f.register_type<Opal>("opal");
 
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {
@@ -42,6 +44,8 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
         logging::info("output dir: %s", m_para.outputDir.c_str());
     }
     logging::info("Ready for transitions");
+
+    m_pysave = PyEval_SaveThread(); // Py_BEGIN_ALLOW_THREADS
 }
 
 void PGPDetectorApp::shutdown()
@@ -96,6 +100,8 @@ void PGPDetectorApp::handleDisconnect(const json& msg)
 void PGPDetectorApp::handlePhase1(const json& msg)
 {
     logging::debug("handlePhase1 in PGPDetectorApp");
+
+    PyEval_RestoreThread(m_pysave);  // Py_END_ALLOW_THREADS
 
     XtcData::Xtc& xtc = m_det->transitionXtc();
     XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
@@ -177,6 +183,8 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
     }
+
+    m_pysave = PyEval_SaveThread(); // Py_BEGIN_ALLOW_THREADS
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);

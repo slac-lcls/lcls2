@@ -63,6 +63,11 @@ class cspad_raw_2_3_42(DetectorImpl):
         segs = self._segments(evt)
         return np.vstack([segs[i].arrayRaw for i in range(len(segs))])
 
+class ele_opal_raw_1_2_3(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+    def image(self, evt) -> Array2d:
+        return self._segments(evt)[0].img
 
 class eventid_valseid_0_0_1(DetectorImpl):
     def __init__(self, *args):

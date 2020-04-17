@@ -15,15 +15,30 @@ class DetectorImpl(object):
         # add blank dictionary as a placeholder.
         self._configs = [Dgram(view=config) for config in all_det_configs]
         self._config_segments = []
+        # a dictionary of the ids (a.k.a. serial-number) of each segment
+        self._segids = {}
         for config in self._configs:
             if hasattr(config.software, self._det_name): 
                 seg_dict = getattr(config.software, self._det_name)
                 self._config_segments += list(seg_dict.keys())
+                #e.g. self._configs[0].software.xpphsd[0].detid
+                seg_dict = getattr(config.software, self._det_name)
+                for segment, det in seg_dict.items():
+                    self._segids[segment]=det.detid
+                    self._dettype=det.dettype
             else:
                 config.__dict__ = {self._det_name: {}}
         self._config_segments.sort()
 
+        self._get_uniqueid()
+
         self._calibconst     = calibconst # only my calibconst (equivalent to det.calibconst['det_name'])
+
+    def _get_uniqueid(self):
+        segids = self._segids
+        self._uniqueid = self._dettype
+        for sorted_segid in sorted(segids):
+            self._uniqueid+='_'+segids[sorted_segid]
 
     def _segments(self,evt):
         """
@@ -41,6 +56,9 @@ class DetectorImpl(object):
                 return evt._det_segments[key]
         else:
             return None
+
+    def _info(self,evt):
+        return self._segments(evt)[0]
 
     @staticmethod
     def _return_types(rtype,rrank):
@@ -62,8 +80,6 @@ class DetectorImpl(object):
 
     def _add_fields(self):
         for config in self._configs:
-            # cpo: temporary hack: ignore configs that have
-            # had an empty placeholder put in them in __init__
             if not hasattr(config,'software'): continue
             if hasattr(config.software,self._det_name):
                 seg      = getattr(config.software,self._det_name)
@@ -79,3 +95,4 @@ class DetectorImpl(object):
                         else:
                             return getattr(info,field)
                     setattr(self, field, func)
+

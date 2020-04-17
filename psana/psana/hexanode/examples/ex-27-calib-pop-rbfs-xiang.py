@@ -43,9 +43,7 @@ def test_opal_data_access() :
 
     ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0085-opal1k.xtc2')
     orun = next(ds.runs())
-    camera = orun.Detector('ele_opal')
-
-    #print('dir(camera):', dir(camera))
+    camera = orun.Detector('opal')
 
     print('test_xtcav_data    expt: %s runnum: %d\n' % (orun.expt, orun.runnum))
 
@@ -57,9 +55,8 @@ def test_opal_data_access() :
         #print('XXXXX', evt._dgrams[0].xtcav[0].raw.raw)
         #print('XXXXX', dir(evt._dgrams[0].opal[0].raw.img))
 
-        raw = evt._dgrams[0].opal[0].raw.img
-        print_ndarr(raw, '  raw:')
-
+        print('***',camera.raw.image(evt))
+        break
 
     calib_data, calib_meta = camera.calibconst.get('pop_rbfs')
     print('camera..calibconst.get   calib_meta', calib_meta)

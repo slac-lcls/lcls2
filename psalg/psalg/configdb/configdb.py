@@ -1,5 +1,7 @@
 import requests
 from requests.auth import HTTPBasicAuth
+from krtc import KerberosTicket
+from urllib.parse import urlparse
 import json
 import logging
 from .typed_json import cdict
@@ -27,6 +29,7 @@ class configdb(object):
             raise Exception("configdb: Must specify root!")
         self.hutch  = hutch
         self.prefix = url.strip('/') + '/' + root + '/'
+        self.host = urlparse(self.prefix).hostname
         self.timeout = 3.05     # timeout for http requests
         self.user = user
         self.password = password
@@ -43,10 +46,23 @@ class configdb(object):
     # Return json response.
     # Raise exception on error.
     def _get_response(self, cmd, *, json=None):
-        resp = requests.get(self.prefix + cmd,
-                            auth=HTTPBasicAuth(self.user, self.password),
-                            json=json,
-                            timeout=self.timeout)
+        if 'ws-auth' in self.prefix:
+            # basic authentication
+            resp = requests.get(self.prefix + cmd,
+                                auth=HTTPBasicAuth(self.user, self.password),
+                                json=json,
+                                timeout=self.timeout)
+        elif 'ws-kerb' in self.prefix:
+            # kerberos authentication
+            resp = requests.get(self.prefix + cmd,
+                                **{"headers": KerberosTicket('HTTP@' + self.host).getAuthHeaders()},
+                                json=json,
+                                timeout=self.timeout)
+        else:
+            # no authentication
+            resp = requests.get(self.prefix + cmd,
+                                json=json,
+                                timeout=self.timeout)
         # raise exception if status is not ok
         resp.raise_for_status()
         return resp.json()
@@ -289,7 +305,7 @@ class configdb(object):
 
             # check for errors
             if not read_val:
-                logging.error('get_configuration returned empty eonfig.')
+                logging.error('get_configuration returned empty config.')
                 return 0
 
             # set detName
@@ -339,8 +355,11 @@ def _cat(args):
         print('%s' % ex) 
         sys.exit(1)
 
+    # authentication is not required, adjust url accordingly
+    url = args.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
+
     # get configuration and pretty print it
-    mycdb = configdb(args.url, hutch, root=args.root)
+    mycdb = configdb(url, hutch, root=args.root)
     xx = mycdb.get_configuration(alias, '%s_%d' % (dev, seg), hutch)
     if len(xx) > 0:
         pprint.pprint(xx)
@@ -354,7 +373,8 @@ def _cp(args):
         sys.exit(1)
 
     # transfer configuration
-    mycdb = configdb(args.url, newhutch, create=args.create, root=args.root)
+    mycdb = configdb(args.url, newhutch, create=args.create, root=args.root,
+                     user=args.user, password=args.password)
     if args.create:
         mycdb.add_alias(newalias)
     retval = mycdb.transfer_config(oldhutch, oldalias, '%s_%d' % (olddev, oldseg),
@@ -381,6 +401,8 @@ def main():
     parser_cp = subparsers.add_parser('cp', help='copy a configuration')
     parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
     parser_cp.add_argument('dst', help='destination: <hutch>/<alias>/<device>_<segment>')
+    parser_cp.add_argument('--user', default='xppopr', help='default: xppopr')
+    parser_cp.add_argument('--password', default='pcds', help='default: pcds')
     parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
     parser_cp.set_defaults(func=_cp)
 

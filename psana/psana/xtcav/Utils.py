@@ -17,7 +17,7 @@ import psana.xtcav.SplittingUtils as su
 import psana.xtcav.ClusteringUtils as cu
 #import collections
 
-from psana.pscalib.calib.XtcavUtils import xtcav_calib_object_from_dict
+from psana.pscalib.calib.XtcavUtils import xtcav_calib_object_from_dict, info_xtcav_object
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
 
 def getImageStatistics(image, ROI):
@@ -100,7 +100,8 @@ def subtractBackground(image, ROI, dark_background):
     #This only contemplates the case when the ROI of the darkbackground is larger than the ROI of the image. Other cases should be contemplated in the future
     if dark_background:
         image_db = dark_background.image
-        ROI_db = xtcav_calib_object_from_dict(dark_background.ROI)
+        #ROI_db = xtcav_calib_object_from_dict(dark_background.ROI)
+        ROI_db = dark_background.ROI
 
         minX = ROI.x0 - ROI_db.x0
         maxX = (ROI.x0+ROI.xN-1)-ROI_db.x0
@@ -327,6 +328,8 @@ def processLasingSingleShot(image_profile, nolasing_averaged_profiles):
 
     num_bunches = len(image_stats)              #Number of bunches
     
+    logger.debug('averaged_profiles: %s' % type(nolasing_averaged_profiles))
+
     if (num_bunches != nolasing_averaged_profiles.num_bunches):
         logger.warning('Different number of bunches in the reference')
     

@@ -5,13 +5,14 @@
 #include "EventBatcher.hh"
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/NamesId.hh"
+#include <Python.h>
 
 namespace Drp {
 
-class TimeTool : public Detector
+class Opal : public Detector
 {
 public:
-    TimeTool(Parameters* para, MemPool* pool);
+    Opal(Parameters* para, MemPool* pool);
     nlohmann::json connectionInfo() override;
     void connect(const nlohmann::json&, const std::string& collectionId) override;
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
@@ -30,7 +31,10 @@ private:
     unsigned          m_readoutGroup;
     XtcData::NamesId  m_evtNamesId;
     std::string       m_connect_json;
+    PyObject*         m_root;
     unsigned          m_paddr;
-};
+    unsigned          m_rows;
+    unsigned          m_columns;
+  };
 
 }

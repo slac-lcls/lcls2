@@ -7,9 +7,11 @@
 import logging
 logger = logging.getLogger(__name__)
 
+import types
 import numpy as np
 from psana.pscalib.calib.XtcavConstants import Empty, Load, Save, ConstTest
 from psana.pscalib.calib.MDBConvertUtils import serialize_dict
+from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
 
 #--------------------
 
@@ -34,8 +36,33 @@ def xtcav_calib_object_from_dict(d):
         #logging.warning('Input parameter is not a python dict: %s' % str(d))
         #return o
     for k,v in d.items() :
-        setattr(o,str(k),v)
+        p = v if type(v) is not dict else\
+            xtcav_calib_object_from_dict(v)
+        setattr(o, str(k), p)
     return o
+
+#--------------------
+
+def info_xtcav_object(o, space='    '):
+    '''returns str with info about xtcav "namespace" object    
+    '''
+    atrs = [k for k in dir(o) if k[0] !='_']
+    s = '\n%s Attrs: %s' % (space, str(atrs))
+    for name in atrs :
+        v = getattr(o, name, None)
+        tv = type(v)
+        sv = info_ndarr(v) if isinstance(v, np.ndarray) else\
+             str(v)        if isinstance(v, (float, int, bool, np.int64, np.float64)) else\
+             str(tv)        
+             #str(v(0))     if name in ('index', 'count') else\
+             #str(v())      if isinstance(v, types.BuiltinFunctionType) else\
+        s += '\n%s attr:%32s value: %s' % (space, name, sv)
+
+        #if tv in (np.ndarray, float, int, bool) : continue
+        if name in ('physical_units', 'roi', 'shot_to_shot', 'roi') :
+            s += info_xtcav_object(v, space=space+'    ')
+
+    return s
 
 #------------------------------
 

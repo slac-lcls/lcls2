@@ -1,6 +1,7 @@
 #pragma once
 
 #include <thread>
+#include <Python.h>
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
 #include "psdaq/trigger/TriggerPrimitive.hh"
@@ -28,6 +29,7 @@ private:
     Detector* m_det;
     std::shared_ptr<Pds::MetricExporter> m_exporter;
     bool m_unconfigure;
+    PyThreadState*    m_pysave;
 };
 
 }

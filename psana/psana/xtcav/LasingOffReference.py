@@ -66,35 +66,34 @@ size = 1
 
 class LasingOffReference():
 
-    def __init__(self,
-            fname='/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0131-e000200-xtcav-v2.xtc2',
-            experiment='amox23616',   #Experiment label
-            max_shots=401,            #Maximum number of valid shots to process
-            run_number=131,           #Run number
-            start_image=0,            #Starting image in run
-            validity_range=None,
-            dark_reference_path=None, #Dark reference information
-            num_bunches=1,            #Number of bunches
-            num_groups=None,          #Number of profiles to average together
-            snr_filter=10,            #Number of sigmas for the noise threshold
-            roi_expand=1,             #Parameter for the roi location
-            roi_fraction=cons.ROI_PIXEL_FRACTION,
-            island_split_method = cons.DEFAULT_SPLIT_METHOD, #Method for island splitting
-            island_split_par1 = 3.0,  #Ratio between number of pixels between largest and second largest groups when calling scipy.label
-            island_split_par2 = 5.,   #Ratio between number of pixels between second/third largest groups when calling scipy.label
-            calibration_path='',
-            save_to_file=True):
+    def __init__(self, args):
+        """
+        """
+        self.args = args
 
-        PLOT_IMAGE = False
+        fname = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0131-e000200-xtcav-v2.xtc2')
+        experiment          = getattr(args, 'experiment', 'amox23616')
+        run_number          = getattr(args, 'run_number', 131)
+        max_shots           = getattr(args, 'max_shots', 401) #Maximum number of shots to process
+        validity_range      = getattr(args, 'validity_range', None)
+        save_to_file        = getattr(args, 'save_to_file', True)
+        calibration_path    = getattr(args, 'calibration_path', '')
+        start_image         = getattr(args, 'start_image', 0)
+        dark_reference_path = getattr(args, 'dark_reference_path', None) #Dark reference information
+        num_bunches         = getattr(args, 'num_bunches', 1)   #Number of bunches
+        num_groups          = getattr(args, 'num_groups', None) #Number of profiles to average together
+        snr_filter          = getattr(args, 'snr_filter', 10)   #Number of sigmas for the noise threshold
+        roi_expand          = getattr(args, 'roi_expand', 1)    #Parameter for the roi location
+        roi_fraction        = getattr(args, 'roi_fraction', cons.ROI_PIXEL_FRACTION)
+        island_split_method = getattr(args, 'island_split_method', cons.DEFAULT_SPLIT_METHOD) #Method for island splitting
+        island_split_par1   = getattr(args, 'island_split_par1', 3.0)  #Ratio between number of pixels between largest and second largest groups when calling scipy.label
+        island_split_par2   = getattr(args, 'island_split_par2', 5.)   #Ratio between number of pixels between second/third largest groups when calling scipy.label
+        PLOT_IMAGE          = getattr(args, 'plot_image', False)
 
         if PLOT_IMAGE :
             self.fig, self.axim, self.axcb = gr.fig_img_cbar_axes(fig=None,\
             win_axim=(0.05,  0.05, 0.87, 0.93),\
             win_axcb=(0.923, 0.05, 0.02, 0.93)) #, **kwargs)
-
-        #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s' # '%(message)s'
-        fmt='[%(levelname).1s] L%(lineno)04d : %(message)s'
-        logging.basicConfig(format=fmt, datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
 
         #if type(run_number) == int:
         #    run_number = str(run_number)
@@ -240,8 +239,8 @@ class LasingOffReference():
         self.n=num_processed
         self.parameters = self.parameters._replace(num_groups=num_groups)   
 
-        print('ZZZ self.parameters.validity_range', self.parameters.validity_range, ' type:', type(self.parameters.validity_range))
-        print('ZZZ self.parameters.run_number', self.parameters.run_number, ' type:', type(self.parameters.run_number))
+        logger.debug('self.parameters.validity_range: %s  type: %s' % (self.parameters.validity_range, type(self.parameters.validity_range)))
+        logger.debug('self.parameters.run_number: %d  type: %s' % (self.parameters.run_number, type(self.parameters.run_number)))
 
         # Set validity range, replace 'end' -> 9999 othervise save does not work...
         if not self.parameters.validity_range or not type(self.parameters.validity_range) == tuple:
@@ -334,8 +333,8 @@ class LasingOffReference():
 
         #logger.debug('XXX instance.parameters:\n%s' % str(instance.parameters))
         #logger.debug('XXX instance.__dict__:\n%s' % str(instance.__dict__))
-        logger.debug('XXX self instance:\n%s' % str(instance))
-        logger.debug('XXX dir(self):\n%s' % dir(self))
+        logger.debug('self instance:\n%s' % str(instance))
+        logger.debug('dir(self):\n%s' % dir(self))
 
         constSave(instance, path)
 

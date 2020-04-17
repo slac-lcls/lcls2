@@ -4,6 +4,8 @@
 using namespace XtcData;
 using namespace psalg::shmem;
 
+//#define DBUG
+
 TransitionCache::TransitionCache(char* p, size_t sz, unsigned nbuff) :
   _pShm(p),
   _szShm(sz),
@@ -37,10 +39,10 @@ void TransitionCache::dump() const {
     const Dgram& odg = *reinterpret_cast<const Dgram*>(_pShm + _szShm*i);
     time_t t=odg.time.seconds();
     char cbuf[64]; ctime_r(&t,cbuf); strtok(cbuf,"\n");
-    printf ("%15.15s : %s : %08x\n",
+    printf ("%15.15s : %s : [%d] = %08x\n",
             TransitionId::name(odg.service()),
             cbuf,
-            _allocated[i]);
+            i, _allocated[i]);
   }
   std::stack<int> cached(_cachedTr);
   printf("\tCached: ");
@@ -96,7 +98,7 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
           _cachedTr.push(ibuffer);
         }
         else {
-          printf("Unexpected state for TransitionCache: _cachedTr empty but tr[%s]!=Configure\n",
+          fprintf(stderr, "Unexpected state for TransitionCache: _cachedTr empty but tr[%s]!=Configure\n",
                  TransitionId::name(id));
           //dump();
           //abort();
@@ -115,7 +117,13 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
           _freeTr.push_back(ib);
         }
         else if (oid == TransitionId::SlowUpdate && id == TransitionId::SlowUpdate) {
-          // SlowUpdate -> SlowUpdate: do nothing
+          // SlowUpdate -> SlowUpdate: replace top entry
+          int ib=_cachedTr.top();       // Release previous SlowUpdate,
+          _cachedTr.pop();              //   which may have _allocated[ib] != 0
+          _freeTr.push_back(ib);        //   so must not overwrite it
+
+          _freeTr.remove(ibuffer);      // Allocate next SlowUpdate buffer,
+          _cachedTr.push(ibuffer);      //   which is free to be filled
         }
         else if (oid == TransitionId::SlowUpdate && id == TransitionId::Disable) {
           // SlowUpdate -> Disable: pop two entries
@@ -127,18 +135,18 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
           _freeTr.push_back(ib);
         }
         else {  // unexpected transition
-          printf("Unexpected transition for TransitionCache: tr[%s]!=[%s] or [%s]\n",
+          fprintf(stderr, "Unexpected transition for TransitionCache: tr[%s]!=[%s] or [%s]\n",
                  TransitionId::name(id),
                  TransitionId::name(TransitionId::Value(oid+2)),
                  TransitionId::name(TransitionId::Value(oid+1)));
           if (lbegin) { // Begin transition
             if (id > oid) {  // Missed a begin transition leading up to it
-              printf("Irrecoverable.\n");
+              fprintf(stderr, "Irrecoverable.\n");
               dump();
               abort();
             }
             else {
-              printf("Recover by rolling back.\n");
+              fprintf(stderr, "Recover by rolling back.\n");
               do {
                 int ib=_cachedTr.top();
                 _freeTr.push_back(ib);
@@ -150,7 +158,7 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
             }
           }
           else { // End transition
-            printf("Recover by rolling back.\n");
+            fprintf(stderr, "Recover by rolling back.\n");
             while( id < oid+3 ) {
               int ib=_cachedTr.top();
               _freeTr.push_back(ib);
@@ -172,7 +180,8 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
             not_ready |= _allocated[itr];
         }
 
-        if (not_ready &~_not_ready)
+        // Ignore not_ready on SlowUpdate
+        if (id != TransitionId::SlowUpdate && not_ready &~_not_ready)
           printf("Transition %s: not_ready %x -> %x\n",
                  TransitionId::name(id), _not_ready, _not_ready|not_ready);
 
@@ -212,9 +221,10 @@ bool TransitionCache::allocate  (int ibuffer, unsigned client) {
         if ((td&1)==1 && td<last) last=td;
       }
 
+    // Ignore _not_ready on SlowUpdate
     TransitionId::Value id =
       reinterpret_cast<const Dgram*>(_pShm + _szShm*ibuffer)->service();
-    if (!((id&1)==1 && id<last))
+    if (id != TransitionId::SlowUpdate && !((id&1)==1 && id<last))
       result=false;
   }
 

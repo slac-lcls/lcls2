@@ -166,7 +166,7 @@ namespace psalg {
         if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
           XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
 #ifdef DBUG2
-          printf("*** received transition id %d\n",dg->service());
+          printf("*** received transition id %d (%s)\n",dg->service(), XtcData::TransitionId::name(dg->service()));
 #endif
           index = i;
           size = myMsg.sizeOfBuffers();
@@ -208,7 +208,7 @@ namespace psalg {
           if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
             XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
 #ifdef DBUG2
-            printf("*** received event id %d\n",dg->service());
+            printf("*** received event id %d (%s)\n",dg->service(), XtcData::TransitionId::name(dg->service()));
 #endif
             index = i;
             size = myMsg.sizeOfBuffers();
@@ -264,10 +264,10 @@ void* ShmemClient::get(int& index, int& size)
   while (1) {
     if (::poll(_pfd, _nfd, -1) > 0) {
       if (_pfd[0].revents & POLLIN) { // Transition
-    	return _handler->transition(index,size);
+        return _handler->transition(index,size);
       }
       else if (_pfd[1].revents & POLLIN) { // Event
-    	return _handler->event(index,size);
+        return _handler->event(index,size);
       }
     }
   }
@@ -328,7 +328,7 @@ int ShmemClient::connect(const char* tag, int tr_index) {
     socklen_t addrlen = sizeof(sockaddr_in);
     sockaddr_in name;
     ::getsockname(_myTrFd, (sockaddr*)&name, &addrlen);
-printf("Connected to %08x.%d [%d] from %08x.%d\n",
+    printf("Connected to %08x.%d [%d] from %08x.%d\n",
            ntohl(saddr.sin_addr.s_addr),ntohs(saddr.sin_port),_myTrFd,
            ntohl(name.sin_addr.s_addr),ntohs(name.sin_port));
 #endif
