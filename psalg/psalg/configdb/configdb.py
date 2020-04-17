@@ -1,5 +1,7 @@
 import requests
 from requests.auth import HTTPBasicAuth
+from krtc import KerberosTicket
+from urllib.parse import urlparse
 import json
 import logging
 from .typed_json import cdict
@@ -27,6 +29,7 @@ class configdb(object):
             raise Exception("configdb: Must specify root!")
         self.hutch  = hutch
         self.prefix = url.strip('/') + '/' + root + '/'
+        self.host = urlparse(self.prefix).hostname
         self.timeout = 3.05     # timeout for http requests
         self.user = user
         self.password = password
@@ -43,10 +46,23 @@ class configdb(object):
     # Return json response.
     # Raise exception on error.
     def _get_response(self, cmd, *, json=None):
-        resp = requests.get(self.prefix + cmd,
-                            auth=HTTPBasicAuth(self.user, self.password),
-                            json=json,
-                            timeout=self.timeout)
+        if 'ws-auth' in self.prefix:
+            # basic authentication
+            resp = requests.get(self.prefix + cmd,
+                                auth=HTTPBasicAuth(self.user, self.password),
+                                json=json,
+                                timeout=self.timeout)
+        elif 'ws-kerb' in self.prefix:
+            # kerberos authentication
+            resp = requests.get(self.prefix + cmd,
+                                **{"headers": KerberosTicket('HTTP@' + self.host).getAuthHeaders()},
+                                json=json,
+                                timeout=self.timeout)
+        else:
+            # no authentication
+            resp = requests.get(self.prefix + cmd,
+                                json=json,
+                                timeout=self.timeout)
         # raise exception if status is not ok
         resp.raise_for_status()
         return resp.json()
@@ -289,7 +305,7 @@ class configdb(object):
 
             # check for errors
             if not read_val:
-                logging.error('get_configuration returned empty eonfig.')
+                logging.error('get_configuration returned empty config.')
                 return 0
 
             # set detName
