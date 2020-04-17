@@ -265,12 +265,6 @@ class LasingOnCharacterization():
 
         if not self._pulse_characterization : return False
 
-        self.printProcessImageResults()
-
-        #=====================================
-        #sys.exit('TEST EXIT in processEvent')
-        #=====================================
-
         return True
 
         
@@ -692,12 +686,16 @@ class LasingOnCharacterization():
         return np.mean(self._pulse_characterization.powerAgreement)  
 
 
-    def printProcessImageResults(self):
+    def resultsProcessImage(self):
         t, power  = self.xRayPower()  
         agreement = self.reconstructionAgreement()
         pulse     = self.pulseDelay()
-        logger.info('             Agreement: %g%%  Maximum power: %g  GW Pulse Delay: %g '%\
-              (agreement*100,np.amax(power), pulse[0]))
+        return t, power, agreement, pulse
+
+
+    def printProcessImageResults(self):
+        t, power, agr, pulse = self.resultsProcessImage()
+        logger.info('%sAgreement: %.3f%%  Max power: %g  GW Pulse Delay: %.3f '%(12*' ', agr*100,np.amax(power), pulse[0]))
 
 
 LasingOnParameters = xtu.namedtuple('LasingOnParameters', 
@@ -725,10 +723,14 @@ def procEvents(args):
     for nev,evt in enumerate(run.events()):
 
         img = lon._camraw(evt)
-        logger.info('Event %03d    %s' % (nev, info_ndarr(img, 'camera raw:')))
+        logger.info('Event %03d' % nev)
+        logger.debug(info_ndarr(img, 'camera raw:'))
         if img is None: continue
 
         if not lon.processEvent(evt): continue
+
+        t, power, agr, pulse = lon.resultsProcessImage()
+        print('%sAgreement:%7.3f%%  Max power: %g  GW Pulse Delay: %.3f '%(12*' ', agr*100,np.amax(power), pulse[0]))
 
         nimgs += 1
         if nimgs>=max_shots: 
