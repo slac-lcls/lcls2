@@ -1,5 +1,6 @@
-/*
- * xtc_tree.cc
+/** \file xtc_tree.cc
+ * @brief tree structure for managing metadata.
+ *  Store metadata in tree nodes, including the corresponding xtc2 objects’ position in the xtc2 files. Associate tree nodes to HDF5 objects, the tree structure reflecting the HDF5 data hierarchy.
  *
  *  Created on: Feb 14, 2020
  *      Author: tonglin

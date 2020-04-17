@@ -1,6 +1,6 @@
-/*
- * xtc_tree.hh
+/** \file xtc_tree.hh
  *
+ * @brief tree structure for managing metadata.
  *  Created on: Feb 14, 2020
  *      Author: tonglin
  */

@@ -1,3 +1,6 @@
+/** \file xtc_vol.h
+ *  @brief The actual XTC_VOL connector header.
+ */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Copyright by The HDF Group.                                               *
  * All rights reserved.                                                      *

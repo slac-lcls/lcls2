@@ -1,6 +1,6 @@
-/*
- * xtc_io_api_cpp.hh
- *
+/**
+ * \file xtc_io_api_cpp.hh
+ * @brief Internal utility functions in C++ for XTC iterator.
  *  Created on: Feb 16, 2020
  *      Author: tonglin
  */

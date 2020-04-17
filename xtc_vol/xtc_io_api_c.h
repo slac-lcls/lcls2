@@ -1,5 +1,5 @@
-/*
- * xtc_io_api.h
+/** \file xtc_io_api_c.h
+ * @brief This file defines the interface and shared data structures between XTC2 iterator (C++) and HDF5 VOL (C).
  *
  *  Created on: Jan 20, 2020
  *      Author: tonglin
@@ -19,13 +19,6 @@
 #define PATH_LEN_MAX 100
 
 typedef void* xtc_func_t;
-
-//EXTERNC typedef enum TARGET_TYPE{
-//    FILE,
-//    GROUP,
-//    DS,
-//    OBJ
-//} target_type;
 
 /* The xtc VOL info object */
 //enum definition is identical with XtcData::DataType.

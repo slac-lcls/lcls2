@@ -1,3 +1,7 @@
+/** \file xtc_io_api.cc
+ * @brief XTC2 iterator and utility functions, used to scan xtc2 file and smd file to load the metadata and to build the index tree.
+ *
+ */
 #include <fcntl.h>
 #include <map>
 #include <stdio.h>

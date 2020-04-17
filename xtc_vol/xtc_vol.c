@@ -1,3 +1,6 @@
+/** \file xtc_vol.c
+ *  @brief The actual XTC_VOL connector implementation.
+ */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Copyright by The HDF Group.                                               *
  * All rights reserved.                                                      *
