@@ -1262,16 +1262,10 @@ H5VL_xtc_dataset_open(void *obj, const H5VL_loc_params_t *loc_params,
  *
  *-------------------------------------------------------------------------
  */
-//H5VL_dataset_read(vol_obj, mem_type_id, mem_space_id, file_space_id, dxpl_id, buf, H5_REQUEST_NULL)
 static herr_t 
 H5VL_xtc_dataset_read(void *dset, hid_t mem_type_id, hid_t mem_space_id,
     hid_t file_space_id, hid_t plist_id, void *buf, void **req)
 {
-    /*
-     * mem_space_id: h5 native type
-     * file_sapce_id: user set it to specify select range
-     *
-     * */
     herr_t ret_value;
     H5VL_xtc_t *obj = (H5VL_xtc_t *)dset;
     assert(obj->xtc_obj);
@@ -1337,55 +1331,12 @@ H5VL_xtc_dataset_read(void *dset, hid_t mem_type_id, hid_t mem_space_id,
             // <"start" coordinate>, immediately followed by <"opposite" corner coordinate>, followed by
             // the next "start" and "opposite" coordinates, until end.
 
-
         }
     } else if(file_select_type == H5S_SEL_POINTS){
         assert(0 && "H5S_SEL_POINTS");
     } else {
         assert(0 && "Unknown file_select_type");
     }
-
-
-
-//    switch(t_class){
-//        printf("mem_type_id class: H5T_INTEGER\n");
-//        case H5T_INTEGER:
-//            break;
-//        case H5T_FLOAT:
-//            printf("mem_type_id class: H5T_FLOAT\n");
-//            break;
-//        case H5T_STRING:
-//            printf("mem_type_id class: H5T_STRING\n");
-//            break;
-//        case H5T_BITFIELD:
-//            printf("mem_type_id class: H5T_BITFIELD\n");
-//            break;
-//        case H5T_OPAQUE:
-//            printf("mem_type_id class: H5T_OPAQUE\n");
-//            break;
-//        case H5T_VLEN:
-//            printf("mem_type_id class: H5T_VLEN\n");
-//            break;
-//        case H5T_COMPOUND:
-//            printf("mem_type_id class: H5T_COMPOUND\n");
-//            break;
-//        case H5T_REFERENCE:
-//            printf("mem_type_id class: H5T_REFERENCE\n");
-//            break;
-//        case H5T_ENUM:
-//            printf("mem_type_id class: H5T_ENUM\n");
-//            break;
-//        case H5T_ARRAY:
-//            printf("mem_type_id class: H5T_ARRAY\n");
-//            break;
-//        default:
-//            break;
-//    }
-
-
-
-
-
 
 #ifdef ENABLE_XTC_LOGGING
     printf("------- XTC VOL DATASET Read\n");
@@ -1440,7 +1391,9 @@ H5VL_xtc_dataset_write(void *dset, hid_t mem_type_id, hid_t mem_space_id,
  *-------------------------------------------------------------------------
  */
 
-//xtc2 to HDF5 native type mapping
+/**
+ * xtc2 to HDF5 native data type conversion
+ */
 hid_t type_convert(xtc_data_type xtc_type){
     char* xtc_type_name = "";
     char* h5_type_name = "";
@@ -1556,10 +1509,10 @@ H5VL_xtc_dataset_get(void *dset, H5VL_dataset_get_t get_type,
             *ret_dcpl = dcpl;
             break;
 
-        case H5VL_DATASET_GET_OFFSET:                /* offset                              */
-            printf("%s:%d: H5VL_DATASET_GET_OFFSET\n", __func__, __LINE__);
-            assert(0 && "DS not implemented: get offset");
-            break;
+//        case H5VL_DATASET_GET_OFFSET:                /* offset                              */
+//            printf("%s:%d: H5VL_DATASET_GET_OFFSET\n", __func__, __LINE__);
+//            //assert(0 && "DS not implemented: get offset");
+//            break;
 
         case H5VL_DATASET_GET_SPACE:                /* dataspace                           */
             assert(obj->ds_info);

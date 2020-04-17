@@ -919,7 +919,7 @@ public:
     }
 
     /** Read the smd file and fill the dgram index in the map
-     *
+     *  @param index_fd the file descriptor of the opened index file, which has the extension "smd".
      */
     int load_index(int index_fd){
         XtcFileIterator iter(index_fd, 0x4000000);
@@ -1317,9 +1317,3 @@ EXTERNC void xtc_file_close(xtc_object* head){
 EXTERNC xtc_object** xtc_get_children_list(xtc_object* group_in, int* num_out){
     return get_children_obj(group_in, num_out);//NULL if no children
 }
-
-void usage(char* progname)
-{
-    fprintf(stderr, "Usage: %s -f <filename> [-h]\n", progname);
-}
-
