@@ -216,6 +216,10 @@ class configdb(object):
     # Create a new device_configuration if it doesn't already exist!
     # Note: session is ignored
     def add_device_config(self, cfg, session=None):
+        if cfg in self.get_device_configs():
+            # already exists!
+            logging.info('device configuration \'%s\' already exists' % cfg)
+            return
         try:
             xx = self._get_response('add_device_config/' + cfg + '/')
         except requests.exceptions.RequestException as ex:
