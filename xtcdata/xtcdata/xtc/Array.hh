@@ -21,10 +21,10 @@ public:
         _shape(shape), _data(reinterpret_cast<T*>(data)), _rank(rank) {}
     Array() : _shape(0), _data(0), _rank(0) {}
     Array(const Array& a) : _shape(a._shape), _data(a._data), _rank(a._rank) {}
-    Array& operator=(Array& o){
+    Array& operator=(const Array& o){
         if(&o == this) return *this;
-        _shape = o.shape;
-        _rank = o.rank;
+        _shape = o._shape;
+        _rank = o._rank;
         _data = o._data;
         return *this;
     }

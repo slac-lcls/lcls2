@@ -73,6 +73,8 @@ void PGPDetectorApp::shutdown()
 
 void PGPDetectorApp::handleConnect(const json& msg)
 {
+    PyEval_RestoreThread(m_pysave);  // Py_END_ALLOW_THREADS
+
     json body = json({});
     std::string errorMsg = m_drp.connect(msg, getId());
     if (!errorMsg.empty()) {
@@ -84,6 +86,8 @@ void PGPDetectorApp::handleConnect(const json& msg)
     m_det->nodeId = m_drp.nodeId();
     m_det->connect(msg, std::to_string(getId()));
 
+    m_pysave = PyEval_SaveThread(); // Py_BEGIN_ALLOW_THREADS
+
     m_unconfigure = false;
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -91,7 +95,11 @@ void PGPDetectorApp::handleConnect(const json& msg)
 
 void PGPDetectorApp::handleDisconnect(const json& msg)
 {
+    PyEval_RestoreThread(m_pysave);  // Py_END_ALLOW_THREADS
+
     shutdown();
+
+    m_pysave = PyEval_SaveThread(); // Py_BEGIN_ALLOW_THREADS
 
     json body = json({});
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));

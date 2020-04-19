@@ -29,6 +29,9 @@ def nameLinkWave8(v):
 def nameLinkOpal(v):
     return ('Opal', hostName(v))
 
+def nameLinkTimeTool(v):
+    return ('TimeTool', hostName(v))
+
 linkType = {}
 linkType[0xff] = nameLinkXpm
 linkType[0xfe] = nameLinkDti
@@ -37,6 +40,7 @@ linkType[0xfc] = nameLinkHsd
 linkType[0xfb] = nameLinkTDet
 linkType[0xfa] = nameLinkWave8
 linkType[0xf9] = nameLinkOpal
+linkType[0xf8] = nameLinkTimeTool
 
 def xpmLinkId(value):
     itype = (value>>24)&0xff
