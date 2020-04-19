@@ -32,7 +32,7 @@ def tt_connect(txId):
     with lcls2_timetool.TimeToolKcu1500Root(**myargs) as cl:
 
         rxId = cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
-        cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.put(txId)
+        cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
         
     d = {}
     d['paddr'] = rxId

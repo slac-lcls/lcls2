@@ -110,6 +110,11 @@ hsds = [
 
     #{node:'daq-tst-dev07',bus:'1b',pv:'DAQ:LAB2:HSD:DEV07_1B',drp:'drp-tst-dev008'},
     {node:'daq-tst-dev07',bus:'1a',pv:'DAQ:LAB2:HSD:DEV07_1A',drp:'drp-tst-dev010'},
+    {node:'daq-tst-dev07',bus:'88',pv:'DAQ:LAB2:HSD:DEV07_88',drp:'drp-tst-dev019'},
+    {node:'daq-tst-dev07',bus:'89',pv:'DAQ:LAB2:HSD:DEV07_89',drp:'drp-tst-dev020'},
+    {node:'daq-tst-dev07',bus:'b1',pv:'DAQ:LAB2:HSD:DEV07_B1',drp:'drp-tst-dev021'},
+    {node:'daq-tst-dev07',bus:'b2',pv:'DAQ:LAB2:HSD:DEV07_B2',drp:'drp-tst-dev022'},
+    {node:'daq-tst-dev07',bus:'5e',pv:'DAQ:LAB2:HSD:DEV07_5E',drp:'drp-tst-dev024'},
 ]
 
 hsd_cmd0 = task_set+'drp '+std_opts0+' -l 0x1'

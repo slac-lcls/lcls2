@@ -54,7 +54,7 @@ static void check(PyObject* obj) {
 
 unsigned TimeTool::_getPaddr() {
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.config.tt_config");
+    PyObject* pModule = PyImport_ImportModule("psalg.configdb.tt_config");
     check(pModule);
     // returns borrowed reference
     PyObject* pDict = PyModule_GetDict(pModule);
