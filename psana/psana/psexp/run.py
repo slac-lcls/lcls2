@@ -189,7 +189,13 @@ class Run(object):
                     det_query = "cspad_0002"
                 else:
                     det_query = configinfo.uniqueid
-                self.calibconst[det_name] = wu.calib_constants_all_types(det_query, exp=self.expt, run=self.runnum)
+                calib_const = wu.calib_constants_all_types(det_query, exp=self.expt, run=self.runnum)
+                
+                # mona - hopefully this will be removed once the calibconst
+                # db all use uniqueid as an identifier
+                if not calib_const:
+                    calib_const = wu.calib_constants_all_types(det_name, exp=self.expt, run=self.runnum)
+                self.calibconst[det_name] = calib_const
             else:
                 self.calibconst[det_name] = None
 
