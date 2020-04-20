@@ -1,7 +1,9 @@
-from psalg.configdb.get_config import get_config
+from psdaq.configdb.get_config import get_config
 from p4p.client.thread import Context
+
 import json
 import time
+import pprint
 
 def epics_put(cfg,epics_prefix,names,values):
 
@@ -12,7 +14,28 @@ def epics_put(cfg,epics_prefix,names,values):
             names.append(epics_prefix+key)
             values.append(val)
         
-def w8_config(connect_str,prefix,cfgtype,detname,detsegm,group):
+def wave8_init(epics_prefix, xpmpv=None):
+    return epics_prefix
+
+def wave8_connect(epics_prefix):
+
+    # Retrieve connection information from EPICS
+    # May need to wait for other processes here, so poll
+    ctxt = Context('pva')
+    for i in range(50):
+        values = ctxt.get(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:RxId').raw.value
+        if values!=0:
+            break
+        print('{:} is zero, retry'.format(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:RxId'))
+        time.sleep(0.1)
+
+    ctxt.close()
+
+    d = {}
+    d['paddr'] = values
+    return json.dumps(d)
+
+def wave8_config(prefix,connect_str,cfgtype,detname,detsegm,group):
     global ctxt
 
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
@@ -32,8 +55,8 @@ def w8_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     raw            = cfg['user']['raw']
     rawStart       = raw['start_ns']
     triggerDelay   = rawStart*1300/7000 - partitionDelay*200
+    print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
     if triggerDelay < 0:
-        print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
         raise ValueError('triggerDelay computes to < 0')
 
     rawNsamples = int(raw['gate_ns']*0.25)
@@ -110,7 +133,7 @@ def w8_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     v = json.dumps(cfg)
     return v
 
-def w8_unconfig(epics_prefix):
+def wave8_unconfig(epics_prefix):
 
     return None;
 

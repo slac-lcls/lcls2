@@ -1,4 +1,4 @@
-import psalg.configdb.configdb as cdb
+import psdaq.configdb.configdb as cdb
 import json
 
 # json2xtc conversion depends on these being present with ':RO'

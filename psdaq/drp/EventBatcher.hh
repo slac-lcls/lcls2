@@ -16,10 +16,10 @@ namespace Drp {
     };
     class EvtBatcherSubFrameTail {
     public:
-        void*    data () {return (void*)((char*)(this)-_totSize());}
-        unsigned width() {return _width;}
-        unsigned tdest() {return _tdest;}
-        unsigned size () {return _size;}
+        void*     data () {return (void*)((char*)(this)-_totSize());}
+        unsigned  width() {return _width;}
+        unsigned  tdest() {return _tdest;}
+        unsigned& size () {return _size;}
     private:
         friend class EvtBatcherIterator;
         unsigned _totSize() {

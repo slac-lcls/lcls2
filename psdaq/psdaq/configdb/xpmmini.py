@@ -17,7 +17,6 @@ class PVHandler(object):
 
     def put(self, pv, op):
         postedval = op.value()
-        print('PVHandler put {:} {:}'.format(postedval['value'],self._cb))
         postedval['timeStamp.secondsPastEpoch'], postedval['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
         pv.post(postedval)
         self._cb(pv,postedval['value'])
@@ -74,7 +73,7 @@ class PVCtrls(threading.Thread):
 
     def msgInsert(self, pv, val):
         if val>0:
-            self._app.PartitionMessage.set(0x8000 | self._msgHeader)
+            self._app.SendTransition(self._msgHeader)
 
     def msgHeader(self, pv, val):
         self._msgHeader = val

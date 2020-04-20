@@ -20,7 +20,6 @@ setup(
 
        entry_points={
             'console_scripts': [
-                'configdb = psalg.configdb.configdb:main',
                 'syslog = psalg.utils.syslog:main',
               ]
        },

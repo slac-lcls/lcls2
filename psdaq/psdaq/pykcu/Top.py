@@ -97,6 +97,7 @@ class QSFPMonitor(pr.Device):
             name      = 'page',
             offset    = (127<<2),
             bitSize   = 8,
+            verify    = False,
             mode      = 'RW'
         ))
 
@@ -153,7 +154,7 @@ class QSFPMonitor(pr.Device):
         return r
 
     def getRxPwr(self):  #mW
-        self.page.set(0)
+        #self.page.set(0)
         v = self.RxPwrBlock.get()
 
         def word(a,o):
@@ -168,7 +169,7 @@ class QSFPMonitor(pr.Device):
 
 
     def getTxBiasI(self):  #mA
-        self.page.set(0)
+        #self.page.set(0)
         v = self.TxBiasBlock.get()
 
         def word(a,o):
@@ -180,7 +181,6 @@ class QSFPMonitor(pr.Device):
             return p * 0.002
                 
         return (pwr(0),pwr(1),pwr(2),pwr(3))
-
 
 class I2cBus(pr.Device):
     def __init__(self,
@@ -197,7 +197,8 @@ class I2cBus(pr.Device):
             name      = 'select',
             offset    = 0x0,
             bitSize   = 8,
-            mode      = 'RW'
+            verify    = False,
+            mode      = 'RW',
         ))
 
         self.add(QSFPMonitor(

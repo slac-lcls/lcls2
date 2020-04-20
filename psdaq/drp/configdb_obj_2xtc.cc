@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
     }
     Py_Initialize();
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.get_config");
+    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.get_config");
     check(pModule);
     // returns borrowed reference
     PyObject* pDict = PyModule_GetDict(pModule);

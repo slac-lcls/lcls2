@@ -124,7 +124,7 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
     Py_Initialize();
     // returns new reference
     printf("importing module \n");
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.tt_config");
+    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.tt_config");
     
     printf("checking module \n");
     check(pModule);

@@ -1,5 +1,5 @@
-from psalg.configdb.typed_json import cdict
-import psalg.configdb.configdb as cdb
+from psdaq.configdb.typed_json import cdict
+import psdaq.configdb.configdb as cdb
 import sys
 import IPython
 import argparse
@@ -48,9 +48,10 @@ def write_to_daq_config_db(args):
     # timing system
     top.set('expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].PauseThreshold',16,'UINT32')
     top.set('expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].TriggerDelay',42,'UINT32')
+    top.set('expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition',0,'UINT32')
 
     top.define_enum('rateEnum', {'929kHz':0, '71kHz':1, '10kHz':2, '1kHz':3, '100Hz':4, '10Hz':5, '1Hz':6})
-    top.set('expert.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.Config_L0_RateSel',6,'rateEnum')
+    top.set('expert.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.Config_L0Select_RateSel',6,'rateEnum')
 
     # Feb[0] refers to pgp lane, Ch[0][,1] refers to camera link channel from Feb (these should be abstracted)
     # UartOpal1000 is camType; sets serial registers

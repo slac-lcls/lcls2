@@ -1,6 +1,6 @@
-from psalg.configdb.typed_json import cdict
-from psalg.configdb.get_config import get_config_with_params
-import psalg.configdb.configdb as cdb
+from psdaq.configdb.typed_json import cdict
+from psdaq.configdb.get_config import get_config_with_params
+import psdaq.configdb.configdb as cdb
 import os
 import io
 import argparse

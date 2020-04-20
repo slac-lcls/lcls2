@@ -36,6 +36,7 @@ class cspad_cspadRawAlg_1_2_3(DetectorImpl):
 class fakecam_raw_2_0_0(cspad_cspadRawAlg_1_2_3):
     def __init__(self, *args):
         super().__init__(*args)
+        self._add_frame('array_raw')
 
 # for the pva detector in the teststand
 class pva_pvaAlg_1_2_3(DetectorImpl):

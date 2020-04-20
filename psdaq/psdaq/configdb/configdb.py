@@ -39,6 +39,8 @@ class configdb(object):
                 xx = self._get_response('create_collections/' + hutch + '/')
             except requests.exceptions.RequestException as ex:
                 logging.error('Web server error: %s' % ex)
+            except Exception as ex:
+                logging.error('%s' % ex)
             else:
                 if not xx['success']:
                     logging.error('%s' % xx['msg'])
@@ -80,6 +82,9 @@ class configdb(object):
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
             return dict()
+        except Exception as ex:
+            logging.error('%s' % ex)
+            return dict()
 
         if not xx['success']:
             logging.error('%s' % xx['msg'])
@@ -100,6 +105,9 @@ class configdb(object):
                                     json=value)
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
+            xx = []
+        except Exception as ex:
+            logging.error('%s' % ex)
             xx = []
 
         # try to clean up superfluous keys from serialization
@@ -125,6 +133,9 @@ class configdb(object):
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
             return dict()
+        except Exception as ex:
+            logging.error('%s' % ex)
+            return dict()
         else:
             if not xx['success']:
                 logging.error('%s' % xx['msg'])
@@ -145,6 +156,9 @@ class configdb(object):
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
             return []
+        except Exception as ex:
+            logging.error('%s' % ex)
+            return []
         else:
             if not xx['success']:
                 logging.error('%s' % xx['msg'])
@@ -157,6 +171,9 @@ class configdb(object):
             xx = self._get_response('get_hutches/')
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
+            return []
+        except Exception as ex:
+            logging.error('%s' % ex)
             return []
         else:
             if not xx['success']:
@@ -174,6 +191,9 @@ class configdb(object):
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
             return []
+        except Exception as ex:
+            logging.error('%s' % ex)
+            return []
         else:
             if not xx['success']:
                 logging.error('%s' % xx['msg'])
@@ -186,6 +206,8 @@ class configdb(object):
             xx = self._get_response('add_alias/' + self.hutch + '/' + alias + '/')
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
+        except Exception as ex:
+            logging.error('%s' % ex)
         else:
             if not xx['success']:
                 logging.error('%s' % xx['msg'])
@@ -194,10 +216,17 @@ class configdb(object):
     # Create a new device_configuration if it doesn't already exist!
     # Note: session is ignored
     def add_device_config(self, cfg, session=None):
+        if cfg in self.get_device_configs():
+            # already exists!
+            logging.info('device configuration \'%s\' already exists' % cfg)
+            return
         try:
             xx = self._get_response('add_device_config/' + cfg + '/')
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
+            return
+        except Exception as ex:
+            logging.error('%s' % ex)
             return
 
         if not xx['success']:
@@ -210,6 +239,9 @@ class configdb(object):
             xx = self._get_response('get_device_configs/')
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
+            return []
+        except Exception as ex:
+            logging.error('%s' % ex)
             return []
         else:
             if not xx['success']:
@@ -225,6 +257,9 @@ class configdb(object):
             xx = self._get_response('get_devices/' + hutch + '/' + alias + '/')
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
+            return []
+        except Exception as ex:
+            logging.error('%s' % ex)
             return []
         else:
             if not xx['success']:
@@ -273,6 +308,9 @@ class configdb(object):
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
             return
+        except Exception as ex:
+            logging.error('%s' % ex)
+            return
 
         if not xx['success']:
             logging.error('%s' % xx['msg'])
@@ -287,6 +325,9 @@ class configdb(object):
             xx = self._get_response('print_configs/' + hutch + '/')
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
+            return
+        except Exception as ex:
+            logging.error('%s' % ex)
             return
 
         if not xx['success']:

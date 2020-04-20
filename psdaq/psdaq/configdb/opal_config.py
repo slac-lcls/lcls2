@@ -1,4 +1,4 @@
-from psalg.configdb.get_config import get_config
+from psdaq.configdb.get_config import get_config
 from .xpmmini import *
 import rogue
 import cameralink_gateway
@@ -8,22 +8,9 @@ import json
 import IPython
 from collections import deque
 
-#this function reads the data base and converts it into.... what sort of object?
-def read_database():
-    return 0
-
-#this takes the data base object from read_database, does some messy calculations on it, and converts it to a rogue writeable object
-def database_object_calculations_2rogue():
-    return 0
-
-
-#this function takes in the object from
-def write_to_rogue():
-    return 0
-
 pv = None
 
-def opal_init(xpmpv=None):
+def opal_init(arg,xpmpv=None):
 
     global pv
     print('opal_init')
@@ -41,8 +28,11 @@ def opal_init(xpmpv=None):
 
     # Open a new thread here
     if xpmpv is not None:
+        cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.UseMiniTpg.set(True)
         pv = PVCtrls(xpmpv,cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper)
         pv.start()
+    else:
+        cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.UseMiniTpg.set(False)
 
     return cl
 
@@ -95,6 +85,7 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,group):
         raise ValueError('triggerDelay computes to < 0')
 
     cfg['expert']['ClinkPcie']['Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer[0]']['TriggerDelay'] = triggerDelay
+    cfg['expert']['ClinkPcie']['Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer[0]']['Partition'] = group
 
     gate = cfg['user']['gate_ns']
     cfg['expert']['ClinkFeb[0]']['TrigCtrl[0]']['TrigPulseWidth'] = gate*0.001
@@ -160,37 +151,6 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,group):
 
     return json.dumps(cfg)
 
-if __name__ == "__main__":
-
-
-    print(20*'_')
-    print(20*'_')
-    print("Executing main")
-    print(20*'_')
-    print(20*'_')
-
-    connect_info = {}
-    connect_info['body'] = {}
-    connect_info['body']['control'] = {}
-    connect_info['body']['control']['0'] = {}
-    connect_info['body']['control']['0']['control_info'] = {}
-    connect_info['body']['control']['0']['control_info']['instrument'] = 'TST'
-    connect_info['body']['control']['0']['control_info']['cfg_dbase'] = 'mcbrowne:psana@psdb-dev:9306/sioanDB'
-
-    mystring = json.dumps(connect_info)                             #paste this string into the pgpread_timetool.cc as parameter for the opal_config function call
-    print(mystring)
-    print(20*'_')
-    print(20*'_')
-    print("Calling opal_config")
-    print(20*'_')
-    print(20*'_')
-
-    my_config = opal_config(mystring,"BEAM", "tmotimetool")
-
-    print(20*'_')
-    print(20*'_')
-    print("opal_config finished")
-    print(20*'_')
-    print(20*'_')
-
-    print(my_config)
+def opal_unconfig(cl):
+    cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(False)
+    return cl

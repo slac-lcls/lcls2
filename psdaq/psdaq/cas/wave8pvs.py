@@ -111,7 +111,8 @@ def main():
 
     # Start the system
     Wave8Board.start(
-        pollEn   = True,
+#        pollEn   = True,
+        pollEn   = False,
         initRead = True,
         timeout  = 5.0,    
     )

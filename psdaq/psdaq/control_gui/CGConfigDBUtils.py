@@ -30,7 +30,7 @@ ROOT_CONFIGDB = 'configDB'
 
 #--------------------
 
-from psalg.configdb.configdb import configdb
+from psdaq.configdb.configdb import configdb
 
 def get_configdb(uri_suffix=URI_CONFIGDB, inst=None, root=ROOT_CONFIGDB) :
     #print('XXX get_configdb', uri_suffix, inst, root)
@@ -45,12 +45,12 @@ def get_configdb(uri_suffix=URI_CONFIGDB, inst=None, root=ROOT_CONFIGDB) :
 if __name__ == "__main__" :
 
     # Access the configuration database using:
-    #from psalg.configdb.configdb import configdb
+    #from psdaq.configdb.configdb import configdb
 
     INSTRUMENT = 'TMO'
 
     confdb = get_configdb(URI_CONFIGDB, INSTRUMENT)
-              # <psalg.configdb.configdb.configdb at 0x7fab765ebf98>
+              # <psdaq.configdb.configdb.configdb at 0x7fab765ebf98>
 
     # Find the hutches in the database:
     list_of_hutch_names = confdb.get_hutches() # ['TMO', 'CXI', etc.]

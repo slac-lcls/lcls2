@@ -61,7 +61,7 @@ static void check(PyObject* obj) {
 unsigned Digitizer::_getPaddr()
 {
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_connect");
+    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.hsd_connect");
     check(pModule);
 
     // returns borrowed reference
@@ -124,7 +124,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string
 
 
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
+    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.hsd_config");
     check(pModule);
 
     CHECK_TIME(PyImport);
@@ -266,7 +266,7 @@ void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
 void Digitizer::shutdown()
 {
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.hsd_config");
+    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.hsd_config");
     check(pModule);
 
     // returns borrowed reference

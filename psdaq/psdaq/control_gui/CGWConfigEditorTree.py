@@ -30,7 +30,7 @@ from psdaq.control_gui.QWPopupEditText import QWPopupEditText, QDialog
 from psdaq.control_gui.QWPopupSelectItem import popup_select_item_from_list
 from psdaq.control_gui.CGJsonUtils import json_from_str
 
-from psalg.configdb.typed_json import updateValue, getType #, getValue
+from psdaq.configdb.typed_json import updateValue, getType #, getValue
 import ast
 #import re
 #--------------------

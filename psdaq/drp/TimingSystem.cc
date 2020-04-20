@@ -81,7 +81,7 @@ static void check(PyObject* obj) {
 void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& config_alias) {
 
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.ts_config");
+    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.ts_config");
     check(pModule);
     // returns borrowed reference
     PyObject* pDict = PyModule_GetDict(pModule);
@@ -140,7 +140,7 @@ void TimingSystem::connect(const json& connect_json, const std::string& collecti
     close(fd);
 
     // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psalg.configdb.ts_connect");
+    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.ts_connect");
     check(pModule);
     // returns borrowed reference
     PyObject* pDict = PyModule_GetDict(pModule);

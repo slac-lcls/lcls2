@@ -1,5 +1,5 @@
-from psalg.configdb.typed_json import cdict
-import psalg.configdb.configdb as cdb
+from psdaq.configdb.typed_json import cdict
+import psdaq.configdb.configdb as cdb
 import sys
 import IPython
 import argparse
@@ -57,6 +57,7 @@ def write_to_daq_config_db(args):
     # timing system
     top.set('cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.PauseThreshold',16,'UINT32')
     top.set('cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.TriggerDelay',42,'UINT32')
+    top.set('cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.Partition',0,'UINT32')
 
     # prescaling
     top.set("cl.TimeToolKcu1500.Application.AppLane0.Prescale.DialInPreScaling",2,'UINT32')                            # prescaled raw data

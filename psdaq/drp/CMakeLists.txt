@@ -1,6 +1,7 @@
 find_package(PythonLibs REQUIRED)
 
 add_library(drpbase
+    BEBDetector.cc
     XpmDetector.cc
     DrpBase.cc
     FileWriter.cc
