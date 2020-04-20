@@ -2,7 +2,7 @@
 - Project repo: https://github.com/slac-lcls/lcls2/tree/master/xtc_vol
 - Link to README: https://github.com/slac-lcls/lcls2/blob/master/xtc_vol/README.md
 
-For detailed code documentation, please start with docs/html/index.html.
+**For detailed code documentation in html pages, please start with docs/html/index.html.**
 
 ## Dependencies:
 - CMake: version 3.10 or newer.
