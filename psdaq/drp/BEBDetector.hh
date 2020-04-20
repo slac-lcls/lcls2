@@ -1,7 +1,7 @@
 #pragma once
 /**
  **   This class services detectors whose event data is formatted from the AxiStreamBatcherEventBuilder firmware module
- **   This class depends upon the existence of a python module "psalg.configdb.<detType>_config.py", which contains
+ **   This class depends upon the existence of a python module "psdaq.configdb.<detType>_config.py", which contains
  **   the following functions:
  **     <detType>_init    (str)        - returns a handle (PyObject) for interacting with the device configuration
  **     <detType>_connect (handle)     - returns a dictionary with "paddr" element for Xpm link ID.  Other entries allowed.

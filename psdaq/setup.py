@@ -20,6 +20,7 @@ setup(
                 'testClient2 = psdaq.control.testClient2:main',
                 'testAsyncErr = psdaq.control.testAsyncErr:main',
                 'testFileReport = psdaq.control.testFileReport:main',
+                'configdb = psdaq.configdb.configdb:main',
                 'getrun = psdaq.control.getrun:main',
                 'groupca = psdaq.cas.groupca:main',
                 'partca = psdaq.cas.partca:main',

@@ -1,5 +1,5 @@
-from psalg.configdb.typed_json import cdict
-import psalg.configdb.configdb as cdb
+from psdaq.configdb.typed_json import cdict
+import psdaq.configdb.configdb as cdb
 import os
 import io
 import argparse

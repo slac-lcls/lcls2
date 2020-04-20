@@ -56,7 +56,7 @@ BEBDetector::~BEBDetector()
 void BEBDetector::_init(const char* arg) 
 {
     char module_name[64];
-    sprintf(module_name,"psalg.configdb.%s_config",m_para->detType.c_str());
+    sprintf(module_name,"psdaq.configdb.%s_config",m_para->detType.c_str());
 
     char func_name[64];
 

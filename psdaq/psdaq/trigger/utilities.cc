@@ -26,7 +26,7 @@ int Pds::Trg::fetchDocument(const std::string& connectMsg,
   int rc = -1;
 
   // returns new reference
-  PyObject* pModule = PyImport_ImportModule("psalg.configdb.get_config");
+  PyObject* pModule = PyImport_ImportModule("psdaq.configdb.get_config");
   if (!failed(pModule))
   {
     // returns borrowed reference

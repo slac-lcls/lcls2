@@ -1,4 +1,4 @@
-from psalg.configdb.get_config import get_config
+from psdaq.configdb.get_config import get_config
 from p4p.client.thread import Context
 
 import json

@@ -9,9 +9,9 @@ from p4p.server.thread import SharedPV
 from psdaq.pyxpm.pvseq import *
 from psdaq.pyxpm.pvhandler import *
 # db support
-from psalg.configdb.typed_json import cdict
-import psalg.configdb.configdb as cdb
-from psalg.configdb.get_config import get_config_with_params
+from psdaq.configdb.typed_json import cdict
+import psdaq.configdb.configdb as cdb
+from psdaq.configdb.get_config import get_config_with_params
 
 provider = None
 lock     = None

@@ -1,4 +1,4 @@
-from psalg.configdb.typed_json import *
+from psdaq.configdb.typed_json import *
 from psana import DataSource, container
 import numpy as np
 import subprocess
