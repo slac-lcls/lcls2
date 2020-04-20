@@ -139,6 +139,23 @@ target_link_libraries(tprutil
 )
 
 #
+#  xcasttest
+#
+add_executable(xcasttest xcasttest.cc)
+
+target_include_directories(xcasttest PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(xcasttest
+   app
+   dl
+   pthread
+   rt
+)
+
+#
 #  pgpca
 #
 add_executable(pgpca pgpca.cc)
@@ -203,7 +220,8 @@ install(TARGETS app
                 tprtrig
 		tprioc
 		tprsh
-		tprutil
+                tprutil
+		xcasttest
                 pgpca
                 pvcam
                 json2xtc

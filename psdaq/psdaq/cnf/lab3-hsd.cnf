@@ -2,7 +2,7 @@ platform = '0'
 username = 'lcls2'
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
-conda_rel = 'ps-2.0.5'
+conda_rel = 'ps-2.1.2'
 hsd_epics_dev02 = 'DAQ:LAB2:HSD:DEV02'
 hsd_epics_dev06 = 'DAQ:LAB2:HSD:DEV06'
 hsd_epics_dev07 = 'DAQ:LAB2:HSD:DEV07'
@@ -15,6 +15,7 @@ hutch = 'tst'
 
 drp_cmd  = 'drp -P '+hutch+' -l 0x1 -d /dev/datadev_0 -C '+collect_host+' -o /ffb01/weaver'
 drp_cmdb = 'drp -P '+hutch+' -l 0x1 -d /dev/datadev_1 -C '+collect_host+' -o /ffb01/weaver'
+
 #verbosity = ' -vvvv'
 verbosity = ' '
 
@@ -50,14 +51,18 @@ procmgr_config = [
 # { host: 'daq-tst-dev06', id:'hsdioc_88', flags:'', conda:conda_rel, env:epics_env, cmd:'hsd126PVs -P '+hsd_epics_dev06+'_88 -d /dev/pcie_adc_88'},
 # { host: 'drp-tst-dev021', id:'xpphsd_2', flags:'pu', conda:conda_rel, cmd:drp_cmd+' -D hsd -k hsd_epics_prefix='+hsd_epics_dev06+'_88'},
 
-#  TTL trigger (signal) on input channels
+ # Wave8
+ { host: 'drp-tst-dev005', id:'wave8pvs',    flags:'sx',    conda:conda_rel, cmd:'wave8pvs --l 0'},
+ { host: 'drp-tst-dev005', id:'tmowave8_0' , flags:'sxpu', conda:conda_rel, cmd:drp_cmd+' -l 0x2 -D wave8 -k epics_prefix=DAQ:WAVE8 '+verbosity},
+
+ #  TTL trigger (signal) on input channels
  { host: 'daq-tst-dev03', id:'ttl'     , flags:'s', conda:conda_rel, cmd:'tprtrig -r 1'},
 
  {                        id:'groupca' , flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
  {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
 
  { host: 'drp-tst-dev024', id:'teb1'   , flags:'xspu', conda:conda_rel, cmd:'teb -P '+hutch+' -C '+collect_host+' '+verbosity},
- { host: 'drp-tst-dev016', id:'meb16'   , flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host+verbosity},
+ { host: 'drp-tst-dev016', id:'meb16'   , flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+'P0 -d -q 4 -C '+collect_host+verbosity},
 
  { host: 'drp-tst-dev005', id:'xppts_0' , flags:'xspu', conda:conda_rel, cmd:drp_cmdb+' -D ts'+verbosity},
 
@@ -70,14 +75,14 @@ bus =1
 pv  =2
 drp =3
 hsds = [
-    {node:'daq-tst-dev07',bus:'88',pv:'DAQ:LAB2:HSD:DEV07_88',drp:'drp-tst-dev019'},
-    {node:'daq-tst-dev07',bus:'89',pv:'DAQ:LAB2:HSD:DEV07_89',drp:'drp-tst-dev020'},
-    {node:'daq-tst-dev07',bus:'b1',pv:'DAQ:LAB2:HSD:DEV07_B1',drp:'drp-tst-dev021'},
-    {node:'daq-tst-dev07',bus:'b2',pv:'DAQ:LAB2:HSD:DEV07_B2',drp:'drp-tst-dev022'},
-    {node:'daq-tst-dev07',bus:'5e',pv:'DAQ:LAB2:HSD:DEV07_5E',drp:'drp-tst-dev024'},
-    {node:'daq-tst-dev07',bus:'1b',pv:'DAQ:LAB2:HSD:DEV07_1B',drp:'drp-tst-dev008'},
+#    {node:'daq-tst-dev07',bus:'88',pv:'DAQ:LAB2:HSD:DEV07_88',drp:'drp-tst-dev019'},
+#    {node:'daq-tst-dev07',bus:'89',pv:'DAQ:LAB2:HSD:DEV07_89',drp:'drp-tst-dev020'},
+#    {node:'daq-tst-dev07',bus:'b1',pv:'DAQ:LAB2:HSD:DEV07_B1',drp:'drp-tst-dev021'},
+#    {node:'daq-tst-dev07',bus:'b2',pv:'DAQ:LAB2:HSD:DEV07_B2',drp:'drp-tst-dev022'},
+#    {node:'daq-tst-dev07',bus:'5e',pv:'DAQ:LAB2:HSD:DEV07_5E',drp:'drp-tst-dev024'},
+#    {node:'daq-tst-dev07',bus:'1b',pv:'DAQ:LAB2:HSD:DEV07_1B',drp:'drp-tst-dev008'},
     {node:'daq-tst-dev07',bus:'1a',pv:'DAQ:LAB2:HSD:DEV07_1A',drp:'drp-tst-dev010'},
-    {node:'daq-tst-dev06',bus:'3d',pv:'DAQ:LAB2:HSD:DEV06_3D',drp:'drp-tst-dev023'},
+#    {node:'daq-tst-dev06',bus:'3d',pv:'DAQ:LAB2:HSD:DEV06_3D',drp:'drp-tst-dev023'},
 ]
 
 port=29074
@@ -89,9 +94,9 @@ for e in hsds:
     procmgr_config.append({id:'hsdpvs_%s_b'%e[bus], port:'%d'%port, flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':B'})
     port += 1
     procmgr_config.append({ host: e[node], id:'hsdioc_%s'%e[bus], flags:'', conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P '+e[pv]+' -d /dev/pcie_adc_%s'%e[bus]})
-    procmgr_config.append({ host: e[drp], id:'xpphsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:drp_cmd+' -D hsd -k hsd_epics_prefix='+e[pv]+':A'})
+    procmgr_config.append({ host: e[drp], id:'tmohsd_%d'%segm, flags:'sxpu', conda:conda_rel, cmd:drp_cmd+' -D hsd -k hsd_epics_prefix='+e[pv]+':A'})
     segm += 1
-    procmgr_config.append({ host: e[drp], id:'xpphsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:drp_cmdb +' -D hsd -k hsd_epics_prefix='+e[pv]+':B'})
+    procmgr_config.append({ host: e[drp], id:'tmohsd_%d'%segm, flags:'sxpu', conda:conda_rel, cmd:drp_cmdb +' -D hsd -k hsd_epics_prefix='+e[pv]+':B'})
     segm += 1
     pvlist.append(e[pv]+':A')
     pvlist.append(e[pv]+':B')

@@ -35,7 +35,7 @@ procmgr_config = [
  { host: 'drp-tst-dev005', id:'tmowave8_0' , flags:'spu', conda:conda_rel, cmd:drp_cmd+' -l 0x2 -D wave8 -k epics_prefix=DAQ:WAVE8 '+verbosity},
 
  {                        id:'pvant', flags:'s', conda:conda_rel, env:epics_env, cmd:'pvant --bases DAQ:WAVE8:Top --fields '+' '.join(fields)},
- { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch},
+ { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C NOBEAM -B DAQ:LAB2 -x 2 -P '+hutch},
  {                        flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 ]
 

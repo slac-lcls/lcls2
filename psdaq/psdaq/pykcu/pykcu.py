@@ -104,12 +104,13 @@ def main():
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for KCU')
     parser.add_argument('-i','--interval',type=int ,help='PV update interval',default=10)
     parser.add_argument('-H','--hsd'     ,action='store_true',help='HSD node',default=False)
+    parser.add_argument('-d','--dev'     ,type=str, default='/dev/datadev_0')
     args = parser.parse_args()
 
     # Set base
     base = pr.Root(name='KCUr',description='') 
 
-    coreMap = rogue.hardware.axi.AxiMemMap('/dev/datadev_0')
+    coreMap = rogue.hardware.axi.AxiMemMap(args.dev)
 
     base.add(Top(memBase = coreMap))
     
