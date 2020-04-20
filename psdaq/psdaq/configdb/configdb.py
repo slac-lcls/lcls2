@@ -424,6 +424,32 @@ def _cp(args):
         print('failed to transfer configuration')
         sys.exit(1)
 
+def _ls(args):
+    # authentication is not required, adjust url accordingly
+    url = args.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
+    mycdb = configdb(url, None, root=args.root)
+
+    if args.src is None:
+        src_list = []
+    else:
+        src_list = args.src.split('/')
+
+    if len(src_list) == 0:
+        # get list of hutches and print them
+        for hutch in mycdb.get_hutches():
+            print(hutch)
+    elif len(src_list) == 1:
+        # get list of aliases in hutch and print them
+        for alias in mycdb.get_aliases(src_list[0]):
+            print(alias)
+    elif len(src_list) == 2:
+        # get list of devices in hutch/alias and print them
+        for device in mycdb.get_devices(src_list[1], src_list[0]):
+            print(device)
+    else:
+        print('Name \'%s\' does not match <hutch>[/<alias>]' % args.src)
+        sys.exit(1)
+
 def main():
 
     # create the top-level parser
@@ -437,7 +463,7 @@ def main():
     parser_cat = subparsers.add_parser('cat', help='print a configuration')
     parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
     parser_cat.set_defaults(func=_cat)
-   
+
     # create the parser for the "cp" command
     parser_cp = subparsers.add_parser('cp', help='copy a configuration')
     parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
@@ -446,6 +472,11 @@ def main():
     parser_cp.add_argument('--password', default='pcds', help='default: pcds')
     parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
     parser_cp.set_defaults(func=_cp)
+
+    # create the parser for the "ls" command
+    parser_ls = subparsers.add_parser('ls', help='list directory contents')
+    parser_ls.add_argument('src', help='source: <hutch>[/<alias>]', nargs='?', default=None)
+    parser_ls.set_defaults(func=_ls)
 
     # parse the args and call whatever function was selected
     args = parser.parse_args()
