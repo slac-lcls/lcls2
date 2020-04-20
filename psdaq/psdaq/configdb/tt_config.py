@@ -61,6 +61,7 @@ def tt_config(cl,connect_str,cfgtype,detname,detsegm,group):
         raise ValueError('triggerDelay computes to < 0')
             
     cfg['cl']['TimeToolKcu1500']['Kcu1500Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer0']['TriggerDelay'] = triggerDelay
+    cfg['cl']['TimeToolKcu1500']['Kcu1500Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer0']['Partition'] = group
         
     cl.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.SendEscape()
 

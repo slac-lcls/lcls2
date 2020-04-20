@@ -85,6 +85,7 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,group):
         raise ValueError('triggerDelay computes to < 0')
 
     cfg['expert']['ClinkPcie']['Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer[0]']['TriggerDelay'] = triggerDelay
+    cfg['expert']['ClinkPcie']['Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer[0]']['Partition'] = group
 
     gate = cfg['user']['gate_ns']
     cfg['expert']['ClinkFeb[0]']['TrigCtrl[0]']['TrigPulseWidth'] = gate*0.001
