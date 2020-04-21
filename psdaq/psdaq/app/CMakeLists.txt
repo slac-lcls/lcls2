@@ -1,3 +1,5 @@
+find_package(PythonLibs REQUIRED)
+
 add_library(app SHARED
     AppUtils.cc
 )
@@ -5,18 +7,19 @@ add_library(app SHARED
 add_executable(hpsBldServer hpsBldServer.cc)
 
 target_include_directories(hpsBldServer PUBLIC
+    ${PYTHON_INCLUDE_DIRS}
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(hpsBldServer
    app
-   cphw
    bld
    epicstools
    dl
    pthread
    rt
+   ${PYTHON_LIBRARIES}
 )
 
 add_executable(hpsBldClient hpsBldClient.cc)

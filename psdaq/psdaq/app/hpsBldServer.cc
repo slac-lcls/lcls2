@@ -18,6 +18,7 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <inttypes.h>
+#include <Python.h>
 
 #include <string>
 #include <new>
@@ -25,17 +26,10 @@
 
 #include "psdaq/app/AppUtils.hh"
 
-#include "psdaq/cphw/BldControl.hh"
-using Pds::Cphw::BldControl;
-
 #include "psdaq/bld/Header.hh"
 #include "psdaq/bld/HpsEvent.hh"
 #include "psdaq/bld/HpsEventIterator.hh"
 #include "psdaq/bld/Server.hh"
-
-#include "psdaq/epicstools/PVBase.hh"
-using Pds_Epics::EpicsPVA;
-using Pds_Epics::PVBase;
 
 void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
@@ -44,52 +38,28 @@ void usage(const char* p) {
   printf("         -p <words> (max packet size)\n");
 }
 
-namespace Bld {
-  class HpsBldControlMonitor : public Pds_Epics::PVBase {
-  public:
-    HpsBldControlMonitor(int         fd, 
-                         sockaddr_in haddr,
-                         BldControl* cntl,
-                         const char* channelName) :
-      Pds_Epics::PVBase(channelName),
-      _fd(fd), _haddr(haddr), _cntl(cntl)
-    {
-    }
-    virtual ~HpsBldControlMonitor() {}
-  public:
-    void updated() {
-      _cntl->disable();
-      unsigned v = getScalarAs<unsigned>();
-      if (v) {
-        _cntl->channelMask = v;
-        _cntl->enable(_fd, _haddr);
-      }
-    }
-  private:
-    int         _fd;
-    sockaddr_in _haddr;
-    BldControl* _cntl;
-  };
-};
-
 using namespace Bld;
 
 static int      count = 0;
 static int      event = 0;
 static int64_t  bytes = 0;
 static unsigned lanes = 0;
-static BldControl* cntl = 0;
 
 static int setup_mc(unsigned addr, unsigned port, unsigned interface);
 static void handle_data(void*);
 
+static PyObject* _check(PyObject* obj) {
+  if (!obj) {
+    PyErr_Print();
+    throw "**** python error\n";
+  }
+  return obj;
+}
 
 static void sigHandler( int signal ) 
 {
   psignal(signal, "bld_control received signal");
 
-  cntl->disable();
-  
   printf("BLD disabled\n");
   ::exit(signal);
 }
@@ -207,7 +177,7 @@ int main(int argc, char* argv[])
     usage(argv[0]);
     return 0;
   }
-    
+
   struct sigaction sa;
   sa.sa_handler = sigHandler;
   sa.sa_flags = SA_RESETHAND;
@@ -262,54 +232,63 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  //  Set the target address
-  Pds::Cphw::Reg::set(hpsip_s, 8193, 0);
+  //  Initialize the PVA monitor
+  //  Fetch the multicast addr and port
 
-  cntl = BldControl::locate();
-  cntl->setMaxSize(psize);
+  Py_Initialize();
 
-  int fd_mc;
+  char module_name[64];
+  sprintf(module_name,"psdaq.pyhpsbld.pyhpsbld");
 
-  if (bldname) {
-    //
-    //  Fetch channel field names from PVA
-    //
-    HpsBldControlMonitor* pvaCntl = new HpsBldControlMonitor(fd, haddr, cntl, 
-                                                             (std::string(bldname)+":HPS:FIELDMASK").c_str());
-    //    EpicsPVA*          pvaPayl = new EpicsPVA((std::string(bldname)+":PAYLOAD").c_str());
-    PVBase*            pvaAddr = new PVBase((std::string(bldname)+":ADDR").c_str());
-    PVBase*            pvaPort = new PVBase((std::string(bldname)+":PORT").c_str());
+   // returns new reference
+  PyObject* m_module = _check(PyImport_ImportModule(module_name));
+
+  PyObject* pDict = _check(PyModule_GetDict(m_module));
+  PyObject* dev;
+  {
+    PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)"hps_init"));
+
+    //  Get a handle to the rogue control
+    // returns new reference
+    dev = _check(PyObject_CallFunction(pFunc,"ssI",bldname,hpsip_s,psize));
+  }
+
+  // "connect" to the sending socket
+  char buf[4];
+  send(fd,buf,sizeof(buf),0);
+
+  unsigned mcaddr, mcport;
+  {
+    PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)"hps_connect"));
+
+    // returns new reference
+    PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"O",dev));
+
+    mcaddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "addr"));
+    mcport = PyLong_AsLong(PyDict_GetItemString(mbytes, "port"));
+        
+    Py_DECREF(mbytes);
+  }
+
+  PyThreadState* m_pysave = PyEval_SaveThread(); // Py_BEGIN_ALLOW_THREADS
   
-    while(1) {
-      if (pvaCntl      ->ready() &&
-          //          pvaPayl      ->ready() &&
-          pvaAddr      ->ready() &&
-          pvaPort      ->ready())
-        break;
-      usleep(100000);
-    }
-
-    fd_mc = setup_mc(pvaAddr->getScalarAs<unsigned>(),
-                     pvaPort->getScalarAs<unsigned>(),
-                     bldip);
-  }
-  else {
-    cntl->disable();
-    cntl->channelMask = 0x18;
-    cntl->enable(fd, haddr);
-    fd_mc = setup_mc(0xefff8001,
-                     11001,
-                     bldip);
-  }
+  int fd_mc = setup_mc(mcaddr,
+                       mcport,
+                       bldip);
   
   int iargs[] = { fd, fd_mc };
   handle_data(iargs);
 
   pthread_join(thr,NULL);
 
+  PyEval_RestoreThread(m_pysave);  // Py_END_ALLOW_THREADS
+
+  Py_DECREF(dev);
+  Py_DECREF(m_module);
+  Py_Finalize();
+
   return 0;
 }
-
 
 int setup_mc(unsigned addr, unsigned port, unsigned interface)
 {
@@ -414,3 +393,4 @@ void handle_data(void* args)
 
   free(buff);
 }
+

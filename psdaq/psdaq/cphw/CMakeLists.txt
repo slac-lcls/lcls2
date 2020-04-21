@@ -35,10 +35,10 @@ target_include_directories(cphw PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
 )
 
-target_link_libraries(cphw
-    cpsw::cpsw
-    ${YAML_CPP_LIB}
-)
+#target_link_libraries(cphw
+#    cpsw::cpsw
+#    ${YAML_CPP_LIB}
+#)
 
 target_include_directories(cphwr PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -49,16 +49,16 @@ target_include_directories(cphwr PUBLIC
 #
 #  amc_timing
 #
-add_executable(amc_timing amc_timing.cc)
+#add_executable(amc_timing amc_timing.cc)
 
-target_link_libraries(amc_timing
-    cphw
-    cpsw::cpsw
-    ${YAML_CPP_LIBRARY}
-    dl
-    pthread
-    rt
-)
+#target_link_libraries(amc_timing
+#    cphw
+#    cpsw::cpsw
+#    ${YAML_CPP_LIBRARY}
+#    dl
+#    pthread
+#    rt
+#)
 
 #
 #  amctiming_udp
@@ -122,7 +122,7 @@ target_link_libraries(xvc_srv
 
 install(TARGETS cphw
                 cphwr
-                amc_timing
+#                amc_timing
                 amc_timing_udp
                 amc_eyescan
     ARCHIVE DESTINATION lib

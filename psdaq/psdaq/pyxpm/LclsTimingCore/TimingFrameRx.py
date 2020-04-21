@@ -240,6 +240,11 @@ class TimingFrameRx(pr.Device):
             self.RxCountReset.set(1)
             time.sleep(0.001)
             self.RxCountReset.set(0)                         
+
+    def Dump(self):
+        for k,v in self._nodes.items():
+            if hasattr(v,'get'):
+                print('{:} : {:}'.format(k,v.get()))
             
     def hardReset(self):
         self.ClearRxCounters()
