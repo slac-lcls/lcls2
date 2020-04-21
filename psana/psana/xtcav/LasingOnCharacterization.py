@@ -36,7 +36,7 @@ class LasingOnCharacterization():
         island_split_method (str): island splitting algorithm. Set to 'scipylabel' or 'contourLabel'  The defaults parameter is then one used for the lasing off reference or 'scipylabel'.
     """
 
-    def __init__(self, args, run):
+    def __init__(self, args, run, dets):
         """
            Arguments:
            - args (argparse.Namespace): container of input parameters as attributes
@@ -45,6 +45,7 @@ class LasingOnCharacterization():
 
         self.args = args
         self.run  = run
+        self.dets = dets
 
         #all parameters defaulted to None since code handles filling parameters later
         self.num_bunches         = getattr(args, 'num_bunches', None)
@@ -59,20 +60,16 @@ class LasingOnCharacterization():
         self.lasingoff_ref_path  = getattr(args, 'lasingoff_reference_path', None) #Lasing off reference file path
         #self.calibration_path   = getattr(args, 'calibration_path', '')
 
-        self._setDataSources()
+        self._setDetectorDataObjects()
         self._loadDarkReference()
         self._loadLasingOffReference()
 
         self._calibrationsset = False
 
-        #=====================
-        #sys.exit('TEST EXIT')
-        #=====================
 
-            
-    def _setDataSources(self):
-        """ initializes access to detectr data
-        """
+    def _setDetectorDataObjects(self):
+        """ initialization of detectrs data objects is moved outside class
+
         run = self.run
         self._camera      = run.Detector(cons.DETNAME)
         self._ebeam       = run.Detector(cons.EBEAM)
@@ -88,6 +85,16 @@ class LasingOnCharacterization():
 
         if None in (self._camraw, self._valsebm, self._valsgd, self._valseid, self._valsxtp) : 
             sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
+        """
+
+        #logger.debug('dir(dets): %s', str(dir(self.dets)))
+        attrs = [name for name in dir(self.dets) if name[:2] != '__']
+        logger.debug('set detectors and data attributes: %s', str(attrs))
+        for name in attrs : setattr(self, name, getattr(self.dets, name, None))
+        
+        #=====================
+        #sys.exit('TEST EXIT')
+        #=====================
 
 
     def _loadDarkReference(self):
@@ -99,7 +106,9 @@ class LasingOnCharacterization():
             logger.info('Using file ' + self.dark_reference_path.split('/')[-1] + ' for dark reference')
 
         if self._darkreference is None :
-            dark_data, dark_meta = self._camera.calibconst.get('xtcav_pedestals')
+           #dark_data, dark_meta = self._camera.calibconst.get('xtcav_pedestals')
+            dark_data, dark_meta = xtup.get_calibconst(self._camera, 'xtcav_pedestals', cons.DETNAME, self.run.expt, self.run.runnum)
+
             self._darkreference = xtu.xtcav_calib_object_from_dict(dark_data)
             logger.debug('==== dark_meta:\n%s' % str(dark_meta))
             logger.debug('==== dir(_darkreference):\n%s'% str(dir(self._darkreference)))
@@ -120,7 +129,8 @@ class LasingOnCharacterization():
             return
 
         if self._lasingoffreference is None:
-            lofr_data, lofr_meta = self._camera.calibconst.get('xtcav_lasingoff')
+            #lofr_data, lofr_meta = self._camera.calibconst.get('xtcav_lasingoff')
+            lofr_data, lofr_meta = xtup.get_calibconst(self._camera, 'xtcav_lasingoff', cons.DETNAME, self.run.expt, self.run.runnum)
             self._lasingoffreference = xtu.xtcav_calib_object_from_dict(lofr_data)
             logger.debug('==== lofr_meta:\n%s' % str(lofr_meta))
             logger.debug('==== dir(_lasingoffreference):\n%s'% str(dir(self._lasingoffreference)))
@@ -178,7 +188,7 @@ class LasingOnCharacterization():
         """ Method that sets the xtcav calibration values for a given run.
         """
         # DONE in __init__
-        #if not self._camera: self._setDataSources()
+        #if not self._camera: self._setDetectorDataObjects()
         #if not self._darkreference: self._loadDarkReference()
         #if not self._lasingoffreference: self._loadLasingOffReference()
 
@@ -707,6 +717,37 @@ LasingOnParameters = xtu.namedtuple('LasingOnParameters',
     'island_split_par1', 
     'island_split_par2'])   
         
+#----------
+#----------
+#----------
+#----------
+#----------
+#----------
+
+class DetectorsData():
+    pass
+
+
+def setDetectors(run, camera=None, ebeam=None, gasdetector=None, eventid=None, xtcavpars=None):
+    """ access to detector and data objects
+    """
+    o = DetectorsData()
+    o._camera      = camera      if camera      is not None else run.Detector(cons.DETNAME)      # 'xtcav'      
+    o._ebeam       = ebeam       if ebeam       is not None else run.Detector(cons.EBEAM)        # 'ebeam'      
+    o._gasdetector = gasdetector if gasdetector is not None else run.Detector(cons.GAS_DETECTOR) # 'gasdetector'
+    o._eventid     = eventid     if eventid     is not None else run.Detector(cons.EVENTID)      # 'eventid'    
+    o._xtcavpars   = xtcavpars   if xtcavpars   is not None else run.Detector(cons.XTCAVPARS)    # 'xtcavpars'  
+
+    o._camraw   = xtup.get_attribute(o._camera,      'raw')
+    o._valsebm  = xtup.get_attribute(o._ebeam,       'valsebm')
+    o._valsgd   = xtup.get_attribute(o._gasdetector, 'valsgd')
+    o._valseid  = xtup.get_attribute(o._eventid,     'valseid')
+    o._valsxtp  = xtup.get_attribute(o._xtcavpars,   'valsxtp')
+
+    if None in (o._camraw, o._valsebm, o._valsgd, o._valseid, o._valsxtp) : 
+        sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
+    return o
+
 
 def procEvents(args):
 
@@ -717,12 +758,13 @@ def procEvents(args):
     ds = DataSource(files=fname)
     run = next(ds.runs())
 
-    lon = LasingOnCharacterization(args, run)
+    dets = setDetectors(run) # NEEDS IN camera, ebeam, gasdetecto, eventid, xtcavpars
+    lon = LasingOnCharacterization(args, run, dets)
 
     nimgs=0
     for nev,evt in enumerate(run.events()):
 
-        img = lon._camraw(evt)
+        img = dets._camraw(evt)
         logger.info('Event %03d' % nev)
         logger.debug(info_ndarr(img, 'camera raw:'))
         if img is None: continue

@@ -37,6 +37,21 @@ def getCameraSaturationValue(valsxtp, evt):
     return (1<<14)-1
     
 
+def get_calibconst(det, ctype='xtcav_pedestals', detname='xtcav', expname='amox23616', run_number=131):
+    resp = det.calibconst.get(ctype)
+    if resp is None : # try direct access
+        logger.warning('ACCESS TO CALIB CONSTANTS "%s"' % ctype\
+                       + ' VIA "%s" DETECTOR INTERFACE DOES NOT WORK, USE DIRECT ACESS' % detname)
+        from psana.pscalib.calib.MDBWebUtils import calib_constants
+        resp = calib_constants(detname, exp=expname, ctype=ctype, run=run_number)
+    if resp is None :
+        logger.warning('CAN NOT ACCESS CALIB CONSTANTS "%s" FOR DETECTOR "%s"' % (ctype, detname))
+        import sys
+        sys.exit('EXIT - PROBLEM NEEDS TO BE FIXED...')
+    #dark_data, dark_meta = resp
+    return resp
+
+
 def getGlobalXTCAVCalibration(ovals, evt):
     """
     Obtain the global XTCAV calibration form the epicsStore

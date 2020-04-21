@@ -135,7 +135,8 @@ class LasingOffReference():
         list_image_profiles = []
 
         #dark_background = self._getDarkBackground(env)
-        dark_data, dark_meta = camera.calibconst.get('xtcav_pedestals')
+        
+        dark_data, dark_meta = xtup.get_calibconst(camera, 'xtcav_pedestals', cons.DETNAME, experiment, run_number)
 
         logger.debug('==== dark_meta:\n%s' % str(dark_meta))
 
