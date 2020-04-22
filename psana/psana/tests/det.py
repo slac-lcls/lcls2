@@ -2,7 +2,6 @@ import sys
 from psana import DataSource
 import numpy as np
 import vals
-from psana.app.detnames import detnames
 
 def det(files):
     ds = DataSource(files=files)
@@ -61,6 +60,13 @@ def detnames(xtc_file):
     assert myrun.epicsinfo[('HX2:DVD:GCC:01:PMON', 'raw')] == 'raw'
     assert myrun.scaninfo[('motor1', 'raw')] == 'raw'
 
+def det_container(xtc_file):
+    ds = DataSource(files=xtc_file)
+    myrun = next(ds.runs())
+    det = myrun.Detector('bogusdet', accept_missing=True)
+    for config in det.raw._configs:
+        for e in config.__dict__['bogusdet'].items(): 
+            pass 
 
 if __name__ == '__main__':
     det()

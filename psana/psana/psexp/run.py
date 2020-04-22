@@ -20,6 +20,8 @@ import psana.pscalib.calib.MDBWebUtils as wu
 
 from psana.psexp.tools import mode
 
+class DetectorNameError(Exception): pass
+
 def _enumerate_attrs(obj):
     state = []
     found = []
@@ -77,12 +79,10 @@ class Run(object):
         The information stored the value field contains:
         
         - configs specific to that detector
-        (if the config doesn't have this detector, a blank dictionary is inserted
-        as a place holder in the config's __dict__ attribute - FIXME: mona)
         - sorted_segment_ids
-        used by Detector cls for checking if an event has correct no. of segments
+          used by Detector cls for checking if an event has correct no. of segments
         - detid_dict
-        has segment_id as a key
+          has segment_id as a key
         - dettype
         - uniqueid
         """
@@ -118,11 +118,29 @@ class Run(object):
                         "dettype": dettype, \
                         "uniqueid": uniqueid})
 
-    def Detector(self,name):
+    def Detector(self, name, accept_missing=False):
+        if name not in self.configinfo_dict \
+                and self.esm.env_from_variable(name) is None and not accept_missing:
+            err_msg = f"Cannot find {name} detector in configs. Available detectors: {','.join(list(self.configinfo_dict.keys()))}"
+            raise DetectorNameError(err_msg)
+
         class Container:
             def __init__(self):
                 pass
-        det = Container
+            def __getattr__(self, name):
+                """ Returns attribute's value if found, otherwise returns
+                this Container class recursively."""
+                value = self.__dict__.get(name)
+                if not value:
+                    return Container() # mona FIXME: have to add level check to avoid attack
+                return value
+            def __iter__(self):
+                return self
+            def __next__(self):
+                """ Returns an empty iterator """
+                raise StopIteration
+        
+        det = Container()
         # instantiate the detector xface for this detector/drp_class
         # (e.g. (xppcspad,raw) or (xppcspad,fex)
         # make them attributes of the container
