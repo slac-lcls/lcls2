@@ -24,7 +24,7 @@ class configdb(object):
     #     root   - Database name, usually "configDB"
     #     user   - User for HTTP authentication
     #     password - Password for HTTP authentication
-    def __init__(self, url, hutch, create=False, root="NONE", user="xppopr", password="pcds"):
+    def __init__(self, url, hutch, create=False, root="NONE", user="tstopr", password="pcds"):
         if root == "NONE":
             raise Exception("configdb: Must specify root!")
         self.hutch  = hutch
@@ -473,7 +473,7 @@ def main():
     parser_cp = subparsers.add_parser('cp', help='copy a configuration')
     parser_cp.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment>')
     parser_cp.add_argument('dst', help='destination: <hutch>/<alias>/<device>_<segment>')
-    parser_cp.add_argument('--user', default='xppopr', help='default: xppopr')
+    parser_cp.add_argument('--user', default='tstopr', help='default: tstopr')
     parser_cp.add_argument('--password', default='pcds', help='default: pcds')
     parser_cp.add_argument('--create', action='store_true', help='create destination hutch or alias if needed')
     parser_cp.set_defaults(func=_cp)
