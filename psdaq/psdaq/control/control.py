@@ -1618,9 +1618,12 @@ class CollectionManager():
         logging.debug('get_experiment()')
         experiment_name = None
         instrument = self.instrument
+
+        # authentication is not required, adjust url accordingly
+        uurl = self.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
+
         try:
-            resp = requests.get((self.url + "/" if not self.url.endswith("/") else self.url) + "/lgbk/ws/activeexperiment_for_instrument_station",
-                                auth=HTTPBasicAuth(self.user, self.password),
+            resp = requests.get((uurl + "/" if not uurl.endswith("/") else uurl) + "/lgbk/ws/activeexperiment_for_instrument_station",
                                 params={"instrument_name": instrument, "station": self.station}, timeout=10)
         except requests.exceptions.RequestException as ex:
             logging.error("get_experiment(): request exception: %s" % ex)
