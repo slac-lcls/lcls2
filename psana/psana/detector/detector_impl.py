@@ -59,18 +59,18 @@ class DetectorImpl(object):
     def _add_fields(self):
         for config in self._configs:
             if not hasattr(config,'software'): continue
-            if hasattr(config.software,self._det_name):
-                seg      = getattr(config.software,self._det_name)
-                seg_dict = getattr(seg[0],self._drp_class_name)
-                attrs    = [attr for attr in vars(seg_dict) if not (attr=='software' or attr=='version')]
-                for field in attrs:
-                    fd = getattr(seg_dict,field)
-                    # fd._type, fd._rank
-                    def func(evt, field=field) -> self._return_types(fd._type,fd._rank):
-                        info = self._info(evt)
-                        if info is None:
-                            return None
-                        else:
-                            return getattr(info,field)
-                    setattr(self, field, func)
+            
+            seg      = getattr(config.software,self._det_name)
+            seg_dict = getattr(seg[0],self._drp_class_name)
+            attrs    = [attr for attr in vars(seg_dict) if not (attr=='software' or attr=='version')]
+            for field in attrs:
+                fd = getattr(seg_dict,field)
+                # fd._type, fd._rank
+                def func(evt, field=field) -> self._return_types(fd._type,fd._rank):
+                    info = self._info(evt)
+                    if info is None:
+                        return None
+                    else:
+                        return getattr(info,field)
+                setattr(self, field, func)
 

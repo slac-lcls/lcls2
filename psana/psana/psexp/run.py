@@ -90,22 +90,20 @@ class Run(object):
 
         for _, det_class in self.dm.det_classes.items(): # det_class is either normal or envstore
             for (det_name, _), _ in det_class.items():
-                # Create a copy of list of configs
-                det_configs = [dgram.Dgram(view=config) for config in self.dm.configs]
+                # Create a copy of list of configs for this detector
+                det_configs = [dgram.Dgram(view=config) for config in self.dm.configs \
+                        if hasattr(config.software, det_name)]
                 sorted_segment_ids = []
                 # a dictionary of the ids (a.k.a. serial-number) of each segment
                 detid_dict = {}
                 dettype = ""
                 uniqueid = ""
                 for config in det_configs:
-                    if hasattr(config.software, det_name): 
-                        seg_dict = getattr(config.software, det_name)
-                        sorted_segment_ids += list(seg_dict.keys())
-                        for segment, det in seg_dict.items():
-                            detid_dict[segment] = det.detid
-                            dettype = det.dettype
-                    else:
-                        config.__dict__ = {det_name: {}}
+                    seg_dict = getattr(config.software, det_name)
+                    sorted_segment_ids += list(seg_dict.keys())
+                    for segment, det in seg_dict.items():
+                        detid_dict[segment] = det.detid
+                        dettype = det.dettype
                 
                 sorted_segment_ids.sort()
                 
