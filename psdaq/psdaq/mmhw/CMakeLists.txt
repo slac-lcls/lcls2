@@ -1,3 +1,5 @@
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 add_library(mmhw SHARED
     AxiVersion.cc
@@ -14,6 +16,10 @@ target_include_directories(mmhw PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
 )
 
+target_link_libraries(mmhw
+    service
+)
+
 add_executable(mmregtest mmregtest.cc)
 
 target_include_directories(mmregtest PUBLIC
@@ -28,8 +34,8 @@ target_include_directories(mmxvc PUBLIC
 
 target_link_libraries(mmxvc
     service
-    pthread
     mmhw
+    Threads::Threads
     rt
 )
 

@@ -1,3 +1,5 @@
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_packages(Threads REQUIRED)
 
 add_library(dti SHARED
     PVStats.cc
@@ -24,7 +26,7 @@ target_link_libraries(dti_simple
    cphw
    ${YAML_CPP_LIB}
    dl
-   pthread
+   Threads::Threads
    rt
 )
 
@@ -38,7 +40,7 @@ target_link_libraries(dti_stats
    cphw
    ${YAML_CPP_LIB}
    dl
-   pthread
+   Threads::Threads
    rt
 )
 
@@ -52,7 +54,7 @@ target_link_libraries(dtiPVs
    cphw
    dti
    dl
-   pthread
+   Threads::Threads
    rt
 )
 
@@ -66,7 +68,7 @@ target_link_libraries(dtiPVr
    cphwr
    dti
    dl
-   pthread
+   Threads::Threads
    rt
 )
 
@@ -80,7 +82,7 @@ target_link_libraries(dti_eyescan
    cphw
    ${YAML_CPP_LIB}
    dl
-   pthread
+   Threads::Threads
    rt
 )
 
@@ -94,7 +96,7 @@ target_link_libraries(dtiHsrCfg
    cphw
    dti
    dl
-   pthread
+   Threads::Threads
    rt
 )
 
@@ -108,7 +110,7 @@ target_link_libraries(dti_appreg
    cphw
    ${YAML_CPP_LIB}
    dl
-   pthread
+   Threads::Threads
    rt
 )
 

@@ -1,3 +1,5 @@
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 add_library(cphw SHARED
     Reg_rssi.cc
@@ -46,6 +48,15 @@ target_include_directories(cphwr PUBLIC
 #
 #add_executable(amc_timing amc_timing.cc)
 
+#target_link_libraries(amc_timing
+#    cphw
+#    cpsw::cpsw
+#    ${YAML_CPP_LIBRARY}
+#    dl
+#    Threads::Threads
+#    rt
+#)
+
 #
 #  amctiming_udp
 #
@@ -54,7 +65,7 @@ add_executable(amc_timing_udp amc_timing.cc)
 target_link_libraries(amc_timing_udp
     cphwr
     dl
-    pthread
+    Threads::Threads    
 )
 
 #
@@ -64,7 +75,7 @@ add_executable(amc_eyescan amc_eyescan.cc)
 
 target_link_libraries(amc_eyescan
     dl
-    pthread
+    Threads::Threads    
     cphwr
 )
 
@@ -76,7 +87,7 @@ add_executable(hsrCfg hsrCfg.cc)
 target_link_libraries(hsrCfg
     cphwr
     dl
-    pthread
+    Threads::Threads    
     rt
 )
 
@@ -87,9 +98,8 @@ add_executable(regtest regtest.cc)
 
 target_link_libraries(regtest
     dl
-    pthread
+    Threads::Threads    
     cphwr
-    -pthread
 )
 
 
@@ -100,9 +110,8 @@ add_executable(xvc_srv xvc_srv.cc)
 
 target_link_libraries(xvc_srv
     dl
-    pthread
+    Threads::Threads    
     cphwr
-    -pthread
 )
 
 

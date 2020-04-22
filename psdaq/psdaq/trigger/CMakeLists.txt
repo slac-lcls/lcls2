@@ -1,5 +1,8 @@
 find_package(PythonLibs REQUIRED)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 add_library(trigger SHARED
   utilities.cc
 )
@@ -14,6 +17,7 @@ target_link_libraries(trigger
   xtcdata::xtc
   service
   ${PYTHON_LIBRARIES}
+  Threads::Threads
 )
 
 #---

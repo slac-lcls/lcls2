@@ -1,5 +1,8 @@
 find_package(PythonLibs REQUIRED)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 add_library(utilities SHARED
   utilities.cc
   IndexPool.cc
@@ -13,6 +16,7 @@ target_include_directories(utilities PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<INSTALL_INTERFACE:include>
   ${PYTHON_INCLUDE_DIRS}
+  Threads::Threads
 )
 
 target_link_libraries(utilities
@@ -103,7 +107,7 @@ target_link_libraries(ft_pingpong
 
 target_link_libraries(ft_publish
   utilities
-  pthread
+  Threads::Threads
 )
 
 target_link_libraries(ft_sub
@@ -140,13 +144,13 @@ target_link_libraries(eblf_pingpong
 
 target_link_libraries(tstEbLfLink
   utilities
-  pthread
+  Threads::Threads
   rt
 )
 
 #target_link_libraries(ibMon
 #  zmq
-#  pthread
+#  Threads::Threads
 #  rt
 #)
 #
@@ -154,7 +158,7 @@ target_link_libraries(tstEbLfLink
 #  contributor
 #  collection
 #  exporter
-#  pthread
+#  Threads::Threads
 #  rt
 #)
 
@@ -163,7 +167,7 @@ target_link_libraries(teb
   trigger
   collection
   exporter
-  pthread
+  Threads::Threads
   rt
   dl
   xtcdata::xtc
@@ -242,7 +246,7 @@ target_link_libraries(tstIndexPool
 #  collection
 #  fabric
 #  zmq
-#  pthread
+#  Threads::Threads
 #  rt
 #  -pg
 #)
@@ -253,7 +257,7 @@ target_link_libraries(tstIndexPool
 #  collection
 #  fabric
 #  zmq
-#  pthread
+#  Threads::Threads
 #  rt
 #  -pg
 #)

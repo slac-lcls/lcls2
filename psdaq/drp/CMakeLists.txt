@@ -1,5 +1,8 @@
 find_package(PythonLibs REQUIRED)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 add_library(drpbase
     BEBDetector.cc
     XpmDetector.cc
@@ -33,7 +36,7 @@ add_executable(drp
 target_link_libraries(drp
     psalg::digitizer
     xtcdata::xtc
-    pthread
+    Threads::Threads
     drpbase
     trigger
 )
@@ -97,6 +100,7 @@ target_include_directories(pgpread PUBLIC
 )
 target_link_libraries(pgpread
     xtcdata::xtc
+    Threads::Threads
 )
 
 add_executable(pgpread_timetool
@@ -113,6 +117,8 @@ target_link_libraries(pgpread_timetool
     service
     xtcdata::xtc
     ${PYTHON_LIBRARIES}
+    Threads::Threads
+    rt
 )
 
 add_executable(AxiBatcherParserTest
@@ -138,7 +144,7 @@ target_include_directories(drp_validate PUBLIC
      ../psdaq/pgp/aes-stream-drivers/include
  )
  target_link_libraries(drp_validate
-     pthread
+     Threads::Threads
  )
 
 install(TARGETS drp drp_bld drp_pva

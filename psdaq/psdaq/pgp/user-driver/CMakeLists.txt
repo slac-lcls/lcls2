@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 add_compile_options(-Wall)
 add_compile_options(-Wno-uninitialized)
@@ -32,7 +34,7 @@ target_link_libraries(status
 #target_link_libraries(pgpread
 #    pgpdriver
 #    xtcdata::xtc
-#    pthread
+#    Threads::Threads
 #    rt
 #)
 
@@ -42,7 +44,7 @@ add_executable(pgpmon
 
 target_link_libraries(pgpmon
     pgpdriver
-    pthread
+    Threads::Threads
     rt
 )
 

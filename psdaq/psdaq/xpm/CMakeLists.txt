@@ -1,3 +1,5 @@
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 add_library(xpm SHARED
     PVSeq.cc
@@ -32,7 +34,7 @@ target_link_libraries(xpm_simple
    cphw
    ${YAML_CPP_LIB}
    dl
-   pthread
+   Threads::Threads
    rt
 )
 
@@ -48,7 +50,7 @@ target_link_libraries(xpmPVs
    app
    ${YAML_CPP_LIB}
    dl
-   pthread
+   Threads::Threads
    rt
 )
 
@@ -63,7 +65,7 @@ target_link_libraries(xpmPeek
    xpm
    app
    dl
-   pthread
+   Threads::Threads
    rt
 )
 
@@ -79,7 +81,7 @@ target_link_libraries(xpmHsrCfg
    app
    ${YAML_CPP_LIB}
    dl
-   pthread
+   Threads::Threads
    rt
 )
 
