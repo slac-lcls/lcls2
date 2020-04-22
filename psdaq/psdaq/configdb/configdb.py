@@ -220,8 +220,13 @@ class configdb(object):
             # already exists!
             logging.info('device configuration \'%s\' already exists' % cfg)
             return
+        major_ver = self.get_version()['major']
         try:
-            xx = self._get_response('add_device_config/' + cfg + '/')
+            # hutch parameter was added in version 2.0.0
+            if major_ver == 1:
+                xx = self._get_response('add_device_config/' + cfg + '/')
+            else:
+                xx = self._get_response('add_device_config/' + self.hutch + '/' + cfg + '/')
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
             return
