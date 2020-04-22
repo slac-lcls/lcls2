@@ -29,12 +29,6 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
 
 import psana.pyalgos.generic.Graphics as gr
 
-#from psana.xtcav.Simulators import\
-  #SimulatorEBeam,\
-  #SimulatorGasDetector,\
-  #SimulatorEventId,\
-  #SimulatorEnvironment
-
 ## PP imports
 #from mpi4py import MPI
 #comm = MPI.COMM_WORLD
@@ -69,7 +63,7 @@ class LasingOffReference():
     def __init__(self, args):
         """
         """
-        self.args = args
+        #self.args = args
 
         fname = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0131-e000200-xtcav-v2.xtc2')
         experiment          = getattr(args, 'experiment', 'amox23616')
@@ -156,25 +150,23 @@ class LasingOffReference():
         if None in (camraw, valsxtp, valsebm, eventid, valsgd) : 
             sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
 
-        #Calibration values needed to process images. first_event is the index of the first event with valid data
-        roi_xtcav, global_calibration, saturation_value, first_event = self._getCalibrationValues(run, camraw, valsxtp, start_image)
-        msg = ('_getCalibrationValues returns'\
-              '\n    roi_xtcav: %s'\
-              '\n    global_calibration: %s'\
-              '\n    saturation_value: %s  first_event: %s')%\
-              (str(roi_xtcav), str(global_calibration), str(saturation_value), str(first_event))
-        #print(msg)
-        logger.debug(msg)
-
         #times = run.times()
         #image_numbers = xtup.divideImageTasks(first_event, len(times), rank, size)
 
+
+        roi_xtcav, global_calibration, saturation_value = None, None, None
         num_processed = 0 #Counter for the total number of xtcav images processed within the run
 
         for nev,evt in enumerate(run.events()):
             #logger.info('Event %03d'%nev)
             img = camraw(evt)
             if img is None: continue
+
+            if roi_xtcav is None :
+                # get calibration values needed to process images.
+                resp = self._getCalibrationValues(nev, evt, camraw, valsxtp)
+                if resp is None : continue
+                roi_xtcav, global_calibration, saturation_value = resp
 
             #Obtain the shot to shot parameters necessary for the retrieval of the x and y axis in time and energy units
             shot_to_shot = xtup.getShotToShotParameters(evt, valsebm, valsgd, valseid)
@@ -283,7 +275,7 @@ class LasingOffReference():
 
 
     @staticmethod
-    def _getCalibrationValues(run, camraw, valsxtp, start_image):
+    def _getCalibrationValues(nev, evt, camraw, valsxtp):
         """
         Internal method. Sets calibration parameters for image processing
         Returns:
@@ -292,30 +284,22 @@ class LasingOffReference():
             saturation_value: value at which image is saturated and no longer valid
             first_image: index of first valid shot in run
         """
-        roi_xtcav, global_calibration, saturation_value = None, None, None
-        first_good_evnum = 1e6
 
-        for nev,evt in enumerate(run.events()):
-            logger.info('C-loop event %03d'%nev)
-            img = camraw(evt)
-            if img is None: continue
+        roi_xtcav = xtup.getXTCAVImageROI(valsxtp, evt)
+        #logger.debug('roi_xtcav: %s' % str(roi_xtcav))
 
-            roi_xtcav = xtup.getXTCAVImageROI(valsxtp, evt)
-            logger.debug('roi_xtcav: %s' % str(roi_xtcav))
+        global_calibration = xtup.getGlobalXTCAVCalibration(valsxtp, evt)
+        #logger.debug('global_calibration: %s' % str(global_calibration))
 
-            global_calibration = xtup.getGlobalXTCAVCalibration(valsxtp, evt)
-            logger.debug('global_calibration: %s' % str(global_calibration))
+        saturation_value = xtup.getCameraSaturationValue(valsxtp, evt)
+        #logger.debug('saturation_value: %s' % str(saturation_value))
 
-            saturation_value = xtup.getCameraSaturationValue(valsxtp, evt)
-            logger.debug('saturation_value: %s' % str(saturation_value))
+        logger.info('Event %2d  CalibrationValues:  roi_xtcav: %s\t global_calibration: %s\t saturation_value: %s'%\
+                    (nev, str(roi_xtcav), str(global_calibration), str(saturation_value)))
 
-            if not roi_xtcav or not global_calibration or not saturation_value:
-                continue
+        resp = (roi_xtcav, global_calibration, saturation_value)
+        return None if None in resp else resp
 
-            first_good_evnum = nev
-            break
-
-        return roi_xtcav, global_calibration, saturation_value, first_good_evnum
 
 # LCLS1:
 #    def save(self, path):

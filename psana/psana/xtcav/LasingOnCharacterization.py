@@ -91,10 +91,6 @@ class LasingOnCharacterization():
         attrs = [name for name in dir(self.dets) if name[:2] != '__']
         logger.debug('set detectors and data attributes: %s', str(attrs))
         for name in attrs : setattr(self, name, getattr(self.dets, name, None))
-        
-        #=====================
-        #sys.exit('TEST EXIT')
-        #=====================
 
 
     def _loadDarkReference(self):
@@ -724,14 +720,14 @@ LasingOnParameters = xtu.namedtuple('LasingOnParameters',
 #----------
 #----------
 
-class DetectorsData():
+class Empty():
     pass
 
 
 def setDetectors(run, camera=None, ebeam=None, gasdetector=None, eventid=None, xtcavpars=None):
-    """ access to detector and data objects
+    """ sets detector and data objects
     """
-    o = DetectorsData()
+    o = Empty()
     o._camera      = camera      if camera      is not None else run.Detector(cons.DETNAME)      # 'xtcav'      
     o._ebeam       = ebeam       if ebeam       is not None else run.Detector(cons.EBEAM)        # 'ebeam'      
     o._gasdetector = gasdetector if gasdetector is not None else run.Detector(cons.GAS_DETECTOR) # 'gasdetector'
@@ -746,6 +742,71 @@ def setDetectors(run, camera=None, ebeam=None, gasdetector=None, eventid=None, x
 
     if None in (o._camraw, o._valsebm, o._valsgd, o._valseid, o._valsxtp) : 
         sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
+    return o
+
+
+def data_camera(camraw, evt):
+    #o = Empty()
+    #o.rawimage = camraw(evt)
+    return {'rawimage' : camraw(evt)}
+
+
+def data_ebeam(valsebm, evt):
+    return {\
+    'ebeamcharge'  : valsebm.Charge(evt),\
+    'xtcavrfamp'   : valsebm.XTCAVAmpl(evt),\
+    'xtcavrfphase' : valsebm.XTCAVPhase(evt),\
+    'dumpecharge'  : valsebm.DumpCharge(evt)*cons.E_CHARGE\
+    }
+
+
+def data_gasdetector(valsgd, evt):
+    return {\
+    'o.f_11_ENRC' : valsgd.f_11_ENRC(evt),\
+    'o.f_12_ENRC' : valsgd.f_12_ENRC(evt),\
+    'o.energydetector' : (o.f_11_ENRC + o.f_12_ENRC)/2,\
+    }
+
+
+def data_eventid(valseid, evt):
+    return {\
+    'time'      : valseid.time(evt),\
+    'fiducials' : valseid.fiducials(evt),\
+    }
+
+
+def data_xtcavpars(valsxtp, evt):
+    """
+    ROI_SIZE_X_names  = ['XTCAV_ROI_sizeX',  'ROI_X_Length', 'OTRS:DMP1:695:SizeX']
+    ROI_SIZE_Y_names  = ['XTCAV_ROI_sizeY',  'ROI_Y_Length', 'OTRS:DMP1:695:SizeY']
+    ROI_START_X_names = ['XTCAV_ROI_startX', 'ROI_X_Offset', 'OTRS:DMP1:695:MinX']
+    ROI_START_Y_names = ['XTCAV_ROI_startY', 'ROI_Y_Offset', 'OTRS:DMP1:695:MinY']
+    
+    UM_PER_PIX_names     = ['XTCAV_calib_umPerPx','OTRS:DMP1:695:RESOLUTION']
+    STR_STRENGTH_names   = ['XTCAV_strength_par_S','Streak_Strength','OTRS:DMP1:695:TCAL_X']
+    RF_AMP_CALIB_names   = ['XTCAV_Amp_Des_calib_MV','XTCAV_Cal_Amp','SIOC:SYS0:ML01:AO214']
+    RF_PHASE_CALIB_names = ['XTCAV_Phas_Des_calib_deg','XTCAV_Cal_Phase','SIOC:SYS0:ML01:AO215']
+    DUMP_E_names         = ['XTCAV_Beam_energy_dump_GeV','Dump_Energy','REFS:DMP1:400:EDES']
+    DUMP_DISP_names      = ['XTCAV_calib_disp_posToEnergy','Dump_Disp','SIOC:SYS0:ML01:AO216']
+
+    o.XTCAV_calib_umPerPx  = valsxtp.XTCAV_calib_umPerPx(evt)
+    o.XTCAV_strength_par_S = valsxtp.XTCAV_strength_par_S(evt)
+    ...
+    a = valsxtp.getattr(valsxtp, 'OTRS:DMP1:695:SizeX', None)
+    o.OTRS_DMP1_695_SizeX = None if a is None else a(evt) 
+    """
+
+    o = Empty()
+    for lstname, names in cons.xtcav_varname.items() :
+        for name in names :
+            a = xtup.get_attribute(valsxtp, name)
+            if a is not None :
+                value = a(evt)
+                o.setattr(name.replace(':','_'), value)
+                #convert name like 'UM_PER_PIX_names' to 'umperpix'
+                varname = lstname.rstrip('_names').replace('_','').lower()
+                if value is not None :
+                    o.setattr(varname, value)
     return o
 
 
