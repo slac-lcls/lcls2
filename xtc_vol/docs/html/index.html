@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=9"/>
 <meta name="generator" content="Doxygen 1.8.15"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>XTC_VOL: Project resources</title>
+<title>XTC_VOL: Main Page</title>
 <link href="tabs.css" rel="stylesheet" type="text/css"/>
 <script type="text/javascript" src="jquery.js"></script>
 <script type="text/javascript" src="dynsections.js"></script>
@@ -62,20 +62,29 @@ $(function() {
 
 <div class="PageDoc"><div class="header">
   <div class="headertitle">
-<div class="title">Project resources </div>  </div>
+<div class="title">XTC_VOL Documentation</div>  </div>
 </div><!--header-->
 <div class="contents">
 <div class="textblock"><ul>
 <li>Project repo: <a href="https://github.com/slac-lcls/lcls2/tree/master/xtc_vol">https://github.com/slac-lcls/lcls2/tree/master/xtc_vol</a></li>
 <li>Link to README: <a href="https://github.com/slac-lcls/lcls2/blob/master/xtc_vol/README.md">https://github.com/slac-lcls/lcls2/blob/master/xtc_vol/README.md</a></li>
 </ul>
-<p><b>For detailed code documentation in html pages, please start with docs/html/index.html.</b></p>
-<h2>Dependencies:</h2>
+<h2>Code documentations</h2>
+<p>For detailed code documentation in html pages, please download this repo and start with <code>xtc_vol/docs/html/index.html</code>.</p>
+<h2>Dependencies and CMakeLists.txt settings:</h2>
 <ul>
 <li>CMake: version 3.10 or newer.</li>
-<li>XTC: CMakeLists assumes it's installed to /usr/local, or you can change the find_library line in "Dependency: XTC" section in CMakeLists.txt.</li>
-<li>MPI: CMakeLists assumes it's installed to /usr/local, or you can change the "include_directories" line in "Dependency: MPI" section in CMakeLists.txt.</li>
-<li>HDF5: CMakeLists assumes it's installed to ../../hdf5_build/hdf5, or you can change the set(HDF5_HOME ...) line in "Dependecy: HDF5" section in CMakeLists.txt.</li>
+<li>XTC: CMakeLists assumes it's installed to <code>/usr/local</code>, or you can change the find_library line in "Dependency: XTC" section in CMakeLists.txt.</li>
+<li>MPI: Needed by HDF5, any reasonably new version should work. This repo has been tested with OpenMPI.<ul>
+<li>CMakeLists assumes it's installed to <code>/usr/local</code>, or you can change the "include_directories" line in "Dependency: MPI" section in CMakeLists.txt.</li>
+</ul>
+</li>
+<li>HDF5: Any recent versions of HDF5 develop branch should work.<ul>
+<li>This repo has been tested with HDF5 develop branch, commit e02e86b78d01c4815ae8c6f13c6d7862701873b1.</li>
+<li>CMakeLists assumes it's installed to <code>../../hdf5_build/hdf5</code>, or you can change the **<code>set(HDF5_HOME ...)</code>** line in "Dependecy: HDF5" section in CMakeLists.txt.</li>
+<li><a href="https://bitbucket.hdfgroup.org/projects/HDFFV/repos/hdf5/browse">Download HDF5</a></li>
+</ul>
+</li>
 </ul>
 <h2>Build XTC_VOL library</h2>
 <p>To build XTC2_VOL project, please follow these steps:</p><ul>

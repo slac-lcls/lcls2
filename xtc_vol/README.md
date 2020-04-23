@@ -1,14 +1,19 @@
-## Project resources
+
 - Project repo: https://github.com/slac-lcls/lcls2/tree/master/xtc_vol
 - Link to README: https://github.com/slac-lcls/lcls2/blob/master/xtc_vol/README.md
 
-**For detailed code documentation in html pages, please start with docs/html/index.html.**
+## Code documentations
+For detailed code documentation in html pages, please download this repo and start with `xtc_vol/docs/html/index.html`.
 
-## Dependencies:
+## Dependencies and CMakeLists.txt settings:
 - CMake: version 3.10 or newer.
-- XTC: CMakeLists assumes it's installed to /usr/local, or you can change the find_library line in "Dependency: XTC" section in CMakeLists.txt.
-- MPI: CMakeLists assumes it's installed to /usr/local, or you can change the "include_directories" line in "Dependency: MPI" section in CMakeLists.txt.
-- HDF5: CMakeLists assumes it's installed to ../../hdf5_build/hdf5, or you can change the set(HDF5_HOME ...) line in "Dependecy: HDF5" section in CMakeLists.txt.
+- XTC: CMakeLists assumes it's installed to `/usr/local`, or you can change the find_library line in "Dependency: XTC" section in CMakeLists.txt.
+- MPI: Needed by HDF5, any reasonably new version should work. This repo has been tested with OpenMPI.
+	- CMakeLists assumes it's installed to `/usr/local`, or you can change the "include_directories" line in "Dependency: MPI" section in CMakeLists.txt.
+- HDF5: Any recent versions of HDF5 develop branch should work. 
+	- This repo has been tested with HDF5 develop branch, commit e02e86b78d01c4815ae8c6f13c6d7862701873b1. 
+	- CMakeLists assumes it's installed to `../../hdf5_build/hdf5`, or you can change the `set(HDF5_HOME ...)` line in "Dependecy: HDF5" section in CMakeLists.txt. 
+	- [Download HDF5](https://bitbucket.hdfgroup.org/projects/HDFFV/repos/hdf5/browse)
 
 ## Build XTC_VOL library
 To build XTC2_VOL project, please follow these steps:
