@@ -17,13 +17,13 @@ For detailed code documentation in html pages, please download this repo and sta
 
 ## Build XTC_VOL library
 To build XTC2_VOL project, please follow these steps:
-- Go to LCLS2 directory, assume we have the lcls2 repo at /home/my_name/lcls2
-- In the source directory (/home/my_name/lcls2/xtc_vol/) edit CMakeList.txt
-        Find "set HDF5_HOME" line, and change it to your HDF5 install location. It should be the one contains include/, lib/, bin/ directories, such as "/home/my_name/hdf5_build/hdf5".
-- Create a build directory, such as xtc_vol/build
-- cd xtc_vol/build # currently in xtc_vol/
-- cmake ..         # currently in build/
-- make             # currently in build/
+- Go to LCLS2 directory, assume we have the lcls2 repo at `/home/my_name/lcls2`
+- In the source directory (`/home/my_name/lcls2/xtc_vol/`) edit CMakeList.txt
+        Find `set HDF5_HOME` line, and change it to your HDF5 install location. It should be the one contains `include/`, `lib/`, `bin/` directories, such as `/home/my_name/hdf5_build/hdf5`.
+- Create a build directory, such as `xtc_vol/build`
+- `cd xtc_vol/build # currently in xtc_vol/`
+- `cmake ..         # currently in build/`
+- `make             # currently in build/`
 
 You will see libh5xtc.so (Linux) or libh5xtc.dylib (OSX), that is the file to be loaded by HDF5 runtime.
 
@@ -34,7 +34,7 @@ To run the demo or any apps with the VOL connector, following environment variab
     export HDF5_VOL_CONNECTOR="xtc_vol under_vol=0;under_info={};"
 
 After build the xtc_vol library and set environment variables, HDF5 can read xtc2 files. Currently, both xtc2 file and corresponding smd file are needed. 
-Use a HDF5 tool h5ls for demostration, sample files are included(data.xtc and data.xtc2.smd) in the repo, run following command line to show the HDF5 hierarchy of the xtc2 file:
+Use a HDF5 tool h5ls for demostration, sample files (data.xtc and data.smd.xtc2) are included in `sample_data/` in the repo, run following command line to show the HDF5 hierarchy of the xtc2 file:
     
         $HDF5_HOME/bin/h5ls data.xtc2
 and h5ls will show the xtc2 data in the HDF5 virtual view. 
@@ -48,7 +48,7 @@ and h5ls will show the xtc2 data in the HDF5 virtual view.
     EndStep                  Group
     EndRun                   Group
     
-With -r option to show the hierarchy.    
+With **-r** option to show the hierarchy.    
 
     /                        Group
     //Configure              Group
@@ -73,8 +73,9 @@ With -r option to show the hierarchy.
     //L1Accept/xpphsd_hsd_raw/1/floatPgp Dataset {SCALAR}
     ......
 
-With -v option for more details of metadata.
+With **-v** option for more details of metadata.
 
+	......
     //L1Accept/xpphsd_hsd_raw Group
         Location:  3:16-103-0-80
         Links:     1
@@ -101,4 +102,4 @@ With -v option for more details of metadata.
         Links:     1
         Storage:   8 logical bytes, 0 allocated bytes
         Type:      native long
-    
+    ......

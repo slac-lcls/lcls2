@@ -29,7 +29,7 @@ using std::string;
 
 
 #define TIMESTAMP_DS_NAME "timestamps"
-#define DEBUG_PRINT printf("%s():%d\n", __func__, __LINE__);
+#define DEBUG_PRINT //printf("%s():%d\n", __func__, __LINE__);
 //H5 utility function prototype
 //H5 name to xtc name, second
 char* name_convert(const char* h5_name){
@@ -128,13 +128,13 @@ public:
         xtc_ds_info* dataset_info = (xtc_ds_info*)calloc(1, sizeof(xtc_ds_info));
         Name& name = names.get(index);
 
-        printf("get_ds_info: index = %d, shapesdata = %p, &shapesdata = %p, offset = %d, dgram_info.isL1 = %d, dgram = %p, dgram_id = 0x%llx, sizeofPayload = %d, field_name = [%s], str_type = [%s]\n",
-                index, shapesdata, &shapesdata, dgram_info.shapesdata_offset, dgram_info.isL1,
-                _current_dgram, _current_dgram->time.value(), _current_dgram->xtc.sizeofPayload(),
-                name.name(), name.str_type());
+//        printf("get_ds_info: index = %d, shapesdata = %p, &shapesdata = %p, offset = %d, dgram_info.isL1 = %d, dgram = %p, dgram_id = 0x%llx, sizeofPayload = %d, field_name = [%s], str_type = [%s]\n",
+//                index, shapesdata, &shapesdata, dgram_info.shapesdata_offset, dgram_info.isL1,
+//                _current_dgram, _current_dgram->time.value(), _current_dgram->xtc.sizeofPayload(),
+//                name.name(), name.str_type());
 
         dataset_info->type = (xtc_data_type)(int)(name.type());
-        printf("get_ds_info: set data type: %d\n", dataset_info->type);
+        //printf("get_ds_info: set data type: %d\n", dataset_info->type);
         dataset_info->dim_cnt = name.rank();//# of dimension: 0-5, how many dimensions of the shape:
 
         dataset_info->element_cnt = name.get_element_size(name.type());// how many elements
@@ -153,12 +153,12 @@ public:
                 dataset_info->current_dims[i] = shape[i];
 
             if(dataset_info->dim_cnt > 0){
-                printf("dim_cnt = %d, dimensions val: ", dataset_info->dim_cnt);
+                //printf("dim_cnt = %d, dimensions val: ", dataset_info->dim_cnt);
                 for(int i = 0; i < dataset_info->dim_cnt; i++){
                     dataset_info->total_pixel_cnt *= dataset_info->current_dims[i];
-                    printf("%d, ", dataset_info->current_dims[i]);
+                    //printf("%d, ", dataset_info->current_dims[i]);
                 }
-                printf("\n");
+                //printf("\n");
             }//dim_cnt == 0
         }
         if(dgram_info.ds_type < 0 || dgram_info.ds_type > 2){
@@ -184,11 +184,11 @@ public:
         DEBUG_PRINT
 
         DEBUG_PRINT
-        printf("get_ds_info: index = %d, copied shapesdata address = %p\n", index, shapesdata);
+//        printf("get_ds_info: index = %d, copied shapesdata address = %p\n", index, shapesdata);
 
         dataset_info->isTimestampsDS = 0;
-        printf("get_ds_infodata_handle: xtc_ptr = %p\n",
-                dataset_info->data_handle->xtc_ptr);
+//        printf("get_ds_infodata_handle: xtc_ptr = %p\n",
+//                dataset_info->data_handle->xtc_ptr);
 
         return dataset_info;
     }
@@ -202,7 +202,7 @@ public:
         assert(data_handle);
         DEBUG_PRINT
         Dgram* sys_current_dgram = (Dgram*)xtc_obj->location->dg;
-        printf("get_data: this = %p, sys_current_dgram = %p, \n", this, sys_current_dgram);
+//        printf("get_data: this = %p, sys_current_dgram = %p, \n", this, sys_current_dgram);
         assert(sys_current_dgram);
 
         if(data_handle->dgram_id != sys_current_dgram->time.value()){//different dgram, need to load.
@@ -211,9 +211,9 @@ public:
                 printf("Can not find dgram info, id/timestamp = 0x%llx\n", data_handle->dgram_id);
                 return -1;
             } else {
-                printf(" Before: Current dgram id = 0x%llx\n", sys_current_dgram->time.value());
+//                printf(" Before: Current dgram id = 0x%llx\n", sys_current_dgram->time.value());
                 check_update_dgram(this->get_fd(), &(it->second), sys_current_dgram);
-                printf(" After: Current dgram id = 0x%llx\n", sys_current_dgram->time.value());
+//                printf(" After: Current dgram id = 0x%llx\n", sys_current_dgram->time.value());
             }
         }
 
@@ -623,13 +623,13 @@ public:
 
         uint64_t dgram_id = this->_current_dgram->time.value();
         xtc_dgram_info dgram_info;
-        printf("%s:%d:  dbgiter = %p, this->_current_dgram = %p, dgram_id = 0x%llx\n",
-                __func__, __LINE__, this, this->_current_dgram, dgram_id);
+//        printf("%s:%d:  dbgiter = %p, this->_current_dgram = %p, dgram_id = 0x%llx\n",
+//                __func__, __LINE__, this, this->_current_dgram, dgram_id);
         //Ensure the smd data is valid for the xtc2 file: all things here should have an entry in the index.
         if(find_index(dgram_id, &dgram_info) != 0)
             return -1;
 
-        printf("dgram_id = 0x%llx, dgram_info.isL1 = %d, ds_type = %d\n", dgram_info.dgram_id, dgram_info.isL1, dgram_info.ds_type);
+        //printf("dgram_id = 0x%llx, dgram_info.isL1 = %d, ds_type = %d\n", dgram_info.dgram_id, dgram_info.isL1, dgram_info.ds_type);
         switch (xtc->contains.id()) {
         case (TypeId::Parent): {
             printf("Found TypeID == Parent, iterating...\n");
@@ -637,7 +637,7 @@ public:
             break;
         }
         case (TypeId::Names): {
-            printf("=============================== find Names!!!\n");
+            //printf("=============================== find Names!!!\n");
             Names& names = *(Names*)xtc;
             _namesLookup[names.namesId()] = NameIndex(names);
             Alg& alg = names.alg();
@@ -666,7 +666,7 @@ public:
             break;
         }
         case (TypeId::ShapesData): {
-            printf("=============================== find ShapesData!!!\n");
+            //printf("=============================== find ShapesData!!!\n");
 
             int shapesdata_offset = (char*)xtc - (char*)(this->_current_dgram);
 
@@ -698,10 +698,10 @@ public:
 
             //check DS holder group existence.
             string cur_path = get_current_path();
-            printf("search cur_path = %s\n", cur_path.c_str());
+            //printf("search cur_path = %s\n", cur_path.c_str());
             xtc_node* group_ds_holder = xtc_tree_node_find(&cur_path); //the direct holder group of datasets
             if(!group_ds_holder){
-                printf("Create group_ds_holder: %s\n", cur_path.c_str());
+                //printf("Create group_ds_holder: %s\n", cur_path.c_str());
                 xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, get_current_path().c_str());
                 xtc_tree_node_add(new_xtc_node(new_obj));
             } //do nothing if group exists.
@@ -713,7 +713,7 @@ public:
             double time_stamp = ((Dgram*)CURRENT_LOCATION->dg)->time.asDouble();
 
             if(!timestamp_ds_node){// create timestamp dataset
-                printf("Create timestamp_ds: %s\n", cur_path.c_str());
+                //printf("Create timestamp_ds: %s\n", cur_path.c_str());
                 append_token(TIMESTAMP_DS_NAME);
                 xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, get_current_path().c_str());
                 new_obj->obj_type = XTC_TIME_DS;//XTC_TIME_DS
@@ -747,7 +747,7 @@ public:
                     //printf("Type=ShapesData  offset = 0x%x\n", offset);
                 }
                 append_token(name.name());//ds name
-                print_local_path();
+                //print_local_path();
                 string path_str = get_current_path();
                 xtc_object* new_obj = xtc_obj_new(CURRENT_LOCATION, get_current_path().c_str());
                 new_obj->obj_type = XTC_DS;
@@ -756,7 +756,7 @@ public:
                 dgram_info.shapesdata_offset = shapesdata_offset;
                 new_obj->ds_info = get_ds_info(i, shapesdata, dgram_info);
                 xtc_tree_node_add(new_xtc_node(new_obj));
-                get_value(i, name, descdata);
+                //get_value(i, name, descdata);
                 pop_token();//ds name
             }
 
@@ -931,7 +931,7 @@ public:
         Dgram* smd_dgram;
         unsigned nevent=0;
         SmdIter smditer;
-        printf("smditer.offset = 0x%llx\n", smditer.offset);
+//        printf("smditer.offset = 0x%llx\n", smditer.offset);
         while ((smd_dgram = iter.next())) {
             smditer.reset();
             smditer.iterate(&(smd_dgram->xtc));
@@ -941,14 +941,14 @@ public:
             info.dgram_offset = smditer.offset;
 
             if(smditer.offset== (uint64_t)(int64_t)-1 ){//Non-L1 events, store in memory
-                printf("smd_dgram.dgram_id = 0x%llx, smd_dgram->xtc.extent = %d, smd_dgram->xtc.sizeofPayload() = %d\n",
-                        smd_dgram->time.value(), smd_dgram->xtc.extent, smd_dgram->xtc.sizeofPayload());
+//                printf("smd_dgram.dgram_id = 0x%llx, smd_dgram->xtc.extent = %d, smd_dgram->xtc.sizeofPayload() = %d\n",
+//                        smd_dgram->time.value(), smd_dgram->xtc.extent, smd_dgram->xtc.sizeofPayload());
                 size_t nonL1_dgram_size = sizeof(Dgram) + smd_dgram->xtc.extent;
 
                 Dgram* nonL1_dgram = (Dgram*)calloc(1, nonL1_dgram_size);
                 size_t memcpy_size =  sizeof(*smd_dgram) + smd_dgram->xtc.sizeofPayload();
 
-                printf("calloc size = %d, memcpy size = %d \n", nonL1_dgram_size, memcpy_size);
+//                printf("calloc size = %d, memcpy size = %d \n", nonL1_dgram_size, memcpy_size);
                 //copy header??
                 //From Smd::generate
                 memcpy(nonL1_dgram, smd_dgram, sizeof(*smd_dgram));
@@ -960,13 +960,13 @@ public:
                 info.isL1 = 0;
                 info.ds_type = DS_NON_L1;
                 info.nonL1Dgram = (void*) nonL1_dgram;
-                printf("load_index: dgram_id = %llu, sizeofPayload = %d\n", info.dgram_id, smd_dgram->xtc.sizeofPayload());
+//                printf("load_index: dgram_id = %llu, sizeofPayload = %d\n", info.dgram_id, smd_dgram->xtc.sizeofPayload());
             } else { //L1 events
                 info.isL1 = 1;
                 info.nonL1Dgram = NULL;
                 info.ds_type = DS_L1;
                 //info.dgram_size = smditer.dgramSize;
-                printf("load_index: dgram_id = %llu, dgram_offset = 0x%llx\n", info.dgram_id, info.dgram_offset);
+//                printf("load_index: dgram_id = %llu, dgram_offset = 0x%llx\n", info.dgram_id, info.dgram_offset);
 
             }
             (*index_map)[info.dgram_id] = info;
@@ -1205,16 +1205,16 @@ xtc_object* iterate_list_all(int fd, int index_fd){
         Xtc* xtc = &(dbgiter->_current_dgram->xtc);
         if (debugprint) {
             ShapesData& shapesdata = *(ShapesData*)xtc;
-            printf("iterate_list_all(): xtc = %p, shapesdata = %p\n", xtc, &shapesdata);
+            //printf("iterate_list_all(): xtc = %p, shapesdata = %p\n", xtc, &shapesdata);
             dbgiter->iterate(xtc);
         }
 
         dbgiter->pop_token();
     }
-    printf("\n\n\n\n");
+    //printf("\n\n\n\n");
 
-    dbgiter->xtc_tree_print();
-    printf("\n\n\n\n");
+    //dbgiter->xtc_tree_print();
+    //printf("\n\n\n\n");
     return head_obj;
 }
 
@@ -1299,7 +1299,7 @@ EXTERNC xtc_object* xtc_file_open(const char* file_path){
     smd_fname += ".smd";
     smd_fname += ".xtc2";
     int index_fd = open(smd_fname.c_str(), O_RDONLY);//open smd file
-    printf("fd = %d, index_fd = %d\n", fd, index_fd);
+//    printf("fd = %d, index_fd = %d\n", fd, index_fd);
     xtc_object* head_obj = iterate_list_all(fd, index_fd);
     return head_obj;//contains a pointer to root node.
 }

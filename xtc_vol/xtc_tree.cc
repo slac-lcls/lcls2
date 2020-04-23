@@ -73,7 +73,7 @@ int add_xtc_node(xtc_node* root, xtc_node* new_node){
             DEBUG_PRINT
             for(auto i : root->children){
                 if(!i->path_abs[0].compare(new_node->path_abs[0])){
-                    printf("new_node has a conflicting path: %s\n", new_node->path_abs[0].c_str());
+                    //printf("new_node has a conflicting path: %s\n", new_node->path_abs[0].c_str());
                     return -1;
                 }
             }

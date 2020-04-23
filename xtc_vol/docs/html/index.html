@@ -81,25 +81,25 @@ $(function() {
 </li>
 <li>HDF5: Any recent versions of HDF5 develop branch should work.<ul>
 <li>This repo has been tested with HDF5 develop branch, commit e02e86b78d01c4815ae8c6f13c6d7862701873b1.</li>
-<li>CMakeLists assumes it's installed to <code>../../hdf5_build/hdf5</code>, or you can change the **<code>set(HDF5_HOME ...)</code>** line in "Dependecy: HDF5" section in CMakeLists.txt.</li>
+<li>CMakeLists assumes it's installed to <code>../../hdf5_build/hdf5</code>, or you can change the <code>set(HDF5_HOME ...)</code> line in "Dependecy: HDF5" section in CMakeLists.txt.</li>
 <li><a href="https://bitbucket.hdfgroup.org/projects/HDFFV/repos/hdf5/browse">Download HDF5</a></li>
 </ul>
 </li>
 </ul>
 <h2>Build XTC_VOL library</h2>
 <p>To build XTC2_VOL project, please follow these steps:</p><ul>
-<li>Go to LCLS2 directory, assume we have the lcls2 repo at /home/my_name/lcls2</li>
-<li>In the source directory (/home/my_name/lcls2/xtc_vol/) edit CMakeList.txt Find "set HDF5_HOME" line, and change it to your HDF5 install location. It should be the one contains include/, lib/, bin/ directories, such as "/home/my_name/hdf5_build/hdf5".</li>
-<li>Create a build directory, such as xtc_vol/build</li>
-<li>cd xtc_vol/build # currently in xtc_vol/</li>
-<li>cmake .. # currently in build/</li>
-<li>make # currently in build/</li>
+<li>Go to LCLS2 directory, assume we have the lcls2 repo at <code>/home/my_name/lcls2</code></li>
+<li>In the source directory (<code>/home/my_name/lcls2/xtc_vol/</code>) edit CMakeList.txt Find <code>set HDF5_HOME</code> line, and change it to your HDF5 install location. It should be the one contains <code>include/</code>, <code>lib/</code>, <code>bin/</code> directories, such as <code>/home/my_name/hdf5_build/hdf5</code>.</li>
+<li>Create a build directory, such as <code>xtc_vol/build</code></li>
+<li><code>cd xtc_vol/build # currently in xtc_vol/</code></li>
+<li><code>cmake .. # currently in build/</code></li>
+<li><code>make # currently in build/</code></li>
 </ul>
 <p>You will see libh5xtc.so (Linux) or libh5xtc.dylib (OSX), that is the file to be loaded by HDF5 runtime.</p>
 <h2>Run the demo</h2>
 <p>To run the demo or any apps with the VOL connector, following environment variables are needed: </p><pre class="fragment">export HDF5_PLUGIN_PATH=/home/my_name/lcls2/xtc_vol/build
 export HDF5_VOL_CONNECTOR="xtc_vol under_vol=0;under_info={};"
-</pre><p>After build the xtc_vol library and set environment variables, HDF5 can read xtc2 files. Currently, both xtc2 file and corresponding smd file are needed. Use a HDF5 tool h5ls for demostration, sample files are included(data.xtc and data.xtc2.smd) in the repo, run following command line to show the HDF5 hierarchy of the xtc2 file: </p><pre class="fragment">    $HDF5_HOME/bin/h5ls data.xtc2
+</pre><p>After build the xtc_vol library and set environment variables, HDF5 can read xtc2 files. Currently, both xtc2 file and corresponding smd file are needed. Use a HDF5 tool h5ls for demostration, sample files (data.xtc and data.smd.xtc2) are included in <code>sample_data/</code> in the repo, run following command line to show the HDF5 hierarchy of the xtc2 file: </p><pre class="fragment">    $HDF5_HOME/bin/h5ls data.xtc2
 </pre><p> and h5ls will show the xtc2 data in the HDF5 virtual view. </p><pre class="fragment">Configure                Group
 BeginRun                 Group
 BeginStep                Group
@@ -108,7 +108,7 @@ L1Accept                 Group
 Disable                  Group
 EndStep                  Group
 EndRun                   Group
-</pre><p>With -r option to show the hierarchy.</p>
+</pre><p>With <b>-r</b> option to show the hierarchy.</p>
 <pre class="fragment">/                        Group
 //Configure              Group
 //Configure/runinfo_runinfo_runinfo Group
@@ -131,7 +131,8 @@ EndRun                   Group
 //L1Accept/xpphsd_hsd_raw/1/timestamps Dataset {1}
 //L1Accept/xpphsd_hsd_raw/1/floatPgp Dataset {SCALAR}
 ......
-</pre><p>With -v option for more details of metadata. </p><pre class="fragment">//L1Accept/xpphsd_hsd_raw Group
+</pre><p>With <b>-v</b> option for more details of metadata. </p><pre class="fragment">......
+//L1Accept/xpphsd_hsd_raw Group
     Location:  3:16-103-0-80
     Links:     1
 //L1Accept/xpphsd_hsd_raw/0 Group
@@ -157,6 +158,7 @@ EndRun                   Group
     Links:     1
     Storage:   8 logical bytes, 0 allocated bytes
     Type:      native long
+......
 </pre> </div></div><!-- PageDoc -->
 </div><!-- contents -->
 <!-- start footer part -->
