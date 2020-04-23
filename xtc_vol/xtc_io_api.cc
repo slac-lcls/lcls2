@@ -1290,9 +1290,15 @@ EXTERNC xtc_object* xtc_obj_find(xtc_object* root_obj, const char* path){
 }
 
 EXTERNC xtc_object* xtc_file_open(const char* file_path){
-    int fd = open(file_path, O_RDONLY);
+    int fd = open(file_path, O_RDONLY);//open xtc2 file
     string fname = string(file_path);
-    int index_fd = open((fname+".smd").c_str(), O_RDONLY);
+    vector<string> tokens = str_tok(file_path, ".");
+    assert(tokens.size() == 2 && tokens[1].compare("xtc2") == 0);
+
+    string smd_fname(tokens[0]);
+    smd_fname += ".smd";
+    smd_fname += ".xtc2";
+    int index_fd = open(smd_fname.c_str(), O_RDONLY);//open smd file
     printf("fd = %d, index_fd = %d\n", fd, index_fd);
     xtc_object* head_obj = iterate_list_all(fd, index_fd);
     return head_obj;//contains a pointer to root node.

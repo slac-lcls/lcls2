@@ -24,10 +24,6 @@ link_directories(${HDF5_HOME}/lib .)
 add_library(xtc_clib SHARED xtc_io_api.cc xtc_tree.cc)
 target_link_libraries(xtc_clib ${XTC_LIB})
 
-# Testcase for tree operations.
-add_executable(test_tree tree_test.cc)
-target_link_libraries(test_tree xtc_clib)
-
 # Core XTC_VOL library
 add_library(h5xtc SHARED xtc_vol.c)
 target_link_libraries(h5xtc hdf5 z MPI::MPI_C xtc_clib)
