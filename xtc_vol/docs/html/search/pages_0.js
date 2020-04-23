@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['project_20resources',['Project resources',['../index.html',1,'']]]
+  ['repo_20links',['Repo links',['../index.html',1,'']]]
 ];

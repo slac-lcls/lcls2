@@ -6,6 +6,20 @@ class Container(object):
     def __init__(self):
         pass
 
+class MissingDet:
+    def __init__(self):
+        pass
+    def __getattr__(self, name):
+        """ Returns itself recursively """
+        return MissingDet() 
+    def __iter__(self):
+        return self
+    def __next__(self):
+        """ Returns an empty iterator """
+        raise StopIteration
+    def __call__(self, evt): # support only one arg - following detector interface proposal
+        return None
+
 class DetectorImpl(object):
     def __init__(self, det_name, drp_class_name, configinfo, calibconst):
         self._det_name       = det_name

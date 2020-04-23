@@ -17,6 +17,7 @@ from psana.psexp.event_manager import TransitionId
 from psana.psexp.events import Events
 from psana.psexp.ds_base import XtcFileNotFound
 import psana.pscalib.calib.MDBWebUtils as wu
+from psana.detector.detector_impl import MissingDet
 
 from psana.psexp.tools import mode
 
@@ -119,26 +120,16 @@ class Run(object):
                         "uniqueid": uniqueid})
 
     def Detector(self, name, accept_missing=False):
-        if name not in self.configinfo_dict \
-                and self.esm.env_from_variable(name) is None and not accept_missing:
-            err_msg = f"Cannot find {name} detector in configs. Available detectors: {','.join(list(self.configinfo_dict.keys()))}"
-            raise DetectorNameError(err_msg)
+        if name not in self.configinfo_dict and self.esm.env_from_variable(name) is None:
+            if not accept_missing:
+                err_msg = f"Cannot find {name} detector in configs. Available detectors: {','.join(list(self.configinfo_dict.keys()))}"
+                raise DetectorNameError(err_msg)
+            else:
+                return MissingDet()
 
         class Container:
             def __init__(self):
                 pass
-            def __getattr__(self, name):
-                """ Returns attribute's value if found, otherwise returns
-                this Container class recursively."""
-                value = self.__dict__.get(name)
-                if not value:
-                    return Container() # mona FIXME: have to add level check to avoid attack
-                return value
-            def __iter__(self):
-                return self
-            def __next__(self):
-                """ Returns an empty iterator """
-                raise StopIteration
         
         det = Container()
         # instantiate the detector xface for this detector/drp_class
