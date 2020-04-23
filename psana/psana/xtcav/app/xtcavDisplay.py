@@ -4,7 +4,7 @@ import sys
 import argparse
 import logging
 logger = logging.getLogger(__name__)
-from psana.pyalgos.generic.Utils import init_logger, STR_LEVEL_NAMES
+from psana.pyalgos.generic.Utils import init_logger, STR_LEVEL_NAMES, input_single_char
 
 scrname = sys.argv[0].rsplit('/')[-1]
 
@@ -19,6 +19,7 @@ parser.add_argument('experiment', help='psana experiment string (e.g. "amox23616
 parser.add_argument('run', type=int, help="run number")
 parser.add_argument('-f', '--fname', type=str, default=d_fname, help='xtc2 file')
 parser.add_argument('-l', '--loglev', default='DEBUG', type=str, help='logging level name, one of %s' % STR_LEVEL_NAMES)
+parser.add_argument('-p', '--pause', type=float, default=2, help="pause [sec] to browse events")
 
 args = parser.parse_args()
 print('Arguments of type %s as %s' % (type(args), type(vars(args))))
@@ -66,47 +67,67 @@ def getLasingOffShot(lon, fname_lor):
     return xtcav_lasingoff.raw(evt_lasingoff)
 
 
-def figaxes():
+def figaxtitles(fig=None):
     """
-       fig, ax11, ax12, ax21, ax22, ax31, ax32 = figaxes()
+       fig, axes, titles = figaxtitles()
+       ax11, ax12, ax21, ax22, ax31, ax32 = axes
     """
-    #plt.ioff() # hold contraol at show() (connect to keyboard for controllable re-drawing)
-    #plt.ion()  # do not hold control
-
-    w,h = 0.40, 0.27
+    w,h = 0.40, 0.26
     x1,x2 = 0.05, 0.55
     y1,y2,y3 = 0.69, 0.36, 0.03
 
-    fig  = plt.figure(figsize=(10,11), dpi=80, facecolor='w', edgecolor='w')#, frameon=True)
-    ax11 = fig.add_axes((x1,y1,w,h))
-    ax12 = fig.add_axes((x2,y1,w,h))
-    ax21 = fig.add_axes((x1,y2,w,h))
-    ax22 = fig.add_axes((x2,y2,w,h))
-    ax31 = fig.add_axes((x1,y3,w,h))
-    ax32 = fig.add_axes((x2,y3,w,h))
+    _fig = fig if fig is not None else\
+           plt.figure(figsize=(8,7), dpi=100, facecolor='w', edgecolor='w')#, frameon=True)
+    axes = (\
+     _fig.add_axes((x1,y1,w,h)),
+     _fig.add_axes((x2,y1,w,h)),
+     _fig.add_axes((x1,y2,w,h)),
+     _fig.add_axes((x2,y2,w,h)),
+     _fig.add_axes((x1,y3,w,h)),
+     _fig.add_axes((x2,y3,w,h))\
+    )
+    titles = 'Lasing On', 'Lasing Off', 'Current', 'E (Delta)', 'E (Sigma)', 'Power'
 
-    ax11.set_title('Lasing On',  color='k', fontsize=20)
-    ax12.set_title('Lasing Off', color='k', fontsize=20)
-    ax21.set_title('Current',    color='k', fontsize=20)
-    ax22.set_title('E (Delta)',  color='k', fontsize=20)
-    ax31.set_title('E (Sigma)',  color='k', fontsize=20)
-    ax32.set_title('Power',      color='k', fontsize=20)
+    #plt.ioff() # hold contraol at show() (connect to keyboard for controllable re-drawing)
+    #plt.ion()  # do not hold control
+    #ax11.set_xlabel(xlabel, fontsize=14)
+    #ax11.set_ylabel(ylabel, fontsize=14)
+        #axim.autoscale(False)
+    #if amp_range is not None : imsh.set_clim(amp_range[0],amp_range[1])
+    #    ax.cla()
+    #    ax.set_title(title, color='k', fontsize=10)
+ 
+    return _fig, axes, titles
 
-        #ax11.set_xlabel(xlabel, fontsize=14)
-        #ax11.set_ylabel(ylabel, fontsize=14)
-            #axim.autoscale(False)
-        #if amp_range is not None : imsh.set_clim(amp_range[0],amp_range[1])
+class Control :
+    PAUSE = False
 
-    return fig, ax11, ax12, ax21, ax22, ax31, ax32
+CONTROL = Control
+
+def press(event):
+    print('press %s of possible e-exit, h/p/d-hold/pause/delay, c/g-continue/go', event.key)
+    sys.stdout.flush()
+    #plt.ion()
+    #plt.show()
+    ch = event.key.lower()
+    if   ch == 'e': sys.exit('Terminated from keyboard')
+    elif ch in ('h','p','d',) :
+        print('Set pause')
+        CONTROL.PAUSE = True
+    elif ch in ('c','g') : 
+        print('Continue event loop')
+        CONTROL.PAUSE = False
+    elif event.key == 'x': return
 
 
 def procEvents(args):
 
     fname     = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0137-e000100-xtcav-v2.xtc2')
     fname_lor = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0131-e000200-xtcav-v2.xtc2')
-    max_shots = getattr(args, 'max_shots', 5)
+    max_shots = getattr(args, 'max_shots', 20)
     mode      = getattr(args, 'mode', 'smd')
     exp       = getattr(args, 'experiment', None)
+    pause     = getattr(args, 'pause', 1)
 
     ds = DataSource(files=fname)
     run = next(ds.runs())
@@ -118,6 +139,11 @@ def procEvents(args):
     valsgd   = lon._valsgd
     valseid  = lon._valseid
     valsxtp  = lon._valsxtp
+
+    fig, axes, titles = figaxtitles()
+    ax11, ax12, ax21, ax22, ax31, ax32 = axes
+    plt.ion() # do not hold control on plt.show()
+    fig.canvas.mpl_connect('key_press_event', press)
 
     nimgs=0
     for nev,evt in enumerate(run.events()):
@@ -146,12 +172,12 @@ def procEvents(args):
     
         results=lon._pulse_characterization
 
-        fig, ax11, ax12, ax21, ax22, ax31, ax32 = figaxes()
+        for ax, title in zip(axes, titles) :
+            ax.cla()
+            ax.set_title(title, color='k', fontsize=12)
 
-        fig.canvas.set_window_title('Event %3d good %3d' % (nev, nimgs))
-        #ax11.cla()
         ax11.imshow(raw, interpolation='nearest', aspect='auto', origin='upper', extent=None, cmap='inferno')
-        #ax12.imshow(
+        ax12.imshow(raw, interpolation='nearest', aspect='auto', origin='upper', extent=None, cmap='jet')
 
         ax21.plot(time[0],results.lasingECurrent[0],label='lasing')
         ax21.plot(time[0],results.nolasingECurrent[0],label='nolasing')
@@ -163,7 +189,6 @@ def procEvents(args):
         ax31.plot(time[0],results.nolasingERMS[0],label='nolasing')
 
         ax32.plot(time[0],power[0])
-
 
         #plt.subplot(3,2,1)
         #plt.title('Lasing On')
@@ -195,13 +220,27 @@ def procEvents(args):
         #plt.subplot(3,2,6)
         #plt.title('Power')
         #plt.plot(time[0],power[0])
-    
-        plt.show()
-        #----------
-        continue
-        #----------
 
-    plt.ioff() # hold contraol at show()
+        fig.canvas.set_window_title('Event %3d good %3d' % (nev, nimgs))
+
+        #fig.canvas.draw()
+        #plt.show() #block=False) 
+        plt.draw()
+
+        print('PAUSE', CONTROL.PAUSE)
+        plt.pause(pause) # hack to make it work... othervise show() does not work...
+
+        #for i in range(10) :
+        #    if CONTROL.PAUSE : plt.pause(1)
+        #    else : break
+
+        while CONTROL.PAUSE : plt.pause(1)
+
+        #ch = input_single_char('Next event? [y/n]')
+        #if ch == 'y': pass
+        #else        : sys.exit('Exit by request')
+            
+    plt.ioff() # hold contraol at show(); plt.ion() is set on any keyboard key press event
     plt.show()
 
 
@@ -209,16 +248,16 @@ def procEvents(args):
 # available quantities from step3, from xtcav/src/Utils.py:ProcessLasingSingleShot
 
 # 't':t,                                  #Master time vector in fs
-# 'powerECOM':powerECOM,              #Retrieved power in GW based on ECOM
-# 'powerERMS':powerERMS,              #Retrieved power in GW based on ERMS
+# 'powerECOM':powerECOM,                  #Retrieved power in GW based on ECOM
+# 'powerERMS':powerERMS,                  #Retrieved power in GW based on ERMS
 # 'powerAgreement':powerAgreement,        #Agreement between the two intensities
 # 'bunchdelay':bunchdelay,                #Delay from each bunch with respect to the first one in fs
 # 'bunchdelaychange':bunchdelaychange,    #Difference between the delay from each bunch with respect to the first one in fs and the same form the non lasing reference
 # 'xrayenergy':shotToShot['xrayenergy'],  #Total x-ray energy from the gas detector in J
 # 'lasingenergyperbunchECOM': eBunchCOM,  #Energy of the XRays generated from each bunch for the center of mass approach in J
 # 'lasingenergyperbunchERMS': eBunchRMS,  #Energy of the XRays generated from each bunch for the dispersion approach in J
-# 'bunchenergydiff':bunchenergydiff,                  #Distance in energy for each bunch with respect to the first one in MeV
-# 'bunchenergydiffchange':bunchenergydiffchange,      #Comparison of that distance with respect to the no lasing
+# 'bunchenergydiff':bunchenergydiff,             #Distance in energy for each bunch with respect to the first one in MeV
+# 'bunchenergydiffchange':bunchenergydiffchange, #Comparison of that distance with respect to the no lasing
 # 'lasingECurrent':lasingECurrent,        #Electron current for the lasing trace (In #electrons/s)
 # 'nolasingECurrent':nolasingECurrent,    #Electron current for the no lasing trace (In #electrons/s)
 # 'lasingECOM':lasingECOM,                #Lasing energy center of masses for each time in MeV

@@ -10,6 +10,7 @@ Usage::
     # Run test: python lcls2/psana/psana/pyalgos/generic/Utils.py 1
 
     # Import
+    from psana.pyalgos.generic.Utils import input_single_char
     import psana.pyalgos.generic.Utils as gu
 
     # Methods
@@ -66,7 +67,8 @@ Usage::
     gu.print_kwargs(kwargs)
     gu.print_parser(parser) # from optparse import OptionParser
 
-    s = do_print(nev) # returns true for sparcified event numbers.
+    s = gu.do_print(nev) # returns true for sparcified event numbers.
+    ch = gu.input_single_char('Next event? [y/n]')
 
 See:
     - :py:class:`Utils`
@@ -88,8 +90,10 @@ import getpass
 import socket
 from time import localtime, strftime, time, strptime, mktime
 import numpy as np
+import tty, termios
+
 #import subprocessif 
-    
+
 from subprocess import call
 if sys.version_info.major == 2:
     from commands import getoutput
@@ -574,6 +578,21 @@ def do_print(nev) :
 
 #------------------------------
 
+def input_single_char(prompt='input? >'):
+    """ input of single character from keybord without <CR> 
+        import sys, tty, termios
+    """
+    sys.stdout.write('\r'+prompt)
+    sys.stdout.flush()
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    tty.setraw(fd)
+    ch = sys.stdin.read(1)
+    termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    return ch
+
+#------------------------------
+
 #def get_grpnames(user='root') :
 #    """Returns tuple of group names"""
 #    from grp import getgrnam
@@ -613,6 +632,13 @@ if __name__ == "__main__" :
 
   #------------------------------
 
+  def test_input_single_char() :    
+    for n in range(20) :
+      ch = input_single_char('Event:%03d Next event? [y/n]' %n)
+      if ch != 'y' : sys.exit('\nExit by key %s' % ch)
+
+  #------------------------------
+
   def test_01() :    
     #logger.debug('debug msg')  # will print a message to the console
     #logger.warning('Watch out!')  # will print a message to the console
@@ -639,6 +665,7 @@ if __name__ == "__main__" :
                         #filename='example.log', filemode='w'
     test_01()
     test_datetime()
+    test_input_single_char()
     sys.exit('\nEnd of test')
 
 #------------------------------
