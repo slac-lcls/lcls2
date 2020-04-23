@@ -3,6 +3,9 @@
 set -e
 
 if [[ $TRAVIS_OS_NAME == osx ]]; then
+  # try to avoid dns (from bldg 50?) because failures may be affecting tests?
+  echo "134.79.138.124 pswww.slac.stanford.edu" | sudo tee -a /etc/hosts
+
   git clone https://github.com/slac-lcls/relmanage.git $HOME/relmanage
   sed -i.old "s|PYTHONVER|${TRAVIS_PYTHON_VERSION}|g" "$HOME/relmanage/env_create_macos.yaml"
   wget https://github.com/phracker/MacOSX-SDKs/releases/download/10.13/MacOSX10.9.sdk.tar.xz

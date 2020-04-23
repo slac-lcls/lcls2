@@ -98,10 +98,9 @@ class WFPeaks :
             
         if self.VERSION == 4 :
             self.paramsCFD = kwargs.get('paramsCFD', {})
-            self.cnls = ['mcp','x1','x2','y1','y2']#for QUAD only
-            self.cnls_map = {4:'mcp',0:'x1',1:'x2',2:'y1',3:'y2'}
-            self.PyCFDs = {cnl:PyCFD(self.paramsCFD[cnl]) for cnl in self.cnls}
-                
+            self.cnls_map = {chnl : opts['name'] for chnl, opts in self.paramsCFD.items()}
+            self.PyCFDs = {name : PyCFD(self.paramsCFD[cnl]) for cnl, name in self.cnls_map.items()}
+
 #----------
 
     def _init_arrays(self) :
