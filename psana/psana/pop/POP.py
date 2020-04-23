@@ -7,7 +7,7 @@ from psana.pop.CartPolar import GenerateCartGrid, GeneratePolarGrid, FindNbrs, C
 from psana.pscalib.calib.MDBWebUtils import calib_constants
 
 class POP:
-    def __init__(self, lmax=4,reg=0,alpha=1,img=None,X0=None,Y0=None,Rmax=None,RBFs_db = False,RBFs_fnm=None,edge_w=10):
+    def __init__(self, lmax=4,reg=0,alpha=1,img=None,X0=None,Y0=None,Rmax=None,RBFs_dict = None,RBFs_fnm=None,edge_w=10):
     
         print('Start initialization......')                          
         lnum = int(lmax/2 + 1)         
@@ -17,9 +17,9 @@ class POP:
                      
         self.X0, self.Y0, self.Rmax = GetCenterR(img,X0,Y0,Rmax) 
         
-        if RBFs_db is True:
-            print('Loading RBFs from DB......')
-            self.RBFs, doc = calib_constants('ele_opal', exp='amox27716', ctype='pop_rbfs', run=85)
+        if RBFs_dict is not None:
+            print('Getting RBFs......')
+            self.RBFs = RBFs_dict
         elif RBFs_fnm is not None:
             print('Loading RBFs from '+RBFs_fnm+'......')
             with open(RBFs_fnm, 'rb') as f:
