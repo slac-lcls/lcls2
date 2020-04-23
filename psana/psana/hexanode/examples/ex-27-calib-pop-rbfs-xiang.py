@@ -41,7 +41,8 @@ def test_opal_data_access() :
     #----------
     print('DETECTOR INTERFACE ACCESS CALIBRATION CONSTANTS')
 
-    ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0085-opal1k.xtc2')
+    #ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0085-opal1k.xtc2')
+    ds = DataSource(files='/reg/d/psdm/AMO/amox27716/results/xiangli/pop_files/pop_raw_imgs.xtc2')    
     orun = next(ds.runs())
     camera = orun.Detector('opal')
 
@@ -59,7 +60,8 @@ def test_opal_data_access() :
         break
 
     calib_data, calib_meta = camera.calibconst.get('pop_rbfs')
-    print('camera..calibconst.get   calib_meta', calib_meta)
+    print('camera..calibconst.get   calib_meta', calib_meta,'calib_data_type',type(calib_data))
+    print(calib_data[3])
 
 #----------
 
