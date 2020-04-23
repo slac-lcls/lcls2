@@ -43,7 +43,6 @@ elif [[ $OS == osx ]]; then
 
   ./build_all.sh -d -p install
   pytest psana/psana/tests
-  pytest psdaq/psdaq/tests
 else
   echo "Unknown OS type: ${OS}"
   exit 1

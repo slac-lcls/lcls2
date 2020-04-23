@@ -1618,9 +1618,12 @@ class CollectionManager():
         logging.debug('get_experiment()')
         experiment_name = None
         instrument = self.instrument
+
+        # authentication is not required, adjust url accordingly
+        uurl = self.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
+
         try:
-            resp = requests.get((self.url + "/" if not self.url.endswith("/") else self.url) + "/lgbk/ws/activeexperiment_for_instrument_station",
-                                auth=HTTPBasicAuth(self.user, self.password),
+            resp = requests.get((uurl + "/" if not uurl.endswith("/") else uurl) + "/lgbk/ws/activeexperiment_for_instrument_station",
                                 params={"instrument_name": instrument, "station": self.station}, timeout=10)
         except requests.exceptions.RequestException as ex:
             logging.error("get_experiment(): request exception: %s" % ex)
@@ -1846,8 +1849,8 @@ def main():
     parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
     parser.add_argument('--rollcall_timeout', type=int, default=30, help='rollcall timeout sec (default 30)')
     parser.add_argument('-v', action='store_true', help='be verbose')
-    parser.add_argument("--user", default="xppopr", help='run database user')
-    parser.add_argument("--password", default="pcds", help='run database password')
+    parser.add_argument("--user", default="tstopr", help='HTTP authentication user')
+    parser.add_argument("--password", default="pcds", help='HTTP authentication password')
     defaultURL = "https://pswww.slac.stanford.edu/ws-auth/devlgbk/"
     parser.add_argument("--url", help="run database URL prefix. Defaults to " + defaultURL, default=defaultURL)
     defaultActiveDetFile = "~/.psdaq/p<platform>.activedet.json"

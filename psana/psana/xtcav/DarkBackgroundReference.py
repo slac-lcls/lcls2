@@ -39,7 +39,7 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr
 class DarkBackgroundReference():
     def __init__(self, args):
 
-        self.args = args
+        #self.args = args
 
         fname = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0104-e000400-xtcav-v2.xtc2')
         experiment       = getattr(args, 'experiment', 'amox23616')
@@ -96,15 +96,7 @@ class DarkBackgroundReference():
         if None in (camraw, valsxtp) : # valsebm, eventid, valsgd) : 
             sys.error('FATAL ERROR IN THE DETECTOR INTERFACE: MISSING ATTRIBUTE MUST BE IMPLEMENTED')
 
-        roi_xtcav, first_image = self._getCalibrationValues(run, camraw, valsxtp, start_image)
-        logger.info('\t roi_xtcav: '+str(roi_xtcav))
-
-
-        ###=======================
-        #sys.exit('TEST EXIT 1')
-        ###=======================
-
-        accumulator_xtcav = np.zeros((roi_xtcav.yN, roi_xtcav.xN), dtype=np.float64)
+        accumulator_xtcav = None
 
         n=0 #Counter for the total number of xtcav images processed 
         for nev,evt in enumerate(run.events()):
@@ -114,7 +106,9 @@ class DarkBackgroundReference():
             img = camera.raw(evt)
             if img is None: continue
 
-            #logger.info(info_ndarr(img, '  img:'))
+            if self.ROI is None :
+                if not self._getImageROI(nev, evt, camraw, valsxtp) : continue
+                accumulator_xtcav = np.zeros((self.ROI.yN, self.ROI.xN), dtype=np.float64)
 
             accumulator_xtcav += img 
             n += 1
@@ -129,7 +123,6 @@ class DarkBackgroundReference():
         #At the end of the program the total accumulator is saved 
         sys.stdout.write('\nMaximum number of images processed\n') 
         self.image=accumulator_xtcav/n
-        self.ROI=roi_xtcav
         
         if not self.parameters.validity_range or not type(self.parameters.validity_range) == tuple:
             self.parameters = self.parameters._replace(validity_range=(self.parameters.run_number, 9999)) #'end'))
@@ -147,30 +140,11 @@ class DarkBackgroundReference():
 
             self.save(fname)
 
-        ###=======================
-        #sys.exit('TEST EXIT OK')
-        ###=======================
 
-    @staticmethod
-    def _getCalibrationValues(run, camraw, valsxtp, start_image):
-        roi_xtcav = None
-        first_good_evnum = 1e6 # len(times)
-
-        for nev,evt in enumerate(run.events()):
-            logger.info('C-loop event %03d'%nev)
-            img = camraw(evt)
-            logger.debug(info_ndarr(img, '  img:'))
-            if img is None: continue
-
-            roi_xtcav = xtup.getXTCAVImageROI(valsxtp, evt)
-            #logger.debug('roi_xtcav: %s' % str(roi_xtcav))
-            if roi_xtcav is None : continue
-            #if 0 in (roi_xtcav.xN, roi_xtcav.yN) : continue
-
-            first_good_evnum = nev
-            break
-
-        return roi_xtcav, first_good_evnum
+    def _getImageROI(self, nev, evt, camraw, valsxtp):
+        self.ROI = xtup.getXTCAVImageROI(valsxtp, evt)
+        logger.info('\t Event %2d ImageROI: %s' % (nev,str(self.ROI)))
+        return self.ROI is not None
 
 
     def save(self, path): 
