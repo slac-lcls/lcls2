@@ -34,7 +34,7 @@ To run the demo or any apps with the VOL connector, following environment variab
     export HDF5_VOL_CONNECTOR="xtc_vol under_vol=0;under_info={};"
 
 After build the xtc_vol library and set environment variables, HDF5 can read xtc2 files. Currently, both xtc2 file and corresponding smd file are needed. 
-Use a HDF5 tool h5ls for demostration, sample files (data.xtc and data.smd.xtc2) are included in `sample_data/` in the repo, run following command line to show the HDF5 hierarchy of the xtc2 file:
+Use a HDF5 tool h5ls for demostration on sample files (data.xtc and data.smd.xtc2), run following command line to show the HDF5 hierarchy of the xtc2 file:
     
         $HDF5_HOME/bin/h5ls data.xtc2
 and h5ls will show the xtc2 data in the HDF5 virtual view. 
