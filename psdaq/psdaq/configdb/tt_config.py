@@ -45,7 +45,7 @@ def tt_connect(cl):
         
     d = {}
     d['paddr'] = rxId
-    return json.dumps(d)
+    return d
 
 def tt_config(cl,connect_str,cfgtype,detname,detsegm,group):
 
