@@ -20,6 +20,8 @@ parser.add_argument('run', type=int, help="run number")
 parser.add_argument('-f', '--fname', type=str, default=d_fname, help='xtc2 file')
 parser.add_argument('-l', '--loglev', default='DEBUG', type=str, help='logging level name, one of %s' % STR_LEVEL_NAMES)
 parser.add_argument('-p', '--pause', type=float, default=2, help="pause [sec] to browse events")
+parser.add_argument('-g', '--grmode', type=int, default=1, help="graphics control mode; 0-close window, 1-using keyboard keys")
+parser.add_argument('-n', '--nevents', type=int, default=100, help="number of non-empty events")
 
 args = parser.parse_args()
 print('Arguments of type %s as %s' % (type(args), type(vars(args))))
@@ -33,46 +35,59 @@ init_logger(args.loglev, fmt='[%(levelname).1s] L%(lineno)04d : %(message)s', da
 #----------
 
 import matplotlib.pyplot as plt
-#plt.switch_backend('agg')
+###plt.switch_backend('Qt5Agg')
 
 import numpy as np
 
 from psana import DataSource
 from psana.xtcav.LasingOnCharacterization import LasingOnCharacterization, cons, setDetectors
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, print_ndarr
+import psana.xtcav.UtilsPsana as xtup
 
 
-def getLasingOffShot(lon, fname_lor):
+def getLasingOffShot(lon, fname_loff):
     results=lon._pulse_characterization
-    lor = lon._lasingoffreference
+    loff = lon._lasingoffreference
     ibunch = 0
 
     group = results.groupnum[ibunch]
-    profs = lor.averaged_profiles
+    profs = loff.averaged_profiles
 
-    ds_lasingoff = DataSource(files=fname_lor)
+    ds = DataSource(files=fname_loff)
     run = next(ds.runs())
 
-    # ???????????
+    print('XXXX dir(run)', dir(run))
+    print('XXXX max_events', run.max_events)
+    print('XXXX esm', run.esm)
+    print('XXXX timestamp', run.timestamp)
+    print('XXXX dm', run.dm)
+    print('XXXX smd_dm', run.smd_dm)
+    #====================
+    sys.exit('TEST EXIT')
+    #====================
 
-    times = run.times()
-    time = profs.eventTime[ibunch][group]
-    fid = profs.eventFid[ibunch][group]
-    et = EventTime(int(time),int(fid))
-    evt_lasingoff = run.event(et)
-    xtcav_lasingoff = Detector(cons.SRC,ds_lasingoff.env())
-    if xtcav_lasingoff is None:
+    camera = run.Detector(cons.DETNAME)
+    camraw = xtup.get_attribute(camera,'raw')
+
+    #LCLS1 stuff does not work here
+    #times = run.times()
+    #time = profs.eventTime[ibunch][group]
+    #fid = profs.eventFid[ibunch][group]
+    #et = EventTime(int(time),int(fid))
+    #evt_loff = run.event(et)
+
+    if camraw is None:
         print('No lasing off image found for unixtime',time,'and fiducials',fid)
-    print('Found lasing off shot in run',lor.parameters.run)
-    return xtcav_lasingoff.raw(evt_lasingoff)
+    print('Found lasing off shot in run',loff.parameters.run)
+    return camraw(evt_loff)
 
 
 def figaxtitles(fig=None):
     """
        fig, axes, titles = figaxtitles()
-       ax11, ax12, ax21, ax22, ax31, ax32 = axes
+       ax11, ax12, ax21, ax22, ax31, ax32, axcb11, axcb12 = axes
     """
-    w,h = 0.40, 0.26
+    w,h, wcb = 0.40, 0.26, 0.01
     x1,x2 = 0.05, 0.55
     y1,y2,y3 = 0.69, 0.36, 0.03
 
@@ -84,18 +99,11 @@ def figaxtitles(fig=None):
      _fig.add_axes((x1,y2,w,h)),
      _fig.add_axes((x2,y2,w,h)),
      _fig.add_axes((x1,y3,w,h)),
-     _fig.add_axes((x2,y3,w,h))\
+     _fig.add_axes((x2,y3,w,h)),
+     _fig.add_axes((0.45,y1,wcb,h)),
+     _fig.add_axes((0.95,y1,wcb,h)),
     )
     titles = 'Lasing On', 'Lasing Off', 'Current', 'E (Delta)', 'E (Sigma)', 'Power'
-
-    #plt.ioff() # hold contraol at show() (connect to keyboard for controllable re-drawing)
-    #plt.ion()  # do not hold control
-    #ax11.set_xlabel(xlabel, fontsize=14)
-    #ax11.set_ylabel(ylabel, fontsize=14)
-        #axim.autoscale(False)
-    #if amp_range is not None : imsh.set_clim(amp_range[0],amp_range[1])
-    #    ax.cla()
-    #    ax.set_title(title, color='k', fontsize=10)
  
     return _fig, axes, titles
 
@@ -105,14 +113,14 @@ class Control :
 CONTROL = Control
 
 def press(event):
-    print('press %s of possible e-exit, h/p/d-hold/pause/delay, c/g-continue/go', event.key)
+    print('pressed %s of possible e-exit, h/p/d-hold/pause/delay, c/g-continue/go' % event.key)
     sys.stdout.flush()
     #plt.ion()
     #plt.show()
     ch = event.key.lower()
     if   ch == 'e': sys.exit('Terminated from keyboard')
     elif ch in ('h','p','d',) :
-        print('Set pause')
+        print('Pause is set')
         CONTROL.PAUSE = True
     elif ch in ('c','g') : 
         print('Continue event loop')
@@ -122,12 +130,13 @@ def press(event):
 
 def procEvents(args):
 
-    fname     = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0137-e000100-xtcav-v2.xtc2')
-    fname_lor = getattr(args, 'fname', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0131-e000200-xtcav-v2.xtc2')
-    max_shots = getattr(args, 'max_shots', 20)
-    mode      = getattr(args, 'mode', 'smd')
-    exp       = getattr(args, 'experiment', None)
-    pause     = getattr(args, 'pause', 1)
+    fname      = getattr(args, 'fname',      '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0137-e000100-xtcav-v2.xtc2')
+    fname_loff = getattr(args, 'fname_loff', '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0131-e000200-xtcav-v2.xtc2')
+    nevents    = getattr(args, 'nevents', 100)
+    mode       = getattr(args, 'mode', 'smd')
+    exp        = getattr(args, 'experiment', None)
+    grmode     = getattr(args, 'grmode', 1)
+    pause      = getattr(args, 'pause', 1)
 
     ds = DataSource(files=fname)
     run = next(ds.runs())
@@ -140,10 +149,11 @@ def procEvents(args):
     valseid  = lon._valseid
     valsxtp  = lon._valsxtp
 
-    fig, axes, titles = figaxtitles()
-    ax11, ax12, ax21, ax22, ax31, ax32 = axes
-    plt.ion() # do not hold control on plt.show()
-    fig.canvas.mpl_connect('key_press_event', press)
+    if grmode == 1 :
+        fig, axes, titles = figaxtitles()
+        ax11, ax12, ax21, ax22, ax31, ax32, axcb11, axcb12 = axes
+        plt.ion() # do not hold control on plt.show()
+        fig.canvas.mpl_connect('key_press_event', press)
 
     nimgs=0
     for nev,evt in enumerate(run.events()):
@@ -156,7 +166,7 @@ def procEvents(args):
         if not lon.processEvent(evt): continue
 
         nimgs += 1
-        if nimgs>=max_shots: break
+        if nimgs>=nevents: break
 
         time, power, agreement, pulse = lon.resultsProcessImage()
         #time, power = lon.xRayPower(method="COM") 
@@ -172,12 +182,26 @@ def procEvents(args):
     
         results=lon._pulse_characterization
 
-        for ax, title in zip(axes, titles) :
-            ax.cla()
-            ax.set_title(title, color='k', fontsize=12)
+        #raw_off = getLasingOffShot(lon, fname_loff)
+        profiles = lon._lasingoffreference.averaged_profiles
+        #print('XXX profiles.eCOMslice', profiles.eCOMslice)
 
-        ax11.imshow(raw, interpolation='nearest', aspect='auto', origin='upper', extent=None, cmap='inferno')
-        ax12.imshow(raw, interpolation='nearest', aspect='auto', origin='upper', extent=None, cmap='jet')
+        if grmode == 0 :
+            fig, axes, titles = figaxtitles()
+            ax11, ax12, ax21, ax22, ax31, ax32, axcb11, axcb12 = axes
+
+        for ax in axes : ax.cla()
+        for ax, title in zip(axes[:6], titles) : ax.set_title(title, color='k', fontsize=12)
+
+        #img_loff = profiles.eCOMslice[0]; ax12.set_title('Lasing Off: eCOMslice', color='k', fontsize=12)
+        #img_loff = profiles.eRMSslice[0]; ax12.set_title('Lasing Off: eRMSslice', color='k', fontsize=12)
+        img_loff = profiles.eCurrent[0]; ax12.set_title('Lasing Off: eCurrent', color='k', fontsize=12)
+
+        imsh11 = ax11.imshow(raw, interpolation='nearest', aspect='auto', origin='upper', extent=None, cmap='inferno')
+        cbar11 = fig.colorbar(imsh11, cax=axcb11, orientation='vertical')
+
+        imsh12 = ax12.imshow(img_loff, interpolation='nearest', aspect='auto', origin='upper', extent=None, cmap='inferno')
+        cbar12 = fig.colorbar(imsh12, cax=axcb12, orientation='vertical')
 
         ax21.plot(time[0],results.lasingECurrent[0],label='lasing')
         ax21.plot(time[0],results.nolasingECurrent[0],label='nolasing')
@@ -190,11 +214,12 @@ def procEvents(args):
 
         ax32.plot(time[0],power[0])
 
+        # LCLS1
         #plt.subplot(3,2,1)
         #plt.title('Lasing On')
         #plt.imshow(raw)
 
-        #xtcav_lasingoff = getLasingOffShot(lon,exp)
+        #xtcav_lasingoff = getLasingOffShot(lon, fname_loff)
         #plt.subplot(3,2,2)
         #plt.title('Lasing Off')
         #plt.imshow(xtcav_lasingoff)
@@ -224,17 +249,18 @@ def procEvents(args):
         fig.canvas.set_window_title('Event %3d good %3d' % (nev, nimgs))
 
         #fig.canvas.draw()
-        #plt.show() #block=False) 
+        #plt.show(block=False) 
         plt.draw()
 
-        print('PAUSE', CONTROL.PAUSE)
-        plt.pause(pause) # hack to make it work... othervise show() does not work...
+        if grmode == 0 :
+            print('\nConntinue - close graphics window (click on [x] on window frame)')
+            plt.show()
 
-        #for i in range(10) :
-        #    if CONTROL.PAUSE : plt.pause(1)
-        #    else : break
-
-        while CONTROL.PAUSE : plt.pause(1)
+        elif grmode == 1 :
+            #print('\nPAUSE %s: ' % CONTROL.PAUSE)
+            print('\nControl keys: e-exit, h/p/d-hold/pause/delay, c/g-continue/go')
+            plt.pause(pause) # hack to make it work... othervise show() does not work...
+            while CONTROL.PAUSE : plt.pause(1)
 
         #ch = input_single_char('Next event? [y/n]')
         #if ch == 'y': pass
@@ -245,7 +271,7 @@ def procEvents(args):
 
 
 
-# available quantities from step3, from xtcav/src/Utils.py:ProcessLasingSingleShot
+# available quantities from step3, from xtcav/Utils.py:ProcessLasingSingleShot
 
 # 't':t,                                  #Master time vector in fs
 # 'powerECOM':powerECOM,                  #Retrieved power in GW based on ECOM
@@ -269,13 +295,8 @@ def procEvents(args):
 
 
 #----------
-#----------
 
 procEvents(args) 
+sys.exit('END OF TEST %s' % scrname)
 
-sys.exit('TEST END OF %s' % scrname)
-
-#sys.exit('END OF %s' % scrname)
-
-#----------
 #----------
