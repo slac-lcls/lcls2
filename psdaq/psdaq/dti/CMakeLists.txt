@@ -11,7 +11,6 @@ target_include_directories(dti PUBLIC
 
 target_link_libraries(dti
     epicstools
-    cpsw::cpsw
     ${YAML_CPP_LIB}
 )
 
@@ -23,7 +22,6 @@ add_executable(dti_simple dti_simple.cc)
 target_link_libraries(dti_simple
    service
    cphw
-   cpsw::cpsw
    ${YAML_CPP_LIB}
    dl
    pthread
@@ -38,7 +36,6 @@ add_executable(dti_stats dti_stats.cc)
 target_link_libraries(dti_stats
    service
    cphw
-   cpsw::cpsw
    ${YAML_CPP_LIB}
    dl
    pthread
@@ -81,7 +78,6 @@ add_executable(dti_eyescan dti_eyescan.cc)
 target_link_libraries(dti_eyescan
    service
    cphw
-   cpsw::cpsw
    ${YAML_CPP_LIB}
    dl
    pthread
@@ -110,7 +106,6 @@ add_executable(dti_appreg dti_appreg.cc)
 target_link_libraries(dti_appreg
    service
    cphw
-   cpsw::cpsw
    ${YAML_CPP_LIB}
    dl
    pthread

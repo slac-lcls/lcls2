@@ -18,7 +18,6 @@ target_include_directories(xpm PUBLIC
 
 target_link_libraries(xpm
     epicstools
-    cpsw::cpsw
     ${YAML_CPP_LIB}
     xtcdata::xtc
 )
@@ -31,7 +30,6 @@ add_executable(xpm_simple xpm_simple.cc)
 target_link_libraries(xpm_simple
    service
    cphw
-   cpsw::cpsw
    ${YAML_CPP_LIB}
    dl
    pthread
