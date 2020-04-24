@@ -97,7 +97,7 @@ def main():
 
     else:
         # print current state
-        transition, state, config_alias, recording = control.getStatus()
+        transition, state, config_alias, recording, platform = control.getStatus()
         print('last transition: %s  state: %s  configuration alias: %s  recording: %s' % (transition, state, config_alias, recording))
 
 if __name__ == '__main__':
