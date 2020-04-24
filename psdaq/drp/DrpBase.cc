@@ -125,8 +125,12 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_configureBuffer(para.maxTrSize),
   m_damage(0)
 {
-    std::map<std::string, std::string> labels{{"partition", std::to_string(para.partition)}};
-    exporter->add("DRP_Damage", labels, Pds::MetricType::Gauge, [&](){ return m_damage; });
+    std::map<std::string, std::string> labels
+    {{"instrument", para.instrument}, 
+        {"partition", std::to_string(para.partition)},
+          {"detname", para.detName}};
+    exporter->add("DRP_Damage"    , labels, Pds::MetricType::Gauge  , [&](){ return m_damage; });
+    exporter->add("DRP_RecordSize", labels, Pds::MetricType::Counter, [&](){ return m_offset; });
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname)
@@ -258,6 +262,9 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
             json msg = createPulseIdMsg(pulseId);
             m_inprocSend.send(msg.dump());
         }
+        if (transitionId == XtcData::TransitionId::BeginRun)
+            m_offset = 0;// reset for monitoring (and not recording)
+
         logging::debug("EbReceiver saw %s transition @ %u.%09u (%014lx)\n",
                        XtcData::TransitionId::name(transitionId),
                        dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
@@ -318,11 +325,13 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
 DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     pool(para), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
 {
+    m_tPrms.instrument = para.instrument;
     m_tPrms.partition = para.partition;
     m_tPrms.core[0]   = -1;
     m_tPrms.core[1]   = -1;
     m_tPrms.verbose   = para.verbose;
 
+    m_mPrms.instrument = para.instrument;
     m_mPrms.partition = para.partition;
     m_mPrms.maxEvents = 8;
     m_mPrms.maxEvSize = pool.bufferSize();
@@ -392,6 +401,7 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
             msg = m_ebRecv->openFiles(m_para, runInfo, m_hostname);
         }
     }
+    m_ebRecv->resetCounters();
     return msg;
 }
 
@@ -463,7 +473,8 @@ std::string DrpBase::configure(const json& msg)
         m_exposer->RegisterCollectable(m_exporter);
     }
 
-    std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};
+    std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
+        {"partition", std::to_string(m_para.partition)}};
     m_exporter->add("drp_port_rcv_rate", labels, Pds::MetricType::Rate,
                     [](){return 4*readInfinibandCounter("port_rcv_data");});
 

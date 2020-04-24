@@ -436,7 +436,7 @@ EbCtrbApp::EbCtrbApp(const TebCtrbParams&                   prms,
   _drpSim       (prms.maxInputSize),
   _prms         (prms)
 {
-  std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
+  std::map<std::string, std::string> labels{{"instrument", prms.instrument},{"partition", std::to_string(prms.partition)}};
   exporter->add("TCtbO_AlPdg", labels, MetricType::Gauge, [&](){ return _drpSim.allocPending(); });
 }
 
@@ -819,6 +819,7 @@ int main(int argc, char **argv)
   std::string    collSrv;
   TebCtrbParams  tebPrms { /* .ifAddr        = */ { }, // Network interface to use
                            /* .port          = */ { }, // Port served to TEBs
+                           /* .instrument    = */ { },
                            /* .partition     = */ NO_PARTITION,
                            /* .alias         = */ { }, // Unique name from cmd line
                            /* .id            = */ -1u,
@@ -832,6 +833,7 @@ int main(int argc, char **argv)
                            /* .contractor    = */ 0 };
   MebCtrbParams  mebPrms { /* .addrs         = */ { },
                            /* .ports         = */ { },
+                           /* .instrument    = */ { },
                            /* .partition     = */ NO_PARTITION,
                            /* .id            = */ -1u,
                            /* .maxEvents     = */ 0,  // Filled in @ connect time

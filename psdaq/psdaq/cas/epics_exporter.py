@@ -11,29 +11,30 @@ from prometheus_client.core import GaugeMetricFamily, REGISTRY
 class CustomCollector():
     def __init__(self):
         self.pvactx = Context('pva')
-        self._name = None
-        self._pv = None
+        self._pvs   = {}
 
-    def registerPV(self, name, pv):
-        self._name = name
-        self._pv = pv
+    def registerPV(self, name, pv, hutch):
+        self._hutch = hutch
+        pvs = []
+        for i in range(8):
+            pvs.append( pv%i )
+        self._pvs[name] = pvs
 
     def collect(self):
-        if self._pv is None:
-            return
-        g = GaugeMetricFamily(self._name, documentation='', labels=['partition'])
-        for p in range(8):
-            pv = self._pv % p
-            value = self.pvactx.get(pv)
-            logging.debug('collect %s: %s' % (pv, str(value.raw.value)))
-            g.add_metric([str(p)], value.raw.value)
-        yield g
+        for name,pvs in self._pvs.items():
+            g = GaugeMetricFamily(name, documentation='', labels=['instrument','partition'])
+            values = self.pvactx.get(pvs)
+            logging.debug('collect %s: %s' % (pvs, str(values)))
+            for i in range(8):
+                g.add_metric([self._hutch,str(i)], values[i].raw.value)
+            yield g
 
 def main():
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for XPM')
 
+    parser.add_argument('-H', required=False, help='e.g. tst', metavar='HUTCH', default='tst')
     parser.add_argument('-P', required=True, help='e.g. DAQ:LAB2:XPM:2', metavar='PREFIX')
-    parser.add_argument('-N', required=True, help='e.g. DeadFrac', metavar='NAME')
+    parser.add_argument('N', help='e.g. DeadFrac', nargs='+', metavar='NAME')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
@@ -43,7 +44,8 @@ def main():
     # Start up the server to expose the metrics.
     c = CustomCollector()
     REGISTRY.register(c)
-    c.registerPV(args.N, args.P + ':PART:%d:' + args.N)
+    for name in args.N:
+        c.registerPV(name, args.P + ':PART:%d:' + name, args.H)
     c.collect()
     start_http_server(9200)
     while True:

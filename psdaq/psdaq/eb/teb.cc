@@ -79,6 +79,7 @@ namespace Pds {
       Teb(const EbParams& prms, const std::shared_ptr<MetricExporter>& exporter);
     public:
       int      configure(Trigger* object, unsigned prescale);
+      int      beginrun ();
       void     run();
     public:                         // For EventBuilder
       virtual
@@ -139,7 +140,7 @@ Teb::Teb(const EbParams& prms, const std::shared_ptr<MetricExporter>& exporter) 
   _exporter     (exporter),
   _l3Transport  (prms.verbose)
 {
-  std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
+  std::map<std::string, std::string> labels{{"instrument", prms.instrument},{"partition", std::to_string(prms.partition)}};
   exporter->add("TEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;             });
   exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;             });
   exporter->add("TEB_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;             }); // Outbound
@@ -151,7 +152,9 @@ Teb::Teb(const EbParams& prms, const std::shared_ptr<MetricExporter>& exporter) 
   exporter->add("TEB_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt();        });
   exporter->add("TEB_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();         });
   exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.pending();  });
+  exporter->add("TEB_WrtRt",  labels, MetricType::Rate,    [&](){ return  _writeCount;            });
   exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return  _writeCount;            });
+  exporter->add("TEB_MonRt",  labels, MetricType::Rate,    [&](){ return  _monitorCount;          });
   exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return  _monitorCount;          });
   exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return  _prescaleCount;         });
 }
@@ -248,6 +251,14 @@ int Teb::configure(Trigger* object,
                   rmtId);
   }
 
+  return 0;
+}
+
+int Teb::beginrun()
+{
+  _eventCount    = 0;
+  _writeCount    = 0;
+  _monitorCount  = 0;
   return 0;
 }
 
@@ -717,6 +728,16 @@ void TebApp::handlePhase1(const json& msg)
       _appThread = std::thread(&Teb::run, std::ref(*_teb));
     }
   }
+  else if (key == "beginrun")
+  {
+    if (_teb->beginrun())
+    {
+      std::string errorMsg = "Phase 1 error: ";
+      errorMsg += "Failed to beginrun";
+      body["err_info"] = errorMsg;
+      logging::error("%s:\n  %s", __PRETTY_FUNCTION__, errorMsg.c_str());
+    }
+  }
 
   // Reply to collection with transition status
   reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
@@ -892,10 +913,10 @@ int main(int argc, char **argv)
 {
   const unsigned NO_PARTITION = unsigned(-1u);
   int            op           = 0;
-  char*          instrument   = NULL;
   std::string    collSrv;
   EbParams       prms;
 
+  prms.instrument = {};
   prms.partition = NO_PARTITION;
   prms.core[0]   = CORE_0;
   prms.core[1]   = CORE_1;
@@ -907,7 +928,7 @@ int main(int argc, char **argv)
     {
       case 'C':  collSrv            = optarg;                       break;
       case 'p':  prms.partition     = std::stoi(optarg);            break;
-      case 'P':  instrument         = optarg;                       break;
+      case 'P':  prms.instrument    = optarg;                       break;
       case 'T':  prms.trgDetName    = optarg ? optarg : "trigger";  break;
       case 'A':  prms.ifAddr        = optarg;                       break;
       case '1':  prms.core[0]       = atoi(optarg);                 break;
@@ -923,10 +944,10 @@ int main(int argc, char **argv)
     }
   }
 
-  logging::init(instrument, prms.verbose ? LOG_DEBUG : LOG_INFO);
+  logging::init(prms.instrument.c_str(), prms.verbose ? LOG_DEBUG : LOG_INFO);
   logging::info("logging configured");
 
-  if (!instrument)
+  if (prms.instrument.empty())
   {
     logging::warning("-P: instrument name is missing");
   }

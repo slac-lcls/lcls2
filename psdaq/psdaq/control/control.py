@@ -1167,6 +1167,13 @@ class CollectionManager():
             return False
 
         # phase 2
+        # ...clear readout
+        self.pv_put(self.pvGroupL0Reset, self.groups)
+        for pv in self.pvListMsgHeader:
+            self.pv_put(pv, DaqControl.transitionId['ClearReadout'])
+        self.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pv_put(self.pvGroupMsgInsert, 0)
+        time.sleep(1.0)
         for pv in self.pvListMsgHeader:
             self.pv_put(pv, DaqControl.transitionId['BeginRun'])
         self.pv_put(self.pvGroupMsgInsert, self.groups)

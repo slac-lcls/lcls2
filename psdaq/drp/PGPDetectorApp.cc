@@ -183,6 +183,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         else if (runInfo.runNumber > 0) {
             m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
         }
+        m_pgpDetector->resetEventCounter();
     }
     else if (key == "endrun") {
         std::string errorMsg = m_drp.endrun(phase1Info);

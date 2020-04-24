@@ -40,6 +40,7 @@ namespace Pds {
 
       string_t ifAddr;             // Network interface to use
       string_t port;               // Served port to receive results
+      string_t instrument;         // Instrument name for monitoring
       unsigned partition;          // The chosen system
       string_t alias;              // Unique name passed on cmd line
       unsigned id;                 // Contributor instance identifier
@@ -56,9 +57,11 @@ namespace Pds {
     struct MebCtrbParams
     {
       using vecstr_t = std::vector<std::string>;
+      using string_t = std::string;
 
       vecstr_t addrs;              // MEB addresses
       vecstr_t ports;              // MEB ports
+      string_t instrument;         // Instrument name for monitoring
       unsigned partition;          // The chosen system
       unsigned id;                 // Contributor instance identifier
       unsigned maxEvents;          // Max # of events to provide for
@@ -77,6 +80,7 @@ namespace Pds {
       string_t  ifAddr;            // Network interface to use
       string_t  ebPort;            // EB port to serve
       string_t  mrqPort;           // Mon request port to receive on
+      string_t  instrument;        // Instrument name for monitoring
       unsigned  partition;         // The chosen system
       string_t  alias;             // Unique name passed on cmd line
       unsigned  id;                // EB instance identifier

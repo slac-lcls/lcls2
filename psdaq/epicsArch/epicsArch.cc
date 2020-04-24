@@ -96,9 +96,11 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
                        XtcData::TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId());
+        if (transitionId == XtcData::TransitionId::BeginRun)
+            m_lastComplete = 0;  // EvtCounter reset
     }
     if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-        logging::critical("%PGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
+        logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
                RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
         logging::critical("data: %08x %08x %08x %08x %08x %08x",
                data[0], data[1], data[2], data[3], data[4], data[5]);
@@ -241,7 +243,9 @@ void EaDetector::shutdown()
 void EaDetector::_worker()
 {
     // setup monitoring
-    std::map<std::string, std::string> labels{{"partition", std::to_string(m_para->partition)}};
+    std::map<std::string, std::string> labels{{"instrument", m_para->instrument},
+      {"partition", std::to_string(m_para->partition)},
+        {"detname",m_para->detName}};
     m_nEvents = 0;
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});

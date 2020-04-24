@@ -297,7 +297,7 @@ namespace Pds {
       _eventCount(0),
       _prms      (prms)
     {
-      std::map<std::string, std::string> labels{{"partition", std::to_string(prms.partition)}};
+      std::map<std::string, std::string> labels{{"instrument", prms.instrument},{"partition", std::to_string(prms.partition)}};
       exporter->add("MEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;      });
       exporter->add("MEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;      });
       exporter->add("MEB_EpAlCt", labels, MetricType::Counter, [&](){ return  epochAllocCnt(); });
@@ -410,6 +410,7 @@ namespace Pds {
         Pool::free((void*)dg);          // Handled means _deleteDatagram() won't be called
       }
     }
+    void beginrun() { _eventCount = 0; }
   private:
     MyXtcMonitorServer* _apps;
     GenericPool*        _pool;
@@ -586,6 +587,10 @@ void MebApp::handlePhase1(const json& msg)
       _appThread = std::thread(&Meb::run, std::ref(*_meb), std::ref(*_apps));
     }
   }
+  else if (key == "beginrun")
+  {
+    _meb->beginrun();
+  }
 
   // Reply to collection with transition status
   reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
@@ -759,11 +764,11 @@ int main(int argc, char** argv)
 {
   const unsigned NO_PARTITION = unsigned(-1u);
   const char*    tag          = 0;
-  std::string    partitionTag;
   std::string    collSrv;
   MebParams      prms { { /* .ifAddr        = */ { }, // Network interface to use
                           /* .ebPort        = */ { },
                           /* .mrqPort       = */ { }, // Unused here
+                          /* .instrument    = */ { },
                           /* .partition     = */ NO_PARTITION,
                           /* .alias         = */ { }, // Unique name passed on cmd line
                           /* .id            = */ -1u,
@@ -795,7 +800,7 @@ int main(int argc, char** argv)
         if (errno != 0 || endPtr == optarg) prms.partition = NO_PARTITION;
         break;
       case 'P':
-        partitionTag = std::string(optarg);
+        prms.instrument = std::string(optarg);
         break;
       case 'n':
         sscanf(optarg, "%d", &prms.numEvBuffers);
@@ -827,7 +832,7 @@ int main(int argc, char** argv)
     }
   }
 
-  logging::init(partitionTag.c_str(), prms.verbose ? LOG_DEBUG : LOG_INFO);
+  logging::init(prms.instrument.c_str(), prms.verbose ? LOG_DEBUG : LOG_INFO);
   logging::info("logging configured");
 
   if (prms.partition == NO_PARTITION)
@@ -835,7 +840,7 @@ int main(int argc, char** argv)
     logging::critical("-p: partition number is mandatory");
     return 1;
   }
-  if (partitionTag.empty())
+  if (prms.instrument.empty())
   {
     logging::critical("-P: instrument name is mandatory");
     return 1;
@@ -865,7 +870,7 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  if (!tag)  tag = partitionTag.c_str();
+  if (!tag)  tag = prms.instrument.c_str();
   logging::info("Partition Tag: '%s'", tag);
 
   struct sigaction sigAction;

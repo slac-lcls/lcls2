@@ -313,6 +313,7 @@ class GroupStats(object):
         self._pv_l0AccRate = addPVF('L0AccRate')
         self._pv_l1Rate    = addPVF('L1Rate')
         self._pv_numL0Inp  = addPVF('NumL0Inp')
+        self._pv_numL0Inh  = addPVF('NumL0Inh')
         self._pv_numL0Acc  = addPVF('NumL0Acc')
         self._pv_numL1     = addPVF('NumL1')
         self._pv_deadFrac  = addPVF('DeadFrac')
@@ -375,6 +376,7 @@ class GroupStats(object):
                 updatePv(self._pv_l0InpRate, l0InpRate)
                 updatePv(self._pv_l0AccRate, l0AccRate)
                 updatePv(self._pv_numL0Inp, numL0)
+                updatePv(self._pv_numL0Inh, numL0Inh)
                 updatePv(self._pv_numL0Acc, numL0Acc)
                 if dnumL0:
                     deadFrac = dnumL0Inh/dnumL0

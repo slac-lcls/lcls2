@@ -417,7 +417,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
                        timingHeader->pulseId());
     }
     if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-        logging::critical("%PGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
+        logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
                RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
         logging::critical("data: %08x %08x %08x %08x %08x %08x",
                data[0], data[1], data[2], data[3], data[4], data[5]);
@@ -509,7 +509,9 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
 {
     // setup monitoring
     uint64_t nevents = 0L;
-    std::map<std::string, std::string> labels{{"partition", std::to_string(m_para.partition)}};
+    std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
+      {"partition", std::to_string(m_para.partition)},
+        {"detname",m_para.detName}};
     exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                   [&](){return nevents;});
     uint64_t bytes = 0L;
