@@ -1152,13 +1152,24 @@ class CollectionManager():
             self.report_error(err_msg)
             return False
 
+        ok = True
         if self.recording:
             # RECORDING: update runDB
-            run_number = self.start_run(self.experiment_name)
-            self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':run_number}}
+            try:
+                run_number = self.start_run(self.experiment_name)
+            except Exception as ex:
+                # ERROR
+                ok = False
+                err_msg = "Failed to start a run with recording enabled"
+            else:
+                self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':run_number}}
         else:
             # NOT RECORDING: by convention, run_number == 0
             self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':0}}
+
+        if not ok:
+            self.report_error(err_msg)
+            return False
 
         # phase 1
         ok = self.condition_common('beginrun', 6000)
@@ -1582,22 +1593,26 @@ class CollectionManager():
 
     def start_run(self, experiment_name):
         run_num = 0
+        ok = False
+        error_msg = "start_run error"
         serverURLPrefix = "{0}run_control/{1}/ws/".format(self.url + "/" if not self.url.endswith("/") else self.url, experiment_name)
         logging.debug('serverURLPrefix = %s' % serverURLPrefix)
         try:
             resp = requests.post(serverURLPrefix + "start_run", auth=HTTPBasicAuth(self.user, self.password))
         except Exception as ex:
-            logging.error('start_run error. HTTP request: %s' % ex)
+            logging.error("start_run (user=%s) exception: %s" % (self.user, ex))
         else:
             logging.debug("start_run response: %s" % resp.text)
             if resp.status_code == requests.codes.ok:
                 if resp.json().get("success", None):
                     logging.debug("start_run success")
                     run_num = resp.json().get("value", {}).get("num", None)
-                else:
-                    logging.error("start_run failure")
+                    ok = True
             else:
-                logging.error("start_run error: status code %d" % resp.status_code)
+                self.report_error("start_run (user=%s) error: status code %d" % (self.user, resp.status_code))
+
+        if not ok:
+            raise Exception(error_msg)
 
         logging.debug("start_run: run number = %s" % run_num)
         return run_num
