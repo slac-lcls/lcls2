@@ -1148,7 +1148,6 @@ class CollectionManager():
         self.experiment_name = self.get_experiment()
         if not self.experiment_name:
             err_msg = 'condition_beginrun(): get_experiment() failed (instrument=\'%s\', station=%d)' % (self.instrument, self.station)
-            logging.error(err_msg)
             self.report_error(err_msg)
             return False
 
@@ -1619,21 +1618,25 @@ class CollectionManager():
 
     def end_run(self, experiment_name):
         run_num = 0
+        ok = False
+        err_msg = "end_run error"
         serverURLPrefix = "{0}run_control/{1}/ws/".format(self.url + "/" if not self.url.endswith("/") else self.url, experiment_name)
         logging.debug('serverURLPrefix = %s' % serverURLPrefix)
         try:
             resp = requests.post(serverURLPrefix + "end_run", auth=HTTPBasicAuth(self.user, self.password))
         except Exception as ex:
-            logging.error('end_run error. HTTP request: %s' % ex)
+            err_msg = "end_run error (user=%s): %s" % (self.user, ex)
         else:
             logging.debug("Response: %s" % resp.text)
             if resp.status_code == requests.codes.ok:
                 if resp.json().get("success", None):
                     logging.debug("end_run success")
-                else:
-                    logging.error("end_run failure")
+                    ok = True
             else:
-                logging.error("end_run error: status code %d" % resp.status_code)
+                err_msg = "end_run error (user=%s): status code %d" % (self.user, resp.status_code)
+
+        if not ok:
+            self.report_error(err_msg)
         return
 
     def get_experiment(self):
