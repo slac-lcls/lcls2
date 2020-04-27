@@ -55,17 +55,15 @@ def detnames():
     format_string = '{0:%d} | {1:%d}'
     names = myrun.scaninfo
   elif args.ids:
-    headers = ['Name','Data Type','UniqueId','SegmentIds']
+    headers = ['Name','Data Type','Segments','UniqueId']
     format_string = '{0:%d} | {1:%d} | {2:%d} | {3:%d}'
     names = myrun.detinfo.keys()
     newnames = []
     for name in names:
       datatype = name[1]
       data = getattr(myrun.Detector(name[0]),datatype)
-      segids = ''
-      for segment,segid in data._segids.items():
-        segids += str(segment)+':'+segid+' '
-      newnames.append((name[0],name[1],data._uniqueid,segids))
+      segments = ','.join([str(segid) for segid in data._sorted_segment_ids])
+      newnames.append((name[0],datatype,segments,data._uniqueid))
     names = newnames
   else:
     headers = ['Name','Data Type']
