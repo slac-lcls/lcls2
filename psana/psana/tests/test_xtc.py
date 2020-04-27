@@ -62,7 +62,12 @@ class Test:
         
         loop_based_exhausted = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ds.py')
         subprocess.check_call(['python',loop_based_exhausted], env=env)
-        
+
+    def test_detnames(self, xtc_file):
+        # for now just check that the various detnames don't crash
+        for flag in ['-r','-e','-s','-i']:
+            subprocess.check_call(['detnames',flag,xtc_file])
+        subprocess.check_call(['detnames',xtc_file])
 
     @pytest.mark.legion
     @pytest.mark.skipif(sys.platform == 'darwin', reason="psana with legion not supported on mac")
