@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 /reg/d/psdm/AMO/amox27716/results/xiangli/run85_opal_1000.xtc2 copied to:
-detnames -r /reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0085-opal1k.xtc2
+detnames -i /reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0085-opal1k.xtc2
 ----------------------------------------
 Name    | Det Type | Data Type | Version
 ----------------------------------------
@@ -34,9 +34,10 @@ def test_opal_data_access() :
     print('DIRECT ACCESS CALIBRATION CONSTANTS')
 
     from psana.pscalib.calib.MDBWebUtils import calib_constants
-    data, doc = calib_constants('ele_opal', exp='amox27716', ctype='pop_rbfs', run=85)
+    data, doc = calib_constants('ele_opal_1234', exp='amox27716', ctype='pop_rbfs', run=85)
     print('direct consatnts access meta:\n', doc)
-    print('direct consatnts access data:\n', data)
+    print('\ndirect consatnts access data:')
+    for k,v in data.items() : print_ndarr(v, '%03d : '%k)
 
     #----------
     print('DETECTOR INTERFACE ACCESS CALIBRATION CONSTANTS')
