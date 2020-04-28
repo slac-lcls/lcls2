@@ -1,37 +1,36 @@
 #!/usr/bin/env python
 
+""" det_raw_dark_proc -e amox23616 -r 104 -d xtcav -o nda.expand -f <input-file.xtc2> -p
+"""
 #----------
 
+import sys
 import logging
 logger = logging.getLogger(__name__)
 from psana.pyalgos.generic.Utils import init_logger, STR_LEVEL_NAMES
-
-import sys
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 #----------
 
 def usage(mode=0) :
-    if mode == 1 : return 'Proceses detector raw n-d array and saves results in files.'
+    if mode == 1 : return 'Proceses detector raw dark data and saves results in files.'
     else : return\
-           '       %s -d <dataset> [-s <source>] [-f <file-name-template>]' % SCRNAME +\
+           '       %s -d <dataset> [-d <dnames>] [-f <file-name-template>]' % SCRNAME +\
            ' [-n <events-collect>] [-m <events-skip>] [-v 7] [-p 1] [-v 7] ...'+\
            '\n  -v, -S control bit-words stand for 1/2/4/8/16/32/... - ave/rms/status/mask/max/min/sta_int_lo/sta_int_hi'+\
-           '\nEx.1:  %s -e amox23616 -r 104 -s xtcav -o nda.expand -n 20 -m 0 -v 7 -p 1' % SCRNAME +\
-           '\nEx.2:  %s -e mecj5515 -r 102 -s MecTargetChamber.0:Cspad2x2.1,MecTargetChamber.0:Cspad2x2.2 -o nda-#exp-#run-#src-#type.txt -n 10' % SCRNAME +\
-           '\nEx.3:  %s -e amo42112 -r 120 -s AmoBPS.0:Opal1000.0 -n 5 -o nda-#exp-#run-peds-#type-#src.txt' % SCRNAME 
+           '\nEx:  %s -e amox23616 -r 104 -d xtcav -o nda.expand -n 20 -m 0 -v 7 -p 1' % SCRNAME
 
 #----------
 
-def command_line_parser() :
+def argument_parser() :
 
     import argparse
 
     d_expnam = 'amox23616'
     d_runnum = 104
-    d_source = 'xtcav' # 'CxiDs2.0:Cspad.0,xtcav' or list of names
+    d_dnames = 'xtcav' # 'CxiDs2.0:Cspad.0,xtcav' or list of names
     d_ifname = '/reg/g/psdm/detector/data2_test/xtc/data-amox23616-r0104-e000400-xtcav-v2.xtc2'
-    d_ofname = 'nda-#exp-#run-#src-#evts-#type-#date-#time-#fid-#sec-#nsec.txt'
+    d_ofname = 'nda-#exp-#run-#src-#evts-#type-#date-#time.txt' #-#sec-#nsec
     d_events = 1000
     d_evskip = 0
     d_intlow = 0
@@ -52,7 +51,7 @@ def command_line_parser() :
    
     h_expnam='dataset name, default = %s' % d_expnam
     h_runnum='run number, default = %s' % d_runnum
-    h_source='input ndarray source name, default = %s' % d_source
+    h_dnames='comma-separated detector names for processing, default = %s' % d_dnames
     h_ifname='input file name, default = %s' % d_ifname
     h_ofname='output file name template, default = %s' % d_ofname
     h_events='number of events to collect, default = %s' % d_events
@@ -77,7 +76,7 @@ def command_line_parser() :
 
     parser.add_argument('-e', '--expnam', default=d_expnam, type=str,   help=h_expnam)
     parser.add_argument('-r', '--runnum', default=d_runnum, type=int,   help=h_runnum)
-    parser.add_argument('-s', '--source', default=d_source, type=str,   help=h_source)
+    parser.add_argument('-d', '--dnames', default=d_dnames, type=str,   help=h_dnames)
     parser.add_argument('-f', '--ifname', default=d_ifname, type=str,   help=h_ifname)
     parser.add_argument('-o', '--ofname', default=d_ofname, type=str,   help=h_ofname)
     parser.add_argument('-n', '--events', default=d_events, type=int,   help=h_events)
@@ -106,20 +105,16 @@ def do_main() :
 
     print('Command   :', ' '.join(sys.argv))
     print('Arguments :')
-    parser = command_line_parser()
+    parser = argument_parser()
     args = parser.parse_args()
     for k,v in vars(args).items() : print('   %s : %s' % (k, str(v)))
 
     init_logger(args.loglev, fmt='[%(levelname).1s] L%(lineno)04d : %(message)s', datefmt='%Y-%m-%dT%H:%M:%S')
 
-    #sys.exit('TEST EXIT %s' % SCRNAME)
-    ##================================
-
     from psana.pscalib.calibprod.DetRawDarkProc import detectors_dark_proc
     detectors_dark_proc(parser)
 
-    #print(usage())
-
+    print(usage())
     sys.exit('END OF %s' % SCRNAME)
 
 #----------
