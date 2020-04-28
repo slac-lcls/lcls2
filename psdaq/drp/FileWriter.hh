@@ -1,7 +1,10 @@
 #pragma once
 
+#include <atomic>
 #include <string>
+#include <thread>
 #include <vector>
+#include "psdaq/service/Fifo.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/TimeStamp.hh"
@@ -21,6 +24,30 @@ private:
     size_t m_count;
     XtcData::TimeStamp m_batch_starttime;
     std::vector<uint8_t> m_buffer;
+};
+
+class BufferedFileWriterMT
+{
+public:
+    BufferedFileWriterMT(size_t bufferSize);
+    ~BufferedFileWriterMT();
+    int open(const std::string& fileName);
+    int close();
+    void writeEvent(void* data, size_t size, XtcData::TimeStamp ts);
+    void run();
+private:
+    size_t m_bufferSize;
+    int m_fd;
+    XtcData::TimeStamp m_batch_starttime;
+    class Buffer {
+    public:
+        uint8_t* p;
+        size_t   count;
+    };
+    Pds::FifoW<Buffer> m_free;  
+    Pds::FifoW<Buffer> m_pend;  
+    std::atomic<bool> m_terminate;
+    std::thread m_thread;
 };
 
 class SmdDef : public XtcData::VarDef

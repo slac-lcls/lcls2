@@ -41,7 +41,7 @@ private:
 private:
     MemPool& m_pool;
     Pds::Eb::MebContributor* m_mon;
-    BufferedFileWriter m_fileWriter;
+    BufferedFileWriterMT m_fileWriter;
     SmdWriter m_smdWriter;
     bool m_writing;
     ZmqSocket& m_inprocSend;

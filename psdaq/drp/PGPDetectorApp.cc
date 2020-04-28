@@ -201,7 +201,9 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
 void PGPDetectorApp::handleReset(const json& msg)
 {
+    PyEval_RestoreThread(m_pysave);  // Py_END_ALLOW_THREADS
     shutdown();
+    m_pysave = PyEval_SaveThread(); // Py_BEGIN_ALLOW_THREADS
 }
 
 json PGPDetectorApp::connectionInfo()
