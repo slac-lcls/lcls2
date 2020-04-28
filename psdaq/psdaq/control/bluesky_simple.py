@@ -153,37 +153,9 @@ class MyDAQ:
         # this dict should be put into beginstep phase1 json
         motor_dict = {'motor1':self.motor.position,
                       'motor2':self.motor.position}
-        self.push_socket.send_string('running')
+        self.push_socket.send_string('running')     # BeginStep
+        self.push_socket.send_string('starting')    # EndStep
         return self.status
-
-    # for the FlyableDevice style, which we don't use for the DAQ
-    # since we only get one kickoff call for all steps in the scan
-    def kickoff(self):
-        # do one step
-        print('*** here in kickoff')
-        self.status = Status()
-        self.status.done = True
-        self.status.success = True
-        # tell the control level to start the scan
-        self.push_socket.send_string('step')
-        return self.status
-
-    # for the FlyableDevice style
-    def complete(self):
-        print('*** here in complete')
-        time.sleep(3)
-        self.status = Status()
-        self.status.done = True
-        self.status.success = True
-        return self.status
-
-    # for the FlyableDevice style
-    def collect(self):
-        return {}
-
-    # for the FlyableDevice style
-    def describe_collect(self):
-        return {}
 
     def read_configuration(self):
         # done at the first read after a configure
