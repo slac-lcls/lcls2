@@ -141,8 +141,6 @@ class MyDAQ:
     def trigger(self):
         # do one step
         self.status = Status()
-        self.status.done = False
-        self.status.success = False
         # tell the control level to do a step in the scan
         # to-do: pass it the motor positions, ideally both
         # requested/measured positions.
