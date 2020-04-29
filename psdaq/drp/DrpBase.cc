@@ -183,9 +183,12 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
 
 std::string EbReceiver::closeFiles()
 {
+    logging::debug("%s: m_writing is %s", __PRETTY_FUNCTION__, m_writing ? "true" : "false");
     if (m_writing) {
         m_writing = false;
+        logging::debug("calling m_smdWriter.close()...");
         m_smdWriter.close();
+        logging::debug("calling m_fileWriter.close()...");
         m_fileWriter.close();
     }
     return std::string{};
