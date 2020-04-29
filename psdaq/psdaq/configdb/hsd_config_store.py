@@ -8,8 +8,9 @@ parser = argparse.ArgumentParser(description='Write a new HSD configuration into
 parser.add_argument('--inst', help='instrument', type=str, default='tst')
 parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
 parser.add_argument('--name', help='detector name', type=str, default='tsthsd')
-parser.add_argument('--segm', help='detector segment', type=int, default=0)
+parser.add_argument('--segm', help='detector segment', nargs='+', type=int, default=[0])
 parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
+parser.add_argument('--gate', help='raw gate, ns', type=int, default=200)
 parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
 parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
 args = parser.parse_args()
@@ -24,7 +25,7 @@ mycdb.add_device_config('hsd')
 
 top = cdict()
 
-top.setInfo('hsd', args.name, args.segm, args.id, 'No comment')
+#top.setInfo('hsd', args.name, args.segm, args.id, 'No comment')
 top.setAlg('config', [2,0,0])
 
 top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
@@ -45,12 +46,12 @@ help_str += "\nuser.fex.xpost    : keep N samples trailing excursion"
 top.set("help:RO", help_str, 'CHARSTR')
 
 top.set('user.raw.start_ns', 107692, 'UINT32')
-top.set('user.raw.gate_ns' ,    200, 'UINT32')
+top.set('user.raw.gate_ns' , args.gate, 'UINT32')
 top.set('user.raw.prescale',      1, 'UINT32')
 
 top.set('user.fex.start_ns', 107692, 'UINT32')
 top.set('user.fex.gate_ns' ,    200, 'UINT32')
-top.set('user.fex.prescale',      1, 'UINT32')
+top.set('user.fex.prescale',      0, 'UINT32')
 top.set('user.fex.ymin' ,      2000, 'UINT32')
 top.set('user.fex.ymax' ,      2080, 'UINT32')
 top.set('user.fex.xpre' ,         8, 'UINT32')
@@ -79,6 +80,9 @@ top.set('expert.sync_ph_even', 0, 'UINT32')
 top.set('expert.sync_ph_odd' , 0, 'UINT32')
 
 mycdb.add_alias(args.alias)
-mycdb.modify_device(args.alias, top)
+
+for segm in args.segm:
+    top.setInfo('hsd', args.name, segm, args.id, 'No comment')
+    mycdb.modify_device(args.alias, top)
 #mycdb.print_configs()
 

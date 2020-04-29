@@ -65,6 +65,9 @@ int BufferedFileWriter::close()
         logging::debug("Closing fd %d", m_fd);
         rv = ::close(m_fd);
     }
+    else {
+        logging::debug("No file to close");
+    }
     if (rv == -1) {
         // %m will be replaced by the string strerror(errno)
         logging::error("Error closing fd %d: %m", m_fd);
@@ -179,6 +182,9 @@ int BufferedFileWriterMT::close()
         m_pend.pendn();  // block until writing complete
         logging::debug("Closing fd %d", m_fd);
         rv = ::close(m_fd);
+    }
+    else {
+        logging::debug("No file to close");
     }
     if (rv == -1) {
         // %m will be replaced by the string strerror(errno)

@@ -5,6 +5,7 @@
 #include <thread>
 #include <vector>
 #include "psdaq/service/Fifo.hh"
+#include "psdaq/service/Task.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/TimeStamp.hh"
@@ -35,6 +36,7 @@ public:
     int close();
     void writeEvent(void* data, size_t size, XtcData::TimeStamp ts);
     void run();
+    const size_t& depth() const { return m_pend.count(); }
 private:
     size_t m_bufferSize;
     int m_fd;
