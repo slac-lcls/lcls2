@@ -210,16 +210,16 @@ void BufferedFileWriterMT::writeEvent(void* data, size_t size, XtcData::TimeStam
     // can't be 1 second without a more precise age calculation, since
     // the seconds field could have "rolled over" since the last event
     m_free.pend();
-    Buffer& b = m_free.front();
-    if ((size > (m_bufferSize - b.count)) || age_seconds>2) {
+    if ((size > (m_bufferSize - m_free.front().count)) || age_seconds>2) {
+        Buffer b = m_free.front();
         m_free.pop(b);
         m_pend.push(b);
         // reset these to prepare for the new batch
         m_batch_starttime = timestamp;
         m_free.pend();
-        b = m_free.front();
     }
 
+    Buffer& b = m_free.front();
     if (size>(m_bufferSize - b.count)) {
         std::cout<<"Buffer size "<<(m_bufferSize-b.count)<<" too small for dgram with size "<<size<<'\n';
         throw "FileWriterMT.cc buffer size too small";
