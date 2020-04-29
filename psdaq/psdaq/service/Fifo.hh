@@ -181,6 +181,7 @@ namespace Pds
     FifoW(size_t size);
   public:
     bool push(const T& item);
+    bool pop(T& item);
     void pend() const;
     void pend(const std::chrono::milliseconds& tmo) const;
     void pendn() const;
@@ -211,6 +212,18 @@ bool Pds::FifoW<T, L>::push(const T& item)
   _cv.notify_one();
 
   return full;
+}
+
+template <class T, class L>
+inline
+bool Pds::FifoW<T, L>::pop(T& item)
+{
+  std::lock_guard<L> lock(_lock);
+
+  bool isempty = Fifo<T>::pop(item);
+  _cv.notify_one();
+
+  return isempty;
 }
 
 template <class T, class L>
