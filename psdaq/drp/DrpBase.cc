@@ -131,7 +131,7 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
           {"detname", para.detName}};
     exporter->add("DRP_Damage"    , labels, Pds::MetricType::Gauge  , [&](){ return m_damage; });
     exporter->add("DRP_RecordSize", labels, Pds::MetricType::Counter, [&](){ return m_offset; });
-    //    exporter->add("DRP_RecordDepth", labels, Pds::MetricType::Histogram, [&](){ return m_fileWriter.depth(); });
+    exporter->add("DRP_RecordDepth", labels, Pds::MetricType::Gauge , [&](){ return m_fileWriter.depth(); });
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname)

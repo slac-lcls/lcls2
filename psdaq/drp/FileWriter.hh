@@ -36,9 +36,10 @@ public:
     int close();
     void writeEvent(void* data, size_t size, XtcData::TimeStamp ts);
     void run();
-    const size_t& depth() const { return m_pend.count(); }
+    const uint64_t& depth() const { return m_depth; }
 private:
     size_t m_bufferSize;
+    uint64_t m_depth;
     int m_fd;
     XtcData::TimeStamp m_batch_starttime;
     class Buffer {

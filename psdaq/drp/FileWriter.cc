@@ -105,14 +105,15 @@ void BufferedFileWriter::writeEvent(void* data, size_t size, XtcData::TimeStamp 
         std::cout<<"Buffer size "<<(m_buffer.size()-m_count)<<" too small for dgram with size "<<size<<'\n';
         throw "FileWriter.cc buffer size too small";
     }
-    memcpy(m_buffer.data()+m_count, data, size);
+    memcpy(m_buffer.data()+m_count, data, size); // test if copy is slow
     m_count += size;
 }
 
-static const unsigned FIFO_DEPTH = 8;
+static const unsigned FIFO_DEPTH = 64;
 
 BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize) :
     m_bufferSize(bufferSize),
+    m_depth(0),                                                                                                 
     m_batch_starttime(0,0),
     m_free(FIFO_DEPTH),
     m_pend(FIFO_DEPTH),
@@ -207,6 +208,7 @@ void BufferedFileWriterMT::writeEvent(void* data, size_t size, XtcData::TimeStam
     // write out data if buffer full or batch is too old
     // can't be 1 second without a more precise age calculation, since
     // the seconds field could have "rolled over" since the last event
+    m_depth = m_free.count();
     m_free.pend();
     if ((size > (m_bufferSize - m_free.front().count)) || age_seconds>2) {
         Buffer b = m_free.front();

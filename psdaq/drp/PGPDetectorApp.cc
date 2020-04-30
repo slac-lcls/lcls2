@@ -13,6 +13,10 @@
 #include "psalg/utils/SysLog.hh"
 #include "RunInfoDef.hh"
 
+#define PY_RELEASE_GIL    PyEval_SaveThread()
+#define PY_ACQUIRE_GIL(x) PyEval_RestoreThread(x)
+//#define PY_RELEASE_GIL    0
+//#define PY_ACQUIRE_GIL(x) {}
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
@@ -45,7 +49,7 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     }
     logging::info("Ready for transitions");
 
-    m_pysave = PyEval_SaveThread(); // Py_BEGIN_ALLOW_THREADS
+    m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 }
 
 void PGPDetectorApp::shutdown()
@@ -73,7 +77,7 @@ void PGPDetectorApp::shutdown()
 
 void PGPDetectorApp::handleConnect(const json& msg)
 {
-    PyEval_RestoreThread(m_pysave);  // Py_END_ALLOW_THREADS
+    PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
 
     json body = json({});
     std::string errorMsg = m_drp.connect(msg, getId());
@@ -86,7 +90,7 @@ void PGPDetectorApp::handleConnect(const json& msg)
     m_det->nodeId = m_drp.nodeId();
     m_det->connect(msg, std::to_string(getId()));
 
-    m_pysave = PyEval_SaveThread(); // Py_BEGIN_ALLOW_THREADS
+    m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 
     m_unconfigure = false;
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
@@ -95,11 +99,11 @@ void PGPDetectorApp::handleConnect(const json& msg)
 
 void PGPDetectorApp::handleDisconnect(const json& msg)
 {
-    PyEval_RestoreThread(m_pysave);  // Py_END_ALLOW_THREADS
+    PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
 
     shutdown();
 
-    m_pysave = PyEval_SaveThread(); // Py_BEGIN_ALLOW_THREADS
+    m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 
     json body = json({});
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
@@ -109,7 +113,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 {
     logging::debug("handlePhase1 in PGPDetectorApp");
 
-    PyEval_RestoreThread(m_pysave);  // Py_END_ALLOW_THREADS
+    PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
 
     XtcData::Xtc& xtc = m_det->transitionXtc();
     XtcData::TypeId tid(XtcData::TypeId::Parent, 0);
@@ -193,7 +197,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
     }
 
-    m_pysave = PyEval_SaveThread(); // Py_BEGIN_ALLOW_THREADS
+    m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -201,9 +205,9 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
 void PGPDetectorApp::handleReset(const json& msg)
 {
-    PyEval_RestoreThread(m_pysave);  // Py_END_ALLOW_THREADS
+    PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
     shutdown();
-    m_pysave = PyEval_SaveThread(); // Py_BEGIN_ALLOW_THREADS
+    m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 }
 
 json PGPDetectorApp::connectionInfo()
