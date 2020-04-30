@@ -28,6 +28,7 @@
 
 from bluesky import RunEngine
 from ophyd.status import Status
+import sys
 import threading
 import zmq
 import asyncio
@@ -37,7 +38,7 @@ from psdaq.control.control import DaqControl
 import argparse
 
 class MyDAQ:
-    def __init__(self, control, motor):
+    def __init__(self, control, motor, *, daqState):
         self.control = control
         self.name = 'mydaq'
         self.parent = None
@@ -50,7 +51,7 @@ class MyDAQ:
         self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
         self.motor = motor
-        self.daqState = 'noconnect'
+        self.daqState = daqState
         self.daqState_cv = threading.Condition()
         self.comm_thread.start()
         self.mon_thread.start()
@@ -196,6 +197,12 @@ def main():
     # instantiate DaqControl object
     control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
 
+    # get initial DAQ state
+    daqState = control.getState()
+    print('initial state: %s' % daqState)
+    if daqState == 'error':
+        sys.exit(1)
+
     config = None
     if args.config:
         config = args.config
@@ -225,7 +232,7 @@ def main():
     from bluesky.plans import scan, count
     from bluesky.preprocessors import fly_during_wrapper
 
-    mydaq = MyDAQ(control,motor)
+    mydaq = MyDAQ(control,motor, daqState=daqState)
     dets = [mydaq]   # just one in this case, but it could be more than one
 
     print('motor',motor.position,motor.name) # in some cases we have to look at ".value"
