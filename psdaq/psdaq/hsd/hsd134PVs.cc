@@ -176,10 +176,13 @@ int main(int argc, char** argv)
   printf("BuildStamp: %s\n",buildStamp.c_str());
   unsigned buildVersion = m->version().FpgaVersion;
 
+  const unsigned pvaaSize=10;
+  Pds_Epics::EpicsPVA* pvaa[pvaaSize];  // need to maintain a reference long enough for putFrom to complete
+
   for(unsigned i=0; i<2; i++) {
     std::string sprefix(prefix);
     sprefix += (i==0) ? ":A:FWBUILD" : ":B:FWBUILD";
-    Pds_Epics::EpicsPVA pvBuild(sprefix.c_str());
+    Pds_Epics::EpicsPVA& pvBuild = *(pvaa[i] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
     while(!pvBuild.connected())
       usleep(1000);
     pvBuild.putFrom(buildStamp); 
@@ -188,7 +191,7 @@ int main(int argc, char** argv)
   for(unsigned i=0; i<2; i++) {
     std::string sprefix(prefix);
     sprefix += (i==0) ? ":A:FWVERSION" : ":B:FWVERSION";
-    Pds_Epics::EpicsPVA pvBuild(sprefix.c_str());
+    Pds_Epics::EpicsPVA& pvBuild = *(pvaa[i+2] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
     while(!pvBuild.connected())
       usleep(1000);
     pvBuild.putFrom(buildVersion); 
@@ -206,17 +209,15 @@ int main(int argc, char** argv)
     for(unsigned i=0; i<2; i++) {
       std::string sprefix(prefix);
       sprefix += ":"+std::string(1,'A'+i)+":PADDR";
-      { Pds_Epics::EpicsPVA pvPaddr(sprefix.c_str());
+      { Pds_Epics::EpicsPVA& pvPaddr = *(pvaa[i+4] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
         while(!pvPaddr.connected())
           usleep(1000);
-        pvPaddr.putFrom(paddr); 
-        usleep(100000); }
+        pvPaddr.putFrom(paddr); }
       sprefix += "_U";
-      { Pds_Epics::EpicsPVA pvPaddr(sprefix.c_str());
+      { Pds_Epics::EpicsPVA& pvPaddr = *(pvaa[i+6] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
         while(!pvPaddr.connected())
           usleep(1000);
-        pvPaddr.putFrom(upaddr);
-        usleep(100000); }
+        pvPaddr.putFrom(upaddr); }
     }
     printf("paddr [0x%x] [%s]\n", upaddr, paddr.c_str());
   }
@@ -226,12 +227,11 @@ int main(int argc, char** argv)
     unsigned uplink = m->pgp()[i*4]->remoteLinkId();
     std::string sprefix(prefix);
     sprefix += ":"+std::string(1,'A'+i)+":PLINK";
-    Pds_Epics::EpicsPVA pvPaddr(sprefix.c_str());
+    Pds_Epics::EpicsPVA& pvPaddr = *(pvaa[i+8] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
     while(!pvPaddr.connected())
       usleep(1000);
     pvPaddr.putFrom(uplink);
     printf("plink [0x%x]\n", uplink);
-    usleep(100000);
   }
 
   StatsTimer* timer = new StatsTimer(*m);
@@ -240,6 +240,12 @@ int main(int argc, char** argv)
 
   timer->allocate(prefix);
   timer->start();
+
+  //  Cleanup PV references
+  usleep(100000);
+  for(unsigned i=0; i<pvaaSize; i++) {
+    delete pvaa[i];
+  }
 
   Pds::Mmhw::Xvc::launch( &m->xvc(), 11000+busId, false );
   while(1)
