@@ -45,6 +45,7 @@ target_link_libraries(hsd
     xtcdata::xtc
     service
     mmhw
+    readline
     rt
 )
 

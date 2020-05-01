@@ -49,6 +49,7 @@ target_link_libraries(drp_bld
     drpbase
     trigger
     epicstools
+    readline
 )
 
 add_executable(drp_pva
@@ -59,6 +60,7 @@ target_link_libraries(drp_pva
     drpbase
     trigger
     epicstools
+    readline
 )
 
 add_executable(configdb_obj_2xtc
