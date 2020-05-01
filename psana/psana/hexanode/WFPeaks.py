@@ -63,6 +63,7 @@ class WFPeaks :
         self.NUM_CHANNELS= kwargs.get('numchs',  5)
         self.NUM_HITS    = kwargs.get('numhits',16)
         self.VERSION     = kwargs.get('version', 1)
+        self.DLD     = kwargs.get('DLD', False)        
 
         if True :
             self.BASE        = kwargs.get('cfd_base',          0.)
@@ -97,9 +98,33 @@ class WFPeaks :
             self.WFBINEND    = kwargs.get('pf3_wfbinend',   30000)
             
         if self.VERSION == 4 :
-            self.paramsCFD = kwargs.get('paramsCFD', {})
-            self.cnls_map = {chnl : opts['name'] for chnl, opts in self.paramsCFD.items()}
-            self.PyCFDs = {name : PyCFD(self.paramsCFD[cnl]) for cnl, name in self.cnls_map.items()}
+            paramsCFD = kwargs.get('paramsCFD', {})
+            
+            if self.DLD:
+                self.paramsCFD = {}
+
+                if self.NUM_CHANNELS == 5:
+                    self.cnls = ['x1','x2','y1','y2','mcp']
+                elif self.NUM_CHANNELS == 7:
+                    self.cnls = ['u1','u2','v1','v2','w1','w2','mcp']
+
+                if isinstance(paramsCFD,list):
+                    for param in paramsCFD:
+                        if param['channel'] not in self.cnls:
+                            raise NameError("Channel names should be chosen from ['x1','x2','y1','y2','mcp'] for QUAD and ['u1','u2','v1','v2','w1','w2','mcp'] for HEX.")
+                        self.paramsCFD[param['channel']] = param
+                elif isinstance(paramsCFD,dict):
+                    for k,param in paramsCFD.items():
+                        if param['channel'] not in self.cnls:
+                            raise NameError("Channel names should be chosen from ['x1','x2','y1','y2','mcp'] for QUAD and ['u1','u2','v1','v2','w1','w2','mcp'] for HEX.")
+                        self.paramsCFD[param['channel']] = param                    
+
+                self.PyCFDs = [PyCFD(self.paramsCFD[self.cnls[i]]) for i in range(self.NUM_CHANNELS)]
+            else:
+                if isinstance(paramsCFD,list):            
+                    self.PyCFDs = [PyCFD(paramsCFD[i]) for i in range(self.NUM_CHANNELS)] 
+                elif isinstance(paramsCFD,dict):       
+                    self.PyCFDs = [PyCFD(param) for k, param in paramsCFD.items()]                                             
 
 #----------
 
@@ -123,13 +148,14 @@ class WFPeaks :
         assert (self.NUM_CHANNELS==wfs.shape[0]),\
                'expected number of channels in not consistent with waveforms array shape'
 
-        offsets = wfs[:,self.IOFFSETBEG:self.IOFFSETEND].mean(axis=1)
-        #print('  XXX offsets: %s' % str(offsets))
-
         if self.VERSION == 2 : std = wfs[:,self.IOFFSETBEG:self.IOFFSETEND].std(axis=1)
 
-
-        self.wfsprep = wfs[:,self.WFBINBEG:self.WFBINEND] - offsets.reshape(-1, 1) # subtract wf-offset
+        if self.VERSION == 4:
+            self.wfsprep = wfs[:,self.WFBINBEG:self.WFBINEND]
+        else:      
+            offsets = wfs[:,self.IOFFSETBEG:self.IOFFSETEND].mean(axis=1)
+            #print('  XXX offsets: %s' % str(offsets))        
+            self.wfsprep = wfs[:,self.WFBINBEG:self.WFBINEND] - offsets.reshape(-1, 1) # subtract wf-offset
         self.wtsprep = wts[:,self.WFBINBEG:self.WFBINEND] # sec
 
         for ch in range(self.NUM_CHANNELS) :
@@ -147,7 +173,7 @@ class WFPeaks :
                 npeaks = peak_finder_v2(wf, self.SIGMABINS, self.THR, self.DEADBINS,\
                                         self._pkvals[ch,:], self._pkinds[ch,:])
             elif self.VERSION == 4 :
-                t_list = self.PyCFDs[self.cnls_map[ch]].CFD(wf,wt)
+                t_list = self.PyCFDs[ch].CFD(wf,wt)
                 npeaks = self._pkinds[ch,:].size if self._pkinds[ch,:].size<=len(t_list) else len(t_list)
                 # need it in V4 to convert _pktsec to _pkinds and _pkvals
                 if self.tbins is None :
