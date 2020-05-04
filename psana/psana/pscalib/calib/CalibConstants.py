@@ -45,7 +45,8 @@ try: KRBHEADERS = KerberosTicket("HTTP@" + urlparse(URL_KRB).hostname).getAuthHe
 except Exception as e:
     msg = e.message if hasattr(e, 'message') else str(e)
     print('Exception:', msg)
-    sys.exit('Fix kerberos ticket - use command kinit')
+    #sys.exit('Fix kerberos ticket - use command kinit')
+    KRBHEADERS = None 
 
 TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T08:40:28-0800
 
