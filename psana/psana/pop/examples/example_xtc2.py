@@ -22,7 +22,6 @@ pop = POP(lmax=4,reg=0,alpha=4e-4,img=None,X0=512,Y0=512,Rmax=512,RBFs_dict = ca
 img = np.zeros((1024,1024))
 fig = plt.figure(figsize=(12,15))
 plt.ion()
-i = 0
 for nevt,evt in enumerate(run.events()):
     if nevt>150:
         break
@@ -73,7 +72,7 @@ for nevt,evt in enumerate(run.events()):
 
         plt.subplot(3,1,3)
         if normalizeDist:        
-            plt.plot((Ebins[1:]+Ebins[:-1])/2,DistE/DistR.max(),'r')
+            plt.plot((Ebins[1:]+Ebins[:-1])/2,DistE/DistE.max(),'r')
             plt.ylim([0,1])
         else:
             plt.plot((Ebins[1:]+Ebins[:-1])/2,DistE,'r')
