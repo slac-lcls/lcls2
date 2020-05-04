@@ -24,15 +24,28 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2018-02-02 by Mikhail Dubrovin
 """
 #------------------------------
-import numpy as np
 import os
+import sys
+import numpy as np
+
+#import kerberos
+from krtc import KerberosTicket
+from urllib.parse import urlparse
 
 URL_ENV = os.environ.get('LCLS_CALIB_HTTP', None)
 URL = 'https://pswww.slac.stanford.edu/calib_ws' if URL_ENV is None else URL_ENV
+URL_KRB = "https://pswww.slac.stanford.edu/ws-kerb/calib_ws/"
 HOST = 'psdb-dev' # 'psanaphi103'
 PORT = 9306       # 27017
 USERNAME = 'calibuser'
 USERPW   = USERNAME[:5]
+
+try: KRBHEADERS = KerberosTicket("HTTP@" + urlparse(URL_KRB).hostname).getAuthHeaders()
+#except kerberos.GSSError as e:
+except Exception as e:
+    msg = e.message if hasattr(e, 'message') else str(e)
+    print('Exception:', msg)
+    sys.exit('Fix kerberos ticket - use command kinit')
 
 TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T08:40:28-0800
 
@@ -104,7 +117,7 @@ PIMAX       = 24
 ANDOR3D     = 25
 JUNGFRAU    = 26
 ZYLA        = 27
-EpicsPVAM    = 28
+EpicsPVAM   = 28
 EPIX10KA    = 29
 
 det_tuple = (
@@ -152,6 +165,7 @@ if __name__ == "__main__" :
   def test_constants() :
     print('URL_ENV  : %s' % str(URL_ENV ))
     print('URL      : %s' % str(URL     ))
+    print('URL_KRB  : %s' % str(URL_KRB ))
     print('HOST     : %s' % str(HOST    ))
     print('PORT     : %s' % str(PORT    ))
     print('USERNAME : %s' % str(USERNAME))

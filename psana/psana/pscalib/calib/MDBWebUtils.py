@@ -26,9 +26,11 @@ Usage ::
 import logging
 logger = logging.getLogger(__name__)
 
+import numpy as np
+
 import psana.pscalib.calib.CalibConstants as cc
-from requests import get
-#import json
+from requests import get, post, delete #put
+import json
 from time import time
 from numpy import fromstring
 from psana.pscalib.calib.MDBUtils import dbnames_collection_query, object_from_data_string
@@ -211,10 +213,92 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
     return resp
 
 #------------------------------
+#-------- 2020-04-30 ----------
+#------------------------------
+
+def encode_data(data) :
+    """Converts any data type into octal string to save in gridfs.
+    """
+    s = None
+    if   isinstance(data, np.ndarray) : s = data.tobytes()
+    elif isinstance(data, str) :        s = str.encode(data)
+    else :
+        logger.warning('DATA TYPE "%s" IS NOT "str" OR "numpy.ndarray" CONVERTED BY pickle.dumps ...'%\
+                       type(data).__name__)
+        s = pickle.dumps(data)
+    return s      
+
+#------------------------------
+
+def add_data_from_file(dbname, fname, sfx=None, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS) :
+    """Adds data from file to the database/gridfs.
+    """
+    _sfx = sfx if sfx is not None else fname.rsplit('.')[-1]
+    files = [('files',  (fname, open(fname, 'rb'), 'image/'+_sfx))]
+    resp = post(url+dbname+'/gridfs/', headers=krbheaders, files=files)
+    logger.debug('add_data_from_file: %s to %s/gridfs/ resp: %s type: %s' % (fname, dbname, resp.text, type(resp)))
+    #jdic = resp.json() # type <class 'dict'>
+    return resp.json().get('_id',None)
+
+#------------------------------
+
+def add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS) :
+    """Adds binary data to the database/gridfs.
+    """
+    import io
+    headers = dict(krbheaders) # krbheaders <class 'dict'>
+    headers['Content-Type'] = 'application/octet-stream'
+    #f = io.StringIO(data)
+    f = io.BytesIO(encode_data(data))
+    d = f.read()
+    print('XXXX',d)
+    resp = post(url+dbname+'/gridfs/', headers=headers, data=d)
+    logger.debug('add_data: to %s/gridfs/ resp: %s' % (dbname, resp.text))
+    return resp.json().get('_id',None)
+
+#------------------------------
+
+def add_document(dbname, colname, jdic, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS) :
+    """Adds document to database collection.
+    """
+    resp = post(url+dbname+'/'+colname+'/', headers=krbheaders, json=jdic)
+    logger.debug('add_document: %s\n  to %s/%s resp: %s' % (str(jdic), dbname, colname, resp.text))
+    return resp.json().get('_id',None)
+
+#------------------------------
+
+def delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS) :
+    """Deletes database for (str) dbname, e.g. dbname='cdb_opal_0001'.
+    """
+    resp = delete(url+dbname, headers=krbheaders)
+    logger.debug(resp.text)
+    return resp
+
+#------------------------------
+
+def delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS) :
+    """ Deletes collection from database.
+    """
+    resp = delete(url+dbname+'/'+colname, headers=krbheaders)
+    logger.debug(resp.text)
+    return resp
+
+#------------------------------
+
+def delete_document(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS) :
+    """Deletes document for specified _id from database/collection.
+    """
+    resp = delete(url+dbname+'/'+colname+'/'+ doc_id, headers=krbheaders)
+    logger.debug(resp.text)
+    return resp
+
+#------------------------------
 #---------  TESTS  ------------
 #------------------------------
 
 if __name__ == "__main__" :
+
+  TEST_FNAME_PNG = '/reg/g/psdm/detector/data2_test/misc/small_img.png'
 
   def test_database_names() :
     print('test_database_names:', database_names())
@@ -336,6 +420,78 @@ if __name__ == "__main__" :
 
 #------------------------------
 
+  def test_insert_constants(expname='test_exp', detname='test_det', ctype='test_ctype', runnum=10, data='test text sampele') :
+    """ Inserts constants using direct MongoDB interface from MDBUtils.
+    """
+    import psana.pscalib.calib.MDBUtils as mu
+    import psana.pyalgos.generic.Utils as gu
+
+    print('test_delete_database 1:', database_names())
+    #txt = '%s\nThis is a string\n to test\ncalibration storage' % gu.str_tstamp()
+    #data, ctype = txt, 'testtext'; logger.debug('txt: %s' % str(data))
+    #data, ctype = get_test_nda(), 'testnda';  logger.debug(info_ndarr(data, 'nda'))
+    #data, ctype = get_test_dic(), 'testdict'; logger.debug('dict: %s' % str(data))
+
+    kwa = {'user' : gu.get_login()}
+    t0_sec = time()
+    ts = gu.str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%z', time_sec=t0_sec)
+    mu.insert_constants('%s - saved at %s'%(data,ts), expname, detname, ctype, runnum+int(tname), int(t0_sec),\
+                        time_stamp=ts, **kwa)
+    print('test_delete_database 2:', database_names())
+
+#------------------------------
+
+  def test_delete_database(dbname='cdb_test_det'):
+    print('test_delete_database %s' % dbname)
+    print('test_delete_database BEFORE:', database_names())
+    resp = delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    print('test_delete_database AFTER :', database_names())
+
+#------------------------------
+
+  def test_delete_collection(dbname='cdb_test_exp', colname='test_det'):
+    print('test_delete_collection %s collection: %s' % (dbname, colname))
+    print('test_delete_collection BEFORE:', collection_names(dbname, url=cc.URL))
+    resp = delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    print('test_delete_collection AFTER :', collection_names(dbname, url=cc.URL))
+
+#------------------------------
+
+  def test_delete_document(dbname='cdb_test_exp', colname='test_det', query={'ctype':'test_ctype'}):
+    doc = find_doc(dbname, colname, query=query, url=cc.URL)
+    print('find_doc:', doc)
+    if doc is None : 
+        logger.warning('test_delete_document: Non-found document in db:%s col:%s query:%s' % (dbname,colname,str(query)))
+        return
+    id = doc.get('_id', None)
+    print('test_delete_document for doc _id:', id)
+    resp = delete_document(dbname, colname, id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    print('test_delete_document resp:', resp)
+
+#------------------------------
+
+  def test_add_data_from_file(dbname='cdb_test_det', fname=TEST_FNAME_PNG) :
+    resp = add_data_from_file(dbname, fname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    print('test_add_data_from_file resp: %s of type: %s' % (resp, type(resp)))
+
+#------------------------------
+
+  def test_add_data(dbname='cdb_test_det') :
+    #data = 'some text is here'
+    data = np.array(range(12))
+    resp = add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    print('test_add_data: %s\n  to: %s/gridfs/\n  resp: %s' % (str(data), dbname, resp))
+
+#------------------------------
+
+  def test_add_document(dbname='cdb_test_det', colname='test_det', jdic={'ctype':'test_ctype'}):
+    from psana.pyalgos.generic.Utils import str_tstamp
+    jdic['time_stamp'] = str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%z')
+    resp = add_document(dbname, colname, jdic, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    print('\ntest_add_document: %s\n  to: %s/%s\n  resp: %s' % (str(jdic), dbname, colname, resp))
+
+#------------------------------
+
 if __name__ == "__main__" :
   def usage() : 
       return 'Use command: python %s <test-number>, where <test-number> = 0,1,2,...,9' % sys.argv[0]\
@@ -349,7 +505,15 @@ if __name__ == "__main__" :
            + '\n  7: test_calib_constants'\
            + '\n  8: test_calib_constants_text'\
            + '\n  9: test_calib_constants_dict'\
-           + '\n 10: test_calib_constants_all_types'
+           + '\n 10: test_calib_constants_all_types'\
+           + '\n 11: test_insert_constants [using direct access methods of MDBUtils]'\
+           + '\n 12: test_delete_database'\
+           + '\n 13: test_delete_collection'\
+           + '\n 14: test_delete_document'\
+           + '\n 15: test_add_data_from_file'\
+           + '\n 16: test_add_data'\
+           + '\n 17: test_add_document'\
+           + ''
 
 #------------------------------
 
@@ -358,22 +522,30 @@ if __name__ == "__main__" :
     import sys
     from psana.pyalgos.generic.NDArrUtils import print_ndarr # info_ndarr, print_ndarr
     global print_ndarr
-    logging.basicConfig(format='%(message)s', level=logging.DEBUG) # logging.INFO
+    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG) # logging.INFO
 
     logger.info('\n%s\n' % usage())
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     logger.info('%s\nTest %s:' % (50*'_',tname))
-    if   tname == '0' : test_database_names();
-    elif tname == '1' : test_collection_names();
-    elif tname == '2' : test_find_docs();
-    elif tname == '3' : test_find_doc();
-    elif tname == '4' : test_get_data_for_id();
-    elif tname == '5' : test_get_data_for_docid();
-    elif tname == '6' : test_dbnames_collection_query();
-    elif tname == '7' : test_calib_constants();
-    elif tname == '8' : test_calib_constants_text();
-    elif tname == '9' : test_calib_constants_dict();
-    elif tname =='10' : test_calib_constants_all_types();
+    if   tname == '0' : test_database_names()
+    elif tname == '1' : test_collection_names()
+    elif tname == '2' : test_find_docs()
+    elif tname == '3' : test_find_doc()
+    elif tname == '4' : test_get_data_for_id()
+    elif tname == '5' : test_get_data_for_docid()
+    elif tname == '6' : test_dbnames_collection_query()
+    elif tname == '7' : test_calib_constants()
+    elif tname == '8' : test_calib_constants_text()
+    elif tname == '9' : test_calib_constants_dict()
+    elif tname =='10' : test_calib_constants_all_types()
+    elif tname =='11' : test_insert_constants()
+    elif tname =='12' : test_delete_database()
+    elif tname =='13' : test_delete_collection()
+    elif tname =='14' : test_delete_document()
+    elif tname =='15' : test_add_data_from_file()
+    elif tname =='16' : test_add_data()
+    elif tname =='17' : test_add_document()
+
     else : logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 

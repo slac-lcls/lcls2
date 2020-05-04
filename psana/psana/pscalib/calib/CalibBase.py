@@ -69,6 +69,10 @@ class CalibBase() :
         self._show_warning('get()')
         return None
 
+    def delete(self, **kwargs) :
+        self._show_warning('delete()')
+        return None
+
 #------------------------------
 
 if __name__ == "__main__" :
