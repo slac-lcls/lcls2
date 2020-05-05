@@ -33,7 +33,8 @@ from requests import get, post, delete #put
 import json
 from time import time
 from numpy import fromstring
-from psana.pscalib.calib.MDBUtils import dbnames_collection_query, object_from_data_string
+#from psana.pscalib.calib.MDBUtils import dbnames_collection_query, object_from_data_string
+import psana.pscalib.calib.MDBUtils as mu
 
 #------------------------------
 #------------------------------
@@ -162,7 +163,7 @@ def get_data_for_doc(dbname, colname, doc, url=cc.URL) :
     r2 = request('%s/%s/gridfs/%s'%(url,dbname,idd))
     s = r2.content
 
-    return object_from_data_string(s, doc)
+    return mu.object_from_data_string(s, doc)
 
 #------------------------------
 
@@ -176,7 +177,7 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
        - det, exp, ctype, run, version
        etc...
     """
-    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
+    db_det, db_exp, colname, query = mu.dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
     logger.debug('get_constants: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
     dbname = db_det if exp is None else db_exp
     doc = find_doc(dbname, colname, query, url)
@@ -193,7 +194,7 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
     """ returns constants for all ctype-s
     """
     ctype=None
-    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
+    db_det, db_exp, colname, query = mu.dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
     dbname = db_det if exp is None else db_exp
     docs = find_docs(dbname, colname, query, url)
     #logger.debug('find_docs: number of docs found: %d' % len(docs))
@@ -216,20 +217,6 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
 #-------- 2020-04-30 ----------
 #------------------------------
 
-def encode_data(data) :
-    """Converts any data type into octal string to save in gridfs.
-    """
-    s = None
-    if   isinstance(data, np.ndarray) : s = data.tobytes()
-    elif isinstance(data, str) :        s = str.encode(data)
-    else :
-        logger.warning('DATA TYPE "%s" IS NOT "str" OR "numpy.ndarray" CONVERTED BY pickle.dumps ...'%\
-                       type(data).__name__)
-        s = pickle.dumps(data)
-    return s      
-
-#------------------------------
-
 def add_data_from_file(dbname, fname, sfx=None, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS) :
     """Adds data from file to the database/gridfs.
     """
@@ -248,22 +235,103 @@ def add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS) :
     import io
     headers = dict(krbheaders) # krbheaders <class 'dict'>
     headers['Content-Type'] = 'application/octet-stream'
-    #f = io.StringIO(data)
-    f = io.BytesIO(encode_data(data))
+    f = io.BytesIO(mu.encode_data(data))   # io.StringIO(data)
     d = f.read()
-    print('XXXX',d)
+    logger.debug('add_data byte-data:',d)
     resp = post(url+dbname+'/gridfs/', headers=headers, data=d)
     logger.debug('add_data: to %s/gridfs/ resp: %s' % (dbname, resp.text))
     return resp.json().get('_id',None)
 
 #------------------------------
 
-def add_document(dbname, colname, jdic, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS) :
+def add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS) :
     """Adds document to database collection.
     """
-    resp = post(url+dbname+'/'+colname+'/', headers=krbheaders, json=jdic)
-    logger.debug('add_document: %s\n  to %s/%s resp: %s' % (str(jdic), dbname, colname, resp.text))
+    resp = post(url+dbname+'/'+colname+'/', headers=krbheaders, json=doc)
+    logger.debug('add_document: %s\n  to %s/%s resp: %s' % (str(doc), dbname, colname, resp.text))
     return resp.json().get('_id',None)
+
+#------------------------------
+
+def add_data_and_doc(data, dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs) :
+    """Adds data and document to the db
+    """
+    id_data = add_data(dbname, data, url, krbheaders)
+    if id_data is None :
+        logger.warning('id_data is None')
+        return None
+    doc = mu.docdic(data, id_data, **kwargs)
+    id_doc = add_document(dbname, colname, doc, url, krbheaders)
+    if id_doc is None :
+        logger.warning('id_doc is None')
+        return None
+    return id_data, id_doc
+
+#------------------------------
+
+
+
+"""
+def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs) :
+    '''TBD: Adds data and document to experiment and detector data bases
+    '''
+    dbname_exp = mu.db_prefixed_name(exp)
+
+
+    id_data = add_data(dbname, data, url, krbheaders)
+    if id_data is None :
+        logger.warning('id_data is None')
+        return None
+    doc = mu.docdic(data, id_data, **kwargs)
+    id_doc = add_document(dbname, colname, doc, url, krbheaders)
+    if id_doc is None :
+        logger.warning('id_doc is None')
+        return None
+    return id_data, id_doc
+"""
+
+
+
+
+
+
+#------------------------------
+
+
+"""
+
+def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs) :
+
+    t0_sec = time()
+    id_data_exp = insert_data(data, fs_exp)
+    id_data_det = insert_data(data, fs_det)
+
+    msg = 'Insert data time %.6f sec' % (time()-t0_sec)\
+        + '\n  - in fs_exp %s id_data_exp: %s' % (fs_exp, id_data_exp)\
+        + '\n  - in fs_det %s id_data_det: %s' % (fs_det, id_data_det)
+    logger.debug(msg)
+
+    doc = docdic(data, id_data_exp, **kwargs)
+    logger.debug(doc_info(doc, fmt='  %s:%s')) #sep='\n  %16s : %s'
+
+    t0_sec = time()
+    id_exp = insert_document(doc, col_exp)
+    doc['id_data'] = id_data_det # override
+    doc['id_exp']  = id_exp      # add
+    id_det = insert_document(doc, col_det)
+
+    msg = 'Insert 2 docs time %.6f sec' % (time()-t0_sec)
+    if col_exp is not None : msg += '\n  - in collection %s id_exp : %s' % (col_exp.name, id_exp)
+    if col_det is not None : msg += '\n  - in collection %s id_det : %s' % (col_det.name, id_det)
+    logger.debug(msg)
+
+    return id_data_exp, id_data_det, id_exp, id_det
+"""
+
+
+
+
+
 
 #------------------------------
 
@@ -306,7 +374,8 @@ if __name__ == "__main__" :
 #------------------------------
 
   def test_collection_names() :
-    print('test_collection_names:', collection_names('cdb_cspad_0001'))
+    dbname = sys.argv[2] if len(sys.argv) > 2 else 'cdb_cspad_0001'
+    print('test_collection_names:', collection_names(dbname))
 
 #------------------------------
 
@@ -326,8 +395,7 @@ if __name__ == "__main__" :
 #------------------------------
 
   def test_get_random_doc_and_data_ids(det='cspad_0001') :
-    from psana.pscalib.calib.MDBUtils import db_prefixed_name
-    dbname = db_prefixed_name(det)
+    dbname = mu.db_prefixed_name(det)
     colname = det
     doc = find_doc(dbname, colname, query={'ctype':'pedestals'})
     print('Pick up any doc for dbname:%s colname:%s pedestals: ' % (dbname,colname))
@@ -368,7 +436,7 @@ if __name__ == "__main__" :
 
   def test_dbnames_collection_query() :
     det='cspad_0001'
-    db_det, db_exp, colname, query = dbnames_collection_query(det, exp=None, ctype='pedestals', run=50, time_sec=None, vers=None)
+    db_det, db_exp, colname, query = mu.dbnames_collection_query(det, exp=None, ctype='pedestals', run=50, time_sec=None, vers=None)
     print('test_dbnames_collection_query:', db_det, db_exp, colname, query)
 
 #------------------------------
@@ -423,7 +491,6 @@ if __name__ == "__main__" :
   def test_insert_constants(expname='test_exp', detname='test_det', ctype='test_ctype', runnum=10, data='test text sampele') :
     """ Inserts constants using direct MongoDB interface from MDBUtils.
     """
-    import psana.pscalib.calib.MDBUtils as mu
     import psana.pyalgos.generic.Utils as gu
 
     print('test_delete_database 1:', database_names())
@@ -484,11 +551,11 @@ if __name__ == "__main__" :
 
 #------------------------------
 
-  def test_add_document(dbname='cdb_test_det', colname='test_det', jdic={'ctype':'test_ctype'}):
+  def test_add_document(dbname='cdb_test_det', colname='test_det', doc={'ctype':'test_ctype'}):
     from psana.pyalgos.generic.Utils import str_tstamp
-    jdic['time_stamp'] = str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%z')
-    resp = add_document(dbname, colname, jdic, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
-    print('\ntest_add_document: %s\n  to: %s/%s\n  resp: %s' % (str(jdic), dbname, colname, resp))
+    doc['time_stamp'] = str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%z')
+    resp = add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    print('\ntest_add_document: %s\n  to: %s/%s\n  resp: %s' % (str(doc), dbname, colname, resp))
 
 #------------------------------
 
@@ -496,7 +563,7 @@ if __name__ == "__main__" :
   def usage() : 
       return 'Use command: python %s <test-number>, where <test-number> = 0,1,2,...,9' % sys.argv[0]\
            + '\n  0: test_database_names'\
-           + '\n  1: test_collection_names'\
+           + '\n  1: test_collection_names [dbname]'\
            + '\n  2: test_find_docs'\
            + '\n  3: test_find_doc'\
            + '\n  4: test_get_data_for_id'\
