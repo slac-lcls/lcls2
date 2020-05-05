@@ -1351,6 +1351,8 @@ class CollectionManager():
             msg = 'handle_storejsonconfig(): %s' % ex
             logging.error(msg)
             return error_msg(msg)
+        else:
+            logging.info('active detectors file updated: %s' % self.activedetfilename)
         return {}
 
     def handle_getinstrument(self, body):
