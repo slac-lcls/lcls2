@@ -56,6 +56,7 @@ Usage ::
     doc_id = mu.insert_document(doc, col)
 
     # Insert data
+    binarydata = encode_data(data)
     id_data = mu.insert_data(data, fs)
     id_data, id_doc = mu.insert_data_and_doc(data, fs, col, **kwargs)
     id_data_exp, id_data_det, id_exp, id_det = mu.insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs)
@@ -478,7 +479,7 @@ def delete_document_from_collection(col, oid) :
 
 #------------------------------
 
-def db_prefixed_name(name, prefix='cdb_') :
+def db_prefixed_name(name, prefix=cc.DBNAME_PREFIX) :
     """Returns database name with prefix, e.g. name='exp12345' -> 'cdb_exp12345'.
     """
     if name is None : return None
@@ -707,6 +708,20 @@ def insert_document(doc, col) :
 
 #------------------------------
 
+def encode_data(data) :
+    """Converts any data type into octal string to save in gridfs.
+    """
+    s = None
+    if   isinstance(data, np.ndarray) : s = data.tobytes()
+    elif isinstance(data, str) :        s = str.encode(data)
+    else :
+        logger.warning('DATA TYPE "%s" IS NOT "str" OR "numpy.ndarray" CONVERTED BY pickle.dumps ...'%\
+                       type(data).__name__)
+        s = pickle.dumps(data)
+    return s      
+
+#------------------------------
+
 def insert_data(data, fs) :
     """Returns inserted data id.
     """
@@ -714,21 +729,7 @@ def insert_data(data, fs) :
         logger.warning('data %s IS NOT INSERTED in the fs %s' % (str(data), str(fs)))
         return None
 
-    s = None # should be replaced by serrialized data
-    if   isinstance(data, np.ndarray) : s = data.tobytes()
-    elif isinstance(data, str) :        s = str.encode(data)
-    #    from psana.pscalib.calib.MDBConvertUtils import serialize_dict
-    #    s = dict(data)
-    #    serialize_dict(s)
-    else :
-        logger.warning('DATA TYPE "%s" IS NOT "str" OR "numpy.ndarray" CONVERTED BY pickle.dumps ...'%\
-                       type(data).__name__)        
-
-        #===================================
-        #sys.exit('TEST EXIT in insert_data')
-        #===================================
-
-        s = pickle.dumps(data)
+    s = encode_data(data)
         
     try :
         r = fs.put(s)

@@ -39,12 +39,13 @@ HOST = 'psdb-dev' # 'psanaphi103'
 PORT = 9306       # 27017
 USERNAME = 'calibuser'
 USERPW   = USERNAME[:5]
+DBNAME_PREFIX = 'cdb_'
 
 try: KRBHEADERS = KerberosTicket("HTTP@" + urlparse(URL_KRB).hostname).getAuthHeaders()
 #except kerberos.GSSError as e:
 except Exception as e:
-    msg = e.message if hasattr(e, 'message') else str(e)
-    print('Exception:', msg)
+    #msg = e.message if hasattr(e, 'message') else str(e)
+    #print('Exception:', msg)
     #sys.exit('Fix kerberos ticket - use command kinit')
     KRBHEADERS = None 
 
