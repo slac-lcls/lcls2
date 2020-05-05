@@ -630,6 +630,8 @@ class CollectionManager():
             # active detectors file bypassed
             self.bypass_activedet = True
             logging.warning("active detectors file disabled. Default settings will be used.")
+        else:
+            logging.info("active detectors file: %s" % self.activedetfilename)
 
         if self.slow_update_rate:
             # initialize slow update thread
