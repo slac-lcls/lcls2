@@ -1,5 +1,5 @@
 if not platform: platform = '6'
-username = 'lcls2'
+hutch, user, password = ('tst', 'tstopr', 'pcds')
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 conda_rel = 'ps-2.1.2'
