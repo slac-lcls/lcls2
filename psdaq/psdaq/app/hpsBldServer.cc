@@ -10,6 +10,8 @@
 //               $PLATFORM:$BLDNAME:ADDR           - IP addr of BLD mcast (larger registry)
 //               $PLATFORM:$BLDNAME:PORT           - port of BLD mcast    (larger registry)
 //
+#define __STDC_FORMAT_MACROS 1
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdint.h>

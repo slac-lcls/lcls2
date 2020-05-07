@@ -1,3 +1,5 @@
+#define __STDC_FORMAT_MACROS 1
+
 #include "BldDetector.hh"
 
 #include <chrono>
@@ -16,6 +18,7 @@
 #include "psalg/utils/SysLog.hh"
 #include <getopt.h>
 #include <Python.h>
+#include <inttypes.h>
 
 
 using json = nlohmann::json;

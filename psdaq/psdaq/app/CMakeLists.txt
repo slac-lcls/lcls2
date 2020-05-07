@@ -1,5 +1,8 @@
 find_package(PythonLibs REQUIRED)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 add_library(app SHARED
     AppUtils.cc
 )
@@ -17,7 +20,8 @@ target_link_libraries(hpsBldServer
    bld
    epicstools
    dl
-   pthread
+   readline
+   Threads::Threads
    rt
    ${PYTHON_LIBRARIES}
 )
@@ -36,7 +40,8 @@ target_link_libraries(hpsBldClient
    epicstools
    xtcdata::xtc
    dl
-   pthread
+   readline
+   Threads::Threads
    rt
 )
 
@@ -53,7 +58,8 @@ target_link_libraries(hpsBldCopy
    epicstools
    xtcdata::xtc
    dl
-   pthread
+   readline
+   Threads::Threads
    rt
 )
 
@@ -68,7 +74,8 @@ target_link_libraries(lclsBldServer
    app
    tpr
    dl
-   pthread
+   readline
+   Threads::Threads
    rt
 )
 
@@ -83,7 +90,8 @@ target_link_libraries(tprtrig
    app
    tpr
    dl
-   pthread
+   readline
+   Threads::Threads
    rt
 )
 
@@ -102,7 +110,8 @@ target_link_libraries(tprioc
    tpr
    app
    dl
-   pthread
+   readline
+   Threads::Threads
    rt
 )
 
@@ -120,7 +129,8 @@ target_link_libraries(tprsh
    epicstools
    app
    dl
-   pthread
+   readline
+   Threads::Threads
    rt
 )
 
@@ -137,7 +147,8 @@ target_include_directories(tprutil PUBLIC
 target_link_libraries(tprutil
    tpr
    dl
-   pthread
+   readline
+   Threads::Threads
    rt
 )
 
@@ -154,7 +165,8 @@ target_include_directories(xcasttest PUBLIC
 target_link_libraries(xcasttest
    app
    dl
-   pthread
+   readline
+   Threads::Threads
    rt
 )
 
@@ -172,7 +184,8 @@ target_link_libraries(pgpca
    service
    epicstools
    dl
-   pthread
+   readline
+   Threads::Threads
    rt
 )
 
@@ -194,7 +207,9 @@ add_executable(json2xtc
 target_link_libraries(json2xtc
     xtcdata::xtc
     service
-    pthread
+    readline
+    Threads::Threads
+    rt
 )
 
 target_include_directories(json2xtc PUBLIC
@@ -210,6 +225,7 @@ target_link_libraries(pvcam
    ${EPICS_PVACLIENT_LIB}
    ${EPICS_CA_LIB}
    tpr
+   readline
    dl
    rt
 )

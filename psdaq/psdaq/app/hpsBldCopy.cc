@@ -1,6 +1,8 @@
 //
 //  Merge the multicast BLD with the timing stream from a TPR
 //
+#define __STDC_FORMAT_MACROS 1
+
 #include <stdio.h>
 #include <unistd.h>
 #include <inttypes.h>

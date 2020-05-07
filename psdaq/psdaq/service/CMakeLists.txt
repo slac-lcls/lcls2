@@ -23,6 +23,7 @@ target_include_directories(service PUBLIC
 target_link_libraries(service PUBLIC
     xtcdata::xtc
     dl
+    rt
 )
 
 add_library(collection SHARED

@@ -2,6 +2,9 @@
 #
 #  xStatus
 #
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 add_executable(qStatus qStatus.cc)
 target_include_directories(qStatus PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -25,7 +28,7 @@ target_include_directories(qRead PUBLIC
 
 target_link_libraries(qRead
   dl
-  pthread
+  Threads::Threads
   rt
 )
 
@@ -36,7 +39,7 @@ target_include_directories(qReset PUBLIC
 
 target_link_libraries(qRead
   dl
-  pthread
+  Threads::Threads
   rt
 )
 

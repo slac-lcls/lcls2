@@ -1,3 +1,5 @@
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 
 add_library(kcu SHARED
     Reg.cc
@@ -83,7 +85,7 @@ target_include_directories(kcuRead PUBLIC
 )
 
 target_link_libraries(kcuRead
-   pthread
+   Threads::Threads
    rt
 )
 
@@ -94,7 +96,7 @@ target_include_directories(kcuReadBulk PUBLIC
 )
 
 target_link_libraries(kcuReadBulk
-   pthread
+   Threads::Threads
    rt
 )
 
@@ -105,7 +107,7 @@ target_include_directories(kcuWrite PUBLIC
 )
 
 target_link_libraries(kcuWrite
-   pthread
+   Threads::Threads
    rt
 )
 
@@ -123,13 +125,13 @@ target_include_directories(kcuMargin PUBLIC
 
 target_link_libraries(kcuMargin
    kcu
-   pthread
+   Threads::Threads
 )
 #
 #add_executable(xError xError.cpp)
 #
 #target_link_libraries(xError
-#   pthread
+#   Threads::Threads
 #)
 
 

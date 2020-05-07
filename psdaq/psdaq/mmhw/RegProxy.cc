@@ -1,6 +1,7 @@
+#define __STDC_FORMAT_MACROS 1
+
 #include "psdaq/mmhw/RegProxy.hh"
 #include "psdaq/service/Semaphore.hh"
-
 #include <unistd.h>
 #include <stdio.h>
 #include <inttypes.h>

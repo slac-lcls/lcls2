@@ -11,6 +11,7 @@ target_link_libraries(epicsArch
     drpbase
     trigger
     epicstools
+    readline
 )
 
 install(TARGETS epicsArch
