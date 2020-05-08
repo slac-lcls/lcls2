@@ -1,0 +1,6 @@
+package for sequence programming
+
+seqplot <sequence.py> - visualization of sequence script
+seqprogram <sequence.py> <xpm pv> - program a sequence script into an XPM
+
+User python sequences import seq.py for definition of the sequence instructions.
