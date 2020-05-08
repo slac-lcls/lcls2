@@ -40,6 +40,7 @@ PORT = 9306       # 27017
 USERNAME = 'calibuser'
 USERPW   = USERNAME[:5]
 DBNAME_PREFIX = 'cdb_'
+DETNAMESDB = '%sdetnames' % DBNAME_PREFIX
 
 try: KRBHEADERS = KerberosTicket("HTTP@" + urlparse(URL_KRB).hostname).getAuthHeaders()
 #except kerberos.GSSError as e:
