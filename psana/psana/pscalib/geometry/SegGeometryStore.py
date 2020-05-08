@@ -16,6 +16,7 @@ Usage::
     sg3= sgs.Create('PNCCD:V1')
     sg4= sgs.Create('ANDOR3D:V1')
     sg5= sgs.Create('JUNGFRAU:V1')
+    sg6= sgs.Create('EPIX10KA:V1')
 
     sg.print_seg_info(pbits=0o377)
     size_arr = sg.size()
@@ -39,6 +40,7 @@ See:
  * :py:class:`SegGeometryBase`
  * :py:class:`SegGeometryCspad2x1V1`
  * :py:class:`SegGeometryEpix100V1`
+ * :py:class:`SegGeometryEpix10kaV1`,
  * :py:class:`SegGeometryMatrixV1`
  * :py:class:`SegGeometryJungfrauV1`
  * :py:class:`SegGeometryStore`
@@ -60,6 +62,7 @@ logger = logging.getLogger('SegGeometryStore')
 
 from psana.pscalib.geometry.SegGeometryCspad2x1V1 import cspad2x1_one
 from psana.pscalib.geometry.SegGeometryEpix100V1  import epix2x2_one
+from psana.pscalib.geometry.SegGeometryEpix10kaV1 import epix10ka_one
 from psana.pscalib.geometry.SegGeometryMatrixV1   import SegGeometryMatrixV1, segment_one, matrix_pars
 from psana.pscalib.geometry.SegGeometryJungfrauV1 import jungfrau_one
 
@@ -76,6 +79,7 @@ class SegGeometryStore() :
         """        
         if segname=='SENS2X1:V1' : return cspad2x1_one # SegGeometryCspad2x1V1(use_wide_pix_center=False)
         if segname=='EPIX100:V1' : return epix2x2_one  # SegGeometryEpix100V1(use_wide_pix_center=False)
+        if segname=='EPIX10KA:V1': return epix10ka_one # SegGeometryEpix10kaV1(use_wide_pix_center=False)
         if segname=='PNCCD:V1'   : return segment_one  # SegGeometryMatrixV1()
         if segname[:4]=='MTRX'   :
             rows, cols, psize_row, psize_col = matrix_pars(segname)
@@ -100,7 +104,7 @@ sgs = SegGeometryStore()
 #------------------------------
 
 def usage() :
-    print('For test(s) use command: python', sys.argv[0], '<test-number=1-6>')
+    print('For test(s) use command: python', sys.argv[0], '<test-number=1-7>')
 
 def test_seggeom() :
     from time import time
@@ -130,6 +134,10 @@ def test_seggeom() :
         sg.print_seg_info(pbits=0o377)
 
     elif(sys.argv[1]=='6') :
+        sg = sgs.Create('EPIX10KA:V1')
+        sg.print_seg_info(pbits=0o377)
+
+    elif(sys.argv[1]=='7') :
         logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s',\
                         datefmt='%m-%d-%Y %H:%M:%S',\
                         level=logging.DEBUG) #filename='example.log', filemode='w'

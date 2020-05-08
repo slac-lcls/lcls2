@@ -33,8 +33,8 @@ from krtc import KerberosTicket
 from urllib.parse import urlparse
 
 URL_ENV = os.environ.get('LCLS_CALIB_HTTP', None)
-URL = 'https://pswww.slac.stanford.edu/calib_ws' if URL_ENV is None else URL_ENV
-URL_KRB = "https://pswww.slac.stanford.edu/ws-kerb/calib_ws/"
+URL     = 'https://pswww.slac.stanford.edu/calib_ws' if URL_ENV is None else URL_ENV
+URL_KRB = 'https://pswww.slac.stanford.edu/ws-kerb/calib_ws/'
 HOST = 'psdb-dev' # 'psanaphi103'
 PORT = 9306       # 27017
 USERNAME = 'calibuser'
