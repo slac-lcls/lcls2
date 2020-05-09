@@ -161,7 +161,7 @@ void addHsdConfigNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId) {
 
 void usage(char* progname)
 {
-    fprintf(stderr, "Usage: %s [-f <filename> -n <numEvents> -t -c -p -h]\n", progname);
+    fprintf(stderr, "Usage: %s [-f <filename> -n <numEvents> -t -c -p <period (us)> -h]\n", progname);
 }
 
 Dgram& createTransition(TransitionId::Value transId, bool counting_timestamps,
