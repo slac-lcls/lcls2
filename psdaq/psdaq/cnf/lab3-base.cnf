@@ -8,10 +8,12 @@ epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 
 shelf = '2'
 ip_addr = '10.0.'+shelf
+hutch = 'tst'
 
 drp_nodes = ['001','002','003','004','005','008','009','011','013','014','015','017','018']
 
-pyxpm_opts = '--db https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,tst,PROD -P DAQ:LAB2:XPM:%d'
+pyxpm_optsdb = '--db https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,tst,PROD -P DAQ:LAB2:XPM:%d'
+pyxpm_opts = '-P DAQ:LAB2:XPM:%d'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -28,7 +30,7 @@ pyxpm_opts = '--db https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,confi
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- { host: epics_host,  id:'pyxpm-2'  , port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.2.102 '+pyxpm_opts%2},
+ { host: epics_host,  id:'pyxpm-2'  , port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.2.102 '+pyxpm_optsdb%2},
  { host: epics_host,  id:'pyxpm-1'  , port:'29452', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.1.103 '+pyxpm_opts%1},
  { host: epics_host,  id:'pyxpm-3'  , port:'29453', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.2.107 '+pyxpm_opts%3},
 
@@ -37,7 +39,7 @@ procmgr_config = [
  { host: 'daq-tst-dev03',  id:'pvcam', port:'29466', flags:'s', conda:conda_rel, env:epics_env, cmd:'pvcam -p DAQ:LAB2:PVCAM'},
 
 ## EPICS PV exporter
- { host: epics_host,  id:'pvrtmon', port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -P DAQ:LAB2:XPM:2 -N DeadFrac'},
+ {                        id:'pvrtmon', port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -H '+hutch+' -P DAQ:LAB2:XPM:2 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
   ]
 
 for n in drp_nodes:
