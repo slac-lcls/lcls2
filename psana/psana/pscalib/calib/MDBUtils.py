@@ -1492,6 +1492,9 @@ def get_test_txt():
 #------------------------------
 if __name__ == "__main__" :
 
+  TEST_FNAME_PNG = '/reg/g/psdm/detector/data2_test/misc/small_img.png'
+  TEST_EXPNAME = 'testexper'
+  TEST_DETNAME = 'testdet_1234'
 
   def test_connect(tname):
     """Connect to host, port get db handls.
@@ -1511,9 +1514,9 @@ if __name__ == "__main__" :
     elif tname == '3' : data, ctype = get_test_dic(), 'testdict'; logger.debug('dict: %s' % str(data))
 
     kwa = {'user' : gu.get_login()}
-    t0_sec = time()
-    insert_constants(data, 'exp12345', 'detector_1234', ctype, 20+int(tname), int(t0_sec),\
-                     time_stamp='2018-01-01T00:00:00-0800', **kwa)
+    t0_sec = int(time())
+    insert_constants(data, TEST_EXPNAME, TEST_DETNAME, ctype, 20+int(tname), t0_sec,\
+                     time_stamp=_timestamp(t0_sec), **kwa)
 
 #------------------------------
 
@@ -1523,7 +1526,7 @@ if __name__ == "__main__" :
     user = gu.get_login()
     kwa = {'user' : user}
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
-        connect(host=cc.HOST, port=cc.PORT, experiment='exp12345', detector='detector_1234', **kwa)
+        connect(host=cc.HOST, port=cc.PORT, experiment=TEST_EXPNAME, detector=TEST_DETNAME, **kwa)
 
     t_data = 0
     nloops = 3
@@ -1555,8 +1558,7 @@ if __name__ == "__main__" :
   def test_get_data(tname):
     """Get doc and data
     """
-    kwa = {'detector': 'detector_1234'}
-    #kwa = {'detector': 'cspad_0001'}
+    kwa = {'detector': TEST_DETNAME}
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(**kwa)
 
     t0_sec = time()
@@ -1739,7 +1741,7 @@ if __name__ == "__main__" :
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG) # logging.INFO
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     if len(sys.argv) < 2 : usage()
-    logger.info('%s\nTest %s: %s' % (50*'_', tname, dict_usage(tname)))
+    logger.info('%s Test %s %s: %s' % (25*'=', tname, 25*'=', dict_usage(tname)))
     if   tname == '0' : test_connect(tname)
     elif tname in ('1','2','3'): test_insert_one(tname)
     elif tname == '4' : test_insert_many(tname)
