@@ -41,6 +41,7 @@ USERNAME = 'calibuser'
 USERPW   = USERNAME[:5]
 DBNAME_PREFIX = 'cdb_'
 DETNAMESDB = '%sdetnames' % DBNAME_PREFIX
+MAX_DETNAME_SIZE = 55
 
 try: KRBHEADERS = KerberosTicket("HTTP@" + urlparse(URL_KRB).hostname).getAuthHeaders()
 #except kerberos.GSSError as e:

@@ -19,6 +19,8 @@ Usage ::
     d = wu.calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL)
     d = {ctype:(data,doc),}
 
+    detname_short = wu.pro_detector_name(detname_long)
+
     test_*()
 """
 #------------------------------
@@ -90,9 +92,10 @@ def collection_names(dbname, url=cc.URL):
 def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL):
     """Returns list of documents for query, e.g. query={'ctype':'pedestals', "run":{ "$gte":80}}
     """
+    uri = '%s/%s/%s'%(url,dbname,colname)
     query_string=str(query).replace("'",'"')
-    logger.debug('find_docs query: %s' % query_string)
-    r = request('%s/%s/%s'%(url,dbname,colname),{"query_string": query_string})
+    logger.debug('find_docs uri: %s query: %s' % (uri, query_string))
+    r = request(uri, {"query_string": query_string})
     try:
         return r.json()
     except:
@@ -297,17 +300,7 @@ def add_data_and_doc(data, dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEA
 
 def _add_detector_name(dbname, colname, detname, detnum):
     check_kerberos_ticket()
-    short_name = '%s_%06d'%(colname,detnum)
-    t0_sec = time()
-    doc = {'long'       : detname,\
-           'short'      : short_name,\
-           'seqnumber'  : detnum,\
-           'uid'        : gu.get_login(),
-           'host'       : gu.get_hostname(),
-           'cwd'        : gu.get_cwd(),
-           'time_sec'   : t0_sec,
-           'time_stamp' : mu._timestamp(int(t0_sec))
-           }
+    doc = mu._doc_detector_name(detname, colname, detnum)
     id_doc = add_document(dbname, colname, doc) #, url, krbheaders)
     return short_name if id_doc is not None else None   
 
@@ -344,12 +337,10 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB):
 
 #------------------------------
 
-def pro_detector_name(detname, maxsize=55):
-    """ Returns short detector name if its length exceeds 55 chars.
+def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE):
+    """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars.
     """
-    nchars = len(detname)
-    #assert nchars < maxsize, 'name length should be <%d characters' % maxsize
-    return detname if nchars<maxsize else _short_detector_name(detname)
+    return detname if len(detname)<maxsize else _short_detector_name(detname)
 
 #------------------------------
 
@@ -413,7 +404,6 @@ def delete_document(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHE
     logger.debug(resp.text)
     return resp
 
-
 #------------------------------
 
 def delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
@@ -422,7 +412,7 @@ def delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders
     check_kerberos_ticket()
 
     # find a single doc for doc_id
-    ldocs = find_docs(dbname, colname, query={'_id':doc_id})
+    ldocs = find_docs(dbname, colname, query={"_id":"ObjectId(%s)"%doc_id})
     if len(ldocs)>1:
         logger.error('UNEXPECTED ERROR: db/collection: %s/%s HAS MORE THAN ONE DOCUMENT FOR _id: %s' % (dbname, colname, doc_id))
         sys.exit('db/collection: %s/%s HAS TO BE FIXED' % (dbname, colname))
@@ -437,14 +427,14 @@ def delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders
     data_id = doc.get('id_data', None)
 
     resp_doc = delete(url+dbname+'/'+colname+'/'+ doc_id, headers=krbheaders)
-    logger.debug('delete db/collection/doc_id: %s/%s/%s responce: %s' (dbname, colname, doc_id, resp_doc.text))
+    logger.debug('delete %s/%s/%s responce: %s' % (dbname, colname, doc_id, resp_doc.text))
 
     if data_id is None:
         logger.warning('db/collection/doc_id: %s/%s/%s DOES NOT HAVE data_id' % (dbname, colname, doc_id))
         return False
 
     resp_data = delete(url+dbname+'/gridfs/'+ data_id, headers=krbheaders)
-    logger.debug('delete db/gridfs/data_id: %s/%s/%s responce: %s' (dbname, data_id, resp_data.text))
+    logger.debug('delete %s/gridfs/%s responce: %s' % (dbname, data_id, resp_data.text))
     return resp_data
 
 #------------------------------
@@ -454,6 +444,10 @@ def delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders
 if __name__ == "__main__" :
 
   TEST_FNAME_PNG = '/reg/g/psdm/detector/data2_test/misc/small_img.png'
+  TEST_EXPNAME = 'testexper'
+  TEST_DETNAME = 'testdet_1234'
+
+#------------------------------
 
   def test_database_names():
     print('test_database_names:', database_names())
@@ -575,7 +569,7 @@ if __name__ == "__main__" :
 
 #------------------------------
 
-  def test_insert_constants(expname='testexper', detname='testdet_1234', ctype='test_ctype', runnum=10, data='test text sampele'):
+  def test_insert_constants(expname=TEST_EXPNAME, detname=TEST_DETNAME, ctype='test_ctype', runnum=10, data='test text sampele'):
     """ Inserts constants using direct MongoDB interface from MDBUtils.
     """
     import psana.pyalgos.generic.Utils as gu
@@ -603,7 +597,7 @@ if __name__ == "__main__" :
 
 #------------------------------
 
-  def test_delete_collection(dbname='cdb_testexper', colname='testdet_1234'):
+  def test_delete_collection(dbname='cdb_testexper', colname=TEST_DETNAME):
     print('test_delete_collection %s collection: %s' % (dbname, colname))
     print('test_delete_collection BEFORE:', collection_names(dbname, url=cc.URL))
     resp = delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
@@ -611,7 +605,7 @@ if __name__ == "__main__" :
 
 #------------------------------
 
-  def test_delete_document(dbname='cdb_testexper', colname='testdet_1234', query={'ctype':'test_ctype'}):
+  def test_delete_document(dbname='cdb_testexper', colname=TEST_DETNAME, query={'ctype':'test_ctype'}):
     doc = find_doc(dbname, colname, query=query, url=cc.URL)
     print('find_doc:', doc)
     if doc is None : 
@@ -624,13 +618,14 @@ if __name__ == "__main__" :
 
 #------------------------------
 
-  def test_delete_document_and_data(dbname='cdb_testexper', colname='testdet_1234'):
+  def test_delete_document_and_data(dbname='cdb_testexper', colname=TEST_DETNAME):
     ldocs = find_docs(dbname, colname, query={}, url=cc.URL)
     if not ldocs :
         print('test_delete_document_and_data db/collection: %s/%s does not have any document' % (dbname, colname))
         return
     doc = ldocs[0]
-    print('test_delete_document_and_data db/collection: %s/%s contains %d documents\n  try to delete doc: %s' % (dbname, colname, len(ldocs), str(doc)))
+    print('==== test_delete_document_and_data db/collection: %s/%s contains %d documents\n==== try to delete doc: %s'%\
+          (dbname, colname, len(ldocs), str(doc)))
     doc_id = doc.get('_id', None)
     resp = delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_document_and_data resp:', resp)
@@ -651,7 +646,7 @@ if __name__ == "__main__" :
 
 #------------------------------
 
-  def test_add_document(dbname='cdb_testexper', colname='testdet_1234', doc={'ctype':'test_ctype'}):
+  def test_add_document(dbname='cdb_testexper', colname=TEST_DETNAME, doc={'ctype':'test_ctype'}):
     from psana.pyalgos.generic.Utils import str_tstamp
     doc['time_stamp'] = str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%z')
     resp = add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
@@ -659,7 +654,7 @@ if __name__ == "__main__" :
 
 #------------------------------
 
-  def test_add_data_and_two_docs(exp='testexper', det='testdet_1234'):
+  def test_add_data_and_two_docs(exp=TEST_EXPNAME, det=TEST_DETNAME):
     from psana.pyalgos.generic.Utils import get_login
     t0_sec = time()
     kwa = {'user'      : get_login(),
@@ -678,14 +673,45 @@ if __name__ == "__main__" :
 
 #------------------------------
 
-  def test_pro_detector_name(shortname='testdet_1234'):
+  def test_pro_detector_name(shortname=TEST_DETNAME):
     longname = shortname + '_this_is_insane_long_detector_name_exceeding_55_characters_in_length_or_longer'
     tmode = sys.argv[2] if len(sys.argv) > 2 else '0'
     dname = shortname if tmode=='0' else\
             longname  if tmode=='1' else\
             longname + '_' + tmode # mu._timestamp(int(time()))
+    print('==== test_pro_detector_name for detname:', dname)
     name = pro_detector_name(dname)
-    print('XXX protected detector name:', name)
+    print('Returned protected detector name:', name)
+
+#------------------------------
+
+  def test_tmp():
+
+    from requests import get
+
+    url = 'https://pswww.slac.stanford.edu/calib_ws/cdb_testexper/testdet_1234'
+
+    q1 = {'query_string': '{}'}
+    r = get(url, q1).json()
+    print('====\n  url  :%s\n  query:%s\n  resp :%s' % (url, str(q1), str(r)))
+
+    doc_id = r[0]['_id']
+    print('Selected doc _id:', doc_id, type(doc_id))
+
+    #q2 = {'query_string': u'{"_id":"5eb49463851779a9b1c40966"}'} DOES NOT WORK
+    q2 = {'query_string': '{"_id":"ObjectId(%s)"}'%doc_id}
+    r = get(url, q2).json()
+    print('====\n  url  :%s\n  query:%s\n  resp :%s' % (url, str(q2), str(r)))
+
+    #ldocs = find_docs(dbname, colname, query={})
+    #print('==== query={} ldocs:\n', ldocs)
+
+    #doc_id = ldocs[0]['_id']
+    #print('==== selected doc _id:', doc_id)
+    
+    #ldocs = find_docs(dbname, colname, query={'_id':doc_id})
+    #print('==== query={"_id":doc_id}} ldocs:\n', ldocs)
+
 
 #------------------------------
 
@@ -713,6 +739,7 @@ if __name__ == "__main__" :
            + '\n 18: test_add_document'\
            + '\n 19: test_add_data_and_two_docs'\
            + '\n 20: test_pro_detector_name [test-number=0-short name, 1-fixed long name, n-long name +"_n"]'\
+           + '\n 00: test_tmp'\
            + ''
 
 #------------------------------
@@ -726,7 +753,7 @@ if __name__ == "__main__":
 
     logger.info('\n%s\n' % usage())
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    logger.info('%s\nTest %s:' % (50*'_',tname))
+    logger.info('%s Test %s %s' % (25*'_',tname, 25*'_'))
     if   tname == '0' : test_database_names()
     elif tname == '1' : test_collection_names()
     elif tname == '2' : test_find_docs()
@@ -748,6 +775,7 @@ if __name__ == "__main__":
     elif tname =='18' : test_add_document()
     elif tname =='19' : test_add_data_and_two_docs()
     elif tname =='20' : test_pro_detector_name()
+    elif tname =='00' : test_tmp()
     else : logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 

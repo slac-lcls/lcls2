@@ -104,6 +104,8 @@ Usage ::
     prefix = mu.out_fname_prefix(fmt='doc-%s-%s-r%04d-%s', **kwa)
     mu.save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' : True})
 
+    detname_short = mu.pro_detector_name(detname_long)
+
     # Test methods
     ...
 """
@@ -856,9 +858,10 @@ def insert_constants(data, experiment, detector, ctype, run, time_sec, **kwargs)
                                                 time_stamp=kwargs.get('time_stamp', None))
     _version = kwargs.get('version', 'v00')
     _comment = kwargs.get('comment', 'default comment')
+    _detector = pro_detector_name(detector)
 
     valid_experiment(experiment)
-    valid_detector(detector)
+    valid_detector(_detector)
     valid_ctype(ctype)
     valid_run(run)
     valid_version(_version)
@@ -869,7 +872,7 @@ def insert_constants(data, experiment, detector, ctype, run, time_sec, **kwargs)
           'experiment' : experiment,
           'run'        : run,
           'run_end'    : kwargs.get('run_end', 'end'),
-          'detector'   : detector,
+          'detector'   : _detector,
           'ctype'      : ctype,
           'time_sec'   : _time_sec,
           'time_stamp' : _time_stamp,
@@ -1037,7 +1040,8 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     """
     cond = (run is not None) or (time_sec is not None) or (vers is not None)
     assert cond, 'Not sufficeint info for query: run, time_sec, and vers are None'
-    query={'detector':det,} # 'ctype':ctype}
+    _det = pro_detector_name(det)
+    query={'detector':_det,} # 'ctype':ctype}
     if ctype is not None : query['ctype'] = ctype
     if dtype is not None : query['dtype'] = dtype
     runq = run if not(run in (0,None)) else 9999 # by cpo request on 2020-01-16
@@ -1046,10 +1050,15 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     if vers is not None : query['version'] = vers
     logger.debug('query: %s' % str(query))
 
-    db_det, db_exp = db_prefixed_name(det), db_prefixed_name(str(exp))
+    db_det, db_exp = db_prefixed_name(_det), db_prefixed_name(str(exp))
     if 'None' in db_det : db_det = None
     if 'None' in db_exp : db_exp = None
-    return db_det, db_exp, det, query
+    return db_det, db_exp, _det, query
+
+#------------------------------
+
+def number_of_docs(col, query={}):
+    return col.count_documents(query)
 
 #------------------------------
 
@@ -1152,7 +1161,7 @@ def collection_info(client, dbname, cname):
     #s += '\n%s%sCOL %s contains %d docs' % (gap, gap, cname.ljust(12), docs.count())
     #for idoc, doc in enumerate(docs):
 
-    ndocs = docs.count()
+    ndocs = number_of_docs(col, query={})
 
     if not ndocs : return s
         
@@ -1321,9 +1330,10 @@ def out_fname_prefix(fmt='clb-%s-%s-r%04d-%s', **kwa):
     """
     exp = kwa.get('experiment', 'exp')
     det = kwa.get('detector', 'det')
+    _det = pro_detector_name(det)
     run = int(kwa.get('run', 0))
     ctype = kwa.get('ctype', 'ctype')
-    return fmt % (exp, det, run, ctype)
+    return fmt % (exp, _det, run, ctype)
 
 #-----------------------------
 
@@ -1378,6 +1388,84 @@ def save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' 
         fname = '%s.meta' % prefix
         gu.save_textfile(msg, fname, mode='w', verb=verb)
         logger.info('saved file: %s' % fname)
+
+
+#------------------------------
+# 2020-05-11
+
+def _doc_detector_name(detname, dettype, detnum):
+    """returns (dict) document for Detector Name Database (for long <detname> to short <dettype-detnum>).
+    """
+    t0_sec = time()
+    return {'long'       : detname,\
+            'short'      : '%s_%06d'%(dettype, detnum),\
+            'seqnumber'  : detnum,\
+            'uid'        : gu.get_login(),
+            'host'       : gu.get_hostname(),
+            'cwd'        : gu.get_cwd(),
+            'time_sec'   : t0_sec,
+            'time_stamp' : _timestamp(int(t0_sec))
+           }
+
+#------------------------------
+
+def _add_detector_name(col, colname, detname, detnum):
+    #client = connect_to_server(host=cc.HOST, port=cc.PORT) # , user=cc.USERNAME, upwd=cc.USERPW)
+    #db = database(client, dbname)
+    #col = collection(db, colname)
+
+    doc = _doc_detector_name(detname, colname, detnum)
+    id_doc = insert_document(doc, col)
+    return doc['short'] if id_doc is not None else None   
+
+#------------------------------
+
+def _short_detector_name(detname, dbname=cc.DETNAMESDB):
+    colname = detname.split('_',1)[0]
+
+    client = connect_to_server(host=cc.HOST, port=cc.PORT) # , user=cc.USERNAME, upwd=cc.USERPW)
+    db = database(client, dbname)
+    col = collection(db, colname)
+
+    # find a single doc for long detname
+    query = {'long':detname}
+    ldocs = find_docs(col, query)
+
+    if ldocs is not None:
+        ndocs = number_of_docs(col, query)
+        logger.debug('ndocs: %d found for long detname: %s' % (ndocs,detname))
+        if ndocs>1:
+            logger.error('UNEXPECTED ERROR: db/collection: %s/%s has >1 document for detname: %s' % (dbname, colname, detname))
+            sys.exit('db/collection: %s/%s HAS TO BE FIXED' % (dbname, colname))
+
+        return ldocs[0].get('short', None)
+
+    # find all docs in the collection
+    ldocs = find_docs(col, query={})
+
+    detnum = 0
+    if ldocs is None: # empty list
+        logger.debug('list of documents in db/collection: %s/%s IS EMPTY' % (dbname, colname))
+        detnum = 1
+    else:
+        for doc in ldocs :
+            num = doc.get('seqnumber', 0)
+            if num > detnum: detnum = num
+        detnum += 1
+      
+    logger.debug('next available detnum: %d' % detnum)
+
+    short_name = _add_detector_name(col, colname, detname, detnum)
+    logger.debug('add document to db/collection: %s/%s doc for short name:%s' % (dbname, colname, short_name))
+
+    return short_name
+
+#------------------------------
+
+def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE):
+    """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars.
+    """
+    return detname if len(detname)<maxsize else _short_detector_name(detname)
 
 #------------------------------
 #----------- TEST -------------
@@ -1603,6 +1691,18 @@ if __name__ == "__main__" :
 
 #------------------------------
 
+  def test_pro_detector_name(shortname='testdet_1234'):
+    longname = shortname + '_this_is_insane_long_detector_name_exceeding_55_characters_in_length_or_longer'
+    tmode = sys.argv[2] if len(sys.argv) > 2 else '0'
+    dname = shortname if tmode=='0' else\
+            longname  if tmode=='1' else\
+            longname + '_' + tmode # mu._timestamp(int(time()))
+    print('==== test_pro_detector_name for detname:', dname)
+    name = pro_detector_name(dname)
+    print('Returned protected detector name:', name)
+
+#------------------------------
+
   def dict_usage(tname=None):
       d = {'0' : 'test_connect',
            '1' : 'test_insert_one txt',
@@ -1618,6 +1718,7 @@ if __name__ == "__main__" :
            '11': 'test_get_data txt',
            '12': 'test_get_data nda',
            '13': 'test_get_data dict',
+           '20': 'test_pro_detector_name [test-number=0-short name, 1-fixed long name, n-long name +"_n"]'\
           }
       if tname is None : return d
       return d.get(tname, 'NON IMPEMENTED TEST')
@@ -1634,7 +1735,8 @@ if __name__ == "__main__" :
 if __name__ == "__main__" :
     #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
     #logging.basicConfig(format=fmt', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
-    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+    #logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG) # logging.INFO
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     if len(sys.argv) < 2 : usage()
     logger.info('%s\nTest %s: %s' % (50*'_', tname, dict_usage(tname)))
@@ -1648,6 +1750,7 @@ if __name__ == "__main__" :
     elif tname == '9' : test_calib_constants_dict()
     elif tname =='10' : test_get_data_for_id(tname)
     elif tname in ('11','12','13'): test_get_data(tname)
+    elif tname =='20' : test_pro_detector_name()
     else : logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 
