@@ -46,12 +46,21 @@ import logging
 DICT_LEVEL_TO_NAME = logging._levelToName # {0: 'NOTSET', 50: 'CRITICAL',...
 DICT_NAME_TO_LEVEL = logging._nameToLevel # {'INFO': 20, 'WARNING': 30, 'WARN': 30,...
 LEVEL_NAMES = list(logging._levelToName.values())
+STR_LEVEL_NAMES = ', '.join(DICT_NAME_TO_LEVEL.keys())
+TSFORMAT = '%Y-%m-%dT%H:%M:%S' #%z'
+
+#------------------------------
+
+def init_logger(loglev_name='DEBUG', fmt='[%(levelname).1s] L%(lineno)04d : %(message)s', datefmt=TSFORMAT) :
+    #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s' # '%(message)s'
+    logging.basicConfig(format=fmt, datefmt=datefmt, level=DICT_NAME_TO_LEVEL[loglev_name])
+    logging.debug('Logger is initialized for level %s' % loglev_name)
 
 #------------------------------
 
 def config_logger(loglevel='DEBUG',\
                   fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s',\
-                  datefmt='%Y-%m-%dT%H:%M:%S',\
+                  datefmt=TSFORMAT,\
                   filename='',\
                   filemode='w') :
 

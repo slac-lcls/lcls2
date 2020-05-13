@@ -4,7 +4,7 @@ import sys
 import argparse
 import logging
 logger = logging.getLogger(__name__)
-from psana.pyalgos.generic.Utils import init_logger, STR_LEVEL_NAMES
+from psana.pyalgos.generic.logger import init_logger, STR_LEVEL_NAMES
 
 scrname = sys.argv[0].rsplit('/')[-1]
 
