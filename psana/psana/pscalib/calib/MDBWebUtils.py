@@ -5,6 +5,7 @@ Usage ::
     import psana.pscalib.calib.MDBWebUtils as wu
     from psana.pscalib.calib.MDBWebUtils import calib_constants
 
+    resp = wu.check_kerberos_ticket(exit_if_invalid=True)
     _ = wu.request(url, query=None)
     _ = wu.database_names(url=cc.URL)
     _ = wu.collection_names(dbname, url=cc.URL)
@@ -19,7 +20,19 @@ Usage ::
     d = wu.calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL)
     d = {ctype:(data,doc),}
 
-    detname_short = wu.pro_detector_name(detname_long)
+    id = wu.add_data_from_file(dbname, fname, sfx=None, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    id = wu.add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    id = wu.add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    id_data, id_doc = wu.add_data_and_doc(data, dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs)
+    id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
+      wu.add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs)
+
+    detname_short = wu.pro_detector_name(detname)
+
+    resp = wu.delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    resp = wu.delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    resp = wu.delete_document(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    resp = wu.delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
 
     test_*()
 """
@@ -63,11 +76,11 @@ def check_kerberos_ticket(exit_if_invalid=True):
 
 def request(url, query=None):
     #logger.debug('==== query: %s' % str(query))
-    t0_sec = time()
-    r = get(url, query)
-    dt = time()-t0_sec
-    logger.debug('CONSUMED TIME by request %.6f sec\n  for url=%s  query=%s' % (dt, url, str(query)))
-    return r
+    #t0_sec = time()
+    #r = get(url, query)
+    #dt = time()-t0_sec # ~30msec
+    #logger.debug('CONSUMED TIME by request %.6f sec\n  for url=%s  query=%s' % (dt, url, str(query)))
+    return get(url, query)
 
 #------------------------------
 
@@ -298,6 +311,38 @@ def add_data_and_doc(data, dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEA
 
 #------------------------------
 
+def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
+    """ Adds data and document to experiment and detector data bases.
+    """
+    t0_sec = time()
+
+    detname = pro_detector_name(det)
+    colname = detname
+    dbname_exp = mu.db_prefixed_name(exp)
+    dbname_det = mu.db_prefixed_name(detname)
+
+    id_data_exp = add_data(dbname_exp, data, url, krbheaders)
+    id_data_det = add_data(dbname_det, data, url, krbheaders)
+    if None in (id_data_exp, id_data_det): return None
+
+    doc = mu.docdic(data, id_data_exp, **kwargs)
+    logger.debug(mu.doc_info(doc, fmt='  %s:%s')) #sep='\n  %16s : %s'
+
+    id_doc_exp = add_document(dbname_exp, colname, doc, url, krbheaders)
+    doc['id_data'] = id_data_det # override
+    doc['id_exp']  = id_doc_exp  # add
+    id_doc_det = add_document(dbname_det, colname, doc, url, krbheaders)
+    if None in (id_doc_exp, id_doc_det): return None
+
+    msg = 'Add 2 data and docs time %.6f sec' % (time()-t0_sec)\
+        + '\n  - data in %s/gridfs id: %s and doc in collection %s id: %s' % (dbname_exp, id_data_exp, colname, id_doc_exp)\
+        + '\n  - data in %s/gridfs id: %s and doc in collection %s id: %s' % (dbname_det, id_data_det, colname, id_doc_det)
+    logger.debug(msg)
+
+    return id_data_exp, id_data_det, id_doc_exp, id_doc_det
+
+#------------------------------
+
 def _add_detector_name(dbname, colname, detname, detnum):
     check_kerberos_ticket()
     doc = mu._doc_detector_name(detname, colname, detnum)
@@ -341,38 +386,6 @@ def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE):
     """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars.
     """
     return detname if len(detname)<maxsize else _short_detector_name(detname)
-
-#------------------------------
-
-def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
-    """ Adds data and document to experiment and detector data bases.
-    """
-    t0_sec = time()
-
-    detname = pro_detector_name(det)
-    colname = detname
-    dbname_exp = mu.db_prefixed_name(exp)
-    dbname_det = mu.db_prefixed_name(detname)
-
-    id_data_exp = add_data(dbname_exp, data, url, krbheaders)
-    id_data_det = add_data(dbname_det, data, url, krbheaders)
-    if None in (id_data_exp, id_data_det): return None
-
-    doc = mu.docdic(data, id_data_exp, **kwargs)
-    logger.debug(mu.doc_info(doc, fmt='  %s:%s')) #sep='\n  %16s : %s'
-
-    id_doc_exp = add_document(dbname_exp, colname, doc, url, krbheaders)
-    doc['id_data'] = id_data_det # override
-    doc['id_exp']  = id_doc_exp  # add
-    id_doc_det = add_document(dbname_det, colname, doc, url, krbheaders)
-    if None in (id_doc_exp, id_doc_det): return None
-
-    msg = 'Add 2 data and docs time %.6f sec' % (time()-t0_sec)\
-        + '\n  - data in %s/gridfs id: %s and doc in collection %s id: %s' % (dbname_exp, id_data_exp, colname, id_doc_exp)\
-        + '\n  - data in %s/gridfs id: %s and doc in collection %s id: %s' % (dbname_det, id_data_det, colname, id_doc_det)
-    logger.debug(msg)
-
-    return id_data_exp, id_data_det, id_doc_exp, id_doc_det
 
 #------------------------------
 
