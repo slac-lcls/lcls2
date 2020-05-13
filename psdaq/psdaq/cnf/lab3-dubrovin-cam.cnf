@@ -2,7 +2,7 @@ if not platform: platform = '6'
 hutch, user, password = ('tst', 'tstopr', 'pcds')
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
-conda_rel = 'ps-3.1.7'
+conda_rel = 'ps-3.1.8'
 
 collect_host = 'drp-tst-acc06'
 
