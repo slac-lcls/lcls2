@@ -8,6 +8,7 @@ from psana.pyalgos.generic.logger import init_logger, STR_LEVEL_NAMES
 
 scrname = sys.argv[0].rsplit('/')[-1]
 usage = '\nE.g. : %s amox23616 131' % scrname\
+      + '\n  or : %s amox23616 131 -l INFO -p True\n' % scrname
       + '\n  or : %s amox23616 131 -l DEBUG --max_shots 200 --num_bunches 1\n' % scrname
 print(usage)
 
