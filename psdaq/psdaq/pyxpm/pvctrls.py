@@ -467,7 +467,7 @@ class PVCtrls(object):
             provider.add(name+':DumpPll%d'%i,pv)
             self._pv_amcDumpPLL.append(pv)
 
-        self._cu    = CuGenCtrls(name+':XTPG', xpm, init=init['XTPG'])
+        self._cu    = CuGenCtrls(name+':XTPG', xpm, init=init['XTPG'] if init is not None else None)
 
         self._group = GroupCtrls(name, app, stats, init=init)
 
