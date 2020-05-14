@@ -20,23 +20,23 @@ rcFileDefault = '/etc/procmgrd.conf'
 #
 def printError(errorCode, args):
     if (errorCode == 5):
-        print("ERR: failed to run '%s' (invalid arguments)" % args)
+        print("*** ERR: failed to run '%s' (invalid arguments)" % args)
     elif (errorCode == 6):
-        print("ERR: failed to run '%s' (conda activate failed)" % args)
+        print("*** ERR: failed to run '%s' (conda activate failed)" % args)
     elif (errorCode == 7):
-        print("ERR: failed to run '%s' (command not found on PATH)" % args)
+        print("*** ERR: failed to run '%s' (command not found on PATH)" % args)
     elif (errorCode == 8):
-        print("ERR: failed to run '%s' (conda.sh not found)" % args)
+        print("*** ERR: failed to run '%s' (conda.sh not found)" % args)
     elif (errorCode == 9):
-        print("ERR: failed to run '%s' (procServ not found)" % args)
+        print("*** ERR: failed to run '%s' (procServ not found)" % args)
     elif (errorCode == 10):
-        print("ERR: failed to run '%s' (rcfile not found)" % args)
+        print("*** ERR: failed to run '%s' (rcfile not found)" % args)
     elif (errorCode == 11):
-        print("ERR: failed to run '%s' (CONDABASE not defined in rcfile)" % args)
+        print("*** ERR: failed to run '%s' (CONDABASE not defined in rcfile)" % args)
     elif (errorCode == 12):
-        print("ERR: failed to run '%s' (PROCSERVBIN not defined in rcfile)" % args)
+        print("*** ERR: failed to run '%s' (PROCSERVBIN not defined in rcfile)" % args)
     elif (errorCode != 0):
-        print("ERR: failed to run '%s' (procServ returned %d)" % \
+        print("*** ERR: failed to run '%s' (procServ returned %d)" % \
             (args, errorCode))
     return
 
@@ -345,7 +345,7 @@ class ProcMgr:
         dup_list = list()
 
         if (platform == -1):
-            print('ERR: platform not specified')
+            print('*** ERR: platform not specified')
             return
         else:
             self.PLATFORM = platform
@@ -478,7 +478,7 @@ class ProcMgr:
               self.flags += 'p'
             for nextflag in self.flags:
               if (nextflag not in self.valid_flag_list):
-                print('ERR: invalid flag:', nextflag)
+                print('*** ERR: invalid flag:', nextflag)
           else:
             self.flags = '-'
 
@@ -517,7 +517,7 @@ class ProcMgr:
           if tmpsum:
             # assign the port statically
             if tmpsum in staticPorts[self.host]:
-                print('ERR: port #%d duplicated in the config file' % tmpsum)
+                print('*** ERR: port #%d duplicated in the config file' % tmpsum)
             else:
                 # avoid dup: update the set of statically assigned ports
                 staticPorts[self.host].add(tmpsum)
@@ -567,7 +567,7 @@ class ProcMgr:
                 ok = False
               if not ok:
                   # reading procServ banner failed
-                  print("ERR: failed to read procServ banner for \'%s\' on host %s" \
+                  print("*** ERR: failed to read procServ banner for \'%s\' on host %s" \
                           % (self.uniqueid, self.host))
               # close connection to the logging port (procServ)
               self.telnet.close()
@@ -582,7 +582,7 @@ class ProcMgr:
               (self.tmpstatus != self.STATUS_ERROR) and \
               (gotid != bytes(self.uniqueid, 'utf-8')) and \
               (not gotid.endswith(bytes(self.uniqueid+".log", 'utf-8')))):
-              print("ERR: found %r, expected %r on host %s port %s" % \
+              print("*** ERR: found %r, expected %r on host %s port %s" % \
                   (gotid, self.uniqueid, self.host, self.ctrlport))
           else:
               # add an entry to the dictionary
@@ -853,7 +853,7 @@ class ProcMgr:
             # wait for SHUT DOWN message
             response = self.telnet.read_until(self.MSG_ISSHUTDOWN, 1)
             if not response.count(self.MSG_ISSHUTDOWN):
-                print('ERR: no SHUT DOWN message in ', end=' ')
+                print('*** ERR: no SHUT DOWN message in ', end=' ')
                 print('response: <<%s>>' % response)
 
             # send ^R to restart child process
@@ -862,14 +862,14 @@ class ProcMgr:
             # wait for restart message
             response = self.telnet.read_until(self.MSG_RESTART, 3)
             if not response.count(self.MSG_RESTART):
-                print('ERR: no restart message... ')
+                print('*** ERR: no restart message... ')
             else:
                 started = True
 
             # close telnet connection
             self.telnet.close()
         else:
-            print('ERR: restart() telnet to %s port %s failed' % \
+            print('*** ERR: restart() telnet to %s port %s failed' % \
                 (host, value[self.DICT_CTRL]))
 
         return started
@@ -947,7 +947,7 @@ class ProcMgr:
                       mkdir_p(logpath)
                     except:
                       # mkdir
-                      print('ERR: mkdir <%s> failed' % logpath)
+                      print('*** ERR: mkdir <%s> failed' % logpath)
                     else:
                       loghost = key2host(key)
                       localFlag = False
@@ -963,7 +963,7 @@ class ProcMgr:
                     try:
                         statmode = os.stat(logpath).st_mode
                     except:
-                        print('ERR: stat %s failed' % logpath)
+                        print('*** ERR: stat %s failed' % logpath)
                         logfile = ''
                     else:
                         if (statmode & pbits) != pbits:
@@ -971,7 +971,7 @@ class ProcMgr:
                             # make log path readable/writable/searchable by all
                             os.chmod(logpath, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
                           except:
-                            print('ERR: chmod %s failed' % logpath)
+                            print('*** ERR: chmod %s failed' % logpath)
                             logfile = ''
 
                 # encode logfile path as part of procServ name
@@ -988,7 +988,7 @@ class ProcMgr:
                         outfile.write("# TESTRELDIR:%s\n" % os.environ['TESTRELDIR'])
                       outfile.close()
                     except:
-                      print("ERR: writing log file '%s' failed" % logfile)
+                      print("*** ERR: writing log file '%s' failed" % logfile)
                     else:
                       pbits = (stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IWGRP | stat.S_IROTH | stat.S_IWOTH)
                       if (os.stat(logfile).st_mode & pbits) != pbits:
@@ -996,14 +996,14 @@ class ProcMgr:
                           # make log file readable/writable by all
                           os.chmod(logfile, pbits)
                         except:
-                          print('ERR: chmod %s failed' % logfile)
+                          print('*** ERR: chmod %s failed' % logfile)
                 else:
                   name = key2uniqueid(key)
 
                 # look for condaProcServ in the same directory as this file
                 condaProcServCmd = shutil.which('condaProcServ')
                 if not condaProcServCmd:
-                  print('ERR: %s/condaProcServ not found' % prefix)
+                  print('*** ERR: %s/condaProcServ not found' % prefix)
                   continue
 
                 startcmd = condaProcServCmd+' %s %s %s %s %s %s %s %d %s %s %s' % \
@@ -1056,7 +1056,7 @@ class ProcMgr:
                     self.telnet.open(host, self.EXECMGRCTRL)
                 except:
                     # telnet failed
-                    print('ERR: telnet to procmgr (%s port %d) failed' % \
+                    print('*** ERR: telnet to procmgr (%s port %d) failed' % \
                             (host, self.EXECMGRCTRL))
                     print('>>> Please start the procServ process on host %s!' % host)
                 else:
@@ -1068,7 +1068,7 @@ class ProcMgr:
                     # wait for prompt (procServ)
                     response = self.telnet.read_until(self.MSG_PROMPT, 2)
                     if not response.count(self.MSG_PROMPT):
-                        print('ERR: no prompt at %s port %s' % \
+                        print('*** ERR: no prompt at %s port %s' % \
                             (key2host(key), self.EXECMGRCTRL))
 
                     # process list of commands
@@ -1096,7 +1096,7 @@ class ProcMgr:
                             printError(int(m.group(0)), args)
 
                         if not response.count(self.MSG_PROMPT):
-                            print('ERR: no prompt at %s port %s' % \
+                            print('*** ERR: no prompt at %s port %s' % \
                                 (host, self.EXECMGRCTRL))
                         else:
                             #
@@ -1113,7 +1113,7 @@ class ProcMgr:
         if len(xlist) > 0 or len(Xlist) > 0:
           # is xterm available?
           if not os.path.exists(self.PATH_XTERM):
-            print('ERR: %s not available' % self.PATH_XTERM)
+            print('*** ERR: %s not available' % self.PATH_XTERM)
           else:
             # order matters: start large xterms last so they will be on top
 
@@ -1177,7 +1177,7 @@ class ProcMgr:
             if connected:
                 telnetdict[key] = connection
             else:
-                print('ERR: telnet to %s port %r failed' % (host, value[self.DICT_CTRL]), end=' ')
+                print('*** ERR: telnet to %s port %r failed' % (host, value[self.DICT_CTRL]), end=' ')
 
         # send ^C to selected connections
         for key, connection in telnetdict.items():
@@ -1194,7 +1194,7 @@ class ProcMgr:
                 rv = 1
                 if verbose:
                     print('FAILED')
-                print('ERR: Exception while shutting down %r client: %r' % (key, sys.exc_info()[1]))
+                print('*** ERR: Exception while shutting down %r client: %r' % (key, sys.exc_info()[1]))
             else:
                 if verbose:
                     print('done')
@@ -1219,7 +1219,7 @@ class ProcMgr:
                 rv = 1
                 if verbose:
                     print('FAILED')
-                print('ERR: Exception while reading %r client: %r' % (key, sys.exc_info()[1]))
+                print('*** ERR: Exception while reading %r client: %r' % (key, sys.exc_info()[1]))
             else:
                 if response.count(self.MSG_ISSHUTTING)  or response.count(self.MSG_ISSHUTDOWN):
                     if verbose:
@@ -1245,7 +1245,7 @@ class ProcMgr:
                 if verbose:
                     print('FAILED')
                 retrylist.append(key)
-                print('ERR: Exception while killing %r client: %r' % (key, sys.exc_info()[1]))
+                print('*** ERR: Exception while killing %r client: %r' % (key, sys.exc_info()[1]))
             else:
                 if response.count(b"Restarting"):
                     retrylist.append(key)
@@ -1268,7 +1268,7 @@ class ProcMgr:
                 rv = 1
                 if verbose:
                     print('FAILED')
-                print('ERR: Exception while killing %r client: %r' % (key, sys.exc_info()[1]))
+                print('*** ERR: Exception while killing %r client: %r' % (key, sys.exc_info()[1]))
             else:
                 if verbose:
                     if response.count(b"Restarting"):
@@ -1285,7 +1285,7 @@ class ProcMgr:
                 telnetdict[key].write(b"\x11");
             except:
                 rv = 1
-                print('ERR: Exception while quitting %r procServ: %r' % (key, sys.exc_info()[1]))
+                print('*** ERR: Exception while quitting %r procServ: %r' % (key, sys.exc_info()[1]))
             else:
                 # change status to NOCONNECT
                 self.setStatus([key], self.STATUS_NOCONNECT)
@@ -1398,7 +1398,7 @@ class ProcMgr:
             if key in self.d:
                 self.d[key][self.DICT_STATUS] = newStatus
             else:
-                print("ERR: setStatus: key '%s' not found" % key)
+                print("*** ERR: setStatus: key '%s' not found" % key)
                 return 1
 
         return 0
