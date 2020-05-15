@@ -92,10 +92,15 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 // Allocate a transition dgram from the pool and initialize its header
                 Pds::EbDgram* trDgram = pool.allocateTr();
                 memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
-                // copy the temporary xtc created on phase 1 of the transition
-                // into the real location
-                XtcData::Xtc& trXtc = det->transitionXtc();
-                memcpy(&trDgram->xtc, &trXtc, trXtc.extent);
+                if (transitionId != XtcData::TransitionId::SlowUpdate) {
+                   // copy the temporary xtc created on phase 1 of the transition
+                   // into the real location
+                   XtcData::Xtc& trXtc = det->transitionXtc();
+                   memcpy(&trDgram->xtc, &trXtc, trXtc.extent);
+                }
+                else {
+                   det->slowupdate(trDgram->xtc);
+                }
                 // make sure the detector hasn't made the transition too big
                 size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();
                 if (size > para.maxTrSize) {

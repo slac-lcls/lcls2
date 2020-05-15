@@ -116,7 +116,7 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_pool(pool),
   m_mon(mon),
   m_fileWriter(4194304),
-  m_smdWriter(1048576),
+  m_smdWriter(4194304),
   m_writing(false),
   m_inprocSend(inprocSend),
   m_count(0),
@@ -262,12 +262,12 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
                 size_t size = sizeof(*configDgram) + configDgram->xtc.sizeofPayload();
                 memcpy(m_configureBuffer.data(), configDgram, size);
             }
+            if (transitionId == XtcData::TransitionId::BeginRun)
+              m_offset = 0;// reset for monitoring (and not recording)
             // send pulseId to inproc so it gets forwarded to the collection
             json msg = createPulseIdMsg(pulseId);
             m_inprocSend.send(msg.dump());
         }
-        if (transitionId == XtcData::TransitionId::BeginRun)
-            m_offset = 0;// reset for monitoring (and not recording)
 
         logging::debug("EbReceiver saw %s transition @ %u.%09u (%014lx)\n",
                        XtcData::TransitionId::name(transitionId),

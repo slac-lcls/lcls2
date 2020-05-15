@@ -13,10 +13,13 @@
 #include "Detector.hh"
 #include "EventBatcher.hh"
 #include "xtcdata/xtc/Xtc.hh"
+#include "xtcdata/xtc/ConfigIter.hh"
 #include "xtcdata/xtc/NamesId.hh"
 #include <Python.h>
 
 namespace Drp {
+
+enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex}; // index for xtc NamesId
 
 class BEBDetector : public Detector
 {
@@ -35,9 +38,9 @@ public:  // Implementation of Detector
         EvtBatcherHeader& ebh = *static_cast<EvtBatcherHeader*>(m_pool->dmaBuffers[index]);
         return static_cast<Pds::TimingHeader*>(ebh.next());
     }
-private:  // This is the sub class interface
+protected:  // This is the sub class interface
     virtual void           _connect  (PyObject*) {}     // handle dictionary entries returned by <detType>_connect python
-    virtual unsigned       _configure(XtcData::Xtc&)=0; // attach eventdata descriptions to xtc
+    virtual unsigned       _configure(XtcData::Xtc&, XtcData::ConfigIter&)=0; // attach descriptions to xtc
     virtual void           _event    (XtcData::Xtc&,    // fill xtc from subframes
                                       std::vector< XtcData::Array<uint8_t> >&) {}
 protected:
@@ -46,7 +49,6 @@ protected:
     static PyObject* _check(PyObject*);
     static std::string _string_from_PyDict(PyObject*, const char* key);
 protected:
-    enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex}; // index for xtc NamesId
     std::string       m_connect_json;  // info passed on connect phase
     unsigned          m_readoutGroup;  // readout group from connect
     PyObject*         m_module;        // python module

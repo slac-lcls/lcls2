@@ -43,7 +43,8 @@ std::string BEBDetector::_string_from_PyDict(PyObject* dict, const char* key)
 
 BEBDetector::BEBDetector(Parameters* para, MemPool* pool) :
     Detector      (para, pool),
-    m_connect_json("")
+    m_connect_json(""),
+    m_module      (0)
 {
     virtChan = 1;
 }
@@ -136,13 +137,16 @@ unsigned BEBDetector::configure(const std::string& config_alias, Xtc& xtc)
 
     // append the config xtc info to the dgram
     Xtc& jsonxtc = *(Xtc*)buffer;
+
+    XtcData::ConfigIter iter(&jsonxtc);
+    unsigned r = _configure(xtc,iter);
     memcpy(xtc.next(),jsonxtc.payload(),jsonxtc.sizeofPayload());
     xtc.alloc(jsonxtc.sizeofPayload());
 
     Py_DECREF(mybytes);
     Py_DECREF(json_bytes);
 
-    return _configure(xtc);
+    return r;
 }
 
 void BEBDetector::connect(const json& connect_json, const std::string& collectionId)

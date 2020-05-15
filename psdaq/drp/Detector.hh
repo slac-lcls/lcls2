@@ -25,6 +25,7 @@ public:
     virtual unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) = 0;
     virtual unsigned beginrun(XtcData::Xtc& xtc, const nlohmann::json& runInfo) {return 0;}
     virtual void beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) {};
+    virtual void slowupdate(XtcData::Xtc& xtc) {};
     virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
     virtual void shutdown() {};
     virtual Pds::TimingHeader* getTimingHeader(uint32_t index) const

@@ -28,6 +28,9 @@ add_executable(drp
     TimeTool.cc
     Wave8.cc
     Opal.cc
+#    OpalTT.cc
+    OpalTTFex.cc
+#    OpalTTSim.cc
     PGPDetector.cc
     PGPDetectorApp.cc
     drp.cc
@@ -35,6 +38,7 @@ add_executable(drp
 
 target_link_libraries(drp
     psalg::digitizer
+    psalg::detector
     xtcdata::xtc
     Threads::Threads
     drpbase
@@ -148,6 +152,19 @@ target_include_directories(drp_validate PUBLIC
  target_link_libraries(drp_validate
      Threads::Threads
  )
+
+add_executable(opaltt_test
+    opaltt_test.cc
+)
+
+target_include_directories(opaltt_test PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+target_link_libraries(opaltt_test
+    xtcdata::xtc
+)
+
 
 install(TARGETS drp drp_bld drp_pva
   ARCHIVE DESTINATION lib

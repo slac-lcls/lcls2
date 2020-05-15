@@ -172,7 +172,7 @@ json Wave8::connectionInfo()
     return json({});
 }
 
-unsigned Wave8::_configure(Xtc& xtc)
+unsigned Wave8::_configure(Xtc& xtc,ConfigIter&)
 {
     // set up the names for the event data
     m_evtNamesRaw = NamesId(nodeId, EventNamesIndex+0);
