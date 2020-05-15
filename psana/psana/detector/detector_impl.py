@@ -50,22 +50,26 @@ class DetectorImpl(object):
             return None
 
     def _info(self,evt):
-        return self._segments(evt)[0]
+        # check for missing data
+        segments = self._segments(evt)
+        if segments is None: return None
+        return segments[0]
 
     @staticmethod
     def _return_types(rtype,rrank):
         rval = typing.Any
-        if rtype<8:
+        if rtype<10:
             if rrank==0:
-                rval = int
+                if rtype<8:
+                    rval = int
+                else:
+                    rval = float
             elif rrank==1:
                 rval = amitypes.Array1d
             elif rrank==2:
                 rval = amitypes.Array2d
             elif rrank==3:
                 rval = amitypes.Array3d
-        elif rtype<10:
-            rval = float
         elif rtype<11:
             rval = str
         return rval

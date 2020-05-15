@@ -7,10 +7,27 @@ class opal_raw_2_0_0(DetectorImpl):
 
         self._add_fields()
 
-    def _info(self,evt):
-        # check for missing data
-        segments = self._segments(evt)
-        if segments is None: return None
+class opal_ttfex_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(opal_ttfex_2_0_0, self).__init__(*args)
 
-        return segments[0]
+        self._add_fields()
+
+class opal_simfex_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(opal_simfex_2_0_0, self).__init__(*args)
+
+        self._add_fields()
+
+class opal_simfex_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(opal_simfex_2_0_0, self).__init__(*args)
+
+        self._add_fields()
+
+class opal_ref_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(opal_ref_2_0_0, self).__init__(*args)
+
+        self._add_fields()
 
