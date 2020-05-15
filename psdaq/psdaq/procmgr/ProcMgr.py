@@ -2,7 +2,7 @@
 # ProcMgr.py - configure (start, stop, status) the DAQ processes
 
 import os, sys, string, telnetlib
-from subprocess import Popen, PIPE, DEVNULL
+from subprocess import Popen, PIPE, DEVNULL, run
 import stat, errno, time
 import re
 from time import sleep, strftime
@@ -986,6 +986,13 @@ class ProcMgr:
                       outfile.write("# CMDLINE: %s\n" % value[self.DICT_CMD])
                       if 'TESTRELDIR' in os.environ:
                         outfile.write("# TESTRELDIR:%s\n" % os.environ['TESTRELDIR'])
+                        if len(value[self.DICT_CONDA]) > 2:
+                          outfile.write("# CONDA_REL:%s\n" % value[self.DICT_CONDA])
+                        cc = run(["git", "describe", "--dirty"], capture_output=True)
+                        if not cc.returncode:
+                          outfile.write("# GIT_DESCRIBE:%s\n" % str(cc.stdout.strip(), 'utf-8'))
+                        else:
+                          print("*** ERR: running 'git describe --dirty' failed")
                       outfile.close()
                     except:
                       print("*** ERR: writing log file '%s' failed" % logfile)
