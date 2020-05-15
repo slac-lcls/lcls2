@@ -20,14 +20,14 @@
 
 //-------------------
 //using namespace std; 
-using namespace XtcData;
+using namespace XtcData;  // this is evil
 
 namespace detector {
 
-  Names& configNames(XtcData::ConfigIter& configo);
+  XtcData::Names& configNames(XtcData::ConfigIter& configo);
 
-  std::string str_dg_info(const Dgram* dg);
-  void      print_dg_info(const Dgram* dg);
+  std::string str_dg_info(const XtcData::Dgram* dg);
+  void      print_dg_info(const XtcData::Dgram* dg);
 
   std::string str_config_names(XtcData::ConfigIter& configo);
   void      print_config_names(XtcData::ConfigIter& configo);
