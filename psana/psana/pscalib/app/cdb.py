@@ -6,11 +6,14 @@ Created on 2018-02-23 by Mikhail Dubrovin
 
 import sys
 
+import logging
+logger = logging.getLogger(__name__)
+from psana.pyalgos.generic.logger import config_logger, STR_LEVEL_NAMES
+SCRNAME = sys.argv[0].rsplit('/')[-1]
+
 #from psana.pyalgos.generic.Utils import print_parser # print_kwargs
 import psana.pscalib.calib.CalibConstants as cc
-from psana.pscalib.calib.MDB_CLI import cdb, logging, MODES
-
-LEVEL_NAMES = ', '.join(list(logging._levelToName.values()))
+from psana.pscalib.calib.MDB_CLI import cdb, MODES
 
 #------------------------------
 
@@ -53,29 +56,6 @@ def usage():
 
 #------------------------------
 
-def cdb_cli() :
-    """Calibration Data Base Command Line Interface
-    """
-    parser = input_option_parser()
-
-    if len(sys.argv) == 1 : 
-        print(80*'_')
-        parser.print_help()
-        print(80*'_')
-        parser.print_usage()
-        print(80*'_')
-        sys.exit('COMMAND WITHOUT PARAMETERS')
-
-    cdb(parser)
-
-    #(popts, pargs) = parser.parse_args()
-    #opts = vars(popts)
-    #kwargs = opts
-    #print_kwargs(kwargs)
-    #cdb(**kwargs)
-
-#------------------------------
-
 def input_option_parser() :
 
     from optparse import OptionParser
@@ -100,6 +80,7 @@ def input_option_parser() :
     d_iofname    = None # './fname.txt'
     d_comment    = 'No comment'
     d_loglevel   = 'INFO'
+    d_webcli     = False
 
     h_host       = 'DB host, default = %s' % d_host
     h_port       = 'DB port, default = %s' % d_port
@@ -120,7 +101,8 @@ def input_option_parser() :
     h_confirm    = 'confirmation of the action, default = %s' % d_confirm
     h_iofname    = 'output file prefix, default = %s' % d_iofname
     h_comment    = 'comment to the document, default = %s' % d_comment
-    h_loglevel   = 'logging level from list (%s), default = %s' % (LEVEL_NAMES, d_loglevel)
+    h_loglevel   = 'logging level from list (%s), default = %s' % (STR_LEVEL_NAMES, d_loglevel)
+    h_webcli     = 'use web-based CLI, default = %s' % d_webcli
 
     parser = OptionParser(description='Command line interface to LCLS2 calibration data base', usage=usage())
 
@@ -144,9 +126,40 @@ def input_option_parser() :
     parser.add_option('-f', '--iofname',    default=d_iofname,    action='store', type='string', help=h_iofname)
     parser.add_option('-m', '--comment',    default=d_comment,    action='store', type='string', help=h_comment)
     parser.add_option('-l', '--loglevel',   default=d_loglevel,   action='store', type='string', help=h_loglevel)
+    parser.add_option('-w', '--webcli',     default=d_webcli,     action='store_true',           help=h_webcli)
 
     return parser
   
+#------------------------------
+
+def cdb_cli() :
+    """Calibration Data Base Command Line Interface
+    """
+    parser = input_option_parser()
+
+    if len(sys.argv) == 1 : 
+        print(80*'_')
+        parser.print_help()
+        print(80*'_')
+        parser.print_usage()
+        print(80*'_')
+        sys.exit('COMMAND WITHOUT PARAMETERS')
+
+    (popts, pargs) = parser.parse_args()
+    #args = pargs
+    #defs = vars(parser.get_default_values())
+    kwargs = vars(popts)
+
+    webcli = kwargs['webcli']
+    loglevel = kwargs.get('loglevel','DEBUG').upper()
+    fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
+    config_logger(loglevel, fmt=fmt)
+
+    if kwargs['webcli']: 
+        from psana.pscalib.calib.MDBWeb_CLI import cdb_web
+        cdb_web(parser)
+    else: cdb(parser)
+
 #------------------------------
 
 if __name__ == "__main__" :

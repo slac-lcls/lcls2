@@ -5,19 +5,14 @@ Created on 2018-02-23 by Mikhail Dubrovin
 #------------------------------
 
 import os
-from psana.pyalgos.generic.Utils import print_kwargs, print_parser, is_in_command_line
-
-import psana.pyalgos.generic.Utils as gu
-from psana.pyalgos.generic.NDArrUtils import info_ndarr #, print_ndarr
-from psana.pscalib.calib.NDArrIO import load_txt, save_txt
-from psana.pscalib.calib.XtcavUtils import load_xtcav_calib_file
-
-import psana.pscalib.calib.MDBUtils as dbu # insert_constants, time_and_timestamp
 import numpy as np
-
-from psana.pyalgos.generic.logger import logging, config_logger
-#import logging
+import logging
 logger = logging.getLogger(__name__)
+
+import psana.pyalgos.generic.Utils as gu # print_kwargs, print_parser, is_in_command_line, etc
+import psana.pscalib.calib.MDBUtils as dbu # insert_constants, time_and_timestamp
+from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
+from psana.pscalib.calib.NDArrIO import load_txt, save_txt
 
 MODES = ('print', 'convert', 'deldoc', 'delcol', 'deldb', 'delall', 'add', 'get', 'export', 'import', 'test')
 
@@ -61,17 +56,13 @@ class MDB_CLI :
 
         self.kwargs = kwargs
         self.defs = vars(parser.get_default_values())
-
         self.loglevel = kwargs.get('loglevel','DEBUG').upper()
 
-        fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
-        config_logger(loglevel=self.loglevel, fmt=fmt)
-
         if self.loglevel == 'DEBUG' :
-            from psana.pyalgos.generic.Utils import print_kwargs, print_parser
+            #from psana.pyalgos.generic.Utils import print_kwargs, print_parser
             print(40*'_')
-            print_parser(parser)
-            print_kwargs(kwargs)
+            gu.print_parser(parser)
+            gu.print_kwargs(kwargs)
             fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
 
 
@@ -216,8 +207,8 @@ class MDB_CLI :
         if run   != defs['run']      : query['run']      = run
         if vers  != defs['version']  : query['version']  = vers
         #if tsec  != defs['time_sec'] : query['time_sec'] = tsec
-        if is_in_command_line('-s', '--time_sec')   : query['time_sec'] = tsec 
-        if is_in_command_line('-t', '--time_stamp') : query['time_stamp'] = tstamp 
+        if gu.is_in_command_line('-s', '--time_sec')   : query['time_sec'] = tsec 
+        if gu.is_in_command_line('-t', '--time_stamp') : query['time_stamp'] = tstamp 
 
         logger.info('query: %s' % str(query))
 
@@ -247,6 +238,9 @@ class MDB_CLI :
         verb  = self.loglevel == 'DEBUG'
         assert os.path.exists(fname), 'File "%s" DOES NOT EXIST' % fname
 
+        if dtype == 'xtcav':
+            from psana.pscalib.calib.XtcavUtils import load_xtcav_calib_file
+
         ext = os.path.splitext(fname)[-1]
         data = gu.load_textfile(fname, verb=verb) if ctype == 'geometry' or dtype in ('str', 'txt', 'text') else\
                load_xtcav_calib_file(fname)       if dtype == 'xtcav' else\
@@ -271,8 +265,8 @@ class MDB_CLI :
         dtype  = kwargs.get('dtype', None)
         run    = kwargs.get('run', None)
         run_end= kwargs.get('run_end', None)
-        tsec   = kwargs.get('time_sec', None)   if is_in_command_line('-s', '--time_sec')   else None
-        tstamp = kwargs.get('time_stamp', None) if is_in_command_line('-t', '--time_stamp') else None
+        tsec   = kwargs.get('time_sec', None)   if gu.is_in_command_line('-s', '--time_sec')   else None
+        tstamp = kwargs.get('time_stamp', None) if gu.is_in_command_line('-t', '--time_stamp') else None
         vers   = kwargs.get('version', None)
         prefix = kwargs.get('iofname', None)
         verb   = self.loglevel == 'DEBUG'
