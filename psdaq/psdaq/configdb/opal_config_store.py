@@ -4,7 +4,7 @@ import sys
 import IPython
 import argparse
 
-def write_to_daq_config_db(args):
+def opal_cdict(args):
 
     #database contains collections which are sets of documents (aka json objects).
     #each type of device has a collection.  The elements of that collection are configurations of that type of device.
@@ -16,14 +16,6 @@ def write_to_daq_config_db(args):
     #When a device is configured, the device has a unique name OPAL7.  Need to search through document for one that has an NAME called OPAL7.  This will have
     #have two fields "collection" and ID field (note how collection here is a field. ID points to a unique document).  This collection field and
     #ID point to the actuall Mongo DB collection and document
-
-    create = True
-    dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
-
-    mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create,
-                         root=dbname, user=args.user, password=args.password)
-    mycdb.add_alias(args.alias)
-    mycdb.add_device_config('opal')
 
     top = cdict()
     top.setInfo('opal', args.name, args.segm, args.id, 'No comment')
@@ -108,15 +100,7 @@ def write_to_daq_config_db(args):
     top.set("expert.ClinkFeb[0].ClinkTop.Ch[0].UartOpal1000.FST[0]",0,'UINT32')   # flash stroble timing
     top.set("expert.ClinkFeb[0].ClinkTop.Ch[0].UartOpal1000.FST[1]",0,'UINT32')
     top.set("expert.ClinkFeb[0].ClinkTop.Ch[0].UartOpal1000.FSP",   1,'UINT32')   # flash strobe polarity
-
-    #the object hierarchy paths (e.g. cl.TimeToolKcu1500.Application.AppLane0... yadayadayada) for a device can be found by implementing
-    #pr.generateAddressMap where pr comes from "import rogue as pr".  For this to work, one has to be logged onto the machine hosting the firmware
-    #that interacts with rogue.  This particular register map can be found in the lcls2-pcie-apps directory cloned from https://github.com/slaclab/lcls2-pcie-apps.
-
-    mycdb.modify_device(args.alias, top)
-
-    #IPython.embed()
-
+    return top
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Write a new TimeTool configuration into the database')
@@ -128,4 +112,15 @@ if __name__ == "__main__":
     parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
     parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
     args = parser.parse_args()
-    write_to_daq_config_db(args)
+
+    create = True
+    dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
+
+    mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create,
+                         root=dbname, user=args.user, password=args.password)
+    mycdb.add_alias(args.alias)
+    mycdb.add_device_config('opal')
+
+    top = opal_cdict(args)
+
+    mycdb.modify_device(args.alias, top)

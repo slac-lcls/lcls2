@@ -28,11 +28,12 @@ def opal_init(arg,xpmpv=None):
 
     # Open a new thread here
     if xpmpv is not None:
-        cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.UseMiniTpg.set(True)
+        cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
         pv = PVCtrls(xpmpv,cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper)
         pv.start()
     else:
-        cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.UseMiniTpg.set(False)
+        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+        time.sleep(0.1)
 
     return cl
 
@@ -47,6 +48,14 @@ def opal_connect(cl):
     rxId = cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
     cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
 
+    print('rxId {:x}'.format(rxId))
+
+    # initialize the serial link
+    uart = getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan)
+    uart.BaudRate.set(57600)
+    uart.SerThrottle.set(10000)
+    time.sleep(0.10)
+
     # @ID? returns OPAL-1000m/Q S/N:xxxxxxxx
     uart = getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan).UartOpal1000
     try:
@@ -58,6 +67,8 @@ def opal_connect(cl):
     opalid = uart._rx._last
     print('opalid {:}'.format(opalid))
 
+    cl.StopRun()
+
     d = {}
     d['paddr'] = rxId
     d['model'] = opalid.split('-')[1].split('/')[0]
@@ -66,6 +77,7 @@ def opal_connect(cl):
     return d
 
 def opal_config(cl,connect_str,cfgtype,detname,detsegm,group):
+
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
 
     lane = 0
@@ -73,6 +85,10 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,group):
 
     if(cl.ClinkPcie.Hsio.PgpMon[0].RxRemLinkReady.get() != 1):
         raise ValueError(f'PGP Link is down' )
+
+    # drain any data in the event pipeline
+    getattr(cl.ClinkPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(True)
+    getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan).Blowoff.set(True)
 
     # overwrite the low-level configuration parameters with calculations from the user configuration
 
@@ -142,6 +158,7 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,group):
 
     cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
     cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(True)
+    getattr(cl.ClinkPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(False)
 
     #  Capture the firmware version to persist in the xtc
     cfg['firmwareVersion'] = cl.ClinkPcie.AxiPcieCore.AxiVersion.FpgaVersion.get()
@@ -152,5 +169,7 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,group):
     return json.dumps(cfg)
 
 def opal_unconfig(cl):
-    cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(False)
+    cl.StopRun()
+
+#    cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(False)
     return cl
