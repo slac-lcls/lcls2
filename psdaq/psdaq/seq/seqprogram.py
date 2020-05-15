@@ -2,6 +2,7 @@ import time
 from psdaq.seq.seq import *
 from psdaq.cas.pvedit import *
 from threading import Lock
+import argparse
 
 class SeqUser:
     def __init__(self, base):
