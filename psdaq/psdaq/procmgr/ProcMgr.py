@@ -988,11 +988,11 @@ class ProcMgr:
                         outfile.write("# TESTRELDIR:%s\n" % os.environ['TESTRELDIR'])
                         if len(value[self.DICT_CONDA]) > 2:
                           outfile.write("# CONDA_REL:%s\n" % value[self.DICT_CONDA])
-                        cc = run(["git", "describe", "--dirty"], capture_output=True)
+                        cc = run(["git", "describe", "--dirty", "--tag"], capture_output=True)
                         if not cc.returncode:
                           outfile.write("# GIT_DESCRIBE:%s\n" % str(cc.stdout.strip(), 'utf-8'))
                         else:
-                          print("*** ERR: running 'git describe --dirty' failed")
+                          print("*** ERR: running 'git describe --dirty --tag' failed")
                       outfile.close()
                     except:
                       print("*** ERR: writing log file '%s' failed" % logfile)
