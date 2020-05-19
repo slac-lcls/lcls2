@@ -1,7 +1,7 @@
 #include <getopt.h>
 #include <sstream>
 #include <iostream>
-#include <Python.h>
+#include <algorithm>
 #include "drp.hh"
 #include "PGPDetectorApp.hh"
 #include "rapidjson/document.h"
@@ -12,15 +12,16 @@ using json = nlohmann::json;
 void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
     std::istringstream ss(kwargs_str);
     std::string kwarg;
-    std::string::size_type pos = 0;
     while (getline(ss, kwarg, ',')) {
-        pos = kwarg.find("=", pos);
+        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
+        auto pos = kwarg.find("=", 0);
         if (!pos) {
+            logging::critical("Keyword argument with no equal sign");
             throw "drp.cc error: keyword argument with no equal sign: "+kwargs_str;
         }
         std::string key = kwarg.substr(0,pos);
         std::string value = kwarg.substr(pos+1,kwarg.length());
-        //cout << kwarg << " " << key << " " << value << endl;
+        //std::cout << "kwarg = '" << kwarg << "' key = '" << key << "' value = '" << value << "'" << std::endl;
         para.kwargs[key] = value;
     }
 }
@@ -122,10 +123,8 @@ int main(int argc, char* argv[])
     para.nTrBuffers = 8; // Power of 2 greater than the maximum number of
                          // transitions in the system at any given time, e.g.,
                          // MAX_LATENCY * (SlowUpdate rate), in same units
-    Py_Initialize(); // for use by configuration
     Drp::PGPDetectorApp app(para);
     app.run();
     app.handleReset(json({}));
-    Py_Finalize(); // for use by configuration
     std::cout<<"end of main drp\n";
 }

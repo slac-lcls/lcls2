@@ -21,10 +21,10 @@ namespace Pds {
     public:
       PoolDeclare;
     public:
-      EbEvent(uint64_t                contract,
-              EbEvent*                after,
+      EbEvent(uint64_t            contract,
+              EbEvent*            after,
               const Pds::EbDgram* ctrb,
-              unsigned                prm);
+              unsigned            prm);
       ~EbEvent();
     public:
       unsigned        parameter() const;
@@ -47,12 +47,12 @@ namespace Pds {
       void     _insert(const Pds::EbDgram*);
       bool     _alive();
     private:
-      size_t                   _size;            // Total contribution size (in bytes)
-      uint64_t                 _remaining;       // List of clients which have contributed
-      const uint64_t           _contract;        // -> potential list of contributors
-      int                      _living;          // Aging counter
-      unsigned                 _prm;             // An application level free parameter
-      XtcData::Damage          _damage;          // Accumulate damage about this event
+      size_t               _size;            // Total contribution size (in bytes)
+      uint64_t             _remaining;       // List of clients which have contributed
+      const uint64_t       _contract;        // -> potential list of contributors
+      int                  _living;          // Aging counter
+      unsigned             _prm;             // An application level free parameter
+      XtcData::Damage      _damage;          // Accumulate damage about this event
       const Pds::EbDgram** _last;            // Pointer into the contributions array
       const Pds::EbDgram*  _contributions[]; // Array of contributions
     };

@@ -28,6 +28,8 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     m_drp(para, context()),
     m_para(para)
 {
+    Py_Initialize(); // for use by configuration
+
     Factory<Detector> f;
     f.register_type<TimingSystem>("ts");
     f.register_type<Digitizer>("hsd");
@@ -52,6 +54,18 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 }
 
+PGPDetectorApp::~PGPDetectorApp()
+{
+    try {
+        PyGILState_Ensure();
+        Py_Finalize(); // for use by configuration
+    } catch(const std::exception &e) {
+        std::cout << "Exception in ~PGPDetectorApp(): " << e.what() << "\n";
+    } catch(...) {
+        std::cout << "Exception in Python code: UNKNOWN\n";
+    }
+}
+
 void PGPDetectorApp::shutdown()
 {
     m_exporter.reset();
@@ -61,12 +75,15 @@ void PGPDetectorApp::shutdown()
     }
 
     if (m_pgpDetector) {
+        m_drp.stop();                   // Release allocate()
         m_pgpDetector->shutdown();
         if (m_pgpThread.joinable()) {
             m_pgpThread.join();
+            logging::info("PGPReader thread finished");
         }
         if (m_collectorThread.joinable()) {
             m_collectorThread.join();
+            logging::info("Collector thread finished");
         }
         m_pgpDetector.reset();
     }

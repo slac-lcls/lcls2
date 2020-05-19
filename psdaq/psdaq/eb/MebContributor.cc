@@ -87,6 +87,8 @@ void MebContributor::shutdown()
 
 int MebContributor::post(const EbDgram* ddg, uint32_t destination)
 {
+  ddg->setEOL();                        // Set end-of-list marker
+
   unsigned     dst    = ImmData::src(destination);
   uint32_t     idx    = ImmData::idx(destination);
   size_t       sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
@@ -122,6 +124,8 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
 
 int MebContributor::post(const EbDgram* ddg)
 {
+  ddg->setEOL();                        // Set end-of-list marker
+
   size_t              sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
   TransitionId::Value tr     = ddg->service();
   uint64_t            offset = _bufRegSize + tr * _maxTrSize;

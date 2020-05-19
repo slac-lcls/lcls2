@@ -103,7 +103,7 @@ namespace Pds {
     private:
       const size_t                     _maxEvtSz;
       uint16_t                         _readoutGroup;
-      const Xtc                        _xtc;
+      Xtc                              _xtc;
       uint64_t                         _pid;
       //GenericPoolW*                    _pool;
       GenericPool*                     _pool;
@@ -185,7 +185,7 @@ void DrpSim::startup(unsigned id, void** base, size_t* size, uint16_t readoutGro
   _allocPending = 0;
   _readoutGroup = readoutGroup;
 
-  const_cast<Xtc&>(_xtc) = Xtc(TypeId(TypeId::Data, 0), Src(id));
+  _xtc = Xtc(TypeId(TypeId::Data, 0), Src(id));
 
   // Avoid going into resource wait by configuring more events in the pool than
   // are necessary to fill all the batches in the batch pool, i.e., make the
@@ -290,14 +290,17 @@ const EbDgram* DrpSim::generate()
 
   Input* idg = ::new(buffer) Input(_pid, tr, _xtc);
 
-  size_t inputSize = INPUT_EXTENT * sizeof(uint32_t);
-
-  // Here is where trigger input information is inserted into the datagram
+  if (idg->isEvent())
   {
-    uint32_t* payload = (uint32_t*)idg->xtc.alloc(inputSize);
-    payload[WRT_IDX] = (_pid %   3) == 0 ? 0xdeadbeef : 0xabadcafe;
-    payload[MON_IDX] = (_pid % 119) == 0 ? 0x12345678 : 0;
-    //payload[MON_IDX] = _pid & (131072 - 1);
+    size_t inputSize = INPUT_EXTENT * sizeof(uint32_t);
+
+    // Here is where trigger input information is inserted into the datagram
+    {
+      uint32_t* payload = (uint32_t*)idg->xtc.alloc(inputSize);
+      payload[WRT_IDX] = (_pid %   3) == 0 ? 0xdeadbeef : 0xabadcafe;
+      payload[MON_IDX] = (_pid % 119) == 0 ? 0x12345678 : 0;
+      //payload[MON_IDX] = _pid & (131072 - 1);
+    }
   }
 
 #ifdef SINGLE_EVENTS
@@ -764,6 +767,7 @@ int CtrbApp::_parseConnectionParams(const json& body)
   printf("  Bit list of TEBs:         0x%016lx, cnt: %zd\n", _tebPrms.builders,
                                                              std::bitset<64>(_tebPrms.builders).count());
   printf("  Number of MEBs:             %zd\n",              _mebPrms.addrs.size());
+  printf("  Batching state:             %s\n",               _tebPrms.batching ? "Enabled" : "Disabled");
   printf("  Batch duration:           0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
   printf("  Batch pool depth:           %d\n",               MAX_BATCHES);
   printf("  Max # of entries / batch:   %d\n",               MAX_ENTRIES);
@@ -830,7 +834,8 @@ int main(int argc, char **argv)
                            /* .core          = */ { CORE_0, CORE_1 },
                            /* .verbose       = */ 0,
                            /* .groups        = */ 0,
-                           /* .contractor    = */ 0 };
+                           /* .contractor    = */ 0,
+                           /* .batching      = */ true };
   MebCtrbParams  mebPrms { /* .addrs         = */ { },
                            /* .ports         = */ { },
                            /* .instrument    = */ { },

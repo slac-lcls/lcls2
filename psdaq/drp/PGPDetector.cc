@@ -75,7 +75,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                     exit(-1);
                 }
 
-                if (event->l3InpBuf) {  // else timed out
+                if (event->l3InpBuf) {  // else shutting down
                     Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(*dgram);
                     if (drp.triggerPrimitive()) { // else this DRP doesn't provide input
                         drp.triggerPrimitive()->event(pool, index, dgram->xtc, l3InpDg->xtc);
@@ -108,7 +108,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                     exit(-1);
                 }
 
-                if (event->l3InpBuf) { // else timed out
+                if (event->l3InpBuf) { // else shutting down
                     new(event->l3InpBuf) Pds::EbDgram(*dgram);
                 }
                 event->transitionDgram = trDgram;
@@ -281,7 +281,7 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
         for (unsigned i=0; i<batch.size; i++) {
             unsigned index = (batch.start + i) % nbuffers;
             PGPEvent* event = &m_pool.pgpEvents[index];
-            if (event->l3InpBuf) // else timed out
+            if (event->l3InpBuf) // else shutting down
             {
                 Pds::EbDgram* dgram = static_cast<Pds::EbDgram*>(event->l3InpBuf);
                 tebContributor.process(dgram);

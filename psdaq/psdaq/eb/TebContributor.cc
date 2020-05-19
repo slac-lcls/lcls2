@@ -12,7 +12,7 @@
 #include "xtcdata/xtc/Dgram.hh"
 
 #ifdef NDEBUG
-//#undef NDEBUG
+#undef NDEBUG
 #endif
 
 #include <cassert>
@@ -23,7 +23,10 @@
 #include <string>
 #include <thread>
 
+#include <unistd.h>
+
 using namespace XtcData;
+using namespace Pds;
 using namespace Pds::Eb;
 using logging  = psalg::SysLog;
 
@@ -31,32 +34,36 @@ using logging  = psalg::SysLog;
 TebContributor::TebContributor(const TebCtrbParams&                   prms,
                                const std::shared_ptr<MetricExporter>& exporter) :
   _prms        (prms),
-  _batMan      (prms.maxInputSize),
+  _batMan      (prms.maxInputSize, prms.batching),
   _transport   (prms.verbose),
   _links       (),
   _id          (-1),
   _numEbs      (0),
-  _pending     (MAX_BATCHES),
-  _batch       (nullptr),
+  _pending     (MAX_LATENCY), // Revisit: MAX_BATCHES),
+  _batchStart  (nullptr),
+  _batchEnd    (nullptr),
   _eventCount  (0),
   _batchCount  (0)
 {
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},{"partition", std::to_string(prms.partition)}};
+  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
+                                            {"partition", std::to_string(prms.partition)}};
   exporter->add("TCtbO_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;             });
   exporter->add("TCtbO_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;             });
   exporter->add("TCtbO_BtAlCt", labels, MetricType::Counter, [&](){ return _batMan.batchAllocCnt(); });
   exporter->add("TCtbO_BtFrCt", labels, MetricType::Counter, [&](){ return _batMan.batchFreeCnt();  });
   exporter->add("TCtbO_BtWtg",  labels, MetricType::Gauge,   [&](){ return _batMan.batchWaiting();  });
+  exporter->add("TCtb_IUBats",  labels, MetricType::Gauge,   [&](){ return _batMan.inUseBatchCnt(); });
   exporter->add("TCtbO_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;             });
   exporter->add("TCtbO_TxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending();    });
-  exporter->add("TCtbO_InFlt",  labels, MetricType::Gauge,   [&](){ return _pending.count();        });
+  exporter->add("TCtbO_InFlt",  labels, MetricType::Gauge,   [&](){ return _pending.guess_size();   });
 }
 
 int TebContributor::configure(const TebCtrbParams& prms)
 {
   _id      = prms.id;
   _numEbs  = std::bitset<64>(prms.builders).count();
-  _pending.clear();
+  const EbDgram* dg;
+  while (_pending.try_pop(dg));
 
   void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
   size_t regSize = _batMan.batchRegionSize(); // No need to add Tr space size here
@@ -95,7 +102,8 @@ int TebContributor::configure(const TebCtrbParams& prms)
 
 void TebContributor::startup(EbCtrbInBase& in)
 {
-  _batch      = nullptr;
+  _batchStart = nullptr;
+  _batchEnd   = nullptr;
   _eventCount = 0;
   _batchCount = 0;
   _running.store(true, std::memory_order_release);
@@ -105,12 +113,13 @@ void TebContributor::startup(EbCtrbInBase& in)
 void TebContributor::shutdown()
 {
   _running.store(false, std::memory_order_release);
+  _batMan.stop();
 
   if (_rcvrThread.joinable())  _rcvrThread.join();
 
-  _batMan.stop();
   _batMan.dump();
   _batMan.shutdown();
+  _pending.shutdown();
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
@@ -124,9 +133,9 @@ void TebContributor::shutdown()
 void* TebContributor::allocate(const TimingHeader& hdr, const void* appPrm)
 {
   auto pid   = hdr.pulseId();
-  auto batch = _batMan.fetch(pid);
+  auto batch = _batMan.fetchW(pid);     // Can block
 
-  if (_prms.verbose >= VL_EVENT)
+  if (unlikely(_prms.verbose >= VL_EVENT))
   {
     const char* svc = TransitionId::name(hdr.service());
     unsigned    idx = batch ? batch->index() : -1;
@@ -137,97 +146,125 @@ void* TebContributor::allocate(const TimingHeader& hdr, const void* appPrm)
            svc, idx, &hdr, ctl, pid, env, appPrm);
   }
 
-  if (batch)                            // Null when terminating
-  {
-    ++_eventCount;                      // Only count events handled
+  if (unlikely(!batch)) return nullptr; // Null when terminating
 
-    batch->store(pid, appPrm);          // Save the appPrm for _every_ event
+  ++_eventCount;                        // Only count events handled
 
-    return batch->allocate();
-  }
-  return batch;
+  _batMan.store(pid, appPrm);           // Save the appPrm for _every_ event
+
+  return batch->allocate();
 }
 
 void TebContributor::process(const EbDgram* dgram)
 {
-  const auto pid        = dgram->pulseId();
-  const auto idx        = Batch::batchNum(pid);
-  auto       cur        = _batMan.batch(idx);
-  bool       flush      = !(dgram->isEvent() ||
-                            (dgram->service() == TransitionId::SlowUpdate));
-  bool       contractor = dgram->readoutGroups() & _prms.contractor;
-
-  if ((_batch && _batch->expired(pid)) || flush)
+  if (likely(dgram->readoutGroups() & (1 << _prms.partition))) // Common RoG triggered
   {
-    if (_batch)
+    // The batch start is the first dgram seen
+    if (!_batchStart)
     {
-      _batch->terminate();   // Avoid race: terminate before adding it to the list
-      _pending.push(_batch); // Add to the list only when complete, even if empty
-      if (contractor)  _post(_batch);
+      _batchStart = dgram;
+      _contractor = dgram->readoutGroups() & _prms.contractor;
     }
 
-    if (flush && (_batch != cur))
-    {
-      cur->terminate();      // Avoid race: terminate before adding it to the list
-      _pending.push(cur);    // Add to the list only when complete, even if empty
-      if (contractor)  _post(cur);
-      cur = nullptr;
-    }
+    const EbDgram*      start      = _batchStart;
+    const EbDgram*      end        = _batchEnd;
+    bool                expired    = _batMan.expired(dgram->pulseId(), start->pulseId());
+    TransitionId::Value svc        = dgram->service();
+    bool                flush      = !((svc == TransitionId::L1Accept) ||
+                                       (svc == TransitionId::SlowUpdate));
 
-    _batch = cur;
+    if (!(expired || flush))  // Most frequent case
+    {
+      _batchEnd    = dgram;   // The batch end is the one before the current Dgram
+      _contractor |= dgram->readoutGroups() & _prms.contractor;
+    }
+    else
+    {
+      if (expired)
+      {
+        if (!end)  end = dgram;
+
+        if (_contractor)  _post(start, end);
+
+        // Start a new batch
+        _batchStart = end == dgram ? nullptr : dgram;
+        _batchEnd   = end == dgram ? nullptr : dgram;
+
+        start = _batchStart;
+        if (start == dgram)
+          _contractor = dgram->readoutGroups() & _prms.contractor;
+      }
+
+      if (flush && start)     // Post the batch + transition if it wasn't just done
+      {
+        if (_contractor)  _post(start, dgram);
+
+        // Start a new batch
+        _batchStart = nullptr;
+        _batchEnd   = nullptr;
+      }
+    }
   }
-  else if (!_batch)  _batch = cur;
-
-  // Revisit: Sending the transitions to the non-selected EBs may not be useful
-  // since they are not sent with a payload.  The TEB can't really do anything
-  // with them since they don't contain any information for the TEB to react to.
-  // The only exceptions to this might be that the value of the env may some day
-  // be used for something and the presence of a transition is used to flush
-  // whatever Result batch is in progress, if that can happen.  For now we leave
-  // this code in until there's a compelling reason to remove it.  If it is to
-  // be removed, consider removing the additional RDMA memory region space where
-  // the transitions land as well, if this doesn't conflict with the MEB's needs.
-  if (!dgram->isEvent())
+  else                        // Common RoG didn't trigger: bypass the TEB
   {
-    if (contractor)  _post(dgram);
+    if (_batchStart && _contractor)  _post(_batchStart, _batchEnd);
+
+    dgram->setEOL();          // Terminate for clarity and dump-ability
+    _pending.push(dgram);
+    assert (size_t(_pending.guess_size()) < _pending.size());
+
+    // Start a new batch
+    _batchStart = nullptr;
+    _batchEnd   = nullptr;
+  }
+
+  // Keep non-selected TEBs synchronized by forwarding transitions to them.  In
+  // particular, the Disable transition flushes out whatever Results batch they
+  // currently have in-progress.
+  if (!dgram->isEvent())             // Also capture the most recent SlowUpdate
+  {
+    if (_contractor)  _post(dgram);
   }
 }
 
-void TebContributor::_post(const Batch* batch) const
+void TebContributor::_post(const EbDgram* start, const EbDgram* end)
 {
-  if (!batch->empty())
+  uint64_t     pid    = start->pulseId();
+  uint32_t     idx    = Batch::index(pid);
+  size_t       extent = (reinterpret_cast<const char*>(end) -
+                         reinterpret_cast<const char*>(start)) + _prms.maxInputSize;
+  unsigned     offset = (reinterpret_cast<const char*>(start) -
+                         reinterpret_cast<const char*>(_batMan.batchRegion()));
+  uint32_t     data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
+  unsigned     dst    = (idx / MAX_ENTRIES) % _numEbs;
+  EbLfCltLink* link   = _links[dst];
+
+  end->setEOL();        // Avoid race: terminate before adding batch to pending list
+  _pending.push(start); // Get the batch on the queue before any corresponding result can show up
+  assert (size_t(_pending.guess_size()) < _pending.size());
+
+  if (unlikely(_prms.verbose >= VL_BATCH))
   {
-    uint32_t     idx    = batch->index();
-    unsigned     dst    = idx % _numEbs;
-    EbLfCltLink* link   = _links[dst];
-    uint32_t     data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
-    size_t       extent = batch->extent();
-    unsigned     offset = idx * _batMan.maxBatchSize();
-    const void*  buffer = batch->buffer();
-
-    if (_prms.verbose >= VL_BATCH)
-    {
-      uint64_t pid    = batch->id();
-      void*    rmtAdx = (void*)link->rmtAdx(offset);
-      printf("CtrbOut posts %9ld    batch[%8d]    @ "
-             "%16p,         pid %014lx,               sz %6zd, TEB %2d @ %16p, data %08x\n",
-             _batchCount, idx, buffer, pid, extent, dst, rmtAdx, data);
-    }
-
-    if (link->post(buffer, extent, offset, data) < 0)  return;
+    void* rmtAdx = (void*)link->rmtAdx(offset);
+    printf("CtrbOut posts %9ld    batch[%8d]    @ "
+           "%16p,         pid %014lx,               sz %6zd, TEB %2d @ %16p, data %08x\n",
+           _batchCount, idx, start, pid, extent, dst, rmtAdx, data);
   }
+
+  if (link->post(start, extent, offset, data) < 0)  return;
 
   ++_batchCount;                        // Count all batches handled
 }
 
 void TebContributor::_post(const EbDgram* dgram) const
 {
-  // Non-events datagrams are sent to all TEBs, except the one that got the
-  // batch containing it.  These EBs won't generate responses.
+  // Send transition datagrams to all TEBs, except the one that got the
+  // batch containing it.  These TEBs won't generate responses.
+  if (_links.size() < 2)  return;
 
   uint64_t pid    = dgram->pulseId();
-  uint32_t idx    = Batch::batchNum(pid);
-  unsigned dst    = idx % _numEbs;
+  uint32_t idx    = Batch::index(pid);
+  unsigned dst    = (idx / MAX_ENTRIES) % _numEbs;
   unsigned tr     = dgram->service();
   uint32_t data   = ImmData::value(ImmData::Transition | ImmData::NoResponse, _id, tr);
   size_t   extent = sizeof(*dgram);  assert(dgram->xtc.sizeofPayload() == 0);
@@ -236,9 +273,9 @@ void TebContributor::_post(const EbDgram* dgram) const
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
     EbLfCltLink* link = *it;
-    if (link->id() != dst)        // Batch posted above included this non-event
+    if (link->id() != dst)        // Batch posted to dst included this Dgram
     {
-      if (_prms.verbose >= VL_BATCH)
+      if (unlikely(_prms.verbose >= VL_BATCH))
       {
         unsigned    env    = dgram->env;
         unsigned    ctl    = dgram->control();

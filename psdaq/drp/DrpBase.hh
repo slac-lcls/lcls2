@@ -75,6 +75,7 @@ public:
     prometheus::Exposer* exposer() {return m_exposer.get();}
     unsigned nodeId() const {return m_nodeId;}
     const Pds::Eb::TebCtrbParams& tebPrms() const {return m_tPrms;}
+    void stop() { if (m_tebContributor)  m_tebContributor->stop(); }
     MemPool pool;
 private:
     int setupTriggerPrimitives(const nlohmann::json& body);

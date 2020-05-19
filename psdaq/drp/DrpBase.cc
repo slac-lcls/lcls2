@@ -126,7 +126,7 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_damage(0)
 {
     std::map<std::string, std::string> labels
-    {{"instrument", para.instrument}, 
+    {{"instrument", para.instrument},
         {"partition", std::to_string(para.partition)},
           {"detname", para.detName}};
     exporter->add("DRP_Damage"    , labels, Pds::MetricType::Gauge  , [&](){ return m_damage; });
@@ -331,6 +331,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 {
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition = para.partition;
+    m_tPrms.batching  = m_para.kwargs["batching"] != "no"; // Default to "yes"
     m_tPrms.core[0]   = -1;
     m_tPrms.core[1]   = -1;
     m_tPrms.verbose   = para.verbose;
@@ -649,6 +650,7 @@ void DrpBase::printParams() const
     printf("  Bit list of TEBs:           0x%016lx, cnt: %zd\n", m_tPrms.builders,
                                                                  std::bitset<64>(m_tPrms.builders).count());
     printf("  Number of MEBs:             %zd\n",                m_mPrms.addrs.size());
+    printf("  Batching state:             %s\n",                 m_tPrms.batching ? "Enabled" : "Disabled");
     printf("  Batch duration:             0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
     printf("  Batch pool depth:           %d\n",                 MAX_BATCHES);
     printf("  Max # of entries / batch:   %d\n",                 MAX_ENTRIES);

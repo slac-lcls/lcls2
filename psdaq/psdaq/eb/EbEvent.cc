@@ -3,6 +3,11 @@
 
 #include "xtcdata/xtc/Dgram.hh"
 
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
+#include <cassert>
 #include <new>
 #include <stdlib.h>
 
@@ -47,9 +52,9 @@ EbEvent::EbEvent(uint64_t        contract,
   if (_remaining == contract)           // Make sure some bit was taken down
   {
     fprintf(stderr, "%s:\n  Source %d isn't in the contract %016lx "
-            "for event with pulse ID %014lx\n",
-            __PRETTY_FUNCTION__, cdg->xtc.src.value(), contract, cdg->pulseId());
-    // Revisit: Set damage?
+            "for event @ %16p with pulse ID %014lx\n",
+            __PRETTY_FUNCTION__, cdg->xtc.src.value(), contract, cdg, cdg->pulseId());
+    assert (_remaining != contract);
   }
 
   connect(after);
@@ -109,9 +114,9 @@ EbEvent* EbEvent::_add(const EbDgram* cdg)
   if (_remaining == remaining)          // Make sure some bit was taken down
   {
     fprintf(stderr, "%s:\n  Source %d didn't contribute to the contract %016lx "
-            "for event with pulse ID %014lx\n",
-            __PRETTY_FUNCTION__, cdg->xtc.src.value(), _contract, cdg->pulseId());
-    // Revisit: Set damage?
+            "for event @ %16p with pulse ID %014lx\n",
+            __PRETTY_FUNCTION__, cdg->xtc.src.value(), _contract, cdg, cdg->pulseId());
+    assert (_remaining != remaining);
   }
 
   _damage.increase(cdg->xtc.damage.value());

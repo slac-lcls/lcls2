@@ -1,22 +1,21 @@
 if not platform: platform = '5'
-username = 'lcls2'
 
 heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
 #ami_worker_nodes = ["drp-tst-acc%02d" % i for i in range(1, 5) if i != 2 and i != 3]
-ami_worker_nodes = ["drp-tst-dev016", "drp-tst-dev015"]
+ami_worker_nodes = ["drp-tst-dev016"] #, "drp-tst-dev015"]
 ami_num_workers = len(ami_worker_nodes)
 ami_manager_node = "drp-tst-acc05"
 
-conda_rel = 'ps-2.1.2'
+conda_rel = 'ps-3.1.10'
 
 procmgr_config_global = [
   { 'host': ami_manager_node, 'id':'ami-global',  'flags':'s', 'conda':conda_rel, 'cmd':f'ami-global -N 0 -n {ami_num_workers}'},
   { 'host': ami_manager_node, 'id':'ami-manager', 'flags':'s', 'conda':conda_rel, 'cmd':'ami-manager'},
   {                           'id':'ami-client',  'flags':'s', 'conda':conda_rel, 'cmd':f'ami-client -H {ami_manager_node}'},
   ## procstat
-  {                           'id':'procstat',   'flags':'sp', 'conda':conda_rel, 'cmd':'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+  {                           'id':'procstat',   'flags':'sp', 'conda':conda_rel, 'cmd':'procstat p'+platform+'.cnf.last'},
 ]
 
 procmgr_config_worker = []

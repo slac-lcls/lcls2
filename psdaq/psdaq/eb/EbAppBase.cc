@@ -25,7 +25,6 @@
 #include <bitset>
 #include <atomic>
 #include <thread>
-#include <map>
 
 using namespace XtcData;
 using namespace Pds;
@@ -72,7 +71,8 @@ int EbAppBase::configure(const std::string&                     pfx,
   _bufferCnt    = 0;
   _fixupCnt     = 0;
 
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},{"partition", std::to_string(prms.partition)}};
+  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
+                                            {"partition", std::to_string(prms.partition)}};
   exporter->add(pfx+"_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
   exporter->add(pfx+"_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
   exporter->add(pfx+"_FxUpCt", labels, MetricType::Counter, [&](){ return _fixupCnt;            });
@@ -115,7 +115,7 @@ int EbAppBase::configure(const std::string&                     pfx,
       return rc;
     }
     _bufRegSize[rmtId] = regSize;
-    _maxBufSize[rmtId] = regSize / _maxBuffers;
+    _maxBufSize[rmtId] = regSize / (_maxBuffers * _maxEntries);
     _maxTrSize[rmtId]  = prms.maxTrSize[rmtId];
     regSize           += roundUpSize(TransitionId::NumberOf * _maxTrSize[rmtId]);  // Ctrbs don't have a transition space
     regSizes[rmtId]    = regSize;
@@ -213,23 +213,18 @@ int EbAppBase::process()
 
   _ctrbSrc->observe(double(src));       // Revisit: For testing
 
-  if (_verbose >= VL_BATCH)
+  if (unlikely(_verbose >= VL_BATCH))
   {
     unsigned    env = idg->env;
     uint64_t    pid = idg->pulseId();
     unsigned    ctl = idg->control();
     const char* knd = TransitionId::name(idg->service());
-    size_t      sz  = sizeof(*idg) + idg->xtc.sizeofPayload(); // Just the first dg size, not the batch size
     printf("EbAp rcvd %9ld %15s[%8d]   @ "
-           "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d, data %08lx\n",
-           _bufferCnt, knd, idx, idg, ctl, pid, env, sz, lnk->id(), data);
+           "%16p, ctl %02x, pid %014lx, env %08x,            src %2d, data %08lx\n",
+           _bufferCnt, knd, idx, idg, ctl, pid, env, lnk->id(), data);
   }
 
-  // Tr space bufSize value is irrelevant since maxEntries will be 1 for that case
-  unsigned maxEntries = (ImmData::buf(flg) == ImmData::Buffer) ? _maxEntries : 1;
-  size_t   bufSize    = _maxBufSize[src] / maxEntries;
-
-  EventBuilder::process(idg, bufSize, maxEntries, data);
+  EventBuilder::process(idg, _maxBufSize[src], data);
 
   return 0;
 }
@@ -254,7 +249,7 @@ uint64_t EbAppBase::contract(const EbDgram* ctrb) const
   // participating in each readout group is provided at configuration time.
 
   uint64_t contract = 0;
-  unsigned groups   = ctrb->readoutGroups();
+  uint16_t groups   = ctrb->readoutGroups();
 
   while (groups)
   {
@@ -271,7 +266,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
   ++_fixupCnt;
   _fixupSrc->observe(double(srcId));
 
-  if (_verbose >= VL_EVENT)
+  //if (_verbose >= VL_EVENT)
   {
     printf("Fixup event %014lx, size %zu, for source %d\n",
            event->sequence(), event->size(), srcId);

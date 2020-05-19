@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <iostream>
 #include <map>
+#include <algorithm>
 #include <getopt.h>
 #include <Python.h>
 #include "DataDriver.h"
@@ -60,11 +61,11 @@ private:
 
 Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
 {
-    int32_t size = dmaRet[m_current];
+    uint32_t size = dmaRet[m_current];
     uint32_t index = dmaIndex[m_current];
     uint32_t lane = (dest[m_current] >> 8) & 7;
     bytes += size;
-    if (unsigned(size) > m_pool.dmaSize()) {
+    if (size > m_pool.dmaSize()) {
         logging::critical("DMA overflowed buffer: %d vs %d\n", size, m_pool.dmaSize());
         exit(-1);
     }
@@ -491,11 +492,11 @@ void EpicsArchApp::handleReset(const nlohmann::json& msg)
 void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
     std::istringstream ss(kwargs_str);
     std::string kwarg;
-    std::string::size_type pos = 0;
     while (getline(ss, kwarg, ',')) {
-        pos = kwarg.find("=", pos);
+        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
+        auto pos = kwarg.find("=", 0);
         if (!pos) {
-          logging::critical("Keyword argument with no equal sign");
+            logging::critical("Keyword argument with no equal sign");
             throw "error: keyword argument with no equal sign: "+kwargs_str;
         }
         std::string key = kwarg.substr(0,pos);

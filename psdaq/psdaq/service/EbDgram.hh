@@ -22,7 +22,7 @@ private:
     unsigned                     timing_control() const {return (_pulseIdAndControl>>56)&0xff;}
     XtcData::TransitionId::Value timing_service() const {return (XtcData::TransitionId::Value)(timing_control()&0xf);}
 protected:
-    uint64_t _pulseIdAndControl;
+    mutable uint64_t _pulseIdAndControl; // Mutable so the EOL bit can be set
 };
 
 class TimingHeader : public PulseId, public XtcData::TransitionBase {
@@ -56,8 +56,8 @@ public:
         env = (th.control()<<24) | (th.env & envRogMask); // filter out other partition ROGs
     }
 public:
-    void setEOL() { _pulseIdAndControl |= 1ULL << (6 + 56); }
-    bool isEOL() const { return (_pulseIdAndControl & (1ULL << (6 + 56))) != 0; }
+    void setEOL() const { _pulseIdAndControl |= 1ULL << (6 + 56); }
+    bool isEOL()  const { return (_pulseIdAndControl & (1ULL << (6 + 56))) != 0; }
 };
 
 #pragma pack(pop)

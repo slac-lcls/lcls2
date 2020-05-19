@@ -16,18 +16,17 @@ using namespace Pds::Eb;
 static const unsigned CLS = 64;         // Cache Line Size
 
 
-EventBuilder::EventBuilder(unsigned epochs,
-                           unsigned entries,
-                           unsigned sources,
-                           uint64_t duration,
-                           unsigned verbose) :
+EventBuilder::EventBuilder(unsigned        epochs,
+                           unsigned        entries,
+                           unsigned        sources,
+                           uint64_t        duration,
+                           const unsigned& verbose) :
   _pending(),
   _mask(~PulseId(duration - 1).pulseId()),
   _epochFreelist(sizeof(EbEpoch), epochs, CLS),
   _epochLut(epochs),
   _eventFreelist(sizeof(EbEvent) + sources * sizeof(EbDgram*), epochs * entries, CLS),
   _eventLut(epochs * entries),
-  _due(nullptr),
   _verbose(verbose),
   _tmoEvtCnt(0)
 {
@@ -91,8 +90,6 @@ void EventBuilder::clear()
     *it = nullptr;
   for (auto it = _eventLut.begin(); it != _eventLut.end(); ++it)
     *it = nullptr;
-
-  _due = nullptr;
 
   _tmoEvtCnt = 0;
 }
@@ -284,20 +281,21 @@ bool EventBuilder::_lookAhead(const EbEpoch*       epoch,
 
   event = event->forward();
 
-  while (true)
+  while (event != due)
   {
     const EbEvent* const lastEvent = epoch->pending.empty();
 
-    while (event != lastEvent)
+    do
     {
-      if ((event->_contract == contract) && !event->_remaining) // Could match readout groups, too
+      if (!event->_remaining && (event->_contract == contract)) // Same as matching readout groups
         return true;
+
+      event = event->forward();
 
       if (event == due)
         return false;
-
-      event = event->forward();
     }
+    while (event != lastEvent);
 
     epoch = epoch->forward();
     if (epoch == lastEpoch)  break;
@@ -322,7 +320,7 @@ const EbEvent* EventBuilder::_flush(const EbEvent* const due)
       // Retire all events up to a newer event, limited by due.
       // Since EbEvents are created in time order, older incomplete events can
       // be fixed up and retired when a newer complete event in the same readout
-      // group can be found.
+      // group is encountered.
       if (event->_remaining)
       {
         if (event->_contract != due->_contract) // Same as matching readout groups
@@ -414,18 +412,16 @@ void EventBuilder::expired()            // Periodically called upon a timeout
 
 void EventBuilder::process(const EbDgram* ctrb,
                            const size_t   size,
-                           unsigned       maxEntries,
                            unsigned       prm)
 {
-  uint64_t       pid   = ctrb->pulseId();
-  EbEpoch*       epoch = _match(pid);
+  EbEpoch*       epoch = _match(ctrb->pulseId());
   EbEvent*       event = epoch->pending.forward();
   const EbEvent* due   = nullptr;
-  unsigned       cnt   = maxEntries;
 
   while (true)
   {
     event = _insert(epoch, ctrb, event, prm);
+
     if (!event->_remaining)  due = event;
 
     if (_verbose >= VL_EVENT)
@@ -441,18 +437,12 @@ void EventBuilder::process(const EbDgram* ctrb,
              ctrb, ctl, pid, env, sz, src, pld[0], pld[1], prm, due ? due->sequence() : 0ul);
     }
 
-    if (!--cnt || ctrb->isEOL())  break; // Handle full list faster
+    if (ctrb->isEOL())  break;
 
     ctrb = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(ctrb) + size);
   }
 
-  if (due)
-  {
-    // Attempt to flush up to and including the newest due event found so far
-    if (_due && (_due->sequence() > due->sequence()))  due = _due;
-
-    _due = _flush(due);
-  }
+  if (due)  _flush(due);
 }
 
 /*

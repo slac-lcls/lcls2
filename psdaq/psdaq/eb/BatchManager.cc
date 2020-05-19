@@ -17,12 +17,20 @@ using namespace Pds::Eb;
 static_assert((MAX_BATCHES - 1) <= ImmData::MaxIdx, "MAX_BATCHES exceeds available range");
 
 
-BatchManager::BatchManager(size_t maxSize) :
-  _maxSize     (maxSize),
-  _maxBatchSize(MAX_ENTRIES * maxSize),
+BatchManager::BatchManager(size_t maxEntrySize, bool batching) :
+  _maxBatchSize(MAX_ENTRIES * maxEntrySize),
   _region      (static_cast<char*>(allocRegion(batchRegionSize()))),
-  _freelist    (MAX_BATCHES),
-  _appPrms     (new AppPrm[MAX_BATCHES * MAX_ENTRIES])
+  _appPrms     (MAX_BATCHES * MAX_ENTRIES),
+  _lastFreed   (0),
+  _previousPid (0),
+  _batch       (maxEntrySize),
+  _batching    (batching),
+  _numAllocs   (0),
+  _numFrees    (0),
+  _nAllocs     (0),
+  _nFrees      (0),
+  _waiting     (0),
+  _terminate   (false)
 {
   if (MAX_ENTRIES < BATCH_DURATION)
   {
@@ -31,11 +39,11 @@ BatchManager::BatchManager(size_t maxSize) :
             "Beware the trigger rate!\n",
             __func__, BATCH_DURATION, MAX_ENTRIES);
   }
-  if (maxSize % sizeof(uint64_t) != 0)
+  if (maxEntrySize % sizeof(uint64_t) != 0)
   {
     fprintf(stderr, "%s: Warning: Make max EbDgram buffer size (%zd) divisible "
             "by %zd to avoid alignment issues",
-            __func__, maxSize, sizeof(uint64_t));
+            __func__, maxEntrySize, sizeof(uint64_t));
   }
   if (_region == nullptr)
   {
@@ -43,39 +51,25 @@ BatchManager::BatchManager(size_t maxSize) :
             __func__, batchRegionSize());
     abort();
   }
-  if (_appPrms == nullptr)
-  {
-    fprintf(stderr, "%s: No memory found for %d application parameters\n",
-            __func__, MAX_BATCHES * MAX_ENTRIES);
-    abort();
-  }
-
-  char*   buffer  = _region;
-  AppPrm* appPrms = _appPrms;
-  for (unsigned i = 0; i < MAX_BATCHES; ++i)
-  {
-    new(_freelist[i]) Batch(buffer, maxSize, appPrms);
-    buffer  += _maxBatchSize;
-    appPrms += MAX_ENTRIES;
-  }
 }
 
 BatchManager::~BatchManager()
 {
-  if (_appPrms)  delete [] _appPrms;
   free(_region);
 }
 
 void BatchManager::shutdown()
 {
-  _freelist.clear();
-
   memset(_region, 0, batchRegionSize() * sizeof(*_region));
-  memset(_appPrms, 0, MAX_BATCHES * MAX_ENTRIES * sizeof(*_appPrms));
+  _appPrms.clear();
 }
 
 void BatchManager::dump() const
 {
-  printf("\nBatchManager batch freelist:\n");
-  _freelist.dump();
+  printf("\nBatchManager dump:\n");
+  printf("  Region base %p  size %zd  maxBatchSize %zd\n",
+         batchRegion(), batchRegionSize(), maxBatchSize());
+  printf("  Number of allocs  %lu  frees %lu  diff %ld  waiting %c\n",
+         batchAllocCnt(), batchFreeCnt(), batchAllocCnt() - batchFreeCnt(),
+         batchWaiting() ? 'T' : 'F');
 }

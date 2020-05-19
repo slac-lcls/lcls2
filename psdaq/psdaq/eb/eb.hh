@@ -52,6 +52,7 @@ namespace Pds {
       unsigned verbose;            // Level of detail to print
       uint16_t readoutGroup;       // RO group receiving trigger result data
       uint16_t contractor;         // RO group supplying trigger input  data
+      bool     batching;           // Batching enable flag
     };
 
     struct MebCtrbParams

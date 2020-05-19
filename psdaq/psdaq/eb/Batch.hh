@@ -6,91 +6,57 @@
 #include "psdaq/service/EbDgram.hh"
 
 #ifdef NDEBUG
-//#undef NDEBUG
+#undef NDEBUG
 #endif
 
 #include <cassert>
 #include <cstdint>                      // For uint64_t
 #include <cstddef>                      // for size_t
-#include <atomic>
 
 
 namespace Pds {
   namespace Eb {
 
-    using AppPrm = std::atomic<uintptr_t>;
-
-    class BatchManager;
-    class ResultDgram;
-
     class Batch
     {
     public:
-      Batch();
-      Batch(void* buffer, size_t bufSize, AppPrm* appPrms);
+      Batch(size_t bufSize);
     public:
-      void*              operator new(size_t, Pds::Eb::Batch&);
-      bool               operator()(Batch* const& lhs, Batch* const& rhs) const;
+      static uint64_t index(uint64_t pid);
     public:
-      static uint64_t    batchNum(uint64_t pid);
-    public:
-      Pds::EbDgram*      allocate();
-      Batch*             initialize(uint64_t pid);
-      void               accumRogs(const XtcData::Transition&);
-      uint16_t           rogsRem(const XtcData::Transition&);
-      uint16_t           rogs() const;
-      void               accumRcvrs(uint64_t receivers);
-      uint64_t           receivers() const;
-      void               terminate();
-      void               release();
-      void               store(uint64_t pid, const void* appPrm);
-      const void*        retrieve(uint64_t pid) const;
-      void               result(const ResultDgram*);
-      const ResultDgram* result() const;
-      size_t             size() const;   // Entry buffer size
-      size_t             extent() const; // Current extent
-      uint64_t           id() const;
-      unsigned           index() const;
-      const void*        buffer() const;
-      const bool         empty() const;
-      bool               expired(uint64_t pid) const;
-      void               dump() const;
+      Pds::EbDgram*   allocate();      // Allocate buffer in batch
+      Batch*          initialize(void* region, uint64_t pid);
+      size_t          extent() const;  // Current extent
+      uint64_t        id() const;      // Batch start pulse ID
+      unsigned        index() const;   // Batch's index
+      const void*     buffer() const;  // Pointer to batch in RDMA space
+      void            dump() const;
     private:
-      void* const        _buffer;    // Pointer to RDMA space for this Batch
-      const size_t       _size;      // Size of entries
-      uint64_t           _id;        // Id of Batch, in case it remains empty
-      unsigned           _extent;    // Current extent (unsigned is large enough)
-      unsigned           _rogs;      // Readout groups that contributed
-      uint64_t           _receivers; // Destinations for this batch
-      AppPrm* const      _appPrms;   // Pointer to AppPrms array for this Batch
-      const ResultDgram* _result;    // For when Batch is handled out of order
+      void*           _buffer;     // Pointer to RDMA space for this Batch
+      const size_t    _bufSize;    // Size of entries
+      uint64_t        _id;         // Id of Batch, in case it remains empty
+      unsigned        _extent;     // Current extent (unsigned is large enough)
     };
   };
 };
 
 
 inline
-void* Pds::Eb::Batch::operator new(size_t, Pds::Eb::Batch& batch)
+uint64_t Pds::Eb::Batch::index(uint64_t pid)
 {
-  return &batch;
-}
-
-inline
-bool Pds::Eb::Batch::operator()(Batch* const& lhs, Batch* const& rhs) const
-{
-  return lhs->_id < rhs->_id;
-}
-
-inline
-uint64_t Pds::Eb::Batch::batchNum(uint64_t pid)
-{
-  return (pid >> __builtin_ctzl(BATCH_DURATION)) & (MAX_BATCHES - 1); // Batch number
+  return pid & (MAX_LATENCY - 1);
 }
 
 inline
 unsigned Pds::Eb::Batch::index() const
 {
-  return batchNum(_id);
+  return index(_id);
+}
+
+inline
+uint64_t Pds::Eb::Batch::id() const
+{
+  return _id;                           // Full PID, not BatchNum
 }
 
 inline
@@ -100,132 +66,27 @@ const void* Pds::Eb::Batch::buffer() const
 }
 
 inline
-size_t Pds::Eb::Batch::size() const
-{
-  return _size;
-}
-
-inline
 size_t Pds::Eb::Batch::extent() const
 {
   return _extent;
 }
 
 inline
-const bool Pds::Eb::Batch::empty() const
+Pds::Eb::Batch* Pds::Eb::Batch::initialize(void* region, uint64_t pid)
 {
-  return _extent == 0;
-}
-
-inline
-Pds::Eb::Batch* Pds::Eb::Batch::initialize(uint64_t pid)
-{
-  // Multiple batches can exist with the same BatchNum, but different PIDs
-  _id        = pid;                     // Full PID, not BatchNum
-  _rogs      = 0;
-  _receivers = 0;
-  _extent    = 0;
+  _id     = pid;                     // Full PID, not BatchNum
+  _buffer = static_cast<char*>(region) + index(pid) * _bufSize;
+  _extent = 0;
 
   return this;
-}
-
-inline
-void Pds::Eb::Batch::accumRogs(const XtcData::Transition& hdr)
-{
-  _rogs |= hdr.readoutGroups();
-}
-
-inline
-uint16_t Pds::Eb::Batch::rogsRem(const XtcData::Transition& hdr)
-{
-  _rogs &= ~hdr.readoutGroups();
-
-  return _rogs;
-}
-
-inline
-uint16_t Pds::Eb::Batch::rogs() const
-{
-  return _rogs;
-}
-
-inline
-void Pds::Eb::Batch::accumRcvrs(uint64_t receivers)
-{
-  _receivers |= receivers;
-}
-
-inline
-uint64_t Pds::Eb::Batch::receivers() const
-{
-  return _receivers;
-}
-
-inline
-void Pds::Eb::Batch::release()
-{
-  _result = nullptr;
 }
 
 inline
 Pds::EbDgram* Pds::Eb::Batch::allocate()
 {
   char* buf = static_cast<char*>(_buffer) + _extent;
-  _extent += _size;
+  _extent += _bufSize;
   return reinterpret_cast<Pds::EbDgram*>(buf);
-}
-
-inline
-void Pds::Eb::Batch::terminate()
-{
-  assert(_extent <= MAX_ENTRIES * _size);
-
-  char* buf = static_cast<char*>(_buffer) + _extent - _size;
-  Pds::EbDgram* dg = reinterpret_cast<Pds::EbDgram*>(buf);
-  dg->setEOL();
-}
-
-inline
-void Pds::Eb::Batch::store(uint64_t pid, const void* appPrm)
-{
-  unsigned idx = pid & (MAX_ENTRIES - 1);
-
-  _appPrms[idx] = reinterpret_cast<uintptr_t>(appPrm);
-}
-
-inline
-const void* Pds::Eb::Batch::retrieve(uint64_t pid) const
-{
-  unsigned idx = pid & (MAX_ENTRIES - 1);
-
-  return reinterpret_cast<void*>((uintptr_t)_appPrms[idx]);
-}
-
-inline
-void Pds::Eb::Batch::result(const ResultDgram* batch)
-{
-  _result = batch;
-}
-
-inline
-const Pds::Eb::ResultDgram* Pds::Eb::Batch::result() const
-{
-  return _result;
-}
-
-inline
-uint64_t Pds::Eb::Batch::id() const
-{
-  // Multiple batches can exist with the same BatchNum, but different PIDs
-  return _id;                           // Full PID, not BatchNum
-}
-
-inline
-bool Pds::Eb::Batch::expired(uint64_t pid) const
-{
-  //return ((id() ^ pid) & ((MAX_BATCHES - 1) << __builtin_ctzl(BATCH_DURATION))) != 0;
-
-  return (pid & ~(BATCH_DURATION - 1)) > (id() & ~(BATCH_DURATION - 1));
 }
 
 #endif

@@ -2,14 +2,14 @@ if not platform: platform = '4'
 
 epics_host = 'daq-tst-dev02'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
-conda_rel = 'ps-3.1.8'
+conda_rel = 'ps-3.1.10'
 hsd_epics_dev02 = 'DAQ:LAB2:HSD:DEV02'
 hsd_epics_dev06 = 'DAQ:LAB2:HSD:DEV06'
 
 shelf = '2'
 ip_addr = '10.0.'+shelf
 collect_host = 'drp-tst-acc06'
-groups = platform
+groups = platform + ' 7' + ' 2'
 hutch, user, password = ('tst', 'tstopr', 'pcds')
 
 prom_dir = '/reg/g/psdm/psdatmgr/etc/config/prom' # Prometheus
@@ -59,8 +59,9 @@ fields = [
 procmgr_config = [
  {                         id:'groupca',     flags:'s',    conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
  {                         id:'xpmpva',      flags:'s',    conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1 DAQ:LAB2:XPM:2'},
- #{ host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' -r ~/.psdaq/tmo.activeDet.json -S 1'},
- { host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' -r /dev/null -S 1 --user '+user+' --password '+password},
+ #{ host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -r ~/.psdaq/tmo.activeDet.json -S 1'},
+ #{ host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -r /dev/null -S 1'},
+ { host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -S 1'},
  {                         id:'control_gui', flags:'p',    conda:conda_rel,                cmd:'control_gui -H '+collect_host},
 
  # TEB
@@ -71,7 +72,7 @@ procmgr_config = [
 # { host: 'drp-tst-dev015', id:'meb1',        flags:'spu',  conda:conda_rel, cmd:meb_cmd},
 
  # PVA
-# { host: 'drp-tst-dev002', id:'tmoandor_0', flags:'spu', conda:conda_rel, cmd: pva_cmd+'-l 0x2 -D andor '+'DAQ:LAB2:PVCAM'},
+ { host: 'drp-tst-dev002', id:'tmoandor_0', flags:'spu', conda:conda_rel, cmd: pva_cmd+'-l 0x2 -D andor '+'DAQ:LAB2:PVCAM'},
  #{ host: 'drp-tst-dev002', id:'tmoxtcav_0', flags:'spu', conda:conda_rel, cmd: pva_cmd+'-D xtcav '+'DAQ:LAB2:PVCAM'},
 
  # EpicsArch
@@ -79,9 +80,9 @@ procmgr_config = [
  { host: 'drp-tst-dev002', id:'epics_0',     flags:'spu', conda:conda_rel, env:epics_env, cmd:ea_cmd},
 
  # BLD - must currently run on dev018 since that's where the bld enet xface is
- { host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    conda:conda_rel, env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4'},
- { host: epics_host,       id:'bldcas',      flags:'s',    conda:conda_rel, env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str},
- { host: 'drp-tst-dev018', id:'bld_0',       flags:'pu',  conda:conda_rel, env:epics_env, cmd:bld_cmd},
+ #{ host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    conda:conda_rel, env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4'},
+ #{ host: epics_host,       id:'bldcas',      flags:'s',    conda:conda_rel, env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str},
+ #{ host: 'drp-tst-dev018', id:'bld_0',       flags:'pu',  conda:conda_rel, env:epics_env, cmd:bld_cmd},
 
  # TimeTool
  { host: 'drp-tst-dev012', id:'tmott_0',     flags:'pu',  conda:conda_rel, cmd:drp_cmd+' -D tt -d /dev/datadev_0'},
@@ -90,11 +91,13 @@ procmgr_config = [
  { host: 'drp-tst-dev013', id:'tmots_0',     flags:'sxpu', conda:conda_rel, cmd:drp_cmd+' -D ts' },
 
  # Wave8
-# { host: 'drp-tst-dev005', id:'wave8pvs',    flags:'s',    conda:conda_rel, cmd:'wave8pvs --l 1'},
-# { host: 'drp-tst-dev005', id:'tmowave8_0',  flags:'sxpu',  conda:conda_rel, cmd:wv8_cmd},
+ #{ host: 'drp-tst-dev005', id:'wave8pvs',    flags:'s',    conda:conda_rel, cmd:'wave8pvs --l 1'},
+ #{ host: 'drp-tst-dev005', id:'tmowave8_0',  flags:'sxpu',  conda:conda_rel, cmd:wv8_cmd},
 
  # Cam
-# { host: 'drp-tst-dev014', id:'tmocam_0',    flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D fakecam -k sim_length=14'},
+ { host: 'drp-tst-dev014', id:'tmocam1_0',   flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D fakecam -k "sim_length=14,batching=yes"'},
+ { host: 'drp-tst-dev015', id:'tmocam2_0',   flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D fakecam -k "sim_length=14,batching=no"'},
+ { host: 'drp-tst-dev017', id:'tmocam3_0',   flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D fakecam -k "sim_length=14,batching=no"'},
 
  {                         id:'procstat',    flags:'p',    conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
 ]
@@ -111,7 +114,7 @@ hsds = [
     {node:'daq-tst-dev07',bus:'89',pv:'DAQ:LAB2:HSD:DEV07_89',drp:'drp-tst-dev020'},
     {node:'daq-tst-dev07',bus:'b1',pv:'DAQ:LAB2:HSD:DEV07_B1',drp:'drp-tst-dev021'},
     {node:'daq-tst-dev07',bus:'b2',pv:'DAQ:LAB2:HSD:DEV07_B2',drp:'drp-tst-dev022'},
-    {node:'daq-tst-dev07',bus:'5e',pv:'DAQ:LAB2:HSD:DEV07_5E',drp:'drp-tst-dev024'},
+    #{node:'daq-tst-dev07',bus:'5e',pv:'DAQ:LAB2:HSD:DEV07_5E',drp:'drp-tst-dev024'},
 ]
 
 hsd_cmd0 = task_set+'drp '+std_opts0+' -l 0x1'

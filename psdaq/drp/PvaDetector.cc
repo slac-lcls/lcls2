@@ -7,6 +7,7 @@
 #include <sstream>
 #include <iostream>
 #include <map>
+#include <algorithm>
 #include <Python.h>
 #include "DataDriver.h"
 #include "RunInfoDef.hh"
@@ -176,11 +177,11 @@ private:
 
 Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
 {
-    int32_t size = dmaRet[m_current];
+    uint32_t size = dmaRet[m_current];
     uint32_t index = dmaIndex[m_current];
     uint32_t lane = (dest[m_current] >> 8) & 7;
     bytes += size;
-    if (unsigned(size) > m_pool.dmaSize()) {
+    if (size > m_pool.dmaSize()) {
         logging::critical("DMA overflowed buffer: %d vs %d\n", size, m_pool.dmaSize());
         exit(-1);
     }
@@ -196,7 +197,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     buffer->index = index;
     event->mask |= (1 << lane);
 
-    logging::debug("PGPReader  lane %d  size %d  hdr %016lx.%016lx.%08x",
+    logging::debug("PGPReader  lane %u  size %u  hdr %016lx.%016lx.%08x",
                    lane, size,
                    reinterpret_cast<const uint64_t*>(data)[0],
                    reinterpret_cast<const uint64_t*>(data)[1],
@@ -212,6 +213,9 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
                        XtcData::TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId());
+        if (transitionId == XtcData::TransitionId::BeginRun) {
+            m_lastComplete = 0;  // EvtCounter reset
+        }
     }
     if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
         logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
@@ -271,7 +275,6 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
     m_current++;
     return dgram;
 }
-
 
 PvaDetector::PvaDetector(Parameters& para, const std::string& pvName, DrpBase& drp) :
     XpmDetector(&para, &drp.pool),
@@ -664,7 +667,7 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
     }
 
     PGPEvent* event = &m_pool->pgpEvents[index];
-    if (event->l3InpBuf) { // else timed out
+    if (event->l3InpBuf) { // else shutting down
         Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(dgram);
         if (l3InpDg->isEvent()) {
             if (m_drp.triggerPrimitive()) { // else this DRP doesn't provide input
@@ -837,11 +840,11 @@ void PvaApp::handleReset(const nlohmann::json& msg)
 void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
     std::istringstream ss(kwargs_str);
     std::string kwarg;
-    std::string::size_type pos = 0;
     while (getline(ss, kwarg, ',')) {
-        pos = kwarg.find("=", pos);
+        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
+        auto pos = kwarg.find("=", 0);
         if (!pos) {
-          logging::critical("Keyword argument with no equal sign");
+            logging::critical("Keyword argument with no equal sign");
             throw "error: keyword argument with no equal sign: "+kwargs_str;
         }
         std::string key = kwarg.substr(0,pos);
