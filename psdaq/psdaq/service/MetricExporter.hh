@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <functional>
 #include <prometheus/exposer.h>
 
 namespace Pds
@@ -49,7 +50,7 @@ public:
          add(const std::string& name,
              const std::map<std::string, std::string>& labels,
              unsigned numBins, double binWidth=1.0, double binMin=0.0);
-    std::vector<prometheus::MetricFamily> Collect() override; // const override;
+    std::vector<prometheus::MetricFamily> Collect() const override;
 private:
     mutable std::vector<prometheus::MetricFamily> m_families;
     std::vector<std::function<uint64_t()> > m_values;

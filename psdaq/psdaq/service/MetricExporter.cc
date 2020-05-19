@@ -53,7 +53,7 @@ void Pds::MetricExporter::add(const std::string& name,
     m_previous.push_back(previous);
 }
 
-std::vector<prometheus::MetricFamily> Pds::MetricExporter::Collect() // const
+std::vector<prometheus::MetricFamily> Pds::MetricExporter::Collect() const
 {
     // std::cout<<"Collect()\n";
     for (size_t i=0; i<m_type.size(); i++) {
