@@ -1073,7 +1073,10 @@ class ProcMgr:
                     self.telnet.write(b"\x15\x0d");
 
                     # wait for prompt (procServ)
-                    response = self.telnet.read_until(self.MSG_PROMPT, 2)
+                    try:
+                        response = self.telnet.read_until(self.MSG_PROMPT, 2)
+                    except EOFError:
+                        response = ""
                     if not response.count(self.MSG_PROMPT):
                         print('*** ERR: no prompt at %s port %s' % \
                             (key2host(key), self.EXECMGRCTRL))
@@ -1096,7 +1099,10 @@ class ProcMgr:
                         # send command
                         self.telnet.write(bytes('%s\n' % nextcmd, 'utf-8'))
                         # wait for prompt
-                        response = self.telnet.read_until(self.MSG_PROMPT, 2)
+                        try:
+                          response = self.telnet.read_until(self.MSG_PROMPT, 2)
+                        except EOFError:
+                          response = ""
                         # search for error code after "return="
                         m = re.search(b'(?<=return=)\d+', response)
                         if m is not None:
