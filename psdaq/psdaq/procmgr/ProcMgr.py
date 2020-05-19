@@ -327,6 +327,16 @@ class ProcMgr:
         self.Xterm_list = Xterm_list
         self.xterm_list = xterm_list
         self.procmgr_macro = procmgr_macro
+        self.git_describe = None
+        if 'TESTRELDIR' in os.environ:
+          cc = run(["git", "-C", os.environ['TESTRELDIR'], "describe", "--dirty", "--tag"], capture_output=True)
+          if not cc.returncode:
+            # success
+            self.git_describe = str(cc.stdout.strip(), 'utf-8')
+          else:
+            # failure
+            errMsg = str(cc.stderr.strip(), 'utf-8')
+            print("*** ERR: running 'git describe' failed: %s" % errMsg)
 
         # configure the default socket timeout in seconds
         socket.setdefaulttimeout(2.5)
@@ -988,11 +998,8 @@ class ProcMgr:
                         outfile.write("# TESTRELDIR:%s\n" % os.environ['TESTRELDIR'])
                         if len(value[self.DICT_CONDA]) > 2:
                           outfile.write("# CONDA_REL:%s\n" % value[self.DICT_CONDA])
-                        cc = run(["git", "describe", "--dirty", "--tag"], capture_output=True)
-                        if not cc.returncode:
-                          outfile.write("# GIT_DESCRIBE:%s\n" % str(cc.stdout.strip(), 'utf-8'))
-                        else:
-                          print("*** ERR: running 'git describe --dirty --tag' failed")
+                        if self.git_describe:
+                          outfile.write("# GIT_DESCRIBE:%s\n" % self.git_describe)
                       outfile.close()
                     except:
                       print("*** ERR: writing log file '%s' failed" % logfile)
