@@ -445,9 +445,18 @@ class ProcMgr:
           # --- conda (optional) ---
           if 'conda' in entry:
             self.conda = entry['conda']
+          elif 'CONDA_DEFAULT_ENV' in os.environ:
+            self.conda = os.environ['CONDA_DEFAULT_ENV']
           else:
             # empty quotes
             self.conda = "''"
+
+          try:
+            if entry['conda'] != os.environ['CONDA_DEFAULT_ENV']:
+              raise ConfigFileError("'conda' key (%s) does not match $CONDA_DEFAULT_ENV (%s)" %
+                                    (entry['conda'], os.environ['CONDA_DEFAULT_ENV']))
+          except KeyError:
+            pass
 
           # --- cmd (required) ---
           if 'cmd' in entry:
