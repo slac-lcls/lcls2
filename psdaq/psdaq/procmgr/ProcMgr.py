@@ -452,7 +452,8 @@ class ProcMgr:
             self.conda = "''"
 
           try:
-            if entry['conda'] != os.environ['CONDA_DEFAULT_ENV']:
+            # TESTRELDIR not being set indicates "production"
+            if (entry['conda'] != os.environ['CONDA_DEFAULT_ENV']) and ('TESTRELDIR' in os.environ):
               raise ConfigFileError("'conda' key (%s) does not match $CONDA_DEFAULT_ENV (%s)" %
                                     (entry['conda'], os.environ['CONDA_DEFAULT_ENV']))
           except KeyError:
