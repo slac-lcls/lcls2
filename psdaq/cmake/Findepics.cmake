@@ -17,7 +17,10 @@ find_path(EPICS_COMPILER_INCLUDE_DIR
 )
 
 foreach(var IN ITEMS pvAccessCA pvAccess pvData ca Com)
-    find_library(EPICS_${var} NAMES ${var})
+    find_library(EPICS_${var}
+                 NAMES ${var}
+                 PATH_SUFFIXES "lib/$ENV{EPICS_HOST_ARCH}"
+                 HINTS ENV EPICS_BASE)
 endforeach(var)
 
 mark_as_advanced(EPICS_FOUND EPICS_PVA_INCLUDE_DIR
