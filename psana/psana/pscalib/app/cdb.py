@@ -28,6 +28,7 @@ def usage():
            '  cdb print -e testexper\n'\
            '  cdb convert -e cxif5315 -u dubrovin -p <password>\n'\
            '  cdb convert -e amox23616 -u dubrovin -p <password>\n'\
+           '  cdb get -e testexper -d testdet_1234 -r 21 -c test_ctype\n'\
            '  cdb get -e exp12345 -d detector_1234 -c testdict -r 23 -f mydict\n'\
            '  cdb get -e cxic0415 -d cspad_0001 -c pedestals -s 1520977960 -f mypeds\n'\
            '  cdb get -e cxic0415 -d cspad_0001 -c geometry -r 100 -f mygeo\n'\
@@ -100,7 +101,7 @@ def input_option_parser() :
     h_dtype      = 'i/o file data type (None - array, txt, xtcav, json, pkl), default = %s' % d_dtype 
     h_run        = 'run number (begin), default = %s' % str(d_run) 
     h_run_end    = 'run number (end), default = %s' % str(d_run_end)
-    h_time_stamp = 'time stamp, default = %s' % d_time_stamp 
+    h_time_stamp = 'time stamp in format like 2020-05-22T01:02:03-0800, default = %s' % d_time_stamp 
     h_time_sec   = 'time (sec), default = %s' % str(d_time_sec)
     h_version    = 'version of constants, default = %s' % d_version
     h_confirm    = 'confirmation of the action, default = %s' % d_confirm

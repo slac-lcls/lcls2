@@ -4,7 +4,7 @@ Created on 2020-05-15 by Mikhail Dubrovin
 """
 #------------------------------
 
-from psana.pscalib.calib.MDB_CLI import *
+from psana.pscalib.calib.MDB_CLI import * # gu, mu, etc
 import psana.pscalib.calib.MDBWebUtils as wu
 cc = wu.cc
 logger = logging.getLogger(__name__)
@@ -100,9 +100,36 @@ class MDBWeb_CLI(MDB_CLI):
         else :
             mu.request_confirmation()
 
+    def get(self):
+        # self._warning()
+        kwa        = self.kwargs
+        det        = kwa.get('detector', None)
+        exp        = kwa.get('experiment', None)
+        ctype      = kwa.get('ctype', None)
+        run        = kwa.get('run', None)
+        vers       = kwa.get('version', None)
+        prefix     = kwa.get('iofname', None)
+        time_sec   = kwa.get('time_sec', None)
+        time_stamp = kwa.get('time_stamp', None)
+        tsformat   = kwa.get('tsformat', '%Y-%m-%dT%H:%M:%S%z') # e.g. 2020-05-22T10:39:07-0700
+        if time_stamp is not None:
+           time_sec = gu.time_sec_from_stamp(tsformat, time_stamp)
+
+        data,doc = wu.calib_constants(det, exp, ctype, run, time_sec, vers, url=cc.URL)
+        logger.info('data: %s' % str(data)[:150])
+        logger.info('doc: %s' % str(doc))
+
+        if prefix is None : prefix = mu.out_fname_prefix(**doc)
+        mu.save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' : True})
+
+
     #def add(self): self._warning()
-    #def get(self): self._warning()
-    #def test(self): logger.warning('MDBWeb_CLI.test')
+
+
+    def test(self):
+        self._warning()
+        logger.warning('MDBWeb_CLI.test')
+
 
     def dispatcher(self):
         mode = self.mode
@@ -112,10 +139,10 @@ class MDBWeb_CLI(MDB_CLI):
         elif mode == 'deldoc': self.deldoc()
         elif mode == 'delcol': self.delcol()
         elif mode == 'deldb' : self.deldb()
+        elif mode == 'get'   : self.get()
 
         # pymongo access from MDB_CLI
-        elif mode == 'add'   : self.add() # TBD ^^^
-        elif mode == 'get'   : self.get()
+        elif mode == 'add'   : self.add()
 
         elif mode == 'convert': self.convert()
         elif mode == 'delall' : self.delall()
