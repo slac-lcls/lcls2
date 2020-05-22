@@ -18,7 +18,7 @@ _transitionId = {
     'L1Accept'          : 12,
 }
 
-def test_py2xtc_step(tmp_path):
+def test_py2xtc_scan(tmp_path):
 
     config = {}
     detname = 'spi_cspad'
@@ -31,8 +31,8 @@ def test_py2xtc_step(tmp_path):
 
     cydgram = dc.CyDgram()
 
-    image_array = np.array([[1,2,3,4],[9,8,7,6]])
-    orientations_array = np.array([4,3,2,1])
+    image_array = np.array([[1,2,3,4,5,6],[11,10,9,8,7,6]])
+    orientations_array = np.array([6,5,4,3,2,1])
 
     runinfo_detname = 'runinfo'
     runinfo_dettype = 'runinfo'
@@ -49,7 +49,7 @@ def test_py2xtc_step(tmp_path):
     fname = os.path.join(tmp_path,'junk.xtc2')
 
     f = open(fname,'wb')
-    for i in range(4):
+    for i in range(6):
         my_data = {
             'image': image_array+i,
             'orientations': orientations_array+i
@@ -64,6 +64,10 @@ def test_py2xtc_step(tmp_path):
             transitionid = _transitionId['Configure']
         elif (i==1):
             transitionid = _transitionId['BeginRun']
+        elif (i==2):
+            transitionid = _transitionId['BeginStep']
+        elif (i==3):
+            transitionid = _transitionId['Enable']
         else:
             transitionid = _transitionId['L1Accept']
         xtc_bytes = cydgram.get(timestamp,transitionid)
@@ -76,10 +80,10 @@ def test_py2xtc_step(tmp_path):
     assert myrun.expt==runinfo_data['expt']
     assert myrun.runnum==runinfo_data['runnum']
     for nevt,evt in enumerate(myrun.events()):
-        assert np.array_equal(evt._dgrams[0].spi_cspad[0].raw.image,image_array+nevt+2)
-        assert np.array_equal(evt._dgrams[0].spi_cspad[0].raw.orientations,orientations_array+nevt+2)
+        assert np.array_equal(evt._dgrams[0].spi_cspad[0].raw.image,image_array+nevt+4)
+        assert np.array_equal(evt._dgrams[0].spi_cspad[0].raw.orientations,orientations_array+nevt+4)
     assert nevt>0 #make sure we get events
 
 if __name__ == "__main__":
     import pathlib
-    test_py2xtc_step(pathlib.Path('.'))
+    test_py2xtc_scan(pathlib.Path('.'))
