@@ -88,23 +88,23 @@ class MyDAQ:
     def daq_communicator_thread(self):
         print('*** daq_communicator_thread')
         while True:
-            state = self.pull_socket.recv()
+            state = self.pull_socket.recv().decode("utf-8")
             print('*** received',state)
-            if state==b'starting':
-                # send 'daqstate(starting)' and wait for complete
+            if state in ('connected', 'starting'):
+                # send 'daqstate(state)' and wait for complete
                 # we can block here since we are not in the bluesky
                 # event loop
-                errMsg = self.control.setState('starting')
+                errMsg = self.control.setState(state)
                 if errMsg is not None:
                     print('*** error:', errMsg)
                     continue
                 with self.daqState_cv:
-                    while self.daqState != 'starting':
-                        print('daqState \'%s\', waiting for \'starting\'...' % self.daqState)
+                    while self.daqState != state:
+                        print('daqState \'%s\', waiting for \'%s\'...' % (self.daqState, state))
                         self.daqState_cv.wait(1.0)
                     print('daqState \'%s\'' % self.daqState)
                 self.ready.set()
-            elif state==b'running':
+            elif state=='running':
                 # launch the step with 'daqstate(running)' (with the
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
@@ -120,7 +120,7 @@ class MyDAQ:
                 # tell bluesky step is complete
                 # this line is needed in ReadableDevice mode to flag completion
                 self.status._finished(success=True)
-            elif state==b'shutdown':
+            elif state=='shutdown':
                 break
 
     def daq_monitor_thread(self):
@@ -167,18 +167,26 @@ class MyDAQ:
     def configure(self, *args, **kwargs):
         return (self.read_configuration(),self.read_configuration())
 
-    def stage(self):
-        # done once at start of scan
-        # put the daq into the right state ('starting')
-        print('*** here in stage')
-        self.push_socket.send_string('starting')
+    def _set_connected(self):
+        self.push_socket.send_string('connected')
         # wait for complete. is this a coroutine, so we shouldn't block?
         self.ready.wait()
         self.ready.clear()
-        
+
+    def stage(self):
+        # done once at start of scan
+        # put the daq into the right state ('connected')
+        print('*** here in stage')
+        self._set_connected()
+
         return [self]
 
     def unstage(self):
+        # done once at end of scan
+        # put the daq into the right state ('connected')
+        print('*** here in unstage')
+        self._set_connected()
+        
         return [self]
 
 def main():
