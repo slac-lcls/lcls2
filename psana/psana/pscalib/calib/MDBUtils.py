@@ -35,6 +35,7 @@ Usage ::
 
     dbname = mu.db_prefixed_name(name)
     dbname = mu.get_dbname(**kwargs)
+    dbname = mu.get_colname(**kwargs)
 
     # All connect methods in one call
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
@@ -495,7 +496,8 @@ def db_prefixed_name(name, prefix=cc.DBNAME_PREFIX):
 #------------------------------
 
 def get_dbname(**kwargs):
-    """Returns (str) dbname or None. Implements logics for dbname selection:
+    """Returns (str) dbname or None.
+       Implements logics for dbname selection:
        -- dbname is used if defined else
        -- prefixed experiment else
        -- prefixed detector else None
@@ -507,12 +509,29 @@ def get_dbname(**kwargs):
 
     if dbname is None :
         name = exp if not (exp is None) else det
-        if name is None :
-            if mode != 'print' :
+        if name is None:
+            if mode != 'print':
                 logger.warning('dbname, experiment, and detector name are NOT SPECIFIED')
             return None
         dbname = db_prefixed_name(name)
     return dbname
+
+#------------------------------
+
+def get_colname(**kwargs):
+    """Returns (str) collection name or None.
+       Implements logics for collection selection:
+       -- dbname is not defined returns None
+       -- colname is defined returns colname
+       -- returns detector name, it might be None
+    """
+    dbname = get_dbname(**kwargs)
+    if dbname is None: return None
+
+    colname = kwargs.get('colname', None)
+    if colname is not None: return colname
+
+    return kwargs.get('detector', None)
 
 #------------------------------
 

@@ -6,6 +6,7 @@ Usage ::
     from psana.pscalib.calib.MDBWebUtils import calib_constants
 
     resp = wu.check_kerberos_ticket(exit_if_invalid=True)
+    q = wu.query_id_pro(query) # e.i., query={"_id":doc_id}
     _ = wu.request(url, query=None)
     _ = wu.database_names(url=cc.URL)
     _ = wu.collection_names(dbname, url=cc.URL)
@@ -32,7 +33,12 @@ Usage ::
     resp = wu.delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     resp = wu.delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     resp = wu.delete_document(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    resp = wu.delete_data(dbname, data_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     resp = wu.delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+
+    s = wu.str_formatted_list(lst, ncols=5, width=24)
+    s = wu.info_docs(dbname, colname, query={}, url=cc.URL, strlen=120)
+    s = wu.info_webclient(**kwargs)
 
     test_*()
 """
@@ -74,6 +80,14 @@ def check_kerberos_ticket(exit_if_invalid=True):
 
 #------------------------------
 
+def query_id_pro(query):
+    id = query.get('_id', None)
+    if (id is None) or ('ObjectId' in id): return query
+    query['_id'] = 'ObjectId(%s)'%id
+    return query
+
+#------------------------------
+
 def request(url, query=None):
     #logger.debug('==== query: %s' % str(query))
     #t0_sec = time()
@@ -85,11 +99,12 @@ def request(url, query=None):
 #------------------------------
 
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/test_db"
-def database_names(url=cc.URL):
+def database_names(url=cc.URL, pattern=None):
     """Returns list of database names for url.
     """
     r = request(url)
-    return r.json()
+    #print(r.json(), type(r.json()))
+    return r.json() if pattern is None else [name for name in r.json() if str(pattern) in name]
 
 #------------------------------
 
@@ -419,18 +434,31 @@ def delete_document(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHE
 
 #------------------------------
 
+def delete_data(dbname, data_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
+    """Deletes data for specified data_id from database/gridfs.
+    """
+    if data_id is None:
+        logger.warning('CAN NOT DELETE DATA FOR INPUT PARAMETERS DB/data_id: %s/%s' % (dbname, data_id))
+        return False
+    uri = url+dbname+'/gridfs/'+ data_id
+    resp_data = delete(uri, headers=krbheaders)
+    logger.debug('delete %s responce: %s' % (uri, resp_data.text))
+    return resp_data
+
+#------------------------------
+
 def delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
-    """TBD: Deletes document for specified _id from database/collection and associated data from database/gridfs.
+    """Deletes document for specified _id from database/collection and associated data from database/gridfs.
     """
     check_kerberos_ticket()
 
     # find a single doc for doc_id
-    ldocs = find_docs(dbname, colname, query={"_id":"ObjectId(%s)"%doc_id})
+    ldocs = find_docs(dbname, colname, query=query_id_pro({"_id":doc_id}))
     if len(ldocs)>1:
         logger.error('UNEXPECTED ERROR: db/collection: %s/%s HAS MORE THAN ONE DOCUMENT FOR _id: %s' % (dbname, colname, doc_id))
         sys.exit('db/collection: %s/%s HAS TO BE FIXED' % (dbname, colname))
 
-    print('XXXX ldocs:', ldocs)
+    logger.debug('XXXX ldocs: %s' % str(ldocs))
 
     if not ldocs:
         logger.warning('db/collection: %s/%s HAS NO DOCUMENT FOR _id: %s' % (dbname, colname, doc_id))
@@ -438,17 +466,98 @@ def delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders
 
     doc = ldocs[0]
     data_id = doc.get('id_data', None)
-
-    resp_doc = delete(url+dbname+'/'+colname+'/'+ doc_id, headers=krbheaders)
-    logger.debug('delete %s/%s/%s responce: %s' % (dbname, colname, doc_id, resp_doc.text))
+    uri = url+dbname+'/'+colname+'/'+ doc_id
+    resp_doc = delete(uri, headers=krbheaders)
+    logger.debug('delete %s responce: %s' % (uri, resp_doc.text))
 
     if data_id is None:
         logger.warning('db/collection/doc_id: %s/%s/%s DOES NOT HAVE data_id' % (dbname, colname, doc_id))
         return False
 
-    resp_data = delete(url+dbname+'/gridfs/'+ data_id, headers=krbheaders)
-    logger.debug('delete %s/gridfs/%s responce: %s' % (dbname, data_id, resp_data.text))
-    return resp_data
+    return delete_data(dbname, data_id, url, krbheaders)
+
+#------------------------------
+
+def str_formatted_list(lst, ncols=5, width=24):
+    s=''
+    c=0
+    for v in lst:
+        s+=str(v).ljust(width)
+        c+=1
+        if c<ncols: continue
+        s+='\n'
+        c=0
+    return s
+
+#------------------------------
+
+def info_doc(dbname, colname, docid, strlen=150):
+    ldocs = find_docs(dbname, colname, query=query_id_pro({"_id":docid}), url=cc.URL)
+    if not ldocs:
+        return 'db/collection: %s/%s does not have any document' % (dbname, colname)
+    doc = ldocs[0]
+    if not isinstance(doc, dict):
+        return 'db/collection: %s/%s document IS NOT dict: %s' % (dbname, colname, str(doc))
+    s = 'db/collection/Id: %s/%s/%s contains %d items:' % (dbname, colname, docid, len(doc))
+    for k,v in doc.items():
+        s += '\n  %s : %s' % (k.ljust(20), str(v)[:strlen])
+    return s
+        
+#------------------------------
+
+def info_docs_list(docs, strlen=150):
+    if not isinstance(docs, list):
+        return 'info_docs_list parameter docs is not list: %s' % str(docs)
+    s = ''
+    for i,d in enumerate(docs):
+        s += '\n%04d %s ...' % (i, str(d)[:strlen])
+    return s
+
+#------------------------------
+
+def info_docs(dbname, colname, query={}, url=cc.URL, strlen=150):
+    docs = find_docs(dbname, colname, query, url=cc.URL)
+    if docs is None:
+        return 'DB/collection %s/%s DOCUMENTS NOT FOUND' % (dbname, colname)
+    return 'DB/collection %s/%s contains %d documents:%s' %\
+           (dbname, colname, len(docs), info_docs_list(docs, strlen=150))
+
+#------------------------------
+
+def info_webclient(**kwargs):
+
+    width = kwargs.get('width', 24)
+    ptrn = mu.db_prefixed_name('') if kwargs.get('cdbonly', False) else None
+    dbnames = database_names(url=cc.URL, pattern=ptrn)
+
+    dbname = mu.get_dbname(**kwargs)
+    if dbname is None:
+        s = '\n=== web client %s contains %d databases for name pattern "%s":\n%s\n\n' % (cc.URL, len(dbnames), str(ptrn), str_formatted_list(dbnames))
+        for name in dbnames:
+             colnames = collection_names(name, url=cc.URL)
+             s += '%s %2d cols: %s\n' % (str(name).ljust(width), len(colnames), str(colnames))
+        return s
+
+    if not (dbname in dbnames):
+        return '\n=== database %s is not found in the list of known:\n%s' % (dbname, str_formatted_list(dbnames))
+
+    colname = mu.get_colname(**kwargs)
+    colnames = collection_names(dbname, url=cc.URL)
+
+    if colname is None:
+        if colnames is None: return '\n=== colnames is None: database %s is empty ???' % (dbname)
+        s = '\n=== database %s contains %d collections: %s\n' % (dbname, len(colnames), str(colnames))
+        for cname in colnames:
+             s += '%s\n' % info_docs(dbname, cname)
+        return s
+
+    if not(colname in colnames):
+        return '\n=== database %s does not have collection %s in the list: %s' % (dbname, colname, str(colnames))
+
+    docid = kwargs.get('docid', None)
+    if docid is None: return info_docs(dbname, colname)
+
+    return info_doc(dbname, colname, docid)
 
 #------------------------------
 #---------  TESTS  ------------

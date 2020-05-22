@@ -31,7 +31,7 @@ import psana.pyalgos.generic.NDArrUtils as ndu
 from   psana.pyalgos.generic.PSNameManager import nm
 
 import psana.pscalib.calib.CalibConstants as cc # list_calib_names
-import psana.pscalib.calib.MDBUtils as dbu # insert_constants, time_and_timestamp
+import psana.pscalib.calib.MDBUtils as mu # insert_constants, time_and_timestamp
 from   psana.pscalib.calib.NDArrIO import load_txt
 from   psana.pscalib.calib.CalibUtils import history_dict_for_file, history_list_of_dicts, parse_calib_file_name
 from   psana.pscalib.calib.XtcavUtils import load_xtcav_calib_file
@@ -149,11 +149,11 @@ def add_calib_file_to_cdb(exp, dircalib, calibvers, detname, cftype, fname, cfdi
     kwargs['ctype']      = cftype
     kwargs['time_sec']   = begin_time
     kwargs['end_time']   = end_time
-    kwargs['time_stamp'] = dbu._timestamp(begin_time)
+    kwargs['time_stamp'] = mu._timestamp(begin_time)
     kwargs['extpars']    = d if d is not None else {} # just in case save entire history dict
     #kwargs['comment']    = 'HISTORY: %s' % d.get('comment', '')
 
-    dbu.insert_calib_data(data, **kwargs)
+    mu.insert_calib_data(data, **kwargs)
 
 #------------------------------
 
@@ -180,11 +180,11 @@ def scan_calib_for_experiment(exp='cxix25615', **kwargs) :
     upwd    = kwargs.get('upwd', None)
     verbose = kwargs.get('verbose', False)
 
-    client = dbu.connect_to_server(host, port, user, upwd)
-    dbname = dbu.db_prefixed_name(exp)
-    if dbu.database_exists(client, dbname) :
+    client = mu.connect_to_server(host, port, user, upwd)
+    dbname = mu.db_prefixed_name(exp)
+    if mu.database_exists(client, dbname) :
         msg = 'Experiment %s already has a database. Consider to delete it from the list:\n%s'%\
-              (exp, str(dbu.database_names(client)))+\
+              (exp, str(mu.database_names(client)))+\
               '\nBefore adding consider to delete existing DB using command: cdb deldb --dbname %s -C -u <username> -p <password>' % dbname
         logger.warning(msg)
         return
