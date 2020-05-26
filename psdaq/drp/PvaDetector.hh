@@ -52,7 +52,6 @@ public:
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
     void shutdown() override;
-    void reset();
     void process(const PvaMonitor&);
 private:
     void _worker();

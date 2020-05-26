@@ -377,11 +377,6 @@ void PvaDetector::shutdown()
     m_namesLookup.clear();   // erase all elements
 }
 
-void PvaDetector::reset()
-{
-    if (m_exporter)  m_exporter.reset();
-}
-
 void PvaDetector::_worker()
 {
     // setup monitoring
@@ -693,8 +688,8 @@ PvaApp::PvaApp(Parameters& para, const std::string& pvName) :
     m_det(std::make_unique<PvaDetector>(m_para, pvName, m_drp))
 {
     if (m_det == nullptr) {
-        logging::critical("Error !! Could not create Detector object");
-        throw "Could not create Detector object";
+        logging::critical("Error !! Could not create Detector object for %s", m_para.detType);
+        throw "Could not create Detector object for " + m_para.detType;
     }
     if (m_para.outputDir.empty()) {
         logging::info("output dir: n/a");
@@ -837,7 +832,6 @@ void PvaApp::handleReset(const nlohmann::json& msg)
 {
     _shutdown();
     m_drp.reset();
-    m_det.reset();
 }
 
 } // namespace Drp

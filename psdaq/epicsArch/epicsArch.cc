@@ -239,11 +239,6 @@ void EaDetector::shutdown()
     m_namesLookup.clear();   // erase all elements
 }
 
-void EaDetector::reset()
-{
-    if (m_exporter)  m_exporter.reset();
-}
-
 void EaDetector::_worker()
 {
     // setup monitoring
@@ -344,8 +339,8 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
     m_det(std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp))
 {
     if (m_det == nullptr) {
-        logging::critical("Error !! Could not create Detector object");
-        throw "Could not create Detector object";
+        logging::critical("Error !! Could not create Detector object for %s", m_para.detType);
+        throw "Could not create Detector object for " + m_para.detType;
     }
     if (m_para.outputDir.empty()) {
         logging::info("output dir: n/a");
@@ -488,7 +483,6 @@ void EpicsArchApp::handleReset(const nlohmann::json& msg)
 {
     _shutdown();
     m_drp.reset();
-    m_det.reset();
 }
 
 } // namespace Drp

@@ -19,7 +19,6 @@ public:
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
     void shutdown() override;
-    void reset();
 private:
     void _worker();
     void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);

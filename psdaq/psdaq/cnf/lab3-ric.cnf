@@ -75,7 +75,7 @@ procmgr_config = [
  #{ host: 'drp-tst-dev003', id:'tmoopal_0',   flags:'xpu',  conda:conda_rel, cmd:drp_cmd0+' -D opal'},
 
  # Timing System
- { host: 'drp-tst-dev013', id:'tmots_0',     flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D ts' },
+ #{ host: 'drp-tst-dev013', id:'tmots_0',     flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D ts' },
 
  # Wave8
  #{ host: 'drp-tst-dev005', id:'wave8pvs',    flags:'s',    conda:conda_rel, cmd:'wave8pvs --l 0'},
@@ -91,8 +91,8 @@ procmgr_config = [
  #{ host: 'drp-tst-dev011', id:'tmocam_5',    flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D fakecam -k sim_length=14' },
  #{ host: 'drp-tst-dev012', id:'tmocam_6',    flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D fakecam -k sim_length=14' },
  #{ host: 'drp-tst-dev013', id:'tmocam_7',    flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D fakecam -k sim_length=14' },
- { host: 'drp-tst-dev014', id:'tmocam0_0',   flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D fakecam -k "sim_length=14,batching=yes"'},
- { host: 'drp-tst-dev015', id:'tmocam1_0',   flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D fakecam -k "sim_length=14,batching=no"'},
+ #{ host: 'drp-tst-dev014', id:'tmocam0_0',   flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D fakecam -k "sim_length=14,batching=yes"'},
+ #{ host: 'drp-tst-dev015', id:'tmocam1_0',   flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D fakecam -k "sim_length=14,batching=no"'},
  #{ host: 'drp-tst-dev017', id:'tmocam2_0',   flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D fakecam -k sim_length=14'},
 
  # procstat
