@@ -36,7 +36,6 @@ class cspad_cspadRawAlg_1_2_3(DetectorImpl):
 class fakecam_raw_2_0_0(cspad_cspadRawAlg_1_2_3):
     def __init__(self, *args):
         super().__init__(*args)
-        self._add_frame('array_raw')
 
 # for the pva detector in the teststand
 class pva_pvaAlg_1_2_3(DetectorImpl):
@@ -79,7 +78,7 @@ class eventid_valseid_0_0_1(DetectorImpl):
         return self._segments(evt)[0].run        if self._segments(evt) is not None else None
     def fiducials(self, evt):
         return self._segments(evt)[0].fiducials  if self._segments(evt) is not None else None
-    def time(self, evt): 
+    def time(self, evt):
         return self._segments(evt)[0].time       if self._segments(evt) is not None else None
 
 
