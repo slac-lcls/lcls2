@@ -26,9 +26,14 @@ Client::Client(const char* devname,
 
   _dev = reinterpret_cast<Pds::Tpr::TprReg*>(ptr);
 
-  _dev->xbar.outMap[2]=0;
-  _dev->xbar.outMap[3]=1;
+  if (!_dev->tpr.clkSel()) {
+    _dev->tpr.clkSel(true);
+    printf("Changed clk xbar to LCLS2 mode\n");
+  }
 
+  _dev->xbar.setTpr( XBar::StraightIn );
+  _dev->xbar.setTpr( XBar::StraightOut);
+  
   { Pds::Tpr::RingB& ring = _dev->ring0;
     ring.clear();
     ring.enable(true);
