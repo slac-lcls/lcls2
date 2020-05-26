@@ -418,6 +418,9 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
                        XtcData::TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId());
+        if (transitionId == XtcData::TransitionId::BeginRun) {
+            m_lastComplete = 0;  // EvtCounter reset
+        }
     }
     if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
         logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
@@ -736,8 +739,6 @@ BldApp::~BldApp()
 
 void BldApp::_shutdown()
 {
-    m_exporter.reset();
-
     m_drp.shutdown();            // TebContributor must be shut down before the worker
     if (m_pgp) {
         m_pgp->shutdown();
@@ -851,6 +852,7 @@ void BldApp::handlePhase1(const json& msg)
 
         m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det);
 
+        if (m_exporter)  m_exporter.reset();
         m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {
             m_drp.exposer()->RegisterCollectable(m_exporter);
@@ -901,6 +903,8 @@ void BldApp::handlePhase1(const json& msg)
 void BldApp::handleReset(const nlohmann::json& msg)
 {
     _shutdown();
+    m_drp.reset();
+    if (m_exporter)  m_exporter.reset();
 }
 
 } // namespace Drp
