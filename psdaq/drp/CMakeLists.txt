@@ -8,6 +8,7 @@ add_library(drpbase
     XpmDetector.cc
     DrpBase.cc
     FileWriter.cc
+    Si570.cc
 )
 
 target_include_directories(drpbase PUBLIC

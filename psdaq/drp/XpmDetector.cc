@@ -1,9 +1,13 @@
 
 #include "XpmDetector.hh"
+#include "Si570.hh"
 #include "AxisDriver.h"
-#include <unistd.h>
+#include "DataDriver.h"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/mmhw/TriggerEventManager.hh"
+#include <unistd.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 
 using namespace XtcData;
 using json = nlohmann::json;
@@ -18,6 +22,44 @@ namespace Drp {
 XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
     Detector(para, pool)
 {
+    int fd = open(m_para->device.c_str(), O_RDWR);
+    if (fd < 0) {
+        logging::error("Error opening %s", m_para->device.c_str());
+        return;
+    }
+
+    // Check timing reference clock, program if necessary
+    unsigned ccnt0,ccnt1;
+    dmaReadRegister(fd, 0x00C00028, &ccnt0);
+    usleep(10000);
+    dmaReadRegister(fd, 0x00C00028, &ccnt1);
+    ccnt1 -= ccnt0;
+    double clkr = double(ccnt1)*16.e-4;
+    printf("Timing RefClk %f MHz\n", clkr);
+    if (clkr < 184 || clkr > 188) {
+      //  Set the I2C Mux
+      dmaWriteRegister(fd, 0x00E00000, (1<<2));
+      Si570 rclk(fd,0x00E00800);
+      rclk.program();
+
+      printf("Reset timing PLL\n");
+      unsigned v;
+      dmaReadRegister(fd, 0x00C00020, &v);
+      v |= 0x80;
+      dmaWriteRegister(fd, 0x00C00020, v);
+      usleep(10);
+      v &= ~0x80;
+      dmaWriteRegister(fd, 0x00C00020, v);
+      usleep(100);
+      v |= 0x8;
+      dmaWriteRegister(fd, 0x00C00020, v);
+      usleep(10);
+      v &= ~0x8;
+      dmaWriteRegister(fd, 0x00C00020, v);
+      usleep(100000);
+    } 
+
+    close(fd);
 }
 
 json XpmDetector::connectionInfo()
@@ -30,6 +72,32 @@ json XpmDetector::connectionInfo()
 
     Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
 
+    //  Advertise ID on the timing link
+    {
+      struct addrinfo hints;
+      struct addrinfo* result;
+
+      memset(&hints, 0, sizeof(struct addrinfo));
+      hints.ai_family = AF_INET;       /* Allow IPv4 or IPv6 */
+      hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+      hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+      
+      char hname[64];
+      gethostname(hname,64);
+      int s = getaddrinfo(hname, NULL, &hints, &result);
+      if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        exit(EXIT_FAILURE);
+      }
+
+      sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
+
+      unsigned id = 0xfb000000 | 
+        (ntohl(saddr->sin_addr.s_addr)&0xffff);
+      dmaWriteRegister(fd, &tem->xma().txId, id);
+    }
+
+    //  Retrieve the timing link ID
     uint32_t reg;
     dmaReadRegister(fd, &tem->xma().rxId, &reg);
 
@@ -52,6 +120,7 @@ json XpmDetector::connectionInfo()
 void XpmDetector::connect(const json& connect_json, const std::string& collectionId)
 {
     logging::info("XpmDetector connect");
+
     // FIXME make configureable
     m_length = 100;
     std::map<std::string,std::string>::iterator it = m_para->kwargs.find("sim_length");

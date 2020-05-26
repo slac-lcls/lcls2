@@ -172,7 +172,8 @@ using Drp::OpalTTSim;
 Opal::Opal(Parameters* para, MemPool* pool) :
     BEBDetector   (para, pool),
     m_evtNamesId  (-1, -1), // placeholder
-    m_tt          (0)
+    m_tt          (0),
+    m_sim         (0)
 {
   _init(para->detName.c_str());  // an argument is required here
 

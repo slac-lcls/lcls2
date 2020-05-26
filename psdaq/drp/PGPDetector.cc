@@ -89,6 +89,9 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             }
             // transitions
             else {
+                logging::debug("PGPDetector saw %s transition @ %u.%09u (%014lx)\n",
+                               XtcData::TransitionId::name(transitionId),
+                               dgram->time.seconds(), dgram->time.nanoseconds(), timingHeader->pulseId());
                 // Allocate a transition dgram from the pool and initialize its header
                 Pds::EbDgram* trDgram = pool.allocateTr();
                 memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));

@@ -8,6 +8,7 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psalg/digitizer/Hsd.hh"
 #include "DataDriver.h"
+#include "Si570.hh"
 #include "psalg/utils/SysLog.hh"
 
 #include <Python.h>
@@ -15,6 +16,9 @@
 #include <stdio.h>
 #include <assert.h>
 #include <fstream>
+#include <unistd.h>
+#include <netdb.h>
+#include <arpa/inet.h>
 
 using namespace XtcData;
 using namespace rapidjson;
@@ -43,7 +47,7 @@ public:
 };
 
 Digitizer::Digitizer(Parameters* para, MemPool* pool) :
-    Detector(para, pool),
+    Detector    (para, pool),
     m_evtNamesId(-1, -1), // placeholder
     m_epics_name(para->kwargs["hsd_epics_prefix"]),
     m_paddr     (_getPaddr())
@@ -60,6 +64,53 @@ static void check(PyObject* obj) {
 
 unsigned Digitizer::_getPaddr()
 {
+    // Check PGP reference clock, reprogram if necessary
+    int fd = open(m_para->device.c_str(), O_RDWR);
+    AxiVersion vsn;
+    axiVersionGet(fd, &vsn);
+    if (vsn.userValues[2] == 0) {  // Only one PCIe interface has access to I2C bus
+      unsigned pgpclk;
+      dmaReadRegister(fd, 0x80010c, &pgpclk);
+      printf("PGP RefClk %f MHz\n", double(pgpclk&0x1fffffff)*1.e-6);
+      if ((pgpclk&0x1fffffff) < 185000000) { // target is 185.7 MHz
+        //  Set the I2C Mux
+        dmaWriteRegister(fd, 0x00e00000, (1<<2));
+        //  Configure the Si570
+        Si570 s(fd, 0x00e00800);
+        s.program();
+      }
+    }
+
+    { struct addrinfo hints;
+      struct addrinfo* result;
+
+      memset(&hints, 0, sizeof(struct addrinfo));
+      hints.ai_family = AF_INET;       /* Allow IPv4 or IPv6 */
+      hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+      hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+
+      char hname[64];
+      gethostname(hname,64);
+      int s = getaddrinfo(hname, NULL, &hints, &result);
+      if (s != 0) {
+        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+        exit(EXIT_FAILURE);
+      }
+
+      sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
+
+      
+      unsigned id = 0xfb000000 | 
+        (ntohl(saddr->sin_addr.s_addr)&0xffff);
+
+      for(unsigned i=0; i<4; i++) {
+        unsigned link = (vsn.userValues[2] == 0) ? i : i+4;
+        dmaWriteRegister(fd, 0x00a40010+4*(link&3), id | (link<<16));
+      }
+    }
+
+    close(fd);
+
     // returns new reference
     PyObject* pModule = PyImport_ImportModule("psdaq.configdb.hsd_connect");
     check(pModule);
