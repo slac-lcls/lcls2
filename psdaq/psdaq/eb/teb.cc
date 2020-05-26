@@ -16,6 +16,10 @@
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include <stdio.h>
 #include <unistd.h>                     // For getopt(), gethostname()
 #include <cstring>
@@ -43,8 +47,8 @@ using string_t = std::string;
 
 static const int      CORE_0          = -1; // devXXX: 18, devXX:  7, accXX:  9
 static const int      CORE_1          = -1; // devXXX: 19, devXX: 19, accXX: 21
-static const string_t TRIGGER_DETNAME = "tmoTeb";
-static const unsigned PROM_PORT_BASE  = 9200; // Prometheus port
+static const string_t TRIGGER_DETNAME = "tmoteb"; // Segment # defaults to 0
+static const unsigned PROM_PORT_BASE  = 9200;     // Prometheus port base
 static const unsigned MAX_PROM_PORTS  = 100;
 
 static struct sigaction      lIntAction;
@@ -289,7 +293,11 @@ void Teb::run()
   {
     if (EbAppBase::process() < 0)
     {
-      if (checkEQ() == -FI_ENOTCONN)  break;
+      if (checkEQ() == -FI_ENOTCONN)
+      {
+        logging::critical("TEB thread lost connection\n");
+        break;
+      }
     }
   }
 
@@ -340,14 +348,14 @@ void Teb::process(EbEvent* event)
   {
     // The common readout group keeps events and batches in pulse ID order
     logging::error("%s:\n  Event %014lx, env %08x is missing the common readout group %d",
-                   dgram->pulseId(), dgram->env, _prms.partition);
+                   __PRETTY_FUNCTION__, dgram->pulseId(), dgram->env, _prms.partition);
     // Revisit: Should this be fatal?
   }
 
   if (ImmData::rsp(ImmData::flg(event->parameter())) == ImmData::Response)
   {
-    Batch*       batch = _batMan.fetch(dgram->pulseId());
-    ResultDgram* rdg   = new(batch->allocate()) ResultDgram(*dgram, _id);
+    Batch*       batch  = _batMan.fetch(dgram->pulseId());
+    ResultDgram* rdg    = new(batch->allocate()) ResultDgram(*dgram, _id);
 
     rdg->xtc.damage.increase(event->damage().value());
 
@@ -494,8 +502,7 @@ void Teb::_post(const EbDgram* start, const EbDgram* end)
   uint32_t idx    = Batch::index(pid);
   size_t   extent = (reinterpret_cast<const char*>(end) -
                      reinterpret_cast<const char*>(start)) + _prms.maxResultSize;
-  unsigned offset = (reinterpret_cast<const char*>(start) -
-                     reinterpret_cast<const char*>(_batMan.batchRegion()));
+  unsigned offset = idx * _prms.maxResultSize;
   uint64_t data   = ImmData::value(ImmData::Buffer, _id, idx);
   uint64_t destns = _batchRcvrs; // & ~_trimmed;
 
@@ -665,13 +672,14 @@ int TebApp::_configure(const json& msg)
   std::string&      detName = _prms.trgDetName;
   if (_prms.trgDetName.empty())  _prms.trgDetName = TRIGGER_DETNAME;
 
-  logging::info("Fetching trigger info from ConfigDb/%s/%s\n\n",
-         configAlias.c_str(), detName.c_str());
+  // In the following, _0 is added in prints to show the default segment number
+  logging::info("Fetching trigger info from ConfigDb/%s/%s_0\n\n",
+                configAlias.c_str(), detName.c_str());
 
   if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, detName, top))
   {
-    logging::error("%s:\n  Document '%s' not found in ConfigDb\n",
-            __PRETTY_FUNCTION__, detName.c_str());
+    logging::error("%s:\n  Document '%s_0' not found in ConfigDb\n",
+                   __PRETTY_FUNCTION__, detName.c_str());
     return -1;
   }
 
@@ -760,12 +768,8 @@ void TebApp::handlePhase1(const json& msg)
   if (key == "configure")
   {
     // Shut down the previously running instance, if any
-    if (_appThread.joinable())
-    {
-      lRunning = 0;
-
-      _appThread.join();
-    }
+    lRunning = 0;
+    if (_appThread.joinable())  _appThread.join();
 
     int rc = _configure(msg);
     if (rc)
@@ -802,7 +806,6 @@ void TebApp::handlePhase1(const json& msg)
 void TebApp::handleDisconnect(const json& msg)
 {
   lRunning = 0;
-
   if (_appThread.joinable())  _appThread.join();
 
   // Reply to collection with transition status
@@ -813,8 +816,9 @@ void TebApp::handleDisconnect(const json& msg)
 void TebApp::handleReset(const json& msg)
 {
   lRunning = 0;
-
   if (_appThread.joinable())  _appThread.join();
+
+  if (_exporter)  _exporter.reset();
 }
 
 int TebApp::_parseConnectionParams(const json& body)

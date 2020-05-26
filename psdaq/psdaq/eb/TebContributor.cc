@@ -15,7 +15,6 @@
 #undef NDEBUG
 #endif
 
-#include <cassert>
 #include <string.h>
 #include <cassert>
 #include <cstdint>
@@ -112,22 +111,25 @@ void TebContributor::startup(EbCtrbInBase& in)
 
 void TebContributor::shutdown()
 {
-  _running.store(false, std::memory_order_release);
-  _batMan.stop();
-
-  if (_rcvrThread.joinable())  _rcvrThread.join();
-
-  _batMan.dump();
-  _batMan.shutdown();
-  _pending.shutdown();
-
-  for (auto it = _links.begin(); it != _links.end(); ++it)
+  if (_running.load(std::memory_order_relaxed))
   {
-    _transport.disconnect(*it);
-  }
-  _links.clear();
+    _running.store(false, std::memory_order_release);
+    _batMan.stop();
 
-  _id = -1;
+    if (_rcvrThread.joinable())  _rcvrThread.join();
+
+    _batMan.dump();
+    _batMan.shutdown();
+    _pending.shutdown();
+
+    for (auto it = _links.begin(); it != _links.end(); ++it)
+    {
+      _transport.disconnect(*it);
+    }
+    _links.clear();
+
+    _id = -1;
+  }
 }
 
 void* TebContributor::allocate(const TimingHeader& hdr, const void* appPrm)
@@ -166,38 +168,34 @@ void TebContributor::process(const EbDgram* dgram)
       _contractor = dgram->readoutGroups() & _prms.contractor;
     }
 
-    const EbDgram*      start      = _batchStart;
-    const EbDgram*      end        = _batchEnd;
-    bool                expired    = _batMan.expired(dgram->pulseId(), start->pulseId());
-    TransitionId::Value svc        = dgram->service();
-    bool                flush      = !((svc == TransitionId::L1Accept) ||
-                                       (svc == TransitionId::SlowUpdate));
+    bool expired = _batMan.expired(dgram->pulseId(), _batchStart->pulseId());
+    auto svc     = dgram->service();
+    bool flush   = (!((svc == TransitionId::L1Accept) ||
+                      (svc == TransitionId::SlowUpdate)) || !_prms.batching);
 
-    if (!(expired || flush))  // Most frequent case
+    if (!(expired || flush))            // Most frequent case when batching
     {
-      _batchEnd    = dgram;   // The batch end is the one before the current Dgram
+      _batchEnd    = dgram;             // The batch end is the previous Dgram
       _contractor |= dgram->readoutGroups() & _prms.contractor;
     }
     else
     {
-      if (expired)
+      if (expired)                      // Never true when not batching
       {
-        if (!end)  end = dgram;
+        if (_contractor)  _post(_batchStart,
+                                _batchEnd ? _batchEnd : _batchStart);
 
-        if (_contractor)  _post(start, end);
-
-        // Start a new batch
-        _batchStart = end == dgram ? nullptr : dgram;
-        _batchEnd   = end == dgram ? nullptr : dgram;
-
-        start = _batchStart;
-        if (start == dgram)
-          _contractor = dgram->readoutGroups() & _prms.contractor;
+        // Start a new batch using the Dgram that expired the batch
+        _batchStart = dgram;
+        _batchEnd   = dgram;
+        _contractor = dgram->readoutGroups() & _prms.contractor;
       }
 
-      if (flush && start)     // Post the batch + transition if it wasn't just done
+      if (flush)                        // Post the batch + transition
       {
-        if (_contractor)  _post(start, dgram);
+        _contractor |= dgram->readoutGroups() & _prms.contractor;
+
+        if (_contractor)  _post(_batchStart, dgram);
 
         // Start a new batch
         _batchStart = nullptr;
@@ -207,7 +205,8 @@ void TebContributor::process(const EbDgram* dgram)
   }
   else                        // Common RoG didn't trigger: bypass the TEB
   {
-    if (_batchStart && _contractor)  _post(_batchStart, _batchEnd);
+    if (_batchStart && _contractor)  _post(_batchStart,
+                                           _batchEnd ? _batchEnd : _batchStart);
 
     dgram->setEOL();          // Terminate for clarity and dump-ability
     _pending.push(dgram);
@@ -233,8 +232,7 @@ void TebContributor::_post(const EbDgram* start, const EbDgram* end)
   uint32_t     idx    = Batch::index(pid);
   size_t       extent = (reinterpret_cast<const char*>(end) -
                          reinterpret_cast<const char*>(start)) + _prms.maxInputSize;
-  unsigned     offset = (reinterpret_cast<const char*>(start) -
-                         reinterpret_cast<const char*>(_batMan.batchRegion()));
+  unsigned     offset = idx * _prms.maxInputSize;
   uint32_t     data   = ImmData::value(ImmData::Buffer | ImmData::Response, _id, idx);
   unsigned     dst    = (idx / MAX_ENTRIES) % _numEbs;
   EbLfCltLink* link   = _links[dst];
