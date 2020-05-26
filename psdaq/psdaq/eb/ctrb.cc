@@ -10,8 +10,13 @@
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/EbDgram.hh"
 
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include <stdio.h>
 #include <unistd.h>
+#include <cassert>
 #include <climits>
 #include <cstdlib>
 #include <cstring>

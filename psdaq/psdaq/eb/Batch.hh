@@ -5,11 +5,6 @@
 
 #include "psdaq/service/EbDgram.hh"
 
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-
-#include <cassert>
 #include <cstdint>                      // For uint64_t
 #include <cstddef>                      // for size_t
 
@@ -74,9 +69,10 @@ size_t Pds::Eb::Batch::extent() const
 inline
 Pds::Eb::Batch* Pds::Eb::Batch::initialize(void* region, uint64_t pid)
 {
-  _id     = pid;                     // Full PID, not BatchNum
+  _id     = pid;                        // Full PID, not BatchNum
   _buffer = static_cast<char*>(region) + index(pid) * _bufSize;
   _extent = 0;
+  //_buffer = region;                     // Revisit: For dense batch allocation idea
 
   return this;
 }
@@ -86,6 +82,7 @@ Pds::EbDgram* Pds::Eb::Batch::allocate()
 {
   char* buf = static_cast<char*>(_buffer) + _extent;
   _extent += _bufSize;
+  //if (_extent > (MAX_LATENCY - BATCH_DURATION) * _bufSize)  _extent = 0; // Revisit
   return reinterpret_cast<Pds::EbDgram*>(buf);
 }
 

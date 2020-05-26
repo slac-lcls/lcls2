@@ -8,7 +8,8 @@ using namespace Pds::Eb;
 
 Batch::Batch(size_t bufSize) :
   _bufSize(bufSize),
-  _id     (0)
+  _id     (0),
+  _extent (0)
 {
 }
 

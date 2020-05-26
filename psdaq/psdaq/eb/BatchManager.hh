@@ -100,9 +100,10 @@ Pds::Eb::Batch* Pds::Eb::BatchManager::fetch(uint64_t pid)
 {
   assert (pid > _previousPid);  _previousPid = pid;
 
-  if (expired(pid, _batch.id()))
+  if (!_batching || expired(pid, _batch.id()))
   {
-    ++_nAllocs;
+    _nAllocs = _numAllocs.load(std::memory_order_relaxed) + 1;
+    _numAllocs.store(_nAllocs, std::memory_order_release);
 
     _batch.initialize(_region, pid);
   }
@@ -114,7 +115,7 @@ Pds::Eb::Batch* Pds::Eb::BatchManager::fetchW(uint64_t pid)
 {
   assert (pid > _previousPid);  _previousPid = pid;
 
-  if (expired(pid, _batch.id()))
+  if (!_batching || expired(pid, _batch.id()))
   {
     // Block when the head tries to pass the tail, unless empty or stopping
     {
@@ -165,7 +166,7 @@ const void* Pds::Eb::BatchManager::retrieve(uint64_t pid) const
 inline
 bool Pds::Eb::BatchManager::expired(uint64_t pid, uint64_t start) const
 {
-  return !_batching || ((pid ^ start) & ~(BATCH_DURATION - 1));
+  return (pid ^ start) & ~(BATCH_DURATION - 1);
 }
 
 inline
