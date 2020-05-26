@@ -63,12 +63,14 @@ def procMgrThread(win, sConfigFile, iExperiment, sExpType, iPlatform, fQueryInte
       ldProcStatus = procMgr.getStatus()
 
     except IOError:
+      ldProcStatus = list()   # default to empty list
       print( "procMgrThread(): ProcMgr(%s, %d): I/O error" % (sConfigFile, iPlatform) )
       printStackTrace()
       # Send out the signal to notify the main window
       win.ProcMgrIOError.emit(sConfigFile, iPlatform )
 
     except:
+      ldProcStatus = list()   # default to empty list
       print( "procMgrThread(): ProcMgr(%s, %d) Failed" % (sConfigFile, iPlatform) )
       printStackTrace()
       # Send out the signal to notify the main window
