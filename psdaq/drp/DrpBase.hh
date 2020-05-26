@@ -63,6 +63,7 @@ class DrpBase
 public:
     DrpBase(Parameters& para, ZmqContext& context);
     void shutdown();
+    void reset();
     nlohmann::json connectionInfo();
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string configure(const nlohmann::json& msg);
@@ -86,7 +87,7 @@ private:
     Pds::Eb::TebCtrbParams m_tPrms;
     Pds::Eb::MebCtrbParams m_mPrms;
     std::unique_ptr<Pds::Eb::TebContributor> m_tebContributor;
-    std::unique_ptr<Pds::Eb::MebContributor> m_meb;
+    std::unique_ptr<Pds::Eb::MebContributor> m_mebContributor;
     std::unique_ptr<EbReceiver> m_ebRecv;
     std::unique_ptr<prometheus::Exposer> m_exposer;
     std::shared_ptr<Pds::MetricExporter> m_exporter;

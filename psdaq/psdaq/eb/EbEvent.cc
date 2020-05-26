@@ -38,6 +38,7 @@ EbEvent::EbEvent(uint64_t        contract,
                  EbEvent*        after,
                  const EbDgram*  cdg,
                  unsigned        prm) :
+  t0       (fast_monotonic_clock::now()), // Revisit: Temporary?
   _contract (contract),
   _living   (MaxTimeouts),
   _prm      (prm),
@@ -52,8 +53,10 @@ EbEvent::EbEvent(uint64_t        contract,
   if (_remaining == contract)           // Make sure some bit was taken down
   {
     fprintf(stderr, "%s:\n  Source %d isn't in the contract %016lx "
-            "for event @ %16p with pulse ID %014lx\n",
-            __PRETTY_FUNCTION__, cdg->xtc.src.value(), contract, cdg, cdg->pulseId());
+            "for %15s @ %16p with pulse ID %014lx, RoGs %04hx\n",
+            __PRETTY_FUNCTION__, cdg->xtc.src.value(), contract,
+            TransitionId::name(cdg->service()), cdg, cdg->pulseId(),
+            cdg->readoutGroups());
     assert (_remaining != contract);
   }
 
@@ -114,8 +117,10 @@ EbEvent* EbEvent::_add(const EbDgram* cdg)
   if (_remaining == remaining)          // Make sure some bit was taken down
   {
     fprintf(stderr, "%s:\n  Source %d didn't contribute to the contract %016lx "
-            "for event @ %16p with pulse ID %014lx\n",
-            __PRETTY_FUNCTION__, cdg->xtc.src.value(), _contract, cdg, cdg->pulseId());
+            "for %15s @ %16p with pulse ID %014lx, RoGs %04hx, remaining %016lx\n",
+            __PRETTY_FUNCTION__, cdg->xtc.src.value(), _contract,
+            TransitionId::name(cdg->service()), cdg, cdg->pulseId(),
+            cdg->readoutGroups(), remaining);
     assert (_remaining != remaining);
   }
 

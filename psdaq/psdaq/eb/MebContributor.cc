@@ -104,6 +104,12 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
     return -1;
   }
 
+  if (ddg->xtc.src.value() != _id)
+  {
+    logging::critical("%s:\n  Event src %d does not match DRP's ID %d: PID %014lx, sz, %zd, dest %08x, data %08x, ofs %08x\n",
+                      __PRETTY_FUNCTION__, ddg->xtc.src.value(), _id, ddg->pulseId(), sz, destination, data, offset);
+  }
+
   if (_verbose >= VL_BATCH)
   {
     uint64_t pid    = ddg->pulseId();
@@ -142,6 +148,12 @@ int MebContributor::post(const EbDgram* ddg)
   {
     EbLfCltLink* link = *it;
     uint32_t     data = ImmData::value(ImmData::Transition, _id, tr);
+
+    if (ddg->xtc.src.value() != _id)
+    {
+      logging::critical("%s:\n  tr %d src %d does not match DRP's ID %d: PID %014lx, sz, %zd, data %08x, ofs %08x\n",
+                        __PRETTY_FUNCTION__, tr, ddg->xtc.src.value(), _id, ddg->pulseId(), sz, data, offset);
+    }
 
     if (_verbose >= VL_BATCH)
     {

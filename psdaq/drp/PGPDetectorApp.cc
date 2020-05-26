@@ -68,10 +68,8 @@ PGPDetectorApp::~PGPDetectorApp()
 
 void PGPDetectorApp::shutdown()
 {
-    m_exporter.reset();
-
     if (m_det) {
-      m_det->shutdown();
+        m_det->shutdown();
     }
 
     if (m_pgpDetector) {
@@ -164,6 +162,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
         m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det);
 
+        if (m_exporter)  m_exporter.reset();
         m_exporter = std::make_shared<Pds::MetricExporter>();
         if (m_drp.exposer()) {
             m_drp.exposer()->RegisterCollectable(m_exporter);
@@ -223,7 +222,11 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 void PGPDetectorApp::handleReset(const json& msg)
 {
     PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
+
     shutdown();
+    m_drp.reset();
+    if (m_exporter)  m_exporter.reset();
+
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 }
 

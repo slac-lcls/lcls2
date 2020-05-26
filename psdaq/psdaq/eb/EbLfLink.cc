@@ -66,7 +66,7 @@ int EbLfLink::setupMr(void*          region,
     return fab->error_num();
   }
 
-  if (_verbose > 1)
+  if (_verbose)
   {
     printf("Registered      memory region: %10p : %10p, size %zd\n",
            (*mr)->start(), (char*)((*mr)->start()) + (*mr)->length(), (*mr)->length());

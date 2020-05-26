@@ -50,7 +50,7 @@ int EbLfServer::initialize(const std::string& addr,
 
   Fabric* fab = _pep->fabric();
 
-  if (_verbose > 1)
+  if (_verbose)
   {
     void* data = fab;                   // Something since data can't be NULL
     printf("EbLfServer is using LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",

@@ -231,14 +231,17 @@ void EaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
 
 void EaDetector::shutdown()
 {
-    m_exporter.reset();
-
     m_terminate.store(true, std::memory_order_release);
     if (m_workerThread.joinable()) {
         m_workerThread.join();
     }
     m_monitor.reset();
     m_namesLookup.clear();   // erase all elements
+}
+
+void EaDetector::reset()
+{
+    if (m_exporter)  m_exporter.reset();
 }
 
 void EaDetector::_worker()
@@ -484,6 +487,8 @@ void EpicsArchApp::handlePhase1(const json& msg)
 void EpicsArchApp::handleReset(const nlohmann::json& msg)
 {
     _shutdown();
+    m_drp.reset();
+    m_det.reset();
 }
 
 } // namespace Drp

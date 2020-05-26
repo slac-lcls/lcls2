@@ -172,7 +172,11 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
   {
     if (_process(ctrb) < 0)
     {
-      if (_transport.pollEQ() == -FI_ENOTCONN)  break;
+      if (_transport.pollEQ() == -FI_ENOTCONN)
+      {
+        logging::critical("Receiver thread lost connection\n");
+        break;
+      }
     }
   }
 

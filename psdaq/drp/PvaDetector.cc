@@ -292,6 +292,7 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
 {
     logging::info("PVA configure");
 
+    if (m_exporter)  m_exporter.reset();
     m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_drp.exposer()) {
         m_drp.exposer()->RegisterCollectable(m_exporter);
@@ -368,14 +369,17 @@ void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
 
 void PvaDetector::shutdown()
 {
-    m_exporter.reset();
-
     m_terminate.store(true, std::memory_order_release);
     if (m_workerThread.joinable()) {
         m_workerThread.join();
     }
     m_pvaMonitor.reset();
     m_namesLookup.clear();   // erase all elements
+}
+
+void PvaDetector::reset()
+{
+    if (m_exporter)  m_exporter.reset();
 }
 
 void PvaDetector::_worker()
@@ -702,7 +706,7 @@ PvaApp::PvaApp(Parameters& para, const std::string& pvName) :
 
 void PvaApp::_shutdown()
 {
-    m_drp.shutdown();        // TebContributor must be shut down befoe the worker
+    m_drp.shutdown();        // TebContributor must be shut down before the worker
     m_det->shutdown();
 }
 
@@ -832,6 +836,8 @@ void PvaApp::handlePhase1(const json& msg)
 void PvaApp::handleReset(const nlohmann::json& msg)
 {
     _shutdown();
+    m_drp.reset();
+    m_det.reset();
 }
 
 } // namespace Drp

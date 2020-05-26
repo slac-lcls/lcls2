@@ -58,7 +58,8 @@ namespace Pds {
       //EbDummyTC                 _dummy;   // Template for TC of dummy contributions  // Revisit: ???
       const unsigned            _verbose;
       uint64_t                  _bufferCnt;
-      uint64_t                  _fixupCnt;
+      uint64_t                  _tmoEvtCnt; // Count of timed out events
+      uint64_t                  _fixupCnt;  // Count of flushed   events
       Pds::PromHistogram*       _fixupSrc;
       Pds::PromHistogram*       _ctrbSrc;
     private:

@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
 #include <chrono>
 #include <thread>
 
@@ -41,7 +40,7 @@ int EbLfClient::connect(EbLfCltLink** link,
     return fab ? fab->error_num() : -FI_ENOMEM;
   }
 
-  if (_verbose > 1)
+  if (_verbose)
   {
     void* data = fab;                   // Something since data can't be NULL
     printf("LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",

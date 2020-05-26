@@ -599,7 +599,6 @@ void MebApp::handlePhase1(const json& msg)
 void MebApp::handleDisconnect(const json &msg)
 {
   lRunning = 0;
-
   if (_appThread.joinable())  _appThread.join();
 
   _apps.reset();
@@ -612,9 +611,11 @@ void MebApp::handleDisconnect(const json &msg)
 void MebApp::handleReset(const json &msg)
 {
   lRunning = 0;
-
   if (_appThread.joinable())  _appThread.join();
+
   _apps.reset();
+
+  if (_exporter)  _exporter.reset();
 }
 
 int MebApp::_parseConnectionParams(const json& body)

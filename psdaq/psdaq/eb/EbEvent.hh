@@ -6,6 +6,7 @@
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/Pool.hh"
 #include "psdaq/service/EbDgram.hh"
+#include "psdaq/service/fast_monotonic_clock.hh" // Revisit: Temporary?
 
 
 namespace Pds {
@@ -32,6 +33,7 @@ namespace Pds {
       size_t          size()      const;
       uint64_t        remaining() const;
       uint64_t        contract()  const;
+      bool            alive()     const;
       XtcData::Damage damage()    const;
       void            damage(XtcData::Damage::Value);
     public:
@@ -40,6 +42,7 @@ namespace Pds {
       const Pds::EbDgram** const  end()     const;
     public:
       void     dump(int number);
+      fast_monotonic_clock::time_point t0; // Revisit: Temporary?
     private:
       friend class EventBuilder;
     private:
@@ -198,6 +201,11 @@ inline const Pds::EbDgram** const Pds::Eb::EbEvent::end() const
 inline bool Pds::Eb::EbEvent::_alive()
 {
   return --_living > 0;
+}
+
+inline bool Pds::Eb::EbEvent::alive() const
+{
+  return _living > 0;
 }
 
 #endif

@@ -27,8 +27,7 @@ EventBuilder::EventBuilder(unsigned        epochs,
   _epochLut(epochs),
   _eventFreelist(sizeof(EbEvent) + sources * sizeof(EbDgram*), epochs * entries, CLS),
   _eventLut(epochs * entries),
-  _verbose(verbose),
-  _tmoEvtCnt(0)
+  _verbose(verbose)
 {
   if (duration & (duration - 1))
   {
@@ -90,8 +89,6 @@ void EventBuilder::clear()
     *it = nullptr;
   for (auto it = _eventLut.begin(); it != _eventLut.end(); ++it)
     *it = nullptr;
-
-  _tmoEvtCnt = 0;
 }
 
 unsigned EventBuilder::_epIndex(uint64_t key) const
@@ -372,8 +369,6 @@ void EventBuilder::expired()            // Periodically called upon a timeout
         if (event->_remaining)  _fixup(event);
 
         due = event;
-
-        ++_tmoEvtCnt;
       }
 
       event = event->forward();

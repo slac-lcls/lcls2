@@ -20,11 +20,11 @@
 #include <unistd.h>
 #include <time.h>
 #include <inttypes.h>
-#include <assert.h>
 #include <climits>
 #include <bitset>
 #include <atomic>
 #include <thread>
+#include <chrono>                       // Revisit: Temporary?
 
 using namespace XtcData;
 using namespace Pds;
@@ -48,6 +48,7 @@ EbAppBase::EbAppBase(const EbParams& prms,
   //_dummy       (Level::Fragment),
   _verbose     (prms.verbose),
   _bufferCnt   (0),
+  _tmoEvtCnt   (0),
   _fixupCnt    (0),
   _region      (nullptr),
   _contributors(0),
@@ -69,14 +70,15 @@ int EbAppBase::configure(const std::string&                     pfx,
   _contributors = prms.contributors;
   _contract     = prms.contractors;
   _bufferCnt    = 0;
+  _tmoEvtCnt    = 0;
   _fixupCnt     = 0;
 
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)}};
   exporter->add(pfx+"_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
   exporter->add(pfx+"_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
+  exporter->add(pfx+"_ToEvCt", labels, MetricType::Counter, [&](){ return _tmoEvtCnt;           });
   exporter->add(pfx+"_FxUpCt", labels, MetricType::Counter, [&](){ return _fixupCnt;            });
-  exporter->add(pfx+"_ToEvCt", labels, MetricType::Counter, [&](){ return  tmoEvtCnt();         });
 
   _fixupSrc = &exporter->add(pfx+"_FxUpSc", labels, nCtrbs);
   _ctrbSrc  = &exporter->add(pfx+"_CtrbSc", labels, nCtrbs); // Revisit: For testing
@@ -263,13 +265,23 @@ uint64_t EbAppBase::contract(const EbDgram* ctrb) const
 
 void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
-  ++_fixupCnt;
+  if (event->alive())
+    ++_fixupCnt;
+  else
+    ++_tmoEvtCnt;
+
   _fixupSrc->observe(double(srcId));
 
   //if (_verbose >= VL_EVENT)
   {
-    printf("Fixup event %014lx, size %zu, for source %d\n",
-           event->sequence(), event->size(), srcId);
+    using ms_t  = std::chrono::milliseconds;   // Revisit: Temporary?
+    auto  now   = fast_monotonic_clock::now(); // Revisit: Temporary?
+    const EbDgram* dg = event->creator();
+    printf("%s %15s %014lx, size %2zu, for source %2d, RoGs %04hx, contract %016lx, remaining %016lx, age %ld\n",
+           event->alive() ? "Fixed-up" : "Timed-out",
+           TransitionId::name(dg->service()), event->sequence(), event->size(),
+           srcId, dg->readoutGroups(), event->contract(), event->remaining(),
+           std::chrono::duration_cast<ms_t>(now - event->t0).count());
   }
 
   event->damage(Damage::DroppedContribution);

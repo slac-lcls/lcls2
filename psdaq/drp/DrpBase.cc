@@ -352,19 +352,13 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
 void DrpBase::shutdown()
 {
-    m_exporter.reset();
+    if (m_tebContributor)  m_tebContributor->shutdown();
+    if (m_mebContributor)  m_mebContributor->shutdown();
+}
 
-    if (m_tebContributor) {
-        m_tebContributor->shutdown();
-        m_tebContributor.reset();
-    }
-
-    if (m_meb) {
-        m_meb->shutdown();
-        m_meb.reset();
-    }
-
-    m_ebRecv.reset();
+void DrpBase::reset()
+{
+    if (m_exporter)  m_exporter.reset();
 }
 
 std::string DrpBase::connect(const json& msg, size_t id)
@@ -472,6 +466,7 @@ std::string DrpBase::configure(const json& msg)
         }
     }
 
+    if (m_exporter)  m_exporter.reset();
     m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_exposer) {
         logging::info("Providing run-time monitoring data on port %d", port);
@@ -487,6 +482,7 @@ std::string DrpBase::configure(const json& msg)
                     [](){return 4*readInfinibandCounter("port_xmit_data");});
 
     // Create all the eb things and do the connections
+    if (m_tebContributor)  m_tebContributor.reset();
     m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, m_exporter);
     int rc = m_tebContributor->configure(m_tPrms);
     if (rc) {
@@ -494,16 +490,18 @@ std::string DrpBase::configure(const json& msg)
     }
 
     if (m_mPrms.addrs.size() != 0) {
-        m_meb = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, m_exporter);
+        if (m_mebContributor)  m_mebContributor.reset();
+        m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, m_exporter);
         void* poolBase = (void*)pool.pebble[0];
         size_t poolSize = pool.pebble.size();
-        rc = m_meb->configure(m_mPrms, poolBase, poolSize);
+        rc = m_mebContributor->configure(m_mPrms, poolBase, poolSize);
         if (rc) {
             return std::string{"MebContributor connect failed"};
         }
     }
 
-    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, m_meb.get(), m_exporter);
+    if (m_ebRecv)  m_ebRecv.reset();
+    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, m_mebContributor.get(), m_exporter);
     rc = m_ebRecv->configure(m_tPrms);
     if (rc) {
         return std::string{"EbReceiver configure failed"};
@@ -524,16 +522,17 @@ int DrpBase::setupTriggerPrimitives(const json& body)
 
     Document top;
     const std::string configAlias = body["config_alias"];
-    const std::string dummy("tmoTeb");  // Default trigger library
+    const std::string dummy("tmoteb");  // Default trigger library
     std::string&      detName = m_para.trgDetName;
     if (m_para.trgDetName.empty())  m_para.trgDetName = dummy;
 
-    logging::info("Fetching trigger info from ConfigDb/%s/%s\n",
+    // In the following, _0 is added in prints to show the default segment number
+    logging::info("Fetching trigger info from ConfigDb/%s/%s_0\n",
            configAlias.c_str(), detName.c_str());
 
     if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, detName, top))
     {
-        logging::error("%s:\n  Document '%s' not found in ConfigDb\n",
+        logging::error("%s:\n  Document '%s_0' not found in ConfigDb\n",
                 __PRETTY_FUNCTION__, detName.c_str());
         return -1;
     }
