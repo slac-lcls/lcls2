@@ -31,12 +31,12 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
     // Check timing reference clock, program if necessary
     unsigned ccnt0,ccnt1;
     dmaReadRegister(fd, 0x00C00028, &ccnt0);
-    usleep(10000);
+    usleep(100000);
     dmaReadRegister(fd, 0x00C00028, &ccnt1);
     ccnt1 -= ccnt0;
-    double clkr = double(ccnt1)*16.e-4;
+    double clkr = double(ccnt1)*16.e-5;
     printf("Timing RefClk %f MHz\n", clkr);
-    if (clkr < 184 || clkr > 188) {
+    if (clkr < 180 || clkr > 190) {
       //  Set the I2C Mux
       dmaWriteRegister(fd, 0x00E00000, (1<<2));
       Si570 rclk(fd,0x00E00800);
