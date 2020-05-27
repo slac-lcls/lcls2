@@ -268,6 +268,7 @@ static void usage(const char* p)
 int main(int argc, char* argv[])
 {
     bool setup_clk = false;
+    bool reset_clk = false;
     bool status    = false;
     bool ringb     = false;
     bool timingRst = false;
@@ -283,10 +284,11 @@ int main(int argc, char* argv[])
     char* endptr;
     
     int c;
-    while((c = getopt(argc, argv, "cd:sStTmMFD:C:")) != EOF) {
+    while((c = getopt(argc, argv, "cd:rsStTmMFD:C:")) != EOF) {
       switch(c) {
       case 'd': dev = optarg; break;
       case 'c': setup_clk = true; updateId = true; break;
+      case 'r': reset_clk = true; break;
       case 's': status    = true; break;
       case 'S': ringb     = true; break;
       case 't': tcountRst = true; break;
@@ -364,7 +366,7 @@ int main(int argc, char* argv[])
     if (core_pcie) {
       double txrefclk, rxrefclk;
       measure_clks(txrefclk,rxrefclk);
-      setup_clk = ( txrefclk < 185 || txrefclk > 186 );
+      setup_clk |= ( txrefclk < 185 || txrefclk > 186 );
 
       if (setup_clk) {
         select_si570();
@@ -374,6 +376,15 @@ int main(int argc, char* argv[])
         set_si570(f);
         read_si570();
         
+        double txrefclk, rxrefclk;
+        measure_clks(txrefclk,rxrefclk);
+      }
+      else if (reset_clk) {
+        select_si570();
+        reset_si570();
+        
+        double f = read_si570();
+
         double txrefclk, rxrefclk;
         measure_clks(txrefclk,rxrefclk);
       }
