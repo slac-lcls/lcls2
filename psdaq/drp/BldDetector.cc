@@ -719,7 +719,7 @@ BldApp::BldApp(Parameters& para) :
     m_det        (new BldDetector(m_para, m_drp))
 {
     if (m_det == nullptr) {
-        logging::critical("Error !! Could not create Detector object for %s", m_para.detType);
+        logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
     }
     if (m_para.outputDir.empty()) {

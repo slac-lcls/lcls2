@@ -41,7 +41,7 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
 
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {
-        logging::critical("Error !! Could not create Detector object for %s", m_para.detType);
+        logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
     }
     if (m_para.outputDir.empty()) {
