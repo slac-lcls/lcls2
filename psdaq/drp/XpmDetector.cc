@@ -37,6 +37,10 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
     double clkr = double(ccnt1)*16.e-5;
     printf("Timing RefClk %f MHz\n", clkr);
     if (clkr < 180 || clkr > 190) {
+      //  Flush I2C by reading the Mux
+      unsigned mux;
+      dmaReadRegister(fd, 0x00E00000, &mux);
+      printf("I2C mux:  0x%x\n", mux); // Force the read not to be optimized out
       //  Set the I2C Mux
       dmaWriteRegister(fd, 0x00E00000, (1<<2));
       Si570 rclk(fd,0x00E00800);
@@ -57,7 +61,7 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
       v &= ~0x8;
       dmaWriteRegister(fd, 0x00C00020, v);
       usleep(100000);
-    } 
+    }
 
     close(fd);
 }
@@ -81,7 +85,7 @@ json XpmDetector::connectionInfo()
       hints.ai_family = AF_INET;       /* Allow IPv4 or IPv6 */
       hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
       hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
-      
+
       char hname[64];
       gethostname(hname,64);
       int s = getaddrinfo(hname, NULL, &hints, &result);
@@ -92,7 +96,7 @@ json XpmDetector::connectionInfo()
 
       sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
 
-      unsigned id = 0xfb000000 | 
+      unsigned id = 0xfb000000 |
         (ntohl(saddr->sin_addr.s_addr)&0xffff);
       dmaWriteRegister(fd, &tem->xma().txId, id);
     }
