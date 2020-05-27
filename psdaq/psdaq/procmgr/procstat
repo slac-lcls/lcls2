@@ -401,11 +401,12 @@ def main():
 
   sConfigFile = lsRemainder[0]
 
-  if (iPlatform < 0):
+  while (iPlatform < 0):
     try:
         iPlatform = deduce_platform(sConfigFile)
     except IOError:
         raise CustomIOError("main(): I/O error while reading " +  sConfigFile)
+    time.sleep(1.0)
 
   evgProcMgr = QObject()
 
