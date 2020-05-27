@@ -100,6 +100,7 @@ class MDBWeb_CLI(MDB_CLI):
         else :
             mu.request_confirmation()
 
+
     def get(self):
         # self._warning()
         kwa        = self.kwargs
@@ -123,7 +124,21 @@ class MDBWeb_CLI(MDB_CLI):
         mu.save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' : True})
 
 
-    #def add(self): self._warning()
+    def add(self) :
+        """Adds calibration constants to database from file.
+        """
+        kwa = self.kwargs
+        fname = kwa.get('iofname', 'None')
+        ctype = kwa.get('ctype', 'None')
+        dtype = kwa.get('dtype', 'None')
+        verb  = self.loglevel == 'DEBUG'
+        det   = kwa.get('detector', None)
+        exp   = kwa.get('experiment', None)
+
+        data = mu.data_from_file(fname, ctype, dtype, verb)
+        #mu.insert_calib_data(data, **kwa)
+        id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
+          wu.add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
 
 
     def test(self):
@@ -140,10 +155,9 @@ class MDBWeb_CLI(MDB_CLI):
         elif mode == 'delcol': self.delcol()
         elif mode == 'deldb' : self.deldb()
         elif mode == 'get'   : self.get()
-
-        # pymongo access from MDB_CLI
         elif mode == 'add'   : self.add()
 
+        # pymongo access from MDB_CLI
         elif mode == 'convert': self.convert()
         elif mode == 'delall' : self.delall()
         elif mode == 'export' : self.exportdb()

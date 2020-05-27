@@ -104,6 +104,7 @@ Usage ::
     mu.request_confirmation()
     prefix = mu.out_fname_prefix(fmt='doc-%s-%s-r%04d-%s', **kwa)
     mu.save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' : True})
+    data = mu.data_from_file(fname, ctype, dtype, verb=False)
 
     detname_short = mu.pro_detector_name(detname_long)
 
@@ -124,6 +125,7 @@ from collections.abc import Iterable
 #from pymongo.errors import ConnectionFailure
 #import pymongo
 
+import os
 import sys
 from time import time
 
@@ -1408,6 +1410,30 @@ def save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' 
         gu.save_textfile(msg, fname, mode='w', verb=verb)
         logger.info('saved file: %s' % fname)
 
+#------------------------------
+
+def data_from_file(fname, ctype, dtype, verb=False) :
+    """Returns data object loaded from file.
+    """
+    from psana.pscalib.calib.NDArrIO import load_txt
+
+    assert os.path.exists(fname), 'File "%s" DOES NOT EXIST' % fname
+
+    if dtype == 'xtcav':
+        from psana.pscalib.calib.XtcavUtils import load_xtcav_calib_file
+
+    ext = os.path.splitext(fname)[-1]
+
+    data = gu.load_textfile(fname, verb=verb) if ctype == 'geometry' or dtype in ('str', 'txt', 'text') else\
+           load_xtcav_calib_file(fname)       if dtype == 'xtcav' else\
+           np.load(fname)                     if ext == '.npy' else\
+           gu.load_json(fname)                if ext == '.json' or dtype == 'json' else\
+           gu.load_pickle(fname)              if ext == '.pkl' or dtype in ('pkl', 'pickle') else\
+           load_txt(fname) # input NDArrIO 
+
+    logger.debug('fname:%s ctype:%s dtype:%s verb:%s data:\n%s\n...'%\
+                 (fname, ctype, dtype, verb, str(data)[:1000]))
+    return data
 
 #------------------------------
 # 2020-05-11

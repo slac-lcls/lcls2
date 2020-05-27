@@ -4,7 +4,6 @@ Created on 2018-02-23 by Mikhail Dubrovin
 """
 #------------------------------
 
-import os
 import numpy as np
 import logging
 logger = logging.getLogger(__name__)
@@ -12,7 +11,6 @@ logger = logging.getLogger(__name__)
 import psana.pyalgos.generic.Utils as gu # print_kwargs, print_parser, is_in_command_line, etc
 import psana.pscalib.calib.MDBUtils as mu # insert_constants, time_and_timestamp
 from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
-from psana.pscalib.calib.NDArrIO import load_txt, save_txt
 
 MODES = ('print', 'convert', 'deldoc', 'delcol', 'deldb', 'delall', 'add', 'get', 'export', 'import', 'test')
 
@@ -231,25 +229,14 @@ class MDB_CLI :
     def add(self) :
         """Adds calibration constants to database from file.
         """
-        kwargs = self.kwargs
-        fname = kwargs.get('iofname', 'None')
-        ctype = kwargs.get('ctype', 'None')
-        dtype = kwargs.get('dtype', 'None')
+        kwa = self.kwargs
+        fname = kwa.get('iofname', 'None')
+        ctype = kwa.get('ctype', 'None')
+        dtype = kwa.get('dtype', 'None')
         verb  = self.loglevel == 'DEBUG'
-        assert os.path.exists(fname), 'File "%s" DOES NOT EXIST' % fname
 
-        if dtype == 'xtcav':
-            from psana.pscalib.calib.XtcavUtils import load_xtcav_calib_file
-
-        ext = os.path.splitext(fname)[-1]
-        data = gu.load_textfile(fname, verb=verb) if ctype == 'geometry' or dtype in ('str', 'txt', 'text') else\
-               load_xtcav_calib_file(fname)       if dtype == 'xtcav' else\
-               np.load(fname)                     if ext == '.npy' else\
-               gu.load_json(fname)                if ext == '.json' or dtype == 'json' else\
-               gu.load_pickle(fname)              if ext == '.pkl' or dtype in ('pkl', 'pickle') else\
-               load_txt(fname) # input NDArrIO 
-
-        mu.insert_calib_data(data, **kwargs)
+        data = mu.data_from_file(fname, ctype, dtype, verb)
+        mu.insert_calib_data(data, **kwa)
 
 
     def get(self) :
