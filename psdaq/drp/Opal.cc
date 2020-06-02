@@ -63,14 +63,14 @@ namespace Drp {
   class RefDef : public VarDef {
   public:
     enum index { image, projection };
-    RefDef(const char* detname, const char* dettype) { 
+    RefDef(const char* detname, const char* dettype) {
       char buff[128];
       sprintf(buff,"%s_%s_image",detname,dettype);
       NameVec.push_back({buff, Name::UINT16, 2});
       sprintf(buff,"%s_%s_projection",detname,dettype);
       NameVec.push_back({buff, Name::DOUBLE, 1}); }
   };
-  
+
   class OpalTT {
   public:
     OpalTT(Opal& d, Parameters* para);
@@ -264,6 +264,7 @@ void Opal::write_image(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >
 void     Opal::slowupdate(XtcData::Xtc& xtc)
 {
   if (m_tt) m_tt->slowupdate(xtc);
+  else this->Detector::slowupdate(xtc);
 }
 
 void     Opal::shutdown()
@@ -285,12 +286,10 @@ OpalTT::~OpalTT() {}
 
 void     OpalTT::slowupdate(XtcData::Xtc& xtc)
 {
-  if (!m_background_empty) {
-      m_background_sem.take();
-      memcpy(&xtc, &m_det.transitionXtc(), m_det.transitionXtc().extent);
-      m_background_sem.give();
-      m_background_empty = true;
-  }
+  m_background_sem.take();
+  memcpy(&xtc, &m_det.transitionXtc(), m_det.transitionXtc().extent);
+  m_background_empty = true;
+  m_background_sem.give();
 }
 
 void     OpalTT::shutdown() { m_fex.unconfigure(); }
@@ -325,7 +324,7 @@ unsigned OpalTT::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
 bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
   m_fex.reset();
-              
+
   OpalTTFex::TTResult result = m_fex.analyze(subframes);
 
   CreateData cd(xtc, m_det.namesLookup(), m_fexNamesId);
@@ -341,13 +340,13 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
     cd.set_value(FexDef::fltposfwhm, m_fex.filtered_fwhm());
     cd.set_value(FexDef::nxtampl   , m_fex.next_amplitude());
     cd.set_value(FexDef::refampl   , m_fex.ref_amplitude());
-   
+
 #define copy_projection(atype, src, index) {                            \
       unsigned shape[1];                                                \
       shape[0] = src.size();                                            \
       Array<atype> a = cd.allocate<atype>(index,shape);                 \
       memcpy(a.data(), src.data(), src.size()*sizeof(atype)); }
-                
+
     if (m_fex.write_evt_projections()) {
       copy_projection(int   , m_fex.sig_projection(), FexDef::proj_sig);
       copy_projection(double, m_fex.ref_projection(), FexDef::proj_ref);
@@ -387,7 +386,7 @@ OpalTTSim::OpalTTSim(const char* evtxtc, Opal& d, Parameters* para) :
   m_simNamesId  (-1,-1),
   m_framebuffer  (2*1024*1024),
   m_evtindex     (0)
-  
+
 {
   _load_xtc(m_evtbuffer, evtxtc);
 }
@@ -472,5 +471,5 @@ void _load_xtc(std::vector<uint8_t>& buffer, const char* filename)
   if (bytes != s.st_size) {
     perror("Error reading all bytes");
     exit(3);
-  } 
+  }
 }
