@@ -12,9 +12,9 @@ SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 #----------
 
-def usage(mode=0) :
-    if mode == 1 : return 'Proceses detector raw dark data and saves results in files.'
-    else : return\
+def usage(mode=0):
+    if mode == 1: return 'Proceses detector raw dark data and saves results in files.'
+    else: return\
            '       %s -d <dataset> [-d <dnames>] [-f <file-name-template>]' % SCRNAME +\
            ' [-n <events-collect>] [-m <events-skip>] [-v 7] [-p 1] [-v 7] ...'+\
            '\n  -v, -S control bit-words stand for 1/2/4/8/16/32/... - ave/rms/status/mask/max/min/sta_int_lo/sta_int_hi'+\
@@ -22,7 +22,7 @@ def usage(mode=0) :
 
 #----------
 
-def argument_parser() :
+def argument_parser():
 
     import argparse
 
@@ -39,14 +39,14 @@ def argument_parser() :
     d_rmshig = 16000
     d_fraclm = 0.1
     d_nsigma = 6.0
-    d_plotim = 0      
-    d_verbos = 7
-    d_savebw = 0o377
     d_intnlo = 6.0
     d_intnhi = 6.0
     d_rmsnlo = 6.0
     d_rmsnhi = 6.0
     d_evcode = None
+    d_plotim = 0      
+    d_savebw = 0o377
+    d_addcdb = False
     d_loglev = 'DEBUG'
    
     h_expnam='dataset name, default = %s' % d_expnam
@@ -62,17 +62,21 @@ def argument_parser() :
     h_rmshig='rms high limit, default = %s' % d_rmshig
     h_fraclm='allowed fraction limit, default = %s' % d_fraclm
     h_nsigma='number of sigma for gated average, default = %s' % d_nsigma
-    h_plotim='control bit-word to plot images, default = %s' % d_plotim
-    h_verbos='control bit-word for verbosity, default = %s' % d_verbos
-    h_savebw='control bit-word to save arrays, default = %s' % d_savebw
     h_intnlo='number of sigma from mean for low  limit on INTENSITY, default = %s' % d_intnlo
     h_intnhi='number of sigma from mean for high limit on INTENSITY, default = %s' % d_intnhi
     h_rmsnlo='number of sigma from mean for low  limit on RMS, default = %s' % d_rmsnlo
     h_rmsnhi='number of sigma from mean for high limit on RMS, default = %s' % d_rmsnhi
     h_evcode='comma separated event codes for selection as OR combination, any negative code inverts selection, default = %s' % str(d_evcode)
+    h_plotim='control bit-word to plot images, default = %s' % d_plotim
+    h_savebw='control bit-word to save arrays, default = %s' % d_savebw
+    h_addcdb='add constants to the calibration data base, default = %s' % d_addcdb
     h_loglev='logging level name, one of %s, default = %s' % (STR_LEVEL_NAMES, str(d_loglev))
 
     parser = argparse.ArgumentParser(description=usage(1), usage=usage())
+
+    #parser.add_argument('expnam', default=d_expnam, type=str,   help=h_expnam)
+    #parser.add_argument('runnum', default=d_runnum, type=int,   help=h_runnum)
+    #parser.add_argument('dnames', default=d_dnames, type=str,   help=h_dnames)
 
     parser.add_argument('-e', '--expnam', default=d_expnam, type=str,   help=h_expnam)
     parser.add_argument('-r', '--runnum', default=d_runnum, type=int,   help=h_runnum)
@@ -87,29 +91,29 @@ def argument_parser() :
     parser.add_argument('-T', '--rmshig', default=d_rmshig, type=float, help=h_rmshig)
     parser.add_argument('-F', '--fraclm', default=d_fraclm, type=float, help=h_fraclm)
     parser.add_argument('-g', '--nsigma', default=d_nsigma, type=float, help=h_nsigma)
-    parser.add_argument('-p', '--plotim', default=d_plotim, type=int,   help=h_plotim)
-    parser.add_argument('-v', '--verbos', default=d_verbos, type=int,   help=h_verbos)
-    parser.add_argument('-S', '--savebw', default=d_savebw, type=int,   help=h_savebw)
     parser.add_argument('-D', '--intnlo', default=d_intnlo, type=float, help=h_intnlo)
     parser.add_argument('-U', '--intnhi', default=d_intnhi, type=float, help=h_intnhi)
     parser.add_argument('-L', '--rmsnlo', default=d_rmsnlo, type=float, help=h_rmsnlo)
     parser.add_argument('-H', '--rmsnhi', default=d_rmsnhi, type=float, help=h_rmsnhi)
     parser.add_argument('-c', '--evcode', default=d_evcode, type=str,   help=h_evcode)
+    parser.add_argument('-p', '--plotim', default=d_plotim, type=int,   help=h_plotim)
+    parser.add_argument('-S', '--savebw', default=d_savebw, type=int,   help=h_savebw)
+    parser.add_argument('-A', '--addcdb', default=d_addcdb,             help=h_addcdb, action='store_true')
     parser.add_argument('-l', '--loglev', default=d_loglev, type=str,   help=h_loglev)
  
     return parser
 
 #----------
 
-def do_main() :
+def do_main():
 
-    print('Command   :', ' '.join(sys.argv))
-    print('Arguments :')
+    print('Command  :', ' '.join(sys.argv))
+    print('Arguments:')
     parser = argument_parser()
     args = parser.parse_args()
-    for k,v in vars(args).items() : print('   %s : %s' % (k, str(v)))
+    for k,v in vars(args).items(): print('   %s: %s' % (k, str(v)))
 
-    init_logger(args.loglev, fmt='[%(levelname).1s] L%(lineno)04d : %(message)s', datefmt='%Y-%m-%dT%H:%M:%S')
+    init_logger(args.loglev, fmt='[%(levelname).1s] L%(lineno)04d: %(message)s', datefmt='%Y-%m-%dT%H:%M:%S')
 
     from psana.pscalib.calibprod.DetRawDarkProc import detectors_dark_proc
     detectors_dark_proc(parser)
@@ -119,7 +123,7 @@ def do_main() :
 
 #----------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     do_main()
 
 #----------

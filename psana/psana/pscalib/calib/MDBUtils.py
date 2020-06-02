@@ -137,7 +137,7 @@ import psana.pscalib.calib.CalibConstants as cc
 from bson.objectid import ObjectId
 from psana.pscalib.calib.Time import Time
 
-TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T09:11:09-0800
+TSFORMAT = cc.TSFORMAT #'%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T09:11:09-0800
 
 #------------------------------
 

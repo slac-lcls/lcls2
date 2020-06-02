@@ -70,6 +70,9 @@ Usage::
     s = gu.do_print(nev) # returns true for sparcified event numbers.
     ch = gu.input_single_char('Next event? [y/n]')
 
+    os_system(cmd)
+    os_command(cmd)
+
 See:
     - :py:class:`Utils`
     - :py:class:`PSUtils`
@@ -589,6 +592,25 @@ def input_single_char(prompt='input? >'):
 #    """Returns tuple of group names"""
 #    from grp import getgrnam
 #    return getgrnam(user)
+
+
+#------------------------------
+
+def os_system(cmd):
+    assert isinstance(cmd,str), 'command should be str'       
+    os.system(cmd)
+    logger.debug('os_system command: %s' % cmd)
+    
+#------------------------------
+
+def os_command(cmd):
+    assert isinstance(cmd,str), 'command should be str'       
+    #_cmd = cmd.split() if isinstance(cmd,str) else cmd
+    _cmd = cmd
+    stream = os.popen(_cmd)
+    resp = stream.read()
+    msg = '%s\n%s' % (_cmd, resp) if resp else _cmd
+    logger.debug('os_command resp: %s' % msg)
 
 #------------------------------
 #----------- TEST -------------
