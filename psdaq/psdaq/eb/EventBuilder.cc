@@ -33,7 +33,7 @@ EventBuilder::EventBuilder(unsigned        epochs,
   {
     fprintf(stderr, "%s:\n  Epoch duration (%016lx) must be a power of 2\n",
             __func__, duration);
-    abort();
+    throw "Epoch duration must be a power of 2";
   }
   // Revisit: For now we punt on the power-of-2 requirement in order to
   //          accomodate transitions, especially in the MEB case
@@ -41,13 +41,13 @@ EventBuilder::EventBuilder(unsigned        epochs,
   //{
   //  fprintf(stderr, "%s:\n  Number of epochs (%08x) must be a power of 2\n",
   //          __func__, epochs);
-  //  abort();
+  //  throw "Number of epochs must be a power of 2";
   //}
   //if (entries & (entries - 1))
   //{
   //  fprintf(stderr, "%s:\n  Number of entries per epoch (%08x) must be a power of 2\n",
   //          __func__, entries);
-  //  abort();
+  //  throw "Number of entries per epoch must be a power of 2";
   //}
 }
 
@@ -150,7 +150,7 @@ EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
           __PRETTY_FUNCTION__, key);
   printf(" epochFreelist:\n");
   _epochFreelist.dump();
-  abort();
+  throw "Unable to allocate epoch";
 }
 
 EbEpoch* EventBuilder::_match(uint64_t inKey)
@@ -202,7 +202,7 @@ EbEvent* EventBuilder::_event(const EbDgram* ctrb,
   fprintf(stderr, "%s:\n  Unable to allocate event\n", __PRETTY_FUNCTION__);
   printf("  eventFreelist:\n");
   _eventFreelist.dump();
-  abort();
+  throw "Unable to allocate event";
 }
 
 EbEvent* EventBuilder::_insert(EbEpoch*       epoch,

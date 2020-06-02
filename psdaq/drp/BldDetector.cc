@@ -387,8 +387,8 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     uint32_t lane = (dest[m_current] >> 8) & 7;
     bytes += size;
     if (unsigned(size) > m_drp.pool.dmaSize()) {
-        logging::critical("DMA overflowed buffer: %d vs %d\n", size, m_drp.pool.dmaSize());
-        exit(-1);
+        logging::critical("DMA overflowed buffer: %d vs %d", size, m_drp.pool.dmaSize());
+        throw "DMA overflowed buffer";
     }
 
     const uint32_t* data = (uint32_t*)m_drp.pool.dmaBuffers[index];
@@ -424,13 +424,13 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     }
     if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
         logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
-               RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
+                          RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
         logging::critical("data: %08x %08x %08x %08x %08x %08x",
-               data[0], data[1], data[2], data[3], data[4], data[5]);
+                          data[0], data[1], data[2], data[3], data[4], data[5]);
 
         logging::critical("lastTid %s", XtcData::TransitionId::name(m_lastTid));
         logging::critical("lastData: %08x %08x %08x %08x %08x %08x",
-               m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5]);
+                          m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5]);
 
         throw "Jump in event counter";
 
@@ -516,8 +516,8 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     // setup monitoring
     uint64_t nevents = 0L;
     std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
-      {"partition", std::to_string(m_para.partition)},
-        {"detname",m_para.detName}};
+                                              {"partition", std::to_string(m_para.partition)},
+                                              {"detname", m_para.detName}};
     exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                   [&](){return nevents;});
     uint64_t bytes = 0L;
@@ -696,7 +696,7 @@ void Pgp::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
                          : m_para.maxTrSize;
     if (size > maxSize) {
         logging::critical("%s Dgram of size %zd overflowed buffer of size %zd", XtcData::TransitionId::name(dgram.service()), size, maxSize);
-        exit(-1);
+        throw "Dgram overflowed buffer";
     }
 
     PGPEvent* event = &m_drp.pool.pgpEvents[index];
@@ -975,7 +975,7 @@ int main(int argc, char* argv[])
                 ++para.verbose;
                 break;
             default:
-                exit(1);
+                return 1;
         }
     }
 
@@ -990,22 +990,22 @@ int main(int argc, char* argv[])
     // Check required parameters
     if (para.partition == unsigned(-1)) {
         logging::critical("-p: partition is mandatory");
-        exit(1);
+        return 1;
     }
     if (para.device.empty()) {
         logging::critical("-d: device is mandatory");
-        exit(1);
+        return 1;
     }
     if (para.alias.empty()) {
         logging::critical("-u: alias is mandatory");
-        exit(1);
+        return 1;
     }
 
     // Alias must be of form <detName>_<detSegment>
     size_t found = para.alias.rfind('_');
     if ((found == std::string::npos) || !isdigit(para.alias.back())) {
         logging::critical("-u: alias must have _N suffix");
-        exit(1);
+        return 1;
     }
     para.detName = "bld";  //para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
@@ -1015,10 +1015,17 @@ int main(int argc, char* argv[])
     para.nTrBuffers = 8; // Power of 2 greater than the maximum number of
                          // transitions in the system at any given time, e.g.,
                          // MAX_LATENCY * (SlowUpdate rate), in same units
-
-    Py_Initialize(); // for use by configuration
-    Drp::BldApp app(para);
-    app.run();
-    app.handleReset(json({}));
-    Py_Finalize(); // for use by configuration
+    try {
+        Py_Initialize(); // for use by configuration
+        Drp::BldApp app(para);
+        app.run();
+        app.handleReset(json({}));
+        Py_Finalize(); // for use by configuration
+        return 0;
+    }
+    catch (std::exception& e)  { logging::critical("%s", e.what()); }
+    catch (std::string& e)     { logging::critical("%s", e.c_str()); }
+    catch (char const* e)      { logging::critical("%s", e); }
+    catch (...)                { logging::critical("Default exception"); }
+    return EXIT_FAILURE;
 }

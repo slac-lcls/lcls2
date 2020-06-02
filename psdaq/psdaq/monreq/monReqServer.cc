@@ -49,15 +49,17 @@ void sigHandler( int signal )
 
   if (callCount == 0)
   {
-    logging::info("\nShutting down");
+    logging::info("Shutting down");
 
     lRunning = 0;
   }
 
   if (callCount++)
   {
-    logging::critical("Aborting on 2nd ^C...");
-    ::abort();
+    logging::critical("Aborting on 2nd ^C");
+
+    sigaction(signal, &lIntAction, NULL);
+    raise(signal);
   }
 }
 
@@ -182,7 +184,7 @@ namespace Pds {
         {
           logging::critical("%s:\n  Datagram is too large (%zd) for buffer of size %d",
                             __PRETTY_FUNCTION__, sizeof(*odg) + odg->xtc.sizeofPayload(), _sizeofBuffers);
-          abort();            // The memcpy would blow by the buffer size limit
+          throw "Fatal: Datagram is too large for buffer"; // The memcpy would blow by the buffer size limit
         }
 
         memcpy(buf, &idg->xtc, idg->xtc.extent);
@@ -203,7 +205,7 @@ namespace Pds {
       unsigned idx = (dg->env >> 16) & 0xff;
       if (idx >= _bufFreeList.size())
       {
-        logging::warning("deleteDatagram: Unexpected index %08x\n", idx);
+        logging::warning("deleteDatagram: Unexpected index %08x", idx);
       }
       //if (idx != bufIdx)
       //{
@@ -214,7 +216,7 @@ namespace Pds {
       {
         if (idx == _bufFreeList.peek(i))
         {
-          logging::error("Attempted double free of list entry %d: idx %d, bufIdx %d, dg %p, ts %u.%09u\n",
+          logging::error("Attempted double free of list entry %d: idx %d, bufIdx %d, dg %p, ts %u.%09u",
                          i, idx, bufIdx, dg, dg->time.seconds(), dg->time.nanoseconds());
           // Does the dg still need to be freed?  Apparently so.
           Pool::free((void*)dg);
@@ -384,7 +386,7 @@ namespace Pds {
         _pool->dump();
         printf("Meb::process event dump:\n");
         event->dump(-1);
-        abort();
+        throw "Fatal: Dgram pool exhausted";
       }
 
       Dgram* dg  = new(buffer) Dgram(*(event->creator()));
@@ -867,7 +869,7 @@ int main(int argc, char** argv)
   {
     // The problem is that there are only 8 bits available in the env
     // Could use the lower 24 bits, but then we have a nonstandard env
-    logging::critical("%s:\n  Number of event buffers > 255 is not supported: got %d\n", prms.numEvBuffers);
+    logging::critical("%s:\n  Number of event buffers > 255 is not supported: got %d", prms.numEvBuffers);
     return 1;
   }
 
@@ -882,12 +884,20 @@ int main(int argc, char** argv)
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
     logging::warning("Failed to set up ^C handler");
 
-  MebApp app(collSrv, tag, nevqueues, ldist, prms);
+  try
+  {
+    MebApp app(collSrv, tag, nevqueues, ldist, prms);
 
-  try                        { app.run(); }
+    app.run();
+
+    app.handleReset(json({}));
+
+    return 0;
+  }
   catch (std::exception& e)  { logging::critical("%s", e.what()); }
+  catch (std::string& e)     { logging::critical("%s", e.c_str()); }
+  catch (char const* e)      { logging::critical("%s", e); }
+  catch (...)                { logging::critical("Default exception"); }
 
-  app.handleReset(json({}));
-
-  return 0;
+  return EXIT_FAILURE;
 }

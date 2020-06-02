@@ -63,8 +63,10 @@ void sigHandler( int signal )
 
   if (callCount++)
   {
-    fprintf(stderr, "Aborting on 2nd ^C...\n");
-    ::abort();
+    fprintf(stderr, "Aborting on 2nd ^C\n");
+
+    sigaction(signal, &lIntAction, NULL);
+    raise(signal);
   }
 }
 
@@ -195,10 +197,10 @@ void DrpSim::startup(unsigned id, void** base, size_t* size, uint16_t readoutGro
   // Avoid going into resource wait by configuring more events in the pool than
   // are necessary to fill all the batches in the batch pool, i.e., make the
   // system run out of batches before it runs out of events
-  assert(_pool == nullptr);
+  if (_pool)  throw "Fatal: _pool != nullptr";
   //_pool = new GenericPoolW(sizeof(Entry) + _maxEvtSz, (MAX_BATCHES + 1) * MAX_ENTRIES, CLS);
   _pool = new GenericPool(sizeof(Entry) + _maxEvtSz, (MAX_BATCHES + 1) * MAX_ENTRIES, CLS);
-  assert(_pool);
+  if (!_pool)  throw "Fatal: _pool == nullptr";
 
   *base = _pool->buffer();
   *size = _pool->size();
@@ -385,7 +387,7 @@ void EbCtrbIn::process(const ResultDgram& result, const void* appPrm)
   const Input* input = (const Input*)appPrm;
   uint64_t     pid   = result.pulseId();
 
-  assert(input);
+  if (!input)  throw "Fatal: input == nullptr";
 
   //if (result.xtc.damage.value())
   //{
@@ -404,7 +406,7 @@ void EbCtrbIn::process(const ResultDgram& result, const void* appPrm)
   {
     fprintf(stderr, "%s:\n  Out of order event: prev %014lx, cur %014lx, diff %ld, xor %014lx\n",
             __PRETTY_FUNCTION__, _pid, pid, pid - _pid, pid ^ _pid);
-    //abort();
+    //throw "Out of order event";
   }
   _pid = pid;
 
@@ -887,7 +889,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "More batch entries (%u) requested than definable "
             "in the batch duration (%lu)\n",
             MAX_ENTRIES, BATCH_DURATION);
-    abort();
+    throw "Fatal: MAX_ENTRIES > BATCH_DURATION";
   }
 
   struct sigaction sigAction;
@@ -900,21 +902,22 @@ int main(int argc, char **argv)
 
   prometheus::Exposer exposer{"0.0.0.0:9200", "/metrics", 1};
   auto exporter = std::make_shared<MetricExporter>();
-
-  CtrbApp app(collSrv, tebPrms, mebPrms, exporter);
-
   exposer.RegisterCollectable(exporter);
 
   try
   {
+    CtrbApp app(collSrv, tebPrms, mebPrms, exporter);
+
     app.run();
-  }
-  catch (std::exception& e)
-  {
-    fprintf(stderr, "%s\n", e.what());
-  }
 
-  app.handleReset(json({}));
+    app.handleReset(json({}));
 
-  return 0;
+    return 0;
+  }
+  catch (std::exception& e)  { fprintf(stderr, "%s\n", e.what()); }
+  catch (std::string& e)     { fprintf(stderr, "%s\n", e.c_str()); }
+  catch (char const* e)      { fprintf(stderr, "%s\n", e); }
+  catch (...)                { fprintf(stderr, "Default exception\n"); }
+
+  return EXIT_FAILURE;
 }

@@ -83,7 +83,7 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
   int rc;
   if ( (rc = _transport.initialize(prms.ifAddr, prms.port, numEbs)) )
   {
-    logging::error("%s:\n  Failed to initialize EbLfServer on %s:%s\n",
+    logging::error("%s:\n  Failed to initialize EbLfServer on %s:%s",
                    __PRETTY_FUNCTION__, prms.ifAddr, prms.port);
     return rc;
   }
@@ -97,19 +97,19 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _transport.connect(&link, prms.id, tmo)) )
     {
-      logging::error("%s:\n  Error connecting to TEB %d\n",
+      logging::error("%s:\n  Error connecting to TEB %d",
                      __PRETTY_FUNCTION__, i);
       return rc;
     }
     unsigned rmtId = link->id();
     _links[rmtId] = link;
 
-    logging::debug("Inbound link with TEB ID %d connected\n", rmtId);
+    logging::debug("Inbound link with TEB ID %d connected", rmtId);
 
     size_t regSize;
     if ( (rc = link->prepare(&regSize)) )
     {
-      logging::error("%s:\n  Failed to prepare link with TEB ID %d\n",
+      logging::error("%s:\n  Failed to prepare link with TEB ID %d",
                      __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
@@ -122,22 +122,22 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
       _region = allocRegion(regSize);
       if (_region == nullptr)
       {
-        logging::error("%s:\n  No memory found for a Result MR of size %zd\n",
+        logging::error("%s:\n  No memory found for a Result MR of size %zd",
                        __PRETTY_FUNCTION__, regSize);
         return ENOMEM;
       }
     }
     else if (regSize != size)
     {
-      logging::error("%s:\n  Error: Result MR size (%zd) cannot differ between TEBs "
-                     "(%zd from Id %d)\n", __PRETTY_FUNCTION__, size, regSize, rmtId);
+      logging::error("%s:\n  Error: Result MR size (%zd) cannot vary between TEBs "
+                     "(%zd from Id %d)", __PRETTY_FUNCTION__, size, regSize, rmtId);
       return -1;
     }
 
     if ( (rc = link->setupMr(_region, regSize)) )
     {
       char* region = static_cast<char*>(_region);
-      logging::error("%s:\n  Failed to set up Result MR for TEB ID %d, %p:%p, size %zd\n",
+      logging::error("%s:\n  Failed to set up Result MR for TEB ID %d, %p:%p, size %zd",
                      __PRETTY_FUNCTION__, rmtId, region, region + regSize, regSize);
       if (_region)  free(_region);
       _region = nullptr;
@@ -145,11 +145,11 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
     }
     if (link->postCompRecv())
     {
-      logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d\n",
+      logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d",
                        __PRETTY_FUNCTION__, rmtId);
     }
 
-    logging::info("Inbound link with TEB ID %d connected and configured\n", rmtId);
+    logging::info("Inbound link with TEB ID %d connected and configured", rmtId);
   }
 
   return 0;
@@ -160,11 +160,11 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
   int rc = pinThread(pthread_self(), _prms.core[1]);
   if (rc && _prms.verbose)
   {
-    logging::error("%s:\n  Error from pinThread:\n  %s\n",
+    logging::error("%s:\n  Error from pinThread:\n  %s",
                    __PRETTY_FUNCTION__, strerror(rc));
   }
 
-  logging::info("Receiver thread is starting\n");
+  logging::info("Receiver thread is starting");
 
   _inputs = nullptr;
 
@@ -174,7 +174,7 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
     {
       if (_transport.pollEQ() == -FI_ENOTCONN)
       {
-        logging::critical("Receiver thread lost connection\n");
+        logging::critical("Receiver thread lost connection");
         break;
       }
     }
@@ -182,7 +182,7 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
 
   _shutdown();
 
-  logging::info("Receiver thread finished\n");
+  logging::info("Receiver thread finished");
 }
 
 void EbCtrbInBase::_shutdown()
@@ -219,7 +219,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
   auto     pid = bdg->pulseId();
   if (lnk->postCompRecv())
   {
-    logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d\n",
+    logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d",
                      __PRETTY_FUNCTION__, src);
   }
 
@@ -391,10 +391,10 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
       if ((input == inputs) && _missing)
       {
         if (rPid < iPid)
-          logging::error("%s:\n  Results %014lx too old for Inputs %014lx\n",
+          logging::error("%s:\n  Results %014lx too old for Inputs %014lx",
                          __PRETTY_FUNCTION__, results->pulseId(), inputs->pulseId());
         else
-          logging::error("%s:\n  No Inputs found for %u Results\n",
+          logging::error("%s:\n  No Inputs found for %u Results",
                          __PRETTY_FUNCTION__, _missing);
         _dump(ctrb, results, inputs);
       }
@@ -411,7 +411,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
   logging::error("%s:\n  No Result found for Input %014lx",
                  __PRETTY_FUNCTION__, iPid);
   if (_missing)
-    logging::error("%s:\n  No Inputs found for %u Results\n",
+    logging::error("%s:\n  No Inputs found for %u Results",
                    __PRETTY_FUNCTION__, missing);
   _dump(ctrb, results, inputs);
 

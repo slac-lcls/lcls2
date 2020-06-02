@@ -79,7 +79,7 @@ int main(int argc, char* argv[])
                 ++para.verbose;
                 break;
             default:
-                exit(1);
+                return 1;
         }
     }
 
@@ -91,26 +91,26 @@ int main(int argc, char* argv[])
     // Check required parameters
     if (para.instrument.empty()) {
         logging::critical("-P: instrument name is mandatory");
-        exit(1);
+        return 1;
     }
     if (para.partition == unsigned(-1)) {
         logging::critical("-p: partition is mandatory");
-        exit(1);
+        return 1;
     }
     if (para.device.empty()) {
         logging::critical("-d: device is mandatory");
-        exit(1);
+        return 1;
     }
     if (para.alias.empty()) {
         logging::critical("-u: alias is mandatory");
-        exit(1);
+        return 1;
     }
 
     // Alias must be of form <detName>_<detSegment>
     size_t found = para.alias.rfind('_');
     if ((found == std::string::npos) || !isdigit(para.alias.back())) {
         logging::critical("-u: alias must have _N suffix");
-        exit(1);
+        return 1;
     }
     para.detName = para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
@@ -123,8 +123,16 @@ int main(int argc, char* argv[])
     para.nTrBuffers = 8; // Power of 2 greater than the maximum number of
                          // transitions in the system at any given time, e.g.,
                          // MAX_LATENCY * (SlowUpdate rate), in same units
-    Drp::PGPDetectorApp app(para);
-    app.run();
-    app.handleReset(json({}));
-    std::cout<<"end of main drp\n";
+    try {
+        Drp::PGPDetectorApp app(para);
+        app.run();
+        app.handleReset(json({}));
+        std::cout<<"end of drp main\n";
+        return 0;
+    }
+    catch (std::exception& e)  { logging::critical("%s", e.what()); }
+    catch (std::string& e)     { logging::critical("%s", e.c_str()); }
+    catch (char const* e)      { logging::critical("%s", e); }
+    catch (...)                { logging::critical("Default exception"); }
+    return EXIT_FAILURE;
 }

@@ -66,8 +66,7 @@ namespace Pds
     const pvd::StructureConstPtr& structure = _strct->getStructure();
     if (!structure) {
       logging::critical("No payload for PV %s.  Is FieldMask empty?", name().c_str());
-      std::string msg("No payload.  Is FieldMask empty?");
-      throw msg;
+      throw "No payload.  Is FieldMask empty?";
     }
     const pvd::StringArray& names = structure->getFieldNames();
     const pvd::FieldConstPtrArray& fields = structure->getFields();
@@ -168,7 +167,7 @@ namespace Pds
   {
     if (!isConnected())
     {
-      logging::error("EpicsMonitorPv::printPv(): Pv %s not Connected\n",
+      logging::error("EpicsMonitorPv::printPv(): PV %s not Connected",
                      name().c_str());
       return 1;
     }

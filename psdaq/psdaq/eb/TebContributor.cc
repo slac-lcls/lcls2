@@ -77,23 +77,23 @@ int TebContributor::configure(const TebCtrbParams& prms)
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _transport.connect(&link, addr, port, _id, tmo)) )
     {
-      logging::error("%s:\n  Error connecting to TEB at %s:%s\n",
+      logging::error("%s:\n  Error connecting to TEB at %s:%s",
                      __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
     unsigned rmtId = link->id();
     _links[rmtId] = link;
 
-    logging::debug("Outbound link with TEB ID %d connected\n", rmtId);
+    logging::debug("Outbound link with TEB ID %d connected", rmtId);
 
     if ( (rc = link->prepare(region, regSize)) )
     {
-      logging::error("%s:\n  Failed to prepare link with TEB ID %d\n",
+      logging::error("%s:\n  Failed to prepare link with TEB ID %d",
                      __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
 
-    logging::info("Outbound link with TEB ID %d connected and configured\n", rmtId);
+    logging::info("Outbound link with TEB ID %d connected and configured", rmtId);
   }
 
   return 0;
@@ -210,7 +210,8 @@ void TebContributor::process(const EbDgram* dgram)
 
     dgram->setEOL();          // Terminate for clarity and dump-ability
     _pending.push(dgram);
-    assert (size_t(_pending.guess_size()) < _pending.size());
+    if (!(size_t(_pending.guess_size()) < _pending.size()))
+      throw std::string(__PRETTY_FUNCTION__) + ": _pending overflow";
 
     // Start a new batch
     _batchStart = nullptr;
@@ -239,7 +240,8 @@ void TebContributor::_post(const EbDgram* start, const EbDgram* end)
 
   end->setEOL();        // Avoid race: terminate before adding batch to pending list
   _pending.push(start); // Get the batch on the queue before any corresponding result can show up
-  assert (size_t(_pending.guess_size()) < _pending.size());
+  if (!(size_t(_pending.guess_size()) < _pending.size()))
+    throw std::string(__PRETTY_FUNCTION__) + ": _pending overflow";
 
   if (unlikely(_prms.verbose >= VL_BATCH))
   {
@@ -265,7 +267,7 @@ void TebContributor::_post(const EbDgram* dgram) const
   unsigned dst    = (idx / MAX_ENTRIES) % _numEbs;
   unsigned tr     = dgram->service();
   uint32_t data   = ImmData::value(ImmData::Transition | ImmData::NoResponse, _id, tr);
-  size_t   extent = sizeof(*dgram);  assert(dgram->xtc.sizeofPayload() == 0);
+  size_t   extent = sizeof(*dgram);  if (dgram->xtc.sizeofPayload())  throw "Unexpected XTC payload";
   unsigned offset = _batMan.batchRegionSize() + tr * sizeof(*dgram);
 
   for (auto it = _links.begin(); it != _links.end(); ++it)

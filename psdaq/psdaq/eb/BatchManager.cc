@@ -49,7 +49,7 @@ BatchManager::BatchManager(size_t maxEntrySize, bool batching) :
   {
     fprintf(stderr, "%s: No memory found for a region of size %zd\n",
             __func__, batchRegionSize());
-    abort();
+    throw "No memory found for region";
   }
 }
 

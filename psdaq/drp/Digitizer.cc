@@ -58,7 +58,7 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
 static void check(PyObject* obj) {
     if (!obj) {
         PyErr_Print();
-        throw "**** python error\n";
+        throw "**** python error";
     }
 }
 
@@ -99,8 +99,8 @@ unsigned Digitizer::_getPaddr()
 
       sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
 
-      
-      unsigned id = 0xfb000000 | 
+
+      unsigned id = 0xfb000000 |
         (ntohl(saddr->sin_addr.s_addr)&0xffff);
 
       for(unsigned i=0; i<4; i++) {
@@ -135,15 +135,15 @@ unsigned Digitizer::_getPaddr()
     Document *d = new Document();
     d->Parse(json_str);
     if (d->HasParseError()) {
-        printf("Parse error: %s, location %zu\n",
-               GetParseError_En(d->GetParseError()), d->GetErrorOffset());
-        abort();
+        logging::critical("Parse error: %s, location %zu",
+                          GetParseError_En(d->GetParseError()), d->GetErrorOffset());
+        throw "Parse error";
     }
     const Value& a = (*d)["paddr"];
 
     unsigned reg = a.GetInt();
     if (!reg) {
-        const char msg[] = "XPM Remote link id register is zero\n";
+        const char msg[] = "XPM Remote link id register is zero";
         logging::error("%s", msg);
         throw msg;
     }
@@ -212,10 +212,10 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string
     char buffer[BUFSIZE];
     unsigned len = Pds::translateJson2Xtc(json, buffer, configNamesId, m_para->detName.c_str(), m_para->detSegment);
     if (len>BUFSIZE) {
-        throw "**** Config json output too large for buffer\n";
+        throw "**** Config json output too large for buffer";
     }
     if (len <= 0) {
-        throw "**** Config json translation error\n";
+        throw "**** Config json translation error";
     }
 
     CHECK_TIME(translateJson);

@@ -66,7 +66,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     uint32_t lane = (dest[m_current] >> 8) & 7;
     bytes += size;
     if (size > m_pool.dmaSize()) {
-        logging::critical("DMA overflowed buffer: %d vs %d\n", size, m_pool.dmaSize());
+        logging::critical("DMA overflowed buffer: %d vs %d", size, m_pool.dmaSize());
         exit(-1);
     }
 
@@ -102,15 +102,15 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     }
     if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
         logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
-               RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
+                          RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
         logging::critical("data: %08x %08x %08x %08x %08x %08x",
-               data[0], data[1], data[2], data[3], data[4], data[5]);
+                          data[0], data[1], data[2], data[3], data[4], data[5]);
 
         logging::critical("lastTid %s", XtcData::TransitionId::name(m_lastTid));
         logging::critical("lastData: %08x %08x %08x %08x %08x %08x",
-               m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5]);
+                          m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5]);
 
-        throw "Jump in event counter";
+        throw "Fatal: Jump in event counter";
 
         for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
             PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
@@ -193,7 +193,7 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
     }
     catch(std::string& error)
     {
-        logging::error("%s: new EpicsArchMonitor( %s ) failed: %s\n",
+        logging::error("%s: new EpicsArchMonitor( %s ) failed: %s",
                        __PRETTY_FUNCTION__, m_pvCfgFile.c_str(), error.c_str());
         m_monitor.reset();
         return 1;
@@ -243,8 +243,8 @@ void EaDetector::_worker()
 {
     // setup monitoring
     std::map<std::string, std::string> labels{{"instrument", m_para->instrument},
-      {"partition", std::to_string(m_para->partition)},
-        {"detname",m_para->detName}};
+                                              {"partition", std::to_string(m_para->partition)},
+                                              {"detname", m_para->detName}};
     m_nEvents = 0;
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});
@@ -268,7 +268,7 @@ void EaDetector::_worker()
         Pds::EbDgram* dgram = pgp.next(index, bytes);
         if (dgram) {
             XtcData::TransitionId::Value service = dgram->service();
-            logging::debug("EAWorker saw %s transition @ %d.%09d (%014lx)\n",
+            logging::debug("EAWorker saw %s transition @ %d.%09d (%014lx)",
                            XtcData::TransitionId::name(service),
                            dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
             if (service != XtcData::TransitionId::L1Accept) {
@@ -340,7 +340,7 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
 {
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
-        throw "Could not create Detector object for " + m_para.detType;
+        throw "Fatal: Could not create Detector object";
     }
     if (m_para.outputDir.empty()) {
         logging::info("output dir: n/a");
@@ -587,7 +587,7 @@ int main(int argc, char* argv[])
             case 'h':
             default:
                 usage(argv[0]);
-                exit(1);
+                return 1;
         }
     }
 
@@ -602,24 +602,25 @@ int main(int argc, char* argv[])
     // Check required parameters
     if (para.partition == unsigned(-1)) {
         logging::critical("-p: partition is mandatory");
-        exit(1);
+        return 1;
     }
     if (para.device.empty()) {
         logging::critical("-d: device is mandatory");
-        exit(1);
+        return 1;
     }
     if (para.alias.empty()) {
         logging::critical("-u: alias is mandatory");
-        exit(1);
+        return 1;
     }
 
     // Alias must be of form <detName>_<detSegment>
     size_t found = para.alias.rfind('_');
     if ((found == std::string::npos) || !isdigit(para.alias.back())) {
         logging::critical("-u: alias must have _N suffix");
-        exit(1);
+        return 1;
     }
-    para.detName = para.alias.substr(0, found);
+    para.detType = "epics";
+    para.detName = "epics";  //para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
     get_kwargs(para, kwargs_str);
@@ -629,19 +630,24 @@ int main(int argc, char* argv[])
         pvCfgFile = argv[optind];
     else {
         logging::critical("A PV config filename is mandatory");
-        exit(1);
+        return 1;
     }
 
-    para.detName = "epics";
-    para.detType = "epics";
     para.maxTrSize = 256 * 1024;
     para.nTrBuffers = 8; // Power of 2 greater than the maximum number of
                          // transitions in the system at any given time, e.g.,
                          // MAX_LATENCY * (SlowUpdate rate), in same units
-
-    Py_Initialize(); // for use by configuration
-    Drp::EpicsArchApp app(para, pvCfgFile);
-    app.run();
-    app.handleReset(json({}));
-    Py_Finalize(); // for use by configuration
+    try {
+        Py_Initialize(); // for use by configuration
+        Drp::EpicsArchApp app(para, pvCfgFile);
+        app.run();
+        app.handleReset(json({}));
+        Py_Finalize(); // for use by configuration
+        return 0;
+    }
+    catch (std::exception& e)  { logging::critical("%s", e.what()); }
+    catch (std::string& e)     { logging::critical("%s", e.c_str()); }
+    catch (char const* e)      { logging::critical("%s", e); }
+    catch (...)                { logging::critical("Default exception"); }
+    return EXIT_FAILURE;
 }

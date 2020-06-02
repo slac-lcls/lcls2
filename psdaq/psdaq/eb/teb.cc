@@ -60,15 +60,17 @@ void sigHandler( int signal )
 
   if (callCount == 0)
   {
-    logging::info("\nShutting down");
+    logging::info("Shutting down");
 
     lRunning = 0;
   }
 
   if (callCount++)
   {
-    logging::critical("Aborting on 2nd ^C...");
-    ::abort();
+    logging::critical("Aborting on 2nd ^C");
+
+    sigaction(signal, &lIntAction, NULL);
+    raise(signal);
   }
 }
 
@@ -295,7 +297,7 @@ void Teb::run()
     {
       if (checkEQ() == -FI_ENOTCONN)
       {
-        logging::critical("TEB thread lost connection\n");
+        logging::critical("TEB thread lost connection");
         break;
       }
     }
@@ -673,12 +675,12 @@ int TebApp::_configure(const json& msg)
   if (_prms.trgDetName.empty())  _prms.trgDetName = TRIGGER_DETNAME;
 
   // In the following, _0 is added in prints to show the default segment number
-  logging::info("Fetching trigger info from ConfigDb/%s/%s_0\n\n",
+  logging::info("Fetching trigger info from ConfigDb/%s/%s_0",
                 configAlias.c_str(), detName.c_str());
 
   if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, detName, top))
   {
-    logging::error("%s:\n  Document '%s_0' not found in ConfigDb\n",
+    logging::error("%s:\n  Document '%s_0' not found in ConfigDb",
                    __PRETTY_FUNCTION__, detName.c_str());
     return -1;
   }
@@ -837,7 +839,7 @@ int TebApp::_parseConnectionParams(const json& body)
   _prms.id = body["teb"][id]["teb_id"];
   if (_prms.id >= MAX_TEBS)
   {
-    logging::error("TEB ID %d is out of range 0 - %d\n", _prms.id, MAX_TEBS - 1);
+    logging::error("TEB ID %d is out of range 0 - %d", _prms.id, MAX_TEBS - 1);
     return 1;
   }
 
@@ -1041,18 +1043,20 @@ int main(int argc, char **argv)
   // Iterate over contributions in the batch
   // Event build them according to their trigger group
 
-  TebApp app(collSrv, prms);
-
   try
   {
+    TebApp app(collSrv, prms);
+
     app.run();
-  }
-  catch (std::exception& e)
-  {
-    logging::critical("Application exception:\n  %s", e.what());
-  }
 
-  app.handleReset(json({}));
+    app.handleReset(json({}));
 
-  return 0;
+    return 0;
+  }
+  catch (std::exception& e)  { logging::critical("%s", e.what()); }
+  catch (std::string& e)     { logging::critical("%s", e.c_str()); }
+  catch (char const* e)      { logging::critical("%s", e); }
+  catch (...)                { logging::critical("Default exception"); }
+
+  return EXIT_FAILURE;
 }

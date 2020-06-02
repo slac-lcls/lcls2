@@ -72,7 +72,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 // make sure the detector hasn't made the event too big
                 if (dgram->xtc.extent > pool.bufferSize()) {
                     logging::critical("L1Accept: buffer size (%d) too small for requested extent (%d)", pool.bufferSize(), dgram->xtc.extent);
-                    exit(-1);
+                    throw "Buffer too small";
                 }
 
                 if (event->l3InpBuf) {  // else shutting down
@@ -82,14 +82,14 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                         size_t size = sizeof(*l3InpDg) + l3InpDg->xtc.sizeofPayload();
                         if (size > drp.tebPrms().maxInputSize) {
                             logging::critical("L3 Input Dgram of size %zd overflowed buffer of size %zd", size, drp.tebPrms().maxInputSize);
-                            exit(-1);
+                            throw "Input Dgram overflowed buffer";
                         }
                     }
                 }
             }
             // transitions
             else {
-                logging::debug("PGPDetector saw %s transition @ %u.%09u (%014lx)\n",
+                logging::debug("PGPDetector saw %s transition @ %u.%09u (%014lx)",
                                XtcData::TransitionId::name(transitionId),
                                dgram->time.seconds(), dgram->time.nanoseconds(), timingHeader->pulseId());
                 // Allocate a transition dgram from the pool and initialize its header
@@ -108,7 +108,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();
                 if (size > para.maxTrSize) {
                     logging::critical("Transition: buffer size (%zd) too small for Dgram (%zd)", para.maxTrSize, size);
-                    exit(-1);
+                    throw "Buffer too small";
                 }
 
                 if (event->l3InpBuf) { // else shutting down
@@ -159,8 +159,8 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     uint64_t nevents = 0L;
     uint64_t bytes = 0L;
     std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
-        {"partition", std::to_string(m_para.partition)},
-          {"detname",m_para.detName}};
+                                              {"partition", std::to_string(m_para.partition)},
+                                              {"detname", m_para.detName}};
     exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                   [&](){return nevents;});
 
@@ -198,7 +198,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
             bytes += size;
             if (size > m_pool.dmaSize()) {
                 logging::critical("DMA overflowed buffer: %u vs %u", size, m_pool.dmaSize());
-                exit(-1);
+                throw "DMA overflowed buffer";
             }
 
             const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
@@ -228,13 +228,13 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                 }
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
                     logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
-                           RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
+                                      RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
                     logging::critical("data: %08x %08x %08x %08x %08x %08x",
-                           data[0], data[1], data[2], data[3], data[4], data[5]);
+                                      data[0], data[1], data[2], data[3], data[4], data[5]);
 
                     logging::critical("lastTid %s", XtcData::TransitionId::name(lastTid));
                     logging::critical("lastData: %08x %08x %08x %08x %08x %08x",
-                           lastData[0], lastData[1], lastData[2], lastData[3], lastData[4], lastData[5]);
+                                      lastData[0], lastData[1], lastData[2], lastData[3], lastData[4], lastData[5]);
 
                     throw "Jump in event counter";
 

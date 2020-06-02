@@ -3,11 +3,6 @@
 
 #include "xtcdata/xtc/Dgram.hh"
 
-#ifdef NDEBUG
-#undef NDEBUG
-#endif
-
-#include <cassert>
 #include <new>
 #include <stdlib.h>
 
@@ -52,12 +47,12 @@ EbEvent::EbEvent(uint64_t        contract,
   _remaining = contract & ~(1ul << cdg->xtc.src.value());
   if (_remaining == contract)           // Make sure some bit was taken down
   {
-    fprintf(stderr, "%s:\n  Source %d isn't in the contract %016lx "
-            "for %15s @ %16p with pulse ID %014lx, RoGs %04hx\n",
+    fprintf(stderr, "%s:\n  Source %d isn't in contract %016lx "
+            "for %s @ %p, PID %014lx, RoGs %04hx\n",
             __PRETTY_FUNCTION__, cdg->xtc.src.value(), contract,
             TransitionId::name(cdg->service()), cdg, cdg->pulseId(),
             cdg->readoutGroups());
-    assert (_remaining != contract);
+    throw "Fatal: _remaining == contract";
   }
 
   connect(after);
@@ -116,12 +111,12 @@ EbEvent* EbEvent::_add(const EbDgram* cdg)
   _remaining = remaining & ~(1ul << cdg->xtc.src.value());
   if (_remaining == remaining)          // Make sure some bit was taken down
   {
-    fprintf(stderr, "%s:\n  Source %d didn't contribute to the contract %016lx "
-            "for %15s @ %16p with pulse ID %014lx, RoGs %04hx, remaining %016lx\n",
-            __PRETTY_FUNCTION__, cdg->xtc.src.value(), _contract,
+    fprintf(stderr, "%s:\n  Source %d didn't affect remaining %016lx "
+            "for %s @ %p, PID %014lx, RoGs %04hx, contract %016lx\n",
+            __PRETTY_FUNCTION__, cdg->xtc.src.value(), remaining,
             TransitionId::name(cdg->service()), cdg, cdg->pulseId(),
-            cdg->readoutGroups(), remaining);
-    assert (_remaining != remaining);
+            cdg->readoutGroups(), _contract);
+    throw "Fatal: _remaining == remaining";
   }
 
   _damage.increase(cdg->xtc.damage.value());

@@ -71,7 +71,7 @@ Pds::Eb::IndexPoolBase::IndexPoolBase(size_t   sizeofObject,
   {
     fprintf(stderr, "%s: numberofObjects (0x%0x = %d) must be a power of 2\n",
             __func__, numberofObjects, numberofObjects);
-    abort();
+    throw "numberofObjects must be a power of 2";
   }
 }
 

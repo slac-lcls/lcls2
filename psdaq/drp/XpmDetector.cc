@@ -111,7 +111,7 @@ json XpmDetector::connectionInfo()
     // fix, but throw here to highlight the problem. - cpo
     if (!reg) {
         const char msg[] = "XPM Remote link id register is zero\n";
-        logging::error("%s", msg);
+        logging::critical("%s", msg);
         throw msg;
     }
     int xpm  = (reg >> 20) & 0x0F;

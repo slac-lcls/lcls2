@@ -51,23 +51,23 @@ int MebContributor::configure(const MebCtrbParams& prms,
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _transport.connect(&link, addr, port, _id, tmo)) )
     {
-      logging::error("%s:\n  Error connecting to MEB at %s:%s\n",
+      logging::error("%s:\n  Error connecting to MEB at %s:%s",
                      __PRETTY_FUNCTION__, addr, port);
       return rc;
     }
     unsigned rmtId = link->id();
     _links[rmtId] = link;
 
-    logging::debug("Outbound link with MEB ID %d connected\n", rmtId);
+    logging::debug("Outbound link with MEB ID %d connected", rmtId);
 
     if ( (rc = link->prepare(region, size, _bufRegSize)) )
     {
-      logging::error("%s:\n  Failed to prepare link with MEB ID %d\n",
+      logging::error("%s:\n  Failed to prepare link with MEB ID %d",
                      __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
 
-    logging::info("Outbound link with MEB ID %d connected and configured\n",
+    logging::info("Outbound link with MEB ID %d connected and configured",
                   rmtId);
   }
 
@@ -98,16 +98,16 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
 
   if (sz > _maxEvSize)
   {
-    logging::critical("%s:\n  L1Accept of size %zd is too big for target buffer of size %zd\n",
-                      __PRETTY_FUNCTION__, sz, _maxEvSize);
-    abort();
-    return -1;
+    logging::critical("L1Accept of size %zd is too big for target buffer of size %zd",
+                      sz, _maxEvSize);
+    throw "L1Accept too big for target buffer";
   }
 
   if (ddg->xtc.src.value() != _id)
   {
-    logging::critical("%s:\n  Event src %d does not match DRP's ID %d: PID %014lx, sz, %zd, dest %08x, data %08x, ofs %08x\n",
-                      __PRETTY_FUNCTION__, ddg->xtc.src.value(), _id, ddg->pulseId(), sz, destination, data, offset);
+    logging::critical("L1Accept src %d does not match DRP's ID %d: PID %014lx, sz, %zd, dest %08x, data %08x, ofs %08x",
+                      ddg->xtc.src.value(), _id, ddg->pulseId(), sz, destination, data, offset);
+    throw "L1Accept source ID mismatch";
   }
 
   if (_verbose >= VL_BATCH)
@@ -135,25 +135,25 @@ int MebContributor::post(const EbDgram* ddg)
   size_t              sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
   TransitionId::Value tr     = ddg->service();
   uint64_t            offset = _bufRegSize + tr * _maxTrSize;
+  uint32_t            data   = ImmData::value(ImmData::Transition, _id, tr);
 
   if (sz > _maxTrSize)
   {
-    logging::critical("%s:\n  %s transition of size %zd is too big for target buffer of size %zd\n",
-                      __PRETTY_FUNCTION__, TransitionId::name(tr), sz, _maxTrSize);
-    abort();
-    return -1;
+    logging::critical("%s transition of size %zd is too big for target buffer of size %zd",
+                      TransitionId::name(tr), sz, _maxTrSize);
+    throw std::string(TransitionId::name(tr)) + " too big for target buffer";
+  }
+
+  if (ddg->xtc.src.value() != _id)
+  {
+    logging::critical("%s transition src %d does not match DRP's ID %d: PID %014lx, sz, %zd, data %08x, ofs %08x",
+                      TransitionId::name(tr), ddg->xtc.src.value(), _id, ddg->pulseId(), sz, data, offset);
+    throw std::string(TransitionId::name(tr)) + " source ID mismatch";
   }
 
   for (auto it = _links.begin(); it != _links.end(); ++it)
   {
     EbLfCltLink* link = *it;
-    uint32_t     data = ImmData::value(ImmData::Transition, _id, tr);
-
-    if (ddg->xtc.src.value() != _id)
-    {
-      logging::critical("%s:\n  tr %d src %d does not match DRP's ID %d: PID %014lx, sz, %zd, data %08x, ofs %08x\n",
-                        __PRETTY_FUNCTION__, tr, ddg->xtc.src.value(), _id, ddg->pulseId(), sz, data, offset);
-    }
 
     if (_verbose >= VL_BATCH)
     {

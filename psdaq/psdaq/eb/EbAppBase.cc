@@ -89,7 +89,7 @@ int EbAppBase::configure(const std::string&                     pfx,
   int rc;
   if ( (rc = _transport.initialize(prms.ifAddr, prms.ebPort, nCtrbs)) )
   {
-    logging::error("%s:\n  Failed to initialize EbLfServer on %s:%s\n",
+    logging::error("%s:\n  Failed to initialize EbLfServer on %s:%s",
                    __PRETTY_FUNCTION__, prms.ifAddr, prms.ebPort);
     return rc;
   }
@@ -100,19 +100,19 @@ int EbAppBase::configure(const std::string&                     pfx,
     const unsigned tmo(120000);         // Milliseconds
     if ( (rc = _transport.connect(&link, _id, tmo)) )
     {
-      logging::error("%s:\n  Error connecting to a DRP\n",
+      logging::error("%s:\n  Error connecting to a DRP",
                      __PRETTY_FUNCTION__);
       return rc;
     }
     unsigned rmtId = link->id();
     _links[rmtId] = link;
 
-    logging::debug("Inbound link with DRP ID %d connected\n", rmtId);
+    logging::debug("Inbound link with DRP ID %d connected", rmtId);
 
     size_t regSize;
     if ( (rc = link->prepare(&regSize)) )
     {
-      logging::error("%s:\n  Failed to prepare link with DRP ID %d\n",
+      logging::error("%s:\n  Failed to prepare link with DRP ID %d",
                      __PRETTY_FUNCTION__, rmtId);
       return rc;
     }
@@ -127,7 +127,7 @@ int EbAppBase::configure(const std::string&                     pfx,
   _region = allocRegion(sumSize);
   if (!_region)
   {
-    logging::error("%s:\n  No memory found for Input MR of size %zd\n",
+    logging::error("%s:\n  No memory found for Input MR of size %zd",
                    __PRETTY_FUNCTION__, sumSize);
     return ENOMEM;
   }
@@ -149,13 +149,13 @@ int EbAppBase::configure(const std::string&                     pfx,
 
     if (link->postCompRecv())
     {
-      logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d\n",
+      logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d",
                        __PRETTY_FUNCTION__, rmtId);
     }
 
     region += regSizes[rmtId];
 
-    logging::info("Inbound link with DRP ID %d connected and configured\n", rmtId);
+    logging::info("Inbound link with DRP ID %d connected and configured", rmtId);
   }
 
   return 0;
@@ -209,7 +209,7 @@ int EbAppBase::process()
   const EbDgram* idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));
   if ( (rc = lnk->postCompRecv()) )
   {
-    logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d\n",
+    logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d",
                      __PRETTY_FUNCTION__, src);
   }
 

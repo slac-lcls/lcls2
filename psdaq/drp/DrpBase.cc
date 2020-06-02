@@ -224,7 +224,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     }
     uint64_t pulseId = dgram->pulseId();
     if (pulseId == 0) {
-      logging::critical("%spulseId %14lx, ts %u.%09u, tid %d, env %08x%s\n",
+      logging::critical("%spulseId %14lx, ts %u.%09u, tid %d, env %08x%s",
                         RED_ON, pulseId, dgram->time.seconds(), dgram->time.nanoseconds(), dgram->service(), dgram->env, RED_OFF);
     }
 
@@ -240,7 +240,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         uint64_t tPid = pulseId;
         uint64_t rPid = result.pulseId();
         logging::critical("pebble pulseId %014lx, result dgram pulseId %014lx, xor %014lx, diff %ld", tPid, rPid, tPid ^ rPid, tPid - rPid);
-        exit(-1);
+        throw "Pulse ID mismatch";
     }
 
     m_lastIndex = index;
@@ -269,7 +269,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
             m_inprocSend.send(msg.dump());
         }
 
-        logging::debug("EbReceiver saw %s transition @ %u.%09u (%014lx)\n",
+        logging::debug("EbReceiver saw %s transition @ %u.%09u (%014lx)",
                        XtcData::TransitionId::name(transitionId),
                        dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
     }
@@ -474,7 +474,8 @@ std::string DrpBase::configure(const json& msg)
     }
 
     std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
-        {"partition", std::to_string(m_para.partition)}};
+                                              {"partition", std::to_string(m_para.partition)},
+                                              {"detname", m_para.detName}};
     m_exporter->add("drp_port_rcv_rate", labels, Pds::MetricType::Rate,
                     [](){return 4*readInfinibandCounter("port_rcv_data");});
 
@@ -527,19 +528,19 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     if (m_para.trgDetName.empty())  m_para.trgDetName = dummy;
 
     // In the following, _0 is added in prints to show the default segment number
-    logging::info("Fetching trigger info from ConfigDb/%s/%s_0\n",
-           configAlias.c_str(), detName.c_str());
+    logging::info("Fetching trigger info from ConfigDb/%s/%s_0",
+                  configAlias.c_str(), detName.c_str());
 
     if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, detName, top))
     {
-        logging::error("%s:\n  Document '%s_0' not found in ConfigDb\n",
-                __PRETTY_FUNCTION__, detName.c_str());
+        logging::error("%s:\n  Document '%s_0' not found in ConfigDb",
+                       __PRETTY_FUNCTION__, detName.c_str());
         return -1;
     }
 
     if ((detName != dummy) && !top.HasMember(m_para.detName.c_str())) {
         logging::warning("This DRP is not contributing trigger input data: "
-                         "'%s' not found in ConfigDb for %s\n",
+                         "'%s' not found in ConfigDb for %s",
                          m_para.detName.c_str(), detName.c_str());
         m_tPrms.contractor = 0;    // This DRP won't provide trigger input data
         m_triggerPrimitive = nullptr;
@@ -551,14 +552,14 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     if (detName != dummy)  symbol +=  "_" + m_para.detName;
     m_triggerPrimitive = m_trigPrimFactory.create(top, detName, symbol);
     if (!m_triggerPrimitive) {
-        logging::error("%s:\n  Failed to create TriggerPrimitive\n",
+        logging::error("%s:\n  Failed to create TriggerPrimitive",
                        __PRETTY_FUNCTION__);
         return -1;
     }
     m_tPrms.maxInputSize = sizeof(Pds::EbDgram) + m_triggerPrimitive->size();
 
     if (m_triggerPrimitive->configure(top, m_connectMsg, m_collectionId)) {
-        logging::error("%s:\n  Failed to configure TriggerPrimitive\n",
+        logging::error("%s:\n  Failed to configure TriggerPrimitive",
                        __PRETTY_FUNCTION__);
         return -1;
     }
