@@ -1,16 +1,14 @@
 platform = '7'
 username = 'lcls2'
 
-epics_host = 'daq-tst-dev02'
+epics_host = 'daq-tst-dev03'
 
 conda_rel = 'ps-3.1.11'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 
-shelf = '2'
-ip_addr = '10.0.'+shelf
 hutch = 'tst'
 
-drp_nodes = ['001','002','003','004','005','008','009','011','013','014','015','017','018']
+drp_nodes = ['002','003','004','005','008','009','011','013','014','015','017','018']
 
 pyxpm_optsdb = '--db https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,tst,PROD -P DAQ:LAB2:XPM:%d'
 pyxpm_opts = '-P DAQ:LAB2:XPM:%d'
@@ -39,7 +37,7 @@ procmgr_config = [
  { host: 'daq-tst-dev03',  id:'pvcam', port:'29466', flags:'s', conda:conda_rel, env:epics_env, cmd:'pvcam -p DAQ:LAB2:PVCAM'},
 
 ## EPICS PV exporter
- {                        id:'pvrtmon', port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -H '+hutch+' -P DAQ:LAB2:XPM:2 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+ {                    id:'pvrtmon',  port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -H '+hutch+' -P DAQ:LAB2:XPM:2 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
   ]
 
 for n in drp_nodes:

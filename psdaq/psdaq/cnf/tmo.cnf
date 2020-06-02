@@ -1,9 +1,9 @@
 if not platform: platform = '4'
 
-epics_host = 'daq-tst-dev02'
+epics_host = 'daq-tst-dev03'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 conda_rel = 'ps-3.1.11'
-hsd_epics_dev02 = 'DAQ:LAB2:HSD:DEV02'
+hsd_epics_dev03 = 'DAQ:LAB2:HSD:DEV03'
 hsd_epics_dev06 = 'DAQ:LAB2:HSD:DEV06'
 
 collect_host = 'drp-tst-acc06'
@@ -37,9 +37,9 @@ ea_cfg = '/reg/neh/home/claus/lclsii/daq/runs/eb/epicsArch.txt'
 
 drp_cmd0 = task_set+'drp '      +(std_opts%0)+' -l 0x1'
 drp_cmd1 = task_set+'drp '      +(std_opts%1)+' -l 0x1'
-bld_cmd  = task_set+'drp_bld '  +(std_opts%1)+' -l 0x1 -k interface=eno2 -D '+bld_str
-pva_cmd  = task_set+'drp_pva '  +(std_opts%1)+' '
-ea_cmd   = task_set+'epicsArch '+(std_opts%1)+' '+ea_cfg
+bld_cmd  = task_set+'drp_bld '  +(std_opts%1)+' -l 0x1 -k "interface=eno2,batching=no" -D '+bld_str
+pva_cmd  = task_set+'drp_pva '  +(std_opts%1)+' -k batching=no '
+ea_cmd   = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
 
 teb_cmd = task_set+'teb -P tst -C '+collect_host+' -M '+prom_dir
 meb_cmd = task_set+'monReqServer -P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -d -q 4'
@@ -69,8 +69,8 @@ procmgr_config = [
  { host: 'drp-tst-dev015', id:'meb1',        flags:'spu',  conda:conda_rel, cmd:meb_cmd},
 
  # PVA
- { host: 'drp-tst-dev002', id:'tmoandor_0',  flags:'spu',  conda:conda_rel, cmd:pva_cmd+'-l 0x2 -D andor '+'DAQ:LAB2:PVCAM'},
- #{ host: 'drp-tst-dev002', id:'tmoxtcav_0',  flags:'spu',  conda:conda_rel, cmd:pva_cmd+'-D xtcav '+'DAQ:LAB2:PVCAM'},
+ { host: 'drp-tst-dev002', id:'tmoandor_0',  flags:'spu',  conda:conda_rel, cmd:pva_cmd+'-l 0x2 -D andor DAQ:LAB2:PVCAM'},
+ #{ host: 'drp-tst-dev002', id:'tmoxtcav_0',  flags:'spu',  conda:conda_rel, cmd:pva_cmd+'-l 0x2 -D xtcav DAQ:LAB2:PVCAM'},
 
  # EpicsArch
  #{ host: 'drp-tst-dev004', id:'epics_0',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:ea_cmd},
@@ -82,11 +82,15 @@ procmgr_config = [
  { host: 'drp-tst-dev018', id:'bld_0',       flags:'pu',   conda:conda_rel, env:epics_env, cmd:bld_cmd},
 
  # TimeTool
- #{ host: 'drp-tst-dev012', id:'tmott_0',     flags:'pu',   conda:conda_rel, cmd:drp_cmd0+' -D tt'},
- #{ host: 'drp-tst-dev003', id:'tmoopal_0',   flags:'pu',   conda:conda_rel, cmd:drp_cmd0+' -D opal'},
+ #{ host: 'drp-tst-dev012', id:'tmott_0',     flags:'pu',   conda:conda_rel, cmd:drp_cmd0+' -D tt -k batching=yes'},
+ #{ host: 'drp-tst-dev003', id:'tmoopaltt_0', flags:'pu',   conda:conda_rel, cmd:drp_cmd0+' -D opal -k batching=no'},
+
+ # Opal (non-timetool)
+ { host: 'drp-tst-dev003', id:'tmoopal_0',   flags:'pu',   conda:conda_rel, cmd:drp_cmd0+' -D opal -k batching=no'},
 
  # Timing System
- { host: 'drp-tst-dev013', id:'tmots_0',     flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D ts' },
+ #{ host: 'drp-tst-dev013', id:'tmots_0',     flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D ts' },
+ { host: 'drp-tst-dev017', id:'tmots_0',     flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D ts' },
 
  # Wave8
  #{ host: 'drp-tst-dev005', id:'wave8pvs',    flags:'s',    conda:conda_rel, cmd:'wave8pvs --l 1'},
@@ -134,3 +138,4 @@ for e in hsds:
 
 if pvlist != []:
     procmgr_config.append({id:'hsdpva', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdpva '+' '.join(pvlist)})
+
