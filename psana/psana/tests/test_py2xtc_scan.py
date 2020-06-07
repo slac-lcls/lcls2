@@ -31,58 +31,62 @@ def test_py2xtc_scan(tmp_path):
 
     cydgram = dc.CyDgram()
 
-    image_array = np.array([[1,2,3,4,5,6],[11,10,9,8,7,6]])
-    orientations_array = np.array([6,5,4,3,2,1])
-
-    runinfo_detname = 'runinfo'
-    runinfo_dettype = 'runinfo'
-    runinfo_detid = ''
-    runinfo_namesid = 1
-    runinfo_nameinfo = dc.nameinfo(runinfo_detname,runinfo_dettype,
-                                   runinfo_detid,runinfo_namesid)
-    runinfo_alg = dc.alg('runinfo',[0,0,1])
-    runinfo_data = {
-        'expt': 'xpptut15',
-        'runnum': 14
-    }
+    motor1_array = np.array([1.0, 2.0, 3.0])
+    motor2_array = np.array([4.0, 5.0, 6.0])
 
     fname = os.path.join(tmp_path,'junk.xtc2')
 
+    my_data = {
+        'motor1': motor1_array,
+        'motor2': motor2_array
+    }
+    timestamp = 0
+    transitionid = _transitionId['Configure']
+
     f = open(fname,'wb')
-    for i in range(6):
-        my_data = {
-            'image': image_array+i,
-            'orientations': orientations_array+i
-        }
 
+    len_list = []
+    for xx in range(4):
         cydgram.addDet(nameinfo, alg, my_data)
-        # only do this for the first two dgrams: name info for config, and
-        # the runinfo data for beginrun
-        if i<2: cydgram.addDet(runinfo_nameinfo, runinfo_alg, runinfo_data)
-        timestamp = i
-        if (i==0):
-            transitionid = _transitionId['Configure']
-        elif (i==1):
-            transitionid = _transitionId['BeginRun']
-        elif (i==2):
-            transitionid = _transitionId['BeginStep']
-        elif (i==3):
-            transitionid = _transitionId['Enable']
-        else:
-            transitionid = _transitionId['L1Accept']
-        xtc_bytes = cydgram.get(timestamp,transitionid)
+        xtc_bytes = cydgram.get(timestamp, transitionid)
+        len_list.append(len(xtc_bytes))
         f.write(xtc_bytes)
-    f.close()
 
-    from psana import DataSource
-    ds = DataSource(files=fname)
-    myrun = next(ds.runs())
-    assert myrun.expt==runinfo_data['expt']
-    assert myrun.runnum==runinfo_data['runnum']
-    for nevt,evt in enumerate(myrun.events()):
-        assert np.array_equal(evt._dgrams[0].spi_cspad[0].raw.image,image_array+nevt+4)
-        assert np.array_equal(evt._dgrams[0].spi_cspad[0].raw.orientations,orientations_array+nevt+4)
-    assert nevt>0 #make sure we get events
+    for xx in range(2):
+        cydgram.addDet(nameinfo, alg, my_data)
+        xtc_bytes = cydgram.getSelect(timestamp, transitionid, add_names=True, add_shapes_data=True)
+        len_list.append(len(xtc_bytes))
+        f.write(xtc_bytes)
+
+    for xx in range(2):
+        cydgram.addDet(nameinfo, alg, my_data)
+        xtc_bytes = cydgram.getSelect(timestamp, transitionid, add_names=False, add_shapes_data=True)
+        len_list.append(len(xtc_bytes))
+        f.write(xtc_bytes)
+
+    for xx in range(2):
+        cydgram.addDet(nameinfo, alg, my_data)
+        xtc_bytes = cydgram.getSelect(timestamp, transitionid, add_names=True, add_shapes_data=False)
+        len_list.append(len(xtc_bytes))
+        f.write(xtc_bytes)
+
+    cydgram.addDet(nameinfo, alg, my_data)
+    xtc_bytes = cydgram.getSelect(timestamp, transitionid, add_names=False, add_shapes_data=False)
+    len_list.append(len(xtc_bytes))
+    f.write(xtc_bytes)
+
+    print("len_list: %s" % len_list)
+
+    header_size = 24                                    # 24 = dgram (12) + xtc (12)
+    assert len_list[0] > len_list[1]
+    assert len_list[1] == len_list[2] == len_list[3]
+    assert len_list[0] == len_list[4] == len_list[5]
+    assert len_list[3] == len_list[6] == len_list[7]
+    assert len_list[8] == len_list[9]
+    assert len_list[10] == header_size
+    assert len_list[8] + len_list[6] - header_size == len_list[0]
+
+    f.close()
 
 if __name__ == "__main__":
     import pathlib
