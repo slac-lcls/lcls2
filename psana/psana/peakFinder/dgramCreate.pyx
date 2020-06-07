@@ -371,68 +371,11 @@ class CyDgram():
         py_name.addNameInfo(py_nameinfo)
         self.config_block.append([py_name, py_shapes, py_data, nameinfo.namesId])
 
-    def getNames(self, nameinfo, alg, event_dict):
-        num_elem = len(event_dict)
-        if num_elem == 0:
-            return False, "No elements added"
-
-        py_shapes = PyShapesBlock(num_elem)
-        py_name = PyNameBlock(num_elem)
-        py_data = PyDataBlock()
-
-        basealg = PyAlg(alg.algname, alg.major, alg.minor, alg.micro)
-
-        num_arrays = 0
-        for name, array in event_dict.items():
-            tmparray = array # make a copy, because we may modify if it's a str
-
-            # convert strings to bytes, including null character
-            if isinstance(array,str):
-                mybyteslist = [ord(c) for c in array]
-                mybyteslist.append(0) # null character
-                tmparray = np.array(mybyteslist,dtype=np.uint8)
-
-            try:
-                array_alg = bool(type(tmparray[1]) == type(alg))
-            except (IndexError,TypeError):
-                array_alg = False
-            if array_alg:
-                arr = np.asarray(tmparray[0])
-                pyalg = PyAlg(tmparray[1].algname,tmparray[1].major, tmparray[1].minor, tmparray[1].micro)
-            else:
-                arr = np.asarray(tmparray)
-                pyalg = basealg
-
-            # Deduce the shape of the data
-            array_size = np.array(arr.shape)
-            array_rank = len(array_size)
-
-            array_size_pad = np.array(np.r_[array_size, (5-array_rank)*[0]], dtype=np.uint32)
-            # Find the type of the data
-            if isinstance(array,str):
-                data_type = 10 # from xtcdata/xtc/ShapesData Name::DataType::CHARSTR
-            else:
-                data_type = parse_type(arr) # uint8, int32, etc...
-            print '$$$ name',name,'array',array,'arralg',array_alg,'arrsize',array_size,'arrrank',array_rank,'datatype',data_type,'arr',arr
-            # Copy the name to the block
-            py_name.addName(fix_encoding(name), pyalg, data_type, array_rank)
-
-            # Copy the shape to the block
-            if array_rank > 0:
-                num_arrays += 1
-                py_shapes.addShape(array_size_pad)
-            py_data.addData(arr)
-
-        py_nameinfo = PyNameInfo(nameinfo.detName, basealg, nameinfo.detType, nameinfo.detId, num_arrays)
-        py_name.addNameInfo(py_nameinfo)
-#       self.config_block.append([py_name, py_shapes, py_data, nameinfo.namesId])
-        return py_name
-
     # the user calls this via get() which constructs the datagram header
     # with the specified timestamp and transitionId.
-    # header, adds in the Names block if it's the first time ("configure")
-    # and then adds the Shapes and Data blocks
-    def constructBlock(self, tstamp, transitionId):
+    # header, adds in the Names block if add_names is True
+    # and then adds the Shapes and Data blocks if add_shapes_data is True
+    def constructBlock(self, tstamp, transitionId, *, add_names, add_shapes_data):
         self.pydgram = PyBlockDgram(tstamp, transitionId)
 
         # this line restricts us to writing out files that do not
@@ -440,13 +383,13 @@ class CyDgram():
         # be different - cpo
         nodeId = 0
 
-        if self.write_configure:
+        if add_names:
             for name, _, _, namesId in self.config_block:
                 self.pydgram.addNamesBlock(name, nodeId, namesId)
-            self.write_configure = False
 
-        for _, shape, data, namesId in self.config_block:
-            self.pydgram.addShapesDataBlock(shape, data, nodeId, namesId)
+        if add_shapes_data:
+            for _, shape, data, namesId in self.config_block:
+                self.pydgram.addShapesDataBlock(shape, data, nodeId, namesId)
      # def writeToFile(self):
      #    if self.config_block:
      #        self.constructBlock()
@@ -454,11 +397,22 @@ class CyDgram():
      #    self.pydgram.writeToFile(self.filename)
 
     def get(self, timestamp, transitionId):
-        self.constructBlock(timestamp, transitionId)
+        self.constructBlock(timestamp, transitionId,
+                            add_names=self.write_configure, add_shapes_data=True)
+        self.write_configure = False
+        self.config_block = []
+        return self.pydgram.retByArr().tobytes()
+
+    # getSelect allows NamesBlock and ShapesDataBlock to be individually selected
+    def getSelect(self, timestamp, transitionId, *, add_names, add_shapes_data):
+        self.constructBlock(timestamp, transitionId,
+                            add_names=add_names, add_shapes_data=add_shapes_data)
         self.config_block = []
         return self.pydgram.retByArr().tobytes()
 
     def getArray(self, timestamp, transitionId):
-        self.constructBlock(timestamp, transitionId)
+        self.constructBlock(timestamp, transitionId,
+                            add_names=self.write_configure, add_shapes_data=True)
+        self.write_configure = False
         self.config_block = []
         return self.pydgram.retByArr()
