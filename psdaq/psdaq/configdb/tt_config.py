@@ -1,10 +1,10 @@
 from psdaq.configdb.get_config import get_config
+from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
 import rogue
 import lcls2_timetool
 import json
 import IPython
-import socket
 
 from collections import deque
 
@@ -27,18 +27,20 @@ def tt_init(arg,xpmpv=None):
 
     # Open a new thread here
     if xpmpv is not None:
-        cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TimingPhyMonitor.UseMiniTpg.set(True)
+        cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.ConfigureXpmMini()
         pv = PVCtrls(xpmpv,cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.XpmMiniWrapper)
         pv.start()
     else:
-        cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TimingPhyMonitor.UseMiniTpg.set(False)
+        print('XpmMini')
+        cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.ConfigureXpmMini()
+        cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.ConfigLclsTimingV2()
+        time.sleep(0.1)
 
     return cl
 
 def tt_connect(cl):
 
-    ip = socket.inet_aton(socket.gethostbyname(socket.gethostname()))
-    txId = (0xf8<<24) | (ip[2]<<8) | (ip[3])
+    txId = timTxId('timetool')
 
     rxId = cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
     cl.TimeToolKcu1500.Kcu1500Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)

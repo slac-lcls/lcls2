@@ -32,6 +32,16 @@ def nameLinkOpal(v):
 def nameLinkTimeTool(v):
     return ('TimeTool', hostName(v))
 
+timDevType = {}
+timDevType['xpm']      = 0xff
+timDevType['dti']      = 0xfe
+timDevType['drp']      = 0xfd
+timDevType['hsd']      = 0xfc
+timDevType['tdet']     = 0xfb
+timDevType['wave8']    = 0xfa
+timDevType['opal']     = 0xf9
+timDevType['timetool'] = 0xf8
+
 linkType = {}
 linkType[0xff] = nameLinkXpm
 linkType[0xfe] = nameLinkDti
@@ -50,3 +60,10 @@ def xpmLinkId(value):
     else:
         names = ('undef','{:x}'.format(value))
     return names
+
+def timTxId(timDevTypeStr):
+    tdt = timDevType[timDevTypeStr]
+    if tdt<timDevType['hsd']:
+        ip   = socket.inet_aton(socket.gethostbyname(socket.gethostname()))
+        return (tdt<<24) | (ip[2]<<8) | (ip[3])
+    return 0

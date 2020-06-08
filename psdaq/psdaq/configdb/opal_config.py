@@ -1,8 +1,8 @@
 from psdaq.configdb.get_config import get_config
+from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
 import rogue
 import cameralink_gateway
-import socket
 import time
 import json
 import IPython
@@ -39,8 +39,7 @@ def opal_init(arg,xpmpv=None):
 
 def opal_connect(cl):
 
-    ip = socket.inet_aton(socket.gethostbyname(socket.gethostname()))
-    txId = (0xf9<<24) | (ip[2]<<8) | (ip[3])
+    txId = timTxId('opal')
 
     lane = 0
     chan = 0

@@ -15,7 +15,6 @@ using logging = psalg::SysLog;
 
 static void dmaReadRegister (int, uint32_t*, uint32_t*);
 static void dmaWriteRegister(int, uint32_t*, uint32_t);
-static bool lverbose = true;
 
 namespace Drp {
 
@@ -35,18 +34,19 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
     dmaReadRegister(fd, 0x00C00028, &ccnt1);
     ccnt1 -= ccnt0;
     double clkr = double(ccnt1)*16.e-5;
-    printf("Timing RefClk %f MHz\n", clkr);
+    logging::info("Timing RefClk %f MHz\n", clkr);
     if (clkr < 180 || clkr > 190) {
       //  Flush I2C by reading the Mux
       unsigned mux;
       dmaReadRegister(fd, 0x00E00000, &mux);
-      printf("I2C mux:  0x%x\n", mux); // Force the read not to be optimized out
+      logging::info("I2C mux:  0x%x\n", mux); // Force the read not to be optimized out
       //  Set the I2C Mux
       dmaWriteRegister(fd, 0x00E00000, (1<<2));
+      
       Si570 rclk(fd,0x00E00800);
       rclk.program();
 
-      printf("Reset timing PLL\n");
+      logging::info("Reset timing PLL\n");
       unsigned v;
       dmaReadRegister(fd, 0x00C00020, &v);
       v |= 0x80;
@@ -165,14 +165,12 @@ void dmaReadRegister (int fd, uint32_t* addr, uint32_t* valp)
 {
   uintptr_t addri = (uintptr_t)addr;
   dmaReadRegister(fd, addri&0xffffffff, valp);
-  if (lverbose)
-    printf("[%08lx] = %08x\n",addri,*valp);
+  logging::debug("[%08lx] = %08x\n",addri,*valp);
 }
 
 void dmaWriteRegister(int fd, uint32_t* addr, uint32_t val)
 {
   uintptr_t addri = (uintptr_t)addr;
   dmaWriteRegister(fd, addri&0xffffffff, val);
-  if (lverbose)
-    printf("[%08lx] %08x\n",addri,val);
+  logging::debug("[%08lx] %08x\n",addri,val);
 }
