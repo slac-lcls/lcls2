@@ -96,6 +96,21 @@ void BEBDetector::_init(const char* arg)
     }
 }
 
+void BEBDetector::_init_feb()
+{
+    PyObject* pDict = _check(PyModule_GetDict(m_module));
+
+    char func_name[64];
+    sprintf(func_name,"%s_init_feb",m_para->detType.c_str());
+    PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
+
+#define MLOOKUP(m,name,dflt) (m.find(name)==m.end() ? dflt : m[name].c_str())
+    const char* lane = MLOOKUP(m_para->kwargs,"feb_lane"   ,0);
+    const char* chan = MLOOKUP(m_para->kwargs,"feb_channel",0);
+    PyObject* mybytes = _check(PyObject_CallFunction(pFunc, "ss", lane, chan)); 
+    Py_DECREF(mybytes);
+}
+
 json BEBDetector::connectionInfo()
 {
     unsigned reg = m_paddr;

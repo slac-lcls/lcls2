@@ -34,9 +34,10 @@ TimeTool::TimeTool(Parameters* para, MemPool* pool) :
     m_evtNamesId(-1, -1) // placeholder
 {
     _init(para->detName.c_str());
+    _init_feb();
 }
 
-  unsigned TimeTool::_configure(XtcData::Xtc& xtc, XtcData::ConfigIter&)
+unsigned TimeTool::_configure(XtcData::Xtc& xtc, XtcData::ConfigIter&)
 {
     // set up the names for L1Accept data
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);

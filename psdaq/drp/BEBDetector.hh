@@ -45,6 +45,7 @@ protected:  // This is the sub class interface
                                       std::vector< XtcData::Array<uint8_t> >&) {}
 protected:
     void _init(const char*);  // Must call from subclass constructor
+    void _init_feb();         // Must call from subclass constructor
     // Helper functions
     static PyObject* _check(PyObject*);
     static std::string _string_from_PyDict(PyObject*, const char* key);

@@ -10,6 +10,10 @@ from collections import deque
 
 pv = None
 
+#FEB parameters
+lane = 0
+chan = 0
+
 def opal_init(arg,xpmpv=None):
 
     global pv
@@ -37,12 +41,17 @@ def opal_init(arg,xpmpv=None):
 
     return cl
 
+def opal_init_feb(slane=None,schan=None):
+    global lane
+    global chan
+    if slane is not None:
+        lane = int(slane)
+    if schan is not None:
+        chan = int(schan)
+
 def opal_connect(cl):
 
     txId = timTxId('opal')
-
-    lane = 0
-    chan = 0
 
     rxId = cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
     cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
