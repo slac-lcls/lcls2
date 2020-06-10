@@ -16,6 +16,7 @@ namespace Drp {
 enum NamesIndex
 {
    BASE         = 0,
+   STEPINFO     = 253,
    OFFSETINFO   = 254,
    RUNINFO      = 255,
 };
