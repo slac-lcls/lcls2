@@ -13,6 +13,7 @@ cdef class SmdReader:
     cdef ParallelReader prl_reader
     
     def __init__(self, int[:] fds, int chunksize):
+        assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
         self.prl_reader = ParallelReader(fds, chunksize)
         self._reset()
         
