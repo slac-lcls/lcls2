@@ -33,12 +33,14 @@ import threading
 import zmq
 import asyncio
 import time
+import dgramCreate as dc
+import numpy as np
 
 from psdaq.control.control import DaqControl
 import argparse
 
 class MyDAQ:
-    def __init__(self, control, motor, *, daqState):
+    def __init__(self, control, motor1, motor2, *, daqState, runDelay):
         self.control = control
         self.name = 'mydaq'
         self.parent = None
@@ -50,8 +52,11 @@ class MyDAQ:
         self.comm_thread = threading.Thread(target=self.daq_communicator_thread, args=())
         self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
-        self.motor = motor
+        self.motor1 = motor1
+        self.motor2 = motor2
+        self.cydgram = dc.CyDgram()
         self.daqState = daqState
+        self.runDelay = runDelay
         self.daqState_cv = threading.Condition()
         self.comm_thread.start()
         self.mon_thread.start()
@@ -108,7 +113,13 @@ class MyDAQ:
                 # launch the step with 'daqstate(running)' (with the
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
-                errMsg = self.control.setState('running',{'beginstep':{self.motor.name:self.motor.position}})
+                errMsg = self.control.setState('running',
+                    {'configure':{'NamesBlockHex':self.getBlock(transitionid=DaqControl.transitionId['Configure'],
+                                                                add_names=True,
+                                                                add_shapes_data=False).hex()},
+                     'beginstep':{'ShapesDataBlockHex':self.getBlock(transitionid=DaqControl.transitionId['BeginStep'],
+                                                                add_names=False,
+                                                                add_shapes_data=True).hex()}})
                 if errMsg is not None:
                     print('*** error:', errMsg)
                     continue
@@ -117,6 +128,13 @@ class MyDAQ:
                         print('daqState \'%s\', waiting for \'running\'...' % self.daqState)
                         self.daqState_cv.wait(1.0)
                     print('daqState \'%s\'' % self.daqState)
+
+                if self.runDelay > 0:
+                    delay = self.runDelay / 1000
+                    print('Running delay %5.3f sec ...' % delay, end=" ")
+                    time.sleep(delay)       # allow some L1Accepts
+                    print('done')
+
                 # tell bluesky step is complete
                 # this line is needed in ReadableDevice mode to flag completion
                 self.status._finished(success=True)
@@ -148,10 +166,10 @@ class MyDAQ:
         # maybe don't launch the step directly here
         # with a daqstate command, since it would block
         # the event-loop?
-        print('*** here in trigger',self.motor.position,self.motor.read())
+#       print('*** here in trigger',self.motor.position,self.motor.read())
         # this dict should be put into beginstep phase1 json
-        motor_dict = {'motor1':self.motor.position,
-                      'motor2':self.motor.position}
+#       motor_dict = {'motor1':self.motor.position,
+#                     'motor2':self.motor.position}
         self.push_socket.send_string('running')     # BeginStep
         self.push_socket.send_string('starting')    # EndStep
         return self.status
@@ -189,6 +207,33 @@ class MyDAQ:
         
         return [self]
 
+    def getBlock(self, *, transitionid, add_names, add_shapes_data):
+        my_data = {
+            self.motor1.name: self.motor1.position,
+            self.motor2.name: self.motor2.position
+        }
+
+        detname       = 'scan'
+        dettype       = 'scan'
+        serial_number = '1234'
+        namesid       = 253     # STEPINFO = 253 (psdaq/drp/drp.hh)
+        nameinfo      = dc.nameinfo(detname,dettype,serial_number,namesid)
+
+        alg           = dc.alg('raw',[1,2,3])
+
+        self.cydgram.addDet(nameinfo, alg, my_data)
+
+        # create dgram
+        timestamp    = 0
+        xtc_bytes    = self.cydgram.getSelect(timestamp, transitionid, add_names=add_names, add_shapes_data=add_shapes_data)
+        print('transitionid %d dgram is %d bytes (with header)' % (transitionid, len(xtc_bytes)))
+
+        # remove first 12 bytes (dgram header), and keep next 12 bytes (xtc header)
+        return xtc_bytes[12:]
+
+from bluesky.utils import short_uid
+from bluesky.plan_stubs import checkpoint, abs_set, wait, trigger_and_read
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
@@ -197,6 +242,8 @@ def main():
                         help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                         help='timeout msec (default 10000)')
+    parser.add_argument('-R', type=int, metavar='RUNNING_DELAY', default=0,
+                        help='delay for L1Accept, msec (default 0)')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--config', metavar='ALIAS', help='configuration alias')
     group.add_argument('-B', action="store_true", help='shortcut for --config BEAM')
@@ -236,16 +283,17 @@ def main():
     #from bluesky.utils import install_kicker
     #install_kicker()
 
-    from ophyd.sim import det, motor
+#   from ophyd.sim import det, motor
+    from ophyd.sim import det, motor1, motor2
     from bluesky.plans import scan, count
     from bluesky.preprocessors import fly_during_wrapper
 
-    mydaq = MyDAQ(control,motor, daqState=daqState)
+    mydaq = MyDAQ(control, motor1, motor2, daqState=daqState, runDelay=args.R)
     dets = [mydaq]   # just one in this case, but it could be more than one
 
-    print('motor',motor.position,motor.name) # in some cases we have to look at ".value"
-    RE(scan(dets, motor, -1, 1, 3))
-    print('motor',motor.position)
+#   print('motor',motor.position,motor.name) # in some cases we have to look at ".value"
+    RE(scan(dets, motor1, -1, 1, motor2, -0.1, 0.1, 3))
+#   print('motor',motor.position)
     #RE(count(dets, num=3))
 
     # only 1 callback! and 3 steps inside it.  doesn't feel useful for us

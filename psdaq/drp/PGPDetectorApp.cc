@@ -21,6 +21,31 @@
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 
+// _dehex - convert a hex std::string to an array of chars
+//
+// For example, string "0E2021" is converted to array [14, 32, 33].
+// <outArray> must be allocated by the caller to at least half
+// the length of <inString>.
+//
+// RETURNS: 0 on success, otherwise 1.
+//
+int _dehex(std::string inString, char *outArray)
+{
+    if (outArray) {
+        try {
+            for (unsigned uu = 0; uu < inString.length() / 2; uu++) {
+                std::string str2 = inString.substr(2*uu, 2);
+                outArray[uu] = (char) std::stoi(str2, 0, 16);   // base 16
+            }
+            return 0;   // success
+        }
+        catch (std::exception& e) {
+            std::cout << "Exception in _dehex(): " << e.what() << "\n";
+        }
+    }
+    return 1;           // error
+}
+
 namespace Drp {
 
 PGPDetectorApp::PGPDetectorApp(Parameters& para) :
@@ -136,11 +161,19 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     xtc.damage = 0;
     xtc.contains = tid;
     xtc.extent = sizeof(XtcData::Xtc);
+    bool has_names_block_hex = false;
+    bool has_shapes_data_block_hex = false;
 
     json phase1Info{ "" };
     if (msg.find("body") != msg.end()) {
         if (msg["body"].find("phase1Info") != msg["body"].end()) {
             phase1Info = msg["body"]["phase1Info"];
+            if (msg["body"]["phase1Info"].find("NamesBlockHex") != msg["body"]["phase1Info"].end()) {
+                has_names_block_hex = true;
+            }
+            if (msg["body"]["phase1Info"].find("ShapesDataBlockHex") != msg["body"]["phase1Info"].end()) {
+                has_shapes_data_block_hex = true;
+            }
         }
     }
 
@@ -151,6 +184,27 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         if (m_unconfigure) {
             shutdown();
             m_unconfigure = false;
+        }
+        if (has_names_block_hex) {
+            std::string xtcHex = msg["body"]["phase1Info"]["NamesBlockHex"];
+            unsigned hexlen = xtcHex.length();
+            if (hexlen > 0) {
+                logging::debug("configure phase1 in PGPDetectorApp: NamesBlockHex length=%u", hexlen);
+                char *xtcBytes = new char[hexlen / 2]();
+                if (_dehex(xtcHex, xtcBytes) != 0) {
+                    logging::error("configure phase1 in PGPDetectorApp: _dehex() failure");
+                } else {
+                    logging::debug("configure phase1 in PGPDetectorApp: _dehex() success");
+                    // append the config xtc info to the dgram
+                    XtcData::Xtc& jsonxtc = *(XtcData::Xtc*)xtcBytes;
+                    logging::debug("configure phase1 jsonxtc.sizeofPayload() = %u\n",
+                                   jsonxtc.sizeofPayload());
+                    unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
+                    memcpy(xtc.next(), xtcBytes, copylen);
+                    xtc.alloc(copylen);
+                }
+                delete[] xtcBytes;
+            }
         }
 
         std::string errorMsg = m_drp.configure(msg);
@@ -191,6 +245,27 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     else if (key == "beginstep") {
         // see if we find some step information in phase 1 that needs to be
         // to be attached to the xtc
+        if (has_shapes_data_block_hex) {
+            std::string xtcHex = msg["body"]["phase1Info"]["ShapesDataBlockHex"];
+            unsigned hexlen = xtcHex.length();
+            if (hexlen > 0) {
+                logging::debug("beginstep phase1 in PGPDetectorApp: ShapesDataBlockHex length=%u", hexlen);
+                char *xtcBytes = new char[hexlen / 2]();
+                if (_dehex(xtcHex, xtcBytes) != 0) {
+                    logging::error("beginstep phase1 in PGPDetectorApp: _dehex() failure");
+                } else {
+                    logging::debug("beginstep phase1 in PGPDetectorApp: _dehex() success");
+                    // append the beginstep xtc info to the dgram
+                    XtcData::Xtc& jsonxtc = *(XtcData::Xtc*)xtcBytes;
+                    logging::debug("beginstep phase1 jsonxtc.sizeofPayload() = %u\n",
+                                   jsonxtc.sizeofPayload());
+                    unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
+                    memcpy(xtc.next(), xtcBytes, copylen);
+                    xtc.alloc(copylen);
+                }
+                delete[] xtcBytes;
+            }
+        }
         m_det->beginstep(xtc, phase1Info);
     }
     else if (key == "beginrun") {
