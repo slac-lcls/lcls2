@@ -219,7 +219,7 @@ class MyDAQ:
         namesid       = 253     # STEPINFO = 253 (psdaq/drp/drp.hh)
         nameinfo      = dc.nameinfo(detname,dettype,serial_number,namesid)
 
-        alg           = dc.alg('raw',[1,2,3])
+        alg           = dc.alg('raw',[2,0,0])
 
         self.cydgram.addDet(nameinfo, alg, my_data)
 
