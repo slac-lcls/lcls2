@@ -29,7 +29,7 @@ using logging = psalg::SysLog;
 //
 // RETURNS: 0 on success, otherwise 1.
 //
-int _dehex(std::string inString, char *outArray)
+static int _dehex(std::string inString, char *outArray)
 {
     if (outArray) {
         try {
