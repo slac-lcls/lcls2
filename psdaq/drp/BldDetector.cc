@@ -842,7 +842,7 @@ void BldApp::handlePhase1(const json& msg)
             m_unconfigure = false;
         }
 
-        std::string errorMsg = m_drp.configure(msg);
+        std::string errorMsg = m_drp.configure(xtc, msg);
         if (!errorMsg.empty()) {
             errorMsg = "Phase 1 error: " + errorMsg;
             logging::error("%s", errorMsg.c_str());
