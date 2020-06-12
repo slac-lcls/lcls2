@@ -139,7 +139,10 @@ class EnvStore(object):
                 if env_var_loc:
                     alg, segment_id = env_var_loc
                     found_pos = np.searchsorted(env_man.timestamps, event_timestamp)[0]
-                    found_pos -= 1 # return the env event before the found position.
+                    
+                    if found_pos == env_man.n_items: # this event is the last step or the events after
+                        found_pos -= 1
+                    
                     for p in range(found_pos, found_pos - PS_N_STEP_SEARCH_STEPS, -1):
                         if p < 0:
                             break
