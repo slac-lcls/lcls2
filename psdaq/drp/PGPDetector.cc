@@ -221,10 +221,17 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
             if (event->mask == m_para.laneMask) {
                 XtcData::TransitionId::Value transitionId = timingHeader->service();
                 if (transitionId != XtcData::TransitionId::L1Accept) {
-                    logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",
-                                   XtcData::TransitionId::name(transitionId),
-                                   timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                                   timingHeader->pulseId());
+                    if (transitionId==XtcData::TransitionId::Configure) {
+                        logging::info("PGPReader saw %s transition @ %u.%09u (%014lx)",
+                                      XtcData::TransitionId::name(transitionId),
+                                      timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                                      timingHeader->pulseId());
+                    } else {
+                        logging::debug("PGPReader saw %s transition @ %u.%09u (%014lx)",
+                                       XtcData::TransitionId::name(transitionId),
+                                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                                       timingHeader->pulseId());
+                    }
                 }
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
                     logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
