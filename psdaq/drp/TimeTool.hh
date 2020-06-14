@@ -14,6 +14,7 @@ private:
                               std::vector< XtcData::Array<uint8_t> >&) override;
 private:
     XtcData::NamesId  m_evtNamesId;
+    unsigned          m_roiLen;
   };
 
 }

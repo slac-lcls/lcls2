@@ -37,7 +37,7 @@ TimeTool::TimeTool(Parameters* para, MemPool* pool) :
     _init_feb();
 }
 
-unsigned TimeTool::_configure(XtcData::Xtc& xtc, XtcData::ConfigIter&)
+unsigned TimeTool::_configure(XtcData::Xtc& xtc, XtcData::ConfigIter& configo)
 {
     // set up the names for L1Accept data
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
@@ -47,6 +47,12 @@ unsigned TimeTool::_configure(XtcData::Xtc& xtc, XtcData::ConfigIter&)
 
     eventNames.add(xtc, TTDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
+
+    XtcData::DescData& descdata = configo.desc_shape();
+    std::string uarts("expert.ClinkFeb[0].ClinkTop.Ch[0].UartPiranha4.");
+    m_roiLen = descdata.get_value<uint32_t>((uarts+"ROI[1]").c_str()) -
+      descdata.get_value<uint32_t>((uarts+"ROI[0]").c_str()) + 1;
+
     return 0;
 }
 
@@ -54,10 +60,14 @@ void TimeTool::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
 {
     CreateData cd(xtc, m_namesLookup, m_evtNamesId);
 
-    unsigned shape[MaxRank];
-    shape[0] = subframes[2].shape()[0];
-    Array<uint8_t> arrayT = cd.allocate<uint8_t>(TTDef::image, shape);
-    memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
+    if (subframes[2].shape()[0] != m_roiLen)
+      xtc.damage.increase(XtcData::Damage::UserDefined);
+    else {
+      unsigned shape[MaxRank];
+      shape[0] = subframes[2].shape()[0];
+      Array<uint8_t> arrayT = cd.allocate<uint8_t>(TTDef::image, shape);
+      memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
+    }
 }
 
 }
