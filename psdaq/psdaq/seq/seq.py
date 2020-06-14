@@ -111,6 +111,22 @@ class Branch(Instruction):
                 engine.instr = self.args[1]
                 engine.ccnt[self.args[2]] += 1
     
+class CheckPoint(Instruction):
+
+    opcode = 3
+    
+    def __init__(self):
+        super(CheckPoint, self).__init__((self.opcode,))
+
+    def _word(self):
+        return int((1<<29))
+
+    def print_(self):
+        return 'CheckPoint'
+
+    def execute(self,engine):
+        engine.instr += 1
+
 class BeamRequest(Instruction):
 
     opcode = 4

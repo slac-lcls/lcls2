@@ -29,6 +29,10 @@ for i in range(4):
     instrset.append(FixedRateSync(marker=0,occ=i+1))
     instrset.append(Branch.conditional(line=b0, counter=0, value=7))
 
+#  Notify
+instrset.append(CheckPoint())
+
+#  Loop here indefinitely
 b0 = len(instrset)
 instrset.append(Branch.unconditional(line=b0))
 

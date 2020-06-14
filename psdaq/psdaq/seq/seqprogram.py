@@ -112,7 +112,7 @@ class SeqUser:
 def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
     parser.add_argument("seq", help="sequence script")
-    parser.add_argument("pv" , help="sequence engine pv; e.g. XPM:0:SEQ_ENG:0")
+    parser.add_argument("pv" , help="sequence engine pv; e.g. XPM:0:SEQENG:0")
     args = parser.parse_args()
     
     config = {'title':'TITLE', 'descset':None, 'instrset':None}

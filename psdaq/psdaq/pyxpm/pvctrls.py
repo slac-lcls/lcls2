@@ -277,8 +277,14 @@ class GroupSetup(object):
         self._pv_SeqBit     = addPV('L0Select_SeqBit'        ,self.put)        
         self._pv_DstMode    = addPV('DstSelect'              ,self.put, 1)
         self._pv_DstMask    = addPV('DstSelect_Mask'         ,self.put)
-        self._pv_Run        = addPV('Run'                    ,self.run    , set=True)
+        self._pv_Run        = addPV('Run'                    ,self.run   , set=True)
         self._pv_Master     = addPV('Master'                 ,self.master, set=True)
+
+        self._pv_StepDone   = SharedPV(initial=NTScalar('I').wrap(0), handler=DefaultPVHandler())
+        provider.add(name+':StepDone', self._pv_StepDone)
+
+        self._pv_StepGroups = addPV('StepGroups'            ,self.stepGroups, set=True)
+        self._pv_StepEnd    = addPV('StepEnd'               ,self.stepEnd   , set=True)
 
         def addPV(label,reg,init=0,set=False):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
@@ -315,7 +321,6 @@ class GroupSetup(object):
         self._pv_MsgConfigKey = addPV('MsgConfigKey')
 
         self._inhibits = []
-##  Remove temporarily while we test Ben's xpm
         self._inhibits.append(PVInhibit(name, app, app.inh_0, group, 0))
         self._inhibits.append(PVInhibit(name, app, app.inh_1, group, 1))
         self._inhibits.append(PVInhibit(name, app, app.inh_2, group, 2))
@@ -390,7 +395,21 @@ class GroupSetup(object):
         self.setDestn()
         self.dump()
         lock.release()
-            
+
+    def stepGroups(self, pv, val):
+        getattr(self._app,'stepGroup%i'%self._group).set(val)
+
+    def stepEnd(self, pv, val):
+        self.stepDone(False)
+        getattr(self._app,'stepEnd%i'%self._group).set(val)
+
+    def stepDone(self, val):
+        value = self._pv_StepDone.current()
+        value['value'] = 1 if val else 0
+        timev = divmod(float(time.time_ns()), 1.0e9)
+        value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
+        self._pv_StepDone.post(value)
+
     def run(self, pv, val):
         lock.acquire()
         self._app.partition.set(self._group)
@@ -471,7 +490,6 @@ class PVCtrls(object):
 
         self._group = GroupCtrls(name, app, stats, init=init)
 
-##  Remove sequencer while we test Ben's image
         if True:
             self._seq = PVSeq(provider, name+':SEQENG:0', ip, Engine(0, xpm.SeqEng_0))
 
@@ -531,16 +549,21 @@ class PVCtrls(object):
             msg = client.recv(256)
             s = struct.Struct('H')
             siter = s.iter_unpack(msg)
-            mask = next(siter)[0]
-            print('mask {:x}'.format(mask))
-            i=0
-            while mask!=0:
-                if mask&1:
-                    addr = next(siter)[0]
-                    print('addr[{}] {:x}'.format(i,addr))
-                    if i<1:
-                        self._seq.checkPoint(addr)
-                i += 1
-                mask = mask>>1
-            
+            src = next(siter)[0]
+            print('src {:x}'.format(src))
+            if src==0:   # sequence notify message
+                mask = next(siter)[0]
+                i=0
+                while mask!=0:
+                    if mask&1:
+                        addr = next(siter)[0]
+                        print('addr[{}] {:x}'.format(i,addr))
+                        if i<1:
+                            self._seq.checkPoint(addr)
+                    i += 1
+                    mask = mask>>1
+            elif src==1: # step end message
+                group = next(siter)[0]
+                self._group._groups[group].stepDone(True)
+
             

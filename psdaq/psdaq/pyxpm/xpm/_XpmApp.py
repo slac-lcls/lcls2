@@ -680,6 +680,28 @@ class XpmApp(pr.Device):
             verify       = False,
         ))
 
+        for i in range(8):
+            self.add(pr.RemoteVariable(    
+                name         = "stepGroup%i"%i,
+                description  = "Step control group",
+                offset       =  0x210+8*i,
+                bitSize      =  8,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                mode         = "RW",
+                verify       = False,
+            ))
+            self.add(pr.RemoteVariable(    
+                name         = "stepEnd%i"%i,
+                description  = "Step end event",
+                offset       =  0x214+8*i,
+                bitSize      =  32,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                mode         = "RW",
+                verify       = False,
+            ))
+
     def l0EnaCnt(self, l0Stats):
         return (l0Stats>>0)&((1<<64)-1)
 
