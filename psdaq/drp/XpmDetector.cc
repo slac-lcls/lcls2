@@ -36,6 +36,13 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
     double clkr = double(ccnt1)*16.e-5;
     logging::info("Timing RefClk %f MHz\n", clkr);
     if (clkr < 180 || clkr > 190) {
+      AxiVersion vsn;
+      axiVersionGet(fd, &vsn);
+      if (vsn.userValues[2]) {  // Only one PCIe interface has access to I2C bus
+         logging::error("Si570 clock needs programming.  This PCIe interface has no I2C access.");
+         return;
+      }
+
       //  Flush I2C by reading the Mux
       unsigned mux;
       dmaReadRegister(fd, 0x00E00000, &mux);
@@ -131,13 +138,18 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
     if (it != m_para->kwargs.end())
         m_length = stoi(it->second);
 
-    int links = m_para->laneMask;
-
     int fd = open(m_para->device.c_str(), O_RDWR);
     if (fd < 0) {
         logging::error("Error opening %s", m_para->device.c_str());
         return;
     }
+
+    int links = m_para->laneMask;
+
+    AxiVersion vsn;
+    axiVersionGet(fd, &vsn);
+    if (vsn.userValues[2]) // Second PCIe interface has lanes shifted by 4
+       links <<= 4;
 
     int readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
 
