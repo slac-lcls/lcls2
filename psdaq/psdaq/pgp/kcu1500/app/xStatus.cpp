@@ -38,6 +38,23 @@ using namespace std;
     WRITEREG(name,addr);                                        \
   }
 
+int          fd  [2];
+
+static int print_mig_lane(const char* name, int addr, int offset, int mask)
+{
+    const unsigned MIG_LANES = 0x00800080;
+    printf("%20.20s", name);
+    for(int i=0; i<2; i++) {
+      int ifd = fd[i];
+      if (ifd >= 0) {
+        uint32_t reg; READREG( MIG_REG, MIG_LANES + addr);
+        printf(" %8x", (reg >> offset) & mask);
+      }
+    }
+    printf("\n");
+    return 0;
+}
+
 static bool lInit = false;
 static bool lReset = false;
 
@@ -74,23 +91,25 @@ static void usage(const char* p) {
   printf("         -I (initialize 186MHz clock)\n");
   printf("         -R (reset to 156.25MHz clock)\n");
   printf("         -C (reset counters)\n");
+  printf("         -Q (enable interrupts)\n");
 }
 
 int main (int argc, char **argv) {
 
-  int          fd  [2];
   unsigned     base;
   int          lbmask = -1;
   bool         lCounterReset = false;
   bool         lUpdateId = false;
+  bool         lIntEnable = false;
   int          c;
 
-  while((c=getopt(argc,argv,"l:CIR"))!=-1) {
+  while((c=getopt(argc,argv,"l:CIRQ"))!=-1) {
     switch(c) {
     case 'l': lbmask = strtoul(optarg,NULL,0); break;
     case 'C': lCounterReset = true; lUpdateId = true; break;
     case 'I': lInit = true; lUpdateId = true; break;
     case 'R': lReset = true; break;
+    case 'Q': lIntEnable = true; break;
     default:  usage(argv[0]); return 1;
     }
   }
@@ -123,7 +142,7 @@ int main (int argc, char **argv) {
         printf("axiLenBits      : %u\n", (vsn.userValues[7]>> 0)&0xff);
         check_program_clock(ifd, vsn);
       }
-    }
+    }   
   }
   
 #define PRINTFIELD(name, addr, offset, mask) {                  \
@@ -210,6 +229,19 @@ int main (int argc, char **argv) {
       if (ifd >= 0)
         dmaWriteRegister(ifd, 0x00a40010+4*(i&3), id | (i<<16));
     }
+  }
+
+  {
+    printf("\n-- migLane Registers --\n");
+    print_mig_lane("blockSize  ", 0, 0, 0x1f);
+    print_mig_lane("blocksPause", 4, 8, 0x3ff);
+    print_mig_lane("blocksFree ", 8, 0, 0x1ff);
+    print_mig_lane("blocksQued ", 8,12, 0x1ff);
+    print_mig_lane("writeQueCnt",12, 0, 0xff);
+    print_mig_lane("wrIndex    ",16, 0, 0x1ff);
+    print_mig_lane("wcIndex    ",20, 0, 0x1ff);
+    print_mig_lane("rdIndex    ",24, 0, 0x1ff);
+    print_mig_lane("ilvStatus  ",288, 0, 0xffffffff);
   }
 
 #define PRINTCLK(name, addr) {                                          \
@@ -317,6 +349,13 @@ int main (int argc, char **argv) {
     }                                                           \
     printf("\n"); }
   PRINTID(txLinkId, 0x10);
+
+  if (lIntEnable) {
+    if (fd[0]>=0)
+      ioctl(fd[0], 0x2002, 0);
+    if (fd[1]>=0)
+      ioctl(fd[1], 0x2002, 0);
+  }
 
   close(fd[0]);
   close(fd[1]);

@@ -112,10 +112,10 @@ static void print_field(const char* name, int addr, int offset, int mask)
 
 static void print_word (const char* name, int addr) { print_field(name,addr,0,0xffffffff); }
 
-static void print_lane(const char* name, int addr, int offset, int stride, int mask)
+static void print_lane(const char* name, int addr, int offset, int stride, int mask, unsigned nl=8)
 {
     printf("%20.20s", name);
-    for(int i=0; i<4; i++) {
+    for(int i=0; i<nl; i++) {
         uint32_t reg = get_reg32( addr+stride*i);
         printf(" %8x", (reg >> offset) & mask);
     }
@@ -330,7 +330,7 @@ int main(int argc, char* argv[])
         printf("%08x%c", userValue, (i&7)==7 ? '\n':' ');
       }
 
-      core_pcie = (axiv.userValues[61] == 0);
+      core_pcie = (axiv.userValues[2] == 0);
     }
 
     //
@@ -462,9 +462,9 @@ int main(int argc, char* argv[])
       print_clk_rate("migB       ",12);
 
       // TDetSemi
-      print_lane("length"    , 0x00a00000,  0, 4, 0xffffff);
-      print_lane("clear"     , 0x00a00000, 30, 4, 0x1);
-      print_lane("enable"    , 0x00a00000, 31, 4, 0x1);
+      print_lane("length"    , 0x00a00000,  0, 4, 0xffffff, 4);
+      print_lane("clear"     , 0x00a00000, 30, 4, 0x1, 4);
+      print_lane("enable"    , 0x00a00000, 31, 4, 0x1, 4);
 
       { printf("%20.20s", "messagedelay");
         for(unsigned i=0; i<8; i++) {
@@ -486,7 +486,8 @@ int main(int argc, char* argv[])
       print_lane("fullToTrig" , 0x00c20138,  0, 256, 0xfff);
       print_lane("nfullToTrig", 0x00c2013c,  0, 256, 0xfff);
 
-      if (core_pcie) {
+      //      if (core_pcie) {
+      if (1) {
         // TDetTiming
         print_word("SOFcounts" , 0x00c00000);
         print_word("EOFcounts" , 0x00c00004);
