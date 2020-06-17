@@ -131,7 +131,7 @@ int main(int argc, char** argv)
   
   const char* dev    = 0;
   const char* prefix = "DAQ:LAB2:HSD";
-  bool lAbortOnErr = true;
+  bool lAbortOnErr = false;
   unsigned    busId  = 0;
 
   while ( (c=getopt( argc, argv, "d:EP:Ih")) != EOF ) {
@@ -139,7 +139,7 @@ int main(int argc, char** argv)
     case 'd':
       dev    = optarg;      break;
     case 'E':
-      lAbortOnErr = false;  break;
+      lAbortOnErr = true;   break;
     case 'P':
       prefix = optarg;      break;
     case '?':
