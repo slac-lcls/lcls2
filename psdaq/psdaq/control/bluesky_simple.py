@@ -29,6 +29,8 @@
 from bluesky import RunEngine
 from ophyd.status import Status
 import sys
+import logging
+from p4p.client.thread import Context as EpicsContext
 import threading
 import zmq
 import asyncio
@@ -40,7 +42,7 @@ from psdaq.control.control import DaqControl
 import argparse
 
 class MyDAQ:
-    def __init__(self, control, motor1, motor2, *, daqState, runDelay):
+    def __init__(self, control, motor1, motor2, *, daqState, args):
         self.control = control
         self.name = 'mydaq'
         self.parent = None
@@ -56,10 +58,38 @@ class MyDAQ:
         self.motor2 = motor2
         self.cydgram = dc.CyDgram()
         self.daqState = daqState
-        self.runDelay = runDelay
+        self.args = args
         self.daqState_cv = threading.Condition()
         self.comm_thread.start()
         self.mon_thread.start()
+        self.verbose = args.v
+        self.pv_base = args.B
+
+        self.groupMask = 1 << args.p
+#       if args.g is None:
+#           self.groupMask = 1 << args.p
+#       else:
+#           self.groupMask = args.g
+
+        # StepEnd is a cumulative count.  If you don't want steps, set StepGroups = 0
+        self.readoutCount = args.c
+        self.readoutCumulative = 0
+
+        # initialize EPICS context
+        self.ctxt = EpicsContext('pva')
+
+        # name PVs
+        self.pv_xpm_base  = self.pv_base + ':XPM:%d:PART:%d' % (args.x, args.p)
+        self.pvStepEnd    = self.pv_xpm_base+':StepEnd'
+        self.pvStepGroups = self.pv_xpm_base+':StepGroups'
+        self.pvStepDone   = self.pv_xpm_base+':StepDone'
+
+        if self.verbose:
+            print('readoutCount =', self.readoutCount)
+            print('groupMask    =', self.groupMask)
+            print('pvStepEnd    =', self.pvStepEnd)
+            print('pvStepGroups =', self.pvStepGroups)
+            print('pvStepDone   =', self.pvStepDone)
 
     def read(self):
         # stuff we want to give back to user running bluesky
@@ -113,6 +143,15 @@ class MyDAQ:
                 # launch the step with 'daqstate(running)' (with the
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
+
+                # set EPICS PVs.
+                # StepEnd is a cumulative count.
+                self.readoutCumulative += self.readoutCount
+                self.pv_put(self.pvStepEnd, self.readoutCumulative)
+                self.pv_put(self.pvStepGroups, self.groupMask)
+                self.pv_put(self.pvStepDone, 0)
+
+                # set DAQ state
                 errMsg = self.control.setState('running',
                     {'configure':{'NamesBlockHex':self.getBlock(transitionid=DaqControl.transitionId['Configure'],
                                                                 add_names=True,
@@ -123,12 +162,15 @@ class MyDAQ:
                 if errMsg is not None:
                     print('*** error:', errMsg)
                     continue
+
                 with self.daqState_cv:
                     while self.daqState != 'running':
                         print('daqState \'%s\', waiting for \'running\'...' % self.daqState)
                         self.daqState_cv.wait(1.0)
                     print('daqState \'%s\'' % self.daqState)
 
+                # FIXME temporary kludge
+                self.runDelay = 3000
                 if self.runDelay > 0:
                     delay = self.runDelay / 1000
                     print('Running delay %5.3f sec ...' % delay, end=" ")
@@ -207,6 +249,25 @@ class MyDAQ:
         
         return [self]
 
+    #
+    # pv_put -
+    #
+    def pv_put(self, pvName, val):
+
+        retval = False
+
+        try:
+            self.ctxt.put(pvName, val)
+        except TimeoutError:
+            logging.error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
+        except Exception:
+            logging.error("self.ctxt.put('%s', %d) failed" % (pvName, val))
+        else:
+            retval = True
+            logging.debug("self.ctxt.put('%s', %d)" % (pvName, val))
+
+        return retval
+
     def getBlock(self, *, transitionid, add_names, add_shapes_data):
         my_data = {
             self.motor1.name: self.motor1.position,
@@ -231,23 +292,28 @@ class MyDAQ:
         # remove first 12 bytes (dgram header), and keep next 12 bytes (xtc header)
         return xtc_bytes[12:]
 
-from bluesky.utils import short_uid
-from bluesky.plan_stubs import checkpoint, abs_set, wait, trigger_and_read
-
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
                         help='platform (default 0)')
+    parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
     parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost',
                         help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                         help='timeout msec (default 10000)')
-    parser.add_argument('-R', type=int, metavar='RUNNING_DELAY', default=0,
-                        help='delay for L1Accept, msec (default 0)')
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument('--config', metavar='ALIAS', help='configuration alias')
-    group.add_argument('-B', action="store_true", help='shortcut for --config BEAM')
+    parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=1, help='# of events to aquire at each step (default 1)')
+#   parser.add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
+    parser.add_argument('--config', metavar='ALIAS', help='configuration alias (e.g. BEAM)')
+    parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
+
+#   if args.g is not None:
+#       if args.g < 1 or args.g > 255:
+#           parser.error('readout group mask (-g) must be 1-255')
+
+    if args.c < 1:
+        parser.error('readout count (-c) must be >= 1')
 
     # instantiate DaqControl object
     control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
@@ -258,15 +324,10 @@ def main():
     if daqState == 'error':
         sys.exit(1)
 
-    config = None
-    if args.config:
-        config = args.config
-    elif args.B:
-        config = "BEAM"
-
-    if config:
+    # optionally set BEAM or NOBEAM
+    if args.config is not None:
         # config alias request
-        rv = control.setConfig(config)
+        rv = control.setConfig(args.config)
         if rv is not None:
             print('Error: %s' % rv)
 
@@ -288,7 +349,8 @@ def main():
     from bluesky.plans import scan, count
     from bluesky.preprocessors import fly_during_wrapper
 
-    mydaq = MyDAQ(control, motor1, motor2, daqState=daqState, runDelay=args.R)
+    # instantiate MyDAQ object
+    mydaq = MyDAQ(control, motor1, motor2, daqState=daqState, args=args)
     dets = [mydaq]   # just one in this case, but it could be more than one
 
 #   print('motor',motor.position,motor.name) # in some cases we have to look at ".value"
