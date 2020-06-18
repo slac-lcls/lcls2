@@ -653,6 +653,7 @@ class CollectionManager():
         self.pvGroupL0Disable = self.pv_xpm_base+':GroupL0Disable'
         self.pvGroupMsgInsert = self.pv_xpm_base+':GroupMsgInsert'
         self.pvGroupL0Reset = self.pv_xpm_base+':GroupL0Reset'
+        self.pvStepGroups = self.pv_xpm_base+(':PART:%d' % self.platform)+':StepGroups'
 
         self.groups = 0     # groups bitmask
         self.cmstate = {}
@@ -1106,6 +1107,11 @@ class CollectionManager():
         # set Disable PV
         if not self.group_run(False):
             logging.error('condition_alloc(): group_run(False) failed')
+            return False
+
+        # if you don't want steps, set StepGroups = 0
+        if not self.step_groups(mask=0):
+            logging.error('condition_alloc(): step_groups(mask=0) failed')
             return False
 
         # create group-dependent PVs
@@ -1771,6 +1777,10 @@ class CollectionManager():
         else:
             rv = self.pv_put(self.pvGroupL0Disable, self.groups)
         return rv
+
+    # if you don't want steps, set StepGroups = 0
+    def step_groups(self, *, mask):
+        return self.pv_put(self.pvStepGroups, mask)
 
     def before_disable(self):
         # disable slowupdate timer
