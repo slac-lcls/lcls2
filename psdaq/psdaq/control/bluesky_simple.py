@@ -65,11 +65,10 @@ class MyDAQ:
         self.verbose = args.v
         self.pv_base = args.B
 
-        self.groupMask = 1 << args.p
-#       if args.g is None:
-#           self.groupMask = 1 << args.p
-#       else:
-#           self.groupMask = args.g
+        if args.g is None:
+            self.groupMask = 1 << args.p
+        else:
+            self.groupMask = args.g
 
         # StepEnd is a cumulative count.  If you don't want steps, set StepGroups = 0
         self.readoutCount = args.c
@@ -303,14 +302,14 @@ def main():
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                         help='timeout msec (default 10000)')
     parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=1, help='# of events to aquire at each step (default 1)')
-#   parser.add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
+    parser.add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
     parser.add_argument('--config', metavar='ALIAS', help='configuration alias (e.g. BEAM)')
     parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
 
-#   if args.g is not None:
-#       if args.g < 1 or args.g > 255:
-#           parser.error('readout group mask (-g) must be 1-255')
+    if args.g is not None:
+        if args.g < 1 or args.g > 255:
+            parser.error('readout group mask (-g) must be 1-255')
 
     if args.c < 1:
         parser.error('readout count (-c) must be >= 1')
