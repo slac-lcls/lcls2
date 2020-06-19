@@ -590,6 +590,43 @@ def wait_for_answers(socket, wait_time, msg_id):
         remaining = max(0, int(wait_time - 1000*(time.time() - start)))
 
 
+class DaqPVA():
+    def __init__(self, *, platform, xpm_master, pv_base):
+        self.platform = platform
+        self.xpm_master = xpm_master
+        self.pv_base = pv_base
+        self.pv_xpm_base = self.pv_base + ':XPM:%d' % self.xpm_master
+
+        # name PVs
+        self.pvStepGroups = self.pv_xpm_base+(':PART:%d' % self.platform)+':StepGroups'
+
+        # initialize EPICS context
+        self.ctxt = Context('pva')
+
+    # if you don't want steps, set StepGroups = 0
+    def step_groups(self, *, mask):
+        return self.pv_put(self.pvStepGroups, mask)
+
+    #
+    # pv_put -
+    #
+    def pv_put(self, pvName, val):
+
+        retval = False
+
+        try:
+            self.ctxt.put(pvName, val)
+        except TimeoutError:
+            logging.error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
+        except Exception:
+            logging.error("self.ctxt.put('%s', %d) failed" % (pvName, val))
+        else:
+            retval = True
+            logging.debug("self.ctxt.put('%s', %d)" % (pvName, val))
+
+        return retval
+
+
 class CollectionManager():
     def __init__(self, args):
         self.platform = args.p

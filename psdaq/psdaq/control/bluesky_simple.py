@@ -38,7 +38,7 @@ import time
 import dgramCreate as dc
 import numpy as np
 
-from psdaq.control.control import DaqControl
+from psdaq.control.control import DaqControl, DaqPVA
 import argparse
 
 class MyDAQ:
@@ -70,24 +70,22 @@ class MyDAQ:
         else:
             self.groupMask = args.g
 
-        # StepEnd is a cumulative count.  If you don't want steps, set StepGroups = 0
+        # StepEnd is a cumulative count
         self.readoutCount = args.c
         self.readoutCumulative = 0
 
-        # initialize EPICS context
-        self.ctxt = EpicsContext('pva')
+        # instantiate DaqPVA object
+        self.pva = DaqPVA(platform=args.p, xpm_master=args.x, pv_base=args.B)
 
         # name PVs
         self.pv_xpm_base  = self.pv_base + ':XPM:%d:PART:%d' % (args.x, args.p)
         self.pvStepEnd    = self.pv_xpm_base+':StepEnd'
-        self.pvStepGroups = self.pv_xpm_base+':StepGroups'
         self.pvStepDone   = self.pv_xpm_base+':StepDone'
 
         if self.verbose:
             print('readoutCount =', self.readoutCount)
             print('groupMask    =', self.groupMask)
             print('pvStepEnd    =', self.pvStepEnd)
-            print('pvStepGroups =', self.pvStepGroups)
             print('pvStepDone   =', self.pvStepDone)
 
     def read(self):
@@ -146,9 +144,9 @@ class MyDAQ:
                 # set EPICS PVs.
                 # StepEnd is a cumulative count.
                 self.readoutCumulative += self.readoutCount
-                self.pv_put(self.pvStepEnd, self.readoutCumulative)
-                self.pv_put(self.pvStepGroups, self.groupMask)
-                self.pv_put(self.pvStepDone, 0)
+                self.pva.pv_put(self.pvStepEnd, self.readoutCumulative)
+                self.pva.step_groups(mask=self.groupMask)
+                self.pva.pv_put(self.pvStepDone, 0)
 
                 # set DAQ state
                 errMsg = self.control.setState('running',
@@ -247,25 +245,6 @@ class MyDAQ:
         self._set_connected()
         
         return [self]
-
-    #
-    # pv_put -
-    #
-    def pv_put(self, pvName, val):
-
-        retval = False
-
-        try:
-            self.ctxt.put(pvName, val)
-        except TimeoutError:
-            logging.error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
-        except Exception:
-            logging.error("self.ctxt.put('%s', %d) failed" % (pvName, val))
-        else:
-            retval = True
-            logging.debug("self.ctxt.put('%s', %d)" % (pvName, val))
-
-        return retval
 
     def getBlock(self, *, transitionid, add_names, add_shapes_data):
         my_data = {
