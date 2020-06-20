@@ -30,7 +30,6 @@ from bluesky import RunEngine
 from ophyd.status import Status
 import sys
 import logging
-from p4p.client.thread import Context as EpicsContext
 import threading
 import zmq
 import asyncio
@@ -60,6 +59,8 @@ class MyDAQ:
         self.daqState = daqState
         self.args = args
         self.daqState_cv = threading.Condition()
+        self.stepDone_cv = threading.Condition()
+        self.stepDone = 0
         self.comm_thread.start()
         self.mon_thread.start()
         self.verbose = args.v
@@ -147,6 +148,9 @@ class MyDAQ:
                 self.pva.pv_put(self.pvStepEnd, self.readoutCumulative)
                 self.pva.step_groups(mask=self.groupMask)
                 self.pva.pv_put(self.pvStepDone, 0)
+                with self.stepDone_cv:
+                    self.stepDone = 0
+                    self.stepDone_cv.notify()
 
                 # set DAQ state
                 errMsg = self.control.setState('running',
@@ -166,13 +170,23 @@ class MyDAQ:
                         self.daqState_cv.wait(1.0)
                     print('daqState \'%s\'' % self.daqState)
 
-                # FIXME temporary kludge
-                self.runDelay = 3000
-                if self.runDelay > 0:
-                    delay = self.runDelay / 1000
-                    print('Running delay %5.3f sec ...' % delay, end=" ")
-                    time.sleep(delay)       # allow some L1Accepts
-                    print('done')
+                # define nested function for monitoring the StepDone PV
+                def callback(stepDone):
+                    with self.stepDone_cv:
+                        self.stepDone = int(stepDone)
+                        self.stepDone_cv.notify()
+
+                # start monitoring the StepDone PV
+                sub = self.pva.monitor_StepDone(callback=callback)
+
+                with self.stepDone_cv:
+                    while self.stepDone != 1:
+                        print('PV \'StepDone\' is %d, waiting for 1...' % self.stepDone)
+                        self.stepDone_cv.wait(1.0)
+                print('PV \'StepDone\' is %d' % self.stepDone)
+
+                # stop monitoring the StepDone PV
+                sub.close()
 
                 # tell bluesky step is complete
                 # this line is needed in ReadableDevice mode to flag completion
@@ -186,7 +200,7 @@ class MyDAQ:
             part1, part2, part3, part4 = self.control.monitorStatus()
             if part1 is None:
                 break
-            elif part1 == 'error':
+            elif part1 not in DaqControl.transitions:
                 continue
 
             # part1=transition, part2=state, part3=config

@@ -599,9 +599,10 @@ class DaqPVA():
 
         # name PVs
         self.pvStepGroups = self.pv_xpm_base+(':PART:%d' % self.platform)+':StepGroups'
+        self.pvStepDone = self.pv_xpm_base+(':PART:%d' % self.platform)+':StepDone'
 
         # initialize EPICS context
-        self.ctxt = Context('pva')
+        self.ctxt = Context('pva', nt=None)
 
     # if you don't want steps, set StepGroups = 0
     def step_groups(self, *, mask):
@@ -625,6 +626,12 @@ class DaqPVA():
             logging.debug("self.ctxt.put('%s', %d)" % (pvName, val))
 
         return retval
+
+    #
+    # DaqPVA.monitor_StepDone
+    #
+    def monitor_StepDone(self, *, callback):
+        return self.ctxt.monitor(self.pvStepDone, callback)
 
 
 class CollectionManager():
