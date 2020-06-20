@@ -652,7 +652,7 @@ class CollectionManager():
         self.front_rep.bind('tcp://*:%d' % front_rep_port(args.p))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(args.p))
         self.slow_update_rate = args.S
-        self.slow_update_enabled = False
+        self.slow_update_enabled = False    # setter: self.set_slow_update_enabled()
         self.slow_update_exit = Event()
         self.phase2_timeout = args.T
         self.user = args.user
@@ -768,7 +768,7 @@ class CollectionManager():
 
         if self.slow_update_rate:
             # start slow update thread
-            self.slow_update_enabled = False
+            self.set_slow_update_enabled(False)
             self.slow_update_thread.start()
 
         # start main loop
@@ -845,12 +845,12 @@ class CollectionManager():
                 # is body dict not-empty?
                 if body:
                     self.phase1Info[key[1]] = body
-                    print('***',key[1],phase1Info)
+                    logging.debug('*** %s %s' % (key[1], phase1Info))
                 # send 'ok' reply before calling handle_trigger()
                 self.front_rep.send_json(create_msg('ok'))
-                # drop slowupdate transition if not in running state,
+                # drop slowupdate transition if slowupdate transitions are not enabled,
                 # due to race condition between slowupdate and disable
-                if key[0] == 'slowupdate' and self.state != 'running':
+                if key[0] == 'slowupdate' and not self.slow_update_enabled:
                     logging.debug('dropped slowupdate transition in state %s' % self.state)
                     return
                 retval = self.handle_trigger(key[0], stateChange=False)
@@ -1826,13 +1826,23 @@ class CollectionManager():
     def step_groups(self, *, mask):
         return self.pv_put(self.pvStepGroups, mask)
 
+    # set slow_update_enabled to True or False
+    def set_slow_update_enabled(self, enabled):
+        self.slow_update_enabled = enabled
+        if enabled:
+            logging.info('slowupdate transitions ENABLED')
+        else:
+            logging.info('slowupdate transitions DISABLED')
+
     def before_disable(self):
-        # disable slowupdate timer
-        self.slow_update_enabled = False
+        if self.slow_update_rate:
+            # disable slowupdate transitions
+            self.set_slow_update_enabled(False)
 
     def after_enable(self):
-        # enable slowupdate timer
-        self.slow_update_enabled = True
+        if self.slow_update_rate:
+            # enable slowupdate transitions
+            self.set_slow_update_enabled(True)
 
     def condition_enable(self):
         # phase 1
@@ -1894,7 +1904,7 @@ class CollectionManager():
                 logging.error('condition_reset(): group_run(False) failed')
 
         # disable slowupdate timer
-        self.slow_update_enabled = False
+        self.set_slow_update_enabled(False)
 
         msg = create_msg('reset')
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
