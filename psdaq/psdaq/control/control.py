@@ -662,6 +662,9 @@ class CollectionManager():
         self.rollcall_timeout = args.rollcall_timeout
         self.bypass_activedet = False
 
+        # instantiate DaqPVA object
+        self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base)
+
         if args.r:
             # active detectors file from command line
             self.activedetfilename = args.r
@@ -784,25 +787,6 @@ class CollectionManager():
     #
     def cmstate_levels(self):
         return {k: self.cmstate[k] for k in self.cmstate.keys() & self.level_keys}
-
-    #
-    # pv_put -
-    #
-    def pv_put(self, pvName, val):
-
-        retval = False
-
-        try:
-            self.ctxt.put(pvName, val)
-        except TimeoutError:
-            logging.error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
-        except Exception:
-            logging.error("self.ctxt.put('%s', %d) failed" % (pvName, val))
-        else:
-            retval = True
-            logging.debug("self.ctxt.put('%s', %d)" % (pvName, val))
-
-        return retval
 
     def service_requests(self):
         # msg['header']['key'] formats:
@@ -1230,16 +1214,16 @@ class CollectionManager():
 
         # phase 2
         # ...clear readout
-        self.pv_put(self.pvGroupL0Reset, self.groups)
+        self.pva.pv_put(self.pvGroupL0Reset, self.groups)
         for pv in self.pvListMsgHeader:
-            self.pv_put(pv, DaqControl.transitionId['ClearReadout'])
-        self.pv_put(self.pvGroupMsgInsert, self.groups)
-        self.pv_put(self.pvGroupMsgInsert, 0)
+            self.pva.pv_put(pv, DaqControl.transitionId['ClearReadout'])
+        self.pva.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pva.pv_put(self.pvGroupMsgInsert, 0)
         time.sleep(1.0)
         for pv in self.pvListMsgHeader:
-            self.pv_put(pv, DaqControl.transitionId['BeginRun'])
-        self.pv_put(self.pvGroupMsgInsert, self.groups)
-        self.pv_put(self.pvGroupMsgInsert, 0)
+            self.pva.pv_put(pv, DaqControl.transitionId['BeginRun'])
+        self.pva.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pva.pv_put(self.pvGroupMsgInsert, 0)
 
         ok = self.get_phase2_replies('beginrun')
         if not ok:
@@ -1263,9 +1247,9 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pvListMsgHeader:
-            self.pv_put(pv, DaqControl.transitionId['EndRun'])
-        self.pv_put(self.pvGroupMsgInsert, self.groups)
-        self.pv_put(self.pvGroupMsgInsert, 0)
+            self.pva.pv_put(pv, DaqControl.transitionId['EndRun'])
+        self.pva.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pva.pv_put(self.pvGroupMsgInsert, 0)
 
         ok = self.get_phase2_replies('endrun')
         if not ok:
@@ -1283,9 +1267,9 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pvListMsgHeader:
-            self.pv_put(pv, DaqControl.transitionId['BeginStep'])
-        self.pv_put(self.pvGroupMsgInsert, self.groups)
-        self.pv_put(self.pvGroupMsgInsert, 0)
+            self.pva.pv_put(pv, DaqControl.transitionId['BeginStep'])
+        self.pva.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pva.pv_put(self.pvGroupMsgInsert, 0)
 
         ok = self.get_phase2_replies('beginstep')
         if not ok:
@@ -1303,9 +1287,9 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pvListMsgHeader:
-            self.pv_put(pv, DaqControl.transitionId['EndStep'])
-        self.pv_put(self.pvGroupMsgInsert, self.groups)
-        self.pv_put(self.pvGroupMsgInsert, 0)
+            self.pva.pv_put(pv, DaqControl.transitionId['EndStep'])
+        self.pva.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pva.pv_put(self.pvGroupMsgInsert, 0)
 
         ok = self.get_phase2_replies('endstep')
         if not ok:
@@ -1320,13 +1304,13 @@ class CollectionManager():
         # phase 1 not needed
         # phase 2 no replies needed
         for pv in self.pvListMsgHeader:
-            if not self.pv_put(pv, DaqControl.transitionId['SlowUpdate']):
+            if not self.pva.pv_put(pv, DaqControl.transitionId['SlowUpdate']):
                 update_ok = False
                 break
 
         if update_ok:
-            self.pv_put(self.pvGroupMsgInsert, self.groups)
-            self.pv_put(self.pvGroupMsgInsert, 0)
+            self.pva.pv_put(self.pvGroupMsgInsert, self.groups)
+            self.pva.pv_put(self.pvGroupMsgInsert, 0)
             self.lastTransition = 'slowupdate'
 
         return update_ok
@@ -1336,7 +1320,7 @@ class CollectionManager():
 
         # set XPM PV
         for pv in self.pvListXPM:
-            if not self.pv_put(pv, 1):
+            if not self.pva.pv_put(pv, 1):
                 self.report_error('connect: failed to put PV \'%s\'' % pv)
                 connect_ok = False
                 break
@@ -1772,17 +1756,17 @@ class CollectionManager():
 
         # phase 2
         # ...clear readout
-        self.pv_put(self.pvGroupL0Reset, self.groups)
+        self.pva.pv_put(self.pvGroupL0Reset, self.groups)
         for pv in self.pvListMsgHeader:
-            self.pv_put(pv, DaqControl.transitionId['ClearReadout'])
-        self.pv_put(self.pvGroupMsgInsert, self.groups)
-        self.pv_put(self.pvGroupMsgInsert, 0)
+            self.pva.pv_put(pv, DaqControl.transitionId['ClearReadout'])
+        self.pva.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pva.pv_put(self.pvGroupMsgInsert, 0)
         time.sleep(1.0)
         # ...configure
         for pv in self.pvListMsgHeader:
-            self.pv_put(pv, DaqControl.transitionId['Configure'])
-        self.pv_put(self.pvGroupMsgInsert, self.groups)
-        self.pv_put(self.pvGroupMsgInsert, 0)
+            self.pva.pv_put(pv, DaqControl.transitionId['Configure'])
+        self.pva.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pva.pv_put(self.pvGroupMsgInsert, 0)
 
         ok = self.get_phase2_replies('configure')
         if not ok:
@@ -1802,9 +1786,9 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pvListMsgHeader:
-            self.pv_put(pv, DaqControl.transitionId['Unconfigure'])
-        self.pv_put(self.pvGroupMsgInsert, self.groups)
-        self.pv_put(self.pvGroupMsgInsert, 0)
+            self.pva.pv_put(pv, DaqControl.transitionId['Unconfigure'])
+        self.pva.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pva.pv_put(self.pvGroupMsgInsert, 0)
 
         ok = self.get_phase2_replies('unconfigure')
         if not ok:
@@ -1817,14 +1801,14 @@ class CollectionManager():
 
     def group_run(self, enable):
         if enable:
-            rv = self.pv_put(self.pvGroupL0Enable, self.groups)
+            rv = self.pva.pv_put(self.pvGroupL0Enable, self.groups)
         else:
-            rv = self.pv_put(self.pvGroupL0Disable, self.groups)
+            rv = self.pva.pv_put(self.pvGroupL0Disable, self.groups)
         return rv
 
     # if you don't want steps, set StepGroups = 0
     def step_groups(self, *, mask):
-        return self.pv_put(self.pvStepGroups, mask)
+        return self.pva.pv_put(self.pvStepGroups, mask)
 
     # set slow_update_enabled to True or False
     def set_slow_update_enabled(self, enabled):
@@ -1853,9 +1837,9 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pvListMsgHeader:
-            self.pv_put(pv, DaqControl.transitionId['Enable'])
-        self.pv_put(self.pvGroupMsgInsert, self.groups)
-        self.pv_put(self.pvGroupMsgInsert, 0)
+            self.pva.pv_put(pv, DaqControl.transitionId['Enable'])
+        self.pva.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pva.pv_put(self.pvGroupMsgInsert, 0)
 
         ok = self.get_phase2_replies('enable')
         if not ok:
@@ -1884,9 +1868,9 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pvListMsgHeader:
-            self.pv_put(pv, DaqControl.transitionId['Disable'])
-        self.pv_put(self.pvGroupMsgInsert, self.groups)
-        self.pv_put(self.pvGroupMsgInsert, 0)
+            self.pva.pv_put(pv, DaqControl.transitionId['Disable'])
+        self.pva.pv_put(self.pvGroupMsgInsert, self.groups)
+        self.pva.pv_put(self.pvGroupMsgInsert, 0)
 
         ok = self.get_phase2_replies('disable')
         if not ok:
