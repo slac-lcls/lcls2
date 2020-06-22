@@ -219,10 +219,6 @@ class MyDAQ:
         # maybe don't launch the step directly here
         # with a daqstate command, since it would block
         # the event-loop?
-#       print('*** here in trigger',self.motor.position,self.motor.read())
-        # this dict should be put into beginstep phase1 json
-#       motor_dict = {'motor1':self.motor.position,
-#                     'motor2':self.motor.position}
         self.push_socket.send_string('running')     # BeginStep
         self.push_socket.send_string('starting')    # EndStep
         return self.status
@@ -336,8 +332,7 @@ def main():
     #from bluesky.utils import install_kicker
     #install_kicker()
 
-#   from ophyd.sim import det, motor
-    from ophyd.sim import det, motor1, motor2
+    from ophyd.sim import motor1, motor2
     from bluesky.plans import scan, count
     from bluesky.preprocessors import fly_during_wrapper
 
@@ -345,13 +340,9 @@ def main():
     mydaq = MyDAQ(control, motor1, motor2, daqState=daqState, args=args)
     dets = [mydaq]   # just one in this case, but it could be more than one
 
-#   print('motor',motor.position,motor.name) # in some cases we have to look at ".value"
-    RE(scan(dets, motor1, -1, 1, motor2, -0.1, 0.1, 3))
-#   print('motor',motor.position)
-    #RE(count(dets, num=3))
-
-    # only 1 callback! and 3 steps inside it.  doesn't feel useful for us
-    #RE(fly_during_wrapper(count([det], num=3), dets))
+    # Scan motor1 from -10 to 10 and motor2 from -0.1 to 0.1, stopping
+    # at 15 equally-spaced points along the way and reading dets.
+    RE(scan(dets, motor1, -10, 10, motor2, -0.1, 0.1, 15))
 
     mydaq.push_socket.send_string('shutdown') #shutdown the daq thread
     mydaq.comm_thread.join()
