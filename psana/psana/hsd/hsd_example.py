@@ -7,7 +7,7 @@ def my_evt_filter(smalldata_evt): # throw away bad events using small data
 def my_realtime_monitor(user_data_dict): # watch user-defined data from smd.event() below
     print(user_data_dict)
 
-ds = DataSource(exp='tstx00517', run=49, dir='/ffb01/data/tst/tstx00517/xtc', filter=my_evt_filter)
+ds = DataSource(exp='tstx00517', run=49, filter=my_evt_filter)
 
 smd = ds.smalldata(filename='run49.h5', batch_size=5, callbacks=[my_realtime_monitor])
 run = next(ds.runs())
