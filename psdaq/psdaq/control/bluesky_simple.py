@@ -30,6 +30,7 @@ from bluesky import RunEngine
 from ophyd.status import Status
 import sys
 import logging
+from psalg.utils.syslog import SysLog
 import threading
 import zmq
 import asyncio
@@ -83,18 +84,17 @@ class MyDAQ:
         self.pvStepEnd    = self.pv_xpm_base+':StepEnd'
         self.pvStepDone   = self.pv_xpm_base+':StepDone'
 
-        if self.verbose:
-            print('readoutCount =', self.readoutCount)
-            print('groupMask    =', self.groupMask)
-            print('pvStepEnd    =', self.pvStepEnd)
-            print('pvStepDone   =', self.pvStepDone)
+        logging.debug('readoutCount = %s' % self.readoutCount)
+        logging.debug('groupMask    = %s' % self.groupMask)
+        logging.debug('pvStepEnd    = %s' % self.pvStepEnd)
+        logging.debug('pvStepDone   = %s' % self.pvStepDone)
 
     def read(self):
         # stuff we want to give back to user running bluesky
         # e.g. how many events we took.  called when trigger status
         # is done&&successful.
         # typically called by trigger_and_read()
-        print('*** here in read')
+        logging.debug('*** here in read')
         return {}
         return dict(('channel1',
              {'value': 5, 'timestamp': 1472493713.271991}),
@@ -103,7 +103,7 @@ class MyDAQ:
 
     def describe(self):
         # stuff we want to give back to user running bluesky
-        print('*** here in describe')
+        logging.debug('*** here in describe')
         return {}
         return dict(('channel1',
              {'source': 'XF23-ID:SOME_PV_NAME',
@@ -119,23 +119,23 @@ class MyDAQ:
     # it is done as a separate thread so we don't block
     # the bluesky event loop.
     def daq_communicator_thread(self):
-        print('*** daq_communicator_thread')
+        logging.debug('*** daq_communicator_thread')
         while True:
             state = self.pull_socket.recv().decode("utf-8")
-            print('*** received',state)
+            logging.debug('*** received %s' % state)
             if state in ('connected', 'starting'):
                 # send 'daqstate(state)' and wait for complete
                 # we can block here since we are not in the bluesky
                 # event loop
                 errMsg = self.control.setState(state)
                 if errMsg is not None:
-                    print('*** error:', errMsg)
+                    logging.error('%s' % errMsg)
                     continue
                 with self.daqState_cv:
                     while self.daqState != state:
-                        print('daqState \'%s\', waiting for \'%s\'...' % (self.daqState, state))
+                        logging.debug('daqState \'%s\', waiting for \'%s\'...' % (self.daqState, state))
                         self.daqState_cv.wait(1.0)
-                    print('daqState \'%s\'' % self.daqState)
+                    logging.debug('daqState \'%s\'' % self.daqState)
                 self.ready.set()
             elif state=='running':
                 # launch the step with 'daqstate(running)' (with the
@@ -161,14 +161,14 @@ class MyDAQ:
                                                                 add_names=False,
                                                                 add_shapes_data=True).hex()}})
                 if errMsg is not None:
-                    print('*** error:', errMsg)
+                    logging.error('%s' % errMsg)
                     continue
 
                 with self.daqState_cv:
                     while self.daqState != 'running':
-                        print('daqState \'%s\', waiting for \'running\'...' % self.daqState)
+                        logging.debug('daqState \'%s\', waiting for \'running\'...' % self.daqState)
                         self.daqState_cv.wait(1.0)
-                    print('daqState \'%s\'' % self.daqState)
+                    logging.debug('daqState \'%s\'' % self.daqState)
 
                 # define nested function for monitoring the StepDone PV
                 def callback(stepDone):
@@ -181,9 +181,9 @@ class MyDAQ:
 
                 with self.stepDone_cv:
                     while self.stepDone != 1:
-                        print('PV \'StepDone\' is %d, waiting for 1...' % self.stepDone)
+                        logging.debug('PV \'StepDone\' is %d, waiting for 1...' % self.stepDone)
                         self.stepDone_cv.wait(1.0)
-                print('PV \'StepDone\' is %d' % self.stepDone)
+                logging.debug('PV \'StepDone\' is %d' % self.stepDone)
 
                 # stop monitoring the StepDone PV
                 sub.close()
@@ -195,7 +195,7 @@ class MyDAQ:
                 break
 
     def daq_monitor_thread(self):
-        print('*** daq_monitor_thread')
+        logging.debug('*** daq_monitor_thread')
         while True:
             part1, part2, part3, part4 = self.control.monitorStatus()
             if part1 is None:
@@ -243,7 +243,7 @@ class MyDAQ:
     def stage(self):
         # done once at start of scan
         # put the daq into the right state ('connected')
-        print('*** here in stage')
+        logging.debug('*** here in stage')
         self._set_connected()
 
         return [self]
@@ -251,7 +251,7 @@ class MyDAQ:
     def unstage(self):
         # done once at end of scan
         # put the daq into the right state ('connected')
-        print('*** here in unstage')
+        logging.debug('*** here in unstage')
         self._set_connected()
         
         return [self]
@@ -275,7 +275,7 @@ class MyDAQ:
         # create dgram
         timestamp    = 0
         xtc_bytes    = self.cydgram.getSelect(timestamp, transitionid, add_names=add_names, add_shapes_data=add_shapes_data)
-        print('transitionid %d dgram is %d bytes (with header)' % (transitionid, len(xtc_bytes)))
+        logging.debug('transitionid %d dgram is %d bytes (with header)' % (transitionid, len(xtc_bytes)))
 
         # remove first 12 bytes (dgram header), and keep next 12 bytes (xtc header)
         return xtc_bytes[12:]
@@ -306,9 +306,18 @@ def main():
     # instantiate DaqControl object
     control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
 
+    # configure logging handlers
+    instrument = control.getInstrument()
+    if args.v:
+        level=logging.DEBUG
+    else:
+        level=logging.WARNING
+    logger = SysLog(instrument=instrument, level=level)
+    logging.info('logging initialized')
+
     # get initial DAQ state
     daqState = control.getState()
-    print('initial state: %s' % daqState)
+    logging.info('initial state: %s' % daqState)
     if daqState == 'error':
         sys.exit(1)
 
@@ -317,7 +326,7 @@ def main():
         # config alias request
         rv = control.setConfig(args.config)
         if rv is not None:
-            print('Error: %s' % rv)
+            logging.error('%s' % rv)
 
     RE = RunEngine({})
 
@@ -328,13 +337,8 @@ def main():
     # Send all metadata/data captured to the BestEffortCallback.
     RE.subscribe(bec)
 
-    # Make plots update live while scans run.
-    #from bluesky.utils import install_kicker
-    #install_kicker()
-
     from ophyd.sim import motor1, motor2
-    from bluesky.plans import scan, count
-    from bluesky.preprocessors import fly_during_wrapper
+    from bluesky.plans import scan
 
     # instantiate MyDAQ object
     mydaq = MyDAQ(control, motor1, motor2, daqState=daqState, args=args)
