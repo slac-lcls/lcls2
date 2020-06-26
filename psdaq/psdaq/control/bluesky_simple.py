@@ -79,16 +79,6 @@ class MyDAQ:
         # instantiate DaqPVA object
         self.pva = DaqPVA(platform=args.p, xpm_master=args.x, pv_base=args.B)
 
-        # name PVs
-        self.pv_xpm_base  = self.pv_base + ':XPM:%d:PART:%d' % (args.x, args.p)
-        self.pvStepEnd    = self.pv_xpm_base+':StepEnd'
-        self.pvStepDone   = self.pv_xpm_base+':StepDone'
-
-        logging.debug('readoutCount = %s' % self.readoutCount)
-        logging.debug('groupMask    = %s' % self.groupMask)
-        logging.debug('pvStepEnd    = %s' % self.pvStepEnd)
-        logging.debug('pvStepDone   = %s' % self.pvStepDone)
-
     def read(self):
         # stuff we want to give back to user running bluesky
         # e.g. how many events we took.  called when trigger status
@@ -96,23 +86,11 @@ class MyDAQ:
         # typically called by trigger_and_read()
         logging.debug('*** here in read')
         return {}
-        return dict(('channel1',
-             {'value': 5, 'timestamp': 1472493713.271991}),
-             ('channel2',
-             {'value': 16, 'timestamp': 1472493713.539238}))
 
     def describe(self):
         # stuff we want to give back to user running bluesky
         logging.debug('*** here in describe')
         return {}
-        return dict(('channel1',
-             {'source': 'XF23-ID:SOME_PV_NAME',
-              'dtype': 'number',
-              'shape': []}),
-            ('channel2',
-             {'source': 'XF23-ID:SOME_PV_NAME',
-              'dtype': 'number',
-              'shape': []}))
 
     # this thread tells the daq to do a step and waits
     # for the completion, so it can set the bluesky status.
@@ -145,9 +123,9 @@ class MyDAQ:
                 # set EPICS PVs.
                 # StepEnd is a cumulative count.
                 self.readoutCumulative += self.readoutCount
-                self.pva.pv_put(self.pvStepEnd, self.readoutCumulative)
+                self.pva.pv_put(self.pva.pvStepEnd, self.readoutCumulative)
                 self.pva.step_groups(mask=self.groupMask)
-                self.pva.pv_put(self.pvStepDone, 0)
+                self.pva.pv_put(self.pva.pvStepDone, 0)
                 with self.stepDone_cv:
                     self.stepDone = 0
                     self.stepDone_cv.notify()
