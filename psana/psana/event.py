@@ -122,7 +122,8 @@ class Event():
                             segs = self._det_segments[class_identifier]
 
                             if det_name not in ['runinfo','smdinfo'] :
-                                assert segment not in segs, 'Found duplicate segment: '+str(segment)+' for '+str(class_identifier)
+                                msg = f'Found duplicate segment: {segment} in {segs} for {class_identifier}'
+                                assert segment not in segs, msg 
                             segs[segment] = drp_class
 
         return

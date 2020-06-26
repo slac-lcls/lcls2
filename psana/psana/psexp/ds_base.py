@@ -55,7 +55,9 @@ class DataSourceBase(abc.ABC):
                 setattr(self, 'run_num', int(kwargs['run']))
 
             if not self.live:
-                os.environ['PS_SMD_MAX_RETRIES'] = '1' # do not retry when not in live mode
+                os.environ['PS_SMD_MAX_RETRIES'] = '0' # do not retry when not in live mode
+            else:
+                os.environ['PS_SMD_MAX_RETRIES'] = '30'
 
         assert self.batch_size > 0
 

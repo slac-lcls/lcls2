@@ -6,88 +6,105 @@ from libc.string cimport memcpy
 from dgramlite cimport Xtc, Sequence, Dgram
 from parallelreader cimport Buffer, ParallelReader
 from libc.stdint cimport uint32_t, uint64_t
+import numpy as np
 
 cdef class SmdReader:
-    cdef int got_events
-    cdef uint64_t min_ts, max_ts
     cdef ParallelReader prl_reader
+    cdef int winner, view_size
     
     def __init__(self, int[:] fds, int chunksize):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
         self.prl_reader = ParallelReader(fds, chunksize)
-        self._reset()
         
-    def _reset(self):
-        self.got_events = 0
-        self.min_ts = 0
-        self.max_ts = 0
-
-    def get(self, how_many=0):
-        self._reset()
-        self.prl_reader.just_read(how_many)
-        
-        cdef int i
-        
-        # Figure who's the fastest buffer (smalltest ts)
-        cdef int winner=0
-        cdef uint64_t limit_ts=0
-        
-        if self.prl_reader.nfiles > 0:
-            limit_ts = self.prl_reader.bufs[0].timestamp
-            for i in range(1, self.prl_reader.nfiles):
-                if self.prl_reader.bufs[i].timestamp < limit_ts:
-                    limit_ts = self.prl_reader.bufs[i].timestamp
-                    winner = i
-        
-        # Make sure all buffers are time coherent
-        self.prl_reader.rewind(limit_ts, winner)
-
-        self.got_events = self.prl_reader.bufs[winner].nevents
-        if self.got_events > 0:
-            self.min_ts = self.prl_reader.bufs[winner].ts_arr[0]
-            self.max_ts = self.prl_reader.bufs[winner].ts_arr[self.got_events-1]
-        
-    def view(self, int buf_id, int step=0):
-        """ Returns memoryview of the buffer object.
-
-        Set step to True to view step events.
+    def is_complete(self):
+        """ Checks that all buffers have at least one event 
         """
-        assert buf_id < self.prl_reader.nfiles
-        
-        cdef char[:] view
-        cdef Buffer* buf
-        cdef uint64_t block_size
-
-        if step == 0:
-            buf = &(self.prl_reader.bufs[buf_id])
-        else:
-            buf = &(self.prl_reader.step_bufs[buf_id])
-
-        if buf.nevents == 0:
-            return 0
-        
-        if step == 0:
-            block_size = buf.offset - buf.lastget_offset
-            view = <char [:block_size]> (buf.chunk + buf.lastget_offset)
-        else:
-            view = <char [:buf.offset]> buf.chunk
-        return view
-
-    @property
-    def got_events(self):
-        return self.got_events
-
-    @property
-    def min_ts(self):
-        return self.min_ts
-
-    @property
-    def max_ts(self):
-        return self.max_ts
-    
-    def retry(self):
-        self.prl_reader._reset_buffers(self.prl_reader.bufs)
+        cdef int is_complete = 1
         cdef int i
         for i in range(self.prl_reader.nfiles):
-            self.prl_reader.bufs[i].needs_reread = 1
-        self.get()
+            if self.prl_reader.bufs[i].n_ready_events - self.prl_reader.bufs[i].n_seen_events == 0:
+                is_complete = 0
+                break
+        return is_complete
+
+    def get(self):
+        self.prl_reader.just_read()
+
+    def view(self, int batch_size=10000):
+        """ Returns memoryview of the data and step buffers.
+
+        This function is called by SmdReaderManager only when is_complete is True (
+        all buffers have at least one event). It returns events of batch_size if
+        possible or as many as it has for the buffer.
+        """
+
+        # Find the winning buffer
+        cdef int i
+        cdef uint64_t limit_ts=0
+        
+        for i in range(self.prl_reader.nfiles):
+            if self.prl_reader.bufs[i].timestamp < limit_ts or limit_ts == 0:
+                limit_ts = self.prl_reader.bufs[i].timestamp
+                self.winner = i
+
+        # Apply batch_size
+        # Find the boundary or limit ts of the winning buffer
+        # this is either the nth or the batch_size event.
+        self.view_size = self.prl_reader.bufs[self.winner].n_ready_events - \
+                self.prl_reader.bufs[self.winner].n_seen_events
+        if self.view_size > batch_size:
+            limit_ts = self.prl_reader.bufs[self.winner].ts_arr[\
+                    self.prl_reader.bufs[self.winner].n_seen_events + batch_size - 1]
+            self.view_size = batch_size
+
+        # Locate the viewing window and update seen_offset for each buffer
+        cdef uint64_t[:] ts_view
+        cdef uint64_t prev_seen_offset = 0
+        cdef Py_ssize_t found_pos
+        cdef uint64_t block_size
+        cdef char[:] view
+        
+        mmrv_bufs = []
+        mmrv_step_bufs = []
+        cdef Buffer* buf, step_buf
+        for i in range(self.prl_reader.nfiles):
+            buf = &(self.prl_reader.bufs[i])
+            ts_view = buf.ts_arr
+            prev_seen_offset = buf.seen_offset
+            
+            # All the events before found_pos are within max_ts
+            found_pos = np.searchsorted(ts_view[:buf.n_ready_events], limit_ts, side='right')
+            buf.seen_offset = buf.next_offset_arr[found_pos-1]
+            buf.n_seen_events = found_pos
+
+            block_size = buf.seen_offset - prev_seen_offset
+            if block_size > 0:
+                view = <char [:block_size]> (buf.chunk + prev_seen_offset)
+                mmrv_bufs.append(view)
+            else:
+                mmrv_bufs.append(0) # add 0 as a place=holder for empty buffer
+
+
+            buf = &(self.prl_reader.step_bufs[i])
+            ts_view = buf.ts_arr
+            prev_seen_offset = buf.seen_offset
+            
+            # All the events before found_pos are within max_ts
+            found_pos = np.searchsorted(ts_view[:buf.n_ready_events], limit_ts, side='right')
+            buf.seen_offset = buf.next_offset_arr[found_pos-1]
+            buf.n_seen_events = found_pos
+
+            block_size = buf.seen_offset - prev_seen_offset
+            if block_size > 0:
+                view = <char [:block_size]> (buf.chunk + prev_seen_offset)
+                mmrv_step_bufs.append(view)
+            else:
+                mmrv_step_bufs.append(0)
+        
+        return mmrv_bufs, mmrv_step_bufs
+
+    @property
+    def view_size(self):
+        return self.view_size
+
+

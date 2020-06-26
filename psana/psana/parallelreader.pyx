@@ -1,7 +1,6 @@
 ## cython: linetrace=True
 ## distutils: define_macros=CYTHON_TRACE_NOGIL=1
 
-import numpy as np
 from parallelreader cimport Buffer
 from cython.parallel import prange
 import os
@@ -30,16 +29,13 @@ cdef class ParallelReader:
                 free(self.step_bufs[i].chunk)
             free(self.step_bufs)
 
-
     cdef void _init_buffers(self):
         cdef Py_ssize_t i
         self._reset_buffers(self.bufs)
         self._reset_buffers(self.step_bufs)
-        for i in prange(self.nfiles, nogil=True):
+        for i in range(self.nfiles):
             self.bufs[i].chunk = <char *>malloc(self.chunksize)
             self.step_bufs[i].chunk = <char *>malloc(self.chunksize)
-            self.bufs[i].got = read(self.file_descriptors[i], self.bufs[i].chunk, self.chunksize)
-
     
     cdef void _reset_buffers(self, Buffer* bufs):
         cdef Py_ssize_t i
@@ -47,20 +43,25 @@ cdef class ParallelReader:
         for i in range(self.nfiles):
             buf = &(bufs[i])
             buf.got = 0
-            buf.offset = 0
-            buf.nevents = 0
-            buf.timestamp = 0
-            buf.needs_reread = 0
-            buf.lastget_offset = 0
+            buf.ready_offset = 0     # offset of the last event in the buffer
+            buf.n_ready_events = 0   # no. of total events in the buffer 
+            buf.seen_offset = 0      # offset of the event seen (yielded) so far
+            buf.n_seen_events = 0    # no. of seen events
+            buf.timestamp = 0       
 
-    cdef void just_read(self, int how_many):
+    cdef void just_read(self):
         """
-        Reads to fill up the buffer and sets the offset and timestamp to the
-        last dgram. If no. of requested events (how_many) is specified, sets
-        the offset and timestamp to the the last dgram of these requested events.
+        Reads only if the buffer has no more unseen events
+
+        If there's some data left at the bottom of the buffer due to cutoff,
+        copy this remaining data to the begining of the buffer then read to 
+        fill the rest of the chunk. Sets the following variables when done:
+        - got = remaining (from copying) + new got (from reading)
+        - ready_offset = offset of the last event that fits in the buffer
+        - n_ready_events = no. of total events that fit in the buffer
+
         """
         cdef Py_ssize_t i = 0
-        cdef uint64_t remaining = 0
         cdef uint64_t got = 0
         cdef uint64_t offset = 0
         cdef Dgram* d
@@ -69,97 +70,59 @@ cdef class ParallelReader:
         cdef uint64_t payload = 0
         cdef unsigned service = 0
         
-        self._reset_buffers(self.step_bufs) # step buffers always get reset when read
-
         for i in prange(self.nfiles, nogil=True):
             buf = &(self.bufs[i])
             step_buf = &(self.step_bufs[i])
             
-            buf.lastget_offset = buf.offset
-
-            # Copy remaining to the beginning of the chunk (if needed)
-            # then fill up the rest of the chunk
-            if buf.needs_reread == 1:
-                remaining = buf.got - buf.offset
-                memcpy(buf.chunk, buf.chunk + buf.offset, remaining)
-                
-                # MONA: TODO there's a chance that below read will be wrong,
-                # if the next part of the dgram cannot be read out in one retry (1s).
-                # The next read will replace the remaining - possible segfault
-                # when try to create Dgram.
-                got = read(self.file_descriptors[i], buf.chunk + remaining, \
-                        self.chunksize - remaining)
-                
-                buf.got = remaining + got
-                buf.needs_reread = 0
-                buf.offset = 0
-                buf.lastget_offset = 0
-
-            buf.nevents = 0
+            # skip reading this buffer if there is/are still some event(s).
+            if buf.n_ready_events - buf.n_seen_events > 0: continue 
             
-            while buf.offset <= buf.got and buf.got > 0:
-                remaining = buf.got - buf.offset
-                if remaining >= sizeof(Dgram):
-                    d = <Dgram *>(buf.chunk + buf.offset)
+            # copy remaining data if any 
+            if buf.got - buf.ready_offset > 0 and buf.ready_offset > 0:
+                memcpy(buf.chunk, buf.chunk + buf.ready_offset, buf.got - buf.ready_offset)
+            
+            # read more data to fill up the buffer
+            got = read( self.file_descriptors[i], buf.chunk + (buf.got - buf.ready_offset), \
+                    self.chunksize - (buf.got - buf.ready_offset) )
+            
+            buf.got = (buf.got - buf.ready_offset) + got
+            
+            # reset the offsets and no. of events
+            buf.ready_offset = 0
+            buf.n_ready_events = 0
+            buf.seen_offset = 0
+            buf.n_seen_events = 0
+            step_buf.ready_offset = 0
+            step_buf.n_ready_events = 0
+            step_buf.seen_offset = 0
+            step_buf.n_seen_events = 0
+            
+            while buf.ready_offset < buf.got:
+                if buf.got - buf.ready_offset >= sizeof(Dgram):
+                    d = <Dgram *>(buf.chunk + buf.ready_offset)
                     payload = d.xtc.extent - sizeof(Xtc)
 
-                    if remaining >= sizeof(Dgram) + payload:
-                        buf.ts_arr[buf.nevents] = <uint64_t>d.seq.high << 32 | d.seq.low
-                        buf.next_offset_arr[buf.nevents] = buf.offset + sizeof(Dgram) + payload
+                    if (buf.got - buf.ready_offset) >= sizeof(Dgram) + payload:
+                        buf.ts_arr[buf.n_ready_events] = <uint64_t>d.seq.high << 32 | d.seq.low
+                        buf.next_offset_arr[buf.n_ready_events] = buf.ready_offset + sizeof(Dgram) + payload
 
-                        
                         # check if this a non L1
                         service = (d.env>>24)&0xf
                         if service != self.L1Accept:
-                            if buf.ts_arr[buf.nevents] > step_buf.timestamp:
-                                memcpy(step_buf.chunk + step_buf.offset, d, sizeof(Dgram) + payload)
-                                step_buf.ts_arr[step_buf.nevents] = buf.ts_arr[buf.nevents]
-                                step_buf.next_offset_arr[step_buf.nevents] = step_buf.offset + sizeof(Dgram) + payload
-                                step_buf.nevents += 1
-                                step_buf.offset += sizeof(Dgram) + payload
-                                step_buf.timestamp = buf.ts_arr[buf.nevents]
+                            memcpy(step_buf.chunk + step_buf.ready_offset, d, sizeof(Dgram) + payload)
+                            step_buf.ts_arr[step_buf.n_ready_events] = buf.ts_arr[buf.n_ready_events]
+                            step_buf.next_offset_arr[step_buf.n_ready_events] = step_buf.ready_offset + sizeof(Dgram) + payload
+                            step_buf.n_ready_events += 1
+                            step_buf.ready_offset += sizeof(Dgram) + payload
+                            step_buf.timestamp = buf.ts_arr[buf.n_ready_events]
                         
-                        buf.offset += sizeof(Dgram) + payload
-                        buf.nevents += 1
-
-                        if buf.nevents == how_many:
-                            buf.timestamp = <uint64_t>d.seq.high << 32 | d.seq.low
-                            break
+                        buf.timestamp = buf.ts_arr[buf.n_ready_events] 
+                        buf.ready_offset += sizeof(Dgram) + payload
+                        buf.n_ready_events += 1
+                        
                     else:
-                        buf.needs_reread = 1
                         break
                 else:
-                    buf.needs_reread = 1
                     break
-            
-            if buf.nevents < how_many:
-                if buf.nevents > 0:
-                    buf.timestamp = buf.ts_arr[buf.nevents-1]
 
-    cdef void _rewind_buffer(self, Buffer* buf, uint64_t max_ts):
-        cdef Py_ssize_t found_pos
-        cdef uint64_t[:] ts_view
-        ts_view = buf.ts_arr
-
-        found_pos = np.searchsorted(ts_view[:buf.nevents], max_ts, side='right')
-        if found_pos == 0:
-            # This buffer doesn't have events within this max_ts
-            buf.offset = buf.lastget_offset
-            buf.timestamp = 0
-            buf.nevents = 0
-        else: 
-            # All the events before found_pos are within max_ts
-            buf.offset = buf.next_offset_arr[found_pos-1]
-            buf.timestamp = buf.ts_arr[found_pos-1]
-            buf.nevents = found_pos
-            
-
-    cdef void rewind(self, uint64_t max_ts, int winner):
-        cdef Py_ssize_t i
-        for i in range(self.nfiles):
-            if i == winner: continue
-            self._rewind_buffer(&(self.bufs[i]), max_ts)
-            self._rewind_buffer(&(self.step_bufs[i]), max_ts)
-
-            
 

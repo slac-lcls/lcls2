@@ -45,7 +45,7 @@ class SmdReaderManager(object):
         assert self.n_files > 0
         self.run = run
         
-        self.batch_size = int(os.environ.get('PS_SMD_N_EVENTS', 13500*16))
+        self.batch_size = int(os.environ.get('PS_SMD_N_EVENTS', 10000))
         if self.run.max_events:
             if self.run.max_events < self.batch_size:
                 self.batch_size = self.run.max_events
@@ -54,40 +54,12 @@ class SmdReaderManager(object):
         self.smdr = SmdReader(run.smd_dm.fds, self.chunksize)
         self.processed_events = 0
         self.got_events = -1
+        self.max_retries = int(os.environ['PS_SMD_MAX_RETRIES'])
+        self.sleep_secs = int(os.environ.get('PS_SMD_SLEEP_SECS', '1'))
 
     def __iter__(self):
         return self
-
-    def _read(self):
-        """
-        Reads 'batch_size' no. of events. If they don't fit in the 'chunksize',
-        returns only events that fit. 
-        
-        If user specifies max_events when creating DataSource, only asks SmdReader
-        to read this amount of events (see how_many is being set below).
-        """
-        max_retries = int(os.environ.get('PS_SMD_MAX_RETRIES', '5'))
-        sleep_secs = int(os.environ.get('PS_SMD_SLEEP_SECS', '1'))
-
-        how_many = self.batch_size
-        if self.run.max_events:
-            to_be_read = self.run.max_events - self.processed_events
-            if to_be_read < how_many:
-                how_many = to_be_read
-        
-        self.smdr.get(how_many)
-        
-        cn_retries = 0
-        while self.smdr.got_events==0:
-            self.smdr.retry()
-            cn_retries += 1
-            if cn_retries == max_retries:
-                break
-            time.sleep(sleep_secs)
-
-        self.got_events = self.smdr.got_events
-        self.processed_events += self.got_events
-        
+    
     def __next__(self):
         """
         Returns a batch of events as an iterator object.
@@ -96,62 +68,81 @@ class SmdReaderManager(object):
         event building). 
         
         The iterator stops reading under two conditions. Either there's
-        nothing to read (_read() comes back with got_events=0) or no.  
-        of processed_events = max_events (specified at DataSource).
+        no more data or max_events reached.
         """
-
-        if self.run.max_events:
-            if self.processed_events >= self.run.max_events:
-                raise StopIteration
+        if self.run.max_events and self.processed_events >= self.run.max_events:
+            raise StopIteration
         
-        self._read()
+        if not self.smdr.is_complete():
+            self.smdr.get()
+            cn_retries = 0
+            while not self.smdr.is_complete():
+                if self.max_retries > 0:
+                    time.sleep(self.sleep_secs)
+                    print('sleep')
+                    cn_retries += 1
+                    if cn_retries > self.max_retries:
+                        raise StopIteration 
+                else:
+                    raise StopIteration
         
-        if self.got_events == 0: raise StopIteration
-
-        views =[]
-        for i in range(self.n_files):
-            view = self.smdr.view(i)
-            if view:
-                views.append(view)
-            else:
-                views.append(memoryview(bytearray()))
-        
-        batch_iter = BatchIterator(views, batch_size=self.run.batch_size, \
+        mmrv_bufs, _ = self.smdr.view(batch_size=self.batch_size)
+        batch_iter = BatchIterator(mmrv_bufs, batch_size=self.run.batch_size, \
                 filter_fn=self.run.filter_callback, destination=self.run.destination)
+        self.got_events = self.smdr.view_size
+        self.processed_events += self.got_events
         return batch_iter
+        
 
     def chunks(self):
         """ Generates a tuple of smd and step dgrams """
-        self._read()
-        while self.got_events > 0:
-            smd_view = bytearray()
-            smd_pf = PacketFooter(n_packets=self.n_files)
-            step_view = bytearray()
-            step_pf = PacketFooter(n_packets=self.n_files)
-            
-            for i in range(self.n_files):
-                _smd_view = self.smdr.view(i)
-                if _smd_view != 0:
-                    smd_view.extend(_smd_view)
-                    smd_pf.set_size(i, memoryview(_smd_view).shape[0])
+        is_done = False
+        while not is_done:
+            if self.smdr.is_complete():
+                mmrv_bufs, mmrv_step_bufs = self.smdr.view(batch_size=self.batch_size)
+                self.got_events = self.smdr.view_size
+                self.processed_events += self.got_events
+                if self.run.max_events and self.processed_events >= self.run.max_events:
+                    is_done = True
                 
-                _step_view = self.smdr.view(i, step=True)
-                if _step_view != 0:
-                    step_view.extend(_step_view)
-                    step_pf.set_size(i, memoryview(_step_view).shape[0])
+                smd_view = bytearray()
+                smd_pf = PacketFooter(n_packets=self.n_files)
+                step_view = bytearray()
+                step_pf = PacketFooter(n_packets=self.n_files)
+                
+                for i, (mmrv_buf, mmrv_step_buf) in enumerate(zip(mmrv_bufs, mmrv_step_bufs)):
+                    if mmrv_buf != 0:
+                        smd_view.extend(mmrv_buf)
+                        smd_pf.set_size(i, memoryview(mmrv_buf).nbytes)
+                    
+                    if mmrv_step_buf != 0:
+                        step_view.extend(mmrv_step_buf)
+                        step_pf.set_size(i, memoryview(mmrv_step_buf).nbytes)
 
-            if smd_view or step_view:
-                if smd_view:
-                    smd_view.extend(smd_pf.footer)
-                if step_view:
-                    step_view.extend(step_pf.footer)
-                yield (smd_view, step_view)
+                if smd_view or step_view:
+                    if smd_view:
+                        smd_view.extend(smd_pf.footer)
+                    if step_view:
+                        step_view.extend(step_pf.footer)
+                    yield (smd_view, step_view)
 
-            if self.run.max_events:
-                if self.processed_events >= self.run.max_events:
-                    break
+            else:
+                self.smdr.get()
+                cn_retries = 0
+                while not self.smdr.is_complete():
+                    if self.max_retries > 0:
+                        time.sleep(self.sleep_secs)
+                        print('sleep')
+                        self.smdr.get()
+                        cn_retries += 1
+                        if cn_retries > self.max_retries:
+                            is_done = True
+                            break
+                    else:
+                        is_done = True
+                        break
 
-            self._read()
+
     
     @property
     def min_ts(self):

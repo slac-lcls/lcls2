@@ -268,10 +268,11 @@ int main(int argc, char* argv[])
     char* xtcname = 0;
     int parseErr = 0;
     size_t n_events = 0;
+    int n_mod = 0;
     char outname[MAX_FNAME_LEN];
     strncpy(outname, "smd.xtc2", MAX_FNAME_LEN);
 
-    while ((c = getopt(argc, argv, "ht:n:f:o:")) != -1) {
+    while ((c = getopt(argc, argv, "ht:n:m:f:o:")) != -1) {
     switch (c) {
       case 'h':
         usage(argv[0]);
@@ -282,6 +283,9 @@ int main(int argc, char* argv[])
         break;
       case 'n':
         n_events = stoi(optarg);
+        break;
+      case 'm':
+        n_mod = stoi(optarg);
         break;
       case 'f':
         xtcname = optarg;
@@ -294,6 +298,7 @@ int main(int argc, char* argv[])
     }
     }
 
+    cout << "n_mod=" << n_mod << endl;
     if (!xtcname) {
     usage(argv[0]);
     exit(2);
@@ -351,6 +356,7 @@ int main(int argc, char* argv[])
     while ((dgIn = iter.next())) {
         nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload()); 
         dgOut = smd.generate(dgIn, buf, nowOffset, nowDgramSize, namesLookup, namesId);
+        
         save(*dgOut, xtcFile);
         eventId++;
         nowOffset += nowDgramSize;
@@ -359,6 +365,11 @@ int main(int argc, char* argv[])
                 cout << "Stop writing. The option -n (no. of events) was set to " << n_events << endl;
                 break;
             }
+        }
+        
+        if (n_mod > 0 && eventId % n_mod == 0) {
+            cout << "sleep... " << endl;
+            sleep(1);
         }
     }// end while((dgIn...
 

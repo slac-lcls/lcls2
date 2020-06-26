@@ -27,7 +27,7 @@ static const char EnumDelim=':';
 
 using namespace std;
 
-#define MAXRETRIES 5
+#define MAXRETRIES 3
 #define SLEEP_SECS 1
 
 // to avoid compiler warnings for debug variables

@@ -194,6 +194,8 @@ class Run(object):
             if self.expt:
                 if self.expt == "cxid9114": # mona: hack for cctbx
                     det_query = "cspad_0002"
+                elif self.expt == "xpptut15":
+                    det_query = "cspad_detnum1234"
                 else:
                     det_query = configinfo.uniqueid
                 calib_const = wu.calib_constants_all_types(det_query, exp=self.expt, run=self.runnum)

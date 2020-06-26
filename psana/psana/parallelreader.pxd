@@ -1,3 +1,6 @@
+## cython: linetrace=True
+## distutils: define_macros=CYTHON_TRACE_NOGIL=1
+
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from posix.unistd cimport read, sleep
@@ -8,13 +11,13 @@ from libc.stdint cimport uint32_t, uint64_t
 cdef struct Buffer:
     char* chunk
     uint64_t got
-    uint64_t offset 
-    int nevents             
+    uint64_t ready_offset 
+    int n_ready_events             
+    uint64_t seen_offset 
+    int n_seen_events             
     uint64_t timestamp                   # ts of the last dgram
     uint64_t ts_arr[0x100000]            # dgram timestamps 
     uint64_t next_offset_arr[0x100000]   # their offset + size of dgram and payload
-    int needs_reread
-    uint64_t lastget_offset
 
 cdef class ParallelReader:
     cdef int[:] file_descriptors
@@ -27,6 +30,4 @@ cdef class ParallelReader:
 
     cdef void _init_buffers(self)
     cdef void _reset_buffers(self, Buffer* bufs)
-    cdef void _rewind_buffer(self, Buffer* buf, uint64_t max_ts)
-    cdef void just_read(self, int how_many)
-    cdef void rewind(self, uint64_t max_ts, int winner)
+    cdef void just_read(self)
