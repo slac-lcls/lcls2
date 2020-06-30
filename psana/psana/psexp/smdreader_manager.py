@@ -79,7 +79,7 @@ class SmdReaderManager(object):
             while not self.smdr.is_complete():
                 if self.max_retries > 0:
                     time.sleep(self.sleep_secs)
-                    print('sleep')
+                    self.smdr.get()
                     cn_retries += 1
                     if cn_retries > self.max_retries:
                         raise StopIteration 
@@ -132,7 +132,6 @@ class SmdReaderManager(object):
                 while not self.smdr.is_complete():
                     if self.max_retries > 0:
                         time.sleep(self.sleep_secs)
-                        print('sleep')
                         self.smdr.get()
                         cn_retries += 1
                         if cn_retries > self.max_retries:
