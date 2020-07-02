@@ -306,7 +306,7 @@ setup(
     packages = PACKAGES,
     package_data = PACKAGE_DATA,
     #cmdclass={'build_ext': my_build_ext},
-    ext_modules = EXTS + cythonize(CYTHON_EXTS, build_dir=CYT_BLD_DIR),
+    ext_modules = EXTS + cythonize(CYTHON_EXTS, build_dir=CYT_BLD_DIR, language_level=2),
     entry_points = ENTRY_POINTS,
 )
 
