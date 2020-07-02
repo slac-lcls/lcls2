@@ -20,6 +20,15 @@ public:
     ConfigDef()  {NameVec.push_back({"fakeValue",Name::CHARSTR,1});}
 } ConfigDef;
 
+class RunInfoDef:public VarDef {
+public:
+    enum index {expIndex, runIndex};
+    RunInfoDef() {
+        NameVec.push_back({"expt",Name::CHARSTR,1});
+        NameVec.push_back({"runnum",Name::UINT32});
+    }
+} RunInfoDef;
+
 class LaserDef: public VarDef {
 public:
     enum index { laserIndex };
@@ -37,6 +46,12 @@ public:
     enum index { hsdIndex };
     HsdDef()  {NameVec.push_back({"waveform",Name::UINT16,1});}
 } HsdDef;
+
+class ScanDef: public VarDef {
+public:
+    enum index { scanIndex };
+    ScanDef()  {NameVec.push_back({"motor",Name::FLOAT});}
+} ScanDef;
 
 class CspadDef: public VarDef {
 public:
@@ -101,6 +116,27 @@ void addHsd(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId,
     };
 }
 
+void addScan(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId,
+             float value)
+{
+    CreateData scan(parent, namesLookup, namesId);
+    scan.set_value(ScanDef::scanIndex, value);
+}
+
+void addRunInfo(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId,
+                const char* exp, uint32_t run) {
+    CreateData runinfo(xtc, namesLookup, namesId);
+    runinfo.set_string(RunInfoDef::expIndex, exp);
+    runinfo.set_value(RunInfoDef::runIndex, run);
+}
+
+void addRunInfoNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId) {
+    Alg runInfoAlg("runinfo",0,0,1);
+    Names& runInfoNames = *new(xtc) Names("runinfo", runInfoAlg, "runinfo", "", namesId, 0);
+    runInfoNames.add(xtc, RunInfoDef);
+    namesLookup[namesId] = NameIndex(runInfoNames);
+}
+
 void addCspadNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId,
                    unsigned segment) {
     Alg cspadAlg("raw",2,3,42);
@@ -152,6 +188,13 @@ void addHsdNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId) {
     namesLookup[namesId] = NameIndex(hsdNames);
 }
 
+void addScanNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId) {
+    Alg scanAlg("raw",2,0,0);
+    Names& scanNames = *new(xtc) Names("scan", scanAlg, "scan", "serialnum1234", namesId, 0);
+    scanNames.add(xtc, ScanDef);
+    namesLookup[namesId] = NameIndex(scanNames);
+}
+
 void addHsdConfigNames(Xtc& xtc, NamesLookup& namesLookup, NamesId& namesId) {
     Alg hsdAlg("fakeConfig",0,0,1);
     Names& hsdNames = *new(xtc) Names("xpphsd", hsdAlg, "hsd", "serialnum1234", namesId, 0);
@@ -197,6 +240,7 @@ int main(int argc, char* argv[])
     int c;
     int parseErr = 0;
     unsigned nevents = 2;
+    unsigned nmotorsteps = 1;
     unsigned timestamp_period = 0; // time in us
     char xtcname[MAX_FNAME_LEN];
     strncpy(xtcname, "ami.xtc2", MAX_FNAME_LEN);
@@ -206,13 +250,16 @@ int main(int argc, char* argv[])
     bool counting_timestamps = false;
     bool add_fake_configs = false;
 
-    while ((c = getopt(argc, argv, "hf:n:s:tcp:")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:m:s:tcp:")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
                 exit(0);
             case 'n':
                 nevents = atoi(optarg);
+                break;
+            case 'm':
+                nmotorsteps = atoi(optarg);
                 break;
             case 'f':
                 strncpy(xtcname, optarg, MAX_FNAME_LEN);
@@ -255,6 +302,15 @@ int main(int argc, char* argv[])
     unsigned nSegments=2;
     unsigned segmentIndex = starting_segment;
 
+    NamesId namesIdRunInfo(nodeId,segmentIndex++);
+    addRunInfoNames(config.xtc, namesLookup, namesIdRunInfo);
+
+    // only add epics and scan info to the first stream
+    NamesId namesIdScan(nodeId,segmentIndex++);
+    if (starting_segment==0) {
+      addScanNames(config.xtc, namesLookup, namesIdScan);
+    }
+
     NamesId namesIdCspad[] = {NamesId(nodeId,segmentIndex++), NamesId(nodeId,segmentIndex++)};
     for (unsigned iseg=0; iseg<nSegments; iseg++) {
         addCspadNames(config.xtc, namesLookup, namesIdCspad[iseg], iseg);
@@ -291,32 +347,64 @@ int main(int argc, char* argv[])
 
     save(config,xtcFile);
 
-    void* buf = malloc(BUFSIZE);
-    for (int i = 0; i < nevents; i++) {
-        if (counting_timestamps) {
-            tv.tv_sec = 0;
-            tv.tv_usec = timestamp_val;
-            timestamp_val++;
-        } else {
-            usleep(timestamp_period);
-            gettimeofday(&tv, NULL);
-            // convert to ns for the Timestamp
-            tv.tv_usec *= 1000;
-        }
-        Transition tr(Dgram::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), env);
-        Dgram& dgram = *new(buf) Dgram(tr, Xtc(tid));
+    Dgram& beginRunTr = createTransition(TransitionId::BeginRun,
+                                         counting_timestamps,
+                                         timestamp_val);
+    addRunInfo(beginRunTr.xtc, namesLookup, namesIdRunInfo, "xpptut15", 15);
+    save(beginRunTr, xtcFile);
 
-        for (unsigned iseg=0; iseg<nSegments; iseg++) {
-            addCspad(dgram.xtc, namesLookup, namesIdCspad[iseg], i);
-        }
-        addLaser(dgram.xtc, namesLookup, namesIdLaser, i%2);
-        addEBeam(dgram.xtc, namesLookup, namesIdEBeam, (float)i);
-        if (i%2==0) {
-            addHsd(dgram.xtc, namesLookup, namesIdHsd, i);
-        }
+    for (unsigned istep=0; istep<nmotorsteps; istep++) {
 
-        save(dgram,xtcFile);
-     }
+        Dgram& beginStepTr = createTransition(TransitionId::BeginStep,
+                                              counting_timestamps,
+                                              timestamp_val);
+        if (starting_segment==0) addScan(beginStepTr.xtc, namesLookup, namesIdScan, istep);
+        save(beginStepTr, xtcFile);
+
+        void* buf = malloc(BUFSIZE);
+        for (int i = 0; i < nevents; i++) {
+            if (counting_timestamps) {
+                tv.tv_sec = 0;
+                tv.tv_usec = timestamp_val;
+                timestamp_val++;
+            } else {
+              usleep(timestamp_period);
+              gettimeofday(&tv, NULL);
+              // convert to ns for the Timestamp
+              tv.tv_usec *= 1000;
+            }
+            Transition tr(Dgram::Event, TransitionId::L1Accept, TimeStamp(tv.tv_sec, tv.tv_usec), env);
+            Dgram& dgram = *new(buf) Dgram(tr, Xtc(tid));
+
+            for (unsigned iseg=0; iseg<nSegments; iseg++) {
+                addCspad(dgram.xtc, namesLookup, namesIdCspad[iseg], i);
+            }
+            addLaser(dgram.xtc, namesLookup, namesIdLaser, i%2);
+            addEBeam(dgram.xtc, namesLookup, namesIdEBeam, (float)i);
+            if (i%2==0) {
+                addHsd(dgram.xtc, namesLookup, namesIdHsd, i);
+            }
+
+            save(dgram,xtcFile);
+        } // events
+
+
+        Dgram& disableTr = createTransition(TransitionId::Disable,
+                                            counting_timestamps,
+                                            timestamp_val);
+        save(disableTr, xtcFile);
+
+        Dgram& endStepTr = createTransition(TransitionId::EndStep,
+                                            counting_timestamps,
+                                            timestamp_val);
+        save(endStepTr, xtcFile);
+    } // steps
+
+    // make an EndRun
+    Dgram& endRunTr = createTransition(TransitionId::EndRun,
+                                       counting_timestamps,
+                                       timestamp_val);
+    save(endRunTr, xtcFile);
 
     fclose(xtcFile);
 
