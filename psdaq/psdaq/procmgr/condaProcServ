@@ -144,10 +144,14 @@ if [[ -z $waitFlag ]]; then
     waitFlag=""
 fi
 
+# workaround bug in procServ where --coresize option was
+# stored in a 32-bit int, which limits core sizes to 2GB.
+ulimit -c $coreSize
+
 if [[ -f $PROCSERVBIN ]]; then
     $PROCSERVBIN \
         --noautorestart --name $name $waitFlag $logFlag --allow \
-        --coresize $coreSize $ctrlPort $cmd $args
+        $ctrlPort $cmd $args
 else
     echo "error: procServ not found"
     exit 9

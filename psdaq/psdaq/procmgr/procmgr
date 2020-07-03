@@ -180,8 +180,8 @@ parser.add_option("-v", "--verbose",
 parser.add_option("-p", type="int", dest="platform", metavar="<platform>",
                   default=-1, help="platform number")
 
-parser.add_option("-c", type="int", dest="coresize", metavar="<coresize>",
-                  default=0, help="max core dump size (default=0)")
+parser.add_option("-c", type="string", dest="coresize", metavar="<coresize>",
+                  default="0", help="max core dump size (default=0)")
 
 parser.add_option("-t", type="int", dest="sigint_delay", metavar="<secs>",
                   default=1, help="stop/restart: SIGINT to SIGTERM delay (default=1)")

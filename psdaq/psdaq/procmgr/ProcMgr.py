@@ -897,7 +897,7 @@ class ProcMgr:
     #
     # startAll - call start() with an empty id_list
     #
-    def startAll(self, verbose=0, logpathbase=None, coresize=0, rcFile=rcFileDefault):
+    def startAll(self, verbose=0, logpathbase=None, coresize='0', rcFile=rcFileDefault):
         return self.start([], verbose, logpathbase, coresize, rcFile)
 
     #
@@ -905,7 +905,7 @@ class ProcMgr:
     #
     # RETURNS: 0 if any processes were started, otherwise 1.
     #
-    def start(self, id_list, verbose=0, logpathbase=None, coresize=0, rcFile=rcFileDefault):
+    def start(self, id_list, verbose=0, logpathbase=None, coresize='0', rcFile=rcFileDefault):
 
         rv = 1                  # return value
         started_count = 0       # count successful start commands
@@ -1030,7 +1030,7 @@ class ProcMgr:
                   print('*** ERR: %s/condaProcServ not found' % prefix)
                   continue
 
-                startcmd = condaProcServCmd+' %s %s %s %s %s %s %s %d %s %s %s' % \
+                startcmd = condaProcServCmd+' %s %s %s %s %s %s %s %s %s %s %s' % \
                        (rcFile, \
                         value[self.DICT_CONDA], \
                         value[self.DICT_ENV], \
