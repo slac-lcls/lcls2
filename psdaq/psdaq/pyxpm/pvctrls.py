@@ -444,7 +444,7 @@ class GroupCtrls(object):
 
 class PVCtrls(object):
 
-    def __init__(self, p, m, name=None, ip=None, xpm=None, stats=None, db=None):
+    def __init__(self, p, m, name=None, ip=None, xpm=None, stats=None, db=None, cuInit=False):
         global provider
         provider = p
         global lock
@@ -490,7 +490,8 @@ class PVCtrls(object):
 
         self._group = GroupCtrls(name, app, stats, init=init)
 
-        if True:
+        #  The following section will throw an exception if the CuInput PV is not set properly
+        if not cuInit:
             self._seq = PVSeq(provider, name+':SEQENG:0', ip, Engine(0, xpm.SeqEng_0))
 
             self._pv_dumpSeq = SharedPV(initial=NTScalar('I').wrap(0), 

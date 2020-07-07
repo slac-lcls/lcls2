@@ -8,8 +8,8 @@ from .xpm_utils import *
 
 Transitions = [('ClearReadout',0),
                ('Configure'  ,2),
-               ('Enable'     ,4),
-               ('Disable'    ,5),
+               ('Enable'     ,8),
+               ('Disable'    ,9),
                ('Unconfigure',3)]
 
 class PvStateMachine(QtWidgets.QWidget):

@@ -47,6 +47,7 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('--ip', type=str, required=True, help="IP address" )
     parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,LAB2,PROD]")
+    parser.add_argument('-I', action='store_true', help='initialize Cu timing')
 
     args = parser.parse_args()
     if args.verbose:
@@ -79,7 +80,7 @@ def main():
     lock = Lock()
 
     pvstats = PVStats(provider, lock, args.P, xpm)
-    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, db=args.db)
+    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, db=args.db, cuInit=True) #cuInit=args.I)
     pvxtpg  = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms, cuMode='xtpg' in xpm.AxiVersion.ImageName.get())
 
     # process PVA transactions
