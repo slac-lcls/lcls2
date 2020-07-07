@@ -1,7 +1,10 @@
 from psana.smdreader import SmdReader
 from psana.psexp.packet_footer import PacketFooter
 from psana.eventbuilder import EventBuilder
+from psana.psexp.event_manager import EventManager
 import os, time
+from psana import dgram
+from psana.event import Event
 
 class BatchIterator(object):
     """ Iterates over batches of events.
@@ -41,21 +44,32 @@ class BatchIterator(object):
 class SmdReaderManager(object):
 
     def __init__(self, run):
-        self.n_files = len(run.smd_dm.fds)
+        self.n_files = len(run.smd_fds)
         assert self.n_files > 0
         self.run = run
         
-        self.batch_size = int(os.environ.get('PS_SMD_N_EVENTS', 10000))
+        self.batch_size = int(os.environ.get('PS_SMD_N_EVENTS', 1000))
         if self.run.max_events:
             if self.run.max_events < self.batch_size:
                 self.batch_size = self.run.max_events
         
-        self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x1000000))
-        self.smdr = SmdReader(run.smd_dm.fds, self.chunksize)
+        self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x100000))
+        self.smdr = SmdReader(run.smd_fds, self.chunksize)
         self.processed_events = 0
         self.got_events = -1
-        self.max_retries = int(os.environ['PS_SMD_MAX_RETRIES'])
-        self.sleep_secs = int(os.environ.get('PS_SMD_SLEEP_SECS', '1'))
+
+    def get_next_dgrams(self, configs=None):
+        dgrams = None
+        if not self.smdr.is_complete():
+            self.smdr.get()
+         
+        if self.smdr.is_complete():
+            mmrv_bufs, _ = self.smdr.view(batch_size=1)
+            if configs is None:
+                dgrams = [dgram.Dgram(view=mmrv_buf, offset=0) for mmrv_buf in mmrv_bufs]
+            else:
+                dgrams = [dgram.Dgram(view=mmrv_buf, config=config, offset=0) for mmrv_buf, config in zip(mmrv_bufs, configs)]
+        return dgrams
 
     def __iter__(self):
         return self
@@ -75,16 +89,8 @@ class SmdReaderManager(object):
         
         if not self.smdr.is_complete():
             self.smdr.get()
-            cn_retries = 0
-            while not self.smdr.is_complete():
-                if self.max_retries > 0:
-                    time.sleep(self.sleep_secs)
-                    self.smdr.get()
-                    cn_retries += 1
-                    if cn_retries > self.max_retries:
-                        raise StopIteration 
-                else:
-                    raise StopIteration
+            if not self.smdr.is_complete():
+                raise StopIteration
         
         mmrv_bufs, _ = self.smdr.view(batch_size=self.batch_size)
         batch_iter = BatchIterator(mmrv_bufs, batch_size=self.run.batch_size, \
@@ -128,20 +134,9 @@ class SmdReaderManager(object):
 
             else:
                 self.smdr.get()
-                cn_retries = 0
-                while not self.smdr.is_complete():
-                    if self.max_retries > 0:
-                        time.sleep(self.sleep_secs)
-                        self.smdr.get()
-                        cn_retries += 1
-                        if cn_retries > self.max_retries:
-                            is_done = True
-                            break
-                    else:
-                        is_done = True
-                        break
-
-
+                if not self.smdr.is_complete():
+                    is_done = True
+                    break
     
     @property
     def min_ts(self):

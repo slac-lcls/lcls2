@@ -303,14 +303,29 @@ class RunSerial(Run):
                 max_events=kwargs['max_events'], batch_size=kwargs['batch_size'], \
                 filter_callback=kwargs['filter_callback'])
         xtc_files, smd_files, other_files = run_src
-        self.smd_dm = DgramManager(smd_files)
+
+        # get Configure and BeginRun using SmdReader
+        self.smd_fds = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in smd_files], dtype=np.int32)
+        self.smdr_man = SmdReaderManager(self)
+        self.configs = self.smdr_man.get_next_dgrams()
+        self.beginruns = self.smdr_man.get_next_dgrams(configs=self.configs)
+        
+        self._get_runinfo()
+        self.smd_dm = DgramManager(smd_files, configs=self.configs)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
-        self.configs = self.dm.configs
-        super()._get_runinfo()
         super()._set_configinfo()
         super()._set_calibconst()
         self.esm = EnvStoreManager(self.smd_dm.configs, 'epics', 'scan')
-        
+    
+    def _get_runinfo(self):
+        if not self.beginruns : return
+
+        beginrun_dgram = self.beginruns[0]
+        if hasattr(beginrun_dgram, 'runinfo'): # some xtc2 do not have BeginRun
+            self.expt = beginrun_dgram.runinfo[0].runinfo.expt 
+            self.runnum = beginrun_dgram.runinfo[0].runinfo.runnum
+            self.timestamp = beginrun_dgram.timestamp()
+
     def events(self):
         events = Events(self)
         for evt in events:
@@ -331,13 +346,28 @@ class RunLegion(Run):
         super(RunLegion, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
                 batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'])
         xtc_files, smd_files, other_files = run_src
-        self.smd_dm = DgramManager(smd_files)
+        
+        # get Configure and BeginRun using SmdReader
+        self.smd_fds = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in smd_files], dtype=np.int32)
+        self.smdr_man = SmdReaderManager(self)
+        self.configs = self.smdr_man.get_next_dgrams()
+        self.beginruns = self.smdr_man.get_next_dgrams(configs=self.configs)
+        
+        self._get_runinfo()
+        self.smd_dm = DgramManager(smd_files, configs=self.configs)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
-        self.configs = self.dm.configs
-        super()._get_runinfo()
         super()._set_configinfo()
         super()._set_calibconst()
         self.esm = EnvStoreManager(self.configs, 'epics', 'scan')
+
+    def _get_runinfo(self):
+        if not self.beginruns : return
+
+        beginrun_dgram = self.beginruns[0]
+        if hasattr(beginrun_dgram, 'runinfo'): # some xtc2 do not have BeginRun
+            self.expt = beginrun_dgram.runinfo[0].runinfo.expt 
+            self.runnum = beginrun_dgram.runinfo[0].runinfo.runnum
+            self.timestamp = beginrun_dgram.timestamp()
 
     def analyze(self, **kwargs):
         return legion_node.analyze(self, **kwargs)

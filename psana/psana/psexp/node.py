@@ -230,7 +230,7 @@ class Smd0(object):
     sends all smds within that timestamp to an smd_node.
     """
     def __init__(self, run):
-        self.smdr_man = SmdReaderManager(run)
+        self.smdr_man = run.smdr_man
         self.run = run
         self.step_hist = StepHistory(self.run.comms.smd_size, len(self.run.configs))
         self.run_mpi()

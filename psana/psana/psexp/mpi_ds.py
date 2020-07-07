@@ -12,6 +12,7 @@ from psana.dgrammanager import DgramManager
 from psana.psexp.envstore_manager import EnvStoreManager
 from psana.psexp.event_manager import TransitionId
 from psana.psexp.node import Smd0, SmdNode, BigDataNode
+from psana.psexp.smdreader_manager import SmdReaderManager
 
 class InvalidEventBuilderCores(Exception): pass
 
@@ -38,12 +39,20 @@ class RunParallel(Run):
         size = psana_comm.Get_size()
 
         if rank == 0:
-            self.smd_dm = DgramManager(smd_files, run=self)
+            # get Configure and BeginRun using SmdReader
+            self.smd_fds = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in smd_files], dtype=np.int32)
+            self.smdr_man = SmdReaderManager(self)
+            self.configs = self.smdr_man.get_next_dgrams()
+            self.beginruns = self.smdr_man.get_next_dgrams(configs=self.configs)
+            
+            self._get_runinfo()
+
+            self.smd_dm = DgramManager(smd_files, configs=self.configs, run=self)
             self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs, run=self)
-            self.configs = self.dm.configs
-            super()._get_runinfo()
+
             nbytes = np.array([memoryview(config).shape[0] for config in self.configs], \
                             dtype='i')
+            
             super()._set_configinfo()
             super()._set_calibconst()
             self.bcast_packets = {'calibconst': self.calibconst, \
@@ -76,6 +85,15 @@ class RunParallel(Run):
             self.timestamp = self.bcast_packets['timestamp']
         
         self.esm = EnvStoreManager(self.configs, 'epics', 'scan')
+    
+    def _get_runinfo(self):
+        if not self.beginruns : return
+
+        beginrun_dgram = self.beginruns[0]
+        if hasattr(beginrun_dgram, 'runinfo'): # some xtc2 do not have BeginRun
+            self.expt = beginrun_dgram.runinfo[0].runinfo.expt 
+            self.runnum = beginrun_dgram.runinfo[0].runinfo.runnum
+            self.timestamp = beginrun_dgram.timestamp()
     
     def events(self):
         for evt in self.run_node():

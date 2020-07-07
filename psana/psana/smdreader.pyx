@@ -7,14 +7,18 @@ from dgramlite cimport Xtc, Sequence, Dgram
 from parallelreader cimport Buffer, ParallelReader
 from libc.stdint cimport uint32_t, uint64_t
 import numpy as np
+import time, os
 
 cdef class SmdReader:
     cdef ParallelReader prl_reader
     cdef int winner, view_size
+    cdef int max_retries, sleep_secs
     
     def __init__(self, int[:] fds, int chunksize):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
         self.prl_reader = ParallelReader(fds, chunksize)
+        self.max_retries = int(os.environ['PS_SMD_MAX_RETRIES']) # no default (force set when creating datasource)
+        self.sleep_secs = int(os.environ.get('PS_SMD_SLEEP_SECS', '1'))
         
     def is_complete(self):
         """ Checks that all buffers have at least one event 
@@ -29,8 +33,18 @@ cdef class SmdReader:
 
     def get(self):
         self.prl_reader.just_read()
+        
+        if self.max_retries > 0:
+            cn_retries = 0
+            while not self.is_complete():
+                time.sleep(self.sleep_secs)
+                print('waiting for an event...')
+                self.prl_reader.just_read()
+                cn_retries += 1
+                if cn_retries > self.max_retries:
+                    break
 
-    def view(self, int batch_size=10000):
+    def view(self, int batch_size=1000):
         """ Returns memoryview of the data and step buffers.
 
         This function is called by SmdReaderManager only when is_complete is True (

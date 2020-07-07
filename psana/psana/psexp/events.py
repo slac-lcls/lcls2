@@ -1,4 +1,3 @@
-from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.event_manager import EventManager, TransitionId
 
 class Events:
@@ -7,7 +6,7 @@ class Events:
         self.get_smd = get_smd # RunParallel
         self.dm = dm # RunSingleFile, RunShmem
         if self.get_smd==0  and self.dm is None:
-            self._smdr_man = SmdReaderManager(run) # RunSerial
+            self._smdr_man = run.smdr_man # RunSerial
         self._evt_man = iter([])
         self._batch_iter = iter([])
         self.flag_empty_smd_batch = False

@@ -367,9 +367,15 @@ int main(int argc, char* argv[])
             }
         }
         
-        if (n_mod > 0 && eventId % n_mod == 0) {
-            cout << "sleep... " << endl;
-            sleep(1);
+        
+        if (n_mod > 0) {
+            if (eventId == 1) {
+                cout << eventId << " sleep...3s " << endl;
+                sleep(3);
+            }else if(eventId % n_mod == 0) {
+                cout << eventId << " sleep...1s " << endl;
+                sleep(1);
+            }
         }
     }// end while((dgIn...
 
