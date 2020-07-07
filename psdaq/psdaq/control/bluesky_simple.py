@@ -42,7 +42,7 @@ from psdaq.control.control import DaqControl, DaqPVA
 import argparse
 
 class MyDAQ:
-    def __init__(self, control, motor1, motor2, *, daqState, args):
+    def __init__(self, control, *, daqState, args):
         self.control = control
         self.name = 'mydaq'
         self.parent = None
@@ -54,8 +54,7 @@ class MyDAQ:
         self.comm_thread = threading.Thread(target=self.daq_communicator_thread, args=())
         self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
-        self.motor1 = motor1
-        self.motor2 = motor2
+        self.motors = []                # set in configure()
         self.cydgram = dc.CyDgram()
         self.daqState = daqState
         self.args = args
@@ -209,7 +208,15 @@ class MyDAQ:
         # the metadata for read_configuration()
         return {}
 
+    # use 'motors' keyword arg to specify a set of motors
     def configure(self, *args, **kwargs):
+        logging.debug("*** here in configure")
+
+        if 'motors' in kwargs:
+            self.motors = kwargs['motors']
+            logging.info('configure: %d motors' % len(self.motors))
+        else:
+            logging.error('configure: no motors')
         return (self.read_configuration(),self.read_configuration())
 
     def _set_connected(self):
@@ -235,10 +242,9 @@ class MyDAQ:
         return [self]
 
     def getBlock(self, *, transitionid, add_names, add_shapes_data):
-        my_data = {
-            self.motor1.name: self.motor1.position,
-            self.motor2.name: self.motor2.position
-        }
+        my_data = {}
+        for motor in self.motors:
+            my_data.update({motor.name: motor.position})
 
         detname       = 'scan'
         dettype       = 'scan'
@@ -319,8 +325,11 @@ def main():
     from bluesky.plans import scan
 
     # instantiate MyDAQ object
-    mydaq = MyDAQ(control, motor1, motor2, daqState=daqState, args=args)
+    mydaq = MyDAQ(control, daqState=daqState, args=args)
     dets = [mydaq]   # just one in this case, but it could be more than one
+
+    # configure MyDAQ object with a set of motors
+    mydaq.configure(motors=[motor1, motor2])
 
     # Scan motor1 from -10 to 10 and motor2 from -0.1 to 0.1, stopping
     # at 15 equally-spaced points along the way and reading dets.
