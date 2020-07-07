@@ -1,7 +1,7 @@
 platform = '7'
 username = 'lcls2'
 
-epics_host = 'daq-tst-dev03'
+epics_host = 'daq-tst-dev02'
 
 conda_rel = 'ps-3.1.11'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'

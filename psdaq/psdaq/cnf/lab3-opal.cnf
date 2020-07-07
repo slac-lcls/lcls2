@@ -1,0 +1,42 @@
+if not platform: platform = '0'
+username = 'lcls2'
+
+epics_host = 'daq-tst-dev03'
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
+conda_rel = 'ps-3.1.11'
+
+collect_host = 'drp-tst-acc06'
+groups = platform
+hutch = 'tst'
+
+prom_dir = '/reg/g/psdm/psdatmgr/etc/config/prom' # Prometheus
+data_dir = '/ffb01/data'
+
+task_set  = 'taskset 0xffbfeffbfe '
+std_opts  = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir
+std_opts0 = std_opts+' -d /dev/datadev_0'
+std_opts1 = std_opts+' -d /dev/datadev_1'
+
+drp_cmd = task_set+'drp '+std_opts0+' -l 0x1'
+teb_cmd = task_set+'teb -P tst -C '+collect_host+' -M '+prom_dir
+meb_cmd = task_set+'monReqServer -P '+hutch+'P0 -C '+collect_host+' -M '+prom_dir+' -d -q 4'
+
+procmgr_config = [
+ {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+
+ { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C NOBEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+hutch+'opr --password pcds'},
+# { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C NOBEAM -B DAQ:LAB2 -x 0 -S 1 -P '+hutch+' --user '+hutch+'opr --password pcds'},
+ {                        flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
+ # TimeTool
+ { host: 'drp-tst-dev012', id:'tmott_0',     flags:'sxpu',  conda:conda_rel, cmd:drp_cmd+' -D tt -k feb_lane=0 -k feb_chan=0'},
+# { host: 'drp-tst-dev012', id:'tmott_0',     flags:'sxpu',  conda:conda_rel, cmd:drp_cmd+' -D tt -k xpmpv=DAQ:LAB2:XPM:0'},
+ # Opal
+# { host: 'drp-tst-dev003', id:'tmoopal_0',     flags:'sxpu',  conda:conda_rel, cmd:drp_cmd+' -D opal'},
+# { host: 'drp-tst-dev003', id:'xppopal_0',     flags:'sxpu',  conda:conda_rel, cmd:drp_cmd+' -D opal -k simxtc=/reg/neh/home/weaver/mevt.out'},
+# { host: 'drp-tst-dev003', id:'xppopal_0',     flags:'sxpu',  conda:conda_rel, cmd:drp_cmd+' -D opal -k xpmpv=DAQ:LAB2:XPM:0,simxtc=/reg/neh/home/weaver/mevt.out'},
+
+ { host: 'drp-tst-dev024', id:'teb1'   , flags:'spu', conda:conda_rel, cmd:teb_cmd},
+ { host: 'drp-tst-dev016', id:'meb16'  , flags:'spu', conda:conda_rel, cmd:meb_cmd},
+
+]
+

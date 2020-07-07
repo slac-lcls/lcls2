@@ -1,7 +1,7 @@
 platform = '7'
 username = 'lcls2'
 
-conda_rel = 'ps-2.0.9'
+conda_rel = 'ps-3.1.11'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 
 # procmgr FLAGS: <port number> static port number to keep executable
@@ -22,7 +22,7 @@ procmgr_config = [
  { id:'pyxpm',   port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.0.103 -P DAQ:ASC:XPM:0'},
 
 ## EPICS PV exporter
- { id:'pvrtmon', port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -P DAQ:ASC:XPM:0 -N DeadFrac'},
+ { id:'pvrtmon', port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -H asc -P DAQ:ASC:XPM:0 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
 
 # { id:'pykcu',   port:'29471', flags:'s', conda:conda_rel, env:epics_env, cmd:'pykcu'},
 
