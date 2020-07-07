@@ -198,7 +198,7 @@ class LinkCtrls(object):
             self._ringb.Dump()
 
 class CuGenCtrls(object):
-    def __init__(self, name, xpm, init=None):
+    def __init__(self, name, xpm, dbinit=None):
 
         def addPV(label, init, reg, archive):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
@@ -207,8 +207,8 @@ class CuGenCtrls(object):
             reg.set(init)
             return pv
 
-        self._pv_cuDelay    = addPV('CuDelay'   , init['CuDelay']    if init else 200*800, xpm.CuGenerator.cuDelay          , True)
-        self._pv_cuBeamCode = addPV('CuBeamCode', init['CuBeamCode'] if init else     140, xpm.CuGenerator.cuBeamCode       , True)
+        self._pv_cuDelay    = addPV('CuDelay'   , dbinit['CuDelay']    if dbinit else 200*800, xpm.CuGenerator.cuDelay          , True)
+        self._pv_cuBeamCode = addPV('CuBeamCode', dbinit['CuBeamCode'] if dbinit else     140, xpm.CuGenerator.cuBeamCode       , True)
         self._pv_clearErr   = addPV('ClearErr'  ,       0, xpm.CuGenerator.cuFiducialIntvErr, False)
 
         def addPV(label, init, reg, archive):
@@ -219,7 +219,7 @@ class CuGenCtrls(object):
                 r.set(init)
             return pv
 
-        self._pv_cuInput    = addPV('CuInput'   , init['CuInput'] if init else   2, xpm.AxiSy56040.OutputConfig, True)
+        self._pv_cuInput    = addPV('CuInput'   , dbinit['CuInput'] if dbinit else   1, xpm.AxiSy56040.OutputConfig, True)
 
 class PVInhibit(object):
     def __init__(self, name, app, inh, group, idx):
@@ -486,7 +486,7 @@ class PVCtrls(object):
             provider.add(name+':DumpPll%d'%i,pv)
             self._pv_amcDumpPLL.append(pv)
 
-        self._cu    = CuGenCtrls(name+':XTPG', xpm, init=init['XTPG'] if init is not None else None)
+        self._cu    = CuGenCtrls(name+':XTPG', xpm, dbinit=init['XTPG'] if init is not None else None)
 
         self._group = GroupCtrls(name, app, stats, init=init)
 
