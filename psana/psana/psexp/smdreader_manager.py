@@ -65,10 +65,15 @@ class SmdReaderManager(object):
          
         if self.smdr.is_complete():
             mmrv_bufs, _ = self.smdr.view(batch_size=1)
+
+            # For configs, we need to copy data from smdreader's buffers
+            # This prevents it from getting overwritten by other dgrams.
+            bytearray_bufs = [bytearray(mmrv_buf) for mmrv_buf in mmrv_bufs]
+            
             if configs is None:
-                dgrams = [dgram.Dgram(view=mmrv_buf, offset=0) for mmrv_buf in mmrv_bufs]
+                dgrams = [dgram.Dgram(view=ba_buf, offset=0) for ba_buf in bytearray_bufs]
             else:
-                dgrams = [dgram.Dgram(view=mmrv_buf, config=config, offset=0) for mmrv_buf, config in zip(mmrv_bufs, configs)]
+                dgrams = [dgram.Dgram(view=ba_buf, config=config, offset=0) for ba_buf, config in zip(bytearray_bufs, configs)]
         return dgrams
 
     def __iter__(self):
