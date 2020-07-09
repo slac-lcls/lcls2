@@ -15,9 +15,11 @@
 
 static void usage(const char* p) {
   printf("Usage: %s [options]\n",p);
-  printf("Options: -r <rate>\n");
+  printf("Options: -r <rate> (0:929kHz,1:71kHz,..)\n");
+  printf("         -e <evcode>\n");
   printf("         -p <pvname>\n");
   printf("         -v (verbose)\n");
+  printf("Either -r or -e is required\n");
 }
 
 namespace pvd = epics::pvData;
@@ -37,13 +39,17 @@ int main(int argc, char* argv[])
   char c;
 
   const char* pvname = 0;
-  unsigned rate = 4; // 10Hz
+  int rate   = -1;
+  int evcode = -1;
   bool verbose = false;
 
-  while ( (c=getopt( argc, argv, "p:r:v"))!=EOF) {
+  while ( (c=getopt( argc, argv, "p:e:r:v"))!=EOF) {
     switch(c) {
     case 'p':
       pvname = optarg;
+      break;
+    case 'e':
+      evcode = strtoul(optarg,NULL,0);
       break;
     case 'r':
       rate = strtoul(optarg,NULL,0);
@@ -87,7 +93,7 @@ int main(int argc, char* argv[])
   //
   //  Open the timing receiver
   //
-  tpr = new Pds::Tpr::Client("/dev/tpra",0);
+  tpr = new Pds::Tpr::Client("/dev/tpra",0,rate>=0);
 
   struct sigaction sa;
   sa.sa_handler = sigHandler;
@@ -98,7 +104,11 @@ int main(int argc, char* argv[])
   sigaction(SIGKILL,&sa,NULL);
   sigaction(SIGSEGV,&sa,NULL);
 
-  tpr->start(Pds::Tpr::TprBase::FixedRate(rate));
+  if (rate >= 0)
+    tpr->start(Pds::Tpr::TprBase::FixedRate(rate));
+  else if (evcode >= 0)
+    tpr->start(Pds::Tpr::TprBase::EventCode(evcode));
+
   tpr->release();
 
   uint16_t image[128];

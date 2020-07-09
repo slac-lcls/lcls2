@@ -14,7 +14,8 @@ namespace Pds {
     class Client {
     public:
       Client(const char* devname,
-             unsigned    channel = 0);
+             unsigned    channel = 0,
+             bool        lcls2 = true);
       ~Client();
     public:
       //  Setup the trigger channel
@@ -24,6 +25,8 @@ namespace Pds {
       void start(unsigned partn);
       //  Enable the trigger (full rate)
       void start(TprBase::FixedRate rate=TprBase::FixedRate::_1M);
+      void start(TprBase::ACRate    rate, unsigned timeSlotMask);
+      void start(TprBase::EventCode evcode);
       //  Disable the trigger
       void stop();
       //  Release control

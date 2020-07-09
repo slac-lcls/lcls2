@@ -63,6 +63,8 @@ namespace Pds {
       enum { NTRIGGERS=12 };
       enum Destination { Any };
       enum FixedRate { _1M, _71K, _10K, _1K, _100H, _10H, _1H };
+      enum ACRate    { _60HA, _30HA, _10HA, _5HA, _1HA, _0_5HA };
+      enum EventCode { _0, _1 };
     public:
       void dump() const;
       void setupDaq    (unsigned i,
@@ -70,6 +72,18 @@ namespace Pds {
       void setupChannel(unsigned i,
                         Destination d,
                         FixedRate   r,
+                        unsigned    bsaPresample,
+                        unsigned    bsaDelay,
+                        unsigned    bsaWidth);
+      void setupChannel(unsigned i,
+                        Destination d,
+                        ACRate      r,
+                        unsigned    timeSlotMask,
+                        unsigned    bsaPresample,
+                        unsigned    bsaDelay,
+                        unsigned    bsaWidth);
+      void setupChannel(unsigned i,
+                        EventCode   r,
                         unsigned    bsaPresample,
                         unsigned    bsaDelay,
                         unsigned    bsaWidth);

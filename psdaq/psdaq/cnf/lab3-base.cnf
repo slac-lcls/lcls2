@@ -34,7 +34,7 @@ procmgr_config = [
 
 ## EPICS camera
  { host: epics_host,  id:'pvcamcas', port:'29465', flags:'s', conda:conda_rel, env:epics_env, cmd:'campvs -P DAQ:LAB2:PVCAM'},
- { host: 'daq-tst-dev03',  id:'pvcam', port:'29466', flags:'s', conda:conda_rel, env:epics_env, cmd:'pvcam -p DAQ:LAB2:PVCAM'},
+ { host: 'daq-tst-dev03',  id:'pvcam', port:'29466', flags:'s', conda:conda_rel, env:epics_env, cmd:'pvcam -p DAQ:LAB2:PVCAM -e 40'},
 
 ## EPICS PV exporter
  {                    id:'pvrtmon',  port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -H '+hutch+' -P DAQ:LAB2:XPM:2 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},

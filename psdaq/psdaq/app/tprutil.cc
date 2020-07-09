@@ -366,7 +366,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2)
       if (parse_frame(p, pulseId, timeStamp)) {
         if (pulseIdP) {
           uint64_t pulseIdN = pulseIdP+1;
-          if (!lcls2) pulseIdN &= 0x1ffffULL;
+          if (!lcls2) pulseIdN = (pulseId&~0x1ffffULL) | (pulseIdN&0x1ffffULL);
           printf(" 0x%016llx %9u.%09u %s\n", 
                  (unsigned long long)pulseId, 
                  unsigned(timeStamp>>32), 

@@ -73,6 +73,32 @@ void TprBase::setupChannel(unsigned i,
   channel[i].control  = bsaWidth ? 7 : 5;
 }
 
+void TprBase::setupChannel(unsigned i,
+                           Destination d,
+                           ACRate      r,
+                           unsigned    timeSlotMask,
+                           unsigned    bsaPresample,
+                           unsigned    bsaDelay,
+                           unsigned    bsaWidth) {
+  channel[i].control  = 0;
+  channel[i].evtSel   = (1<<30) | (1<<11) | ((timeSlotMask&0x7fe)<<2) | (unsigned(r)&0x7); //
+  channel[i].bsaDelay = (bsaPresample<<20) | bsaDelay;
+  channel[i].bsaWidth = bsaWidth;
+  channel[i].control  = bsaWidth ? 7 : 5;
+}
+
+void TprBase::setupChannel(unsigned i,
+                           EventCode   r,
+                           unsigned    bsaPresample,
+                           unsigned    bsaDelay,
+                           unsigned    bsaWidth) {
+  channel[i].control  = 0;
+  channel[i].evtSel   = (1<<30) | (2<<11) | (unsigned(r)&0xff); //
+  channel[i].bsaDelay = (bsaPresample<<20) | bsaDelay;
+  channel[i].bsaWidth = bsaWidth;
+  channel[i].control  = bsaWidth ? 7 : 5;
+}
+
 void TprBase::setupTrigger(unsigned i,
                            unsigned source,
                            unsigned polarity,

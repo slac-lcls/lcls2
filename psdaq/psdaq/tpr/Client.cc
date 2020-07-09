@@ -9,7 +9,8 @@
 using namespace Pds::Tpr;
 
 Client::Client(const char* devname,
-               unsigned    channel) :
+               unsigned    channel,
+               bool        lcls2) :
   _channel(channel)
 {
   _fd = ::open(devname, O_RDWR);
@@ -26,9 +27,9 @@ Client::Client(const char* devname,
 
   _dev = reinterpret_cast<Pds::Tpr::TprReg*>(ptr);
 
-  if (!_dev->tpr.clkSel()) {
-    _dev->tpr.clkSel(true);
-    printf("Changed clk xbar to LCLS2 mode\n");
+  if (_dev->tpr.clkSel() != lcls2) {
+    _dev->tpr.clkSel(lcls2);
+    printf("Changed clk xbar to %s mode\n", lcls2 ? "LCLS2":"LCLS1");
   }
 
   _dev->xbar.setTpr( XBar::StraightIn );
@@ -102,6 +103,30 @@ void Client::start(TprBase::FixedRate rate)
 {
   _dump();
   _dev->base.setupChannel(_channel, TprBase::Any, rate, 0, 0, 1);
+  _dump();
+
+  char buff[32];
+  read(_fdsh, &buff, 32 );
+  _rp = _queues->allwp[_channel];
+}
+
+//  Enable the trigger
+void Client::start(TprBase::ACRate rate, unsigned timeSlotMask)
+{
+  _dump();
+  _dev->base.setupChannel(_channel, TprBase::Any, rate, timeSlotMask, 0, 0, 1);
+  _dump();
+
+  char buff[32];
+  read(_fdsh, &buff, 32 );
+  _rp = _queues->allwp[_channel];
+}
+
+//  Enable the trigger
+void Client::start(TprBase::EventCode evcode)
+{
+  _dump();
+  _dev->base.setupChannel(_channel, evcode, 0, 0, 1);
   _dump();
 
   char buff[32];
