@@ -962,9 +962,6 @@ int main(int argc, char* argv[])
             case 'P':
                 para.instrument = optarg;
                 break;
-            case 'T':
-                para.trgDetName = optarg ? optarg : "trigger";
-                break;
             case 'k':
                 kwargs_str = std::string(optarg);
                 break;

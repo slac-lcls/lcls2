@@ -60,7 +60,6 @@ struct Parameters
     std::string prometheusDir;
     std::map<std::string,std::string> kwargs;
     uint32_t rogMask;
-    std::string trgDetName;
     unsigned verbose;
     size_t maxTrSize;
     unsigned nTrBuffers;

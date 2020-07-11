@@ -603,26 +603,25 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     using namespace rapidjson;
 
     Document top;
-    const std::string configAlias = body["config_alias"];
-    const std::string dummy("tmoteb");  // Default trigger library
-    std::string&      detName = m_para.trgDetName;
-    if (m_para.trgDetName.empty())  m_para.trgDetName = dummy;
+    const std::string configAlias   = body["config_alias"];
+    const std::string triggerConfig = body["trigger_config"];
 
     // In the following, _0 is added in prints to show the default segment number
     logging::info("Fetching trigger info from ConfigDb/%s/%s_0",
-                  configAlias.c_str(), detName.c_str());
+                  configAlias.c_str(), triggerConfig.c_str());
 
-    if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, detName, top))
+    if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, triggerConfig, top))
     {
         logging::error("%s:\n  Document '%s_0' not found in ConfigDb",
-                       __PRETTY_FUNCTION__, detName.c_str());
+                       __PRETTY_FUNCTION__, triggerConfig.c_str());
         return -1;
     }
 
-    if ((detName != dummy) && !top.HasMember(m_para.detName.c_str())) {
+    bool buildAll = top.HasMember("buildAll") && top["buildAll"].GetInt()==1;
+    if (!buildAll && !top.HasMember(m_para.detName.c_str())) {
         logging::warning("This DRP is not contributing trigger input data: "
                          "'%s' not found in ConfigDb for %s",
-                         m_para.detName.c_str(), detName.c_str());
+                         m_para.detName.c_str(), triggerConfig.c_str());
         m_tPrms.contractor = 0;    // This DRP won't provide trigger input data
         m_triggerPrimitive = nullptr;
         return 0;
@@ -630,8 +629,8 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     m_tPrms.contractor = m_tPrms.readoutGroup;
 
     std::string symbol("create_producer");
-    if (detName != dummy)  symbol +=  "_" + m_para.detName;
-    m_triggerPrimitive = m_trigPrimFactory.create(top, detName, symbol);
+    if (!buildAll)  symbol +=  "_" + m_para.detName;
+    m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);
     if (!m_triggerPrimitive) {
         logging::error("%s:\n  Failed to create TriggerPrimitive",
                        __PRETTY_FUNCTION__);

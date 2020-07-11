@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
     int c;
     std::string kwargs_str;
     std::string::size_type ii = 0;
-    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:T::M:v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -68,9 +68,6 @@ int main(int argc, char* argv[])
                 if (ii != std::string::npos) {
                     para.instrument.erase(ii, std::string::npos);
                 }
-                break;
-            case 'T':
-                para.trgDetName = optarg ? optarg : "trigger";
                 break;
             case 'M':
                 para.prometheusDir = optarg;

@@ -783,7 +783,6 @@ int main(int argc, char** argv)
                           /* .maxTrSize     = */ { }, // Filled in @ connect
                           /* .maxResultSize = */ 0,   // Unused here
                           /* .numMrqs       = */ 0,   // Unused here
-                          /* .trgDetName    = */ { }, // Unused here
                           /* .prometheusDir = */ { }, // Optionally filled in below
                           /* .core          = */ { CORE_0, CORE_1 },
                           /* .verbose       = */ 0 },

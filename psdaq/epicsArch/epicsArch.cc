@@ -515,9 +515,6 @@ static void usage(const char* name)
       "    -P      [*required*] Instrument name\n"
       "    -p      [*required*] Set partition id\n"
       "    -o      Set output file directory\n"
-      "    -T      ConfigDb detName for trigger\n"
-      "            (-T without arg gives system default;\n"
-      "             n.b. no space between -T and arg)\n"
       "    -M      Prometheus config file directory\n"
       "    -v      Verbosity level (repeat for increased detail)\n"
       "    -h      Show usage\n"
@@ -549,7 +546,7 @@ int main(int argc, char* argv[])
     Drp::Parameters para;
     std::string kwargs_str;
     int c;
-    while((c = getopt(argc, argv, "p:o:l:C:d:u:k:P:T::M:vh")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:C:d:u:k:P:M:vh")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -574,9 +571,6 @@ int main(int argc, char* argv[])
                 break;
             case 'P':
                 para.instrument = optarg;
-                break;
-            case 'T':
-                para.trgDetName = optarg ? optarg : "trigger";
                 break;
             case 'M':
                 para.prometheusDir = optarg;

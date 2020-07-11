@@ -47,7 +47,6 @@ using string_t = std::string;
 
 static const int      CORE_0          = -1; // devXXX: 18, devXX:  7, accXX:  9
 static const int      CORE_1          = -1; // devXXX: 19, devXX: 19, accXX: 21
-static const string_t TRIGGER_DETNAME = "tmoteb"; // Segment # defaults to 0
 static const unsigned PROM_PORT_BASE  = 9200;     // Prometheus port base
 static const unsigned MAX_PROM_PORTS  = 100;
 
@@ -671,24 +670,23 @@ int TebApp::_configure(const json& msg)
   int               rc = 0;
   Document          top;
   const std::string configAlias(msg["body"]["config_alias"]);
-  std::string&      detName = _prms.trgDetName;
-  if (_prms.trgDetName.empty())  _prms.trgDetName = TRIGGER_DETNAME;
+  const std::string triggerConfig(msg["body"]["trigger_config"]);
 
   // In the following, _0 is added in prints to show the default segment number
   logging::info("Fetching trigger info from ConfigDb/%s/%s_0",
-                configAlias.c_str(), detName.c_str());
+                configAlias.c_str(), triggerConfig.c_str());
 
-  if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, detName, top))
+  if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, triggerConfig, top))
   {
     logging::error("%s:\n  Document '%s_0' not found in ConfigDb",
-                   __PRETTY_FUNCTION__, detName.c_str());
+                   __PRETTY_FUNCTION__, triggerConfig.c_str());
     return -1;
   }
 
-  if (detName != TRIGGER_DETNAME)  _buildContract(top);
+  if (!triggerConfig.empty())  _buildContract(top);
 
   const std::string symbol("create_consumer");
-  Trigger* trigger = _factory.create(top, detName, symbol);
+  Trigger* trigger = _factory.create(top, triggerConfig, symbol);
   if (!trigger)
   {
     logging::error("%s:\n  Failed to create Trigger",
@@ -707,7 +705,7 @@ int TebApp::_configure(const json& msg)
 # define _FETCH(key, item)                                              \
   if (top.HasMember(key))  item = top[key].GetUint();                   \
   else { logging::error("%s:\n  Key '%s' not found in Document %s",     \
-                        __PRETTY_FUNCTION__, key, detName.c_str());     \
+                        __PRETTY_FUNCTION__, key, triggerConfig.c_str()); \
          rc = -1; }
 
   unsigned prescale;  _FETCH("prescale", prescale);
@@ -922,7 +920,6 @@ void TebApp::_printParams(const EbParams& prms, unsigned groups) const
                                                                  std::bitset<64>(prms.contributors).count());
   printf("  Readout group contractors:    ");                    _printGroups(groups, prms.contractors);
   printf("  Readout group receivers:      ");                    _printGroups(groups, prms.receivers);
-  printf("  ConfigDb trigger detName:     %s\n",                 prms.trgDetName.c_str());
   printf("  Number of MEB requestors:     %d\n",                 prms.numMrqs);
   printf("  Batch duration:               0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
   printf("  Batch pool depth:             %d\n",                 MAX_BATCHES);
@@ -953,10 +950,6 @@ static void usage(char *name, char *desc, const EbParams& prms)
           "Partition number");
   fprintf(stderr, " %-23s %s\n",                      "-P <instrument>",
           "Instrument name");
-  fprintf(stderr, " %-23s %s (default: '%s')\n"
-                  " %-23s %s\n",                      "-T[<trigger 'detName'>]",
-          "ConfigDb detName for trigger",             TRIGGER_DETNAME.c_str(),
-          " ", "(-T without arg gives system default; n.b. no space between -T and arg)");
   fprintf(stderr, " %-23s %s (required)\n",           "-u <alias>",
           "Alias for teb process");
   fprintf(stderr, " %-23s %s\n",                      "-M <directory>",
@@ -984,14 +977,13 @@ int main(int argc, char **argv)
   prms.core[1]   = CORE_1;
   prms.verbose   = 0;
 
-  while ((op = getopt(argc, argv, "C:p:P:T::A:1:2:u:M:h?v")) != -1)
+  while ((op = getopt(argc, argv, "C:p:P:A:1:2:u:M:h?v")) != -1)
   {
     switch (op)
     {
       case 'C':  collSrv            = optarg;                       break;
       case 'p':  prms.partition     = std::stoi(optarg);            break;
       case 'P':  prms.instrument    = optarg;                       break;
-      case 'T':  prms.trgDetName    = optarg ? optarg : "trigger";  break;
       case 'A':  prms.ifAddr        = optarg;                       break;
       case '1':  prms.core[0]       = atoi(optarg);                 break;
       case '2':  prms.core[1]       = atoi(optarg);                 break;

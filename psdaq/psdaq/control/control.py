@@ -651,6 +651,7 @@ class CollectionManager():
         self.alias = args.u
         self.config_alias = args.C  # e.g. BEAM/NOBEAM
         self.cfg_dbase = args.d
+        self.trigger_config = args.t
         self.xpm_master = args.x
         self.pv_base = args.B
         self.context = zmq.Context(1)
@@ -1750,7 +1751,7 @@ class CollectionManager():
     def condition_configure(self):
         # phase 1
         ok = self.condition_common('configure', 150000,
-                                   body={'config_alias': self.config_alias})
+                                   body={'config_alias': self.config_alias, 'trigger_config': self.trigger_config})
         if not ok:
             logging.error('condition_configure(): configure phase1 failed')
             return False
@@ -1923,6 +1924,7 @@ def main():
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')
+    parser.add_argument('-t', metavar='TRIGGER_CONFIG', default='tmoteb', help='trigger configuration name')
     parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 0)')
     parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
     parser.add_argument('--rollcall_timeout', type=int, default=30, help='rollcall timeout sec (default 30)')

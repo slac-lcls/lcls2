@@ -10,13 +10,16 @@ parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
 parser.add_argument('--name', help='detector name', type=str, default='trigger')
 parser.add_argument('--segm', help='detector segment', type=int, default=0)
 parser.add_argument('--id', help='device id/serial num', type=str, default='No serial number')
+parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
+parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
 args = parser.parse_args()
 
 # these are the current default values, but put them here to be explicit
 create = False
 dbname = 'configDB'
 
-mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create, dbname)
+mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create, 
+                     root=dbname, user=args.user, password=args.password)
 
 # this needs to be called once per detType at the
 # "beginning of time" to create the collection name (same as detType
