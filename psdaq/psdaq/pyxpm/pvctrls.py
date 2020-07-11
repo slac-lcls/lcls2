@@ -207,9 +207,18 @@ class CuGenCtrls(object):
             reg.set(init)
             return pv
 
-        self._pv_cuDelay    = addPV('CuDelay'   , dbinit['CuDelay']    if dbinit else 200*800, xpm.CuGenerator.cuDelay          , True)
-        self._pv_cuBeamCode = addPV('CuBeamCode', dbinit['CuBeamCode'] if dbinit else     140, xpm.CuGenerator.cuBeamCode       , True)
-        self._pv_clearErr   = addPV('ClearErr'  ,       0, xpm.CuGenerator.cuFiducialIntvErr, False)
+        try:
+            cuDelay    = dbinit['XTPG']['CuDelay']
+            cuBeamCode = dbInit['XTPG']['CuBeamCode']
+            cuInput    = dbinit['XTPG']['CuInput']
+        except:
+            cuDelay    = 200*800
+            cuBeamCode = 140
+            cuInput    = 1
+            
+        self._pv_cuDelay    = addPV('CuDelay'   ,    cuDelay, xpm.CuGenerator.cuDelay          , True)
+        self._pv_cuBeamCode = addPV('CuBeamCode', cuBeamCode, xpm.CuGenerator.cuBeamCode       , True)
+        self._pv_clearErr   = addPV('ClearErr'  ,          0, xpm.CuGenerator.cuFiducialIntvErr, False)
 
         def addPV(label, init, reg, archive):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
@@ -219,7 +228,7 @@ class CuGenCtrls(object):
                 r.set(init)
             return pv
 
-        self._pv_cuInput    = addPV('CuInput'   , dbinit['CuInput'] if dbinit else   1, xpm.AxiSy56040.OutputConfig, True)
+        self._pv_cuInput    = addPV('CuInput'   , cuInput, xpm.AxiSy56040.OutputConfig, True)
 
 class PVInhibit(object):
     def __init__(self, name, app, inh, group, idx):
@@ -486,7 +495,7 @@ class PVCtrls(object):
             provider.add(name+':DumpPll%d'%i,pv)
             self._pv_amcDumpPLL.append(pv)
 
-        self._cu    = CuGenCtrls(name+':XTPG', xpm, dbinit=init['XTPG'] if init is not None else None)
+        self._cu    = CuGenCtrls(name+':XTPG', xpm, dbinit=init)
 
         self._group = GroupCtrls(name, app, stats, init=init)
 
@@ -516,6 +525,7 @@ class PVCtrls(object):
             countdn -= 1
             if countdn == 0 and self._db:
                 # save config
+                print('Updating {}'.format(self._db))
                 db_url, db_name, db_instrument, db_alias = self._db.split(',',4)
                 mycdb = cdb.configdb(db_url, db_instrument, True, db_name)
                 mycdb.add_device_config('xpm')
@@ -537,7 +547,11 @@ class PVCtrls(object):
 
                 if not db_alias in mycdb.get_aliases():
                     mycdb.add_alias(db_alias)
-                mycdb.modify_device(db_alias, top)
+
+                try:
+                    mycdb.modify_device(db_alias, top)
+                except:
+                    pass
                 
     def notify(self):
         client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

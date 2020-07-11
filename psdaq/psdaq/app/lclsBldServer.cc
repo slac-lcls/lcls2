@@ -28,6 +28,7 @@ static void usage(const char* p) {
   printf("          -a <addr>      : MC address   [default: 0xefff1801]\n");
   printf("          -i <addr/name> : MC interface [no default] \n");
   printf("          -r <rate>      : update rate  [default: 5 = 10Hz]\n");
+  printf("          -e <eventcode> : update evcode\n");
 }
 
 int main(int argc, char** argv) {
@@ -42,10 +43,11 @@ int main(int argc, char** argv) {
   unsigned mcintf = 0;
   unsigned short port = 12148;
   unsigned rate = 5;
+  int      evcode = -1;
 
   //char* endptr;
 
-  while ( (c=getopt( argc, argv, "d:a:b:i:r:h?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "d:a:b:e:i:r:h?")) != EOF ) {
     switch(c) {
     case 'd':
       tprid  = optarg[0];
@@ -62,6 +64,9 @@ int main(int argc, char** argv) {
       break;
     case 'i':
       mcintf = Psdaq::AppUtils::parse_interface(optarg);
+      break;
+    case 'e':
+      evcode = strtoul(optarg,NULL,0);
       break;
     case 'r':
       rate = strtoul(optarg,NULL,0);
@@ -150,10 +155,14 @@ int main(int argc, char** argv) {
     char evrdev[16];
     sprintf(evrdev,"/dev/tpr%c",tprid);
 
-    Client client(evrdev,1);
+    Client client(evrdev,1,evcode<0);
 
     client.setup(0, 0, 1);
-    client.start(TprBase::FixedRate(rate));
+    if (evcode<0)
+      client.start(TprBase::FixedRate(rate));
+    else
+      client.start(TprBase::EventCode(evcode));
+
     client.release();
 
     while(1) {
