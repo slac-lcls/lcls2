@@ -648,6 +648,7 @@ void TebApp::_buildContract(const Document& top)
 {
   const json& body = _connectMsg["body"];
 
+  bool buildAll = top.HasMember("buildAll") && top["buildAll"].GetInt()==1;
   _prms.contractors.fill(0);
 
   for (auto it : body["drp"].items())
@@ -657,7 +658,7 @@ void TebApp::_buildContract(const Document& top)
     size_t      found   = alias.rfind('_');
     std::string detName = alias.substr(0, found);
 
-    if (top.HasMember(detName.c_str()))
+    if (buildAll || top.HasMember(detName.c_str()))
     {
       auto group = unsigned(it.value()["det_info"]["readout"]);
       _prms.contractors[group] |= 1ul << drpId;

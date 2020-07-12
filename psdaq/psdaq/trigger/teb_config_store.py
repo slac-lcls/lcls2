@@ -18,7 +18,9 @@ args = parser.parse_args()
 create = False
 dbname = 'configDB'
 
-mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create,
+#mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create,
+#                     root=dbname, user=args.user, password=args.password)
+mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-kerb/devconfigdb/ws/', args.inst, create,
                      root=dbname, user=args.user, password=args.password)
 
 # this needs to be called once per detType at the
@@ -33,6 +35,8 @@ top.setInfo('teb', args.name, args.segm, args.id, 'No comment')
 top.setAlg('tebConfig', [0,0,1])
 
 top.set('soname', 'libtmoTeb.so', 'CHARSTR')
+
+top.set('buildAll', 1, 'UINT32')
 
 # This is a required entry:
 top.set('prescale', 1, 'UINT32')
