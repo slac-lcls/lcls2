@@ -23,31 +23,6 @@ static json createFileReportMsg(std::string path, std::string absolute_path,
                                 unsigned run_num, std::string hostname);
 static json createPulseIdMsg(uint64_t pulseId);
 
-// _dehex - convert a hex std::string to an array of chars
-//
-// For example, string "0E2021" is converted to array [14, 32, 33].
-// <outArray> must be allocated by the caller to at least half
-// the length of <inString>.
-//
-// RETURNS: 0 on success, otherwise 1.
-//
-static int _dehex(std::string inString, char *outArray)
-{
-    if (outArray) {
-        try {
-            for (unsigned uu = 0; uu < inString.length() / 2; uu++) {
-                std::string str2 = inString.substr(2*uu, 2);
-                outArray[uu] = (char) std::stoi(str2, 0, 16);   // base 16
-            }
-            return 0;   // success
-        }
-        catch (std::exception& e) {
-            std::cout << "Exception in _dehex(): " << e.what() << "\n";
-        }
-    }
-    return 1;           // error
-}
-
 namespace Drp {
 
 static const unsigned PROM_PORT_BASE  = 9200;
@@ -397,36 +372,6 @@ std::string DrpBase::connect(const json& msg, size_t id)
     return std::string{};
 }
 
-std::string DrpBase::beginstep(XtcData::Xtc& xtc, const json& phase1Info)
-{
-    std::string retval;
-    if (phase1Info.find("ShapesDataBlockHex") != phase1Info.end()) {
-        std::string xtcHex = phase1Info["ShapesDataBlockHex"];
-        unsigned hexlen = xtcHex.length();
-        if ((hexlen == 0) || (hexlen & 1)) {
-            // error
-            retval = "beginstep: invalid ShapesDataBlockHex length = " + std::to_string(hexlen);
-        } else {
-            logging::debug("%s: ShapesDataBlockHex length = %u", __PRETTY_FUNCTION__, hexlen);
-            char *xtcBytes = new char[hexlen / 2]();
-            if (_dehex(xtcHex, xtcBytes) != 0) {
-                // error
-                retval = "beginstep: failed to decode ShapesDataBlockHex";
-            } else {
-                // append the beginstep xtc info to the dgram
-                XtcData::Xtc& jsonxtc = *(XtcData::Xtc*)xtcBytes;
-                logging::debug("%s: jsonxtc.sizeofPayload() = %u\n", __PRETTY_FUNCTION__,
-                               jsonxtc.sizeofPayload());
-                unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
-                memcpy(xtc.next(), xtcBytes, copylen);
-                xtc.alloc(copylen);
-            }
-            delete[] xtcBytes;
-        }
-    }
-    return retval;
-}
-
 std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
 {
     std::string msg;
@@ -483,36 +428,10 @@ std::string DrpBase::endrun(const json& phase1Info)
     return std::string{};
 }
 
-std::string DrpBase::configure(XtcData::Xtc& xtc, const json& msg)
+std::string DrpBase::configure(const json& msg)
 {
     if (setupTriggerPrimitives(msg["body"])) {
         return std::string("Failed to set up TriggerPrimitive(s)");
-    }
-
-    if ((msg["body"].find("phase1Info") != msg["body"].end()) &&
-        (msg["body"]["phase1Info"].find("NamesBlockHex") != msg["body"]["phase1Info"].end())) {
-        std::string xtcHex = msg["body"]["phase1Info"]["NamesBlockHex"];
-        unsigned hexlen = xtcHex.length();
-        if ((hexlen == 0) || (hexlen & 1)) {
-            // error
-            return std::string("configure: invalid NamesBlockHex length = ") + std::to_string(hexlen);
-        } else {
-            logging::debug("%s: NamesBlockHex length = %u", __PRETTY_FUNCTION__, hexlen);
-            char *xtcBytes = new char[hexlen / 2]();
-            if (_dehex(xtcHex, xtcBytes) != 0) {
-                // error
-                return std::string("configure: failed to decode NamesBlockHex");
-            } else {
-                // append the config xtc info to the dgram
-                XtcData::Xtc& jsonxtc = *(XtcData::Xtc*)xtcBytes;
-                    logging::debug("%s: jsonxtc.sizeofPayload() = %u\n", __PRETTY_FUNCTION__,
-                                   jsonxtc.sizeofPayload());
-                unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
-                memcpy(xtc.next(), xtcBytes, copylen);
-                xtc.alloc(copylen);
-            }
-            delete[] xtcBytes;
-        }
     }
 
     // Find and register a port to use with Prometheus for run-time monitoring

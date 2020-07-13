@@ -177,6 +177,11 @@ void TimingSystem::beginstep(XtcData::Xtc& xtc, const json& stepInfo) {
     std::cout << "*** stepInfo: " << stepInfo.dump() << std::endl;
 }
 
+// returning true here causes this detector to record scanInfo data
+bool TimingSystem::scanEnabled() {
+    return true;
+}
+
 void TimingSystem::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
     DescribedData ts(dgram.xtc, m_namesLookup, m_evtNamesId);

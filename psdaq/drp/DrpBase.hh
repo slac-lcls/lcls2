@@ -66,8 +66,7 @@ public:
     void reset();
     nlohmann::json connectionInfo();
     std::string connect(const nlohmann::json& msg, size_t id);
-    std::string configure(XtcData::Xtc& xtc, const nlohmann::json& msg);
-    std::string beginstep(XtcData::Xtc& xtc, const nlohmann::json& phase1Info);
+    std::string configure(const nlohmann::json& msg);
     std::string beginrun(const nlohmann::json& phase1Info, RunInfo& runInfo);
     std::string endrun(const nlohmann::json& phase1Info);
     void runInfoSupport(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
