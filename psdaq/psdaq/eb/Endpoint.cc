@@ -823,6 +823,7 @@ bool Fabric::initialize(const char* node, const char* service, uint64_t flags, s
       _hints->tx_attr->size = tx_size;
     if (rx_size)
       _hints->rx_attr->size = rx_size;
+    _hints->domain_attr->cq_data_size = 4;  /* required minimum */
 
     CHECK_ERR(fi_getinfo(FIVER, node ? node : ANY_ADDR, service, flags, _hints, &_info), "fi_getinfo");
     // sockets provider and maybe others ignore the hints so let's explicitly set the mr_mode bits.
@@ -969,23 +970,20 @@ bool EndpointBase::initialize()
     return false;
   }
 
-  struct fi_eq_attr eq_attr = {
-    .size = 0,
-    .flags = 0,
-    .wait_obj = FI_WAIT_UNSPEC,
-    .signaling_vector = 0,
-    .wait_set = NULL,
-  };
+  struct fi_eq_attr eq_attr;
 
-  struct fi_cq_attr cq_attr = {
-    .size = 0,
-    .flags = 0,
-    .format = FI_CQ_FORMAT_DATA,
-    .wait_obj = FI_WAIT_UNSPEC,
-    .signaling_vector = 0,
-    .wait_cond = FI_CQ_COND_NONE,
-    .wait_set = NULL,
-  };
+  memset(&eq_attr, 0, sizeof(eq_attr));
+  eq_attr.size = 0;
+  eq_attr.flags = 0;
+  eq_attr.wait_obj = FI_WAIT_UNSPEC;
+
+  struct fi_cq_attr cq_attr;
+
+  memset(&cq_attr, 0, sizeof(cq_attr));
+  cq_attr.size = 0;
+  cq_attr.flags = 0;
+  cq_attr.format = FI_CQ_FORMAT_DATA;
+  cq_attr.wait_obj = FI_WAIT_UNSPEC;
 
   if (!_eq) {
     _eq = new EventQueue(_fabric, &eq_attr, NULL);
@@ -1001,7 +999,7 @@ bool EndpointBase::initialize()
   if (!_rxcq) {
     _rxcq = _txcq_owner ? _txcq : new CompletionQueue(_fabric, &cq_attr, NULL);
     if (!_rxcq)  return false;
-    _rxcq_owner = true;
+    _rxcq_owner = !_txcq_owner;
   }
 
   _state = EP_UP;
@@ -1884,15 +1882,13 @@ CompletionQueue::CompletionQueue(Fabric* fabric, size_t size) :
   _fabric(fabric),
   _cq(nullptr)
 {
-  struct fi_cq_attr cq_attr = {
-    .size = size,
-    .flags = 0,
-    .format = FI_CQ_FORMAT_DATA,
-    .wait_obj = FI_WAIT_UNSPEC,
-    .signaling_vector = 0,
-    .wait_cond = FI_CQ_COND_NONE,
-    .wait_set = NULL,
-  };
+  struct fi_cq_attr cq_attr;
+
+  memset(&cq_attr, 0, sizeof(cq_attr));
+  cq_attr.size = size;
+  cq_attr.flags = 0;
+  cq_attr.format = FI_CQ_FORMAT_DATA;
+  cq_attr.wait_obj = FI_WAIT_UNSPEC;
 
   _up = initialize(&cq_attr, NULL);
 }
@@ -1926,9 +1922,39 @@ ssize_t CompletionQueue::comp_error(struct fi_cq_err_entry* comp_err)
   return rret;
 }
 
+#pragma GCC diagnostic ignored "-Wunused-function"
+
+static void comp_error_dump(struct fi_cq_err_entry* comp_err)
+{
+  printf ("void*    op_context    %p\n",     comp_err->op_context);
+  printf ("uint64_t flags         %016lx\n", comp_err->flags);
+  printf ("size_t   len           %zd\n",    comp_err->len);
+  printf ("void*    buf           %p\n",     comp_err->buf);
+  printf ("uint64_t data          %016lx\n", comp_err->data);
+  printf ("uint64_t tag           %016lx\n", comp_err->tag);
+  printf ("size_t   olen          %zd\n",    comp_err->olen);
+  printf ("int      err           %d\n",     comp_err->err);
+  printf ("int      prov_errno    %d\n",     comp_err->prov_errno);
+  /* err_data is available until the next time the CQ is read */
+  printf ("size_t   err_data_size %zd\n",    comp_err->err_data_size);
+  printf ("void*    err_data      %p\n",     comp_err->err_data);
+  if (comp_err->err_data_size) {
+    uint32_t* ptr = (uint32_t*)comp_err->err_data;
+    for (unsigned i = 0; i < comp_err->err_data_size; ++i)
+      printf("  %08x", *ptr++);
+    printf("\n");
+  }
+}
+
+#pragma GCC diagnostic pop
+
 ssize_t CompletionQueue::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, const char* cmd)
 {
   struct fi_cq_err_entry comp_err;
+  //uint32_t err_data = 0xeeeeeeee;
+  //memset(&comp_err, 0xee, sizeof(comp_err));
+  //comp_err.buf      = nullptr;
+  //comp_err.err_data = &err_data;
 
   if ((comp_ret < 0) && (comp_ret != -FI_EAGAIN)) {
     _errno = (int) comp_ret;
@@ -1937,6 +1963,7 @@ ssize_t CompletionQueue::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* 
         char buf[ERR_MSG_LEN];
         fi_cq_strerror(_cq, comp_err.prov_errno, comp_err.err_data, buf, sizeof(buf));
         set_custom_error("%s: %s(%d)", cmd, buf, comp_err.prov_errno);
+        //comp_error_dump(&comp_err);
       }
     } else {
       set_error(cmd);
@@ -1958,6 +1985,7 @@ ssize_t CompletionQueue::comp_wait(struct fi_cq_data_entry* comp, ssize_t max_co
 ssize_t CompletionQueue::check_completion(int context, unsigned flags, uint64_t* data)
 {
   struct fi_cq_data_entry comp;
+  //memset(&comp, 0xee, sizeof(comp));
 
   ssize_t rret = comp_wait(&comp, 1);
   if (rret == 1) {
@@ -1966,6 +1994,7 @@ ssize_t CompletionQueue::check_completion(int context, unsigned flags, uint64_t*
         if (*((int*) comp.op_context) == context) {
           if (data)
             *data = comp.data;
+          //dump_cq_data_entry(comp); // Temporary
           return FI_SUCCESS;
         } else {
           set_custom_error("Wrong completion: comp.op_context value is %d, expected %d", *(int*)comp.op_context, context);
@@ -2051,13 +2080,12 @@ EventQueue::EventQueue(Fabric* fabric, size_t size) :
   _fabric(fabric),
   _eq(nullptr)
 {
-  struct fi_eq_attr eq_attr = {
-    .size = size,
-    .flags = 0,
-    .wait_obj = FI_WAIT_UNSPEC,
-    .signaling_vector = 0,
-    .wait_set = NULL,
-  };
+  struct fi_eq_attr eq_attr;
+
+  memset(&eq_attr, 0, sizeof(eq_attr));
+  eq_attr.size = size;
+  eq_attr.flags = 0;
+  eq_attr.wait_obj = FI_WAIT_UNSPEC;
 
   _up = initialize(&eq_attr, NULL);
 }
