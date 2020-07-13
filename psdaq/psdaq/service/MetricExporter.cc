@@ -43,7 +43,7 @@ void Pds::MetricExporter::add(const std::string& name,
     }
     m_families.emplace_back(makeMetric(name, labels, prometheusType));
     m_values.push_back(value);
-    m_histos.emplace_back(0, 0, 0);     // Placeholder; not used
+    m_histos.push_back(nullptr);        // Placeholder; not used
     m_type.push_back(type);
     Pds::Previous previous;
     if (type == Pds::MetricType::Rate) {
@@ -73,7 +73,7 @@ std::vector<prometheus::MetricFamily> Pds::MetricExporter::Collect() const
             m_previous[i].time = now;
         }
         else if (m_type[i] == Pds::MetricType::Histogram) {
-            m_histos[i].collect(m_families[i]);
+            m_histos[i]->collect(m_families[i]);
         }
         else {
             setValue(m_families[i], m_values[i]());
@@ -85,7 +85,8 @@ std::vector<prometheus::MetricFamily> Pds::MetricExporter::Collect() const
 
 Pds::PromHistogram::PromHistogram(unsigned numBins, double binWidth, double binMin) :
   _boundaries(numBins),
-  _counts    (numBins + 1)
+  _counts    (numBins + 1),
+  _sum       (0.0)
 {
     //if (numBins)
     //    printf("PromHisto: numBins %u, binWidth %f, binMin %f\n", numBins, binWidth, binMin);
@@ -94,18 +95,17 @@ Pds::PromHistogram::PromHistogram(unsigned numBins, double binWidth, double binM
     }
 }
 
-Pds::PromHistogram&
+std::shared_ptr<Pds::PromHistogram>
     Pds::MetricExporter::add(const std::string& name,
                              const std::map<std::string, std::string>& labels,
                              unsigned numBins, double binWidth, double binMin)
 {
     Pds::MetricType type = Pds::MetricType::Histogram;
     prometheus::MetricType prometheusType = prometheus::MetricType::Histogram;
-    auto family = makeMetric(name, labels, prometheusType);
-    family.metric[0].histogram.bucket.resize(numBins + 1);
-    m_families.emplace_back(family);
-    m_values.push_back([](){ return 0; } ); // Placeholder; won't be called
-    m_histos.emplace_back(numBins, binWidth, binMin);
+    m_families.emplace_back(makeMetric(name, labels, prometheusType));
+    m_families.back().metric[0].histogram.bucket.resize(numBins + 1);
+    m_values.push_back(nullptr);        // Placeholder; won't be called
+    m_histos.push_back(std::make_shared<PromHistogram>(numBins, binWidth, binMin));
     m_type.push_back(type);
 
     //for (unsigned i = 0; i < m_type.size(); ++i)
@@ -132,20 +132,25 @@ void Pds::PromHistogram::collect(prometheus::MetricFamily& family)
 
     //printf("collect: count %llu, sum %f\n", cumulative_count, _sum);
     //for (unsigned i = 0; i < metric.histogram.bucket.size(); ++i)
-    //  printf("collect: bucket[%u] cnt %lu, ub %f\n",
-    //         i, metric.histogram.bucket[i].cumulative_count, metric.histogram.bucket[i].upper_bound);
+    //    printf("collect: bucket[%u] cnt %lu, ub %f\n",
+    //           i, metric.histogram.bucket[i].cumulative_count, metric.histogram.bucket[i].upper_bound);
 }
 
 void Pds::PromHistogram::observe(double sample)
 {
     auto bin = static_cast<std::size_t>(std::distance(
-      _boundaries.begin(),
-      std::find_if(_boundaries.begin(), _boundaries.end(),
-                   [sample](double boundary) { return boundary >= sample; })));
-    _counts[bin]++;
-    _sum += sample;
-
-    //printf("observe: sample %f, bin %d, counts %lu, sum %f\n",
+        _boundaries.begin(),
+        std::find_if(_boundaries.begin(), _boundaries.end(),
+                     [sample](double boundary) { return boundary >= sample; })));
+    if (bin >= 0 && bin < _counts.size()) {
+        _counts[bin]++;
+        _sum += sample;
+    }
+    else {
+      fprintf(stderr, "%s:\n  Bin number %zd is out of range [0, %zd) for sample %f ([%f - %f))\n",
+              __PRETTY_FUNCTION__, bin, _counts.size(), sample, *_boundaries.begin(), *_boundaries.end());
+    }
+    //printf("observe: sample %f, bin %zd, counts %lu, sum %f\n",
     //       sample, bin, _counts[bin], _sum);
 }
 

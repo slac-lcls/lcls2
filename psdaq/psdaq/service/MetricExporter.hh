@@ -46,7 +46,7 @@ public:
     void add(const std::string& name,
              const std::map<std::string, std::string>& labels,
              MetricType type, std::function<uint64_t()> value);
-    PromHistogram&
+    std::shared_ptr<PromHistogram>
          add(const std::string& name,
              const std::map<std::string, std::string>& labels,
              unsigned numBins, double binWidth=1.0, double binMin=0.0);
@@ -54,7 +54,7 @@ public:
 private:
     mutable std::vector<prometheus::MetricFamily> m_families;
     std::vector<std::function<uint64_t()> > m_values;
-    mutable std::vector<PromHistogram> m_histos;
+    mutable std::vector<std::shared_ptr<PromHistogram> > m_histos;
     std::vector<MetricType> m_type;
     mutable std::vector<Previous> m_previous;
 };
