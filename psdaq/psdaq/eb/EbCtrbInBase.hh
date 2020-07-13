@@ -4,6 +4,7 @@
 #include "EbLfServer.hh"
 
 #include <memory>
+#include <string>
 #include <vector>
 #include <atomic>
 #include <list>
@@ -27,15 +28,22 @@ namespace Pds
       EbCtrbInBase(const TebCtrbParams&, const std::shared_ptr<MetricExporter>&);
       virtual ~EbCtrbInBase() {}
     public:
-      int      configure(const TebCtrbParams&);
+      int      resetCounters();
+      int      startConnection(std::string& port);
+      int      connect();
+      int      configure();
+      void     unconfigure();
+      void     disconnect();
+      void     shutdown();
     public:
       void     receiver(TebContributor&, std::atomic<bool>& running);
     public:
       virtual
       void     process(const ResultDgram& result, const void* input) = 0;
     private:
-      void    _initialize(const char* who);
-      void    _shutdown();
+      int     _linksConfigure(std::vector<EbLfSvrLink*>& links,
+                              unsigned                   id,
+                              const char*                name);
       int     _process(TebContributor& ctrb);
       void    _matchUp(TebContributor&    ctrb,
                        const ResultDgram* results);

@@ -19,16 +19,17 @@
 namespace Pds {
   namespace Eb {
 
-    using AppPrm = std::atomic<uintptr_t>;
-    using lock_t = std::mutex;
-    using cv_t   = std::condition_variable_any;
+    using AppPrm_t = std::atomic<uintptr_t>;
+    using lock_t   = std::mutex;
+    using cv_t     = std::condition_variable_any;
 
     class BatchManager
     {
     public:
-      BatchManager(size_t maxEntrySize, bool batching);
+      BatchManager();
       ~BatchManager();
     public:
+      int             initialize(size_t maxEntrySize, bool batching);
       void            stop();
       void            shutdown();
       Batch*          fetch(uint64_t pid);
@@ -47,11 +48,11 @@ namespace Pds {
       const uint64_t& batchFreeCnt()  const;
       const uint64_t& batchWaiting()  const;
     private:
-      const size_t          _maxBatchSize; // Max batch size rounded up by page size
-      char* const           _region;       // RDMA buffers for batches
+      size_t                _maxBatchSize; // Max batch size rounded up by page size
+      char*                 _region;       // RDMA buffers for batches
       mutable lock_t        _lock;         // Resource wait lock
       mutable cv_t          _cv;           // Monitor the number of free batches
-      std::vector<AppPrm>   _appPrms;      // Lookup array of application parameters
+      std::vector<AppPrm_t> _appPrms;      // Lookup array of application parameters
       std::atomic<uint64_t> _lastFreed;    // PID of last freed batch
       uint64_t              _previousPid;  // PID of previous fetch attempt
       Batch                 _batch;        // The currently being accumulated batch

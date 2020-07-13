@@ -110,7 +110,7 @@ Pds::EbDgram* MemPool::allocateTr()
 
 
 EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
-                       MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
+                       MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon,
                        const std::shared_ptr<Pds::MetricExporter>& exporter) :
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
@@ -132,6 +132,7 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
     exporter->add("DRP_Damage"    , labels, Pds::MetricType::Gauge  , [&](){ return m_damage; });
     exporter->add("DRP_RecordSize", labels, Pds::MetricType::Counter, [&](){ return m_offset; });
     exporter->add("DRP_RecordDepth", labels, Pds::MetricType::Gauge , [&](){ return m_fileWriter.depth(); });
+    m_dmgType = exporter->add("DRP_DamageType", labels, 16);
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname)
@@ -196,8 +197,11 @@ std::string EbReceiver::closeFiles()
 
 void EbReceiver::resetCounters()
 {
+    EbCtrbInBase::resetCounters();
+
     m_lastIndex = 0;
     m_damage = 0;
+    m_dmgType->clear();
 }
 
 void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
@@ -251,6 +255,12 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     dgram->xtc.damage.increase(result.xtc.damage.value());
     if (dgram->xtc.damage.value()) {
         m_damage++;
+        uint16_t damage = dgram->xtc.damage.value();
+        while (damage) {
+            unsigned dmgType = __builtin_ffsl(damage) - 1;
+            damage &= ~(1 << dmgType);
+            m_dmgType->observe(dmgType);
+        }
     }
 
     // pass everything except L1 accepts and slow updates to control level
@@ -292,16 +302,16 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         }
     }
 
-    if (m_mon) {
+    if (m_mon.enabled()) {
         // L1Accept
         if (result.isEvent()) {
             if (result.monitor()) {
-                m_mon->post(dgram, result.monBufNo());
+                m_mon.post(dgram, result.monBufNo());
             }
         }
         // Other Transition
         else {
-            m_mon->post(m_pool.pgpEvents[index].transitionDgram);
+            m_mon.post(m_pool.pgpEvents[index].transitionDgram);
         }
     }
 
@@ -326,15 +336,80 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
 }
 
 
+static std::unique_ptr<prometheus::Exposer>
+    createExposer(const Parameters& para,
+                  const std::string& hostname)
+{
+    std::unique_ptr<prometheus::Exposer> exposer;
+
+    // Find and register a port to use with Prometheus for run-time monitoring
+    unsigned port = 0;
+    for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
+        try {
+            port = PROM_PORT_BASE + i;
+            exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
+            if (i > 0) {
+                if ((i < MAX_PROM_PORTS) && !para.prometheusDir.empty()) {
+                    std::string fileName = para.prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i) + ".yaml";
+                    FILE* file = fopen(fileName.c_str(), "w");
+                    if (file) {
+                        fprintf(file, "- targets:\n    - '%s:%d'\n", hostname.c_str(), port);
+                        fclose(file);
+                    }
+                    else {
+                        // %m will be replaced by the string strerror(errno)
+                        logging::warning("Error creating file %s: %m", fileName.c_str());
+                    }
+                }
+                else {
+                    logging::warning("Could not start run-time monitoring server");
+                }
+            }
+            break;
+        }
+        catch(const std::runtime_error& e) {
+            logging::debug("Could not start run-time monitoring server on port %d", port);
+            logging::debug("%s", e.what());
+        }
+    }
+
+    if (exposer) {
+        logging::info("Providing run-time monitoring data on port %d", port);
+    }
+
+    return exposer;
+}
+
 DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     pool(para), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
 {
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+    m_hostname = std::string(hostname);
+
+    m_exposer = createExposer(para, m_hostname);
+    m_exporter = std::make_shared<Pds::MetricExporter>();
+
+    if (m_exposer) {
+        m_exposer->RegisterCollectable(m_exporter);
+    }
+
+    std::map<std::string, std::string> labels{{"instrument", para.instrument},
+                                              {"partition", std::to_string(para.partition)},
+                                              {"detname", para.detName}};
+    m_exporter->add("drp_port_rcv_rate", labels, Pds::MetricType::Rate,
+                    [](){return 4*readInfinibandCounter("port_rcv_data");});
+
+    m_exporter->add("drp_port_xmit_rate", labels, Pds::MetricType::Rate,
+                    [](){return 4*readInfinibandCounter("port_xmit_data");});
+
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition = para.partition;
     m_tPrms.batching  = m_para.kwargs["batching"] != "no"; // Default to "yes"
     m_tPrms.core[0]   = -1;
     m_tPrms.core[1]   = -1;
     m_tPrms.verbose   = para.verbose;
+    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, m_exporter);
 
     m_mPrms.instrument = para.instrument;
     m_mPrms.partition = para.partition;
@@ -342,23 +417,36 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_mPrms.maxEvSize = pool.bufferSize();
     m_mPrms.maxTrSize = para.maxTrSize;
     m_mPrms.verbose   = para.verbose;
+    m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, m_exporter);
+
+    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *m_mebContributor, m_exporter);
 
     m_inprocSend.connect("inproc://drp");
-
-    char hostname[HOST_NAME_MAX];
-    gethostname(hostname, HOST_NAME_MAX);
-    m_hostname = std::string(hostname);
 }
 
 void DrpBase::shutdown()
 {
-    if (m_tebContributor)  m_tebContributor->shutdown();
-    if (m_mebContributor)  m_mebContributor->shutdown();
+    m_tebContributor->shutdown();
+    m_mebContributor->shutdown();
+    m_ebRecv->shutdown();
 }
 
 void DrpBase::reset()
 {
-    if (m_exporter)  m_exporter.reset();
+    shutdown();
+}
+
+json DrpBase::connectionInfo(const std::string& ip)
+{
+    m_tPrms.ifAddr = ip;
+    m_tPrms.port.clear();
+    int rc = m_ebRecv->startConnection(m_tPrms.port);
+    if (rc)  throw "Error starting connection";
+
+    json info = {{"drp_port", m_tPrms.port},
+                 {"max_ev_size", m_mPrms.maxEvSize},
+                 {"max_tr_size", m_mPrms.maxTrSize}};
+    return info;
 }
 
 std::string DrpBase::connect(const json& msg, size_t id)
@@ -369,6 +457,57 @@ std::string DrpBase::connect(const json& msg, size_t id)
 
     parseConnectionParams(msg["body"], id);
 
+    int rc = m_tebContributor->connect();
+    if (rc) {
+        return std::string{"TebContributor connect failed"};
+    }
+    if (m_mPrms.addrs.size() != 0) {
+        rc = m_mebContributor->connect(m_mPrms);
+        if (rc) {
+            return std::string{"MebContributor connect failed"};
+        }
+    }
+    rc = m_ebRecv->connect();
+    if (rc) {
+        return std::string{"EbReceiver connect failed"};
+    }
+
+    return std::string{};
+}
+
+std::string DrpBase::configure(const json& msg)
+{
+    if (setupTriggerPrimitives(msg["body"])) {
+        return std::string("Failed to set up TriggerPrimitive(s)");
+    }
+
+    int rc = m_tebContributor->configure();
+    if (rc) {
+        return std::string{"TebContributor configure failed"};
+    }
+
+    if (m_mPrms.addrs.size() != 0) {
+        void* poolBase = (void*)pool.pebble[0];
+        size_t poolSize = pool.pebble.size();
+        rc = m_mebContributor->configure(poolBase, poolSize);
+        if (rc) {
+            return std::string{"MebContributor configure failed"};
+        }
+    }
+
+    rc = m_ebRecv->configure();
+    if (rc) {
+        return std::string{"EbReceiver configure failed"};
+    }
+
+    printParams();
+
+    // start eb receiver thread
+    m_tebContributor->startup(*m_ebRecv);
+
+    m_tebContributor->resetCounters();
+    m_mebContributor->resetCounters();
+    m_ebRecv->resetCounters();
     return std::string{};
 }
 
@@ -388,8 +527,8 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
     runInfo.experimentName = experiment_name;
     runInfo.runNumber = run_number;
 
-    logging::debug("%s: expt=\"%s\" runnum=%u",
-                   __PRETTY_FUNCTION__, experiment_name.c_str(), run_number);
+    logging::debug("expt=\"%s\" runnum=%u",
+                   experiment_name.c_str(), run_number);
 
     // if run_number is nonzero then we are recording
     if (run_number) {
@@ -400,6 +539,8 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
             msg = m_ebRecv->openFiles(m_para, runInfo, m_hostname);
         }
     }
+    m_tebContributor->resetCounters();
+    m_mebContributor->resetCounters();
     m_ebRecv->resetCounters();
     return msg;
 }
@@ -428,93 +569,22 @@ std::string DrpBase::endrun(const json& phase1Info)
     return std::string{};
 }
 
-std::string DrpBase::configure(const json& msg)
+void DrpBase::unconfigure()
 {
-    if (setupTriggerPrimitives(msg["body"])) {
-        return std::string("Failed to set up TriggerPrimitive(s)");
-    }
-
-    // Find and register a port to use with Prometheus for run-time monitoring
-    if (m_exposer)  m_exposer.reset();
-    unsigned port = 0;
-    for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
-        try {
-            port = PROM_PORT_BASE + i;
-            m_exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
-            if (i > 0) {
-                if ((i < MAX_PROM_PORTS) && !m_para.prometheusDir.empty()) {
-                    std::string fileName = m_para.prometheusDir + "/drpmon_" + m_hostname + "_" + std::to_string(i) + ".yaml";
-                    FILE* file = fopen(fileName.c_str(), "w");
-                    if (file) {
-                        fprintf(file, "- targets:\n    - '%s:%d'\n", m_hostname.c_str(), port);
-                        fclose(file);
-                    }
-                    else {
-                        // %m will be replaced by the string strerror(errno)
-                        logging::error("Error creating file %s: %m", fileName.c_str());
-                    }
-                }
-                else {
-                    logging::warning("Could not start run-time monitoring server");
-                }
-            }
-            break;
-        }
-        catch(const std::runtime_error& e) {
-            logging::debug("Could not start run-time monitoring server on port %d", port);
-            logging::debug("%s", e.what());
-        }
-    }
-
-    if (m_exporter)  m_exporter.reset();
-    m_exporter = std::make_shared<Pds::MetricExporter>();
-    if (m_exposer) {
-        logging::info("Providing run-time monitoring data on port %d", port);
-        m_exposer->RegisterCollectable(m_exporter);
-    }
-
-    std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
-                                              {"partition", std::to_string(m_para.partition)},
-                                              {"detname", m_para.detName}};
-    m_exporter->add("drp_port_rcv_rate", labels, Pds::MetricType::Rate,
-                    [](){return 4*readInfinibandCounter("port_rcv_data");});
-
-    m_exporter->add("drp_port_xmit_rate", labels, Pds::MetricType::Rate,
-                    [](){return 4*readInfinibandCounter("port_xmit_data");});
-
-    // Create all the eb things and do the connections
-    if (m_tebContributor)  m_tebContributor.reset();
-    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, m_exporter);
-    int rc = m_tebContributor->configure(m_tPrms);
-    if (rc) {
-        return std::string{"TebContributor configure failed"};
-    }
-
+    m_tebContributor->unconfigure();
     if (m_mPrms.addrs.size() != 0) {
-        if (m_mebContributor)  m_mebContributor.reset();
-        m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, m_exporter);
-        void* poolBase = (void*)pool.pebble[0];
-        size_t poolSize = pool.pebble.size();
-        rc = m_mebContributor->configure(m_mPrms, poolBase, poolSize);
-        if (rc) {
-            return std::string{"MebContributor connect failed"};
-        }
+        m_mebContributor->unconfigure();
     }
+    m_ebRecv->unconfigure();
+}
 
-    if (m_ebRecv)  m_ebRecv.reset();
-    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, m_mebContributor.get(), m_exporter);
-    rc = m_ebRecv->configure(m_tPrms);
-    if (rc) {
-        return std::string{"EbReceiver configure failed"};
+void DrpBase::disconnect()
+{
+    m_tebContributor->disconnect();
+    if (m_mPrms.addrs.size() != 0) {
+        m_mebContributor->disconnect();
     }
-
-    printParams();
-
-    // start eb receiver thread
-    m_tebContributor->startup(*m_ebRecv);
-
-    m_ebRecv->resetCounters();
-    return std::string{};
+    m_ebRecv->disconnect();
 }
 
 int DrpBase::setupTriggerPrimitives(const json& body)
@@ -571,15 +641,8 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     std::string stringId = std::to_string(id);
     logging::debug("id %zu", id);
     m_tPrms.id = body["drp"][stringId]["drp_id"];
-    m_nodeId = body["drp"][stringId]["drp_id"];
-    const unsigned numPorts    = Pds::Eb::MAX_DRPS + Pds::Eb::MAX_TEBS + Pds::Eb::MAX_MEBS + Pds::Eb::MAX_MEBS;
-    const unsigned tebPortBase = Pds::Eb::TEB_PORT_BASE + numPorts * m_para.partition;
-    const unsigned drpPortBase = Pds::Eb::DRP_PORT_BASE + numPorts * m_para.partition;
-    const unsigned mebPortBase = Pds::Eb::MEB_PORT_BASE + numPorts * m_para.partition;
-
-    m_tPrms.port = std::to_string(drpPortBase + m_tPrms.id);
     m_mPrms.id = m_tPrms.id;
-    m_tPrms.ifAddr = body["drp"][stringId]["connect_info"]["nic_ip"];
+    m_nodeId = body["drp"][stringId]["drp_id"];
 
     uint64_t builders = 0;
     m_tPrms.addrs.clear();
@@ -587,10 +650,11 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     for (auto it : body["teb"].items()) {
         unsigned tebId = it.value()["teb_id"];
         std::string address = it.value()["connect_info"]["nic_ip"];
-        logging::debug("TEB: %u  %s", tebId, address.c_str());
+        std::string port = it.value()["connect_info"]["teb_port"];
+        logging::debug("TEB: %u  %s:%s", tebId, address.c_str(), port.c_str());
         builders |= 1ul << tebId;
         m_tPrms.addrs.push_back(address);
-        m_tPrms.ports.push_back(std::string(std::to_string(tebPortBase + tebId)));
+        m_tPrms.ports.push_back(port);
     }
     m_tPrms.builders = builders;
 
@@ -618,9 +682,10 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
         for (auto it : body["meb"].items()) {
             unsigned mebId = it.value()["meb_id"];
             std::string address = it.value()["connect_info"]["nic_ip"];
-            logging::debug("MEB: %u  %s", mebId, address.c_str());
+            std::string port = it.value()["connect_info"]["meb_port"];
+            logging::debug("MEB: %u  %s:%s", mebId, address.c_str(), port.c_str());
             m_mPrms.addrs.push_back(address);
-            m_mPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
+            m_mPrms.ports.push_back(port);
             unsigned count = it.value()["connect_info"]["buf_count"];
             if (!m_mPrms.maxEvents)  m_mPrms.maxEvents = count;
             if (count != m_mPrms.maxEvents) {
@@ -630,18 +695,12 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     }
 }
 
-json DrpBase::connectionInfo()
-{
-    json info = {{"max_ev_size", m_mPrms.maxEvSize},
-                 {"max_tr_size", m_mPrms.maxTrSize}};
-    return info;
-}
-
 void DrpBase::printParams() const
 {
     using namespace Pds::Eb;
 
-    printf("\nParameters of Contributor ID %d:\n",               m_tPrms.id);
+    printf("\nParameters of Contributor ID %d (%s:%s):\n",       m_tPrms.id,
+                                                                 m_tPrms.ifAddr.c_str(), m_tPrms.port.c_str());
     printf("  Thread core numbers:        %d, %d\n",             m_tPrms.core[0], m_tPrms.core[1]);
     printf("  Partition:                  %d\n",                 m_tPrms.partition);
     printf("  Readout group receipient:   0x%02x\n",             m_tPrms.readoutGroup);
@@ -651,13 +710,13 @@ void DrpBase::printParams() const
     printf("  Number of MEBs:             %zd\n",                m_mPrms.addrs.size());
     printf("  Batching state:             %s\n",                 m_tPrms.batching ? "Enabled" : "Disabled");
     printf("  Batch duration:             0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
-    printf("  Batch pool depth:           %d\n",                 MAX_BATCHES);
-    printf("  Max # of entries / batch:   %d\n",                 MAX_ENTRIES);
-    printf("  # of TEB contrib. buffers:  %d\n",                 MAX_LATENCY);
-    printf("  Max TEB contribution size:  %zd\n",                m_tPrms.maxInputSize);
-    printf("  Max MEB L1Accept     size:  %zd\n",                m_mPrms.maxEvSize);
-    printf("  Max MEB transition   size:  %zd\n",                m_mPrms.maxTrSize);
-    printf("  # of MEB contrib. buffers:  %d\n",                 m_mPrms.maxEvents);
+    printf("  Batch pool depth:           0x%08x = %u\n",        MAX_BATCHES, MAX_BATCHES);
+    printf("  Max # of entries / batch:   0x%08x = %u\n",        MAX_ENTRIES, MAX_ENTRIES);
+    printf("  # of TEB contrib. buffers:  0x%08x = %u\n",        MAX_LATENCY, MAX_LATENCY);
+    printf("  Max TEB contribution size:  0x%08zx = %zu\n",      m_tPrms.maxInputSize, m_tPrms.maxInputSize);
+    printf("  Max MEB L1Accept     size:  0x%08zx = %zu\n",      m_mPrms.maxEvSize, m_mPrms.maxEvSize);
+    printf("  Max MEB transition   size:  0x%08zx = %zu\n",      m_mPrms.maxTrSize, m_mPrms.maxTrSize);
+    printf("  # of MEB contrib. buffers:  0x%08x = %u\n",        m_mPrms.maxEvents, m_mPrms.maxEvents);
     printf("\n");
 }
 

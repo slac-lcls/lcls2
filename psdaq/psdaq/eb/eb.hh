@@ -10,30 +10,29 @@
 namespace Pds {
   namespace Eb {
 
-    const unsigned RTMON_PORT_BASE = 5559;      // Run-time montitoring port
+    const unsigned PROM_PORT_BASE = 9200;       // Prometheus montitoring port
+    const unsigned MAX_PROM_PORTS = 100;
 
     const unsigned MAX_DRPS       = 64;         // Maximum possible number of Contributors
-    const unsigned MAX_TEBS       = 64;         // Maximum possible number of Event Builders
-    const unsigned MAX_MRQS       = MAX_TEBS;   // Maximum possible number of Monitor Requestors
-    const unsigned MAX_MEBS       = 64;         // Maximum possible number of Monitors
-    const unsigned MAX_PORTS      = MAX_DRPS + MAX_TEBS + MAX_MRQS + MAX_MEBS;
-
-    const unsigned OUR_PORT_BASE  = 1024;       // Pick from range 1024 - 32768, 61000 - 65535
-    const unsigned TEB_PORT_BASE  = OUR_PORT_BASE;             // TEB to receive L3 contributions
-    const unsigned DRP_PORT_BASE  = TEB_PORT_BASE + MAX_TEBS;  // TEB to send    results
-    const unsigned MRQ_PORT_BASE  = DRP_PORT_BASE + MAX_DRPS;  // TEB to receive monitor requests
-    const unsigned MEB_PORT_BASE  = MRQ_PORT_BASE + MAX_MEBS;  // MEB to receive data contributions
+    const unsigned MAX_TEBS       =  4;         // Maximum possible number of Event Builders
+    const unsigned MAX_MEBS       =  4;         // Maximum possible number of Monitors
+    const unsigned MAX_MRQS       = MAX_MEBS;   // Maximum possible number of Monitor Requestors
 
     const unsigned MAX_ENTRIES    = 64;                        // <= BATCH_DURATION
     const uint64_t BATCH_DURATION = MAX_ENTRIES;               // >= MAX_ENTRIES; power of 2; beam pulse ticks (1 uS)
-    const unsigned MAX_LATENCY    = 4 * 1024 * 1024;               // In beam pulse ticks (1 uS)
+    const unsigned MAX_LATENCY    = 4 * 1024 * 1024;           // In beam pulse ticks (1 uS)
     const unsigned MAX_BATCHES    = MAX_LATENCY / MAX_ENTRIES; // Max # of batches in circulation
 
-    const unsigned NUM_READOUT_GROUPS = 16;     // Number of readout groups supported
+    const unsigned NUM_READOUT_GROUPS     = 16; // # of RoGs supported
+    const unsigned NUM_TRANSITION_BUFFERS =  8; // # of buffers for implementing
+                                                // flow control for transitions
+                                                // (not batches) transferred between
+                                                // DRPs and EBs; May be different
+                                                // from DRP's para.nTrBuffers
 
     enum { VL_NONE, VL_DEFAULT, VL_BATCH, VL_EVENT, VL_DETAILED }; // Verbosity levels
 
-    struct TebCtrbParams
+    struct TebCtrbParams           // Used by TEB contributors (DRPs)
     {
       using string_t = std::string;
       using vecstr_t = std::vector<std::string>;
@@ -49,13 +48,14 @@ namespace Pds {
       vecstr_t ports;              // TEB ports
       size_t   maxInputSize;       // Max size of contribution
       int      core[2];            // Cores to pin threads to
+      mutable
       unsigned verbose;            // Level of detail to print
       uint16_t readoutGroup;       // RO group receiving trigger result data
       uint16_t contractor;         // RO group supplying trigger input  data
       bool     batching;           // Batching enable flag
     };
 
-    struct MebCtrbParams
+    struct MebCtrbParams           // Used by MEB contributors (DRPs)
     {
       using vecstr_t = std::vector<std::string>;
       using string_t = std::string;
@@ -68,6 +68,7 @@ namespace Pds {
       unsigned maxEvents;          // Max # of events to provide for
       size_t   maxEvSize;          // Max event size
       size_t   maxTrSize;          // Max non-event size
+      mutable
       unsigned verbose;            // Level of detail to print
     };
 
@@ -95,6 +96,7 @@ namespace Pds {
       unsigned  numMrqs;           // Number of Mon request servers
       string_t  prometheusDir;     // Run-time monitoring prometheus config file
       int       core[2];           // Cores to pin threads to
+      mutable
       unsigned  verbose;           // Level of detail to print
     };
 

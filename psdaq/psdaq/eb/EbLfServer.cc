@@ -14,9 +14,10 @@
 using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
+using ms_t = std::chrono::milliseconds;
 
 
-EbLfServer::EbLfServer(unsigned verbose) :
+EbLfServer::EbLfServer(const unsigned& verbose) :
   _eq     (nullptr),
   _rxcq   (nullptr),
   _tmo    (0),                          // Start by polling
@@ -31,20 +32,20 @@ EbLfServer::~EbLfServer()
   shutdown();
 }
 
-int EbLfServer::initialize(const std::string& addr,
-                           const std::string& port,
-                           unsigned           nLinks)
+int EbLfServer::listen(const std::string& addr,
+                       std::string&       port,
+                       unsigned           nLinks)
 {
   _pending = 0;
 
   const uint64_t flags  = 0;
-  const size_t   txSize = 1;            // Something small to not waste memory
-  const size_t   rxSize = 0; //1152 + 64;
+  const size_t   txSize = 0;         // Default for the return path
+  const size_t   rxSize = 0; //1152 + 64; // Tunable parameter
   _pep = new PassiveEndpoint(addr.c_str(), port.c_str(), flags, txSize, rxSize);
   if (!_pep || (_pep->state() != EP_UP))
   {
-    fprintf(stderr, "%s:\n  Failed to create Passive Endpoint: %s\n",
-            __PRETTY_FUNCTION__, _pep ? _pep->error() : "No memory");
+    fprintf(stderr, "%s:\n  Failed to create Passive Endpoint for %s:%s: %s\n",
+            __PRETTY_FUNCTION__, addr.c_str(), port.c_str(), _pep ? _pep->error() : "No memory");
     return _pep ? _pep->error_num(): ENOMEM;
   }
 
@@ -53,7 +54,7 @@ int EbLfServer::initialize(const std::string& addr,
   if (_verbose)
   {
     void* data = fab;                   // Something since data can't be NULL
-    printf("EbLfServer is using LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
+    printf("LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
            fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
   }
 
@@ -77,7 +78,16 @@ int EbLfServer::initialize(const std::string& addr,
     return ENOMEM;
   }
 
-  if (!_pep->listen(nLinks))
+  bool rc;
+  if (port.empty())                     // OS provides an ephemeral port number
+  {
+    uint16_t newPort;
+    rc   = _pep->listen(nLinks, newPort);
+    port = std::to_string(unsigned(newPort));
+  }
+  else                                  // Use the caller-provided port number
+    rc = _pep->listen(nLinks);
+  if (!rc)
   {
     fprintf(stderr, "%s:\n  Failed to set Passive Endpoint to listening state: %s\n",
             __PRETTY_FUNCTION__, _pep->error());
@@ -85,25 +95,30 @@ int EbLfServer::initialize(const std::string& addr,
   }
 
   if (_verbose)
-    printf("EbLfServer is listening for %d client(s) on port %s\n",
-           nLinks, port.c_str());
+    printf("EbLfServer is listening for up to %u client(s) on %s:%s\n",
+           nLinks, addr.c_str(), port.c_str());
 
   return 0;
 }
 
-int EbLfServer::connect(EbLfSvrLink** link, unsigned id, int msTmo)
+int EbLfServer::connect(EbLfSvrLink** link, int msTmo)
 {
+  auto             t0(std::chrono::steady_clock::now());
   CompletionQueue* txcq    = nullptr;
   uint64_t         txFlags = 0;
-  Endpoint* ep = _pep->accept(msTmo, _eq, txcq, txFlags, _rxcq, FI_RECV);
+  uint64_t         rxFlags = FI_RECV;
+  Endpoint* ep = _pep->accept(msTmo, _eq, txcq, txFlags, _rxcq, rxFlags);
   if (!ep)
   {
     fprintf(stderr, "%s:\n  Failed to accept connection: %s\n",
             __PRETTY_FUNCTION__, _pep->error());
     return _pep->error_num();
   }
+  auto t1(std::chrono::steady_clock::now());
+  auto dT(std::chrono::duration_cast<ms_t>(t1 - t0).count());
+  if (_verbose > 1)  printf("EbLfServer: dT to connect: %lu ms\n", dT);
 
-  int rxDepth = _pep->fabric()->info()->rx_attr->size;
+  int rxDepth = ep->fabric()->info()->rx_attr->size;
   if (_verbose > 1)  printf("EbLfServer: rx_attr.size = %d\n", rxDepth);
   *link = new EbLfSvrLink(ep, rxDepth, _verbose);
   if (!*link)
@@ -112,13 +127,6 @@ int EbLfServer::connect(EbLfSvrLink** link, unsigned id, int msTmo)
     return ENOMEM;
   }
   _linkByEp[ep->endpoint()] = *link;
-
-  int rc = (*link)->exchangeIds(id);
-  if (rc)
-  {
-    fprintf(stderr, "%s:\n  Failed to exchange ID with peer\n", __PRETTY_FUNCTION__);
-    return rc;
-  }
 
   return 0;
 }
@@ -162,7 +170,7 @@ int EbLfServer::pollEQ()
       else
       {
         fprintf(stderr, "%s:\n  Ignoring unrecognized EP %p "
-                "during unexpected event %d\n",
+                "during unexpected event %u\n",
                 __PRETTY_FUNCTION__, ep, event);
       }
       rc = _eq->error_num();
@@ -183,13 +191,15 @@ int EbLfServer::pollEQ()
 
 int EbLfServer::disconnect(EbLfSvrLink* link)
 {
+  if (!link)  return FI_SUCCESS;
+
   if (_verbose)
     printf("Disconnecting from EbLfClient %d\n", link->id());
 
   Endpoint* ep = link->endpoint();
   if (!ep)  return -FI_ENOTCONN;
 
-  _pep->close(ep);
+  ep->shutdown();
 
   delete link;
 
@@ -261,8 +271,8 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
       static int _errno = 1;
       if (rc != _errno)
       {
-        fprintf(stderr, "%s:\n  Error reading Rx CQ: %s\n",
-                __PRETTY_FUNCTION__, _rxcq->error());
+        fprintf(stderr, "%s:\n  Error reading Rx CQ: %s(%d)\n",
+                __PRETTY_FUNCTION__, _rxcq->error(), rc);
         _errno = rc;
       }
       break;
@@ -272,4 +282,84 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
   --_pending;
 
   return rc;
+}
+
+
+// --- Revisit: The following maybe better belongs somewhere else
+#include "psalg/utils/SysLog.hh"
+
+using logging = psalg::SysLog;
+
+int Pds::Eb::linksStart(EbLfServer&        transport,
+                        const std::string& ifAddr,
+                        std::string&       port,
+                        unsigned           nLinks,
+                        const char*        name)
+{
+  int rc = transport.listen(ifAddr, port, nLinks);
+  if (rc)
+  {
+    logging::error("%s:\n  Failed to initialize %s EbLfServer on %s:%s",
+                   __PRETTY_FUNCTION__, name, ifAddr.c_str(), port.c_str());
+    return rc;
+  }
+
+  return 0;
+}
+
+int Pds::Eb::linksConnect(EbLfServer&                transport,
+                          std::vector<EbLfSvrLink*>& links,
+                          const char*                name)
+{
+  for (unsigned i = 0; i < links.size(); ++i)
+  {
+    auto           t0(std::chrono::steady_clock::now());
+    int            rc;
+    EbLfSvrLink*   link;
+    const unsigned msTmo(9500);         // < control.py transition timeout
+    if ( (rc = transport.connect(&link, msTmo)) )
+    {
+      logging::error("%s:\n  Error connecting to a %s",
+                     __PRETTY_FUNCTION__, name);
+      return rc;
+    }
+    links[i] = link;
+
+    auto t1 = std::chrono::steady_clock::now();
+    auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
+    logging::info("Inbound link[%u] with %s connected in %lu ms",
+                  i, name, dT);
+  }
+
+  return 0;
+}
+
+int Pds::Eb::linksConfigure(std::vector<EbLfSvrLink*>& links,
+                            unsigned                   id,
+                            const char*                name)
+{
+  std::vector<EbLfSvrLink*> tmpLinks(links.size());
+
+  for (auto link : links)
+  {
+    auto t0(std::chrono::steady_clock::now());
+    int  rc;
+    if ( (rc = link->prepare(id)) )
+    {
+      logging::error("%s:\n  Failed to prepare link with %s ID %d",
+                     __PRETTY_FUNCTION__, name, link->id());
+      return rc;
+    }
+    unsigned rmtId  = link->id();
+    tmpLinks[rmtId] = link;
+
+    auto t1 = std::chrono::steady_clock::now();
+    auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
+    logging::info("Inbound link with %s ID %d configured in %lu ms",
+                  name, rmtId, dT);
+  }
+
+  links = tmpLinks;                     // Now in remote ID sorted order
+
+  return 0;
 }

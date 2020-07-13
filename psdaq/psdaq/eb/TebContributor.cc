@@ -33,9 +33,7 @@ using logging  = psalg::SysLog;
 TebContributor::TebContributor(const TebCtrbParams&                   prms,
                                const std::shared_ptr<MetricExporter>& exporter) :
   _prms        (prms),
-  _batMan      (prms.maxInputSize, prms.batching),
   _transport   (prms.verbose),
-  _links       (),
   _id          (-1),
   _numEbs      (0),
   _pending     (MAX_LATENCY), // Revisit: MAX_BATCHES),
@@ -57,44 +55,10 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
   exporter->add("TCtbO_InFlt",  labels, MetricType::Gauge,   [&](){ return _pending.guess_size();   });
 }
 
-int TebContributor::configure(const TebCtrbParams& prms)
+int TebContributor::resetCounters()
 {
-  _id      = prms.id;
-  _numEbs  = std::bitset<64>(prms.builders).count();
-  const EbDgram* dg;
-  while (_pending.try_pop(dg));
-
-  void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
-  size_t regSize = _batMan.batchRegionSize(); // No need to add Tr space size here
-
-  _links.resize(prms.addrs.size());
-  for (unsigned i = 0; i < _links.size(); ++i)
-  {
-    int            rc;
-    const char*    addr = prms.addrs[i].c_str();
-    const char*    port = prms.ports[i].c_str();
-    EbLfCltLink*   link;
-    const unsigned tmo(120000);         // Milliseconds
-    if ( (rc = _transport.connect(&link, addr, port, _id, tmo)) )
-    {
-      logging::error("%s:\n  Error connecting to TEB at %s:%s",
-                     __PRETTY_FUNCTION__, addr, port);
-      return rc;
-    }
-    unsigned rmtId = link->id();
-    _links[rmtId] = link;
-
-    logging::debug("Outbound link with TEB ID %d connected", rmtId);
-
-    if ( (rc = link->prepare(region, regSize)) )
-    {
-      logging::error("%s:\n  Failed to prepare link with TEB ID %d",
-                     __PRETTY_FUNCTION__, rmtId);
-      return rc;
-    }
-
-    logging::info("Outbound link with TEB ID %d connected and configured", rmtId);
-  }
+  _eventCount = 0;
+  _batchCount = 0;
 
   return 0;
 }
@@ -103,15 +67,31 @@ void TebContributor::startup(EbCtrbInBase& in)
 {
   _batchStart = nullptr;
   _batchEnd   = nullptr;
-  _eventCount = 0;
-  _batchCount = 0;
+
   _running.store(true, std::memory_order_release);
   _rcvrThread = std::thread([&] { in.receiver(*this, _running); });
 }
 
 void TebContributor::shutdown()
 {
-  if (_running.load(std::memory_order_relaxed))
+  if (!_links.empty())                  // Avoid shutting down if already done
+  {
+    unconfigure();
+    disconnect();
+  }
+}
+
+void TebContributor::disconnect()
+{
+  for (auto link : _links)  _transport.disconnect(link);
+  _links.clear();
+
+  _id = -1;
+}
+
+void TebContributor::unconfigure()
+{
+  if (!_links.empty())             // Avoid unconfiguring again if already done
   {
     _running.store(false, std::memory_order_release);
     _batMan.stop();
@@ -121,15 +101,39 @@ void TebContributor::shutdown()
     _batMan.dump();
     _batMan.shutdown();
     _pending.shutdown();
-
-    for (auto it = _links.begin(); it != _links.end(); ++it)
-    {
-      _transport.disconnect(*it);
-    }
-    _links.clear();
-
-    _id = -1;
   }
+}
+
+int TebContributor::connect()
+{
+  _links  .resize(_prms.addrs.size());
+  _id     = _prms.id;
+  _numEbs = std::bitset<64>(_prms.builders).count();
+
+  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, "TEB");
+  if (rc)  return rc;
+
+  return 0;
+}
+
+int TebContributor::configure()
+{
+  // To give maximal chance of inspection with a debugger of a previous run's
+  // information, clear it in configure() rather than in unconfigure()
+  const EbDgram* dg;
+  while (_pending.try_pop(dg));
+  _pending.startup();
+
+  // maxInputSize becomes known during Configure, so initialize BatchManager now
+  _batMan.initialize(_prms.maxInputSize, _prms.batching);
+
+  void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
+  size_t regSize = _batMan.batchRegionSize(); // No need to add Tr space size here
+
+  int rc = linksConfigure(_links, _id, region, regSize, "TEB");
+  if (rc)  return rc;
+
+  return 0;
 }
 
 void* TebContributor::allocate(const TimingHeader& hdr, const void* appPrm)
@@ -143,7 +147,7 @@ void* TebContributor::allocate(const TimingHeader& hdr, const void* appPrm)
     unsigned    idx = batch ? batch->index() : -1;
     unsigned    ctl = hdr.control();
     unsigned    env = hdr.env;
-    printf("Batching  %15s  dg  [%8d]     @ "
+    printf("Batching  %15s  dg  [%8u]     @ "
            "%16p, ctl %02x, pid %014lx, env %08x,                    prm %p\n",
            svc, idx, &hdr, ctl, pid, env, appPrm);
   }
@@ -246,8 +250,8 @@ void TebContributor::_post(const EbDgram* start, const EbDgram* end)
   if (unlikely(_prms.verbose >= VL_BATCH))
   {
     void* rmtAdx = (void*)link->rmtAdx(offset);
-    printf("CtrbOut posts %9ld    batch[%8d]    @ "
-           "%16p,         pid %014lx,               sz %6zd, TEB %2d @ %16p, data %08x\n",
+    printf("CtrbOut posts %9lu    batch[%8u]    @ "
+           "%16p,         pid %014lx,               sz %6zd, TEB %2u @ %16p, data %08x\n",
            _batchCount, idx, start, pid, extent, dst, rmtAdx, data);
   }
 
@@ -262,19 +266,29 @@ void TebContributor::_post(const EbDgram* dgram) const
   // batch containing it.  These TEBs won't generate responses.
   if (_links.size() < 2)  return;
 
-  uint64_t pid    = dgram->pulseId();
-  uint32_t idx    = Batch::index(pid);
-  unsigned dst    = (idx / MAX_ENTRIES) % _numEbs;
-  unsigned tr     = dgram->service();
-  uint32_t data   = ImmData::value(ImmData::Transition | ImmData::NoResponse, _id, tr);
-  size_t   extent = sizeof(*dgram);  if (dgram->xtc.sizeofPayload())  throw "Unexpected XTC payload";
-  unsigned offset = _batMan.batchRegionSize() + tr * sizeof(*dgram);
+  uint64_t pid = dgram->pulseId();
+  unsigned dst = (Batch::index(pid) / MAX_ENTRIES) % _numEbs;
+  size_t   sz  = sizeof(*dgram);  if (dgram->xtc.sizeofPayload())  throw "Unexpected XTC payload";
 
-  for (auto it = _links.begin(); it != _links.end(); ++it)
+  for (auto link : _links)
   {
-    EbLfCltLink* link = *it;
-    if (link->id() != dst)        // Batch posted to dst included this Dgram
+    unsigned src  = link->id();
+    if (src != dst)      // Skip dst, which received batch including this Dgram
     {
+      uint64_t imm;
+      int rc = link->poll(&imm);        // Get a free buffer index
+      if (rc)
+      {
+        logging::error("%s:\n  Failed to read buffer index from TEB ID %d: rc %d\n",
+                       __PRETTY_FUNCTION__, src, rc);
+        continue;                       // Revisit: Skip on error?
+      }
+
+      uint32_t idx    = ImmData::idx(imm);
+      unsigned offset = _batMan.batchRegionSize() + idx * sizeof(*dgram);
+      uint32_t data   = ImmData::value(ImmData::Transition |
+                                       ImmData::NoResponse, _id, idx);
+
       if (unlikely(_prms.verbose >= VL_BATCH))
       {
         unsigned    env    = dgram->env;
@@ -282,11 +296,16 @@ void TebContributor::_post(const EbDgram* dgram) const
         const char* svc    = TransitionId::name(dgram->service());
         void*       rmtAdx = (void*)link->rmtAdx(offset);
         printf("CtrbOut posts    %15s              @ "
-               "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2d @ %16p, data %08x\n",
-               svc, dgram, ctl, pid, env, extent, link->id(), rmtAdx, data);
+               "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u @ %16p, data %08x\n",
+               svc, dgram, ctl, pid, env, sz, src, rmtAdx, data);
       }
 
-      link->post(dgram, extent, offset, data); // Not a batch
+      rc = link->post(dgram, sz, offset, data); // Not a batch; Continue on error
+      if (rc)
+      {
+        logging::error("%s:\n  Failed to post buffer number to TEB ID %d: rc %d, data %08x",
+                       __PRETTY_FUNCTION__, src, rc, data);
+      }
     }
   }
 }

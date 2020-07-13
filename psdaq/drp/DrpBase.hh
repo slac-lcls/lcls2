@@ -29,7 +29,7 @@ class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
     EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms, MemPool& pool,
-               ZmqSocket& inprocSend, Pds::Eb::MebContributor* mon,
+               ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon,
                const std::shared_ptr<Pds::MetricExporter>& exporter);
     void process(const Pds::Eb::ResultDgram& result, const void* input) override;
 public:
@@ -40,7 +40,7 @@ private:
     void _writeDgram(XtcData::Dgram* dgram);
 private:
     MemPool& m_pool;
-    Pds::Eb::MebContributor* m_mon;
+    Pds::Eb::MebContributor& m_mon;
     BufferedFileWriterMT m_fileWriter;
     SmdWriter m_smdWriter;
     bool m_writing;
@@ -56,6 +56,8 @@ private:
     unsigned m_nodeId;
     std::vector<uint8_t> m_configureBuffer;
     uint64_t m_damage;
+    std::shared_ptr<Pds::PromHistogram> m_dmgType;
+
 };
 
 class DrpBase
@@ -64,19 +66,21 @@ public:
     DrpBase(Parameters& para, ZmqContext& context);
     void shutdown();
     void reset();
-    nlohmann::json connectionInfo();
+    nlohmann::json connectionInfo(const std::string& ip);
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string configure(const nlohmann::json& msg);
     std::string beginrun(const nlohmann::json& phase1Info, RunInfo& runInfo);
     std::string endrun(const nlohmann::json& phase1Info);
+    void unconfigure();
+    void disconnect();
     void runInfoSupport(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
     void runInfoData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, const RunInfo& runInfo);
-    Pds::Eb::TebContributor& tebContributor() const {return *m_tebContributor;}
+    Pds::Eb::TebContributor& tebContributor() {return *m_tebContributor;}
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
     prometheus::Exposer* exposer() {return m_exposer.get();}
     unsigned nodeId() const {return m_nodeId;}
     const Pds::Eb::TebCtrbParams& tebPrms() const {return m_tPrms;}
-    void stop() { if (m_tebContributor)  m_tebContributor->stop(); }
+    void stop() { m_tebContributor->stop(); }
     MemPool pool;
 private:
     int setupTriggerPrimitives(const nlohmann::json& body);

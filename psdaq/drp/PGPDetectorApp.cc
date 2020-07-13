@@ -93,6 +93,17 @@ PGPDetectorApp::~PGPDetectorApp()
 
 void PGPDetectorApp::shutdown()
 {
+    unconfigure();
+    disconnect();
+}
+
+void PGPDetectorApp::disconnect()
+{
+    m_drp.disconnect();
+}
+
+void PGPDetectorApp::unconfigure()
+{
     if (m_det) {
         m_det->shutdown();
     }
@@ -108,9 +119,10 @@ void PGPDetectorApp::shutdown()
             m_collectorThread.join();
             logging::info("Collector thread finished");
         }
+        m_exporter.reset();
         m_pgpDetector.reset();
     }
-    m_drp.shutdown();
+    m_drp.unconfigure();
 
     m_det->namesLookup().clear();   // erase all elements
 }
@@ -122,13 +134,14 @@ void PGPDetectorApp::handleConnect(const json& msg)
     json body = json({});
     std::string errorMsg = m_drp.connect(msg, getId());
     if (!errorMsg.empty()) {
-        logging::error("Error in DrpBase::connect");
+        logging::error("Error in DrpBase::connect()");
         logging::error("%s", errorMsg.c_str());
         body["err_info"] = errorMsg;
     }
-
-    m_det->nodeId = m_drp.nodeId();
-    m_det->connect(msg, std::to_string(getId()));
+    else {
+        m_det->nodeId = m_drp.nodeId();
+        m_det->connect(msg, std::to_string(getId()));
+    }
 
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 
@@ -141,7 +154,13 @@ void PGPDetectorApp::handleDisconnect(const json& msg)
 {
     PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
 
-    shutdown();
+    // Carry out the queued Unconfigure, if there was one
+    if (m_unconfigure) {
+        unconfigure();
+        m_unconfigure = false;
+    }
+
+    disconnect();
 
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 
@@ -151,8 +170,9 @@ void PGPDetectorApp::handleDisconnect(const json& msg)
 
 void PGPDetectorApp::handlePhase1(const json& msg)
 {
-    logging::debug("handlePhase1 in PGPDetectorApp (m_det->scanEnabled() is %s)",
-                   m_det->scanEnabled() ? "TRUE" : "FALSE");
+    std::string key = msg["header"]["key"];
+    logging::debug("handlePhase1 for %s in PGPDetectorApp (m_det->scanEnabled() is %s)",
+                   key.c_str(), m_det->scanEnabled() ? "TRUE" : "FALSE");
 
     PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
 
@@ -179,11 +199,10 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     }
 
     json body = json({});
-    std::string key = msg["header"]["key"];
 
     if (key == "configure") {
         if (m_unconfigure) {
-            shutdown();
+            unconfigure();
             m_unconfigure = false;
         }
         if (has_names_block_hex && m_det->scanEnabled()) {
@@ -214,33 +233,33 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
-
-        m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det);
-
-        if (m_exporter)  m_exporter.reset();
-        m_exporter = std::make_shared<Pds::MetricExporter>();
-        if (m_drp.exposer()) {
-            m_drp.exposer()->RegisterCollectable(m_exporter);
-        }
-
-        m_pgpThread = std::thread{&PGPDetector::reader, std::ref(*m_pgpDetector), m_exporter,
-                                  std::ref(m_det), std::ref(m_drp.tebContributor())};
-        m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
-                                        std::ref(m_drp.tebContributor()));
-        std::string config_alias = msg["body"]["config_alias"];
-        unsigned error = m_det->configure(config_alias, xtc);
-        if (error) {
-            std::string errorMsg = "Phase 1 error in Detector::configure";
-            body["err_info"] = errorMsg;
-            logging::error("%s", errorMsg.c_str());
-        }
         else {
-            m_drp.runInfoSupport(xtc, m_det->namesLookup());
+            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det);
+
+            m_exporter = std::make_shared<Pds::MetricExporter>();
+            if (m_drp.exposer()) {
+                m_drp.exposer()->RegisterCollectable(m_exporter);
+            }
+
+            m_pgpThread = std::thread{&PGPDetector::reader, std::ref(*m_pgpDetector), m_exporter,
+                                      std::ref(m_det), std::ref(m_drp.tebContributor())};
+            m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
+                                            std::ref(m_drp.tebContributor()));
+            std::string config_alias = msg["body"]["config_alias"];
+            unsigned error = m_det->configure(config_alias, xtc);
+            if (error) {
+                std::string errorMsg = "Phase 1 error in Detector::configure()";
+                body["err_info"] = errorMsg;
+                logging::error("%s", errorMsg.c_str());
+            }
+            else {
+                m_drp.runInfoSupport(xtc, m_det->namesLookup());
+            }
+            m_pgpDetector->resetEventCounter();
         }
-        m_pgpDetector->resetEventCounter();
     }
     else if (key == "unconfigure") {
-        // Delay unconfiguration until after phase 2 of unconfigure has completed
+        // "Queue" unconfiguration until after phase 2 has completed
         m_unconfigure = true;
     }
     else if (key == "beginstep") {
@@ -312,7 +331,7 @@ json PGPDetectorApp::connectionInfo()
     json body = {{"connect_info", {{"nic_ip", ip}}}};
     json info = m_det->connectionInfo();
     body["connect_info"].update(info);
-    json bufInfo = m_drp.connectionInfo();
+    json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo); // Revisit: Should be in det_info
     return body;
 }

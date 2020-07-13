@@ -11,11 +11,10 @@
 using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
-
 using ms_t = std::chrono::milliseconds;
 
 
-EbLfClient::EbLfClient(unsigned verbose) :
+EbLfClient::EbLfClient(const unsigned& verbose) :
   _pending(0),
   _verbose(verbose)
 {
@@ -24,14 +23,13 @@ EbLfClient::EbLfClient(unsigned verbose) :
 int EbLfClient::connect(EbLfCltLink** link,
                         const char*   peer,
                         const char*   port,
-                        unsigned      id,
                         unsigned      msTmo)
 {
   _pending = 0;
 
   const uint64_t flags  = 0;
-  const size_t   txSize = 0; //192;
-  const size_t   rxSize = 1;            // Something small to not waste memory
+  const size_t   txSize = 0; //192;          // Tunable parameter
+  const size_t   rxSize = 0;            // Default for the return path
   Fabric* fab = new Fabric(peer, port, flags, txSize, rxSize);
   if (!fab || !fab->up())
   {
@@ -49,8 +47,7 @@ int EbLfClient::connect(EbLfCltLink** link,
 
   struct fi_info*  info   = fab->info();
   size_t           cqSize = info->tx_attr->size;
-  if (_verbose > 1)  printf("EbLfClient: rx_attr.size = %zd, tx_attr.size = %zd\n",
-                            info->rx_attr->size, info->tx_attr->size);
+  if (_verbose > 1)  printf("EbLfClient: tx_attr.size = %zd\n", cqSize);
   CompletionQueue* txcq   = new CompletionQueue(fab, cqSize);
   if (!txcq)
   {
@@ -60,7 +57,7 @@ int EbLfClient::connect(EbLfCltLink** link,
   }
 
   if (_verbose)
-    printf("EbLfClient is waiting %d ms for server %s:%s\n", msTmo, peer, port);
+    printf("EbLfClient is waiting %u ms for server %s:%s\n", msTmo, peer, port);
 
   EventQueue*      eq   = nullptr;
   CompletionQueue* rxcq = nullptr;
@@ -77,9 +74,11 @@ int EbLfClient::connect(EbLfCltLink** link,
   uint64_t dT = 0;
   while (true)
   {
-    if (ep->connect(msTmo, FI_TRANSMIT | FI_SELECTIVE_COMPLETION, 0))  break; // Success
-    if (ep->error_num() == -FI_ENODATA)       break; // connect() timed out
-    if (ep->error_num() != -FI_ECONNREFUSED)  break; // Serious error
+    uint64_t txFlags = FI_TRANSMIT | FI_SELECTIVE_COMPLETION;
+    uint64_t rxFlags = 0;
+    if (ep->connect(msTmo, txFlags, rxFlags))  break; // Success
+    if (ep->error_num() == -FI_ENODATA)        break; // connect() timed out
+    if (ep->error_num() != -FI_ECONNREFUSED)   break; // Serious error
 
     t1 = std::chrono::steady_clock::now();
     dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
@@ -89,7 +88,7 @@ int EbLfClient::connect(EbLfCltLink** link,
 
     // Retrying too quickly can cause libfabric sockets EP to segfault
     // Jan 2020: LF 1.7.1, sock_ep_cm_thread()->sock_pep_req_handler(), pep = 0
-    std::this_thread::sleep_for(ms_t(100));
+    std::this_thread::sleep_for(ms_t(1));
   }
   if ((ep->error_num() != FI_SUCCESS) || (msTmo && (dT > msTmo)))
   {
@@ -99,19 +98,17 @@ int EbLfClient::connect(EbLfCltLink** link,
             (rc != FI_ENODATA) ? ep->error() : "Timed out");
     return (rc != FI_SUCCESS) ? rc : -FI_ETIMEDOUT;
   }
+  t1 = std::chrono::steady_clock::now();
+  dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
+  if (_verbose > 1)  printf("EbLfClient: dT to connect: %lu ms\n", dT);
 
-  *link = new EbLfCltLink(ep, _verbose, _pending);
+  int rxDepth = fab->info()->rx_attr->size;
+  if (_verbose > 1)  printf("EbLfClient: rx_attr.size = %d\n", rxDepth);
+  *link = new EbLfCltLink(ep, rxDepth, _verbose, _pending);
   if (!*link)
   {
     fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);
     return ENOMEM;
-  }
-
-  int rc = (*link)->exchangeIds(id);
-  if (rc)
-  {
-    fprintf(stderr, "%s:\n  Failed to exchange ID with peer\n", __PRETTY_FUNCTION__);
-    return rc;
   }
 
   return 0;
@@ -119,6 +116,8 @@ int EbLfClient::connect(EbLfCltLink** link,
 
 int EbLfClient::disconnect(EbLfCltLink* link)
 {
+  if (!link)  return FI_SUCCESS;
+
   if (_verbose)
     printf("Disconnecting from EbLfServer %d\n", link->id());
 
@@ -133,6 +132,98 @@ int EbLfClient::disconnect(EbLfCltLink* link)
   }
   delete link;
   _pending = 0;
+
+  return FI_SUCCESS;
+}
+
+
+// --- Revisit: The following maybe better belongs somewhere else
+#include "psalg/utils/SysLog.hh"
+
+using logging = psalg::SysLog;
+
+int Pds::Eb::linksConnect(EbLfClient&                     transport,
+                          std::vector<EbLfCltLink*>&      links,
+                          const std::vector<std::string>& addrs,
+                          const std::vector<std::string>& ports,
+                          const char*                     name)
+{
+  for (unsigned i = 0; i < addrs.size(); ++i)
+  {
+    auto           t0(std::chrono::steady_clock::now());
+    int            rc;
+    const char*    addr = addrs[i].c_str();
+    const char*    port = ports[i].c_str();
+    EbLfCltLink*   link;
+    const unsigned msTmo(9500);         // < control.py transition timeout
+    if ( (rc = transport.connect(&link, addr, port, msTmo)) )
+    {
+      logging::error("%s:\n  Error connecting to %s at %s:%s",
+                     __PRETTY_FUNCTION__, name, addr, port);
+      return rc;
+    }
+    links[i] = link;
+
+    auto t1 = std::chrono::steady_clock::now();
+    auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
+    logging::info("Outbound link[%u] with %s connected in %lu ms",
+                  i, name, dT);
+  }
+
+  return 0;
+}
+
+int Pds::Eb::linksConfigure(std::vector<EbLfCltLink*>& links,
+                            unsigned                   id,
+                            const char*                name)
+{
+  return linksConfigure(links, id, nullptr, 0, 0, name);
+}
+
+int Pds::Eb::linksConfigure(std::vector<EbLfCltLink*>& links,
+                            unsigned                   id,
+                            void*                      region,
+                            size_t                     regSize,
+                            const char*                name)
+{
+  return linksConfigure(links, id, region, regSize, 0, name);
+}
+
+int Pds::Eb::linksConfigure(std::vector<EbLfCltLink*>& links,
+                            unsigned                   id,
+                            void*                      region,
+                            size_t                     lclSize,
+                            size_t                     rmtSize,
+                            const char*                name)
+{
+  std::vector<EbLfCltLink*> tmpLinks(links.size());
+
+  for (auto link : links)
+  {
+    auto t0(std::chrono::steady_clock::now());
+    int  rc;
+    if (region && rmtSize)
+      rc = link->prepare(id, region, lclSize, rmtSize);
+    else if (region)
+      rc = link->prepare(id, region, lclSize);
+    else
+      rc = link->prepare(id);
+    if (rc)
+    {
+      logging::error("%s:\n  Failed to prepare link with %s ID %d",
+                     __PRETTY_FUNCTION__, name, link->id());
+      return rc;
+    }
+    unsigned rmtId  = link->id();
+    tmpLinks[rmtId] = link;
+
+    auto t1 = std::chrono::steady_clock::now();
+    auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
+    logging::info("Outbound link with %s ID %d configured in %lu ms",
+                  name, rmtId, dT);
+  }
+
+  links = tmpLinks;                     // Now in remote ID sorted order
 
   return 0;
 }

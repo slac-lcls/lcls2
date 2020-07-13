@@ -739,7 +739,18 @@ BldApp::~BldApp()
 
 void BldApp::_shutdown()
 {
-    m_drp.shutdown();            // TebContributor must be shut down before the worker
+    _unconfigure();
+    _disconnect();
+}
+
+void BldApp::_disconnect()
+{
+    m_drp.disconnect();
+}
+
+void BldApp::_unconfigure()
+{
+    m_drp.unconfigure();  // TebContributor must be shut down before the worker
     if (m_pgp) {
         m_pgp->shutdown();
          if (m_workerThread.joinable()) {
@@ -757,7 +768,7 @@ json BldApp::connectionInfo()
     json body = {{"connect_info", {{"nic_ip", ip}}}};
     json info = m_det->connectionInfo();
     body["connect_info"].update(info);
-    json bufInfo = m_drp.connectionInfo();
+    json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
     return body;
 }
@@ -809,7 +820,13 @@ void BldApp::handleConnect(const nlohmann::json& msg)
 
 void BldApp::handleDisconnect(const json& msg)
 {
-    _shutdown();
+    // Carry out the queued Unconfigure, if there was one
+    if (m_unconfigure) {
+        _unconfigure();
+        m_unconfigure = false;
+    }
+
+    _disconnect();
 
     json body = json({});
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
@@ -838,7 +855,7 @@ void BldApp::handlePhase1(const json& msg)
 
     if (key == "configure") {
         if (m_unconfigure) {
-            _shutdown();
+            _unconfigure();
             m_unconfigure = false;
         }
 
@@ -872,6 +889,7 @@ void BldApp::handlePhase1(const json& msg)
         m_drp.runInfoSupport(xtc, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
+        // "Queue" unconfiguration until after phase 2 has completed
         m_unconfigure = true;
     }
     else if (key == "beginrun") {

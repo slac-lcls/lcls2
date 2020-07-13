@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <cstddef>
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 struct fi_cq_data_entry;
@@ -24,13 +25,13 @@ namespace Pds {
     class EbLfServer
     {
     public:
-      EbLfServer(unsigned verbose);
+      EbLfServer(const unsigned& verbose);
       ~EbLfServer();
     public:
-      int  initialize(const std::string& addr,    // Interface to use
-                      const std::string& port,    // Port to listen on
-                      unsigned           nLinks); // Number of links to expect
-      int  connect(EbLfSvrLink**, unsigned id, int msTmo = -1);
+      int  listen(const std::string& addr,    // Interface to use
+                  std::string&       port,    // Port being listened on
+                  unsigned           nLinks); // Max number of links
+      int  connect(EbLfSvrLink**, int msTmo = -1);
       int  disconnect(EbLfSvrLink*);
       void shutdown();
       int  pend(fi_cq_data_entry*, int msTmo);
@@ -46,13 +47,28 @@ namespace Pds {
       Fabrics::EventQueue*      _eq;      // Event Queue
       Fabrics::CompletionQueue* _rxcq;    // Receive Completion Queue
       int                       _tmo;     // Timeout for polling or waiting
-      unsigned                  _verbose; // Print some stuff if set
+      const unsigned&           _verbose; // Print some stuff if set
     private:
       uint64_t                  _pending; // Flag set when currently pending
     private:
       Fabrics::PassiveEndpoint* _pep;     // EP for establishing connections
       LinkMap                   _linkByEp;// Map to retrieve link given raw EP
     };
+
+    // --- Revisit: The following maybe better belongs somewhere else
+
+    int linksStart(EbLfServer&        transport,
+                   const std::string& ifAddr,
+                   std::string&       port,
+                   unsigned           nLinks,
+                   const char*        name);
+    int linksConnect(EbLfServer&                transport,
+                     std::vector<EbLfSvrLink*>& links,
+                     const char*                name);
+    int linksConfigure(std::vector<EbLfSvrLink*>& links,
+                       unsigned                   id,
+                       const char*                name);
+
   };
 };
 
@@ -72,9 +88,12 @@ int Pds::Eb::EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
     if (rc > 0)  _tmo = 0;     // Switch to polling after successful completion
   }
 
-#ifdef DBG
   if (rc > 0)
   {
+    if (cqEntry->op_context)
+      static_cast<Pds::Eb::EbLfLink*>(cqEntry->op_context)->postCompRecv(rc);
+
+#ifdef DBG
     if ((cqEntry->flags & flags) != flags)
     {
       fprintf(stderr, "%s:\n  Expected   CQ entry:\n"
@@ -83,8 +102,8 @@ int Pds::Eb::EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
               __PRETTY_FUNCTION__, rc, cqEntry->flags, flags, cqEntry->data,
               cqEntry->op_context, cqEntry->len, cqEntry->buf);
     }
-  }
 #endif
+  }
 
   return rc;
 }

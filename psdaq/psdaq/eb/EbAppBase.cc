@@ -30,158 +30,214 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
-using logging  = psalg::SysLog;
+using logging          = psalg::SysLog;
+using MetricExporter_t = std::shared_ptr<MetricExporter>;
+using ms_t             = std::chrono::milliseconds;
 
 
-EbAppBase::EbAppBase(const EbParams& prms,
-                     const uint64_t  duration,
-                     const unsigned  maxEntries,
-                     const unsigned  maxBuffers) :
+EbAppBase::EbAppBase(const EbParams&         prms,
+                     const MetricExporter_t& exporter,
+                     const std::string&      pfx,
+                     const uint64_t          duration,
+                     const unsigned          maxEntries,
+                     const unsigned          maxBuffers) :
   EventBuilder (maxBuffers + TransitionId::NumberOf,
                 maxEntries,
-                8 * sizeof(prms.contributors), //Revisit: std::bitset<64>(prms.contributors).count(),
+                MAX_DRPS, //Revisit: std::bitset<64>(prms.contributors).count(),
                 duration,
                 prms.verbose),
   _transport   (prms.verbose),
   _maxEntries  (maxEntries),
   _maxBuffers  (maxBuffers),
-  //_dummy       (Level::Fragment),
   _verbose     (prms.verbose),
   _bufferCnt   (0),
   _tmoEvtCnt   (0),
   _fixupCnt    (0),
-  _region      (nullptr),
   _contributors(0),
   _id          (-1)
 {
-}
-
-int EbAppBase::configure(const std::string&                     pfx,
-                         const EbParams&                        prms,
-                         const std::shared_ptr<MetricExporter>& exporter)
-{
-  unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
-
-  _links.resize(nCtrbs);
-  _bufRegSize.resize(nCtrbs);
-  _maxTrSize.resize(nCtrbs);
-  _maxBufSize.resize(nCtrbs);
-  _id           = prms.id;
-  _contributors = prms.contributors;
-  _contract     = prms.contractors;
-  _bufferCnt    = 0;
-  _tmoEvtCnt    = 0;
-  _fixupCnt     = 0;
-
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)}};
+  exporter->add(pfx+"_EpAlCt", labels, MetricType::Counter, [&](){ return  epochAllocCnt();     });
+  exporter->add(pfx+"_EpFrCt", labels, MetricType::Counter, [&](){ return  epochFreeCnt();      });
+  exporter->add(pfx+"_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt();     });
+  exporter->add(pfx+"_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();      });
   exporter->add(pfx+"_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
   exporter->add(pfx+"_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
   exporter->add(pfx+"_ToEvCt", labels, MetricType::Counter, [&](){ return _tmoEvtCnt;           });
   exporter->add(pfx+"_FxUpCt", labels, MetricType::Counter, [&](){ return _fixupCnt;            });
 
-  _fixupSrc = &exporter->add(pfx+"_FxUpSc", labels, nCtrbs);
-  _ctrbSrc  = &exporter->add(pfx+"_CtrbSc", labels, nCtrbs); // Revisit: For testing
+  // Revisit: nCtrbs isn't known yet
+  unsigned nCtrbs = 64; //std::bitset<64>(prms.contributors).count();
+  _fixupSrc = exporter->add(pfx+"_FxUpSc", labels, nCtrbs);
+  _ctrbSrc  = exporter->add(pfx+"_CtrbSc", labels, nCtrbs); // Revisit: For testing
+}
 
-  std::vector<size_t> regSizes(nCtrbs);
-  size_t              sumSize = 0;
-
-  int rc;
-  if ( (rc = _transport.initialize(prms.ifAddr, prms.ebPort, nCtrbs)) )
+void EbAppBase::shutdown()
+{
+  if (_id != unsigned(-1))              // Avoid shutting down if already done
   {
-    logging::error("%s:\n  Failed to initialize EbLfServer on %s:%s",
-                   __PRETTY_FUNCTION__, prms.ifAddr, prms.ebPort);
-    return rc;
+    unconfigure();
+    disconnect();
+
+    _transport.shutdown();
   }
+}
 
-  for (unsigned i = 0; i < _links.size(); ++i)
+void EbAppBase::disconnect()
+{
+  for (auto link : _links)
   {
-    EbLfSvrLink*   link;
-    const unsigned tmo(120000);         // Milliseconds
-    if ( (rc = _transport.connect(&link, _id, tmo)) )
-    {
-      logging::error("%s:\n  Error connecting to a DRP",
-                     __PRETTY_FUNCTION__);
-      return rc;
-    }
-    unsigned rmtId = link->id();
-    _links[rmtId] = link;
-
-    logging::debug("Inbound link with DRP ID %d connected", rmtId);
-
-    size_t regSize;
-    if ( (rc = link->prepare(&regSize)) )
-    {
-      logging::error("%s:\n  Failed to prepare link with DRP ID %d",
-                     __PRETTY_FUNCTION__, rmtId);
-      return rc;
-    }
-    _bufRegSize[rmtId] = regSize;
-    _maxBufSize[rmtId] = regSize / (_maxBuffers * _maxEntries);
-    _maxTrSize[rmtId]  = prms.maxTrSize[rmtId];
-    regSize           += roundUpSize(TransitionId::NumberOf * _maxTrSize[rmtId]);  // Ctrbs don't have a transition space
-    regSizes[rmtId]    = regSize;
-    sumSize           += regSize;
+    _transport.disconnect(link);
   }
+  _links.clear();
 
-  _region = allocRegion(sumSize);
-  if (!_region)
+  _id           = -1;
+  _contributors = 0;
+  _contract.fill(0);
+}
+
+void EbAppBase::unconfigure()
+{
+  EventBuilder::dump(0);
+  EventBuilder::clear();
+
+  for (auto& region : _region)
   {
-    logging::error("%s:\n  No memory found for Input MR of size %zd",
-                   __PRETTY_FUNCTION__, sumSize);
-    return ENOMEM;
+    if (region)  free(region);
+    region = nullptr;
   }
+  _region.clear();
 
-  // Note that this loop can't be combined with the one above due to the exchange protocol
-  char* region = reinterpret_cast<char*>(_region);
-  for (unsigned rmtId = 0; rmtId < _links.size(); ++rmtId)
+  _bufRegSize.clear();
+  _maxBufSize.clear();
+  _maxTrSize .clear();
+}
+
+int EbAppBase::resetCounters()
+{
+  _bufferCnt = 0;
+  _tmoEvtCnt = 0;
+  _fixupCnt  = 0;
+  _fixupSrc->clear();
+  _ctrbSrc ->clear();
+
+  return 0;
+}
+
+int EbAppBase::startConnection(const std::string& ifAddr,
+                               std::string&       port,
+                               unsigned           nLinks)
+{
+  int rc = linksStart(_transport, ifAddr, port, nLinks, "DRP");
+  if (rc)  return rc;
+
+  return 0;
+}
+
+int EbAppBase::connect(const EbParams& prms)
+{
+  unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
+
+  _bufNo        .clear();
+  _links        .resize(nCtrbs);
+  _id           = prms.id;
+  _contributors = prms.contributors;
+  _contract     = prms.contractors;
+
+  int rc = linksConnect(_transport, _links, "DRP");
+  if (rc)  return rc;
+
+  return 0;
+}
+
+int EbAppBase::configure(const EbParams& prms)
+{
+  unsigned nCtrbs = _links.size();
+
+  _bufRegSize.resize(nCtrbs);
+  _maxTrSize .resize(nCtrbs);
+  _maxBufSize.resize(nCtrbs);
+
+  int rc = _linksConfigure(prms, _links, _id, "DRP");
+  if (rc)  return rc;
+
+  // linksConfigure() on the other side drains these away, so must repost them
+  // on each Configure
+  _bufNo.resize(nCtrbs * NUM_TRANSITION_BUFFERS);
+
+  for (unsigned i = 0; i < NUM_TRANSITION_BUFFERS; ++i)
   {
-    EbLfSvrLink* link = _links[rmtId];
-    if ( (rc = link->setupMr(region, regSizes[rmtId])) )
+    for (auto it = _links.begin(); it != _links.end(); ++it)
     {
-      logging::error("%s:\n  Failed to set up Input MR for DRP ID %d, "
-                     "%p:%p, size %zd\n", __PRETTY_FUNCTION__,
-                     rmtId, region, region + regSizes[rmtId], regSizes[rmtId]);
-      if (_region)  free(_region);
-      _region = nullptr;
-      return rc;
+      EbLfSvrLink* link = *it;
+
+      unsigned src = link->id();
+
+      _bufNo[i * _links.size() + src] = i;
     }
-
-    if (link->postCompRecv())
-    {
-      logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d",
-                       __PRETTY_FUNCTION__, rmtId);
-    }
-
-    region += regSizes[rmtId];
-
-    logging::info("Inbound link with DRP ID %d connected and configured", rmtId);
+    post(i);
   }
 
   return 0;
 }
 
-void EbAppBase::shutdown()
+int EbAppBase::_linksConfigure(const EbParams&            prms,
+                               std::vector<EbLfSvrLink*>& links,
+                               unsigned                   id,
+                               const char*                name)
 {
-  EventBuilder::dump(0);
-  EventBuilder::clear();
+  std::vector<EbLfSvrLink*> tmpLinks(links.size());
+  _region.resize(links.size());
 
-  for (auto it = _links.begin(); it != _links.end(); ++it)
+  for (auto link : links)
   {
-    _transport.disconnect(*it);
+    auto   t0(std::chrono::steady_clock::now());
+    int    rc;
+    size_t regSize;
+    if ( (rc = link->prepare(id, &regSize)) )
+    {
+      logging::error("%s:\n  Failed to prepare link with %s ID %d",
+                     __PRETTY_FUNCTION__, name, link->id());
+      return rc;
+    }
+    unsigned rmtId     = link->id();
+    tmpLinks[rmtId]    = link;
+
+    _bufRegSize[rmtId] = regSize;
+    _maxBufSize[rmtId] = regSize / (_maxBuffers * _maxEntries);
+    _maxTrSize[rmtId]  = prms.maxTrSize[rmtId];
+    regSize           += roundUpSize(NUM_TRANSITION_BUFFERS * _maxTrSize[rmtId]);  // Ctrbs don't have a transition space
+
+    void* region = allocRegion(regSize);
+    if (!region)
+    {
+      logging::error("%s:\n  "
+                     "No memory found for Input MR for %s ID %d of size %zd",
+                     __PRETTY_FUNCTION__, name, rmtId, regSize);
+      return ENOMEM;
+    }
+    _region[rmtId] = region;
+
+    if ( (rc = link->setupMr(region, regSize)) )
+    {
+      logging::error("%s:\n  Failed to set up Input MR for %s ID %d, "
+                     "%p:%p, size %zd", __PRETTY_FUNCTION__, name, rmtId,
+                     region, static_cast<char*>(region) + regSize, regSize);
+      if (region)  free(region);
+      _region[rmtId] = nullptr;
+      return rc;
+    }
+
+    auto t1 = std::chrono::steady_clock::now();
+    auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
+    logging::info("Inbound link with %s ID %d configured in %lu ms",
+                  name, rmtId, dT);
   }
-  _links.clear();
-  _transport.shutdown();
 
-  if (_region)  free(_region);
-  _region = nullptr;
+  links = tmpLinks;                     // Now in remote ID sorted order
 
-  _bufRegSize.clear();
-  _maxBufSize.clear();
-  _maxTrSize.clear();
-  _contributors = 0;
-  _id           = -1;
-  _contract.fill(0);
+  return 0;
 }
 
 int EbAppBase::process()
@@ -190,10 +246,12 @@ int EbAppBase::process()
 
   // Pend for an input datagram and pass it to the event builder
   uint64_t  data;
-  const int tmo = 100;       // milliseconds - Also see EbEvent.cc::MaxTimeouts
-  if ( (rc = _transport.pend(&data, tmo)) < 0)
+  const int msTmo = 100;       // Also see EbEvent.cc::MaxTimeouts
+  if ( (rc = _transport.pend(&data, msTmo)) < 0)
   {
+    // Time out incomplete events
     if (rc == -FI_ETIMEDOUT)  EventBuilder::expired();
+    else printf("EbAppBase::process: pend() -> rc %d\n", rc);
     return rc;
   }
 
@@ -207,11 +265,11 @@ int EbAppBase::process()
                      ? (                   idx * _maxBufSize[src]) // In batch/buffer region
                      : (_bufRegSize[src] + idx * _maxTrSize[src]); // Tr region for non-selected EB is after batch/buffer region
   const EbDgram* idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));
-  if ( (rc = lnk->postCompRecv()) )
-  {
-    logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d",
-                     __PRETTY_FUNCTION__, src);
-  }
+
+  // Cache the buffer number so that we can tell the contributor when it's free for reuse
+  if (ImmData::buf(flg) == ImmData::Transition)
+    _bufNo[idx * _links.size() + src] = idx; // Revisit: The 1st idx is wrong: It must be the same value for all contributions to the event
+                                             //          Somehow get this idx from event->parameter()
 
   _ctrbSrc->observe(double(src));       // Revisit: For testing
 
@@ -220,15 +278,40 @@ int EbAppBase::process()
     unsigned    env = idg->env;
     uint64_t    pid = idg->pulseId();
     unsigned    ctl = idg->control();
-    const char* knd = TransitionId::name(idg->service());
-    printf("EbAp rcvd %9ld %15s[%8d]   @ "
-           "%16p, ctl %02x, pid %014lx, env %08x,            src %2d, data %08lx\n",
-           _bufferCnt, knd, idx, idg, ctl, pid, env, lnk->id(), data);
+    const char* svc = TransitionId::name(idg->service());
+    printf("EbAp rcvd %9lu %15s[%8u]   @ "
+           "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, data %08lx, lnk %p, src %2u\n",
+           _bufferCnt, svc, idx, idg, ctl, pid, env, lnk->id(), data, lnk, src);
   }
 
+  // Tr space bufSize value is irrelevant since maxEntries will be 1 for that case
   EventBuilder::process(idg, _maxBufSize[src], data);
 
   return 0;
+}
+
+void EbAppBase::post(unsigned data)
+{
+  unsigned idx = ImmData::idx(data);
+
+  for (auto it = _links.begin(); it != _links.end(); ++it)
+  {
+    EbLfSvrLink* link = *it;
+    unsigned     src  = link->id();
+    unsigned     buf  = _bufNo[idx * _links.size() + src];
+    uint64_t     imm  = ImmData::value(ImmData::Transition, _id, buf);
+
+    if (unlikely(_verbose >= VL_EVENT))
+      printf("EbAp posts transition buffer index %u to src %2u, %08lx (%08x)\n",
+             buf, src, imm, data);
+
+    int rc = link->post(nullptr, 0, imm);
+    if (rc)
+    {
+      logging::error("%s:\n  Failed to post buffer number to DRP ID %d: rc %d, imm %08lx, data %08x",
+                     __PRETTY_FUNCTION__, src, rc, imm, data);
+    }
+  }
 }
 
 void EbAppBase::trim(unsigned dst)
@@ -277,7 +360,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
     using ms_t  = std::chrono::milliseconds;   // Revisit: Temporary?
     auto  now   = fast_monotonic_clock::now(); // Revisit: Temporary?
     const EbDgram* dg = event->creator();
-    printf("%s %15s %014lx, size %2zu, for source %2d, RoGs %04hx, contract %016lx, remaining %016lx, age %ld\n",
+    printf("%s %15s %014lx, size %2zu, for source %2u, RoGs %04hx, contract %016lx, remaining %016lx, age %ld\n",
            event->alive() ? "Fixed-up" : "Timed-out",
            TransitionId::name(dg->service()), event->sequence(), event->size(),
            srcId, dg->readoutGroups(), event->contract(), event->remaining(),

@@ -8,7 +8,7 @@
 #include "psdaq/service/GenericPoolW.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
-#include "psdaq/service/EbDgram.hh"
+#include "psalg/utils/SysLog.hh"
 
 #ifdef NDEBUG
 #undef NDEBUG
@@ -35,7 +35,8 @@
 using namespace XtcData;
 using namespace Pds;
 
-using json = nlohmann::json;
+using json    = nlohmann::json;
+using logging = psalg::SysLog;
 
 static const unsigned CLS              = 64;   // Cache Line Size
 static const int      CORE_0           = 18;   // devXXX: 11, devXX:  7, accXX:  9
@@ -133,16 +134,17 @@ namespace Pds {
       EbCtrbIn(const TebCtrbParams&                   prms,
                DrpSim&                                drpSim,
                ZmqContext&                            context,
+               MebContributor&                        mebCtrb,
                const std::shared_ptr<MetricExporter>& exporter);
       virtual ~EbCtrbIn() {}
     public:
-      int      configure(const TebCtrbParams&, MebContributor*);
+      int      configure();
       void     shutdown();
     public:                             // For EbCtrbInBase
       virtual void process(const ResultDgram& result, const void* input);
     private:
       DrpSim&         _drpSim;
-      MebContributor* _mebCtrb;
+      MebContributor& _mebCtrb;
       ZmqSocket       _inprocSend;
       uint64_t        _pid;
     };
@@ -349,28 +351,27 @@ void DrpSim::release(const Input* input)
 EbCtrbIn::EbCtrbIn(const TebCtrbParams&                   prms,
                    DrpSim&                                drpSim,
                    ZmqContext&                            context,
+                   MebContributor&                        mebCtrb,
                    const std::shared_ptr<MetricExporter>& exporter) :
   EbCtrbInBase(prms, exporter),
   _drpSim     (drpSim),
-  _mebCtrb    (nullptr),
+  _mebCtrb    (mebCtrb),
   _inprocSend (&context, ZMQ_PAIR),
   _pid        (0)
 {
   _inprocSend.connect("inproc://drp");
 }
 
-int EbCtrbIn::configure(const TebCtrbParams& tebPrms, MebContributor* mebCtrb)
+int EbCtrbIn::configure()
 {
   _pid = 0;
 
-  _mebCtrb = mebCtrb;
-
-  return EbCtrbInBase::configure(tebPrms);
+  return EbCtrbInBase::configure();
 }
 
 void EbCtrbIn::shutdown()
 {
-  if (_mebCtrb)  _mebCtrb->shutdown();
+  _mebCtrb.shutdown();
 }
 
 static json createPulseIdMsg(uint64_t pulseId)
@@ -410,15 +411,15 @@ void EbCtrbIn::process(const ResultDgram& result, const void* appPrm)
   }
   _pid = pid;
 
-  if (_mebCtrb)
+  if (_mebCtrb.enabled())
   {
     if (result.isEvent())           // L1Accept
     {
-      if (result.monitor())  _mebCtrb->post(input, result.monBufNo());
+      if (result.monitor())  _mebCtrb.post(input, result.monBufNo());
     }
     else                                // Other Transition
     {
-      _mebCtrb->post(input);
+      _mebCtrb.post(input);
     }
   }
 
@@ -446,7 +447,8 @@ EbCtrbApp::EbCtrbApp(const TebCtrbParams&                   prms,
   _drpSim       (prms.maxInputSize),
   _prms         (prms)
 {
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},{"partition", std::to_string(prms.partition)}};
+  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
+                                            {"partition",  std::to_string(prms.partition)}};
   exporter->add("TCtbO_AlPdg", labels, MetricType::Gauge, [&](){ return _drpSim.allocPending(); });
 }
 
@@ -547,7 +549,7 @@ CtrbApp::CtrbApp(const std::string&                     collSrv,
   _mebPrms(mebPrms),
   _tebCtrb(tebPrms, exporter),
   _mebCtrb(mebPrms, exporter),
-  _inbound(tebPrms, _tebCtrb.drpSim(), context(), exporter)
+  _inbound(tebPrms, _tebCtrb.drpSim(), context(), _mebCtrb, exporter)
 {
   printf("Ready for transitions\n");
 }
@@ -555,16 +557,37 @@ CtrbApp::CtrbApp(const std::string&                     collSrv,
 json CtrbApp::connectionInfo()
 {
   // Allow the default NIC choice to be overridden
-  std::string ip = _tebPrms.ifAddr.empty() ? getNicIp() : _tebPrms.ifAddr;
-  json body = {{"connect_info", {{"nic_ip", ip},
+  if (_tebPrms.ifAddr.empty())  _tebPrms.ifAddr = getNicIp();
+
+  int rc = _inbound.startConnection(_tebPrms.port);
+  if (rc)  throw "Error starting connection";
+
+  json info = {{"connect_info", {{"nic_ip",      _tebPrms.ifAddr},
+                                 {"drp_port",    _tebPrms.port},
                                  {"max_ev_size", _mebPrms.maxEvSize},
                                  {"max_tr_size", _mebPrms.maxTrSize}}}};
-  return body;
+  return info;
 }
 
 void CtrbApp::handleConnect(const json& msg)
 {
   int rc = _parseConnectionParams(msg["body"]);
+
+  rc = _tebCtrb.resetCounters();
+  if (rc)  printf("Error initializing TebContributor\n");
+
+  rc = _mebCtrb.resetCounters();
+  if (rc)  printf("Error initializing MebContributor\n");
+
+  rc = _tebCtrb.connect();
+  if (rc)  printf("TebContributor connect failed\n");
+
+  if (_mebPrms.addrs.size() != 0) {
+    rc = _mebCtrb.connect(_mebPrms);
+    if (rc)  printf("MebContributor connect failed\n");
+  }
+  rc = _inbound.connect();
+  if (rc)  printf("EbReceiver connect failed\n");
 
   _unconfigure = false;
 
@@ -587,23 +610,20 @@ int CtrbApp::_configure(const json& msg)
     _unconfigure = false;
   }
 
-  int rc = _tebCtrb.configure(_tebPrms);
+  int rc = _tebCtrb.configure();
   if (rc)  return rc;
 
   void*  base;
   size_t size;
   _tebCtrb.drpSim().startup(_tebPrms.id, &base, &size, _tebPrms.readoutGroup);
 
-  MebContributor* mebCtrb = nullptr;
   if (_mebPrms.addrs.size() != 0)
   {
-    int rc = _mebCtrb.configure(_mebPrms, base, size);
+    int rc = _mebCtrb.configure(base, size);
     if (rc)  return rc;
-
-    mebCtrb = &_mebCtrb;
   }
 
-  rc = _inbound.configure(_tebPrms, mebCtrb);
+  rc = _inbound.configure();
   if (rc)  return rc;
 
   lRunning = 1;
@@ -688,22 +708,14 @@ void CtrbApp::handleReset(const json& msg)
 
 int CtrbApp::_parseConnectionParams(const json& body)
 {
-  const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_TEBS + MAX_MEBS;
-  const unsigned tebPortBase = TEB_PORT_BASE + numPorts * _tebPrms.partition;
-  const unsigned drpPortBase = DRP_PORT_BASE + numPorts * _tebPrms.partition;
-  const unsigned mebPortBase = MEB_PORT_BASE + numPorts * _tebPrms.partition;
-
   std::string id = std::to_string(getId());
   _tebPrms.id    = body["drp"][id]["drp_id"];
   _mebPrms.id    = _tebPrms.id;
   if (_tebPrms.id >= MAX_DRPS)
   {
-    fprintf(stderr, "DRP ID %d is out of range 0 - %d\n", _tebPrms.id, MAX_DRPS - 1);
+    fprintf(stderr, "DRP ID %d is out of range 0 - %u\n", _tebPrms.id, MAX_DRPS - 1);
     return 1;
   }
-
-  _tebPrms.ifAddr = body["drp"][id]["connect_info"]["nic_ip"];
-  _tebPrms.port   = std::to_string(drpPortBase + _tebPrms.id);
 
   _tebPrms.builders = 0;
   _tebPrms.addrs.clear();
@@ -719,20 +731,21 @@ int CtrbApp::_parseConnectionParams(const json& body)
   {
     unsigned    tebId   = it.value()["teb_id"];
     std::string address = it.value()["connect_info"]["nic_ip"];
+    std::string port    = it.value()["connect_info"]["teb_port"];
     if (tebId > MAX_TEBS - 1)
     {
-      fprintf(stderr, "TEB ID %d is out of range 0 - %d\n", tebId, MAX_TEBS - 1);
+      fprintf(stderr, "TEB ID %d is out of range 0 - %u\n", tebId, MAX_TEBS - 1);
       return 1;
     }
     _tebPrms.builders |= 1ul << tebId;
     _tebPrms.addrs.push_back(address);
-    _tebPrms.ports.push_back(std::string(std::to_string(tebPortBase + tebId)));
+    _tebPrms.ports.push_back(port);
   }
 
   unsigned group = body["drp"][id]["det_info"]["readout"];
   if (group > NUM_READOUT_GROUPS - 1)
   {
-    fprintf(stderr, "Readout group %d is out of range 0 - %d\n", group, NUM_READOUT_GROUPS - 1);
+    fprintf(stderr, "Readout group %u is out of range 0 - %u\n", group, NUM_READOUT_GROUPS - 1);
     return 1;
   }
   _tebPrms.readoutGroup = 1 << group;
@@ -748,15 +761,15 @@ int CtrbApp::_parseConnectionParams(const json& body)
   {
     for (auto it : body["meb"].items())
     {
-      unsigned    mebId   = it.value()["meb_id"];
-      std::string address = it.value()["connect_info"]["nic_ip"];
+      unsigned mebId = it.value()["meb_id"];
       if (mebId > MAX_MEBS - 1)
       {
-        fprintf(stderr, "MEB ID %d is out of range 0 - %d\n", mebId, MAX_MEBS - 1);
+        fprintf(stderr, "MEB ID %d is out of range 0 - %u\n", mebId, MAX_MEBS - 1);
         return 1;
       }
-      _mebPrms.addrs.push_back(address);
-      _mebPrms.ports.push_back(std::string(std::to_string(mebPortBase + mebId)));
+
+      _mebPrms.addrs.push_back(it.value()["connect_info"]["nic_ip"]);
+      _mebPrms.ports.push_back(it.value()["connect_info"]["meb_port"]);
 
       unsigned count = it.value()["connect_info"]["buf_count"];
       if (!_mebPrms.maxEvents)  _mebPrms.maxEvents = count;
@@ -766,27 +779,24 @@ int CtrbApp::_parseConnectionParams(const json& body)
     }
   }
 
-  printf("\nParameters of Contributor ID %d:\n",             _tebPrms.id);
-  printf("  Thread core numbers:        %d, %d\n",           _tebPrms.core[0], _tebPrms.core[1]);
-  printf("  Partition:                  %d\n",               _tebPrms.partition);
-  printf("  Readout group receipient: 0x%02x\n",             _tebPrms.readoutGroup);
-  printf("  Readout group contractor: 0x%02x\n",             _tebPrms.contractor);
-  printf("  Bit list of TEBs:         0x%016lx, cnt: %zd\n", _tebPrms.builders,
-                                                             std::bitset<64>(_tebPrms.builders).count());
-  printf("  Number of MEBs:             %zd\n",              _mebPrms.addrs.size());
-  printf("  Batching state:             %s\n",               _tebPrms.batching ? "Enabled" : "Disabled");
-  printf("  Batch duration:           0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
-  printf("  Batch pool depth:           %d\n",               MAX_BATCHES);
-  printf("  Max # of entries / batch:   %d\n",               MAX_ENTRIES);
-  printf("  # of TEB contrib. buffers:  %d\n",               MAX_LATENCY);
-  printf("  Max TEB contribution size:  %zd\n",              _tebPrms.maxInputSize);
-  printf("  Max MEB contribution size:  %zd\n",              _mebPrms.maxEvSize);
-  printf("  Max MEB transition   size:  %zd\n",              _mebPrms.maxTrSize);
-  printf("  # of MEB contrib. buffers:  %d\n",               _mebPrms.maxEvents);
-  printf("\n");
-  printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS - 1);
-  printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS - 1);
-  printf("  MEB port range: %d - %d\n", mebPortBase, mebPortBase + MAX_MEBS - 1);
+  printf("\nParameters of Contributor ID %d (%s:%s):\n",       _tebPrms.id,
+                                                               _tebPrms.ifAddr.c_str(), _tebPrms.port.c_str());
+  printf("  Thread core numbers:        %u, %u\n",             _tebPrms.core[0], _tebPrms.core[1]);
+  printf("  Partition:                  %u\n",                 _tebPrms.partition);
+  printf("  Readout group receipient:   0x%02x\n",             _tebPrms.readoutGroup);
+  printf("  Readout group contractor:   0x%02x\n",             _tebPrms.contractor);
+  printf("  Bit list of TEBs:           0x%016lx, cnt: %zd\n", _tebPrms.builders,
+                                                               std::bitset<64>(_tebPrms.builders).count());
+  printf("  Number of MEBs:             %zd\n",                _mebPrms.addrs.size());
+  printf("  Batching state:             %s\n",                 _tebPrms.batching ? "Enabled" : "Disabled");
+  printf("  Batch duration:             0x%014lx = %lu uS\n",  BATCH_DURATION, BATCH_DURATION);
+  printf("  Batch pool depth:           %u\n",                 MAX_BATCHES);
+  printf("  Max # of entries / batch:   %u\n",                 MAX_ENTRIES);
+  printf("  # of TEB contrib. buffers:  %u\n",                 MAX_LATENCY);
+  printf("  Max TEB contribution size:  %zd\n",                _tebPrms.maxInputSize);
+  printf("  Max MEB contribution size:  %zd\n",                _mebPrms.maxEvSize);
+  printf("  Max MEB transition   size:  %zd\n",                _mebPrms.maxTrSize);
+  printf("  # of MEB contrib. buffers:  %u\n",                 _mebPrms.maxEvents);
   printf("\n");
 
   return 0;
@@ -806,6 +816,8 @@ void usage(char *name, char *desc, const TebCtrbParams& prms)
 
   fprintf(stderr, " %-22s %s (default: %s)\n",        "-A <interface_addr>",
           "IP address of the interface to use",       "libfabric's 'best' choice");
+  fprintf(stderr, " %-23s %s (default: %s)\n",        "-D <Ctrb server port>",
+          "Port served to TEB for Results",           "dynamically assigned");
 
   fprintf(stderr, " %-22s %s (required)\n",           "-C <address>",
           "Collection server");
@@ -813,9 +825,9 @@ void usage(char *name, char *desc, const TebCtrbParams& prms)
           "Partition number");
   fprintf(stderr, " %-22s %s (required)\n",           "-u <alias>",
           "Alias for drp process");
-  fprintf(stderr, " %-22s %s (default: %d)\n",        "-1 <core>",
+  fprintf(stderr, " %-22s %s (default: %u)\n",        "-1 <core>",
           "Core number for pinning App thread to",    prms.core[0]);
-  fprintf(stderr, " %-22s %s (default: %d)\n",        "-2 <core>",
+  fprintf(stderr, " %-22s %s (default: %u)\n",        "-2 <core>",
           "Core number for pinning other threads to", prms.core[1]);
 
   fprintf(stderr, " %-22s %s\n", "-v", "enable debugging output (repeat for increased detail)");
@@ -830,7 +842,7 @@ int main(int argc, char **argv)
   std::string    collSrv;
   TebCtrbParams  tebPrms { /* .ifAddr        = */ { }, // Network interface to use
                            /* .port          = */ { }, // Port served to TEBs
-                           /* .instrument    = */ { },
+                           /* .instrument    = */ {"tst"},
                            /* .partition     = */ NO_PARTITION,
                            /* .alias         = */ { }, // Unique name from cmd line
                            /* .id            = */ -1u,
@@ -845,7 +857,7 @@ int main(int argc, char **argv)
                            /* .batching      = */ true };
   MebCtrbParams  mebPrms { /* .addrs         = */ { },
                            /* .ports         = */ { },
-                           /* .instrument    = */ { },
+                           /* .instrument    = */ {"tst"},
                            /* .partition     = */ NO_PARTITION,
                            /* .id            = */ -1u,
                            /* .maxEvents     = */ 0,  // Filled in @ connect time
@@ -853,13 +865,14 @@ int main(int argc, char **argv)
                            /* .maxTrSize     = */ MON_TRSIZE,
                            /* .verbose       = */ 0 };
 
-  while ((op = getopt(argc, argv, "C:p:A:1:2:u:h?v")) != -1)
+  while ((op = getopt(argc, argv, "C:p:A:D:1:2:u:h?v")) != -1)
   {
     switch (op)
     {
       case 'C':  collSrv            = optarg;             break;
       case 'p':  tebPrms.partition  = std::stoi(optarg);  break;
       case 'A':  tebPrms.ifAddr     = optarg;             break;
+      case 'D':  tebPrms.port       = optarg;             break;
       case '1':  tebPrms.core[0]    = atoi(optarg);       break;
       case '2':  tebPrms.core[1]    = atoi(optarg);       break;
       case 'u':  tebPrms.alias      = optarg;             break;
@@ -871,6 +884,9 @@ int main(int argc, char **argv)
         return 1;
     }
   }
+
+  logging::init(tebPrms.instrument.c_str(), tebPrms.verbose ? LOG_DEBUG : LOG_INFO);
+  logging::info("logging configured");
 
   if ( (mebPrms.partition = tebPrms.partition) == NO_PARTITION)
   {
@@ -900,7 +916,8 @@ int main(int argc, char **argv)
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
     fprintf(stderr, "Failed to set up ^C handler\n");
 
-  prometheus::Exposer exposer{"0.0.0.0:9200", "/metrics", 1};
+  unsigned port = PROM_PORT_BASE;
+  prometheus::Exposer exposer{"0.0.0.0:"+std::to_string(port), "/metrics", 1};
   auto exporter = std::make_shared<MetricExporter>();
   exposer.RegisterCollectable(exporter);
 

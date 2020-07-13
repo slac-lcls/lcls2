@@ -26,6 +26,7 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 using logging  = psalg::SysLog;
+using ms_t     = std::chrono::milliseconds;
 
 
 static void dumpBatch(const TebContributor& ctrb,
@@ -40,8 +41,8 @@ static void dumpBatch(const TebContributor& ctrb,
     auto svc = TransitionId::name(dg->service());
     auto rog = dg->readoutGroups();
     auto dmg = dg->xtc.damage.value();
-    printf("  %2d: %15s, pid %014lx, diff %016lx, RoG %2hx, dmg %04x, appPrm %p %s\n",
-           i, svc, pid, pid - bPid, rog, dmg, ctrb.retrieve(pid), dg->isEOL() ? "EOL" : "");
+    printf("  %2u: %16p, %15s, pid %014lx, diff %016lx, RoG %2hx, dmg %04x, appPrm %p %s\n",
+           i, dg, svc, pid, pid - bPid, rog, dmg, ctrb.retrieve(pid), dg->isEOL() ? "EOL" : "");
     if (dg->isEOL())  return;
     dg = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(dg) + size);
   }
@@ -52,7 +53,6 @@ static void dumpBatch(const TebContributor& ctrb,
 EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
                            const std::shared_ptr<MetricExporter>& exporter) :
   _transport    (prms.verbose),
-  _links        (),
   _maxResultSize(0),
   _batchCount   (0),
   _eventCount   (0),
@@ -70,49 +70,93 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
   exporter->add("TCtbI_BypCt", labels, MetricType::Counter, [&](){ return _bypassCount;         });
 }
 
-int EbCtrbInBase::configure(const TebCtrbParams& prms)
+int EbCtrbInBase::resetCounters()
 {
-  _batchCount   = 0;
-  _eventCount   = 0;
-  _missing      = 0;
-  _bypassCount  = 0;
+  _batchCount  = 0;
+  _eventCount  = 0;
+  _missing     = 0;
+  _bypassCount = 0;
 
-  unsigned numEbs = std::bitset<64>(prms.builders).count();
+  return 0;
+}
+
+void EbCtrbInBase::shutdown()
+{
+  if (!_links.empty())                  // Avoid shutting down if already done
+  {
+    unconfigure();
+    disconnect();
+
+    _transport.shutdown();
+  }
+}
+
+void EbCtrbInBase::disconnect()
+{
+  for (auto link : _links)  _transport.disconnect(link);
+  _links.clear();
+}
+
+void EbCtrbInBase::unconfigure()
+{
+  if (_region)  free(_region);
+  _region = nullptr;
+}
+
+int EbCtrbInBase::startConnection(std::string& port)
+{
+  int rc = linksStart(_transport, _prms.ifAddr, port, MAX_TEBS, "TEB");
+  if (rc)  return rc;
+
+  return 0;
+}
+
+int EbCtrbInBase::connect()
+{
+  unsigned numEbs = std::bitset<64>(_prms.builders).count();
+
   _links.resize(numEbs);
 
-  int rc;
-  if ( (rc = _transport.initialize(prms.ifAddr, prms.port, numEbs)) )
-  {
-    logging::error("%s:\n  Failed to initialize EbLfServer on %s:%s",
-                   __PRETTY_FUNCTION__, prms.ifAddr, prms.port);
-    return rc;
-  }
+  int rc = linksConnect(_transport, _links, "TEB");
+  if (rc)  return rc;
 
+  return 0;
+}
+
+int EbCtrbInBase::configure()
+{
+  // To give maximal chance of inspection with a debugger of a previous run's
+  // information, clear it in configure() rather than in unconfigure()
+  _inputs = nullptr;
+  _deferred.clear();
+
+  int rc = _linksConfigure(_links, _prms.id, "TEB");
+  if (rc)  return rc;
+
+  return 0;
+}
+
+int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
+                                  unsigned                   id,
+                                  const char*                name)
+{
+  std::vector<EbLfSvrLink*> tmpLinks(links.size());
   size_t size = 0;
 
   // Since each EB handles a specific batch, one region can be shared by all
-  for (unsigned i = 0; i < _links.size(); ++i)
+  for (auto link : links)
   {
-    EbLfSvrLink*   link;
-    const unsigned tmo(120000);         // Milliseconds
-    if ( (rc = _transport.connect(&link, prms.id, tmo)) )
-    {
-      logging::error("%s:\n  Error connecting to TEB %d",
-                     __PRETTY_FUNCTION__, i);
-      return rc;
-    }
-    unsigned rmtId = link->id();
-    _links[rmtId] = link;
-
-    logging::debug("Inbound link with TEB ID %d connected", rmtId);
-
+    auto   t0(std::chrono::steady_clock::now());
+    int    rc;
     size_t regSize;
-    if ( (rc = link->prepare(&regSize)) )
+    if ( (rc = link->prepare(id, &regSize)) )
     {
-      logging::error("%s:\n  Failed to prepare link with TEB ID %d",
-                     __PRETTY_FUNCTION__, rmtId);
+      logging::error("%s:\n  Failed to prepare link with %s ID %d",
+                     __PRETTY_FUNCTION__, name, link->id());
       return rc;
     }
+    unsigned rmtId  = link->id();
+    tmpLinks[rmtId] = link;
 
     if (!size)
     {
@@ -120,37 +164,38 @@ int EbCtrbInBase::configure(const TebCtrbParams& prms)
       _maxResultSize = regSize / (MAX_BATCHES * MAX_ENTRIES);
 
       _region = allocRegion(regSize);
-      if (_region == nullptr)
+      if (!_region)
       {
-        logging::error("%s:\n  No memory found for a Result MR of size %zd",
-                       __PRETTY_FUNCTION__, regSize);
+        logging::error("%s:\n  "
+                       "No memory found for Result MR for %s ID %d of size %zd",
+                       __PRETTY_FUNCTION__, name, rmtId, regSize);
         return ENOMEM;
       }
     }
     else if (regSize != size)
     {
-      logging::error("%s:\n  Error: Result MR size (%zd) cannot vary between TEBs "
-                     "(%zd from Id %d)", __PRETTY_FUNCTION__, size, regSize, rmtId);
+      logging::error("%s:\n  Result MR size (%zd) cannot vary between %ss "
+                     "(%zd from Id %u)", __PRETTY_FUNCTION__, size, name, regSize, rmtId);
       return -1;
     }
 
     if ( (rc = link->setupMr(_region, regSize)) )
     {
-      char* region = static_cast<char*>(_region);
-      logging::error("%s:\n  Failed to set up Result MR for TEB ID %d, %p:%p, size %zd",
-                     __PRETTY_FUNCTION__, rmtId, region, region + regSize, regSize);
+      logging::error("%s:\n  Failed to set up Result MR for %s ID %d, "
+                     "%p:%p, size %zd", __PRETTY_FUNCTION__, name, rmtId,
+                     _region, static_cast<char*>(_region) + regSize, regSize);
       if (_region)  free(_region);
       _region = nullptr;
       return rc;
     }
-    if (link->postCompRecv())
-    {
-      logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d",
-                       __PRETTY_FUNCTION__, rmtId);
-    }
 
-    logging::info("Inbound link with TEB ID %d connected and configured", rmtId);
+    auto t1 = std::chrono::steady_clock::now();
+    auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
+    logging::info("Inbound link with %s ID %d configured in %lu ms",
+                  name, rmtId, dT);
   }
+
+  links = tmpLinks;                     // Now in remote ID sorted order
 
   return 0;
 }
@@ -166,36 +211,19 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
 
   logging::info("Receiver thread is starting");
 
-  _inputs = nullptr;
-
   while (running.load(std::memory_order_relaxed))
   {
     if (_process(ctrb) < 0)
     {
       if (_transport.pollEQ() == -FI_ENOTCONN)
       {
-        logging::critical("Receiver thread lost connection");
+        logging::error("Receiver thread lost connection with a TEB");
         break;
       }
     }
   }
 
-  _shutdown();
-
   logging::info("Receiver thread finished");
-}
-
-void EbCtrbInBase::_shutdown()
-{
-  for (auto it = _links.begin(); it != _links.end(); ++it)
-  {
-    _transport.disconnect(*it);
-  }
-  _links.clear();
-  _transport.shutdown();
-
-  if (_region)  free(_region);
-  _region = nullptr;
 }
 
 int EbCtrbInBase::_process(TebContributor& ctrb)
@@ -212,31 +240,26 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     return rc;
   }
 
+  ++_batchCount;
+
   unsigned src = ImmData::src(data);
   unsigned idx = ImmData::idx(data);
   auto     lnk = _links[src];
   auto     bdg = static_cast<const ResultDgram*>(lnk->lclAdx(idx * _maxResultSize));
   auto     pid = bdg->pulseId();
-  if (lnk->postCompRecv())
-  {
-    logging::warning("%s:\n  Failed to post CQ buffers for DRP ID %d",
-                     __PRETTY_FUNCTION__, src);
-  }
 
   if (unlikely(_prms.verbose >= VL_BATCH))
   {
     unsigned ctl     = bdg->control();
     unsigned env     = bdg->env;
     auto&    pending = ctrb.pending();
-    printf("CtrbIn  rcvd        %6ld result  [%8d] @ "
-           "%16p, ctl %02x, pid %014lx, env %08x,            src %2d, empty %c, cnt %d\n",
-           _batchCount, idx, bdg, ctl, pid, env, lnk->id(), pending.is_empty() ? 'Y' : 'N',
+    printf("CtrbIn  rcvd        %6lu result  [%8u] @ "
+           "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, empty %c, cnt %u\n",
+           _batchCount, idx, bdg, ctl, pid, env, src, pending.is_empty() ? 'Y' : 'N',
            pending.guess_size());
   }
 
   _matchUp(ctrb, bdg);
-
-  ++_batchCount;
 
   return 0;
 }
@@ -276,11 +299,13 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
     if (results)                          // If not all deferred Results were consummed
       _defer(results);                    //   defer the remainder
 
-    // Revisit: This probably doesn't happen anymore, but be alert for it for while
+    // No progress can legitimately happen with multiple TEBs presenting events
+    // out of order.  These will be deferred so that when the expected Result
+    // arrives (according to the Input), it will be handled in t he proer order
     if ((results == res) && (inputs == inp))
     {
-      printf("No progress: res %014lx, inp %014lx\n", res->pulseId(), inp->pulseId());
-      break;                              // Revisit: Break if no progress
+      //printf("No progress: res %014lx, inp %014lx\n", res->pulseId(), inp->pulseId());
+      break;                              // Break on no progress
     }
   }                                       // Loop for a newer Inputs batch
   _inputs = inputs;                       // Save any remaining Inputs for next time
@@ -338,8 +363,15 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
   // This code expects to handle events in pulse ID order
   while (rPid <= iPid)
   {
-    // Revisit: Why does this fail?
-    //static uint64_t rPidPrv = 0;  assert (rPid > rPidPrv);  rPidPrv = rPid;
+    uint64_t rPidPrv = 0;
+    if (unlikely(!(rPid > rPidPrv)))
+    {
+      logging::critical("%s:\n  rPid %014lx <= rPidPrv %014lx\n",
+                        __PRETTY_FUNCTION__, rPid, rPidPrv);
+      _dump(ctrb, results, inputs);
+      throw "Result pulse ID didn't advance";
+    }
+    rPidPrv = rPid;
 
     // Ignore Results for which there is no Input
     // This can happen due to this DRP being in a different readout group than
@@ -355,14 +387,22 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
       auto ctl    = result->control();
       auto svc    = TransitionId::name(result->service());
       auto extent = sizeof(*result) + result->xtc.sizeofPayload();
-      printf("CtrbIn  found  %15s  [%8ld]    @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2d, deliver %c [%014lx]\n",
+      printf("CtrbIn  found  %15s  [%8lu]    @ "
+             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u, deliver %c [%014lx]\n",
              svc, idx, result, ctl, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid);
     }
 
     if (rPid == iPid)
     {
-      static uint64_t iPidPrv = 0;  assert (iPid > iPidPrv);  iPidPrv = iPid;
+      static uint64_t iPidPrv = 0;
+      if (unlikely(!(iPid > iPidPrv)))
+      {
+        logging::critical("%s:\n  iPid %014lx <= iPidPrv %014lx\n",
+                          __PRETTY_FUNCTION__, iPid, iPidPrv);
+        _dump(ctrb, results, inputs);
+        throw "Input pulse ID didn't advance";
+      }
+      iPidPrv = iPid;
 
       process(*result, ctrb.retrieve(iPid));
 
@@ -408,8 +448,10 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
     rPid = result->pulseId();
   }
 
-  logging::error("%s:\n  No Result found for Input %014lx",
-                 __PRETTY_FUNCTION__, iPid);
+  // No Result for Input is allowed to happen when it is too new for the Input,
+  // as can happen when multiple TEBs present Results out of order
+  //logging::error("%s:\n  No Result found for Input %014lx",
+  //               __PRETTY_FUNCTION__, iPid);
   if (_missing)
     logging::error("%s:\n  No Inputs found for %u Results",
                    __PRETTY_FUNCTION__, missing);

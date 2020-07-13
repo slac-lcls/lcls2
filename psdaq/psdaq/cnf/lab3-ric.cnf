@@ -44,18 +44,18 @@ meb_cmd = task_set+'monReqServer -P '+hutch+' -C '+collect_host+' -M '+prom_dir+
 
 procmgr_config = [
  {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
- {                         id:'xpmpva',      flags:'s',   env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1 DAQ:LAB2:XPM:2'},
+ {                         id:'xpmpva',      flags:'s',   env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1 DAQ:LAB2:XPM:2 DAQ:LAB2:XPM:3'},
  #{ host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -r ~claus/.psdaq/p3.activedet.json'},
- { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -r /dev/null -S 1'},
+ { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -r /dev/null'}, # -S 1'},
  #{ host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -S 1'},
  {                         id:'control_gui', flags:'p',                  cmd:'control_gui -H '+collect_host},
 
  # TEB
- { host: 'drp-tst-dev016', id:'teb0',        flags:'sxpu', cmd:teb_cmd},
+ #{ host: 'drp-tst-dev016', id:'teb0',        flags:'sxpu', cmd:teb_cmd},
  #{ host: 'drp-tst-dev015', id:'teb1',        flags:'sxpu', cmd:teb_cmd},
 
  # MEB
- { host: 'drp-tst-dev016', id:'meb0',        flags:'sxpu', cmd:meb_cmd},
+ #{ host: 'drp-tst-dev016', id:'meb0',        flags:'sxpu', cmd:meb_cmd},
  #{ host: 'drp-tst-dev015', id:'meb1',        flags:'sxpu', cmd:meb_cmd},
 
  # PVA
@@ -90,15 +90,15 @@ procmgr_config = [
  #{ host: 'drp-tst-dev011', id:'tmocam_5',    flags:'sxpu', cmd:drp_cmd1+' -D fakecam -k sim_length=14' },
  #{ host: 'drp-tst-dev012', id:'tmocam_6',    flags:'sxpu', cmd:drp_cmd1+' -D fakecam -k sim_length=14' },
  #{ host: 'drp-tst-dev013', id:'tmocam_7',    flags:'sxpu', cmd:drp_cmd1+' -D fakecam -k sim_length=14' },
- { host: 'drp-tst-dev014', id:'tmocam0_0',   flags:'sxpu', cmd:drp_cmd1+' -D fakecam -k "sim_length=14,batching=yes"'},
- { host: 'drp-tst-dev015', id:'tmocam1_0',   flags:'sxpu', cmd:drp_cmd1+' -D fakecam -k "sim_length=14,batching=no"'},
+ #{ host: 'drp-tst-dev014', id:'tmocam0_0',   flags:'sxpu', cmd:drp_cmd1+' -D fakecam -k "sim_length=14,batching=yes"'},
+ #{ host: 'drp-tst-dev015', id:'tmocam1_0',   flags:'sxpu', cmd:drp_cmd1+' -D fakecam -k "sim_length=14,batching=no"'},
  #{ host: 'drp-tst-dev017', id:'tmocam2_0',   flags:'sxpu', cmd:drp_cmd1+' -D fakecam -k sim_length=14'},
 
  # procstat
  {                         id:'procstat',    flags:'p',    cmd:'procstat p'+platform+'.cnf.last'},
 ]
 
-# HSD: 6.4 GS/s digitizer (DEV07_1B, 1A)
+# HSD: 6.4 GS/s digitizer
 node = 0
 bus  = 1
 pv   = 2
@@ -113,14 +113,14 @@ hsds = [
     #{node:'daq-tst-dev07',bus:'5e',pv:'DAQ:LAB2:HSD:DEV07_5E',drp:'drp-tst-dev024'},
 ]
 
-port=29074 + 100*int(platform)
+svc=29074 + 100*int(platform)
 segm=0
 pvlist = []
 for e in hsds:
-    procmgr_config.append({id:'hsdpvs_%s_a'%e[bus], port:'%d'%port, flags:'s', env:epics_env, cmd:'hsdpvs -P '+e[pv]+':A'})
-    port += 1
-    procmgr_config.append({id:'hsdpvs_%s_b'%e[bus], port:'%d'%port, flags:'s', env:epics_env, cmd:'hsdpvs -P '+e[pv]+':B'})
-    port += 1
+    procmgr_config.append({id:'hsdpvs_%s_a'%e[bus], port:'%d'%svc, flags:'s', env:epics_env, cmd:'hsdpvs -P '+e[pv]+':A'})
+    svc += 1
+    procmgr_config.append({id:'hsdpvs_%s_b'%e[bus], port:'%d'%svc, flags:'s', env:epics_env, cmd:'hsdpvs -P '+e[pv]+':B'})
+    svc += 1
     procmgr_config.append({ host: e[node], id:'hsdioc_%s'%e[bus], flags:'', env:epics_env, cmd:'hsd134PVs -P '+e[pv]+' -d /dev/pcie_adc_%s'%e[bus]})
     procmgr_config.append({ host: e[drp], id:'tmohsd_%d'%segm, flags:'pu', cmd:drp_cmd0+' -D hsd -k hsd_epics_prefix='+e[pv]+':A'})
     segm += 1

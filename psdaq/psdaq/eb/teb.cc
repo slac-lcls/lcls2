@@ -45,10 +45,8 @@ using json     = nlohmann::json;
 using logging  = psalg::SysLog;
 using string_t = std::string;
 
-static const int      CORE_0          = -1; // devXXX: 18, devXX:  7, accXX:  9
-static const int      CORE_1          = -1; // devXXX: 19, devXX: 19, accXX: 21
-static const unsigned PROM_PORT_BASE  = 9200;     // Prometheus port base
-static const unsigned MAX_PROM_PORTS  = 100;
+static const int CORE_0 = -1;           // devXXX: 18, devXX:  7, accXX:  9
+static const int CORE_1 = -1;           // devXXX: 19, devXX: 19, accXX: 21
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -84,8 +82,14 @@ namespace Pds {
     public:
       Teb(const EbParams& prms, const MetricExporter_t& exporter);
     public:
+      int      resetCounters();
+      int      startConnection(std::string& tebPort, std::string& mrqPort);
+      int      connect();
       int      configure(Trigger* object, unsigned prescale);
       int      beginrun ();
+      void     unconfigure();
+      void     disconnect();
+      void     shutdown();
       void     run();
     public:                         // For EventBuilder
       virtual
@@ -94,7 +98,6 @@ namespace Pds {
       void     _tryPost(const EbDgram* dg);
       void     _post(const EbDgram* start, const EbDgram* end);
       uint64_t _receivers(const EbDgram& ctrb) const;
-      void     _shutdown();
     private:
       std::vector<EbLfCltLink*> _l3Links;
       EbLfServer                _mrqTransport;
@@ -119,7 +122,6 @@ namespace Pds {
       uint64_t                  _prescaleCount;
     private:
       const EbParams&           _prms;
-      const MetricExporter_t&   _exporter;
       EbLfClient                _l3Transport;
     };
   };
@@ -128,12 +130,10 @@ namespace Pds {
 
 using namespace Pds::Eb;
 
-Teb::Teb(const EbParams& prms, const MetricExporter_t& exporter) :
-  EbAppBase     (prms, BATCH_DURATION, MAX_ENTRIES, MAX_BATCHES),
-  _l3Links      (),
+Teb::Teb(const EbParams&         prms,
+         const MetricExporter_t& exporter) :
+  EbAppBase     (prms, exporter, "TEB", BATCH_DURATION, MAX_ENTRIES, MAX_BATCHES),
   _mrqTransport (prms.verbose),
-  _mrqLinks     (),
-  _batMan       (prms.maxResultSize, true), // TEB always batches
   _id           (-1),
   _batchStart   (nullptr),
   _batchEnd     (nullptr),
@@ -146,7 +146,6 @@ Teb::Teb(const EbParams& prms, const MetricExporter_t& exporter) :
   _monitorCount (0),
   _prescaleCount(0),
   _prms         (prms),
-  _exporter     (exporter),
   _l3Transport  (prms.verbose)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
@@ -157,109 +156,111 @@ Teb::Teb(const EbParams& prms, const MetricExporter_t& exporter) :
   exporter->add("TEB_BtAlCt", labels, MetricType::Counter, [&](){ return _batMan.batchAllocCnt(); });
   exporter->add("TEB_BtFrCt", labels, MetricType::Counter, [&](){ return _batMan.batchFreeCnt();  });
   exporter->add("TEB_BtWtg",  labels, MetricType::Gauge,   [&](){ return _batMan.batchWaiting();  });
-  exporter->add("TEB_EpAlCt", labels, MetricType::Counter, [&](){ return  epochAllocCnt();        });
-  exporter->add("TEB_EpFrCt", labels, MetricType::Counter, [&](){ return  epochFreeCnt();         });
-  exporter->add("TEB_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt();        });
-  exporter->add("TEB_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();         });
   exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.pending();  });
-  exporter->add("TEB_WrtRt",  labels, MetricType::Rate,    [&](){ return  _writeCount;            });
-  exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return  _writeCount;            });
-  exporter->add("TEB_MonRt",  labels, MetricType::Rate,    [&](){ return  _monitorCount;          });
-  exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return  _monitorCount;          });
-  exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return  _prescaleCount;         });
+  exporter->add("TEB_WrtRt",  labels, MetricType::Rate,    [&](){ return _writeCount;             });
+  exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return _writeCount;             });
+  exporter->add("TEB_MonRt",  labels, MetricType::Rate,    [&](){ return _monitorCount;           });
+  exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return _monitorCount;           });
+  exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return _prescaleCount;          });
+}
+
+int Teb::resetCounters()
+{
+  EbAppBase::resetCounters();
+
+  _eventCount    = 0;
+  _batchCount    = 0;
+  _writeCount    = 0;
+  _monitorCount  = 0;
+  _prescaleCount = 0;
+
+  return 0;
+}
+
+void Teb::shutdown()
+{
+  if (!_l3Links.empty())                // Avoid shutting down if already done
+  {
+    unconfigure();
+    disconnect();
+
+    _mrqTransport.shutdown();
+  }
+}
+
+void Teb::disconnect()
+{
+  for (auto link : _mrqLinks)  _mrqTransport.disconnect(link);
+  _mrqLinks.clear();
+
+  for (auto link : _l3Links)  _l3Transport.disconnect(link);
+  _l3Links.clear();
+
+  EbAppBase::disconnect();
+
+  _id = -1;
+  _rcvrs.fill(0);
+}
+
+void Teb::unconfigure()
+{
+  _batMan.dump();
+  _batMan.shutdown();
+
+  EbAppBase::unconfigure();
+}
+
+int Teb::startConnection(std::string& tebPort,
+                         std::string& mrqPort)
+{
+  int rc = EbAppBase::startConnection(_prms.ifAddr, tebPort, MAX_DRPS);
+  if (rc)  return rc;
+
+  rc = linksStart(_mrqTransport, _prms.ifAddr, mrqPort, MAX_MRQS, "Mon Requestor");
+  if (rc)  return rc;
+
+  return 0;
+}
+
+int Teb::connect()
+{
+  _l3Links .resize(_prms.addrs.size());
+  _mrqLinks.resize(_prms.numMrqs);
+  _id      = _prms.id;
+  _rcvrs   = _prms.receivers;
+
+  int rc = EbAppBase::connect(_prms);
+  if (rc)  return rc;
+
+  rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, "DRP");
+  if (rc)  return rc;
+  rc = linksConnect(_mrqTransport, _mrqLinks, "Mon Requestor");
+  if (rc)  return rc;
+
+  return 0;
 }
 
 int Teb::configure(Trigger* object,
                    unsigned prescale)
 {
-  _id    = _prms.id;
-  _rcvrs = _prms.receivers;
-
-  int rc;
-  if ( (rc = EbAppBase::configure("TEB", _prms, _exporter)) )  return rc;
-
   _trigger    = object;
   _prescale   = prescale - 1;           // Be zero based
   _wrtCounter = _prescale;              // Reset prescale counter
 
+  // maxResultSize becomes known during Configure, so initialize BatchManager now
+  _batMan.initialize(_prms.maxResultSize, true); // TEB always batches
+
+  int rc = EbAppBase::configure(_prms);
+  if (rc)  return rc;
+
   void*  region  = _batMan.batchRegion();
   size_t regSize = _batMan.batchRegionSize();
+  size_t rmtSize = 0;                   // Revisit: Unused
 
-  _l3Links.resize(_prms.addrs.size());
-  for (unsigned i = 0; i < _l3Links.size(); ++i)
-  {
-    const char*    addr = _prms.addrs[i].c_str();
-    const char*    port = _prms.ports[i].c_str();
-    EbLfCltLink*   link;
-    const unsigned tmo(120000);         // Milliseconds
-    if ( (rc = _l3Transport.connect(&link, addr, port, _id, tmo)) )
-    {
-      logging::error("%s:\n  Error connecting to DRP at %s:%s",
-                     __PRETTY_FUNCTION__, addr, port);
-      return rc;
-    }
-    unsigned rmtId = link->id();
-    _l3Links[rmtId] = link;
-
-    logging::debug("Outbound link with DRP ID %d connected", rmtId);
-
-    if ( (rc = link->prepare(region, regSize)) )
-    {
-      logging::error("%s:\n  Failed to prepare link with DRP ID %d",
-                     __PRETTY_FUNCTION__, rmtId);
-      return rc;
-    }
-
-    logging::info("Outbound link with DRP ID %d connected and configured",
-                  rmtId);
-  }
-
-  if ( (rc = _mrqTransport.initialize(_prms.ifAddr, _prms.mrqPort, _prms.numMrqs)) )
-  {
-    logging::error("%s:\n  Failed to initialize MonReq EbLfServer on %s:%s",
-                   __PRETTY_FUNCTION__, _prms.ifAddr, _prms.mrqPort);
-    return rc;
-  }
-
-  _mrqLinks.resize(_prms.numMrqs);
-  for (unsigned i = 0; i < _mrqLinks.size(); ++i)
-  {
-    EbLfSvrLink*   link;
-    const unsigned tmo(120000);         // Milliseconds
-    if ( (rc = _mrqTransport.connect(&link, _id, tmo)) )
-    {
-      logging::error("%s:\n  Error connecting to a Mon Requestor",
-                     __PRETTY_FUNCTION__);
-      return rc;
-    }
-    unsigned rmtId = link->id();
-    _mrqLinks[rmtId] = link;
-
-    logging::debug("Inbound link with Mon Requestor ID %d connected", rmtId);
-
-    if ( (rc = link->prepare()) )
-    {
-      logging::error("%s:\n  Failed to prepare link with Mon Requestor ID %d",
-                     __PRETTY_FUNCTION__, rmtId);
-      return rc;
-    }
-  }
-
-  // Note that this loop can't be combined with the one above due to the exchange protocol
-  for (unsigned i = 0; i < _mrqLinks.size(); ++i)
-  {
-    EbLfSvrLink* link  = _mrqLinks[i];
-    unsigned     rmtId = link->id();
-
-    if (link->postCompRecv())
-    {
-      logging::warning("%s:\n  Failed to post CQ buffers for Mon Requestor ID %d",
-                       __PRETTY_FUNCTION__, rmtId);
-    }
-
-    logging::info("Inbound link with Mon Requestor ID %d connected and configured",
-                  rmtId);
-  }
+  rc = linksConfigure(_l3Links, _id, region, regSize, rmtSize, "DRP");
+  if (rc)  return rc;
+  rc = linksConfigure(_mrqLinks, _id, "Mon Requestor");
+  if (rc)  return rc;
 
   return 0;
 }
@@ -274,6 +275,8 @@ int Teb::beginrun()
 
 void Teb::run()
 {
+  logging::info("TEB thread started");
+
   int rc = pinThread(pthread_self(), _prms.core[0]);
   if (rc != 0)
   {
@@ -281,8 +284,9 @@ void Teb::run()
                    __PRETTY_FUNCTION__, strerror(rc));
   }
 
-  logging::info("TEB thread is starting");
-
+  _batchStart    = nullptr;
+  _batchEnd      = nullptr;
+  _batchRcvrs    = 0;
   //_trimmed       = 0;
   _eventCount    = 0;
   _batchCount    = 0;
@@ -296,39 +300,13 @@ void Teb::run()
     {
       if (checkEQ() == -FI_ENOTCONN)
       {
-        logging::critical("TEB thread lost connection");
+        logging::error("TEB thread lost connection with a DRP");
         break;
       }
     }
   }
 
-  _shutdown();
-
   logging::info("TEB thread finished");
-}
-
-void Teb::_shutdown()
-{
-  for (auto it = _mrqLinks.begin(); it != _mrqLinks.end(); ++it)
-  {
-    _mrqTransport.disconnect(*it);
-  }
-  _mrqLinks.clear();
-  _mrqTransport.shutdown();
-
-  for (auto it = _l3Links.begin(); it != _l3Links.end(); ++it)
-  {
-    _l3Transport.disconnect(*it);
-  }
-  _l3Links.clear();
-
-  EbAppBase::shutdown();
-
-  _batMan.dump();
-  _batMan.shutdown();
-
-  _id = -1;
-  _rcvrs.fill(0);
 }
 
 void Teb::process(EbEvent* event)
@@ -348,15 +326,16 @@ void Teb::process(EbEvent* event)
   if (!(dgram->readoutGroups() & (1 << _prms.partition)))
   {
     // The common readout group keeps events and batches in pulse ID order
-    logging::error("%s:\n  Event %014lx, env %08x is missing the common readout group %d",
+    logging::error("%s:\n  Event %014lx, env %08x is missing the common readout group %u",
                    __PRETTY_FUNCTION__, dgram->pulseId(), dgram->env, _prms.partition);
     // Revisit: Should this be fatal?
   }
 
+  // "Selected" EBs respond with a Result, others simply acknowledge
   if (ImmData::rsp(ImmData::flg(event->parameter())) == ImmData::Response)
   {
-    Batch*       batch  = _batMan.fetch(dgram->pulseId());
-    ResultDgram* rdg    = new(batch->allocate()) ResultDgram(*dgram, _id);
+    Batch*       batch = _batMan.fetch(dgram->pulseId());
+    ResultDgram* rdg   = new(batch->allocate()) ResultDgram(*dgram, _id);
 
     rdg->xtc.damage.increase(event->damage().value());
 
@@ -384,18 +363,7 @@ void Teb::process(EbEvent* event)
         uint64_t data;
         int      rc = _mrqTransport.poll(&data);
         if (rc < 0)  rdg->monitor(line, false);
-        else
-        {
-          rdg->monBufNo(data);
-
-          unsigned src = ImmData::src(data);
-          rc = _mrqLinks[src]->postCompRecv();
-          if (rc)
-          {
-            logging::warning("%s:\n  Failed to post CQ buffers for Mon Requestor ID %d",
-                             __PRETTY_FUNCTION__, src);
-          }
-        }
+        else         rdg->monBufNo(data);
       }
     }
 
@@ -409,9 +377,9 @@ void Teb::process(EbEvent* event)
       unsigned    src = rdg->xtc.src.value();
       unsigned    env = rdg->env;
       uint32_t*   pld = reinterpret_cast<uint32_t*>(rdg->xtc.payload());
-      printf("TEB processed %15s result [%8d] @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d, res [%08x, %08x]\n",
-             svc, idx, &rdg, ctl, pid, env, sz, src, pld[0], pld[1]);
+      printf("TEB processed %15s result [%8u] @ "
+             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, res [%08x, %08x]\n",
+             svc, idx, rdg, ctl, pid, env, sz, src, pld[0], pld[1]);
     }
 
     _tryPost(rdg);
@@ -441,6 +409,23 @@ void Teb::process(EbEvent* event)
         _batchRcvrs = 0;
       }
     }
+
+    if (unlikely(_prms.verbose >= VL_EVENT)) // || rdg->monitor()))
+    {
+      const char* svc = TransitionId::name(dgram->service());
+      uint64_t    pid = dgram->pulseId();
+      unsigned    idx = Batch::index(pid);
+      unsigned    ctl = dgram->control();
+      size_t      sz  = sizeof(dgram) + dgram->xtc.sizeofPayload();
+      unsigned    src = dgram->xtc.src.value();
+      unsigned    env = dgram->env;
+      printf("TEB processed %15s ACK    [%8u] @ "
+             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, data %08x\n",
+             svc, idx, dgram, ctl, pid, env, sz, src, event->parameter());
+    }
+
+    // Make the transition buffer available to the contributor again
+    post(event->parameter());
   }
 }
 
@@ -498,7 +483,13 @@ void Teb::_tryPost(const EbDgram* dgram)
 void Teb::_post(const EbDgram* start, const EbDgram* end)
 {
   uint64_t        pid    = start->pulseId();
-  static uint64_t pidPrv = 0;  assert (pid > pidPrv);  pidPrv = pid;
+  static uint64_t pidPrv = 0;  //assert (pid > pidPrv);  pidPrv = pid;
+  if (!(pid > pidPrv))
+  {
+    printf("pid %014lx, pidPrv %014lx\n", pid, pidPrv);
+    assert (pid > pidPrv);
+  }
+  pidPrv = pid;
 
   uint32_t idx    = Batch::index(pid);
   size_t   extent = (reinterpret_cast<const char*>(end) -
@@ -519,8 +510,8 @@ void Teb::_post(const EbDgram* start, const EbDgram* end)
     if (unlikely(_prms.verbose >= VL_BATCH))
     {
       void* rmtAdx = (void*)link->rmtAdx(offset);
-      printf("TEB posts          %9ld result  [%8d] @ "
-             "%16p,         pid %014lx,               sz %6zd, dst %2d @ %16p\n",
+      printf("TEB posts          %9lu result  [%8u] @ "
+             "%16p,         pid %014lx,               sz %6zd, dst %2u @ %16p\n",
              _batchCount, idx, start, pid, extent, dst, rmtAdx);
     }
 
@@ -532,7 +523,7 @@ void Teb::_post(const EbDgram* start, const EbDgram* end)
       //static unsigned retries = 0;
       //trim(dst);
       //if (retries++ == 5)  { _trimmed |= 1ul << dst; retries = 0; }
-      //printf("%s:  link->post() to %d returned %d, trimmed = %016lx\n",
+      //printf("%s:  link->post() to %u returned %d, trimmed = %016lx\n",
       //       __PRETTY_FUNCTION__, dst, rc, _trimmed);
     }
   }
@@ -574,6 +565,57 @@ uint64_t Teb::_receivers(const EbDgram& ctrb) const
 }
 
 
+static std::string getHostname()
+{
+  char hostname[HOST_NAME_MAX];
+  gethostname(hostname, HOST_NAME_MAX);
+  return std::string(hostname);
+}
+
+static std::unique_ptr<prometheus::Exposer>
+    createExposer(const EbParams&    prms,
+                  const std::string& hostname)
+{
+  std::unique_ptr<prometheus::Exposer> exposer;
+
+  // Find and register a port to use with Prometheus for run-time monitoring
+  unsigned port = 0;
+  for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
+    try {
+      port = PROM_PORT_BASE + i;
+      exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
+      if (i > 0) {
+        if ((i < MAX_PROM_PORTS) && !prms.prometheusDir.empty()) {
+          std::string fileName = prms.prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i) + ".yaml";
+          FILE* file = fopen(fileName.c_str(), "w");
+          if (file) {
+            fprintf(file, "- targets:\n    - '%s:%u'\n", hostname.c_str(), port);
+            fclose(file);
+          }
+          else {
+            // %m will be replaced by the string strerror(errno)
+            logging::warning("Error creating file %s: %m", fileName.c_str());
+          }
+        }
+        else {
+          logging::warning("Could not start run-time monitoring server");
+        }
+      }
+      break;
+    }
+    catch(const std::runtime_error& e) {
+      logging::debug("Could not start run-time monitoring server on port %u", port);
+      logging::debug("%s", e.what());
+    }
+  }
+
+  if (exposer) {
+    logging::info("Providing run-time monitoring data on port %u", port);
+  }
+
+  return exposer;
+}
+
 class TebApp : public CollectionApp
 {
 public:
@@ -586,13 +628,18 @@ public:                                 // For CollectionApp
   void handlePhase1(const json& msg) override;
   void handleReset(const json& msg) override;
 private:
+  std::string
+       _error(const json& msg, const std::string& errorMsg);
   int  _configure(const json& msg);
+  void _unconfigure();
   int  _parseConnectionParams(const json& msg);
   void _printParams(const EbParams& prms, unsigned groups) const;
   void _printGroups(unsigned groups, const u64arr_t& array) const;
   void _buildContract(const Document& top);
 private:
   EbParams&                            _prms;
+  const bool                           _ebPortEph;
+  const bool                           _mrqPortEph;
   std::unique_ptr<prometheus::Exposer> _exposer;
   std::shared_ptr<MetricExporter>      _exporter;
   std::unique_ptr<Teb>                 _teb;
@@ -600,14 +647,26 @@ private:
   json                                 _connectMsg;
   Trg::Factory<Trg::Trigger>           _factory;
   uint16_t                             _groups;
+  bool                                 _unconfigFlag;
 };
 
 TebApp::TebApp(const std::string& collSrv,
                EbParams&          prms) :
   CollectionApp(collSrv, prms.partition, "teb", prms.alias),
-  _prms        (prms)
+  _prms        (prms),
+  _ebPortEph   (prms.ebPort.empty()),
+  _mrqPortEph  (prms.mrqPort.empty()),
+  _exposer     (createExposer(prms, getHostname())),
+  _exporter    (std::make_shared<MetricExporter>()),
+  _teb         (std::make_unique<Teb>(_prms, _exporter)),
+  _unconfigFlag(false)
 {
   Py_Initialize();
+
+  if (_exposer)
+  {
+    _exposer->RegisterCollectable(_exporter);
+  }
 
   logging::info("Ready for transitions");
 }
@@ -617,28 +676,57 @@ TebApp::~TebApp()
   Py_Finalize();
 }
 
+std::string TebApp::_error(const json&        msg,
+                           const std::string& errorMsg)
+{
+  json body = json({});
+  const std::string& key = msg["header"]["key"];
+  body["err_info"] = errorMsg;
+  logging::error("%s", errorMsg.c_str());
+  reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
+  return errorMsg;
+}
+
 json TebApp::connectionInfo()
 {
   // Allow the default NIC choice to be overridden
-  std::string ip = _prms.ifAddr.empty() ? getNicIp() : _prms.ifAddr;
-  json body = {{"connect_info", {{"nic_ip", ip}}}};
+  if (_prms.ifAddr.empty())  _prms.ifAddr = getNicIp();
+
+  // If port is not user specified, reset the previously allocated port number
+  if (_ebPortEph)            _prms.ebPort.clear();
+  if (_mrqPortEph)           _prms.mrqPort.clear();
+
+  int rc = _teb->startConnection(_prms.ebPort, _prms.mrqPort);
+  if (rc)  throw "Error starting connection";
+
+  json body = {{"connect_info", {{"nic_ip",   _prms.ifAddr},
+                                 {"teb_port", _prms.ebPort},
+                                 {"mrq_port", _prms.mrqPort}}}};
   return body;
 }
 
 void TebApp::handleConnect(const json& msg)
 {
+  // Save a copy of the json so we can use it to connect to
+  // the config database on configure
+  _connectMsg = msg;
+
   json body = json({});
   int  rc   = _parseConnectionParams(msg["body"]);
   if (rc)
   {
-    std::string errorMsg = "Error parsing connect parameters";
-    body["err_info"] = errorMsg;
-    logging::error("%s:\n  %s", __PRETTY_FUNCTION__, errorMsg.c_str());
+    _error(msg, "Error parsing connection parameters");
+    return;
   }
 
-  // Save a copy of the json so we can use it to connect to
-  // the config database on configure
-  _connectMsg = msg;
+  _teb->resetCounters();
+
+  rc = _teb->connect();
+  if (rc)
+  {
+    _error(msg, "Error in TEB connect()");
+    return;
+  }
 
   // Reply to collection with transition status
   reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
@@ -713,52 +801,20 @@ int TebApp::_configure(const json& msg)
 
 # undef _FETCH
 
-  // Find and register a port to use with Prometheus for run-time monitoring
-  if (_exposer)  _exposer.reset();
-  unsigned port = 0;
-  for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
-    try {
-      port = PROM_PORT_BASE + i;
-      _exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
-      if (i > 0) {
-        if ((i < MAX_PROM_PORTS) && !_prms.prometheusDir.empty()) {
-          char hostname[HOST_NAME_MAX];
-          gethostname(hostname, HOST_NAME_MAX);
-          std::string fileName = _prms.prometheusDir + "/drpmon_" + std::string(hostname) + "_" + std::to_string(i) + ".yaml";
-          FILE* file = fopen(fileName.c_str(), "w");
-          if (file) {
-            fprintf(file, "- targets:\n    - '%s:%d'\n", hostname, port);
-            fclose(file);
-          }
-          else {
-            // %m will be replaced by the string strerror(errno)
-            logging::error("Error creating file %s: %m", fileName.c_str());
-          }
-        }
-        else {
-          logging::warning("Could not start run-time monitoring server");
-        }
-      }
-      break;
-    }
-    catch(const std::runtime_error& e) {
-      logging::debug("Could not start run-time monitoring server on port %d", port);
-      logging::debug("%s", e.what());
-    }
-  }
-
-  if (_exporter)  _exporter.reset();
-  _exporter = std::make_shared<MetricExporter>();
-  if (_exposer) {
-    logging::info("Providing run-time monitoring data on port %d", port);
-    _exposer->RegisterCollectable(_exporter);
-  }
-
-  if (_teb)  _teb.reset();
-  _teb = std::make_unique<Teb>(_prms, _exporter);
   rc = _teb->configure(trigger, prescale);
+  if (rc)  logging::error("%s:\n  Failed to configure TEB",
+                          __PRETTY_FUNCTION__);
 
   return rc;
+}
+
+void TebApp::_unconfigure()
+{
+  // Shut down the previously running instance, if any
+  lRunning = 0;
+  if (_appThread.joinable())  _appThread.join();
+
+  _teb->unconfigure();
 }
 
 void TebApp::handlePhase1(const json& msg)
@@ -768,35 +824,37 @@ void TebApp::handlePhase1(const json& msg)
 
   if (key == "configure")
   {
-    // Shut down the previously running instance, if any
-    lRunning = 0;
-    if (_appThread.joinable())  _appThread.join();
+    // Handle a "queued" Unconfigure, if any
+    if (_unconfigFlag)
+    {
+      _unconfigure();
+      _unconfigFlag = false;
+    }
 
     int rc = _configure(msg);
     if (rc)
     {
-      std::string errorMsg = "Phase 1 error: ";
-      errorMsg += "Failed to configure";
-      body["err_info"] = errorMsg;
-      logging::error("%s:\n  %s", __PRETTY_FUNCTION__, errorMsg.c_str());
+      _error(msg, "Phase 1 error: Failed to " + key);
+      return;
     }
-    else
-    {
-      _printParams(_prms, _groups);
 
-      lRunning = 1;
+    _printParams(_prms, _groups);
 
-      _appThread = std::thread(&Teb::run, std::ref(*_teb));
-    }
+    lRunning = 1;
+
+    _appThread = std::thread(&Teb::run, std::ref(*_teb));
+  }
+  else if (key == "unconfigure")
+  {
+    // "Queue" unconfiguration until after phase 2 has completed
+    _unconfigFlag = true;
   }
   else if (key == "beginrun")
   {
     if (_teb->beginrun())
     {
-      std::string errorMsg = "Phase 1 error: ";
-      errorMsg += "Failed to beginrun";
-      body["err_info"] = errorMsg;
-      logging::error("%s:\n  %s", __PRETTY_FUNCTION__, errorMsg.c_str());
+      _error(msg, "Phase 1 error: Failed to " + key);
+      return;
     }
   }
 
@@ -806,8 +864,14 @@ void TebApp::handlePhase1(const json& msg)
 
 void TebApp::handleDisconnect(const json& msg)
 {
-  lRunning = 0;
-  if (_appThread.joinable())  _appThread.join();
+  // Carry out the queued Unconfigure, if there was one
+  if (_unconfigFlag)
+  {
+    _unconfigure();
+    _unconfigFlag = false;
+  }
+
+  _teb->disconnect();
 
   // Reply to collection with transition status
   json body = json({});
@@ -819,32 +883,18 @@ void TebApp::handleReset(const json& msg)
   lRunning = 0;
   if (_appThread.joinable())  _appThread.join();
 
-  if (_exporter)  _exporter.reset();
+  _teb->shutdown();
 }
 
 int TebApp::_parseConnectionParams(const json& body)
 {
-  const unsigned numPorts    = MAX_DRPS + MAX_TEBS + MAX_TEBS + MAX_MEBS;
-  const unsigned tebPortBase = TEB_PORT_BASE + numPorts * _prms.partition;
-  const unsigned drpPortBase = DRP_PORT_BASE + numPorts * _prms.partition;
-  const unsigned mrqPortBase = MRQ_PORT_BASE + numPorts * _prms.partition;
-
-  printf("  TEB port range: %d - %d\n", tebPortBase, tebPortBase + MAX_TEBS - 1);
-  printf("  DRP port range: %d - %d\n", drpPortBase, drpPortBase + MAX_DRPS - 1);
-  printf("  MRQ port range: %d - %d\n", mrqPortBase, mrqPortBase + MAX_MEBS - 1);
-  printf("\n");
-
   std::string id = std::to_string(getId());
   _prms.id = body["teb"][id]["teb_id"];
   if (_prms.id >= MAX_TEBS)
   {
-    logging::error("TEB ID %d is out of range 0 - %d", _prms.id, MAX_TEBS - 1);
+    logging::error("TEB ID %d is out of range 0 - %u", _prms.id, MAX_TEBS - 1);
     return 1;
   }
-
-  _prms.ifAddr  = body["teb"][id]["connect_info"]["nic_ip"];
-  _prms.ebPort  = std::to_string(tebPortBase + _prms.id);
-  _prms.mrqPort = std::to_string(mrqPortBase + _prms.id);
 
   _prms.contributors = 0;
   _prms.addrs.clear();
@@ -863,20 +913,20 @@ int TebApp::_parseConnectionParams(const json& body)
   for (auto it : body["drp"].items())
   {
     unsigned    drpId   = it.value()["drp_id"];
-    std::string address = it.value()["connect_info"]["nic_ip"];
     if (drpId > MAX_DRPS - 1)
     {
-      logging::error("DRP ID %d is out of range 0 - %d", drpId, MAX_DRPS - 1);
+      logging::error("DRP ID %d is out of range 0 - %u", drpId, MAX_DRPS - 1);
       return 1;
     }
     _prms.contributors |= 1ul << drpId;
-    _prms.addrs.push_back(address);
-    _prms.ports.push_back(std::string(std::to_string(drpPortBase + drpId)));
+
+    _prms.addrs.push_back(it.value()["connect_info"]["nic_ip"]);
+    _prms.ports.push_back(it.value()["connect_info"]["drp_port"]);
 
     auto group = unsigned(it.value()["det_info"]["readout"]);
     if (group > NUM_READOUT_GROUPS - 1)
     {
-      logging::error("Readout group %d is out of range 0 - %d", group, NUM_READOUT_GROUPS - 1);
+      logging::error("Readout group %u is out of range 0 - %u", group, NUM_READOUT_GROUPS - 1);
       return 1;
     }
     _prms.contractors[group] |= 1ul << drpId; // Possibly overridden during Configure
@@ -895,6 +945,12 @@ int TebApp::_parseConnectionParams(const json& body)
     {
       _prms.numMrqs++;
     }
+    if (_prms.numMrqs > MAX_MRQS)
+    {
+      logging::error("More monitor requestors found (%u) than supportable %u",
+                     _prms.numMrqs, MAX_MRQS);
+      return 1;
+    }
   }
 
   return 0;
@@ -907,27 +963,28 @@ void TebApp::_printGroups(unsigned groups, const u64arr_t& array) const
     unsigned group = __builtin_ffs(groups) - 1;
     groups &= ~(1 << group);
 
-    printf("%d: 0x%016lx  ", group, array[group]);
+    printf("%u: 0x%016lx  ", group, array[group]);
   }
   printf("\n");
 }
 
 void TebApp::_printParams(const EbParams& prms, unsigned groups) const
 {
-  printf("Parameters of TEB ID %d:\n",                           prms.id);
+  printf("Parameters of TEB ID %d (%s:%s):\n",                   prms.id,
+                                                                 prms.ifAddr.c_str(), prms.ebPort.c_str());
   printf("  Thread core numbers:          %d, %d\n",             prms.core[0], prms.core[1]);
-  printf("  Partition:                    %d\n",                 prms.partition);
+  printf("  Partition:                    %u\n",                 prms.partition);
   printf("  Bit list of contributors:     0x%016lx, cnt: %zd\n", prms.contributors,
                                                                  std::bitset<64>(prms.contributors).count());
   printf("  Readout group contractors:    ");                    _printGroups(groups, prms.contractors);
   printf("  Readout group receivers:      ");                    _printGroups(groups, prms.receivers);
-  printf("  Number of MEB requestors:     %d\n",                 prms.numMrqs);
-  printf("  Batch duration:               0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
-  printf("  Batch pool depth:             %d\n",                 MAX_BATCHES);
-  printf("  Max # of entries / batch:     %d\n",                 MAX_ENTRIES);
-  printf("  # of contrib. buffers:        %d\n",                 MAX_LATENCY);
-  printf("  Max result     EbDgram size:  %zd\n",                prms.maxResultSize);
-  printf("  Max transition EbDgram size:  %zd\n",                prms.maxTrSize[0]);
+  printf("  Number of MEB requestors:     %u\n",                 prms.numMrqs);
+  printf("  Batch duration:               0x%014lx = %lu uS\n",  BATCH_DURATION, BATCH_DURATION);
+  printf("  Batch pool depth:             0x%08x = %u\n",        MAX_BATCHES, MAX_BATCHES);
+  printf("  Max # of entries / batch:     0x%08x = %u\n",        MAX_ENTRIES, MAX_ENTRIES);
+  printf("  # of contrib. buffers:        0x%08x = %u\n",        MAX_LATENCY, MAX_LATENCY);
+  printf("  Max result     EbDgram size:  0x%08zx = %zd\n",      prms.maxResultSize, prms.maxResultSize);
+  printf("  Max transition EbDgram size:  0x%08zx = %zd\n",      prms.maxTrSize[0], prms.maxTrSize[0]);
   printf("\n");
 }
 
@@ -944,6 +1001,10 @@ static void usage(char *name, char *desc, const EbParams& prms)
 
   fprintf(stderr, " %-23s %s (default: %s)\n",        "-A <interface_addr>",
           "IP address of the interface to use",       "libfabric's 'best' choice");
+  fprintf(stderr, " %-23s %s (default: %s)\n",        "-E <TEB server port>",
+          "Port served to Contributors for Inputs",   "dynamically assigned");
+  fprintf(stderr, " %-23s %s (default: %s)\n",        "-R <MRQ server port>",
+          "Network port for Mon requestors",          "dynamically assigned");
 
   fprintf(stderr, " %-23s %s (required)\n",           "-C <address>",
           "Collection server");
@@ -955,9 +1016,9 @@ static void usage(char *name, char *desc, const EbParams& prms)
           "Alias for teb process");
   fprintf(stderr, " %-23s %s\n",                      "-M <directory>",
           "Prometheus config file directory");
-  fprintf(stderr, " %-23s %s (default: %d)\n",        "-1 <core>",
+  fprintf(stderr, " %-23s %s (default: %u)\n",        "-1 <core>",
           "Core number for pinning App thread to",    CORE_0);
-  fprintf(stderr, " %-23s %s (default: %d)\n",        "-2 <core>",
+  fprintf(stderr, " %-23s %s (default: %u)\n",        "-2 <core>",
           "Core number for pinning other threads to", CORE_1);
 
   fprintf(stderr, " %-23s %s\n", "-v", "enable debugging output (repeat for increased detail)");
@@ -978,7 +1039,7 @@ int main(int argc, char **argv)
   prms.core[1]   = CORE_1;
   prms.verbose   = 0;
 
-  while ((op = getopt(argc, argv, "C:p:P:A:1:2:u:M:h?v")) != -1)
+  while ((op = getopt(argc, argv, "C:p:P:A:E:R:1:2:u:M:h?v")) != -1)
   {
     switch (op)
     {
@@ -986,6 +1047,8 @@ int main(int argc, char **argv)
       case 'p':  prms.partition     = std::stoi(optarg);            break;
       case 'P':  prms.instrument    = optarg;                       break;
       case 'A':  prms.ifAddr        = optarg;                       break;
+      case 'E':  prms.ebPort        = optarg;                       break;
+      case 'R':  prms.mrqPort       = optarg;                       break;
       case '1':  prms.core[0]       = atoi(optarg);                 break;
       case '2':  prms.core[1]       = atoi(optarg);                 break;
       case 'u':  prms.alias         = optarg;                       break;

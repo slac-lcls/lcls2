@@ -15,10 +15,11 @@ namespace Pds {
     class Batch
     {
     public:
-      Batch(size_t bufSize);
+      Batch();
     public:
       static uint64_t index(uint64_t pid);
     public:
+      int             initialize(size_t bufSize);
       Pds::EbDgram*   allocate();      // Allocate buffer in batch
       Batch*          initialize(void* region, uint64_t pid);
       size_t          extent() const;  // Current extent
@@ -28,7 +29,7 @@ namespace Pds {
       void            dump() const;
     private:
       void*           _buffer;     // Pointer to RDMA space for this Batch
-      const size_t    _bufSize;    // Size of entries
+      size_t          _bufSize;    // Size of entries
       uint64_t        _id;         // Id of Batch, in case it remains empty
       unsigned        _extent;     // Current extent (unsigned is large enough)
     };

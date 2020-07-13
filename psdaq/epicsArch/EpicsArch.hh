@@ -46,6 +46,8 @@ private:
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
+    void _unconfigure();
+    void _disconnect();
     void _shutdown();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 private:

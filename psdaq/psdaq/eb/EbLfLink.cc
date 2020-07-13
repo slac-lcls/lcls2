@@ -14,42 +14,107 @@ using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
 
+using ms_t = std::chrono::milliseconds;
 
-EbLfLink::EbLfLink(Endpoint* ep,
-                   unsigned  verbose) :
-  _ep(ep),
-  _mr(nullptr),
-  _id(-1),
+
+EbLfLink::EbLfLink(Endpoint*       ep,
+                   int             depth,
+                   const unsigned& verbose) :
+  _id     (-1),
+  _ep     (ep),
+  _mr     (nullptr),
   _verbose(verbose)
 {
-  if (setupMr(_buffer, sizeof(_buffer), &_bufMr))  return;
+  postCompRecv(depth);
 }
 
-int EbLfLink::setupMr(void*  region,
-                      size_t size)
+int EbLfLink::recvU32(uint32_t*   u32,
+                      const char* name)
 {
-  int rc;
-
-  if (_mr)
+  ssize_t  rc;
+  uint64_t data;
+  if ((rc = poll(&data, 1000)))
   {
-    Fabric* fab = _ep->fabric();
+    fprintf(stderr, "%s:\n  Failed to receive %s from peer: %s\n",
+            __PRETTY_FUNCTION__, name, _ep->error());
+    return rc;
+  }
+  *u32 = data;
 
-    if (_verbose > 1)
+  if (_verbose > 1)  printf("Received peer's %s: 0x%08x = %d\n",
+                            name, *u32, *u32);
+
+  return 0;
+}
+
+int EbLfLink::sendU32(uint32_t    u32,
+                      const char* name)
+{
+  ssize_t  rc;
+  uint64_t imm = u32;
+  if ((rc = post(nullptr, 0, imm)))
+  {
+    fprintf(stderr, "%s:\n  Failed to send %s to peer: %s\n",
+            __PRETTY_FUNCTION__, name, _ep->error());
+    return rc;
+  }
+
+  if (_verbose > 1)  printf("Sent     peer   %s  0x%08x = %d\n",
+                            name, u32, u32);
+
+  return 0;
+}
+
+int EbLfLink::recvMr(RemoteAddress& ra)
+{
+  ssize_t   rc;
+  unsigned* ptr = reinterpret_cast<unsigned*>(&ra);
+
+  for (unsigned i = 0; i < sizeof(ra)/sizeof(*ptr); ++i)
+  {
+    uint64_t imm;
+    if ((rc = poll(&imm, 1000)))
     {
-      printf("Deregistering   memory region: %10p : %10p, size %zd\n",
-             _mr->start(), (char*)(_mr->start()) + _mr->length(), _mr->length());
+      fprintf(stderr, "%s:\n  Failed to receive remote region specs from ID %d: %s\n",
+              __PRETTY_FUNCTION__, _id, _ep->error());
+      return rc;
     }
-    if (!fab->deregister_memory(_mr))
+    *ptr++ = imm & 0x00000000ffffffffull;
+  }
+
+  if (_verbose > 1)
+  {
+    printf("Received remote MR: %10p : %10p, size 0x%08zx = %zd\n",
+           (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent, ra.extent);
+  }
+
+  return 0;
+}
+
+int EbLfLink::sendMr(MemoryRegion* mr)
+{
+  ssize_t       rc;
+  RemoteAddress ra(mr->rkey(), (uint64_t)mr->start(), mr->length());
+  unsigned*     ptr = reinterpret_cast<unsigned*>(&ra);
+
+  for (unsigned i = 0; i < sizeof(ra)/sizeof(*ptr); ++i)
+  {
+    uint64_t imm = *ptr++;
+    if ((rc = post(nullptr, 0, imm)) < 0)
     {
-      fprintf(stderr, "%s:\n  Failed to deregister memory region %p (%p, %zd)\n",
-              __PRETTY_FUNCTION__, _mr, _mr->start(), _mr->length());
+      fprintf(stderr, "%s:\n  Failed to send local memory specs to ID %d: %s\n",
+              __PRETTY_FUNCTION__, _id, _ep->error());
+      return rc;
     }
   }
 
-  if ( (rc = setupMr(region, size, &_mr)) )  return rc;
-  if ( (rc = sendMr(_mr)) )                  return rc;
+  if (_verbose > 1)
+  {
+    printf("Sent     local  MR: %10p : %10p, size 0x%08zx = %zd\n",
+           (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent, ra.extent);
+  }
 
-  return rc;
+  return 0;
 }
 
 int EbLfLink::setupMr(void*          region,
@@ -61,104 +126,16 @@ int EbLfLink::setupMr(void*          region,
   *mr = fab->register_memory(region, size);
   if (!*mr)
   {
-    fprintf(stderr, "%s:\n  Failed to register memory region @ %p, size %zu: %s\n",
+    fprintf(stderr, "%s:\n  Failed to register MR @ %p, size %zu: %s\n",
             __PRETTY_FUNCTION__, region, size, fab->error());
     return fab->error_num();
   }
 
   if (_verbose)
   {
-    printf("Registered      memory region: %10p : %10p, size %zd\n",
-           (*mr)->start(), (char*)((*mr)->start()) + (*mr)->length(), (*mr)->length());
-  }
-
-  return 0;
-}
-
-int EbLfLink::recvU32(uint32_t*   u32,
-                      const char* name)
-{
-  ssize_t rc;
-  void*   buf = _bufMr->start();
-
-  if ((rc = _ep->recv_sync(buf, sizeof(*u32), _bufMr)) < 0)
-  {
-    fprintf(stderr, "%s:\n  Failed to receive %s from peer: %s\n",
-            __PRETTY_FUNCTION__, name, _ep->error());
-    return rc;
-  }
-  *u32 = *(uint32_t*)buf;
-
-  if (_verbose > 1)  printf("Received peer's %s: %d\n", name, *u32);
-
-  return 0;
-}
-
-int EbLfLink::sendU32(uint32_t    u32,
-                      const char* name)
-{
-  ssize_t      rc;
-  void*        buf = _bufMr->start();
-
-  LocalAddress adx(buf, sizeof(u32), _bufMr);
-  LocalIOVec   iov(&adx, 1);
-  Message      msg(&iov, 0, NULL, 0);
-
-  *(uint32_t*)buf = u32;
-  if ((rc = _ep->sendmsg_sync(&msg, FI_TRANSMIT_COMPLETE | FI_COMPLETION)) < 0)
-  {
-    fprintf(stderr, "%s:\n  Failed to send %s to peer: %s\n",
-            __PRETTY_FUNCTION__, name, _ep->error());
-    return rc;
-  }
-
-  if (_verbose > 1)  printf("Sent     peer   %s  %d\n", name, u32);
-
-  return 0;
-}
-
-int EbLfLink::sendMr(MemoryRegion* mr)
-{
-  RemoteAddress ra(mr->rkey(), (uint64_t)mr->start(), mr->length());
-  LocalAddress  adx(_bufMr->start(), sizeof(ra), _bufMr);
-  LocalIOVec    iov(&adx, 1);
-  Message       msg(&iov, 0, NULL, 0);
-  ssize_t       rc;
-
-  memcpy(adx.buf(), &ra, adx.len());
-
-  if ((rc = _ep->sendmsg_sync(&msg, FI_COMPLETION)) < 0)
-  {
-    fprintf(stderr, "%s:\n  Failed to send local memory specs to ID %d: %s\n",
-            __PRETTY_FUNCTION__, _id, _ep->error());
-    return rc;
-  }
-
-  if (_verbose > 1)
-  {
-    printf("Sent     local  memory region: %10p : %10p, size %zd\n",
-           (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent);
-  }
-
-  return 0;
-}
-
-int EbLfLink::recvMr(RemoteAddress& ra)
-{
-  ssize_t  rc;
-  if ((rc = _ep->recv_sync(_bufMr->start(), sizeof(ra), _bufMr)) < 0)
-  {
-    fprintf(stderr, "%s:\n  Failed to receive remote region specs from ID %d: %s\n",
-            __PRETTY_FUNCTION__, _id, _ep->error());
-    return rc;
-  }
-
-  memcpy(&ra, _bufMr->start(), sizeof(ra));
-
-  if (_verbose > 1)
-  {
-    printf("Received remote memory region: %10p : %10p, size %zd\n",
-           (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent);
+    printf("Registered      MR: %10p : %10p, size 0x%08zx = %zd\n",
+           (*mr)->start(), (char*)((*mr)->start()) + (*mr)->length(),
+           (*mr)->length(), (*mr)->length());
   }
 
   return 0;
@@ -166,42 +143,88 @@ int EbLfLink::recvMr(RemoteAddress& ra)
 
 // ---
 
-EbLfSvrLink::EbLfSvrLink(Endpoint* ep,
-                         int       depth,
-                         unsigned  verbose) :
-  EbLfLink(ep, verbose),
-  _depth(depth),
-  _count(1)
+EbLfSvrLink::EbLfSvrLink(Endpoint*       ep,
+                         int             depth,
+                         const unsigned& verbose) :
+  EbLfLink(ep, depth, verbose)
 {
 }
 
-int EbLfSvrLink::exchangeIds(unsigned id)
+int EbLfSvrLink::_synchronizeBegin()
 {
   int rc;
 
-  if ( (rc = recvU32(&_id, "ID")) )  return rc;
-  if ( (rc = sendU32(  id, "ID")) )  return rc;
+  // Send a synchronization message to _one_ client
+  uint64_t imm = _BegSync;              // Use a different value from Clients
+  if ( (rc = EbLfLink::post(nullptr, 0, imm)) )  return rc;
 
-  return 0;
+  // Drain any stale transmissions that are stuck in the pipe
+  while ((rc = EbLfLink::poll(&imm, 60000)) == 0)
+  {
+    if (imm == _EndSync)  break;        // Break on synchronization message
+  }
+
+  return rc;
 }
 
-int EbLfSvrLink::prepare()
+int EbLfSvrLink::_synchronizeEnd()
 {
-  int      rc;
-  uint32_t sz;
+  int rc;
 
-  if ( (rc = recvU32(&sz, "region size")) )  return rc;
-  if (sz != sizeof(_buffer))                 return -1;
+  uint64_t imm = _SvrSync;
+  if ( (rc = EbLfLink::post(nullptr, 0, imm)) )  return rc;
+  if ( (rc = EbLfLink::poll(&imm, 5000)) )       return rc;
+  if (imm != _CltSync)
+    fprintf(stderr, "Failed protocol: imm %08lx != %08x\n", imm, _CltSync);
+
+  return rc;
+}
+
+int EbLfSvrLink::prepare(unsigned id)
+{
+  int rc;
+
+  // Wait for synchronization to complete successfully prior to any sends/recvs
+  if ( (rc = _synchronizeBegin()) )
+  {
+    fprintf(stderr, "%s:\n  Failed synchronize Begin with peer: rc %d\n",
+            __PRETTY_FUNCTION__, rc);
+    return rc;
+  }
+
+  // Exchange IDs and get MR size
+  if ( (rc = recvU32(&_id, "ID")) )       return rc;
+  if ( (rc = sendU32(  id, "ID")) )       return rc;
+
+  // Verify the exchanges are complete
+  if ( (rc = _synchronizeEnd()) )
+  {
+    fprintf(stderr, "%s:\n  Failed synchronize End with peer: rc %d\n",
+            __PRETTY_FUNCTION__, rc);
+    return rc;
+  }
 
   return 0;
 }
 
-int EbLfSvrLink::prepare(size_t* size)
+int EbLfSvrLink::prepare(unsigned id,
+                         size_t*  size)
 {
   int      rc;
   uint32_t rs;
 
-  if ( (rc = recvU32(&rs, "region size")) )  return rc;
+  // Wait for synchronization to complete successfully prior to any sends/recvs
+  if ( (rc = _synchronizeBegin()) )
+  {
+    fprintf(stderr, "%s:\n  Failed synchronize Begin with peer: rc %d\n",
+            __PRETTY_FUNCTION__, rc);
+    return rc;
+  }
+
+  // Exchange IDs and get MR size
+  if ( (rc = recvU32(&_id, "ID")) )       return rc;
+  if ( (rc = sendU32(  id, "ID")) )       return rc;
+  if ( (rc = recvU32( &rs, "MR size")) )  return rc;
   if (size)  *size = rs;
 
   // This method requires a call to setupMr(region, size) below
@@ -210,90 +233,157 @@ int EbLfSvrLink::prepare(size_t* size)
   return 0;
 }
 
-int EbLfSvrLink::_postCompRecv(int count)
+int EbLfSvrLink::setupMr(void*  region,
+                         size_t size)
 {
-  int i;
+  int rc;
 
-  for (i = _count; i < count; ++i)
+  if (_mr)
   {
-    ssize_t rc;
-    if ((rc = _ep->recv_comp_data((void*)uintptr_t(i))) < 0)
+    Fabric* fab = _ep->fabric();
+
+    if (_verbose > 1)
     {
-      if (rc != -FI_EAGAIN)
-        fprintf(stderr, "%s:\n  Failed to post a CQ buffer %d: %s\n",
-                __PRETTY_FUNCTION__, i, _ep->error());
-      break;
+      printf("Deregistering   MR: %10p : %10p, size 0x%08zx = %zd\n",
+             _mr->start(), (char*)(_mr->start()) + _mr->length(),
+             _mr->length(), _mr->length());
     }
+    if (!fab->deregister_memory(_mr))
+    {
+      fprintf(stderr, "%s:\n  Failed to deregister MR %p (%p, %zd)\n",
+              __PRETTY_FUNCTION__, _mr, _mr->start(), _mr->length());
+    }
+    _mr = nullptr;
   }
 
-  return i;
+  // Set up the MR and provide its specs to the other side
+  if ( (rc = EbLfLink::setupMr(region, size, &_mr)) )  return rc;
+  if ( (rc = sendMr(_mr)) )                            return rc;
+
+  // Verify the exchanges are complete
+  if ( (rc = _synchronizeEnd()) )
+  {
+    fprintf(stderr, "%s:\n  Failed synchronize End with peer: rc %d\n",
+            __PRETTY_FUNCTION__, rc);
+    return rc;
+  }
+
+  return rc;
 }
 
 // ---
 
-EbLfCltLink::EbLfCltLink(Endpoint* ep,
-                         unsigned  verbose,
-                         uint64_t& pending) :
-  EbLfLink(ep, verbose),
+EbLfCltLink::EbLfCltLink(Endpoint*       ep,
+                         int             depth,
+                         const unsigned& verbose,
+                         uint64_t&       pending) :
+  EbLfLink(ep, depth, verbose),
   _pending(pending)
 {
 }
 
-int EbLfCltLink::exchangeIds(unsigned id)
+int EbLfCltLink::_synchronizeBegin()
 {
   int rc;
 
-  if ( (rc = sendU32(  id, "ID")) )  return rc;
-  if ( (rc = recvU32(&_id, "ID")) )  return rc;
+  // NB: Clients can't send anything to a server before receiving the
+  //     synchronization message or the Server will get confused
+  // Drain any stale transmissions that are stuck in the pipe
+  uint64_t imm;
+  while ((rc = EbLfLink::poll(&imm, 60000)) == 0)
+  {
+    if (imm == _BegSync)  break;        // Break on synchronization message
+  }
+  if (rc != 0)                                   return rc;
 
-  return 0;
+  // Send a synchronization message to the server
+  imm = _EndSync;                       // Use a different value from Servers
+  if ( (rc = EbLfLink::post(nullptr, 0, imm)) )  return rc;
+
+  return rc;
 }
 
-// A small memory region is needed in order to use the post(buf, len, immData)
-// method, below.
-int EbLfCltLink::prepare()
+int EbLfCltLink::_synchronizeEnd()
 {
-  return prepare(nullptr, 0, sizeof(RemoteAddress));
+  int rc;
+
+  uint64_t imm = _CltSync;
+  if ( (rc = EbLfLink::post(nullptr, 0, imm)) )  return rc;
+  if ( (rc = EbLfLink::poll(&imm, 5000)) )       return rc;
+  if (imm != _SvrSync)
+    fprintf(stderr, "Failed protocol: imm %08lx != %08x\n", imm, _SvrSync);
+
+  return rc;
 }
 
-int EbLfCltLink::prepare(void*  region,
-                         size_t size)
+int EbLfCltLink::prepare(unsigned id)
 {
-  return prepare(region, size, size);
+  return prepare(id, nullptr, 0, 0);
+}
+
+int EbLfCltLink::prepare(unsigned id,
+                         void*    region,
+                         size_t   size)
+{
+  return prepare(id, region, size, size);
 }
 
 // Buffers to be posted using the post(buf, len, offset, immData, ctx) method,
 // below, must be covered by a memory region set up using this method.
-int EbLfCltLink::prepare(void*  region,
-                         size_t lclSize,
-                         size_t rmtSize)
+int EbLfCltLink::prepare(unsigned id,
+                         void*    region,
+                         size_t   lclSize,
+                         size_t   rmtSize)
 {
   int rc;
 
-  if ( (rc = sendU32(rmtSize, "region size")) )  return rc;
+  // Wait for synchronization to complete successfully prior to any sends/recvs
+  if ( (rc = _synchronizeBegin()) )
+  {
+    fprintf(stderr, "%s:\n  Failed synchronize Begin with peer: rc %d\n",
+            __PRETTY_FUNCTION__, rc);
+    return rc;
+  }
+
+  // Exchange IDs and get MR size
+  if ( (rc = sendU32(     id, "ID")) )       return rc;
+  if ( (rc = recvU32(   &_id, "ID")) )       return rc;
 
   // Region may already have stuff in it, so can't write on it above
   // Revisit: Would like to make it const, but has issues in Endpoint.cc
   if (region)
   {
+    if ( (rc = sendU32(rmtSize, "MR size")) )  return rc;
+
     if (_mr)
     {
       Fabric* fab = _ep->fabric();
 
       if (_verbose > 1)
       {
-        printf("Deregistering   memory region: %10p : %10p, size %zd\n",
-               _mr->start(), (char*)(_mr->start()) + _mr->length(), _mr->length());
+        printf("Deregistering   MR: %10p : %10p, size 0x%08zx = %zd\n",
+               _mr->start(), (char*)(_mr->start()) + _mr->length(),
+               _mr->length(), _mr->length());
       }
       if (!fab->deregister_memory(_mr))
       {
-        fprintf(stderr, "%s:\n  Failed to deregister memory region %p (%p, %zd)\n",
+        fprintf(stderr, "%s:\n  Failed to deregister MR %p (%p, %zd)\n",
                 __PRETTY_FUNCTION__, _mr, _mr->start(), _mr->length());
       }
+      _mr = nullptr;
     }
 
-    if ( (rc = recvMr(_ra)) )                     return rc;
+    // Set up the MR and provide its specs to the other side
     if ( (rc = setupMr(region, lclSize, &_mr)) )  return rc;
+    if ( (rc = recvMr (_ra)) )                    return rc;
+  }
+
+  // Verify the exchanges are complete
+  if ( (rc = _synchronizeEnd()) )
+  {
+    fprintf(stderr, "%s:\n  Failed synchronize End with peer: rc %d\n",
+            __PRETTY_FUNCTION__, rc);
+    return rc;
   }
 
   return 0;
@@ -362,17 +452,98 @@ int EbLfCltLink::post(const void* buf,
   return rc;
 }
 
-// This method requires that at least a small memory region has been registered.
-// This can be done using the prepare(size) method above.
-int EbLfCltLink::post(const void* buf,
-                      size_t      len,
-                      uint64_t    immData)
+// This method requires that a memory region has been registered that covers the
+// buffer specified by buf, len.  This can be done using the prepare(size)
+// method above.  If these are NULL, no memory region is needed.
+int EbLfLink::post(const void* buf,
+                   size_t      len,
+                   uint64_t    immData)
 {
   ssize_t rc;
   if ( (rc = _ep->injectdata(buf, len, immData)) )
   {
-    fprintf(stderr, "%s:\n  injectdata failed: %s\n",
-            __PRETTY_FUNCTION__, _ep->error());
+    fprintf(stderr, "%s:\n  injectdata() to ID %d failed: %s\n",
+            __PRETTY_FUNCTION__, _id, _ep->error());
+  }
+
+  return rc;
+}
+
+int EbLfLink::poll(uint64_t* data)      // Sample only, don't wait
+{
+  int              rc;
+  fi_cq_data_entry cqEntry;
+  const unsigned   nEntries = 1;
+
+  rc = _ep->rxcq()->comp(&cqEntry, nEntries);
+  if (rc > 0)
+  {
+    if (postCompRecv(nEntries))
+    {
+      fprintf(stderr, "%s:\n  Failed to post %d CQ buffers\n",
+              __PRETTY_FUNCTION__, nEntries);
+    }
+
+    *data = cqEntry.data;
+    return 0;
+  }
+
+  if (rc != -FI_EAGAIN)
+    fprintf(stderr, "%s:\n  No CQ entries for ID %d: rc %d: %s\n",
+            __PRETTY_FUNCTION__, _id, rc, _ep->rxcq()->error());
+
+  return rc;
+}
+
+int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
+{
+  int  rc;
+  auto cq = _ep->rxcq();
+  auto t0(std::chrono::steady_clock::now());
+
+  do
+  {
+    fi_cq_data_entry cqEntry;
+    const unsigned   nEntries = 1;
+    rc = cq->comp_wait(&cqEntry, nEntries, msTmo);
+    if (rc > 0)
+    {
+      if (postCompRecv(nEntries))
+      {
+        fprintf(stderr, "%s:\n  Failed to post %d CQ buffers\n",
+                __PRETTY_FUNCTION__, nEntries);
+      }
+
+      *data = cqEntry.data;
+      return 0;
+    }
+    if (rc == -FI_EAGAIN)
+    {
+      auto t1 = std::chrono::steady_clock::now();
+      auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
+      if (dT > msTmo)  return rc;
+    }
+  }
+  while ((rc == -FI_EAGAIN) || (rc == 0));
+
+  fprintf(stderr, "%s:\n  No CQ entries for ID %d: rc %d: %s\n",
+          __PRETTY_FUNCTION__, _id, rc, cq->error());
+  return rc;
+}
+
+// postCompRecv() is meant to be called after an immediate data message has been
+// received (via EbLfServer::pend(), poll(), etc., or EbLfLink::poll()) to
+// replenish the completion receive buffers
+ssize_t EbLfLink::postCompRecv()
+{
+  ssize_t rc = 0;
+  if ((rc = _ep->recv_comp_data(this)) < 0)
+  {
+    if (rc != -FI_EAGAIN)
+      fprintf(stderr, "%s:\n  Link ID %d failed to post a CQ buffer: %s\n",
+              __PRETTY_FUNCTION__, _id, _ep->error());
+    else
+      rc = 0;
   }
 
   return rc;

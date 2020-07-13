@@ -178,6 +178,7 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
 {
     logging::info("EpicsArch configure");
 
+    if (m_exporter)  m_exporter.reset();
     m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_drp.exposer()) {
         m_drp.exposer()->RegisterCollectable(m_exporter);
@@ -352,7 +353,18 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
 
 void EpicsArchApp::_shutdown()
 {
-    m_drp.shutdown();        // TebContributor must be shut down befoe the worker
+    _unconfigure();
+    _disconnect();
+}
+
+void EpicsArchApp::_disconnect()
+{
+    m_drp.disconnect();
+}
+
+void EpicsArchApp::_unconfigure()
+{
+    m_drp.unconfigure();  // TebContributor must be shut down before the worker
     m_det->shutdown();
 }
 
@@ -363,7 +375,7 @@ json EpicsArchApp::connectionInfo()
     json body = {{"connect_info", {{"nic_ip", ip}}}};
     json info = m_det->connectionInfo();
     body["connect_info"].update(info);
-    json bufInfo = m_drp.connectionInfo();
+    json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
     return body;
 }
@@ -398,7 +410,13 @@ void EpicsArchApp::handleConnect(const nlohmann::json& msg)
 
 void EpicsArchApp::handleDisconnect(const json& msg)
 {
-    _shutdown();
+    // Carry out the queued Unconfigure, if there was one
+    if (m_unconfigure) {
+        _unconfigure();
+        m_unconfigure = false;
+    }
+
+    _disconnect();
 
     json body = json({});
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
@@ -427,7 +445,7 @@ void EpicsArchApp::handlePhase1(const json& msg)
 
     if (key == "configure") {
         if (m_unconfigure) {
-            _shutdown();
+            _unconfigure();
             m_unconfigure = false;
         }
 
@@ -438,22 +456,20 @@ void EpicsArchApp::handlePhase1(const json& msg)
             _error(key, msg, errorMsg);
             return;
         }
-        else {
-            std::string config_alias = msg["body"]["config_alias"];
-            unsigned error = m_det->configure(config_alias, xtc);
-            if (error) {
-                std::string errorMsg = "Phase 1 error in Detector::configure";
-                logging::error("%s", errorMsg.c_str());
-                _error(key, msg, errorMsg);
-                return;
-            }
-            else {
-                m_drp.runInfoSupport(xtc, m_det->namesLookup());
-            }
+
+        std::string config_alias = msg["body"]["config_alias"];
+        unsigned error = m_det->configure(config_alias, xtc);
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::configure";
+            logging::error("%s", errorMsg.c_str());
+            _error(key, msg, errorMsg);
+            return;
         }
+
+        m_drp.runInfoSupport(xtc, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
-        // Delay unconfiguration until after phase 2 of unconfigure has completed
+        // "Queue" unconfiguration until after phase 2 has completed
         m_unconfigure = true;
     }
     else if (key == "beginrun") {

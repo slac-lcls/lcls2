@@ -31,7 +31,11 @@ namespace Pds {
       TebContributor(const TebCtrbParams&, const std::shared_ptr<MetricExporter>&);
       ~TebContributor() {}
     public:
-      int         configure(const TebCtrbParams&);
+      int         resetCounters();
+      int         connect();
+      int         configure();
+      void        unconfigure();
+      void        disconnect();
       void        startup(EbCtrbInBase&);
       void        shutdown();
       void        stop()  { _batMan.stop(); }

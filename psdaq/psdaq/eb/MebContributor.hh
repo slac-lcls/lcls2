@@ -22,18 +22,24 @@ namespace Pds {
     public:
       MebContributor(const MebCtrbParams&, std::shared_ptr<MetricExporter>);
     public:
-      int  configure(const MebCtrbParams&, void* region, size_t size);
+      int  resetCounters();
+      int  connect(const MebCtrbParams& prms);
+      int  configure(void* region, size_t size);
+      void unconfigure();
+      void disconnect();
       void shutdown();
+      bool enabled() { return _enabled; }
     public:
       int  post(const Pds::EbDgram* dataDatagram); // Transitions
       int  post(const Pds::EbDgram* dataDatagram,
-                uint32_t                destination);  // L1Accepts
+                uint32_t            destination);  // L1Accepts
     private:
       size_t                    _maxEvSize;
       size_t                    _maxTrSize;
       size_t                    _bufRegSize;
       EbLfClient                _transport;
       std::vector<EbLfCltLink*> _links;
+      bool                      _enabled;
       unsigned                  _id;
       unsigned                  _verbose;
     private:
