@@ -127,6 +127,11 @@ public:
         m_condition.notify_one();
     }
 
+    void startup()
+    {
+        m_terminate.store(false);
+    }
+
 private:
     std::mutex m_mutex;
     std::condition_variable m_condition;
