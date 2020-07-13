@@ -139,7 +139,7 @@ EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
     EbEpoch*& entry = _epochLut[index];
     if (!entry)  entry = epoch;
     //else { printf("Epoch list entry %p is already allocated with key %014lx\n", entry, entry->key);
-    //  printf("New epoch %p pid %014lx, index %d, shift %zd\n",
+    //  printf("New epoch %p pid %014lx, index %u, shift %zd\n",
     //         epoch, epoch->key, index, _epochLut.size());
     //  entry->dump(0);
     //}
@@ -192,7 +192,7 @@ EbEvent* EventBuilder::_event(const EbDgram* ctrb,
     //EbEvent*& entry = _eventLut[index];
     //if (!entry)  entry = event;
     //else { printf("Event list entry %p is already allocated with key %014lx\n", entry, entry->sequence());
-    //  printf("New event %p pid %014lx, index %d, mask %08lx, shift %zd\n",
+    //  printf("New event %p pid %014lx, index %u, mask %08lx, shift %zd\n",
     //         event, event->sequence(), index, _mask, _eventLut.size());
     //  entry->dump(0);
     //}
@@ -428,7 +428,7 @@ void EventBuilder::process(const EbDgram* ctrb,
       size_t    sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
       unsigned  src = ctrb->xtc.src.value();
       printf("EB found a ctrb                                 @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2d, pld [%08x, %08x], prm %08x, due %014lx\n",
+             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, pld [%08x, %08x], prm %08x, due %014lx\n",
              ctrb, ctl, pid, env, sz, src, pld[0], pld[1], prm, due ? due->sequence() : 0ul);
     }
 

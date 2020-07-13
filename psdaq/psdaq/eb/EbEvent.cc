@@ -47,7 +47,7 @@ EbEvent::EbEvent(uint64_t        contract,
   _remaining = contract & ~(1ul << cdg->xtc.src.value());
   if (_remaining == contract)           // Make sure some bit was taken down
   {
-    fprintf(stderr, "%s:\n  Source %d isn't in contract %016lx "
+    fprintf(stderr, "%s:\n  Source %u isn't in contract %016lx "
             "for %s @ %p, PID %014lx, RoGs %04hx\n",
             __PRETTY_FUNCTION__, cdg->xtc.src.value(), contract,
             TransitionId::name(cdg->service()), cdg, cdg->pulseId(),
@@ -111,7 +111,7 @@ EbEvent* EbEvent::_add(const EbDgram* cdg)
   _remaining = remaining & ~(1ul << cdg->xtc.src.value());
   if (_remaining == remaining)          // Make sure some bit was taken down
   {
-    fprintf(stderr, "%s:\n  Source %d didn't affect remaining %016lx "
+    fprintf(stderr, "%s:\n  Source %u didn't affect remaining %016lx "
             "for %s @ %p, PID %014lx, RoGs %04hx, contract %016lx\n",
             __PRETTY_FUNCTION__, cdg->xtc.src.value(), remaining,
             TransitionId::name(cdg->service()), cdg, cdg->pulseId(),
