@@ -33,6 +33,7 @@ public:
     {
         return static_cast<Pds::TimingHeader*>(m_pool->dmaBuffers[index]);
     }
+    virtual bool scanEnabled() {return false;}
     XtcData::Xtc& transitionXtc() {return *reinterpret_cast<XtcData::Xtc*>(m_xtcbuf.data());}
     XtcData::NamesLookup& namesLookup() {return m_namesLookup;}
     unsigned nodeId;
