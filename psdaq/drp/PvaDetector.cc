@@ -647,6 +647,13 @@ void PvaDetector::_timeout(const XtcData::TimeStamp& timestamp)
                            timestamp.seconds(), timestamp.nanoseconds(),
                            dgram.time.seconds(), dgram.time.nanoseconds());
         }
+        else {
+            // Allocate a transition dgram from the pool and initialize its header
+            Pds::EbDgram* trDgram = m_pool->allocateTr();
+            *trDgram = dgram;
+            PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
+            pgpEvent->transitionDgram = trDgram;
+        }
         _sendToTeb(dgram, index);
     }
 }
