@@ -139,7 +139,6 @@ int EbAppBase::connect(const EbParams& prms)
 {
   unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
 
-  _bufNo        .clear();
   _links        .resize(nCtrbs);
   _id           = prms.id;
   _contributors = prms.contributors;
@@ -162,21 +161,23 @@ int EbAppBase::configure(const EbParams& prms)
   int rc = _linksConfigure(prms, _links, _id, "DRP");
   if (rc)  return rc;
 
-  // linksConfigure() on the other side drains these away, so must repost them
-  // on each Configure
-  _bufNo.resize(nCtrbs * NUM_TRANSITION_BUFFERS);
-
-  for (unsigned i = 0; i < NUM_TRANSITION_BUFFERS; ++i)
+  for (unsigned buf = 0; buf < NUM_TRANSITION_BUFFERS; ++buf)
   {
-    for (auto it = _links.begin(); it != _links.end(); ++it)
+    for (auto link : _links)
     {
-      EbLfSvrLink* link = *it;
+      uint64_t imm  = ImmData::value(ImmData::Transition, _id, buf);
 
-      unsigned src = link->id();
+      if (unlikely(_verbose >= VL_EVENT))
+        printf("EbAp posts transition buffer index %u to src %2u, %08lx\n",
+               buf, link->id(), imm);
 
-      _bufNo[i * _links.size() + src] = i;
+      rc = link->post(nullptr, 0, imm);
+      if (rc)
+      {
+        logging::error("%s:\n  Failed to post buffer number to DRP ID %d: rc %d, imm %08lx",
+                       __PRETTY_FUNCTION__, link->id(), rc, imm);
+      }
     }
-    post(i);
   }
 
   return 0;
@@ -251,7 +252,7 @@ int EbAppBase::process()
   {
     // Time out incomplete events
     if (rc == -FI_ETIMEDOUT)  EventBuilder::expired();
-    else printf("EbAppBase::process: pend() -> rc %d\n", rc);
+    else logging::error("%s:\n  pend() error %d\n", __PRETTY_FUNCTION__, rc);
     return rc;
   }
 
@@ -266,10 +267,8 @@ int EbAppBase::process()
                      : (_bufRegSize[src] + idx * _maxTrSize[src]); // Tr region for non-selected EB is after batch/buffer region
   const EbDgram* idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));
 
-  // Cache the buffer number so that we can tell the contributor when it's free for reuse
-  if (ImmData::buf(flg) == ImmData::Transition)
-    _bufNo[idx * _links.size() + src] = idx; // Revisit: The 1st idx is wrong: It must be the same value for all contributions to the event
-                                             //          Somehow get this idx from event->parameter()
+  if (src != idg->xtc.src.value())
+    logging::warning("Link src (%d) != dgram src (%d)", src, idg->xtc.src.value());
 
   _ctrbSrc->observe(double(src));       // Revisit: For testing
 
@@ -290,26 +289,26 @@ int EbAppBase::process()
   return 0;
 }
 
-void EbAppBase::post(unsigned data)
+void EbAppBase::post(const EbDgram* const* begin, const EbDgram** const end)
 {
-  unsigned idx = ImmData::idx(data);
-
-  for (auto it = _links.begin(); it != _links.end(); ++it)
+  for (auto pdg = begin; pdg < end; ++pdg)
   {
-    EbLfSvrLink* link = *it;
-    unsigned     src  = link->id();
-    unsigned     buf  = _bufNo[idx * _links.size() + src];
-    uint64_t     imm  = ImmData::value(ImmData::Transition, _id, buf);
+    auto     idg = *pdg;
+    unsigned src = idg->xtc.src.value();
+    auto     lnk = _links[src];
+    size_t   ofs = lnk->lclOfs(reinterpret_cast<const void*>(idg));
+    unsigned buf = (ofs - _bufRegSize[src]) / _maxTrSize[src];
+    uint64_t imm = ImmData::value(ImmData::Transition, _id, buf);
 
     if (unlikely(_verbose >= VL_EVENT))
-      printf("EbAp posts transition buffer index %u to src %2u, %08lx (%08x)\n",
-             buf, src, imm, data);
+      printf("EbAp posts transition buffer index %u to src %2u, %08lx\n",
+             buf, src, imm);
 
-    int rc = link->post(nullptr, 0, imm);
+    int rc = lnk->post(nullptr, 0, imm);
     if (rc)
     {
-      logging::error("%s:\n  Failed to post buffer number to DRP ID %d: rc %d, imm %08lx, data %08x",
-                     __PRETTY_FUNCTION__, src, rc, imm, data);
+      logging::error("%s:\n  Failed to post buffer number to DRP ID %d: rc %d, imm %08lx",
+                     __PRETTY_FUNCTION__, src, rc, imm);
     }
   }
 }

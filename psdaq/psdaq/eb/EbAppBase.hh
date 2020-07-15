@@ -50,7 +50,8 @@ namespace Pds {
       void             disconnect();
       void             shutdown();
       int              process();
-      void             post(unsigned data);
+      void             post(const EbDgram* const* begin,
+                            const EbDgram** const end);
       void             trim(unsigned dst);
     public:                            // For EventBuilder
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
@@ -69,7 +70,6 @@ namespace Pds {
       std::vector<size_t>       _maxBufSize;
       const unsigned            _maxEntries;
       const unsigned            _maxBuffers;
-      std::vector<unsigned>     _bufNo;
       const unsigned&           _verbose;
       uint64_t                  _bufferCnt;
       uint64_t                  _tmoEvtCnt; // Count of timed out events

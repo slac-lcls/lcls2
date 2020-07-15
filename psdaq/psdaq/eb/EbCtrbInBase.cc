@@ -237,6 +237,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
   {
     // Try to sweep out any deferred Results
     if (rc == -FI_ETIMEDOUT)  _matchUp(ctrb, nullptr);
+    else logging::error("%s:\n  pend() error %d\n", __PRETTY_FUNCTION__, rc);
     return rc;
   }
 

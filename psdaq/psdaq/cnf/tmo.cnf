@@ -10,7 +10,8 @@ collect_host = 'drp-tst-acc06'
 groups = platform + ' 7' + ' 2'
 #hutch, user, password = ('tmo', 'tmoopr', 'pcds')
 hutch, user, password = ('tst', 'tstopr', 'pcds')
-lgbk = 'https://pswww.slac.stanford.edu/ws-auth/lgbk/'
+#lgbk = 'https://pswww.slac.stanford.edu/ws-auth/lgbk/'
+lgbk = 'https://pswww.slac.stanford.edu/ws-auth/devlgbk/'
 prom_dir = '/reg/g/psdm/psdatmgr/etc/config/prom' # Prometheus
 data_dir = '/ffb01/data'
 
@@ -56,9 +57,9 @@ fields = [
 procmgr_config = [
  {                         id:'groupca',     flags:'s',    conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
  {                         id:'xpmpva',      flags:'s',    conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1 DAQ:LAB2:XPM:2'},
- #{ host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --url '+lgbk+'--user '+user+' --password '+password+' -r ~/.psdaq/tmo.activeDet.json -S 1'},
- #{ host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --url '+lgbk+'--user '+user+' --password '+password+' -r /dev/null -S 1'},
- { host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --url '+lgbk+'--user '+user+' --password '+password+' -S 1'},
+ #{ host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --url '+lgbk+' --user '+user+' --password '+password+' -r ~/.psdaq/tmo.activeDet.json -S 1'},
+ #{ host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --url '+lgbk+' --user '+user+' --password '+password+' -r /dev/null -S 1'},
+ { host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --url '+lgbk+' --user '+user+' --password '+password+' -S 1'},
  {                         id:'control_gui', flags:'p',    conda:conda_rel,                cmd:'control_gui -H '+collect_host},
 
  # TEB

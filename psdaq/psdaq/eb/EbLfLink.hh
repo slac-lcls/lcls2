@@ -22,8 +22,10 @@ namespace Pds {
       int recvMr(Fabrics::RemoteAddress&);
       int setupMr(void* region, size_t size, Fabrics::MemoryRegion**);
     public:
-      void*     lclAdx(size_t offset) const;
-      uintptr_t rmtAdx(size_t offset) const;
+      void*     lclAdx(size_t      offset) const;
+      size_t    lclOfs(const void* buffer) const;
+      uintptr_t rmtAdx(size_t      offset) const;
+      size_t    rmtOfs(uintptr_t   buffer) const;
     public:
       Fabrics::Endpoint* endpoint() const { return _ep;  }
       unsigned           id()       const { return _id;  }
@@ -98,9 +100,22 @@ void* Pds::Eb::EbLfLink::lclAdx(size_t offset) const
 }
 
 inline
+size_t Pds::Eb::EbLfLink::lclOfs(const void* buffer) const
+{
+  return static_cast<const char*>(buffer) -
+         static_cast<const char*>(_mr->start());
+}
+
+inline
 uintptr_t Pds::Eb::EbLfLink::rmtAdx(size_t offset) const
 {
   return _ra.addr + offset;
+}
+
+inline
+size_t Pds::Eb::EbLfLink::rmtOfs(uintptr_t buffer) const
+{
+  return buffer - _ra.addr;
 }
 
 inline

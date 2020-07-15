@@ -425,7 +425,7 @@ void Teb::process(EbEvent* event)
     }
 
     // Make the transition buffer available to the contributor again
-    post(event->parameter());
+    post(event->begin(), event->end());
   }
 }
 

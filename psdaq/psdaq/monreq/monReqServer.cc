@@ -435,7 +435,7 @@ void Meb::process(EbEvent* event)
   if (_apps->events(dg) == XtcMonitorServer::Handled)
   {
     // Make the buffer available to the contributor again
-    post(event->parameter());
+    post(event->begin(), event->end());
 
     Pool::free((void*)dg);          // Handled means _deleteDatagram() won't be called
   }
