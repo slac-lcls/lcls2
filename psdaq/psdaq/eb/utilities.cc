@@ -26,7 +26,7 @@ void* Pds::Eb::allocRegion(size_t size)
   int    ret      = posix_memalign(&region, pageSize, size);
   if (ret)
   {
-    fprintf(stderr, "%s:\n  Error from posix_memalign:\n  %s",
+    fprintf(stderr, "%s:\n  Error from posix_memalign:\n  %s\n",
             __PRETTY_FUNCTION__, strerror(ret));
     return nullptr;
   }

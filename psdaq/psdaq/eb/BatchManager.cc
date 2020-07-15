@@ -60,18 +60,18 @@ int BatchManager::initialize(size_t maxEntrySize, bool batching)
     fprintf(stderr, "%s: Warning: More triggers can occur in a batch duration (%lu) "
             "than for which there are batch entries (%u).\n"
             "Beware the trigger rate!\n",
-            __func__, BATCH_DURATION, MAX_ENTRIES);
+            __PRETTY_FUNCTION__, BATCH_DURATION, MAX_ENTRIES);
   }
   if (maxEntrySize % sizeof(uint64_t) != 0)
   {
     fprintf(stderr, "%s: Warning: Make max EbDgram buffer size (%zd) divisible "
-            "by %zd to avoid alignment issues",
-            __func__, maxEntrySize, sizeof(uint64_t));
+            "by %zd to avoid alignment issues\n",
+            __PRETTY_FUNCTION__, maxEntrySize, sizeof(uint64_t));
   }
   if (_region == nullptr)
   {
     fprintf(stderr, "%s: No memory found for a region of size %zd\n",
-            __func__, batchRegionSize());
+            __PRETTY_FUNCTION__, batchRegionSize());
     return 1;
   }
   return 0;

@@ -65,8 +65,8 @@ procmgr_config = [
  #{ host: 'drp-tst-dev004', id:'epics_0',     flags:'xpu',  env:epics_env, cmd:ea_cmd},
 
  # BLD - must currently run on dev018 since that's where the bld enet xface is
- #{ host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4'},
- #{ host: epics_host,       id:'bldcas',      flags:'s',    env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str},
+ { host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4 -e 40'},
+ { host: epics_host,       id:'bldcas',      flags:'s',    env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str},
  #{ host: 'drp-tst-dev018', id:'bld_0',       flags:'xpu',  env:epics_env, cmd:bld_cmd},
 
  # TimeTool

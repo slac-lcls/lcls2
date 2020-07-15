@@ -175,7 +175,11 @@ int EbLfSvrLink::_synchronizeEnd()
   if ( (rc = EbLfLink::post(nullptr, 0, imm)) )  return rc;
   if ( (rc = EbLfLink::poll(&imm, 5000)) )       return rc;
   if (imm != _CltSync)
-    fprintf(stderr, "Failed protocol: imm %08lx != %08x\n", imm, _CltSync);
+  {
+    fprintf(stderr, "%s:\n  Failed protocol: imm %08lx != %08x\n",
+            __PRETTY_FUNCTION__, imm, _CltSync);
+    return 1;
+  }
 
   return rc;
 }
@@ -311,7 +315,11 @@ int EbLfCltLink::_synchronizeEnd()
   if ( (rc = EbLfLink::post(nullptr, 0, imm)) )  return rc;
   if ( (rc = EbLfLink::poll(&imm, 5000)) )       return rc;
   if (imm != _SvrSync)
-    fprintf(stderr, "Failed protocol: imm %08lx != %08x\n", imm, _SvrSync);
+  {
+    fprintf(stderr, "%s:\n  Failed protocol: imm %08lx != %08x\n",
+            __PRETTY_FUNCTION__, imm, _SvrSync);
+    return 1;
+  }
 
   return rc;
 }
