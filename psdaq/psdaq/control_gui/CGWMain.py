@@ -111,12 +111,6 @@ class CGWMain(QWZMQListener) :
         self.opts = vars(popts)
         self.defs = vars(parser.get_default_values())
 
-        #host       = popts.host     # self.opts['host']
-        #port       = popts.port # self.opts['port']
-        #cp.user    = popts.user
-        #cp.upwd    = popts.upwd
-        #exp        = popts.experiment
-        #det        = popts.detector
         self.logdir     = popts.logdir
         self.loglevel   = popts.loglevel.upper()
         self.host       = popts.host
@@ -125,6 +119,8 @@ class CGWMain(QWZMQListener) :
         self.expname    = popts.expname
         self.uris       = popts.uris  # 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/'
         self.expert     = popts.expert # bool
+        self.user       = popts.user 
+        self.password   = popts.password 
 
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
         #if host     != self.defs['host']       : cp.cdb_host.setValue(host)

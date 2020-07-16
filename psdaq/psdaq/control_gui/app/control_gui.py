@@ -56,6 +56,8 @@ def input_option_parser() :
     d_expname    = 'tmo12345'
     d_uris       = URI_CONFIGDB # 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/'
     d_expert     = False  
+    d_user       = 'tmoopr'
+    d_password   = 'pcds'
 
     h_platform   = 'platform in range [0,7], default = %s' % d_platform
     h_host       = 'control host, default = %s' % d_host
@@ -65,17 +67,21 @@ def input_option_parser() :
     h_expname    = 'experiment name, default = %s' % d_expname
     h_uris       = 'configuration DB URI suffix, default = %s' % d_uris
     h_expert     = 'force start gui in expert mode, default = %s' % d_expert
+    h_user       = 'user login name, default = %s' % d_user
+    h_password   = 'password for interaction with configuration DB, default = %s' % d_password
 
     parser = OptionParser(description='DAQ Control GUI', usage=usage())
 
-    parser.add_option('-p', '--platform',   default=d_platform,   action='store', type='int',    help=h_platform)
-    parser.add_option('-H', '--host',       default=d_host,       action='store', type='string', help=h_host)
-    parser.add_option('-t', '--timeout',    default=d_timeout,    action='store', type='int',    help=h_timeout)
-    parser.add_option('-l', '--loglevel',   default=d_loglevel,   action='store', type='string', help=h_loglevel)
-    parser.add_option('-L', '--logdir',     default=d_logdir,     action='store', type='string', help=h_logdir)
-    parser.add_option('-e', '--expname',    default=d_expname,    action='store', type='string', help=h_expname)
-    parser.add_option('-u', '--uris',       default=d_uris,       action='store', type='string', help=h_uris)
-    parser.add_option('-E', '--expert',     default=d_expert,     action='store_true',           help=h_expert)
+    parser.add_option('-p', '--platform', default=d_platform, action='store', type='int',    help=h_platform)
+    parser.add_option('-H', '--host',     default=d_host,     action='store', type='string', help=h_host)
+    parser.add_option('-t', '--timeout',  default=d_timeout,  action='store', type='int',    help=h_timeout)
+    parser.add_option('-l', '--loglevel', default=d_loglevel, action='store', type='string', help=h_loglevel)
+    parser.add_option('-L', '--logdir',   default=d_logdir,   action='store', type='string', help=h_logdir)
+    parser.add_option('-e', '--expname',  default=d_expname,  action='store', type='string', help=h_expname)
+    parser.add_option('-u', '--uris',     default=d_uris,     action='store', type='string', help=h_uris)
+    parser.add_option('-E', '--expert',   default=d_expert,   action='store_true',           help=h_expert)
+    parser.add_option(      '--user',     default=d_user,     action='store', type='string', help=h_user)
+    parser.add_option(      '--password', default=d_password, action='store', type='string', help=h_password)
 
     return parser
   

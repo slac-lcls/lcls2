@@ -31,7 +31,7 @@ from PyQt5.QtGui import QCursor
 from psdaq.control_gui.CGConfigParameters import cp
 from psdaq.control_gui.CGWConfigEditor import CGWConfigEditor
 from psdaq.control_gui.QWPopupSelectItem import popup_select_item_from_list
-from psdaq.control_gui.CGConfigDBUtils import get_configdb, URI_CONFIGDB
+from psdaq.control_gui.CGConfigDBUtils import get_configdb, URI_CONFIGDB, ROOT_CONFIGDB
 from psdaq.control_gui.CGJsonUtils import str_json
 
 from psdaq.control_gui.QWUtils import confirm_or_cancel_dialog_box
@@ -121,9 +121,11 @@ class CGWMainConfiguration(QGroupBox) :
     def inst_configdb(self, msg=''):
         uris = getattr(cp.cgwmain, 'uris', URI_CONFIGDB)
         inst = getattr(cp, 'inst', None)
+        user = getattr(cp.cgwmain, 'user', None)
+        pwd  = getattr(cp.cgwmain, 'password', None)
         if inst is None : inst = daq_control_get_instrument()
-        logger.debug('%sconnect to configdb(uri_suffix=%s, inst=%s)' % (msg, uris, inst))
-        return inst, get_configdb(uri_suffix=uris, inst=inst)
+        logger.debug('%sconnect to configdb(uris=%s, inst=%s, user=%s, password=...)' % (msg, uris, inst, user))
+        return inst, get_configdb(uri=uris, hutch=inst, create=False, root=ROOT_CONFIGDB, user=user, password=pwd)
 
 #--------------------
 

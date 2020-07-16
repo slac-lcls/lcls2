@@ -7,7 +7,7 @@ Usage::
 
     # Import and make configdb object with non-default parameters:
     from psdaq.control_gui.CGConfigDBUtils import get_configdb, URI_CONFIGDB, ROOT_CONFIGDB
-    confdb = get_configdb(uri_suffix=URI_CONFIGDB, inst=INSTRUMENT, root=ROOT_CONFIGDB)
+    confdb = get_configdb(uri=URI_CONFIGDB, hutch=INSTRUMENT, create=False, root=ROOT_CONFIGDB, user="xppopr", password="pcds")
 
     # Methods - see :py:class:`CGWMainPartition`
 
@@ -25,16 +25,15 @@ Created on 2019-03-25 by Mikhail Dubrovin
 #import logging
 #logger = logging.getLogger(__name__)
 
-URI_CONFIGDB = "https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/"
+URI_CONFIGDB = 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/'
 ROOT_CONFIGDB = 'configDB'
 
 #--------------------
 
 from psdaq.configdb.configdb import configdb
 
-def get_configdb(uri_suffix=URI_CONFIGDB, inst=None, root=ROOT_CONFIGDB) :
-    #print('XXX get_configdb', uri_suffix, inst, root)
-    return configdb(uri_suffix, inst, root=root)
+def get_configdb(uri=URI_CONFIGDB, hutch='tmo', create=False, root=ROOT_CONFIGDB, user='tmoopr', password='pcds') :
+    return configdb(uri, hutch, create=create, root=root, user=user, password=password)
 
 #--------------------
 
@@ -49,7 +48,7 @@ if __name__ == "__main__" :
 
     INSTRUMENT = 'TMO'
 
-    confdb = get_configdb(URI_CONFIGDB, INSTRUMENT)
+    confdb = get_configdb(URI_CONFIGDB, INSTRUMENT, create=False, root=ROOT_CONFIGDB, user='tmoopr', password='pcds')
               # <psdaq.configdb.configdb.configdb at 0x7fab765ebf98>
 
     # Find the hutches in the database:
