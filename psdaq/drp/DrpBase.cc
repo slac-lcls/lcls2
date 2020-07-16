@@ -613,6 +613,7 @@ int DrpBase::setupTriggerPrimitives(const json& body)
                          m_para.detName.c_str(), triggerConfig.c_str());
         m_tPrms.contractor = 0;    // This DRP won't provide trigger input data
         m_triggerPrimitive = nullptr;
+        m_tPrms.maxInputSize = sizeof(Pds::EbDgram); // Revisit: 0 is bad
         return 0;
     }
     m_tPrms.contractor = m_tPrms.readoutGroup;
