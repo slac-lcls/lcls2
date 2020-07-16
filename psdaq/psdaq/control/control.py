@@ -1455,7 +1455,8 @@ class CollectionManager():
         retval = set()
         for level, item1 in d["activedet"].items():
             for alias, item2 in item1.items():
-                retval.add(level + "/" + alias)
+                if item2["active"]:
+                    retval.add(level + "/" + alias)
         return retval
 
     def progressReport(self, begin_time, end_time, *, progress_txt):
