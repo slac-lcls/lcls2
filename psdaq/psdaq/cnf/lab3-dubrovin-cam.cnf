@@ -1,5 +1,7 @@
 if not platform: platform = '6'
 hutch, user, password = ('tst', 'tstopr', 'pcds')
+#hutch, user, password = ('xpp', 'xppopr', 'pcds')
+#hutch, user, password = ('tmo', 'tmoopr', 'pcds')
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 
@@ -20,11 +22,11 @@ collect_host = 'drp-tst-acc06'
 procmgr_config = [
  {                        id:'partca-'+platform, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
  {                        id:'procstat', flags:'p', cmd:'procstat p'+platform+'.cnf.last'},
- { host: collect_host,    id:'control', flags:'spu', env:epics_env, cmd:'control -v -C BEAM -P tst -B DAQ:LAB2 -x 2 --user '+user+' --password '+password},
+ { host: collect_host,    id:'control', flags:'spu', env:epics_env, cmd:'control -v -C BEAM -P '+hutch+' -B DAQ:LAB2 -x 2 --user '+user+' --password '+password},
  {                        flags:'xp', id:'control_gui', cmd:'control_gui -t 30000 -H'+collect_host+' --user '+user+' --password '+password+' -E'},
  #{                        flags:'xp', id:'control_gui', cmd:'control_gui -H'+collect_host+' -L logs'},
  # trigger event builder
  { host: 'drp-tst-dev011', id:'teb1', flags:'spu', cmd:'teb -C '+collect_host},
  # cameras
- { host: 'drp-tst-dev011', id:'cam1_0', flags:'spux', cmd:'drp -l 0xf -D fakecam -d /dev/datadev_1  -P tst -C '+collect_host}
+ { host: 'drp-tst-dev011', id:'cam1_0', flags:'spux', cmd:'drp -l 0xf -D fakecam -d /dev/datadev_1  -P '+hutch+' -C '+collect_host}
 ]
