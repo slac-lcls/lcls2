@@ -27,7 +27,7 @@ class configdb(object):
             raise Exception("configdb: Must specify root!")
         self.hutch  = hutch
         self.prefix = url.strip('/') + '/' + root + '/'
-        self.timeout = 3.05     # timeout for http requests
+        self.timeout = 15.05     # timeout for http requests
         self.user = user
         self.password = password
 
@@ -47,6 +47,7 @@ class configdb(object):
                             auth=HTTPBasicAuth(self.user, self.password),
                             json=json,
                             timeout=self.timeout)
+
         # raise exception if status is not ok
         resp.raise_for_status()
         return resp.json()

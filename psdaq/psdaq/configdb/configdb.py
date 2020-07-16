@@ -30,7 +30,7 @@ class configdb(object):
         self.hutch  = hutch
         self.prefix = url.strip('/') + '/' + root + '/'
         self.host = urlparse(self.prefix).hostname
-        self.timeout = 3.05     # timeout for http requests
+        self.timeout = 15.05     # timeout for http requests
         self.user = user
         self.password = password
 
@@ -81,14 +81,14 @@ class configdb(object):
                                     alias + '/' + device + '/')
         except requests.exceptions.RequestException as ex:
             logging.error('Web server error: %s' % ex)
-            return dict()
+            raise ex
         except Exception as ex:
             logging.error('%s' % ex)
-            return dict()
+            raise ex
 
         if not xx['success']:
             logging.error('%s' % xx['msg'])
-            return dict()
+            raise RuntimeError('Internal error fetching detector configuration')
         else:
             return xx['value']
 
