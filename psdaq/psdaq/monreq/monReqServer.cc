@@ -449,50 +449,6 @@ static std::string getHostname()
   return std::string(hostname);
 }
 
-static std::unique_ptr<prometheus::Exposer>
-    createExposer(const EbParams&    prms,
-                  const std::string& hostname)
-{
-  std::unique_ptr<prometheus::Exposer> exposer;
-
-  // Find and register a port to use with Prometheus for run-time monitoring
-  unsigned port = 0;
-  for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
-    try {
-      port = PROM_PORT_BASE + i;
-      exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
-      if (i > 0) {
-        if ((i < MAX_PROM_PORTS) && !prms.prometheusDir.empty()) {
-          std::string fileName = prms.prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i) + ".yaml";
-          FILE* file = fopen(fileName.c_str(), "w");
-          if (file) {
-            fprintf(file, "- targets:\n    - '%s:%u'\n", hostname.c_str(), port);
-            fclose(file);
-          }
-          else {
-            // %m will be replaced by the string strerror(errno)
-            logging::warning("Error creating file %s: %m", fileName.c_str());
-          }
-        }
-        else {
-          logging::warning("Could not start run-time monitoring server");
-        }
-      }
-      break;
-    }
-    catch(const std::runtime_error& e) {
-      logging::debug("Could not start run-time monitoring server on port %u", port);
-      logging::debug("%s", e.what());
-    }
-  }
-
-  if (exposer) {
-    logging::info("Providing run-time monitoring data on port %u", port);
-  }
-
-  return exposer;
-}
-
 class MebApp : public CollectionApp
 {
 public:
@@ -527,7 +483,7 @@ MebApp::MebApp(const std::string& collSrv,
   CollectionApp(collSrv, prms.partition, "meb", prms.alias),
   _prms        (prms),
   _ebPortEph   (prms.ebPort.empty()),
-  _exposer     (createExposer(prms, getHostname())),
+  _exposer     (Pds::createExposer(prms.prometheusDir, getHostname())),
   _exporter    (std::make_shared<MetricExporter>()),
   _meb         (std::make_unique<Meb>(_prms, _exporter)),
   _unconfigFlag(false)

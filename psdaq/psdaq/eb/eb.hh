@@ -10,9 +10,6 @@
 namespace Pds {
   namespace Eb {
 
-    const unsigned PROM_PORT_BASE = 9200;       // Prometheus montitoring port
-    const unsigned MAX_PROM_PORTS = 100;
-
     const unsigned MAX_DRPS       = 64;         // Maximum possible number of Contributors
     const unsigned MAX_TEBS       =  4;         // Maximum possible number of Event Builders
     const unsigned MAX_MEBS       =  4;         // Maximum possible number of Monitors

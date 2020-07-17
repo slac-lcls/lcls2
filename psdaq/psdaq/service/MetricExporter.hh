@@ -9,6 +9,10 @@
 namespace Pds
 {
 
+std::unique_ptr<prometheus::Exposer>
+    createExposer(const std::string& prometheusDir,
+                  const std::string& hostname);
+
 struct Previous
 {
     uint64_t value;

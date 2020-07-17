@@ -803,6 +803,13 @@ int CtrbApp::_parseConnectionParams(const json& body)
 }
 
 
+static std::string getHostname()
+{
+  char hostname[HOST_NAME_MAX];
+  gethostname(hostname, HOST_NAME_MAX);
+  return std::string(hostname);
+}
+
 static
 void usage(char *name, char *desc, const TebCtrbParams& prms)
 {
@@ -837,8 +844,9 @@ void usage(char *name, char *desc, const TebCtrbParams& prms)
 
 int main(int argc, char **argv)
 {
-  const unsigned NO_PARTITION = unsigned(-1u);
-  int            op           = 0;
+  const unsigned NO_PARTITION  = unsigned(-1u);
+  int            op            = 0;
+  std::string    prometheusDir = "/reg/g/psdm/psdatmgr/etc/config/prom";
   std::string    collSrv;
   TebCtrbParams  tebPrms { /* .ifAddr        = */ { }, // Network interface to use
                            /* .port          = */ { }, // Port served to TEBs
@@ -865,7 +873,7 @@ int main(int argc, char **argv)
                            /* .maxTrSize     = */ MON_TRSIZE,
                            /* .verbose       = */ 0 };
 
-  while ((op = getopt(argc, argv, "C:p:A:D:1:2:u:h?v")) != -1)
+  while ((op = getopt(argc, argv, "C:p:A:D:1:2:u:M:h?v")) != -1)
   {
     switch (op)
     {
@@ -876,6 +884,7 @@ int main(int argc, char **argv)
       case '1':  tebPrms.core[0]    = atoi(optarg);       break;
       case '2':  tebPrms.core[1]    = atoi(optarg);       break;
       case 'u':  tebPrms.alias      = optarg;             break;
+      case 'M':  prometheusDir      = optarg;             break;
       case 'v':  ++tebPrms.verbose;
                  ++mebPrms.verbose;                       break;
       case '?':
@@ -916,10 +925,9 @@ int main(int argc, char **argv)
   if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
     fprintf(stderr, "Failed to set up ^C handler\n");
 
-  unsigned port = PROM_PORT_BASE;
-  prometheus::Exposer exposer{"0.0.0.0:"+std::to_string(port), "/metrics", 1};
+  auto exposer  = Pds::createExposer(prometheusDir, getHostname());
   auto exporter = std::make_shared<MetricExporter>();
-  exposer.RegisterCollectable(exporter);
+  exposer->RegisterCollectable(exporter);
 
   try
   {

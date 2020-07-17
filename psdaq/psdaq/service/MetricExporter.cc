@@ -1,5 +1,54 @@
 #include <iostream>
 #include "MetricExporter.hh"
+#include "psalg/utils/SysLog.hh"
+
+static const unsigned PROM_PORT_BASE = 9200;       // Prometheus montitoring port
+static const unsigned MAX_PROM_PORTS = 100;
+
+using logging = psalg::SysLog;
+
+
+std::unique_ptr<prometheus::Exposer>
+    Pds::createExposer(const std::string& prometheusDir,
+                       const std::string& hostname)
+{
+    std::unique_ptr<prometheus::Exposer> exposer;
+
+    // Find and register a port to use with Prometheus for run-time monitoring
+    unsigned port = 0;
+    for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
+        try {
+            port = PROM_PORT_BASE + i;
+            exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
+            if (!prometheusDir.empty()) {
+                std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i) + ".yaml";
+                FILE* file = fopen(fileName.c_str(), "w");
+                if (file) {
+                    fprintf(file, "- targets:\n    - '%s:%d'\n", hostname.c_str(), port);
+                    fclose(file);
+                }
+                else {
+                    // %m will be replaced by the string strerror(errno)
+                    logging::warning("Error creating file %s: %m", fileName.c_str());
+                }
+            }
+            else {
+                logging::warning("Unable to update Prometheus configuration: directory not provided");
+            }
+            break;
+        }
+        catch(const std::runtime_error& e) {
+            logging::debug("Could not start run-time monitoring server on port %d", port);
+            logging::debug("%s", e.what());
+        }
+    }
+
+    if (exposer) {
+        logging::info("Providing run-time monitoring data on port %d", port);
+    }
+
+    return exposer;
+}
 
 
 static

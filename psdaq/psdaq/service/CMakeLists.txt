@@ -44,7 +44,13 @@ add_library(exporter SHARED
     MetricExporter.cc
 )
 
+target_include_directories(exporter PUBLIC
+     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+     $<INSTALL_INTERFACE:include>
+)
+
 target_link_libraries(exporter PUBLIC
+    psalg::utils
     prometheus-cpp::pull
 )
 
