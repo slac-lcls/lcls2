@@ -1751,7 +1751,7 @@ class CollectionManager():
 
     def condition_configure(self):
         # phase 1
-        ok = self.condition_common('configure', 150000,
+        ok = self.condition_common('configure', 45000,
                                    body={'config_alias': self.config_alias, 'trigger_config': self.trigger_config})
         if not ok:
             logging.error('condition_configure(): configure phase1 failed')
