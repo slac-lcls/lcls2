@@ -83,7 +83,7 @@ def main():
     elif args.monitor:
         # monitor the status
         while True:
-            part1, part2, part3, part4 = control.monitorStatus()
+            part1, part2, part3, part4, part5 = control.monitorStatus()
             if part1 is None:
                 break
             elif part1 == 'error':
@@ -92,13 +92,15 @@ def main():
                 print('data file: %s' % part2)
             elif part1 == 'progress':
                 print('progress: %s (%d/%d)' % (part2, part3, part4))
+            elif part1 in DaqControl.transitions:
+                print('transition: %-11s  state: %-11s  config: %s  recording: %s  bypass activedet: %s' % (part1, part2, part3, part4, part5))
             else:
-                print('transition: %-11s  state: %-11s  config: %s  recording: %s' % (part1, part2, part3, part4))
+                print('unknown status: %s' % part1)
 
     else:
         # print current state
-        transition, state, config_alias, recording, platform = control.getStatus()
-        print('last transition: %s  state: %s  configuration alias: %s  recording: %s' % (transition, state, config_alias, recording))
+        transition, state, config_alias, recording, platform, bypass_activedet = control.getStatus()
+        print('last transition: %s  state: %s  configuration alias: %s  recording: %s  bypass activedet: %s' % (transition, state, config_alias, recording, bypass_activedet))
 
 if __name__ == '__main__':
     main()

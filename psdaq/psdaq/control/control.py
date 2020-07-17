@@ -219,7 +219,7 @@ class DaqControl:
     # DaqControl.getStatus - get status
     #
     def getStatus(self):
-        r1 = r2 = r3 = r4 = 'error'
+        r1 = r2 = r3 = r4 = r6 = 'error'
         r5 = {}
         try:
             msg = create_msg('getstatus')
@@ -236,10 +236,11 @@ class DaqControl:
                 r3 = reply['body']['config_alias']
                 r4 = reply['body']['recording']
                 r5 = reply['body']['platform']
+                r6 = reply['body']['bypass_activedet']
             except KeyError:
                 pass
 
-        return (r1, r2, r3, r4, r5)
+        return (r1, r2, r3, r4, r5, r6)
 
     #
     # DaqControl.monitorStatus - monitor the status
@@ -252,20 +253,20 @@ class DaqControl:
                 msg = self.front_sub.recv_json()
 
                 if msg['header']['key'] == 'status':
-                    # return transition, state, config_alias, recording
-                    return msg['body']['transition'], msg['body']['state'], msg['body']['config_alias'], msg['body']['recording']
+                    # return transition, state, config_alias, recording, bypass_activedet
+                    return msg['body']['transition'], msg['body']['state'], msg['body']['config_alias'], msg['body']['recording'], msg['body']['bypass_activedet']
 
                 elif msg['header']['key'] == 'error':
-                    # return 'error', error message, 'error', 'error'
-                    return 'error', msg['body']['err_info'], 'error', 'error'
+                    # return 'error', error message, 'error', 'error', 'error'
+                    return 'error', msg['body']['err_info'], 'error', 'error', 'error'
 
                 elif msg['header']['key'] == 'fileReport':
-                    # return 'fileReport', path, 'error', 'error'
-                    return 'fileReport', msg['body']['path'], 'error', 'error'
+                    # return 'fileReport', path, 'error', 'error', 'error'
+                    return 'fileReport', msg['body']['path'], 'error', 'error', 'error'
 
                 elif msg['header']['key'] == 'progress':
-                    # return 'progress', transition, elapsed, total
-                    return 'progress', msg['body']['transition'], msg['body']['elapsed'], msg['body']['total']
+                    # return 'progress', transition, elapsed, total, 'error'
+                    return 'progress', msg['body']['transition'], msg['body']['elapsed'], msg['body']['total'], 'error'
 
             except KeyboardInterrupt:
                 break
@@ -274,7 +275,7 @@ class DaqControl:
                 logging.error('KeyError: %s' % ex)
                 break
 
-        return None, None, None, None
+        return None, None, None, None, None
 
     #
     # DaqControl.setState - change the state
