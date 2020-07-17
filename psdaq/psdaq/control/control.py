@@ -896,12 +896,21 @@ class CollectionManager():
         logging.debug('confirm_response(): ids = %s' % ids)
         msgs = []
         reports = []
+        error_flag = False
         begin_time = datetime.now(timezone.utc)
         end_time = begin_time + timedelta(milliseconds=wait_time)
-        while len(ids) > 0 and datetime.now(timezone.utc) < end_time:
+        while len(ids) > 0 and datetime.now(timezone.utc) < end_time and not error_flag:
             if progress_txt is not None:
                 self.progressReport(begin_time, end_time, progress_txt=progress_txt)
             for msg in wait_for_answers(socket, 1000, msg_id):
+
+                # exit loop early if an error is received
+                if 'err_info' in msg['body']:
+                    logging.debug('confirm_response(): id %s error: %s' %\
+                                  (msg['header']['sender_id'], msg['body']['err_info']))
+                    ids = [msg['header']['sender_id']]
+                    error_flag = True
+
                 if msg['header']['key'] in report_keys:
                     reports.append(msg)
                 elif msg['header']['sender_id'] in ids:
@@ -910,7 +919,7 @@ class CollectionManager():
                     logging.debug('confirm_response(): removed %s from ids' % msg['header']['sender_id'])
                 else:
                     logging.debug('confirm_response(): %s not in ids' % msg['header']['sender_id'])
-                if len(ids) == 0:
+                if error_flag or len(ids) == 0:
                     break
         for ii in ids:
             logging.debug('id %s did not respond' % ii)
