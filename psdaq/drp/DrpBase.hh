@@ -34,7 +34,7 @@ public:
     void process(const Pds::Eb::ResultDgram& result, const void* input) override;
 public:
     void resetCounters();
-    std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname);
+    std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
     std::string closeFiles();
 private:
     void _writeDgram(XtcData::Dgram* dgram);
@@ -53,7 +53,6 @@ private:
     uint64_t m_lastPid;
     XtcData::TransitionId::Value m_lastTid;
     uint64_t m_offset;
-    unsigned m_nodeId;
     std::vector<uint8_t> m_configureBuffer;
     uint64_t m_damage;
     std::shared_ptr<Pds::PromHistogram> m_dmgType;

@@ -121,7 +121,6 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_inprocSend(inprocSend),
   m_count(0),
   m_offset(0),
-  m_nodeId(tPrms.id),
   m_configureBuffer(para.maxTrSize),
   m_damage(0)
 {
@@ -135,14 +134,14 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
     m_dmgType = exporter->add("DRP_DamageType", labels, 16);
 }
 
-std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname)
+std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId)
 {
     std::string retVal = std::string{};     // return empty string on success
     if (runInfo.runNumber) {
         std::ostringstream ss;
         ss << runInfo.experimentName <<
               "-r" << std::setfill('0') << std::setw(4) << runInfo.runNumber <<
-              "-s" << std::setw(3) << m_nodeId <<
+              "-s" << std::setw(3) << nodeId <<
               "-c000";
         std::string runName = ss.str();
         // data
@@ -211,7 +210,7 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
 
     // small data writing
     Smd smd;
-    XtcData::NamesId namesId(m_nodeId, NamesIndex::OFFSETINFO);
+    XtcData::NamesId namesId(dgram->xtc.src.value(), NamesIndex::OFFSETINFO);
     XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, m_offset, size,
             m_smdWriter.namesLookup, namesId);
     m_smdWriter.writeEvent(smdDgram, sizeof(XtcData::Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
@@ -536,7 +535,7 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
         if (m_para.outputDir.empty()) {
             msg = "Cannot record due to missing output directory";
         } else {
-            msg = m_ebRecv->openFiles(m_para, runInfo, m_hostname);
+            msg = m_ebRecv->openFiles(m_para, runInfo, m_hostname, m_nodeId);
         }
     }
     m_tebContributor->resetCounters();
@@ -548,7 +547,7 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
 void DrpBase::runInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
 {
     XtcData::Alg runInfoAlg("runinfo", 0, 0, 1);
-    XtcData::NamesId runInfoNamesId(m_nodeId, NamesIndex::RUNINFO);
+    XtcData::NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
     XtcData::Names& runInfoNames = *new(xtc) XtcData::Names("runinfo", runInfoAlg,
                                                             "runinfo", "", runInfoNamesId);
     RunInfoDef myRunInfoDef;
@@ -558,7 +557,7 @@ void DrpBase::runInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
 
 void DrpBase::runInfoData(Xtc& xtc, NamesLookup& namesLookup, const RunInfo& runInfo)
 {
-    XtcData::NamesId runInfoNamesId(m_nodeId, NamesIndex::RUNINFO);
+    XtcData::NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
     XtcData::CreateData runinfo(xtc, namesLookup, runInfoNamesId);
     runinfo.set_string(RunInfoDef::EXPT, runInfo.experimentName.c_str());
     runinfo.set_value(RunInfoDef::RUNNUM, runInfo.runNumber);
