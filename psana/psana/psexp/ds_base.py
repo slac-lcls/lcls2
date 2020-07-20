@@ -8,6 +8,10 @@ import pathlib
 from psana.dgrammanager import DgramManager
 from psana.smalldata import SmallData
 
+from psana.psexp.prometheus_manager import PrometheusManager
+import threading
+import logging
+
 class InvalidFileType(Exception): pass
 class XtcFileNotFound(Exception): pass
 
@@ -25,6 +29,7 @@ class DataSourceBase(abc.ABC):
     shmem = None
     run_dict = {}
     destination = 0
+    monitor = False
 
     def __init__(self, **kwargs):
         """Initializes datasource base.
@@ -45,7 +50,8 @@ class DataSourceBase(abc.ABC):
             self.smalldata_kwargs = {}
             keywords = ('exp', 'dir', 'files', 'shmem', \
                     'filter', 'batch_size', 'max_events', 'detectors', \
-                    'det_name','destination','live','smalldata_kwargs')
+                    'det_name','destination','live','smalldata_kwargs', \
+                    'monitor')
             
             for k in keywords:
                 if k in kwargs:
@@ -60,6 +66,7 @@ class DataSourceBase(abc.ABC):
                 os.environ['PS_SMD_MAX_RETRIES'] = '30'
 
         assert self.batch_size > 0
+        
 
     def events(self):
         for run in self.runs():
@@ -157,6 +164,25 @@ class DataSourceBase(abc.ABC):
     def smalldata(self, **kwargs):
         return SmallData(**self.smalldata_kwargs, **kwargs)
 
+    def _start_prometheus_client(self, mpi_rank=0):
+        if not self.monitor:
+            logging.debug('not monitoring performance with prometheus')
+            self.prom_man = None
+            return
 
+        logging.debug('starting prometheus client on rank %d'%mpi_rank)
+        self.prom_man = PrometheusManager()
+        self.e = threading.Event()
+        self.t = threading.Thread(name='PrometheusThread%s'%(mpi_rank),
+                target=self.prom_man.push_metrics,
+                args=(self.e, os.getpid()),
+                daemon=True)
+        self.t.start()
 
+    def _end_prometheus_client(self, mpi_rank=0):
+        if not self.monitor:
+            return
+
+        logging.debug('runs ending on rank %d'%(mpi_rank))
+        self.e.set()
 

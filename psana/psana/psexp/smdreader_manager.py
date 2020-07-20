@@ -5,6 +5,8 @@ from psana.psexp.event_manager import EventManager
 import os, time
 from psana import dgram
 from psana.event import Event
+import logging
+
 
 class BatchIterator(object):
     """ Iterates over batches of events.
@@ -27,8 +29,10 @@ class BatchIterator(object):
         else:
             self.eb = EventBuilder(views)
 
+
     def __iter__(self):
         return self
+
 
     def __next__(self):
         # With batch_size known, smditer returns a batch_dict,
@@ -41,8 +45,9 @@ class BatchIterator(object):
         if self.eb.nevents == 0 and self.eb.nsteps == 0: raise StopIteration
         return batch_dict, step_dict
 
-class SmdReaderManager(object):
 
+
+class SmdReaderManager(object):
     def __init__(self, run):
         self.n_files = len(run.smd_fds)
         assert self.n_files > 0
@@ -57,6 +62,10 @@ class SmdReaderManager(object):
         self.smdr = SmdReader(run.smd_fds, self.chunksize)
         self.processed_events = 0
         self.got_events = -1
+        
+        # Collecting Smd0 performance using prometheus
+        if self.run.prom_man:
+            self.c_read = self.run.prom_man.get_counter('psana_smd0_read')
 
     def get_next_dgrams(self, configs=None):
         dgrams = None
@@ -76,9 +85,11 @@ class SmdReaderManager(object):
                 dgrams = [dgram.Dgram(view=ba_buf, config=config, offset=0) for ba_buf, config in zip(bytearray_bufs, configs)]
         return dgrams
 
+
     def __iter__(self):
         return self
-    
+
+
     def __next__(self):
         """
         Returns a batch of events as an iterator object.
@@ -94,6 +105,8 @@ class SmdReaderManager(object):
         
         if not self.smdr.is_complete():
             self.smdr.get()
+            if self.run.prom_man:
+                self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
             if not self.smdr.is_complete():
                 raise StopIteration
         
@@ -102,6 +115,12 @@ class SmdReaderManager(object):
                 filter_fn=self.run.filter_callback, destination=self.run.destination)
         self.got_events = self.smdr.view_size
         self.processed_events += self.got_events
+
+        # sending data to prometheus
+        if self.run.prom_man:
+            self.c_read.labels('evts', 'None').inc(self.got_events)
+            self.c_read.labels('batches', 'None').inc()
+
         return batch_iter
         
 
@@ -113,6 +132,13 @@ class SmdReaderManager(object):
                 mmrv_bufs, mmrv_step_bufs = self.smdr.view(batch_size=self.batch_size)
                 self.got_events = self.smdr.view_size
                 self.processed_events += self.got_events
+                
+                # sending data to prometheus
+                if self.run.prom_man:
+                    logging.debug('Smd0 got %d events'%(self.got_events))
+                    self.c_read.labels('evts', 'None').inc(self.got_events)
+                    self.c_read.labels('batches', 'None').inc()
+
                 if self.run.max_events and self.processed_events >= self.run.max_events:
                     is_done = True
                 
@@ -139,13 +165,18 @@ class SmdReaderManager(object):
 
             else:
                 self.smdr.get()
+                if self.run.prom_man:
+                    logging.debug('Smd0 read %.2f MB'%(self.smdr.got/1e6))
+                    self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
                 if not self.smdr.is_complete():
                     is_done = True
                     break
-    
+        
+
     @property
     def min_ts(self):
         return self.smdr.min_ts
+
 
     @property
     def max_ts(self):

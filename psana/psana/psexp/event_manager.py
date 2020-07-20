@@ -4,6 +4,7 @@ from psana.psexp.packet_footer import PacketFooter
 import numpy as np
 import os
 from psana.psexp.TransitionId import TransitionId
+import logging
 
 class EventManager(object):
     """ Return an event from the received smalldata memoryview (view)
@@ -15,7 +16,7 @@ class EventManager(object):
           replace smalldata view with the read out bigdata.
           Yield one bigdata event.
     """
-    def __init__(self, view, smd_configs, dm, filter_fn=0):
+    def __init__(self, view, smd_configs, dm, filter_fn=0, prometheus_counter=None):
         if view:
             pf = PacketFooter(view=view)
             self.smd_events = pf.split_packets()
@@ -29,6 +30,7 @@ class EventManager(object):
         self.n_smd_files = len(self.smd_configs)
         self.filter_fn = filter_fn
         self.cn_events = 0
+        self.prometheus_counter = prometheus_counter
 
         if not self.filter_fn and len(self.dm.xtc_files) > 0:
             self._read_bigdata_in_chunk()
@@ -79,7 +81,8 @@ class EventManager(object):
                 self.ofsz_batch[j,:,1] = ofsz[:,1]
 
                 sizes += ofsz[:,1]
-        
+       
+        sum_read_nbytes = 0 # for prometheus counter
         for i in range(self.n_smd_files):
             # If no data were filtered, we can assume that all bigdata
             # dgrams starting from the first offset are stored consecutively
@@ -87,9 +90,16 @@ class EventManager(object):
             # store in a view.
             os.lseek(self.dm.fds[i], offsets[i], 0)
             self.bigdata[i].extend(os.read(self.dm.fds[i], sizes[i]))
+            sum_read_nbytes += sizes[i]
+        self._inc_prometheus_counter('MB', sum_read_nbytes/1e6)
+        logging.debug('BigData read chunk %.2f MB'%(sum_read_nbytes/1e6))
             
     def __iter__(self):
         return self
+
+    def _inc_prometheus_counter(self, unit, value=1):
+        if self.prometheus_counter:
+            self.prometheus_counter.labels(unit,'None').inc(value)
 
     def __next__(self):
         if self.cn_events == self.n_events: 
@@ -97,6 +107,7 @@ class EventManager(object):
         if len(self.dm.xtc_files) == 0:
             smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.run())
             self.cn_events += 1
+            self._inc_prometheus_counter('evts')
             return smd_evt
         
         if self.filter_fn:
@@ -105,9 +116,12 @@ class EventManager(object):
             if smd_evt.service() == TransitionId.L1Accept:
                 offset_and_size_array = smd_evt.get_offsets_and_sizes()
                 bd_evt = self.dm.jump(offset_and_size_array[:,0], offset_and_size_array[:,1])
+                self._inc_prometheus_counter('MB', np.sum(offset_and_size_array[:,1])/1e6)
+                logging.debug('BigData read single %.2f MB'%(np.sum(offset_and_size_array[:,1])/1e6))
             else:
                 bd_evt = smd_evt
 
+            self._inc_prometheus_counter('evts')
             return bd_evt
         
         dgrams = [None] * self.n_smd_files
@@ -117,5 +131,6 @@ class EventManager(object):
                 dgrams[j] = dgram.Dgram(view=self.bigdata[j], config=self.dm.configs[j], offset=ofsz[j,0])
         bd_evt = Event(dgrams, run=self.dm.run())
         self.cn_events += 1
+        self._inc_prometheus_counter('evts')
         return bd_evt
         

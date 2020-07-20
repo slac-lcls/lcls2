@@ -9,6 +9,7 @@ from psana.psexp.event_manager import TransitionId
 from psana.dgram import Dgram
 import os
 from mpi4py import MPI
+import logging
 
 # Setting up group communications
 # Ex. PS_SMD_NODES=3 mpirun -n 13
@@ -25,6 +26,7 @@ from mpi4py import MPI
 #       0   3   6   9       0   1   2   3
 #       1   4   7   10      0   1   2   3
 #       2   5   8   11      0   1   2   3
+
 
 class Communicators(object):
     # Reserved nodes are for external applications (e.g. smalldata
@@ -46,6 +48,7 @@ class Communicators(object):
     color = 0
     _nodetype = None
     bd_comm = None
+
 
     def __init__(self):
         self.comm = MPI.COMM_WORLD
@@ -99,14 +102,18 @@ class Communicators(object):
         elif self.world_rank>=self.psana_group.Get_size():
             self._nodetype = 'srv'
     
+
     def bd_group(self):
         return self._bd_only_group
+
 
     def srv_group(self):
         return self._srv_group
 
+
     def node_type(self):
         return self._nodetype
+
 
 
 class StepHistory(object):
@@ -122,6 +129,7 @@ class StepHistory(object):
         # [ -----------client 0------------- ,  ----------- client 1------------ ,
         for i in range(1, client_size):
             self.send_history.append(np.zeros(self.n_smds, dtype=np.int))
+
 
     def extend_buffers(self, views, client_id, as_event=False):
         idx = client_id - 1 # rank 0 has no send history.
@@ -140,10 +148,12 @@ class StepHistory(object):
                     self.bufs[i_smd].extend(dg_bytes)
                     self.send_history[idx][i_smd] += dg_bytes.nbytes
     
+
     def update_history(self, views, client_id):
         indexed_id = client_id - 1 # rank 0 has no send history.
         for i, view in enumerate(views):
             self.send_history[indexed_id][i] += view.nbytes
+
 
     def get_buffer(self, client_id):
         """ Returns new step data (if any) for this client
@@ -163,6 +173,8 @@ class StepHistory(object):
         
         return views
 
+
+
 def repack_for_eb(smd_chunk, step_views, configs):
     """ Smd0 uses this to prepend missing step views
     to the smd_chunk (just data with the same limit timestamp from all
@@ -179,6 +191,7 @@ def repack_for_eb(smd_chunk, step_views, configs):
         return new_chunk
     else:
         return smd_chunk 
+
 
 
 def repack_for_bd(smd_batch, step_views, configs, client=-1):
@@ -224,6 +237,8 @@ def repack_for_bd(smd_batch, step_views, configs, client=-1):
     else:
         return smd_batch
 
+
+
 class Smd0(object):
     """ Sends blocks of smds to smd_node
     Identifies limit timestamp of the slowest detector then
@@ -233,7 +248,13 @@ class Smd0(object):
         self.smdr_man = run.smdr_man
         self.run = run
         self.step_hist = StepHistory(self.run.comms.smd_size, len(self.run.configs))
+        
+        # Collecting Smd0 performance using prometheus
+        if self.run.prom_man:
+            self.c_sent = self.run.prom_man.get_counter('psana_smd0_sent')
+        
         self.run_mpi()
+
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
@@ -263,9 +284,17 @@ class Smd0(object):
             
             self.run.comms.smd_comm.Send(smd_extended, dest=rankreq[0])
         
+            # sending data to prometheus
+            if self.run.prom_man:
+                self.c_sent.labels('evts', rankreq[0]).inc(self.smdr_man.got_events)
+                self.c_sent.labels('batches', rankreq[0]).inc()
+                self.c_sent.labels('MB', rankreq[0]).inc(memoryview(smd_extended).nbytes/1e6)
+        
         for i in range(self.run.comms.n_smd_nodes):
             self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             self.run.comms.smd_comm.Send(bytearray(), dest=rankreq[0])
+
+
 
 class SmdNode(object):
     """Handles both smd_0 and bd_nodes
@@ -276,6 +305,10 @@ class SmdNode(object):
         self.run = run
         self.step_hist = StepHistory(self.run.comms.bd_size, len(self.run.configs))
         self.waiting_bds = []
+        # Collecting Smd0 performance using prometheus
+        if self.run.prom_man:
+            self.c_sent = self.run.prom_man.get_counter('psana_eb_sent')
+
 
     def pack(self, *args):
         pf = PacketFooter(len(args))
@@ -285,6 +318,7 @@ class SmdNode(object):
             batch += arg
         batch += pf.footer
         return batch
+
 
     def _send_to_dest(self, dest_rank, smd_batch_dict, step_batch_dict, eb_man):
         bd_comm = self.run.comms.bd_comm
@@ -299,6 +333,7 @@ class SmdNode(object):
             step_pf = PacketFooter(view=step_batch)
             self.step_hist.extend_buffers(step_pf.split_packets(), dest_rank, as_event=True)
         del step_batch_dict[dest_rank] # done adding
+
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
@@ -332,6 +367,13 @@ class SmdNode(object):
                     batch = repack_for_bd(smd_batch, missing_step_views, self.run.configs, client=rankreq[0])
                     bd_comm.Send(batch, dest=rankreq[0])
                     
+                    # sending data to prometheus
+                    if self.run.prom_man:
+                        logging.debug('EventBuilder sent %d events (%.2f MB) to rank %d'%(eb_man.eb.nevents, memoryview(batch).nbytes/1e6, rankreq[0]))
+                        self.c_sent.labels('evts', rankreq[0]).inc(eb_man.eb.nevents)
+                        self.c_sent.labels('batches', rankreq[0]).inc()
+                        self.c_sent.labels('MB', rankreq[0]).inc(memoryview(batch).nbytes/1e6)
+                    
                     if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:  
                         step_pf = PacketFooter(view=step_batch)
                         self.step_hist.extend_buffers(step_pf.split_packets(), rankreq[0], as_event=True)
@@ -363,7 +405,8 @@ class SmdNode(object):
                                 self._send_to_dest(dest_rank, smd_batch_dict, step_batch_dict, eb_man)
                             else:
                                 self.waiting_bds.append(dest_rank)
-                        
+                
+
 
         # Done 
         # - kill idling nodes
@@ -374,6 +417,8 @@ class SmdNode(object):
         for i in range(n_bd_nodes-len(self.waiting_bds)):
             bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             bd_comm.Send(bytearray(), dest=rankreq[0])
+
+
 
 class BigDataNode(object):
     def __init__(self, run):

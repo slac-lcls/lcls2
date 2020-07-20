@@ -2,14 +2,18 @@ from psana.psexp.event_manager import EventManager, TransitionId
 
 class Events:
     def __init__(self, run, get_smd=0, dm=None):
-        self.run = run
-        self.get_smd = get_smd # RunParallel
-        self.dm = dm # RunSingleFile, RunShmem
-        if self.get_smd==0  and self.dm is None:
-            self._smdr_man = run.smdr_man # RunSerial
-        self._evt_man = iter([])
-        self._batch_iter = iter([])
-        self.flag_empty_smd_batch = False
+        self.run     = run
+        self.get_smd = get_smd              # RunParallel
+        self.dm      = dm                   # RunSingleFile, RunShmem
+        if self.get_smd==0 and self.dm is None:
+            self._smdr_man = run.smdr_man   # RunSerial
+        self._evt_man               = iter([])
+        self._batch_iter            = iter([])
+        self.flag_empty_smd_batch   = False
+        if self.run.prom_man:
+            self.c_read = self.run.prom_man.get_counter('psana_bd_read')
+        else:
+            self.c_read = None
 
     def __iter__(self):
         return self
@@ -35,8 +39,13 @@ class Events:
                     self.flag_empty_smd_batch = True
                     raise StopIteration
                 else:
-                    self._evt_man = EventManager(smd_batch, self.run.configs, \
-                            self.run.dm, filter_fn=self.run.filter_callback)
+                    if self.run.prom_man:
+                        self.c_read.labels('batches','None').inc()
+                    self._evt_man = EventManager(smd_batch, 
+                            self.run.configs, 
+                            self.run.dm, 
+                            filter_fn           = self.run.filter_callback,
+                            prometheus_counter  = self.c_read)
                     return self._get_evt_and_update_store()
         else: 
             if self.dm:
@@ -56,8 +65,11 @@ class Events:
                         self._batch_iter = next(self._smdr_man)
                         batch_dict, _ = next(self._batch_iter)
 
-                    self._evt_man = EventManager(batch_dict[0][0], self.run.configs, \
-                            self.run.dm, filter_fn=self.run.filter_callback)
+                    self._evt_man = EventManager(batch_dict[0][0], 
+                            self.run.configs, 
+                            self.run.dm, 
+                            filter_fn=self.run.filter_callback,
+                            prometheus_counter  = self.c_read)
                     return self._get_evt_and_update_store()
 
 

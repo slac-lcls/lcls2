@@ -1,6 +1,5 @@
 ## cython: linetrace=True
 ## distutils: define_macros=CYTHON_TRACE_NOGIL=1
-
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from dgramlite cimport Xtc, Sequence, Dgram
@@ -9,27 +8,33 @@ from libc.stdint cimport uint32_t, uint64_t
 import numpy as np
 import time, os
 
+
 cdef class SmdReader:
     cdef ParallelReader prl_reader
     cdef int winner, view_size
     cdef int max_retries, sleep_secs
-    
+
     def __init__(self, int[:] fds, int chunksize):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
-        self.prl_reader = ParallelReader(fds, chunksize)
-        self.max_retries = int(os.environ['PS_SMD_MAX_RETRIES']) # no default (force set when creating datasource)
-        self.sleep_secs = int(os.environ.get('PS_SMD_SLEEP_SECS', '1'))
+        self.prl_reader     = ParallelReader(fds, chunksize)
         
+        # max retries has no default value (set when creating datasource)
+        self.max_retries    = int(os.environ['PS_SMD_MAX_RETRIES']) 
+        self.sleep_secs     = int(os.environ.get('PS_SMD_SLEEP_SECS', '1'))
+
     def is_complete(self):
         """ Checks that all buffers have at least one event 
         """
         cdef int is_complete = 1
         cdef int i
+
         for i in range(self.prl_reader.nfiles):
-            if self.prl_reader.bufs[i].n_ready_events - self.prl_reader.bufs[i].n_seen_events == 0:
+            if self.prl_reader.bufs[i].n_ready_events - \
+                    self.prl_reader.bufs[i].n_seen_events == 0:
                 is_complete = 0
-                break
+
         return is_complete
+
 
     def get(self):
         self.prl_reader.just_read()
@@ -43,6 +48,7 @@ cdef class SmdReader:
                 cn_retries += 1
                 if cn_retries > self.max_retries:
                     break
+
 
     def view(self, int batch_size=1000):
         """ Returns memoryview of the data and step buffers.
@@ -117,8 +123,14 @@ cdef class SmdReader:
         
         return mmrv_bufs, mmrv_step_bufs
 
+
     @property
     def view_size(self):
         return self.view_size
+
+
+    @property
+    def got(self):
+        return self.prl_reader.got
 
 

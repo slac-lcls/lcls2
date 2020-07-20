@@ -13,6 +13,8 @@ from psana.psexp.envstore_manager import EnvStoreManager
 from psana.psexp.event_manager import TransitionId
 from psana.psexp.node import Smd0, SmdNode, BigDataNode
 from psana.psexp.smdreader_manager import SmdReaderManager
+import logging
+from mpi4py import MPI
 
 class InvalidEventBuilderCores(Exception): pass
 
@@ -27,9 +29,12 @@ class RunParallel(Run):
         
         Note that destination callback only works with RunParallel.
         """
-        super(RunParallel, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
-                batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'], \
-                destination=kwargs['destination'])
+        super(RunParallel, self).__init__(exp, run_no, 
+                max_events      = kwargs['max_events'], 
+                batch_size      = kwargs['batch_size'], 
+                filter_callback = kwargs['filter_callback'], 
+                destination     = kwargs['destination'],
+                prom_man        = kwargs['prom_man'])
         xtc_files, smd_files, other_files = run_src
 
         self.comms = comms
@@ -153,14 +158,21 @@ class MPIDataSource(DataSourceBase):
 
         self.exp = exp
         self.run_dict = run_dict
+        
+        super()._start_prometheus_client(mpi_rank=rank)
 
 
     def runs(self):
         for run_no in self.run_dict:
-            run = RunParallel(self.comms, self.exp, run_no, self.run_dict[run_no], \
-                        max_events=self.max_events, batch_size=self.batch_size, \
-                        filter_callback=self.filter, destination=self.destination)
+            run = RunParallel(self.comms, self.exp, run_no, self.run_dict[run_no], 
+                        max_events      = self.max_events, 
+                        batch_size      = self.batch_size, 
+                        filter_callback = self.filter, 
+                        destination     = self.destination,
+                        prom_man        = self.prom_man)
             self.run = run # FIXME: provide support for cctbx code (ds.Detector). will be removed in next cctbx update.
             yield run
+        
+        super()._end_prometheus_client(mpi_rank=self.comms.psana_comm.Get_rank()) 
 
 

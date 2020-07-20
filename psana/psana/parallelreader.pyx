@@ -9,12 +9,13 @@ from dgramlite cimport Xtc, Sequence, Dgram
 cdef class ParallelReader:
     
     def __cinit__(self, int[:] file_descriptors, size_t chunksize):
-        self.file_descriptors = file_descriptors
-        self.chunksize = chunksize
-        self.nfiles = self.file_descriptors.shape[0]
-        self.L1Accept = 12
-        self.bufs = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
-        self.step_bufs = <Buffer *>malloc(sizeof(Buffer)*self.nfiles)
+        self.file_descriptors   = file_descriptors
+        self.chunksize          = chunksize
+        self.nfiles             = self.file_descriptors.shape[0]
+        self.L1Accept           = 12
+        self.bufs               = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
+        self.step_bufs          = <Buffer *>malloc(sizeof(Buffer)*self.nfiles)
+        self.got                = 0
         self._init_buffers()
 
 
@@ -69,11 +70,12 @@ cdef class ParallelReader:
         cdef Buffer* step_buf
         cdef uint64_t payload = 0
         cdef unsigned service = 0
+        self.got = 0
         
         for i in prange(self.nfiles, nogil=True):
             buf = &(self.bufs[i])
             step_buf = &(self.step_bufs[i])
-            
+
             # skip reading this buffer if there is/are still some event(s).
             if buf.n_ready_events - buf.n_seen_events > 0: continue 
             
@@ -84,6 +86,9 @@ cdef class ParallelReader:
             # read more data to fill up the buffer
             got = read( self.file_descriptors[i], buf.chunk + (buf.got - buf.ready_offset), \
                     self.chunksize - (buf.got - buf.ready_offset) )
+            
+            # summing the size of all the new reads
+            self.got += got
             
             buf.got = (buf.got - buf.ready_offset) + got
             

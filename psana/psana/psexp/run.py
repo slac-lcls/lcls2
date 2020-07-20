@@ -3,7 +3,6 @@ import pickle
 import inspect
 import numpy as np
 from copy import copy
-
 from psana import dgram
 from psana.dgrammanager import DgramManager
 from psana.psexp.tools import run_from_id, RunHelper
@@ -18,10 +17,11 @@ from psana.psexp.events import Events
 from psana.psexp.ds_base import XtcFileNotFound
 import psana.pscalib.calib.MDBWebUtils as wu
 from psana.detector.detector_impl import MissingDet
-
 from psana.psexp.tools import mode
 
+
 class DetectorNameError(Exception): pass
+
 
 def _enumerate_attrs(obj):
     state = []
@@ -47,6 +47,7 @@ def _enumerate_attrs(obj):
     mygetattr(obj)
     return found
 
+
 class Run(object):
     exp = None # FIXME: consolidate with below
     run_no = None
@@ -61,13 +62,17 @@ class Run(object):
     nfiles = 0
     scan = False # True when looping over steps
     
-    def __init__(self, exp, run_no, max_events=0, batch_size=1, filter_callback=0, destination=0):
-        self.exp = exp
-        self.run_no = run_no
-        self.max_events = max_events
-        self.batch_size = batch_size
-        self.filter_callback = filter_callback
-        self.destination = destination
+    def __init__(self, exp, run_no, 
+            max_events=0, batch_size=1, 
+            filter_callback=0, destination=0, 
+            prom_man=None):
+        self.exp                = exp
+        self.run_no             = run_no
+        self.max_events         = max_events
+        self.batch_size         = batch_size
+        self.filter_callback    = filter_callback
+        self.destination        = destination
+        self.prom_man           = prom_man
         RunHelper(self)
 
     def run(self):
@@ -299,9 +304,11 @@ class RunSerial(Run):
     """ Yields list of events from multiple smd/bigdata files using single core."""
 
     def __init__(self, exp, run_no, run_src, **kwargs):
-        super(RunSerial, self).__init__(exp, run_no, \
-                max_events=kwargs['max_events'], batch_size=kwargs['batch_size'], \
-                filter_callback=kwargs['filter_callback'])
+        super(RunSerial, self).__init__(exp, run_no, 
+                max_events=kwargs['max_events'], 
+                batch_size=kwargs['batch_size'], 
+                filter_callback=kwargs['filter_callback'],
+                prom_man=kwargs['prom_man'])
         xtc_files, smd_files, other_files = run_src
 
         # get Configure and BeginRun using SmdReader
@@ -343,8 +350,11 @@ class RunLegion(Run):
 
     def __init__(self, exp, run_no, run_src, **kwargs):
         """ Parallel read using Legion """
-        super(RunLegion, self).__init__(exp, run_no, max_events=kwargs['max_events'], \
-                batch_size=kwargs['batch_size'], filter_callback=kwargs['filter_callback'])
+        super(RunLegion, self).__init__(exp, run_no, 
+                max_events      = kwargs['max_events'], 
+                batch_size      = kwargs['batch_size'], 
+                filter_callback = kwargs['filter_callback'],
+                prom_man        = kwargs['prom_man'])
         xtc_files, smd_files, other_files = run_src
         
         # get Configure and BeginRun using SmdReader
@@ -371,3 +381,4 @@ class RunLegion(Run):
 
     def analyze(self, **kwargs):
         return legion_node.analyze(self, **kwargs)
+

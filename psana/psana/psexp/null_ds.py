@@ -26,3 +26,4 @@ class NullDataSource(DataSourceBase):
             run.events = events
 
             yield run
+        
