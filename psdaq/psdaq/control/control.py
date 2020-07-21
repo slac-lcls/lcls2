@@ -905,7 +905,7 @@ class CollectionManager():
             for msg in wait_for_answers(socket, 1000, msg_id):
 
                 # exit loop early if an error is received
-                if 'err_info' in msg['body']:
+                if msg['body'] is not None and 'err_info' in msg['body']:
                     logging.debug('confirm_response(): id %s error: %s' %\
                                   (msg['header']['sender_id'], msg['body']['err_info']))
                     ids = [msg['header']['sender_id']]
