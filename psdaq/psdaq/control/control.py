@@ -21,6 +21,18 @@ POSIX_TIME_AT_EPICS_EPOCH = 631152000
 
 report_keys = ['error', 'fileReport']
 
+class ControlError(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+class ConfigDBError(ControlError):
+    """Exception raised for ConfigDB errors.
+    Attributes:
+        message -- explanation of the error
+    """
+    def __init__(self, message):
+        self.message = message
+
 class DaqControl:
     'Base class for controlling data acquisition'
 
@@ -859,7 +871,7 @@ class CollectionManager():
     #
     def register_file(self, body):
         if self.experiment_name is None:
-            logging.error('register_file(): experiment_name is None')
+            raise ConfigDBError('register_file: experiment_name is None')
             return
 
         path = body['path']
@@ -875,16 +887,17 @@ class CollectionManager():
             resp = requests.post(serverURLPrefix + "register_file", json=body,
                                  auth=HTTPBasicAuth(self.user, self.password))
         except Exception as ex:
-            logging.error('register_file error. HTTP request: %s' % ex)
+            raise ConfigDBError('register_file error. HTTP request: %s' % ex)
         else:
             logging.debug("register_file response: %s" % resp.text)
             if resp.status_code == requests.codes.ok:
                 if resp.json().get("success", None):
                     logging.debug("register_file success")
                 else:
-                    logging.error("register_file failure")
+                    raise ConfigDBError("register_file failure")
             else:
-                logging.error("register_file error: status code %d" % resp.status_code)
+                raise ConfigDBError("register_file error: status code %d" % \
+                                    resp.status_code)
 
         return
 
@@ -1105,7 +1118,12 @@ class CollectionManager():
         ids = self.filter_level('drp', ids)
         # make sure all the clients respond to transition before timeout
         missing, answers, reports = self.confirm_response(self.back_pull, self.phase2_timeout, None, ids)
-        self.process_reports(reports)
+        try:
+            self.process_reports(reports)
+        except ConfigDBError as ex:
+            self.report_error(ex.message)
+            return False
+
         if missing:
             logging.error('%s phase2 failed' % transition)
             for alias in self.get_aliases(missing):
