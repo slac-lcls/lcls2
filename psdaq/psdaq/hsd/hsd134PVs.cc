@@ -119,7 +119,7 @@ void StatsTimer::expired()
 void usage(const char* p) {
   printf("Usage: %s -d <device> [options]\n",p);
   printf("Options: -P <prefix>  (default: DAQ:LAB2:HSD)\n");
-  printf("         -E           (tolerate errors)\n");
+  printf("         -E           (abort on error)\n");
 }
 
 int main(int argc, char** argv)

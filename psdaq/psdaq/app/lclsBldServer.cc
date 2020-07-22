@@ -17,8 +17,6 @@
 
 using namespace Pds::Tpr;
 
-//static bool     verbose = false;
-
 extern int optind;
 
 static void usage(const char* p) {
@@ -44,10 +42,11 @@ int main(int argc, char** argv) {
   unsigned short port = 12148;
   unsigned rate = 5;
   int      evcode = -1;
+  bool     lverbose = false;
 
   //char* endptr;
 
-  while ( (c=getopt( argc, argv, "d:a:b:e:i:r:h?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "d:a:b:e:i:r:vh?")) != EOF ) {
     switch(c) {
     case 'd':
       tprid  = optarg[0];
@@ -70,6 +69,9 @@ int main(int argc, char** argv) {
       break;
     case 'r':
       rate = strtoul(optarg,NULL,0);
+      break;
+    case 'v':
+      lverbose = true;
       break;
     case 'h':
       usage(argv[0]);
@@ -174,6 +176,9 @@ int main(int argc, char** argv) {
       payload[2] = fr->pulseId & 0xffffffff;
       payload[3] = fr->pulseId >> 32;
       send(mcfd, payload, 220, 0);
+
+      if (lverbose)
+        printf("Timestamp %lu.%09u\n",fr->timeStamp>>32,unsigned(fr->timeStamp&0xffffffff));
     }
   }
 
