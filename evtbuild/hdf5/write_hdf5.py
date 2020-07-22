@@ -14,7 +14,7 @@ def create_image(mb_per_img):
 
 
 #create the files striped as above and prepared for swmr
-def master(comm):
+def main(comm):
 
     size = comm.Get_size()
 
@@ -148,7 +148,7 @@ def write_files(comm):
     rank = comm.Get_rank()
 
     if rank ==0:
-        master(comm)
+        main(comm)
 
     comm.Barrier()
     if rank == 0:

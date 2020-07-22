@@ -158,7 +158,7 @@ def connect_to_server(host=cc.HOST, port=cc.PORT,\
     client = MongoClient(uri, connect=False, connectTimeoutMS=ctout, serverSelectionTimeoutMS=stout) #, socketTimeoutMS=stout
     #client = MongoClient(host, port, connect=False, connectTimeoutMS=ctout, socketTimeoutMS=stout)
     try:
-        result = client.admin.command("ismaster")
+        result = client.admin.command("ismain")
         return client
 
     except errors.ConnectionFailure as err:

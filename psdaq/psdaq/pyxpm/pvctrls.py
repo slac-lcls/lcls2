@@ -287,7 +287,7 @@ class GroupSetup(object):
         self._pv_DstMode    = addPV('DstSelect'              ,self.put, 1)
         self._pv_DstMask    = addPV('DstSelect_Mask'         ,self.put)
         self._pv_Run        = addPV('Run'                    ,self.run   , set=True)
-        self._pv_Master     = addPV('Master'                 ,self.master, set=True)
+        self._pv_Main     = addPV('Main'                 ,self.main, set=True)
 
         self._pv_StepDone   = SharedPV(initial=NTScalar('I').wrap(0), handler=DefaultPVHandler())
         provider.add(name+':StepDone', self._pv_StepDone)
@@ -336,8 +336,8 @@ class GroupSetup(object):
         self._inhibits.append(PVInhibit(name, app, app.inh_3, group, 3))
 
     def dump(self):
-        print('Group: {}  Master: {}  RateSel: {:x}  DestSel: {:x}  Ena: {}'
-              .format(self._group, self._app.l0Master.get(), self._app.l0RateSel.get(), self._app.l0DestSel.get(), self._app.l0En.get()))
+        print('Group: {}  Main: {}  RateSel: {:x}  DestSel: {:x}  Ena: {}'
+              .format(self._group, self._app.l0Main.get(), self._app.l0RateSel.get(), self._app.l0DestSel.get(), self._app.l0En.get()))
 
     def setFixedRate(self):
         rateVal = (0<<14) | (self._pv_FixedRate.current()['value']&0xf)
@@ -366,22 +366,22 @@ class GroupSetup(object):
         destVal  = (mode<<15) | (mask&0x7fff)
         self._app.l0DestSel.set(destVal)
 
-    def master(self, pv, val):
+    def main(self, pv, val):
         lock.acquire()
         self._app.partition.set(self._group)
-        forceUpdate(self._app.l0Master)
+        forceUpdate(self._app.l0Main)
 
         if val==0:
-            self._app.l0Master.set(0)
+            self._app.l0Main.set(0)
             self._app.l0En    .set(0)
-            self._stats._master = 0
+            self._stats._main = 0
             
             curr = self._pv_Run.current()
             curr['value'] = 0
             self._pv_Run.post(curr)
         else:
-            self._app.l0Master.set(1)
-            self._stats._master = 1
+            self._app.l0Main.set(1)
+            self._stats._main = 1
         lock.release()
 
     def put(self, pv, val):

@@ -57,7 +57,7 @@ class PVCtrls(threading.Thread):
         addPV('GroupL0Enable'   , self.l0Enable)
         addPV('GroupL0Disable'  , self.l0Disable)
         addPV('GroupMsgInsert'  , self.msgInsert)
-        addPV('PART:0:Master'   , self.master)
+        addPV('PART:0:Main'   , self.main)
         addPV('PART:0:MsgHeader', self.msgHeader)
 
         with Server(providers=[self.provider]):
@@ -83,6 +83,6 @@ class PVCtrls(threading.Thread):
     def msgHeader(self, pv, val):
         self._msgHeader = val
 
-    def master(self, pv, val):
+    def main(self, pv, val):
         self._app.HwEnable.set(True)
 

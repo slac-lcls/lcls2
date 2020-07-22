@@ -40,7 +40,7 @@ class Ads54J60(pr.Device):
         mainDigital = (0x1 << 14) # With respect to CH  
         jesdDigital = (0x2 << 14) # With respect to CH  
         jesdAnalog  = (0x3 << 14) # With respect to CH  
-        masterPage  = (0x7 << 14)
+        mainPage  = (0x7 << 14)
         analogPage  = (0x8 << 14)
         unusedPages = (0xE << 14)
         chA         = (0x0 << 14)
@@ -80,13 +80,13 @@ class Ads54J60(pr.Device):
         ))
                         
         #############
-        # Master Page 
+        # Main Page 
         #############
         
         self.add(pr.RemoteVariable(   
             name         = "PDN_ADC_CHA_0",
             description  = "",
-            offset       = (masterPage + (4*0x20)),
+            offset       = (mainPage + (4*0x20)),
             bitSize      = 4,
             bitOffset    = 4,
             base         = pr.UInt,
@@ -97,7 +97,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "PDN_ADC_CHB",
             description  = "",
-            offset       = (masterPage + (4*0x20)),
+            offset       = (mainPage + (4*0x20)),
             bitSize      = 4,
             bitOffset    = 0,
             base         = pr.UInt,
@@ -108,7 +108,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "PDN_BUFFER_CHB_0",
             description  = "",
-            offset       = (masterPage + (4*0x20)),
+            offset       = (mainPage + (4*0x20)),
             bitSize      = 2,
             bitOffset    = 6,
             base         = pr.UInt,
@@ -119,7 +119,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "PDN_BUFFER_CHA_0",
             description  = "",
-            offset       = (masterPage + (4*0x20)),
+            offset       = (mainPage + (4*0x20)),
             bitSize      = 2,
             bitOffset    = 4,
             base         = pr.UInt,
@@ -130,7 +130,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "PDN_ADC_CHA_1",
             description  = "",
-            offset       = (masterPage + (4*0x23)),
+            offset       = (mainPage + (4*0x23)),
             bitSize      = 4,
             bitOffset    = 4,
             base         = pr.UInt,
@@ -141,7 +141,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "PDN_ADC_CHB_1",
             description  = "",
-            offset       = (masterPage + (4*0x23)),
+            offset       = (mainPage + (4*0x23)),
             bitSize      = 4,
             bitOffset    = 0,
             base         = pr.UInt,
@@ -152,7 +152,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "PDN_BUFFER_CHB_1",
             description  = "",
-            offset       = (masterPage + (4*0x24)),
+            offset       = (mainPage + (4*0x24)),
             bitSize      = 2,
             bitOffset    = 6,
             base         = pr.UInt,
@@ -163,7 +163,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "PDN_BUFFER_CHA_1",
             description  = "",
-            offset       = (masterPage + (4*0x24)),
+            offset       = (mainPage + (4*0x24)),
             bitSize      = 2,
             bitOffset    = 4,
             base         = pr.UInt,
@@ -174,7 +174,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "GLOBAL_PDN",
             description  = "",
-            offset       = (masterPage + (4*0x26)),
+            offset       = (mainPage + (4*0x26)),
             bitSize      = 1,
             bitOffset    = 7,
             base         = pr.UInt,
@@ -185,7 +185,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "OVERRIDE_PDN_PIN",
             description  = "",
-            offset       = (masterPage + (4*0x26)),
+            offset       = (mainPage + (4*0x26)),
             bitSize      = 1,
             bitOffset    = 6,
             base         = pr.UInt,
@@ -196,7 +196,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "PDN_MASK_SEL",
             description  = "",
-            offset       = (masterPage + (4*0x26)),
+            offset       = (mainPage + (4*0x26)),
             bitSize      = 1,
             bitOffset    = 5,
             base         = pr.UInt,
@@ -207,7 +207,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "EN_INPUT_DC_COUPLING",
             description  = "",
-            offset       = (masterPage + (4*0x4F)),
+            offset       = (mainPage + (4*0x4F)),
             bitSize      = 1,
             bitOffset    = 0,
             base         = pr.UInt,
@@ -218,7 +218,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "MASK_SYSREF",
             description  = "",
-            offset       = (masterPage + (4*0x53)),
+            offset       = (mainPage + (4*0x53)),
             bitSize      = 1,
             bitOffset    = 6,
             base         = pr.UInt,
@@ -229,7 +229,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "EN_SYSREF_DC_COUPLING",
             description  = "",
-            offset       = (masterPage + (4*0x53)),
+            offset       = (mainPage + (4*0x53)),
             bitSize      = 1,
             bitOffset    = 1,
             base         = pr.UInt,
@@ -240,7 +240,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "SET_SYSREF",
             description  = "",
-            offset       = (masterPage + (4*0x53)),
+            offset       = (mainPage + (4*0x53)),
             bitSize      = 1,
             bitOffset    = 0,
             base         = pr.UInt,
@@ -251,7 +251,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "ENABLE_MANUAL_SYSREF",
             description  = "",
-            offset       = (masterPage + (4*0x54)),
+            offset       = (mainPage + (4*0x54)),
             bitSize      = 1,
             bitOffset    = 7,
             base         = pr.UInt,
@@ -262,7 +262,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "PDN_MASK",
             description  = "",
-            offset       = (masterPage + (4*0x55)),
+            offset       = (mainPage + (4*0x55)),
             bitSize      = 1,
             bitOffset    = 4,
             base         = pr.UInt,
@@ -273,7 +273,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "FOVR_CHB",
             description  = "",
-            offset       = (masterPage + (4*0x59)),
+            offset       = (mainPage + (4*0x59)),
             bitSize      = 1,
             bitOffset    = 7,
             base         = pr.UInt,
@@ -284,7 +284,7 @@ class Ads54J60(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "AlwaysWrite0x1_A",
             description  = "Always set this bit to 1",
-            offset       = (masterPage + (4*0x59)),
+            offset       = (mainPage + (4*0x59)),
             bitSize      = 1,
             bitOffset    = 5,
             base         = pr.UInt,
@@ -348,7 +348,7 @@ class Ads54J60(pr.Device):
             self._rawWrite(mainDigital + chA + (4*0x000),0x00) # CHA: clear reset
             self._rawWrite(mainDigital + chB + (4*0x000),0x00) # CHB: clear reset 
 
-            self._rawWrite(masterPage        + (4*0x059),0x20); # Set the ALWAYS WRITE 1 bit
+            self._rawWrite(mainPage        + (4*0x059),0x20); # Set the ALWAYS WRITE 1 bit
             
             self.PllRst()
             

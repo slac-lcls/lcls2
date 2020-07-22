@@ -299,7 +299,7 @@ class LasingOnCharacterization():
 
         Returns: 
             PulseCharacterization: List with the results
-                't':                           Master time vector in fs
+                't':                           Main time vector in fs
                 'powerECOM':                    Retrieved power in GW based on ECOM
                 'powerERMS':                    Retrieved power in GW based on ERMS
                 'powerAgreement':               Agreement between the two intensities
@@ -580,11 +580,11 @@ class LasingOnCharacterization():
                 'Cannot construct pulse FWHM')
             return None, None
                         
-        mastert = self._pulse_characterization.t
+        maint = self._pulse_characterization.t
 
-        t = np.zeros((self.num_bunches, len(mastert)), dtype=np.float64);
+        t = np.zeros((self.num_bunches, len(maint)), dtype=np.float64);
         for j in range(self.num_bunches):
-            t[j,:] = mastert+self._pulse_characterization.bunchdelay[j]
+            t[j,:] = maint+self._pulse_characterization.bunchdelay[j]
 
         if method=='RMS':
             power = self._pulse_characterization.powerERMS

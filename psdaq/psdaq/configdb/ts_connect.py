@@ -25,8 +25,8 @@ class ts_connector:
 
         control_info=self.connect_info['body']['control']['0']['control_info']
         self.xpm_base = control_info['pv_base']+':XPM:'
-        master_xpm_num = control_info['xpm_master']
-        self.master_xpm_pv = self.xpm_base+str(master_xpm_num)+':'
+        main_xpm_num = control_info['xpm_main']
+        self.main_xpm_pv = self.xpm_base+str(main_xpm_num)+':'
 
         self.ctxt = Context('pva')
         self.get_xpm_info()
@@ -94,8 +94,8 @@ class ts_connector:
         self.ctxt.put(pv_names,link_masks)
         
     def xpm_link_disable_all(self):
-        # Start from the master and recursively remove the groups from each downstream link
-        self.xpm_link_disable(self.master_xpm_pv, self.readout_group_mask)
+        # Start from the main and recursively remove the groups from each downstream link
+        self.xpm_link_disable(self.main_xpm_pv, self.readout_group_mask)
 
     def xpm_link_enable(self):
         self.xpm_link_disable_all()
@@ -125,7 +125,7 @@ class ts_connector:
         time.sleep(2)
 
     def l0_count_reset(self):
-        pvL0Reset = self.master_xpm_pv+'GroupL0Reset'
+        pvL0Reset = self.main_xpm_pv+'GroupL0Reset'
         print('*** resetting l0 count',self.readout_group_mask)
         self.ctxt.put(pvL0Reset,self.readout_group_mask)
 

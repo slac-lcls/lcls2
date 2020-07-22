@@ -369,8 +369,8 @@ class XpmApp(pr.Device):
         ))
 
         self.add(pr.RemoteVariable(    
-            name         = "l0Master",
-            description  = "L0 trigger master",
+            name         = "l0Main",
+            description  = "L0 trigger main",
             offset       =  0x1b,
             bitSize      =  1,
             bitOffset    =  0x06,

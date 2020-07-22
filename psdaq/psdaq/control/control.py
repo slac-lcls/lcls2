@@ -604,11 +604,11 @@ def wait_for_answers(socket, wait_time, msg_id):
 
 
 class DaqPVA():
-    def __init__(self, *, platform, xpm_master, pv_base):
+    def __init__(self, *, platform, xpm_main, pv_base):
         self.platform         = platform
-        self.xpm_master       = xpm_master
-        self.pv_xpm_base      = pv_base + ':XPM:%d'         % xpm_master
-        self.pv_xpm_part_base = pv_base + ':XPM:%d:PART:%d' % (xpm_master, platform)
+        self.xpm_main       = xpm_main
+        self.pv_xpm_base      = pv_base + ':XPM:%d'         % xpm_main
+        self.pv_xpm_part_base = pv_base + ':XPM:%d:PART:%d' % (xpm_main, platform)
 
         # name PVs
         self.pvListMsgHeader  = []  # filled in at alloc
@@ -665,7 +665,7 @@ class CollectionManager():
         self.config_alias = args.C  # e.g. BEAM/NOBEAM
         self.cfg_dbase = args.d
         self.trigger_config = args.t
-        self.xpm_master = args.x
+        self.xpm_main = args.x
         self.pv_base = args.B
         self.context = zmq.Context(1)
         self.back_pull = self.context.socket(zmq.PULL)
@@ -688,7 +688,7 @@ class CollectionManager():
         self.bypass_activedet = False
 
         # instantiate DaqPVA object
-        self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base)
+        self.pva = DaqPVA(platform=self.platform, xpm_main=self.xpm_main, pv_base=self.pv_base)
 
         if args.r:
             # active detectors file from command line
@@ -1178,7 +1178,7 @@ class CollectionManager():
         for g in range(8):
             if self.groups & (1 << g):
                 self.pva.pvListMsgHeader.append(self.pva.pv_xpm_base+":PART:"+str(g)+':MsgHeader')
-                self.pva.pvListXPM.append(self.pva.pv_xpm_base+":PART:"+str(g)+':Master')
+                self.pva.pvListXPM.append(self.pva.pv_xpm_base+":PART:"+str(g)+':Main')
         logging.debug('pvListMsgHeader: %s' % self.pva.pvListMsgHeader)
         logging.debug('pvListXPM: %s' % self.pva.pvListXPM)
 
@@ -1356,7 +1356,7 @@ class CollectionManager():
                 break
 
         if connect_ok:
-            logging.info('master XPM is %d' % self.xpm_master)
+            logging.info('main XPM is %d' % self.xpm_main)
 
             # select procs with active flag set
             ids = self.filter_active_set(self.ids)
@@ -1585,7 +1585,7 @@ class CollectionManager():
             self.cmstate['control'][0]['active'] = 1
             self.cmstate['control'][0]['control_info'] = {}
             self.cmstate['control'][0]['proc_info'] = {}
-            self.cmstate['control'][0]['control_info']['xpm_master'] = self.xpm_master
+            self.cmstate['control'][0]['control_info']['xpm_main'] = self.xpm_main
             self.cmstate['control'][0]['control_info']['pv_base'] = self.pv_base
             self.cmstate['control'][0]['control_info']['cfg_dbase'] = self.cfg_dbase
             self.cmstate['control'][0]['control_info']['instrument'] = self.instrument
@@ -1947,7 +1947,7 @@ def main():
     # Process arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
-    parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
+    parser.add_argument('-x', metavar='XPM', type=int, required=True, help='main XPM')
     parser.add_argument('-P', metavar='INSTRUMENT', required=True, help='instrument_name[:station_number]')
     parser.add_argument('-d', metavar='CFGDATABASE', default='https://pswww.slac.stanford.edu/ws/devconfigdb/ws/configDB', help='configuration database connection')
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')

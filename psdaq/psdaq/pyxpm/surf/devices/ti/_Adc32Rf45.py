@@ -43,7 +43,7 @@ class Adc32Rf45(pr.Device):
         jesdDigital     = (0x4 << 14) # With respect to CH  
         decFilter       = (0x5 << 14) # With respect to CH  
         pwrDet          = (0x6 << 14) # With respect to CH        
-        masterPage      = (0x7 << 14)
+        mainPage      = (0x7 << 14)
         analogPage      = (0x8 << 14)
         chA             = (0x0 << 14)
         chB             = (0x8 << 14)        
@@ -83,12 +83,12 @@ class Adc32Rf45(pr.Device):
         ))
                         
         #############
-        # Master Page 
+        # Main Page 
         #############
         self.add(pr.RemoteVariable(   
             name         = "PDN_SYSREF",
             description  = "0 = Normal operation, 1 = SYSREF input capture buffer is powered down and further SYSREF input pulses are ignored",
-            offset       =  (masterPage + (4*0x020)),
+            offset       =  (mainPage + (4*0x020)),
             bitSize      =  1,
             bitOffset    =  4,
             base         = pr.UInt,
@@ -99,7 +99,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "PDN_CHB",
             description  = "0 = Normal operation, 1 = Channel B is powered down",
-            offset       =  (masterPage + (4*0x020)),
+            offset       =  (mainPage + (4*0x020)),
             bitSize      =  1,
             bitOffset    =  1,
             base         = pr.UInt,
@@ -110,7 +110,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "GLOBAL_PDN",
             description  = "0 = Normal operation, 1 = Global power-down enabled",
-            offset       =  (masterPage + (4*0x020)),
+            offset       =  (mainPage + (4*0x020)),
             bitSize      =  1,
             bitOffset    =  0,
             base         = pr.UInt,
@@ -121,7 +121,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "INCR_CM_IMPEDANCE",
             description  = "0 = VCM buffer directly drives the common point of biasing resistors, 1 = VCM buffer drives the common point of biasing resistors with > 5 kOhm",
-            offset       =  (masterPage + (4*0x032)),
+            offset       =  (mainPage + (4*0x032)),
             bitSize      =  1,
             bitOffset    =  5,
             base         = pr.UInt,
@@ -132,7 +132,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "AlwaysWrite0x1_A",
             description  = "Always set this bit to 1",
-            offset       =  (masterPage + (4*0x039)),
+            offset       =  (mainPage + (4*0x039)),
             bitSize      =  1,
             bitOffset    =  6,
             base         = pr.UInt,
@@ -145,7 +145,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "AlwaysWrite0x1_B",
             description  = "Always set this bit to 1",
-            offset       =  (masterPage + (4*0x039)),
+            offset       =  (mainPage + (4*0x039)),
             bitSize      =  1,
             bitOffset    =  4,
             base         = pr.UInt,
@@ -158,7 +158,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "PDN_CHB_EN",
             description  = "This bit enables the power-down control of channel B through the SPI in register 20h: 0 = PDN control disabled, 1 = PDN control enabled",
-            offset       =  (masterPage + (4*0x039)),
+            offset       =  (mainPage + (4*0x039)),
             bitSize      =  1,
             bitOffset    =  1,
             base         = pr.UInt,
@@ -169,7 +169,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "SYNC_TERM_DIS",
             description  = "0 = On-chip, 100-Ohm termination enabled, 1 = On-chip, 100-Ohm termination disabled",
-            offset       =  (masterPage + (4*0x039)),
+            offset       =  (mainPage + (4*0x039)),
             bitSize      =  1,
             bitOffset    =  0,
             base         = pr.UInt,
@@ -180,7 +180,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "SYSREF_DEL_EN",
             description  = "0 = SYSREF delay disabled, 1 = SYSREF delay enabled through register settings [3Ch (bits 1-0), 5Ah (bits 7-5)]",
-            offset       =  (masterPage + (4*0x03C)),
+            offset       =  (mainPage + (4*0x03C)),
             bitSize      =  1,
             bitOffset    =  6,
             base         = pr.UInt,
@@ -191,7 +191,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "SYSREF_DEL_HI",
             description  = "When the SYSREF delay feature is enabled (3Ch, bit 6) the delay can be adjusted in 25-ps steps; the first step is 175 ps. The PVT variation of each 25-ps step is +/-10 ps. The 175-ps step is +/-50 ps",
-            offset       =  (masterPage + (4*0x03C)),
+            offset       =  (mainPage + (4*0x03C)),
             bitSize      =  2,
             bitOffset    =  0,
             base         = pr.UInt,
@@ -202,7 +202,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "JESD_OUTPUT_SWING",
             description  = "These bits select the output amplitude (VOD) of the JESD transmitter for all lanes.",
-            offset       =  (masterPage + (4*0x3D)),
+            offset       =  (mainPage + (4*0x3D)),
             bitSize      =  3,
             bitOffset    =  0,
             base         = pr.UInt,
@@ -213,7 +213,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "SYSREF_DEL_LO",
             description  = "When the SYSREF delay feature is enabled (3Ch, bit 6) the delay can be adjusted in 25-ps steps; the first step is 175 ps. The PVT variation of each 25-ps step is +/-10 ps. The 175-ps step is +/-50 ps",
-            offset       =  (masterPage + (4*0x05A)),
+            offset       =  (mainPage + (4*0x05A)),
             bitSize      =  3,
             bitOffset    =  5,
             base         = pr.UInt,
@@ -224,7 +224,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "SEL_SYSREF_REG",
             description  = "0 = SYSREF is logic low, 1 = SYSREF is logic high",
-            offset       =  (masterPage + (4*0x057)),
+            offset       =  (mainPage + (4*0x057)),
             bitSize      =  1,
             bitOffset    =  4,
             base         = pr.UInt,
@@ -235,7 +235,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "ASSERT_SYSREF_REG",
             description  = "0 = SYSREF is asserted by device pins, 1 = SYSREF can be asserted by the ASSERT SYSREF REG register bit",
-            offset       =  (masterPage + (4*0x057)),
+            offset       =  (mainPage + (4*0x057)),
             bitSize      =  1,
             bitOffset    =  3,
             base         = pr.UInt,
@@ -246,7 +246,7 @@ class Adc32Rf45(pr.Device):
         self.add(pr.RemoteVariable(   
             name         = "SYNCB_POL",
             description  = "0 = Polarity is not inverted, 1 = Polarity is inverted",
-            offset       =  (masterPage + (4*0x058)),
+            offset       =  (mainPage + (4*0x058)),
             bitSize      =  1,
             bitOffset    =  5,
             base         = pr.UInt,
@@ -327,7 +327,7 @@ class Adc32Rf45(pr.Device):
             self._rawWrite(generalAddr + (4*0x00F0),0x38) # ...
             self._rawWrite(generalAddr + (4*0x00F1),0xBF) # Analog trims ended here.
             self._rawWrite(generalAddr + (4*0x0011),0x00) # Disable ADC Page
-            self._rawWrite(generalAddr + (4*0x0012),0x04) # Select Master Page
+            self._rawWrite(generalAddr + (4*0x0012),0x04) # Select Main Page
             self._rawWrite(generalAddr + (4*0x0025),0x01) # Global Analog Trims start here.              
             self._rawWrite(generalAddr + (4*0x0026),0x40) #...
             self._rawWrite(generalAddr + (4*0x0027),0x80) #...
@@ -358,7 +358,7 @@ class Adc32Rf45(pr.Device):
             self._rawWrite(generalAddr + (4*0x0057),0x18) # Pulse SYSREF, pull high --these lines are added in revision SBAA226C.
             self._rawWrite(generalAddr + (4*0x0057),0x10) # Pulse SYSREF, pull back low --these lines are added in revision SBAA226C.
             self._rawWrite(generalAddr + (4*0x0057),0x00) # Give SYSREF control back to device pin --these lines are added in revision SBAA226C.
-            self._rawWrite(generalAddr + (4*0x0012),0x00) # Master page disabled
+            self._rawWrite(generalAddr + (4*0x0012),0x00) # Main page disabled
             self._rawWrite(generalAddr + (4*0x0011),0xFF) # Select ADC Page
             self._rawWrite(generalAddr + (4*0x0083),0x07) # Additioanal Analog trims
             self._rawWrite(generalAddr + (4*0x005C),0x00) #...

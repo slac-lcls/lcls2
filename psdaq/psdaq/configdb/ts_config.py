@@ -17,8 +17,8 @@ def ts_config(connect_json,cfgtype,detname,detsegm):
     readout_groups = set(readout_groups)
 
     control_info = connect_info['body']['control']['0']['control_info']
-    xpm_master   = control_info['xpm_master']
-    pv_prefix    = control_info['pv_base']+':XPM:'+str(xpm_master)+':PART:'
+    xpm_main   = control_info['xpm_main']
+    pv_prefix    = control_info['pv_base']+':XPM:'+str(xpm_main)+':PART:'
 
     rcfg = cfg.copy()
     rcfg['user'  ] = {}
@@ -92,7 +92,7 @@ def ts_config(connect_json,cfgtype,detname,detsegm):
     ctxt.put(names,values)
 
     #  Capture firmware version for persistence in xtc
-    pv_prefix = control_info['pv_base']+':XPM:'+str(xpm_master)+':'
+    pv_prefix = control_info['pv_base']+':XPM:'+str(xpm_main)+':'
     #rcfg['firmwareVersion'] = ctxt.get(pv_prefix+'FwVersion').raw.value
     rcfg['firmwareBuild'  ] = ctxt.get(pv_prefix+'FwBuild').raw.value
     ctxt.close()

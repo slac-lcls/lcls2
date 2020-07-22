@@ -333,7 +333,7 @@ def processLasingSingleShot(image_profile, nolasing_averaged_profiles):
     if (num_bunches != nolasing_averaged_profiles.num_bunches):
         logger.warning('Different number of bunches in the reference')
     
-    t = nolasing_averaged_profiles.t   #Master time obtained from the no lasing references
+    t = nolasing_averaged_profiles.t   #Main time obtained from the no lasing references
     dt = (t[-1]-t[0])/(t.size-1)
     
              #Electron charge in coulombs
@@ -376,13 +376,13 @@ def processLasingSingleShot(image_profile, nolasing_averaged_profiles):
         eCOMslice=(image_stats[j].yCOMslice-image_stats[j].yCOM)*physical_units.yMeVPerPix       #Center of mass in energy for each t converted to the right units        
         eRMSslice=image_stats[j].yRMSslice*physical_units.yMeVPerPix                               #Energy dispersion for each t converted to the right units
 
-        interp=scipy.interpolate.interp1d(physical_units.xfs-distT,eCurrent,kind='linear',fill_value=0,bounds_error=False,assume_sorted=True)  #Interpolation to master time
+        interp=scipy.interpolate.interp1d(physical_units.xfs-distT,eCurrent,kind='linear',fill_value=0,bounds_error=False,assume_sorted=True)  #Interpolation to main time
         eCurrent=interp(t)    
                                                    
-        interp=scipy.interpolate.interp1d(physical_units.xfs-distT,eCOMslice,kind='linear',fill_value=0,bounds_error=False,assume_sorted=True)  #Interpolation to master time
+        interp=scipy.interpolate.interp1d(physical_units.xfs-distT,eCOMslice,kind='linear',fill_value=0,bounds_error=False,assume_sorted=True)  #Interpolation to main time
         eCOMslice=interp(t)
             
-        interp=scipy.interpolate.interp1d(physical_units.xfs-distT,eRMSslice,kind='linear',fill_value=0,bounds_error=False,assume_sorted=True)  #Interpolation to master time
+        interp=scipy.interpolate.interp1d(physical_units.xfs-distT,eRMSslice,kind='linear',fill_value=0,bounds_error=False,assume_sorted=True)  #Interpolation to main time
         eRMSslice=interp(t)        
         
         #Find best no lasing match
@@ -464,7 +464,7 @@ def averageXTCAVProfilesGroups(list_image_profiles, num_groups=0, method='hierar
 
     B = 20
     # Obtain physical units and calculate time vector   
-    #We find adequate values for the master time
+    #We find adequate values for the main time
     maxt = np.amax([np.amax(l.xfs) for l in list_physical_units])
     mint = np.amin([np.amin(l.xfs) for l in list_physical_units])
     mindt = np.amin([np.abs(l.xfsPerPix) for l in list_physical_units])
@@ -472,10 +472,10 @@ def averageXTCAVProfilesGroups(list_image_profiles, num_groups=0, method='hierar
     #Obtain the number of electrons in each shot
     num_electrons = np.array([x.dumpecharge/cons.E_CHARGE for x in list_shot_to_shot])
 
-    #To be safe with the master time, we set it to have a step half the minumum step
+    #To be safe with the main time, we set it to have a step half the minumum step
     dt=mindt/2
 
-    #And create the master time vector in fs
+    #And create the main time vector in fs
     t=np.arange(mint,maxt+dt,dt)
 
     averageECurrent = []      #Electron current in (#electrons/s)
@@ -556,13 +556,13 @@ def averageXTCAVProfilesGroups(list_image_profiles, num_groups=0, method='hierar
                 eCOMslice=(sublist_image_stats[i][j].yCOMslice-sublist_image_stats[i][j].yCOM)*sublist_physical_units[i].yMeVPerPix #Center of mass in energy for each t converted to the right units
                 eRMSslice=sublist_image_stats[i][j].yRMSslice*sublist_physical_units[i].yMeVPerPix                                 #Energy dispersion for each t converted to the right units
 
-                interp=scipy.interpolate.interp1d(sublist_physical_units[i].xfs-distT[i],eCurrent,kind='linear',fill_value=0,bounds_error=False,assume_sorted=True)  #Interpolation to master time                    
+                interp=scipy.interpolate.interp1d(sublist_physical_units[i].xfs-distT[i],eCurrent,kind='linear',fill_value=0,bounds_error=False,assume_sorted=True)  #Interpolation to main time                    
                 averageECurrent[j][g,:]=averageECurrent[j][g,:]+interp(t)  #Accumulate it in the right group                    
 
-                interp=scipy.interpolate.interp1d(sublist_physical_units[i].xfs-distT[i],eCOMslice,kind='linear',fill_value=0,bounds_error=False,assume_sorted=True) #Interpolation to master time
+                interp=scipy.interpolate.interp1d(sublist_physical_units[i].xfs-distT[i],eCOMslice,kind='linear',fill_value=0,bounds_error=False,assume_sorted=True) #Interpolation to main time
                 averageECOMslice[j][g,:]=averageECOMslice[j][g,:]+interp(t)          #Accumulate it in the right group
 
-                interp=scipy.interpolate.interp1d(sublist_physical_units[i].xfs-distT[i],eRMSslice,kind='linear',fill_value=0,bounds_error=False,assume_sorted=True) #Interpolation to master time
+                interp=scipy.interpolate.interp1d(sublist_physical_units[i].xfs-distT[i],eRMSslice,kind='linear',fill_value=0,bounds_error=False,assume_sorted=True) #Interpolation to main time
                 averageERMSslice[j][g,:]=averageERMSslice[j][g,:]+interp(t)
 
             averageECurrent[j][g,:] = averageECurrent[j][g,:]/num_in_cluster
@@ -645,7 +645,7 @@ PhysicalUnits = namedtuple('PhysicalUnits',
 
 
 AveragedProfiles = namedtuple('AveragedProfiles',
-    ['t',                         #Master time in fs
+    ['t',                         #Main time in fs
     'eCurrent',                   #Electron current in (#electrons/s)
     'eCOMslice',                  #Energy center of masses for each time in MeV
     'eRMSslice',                  #Energy dispersion for each time in MeV
@@ -658,7 +658,7 @@ AveragedProfiles = namedtuple('AveragedProfiles',
     'eventFid'])                  #Fiducial values used for jumping to events
 
 PulseCharacterization = namedtuple('PulseCharacterization',
-    ['t',                        #Master time vector in fs
+    ['t',                        #Main time vector in fs
     'powerrawECOM',              #Retrieved power in GW based on ECOM without gas detector normalization
     'powerrawERMS',              #Retrieved power in arbitrary units based on ERMS without gas detector normalization
     'powerECOM',                 #Retrieved power in GW based on ECOM

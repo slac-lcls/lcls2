@@ -76,7 +76,7 @@ class MyDAQ:
         self.readoutCumulative = 0
 
         # instantiate DaqPVA object
-        self.pva = DaqPVA(platform=args.p, xpm_master=args.x, pv_base=args.B)
+        self.pva = DaqPVA(platform=args.p, xpm_main=args.x, pv_base=args.B)
 
     def read(self):
         # stuff we want to give back to user running bluesky
@@ -269,7 +269,7 @@ def main():
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
                         help='platform (default 0)')
-    parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
+    parser.add_argument('-x', metavar='XPM', type=int, required=True, help='main XPM')
     parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost',
                         help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,

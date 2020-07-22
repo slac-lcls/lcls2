@@ -522,7 +522,7 @@ class ProcMgr:
 
           # initialize dictionaries used for port assignments
           if not self.host in nextCtrlPort:
-              # on each host, two ports are reserved for a master server: ctrl and log
+              # on each host, two ports are reserved for a main server: ctrl and log
               nextCtrlPort[self.host] = self.EXECMGRCTRL + 2
               staticPorts[self.host] = set()
 

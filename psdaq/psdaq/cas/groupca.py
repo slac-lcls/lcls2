@@ -230,17 +230,17 @@ def addGroup(tw, base, group, xpm):
     w.setLayout(wlo)
     tw.addTab(w,'Group %d'%group)
 
-    pvXpm = Pv(pvbase+'Master')
+    pvXpm = Pv(pvbase+'Main')
     pvXpm.put(1)
 
-class GroupMaster(QtWidgets.QWidget):
+class GroupMain(QtWidgets.QWidget):
     def __init__(self, pvbase, groups):
-        super(GroupMaster,self).__init__()
+        super(GroupMain,self).__init__()
         hlo = QtWidgets.QHBoxLayout()
-        hlo.addWidget(QtWidgets.QLabel('Master:'))
+        hlo.addWidget(QtWidgets.QLabel('Main:'))
         hlo.addStretch()
         for g in groups:
-            b=PvCheckBox(pvbase+'%d:Master'%g,'Group %d'%g)
+            b=PvCheckBox(pvbase+'%d:Main'%g,'Group %d'%g)
             hlo.addWidget(b)
             hlo.addStretch()
         self.setLayout(hlo)
@@ -256,7 +256,7 @@ class Ui_MainWindow(object):
         lol = QtWidgets.QVBoxLayout()
 
         if not prod:
-            lol.addWidget(GroupMaster(pvbase,groups))
+            lol.addWidget(GroupMain(pvbase,groups))
 
             tw = QtWidgets.QTabWidget()
             for g in groups:
@@ -289,7 +289,7 @@ class Ui_MainWindow(object):
         MainWindow.setWindowTitle(base)
         MainWindow.setCentralWidget(self.centralWidget)
 
-    def master(self,checked):
+    def main(self,checked):
         if checked:
             self.pvL0Enable.put(self.groups)
             time.sleep(0.1)

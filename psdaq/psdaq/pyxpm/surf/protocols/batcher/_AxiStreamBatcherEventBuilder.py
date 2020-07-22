@@ -23,7 +23,7 @@ class AxiStreamBatcherEventBuilder(pr.Device):
     def __init__(self,       
             name         = "AxiStreamBatcherEventBuilder",
             description  = "AxiStreamBatcherEventBuilder Container",
-            numberSlaves = 1,
+            numberSubordinates = 1,
             tickUnit     = 'TBD',
             **kwargs):
         super().__init__(name=name, description=description, **kwargs)
@@ -34,7 +34,7 @@ class AxiStreamBatcherEventBuilder(pr.Device):
             offset       = 0x000,
             bitSize      = 32,
             mode         = 'RO',
-            number       = numberSlaves,
+            number       = numberSubordinates,
             stride       = 4,
             pollInterval = 1,
         ) 
@@ -45,18 +45,18 @@ class AxiStreamBatcherEventBuilder(pr.Device):
             offset       = 0x100,
             bitSize      = 32,
             mode         = 'RO',
-            number       = numberSlaves,
+            number       = numberSubordinates,
             stride       = 4,
             pollInterval = 1,
         )   
 
         self.addRemoteVariables(   
             name         = 'TimeoutDropCnt',
-            description  = 'Increments every time a timeout slave channel drop event happens',
+            description  = 'Increments every time a timeout subordinate channel drop event happens',
             offset       = 0x200,
             bitSize      = 32,
             mode         = 'RO',
-            number       = numberSlaves,
+            number       = numberSubordinates,
             stride       = 4,
             pollInterval = 1,
         )           
@@ -65,7 +65,7 @@ class AxiStreamBatcherEventBuilder(pr.Device):
             name         = 'Bypass',
             description  = 'Mask to bypass a channel',
             offset       = 0xFD0,
-            bitSize      = numberSlaves,
+            bitSize      = numberSubordinates,
             mode         = 'RW',
         ))        
         

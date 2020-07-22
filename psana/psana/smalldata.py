@@ -706,7 +706,7 @@ class SmallData: # (client)
 
             # part (2): now that the number of events is known for this
             # dataset, fill in the "soft link" that points from the
-            # master file to all the smaller files.
+            # main file to all the smaller files.
             index_of_last_fill = 0
             for fn in files:
 

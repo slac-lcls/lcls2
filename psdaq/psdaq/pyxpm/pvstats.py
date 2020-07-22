@@ -287,7 +287,7 @@ class GroupStats(object):
     def __init__(self, name, app, group):
         self._app   = app
         self._group = group
-        self._master = 0
+        self._main = 0
         self._timeval = float(time.time_ns())
         self._app.partition.set(group)
         l0Stats        = self._app.l0Stats.get()
@@ -334,7 +334,7 @@ class GroupStats(object):
         timev = divmod(timeval, 1.0e9)
         lock.acquire()
         self._app.partition.set(self._group)
-        if self._master:
+        if self._main:
             l0Stats  = self._app.l0Stats.get()
             if l0Stats is not None:
                 l0Ena    = self._app.l0EnaCnt(l0Stats)
