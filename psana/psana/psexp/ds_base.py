@@ -67,6 +67,8 @@ class DataSourceBase(abc.ABC):
 
         assert self.batch_size > 0
         
+        self.prom_man = PrometheusManager()
+        
 
     def events(self):
         for run in self.runs():
@@ -167,17 +169,14 @@ class DataSourceBase(abc.ABC):
     def _start_prometheus_client(self, mpi_rank=0):
         if not self.monitor:
             logging.debug('not monitoring performance with prometheus')
-            self.prom_man = None
-            return
-
-        logging.debug('starting prometheus client on rank %d'%mpi_rank)
-        self.prom_man = PrometheusManager()
-        self.e = threading.Event()
-        self.t = threading.Thread(name='PrometheusThread%s'%(mpi_rank),
-                target=self.prom_man.push_metrics,
-                args=(self.e, os.getpid()),
-                daemon=True)
-        self.t.start()
+        else:
+            logging.debug('starting prometheus client on rank %d'%mpi_rank)
+            self.e = threading.Event()
+            self.t = threading.Thread(name='PrometheusThread%s'%(mpi_rank),
+                    target=self.prom_man.push_metrics,
+                    args=(self.e, os.getpid()),
+                    daemon=True)
+            self.t.start()
 
     def _end_prometheus_client(self, mpi_rank=0):
         if not self.monitor:

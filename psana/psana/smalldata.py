@@ -408,6 +408,7 @@ class SmallData: # (client)
         # partition into comms
         n_srv = self._server_group.size
         if n_srv < 1:
+            print(f'xxx n_srv={n_srv}')
             raise Exception('Attempting to run smalldata with no servers'
                             ' set env var PS_SRV_NODES to be 1 or more')
 

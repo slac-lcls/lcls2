@@ -11,7 +11,7 @@ class SingleFileDataSource(DataSourceBase):
         for run_no in self.run_dict:
             run = RunSingleFile(self.exp, run_no, self.run_dict[run_no], \
                         max_events=self.max_events, batch_size=self.batch_size, \
-                        filter_callback=self.filter)
+                        filter_callback=self.filter, prom_man=self.prom_man)
             self._configs = run.configs # short cut to config
             yield run
 

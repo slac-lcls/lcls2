@@ -64,8 +64,7 @@ class SmdReaderManager(object):
         self.got_events = -1
         
         # Collecting Smd0 performance using prometheus
-        if self.run.prom_man:
-            self.c_read = self.run.prom_man.get_counter('psana_smd0_read')
+        self.c_read = self.run.prom_man.get_metric('psana_smd0_read')
 
     def get_next_dgrams(self, configs=None):
         dgrams = None
@@ -105,8 +104,7 @@ class SmdReaderManager(object):
         
         if not self.smdr.is_complete():
             self.smdr.get()
-            if self.run.prom_man:
-                self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
+            self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
             if not self.smdr.is_complete():
                 raise StopIteration
         
@@ -117,9 +115,8 @@ class SmdReaderManager(object):
         self.processed_events += self.got_events
 
         # sending data to prometheus
-        if self.run.prom_man:
-            self.c_read.labels('evts', 'None').inc(self.got_events)
-            self.c_read.labels('batches', 'None').inc()
+        self.c_read.labels('evts', 'None').inc(self.got_events)
+        self.c_read.labels('batches', 'None').inc()
 
         return batch_iter
         
@@ -134,10 +131,9 @@ class SmdReaderManager(object):
                 self.processed_events += self.got_events
                 
                 # sending data to prometheus
-                if self.run.prom_man:
-                    logging.debug('Smd0 got %d events'%(self.got_events))
-                    self.c_read.labels('evts', 'None').inc(self.got_events)
-                    self.c_read.labels('batches', 'None').inc()
+                logging.debug('Smd0 got %d events'%(self.got_events))
+                self.c_read.labels('evts', 'None').inc(self.got_events)
+                self.c_read.labels('batches', 'None').inc()
 
                 if self.run.max_events and self.processed_events >= self.run.max_events:
                     is_done = True
@@ -165,9 +161,10 @@ class SmdReaderManager(object):
 
             else:
                 self.smdr.get()
-                if self.run.prom_man:
-                    logging.debug('Smd0 read %.2f MB'%(self.smdr.got/1e6))
-                    self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
+                
+                logging.debug('Smd0 read %.2f MB'%(self.smdr.got/1e6))
+                self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
+                
                 if not self.smdr.is_complete():
                     is_done = True
                     break

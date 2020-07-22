@@ -10,10 +10,7 @@ class Events:
         self._evt_man               = iter([])
         self._batch_iter            = iter([])
         self.flag_empty_smd_batch   = False
-        if self.run.prom_man:
-            self.c_read = self.run.prom_man.get_counter('psana_bd_read')
-        else:
-            self.c_read = None
+        self.c_read = self.run.prom_man.get_metric('psana_bd_read')
 
     def __iter__(self):
         return self
@@ -39,8 +36,7 @@ class Events:
                     self.flag_empty_smd_batch = True
                     raise StopIteration
                 else:
-                    if self.run.prom_man:
-                        self.c_read.labels('batches','None').inc()
+                    self.c_read.labels('batches','None').inc()
                     self._evt_man = EventManager(smd_batch, 
                             self.run.configs, 
                             self.run.dm, 

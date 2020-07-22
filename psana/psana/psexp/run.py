@@ -249,8 +249,8 @@ class Run(object):
 class RunShmem(Run):
     """ Yields list of events from a shared memory client (no event building routine). """
     
-    def __init__(self, exp, run_no, xtc_files, max_events, batch_size, filter_callback, tag):
-        super(RunShmem, self).__init__(exp, run_no, max_events=max_events, batch_size=batch_size, filter_callback=filter_callback)
+    def __init__(self, exp, run_no, xtc_files, max_events, batch_size, filter_callback, tag, prom_man):
+        super(RunShmem, self).__init__(exp, run_no, max_events=max_events, batch_size=batch_size, filter_callback=filter_callback, prom_man=prom_man)
         self.dm = DgramManager(xtc_files,tag=tag)
         self.configs = self.dm.configs 
         super()._get_runinfo()
@@ -278,7 +278,8 @@ class RunSingleFile(Run):
     def __init__(self, exp, run_no, run_src, **kwargs):
         super(RunSingleFile, self).__init__(exp, run_no, \
                 max_events=kwargs['max_events'], batch_size=kwargs['batch_size'], \
-                filter_callback=kwargs['filter_callback'])
+                filter_callback=kwargs['filter_callback'], 
+                prom_man=kwargs['prom_man'])
         xtc_files, smd_files, epics_file = run_src
         self.dm = DgramManager(xtc_files)
         self.configs = self.dm.configs

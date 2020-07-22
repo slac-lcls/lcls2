@@ -250,8 +250,7 @@ class Smd0(object):
         self.step_hist = StepHistory(self.run.comms.smd_size, len(self.run.configs))
         
         # Collecting Smd0 performance using prometheus
-        if self.run.prom_man:
-            self.c_sent = self.run.prom_man.get_counter('psana_smd0_sent')
+        self.c_sent = self.run.prom_man.get_metric('psana_smd0_sent')
         
         self.run_mpi()
 
@@ -285,10 +284,9 @@ class Smd0(object):
             self.run.comms.smd_comm.Send(smd_extended, dest=rankreq[0])
         
             # sending data to prometheus
-            if self.run.prom_man:
-                self.c_sent.labels('evts', rankreq[0]).inc(self.smdr_man.got_events)
-                self.c_sent.labels('batches', rankreq[0]).inc()
-                self.c_sent.labels('MB', rankreq[0]).inc(memoryview(smd_extended).nbytes/1e6)
+            self.c_sent.labels('evts', rankreq[0]).inc(self.smdr_man.got_events)
+            self.c_sent.labels('batches', rankreq[0]).inc()
+            self.c_sent.labels('MB', rankreq[0]).inc(memoryview(smd_extended).nbytes/1e6)
         
         for i in range(self.run.comms.n_smd_nodes):
             self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
@@ -306,8 +304,7 @@ class SmdNode(object):
         self.step_hist = StepHistory(self.run.comms.bd_size, len(self.run.configs))
         self.waiting_bds = []
         # Collecting Smd0 performance using prometheus
-        if self.run.prom_man:
-            self.c_sent = self.run.prom_man.get_counter('psana_eb_sent')
+        self.c_sent = self.run.prom_man.get_metric('psana_eb_sent')
 
 
     def pack(self, *args):
@@ -368,11 +365,10 @@ class SmdNode(object):
                     bd_comm.Send(batch, dest=rankreq[0])
                     
                     # sending data to prometheus
-                    if self.run.prom_man:
-                        logging.debug('EventBuilder sent %d events (%.2f MB) to rank %d'%(eb_man.eb.nevents, memoryview(batch).nbytes/1e6, rankreq[0]))
-                        self.c_sent.labels('evts', rankreq[0]).inc(eb_man.eb.nevents)
-                        self.c_sent.labels('batches', rankreq[0]).inc()
-                        self.c_sent.labels('MB', rankreq[0]).inc(memoryview(batch).nbytes/1e6)
+                    logging.debug('EventBuilder sent %d events (%.2f MB) to rank %d'%(eb_man.eb.nevents, memoryview(batch).nbytes/1e6, rankreq[0]))
+                    self.c_sent.labels('evts', rankreq[0]).inc(eb_man.eb.nevents)
+                    self.c_sent.labels('batches', rankreq[0]).inc()
+                    self.c_sent.labels('MB', rankreq[0]).inc(memoryview(batch).nbytes/1e6)
                     
                     if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:  
                         step_pf = PacketFooter(view=step_batch)
