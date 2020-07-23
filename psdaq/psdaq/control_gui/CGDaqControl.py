@@ -23,7 +23,7 @@ Usage ::
     # or
     state = daq_control_get_state()
 
-    transition, state, cfgtype, recording, platform = daq_control_get_status()
+    transition, state, cfgtype, recording, platform, bypass_activedet, experiment_name, run_number, last_run_number = daq_control_get_status()
     instr = daq_control_get_instrument()
 
     daq_control_set_record(do_record=True)
@@ -148,14 +148,18 @@ def daq_control_get_status() :
     daq_ctrl = get_daq_control('in daq_control_get_status ')
     if daq_ctrl is None : return None
 
-    transition, state, cfgtype, recording, platform, bypass_activedet = daq_ctrl.getStatus()
+    transition, state, cfgtype, recording, platform, bypass_activedet, \
+        experiment_name, run_number, last_run_number = daq_ctrl.getStatus()
     logger.debug('daq_control_get_status transition:%s state:%s cfgtype:%s recording:%s bypass_activedet:%s'%\
                  (str(transition), str(state), str(cfgtype), str(recording), str(bypass_activedet)))
+    logger.debug('daq_control_get_status experiment_name:%s run_number:%s last_run_number:%s'%\
+                 (str(experiment_name), str(run_number), str(last_run_number)))
     logger.debug('daq_control_get_status platform:%s' % str(platform))
 
     #logger.debug('daq_control_get_status() time = %.6f sec' % (time()-t0_sec))
 
-    return transition.lower(), state.lower(), cfgtype, recording, platform
+    return transition.lower(), state.lower(), cfgtype, recording, platform, \
+        bypass_activedet, experiment_name, run_number, last_run_number
 
 #----------
 

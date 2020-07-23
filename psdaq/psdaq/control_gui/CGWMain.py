@@ -144,7 +144,8 @@ class CGWMain(QWZMQListener) :
 #------------------------------
 
     def init_daq_control_parameters(self) :
-        cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording, _platform = daq_control_get_status()
+        cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording, _platform, \
+            cp.s_bypass_activedet, cp.s_experiment_name, cp.s_run_number, cp.s_last_run_number = daq_control_get_status()
         cp.instr = daq_control_get_instrument()
         logger.debug('daq_control_get_instrument(): %s' % cp.instr)
         if cp.instr is None : logger.warning('instrument is None')
@@ -351,6 +352,10 @@ class CGWMain(QWZMQListener) :
                     cp.s_cfgtype    = body['config_alias'] # BEAM/NO BEAM
                     cp.s_recording  = body['recording']    # True/False
                     cp.s_platform   = body.get('platform', None) # dict
+                    cp.s_bypass_activedet  = body['bypass_activedet']   # True/False
+                    cp.s_experiment_name  = body['experiment_name']     # string
+                    cp.s_run_number  = body['run_number']               # int
+                    cp.s_last_run_number  = body['last_run_number']     # int
 
                     #====
                     if wctrl is not None : wctrl.set_but_ctrls()

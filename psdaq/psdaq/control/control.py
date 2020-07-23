@@ -233,6 +233,7 @@ class DaqControl:
     def getStatus(self):
         r1 = r2 = r3 = r4 = r6 = 'error'
         r5 = {}
+        r7 = r8 = r9 = 'error'
         try:
             msg = create_msg('getstatus')
             self.front_req.send_json(msg)
@@ -249,10 +250,13 @@ class DaqControl:
                 r4 = reply['body']['recording']
                 r5 = reply['body']['platform']
                 r6 = reply['body']['bypass_activedet']
+                r7 = reply['body']['experiment_name']
+                r8 = reply['body']['run_number']
+                r9 = reply['body']['last_run_number']
             except KeyError:
                 pass
 
-        return (r1, r2, r3, r4, r5, r6)
+        return (r1, r2, r3, r4, r5, r6, r7, r8, r9)
 
     #
     # DaqControl.monitorStatus - monitor the status
@@ -265,20 +269,21 @@ class DaqControl:
                 msg = self.front_sub.recv_json()
 
                 if msg['header']['key'] == 'status':
-                    # return transition, state, config_alias, recording, bypass_activedet
-                    return msg['body']['transition'], msg['body']['state'], msg['body']['config_alias'], msg['body']['recording'], msg['body']['bypass_activedet']
+                    # return transition, state, config_alias, recording, bypass_activedet, experiment_name, run_number, last_run_number
+                    return msg['body']['transition'], msg['body']['state'], msg['body']['config_alias'], msg['body']['recording'], msg['body']['bypass_activedet'],\
+                           msg['body']['experiment_name'], msg['body']['run_number'], msg['body']['last_run_number']
 
                 elif msg['header']['key'] == 'error':
-                    # return 'error', error message, 'error', 'error', 'error'
-                    return 'error', msg['body']['err_info'], 'error', 'error', 'error'
+                    # return 'error', error message, 'error', 'error', 'error', 'error', 'error', 'error'
+                    return 'error', msg['body']['err_info'], 'error', 'error', 'error', 'error', 'error', 'error'
 
                 elif msg['header']['key'] == 'fileReport':
-                    # return 'fileReport', path, 'error', 'error', 'error'
-                    return 'fileReport', msg['body']['path'], 'error', 'error', 'error'
+                    # return 'fileReport', path, 'error', 'error', 'error', 'error', 'error', 'error'
+                    return 'fileReport', msg['body']['path'], 'error', 'error', 'error', 'error', 'error', 'error'
 
                 elif msg['header']['key'] == 'progress':
-                    # return 'progress', transition, elapsed, total, 'error'
-                    return 'progress', msg['body']['transition'], msg['body']['elapsed'], msg['body']['total'], 'error'
+                    # return 'progress', transition, elapsed, total, 'error', 'error', 'error', 'error'
+                    return 'progress', msg['body']['transition'], msg['body']['elapsed'], msg['body']['total'], 'error', 'error', 'error', 'error'
 
             except KeyboardInterrupt:
                 break
@@ -287,7 +292,7 @@ class DaqControl:
                 logging.error('KeyError: %s' % ex)
                 break
 
-        return None, None, None, None, None
+        return None, None, None, None, None, None, None, None
 
     #
     # DaqControl.setState - change the state
@@ -684,6 +689,7 @@ class CollectionManager():
         self.password = args.password
         self.url = args.url
         self.experiment_name = None
+        self.run_number = self.last_run_number = 0
         self.rollcall_timeout = args.rollcall_timeout
         self.bypass_activedet = False
 
@@ -1087,9 +1093,14 @@ class CollectionManager():
             self.front_rep.send_json(answer)
 
     def status_msg(self):
+        if not self.experiment_name:
+            expname = 'None'
+        else:
+            expname = self.experiment_name
         body = {'state': self.state, 'transition': self.lastTransition,
                 'platform': self.cmstate_levels(),
-                'config_alias': str(self.config_alias), 'recording': self.recording, 'bypass_activedet': self.bypass_activedet}
+                'config_alias': str(self.config_alias), 'recording': self.recording, 'bypass_activedet': self.bypass_activedet,
+                'experiment_name': expname, 'run_number': self.run_number, 'last_run_number': self.last_run_number}
         return create_msg('status', body=body)
 
     def report_status(self):
@@ -1221,15 +1232,17 @@ class CollectionManager():
         if self.recording:
             # RECORDING: update runDB
             try:
-                run_number = self.start_run(self.experiment_name)
+                self.run_number = self.start_run(self.experiment_name)
             except Exception as ex:
                 # ERROR
+                self.run_number = 0
                 ok = False
                 err_msg = "Failed to start a run with recording enabled"
             else:
-                self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':run_number}}
+                self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':self.run_number}}
         else:
             # NOT RECORDING: by convention, run_number == 0
+            self.run_number = 0
             self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':0}}
 
         if not ok:
@@ -1286,6 +1299,12 @@ class CollectionManager():
             return False
 
         self.lastTransition = 'endrun'
+
+        # store last recorded run number
+        if self.run_number > 0:
+            self.last_run_number = self.run_number
+            self.run_number = 0
+
         return True
 
     def condition_beginstep(self):
