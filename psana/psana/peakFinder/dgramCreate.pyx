@@ -357,7 +357,6 @@ class CyDgram():
                 data_type = 10 # from xtcdata/xtc/ShapesData Name::DataType::CHARSTR
             else:
                 data_type = parse_type(arr) # uint8, int32, etc...
-            print '$$$ name',name,'array',array,'arralg',array_alg,'arrsize',array_size,'arrrank',array_rank,'datatype',data_type,'arr',arr
             # Copy the name to the block
             py_name.addName(fix_encoding(name), pyalg, data_type, array_rank)
 
