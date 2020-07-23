@@ -1119,7 +1119,7 @@ class ProcMgr:
                         try:
                           response = self.telnet.read_until(self.MSG_PROMPT, 2)
                         except EOFError:
-                          response = ""
+                          response = b""
                         # search for error code after "return="
                         m = re.search(b'(?<=return=)\d+', response)
                         if m is not None:
