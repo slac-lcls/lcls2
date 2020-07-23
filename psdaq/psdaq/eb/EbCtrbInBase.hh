@@ -26,7 +26,7 @@ namespace Pds
     {
     public:
       EbCtrbInBase(const TebCtrbParams&, const std::shared_ptr<MetricExporter>&);
-      virtual ~EbCtrbInBase() {}
+      virtual ~EbCtrbInBase();
     public:
       int      resetCounters();
       int      startConnection(std::string& port);
@@ -67,6 +67,7 @@ namespace Pds
       uint64_t                      _missing;
       uint64_t                      _bypassCount;
       const TebCtrbParams&          _prms;
+      size_t                        _regSize;
       void*                         _region;
     };
   };

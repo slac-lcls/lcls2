@@ -146,7 +146,7 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
                           std::vector<EbLfCltLink*>&      links,
                           const std::vector<std::string>& addrs,
                           const std::vector<std::string>& ports,
-                          const char*                     name)
+                          const char*                     peer)
 {
   for (unsigned i = 0; i < addrs.size(); ++i)
   {
@@ -159,7 +159,7 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
     if ( (rc = transport.connect(&link, addr, port, msTmo)) )
     {
       logging::error("%s:\n  Error connecting to %s at %s:%s",
-                     __PRETTY_FUNCTION__, name, addr, port);
+                     __PRETTY_FUNCTION__, peer, addr, port);
       return rc;
     }
     links[i] = link;
@@ -167,7 +167,7 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
     auto t1 = std::chrono::steady_clock::now();
     auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
     logging::info("Outbound link[%u] with %s connected in %lu ms",
-                  i, name, dT);
+                  i, peer, dT);
   }
 
   return 0;
@@ -175,18 +175,18 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
 
 int Pds::Eb::linksConfigure(std::vector<EbLfCltLink*>& links,
                             unsigned                   id,
-                            const char*                name)
+                            const char*                peer)
 {
-  return linksConfigure(links, id, nullptr, 0, 0, name);
+  return linksConfigure(links, id, nullptr, 0, 0, peer);
 }
 
 int Pds::Eb::linksConfigure(std::vector<EbLfCltLink*>& links,
                             unsigned                   id,
                             void*                      region,
                             size_t                     regSize,
-                            const char*                name)
+                            const char*                peer)
 {
-  return linksConfigure(links, id, region, regSize, 0, name);
+  return linksConfigure(links, id, region, regSize, regSize, peer);
 }
 
 int Pds::Eb::linksConfigure(std::vector<EbLfCltLink*>& links,
@@ -194,24 +194,18 @@ int Pds::Eb::linksConfigure(std::vector<EbLfCltLink*>& links,
                             void*                      region,
                             size_t                     lclSize,
                             size_t                     rmtSize,
-                            const char*                name)
+                            const char*                peer)
 {
   std::vector<EbLfCltLink*> tmpLinks(links.size());
 
   for (auto link : links)
   {
     auto t0(std::chrono::steady_clock::now());
-    int  rc;
-    if (region && rmtSize)
-      rc = link->prepare(id, region, lclSize, rmtSize);
-    else if (region)
-      rc = link->prepare(id, region, lclSize);
-    else
-      rc = link->prepare(id);
+    int  rc = link->prepare(id, region, lclSize, rmtSize, peer);
     if (rc)
     {
       logging::error("%s:\n  Failed to prepare link with %s ID %d",
-                     __PRETTY_FUNCTION__, name, link->id());
+                     __PRETTY_FUNCTION__, peer, link->id());
       return rc;
     }
     unsigned rmtId  = link->id();
@@ -220,7 +214,7 @@ int Pds::Eb::linksConfigure(std::vector<EbLfCltLink*>& links,
     auto t1 = std::chrono::steady_clock::now();
     auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
     logging::info("Outbound link with %s ID %d configured in %lu ms",
-                  name, rmtId, dT);
+                  peer, rmtId, dT);
   }
 
   links = tmpLinks;                     // Now in remote ID sorted order

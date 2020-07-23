@@ -73,6 +73,16 @@ EbAppBase::EbAppBase(const EbParams&         prms,
   _ctrbSrc  = exporter->add(pfx+"_CtrbSc", labels, nCtrbs); // Revisit: For testing
 }
 
+EbAppBase::~EbAppBase()
+{
+  for (auto& region : _region)
+  {
+    if (region)  free(region);
+    region = nullptr;
+  }
+  _region.clear();
+}
+
 void EbAppBase::shutdown()
 {
   if (_id != unsigned(-1))              // Avoid shutting down if already done
@@ -94,24 +104,16 @@ void EbAppBase::disconnect()
 
   _id           = -1;
   _contributors = 0;
-  _contract.fill(0);
+  _contract     .fill(0);
+  _bufRegSize   .clear();
+  _maxBufSize   .clear();
+  _maxTrSize    .clear();
 }
 
 void EbAppBase::unconfigure()
 {
   EventBuilder::dump(0);
   EventBuilder::clear();
-
-  for (auto& region : _region)
-  {
-    if (region)  free(region);
-    region = nullptr;
-  }
-  _region.clear();
-
-  _bufRegSize.clear();
-  _maxBufSize.clear();
-  _maxTrSize .clear();
 }
 
 int EbAppBase::resetCounters()
@@ -140,6 +142,11 @@ int EbAppBase::connect(const EbParams& prms)
   unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
 
   _links        .resize(nCtrbs);
+  _region       .resize(nCtrbs);
+  _regSize      .resize(nCtrbs);
+  _bufRegSize   .resize(nCtrbs);
+  _maxTrSize    .resize(nCtrbs);
+  _maxBufSize   .resize(nCtrbs);
   _id           = prms.id;
   _contributors = prms.contributors;
   _contract     = prms.contractors;
@@ -147,17 +154,40 @@ int EbAppBase::connect(const EbParams& prms)
   int rc = linksConnect(_transport, _links, "DRP");
   if (rc)  return rc;
 
+  for (unsigned i = 0; i < nCtrbs; ++i)
+  {
+    if (!_region[i])                    // No need to guess again
+    {
+      // Make a guess at the size of the Input region
+      size_t inpSizeGuess = _maxEntries != 1        // Distinguish between TEB and MEB
+                          ? (sizeof(EbDgram) + 2  * sizeof(uint32_t)) * _maxBuffers * _maxEntries
+                          : 128*1024 * _maxBuffers; // MEB case
+      size_t regSizeGuess = inpSizeGuess + roundUpSize(NUM_TRANSITION_BUFFERS * prms.maxTrSize[i]);
+      //printf("*** EAB::connect: region %p, regSizeGuess %zu\n", _region[i], regSizeGuess);
+
+      _region[i] = allocRegion(regSizeGuess);
+      if (!_region[i])
+      {
+        logging::error("%s:\n  "
+                       "No memory found for Input MR for %s[%d] of size %zd",
+                       __PRETTY_FUNCTION__, "DRP", i, regSizeGuess);
+        return ENOMEM;
+      }
+
+      // Save the allocated size, which may be more than the required size
+      _regSize[i] = regSizeGuess;
+    }
+
+    //printf("*** EAB::connect: region %p, regSize %zu\n", _region[i], _regSize[i]);
+    rc = _transport.setupMr(_region[i], _regSize[i]);
+    if (rc)  return rc;
+  }
+
   return 0;
 }
 
 int EbAppBase::configure(const EbParams& prms)
 {
-  unsigned nCtrbs = _links.size();
-
-  _bufRegSize.resize(nCtrbs);
-  _maxTrSize .resize(nCtrbs);
-  _maxBufSize.resize(nCtrbs);
-
   int rc = _linksConfigure(prms, _links, _id, "DRP");
   if (rc)  return rc;
 
@@ -186,20 +216,19 @@ int EbAppBase::configure(const EbParams& prms)
 int EbAppBase::_linksConfigure(const EbParams&            prms,
                                std::vector<EbLfSvrLink*>& links,
                                unsigned                   id,
-                               const char*                name)
+                               const char*                peer)
 {
   std::vector<EbLfSvrLink*> tmpLinks(links.size());
-  _region.resize(links.size());
 
   for (auto link : links)
   {
     auto   t0(std::chrono::steady_clock::now());
     int    rc;
     size_t regSize;
-    if ( (rc = link->prepare(id, &regSize)) )
+    if ( (rc = link->prepare(id, &regSize, peer)) )
     {
       logging::error("%s:\n  Failed to prepare link with %s ID %d",
-                     __PRETTY_FUNCTION__, name, link->id());
+                     __PRETTY_FUNCTION__, peer, link->id());
       return rc;
     }
     unsigned rmtId     = link->id();
@@ -210,30 +239,37 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
     _maxTrSize[rmtId]  = prms.maxTrSize[rmtId];
     regSize           += roundUpSize(NUM_TRANSITION_BUFFERS * _maxTrSize[rmtId]);  // Ctrbs don't have a transition space
 
-    void* region = allocRegion(regSize);
-    if (!region)
+    // Allocate the region, and reallocate if the required size is larger
+    if (regSize > _regSize[rmtId])
     {
-      logging::error("%s:\n  "
-                     "No memory found for Input MR for %s ID %d of size %zd",
-                     __PRETTY_FUNCTION__, name, rmtId, regSize);
-      return ENOMEM;
-    }
-    _region[rmtId] = region;
+      if (_region[rmtId])  free(_region[rmtId]);
 
-    if ( (rc = link->setupMr(region, regSize)) )
+      _region[rmtId] = allocRegion(regSize);
+      if (!_region[rmtId])
+      {
+        logging::error("%s:\n  "
+                       "No memory found for Input MR for %s ID %d of size %zd",
+                       __PRETTY_FUNCTION__, peer, rmtId, regSize);
+        return ENOMEM;
+      }
+
+      // Save the allocated size, which may be more than the required size
+      _regSize[rmtId] = regSize;
+    }
+
+    //printf("*** EAB::cfg: region %p, regSize %zu\n", _region[rmtId], regSize);
+    if ( (rc = link->setupMr(_region[rmtId], regSize, peer)) )
     {
       logging::error("%s:\n  Failed to set up Input MR for %s ID %d, "
-                     "%p:%p, size %zd", __PRETTY_FUNCTION__, name, rmtId,
-                     region, static_cast<char*>(region) + regSize, regSize);
-      if (region)  free(region);
-      _region[rmtId] = nullptr;
+                     "%p:%p, size %zd", __PRETTY_FUNCTION__, peer, rmtId,
+                     _region[rmtId], static_cast<char*>(_region[rmtId]) + regSize, regSize);
       return rc;
     }
 
     auto t1 = std::chrono::steady_clock::now();
     auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
     logging::info("Inbound link with %s ID %d configured in %lu ms",
-                  name, rmtId, dT);
+                  peer, rmtId, dT);
   }
 
   links = tmpLinks;                     // Now in remote ID sorted order

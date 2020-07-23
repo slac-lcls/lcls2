@@ -19,6 +19,7 @@ static_assert((MAX_BATCHES - 1) <= ImmData::MaxIdx, "MAX_BATCHES exceeds availab
 
 BatchManager::BatchManager() :
   _maxBatchSize(0),
+  _regSize     (0),
   _region      (nullptr),
   _appPrms     (MAX_BATCHES * MAX_ENTRIES),
   _numAllocs   (0),
@@ -37,24 +38,6 @@ BatchManager::~BatchManager()
 
 int BatchManager::initialize(size_t maxEntrySize, bool batching)
 {
-  size_t maxBatchSize = MAX_ENTRIES * maxEntrySize;
-  if (_maxBatchSize != maxBatchSize)
-  {
-    _maxBatchSize = maxBatchSize;
-    if (_region)  free(_region);
-    _region = static_cast<char*>(allocRegion(batchRegionSize()));
-  }
-  _lastFreed    = 0;
-  _previousPid  = 0;
-  _batch.initialize(maxEntrySize);
-  _batching     = batching;
-  _numAllocs    = 0;
-  _numFrees     = 0;
-  _nAllocs      = 0;
-  _nFrees       = 0;
-  _waiting      = 0;
-  _terminate    = false;
-
   if (MAX_ENTRIES < BATCH_DURATION)
   {
     fprintf(stderr, "%s: Warning: More triggers can occur in a batch duration (%lu) "
@@ -68,18 +51,46 @@ int BatchManager::initialize(size_t maxEntrySize, bool batching)
             "by %zd to avoid alignment issues\n",
             __PRETTY_FUNCTION__, maxEntrySize, sizeof(uint64_t));
   }
-  if (_region == nullptr)
+
+  // Allocate the region, and reallocate if the required size is larger
+  _maxBatchSize = MAX_ENTRIES * maxEntrySize;
+  //printf("*** BM::init: region %p, regSize %zu, regSizeGuess %zu\n",
+  //       _region, _regSize, batchRegionSize());
+  if (batchRegionSize() > _regSize)
   {
-    fprintf(stderr, "%s: No memory found for a region of size %zd\n",
-            __PRETTY_FUNCTION__, batchRegionSize());
-    return 1;
+    //printf("*** BM::init: batchRegionSize() [%zu] > _regSize [%zu]: (re)allocating\n", batchRegionSize(), _regSize);
+
+    if (_region)  free(_region);
+
+    _region = static_cast<char*>(allocRegion(batchRegionSize()));
+    if (!_region)
+    {
+      fprintf(stderr, "%s: No memory found for a region of size %zd\n",
+              __PRETTY_FUNCTION__, batchRegionSize());
+      return ENOMEM;
+    }
+
+    // Save the allocated size, which may be more than the required size
+    _regSize = batchRegionSize();
   }
+
+  _lastFreed    = 0;
+  _previousPid  = 0;
+  _batch.initialize(maxEntrySize);
+  _batching     = batching;
+  _numAllocs    = 0;
+  _numFrees     = 0;
+  _nAllocs      = 0;
+  _nFrees       = 0;
+  _waiting      = 0;
+  _terminate    = false;
+
   return 0;
 }
 
 void BatchManager::shutdown()
 {
-  memset(_region, 0, batchRegionSize() * sizeof(*_region));
+  if (_region)  memset(_region, 0, batchRegionSize());
   _appPrms.clear();
 }
 

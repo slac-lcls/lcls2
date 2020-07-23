@@ -59,6 +59,7 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
   _missing      (0),
   _bypassCount  (0),
   _prms         (prms),
+  _regSize      (0),
   _region       (nullptr)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},{"partition", std::to_string(prms.partition)}};
@@ -68,6 +69,12 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
   exporter->add("TCtbI_MisCt", labels, MetricType::Counter, [&](){ return _missing;             });
   exporter->add("TCtbI_DefSz", labels, MetricType::Counter, [&](){ return _deferred.size();     });
   exporter->add("TCtbI_BypCt", labels, MetricType::Counter, [&](){ return _bypassCount;         });
+}
+
+EbCtrbInBase::~EbCtrbInBase()
+{
+  if (_region)  free(_region);
+  _region = nullptr;
 }
 
 int EbCtrbInBase::resetCounters()
@@ -99,13 +106,35 @@ void EbCtrbInBase::disconnect()
 
 void EbCtrbInBase::unconfigure()
 {
-  if (_region)  free(_region);
-  _region = nullptr;
 }
 
 int EbCtrbInBase::startConnection(std::string& port)
 {
   int rc = linksStart(_transport, _prms.ifAddr, port, MAX_TEBS, "TEB");
+  if (rc)  return rc;
+
+  if (!_region)                         // No need to guess again
+  {
+    // Make a guess at the size of the Result region
+    size_t resSizeGuess = sizeof(EbDgram) + 2  * sizeof(uint32_t);
+    size_t regSizeGuess = resSizeGuess * MAX_BATCHES * MAX_ENTRIES;
+    //printf("*** ECIB::startConn: region %p, regSizeGuess %zu\n", _region, regSizeGuess);
+
+    _region = allocRegion(regSizeGuess);
+    if (!_region)
+    {
+      logging::error("%s:\n  "
+                     "No memory found for Input MR for %s of size %zd",
+                     __PRETTY_FUNCTION__, "TEB", regSizeGuess);
+      return ENOMEM;
+    }
+
+    // Save the allocated size, which may be more than the required size
+    _regSize = regSizeGuess;
+  }
+
+  //printf("*** ECIB::startConn: region %p, regSize %zu\n", _region, _regSize);
+  rc = _transport.setupMr(_region, _regSize);
   if (rc)  return rc;
 
   return 0;
@@ -138,7 +167,7 @@ int EbCtrbInBase::configure()
 
 int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
                                   unsigned                   id,
-                                  const char*                name)
+                                  const char*                peer)
 {
   std::vector<EbLfSvrLink*> tmpLinks(links.size());
   size_t size = 0;
@@ -149,10 +178,10 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
     auto   t0(std::chrono::steady_clock::now());
     int    rc;
     size_t regSize;
-    if ( (rc = link->prepare(id, &regSize)) )
+    if ( (rc = link->prepare(id, &regSize, peer)) )
     {
       logging::error("%s:\n  Failed to prepare link with %s ID %d",
-                     __PRETTY_FUNCTION__, name, link->id());
+                     __PRETTY_FUNCTION__, peer, link->id());
       return rc;
     }
     unsigned rmtId  = link->id();
@@ -160,39 +189,46 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
 
     if (!size)
     {
-      size           = regSize;
-      _maxResultSize = regSize / (MAX_BATCHES * MAX_ENTRIES);
-
-      _region = allocRegion(regSize);
-      if (!_region)
+      // Allocate the region, and reallocate if the required size is larger
+      if (regSize > _regSize)
       {
-        logging::error("%s:\n  "
-                       "No memory found for Result MR for %s ID %d of size %zd",
-                       __PRETTY_FUNCTION__, name, rmtId, regSize);
-        return ENOMEM;
+        if (_region)  free(_region);
+
+        _region = allocRegion(regSize);
+        if (!_region)
+        {
+          logging::error("%s:\n  "
+                         "No memory found for Result MR for %s ID %d of size %zd",
+                         __PRETTY_FUNCTION__, peer, rmtId, regSize);
+          return ENOMEM;
+        }
+
+        // Save the allocated size, which may be more than the required size
+        _regSize = regSize;
       }
+      _maxResultSize = regSize / (MAX_BATCHES * MAX_ENTRIES);
+      size           = regSize;
     }
     else if (regSize != size)
     {
       logging::error("%s:\n  Result MR size (%zd) cannot vary between %ss "
-                     "(%zd from Id %u)", __PRETTY_FUNCTION__, size, name, regSize, rmtId);
+                     "(%zd from Id %u)", __PRETTY_FUNCTION__, size, peer, regSize, rmtId);
       return -1;
     }
 
-    if ( (rc = link->setupMr(_region, regSize)) )
+    //printf("*** ECIB::cfg: region %p, regSize %zu\n", _region, regSize);
+    if ( (rc = link->setupMr(_region, regSize, peer)) )
     {
       logging::error("%s:\n  Failed to set up Result MR for %s ID %d, "
-                     "%p:%p, size %zd", __PRETTY_FUNCTION__, name, rmtId,
+                     "%p:%p, size %zd", __PRETTY_FUNCTION__, peer, rmtId,
                      _region, static_cast<char*>(_region) + regSize, regSize);
-      if (_region)  free(_region);
-      _region = nullptr;
       return rc;
     }
 
     auto t1 = std::chrono::steady_clock::now();
     auto dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
     logging::info("Inbound link with %s ID %d configured in %lu ms",
-                  name, rmtId, dT);
+                  peer, rmtId, dT);
   }
 
   links = tmpLinks;                     // Now in remote ID sorted order

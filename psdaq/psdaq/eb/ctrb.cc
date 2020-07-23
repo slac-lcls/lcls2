@@ -583,7 +583,9 @@ void CtrbApp::handleConnect(const json& msg)
   if (rc)  printf("TebContributor connect failed\n");
 
   if (_mebPrms.addrs.size() != 0) {
-    rc = _mebCtrb.connect(_mebPrms);
+    void*  base = nullptr;
+    size_t size = 0;
+    rc = _mebCtrb.connect(_mebPrms, base, size);
     if (rc)  printf("MebContributor connect failed\n");
   }
   rc = _inbound.connect();

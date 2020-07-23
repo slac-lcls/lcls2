@@ -36,7 +36,7 @@ namespace Pds {
                 const uint64_t duration,
                 const unsigned maxEntries,
                 const unsigned maxBuffers);
-      virtual ~EbAppBase() {}
+      virtual ~EbAppBase();
     public:
       int              checkEQ()  { return _transport.pollEQ(); }
     public:
@@ -77,6 +77,7 @@ namespace Pds {
       PromHisto_t               _fixupSrc;
       PromHisto_t               _ctrbSrc;
     private:
+      std::vector<size_t>       _regSize;
       std::vector<void*>        _region;
       uint64_t                  _contributors;
       unsigned                  _id;

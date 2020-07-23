@@ -39,6 +39,7 @@ namespace Pds {
       int  pend(uint64_t* data, int msTmo);
       int  poll(uint64_t* data);
       int  pollEQ();
+      int  setupMr(void* region, size_t size);
     public:
       const uint64_t& pending() const { return _pending; }
     private:

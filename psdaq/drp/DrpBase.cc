@@ -414,7 +414,9 @@ std::string DrpBase::connect(const json& msg, size_t id)
         return std::string{"TebContributor connect failed"};
     }
     if (m_mPrms.addrs.size() != 0) {
-        rc = m_mebContributor->connect(m_mPrms);
+        void* poolBase = (void*)pool.pebble[0];
+        size_t poolSize = pool.pebble.size();
+        rc = m_mebContributor->connect(m_mPrms, poolBase, poolSize);
         if (rc) {
             return std::string{"MebContributor connect failed"};
         }

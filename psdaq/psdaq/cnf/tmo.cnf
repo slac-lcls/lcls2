@@ -87,7 +87,7 @@ procmgr_config = [
  #{ host: 'drp-tst-dev003', id:'tmoopaltt_0', flags:'pu',   conda:conda_rel, cmd:drp_cmd0+' -D opal -k batching=no'},
 
  # Opal (non-timetool)
- { host: 'drp-tst-dev003', id:'tmoopal_0',   flags:'pu',   conda:conda_rel, cmd:drp_cmd0+' -D opal -k batching=no'},
+ #{ host: 'drp-tst-dev003', id:'tmoopal_0',   flags:'pu',   conda:conda_rel, cmd:drp_cmd0+' -D opal -k batching=no'},
 
  # Timing System
  #{ host: 'drp-tst-dev013', id:'tmots_0',     flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D ts' },

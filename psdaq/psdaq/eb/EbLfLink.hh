@@ -11,16 +11,21 @@
 namespace Pds {
   namespace Eb {
 
+    int setupMr(Fabrics::Fabric*        fabric,
+                void*                   region,
+                size_t                  size,
+                Fabrics::MemoryRegion** mr,
+                const unsigned&         verbose);
+
     class EbLfLink
     {
     public:
       EbLfLink(Fabrics::Endpoint*, int depth, const unsigned& verbose);
     public:
-      int recvU32(uint32_t* u32, const char* name);
-      int sendU32(uint32_t  u32, const char* name);
-      int sendMr(Fabrics::MemoryRegion*);
-      int recvMr(Fabrics::RemoteAddress&);
-      int setupMr(void* region, size_t size, Fabrics::MemoryRegion**);
+      int recvU32(uint32_t* u32, const char* peer, const char* name);
+      int sendU32(uint32_t  u32, const char* peer, const char* name);
+      int sendMr(Fabrics::MemoryRegion*,  const char* peer);
+      int recvMr(Fabrics::RemoteAddress&, const char* peer);
     public:
       void*     lclAdx(size_t      offset) const;
       size_t    lclOfs(const void* buffer) const;
@@ -56,10 +61,12 @@ namespace Pds {
     public:
       EbLfSvrLink(Fabrics::Endpoint*, int rxDepth, const unsigned& verbose);
     public:
-      int prepare(unsigned id);
-      int prepare(unsigned id,
-                  size_t*  size);
-      int setupMr(void* region, size_t size);
+      int prepare(unsigned    id,
+                  const char* peer);
+      int prepare(unsigned    id,
+                  size_t*     size,
+                  const char* peer);
+      int setupMr(void* region, size_t size, const char* peer);
     private:
       int _synchronizeBegin();
       int _synchronizeEnd();
@@ -70,14 +77,18 @@ namespace Pds {
     public:
       EbLfCltLink(Fabrics::Endpoint*, int rxDepth, const unsigned& verbose, uint64_t& pending);
     public:
-      int prepare(unsigned id);
-      int prepare(unsigned id,
-                  void*    region,
-                  size_t   lclSize,
-                  size_t   rmtSize);
-      int prepare(unsigned id,
-                  void*    region,
-                  size_t   size);
+      int prepare(unsigned    id,
+                  const char* peer);
+      int prepare(unsigned    id,
+                  void*       region,
+                  size_t      lclSize,
+                  size_t      rmtSize,
+                  const char* peer);
+      int prepare(unsigned    id,
+                  void*       region,
+                  size_t      size,
+                  const char* peer);
+      int setupMr(void* region, size_t size);
     public:
       int post(const void* buf,
                size_t      len,

@@ -216,7 +216,7 @@ int Teb::startConnection(std::string& tebPort,
   int rc = EbAppBase::startConnection(_prms.ifAddr, tebPort, MAX_DRPS);
   if (rc)  return rc;
 
-  rc = linksStart(_mrqTransport, _prms.ifAddr, mrqPort, MAX_MRQS, "Mon Requestor");
+  rc = linksStart(_mrqTransport, _prms.ifAddr, mrqPort, MAX_MRQS, "MRQ");
   if (rc)  return rc;
 
   return 0;
@@ -234,8 +234,25 @@ int Teb::connect()
 
   rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, "DRP");
   if (rc)  return rc;
-  rc = linksConnect(_mrqTransport, _mrqLinks, "Mon Requestor");
+  rc = linksConnect(_mrqTransport, _mrqLinks, "MRQ");
   if (rc)  return rc;
+
+  if (!_batMan.batchRegion())           // No need to guess again
+  {
+    // Make a guess at the size of the Result entries
+    size_t maxResultSizeGuess = sizeof(EbDgram) + 2 * sizeof(uint32_t);
+    _batMan.initialize(maxResultSizeGuess, true); // TEB always batches
+  }
+
+  void*  region  = _batMan.batchRegion();
+  size_t regSize = _batMan.batchRegionSize();
+
+  //printf("*** TEB::connect: region %p, regSize %zu\n", region, regSize);
+  for (auto link : _l3Links)
+  {
+    rc = link->setupMr(region, regSize);
+    if (rc)  return rc;
+  }
 
   return 0;
 }
@@ -247,19 +264,19 @@ int Teb::configure(Trigger* object,
   _prescale   = prescale - 1;           // Be zero based
   _wrtCounter = _prescale;              // Reset prescale counter
 
-  // maxResultSize becomes known during Configure, so initialize BatchManager now
-  _batMan.initialize(_prms.maxResultSize, true); // TEB always batches
-
   int rc = EbAppBase::configure(_prms);
   if (rc)  return rc;
 
+  // maxResultSize becomes known during Configure, so reinitialize BatchManager now
+  _batMan.initialize(_prms.maxResultSize, true); // TEB always batches
+
   void*  region  = _batMan.batchRegion();
   size_t regSize = _batMan.batchRegionSize();
-  size_t rmtSize = 0;                   // Revisit: Unused
 
-  rc = linksConfigure(_l3Links, _id, region, regSize, rmtSize, "DRP");
+  //printf("*** TEB::cfg: region %p, regSize %zu\n", region, regSize);
+  rc = linksConfigure(_l3Links, _id, region, regSize, "DRP");
   if (rc)  return rc;
-  rc = linksConfigure(_mrqLinks, _id, "Mon Requestor");
+  rc = linksConfigure(_mrqLinks, _id, "MRQ");
   if (rc)  return rc;
 
   return 0;

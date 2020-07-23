@@ -17,6 +17,82 @@ using namespace Pds::Eb;
 using ms_t = std::chrono::milliseconds;
 
 
+static int checkMr(Fabric*         fabric,
+                   void*           region,
+                   size_t          size,
+                   MemoryRegion*   mr,
+                   const unsigned& verbose)
+{
+  //printf("*** PE::checkMr: mr %p, start %p, region %p, len %zu, size %zu\n",
+  //       mr, mr->start(), region, mr->length(), size);
+  if ((region == mr->start()) && (size <= mr->length()))
+  {
+    if (verbose)
+    {
+      printf("Reusing        MR: %10p : %10p, size 0x%08zx = %zu\n",
+             mr->start(), (char*)(mr->start()) + mr->length(),
+             mr->length(), mr->length());
+    }
+    return 0;
+  }
+  if (!fabric->deregister_memory(mr))
+  {
+    fprintf(stderr, "%s:\n  Failed to deregister MR %p (%p, %zu)\n",
+            __PRETTY_FUNCTION__, mr, mr->start(), mr->length());
+  }
+  if (verbose > 1)
+  {
+    printf("Freed          MR: %10p : %10p, size 0x%08zx = %zu\n",
+           mr->start(), (char*)(mr->start()) + mr->length(),
+           mr->length(), mr->length());
+  }
+  return 1;
+}
+
+int Pds::Eb::setupMr(Fabric*         fabric,
+                     void*           region,
+                     size_t          size,
+                     MemoryRegion**  memReg,
+                     const unsigned& verbose)
+{
+  //printf("*** PE::setupMr: memReg %p, *memReg %p, region %p, size %zu\n",
+  //       memReg, memReg ? *memReg : 0, region, size);
+  // If *memReg describes a region, check that its size is appropriate
+  if (memReg && *memReg && !checkMr(fabric, region, size, *memReg, verbose))
+  {
+    return 0;
+  }
+
+  // If there's a MR for the region, check that its size is appropriate
+  MemoryRegion* mr = fabric->lookup_memory(region, sizeof(uint8_t));
+  //printf("*** PE::setupMr: mr lkup %p, region %p, size %zu\n", mr, region, size);
+  if (mr && !checkMr(fabric, region, size, mr, verbose))
+  {
+    if (memReg)  *memReg = mr;
+    return 0;
+  }
+
+  mr = fabric->register_memory(region, size);
+  //printf("*** PE::setupMr: mr new  %p, region %p, size %zu\n", mr, region, size);
+  if (memReg)  *memReg = mr;            // Even on error, set *memReg
+  if (!mr)
+  {
+    fprintf(stderr, "%s:\n  Failed to register MR @ %p, size %zu: %s\n",
+            __PRETTY_FUNCTION__, region, size, fabric->error());
+    return fabric->error_num();
+  }
+  if (verbose)
+  {
+    printf("Registered     MR: %10p : %10p, size 0x%08zx = %zu\n",
+           mr->start(), (char*)(mr->start()) + mr->length(),
+           mr->length(), mr->length());
+  }
+
+  return 0;
+}
+
+// ---
+
 EbLfLink::EbLfLink(Endpoint*       ep,
                    int             depth,
                    const unsigned& verbose) :
@@ -29,6 +105,7 @@ EbLfLink::EbLfLink(Endpoint*       ep,
 }
 
 int EbLfLink::recvU32(uint32_t*   u32,
+                      const char* peer,
                       const char* name)
 {
   ssize_t  rc;
@@ -41,13 +118,14 @@ int EbLfLink::recvU32(uint32_t*   u32,
   }
   *u32 = data;
 
-  if (_verbose > 1)  printf("Received peer's %s: 0x%08x = %d\n",
-                            name, *u32, *u32);
+  if (_verbose > 1)  printf("Received %s's %s: 0x%08x = %d\n",
+                            peer, name, *u32, *u32);
 
   return 0;
 }
 
 int EbLfLink::sendU32(uint32_t    u32,
+                      const char* peer,
                       const char* name)
 {
   ssize_t  rc;
@@ -59,13 +137,14 @@ int EbLfLink::sendU32(uint32_t    u32,
     return rc;
   }
 
-  if (_verbose > 1)  printf("Sent     peer   %s  0x%08x = %d\n",
-                            name, u32, u32);
+  if (_verbose > 1)  printf("Sent     %s   %s  0x%08x = %d\n",
+                            peer, name, u32, u32);
 
   return 0;
 }
 
-int EbLfLink::recvMr(RemoteAddress& ra)
+int EbLfLink::recvMr(RemoteAddress& ra,
+                     const char*    peer)
 {
   ssize_t   rc;
   unsigned* ptr = reinterpret_cast<unsigned*>(&ra);
@@ -75,8 +154,8 @@ int EbLfLink::recvMr(RemoteAddress& ra)
     uint64_t imm;
     if ((rc = poll(&imm, 1000)))
     {
-      fprintf(stderr, "%s:\n  Failed to receive remote region specs from ID %d: %s\n",
-              __PRETTY_FUNCTION__, _id, _ep->error());
+      fprintf(stderr, "%s:\n  Failed to receive remote region specs from %s ID %d: %s\n",
+              __PRETTY_FUNCTION__, peer, _id, _ep->error());
       return rc;
     }
     *ptr++ = imm & 0x00000000ffffffffull;
@@ -84,14 +163,15 @@ int EbLfLink::recvMr(RemoteAddress& ra)
 
   if (_verbose > 1)
   {
-    printf("Received remote MR: %10p : %10p, size 0x%08zx = %zd\n",
+    printf("Received %s's MR: %10p : %10p, size 0x%08zx = %zu\n", peer,
            (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent, ra.extent);
   }
 
   return 0;
 }
 
-int EbLfLink::sendMr(MemoryRegion* mr)
+int EbLfLink::sendMr(MemoryRegion* mr,
+                     const char*   peer)
 {
   ssize_t       rc;
   RemoteAddress ra(mr->rkey(), (uint64_t)mr->start(), mr->length());
@@ -102,40 +182,16 @@ int EbLfLink::sendMr(MemoryRegion* mr)
     uint64_t imm = *ptr++;
     if ((rc = post(nullptr, 0, imm)) < 0)
     {
-      fprintf(stderr, "%s:\n  Failed to send local memory specs to ID %d: %s\n",
-              __PRETTY_FUNCTION__, _id, _ep->error());
+      fprintf(stderr, "%s:\n  Failed to send local memory specs to %s ID %d: %s\n",
+              __PRETTY_FUNCTION__, peer, _id, _ep->error());
       return rc;
     }
   }
 
   if (_verbose > 1)
   {
-    printf("Sent     local  MR: %10p : %10p, size 0x%08zx = %zd\n",
+    printf("Sent     %s   MR: %10p : %10p, size 0x%08zx = %zu\n", peer,
            (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent, ra.extent);
-  }
-
-  return 0;
-}
-
-int EbLfLink::setupMr(void*          region,
-                      size_t         size,
-                      MemoryRegion** mr)
-{
-  Fabric* fab = _ep->fabric();
-
-  *mr = fab->register_memory(region, size);
-  if (!*mr)
-  {
-    fprintf(stderr, "%s:\n  Failed to register MR @ %p, size %zu: %s\n",
-            __PRETTY_FUNCTION__, region, size, fab->error());
-    return fab->error_num();
-  }
-
-  if (_verbose)
-  {
-    printf("Registered      MR: %10p : %10p, size 0x%08zx = %zd\n",
-           (*mr)->start(), (char*)((*mr)->start()) + (*mr)->length(),
-           (*mr)->length(), (*mr)->length());
   }
 
   return 0;
@@ -184,35 +240,37 @@ int EbLfSvrLink::_synchronizeEnd()
   return rc;
 }
 
-int EbLfSvrLink::prepare(unsigned id)
+int EbLfSvrLink::prepare(unsigned    id,
+                         const char* peer)
 {
   int rc;
 
   // Wait for synchronization to complete successfully prior to any sends/recvs
   if ( (rc = _synchronizeBegin()) )
   {
-    fprintf(stderr, "%s:\n  Failed synchronize Begin with peer: rc %d\n",
-            __PRETTY_FUNCTION__, rc);
+    fprintf(stderr, "%s:\n  Failed synchronize Begin with %s: rc %d\n",
+            __PRETTY_FUNCTION__, peer, rc);
     return rc;
   }
 
   // Exchange IDs and get MR size
-  if ( (rc = recvU32(&_id, "ID")) )       return rc;
-  if ( (rc = sendU32(  id, "ID")) )       return rc;
+  if ( (rc = recvU32(&_id, peer, "ID")) )  return rc;
+  if ( (rc = sendU32(  id, peer, "ID")) )  return rc;
 
   // Verify the exchanges are complete
   if ( (rc = _synchronizeEnd()) )
   {
-    fprintf(stderr, "%s:\n  Failed synchronize End with peer: rc %d\n",
-            __PRETTY_FUNCTION__, rc);
+    fprintf(stderr, "%s:\n  Failed synchronize End with %s: rc %d\n",
+            __PRETTY_FUNCTION__, peer, rc);
     return rc;
   }
 
   return 0;
 }
 
-int EbLfSvrLink::prepare(unsigned id,
-                         size_t*  size)
+int EbLfSvrLink::prepare(unsigned    id,
+                         size_t*     size,
+                         const char* peer)
 {
   int      rc;
   uint32_t rs;
@@ -220,15 +278,15 @@ int EbLfSvrLink::prepare(unsigned id,
   // Wait for synchronization to complete successfully prior to any sends/recvs
   if ( (rc = _synchronizeBegin()) )
   {
-    fprintf(stderr, "%s:\n  Failed synchronize Begin with peer: rc %d\n",
-            __PRETTY_FUNCTION__, rc);
+    fprintf(stderr, "%s:\n  Failed synchronize Begin with %s: rc %d\n",
+            __PRETTY_FUNCTION__, peer, rc);
     return rc;
   }
 
   // Exchange IDs and get MR size
-  if ( (rc = recvU32(&_id, "ID")) )       return rc;
-  if ( (rc = sendU32(  id, "ID")) )       return rc;
-  if ( (rc = recvU32( &rs, "MR size")) )  return rc;
+  if ( (rc = recvU32(&_id, peer, "ID")) )       return rc;
+  if ( (rc = sendU32(  id, peer, "ID")) )       return rc;
+  if ( (rc = recvU32( &rs, peer, "MR size")) )  return rc;
   if (size)  *size = rs;
 
   // This method requires a call to setupMr(region, size) below
@@ -237,38 +295,21 @@ int EbLfSvrLink::prepare(unsigned id,
   return 0;
 }
 
-int EbLfSvrLink::setupMr(void*  region,
-                         size_t size)
+int EbLfSvrLink::setupMr(void*       region,
+                         size_t      size,
+                         const char* peer)
 {
   int rc;
 
-  if (_mr)
-  {
-    Fabric* fab = _ep->fabric();
-
-    if (_verbose > 1)
-    {
-      printf("Deregistering   MR: %10p : %10p, size 0x%08zx = %zd\n",
-             _mr->start(), (char*)(_mr->start()) + _mr->length(),
-             _mr->length(), _mr->length());
-    }
-    if (!fab->deregister_memory(_mr))
-    {
-      fprintf(stderr, "%s:\n  Failed to deregister MR %p (%p, %zd)\n",
-              __PRETTY_FUNCTION__, _mr, _mr->start(), _mr->length());
-    }
-    _mr = nullptr;
-  }
-
   // Set up the MR and provide its specs to the other side
-  if ( (rc = EbLfLink::setupMr(region, size, &_mr)) )  return rc;
-  if ( (rc = sendMr(_mr)) )                            return rc;
+  if ( (rc = Pds::Eb::setupMr(_ep->fabric(), region, size, &_mr, _verbose)) )  return rc;
+  if ( (rc = sendMr(_mr, peer)) )  return rc;
 
   // Verify the exchanges are complete
   if ( (rc = _synchronizeEnd()) )
   {
-    fprintf(stderr, "%s:\n  Failed synchronize End with peer: rc %d\n",
-            __PRETTY_FUNCTION__, rc);
+    fprintf(stderr, "%s:\n  Failed synchronize End with %s: rc %d\n",
+            __PRETTY_FUNCTION__, peer, rc);
     return rc;
   }
 
@@ -284,6 +325,14 @@ EbLfCltLink::EbLfCltLink(Endpoint*       ep,
   EbLfLink(ep, depth, verbose),
   _pending(pending)
 {
+}
+
+int EbLfCltLink::setupMr(void* region, size_t size)
+{
+  if (_ep)
+    return Pds::Eb::setupMr(_ep->fabric(), region, size, nullptr, _verbose);
+  else
+    return -1;
 }
 
 int EbLfCltLink::_synchronizeBegin()
@@ -324,24 +373,27 @@ int EbLfCltLink::_synchronizeEnd()
   return rc;
 }
 
-int EbLfCltLink::prepare(unsigned id)
+int EbLfCltLink::prepare(unsigned    id,
+                         const char* peer)
 {
-  return prepare(id, nullptr, 0, 0);
+  return prepare(id, nullptr, 0, 0, peer);
 }
 
-int EbLfCltLink::prepare(unsigned id,
-                         void*    region,
-                         size_t   size)
+int EbLfCltLink::prepare(unsigned    id,
+                         void*       region,
+                         size_t      size,
+                         const char* peer)
 {
-  return prepare(id, region, size, size);
+  return prepare(id, region, size, size, peer);
 }
 
 // Buffers to be posted using the post(buf, len, offset, immData, ctx) method,
 // below, must be covered by a memory region set up using this method.
-int EbLfCltLink::prepare(unsigned id,
-                         void*    region,
-                         size_t   lclSize,
-                         size_t   rmtSize)
+int EbLfCltLink::prepare(unsigned    id,
+                         void*       region,
+                         size_t      lclSize,
+                         size_t      rmtSize,
+                         const char* peer)
 {
   int rc;
 
@@ -354,36 +406,17 @@ int EbLfCltLink::prepare(unsigned id,
   }
 
   // Exchange IDs and get MR size
-  if ( (rc = sendU32(     id, "ID")) )       return rc;
-  if ( (rc = recvU32(   &_id, "ID")) )       return rc;
+  if ( (rc = sendU32(  id, peer, "ID")) )  return rc;
+  if ( (rc = recvU32(&_id, peer, "ID")) )  return rc;
 
-  // Region may already have stuff in it, so can't write on it above
   // Revisit: Would like to make it const, but has issues in Endpoint.cc
   if (region)
   {
-    if ( (rc = sendU32(rmtSize, "MR size")) )  return rc;
-
-    if (_mr)
-    {
-      Fabric* fab = _ep->fabric();
-
-      if (_verbose > 1)
-      {
-        printf("Deregistering   MR: %10p : %10p, size 0x%08zx = %zd\n",
-               _mr->start(), (char*)(_mr->start()) + _mr->length(),
-               _mr->length(), _mr->length());
-      }
-      if (!fab->deregister_memory(_mr))
-      {
-        fprintf(stderr, "%s:\n  Failed to deregister MR %p (%p, %zd)\n",
-                __PRETTY_FUNCTION__, _mr, _mr->start(), _mr->length());
-      }
-      _mr = nullptr;
-    }
+    if ( (rc = sendU32(rmtSize, peer, "MR size")) )  return rc;
 
     // Set up the MR and provide its specs to the other side
-    if ( (rc = setupMr(region, lclSize, &_mr)) )  return rc;
-    if ( (rc = recvMr (_ra)) )                    return rc;
+    if ( (rc = Pds::Eb::setupMr(_ep->fabric(), region, lclSize, &_mr, _verbose)) )  return rc;
+    if ( (rc = recvMr (_ra, peer)) )  return rc;
   }
 
   // Verify the exchanges are complete

@@ -23,7 +23,7 @@ namespace Pds {
       MebContributor(const MebCtrbParams&, std::shared_ptr<MetricExporter>);
     public:
       int  resetCounters();
-      int  connect(const MebCtrbParams& prms);
+      int  connect(const MebCtrbParams& prms, void* region, size_t size);
       int  configure(void* region, size_t size);
       void unconfigure();
       void disconnect();

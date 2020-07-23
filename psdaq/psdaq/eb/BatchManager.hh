@@ -49,6 +49,7 @@ namespace Pds {
       const uint64_t& batchWaiting()  const;
     private:
       size_t                _maxBatchSize; // Max batch size rounded up by page size
+      size_t                _regSize;      // The allocated size of the _region
       char*                 _region;       // RDMA buffers for batches
       mutable lock_t        _lock;         // Resource wait lock
       mutable cv_t          _cv;           // Monitor the number of free batches
