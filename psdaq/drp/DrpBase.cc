@@ -357,7 +357,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition = para.partition;
-    m_tPrms.batching  = m_para.kwargs["batching"] != "no"; // Default to "yes"
+    m_tPrms.batching  = m_para.kwargs["batching"] != "yes"; // Default to "no"
     m_tPrms.core[0]   = -1;
     m_tPrms.core[1]   = -1;
     m_tPrms.verbose   = para.verbose;
