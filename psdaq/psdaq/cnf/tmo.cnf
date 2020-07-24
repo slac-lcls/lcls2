@@ -60,7 +60,7 @@ procmgr_config = [
  #{ host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --url '+lgbk+' --user '+user+' --password '+password+' -r ~/.psdaq/tmo.activeDet.json -S 1'},
  #{ host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --url '+lgbk+' --user '+user+' --password '+password+' -r /dev/null -S 1'},
  { host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --url '+lgbk+' --user '+user+' --password '+password+' -S 1'},
- {                         id:'control_gui', flags:'p',    conda:conda_rel,                cmd:'control_gui -H '+collect_host},
+ {                         id:'control_gui', flags:'p',    conda:conda_rel,                cmd:'control_gui --user '+user+' --password '+password+' -l WARNING -H '+collect_host},
 
  # TEB
  { host: 'drp-tst-dev016', id:'teb0',        flags:'spu',  conda:conda_rel, cmd:teb_cmd},
