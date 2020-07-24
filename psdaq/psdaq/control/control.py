@@ -19,7 +19,7 @@ from threading import Thread, Event
 PORT_BASE = 29980
 POSIX_TIME_AT_EPICS_EPOCH = 631152000
 
-report_keys = ['error', 'fileReport']
+report_keys = ['error', 'warning', 'fileReport']
 
 class ControlError(Exception):
     """Base class for exceptions in this module."""
@@ -962,6 +962,8 @@ class CollectionManager():
                     self.register_file(msg['body'])
                 elif msg['header']['key'] == 'error':
                     self.report_error(msg['body']['err_info'])
+                elif msg['header']['key'] == 'warning':
+                    self.report_warning(msg['body']['err_info'])
             except KeyError as ex:
                 logging.error('process_reports() KeyError: %s' % ex)
 
@@ -1567,7 +1569,7 @@ class CollectionManager():
                     if not self.bypass_activedet:
                         if responder not in required_set:
                             if responder not in newfound_set:
-                                logging.info('Received response from %s, it does not appear in active detectors file' % responder)
+                                self.report_warning('Received response from %s, it does not appear in active detectors file' % responder)
                                 newfound_set.add(responder)
                             elif responder not in missing_set:
                                 # ignore duplicate response
