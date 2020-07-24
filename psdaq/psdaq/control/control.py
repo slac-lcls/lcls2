@@ -277,6 +277,10 @@ class DaqControl:
                     # return 'error', error message, 'error', 'error', 'error', 'error', 'error', 'error'
                     return 'error', msg['body']['err_info'], 'error', 'error', 'error', 'error', 'error', 'error'
 
+                elif msg['header']['key'] == 'warning':
+                    # return 'error', error message, 'error', 'error', 'error', 'error', 'error', 'error'
+                    return 'warning', msg['body']['err_info'], 'error', 'error', 'error', 'error', 'error', 'error'
+
                 elif msg['header']['key'] == 'fileReport':
                     # return 'fileReport', path, 'error', 'error', 'error', 'error', 'error', 'error'
                     return 'fileReport', msg['body']['path'], 'error', 'error', 'error', 'error', 'error', 'error'
@@ -539,6 +543,10 @@ def create_msg(key, msg_id=None, sender_id=None, body={}):
 def error_msg(message):
     body = {'err_info': message}
     return create_msg('error', body=body)
+
+def warning_msg(message):
+    body = {'err_info': message}
+    return create_msg('warning', body=body)
 
 def fileReport_msg(path):
     body = {'path': path}
@@ -1682,10 +1690,14 @@ class CollectionManager():
         self.front_pub.send_json(error_msg(msg))
         return
 
+    def report_warning(self, msg):
+        logging.warning(msg)
+        self.front_pub.send_json(warning_msg(msg))
+        return
+
     def start_run(self, experiment_name):
         run_num = 0
         ok = False
-        error_msg = "start_run error"
         serverURLPrefix = "{0}run_control/{1}/ws/".format(self.url + "/" if not self.url.endswith("/") else self.url, experiment_name)
         logging.debug('serverURLPrefix = %s' % serverURLPrefix)
         try:
@@ -1703,9 +1715,9 @@ class CollectionManager():
                 self.report_error("start_run (user=%s) error: status code %d" % (self.user, resp.status_code))
 
         if not ok:
-            raise Exception(error_msg)
+            raise Exception("start_run error")
 
-        logging.debug("start_run: run number = %s" % run_num)
+        logging.info("start_run: run number = %s" % run_num)
         return run_num
 
     def end_run(self, experiment_name):

@@ -88,6 +88,8 @@ def main():
                 break
             elif part1 == 'error':
                 print('error: %s' % part2)
+            elif part1 == 'warning':
+                print('warning: %s' % part2)
             elif part1 == 'fileReport':
                 print('data file: %s' % part2)
             elif part1 == 'progress':
