@@ -1427,6 +1427,10 @@ class CollectionManager():
 
     def handle_storejsonconfig(self, body):
         logging.debug('handle_storejsonconfig()')
+        if self.activedetfilename == '/dev/null':
+            msg = 'store failed: active detector filename is /dev/null'
+            logging.error(msg)
+            return error_msg(msg)
         try:
             with open(self.activedetfilename, 'w') as f:
                 print('%s' % body["json_data"], file=f)
