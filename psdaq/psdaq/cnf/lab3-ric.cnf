@@ -48,7 +48,7 @@ procmgr_config = [
  #{ host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -r ~claus/.psdaq/p3.activedet.json'},
  { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -r /dev/null'}, # -S 1'},
  #{ host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -S 1'},
- {                         id:'control_gui', flags:'p',                  cmd:'control_gui -H '+collect_host},
+ {                         id:'control_gui', flags:'p',                  cmd:'control_gui -l INFO -H '+collect_host},
 
  # TEB
  #{ host: 'drp-tst-dev016', id:'teb0',        flags:'sxpu', cmd:teb_cmd},

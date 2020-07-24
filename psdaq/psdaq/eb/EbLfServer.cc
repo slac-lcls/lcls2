@@ -124,6 +124,7 @@ int EbLfServer::connect(EbLfSvrLink** link, int msTmo)
   if (!*link)
   {
     fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);
+    delete ep;
     return ENOMEM;
   }
   _linkByEp[ep->endpoint()] = *link;
@@ -324,7 +325,7 @@ int Pds::Eb::linksConnect(EbLfServer&                transport,
     auto           t0(std::chrono::steady_clock::now());
     int            rc;
     EbLfSvrLink*   link;
-    const unsigned msTmo(9500);         // < control.py transition timeout
+    const unsigned msTmo(14750);        // < control.py transition timeout
     if ( (rc = transport.connect(&link, msTmo)) )
     {
       logging::error("%s:\n  Error connecting to a %s",

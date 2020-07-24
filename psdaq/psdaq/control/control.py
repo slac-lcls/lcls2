@@ -1382,7 +1382,7 @@ class CollectionManager():
             msg = create_msg('connect', body=self.filter_active_dict(self.cmstate_levels()))
             self.back_pub.send_multipart([b'partition', json.dumps(msg)])
 
-            retlist, answers, reports = self.confirm_response(self.back_pull, 10000, msg['header']['msg_id'], ids, progress_txt='connect')
+            retlist, answers, reports = self.confirm_response(self.back_pull, 15000, msg['header']['msg_id'], ids, progress_txt='connect')
             self.process_reports(reports)
             connect_ok = (self.check_answers(answers) == 0)
             ret = len(retlist)

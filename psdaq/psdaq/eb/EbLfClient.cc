@@ -90,16 +90,17 @@ int EbLfClient::connect(EbLfCltLink** link,
     // Jan 2020: LF 1.7.1, sock_ep_cm_thread()->sock_pep_req_handler(), pep = 0
     std::this_thread::sleep_for(ms_t(1));
   }
+  t1 = std::chrono::steady_clock::now();
+  dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
   if ((ep->error_num() != FI_SUCCESS) || (msTmo && (dT > msTmo)))
   {
     int rc = ep->error_num();
-    fprintf(stderr, "%s:\n  Error connecting to %s:%s: %s\n",
-            __PRETTY_FUNCTION__, peer, port,
-            (rc != FI_ENODATA) ? ep->error() : "Timed out");
-    return (rc != FI_SUCCESS) ? rc : -FI_ETIMEDOUT;
+    fprintf(stderr, "%s:\n  %s connecting to %s:%s: %s\n",
+            __PRETTY_FUNCTION__, (dT <= msTmo) ? "Error" : "Timed out",
+            peer, port, ep->error());
+    delete ep;
+    return (dT <= msTmo) ? rc : -FI_ETIMEDOUT;
   }
-  t1 = std::chrono::steady_clock::now();
-  dT = std::chrono::duration_cast<ms_t>(t1 - t0).count();
   if (_verbose > 1)  printf("EbLfClient: dT to connect: %lu ms\n", dT);
 
   int rxDepth = fab->info()->rx_attr->size;
@@ -108,6 +109,7 @@ int EbLfClient::connect(EbLfCltLink** link,
   if (!*link)
   {
     fprintf(stderr, "%s:\n  Failed to find memory for link\n", __PRETTY_FUNCTION__);
+    delete ep;
     return ENOMEM;
   }
 
@@ -155,7 +157,7 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
     const char*    addr = addrs[i].c_str();
     const char*    port = ports[i].c_str();
     EbLfCltLink*   link;
-    const unsigned msTmo(9500);         // < control.py transition timeout
+    const unsigned msTmo(14750);        // < control.py transition timeout
     if ( (rc = transport.connect(&link, addr, port, msTmo)) )
     {
       logging::error("%s:\n  Error connecting to %s at %s:%s",

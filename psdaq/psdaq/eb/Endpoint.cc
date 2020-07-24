@@ -1687,8 +1687,8 @@ Endpoint* PassiveEndpoint::accept(int timeout, EventQueue* eq, CompletionQueue* 
   } else {
     _errno = -FI_ECONNABORTED;
     set_error("active endpoint creation failed");
-    delete endp;
     fi_reject(_pep, entry.info->handle, NULL, 0);
+    delete endp;
     return NULL;
   }
 }
