@@ -559,7 +559,10 @@ json CtrbApp::connectionInfo()
   // Allow the default NIC choice to be overridden
   if (_tebPrms.ifAddr.empty())  _tebPrms.ifAddr = getNicIp();
 
-  int rc = _inbound.startConnection(_tebPrms.port);
+  // Make a guess at the size of the Result entries
+  size_t resSizeGuess = sizeof(EbDgram) + 2  * sizeof(uint32_t);
+
+  int rc = _inbound.startConnection(_tebPrms.port, resSizeGuess);
   if (rc)  throw "Error starting connection";
 
   json info = {{"connect_info", {{"nic_ip",      _tebPrms.ifAddr},
@@ -573,13 +576,16 @@ void CtrbApp::handleConnect(const json& msg)
 {
   int rc = _parseConnectionParams(msg["body"]);
 
+  // Make a guess at the size of the Input entries
+  size_t inpSizeGuess = sizeof(EbDgram) + 2 * sizeof(uint32_t);
+
   rc = _tebCtrb.resetCounters();
   if (rc)  printf("Error initializing TebContributor\n");
 
   rc = _mebCtrb.resetCounters();
   if (rc)  printf("Error initializing MebContributor\n");
 
-  rc = _tebCtrb.connect();
+  rc = _tebCtrb.connect(inpSizeGuess);
   if (rc)  printf("TebContributor connect failed\n");
 
   if (_mebPrms.addrs.size() != 0) {

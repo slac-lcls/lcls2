@@ -322,7 +322,10 @@ int Meb::connect()
 {
   _mrqLinks.resize(_prms.addrs.size());
 
-  int rc = EbAppBase::connect(_prms);
+  // Make a guess at the size of the Input entries
+  size_t inpSizeGuess = 128*1024;
+
+  int rc = EbAppBase::connect(_prms, inpSizeGuess);
   if (rc)  return rc;
 
   rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, "TEB");

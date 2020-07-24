@@ -108,17 +108,19 @@ void EbCtrbInBase::unconfigure()
 {
 }
 
-int EbCtrbInBase::startConnection(std::string& port)
+int EbCtrbInBase::startConnection(std::string& port, size_t resSizeGuess)
 {
   int rc = linksStart(_transport, _prms.ifAddr, port, MAX_TEBS, "TEB");
   if (rc)  return rc;
 
+  // Set up a guess at the RDMA region
+  // If it's too small, it will be corrected during Configure
   if (!_region)                         // No need to guess again
   {
     // Make a guess at the size of the Result region
-    size_t resSizeGuess = sizeof(EbDgram) + 2  * sizeof(uint32_t);
     size_t regSizeGuess = resSizeGuess * MAX_BATCHES * MAX_ENTRIES;
-    //printf("*** ECIB::startConn: region %p, regSizeGuess %zu\n", _region, regSizeGuess);
+    //printf("*** ECIB::startConn: region %p, regSize %zu, regSizeGuess %zu\n",
+    //       _region, _regSize, regSizeGuess);
 
     _region = allocRegion(regSizeGuess);
     if (!_region)

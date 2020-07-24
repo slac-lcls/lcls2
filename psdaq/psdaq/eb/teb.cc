@@ -229,7 +229,10 @@ int Teb::connect()
   _id      = _prms.id;
   _rcvrs   = _prms.receivers;
 
-  int rc = EbAppBase::connect(_prms);
+  // Make a guess at the size of the Input entries
+  size_t inpSizeGuess = sizeof(EbDgram) + 2  * sizeof(uint32_t);
+
+  int rc = EbAppBase::connect(_prms, inpSizeGuess);
   if (rc)  return rc;
 
   rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, "DRP");

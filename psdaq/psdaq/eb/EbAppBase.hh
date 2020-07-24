@@ -44,7 +44,7 @@ namespace Pds {
       int              startConnection(const std::string& ifAddr,
                                        std::string&       port,
                                        unsigned           nLinks);
-      int              connect(const EbParams& prms);
+      int              connect(const EbParams& prms, size_t inpSizeGuess);
       int              configure(const EbParams& prms);
       void             unconfigure();
       void             disconnect();

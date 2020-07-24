@@ -104,7 +104,7 @@ void TebContributor::unconfigure()
   }
 }
 
-int TebContributor::connect()
+int TebContributor::connect(size_t inpSizeGuess)
 {
   _links  .resize(_prms.addrs.size());
   _id     = _prms.id;
@@ -113,17 +113,18 @@ int TebContributor::connect()
   int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, "TEB");
   if (rc)  return rc;
 
+  // Set up a guess at the RDMA region
+  // If it's too small, it will be corrected during Configure
   if (!_batMan.batchRegion())           // No need to guess again
   {
-    // Make a guess at the size of the Input entries
-    size_t maxInputSizeGuess = sizeof(EbDgram) + 2 * sizeof(uint32_t);
-    _batMan.initialize(maxInputSizeGuess, false); // Batching flag get set properly later
+    _batMan.initialize(inpSizeGuess, false);  // Batching flag get set properly later
   }
 
   void*  region  = _batMan.batchRegion();     // Local space for Trs is in the batch region
   size_t regSize = _batMan.batchRegionSize(); // No need to add Tr space size here
 
-  //printf("*** TC::connect: region %p, regSize %zu\n", region, regSize);
+  //printf("*** TC::connect: region %p, regSize %zu, inpSizeGuess %zu\n",
+  //       region, regSize, inpSizeGuess);
   for (auto link : _links)
   {
     rc = link->setupMr(region, regSize);

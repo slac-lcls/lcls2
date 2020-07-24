@@ -391,8 +391,12 @@ void DrpBase::reset()
 json DrpBase::connectionInfo(const std::string& ip)
 {
     m_tPrms.ifAddr = ip;
-    m_tPrms.port.clear();
-    int rc = m_ebRecv->startConnection(m_tPrms.port);
+    m_tPrms.port.clear();               // Use an ephemeral port
+
+    // Make a guess at the size of the Result entries
+    size_t resSizeGuess = sizeof(Pds::EbDgram) + 2  * sizeof(uint32_t);
+
+    int rc = m_ebRecv->startConnection(m_tPrms.port, resSizeGuess);
     if (rc)  throw "Error starting connection";
 
     json info = {{"drp_port", m_tPrms.port},
@@ -409,7 +413,10 @@ std::string DrpBase::connect(const json& msg, size_t id)
 
     parseConnectionParams(msg["body"], id);
 
-    int rc = m_tebContributor->connect();
+    // Make a guess at the size of the Input entries
+    size_t inpSizeGuess = sizeof(Pds::EbDgram) + 2 * sizeof(uint32_t);
+
+    int rc = m_tebContributor->connect(inpSizeGuess);
     if (rc) {
         return std::string{"TebContributor connect failed"};
     }

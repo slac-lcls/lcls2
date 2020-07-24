@@ -29,7 +29,7 @@ namespace Pds
       virtual ~EbCtrbInBase();
     public:
       int      resetCounters();
-      int      startConnection(std::string& port);
+      int      startConnection(std::string& port, size_t resSizeGuess);
       int      connect();
       int      configure();
       void     unconfigure();

@@ -137,7 +137,7 @@ int EbAppBase::startConnection(const std::string& ifAddr,
   return 0;
 }
 
-int EbAppBase::connect(const EbParams& prms)
+int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
 {
   unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
 
@@ -154,16 +154,17 @@ int EbAppBase::connect(const EbParams& prms)
   int rc = linksConnect(_transport, _links, "DRP");
   if (rc)  return rc;
 
+  // Set up a guess at the RDMA region now that we know the number of Contributors
+  // If it's too small, it will be corrected during Configure
   for (unsigned i = 0; i < nCtrbs; ++i)
   {
     if (!_region[i])                    // No need to guess again
     {
       // Make a guess at the size of the Input region
-      size_t inpSizeGuess = _maxEntries != 1        // Distinguish between TEB and MEB
-                          ? (sizeof(EbDgram) + 2  * sizeof(uint32_t)) * _maxBuffers * _maxEntries
-                          : 128*1024 * _maxBuffers; // MEB case
-      size_t regSizeGuess = inpSizeGuess + roundUpSize(NUM_TRANSITION_BUFFERS * prms.maxTrSize[i]);
-      //printf("*** EAB::connect: region %p, regSizeGuess %zu\n", _region[i], regSizeGuess);
+      size_t regSizeGuess = (inpSizeGuess * _maxBuffers * _maxEntries +
+                             roundUpSize(NUM_TRANSITION_BUFFERS * prms.maxTrSize[i]));
+      //printf("*** EAB::connect: region %p, regSize %zu, regSizeGuess %zu\n",
+      //       _region[i], _regSize[i], regSizeGuess);
 
       _region[i] = allocRegion(regSizeGuess);
       if (!_region[i])
