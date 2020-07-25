@@ -1569,7 +1569,6 @@ class CollectionManager():
                     if not self.bypass_activedet:
                         if responder not in required_set:
                             if responder not in newfound_set:
-                                self.report_warning('Received response from %s, it does not appear in active detectors file' % responder)
                                 newfound_set.add(responder)
                             elif responder not in missing_set:
                                 # ignore duplicate response
@@ -1590,11 +1589,16 @@ class CollectionManager():
                         if level == 'drp':
                             self.cmstate[level][id]['det_info'] = {}
                             self.cmstate[level][id]['det_info']['readout'] = self.platform
+                        self.report_warning('rollcall: %s NOT selected for data collection' % responder)
                     else:
                         # copy values from active detectors file
                         self.cmstate[level][id]['active'] = json_data['activedet'][level][alias]['active']
                         if level == 'drp':
                             self.cmstate[level][id]['det_info'] = json_data['activedet'][level][alias]['det_info'].copy()
+                            group = json_data['activedet'][level][alias]['det_info']['readout']
+                            logging.info('rollcall: %s selected for data collection (readout group %d)' % (responder, group))
+                        else:
+                            logging.info('rollcall: %s selected for data collection' % responder)
                     self.ids.add(id)
             self.subtract_clients(missing_set)
             if not missing_set:
