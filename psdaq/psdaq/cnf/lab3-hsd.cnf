@@ -59,7 +59,7 @@ procmgr_config = [
  { host: 'daq-tst-dev03', id:'ttl'     , flags:'s', conda:conda_rel, cmd:'tprtrig -r 1'},
 
  {                        id:'groupca' , flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
- {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
 
  { host: 'drp-tst-dev024', id:'teb1'   , flags:'xspu', conda:conda_rel, cmd:'teb -P '+hutch+' -C '+collect_host+' '+verbosity},
  { host: 'drp-tst-dev016', id:'meb16'   , flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+'P0 -d -q 4 -C '+collect_host+verbosity},
@@ -123,7 +123,7 @@ for hsd in dev07_hsds:
     pvlist.append(hsd_epics_dev07+'_%s:B'%hsd.upper())
 
 procmgr_init.append({ id:'hsdpva', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdpva '+' '.join(pvlist)})
-procmgr_init.append({ id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'})
+procmgr_init.append({ id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'})
 
 #procmgr_config = procmgr_init
 

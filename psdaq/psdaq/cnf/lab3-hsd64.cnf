@@ -23,7 +23,7 @@ collect_host = 'drp-tst-acc06'
 procmgr_config = [
 # {                        id:'partca',flags:'s', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
  {                        id:'groupca',flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+platform},
- {                        id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ {                        id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
 # {                        id:'modca'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'modca DAQ:LAB2:XPM:2'},
 
  {                        id:'hsdcas_3e', port:'29073', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdcas -P DAQ:LAB2:HSD:DEV06_3E'},

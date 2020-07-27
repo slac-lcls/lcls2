@@ -20,7 +20,7 @@ conda_rel = 'ps-2.0.1'
 
 procmgr_config = [
  {                        id:'partca',flags:'s', conda:conda_rel, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
- {                        id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ {                        id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
  {                        id:'xpmpva'  ,flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:2'},
 
 # { host: 'drp-tst-dev002', id:'simv017', flags:'s', conda:conda_rel, cmd:'kcuSimValid -C '+platform+',320,0xf -F -N -v0xff'},

@@ -22,7 +22,7 @@ teb_cmd = task_set+'teb -P tst -C '+collect_host+' -M '+prom_dir
 meb_cmd = task_set+'monReqServer -P '+hutch+'P0 -C '+collect_host+' -M '+prom_dir+' -d -q 4'
 
 procmgr_config = [
- {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ {                        id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
 
  { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C NOBEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+hutch+'opr --password pcds'},
 # { host: collect_host, id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -C NOBEAM -B DAQ:LAB2 -x 0 -S 1 -P '+hutch+' --user '+hutch+'opr --password pcds'},

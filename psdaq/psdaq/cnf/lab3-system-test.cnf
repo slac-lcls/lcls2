@@ -84,5 +84,5 @@ procmgr_config = [
  { host: 'drp-tst-dev019', id:'pva_19', flags:'sxpu', conda:conda_rel, cmd: pva_cmd },
 
  # procstat
- {                         id:'procstat', flags:'p',  conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ {                         id:'procstat', flags:'p',  conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
 ]

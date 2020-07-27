@@ -30,5 +30,5 @@ procmgr_config = [
  {                    id:'partca' ,               flags:'s', conda:conda_rel, env:epics_env, cmd:'partca -x DAQ:LAB2:PART:5'},
 
 ## procstat
- {                    id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ {                    id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
   ]

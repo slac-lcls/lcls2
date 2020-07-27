@@ -25,7 +25,7 @@ groups = '0'
 
 procmgr_config = [
  {                        id:'groupca',flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
- {                        id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat -t '+username+' -e0 -n none p'+platform+'.cnf.last'},
+ {                        id:'procstat', flags:'sp', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
 
  {                        id:'hsdpvs_3e', port:'29074', flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P DAQ:LAB2:HSD:DEV06_3E'},
  {                        id:'hsdpva_3e', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdpva DAQ:LAB2:HSD:DEV06_3E:A'},

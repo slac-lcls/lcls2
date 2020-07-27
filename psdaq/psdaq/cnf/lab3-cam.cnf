@@ -53,5 +53,5 @@ procmgr_config = [
  { host: 'daq-tst-dev01', id:'qRead-ds6' ,flags:qflags, cmd:bin_path+'psdaq/pgp/pgpGen4Daq/app/qRead -d /dev/pgpdaq0 -c 0 -L 0xf -P 8' },
 
 ## procstat
- {                       id:'procstat',    flags:'s',    env:'LD_LIBRARY_PATH=/reg/g/pcds/package/python-2.5.2/lib:/reg/g/pcds/package/qt-4.3.4_x86_64/lib PATH=/reg/g/pcds/package/python-2.5.2/bin:/reg/g/pcds/package/qt-4.3.4_x86_64/bin: PYTHONPATH=', cmd:'/reg/g/pcds/dist/pds/tools/procmgr/procstat.py -t '+username+' -e0 -n none -p '+platform+' p'+platform+'.cnf.last'},
+ {                       id:'procstat',    flags:'sp',   env:'LD_LIBRARY_PATH=/reg/g/pcds/package/python-2.5.2/lib:/reg/g/pcds/package/qt-4.3.4_x86_64/lib PATH=/reg/g/pcds/package/python-2.5.2/bin:/reg/g/pcds/package/qt-4.3.4_x86_64/bin: PYTHONPATH=', cmd:'/reg/g/pcds/dist/pds/tools/procmgr/procstat.py p'+platform+'.cnf.last'},
   ]
