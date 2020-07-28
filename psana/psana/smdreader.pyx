@@ -133,4 +133,6 @@ cdef class SmdReader:
     def got(self):
         return self.prl_reader.got
 
-
+    @property
+    def chunk_overflown(self):
+        return self.prl_reader.chunk_overflown

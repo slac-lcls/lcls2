@@ -61,7 +61,7 @@ class SmdReaderManager(object):
             if self.run.max_events < self.batch_size:
                 self.batch_size = self.run.max_events
         
-        self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x100000))
+        self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x1000000))
         self.smdr = SmdReader(run.smd_fds, self.chunksize)
         self.processed_events = 0
         self.got_events = -1
@@ -73,6 +73,10 @@ class SmdReaderManager(object):
     def _get(self):
         logging.debug("SmdReaderManager calls smdr.get()")
         self.smdr.get()
+        
+        if self.smdr.chunk_overflown > 0:
+            msg = f"SmdReader found dgram ({self.smdr.chunk_overflown} MB) larger than chunksize ({self.chunksize/1e6} MB)"
+            raise ValueError(msg)
 
     def get_next_dgrams(self, configs=None):
         dgrams = None

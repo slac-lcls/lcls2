@@ -9,25 +9,26 @@ import array
 from libc.stdint cimport uint32_t, uint64_t
 
 cdef struct Buffer:
-    char* chunk
+    char*    chunk
     uint64_t got
     uint64_t ready_offset 
-    int n_ready_events             
+    int      n_ready_events             
     uint64_t seen_offset 
-    int n_seen_events             
+    int      n_seen_events             
     uint64_t timestamp                   # ts of the last dgram
     uint64_t ts_arr[0x100000]            # dgram timestamps 
     uint64_t next_offset_arr[0x100000]   # their offset + size of dgram and payload
 
 cdef class ParallelReader:
-    cdef int[:] file_descriptors
-    cdef size_t chunksize
+    cdef int[:]     file_descriptors
+    cdef size_t     chunksize
     cdef Py_ssize_t nfiles
-    cdef int coarse_freq
-    cdef Buffer *bufs
-    cdef Buffer *step_bufs
-    cdef unsigned L1Accept
-    cdef uint64_t got                   # summing the size of new reads used by prometheus
+    cdef int        coarse_freq
+    cdef Buffer     *bufs
+    cdef Buffer     *step_bufs
+    cdef unsigned   L1Accept
+    cdef uint64_t   got                  # summing the size of new reads used by prometheus
+    cdef uint64_t   chunk_overflown
 
     cdef void _init_buffers(self)
     cdef void _reset_buffers(self, Buffer* bufs)

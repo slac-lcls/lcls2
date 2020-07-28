@@ -16,6 +16,7 @@ cdef class ParallelReader:
         self.bufs               = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
         self.step_bufs          = <Buffer *>malloc(sizeof(Buffer)*self.nfiles)
         self.got                = 0
+        self.chunk_overflown    = 0     # set to dgram size if it's too big
         self._init_buffers()
 
 
@@ -35,20 +36,20 @@ cdef class ParallelReader:
         self._reset_buffers(self.bufs)
         self._reset_buffers(self.step_bufs)
         for i in range(self.nfiles):
-            self.bufs[i].chunk = <char *>malloc(self.chunksize)
+            self.bufs[i].chunk      = <char *>malloc(self.chunksize)
             self.step_bufs[i].chunk = <char *>malloc(self.chunksize)
     
     cdef void _reset_buffers(self, Buffer* bufs):
         cdef Py_ssize_t i
         cdef Buffer* buf
         for i in range(self.nfiles):
-            buf = &(bufs[i])
-            buf.got = 0
-            buf.ready_offset = 0     # offset of the last event in the buffer
-            buf.n_ready_events = 0   # no. of total events in the buffer 
-            buf.seen_offset = 0      # offset of the event seen (yielded) so far
-            buf.n_seen_events = 0    # no. of seen events
-            buf.timestamp = 0       
+            buf                 = &(bufs[i])
+            buf.got             = 0
+            buf.ready_offset    = 0     # offset of the last event in the buffer
+            buf.n_ready_events  = 0     # no. of total events in the buffer 
+            buf.seen_offset     = 0     # offset of the event seen (yielded) so far
+            buf.n_seen_events   = 0     # no. of seen events
+            buf.timestamp       = 0       
 
     cdef void just_read(self):
         """
@@ -62,15 +63,15 @@ cdef class ParallelReader:
         - n_ready_events = no. of total events that fit in the buffer
 
         """
-        cdef Py_ssize_t i = 0
-        cdef uint64_t got = 0
-        cdef uint64_t offset = 0
+        cdef Py_ssize_t i       = 0
+        cdef uint64_t got       = 0
+        cdef uint64_t offset    = 0
         cdef Dgram* d
         cdef Buffer* buf
         cdef Buffer* step_buf
-        cdef uint64_t payload = 0
-        cdef unsigned service = 0
-        self.got = 0
+        cdef uint64_t payload   = 0
+        cdef unsigned service   = 0
+        self.got                = 0
         
         for i in prange(self.nfiles, nogil=True):
             buf = &(self.bufs[i])
@@ -93,19 +94,23 @@ cdef class ParallelReader:
             buf.got = (buf.got - buf.ready_offset) + got
             
             # reset the offsets and no. of events
-            buf.ready_offset = 0
-            buf.n_ready_events = 0
-            buf.seen_offset = 0
-            buf.n_seen_events = 0
-            step_buf.ready_offset = 0
+            buf.ready_offset        = 0
+            buf.n_ready_events      = 0
+            buf.seen_offset         = 0
+            buf.n_seen_events       = 0
+            step_buf.ready_offset   = 0
             step_buf.n_ready_events = 0
-            step_buf.seen_offset = 0
-            step_buf.n_seen_events = 0
+            step_buf.seen_offset    = 0
+            step_buf.n_seen_events  = 0
             
             while buf.ready_offset < buf.got:
                 if buf.got - buf.ready_offset >= sizeof(Dgram):
                     d = <Dgram *>(buf.chunk + buf.ready_offset)
                     payload = d.xtc.extent - sizeof(Xtc)
+
+                    # check if this dgram is too big to fit in the chunk
+                    if sizeof(Dgram) + payload > self.chunksize:
+                        self.chunk_overflown = sizeof(Dgram) + payload
 
                     if (buf.got - buf.ready_offset) >= sizeof(Dgram) + payload:
                         buf.ts_arr[buf.n_ready_events] = <uint64_t>d.seq.high << 32 | d.seq.low
