@@ -5,6 +5,17 @@ if mode == 'mpi':
     from mpi4py import MPI
     world_size = MPI.COMM_WORLD.Get_size()
     rank       = MPI.COMM_WORLD.Get_rank()
+    
+    # set a unique jobid (rank 0 process id) for prometheus client
+    if rank == 0:
+        prometheus_jobid = os.getpid()
+    else:
+        prometheus_jobid = None
+    prometheus_jobid = MPI.COMM_WORLD.bcast(prometheus_jobid, root=0)
+    os.environ['PS_PROMETHEUS_JOBID'] = str(prometheus_jobid)
+else:
+    os.environ['PS_PROMETHEUS_JOBID'] = str(os.getpid())
+
 
 class InvalidDataSource(Exception): pass
 

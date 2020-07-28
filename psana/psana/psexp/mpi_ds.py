@@ -14,7 +14,7 @@ from psana.psexp.event_manager import TransitionId
 from psana.psexp.node import Smd0, SmdNode, BigDataNode
 from psana.psexp.smdreader_manager import SmdReaderManager
 import logging
-from mpi4py import MPI
+import time
 
 class InvalidEventBuilderCores(Exception): pass
 
@@ -103,7 +103,11 @@ class RunParallel(Run):
     def events(self):
         for evt in self.run_node():
             if evt.service() != TransitionId.L1Accept: continue
+            st = time.time()
             yield evt
+            en = time.time()
+            self.c_ana.labels('seconds','None').inc(en-st)
+            self.c_ana.labels('calls','None').inc()
 
     def steps(self):
         self.scan = True

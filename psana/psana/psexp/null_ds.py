@@ -16,7 +16,8 @@ class NullDataSource(DataSourceBase):
             run = Run(self.exp, run_no, 
                       max_events=0, 
                       batch_size=self.batch_size,
-                      filter_callback=self.filter) 
+                      filter_callback=self.filter,
+                      prom_man=self.prom_man) 
 
             # create a run with no events
             # the following iterator exits immediately

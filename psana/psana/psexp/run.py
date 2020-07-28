@@ -18,6 +18,7 @@ from psana.psexp.ds_base import XtcFileNotFound
 import psana.pscalib.calib.MDBWebUtils as wu
 from psana.detector.detector_impl import MissingDet
 from psana.psexp.tools import mode
+import time
 
 
 class DetectorNameError(Exception): pass
@@ -73,13 +74,14 @@ class Run(object):
         self.filter_callback    = filter_callback
         self.destination        = destination
         self.prom_man           = prom_man
+        self.c_ana              = self.prom_man.get_metric('psana_bd_ana')
         RunHelper(self)
 
     def run(self):
         """ Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
         return self.run_no
-
+    
     def _set_configinfo(self):
         """ From configs, we generate a dictionary lookup with det_name as a key.
         The information stored the value field contains:
@@ -333,12 +335,17 @@ class RunSerial(Run):
             self.expt = beginrun_dgram.runinfo[0].runinfo.expt 
             self.runnum = beginrun_dgram.runinfo[0].runinfo.runnum
             self.timestamp = beginrun_dgram.timestamp()
-
+    
     def events(self):
         events = Events(self)
         for evt in events:
             if evt.service() == TransitionId.L1Accept:
+                st = time.time()
                 yield evt
+                en = time.time()
+                self.c_ana.labels('seconds','None').inc(en-st)
+                self.c_ana.labels('calls','None').inc()
+
     
     def steps(self):
         """ Generates events between steps. """

@@ -5,6 +5,9 @@ import numpy as np
 import os
 from psana.psexp.TransitionId import TransitionId
 import logging
+from psana.psexp.prometheus_manager import PrometheusManager
+
+s_bd_disk = PrometheusManager.get_metric('psana_bd_wait_disk')
 
 class EventManager(object):
     """ Return an event from the received smalldata memoryview (view)
@@ -34,6 +37,22 @@ class EventManager(object):
 
         if not self.filter_fn and len(self.dm.xtc_files) > 0:
             self._read_bigdata_in_chunk()
+
+    @s_bd_disk.time()
+    def _read_chunks_from_disk(self, fds, offsets, sizes):
+        sum_read_nbytes = 0 # for prometheus counter
+        for i in range(self.n_smd_files):
+            os.lseek(fds[i], offsets[i], 0)
+            self.bigdata[i].extend(os.read(fds[i], sizes[i]))
+            sum_read_nbytes += sizes[i]
+        logging.debug("EventManager: BigData core reads %.2f MB from disk"%(sum_read_nbytes/1e6))
+        self._inc_prometheus_counter('MB', sum_read_nbytes/1e6)
+        return 
+    
+    @s_bd_disk.time()
+    def _read_event_from_disk(self, offsets, sizes):
+        logging.debug("EventManager: BigData core reads a event (%.2f MB) from disk"%(np.sum(sizes)/1e6))
+        return self.dm.jump(offsets, sizes)
             
     def _read_bigdata_in_chunk(self):
         """ Read bigdata chunks of 'size' bytes and store them in views
@@ -82,17 +101,11 @@ class EventManager(object):
 
                 sizes += ofsz[:,1]
        
-        sum_read_nbytes = 0 # for prometheus counter
-        for i in range(self.n_smd_files):
-            # If no data were filtered, we can assume that all bigdata
-            # dgrams starting from the first offset are stored consecutively
-            # in the file. We read a chunk of sum(all dgram sizes) and
-            # store in a view.
-            os.lseek(self.dm.fds[i], offsets[i], 0)
-            self.bigdata[i].extend(os.read(self.dm.fds[i], sizes[i]))
-            sum_read_nbytes += sizes[i]
-        self._inc_prometheus_counter('MB', sum_read_nbytes/1e6)
-        logging.debug('BigData read chunk %.2f MB'%(sum_read_nbytes/1e6))
+        # If no data were filtered, we can assume that all bigdata
+        # dgrams starting from the first offset are stored consecutively
+        # in the file. We read a chunk of sum(all dgram sizes) and
+        # store in a view.
+        self._read_chunks_from_disk(self.dm.fds, offsets, sizes)
             
     def __iter__(self):
         return self
@@ -115,7 +128,7 @@ class EventManager(object):
             self.cn_events += 1
             if smd_evt.service() == TransitionId.L1Accept:
                 offset_and_size_array = smd_evt.get_offsets_and_sizes()
-                bd_evt = self.dm.jump(offset_and_size_array[:,0], offset_and_size_array[:,1])
+                bd_evt = self._read_event_from_disk(offset_and_size_array[:,0], offset_and_size_array[:,1])
                 self._inc_prometheus_counter('MB', np.sum(offset_and_size_array[:,1])/1e6)
                 logging.debug('BigData read single %.2f MB'%(np.sum(offset_and_size_array[:,1])/1e6))
             else:

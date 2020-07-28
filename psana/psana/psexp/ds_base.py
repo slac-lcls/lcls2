@@ -16,41 +16,36 @@ class InvalidFileType(Exception): pass
 class XtcFileNotFound(Exception): pass
 
 class DataSourceBase(abc.ABC):
-
-    filter = 0
-    batch_size = 1
-    max_events = 0
-    detectors = []
-    exp = None
-    run_num = -1
-    live = False
-    dir = None
-    files = None
-    shmem = None
-    run_dict = {}
-    destination = 0
-    monitor = False
+    filter      = 0         # callback that takes an evt and return True/False.
+    batch_size  = 1         # length of batched offsets
+    max_events  = 0         # no. of maximum events
+    detectors   = []        # user-selected detector names
+    exp         = None      # experiment id (e.g. xpptut13)
+    run_num     = -1        # run no. 
+    live        = False     # turns live mode on/off 
+    dir         = None      # manual entry for path to xtc files
+    files       = None      # list of xtc files 
+    shmem       = None
+    run_dict    = {}
+    destination = 0         # callback that returns rank no. (used by EventBuilder)
+    monitor     = False      # turns prometheus monitoring client of/off
 
     def __init__(self, **kwargs):
-        """Initializes datasource base.
-        
-        Keyword arguments:
-        exp         -- experiment id (e.g. xpptut13)
-        run         -- run no. 
-        dir         -- manual entry for path to xtc files
-        files       -- list of files 
-        filter      -- callback that takes an evt and return True/False.
-        batch_size  -- length of batched offsets
-        max_events  -- no. of maximum events
-        detectors   -- user-selected detector names (for list of names, use detnames cli).
-        destination -- callback that takes a timestamp and returns rank no (only works with RunParallel).
-        live        -- turns live mode on/off (default is False). 
-        """
+        """Initializes datasource base"""
         if kwargs is not None:
             self.smalldata_kwargs = {}
-            keywords = ('exp', 'dir', 'files', 'shmem', \
-                    'filter', 'batch_size', 'max_events', 'detectors', \
-                    'det_name','destination','live','smalldata_kwargs', \
+            keywords = ('exp', 
+                    'dir', 
+                    'files', 
+                    'shmem', 
+                    'filter', 
+                    'batch_size', 
+                    'max_events', 
+                    'detectors', 
+                    'det_name',
+                    'destination',
+                    'live',
+                    'smalldata_kwargs', 
                     'monitor')
             
             for k in keywords:
@@ -67,7 +62,7 @@ class DataSourceBase(abc.ABC):
 
         assert self.batch_size > 0
         
-        self.prom_man = PrometheusManager()
+        self.prom_man = PrometheusManager(os.environ['PS_PROMETHEUS_JOBID'])
         
 
     def events(self):
@@ -170,11 +165,11 @@ class DataSourceBase(abc.ABC):
         if not self.monitor:
             logging.debug('not monitoring performance with prometheus')
         else:
-            logging.debug('starting prometheus client on rank %d'%mpi_rank)
+            logging.debug('START PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
             self.e = threading.Event()
             self.t = threading.Thread(name='PrometheusThread%s'%(mpi_rank),
                     target=self.prom_man.push_metrics,
-                    args=(self.e, os.getpid()),
+                    args=(self.e, mpi_rank),
                     daemon=True)
             self.t.start()
 
@@ -182,6 +177,6 @@ class DataSourceBase(abc.ABC):
         if not self.monitor:
             return
 
-        logging.debug('runs ending on rank %d'%(mpi_rank))
+        logging.debug('END PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
         self.e.set()
 

@@ -10,6 +10,10 @@ from psana.dgram import Dgram
 import os
 from mpi4py import MPI
 import logging
+from psana.psexp.prometheus_manager import PrometheusManager
+
+s_smd0_recv = PrometheusManager.get_metric('psana_smd0_wait_recv')
+s_eb_recv   = PrometheusManager.get_metric('psana_eb_wait_recv')
 
 # Setting up group communications
 # Ex. PS_SMD_NODES=3 mpirun -n 13
@@ -254,6 +258,10 @@ class Smd0(object):
         
         self.run_mpi()
 
+    @s_smd0_recv.time()
+    def _request_rank(self, rankreq):
+        logging.debug("Node: Smd0 requesting a rank")
+        self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
@@ -268,8 +276,8 @@ class Smd0(object):
             # Read new epics data as available in the queue
             # then send only unseen portion of data to the evtbuilder rank.
             if not smd_chunk: break
-
-            self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+            
+            self._request_rank(rankreq) # wrap request so prometheus can profile it
             
             # Check missing steps for the current client
             missing_step_views = self.step_hist.get_buffer(rankreq[0])
@@ -289,7 +297,7 @@ class Smd0(object):
             self.c_sent.labels('MB', rankreq[0]).inc(memoryview(smd_extended).nbytes/1e6)
         
         for i in range(self.run.comms.n_smd_nodes):
-            self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+            self._request_rank(rankreq)
             self.run.comms.smd_comm.Send(bytearray(), dest=rankreq[0])
 
 
@@ -331,6 +339,10 @@ class SmdNode(object):
             self.step_hist.extend_buffers(step_pf.split_packets(), dest_rank, as_event=True)
         del step_batch_dict[dest_rank] # done adding
 
+    @s_eb_recv.time()
+    def _request_rank(self, rankreq):
+        logging.debug("Node: EventBuilder requesting a rank")
+        self.run.comms.bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
@@ -358,7 +370,7 @@ class SmdNode(object):
                 if 0 in smd_batch_dict.keys():
                     smd_batch, _ = smd_batch_dict[0]
                     step_batch, _ = step_batch_dict[0]
-                    bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+                    self._request_rank(rankreq)
                     
                     missing_step_views = self.step_hist.get_buffer(rankreq[0])
                     batch = repack_for_bd(smd_batch, missing_step_views, self.run.configs, client=rankreq[0])
@@ -395,7 +407,7 @@ class SmdNode(object):
                                     sent = True
                         
                         if not sent:
-                            bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+                            self._request_rank(rankreq)
                             dest_rank = rankreq[0]
                             if dest_rank in smd_batch_dict:
                                 self._send_to_dest(dest_rank, smd_batch_dict, step_batch_dict, eb_man)
@@ -411,7 +423,7 @@ class SmdNode(object):
         
         # - kill all other nodes
         for i in range(n_bd_nodes-len(self.waiting_bds)):
-            bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+            self._request_rank(rankreq)
             bd_comm.Send(bytearray(), dest=rankreq[0])
 
 

@@ -6,6 +6,9 @@ import os, time
 from psana import dgram
 from psana.event import Event
 import logging
+from psana.psexp.prometheus_manager import PrometheusManager
+
+s_smd0_disk = PrometheusManager.get_metric('psana_smd0_wait_disk')
 
 
 class BatchIterator(object):
@@ -66,10 +69,15 @@ class SmdReaderManager(object):
         # Collecting Smd0 performance using prometheus
         self.c_read = self.run.prom_man.get_metric('psana_smd0_read')
 
+    @s_smd0_disk.time()
+    def _get(self):
+        logging.debug("SmdReaderManager calls smdr.get()")
+        self.smdr.get()
+
     def get_next_dgrams(self, configs=None):
         dgrams = None
         if not self.smdr.is_complete():
-            self.smdr.get()
+            self._get()
          
         if self.smdr.is_complete():
             mmrv_bufs, _ = self.smdr.view(batch_size=1)
@@ -103,7 +111,7 @@ class SmdReaderManager(object):
             raise StopIteration
         
         if not self.smdr.is_complete():
-            self.smdr.get()
+            self._get()
             self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
             if not self.smdr.is_complete():
                 raise StopIteration
@@ -160,7 +168,7 @@ class SmdReaderManager(object):
                     yield (smd_view, step_view)
 
             else:
-                self.smdr.get()
+                self._get()
                 
                 logging.debug('Smd0 read %.2f MB'%(self.smdr.got/1e6))
                 self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
