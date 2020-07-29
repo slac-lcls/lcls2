@@ -138,10 +138,7 @@ class CGWMainPartition(QGroupBox) :
         set_platform(dict_platf, list2d)
 
         # 2019-03-13 caf: If Select->Apply is successful, an Allocate transition should be triggered.
-        json_data = daq_control().getJsonConfig()
-        retval = daq_control().storeJsonConfig(json_data)
-        if 'err_info' in retval :
-            logger.error('control.storeJsonConfig: %s' % retval['err_info'])
+        # 2020-07-29 caf: The Allocate transition will update the active detectors file, if necessary.
 
         list2d_active = list_active_procs(list2d)
 

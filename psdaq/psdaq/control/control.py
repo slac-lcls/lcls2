@@ -142,20 +142,10 @@ class DaqControl:
     #
     def getJsonConfig(self):
         src = self.getPlatform()
-        dst = {"activedet": {}}
-        for level, item1 in src.items():
-            if level == "control":
-                continue    # skip
-            if level not in dst["activedet"]:
-                dst["activedet"][level] = {}
-            for xx, item2 in item1.items():
-                alias = item2["proc_info"]["alias"]
-                dst["activedet"][level][alias] = {}
-                if "det_info" in item2:
-                    dst["activedet"][level][alias]["det_info"] = item2["det_info"].copy()
-                dst["activedet"][level][alias]["active"] = item2["active"]
-
-        return oldjson.dumps(dst, sort_keys=True, indent=4)
+        dst = levels_to_activedet(src)
+        retval =  oldjson.dumps(dst, sort_keys=True, indent=4)
+        logging.debug('getJsonConfig() return value: %s' % retval)
+        return retval
 
     #
     # DaqControl.storeJsonConfig - store json configuration
@@ -615,6 +605,20 @@ def wait_for_answers(socket, wait_time, msg_id):
                           (msg['header']['msg_id'], msg_id))
         remaining = max(0, int(wait_time - 1000*(time.time() - start)))
 
+def levels_to_activedet(src):
+    dst = {"activedet": {}}
+    for level, item1 in src.items():
+        if level == "control":
+            continue    # skip
+        if level not in dst["activedet"]:
+            dst["activedet"][level] = {}
+        for xx, item2 in item1.items():
+            alias = item2["proc_info"]["alias"]
+            dst["activedet"][level][alias] = {}
+            if "det_info" in item2:
+                dst["activedet"][level][alias]["det_info"] = item2["det_info"].copy()
+            dst["activedet"][level][alias]["active"] = item2["active"]
+    return dst
 
 class DaqPVA():
     def __init__(self, *, platform, xpm_master, pv_base):
@@ -1218,6 +1222,21 @@ class CollectionManager():
                 self.cmstate['meb'][node]['meb_id'] = i
 
         logging.debug('cmstate after alloc:\n%s' % self.cmstate)
+
+        # write to the activedet file only if the contents would change
+        dst = levels_to_activedet(self.cmstate_levels())
+        json_from_file = self.read_json_file(self.activedetfilename)
+        if dst == json_from_file:
+            logging.debug('condition_alloc(): no change to activedet file %s' % self.activedetfilename)
+        else:
+            try:
+                self.handle_storejsonconfig(oldjson.dumps(dst, sort_keys=True, indent=4))
+            except Exception as ex:
+                self.report_error('updating activedet file %s' % str(ex))
+                return False
+            else:
+                logging.info('condition_alloc(): updated activedet file %s' % self.activedetfilename)
+
         self.lastTransition = 'alloc'
         logging.debug('condition_alloc() returning True')
         return True
@@ -1435,21 +1454,17 @@ class CollectionManager():
         logging.debug('handle_getstatus()')
         return self.status_msg()
 
+    # Update the active detector file.
+    # May throw an exception.
     def handle_storejsonconfig(self, body):
-        logging.debug('handle_storejsonconfig()')
+        logging.debug('handle_storejsonconfig(): body = %s' % body)
         if self.activedetfilename == '/dev/null':
             msg = 'store failed: active detector filename is /dev/null'
-            logging.error(msg)
-            return error_msg(msg)
-        try:
-            with open(self.activedetfilename, 'w') as f:
-                print('%s' % body["json_data"], file=f)
-        except Exception as ex:
-            msg = 'handle_storejsonconfig(): %s' % ex
-            logging.error(msg)
-            return error_msg(msg)
+            self.report_warning(msg)
         else:
-            logging.info('active detectors file updated: %s' % self.activedetfilename)
+            with open(self.activedetfilename, 'w') as f:
+                print('%s' % body, file=f)
+
         return {}
 
     def handle_getinstrument(self, body):
@@ -1501,15 +1516,24 @@ class CollectionManager():
 
     def read_json_file(self, filename):
         json_data = {}
+
+        if not os.path.isfile(filename):
+            self.report_error('active detectors file %s not found' % filename)
+            return {}
+
+        if os.path.getsize(filename) == 0:
+            self.report_error('active detectors file %s is empty' % filename)
+            return {}
+
         try:
             with open(filename) as fd:
                 json_data = oldjson.load(fd)
-        except FileNotFoundError as ex:
-            self.report_error('Error opening active detectors file: %s' % ex)
-            return {}
         except Exception as ex:
-            self.report_error('Error reading active detectors file %s: %s' % (filename, ex))
-            return {}
+            self.report_error("read_json_file(%s): %s" % (filename, ex))
+            json_data = {}
+        else:
+            logging.info('read_json_file(%s): json_data:\n%s' % (filename, json_data))
+
         return json_data
 
     def get_required_set(self, d):
