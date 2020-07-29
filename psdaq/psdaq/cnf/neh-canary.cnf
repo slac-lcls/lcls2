@@ -1,7 +1,7 @@
 if not platform: platform = '0'
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.152.255'
-conda_rel = 'ps-3.1.11'
+conda_rel = 'ps-3.1.12'
 
 #collect_host = os.uname()[1]
 collect_host = 'drp-neh-cmp001'
@@ -25,15 +25,15 @@ drp_cmd  = 'drp -P '+hutch+' -d /dev/datadev_1 -C '+collect_host+' -o /u1'
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
-# { id:'pyxpmg' , port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.1.102 -P DAQ:NEH:XPM:1'}, # AmcCarrierEmpty
- { id:'pyxpm'  , port:'29452', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.1.103 -P DAQ:NEH:XPM:0'},  # XTPG
-# { id:'xpmpva' , flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmpva -x DAQ:NEH:XPM:0'},
+ { id:'pyxpm-2' , port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.1.102 -P DAQ:NEH:XPM:0'}, # XTPG
+ { id:'pyxpm-3' , port:'29452', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.1.103 -P DAQ:NEH:XPM:1'}, # XPM
+ { id:'xpmpva' , flags:'s', conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:1'},
  { id:'groupca', flags:'s', conda:conda_rel, env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups},
  { id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
 
  { id:'teb1', flags:'spu', conda:conda_rel, cmd:'teb -C '+collect_host+' -P '+hutch},
  { id:'meb1', flags:'spu', conda:conda_rel, cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host},
- { id:'xppts_0', flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D ts -l 0x1 -ksim_length=4'},
+ { id:'tstts_0', flags:'spu', conda:conda_rel, cmd:drp_cmd+' -D ts -l 0x1 -ksim_length=4'},
  { id:'control', flags:'spu', conda:conda_rel, env:epics_env, cmd:'control -v -B DAQ:NEH -x 0 -C BEAM -P '+hutch+' -r /dev/null'},
  { flags:'p', id:'control_gui', conda:conda_rel, cmd:'control_gui -H '+collect_host},
 ]

@@ -29,6 +29,7 @@ static void usage(const char* p)
   printf("\t-s\tBuffer size, bytes\n");
   printf("\t-r\tReceive mode\n");
   printf("\t-P\tPeek at data\n");
+  printf("\t-d\tNumber of packets to dump\n");
 }
 
 int main(int argc, char **argv) 
@@ -36,12 +37,13 @@ int main(int argc, char **argv)
   unsigned interface = 0x7f000001;
   unsigned port  = 0;
   ssize_t  sz    = 0x2000;
+  unsigned ndump = 0;
   bool lreceiver = false;
   bool lpeek = false;
   std::vector<unsigned> uaddr;
 
   char c;
-  while ( (c=getopt( argc, argv, "i:a:p:s:rPh?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "i:a:d:p:s:rPh?")) != EOF ) {
     switch(c) {
     case 'a': 
       for(char* arg = strtok(optarg,","); arg!=NULL; arg=strtok(NULL,","))
@@ -52,6 +54,9 @@ int main(int argc, char **argv)
       break;
     case 'p':
       port = strtoul(optarg,NULL,0);
+      break;
+    case 'd':
+      ndump = strtoul(optarg,NULL,0);
       break;
     case 's':
       sz   = strtoul(optarg,NULL,0);
@@ -164,6 +169,7 @@ int main(int argc, char **argv)
   }
 
   uint64_t nbytes = 0, tbytes = 0;
+  uint32_t npkts = 0;
   char* buff = new char[sz];
   iphdr* ip = (iphdr*)buff;
   ip->ihl = 5;
@@ -201,6 +207,14 @@ int main(int argc, char **argv)
         }
       }
       bytes = ::recv(fd, buff, sz, 0);
+      npkts++;
+      if (ndump) {
+        const uint32_t* p = reinterpret_cast<const uint32_t*>(buff);
+        for(unsigned i=0; i<(bytes>>2); i++)
+          printf("%08x%c",p[i],(i%8)==7?'\n':' ');
+        printf("\n");
+        --ndump;
+      }
     }
     else {
       const sockaddr_in& sa = address[iaddr];
@@ -221,14 +235,16 @@ int main(int argc, char **argv)
     if (dt > 1) {
       t += dt;
       nbytes += tbytes;
-      printf("\t%uMB/s\t%uMB/s\t%dMB\t%d.%09d\n",
+      printf("\t%uMB/s\t%uMB/s\t%dMB\t%dHz\t%d.%09d\n",
 	     unsigned(double(nbytes)/ t*1.e-6),
 	     unsigned(double(tbytes)/dt*1.e-6),
              unsigned(double(tbytes)*1.e-6),
+             npkts,
              unsigned(tv.tv_sec), unsigned(tv.tv_nsec));
                       
       tv_begin = tv;
       tbytes = 0;
+      npkts  = 0;
     }
   }
 
