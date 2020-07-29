@@ -26,6 +26,7 @@ class PGPDetector
 {
 public:
     PGPDetector(const Parameters& para, DrpBase& drp, Detector* det);
+    ~PGPDetector();
     void reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector* det, Pds::Eb::TebContributor& tebContributor);
     void collector(Pds::Eb::TebContributor& tebContributor);
     void resetEventCounter();

@@ -40,6 +40,7 @@ class EpicsArchApp : public CollectionApp
 {
 public:
     EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile);
+    ~EpicsArchApp();
     void handleReset(const nlohmann::json& msg) override;
 private:
     nlohmann::json connectionInfo() override;

@@ -596,7 +596,7 @@ class TebApp : public CollectionApp
 {
 public:
   TebApp(const std::string& collSrv, EbParams&);
-  virtual ~TebApp();
+  ~TebApp();
 public:                                 // For CollectionApp
   json connectionInfo() override;
   void handleConnect(const json& msg) override;
@@ -649,6 +649,10 @@ TebApp::TebApp(const std::string& collSrv,
 
 TebApp::~TebApp()
 {
+  // Try to take things down gracefully when an exception takes us off the
+  // normal path so that the most chance is given for prints to show up
+  handleReset(json({}));
+
   Py_Finalize();
 }
 
@@ -1080,8 +1084,6 @@ int main(int argc, char **argv)
     TebApp app(collSrv, prms);
 
     app.run();
-
-    app.handleReset(json({}));
 
     return 0;
   }

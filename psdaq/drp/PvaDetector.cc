@@ -288,6 +288,13 @@ PvaDetector::PvaDetector(Parameters& para, const std::string& pvName, DrpBase& d
 {
 }
 
+PvaDetector::~PvaDetector()
+{
+    // Try to take things down gracefully when an exception takes us off the
+    // normal path so that the most chance is given for prints to show up
+    shutdown();
+}
+
 unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
 {
     logging::info("PVA configure");
@@ -705,6 +712,13 @@ PvaApp::PvaApp(Parameters& para, const std::string& pvName) :
         logging::info("output dir: %s", m_para.outputDir.c_str());
     }
     logging::info("Ready for transitions");
+}
+
+PvaApp::~PvaApp()
+{
+    // Try to take things down gracefully when an exception takes us off the
+    // normal path so that the most chance is given for prints to show up
+    handleReset(json({}));
 }
 
 void PvaApp::_shutdown()

@@ -55,6 +55,13 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
   exporter->add("TCtbO_InFlt",  labels, MetricType::Gauge,   [&](){ return _pending.guess_size();   });
 }
 
+TebContributor::~TebContributor()
+{
+  // Try to take things down gracefully when an exception takes us off the
+  // normal path so that the most chance is given for prints to show up
+  shutdown();
+}
+
 int TebContributor::resetCounters()
 {
   _eventCount = 0;

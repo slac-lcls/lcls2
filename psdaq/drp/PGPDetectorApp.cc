@@ -81,6 +81,10 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
 
 PGPDetectorApp::~PGPDetectorApp()
 {
+    // Try to take things down gracefully when an exception takes us off the
+    // normal path so that the most chance is given for prints to show up
+    handleReset(json({}));
+
     try {
         PyGILState_Ensure();
         Py_Finalize(); // for use by configuration

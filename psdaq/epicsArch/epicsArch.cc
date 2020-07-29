@@ -171,6 +171,8 @@ EaDetector::EaDetector(Parameters& para, const std::string& pvCfgFile, DrpBase& 
 
 EaDetector::~EaDetector()
 {
+    shutdown();
+
     EpicsArchMonitor::close();
 }
 
@@ -349,6 +351,13 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
         logging::info("output dir: %s", m_para.outputDir.c_str());
     }
     logging::info("Ready for transitions");
+}
+
+EpicsArchApp::~EpicsArchApp()
+{
+    // Try to take things down gracefully when an exception takes us off the
+    // normal path so that the most chance is given for prints to show up
+    handleReset(json({}));
 }
 
 void EpicsArchApp::_shutdown()

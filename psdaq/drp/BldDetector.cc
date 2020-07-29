@@ -733,6 +733,10 @@ BldApp::BldApp(Parameters& para) :
 
 BldApp::~BldApp()
 {
+    // Try to take things down gracefully when an exception takes us off the
+    // normal path so that the most chance is given for prints to show up
+    handleReset(json({}));
+
     if (m_det) {
         delete m_det;
     }

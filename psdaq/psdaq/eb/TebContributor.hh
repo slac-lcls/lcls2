@@ -29,7 +29,7 @@ namespace Pds {
     {
     public:
       TebContributor(const TebCtrbParams&, const std::shared_ptr<MetricExporter>&);
-      ~TebContributor() {}
+      ~TebContributor();
     public:
       int         resetCounters();
       int         connect(size_t inpSizeGuess);

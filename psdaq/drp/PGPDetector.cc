@@ -152,6 +152,13 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
     }
 }
 
+PGPDetector::~PGPDetector()
+{
+    // Try to take things down gracefully when an exception takes us off the
+    // normal path so that the most chance is given for prints to show up
+    shutdown();
+}
+
 void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector* det,
                          Pds::Eb::TebContributor& tebContributor)
 {

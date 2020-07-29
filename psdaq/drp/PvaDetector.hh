@@ -49,6 +49,7 @@ class PvaDetector : public XpmDetector
 {
 public:
     PvaDetector(Parameters& para, const std::string& pvName, DrpBase& drp);
+    ~PvaDetector();
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
     void shutdown() override;
@@ -87,6 +88,7 @@ class PvaApp : public CollectionApp
 {
 public:
     PvaApp(Parameters& para, const std::string& pvaName);
+    ~PvaApp();
     void handleReset(const nlohmann::json& msg) override;
 private:
     nlohmann::json connectionInfo() override;

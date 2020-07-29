@@ -456,6 +456,7 @@ class MebApp : public CollectionApp
 {
 public:
   MebApp(const std::string& collSrv, MebParams&);
+  ~MebApp();
 public:                                 // For CollectionApp
   json connectionInfo() override;
   void handleConnect(const json& msg) override;
@@ -497,6 +498,13 @@ MebApp::MebApp(const std::string& collSrv,
   }
 
   logging::info("Ready for transitions");
+}
+
+MebApp::~MebApp()
+{
+  // Try to take things down gracefully when an exception takes us off the
+  // normal path so that the most chance is given for prints to show up
+  handleReset(json({}));
 }
 
 std::string MebApp::_error(const json&        msg,
@@ -885,8 +893,6 @@ int main(int argc, char** argv)
     MebApp app(collSrv, prms);
 
     app.run();
-
-    app.handleReset(json({}));
 
     return 0;
   }
