@@ -135,7 +135,8 @@ BldFactory::BldFactory(const char* name,
     else {
         throw std::string("BLD name ")+name+" not recognized";
     }
-    _handler = std::make_shared<Bld>(mcaddr, mcport, interface, Bld::DgramPulseIdPos, Bld::DgramHeaderSize, payloadSize);
+    _handler = std::make_shared<Bld>(mcaddr, mcport, interface, Bld::DgramTimestampPos, Bld::DgramHeaderSize, payloadSize);
+    //    _handler = std::make_shared<Bld>(mcaddr, mcport, interface, Bld::DgramPulseIdPos, Bld::DgramHeaderSize, payloadSize);
 }
 
   //
@@ -171,7 +172,7 @@ BldFactory::BldFactory(const BldPVA& pva) :
     else {
         throw std::string("BLD type ")+_detType+" not recognized";
     }
-    _handler = std::make_shared<Bld>(mcaddr, mcport, pva._interface, Bld::PulseIdPos, Bld::HeaderSize, payloadSize);
+    _handler = std::make_shared<Bld>(mcaddr, mcport, pva._interface, Bld::TimestampPos, Bld::HeaderSize, payloadSize);
 }
 
   BldFactory::BldFactory(const BldFactory& o) :
@@ -264,10 +265,10 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
 Bld::Bld(unsigned mcaddr,
          unsigned port,
          unsigned interface,
-         unsigned pulseIdPos,
+         unsigned timestampPos,
          unsigned headerSize,
          unsigned payloadSize) :
-  m_pulseIdPos(pulseIdPos), m_headerSize(headerSize), m_payloadSize(payloadSize),
+  m_timestampPos(timestampPos), m_headerSize(headerSize), m_payloadSize(payloadSize),
   m_bufferSize(0), m_position(0),  m_buffer(Bld::MTU), m_payload(m_buffer.data())
 {
     logging::debug("Bld listening for %x.%d with payload size %u",mcaddr,port,payloadSize);
@@ -303,7 +304,7 @@ Bld::Bld(unsigned mcaddr,
 }
 
 Bld::Bld(const Bld& o) :
-    m_pulseIdPos  (o.m_pulseIdPos),
+    m_timestampPos(o.m_timestampPos),
     m_headerSize  (o.m_headerSize),
     m_payloadSize (o.m_payloadSize),
     m_sockfd      (o.m_sockfd)
@@ -332,24 +333,23 @@ uint8_t payload[]
 
 uint64_t Bld::next()
 {
-    uint64_t pulseId(0L);
+    uint64_t timestamp(0L);
     // get new multicast if buffer is empty
     if ((m_position + m_payloadSize + 4) > m_bufferSize) {
         m_bufferSize = recv(m_sockfd, m_buffer.data(), Bld::MTU, 0);
-        pulseId      = headerPulseId();
+        timestamp    = headerTimestamp();
         m_payload    = &m_buffer[m_headerSize];
         m_position   = m_headerSize + m_payloadSize;
     }
     else {
-        uint32_t pulseIdOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position) >> 20;
-        pulseId     = headerPulseId() + pulseIdOffset;
+        uint32_t timestampOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)&0xfffff;
+        timestamp   = headerTimestamp() + timestampOffset;
         m_payload   = &m_buffer[m_position + 4];
         m_position += 4 + m_payloadSize;
     }
-    // if (pulseId==0L) {
-    //   logging::debug("pulseId is 0");
-    // }
-    return pulseId;
+    logging::debug("BLD timestamp %16llx",timestamp);
+
+    return timestamp;
 }
 
 
@@ -454,11 +454,12 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     return dgram;
 }
 
-static const unsigned _skip_intv = 10000;
-Pds::EbDgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex, uint64_t& bytes)
+//static const unsigned _skip_intv = 10000;  // pulseIds
+static const unsigned _skip_intv = 10000000; // ns
+Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex, uint64_t& bytes)
 {
-    //  Fast forward to _next pulseId
-    if (pulseId < m_next)
+    //  Fast forward to _next timestamp
+    if (timestamp < m_next)
         return nullptr;
 
     // get new buffers
@@ -478,7 +479,7 @@ Pds::EbDgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex, uint64_t& bytes)
             auto now = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
             if (elapsed > 10) {
-                m_next = pulseId + _skip_intv;
+                m_next = timestamp + _skip_intv;
                 //if (m_running)  logging::debug("pgp timeout");
                 return nullptr;
             }
@@ -487,15 +488,15 @@ Pds::EbDgram* Pgp::next(uint64_t pulseId, uint32_t& evtIndex, uint64_t& bytes)
 
     const Pds::TimingHeader* timingHeader = reinterpret_cast<Pds::TimingHeader*>(m_drp.pool.dmaBuffers[dmaIndex[m_current]]);
 
-    // return dgram if bld pulseId matches pgp pulseId or if it's a transition
-    if ((pulseId == timingHeader->pulseId()) || (timingHeader->service() != XtcData::TransitionId::L1Accept)) {
+    // return dgram if bld timestamp matches pgp timestamp or if it's a transition
+    if ((timestamp == timingHeader->time.value()) || (timingHeader->service() != XtcData::TransitionId::L1Accept)) {
         Pds::EbDgram* dgram = _handle(evtIndex, bytes);
         m_current++;
-        m_next = timingHeader->pulseId();
+        m_next = timingHeader->time.value();
         return dgram;
     }
     // Missed BLD data so mark event as damaged
-    else if (pulseId > timingHeader->pulseId()) {
+    else if (timestamp > timingHeader->time.value()) {
         Pds::EbDgram* dgram = _handle(evtIndex, bytes);
         dgram->xtc.damage.increase(XtcData::Damage::MissingData);
         m_current++;
@@ -567,12 +568,12 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     //    std::vector<XtcData::NameIndex> nameIndex(m_config.size());
 
     uint64_t nextId = -1ULL;
-    std::vector<uint64_t> pulseId(m_config.size());
+    std::vector<uint64_t> timestamp(m_config.size());
     for(unsigned i=0; i<m_config.size(); i++) {
-        pulseId[i] = m_config[i]->handler().next();
-        if (pulseId[i] < nextId)
-            nextId = pulseId[i];
-        logging::info("BldApp::worker Initial pulseId[%d] 0x%" PRIx64, i, pulseId[i]);
+        timestamp[i] = m_config[i]->handler().next();
+        if (timestamp[i] < nextId)
+            nextId = timestamp[i];
+        logging::info("BldApp::worker Initial timestamp[%d] 0x%" PRIx64, i, timestamp[i]);
     }
 
     bool lMissing = false;
@@ -590,19 +591,19 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
         if (dgram) {
             if (dgram->xtc.damage.value()) {
                 ++nmissed;
-                if (dgram->pulseId() < nextId)
+                if (dgram->time.value() < nextId)
                     lHold=true;
                 if (!lMissing) {
                     lMissing = true;
                     logging::debug("Missed next bld: pgp %016lx  bld %016lx",
-                                   dgram->pulseId(), nextId);
+                                   dgram->time.value(), nextId);
                 }
             }
             else {
                 if (dgram->service() == XtcData::TransitionId::L1Accept) {
                     bool lMissed = false;
                     for(unsigned i=0; i<m_config.size(); i++) {
-                        if (pulseId[i] == nextId) {
+                        if (timestamp[i] == nextId) {
                             // Revisit: This is intended to be done by BldDetector::event()
                             XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
                             const Bld& bld = m_config[i]->handler();
@@ -614,7 +615,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                             lMissed = true;
                             if (!lMissing)
                                 logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx",
-                                               i, nextId, pulseId[i]);
+                                               i, nextId, timestamp[i]);
                         }
                     }
                     if (lMissed) {
@@ -672,14 +673,14 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
         if (!lHold) {
             nextId++;
             for(unsigned i=0; i<m_config.size(); i++) {
-                if (pulseId[i] < nextId)
-                    pulseId[i] = m_config[i]->handler().next();
+                if (timestamp[i] < nextId)
+                    timestamp[i] = m_config[i]->handler().next();
             }
 
             nextId = -1ULL;
             for(unsigned i=0; i<m_config.size(); i++) {
-                if (pulseId[i] < nextId)
-                    nextId = pulseId[i];
+                if (timestamp[i] < nextId)
+                    nextId = timestamp[i];
             }
         }
     }

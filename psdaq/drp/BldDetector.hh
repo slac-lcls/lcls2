@@ -22,22 +22,24 @@ class Bld
 {
 public:
     Bld(unsigned mcaddr, unsigned port, unsigned interface,
-        unsigned pulseIdPos, unsigned headerSize, unsigned payloadSize);
+        unsigned timestampPos, unsigned headerSize, unsigned payloadSize);
     Bld(const Bld&);
     ~Bld();
 public:
     static const unsigned MTU = 9000;
-    static const unsigned PulseIdPos      =  0; // LCLS-II style
-    static const unsigned HeaderSize      = 20;
-    static const unsigned DgramPulseIdPos =  8; // LCLS-I style
-    static const unsigned DgramHeaderSize = 52;
+    static const unsigned PulseIdPos        =  0; // LCLS-II style
+    static const unsigned TimestampPos      =  8; // LCLS-II style
+    static const unsigned HeaderSize        = 20;
+    static const unsigned DgramTimestampPos =  0; // LCLS-I style
+    static const unsigned DgramPulseIdPos   =  8; // LCLS-I style
+    static const unsigned DgramHeaderSize   = 52;
 public:
     uint64_t next       ();
     uint8_t* payload    () const { return m_payload; }
     unsigned payloadSize() const { return m_payloadSize; }
 private:
-    uint64_t headerPulseId() const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_pulseIdPos);}
-    unsigned m_pulseIdPos;
+    uint64_t headerTimestamp  () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_timestampPos);}
+    unsigned m_timestampPos;
     unsigned m_headerSize;
     unsigned m_payloadSize;
     int      m_sockfd;
@@ -92,7 +94,7 @@ class Pgp
 public:
     Pgp(Parameters& para, DrpBase& drp, Detector* det);
 
-    Pds::EbDgram* next(uint64_t pulseId, uint32_t& evtIndex, uint64_t& bytes);
+    Pds::EbDgram* next(uint64_t timestamp, uint32_t& evtIndex, uint64_t& bytes);
     void worker(std::shared_ptr<Pds::MetricExporter> exporter);
     void shutdown();
 private:
