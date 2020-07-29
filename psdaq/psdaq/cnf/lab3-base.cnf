@@ -3,7 +3,7 @@ username = 'lcls2'
 
 epics_host = 'daq-tst-dev02'
 
-conda_rel = 'ps-3.1.11'
+conda_rel = 'ps-3.1.12'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 
 hutch = 'tst'
@@ -42,3 +42,23 @@ procmgr_config = [
 
 for n in drp_nodes:
     procmgr_config.append({host:'drp-tst-dev'+n, id:'pykcu-'+n, port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pykcu'})
+
+# HSD: 6.4 GS/s digitizer
+bus  = 0
+svc  = 1                        # 'port' is a reserved word
+pv   = 2
+hsds = [
+    {bus:'1b', svc:29074, pv:'DAQ:LAB2:HSD:DEV07_1B'},
+    {bus:'1a', svc:29076, pv:'DAQ:LAB2:HSD:DEV07_1A'},
+    {bus:'88', svc:29078, pv:'DAQ:LAB2:HSD:DEV07_88'},
+    {bus:'89', svc:29080, pv:'DAQ:LAB2:HSD:DEV07_89'},
+    {bus:'b1', svc:29082, pv:'DAQ:LAB2:HSD:DEV07_B1'},
+    {bus:'b2', svc:29084, pv:'DAQ:LAB2:HSD:DEV07_B2'},
+    {bus:'5e', svc:29086, pv:'DAQ:LAB2:HSD:DEV07_5E'},
+    {bus:'da', svc:29088, pv:'DAQ:LAB2:HSD:DEV07_DA'},
+    {bus:'3d', svc:29090, pv:'DAQ:LAB2:HSD:DEV07_3D'},
+]
+
+for e in hsds:
+    procmgr_config.append({ port:'%d'%(e[svc]+0), id:'hsdpvs_%s_a'%e[bus], flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':A'})
+    procmgr_config.append({ port:'%d'%(e[svc]+1), id:'hsdpvs_%s_b'%e[bus], flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':B'})

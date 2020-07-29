@@ -45,10 +45,9 @@ meb_cmd = task_set+'monReqServer -P '+hutch+' -C '+collect_host+' -M '+prom_dir+
 procmgr_config = [
  {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
  {                         id:'xpmpva',      flags:'s',   env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1 DAQ:LAB2:XPM:2 DAQ:LAB2:XPM:3'},
- #{ host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -r ~claus/.psdaq/p3.activedet.json'},
  { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -r /dev/null'}, # -S 1'},
  #{ host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:'control -v -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --user '+user+' --password '+password+' -S 1'},
- {                         id:'control_gui', flags:'p',                  cmd:'control_gui -l INFO -H '+collect_host},
+ {                         id:'control_gui', flags:'p',                  cmd:'control_gui -l INFO -H '+collect_host+' --user '+user+' --password '+password},
 
  # TEB
  #{ host: 'drp-tst-dev016', id:'teb0',        flags:'sxpu', cmd:teb_cmd},
@@ -65,8 +64,8 @@ procmgr_config = [
  #{ host: 'drp-tst-dev004', id:'epics_0',     flags:'xpu',  env:epics_env, cmd:ea_cmd},
 
  # BLD - must currently run on dev018 since that's where the bld enet xface is
- #{ host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4 -e 40'},
- #{ host: epics_host,       id:'bldcas',      flags:'s',    env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str},
+ { host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4 -e 40'},
+ { host: epics_host,       id:'bldcas',      flags:'s',    env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str},
  #{ host: 'drp-tst-dev018', id:'bld_0',       flags:'xpu',  env:epics_env, cmd:bld_cmd},
 
  # TimeTool
@@ -113,14 +112,9 @@ hsds = [
     #{node:'daq-tst-dev07',bus:'5e',pv:'DAQ:LAB2:HSD:DEV07_5E',drp:'drp-tst-dev024'},
 ]
 
-svc=29074 + 100*int(platform)
 segm=0
 pvlist = []
 for e in hsds:
-    procmgr_config.append({id:'hsdpvs_%s_a'%e[bus], port:'%d'%svc, flags:'s', env:epics_env, cmd:'hsdpvs -P '+e[pv]+':A'})
-    svc += 1
-    procmgr_config.append({id:'hsdpvs_%s_b'%e[bus], port:'%d'%svc, flags:'s', env:epics_env, cmd:'hsdpvs -P '+e[pv]+':B'})
-    svc += 1
     procmgr_config.append({ host: e[node], id:'hsdioc_%s'%e[bus], flags:'', env:epics_env, cmd:'hsd134PVs -P '+e[pv]+' -d /dev/pcie_adc_%s'%e[bus]})
     procmgr_config.append({ host: e[drp], id:'tmohsd_%d'%segm, flags:'pu', cmd:drp_cmd0+' -D hsd -k hsd_epics_prefix='+e[pv]+':A'})
     segm += 1
