@@ -211,10 +211,12 @@ class CuGenCtrls(object):
             cuDelay    = dbinit['XTPG']['CuDelay']
             cuBeamCode = dbInit['XTPG']['CuBeamCode']
             cuInput    = dbinit['XTPG']['CuInput']
+            print('Read XTPG parameters CuDelay {}, CuBeamCode {}, CuInput {}'.format(cuDelay,cuBeamCode,cuInput))
         except:
             cuDelay    = 200*800
             cuBeamCode = 140
             cuInput    = 1
+            print('Defaulting XTPG parameters')
             
         self._pv_cuDelay    = addPV('CuDelay'   ,    cuDelay, xpm.CuGenerator.cuDelay          , True)
         self._pv_cuBeamCode = addPV('CuBeamCode', cuBeamCode, xpm.CuGenerator.cuBeamCode       , True)
