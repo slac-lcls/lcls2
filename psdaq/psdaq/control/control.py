@@ -1458,10 +1458,7 @@ class CollectionManager():
     # May throw an exception.
     def handle_storejsonconfig(self, body):
         logging.debug('handle_storejsonconfig(): body = %s' % body)
-        if self.activedetfilename == '/dev/null':
-            msg = 'store failed: active detector filename is /dev/null'
-            self.report_warning(msg)
-        else:
+        if self.activedetfilename != '/dev/null':
             with open(self.activedetfilename, 'w') as f:
                 print('%s' % body, file=f)
 
@@ -1518,7 +1515,10 @@ class CollectionManager():
         json_data = {}
 
         if not os.path.isfile(filename):
-            self.report_error('active detectors file %s not found' % filename)
+            if filename == '/dev/null':
+                self.report_warning('/dev/null is not a proper active detectors file')
+            else:
+                self.report_error('active detectors file %s not found' % filename)
             return {}
 
         if os.path.getsize(filename) == 0:
