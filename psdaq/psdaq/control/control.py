@@ -1635,6 +1635,8 @@ class CollectionManager():
         if missing_set:
             for client in missing_set:
                 self.report_error(client + ' did not respond to rollcall')
+            # Despite rollcall transition errors, allow state machine to advance.
+            retval = True
         else:
             retval = True
             self.lastTransition = 'rollcall'
