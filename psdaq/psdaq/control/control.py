@@ -1637,6 +1637,7 @@ class CollectionManager():
                 self.report_error(client + ' did not respond to rollcall')
             # Despite rollcall transition errors, allow state machine to advance.
             retval = True
+            self.lastTransition = 'rollcall'
         else:
             retval = True
             self.lastTransition = 'rollcall'
