@@ -6,15 +6,15 @@ PUSH_INTERVAL_SECS  = 5
 PUSH_GATEWAY        = 'psdm03:9091'
 
 registry = CollectorRegistry()
-metrics = {'psana_smd0_read'    : ('Counter', 'events read by Smd0'), 
-        'psana_smd0_sent'       : ('Counter', 'events sent by Smd0'), 
-        'psana_eb_sent'         : ('Counter', 'events sent by EventBuilder'),
-        'psana_bd_read'         : ('Counter', 'events read by BigData'),
-        'psana_smd0_wait_disk'  : ('Summary', 'time spent (s) reading smalldata'),
-        'psana_smd0_wait_recv'  : ('Summary', 'time waiting (s) for EventBuilder core'),
-        'psana_eb_wait_recv'    : ('Summary', 'time waiting (s) for BigData core'),
-        'psana_eb_wait_filter'  : ('Summary', 'time spent (s) in filter fn on \
-                                    EventBuilder core'),
+metrics ={'psana_smd0_wait_disk': ('Summary', 'Time spent (s) reading smalldata'),
+        'psana_smd0_read'       : ('Counter', 'Counting no. of events/batches/MB read by Smd0'), 
+        'psana_smd0_sent'       : ('Counter', 'Counting no. of events/batches/MB and wait time \
+                                    communicating with EventBuilder cores'), 
+        'psana_eb_sent'         : ('Counter', 'Counting no. of events/batches/MB and wait time \
+                                    communicating with BigData cores'),
+        'psana_eb_filter'       : ('Counter', 'Counting no. of batches and wait time \
+                                    in filter callback'), 
+        'psana_bd_read'         : ('Counter', 'Counting no. of events processed by BigData'),
         'psana_bd_wait_disk'    : ('Summary', 'time spent (s) reading bigdata'),
         'psana_bd_ana'          : ('Counter', 'time spent (s) in analysis fn on \
                                     BigData core'),

@@ -16,7 +16,7 @@ class BatchIterator(object):
 
     SmdReaderManager returns this object when a chunk is read.
     """
-    def __init__(self, views, batch_size=1, filter_fn=0, destination=0):
+    def __init__(self, views, configs, batch_size=1, filter_fn=0, destination=0):
         self.batch_size = batch_size
         self.filter_fn = filter_fn
         self.destination = destination
@@ -30,7 +30,7 @@ class BatchIterator(object):
         if empty_view:
             self.eb = None
         else:
-            self.eb = EventBuilder(views)
+            self.eb = EventBuilder(views, configs)
 
 
     def __iter__(self):
@@ -121,8 +121,10 @@ class SmdReaderManager(object):
                 raise StopIteration
         
         mmrv_bufs, _ = self.smdr.view(batch_size=self.batch_size)
-        batch_iter = BatchIterator(mmrv_bufs, batch_size=self.run.batch_size, \
-                filter_fn=self.run.filter_callback, destination=self.run.destination)
+        batch_iter = BatchIterator(mmrv_bufs, self.run.configs, 
+                batch_size  = self.run.batch_size, 
+                filter_fn   = self.run.filter_callback, 
+                destination = self.run.destination)
         self.got_events = self.smdr.view_size
         self.processed_events += self.got_events
 

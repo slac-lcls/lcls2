@@ -12,6 +12,9 @@ from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from libc.stdint cimport uint32_t, uint64_t
 
+from psana.event import Event
+import time
+
 cdef class EventBuilder:
     """Builds a batch of events
     Takes memoryslice 'views' and identifies matching timestamp
@@ -36,6 +39,7 @@ cdef class EventBuilder:
     cdef array.array event_timestamps
     cdef array.array services
     cdef list views
+    cdef list configs
     cdef unsigned nevents
     cdef unsigned nsteps
     cdef size_t DGRAM_SIZE
@@ -44,21 +48,22 @@ cdef class EventBuilder:
     cdef unsigned long max_ts
     cdef unsigned L1_ACCEPT
 
-    def __init__(self, views):
-        self.nsmds = len(views)
-        self.offsets = array.array('I', [0]*self.nsmds)
-        self.sizes = array.array('I', [memoryview(view).shape[0] for view in views])
-        self.timestamps = array.array('L', [0]*self.nsmds)
-        self.dgram_sizes = array.array('I', [0]*self.nsmds)
-        self.dgram_timestamps = array.array('L', [0]*self.nsmds)
-        self.event_timestamps = array.array('L', [0]*self.nsmds)
-        self.services = array.array('i', [0]*self.nsmds)
-        self.views = views
-        self.nevents = 0
-        self.nsteps = 0
-        self.DGRAM_SIZE = sizeof(Dgram)
-        self.XTC_SIZE = sizeof(Xtc)
-        self.L1_ACCEPT = 12
+    def __init__(self, views, configs):
+        self.nsmds              = len(views)
+        self.offsets            = array.array('I', [0]*self.nsmds)
+        self.sizes              = array.array('I', [memoryview(view).shape[0] for view in views])
+        self.timestamps         = array.array('L', [0]*self.nsmds)
+        self.dgram_sizes        = array.array('I', [0]*self.nsmds)
+        self.dgram_timestamps   = array.array('L', [0]*self.nsmds)
+        self.event_timestamps   = array.array('L', [0]*self.nsmds)
+        self.services           = array.array('i', [0]*self.nsmds)
+        self.views              = views
+        self.configs            = configs
+        self.nevents            = 0
+        self.nsteps             = 0
+        self.DGRAM_SIZE         = sizeof(Dgram)
+        self.XTC_SIZE           = sizeof(Xtc)
+        self.L1_ACCEPT          = 12
         
     def _has_more(self):
         for i in range(self.nsmds):
@@ -66,7 +71,7 @@ cdef class EventBuilder:
                 return True
         return False
 
-    def build(self, batch_size=1, filter_fn=0, destination=0, limit_ts=-1):
+    def build(self, batch_size=1, filter_fn=0, destination=0, limit_ts=-1, prometheus_counter=None):
         """
         Builds a list of batches.
 
@@ -117,6 +122,8 @@ cdef class EventBuilder:
         # For checking step dgrams
         cdef unsigned service = 0
 
+        cdef int accept = 1 # for filter callback
+
         while got < batch_size and self._has_more() and not reach_limit_ts:
             array.zero(self.timestamps)
             array.zero(self.dgram_sizes)
@@ -149,6 +156,8 @@ cdef class EventBuilder:
             for smd_id in sorted_smd_id:
                 if self.timestamps[smd_id] == 0:
                     continue
+
+                accept = 1
 
                 array.zero(self.event_timestamps)
                 self.event_timestamps[smd_id] = self.timestamps[smd_id]
@@ -222,25 +231,31 @@ cdef class EventBuilder:
                         evt_footer_view[dgram_idx] = dgram.nbytes
                         evt_bytes.extend(bytearray(dgram))
                     evt_size += evt_footer_view[dgram_idx]
-
-                batch.extend(evt_bytes)
-                batch.extend(evt_footer_view)
-                evt_sizes.append(evt_size + evt_footer_size)
-                got += 1
                 
-                # Add step
-                if service != self.L1_ACCEPT:
-                    step_batch.extend(evt_bytes)
-                    step_batch.extend(evt_footer_view)
-                    step_sizes.append(evt_size + evt_footer_size)
-                    got_step += 1
+                evt_bytes.extend(evt_footer_view)
 
-                # mona removed evt._complete() - I think smd events do not
-                # need det interface. The evt._complete() is called in def _from_bytes()
-                # and this is how bigdata events are created.
-                
-                # TODO: 
-                # Find a place for filter(evt)
+                if filter_fn != 0:
+                    py_evt = Event._from_bytes(self.configs, evt_bytes) 
+                    # mona removed evt._complete() - I think smd events do not
+                    # need det interface. The evt._complete() is called in def _from_bytes()
+                    # and this is how bigdata events are created.
+                    st_filter = time.time()
+                    accept = filter_fn(py_evt)
+                    en_filter = time.time()
+                    if prometheus_counter is not None:
+                        prometheus_counter.labels('seconds', 'None').inc(en_filter - st_filter)
+                        prometheus_counter.labels('batches', 'None').inc()
+
+                if accept == 1:
+                    batch.extend(evt_bytes)
+                    evt_sizes.append(evt_size + evt_footer_size)
+                    got += 1
+                    
+                    # Add step
+                    if service != self.L1_ACCEPT:
+                        step_batch.extend(evt_bytes)
+                        step_sizes.append(evt_size + evt_footer_size)
+                        got_step += 1
 
                 if limit_ts > -1:
                     if self.max_ts >= limit_ts:

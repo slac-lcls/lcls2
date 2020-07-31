@@ -10,10 +10,8 @@ from psana.dgram import Dgram
 import os
 from mpi4py import MPI
 import logging
-from psana.psexp.prometheus_manager import PrometheusManager
+import time
 
-s_smd0_recv = PrometheusManager.get_metric('psana_smd0_wait_recv')
-s_eb_recv   = PrometheusManager.get_metric('psana_eb_wait_recv')
 
 # Setting up group communications
 # Ex. PS_SMD_NODES=3 mpirun -n 13
@@ -258,10 +256,6 @@ class Smd0(object):
         
         self.run_mpi()
 
-    @s_smd0_recv.time()
-    def _request_rank(self, rankreq):
-        logging.debug("Node: Smd0 requesting a rank")
-        self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
@@ -277,7 +271,9 @@ class Smd0(object):
             # then send only unseen portion of data to the evtbuilder rank.
             if not smd_chunk: break
             
-            self._request_rank(rankreq) # wrap request so prometheus can profile it
+            st_req = time.time()
+            self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+            en_req = time.time()
             
             # Check missing steps for the current client
             missing_step_views = self.step_hist.get_buffer(rankreq[0])
@@ -295,9 +291,11 @@ class Smd0(object):
             self.c_sent.labels('evts', rankreq[0]).inc(self.smdr_man.got_events)
             self.c_sent.labels('batches', rankreq[0]).inc()
             self.c_sent.labels('MB', rankreq[0]).inc(memoryview(smd_extended).nbytes/1e6)
+            self.c_sent.labels('seconds', rankreq[0]).inc(en_req - st_req)
+            logging.debug(f'node.py: Smd0 sent {self.smdr_man.got_events} events to {rankreq[0]} (waiting for this rank took {en_req-st_req:.5f} seconds)')
         
         for i in range(self.run.comms.n_smd_nodes):
-            self._request_rank(rankreq)
+            self.run.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             self.run.comms.smd_comm.Send(bytearray(), dest=rankreq[0])
 
 
@@ -339,10 +337,12 @@ class SmdNode(object):
             self.step_hist.extend_buffers(step_pf.split_packets(), dest_rank, as_event=True)
         del step_batch_dict[dest_rank] # done adding
 
-    @s_eb_recv.time()
     def _request_rank(self, rankreq):
-        logging.debug("Node: EventBuilder requesting a rank")
+        st_req = time.time()
         self.run.comms.bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+        en_req = time.time()
+        self.c_sent.labels('seconds',rankreq[0]).inc(en_req-st_req)
+        logging.debug("node.py: EventBuilder %d got BigData %d (request took %.5f seconds)"%(self.run.comms.smd_rank, rankreq[0], (en_req-st_req)))
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
@@ -377,7 +377,7 @@ class SmdNode(object):
                     bd_comm.Send(batch, dest=rankreq[0])
                     
                     # sending data to prometheus
-                    logging.debug('EventBuilder sent %d events (%.2f MB) to rank %d'%(eb_man.eb.nevents, memoryview(batch).nbytes/1e6, rankreq[0]))
+                    logging.debug('node.py: EventBuilder sent %d events (%.2f MB) to rank %d'%(eb_man.eb.nevents, memoryview(batch).nbytes/1e6, rankreq[0]))
                     self.c_sent.labels('evts', rankreq[0]).inc(eb_man.eb.nevents)
                     self.c_sent.labels('batches', rankreq[0]).inc()
                     self.c_sent.labels('MB', rankreq[0]).inc(memoryview(batch).nbytes/1e6)

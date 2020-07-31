@@ -107,7 +107,7 @@ class RunParallel(Run):
             yield evt
             en = time.time()
             self.c_ana.labels('seconds','None').inc(en-st)
-            self.c_ana.labels('calls','None').inc()
+            self.c_ana.labels('batches','None').inc()
 
     def steps(self):
         self.scan = True
