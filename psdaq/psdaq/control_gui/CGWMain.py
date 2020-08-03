@@ -43,18 +43,18 @@ from psdaq.control_gui.CGWMainTabs          import CGWMainTabs
 
 #------------------------------
 
-class CGWMain(QWZMQListener) :
+class CGWMain(QWZMQListener):
 
     _name = 'CGWMain'
 
-    def __init__(self, parser=None) :
+    def __init__(self, parser=None):
 
         self.proc_parser(parser)
 
-        if __name__ != "__main__" :
+        if __name__ != "__main__":
           daq_control.set_daq_control(DaqControl(host=self.host, platform=self.platform, timeout=self.timeout))
           QWZMQListener.__init__(self, host=self.host, platform=self.platform, timeout=self.timeout)
-        else : # emulator mode for TEST ONLY
+        else: # emulator mode for TEST ONLY
           QWZMQListener.__init__(self, is_normal=False)
 
         self.init_daq_control_parameters() # cach parameters in cp
@@ -90,17 +90,17 @@ class CGWMain(QWZMQListener) :
         #self.connect_signals_to_slots()
         #self.move(self.pos()) # + QPoint(self.width()+5, 0))
 
-    def connect_signals_to_slots(self) :
+    def connect_signals_to_slots(self):
         pass
         #self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
         #self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
 
 #------------------------------
 
-    def proc_parser(self, parser=None) :
+    def proc_parser(self, parser=None):
         self.parser=parser
 
-        if parser is None :
+        if parser is None:
             self.loglevel = 'DEBUG'
             self.logdir   = 'logdir'
             self.expert   = None
@@ -122,37 +122,37 @@ class CGWMain(QWZMQListener) :
         self.user       = popts.user 
         self.password   = popts.password 
 
-        #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
-        #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
-        #if port     != self.defs['port']       : cp.cdb_port.setValue(port)
-        #if exp      != self.defs['experiment'] : cp.exp_name.setValue(exp)
-        #if det      != self.defs['detector']   : cp.data_source.setValue(det)
-        #if loglevel != self.defs['loglevel']   : cp.log_level.setValue(loglevel)
-        #if logdir   != self.defs['logdir']     : cp.log_prefix.setValue(logdir)
+        #if host     != self.defs['host']      : cp.cdb_host.setValue(host)
+        #if host     != self.defs['host']      : cp.cdb_host.setValue(host)
+        #if port     != self.defs['port']      : cp.cdb_port.setValue(port)
+        #if exp      != self.defs['experiment']: cp.exp_name.setValue(exp)
+        #if det      != self.defs['detector']  : cp.data_source.setValue(det)
+        #if loglevel != self.defs['loglevel']  : cp.log_level.setValue(loglevel)
+        #if logdir   != self.defs['logdir']    : cp.log_prefix.setValue(logdir)
 
-        #if is_in_command_line(None, '--host')       : cp.cdb_host.setValue(host)
-        #if is_in_command_line(None, '--port')       : cp.cdb_port.setValue(port)
-        #if is_in_command_line('-e', '--experiment') : cp.exp_name.setValue(exp)
-        #if is_in_command_line('-d', '--detector')   : cp.data_source.setValue(det)
-        #if is_in_command_line('-l', '--loglevel')   : cp.log_level.setValue(loglevel)
-        #if is_in_command_line('-L', '--logdir')     : cp.log_prefix.setValue(logdir)
+        #if is_in_command_line(None, '--host')      : cp.cdb_host.setValue(host)
+        #if is_in_command_line(None, '--port')      : cp.cdb_port.setValue(port)
+        #if is_in_command_line('-e', '--experiment'): cp.exp_name.setValue(exp)
+        #if is_in_command_line('-d', '--detector')  : cp.data_source.setValue(det)
+        #if is_in_command_line('-l', '--loglevel')  : cp.log_level.setValue(loglevel)
+        #if is_in_command_line('-L', '--logdir')    : cp.log_prefix.setValue(logdir)
 
-        #if self.loglevel == 'DEBUG' :
+        #if self.loglevel == 'DEBUG':
         #    print(40*'_')
         #    print_parser(parser)
         #    print_kwargs(self.opts)
 #------------------------------
 
-    def init_daq_control_parameters(self) :
+    def init_daq_control_parameters(self):
         cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording, _platform, \
             cp.s_bypass_activedet, cp.s_experiment_name, cp.s_run_number, cp.s_last_run_number = daq_control_get_status()
         cp.instr = daq_control_get_instrument()
         logger.debug('daq_control_get_instrument(): %s' % cp.instr)
-        if cp.instr is None : logger.warning('instrument is None')
+        if cp.instr is None: logger.warning('instrument is None')
 
 #------------------------------
 
-    def set_tool_tips(self) :
+    def set_tool_tips(self):
         pass
         #self.setToolTip('DAQ control')
 
@@ -165,7 +165,7 @@ class CGWMain(QWZMQListener) :
 
 #--------------------
 
-    def set_style(self) :
+    def set_style(self):
         self.setWindowTitle("DAQ Control")
         self.layout().setContentsMargins(0,0,0,0)
         self.setMinimumSize(300,700)
@@ -217,13 +217,13 @@ class CGWMain(QWZMQListener) :
         #self.but1.raise_()
 
 
-    def closeEvent(self, e) :
+    def closeEvent(self, e):
         logger.debug('%s.closeEvent' % self._name)
 
         resp = confirm_or_cancel_dialog_box(parent=None,
                                             text='Close window?',\
                                             title='Confirm or cancel') 
-        if not resp : 
+        if not resp: 
             logger.warning('Closing window is cancelled')
             e.ignore()
             return
@@ -231,12 +231,12 @@ class CGWMain(QWZMQListener) :
         logger.debug('Closing window is confirmed')
 
         # save app-configuration parameters
-        #try :
+        #try:
         #    self.on_save()
         #except Exception as ex:
         #    print('Exception: %s' % ex)
 
-        try : 
+        try: 
             self.wtabs.close()
             self.wconf.close()
             self.wlogr.close()
@@ -251,10 +251,10 @@ class CGWMain(QWZMQListener) :
 
 #--------------------
         
-#    def __del__(self) :
+#    def __del__(self):
 #        logger.debug('In CGConfigParameters d-tor')
-#        #if self.save_cp_at_exit.value() :
-#        if True :
+#        #if self.save_cp_at_exit.value():
+#        if True:
 #            self.on_save()
 
 #--------------------
@@ -264,7 +264,7 @@ class CGWMain(QWZMQListener) :
         #QWZMQListener.resizeEvent(self, e)
 
 
-    #def moveEvent(self, e) :
+    #def moveEvent(self, e):
         #logger.debug('moveEvent', self._name) 
         #self.position = self.mapToGlobal(self.pos())
         #self.position = self.pos()
@@ -278,7 +278,7 @@ class CGWMain(QWZMQListener) :
 
         point, size = self.mapToGlobal(QPoint(-5,-22)), self.size() # Offset (-5,-22) for frame size.
         x,y,w,h = point.x(), point.y(), size.width(), size.height()
-        msg = 'Save main window x,y,w,h : %d, %d, %d, %d' % (x,y,w,h)
+        msg = 'Save main window x,y,w,h: %d, %d, %d, %d' % (x,y,w,h)
         logger.info(msg) #, self._name)
         print(msg)
 
@@ -297,13 +297,12 @@ class CGWMain(QWZMQListener) :
         cp.printParameters()
         cp.saveParametersInFile()
 
-        #if cp.save_log_at_exit.value() :
+        #if cp.save_log_at_exit.value():
         #    pass
             # ?????
             #log.saveLogInFile(cp.log_file.value())
             #print('Saved log file: %s' % cp.log_file.value())
             #log.saveLogTotalInFile(fnm.log_file_total())
-
 
 #------------------------------
 
@@ -315,21 +314,21 @@ class CGWMain(QWZMQListener) :
         flags = self.zmq_socket.getsockopt(zmq.EVENTS)
         flag = 'UNKNOWN'
         msg = ''
-        if flags & zmq.POLLIN :
-          while self.zmq_socket.getsockopt(zmq.EVENTS) & zmq.POLLIN :
+        if flags & zmq.POLLIN:
+          while self.zmq_socket.getsockopt(zmq.EVENTS) & zmq.POLLIN:
             flag = 'POLLIN'
             msg = self.zmq_socket.recv_multipart()
             self.process_zmq_message(msg)
             #self.setWindowTitle(str(msg))
-        elif flags & zmq.POLLOUT : flag = 'POLLOUT'
-        elif flags & zmq.POLLERR : flag = 'POLLERR'
-        else : pass
+        elif flags & zmq.POLLOUT: flag = 'POLLOUT'
+        elif flags & zmq.POLLERR: flag = 'POLLERR'
+        else: pass
 
         self.zmq_notifier.setEnabled(True)
         _flags = self.zmq_socket.getsockopt(zmq.EVENTS) # WITHOUT THIS LINE IT WOULD NOT CALL on_read_msg AGAIN!
         logger.debug('CGWMain.on_zmq_poll Flag zmq.%s in %d msg: %s' % (flag, flags, msg)\
                    + '\n    poll processing time = %.6f sec' % (time()-t0_sec))
-        if _flags & zmq.POLLIN : self.on_zmq_poll()
+        if _flags & zmq.POLLIN: self.on_zmq_poll()
 
 
     def process_zmq_message(self, msg):
@@ -339,13 +338,15 @@ class CGWMain(QWZMQListener) :
         wctrl = cp.cgwmaintabuser if cp.cgwmaintabuser is not None else\
                 cp.cgwmaincontrol
 
-        try :
-            for rec in msg :
+        try:
+            for rec in msg:
                 jo = json.loads(rec)
                 #  jo['header'] # {'key': 'status', 'msg_id': '0918505109-317821000', 'sender_id': None}
                 #  jo['body']   # {'state': 'allocated', 'transition': 'alloc'}
 
-                if  jo['header']['key'] == 'status' :
+                jo_header_key = jo['header']['key']
+
+                if  jo_header_key == 'status':
                     body = jo['body']
                     cp.s_transition = body['transition']
                     cp.s_state      = body['state']
@@ -358,40 +359,46 @@ class CGWMain(QWZMQListener) :
                     cp.s_last_run_number  = body['last_run_number']     # int
 
                     #====
-                    if wctrl is not None : wctrl.set_but_ctrls()
-                    if wctrl is not None : wctrl.update_progress_bar(0, is_visible=False)
+                    if wctrl is not None: wctrl.set_but_ctrls()
+                    if wctrl is not None: wctrl.update_progress_bar(0, is_visible=False)
                     self.wconf.set_config_type(cp.s_cfgtype)
-                    if wcoll is not None : wcoll.update_table()
+                    if wcoll is not None: wcoll.update_table()
                     logger.info('zmq msg transition:%s state:%s config:%s recording:%s'%\
                                 (cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording))
 
-                elif jo['header']['key'] == 'error' :
+                elif jo_header_key == 'error':
                     body = jo['body']
-                    logger.error('received error msg: %s' % body['err_info'])
-                    if wctrl is not None : wctrl.update_progress_bar(0, is_visible=False)
-                    if wctrl is not None : wctrl.set_but_ctrls()
+                    logger.error(str(body['err_info']))
+                    if wctrl is not None: wctrl.update_progress_bar(0, is_visible=False)
+                    if wctrl is not None: wctrl.set_but_ctrls()
 
                     ## grab status directly (not from error message)
                     #status = daq_control_get_status()
-                    #if status is None :
+                    #if status is None:
                     #    logger.warning('process_zmq_message on error: STATUS IS NOT AVAILABLE')
                     #    return
 
                     #transition, state, cfgtype, recording = status
                     #self.wconf.set_config_type(cfgtype)
-                    #if wcoll is not None : wcoll.update_table()
+                    #if wcoll is not None: wcoll.update_table()
 
-                elif jo['header']['key'] == 'progress' :
+                elif jo_header_key == 'warning':
                     body = jo['body']
-                    logger.debug('received progress msg: %s' % str(body))
-                    if wctrl is not None : 
+                    logger.warning(str(body['err_info']))
+                    if wctrl is not None: wctrl.update_progress_bar(0, is_visible=False)
+                    if wctrl is not None: wctrl.set_but_ctrls()
+
+                elif jo_header_key == 'progress':
+                    body = jo['body']
+                    logger.debug('progress: %s' % str(body))
+                    if wctrl is not None: 
                         v = 100*body['elapsed'] / body['total']
                         wctrl.update_progress_bar(v, is_visible=True, trans_name=body['transition'])
 
-                else :
+                else:
                     sj = json.dumps(jo, indent=2, sort_keys=False)
                     logger.debug('received jason:\n%s' % sj)
-                    if wctrl is not None : wctrl.update_progress_bar(0, is_visible=False)
+                    if wctrl is not None: wctrl.update_progress_bar(0, is_visible=False)
 
         except KeyError as ex:
              logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex))
@@ -404,25 +411,25 @@ class CGWMain(QWZMQListener) :
 #------------------------------
 #------------------------------
 
-    if __name__ == "__main__" :
+    if __name__ == "__main__":
 
-      def key_usage(self) :
+      def key_usage(self):
         return 'Keys:'\
                '\n  V - view/hide tabs'\
                '\n'
 
-      def keyPressEvent(self, e) :
+      def keyPressEvent(self, e):
         #print('keyPressEvent, key=', e.key())       
-        if   e.key() == Qt.Key_Escape :
+        if   e.key() == Qt.Key_Escape:
             self.close()
-        elif e.key() == Qt.Key_V : 
+        elif e.key() == Qt.Key_V: 
             self.wtab.view_hide_tabs()
-        else :
+        else:
             logger.info(self.key_usage())
 
 #------------------------------
 
-def proc_control_gui(parser=None) :
+def proc_control_gui(parser=None):
     import sys
     #sys.stdout = sys.stderr = open('/dev/null', 'w') # open('%s-stdout-stderr' % cp.log_file.value(), 'w')
 
@@ -441,7 +448,7 @@ def proc_control_gui(parser=None) :
 
 #------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     from psdaq.control_gui.CGDaqControl import DaqControlEmulator
     daq_control.set_daq_control(DaqControlEmulator())

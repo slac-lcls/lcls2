@@ -39,7 +39,7 @@ from psdaq.control_gui.CGConfigParameters import cp
 #--------------------
 char_expand  = u' \u25BC' # down-head triangle
 
-class CGWConfigSelect(QGroupBox) :
+class CGWConfigSelect(QGroupBox):
     """
     """
     def __init__(self, parent=None, type_def='Select', dev_def='Select'):
@@ -82,7 +82,7 @@ class CGWConfigSelect(QGroupBox) :
 
 #--------------------
 
-    def set_tool_tips(self) :
+    def set_tool_tips(self):
         #self.setToolTip('Configuration') 
         #self.but_edit.setToolTip('Edit configuration dictionary.')
         self.but_type.setToolTip('Select configuration type.') 
@@ -90,19 +90,19 @@ class CGWConfigSelect(QGroupBox) :
 
 #--------------------
 
-    def set_buts_enabled(self) :
+    def set_buts_enabled(self):
         is_selected_type = self.but_type.text()[:6] != 'Select'
         is_selected_det  = self.but_dev .text()[:6] != 'Select'
-        self.but_dev .setEnabled(is_selected_type)
+        self.but_dev.setEnabled(is_selected_type)
         #self.but_edit.setEnabled(is_selected_type and is_selected_det)
-        if self.but_apply is not None :
+        if self.but_apply is not None:
             is_enabled = is_selected_type and is_selected_det
             self.but_apply.setEnabled(is_enabled)
             #self.but_apply.setFlat(not is_enabled)
 
 #--------------------
 
-    def set_style(self) :
+    def set_style(self):
         from psdaq.control_gui.Styles import style
         self.setStyleSheet(style.qgrbox_title)
         self.set_buts_enabled()
@@ -119,7 +119,7 @@ class CGWConfigSelect(QGroupBox) :
         inst = getattr(cp, 'instr', None)
         user = getattr(cp.cgwmain, 'user', None)
         pwd  = getattr(cp.cgwmain, 'password', None)
-        if inst is None : inst = daq_control_get_instrument()
+        if inst is None: inst = daq_control_get_instrument()
         logger.debug('%sconnect to configdb(uris=%s, inst=%s, user=%s, password=...)' % (msg, uris, inst, user))
         return inst, get_configdb(uri=uris, hutch=inst, create=False, root=ROOT_CONFIGDB, user=user, password=pwd)
 
@@ -128,8 +128,9 @@ class CGWConfigSelect(QGroupBox) :
     def on_but_type(self):
         #logger.debug('on_but_type')
         inst, confdb = self.inst_configdb('on_but_type: ')
-        list_of_aliases = confdb.get_aliases(hutch=inst) # ['NOBEAM', 'BEAM']
-        if not list_of_aliases :
+        list_of_aliases = confdb.get_aliases(hutch=inst) # ['NOBEAM', 'BEAM', ??? 'PROD']
+
+        if not list_of_aliases:
             list_of_aliases = ['NOBEAM', 'BEAM']
             logger.warning('List of configdb-s IS EMPTY... Use default: %s' % str(list_of_aliases))
 
@@ -138,7 +139,7 @@ class CGWConfigSelect(QGroupBox) :
         msg = 'selected %s of the list %s' % (selected, str(list_of_aliases))
         logger.debug(msg)
 
-        if selected != self.type_old :
+        if selected != self.type_old:
             self.set_but_dev_text()
             self.type_old = selected
 
@@ -151,7 +152,7 @@ class CGWConfigSelect(QGroupBox) :
 #--------------------
  
     def set_config_type(self, config_type):
-        if config_type == self.type_old : return
+        if config_type == self.type_old: return
 
         self.set_but_type_text(config_type)
         self.set_but_dev_text()
@@ -180,7 +181,7 @@ class CGWConfigSelect(QGroupBox) :
         cfgtype = str(self.but_type.text()).split(' ')[0] # 'NOBEAM' or 'BEAM'
         list_of_device_names = confdb.get_devices(cfgtype, hutch=inst)
 
-        if not list_of_device_names :
+        if not list_of_device_names:
             logger.warning('list_of_device_names IS EMPTY... Check configuration DB')
             return
 
@@ -195,13 +196,13 @@ class CGWConfigSelect(QGroupBox) :
 
     def closeEvent(self, e):
         print('CGWConfigSelect.closeEvent')
-        if self.w_edit is not None :
+        if self.w_edit is not None:
            self.w_edit.close()
         QGroupBox.closeEvent(self, e)
 
 #--------------------
  
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
 
