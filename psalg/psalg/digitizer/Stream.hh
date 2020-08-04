@@ -16,7 +16,7 @@ namespace Pds {
     public:
       unsigned num_samples() const { return _word[0]&0x3fffffff; }
       unsigned stream_id  () const { return (_word[1]>>24)&0xff; }
-      unsigned samples () const { return _word[0]&0x7fffffff; } // number of samples
+      unsigned samples () const { return num_samples(); } // number of samples
       bool     unlocked() const { return (_word[0]>>30)&1; }        // data serial link unlocked
       bool     overflow() const { return (_word[0]>>31)&1; }        // overflow of memory buffer
       unsigned strmtype() const { return (_word[1]>>24)&0xff; } // type of stream {raw, thr, ...}
@@ -24,7 +24,8 @@ namespace Pds {
       unsigned eoffs   () const { return (_word[1]>>8)&0xff; }  // padding at end
       unsigned buffer  () const { return _word[1]>>16; }        // 16 front-end buffers (like FEE)
       // (only need 4 bits but using 16)
-      unsigned toffs   () const { return _word[2]; }            // phase between sample clock and timing clock (1.25GHz)
+      unsigned toffs   () const { return (_word[2]>> 0)&0xffff; } // phase between sample clock and timing clock (1.25GHz)
+      unsigned l1tag   () const { return (_word[2]>>16)&0x1f; }   // trigger tag word
       // wrong if this value is not fixed
       unsigned baddr   () const { return _word[3]&0xffff; }     // begin address in circular buffer
       unsigned eaddr   () const { return _word[3]>>16; }        // end address in circular buffer
