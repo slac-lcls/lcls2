@@ -14,10 +14,11 @@ namespace Pds {
     public:
       StreamHeader() {}
     public:
-      unsigned num_samples() const { return _word[0]&~(1<<31); }
+      unsigned num_samples() const { return _word[0]&0x3fffffff; }
       unsigned stream_id  () const { return (_word[1]>>24)&0xff; }
       unsigned samples () const { return _word[0]&0x7fffffff; } // number of samples
-      bool     overflow() const { return _word[0]>>31; }        // overflow of memory buffer
+      bool     unlocked() const { return (_word[0]>>30)&1; }        // data serial link unlocked
+      bool     overflow() const { return (_word[0]>>31)&1; }        // overflow of memory buffer
       unsigned strmtype() const { return (_word[1]>>24)&0xff; } // type of stream {raw, thr, ...}
       unsigned boffs   () const { return (_word[1]>>0)&0xff; }  // padding at start
       unsigned eoffs   () const { return (_word[1]>>8)&0xff; }  // padding at end
