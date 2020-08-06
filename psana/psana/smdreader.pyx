@@ -5,22 +5,32 @@ from libc.string cimport memcpy
 from dgramlite cimport Xtc, Sequence, Dgram
 from parallelreader cimport Buffer, ParallelReader
 from libc.stdint cimport uint32_t, uint64_t
-import numpy as np
+from cython.parallel import prange
+from cpython cimport array
 import time, os
+cimport cython
 
 
 cdef class SmdReader:
     cdef ParallelReader prl_reader
-    cdef int winner, view_size
-    cdef int max_retries, sleep_secs
+    cdef int            winner, view_size
+    cdef int            max_retries, sleep_secs
+    cdef array.array    buf_offsets, stepbuf_offsets, buf_sizes, stepbuf_sizes
+    cdef array.array    i_evts, founds
 
     def __init__(self, int[:] fds, int chunksize):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
-        self.prl_reader     = ParallelReader(fds, chunksize)
+        self.prl_reader         = ParallelReader(fds, chunksize)
         
         # max retries has no default value (set when creating datasource)
-        self.max_retries    = int(os.environ['PS_SMD_MAX_RETRIES']) 
-        self.sleep_secs     = int(os.environ.get('PS_SMD_SLEEP_SECS', '1'))
+        self.max_retries        = int(os.environ['PS_SMD_MAX_RETRIES']) 
+        self.sleep_secs         = int(os.environ.get('PS_SMD_SLEEP_SECS', '1'))
+        self.buf_offsets        = array.array('Q', [0]*fds.size)
+        self.stepbuf_offsets    = array.array('Q', [0]*fds.size)
+        self.buf_sizes          = array.array('Q', [0]*fds.size)
+        self.stepbuf_sizes      = array.array('Q', [0]*fds.size)
+        self.i_evts             = array.array('Q', [0]*fds.size)
+        self.founds             = array.array('Q', [0]*fds.size)
 
     def is_complete(self):
         """ Checks that all buffers have at least one event 
@@ -49,7 +59,7 @@ cdef class SmdReader:
                 if cn_retries > self.max_retries:
                     break
 
-
+    @cython.boundscheck(False)
     def view(self, int batch_size=1000):
         """ Returns memoryview of the data and step buffers.
 
@@ -59,7 +69,7 @@ cdef class SmdReader:
         """
 
         # Find the winning buffer
-        cdef int i
+        cdef int i, i_evt
         cdef uint64_t limit_ts=0
         
         for i in range(self.prl_reader.nfiles):
@@ -79,47 +89,79 @@ cdef class SmdReader:
 
         # Locate the viewing window and update seen_offset for each buffer
         cdef uint64_t[:] ts_view
-        cdef uint64_t prev_seen_offset = 0
-        cdef Py_ssize_t found_pos
+        cdef uint64_t prev_seen_offset  = 0
         cdef uint64_t block_size
-        cdef char[:] view
-        
-        mmrv_bufs = []
-        mmrv_step_bufs = []
-        cdef Buffer* buf, step_buf
+        cdef Buffer* buf
+        cdef uint64_t[:] buf_offsets    = self.buf_offsets
+        cdef uint64_t[:] buf_sizes      = self.buf_sizes
+        cdef uint64_t[:] stepbuf_offsets= self.stepbuf_offsets
+        cdef uint64_t[:] stepbuf_sizes  = self.stepbuf_sizes
+        cdef uint64_t[:] i_evts         = self.i_evts 
+        cdef uint64_t[:] founds         = self.founds
         for i in range(self.prl_reader.nfiles):
             buf = &(self.prl_reader.bufs[i])
-            ts_view = buf.ts_arr
-            prev_seen_offset = buf.seen_offset
+            buf_offsets[i] = buf.seen_offset
             
             # All the events before found_pos are within max_ts
-            found_pos = np.searchsorted(ts_view[:buf.n_ready_events], limit_ts, side='right')
-            buf.seen_offset = buf.next_offset_arr[found_pos-1]
-            buf.n_seen_events = found_pos
+            i_evts[i] = buf.n_seen_events
+            founds[i] = 0
+            while i_evts[i] < buf.n_ready_events and buf.ts_arr[i_evts[i]] < limit_ts:
+                i_evts[i] += 1
 
-            block_size = buf.seen_offset - prev_seen_offset
-            if block_size > 0:
+            if i_evts[i] == buf.n_ready_events:     # all events should be yielded
+                founds[i] = buf.n_ready_events - 1 
+            if buf.ts_arr[i_evts[i]] == limit_ts:   # this event matches limit ts
+                founds[i] = i_evts[i]              
+            elif buf.ts_arr[i_evts[i]] > limit_ts:  # this event exceeds limt ts yield all the events prior to this one
+                founds[i] = i_evts[i] - 1
+            
+            buf.seen_offset = buf.next_offset_arr[founds[i]]
+            buf.n_seen_events = founds[i] + 1
+            buf_sizes[i] = buf.seen_offset - buf_offsets[i]
+            
+            # Handle step buffers the same way
+            buf = &(self.prl_reader.step_bufs[i])
+            stepbuf_offsets[i] = buf.seen_offset
+            
+            # All the events before found_pos are within max_ts
+            i_evts[i] = buf.n_seen_events
+            founds[i] = 0
+            while i_evts[i] < buf.n_ready_events and buf.ts_arr[i_evts[i]] < limit_ts:
+                i_evts[i] += 1
+
+            if i_evts[i] == buf.n_ready_events:     # all events should be yielded
+                founds[i] = buf.n_ready_events - 1 
+            if buf.ts_arr[i_evts[i]] == limit_ts:   # this event matches limit ts
+                founds[i] = i_evts[i]              
+            elif buf.ts_arr[i_evts[i]] > limit_ts:  # this event exceeds limt ts yield all the events prior to this one
+                founds[i] = i_evts[i] - 1
+            
+            buf.seen_offset = buf.next_offset_arr[founds[i]]
+            buf.n_seen_events = founds[i] + 1
+            stepbuf_sizes[i] = buf.seen_offset - stepbuf_offsets[i]
+            
+        # output as a list of memoryviews for both L1 and step buffers
+        mmrv_bufs = []
+        mmrv_step_bufs = []
+        cdef char[:] view
+        for i in range(self.prl_reader.nfiles):
+            buf = &(self.prl_reader.bufs[i])
+            if self.buf_sizes[i] > 0:
+                prev_seen_offset = self.buf_offsets[i]
+                block_size = self.buf_sizes[i]
                 view = <char [:block_size]> (buf.chunk + prev_seen_offset)
                 mmrv_bufs.append(view)
             else:
                 mmrv_bufs.append(0) # add 0 as a place=holder for empty buffer
-
-
-            buf = &(self.prl_reader.step_bufs[i])
-            ts_view = buf.ts_arr
-            prev_seen_offset = buf.seen_offset
             
-            # All the events before found_pos are within max_ts
-            found_pos = np.searchsorted(ts_view[:buf.n_ready_events], limit_ts, side='right')
-            buf.seen_offset = buf.next_offset_arr[found_pos-1]
-            buf.n_seen_events = found_pos
-
-            block_size = buf.seen_offset - prev_seen_offset
-            if block_size > 0:
+            buf = &(self.prl_reader.step_bufs[i])
+            if self.stepbuf_sizes[i] > 0:
+                prev_seen_offset = self.stepbuf_offsets[i]
+                block_size = self.stepbuf_sizes[i]
                 view = <char [:block_size]> (buf.chunk + prev_seen_offset)
                 mmrv_step_bufs.append(view)
             else:
-                mmrv_step_bufs.append(0)
+                mmrv_step_bufs.append(0) # add 0 as a place=holder for empty buffer
         
         return mmrv_bufs, mmrv_step_bufs
 

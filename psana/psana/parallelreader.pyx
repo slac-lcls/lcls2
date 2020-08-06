@@ -5,6 +5,7 @@ from parallelreader cimport Buffer
 from cython.parallel import prange
 import os
 from dgramlite cimport Xtc, Sequence, Dgram
+cimport cython
 
 cdef class ParallelReader:
     
@@ -50,7 +51,8 @@ cdef class ParallelReader:
             buf.seen_offset     = 0     # offset of the event seen (yielded) so far
             buf.n_seen_events   = 0     # no. of seen events
             buf.timestamp       = 0       
-
+    
+    @cython.boundscheck(False)
     cdef void just_read(self):
         """
         Reads only if the buffer has no more unseen events

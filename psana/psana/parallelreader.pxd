@@ -12,9 +12,9 @@ cdef struct Buffer:
     char*    chunk
     uint64_t got
     uint64_t ready_offset 
-    int      n_ready_events             
+    uint64_t n_ready_events             
     uint64_t seen_offset 
-    int      n_seen_events             
+    uint64_t n_seen_events             
     uint64_t timestamp                   # ts of the last dgram
     uint64_t ts_arr[0x100000]            # dgram timestamps 
     uint64_t next_offset_arr[0x100000]   # their offset + size of dgram and payload
