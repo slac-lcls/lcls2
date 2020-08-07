@@ -23,7 +23,9 @@ def opal_init(arg,xpmpv=None):
                'pollEn'      : False,
                'initRead'    : True,
                'camType'     : ['Opal1000'],
-               'dataDebug'   : False,}
+               'dataDebug'   : False,
+               'enLclsII'    : True,
+    }
 
     # in older versions we didn't have to use the "with" statement
     # but now the register accesses don't seem to work without it -cpo
