@@ -19,6 +19,12 @@ if mode == 'mpi':
         sys.__excepthook__(exctype, value, traceback)
     sys.excepthook = global_except_hook
 
+# for debugging...
+#import logging
+#logging.basicConfig(level=logging.DEBUG,
+#                format='(%(threadName)-10s) %(message)s',
+#                        )
+
 def filter_fn(evt):
     return True
 
@@ -42,7 +48,6 @@ for run in ds.runs():
 if mode == 'legion':
     import pygion
     pygion.execution_fence(block=True)
+    assert n_events == 10
 
-print('n_events', n_events)
-# FIXME: Elliott: This fails right now in Legion
-# assert n_events == 10
+#logging.debug(f'n_events={n_events}')

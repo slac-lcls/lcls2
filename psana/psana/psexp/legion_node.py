@@ -11,14 +11,12 @@ else:
             return lambda fn: fn
         return fn
 
-from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.event_manager import TransitionId
 from psana.psexp.events import Events
 
 def smd_chunks(run):
-    smdr_man = SmdReaderManager(run)
-    for smd_chunk, update_chunk in smdr_man.chunks():
+    for smd_chunk, update_chunk in run.smdr_man.chunks():
         yield smd_chunk
 
 @task(inner=True)
