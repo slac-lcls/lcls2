@@ -8,16 +8,20 @@ PUSH_GATEWAY        = 'psdm03:9091'
 registry = CollectorRegistry()
 metrics ={'psana_smd0_wait_disk': ('Summary', 'Time spent (s) reading smalldata'),
         'psana_smd0_read'       : ('Counter', 'Counting no. of events/batches/MB read by Smd0'), 
-        'psana_smd0_sent'       : ('Counter', 'Counting no. of events/batches/MB and wait time \
+        'psana_smd0_sent'       : ('Counter', 'Counting no. of events/batches/MB and wait time  \
                                     communicating with EventBuilder cores'), 
-        'psana_eb_sent'         : ('Counter', 'Counting no. of events/batches/MB and wait time \
+        'psana_eb_sent'         : ('Counter', 'Counting no. of events/batches/MB and wait time  \
                                     communicating with BigData cores'),
-        'psana_eb_filter'       : ('Counter', 'Counting no. of batches and wait time \
+        'psana_eb_filter'       : ('Counter', 'Counting no. of batches and wait time            \
                                     in filter callback'), 
+        'psana_eb_wait_smd0'    : ('Summary', 'time spent (s) waiting for Smd0'),
         'psana_bd_read'         : ('Counter', 'Counting no. of events processed by BigData'),
         'psana_bd_wait_disk'    : ('Summary', 'time spent (s) reading bigdata'),
-        'psana_bd_ana'          : ('Counter', 'time spent (s) in analysis fn on \
+        'psana_bd_wait_eb'      : ('Summary', 'time spent (s) waiting for EventBuilder cores'),
+        'psana_bd_ana'          : ('Counter', 'time spent (s) in analysis fn on                 \
                                     BigData core'),
+        'psana_timestamp'       : ('Gauge',   'Uses different labels (e.g. python_init,         \
+                                    first_event) to set the timestamp of that stage'),
         }
 
 for metric_name, (metric_type, desc) in metrics.items():
@@ -25,6 +29,8 @@ for metric_name, (metric_type, desc) in metrics.items():
         registry.register(Counter(metric_name, desc, ['unit', 'endpoint']))
     elif metric_type == 'Summary':
         registry.register(Summary(metric_name, desc))
+    elif metric_type == 'Guage':
+        registry.register(Guage(metric_name, desc, ['python_init', 'first_event']))
 
 class PrometheusManager(object):
     def __init__(self, jobid):

@@ -11,7 +11,10 @@ import os
 from mpi4py import MPI
 import logging
 import time
+from psana.psexp.prometheus_manager import PrometheusManager
 
+s_eb_wait_smd0 = PrometheusManager.get_metric('psana_eb_wait_smd0')
+s_bd_wait_eb = PrometheusManager.get_metric('psana_bd_wait_eb')
 
 # Setting up group communications
 # Ex. PS_SMD_NODES=3 mpirun -n 13
@@ -306,11 +309,12 @@ class SmdNode(object):
     offsets and dgramsizes into a numpy array. Sends
     this np array to bd_nodes that are registered to it."""
     def __init__(self, run):
-        self.run = run
-        self.step_hist = StepHistory(self.run.comms.bd_size, len(self.run.configs))
-        self.waiting_bds = []
+        self.run        = run
+        self.step_hist  = StepHistory(self.run.comms.bd_size, len(self.run.configs))
+        self.waiting_bds= []
+        
         # Collecting Smd0 performance using prometheus
-        self.c_sent = self.run.prom_man.get_metric('psana_eb_sent')
+        self.c_sent     = self.run.prom_man.get_metric('psana_eb_sent')
 
 
     def pack(self, *args):
@@ -344,6 +348,17 @@ class SmdNode(object):
         self.c_sent.labels('seconds',rankreq[0]).inc(en_req-st_req)
         logging.debug("node.py: EventBuilder %d got BigData %d (request took %.5f seconds)"%(self.run.comms.smd_rank, rankreq[0], (en_req-st_req)))
 
+    @s_eb_wait_smd0.time()
+    def _request_data(self, smd_comm):
+        smd_comm.Send(np.array([self.run.comms.smd_rank], dtype='i'), dest=0)
+        info = MPI.Status()
+        smd_comm.Probe(source=0, status=info)
+        count = info.Get_elements(MPI.BYTE)
+        smd_chunk = bytearray(count)
+        smd_comm.Recv(smd_chunk, source=0)
+        logging.debug(f"node.py: EventBuilder {self.run.comms.smd_rank} received {count/1e6:.2f} MB from Smd0")
+        return smd_chunk
+
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
         smd_comm   = self.run.comms.smd_comm
@@ -352,12 +367,7 @@ class SmdNode(object):
         smd_rank   = self.run.comms.smd_rank
         
         while True:
-            smd_comm.Send(np.array([smd_rank], dtype='i'), dest=0)
-            info = MPI.Status()
-            smd_comm.Probe(source=0, status=info)
-            count = info.Get_elements(MPI.BYTE)
-            smd_chunk = bytearray(count)
-            smd_comm.Recv(smd_chunk, source=0)
+            smd_chunk = self._request_data(smd_comm)
             if not smd_chunk:
                 break
            
@@ -434,7 +444,8 @@ class BigDataNode(object):
         self.step_max_ts = 0
 
     def run_mpi(self):
-
+        
+        @s_bd_wait_eb.time()
         def get_smd():
             bd_comm = self.run.comms.bd_comm
             bd_rank = self.run.comms.bd_rank

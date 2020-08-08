@@ -71,11 +71,13 @@ class SmdReaderManager(object):
 
     @s_smd0_disk.time()
     def _get(self):
-        logging.debug("SmdReaderManager calls smdr.get()")
         self.smdr.get()
+        logging.debug('SmdReaderManager: read %.5f MB'%(self.smdr.got/1e6))
+        self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
         
         if self.smdr.chunk_overflown > 0:
             msg = f"SmdReader found dgram ({self.smdr.chunk_overflown} MB) larger than chunksize ({self.chunksize/1e6} MB)"
+            logging.debug(msg)
             raise ValueError(msg)
 
     def get_next_dgrams(self, configs=None):
@@ -116,7 +118,6 @@ class SmdReaderManager(object):
         
         if not self.smdr.is_complete():
             self._get()
-            self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
             if not self.smdr.is_complete():
                 raise StopIteration
         
@@ -175,10 +176,6 @@ class SmdReaderManager(object):
 
             else:
                 self._get()
-                
-                logging.debug('Smd0 read %.2f MB'%(self.smdr.got/1e6))
-                self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
-                
                 if not self.smdr.is_complete():
                     is_done = True
                     break

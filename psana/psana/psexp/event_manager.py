@@ -45,13 +45,13 @@ class EventManager(object):
             os.lseek(fds[i], offsets[i], 0)
             self.bigdata[i].extend(os.read(fds[i], sizes[i]))
             sum_read_nbytes += sizes[i]
-        logging.debug("EventManager: BigData core reads %.2f MB from disk"%(sum_read_nbytes/1e6))
+        logging.debug("EventManager: BigData core reads chunk %.5f MB from disk"%(sum_read_nbytes/1e6))
         self._inc_prometheus_counter('MB', sum_read_nbytes/1e6)
         return 
     
     @s_bd_disk.time()
     def _read_event_from_disk(self, offsets, sizes):
-        logging.debug("EventManager: BigData core reads a event (%.2f MB) from disk"%(np.sum(sizes)/1e6))
+        logging.debug("EventManager: BigData core reads an event (%.5f MB) from disk"%(np.sum(sizes)/1e6))
         return self.dm.jump(offsets, sizes)
             
     def _read_bigdata_in_chunk(self):
@@ -130,7 +130,6 @@ class EventManager(object):
                 offset_and_size_array = smd_evt.get_offsets_and_sizes()
                 bd_evt = self._read_event_from_disk(offset_and_size_array[:,0], offset_and_size_array[:,1])
                 self._inc_prometheus_counter('MB', np.sum(offset_and_size_array[:,1])/1e6)
-                logging.debug('BigData read single %.2f MB'%(np.sum(offset_and_size_array[:,1])/1e6))
             else:
                 bd_evt = smd_evt
 
