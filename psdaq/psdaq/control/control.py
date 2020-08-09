@@ -793,7 +793,6 @@ class CollectionManager():
                                            after=['after_enable', 'report_status'],
                                            conditions='condition_enable')
         self.collectMachine.add_transition('disable', 'running', 'paused',
-                                           before='before_disable',
                                            conditions='condition_disable', after='report_status')
         # slowupdate is an internal transition
         # do not report status after slowupdate transition
@@ -1917,11 +1916,6 @@ class CollectionManager():
         else:
             logging.info('slowupdate transitions DISABLED')
 
-    def before_disable(self):
-        if self.slow_update_rate:
-            # disable slowupdate transitions
-            self.set_slow_update_enabled(False)
-
     def after_enable(self):
         if self.slow_update_rate:
             # enable slowupdate transitions
@@ -1954,15 +1948,24 @@ class CollectionManager():
 
 
     def condition_disable(self):
+
+        # disable slow updates early in the disable transition
+        if self.slow_update_rate:
+            self.set_slow_update_enabled(False)
+
         # order matters: set Disable PV before others transition
         if not self.group_run(False):
             logging.error('condition_disable(): group_run(False) failed')
+            if self.slow_update_rate and not self.slow_update_enabled:
+                logging.warning('condition_disable(): slowupdate transitions are disabled')
             return False
 
         # phase 1
         ok = self.condition_common('disable', 6000)
         if not ok:
             logging.error('condition_disable(): disable phase1 failed')
+            if self.slow_update_rate and not self.slow_update_enabled:
+                logging.warning('condition_disable(): slowupdate transitions are disabled')
             return False
 
         # phase 2
