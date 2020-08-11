@@ -55,7 +55,6 @@ namespace Pds {
       mutable cv_t          _cv;           // Monitor the number of free batches
       std::vector<AppPrm_t> _appPrms;      // Lookup array of application parameters
       std::atomic<uint64_t> _lastFreed;    // PID of last freed batch
-      uint64_t              _previousPid;  // PID of previous fetch attempt
       Batch                 _batch;        // The currently being accumulated batch
       unsigned              _batching;     // Batching flag history
       std::atomic<uint64_t> _numAllocs;
@@ -100,8 +99,6 @@ size_t Pds::Eb::BatchManager::maxBatchSize() const
 inline
 Pds::Eb::Batch* Pds::Eb::BatchManager::fetch(uint64_t pid)
 {
-  assert (pid > _previousPid);  _previousPid = pid;
-
   if (!_batching || expired(pid, _batch.id()))
   {
     _nAllocs = _numAllocs.load(std::memory_order_relaxed) + 1;
@@ -115,8 +112,6 @@ Pds::Eb::Batch* Pds::Eb::BatchManager::fetch(uint64_t pid)
 inline
 Pds::Eb::Batch* Pds::Eb::BatchManager::fetchW(uint64_t pid)
 {
-  assert (pid > _previousPid);  _previousPid = pid;
-
   if (!_batching || expired(pid, _batch.id()))
   {
     // Block when the head tries to pass the tail, unless empty or stopping

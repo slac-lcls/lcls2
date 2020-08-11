@@ -51,8 +51,6 @@ EbAppBase::EbAppBase(const EbParams&         prms,
   _maxBuffers  (maxBuffers),
   _verbose     (prms.verbose),
   _bufferCnt   (0),
-  _tmoEvtCnt   (0),
-  _fixupCnt    (0),
   _contributors(0),
   _id          (-1)
 {
@@ -64,8 +62,8 @@ EbAppBase::EbAppBase(const EbParams&         prms,
   exporter->add(pfx+"_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();      });
   exporter->add(pfx+"_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
   exporter->add(pfx+"_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
-  exporter->add(pfx+"_ToEvCt", labels, MetricType::Counter, [&](){ return _tmoEvtCnt;           });
-  exporter->add(pfx+"_FxUpCt", labels, MetricType::Counter, [&](){ return _fixupCnt;            });
+  exporter->add(pfx+"_ToEvCt", labels, MetricType::Counter, [&](){ return  timeoutCnt();        });
+  exporter->add(pfx+"_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();          });
 
   // Revisit: nCtrbs isn't known yet
   unsigned nCtrbs = 64; //std::bitset<64>(prms.contributors).count();
@@ -119,8 +117,6 @@ void EbAppBase::unconfigure()
 int EbAppBase::resetCounters()
 {
   _bufferCnt = 0;
-  _tmoEvtCnt = 0;
-  _fixupCnt  = 0;
   _fixupSrc->clear();
   _ctrbSrc ->clear();
 
@@ -284,7 +280,7 @@ int EbAppBase::process()
 
   // Pend for an input datagram and pass it to the event builder
   uint64_t  data;
-  const int msTmo = 100;       // Also see EbEvent.cc::MaxTimeouts
+  const int msTmo = 100;
   if ( (rc = _transport.pend(&data, msTmo)) < 0)
   {
     // Time out incomplete events
@@ -384,24 +380,7 @@ uint64_t EbAppBase::contract(const EbDgram* ctrb) const
 
 void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
-  if (event->alive())
-    ++_fixupCnt;
-  else
-    ++_tmoEvtCnt;
+  event->damage(Damage::DroppedContribution);
 
   _fixupSrc->observe(double(srcId));
-
-  //if (_verbose >= VL_EVENT)
-  {
-    using ms_t  = std::chrono::milliseconds;   // Revisit: Temporary?
-    auto  now   = fast_monotonic_clock::now(); // Revisit: Temporary?
-    const EbDgram* dg = event->creator();
-    printf("%s %15s %014lx, size %2zu, for source %2u, RoGs %04hx, contract %016lx, remaining %016lx, age %ld\n",
-           event->alive() ? "Fixed-up" : "Timed-out",
-           TransitionId::name(dg->service()), event->sequence(), event->size(),
-           srcId, dg->readoutGroups(), event->contract(), event->remaining(),
-           std::chrono::duration_cast<ms_t>(now - event->t0).count());
-  }
-
-  event->damage(Damage::DroppedContribution);
 }

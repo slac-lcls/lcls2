@@ -60,6 +60,7 @@ namespace Pds {
       const Pds::EbDgram*       _batchStart;
       const Pds::EbDgram*       _batchEnd;
       bool                      _contractor;
+      uint64_t                  _previousPid;
     private:
       mutable uint64_t          _eventCount;
       mutable uint64_t          _batchCount;

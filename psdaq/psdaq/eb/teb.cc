@@ -95,9 +95,9 @@ namespace Pds {
       virtual
       void     process(EbEvent* event);
     private:
-      void     _tryPost(const EbDgram* dg);
+      void     _tryPost(const EbDgram* dg, uint64_t dsts);
       void     _post(const EbDgram* start, const EbDgram* end);
-      uint64_t _receivers(const EbDgram& ctrb) const;
+      uint64_t _receivers(unsigned rogs) const;
     private:
       std::vector<EbLfCltLink*> _l3Links;
       EbLfServer                _mrqTransport;
@@ -106,7 +106,7 @@ namespace Pds {
       unsigned                  _id;
       const EbDgram*            _batchStart;
       const EbDgram*            _batchEnd;
-      uint64_t                  _batchRcvrs;
+      uint64_t                  _resultDsts;
     private:
       u64arr_t                  _rcvrs;
       //uint64_t                  _trimmed;
@@ -114,8 +114,10 @@ namespace Pds {
       unsigned                  _prescale;
     private:
       unsigned                  _wrtCounter;
+      uint64_t                  _pidPrv;
     private:
       uint64_t                  _eventCount;
+      uint64_t                  _splitCount;
       uint64_t                  _batchCount;
       uint64_t                  _writeCount;
       uint64_t                  _monitorCount;
@@ -137,10 +139,12 @@ Teb::Teb(const EbParams&         prms,
   _id           (-1),
   _batchStart   (nullptr),
   _batchEnd     (nullptr),
-  _batchRcvrs   (0),
+  _resultDsts   (0),
   //_trimmed      (0),
   _trigger      (nullptr),
+  _pidPrv       (0),
   _eventCount   (0),
+  _splitCount   (0),
   _batchCount   (0),
   _writeCount   (0),
   _monitorCount (0),
@@ -152,6 +156,7 @@ Teb::Teb(const EbParams&         prms,
                                             {"partition", std::to_string(prms.partition)}};
   exporter->add("TEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;             });
   exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;             });
+  exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;             });
   exporter->add("TEB_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;             }); // Outbound
   exporter->add("TEB_BtAlCt", labels, MetricType::Counter, [&](){ return _batMan.batchAllocCnt(); });
   exporter->add("TEB_BtFrCt", labels, MetricType::Counter, [&](){ return _batMan.batchFreeCnt();  });
@@ -169,6 +174,7 @@ int Teb::resetCounters()
   EbAppBase::resetCounters();
 
   _eventCount    = 0;
+  _splitCount    = 0;
   _batchCount    = 0;
   _writeCount    = 0;
   _monitorCount  = 0;
@@ -306,9 +312,10 @@ void Teb::run()
 
   _batchStart    = nullptr;
   _batchEnd      = nullptr;
-  _batchRcvrs    = 0;
+  _resultDsts    = 0;
   //_trimmed       = 0;
   _eventCount    = 0;
+  _splitCount    = 0;
   _batchCount    = 0;
   _writeCount    = 0;
   _monitorCount  = 0;
@@ -340,7 +347,6 @@ void Teb::process(EbEvent* event)
     printf("Teb::process event dump:\n");
     event->dump(++cnt);
   }
-  ++_eventCount;
 
   const EbDgram* dgram = event->creator();
   if (!(dgram->readoutGroups() & (1 << _prms.partition)))
@@ -351,10 +357,31 @@ void Teb::process(EbEvent* event)
     // Revisit: Should this be fatal?
   }
 
+  uint64_t pid = dgram->pulseId();
+  if (!(pid > _pidPrv))
+  {
+    if (event->remaining())             // I.e., this event was fixed up
+    {
+      // This can happen only for a split event (I think), which was fixed up and
+      // posted earlier, so return to dismiss this counterpart and not post it
+      ++_splitCount;
+      return;
+    }
+
+    event->damage(Damage::OutOfOrder);
+
+    logging::error("%s:\n  Pulse ID did not advance: %014lx vs %014lx\n",
+                   __PRETTY_FUNCTION__, pid, _pidPrv);
+    // Revisit: fatal?  throw "Pulse ID did not advance";
+  }
+  _pidPrv = pid;
+
+  ++_eventCount;
+
   // "Selected" EBs respond with a Result, others simply acknowledge
   if (ImmData::rsp(ImmData::flg(event->parameter())) == ImmData::Response)
   {
-    Batch*       batch = _batMan.fetch(dgram->pulseId());
+    Batch*       batch = _batMan.fetch(pid);
     ResultDgram* rdg   = new(batch->allocate()) ResultDgram(*dgram, _id);
 
     rdg->xtc.damage.increase(event->damage().value());
@@ -387,6 +414,9 @@ void Teb::process(EbEvent* event)
       }
     }
 
+    // Avoid sending Results to contributors that failed to supply Input
+    uint64_t dsts = _receivers(dgram->readoutGroups()) & ~event->remaining();
+
     if (unlikely(_prms.verbose >= VL_EVENT)) // || rdg->monitor()))
     {
       const char* svc = TransitionId::name(rdg->service());
@@ -398,11 +428,11 @@ void Teb::process(EbEvent* event)
       unsigned    env = rdg->env;
       uint32_t*   pld = reinterpret_cast<uint32_t*>(rdg->xtc.payload());
       printf("TEB processed %15s result [%8u] @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, res [%08x, %08x]\n",
-             svc, idx, rdg, ctl, pid, env, sz, src, pld[0], pld[1]);
+             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, dsts %016lx, res [%08x, %08x]\n",
+             svc, idx, rdg, ctl, pid, env, sz, src, dsts, pld[0], pld[1]);
     }
 
-    _tryPost(rdg);
+    _tryPost(rdg, dsts);
   }
   else
   {
@@ -414,7 +444,7 @@ void Teb::process(EbEvent* event)
       TransitionId::Value svc     = dgram->service();
       bool                flush   = !((svc == TransitionId::L1Accept) ||
                                       (svc == TransitionId::SlowUpdate));
-      bool                expired = _batMan.expired(dgram->pulseId(), start->pulseId());
+      bool                expired = _batMan.expired(pid, start->pulseId());
 
       if (expired || flush)
       {
@@ -426,14 +456,13 @@ void Teb::process(EbEvent* event)
         // Start a new batch
         _batchStart = nullptr;
         _batchEnd   = nullptr;
-        _batchRcvrs = 0;
+        _resultDsts = 0;
       }
     }
 
     if (unlikely(_prms.verbose >= VL_EVENT)) // || rdg->monitor()))
     {
       const char* svc = TransitionId::name(dgram->service());
-      uint64_t    pid = dgram->pulseId();
       unsigned    idx = Batch::index(pid);
       unsigned    ctl = dgram->control();
       size_t      sz  = sizeof(dgram) + dgram->xtc.sizeofPayload();
@@ -449,7 +478,7 @@ void Teb::process(EbEvent* event)
   }
 }
 
-void Teb::_tryPost(const EbDgram* dgram)
+void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts)
 {
   // The batch start is the first dgram seen
   if (!_batchStart)  _batchStart = dgram;
@@ -460,7 +489,6 @@ void Teb::_tryPost(const EbDgram* dgram)
   bool                flush   = !((svc == TransitionId::L1Accept) ||
                                   (svc == TransitionId::SlowUpdate));
   bool                expired = _batMan.expired(dgram->pulseId(), start->pulseId());
-  uint64_t            rcvrs   = _receivers(*dgram);
 
   if (expired || flush)
   {
@@ -469,7 +497,7 @@ void Teb::_tryPost(const EbDgram* dgram)
       if (!end)
       {
         end          = dgram;
-        _batchRcvrs |= rcvrs;
+        _resultDsts |= dsts;
       }
 
       _post(start, end);
@@ -477,48 +505,47 @@ void Teb::_tryPost(const EbDgram* dgram)
       // Start a new batch
       _batchStart = end == dgram ? nullptr : dgram;
       _batchEnd   = end == dgram ? nullptr : dgram;
-      _batchRcvrs = end == dgram ? 0       : rcvrs;
+      _resultDsts = end == dgram ? 0       : dsts;
       start       = _batchStart;
     }
 
     if (flush && start)     // Post the batch + transition if it wasn't just done
     {
-      _batchRcvrs |= rcvrs;
+      _resultDsts |= dsts;
 
       _post(start, dgram);
 
       // Start a new batch
       _batchStart = nullptr;
       _batchEnd   = nullptr;
-      _batchRcvrs = 0;
+      _resultDsts = 0;
     }
   }
   else
   {
     _batchEnd    = dgram;   // The batch end is the one before the current dgram
-    _batchRcvrs |= rcvrs;
+    _resultDsts |= dsts;
   }
 }
 
 void Teb::_post(const EbDgram* start, const EbDgram* end)
 {
-  uint64_t        pid    = start->pulseId();
-  static uint64_t pidPrv = 0;  //assert (pid > pidPrv);  pidPrv = pid;
-  if (!(pid > pidPrv))
-  {
-    printf("pid %014lx, pidPrv %014lx\n", pid, pidPrv);
-    assert (pid > pidPrv);
-  }
-  pidPrv = pid;
-
+  uint64_t pid    = start->pulseId();
   uint32_t idx    = Batch::index(pid);
   size_t   extent = (reinterpret_cast<const char*>(end) -
                      reinterpret_cast<const char*>(start)) + _prms.maxResultSize;
   unsigned offset = idx * _prms.maxResultSize;
   uint64_t data   = ImmData::value(ImmData::Buffer, _id, idx);
-  uint64_t destns = _batchRcvrs; // & ~_trimmed;
+  uint64_t destns = _resultDsts; // & ~_trimmed;
 
   end->setEOL();                        // Terminate the batch
+
+  if (unlikely(_prms.verbose >= VL_BATCH))
+  {
+    printf("TEB posts          %9lu result  [%8u] @ "
+           "%16p,         pid %014lx,               sz %6zd, dst %016lx\n",
+           _batchCount, idx, start, pid, extent, destns);
+  }
 
   while (destns)
   {
@@ -526,14 +553,6 @@ void Teb::_post(const EbDgram* start, const EbDgram* end)
     EbLfCltLink* link = _l3Links[dst];
 
     destns &= ~(1ul << dst);
-
-    if (unlikely(_prms.verbose >= VL_BATCH))
-    {
-      void* rmtAdx = (void*)link->rmtAdx(offset);
-      printf("TEB posts          %9lu result  [%8u] @ "
-             "%16p,         pid %014lx,               sz %6zd, dst %2u @ %16p\n",
-             _batchCount, idx, start, pid, extent, dst, rmtAdx);
-    }
 
     if (int rc = link->post(start, extent, offset, data) < 0)
     {
@@ -560,7 +579,7 @@ void Teb::_post(const EbDgram* start, const EbDgram* end)
   _batMan.release(pid);
 }
 
-uint64_t Teb::_receivers(const EbDgram& ctrb) const
+uint64_t Teb::_receivers(unsigned groups) const
 {
   // This method is called when the event is processed, which happens when the
   // event builder has built the event.  The supplied contribution contains
@@ -572,7 +591,6 @@ uint64_t Teb::_receivers(const EbDgram& ctrb) const
   // time.
 
   uint64_t receivers = 0;
-  unsigned groups    = ctrb.readoutGroups();
 
   while (groups)
   {

@@ -6,6 +6,7 @@
 
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/GenericPool.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 namespace Pds {
   class EbDgram;
@@ -44,6 +45,8 @@ namespace Pds {
       const uint64_t&    epochFreeCnt()  const;
       const uint64_t&    eventAllocCnt() const;
       const uint64_t&    eventFreeCnt()  const;
+      const uint64_t&    timeoutCnt()    const;
+      const uint64_t&    fixupCnt()      const;
     private:
       unsigned          _epIndex(uint64_t key) const;
       unsigned          _evIndex(uint64_t key) const;
@@ -57,18 +60,22 @@ namespace Pds {
       bool              _lookAhead(const EbEpoch*,
                                    const EbEvent*,
                                    const EbEvent* const due) const;
-      const EbEvent*    _flush(const EbEvent* const due);
+      void              _flush(const EbEvent* const due);
       void              _retire(EbEvent*);
       EbEvent*          _insert(EbEpoch*, const Pds::EbDgram*, EbEvent*, unsigned prm);
     private:
       friend class EbEvent;
     private:
       LinkedList<EbEpoch>   _pending;       // Listhead, Epochs with events pending
+      fast_monotonic_clock::time_point
+                            _tLastFlush;    // Starting time of timeout
       const uint64_t        _mask;          // Sequence mask
       GenericPool           _epochFreelist; // Freelist for new epochs
       std::vector<EbEpoch*> _epochLut;      // LUT of allocated epochs
       GenericPool           _eventFreelist; // Freelist for new events
       std::vector<EbEvent*> _eventLut;      // LUT of allocated events
+      uint64_t              _tmoEvtCnt;     // Count of timed out events
+      uint64_t              _fixupCnt;      // Count of flushed   events
       const unsigned&       _verbose;       // Print progress info
     };
   };
@@ -92,6 +99,16 @@ inline const uint64_t& Pds::Eb::EventBuilder::eventAllocCnt() const
 inline const uint64_t& Pds::Eb::EventBuilder::eventFreeCnt() const
 {
   return _eventFreelist.numberofFrees();
+}
+
+inline const uint64_t& Pds::Eb::EventBuilder::timeoutCnt() const
+{
+  return _tmoEvtCnt;
+}
+
+inline const uint64_t& Pds::Eb::EventBuilder::fixupCnt() const
+{
+  return _fixupCnt;
 }
 
 #endif

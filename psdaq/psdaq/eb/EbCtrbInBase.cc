@@ -340,7 +340,7 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
 
     // No progress can legitimately happen with multiple TEBs presenting events
     // out of order.  These will be deferred so that when the expected Result
-    // arrives (according to the Input), it will be handled in t he proer order
+    // arrives (according to the Input), it will be handled in t he proper order
     if ((results == res) && (inputs == inp))
     {
       //printf("No progress: res %014lx, inp %014lx\n", res->pulseId(), inp->pulseId());
@@ -397,7 +397,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
   const auto iSize   = _prms.maxInputSize;
   auto       rPid    = result->pulseId();
   auto       iPid    = input->pulseId();
-  unsigned   missing = 0;
+  unsigned   missing = _missing;
 
   // This code expects to handle events in pulse ID order
   while (rPid <= iPid)
@@ -458,25 +458,32 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
 
       iPid = input->pulseId();
     }
-    else if (result->readoutGroups() & _prms.readoutGroup) // Is a match expected?
+    else
     {
-      // A fixed-up event for which this DRP didn't supply input is allowed, else count
-      if (!(result->xtc.damage.value() & (1 <<  Damage::DroppedContribution)))
-        ++_missing;
+      assert (rPid < iPid);        // rPid > iPid would have caused loop to end
+
+      if (result->readoutGroups() & _prms.readoutGroup) // Is a match expected?
+      {
+        if (!(result->readoutGroups() & _prms.contractor)) // Are we Receiver-only?
+        {
+          // In this case, the Result could have appeared before the Input was
+          // prepared, so the Result should be deferred and timed out
+          // For now, continue on
+          // ToDo: Implement timing/sweeping out missing Input
+
+          ++_missing;
+
+          logging::error("%s:\n  No Input found for Result %014lx",
+                         __PRETTY_FUNCTION__, rPid);
+          _dump(ctrb, results, inputs);
+        }
+        // else Result was fixed up and Input is missing, so discard Result
+      }
+      // else no match is expected, so discard Result
     }
 
     if (result->isEOL())
     {
-      if ((input == inputs) && _missing)
-      {
-        if (rPid < iPid)
-          logging::error("%s:\n  Results %014lx too old for Inputs %014lx",
-                         __PRETTY_FUNCTION__, results->pulseId(), inputs->pulseId());
-        else
-          logging::error("%s:\n  No Inputs found for %u Results",
-                         __PRETTY_FUNCTION__, _missing);
-        _dump(ctrb, results, inputs);
-      }
       inputs  = input;
       results = nullptr;
       return;
@@ -491,10 +498,12 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
   // as can happen when multiple TEBs present Results out of order
   //logging::error("%s:\n  No Result found for Input %014lx",
   //               __PRETTY_FUNCTION__, iPid);
-  if (_missing)
-    logging::error("%s:\n  No Inputs found for %u Results",
-                   __PRETTY_FUNCTION__, missing);
-  _dump(ctrb, results, inputs);
+  if (_missing != missing)
+  {
+    logging::error("%s:\n  No Inputs found for %d Results",
+                   __PRETTY_FUNCTION__, _missing - missing);
+    _dump(ctrb, results, inputs);
+  }
 
   inputs  = input;
   results = result;

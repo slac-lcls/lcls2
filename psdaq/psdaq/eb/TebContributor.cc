@@ -39,6 +39,7 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
   _pending     (MAX_LATENCY), // Revisit: MAX_BATCHES),
   _batchStart  (nullptr),
   _batchEnd    (nullptr),
+  _previousPid (0),
   _eventCount  (0),
   _batchCount  (0)
 {
@@ -164,7 +165,15 @@ int TebContributor::configure()
 
 void* TebContributor::allocate(const TimingHeader& hdr, const void* appPrm)
 {
-  auto pid   = hdr.pulseId();
+  auto pid = hdr.pulseId();
+  if (!(pid > _previousPid))
+  {
+    fprintf(stderr, "%s:\n  Pulse ID did not advance: %014lx vs %014lx\n",
+           __PRETTY_FUNCTION__, pid, _previousPid);
+    throw "Pulse ID did not advance";
+  }
+  _previousPid = pid;
+
   auto batch = _batMan.fetchW(pid);     // Can block
 
   if (unlikely(_prms.verbose >= VL_EVENT))

@@ -8,12 +8,15 @@
 
 #include <stdlib.h>
 #include <new>
+#include <chrono>
 
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
 static const unsigned CLS = 64;         // Cache Line Size
+static const auto                       // Maximum event age in ms
+  EventTimeout(std::chrono::duration<int, std::milli>(2000));
 
 
 EventBuilder::EventBuilder(unsigned        epochs,
@@ -27,6 +30,8 @@ EventBuilder::EventBuilder(unsigned        epochs,
   _epochLut(epochs),
   _eventFreelist(sizeof(EbEvent) + sources * sizeof(EbDgram*), epochs * entries, CLS),
   _eventLut(epochs * entries),
+  _tmoEvtCnt(0),
+  _fixupCnt(0),
   _verbose(verbose)
 {
   if (duration & (duration - 1))
@@ -84,6 +89,8 @@ void EventBuilder::clear()
 
   _eventFreelist.clearCounters();
   _epochFreelist.clearCounters();
+  _tmoEvtCnt = 0;
+  _fixupCnt  = 0;
 
   for (auto it = _epochLut.begin(); it != _epochLut.end(); ++it)
     *it = nullptr;
@@ -243,7 +250,7 @@ EbEvent* EventBuilder::_insert(EbEpoch*       epoch,
 
 void EventBuilder::_fixup(EbEvent* event) // Always called with remaining != 0
 {
-  uint64_t& remaining = event->_remaining;
+  uint64_t remaining = event->_remaining;
 
   do
   {
@@ -303,52 +310,13 @@ bool EventBuilder::_lookAhead(const EbEpoch*       epoch,
   return false;
 }
 
-const EbEvent* EventBuilder::_flush(const EbEvent* const due)
+void EventBuilder::_flush(const EbEvent* const due)
 {
   const EbEpoch* const lastEpoch = _pending.empty();
   EbEpoch*             epoch     = _pending.forward();
+  auto                 now       = fast_monotonic_clock::now();
 
-  do
-  {
-    EbEvent* event = epoch->pending.forward();
-
-    while (event != epoch->pending.empty())
-    {
-      // Retire all events up to a newer event, limited by due.
-      // Since EbEvents are created in time order, older incomplete events can
-      // be fixed up and retired when a newer complete event in the same readout
-      // group is encountered.
-      if (event->_remaining)
-      {
-        if (event->_contract != due->_contract) // Same as matching readout groups
-          if (!_lookAhead(epoch, event, due))  return due;
-
-        _fixup(event);
-      }
-      if (event == due)
-      {
-        _retire(event);
-
-        return nullptr;
-      }
-
-      EbEvent* next = event->forward();
-
-      _retire(event);
-
-      event = next;
-    }
-  }
-  while (epoch = epoch->forward(), epoch != lastEpoch);
-
-  return nullptr;
-}
-
-void EventBuilder::expired()            // Periodically called upon a timeout
-{
-  const EbEpoch* const lastEpoch = _pending.empty();
-  EbEpoch*             epoch     = _pending.forward();
-  EbEvent*             due       = nullptr;
+  _tLastFlush = now;
 
   while (epoch != lastEpoch)
   {
@@ -357,28 +325,76 @@ void EventBuilder::expired()            // Periodically called upon a timeout
 
     while (event != lastEvent)
     {
-      // Time out all queued events, including those that are complete but are
-      // blocked from flushing due to an older incomplete event from another RoG
-      if (!event->_alive())
+      // Retire all events up to a newer event, limited by due.
+      // Since EbEvents are created in time order, older incomplete events can
+      // be fixed up and retired when a newer complete event in the same readout
+      // group (RoG) is encountered.
+      if (event->_remaining)
       {
-        //printf("Event timed out: %014lx, readout group %u, remaining %016lx\n",
-        //       event->sequence(),
-        //       event->creator()->readoutGroups(),
-        //       event->_remaining);
+        // Time out incomplete events
+        bool timedOut(now - epoch->t0 > EventTimeout);
 
-        if (event->_remaining)  _fixup(event);
+        if (!timedOut)
+        {
+          if (!due)  return; // Not timed out; just return on timeout calls
 
-        due = event;
+          // If there's a newer event with the same contract/RoG and 0 remaining
+          // then fix up and sweep out the current event
+          // The due event has 0 remaining, so no need to lookAhead if same RoG
+          if (event->_contract != due->_contract) // Same as matching RoGs
+            if (!_lookAhead(epoch, event, due))  return;
+
+          ++_fixupCnt;
+        }
+        else
+          ++_tmoEvtCnt;
+
+        if (_verbose >= VL_EVENT)
+        {
+          const EbDgram* dg = event->creator();
+          printf("%-9s %15s %014lx, size %5zu, for remaining %016lx, RoGs %04hx, contract %016lx\n",
+                 timedOut ? "Timed-out" : "Fixed-up",
+                 TransitionId::name(dg->service()), event->sequence(), event->_size,
+                 event->_remaining, dg->readoutGroups(), event->_contract);
+        }
+
+        _fixup(event);
+      }
+      if (event == due)
+      {
+        _retire(event);
+
+        return;
       }
 
-      event = event->forward();
+      EbEvent* next = event->forward();
+
+      _retire(event);
+
+      event = next;
     }
 
     epoch = epoch->forward();
   }
+}
 
-  // _flush() can modify links, so must be called outside of the above loops
-  if (due)  _flush(due);
+/*
+** ++
+**
+**   In principle an event could sit on the pending queue forever,
+**   waiting for its contract to complete. To handle this scenario,
+**   the EB times-out the oldest event on the pending queue.
+**   This is accomplished by periodically calling this function,
+**   which attempts to flush all pending events.  Those events that
+**   belong to an epoch that is suffiently old are flushed, whether
+**   they are complete or not.
+**
+** --
+*/
+
+void EventBuilder::expired()            // Periodically called upon a timeout
+{
+  _flush(nullptr);                      // Try to flush everything
 }
 
 /*
@@ -438,6 +454,12 @@ void EventBuilder::process(const EbDgram* ctrb,
   }
 
   if (due)  _flush(due);
+  else
+  {
+    auto now    (fast_monotonic_clock::now());
+    auto timeout(std::chrono::duration<int, std::milli>(100));
+    if (now - _tLastFlush > timeout)  _flush(nullptr);
+  }
 }
 
 /*

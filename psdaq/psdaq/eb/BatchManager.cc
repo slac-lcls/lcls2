@@ -75,7 +75,6 @@ int BatchManager::initialize(size_t maxEntrySize, bool batching)
   }
 
   _lastFreed    = 0;
-  _previousPid  = 0;
   _batch.initialize(maxEntrySize);
   _batching     = batching;
   _numAllocs    = 0;

@@ -72,8 +72,6 @@ namespace Pds {
       const unsigned            _maxBuffers;
       const unsigned&           _verbose;
       uint64_t                  _bufferCnt;
-      uint64_t                  _tmoEvtCnt; // Count of timed out events
-      uint64_t                  _fixupCnt;  // Count of flushed   events
       PromHisto_t               _fixupSrc;
       PromHisto_t               _ctrbSrc;
     private:

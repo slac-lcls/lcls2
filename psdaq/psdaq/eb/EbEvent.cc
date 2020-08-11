@@ -10,8 +10,6 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-static const int MaxTimeouts = 50;     // In units of transport.pend() timeouts
-
 // Revisit: Fix stale comments:
 /*
 ** ++
@@ -33,9 +31,7 @@ EbEvent::EbEvent(uint64_t        contract,
                  EbEvent*        after,
                  const EbDgram*  cdg,
                  unsigned        prm) :
-  t0       (fast_monotonic_clock::now()), // Revisit: Temporary?
   _contract (contract),
-  _living   (MaxTimeouts),
   _prm      (prm),
   _damage   (cdg->xtc.damage.value()),
   _last     (_contributions)
@@ -120,8 +116,6 @@ EbEvent* EbEvent::_add(const EbDgram* cdg)
   }
 
   _damage.increase(cdg->xtc.damage.value());
-
-  _living    = MaxTimeouts;
 
   return this;
 }

@@ -6,7 +6,6 @@
 #include "psdaq/service/LinkedList.hh"
 #include "psdaq/service/Pool.hh"
 #include "psdaq/service/EbDgram.hh"
-#include "psdaq/service/fast_monotonic_clock.hh" // Revisit: Temporary?
 
 
 namespace Pds {
@@ -33,7 +32,6 @@ namespace Pds {
       size_t          size()      const;
       uint64_t        remaining() const;
       uint64_t        contract()  const;
-      bool            alive()     const;
       XtcData::Damage damage()    const;
       void            damage(XtcData::Damage::Value);
     public:
@@ -42,13 +40,11 @@ namespace Pds {
       const Pds::EbDgram** const  end()     const;
     public:
       void     dump(int number);
-      fast_monotonic_clock::time_point t0; // Revisit: Temporary?
     private:
       friend class EventBuilder;
     private:
       EbEvent* _add(const Pds::EbDgram*);
       void     _insert(const Pds::EbDgram*);
-      bool     _alive();
     private:
       size_t               _size;            // Total contribution size (in bytes)
       uint64_t             _remaining;       // List of clients which have contributed
@@ -181,31 +177,6 @@ inline const Pds::EbDgram* const* Pds::Eb::EbEvent::begin() const
 inline const Pds::EbDgram** const Pds::Eb::EbEvent::end() const
 {
   return _last;
-}
-
-/*
-** ++
-**
-**   In principle an event could sit on the pending queue forever,
-**   waiting for its contract to complete. To handle this scenario,
-**   the EB times-out the oldest event on the pending queue.
-**   This is accomplished by periodically calling this function,
-**   which counts down a counter whose initial value is specified
-**   at construction time. When the counter drops to less than
-**   or equal to zero the event is expired. Note: the arrival of
-**   any contributor to this event will RESET the counter.
-**
-** --
-*/
-
-inline bool Pds::Eb::EbEvent::_alive()
-{
-  return --_living > 0;
-}
-
-inline bool Pds::Eb::EbEvent::alive() const
-{
-  return _living > 0;
 }
 
 #endif
