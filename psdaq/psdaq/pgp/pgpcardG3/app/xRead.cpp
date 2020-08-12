@@ -61,7 +61,7 @@ int main (int argc, char **argv) {
   bool          print = false;
   uint          maxSize;
   uint          *data;
-  char          err[128];
+  char          err[256];
   char          pgpcard[128]              = "";
   int                 maxPrint            = 1024;
   bool                cardGiven           = false;
@@ -80,7 +80,7 @@ int main (int argc, char **argv) {
   while( ( c = getopt( argc, argv, "hP:L:d:D:c:f:N:o:rvV:" ) ) != EOF ) {
     switch(c) {
     case 'P':
-      strcpy(pgpcard, optarg);
+      strncpy(pgpcard, optarg, sizeof(pgpcard)-1);
       cardGiven = true;
       break;
     case 'L':
@@ -141,7 +141,7 @@ int main (int argc, char **argv) {
   }
   fd = open( pgpcard,  O_RDWR );
   if (fd < 0) {
-    sprintf(err, "%s opening %s failed", argv[0], pgpcard);
+    snprintf(err, sizeof(err), "%s opening %s failed", argv[0], pgpcard);
     perror(err);
     return 1;
   }
@@ -213,9 +213,9 @@ int main (int argc, char **argv) {
         uint64_t pulseId = (uint64_t(data[1])<<32) | data[0];
         if (ppulseId) {
           if (dpulseId > 100 && pulseId != (ppulseId+dpulseId))
-            printf("\tPulseId = %016llx [%016llx, %016llx]\n", 
-                   (unsigned long long)pulseId, 
-                   (unsigned long long)(pulseId+dpulseId), 
+            printf("\tPulseId = %016llx [%016llx, %016llx]\n",
+                   (unsigned long long)pulseId,
+                   (unsigned long long)(pulseId+dpulseId),
                    (unsigned long long)(pulseId-ppulseId));
           dpulseId = pulseId - ppulseId;
         }
@@ -250,7 +250,7 @@ int main (int argc, char **argv) {
   } while ( ret > 0 );
   count = -1;
   if (ret < 0) {
-    sprintf(err, "%s reading %s failed ", argv[0], pgpcard);
+    snprintf(err, sizeof(err), "%s reading %s failed ", argv[0], pgpcard);
     perror(err);
     return 1;
   }
@@ -280,7 +280,7 @@ void* countThread(void* args)
     double dbytes = double(nbytes-obytes)/dt;
     double tbytes = dbytes/rate;
     unsigned dbsc = 0, rsc=0, tbsc=0;
-    
+
     if (count < 0) break;
 
     static const char scchar[] = { ' ', 'k', 'M' };
@@ -301,7 +301,7 @@ void* countThread(void* args)
       dbsc    = 1;
       dbytes *= 1.e-3;
     }
-    
+
     if (tbytes > 1.e6) {
       tbsc    = 2;
       tbytes *= 1.e-6;
@@ -310,11 +310,11 @@ void* countThread(void* args)
       tbsc    = 1;
       tbytes *= 1.e-3;
     }
-    
-    printf("Rate %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B] (%7.2f %cB/evt) lanes %02x\n", 
-           rate  , scchar[rsc ], ncount, 
-           dbytes, scchar[dbsc], (long long)nbytes, 
-           tbytes, scchar[tbsc], 
+
+    printf("Rate %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B] (%7.2f %cB/evt) lanes %02x\n",
+           rate  , scchar[rsc ], ncount,
+           dbytes, scchar[dbsc], (long long)nbytes,
+           tbytes, scchar[tbsc],
            lanes);
     lanes = 0;
 

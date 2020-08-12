@@ -36,6 +36,7 @@ const char* Name::str_type() // (DataType type)
   case ENUMVAL  : return std::move("ENUMVAL");
   case ENUMDICT : return std::move("ENUMDICT");
   };
+  return nullptr;
 }
 
 int Name::get_element_size(Name::DataType type)

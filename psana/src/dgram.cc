@@ -57,7 +57,7 @@ struct PyDgramObject {
 
 static void addObjToPyObj(PyObject* parent, const char* name, PyObject* obj, PyObject* pycontainertype) {
     char namecopy[TMPSTRINGSIZE];
-    strncpy(namecopy,name,TMPSTRINGSIZE);
+    strncpy(namecopy,name,TMPSTRINGSIZE-1);
     char *key = ::strtok(namecopy,PyNameDelim);
     while(1) {
         char* next = ::strtok(NULL, PyNameDelim);
@@ -89,7 +89,7 @@ static void addObjHierarchy(PyObject* parent, PyObject* pycontainertype,
                             const char* name, PyObject* obj,
                             unsigned segment) {
     char namecopy[TMPSTRINGSIZE];
-    strncpy(namecopy,name,TMPSTRINGSIZE);
+    strncpy(namecopy,name,TMPSTRINGSIZE-1);
     char *key = ::strtok(namecopy,PyNameDelim);
     char* next = ::strtok(NULL, PyNameDelim);
 
@@ -174,10 +174,10 @@ static void setAlg(PyObject* parent, PyObject* pycontainertype, const char* base
     PyObject* software = Py_BuildValue("s", algName);
     PyObject* version  = Py_BuildValue("iii", (_v>>16)&0xff, (_v>>8)&0xff, (_v)&0xff);
 
-    snprintf(keyName,TMPSTRINGSIZE,"%s%ssoftware",
+    snprintf(keyName,sizeof(keyName),"%s%ssoftware",
              baseName,PyNameDelim);
     addObjHierarchy(parent, pycontainertype, keyName, software, segment);
-    snprintf(keyName,TMPSTRINGSIZE,"%s%sversion",
+    snprintf(keyName,sizeof(keyName),"%s%sversion",
              baseName,PyNameDelim);
     addObjHierarchy(parent, pycontainertype, keyName, version, segment);
 }
@@ -185,29 +185,29 @@ static void setAlg(PyObject* parent, PyObject* pycontainertype, const char* base
 static void setDataInfo(PyObject* parent, PyObject* pycontainertype, const char* baseName, Name& name, unsigned segment) {
     unsigned type = name.type();
     unsigned rank = name.rank();
-    char keyName[TMPSTRINGSIZE];
+    char keyName[2*TMPSTRINGSIZE];
 
     PyObject* py_type = Py_BuildValue("i", type);
     PyObject* py_rank = Py_BuildValue("i", rank);
 
-    snprintf(keyName,TMPSTRINGSIZE,"%s%s_type",
+    snprintf(keyName,sizeof(keyName),"%s%s_type",
              baseName,PyNameDelim);
     addObjHierarchy(parent, pycontainertype, keyName, py_type, segment);
-    snprintf(keyName,TMPSTRINGSIZE,"%s%s_rank",
+    snprintf(keyName,sizeof(keyName),"%s%s_rank",
              baseName,PyNameDelim);
     addObjHierarchy(parent, pycontainertype, keyName, py_rank, segment);
 }
 
 static void setDetInfo(PyObject* parent, PyObject* pycontainertype, Names& names) {
-    char keyName[TMPSTRINGSIZE];
+    char keyName[2*TMPSTRINGSIZE];
     unsigned segment = names.segment();
     PyObject* detType = Py_BuildValue("s", names.detType());
-    snprintf(keyName,TMPSTRINGSIZE,"%s%sdettype",
+    snprintf(keyName,sizeof(keyName),"%s%sdettype",
              names.detName(),PyNameDelim);
     addObjHierarchy(parent, pycontainertype, keyName, detType, segment);
 
     PyObject* detId = Py_BuildValue("s", names.detId());
-    snprintf(keyName,TMPSTRINGSIZE,"%s%sdetid",
+    snprintf(keyName,sizeof(keyName),"%s%sdetid",
              names.detName(),PyNameDelim);
     addObjHierarchy(parent, pycontainertype, keyName, detId, segment);
 }
@@ -234,7 +234,7 @@ static void dictAssignConfig(PyDgramObject* pyDgram, NamesLookup& namesLookup)
         Names& names = nameIndex.names();
         Alg& detAlg = names.alg();
         unsigned segment = names.segment();
-        snprintf(baseName,TMPSTRINGSIZE,"%s%s%s",
+        snprintf(baseName,sizeof(baseName),"%s%s%s",
                  names.detName(),PyNameDelim,names.alg().name());
         setAlg(software, pycontainertype, baseName, detAlg, segment);
         setDetInfo(software, pycontainertype, names);
@@ -242,7 +242,7 @@ static void dictAssignConfig(PyDgramObject* pyDgram, NamesLookup& namesLookup)
         for (unsigned j = 0; j < names.num(); j++) {
             Name& name = names.get(j);
             Alg& alg = name.alg();
-            snprintf(baseName,TMPSTRINGSIZE,"%s%s%s%s%s",
+            snprintf(baseName,sizeof(baseName),"%s%s%s%s%s",
                      names.detName(),PyNameDelim,names.alg().name(),
                      PyNameDelim,name.name());
             setAlg(software, pycontainertype, baseName, alg, segment);
@@ -277,7 +277,7 @@ static PyObject* createEnum(const char* enumname, PyDgramObject* pyDgram, DescDa
             }
         } else if (name.type() == Name::ENUMDICT) {
             // check that we are looking at the correct ENUMDICT
-            strncpy(tempName,varName,TMPSTRINGSIZE);
+            strncpy(tempName,varName,TMPSTRINGSIZE-1);
             char* enumtype_dict = strchr(tempName,EnumDelim)+1;
 
             if (strncmp(enumtype,enumtype_dict,TMPSTRINGSIZE)==0) {
@@ -304,7 +304,7 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata, Xtc* myXtc)
     Names& names = descdata.nameindex().names();
 
 
-    char keyName[TMPSTRINGSIZE];
+    char keyName[2*TMPSTRINGSIZE];
     char tempName[TMPSTRINGSIZE];
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
@@ -381,7 +381,7 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata, Xtc* myXtc)
                 // overwrite the delimiter with the null character
                 // so the value's python name doesn't include the dict
                 // name (which follows the EnumDelim).
-                strncpy(tempName,varName,TMPSTRINGSIZE);
+                strncpy(tempName,varName,TMPSTRINGSIZE-1);
                 char* delim = strchr(tempName,EnumDelim);
                 if (!delim) throw std::runtime_error("dgram.cc: failed to find delimitor in enum");
 
@@ -477,7 +477,7 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata, Xtc* myXtc)
             PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
         }
         if (newobj) {
-            snprintf(keyName,TMPSTRINGSIZE,"%s%s%s%s%s",
+            snprintf(keyName,sizeof(keyName),"%s%s%s%s%s",
                      names.detName(),PyNameDelim,names.alg().name(),
                      PyNameDelim,varName);
             addObjHierarchy((PyObject*)pyDgram, pyDgram->contInfo.pycontainertype, keyName, newobj, names.segment());
@@ -631,7 +631,7 @@ static int dgram_read(PyDgramObject* self, int sequential)
         }
         if (readSuccess <= 0) {
             printf("dgram.cc: timeout reading datagram, raising StopIteration.\n");
-            snprintf(s, TMPSTRINGSIZE, "loading dgram was unsuccessful -- %s", strerror(errno));
+            snprintf(s, sizeof(s), "loading dgram was unsuccessful -- %s", strerror(errno));
             PyErr_SetString(PyExc_StopIteration, s);
             return -1;
         }
@@ -641,7 +641,7 @@ static int dgram_read(PyDgramObject* self, int sequential)
         //readSuccess = pread(self->file_descriptor, self->dgram, self->size, fOffset); // for read with offset
         readSuccess = pread(self->file_descriptor, self->dgram, self->size, fOffset); // for read with offset
         if (readSuccess <= 0) {
-            snprintf(s, TMPSTRINGSIZE, "loading dgram with offset was unsuccessful -- %s", strerror(errno));
+            snprintf(s, sizeof(s), "loading dgram with offset was unsuccessful -- %s", strerror(errno));
             PyErr_SetString(PyExc_StopIteration, s);
             return -1;
         }
@@ -801,7 +801,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     if (!isView) {
         bool sequential = (fd==-1) != (configDgram==0);
         if (sequential) {
-            memcpy(self->dgram, &dgram_header, sizeof(dgram_header));
+          memcpy((void*)self->dgram, (const void*)&dgram_header, sizeof(dgram_header));
         }
 
         int err = dgram_read(self, sequential);

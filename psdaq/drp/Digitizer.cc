@@ -222,7 +222,7 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string
 
     // append the config xtc info to the dgram
     Xtc& jsonxtc = *(Xtc*)buffer;
-    memcpy(xtc.next(),jsonxtc.payload(),jsonxtc.sizeofPayload());
+    memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
     xtc.alloc(jsonxtc.sizeofPayload());
 
     // get the lane mask from the json

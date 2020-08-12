@@ -41,7 +41,7 @@ static bool lInit = false;
 static bool lReset = false;
 
 /*
-static void check_program_clock(int ifd, const AxiVersion& vsn) 
+static void check_program_clock(int ifd, const AxiVersion& vsn)
 {
   if (lInit || lReset) {
     if (vsn.userValues[2] == 0) {
@@ -83,14 +83,13 @@ int main (int argc, char **argv) {
   unsigned     base;
   int          lbmask = -1;
   bool         lCounterReset = false;
-  bool         lUpdateId = false;
   int          c;
 
   while((c=getopt(argc,argv,"l:CIR"))!=-1) {
     switch(c) {
     case 'l': lbmask = strtoul(optarg,NULL,0); break;
-    case 'C': lCounterReset = true; lUpdateId = true; break;
-    case 'I': lInit = true; lUpdateId = true; break;
+    case 'C': lCounterReset = true; break;
+    case 'I': lInit = true; break;
     case 'R': lReset = true; break;
     default:  usage(argv[0]); return 1;
     }
@@ -114,7 +113,7 @@ int main (int argc, char **argv) {
         printf("firmwareVersion : %x\n", vsn.firmwareVersion);
         printf("upTimeCount     : %u\n", vsn.upTimeCount);
         printf("deviceId        : %x\n", vsn.deviceId);
-        printf("buildString     : %s\n", vsn.buildString); 
+        printf("buildString     : %s\n", vsn.buildString);
         printf("corePcie        : %c\n", (vsn.userValues[2] == 0) ? 'T':'F');
         printf("dmaSize         : %u\n", vsn.userValues[0]);
         printf("dmaClkFreq      : %u\n", vsn.userValues[4]);
@@ -126,7 +125,7 @@ int main (int argc, char **argv) {
       }
     }
   }
-  
+
 #define PRINTFIELD(name, addr, offset, mask) {                  \
     uint32_t reg;                                               \
     printf("%20.20s :", #name);                                 \

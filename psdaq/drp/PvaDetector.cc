@@ -456,11 +456,11 @@ void PvaDetector::_worker()
             else {
                 // Allocate a transition dgram from the pool and initialize its header
                 Pds::EbDgram* trDgram = m_pool->allocateTr();
-                memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
                 // copy the temporary xtc created on phase 1 of the transition
                 // into the real location
                 XtcData::Xtc& trXtc = transitionXtc();
-                memcpy(&trDgram->xtc, &trXtc, trXtc.extent);
+                memcpy((void*)&trDgram->xtc, (const void*)&trXtc, trXtc.extent);
                 PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
                 pgpEvent->transitionDgram = trDgram;
 
@@ -565,7 +565,7 @@ bool PvaDetector::_handle(const XtcData::TimeStamp& timestamp,
                 event(dgram, pgpEvent);
             }
             else {
-                memcpy(&dgram.xtc, &deferred->xtc, deferred->xtc.extent);
+              memcpy((void*)&dgram.xtc, (const void*)&deferred->xtc, deferred->xtc.extent);
             }
         }
         else {

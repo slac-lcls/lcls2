@@ -224,7 +224,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                     logging::debug("configure phase1 jsonxtc.sizeofPayload() = %u\n",
                                    jsonxtc.sizeofPayload());
                     unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
-                    memcpy(xtc.next(), xtcBytes, copylen);
+                    memcpy((void*)xtc.next(), (const void*)xtcBytes, copylen);
                     xtc.alloc(copylen);
                 }
                 delete[] xtcBytes;
@@ -283,7 +283,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                     logging::debug("beginstep phase1 jsonxtc.sizeofPayload() = %u\n",
                                    jsonxtc.sizeofPayload());
                     unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
-                    memcpy(xtc.next(), xtcBytes, copylen);
+                    memcpy((void*)xtc.next(), (const void*)xtcBytes, copylen);
                     xtc.alloc(copylen);
                 }
                 delete[] xtcBytes;

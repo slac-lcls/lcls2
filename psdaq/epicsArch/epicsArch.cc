@@ -290,7 +290,7 @@ void EaDetector::_worker()
                     // copy the temporary xtc created on phase 1 of the transition
                     // into the real location
                     XtcData::Xtc& trXtc = transitionXtc();
-                    memcpy(&trDgram->xtc, &trXtc, trXtc.extent);
+                    memcpy((void*)&trDgram->xtc, (const void*)&trXtc, trXtc.extent);
 
                     if (service == XtcData::TransitionId::Enable) {
                         m_running = true;

@@ -103,7 +103,7 @@ int main(int argc, char* argv[]) {
     // copy over the names/shapesdata xtc's (translateJson2Xtc puts
     // a Parent Xtc on the top level so we can copy over both
     // names/shapesdata at the same time)
-    memcpy(dg.xtc.next(),xtcbuf.payload(),xtcbuf.sizeofPayload());
+    memcpy((void*)dg.xtc.next(),(const void*)xtcbuf.payload(),xtcbuf.sizeofPayload());
     dg.xtc.alloc(xtcbuf.sizeofPayload());
 
     FILE* fp = fopen("junk.xtc2", "w+");

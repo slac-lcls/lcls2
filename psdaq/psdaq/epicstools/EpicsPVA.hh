@@ -165,7 +165,7 @@ namespace Pds_Epics {
             // _channel.put().set("value", val).exec();
         } catch(const pvac::Timeout& t) {
             std::cout << "Timeout when putting to pv " << name() << std::endl;
-        } catch(std::runtime_error r) {
+        } catch(const std::runtime_error& r) {
             std::cout << "Runtime error when putting to pv " << name() << std::endl;
         }
     }

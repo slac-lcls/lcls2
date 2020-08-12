@@ -633,11 +633,11 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
 
                     // Allocate a transition dgram from the pool and initialize its header
                     Pds::EbDgram* trDgram = m_drp.pool.allocateTr();
-                    memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                    memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
                     // copy the temporary xtc created on phase 1 of the transition
                     // into the real location
                     XtcData::Xtc& trXtc = m_det->transitionXtc();
-                    memcpy(&trDgram->xtc, &trXtc, trXtc.extent);
+                    memcpy((void*)&trDgram->xtc, (const void*)&trXtc, trXtc.extent);
                     PGPEvent* pgpEvent = &m_drp.pool.pgpEvents[index];
                     pgpEvent->transitionDgram = trDgram;
 

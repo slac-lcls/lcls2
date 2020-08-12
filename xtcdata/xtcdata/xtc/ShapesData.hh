@@ -36,7 +36,7 @@ class Alg {
 public:
     Alg(const char* alg, uint8_t major, uint8_t minor, uint8_t micro) :
         _version(major,minor,micro) {
-        strncpy(_alg, alg, MaxNameSize);
+        strncpy(_alg, alg, MaxNameSize-1);
     }
 
     uint32_t version() {
@@ -64,32 +64,32 @@ public:
         // assert(rank != 0 && (type=INT64 || type = DOUBLE));
 
         assert(rank < MaxRank);assert(strlen(name) < MaxNameSize);
-        strncpy(_name, name, MaxNameSize);
+        strncpy(_name, name, MaxNameSize-1);
         _type = (uint32_t)type;
         _rank = rank;
     }
-  
+
     Name(const char* name, DataType type, int rank, Alg& alg) : _alg(alg) {
         assert(rank < MaxRank);assert(sizeof(name) < MaxNameSize);
-        strncpy(_name, name, MaxNameSize);
+        strncpy(_name, name, MaxNameSize-1);
         _type = (uint32_t)type;
         _rank = rank;
-    } 
+    }
 
     Name(const char* name, Alg& alg) : _alg(alg) {
         assert(sizeof(name) < MaxNameSize);
-        strncpy(_name, name, MaxNameSize);
+        strncpy(_name, name, MaxNameSize-1);
         _type = (uint32_t)Name::UINT8;
         _rank = 1;
     }
-       
+
     const char* name() {return _name;}
     DataType    type() {return (DataType)_type;}
     uint32_t    rank() {return _rank;}
     Alg&        alg()  {return _alg;}
     const char* str_type();
 
-  
+
 private:
     Alg      _alg;
     char     _name[MaxNameSize];
@@ -164,9 +164,9 @@ public:
 
     NameInfo(const char* detname, Alg& alg0, const char* dettype, const char* detid, uint32_t segment0, uint32_t numarr=0):alg(alg0), segment(segment0){
         numArrays = numarr;
-        strncpy(detName, detname, MaxNameSize);
-        strncpy(detType, dettype, MaxNameSize);
-        strncpy(detId,   detid,   MaxNameSize);
+        strncpy(detName, detname, MaxNameSize-1);
+        strncpy(detType, dettype, MaxNameSize-1);
+        strncpy(detId,   detid,   MaxNameSize-1);
     }
 
 };
@@ -188,7 +188,7 @@ public:
 
     NamesId& namesId() {return (NamesId&)src;}
 
-    uint32_t numArrays(){return _NameInfo.numArrays;}; 
+    uint32_t numArrays(){return _NameInfo.numArrays;};
     const char* detName() {return _NameInfo.detName;}
     const char* detType() {return _NameInfo.detType;}
     const char* detId()   {return _NameInfo.detId;}
@@ -227,7 +227,7 @@ private:
 class Data : public AutoParentAlloc
 {
 public:
-    Data(Xtc& superparent) : 
+    Data(Xtc& superparent) :
         AutoParentAlloc(TypeId(TypeId::Data,0))
     {
         // go two levels up to "auto-alloc" Data Xtc header size

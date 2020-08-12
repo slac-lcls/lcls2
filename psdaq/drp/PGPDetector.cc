@@ -94,12 +94,12 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                                dgram->time.seconds(), dgram->time.nanoseconds(), timingHeader->pulseId());
                 // Allocate a transition dgram from the pool and initialize its header
                 Pds::EbDgram* trDgram = pool.allocateTr();
-                memcpy(trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+                memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
                 if (transitionId != XtcData::TransitionId::SlowUpdate) {
                    // copy the temporary xtc created on phase 1 of the transition
                    // into the real location
                    XtcData::Xtc& trXtc = det->transitionXtc();
-                   memcpy(&trDgram->xtc, &trXtc, trXtc.extent);
+                   memcpy((void*)&trDgram->xtc, (const void*)&trXtc, trXtc.extent);
                 }
                 else {
                    det->slowupdate(trDgram->xtc);

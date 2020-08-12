@@ -26,7 +26,7 @@ public:
     virtual unsigned beginrun(XtcData::Xtc& xtc, const nlohmann::json& runInfo) {return 0;}
     virtual void beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) {};
     virtual void slowupdate(XtcData::Xtc& xtc) { XtcData::Xtc& trXtc = transitionXtc();
-                                                 memcpy(&xtc, &trXtc, trXtc.extent); };
+                                                 memcpy((void*)&xtc, (const void*)&trXtc, trXtc.extent); };
     virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
     virtual void shutdown() {};
     virtual Pds::TimingHeader* getTimingHeader(uint32_t index) const

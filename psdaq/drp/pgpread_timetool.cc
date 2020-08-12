@@ -120,15 +120,15 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
 {
     const char* detname = "tmotimetool";
 
-    printf("Initializing python \n");    
+    printf("Initializing python \n");
     Py_Initialize();
     // returns new reference
     printf("importing module \n");
     PyObject* pModule = PyImport_ImportModule("psdaq.configdb.tt_config");
-    
+
     printf("checking module \n");
     check(pModule);
-    
+
     // returns borrowed reference
     printf("getting dict \n");
     PyObject* pDict = PyModule_GetDict(pModule);
@@ -177,9 +177,9 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
     Dgram& config = createTransition(TransitionId::Configure,timestamp_val);    //what are the arguments here?
 
     // append the config xtc info to the dgram
-    Xtc& jsonxtc = *(Xtc*)config_buf;                                           //config buf is global 
+    Xtc& jsonxtc = *(Xtc*)config_buf;                                           //config buf is global
     Xtc& xtc     = config.xtc;                                                  //
-    memcpy(xtc.next(),jsonxtc.payload(),jsonxtc.sizeofPayload());               //this line copies jsonxtc to the xtc object.
+    memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload()); //this line copies jsonxtc to the xtc object.
     xtc.alloc(jsonxtc.sizeofPayload());
 
     // append the metadata; which algorithm is needed to interpret bytes, the detector type, etc...
@@ -205,7 +205,7 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
 
 
 
-    Py_XDECREF(pModule);    
+    Py_XDECREF(pModule);
 
     printf("ending prescaler config testing \n ");
 
@@ -217,7 +217,7 @@ int tt_config(int x,NamesLookup &namesLookup,FILE *xtcFile)
 int main(int argc, char* argv[])
 {
 
-    
+
     printf("starting main \n");
 
     FILE* xtcFile = fopen("timetoolconfig.xtc2", "w");
@@ -227,11 +227,11 @@ int main(int argc, char* argv[])
 
 
     NamesLookup namesLookup;
-    
+
     int c, channel;
     int write_interval = 1;
 
-    timespec ts; 
+    timespec ts;
 
     channel = 0;
     std::string device;
@@ -247,7 +247,7 @@ int main(int argc, char* argv[])
                    printf("entering tt config \n");
                    tt_config(0,namesLookup,xtcFile);
                    break;
-                   //toggle_acquisition(0);                     
+                   //toggle_acquisition(0);
             case 'f':
                    printf("doing fast write \n");
                    write_interval = 0;
@@ -296,7 +296,7 @@ int main(int argc, char* argv[])
     uint32_t                raw_counter                  = 0;
     uint32_t                last_raw_counter             = 0;
 
-    std::time_t             last_time;    
+    std::time_t             last_time;
     std::vector<uint8_t>    raw_vector;
 
     eventBuilderParser      my_frame;
@@ -317,21 +317,21 @@ int main(int argc, char* argv[])
             //uint32_t dest = dmaDest[b] >> 8;
             raw_data = reinterpret_cast<uint8_t *>(dmaBuffers[index]);
 
-            
+
 
             //if(size !=2112){
             //    printf("corrupted frame. size = %d",size);
             //}
-            
+
 
 
             raw_vector = std::vector<uint8_t> (raw_data,raw_data+size);
             my_frame.load_frame( raw_vector );
             my_frame.parse_array();
-            
+
             if(ts.tv_sec - last_time  >= write_interval){
-                
-                
+
+
 
                 my_frame.print_frame();
 
@@ -342,7 +342,7 @@ int main(int argc, char* argv[])
                 //*****************************
                 //**** writing xtc to disk ****
                 //*****************************
-                //refer to this link https://docs.google.com/presentation/d/1KsTXafudKoDTHlqAQXOHSZRLQ1x734kTlrVniV3K-NI/edit#slide=id.g64c80c79d8_0_69 
+                //refer to this link https://docs.google.com/presentation/d/1KsTXafudKoDTHlqAQXOHSZRLQ1x734kTlrVniV3K-NI/edit#slide=id.g64c80c79d8_0_69
                 //for a visual layout of how the data structures below create the object that gets stored to xtc.
                 unsigned nodeId = 0;
                 unsigned env    = 0;
@@ -379,7 +379,7 @@ int main(int argc, char* argv[])
 
 
             last_time = ts.tv_sec;
-        
+
             raw_counter = raw_counter + 1;
 
             if(expected_next_count != raw_data[1]){

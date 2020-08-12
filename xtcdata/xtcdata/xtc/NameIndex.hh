@@ -17,7 +17,7 @@ public:
     NameIndex() : _names(0) {}
 
     NameIndex(Names& names) {
-        _init_names(names); 
+        _init_names(names);
         unsigned iarray = 0;
         for (unsigned i=0; i<_names->num(); i++) {
             Name& name = _names->get(i);
@@ -41,7 +41,7 @@ public:
         if (_names) free(_names);
         if (rhs._names) {
             _names = (Names*)malloc(rhs._names->extent);
-            std::memcpy(_names, rhs._names, rhs._names->extent);
+            std::memcpy((void*)_names, (const void*)rhs._names, rhs._names->extent);
         } else {
             _names = rhs._names; // copy over the zero
         }
@@ -81,7 +81,7 @@ public:
 private:
     void _init_names(Names& names) {
         _names = (Names*)malloc(names.extent);
-        std::memcpy(_names, &names, names.extent);
+        std::memcpy((void*)_names, (const void*)&names, names.extent);
     }
     Names*   _names;
     IndexMap _shapeMap;

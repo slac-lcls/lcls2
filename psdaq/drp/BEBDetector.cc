@@ -54,7 +54,7 @@ BEBDetector::~BEBDetector()
     Py_DECREF(m_module);
 }
 
-void BEBDetector::_init(const char* arg) 
+void BEBDetector::_init(const char* arg)
 {
     char module_name[64];
     sprintf(module_name,"psdaq.configdb.%s_config",m_para->detType.c_str());
@@ -83,7 +83,7 @@ void BEBDetector::_init(const char* arg)
       PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"O",m_root));
 
       m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
-        
+
       if (!m_paddr) {
         const char msg[] = "XPM Remote link id register is zero\n";
         logging::error("%s", msg);
@@ -107,7 +107,7 @@ void BEBDetector::_init_feb()
 #define MLOOKUP(m,name,dflt) (m.find(name)==m.end() ? dflt : m[name].c_str())
     const char* lane = MLOOKUP(m_para->kwargs,"feb_lane"   ,0);
     const char* chan = MLOOKUP(m_para->kwargs,"feb_channel",0);
-    PyObject* mybytes = _check(PyObject_CallFunction(pFunc, "ss", lane, chan)); 
+    PyObject* mybytes = _check(PyObject_CallFunction(pFunc, "ss", lane, chan));
     Py_DECREF(mybytes);
 }
 
@@ -131,8 +131,8 @@ unsigned BEBDetector::configure(const std::string& config_alias, Xtc& xtc)
     PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
 
     // returns new reference
-    PyObject* mybytes = _check(PyObject_CallFunction(pFunc, "Osssii", 
-                                                    m_root, m_connect_json.c_str(), config_alias.c_str(), 
+    PyObject* mybytes = _check(PyObject_CallFunction(pFunc, "Osssii",
+                                                    m_root, m_connect_json.c_str(), config_alias.c_str(),
                                                     m_para->detName.c_str(), m_para->detSegment, m_readoutGroup));
 
     // returns new reference
@@ -155,7 +155,7 @@ unsigned BEBDetector::configure(const std::string& config_alias, Xtc& xtc)
 
     XtcData::ConfigIter iter(&jsonxtc);
     unsigned r = _configure(xtc,iter);
-    memcpy(xtc.next(),jsonxtc.payload(),jsonxtc.sizeofPayload());
+    memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
     xtc.alloc(jsonxtc.sizeofPayload());
 
     Py_DECREF(mybytes);
@@ -180,7 +180,7 @@ void BEBDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
     EvtBatcherSubFrameTail* ebsft = ebit.next();
     unsigned nsubs = ebsft->tdest()+1;
     std::vector< XtcData::Array<uint8_t> > subframes(nsubs, XtcData::Array<uint8_t>(0, 0, 1) );
-    
+
     do {
         subframes[ebsft->tdest()] = XtcData::Array<uint8_t>(ebsft->data(), &ebsft->size(), 1);
     } while ((ebsft=ebit.next()));

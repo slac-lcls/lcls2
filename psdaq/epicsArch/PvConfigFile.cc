@@ -157,7 +157,7 @@ int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
       else
       {
         char strMessage[256];
-        sprintf(strMessage, "PV %s: Unrecognized provider '%s'; choose from 'ca' or 'pva'\n",
+        snprintf(strMessage, sizeof(strMessage), "PV %s: Unrecognized provider '%s'; choose from 'ca' or 'pva'\n",
                 sPvName.c_str(), &sPvLine.c_str()[uOffsetInterval]);
         printf("%s: %s\n", __FUNCTION__, strMessage);
         sConfigFileWarning = strMessage;
@@ -169,7 +169,7 @@ int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
   if ( _setPvName.find(sPvName) != _setPvName.end() )
   {
     char strMessage[256];
-    sprintf(strMessage, "Duplicated PV name %s", sPvName.c_str());
+    snprintf(strMessage, sizeof(strMessage), "Duplicated PV name %s", sPvName.c_str());
     printf("%s: %s\n", __FUNCTION__, strMessage);
     sConfigFileWarning = strMessage;
     return 0;
@@ -178,7 +178,7 @@ int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
   if ( _setPvDescription.find(sPvName) != _setPvDescription.end() )
   {
     char strMessage[256];
-    sprintf(strMessage, "PV name %s was used as another PV's description", sPvName.c_str());
+    snprintf(strMessage, sizeof(strMessage), "PV name %s was used as another PV's description", sPvName.c_str());
     printf("%s: %s\n", __FUNCTION__, strMessage);
     sConfigFileWarning = strMessage;
     return 1;
@@ -190,7 +190,7 @@ int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
   if ( _setPvName.find(sPvDescriptionUpdate) != _setPvName.end() )
   {
     char strMessage[256];
-    sprintf(strMessage, "PV name %s was used as another PV's description", sPvDescriptionUpdate.c_str());
+    snprintf(strMessage, sizeof(strMessage), "PV name %s was used as another PV's description", sPvDescriptionUpdate.c_str());
     printf("%s: %s\n", __FUNCTION__, strMessage);
     sConfigFileWarning = strMessage;
     return 1;
@@ -272,7 +272,7 @@ int PvConfigFile::_getPvDescription(const std::string & sLine, std::string & sPv
 int PvConfigFile::_updatePvDescription(const std::string& sPvName, const std::string& sFnConfig, int iLineNumber, std::string& sPvDescription, std::string& sConfigFileWarning)
 {
   char strMessage [256];
-  char strMessage2[256];
+  char strMessage2[384];
   if (!sPvDescription.empty())
   {
     if ( _setPvDescription.find(sPvDescription) == _setPvDescription.end() )
@@ -280,18 +280,18 @@ int PvConfigFile::_updatePvDescription(const std::string& sPvName, const std::st
       _setPvDescription.insert(sPvDescription);
       return 0;
     }
-    sprintf( strMessage, "%s has duplicated title \"%s\".", sPvName.c_str(), sPvDescription.c_str());
+    snprintf( strMessage, sizeof(strMessage), "%s has duplicated title \"%s\".", sPvName.c_str(), sPvDescription.c_str());
     sPvDescription  += '-' + sPvName;
   }
   else
   {
     sPvDescription = sPvName;
-    sprintf( strMessage, "%s has no title.", sPvName.c_str());
+    snprintf( strMessage, sizeof(strMessage), "%s has no title.", sPvName.c_str());
   }
 
   if ( _setPvDescription.find(sPvDescription) == _setPvDescription.end() )
   {
-    sprintf(strMessage2, "%s\nUse \"%s\"\n", strMessage, sPvDescription.c_str() );
+    snprintf(strMessage2, sizeof(strMessage2), "%s\nUse \"%s\"\n", strMessage, sPvDescription.c_str() );
     if (_verbose) {
       printf("%s: %s", __FUNCTION__, strMessage2);
     }
@@ -315,7 +315,7 @@ int PvConfigFile::_updatePvDescription(const std::string& sPvName, const std::st
     {
       sPvDescription = sPvDesecriptionNew;
 
-      sprintf(strMessage2, " %s Use %s\n", strMessage, sPvDescription.c_str() );
+      snprintf(strMessage2, sizeof(strMessage2), " %s Use %s\n", strMessage, sPvDescription.c_str() );
       if (_verbose) {
         printf("%s: %s", __FUNCTION__, strMessage2);
       }
@@ -330,7 +330,7 @@ int PvConfigFile::_updatePvDescription(const std::string& sPvName, const std::st
   printf("%s: Cannot generate proper PV name for %s (%s).\n",
     __FUNCTION__, sPvDescription.c_str(), sPvName.c_str());
 
-  sprintf(strMessage2, "%s No proper title found.\n", strMessage);
+  snprintf(strMessage2, sizeof(strMessage2), "%s No proper title found.\n", strMessage);
   printf("%s: %s", __FUNCTION__, strMessage2);
   sConfigFileWarning = strMessage2;
 

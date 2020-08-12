@@ -91,7 +91,7 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string&
     check(pFunc);
     // need to get the dbase connection info via collection
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssi",m_connect_json.c_str(), config_alias.c_str(), 
+    PyObject* mybytes = PyObject_CallFunction(pFunc,"sssi",m_connect_json.c_str(), config_alias.c_str(),
                                               m_para->detName.c_str(), m_para->detSegment);
     check(mybytes);
     // returns new reference
@@ -110,7 +110,7 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string&
 
     // append the config xtc info to the dgram
     Xtc& jsonxtc = *(Xtc*)config_buf;
-    memcpy(xtc.next(),jsonxtc.payload(),jsonxtc.sizeofPayload());
+    memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
     xtc.alloc(jsonxtc.sizeofPayload());
 
     Py_DECREF(pModule);

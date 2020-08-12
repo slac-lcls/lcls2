@@ -287,7 +287,7 @@ OpalTT::~OpalTT() {}
 void     OpalTT::slowupdate(XtcData::Xtc& xtc)
 {
   m_background_sem.take();
-  memcpy(&xtc, &m_det.transitionXtc(), m_det.transitionXtc().extent);
+  memcpy((void*)&xtc, (const void*)&m_det.transitionXtc(), m_det.transitionXtc().extent);
   m_background_empty = true;
   m_background_sem.give();
 }
