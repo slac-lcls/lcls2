@@ -42,12 +42,17 @@ class RunParallel(Run):
     
         rank = psana_comm.Get_rank()
         size = psana_comm.Get_size()
+        
+        g_ts = self.prom_man.get_metric("psana_timestamp")
 
         if rank == 0:
             # get Configure and BeginRun using SmdReader
             self.smd_fds = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in smd_files], dtype=np.int32)
             self.smdr_man = SmdReaderManager(self)
             self.configs = self.smdr_man.get_next_dgrams()
+
+            g_ts.labels("first_event").set(time.time())
+
             self.beginruns = self.smdr_man.get_next_dgrams(configs=self.configs)
             
             self._get_runinfo()
@@ -82,6 +87,9 @@ class RunParallel(Run):
         self.bcast_packets = psana_comm.bcast(self.bcast_packets, root=0)
         if rank > 0:
             self.configs = [dgram.Dgram(view=config, offset=0) for config in self.configs]
+            
+            g_ts.labels("first_event").set(time.time())
+            
             self.dm = DgramManager(xtc_files, configs=self.configs, run=self)
             super()._set_configinfo() # after creating a dgrammanger, we can setup config info
             self.calibconst = self.bcast_packets['calibconst']

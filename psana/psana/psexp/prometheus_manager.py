@@ -1,5 +1,5 @@
 import time
-from prometheus_client import CollectorRegistry, Counter, push_to_gateway, Summary
+from prometheus_client import CollectorRegistry, Counter, push_to_gateway, Summary, Gauge
 import logging
 
 PUSH_INTERVAL_SECS  = 5
@@ -29,8 +29,8 @@ for metric_name, (metric_type, desc) in metrics.items():
         registry.register(Counter(metric_name, desc, ['unit', 'endpoint']))
     elif metric_type == 'Summary':
         registry.register(Summary(metric_name, desc))
-    elif metric_type == 'Guage':
-        registry.register(Guage(metric_name, desc, ['python_init', 'first_event']))
+    elif metric_type == 'Gauge':
+        registry.register(Gauge(metric_name, desc, ['checkpoint']))
 
 class PrometheusManager(object):
     def __init__(self, jobid):
@@ -47,7 +47,10 @@ class PrometheusManager(object):
     def get_metric(metric_name):
         # get metric object from its name 
         # NOTE that _created has to be appended to locate the key
-        collector = registry._names_to_collectors[f'{metric_name}_created']
+        if metric_name in registry._names_to_collectors:
+            collector = registry._names_to_collectors[metric_name]
+        else:
+            collector = registry._names_to_collectors[f'{metric_name}_created']
         return collector
         
         
