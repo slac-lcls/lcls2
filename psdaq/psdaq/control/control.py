@@ -1949,21 +1949,21 @@ class CollectionManager():
 
     def condition_disable(self):
 
-        # disable slow updates early in the disable transition
-        if self.slow_update_rate:
-            self.set_slow_update_enabled(False)
-
         # order matters: set Disable PV before others transition
         if not self.group_run(False):
             logging.error('condition_disable(): group_run(False) failed')
-            if self.slow_update_rate and not self.slow_update_enabled:
-                logging.warning('condition_disable(): slowupdate transitions are disabled')
             return False
+
+        # disable slow updates early in the disable transition
+        # but after setting Disable PV has succeeded
+        if self.slow_update_rate:
+            self.set_slow_update_enabled(False)
 
         # phase 1
         ok = self.condition_common('disable', 6000)
         if not ok:
             logging.error('condition_disable(): disable phase1 failed')
+            logging.warning('condition_disable(): L0s are disabled')
             if self.slow_update_rate and not self.slow_update_enabled:
                 logging.warning('condition_disable(): slowupdate transitions are disabled')
             return False
