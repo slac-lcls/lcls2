@@ -17,6 +17,8 @@ def main():
                         help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                         help='timeout msec (default 10000)')
+    parser.add_argument('--phase1', metavar='JSON', default=None,
+                        help='phase1Info (use with --state or --transition)')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--state', choices=DaqControl.states)
     group.add_argument('--transition', choices=DaqControl.transitions)
@@ -37,7 +39,11 @@ def main():
     control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
 
     # verify instrument name match
-    instr = control.getInstrument()
+    try:
+        instr = control.getInstrument()
+    except KeyboardInterrupt:
+        instr = None
+
     if instr is None:
         exit('Error: failed to read instrument name')
     elif instr != args.P:
