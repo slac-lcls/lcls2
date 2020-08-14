@@ -4,6 +4,7 @@ daqstate command
 """
 from psdaq.control.control import DaqControl
 import argparse
+import json
 
 def main():
 
@@ -18,7 +19,7 @@ def main():
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                         help='timeout msec (default 10000)')
     parser.add_argument('--phase1', metavar='JSON', default=None,
-                        help='phase1Info (use with --state or --transition)')
+                        help='phase1Info (only use with --state)')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--state', choices=DaqControl.states)
     group.add_argument('--transition', choices=DaqControl.transitions)
@@ -52,7 +53,14 @@ def main():
 
     if args.state:
         # change the state
-        rv = control.setState(args.state)
+        if args.phase1 is None:
+            rv = control.setState(args.state)
+        else:
+            try:
+                phase1 = json.loads(args.phase1)
+            except Exception as ex:
+                exit('Error: failed to parse JSON: %s' % ex)
+            rv = control.setState(args.state, phase1)
         if rv is not None:
             print('Error: %s' % rv)
 
