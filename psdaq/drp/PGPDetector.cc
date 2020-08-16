@@ -187,7 +187,6 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     exporter->add("drp_worker_output_queue", labels, Pds::MetricType::Gauge,
                    [&](){return queueLength(m_workerOutputQueues);});
 
-
     int64_t worker = 0L;
     uint64_t batchId = 0L;
     const unsigned bufferMask = m_pool.nbuffers() - 1;
@@ -330,4 +329,8 @@ void PGPDetector::shutdown()
     for (unsigned i = 0; i < m_para.nworkers; i++) {
         m_workerOutputQueues[i].shutdown();
     }
+
+    //  Flush the DMA buffers
+    int32_t ret = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
+    dmaRetIndexes(m_pool.fd(), ret, dmaIndex);
 }
