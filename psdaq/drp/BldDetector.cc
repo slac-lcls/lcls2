@@ -96,7 +96,7 @@ BldFactory::BldFactory(const char* name,
     //  Make static configuration of BLD  :(
     //
     if      (strcmp("ebeam",name)==0) {
-        mcaddr = 0xefff1800;
+        mcaddr = 0xefff1900;
         _alg    = XtcData::Alg("raw", 2, 0, 0);
         _varDef.NameVec.push_back(XtcData::Name("damageMask"       , XtcData::Name::UINT32));
         _varDef.NameVec.push_back(XtcData::Name("ebeamCharge"      , XtcData::Name::DOUBLE));
@@ -121,8 +121,28 @@ BldFactory::BldFactory(const char* name,
         _varDef.NameVec.push_back(XtcData::Name("ebeamLTU450"      , XtcData::Name::DOUBLE));
         payloadSize = 164;
     }
-    else if (strcmp("gasdet",name)==0) {
-        mcaddr = 0xefff1802;
+    else if (strcmp("pcav",name)==0) {
+        mcaddr = 0xefff1901;
+        _alg    = XtcData::Alg("raw", 2, 0, 0);
+        _varDef.NameVec.push_back(XtcData::Name("fitTime1"      , XtcData::Name::DOUBLE));
+        _varDef.NameVec.push_back(XtcData::Name("fitTime2"      , XtcData::Name::DOUBLE));
+        _varDef.NameVec.push_back(XtcData::Name("charge1"       , XtcData::Name::DOUBLE));
+        _varDef.NameVec.push_back(XtcData::Name("charge2"       , XtcData::Name::DOUBLE));
+        payloadSize = 16;
+    }
+    else if (strcmp("gmd",name)==0) {
+        mcaddr = 0xefff1902;
+        _alg    = XtcData::Alg("raw", 2, 0, 0);
+        _varDef.NameVec.push_back(XtcData::Name("f_11_ENRC"      , XtcData::Name::DOUBLE));
+        _varDef.NameVec.push_back(XtcData::Name("f_12_ENRC"      , XtcData::Name::DOUBLE));
+        _varDef.NameVec.push_back(XtcData::Name("f_21_ENRC"      , XtcData::Name::DOUBLE));
+        _varDef.NameVec.push_back(XtcData::Name("f_22_ENRC"      , XtcData::Name::DOUBLE));
+        _varDef.NameVec.push_back(XtcData::Name("f_63_ENRC"      , XtcData::Name::DOUBLE));
+        _varDef.NameVec.push_back(XtcData::Name("f_64_ENRC"      , XtcData::Name::DOUBLE));
+        payloadSize = 24;
+    }
+    else if (strcmp("xgmd",name)==0) {
+        mcaddr = 0xefff1903;
         _alg    = XtcData::Alg("raw", 2, 0, 0);
         _varDef.NameVec.push_back(XtcData::Name("f_11_ENRC"      , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("f_12_ENRC"      , XtcData::Name::DOUBLE));
@@ -136,7 +156,6 @@ BldFactory::BldFactory(const char* name,
         throw std::string("BLD name ")+name+" not recognized";
     }
     _handler = std::make_shared<Bld>(mcaddr, mcport, interface, Bld::DgramTimestampPos, Bld::DgramHeaderSize, payloadSize);
-    //    _handler = std::make_shared<Bld>(mcaddr, mcport, interface, Bld::DgramPulseIdPos, Bld::DgramHeaderSize, payloadSize);
 }
 
   //

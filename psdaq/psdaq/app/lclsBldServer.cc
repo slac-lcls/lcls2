@@ -36,30 +36,25 @@ int main(int argc, char** argv) {
 
   int c;
   bool lUsage = false;
-  //const char* bldType = 0;
-  unsigned mcaddr = 0xefff1800;
+  const char* bldType = 0;
   unsigned mcintf = 0;
-  unsigned short port = 12148;
   unsigned rate = 5;
   int      evcode = -1;
   bool     lverbose = false;
 
   //char* endptr;
 
-  while ( (c=getopt( argc, argv, "d:a:b:e:i:r:vh?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "d:b:e:i:r:vh?")) != EOF ) {
     switch(c) {
+    case 'b':
+      bldType = optarg;
+      break;
     case 'd':
       tprid  = optarg[0];
       if (strlen(optarg) != 1) {
         printf("%s: option `-r' parsing error\n", argv[0]);
         lUsage = true;
       }
-      break;
-    case 'b':
-      //bldType = optarg;
-      break;
-    case 'a':
-      mcaddr = strtoul(optarg,NULL,0);
       break;
     case 'i':
       mcintf = Psdaq::AppUtils::parse_interface(optarg);
@@ -91,6 +86,38 @@ int main(int argc, char** argv) {
   if (!mcintf) {
     printf("%s: MC interface not set\n",argv[0]);
     lUsage = true;
+  }
+
+  unsigned mcaddr;
+  unsigned short port = 12148;
+  unsigned payloadWords;
+  unsigned typeId, bldInfo;
+
+  if (!bldType)
+    lUsage = true;
+  else if (strcmp(bldType,"ebeam")==0) {
+    mcaddr       = 0xefff1900;
+    typeId       = (7<<16) | 15; // typeid = EBeam v7
+    bldInfo      = 0;
+    payloadWords = 41;
+  }
+  else if (strcmp(bldType,"pcav")==0) {
+    mcaddr       = 0xefff1901;
+    typeId       = (0<<16) | 17; // typeid = PhaseCavity v0
+    bldInfo      = 1;
+    payloadWords = 8;
+  }
+  else if (strcmp(bldType,"gmd")==0) {
+    mcaddr       = 0xefff1902;
+    typeId       = (2<<16) | 64; // typeid = GMD v2
+    bldInfo      = 2;
+    payloadWords = 12;
+  }
+  else if (strcmp(bldType,"xgmd")==0) {
+    mcaddr       = 0xefff1903;
+    typeId       = (0<<16) | 64; // typeid = XGMD v0
+    bldInfo      = 3;
+    payloadWords = 12;
   }
 
   if (lUsage) {
@@ -142,16 +169,16 @@ int main(int argc, char** argv) {
     // timestamp
     payload[ 4] = 0; // env
     payload[ 5] = 0; // damage
-    payload[ 6] = (1<<16) | 1; // typeid = Xtc v1
-    payload[ 7] = (6<<24) | (pid&0xffffff);
-    payload[ 8] = 0;   // ebeam
-    payload[ 9] = 204; // extent
+    payload[ 6] = (6<<24) | (pid&0xffffff);
+    payload[ 7] = bldInfo;
+    payload[ 8] = typeId;
+    payload[ 9] = 4*payloadWords+20; // extent
     payload[10] = 0;   // damage
-    payload[11] = (7<<16) | 15; // typeid = EBeam v7
-    payload[12] = (6<<24) | (pid&0xffffff);
-    payload[13] = 0;   // ebeam
-    payload[14] = 184; // extent
-    for(unsigned i=0; i<41; i++)
+    payload[11] = (6<<24) | (pid&0xffffff);
+    payload[12] = bldInfo;
+    payload[11] = typeId;
+    payload[14] = 4*payloadWords+20; // extent
+    for(unsigned i=0; i<payloadWords; i++)
       payload[15+i] = i;
 
     char evrdev[16];
@@ -175,7 +202,7 @@ int main(int argc, char** argv) {
       payload[1] = fr->timeStamp >> 32;
       payload[2] = fr->pulseId & 0xffffffff;
       payload[3] = fr->pulseId >> 32;
-      send(mcfd, payload, 220, 0);
+      send(mcfd, payload, 96+4*payloadWords, 0);
 
       if (lverbose)
         printf("Timestamp %lu.%09u\n",fr->timeStamp>>32,unsigned(fr->timeStamp&0xffffffff));

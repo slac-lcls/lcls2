@@ -30,6 +30,7 @@ static void usage(const char* p)
   printf("\t-r\tReceive mode\n");
   printf("\t-P\tPeek at data\n");
   printf("\t-d\tNumber of packets to dump\n");
+  printf("\t-D\tDelay between tmit packets [usec]\n");
 }
 
 int main(int argc, char **argv) 
@@ -41,9 +42,10 @@ int main(int argc, char **argv)
   bool lreceiver = false;
   bool lpeek = false;
   std::vector<unsigned> uaddr;
+  unsigned tdelay = 0;
 
   char c;
-  while ( (c=getopt( argc, argv, "i:a:d:p:s:rPh?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "i:a:d:D:p:s:rPh?")) != EOF ) {
     switch(c) {
     case 'a': 
       for(char* arg = strtok(optarg,","); arg!=NULL; arg=strtok(NULL,","))
@@ -57,6 +59,9 @@ int main(int argc, char **argv)
       break;
     case 'd':
       ndump = strtoul(optarg,NULL,0);
+      break;
+    case 'D':
+      tdelay = strtoul(optarg,NULL,0);
       break;
     case 's':
       sz   = strtoul(optarg,NULL,0);
@@ -220,6 +225,8 @@ int main(int argc, char **argv)
       const sockaddr_in& sa = address[iaddr];
       bytes = ::sendto(fd, buff, sz, 0, (const sockaddr*)&sa, sizeof(sockaddr_in));
       iaddr = (iaddr+1)%address.size();
+      if (tdelay)
+        usleep(tdelay);
     }
 
     if (bytes < 0) {

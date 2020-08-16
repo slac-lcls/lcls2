@@ -32,7 +32,7 @@ public:
     static const unsigned HeaderSize        = 20;
     static const unsigned DgramTimestampPos =  0; // LCLS-I style
     static const unsigned DgramPulseIdPos   =  8; // LCLS-I style
-    static const unsigned DgramHeaderSize   = 52;
+    static const unsigned DgramHeaderSize   = 60;
 public:
     uint64_t next       ();
     uint8_t* payload    () const { return m_payload; }
