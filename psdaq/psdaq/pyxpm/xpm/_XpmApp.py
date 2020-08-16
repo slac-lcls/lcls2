@@ -401,9 +401,9 @@ class XpmApp(pr.Device):
         self.add(pr.RemoteVariable(    
             name         = "l0DestSel",
             description  = "L0 destination select",
-            offset       =  0x1e,
+            offset       =  0x1c,
             bitSize      =  16,
-            bitOffset    =  0x00,
+            bitOffset    =  0x10,
             base         = pr.UInt,
             mode         = "RW",
         ))

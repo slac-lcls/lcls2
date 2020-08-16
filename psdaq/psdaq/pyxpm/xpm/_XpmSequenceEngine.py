@@ -141,9 +141,9 @@ class XpmSequenceEngine(pr.Device):
         self.add(pr.RemoteVariable(    
             name         = "ctlSeq",
             description  = "Control sequences",
-            offset       =  0x02,
+            offset       =  0x00,
             bitSize      =  8,
-            bitOffset    =  0x00,
+            bitOffset    =  0x10,
             base         = pr.UInt,
             mode         = "RO",
         ))
@@ -151,9 +151,9 @@ class XpmSequenceEngine(pr.Device):
         self.add(pr.RemoteVariable(    
             name         = "xpmSeq",
             description  = "XPM sequences",
-            offset       =  0x03,
+            offset       =  0x00,
             bitSize      =  8,
-            bitOffset    =  0x00,
+            bitOffset    =  0x18,
             base         = pr.UInt,
             mode         = "RO",
         ))
