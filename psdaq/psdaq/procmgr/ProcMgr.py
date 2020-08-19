@@ -1091,7 +1091,7 @@ class ProcMgr:
 
                     # wait for prompt (procServ)
                     try:
-                        response = self.telnet.read_until(self.MSG_PROMPT, 2)
+                        response = self.telnet.read_until(self.MSG_PROMPT, 10)
                     except EOFError:
                         response = ""
                     if not response.count(self.MSG_PROMPT):
@@ -1117,7 +1117,7 @@ class ProcMgr:
                         self.telnet.write(bytes('%s\n' % nextcmd, 'utf-8'))
                         # wait for prompt
                         try:
-                          response = self.telnet.read_until(self.MSG_PROMPT, 2)
+                          response = self.telnet.read_until(self.MSG_PROMPT, 10)
                         except EOFError:
                           response = b""
                         # search for error code after "return="
