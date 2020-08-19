@@ -37,13 +37,14 @@ def _dgSize(view):
 
 class DgramManager():
 
-    def __init__(self, xtc_files, configs=[], tag=None, run=None):
-        """ Opens xtc_files and stores configs."""
+    def __init__(self, xtc_files, configs=[], fds=[], tag=None, run=None):
+        """ Opens xtc_files and stores configs.
+        If file descriptors (fds) is given, reuse the given file descriptors.
+        """
         self.xtc_files = []
         self.shmem_cli = None
         self.shmem_kwargs = {'index':-1,'size':0,'cli_cptr':None}
         self.configs = []
-        self.fds = np.ones(len(xtc_files), dtype=np.int32) * -1
         self._timestamps = [] # built when iterating
         self._run = run
 
@@ -73,24 +74,25 @@ class DgramManager():
                 else:
                     self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
 
-        given_configs = True if len(configs) > 0 else False
 
+        self.given_fds = True if len(fds) > 0 else False
+        if self.given_fds:
+            self.fds = np.asarray(fds, dtype=np.int32)
+        else:
+            self.fds = np.array([os.open(xtc_file, os.O_RDONLY) for xtc_file in self.xtc_files], dtype=np.int32)
+        
+        given_configs = True if len(configs) > 0 else False
         if given_configs:
             self.configs = configs
-
-        for i, xtcdata_filename in enumerate(self.xtc_files):
-            self.fds[i] = os.open(xtcdata_filename, os.O_RDONLY)
-            if not given_configs:
-                d = dgram.Dgram(file_descriptor=self.fds[i])
-                self.configs += [d]
+        elif xtc_files[0] != 'shmem':
+            self.configs = [dgram.Dgram(file_descriptor=fd) for fd in self.fds]
 
         self.det_classes, self.xtc_info, self.det_info_table = self.get_det_class_table()
         self.calibconst = {} # initialize to empty dict - will be populated by run class
 
-    def __del__(self):
-        if self.fds.shape[0] > 0:
+    def close(self):
+        if not self.given_fds:
             for fd in self.fds:
-                if fd < 0: continue
                 os.close(fd)
 
     def __iter__(self):

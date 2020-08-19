@@ -18,6 +18,7 @@ from psana.psexp.events import Events
 def smd_chunks(run):
     for smd_chunk, update_chunk in run.smdr_man.chunks():
         yield smd_chunk
+    #run.close() # FIXME: Check with Elliott if this is a good place to close all open files
 
 @task(inner=True)
 def run_smd0_task(run):

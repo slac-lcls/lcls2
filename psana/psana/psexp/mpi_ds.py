@@ -57,7 +57,7 @@ class RunParallel(Run):
             
             self._get_runinfo()
 
-            self.smd_dm = DgramManager(smd_files, configs=self.configs, run=self)
+            self.smd_dm = DgramManager(smd_files, configs=self.configs, run=self, fds=self.smd_fds)
             self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs, run=self)
 
             nbytes = np.array([memoryview(config).shape[0] for config in self.configs], \
@@ -116,11 +116,13 @@ class RunParallel(Run):
             en = time.time()
             self.c_ana.labels('seconds','None').inc(en-st)
             self.c_ana.labels('batches','None').inc()
+        self.close()
 
     def steps(self):
         self.scan = True
         for step in self.run_node():
             yield step
+        self.close()
 
     def run_node(self):
         if self.comms._nodetype == 'smd0':

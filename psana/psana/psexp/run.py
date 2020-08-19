@@ -1,4 +1,4 @@
-import os
+import os, sys
 import pickle
 import inspect
 import numpy as np
@@ -12,7 +12,7 @@ from psana.psexp.event_manager import EventManager
 from psana.psexp.envstore_manager import EnvStoreManager
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.step import Step
-from psana.psexp.event_manager import TransitionId
+from psana.psexp.TransitionId import TransitionId
 from psana.psexp.events import Events
 from psana.psexp.ds_base import XtcFileNotFound
 import psana.pscalib.calib.MDBWebUtils as wu
@@ -62,6 +62,7 @@ class Run(object):
     filter_callback = None
     nfiles = 0
     scan = False # True when looping over steps
+    smd_fds = None
     
     def __init__(self, exp, run_no, 
             max_events=0, batch_size=1, 
@@ -76,6 +77,27 @@ class Run(object):
         self.prom_man           = prom_man
         self.c_ana              = self.prom_man.get_metric('psana_bd_ana')
         RunHelper(self)
+
+    def close(self):
+        """ Closing all xtcfiles 
+        This is called when StopIteration is raised in Events Iterator 
+        (BigData cores for parallel run) and when Smd0 or EventBuilders
+        close their connections with clients.
+        
+        For SmallData
+        - RunSingleFile, RunShmem, close files opened by DgramManager.
+        - RunSerial, RunParallel close smd_fds opened by Run.
+        """
+        if self.smd_fds is not None:
+            for fd in self.smd_fds:
+                os.close(fd)
+            
+        if self.smd_dm:
+            self.smd_dm.close()
+
+        if self.dm:
+            self.dm.close()
+
 
     def run(self):
         """ Returns integer representaion of run no.
@@ -321,7 +343,7 @@ class RunSerial(Run):
         self.beginruns = self.smdr_man.get_next_dgrams(configs=self.configs)
         
         self._get_runinfo()
-        self.smd_dm = DgramManager(smd_files, configs=self.configs)
+        self.smd_dm = DgramManager(smd_files, configs=self.configs, fds=self.smd_fds)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         super()._set_configinfo()
         super()._set_calibconst()
@@ -345,6 +367,7 @@ class RunSerial(Run):
                 en = time.time()
                 self.c_ana.labels('seconds','None').inc(en-st)
                 self.c_ana.labels('batches','None').inc()
+        self.close()
 
     
     def steps(self):
@@ -353,6 +376,7 @@ class RunSerial(Run):
         for evt in events:
             if evt.service() == TransitionId.BeginStep:
                 yield Step(evt, events)
+        self.close()
 
 class RunLegion(Run):
 
@@ -372,7 +396,7 @@ class RunLegion(Run):
         self.beginruns = self.smdr_man.get_next_dgrams(configs=self.configs)
         
         self._get_runinfo()
-        self.smd_dm = DgramManager(smd_files, configs=self.configs)
+        self.smd_dm = DgramManager(smd_files, configs=self.configs, fds=self.smd_fds)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         super()._set_configinfo()
         super()._set_calibconst()

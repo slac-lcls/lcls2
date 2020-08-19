@@ -303,6 +303,7 @@ class Smd0(object):
 
 
 
+
 class SmdNode(object):
     """Handles both smd_0 and bd_nodes
     Receives blocks of smds from smd_0 then assembles
@@ -435,6 +436,7 @@ class SmdNode(object):
         for i in range(n_bd_nodes-len(self.waiting_bds)):
             self._request_rank(rankreq)
             bd_comm.Send(bytearray(), dest=rankreq[0])
+        
 
 
 

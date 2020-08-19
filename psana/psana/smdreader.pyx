@@ -5,7 +5,6 @@ from libc.string cimport memcpy
 from dgramlite cimport Xtc, Sequence, Dgram
 from parallelreader cimport Buffer, ParallelReader
 from libc.stdint cimport uint32_t, uint64_t
-from cython.parallel import prange
 from cpython cimport array
 import time, os
 cimport cython
