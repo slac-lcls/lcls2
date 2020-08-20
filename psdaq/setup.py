@@ -46,6 +46,7 @@ setup(
                 'pykcu = psdaq.pykcu.pykcu:main',
                 'control_gui = psdaq.control_gui.app.control_gui:control_gui',
                 'bluesky_simple = psdaq.control.bluesky_simple:main',
+                'opal_config_scan = psdaq.control.opal_config_scan:main',
                 'epics_exporter = psdaq.cas.epics_exporter:main',
                 'seqplot = psdaq.seq.seqplot:main',
                 'seqprogram = psdaq.seq.seqprogram:main',
