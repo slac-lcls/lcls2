@@ -10,14 +10,15 @@ import argparse
 
 class MyDAQ:
     def __init__(self, control, *, daqState, args):
+        self.zmq_port = 5550+args.p     # one port per platform
         self.control = control
         self.name = 'mydaq'
         self.parent = None
         self.context = zmq.Context()
         self.push_socket = self.context.socket(zmq.PUSH)
-        self.push_socket.bind('tcp://*:5555')
+        self.push_socket.bind('tcp://*:%s' % self.zmq_port)
         self.pull_socket = self.context.socket(zmq.PULL)
-        self.pull_socket.connect('tcp://localhost:5555')
+        self.pull_socket.connect('tcp://localhost:%s' % self.zmq_port)
         self.comm_thread = threading.Thread(target=self.daq_communicator_thread, args=())
         self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
