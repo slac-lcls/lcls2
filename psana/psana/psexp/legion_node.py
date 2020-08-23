@@ -18,7 +18,6 @@ from psana.psexp.events import Events
 def smd_chunks(run):
     for smd_chunk, update_chunk in run.smdr_man.chunks():
         yield smd_chunk
-    #run.close() # FIXME: Check with Elliott if this is a good place to close all open files
 
 @task(inner=True)
 def run_smd0_task(run):
@@ -28,6 +27,7 @@ def run_smd0_task(run):
         run_smd_task(smd_chunk, run, point=i)
     # Block before returning so that the caller can use this task's future for synchronization
     pygion.execution_fence(block=True)
+    run.close() # FIXME: Check with Elliott if this is a good place to close all open files
 
 def smd_batches(smd_chunk, run):
     eb_man = EventBuilderManager(smd_chunk, run)
@@ -72,6 +72,7 @@ def analyze(run, event_fn=None, start_run_fn=None, det=None):
         return run_smd0_task(run)
     else:
         run_to_process.append(run)
+    
 
 if pygion is not None and not pygion.is_script:
     @task(top_level=True)
