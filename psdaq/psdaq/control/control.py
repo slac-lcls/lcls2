@@ -647,6 +647,7 @@ class DaqPVA():
     # If you don't want steps, set StepGroups = 0.
     #
     def step_groups(self, *, mask):
+        logging.debug("DaqPVA.step_groups(mask=%d)" % mask)
         return self.pv_put(self.pvStepGroups, mask)
 
     #
@@ -1321,6 +1322,7 @@ class CollectionManager():
             self.pva.pv_put(pv, DaqControl.transitionId['EndRun'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.step_groups(mask=0)    # default is no scanning
 
         ok = self.get_phase2_replies('endrun')
         if not ok:
@@ -1865,6 +1867,7 @@ class CollectionManager():
             self.pva.pv_put(pv, DaqControl.transitionId['Configure'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.step_groups(mask=0)    # default is no scanning
 
         ok = self.get_phase2_replies('configure')
         if not ok:
@@ -1906,6 +1909,7 @@ class CollectionManager():
 
     # if you don't want steps, set StepGroups = 0
     def step_groups(self, *, mask):
+        logging.debug("step_groups(mask=%d)" % mask)
         return self.pva.pv_put(self.pva.pvStepGroups, mask)
 
     # set slow_update_enabled to True or False
