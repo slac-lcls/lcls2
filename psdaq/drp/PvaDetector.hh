@@ -57,8 +57,10 @@ public:
 private:
     void _worker();
     void _timeout(const XtcData::TimeStamp& timestamp);
-    void _defer(const XtcData::TimeStamp& timestamp);
-    bool _handle(const XtcData::TimeStamp& timestamp, unsigned index, const XtcData::Dgram* deferred);
+    void _matchUp();
+    void _handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
+    void _handleYounger(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
+    void _handleOlder(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
     enum {PvaNamesIndex = NamesIndex::BASE};
@@ -66,11 +68,10 @@ private:
     DrpBase& m_drp;
     std::unique_ptr<PvaMonitor> m_pvaMonitor;
     std::thread m_workerThread;
-    SPSCQueue<uint32_t> m_inputQueue;
-    SPSCQueue<XtcData::Dgram*> m_deferredQueue;
-    SPSCQueue<XtcData::Dgram*> m_deferredFreelist;
-    std::vector<uint8_t> m_deferredBuffer;
-    mutable std::mutex m_lock;
+    SPSCQueue<uint32_t> m_pgpQueue;
+    SPSCQueue<XtcData::Dgram*> m_pvQueue;
+    SPSCQueue<XtcData::Dgram*> m_bufferFreelist;
+    std::vector<uint8_t> m_buffer;
     std::atomic<bool> m_terminate;
     std::atomic<bool> m_running;
     std::shared_ptr<Pds::MetricExporter> m_exporter;

@@ -1,6 +1,7 @@
 #include "EpicsArch.hh"
 
 #include <cassert>
+#include <bitset>
 #include <chrono>
 #include <unistd.h>
 #include <iostream>
@@ -270,6 +271,8 @@ void EaDetector::_worker()
         uint32_t index;
         Pds::EbDgram* dgram = pgp.next(index, bytes);
         if (dgram) {
+            m_nEvents++;
+
             XtcData::TransitionId::Value service = dgram->service();
             logging::debug("EAWorker saw %s transition @ %d.%09d (%014lx)",
                            XtcData::TransitionId::name(service),
@@ -309,8 +312,6 @@ void EaDetector::_worker()
 
 void EaDetector::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
 {
-    m_nEvents++;
-
     // Make sure the datagram didn't get too big
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
     const size_t maxSize = ((dgram.service() == XtcData::TransitionId::L1Accept) ||
@@ -629,6 +630,12 @@ int main(int argc, char* argv[])
     }
     if (para.alias.empty()) {
         logging::critical("-u: alias is mandatory");
+        return 1;
+    }
+
+    // Only one lane is supported by this DRP
+    if (std::bitset<8>(para.laneMask).count() != 1) {
+        logging::critical("-l: lane mask must have only 1 bit set");
         return 1;
     }
 

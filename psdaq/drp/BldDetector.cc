@@ -2,6 +2,7 @@
 
 #include "BldDetector.hh"
 
+#include <bitset>
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -1037,6 +1038,12 @@ int main(int argc, char* argv[])
     }
     if (para.alias.empty()) {
         logging::critical("-u: alias is mandatory");
+        return 1;
+    }
+
+    // Only one lane is supported by this DRP
+    if (std::bitset<8>(para.laneMask).count() != 1) {
+        logging::critical("-l: lane mask must have only 1 bit set");
         return 1;
     }
 

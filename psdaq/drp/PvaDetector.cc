@@ -1,7 +1,12 @@
 #include "PvaDetector.hh"
 
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include <getopt.h>
 #include <cassert>
+#include <bitset>
 #include <chrono>
 #include <unistd.h>
 #include <sstream>
@@ -191,6 +196,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     const unsigned bufferMask = m_pool.nbuffers() - 1;
     current = evtCounter & bufferMask;
     PGPEvent* event = &m_pool.pgpEvents[current];
+    assert(event->mask == 0);
 
     DmaBuffer* buffer = &event->buffers[lane];
     buffer->size = size;
@@ -276,13 +282,14 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
     return dgram;
 }
 
+
 PvaDetector::PvaDetector(Parameters& para, const std::string& pvName, DrpBase& drp) :
     XpmDetector(&para, &drp.pool),
     m_pvName(pvName),
     m_drp(drp),
-    m_inputQueue(drp.pool.nbuffers()),
-    m_deferredQueue(8),                 // Revisit size
-    m_deferredFreelist(m_deferredQueue.size()),
+    m_pgpQueue(drp.pool.nbuffers()),
+    m_pvQueue(8),                       // Revisit size
+    m_bufferFreelist(m_pvQueue.size()),
     m_terminate(false),
     m_running(false)
 {
@@ -339,19 +346,21 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
     names.add(xtc, varDef);
     m_namesLookup[namesId] = XtcData::NameIndex(names);
 
-    size_t defBufSize = m_pool->bufferSize();
-    m_deferredBuffer.resize(m_deferredQueue.size() * defBufSize);
-    for(unsigned i = 0; i < m_deferredQueue.size(); ++i) {
-        XtcData::Dgram* dg = reinterpret_cast<XtcData::Dgram*>(&m_deferredBuffer[i * defBufSize]);
-        m_deferredFreelist.push(dg);
+    size_t bufSize = m_pool->bufferSize();
+    m_buffer.resize(m_pvQueue.size() * bufSize);
+    for(unsigned i = 0; i < m_pvQueue.size(); ++i) {
+        XtcData::Dgram* dg = reinterpret_cast<XtcData::Dgram*>(&m_buffer[i * bufSize]);
+        m_bufferFreelist.push(dg);
     }
+
+    m_terminate.store(false, std::memory_order_release);
 
     m_workerThread = std::thread{&PvaDetector::_worker, this};
 
     return 0;
 }
 
-void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
+void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
 {
     XtcData::NamesId namesId(nodeId, PvaNamesIndex);
     XtcData::DescribedData desc(dgram.xtc, m_namesLookup, namesId);
@@ -417,13 +426,10 @@ void PvaDetector::_worker()
                     [&](){return m_nTimedOut;});
 
     m_exporter->add("drp_worker_input_queue", labels, Pds::MetricType::Gauge,
-                    [&](){return m_inputQueue.guess_size();});
+                    [&](){return m_pgpQueue.guess_size();});
 
     Pgp pgp(*m_para, m_drp, m_running);
 
-    m_terminate.store(false, std::memory_order_release);
-
-    auto t0 = std::chrono::steady_clock::now();
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
@@ -432,26 +438,22 @@ void PvaDetector::_worker()
         uint32_t index;
         Pds::EbDgram* dgram = pgp.next(index, bytes);
         if (dgram) {
+            m_nEvents++;
+
             XtcData::TransitionId::Value service = dgram->service();
             // Also queue SlowUpdates to keep things in time order
             if ((service == XtcData::TransitionId::L1Accept) ||
                 (service == XtcData::TransitionId::SlowUpdate)) {
-                m_inputQueue.push(index);
+                m_pgpQueue.push(index);
 
-                // Run the timeout routine once in a while to sweep out older
-                // events.  If the PV is updating, _timeout() never finds
-                // anything to do.  Delay avoids queue head contention.
-                using ms_t = std::chrono::milliseconds;
-                auto  t1   = std::chrono::steady_clock::now();
+                _matchUp();
+
+                // Prevent PGP events from stacking up by by timing them out.
+                // If the PV is updating, _timeout() never finds anything to do.
+                XtcData::TimeStamp timestamp;
                 const unsigned msTmo = 100;
-                if (std::chrono::duration_cast<ms_t>(t1 - t0).count() > msTmo)
-                {
-                    XtcData::TimeStamp timestamp;
-                    const unsigned nsTmo = msTmo * 1000000;
-                    _timeout(timestamp.from_ns(dgram->time.to_ns() - nsTmo));
-
-                    t0 = std::chrono::steady_clock::now();
-                }
+                const unsigned nsTmo = msTmo * 1000000;
+                _timeout(timestamp.from_ns(dgram->time.to_ns() - nsTmo));
             }
             else {
                 // Allocate a transition dgram from the pool and initialize its header
@@ -486,152 +488,132 @@ void PvaDetector::process(const PvaMonitor& pva)
     if (!m_running) {
         return;
     }
-    ++m_nUpdates;
-    //logging::debug("%s updated @ %u.%09u", pva.name().c_str(), seconds, nanoseconds);
 
-    // Prevent _timeout() from interfering
-    std::lock_guard<std::mutex> lock(m_lock);
+    XtcData::Dgram* dgram;
+    if (m_bufferFreelist.try_pop(dgram)) { // If a buffer is available...
+        ++m_nUpdates;
+        //logging::debug("%s updated @ %u.%09u", pva.name().c_str(), seconds, nanoseconds);
 
-    unsigned seconds = pva.getScalarAs<unsigned>("timeStamp.secondsPastEpoch");
-    unsigned nanoseconds = pva.getScalarAs<unsigned>("timeStamp.nanoseconds");
-    // Convert timestamp from 1/1/70 to 1/1/90 epoch (5 leap years)
-    XtcData::TimeStamp timestamp(seconds - (20*365+5)*24*3600, nanoseconds);
+        unsigned seconds = pva.getScalarAs<unsigned>("timeStamp.secondsPastEpoch");
+        unsigned nanoseconds = pva.getScalarAs<unsigned>("timeStamp.nanoseconds");
+        // Convert timestamp from 1/1/70 to 1/1/90 epoch (5 leap years)
+        XtcData::TimeStamp timestamp(seconds - (20*365+5)*24*3600, nanoseconds);
 
-    while (true) {
-        uint32_t index;
-        if (!m_inputQueue.peek(index)) {         // If no PGP contribution
-            _defer(timestamp);                   //   defer PV's update
-            return;                              // Nothing more can be done
-        }
+        dgram->time = timestamp;             //   Save the PV's timestamp
+        dgram->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
 
-        XtcData::Dgram* deferred;
-        while (m_deferredQueue.peek(deferred)) { // Handle deferred entries first
-            while (!_handle(deferred->time, index, deferred)) { // If deferred PV not handled
-                if (!m_inputQueue.peek(index)) { //   and if no other PGP contribution
-                    _defer(timestamp);           //   defer current PV update
-                    return;                      //   until next update
-                }                                // Else retry with new PGP contribution
-            }
-            XtcData::Dgram* dg;
-            m_deferredQueue.try_pop(dg);         // Actually consume buffer
-            assert(dg == deferred);
+        event(*dgram, nullptr);              // PGPEvent not needed in this case
 
-            m_deferredFreelist.push(deferred);   // Return buffer to freelist
-
-            if (!m_inputQueue.peek(index)) {     // If no PGP contribution
-                _defer(timestamp);               //   defer PV's update
-                return;                          // Nothing more can be done
-            }
-        }
-
-        if (_handle(timestamp, index, nullptr)) { // If PV was handled
-            break;                                //   await another update
-        }                                         // else try next PGP contribution
-    }
-}
-
-void PvaDetector::_defer(const XtcData::TimeStamp& timestamp)
-{
-    XtcData::Dgram* deferred;
-    if (m_deferredFreelist.try_pop(deferred)) { // If a deferred buffer is available...
-        deferred->time = timestamp;             //   Save the PV's timestamp
-        deferred->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
-        event(*deferred, nullptr);              //   Opt to create the XTC now rather than later
-        m_deferredQueue.push(deferred);         //   Queue the deferred buffer for later handling
+        m_pvQueue.push(dgram);
     }
     else {
-        ++m_nMissed;                            // Else count it as missed
+        ++m_nMissed;                         // Else count it as missed
     }
 }
 
-bool PvaDetector::_handle(const XtcData::TimeStamp& timestamp,
-                          unsigned index, const XtcData::Dgram* deferred)
+void PvaDetector::_matchUp()
 {
-    Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
-    if (timestamp == dgram.time) {
-        uint32_t idx;
-        m_inputQueue.try_pop(idx);  // Actually consume the element
-        assert(idx == index);
+    while (true) {
+        XtcData::Dgram* pvDg;
+        if (!m_pvQueue.peek(pvDg))  break;
 
-        ++m_nMatch;
-        logging::debug("PV matches PGP!!  "
-                       "TimeStamps: PV %u.%09u == PGP %u.%09u",
-                       timestamp.seconds(), timestamp.nanoseconds(),
-                       dgram.time.seconds(), dgram.time.nanoseconds());
+        uint32_t pgpIdx;
+        if (!m_pgpQueue.peek(pgpIdx))  break;
 
-        if (dgram.isEvent()) {
-            if (!deferred) {
-                PGPEvent* pgpEvent = nullptr; // Not needed in this case
-                event(dgram, pgpEvent);
-            }
-            else {
-              memcpy((void*)&dgram.xtc, (const void*)&deferred->xtc, deferred->xtc.extent);
-            }
-        }
-        else {
-            // Allocate a transition dgram from the pool and initialize its header
-            Pds::EbDgram* trDgram = m_pool->allocateTr();
-            *trDgram = dgram;
-            PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
-            pgpEvent->transitionDgram = trDgram;
-        }
-        _sendToTeb(dgram, index);
+        Pds::EbDgram& pgpDg = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[pgpIdx]);
+
+        if      (pvDg->time == pgpDg.time)  _handleMatch  (*pvDg, pgpDg);
+        else if (pvDg->time >  pgpDg.time)  _handleYounger(*pvDg, pgpDg);
+        else                                _handleOlder  (*pvDg, pgpDg);
+    }
+}
+
+void PvaDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
+{
+    XtcData::Dgram* dgram;
+    m_pvQueue.try_pop(dgram);           // Actually consume the element
+
+    uint32_t pgpIdx;
+    m_pgpQueue.try_pop(pgpIdx);         // Actually consume the element
+
+    ++m_nMatch;
+    logging::debug("PV matches PGP!!  "
+                   "TimeStamps: PV %u.%09u == PGP %u.%09u",
+                   pvDg.time.seconds(), pvDg.time.nanoseconds(),
+                   pgpDg.time.seconds(), pgpDg.time.nanoseconds());
+
+    if (pgpDg.service() == XtcData::TransitionId::L1Accept) {
+        memcpy((void*)&pgpDg.xtc, (const void*)&pvDg.xtc, pvDg.xtc.extent);
+
+        _sendToTeb(pgpDg, pgpIdx);
+    }
+    else { // SlowUpdate
+        // Allocate a transition dgram from the pool and initialize its header
+        Pds::EbDgram* trDg = m_pool->allocateTr();
+        *trDg = pgpDg;
+        PGPEvent* pgpEvent = &m_pool->pgpEvents[pgpIdx];
+        pgpEvent->transitionDgram = trDg;
+
+        memcpy((void*)&trDg->xtc, (const void*)&pvDg.xtc, pvDg.xtc.extent);
+
+        _sendToTeb(*trDg, pgpIdx);
     }
 
-    // The PV is newer than the event, so forward empty event with damage
-    else if (timestamp > dgram.time) {
-        uint32_t idx;
-        m_inputQueue.try_pop(idx);  // Actually consume the element
-        assert(idx == index);
+    m_bufferFreelist.push(dgram);     // Return buffer to freelist
+}
 
-        if (dgram.isEvent()) {
-            // No PVA data so mark event as damaged
-            dgram.xtc.damage.increase(XtcData::Damage::MissingData);
+void PvaDetector::_handleYounger(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
+{
+    uint32_t pgpIdx;
+    m_pgpQueue.try_pop(pgpIdx);       // Actually consume the element
 
-            ++m_nEmpty;
-            //using us_t = std::chrono::microseconds;
-            //printf("Missed PV: PGP ts %u.%09u, now %ld, d %ld, diff %ld\n",
-            //       dgram.time.seconds(), dgram.time.nanoseconds(),
-            //       t0.time_since_epoch().count(),
-            //       std::chrono::duration_cast<us_t>(t0 - tMissed).count(),
-            //       std::chrono::duration_cast<us_t>(t0 - tEmpty).count());
-            //tEmpty = t0;
-            logging::debug("No PV data!!      "
-                           "TimeStamps: PV %u.%09u > PGP %u.%09u",
-                           timestamp.seconds(), timestamp.nanoseconds(),
-                           dgram.time.seconds(), dgram.time.nanoseconds());
-        }
-        else {
-            // Allocate a transition dgram from the pool and initialize its header
-            Pds::EbDgram* trDgram = m_pool->allocateTr();
-            *trDgram = dgram;
-            PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
-            pgpEvent->transitionDgram = trDgram;
-        }
-        _sendToTeb(dgram, index);
-        return false;      // Keep processing PGP events until a match is found
+    ++m_nEmpty;
+
+    //using us_t = std::chrono::microseconds;
+    //printf("Missed PV: PGP ts %u.%09u, now %ld, d %ld, diff %ld\n",
+    //       pgpDg.time.seconds(), pgpDg.time.nanoseconds(),
+    //       t0.time_since_epoch().count(),
+    //       std::chrono::duration_cast<us_t>(t0 - tMissed).count(),
+    //       std::chrono::duration_cast<us_t>(t0 - tEmpty).count());
+    //tEmpty = t0;
+    logging::debug("No PV data!!      "
+                   "TimeStamps: PV %u.%09u > PGP %u.%09u",
+                   pvDg.time.seconds(), pvDg.time.nanoseconds(),
+                   pgpDg.time.seconds(), pgpDg.time.nanoseconds());
+
+    // No PV data so mark event damaged
+    pgpDg.xtc.damage.increase(XtcData::Damage::MissingData);
+
+    if (!pgpDg.isEvent()) {
+        // Allocate a transition dgram from the pool and initialize its header
+        Pds::EbDgram* trDg = m_pool->allocateTr();
+        *trDg = pgpDg;
+        PGPEvent* pgpEvent = &m_pool->pgpEvents[pgpIdx];
+        pgpEvent->transitionDgram = trDg;
     }
 
-    // The PV is older than the event, so discard it and look for a newer one
-    else if (dgram.isEvent()) {
-        ++m_nTooOld;
-        logging::debug("PV too old!!      "
-                       "TimeStamps: PV %u.%09u < PGP %u.%09u",
-                       timestamp.seconds(), timestamp.nanoseconds(),
-                       dgram.time.seconds(), dgram.time.nanoseconds());
-    }
+    _sendToTeb(pgpDg, pgpIdx);
+}
 
-    return true;
+void PvaDetector::_handleOlder(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
+{
+    XtcData::Dgram* dgram;
+    m_pvQueue.try_pop(dgram);           // Actually consume the element
+
+    ++m_nTooOld;
+    logging::debug("PV too old!!      "
+                   "TimeStamps: PV %u.%09u < PGP %u.%09u",
+                   pvDg.time.seconds(), pvDg.time.nanoseconds(),
+                   pgpDg.time.seconds(), pgpDg.time.nanoseconds());
+
+    m_bufferFreelist.push(dgram);       // Return buffer to freelist
 }
 
 void PvaDetector::_timeout(const XtcData::TimeStamp& timestamp)
 {
-    // Prevent handling of newer events from interfering
-    std::lock_guard<std::mutex> lock(m_lock);
-
     while (true) {
         uint32_t index;
-        if (!m_inputQueue.peek(index)) {
+        if (!m_pgpQueue.peek(index)) {
             break;
         }
 
@@ -641,18 +623,20 @@ void PvaDetector::_timeout(const XtcData::TimeStamp& timestamp)
         }
 
         uint32_t idx;
-        m_inputQueue.try_pop(idx);  // Actually consume the element
+        m_pgpQueue.try_pop(idx);        // Actually consume the element
         assert(idx == index);
 
-        if (dgram.service() != XtcData::TransitionId::SlowUpdate) {
-            // No PVA data so mark event as damaged
-            dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
+        // No PVA data so mark event as damaged
+        dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
+        ++m_nTimedOut;
+        logging::debug("Event timed out!! "
+                       "TimeStamps: timeout %u.%09u > PGP %u.%09u",
+                       timestamp.seconds(), timestamp.nanoseconds(),
+                       dgram.time.seconds(), dgram.time.nanoseconds());
 
-            ++m_nTimedOut;
-            logging::debug("Event timed out!! "
-                           "TimeStamps: timeout %u.%09u > PGP %u.%09u",
-                           timestamp.seconds(), timestamp.nanoseconds(),
-                           dgram.time.seconds(), dgram.time.nanoseconds());
+
+        if (dgram.service() != XtcData::TransitionId::SlowUpdate) {
+            _sendToTeb(dgram, index);
         }
         else {
             // Allocate a transition dgram from the pool and initialize its header
@@ -660,15 +644,14 @@ void PvaDetector::_timeout(const XtcData::TimeStamp& timestamp)
             *trDgram = dgram;
             PGPEvent* pgpEvent = &m_pool->pgpEvents[index];
             pgpEvent->transitionDgram = trDgram;
+
+            _sendToTeb(*trDgram, index);
         }
-        _sendToTeb(dgram, index);
     }
 }
 
 void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
 {
-    m_nEvents++;
-
     // Make sure the datagram didn't get too big
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
     const size_t maxSize = ((dgram.service() == XtcData::TransitionId::L1Accept) ||
@@ -958,6 +941,12 @@ int main(int argc, char* argv[])
     }
     if (para.alias.empty()) {
         logging::critical("-u: alias is mandatory");
+        return 1;
+    }
+
+    // Only one lane is supported by this DRP
+    if (std::bitset<8>(para.laneMask).count() != 1) {
+        logging::critical("-l: lane mask must have only 1 bit set");
         return 1;
     }
 

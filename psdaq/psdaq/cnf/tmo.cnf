@@ -1,7 +1,10 @@
 if not platform: platform = '4'
 
+import os
+ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
+
 epics_host = 'daq-tst-dev03'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'+' '+ld_lib_path
 conda_rel = 'ps-3.1.16'
 hsd_epics_dev03 = 'DAQ:LAB2:HSD:DEV03'
 hsd_epics_dev06 = 'DAQ:LAB2:HSD:DEV06'
@@ -68,12 +71,12 @@ procmgr_config = [
  { host: 'drp-tst-dev015', id:'meb1',        flags:'spu',  conda:conda_rel, cmd:meb_cmd},
 
  # PVA
- { host: 'drp-tst-dev002', id:'tmoandor_0',  flags:'spu',  conda:conda_rel, cmd:pva_cmd+'-l 0x2 -D andor DAQ:LAB2:PVCAM'},
- #{ host: 'drp-tst-dev002', id:'tmoxtcav_0',  flags:'spu',  conda:conda_rel, cmd:pva_cmd+'-l 0x2 -D xtcav DAQ:LAB2:PVCAM'},
+ { host: 'drp-tst-dev017', id:'tmoandor_0',  flags:'spu',  conda:conda_rel, cmd:pva_cmd+'-l 0x2 -D andor DAQ:LAB2:PVCAM'},
+ #{ host: 'drp-tst-dev017', id:'tmoxtcav_0',  flags:'spu',  conda:conda_rel, cmd:pva_cmd+'-l 0x2 -D xtcav DAQ:LAB2:PVCAM'},
 
  # EpicsArch
- #{ host: 'drp-tst-dev004', id:'epics_0',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:ea_cmd},
- { host: 'drp-tst-dev002', id:'epics_0',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:ea_cmd},
+ #{ host: 'drp-tst-dev004', id:'epics_0',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:ea_cmd+' -l 0x4'},
+ { host: 'drp-tst-dev017', id:'epics_0',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:ea_cmd+' -l 0x4'},
 
  # BLD - must currently run on dev018 since that's where the bld enet xface is
  { host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    conda:conda_rel, env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4 -e 40'},
@@ -85,7 +88,7 @@ procmgr_config = [
  #{ host: 'drp-tst-dev003', id:'tmoopaltt_0', flags:'pu',   conda:conda_rel, cmd:drp_cmd0+' -D opal -k batching=no'},
 
  # Opal (non-timetool)
- #{ host: 'drp-tst-dev003', id:'tmoopal_0',   flags:'pu',   conda:conda_rel, cmd:drp_cmd0+' -D opal -k batching=no'},
+ #{ host: 'drp-tst-dev003', id:'tmoopal_0',   flags:'pu',   conda:conda_rel, env:epics_env, cmd:drp_cmd0+' -D opal -k batching=no'},
 
  # Timing System
  #{ host: 'drp-tst-dev013', id:'tmots_0',     flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D ts' },

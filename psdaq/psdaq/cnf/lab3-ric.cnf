@@ -50,12 +50,12 @@ procmgr_config = [
  {                         id:'control_gui', flags:'p',                  cmd:'control_gui -l INFO -H '+collect_host+' --user '+user+' --password '+password},
 
  # TEB
- #{ host: 'drp-tst-dev016', id:'teb0',        flags:'sxpu', cmd:teb_cmd},
+ { host: 'drp-tst-dev016', id:'teb0',        flags:'spu', cmd:teb_cmd},
  #{ host: 'drp-tst-dev015', id:'teb1',        flags:'sxpu', cmd:teb_cmd},
 
  # MEB
- #{ host: 'drp-tst-dev016', id:'meb0',        flags:'sxpu', cmd:meb_cmd},
- #{ host: 'drp-tst-dev015', id:'meb1',        flags:'sxpu', cmd:meb_cmd},
+ #{ host: 'drp-tst-dev016', id:'meb0',        flags:'spu', cmd:meb_cmd},
+ #{ host: 'drp-tst-dev015', id:'meb1',        flags:'spu', cmd:meb_cmd},
 
  # PVA
  #{ host: 'drp-tst-dev002', id:'tmoandor_0',  flags:'xpu',  cmd:pva_cmd+'-l 0x2 -D andor '+'DAQ:LAB2:PVCAM'},
@@ -64,8 +64,8 @@ procmgr_config = [
  #{ host: 'drp-tst-dev004', id:'epics_0',     flags:'xpu',  env:epics_env, cmd:ea_cmd},
 
  # BLD - must currently run on dev018 since that's where the bld enet xface is
- { host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4 -e 40'},
- { host: epics_host,       id:'bldcas',      flags:'s',    env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str},
+ #{ host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4 -e 40'},
+ #{ host: epics_host,       id:'bldcas',      flags:'s',    env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str},
  #{ host: 'drp-tst-dev018', id:'bld_0',       flags:'xpu',  env:epics_env, cmd:bld_cmd},
 
  # TimeTool
@@ -74,6 +74,7 @@ procmgr_config = [
 
  # Timing System
  #{ host: 'drp-tst-dev013', id:'tmots_0',     flags:'sxpu', cmd:drp_cmd1+' -D ts'},
+ #{ host: 'drp-tst-dev017', id:'tmots_0',     flags:'sxpu', cmd:drp_cmd1+' -D ts'},
 
  # Wave8
  #{ host: 'drp-tst-dev005', id:'wave8pvs',    flags:'s',    cmd:'wave8pvs --l 0'},
