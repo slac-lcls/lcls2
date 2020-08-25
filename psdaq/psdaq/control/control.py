@@ -1395,6 +1395,7 @@ class CollectionManager():
         return update_ok
 
     def condition_connect(self):
+        logging.debug('condition_connect: phase1Info = %s' % self.phase1Info)
         connect_ok = True
 
         # set XPM PV
@@ -1847,6 +1848,7 @@ class CollectionManager():
         return retval
 
     def condition_configure(self):
+        logging.debug('condition_configure: phase1Info = %s' % self.phase1Info)
         # phase 1
         ok = self.condition_common('configure', 45000,
                                    body={'config_alias': self.config_alias, 'trigger_config': self.trigger_config})
@@ -1879,6 +1881,7 @@ class CollectionManager():
         return True
 
     def condition_unconfigure(self):
+        self.phase1Info = {}    # clear phase1Info
         # phase 1
         ok = self.condition_common('unconfigure', 6000)
         if not ok:
@@ -1987,6 +1990,7 @@ class CollectionManager():
 
 
     def condition_reset(self):
+        self.phase1Info = {}    # clear phase1Info
 
         # disable triggers
         if self.state == 'running':
