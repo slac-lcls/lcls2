@@ -1,5 +1,7 @@
 from psana.psexp.envstore import EnvStore
 from psana.dgram import Dgram
+from psana.psexp.TransitionId import TransitionId
+import copy
 
 class EnvStoreManager(object):
     """ Manages envStore.
@@ -25,6 +27,19 @@ class EnvStoreManager(object):
             for key, val in d.__dict__.items():
                 if key in self.stores:
                     self.stores[key].add_to(new_d, i)
+
+                # For BeginStep, checks if self.configs need to
+                # be updated.
+                if new_d.service() == TransitionId.BeginStep:
+                    # Only apply fields w/o leading "_" and exist in the 
+                    # original config
+                    if key.startswith("_") or not hasattr(self.configs[i], key): continue
+                    cfgold = getattr(self.configs[i], key)
+
+                    for segid, segment in getattr(new_d, key).items():
+                        # Only apply fiedls with .config
+                        if not hasattr(segment, "config"): continue
+                        cfgold[segid] = copy.deepcopy(segment) 
 
     def update_by_views(self, views):
         if not views:
