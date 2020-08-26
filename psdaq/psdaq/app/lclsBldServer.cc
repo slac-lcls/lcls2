@@ -176,7 +176,7 @@ int main(int argc, char** argv) {
     payload[10] = 0;   // damage
     payload[11] = (6<<24) | (pid&0xffffff);
     payload[12] = bldInfo;
-    payload[11] = typeId;
+    payload[13] = typeId;
     payload[14] = 4*payloadWords+20; // extent
     for(unsigned i=0; i<payloadWords; i++)
       payload[15+i] = i;
