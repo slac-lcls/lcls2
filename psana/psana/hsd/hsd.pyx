@@ -126,6 +126,7 @@ cdef class cyhsd_base_1_2_3:
         self._peaksDict = {}
         self._fexPeaks = []
         self._hsdsegments = self._segments(evt)
+        if self._hsdsegments is None: return # no segments at all
         self._evt = evt
         seglist = []
         for iseg in self._hsdsegments:
