@@ -22,15 +22,20 @@ class MissingDet:
 
 class DetectorImpl(object):
     def __init__(self, det_name, drp_class_name, configinfo, calibconst):
-        self._det_name       = det_name
-        self._drp_class_name = drp_class_name
-
-        self._configs = configinfo.configs # configs for only this detector
-        self._sorted_segment_ids = configinfo.sorted_segment_ids
-        self._uniqueid = configinfo.uniqueid
-        self._dettype = configinfo.dettype
+        self._det_name          = det_name
+        self._drp_class_name    = drp_class_name
         
-        self._calibconst     = calibconst # only my calibconst (equivalent to det.calibconst['det_name'])
+        # Both configs and calibconst are for only this detector
+        self._configs           = configinfo.configs 
+        self._calibconst        = calibconst 
+        self._sorted_segment_ids= configinfo.sorted_segment_ids
+        self._uniqueid          = configinfo.uniqueid
+        self._dettype           = configinfo.dettype
+        
+        # For detectors with cfgscan, add EnvStore to keep track
+        # of all their history to support jump.
+        #if drp_class_name == "config": 
+
 
     def _segments(self,evt):
         """

@@ -1,5 +1,4 @@
-from .ds_base import DataSourceBase
-from psana.psexp.run import RunLegion
+from psana.psexp import RunLegion, DataSourceBase
 
 class LegionDataSource(DataSourceBase):
     def __init__(self, *args, **kwargs):

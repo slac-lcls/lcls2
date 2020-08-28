@@ -1,4 +1,4 @@
-from psana.psexp.event_manager import TransitionId
+from psana.psexp import TransitionId
 
 class Step(object):
     

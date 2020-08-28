@@ -1,11 +1,9 @@
+from psana       import dgram
 from psana.event import Event
-from psana import dgram
-from psana.psexp.packet_footer import PacketFooter
+from psana.psexp import PacketFooter, TransitionId, PrometheusManager
 import numpy as np
 import os
-from psana.psexp.TransitionId import TransitionId
 import logging
-from psana.psexp.prometheus_manager import PrometheusManager
 
 s_bd_disk = PrometheusManager.get_metric('psana_bd_wait_disk')
 

@@ -1,4 +1,4 @@
-from psana.psexp.event_manager import EventManager, TransitionId
+from psana.psexp import EventManager, TransitionId
 
 class Events:
     def __init__(self, run, get_smd=0, dm=None):

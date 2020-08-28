@@ -1,4 +1,4 @@
-from psana.psexp.packet_footer import PacketFooter
+from psana.psexp import PacketFooter
 import numpy as np
 from collections import defaultdict
 import os

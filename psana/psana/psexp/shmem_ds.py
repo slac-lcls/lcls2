@@ -1,5 +1,4 @@
-from .ds_base import DataSourceBase
-from .run import RunShmem
+from psana.psexp import DataSourceBase, RunShmem
 
 class ShmemDataSource(DataSourceBase):
 

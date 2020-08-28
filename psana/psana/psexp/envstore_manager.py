@@ -1,6 +1,5 @@
-from psana.psexp.envstore import EnvStore
+from psana.psexp import EnvStore, TransitionId
 from psana.dgram import Dgram
-from psana.psexp.TransitionId import TransitionId
 import copy
 
 class EnvStoreManager(object):

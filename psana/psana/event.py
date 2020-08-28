@@ -2,9 +2,8 @@
 #import detectors
 
 from psana import dgram
-from psana.psexp.packet_footer import PacketFooter
+from psana.psexp import PacketFooter, TransitionId
 import numpy as np
-from psana.psexp.TransitionId import TransitionId
 
 # TO DO
 # 1) remove comments

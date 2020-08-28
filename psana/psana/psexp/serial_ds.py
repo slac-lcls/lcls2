@@ -1,5 +1,4 @@
-from .ds_base import DataSourceBase
-from psana.psexp.run import RunSerial
+from psana.psexp import RunSerial, DataSourceBase
 
 class SerialDataSource(DataSourceBase):
 

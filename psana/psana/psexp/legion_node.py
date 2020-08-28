@@ -1,4 +1,4 @@
-from .tools import mode
+from psana.psexp import mode
 
 pygion = None
 if mode == 'legion':
@@ -11,9 +11,7 @@ else:
             return lambda fn: fn
         return fn
 
-from psana.psexp.eventbuilder_manager import EventBuilderManager
-from psana.psexp.event_manager import TransitionId
-from psana.psexp.events import Events
+from psana.psexp import EventBuilderManager, TransitionId, Events
 
 def smd_chunks(run):
     for smd_chunk, update_chunk in run.smdr_man.chunks():

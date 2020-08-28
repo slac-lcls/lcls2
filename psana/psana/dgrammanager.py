@@ -35,7 +35,7 @@ def _dgSize(view):
     txSize = 3 * 4              # sizeof(XtcData::TransitionBase)
     return txSize + np.array(view, copy=False).view(dtype=np.uint32)[iExt]
 
-class DgramManager():
+class DgramManager(object):
 
     def __init__(self, xtc_files, configs=[], fds=[], tag=None, run=None):
         """ Opens xtc_files and stores configs.

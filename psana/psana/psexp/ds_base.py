@@ -8,7 +8,7 @@ import pathlib
 from psana.dgrammanager import DgramManager
 from psana.smalldata import SmallData
 
-from psana.psexp.prometheus_manager import PrometheusManager
+from psana.psexp import PrometheusManager
 import threading
 import logging
 

@@ -1,12 +1,10 @@
 from psana.smdreader import SmdReader
-from psana.psexp.packet_footer import PacketFooter
 from psana.eventbuilder import EventBuilder
-from psana.psexp.event_manager import EventManager
+from psana.psexp import *
 import os, time
 from psana import dgram
 from psana.event import Event
 import logging
-from psana.psexp.prometheus_manager import PrometheusManager
 
 s_smd0_disk = PrometheusManager.get_metric('psana_smd0_wait_disk')
 

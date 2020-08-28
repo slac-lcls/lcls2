@@ -1,6 +1,5 @@
 from psana.eventbuilder import EventBuilder
-from psana.psexp.packet_footer import PacketFooter
-from psana.psexp.prometheus_manager import PrometheusManager
+from psana.psexp        import PacketFooter, PrometheusManager
 
 class EventBuilderManager(object):
 

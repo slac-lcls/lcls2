@@ -1,8 +1,5 @@
-
 import os
-from .tools import mode
-from .ds_base import DataSourceBase
-from psana.psexp.run import Run
+from psana.psexp import Run, mode, DataSourceBase
 
 
 class NullDataSource(DataSourceBase):

@@ -1,5 +1,4 @@
-from .ds_base import DataSourceBase
-from .run import RunSingleFile
+from psana.psexp import DataSourceBase, RunSingleFile
 
 class SingleFileDataSource(DataSourceBase):
 
