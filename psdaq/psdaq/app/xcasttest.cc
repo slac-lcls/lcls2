@@ -43,9 +43,10 @@ int main(int argc, char **argv)
   bool lpeek = false;
   std::vector<unsigned> uaddr;
   unsigned tdelay = 0;
+  bool checkfid = false;
 
   char c;
-  while ( (c=getopt( argc, argv, "i:a:d:D:p:s:rPh?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "i:a:d:D:p:s:frPh?")) != EOF ) {
     switch(c) {
     case 'a': 
       for(char* arg = strtok(optarg,","); arg!=NULL; arg=strtok(NULL,","))
@@ -68,6 +69,9 @@ int main(int argc, char **argv)
       break;
     case 'r':
       lreceiver = true;
+      break;
+    case 'f':
+      checkfid = true;
       break;
     case 'P':
       lpeek = true;
@@ -174,7 +178,13 @@ int main(int argc, char **argv)
   }
 
   uint64_t nbytes = 0, tbytes = 0;
-  uint32_t npkts = 0;
+  uint64_t npkts = 0;
+
+  Psdaq::MonitorArgs args;
+  args.add("Packets","Pkts",npkts);
+  args.add("Bytes","B",tbytes);
+  Psdaq::AppUtils::monitor(args);
+
   char* buff = new char[sz];
   iphdr* ip = (iphdr*)buff;
   ip->ihl = 5;
@@ -194,11 +204,23 @@ int main(int argc, char **argv)
   udp->len    = htons(sz+sizeof(udphdr));
   udp->check  = 0;
 
-  timespec tv_begin;
-  clock_gettime(CLOCK_REALTIME,&tv_begin);
-  double t = 0;
-
   unsigned iaddr=0;
+  
+  unsigned fido=0;
+
+  if (lreceiver) {
+      sockaddr_in src;
+      socklen_t len = sizeof(src);
+      ::recvfrom(fd, buff, sz, 0, (sockaddr*)&src, &len);
+      unsigned srcip = ntohl(src.sin_addr.s_addr);
+      unsigned sport = ntohs(src.sin_port);
+      printf("received from %u.%u.%u.%u:%u\n",
+             (srcip>>24)&0xff,
+             (srcip>>16)&0xff,
+             (srcip>> 8)&0xff,
+             (srcip>> 0)&0xff,
+             sport);
+  }
 
   while(1) {
 
@@ -213,12 +235,19 @@ int main(int argc, char **argv)
       }
       bytes = ::recv(fd, buff, sz, 0);
       npkts++;
+      const uint32_t* p = reinterpret_cast<const uint32_t*>(buff);
       if (ndump) {
-        const uint32_t* p = reinterpret_cast<const uint32_t*>(buff);
         for(unsigned i=0; i<(bytes>>2); i++)
           printf("%08x%c",p[i],(i%8)==7?'\n':' ');
         printf("\n");
         --ndump;
+      }
+      else if (checkfid) {
+        unsigned fid = p[3]&0x1ffff;
+        int diff = (fido > fid) ? fid + 0x1ffe0 - fido : fid-fido;
+        if (diff != 3)
+          printf("fid [0x%05x] ofid [0x%05x] diff %u\n", fid, fido, diff);
+        fido = fid;
       }
     }
     else {
@@ -234,25 +263,6 @@ int main(int argc, char **argv)
       continue;
     }
     tbytes += bytes;
-
-    timespec tv;
-    clock_gettime(CLOCK_REALTIME,&tv);
-    double dt = double(tv.tv_sec - tv_begin.tv_sec) +
-      1.e-9*(double(tv.tv_nsec)-double(tv_begin.tv_nsec));
-    if (dt > 1) {
-      t += dt;
-      nbytes += tbytes;
-      printf("\t%uMB/s\t%uMB/s\t%dMB\t%dHz\t%d.%09d\n",
-	     unsigned(double(nbytes)/ t*1.e-6),
-	     unsigned(double(tbytes)/dt*1.e-6),
-             unsigned(double(tbytes)*1.e-6),
-             npkts,
-             unsigned(tv.tv_sec), unsigned(tv.tv_nsec));
-                      
-      tv_begin = tv;
-      tbytes = 0;
-      npkts  = 0;
-    }
   }
 
   return 0;
