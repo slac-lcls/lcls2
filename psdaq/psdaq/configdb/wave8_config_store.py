@@ -90,16 +90,14 @@ def write_to_daq_config_db(args):
     top.set("user.raw.start_ns"            ,107692,'UINT32')    # [ns from timing fiducial]
     top.set("user.raw.gate_ns"             ,400,'UINT32')       # [ns]
     top.set("user.raw.nsamples:RO"         ,100,'UINT32')       # [ns]
-    for i in range(8):
-        top.set("user.raw.enable[%d]"%i    ,  1,'UINT8')        # record channel
+    top.set("user.raw.enable"              ,[1]*8,'UINT8')      # record channel
     top.set("user.raw.prescale"            ,  1,'UINT32')       # record 1 out of N events
     top.set("user.fex.baseline"            ,  1,'baselineEnum') # [log2 of 250 MHz ADC samples]
     top.set("user.fex.start_ns"            ,107892,'UINT32')    # [ns from timing fiducial]
     top.set("user.fex.gate_ns"             ,200,'UINT32')       # [ns]
     top.set("user.fex.nsamples:RO"         , 50,'UINT32')       # [ns]
     top.set("user.fex.quadsel"             ,  0,'quadrantEnum') # channels for X,Y,I calculation
-    for i in range(4):
-        top.set("user.fex.coeff[%d]"%i     , 1.,'DOUBLE')       # coefficient in X,Y,I calculation
+    top.set("user.fex.coeff"               ,[1.]*4,'DOUBLE')    # coefficient in X,Y,I calculation
 
     top.init("expert","Top.SystemRegs.AvccEn0"         ,  1,'UINT8')
     top.init("expert","Top.SystemRegs.AvccEn1"         ,  1,'UINT8')
@@ -122,14 +120,12 @@ def write_to_daq_config_db(args):
     top.init("expert","Top.Integrators.IntegralSize"          ,    0,'UINT32')            # user config
     top.init("expert","Top.Integrators.BaselineSize"          ,    0,'UINT8')             # user config
     top.init("expert","Top.Integrators.QuadrantSel"           ,    0,'quadrantEnum')      # user config
-    for i in range(4):
-        top.init("expert","Top.Integrators.CorrCoefficientFloat64[%d]"%i, 1.0, 'DOUBLE')  # user config
+    top.init("expert","Top.Integrators.CorrCoefficientFloat64", [1.0]*4, 'DOUBLE')  # user config
     top.init("expert","Top.Integrators.CntRst"                ,    0,'UINT8')
     top.init("expert","Top.Integrators.ProcFifoPauseThreshold",  255,'UINT32')
     top.init("expert","Top.Integrators.IntFifoPauseThreshold" ,  255,'UINT32')
 
-    for i in range(8):
-        top.init("expert","Top.RawBuffers.BuffEn[%d]"%i  ,   0,'UINT32')  # user config
+    top.init("expert","Top.RawBuffers.BuffEn"            ,[0]*8,'UINT32')  # user config
     top.init("expert","Top.RawBuffers.BuffLen"           , 100,'UINT32')  # user config
     top.init("expert","Top.RawBuffers.CntRst"            ,   0,'UINT8')
     top.init("expert","Top.RawBuffers.FifoPauseThreshold", 100,'UINT32')
@@ -139,11 +135,10 @@ def write_to_daq_config_db(args):
     top.init("expert","Top.BatcherEventBuilder.Timeout", 0,'UINT32')
     top.init("expert","Top.BatcherEventBuilder.Blowoff", 0,'UINT8')
 
-    #  TriggerEventBuffer[x] - x should be hidden from application
-    top.init("expert","Top.TriggerEventManager.TriggerEventBuffer[0].Partition"     , 0,'UINT8')
-    top.init("expert","Top.TriggerEventManager.TriggerEventBuffer[0].PauseThreshold",16,'UINT8')
-    top.init("expert","Top.TriggerEventManager.TriggerEventBuffer[0].TriggerDelay"  , 0,'UINT32')  # user config
-    top.init("expert","Top.TriggerEventManager.TriggerEventBuffer[0].MasterEnable"  , 0,'UINT8')
+    top.init("expert","Top.TriggerEventManager.TriggerEventBuffer.Partition"     , 0,'UINT8')
+    top.init("expert","Top.TriggerEventManager.TriggerEventBuffer.PauseThreshold",16,'UINT8')
+    top.init("expert","Top.TriggerEventManager.TriggerEventBuffer.TriggerDelay"  , 0,'UINT32')  # user config
+    top.init("expert","Top.TriggerEventManager.TriggerEventBuffer.MasterEnable"  , 0,'UINT8')
 
     dlyAlane = [ [ 0x0c,0x0b,0x0e,0x0e,0x10,0x10,0x12,0x0b ],
                  [ 0x0a,0x08,0x0c,0x0b,0x0d,0x0c,0x0b,0x0c ],
@@ -155,17 +150,15 @@ def write_to_daq_config_db(args):
                  [ 0x13,0x12,0x13,0x12,0x12,0x11,0x12,0x11 ] ]
 
     for iadc in range(4):
-        base = 'Top.AdcReadout[%d]'%iadc
-        for lane in range(8):
-            top.init('expert',base+'.DelayAdcALane[%d]'%lane, dlyAlane[iadc][lane], 'UINT8')
-        for lane in range(8):
-            top.init('expert',base+'.DelayAdcBLane[%d]'%lane, dlyBlane[iadc][lane], 'UINT8')
+        base = 'Top.AdcReadout%d'%iadc
+        top.init('expert',base+'.DelayAdcALane', dlyAlane[iadc], 'UINT8')
+        top.init('expert',base+'.DelayAdcBLane', dlyBlane[iadc], 'UINT8')
         top.init('expert',base+'.DMode'  , 3, 'UINT8')
         top.init('expert',base+'.Invert' , 0, 'UINT8')
         top.init('expert',base+'.Convert', 3, 'UINT8')
 
     for iadc in range(4):
-        base = 'Top.AdcConfig[%d]'%iadc
+        base = 'Top.AdcConfig%d'%iadc
         zeroregs = [7,8,0xb,0xc,0xf,0x10,0x11,0x12,0x12,0x13,0x14,0x16,0x17,0x18,0x20]
         for r in zeroregs:
             top.init('expert',base+'.AdcReg_0x%04X'%r,    0, 'UINT8')

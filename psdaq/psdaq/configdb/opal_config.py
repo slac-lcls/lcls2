@@ -1,6 +1,8 @@
 from psdaq.configdb.get_config import get_config
+from psdaq.configdb.scan_utils import *
+from psdaq.configdb.xpmmini import *
 from psdaq.cas.xpm_utils import timTxId
-from .xpmmini import *
+import pprint
 import rogue
 import cameralink_gateway
 import time
@@ -13,6 +15,21 @@ pv = None
 #FEB parameters
 lane = 0
 chan = 0
+ocfg = None
+group = None
+
+def dict_compare(new,curr,result):
+    for k in new.keys():
+        if dict is type(curr[k]):
+            resultk = {}
+            dict_compare(new[k],curr[k],resultk)
+            if resultk:
+                result[k] = resultk
+        else:
+            if new[k]==curr[k]: 
+                pass
+            else:
+                result[k] = new[k]
 
 def opal_init(arg,xpmpv=None):
 
@@ -52,6 +69,8 @@ def opal_init_feb(slane=None,schan=None):
         chan = int(schan)
 
 def opal_connect(cl):
+    global lane
+    global chan
 
     txId = timTxId('opal')
 
@@ -86,46 +105,104 @@ def opal_connect(cl):
 
     return d
 
-def opal_config(cl,connect_str,cfgtype,detname,detsegm,group):
+def user_to_expert(cl, cfg, full=False):
+    global group
+
+    d = {}
+    hasUser = 'user' in cfg
+    if (hasUser and 'start_ns' in cfg['user']):
+        partitionDelay = getattr(cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
+        rawStart       = cfg['user']['start_ns']
+        triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
+        print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+        if triggerDelay < 0:
+            print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+            raise ValueError('triggerDelay computes to < 0')
+
+        d['expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
+
+    if full:
+        d['expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition']=group
+
+    if (hasUser and 'gate_ns' in cfg['user']):
+        gate = cfg['user']['gate_ns']
+        d['expert.ClinkFeb.TrigCtrl.TrigPulseWidth']=gate*0.001
+
+    if (hasUser and 'black_level' in cfg['user']):
+        d['expert.ClinkFeb.ClinkTop.ClinkCh.UartOpal1000.BL']=cfg['user']['black_level']
+
+    if (hasUser and 'vertical_bin' in cfg['user']):
+        d['expert.ClinkFeb.ClinkTop.ClinkCh.UartOpal1000.VBIN']=cfg['user']['vertical_bin']
+
+    update_config_entry(cfg,ocfg,d)
+
+def config_expert(cl, cfg):
+    global lane
+    global chan
+
+    # translate legal Python names to Rogue names
+    rogue_translate = {'ClinkFeb'          :'ClinkFeb[%d]'%lane,
+                       'ClinkCh'           :'Ch[%d]'%chan,
+                       'TriggerEventBuffer':'TriggerEventBuffer[%d]'%lane,
+                       'TrigCtrl'          :'TrigCtrl[%d]'%chan,
+                       'PllConfig0'        :'PllConfig[0]',
+                       'PllConfig1'        :'PllConfig[1]',
+                       'PllConfig2'        :'PllConfig[2]',
+                       'Red'               :'WB[0]',
+                       'Green'             :'WB[1]',
+                       'Blue'              :'WB[2]'}
+
+    depth = 0
+    path  = 'cl'
+    my_queue  =  deque([[path,depth,cl,cfg]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
+    while(my_queue):
+        path,depth,rogue_node, configdb_node = my_queue.pop()
+        #  Replace configdb lane and febch for the physical values
+        if(dict is type(configdb_node)):
+            for i in configdb_node:
+                if i in rogue_translate:
+                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[rogue_translate[i]],configdb_node[i]])
+                else:
+                    try:
+                        my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[i],configdb_node[i]])
+                    except KeyError:
+                        print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
+
+        #  Apply
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
+            rogue_node.set(configdb_node)
+
+    #  Parameters like black-level need time to take affect (100ms?)
+
+#  Apply the full configuration
+def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
+    global ocfg
+    global group
+    global lane
+    global chan
+    group = grp
+
+    appLane  = 'AppLane[%d]'%lane
+    clinkFeb = 'ClinkFeb[%d]'%lane
+    clinkCh  = 'Ch[%d]'%chan
 
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
-
-    lane = 0
-    chan = 0
+    ocfg = cfg
 
     if(cl.ClinkPcie.Hsio.PgpMon[0].RxRemLinkReady.get() != 1):
         raise ValueError(f'PGP Link is down' )
 
     # drain any data in the event pipeline
-    getattr(cl.ClinkPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(True)
-    getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan).Blowoff.set(True)
-
-    # overwrite the low-level configuration parameters with calculations from the user configuration
-
-    partitionDelay = getattr(cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
-    rawStart       = cfg['user']['start_ns']
-    triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
-    print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
-    if triggerDelay < 0:
-        print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
-        raise ValueError('triggerDelay computes to < 0')
-
-    cfg['expert']['ClinkPcie']['Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer[0]']['TriggerDelay'] = triggerDelay
-    cfg['expert']['ClinkPcie']['Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer[0]']['Partition'] = group
-
-    gate = cfg['user']['gate_ns']
-    cfg['expert']['ClinkFeb[0]']['TrigCtrl[0]']['TrigPulseWidth'] = gate*0.001
-    cfg['expert']['ClinkFeb[0]']['ClinkTop']['Ch[0]']['UartOpal1000']['BL']   = cfg['user']['black_level']
-    cfg['expert']['ClinkFeb[0]']['ClinkTop']['Ch[0]']['UartOpal1000']['VBIN'] = cfg['user']['vertical_bin']
+    getattr(cl.ClinkPcie.Application,appLane).EventBuilder.Blowoff.set(True)
+    getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(True)
 
     #  set bool parameters
-    cfg['expert']['ClinkFeb[0]']['TrigCtrl[0]']['EnableTrig'] = True
-    cfg['expert']['ClinkFeb[0]']['TrigCtrl[0]']['InvCC'] = False
-    cfg['expert']['ClinkFeb[0]']['ClinkTop']['Ch[0]']['DataEn'] = True
-    cfg['expert']['ClinkFeb[0]']['ClinkTop']['Ch[0]']['Blowoff'] = False
+    cfg['expert']['ClinkFeb']['TrigCtrl']['EnableTrig'] = True
+    cfg['expert']['ClinkFeb']['TrigCtrl']['InvCC'] = False
+    cfg['expert']['ClinkFeb']['ClinkTop']['ClinkCh']['DataEn'] = True
 
     #  trigger polarity inversion for firmware version
-    uart = getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan).UartOpal1000
+    uart = getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).UartOpal1000
     try:
         v = uart.BS.get()
         uart.BS.set(str(int(v)+1))
@@ -137,38 +214,21 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,group):
         major,minor = fwver[2].split('.')[:2]
         if int(major)<1 or int(minor)<20:
             print('Normal polarity')
-            cfg['expert']['ClinkFeb[0]']['ClinkTop']['Ch[0]']['UartOpal1000']['CCE[1]'] = 0 
+            getattr(uart,'CCE[1]').set(0)
         else:
             print('Inverted polarity')
-            cfg['expert']['ClinkFeb[0]']['ClinkTop']['Ch[0]']['UartOpal1000']['CCE[1]'] = 1  # invert polarity 
+            getattr(uart,'CCE[1]').set(1)
+    getattr(uart,'CCE[0]').set(0)  # trigger on CC1
+    uart.MO.set(1)  # set to triggered mode
 
-    depth = 0
-    path  = 'cl'
-    my_queue  =  deque([[path,depth,cl,cfg['expert']]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
-    while(my_queue):
-        path,depth,rogue_node, configdb_node = my_queue.pop()
-        #  Replace configdb lane and febch for the physical values
-        if(dict is type(configdb_node)):
-            for i in configdb_node:
-                #  Substitute proper pgp lane or feb channel
-                if i == 'ClinkFeb[0]':
-                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes['ClinkFeb[%d]'%lane],configdb_node[i]])
-                elif i == 'Ch[0]':
-                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes['Ch[%d]'%chan],configdb_node[i]])
-                else:
-                    try:
-                        my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[i],configdb_node[i]])
-                    except KeyError:
-                        print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
+    user_to_expert(cl,cfg,full=True)
 
-        #  Apply
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
-            rogue_node.set(configdb_node)
-
+    config_expert(cl,cfg['expert'])
 
     cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
     cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(True)
-    getattr(cl.ClinkPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(False)
+    getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(False)
+    getattr(cl.ClinkPcie.Application,appLane).EventBuilder.Blowoff.set(False)
 
     #  Capture the firmware version to persist in the xtc
     cfg['firmwareVersion'] = cl.ClinkPcie.AxiPcieCore.AxiVersion.FpgaVersion.get()
@@ -176,10 +236,38 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,group):
 
     cl.StartRun()
 
+    ocfg = cfg
+    return json.dumps(cfg)
+
+def opal_scan_keys(cl,update):
+    global ocfg
+    #  extract updates
+    cfg = {}
+    copy_reconfig_keys(cfg,ocfg, json.loads(update))
+    #  Apply group
+    user_to_expert(cl,cfg,full=False)
+    #  Retain mandatory fields for XTC translation
+    for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
+        copy_config_entry(cfg,ocfg,key)
+        copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
+    return json.dumps(cfg)
+
+def opal_update(cl,update):
+    global ocfg
+    #  extract updates
+    cfg = {}
+    update_config_entry(cfg,ocfg, json.loads(update))
+    #  Apply group
+    user_to_expert(cl,cfg,full=False)
+    #  Apply config
+    config_expert(cl, cfg['expert'])
+    #  Retain mandatory fields for XTC translation
+    for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
+        copy_config_entry(cfg,ocfg,key)
+        copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
     return json.dumps(cfg)
 
 def opal_unconfig(cl):
     cl.StopRun()
 
-#    cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(False)
     return cl

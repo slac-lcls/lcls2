@@ -24,11 +24,16 @@ public:
     virtual void connect(const nlohmann::json&, const std::string& collectionId) {};
     virtual unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) = 0;
     virtual unsigned beginrun(XtcData::Xtc& xtc, const nlohmann::json& runInfo) {return 0;}
-    virtual void beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) {};
+    virtual unsigned beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) {return 0;};
     virtual void slowupdate(XtcData::Xtc& xtc) { XtcData::Xtc& trXtc = transitionXtc();
                                                  memcpy((void*)&xtc, (const void*)&trXtc, trXtc.extent); };
     virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;
     virtual void shutdown() {};
+
+    // Scan methods.  Default is to fail.
+    virtual unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc) {return 1;};
+    virtual unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc) {return 1;};
+
     virtual Pds::TimingHeader* getTimingHeader(uint32_t index) const
     {
         return static_cast<Pds::TimingHeader*>(m_pool->dmaBuffers[index]);

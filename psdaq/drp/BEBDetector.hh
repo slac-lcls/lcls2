@@ -19,7 +19,7 @@
 
 namespace Drp {
 
-enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex}; // index for xtc NamesId
+  enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex, UpdateNamesIndex}; // index for xtc NamesId
 
 class BEBDetector : public Detector
 {
@@ -32,6 +32,9 @@ public:  // Implementation of Detector
     unsigned       configure     (const std::string& config_alias, XtcData::Xtc& xtc) override;
     void           event         (XtcData::Dgram& dgram, PGPEvent* event) override;
     void           shutdown      () override;
+
+    unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc) override;
+    unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc) override;
 
     Pds::TimingHeader* getTimingHeader(uint32_t index) const override
     {

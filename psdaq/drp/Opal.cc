@@ -176,6 +176,7 @@ Opal::Opal(Parameters* para, MemPool* pool) :
     m_sim         (0)
 {
   _init(para->detName.c_str());  // an argument is required here
+  _init_feb();
 
 #define MLOOKUP(m,name,dflt) (m.find(name)==m.end() ? dflt : m[name].c_str())
 

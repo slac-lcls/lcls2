@@ -13,7 +13,7 @@ public:
     TimingSystem(Parameters* para, MemPool* pool);
     void connect(const nlohmann::json& msg, const std::string& collectionId) override;
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
-    void beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) override;
+    unsigned beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) override;
     bool scanEnabled() override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
 private:

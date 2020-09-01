@@ -269,19 +269,8 @@ private:
     int          _cnt;
 };
 
-//
-// Translate a buffer containing JSON (in) to a buffer containing an
-// Xtc2 structure (out) with the specified NamesId.
-//
-// This returns the size of what is written into out, or -1 if there
-// is an error.
-//
-int translateJson2Xtc(char *in, char *out, NamesId namesID, const char* detname, unsigned segment)
+int translateJson2XtcNames(Document* d, Xtc* xtc, NamesLookup& nl, NamesId namesID, Value& json, const char* detname, unsigned segment)
 {
-    TypeId tid(TypeId::Parent, 0);
-    Xtc *xtc = new (out) Xtc(tid);
-    Document *d = new Document();
-    d->Parse(in);
     if (d->HasParseError()) {
         printf("Parse error: %s, location %zu\n",
                GetParseError_En(d->GetParseError()), d->GetErrorOffset());
@@ -315,7 +304,6 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, const char* detname,
     d->RemoveMember("detId:RO");
     d->RemoveMember("doc:RO");
     Value &jsv = (*d)[":types:"];
-    Value json;
     json = jsv;              // This makes d[':types:'] null!!
     d->RemoveMember(":types:");
 
@@ -338,9 +326,13 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, const char* detname,
     JsonFindArrayIterator fai = JsonFindArrayIterator(*d, json, vars);
     fai.iterate();
     names.add(*xtc, vars);
-    NamesLookup nl;
     nl[namesID] = NameIndex(names);
 
+    return 0;
+}
+
+int translateJson2XtcData(Document* d, Xtc* xtc, NamesLookup& nl, NamesId namesID, Value& json)
+{
     CreateData cd(*xtc, nl, namesID);
     JsonCreateDataIterator cdi = JsonCreateDataIterator(*d, json, cd);
     if (json.HasMember(":enum:")) {
@@ -358,6 +350,32 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, const char* detname,
         }
     }
     cdi.iterate();
+    return 0;
+}
+
+//
+// Translate a buffer containing JSON (in) to a buffer containing an
+// Xtc2 structure (out) with the specified NamesId.
+//
+// This returns the size of what is written into out, or -1 if there
+// is an error.
+//
+int translateJson2Xtc(char *in, char *out, NamesId namesID, const char* detname, unsigned segment)
+{
+    TypeId tid(TypeId::Parent, 0);
+    Xtc *xtc = new (out) Xtc(tid);
+
+    Document *d = new Document();
+    NamesLookup nl;
+    Value json;
+
+    d->Parse(in);
+    if (translateJson2XtcNames(d, xtc, nl, namesID, json, detname, segment) < 0)
+        return -1;
+
+    if (translateJson2XtcData (d, xtc, nl, namesID, json) < 0)
+        return -1;
+
     delete d;
     return xtc->extent;
 }

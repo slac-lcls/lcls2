@@ -13,6 +13,8 @@
 #include "psalg/utils/SysLog.hh"
 #include "RunInfoDef.hh"
 
+#include <string>
+
 #define PY_RELEASE_GIL    PyEval_SaveThread()
 #define PY_ACQUIRE_GIL(x) PyEval_RestoreThread(x)
 //#define PY_RELEASE_GIL    0
@@ -20,6 +22,7 @@
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+using std::string;
 
 // _dehex - convert a hex std::string to an array of chars
 //
@@ -44,6 +47,47 @@ static int _dehex(std::string inString, char *outArray)
         }
     }
     return 1;           // error
+}
+
+//  Return a list of scan parameters for detname
+static json _getscankeys(const json& stepInfo, const char* detname)
+{
+    json update;
+    if (stepInfo.contains("reconfig_keys")) {
+        json reconfig = stepInfo["reconfig_keys"];
+        logging::debug("_getscankeys reconfig [%s]",reconfig.dump().c_str());
+        for (json::iterator it=reconfig.begin(); it != reconfig.end(); it++) {
+            std::string v = it->get<std::string>();
+            logging::debug("_getscankeys key [%s]",v.c_str());
+            size_t delim = v.find(":");
+            if (delim != string::npos) {
+                string src = v.substr(0,delim);
+                if (src == detname)
+                    update.push_back(v.substr(delim+1));
+            }
+        }
+    }
+    logging::debug("_getscankeys returning [%s]",update.dump().c_str());
+    return update;
+}
+
+//  Return a dictionary of scan parameters for detname
+static json _getscanvalues(const json& stepInfo, const char* detname)
+{
+    json update;
+    if (stepInfo.contains("reconfig_values")) {
+        json reconfig = stepInfo["reconfig_values"];
+        for (json::iterator it=reconfig.begin(); it != reconfig.end(); it++) {
+            size_t delim = it.key().find(":");
+            if (delim != string::npos) {
+                string src = it.key().substr(0,delim);
+                if (src == detname)
+                    update[it.key().substr(delim+1)] = it.value();
+            }
+        }
+    }
+    logging::debug("_getscanvalues returning [%s]",update.dump().c_str());
+    return update;
 }
 
 namespace Drp {
@@ -193,10 +237,10 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     if (msg.find("body") != msg.end()) {
         if (msg["body"].find("phase1Info") != msg["body"].end()) {
             phase1Info = msg["body"]["phase1Info"];
-            if (msg["body"]["phase1Info"].find("NamesBlockHex") != msg["body"]["phase1Info"].end()) {
+            if (phase1Info.find("NamesBlockHex") != phase1Info.end()) {
                 has_names_block_hex = true;
             }
-            if (msg["body"]["phase1Info"].find("ShapesDataBlockHex") != msg["body"]["phase1Info"].end()) {
+            if (phase1Info.find("ShapesDataBlockHex") != phase1Info.end()) {
                 has_shapes_data_block_hex = true;
             }
         }
@@ -249,8 +293,14 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                                       std::ref(m_det), std::ref(m_drp.tebContributor())};
             m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
                                             std::ref(m_drp.tebContributor()));
+
             std::string config_alias = msg["body"]["config_alias"];
             unsigned error = m_det->configure(config_alias, xtc);
+            if (!error) {
+                json scan = _getscankeys(phase1Info, m_para.alias.c_str());
+                if (!scan.empty())
+                    error = m_det->configureScan(scan, xtc);
+            }
             if (error) {
                 std::string errorMsg = "Phase 1 error in Detector::configure()";
                 body["err_info"] = errorMsg;
@@ -289,7 +339,18 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                 delete[] xtcBytes;
             }
         }
-        m_det->beginstep(xtc, phase1Info);
+
+        unsigned error = m_det->beginstep(xtc, phase1Info);
+        if (!error) {
+            json scan = _getscanvalues(phase1Info, m_para.alias.c_str());
+            if (!scan.empty())
+                error = m_det->stepScan(scan, xtc);
+        }
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::beginstep()";
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        }
     }
     else if (key == "beginrun") {
         RunInfo runInfo;
@@ -339,5 +400,4 @@ json PGPDetectorApp::connectionInfo()
     body["connect_info"].update(bufInfo); // Revisit: Should be in det_info
     return body;
 }
-
 }

@@ -30,7 +30,19 @@ namespace Pds
     };
 
     int translateJson2Xtc(char *in, char *out, XtcData::NamesId namesID, const char* detname=0, unsigned segment=0);
-
+    int translateJson2XtcNames(rapidjson::Document* d, 
+                               XtcData::Xtc* xtc, 
+                               XtcData::NamesLookup& nl, 
+                               XtcData::NamesId namesID, 
+                               rapidjson::Value& json, 
+                               const char* detname, 
+                               unsigned segment);
+    int translateJson2XtcData (rapidjson::Document* d, 
+                               XtcData::Xtc* xtc, 
+                               XtcData::NamesLookup& nl, 
+                               XtcData::NamesId namesID, 
+                               rapidjson::Value& json);
+  
 }; // namespace Pds
 
 #endif // JSON2XTC__H
