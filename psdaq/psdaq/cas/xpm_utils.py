@@ -32,6 +32,9 @@ def nameLinkOpal(v):
 def nameLinkTimeTool(v):
     return ('TimeTool', hostName(v))
 
+def nameLinkEpixQuad(v):
+    return ('EpixQuad', hostName(v))
+
 timDevType = {}
 timDevType['xpm']      = 0xff
 timDevType['dti']      = 0xfe
@@ -41,6 +44,7 @@ timDevType['tdet']     = 0xfb
 timDevType['wave8']    = 0xfa
 timDevType['opal']     = 0xf9
 timDevType['timetool'] = 0xf8
+timDevType['epixquad'] = 0xf7
 
 linkType = {}
 linkType[0xff] = nameLinkXpm
@@ -51,6 +55,7 @@ linkType[0xfb] = nameLinkTDet
 linkType[0xfa] = nameLinkWave8
 linkType[0xf9] = nameLinkOpal
 linkType[0xf8] = nameLinkTimeTool
+linkType[0xf7] = nameLinkEpixQuad
 
 def xpmLinkId(value):
     itype = (value>>24)&0xff
