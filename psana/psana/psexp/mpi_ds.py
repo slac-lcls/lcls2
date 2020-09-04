@@ -89,7 +89,7 @@ class RunParallel(Run):
             self.runnum = self.bcast_packets['runnum']
             self.timestamp = self.bcast_packets['timestamp']
         
-        self.esm = EnvStoreManager(self.configs, 'epics', 'scan')
+        self.esm = EnvStoreManager(self.configs)
     
     def _get_runinfo(self):
         if not self.beginruns : return

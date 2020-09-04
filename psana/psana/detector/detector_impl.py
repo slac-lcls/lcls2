@@ -2,6 +2,8 @@ import typing
 import amitypes
 from psana.dgram import Dgram
 
+class MissingEnvStore(Exception): pass
+
 class Container(object):
     def __init__(self):
         pass
@@ -20,8 +22,11 @@ class MissingDet:
     def __call__(self, evt): # support only one arg - following detector interface proposal
         return None
 
+
 class DetectorImpl(object):
-    def __init__(self, det_name, drp_class_name, configinfo, calibconst):
+    def __init__(self, det_name, drp_class_name, configinfo, calibconst,
+            env_store   = None,
+            var_name    = None):
         self._det_name          = det_name
         self._drp_class_name    = drp_class_name
         
@@ -31,11 +36,23 @@ class DetectorImpl(object):
         self._sorted_segment_ids= configinfo.sorted_segment_ids
         self._uniqueid          = configinfo.uniqueid
         self._dettype           = configinfo.dettype
-        
-        # For detectors with cfgscan, add EnvStore to keep track
-        # of all their history to support jump.
-        #if drp_class_name == "config": 
+        self._env_store         = env_store
+        self._var_name          = var_name    
+    
+    def __call__(self, events):
+        if self._env_store is None:
+            err_msg = f"Function call is not available for this detector."
+            raise MissingEnvStore(err_msg)
 
+        if isinstance(events, list):
+            return self._env_store.values(events, self._var_name)
+        else:
+            env_values = self._env_store.values([events], self._var_name)
+            return env_values[0]
+    
+    @property
+    def dtype(self):
+        return self._env_store.dtype(self._var_name)
 
     def _segments(self,evt):
         """

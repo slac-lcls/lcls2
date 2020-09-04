@@ -12,11 +12,11 @@ class EnvManager(object):
     """
     
     def __init__(self, config, env_name):
-        self.config = config
-        self.env_name = env_name
-        self.dgrams = []
+        self.config     = config
+        self.env_name   = env_name
+        self.dgrams     = []
         self.timestamps = []
-        self.n_items = 0
+        self.n_items    = 0
         self._init_env_variables()
 
     def _init_env_variables(self):
@@ -39,6 +39,7 @@ class EnvManager(object):
                     for var_name in vars(seg_alg):
                         if var_name in ('version', 'software') : continue
                         var_obj = getattr(seg_alg, var_name)
+                        if hasattr(var_obj, '_type') == False: continue
                         var_type = DetectorImpl._return_types(var_obj._type, var_obj._rank)
                         env_vars[var_name] = var_type
                         
@@ -82,7 +83,7 @@ class EnvStore(object):
                         self.env_variables[alg] = env_dict
                     else:
                         for segment_id, var_dict in env_dict.items():
-                            if segment_id not in self.env_variables[alg][segment_id]:
+                            if segment_id not in self.env_variables[alg]:
                                 self.env_variables[alg] = {segment_id: var_dict}
                             else:
                                 self.env_variables[alg][segment_id].update(var_dict)
@@ -118,6 +119,21 @@ class EnvStore(object):
                     if cn_dgrams < from_pos: 
                         continue
                     yield dgram
+
+    def get_step_dgrams_of_event(self, evt):
+        step_dgrams = []
+        for i, env_man in enumerate(self.env_managers):
+            found_pos = np.searchsorted(env_man.timestamps, evt.timestamp, side='right')
+            found_pos -= 1
+                
+            if found_pos < 0:
+                step_dgram = None
+            else:
+                step_dgram = env_man.dgrams[found_pos]
+
+            step_dgrams.append(step_dgram)
+        return step_dgrams
+
     
     def values(self, events, env_variable):
         """ Returns values of the env_variable for the given events.
@@ -130,9 +146,11 @@ class EnvStore(object):
         
         PS_N_STEP_SEARCH_STEPS = int(os.environ.get("PS_N_STEP_SEARCH_STEPS", "10"))
         env_values = []
-        
+
         for evt in events:
             event_timestamp = np.array([evt.timestamp], dtype=np.uint64)
+
+            # For epics and scan detectors, locate variable and return its value
             for i, env_man in enumerate(self.env_managers):
                 val = None
                 env_var_loc = env_man.locate_variable(env_variable) # check if this xtc has the variable
@@ -153,7 +171,7 @@ class EnvStore(object):
                     
                     if val is not None: break # found the value from this env manager
             env_values.append(val)
-        
+
         return env_values
 
     def get_info(self):

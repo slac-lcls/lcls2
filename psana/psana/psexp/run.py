@@ -38,6 +38,17 @@ def _enumerate_attrs(obj):
     mygetattr(obj)
     return found
 
+class StepEvent(object):
+    def __init__(self, env_store):
+        self.env_store = env_store
+    def dgrams(self, evt):
+        return self.env_store.get_step_dgrams_of_event(evt)
+    def docstring(self, evt):
+        env_values = self.env_store.values([evt], 'docstring')
+        return env_values[0]
+    def value(self, evt):
+        env_values = self.env_store.values([evt], 'step_value')
+        return env_values[0]
 
 class Run(object):
     exp = None # FIXME: consolidate with below
@@ -157,13 +168,20 @@ class Run(object):
         flag_found = False
         for (det_name,drp_class_name),drp_class in self.dm.det_classes['normal'].items():
             if det_name == name:
-                setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configinfo_dict[det_name], self.calibconst[det_name]))
+                # Detetors with cfgscan also owns an EnvStore
+                env_store = None
+                var_name  = None
+                if det_name in self.esm.stores:
+                    env_store = self.esm.stores[det_name]
+                    setattr(det, "step", StepEvent(env_store))
+
+                setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.configinfo_dict[det_name], self.calibconst[det_name], env_store, var_name))
                 setattr(det,'_configs', self.configs)
                 setattr(det,'calibconst', self.calibconst[det_name])
                 setattr(det,'_dettype', self.dm.det_info_table[det_name][0])
                 setattr(det,'_detid', self.dm.det_info_table[det_name][1])
                 flag_found = True
-        
+
         # If no detector found, EnvStore variable is assumed to have been passed in.
         # Environment values are identified by variable names (e.g. 'XPP:VARS:FLOAT:02').
         # From d.epics[0].raw.HX2:DVD:GCC:01:PMON = 41.0
@@ -179,7 +197,7 @@ class Run(object):
                 drp_class_name = alg
                 det_class_table = self.dm.det_classes[det_name]
                 drp_class = det_class_table[(det_name, drp_class_name)]
-                det = drp_class(det_name, var_name, drp_class_name, self.configinfo_dict[det_name], self.calibconst[det_name], self.esm.stores[env_name])
+                det = drp_class(det_name, drp_class_name, self.configinfo_dict[det_name], self.calibconst[det_name], self.esm.stores[env_name], var_name)
 
         return det
 
@@ -271,7 +289,7 @@ class RunShmem(Run):
         super()._set_configinfo()
         super()._set_calibconst()
         self.dm.calibconst = self.calibconst
-        self.esm = EnvStoreManager(self.dm.configs, 'epics', 'scan')
+        self.esm = EnvStoreManager(self.dm.configs)
 
     def events(self):
         events = Events(self, dm=self.dm)
@@ -300,7 +318,7 @@ class RunSingleFile(Run):
         super()._get_runinfo()
         super()._set_configinfo()
         super()._set_calibconst()
-        self.esm = EnvStoreManager(self.dm.configs, 'epics', 'scan')
+        self.esm = EnvStoreManager(self.dm.configs)
 
     def events(self):
         events = Events(self, dm=self.dm)
@@ -320,24 +338,26 @@ class RunSerial(Run):
 
     def __init__(self, exp, run_no, run_src, **kwargs):
         super(RunSerial, self).__init__(exp, run_no, 
-                max_events=kwargs['max_events'], 
-                batch_size=kwargs['batch_size'], 
-                filter_callback=kwargs['filter_callback'],
-                prom_man=kwargs['prom_man'])
+                max_events      = kwargs['max_events'], 
+                batch_size      = kwargs['batch_size'], 
+                filter_callback = kwargs['filter_callback'],
+                prom_man        = kwargs['prom_man'])
+        
         xtc_files, smd_files, other_files = run_src
 
         # get Configure and BeginRun using SmdReader
-        self.smd_fds = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in smd_files], dtype=np.int32)
-        self.smdr_man = SmdReaderManager(self)
-        self.configs = self.smdr_man.get_next_dgrams()
-        self.beginruns = self.smdr_man.get_next_dgrams(configs=self.configs)
-        
+        self.smd_fds    = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in smd_files], dtype=np.int32)
+        self.smdr_man   = SmdReaderManager(self)
+        self.configs    = self.smdr_man.get_next_dgrams()
+        self.beginruns  = self.smdr_man.get_next_dgrams(configs=self.configs)
+
+        # setup DgramManagers for both small- and bigdata
+        self.smd_dm     = DgramManager(smd_files, configs=self.configs, fds=self.smd_fds)
+        self.dm         = DgramManager(xtc_files, configs=self.smd_dm.configs)
+        self.esm        = EnvStoreManager(self.configs)
         self._get_runinfo()
-        self.smd_dm = DgramManager(smd_files, configs=self.configs, fds=self.smd_fds)
-        self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         super()._set_configinfo()
         super()._set_calibconst()
-        self.esm = EnvStoreManager(self.smd_dm.configs, 'epics', 'scan')
     
     def _get_runinfo(self):
         if not self.beginruns : return
@@ -390,7 +410,7 @@ class RunLegion(Run):
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         super()._set_configinfo()
         super()._set_calibconst()
-        self.esm = EnvStoreManager(self.configs, 'epics', 'scan')
+        self.esm = EnvStoreManager(self.configs)
 
     def _get_runinfo(self):
         if not self.beginruns : return
