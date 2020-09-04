@@ -5,6 +5,8 @@ class epix10k_raw_0_0_1(AreaDetector):
         super().__init__(*args)
     def raw(self,evt):
         data = {}
-        for segment,val in self._segments(evt).items():
+        segments = self._segments(evt)
+        if segments is None: return None
+        for segment,val in segments.items():
             data[segment]=val.raw
         return data
