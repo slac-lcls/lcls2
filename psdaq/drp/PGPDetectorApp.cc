@@ -52,7 +52,7 @@ static int _dehex(std::string inString, char *outArray)
 //  Return a list of scan parameters for detname
 static json _getscankeys(const json& stepInfo, const char* detname, const char* alias)
 {
-    nlohmann::ordered_json update;
+    json update;
     if (stepInfo.contains("reconfig_keys")) {
         json reconfig = stepInfo["reconfig_keys"];
         logging::debug("_getscankeys reconfig [%s]",reconfig.dump().c_str());
@@ -76,7 +76,7 @@ static json _getscankeys(const json& stepInfo, const char* detname, const char* 
 //  Return a dictionary of scan parameters for detname
 static json _getscanvalues(const json& stepInfo, const char* detname, const char* alias)
 {
-    nlohmann::ordered_json update;
+    json update;
     if (stepInfo.contains("reconfig_values")) {
         json reconfig = stepInfo["reconfig_values"];
         for (json::iterator it=reconfig.begin(); it != reconfig.end(); it++) {
