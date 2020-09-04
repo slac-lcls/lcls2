@@ -3,6 +3,8 @@ find_package(PythonLibs REQUIRED)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
+find_package(usdusb4 REQUIRED)
+
 add_library(app SHARED
     AppUtils.cc
 )
@@ -76,6 +78,21 @@ target_link_libraries(lclsBldServer
    dl
    readline
    Threads::Threads
+   rt
+)
+
+add_executable(usdusb usdusb.cc)
+
+target_include_directories(usdusb PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(usdusb
+   app
+   tpr
+   usdusb4::usdusb4
+   pthread
    rt
 )
 
@@ -244,6 +261,7 @@ install(TARGETS app
                 pgpca
                 pvcam
                 json2xtc
+                usdusb
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
