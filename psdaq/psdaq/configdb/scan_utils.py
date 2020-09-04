@@ -8,7 +8,7 @@ def copy_config_entry(d,old,key):
         if k in o:
             o = o[k]
         else:
-            print('Error in lookup of :types:{:}'.format(key))
+            print('Error in lookup of [:types:]{:}'.format(key))
             raise KeyError
         if k in d:
             d = d[k]
@@ -22,7 +22,12 @@ def update_config_entry(r,old,update):
     if not ':types:' in r:
         r[':types:'] = {}
     for key in update.keys():
-        copy_config_entry(r[':types:'],old[':types:'],key)
+        if key == 'step_docstring':
+            r[':types:'][key] = 'CHARSTR'
+        elif key == 'step_value':
+            r[':types:'][key] = 'FLOAT'
+        else:
+            copy_config_entry(r[':types:'],old[':types:'],key)
 
     for key,value in update.items():
         d = r
@@ -41,8 +46,18 @@ def copy_reconfig_keys(r,old,update):
     if not ':types:' in r:
         r[':types:'] = {}
     for key in update:
-        copy_config_entry(r[':types:'],old[':types:'],key)
+        if key == 'step_docstring':
+            r[':types:'][key] = 'CHARSTR'
+        elif key == 'step_value':
+            r[':types:'][key] = 'FLOAT'
+        else:
+            copy_config_entry(r[':types:'],old[':types:'],key)
 
     for key in update:
-        copy_config_entry(r,old,key)
+        if key == 'step_docstring':
+            r[key] = ''
+        elif key == 'step_value':
+            r[key] = 0.
+        else:
+            copy_config_entry(r,old,key)
 

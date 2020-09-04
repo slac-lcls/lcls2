@@ -2,7 +2,6 @@ from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.xpmmini import *
 from psdaq.cas.xpm_utils import timTxId
-import pprint
 import rogue
 import cameralink_gateway
 import time
@@ -10,6 +9,7 @@ import json
 import IPython
 from collections import deque
 
+cl = None
 pv = None
 
 #FEB parameters
@@ -34,6 +34,7 @@ def dict_compare(new,curr,result):
 def opal_init(arg,xpmpv=None):
 
     global pv
+    global cl
     print('opal_init')
 
     myargs = { 'dev'         : '/dev/datadev_0',
@@ -239,8 +240,9 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     ocfg = cfg
     return json.dumps(cfg)
 
-def opal_scan_keys(cl,update):
+def opal_scan_keys(update):
     global ocfg
+    global cl
     #  extract updates
     cfg = {}
     copy_reconfig_keys(cfg,ocfg, json.loads(update))
@@ -252,8 +254,9 @@ def opal_scan_keys(cl,update):
         copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
     return json.dumps(cfg)
 
-def opal_update(cl,update):
+def opal_update(update):
     global ocfg
+    global cl
     #  extract updates
     cfg = {}
     update_config_entry(cfg,ocfg, json.loads(update))

@@ -10,6 +10,7 @@ import IPython
 from collections import deque
 
 pv = None
+cl = None
 
 # FEB parameters
 lane = 0
@@ -26,6 +27,7 @@ def cl_poll(uart):
         time.sleep(0.01)
 
 def tt_init(arg,xpmpv=None):
+    global cl
 
     myargs = { 'dev'         : '/dev/datadev_0',
                'pgp3'        : False,
@@ -185,7 +187,8 @@ def tt_config(cl,connect_str,cfgtype,detname,detsegm,grp):
 
     return json.dumps(cfg)
 
-def tt_scan_keys(cl,update):
+def tt_scan_keys(update):
+    global cl
     global ocfg
     #  extract updates
     cfg = {}
@@ -198,7 +201,8 @@ def tt_scan_keys(cl,update):
         copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
     return json.dumps(cfg)
 
-def tt_update(cl,update):
+def tt_update(update):
+    global cl
     global ocfg
     #  extract updates
     cfg = {}

@@ -1,5 +1,8 @@
 #include "Json2Xtc.hh"
 
+#include <list>
+#include <string>
+
 using namespace XtcData;
 using namespace rapidjson;
 
@@ -20,16 +23,27 @@ std::map<std::string, enum Name::DataType> JsonIterator::typeMap = {
     {"ENUMDICT", Name::ENUMDICT}
 };
 
+
+static std::list<std::string> sorted_list(Value& val) {
+    std::list<std::string> members;
+    for (Value::MemberIterator itr = val.MemberBegin();
+         itr != val.MemberEnd();
+         ++itr) {
+        members.push_back(std::string(itr->name.GetString()));
+    }
+    members.sort();
+    return members;
+}
+
+
 void JsonIterator::iterate(Value &val) {
     if (val.IsObject()) {
-        for (Value::MemberIterator itr = val.MemberBegin();
-             itr != val.MemberEnd();
-             ++itr) {
-            const char *name = itr->name.GetString();
-            Value &map = val[name];
-            _names.push_back((std::string)name);
+        std::list<std::string> members = sorted_list(val);
+        for (auto itr = members.begin();
+             itr != members.end(); itr++) {
+            _names.push_back(*itr);
             _isnum.push_back(false);
-            iterate(map);
+            iterate(val[itr->c_str()]);
             _names.pop_back();
             _isnum.pop_back();
         }
@@ -46,10 +60,9 @@ void JsonIterator::iterate(Value &val) {
             process(val);
         } else {
             for (cnt = 0, itr = val.Begin(); itr != val.End(); ++cnt, ++itr) {
-                Value &map = val[cnt];
                 _names.push_back(std::to_string(cnt));
                 _isnum.push_back(true);
-                iterate(map);
+                iterate(val[cnt]);
                 _names.pop_back();
                 _isnum.pop_back();
             }
@@ -310,16 +323,14 @@ int translateJson2XtcNames(Document* d, Xtc* xtc, NamesLookup& nl, NamesId names
     VarDef vars;
     if (json.HasMember(":enum:")) {
         Value &etypes = json[":enum:"];
-        for (Value::MemberIterator itr = etypes.MemberBegin();
-             itr != etypes.MemberEnd();
-             ++itr) {
-            std::string ename = itr->name.GetString();
-            Value &map = etypes[ename.c_str()];
-            for (Value::MemberIterator itr2 = map.MemberBegin();
-                 itr2 != map.MemberEnd();
+        std::list<std::string> members = sorted_list(etypes);
+        for (auto itr = members.begin();
+            itr != members.end(); itr++) {
+            std::list<std::string> mem2 = sorted_list(etypes[itr->c_str()]);
+            for (auto itr2 = mem2.begin();
+                 itr2 != mem2.end();
                  ++itr2) {
-                std::string name = itr2->name.GetString();
-                vars.NameVec.push_back({(name + ":" + ename).c_str(), Name::ENUMDICT});
+                vars.NameVec.push_back({(*itr2 + ":" + *itr).c_str(), Name::ENUMDICT});
             }
         }
     }
@@ -337,15 +348,16 @@ int translateJson2XtcData(Document* d, Xtc* xtc, NamesLookup& nl, NamesId namesI
     JsonCreateDataIterator cdi = JsonCreateDataIterator(*d, json, cd);
     if (json.HasMember(":enum:")) {
         Value &etypes = json[":enum:"];
-        for (Value::MemberIterator itr = etypes.MemberBegin();
-             itr != etypes.MemberEnd();
+        std::list<std::string> mem = sorted_list(etypes);
+        for (auto itr = mem.begin();
+             itr != mem.end();
              ++itr) {
-            std::string ename = itr->name.GetString();
-            Value &map = etypes[ename.c_str()];
-            for (Value::MemberIterator itr2 = map.MemberBegin();
-                 itr2 != map.MemberEnd();
+            Value &map = etypes[itr->c_str()];
+            std::list<std::string> mem2 = sorted_list(map);
+            for (auto itr2 = mem2.begin();
+                 itr2 != mem2.end();
                  ++itr2) {
-                cdi.set_value(itr2->value.GetInt());
+                cdi.set_value(map[itr2->c_str()].GetInt());
             }
         }
     }

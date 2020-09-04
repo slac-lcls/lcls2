@@ -1,4 +1,5 @@
 #include "TimingSystem.hh"
+#include "PythonConfigScanner.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -21,6 +22,14 @@ using namespace XtcData;
 using namespace rapidjson;
 
 using json = nlohmann::json;
+
+static PyObject* check(PyObject* obj) {
+    if (!obj) {
+        PyErr_Print();
+        throw "**** python error\n";
+    }
+    return obj;
+}
 
 namespace Drp {
 
@@ -65,26 +74,30 @@ public:
 } TSDef;
 
 TimingSystem::TimingSystem(Parameters* para, MemPool* pool) :
-    XpmDetector(para, pool),
-    m_evtNamesId(-1, -1), // placeholder
-    m_connect_json("")
+    XpmDetector   (para, pool),
+    m_evtNamesId  (-1, -1), // placeholder
+    m_connect_json(""),
+    m_module      (0)
 {
+    char module_name[64];
+    sprintf(module_name,"psdaq.configdb.%s_config",para->detType.c_str());
+
+    // returns new reference
+    m_module = check(PyImport_ImportModule(module_name));
+
+    m_configScanner = new PythonConfigScanner(*m_para,*m_module);
 }
 
-static void check(PyObject* obj) {
-    if (!obj) {
-        PyErr_Print();
-        throw "**** python error\n";
-    }
+TimingSystem::~TimingSystem()
+{
+    delete m_configScanner;
+    Py_DECREF(m_module);
 }
 
 void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string& config_alias) {
 
-    // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.ts_config");
-    check(pModule);
     // returns borrowed reference
-    PyObject* pDict = PyModule_GetDict(pModule);
+    PyObject* pDict = check(PyModule_GetDict(m_module));
     check(pDict);
     // returns borrowed reference
     PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"ts_config");
@@ -113,7 +126,6 @@ void TimingSystem::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string&
     memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
     xtc.alloc(jsonxtc.sizeofPayload());
 
-    Py_DECREF(pModule);
     Py_DECREF(mybytes);
     Py_DECREF(json_bytes);
 
@@ -173,10 +185,23 @@ unsigned TimingSystem::configure(const std::string& config_alias, Xtc& xtc)
     return 0;
 }
 
+unsigned TimingSystem::configureScan(const nlohmann::json& scan_keys, XtcData::Xtc& xtc) 
+{
+    NamesId namesId(nodeId,UpdateNamesIndex);
+    return m_configScanner->configure(scan_keys, xtc, namesId, m_namesLookup);
+}
+
 unsigned TimingSystem::beginstep(XtcData::Xtc& xtc, const json& stepInfo) {
     std::cout << "*** stepInfo: " << stepInfo.dump() << std::endl;
     return 0;
 }
+
+unsigned TimingSystem::stepScan(const json& stepInfo, Xtc& xtc)
+{
+    NamesId namesId(nodeId,UpdateNamesIndex);
+    return m_configScanner->step(stepInfo, xtc, namesId, m_namesLookup);
+}
+
 
 // returning true here causes this detector to record scanInfo data
 bool TimingSystem::scanEnabled() {

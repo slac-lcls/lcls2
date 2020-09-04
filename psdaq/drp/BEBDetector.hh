@@ -18,6 +18,7 @@
 #include <Python.h>
 
 namespace Drp {
+  class PythonConfigScanner;
 
   enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex, UpdateNamesIndex}; // index for xtc NamesId
 
@@ -53,11 +54,12 @@ protected:
     static PyObject* _check(PyObject*);
     static std::string _string_from_PyDict(PyObject*, const char* key);
 protected:
-    std::string       m_connect_json;  // info passed on connect phase
-    unsigned          m_readoutGroup;  // readout group from connect
-    PyObject*         m_module;        // python module
-    PyObject*         m_root;          // handle for python functions
-    unsigned          m_paddr;         // timing system link id
+    std::string          m_connect_json;  // info passed on connect phase
+    unsigned             m_readoutGroup;  // readout group from connect
+    PyObject*            m_module;        // python module
+    PyObject*            m_root;          // handle for python functions
+    unsigned             m_paddr;         // timing system link id
+    PythonConfigScanner* m_configScanner;
   };
 
 }

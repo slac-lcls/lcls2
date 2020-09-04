@@ -6,6 +6,7 @@ import json
 import time
 import pprint
 
+prefix = None
 ocfg = None
 group = None
 lane = 0
@@ -40,6 +41,8 @@ def epics_put(cfg,epics_prefix,names,values):
             values.append(val)
         
 def wave8_init(epics_prefix, xpmpv=None):
+    global prefix
+    prefix = epics_prefix
     return epics_prefix
 
 def wave8_init_feb(slane=None,schan=None):
@@ -189,7 +192,8 @@ def wave8_config(prefix,connect_str,cfgtype,detname,detsegm,grp):
     v = json.dumps(cfg)
     return v
 
-def wave8_scan_keys(prefix,update):
+def wave8_scan_keys(update):
+    global prefix
     global ocfg
     #  extract updates
     cfg = {}
@@ -204,7 +208,8 @@ def wave8_scan_keys(prefix,update):
         copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
     return json.dumps(cfg)
 
-def wave8_update(prefix,update):
+def wave8_update(update):
+    global prefix
     global ocfg
     #  extract updates
     cfg = {}

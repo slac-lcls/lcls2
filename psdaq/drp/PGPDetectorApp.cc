@@ -50,9 +50,9 @@ static int _dehex(std::string inString, char *outArray)
 }
 
 //  Return a list of scan parameters for detname
-static json _getscankeys(const json& stepInfo, const char* detname)
+static json _getscankeys(const json& stepInfo, const char* detname, const char* alias)
 {
-    json update;
+    nlohmann::ordered_json update;
     if (stepInfo.contains("reconfig_keys")) {
         json reconfig = stepInfo["reconfig_keys"];
         logging::debug("_getscankeys reconfig [%s]",reconfig.dump().c_str());
@@ -64,6 +64,8 @@ static json _getscankeys(const json& stepInfo, const char* detname)
                 string src = v.substr(0,delim);
                 if (src == detname)
                     update.push_back(v.substr(delim+1));
+                if (src == alias)
+                    update.push_back(v.substr(delim+1));
             }
         }
     }
@@ -72,16 +74,20 @@ static json _getscankeys(const json& stepInfo, const char* detname)
 }
 
 //  Return a dictionary of scan parameters for detname
-static json _getscanvalues(const json& stepInfo, const char* detname)
+static json _getscanvalues(const json& stepInfo, const char* detname, const char* alias)
 {
-    json update;
+    nlohmann::ordered_json update;
     if (stepInfo.contains("reconfig_values")) {
         json reconfig = stepInfo["reconfig_values"];
         for (json::iterator it=reconfig.begin(); it != reconfig.end(); it++) {
+            std::string v = it.key();
+            logging::debug("_getscanvalues key [%s]",v.c_str());
             size_t delim = it.key().find(":");
             if (delim != string::npos) {
                 string src = it.key().substr(0,delim);
                 if (src == detname)
+                    update[it.key().substr(delim+1)] = it.value();
+                if (src == alias)
                     update[it.key().substr(delim+1)] = it.value();
             }
         }
@@ -297,7 +303,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             std::string config_alias = msg["body"]["config_alias"];
             unsigned error = m_det->configure(config_alias, xtc);
             if (!error) {
-                json scan = _getscankeys(phase1Info, m_para.alias.c_str());
+                json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
                 if (!scan.empty())
                     error = m_det->configureScan(scan, xtc);
             }
@@ -342,7 +348,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
         unsigned error = m_det->beginstep(xtc, phase1Info);
         if (!error) {
-            json scan = _getscanvalues(phase1Info, m_para.alias.c_str());
+            json scan = _getscanvalues(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
             if (!scan.empty())
                 error = m_det->stepScan(scan, xtc);
         }
