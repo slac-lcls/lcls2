@@ -315,7 +315,7 @@ class CyDgram():
         # self.filename = fix_encoding(filename)
         self.config_block = []
 
-    def addDet(self, nameinfo, alg, event_dict):
+    def addDet(self, nameinfo, alg, event_dict, segment=0):
         num_elem = len(event_dict)
         if num_elem == 0:
             return False, "No elements added"
@@ -366,7 +366,7 @@ class CyDgram():
                 py_shapes.addShape(array_size_pad)
             py_data.addData(arr)
 
-        py_nameinfo = PyNameInfo(nameinfo.detName, basealg, nameinfo.detType, nameinfo.detId, num_arrays)
+        py_nameinfo = PyNameInfo(nameinfo.detName, basealg, nameinfo.detType, nameinfo.detId, num_arrays, segment)
         py_name.addNameInfo(py_nameinfo)
         self.config_block.append([py_name, py_shapes, py_data, nameinfo.namesId])
 
