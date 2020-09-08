@@ -19,7 +19,7 @@ def _enumerate_attrs(obj):
     found = []
 
     def mygetattr(obj):
-        children = [attr for attr in dir(obj) if not attr.startswith('_')]
+        children = [attr for attr in dir(obj) if not attr.startswith('_') and attr != "dtype"]
 
         for child in children:
             childobj = getattr(obj,child)
@@ -220,6 +220,10 @@ class Run(object):
     @property
     def scaninfo(self):
         return self.esm.stores['scan'].get_info()
+
+    @property
+    def stepinfo(self):
+        return self.esm.get_stepinfo()
     
     @property
     def xtcinfo(self):

@@ -23,7 +23,7 @@ class EnvStoreManager(object):
         # Locate detectors with cfgscan in DrpClassName
         for detname, segments in self.configs[0].software.__dict__.items():
             for segid, segment in segments.items():
-                if 'raw' in segment.__dict__:
+                if 'config' in segment.__dict__:
                     if detname not in envstore_names: 
                         envstore_names.append(detname)
 
@@ -76,6 +76,13 @@ class EnvStoreManager(object):
                 alg, _ = found
                 return env_name, alg
         return None
+
+    def get_stepinfo(self):
+        config_stores = set(self.stores.keys()).difference({'epics', 'scan'})
+        stepinfo = {}
+        for config_store in config_stores:
+            stepinfo[(config_store, 'step')] = ['value', 'docstring'] 
+        return stepinfo
 
     
 
