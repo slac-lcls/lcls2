@@ -70,13 +70,18 @@ def main():
 
     # -- begin script --------------------------------------------------------
 
-    configure_dict = {"configure": {"reconfig_keys": ["tmoopal_0:user.start_ns", "tmoopal_0:user.gate_ns"]}}
+    keys_dict = {"configure": {"step_keys": ["tmoopal_0:user.black_level"]}}
 
-    for start_ns in (0, 1000):
-        for gate_ns in (10000, 20000):
-            beginstep_dict = {"beginstep": {"reconfig_values": {"tmoopal_0:user.start_ns": start_ns, "tmoopal_0:user.gate_ns": gate_ns}}}
-            # trigger
-            scan.trigger(phase1Info = dict(configure_dict, **beginstep_dict))
+
+    for step, black_level in enumerate([15, 31, 47]):
+
+        values_dict = \
+          {"beginstep": {"step_values":    {"tmoopal_0:user.black_level": black_level},
+                         "step_docstring": "step%d" % step,
+                         "step_value":     float(step)}}
+
+        # trigger
+        scan.trigger(phase1Info = {**keys_dict, **values_dict})
 
     # -- end script ----------------------------------------------------------
 

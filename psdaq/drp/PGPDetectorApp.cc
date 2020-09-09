@@ -53,8 +53,8 @@ static int _dehex(std::string inString, char *outArray)
 static json _getscankeys(const json& stepInfo, const char* detname, const char* alias)
 {
     json update;
-    if (stepInfo.contains("reconfig_keys")) {
-        json reconfig = stepInfo["reconfig_keys"];
+    if (stepInfo.contains("step_keys")) {
+        json reconfig = stepInfo["step_keys"];
         logging::debug("_getscankeys reconfig [%s]",reconfig.dump().c_str());
         for (json::iterator it=reconfig.begin(); it != reconfig.end(); it++) {
             std::string v = it->get<std::string>();
@@ -77,8 +77,8 @@ static json _getscankeys(const json& stepInfo, const char* detname, const char* 
 static json _getscanvalues(const json& stepInfo, const char* detname, const char* alias)
 {
     json update;
-    if (stepInfo.contains("reconfig_values")) {
-        json reconfig = stepInfo["reconfig_values"];
+    if (stepInfo.contains("step_values")) {
+        json reconfig = stepInfo["step_values"];
         for (json::iterator it=reconfig.begin(); it != reconfig.end(); it++) {
             std::string v = it.key();
             logging::debug("_getscanvalues key [%s]",v.c_str());
