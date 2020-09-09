@@ -517,6 +517,7 @@ class ConfigurationScan:
         self.mon_thread.start()
         self.verbose = args.v
         self.pv_base = args.B
+        self._step_count = 0
 
         if args.g is None:
             self.groupMask = 1 << args.p
@@ -634,18 +635,20 @@ class ConfigurationScan:
     def stage(self):
         # done once at start of scan
         # put the daq into the right state ('connected')
-        logging.debug('*** here in stage')
         self._set_connected()
+        # clear the step count
+        self._step_count = 0
+        logging.debug('*** stage: step count = %d' % self._step_count)
 
     def unstage(self):
         # done once at end of scan
         # put the daq into the right state ('connected')
-        logging.debug('*** here in unstage')
+        logging.debug('*** unstage: step count = %d' % self._step_count)
         self._set_connected()
 
     def trigger(self, *, phase1Info=None):
         # do one step
-        logging.debug('*** here in trigger')
+        logging.debug('*** trigger: step count = %d' % self._step_count)
         if phase1Info is None:
             # BeginStep
             self.push_socket.send_string('running')
@@ -656,6 +659,9 @@ class ConfigurationScan:
 
         # EndStep
         self.push_socket.send_string('starting')
+
+        # update the step count
+        self._step_count += 1
 
 
 # Translate drp alias to detector name
