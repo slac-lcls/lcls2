@@ -53,6 +53,7 @@ static int _dehex(std::string inString, char *outArray)
 static json _getscankeys(const json& stepInfo, const char* detname, const char* alias)
 {
     json update;
+    bool detscanned=false;
     if (stepInfo.contains("step_keys")) {
         json reconfig = stepInfo["step_keys"];
         logging::debug("_getscankeys reconfig [%s]",reconfig.dump().c_str());
@@ -62,13 +63,20 @@ static json _getscankeys(const json& stepInfo, const char* detname, const char* 
             size_t delim = v.find(":");
             if (delim != string::npos) {
                 string src = v.substr(0,delim);
-                if (src == detname)
-                    update.push_back(v.substr(delim+1));
                 if (src == alias)
                     update.push_back(v.substr(delim+1));
+                if (src.substr(0,src.rfind("_",delim)) == detname)
+                    detscanned = true;
             }
         }
     }
+
+    //  Add "step_docstring" and "step_value" for scanned detectors
+    if (detscanned) {
+        update.push_back("step_docstring");
+        update.push_back("step_value");
+    }
+
     logging::debug("_getscankeys returning [%s]",update.dump().c_str());
     return update;
 }
@@ -77,6 +85,7 @@ static json _getscankeys(const json& stepInfo, const char* detname, const char* 
 static json _getscanvalues(const json& stepInfo, const char* detname, const char* alias)
 {
     json update;
+    bool detscanned=false;
     if (stepInfo.contains("step_values")) {
         json reconfig = stepInfo["step_values"];
         for (json::iterator it=reconfig.begin(); it != reconfig.end(); it++) {
@@ -85,13 +94,20 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
             size_t delim = it.key().find(":");
             if (delim != string::npos) {
                 string src = it.key().substr(0,delim);
-                if (src == detname)
                     update[it.key().substr(delim+1)] = it.value();
                 if (src == alias)
                     update[it.key().substr(delim+1)] = it.value();
+                if (src.substr(0,src.rfind("_",delim)) == detname)
+                    detscanned = true;
             }
         }
     }
+
+    if (detscanned) {
+        update["step_docstring"] = stepInfo["step_docstring"];
+        update["step_value"    ] = stepInfo["step_value"];
+    }
+
     logging::debug("_getscanvalues returning [%s]",update.dump().c_str());
     return update;
 }
