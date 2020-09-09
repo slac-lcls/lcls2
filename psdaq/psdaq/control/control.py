@@ -530,7 +530,6 @@ class ConfigurationScan:
 
         # instantiate DaqPVA object
         self.pva = DaqPVA(platform=args.p, xpm_master=args.x, pv_base=args.B)
-        print('*** hello from ConfigurationScan ***')
 
     # this thread tells the daq to do a step and waits for the completion
     def daq_communicator_thread(self):
@@ -649,14 +648,24 @@ class ConfigurationScan:
     def trigger(self, *, phase1Info=None):
         # do one step
         logging.debug('*** trigger: step count = %d' % self._step_count)
+        # provide defaults for step_value and step_docstring
         if phase1Info is None:
-            # BeginStep
-            self.push_socket.send_string('running')
-        else:
-            logging.debug('*** phase1Info = %s' % oldjson.dumps(phase1Info))
-            # BeginStep
-            self.push_socket.send_string('running,%s' % oldjson.dumps(phase1Info))
-
+            phase1Info = {}
+        if "beginstep" not in phase1Info:
+            phase1Info.update({"beginstep": {}})
+        if "configure" not in phase1Info:
+            phase1Info.update({"configure": {}})
+        if "step_keys" not in phase1Info["configure"]:
+            phase1Info["configure"].update({"step_keys": []})
+        if "step_values" not in phase1Info["beginstep"]:
+            phase1Info["beginstep"].update({"step_values": {}})
+        if "step_value" not in phase1Info["beginstep"]:
+            phase1Info["beginstep"].update({"step_value": float(self._step_count)})
+        if "step_docstring" not in phase1Info["beginstep"]:
+            phase1Info["beginstep"].update({"step_docstring": "step%d" % self._step_count})
+        logging.debug('*** phase1Info = %s' % oldjson.dumps(phase1Info))
+        # BeginStep
+        self.push_socket.send_string('running,%s' % oldjson.dumps(phase1Info))
         # EndStep
         self.push_socket.send_string('starting')
 
