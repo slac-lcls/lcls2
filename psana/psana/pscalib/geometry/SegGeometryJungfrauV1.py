@@ -1,4 +1,4 @@
-####!/usr/bin/env python
+#!/usr/bin/env python
 #------------------------------
 """
 Class :py:class:`SegGeometryJungfrauV1` describes the Jungfrau V1 sensor geometry
@@ -69,33 +69,33 @@ Usage::
     ...
 
 See:
- * :py:class:`SegGeometryBase`
- * :py:class:`SegGeometryCspad2x1V1`
- * :py:class:`SegGeometryEpix100V1`
- * :py:class:`SegGeometryMatrixV1`
- * :py:class:`SegGeometryJungfrauV1`
- * :py:class:`SegGeometryStore`
- * :py:class:`GeometryAccess`
  * :py:class:`GeometryObject`
+ * :py:class:`SegGeometry` 
+ * :py:class:`SegGeometryCspad2x1V1`
+ * :py:class:`SegGeometryEpix100V1` 
+ * :py:class:`SegGeometryJungfrauV1` 
+ * :py:class:`SegGeometryMatrixV1`
+ * :py:class:`SegGeometryStore`
 
 For more detail see `Detector Geometry <https://confluence.slac.stanford.edu/display/PSDM/Detector+Geometry>`_.
 
-This software was developed for the LCLS2 project.
+This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
 Created: 2017-10-12 by Mikhail Dubrovin
-Adopted for LCLS2 on 2018-02-01
+2020-09-04 - converted to py3
 """
 #------------------------------
 
-#import math
-import numpy as np
-from psana.pscalib.geometry.SegGeometryBase import *
+from psana.pscalib.geometry.SegGeometry import *
+logger = logging.getLogger(__name__)
 
 #------------------------------
 
-class SegGeometryJungfrauV1(SegGeometryBase) :
+class SegGeometryJungfrauV1(SegGeometry):
     """Self-sufficient class for generation of Jungfrau 2x4 sensor pixel coordinate array"""
+
+    _name = 'SegGeometryJungfrauV1'
 
     _rasic =  256    # Number of rows in ASIC
     _casic =  256    # Number of cols in ASIC
@@ -104,13 +104,22 @@ class SegGeometryJungfrauV1(SegGeometryBase) :
     _pixs  =   75    # Pixel size in um (micrometer)
     _pixd  = 400.00  # Pixel depth in um (micrometer)
 
+    _arows = _rasic
+    _acols = _casic
+
+    _nasics_in_rows = 2 # Number of ASICs in row direction
+    _nasics_in_cols = 4 # Number of ASICs in column direction
+
+    _asic0indices = ((0, 0), (0, _casic), (0, 2*_casic), (0, 3*_casic),
+        (_rasic, 0), (_rasic, _casic), (_rasic, 2*_casic), (_rasic, 3*_casic))
+
 #------------------------------
 
-    def __init__(sp) :
-        #print('SegGeometryJungfrauV1.__init__()')
+    def __init__(sp, **kwa):
+        logger.debug('SegGeometryJungfrauV1.__init__()')
+        #sp.arg = kwa.get('arg', True)
 
-        SegGeometryBase.__init__(sp)
-        #super(SegGeometryBase, self).__init__()
+        SegGeometry.__init__(sp)
 
         sp.x_pix_arr_um_offset  = None
         sp.pix_area_arr = None
@@ -119,7 +128,7 @@ class SegGeometryJungfrauV1(SegGeometryBase) :
 
 #------------------------------
 
-    def make_pixel_coord_arrs(sp) :
+    def make_pixel_coord_arrs(sp):
         """Makes [512,1024] maps of x, y, and z pixel coordinates
         with origin in the center of 2x4
         """        
@@ -136,10 +145,10 @@ class SegGeometryJungfrauV1(SegGeometryBase) :
         
 #------------------------------
 
-    def make_pixel_size_arrs(sp) :
+    def make_pixel_size_arrs(sp):
         """Makes [512,1024] maps of x, y, and z 2x2 pixel size 
         """        
-        if sp.pix_area_arr is None :
+        if sp.pix_area_arr is None:
            sh = (sp._rows, sp._cols)
 
            sp.x_pix_size_um = np.ones(sh)*sp._pixs
@@ -149,105 +158,110 @@ class SegGeometryJungfrauV1(SegGeometryBase) :
  
 #------------------------------
 
-    def print_member_data(sp) :
-        print('SegGeometryJungfrauV1.print_member_data()')
-        print('    _rasic : %d'    % sp._rasic)
-        print('    _casic : %d'    % sp._casic)
-        print('    _rows  : %d'    % sp._rows)
-        print('    _cols  : %d'    % sp._cols)
-        print('    _pixs  : %7.2f' % sp._pixs)
-        print('    _pixd  : %7.2f' % sp._pixd)
+    def print_member_data(sp):
+        s = 'SegGeometryJungfrauV1.print_member_data()'\
+          + '\n    _rows : %d'    % sp._rows\
+          + '\n    _cols : %d'    % sp._cols\
+          + '\n    _pixs : %7.2f' % sp._pixs\
+          + '\n    _pixd : %7.2f' % sp._pixd\
+          + '\n    _rasic: %d'    % sp._rasic\
+          + '\n    _casic: %d'    % sp._casic
+        logger.info(s)
 
 #------------------------------
 
-    def print_pixel_size_arrs(sp) :
-        print('SegGeometryJungfrauV1.print_pixel_size_arrs()')
+    def print_pixel_size_arrs(sp):
         sp.make_pixel_size_arrs()
-        print('sp.x_pix_size_um.shape = ',            sp.x_pix_size_um.shape)
-        print('sp.y_pix_size_um:\n',                  sp.y_pix_size_um)
-        print('sp.y_pix_size_um.shape = ',            sp.y_pix_size_um.shape)
-        print('sp.z_pix_size_um:\n',                  sp.z_pix_size_um)
-        print('sp.z_pix_size_um.shape = ',            sp.z_pix_size_um.shape)
-        print('sp.pix_area_arr.shape  = ',            sp.pix_area_arr.shape)
+        s = 'SegGeometryJungfrauV1.print_pixel_size_arrs()'\
+          + '\n  sp.x_pix_size_um.shape = ' + str(sp.x_pix_size_um.shape)\
+          + '\n  sp.y_pix_size_um:\n'       + str(sp.y_pix_size_um)\
+          + '\n  sp.y_pix_size_um.shape = ' + str(sp.y_pix_size_um.shape)\
+          + '\n  sp.z_pix_size_um:\n'       + str(sp.z_pix_size_um)\
+          + '\n  sp.z_pix_size_um.shape = ' + str(sp.z_pix_size_um.shape)\
+          + '\n  sp.pix_area_arr.shape  = ' + str(sp.pix_area_arr.shape)
+        logger.info(s)
 
 #------------------------------
 
-    def print_maps_seg_um(sp) :
-        print('SegGeometryJungfrauV1.print_maps_seg_um()')
-        print('x_pix_arr_um =\n',      sp.x_pix_arr_um)
-        print('x_pix_arr_um.shape = ', sp.x_pix_arr_um.shape)
-        print('y_pix_arr_um =\n',      sp.y_pix_arr_um)
-        print('y_pix_arr_um.shape = ', sp.y_pix_arr_um.shape)
-        print('z_pix_arr_um =\n',      sp.z_pix_arr_um)
-        print('z_pix_arr_um.shape = ', sp.z_pix_arr_um.shape)
+    def print_maps_seg_um(sp):
+        s = 'SegGeometryJungfrauV1.print_maps_seg_um()'\
+          + '\n  x_pix_arr_um =\n'      + str(sp.x_pix_arr_um)\
+          + '\n  x_pix_arr_um.shape = ' + str(sp.x_pix_arr_um.shape)\
+          + '\n  y_pix_arr_um =\n'      + str(sp.y_pix_arr_um)\
+          + '\n  y_pix_arr_um.shape = ' + str(sp.y_pix_arr_um.shape)\
+          + '\n  z_pix_arr_um =\n'      + str(sp.z_pix_arr_um)\
+          + '\n  z_pix_arr_um.shape = ' + str(sp.z_pix_arr_um.shape)
+        logger.info(s)
 
 #------------------------------
 
-    def print_xy_1darr_um(sp) :
-        print('SegGeometryJungfrauV1.print_xy_1darr_um()')
-        print('x_arr_um:\n',       sp.x_arr_um)
-        print('x_arr_um.shape = ', sp.x_arr_um.shape)
-        print('y_arr_um:\n',       sp.y_arr_um)
-        print('y_arr_um.shape = ', sp.y_arr_um.shape)
+    def print_xy_1darr_um(sp):
+        s = 'SegGeometryJungfrauV1.print_xy_1darr_um()'\
+          + '\n  x_arr_um:\n'       + str(sp.x_arr_um)\
+          + '\n  x_arr_um.shape = ' + str(sp.x_arr_um.shape)\
+          + '\n  y_arr_um:\n'       + str(sp.y_arr_um)\
+          + '\n  y_arr_um.shape = ' + str(sp.y_arr_um.shape)
+        logger.info(s)
 
 #------------------------------
 
-    def print_xyz_min_max_um(sp) :
-        print('SegGeometryJungfrauV1.print_xyz_min_max_um()')
+    def print_xyz_min_max_um(sp):
         xmin, ymin, zmin = sp.get_xyz_min_um()
         xmax, ymax, zmax = sp.get_xyz_max_um()
-        print('In [um] xmin:%9.2f, xmax:%9.2f, ymin:%9.2f, ymax:%9.2f, zmin:%9.2f, zmax:%9.2f' \
-              % (xmin, xmax, ymin, ymax, zmin, zmax))
+        s = 'SegGeometryJungfrauV1.print_xyz_min_max_um()'\
+          + '\n  In [um] xmin:%9.2f, xmax:%9.2f, ymin:%9.2f, ymax:%9.2f, zmin:%9.2f, zmax:%9.2f' \
+              % (xmin, xmax, ymin, ymax, zmin, zmax)
+        logger.info(s)
 
 #------------------------------
 
-    def get_xyz_min_um(sp) : 
+    def get_xyz_min_um(sp):
         return sp.x_arr_um[0], sp.y_arr_um[-1], 0
 
-    def get_xyz_max_um(sp) : 
+    def get_xyz_max_um(sp):
         return sp.x_arr_um[-1], sp.y_arr_um[0], 0
 
-    def get_seg_xy_maps_um(sp) : 
+    def get_seg_xy_maps_um(sp):
         return sp.x_pix_arr_um, sp.y_pix_arr_um
 
-    def get_seg_xyz_maps_um(sp) : 
+    def get_seg_xyz_maps_um(sp):
         return sp.x_pix_arr_um, sp.y_pix_arr_um, sp.z_pix_arr_um
 
-    def get_seg_xy_maps_um_with_offset(sp) : 
-        if  sp.x_pix_arr_um_offset is None :
+    def get_seg_xy_maps_um_with_offset(sp):
+        if  sp.x_pix_arr_um_offset is None:
             x_min_um, y_min_um, z_min_um = sp.get_xyz_min_um()
             sp.x_pix_arr_um_offset = sp.x_pix_arr_um - x_min_um
             sp.y_pix_arr_um_offset = sp.y_pix_arr_um - y_min_um
         return sp.x_pix_arr_um_offset, sp.y_pix_arr_um_offset
 
-    def get_seg_xyz_maps_um_with_offset(sp) : 
-        if  sp.x_pix_arr_um_offset is None :
+    def get_seg_xyz_maps_um_with_offset(sp):
+        if  sp.x_pix_arr_um_offset is None:
             x_min_um, y_min_um, z_min_um = sp.get_xyz_min_um()
             sp.x_pix_arr_um_offset = sp.x_pix_arr_um - x_min_um
             sp.y_pix_arr_um_offset = sp.y_pix_arr_um - y_min_um
             sp.z_pix_arr_um_offset = sp.z_pix_arr_um - z_min_um
         return sp.x_pix_arr_um_offset, sp.y_pix_arr_um_offset, sp.z_pix_arr_um_offset
 
-    def get_pix_size_um(sp) : 
+    def get_pix_size_um(sp):
         return sp._pixs
 
-    def get_pix_depth_um(sp) : 
+    def get_pix_depth_um(sp):
         return sp._pixd
 
-    def get_pixel_size_arrs_um(sp) :
+    def get_pixel_size_arrs_um(sp):
         sp.make_pixel_size_arrs()
         return sp.x_pix_size_um, sp.y_pix_size_um, sp.z_pix_size_um
 
-    def get_pixel_area_arr(sp) :
+    def get_pixel_area_arr(sp):
         sp.make_pixel_size_arrs()
         return sp.pix_area_arr
 
-    def get_seg_xy_maps_pix(sp) :
+    def get_seg_xy_maps_pix(sp):
         sp.x_pix_arr_pix = sp.x_pix_arr_um/sp._pixs
         sp.y_pix_arr_pix = sp.y_pix_arr_um/sp._pixs
         return sp.x_pix_arr_pix, sp.y_pix_arr_pix
 
-    def get_seg_xy_maps_pix_with_offset(sp) :
+    def get_seg_xy_maps_pix_with_offset(sp):
         X, Y = sp.get_seg_xy_maps_pix()
         xmin, ymin = X.min(), Y.min()
         return X-xmin, Y-ymin
@@ -256,7 +270,7 @@ class SegGeometryJungfrauV1(SegGeometryBase) :
 # INTERFACE METHODS
 #------------------------------
 
-    def print_seg_info(sp, pbits=0) :
+    def print_seg_info(sp, pbits=0):
         """ Prints segment info for selected bits
         pbits = 0 - nothing,
         +1 - member data,
@@ -264,98 +278,99 @@ class SegGeometryJungfrauV1(SegGeometryBase) :
         +4 - min, max coordinates in um,
         +8 - x, y 1-d pixel coordinate arrays in um.
         """
-        if pbits & 1 : sp.print_member_data()
-        if pbits & 2 : sp.print_maps_seg_um()
-        if pbits & 4 : sp.print_xyz_min_max_um()
-        if pbits & 8 : sp.print_xy_1darr_um()
+        if pbits & 1: sp.print_member_data()
+        if pbits & 2: sp.print_maps_seg_um()
+        if pbits & 4: sp.print_xyz_min_max_um()
+        if pbits & 8: sp.print_xy_1darr_um()
 
 
-    def size(sp) :
+    def size(sp):
         """ Returns number of pixels in segment
         """
         return sp._rows*sp._cols
 
 
-    def rows(sp) :
+    def rows(sp):
         """ Returns number of rows in segment
         """
         return sp._rows
 
 
-    def cols(sp) :
+    def cols(sp):
         """ Returns number of cols in segment
         """
         return sp._cols
 
 
-    def shape(sp) :
+    def shape(sp):
         """ Returns shape of the segment (rows, cols)
         """
         return (sp._rows, sp._cols)
 
 
-    def pixel_scale_size(sp) :
+    def pixel_scale_size(sp):
         """ Returns pixel size in um for indexing
         """
         return sp._pixs
 
 
-    def pixel_area_array(sp) :
+    def pixel_area_array(sp):
         """ Returns pixel area array of shape=(rows, cols)
         """
         return sp.get_pixel_area_arr()
 
 
-    def pixel_size_array(sp, axis=None) :
+    def pixel_size_array(sp, axis=None):
         """ Returns numpy array of pixel sizes in um for AXIS
         """
         return sp.return_switch(sp.get_pixel_size_arrs_um, axis)
 
 
-    def pixel_coord_array(sp, axis=None) :
+    def pixel_coord_array(sp, axis=None):
         """ Returns numpy array of segment pixel coordinates in um for AXIS
         """
         return sp.return_switch(sp.get_seg_xyz_maps_um, axis)
 
 
-    def pixel_coord_min(sp, axis=None) :
+    def pixel_coord_min(sp, axis=None):
         """ Returns minimal value in the array of segment pixel coordinates in um for AXIS
         """
         return sp.return_switch(sp.get_xyz_min_um, axis)
 
 
-    def pixel_coord_max(sp, axis=None) :
+    def pixel_coord_max(sp, axis=None):
         """ Returns maximal value in the array of segment pixel coordinates in um for AXIS
         """
         return sp.return_switch(sp.get_xyz_max_um, axis)
 
 
-    def pixel_mask_array(sp, mbits=0o377, width=1) :
+    def pixel_mask_array(sp, mbits=0o377, width=1, **kwa):
         """ Returns numpy array of pixel mask: 1/0 = ok/masked,
 
         Parameters
 
-        mbits: 
+        mbits:
             +1 - mask edges,
             +2 - mask central columns 
 
         width (uint) - width in pixels of masked edge
         """
         w = width
+        #mbits = kwargs.get('mbits', 0o377)
         zero_col = np.zeros((sp._rows,w),dtype=np.uint8)
         zero_row = np.zeros((w,sp._cols),dtype=np.uint8)
         mask     = np.ones((sp._rows,sp._cols),dtype=np.uint8)
 
-        if mbits & 1 : 
+        if mbits & 1:
         # mask edges
             mask[0:w,:] = zero_row # mask top    edge
             mask[-w:,:] = zero_row # mask bottom edge
             mask[:,0:w] = zero_col # mask left   edge
             mask[:,-w:] = zero_col # mask right  edge
 
-        if mbits & 2 : 
+        if mbits & 2:
         # mask central rows and colums - gaps edges
-            for i in range(1,4) :
+            for i in range(1,4):
                 g = sp._casic*i
                 mask[:,g-w:g] = zero_col # mask central-left  column
                 mask[:,g:g+w] = zero_col # mask central-right column
@@ -366,60 +381,76 @@ class SegGeometryJungfrauV1(SegGeometryBase) :
 
         return mask
 
-#------------------------------
+#----------
+# 2020-07 added for converter
+
+    def asic0indices(sp):
+        """ Returns list of ASIC (0,0)-corner indices in panel daq array. 
+        """
+        return sp._asic0indices
+
+    def asic_rows_cols(sp):
+        """ Returns ASIC number of rows, columns.
+        """
+        return sp._arows, sp._acols
+
+    def number_of_asics_in_rows_cols(sp):
+        """ Returns ASIC number of ASICS in the panal in direction fo rows, columns.
+        """
+        return sp._nasics_in_rows, sp._nasics_in_cols
+
+    def name(sp):
+        """ Returns segment name.
+        """
+        return sp._name
+
 #------------------------------
 
 jungfrau_one = SegGeometryJungfrauV1()
 
 #------------------------------
-#------------------------------
-#------------------------------
 #----------- TEST -------------
 #------------------------------
-#------------------------------
-#------------------------------
 
-if __name__ == "__main__" :
-    import psana.pyalgos.generic.Graphics as gg # For test purpose in main only
+if __name__ == "__main__":
+  import sys
+  from time import time
+  import psana.pyalgos.generic.Graphics as gg # For test purpose in main only
 
+  logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)
 
-def test_xyz_min_max() :
-    w = SegGeometryJungfrauV1()
+  def test_xyz_min_max():
+    w = jungfrau_one
     w.print_xyz_min_max_um() 
-    print('Ymin = ', w.pixel_coord_min('Y'))
-    print('Ymax = ', w.pixel_coord_max('Y'))
+    logger.info('\nYmin = ' + str(w.pixel_coord_min('Y'))\
+              + '\nYmax = ' + str(w.pixel_coord_max('Y')))
 
 #------------------------------
 
-def test_xyz_maps() :
-
-    w = SegGeometryJungfrauV1()
+  def test_xyz_maps():
+    w = jungfrau_one
     w.print_maps_seg_um()
-
     titles = ['X map','Y map']
-    #for i,arr2d in enumerate([w.x_pix_arr,w.y_pix_arr]) :
-    for i,arr2d in enumerate( w.get_seg_xy_maps_pix() ) :
+    #for i,arr2d in enumerate([w.x_pix_arr,w.y_pix_arr]):
+    for i,arr2d in enumerate( w.get_seg_xy_maps_pix() ):
         amp_range = (arr2d.min(), arr2d.max())
         gg.plotImageLarge(arr2d, amp_range=amp_range, figsize=(10,5), title=titles[i])
         gg.move(200*i,100*i)
-
     gg.show()
 
 #------------------------------
 
-def test_jungfrau_img() :
-    from time import time
+  def test_jungfrau_img():
 
     t0_sec = time()
-    w = SegGeometryJungfrauV1()
-    print('Consumed time for coordinate arrays (sec) =', time()-t0_sec)
+    w = jungfrau_one
+    logger.info('Consumed time for coordinate arrays (sec) = %.3f' % (time()-t0_sec))
 
     X,Y = w.get_seg_xy_maps_pix()
 
     w.print_seg_info(0o377)
 
-    #print('X(pix) :\n', X)
-    print('X.shape =', X.shape)
+    logger.info('X.shape =' + str(X.shape))
 
     xmin, ymin, zmin = w.get_xyz_min_um()
     xmax, ymax, zmax = w.get_xyz_max_um()
@@ -430,49 +461,44 @@ def test_jungfrau_img() :
 
     xsize = xmax - xmin + 1
     ysize = ymax - ymin + 1
-    print('xsize =', xsize)
-    print('ysize =', ysize)
-
-#    H, Xedges, Yedges = np.histogram2d(X.flatten(), Y.flatten(), bins=[xsize,ysize], range=[[xmin, xmax], [ymin, ymax]], normed=False, weights=X.flatten()+Y.flatten()) 
-
-#    print('Xedges:', Xedges)
-#    print('Yedges:', Yedges)
-#    print('H.shape:', H.shape)
-
-#    gg.plotImageLarge(H, amp_range=(-800, 800), figsize=(8,10)) # range=(-1, 2), 
-#    gg.show()
+    logger.info('\n  xsize = %d' % xsize\
+               +'\n  ysize = %d' % ysize)
 
 #------------------------------
 
-def test_jungfrau_img_easy() :
-    o = SegGeometryJungfrauV1()
-    X,Y = o.get_seg_xy_maps_pix_with_offset()
-    iX, iY = (X+0.25).astype(int), (Y+0.25).astype(int)
-    img = gg.getImageFromIndexArrays(iY,iX,iX+iY)
-    gg.plotImageLarge(img, amp_range=(0, 1500), figsize=(14,6))
+  def test_jungfrau_img_easy():
+    o = jungfrau_one
+    X, Y = o.get_seg_xy_maps_pix()
+    xmin, xmax, ymin, ymax  = X.min(), X.max(), Y.min(), Y.max()
+    Xoff, Yoff = X-xmin, Y-ymin
+    iX, iY = (Xoff+0.25).astype(int), (Yoff+0.25).astype(int)
+    img = gg.getImageFromIndexArrays(iY,iX,X+3*Y)
+    gg.plotImageLarge(img, amp_range=(xmin+3*ymin, xmax+3*ymax), figsize=(14,6))
     gg.show()
 
 #------------------------------
 
-def test_pix_sizes() :
-    w = SegGeometryJungfrauV1()
+  def test_pix_sizes():
+    w = jungfrau_one
     w.print_pixel_size_arrs()
     size_arrX = w.pixel_size_array('X')
     size_arrY = w.pixel_size_array('Y')
     area_arr  = w.pixel_area_array()
-    print('area_arr[348:358,378:388]:\n',   area_arr[348:358,378:388])
-    print('area_arr.shape :',               area_arr.shape)
-    print('size_arrX[348:358,378:388]:\n',  size_arrX[348:358,378:388])
-    print('size_arrX.shape :',              size_arrX.shape)
-    print('size_arrY[348:358,378:388]:\n',  size_arrY[348:358,378:388])
-    print('size_arrY.shape :',              size_arrY.shape)
+    s = 'test_pix_sizes():'\
+      + '\n  area_arr[348:358,378:388]:\n'  + str(area_arr[348:358,378:388])\
+      + '\n  area_arr.shape:'               + str(area_arr.shape)\
+      + '\n  size_arrX[348:358,378:388]:\n' + str(size_arrX[348:358,378:388])\
+      + '\n  size_arrX.shape:'              + str(size_arrX.shape)\
+      + '\n  size_arrY[348:358,378:388]:\n' + str(size_arrY[348:358,378:388])\
+      + '\n  size_arrY.shape:'              + str(size_arrY.shape)
+    logger.info(s)
 
 #------------------------------
 
-def test_jungfrau_mask(mbits=0o377, width=1) :
-    o = SegGeometryJungfrauV1()
+  def test_jungfrau_mask(mbits=0o377, width=1):
+    o = jungfrau_one
     X, Y = o.get_seg_xy_maps_pix_with_offset()
-    mask = o.pixel_mask_array(mbits, width)
+    mask = o.pixel_mask_array(mbits=mbits, width=width)
     mask[mask==0]=4
     iX, iY = (X+0.25).astype(int), (Y+0.25).astype(int)
     img = gg.getImageFromIndexArrays(iY,iX,mask)
@@ -480,20 +506,34 @@ def test_jungfrau_mask(mbits=0o377, width=1) :
     gg.show()
 
 #------------------------------
+
+  def usage(tname='0'):
+    s = ''
+    if tname in ('0',): s+='\n==== Usage: python %s <test-number>' % sys.argv[0]
+    if tname in ('0','1'): s+='\n 1 - test_xyz_min_max()'
+    if tname in ('0','2'): s+='\n 2 - test_xyz_maps()'
+    if tname in ('0','3'): s+='\n 3 - test_jungfrau_img()'
+    if tname in ('0','4'): s+='\n 4 - test_jungfrau_img_easy()'
+    if tname in ('0','5'): s+='\n 5 - test_pix_sizes()'
+    if tname in ('0','6'): s+='\n 6 - test_jungfrau_mask(mbits=1+2)'
+    if tname in ('0','7'): s+='\n 7 - test_jungfrau_mask(mbits=1+2, width=10)'
+    return s
+
+#------------------------------
  
-if __name__ == "__main__" :
-    import sys
+if __name__ == "__main__":
 
-    if len(sys.argv)==1   : print('For test(s) use command: python', sys.argv[0], '<test-number=0-5>')
-    elif sys.argv[1]=='0' : test_xyz_min_max()
-    elif sys.argv[1]=='1' : test_xyz_maps()
-    elif sys.argv[1]=='2' : test_jungfrau_img()
-    elif sys.argv[1]=='3' : test_jungfrau_img_easy()
-    elif sys.argv[1]=='4' : test_pix_sizes()
-    elif sys.argv[1]=='5' : test_jungfrau_mask(mbits=1+2)
-    elif sys.argv[1]=='6' : test_jungfrau_mask(mbits=1+2, width=10)
-    else : print('Non-expected arguments: sys.argv=', sys.argv)
-
-    sys.exit('End of test.')
+    tname = sys.argv[1] if len(sys.argv) > 1 else '0'
+    if len(sys.argv)==1: logger.info(usage())
+    elif tname in ('1',): test_xyz_min_max()
+    elif tname in ('2',): test_xyz_maps()
+    elif tname in ('3',): test_jungfrau_img()
+    elif tname in ('4',): test_jungfrau_img_easy()
+    elif tname in ('5',): test_pix_sizes()
+    elif tname in ('6',): test_jungfrau_mask(mbits=1+2)
+    elif tname in ('7',): test_jungfrau_mask(mbits=1+2, width=10)
+    else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, usage()))
+    if len(sys.argv)>1: logger.info(usage(tname))
+    sys.exit('END OF TEST')
 
 #------------------------------

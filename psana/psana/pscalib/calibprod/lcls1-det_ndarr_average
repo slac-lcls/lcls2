@@ -1,0 +1,212 @@
+#!/usr/bin/env python
+
+##-----------------------------
+import os
+import sys
+import psana
+import numpy as np
+from time import time
+#from Detector.PyDetector import PyDetector
+from Detector.GlobalUtils import print_ndarr
+from ImgAlgos.PyAlgos import reshape_nda_to_2d, reshape_nda_to_3d, print_arr_attr, print_arr
+import pyimgalgos.GlobalGraphics as gg
+
+from pyimgalgos.GlobalUtils import subtract_bkgd
+from pyimgalgos.RadialBkgd  import RadialBkgd, polarization_factor
+
+from optparse import OptionParser
+##-----------------------------
+
+def example_01(dsname, source, ofname, events, evskip, algors, plotim, verbos):
+
+    SKIP   = evskip
+    EVENTS = events + SKIP
+
+    #dsname = 'exp=cxif5315:run=169'
+    #src    = psana.Source('DetInfo(%s)' % source)
+    src    = source
+    if verbos : print 'Calibrated detector data average for\n  dataset: %s\n  source : %s' % (dsname, src)
+
+    # Non-standard calib directory
+    #psana.setOption('psana.calib-dir', './calib')
+
+    ds  = psana.DataSource(dsname)
+    evt = ds.events().next()
+    env = ds.env()
+    
+    det = psana.Detector(src, env)
+    shape = det.shape(evt) 
+
+    print '  det.shape() = ', shape 
+
+    nda_peds = det.pedestals(evt)       if algors & 2  else None    
+    nda_bkgd = det.bkgd(evt)            if algors & 8  else None
+    nda_mask = det.mask_comb(evt, 0377) #if algors & 64 else None
+
+    rb = None
+    nda_polf = None
+    if algors & 16 :
+        Xarr = det.coords_x(evt)
+        Yarr = det.coords_y(evt)
+        Zarr = det.coords_z(evt)
+        rb = RadialBkgd(Xarr, Yarr, mask=nda_mask, nradbins=500, nphibins=1)
+        nda_polf = polarization_factor(rb.pixel_rad(), rb.pixel_phi()+90, Zarr)
+
+    t0_sec = time()
+    counter=0
+    arr_sum = np.zeros(shape, dtype=np.double)
+    arr_max = np.zeros(shape, dtype=np.double)
+
+    #       '   0 - det.calib'\
+    #       '  +1 - det.raw'\
+    #       '  +2 - pedestals'\
+    #       '  +4 - common mode'\
+    #       '  +8 - det.bkgd'\
+    #       ' +16 - radial background'\
+    #       ' +32 - common mode'\
+    #       ' +64 - det.mask'\
+
+    for i, evt in enumerate(ds.events()) :
+
+        if i<SKIP    : continue
+        if not i<EVENTS : break
+
+        dt0_sec = time()
+        nda = det.raw(evt) if algors else det.calib(evt)
+        if nda is None : continue
+
+        if algors >  1: nda = np.array(nda, dtype=np.double, copy=True)
+        if algors &  2: nda -= nda_peds
+        if algors &  4: det.common_mode_apply(evt, nda)
+        if algors &  8: nda = subtract_bkgd(nda, nda_bkgd, mask=nda_mask, winds=None, pbits=0)
+        if algors & 16: 
+            nda = rb.subtract_bkgd(nda.flatten() * nda_polf)
+            nda.shape = shape
+        if algors & 32: det.common_mode_apply(evt, nda)
+        if algors & 64: nda *= nda_mask
+
+        if verbos :
+           if i<5 \
+           or (i<51   and i%10==0) \
+           or (i<1001 and i%100==0) \
+           or i%1000==0 : print '  Event: %d, time/event = %f sec' % (i, time()-dt0_sec)
+        counter += 1
+        arr_sum += nda 
+        arr_max = np.maximum(arr_max, nda)
+
+    print '  Detector data found in %d events' % counter
+    print '  Total consumed time = %f sec' % (time()-t0_sec)
+
+    arr_ave = arr_sum/counter if counter>0 else arr_sum
+  
+    # Plot averaged image
+
+    if plotim :
+        #nda = arr_ave
+        nda = arr_max
+        img = det.image(evt, nda)
+        if img is None : sys.exit('Image is not available. FURTHER TEST IS TERMINATED')
+    
+        ave, rms = nda.mean(), nda.std()
+        gg.plotImageLarge(img, amp_range=(ave-1*rms, ave+3*rms))
+        gg.show()
+
+    # Save n-d array in text files
+
+    suffix = source.replace(":","-").replace(".","-") #.lower()
+    prefix = '%s-%s-r%04d-e%06d-%s' % (ofname, env.experiment(), evt.run(), counter, suffix)
+
+    cmts = ['DATASET  %s' % dsname, 'STATISTICS  %d' % counter]        
+
+    addmetad=True # for now it does not matter for CSPAD(2x2) 
+
+    det.save_asdaq('%s-ave.txt' % prefix, arr_ave, cmts + ['ARR_TYPE  average'], '%.2f', verbos, addmetad)
+    det.save_asdaq('%s-max.txt' % prefix, arr_max, cmts + ['ARR_TYPE  maximum'], '%.2f', verbos, addmetad)
+
+    if det.is_cspad2x2() :
+        from PSCalib.GeometryObject import two2x1ToData2x2 #, data2x2ToTwo2x1
+        arr_daq = two2x1ToData2x2(arr_max)
+        arr_daq.shape = (185*388, 2)
+        print_ndarr(arr_daq, 'arr_daq')
+        fname = '%s-max-noheader.txt' % prefix
+        np.savetxt(fname, arr_daq, fmt='%.2f', delimiter=' ', newline='\n')
+        print 'Saved file %s' % fname
+
+#------------------------------
+
+def usage() :
+    return '\n\nExample of command to average n-d array from detector source and save it in file:\n'+\
+           '\n         %prog -d <dataset> [-s <source>] [-f <file-prefix>]'+\
+           ' [-n <events-collect>] [-m <events-skip>] [-p] [-v]'+\
+           '\n  ex1:   %prog -d exp=cxif5315:run=169 -s CxiDs2.0:Cspad.0 -n 100 -f nda-abc -m 0 -p -v'+\
+           '\n  ex2:   %prog -d exp=cxif5315:run=169 -s CxiDs2.0:Cspad.0 -n 100 -v'+\
+           '\n  ex3:   %prog -d exp=cxif5315:run=162 -s CxiDs2.0:Cspad.0 -n 100 -a 3 -f nda-abc -m 0 -p -v'+\
+           '\n  ex4:   %prog -d exp=amo86615:run=159 -s Camp.0:pnCCD.1 -n 100 -v'
+
+##-----------------------------
+
+def input_options_parser() :
+
+    dsname_def = 'exp=cxif5315:run=169'
+    source_def = 'CxiDs2.0:Cspad.0'
+    ofname_def = 'nda'
+    events_def = 10000000
+    evskip_def = 0
+    algors_def = 0
+    plotim_def = False       
+    verbos_def = False       
+
+    h_dsname = 'dataset name, default = %s' % dsname_def
+    h_source = 'input ndarray file name, default = %s' % source_def
+    h_ofname = 'output file prefix, default = %s' % ofname_def
+    h_events = 'number of events to collect, default = %s' % events_def
+    h_evskip = 'number of events to skip, default = %s' % evskip_def
+    h_algors = 'bitword for algorithms:'\
+               '  0-det.calib,'\
+               ' +1-det.raw,'\
+               ' +2-pedestals,'\
+               ' +4-common mode,'\
+               ' +8-det.bkgd,'\
+               ' +16-radial background,'\
+               ' +32-common mode,'\
+               ' +64-det.mask,'\
+               ' default = %s' % algors_def
+    h_plotim = 'plot averaged image, default = %s' % str(plotim_def)
+    h_verbos = 'verbosity, default = %s' % str(verbos_def)
+    
+    parser = OptionParser(description='Optional input parameters.', usage ='usage: %prog [options]' + usage())
+    parser.add_option('-d', '--dsname', dest='dsname', default=dsname_def, action='store', type='string', help=h_dsname)
+    parser.add_option('-s', '--source', dest='source', default=source_def, action='store', type='string', help=h_source)
+    parser.add_option('-f', '--ofname', dest='ofname', default=ofname_def, action='store', type='string', help=h_ofname)
+    parser.add_option('-n', '--events', dest='events', default=events_def, action='store', type='int',    help=h_events)
+    parser.add_option('-m', '--evskip', dest='evskip', default=evskip_def, action='store', type='int',    help=h_evskip)
+    parser.add_option('-a', '--algors', dest='algors', default=algors_def, action='store', type='int',    help=h_algors)
+    parser.add_option('-p', '--plotim', dest='plotim', default=plotim_def, action='store_true',           help=h_plotim)
+    parser.add_option('-v', '--verbos', dest='verbos', default=verbos_def, action='store_true',           help=h_verbos)
+ 
+    (opts, args) = parser.parse_args()
+    return (opts, args)
+
+##-----------------------------
+
+if __name__ == "__main__" :
+
+    proc_name = os.path.basename(sys.argv[0])
+    if len(sys.argv)==1 :
+        print 'Try command: %s -h' % proc_name
+        sys.exit ('End of %s' % proc_name)
+        
+    #print '%s\nExample # %d' % (80*'_', ntest)
+
+    (opts, args) = input_options_parser()
+
+    if opts.verbos :
+        print 'Command arguments:', ' '.join(sys.argv)
+        print '  opts: ', opts
+        print '  args: ', args
+
+    example_01(opts.dsname, opts.source, opts.ofname, opts.events, opts.evskip, opts.algors, opts.plotim, opts.verbos)
+
+    sys.exit(0)
+
+##-----------------------------

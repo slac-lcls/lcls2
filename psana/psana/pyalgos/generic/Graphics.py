@@ -64,8 +64,8 @@ logger = logging.getLogger('Graphics')
 
 import numpy as np
 from time import time, localtime, strftime
-from math import log10
-import math
+from math import log10, sqrt
+
 import matplotlib
 import matplotlib.pyplot  as plt
 import matplotlib.lines   as lines
@@ -200,13 +200,13 @@ def proc_stat(weights, bins) :
 
     #sum_2  = (weights*center*center).sum()
     #err2 = sum_2/sum_w - mean*mean
-    #err  = math.sqrt(err2)
+    #err  = sqrt(err2)
 
-    rms  = math.sqrt(m2) if m2>0 else 0
+    rms  = sqrt(m2) if m2>0 else 0
     rms2 = m2
     
-    err_mean = rms/math.sqrt(neff)
-    err_rms  = err_mean/math.sqrt(2)    
+    err_mean = rms/sqrt(neff)
+    err_rms  = err_mean/sqrt(2)    
 
     skew, kurt, var_4 = 0, 0, 0
 
@@ -214,7 +214,7 @@ def proc_stat(weights, bins) :
         skew  = m3/(rms2 * rms) 
         kurt  = m4/(rms2 * rms2) - 3
         var_4 = (m4 - rms2*rms2*(neff-3)/(neff-1))/neff if neff>1 else 0
-    err_err = math.sqrt(math.sqrt(var_4)) if var_4>0 else 0 
+    err_err = sqrt(sqrt(var_4)) if var_4>0 else 0 
     #print  'mean:%f, rms:%f, err_mean:%f, err_rms:%f, neff:%f' % (mean, rms, err_mean, err_rms, neff)
     #print  'skew:%f, kurt:%f, err_err:%f' % (skew, kurt, err_err)
     return mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w
@@ -379,10 +379,41 @@ def plotGraph(x,y, figsize=(5,10), window=(0.15, 0.10, 0.78, 0.86), pfmt='b-', l
     return fig, ax
 
 #------------------------------
+
+def img_from_pixel_arrays(rows, cols, W=None, dtype=np.float32, vbase=0):
+    """Returns image from rows, cols index arrays and associated weights W.
+       Methods like matplotlib imshow(img) plot 2-d image array oriented as matrix(rows,cols).
+    """
+    if rows.size != cols.size \
+    or (W is not None and rows.size !=  W.size):
+        msg = 'img_from_pixel_arrays(): input array sizes are different;' \
+            + ' rows.size=%d, cols.size=%d, W.size=%d' % (rows.size, cols.size, W.size)
+        logger.warning(msg)
+        return img_default()
+
+    rowsfl = rows.flatten()
+    colsfl = cols.flatten()
+
+    rsize = int(rowsfl.max())+1 
+    csize = int(colsfl.max())+1
+
+    weight = W.flatten() if W is not None else np.ones_like(rowsfl)
+    img = vbase*np.ones((rsize,csize), dtype=dtype)
+    img[rowsfl,colsfl] = weight # Fill image array with data 
+    return img
+    
+#------------------------------
+
+#from psana.pscalib.geometry.GeometryAccess import img_from_pixel_arrays
+getImageFromIndexArrays = img_from_pixel_arrays # backward compatability
+
+#------------------------------
 #------------------------------
 #------------------------------
 
-def test01() :
+if __name__ == "__main__" :
+
+  def test01() :
     """ imshow
     """
     img = random_standard(shape=(40,60), mu=200, sigma=25)
@@ -396,7 +427,7 @@ def test01() :
 
 #------------------------------
 
-def test02() :
+  def test02() :
     """ hist
     """
     mu, sigma = 200, 25
@@ -408,7 +439,7 @@ def test02() :
 
 #------------------------------
 
-def test03() :
+  def test03() :
     """ Update image in the event loop
     """
     #fig = figure(figsize=(6,5), title='Test hist', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=(100,10))
@@ -432,7 +463,7 @@ def test03() :
 
 #------------------------------
 
-def test04() :
+  def test04() :
     """ Update histogram in the event loop
     """
     mu, sigma = 200, 25
@@ -452,7 +483,7 @@ def test04() :
 
 #------------------------------
 
-def test05() :
+  def test05() :
     """ Update image with color bar in the event loop
     """
     fig, axim, axcb = fig_img_cbar_axes()
@@ -480,7 +511,7 @@ def test05() :
 #------------------------------
 #------------------------------
 
-def usage() :
+  def usage() :
     msg = 'Usage: python psalgos/examples/ex-02-localextrema.py <test-number>'\
           '\n  where <test-number> ='\
           '\n  1 - single 2d random image'\
@@ -492,7 +523,7 @@ def usage() :
 
 #------------------------------
 
-def do_test() :
+  def do_test() :
 
     from time import time
     from psana.pyalgos.generic.NDArrGenerators import random_standard; global random_standard
