@@ -44,7 +44,7 @@ class StepEvent(object):
     def dgrams(self, evt):
         return self.env_store.get_step_dgrams_of_event(evt)
     def docstring(self, evt) -> str:
-        env_values = self.env_store.values([evt], 'docstring')
+        env_values = self.env_store.values([evt], 'step_docstring')
         return env_values[0]
     def value(self, evt) -> float:
         env_values = self.env_store.values([evt], 'step_value')

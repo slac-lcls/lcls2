@@ -16,18 +16,15 @@ class EventBuilderManager(object):
         self.c_filter       = PrometheusManager.get_metric('psana_eb_filter')
 
     def batches(self):
-        batch_dict, step_dict = self.eb.build(
-                batch_size          = self.batch_size, 
-                filter_fn           = self.filter_fn, 
-                destination         = self.destination,
-                prometheus_counter  = self.c_filter)
-        while self.eb.nevents or self.eb.nsteps:
-            self.min_ts = self.eb.min_ts
-            self.max_ts = self.eb.max_ts
-            yield batch_dict, step_dict
+        while True: 
             batch_dict, step_dict = self.eb.build(
                     batch_size          = self.batch_size, 
                     filter_fn           = self.filter_fn, 
                     destination         = self.destination,
                     prometheus_counter  = self.c_filter)
+            self.min_ts = self.eb.min_ts
+            self.max_ts = self.eb.max_ts
+            print(f"call build self.eb.nevents={self.eb.nevents} nsteps={self.eb.nsteps}")
+            if self.eb.nevents==0 and self.eb.nsteps==0: break
+            yield batch_dict, step_dict
 
