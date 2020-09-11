@@ -24,7 +24,6 @@ class EventBuilderManager(object):
                     prometheus_counter  = self.c_filter)
             self.min_ts = self.eb.min_ts
             self.max_ts = self.eb.max_ts
-            print(f"call build self.eb.nevents={self.eb.nevents} nsteps={self.eb.nsteps}")
             if self.eb.nevents==0 and self.eb.nsteps==0: break
             yield batch_dict, step_dict
 
