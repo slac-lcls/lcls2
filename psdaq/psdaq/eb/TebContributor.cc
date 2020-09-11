@@ -45,6 +45,10 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)}};
+
+  exporter->constant("TCtb_IUMax",  labels, MAX_BATCHES);
+  exporter->constant("TCtbO_IFMax", labels, _pending.size());
+
   exporter->add("TCtbO_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;             });
   exporter->add("TCtbO_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;             });
   exporter->add("TCtbO_BtAlCt", labels, MetricType::Counter, [&](){ return _batMan.batchAllocCnt(); });
@@ -53,7 +57,8 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
   exporter->add("TCtb_IUBats",  labels, MetricType::Gauge,   [&](){ return _batMan.inUseBatchCnt(); });
   exporter->add("TCtbO_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;             });
   exporter->add("TCtbO_TxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending();    });
-  exporter->add("TCtbO_InFlt",  labels, MetricType::Gauge,   [&](){ return _pending.guess_size();   });
+  exporter->add("TCtbO_InFlt",  labels, MetricType::Gauge,   [&](){ _pendingSize = _pending.guess_size();
+                                                                    return _pendingSize; });
 }
 
 TebContributor::~TebContributor()

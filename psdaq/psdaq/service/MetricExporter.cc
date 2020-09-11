@@ -81,6 +81,7 @@ void Pds::MetricExporter::add(const std::string& name,
         case Pds::MetricType::Gauge:
             prometheusType = prometheus::MetricType::Gauge;
             break;
+        case Pds::MetricType::Constant:
         case Pds::MetricType::Counter:
             prometheusType = prometheus::MetricType::Counter;
             break;
@@ -102,30 +103,50 @@ void Pds::MetricExporter::add(const std::string& name,
     m_previous.push_back(previous);
 }
 
+void Pds::MetricExporter::constant(const std::string& name,
+                                   const std::map<std::string, std::string>& labels,
+                                   uint64_t constant)
+{
+    Pds::MetricType type = Pds::MetricType::Constant;
+    std::function<uint64_t()> value;    // Placeholder; not used
+
+    add(name, labels, type, value);
+
+    m_families.back().metric[0].counter.value = static_cast<double>(constant);
+}
+
 std::vector<prometheus::MetricFamily> Pds::MetricExporter::Collect() const
 {
     // std::cout<<"Collect()\n";
     for (size_t i=0; i<m_type.size(); i++) {
         //std::cout<<"Collector  "<<m_families[i].name<<'\n';
-        if (m_type[i] == Pds::MetricType::Rate) {
-            uint64_t newValue = m_values[i]();
-            auto now = std::chrono::steady_clock::now();
-            uint64_t previousValue = m_previous[i].value;
-            uint64_t difference = 0UL;
-            if (newValue > previousValue) {
-                difference = newValue - previousValue;
+        switch (m_type[i]) {
+            case Pds::MetricType::Rate: {
+                uint64_t newValue = m_values[i]();
+                auto now = std::chrono::steady_clock::now();
+                uint64_t previousValue = m_previous[i].value;
+                uint64_t difference = 0UL;
+                if (newValue > previousValue) {
+                    difference = newValue - previousValue;
+                }
+                auto duration = std::chrono::duration_cast<std::chrono::microseconds>(now - m_previous[i].time).count();
+                double rate = static_cast<double>(difference) / static_cast<double>(duration) * 1.0e6;
+                setValue(m_families[i], rate);
+                m_previous[i].value = newValue;
+                m_previous[i].time = now;
+                break;
             }
-            auto duration = std::chrono::duration_cast<std::chrono::microseconds>(now - m_previous[i].time).count();
-            double rate = static_cast<double>(difference) / static_cast<double>(duration) * 1.0e6;
-            setValue(m_families[i], rate);
-            m_previous[i].value = newValue;
-            m_previous[i].time = now;
-        }
-        else if (m_type[i] == Pds::MetricType::Histogram) {
-            m_histos[i]->collect(m_families[i]);
-        }
-        else {
-            setValue(m_families[i], m_values[i]());
+            case Pds::MetricType::Histogram: {
+                m_histos[i]->collect(m_families[i]);
+                break;
+            }
+            case Pds::MetricType::Constant: {
+                break;                  // Nothing to do
+            }
+            default: {
+                setValue(m_families[i], m_values[i]());
+                break;
+            }
         }
     }
     return m_families;
@@ -145,9 +166,9 @@ Pds::PromHistogram::PromHistogram(unsigned numBins, double binWidth, double binM
 }
 
 std::shared_ptr<Pds::PromHistogram>
-    Pds::MetricExporter::add(const std::string& name,
-                             const std::map<std::string, std::string>& labels,
-                             unsigned numBins, double binWidth, double binMin)
+    Pds::MetricExporter::histogram(const std::string& name,
+                                   const std::map<std::string, std::string>& labels,
+                                   unsigned numBins, double binWidth, double binMin)
 {
     Pds::MetricType type = Pds::MetricType::Histogram;
     prometheus::MetricType prometheusType = prometheus::MetricType::Histogram;

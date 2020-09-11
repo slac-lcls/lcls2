@@ -43,10 +43,10 @@ namespace Pds {
       bool            expired(uint64_t pid, uint64_t start) const;
     public:
       void            dump()          const;
-      int64_t         inUseBatchCnt() const;
+      const uint64_t& batchWaiting()  const;
       const uint64_t& batchAllocCnt() const;
       const uint64_t& batchFreeCnt()  const;
-      const uint64_t& batchWaiting()  const;
+      const uint64_t& inUseBatchCnt() const;
     private:
       size_t                _maxBatchSize; // Max batch size rounded up by page size
       size_t                _regSize;      // The allocated size of the _region
@@ -59,8 +59,10 @@ namespace Pds {
       unsigned              _batching;     // Batching flag history
       std::atomic<uint64_t> _numAllocs;
       std::atomic<uint64_t> _numFrees;
-      uint64_t              _nAllocs;      // Number of Batch allocates
-      uint64_t              _nFrees;       // Number of Batch frees
+      std::atomic<uint64_t> _numInUse;
+      mutable uint64_t      _nAllocs;      // Number of Batch allocates
+      mutable uint64_t      _nFrees;       // Number of Batch frees
+      mutable uint64_t      _nInUse;       // Number of Batch allocates - frees
       uint64_t              _waiting;      // State of allocation
       std::atomic<bool>     _terminate;    // Flag for breaking out of the cv wait
     };
@@ -101,8 +103,8 @@ Pds::Eb::Batch* Pds::Eb::BatchManager::fetch(uint64_t pid)
 {
   if (!_batching || expired(pid, _batch.id()))
   {
-    _nAllocs = _numAllocs.load(std::memory_order_relaxed) + 1;
-    _numAllocs.store(_nAllocs, std::memory_order_release);
+    _numAllocs.fetch_add(1, std::memory_order_acq_rel);
+    _numInUse.fetch_add(1, std::memory_order_acq_rel);
 
     _batch.initialize(_region, pid);
   }
@@ -125,8 +127,8 @@ Pds::Eb::Batch* Pds::Eb::BatchManager::fetchW(uint64_t pid)
                                  _terminate.load(std::memory_order_acquire); });
       --_waiting;
       if (_terminate.load(std::memory_order_acquire))  return nullptr;
-      _nAllocs = _numAllocs.load(std::memory_order_relaxed) + 1;
-      _numAllocs.store(_nAllocs, std::memory_order_release);
+      _numAllocs.fetch_add(1, std::memory_order_acq_rel);
+      _numInUse.fetch_add(1, std::memory_order_acq_rel);
     }
 
     _batch.initialize(_region, pid);
@@ -140,8 +142,8 @@ void Pds::Eb::BatchManager::release(uint64_t pid)
   std::unique_lock<std::mutex> lock(_lock);
   _lastFreed.store(pid, std::memory_order_release);
   _cv.notify_one();
-  _nFrees = _numFrees.load(std::memory_order_relaxed) + 1;
-  _numFrees.store(_nFrees, std::memory_order_release);
+  _numFrees.fetch_add(1, std::memory_order_acq_rel);
+  _numInUse.fetch_sub(1, std::memory_order_acq_rel);
 }
 
 inline
@@ -167,20 +169,24 @@ bool Pds::Eb::BatchManager::expired(uint64_t pid, uint64_t start) const
 }
 
 inline
-int64_t Pds::Eb::BatchManager::inUseBatchCnt() const
+const uint64_t& Pds::Eb::BatchManager::inUseBatchCnt() const
 {
-  return _nAllocs - _nFrees;
+  //_nInUse = batchAllocCnt() - batchFreeCnt();
+  _nInUse = _numInUse.load(std::memory_order_relaxed);
+  return _nInUse;
 }
 
 inline
 const uint64_t& Pds::Eb::BatchManager::batchAllocCnt() const
 {
+  _nAllocs = _numAllocs.load(std::memory_order_relaxed);
   return _nAllocs;
 }
 
 inline
 const uint64_t& Pds::Eb::BatchManager::batchFreeCnt() const
 {
+  _nFrees = _numFrees.load(std::memory_order_relaxed);
   return _nFrees;
 }
 

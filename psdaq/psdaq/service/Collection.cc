@@ -54,8 +54,7 @@ std::string getNicIp()
     }
     if (interface_name == nullptr) {
         if (ethernet_name == nullptr) {
-            logging::critical("No Infiniband or Ethernet interface found");
-            return std::string();
+            throw "No Infiniband or Ethernet interface found";
         }
         logging::warning("No Infiniband interface found - using Ethernet");
         interface_name = ethernet_name;

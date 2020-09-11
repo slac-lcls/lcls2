@@ -24,8 +24,10 @@ BatchManager::BatchManager() :
   _appPrms     (MAX_BATCHES * MAX_ENTRIES),
   _numAllocs   (0),
   _numFrees    (0),
+  _numInUse    (0),
   _nAllocs     (0),
   _nFrees      (0),
+  _nInUse      (0),
   _waiting     (0),
   _terminate   (false)
 {
@@ -79,8 +81,10 @@ int BatchManager::initialize(size_t maxEntrySize, bool batching)
   _batching     = batching;
   _numAllocs    = 0;
   _numFrees     = 0;
+  _numInUse     = 0;
   _nAllocs      = 0;
   _nFrees       = 0;
+  _nInUse       = 0;
   _waiting      = 0;
   _terminate    = false;
 

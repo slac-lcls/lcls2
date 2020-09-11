@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdint>
 #include <map>
+#include <atomic>
 
 #include "spscqueue.hh"
 
@@ -98,12 +99,18 @@ public:
     int fd () const {return m_fd;}
     Pds::EbDgram* allocateTr();
     void freeTr(Pds::EbDgram* dgram) { m_transitionBuffers.push(dgram); }
+    void allocate(unsigned count) { m_inUse.fetch_add(count, std::memory_order_acq_rel) ; }
+    void release(unsigned count) { m_inUse.fetch_sub(count, std::memory_order_acq_rel); }
+    const uint64_t& inUse() const { m_dmaBuffersInUse = m_inUse.load(std::memory_order_relaxed);
+                                    return m_dmaBuffersInUse; }
 private:
     unsigned m_nbuffers;
     unsigned m_bufferSize;
     unsigned m_dmaSize;
     int m_fd;
     SPSCQueue<void*> m_transitionBuffers;
+    std::atomic<unsigned> m_inUse;
+    mutable uint64_t m_dmaBuffersInUse;
 };
 
 }

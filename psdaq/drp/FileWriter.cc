@@ -113,7 +113,7 @@ static const unsigned FIFO_DEPTH = 64;
 
 BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize) :
     m_bufferSize(bufferSize),
-    m_depth(0),                                                                                                 
+    m_depth(0),
     m_batch_starttime(0,0),
     m_free(FIFO_DEPTH),
     m_pend(FIFO_DEPTH),
@@ -126,6 +126,7 @@ BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize) :
         b.p = new uint8_t[bufferSize];
         m_free.push(b);
     }
+    m_size = m_free.size();
 }
 
 BufferedFileWriterMT::~BufferedFileWriterMT()

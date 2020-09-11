@@ -46,6 +46,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
     Batch batch;
     MemPool& pool = drp.pool;
     const unsigned nbuffers = pool.nbuffers();
+
     while (true) {
         if (!inputQueue.pop(batch)) {
             break;
@@ -181,11 +182,14 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
         }
         return sum;
     };
+    uint64_t nbuffers = m_para.nworkers * m_pool.nbuffers();
+    exporter->constant("drp_worker_queue_depth", labels, nbuffers);
+
     exporter->add("drp_worker_input_queue", labels, Pds::MetricType::Gauge,
                   [&](){return queueLength(m_workerInputQueues);});
 
     exporter->add("drp_worker_output_queue", labels, Pds::MetricType::Gauge,
-                   [&](){return queueLength(m_workerOutputQueues);});
+                  [&](){return queueLength(m_workerOutputQueues);});
 
     int64_t worker = 0L;
     uint64_t batchId = 0L;
@@ -216,6 +220,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
             buffer->size = size;
             buffer->index = index;
             event->mask |= (1 << lane);
+            m_pool.allocate(1);
 
             const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
             if (m_para.verbose < 2)

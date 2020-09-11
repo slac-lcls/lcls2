@@ -34,9 +34,9 @@ using namespace psalg::shmem;
 using namespace Pds;
 using namespace Pds::Eb;
 
-using json             = nlohmann::json;
-using logging          = psalg::SysLog;
-using MetricExporter_t = std::shared_ptr<MetricExporter>;
+using json     = nlohmann::json;
+using logging  = psalg::SysLog;
+using u64arr_t = std::array<uint64_t, NUM_READOUT_GROUPS>;
 
 static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
@@ -104,6 +104,10 @@ namespace Pds {
     }
     virtual ~MyXtcMonitorServer()
     {
+    }
+    const size_t& bufListCount() const
+    {
+      return _bufFreeList.count();
     }
   private:
     virtual void _copyDatagram(Dgram* dg, char* buf)
@@ -266,11 +270,14 @@ Meb::Meb(const MebParams&        prms,
   _mrqTransport(prms.verbose)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)}};
-  exporter->add("MEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;      });
-  exporter->add("MEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;      });
-  exporter->add("MEB_ReqRt",  labels, MetricType::Rate,    [&](){ return _requestCount;    });
-  exporter->add("MEB_ReqCt",  labels, MetricType::Counter, [&](){ return _requestCount;    });
+                                            {"partition", std::to_string(prms.partition)},
+                                            {"detname", prms.alias}};
+  exporter->add("MEB_EvtRt", labels, MetricType::Rate,    [&](){ return _eventCount;      });
+  exporter->add("MEB_EvtCt", labels, MetricType::Counter, [&](){ return _eventCount;      });
+  exporter->add("MEB_ReqRt", labels, MetricType::Rate,    [&](){ return _requestCount;    });
+  exporter->add("MEB_ReqCt", labels, MetricType::Counter, [&](){ return _requestCount;    });
+  exporter->add("MRQ_BufCt", labels, MetricType::Counter, [&](){ return _apps ? _apps->bufListCount() : 0; });
+  exporter->constant("MRQ_BufCtMax", labels, prms.numEvBuffers);
 }
 
 Meb::~Meb()

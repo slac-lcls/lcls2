@@ -41,6 +41,7 @@ enum class MetricType
     Gauge,
     Counter,
     Rate,
+    Constant,                           // To be used only by addConst()
     Histogram
 };
 
@@ -50,10 +51,13 @@ public:
     void add(const std::string& name,
              const std::map<std::string, std::string>& labels,
              MetricType type, std::function<uint64_t()> value);
+    void constant(const std::string& name,
+                  const std::map<std::string, std::string>& labels,
+                  uint64_t value);
     std::shared_ptr<PromHistogram>
-         add(const std::string& name,
-             const std::map<std::string, std::string>& labels,
-             unsigned numBins, double binWidth=1.0, double binMin=0.0);
+         histogram(const std::string& name,
+                   const std::map<std::string, std::string>& labels,
+                   unsigned numBins, double binWidth=1.0, double binMin=0.0);
     std::vector<prometheus::MetricFamily> Collect() const override;
 private:
     mutable std::vector<prometheus::MetricFamily> m_families;

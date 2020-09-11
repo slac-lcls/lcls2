@@ -37,9 +37,11 @@ public:
     void writeEvent(void* data, size_t size, XtcData::TimeStamp ts);
     void run();
     const uint64_t& depth() const { return m_depth; }
+    const uint64_t& size() const { return m_size; }
 private:
     size_t m_bufferSize;
     uint64_t m_depth;
+    uint64_t m_size;
     int m_fd;
     XtcData::TimeStamp m_batch_starttime;
     class Buffer {
@@ -47,8 +49,8 @@ private:
         uint8_t* p;
         size_t   count;
     };
-    Pds::FifoW<Buffer> m_free;  
-    Pds::FifoW<Buffer> m_pend;  
+    Pds::FifoW<Buffer> m_free;
+    Pds::FifoW<Buffer> m_pend;
     std::atomic<bool> m_terminate;
     std::thread m_thread;
 };

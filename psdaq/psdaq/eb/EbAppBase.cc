@@ -52,23 +52,23 @@ EbAppBase::EbAppBase(const EbParams&         prms,
   _verbose     (prms.verbose),
   _bufferCnt   (0),
   _contributors(0),
-  _id          (-1)
+  _id          (-1),
+  _exporter    (exporter),
+  _pfx         (pfx)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)}};
-  exporter->add(pfx+"_EpAlCt", labels, MetricType::Counter, [&](){ return  epochAllocCnt();     });
-  exporter->add(pfx+"_EpFrCt", labels, MetricType::Counter, [&](){ return  epochFreeCnt();      });
-  exporter->add(pfx+"_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt();     });
-  exporter->add(pfx+"_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();      });
-  exporter->add(pfx+"_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
-  exporter->add(pfx+"_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
-  exporter->add(pfx+"_ToEvCt", labels, MetricType::Counter, [&](){ return  timeoutCnt();        });
-  exporter->add(pfx+"_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();          });
+                                            {"partition", std::to_string(prms.partition)},
+                                            {"detname", prms.alias},
+                                            {"eb", pfx}};
+  uint64_t depth = (maxBuffers + TransitionId::NumberOf) * maxEntries;
+  exporter->constant("EB_EvPlDp", labels, depth);
 
-  // Revisit: nCtrbs isn't known yet
-  unsigned nCtrbs = 64; //std::bitset<64>(prms.contributors).count();
-  _fixupSrc = exporter->add(pfx+"_FxUpSc", labels, nCtrbs);
-  _ctrbSrc  = exporter->add(pfx+"_CtrbSc", labels, nCtrbs); // Revisit: For testing
+  exporter->add("EB_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt();     });
+  exporter->add("EB_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();      });
+  exporter->add("EB_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
+  exporter->add("EB_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
+  exporter->add("EB_ToEvCt", labels, MetricType::Counter, [&](){ return  timeoutCnt();        });
+  exporter->add("EB_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();          });
 }
 
 EbAppBase::~EbAppBase()
@@ -117,8 +117,8 @@ void EbAppBase::unconfigure()
 int EbAppBase::resetCounters()
 {
   _bufferCnt = 0;
-  _fixupSrc->clear();
-  _ctrbSrc ->clear();
+  if (_fixupSrc)  _fixupSrc->clear();
+  if (_ctrbSrc)   _ctrbSrc ->clear();
 
   return 0;
 }
@@ -136,6 +136,10 @@ int EbAppBase::startConnection(const std::string& ifAddr,
 int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
 {
   unsigned nCtrbs = std::bitset<64>(prms.contributors).count();
+  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
+                                            {"partition", std::to_string(prms.partition)},
+                                            {"detname", prms.alias},
+                                            {"eb", _pfx}};
 
   _links        .resize(nCtrbs);
   _region       .resize(nCtrbs);
@@ -146,6 +150,8 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
   _id           = prms.id;
   _contributors = prms.contributors;
   _contract     = prms.contractors;
+  _fixupSrc     = _exporter->histogram("EB_FxUpSc", labels, nCtrbs);
+  _ctrbSrc      = _exporter->histogram("EB_CtrbSc", labels, nCtrbs); // Revisit: For testing
 
   int rc = linksConnect(_transport, _links, "DRP");
   if (rc)  return rc;

@@ -264,6 +264,7 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
         while (true) {
             m_available = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
             if (m_available > 0) {
+                m_pool.allocate(m_available);
                 break;
             }
 
@@ -399,6 +400,7 @@ void PvaDetector::_worker()
     std::map<std::string, std::string> labels{{"instrument", m_para->instrument},
                                               {"partition", std::to_string(m_para->partition)},
                                               {"detname", m_para->detName},
+                                              {"detseg", std::to_string(m_para->detSegment)},
                                               {"PV", m_pvaMonitor->name()}};
     m_nEvents = 0;
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
@@ -427,6 +429,7 @@ void PvaDetector::_worker()
 
     m_exporter->add("drp_worker_input_queue", labels, Pds::MetricType::Gauge,
                     [&](){return m_pgpQueue.guess_size();});
+    m_exporter->constant("drp_worker_queue_depth", labels, m_pgpQueue.size());
 
     Pgp pgp(*m_para, m_drp, m_running);
 
@@ -567,24 +570,25 @@ void PvaDetector::_handleYounger(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg
     uint32_t pgpIdx;
     m_pgpQueue.try_pop(pgpIdx);       // Actually consume the element
 
-    ++m_nEmpty;
+    if (pgpDg.service() == XtcData::TransitionId::L1Accept) {
+        // No PV data so mark event damaged
+        pgpDg.xtc.damage.increase(XtcData::Damage::MissingData);
 
-    //using us_t = std::chrono::microseconds;
-    //printf("Missed PV: PGP ts %u.%09u, now %ld, d %ld, diff %ld\n",
-    //       pgpDg.time.seconds(), pgpDg.time.nanoseconds(),
-    //       t0.time_since_epoch().count(),
-    //       std::chrono::duration_cast<us_t>(t0 - tMissed).count(),
-    //       std::chrono::duration_cast<us_t>(t0 - tEmpty).count());
-    //tEmpty = t0;
-    logging::debug("No PV data!!      "
-                   "TimeStamps: PV %u.%09u > PGP %u.%09u",
-                   pvDg.time.seconds(), pvDg.time.nanoseconds(),
-                   pgpDg.time.seconds(), pgpDg.time.nanoseconds());
+        ++m_nEmpty;
 
-    // No PV data so mark event damaged
-    pgpDg.xtc.damage.increase(XtcData::Damage::MissingData);
-
-    if (!pgpDg.isEvent()) {
+        //using us_t = std::chrono::microseconds;
+        //printf("Missed PV: PGP ts %u.%09u, now %ld, d %ld, diff %ld\n",
+        //       pgpDg.time.seconds(), pgpDg.time.nanoseconds(),
+        //       t0.time_since_epoch().count(),
+        //       std::chrono::duration_cast<us_t>(t0 - tMissed).count(),
+        //       std::chrono::duration_cast<us_t>(t0 - tEmpty).count());
+        //tEmpty = t0;
+        logging::debug("No PV data!!      "
+                       "TimeStamps: PV %u.%09u > PGP %u.%09u",
+                       pvDg.time.seconds(), pvDg.time.nanoseconds(),
+                       pgpDg.time.seconds(), pgpDg.time.nanoseconds());
+    }
+    else {
         // Allocate a transition dgram from the pool and initialize its header
         Pds::EbDgram* trDg = m_pool->allocateTr();
         *trDg = pgpDg;

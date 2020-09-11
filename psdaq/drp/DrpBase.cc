@@ -56,19 +56,21 @@ static unsigned nextPowerOf2(unsigned n)
 }
 
 MemPool::MemPool(const Parameters& para) :
-    m_transitionBuffers(para.nTrBuffers)
+    m_transitionBuffers(para.nTrBuffers),
+    m_inUse(0),
+    m_dmaBuffersInUse(0)
 {
     m_fd = open(para.device.c_str(), O_RDWR);
     if (m_fd < 0) {
         logging::critical("Error opening %s", para.device.c_str());
-        throw "Error opening kcu1500!!\n";
+        throw "Error opening kcu1500!!";
     }
 
     uint32_t dmaCount;
     dmaBuffers = dmaMapDma(m_fd, &dmaCount, &m_dmaSize);
     if (dmaBuffers == NULL ) {
         logging::critical("Failed to map dma buffers!");
-        throw "Error calling dmaMapDma!!\n";
+        throw "Error calling dmaMapDma!!";
     }
     logging::info("dmaCount %u  dmaSize %u", dmaCount, m_dmaSize);
 
@@ -128,7 +130,8 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
     exporter->add("DRP_Damage"    , labels, Pds::MetricType::Gauge  , [&](){ return m_damage; });
     exporter->add("DRP_RecordSize", labels, Pds::MetricType::Counter, [&](){ return m_offset; });
     exporter->add("DRP_RecordDepth", labels, Pds::MetricType::Gauge , [&](){ return m_fileWriter.depth(); });
-    m_dmgType = exporter->add("DRP_DamageType", labels, 16);
+    exporter->constant("DRP_RecordDepthMax", labels, m_fileWriter.size());
+    m_dmgType = exporter->histogram("DRP_DamageType", labels, 16);
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId)
@@ -325,6 +328,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
             if (m_count == m_size) {
                 dmaRetIndexes(m_pool.fd(), m_count, m_indices);
                 // std::cout<<"return dma buffers to driver\n";
+                m_pool.release(m_count);
                 m_count = 0;
             }
         }
@@ -348,12 +352,17 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
     std::map<std::string, std::string> labels{{"instrument", para.instrument},
                                               {"partition", std::to_string(para.partition)},
-                                              {"detname", para.detName}};
+                                              {"detname", para.detName},
+                                              {"detseg", std::to_string(para.detSegment)}};
     m_exporter->add("drp_port_rcv_rate", labels, Pds::MetricType::Rate,
                     [](){return 4*readInfinibandCounter("port_rcv_data");});
 
     m_exporter->add("drp_port_xmit_rate", labels, Pds::MetricType::Rate,
                     [](){return 4*readInfinibandCounter("port_xmit_data");});
+
+    m_exporter->add("drp_dma_in_use", labels, Pds::MetricType::Gauge,
+                    [&](){return pool.inUse();});
+    m_exporter->constant("drp_dma_in_use_max", labels, pool.nbuffers());
 
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition = para.partition;

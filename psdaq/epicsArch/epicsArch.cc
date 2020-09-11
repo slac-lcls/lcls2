@@ -68,7 +68,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     bytes += size;
     if (size > m_pool.dmaSize()) {
         logging::critical("DMA overflowed buffer: %d vs %d", size, m_pool.dmaSize());
-        exit(-1);
+        throw "DMA overflowed buffer";
     }
 
     const uint32_t* data = (uint32_t*)m_pool.dmaBuffers[index];
@@ -76,6 +76,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     const unsigned bufferMask = m_pool.nbuffers() - 1;
     current = evtCounter & bufferMask;
     PGPEvent* event = &m_pool.pgpEvents[current];
+    assert(event->mask == 0);
 
     DmaBuffer* buffer = &event->buffers[lane];
     buffer->size = size;
@@ -98,8 +99,9 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
                        XtcData::TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId());
-        if (transitionId == XtcData::TransitionId::BeginRun)
+        if (transitionId == XtcData::TransitionId::BeginRun) {
             m_lastComplete = 0;  // EvtCounter reset
+        }
     }
     if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
         logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
@@ -111,7 +113,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
         logging::critical("lastData: %08x %08x %08x %08x %08x %08x",
                           m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5]);
 
-        throw "Fatal: Jump in event counter";
+        throw "Jump in event counter";
 
         for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
             PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
@@ -142,6 +144,7 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
         while (true) {
             m_available = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
             if (m_available > 0) {
+                m_pool.allocate(m_available);
                 break;
             }
 
@@ -248,7 +251,8 @@ void EaDetector::_worker()
     // setup monitoring
     std::map<std::string, std::string> labels{{"instrument", m_para->instrument},
                                               {"partition", std::to_string(m_para->partition)},
-                                              {"detname", m_para->detName}};
+                                              {"detname", m_para->detName},
+                                              {"detseg", std::to_string(m_para->detSegment)}};
     m_nEvents = 0;
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});
@@ -320,11 +324,11 @@ void EaDetector::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
                          : m_para->maxTrSize;
     if (size > maxSize) {
         logging::critical("%s Dgram of size %zd overflowed buffer of size %zd", XtcData::TransitionId::name(dgram.service()), size, maxSize);
-        exit(-1);
+        throw "Dgram overflowed buffer";
     }
 
     PGPEvent* event = &m_drp.pool.pgpEvents[index];
-    if (event->l3InpBuf) { // else timed out
+    if (event->l3InpBuf) { // else shutting down
         Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(dgram);
         if (dgram.isEvent()) {
             if (m_drp.triggerPrimitive()) { // else this DRP doesn't provide input
@@ -332,6 +336,9 @@ void EaDetector::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
             }
         }
         m_drp.tebContributor().process(l3InpDg);
+    }
+    else {
+        logging::error("Attempted to send to TEB without an Input buffer");
     }
 }
 

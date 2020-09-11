@@ -21,17 +21,19 @@ namespace XtcData {
 namespace Pds {
   namespace Eb {
 
-    using u64arr_t    = std::array<uint64_t, NUM_READOUT_GROUPS>;
-    using PromHisto_t = std::shared_ptr<Pds::PromHistogram>;
-
     class EbLfSvrLink;
     class EbEvent;
 
     class EbAppBase : public EventBuilder
     {
     public:
+      using u64arr_t         = std::array<uint64_t, NUM_READOUT_GROUPS>;
+      using PromHisto_t      = std::shared_ptr<Pds::PromHistogram>;
+      using MetricExporter_t = std::shared_ptr<Pds::MetricExporter>;
+
+    public:
       EbAppBase(const EbParams& prms,
-                const std::shared_ptr<MetricExporter>&,
+                const MetricExporter_t&,
                 const std::string& pfx,
                 const uint64_t duration,
                 const unsigned maxEntries,
@@ -79,6 +81,8 @@ namespace Pds {
       std::vector<void*>        _region;
       uint64_t                  _contributors;
       unsigned                  _id;
+      const MetricExporter_t&   _exporter;
+      const std::string&        _pfx;
     };
   };
 };

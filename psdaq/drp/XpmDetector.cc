@@ -49,7 +49,7 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
       logging::info("I2C mux:  0x%x\n", mux); // Force the read not to be optimized out
       //  Set the I2C Mux
       dmaWriteRegister(fd, 0x00E00000, (1<<2));
-      
+
       Si570 rclk(fd,0x00E00800);
       rclk.program();
 
@@ -117,9 +117,7 @@ json XpmDetector::connectionInfo()
     // back as zero (incorrectly). This is not the best longterm
     // fix, but throw here to highlight the problem. - cpo
     if (!reg) {
-        const char msg[] = "XPM Remote link id register is zero\n";
-        logging::critical("%s", msg);
-        throw msg;
+        throw "XPM Remote link id register is zero";
     }
     int xpm  = (reg >> 20) & 0x0F;
     int port = (reg >>  0) & 0xFF;

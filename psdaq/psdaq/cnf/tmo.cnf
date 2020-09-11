@@ -61,7 +61,7 @@ procmgr_config = [
  {                         id:'groupca',     flags:'s',    conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
  {                         id:'xpmpva',      flags:'s',    conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1 DAQ:LAB2:XPM:2'},
  { host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --url '+lgbk+' --user '+user+' --password '+password+' -S 1'},
- {                         id:'control_gui', flags:'p',    conda:conda_rel,                cmd:'control_gui -l INFO -H '+collect_host+' --user '+user+' --password '+password},
+ {                         id:'control_gui', flags:'p',    conda:conda_rel,                cmd:'control_gui -E -l INFO -H '+collect_host+' --user '+user+' --password '+password},
 
  # TEB
  { host: 'drp-tst-dev016', id:'teb0',        flags:'spu',  conda:conda_rel, cmd:teb_cmd},
@@ -79,7 +79,7 @@ procmgr_config = [
  { host: 'drp-tst-dev017', id:'epics_0',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:ea_cmd+' -l 0x4'},
 
  # BLD - must currently run on dev018 since that's where the bld enet xface is
- { host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    conda:conda_rel, env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4 -e 40'},
+ { host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    conda:conda_rel, env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4 -e 40 -b '+bld_str},
  { host: epics_host,       id:'bldcas',      flags:'s',    conda:conda_rel, env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str},
  { host: 'drp-tst-dev018', id:'bld_0',       flags:'pu',   conda:conda_rel, env:epics_env, cmd:bld_cmd},
 

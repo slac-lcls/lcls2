@@ -143,9 +143,7 @@ unsigned Digitizer::_getPaddr()
 
     unsigned reg = a.GetInt();
     if (!reg) {
-        const char msg[] = "XPM Remote link id register is zero";
-        logging::error("%s", msg);
-        throw msg;
+        throw "XPM Remote link id register is zero";
     }
 
     Py_DECREF(pModule);

@@ -64,6 +64,7 @@ namespace Pds {
     private:
       mutable uint64_t          _eventCount;
       mutable uint64_t          _batchCount;
+      mutable uint64_t          _pendingSize;
     private:
       std::atomic<bool>         _running;
       std::thread               _rcvrThread;

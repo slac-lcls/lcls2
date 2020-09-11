@@ -108,7 +108,7 @@ namespace Pds {
       const EbDgram*            _batchEnd;
       uint64_t                  _resultDsts;
     private:
-      u64arr_t                  _rcvrs;
+      EbAppBase::u64arr_t       _rcvrs;
       //uint64_t                  _trimmed;
       Trigger*                  _trigger;
       unsigned                  _prescale;
@@ -153,7 +153,8 @@ Teb::Teb(const EbParams&         prms,
   _l3Transport  (prms.verbose)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)}};
+                                            {"partition", std::to_string(prms.partition)},
+                                            {"detname", prms.alias}};
   exporter->add("TEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;             });
   exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;             });
   exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;             });
@@ -628,7 +629,7 @@ private:
   void _unconfigure();
   int  _parseConnectionParams(const json& msg);
   void _printParams(const EbParams& prms, unsigned groups) const;
-  void _printGroups(unsigned groups, const u64arr_t& array) const;
+  void _printGroups(unsigned groups, const EbAppBase::u64arr_t& array) const;
   void _buildContract(const Document& top);
 private:
   EbParams&                            _prms;
@@ -954,7 +955,7 @@ int TebApp::_parseConnectionParams(const json& body)
   return 0;
 }
 
-void TebApp::_printGroups(unsigned groups, const u64arr_t& array) const
+void TebApp::_printGroups(unsigned groups, const EbAppBase::u64arr_t& array) const
 {
   while (groups)
   {

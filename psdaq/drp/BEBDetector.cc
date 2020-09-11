@@ -27,7 +27,7 @@ namespace Drp {
 PyObject* BEBDetector::_check(PyObject* obj) {
     if (!obj) {
         PyErr_Print();
-        throw "**** python error\n";
+        throw "**** python error";
     }
     return obj;
 }
@@ -87,9 +87,7 @@ void BEBDetector::_init(const char* arg)
       m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
 
       if (!m_paddr) {
-        const char msg[] = "XPM Remote link id register is zero\n";
-        logging::error("%s", msg);
-        throw msg;
+        throw "XPM Remote link id register is zero";
       }
 
       _connect(mbytes);
@@ -124,7 +122,7 @@ json BEBDetector::connectionInfo()
     return info;
 }
 
-unsigned BEBDetector::configure(const std::string& config_alias, 
+unsigned BEBDetector::configure(const std::string& config_alias,
                                 Xtc&               xtc)
 {
     PyObject* pDict = _check(PyModule_GetDict(m_module));

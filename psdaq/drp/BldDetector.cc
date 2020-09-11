@@ -489,6 +489,7 @@ Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex, uint64_t& bytes)
         while (true) {
             m_available = dmaReadBulkIndex(m_drp.pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
             if (m_available > 0) {
+                m_drp.pool.allocate(m_available);
                 break;
             }
 
@@ -538,7 +539,8 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     uint64_t nevents = 0L;
     std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
                                               {"partition", std::to_string(m_para.partition)},
-                                              {"detname", m_para.detName}};
+                                              {"detname", m_para.detName},
+                                              {"detseg", std::to_string(m_para.detSegment)}};
     exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                   [&](){return nevents;});
     uint64_t bytes = 0L;
