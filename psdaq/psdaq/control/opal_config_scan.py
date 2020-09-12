@@ -8,6 +8,24 @@ import json
 from psdaq.control.control import DaqControl, DaqPVA, ConfigurationScan
 import argparse
 
+class MyFloatPv:
+    """Fake float PV"""
+    def __init__(self, name):
+        self.name = name
+        self.position = 0.0
+
+    def update(self, step):
+        self.position = float(step)
+
+class MyStringPv:
+    """Fake string PV"""
+    def __init__(self, name):
+        self.name = name
+        self.position = "step0"
+
+    def update(self, step):
+        self.position = "step%d" % step
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
@@ -66,19 +84,24 @@ def main():
     # instantiate ConfigurationScan
     scan = ConfigurationScan(control, daqState=daqState, args=args)
 
+    # create fake pvs
+    motors = [MyFloatPv("tmoopal_step_value"), MyStringPv("tmoopal_step_docstring")]
+    scan.configure(motors = motors)
+
     scan.stage()
 
     # -- begin script --------------------------------------------------------
 
     keys_dict = {"configure": {"step_keys": ["tmoopal_0:user.black_level"]}}
 
-
     for step, black_level in enumerate([15, 31, 47]):
 
         values_dict = \
-          {"beginstep": {"step_values":    {"tmoopal_0:user.black_level": black_level},
-                         "step_docstring": "step%d" % step,
-                         "step_value":     float(step)}}
+          {"beginstep": {"step_values": {"tmoopal_0:user.black_level": black_level}}}
+
+        # update fake pvs
+        for motor in motors:
+            motor.update(step)
 
         # trigger
         scan.trigger(phase1Info = {**keys_dict, **values_dict})

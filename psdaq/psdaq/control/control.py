@@ -518,6 +518,7 @@ class ConfigurationScan:
         self.verbose = args.v
         self.pv_base = args.B
         self._step_count = 0
+        self.motors = []                # set in configure()
 
         if args.g is None:
             self.groupMask = 1 << args.p
@@ -644,6 +645,16 @@ class ConfigurationScan:
         # put the daq into the right state ('connected')
         logging.debug('*** unstage: step count = %d' % self._step_count)
         self._set_connected()
+
+    # use 'motors' keyword arg to specify a set of motors
+    def configure(self, *args, **kwargs):
+        logging.debug("*** here in configure")
+
+        if 'motors' in kwargs:
+            self.motors = kwargs['motors']
+            logging.info('configure: %d motors' % len(self.motors))
+        else:
+            logging.error('configure: no motors')
 
     def trigger(self, *, phase1Info=None):
         # do one step
