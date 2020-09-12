@@ -52,7 +52,7 @@ static void events(unsigned          dev,
     }
     else {
       if (lverbose)
-        printf("ReadFIFO %d records\n",nRecords);
+        printf("ReadFIFO %ld records\n",nRecords);
 
       for(int i=0; i<nRecords; i++) {
         const USB4_FIFOBufferRecord& record = _records[i];
@@ -89,7 +89,7 @@ static void events(unsigned          dev,
             dtpr = double(nfid) / 357.;
           }
 
-          double fdelta = dusd - dtpr;
+//        double fdelta = dusd - dtpr;
         }
 
         payload[0] = fr->timeStamp & 0xffffffff;
@@ -155,7 +155,7 @@ static void configure(unsigned                dev,
 
     unsigned long count;
     USBDBUG3( GetCount, dev, 0, &count );
-    printf("Read count %u\n", count);
+    printf("Read count %lu\n", count);
   }
 }
 
