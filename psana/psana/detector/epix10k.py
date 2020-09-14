@@ -1,12 +1,8 @@
-from psana.detector.areadetector import AreaDetector
 
-class epix10k_raw_0_0_1(AreaDetector):
-    def __init__(self, *args):
-        super().__init__(*args)
-    def raw(self,evt):
-        data = {}
-        segments = self._segments(evt)
-        if segments is None: return None
-        for segment,val in segments.items():
-            data[segment]=val.raw
-        return data
+from psana.detector.epix10ka_base import epix10ka_base, logging
+logger = logging.getLogger(__name__)
+
+class epix10k_raw_0_0_1(epix10ka_base):
+    def __init__(self, *args, **kwargs):
+        logger.debug('epix10k_raw_0_0_1.__init__')
+        epix10ka_base.__init__(self, *args, **kwargs)
