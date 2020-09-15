@@ -175,6 +175,7 @@ class WFPeaks :
             elif self.VERSION == 4 :
                 t_list = self.PyCFDs[ch].CFD(wf,wt)
                 npeaks = self._pkinds[ch,:].size if self._pkinds[ch,:].size<=len(t_list) else len(t_list)
+                if wt.size==0: continue
                 # need it in V4 to convert _pktsec to _pkinds and _pkvals
                 if self.tbins is None :
                     from psana.pyalgos.generic.HBins import HBins

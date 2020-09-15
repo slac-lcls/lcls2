@@ -40,7 +40,7 @@ Usage::
     # --------------
     from psana.pyalgos.generic.HPolar import polarization_factor, divide_protected, cart2polar, polar2cart, bincount
 
-    polf = polarization_factor(rad, phi, z)
+    polf = polarization_factor(rad, phi, z, vertical=False)
     result = divide_protected(num, den, vsub_zero=0)
     r, theta = cart2polar(x, y)
     x, y = polar2cart(r, theta)
@@ -99,10 +99,11 @@ def bincount(map_bins, map_weights=None, length=None) :
     return np.bincount(map_bins.flatten(), weights, length)
 
 
-def polarization_factor(rad, phi_deg, z) :
+def polarization_factor(rad, phi_deg, z, vertical=False) :
     """Returns per-pixel polarization factors, assuming that detector is perpendicular to Z.
     """
-    phi = np.deg2rad(phi_deg)
+    _phi_deg = np.array(phi_deg + 90) if vertical else phi_deg
+    phi = np.deg2rad(_phi_deg)
     ones = np.ones_like(rad)
     theta = np.arctan2(rad, z)
     sxc = np.sin(theta)*np.cos(phi)
