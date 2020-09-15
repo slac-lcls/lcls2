@@ -359,14 +359,18 @@ def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADE
 #------------------------------
 
 def _add_detector_name(dbname, colname, detname, detnum):
+    """ Adds document for detector names and returns short detector name for long input name detname.
+    """
     check_kerberos_ticket()
     doc = mu._doc_detector_name(detname, colname, detnum)
     id_doc = add_document(dbname, colname, doc) #, url, krbheaders)
-    return short_name if id_doc is not None else None   
+    return doc.get('short', None) if id_doc is not None else None
 
 #------------------------------
 
 def _short_detector_name(detname, dbname=cc.DETNAMESDB):
+    """Returns short detector name for long input name detname.
+    """
     colname = detname.split('_',1)[0]
     # find a single doc for long detname
     ldocs = find_docs(dbname, colname, query={'long':detname})
@@ -381,7 +385,7 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB):
     ldocs = find_docs(dbname, colname, query={})
 
     detnum = 0
-    if not ldocs: # empty list
+    if not ldocs or ldocs is None: # empty list
         logger.debug('List of documents in db/collection: %s/%s IS EMPTY' % (dbname, colname))
         detnum = 1
     else:

@@ -83,7 +83,7 @@ def input_option_parser() :
     d_confirm    = False
     d_iofname    = None # './fname.txt'
     d_comment    = 'No comment'
-    d_loglevel   = 'INFO'
+    d_strloglev  = 'INFO'
     d_webcli     = True
     d_cdbonly    = True
 
@@ -108,7 +108,7 @@ def input_option_parser() :
     h_confirm    = 'confirmation of the action, default = %s' % d_confirm
     h_iofname    = 'output file prefix, default = %s' % d_iofname
     h_comment    = 'comment to the document, default = %s' % d_comment
-    h_loglevel   = 'logging level from list (%s), default = %s' % (STR_LEVEL_NAMES, d_loglevel)
+    h_strloglev  = 'logging level from list (%s), default = %s' % (STR_LEVEL_NAMES, d_strloglev)
     h_webcli     = 'use web-based CLI, default = %s' % d_webcli
     h_cdbonly    = 'command valid for CDB only, ignores other DBs, default = %s' % d_cdbonly
 
@@ -135,7 +135,7 @@ def input_option_parser() :
     parser.add_option('-C', '--confirm',    default=d_confirm,    action='store_true',           help=h_confirm)
     parser.add_option('-f', '--iofname',    default=d_iofname,    action='store', type='string', help=h_iofname)
     parser.add_option('-m', '--comment',    default=d_comment,    action='store', type='string', help=h_comment)
-    parser.add_option('-l', '--loglevel',   default=d_loglevel,   action='store', type='string', help=h_loglevel)
+    parser.add_option('-l', '--strloglev',  default=d_strloglev,  action='store', type='string', help=h_strloglev)
     parser.add_option('-w', '--webcli',     default=d_webcli,     action='store_false',          help=h_webcli)
     parser.add_option('--cdbonly',          default=d_cdbonly,    action='store_false',          help=h_cdbonly)
 
@@ -162,9 +162,9 @@ def cdb_cli() :
     kwargs = vars(popts)
 
     webcli = kwargs['webcli']
-    loglevel = kwargs.get('loglevel','DEBUG').upper()
+    strloglev = kwargs.get('strloglev','DEBUG').upper()
     fmt='[%(levelname).1s] %(asctime)s %(name)s %(lineno)d: %(message)s'
-    config_logger(loglevel, fmt=fmt)
+    config_logger(strloglev, fmt=fmt)
 
     if kwargs['webcli']: cdb_web(parser)
     else:                cdb(parser)

@@ -25,6 +25,8 @@ class MDBWeb_CLI(MDB_CLI):
 
 
     def deldoc(self):
+        """Deletes document and associated data for specified docid. DB and collection names are evaluated from input parameters.
+        """
         kwa = self.kwargs
         dbname = mu.get_dbname(**kwa)
         colname = mu.get_colname(**kwa)
@@ -47,6 +49,8 @@ class MDBWeb_CLI(MDB_CLI):
 
 
     def delcol(self):
+        """Deletes collection and all associated data. DB and collection names are evaluated from input parameters.
+        """
         kwa = self.kwargs
         dbname = mu.get_dbname(**kwa)
         colname = mu.get_colname(**kwa)
@@ -82,6 +86,8 @@ class MDBWeb_CLI(MDB_CLI):
 
 
     def deldb(self):
+        """Deletes data base. DB name is evaluated from input parameters.
+        """
         dbname = mu.get_dbname(**self.kwargs)
 
         logger.info('MDBWeb_CLI mode "%s" database "%s"' % (self.mode, dbname))
@@ -102,6 +108,8 @@ class MDBWeb_CLI(MDB_CLI):
 
 
     def get(self):
+        """Finds requested document and associated data and saves them in files.
+        """
         # self._warning()
         kwa        = self.kwargs
         det        = kwa.get('detector', None)
@@ -131,12 +139,11 @@ class MDBWeb_CLI(MDB_CLI):
         fname = kwa.get('iofname', 'None')
         ctype = kwa.get('ctype', 'None')
         dtype = kwa.get('dtype', 'None')
-        verb  = self.loglevel == 'DEBUG'
+        verb  = self.strloglev == 'DEBUG'
         det   = kwa.get('detector', None)
         exp   = kwa.get('experiment', None)
 
         data = mu.data_from_file(fname, ctype, dtype, verb)
-        #mu.insert_calib_data(data, **kwa)
         id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
           wu.add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
 

@@ -54,9 +54,9 @@ class MDB_CLI :
 
         self.kwargs = kwargs
         self.defs = vars(parser.get_default_values())
-        self.loglevel = kwargs.get('loglevel','DEBUG').upper()
+        self.strloglev = kwargs.get('strloglev','DEBUG').upper()
 
-        if self.loglevel == 'DEBUG' :
+        if self.strloglev == 'DEBUG' :
             #from psana.pyalgos.generic.Utils import print_kwargs, print_parser
             print(40*'_')
             gu.print_parser(parser)
@@ -233,7 +233,7 @@ class MDB_CLI :
         fname = kwa.get('iofname', 'None')
         ctype = kwa.get('ctype', 'None')
         dtype = kwa.get('dtype', 'None')
-        verb  = self.loglevel == 'DEBUG'
+        verb  = self.strloglev == 'DEBUG'
 
         data = mu.data_from_file(fname, ctype, dtype, verb)
         mu.insert_calib_data(data, **kwa)
@@ -256,7 +256,6 @@ class MDB_CLI :
         tstamp = kwargs.get('time_stamp', None) if gu.is_in_command_line('-t', '--time_stamp') else None
         vers   = kwargs.get('version', None)
         prefix = kwargs.get('iofname', None)
-        verb   = self.loglevel == 'DEBUG'
 
         db_det, db_exp, colname, query = mu.dbnames_collection_query(det, exp, ctype, run, tsec, vers, dtype)
         logger.debug('get: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
