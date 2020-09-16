@@ -101,6 +101,7 @@ class HBins() :
 
 
     def _set_valid_edges(self, edges) :
+
         if not isinstance(edges,(tuple,list,np.array)) :
             raise ValueError('Parameter edges is not a tuple or list: '\
                              'edges=%s' % str(edges))
@@ -109,7 +110,7 @@ class HBins() :
             raise ValueError('Sequence of edges should have at least two values: '\
                              'edges=%s' % str(edges))
 
-        if not all([isinstance(v,(int, float)) for v in tuple(edges)]) :
+        if not all([isinstance(v,(int, float, np.generic)) for v in tuple(edges)]) :
             raise ValueError('Sequence of edges has a wrong type value: '\
                              'edges=%s' % str(edges))
 
