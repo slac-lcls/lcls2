@@ -68,6 +68,7 @@
 
 
 static int fd;
+static int lanes = 4;
 
 static inline uint32_t get_reg32(int reg) {
   unsigned v;
@@ -83,7 +84,7 @@ static void print_mig_lane(const char* name, int addr, int offset, int mask)
 {
     const unsigned MIG_LANES = 0x00800080;
     printf("%20.20s", name);
-    for(int i=0; i<4; i++) {
+    for(int i=0; i<lanes; i++) {
       uint32_t reg = get_reg32( MIG_LANES + i*32 + addr);
       printf(" %8x", (reg >> offset) & mask);
     }
@@ -284,10 +285,11 @@ int main(int argc, char* argv[])
     char* endptr;
 
     int c;
-    while((c = getopt(argc, argv, "cd:rsStTmMFD:C:")) != EOF) {
+    while((c = getopt(argc, argv, "cd:l:rsStTmMFD:C:")) != EOF) {
       switch(c) {
       case 'd': dev = optarg; break;
       case 'c': setup_clk = true; updateId = true; break;
+      case 'l': lanes = strtoul(optarg,&endptr,0); break;
       case 'r': reset_clk = true; break;
       case 's': status    = true; break;
       case 'S': ringb     = true; break;
@@ -432,7 +434,7 @@ int main(int argc, char* argv[])
 
     //  set new defaults for pause threshold
     const unsigned MIG_LANES = 0x00800080;
-    for(int i=0; i<4; i++) {
+    for(int i=0; i<lanes; i++) {
         unsigned v = get_reg32( MIG_LANES + i*32 + 4);
         v &= ~(0x3ff<<8);
         v |= (0x3f<<8);
@@ -441,7 +443,7 @@ int main(int argc, char* argv[])
 
     if (status) {
       //      uint32_t lanes = get_reg32( RESOURCES);
-      uint32_t lanes = 4;
+      //      uint32_t lanes = 4;
       printf("  lanes             :  %u\n", lanes);
 
       printf("  monEnable         :  %u\n", get_reg32( 0x00800000)&1);
@@ -462,9 +464,9 @@ int main(int argc, char* argv[])
       print_clk_rate("migB       ",12);
 
       // TDetSemi
-      print_lane("length"    , 0x00a00000,  0, 4, 0xffffff, 4);
-      print_lane("clear"     , 0x00a00000, 30, 4, 0x1, 4);
-      print_lane("enable"    , 0x00a00000, 31, 4, 0x1, 4);
+      print_lane("length"    , 0x00a00000,  0, 4, 0xffffff, lanes);
+      print_lane("clear"     , 0x00a00000, 30, 4, 0x1, lanes);
+      print_lane("enable"    , 0x00a00000, 31, 4, 0x1, lanes);
 
       { printf("%20.20s", "messagedelay");
         for(unsigned i=0; i<8; i++) {
@@ -547,7 +549,7 @@ int main(int argc, char* argv[])
       unsigned w = get_reg32( 0x00a00000);
       printf("Configured partition [%u], length [%u], links [%x]: [%x](%x)\n",
              partition, length, links, v, w);
-      for(unsigned i=0; i<4; i++)
+      for(unsigned i=0; i<lanes; i++)
         if (links&(1<<i)) {
           set_reg32( 0x00800084+32*i, 0x1f00);
           set_reg32( TRG_LANES(i)+4, partition);
