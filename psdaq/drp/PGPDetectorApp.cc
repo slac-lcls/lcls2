@@ -363,10 +363,18 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
 
         unsigned error = m_det->beginstep(xtc, phase1Info);
-        if (!error) {
+        if (error) {
+            logging::error("m_det->beginstep() returned error");
+        } else {
             json scan = _getscanvalues(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
-            if (!scan.empty())
+            if (scan.empty()) {
+                logging::debug("scan is empty");
+            } else {
                 error = m_det->stepScan(scan, xtc);
+                if (error) {
+                    logging::error("m_det->stepScan() returned error");
+                }
+            }
         }
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::beginstep()";
