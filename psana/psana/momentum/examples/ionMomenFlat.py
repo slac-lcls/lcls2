@@ -46,7 +46,7 @@ Momen = IonMomentumFlat(t0_ns=0,x0_mm=0,y0_mm=0,
   
 #calculate momentum                        
 Px = Momen.CalcPx(m_amu,X,T)
-Pz = Momen.CalcPx(m_amu,Z,T)
+Pz = Momen.CalcPy(m_amu,Z,T)
 Py = Momen.CalcPzMultiAcc(m_amu,q_au,T)
 Py_apx = Momen.CalcPzOneAccApprox(T,ta0_ns,q_au=1)
 Px_hist,_ = np.histogram(Px,bins=Pbins)
