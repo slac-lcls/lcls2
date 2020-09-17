@@ -28,6 +28,10 @@ if [ "${PROCMGRDBIN}Y" == "Y" ]; then
     exit 1
 fi
 
+if [ "${PROCMGRDUSERS}Z" == "Z" ]; then
+    echo "$0 Warning: PROCMGRDUSERS not set in $CONFIGFILE.  Using $PROCMGRDUSER"
+fi
+
 if [ "${PROCMGRDUSER}Z" == "Z" ]; then
     PROCMGRDUSER=${PROCMGRDUSERDEFAULT}
     echo "$0 Warning: PROCMGRDUSER not set in $CONFIGFILE.  Using default value: $PROCMGRDUSER"
@@ -37,15 +41,26 @@ launch1()
 {
     ctrlport=$(( PORTBASE + ( 100 * $1 ) ))
     logport=$(( ctrlport + 1 ))
-    daemon --user=${PROCMGRDUSER} ${PROCMGRDBIN}$1 --allow --ignore '^D' -l $logport --coresize 0 -c /tmp $ctrlport /bin/tcsh -f
+    daemon --user=$2 ${PROCMGRDBIN}$1 --allow --ignore '^D' -l $logport --coresize 0 -c /tmp $ctrlport /bin/tcsh -f
 }
 
 start()
 {
-    # start 8 procmgrd processes to serve platforms 0 through 7
-    for ((i=0; i<=7; i+=1)); do
-        launch1 $i
-    done
+    if [ -n "$PROCMGRDUSERS" ]; then
+        # start procmgrd processes for users listed in $PROCMGRDUSERS
+        IFS=',' read -r -a users <<< "$PROCMGRDUSERS"
+        for index in "${!users[@]}"
+        do
+            if [ -n "${users[index]}" ]; then
+                launch1 $index ${users[index]}
+            fi
+        done
+    else
+        # start 8 procmgrd processes to serve platforms 0 through 7
+        for ((index=0; index<=7; index+=1)); do
+            launch1 $index $PROCMGRDUSER
+        done
+    fi
     RETVAL=$?
     echo
 }
