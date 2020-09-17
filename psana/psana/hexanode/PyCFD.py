@@ -39,23 +39,27 @@ class PyCFD:
             
     def CFD(self,wf, wt):        
         
-        wf = wf[(wt>self.timerange_low)&(wt<self.timerange_high)]
-        wt = wt[(wt>self.timerange_low)&(wt<self.timerange_high)]        
+        wf = wf[(wt>self.timerange_low)&(wt<self.timerange_high)] 
+        wt = wt[(wt>self.timerange_low)&(wt<self.timerange_high)] #choose the time window of interest        
         
-        wf_1 = wf[:-self.delay]
-        wf_2 = wf[self.delay:]
+        wf_1 = wf[:-self.delay] #original waveform
+        wf_2 = wf[self.delay:] #delayed waveform
        
-        wf_cal = wf_1 - self.fraction*wf_2      
-        wf_cal_m_walk = self.polarity*wf_cal-self.walk+self.polarity*(self.fraction*self.offset-self.offset)
-        wf_cal_m_walk_sign = np.sign(wf_cal_m_walk)
+        wf_cal = wf_1 - self.fraction*wf_2 #bipolar waveform
+        wf_cal_m_walk = self.polarity*wf_cal-self.walk+self.polarity*(self.fraction*self.offset-self.offset) #bipolar signal minus the walk level
+        wf_cal_m_walk_sign = np.sign(wf_cal_m_walk) 
 
         wf_cal_ind = np.where((wf_cal_m_walk_sign[:-1] < wf_cal_m_walk_sign[1:]) & 
-        (wf_cal_m_walk_sign[1:] != 0) & ((wf_cal_m_walk[1:] - wf_cal_m_walk[:-1]) >= 1e-8))[0] 
+        (wf_cal_m_walk_sign[1:] != 0) & ((wf_cal_m_walk[1:] - wf_cal_m_walk[:-1]) >= 1e-8))[0] #find the sign change locations of wf_cal_m_walk
 
-        wf_cal_ind_ind = np.where(self.polarity*wf_1[wf_cal_ind] > (self.threshold+self.polarity*self.offset))[0]
+        #check if the orignal signal is above the threhold at sign change locations of wf_cal_m_walk
+        wf_cal_ind_ind = np.where(self.polarity*wf_1[wf_cal_ind] > (self.threshold+self.polarity*self.offset))[0]  
+
         
         t_cfd_list = []
         
+        
+        #The arrival time t_cfd is obtained from the Newton Polynomial fitted to the 4 data points around the location found from above.
         for ind in wf_cal_ind_ind:
 
             t_arr = wt[(wf_cal_ind[ind]-1):(wf_cal_ind[ind]+3)]
