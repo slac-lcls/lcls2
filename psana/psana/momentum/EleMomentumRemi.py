@@ -34,13 +34,7 @@ class EleMomentumRemi():
         angle = omega_mns*(t_ns-self.t0)
         angle %= 2*np.pi
         R = self.au2mm*(2*np.abs(np.sin(angle/2)))*Ptr/(B_tesla/self.au2tesla)
-        return R      
-    
-    def CalcPx(self,omega_mns,x_mm,y_mm,t_ns):
-        return self.mmPns2au*omega_mns/2*((x_mm-self.x0)*np.cos(omega_mns*(t_ns-self.t0)/2) + (y_mm-self.y0))
-    
-    def CalcPy(self,omega_mns,x_mm,y_mm,t_ns):
-        return self.mmPns2au*omega_mns/2*((y_mm-self.y0)*np.cos(omega_mns*(t_ns-self.t0)/2) - (x_mm-self.x0))    
+        return R        
          
     def CalcPzOneAcc(self,m_amu,t_ns):
         return self.amu2au*m_amu*self.mmPns2au*self.l/(t_ns-self.t0) - 8.04e-2*self.U*(t_ns-self.t0)/(2*self.l)
