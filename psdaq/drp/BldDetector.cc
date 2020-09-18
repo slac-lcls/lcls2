@@ -92,18 +92,19 @@ BldFactory::BldFactory(const char* name,
 
     unsigned payloadSize = 0;
     unsigned mcaddr = 0;
-    unsigned mcport = 12148;
+    unsigned mcport = 10148; // 12148, eventually
+    uint64_t tscorr = 0x259e9d80ULL << 32;
     //
     //  Make static configuration of BLD  :(
     //
     if      (strncmp("ebeam",name,5)==0) {
         if (name[5]=='h') {
             mcaddr = 0xefff1800;
-            mcport = 10148;
         }
         else {
             mcaddr = 0xefff1900; 
         }
+        tscorr = 0;
         _alg    = XtcData::Alg("raw", 2, 0, 0);
         _varDef.NameVec.push_back(XtcData::Name("damageMask"       , XtcData::Name::UINT32));
         _varDef.NameVec.push_back(XtcData::Name("ebeamCharge"      , XtcData::Name::DOUBLE));
@@ -131,7 +132,6 @@ BldFactory::BldFactory(const char* name,
     else if (strncmp("pcav",name,4)==0) {
         if (name[4]=='h') {
             mcaddr = 0xefff1801;
-            mcport = 10148;
         }
         else {
             mcaddr = 0xeff1901;
@@ -162,7 +162,8 @@ BldFactory::BldFactory(const char* name,
     else {
         throw std::string("BLD name ")+name+" not recognized";
     }
-    _handler = std::make_shared<Bld>(mcaddr, mcport, interface, Bld::DgramTimestampPos, Bld::DgramHeaderSize, payloadSize);
+    _handler = std::make_shared<Bld>(mcaddr, mcport, interface, Bld::DgramTimestampPos, Bld::DgramHeaderSize, payloadSize,
+                                     tscorr);
 }
 
   //
@@ -293,9 +294,11 @@ Bld::Bld(unsigned mcaddr,
          unsigned interface,
          unsigned timestampPos,
          unsigned headerSize,
-         unsigned payloadSize) :
+         unsigned payloadSize,
+         uint64_t timestampCorr) :
   m_timestampPos(timestampPos), m_headerSize(headerSize), m_payloadSize(payloadSize),
-  m_bufferSize(0), m_position(0),  m_buffer(Bld::MTU), m_payload(m_buffer.data())
+  m_bufferSize(0), m_position(0),  m_buffer(Bld::MTU), m_payload(m_buffer.data()),
+  m_timestampCorr(timestampCorr)
 {
     logging::debug("Bld listening for %x.%d with payload size %u",mcaddr,port,payloadSize);
 

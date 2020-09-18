@@ -22,7 +22,8 @@ class Bld
 {
 public:
     Bld(unsigned mcaddr, unsigned port, unsigned interface,
-        unsigned timestampPos, unsigned headerSize, unsigned payloadSize);
+        unsigned timestampPos, unsigned headerSize, unsigned payloadSize,
+        uint64_t timestampCorr=0);
     Bld(const Bld&);
     ~Bld();
 public:
@@ -38,7 +39,7 @@ public:
     uint8_t* payload    () const { return m_payload; }
     unsigned payloadSize() const { return m_payloadSize; }
 private:
-    uint64_t headerTimestamp  () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_timestampPos);}
+    uint64_t headerTimestamp  () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_timestampPos) - m_timestampCorr;}
     unsigned m_timestampPos;
     unsigned m_headerSize;
     unsigned m_payloadSize;
@@ -47,6 +48,7 @@ private:
     unsigned m_position;
     std::vector<uint8_t> m_buffer;
     uint8_t* m_payload;
+    uint64_t m_timestampCorr;
 };
 
 class BldPVA
