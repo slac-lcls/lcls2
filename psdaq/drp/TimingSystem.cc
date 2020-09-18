@@ -8,6 +8,7 @@
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "AxisDriver.h"
+#include "DataDriver.h"
 
 #include <fcntl.h>
 #include <Python.h>
@@ -143,12 +144,21 @@ void TimingSystem::connect(const json& connect_json, const std::string& collecti
         return;
     }
 
-    uint32_t val;
-    dmaReadRegister(fd, 0x00a00000, &val);
-    // zero out the "length" field which changes the behaviour of the
-    // firmware from fake-camera mode to timing-system mode
-    val&=0xf0000000;
-    dmaWriteRegister(fd, 0x00a00000, val);
+    int links = m_para->laneMask;
+
+    AxiVersion vsn;
+    axiVersionGet(fd, &vsn);
+    if (vsn.userValues[2]) // Second PCIe interface has lanes shifted by 4
+       links <<= 4;
+
+    for(unsigned i=0, l=links; l; i++) {
+        if (l&(1<<i)) {
+          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
+          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<31));  // enable, zero-out length
+          l &= ~(1<<i);
+        }
+    }
+
     close(fd);
 
     // returns new reference
