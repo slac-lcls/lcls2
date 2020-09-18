@@ -29,7 +29,7 @@ if [ "${PROCMGRDBIN}Y" == "Y" ]; then
 fi
 
 if [ "${PROCMGRDUSERS}Z" == "Z" ]; then
-    echo "$0 Warning: PROCMGRDUSERS not set in $CONFIGFILE.  Using $PROCMGRDUSER"
+    echo "$0 Warning: PROCMGRDUSERS not set in $CONFIGFILE.  Using PROCMGRDUSER"
 fi
 
 if [ "${PROCMGRDUSER}Z" == "Z" ]; then
