@@ -102,6 +102,13 @@ class ts_ts_0_0_1(DetectorImpl):
 
         self._add_fields()
 
+    def l1fid(self,evt) -> int:
+        return self._info(evt).timestamp&0x1ffff
+
+    def seconds(self,evt) -> float:
+        ts = self._info(evt).timestamp
+        return float(ts>>32) + float(ts&0xffffffff)*1.e-9
+
     def _info(self,evt):
         # check for missing data
         segments = self._segments(evt)
