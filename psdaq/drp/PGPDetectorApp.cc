@@ -71,12 +71,6 @@ static json _getscankeys(const json& stepInfo, const char* detname, const char* 
         }
     }
 
-    //  Add "step_docstring" and "step_value" for scanned detectors
-    if (detscanned) {
-        update.push_back("step_docstring");
-        update.push_back("step_value");
-    }
-
     logging::debug("_getscankeys returning [%s]",update.dump().c_str());
     return update;
 }
@@ -101,11 +95,6 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
                     detscanned = true;
             }
         }
-    }
-
-    if (detscanned) {
-        update["step_docstring"] = stepInfo["step_docstring"];
-        update["step_value"    ] = stepInfo["step_value"];
     }
 
     logging::debug("_getscanvalues returning [%s]",update.dump().c_str());

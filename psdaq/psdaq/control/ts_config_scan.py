@@ -5,7 +5,7 @@ import threading
 import zmq
 import json
 
-from psdaq.control.control import DaqControl, DaqPVA, ConfigurationScan
+from psdaq.control.control import DaqControl, DaqPVA, ConfigurationScan, MyFloatPv, MyStringPv
 import argparse
 
 def main():
@@ -70,15 +70,17 @@ def main():
 
     # -- begin script --------------------------------------------------------
 
+    # PV scan setup
+    motors = [MyFloatPv("tstts_step_value"), MyStringPv("tstts_step_docstring")]
+    scan.configure(motors = motors)
+
+    # configuration scan setup
     keys_dict = {"configure": {"step_keys": ["tstts_0:expert.group0.inhibit0.interval"]}}
 
-
-    for step, interval in enumerate([10,20,30]):
-
+    # scan loop
+    for interval in [10,20,30]:
         values_dict = \
-          {"beginstep": {"step_values":    {"tstts_0:expert.group0.inhibit0.interval": interval},
-                         "step_docstring": "step%d" % step,
-                         "step_value":     float(step)}}
+          {"beginstep": {"step_values":    {"tstts_0:expert.group0.inhibit0.interval": interval}}}
 
         # trigger
         scan.trigger(phase1Info = {**keys_dict, **values_dict})

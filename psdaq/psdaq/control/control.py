@@ -21,6 +21,24 @@ POSIX_TIME_AT_EPICS_EPOCH = 631152000
 
 report_keys = ['error', 'warning', 'fileReport']
 
+class MyFloatPv:
+    """Fake float PV"""
+    def __init__(self, name):
+        self.name = name
+        self.position = 0.0
+
+    def update(self, step):
+        self.position = float(step)
+
+class MyStringPv:
+    """Fake string PV"""
+    def __init__(self, name):
+        self.name = name
+        self.position = "step0"
+
+    def update(self, step):
+        self.position = "step%d" % step
+
 class ControlError(Exception):
     """Base class for exceptions in this module."""
     pass
@@ -659,7 +677,6 @@ class ConfigurationScan:
     def trigger(self, *, phase1Info=None):
         # do one step
         logging.debug('*** trigger: step count = %d' % self._step_count)
-        # provide defaults for step_value and step_docstring
         if phase1Info is None:
             phase1Info = {}
         if "beginstep" not in phase1Info:
@@ -670,10 +687,11 @@ class ConfigurationScan:
             phase1Info["configure"].update({"step_keys": []})
         if "step_values" not in phase1Info["beginstep"]:
             phase1Info["beginstep"].update({"step_values": {}})
-        if "step_value" not in phase1Info["beginstep"]:
-            phase1Info["beginstep"].update({"step_value": float(self._step_count)})
-        if "step_docstring" not in phase1Info["beginstep"]:
-            phase1Info["beginstep"].update({"step_docstring": "step%d" % self._step_count})
+
+        # update 'motors' (including other EPICS-like values)
+        for motor in self.motors:
+            motor.update(self._step_count)
+
         logging.debug('*** phase1Info = %s' % oldjson.dumps(phase1Info))
         # BeginStep
         self.push_socket.send_string('running,%s' % oldjson.dumps(phase1Info))
