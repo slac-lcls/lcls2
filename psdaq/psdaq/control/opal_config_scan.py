@@ -5,26 +5,8 @@ import threading
 import zmq
 import json
 
-from psdaq.control.control import DaqControl, DaqPVA, ConfigurationScan
+from psdaq.control.control import DaqControl, DaqPVA, ConfigurationScan, MyFloatPv, MyStringPv
 import argparse
-
-class MyFloatPv:
-    """Fake float PV"""
-    def __init__(self, name):
-        self.name = name
-        self.position = 0.0
-
-    def update(self, step):
-        self.position = float(step)
-
-class MyStringPv:
-    """Fake string PV"""
-    def __init__(self, name):
-        self.name = name
-        self.position = "step0"
-
-    def update(self, step):
-        self.position = "step%d" % step
 
 def main():
     parser = argparse.ArgumentParser()
@@ -84,25 +66,26 @@ def main():
     # instantiate ConfigurationScan
     scan = ConfigurationScan(control, daqState=daqState, args=args)
 
-    # create fake pvs
-    motors = [MyFloatPv("tmoopal_step_value"), MyStringPv("tmoopal_step_docstring")]
-    scan.configure(motors = motors)
-
     scan.stage()
 
     # -- begin script --------------------------------------------------------
 
-    keys_dict = {"configure": {"step_keys": ["tmoopal_0:user.black_level"]}}
+    # PV scan setup
+    motors = [MyFloatPv("tmoopal_step_value"), MyStringPv("tmoopal_step_docstring")]
+    scan.configure(motors = motors)
 
-    for step, black_level in enumerate([15, 31, 47]):
-
+    # configuration scan setup
+    keys_dict = {"configure": {"step_keys":     ["tmoopal_0:user.black_level"],
+                               "NamesBlockHex": scan.getBlock(transitionid=DaqControl.transitionId['Configure'],
+                                                              add_names=True, add_shapes_data=False).hex()}}
+    # scan loop
+    for black_level in [15, 31, 47]:
+        # update
+        scan.update(value=scan.step_count())
         values_dict = \
-          {"beginstep": {"step_values": {"tmoopal_0:user.black_level": black_level}}}
-
-        # update fake pvs
-        for motor in motors:
-            motor.update(step)
-
+          {"beginstep": {"step_values":        {"tmoopal_0:user.black_level": black_level},
+                         "ShapesDataBlockHex": scan.getBlock(transitionid=DaqControl.transitionId['BeginStep'],
+                                                             add_names=False, add_shapes_data=True).hex()}}
         # trigger
         scan.trigger(phase1Info = {**keys_dict, **values_dict})
 
