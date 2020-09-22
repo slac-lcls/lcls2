@@ -16,7 +16,7 @@ cimport numpy as cnp
 cnp.import_array()
 
 import sys # ref count
-from amitypes import HSDWaveforms, HSDPeaks, HSDAssemblies
+from amitypes import HSDWaveforms, HSDPeaks, HSDAssemblies, HSDPeakTimes
 
 ################# High Speed Digitizer #################
 
@@ -112,6 +112,7 @@ cdef class cyhsd_base_1_2_3:
         self._wvDict = {}
         self._fexPeaks = []
         self._peaksDict = {}
+        self._peakTimesDict = {}
         self._evt = None
         self._hsdsegments = None
 
@@ -142,18 +143,26 @@ cdef class cyhsd_base_1_2_3:
                                 self._wvDict[iseg] = {}
                                 # FIXME: this needs to be put in units of seconds
                                 # perhaps both for 5GHz and 6GHz models
-                                self._wvDict[iseg]["times"] = np.arange(len(pychan.waveform))
+                                self._wvDict[iseg]["times"] = np.arange(len(pychan.waveform)) * 1/(6.4*10e9*13/14)
                             self._wvDict[iseg][chanNum] = pychan.waveform
                         if pychan.peakList is not None:
                             if iseg not in self._peaksDict.keys():
                                 self._peaksDict[iseg]={}
+                                self._peakTimesDict[iseg]={}
                             self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
+
+                            times = []
+                            for start, peak in zip(pychan.startPosList, pychan.peakList):
+                                times.append(np.arange(start, start+len(peak)) * 1/(6.4*10e9*13/14))
+                            self._peakTimesDict[iseg][chanNum] = times
+
         # maybe check that we have all segments in the event?
         # FIXME: also check that we have all the channels we expect?
         # unclear how to flag this.  maybe return None to the user
         # from the det xface?
         #seglist.sort()
         #if seglist != self._config_segments: 
+
 
     # adding this decorator allows access to the signature information of the function in python
     # this is used for AMI type safety
@@ -188,8 +197,24 @@ cdef class cyhsd_base_1_2_3:
             self._parseEvt(evt)
         if not self._peaksDict:
             return None
-        else: 
+        else:
             return self._peaksDict
+
+    @cython.binding(True)
+    def peak_times(self, evt) -> HSDPeakTimes:
+        """Return a dictionary of available times of peaks found in the event.
+        0:    tuple of beginning of peaks and array of peak intensities from channel 0
+        1:    tuple of beginning of peaks and array of peak intensities from channel 1
+        ...
+        16:   tuple of beginning of peaks and array of peak intensities from channel 16
+        """
+        if self._isNewEvt(evt):
+            self._parseEvt(evt)
+        if not self._peakTimesDict:
+            return None
+        else:
+            return self._peakTimesDict
+
 
 class hsd_raw_2_0_0(hsd_hsd_1_2_3):
 
