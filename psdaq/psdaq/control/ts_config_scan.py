@@ -81,7 +81,7 @@ def main():
     # scan loop
     for index, interval in enumerate([10,20,30]):
         # update
-        scan.update(value=float(index))
+        scan.update(value=index)
         values_dict = \
           {"beginstep": {"step_values":        {"tstts_0:expert.group0.inhibit0.interval": interval},
                          "ShapesDataBlockHex": scan.getBlock(transitionid=DaqControl.transitionId['BeginStep'],
