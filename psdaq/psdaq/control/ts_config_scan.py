@@ -75,15 +75,19 @@ def main():
     scan.configure(motors = motors)
 
     # configuration scan setup
-    keys_dict = {"configure": {"step_keys": ["tstts_0:expert.group0.inhibit0.interval"]}}
-
+    keys_dict = {"configure": {"step_keys":     ["tstts_0:expert.group0.inhibit0.interval"],
+                               "NamesBlockHex": scan.getBlock(transitionid=DaqControl.transitionId['Configure'],
+                                                              add_names=True, add_shapes_data=False).hex()}}
     # scan loop
-    for interval in [10,20,30]:
+    for index, interval in enumerate([10,20,30]):
+        # update
+        scan.update(value=float(index))
         values_dict = \
-          {"beginstep": {"step_values":    {"tstts_0:expert.group0.inhibit0.interval": interval}}}
-
+          {"beginstep": {"step_values":        {"tstts_0:expert.group0.inhibit0.interval": interval},
+                         "ShapesDataBlockHex": scan.getBlock(transitionid=DaqControl.transitionId['BeginStep'],
+                                                             add_names=False, add_shapes_data=True).hex()}}
         # trigger
-        scan.trigger(phase1Info = {**keys_dict, **values_dict})
+        scan.trigger(phase1Info={**keys_dict, **values_dict})
 
     # -- end script ----------------------------------------------------------
 

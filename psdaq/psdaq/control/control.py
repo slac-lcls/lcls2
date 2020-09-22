@@ -15,6 +15,7 @@ from psalg.utils.syslog import SysLog
 import string
 from p4p.client.thread import Context
 from threading import Thread, Event, Condition
+import dgramCreate as dc
 
 PORT_BASE = 29980
 POSIX_TIME_AT_EPICS_EPOCH = 631152000
@@ -27,8 +28,11 @@ class MyFloatPv:
         self.name = name
         self.position = 0.0
 
-    def update(self, step):
-        self.position = float(step)
+    def update(self, value):
+        if type(value) == float:
+            self.position = value
+        elif type(value) == int:
+            self.position = float(value)
 
 class MyStringPv:
     """Fake string PV"""
@@ -36,8 +40,11 @@ class MyStringPv:
         self.name = name
         self.position = "step0"
 
-    def update(self, step):
-        self.position = "step%d" % step
+    def update(self, value):
+        if type(value) == str:
+            self.position = value
+        elif type(value) == int:
+            self.position = "step%d" % value
 
 class ControlError(Exception):
     """Base class for exceptions in this module."""
@@ -535,8 +542,8 @@ class ConfigurationScan:
         self.mon_thread.start()
         self.verbose = args.v
         self.pv_base = args.B
-        self._step_count = 0
         self.motors = []                # set in configure()
+        self.cydgram = dc.CyDgram()
 
         if args.g is None:
             self.groupMask = 1 << args.p
@@ -654,15 +661,36 @@ class ConfigurationScan:
         # done once at start of scan
         # put the daq into the right state ('connected')
         self._set_connected()
-        # clear the step count
-        self._step_count = 0
-        logging.debug('*** stage: step count = %d' % self._step_count)
 
     def unstage(self):
         # done once at end of scan
         # put the daq into the right state ('connected')
-        logging.debug('*** unstage: step count = %d' % self._step_count)
+        logging.debug('*** unstage')
         self._set_connected()
+
+    def getBlock(self, *, transitionid, add_names, add_shapes_data):
+        my_data = {}
+        for motor in self.motors:
+            my_data.update({motor.name: motor.position})
+
+        detname       = 'scan'
+        dettype       = 'scan'
+        serial_number = '1234'
+        namesid       = 253     # STEPINFO = 253 (psdaq/drp/drp.hh)
+        nameinfo      = dc.nameinfo(detname,dettype,serial_number,namesid)
+
+        alg           = dc.alg('raw',[2,0,0])
+
+        self.cydgram.addDet(nameinfo, alg, my_data)
+
+        # create dgram
+        timestamp    = 0
+        xtc_bytes    = self.cydgram.getSelect(timestamp, transitionid, add_names=add_names, add_shapes_data=add_shapes_data)
+        logging.debug('transitionid %d dgram is %d bytes (with header)' % (transitionid, len(xtc_bytes)))
+
+        # remove first 12 bytes (dgram header), and keep next 12 bytes (xtc header)
+        return xtc_bytes[12:]
+
 
     # use 'motors' keyword arg to specify a set of motors
     def configure(self, *args, **kwargs):
@@ -674,9 +702,14 @@ class ConfigurationScan:
         else:
             logging.error('configure: no motors')
 
+    def update(self, *, value):
+        # update 'motors'
+        for motor in self.motors:
+            motor.update(value)
+
     def trigger(self, *, phase1Info=None):
         # do one step
-        logging.debug('*** trigger: step count = %d' % self._step_count)
+        logging.debug('*** trigger')
         if phase1Info is None:
             phase1Info = {}
         if "beginstep" not in phase1Info:
@@ -688,19 +721,11 @@ class ConfigurationScan:
         if "step_values" not in phase1Info["beginstep"]:
             phase1Info["beginstep"].update({"step_values": {}})
 
-        # update 'motors' (including other EPICS-like values)
-        for motor in self.motors:
-            motor.update(self._step_count)
-
         logging.debug('*** phase1Info = %s' % oldjson.dumps(phase1Info))
         # BeginStep
         self.push_socket.send_string('running,%s' % oldjson.dumps(phase1Info))
         # EndStep
         self.push_socket.send_string('starting')
-
-        # update the step count
-        self._step_count += 1
-
 
 # Translate drp alias to detector name
 # For example: 'cam_1' -> 'cam'
