@@ -79,9 +79,9 @@ def main():
                                "NamesBlockHex": scan.getBlock(transitionid=DaqControl.transitionId['Configure'],
                                                               add_names=True, add_shapes_data=False).hex()}}
     # scan loop
-    for index, interval in enumerate([10,20,30]):
+    for interval in [10,20,30]:
         # update
-        scan.update(value=index)
+        scan.update(value=scan.step_count())
         values_dict = \
           {"beginstep": {"step_values":        {"tstts_0:expert.group0.inhibit0.interval": interval},
                          "ShapesDataBlockHex": scan.getBlock(transitionid=DaqControl.transitionId['BeginStep'],

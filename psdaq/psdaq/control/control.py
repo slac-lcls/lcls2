@@ -543,6 +543,7 @@ class ConfigurationScan:
         self.verbose = args.v
         self.pv_base = args.B
         self.motors = []                # set in configure()
+        self._step_count = 0
         self.cydgram = dc.CyDgram()
 
         if args.g is None:
@@ -661,11 +662,12 @@ class ConfigurationScan:
         # done once at start of scan
         # put the daq into the right state ('connected')
         self._set_connected()
+        self._step_count = 0
 
     def unstage(self):
         # done once at end of scan
         # put the daq into the right state ('connected')
-        logging.debug('*** unstage')
+        logging.debug('*** unstage: step count = %d' % self._step_count)
         self._set_connected()
 
     def getBlock(self, *, transitionid, add_names, add_shapes_data):
@@ -702,6 +704,9 @@ class ConfigurationScan:
         else:
             logging.error('configure: no motors')
 
+    def step_count(self):
+        return self._step_count
+
     def update(self, *, value):
         # update 'motors'
         for motor in self.motors:
@@ -709,7 +714,7 @@ class ConfigurationScan:
 
     def trigger(self, *, phase1Info=None):
         # do one step
-        logging.debug('*** trigger')
+        logging.debug('*** trigger: step count = %d' % self._step_count)
         if phase1Info is None:
             phase1Info = {}
         if "beginstep" not in phase1Info:
@@ -726,6 +731,7 @@ class ConfigurationScan:
         self.push_socket.send_string('running,%s' % oldjson.dumps(phase1Info))
         # EndStep
         self.push_socket.send_string('starting')
+        self._step_count += 1
 
 # Translate drp alias to detector name
 # For example: 'cam_1' -> 'cam'
