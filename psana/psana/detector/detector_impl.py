@@ -1,8 +1,11 @@
 import typing
 import amitypes
 from psana.dgram import Dgram
+from psana.event import Event
+from psana.psexp.step import Step
 
 class MissingEnvStore(Exception): pass
+class InvalidInputEnvStore(Exception): pass
 
 class Container(object):
     def __init__(self):
@@ -46,9 +49,14 @@ class DetectorImpl(object):
 
         if isinstance(events, list):
             return self._env_store.values(events, self._var_name)
-        else:
+        elif isinstance(events, Event):
             env_values = self._env_store.values([events], self._var_name)
             return env_values[0]
+        elif isinstance(events, Step):
+            env_values = self._env_store.values([events.evt], self._var_name)
+            return env_values[0]
+        err_msg = f"Calling detector only accept Event or Step. Invalid type: {type(events)} given."
+        raise InvalidInputEnvStore(err_msg)
     
     @property
     def dtype(self):
