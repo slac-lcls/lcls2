@@ -9,6 +9,7 @@ from psana.dgrammanager import DgramManager
 import psana.pscalib.calib.MDBWebUtils as wu
 from psana.detector.detector_impl import MissingDet
 from psana.psexp import *
+import logging
 
 
 class DetectorNameError(Exception): pass
@@ -232,14 +233,14 @@ class Run(object):
     def _set_calibconst(self):
         self.calibconst = {}
         for det_name, configinfo in self.configinfo_dict.items():
-            if self.expt:
+            if self.expt: 
                 if self.expt == "cxid9114": # mona: hack for cctbx
-                    det_query = "cspad_0002"
+                    det_uniqueid = "cspad_0002"
                 elif self.expt == "xpptut15":
-                    det_query = "cspad_detnum1234"
+                    det_uniqueid = "cspad_detnum1234"
                 else:
-                    det_query = configinfo.uniqueid
-                calib_const = wu.calib_constants_all_types(det_query, exp=self.expt, run=self.runnum)
+                    det_uniqueid = configinfo.uniqueid
+                calib_const = wu.calib_constants_all_types(det_uniqueid, exp=self.expt, run=self.runnum)
                 
                 # mona - hopefully this will be removed once the calibconst
                 # db all use uniqueid as an identifier
@@ -247,7 +248,10 @@ class Run(object):
                     calib_const = wu.calib_constants_all_types(det_name, exp=self.expt, run=self.runnum)
                 self.calibconst[det_name] = calib_const
             else:
+                logging.debug(f"Cannot access calibration constants without experiment code: self.expt={self.expt}")
                 self.calibconst[det_name] = None
+
+
 
 
     def analyze(self, event_fn=None, det=None):
