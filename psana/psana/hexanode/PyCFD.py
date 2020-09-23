@@ -17,6 +17,7 @@ class PyCFD:
         self.timerange_low = params['timerange_low']
         self.timerange_high = params['timerange_high']
         self.offset = params['offset']
+        self.xtol = 0.1*self.sample_interval
 
         
     def NewtonPolynomial3(self,x,x_arr,y_arr):
@@ -60,23 +61,27 @@ class PyCFD:
         
         
         #The arrival time t_cfd is obtained from the Newton Polynomial fitted to the 4 data points around the location found from above.
-        for ind in wf_cal_ind_ind:
+        try:
+            for ind in wf_cal_ind_ind:
 
-            t_arr = wt[(wf_cal_ind[ind]-1):(wf_cal_ind[ind]+3)]
+                t_arr = wt[(wf_cal_ind[ind]-1):(wf_cal_ind[ind]+3)]
 
-            wf_cal_m_walk_arr = wf_cal_m_walk[(wf_cal_ind[ind]-1):(wf_cal_ind[ind]+3)]
+                wf_cal_m_walk_arr = wf_cal_m_walk[(wf_cal_ind[ind]-1):(wf_cal_ind[ind]+3)]
             
-            if len(t_arr) != 4 or len(wf_cal_m_walk_arr) != 4:
-                continue
+                if len(t_arr) != 4 or len(wf_cal_m_walk_arr) != 4:
+                    continue
             
-            if (t_arr[1] - t_arr[0])==0 or (t_arr[2] - t_arr[1])==0 or (t_arr[3] - t_arr[2])==0:
-                continue
+                if (t_arr[1] - t_arr[0])==0 or (t_arr[2] - t_arr[1])==0 or (t_arr[3] - t_arr[2])==0:
+                    continue
                 
-            if (t_arr[2] - t_arr[0])==0 or (t_arr[3] - t_arr[1])==0 or (t_arr[3] - t_arr[0])==0:
-                continue
+                if (t_arr[2] - t_arr[0])==0 or (t_arr[3] - t_arr[1])==0 or (t_arr[3] - t_arr[0])==0:
+                    continue
             
-            t_cfd = bisect(self.NewtonPolynomial3,t_arr[1],t_arr[2],args=(t_arr, wf_cal_m_walk_arr),xtol=1e-3)
+                t_cfd = bisect(self.NewtonPolynomial3,t_arr[1],t_arr[2],args=(t_arr, wf_cal_m_walk_arr),xtol=self.xtol)
             
-            t_cfd_list.append(t_cfd)
+                t_cfd_list.append(t_cfd)
+        except:
+            print('Newton Polynomial escaped.')
+            t_cfd_list.append(wt[wf_cal_ind[ind]])
 
         return t_cfd_list
