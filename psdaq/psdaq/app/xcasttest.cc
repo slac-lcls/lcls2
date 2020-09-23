@@ -177,7 +177,7 @@ int main(int argc, char **argv)
     }
   }
 
-  uint64_t nbytes = 0, tbytes = 0;
+  uint64_t tbytes = 0;
   uint64_t npkts = 0;
 
   Psdaq::MonitorArgs args;

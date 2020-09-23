@@ -2,6 +2,7 @@
 #define PsAlg_ShMem_XtcMonitorMsg_hh
 
 #include <stdint.h>
+#include <stddef.h>
 
 namespace psalg {
   namespace shmem {
@@ -22,7 +23,7 @@ namespace psalg {
       int bufferIndex     () const { return _bufferIndex; }
       int numberOfBuffers () const { return _numberOfBuffers&0xff; }
       int numberOfQueues  () const { return (_numberOfBuffers>>8)&0xff; }
-      int sizeOfBuffers   () const { return _sizeOfBuffers&SizeMask; }
+      size_t sizeOfBuffers() const { return (size_t)_sizeOfBuffers&SizeMask; }
       bool serial         () const { return return_queue()==0; }
       int return_queue    () const { return (_numberOfBuffers>>16)&0xff; }
     public:
@@ -41,7 +42,7 @@ namespace psalg {
     private:
       int32_t  _bufferIndex;
       int32_t  _numberOfBuffers;
-      uint32_t _sizeOfBuffers;
+      uint32_t _sizeOfBuffers; // hoping we don't get larger than 4GB and SizeMask matters
       uint32_t _reserved;
     };
   };

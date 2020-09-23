@@ -55,6 +55,7 @@
 #include <vector>
 #include <poll.h>
 #include <time.h>
+#include <stddef.h>
 
 namespace XtcData {
   class Dgram;
@@ -99,7 +100,7 @@ namespace psalg {
       virtual void _requestDatagram();
     private:
       const char*       _tag;               // name of the complete shared memory segment
-      unsigned          _sizeOfBuffers;     // size of each shared memory datagram buffer
+      size_t            _sizeOfBuffers;     // size of each shared memory datagram buffer
       unsigned          _numberOfEvBuffers; // number of shared memory buffers for events
       unsigned          _numberOfEvQueues;  // number of message queues for events
       char*             _myShm;             // the pointer to start of shared memory

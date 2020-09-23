@@ -342,14 +342,14 @@ int ShmemClient::connect(const char* tag, int tr_index) {
   //
   //  Initialize shared memory from first message
   //
-  unsigned sizeOfShm = myMsg.numberOfBuffers() * myMsg.sizeOfBuffers();
-  unsigned pageSize  = (unsigned)sysconf(_SC_PAGESIZE);
-  unsigned remainder = sizeOfShm % pageSize;
+  size_t sizeOfShm = myMsg.numberOfBuffers() * myMsg.sizeOfBuffers();
+  size_t pageSize  = (unsigned)sysconf(_SC_PAGESIZE);
+  size_t remainder = sizeOfShm % pageSize;
   if (remainder)
     sizeOfShm += pageSize - remainder;
 
   XtcMonitorMsg::sharedMemoryName(tag, qname);
-  printf("Opening shared memory %s of size 0x%x (0x%x * 0x%x)\n",
+  printf("Opening shared memory %s of size 0x%zx (0x%x * 0x%zx)\n",
 	 qname,sizeOfShm,myMsg.numberOfBuffers(),myMsg.sizeOfBuffers());
 
   int shm = shm_open(qname, OFLAGS, PERMS_IN);

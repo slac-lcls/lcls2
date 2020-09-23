@@ -549,7 +549,7 @@ int main(int argc, char* argv[])
       unsigned w = get_reg32( 0x00a00000);
       printf("Configured partition [%u], length [%u], links [%x]: [%x](%x)\n",
              partition, length, links, v, w);
-      for(unsigned i=0; i<lanes; i++)
+      for(int i=0; i<lanes; i++)
         if (links&(1<<i)) {
           set_reg32( 0x00800084+32*i, 0x1f00);
           set_reg32( TRG_LANES(i)+4, partition);
