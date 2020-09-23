@@ -39,13 +39,14 @@ int main(int argc, char** argv) {
   bool lUsage = false;
   unsigned output  = 0;
   unsigned channel = 10;
-  unsigned rate    = 5;
+  int      rate    = 5;
+  int      evcode  = -1;
   unsigned delay   = 0;
   unsigned width   = 1;
 
   //char* endptr;
 
-  while ( (c=getopt( argc, argv, "c:d:w:o:t:r:h?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "c:d:w:o:t:r:e:h?")) != EOF ) {
     switch(c) {
     case 'c':
       channel = strtoul(optarg,NULL,0);
@@ -68,6 +69,9 @@ int main(int argc, char** argv) {
       break;
     case 'r':
       rate = strtoul(optarg,NULL,0);
+      break;
+    case 'e':
+      evcode = strtoul(optarg,NULL,0);
       break;
     case 'h':
       usage(argv[0]);
@@ -92,7 +96,11 @@ int main(int argc, char** argv) {
   char evrdev[16];
   sprintf(evrdev,"/dev/tpr%c",tprid);
 
-  Client client(evrdev,channel);
+  printf("Configuring channel %u outputs 0x%x for %s %u\n",
+         channel, output, evcode<0 ? "FixedRate":"EventCode",
+         evcode<0 ? rate:evcode);
+
+  Client client(evrdev,channel,evcode<0);
 
   for(unsigned i=0; output; i++) {
     if (output & (1<<i)) {
@@ -100,7 +108,10 @@ int main(int argc, char** argv) {
       output &= ~(1<<i);
     }
   }
-  client.start(TprBase::FixedRate(rate));
+  if (evcode < 0)
+    client.start(TprBase::FixedRate(rate));
+  else
+    client.start(TprBase::EventCode(evcode));
   client.reg().base.dump();
   client.release();
 
