@@ -36,7 +36,7 @@ static void events(unsigned          dev,
   enum { MAX_RECORDS = 1024 };
   USB4_FIFOBufferRecord* _records = new USB4_FIFOBufferRecord[MAX_RECORDS];
   uint64_t _tpr_ts;
-  unsigned _usd_ts;
+//unsigned _usd_ts;
 
   bool first = true;
 
@@ -55,7 +55,7 @@ static void events(unsigned          dev,
         printf("ReadFIFO %ld records\n",nRecords);
 
       for(int i=0; i<nRecords; i++) {
-        const USB4_FIFOBufferRecord& record = _records[i];
+//      const USB4_FIFOBufferRecord& record = _records[i];
         
         const Pds::Tpr::Frame* fr = client.advance();
         
@@ -68,16 +68,16 @@ static void events(unsigned          dev,
         }
         else {
 
-          unsigned usd_ts = record.Time;
+//        unsigned usd_ts = record.Time;
           //          const double tolerance = 0.03;  // AC line rate jitter
           //          const unsigned maxdfid = 20000; // 48MHz timestamp rollover
 
-          double dusd = double(usd_ts - _usd_ts)/48e6;
-          _usd_ts = usd_ts;
+//        double dusd = double(usd_ts - _usd_ts)/48e6;
+//        _usd_ts = usd_ts;
 
-          double dtpr;
+//        double dtpr;
           if (lcls2) {
-            dtpr = double(fr->timeStamp - _tpr_ts);
+//          dtpr = double(fr->timeStamp - _tpr_ts);
             _tpr_ts = fr->timeStamp;
           }
           else {
@@ -86,7 +86,7 @@ static void events(unsigned          dev,
             _tpr_ts = pid;
             if (nfid < 0)
               nfid += 0x1ffe0;
-            dtpr = double(nfid) / 357.;
+//          dtpr = double(nfid) / 357.;
           }
 
 //        double fdelta = dusd - dtpr;

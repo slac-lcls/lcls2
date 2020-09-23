@@ -53,7 +53,7 @@ static int _dehex(std::string inString, char *outArray)
 static json _getscankeys(const json& stepInfo, const char* detname, const char* alias)
 {
     json update;
-    bool detscanned=false;
+//  bool detscanned=false;
     if (stepInfo.contains("step_keys")) {
         json reconfig = stepInfo["step_keys"];
         logging::debug("_getscankeys reconfig [%s]",reconfig.dump().c_str());
@@ -65,8 +65,8 @@ static json _getscankeys(const json& stepInfo, const char* detname, const char* 
                 string src = v.substr(0,delim);
                 if (src == alias)
                     update.push_back(v.substr(delim+1));
-                if (src.substr(0,src.rfind("_",delim)) == detname)
-                    detscanned = true;
+//              if (src.substr(0,src.rfind("_",delim)) == detname)
+//                  detscanned = true;
             }
         }
     }
@@ -79,7 +79,7 @@ static json _getscankeys(const json& stepInfo, const char* detname, const char* 
 static json _getscanvalues(const json& stepInfo, const char* detname, const char* alias)
 {
     json update;
-    bool detscanned=false;
+//  bool detscanned=false;
     if (stepInfo.contains("step_values")) {
         json reconfig = stepInfo["step_values"];
         for (json::iterator it=reconfig.begin(); it != reconfig.end(); it++) {
@@ -91,8 +91,8 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
                     update[it.key().substr(delim+1)] = it.value();
                 if (src == alias)
                     update[it.key().substr(delim+1)] = it.value();
-                if (src.substr(0,src.rfind("_",delim)) == detname)
-                    detscanned = true;
+//              if (src.substr(0,src.rfind("_",delim)) == detname)
+//                  detscanned = true;
             }
         }
     }
