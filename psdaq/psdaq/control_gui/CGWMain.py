@@ -39,7 +39,8 @@ from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl,\
                                                    daq_control_get_status, daq_control_get_instrument
 from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
 from psdaq.control_gui.QWUtils              import confirm_or_cancel_dialog_box
-from psdaq.control_gui.CGWMainTabs          import CGWMainTabs
+#from psdaq.control_gui.CGWMainTabs          import CGWMainTabs
+from psdaq.control_gui.CGWMainTabExpert     import CGWMainTabExpert
 
 #------------------------------
 
@@ -74,7 +75,8 @@ class CGWMain(QWZMQListener):
         #icon.set_icons()
 
         self.wconf = CGWMainConfiguration()
-        self.wtabs = CGWMainTabs()
+        #self.wtabs = CGWMainTabs()
+        self.wtabs = CGWMainTabExpert()
 
         self.vspl = QSplitter(Qt.Vertical)
         self.vspl.addWidget(self.wconf) 
@@ -167,7 +169,8 @@ class CGWMain(QWZMQListener):
 
     def set_style(self):
         self.setWindowTitle("DAQ Control")
-        self.layout().setContentsMargins(0,0,0,0)
+        #self.layout().setContentsMargins(0,0,0,0)
+        self.layout().setContentsMargins(3,0,3,0)
         self.setMinimumSize(300,700)
 
         self.wconf.setFixedHeight(80)
@@ -304,6 +307,26 @@ class CGWMain(QWZMQListener):
             #print('Saved log file: %s' % cp.log_file.value())
             #log.saveLogTotalInFile(fnm.log_file_total())
 
+
+    def wcontrol(self):
+        return cp.cgwmaintabuser if cp.cgwmaintabuser is not None else\
+               cp.cgwmaincontrol
+
+
+    def set_buts_enabled(self):
+        """set buttons in all widgets enabled/disabled depending on current state.
+        """
+        w = self.wcontrol()
+        if w is not None:
+            w.set_buts_enabled()
+            w.update_progress_bar(0, is_visible=False)
+
+        w = cp.cgwmainpartition
+        if w is not None: w.set_buts_enabled()
+
+        w = cp.cgwmainconfiguration
+        if w is not None: w.set_buts_enabled()
+
 #------------------------------
 
     def on_zmq_poll(self):
@@ -334,10 +357,6 @@ class CGWMain(QWZMQListener):
     def process_zmq_message(self, msg):
         #print('==== msg: %s' % str(msg))
 
-        wcoll = cp.cgwmaincollection
-        wctrl = cp.cgwmaintabuser if cp.cgwmaintabuser is not None else\
-                cp.cgwmaincontrol
-
         try:
             for rec in msg:
                 jo = json.loads(rec)
@@ -353,52 +372,40 @@ class CGWMain(QWZMQListener):
                     cp.s_cfgtype    = body['config_alias'] # BEAM/NO BEAM
                     cp.s_recording  = body['recording']    # True/False
                     cp.s_platform   = body.get('platform', None) # dict
-                    cp.s_bypass_activedet  = body['bypass_activedet']   # True/False
-                    cp.s_experiment_name  = body['experiment_name']     # string
-                    cp.s_run_number  = body['run_number']               # int
-                    cp.s_last_run_number  = body['last_run_number']     # int
+                    cp.s_bypass_activedet = body['bypass_activedet'] # True/False
+                    cp.s_experiment_name  = body['experiment_name']  # string
+                    cp.s_run_number       = body['run_number']       # int
+                    cp.s_last_run_number  = body['last_run_number']  # int
 
                     #====
-                    if wctrl is not None: wctrl.set_but_ctrls()
-                    if wctrl is not None: wctrl.update_progress_bar(0, is_visible=False)
                     self.wconf.set_config_type(cp.s_cfgtype)
-                    if wcoll is not None: wcoll.update_table()
+                    w = cp.cgwmaincollection
+                    if w is not None: w.update_table()
                     logger.info('zmq msg transition:%s state:%s config:%s recording:%s'%\
                                 (cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording))
 
                 elif jo_header_key == 'error':
                     body = jo['body']
                     logger.error(str(body['err_info']))
-                    if wctrl is not None: wctrl.update_progress_bar(0, is_visible=False)
-                    if wctrl is not None: wctrl.set_but_ctrls()
-
-                    ## grab status directly (not from error message)
-                    #status = daq_control_get_status()
-                    #if status is None:
-                    #    logger.warning('process_zmq_message on error: STATUS IS NOT AVAILABLE')
-                    #    return
-
-                    #transition, state, cfgtype, recording = status
-                    #self.wconf.set_config_type(cfgtype)
-                    #if wcoll is not None: wcoll.update_table()
 
                 elif jo_header_key == 'warning':
                     body = jo['body']
                     logger.warning(str(body['err_info']))
-                    if wctrl is not None: wctrl.update_progress_bar(0, is_visible=False)
-                    if wctrl is not None: wctrl.set_but_ctrls()
 
                 elif jo_header_key == 'progress':
                     body = jo['body']
                     logger.debug('progress: %s' % str(body))
+                    wctrl = self.wcontrol()
                     if wctrl is not None: 
                         v = 100*body['elapsed'] / body['total']
                         wctrl.update_progress_bar(v, is_visible=True, trans_name=body['transition'])
+                        return # DO NOT enable_buttons()
 
                 else:
                     sj = json.dumps(jo, indent=2, sort_keys=False)
                     logger.debug('received jason:\n%s' % sj)
-                    if wctrl is not None: wctrl.update_progress_bar(0, is_visible=False)
+
+                self.set_buts_enabled()
 
         except KeyError as ex:
              logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex))

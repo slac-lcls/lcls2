@@ -43,7 +43,7 @@ from psdaq.control_gui.CGWConfigSelect import CGWConfigSelect
 #--------------------
 char_expand  = u' \u25BC' # down-head triangle
 
-class CGWMainConfiguration(QGroupBox) :
+class CGWMainConfiguration(QGroupBox):
     """
     """
     list_of_aliases = ['NOBEAM', 'BEAM']
@@ -85,24 +85,20 @@ class CGWMainConfiguration(QGroupBox) :
 
 #--------------------
 
-    def set_tool_tips(self) :
+    def set_tool_tips(self):
         #self.setToolTip('Configuration') 
         self.but_edit.setToolTip('Edit configuration dictionary.')
         self.but_type.setToolTip('Select configuration type.') 
 
 #--------------------
 
-    def set_buts_enabled(self) :
-        is_selected_type = self.but_type.text()[:6] != 'Select'
-        #is_selected_det  = self.but_dev .text()[:6] != 'Select'
-        #self.but_dev .setEnabled(is_selected_type)
-        #self.but_edit.setEnabled(is_selected_type and is_selected_det)
-        self.but_type.setEnabled(True)
+    def set_buts_enabled(self):
+        self.but_type.setEnabled(cp.s_state in ('reset','unallocated','allocated','connected'))
         self.but_edit.setEnabled(True)
 
 #--------------------
 
-    def set_style(self) :
+    def set_style(self):
         from psdaq.control_gui.Styles import style
         self.setStyleSheet(style.qgrbox_title)
         self.but_edit.setFixedWidth(60)
@@ -123,13 +119,13 @@ class CGWMainConfiguration(QGroupBox) :
         inst = getattr(cp, 'inst', None)
         user = getattr(cp.cgwmain, 'user', None)
         pwd  = getattr(cp.cgwmain, 'password', None)
-        if inst is None : inst = daq_control_get_instrument()
+        if inst is None: inst = daq_control_get_instrument()
         logger.debug('%sconnect to configdb(uris=%s, inst=%s, user=%s, password=...)' % (msg, uris, inst, user))
         return inst, get_configdb(uri=uris, hutch=inst, create=False, root=ROOT_CONFIGDB, user=user, password=pwd)
 
 #--------------------
 
-    def save_dictj_in_db(self, dictj, msg='') :
+    def save_dictj_in_db(self, dictj, msg=''):
         logger.debug('%ssave_dictj_in_db' % msg)
         cfgtype, devname = self.cfgtype_and_device()
         inst, confdb = self.inst_configdb('CGWConfigEditor.on_but_apply: ')
@@ -141,7 +137,7 @@ class CGWMainConfiguration(QGroupBox) :
         resp = confirm_or_cancel_dialog_box(parent=None,
                                             text='Save changes in configuration DB',\
                                             title='Confirm or cancel')
-        if resp :
+        if resp:
             try:
                 new_key = confdb.modify_device(cfgtype, dictj, hutch=inst)
                 logger.debug('save_dictj_in_db new_key: %d' % new_key)
@@ -150,7 +146,7 @@ class CGWMainConfiguration(QGroupBox) :
             except Exception as err:            
                 logger.error('Exception: %s' % err)
 
-        else :
+        else:
             logger.warning('Saving of configuration in DB is cancelled...')
 
 #--------------------
@@ -159,7 +155,7 @@ class CGWMainConfiguration(QGroupBox) :
         #logger.debug('on_but_type')
         inst, confdb = self.inst_configdb('on_but_type: ')
         list_of_aliases = confdb.get_aliases(hutch=inst) # ['NOBEAM', 'BEAM']
-        if not list_of_aliases :
+        if not list_of_aliases:
             list_of_aliases = self.list_of_aliases # ['NOBEAM', 'BEAM']
             logger.warning('List of configdb-s IS EMPTY... Use default: %s' % str(list_of_aliases))
 
@@ -168,12 +164,12 @@ class CGWMainConfiguration(QGroupBox) :
         msg = 'selected %s of the list %s' % (selected, str(list_of_aliases))
         logger.debug(msg)
 
-        if selected in (None, self.type_old) : return
+        if selected in (None, self.type_old): return
 
         rv = daq_control().setConfig(selected)
         if rv is None: 
             self.set_config_type(selected)
-        else :
+        else:
             logger.error('setConfig("%s"): %s' % (selected,rv))
             self.set_config_type('error')
 
@@ -183,9 +179,9 @@ class CGWMainConfiguration(QGroupBox) :
 
         cfgtype = config_type if config_type in ('error','init') else cp.s_cfgtype
 
-        if cfgtype == self.type_old : return
+        if cfgtype == self.type_old: return
 
-        if not (cfgtype in self.list_of_aliases) : return
+        if not (cfgtype in self.list_of_aliases): return
 
         self.set_but_type_text(cfgtype)
         self.type_old = cfgtype
@@ -213,7 +209,7 @@ class CGWMainConfiguration(QGroupBox) :
         cfgtype = str(self.but_type.text()).split(' ')[0] # 'NOBEAM' or 'BEAM'
         list_of_device_names = confdb.get_devices(cfgtype, hutch=inst)
 
-        if not list_of_device_names :
+        if not list_of_device_names:
             logger.warning('list_of_device_names IS EMPTY... Check configuration DB')
             return
 
@@ -234,7 +230,7 @@ class CGWMainConfiguration(QGroupBox) :
 #--------------------
  
 #    def on_cbx_seq(self, ind):
-#        #if self.cbx.hasFocus() :
+#        #if self.cbx.hasFocus():
 #        cbx = self.cbx_seq
 #        tit = cbx.text()
 #        #self.cbx_runc.setStyleSheet(style.styleGreenish if cbx.isChecked() else style.styleYellowBkg)
@@ -256,7 +252,7 @@ class CGWMainConfiguration(QGroupBox) :
         resp=w.exec_()
         logger.debug('resp=%s' % resp)
 
-        if resp == QWDialog.Rejected : return None
+        if resp == QWDialog.Rejected: return None
 
         cfgtype = wd.but_type_text()
         dev     = wd.but_dev_text()
@@ -269,17 +265,17 @@ class CGWMainConfiguration(QGroupBox) :
  
     def on_but_edit(self):
         #logger.debug('on_but_edit')
-        if self.w_edit is None :
+        if self.w_edit is None:
             logger.debug("TBD Open configuration editor window")
             resp = self.select_config_type_and_dev()
-            if resp is None : return
+            if resp is None: return
             cfgtype, dev = resp
             self.device_edit = dev
             self.cfgtype_edit = cfgtype
 
             inst, confdb = self.inst_configdb('on_but_edit: ')
 
-            try :
+            try:
                 self.config = confdb.get_configuration(cfgtype, dev, hutch=inst)
             except ValueError as err:
                 logger.error('ValueError: %s' % err)
@@ -293,7 +289,7 @@ class CGWMainConfiguration(QGroupBox) :
             self.w_edit.move(self.mapToGlobal(QPoint(self.width()+10,0)))
             self.w_edit.show()
 
-        else :
+        else:
             logger.debug("Close configuration editor window")
             self.w_edit.close()
             self.w_edit = None
@@ -307,14 +303,14 @@ class CGWMainConfiguration(QGroupBox) :
 
     def closeEvent(self, e):
         logger.debug('CGWMainConfiguration.closeEvent')
-        if self.w_edit is not None :
+        if self.w_edit is not None:
            self.w_edit.close()
         QGroupBox.closeEvent(self, e)
         cp.cgwmainconfiguration = None
 
 #--------------------
  
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
 

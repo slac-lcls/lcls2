@@ -24,15 +24,15 @@ Adopted for LCLS2 on 2018-02-15
 """
 #------------------------------
 
-class Styles() :
+class Styles():
     """Storage of CalibManager styles.
     """
-    def __init__(self) :
+    def __init__(self):
         self._name = self.__class__.__name__
         self.set_styles()
 
 #------------------------------
-    def set_styles(self) :
+    def set_styles(self):
 
         self.styleYellowish = "background-color: rgb(255, 255, 220); color: rgb(0, 0, 0);" # Yellowish
         self.stylePink      = "background-color: rgb(255, 200, 220); color: rgb(0, 0, 0);" # Pinkish
@@ -85,11 +85,12 @@ class Styles() :
         #self.colorEditBad      = QtGui.QColor(255,   0,   0)
         #self.colorEdit         = QtGui.QColor('white')
         #self.colorTabItem      = QtGui.QColor('white')
-        #self.qgrbox_title  = "QGroupBox::title {left:10px; top:12px;};"
-        #self.qgrbox_title  = "QGroupBox{border: 1px solid; border-color: #FF17365D; margin-top:10px;};"\
 
-        self.qgrbox_title  = "QGroupBox::title{left:10px; top:12px;}"\
-                             "QGroupBox{margin-top:-10px; padding-top:20px;}"
+        self.qgrbox_title  = "QGroupBox::title{left:10px; top:-5px;}"\
+                             "QGroupBox{margin-top:10px; padding-top:10px;}"\
+                             "QGroupBox{border: 1px solid; border-color: #AA00B0B0; border-radius:5px;}"
+                             #"QGroupBox{border: 1px solid; border-color: #FF17365D; margin-top:10px;}"
+
         # left:10px; top:12px; - offsets of the title relative to layout QRect
         # margin-top:-10px; - offset of the frame relative to its default position??? 
         # padding-top:20px; - offset of widget content relative to the frame

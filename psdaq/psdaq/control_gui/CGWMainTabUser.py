@@ -67,28 +67,28 @@ class CGWMainTabUser(QGroupBox) :
 
         self.set_style()
         self.set_tool_tips()
-        self.set_but_ctrls()
+        self.set_buts_enabled()
 
 #------------------------------
 
-    def set_but_ctrls(self) :
+    def set_buts_enabled(self) :
         """interface method sets button states,
            is called from CGWMain on zmq poll and at initialization of the object.
         """
         transition, state, cfgtype, recording =\
            cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording
 
-        logger.debug('set_but_ctrls transition:%s state:%s config:%s recording:%s'%\
+        logger.debug('set_buts_enabled transition:%s state:%s config:%s recording:%s'%\
                       (transition, state, cfgtype, recording))
 
         #s = daq_control_get_status() if s_status is None else s_status
         #if s is None :
-        #    logger.warning('set_but_ctrls: STATUS IS NOT AVAILABLE')
+        #    logger.warning('set_buts_enabled: STATUS IS NOT AVAILABLE')
         #    return
 
         #state_zmq = str(s_state).lower() if s_state is not None else None
         #if (s_state is not None) and state_zmq != state :
-        #    logger.debug('set_but_ctrls ZMQ msg state:%s inconsistent with current:%s'%\
+        #    logger.debug('set_buts_enabled ZMQ msg state:%s inconsistent with current:%s'%\
         #                 (state_zmq,state))
 
         if state == self.s_running :

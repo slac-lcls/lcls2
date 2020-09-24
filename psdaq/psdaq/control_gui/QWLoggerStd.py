@@ -114,6 +114,8 @@ class QWLoggerStd(QWidget) :
         self.instrument   = kwargs.get('instrument', 'NonDefined')
         self.log_fname    = log_file_name(kwargs.get('log_prefix', '.'))
 
+        if self.instrument is None: self.instrument='None'
+
         if self.log_level=='DEBUG' :
             print('%s.__init__ log_fname: %s' % (self._name, self.log_fname))
 
