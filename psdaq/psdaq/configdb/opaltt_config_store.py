@@ -65,20 +65,15 @@ def opaltt_cdict(args):
     return top
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Write a new TimeTool configuration into the database')
-    parser.add_argument('--inst', help='instrument', type=str, default='tst')
-    parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
-    parser.add_argument('--name', help='detector name', type=str, default='tsttt')
-    parser.add_argument('--segm', help='detector segment', type=int, default=0)
-    parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
-    parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
-    parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
-    args = parser.parse_args()
+    args = cdb.createArgs().args
 
     create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
-    mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create,
+    db   = 'configdb' if args.prod else 'devconfigdb'
+    url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
+
+    mycdb = cdb.configdb(url, args.inst, create,
                          root=dbname, user=args.user, password=args.password)
     mycdb.add_alias(args.alias)
     mycdb.add_device_config('opal')

@@ -455,6 +455,21 @@ def _ls(args):
         print('Name \'%s\' does not match <hutch>[/<alias>]' % args.src)
         sys.exit(1)
 
+class createArgs(object):
+    def __init__(self):
+        parser = argparse.ArgumentParser(description='Write a new segment configuration into the database')
+        parser.add_argument('--prod', help='use production db', action='store_true')
+        parser.add_argument('--inst', help='instrument', type=str, default='tst')
+        parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
+        parser.add_argument('--name', help='detector name', type=str, default='tstts')
+        parser.add_argument('--segm', help='detector segment', type=int, default=0)
+        parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
+        parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
+        parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
+        parser.add_argument('--yaml', help='Load values from yaml file', type=str, default=None)
+        self.args = parser.parse_args()
+
+
 def main():
 
     # create the top-level parser

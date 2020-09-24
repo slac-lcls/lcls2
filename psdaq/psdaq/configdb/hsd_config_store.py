@@ -2,24 +2,14 @@ from psdaq.configdb.typed_json import cdict
 import psdaq.configdb.configdb as cdb
 import os
 import io
-import argparse
 
-parser = argparse.ArgumentParser(description='Write a new HSD configuration into the database')
-parser.add_argument('--inst', help='instrument', type=str, default='tst')
-parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
-parser.add_argument('--name', help='detector name', type=str, default='tsthsd')
-parser.add_argument('--segm', help='detector segment', nargs='+', type=int, default=[0])
-parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
-parser.add_argument('--gate', help='raw gate, ns', type=int, default=200)
-parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
-parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
-args = parser.parse_args()
-
-# these are the current default values, but I put them here to be explicit
 create = True
 dbname = 'configDB'
+args = cdb.createArgs().args
+db   = 'configdb' if args.prod else 'devconfigdb'
+url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
 
-mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create,
+mycdb = cdb.configdb(url, args.inst, create,
                      root=dbname, user=args.user, password=args.password)
 mycdb.add_device_config('hsd')
 
@@ -46,7 +36,7 @@ help_str += "\nuser.fex.xpost    : keep N samples trailing excursion"
 top.set("help:RO", help_str, 'CHARSTR')
 
 top.set('user.raw.start_ns', 107692, 'UINT32')
-top.set('user.raw.gate_ns' , args.gate, 'UINT32')
+top.set('user.raw.gate_ns' ,    200, 'UINT32')
 top.set('user.raw.prescale',      1, 'UINT32')
 
 top.set('user.fex.start_ns', 107692, 'UINT32')
