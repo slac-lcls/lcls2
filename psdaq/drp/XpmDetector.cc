@@ -21,11 +21,7 @@ namespace Drp {
 XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
     Detector(para, pool)
 {
-    int fd = open(m_para->device.c_str(), O_RDWR);
-    if (fd < 0) {
-        logging::error("Error opening %s", m_para->device.c_str());
-        return;
-    }
+    int fd = pool->fd();
 
     // Check timing reference clock, program if necessary
     unsigned ccnt0,ccnt1;
@@ -69,17 +65,11 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
       dmaWriteRegister(fd, 0x00C00020, v);
       usleep(100000);
     }
-
-    close(fd);
 }
 
 json XpmDetector::connectionInfo()
 {
-    int fd = open(m_para->device.c_str(), O_RDWR);
-    if (fd < 0) {
-        logging::error("Error opening %s", m_para->device.c_str());
-        return json();
-    }
+    int fd = m_pool->fd();
 
     Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
 
@@ -112,7 +102,6 @@ json XpmDetector::connectionInfo()
     uint32_t reg;
     dmaReadRegister(fd, &tem->xma().rxId, &reg);
 
-    close(fd);
     // there is currently a failure mode where the register reads
     // back as zero (incorrectly). This is not the best longterm
     // fix, but throw here to highlight the problem. - cpo
@@ -136,12 +125,7 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
     if (it != m_para->kwargs.end())
         m_length = stoi(it->second);
 
-    int fd = open(m_para->device.c_str(), O_RDWR);
-    if (fd < 0) {
-        logging::error("Error opening %s", m_para->device.c_str());
-        return;
-    }
-
+    int fd = m_pool->fd();
     int links = m_para->laneMask;
 
     AxiVersion vsn;
@@ -165,8 +149,24 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
             dmaWriteRegister(fd, 0x00a00000+4*(i&3), (m_length&0xffffff) | (1<<31));  // enable
           }
       }
+}
 
-    close(fd);
+void XpmDetector::shutdown()
+{
+    int fd = m_pool->fd();
+    int links = m_para->laneMask;
+
+    AxiVersion vsn;
+    axiVersionGet(fd, &vsn);
+    if (vsn.userValues[2]) // Second PCIe interface has lanes shifted by 4
+       links <<= 4;
+
+    for(unsigned i=0, l=links; l; i++) {
+        if (l&(1<<i)) {
+          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
+          l &= ~(1<<i);
+        }
+    }
 }
 
 }

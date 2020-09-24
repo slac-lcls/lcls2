@@ -138,12 +138,7 @@ void TimingSystem::connect(const json& connect_json, const std::string& collecti
 {
     XpmDetector::connect(connect_json, collectionId);
 
-    int fd = open(m_para->device.c_str(), O_RDWR);
-    if (fd < 0) {
-        std::cout<<"Error opening "<< m_para->device << '\n';
-        return;
-    }
-
+    int fd = m_pool->fd();
     int links = m_para->laneMask;
 
     AxiVersion vsn;
@@ -158,8 +153,6 @@ void TimingSystem::connect(const json& connect_json, const std::string& collecti
           l &= ~(1<<i);
         }
     }
-
-    close(fd);
 
     // returns new reference
     PyObject* pModule = PyImport_ImportModule("psdaq.configdb.ts_connect");

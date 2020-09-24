@@ -194,8 +194,9 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     int64_t worker = 0L;
     uint64_t batchId = 0L;
     const unsigned bufferMask = m_pool.nbuffers() - 1;
-    XtcData::TransitionId::Value lastTid;
+    XtcData::TransitionId::Value lastTid = XtcData::TransitionId::Reset;
     uint32_t lastData[6];
+    memset(lastData,0,sizeof(lastData));
     while (1) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
@@ -334,6 +335,10 @@ void PGPDetector::shutdown()
     for (unsigned i = 0; i < m_para.nworkers; i++) {
         m_workerOutputQueues[i].shutdown();
     }
+
+    uint8_t mask[DMA_MASK_SIZE];
+    dmaInitMaskBytes(mask);
+    dmaSetMaskBytes(m_pool.fd(), mask);
 
     //  Flush the DMA buffers
     int32_t ret = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);

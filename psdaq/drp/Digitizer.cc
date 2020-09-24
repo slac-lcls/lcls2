@@ -65,7 +65,7 @@ static void check(PyObject* obj) {
 unsigned Digitizer::_getPaddr()
 {
     // Check PGP reference clock, reprogram if necessary
-    int fd = open(m_para->device.c_str(), O_RDWR);
+    int fd = m_pool->fd();
     AxiVersion vsn;
     axiVersionGet(fd, &vsn);
     if (vsn.userValues[2] == 0) {  // Only one PCIe interface has access to I2C bus
@@ -108,8 +108,6 @@ unsigned Digitizer::_getPaddr()
         dmaWriteRegister(fd, 0x00a40010+4*(link&3), id | (link<<16));
       }
     }
-
-    close(fd);
 
     // returns new reference
     PyObject* pModule = PyImport_ImportModule("psdaq.configdb.hsd_connect");
@@ -245,7 +243,7 @@ void Digitizer::connect(const json& connect_json, const std::string& collectionI
 unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc)
 {
     //  Reset the PGP links
-    int fd = open(m_para->device.c_str(), O_RDWR);
+    int fd = m_pool->fd();
     //  user reset
     dmaWriteRegister(fd, 0x00800000, (1<<31));
     usleep(10);
@@ -259,7 +257,6 @@ unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc)
     dmaWriteRegister(fd, 0x00a40024, 6);
     usleep(10);
     dmaWriteRegister(fd, 0x00a40024, 0);
-    close(fd);
 
     unsigned lane_mask;
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
