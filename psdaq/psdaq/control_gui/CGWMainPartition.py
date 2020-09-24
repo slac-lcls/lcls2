@@ -80,6 +80,8 @@ class CGWMainPartition(QGroupBox):
         self.state = None
         self.w_display = None
 
+        self.set_buts_enabled()
+
 #--------------------
 
     def set_tool_tips(self):
@@ -200,7 +202,7 @@ class CGWMainPartition(QGroupBox):
         """By Chris F. logistics sets buttons un/visible.
         """
         s = cp.s_state
-        logger.debug('set_buts_enabled for state %s' % s)
+        logger.info('set_buts_enabled for state "%s"' % s)
         self.state = state = s.lower() if s is not None else 'None'
 
         part_select = state in ('reset','unallocated')
