@@ -128,6 +128,10 @@ class MDBWeb_CLI(MDB_CLI):
         logger.info('data: %s' % str(data)[:150])
         logger.info('doc: %s' % str(doc))
 
+        if doc is None or data is None:
+            logger.warning('files for doc and data are not saved')
+            return
+
         if prefix is None : prefix = mu.out_fname_prefix(**doc)
         mu.save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' : True})
 

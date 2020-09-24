@@ -218,6 +218,16 @@ def get_data_for_doc(dbname, colname, doc, url=cc.URL):
 
 #------------------------------
 
+def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, dtype=None):
+    """wrapper for MDBUtils.dbnames_collection_query,
+       - which should receive short detector name, othervice uses direct interface to DB
+    """
+    short = pro_detector_name(det)
+    logger.debug('short: %s' % short)
+    return mu.dbnames_collection_query(short, exp, ctype, run, time_sec, vers, dtype)
+
+#------------------------------
+
 def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL):
     """Returns calibration constants and document with metadata for specified parameters. 
        To get meaningful constants, at least a few parameters must be specified, e.g.:
@@ -228,7 +238,7 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
        - det, exp, ctype, run, version
        etc...
     """
-    db_det, db_exp, colname, query = mu.dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
+    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
     logger.debug('get_constants: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
     dbname = db_det if exp is None else db_exp
     doc = find_doc(dbname, colname, query, url)
@@ -245,7 +255,7 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
     """ returns constants for all ctype-s
     """
     ctype=None
-    db_det, db_exp, colname, query = mu.dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
+    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
     dbname = db_det if exp is None else db_exp
     docs = find_docs(dbname, colname, query, url)
     #logger.debug('find_docs: number of docs found: %d' % len(docs))
@@ -340,6 +350,8 @@ def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADE
     id_data_det = add_data(dbname_det, data, url, krbheaders)
     if None in (id_data_exp, id_data_det): return None
 
+    kwargs['detector'] = detname # ex: epix10ka_000001
+    kwargs['longname'] = det
     doc = mu.docdic(data, id_data_exp, **kwargs)
     logger.debug(mu.doc_info(doc, fmt='  %s:%s')) #sep='\n  %16s : %s'
 
@@ -643,7 +655,7 @@ if __name__ == "__main__" :
 
   def test_dbnames_collection_query():
     det='cspad_0001'
-    db_det, db_exp, colname, query = mu.dbnames_collection_query(det, exp=None, ctype='pedestals', run=50, time_sec=None, vers=None)
+    db_det, db_exp, colname, query = dbnames_collection_query(det, exp=None, ctype='pedestals', run=50, time_sec=None, vers=None)
     print('test_dbnames_collection_query:', db_det, db_exp, colname, query)
 
 #------------------------------

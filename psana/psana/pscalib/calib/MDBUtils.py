@@ -654,6 +654,7 @@ def docdic(data, dataid, **kwargs):
           'host'      : gu.get_hostname(),
           'cwd'       : gu.get_cwd(),
           'id_data'   : dataid,
+          'longname'  : kwargs.get('longname', None),
           }
 
     if isinstance(data, np.ndarray):
