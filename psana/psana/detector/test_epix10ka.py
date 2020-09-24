@@ -8,22 +8,18 @@ logger = logging.getLogger(__name__)
 #from psana.pscalib.geometry.SegGeometry import *
 #from psana.detector.epix10k import DetectorImpl
 
+from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
+
 #----------
 #fname0 = '/reg/neh/home/cpo/git/psana_cpo/epix.xtc2'
 #fname1 = '/reg/neh/home/cpo/git/psana_cpo/epix_2seg.xtc2'
 fname0 = '/reg/g/psdm/detector/data2_test/xtc/data-mfxc00318-r0013-epix10kaquad-e000005.xtc2'
 fname1 = '/reg/g/psdm/detector/data2_test/xtc/data-mfxc00318-r0013-epix10kaquad-e000005-seg1and3.xtc2'
+fname2 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2'
 
 #----------
 
-def test_raw(fname):
-    logger.info('in test_raw data from file:\n  %s' % fname)
-
-    from psana import DataSource
-    ds = DataSource(files=fname)
-    myrun = next(ds.runs())
-    det = myrun.Detector('epix10k2M')
-
+def print_det_raw(det):
     print('dir(det):', dir(det))
     print('det._dettype:', det._dettype)
     print('det._detid:', det._detid)
@@ -44,18 +40,48 @@ def test_raw(fname):
     print('r._sorted_segment_ids:', r._sorted_segment_ids)
     print('r._uniqueid:', r._uniqueid)
     print('r._var_name:', r._var_name)
-    #print('r.dtype:', r.dtype)
     print('r.raw:', r.raw)
+    #print('r.dtype:', r.dtype)
 
-    #calib_const = det._calibconst
-    #print('calib_const', calib_const)
+#----------
 
-    detname = r._uniqueid
+def test_raw(fname):
+    logger.info('in test_raw data from file:\n  %s' % fname)
+
+    from psana import DataSource
+    ds = DataSource(files=fname)
+    orun = next(ds.runs())
+    det = orun.Detector('epix10k2M')
+
+    print('dir(orun):', dir(orun))
+
+    if False: print_det_raw(det)
+
+    oraw = det.raw
+    detname = oraw._uniqueid
+    expname = orun.expt if orun.expt is not None else 'mfxc00318'
+    runnum = orun.runnum
+    print('expname:', expname)
+    print('runnum:', runnum)
+    print('split detname:', '\n'.join(detname.split('_')))
+
+    calib_const = det.calibconst if hasattr(det,'calibconst') else None
+    print('det.calibconst', calib_const)
+
 
     from psana.pscalib.calib.MDBWebUtils import calib_constants
-    pedestals, _ = calib_constants(detname, exp='mfxc00318', ctype='pedestals', run=13)
 
-    print('pedestals',pedestals)
+    logger.info('XXX call calib_constants')
+
+    pedestals, _ = calib_constants(detname, exp=expname, ctype='pedestals',    run=runnum)
+    gain, _      = calib_constants(detname, exp=expname, ctype='pixel_gain',   run=runnum)
+    rms, _       = calib_constants(detname, exp=expname, ctype='pixel_rms',    run=runnum)
+    status, _    = calib_constants(detname, exp=expname, ctype='pixel_status', run=runnum)
+
+    logger.info(info_ndarr(pedestals, 'pedestals'))
+    logger.info(info_ndarr(gain,      'gain     '))
+    logger.info(info_ndarr(rms,       'rms      '))
+    logger.info(info_ndarr(status,    'status   '))
 
     for evt in ds.events():
         raw = det.raw.raw(evt)
@@ -78,7 +104,7 @@ if __name__ == "__main__":
       + '\n    0 - test_raw("%s")'%fname0\
       + '\n    1 - test_raw("%s")'%fname1\
 
-    d_loglev  ='DEBUG'
+    d_loglev  = 'INFO' #'INFO' #'DEBUG'
 
     import argparse
 
@@ -98,6 +124,7 @@ if __name__ == "__main__":
     tname = args.tname
     if   tname=='0': test_raw(fname0)
     elif tname=='1': test_raw(fname1)
+    elif tname=='2': test_raw(fname2)
     else: logger.warning('NON-IMPLEMENTED TEST: %s' % tname)
 
     sys.exit('END OF %s' % SCRNAME)
