@@ -63,7 +63,7 @@ Usage::
     # get image martix irow and icol indexes for specified point in [um]. By default p_um=(0,0) - detector origin coordinates (center).
     irow, icol = geometry.point_coord_indexes(p_um=(0,0))
     # all other parameters should be the same as in get_pixel_coord_indexes method
-    irow, icol = geometry.point_coord_indexes(p_um=(0,0), 'QUAD:V1', 1, pix_scale_size_um=None, xy0_off_pix=(1000,1000), do_tilt=True, cframe=0)
+    irow, icol = geometry.point_coord_indexes(p_um=(0,0), 'QUAD:V1', 1, pix_scale_size_um=None, xy0_off_pix=(1000,1000), do_tilt=True, cframe=0, fract=False)
 
     # get 2-d image from index arrays
     img = img_from_pixel_arrays(rows,cols,W=arr)
@@ -144,7 +144,7 @@ class GeometryAccess:
         self.valid = False
 
         if self.path is None or not os.path.exists(self.path):
-            logger.warning('%s: geometry file "%s" does not exist' % (self.__class__.__name__, path))
+            logger.warning('%s: geometry file "%s" does not exist' % (self.__class__.__name__, self.path))
             return
 
         self.load_pars_from_file()
@@ -171,6 +171,7 @@ class GeometryAccess:
         self.icol_old   = None
         self.p_um_old   = None
         self.cframe_old = None
+        self.fract_old  = None
 
     #------------------------------
 
@@ -556,7 +557,7 @@ class GeometryAccess:
 
     #------------------------------
         
-    def xy_to_rc_point(self, X, Y, p_um=(0,0), pix_scale_size_um=None, xy0_off_pix=None, cframe=0):
+    def xy_to_rc_point(self, X, Y, p_um=(0,0), pix_scale_size_um=None, xy0_off_pix=None, cframe=0, fract=False):
         if X is None or Y is None: return None, None
 
         x_um, y_um = self.p_um_old = p_um
@@ -569,6 +570,7 @@ class GeometryAccess:
                 if xy0_off_pix[0]>0: xmin -= xy0_off_pix[0] * pix_size
                 if xy0_off_pix[1]>0: ymax += xy0_off_pix[1] * pix_size
             xmin, ymax = xmin-pix_size/2, ymax+pix_size/2
+            if fract: return (ymax-y_um)/pix_size, (x_um-xmin)/pix_size
             return int(floor((ymax-y_um)/pix_size)), int(floor((x_um-xmin)/pix_size))
 
         else: # PSANA image-matrix frame - x-along gravity(rows), y-right(columns), z=[x,y]-opposite to the beam
@@ -578,6 +580,7 @@ class GeometryAccess:
                 if xy0_off_pix[0]>0: xmin -= xy0_off_pix[0] * pix_size
                 if xy0_off_pix[1]>0: ymin -= xy0_off_pix[1] * pix_size
             xmin, ymin = xmin-pix_size/2, ymin-pix_size/2
+            if fract: return (x_um-xmin)/pix_size, (y_um-ymin)/pix_size
             return int(floor((x_um-xmin)/pix_size)), int(floor((y_um-ymin)/pix_size))
 
     #------------------------------
@@ -639,7 +642,7 @@ class GeometryAccess:
 
     #------------------------------
 
-    def point_coord_indexes(self, p_um=(0,0), oname=None, oindex=0, pix_scale_size_um=None, xy0_off_pix=None, do_tilt=True, cframe=0):
+    def point_coord_indexes(self, p_um=(0,0), oname=None, oindex=0, pix_scale_size_um=None, xy0_off_pix=None, do_tilt=True, cframe=0, fract=False):
         """Converts point (x_um, y_um) corrdinates [um] to pixel (row, col) indexes.
            All other parameters are the same as in get_pixel_coord_indexes.
            WARNING: indexes are not required to be inside the image. They are integer, may be negative or exceed pixel maximal index.
@@ -656,7 +659,8 @@ class GeometryAccess:
             return self.irow_old, self.icol_old
 
         X, Y, Z = self.get_pixel_coords(oname, oindex, do_tilt, cframe)
-        self.irow_old, self.icol_old = self.xy_to_rc_point(X, Y, p_um, pix_scale_size_um, xy0_off_pix, cframe)
+        self.irow_old, self.icol_old = self.xy_to_rc_point(X, Y, p_um, pix_scale_size_um, xy0_off_pix, cframe, fract)
+        self.fract_old = fract
         return self.irow_old, self.icol_old
 
     #------------------------------
