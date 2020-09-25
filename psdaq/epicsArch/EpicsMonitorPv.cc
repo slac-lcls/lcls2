@@ -88,12 +88,17 @@ namespace Pds
                       pvd::ScalarTypeFunc::name(scalar->getScalarType()),
                       type);
         switch (scalar->getScalarType()) {
-          case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int32_t >(data, length); };  break;
-          case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int64_t >(data, length); };  break;
-          case pvd::pvUInt:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint32_t>(data, length); };  break;
-          case pvd::pvULong:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint64_t>(data, length); };  break;
-          case pvd::pvFloat:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<float   >(data, length); };  break;
-          case pvd::pvDouble: getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<double  >(data, length); };  break;
+          case pvd::pvBoolean: getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint8_t >(data, length); };  break;
+          case pvd::pvByte:    getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int8_t  >(data, length); };  break;
+          case pvd::pvShort:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int16_t >(data, length); };  break;
+          case pvd::pvInt:     getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int32_t >(data, length); };  break;
+          case pvd::pvLong:    getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int64_t >(data, length); };  break;
+          case pvd::pvUByte:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint8_t >(data, length); };  break;
+          case pvd::pvUShort:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint16_t>(data, length); };  break;
+          case pvd::pvUInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint32_t>(data, length); };  break;
+          case pvd::pvULong:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint64_t>(data, length); };  break;
+          case pvd::pvFloat:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<float   >(data, length); };  break;
+          case pvd::pvDouble:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<double  >(data, length); };  break;
           default: {
             logging::critical("%s: Unsupported %s type %s (%d)",
                               fullName.c_str(),
@@ -120,12 +125,17 @@ namespace Pds
                       pvd::ScalarTypeFunc::name(array->getElementType()),
                       type, nelem);
         switch (array->getElementType()) {
-          case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int32_t >(data, length); };  break;
-          case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int64_t >(data, length); };  break;
-          case pvd::pvUInt:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint32_t>(data, length); };  break;
-          case pvd::pvULong:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint64_t>(data, length); };  break;
-          case pvd::pvFloat:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<float   >(data, length); };  break;
-          case pvd::pvDouble: getData = [&](void* data, size_t& length) -> size_t { return _getDataT<double  >(data, length); };  break;
+          case pvd::pvBoolean: getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint8_t >(data, length); };  break;
+          case pvd::pvByte:    getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int8_t  >(data, length); };  break;
+          case pvd::pvShort:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int16_t >(data, length); };  break;
+          case pvd::pvInt:     getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int32_t >(data, length); };  break;
+          case pvd::pvLong:    getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int64_t >(data, length); };  break;
+          case pvd::pvUByte:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint8_t >(data, length); };  break;
+          case pvd::pvUShort:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint16_t>(data, length); };  break;
+          case pvd::pvUInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint32_t>(data, length); };  break;
+          case pvd::pvULong:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint64_t>(data, length); };  break;
+          case pvd::pvFloat:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<float   >(data, length); };  break;
+          case pvd::pvDouble:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<double  >(data, length); };  break;
           default: {
             logging::critical("%s: Unsupported %s type %s (%d)",
                               fullName.c_str(),
