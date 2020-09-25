@@ -181,6 +181,7 @@ class Run(object):
                 setattr(det,'calibconst', self.calibconst[det_name])
                 setattr(det,'_dettype', self.dm.det_info_table[det_name][0])
                 setattr(det,'_detid', self.dm.det_info_table[det_name][1])
+                setattr(det,'_det_name', det_name)
                 flag_found = True
 
         # If no detector found, EnvStore variable is assumed to have been passed in.
@@ -199,6 +200,7 @@ class Run(object):
                 det_class_table = self.dm.det_classes[det_name]
                 drp_class = det_class_table[(det_name, drp_class_name)]
                 det = drp_class(det_name, drp_class_name, self.configinfo_dict[det_name], self.calibconst[det_name], self.esm.stores[env_name], var_name)
+                setattr(det, '_det_name', det_name)
 
         return det
 
