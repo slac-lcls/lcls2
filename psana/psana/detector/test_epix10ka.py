@@ -54,10 +54,8 @@ def test_raw(fname):
     orun = next(ds.runs())
     det = orun.Detector('epix10k2M')
 
-    print('dir(orun):', dir(orun))
-    print('dir(det):', dir(det))
-
-    sys.exit('TEST EXIT')
+    #print('dir(orun):', dir(orun))
+    #print('dir(det):', dir(det))
 
     #if True: print_det_raw(det)
 
@@ -67,11 +65,15 @@ def test_raw(fname):
     runnum = orun.runnum
     print('expname:', expname)
     print('runnum:', runnum)
-    print('detname:', oraw._det_name)
+    #print('detname:', oraw._det_name)
+    print('detname:', det._det_name)
     print('split detnameid:', '\n'.join(detnameid.split('_')))
 
+    #sys.exit('TEST EXIT')
+
+
     calib_const = det.calibconst if hasattr(det,'calibconst') else None
-    print('det.calibconst', calib_const)
+    print('det.calibconst', calib_const.keys())
 
 
     from psana.pscalib.calib.MDBWebUtils import calib_constants
@@ -88,11 +90,12 @@ def test_raw(fname):
     logger.info(info_ndarr(rms,       'rms      '))
     logger.info(info_ndarr(status,    'status   '))
 
-    for evt in ds.events():
+    for evnum,evt in enumerate(ds.events()):
+        print('%s\nEvent %04d' % (50*'_',evnum))
         raw = det.raw.raw(evt)
         for segment,panel in raw.items():
             print(segment,panel.shape)
-        print(50*'-')
+    print(50*'-')
 
 #----------
 

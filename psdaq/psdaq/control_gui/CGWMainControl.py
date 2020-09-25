@@ -126,7 +126,7 @@ class CGWMainControl(QGroupBox):
         self.state = 'undefined'
         self.transition = 'undefined'
         self.ts = 'N/A'
-        self.check_state()
+        #self.check_state()
         self.check_transition()
         self.set_buts_enabled()
 
@@ -226,16 +226,15 @@ class CGWMainControl(QGroupBox):
             return
         if s == self.state: return
         self.set_buts_enabled()
+        self.state = s
 
 #--------------------
 
-    def set_but_enabled(self, but, is_enabled=True):
+    def set_but_record_enabled(self, is_enabled=True):
+        but = self.but_record
         but.setEnabled(is_enabled)
         but.setFlat(not is_enabled)
         #but.setVisible(is_enabled)
-
-    def set_but_record_enabled(self, is_enabled=True):
-        self.set_but_enabled(self.but_record, is_enabled)
 
 #--------------------
 
@@ -245,13 +244,13 @@ class CGWMainControl(QGroupBox):
              (cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording)
 
         logger.debug('in set_buts_enabled current status %s' % str(status))
+        #print('in set_buts_enabled current status %s' % str(status))
 
         self.but_record.setIcon(icon.icon_record_stop if recording else icon.icon_record_start)
         self.set_but_record_enabled(state in ('reset','unallocated','allocated','connected','configured'))
-        self.box_state.setEnabled(state in ('allocated','connected','configured','started','paused','running'))
+        self.box_state.setEnabled(state not in ('reset','unallocated'))
 
         self.ts = gu.str_tstamp(fmt='%H:%M:%S', time_sec=None) # '%Y-%m-%dT%H:%M:%S%z'
-        self.state = state 
         #self.but_state.setText('%s since %s' % (s.upper(), self.ts))
         self.but_ctrls.setText(state.upper() if state is not None else 'None')
 

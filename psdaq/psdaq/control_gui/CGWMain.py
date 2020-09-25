@@ -311,8 +311,8 @@ class CGWMain(QWZMQListener):
 
 
     def wcontrol(self):
-        return cp.cgwmaintabuser if cp.cgwmaintabuser is not None else\
-               cp.cgwmaincontrol
+        return cp.cgwmaincontrol
+        #return cp.cgwmaintabuser if cp.cgwmaintabuser is not None else cp.cgwmaincontrol
 
 
     def set_buts_enabled(self):
