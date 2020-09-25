@@ -54,18 +54,21 @@ def test_raw(fname):
     orun = next(ds.runs())
     det = orun.Detector('epix10k2M')
 
-    #print('dir(orun):', dir(orun))
-    #print('dir(det):', dir(det))
+    print('dir(orun):', dir(orun))
+    print('dir(det):', dir(det))
+
+    sys.exit('TEST EXIT')
 
     #if True: print_det_raw(det)
 
     oraw = det.raw
-    detname = oraw._uniqueid
+    detnameid = oraw._uniqueid
     expname = orun.expt if orun.expt is not None else 'mfxc00318'
     runnum = orun.runnum
     print('expname:', expname)
     print('runnum:', runnum)
-    print('split detname:', '\n'.join(detname.split('_')))
+    print('detname:', oraw._det_name)
+    print('split detnameid:', '\n'.join(detnameid.split('_')))
 
     calib_const = det.calibconst if hasattr(det,'calibconst') else None
     print('det.calibconst', calib_const)
@@ -75,10 +78,10 @@ def test_raw(fname):
 
     logger.info('XXX call calib_constants')
 
-    pedestals, _ = calib_constants(detname, exp=expname, ctype='pedestals',    run=runnum)
-    gain, _      = calib_constants(detname, exp=expname, ctype='pixel_gain',   run=runnum)
-    rms, _       = calib_constants(detname, exp=expname, ctype='pixel_rms',    run=runnum)
-    status, _    = calib_constants(detname, exp=expname, ctype='pixel_status', run=runnum)
+    pedestals, _ = calib_constants(detnameid, exp=expname, ctype='pedestals',    run=runnum)
+    gain, _      = calib_constants(detnameid, exp=expname, ctype='pixel_gain',   run=runnum)
+    rms, _       = calib_constants(detnameid, exp=expname, ctype='pixel_rms',    run=runnum)
+    status, _    = calib_constants(detnameid, exp=expname, ctype='pixel_status', run=runnum)
 
     logger.info(info_ndarr(pedestals, 'pedestals'))
     logger.info(info_ndarr(gain,      'gain     '))
