@@ -91,6 +91,8 @@ class CGWMain(QWZMQListener):
         #self.set_tool_tips()
         #self.connect_signals_to_slots()
         #self.move(self.pos()) # + QPoint(self.width()+5, 0))
+        self.set_buts_enabled()
+
 
     def connect_signals_to_slots(self):
         pass

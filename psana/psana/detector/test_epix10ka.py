@@ -13,9 +13,10 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
 #----------
 #fname0 = '/reg/neh/home/cpo/git/psana_cpo/epix.xtc2'
 #fname1 = '/reg/neh/home/cpo/git/psana_cpo/epix_2seg.xtc2'
-fname0 = '/reg/g/psdm/detector/data2_test/xtc/data-mfxc00318-r0013-epix10kaquad-e000005.xtc2'
-fname1 = '/reg/g/psdm/detector/data2_test/xtc/data-mfxc00318-r0013-epix10kaquad-e000005-seg1and3.xtc2'
-fname2 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2'
+#fname0 = '/reg/g/psdm/detector/data2_test/xtc/data-mfxc00318-r0013-epix10kaquad-e000005.xtc2'
+#fname1 = '/reg/g/psdm/detector/data2_test/xtc/data-mfxc00318-r0013-epix10kaquad-e000005-seg1and3.xtc2'
+fname0 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2'
+fname1 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005-seg1and3.xtc2'
 
 #----------
 
@@ -53,9 +54,10 @@ def test_raw(fname):
     orun = next(ds.runs())
     det = orun.Detector('epix10k2M')
 
-    print('dir(orun):', dir(orun))
+    #print('dir(orun):', dir(orun))
+    #print('dir(det):', dir(det))
 
-    if False: print_det_raw(det)
+    #if True: print_det_raw(det)
 
     oraw = det.raw
     detname = oraw._uniqueid
@@ -124,7 +126,6 @@ if __name__ == "__main__":
     tname = args.tname
     if   tname=='0': test_raw(fname0)
     elif tname=='1': test_raw(fname1)
-    elif tname=='2': test_raw(fname2)
     else: logger.warning('NON-IMPLEMENTED TEST: %s' % tname)
 
     sys.exit('END OF %s' % SCRNAME)

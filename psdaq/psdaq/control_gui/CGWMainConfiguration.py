@@ -83,6 +83,8 @@ class CGWMainConfiguration(QGroupBox):
         self.type_old = None
         self.set_config_type('init')
 
+        self.set_buts_enabled()
+
 #--------------------
 
     def set_tool_tips(self):
@@ -102,7 +104,6 @@ class CGWMainConfiguration(QGroupBox):
         from psdaq.control_gui.Styles import style
         self.setStyleSheet(style.qgrbox_title)
         self.but_edit.setFixedWidth(60)
-        self.set_buts_enabled()
 
         #self.layout().setContentsMargins(0,0,0,0)
         #self.setMinimumWidth(350)
