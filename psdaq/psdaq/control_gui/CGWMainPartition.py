@@ -77,9 +77,7 @@ class CGWMainPartition(QGroupBox):
         #self.but_display.clicked.connect(self.on_but_display)
 
         self.w_select = None
-        self.state = None
         self.w_display = None
-
         self.set_buts_enabled()
 
 #--------------------
@@ -123,13 +121,14 @@ class CGWMainPartition(QGroupBox):
         #    logger.debug('%s %s is %s selected' % (name.ljust(10), alias.ljust(10), {False:'not', True:'   '}[state]))
 
         #parent=self,
+
         w = QWPopupTableCheck(tableio=list2d, title_h=self.TABTITLE_H,\
-                              do_ctrl=(self.state=='unallocated'),\
+                              do_ctrl=self.do_ctrl,\
                               win_title='Select partition',\
                               do_edit=False, is_visv=False, do_frame=True)
 
-        if self.state!='unallocated':
-            w.setToolTip('Processes control is only available\nin the state UNALLOCATED')
+        if not self.do_ctrl:
+            w.setToolTip('Processes control is only available\nin the state UNALLOCATED or RESET')
 
         #w.move(QCursor.pos()+QPoint(20,10))
         w.move(self.mapToGlobal(self.but_select.pos()) + QPoint(5, 22)) # (5,22) offset for frame
@@ -203,14 +202,13 @@ class CGWMainPartition(QGroupBox):
         """
         s = cp.s_state
         logger.info('set_buts_enabled for state "%s"' % s)
-        self.state = state = s.lower() if s is not None else 'None'
+        state = s.lower() if s is not None else 'None'
+        self.do_ctrl = enabled = (state in ('reset','unallocated'))
 
-        part_select = state in ('reset','unallocated')
+        self.but_select.setEnabled(enabled)
+        self.but_show.setEnabled(not enabled)
 
-        self.but_select.setEnabled(part_select)
-        self.but_show.setEnabled(not part_select)
-
-        if part_select and self.w_display is not None:
+        if enabled and self.w_display is not None:
             self.w_display.close()
             self.w_display = None
 
