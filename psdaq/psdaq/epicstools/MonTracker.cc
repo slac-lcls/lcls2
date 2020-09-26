@@ -161,7 +161,7 @@ bool MonTracker::getComplete(ProviderType providerType, const std::string& reque
   if (status == std::future_status::ready) {
     _strct = ft.get();
     // Sending the onConnect message after the get; most users expect the data to be available on connect.
-    //this->onConnect();
+    onConnect();
     return true;
   } else {
     std::cerr << "Timeout getting the value of PV " << name() << "\n";
@@ -190,17 +190,19 @@ void MonTracker::process(const pvac::MonitorEvent& evt)
       break;
     case pvac::MonitorEvent::Disconnect:
       std::cout<<"Disconnect "<<_name<<"\n";
+      onDisconnect();
       break;
     case pvac::MonitorEvent::Data:
     {
       unsigned n;
       for(n=0; n<2 && _mon.poll(); n++) {
-        pvd::PVField::const_shared_pointer fld(_mon.root->getSubField("value"));
-        if(!fld)
-          fld = _mon.root;
+        //pvd::PVField::const_shared_pointer fld(_mon.root->getSubField("value"));
+        //if(!fld)
+        //  fld = _mon.root;
         //std::cout<<"Event "<<_name<<" "<<fld
         //         <<" Changed:"<<_mon.changed
         //         <<" overrun:"<<_mon.overrun<<"\n";
+        _strct = _mon.root;
         updated();
       }
       if(n==2) {
@@ -209,7 +211,7 @@ void MonTracker::process(const pvac::MonitorEvent& evt)
       } else if(n==0) {
         std::cerr<<"Spurious Data event "<<_name<<"\n";
       }
+      break;
     }
-    break;
   }
 }

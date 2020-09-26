@@ -67,6 +67,7 @@ public:
   enum ProviderType { CA, PVA };
 
   const std::string& name() const { return _name; }
+  bool connected() const { return _connected; }
 
   virtual void getDone (const pvac::GetEvent &evt) OVERRIDE FINAL;
   virtual void connectEvent (const pvac::ConnectEvent &evt) OVERRIDE FINAL;
