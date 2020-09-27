@@ -77,7 +77,6 @@ EpicsArchMonitor::~EpicsArchMonitor()
       logging::error("EpicsArchMonitor()::EpicsMonitorPv::release(%s (%s)) failed",
                      epicsPvCur.getPvDescription().c_str(), epicsPvCur.getPvName().c_str());
   }
-  EpicsMonitorPv::shutdown();
 }
 
 void EpicsArchMonitor::close()
@@ -188,9 +187,6 @@ int EpicsArchMonitor::_setupPvList(const Pds::PvConfigFile::TPvList& vPvList,
   if (vPvList.size() >= iMaxNumPv)
     printf("EpicsArchMonitor::_setupPvList(): Number of PVs (%zd) has reached capacity (%d), "
            "some PVs in the list were skipped.\n", vPvList.size(), iMaxNumPv);
-
-  if (EpicsMonitorPv::prepare())
-    return 1;
 
   for (unsigned iPvName = 0; iPvName < vPvList.size(); iPvName++)
   {

@@ -2,11 +2,11 @@ platform = '0'
 username = 'lcls2'
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
-conda_rel = 'ps-3.1.11'
+conda_rel = 'ps-3.1.16'
 
 shelf = '2'
 ip_addr = '10.0.'+shelf
-collect_host = 'drp-tst-acc06'
+collect_host = 'drp-tst-acc05'
 groups = '0 7'
 hutch = 'tst'
 

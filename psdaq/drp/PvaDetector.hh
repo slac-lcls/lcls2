@@ -19,7 +19,7 @@ class PvaDetector;
 class PvaMonitor : public Pds_Epics::PVBase
 {
 public:
-    PvaMonitor(const char* channelName, PvaDetector& det) : Pds_Epics::PVBase(channelName), m_pvaDetector(det) {}
+    PvaMonitor(const char* channelName, PvaDetector& det, const char* provider="pva") : Pds_Epics::PVBase(provider, channelName), m_pvaDetector(det) {}
     void printStructure();
     XtcData::VarDef get(size_t& payloadSize);
     void updated() override;

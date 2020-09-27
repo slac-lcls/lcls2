@@ -13,7 +13,6 @@
 #include "PVMonitorCb.hh"
 
 namespace pvd = epics::pvData;
-namespace pva = epics::pvAccess;
 
 namespace Pds_Epics {
 
@@ -56,8 +55,6 @@ class MonTracker : public pvac::ClientChannel::ConnectCallback,
                    public PVMonitorCb
 {
 public:
-  static int prepare();
-  static void shutdown();
   static void close();
 public:
   POINTER_DEFINITIONS(MonTracker);

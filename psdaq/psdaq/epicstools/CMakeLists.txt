@@ -1,5 +1,6 @@
 
 add_library(epicstools SHARED
+    EpicsProviders.cc
     EpicsPVA.cc
     MonTracker.cc
     PvServer.cc

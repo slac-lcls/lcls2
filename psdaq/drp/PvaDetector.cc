@@ -80,6 +80,8 @@ XtcData::VarDef PvaMonitor::get(size_t& payloadSize)
                           type);
             switch (scalar->getScalarType()) {
                 case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int32_t >(data, length); };  break;
+                case pvd::pvShort:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int16_t >(data, length); };  break;
+                case pvd::pvUShort: getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint16_t >(data, length); };  break;
                 case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int64_t >(data, length); };  break;
                 case pvd::pvUInt:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint32_t>(data, length); };  break;
                 case pvd::pvULong:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint64_t>(data, length); };  break;
@@ -109,6 +111,8 @@ XtcData::VarDef PvaMonitor::get(size_t& payloadSize)
                           type, length);
             switch (array->getElementType()) {
                 case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int32_t >(data, length); };  break;
+                case pvd::pvShort:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int16_t >(data, length); };  break;
+                case pvd::pvUShort: getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint16_t >(data, length); };  break;
                 case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int64_t >(data, length); };  break;
                 case pvd::pvUInt:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint32_t>(data, length); };  break;
                 case pvd::pvULong:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint64_t>(data, length); };  break;
@@ -313,7 +317,7 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
         m_drp.exposer()->RegisterCollectable(m_exporter);
     }
 
-    m_pvaMonitor = std::make_unique<PvaMonitor>(m_pvName.c_str(), *this);
+    m_pvaMonitor = std::make_unique<PvaMonitor>(m_pvName.c_str(), *this, m_para->kwargs["provider"].c_str());
 
     auto start = std::chrono::steady_clock::now();
     while(true) {
@@ -963,6 +967,7 @@ int main(int argc, char* argv[])
     para.detName = para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
+    para.kwargs["provider"] = std::string("pva"); // det default
     get_kwargs(para, kwargs_str);
 
     std::string pvName;
@@ -974,9 +979,9 @@ int main(int argc, char* argv[])
     }
 
     para.maxTrSize = 256 * 1024;
-    para.nTrBuffers = 8; // Power of 2 greater than the maximum number of
-                         // transitions in the system at any given time, e.g.,
-                         // MAX_LATENCY * (SlowUpdate rate), in same units
+    para.nTrBuffers = 32; // Power of 2 greater than the maximum number of
+                          // transitions in the system at any given time, e.g.,
+                          // MAX_LATENCY * (SlowUpdate rate), in same units
     try {
         Py_Initialize(); // for use by configuration
         Drp::PvaApp app(para, pvName);

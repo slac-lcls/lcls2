@@ -1,10 +1,10 @@
 #include "MonTracker.hh"
+#include "EpicsProviders.hh"
 
 #include <epicsGuard.h>
 
 #include <pv/pvData.h>
-#include <pv/configuration.h>
-#include <pv/caProvider.h>
+#include <pv/createRequest.h>
 
 #include <exception>
 
@@ -73,35 +73,6 @@ void WorkQueue::run()
 }
 
 Pds_Epics::WorkQueue MonTracker::_monwork;
-pvac::ClientProvider MonTracker::_caProvider;
-pvac::ClientProvider MonTracker::_pvaProvider;
-
-int MonTracker::prepare()
-{
-  // Do the following only once per process instance
-  static bool prepared = false;
-  if (!prepared) {
-    prepared = true;
-
-    // explicitly select configuration from process environment
-    pva::Configuration::shared_pointer configuration(pva::ConfigurationBuilder()
-                                                     .push_env()
-                                                     .build());
-    // "pva" provider automatically in registry
-    // add "ca" provider to registry
-    epics::pvAccess::ca::CAClientFactory::start();
-
-    _caProvider  = pvac::ClientProvider("ca",  configuration);
-    _pvaProvider = pvac::ClientProvider("pva", configuration);
-  }
-  return 0;
-}
-
-void MonTracker::shutdown()
-{
-  _caProvider.disconnect();
-  _pvaProvider.disconnect();
-}
 
 void MonTracker::close()
 {
@@ -151,8 +122,8 @@ bool MonTracker::getComplete(ProviderType providerType, const std::string& reque
   }
 
   switch (providerType) {
-    case CA:   _channel = _caProvider.connect(_name);   break;
-    case PVA:  _channel = _pvaProvider.connect(_name);  break;
+    case CA:   _channel = EpicsProviders::ca ().connect(_name);  break;
+    case PVA:  _channel = EpicsProviders::pva().connect(_name);  break;
   }
   _channel.addConnectListener(this);
 

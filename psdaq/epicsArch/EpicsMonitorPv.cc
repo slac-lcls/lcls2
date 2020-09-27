@@ -79,7 +79,7 @@ namespace Pds
       case pvd::scalar: {
         const pvd::Scalar* scalar = static_cast<const pvd::Scalar*>(fields[i].get());
         XtcData::Name::DataType type = xtype[scalar->getScalarType()];
-        def.NameVec.push_back(XtcData::Name(names[i].c_str(), type)); // Name must resolve to a name that psana recognizes: i.e. 'value'
+        def.NameVec.push_back(XtcData::Name(name().c_str(), type)); // Name must resolve to a name that psana recognizes: i.e. 'value'
         payloadSize = XtcData::Name::get_element_size(type);
         _pData = calloc(1, payloadSize);
         logging::info("PV name: %s  %s type: '%s' (%d)",
@@ -116,7 +116,7 @@ namespace Pds
         const pvd::ScalarArray* array = static_cast<const pvd::ScalarArray*>(fields[i].get());
         XtcData::Name::DataType type = xtype[array->getElementType()];
         size_t nelem = _strct->getSubField<pvd::PVArray>(names[i].c_str())->getLength();
-        def.NameVec.push_back(XtcData::Name(names[i].c_str(), type, 1)); // Name must resolve to a name that psana recognizes: i.e. 'value'
+        def.NameVec.push_back(XtcData::Name(name().c_str(), type, 1)); // Name must resolve to a name that psana recognizes: i.e. 'value'
         payloadSize = nelem * XtcData::Name::get_element_size(type);
         _pData = calloc(1, payloadSize);
         logging::info("PV name: %s  %s type: %s (%d)  length: %zd",
