@@ -41,6 +41,8 @@ def test_standard():
     for run in ds.runs():
         det = run.Detector('xppcspad')
         edet = run.Detector('HX2:DVD:GCC:01:PMON')
+        infodet = run.Detector('epicsinfo')
+        assert 'HX2:DVD:GCC:01:PMON' in infodet.epicsinfo()
         for evt in run.events():
             sendbuf += 1
             padarray = vals.padarray

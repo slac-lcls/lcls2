@@ -3,6 +3,7 @@
 
 from .test_detectors        import *
 
+from .misc_detectors        import *
 from .bld                   import *
 from .envstore              import *
 from hsd                    import *

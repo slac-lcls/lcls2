@@ -20,7 +20,7 @@ using namespace XtcData;
 
 #define BUFSIZE 0x4000000
 
-enum MyNamesId {HsdRaw,HsdFex,Cspad,Epics,Scan,RunInfo,NumberOf};
+enum MyNamesId {HsdRaw,HsdFex,Cspad,Epics,EpicsInfo,Scan,RunInfo,NumberOf};
 
 class RunInfoDef:public VarDef
 {
@@ -527,6 +527,25 @@ void addEpicsData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned 
     epicsExample(xtc, namesLookup, namesId);
 }
 
+void addEpicsInfo(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
+    Alg xppEpicsInfoAlg("epicsinfo",1,0,0);
+    NamesId namesId(nodeId,MyNamesId::EpicsInfo+MyNamesId::NumberOf*segment);
+    Names& epicsInfoNames = *new(xtc) Names("epicsinfo", xppEpicsInfoAlg, "epicsinfo","detnum1234", namesId, segment);
+    VarDef epicsInfo;
+    epicsInfo.NameVec.push_back({"keys",Name::CHARSTR,1});
+    epicsInfo.NameVec.push_back({"HX2:DVD:GCC:01:PMON",Name::CHARSTR,1});
+    epicsInfo.NameVec.push_back({"HX2:DVD:GPI:01:PMON",Name::CHARSTR,1});
+    epicsInfoNames.add(xtc, epicsInfo);
+    namesLookup[namesId] = NameIndex(epicsInfoNames);
+    // add dictionary of information for each epics detname above.
+    // first name is required to be "keys".  keys and values
+    // are delimited by "\n".
+    CreateData epicsinfo(xtc, namesLookup, namesId);
+    epicsinfo.set_string(0, "epicsname""\n""otherfieldname");
+    epicsinfo.set_string(1, "HX2:DVD:GCC:01:PMON""\n""hello1");
+    epicsinfo.set_string(2, "HX2:DVD:GPI:01:PMON""\n""hello2");
+}
+
 void addScanNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
     Alg scanAlg("raw",2,0,0);
     NamesId namesId(nodeId,MyNamesId::Scan+MyNamesId::NumberOf*segment);
@@ -626,6 +645,7 @@ int main(int argc, char* argv[])
     // only add epics and scan info to the first stream
     if (starting_segment==0) {
         addEpicsNames(config.xtc, namesLookup, nodeid1, iseg); 
+        addEpicsInfo(config.xtc, namesLookup, nodeid1, iseg); 
         addScanNames(config.xtc, namesLookup, nodeid1, iseg);
     }
     for (unsigned iseg=0; iseg<nSegments; iseg++) {
