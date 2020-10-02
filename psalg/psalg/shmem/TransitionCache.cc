@@ -5,13 +5,15 @@ using namespace XtcData;
 using namespace psalg::shmem;
 
 //#define DBUG
+static const int MAX_SLOW_UPDATES = 3;
 
 TransitionCache::TransitionCache(char* p, size_t sz, unsigned nbuff) :
   _pShm(p),
   _szShm(sz),
   _numberofTrBuffers(nbuff),
   _not_ready(0),
-  _allocated(new unsigned[nbuff])
+  _allocated(new unsigned[nbuff]),
+  _nSlowUpdates(0)
 {
   sem_init(&_sem, 0, 1);
   memset(_allocated, 0, _numberofTrBuffers*sizeof(unsigned));
@@ -74,8 +76,13 @@ std::stack<int> TransitionCache::current() {
 //
 int  TransitionCache::allocate  (TransitionId::Value id) {
   int result = -1;
+  TransitionId::Value oid = _cachedTr.empty() ? 
+    TransitionId::Reset :
+    reinterpret_cast<const Dgram*>(_pShm + _szShm*_cachedTr.top())->service();
 #ifdef DBUG
-  printf("allocate(%s)\n",TransitionId::name(id));
+  printf("allocate(%s) [old %s]\n",
+         TransitionId::name(id),
+         TransitionId::name(oid));
   for(unsigned i=0; i<_numberofTrBuffers; i++)
     printf("%08x ",_allocated[i]);
   printf("\n");
@@ -86,13 +93,14 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
   for(std::list<int>::iterator it=_freeTr.begin();
       it!=_freeTr.end(); it++)
     if (_allocated[*it]==0) {
+
       unsigned ibuffer = *it;
 
       //
       //  Cache the transition for any clients
       //    which may not be listening (yet)
       //
-      if ( _cachedTr.empty() ) {
+      if ( _cachedTr.empty() ) {  // First transition
         if (id==TransitionId::Configure) {
           _freeTr.remove(ibuffer);
           _cachedTr.push(ibuffer);
@@ -105,34 +113,37 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
         }
       }
       else {
-        const Dgram& odg = *reinterpret_cast<const Dgram*>(_pShm + _szShm*_cachedTr.top());
-        TransitionId::Value oid = odg.service();
-        if (id == oid+2) {       // Next begin transition
+        //  A limited # of SlowUpdates are cached
+        if (id == TransitionId::SlowUpdate) {
+#ifdef DBUG
+          printf("allocate nSlowUpdates %d\n",_nSlowUpdates);
+#endif
+          if (_nSlowUpdates < MAX_SLOW_UPDATES) {
+            ++_nSlowUpdates;
+            _freeTr.remove(ibuffer);  // Fill a free buffer
+            _cachedTr.push(ibuffer);  // and push it onto the cache
+          }
+        }
+        else if (id == oid+2) {       // Next begin transition
           _freeTr.remove(ibuffer);
           _cachedTr.push(ibuffer);
         }
         else if (id == oid+1) {  // Matching end transition
-          int ib=_cachedTr.top();
-          _cachedTr.pop();
+          int ib=_cachedTr.top();  // Return the matching begin tr
+          _cachedTr.pop();         // to the free stack
           _freeTr.push_back(ib);
         }
-        else if (oid == TransitionId::SlowUpdate && id == TransitionId::SlowUpdate) {
-          // SlowUpdate -> SlowUpdate: replace top entry
-          int ib=_cachedTr.top();       // Release previous SlowUpdate,
-          _cachedTr.pop();              //   which may have _allocated[ib] != 0
-          _freeTr.push_back(ib);        //   so must not overwrite it
-
-          _freeTr.remove(ibuffer);      // Allocate next SlowUpdate buffer,
-          _cachedTr.push(ibuffer);      //   which is free to be filled
-        }
-        else if (oid == TransitionId::SlowUpdate && id == TransitionId::Disable) {
-          // SlowUpdate -> Disable: pop two entries
-          int ib=_cachedTr.top();
-          _cachedTr.pop();
-          _freeTr.push_back(ib);
-          ib=_cachedTr.top();
-          _cachedTr.pop();
-          _freeTr.push_back(ib);
+        else if (id  == TransitionId::Disable) {
+          //  Free all the SlowUpdates and the matching Enable
+          while (oid > TransitionId::BeginStep) {
+            int ib=_cachedTr.top();
+            _cachedTr.pop();
+            _freeTr.push_back(ib);
+            //  Special count of SlowUpdates returned to free stack (no clients)
+            if (oid == TransitionId::SlowUpdate && _allocated[ib]==0)
+              --_nSlowUpdates;
+            oid = reinterpret_cast<const Dgram*>(_pShm + _szShm*_cachedTr.top())->service();
+          }
         }
         else {  // unexpected transition
           fprintf(stderr, "Unexpected transition for TransitionCache: tr[%s]!=[%s] or [%s]\n",
@@ -254,8 +265,18 @@ bool TransitionCache::deallocate(int ibuffer, unsigned client) {
     if ( _allocated[ibuffer]==v )
       printf("_deallocate[%d,%d] %08x no change\n",ibuffer,client,v);
 #endif
-    _allocated[ibuffer]=v; }
-
+    _allocated[ibuffer]=v; 
+    if (v==0) {
+      const Dgram& odg = *reinterpret_cast<const Dgram*>(_pShm + _szShm*ibuffer);
+      TransitionId::Value oid = odg.service();
+      if (oid == TransitionId::SlowUpdate) {
+        --_nSlowUpdates;
+#ifdef DBUG
+        fprintf(stderr,"deallocate nSlowUpdates %d\n",_nSlowUpdates);
+#endif
+      }
+    }
+  }
   if (_not_ready & (1<<client)) {
     for(unsigned i=0; i<_numberofTrBuffers; i++)
       if (_allocated[i] & (1<<client)) {

@@ -228,9 +228,12 @@ XtcMonitorServer::Result XtcMonitorServer::events(Dgram* dg)
     int itr = _transitionCache->allocate(trid);
 
     if (itr < 0) {
+      return Handled;
+      /**  This is no longer an error
       printf("No buffers available for transition!\n");
       _transitionCache->dump();
       abort();
+      **/
     }
 
     int ibuffer = itr + _numberOfEvBuffers;

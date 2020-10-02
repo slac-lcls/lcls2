@@ -39,6 +39,7 @@ namespace psalg {
       unsigned*        _allocated; // bitmask of clients that are processing
       std::stack <int> _cachedTr;  // set of transitions for the current DAQ state
       std::list  <int> _freeTr;    // complement of _cachedTr
+      int              _nSlowUpdates;
     };
   };
 };
