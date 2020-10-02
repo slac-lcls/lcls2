@@ -78,6 +78,7 @@ class CGWMainPartition(QGroupBox):
 
         self.w_select = None
         self.w_display = None
+        self.w_dispopup = None
         self.set_buts_enabled()
 
 #--------------------
@@ -122,23 +123,25 @@ class CGWMainPartition(QGroupBox):
 
         #parent=self,
 
-        w = QWPopupTableCheck(tableio=list2d, title_h=self.TABTITLE_H,\
+        self.w_dispopup = QWPopupTableCheck(tableio=list2d, title_h=self.TABTITLE_H,\
                               do_ctrl=self.do_ctrl,\
                               win_title='Select partition',\
                               do_edit=False, is_visv=False, do_frame=True)
 
         if not self.do_ctrl:
-            w.setToolTip('Processes control is only available\nin the state UNALLOCATED or RESET')
+            self.w_dispopup.setToolTip('Processes control is only available\nin the state UNALLOCATED or RESET')
 
-        #w.move(QCursor.pos()+QPoint(20,10))
-        w.move(self.mapToGlobal(self.but_select.pos()) + QPoint(5, 22)) # (5,22) offset for frame
-        resp=w.exec_()
+        #self.w_dispopup.move(QCursor.pos()+QPoint(20,10))
+        self.w_dispopup.move(self.mapToGlobal(self.but_select.pos()) + QPoint(5, 22)) # (5,22) offset for frame
+        resp=self.w_dispopup.exec_()
 
-        logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
+        logger.info('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
 
         if resp!=QDialog.Accepted: return
 
-        list2d = w.table_out()
+        list2d = self.w_dispopup.table_out()
+
+        self.w_dispopup = None
 
         if self.w_display is not None:
             self.w_display.fill_table_model(tableio=list2d,\
@@ -211,6 +214,12 @@ class CGWMainPartition(QGroupBox):
         if enabled and self.w_display is not None:
             self.w_display.close()
             self.w_display = None
+
+        #if self.w_dispopup is not None:
+        #    _, list2d = get_platform() # [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
+        #    self.w_dispopup.fill_table_model(tableio=list2d,\
+        #                                    title_h=self.TABTITLE_H,\
+        #                                    do_edit=False, is_visv=False, do_ctrl=False, do_frame=True)
 
 #--------------------
 

@@ -31,6 +31,7 @@ from PyQt5.QtCore import Qt
 from psdaq.control_gui.Styles import style
 #from psdaq.control_gui.QWTableOfCheckBoxes import QWTableOfCheckBoxes
 from psdaq.control_gui.CGWPartitionTable import CGWPartitionTable
+from psdaq.control_gui.CGJsonUtils import get_platform #, set_platform, list_active_procs
 
 #------------------------------
 
@@ -41,6 +42,7 @@ class QWPopupTableCheck(QDialog) :
         parent = kwargs.get('parent', None)
         QDialog.__init__(self, parent)
  
+        self.kwargs = kwargs
         win_title = kwargs.get('win_title', None)
         if win_title is not None : self.setWindowTitle(win_title)
 
@@ -51,13 +53,17 @@ class QWPopupTableCheck(QDialog) :
         self.do_ctrl  = kwargs.get('do_ctrl', True)
         self.do_frame = kwargs.get('do_frame', True)
 
+        self.but_update = QPushButton('&Update') 
         self.but_cancel = QPushButton('&Cancel') 
         self.but_apply  = QPushButton('&Apply') 
         
+        self.but_update.clicked.connect(self.on_but_update)
         self.but_cancel.clicked.connect(self.onCancel)
         self.but_apply.clicked.connect(self.onApply)
 
         self.hbox = QHBoxLayout()
+        self.hbox.addWidget(self.but_update)
+        self.hbox.addStretch(1)
         self.hbox.addWidget(self.but_cancel)
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.but_apply)
@@ -83,9 +89,12 @@ class QWPopupTableCheck(QDialog) :
         self.layout().setContentsMargins(0,0,0,0)
 
         self.setMinimumWidth(100)
+        self.but_update.setFixedWidth(70)
         self.but_cancel.setFixedWidth(70)
         self.but_apply .setFixedWidth(70)
 
+        self.but_update.setStyleSheet(styleGray)
+        self.but_update.setFocusPolicy(Qt.NoFocus)
         self.but_cancel.setFocusPolicy(Qt.NoFocus)
         self.but_cancel.setStyleSheet(styleGray)
         self.but_apply.setStyleSheet(styleGray)
@@ -106,6 +115,32 @@ class QWPopupTableCheck(QDialog) :
           self.but_apply .setIcon(icon.icon_button_ok)
         except : pass
  
+
+    def on_but_update(self):
+        logger.warning('on_but_update')
+        #self.done(1)
+
+        _, list2d = get_platform() # [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
+        print('XXX list2d\n',list2d)
+
+        self.kwargs['tableio'] = list2d
+        wtab = CGWPartitionTable(**self.kwargs)
+
+        #self.vbox.removeWidget(self.hbox)
+        self.vbox.replaceWidget(self.wtab, wtab)
+        #self.vbox.addLayout(self.hbox)
+
+        self.wtab.close()
+        del self.wtab
+        self.wtab = wtab
+
+        self.set_style()
+
+        #list2d_active = list_active_procs(list2d)
+
+        #self.wtab.fill_table_model(tableio=list2d,\
+        #                           title_h=self.kwargs.get('title_h', 'Some title'),\
+        #                           do_edit=False, is_visv=False, do_ctrl=self.do_ctrl, do_frame=True)
 
     def onCancel(self):
         logger.debug('onCancel')
