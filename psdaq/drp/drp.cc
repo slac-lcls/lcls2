@@ -15,7 +15,7 @@ void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
     while (getline(ss, kwarg, ',')) {
         kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
         auto pos = kwarg.find("=", 0);
-        if (!pos) {
+        if (pos == std::string::npos) {
             logging::critical("Keyword argument with no equal sign");
             throw "drp.cc error: keyword argument with no equal sign: "+kwargs_str;
         }

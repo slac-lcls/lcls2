@@ -102,7 +102,7 @@ BldFactory::BldFactory(const char* name,
             mcaddr = 0xefff1800;
         }
         else {
-            mcaddr = 0xefff1900; 
+            mcaddr = 0xefff1900;
         }
         tscorr = 0;
         _alg    = XtcData::Alg("raw", 2, 0, 0);
@@ -970,7 +970,7 @@ static void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
     std::string::size_type pos = 0;
     while (getline(ss, kwarg, ',')) {
         pos = kwarg.find("=", pos);
-        if (!pos) {
+        if (pos == std::string::npos) {
             logging::critical("Keyword argument with no equal sign");
             throw "drp.cc error: keyword argument with no equal sign: "+kwargs_str;
         }
