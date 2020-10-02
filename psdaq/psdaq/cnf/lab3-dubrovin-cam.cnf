@@ -5,7 +5,7 @@ hutch, user, password = ('tst', 'tstopr', 'pcds')
 
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 
-collect_host = 'drp-tst-acc06'
+collect_host = 'drp-tst-dev009'
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -20,13 +20,13 @@ collect_host = 'drp-tst-acc06'
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- {                        id:'partca-'+platform, env:epics_env, cmd:'partca DAQ:LAB2:PART:'+platform},
+ {                        id:'groupca',flags:'s', env:epics_env, cmd:'groupca DAQ:LAB2 2 1'},
  {                        id:'procstat', flags:'p', cmd:'procstat p'+platform+'.cnf.last'},
- { host: collect_host,    id:'control', flags:'spu', env:epics_env, cmd:'control -v -C BEAM -P '+hutch+' -B DAQ:LAB2 -x 2 --user '+user+' --password '+password},
- {                        flags:'xp', id:'control_gui', cmd:'control_gui -t 30000 -H'+collect_host+' --user '+user+' --password '+password+' -E'},
- #{                        flags:'xp', id:'control_gui', cmd:'control_gui -H'+collect_host+' -L logs'},
+ { host: collect_host,    id:'control', flags:'sxpu', env:epics_env, cmd:'control -v -C BEAM -P '+hutch+' -B DAQ:LAB2 -x 2 --user '+user+' --password '+password},
+ {                        flags:'xp', id:'control_gui', cmd:'control_gui -E -t 30000 -l WARNING -H '+collect_host},
  # trigger event builder
- { host: 'drp-tst-dev011', id:'teb1', flags:'spu', cmd:'teb -C '+collect_host},
+ { host: 'drp-tst-dev009', id:'teb1', flags:'xpu', cmd:'teb -P '+hutch+' -C '+collect_host},
  # cameras
- { host: 'drp-tst-dev011', id:'cam1_0', flags:'spux', cmd:'drp -l 0xf -D fakecam -d /dev/datadev_1  -P '+hutch+' -C '+collect_host}
+ { host: 'drp-tst-dev009', id:'cam_0', flags:'sxpu', cmd:'drp -o ~caf/data -l 0x4 -D fakecam -d /dev/datadev_1 -P '+hutch+' -C '+collect_host},
+ { host: 'drp-tst-dev009', id:'cam_1', flags:'sxpu', cmd:'drp -o ~caf/data -l 0x8 -D fakecam -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
 ]
