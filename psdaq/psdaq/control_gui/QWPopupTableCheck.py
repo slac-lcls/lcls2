@@ -104,7 +104,7 @@ class QWPopupTableCheck(QDialog) :
         self.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.MinimumExpanding)
 
         self.wtab.setFixedHeight(self.wtab.height()+2)
-        self.setFixedWidth(self.wtab.width()+2)
+        self.setFixedWidth(max(self.wtab.width(),285)+2)
         
 
     def setIcons(self):
@@ -117,30 +117,20 @@ class QWPopupTableCheck(QDialog) :
  
 
     def on_but_update(self):
-        logger.warning('on_but_update')
-        #self.done(1)
-
+        logger.debug('on_but_update')
         _, list2d = get_platform() # [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
-        print('XXX list2d\n',list2d)
+        logger.debug('list2d\n',list2d)
 
         self.kwargs['tableio'] = list2d
         wtab = CGWPartitionTable(**self.kwargs)
-
-        #self.vbox.removeWidget(self.hbox)
         self.vbox.replaceWidget(self.wtab, wtab)
+        #self.vbox.removeWidget(self.hbox)
         #self.vbox.addLayout(self.hbox)
-
         self.wtab.close()
         del self.wtab
         self.wtab = wtab
-
         self.set_style()
 
-        #list2d_active = list_active_procs(list2d)
-
-        #self.wtab.fill_table_model(tableio=list2d,\
-        #                           title_h=self.kwargs.get('title_h', 'Some title'),\
-        #                           do_edit=False, is_visv=False, do_ctrl=self.do_ctrl, do_frame=True)
 
     def onCancel(self):
         logger.debug('onCancel')
