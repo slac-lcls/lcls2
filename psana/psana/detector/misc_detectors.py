@@ -24,3 +24,8 @@ class epicsinfo_epicsinfo_1_0_0(DetectorImpl):
                         for k,v in zip(keys,values): self.infodict[n][k]=v
     def __call__(self):
         return self.infodict
+
+class pv_raw_1_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self._add_fields()
