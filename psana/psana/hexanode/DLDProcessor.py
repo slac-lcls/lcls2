@@ -100,7 +100,7 @@ class DLDProcessor :
         # load config & calib constants distributed for detector or from file
         txt_cfg   = None
         txt_calib = None
-        det_consts = CONSTS if CONSTS is not None else DETOBJ.calibconst
+        det_consts = CONSTS if CONSTS is not None else DETOBJ.calibconst if DETOBJ is not None else None
 
         if det_consts is not None :
             txt_cfg,   meta_cfg   = det_consts.get(self.CTYPE_CALIBCFG, None)

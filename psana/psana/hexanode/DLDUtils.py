@@ -55,7 +55,7 @@ def load_config_pars(txt_config, sorter=None, **kwargs) :
     command = load_int(lins[0])
 
     # CLI 'command' argument has higher priority then in configuration file
-    if COMMAND!=1 : command = COMMNAD 
+    if COMMAND!=1 : command = COMMAND 
 
     if command == -1 : return False, None, None, None, None, None, None, None
 
