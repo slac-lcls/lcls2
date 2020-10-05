@@ -10,7 +10,8 @@ epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'+' '+ld_lib_path
 
 hutch = 'tst'
 
-drp_nodes = ['002','003','004','005','008','009','011','013','014','015','017','018']
+#drp_nodes = ['002','003','004','005','008','009','011','013','014','015','017','018']
+drp_nodes = ['004','008','009']
 
 pyxpm_optsdb = '--db https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,tst,PROD -P DAQ:LAB2:XPM:%d'
 pyxpm_opts = '-P DAQ:LAB2:XPM:%d'
@@ -50,15 +51,16 @@ bus  = 0
 svc  = 1                        # 'port' is a reserved word
 pv   = 2
 hsds = [
-    {bus:'1b', svc:29074, pv:'DAQ:LAB2:HSD:DEV07_1B'},
-    {bus:'1a', svc:29076, pv:'DAQ:LAB2:HSD:DEV07_1A'},
-    {bus:'88', svc:29078, pv:'DAQ:LAB2:HSD:DEV07_88'},
-    {bus:'89', svc:29080, pv:'DAQ:LAB2:HSD:DEV07_89'},
-    {bus:'b1', svc:29082, pv:'DAQ:LAB2:HSD:DEV07_B1'},
-    {bus:'b2', svc:29084, pv:'DAQ:LAB2:HSD:DEV07_B2'},
-    {bus:'5e', svc:29086, pv:'DAQ:LAB2:HSD:DEV07_5E'},
-    {bus:'da', svc:29088, pv:'DAQ:LAB2:HSD:DEV07_DA'},
-    {bus:'3d', svc:29090, pv:'DAQ:LAB2:HSD:DEV07_3D'},
+    #{bus:'1b', svc:29074, pv:'DAQ:LAB2:HSD:DEV07_1B'},
+    #{bus:'1a', svc:29076, pv:'DAQ:LAB2:HSD:DEV07_1A'},
+    #{bus:'88', svc:29078, pv:'DAQ:LAB2:HSD:DEV07_88'},
+    #{bus:'89', svc:29080, pv:'DAQ:LAB2:HSD:DEV07_89'},
+    #{bus:'b1', svc:29082, pv:'DAQ:LAB2:HSD:DEV07_B1'},
+    #{bus:'b2', svc:29084, pv:'DAQ:LAB2:HSD:DEV07_B2'},
+    #{bus:'5e', svc:29086, pv:'DAQ:LAB2:HSD:DEV07_5E'},
+    #{bus:'da', svc:29088, pv:'DAQ:LAB2:HSD:DEV07_DA'},
+    #{bus:'3d', svc:29090, pv:'DAQ:LAB2:HSD:DEV07_3D'},
+    {bus:'3e', svc:29092, pv:'DAQ:LAB2:HSD:DEV07_3E'},
 ]
 
 for e in hsds:
