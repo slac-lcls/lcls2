@@ -251,10 +251,18 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     m_lastTid = transitionId;
 
     // Transfer Result damage to the datagram
-    dgram->xtc.damage.increase(result.xtc.damage.value());
-    if (dgram->xtc.damage.value()) {
+    uint16_t damage;
+    if ((transitionId == XtcData::TransitionId::L1Accept)) {
+      dgram->xtc.damage.increase(result.xtc.damage.value());
+      damage = dgram->xtc.damage.value();
+    }
+    else {
+      auto trDgram = m_pool.pgpEvents[index].transitionDgram;
+      trDgram->xtc.damage.increase(result.xtc.damage.value());
+      damage = trDgram->xtc.damage.value();
+    }
+    if (damage) {
         m_damage++;
-        uint16_t damage = dgram->xtc.damage.value();
         while (damage) {
             unsigned dmgType = __builtin_ffsl(damage) - 1;
             damage &= ~(1 << dmgType);
