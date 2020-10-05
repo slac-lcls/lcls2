@@ -56,13 +56,13 @@ namespace Pds {
       std::vector<AppPrm_t> _appPrms;      // Lookup array of application parameters
       std::atomic<uint64_t> _lastFreed;    // PID of last freed batch
       Batch                 _batch;        // The currently being accumulated batch
-      unsigned              _batching;     // Batching flag history
-      std::atomic<uint64_t> _numAllocs;
-      std::atomic<uint64_t> _numFrees;
-      std::atomic<uint64_t> _numInUse;
-      mutable uint64_t      _nAllocs;      // Number of Batch allocates
-      mutable uint64_t      _nFrees;       // Number of Batch frees
-      mutable uint64_t      _nInUse;       // Number of Batch allocates - frees
+      unsigned              _batching;     // Is batching enabled?
+      std::atomic<uint64_t> _numAllocs;    // Number of Batch allocates
+      std::atomic<uint64_t> _numFrees;     // Number of Batch frees
+      std::atomic<uint64_t> _numInUse;     // Number of Batch allocates - frees
+      mutable uint64_t      _nAllocs;      // Run-time monitoring version
+      mutable uint64_t      _nFrees;       // Run-time monitoring version
+      mutable uint64_t      _nInUse;       // Run-time monitoring version
       uint64_t              _waiting;      // State of allocation
       std::atomic<bool>     _terminate;    // Flag for breaking out of the cv wait
     };
@@ -110,6 +110,13 @@ Pds::Eb::Batch* Pds::Eb::BatchManager::fetch(uint64_t pid)
   }
   return &_batch;
 }
+
+// @TODO: This wait could in principle go away if:
+// - the TEB event timeout period is smaller than the latency buffer size
+// - the TebContributor pending queue is changed to hold data Dgram batches
+//   that are similarly constructed (time-wise) as the current Input batches
+// In that case, overwriting the Input RDMA region after the TebContributor post
+// is finished sending the buffer is not an issue.
 
 inline
 Pds::Eb::Batch* Pds::Eb::BatchManager::fetchW(uint64_t pid)
