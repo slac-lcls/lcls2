@@ -20,7 +20,8 @@ setup(
 
        entry_points={
             'console_scripts': [
-                'syslog = psalg.utils.syslog:main',
+                'syslog   = psalg.utils.syslog:main',
+                'daqPipes = psalg.daqPipes.daqPipes:main',
               ]
        },
 )
