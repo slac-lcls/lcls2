@@ -16,7 +16,7 @@ class epicsinfo_epicsinfo_1_0_0(DetectorImpl):
             if hasattr(c,'epicsinfo'):
                 for seg,value in c.epicsinfo.items():
                     names = getattr(value,'epicsinfo')
-                    keys = names.keys.split('\n')
+                    keys = names.keys.split(',')
                     for n in dir(names):
                         if n.startswith('_') or n=='keys': continue
                         if n not in self.infodict: self.infodict[n]={}

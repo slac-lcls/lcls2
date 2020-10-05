@@ -541,9 +541,9 @@ void addEpicsInfo(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned
     // first name is required to be "keys".  keys and values
     // are delimited by "\n".
     CreateData epicsinfo(xtc, namesLookup, namesId);
-    epicsinfo.set_string(0, "epicsname""\n""otherfieldname");
-    epicsinfo.set_string(1, "HX2:DVD:GCC:01:PMON""\n""hello1");
-    epicsinfo.set_string(2, "HX2:DVD:GPI:01:PMON""\n""hello2");
+    epicsinfo.set_string(0, "epicsname"",""otherfieldname");
+    epicsinfo.set_string(1, "HX2:DVD:GCC:01:PMON"",""hello1");
+    epicsinfo.set_string(2, "HX2:DVD:GPI:01:PMON"",""hello2");
 }
 
 void addScanNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
