@@ -16,6 +16,7 @@
 #include <Python.h>
 #include "DataDriver.h"
 #include "RunInfoDef.hh"
+#include "xtcdata/xtc/Damage.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
@@ -29,120 +30,38 @@ using logging = psalg::SysLog;
 
 namespace Drp {
 
-static const XtcData::Name::DataType xtype[] = {
-    XtcData::Name::UINT8 , // pvBoolean
-    XtcData::Name::INT8  , // pvByte
-    XtcData::Name::INT16 , // pvShort
-    XtcData::Name::INT32 , // pvInt
-    XtcData::Name::INT64 , // pvLong
-    XtcData::Name::UINT8 , // pvUByte
-    XtcData::Name::UINT16, // pvUShort
-    XtcData::Name::UINT32, // pvUInt
-    XtcData::Name::UINT64, // pvULong
-    XtcData::Name::FLOAT , // pvFloat
-    XtcData::Name::DOUBLE, // pvDouble
-    XtcData::Name::CHARSTR, // pvString
-};
-
-
-void PvaMonitor::printStructure()
+void PvaMonitor::getVarDef(XtcData::VarDef& varDef)
 {
-    const pvd::StructureConstPtr& structure = _strct->getStructure();
-    const pvd::StringArray& names = structure->getFieldNames();
-    const pvd::FieldConstPtrArray& fields = structure->getFields();
-    for (unsigned i=0; i<names.size(); i++) {
-        logging::info("PV Name: %s  FieldName: %s  FieldType: %s",
-                      name().c_str(), names[i].c_str(), pvd::TypeFunc::name(fields[i]->getType()));
+    std::string             name = "value";
+    XtcData::Name::DataType type;
+    size_t                  size;
+    size_t                  rank;
+    getParams(name, type, size, rank);
+
+    varDef.NameVec.push_back(XtcData::Name(name.c_str(), type, rank));
+}
+
+void PvaMonitor::onConnect()
+{
+    logging::info("%s connected\n", name().c_str());
+
+    if (m_para.verbose) {
+        printStructure();
     }
 }
 
-XtcData::VarDef PvaMonitor::get(size_t& payloadSize)
+void PvaMonitor::onDisconnect()
 {
-    XtcData::VarDef vd;
-    const pvd::StructureConstPtr& structure = _strct->getStructure();
-    const pvd::StringArray& names = structure->getFieldNames();
-    const pvd::FieldConstPtrArray& fields = structure->getFields();
-    unsigned i;
-    for (i=0; i<fields.size(); i++) {
-        if (names[i] == "value")  break;
-    }
-    std::string fullName(name() + "." + names[i]);
-    switch (fields[i]->getType()) {
-        case pvd::scalar: {
-            const pvd::Scalar* scalar = static_cast<const pvd::Scalar*>(fields[i].get());
-            XtcData::Name::DataType type = xtype[scalar->getScalarType()];
-            vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type)); // Name must resolve to a name that psana recognizes: i.e. 'value'
-            payloadSize = XtcData::Name::get_element_size(type);
-            logging::info("PV name: %s  %s type: %s (%d)",
-                          fullName.c_str(),
-                          pvd::TypeFunc::name(fields[i]->getType()),
-                          pvd::ScalarTypeFunc::name(scalar->getScalarType()),
-                          type);
-            switch (scalar->getScalarType()) {
-                case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int32_t >(data, length); };  break;
-                case pvd::pvShort:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int16_t >(data, length); };  break;
-                case pvd::pvUShort: getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint16_t >(data, length); };  break;
-                case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<int64_t >(data, length); };  break;
-                case pvd::pvUInt:   getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint32_t>(data, length); };  break;
-                case pvd::pvULong:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<uint64_t>(data, length); };  break;
-                case pvd::pvFloat:  getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<float   >(data, length); };  break;
-                case pvd::pvDouble: getData = [&](void* data, size_t& length) -> size_t { return _getDatumT<double  >(data, length); };  break;
-                default: {
-                    logging::critical("%s: Unsupported %s type %s (%d)",
-                                      fullName.c_str(),
-                                      pvd::TypeFunc::name(fields[i]->getType()),
-                                      pvd::ScalarTypeFunc::name(scalar->getScalarType()),
-                                      scalar->getScalarType());
-                    throw "Unsupported scalar type";
-                }
-            }
-            break;
-        }
-        case pvd::scalarArray: {
-            const pvd::ScalarArray* array = static_cast<const pvd::ScalarArray*>(fields[i].get());
-            XtcData::Name::DataType type = xtype[array->getElementType()];
-            size_t length = _strct->getSubField<pvd::PVArray>(names[i].c_str())->getLength();
-            vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type, 1)); // Name must resolve to a name that psana recognizes: i.e. 'value'
-            payloadSize = length * XtcData::Name::get_element_size(type);
-            logging::info("PV name: %s  %s type: %s (%d)  length: %zd",
-                          fullName.c_str(),
-                          pvd::TypeFunc::name(fields[i]->getType()),
-                          pvd::ScalarTypeFunc::name(array->getElementType()),
-                          type, length);
-            switch (array->getElementType()) {
-                case pvd::pvInt:    getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int32_t >(data, length); };  break;
-                case pvd::pvShort:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int16_t >(data, length); };  break;
-                case pvd::pvUShort: getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint16_t >(data, length); };  break;
-                case pvd::pvLong:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<int64_t >(data, length); };  break;
-                case pvd::pvUInt:   getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint32_t>(data, length); };  break;
-                case pvd::pvULong:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<uint64_t>(data, length); };  break;
-                case pvd::pvFloat:  getData = [&](void* data, size_t& length) -> size_t { return _getDataT<float   >(data, length); };  break;
-                case pvd::pvDouble: getData = [&](void* data, size_t& length) -> size_t { return _getDataT<double  >(data, length); };  break;
-                default: {
-                    logging::critical("%s: Unsupported %s type '%s' (%d)",
-                                      fullName.c_str(),
-                                      pvd::TypeFunc::name(fields[i]->getType()),
-                                      pvd::ScalarTypeFunc::name(array->getElementType()),
-                                      array->getElementType());
-                    throw "Unsupported scalarArray type";
-                }
-            }
-            break;
-        }
-        default: {
-            logging::critical("%s: Unsupported field type '%s'",
-                              fullName.c_str(),
-                              pvd::TypeFunc::name(fields[i]->getType()));
-            throw "Unsupported field type";
-        }
-    }
-
-    return vd;
+    logging::info("%s disconnected\n", name().c_str());
 }
 
 void PvaMonitor::updated()
 {
-    m_pvaDetector.process(*this);
+    long seconds     = _strct->getSubField<pvd::PVScalar>("timeStamp.secondsPastEpoch")->getAs<long>();
+    int  nanoseconds = _strct->getSubField<pvd::PVScalar>("timeStamp.nanoseconds")->getAs<int>();
+    XtcData::TimeStamp timestamp(seconds - m_epochDiff, nanoseconds);
+
+    m_pvaDetector.process(timestamp);
 }
 
 
@@ -288,9 +207,9 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
 }
 
 
-PvaDetector::PvaDetector(Parameters& para, const std::string& pvName, DrpBase& drp) :
+PvaDetector::PvaDetector(Parameters& para, const std::string& pvDescriptor, DrpBase& drp) :
     XpmDetector(&para, &drp.pool),
-    m_pvName(pvName),
+    m_pvDescriptor(pvDescriptor),
     m_drp(drp),
     m_pgpQueue(drp.pool.nbuffers()),
     m_pvQueue(8),                       // Revisit size
@@ -317,45 +236,56 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
         m_drp.exposer()->RegisterCollectable(m_exporter);
     }
 
-    m_pvaMonitor = std::make_unique<PvaMonitor>(m_pvName.c_str(), *this, m_para->kwargs["provider"].c_str());
-
-    auto start = std::chrono::steady_clock::now();
-    while(true) {
-        if (m_pvaMonitor->connected()) {
-            m_pvaMonitor->printStructure();
-            break;
-        }
-        usleep(100000);
-        auto now = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
-        if (elapsed > 5000) {
-            logging::error("Failed to connect with %s", m_pvaMonitor->name().c_str());
-            return 1;
-        }
+    std::string provider = "pva";
+    std::string pvName   = m_pvDescriptor;
+    auto pos = m_pvDescriptor.find("/", 0);
+    if (pos != std::string::npos) {
+        provider = m_pvDescriptor.substr(0, pos);
+        pvName   = pvName.substr(pos+1);
     }
 
-    XtcData::Alg alg("raw", 0, 0, 1);
-    XtcData::NamesId namesId(nodeId, PvaNamesIndex);
-    XtcData::Names& names = *new(xtc) XtcData::Names(m_para->detName.c_str(), alg,
-                                                     m_para->detType.c_str(), m_para->serNo.c_str(), namesId);
-    size_t payloadSize;
-    XtcData::VarDef varDef = m_pvaMonitor->get(payloadSize);
-    payloadSize += 64;      // Revisit: Add scootch for what DescribedData adds
-    logging::debug("payloadSize %zd", payloadSize);
-    if (payloadSize > m_pool->bufferSize()) {
-        logging::error("Event buffer size (%zd) is too small for %s payload (%zd)",
-                       m_pool->bufferSize(), m_pvaMonitor->name().c_str(), payloadSize);
+    m_pvaMonitor = std::make_shared<PvaMonitor>(*m_para, pvName, *this, provider);
+
+    std::string request = provider == "pva"
+                        ? "field(value,timeStamp,dimension)"
+                        : "field(value,timeStamp)";
+    unsigned tmo = 3;
+    bool ready = m_pvaMonitor->ready(request, tmo);
+    if (!ready) {
+        logging::error("Failed to connect with %s", m_pvaMonitor->name().c_str());
         return 1;
     }
 
-    names.add(xtc, varDef);
-    m_namesLookup[namesId] = XtcData::NameIndex(names);
+    XtcData::Alg     rawAlg("raw", 1, 0, 0);
+    XtcData::NamesId rawNamesId(nodeId, RawNamesIndex);
+    XtcData::Names&  rawNames = *new(xtc) XtcData::Names(m_para->detName.c_str(), rawAlg,
+                                                         m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId);
+    XtcData::VarDef  rawVarDef;
+    m_pvaMonitor->getVarDef(rawVarDef);
+    rawNames.add(xtc, rawVarDef);
+    m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
 
-    size_t bufSize = m_pool->bufferSize();
+    XtcData::Alg     infoAlg("epicsinfo", 1, 0, 0);
+    XtcData::NamesId infoNamesId(nodeId, InfoNamesIndex);
+    XtcData::Names&  infoNames = *new(xtc) XtcData::Names("epicsinfo", infoAlg,
+                                                          "epicsinfo", "detnum1234", infoNamesId);
+    XtcData::VarDef  infoVarDef;
+    infoVarDef.NameVec.push_back({"keys", XtcData::Name::CHARSTR, 1});
+    infoVarDef.NameVec.push_back({m_para->detName.c_str(), XtcData::Name::CHARSTR, 1});
+    infoNames.add(xtc, infoVarDef);
+    m_namesLookup[infoNamesId] = XtcData::NameIndex(infoNames);
+
+    // add dictionary of information for each epics detname above.
+    // first name is required to be "keys".  keys and values
+    // are delimited by ",".
+    XtcData::CreateData epicsInfo(xtc, m_namesLookup, infoNamesId);
+    epicsInfo.set_string(0, "epicsname" "," "provider");
+    epicsInfo.set_string(1, (m_pvaMonitor->name() + "," + provider).c_str());
+
+    size_t bufSize = m_pool->pebble.bufferSize();
     m_buffer.resize(m_pvQueue.size() * bufSize);
     for(unsigned i = 0; i < m_pvQueue.size(); ++i) {
-        XtcData::Dgram* dg = reinterpret_cast<XtcData::Dgram*>(&m_buffer[i * bufSize]);
-        m_bufferFreelist.push(dg);
+        m_bufferFreelist.push(reinterpret_cast<XtcData::Dgram*>(&m_buffer[i * bufSize]));
     }
 
     m_terminate.store(false, std::memory_order_release);
@@ -367,13 +297,20 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
 
 void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
 {
-    XtcData::NamesId namesId(nodeId, PvaNamesIndex);
+    XtcData::NamesId namesId(nodeId, RawNamesIndex);
     XtcData::DescribedData desc(dgram.xtc, m_namesLookup, namesId);
-    size_t length;
-    size_t size = m_pvaMonitor->getData(desc.data(), length);
+    auto scootch     = 64;       // Size dependent amount used by DescribedData
+    auto payloadSize = m_pool->bufferSize() - sizeof(dgram) - dgram.xtc.sizeofPayload() - scootch;
+    auto size        = payloadSize;
+    auto shape       = m_pvaMonitor->getData(desc.data(), size);
+    if (size > payloadSize) {
+        logging::debug("Truncated: Buffer of size %zu is too small for payload of size %zu for %s\n",
+                       payloadSize, size, m_pvaMonitor->name().c_str());
+        dgram.xtc.damage.increase(XtcData::Damage::Truncated);
+        size = payloadSize;
+    }
     desc.set_data_length(size);
-    unsigned shape[] = { unsigned(length) };
-    desc.set_array_shape(0, shape);
+    desc.set_array_shape(0, shape.data());
 
     //size_t sz = (sizeof(dgram) + dgram.xtc.sizeofPayload()) >> 2;
     //uint32_t* payload = (uint32_t*)dgram.xtc.payload();
@@ -489,32 +426,25 @@ void PvaDetector::_worker()
     logging::info("Worker thread finished");
 }
 
-void PvaDetector::process(const PvaMonitor& pva)
+void PvaDetector::process(const XtcData::TimeStamp& timestamp)
 {
     // Protect against namesLookup not being stable before Enable
-    if (!m_running) {
-        return;
-    }
+    if (m_running.load(std::memory_order_relaxed)) {
+        XtcData::Dgram* dgram;
+        if (m_bufferFreelist.try_pop(dgram)) { // If a buffer is available...
+            ++m_nUpdates;
+            logging::debug("%s updated @ %u.%09u", m_pvaMonitor->name().c_str(), timestamp.seconds(), timestamp.nanoseconds());
 
-    XtcData::Dgram* dgram;
-    if (m_bufferFreelist.try_pop(dgram)) { // If a buffer is available...
-        ++m_nUpdates;
-        //logging::debug("%s updated @ %u.%09u", pva.name().c_str(), seconds, nanoseconds);
+            dgram->time = timestamp;           //   Save the PV's timestamp
+            dgram->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
 
-        unsigned seconds = pva.getScalarAs<unsigned>("timeStamp.secondsPastEpoch");
-        unsigned nanoseconds = pva.getScalarAs<unsigned>("timeStamp.nanoseconds");
-        // Convert timestamp from 1/1/70 to 1/1/90 epoch (5 leap years)
-        XtcData::TimeStamp timestamp(seconds - (20*365+5)*24*3600, nanoseconds);
+            event(*dgram, nullptr);            // PGPEvent not needed in this case
 
-        dgram->time = timestamp;             //   Save the PV's timestamp
-        dgram->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
-
-        event(*dgram, nullptr);              // PGPEvent not needed in this case
-
-        m_pvQueue.push(dgram);
-    }
-    else {
-        ++m_nMissed;                         // Else count it as missed
+            m_pvQueue.push(dgram);
+        }
+        else {
+            ++m_nMissed;                       // Else count it as missed
+        }
     }
 }
 
@@ -527,11 +457,16 @@ void PvaDetector::_matchUp()
         uint32_t pgpIdx;
         if (!m_pgpQueue.peek(pgpIdx))  break;
 
-        Pds::EbDgram& pgpDg = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[pgpIdx]);
+        Pds::EbDgram* pgpDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[pgpIdx]);
 
-        if      (pvDg->time == pgpDg.time)  _handleMatch  (*pvDg, pgpDg);
-        else if (pvDg->time >  pgpDg.time)  _handleYounger(*pvDg, pgpDg);
-        else                                _handleOlder  (*pvDg, pgpDg);
+        logging::debug("PV: %u.%09d, PGP: %u.%09d, PGP - PV: %ld ns\n",
+                       pvDg->time.seconds(), pvDg->time.nanoseconds(),
+                       pgpDg->time.seconds(), pgpDg->time.nanoseconds(),
+                       pgpDg->time.to_ns() - pvDg->time.to_ns());
+
+        if      (pvDg->time == pgpDg->time)  _handleMatch  (*pvDg, *pgpDg);
+        else if (pvDg->time >  pgpDg->time)  _handleYounger(*pvDg, *pgpDg);
+        else                                 _handleOlder  (*pvDg, *pgpDg);
     }
 }
 
@@ -575,19 +510,12 @@ void PvaDetector::_handleYounger(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg
     m_pgpQueue.try_pop(pgpIdx);       // Actually consume the element
 
     if (pgpDg.service() == XtcData::TransitionId::L1Accept) {
-        // No PV data so mark event damaged
+        // No corresponding PV data so mark event damaged
         pgpDg.xtc.damage.increase(XtcData::Damage::MissingData);
 
         ++m_nEmpty;
 
-        //using us_t = std::chrono::microseconds;
-        //printf("Missed PV: PGP ts %u.%09u, now %ld, d %ld, diff %ld\n",
-        //       pgpDg.time.seconds(), pgpDg.time.nanoseconds(),
-        //       t0.time_since_epoch().count(),
-        //       std::chrono::duration_cast<us_t>(t0 - tMissed).count(),
-        //       std::chrono::duration_cast<us_t>(t0 - tEmpty).count());
-        //tEmpty = t0;
-        logging::debug("No PV data!!      "
+        logging::debug("PV too young!!    "
                        "TimeStamps: PV %u.%09u > PGP %u.%09u",
                        pvDg.time.seconds(), pvDg.time.nanoseconds(),
                        pgpDg.time.seconds(), pgpDg.time.nanoseconds());
@@ -664,7 +592,7 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
     const size_t maxSize = ((dgram.service() == XtcData::TransitionId::L1Accept) ||
                             (dgram.service() == XtcData::TransitionId::SlowUpdate))
-                         ? m_pool->bufferSize()
+                         ? m_pool->pebble.bufferSize()
                          : m_para->maxTrSize;
     if (size > maxSize) {
         logging::critical("%s Dgram of size %zd overflowed buffer of size %zd", XtcData::TransitionId::name(dgram.service()), size, maxSize);
@@ -687,11 +615,11 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
 }
 
 
-PvaApp::PvaApp(Parameters& para, const std::string& pvName) :
+PvaApp::PvaApp(Parameters& para, const std::string& pvDescriptor) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
     m_para(para),
-    m_det(std::make_unique<PvaDetector>(m_para, pvName, m_drp))
+    m_det(std::make_unique<PvaDetector>(m_para, pvDescriptor, m_drp))
 {
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
@@ -871,7 +799,7 @@ void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
     while (getline(ss, kwarg, ',')) {
         kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
         auto pos = kwarg.find("=", 0);
-        if (!pos) {
+        if (pos == std::string::npos) {
             logging::critical("Keyword argument with no equal sign");
             throw "error: keyword argument with no equal sign: "+kwargs_str;
         }
@@ -899,7 +827,7 @@ int main(int argc, char* argv[])
                 para.laneMask = std::stoul(optarg, nullptr, 16);
                 break;
             case 'D':
-                para.detType = optarg;
+                para.detType = optarg;  // Defaults to 'pv'
                 break;
             case 'S':
                 para.serNo = optarg;
@@ -958,6 +886,11 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    // Allow detType to be overridden, but generally, psana will expect 'pv'
+    if (para.detType.empty()) {
+      para.detType = "pv";
+    }
+
     // Alias must be of form <detName>_<detSegment>
     size_t found = para.alias.rfind('_');
     if ((found == std::string::npos) || !isdigit(para.alias.back())) {
@@ -967,14 +900,12 @@ int main(int argc, char* argv[])
     para.detName = para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
-    para.kwargs["provider"] = std::string("pva"); // det default
-    get_kwargs(para, kwargs_str);
-
-    std::string pvName;
+    // Provider is "pva" (default) or "ca"
+    std::string pvDescriptor;           // [<provider>/]<PV name>
     if (optind < argc)
-        pvName = argv[optind];
+        pvDescriptor = argv[optind];
     else {
-        logging::critical("A PV name is mandatory");
+        logging::critical("A PV ([<provider>/]<PV name>) is mandatory");
         return 1;
     }
 
@@ -983,8 +914,10 @@ int main(int argc, char* argv[])
                           // transitions in the system at any given time, e.g.,
                           // MAX_LATENCY * (SlowUpdate rate), in same units
     try {
+        get_kwargs(para, kwargs_str);
+
         Py_Initialize(); // for use by configuration
-        Drp::PvaApp app(para, pvName);
+        Drp::PvaApp app(para, pvDescriptor);
         app.run();
         app.handleReset(json({}));
         Py_Finalize(); // for use by configuration

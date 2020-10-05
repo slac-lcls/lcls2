@@ -5,12 +5,15 @@
 #include <vector>
 #include <set>
 
-namespace Pds
+namespace Drp
 {
   class PvConfigFile
   {
   public:
-    PvConfigFile(const std::string & sFnConfig, bool bProviderType, int iMaxDepth, int iMaxNumPv,
+    PvConfigFile(const std::string & sFnConfig,
+                 const std::string & sProvider,
+                 int iMaxDepth,
+                 int iMaxNumPv,
                  bool verbose);
     ~PvConfigFile();
   public:
@@ -20,7 +23,7 @@ namespace Pds
     TPvNameSet  _setPvName;
     TPvNameSet  _setPvDescription;
     std::string _sFnConfig;
-    bool        _bProviderType;
+    std::string _sProvider;
     int         _iMaxDepth;
     int         _iMaxNumPv;
     bool        _verbose;
@@ -29,12 +32,13 @@ namespace Pds
     {
       std::string sPvName;
       std::string sPvDescription;
-      bool bProviderType;
+      std::string sProvider;
 
         PvInfo(const std::string & sPvName1,
                const std::string & sPvDescription1,
-               bool bProviderType1):sPvName(sPvName1),
-                                    sPvDescription(sPvDescription1), bProviderType(bProviderType1)
+               const std::string & sProvider1):sPvName(sPvName1),
+                                               sPvDescription(sPvDescription1),
+                                               sProvider(sProvider1)
       {
       }
     };
@@ -60,6 +64,6 @@ namespace Pds
     PvConfigFile(const PvConfigFile &);
     PvConfigFile & operator=(const PvConfigFile &);
   };
-}       // namespace Pds
+}       // namespace Drp
 
 #endif

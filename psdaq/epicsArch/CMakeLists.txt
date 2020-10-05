@@ -1,6 +1,7 @@
 find_package(PythonLibs REQUIRED)
 
 add_executable(epicsArch
+    ../drp/PvMonitorBase.cc
     EpicsArchMonitor.cc
     EpicsMonitorPv.cc
     PvConfigFile.cc

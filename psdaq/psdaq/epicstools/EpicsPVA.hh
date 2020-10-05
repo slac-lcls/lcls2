@@ -134,6 +134,8 @@ namespace Pds_Epics {
     EpicsPVA(const char* provider, const char *channelName, PVMonitorCb*, const int maxElements=0);
     virtual ~EpicsPVA();
 
+    static void setProvider(const char*);
+
     std::string name() const { return _channel.name(); }
     bool connected() const { return _connected; }
     long sec();

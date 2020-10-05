@@ -14,7 +14,7 @@ namespace XtcData
   class Dgram;
 };
 
-namespace Pds
+namespace Drp
 {
   class UserMessage;
 
@@ -25,32 +25,35 @@ namespace Pds
                      std::string& sConfigFileWarning);
     ~EpicsArchMonitor();
   public:
-    void     initDef(size_t& payloadSize);
     void     addNames(const std::string& detName, const std::string& detType, const std::string& serNo,
                       XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId);
-    void     getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId);
+    int      getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId, size_t payloadSize);
     unsigned validate(unsigned& iPvCount);
 
     static void close();
 
-    static const int  iNamesIndex   = EpicsXtcSettings::iNamesIndex;
-    static const int  iMaxNumPv     = EpicsXtcSettings::iMaxNumPv;
-    static const int  iMaxXtcSize   = EpicsXtcSettings::iMaxXtcSize;
+    static const int  iRawNamesIndex  = EpicsXtcSettings::iRawNamesIndex;
+    static const int  iInfoNamesIndex = EpicsXtcSettings::iInfoNamesIndex;
+    static const int  iMaxNumPv       = EpicsXtcSettings::iMaxNumPv;
+    static const int  iMaxXtcSize     = EpicsXtcSettings::iMaxXtcSize;
 
   private:
     std::string         _sFnConfig;
     int                 _iDebugLevel;
     TEpicsMonitorPvList _lpvPvList;
     EpicsArchDef        _epicsArchDef;
+    XtcData::VarDef     _epicsInfoDef;
 
-    int _setupPvList(const Pds::PvConfigFile::TPvList& vPvList, TEpicsMonitorPvList& lpvPvList);
-    int _writeToXtc(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, XtcData::NamesId& namesId);
+    void _initDef();
+    void _initInfoDef();
+    void _addInfo(XtcData::CreateData& epicsInfo);
+    int  _setupPvList(const PvConfigFile::TPvList& vPvList, TEpicsMonitorPvList& lpvPvList);
 
     // Class usage control: Value semantics is disabled
     EpicsArchMonitor(const EpicsArchMonitor&) = delete;
     EpicsArchMonitor& operator=(const EpicsArchMonitor&) = delete;
   };
 
-}       // namespace Pds
+}       // namespace Drp
 
 #endif

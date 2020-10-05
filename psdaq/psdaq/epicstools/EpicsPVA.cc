@@ -15,6 +15,10 @@
 
 #include <pv/pvData.h>
 
+#include <pv/pvData.h>
+#include <pv/configuration.h>
+#include <pv/caProvider.h>
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -22,7 +26,7 @@
 
 static bool _debug = false;
 
-template<typename T> T valT(const char*& v) { 
+template<typename T> T valT(const char*& v) {
   if (_debug) {
     printf("valT[%p] size[%zu] [%x]\n", v, sizeof(T), reinterpret_cast<const uint32_t*>(v)[0]);
   }
@@ -31,7 +35,7 @@ template<typename T> T valT(const char*& v) {
   return t;
 }
 
-template<typename T> pvd::shared_vector<const T> vecT(const char*& v, unsigned n) { 
+template<typename T> pvd::shared_vector<const T> vecT(const char*& v, unsigned n) {
   if (_debug) {
     printf("vecT[%p] size[%zu][%u] [%x]\n", v, sizeof(T), n, reinterpret_cast<const uint32_t*>(v)[0]);
   }
@@ -58,7 +62,7 @@ namespace Pds_Epics {
     }
 
     EpicsPVA::EpicsPVA(const char* provider, const char *channelName, PVMonitorCb* monitor, const int maxElements) :
-      _channel(strcmp(provider,"ca")==0 ? 
+      _channel(strcmp(provider,"ca")==0 ?
                EpicsProviders::ca ().connect(channelName) :
                EpicsProviders::pva().connect(channelName)),
       _monitorCB(monitor)

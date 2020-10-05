@@ -60,6 +60,7 @@ target_link_libraries(drp_bld
 
 add_executable(drp_pva
     PvaDetector.cc
+    PvMonitorBase.cc
 )
 
 target_link_libraries(drp_pva

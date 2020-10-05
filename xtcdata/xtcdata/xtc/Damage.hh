@@ -10,6 +10,7 @@ class Damage
 {
 public:
     enum Value {
+        Truncated           =  0,
         OutOfOrder          =  1,
         OutOfSynch          =  2,
         Corrupted           =  3,

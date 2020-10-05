@@ -10,13 +10,16 @@
 using std::string;
 using std::stringstream;
 
-namespace Pds
+namespace Drp
 {
 
-PvConfigFile::PvConfigFile(const std::string & sFnConfig, bool bProviderType, int iMaxDepth,
-                           int iMaxNumPv, bool verbose) :
+PvConfigFile::PvConfigFile(const std::string & sFnConfig,
+                           const std::string & sProvider,
+                           int iMaxDepth,
+                           int iMaxNumPv,
+                           bool verbose) :
   _sFnConfig(sFnConfig),
-  _bProviderType(bProviderType),
+  _sProvider(sProvider),
   _iMaxDepth(iMaxDepth),
   _iMaxNumPv(iMaxNumPv),
   _verbose(verbose)
@@ -83,7 +86,7 @@ int PvConfigFile::_readConfigFile(const std::string & sFnConfig,
     if (sLine[0] == '<')
     {
       sLine[0] = ' ';
-      Pds::PvConfigFile::TFileList vsFileLst;
+      PvConfigFile::TFileList vsFileLst;
       _splitFileList(sLine, vsFileLst, _iMaxNumPv);
 
       for (int iPvFile = 0; iPvFile < (int) vsFileLst.size(); iPvFile++)
@@ -137,7 +140,7 @@ int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
   }
 
   string sPvName;
-  bool   bProviderType = _bProviderType;
+  string sProvider = _sProvider;
 
   size_t uOffsetSeparator =
     sPvLine.find_first_of(sPvLineSeparators, uOffsetPv + 1);
@@ -152,8 +155,8 @@ int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
       sPvLine.find_first_not_of(sPvLineSeparators, uOffsetSeparator + 1);
     if (uOffsetInterval != string::npos)
     {
-      if      (sPvLine.find("ca",  uOffsetInterval) != string::npos)  bProviderType = false;
-      else if (sPvLine.find("pva", uOffsetInterval) != string::npos)  bProviderType = true;
+      if      (sPvLine.find("ca",  uOffsetInterval) != string::npos)  sProvider = "ca";
+      else if (sPvLine.find("pva", uOffsetInterval) != string::npos)  sProvider = "pva";
       else
       {
         char strMessage[256];
@@ -198,14 +201,14 @@ int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
 
   _setPvName.insert(sPvName);
 
-  vPvList.push_back(PvConfigFile::PvInfo(sPvName, sPvDescriptionUpdate, bProviderType));
+  vPvList.push_back(PvConfigFile::PvInfo(sPvName, sPvDescriptionUpdate, sProvider));
   bPvAdd = true;
 
   return iError;
 }
 
 int PvConfigFile::_splitFileList(const std::string & sFileList,
-                                 Pds::PvConfigFile::TFileList & vsFileList, int iMaxNumPv)
+                                 PvConfigFile::TFileList & vsFileList, int iMaxNumPv)
 {
   static const char sFileListSeparators[] = " ,;\t\r\n";
   size_t uOffsetStart = sFileList.find_first_not_of(sFileListSeparators, 0);
@@ -337,4 +340,4 @@ int PvConfigFile::_updatePvDescription(const std::string& sPvName, const std::st
   return 1;
 }
 
-}       // namespace Pds
+}       // namespace Drp

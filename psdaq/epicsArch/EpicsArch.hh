@@ -25,7 +25,7 @@ private:
 private:
     const std::string& m_pvCfgFile;
     DrpBase& m_drp;
-    std::unique_ptr<Pds::EpicsArchMonitor> m_monitor;
+    std::unique_ptr<EpicsArchMonitor> m_monitor;
     std::thread m_workerThread;
     std::atomic<bool> m_terminate;
     bool m_running;

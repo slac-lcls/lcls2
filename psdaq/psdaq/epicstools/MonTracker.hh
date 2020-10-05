@@ -5,10 +5,10 @@
 #include <deque>
 #include <future>
 
-#include <epicsEvent.h>
-#include <epicsMutex.h>
-#include <pv/thread.h>
-#include <pva/client.h>
+#include "epicsEvent.h"
+#include "epicsMutex.h"
+#include "pv/thread.h"
+#include "pva/client.h"
 
 #include "PVMonitorCb.hh"
 
@@ -58,12 +58,11 @@ public:
   static void close();
 public:
   POINTER_DEFINITIONS(MonTracker);
-  MonTracker(const std::string& name) :_name(name) {}
-  virtual ~MonTracker() { _mon.cancel(); }
+  MonTracker(const std::string& name);
+  MonTracker(const std::string& provider, const std::string& name);
+  virtual ~MonTracker();
 
-  enum ProviderType { CA, PVA };
-
-  const std::string& name() const { return _name; }
+  const std::string name() const { return _channel.name(); }
   bool connected() const { return _connected; }
 
   virtual void getDone (const pvac::GetEvent &evt) OVERRIDE FINAL;
@@ -71,21 +70,17 @@ public:
   virtual void monitorEvent(const pvac::MonitorEvent& evt) OVERRIDE FINAL;
   virtual void process(const pvac::MonitorEvent& evt) OVERRIDE FINAL;
 protected:
-  bool getComplete(ProviderType providerType, const std::string& request = "field()");
+  bool getComplete(const std::string& request = "field()", unsigned tmo = 30);
   void disconnect();
 private:
   static WorkQueue _monwork;            // Static to start only one WorkQueue
   std::promise<pvd::PVStructure::const_shared_pointer> _promise;
 protected:
-  const std::string _name;
-  bool _connected;
   pvd::PVStructure::const_shared_pointer _strct;
-  pvd::PVStructure::shared_pointer _pvRequest;
-  static pvac::ClientProvider _caProvider;            // Only one for the process
-  static pvac::ClientProvider _pvaProvider;           // Only one for the process
   pvac::ClientChannel _channel;
   pvac::Operation _op;
   pvac::Monitor _mon;
+  bool _connected;
 };
 
 };

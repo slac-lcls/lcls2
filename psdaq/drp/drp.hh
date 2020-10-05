@@ -81,6 +81,7 @@ public:
         return &m_buffer[offset];
     }
     size_t size() const {return m_buffer.size();}
+    size_t bufferSize() const {return m_bufferSize;}
 private:
     size_t m_bufferSize;
     std::vector<uint8_t> m_buffer;

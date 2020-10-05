@@ -18,7 +18,6 @@
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
-using namespace Pds;
 
 namespace Drp {
 
@@ -200,7 +199,7 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
     }
     catch(std::string& error)
     {
-        logging::error("%s: new EpicsArchMonitor( %s ) failed: %s",
+        logging::error("%s: Failed to create EpicsArchMonitor( %s ): %s",
                        __PRETTY_FUNCTION__, m_pvCfgFile.c_str(), error.c_str());
         m_monitor.reset();
         return 1;
@@ -210,17 +209,7 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
     unsigned pvCount = 0;
     unsigned nNotConnected = m_monitor->validate(pvCount);
     if (nNotConnected) {
-        logging::error("Number of PVs that didn't connect: %d (of %d)", nNotConnected, pvCount);
-        return 1;
-    }
-
-    size_t payloadSize;
-    m_monitor->initDef(payloadSize);
-    logging::debug("payloadSize %zd", payloadSize);
-    if (payloadSize > m_pool->bufferSize()) {
-        logging::error("Event buffer size (%zd) is too small for payload (%zd)",
-                       m_pool->bufferSize(), payloadSize);
-        return 1;
+        logging::warning("Number of PVs that didn't connect: %d (of %d)", nNotConnected, pvCount);
     }
 
     m_monitor->addNames(m_para->detName, m_para->detType, m_para->serNo,
@@ -233,7 +222,9 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
 
 void EaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
-    m_monitor->getData(dgram.xtc, m_namesLookup, nodeId);
+    auto payloadSize = m_pool->bufferSize() - sizeof(dgram);
+
+    m_monitor->getData(dgram.xtc, m_namesLookup, nodeId, payloadSize);
 }
 
 void EaDetector::shutdown()
@@ -655,6 +646,7 @@ int main(int argc, char* argv[])
     para.detType = "epics";
     para.detName = "epics";  //para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
+    para.serNo = "detnum1234";
 
     get_kwargs(para, kwargs_str);
 

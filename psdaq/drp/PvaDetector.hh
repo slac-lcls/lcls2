@@ -8,39 +8,31 @@
 #include <condition_variable>
 #include "DrpBase.hh"
 #include "XpmDetector.hh"
+#include "PvMonitorBase.hh"
 #include "spscqueue.hh"
 #include "psdaq/service/Collection.hh"
-#include "psdaq/epicstools/PVBase.hh"
 
 namespace Drp {
 
 class PvaDetector;
 
-class PvaMonitor : public Pds_Epics::PVBase
+class PvaMonitor : public PvMonitorBase
 {
 public:
-    PvaMonitor(const char* channelName, PvaDetector& det, const char* provider="pva") : Pds_Epics::PVBase(provider, channelName), m_pvaDetector(det) {}
-    void printStructure();
-    XtcData::VarDef get(size_t& payloadSize);
-    void updated() override;
+    PvaMonitor(Parameters& para, const std::string& channelName, PvaDetector& det, const std::string& provider) :
+      PvMonitorBase(channelName, provider),
+      m_para(para),
+      m_pvaDetector(det)
+    {
+    }
 public:
-    std::function<size_t(void* data, size_t& length)> getData;
+    void onConnect()    override;
+    void onDisconnect() override;
+    void updated()      override;
+public:
+    void getVarDef(XtcData::VarDef&);
 private:
-    template<typename T> size_t _getDatumT(void* data, size_t& length) {
-        *static_cast<T*>(data) = getScalarAs<T>();
-        length = 1;
-        return sizeof(T);
-    }
-    template<typename T> size_t _getDataT(void* data, size_t& length) {
-        //pvd::shared_vector<const T> vec((T*)data, [](void*){}, 0, 128); // Doesn't work
-        pvd::shared_vector<const T> vec;
-        getVectorAs<T>(vec);
-        length = vec.size();
-        size_t size = length * sizeof(T);
-        memcpy(data, vec.data(), size);
-        return size;
-    }
-private:
+    Parameters&  m_para;
     PvaDetector& m_pvaDetector;
 };
 
@@ -53,7 +45,8 @@ public:
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
     void shutdown() override;
-    void process(const PvaMonitor&);
+    void connect();
+    void process(const XtcData::TimeStamp&);
 private:
     void _worker();
     void _timeout(const XtcData::TimeStamp& timestamp);
@@ -63,10 +56,10 @@ private:
     void _handleOlder(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
-    enum {PvaNamesIndex = NamesIndex::BASE};
-    const std::string& m_pvName;
+    enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
+    const std::string m_pvDescriptor;
     DrpBase& m_drp;
-    std::unique_ptr<PvaMonitor> m_pvaMonitor;
+    std::shared_ptr<PvaMonitor> m_pvaMonitor;
     std::thread m_workerThread;
     SPSCQueue<uint32_t> m_pgpQueue;
     SPSCQueue<XtcData::Dgram*> m_pvQueue;
