@@ -77,8 +77,8 @@ class CGWMainPartition(QGroupBox):
         #self.but_display.clicked.connect(self.on_but_display)
 
         self.w_select = None
-        self.w_display = None
-        self.w_dispopup = None
+        self.w_show = None
+        self.w_select = None
         self.set_buts_enabled()
 
 #--------------------
@@ -104,16 +104,18 @@ class CGWMainPartition(QGroupBox):
         return QSize(200, 120)
  
 #--------------------
-
-    def on_but_show(self):
-        logger.debug('on_but_show TBD')
-
-#--------------------
  
     def on_but_select(self):
         logger.debug('on_but_select')
+        if self.w_select is not None:
+            self.w_select.close()
+            self.w_select = None
         self.roll_call()
 
+#--------------------
+ 
+    def open_select_window(self):
+        logger.debug('open_select_window')
         dict_platf, list2d = get_platform() # list2d = [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
 
         #logger.debug('List of processes:')
@@ -123,73 +125,82 @@ class CGWMainPartition(QGroupBox):
 
         #parent=self,
 
-        self.w_dispopup = QWPopupTableCheck(tableio=list2d, title_h=self.TABTITLE_H,\
+        self.w_select = QWPopupTableCheck(tableio=list2d, title_h=self.TABTITLE_H,\
                               do_ctrl=self.do_ctrl,\
                               win_title='Select partition',\
                               do_edit=False, is_visv=False, do_frame=True)
 
         if not self.do_ctrl:
-            self.w_dispopup.setToolTip('Processes control is only available\nin the state UNALLOCATED or RESET')
+            self.w_select.setToolTip('Processes control is only available\nin the state UNALLOCATED or RESET')
 
-        #self.w_dispopup.move(QCursor.pos()+QPoint(20,10))
-        self.w_dispopup.move(self.mapToGlobal(self.but_select.pos()) + QPoint(5, 22)) # (5,22) offset for frame
-        resp=self.w_dispopup.exec_()
+        #self.w_select.move(QCursor.pos()+QPoint(20,10))
+        self.w_select.move(self.mapToGlobal(self.but_select.pos()) + QPoint(5, 22)) # (5,22) offset for frame
+        resp=self.w_select.show()
 
-        logger.info('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
+        # MOVED TO QWPopupTableCheck
 
-        if resp!=QDialog.Accepted: return
+        #resp=self.w_select.exec_()
+        #logger.info('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
+        #if resp!=QDialog.Accepted: return
+        #list2d = self.w_select.table_out()
 
-        list2d = self.w_dispopup.table_out()
+        #self.w_select = None
+        #set_platform(dict_platf, list2d)
 
-        self.w_dispopup = None
+        ## 2019-03-13 caf: If Select->Apply is successful, an Allocate transition should be triggered.
+        ## 2020-07-29 caf: The Allocate transition will update the active detectors file, if necessary.
 
-        if self.w_display is not None:
-            self.w_display.fill_table_model(tableio=list2d,\
-                                            title_h=self.TABTITLE_H,\
-                                            do_edit=False, is_visv=False, do_ctrl=False, do_frame=True)
+        #list2d_active = list_active_procs(list2d)
 
-        set_platform(dict_platf, list2d)
+        #if len(list2d_active)==0:
+        #    logger.warning('NO PROCESS SELECTED!')
 
-        # 2019-03-13 caf: If Select->Apply is successful, an Allocate transition should be triggered.
-        # 2020-07-29 caf: The Allocate transition will update the active detectors file, if necessary.
-
-        list2d_active = list_active_procs(list2d)
-
-        if len(list2d_active)==0:
-            logger.warning('NO PROCESS SELECTED!')
-
-        daq_control().setState('allocated')
+        #daq_control().setState('allocated')
 
 #--------------------
-#    def on_but_display(self):
-#        logger.debug('on_but_display')
+
+    def update_select_window(self):
+        logger.debug('update_select_window')
+        if self.w_select is None: return
+        self.w_select.update_partition_table()
+
+#--------------------
+
+    def update_show_window(self):
+        logger.debug('update_show_window')
+        if self.w_show is None: return
+        _, list2d = get_platform() # list2d = [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
+        self.w_show.fill_table_model(tableio=list2d,\
+                                     title_h=self.TABTITLE_H,\
+                                     do_edit=False, is_visv=False, do_ctrl=False, do_frame=True)
+
 #--------------------
 
     def on_but_show(self):
         logger.debug('on_but_show')
 
-        if self.w_display is None:
+        if self.w_show is None:
             _, list2d = get_platform() # [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
 
             list2d_active = list_active_procs(list2d)
             #logger.debug('list2d active processes:\n%s' % str(list2d_active))
 
-            self.w_display = CGWPartitionTable(parent=None, tableio=list2d_active,\
-                                               win_title='Display partitions',\
-                                               title_h=self.TABTITLE_H,\
-                                               is_visv=False)
+            self.w_show = CGWPartitionTable(parent=None, tableio=list2d_active,\
+                                            win_title='Display partitions',\
+                                            title_h=self.TABTITLE_H,\
+                                            is_visv=False)
 
-            self.w_display.setToolTip('Processes selection is only available\nin the "Select" window.')
-            self.w_display.move(QCursor.pos()+QPoint(50,10))
-            self.w_display.setWindowTitle('Display partitions')
-            self.w_display.show()
+            self.w_show.setToolTip('Processes selection is only available\nin the "Select" window.')
+            self.w_show.move(QCursor.pos()+QPoint(50,10))
+            self.w_show.setWindowTitle('Show partitions')
+            self.w_show.show()
+            #self.but_show.setFocus()
         else:
-            self.w_display.close()
-            self.w_display = None
+            self.w_show.close()
+            self.w_show = None
 
 #--------------------
  
-    #def on_but_roll_call(self):
     def roll_call(self):
         """Equivalent to CLI: daqstate -p6 --transition plat
            https://github.com/slac-lcls/lcls2/blob/collection_front/psdaq/psdaq/control/daqstate.py
@@ -201,9 +212,11 @@ class CGWMainPartition(QGroupBox):
 #--------------------
 
     def set_buts_enabled(self):
-        """By Chris F. logistics sets buttons un/visible.
+        """By Chris F. logistics https://confluence.slac.stanford.edu/display/~caf/DAQ+GUI+Notes
         """
         s = cp.s_state
+        trans = cp.s_transition
+        logger.debug('transition: %s' % trans)
         logger.info('set_buts_enabled for state "%s"' % s)
         state = s.lower() if s is not None else 'None'
         self.do_ctrl = enabled = (state in ('reset','unallocated'))
@@ -211,15 +224,20 @@ class CGWMainPartition(QGroupBox):
         self.but_select.setEnabled(enabled)
         self.but_show.setEnabled(not enabled)
 
-        if enabled and self.w_display is not None:
-            self.w_display.close()
-            self.w_display = None
+        if enabled and self.w_show is not None:
+            self.w_show.close()
+            self.w_show = None
 
-        #if self.w_dispopup is not None:
-        #    _, list2d = get_platform() # [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
-        #    self.w_dispopup.fill_table_model(tableio=list2d,\
-        #                                    title_h=self.TABTITLE_H,\
-        #                                    do_edit=False, is_visv=False, do_ctrl=False, do_frame=True)
+        if trans == 'rollcall':
+            if self.w_show   is not None: self.update_show_window()
+            if self.w_select is not None: self.update_select_window()
+
+        if state == 'unallocated':
+           if self.w_select is None: self.open_select_window()
+        else:
+           if self.w_select is not None:
+               self.w_select.close()
+               self.w_select = None
 
 #--------------------
 
