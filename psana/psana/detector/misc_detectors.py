@@ -11,7 +11,7 @@ from psana.detector.detector_impl import DetectorImpl
 class epicsinfo_epicsinfo_1_0_0(DetectorImpl):
     def __init__(self, *args):
         super().__init__(*args)
-        self.infodict={}
+        self._infodict={}
         for c in self._configs:
             if hasattr(c,'epicsinfo'):
                 for seg,value in c.epicsinfo.items():
@@ -19,11 +19,11 @@ class epicsinfo_epicsinfo_1_0_0(DetectorImpl):
                     keys = names.keys.split(',')
                     for n in dir(names):
                         if n.startswith('_') or n=='keys': continue
-                        if n not in self.infodict: self.infodict[n]={}
+                        if n not in self._infodict: self._infodict[n]={}
                         values = getattr(names,n).split('\n')
-                        for k,v in zip(keys,values): self.infodict[n][k]=v
+                        for k,v in zip(keys,values): self._infodict[n][k]=v
     def __call__(self):
-        return self.infodict
+        return self._infodict
 
 class pv_raw_1_0_0(DetectorImpl):
     def __init__(self, *args):
