@@ -13,9 +13,12 @@
 using namespace XtcData;
 using std::string;
 
-template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigned numWords, const char* fmt)
+template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigned numWords, unsigned* shape, unsigned rank, const char* fmt)
 {
-    printf("'%s': ", name);
+    printf("'%s' ", name);
+    printf("(shape:");
+    for (unsigned w = 0; w < rank; w++) printf(" %d",shape[w]);
+    printf("): ");
     for (unsigned w = 0; w < numWords; ++w) {
         printf(fmt, arrT.data()[w]);
     }
@@ -38,7 +41,7 @@ public:
         switch(name.type()){
         case(Name::UINT8):{
             if(data_rank > 0){
-                _dump<uint8_t>(name.name(), descdata.get_array<uint8_t>(i), _numWords, " %d");
+                _dump<uint8_t>(name.name(), descdata.get_array<uint8_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
             }
             else{
                 printf("'%s': %d\n",name.name(),descdata.get_value<uint8_t>(i));
@@ -48,7 +51,7 @@ public:
 
         case(Name::UINT16):{
             if(data_rank > 0){
-                _dump<uint16_t>(name.name(), descdata.get_array<uint16_t>(i), _numWords, " %d");
+                _dump<uint16_t>(name.name(), descdata.get_array<uint16_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
             }
             else{
                 printf("'%s': %d\n",name.name(),descdata.get_value<uint16_t>(i));
@@ -58,7 +61,7 @@ public:
 
         case(Name::UINT32):{
             if(data_rank > 0){
-                _dump<uint32_t>(name.name(), descdata.get_array<uint32_t>(i), _numWords, " %d");
+                _dump<uint32_t>(name.name(), descdata.get_array<uint32_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
             }
             else{
                 printf("'%s': %d\n",name.name(),descdata.get_value<uint32_t>(i));
@@ -68,7 +71,7 @@ public:
 
         case(Name::UINT64):{
             if(data_rank > 0){
-                _dump<uint64_t>(name.name(), descdata.get_array<uint64_t>(i), _numWords, " %ld");
+                _dump<uint64_t>(name.name(), descdata.get_array<uint64_t>(i), _numWords, descdata.shape(name), name.rank(), " %ld");
             }
             else{
                 printf("'%s': %d\n",name.name(),descdata.get_value<uint64_t>(i));
@@ -78,7 +81,7 @@ public:
 
         case(Name::INT8):{
             if(data_rank > 0){
-                _dump<int8_t>(name.name(), descdata.get_array<int8_t>(i), _numWords, " %d");
+                _dump<int8_t>(name.name(), descdata.get_array<int8_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
             }
             else{
                 printf("'%s': %d\n",name.name(),descdata.get_value<int8_t>(i));
@@ -88,7 +91,7 @@ public:
 
         case(Name::INT16):{
             if(data_rank > 0){
-                _dump<int16_t>(name.name(), descdata.get_array<int16_t>(i), _numWords, " %d");
+                _dump<int16_t>(name.name(), descdata.get_array<int16_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
             }
             else{
                 printf("'%s': %d\n",name.name(),descdata.get_value<int16_t>(i));
@@ -98,7 +101,7 @@ public:
 
         case(Name::INT32):{
             if(data_rank > 0){
-                _dump<int32_t>(name.name(), descdata.get_array<int32_t>(i), _numWords, " %d");
+                _dump<int32_t>(name.name(), descdata.get_array<int32_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
             }
             else{
                 printf("'%s': %d\n",name.name(),descdata.get_value<int32_t>(i));
@@ -108,7 +111,7 @@ public:
 
         case(Name::INT64):{
             if(data_rank > 0){
-                _dump<int64_t>(name.name(), descdata.get_array<int64_t>(i), _numWords, " %ld");
+                _dump<int64_t>(name.name(), descdata.get_array<int64_t>(i), _numWords, descdata.shape(name), name.rank(), " %ld");
             }
             else{
                 printf("'%s': %d\n",name.name(),descdata.get_value<int64_t>(i));
@@ -118,7 +121,7 @@ public:
 
         case(Name::FLOAT):{
             if(data_rank > 0){
-                _dump<float>(name.name(), descdata.get_array<float>(i), _numWords, " %f");
+                _dump<float>(name.name(), descdata.get_array<float>(i), _numWords, descdata.shape(name), name.rank(), " %f");
             }
             else{
                 printf("'%s': %f\n",name.name(),descdata.get_value<float>(i));
@@ -128,7 +131,7 @@ public:
 
         case(Name::DOUBLE):{
             if(data_rank > 0){
-                _dump<double>(name.name(), descdata.get_array<double>(i), _numWords, " %f");
+                _dump<double>(name.name(), descdata.get_array<double>(i), _numWords, descdata.shape(name), name.rank(), " %f");
             }
             else{
                 printf("'%s': %f\n",name.name(),descdata.get_value<double>(i));
@@ -149,7 +152,7 @@ public:
 
         case(Name::ENUMVAL):{
             if(data_rank > 0){
-                _dump<int32_t>(name.name(), descdata.get_array<int32_t>(i), _numWords, " %d");
+                _dump<int32_t>(name.name(), descdata.get_array<int32_t>(i), _numWords, descdata.shape(name), name.rank(), " %d");
             }
             else{
                 printf("'%s': %d\n",name.name(),descdata.get_value<int32_t>(i));
