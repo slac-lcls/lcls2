@@ -200,7 +200,7 @@ using namespace Pds;
 static void usage(const char* p)
 {
   printf("Usage: %s [OPTIONS]\n",p);
-  printf("          -a <addr>      : MC address   [default: 0xefff1801]\n");
+  printf("          -a <addr>      : MC address   [default: 0xefff1904]\n");
   printf("          -i <addr/name> : MC interface [no default] \n");
   printf("          -t             : disable timestamp check\n");
   printf("          -z             : zero encoder\n");
@@ -225,7 +225,7 @@ int main(int argc, char** argv) {
     int evcode     = -1;   // lcls1 event select
   } tpr_config;
   unsigned mcintf  = 0;
-  unsigned mcaddr  = 0;
+  unsigned mcaddr  = 0xefff1904;    // 239.255.25.4
   const unsigned port = 10148;
   unsigned bldInfo = 0;
   const unsigned typeId  = 62; // UsdUsbData
