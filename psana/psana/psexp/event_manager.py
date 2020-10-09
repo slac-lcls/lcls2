@@ -4,6 +4,7 @@ from psana.psexp import PacketFooter, TransitionId, PrometheusManager
 import numpy as np
 import os
 import logging
+import time
 
 s_bd_disk = PrometheusManager.get_metric('psana_bd_wait_disk')
 
@@ -39,18 +40,30 @@ class EventManager(object):
     @s_bd_disk.time()
     def _read_chunks_from_disk(self, fds, offsets, sizes):
         sum_read_nbytes = 0 # for prometheus counter
+        st = time.time()
         for i in range(self.n_smd_files):
             os.lseek(fds[i], offsets[i], 0)
             self.bigdata[i].extend(os.read(fds[i], sizes[i]))
             sum_read_nbytes += sizes[i]
-        logging.debug("EventManager: BigData core reads chunk %.5f MB from disk"%(sum_read_nbytes/1e6))
+        en = time.time()
+        rate = 0
+        if sum_read_nbytes > 0:
+            rate = (sum_read_nbytes/1e6)/(en-st)
+        logging.debug(f"EventManager: BigData reads chunk {sum_read_nbytes/1e6:.2f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
         self._inc_prometheus_counter('MB', sum_read_nbytes/1e6)
         return 
     
     @s_bd_disk.time()
     def _read_event_from_disk(self, offsets, sizes):
-        logging.debug("EventManager: BigData core reads an event (%.5f MB) from disk"%(np.sum(sizes)/1e6))
-        return self.dm.jump(offsets, sizes)
+        sum_read_nbytes = np.sum(sizes)
+        st              = time.time()
+        data            = self.dm.jump(offsets, sizes)
+        en              = time.time()
+        rate            = 0
+        if sum_read_nbytes > 0:
+            rate = (sum_read_nbytes/1e6)/(en-st)
+        logging.debug(f"EventManager: BigData reads single {sum_read_nbytes/1e6:.2f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
+        return data 
             
     def _read_bigdata_in_chunk(self):
         """ Read bigdata chunks of 'size' bytes and store them in views

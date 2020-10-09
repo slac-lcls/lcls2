@@ -1,4 +1,5 @@
 from psana.psexp import EventManager, TransitionId
+import logging
 
 class Events:
     def __init__(self, run, get_smd=0, dm=None):

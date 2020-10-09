@@ -450,7 +450,10 @@ class BigDataNode(object):
             bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
             count = info.Get_elements(MPI.BYTE)
             chunk = bytearray(count)
+            st = time.time()
             bd_comm.Recv(chunk, source=0)
+            en = time.time()
+            logging.debug(f"node.py: BigData{bd_rank} waited {en-st} s for EventBuilder")
             return chunk
         
         events = Events(self.run, get_smd=get_smd)
