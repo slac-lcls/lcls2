@@ -299,6 +299,11 @@ int main(int argc, char** argv) {
     lUsage = true;
   }
 
+  if (!mcintf) {
+    printf("%s: '-i' argument is required\n", argv[0]);
+    lUsage = true;
+  }
+
   if (lUsage) {
     usage(argv[0]);
     return 1;
@@ -394,7 +399,7 @@ int main(int argc, char** argv) {
   }
 
   unsigned pid = getpid();
-  uint32_t* payload = new uint32_t[14+payloadWords];
+  uint32_t* payload = new uint32_t[16+payloadWords];
   // clocktime
   // timestamp
   payload[ 4] = 0; // env
