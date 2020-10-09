@@ -170,7 +170,7 @@ protected:
 
         unsigned rank = _nameindex.names().get(index).rank();
 
-
+        assert (rank!=0); // should not be called for scalars
         assert (shapeIndex==_numarrays); // check that shapes are filled in order
         _unused(shapeIndex);
         Shape& sh = _shapesdata.shapes().get(_numarrays);
