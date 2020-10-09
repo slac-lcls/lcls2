@@ -1,11 +1,7 @@
 import typing
 import amitypes
 from psana.dgram import Dgram
-from psana.event import Event
-from psana.psexp.step import Step
 
-class MissingEnvStore(Exception): pass
-class InvalidInputEnvStore(Exception): pass
 
 class Container(object):
     def __init__(self):
@@ -42,26 +38,6 @@ class DetectorImpl(object):
         self._env_store         = env_store
         self._var_name          = var_name    
     
-    def __call__(self, events):
-        if self._env_store is None:
-            err_msg = f"Function call is not available for this detector."
-            raise MissingEnvStore(err_msg)
-
-        if isinstance(events, list):
-            return self._env_store.values(events, self._var_name)
-        elif isinstance(events, Event):
-            env_values = self._env_store.values([events], self._var_name)
-            return env_values[0]
-        elif isinstance(events, Step):
-            env_values = self._env_store.values([events.evt], self._var_name)
-            return env_values[0]
-        err_msg = f"Calling detector only accept Event or Step. Invalid type: {type(events)} given."
-        raise InvalidInputEnvStore(err_msg)
-    
-    @property
-    def dtype(self):
-        return self._env_store.dtype(self._var_name)
-
     def _segments(self,evt):
         """
         Look in the event to find all the dgrams for our detector/drp_class
