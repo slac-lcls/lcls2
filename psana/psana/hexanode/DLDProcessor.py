@@ -83,6 +83,7 @@ class DLDProcessor :
         CALIBTAB       = calibtab #if calibtab is not None else file.find_calib_file(type=self.CTYPE_CALIBTAB)
         CONSTS         = kwargs.get('consts', None)
         DETOBJ         = kwargs.get('detobj', None)
+        self.CALIBTAB  = CALIBTAB
 
 #------------------------------
 
@@ -311,10 +312,10 @@ class DLDProcessor :
 
     def _on_command_3_end(self) :
       if self.command == 3 : # generate and logger.info(correction tables for sum- and position-correction
-        CALIBTAB = calibtab if calibtab is not None else\
+        CALIBTAB = self.CALIBTAB if self.CALIBTAB is not None else\
                    file.make_calib_file_path(type=CTYPE_CALIBTAB)
         logger.info("creating calibration table in file: %s" % CALIBTAB)
-        status = hexanode.py_create_calibration_tables(CALIBTAB.encode(), sorter)
+        status = hexanode.py_create_calibration_tables(CALIBTAB.encode(), self.sorter)
         logger.info("CALIBRATION: finished creating calibration tables: status %s" % status)
 
 
