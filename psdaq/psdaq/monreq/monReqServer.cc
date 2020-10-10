@@ -130,16 +130,17 @@ namespace Pds {
 
         odg->xtc.damage.increase(idg->xtc.damage.value());
 
-        buf = (char*)odg->xtc.alloc(idg->xtc.extent);
-
-        if (sizeof(*odg) + odg->xtc.sizeofPayload() > _sizeofBuffers)
+        size_t   oSz  = sizeof(*odg) + odg->xtc.sizeofPayload();
+        uint32_t iExt = idg->xtc.extent;
+        if (oSz + iExt > _sizeofBuffers)
         {
-          logging::critical("%s:\n  Datagram is too large (%zd) for buffer of size %d",
-                            __PRETTY_FUNCTION__, sizeof(*odg) + odg->xtc.sizeofPayload(), _sizeofBuffers);
-          throw "Datagram is too large for buffer"; // The memcpy would blow by the buffer size limit
+          logging::debug("Truncated: Buffer of size %zu is too small to add Xtc of size %zu\n",
+                         _sizeofBuffers, iExt);
+          odg->xtc.damage.increase(XtcData::Damage::Truncated);
+          iExt = _sizeofBuffers - oSz;
         }
-
-        memcpy(buf, &idg->xtc, idg->xtc.extent);
+        buf = (char*)odg->xtc.alloc(iExt);
+        memcpy(buf, &idg->xtc, iExt);
       }
       while (++ctrb != last);
     }

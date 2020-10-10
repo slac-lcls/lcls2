@@ -331,8 +331,8 @@ void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
 {
     XtcData::NamesId namesId(nodeId, RawNamesIndex);
     XtcData::DescribedData desc(dgram.xtc, m_namesLookup, namesId);
-    auto payloadSize  = m_pool->pebble.bufferSize() - sizeof(Pds::EbDgram) -
-                        dgram.xtc.sizeofPayload() - sizeof(XtcData::Shape);
+    auto payloadSize  = m_pool->pebble.bufferSize() - sizeof(Pds::EbDgram) - dgram.xtc.sizeofPayload() -
+                        sizeof(XtcData::Shapes) - sizeof(XtcData::Shape);
     auto size         = payloadSize;
     auto shape        = m_pvaMonitor->getData(desc.data(), size);
     uint32_t shapeHack[XtcData::MaxRank]; // Revisit: Hack!
