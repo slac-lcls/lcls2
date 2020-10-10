@@ -86,6 +86,7 @@ MemPool::MemPool(const Parameters& para) :
     m_bufferSize = __builtin_popcount(para.laneMask) * m_dmaSize;
     pebble.resize(m_nbuffers, m_bufferSize, para.nTrBuffers, para.maxTrSize);
     logging::info("nbuffers %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
+    logging::info("nTrBuffers %u  transition buffer size %u", para.nTrBuffers, para.maxTrSize);
 
     pgpEvents.resize(m_nbuffers);
 

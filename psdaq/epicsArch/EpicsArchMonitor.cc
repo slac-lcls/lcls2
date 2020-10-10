@@ -1,3 +1,7 @@
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
+
 #include <stdio.h>
 #include <string>
 #include <vector>
@@ -8,7 +12,7 @@
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
-#include "psdaq/service/GenericPool.hh"
+#include "psdaq/service/EbDgram.hh"
 #include "psalg/utils/SysLog.hh"
 
 #include "EpicsArchMonitor.hh"
@@ -86,12 +90,15 @@ void EpicsArchMonitor::close()
   EpicsMonitorPv::close();
 }
 
-void EpicsArchMonitor::_initDef()
+void EpicsArchMonitor::_initDef(size_t& payloadSize)
 {
+  payloadSize = 0;
   for (unsigned iPvName = 0; iPvName < _lpvPvList.size(); iPvName++)
   {
     EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
-    epicsPvCur.addDef(_epicsArchDef);
+    size_t size;
+    epicsPvCur.addDef(_epicsArchDef, size);
+    payloadSize += size;
   }
 }
 
@@ -114,24 +121,28 @@ void EpicsArchMonitor::_addInfo(XtcData::CreateData& epicsInfo)
   // add dictionary of information for each epics detname above.
   // first name is required to be "keys".  keys and values
   // are delimited by ",".
-  epicsInfo.set_string(0, "epicsname" "," "alias");
+  epicsInfo.set_string(0, "epicsname"); // "," "2nd string"...
 
   for (unsigned iPvName = 0; iPvName < _lpvPvList.size(); iPvName++)
   {
     EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
 
-    epicsInfo.set_string(1 + iPvName, (epicsPvCur.getPvName() + "," + epicsPvCur.getPvDescription()).c_str());
+    epicsInfo.set_string(1 + iPvName, epicsPvCur.getPvName().c_str()); // + "," + 2ndString).c_str()
   }
 }
 
 void EpicsArchMonitor::addNames(const std::string& detName, const std::string& detType, const std::string& serNo,
-                                XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId)
+                                XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId,
+                                size_t& payloadSize)
 {
   XtcData::Alg     rawAlg("raw", 2, 0, 0);
   XtcData::NamesId rawNamesId(nodeId, iRawNamesIndex);
   XtcData::Names&  rawNames = *new(xtc) XtcData::Names(detName.c_str(), rawAlg,
                                                        detType.c_str(), serNo.c_str(), rawNamesId);
-  _initDef();
+  _initDef(payloadSize);
+  payloadSize += (sizeof(Pds::EbDgram) +
+                  sizeof(XtcData::Shapes) +
+                  (1 + _lpvPvList.size()) * sizeof(XtcData::Shape));
   rawNames.add(xtc, _epicsArchDef);
   namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
 
@@ -152,19 +163,20 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
   XtcData::NamesId namesId(nodeId, iRawNamesIndex);
   XtcData::DescribedData desc(xtc, namesLookup, namesId);
   payloadSize -= xtc.sizeofPayload();
-  auto scootch = 64;             // Size dependent amount used by DescribedData
-  payloadSize -= scootch;
+  payloadSize -= sizeof(XtcData::Shapes); // Reserve space for one of these
+  payloadSize -= sizeof(XtcData::Shape);  // Reserve space for the stale vector
 
   const size_t iNumPv = _lpvPvList.size();
-  std::vector<std::vector<unsigned> > shapes(iNumPv);
-  uint32_t* staleFlags = static_cast<uint32_t*>(desc.data());
   unsigned nWords = 1 + ((iNumPv - 1) >> 5);
+  uint32_t* staleFlags = static_cast<uint32_t*>(desc.data());
   memset(staleFlags, 0, nWords * sizeof(*staleFlags));
+  payloadSize -= nWords * sizeof(*staleFlags);
+
+  std::vector<std::vector<uint32_t> > shapes(iNumPv);
   char* pXtc = reinterpret_cast<char*>(&staleFlags[nWords]);
-  payloadSize -= pXtc - reinterpret_cast<char*>(&xtc);
   for (unsigned iPvName = 0; iPvName < iNumPv; iPvName++)
   {
-    EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
+    auto& epicsPvCur = *_lpvPvList[iPvName];
 
     if (_iDebugLevel >= 1)
       epicsPvCur.printPv();
@@ -173,6 +185,9 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
     bool stale;
     if (!epicsPvCur.addToXtc(stale, pXtc, size, shapes[iPvName]))
     {
+      if (shapes[iPvName].size() != 0)         // If rank is non-zero,
+        payloadSize -= sizeof(XtcData::Shape); // reserve space for Shape data
+
       if (size > payloadSize) {
         logging::debug("Truncated: Buffer of size %zu is too small for payload of size %zu for %s\n",
                        payloadSize, size, epicsPvCur.name().c_str());
@@ -186,16 +201,21 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
     }
   }
 
-  desc.set_data_length(pXtc - reinterpret_cast<char*>(&xtc));
+  // First, set data length...
+  desc.set_data_length(pXtc - static_cast<char*>(desc.data()));
 
-  unsigned shape[XtcData::MaxRank];
-  shape[0] = unsigned(nWords);
+  // Second, set array shapes.  Can't do it in the other order
+  uint32_t shape[XtcData::MaxRank];
+  shape[0] = uint32_t(nWords);
   desc.set_array_shape(EpicsArchDef::Stale, shape);
+
+  // Set array shape information for non-zero rank data
   for (unsigned iPvName = 0; iPvName < iNumPv; iPvName++)
   {
-    EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
-    if (!epicsPvCur.isDisabled())
+    const auto& epicsPvCur = *_lpvPvList[iPvName];
+    if (!epicsPvCur.isDisabled() && (shapes[iPvName].size() != 0)) {
       desc.set_array_shape(EpicsArchDef::Data + iPvName, shapes[iPvName].data());
+    }
   }
 
   return 0;     // All PV values are outputted successfully

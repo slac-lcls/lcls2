@@ -1,39 +1,40 @@
 #pragma once
 
 #include <string>
-#include "xtcdata/xtc/ShapesData.hh"
-#include "psdaq/epicstools/MonTracker.hh"
+#include <vector>
+#include "MonTracker.hh"
 
 #include "epicsTime.h"                  // POSIX_TIME_AT_EPICS_EPOCH
 
-namespace Drp {
+namespace Pds_Epics {
 
-class PvMonitorBase : public Pds_Epics::MonTracker
+class PvMonitorBase : public MonTracker
 {
 public:
-    PvMonitorBase(const std::string& channelName, const std::string& provider = "pva") :
-      Pds_Epics::MonTracker(provider, channelName),
+    PvMonitorBase(const std::string& channelName,
+                  const std::string& provider = "pva") :
+      MonTracker(provider, channelName),
       m_epochDiff(provider == "pva" ? 0 : POSIX_TIME_AT_EPICS_EPOCH)
     {
     }
   virtual ~PvMonitorBase() {}
 public:
     void printStructure() const;
-    void getType(const std::string& fieldName = "value");
     bool ready(const std::string& request, unsigned tmo)
     {
         return getComplete(request, tmo);
     }
-    int getParams(const std::string&       name,
-                  XtcData::Name::DataType& type,
-                  size_t&                  size,
-                  size_t&                  rank);
-    std::vector<unsigned> getData(void* data, size_t& length);
+    int getParams(const std::string& name,
+                  pvd::ScalarType&   type,
+                  size_t&            size,
+                  size_t&            rank);
+    void getTimestamp(int64_t& seconds, int32_t& nanoseconds) const;
+    std::vector<uint32_t> getData(void* data, size_t& length);
 private:
     size_t _getData(std::shared_ptr<const pvd::PVScalar>      const& pvScalar,      void* data, size_t& length);
     size_t _getData(std::shared_ptr<const pvd::PVScalarArray> const& pvScalarArray, void* data, size_t& length);
     size_t _getData(std::shared_ptr<const pvd::PVUnion>       const& pvUnion,       void* data, size_t& length);
-    std::vector<unsigned> _getDimensions(size_t length);
+    std::vector<uint32_t> _getDimensions(size_t length);
 private:
 //  public:
 //    std::function<size_t(void* data, size_t& size)> getData;

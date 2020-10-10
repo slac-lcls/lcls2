@@ -2,25 +2,12 @@
 
 #include "psalg/utils/SysLog.hh"
 
+#include "pv/pvTimeStamp.h"
+
 using logging = psalg::SysLog;
 
-namespace Drp
+namespace Pds_Epics
 {
-
-  static const XtcData::Name::DataType xtype[] = {
-    XtcData::Name::UINT8 , // pvBoolean
-    XtcData::Name::INT8  , // pvByte
-    XtcData::Name::INT16 , // pvShort
-    XtcData::Name::INT32 , // pvInt
-    XtcData::Name::INT64 , // pvLong
-    XtcData::Name::UINT8 , // pvUByte
-    XtcData::Name::UINT16, // pvUShort
-    XtcData::Name::UINT32, // pvUInt
-    XtcData::Name::UINT64, // pvULong
-    XtcData::Name::FLOAT , // pvFloat
-    XtcData::Name::DOUBLE, // pvDouble
-    XtcData::Name::CHARSTR, // pvString
-  };
 
 void PvMonitorBase::printStructure() const
 {
@@ -116,10 +103,10 @@ void PvMonitorBase::printStructure() const
     }
 }
 
-int PvMonitorBase::getParams(const std::string&       name,
-                             XtcData::Name::DataType& type,
-                             size_t&                  size,
-                             size_t&                  rank)
+int PvMonitorBase::getParams(const std::string& name,
+                             pvd::ScalarType&   type,
+                             size_t&            nelem,
+                             size_t&            rank)
 {
     auto pvStructureArray = _strct->getSubField<pvd::PVStructureArray>("dimension");
     rank = pvStructureArray ? pvStructureArray->getLength() : 1;
@@ -135,8 +122,8 @@ int PvMonitorBase::getParams(const std::string&       name,
         case pvd::scalar: {
             auto pvScalar = _strct->getSubField<pvd::PVScalar>(offset);
             auto scalar   = pvScalar->getScalar();
-            type          = xtype[scalar->getScalarType()];
-            size          = XtcData::Name::get_element_size(type);
+            type          = scalar->getScalarType();
+            nelem         = 1;
             rank          = 0;
 // This was tested and is known to work
 //          switch (scalar->getScalarType()) {
@@ -161,9 +148,8 @@ int PvMonitorBase::getParams(const std::string&       name,
         case pvd::scalarArray: {
             auto pvScalarArray = _strct->getSubField<pvd::PVScalarArray>(offset);
             auto scalarArray   = pvScalarArray->getScalarArray();
-            type               = xtype[scalarArray->getElementType()];
-            auto nelem         = pvScalarArray->getLength();
-            size               = nelem * XtcData::Name::get_element_size(type);
+            type               = scalarArray->getElementType();
+            nelem              = pvScalarArray->getLength();
 // This was tested and is known to work
 //          switch (scalarArray->getElementType()) {
 //              case pvd::pvBoolean: getData = [&](void* data, size_t& length) -> size_t { return _getArray<uint8_t >(data, length); };  break;
@@ -189,9 +175,8 @@ int PvMonitorBase::getParams(const std::string&       name,
             auto union_        = pvUnion->getUnion();
             auto pvScalarArray = pvUnion->get<pvd::PVScalarArray>();
             auto scalarArray   = pvScalarArray->getScalarArray();
-            type               = xtype[scalarArray->getElementType()];
-            auto nelem         = pvScalarArray->getLength();
-            size               = nelem * XtcData::Name::get_element_size(type);
+            type               = scalarArray->getElementType();
+            nelem              = pvScalarArray->getLength();
 // This has NOT been tested
 //          switch (scalarArray->getElementType()) {
 //              case pvd::pvBoolean: getData = [&](void* data, size_t& length) -> size_t { return _getUnion<uint8_t >(data, length); };  break;
@@ -221,6 +206,23 @@ int PvMonitorBase::getParams(const std::string&       name,
     }
 
     return 0;
+}
+
+void PvMonitorBase::getTimestamp(int64_t& seconds, int32_t& nanoseconds) const
+{
+    // This seems to be the intended way to retrieve the timestamp
+    // However there is some problem with const...
+    //pvd::PVTimeStamp pvTimeStamp;
+    //pvTimeStamp.attach(_strct->getSubField("timeStamp"));
+    //pvd::TimeStamp ts;
+    //pvTimeStamp.get(ts);
+    //
+    //seconds     = ts.getSecondsPastEpoch();
+    //nanoseconds = ts.getNanoseconds();
+
+    seconds     = _strct->getSubField<pvd::PVScalar>("timeStamp.secondsPastEpoch")->getAs<long>();
+    nanoseconds = _strct->getSubField<pvd::PVScalar>("timeStamp.nanoseconds")->getAs<int>();
+    seconds    -= m_epochDiff;
 }
 
 size_t PvMonitorBase::_getData(std::shared_ptr<const pvd::PVScalar> const& pvScalar, void* data, size_t& size)
@@ -305,22 +307,23 @@ size_t PvMonitorBase::_getData(std::shared_ptr<const pvd::PVUnion> const& pvUnio
     return 0;
 }
 
-std::vector<unsigned> PvMonitorBase::_getDimensions(size_t count)
+std::vector<uint32_t> PvMonitorBase::_getDimensions(size_t count)
 {
     auto pvStructureArray = _strct->getSubField<pvd::PVStructureArray>("dimension");
     if (pvStructureArray) {
         auto pvStructure = pvStructureArray->view();
-        std::vector<unsigned> counts(pvStructureArray->getLength());
+        std::vector<uint32_t> counts(pvStructureArray->getLength());
         for (unsigned i = 0; i < counts.size(); ++i) {
-            counts[i] = pvStructure[i]->getSubField<pvd::PVInt>("size")->getAs<unsigned>();
+            // Revisit: EPICS data shows up in [x,y] order but psana wants [y,x]
+            counts[i] = pvStructure[counts.size() - 1 - i]->getSubField<pvd::PVInt>("size")->getAs<uint32_t>();
         }
         return counts;
     }
 
-    return std::vector<unsigned>(1, count);
+    return std::vector<uint32_t>(1, count);
 }
 
-std::vector<unsigned> PvMonitorBase::getData(void* data, size_t& payloadSize)
+std::vector<uint32_t> PvMonitorBase::getData(void* data, size_t& payloadSize)
 {
     auto   field  = _strct->getSubField<pvd::PVField>("value");
     auto   offset = field->getFieldOffset();
@@ -330,7 +333,8 @@ std::vector<unsigned> PvMonitorBase::getData(void* data, size_t& payloadSize)
         case pvd::scalar: {
             auto pvScalar = _strct->getSubField<pvd::PVScalar>(offset);
             count = _getData(pvScalar, data, size);
-            break;
+            payloadSize = size;
+            return std::vector<uint32_t>(0);
         }
         case pvd::scalarArray: {
             auto pvScalarArray = _strct->getSubField<pvd::PVScalarArray>(offset);
@@ -354,4 +358,4 @@ std::vector<unsigned> PvMonitorBase::getData(void* data, size_t& payloadSize)
     return _getDimensions(count);
 }
 
-} // namespace Drp
+} // namespace Pds_Epics

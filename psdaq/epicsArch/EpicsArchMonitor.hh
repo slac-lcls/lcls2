@@ -26,7 +26,8 @@ namespace Drp
     ~EpicsArchMonitor();
   public:
     void     addNames(const std::string& detName, const std::string& detType, const std::string& serNo,
-                      XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId);
+                      XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId,
+                      size_t& payloadSize);
     int      getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId, size_t payloadSize);
     unsigned validate(unsigned& iPvCount);
 
@@ -44,7 +45,7 @@ namespace Drp
     EpicsArchDef        _epicsArchDef;
     XtcData::VarDef     _epicsInfoDef;
 
-    void _initDef();
+    void _initDef(size_t& payloadSize);
     void _initInfoDef();
     void _addInfo(XtcData::CreateData& epicsInfo);
     int  _setupPvList(const PvConfigFile::TPvList& vPvList, TEpicsMonitorPvList& lpvPvList);

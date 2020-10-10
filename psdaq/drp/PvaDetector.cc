@@ -30,15 +30,35 @@ using logging = psalg::SysLog;
 
 namespace Drp {
 
-void PvaMonitor::getVarDef(XtcData::VarDef& varDef)
-{
-    std::string             name = "value";
-    XtcData::Name::DataType type;
-    size_t                  size;
-    size_t                  rank;
-    getParams(name, type, size, rank);
+static const XtcData::Name::DataType xtype[] = {
+  XtcData::Name::UINT8 , // pvBoolean
+  XtcData::Name::INT8  , // pvByte
+  XtcData::Name::INT16 , // pvShort
+  XtcData::Name::INT32 , // pvInt
+  XtcData::Name::INT64 , // pvLong
+  XtcData::Name::UINT8 , // pvUByte
+  XtcData::Name::UINT16, // pvUShort
+  XtcData::Name::UINT32, // pvUInt
+  XtcData::Name::UINT64, // pvULong
+  XtcData::Name::FLOAT , // pvFloat
+  XtcData::Name::DOUBLE, // pvDouble
+  XtcData::Name::CHARSTR, // pvString
+};
 
-    varDef.NameVec.push_back(XtcData::Name(name.c_str(), type, rank));
+void PvaMonitor::getVarDef(XtcData::VarDef& varDef, size_t& payloadSize, size_t rankHack)
+{
+    std::string     name = "value";
+    pvd::ScalarType type;
+    size_t          nelem;
+    size_t          rank;
+    getParams(name, type, nelem, rank);
+
+    if (rankHack != size_t(-1))  rank = rankHack; // Revisit: Hack!
+
+    auto xtcType = xtype[type];
+    varDef.NameVec.push_back(XtcData::Name(name.c_str(), xtcType, rank));
+
+    payloadSize = nelem * XtcData::Name::get_element_size(xtcType);
 }
 
 void PvaMonitor::onConnect()
@@ -57,9 +77,10 @@ void PvaMonitor::onDisconnect()
 
 void PvaMonitor::updated()
 {
-    long seconds     = _strct->getSubField<pvd::PVScalar>("timeStamp.secondsPastEpoch")->getAs<long>();
-    int  nanoseconds = _strct->getSubField<pvd::PVScalar>("timeStamp.nanoseconds")->getAs<int>();
-    XtcData::TimeStamp timestamp(seconds - m_epochDiff, nanoseconds);
+    int64_t seconds;
+    int32_t nanoseconds;
+    getTimestamp(seconds, nanoseconds);
+    XtcData::TimeStamp timestamp(seconds, nanoseconds);
 
     m_pvaDetector.process(timestamp);
 }
@@ -215,8 +236,12 @@ PvaDetector::PvaDetector(Parameters& para, const std::string& pvDescriptor, DrpB
     m_pvQueue(8),                       // Revisit size
     m_bufferFreelist(m_pvQueue.size()),
     m_terminate(false),
-    m_running(false)
+    m_running(false),
+    m_firstDimKw(0)
 {
+    auto firstDimKw = para.kwargs["firstdim"];
+    if (!firstDimKw.empty())
+        m_firstDimKw = std::stoul(firstDimKw);
 }
 
 PvaDetector::~PvaDetector()
@@ -260,8 +285,15 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
     XtcData::NamesId rawNamesId(nodeId, RawNamesIndex);
     XtcData::Names&  rawNames = *new(xtc) XtcData::Names(m_para->detName.c_str(), rawAlg,
                                                          m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId);
+    size_t           payloadSize;
     XtcData::VarDef  rawVarDef;
-    m_pvaMonitor->getVarDef(rawVarDef);
+    size_t           rankHack = m_firstDimKw != 0 ? 2 : -1; // Revisit: Hack!
+    m_pvaMonitor->getVarDef(rawVarDef, payloadSize, rankHack);
+    payloadSize += sizeof(Pds::EbDgram) + sizeof(XtcData::Shapes) + sizeof(XtcData::Shape);
+    if (payloadSize > m_pool->pebble.bufferSize()) {
+        logging::warning("Increase Pebble::m_bufferSize (%zd) to avoid truncation of %s data (%zd)",
+                         m_pool->pebble.bufferSize(), m_pvaMonitor->name().c_str(), payloadSize);
+    }
     rawNames.add(xtc, rawVarDef);
     m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
 
@@ -279,8 +311,8 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
     // first name is required to be "keys".  keys and values
     // are delimited by ",".
     XtcData::CreateData epicsInfo(xtc, m_namesLookup, infoNamesId);
-    epicsInfo.set_string(0, "epicsname" "," "provider");
-    epicsInfo.set_string(1, (m_pvaMonitor->name() + "," + provider).c_str());
+    epicsInfo.set_string(0, "epicsname"); //  "," "provider");
+    epicsInfo.set_string(1, (m_pvaMonitor->name()).c_str()); // + "," + provider).c_str());
 
     size_t bufSize = m_pool->pebble.bufferSize();
     m_buffer.resize(m_pvQueue.size() * bufSize);
@@ -299,10 +331,15 @@ void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
 {
     XtcData::NamesId namesId(nodeId, RawNamesIndex);
     XtcData::DescribedData desc(dgram.xtc, m_namesLookup, namesId);
-    auto scootch     = 64;       // Size dependent amount used by DescribedData
-    auto payloadSize = m_pool->bufferSize() - sizeof(dgram) - dgram.xtc.sizeofPayload() - scootch;
-    auto size        = payloadSize;
-    auto shape       = m_pvaMonitor->getData(desc.data(), size);
+    auto payloadSize  = m_pool->pebble.bufferSize() - sizeof(Pds::EbDgram) -
+                        dgram.xtc.sizeofPayload() - sizeof(XtcData::Shape);
+    auto size         = payloadSize;
+    auto shape        = m_pvaMonitor->getData(desc.data(), size);
+    uint32_t shapeHack[XtcData::MaxRank]; // Revisit: Hack!
+    if (m_firstDimKw != 0) {
+      shapeHack[0] = m_firstDimKw;
+      shapeHack[1] = shape[0] / m_firstDimKw;
+    }
     if (size > payloadSize) {
         logging::debug("Truncated: Buffer of size %zu is too small for payload of size %zu for %s\n",
                        payloadSize, size, m_pvaMonitor->name().c_str());
@@ -310,7 +347,7 @@ void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
         size = payloadSize;
     }
     desc.set_data_length(size);
-    desc.set_array_shape(0, shape.data());
+    desc.set_array_shape(0, m_firstDimKw == 0 ? shape.data() : shapeHack); // Revisit: Hack!
 
     //size_t sz = (sizeof(dgram) + dgram.xtc.sizeofPayload()) >> 2;
     //uint32_t* payload = (uint32_t*)dgram.xtc.payload();

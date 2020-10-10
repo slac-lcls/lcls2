@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 
-#include "drp/PvMonitorBase.hh"
+#include "psdaq/epicstools/PvMonitorBase.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 
@@ -14,7 +14,7 @@
 namespace Drp
 {
 
-  class EpicsMonitorPv : public Drp::PvMonitorBase
+  class EpicsMonitorPv : public Pds_Epics::PvMonitorBase
   {
   public:
     EpicsMonitorPv(const std::string& sPvName,
@@ -25,8 +25,8 @@ namespace Drp
 
     int  release();
     int  printPv() const;
-    int  addDef(EpicsArchDef& def);
-    int  addToXtc(bool& stale, char *pcXtcMem, size_t& iSizeXtc, std::vector<unsigned>& sShape);
+    int  addDef(EpicsArchDef& def, size_t& size);
+    int  addToXtc(bool& stale, char *pcXtcMem, size_t& iSizeXtc, std::vector<uint32_t>& sShape);
 
     /* Get & Set functions */
     const std::string  getPvName()         const {return name();}
@@ -41,7 +41,7 @@ namespace Drp
   private:
     std::string           _sPvDescription;
     std::vector<uint8_t>  _pData;
-    std::vector<unsigned> _shape;
+    std::vector<uint32_t> _shape;
     size_t                _size;
     bool                  _bUpdated;
     bool                  _bDisabled;

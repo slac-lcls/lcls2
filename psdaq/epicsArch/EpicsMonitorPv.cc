@@ -13,11 +13,26 @@ using logging = psalg::SysLog;
 namespace Drp
 {
 
+  static const XtcData::Name::DataType xtype[] = {
+    XtcData::Name::UINT8 , // pvBoolean
+    XtcData::Name::INT8  , // pvByte
+    XtcData::Name::INT16 , // pvShort
+    XtcData::Name::INT32 , // pvInt
+    XtcData::Name::INT64 , // pvLong
+    XtcData::Name::UINT8 , // pvUByte
+    XtcData::Name::UINT16, // pvUShort
+    XtcData::Name::UINT32, // pvUInt
+    XtcData::Name::UINT64, // pvULong
+    XtcData::Name::FLOAT , // pvFloat
+    XtcData::Name::DOUBLE, // pvDouble
+    XtcData::Name::CHARSTR, // pvString
+  };
+
   EpicsMonitorPv::EpicsMonitorPv(const std::string& sPvName,
                                  const std::string& sPvDescription,
                                  const std::string& sProvider,
                                  bool               bDebug) :
-    Drp::PvMonitorBase(sPvName, sProvider),
+    Pds_Epics::PvMonitorBase(sPvName, sProvider),
     _sPvDescription(sPvDescription),
     _size(0),
     _bUpdated(false),
@@ -39,19 +54,20 @@ namespace Drp
     return 0;
   }
 
-  int EpicsMonitorPv::addDef(EpicsArchDef& def)
+  int EpicsMonitorPv::addDef(EpicsArchDef& def, size_t& size)
   {
     if (_bDisabled)  return 1;
 
-    std::string             name = "value";
-    XtcData::Name::DataType type;
-    size_t                  size;
-    size_t                  rank;
-    getParams(name, type, size, rank);
+    std::string     name = "value";
+    pvd::ScalarType type;
+    size_t          nelem;
+    size_t          rank;
+    getParams(name, type, nelem, rank);
 
     auto detName = !_sPvDescription.empty() ? _sPvDescription : name;
-
-    def.NameVec.push_back(XtcData::Name(detName.c_str(), type, rank));
+    auto xtcType = xtype[type];
+    def.NameVec.push_back(XtcData::Name(detName.c_str(), xtcType, rank));
+    size = nelem * XtcData::Name::get_element_size(xtcType);
     _pData.resize(size);
 
     std::string fnames("VarDef.NameVec fields: ");
@@ -99,7 +115,7 @@ namespace Drp
     return 0;
   }
 
-  int EpicsMonitorPv::addToXtc(bool& stale, char* pcXtcMem, size_t& iSizeXtc, std::vector<unsigned>& sShape)
+  int EpicsMonitorPv::addToXtc(bool& stale, char* pcXtcMem, size_t& iSizeXtc, std::vector<uint32_t>& sShape)
   {
     if (pcXtcMem == NULL || _bDisabled)
       return 1;

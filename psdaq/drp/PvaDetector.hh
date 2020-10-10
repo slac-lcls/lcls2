@@ -8,19 +8,19 @@
 #include <condition_variable>
 #include "DrpBase.hh"
 #include "XpmDetector.hh"
-#include "PvMonitorBase.hh"
 #include "spscqueue.hh"
+#include "psdaq/epicstools/PvMonitorBase.hh"
 #include "psdaq/service/Collection.hh"
 
 namespace Drp {
 
 class PvaDetector;
 
-class PvaMonitor : public PvMonitorBase
+class PvaMonitor : public Pds_Epics::PvMonitorBase
 {
 public:
     PvaMonitor(Parameters& para, const std::string& channelName, PvaDetector& det, const std::string& provider) :
-      PvMonitorBase(channelName, provider),
+      Pds_Epics::PvMonitorBase(channelName, provider),
       m_para(para),
       m_pvaDetector(det)
     {
@@ -30,7 +30,7 @@ public:
     void onDisconnect() override;
     void updated()      override;
 public:
-    void getVarDef(XtcData::VarDef&);
+    void getVarDef(XtcData::VarDef&, size_t& payloadSize, size_t rankHack); // Revisit: Hack!
 private:
     Parameters&  m_para;
     PvaDetector& m_pvaDetector;
@@ -75,6 +75,7 @@ private:
     uint64_t m_nEmpty;
     uint64_t m_nTooOld;
     uint64_t m_nTimedOut;
+    uint32_t m_firstDimKw;              // Revisit: Hack!
 };
 
 

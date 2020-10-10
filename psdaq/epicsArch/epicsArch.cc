@@ -212,8 +212,13 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
         logging::warning("Number of PVs that didn't connect: %d (of %d)", nNotConnected, pvCount);
     }
 
+    size_t payloadSize;
     m_monitor->addNames(m_para->detName, m_para->detType, m_para->serNo,
-                        xtc, m_namesLookup, nodeId);
+                        xtc, m_namesLookup, nodeId, payloadSize);
+    if (payloadSize > m_para->maxTrSize) {
+        logging::warning("Increase Parameter::maxTrSize (%zd) to avoid truncation of data (%zd)",
+                         m_para->maxTrSize, payloadSize);
+    }
 
     m_workerThread = std::thread{&EaDetector::_worker, this};
 
@@ -222,7 +227,7 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
 
 void EaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
-    auto payloadSize = m_pool->bufferSize() - sizeof(dgram);
+    auto payloadSize = m_para->maxTrSize - sizeof(Pds::EbDgram);
 
     m_monitor->getData(dgram.xtc, m_namesLookup, nodeId, payloadSize);
 }
@@ -539,6 +544,8 @@ static void usage(const char* name)
       "    -P      [*required*] Instrument name\n"
       "    -p      [*required*] Set partition id\n"
       "    -o      Set output file directory\n"
+      "    -l      Set the PGP lane mask\n"
+      "    -k      Option for supplying kwargs\n"
       "    -M      Prometheus config file directory\n"
       "    -v      Verbosity level (repeat for increased detail)\n"
       "    -h      Show usage\n"
@@ -550,7 +557,7 @@ static void usage(const char* name)
       "    - Use \'#\' at the beginning of the line to comment out whole line\n"
       "    - Use \'#\' in the middle of the line to comment out the remaining characters\n"
       "    - Use '*' at the beginning of the line to define an alias for the\n"
-      "      immediately following PV(s)\n"
+      "      immediately following PV(s).  This must be a valid Python name\n"
       "    - Use \'<\' to include file(s)\n"
       "  \n"
       "  Example:\n"
@@ -559,7 +566,7 @@ static void usage(const char* name)
       "    iocTest:aiExample          # PV Name, CA provider\n"
       "    # This is a comment line\n"
       "    iocTest:calcExample1 pva   # PV name, PVA provider\n"
-      "    * electron beam energy     # Alias for BEND:DMP1:400:BDES\n"
+      "    * electron_beam_energy     # Alias for BEND:DMP1:400:BDES\n"
       "    BEND:DMP1:400:BDES   ca    # PV name, CA provider\n",
       name
     );

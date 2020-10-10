@@ -30,7 +30,8 @@ public:
 
   EpicsArchDef()
   {
-    NameVec.push_back({"StaleFlags", XtcData::Name::UINT32, 1});
+    const size_t rank = 1;
+    NameVec.push_back({"StaleFlags", XtcData::Name::UINT32, rank});
     // PVs are added to NameVec in the code
   }
 };

@@ -4,6 +4,7 @@ add_library(epicstools SHARED
     EpicsPVA.cc
     MonTracker.cc
     PvServer.cc
+    PvMonitorBase.cc
 )
 
 target_include_directories(epicstools PUBLIC
@@ -17,6 +18,7 @@ target_link_libraries(epicstools
     epics::pvData
     epics::ca
     epics::Com
+    psalg::utils
 )
 
 install(TARGETS epicstools
