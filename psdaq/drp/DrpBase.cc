@@ -146,7 +146,9 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
               "-c000";
         std::string runName = ss.str();
         // data
-        std::string dataDir = {para.outputDir + "/" + para.instrument + "/" + runInfo.experimentName + "/xtc"};
+        std::string exptDir = {para.outputDir + "/" + para.instrument + "/" + runInfo.experimentName};
+        local_mkdir(exptDir.c_str());
+        std::string dataDir = {exptDir + "/xtc"};
         local_mkdir(dataDir.c_str());
         std::string path = {"/" + para.instrument + "/" + runInfo.experimentName + "/xtc/" + runName + ".xtc2"};
         std::string absolute_path = {para.outputDir + path};
