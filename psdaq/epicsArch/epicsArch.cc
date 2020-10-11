@@ -94,10 +94,18 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     }
     XtcData::TransitionId::Value transitionId = timingHeader->service();
     if (transitionId != XtcData::TransitionId::L1Accept) {
-        logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",
-                       XtcData::TransitionId::name(transitionId),
-                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                       timingHeader->pulseId());
+        if (transitionId == XtcData::TransitionId::Configure) {
+            logging::info("PGPReader  saw %s transition @ %u.%09u (%014lx)",
+                          XtcData::TransitionId::name(transitionId),
+                          timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                          timingHeader->pulseId());
+        }
+        else {
+            logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",
+                           XtcData::TransitionId::name(transitionId),
+                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                           timingHeader->pulseId());
+        }
         if (transitionId == XtcData::TransitionId::BeginRun) {
             m_lastComplete = 0;  // EvtCounter reset
         }
@@ -547,6 +555,8 @@ static void usage(const char* name)
       "    -l      Set the PGP lane mask\n"
       "    -k      Option for supplying kwargs\n"
       "    -M      Prometheus config file directory\n"
+      "    -t      Number of transition buffers (power of 2)\n"
+      "    -T      Transition buffer size\n"
       "    -v      Verbosity level (repeat for increased detail)\n"
       "    -h      Show usage\n"
       "================================================================================\n"
@@ -575,9 +585,14 @@ static void usage(const char* name)
 int main(int argc, char* argv[])
 {
     Drp::Parameters para;
+    para.maxTrSize = 256 * 1024;
+    para.nTrBuffers = 32; // Power of 2 greater than the maximum number of
+                          // transitions in the system at any given time, e.g.,
+                          // MAX_LATENCY * (SlowUpdate rate), in same units
+
     std::string kwargs_str;
     int c;
-    while((c = getopt(argc, argv, "p:o:l:C:d:u:k:P:M:vh")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:C:d:u:k:P:M:t:T:vh")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -605,6 +620,12 @@ int main(int argc, char* argv[])
                 break;
             case 'M':
                 para.prometheusDir = optarg;
+                break;
+            case 't':
+                para.nTrBuffers = std::stoul(optarg, nullptr, 0);
+                break;
+            case 'T':
+                para.maxTrSize  = std::stoul(optarg, nullptr, 0);
                 break;
             case 'v':
                 ++para.verbose;
@@ -665,10 +686,6 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    para.maxTrSize = 256 * 1024;
-    para.nTrBuffers = 32; // Power of 2 greater than the maximum number of
-                          // transitions in the system at any given time, e.g.,
-                          // MAX_LATENCY * (SlowUpdate rate), in same units
     try {
         Py_Initialize(); // for use by configuration
         Drp::EpicsArchApp app(para, pvCfgFile);

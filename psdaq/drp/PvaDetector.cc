@@ -27,6 +27,41 @@
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 
+static unsigned tsMatchDegree = 2;
+
+//
+//  Put all the ugliness of non-global timestamps here
+//
+static int _compare(const XtcData::TimeStamp& ts1,
+                    const XtcData::TimeStamp& ts2) {
+  int result = 0;
+
+  if (tsMatchDegree == 0)
+      return result;
+
+  if (tsMatchDegree == 1) {
+    /*
+    **  Mask out the fiducial
+    */
+    const uint64_t mask = 0xfffffffffffe0000ULL;
+    uint64_t ts1m = ts1.value()&mask;
+    uint64_t ts2m = ts2.value()&mask;
+
+    /*
+      if      (ts1m > ts2m) result = 1;
+      else if (ts1m < ts2m) result = -1;
+    */
+    int64_t dt = int64_t(ts1m) - int64_t(ts2m);
+    const int64_t delta = 10000000; // 10 ms!
+    if      (dt >  delta) result = 1;
+    else if (dt < -delta) result = -1;
+    return result;
+  }
+
+  if      (ts1 > ts2) result = 1;
+  else if (ts2 > ts1) result = -1;
+  return result;
+}
 
 namespace Drp {
 
@@ -159,10 +194,18 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     }
     XtcData::TransitionId::Value transitionId = timingHeader->service();
     if (transitionId != XtcData::TransitionId::L1Accept) {
-        logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",
-                       XtcData::TransitionId::name(transitionId),
-                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                       timingHeader->pulseId());
+        if ( transitionId == XtcData::TransitionId::Configure) {
+            logging::info("PGPReader  saw %s transition @ %u.%09u (%014lx)",
+                          XtcData::TransitionId::name(transitionId),
+                          timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                          timingHeader->pulseId());
+        }
+        else {
+            logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",
+                           XtcData::TransitionId::name(transitionId),
+                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                           timingHeader->pulseId());
+        }
         if (transitionId == XtcData::TransitionId::BeginRun) {
             m_lastComplete = 0;  // EvtCounter reset
         }
@@ -251,6 +294,7 @@ PvaDetector::~PvaDetector()
     shutdown();
 }
 
+  //std::string PvaDetector::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc)
 unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
 {
     logging::info("PVA configure");
@@ -277,7 +321,9 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
     unsigned tmo = 3;
     bool ready = m_pvaMonitor->ready(request, tmo);
     if (!ready) {
-        logging::error("Failed to connect with %s", m_pvaMonitor->name().c_str());
+        std::string error = "Failed to connect with " + m_pvaMonitor->name();
+        logging::error(error.c_str());
+        //return error;
         return 1;
     }
 
@@ -324,6 +370,7 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
 
     m_workerThread = std::thread{&PvaDetector::_worker, this};
 
+    //    return std::string();
     return 0;
 }
 
@@ -432,8 +479,8 @@ void PvaDetector::_worker()
                 // Prevent PGP events from stacking up by by timing them out.
                 // If the PV is updating, _timeout() never finds anything to do.
                 XtcData::TimeStamp timestamp;
-                const unsigned msTmo = 100;
-                const unsigned nsTmo = msTmo * 1000000;
+                const uint64_t msTmo = tsMatchDegree==2 ? 100 : 5000;
+                const uint64_t nsTmo = msTmo * 1000000;
                 _timeout(timestamp.from_ns(dgram->time.to_ns() - nsTmo));
             }
             else {
@@ -501,9 +548,13 @@ void PvaDetector::_matchUp()
                        pgpDg->time.seconds(), pgpDg->time.nanoseconds(),
                        pgpDg->time.to_ns() - pvDg->time.to_ns());
 
-        if      (pvDg->time == pgpDg->time)  _handleMatch  (*pvDg, *pgpDg);
-        else if (pvDg->time >  pgpDg->time)  _handleYounger(*pvDg, *pgpDg);
-        else                                 _handleOlder  (*pvDg, *pgpDg);
+        //  Mask out fiducial until it's understood
+        //        if      (pvDg->time == pgpDg->time)  _handleMatch  (*pvDg, *pgpDg);
+
+        int result = _compare(pvDg->time,pgpDg->time);
+        if      (result==0) _handleMatch  (*pvDg, *pgpDg);
+        else if (result >0) _handleYounger(*pvDg, *pgpDg);
+        else                _handleOlder  (*pvDg, *pgpDg);
     }
 }
 
@@ -575,9 +626,11 @@ void PvaDetector::_handleOlder(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
 
     ++m_nTooOld;
     logging::debug("PV too old!!      "
-                   "TimeStamps: PV %u.%09u < PGP %u.%09u",
+                   "TimeStamps: PV %u.%09u < PGP %u.%09u [0x%08x%04x.%05x < 0x%08x%04x.%05x]",
                    pvDg.time.seconds(), pvDg.time.nanoseconds(),
-                   pgpDg.time.seconds(), pgpDg.time.nanoseconds());
+                   pgpDg.time.seconds(), pgpDg.time.nanoseconds(),
+                   pvDg.time.seconds(), (pvDg.time.nanoseconds()>>16)&0xfffe, pvDg.time.nanoseconds()&0x1ffff, 
+                   pgpDg.time.seconds(), (pgpDg.time.nanoseconds()>>16)&0xfffe, pgpDg.time.nanoseconds()&0x1ffff);
 
     m_bufferFreelist.push(dgram);       // Return buffer to freelist
 }
@@ -591,7 +644,7 @@ void PvaDetector::_timeout(const XtcData::TimeStamp& timestamp)
         }
 
         Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
-        if (dgram.time > timestamp) {
+        if (_compare(dgram.time,timestamp)>=0) {
             break;                  // dgram is newer than the timeout timestamp
         }
 
@@ -603,9 +656,11 @@ void PvaDetector::_timeout(const XtcData::TimeStamp& timestamp)
         dgram.xtc.damage.increase(XtcData::Damage::TimedOut);
         ++m_nTimedOut;
         logging::debug("Event timed out!! "
-                       "TimeStamps: timeout %u.%09u > PGP %u.%09u",
+                       "TimeStamps: timeout %u.%09u > PGP %u.%09u [0x%08x%04x.%05x > 0x%08x%04x.%05x]",
                        timestamp.seconds(), timestamp.nanoseconds(),
-                       dgram.time.seconds(), dgram.time.nanoseconds());
+                       dgram.time.seconds(), dgram.time.nanoseconds(),
+                       timestamp.seconds(), (timestamp.nanoseconds()>>16)&0xfffe, timestamp.nanoseconds()&0x1ffff,
+                       dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff);
 
 
         if (dgram.service() != XtcData::TransitionId::SlowUpdate) {
@@ -786,7 +841,7 @@ void PvaApp::handlePhase1(const json& msg)
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc);
         if (error) {
-            std::string errorMsg = "Phase 1 error in Detector::configure";
+            std::string errorMsg = "Failed transition phase 1";
             logging::error("%s", errorMsg.c_str());
             _error(key, msg, errorMsg);
             return;
@@ -852,7 +907,7 @@ int main(int argc, char* argv[])
     Drp::Parameters para;
     std::string kwargs_str;
     int c;
-    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:T::M:v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:T::M:01v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -886,6 +941,13 @@ int main(int argc, char* argv[])
                 break;
             case 'M':
                 para.prometheusDir = optarg;
+                break;
+            //  Indicate level of timestamp matching (ugh)
+            case '0':
+                tsMatchDegree = 0;
+                break;
+            case '1':
+                tsMatchDegree = 1;
                 break;
             case 'v':
                 ++para.verbose;

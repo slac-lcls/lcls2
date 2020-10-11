@@ -42,6 +42,7 @@ class PvaDetector : public XpmDetector
 public:
     PvaDetector(Parameters& para, const std::string& pvName, DrpBase& drp);
     ~PvaDetector();
+  //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
     void shutdown() override;

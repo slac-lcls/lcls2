@@ -149,7 +149,8 @@ BldFactory::BldFactory(const char* name,
         _varDef.NameVec.push_back(XtcData::Name("energy"      , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("xpos"        , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("ypos"        , XtcData::Name::DOUBLE));
-        payloadSize = 24;
+        _varDef.NameVec.push_back(XtcData::Name("avgIntensity", XtcData::Name::DOUBLE));
+        payloadSize = 32;
     }
     else if (strcmp("xgmd",name)==0) {
         mcaddr = 0xefff1903;
@@ -157,7 +158,8 @@ BldFactory::BldFactory(const char* name,
         _varDef.NameVec.push_back(XtcData::Name("energy"      , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("xpos"        , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("ypos"        , XtcData::Name::DOUBLE));
-        payloadSize = 24;
+        _varDef.NameVec.push_back(XtcData::Name("avgIntensity", XtcData::Name::DOUBLE));
+        payloadSize = 32;
     }
     else {
         throw std::string("BLD name ")+name+" not recognized";
@@ -443,10 +445,18 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     }
     XtcData::TransitionId::Value transitionId = timingHeader->service();
     if (transitionId != XtcData::TransitionId::L1Accept) {
-        logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",
-                       XtcData::TransitionId::name(transitionId),
-                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                       timingHeader->pulseId());
+        if (transitionId == XtcData::TransitionId::Configure) {
+            logging::info("PGPReader  saw %s transition @ %u.%09u (%014lx)",
+                          XtcData::TransitionId::name(transitionId),
+                          timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                          timingHeader->pulseId());
+        }
+        else {
+            logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",
+                           XtcData::TransitionId::name(transitionId),
+                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                           timingHeader->pulseId());
+        }
         if (transitionId == XtcData::TransitionId::BeginRun) {
             m_lastComplete = 0;  // EvtCounter reset
         }
