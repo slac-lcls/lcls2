@@ -584,7 +584,9 @@ void PvaDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
         PGPEvent* pgpEvent = &m_pool->pgpEvents[pgpIdx];
         pgpEvent->transitionDgram = trDg;
 
-        memcpy((void*)&trDg->xtc, (const void*)&pvDg.xtc, pvDg.xtc.extent);
+        // Ignore PV data on SlowUpdates and instead provide an empty XTC
+        //memcpy((void*)&trDg->xtc, (const void*)&pvDg.xtc, pvDg.xtc.extent);
+        trDg->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
 
         _sendToTeb(*trDg, pgpIdx);
     }
@@ -629,7 +631,7 @@ void PvaDetector::_handleOlder(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
                    "TimeStamps: PV %u.%09u < PGP %u.%09u [0x%08x%04x.%05x < 0x%08x%04x.%05x]",
                    pvDg.time.seconds(), pvDg.time.nanoseconds(),
                    pgpDg.time.seconds(), pgpDg.time.nanoseconds(),
-                   pvDg.time.seconds(), (pvDg.time.nanoseconds()>>16)&0xfffe, pvDg.time.nanoseconds()&0x1ffff, 
+                   pvDg.time.seconds(), (pvDg.time.nanoseconds()>>16)&0xfffe, pvDg.time.nanoseconds()&0x1ffff,
                    pgpDg.time.seconds(), (pgpDg.time.nanoseconds()>>16)&0xfffe, pgpDg.time.nanoseconds()&0x1ffff);
 
     m_bufferFreelist.push(dgram);       // Return buffer to freelist
