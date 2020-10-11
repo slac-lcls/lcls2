@@ -120,8 +120,9 @@ int  TransitionCache::allocate  (TransitionId::Value id) {
 #endif
           if (_nSlowUpdates < MAX_SLOW_UPDATES) {
             ++_nSlowUpdates;
-            _freeTr.remove(ibuffer);  // Fill a free buffer
-            _cachedTr.push(ibuffer);  // and push it onto the cache
+            //  Don't need to move off the free transition (nothing puts it back)
+            // _freeTr.remove(ibuffer);  // Fill a free buffer
+            // _cachedTr.push(ibuffer);  // and push it onto the cache
           }
         }
         else if (id == oid+2) {       // Next begin transition
