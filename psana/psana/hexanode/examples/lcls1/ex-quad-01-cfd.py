@@ -16,7 +16,8 @@ det = Detector(detname)
 
 ch = int(sys.argv[1]) if len(sys.argv) > 1 else 2 # Acqiris chanel
 
-for nevent,evt in enumerate(ds.events()):
+myrun=next(ds.runs())
+for nevent,evt in enumerate(myrun.events()):
     r = det.raw(evt)
     nda = np.array(r)
     print 'Event:%03d'%nevent, '\n' if r is not None else '', r

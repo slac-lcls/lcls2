@@ -7,10 +7,11 @@ import numpy as np
 import inspect, base64
 
 class parse_dgram():
-    def __init__(self, ds, source, detector, config, event_limit):
+    def __init__(self, ds, run, source, detector, config, event_limit):
         self.events=[]
         self.event_limit = event_limit
         self.ds = ds
+        self.run = run
         self.source = source
         self.detector = detector
         self.config = config
@@ -123,7 +124,7 @@ class parse_dgram():
         cs = self.ds.env().configStore()
         configure = cs.get(self.config, self.source)
         self.events.append(self.parse_event(configure))
-        for ct,evt in enumerate(self.ds.events()):
+        for ct,evt in enumerate(self.run.events()):
             if ct>self.event_limit:
                 break
             framev2 = evt.get(self.detector, self.source)
@@ -136,11 +137,12 @@ event_limit = 10
 
 ## Jungfrau
 ds = DataSource('exp=xpptut15:run=430')
+myrun = next(ds.runs())
 source = Source('DetInfo(MfxEndstation.0:Jungfrau.0)')
 detector = Jungfrau.ElementV2
 config = Jungfrau.ConfigV3
 
-cfgd = parse_dgram(ds, source, detector, config, event_limit)
+cfgd = parse_dgram(ds, myrun, source, detector, config, event_limit)
 with open("jungfrau.json", 'w') as f:
     f.write(json.dumps(cfgd.events))
 
@@ -150,11 +152,12 @@ with open("jungfrau.json", 'w') as f:
 
 ## Epix
 ds = DataSource('exp=xpptut15:run=260')
+myrun = next(ds.runs())
 source = Source('DetInfo(XcsEndstation.0:Epix100a.1)')
 detector = Epix.ElementV3
 config = Epix.Config100aV2
 
-cfgd = parse_dgram(ds, source, detector, config, event_limit)
+cfgd = parse_dgram(ds, myrun, source, detector, config, event_limit)
 with open("epix.json", 'w') as f:
     f.write(json.dumps(cfgd.events))
 
@@ -162,29 +165,31 @@ with open("epix.json", 'w') as f:
 ## Crystal dark runs
 
 ds = DataSource('exp=cxid9114:run=89')
+myrun = next(ds.runs())
 source = Source('DetInfo(CxiDs1.0:Cspad.0)')
 detector = CsPad.DataV2
 config = CsPad.ConfigV5
 
-cfgd = parse_dgram(ds, source, detector, config, event_limit)
+cfgd = parse_dgram(ds, myrun, source, detector, config, event_limit)
 with open("crystal_dark.json", 'w') as f:
     f.write(json.dumps(cfgd.events))
 
 ## Crystal x-ray runs
 
 ds = DataSource('exp=cxid9114:run=95')
+myrun = next(ds.runs())
 source = Source('DetInfo(CxiDs1.0:Cspad.0)')
 detector = CsPad.DataV2
 config = CsPad.ConfigV5
 
-cfgd = parse_dgram(ds, source, detector, config, event_limit)
+cfgd = parse_dgram(ds, myrun, source, detector, config, event_limit)
 with open("crystal_xray.json", 'w') as f:
     f.write(json.dumps(cfgd.events))
 
 cs = ds.env().configStore()
 conf = cs.get(config, source)
 
-evt = ds.events().next()
-evt = ds.events().next()
+evt = next(myrun.events())
+evt = next(myrun.events())
 
 framev2 = evt.get(detector, source)

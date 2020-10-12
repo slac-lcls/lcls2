@@ -18,7 +18,8 @@ t_sec = time()
 
 ### intensity = []
 
-for nev,evt in enumerate(ds.events()):
+myrun=next(ds.runs())
+for nev,evt in enumerate(myrun.events()):
 
         if nev%size!=rank: continue # different ranks look at different events
 

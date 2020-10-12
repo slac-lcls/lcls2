@@ -60,7 +60,8 @@ print 'Example for\n  dataset: %s\n  source1 : %s\n  source2 : %s' % (dsname, sr
 ds  = psana.DataSource(dsname)
 env = ds.env()
 #nrun = evt.run()
-#evt = ds.events().next()
+#myrun = next(ds.runs())
+#evt = next(myrun.events())
 #for key in evt.keys() : print key
 
 det2 = WFDetector(src2, env, pbits=1022)
@@ -90,7 +91,8 @@ ax = [gr.add_axes(fig, axwin=(x0, y0 + i*dy, w, h)) for i in range(naxes)]
 #------------------------------
 wf,wt = None, None
 
-for i,evt in enumerate(ds.events()) :
+myrun=next(ds.runs())
+for i,evt in enumerate(myrun.events()) :
     #if i< 140 : continue
     if i>4 : break
     print 50*'_', '\n Event # %d' % i

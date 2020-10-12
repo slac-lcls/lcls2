@@ -90,7 +90,8 @@ def test_raw(fname):
     logger.info(info_ndarr(rms,       'rms      '))
     logger.info(info_ndarr(status,    'status   '))
 
-    for evnum,evt in enumerate(ds.events()):
+    myrun = next(ds.runs())
+    for evnum,evt in enumerate(myrun.events()):
         print('%s\nEvent %04d' % (50*'_',evnum))
         raw = det.raw.raw(evt)
         for segment,panel in raw.items():

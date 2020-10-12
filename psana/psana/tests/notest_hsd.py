@@ -18,7 +18,8 @@ def test_hsd():
     det = ds.Detector("xpphsd")
 
     chanNum = 3
-    for i, evt in enumerate(ds.events()):
+    myrun = next(ds.runs())
+    for i, evt in enumerate(myrun.events()):
         raw = det.raw(evt)
         peaks = det.peaks(evt)
         print("raw waveforms: ", raw)

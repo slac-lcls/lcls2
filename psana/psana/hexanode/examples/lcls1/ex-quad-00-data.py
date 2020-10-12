@@ -7,7 +7,8 @@ from psana import DataSource, Detector
 ds = DataSource('exp=amox27716:run=100')
 det = Detector('AmoEndstation.0:Acqiris.1')
 
-for n,evt in enumerate(ds.events()):
+myrun = next(ds.runs())
+for n,evt in enumerate(myrun.events()):
     v = det.raw(evt)
     print 'Event:%03d'%n, '\n' if v is not None else '', v
     if v is not None : break

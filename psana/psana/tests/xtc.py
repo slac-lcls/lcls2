@@ -5,7 +5,8 @@ from psana import DataSource
 
 def refcnt_test(fname,nsegments,cydgram):
   ds = DataSource(files=fname)  
-  for nevent,evt in enumerate(ds.events()):
+  myrun = next(ds.runs())
+  for nevent,evt in enumerate(myrun.events()):
       if nevent==0:
         dgrambytes_event0=evt._dgrams[0]._dgrambytes
       elif nevent==1:

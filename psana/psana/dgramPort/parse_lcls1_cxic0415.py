@@ -57,7 +57,8 @@ context = zmq.Context()
 zmq_socket = context.socket(zmq.PUSH)
 zmq_socket.bind("tcp://127.0.0.1:5557")
 
-for i, evt in enumerate(ds.events()):
+myrun = next(ds.runs())
+for i, evt in enumerate(myrun.events()):
     if i == nevents: break
     raw = det.raw(evt)
     calib = det.calib(evt)

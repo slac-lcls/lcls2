@@ -16,7 +16,8 @@ Usage::
     dsname = '/reg/g/psdm/detector/data_test/xtc/cxif5315-e545-r0169-s00-c00.xtc'
     ds = psana.DataSource(dsname)
     env=ds.env()
-    evt=ds.events().next()
+    myrun=next(ds.runs())
+    evt=next(myrun.events())
 
     src      = 'Cspad.' # 'Epix100a.', etc
     ctype    = gu.PIXEL_MASK # | gu.PEDESTALS | gu.PIXEL_STATUS, etc.
@@ -857,7 +858,8 @@ def set_parameters() :
 
     ds = psana.DataSource(dsname)
     genv=ds.env()
-    gevt=ds.events().next()
+    grun=next(ds.runs())
+    gevt=next(grun.events())
 
 #------------------------------
 

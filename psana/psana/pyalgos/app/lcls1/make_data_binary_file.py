@@ -31,7 +31,8 @@ def make_data_binary_file(dsname   = 'exp=xpptut15:run=54',\
 
     f = open(ofname,'wb')
 
-    for nevt, evt in enumerate(ds.events()):
+    myrun = next(ds.runs())
+    for nevt, evt in enumerate(myrun.events()):
        if nevt%100==0 : print 'Event %d'%nevt
        if nevt < nev_min : continue
        if nevt >= nev_max : break

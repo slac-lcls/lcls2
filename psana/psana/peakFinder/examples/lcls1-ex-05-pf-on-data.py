@@ -45,7 +45,8 @@ print '%s\nExample for\n  dataset: %s\n  source : %s' % (85*'_',dsname, src)
 
 ds  = psana.DataSource(dsname)
 env = ds.env()
-#evt = ds.events().next()
+#myrun = next(ds.runs())
+#evt = next(myrun.events())
 #runnum = evt.run()
 
 #run = ds.runs().next()
@@ -111,7 +112,8 @@ nda = None
 peaks = None
 
 # loop over events in data set
-for evnum, evt in enumerate(ds.events()) :
+myrun = next(ds.runs())
+for evnum, evt in enumerate(myrun.events()) :
 
     if evnum%100==0 : print 'Event %d' % (evnum)
 

@@ -68,12 +68,8 @@ for run in ds.runs():
         padarray = vals.padarray
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
 
-# Usecase 2: one iterator
-ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
-for evt in ds.events():
-    pass
 
-# Usecase#3: looping through steps
+# Usecase#2 looping through steps
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
 for run in ds.runs():
     det = run.Detector('xppcspad')
@@ -82,7 +78,7 @@ for run in ds.runs():
             padarray = vals.padarray
             assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
 
-# Usecase#4: singlefile ds
+# Usecase#3: singlefile ds
 ds = DataSource(files=os.path.join(xtc_dir,'data-r0001-s00.xtc2'))
 for run in ds.runs():
     det = run.Detector('xppcspad')

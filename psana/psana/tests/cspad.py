@@ -17,7 +17,8 @@ os.environ['PS_CALIB_DIR'] = "/reg/common/package/mona/cxid9114"
 ds = psana.DataSource(files='/reg/common/package/lcls2_data/crystal_99_evts.xtc')
 det = ds.Detector("DscCsPad")
 run = 101
-for i, evt in enumerate(ds.events()):
+myrun = next(ds.runs())
+for i, evt in enumerate(myrun.events()):
     if i == 3: break
     raw = det.raw(evt)
     ped = det.pedestals(run)

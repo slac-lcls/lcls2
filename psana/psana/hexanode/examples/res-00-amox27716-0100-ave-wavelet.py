@@ -154,7 +154,8 @@ def draw_times_old(ax, wf, wt) :
 ds  = psana.DataSource(dsname)
 env = ds.env()
 #nrun = evt.run()
-#evt = ds.events().next()
+#myrun = next(ds.runs())
+#evt = next(myrun.events())
 #for key in evt.keys() : print(key)
 
 det2 = WFDetector(src2, env) #, pbits=1022)
@@ -184,7 +185,8 @@ ax = [gr.add_axes(fig, axwin=(x0, y0 + i*dy, w, h)) for i in range(NAXES)]
 #------------------------------
 wf,wt = None, None
 
-for n,evt in enumerate(ds.events()) :
+myrun = next(ds.runs())
+for n,evt in enumerate(myrun.events()) :
     if n<EVSKIP : continue
     if n>EVENTS : break
     #print(50*'_', '\n Event # %d' % n)

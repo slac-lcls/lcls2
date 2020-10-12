@@ -143,7 +143,8 @@ xtcav_SIOC_SYS0_ML01_AO216         = xtcav_gr.create_dataset('SIOC:SYS0:ML01:AO2
 
 raw_ds = h5out.create_dataset('raw', (EVENTS+1,1024,1024), dtype='u2', chunks=(chsize,1024,1024), maxshape=(None,1024,1024))
   
-for nevt,evt in enumerate(ds.events()):
+myrun = next(ds.runs())
+for nevt,evt in enumerate(myrun.events()):
    #wfs = det.waveform(evt)
    #times = det.wftime(evt)
    raw = det.raw(evt)

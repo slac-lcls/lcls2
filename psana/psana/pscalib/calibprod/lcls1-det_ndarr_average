@@ -31,7 +31,8 @@ def example_01(dsname, source, ofname, events, evskip, algors, plotim, verbos):
     #psana.setOption('psana.calib-dir', './calib')
 
     ds  = psana.DataSource(dsname)
-    evt = ds.events().next()
+    myrun = next(ds.runs())
+    evt = next(myrun.events())
     env = ds.env()
     
     det = psana.Detector(src, env)
@@ -65,8 +66,9 @@ def example_01(dsname, source, ofname, events, evskip, algors, plotim, verbos):
     #       ' +16 - radial background'\
     #       ' +32 - common mode'\
     #       ' +64 - det.mask'\
-
-    for i, evt in enumerate(ds.events()) :
+    
+    myrun=next(ds.runs())
+    for i, evt in enumerate(myrun.events()) :
 
         if i<SKIP    : continue
         if not i<EVENTS : break

@@ -137,7 +137,8 @@ class parse_dgram():
         cs = self.ds.env().configStore()
         configure = cs.get(self.config, self.source)
         self.events.append(self.parse_event(configure))
-        for ct,evt in enumerate(self.ds.events()):
+        myrun = next(self.ds.runs())
+        for ct,evt in enumerate(myrun.events()):
             if ct>self.event_limit:
                 break
             framev2 = evt.get(self.detector, self.source)

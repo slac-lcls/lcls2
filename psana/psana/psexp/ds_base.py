@@ -63,11 +63,6 @@ class DataSourceBase(abc.ABC):
         assert self.batch_size > 0
         
         self.prom_man = PrometheusManager(os.environ['PS_PROMETHEUS_JOBID'])
-        
-
-    def events(self):
-        for run in self.runs():
-            for evt in run.events(): yield evt
 
     @abc.abstractmethod
     def runs(self):
