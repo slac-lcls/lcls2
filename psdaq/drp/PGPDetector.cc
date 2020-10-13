@@ -168,7 +168,8 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     uint64_t bytes = 0L;
     std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
                                               {"partition", std::to_string(m_para.partition)},
-                                              {"detname", m_para.detName}};
+                                              {"detname", m_para.detName},
+                                              {"alias", m_para.alias}};
     exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                   [&](){return nevents;});
 

@@ -125,9 +125,10 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_damage(0)
 {
     std::map<std::string, std::string> labels
-    {{"instrument", para.instrument},
-        {"partition", std::to_string(para.partition)},
-          {"detname", para.detName}};
+        {{"instrument", para.instrument},
+         {"partition", std::to_string(para.partition)},
+         {"detname", para.detName},
+         {"alias", para.alias}};
     exporter->add("DRP_Damage"    , labels, Pds::MetricType::Gauge  , [&](){ return m_damage; });
     exporter->add("DRP_RecordSize", labels, Pds::MetricType::Counter, [&](){ return m_offset; });
     exporter->add("DRP_RecordDepth", labels, Pds::MetricType::Gauge , [&](){ return m_fileWriter.depth(); });
@@ -364,7 +365,8 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     std::map<std::string, std::string> labels{{"instrument", para.instrument},
                                               {"partition", std::to_string(para.partition)},
                                               {"detname", para.detName},
-                                              {"detseg", std::to_string(para.detSegment)}};
+                                              {"detseg", std::to_string(para.detSegment)},
+                                              {"alias", para.alias}};
     m_exporter->add("drp_port_rcv_rate", labels, Pds::MetricType::Rate,
                     [](){return 4*readInfinibandCounter("port_rcv_data");});
 

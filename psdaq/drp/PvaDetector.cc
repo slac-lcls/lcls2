@@ -55,6 +55,7 @@ static int _compare(const XtcData::TimeStamp& ts1,
     const int64_t delta = 10000000; // 10 ms!
     if      (dt >  delta) result = 1;
     else if (dt < -delta) result = -1;
+    //if (result != 0)  printf("ts1 %016lx,  ts2 %016lx,  dT %016lx\n", ts1.value(), ts2.value(), dt);
     return result;
   }
 
@@ -426,7 +427,8 @@ void PvaDetector::_worker()
                                               {"partition", std::to_string(m_para->partition)},
                                               {"detname", m_para->detName},
                                               {"detseg", std::to_string(m_para->detSegment)},
-                                              {"PV", m_pvaMonitor->name()}};
+                                              {"PV", m_para->alias}, // Leave for backward compatibility for now
+                                              {"alias", m_para->alias}};
     m_nEvents = 0;
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});
@@ -477,9 +479,10 @@ void PvaDetector::_worker()
                 _matchUp();
 
                 // Prevent PGP events from stacking up by by timing them out.
+                // The maximum timeout must be < MAX_LATENCY to avoid hangs.
                 // If the PV is updating, _timeout() never finds anything to do.
                 XtcData::TimeStamp timestamp;
-                const uint64_t msTmo = tsMatchDegree==2 ? 100 : 5000;
+                const uint64_t msTmo = tsMatchDegree==2 ? 100 : 4400;
                 const uint64_t nsTmo = msTmo * 1000000;
                 _timeout(timestamp.from_ns(dgram->time.to_ns() - nsTmo));
             }

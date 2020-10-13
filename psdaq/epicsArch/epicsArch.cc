@@ -256,7 +256,8 @@ void EaDetector::_worker()
     std::map<std::string, std::string> labels{{"instrument", m_para->instrument},
                                               {"partition", std::to_string(m_para->partition)},
                                               {"detname", m_para->detName},
-                                              {"detseg", std::to_string(m_para->detSegment)}};
+                                              {"detseg", std::to_string(m_para->detSegment)},
+                                              {"alias", m_para->alias}};
     m_nEvents = 0;
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                     [&](){return m_nEvents;});
