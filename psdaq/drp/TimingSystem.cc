@@ -174,6 +174,9 @@ void TimingSystem::connect(const json& connect_json, const std::string& collecti
 
 unsigned TimingSystem::configure(const std::string& config_alias, Xtc& xtc)
 {
+    if (XpmDetector::configure(config_alias, xtc))
+        return 1;
+
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     // set up the names for the configuration data
     NamesId configNamesId(nodeId,ConfigNamesIndex);

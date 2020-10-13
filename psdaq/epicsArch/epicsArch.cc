@@ -191,6 +191,9 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
 {
     logging::info("EpicsArch configure");
 
+    if (XpmDetector::configure(config_alias, xtc))
+        return 1;
+
     if (m_exporter)  m_exporter.reset();
     m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_drp.exposer()) {

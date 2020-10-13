@@ -118,7 +118,11 @@ json XpmDetector::connectionInfo()
 void XpmDetector::connect(const json& connect_json, const std::string& collectionId)
 {
     logging::info("XpmDetector connect");
+    m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
+}
 
+unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
+{
     // FIXME make configureable
     m_length = 100;
     std::map<std::string,std::string>::iterator it = m_para->kwargs.find("sim_length");
@@ -133,15 +137,13 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
     if (vsn.userValues[2]) // Second PCIe interface has lanes shifted by 4
        links <<= 4;
 
-    int readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
-
     Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
     for(unsigned i=0, l=links; l; i++) {
         Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
         if (l&(1<<i)) {
             dmaWriteRegister(fd, &b.enable, (1<<2)      );  // reset counters
             dmaWriteRegister(fd, &b.pauseThresh, 16     );
-            dmaWriteRegister(fd, &b.group , readoutGroup);
+            dmaWriteRegister(fd, &b.group , m_readoutGroup);
             dmaWriteRegister(fd, &b.enable, 3           );  // enable
             l &= ~(1<<i);
 
@@ -149,6 +151,8 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
             dmaWriteRegister(fd, 0x00a00000+4*(i&3), (m_length&0xffffff) | (1<<31));  // enable
           }
       }
+
+    return 0;
 }
 
 void XpmDetector::shutdown()

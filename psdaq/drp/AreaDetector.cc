@@ -49,6 +49,9 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc)
 {
     logging::info("AreaDetector configure");
 
+    if (XpmDetector::configure(config_alias, xtc))
+        return 1;
+
     Alg fexAlg("fex", 2, 0, 0);
     NamesId fexNamesId(nodeId,FexNamesIndex);
     Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), fexAlg,

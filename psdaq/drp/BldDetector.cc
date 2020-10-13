@@ -388,7 +388,6 @@ class BldDetector : public XpmDetector
 {
 public:
     BldDetector(Parameters& para, DrpBase& drp) : XpmDetector(&para, &drp.pool) {}
-    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override { return 0; }
     void event(XtcData::Dgram& dgram, PGPEvent* event) override {}
     void shutdown() override {}
 };

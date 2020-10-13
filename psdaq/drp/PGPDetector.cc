@@ -136,7 +136,7 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
         }
     }
     dmaSetMaskBytes(drp.pool.fd(), mask);
-
+    
     for (unsigned i=0; i<para.nworkers; i++) {
         m_workerInputQueues.emplace_back(SPSCQueue<Batch>(drp.pool.nbuffers()));
         m_workerOutputQueues.emplace_back(SPSCQueue<Batch>(drp.pool.nbuffers()));
