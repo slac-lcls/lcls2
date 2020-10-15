@@ -444,7 +444,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     }
     XtcData::TransitionId::Value transitionId = timingHeader->service();
     if (transitionId != XtcData::TransitionId::L1Accept) {
-        if (transitionId == XtcData::TransitionId::Configure) {
+        if (transitionId != XtcData::TransitionId::SlowUpdate) {
             logging::info("PGPReader  saw %s transition @ %u.%09u (%014lx)",
                           XtcData::TransitionId::name(transitionId),
                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
@@ -536,6 +536,7 @@ Pds::EbDgram* Pgp::next(uint64_t timestamp, uint32_t& evtIndex, uint64_t& bytes)
     }
     // Missed BLD data so mark event as damaged
     else if (timestamp > timingHeader->time.value()) {
+      //printf("ts %016lx, th %016lx, d %ld\n", timestamp, timingHeader->time.value(), timestamp - timingHeader->time.value());
         Pds::EbDgram* dgram = _handle(evtIndex, bytes);
         dgram->xtc.damage.increase(XtcData::Damage::MissingData);
         m_current++;
@@ -977,16 +978,16 @@ void BldApp::handleReset(const nlohmann::json& msg)
 static void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
     std::istringstream ss(kwargs_str);
     std::string kwarg;
-    std::string::size_type pos = 0;
     while (getline(ss, kwarg, ',')) {
-        pos = kwarg.find("=", pos);
+        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
+        auto pos = kwarg.find("=", 0);
         if (pos == std::string::npos) {
             logging::critical("Keyword argument with no equal sign");
             throw "drp.cc error: keyword argument with no equal sign: "+kwargs_str;
         }
         std::string key = kwarg.substr(0,pos);
         std::string value = kwarg.substr(pos+1,kwarg.length());
-        //cout << kwarg << " " << key << " " << value << endl;
+        //std::cout << "kwarg = '" << kwarg << "' key = '" << key << "' value = '" << value << "'" << std::endl;
         para.kwargs[key] = value;
     }
 }
