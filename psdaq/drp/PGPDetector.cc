@@ -136,7 +136,7 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
         }
     }
     dmaSetMaskBytes(drp.pool.fd(), mask);
-    
+
     for (unsigned i=0; i<para.nworkers; i++) {
         m_workerInputQueues.emplace_back(SPSCQueue<Batch>(drp.pool.nbuffers()));
         m_workerOutputQueues.emplace_back(SPSCQueue<Batch>(drp.pool.nbuffers()));
@@ -235,13 +235,13 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
             if (event->mask == m_para.laneMask) {
                 XtcData::TransitionId::Value transitionId = timingHeader->service();
                 if (transitionId != XtcData::TransitionId::L1Accept) {
-                    if (transitionId==XtcData::TransitionId::Configure) {
-                        logging::info("PGPReader saw %s transition @ %u.%09u (%014lx)",
+                    if (transitionId!=XtcData::TransitionId::SlowUpdate) {
+                        logging::info("PGPReader  saw %s transition @ %u.%09u (%014lx)",
                                       XtcData::TransitionId::name(transitionId),
                                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                       timingHeader->pulseId());
                     } else {
-                        logging::debug("PGPReader saw %s transition @ %u.%09u (%014lx)",
+                        logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",
                                        XtcData::TransitionId::name(transitionId),
                                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                        timingHeader->pulseId());

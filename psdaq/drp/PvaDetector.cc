@@ -195,7 +195,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     }
     XtcData::TransitionId::Value transitionId = timingHeader->service();
     if (transitionId != XtcData::TransitionId::L1Accept) {
-        if ( transitionId == XtcData::TransitionId::Configure) {
+        if ( transitionId != XtcData::TransitionId::SlowUpdate) {
             logging::info("PGPReader  saw %s transition @ %u.%09u (%014lx)",
                           XtcData::TransitionId::name(transitionId),
                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
@@ -479,6 +479,8 @@ void PvaDetector::_worker()
                 (service == XtcData::TransitionId::SlowUpdate)) {
                 m_pgpQueue.push(index);
 
+                //printf("u PGP: %u.%09u\n", dgram->time.seconds(), dgram->time.nanoseconds());
+
                 _matchUp();
 
                 // Prevent PGP events from stacking up by by timing them out.
@@ -525,6 +527,12 @@ void PvaDetector::process(const XtcData::TimeStamp& timestamp)
             ++m_nUpdates;
             logging::debug("%s updated @ %u.%09u", m_pvaMonitor->name().c_str(), timestamp.seconds(), timestamp.nanoseconds());
 
+            //static uint64_t last_ts = 0;
+            //uint64_t ts = timestamp.to_ns();
+            //int64_t  dT = ts - last_ts;
+            //printf("  PV:  %u.%09u, dT %9ld, ts %18lu, last %18lu\n", timestamp.seconds(), timestamp.nanoseconds(), dT, ts, last_ts);
+            //if (dT > 0)  last_ts = ts;
+
             dgram->time = timestamp;           //   Save the PV's timestamp
             dgram->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
 
@@ -550,6 +558,7 @@ void PvaDetector::_matchUp()
         Pds::EbDgram* pgpDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[pgpIdx]);
 
         logging::debug("PV: %u.%09d, PGP: %u.%09d, PGP - PV: %ld ns\n",
+        //printf("  PV:  %u.%09d\n  PGP: %u.%09d, PGP - PV: %ld ns\n",
                        pvDg->time.seconds(), pvDg->time.nanoseconds(),
                        pgpDg->time.seconds(), pgpDg->time.nanoseconds(),
                        pgpDg->time.to_ns() - pvDg->time.to_ns());
@@ -561,6 +570,8 @@ void PvaDetector::_matchUp()
         if      (result==0) _handleMatch  (*pvDg, *pgpDg);
         else if (result >0) _handleYounger(*pvDg, *pgpDg);
         else                _handleOlder  (*pvDg, *pgpDg);
+
+        //_handleMatch  (*pvDg, *pgpDg);
     }
 }
 
@@ -708,9 +719,6 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
             }
         }
         m_drp.tebContributor().process(l3InpDg);
-    }
-    else {
-        logging::error("Attempted to send to TEB without an Input buffer");
     }
 }
 
