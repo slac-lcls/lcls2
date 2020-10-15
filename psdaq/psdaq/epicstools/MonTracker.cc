@@ -189,8 +189,8 @@ void MonTracker::process(const pvac::MonitorEvent& evt)
       if(n==2) {
         // too many updates, re-queue to balance with others
         _monwork.push(shared_from_this(), evt);
-      } else if(n==0) {
-        std::cerr<<"Spurious Data event "<<name()<<"\n";
+      //} else if(n==0) {
+      //  std::cerr<<"Spurious Data event "<<name()<<"\n";
       }
       break;
     }
