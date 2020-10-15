@@ -288,11 +288,16 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
             // send pulseId to inproc so it gets forwarded to the collection
             json msg = createPulseIdMsg(pulseId);
             m_inprocSend.send(msg.dump());
-        }
 
-        logging::debug("EbReceiver saw %s transition @ %u.%09u (%014lx)",
-                       XtcData::TransitionId::name(transitionId),
-                       dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
+            logging::info("EbReceiver saw %s transition @ %u.%09u (%014lx)",
+                           XtcData::TransitionId::name(transitionId),
+                          dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
+        }
+        else {
+            logging::debug("EbReceiver saw %s transition @ %u.%09u (%014lx)",
+                           XtcData::TransitionId::name(transitionId),
+                           dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
+        }
     }
 
     if (m_writing) {                    // Won't ever be true for Configure
@@ -379,7 +384,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition = para.partition;
-    m_tPrms.batching  = m_para.kwargs["batching"] != "yes"; // Default to "no"
+    m_tPrms.batching  = m_para.kwargs["batching"] == "yes"; // Default to "no"
     m_tPrms.core[0]   = -1;
     m_tPrms.core[1]   = -1;
     m_tPrms.verbose   = para.verbose;
