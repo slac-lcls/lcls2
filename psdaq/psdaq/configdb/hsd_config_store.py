@@ -71,8 +71,7 @@ top.set('expert.sync_ph_odd' , 0, 'UINT32')
 
 mycdb.add_alias(args.alias)
 
-for segm in args.segm:
-    top.setInfo('hsd', args.name, segm, args.id, 'No comment')
-    mycdb.modify_device(args.alias, top)
+top.setInfo('hsd', args.name, args.segm, args.id, 'No comment')
+mycdb.modify_device(args.alias, top)
 #mycdb.print_configs()
 
