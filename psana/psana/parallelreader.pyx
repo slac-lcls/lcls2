@@ -14,8 +14,12 @@ cdef class ParallelReader:
         self.chunksize          = chunksize
         self.nfiles             = self.file_descriptors.shape[0]
         self.L1Accept           = 12
+        self.BeginRun           = 4
         self.bufs               = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
         self.step_bufs          = <Buffer *>malloc(sizeof(Buffer)*self.nfiles)
+        self.beginrun_buf       = <char *>malloc(self.chunksize)
+        self.beginrun_offset    = 0
+        self.n_beginruns        = 0
         self.got                = 0
         self.chunk_overflown    = 0     # set to dgram size if it's too big
         self._init_buffers()
@@ -31,6 +35,7 @@ cdef class ParallelReader:
             for i in range(self.nfiles):
                 free(self.step_bufs[i].chunk)
             free(self.step_bufs)
+        free(self.beginrun_buf)
 
     cdef void _init_buffers(self):
         cdef Py_ssize_t i
@@ -74,6 +79,8 @@ cdef class ParallelReader:
         cdef uint64_t payload   = 0
         cdef unsigned service   = 0
         self.got                = 0
+        self.beginrun_offset    = 0
+        self.n_beginruns        = 0
         
         for i in prange(self.nfiles, nogil=True):
             buf = &(self.bufs[i])
@@ -127,6 +134,12 @@ cdef class ParallelReader:
                             step_buf.n_ready_events += 1
                             step_buf.ready_offset += sizeof(Dgram) + payload
                             step_buf.timestamp = buf.ts_arr[buf.n_ready_events]
+
+                            if service == self.BeginRun and i == 0:
+                                memcpy(self.beginrun_buf + self.beginrun_offset, d, sizeof(Dgram) + payload)
+                                self.beginrun_offset += sizeof(Dgram) + payload
+                                self.n_beginruns += 1
+
                         
                         buf.timestamp = buf.ts_arr[buf.n_ready_events] 
                         buf.ready_offset += sizeof(Dgram) + payload

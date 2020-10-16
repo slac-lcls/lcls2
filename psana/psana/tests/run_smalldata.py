@@ -25,7 +25,7 @@ def global_except_hook(exctype, value, traceback):
     mpi4py.MPI.COMM_WORLD.Abort(1)
     sys.__excepthook__(exctype, value, traceback)
 
-sys.excepthook = global_except_hook
+#sys.excepthook = global_except_hook
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -52,28 +52,28 @@ def gen_h5(source='xtc', pid=None):
     smd = ds.smalldata(filename='smalldata_test.h5', batch_size=5,
                        callbacks=[test_callback])
 
-    run = next(ds.runs())
-    for i,evt in enumerate(run.events()):
+    for run in ds.runs():
+        for i,evt in enumerate(run.events()):
 
-        print('event:', i)
+            print('event:', i)
 
-        smd.event(evt, 
-                  timestamp=evt.timestamp, 
-                  oneint=1, 
-                  twofloat=2.0,
-                  arrint=np.ones(2, dtype=np.int),
-                  arrfloat=np.ones(2, dtype=np.float)
-                  # ragged_
-                  )
+            smd.event(evt, 
+                      timestamp=evt.timestamp, 
+                      oneint=1, 
+                      twofloat=2.0,
+                      arrint=np.ones(2, dtype=np.int),
+                      arrfloat=np.ones(2, dtype=np.float)
+                      # ragged_
+                      )
 
 
-        if evt.timestamp % 2 == 0:
-            smd.event(evt.timestamp, # make sure passing int works
-                      unaligned_int=3,
-                      every_other_missing=2)
+            if evt.timestamp % 2 == 0:
+                smd.event(evt.timestamp, # make sure passing int works
+                          unaligned_int=3,
+                          every_other_missing=2)
 
-        if (rank % 2 == 0) and (smd._type == 'client'):
-            smd.event(evt, missing_vds=1)
+            if (rank % 2 == 0) and (smd._type == 'client'):
+                smd.event(evt, missing_vds=1)
 
     if smd.summary:
         smd.save_summary({'summary_array' : np.arange(3)}, summary_int=1)

@@ -69,6 +69,7 @@ class Test:
             subprocess.check_call(['detnames',flag,xtc_file])
         subprocess.check_call(['detnames',xtc_file])
 
+    """
     @pytest.mark.legion
     @pytest.mark.skipif(sys.platform == 'darwin', reason="psana with legion not supported on mac")
     def test_legion(self, tmp_path):
@@ -123,7 +124,7 @@ class Test:
             ('PS_PARALLEL', 'legion'),
         ])
         subprocess.check_call(['legion_python', 'run_no_mpi', '-ll:py', '1'], env=env)
-
+    """
     def test_det(self, xtc_file):
         det(xtc_file)
         detnames(xtc_file)

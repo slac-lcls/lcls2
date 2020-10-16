@@ -46,7 +46,7 @@ cdef class EventBuilder:
     cdef size_t XTC_SIZE
     cdef unsigned long min_ts
     cdef unsigned long max_ts
-    cdef unsigned L1_ACCEPT
+    cdef unsigned L1Accept 
 
     def __init__(self, views, configs):
         self.nsmds              = len(views)
@@ -63,7 +63,7 @@ cdef class EventBuilder:
         self.nsteps             = 0
         self.DGRAM_SIZE         = sizeof(Dgram)
         self.XTC_SIZE           = sizeof(Xtc)
-        self.L1_ACCEPT          = 12
+        self.L1Accept           = 12
         
     def _has_more(self):
         for i in range(self.nsmds):
@@ -252,7 +252,7 @@ cdef class EventBuilder:
                     got += 1
                     
                     # Add step
-                    if service != self.L1_ACCEPT:
+                    if service != self.L1Accept:
                         step_batch.extend(evt_bytes)
                         step_sizes.append(evt_size + evt_footer_size)
                         got_step += 1

@@ -3,11 +3,11 @@ from psana.psexp        import PacketFooter, PrometheusManager
 
 class EventBuilderManager(object):
 
-    def __init__(self, view, run): 
-        self.configs        = run.configs 
-        self.batch_size     = run.batch_size
-        self.filter_fn      = run.filter_callback
-        self.destination    = run.destination
+    def __init__(self, view, configs, dsparms): 
+        self.configs        = configs 
+        self.batch_size     = dsparms.batch_size
+        self.filter_fn      = dsparms.filter
+        self.destination    = dsparms.destination
         self.n_files        = len(self.configs)
 
         pf                  = PacketFooter(view=view)

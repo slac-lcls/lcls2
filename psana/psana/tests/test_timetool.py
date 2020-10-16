@@ -21,7 +21,7 @@ def get_fir_coefficients(myrun):
 
     return my_kernel
 
-def test_timetool():
+def run_timetool():
 
     firmware_edges = []
     software_edges = []
@@ -95,7 +95,7 @@ def test_timetool_psana(plot=False):
     assert nevt==1324
 
 if __name__ == "__main__":
-    test_timetool()
+    #run_timetool()
     test_timetool_psana(plot=False)
 
 """

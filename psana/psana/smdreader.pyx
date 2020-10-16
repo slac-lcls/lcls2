@@ -177,3 +177,21 @@ cdef class SmdReader:
     @property
     def chunk_overflown(self):
         return self.prl_reader.chunk_overflown
+
+    @property
+    def beginrun_offset(self):
+        return self.prl_reader.beginrun_offset
+
+    @property
+    def n_beginruns(self):
+        return self.prl_reader.n_beginruns
+
+    def beginrun_view(self):
+        if self.prl_reader.beginrun_offset == 0:
+            return bytearray() 
+        else:
+            view = <char [:self.prl_reader.beginrun_offset]> (self.prl_reader.beginrun_buf)
+            return view
+    def reset_beginrun(self):
+        self.prl_reader.beginrun_offset = 0
+        self.prl_reader.n_beginruns = 0

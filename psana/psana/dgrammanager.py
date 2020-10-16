@@ -87,7 +87,6 @@ class DgramManager(object):
         elif xtc_files[0] != 'shmem':
             self.configs = [dgram.Dgram(file_descriptor=fd) for fd in self.fds]
 
-        self.det_classes, self.xtc_info, self.det_info_table = self.get_det_class_table()
         self.calibconst = {} # initialize to empty dict - will be populated by run class
 
     def close(self):
@@ -140,66 +139,6 @@ class DgramManager(object):
 
         evt = Event(dgrams, run=self.run())
         return evt
-
-    def get_det_class_table(self):
-        """
-        this function gets the version number for a (det, drp_class) combo
-        maps (dettype,software,version) to associated python class and
-        detector info for a det_name maps to dettype, detid tuple.
-        """
-        det_classes = {'epics': {}, 'scan': {}, 'normal': {}}
-
-        xtc_info = []
-        det_info_table = {}
-
-        # loop over the dgrams in the configuration
-        # if a detector/drp_class combo exists in two cfg dgrams
-        # it will be OK... they should give the same final Detector class
-
-        for cfg_dgram in self.configs:
-            for det_name, det_dict in cfg_dgram.software.__dict__.items():
-                # go find the class of the first segment in the dict
-                # they should all be identical
-                first_key = next(iter(det_dict.keys()))
-                det = det_dict[first_key]
-
-                if det_name not in det_classes:
-                    det_class_table = det_classes['normal']
-                else:
-                    det_class_table = det_classes[det_name]
-
-
-                dettype, detid = (None, None)
-                for drp_class_name, drp_class in det.__dict__.items():
-
-                    # collect detname maps to dettype and detid
-                    if drp_class_name == 'dettype':
-                        dettype = drp_class
-                        continue
-
-                    if drp_class_name == 'detid':
-                        detid = drp_class
-                        continue
-
-                    # FIXME: we want to skip '_'-prefixed drp_classes
-                    #        but this needs to be fixed upstream
-                    if drp_class_name.startswith('_'): continue
-
-                    # use this info to look up the desired Detector class
-                    versionstring = [str(v) for v in drp_class.version]
-                    class_name = '_'.join([det.dettype, drp_class.software] + versionstring)
-                    xtc_entry = (det_name,det.dettype,drp_class_name,'_'.join(versionstring))
-                    if xtc_entry not in xtc_info:
-                        xtc_info.append(xtc_entry)
-                    if hasattr(detectors, class_name):
-                        DetectorClass = getattr(detectors, class_name) # return the class object
-                        det_class_table[(det_name, drp_class_name)] = DetectorClass
-                    else:
-                        pass
-
-                det_info_table[det_name] = (dettype, detid)
-
-        return det_classes, xtc_info, det_info_table
 
     def get_timestamps(self):
         return np.asarray(self._timestamps, dtype=np.uint64) # return numpy array for easy search later

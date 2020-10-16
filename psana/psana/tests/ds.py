@@ -13,7 +13,7 @@ def global_except_hook(exctype, value, traceback):
     import mpi4py.MPI
     mpi4py.MPI.COMM_WORLD.Abort(1)
     sys.__excepthook__(exctype, value, traceback)
-sys.excepthook = global_except_hook
+#sys.excepthook = global_except_hook
 
 import os
 from psana import DataSource
@@ -170,5 +170,6 @@ if __name__ == "__main__":
     test_no_bigdata()
     test_step()
     test_select_detectors()
-    test_callback(1)
-    test_callback(5)
+    if size >= 3:
+        test_callback(1)
+        #test_callback(5)

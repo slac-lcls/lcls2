@@ -1,16 +1,22 @@
 from psana.psexp import DataSourceBase, RunSingleFile
+from psana.psexp import Events, TransitionId
+from psana.dgrammanager import DgramManager
 
 class SingleFileDataSource(DataSourceBase):
 
     def __init__(self, *args, **kwargs):
         super(SingleFileDataSource, self).__init__(**kwargs)
-        self.exp, self.run_dict = self._setup_xtcs()
-
+        self._setup_xtcs()
+        self.dm = DgramManager(self.files)
+        self._configs = self.dm.configs
+        self._setup_det_class_table()
+        self._set_configinfo()
+    
     def runs(self):
-        for run_no in self.run_dict:
-            run = RunSingleFile(self.exp, run_no, self.run_dict[run_no], \
-                        max_events=self.max_events, batch_size=self.batch_size, \
-                        filter_callback=self.filter, prom_man=self.prom_man)
-            self._configs = run.configs # short cut to config
-            yield run
+        events = Events(self._configs, self.dm, self.prom_man, filter_callback=self.filter)
+        for evt in events:
+            if evt.service() == TransitionId.BeginRun:
+                run = RunSingleFile(evt, events, self.dsparms)
+                yield run 
+
 
