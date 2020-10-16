@@ -93,7 +93,9 @@ namespace Pds {
       void     run();
     public:                         // For EventBuilder
       virtual
-      void     process(EbEvent* event);
+      void     flush() override;
+      virtual
+      void     process(EbEvent* event) override;
     private:
       void     _tryPost(const EbDgram* dg, uint64_t dsts);
       void     _post(const EbDgram* start, const EbDgram* end);
@@ -477,6 +479,23 @@ void Teb::process(EbEvent* event)
     // Make the transition buffer available to the contributor again
     post(event->begin(), event->end());
   }
+}
+
+// Called by EB  on timeout when it is empty of events
+// to flush out any in-progress batch
+void Teb::flush()
+{
+  //const EbDgram* start = _batchStart;
+  //const EbDgram* end   = _batchEnd;
+  //
+  //if (_batchStart)
+  //{
+  //  _post(start, end);
+  //
+  //  // Start a new batch
+  //  _batchStart = nullptr;
+  //  _batchEnd   = nullptr;
+  //}
 }
 
 void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts)

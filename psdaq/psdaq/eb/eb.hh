@@ -15,10 +15,14 @@ namespace Pds {
     const unsigned MAX_MEBS       =  4;         // Maximum possible number of Monitors
     const unsigned MAX_MRQS       = MAX_MEBS;   // Maximum possible number of Monitor Requestors
 
+    const unsigned TICK_RATE      = 928500;     // System clock rate in Hz
+
     const unsigned MAX_ENTRIES    = 64;                        // <= BATCH_DURATION
     const uint64_t BATCH_DURATION = MAX_ENTRIES;               // >= MAX_ENTRIES; power of 2; beam pulse ticks (1 uS)
-    const unsigned MAX_LATENCY    = 4 * 1024 * 1024;           // In beam pulse ticks (1 uS)
+    const unsigned MAX_LATENCY    = 16 * 1024 * 1024;          // In beam pulse ticks (1 uS)
     const unsigned MAX_BATCHES    = MAX_LATENCY / MAX_ENTRIES; // Max # of batches in circulation
+
+    const unsigned EB_TMO_MS      = 1000 * MAX_LATENCY/TICK_RATE - 2000; // ms
 
     const unsigned NUM_READOUT_GROUPS     = 16; // # of RoGs supported
     const unsigned NUM_TRANSITION_BUFFERS =  8; // # of buffers for implementing

@@ -29,6 +29,7 @@ namespace Pds {
                    const unsigned& verbose);
       virtual ~EventBuilder();
     public:
+      virtual void       flush() {}
       virtual void       fixup(EbEvent*, unsigned srcId)     = 0;
       virtual void       process(EbEvent*)                   = 0;
       virtual uint64_t   contract(const Pds::EbDgram*) const = 0;

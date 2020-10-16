@@ -55,7 +55,7 @@ static unsigned nextPowerOf2(unsigned n)
     return 1 << count;
 }
 
-MemPool::MemPool(const Parameters& para) :
+MemPool::MemPool(Parameters& para) :
     m_transitionBuffers(para.nTrBuffers),
     m_inUse(0),
     m_dmaBuffersInUse(0)
@@ -83,7 +83,11 @@ MemPool::MemPool(const Parameters& para) :
     // Also include space in the pebble for a pool of transition buffers of
     // worst case size so that they will be part of the memory region that can
     // be RDMAed from to the MEB
-    m_bufferSize = __builtin_popcount(para.laneMask) * m_dmaSize;
+    //auto pebbleBufSize = para.kwargs["pebbleBufSize"];
+    //if (pbs.empty())                    // Allow overriding the Pebble size
+        m_bufferSize = __builtin_popcount(para.laneMask) * m_dmaSize;
+    //else
+    //    m_bufferSize = std::stoul(pebbleBufSize);
     pebble.resize(m_nbuffers, m_bufferSize, para.nTrBuffers, para.maxTrSize);
     logging::info("nbuffers %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
     logging::info("nTrBuffers %u  transition buffer size %u", para.nTrBuffers, para.maxTrSize);

@@ -90,7 +90,7 @@ private:
 class MemPool
 {
 public:
-    MemPool(const Parameters& para);
+    MemPool(Parameters& para);
     Pebble pebble;
     std::vector<PGPEvent> pgpEvents;
     void** dmaBuffers;

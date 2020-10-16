@@ -14,10 +14,9 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
 
-static const unsigned CLS = 64;         // Cache Line Size
-static const auto                       // Maximum event age in ms
-  EventTimeout(std::chrono::duration<int, std::milli>(2000));
-
+static constexpr unsigned CLS = 64;     // Cache Line Size
+static constexpr auto                   // Maximum event age in ms
+  EventTimeout(std::chrono::duration<int, std::milli>(Pds::Eb::EB_TMO_MS)); //2000));
 
 EventBuilder::EventBuilder(unsigned        epochs,
                            unsigned        entries,
@@ -394,6 +393,26 @@ void EventBuilder::_flush(const EbEvent* const due)
 
 void EventBuilder::expired()            // Periodically called upon a timeout
 {
+  //// Order matters: Wait one additional timeout period after _flush() has
+  //// emptied the EB of events before calling the application's flush().
+  //const EbEpoch* const lastEpoch = _pending.empty();
+  //EbEpoch*             epoch     = _pending.forward();
+  //if (epoch == lastEpoch)
+  //{
+  //  flush();
+  //  return;
+  //}
+  //else
+  //{
+  //  const EbEvent* const lastEvent = epoch->pending.empty();
+  //  EbEvent*             event     = epoch->pending.forward();
+  //  if (event == lastEvent)
+  //  {
+  //    flush();
+  //    return;
+  //  }
+  //}
+
   _flush(nullptr);                      // Try to flush everything
 }
 

@@ -117,8 +117,29 @@ void PvaMonitor::updated()
     int32_t nanoseconds;
     getTimestamp(seconds, nanoseconds);
     XtcData::TimeStamp timestamp(seconds, nanoseconds);
-
-    m_pvaDetector.process(timestamp);
+    //static XtcData::TimeStamp ts_prv(0, 0);
+    //
+    //if (timestamp > ts_prv) {
+        m_pvaDetector.process(timestamp);
+    //}
+    //else {
+    //  printf("Updated: ts didn't advance: new %016lx  prv %016lx  d %ld\n",
+    //         timestamp.value(), ts_prv.value(), timestamp.to_ns() - ts_prv.to_ns());
+    //}
+    //ts_prv = timestamp;
+    //
+    //if (nanoseconds > 1000000000) {
+    //  printf("Updated: nsec > 1 second: %016lx  s %ld  ns %d\n",
+    //         timestamp.value(), seconds, nanoseconds);
+    //}
+    //
+    //if ((timestamp.to_ns() > ts_prv.to_ns()) &&
+    //    !(timestamp.value() > ts_prv.value())) {
+    //  printf("Updated: > disagreement: ts to_ns %016lx  val %016lx\n"
+    //         "                        prv to_ns %016lx  val %016lx\n",
+    //         timestamp.to_ns(), timestamp.value(),
+    //         ts_prv.to_ns(), ts_prv.value());
+    //}
 }
 
 
@@ -484,10 +505,13 @@ void PvaDetector::_worker()
                 _matchUp();
 
                 // Prevent PGP events from stacking up by by timing them out.
-                // The maximum timeout must be < MAX_LATENCY to avoid hangs.
+                // The maximum timeout is < the TEB event build timeout to keep
+                // prompt contributions from timing out before latent ones arrive.
                 // If the PV is updating, _timeout() never finds anything to do.
                 XtcData::TimeStamp timestamp;
-                const uint64_t msTmo = tsMatchDegree==2 ? 100 : 4400;
+                //const uint64_t msTmo = tsMatchDegree==2 ? 100 : 4400;
+                const uint64_t ebTmo = Pds::Eb::EB_TMO_MS/2 - 100;
+                const uint64_t msTmo = tsMatchDegree==2 ? 100 : ebTmo;
                 const uint64_t nsTmo = msTmo * 1000000;
                 _timeout(timestamp.from_ns(dgram->time.to_ns() - nsTmo));
             }
