@@ -1,26 +1,22 @@
+#!/usr/bin/env python
 
 import sys
 import logging
 logger = logging.getLogger(__name__)
 
-#from time import time
 #import psana.pyalgos.generic.Graphics as gg
 #from psana.pscalib.geometry.SegGeometry import *
 #from psana.detector.epix10k import DetectorImpl
 
 from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
-
 #----------
-#fname0 = '/reg/neh/home/cpo/git/psana_cpo/epix.xtc2'
-#fname1 = '/reg/neh/home/cpo/git/psana_cpo/epix_2seg.xtc2'
-#fname0 = '/reg/g/psdm/detector/data2_test/xtc/data-mfxc00318-r0013-epix10kaquad-e000005.xtc2'
-#fname1 = '/reg/g/psdm/detector/data2_test/xtc/data-mfxc00318-r0013-epix10kaquad-e000005-seg1and3.xtc2'
+
 fname0 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2'
 fname1 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005-seg1and3.xtc2'
 
 #----------
 
-def print_det_raw(det):
+def print_det_raw_attrs(det):
     print('dir(det):', dir(det))
     print('det._dettype:', det._dettype)
     print('det._detid:', det._detid)
@@ -46,7 +42,7 @@ def print_det_raw(det):
 
 #----------
 
-def test_raw(fname):
+def test_raw(fname, args):
     logger.info('in test_raw data from file:\n  %s' % fname)
 
     from psana import DataSource
@@ -54,10 +50,13 @@ def test_raw(fname):
     orun = next(ds.runs())
     det = orun.Detector('epix10k2M')
 
-    #print('dir(orun):', dir(orun))
-    #print('dir(det):', dir(det))
+    if args.pattrs:
+      print('dir(orun):', dir(orun))
+      print('dir(det):', dir(det))
+      print_det_raw_attrs(det)
 
-    #if True: print_det_raw(det)
+    from psana.pyalgos.generic.Utils import str_attributes
+    print(str_attributes(orun, cmt='\nattributes of orun %s:'% str(orun), fmt=', %s'))
 
     oraw = det.raw
     detnameid = oraw._uniqueid
@@ -78,7 +77,7 @@ def test_raw(fname):
 
     from psana.pscalib.calib.MDBWebUtils import calib_constants
 
-    logger.info('XXX call calib_constants')
+    logger.info('call calib_constants directly')
 
     pedestals, _ = calib_constants(detnameid, exp=expname, ctype='pedestals',    run=runnum)
     gain, _      = calib_constants(detnameid, exp=expname, ctype='pixel_gain',   run=runnum)
@@ -108,22 +107,25 @@ if __name__ == "__main__":
     STR_LEVEL_NAMES = ', '.join(LEVEL_NAMES)
 
     usage =\
-        '\n  python %s <test-name>' % SCRNAME\
+        '\n  python %s <test-name> [optional-arguments]' % SCRNAME\
       + '\n  where test-name: '\
       + '\n    0 - test_raw("%s")'%fname0\
       + '\n    1 - test_raw("%s")'%fname1\
 
     d_loglev  = 'INFO' #'INFO' #'DEBUG'
+    d_pattrs  = False
 
     import argparse
 
     parser = argparse.ArgumentParser(usage=usage)
     parser.add_argument('tname', type=str, help='test name')
     parser.add_argument('-l', '--loglev', default=d_loglev, type=str, help='logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev))
+    parser.add_argument('-P', '--pattrs', default=d_pattrs, action='store_true', help='print objects attrubutes, def=%s' % d_pattrs)
 
     args = parser.parse_args()
+    kwa = vars(args)
     s = '\nArguments:'
-    for k,v in vars(args).items(): s += '\n %8s: %s' % (k, str(v))
+    for k,v in kwa.items(): s += '\n %8s: %s' % (k, str(v))
 
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=DICT_NAME_TO_LEVEL[args.loglev])
     #logger.setLevel(intlevel)
@@ -131,8 +133,8 @@ if __name__ == "__main__":
     logger.info(s)
 
     tname = args.tname
-    if   tname=='0': test_raw(fname0)
-    elif tname=='1': test_raw(fname1)
+    if   tname=='0': test_raw(fname0, args)
+    elif tname=='1': test_raw(fname1, args)
     else: logger.warning('NON-IMPLEMENTED TEST: %s' % tname)
 
     sys.exit('END OF %s' % SCRNAME)

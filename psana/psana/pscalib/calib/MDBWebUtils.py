@@ -28,7 +28,7 @@ Usage ::
     id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
       wu.add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs)
 
-    detname_short = wu.pro_detector_name(detname)
+    detname_short = wu.pro_detector_name(detname, add_shortname=False)
 
     resp = wu.delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     resp = wu.delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
@@ -341,7 +341,7 @@ def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADE
     """
     t0_sec = time()
 
-    detname = pro_detector_name(det)
+    detname = pro_detector_name(det, add_shortname=True)
     colname = detname
     dbname_exp = mu.db_prefixed_name(exp)
     dbname_det = mu.db_prefixed_name(detname)
@@ -380,12 +380,13 @@ def _add_detector_name(dbname, colname, detname, detnum):
 
 #------------------------------
 
-def _short_detector_name(detname, dbname=cc.DETNAMESDB):
+def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
     """Returns short detector name for long input name detname.
     """
     colname = detname.split('_',1)[0]
     # find a single doc for long detname
     ldocs = find_docs(dbname, colname, query={'long':detname})
+
     if len(ldocs)>1:
         logger.error('UNEXPECTED ERROR: db/collection: %s/%s has >1 document for detname: %s' % (dbname, colname, detname))
         sys.exit('db/collection: %s/%s HAS TO BE FIXED' % (dbname, colname))
@@ -396,6 +397,13 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB):
     # find all docs in the collection
     ldocs = find_docs(dbname, colname, query={})
 
+    # find detector for partial name
+    shortname = mu._short_for_partial_name(detname, ldocs)
+    if shortname is not None: return shortname
+
+    if not add_shortname: return None
+
+    # add new short name to the db
     detnum = 0
     if not ldocs or ldocs is None: # empty list
         logger.debug('List of documents in db/collection: %s/%s IS EMPTY' % (dbname, colname))
@@ -413,10 +421,10 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB):
 
 #------------------------------
 
-def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE):
+def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
     """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars.
     """
-    return detname if len(detname)<maxsize else _short_detector_name(detname)
+    return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
 
 #------------------------------
 

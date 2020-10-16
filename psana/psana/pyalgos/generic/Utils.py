@@ -528,10 +528,21 @@ def str_kwargs(kwargs, title='Input parameters:', fmt='\n%20s : %s'):
 
 #------------------------------
 
-def print_kwargs(kwargs) :
-    print('%s\n  kwargs:' % (40*'_'))
+def print_kwargs(kwargs, cmt='%s\n  kwargs:' % (40*'_')) :
+    print(cmt)
     for k,v in kwargs.items() : print('  %10s : %10s' % (k,v))
     print(40*'_')
+
+#------------------------------
+
+def str_attributes(o, cmt='\nattributes:', fmt='\n  %s'):
+    return cmt + ''.join([fmt % str(v) for v in dir(o)])
+
+#------------------------------
+
+#def str_attributes(o, cmt='\nattributes:', fmt='\n%20s : %s'):
+#    return  str(dir(o))
+    #return cmt + ''.join([fmt % (k,str(v)) for k,v in dir(o) if len(k)>2 and k[:2] != '__'])
 
 #------------------------------
 
