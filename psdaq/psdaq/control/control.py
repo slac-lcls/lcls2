@@ -1843,6 +1843,7 @@ class CollectionManager():
                         self.cmstate[level] = {}
                     id = answer['header']['sender_id']
                     self.cmstate[level][id] = item
+                    self.cmstate[level][id]['hidden'] = 0
                     if self.bypass_activedet:
                         # active detectors file disabled: default to active=1
                         self.cmstate[level][id]['active'] = 1
@@ -1889,6 +1890,7 @@ class CollectionManager():
             self.cmstate['control'] = {}
             self.cmstate['control'][0] = {}
             self.cmstate['control'][0]['active'] = 1
+            self.cmstate['control'][0]['hidden'] = 1
             self.cmstate['control'][0]['control_info'] = {}
             self.cmstate['control'][0]['proc_info'] = {}
             self.cmstate['control'][0]['control_info']['xpm_master'] = self.xpm_master
