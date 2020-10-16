@@ -153,7 +153,7 @@ cdef class cyhsd_base_1_2_3:
 
                             times = []
                             for start, peak in zip(pychan.startPosList, pychan.peakList):
-                                times.append(np.arange(start, start+len(peak)) * 1/(6.4*10e9*13/14))
+                                times.append(np.arange(start, start+len(peak)) * 1/(6.4*1e9*13/14))
                             self._peakTimesDict[iseg][chanNum] = times
 
         # maybe check that we have all segments in the event?
