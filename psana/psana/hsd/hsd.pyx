@@ -143,7 +143,7 @@ cdef class cyhsd_base_1_2_3:
                                 self._wvDict[iseg] = {}
                                 # FIXME: this needs to be put in units of seconds
                                 # perhaps both for 5GHz and 6GHz models
-                                self._wvDict[iseg]["times"] = np.arange(len(pychan.waveform)) * 1/(6.4*10e9*13/14)
+                                self._wvDict[iseg]["times"] = np.arange(len(pychan.waveform)) * 1/(6.4*1e9*13/14)
                             self._wvDict[iseg][chanNum] = pychan.waveform
                         if pychan.peakList is not None:
                             if iseg not in self._peaksDict.keys():
