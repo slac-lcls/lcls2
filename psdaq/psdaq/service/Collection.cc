@@ -52,13 +52,13 @@ std::string getNicIp()
             }
         }
     }
-    //if (interface_name == nullptr) {
+    if (interface_name == nullptr) {
         if (ethernet_name == nullptr) {
             throw "No Infiniband or Ethernet interface found";
         }
         logging::warning("No Infiniband interface found - using Ethernet");
         interface_name = ethernet_name;
-        //}
+    }
 
     // get address of the first infiniband device found above
     for (struct ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
