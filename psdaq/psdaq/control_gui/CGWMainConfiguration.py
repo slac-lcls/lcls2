@@ -79,7 +79,6 @@ class CGWMainConfiguration(QGroupBox):
 
         self.device_edit = None
         self.cfgtype_edit = None
-        self.w_edit = None
         self.type_old = None
         self.set_config_type('init')
 
@@ -265,8 +264,9 @@ class CGWMainConfiguration(QGroupBox):
 #--------------------
  
     def on_but_edit(self):
-        #logger.debug('on_but_edit')
-        if self.w_edit is None:
+        logger.debug('on_but_edit')
+        #if self.w_edit is None:
+        if cp.cgwconfigeditor is None:
             logger.debug("TBD Open configuration editor window")
             resp = self.select_config_type_and_dev()
             if resp is None: return
@@ -281,6 +281,9 @@ class CGWMainConfiguration(QGroupBox):
             except ValueError as err:
                 logger.error('ValueError: %s' % err)
                 return
+            except Exception as err:
+                logger.error('Exception: %s' % err)
+                return
 
             msg = 'get_configuration(%s, %s, %s):\n' % (cfgtype, dev, inst)\
                 + '%s\n    type(config): %s'%(str_json(self.config), type(self.config))
@@ -293,18 +296,12 @@ class CGWMainConfiguration(QGroupBox):
         else:
             logger.debug("Close configuration editor window")
             self.w_edit.close()
-            self.w_edit = None
 
 #--------------------
  
-#    def on_but_scan(self):
-#        logger.debug('on_but_scan')
-
-#--------------------
-
     def closeEvent(self, e):
         logger.debug('CGWMainConfiguration.closeEvent')
-        if self.w_edit is not None:
+        if cp.cgwconfigeditor is not None:
            self.w_edit.close()
         QGroupBox.closeEvent(self, e)
         cp.cgwmainconfiguration = None

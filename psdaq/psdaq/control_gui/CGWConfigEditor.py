@@ -43,7 +43,7 @@ char_shrink  = u' \u25B2' # solid up-head triangle
 
 #--------------------
 
-class CGWConfigEditor(QWidget) :
+class CGWConfigEditor(QWidget):
     """Configuration editor top widget
     """
     MORE_OPTIONS = ('More','Load','Save','Help')
@@ -54,6 +54,8 @@ class CGWConfigEditor(QWidget) :
         #QGroupBox.__init__(self, 'Partition', parent)
         QWidget.__init__(self, parent)
 
+        cp.cgwconfigeditor = self
+
         # I/O files
         self.ifname_json = '%s/json2xtc_test.json' % path_to_test_data() # input file
         self.ofname_json = './test.json' # output file
@@ -61,7 +63,7 @@ class CGWConfigEditor(QWidget) :
         self.help_box = None
 
         self.dictj = dictj
-        if dictj is None : self.load_dict() # fills self.dictj
+        if dictj is None: self.load_dict() # fills self.dictj
 
         self.but_close= QPushButton('Close')
         self.but_apply= QPushButton('Apply')
@@ -100,7 +102,7 @@ class CGWConfigEditor(QWidget) :
 
 #--------------------
 
-    def set_tool_tips(self) :
+    def set_tool_tips(self):
         self.setToolTip('Configuration editor GUI'\
                         '\n - Expand/Collapse button - expands/collapse entire dictionary content'\
                         '\n - Close button - closes editor window, all modifications'\
@@ -123,7 +125,7 @@ class CGWConfigEditor(QWidget) :
 
 #--------------------
 
-    def set_style(self) :
+    def set_style(self):
         from psdaq.control_gui.Styles import style
         self.setWindowTitle('Configuration Editor')
         self.setMinimumSize(400,800)
@@ -135,7 +137,7 @@ class CGWConfigEditor(QWidget) :
         #self.setMinimumWidth(300)
         #self.edi.setMinimumWidth(210)
         #self.setFixedHeight(34) # 50 if self.show_frame else 34)
-        #if not self.show_frame : 
+        #if not self.show_frame:
         #self.layout().setContentsMargins(0,0,0,0)
 
         #style = "background-color: rgb(255, 255, 220); color: rgb(0, 0, 0);" # Yellowish
@@ -149,7 +151,7 @@ class CGWConfigEditor(QWidget) :
  
 #--------------------
 
-    def load_dict(self) :
+    def load_dict(self):
         ifname = self.ifname_json
         logger.info('CGWConfigEditor: load json from %s' % ifname)
         self.dictj = dj = load_json_from_file(ifname)
@@ -160,7 +162,7 @@ class CGWConfigEditor(QWidget) :
  
     def on_but_load(self):
         logger.debug('on_but_load')
-        if self.select_ifname() : 
+        if self.select_ifname():
            self.load_dict()
            self.wedi.set_content(self.dictj)
 
@@ -173,7 +175,7 @@ class CGWConfigEditor(QWidget) :
                       directory = self.ifname_json,
                       filter    = 'Text files(*.json *.cfg *.txt *.text *.dat *.data)\nAll files (*)'
                       )
-        if path == '' :
+        if path == '':
             logger.info('Loading is cancelled')
             return False
         self.ifname_json = path
@@ -184,7 +186,7 @@ class CGWConfigEditor(QWidget) :
  
     def on_but_save(self):
         logger.debug('on_but_save')
-        if self.select_ofname() : 
+        if self.select_ofname():
            self.save_dict_in_file()
 
 #--------------------
@@ -192,7 +194,7 @@ class CGWConfigEditor(QWidget) :
     def on_but_help(self):
         logger.debug('on_but_help')
         s = self.toolTip()
-        if self.help_box is not None : self.help_box.close()
+        if self.help_box is not None: self.help_box.close()
         self.help_box = help_dialog_box(parent=self.box_more,
                                         text=self.toolTip(), title='Help')
 
@@ -205,7 +207,7 @@ class CGWConfigEditor(QWidget) :
                       directory = self.ofname_json,
                       filter    = 'Text files (*.json *.cfg *.txt *.text *.dat *.data)\nAll files (*)'
                       )
-        if path == '' :
+        if path == '':
             logger.info('Saving is cancelled')
             return False
         self.ofname_json = path
@@ -234,10 +236,10 @@ class CGWConfigEditor(QWidget) :
         sj = str_json(dj)
         logger.info('on_but_apply jason/dict:\n%s' % sj)
 
-        if cp.cgwmainconfiguration is None :
+        if cp.cgwmainconfiguration is None:
             logger.warning("parent (ctrl) is None - changes can't be applied to DB")
             return
-        else :
+        else:
             cp.cgwmainconfiguration.save_dictj_in_db(dj, msg='CGWConfigEditor: ')
 
 #--------------------
@@ -248,22 +250,22 @@ class CGWConfigEditor(QWidget) :
 
 #--------------------
  
-    def on_box_more(self, ind) :
+    def on_box_more(self, ind):
         opt = self.MORE_OPTIONS[ind]
         logger.info('CGWConfigEditor selected option %s' % opt)
 
-        if   ind==1 : self.on_but_load()
-        elif ind==2 : self.on_but_save()
-        elif ind==3 : self.on_but_help()
+        if   ind==1: self.on_but_load()
+        elif ind==2: self.on_but_save()
+        elif ind==3: self.on_but_help()
         self.box_more.setCurrentIndex(0)
 
 #--------------------
  
-    def on_box_type(self, ind) :
+    def on_box_type(self, ind):
         type = self.EDITOR_TYPES[ind]
         logger.info('CGWConfigEditor set editor type %s' % type)
 
-        if self.wedi is not None :
+        if self.wedi is not None:
            self.vbox.removeWidget(self.wedi)
            self.wedi.close()
            del self.wedi
@@ -283,13 +285,13 @@ class CGWConfigEditor(QWidget) :
 
         is_tree_editor = edi_type=='Tree'
         self.but_expn.setVisible(is_tree_editor)
-        if is_tree_editor : self.but_expn.setText('Expand %s'%char_expand)
+        if is_tree_editor: self.but_expn.setText('Expand %s'%char_expand)
 
         kwargs = {'parent':None, 'dictj':self.dictj}
 
-        if   edi_type == self.EDITOR_TYPES[0] : return CGWConfigEditorText(**kwargs)
-        elif edi_type == self.EDITOR_TYPES[1] : return CGWConfigEditorTree(**kwargs)
-        else :
+        if   edi_type == self.EDITOR_TYPES[0]: return CGWConfigEditorText(**kwargs)
+        elif edi_type == self.EDITOR_TYPES[1]: return CGWConfigEditorTree(**kwargs)
+        else:
             logger.warning('Unknown editor type "%s"' % edi_type)
             return QTextEdit(edi_type)
 
@@ -297,10 +299,10 @@ class CGWConfigEditor(QWidget) :
  
     def on_but_expn(self):
         #logger.debug('on_but_expn')
-        if self.but_expn.text()[:6] == 'Expand' :
+        if self.but_expn.text()[:6] == 'Expand':
            self.wedi.process_expand()
            self.but_expn.setText('Collapse %s'%char_shrink)
-        else :
+        else:
            self.wedi.process_collapse()
            self.but_expn.setText('Expand %s'%char_expand)
 
@@ -309,13 +311,14 @@ class CGWConfigEditor(QWidget) :
     def closeEvent(self, e):
         QWidget.closeEvent(self, e)
         logger.debug('closeEvent')
-        if cp.cgwmainconfiguration is not None :
-           cp.cgwmainconfiguration.w_edit = None
-        if self.help_box is not None : self.help_box.close()
+
+        if self.help_box is not None: self.help_box.close()
+        if cp.cgwconfigeditor is not None:
+           cp.cgwconfigeditor = None
 
 #--------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
 

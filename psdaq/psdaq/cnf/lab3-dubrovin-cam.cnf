@@ -23,7 +23,7 @@ procmgr_config = [
  {                        id:'groupca',flags:'s', env:epics_env, cmd:'groupca DAQ:LAB2 2 1'},
  {                        id:'procstat', flags:'p', cmd:'procstat p'+platform+'.cnf.last'},
  { host: collect_host,    id:'control', flags:'sxpu', env:epics_env, cmd:'control -v -C BEAM -P '+hutch+' -B DAQ:LAB2 -x 2 --user '+user+' --password '+password},
- {                        flags:'xp', id:'control_gui', cmd:'control_gui -E -t 30000 -l WARNING -H '+collect_host},
+ {                        flags:'xp', id:'control_gui', cmd:'control_gui -E -t 30000 -l DEBUG -H '+collect_host},
  # trigger event builder
  { host: 'drp-tst-dev009', id:'teb1', flags:'xpu', cmd:'teb -P '+hutch+' -C '+collect_host},
  # cameras

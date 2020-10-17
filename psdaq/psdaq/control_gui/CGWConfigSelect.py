@@ -77,7 +77,6 @@ class CGWConfigSelect(QGroupBox):
         self.but_type.clicked.connect(self.on_but_type)
         self.but_dev .clicked.connect(self.on_but_dev)
 
-        self.w_edit = None
         self.type_old = None
 
 #--------------------
@@ -196,8 +195,6 @@ class CGWConfigSelect(QGroupBox):
 
     def closeEvent(self, e):
         print('CGWConfigSelect.closeEvent')
-        if self.w_edit is not None:
-           self.w_edit.close()
         QGroupBox.closeEvent(self, e)
 
 #--------------------

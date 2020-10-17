@@ -60,6 +60,7 @@ class CGConfigParameters(ConfigParameters) :
         self.cgwmaincontrol    = None
         self.cgwmaintabuser    = None
         self.cgwmainconfiguration = None
+        self.cgwconfigeditor   = None
 
         # DAQ status cache
         self.s_transition      = None
