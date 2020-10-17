@@ -162,8 +162,8 @@ namespace Pds {
       {
         if (idx == _bufFreeList.peek(i))
         {
-          logging::error("Attempted double free of list entry %u: idx %u, dg %p, ts %u.%09u",
-                         i, idx, dg, dg->time.seconds(), dg->time.nanoseconds());
+          logging::error("Attempted double free of list entry %u: idx %u, dg %p, ts %u.%09u, svc %s",
+                         i, idx, dg, dg->time.seconds(), dg->time.nanoseconds(), TransitionId::name(dg->service()));
           // Does the dg still need to be freed?  Apparently so.
           Pool::free((void*)dg);
           return;
