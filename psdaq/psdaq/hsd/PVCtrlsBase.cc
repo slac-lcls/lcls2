@@ -49,7 +49,7 @@ namespace Pds {
     {                                                                   \
     public:                                                             \
       PV(name)(PVCtrlsBase& ctrl, const char* pvName) :                  \
-        EpicsPVA(pvName, this),                                         \
+        EpicsPVA("pva", pvName, this, 0, false),                        \
         _ctrl(ctrl) {}                                                  \
       virtual ~PV(name)() {}                                            \
     public:                                                             \

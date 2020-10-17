@@ -1,46 +1,32 @@
 from psdaq.configdb.typed_json import cdict
-from psdaq.configdb.get_config import get_config_with_params
 import psdaq.configdb.configdb as cdb
 import os
 import io
-import argparse
 
 create = True
+dbname = 'configDB'
+args = cdb.createArgs().args
+db   = 'configdb' if args.prod else 'devconfigdb'
+url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--url',type=str,default='https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/',help='DB URL')
-parser.add_argument('--inst',type=str,default='tst',help='instrument')
-parser.add_argument('--alias',type=str,default='PROD',help='alias')
-parser.add_argument('--db',type=str,default='configDB',help='database')
-parser.add_argument('--load',action='store_true',help='load from db')
-parser.add_argument('--store',action='store_true',help='store to db')
-parser.add_argument('--name',type=str,default='DAQ:LAB2:XPM:0',help='device name')
-args = parser.parse_args()
+mycdb = cdb.configdb(url, args.inst, create,
+                     root=dbname, user=args.user, password=args.password)
+mycdb.add_device_config('xpm')
 
-if args.store:
+top = cdict()
 
-    mycdb = cdb.configdb(args.url,args.inst,create,args.db)
-    mycdb.add_device_config('xpm')
+top.setInfo('xpm', args.name, None, 'serial1234', 'No comment')
+top.setAlg('config', [0,0,0])
 
-    top = cdict()
+top.set('XTPG.CuDelay'   , 134682, 'UINT32')
+top.set('XTPG.CuBeamCode',     40, 'UINT8')
+top.set('XTPG.CuInput'   ,      0, 'UINT8')
+v = [10]*8
+top.set('PART.L0Delay', v, 'UINT32')
 
-    top.setInfo('xpm', args.name, None, 'serial1234', 'No comment')
-    top.setAlg('config', [0,0,0])
+if not args.alias in mycdb.get_aliases():
+    mycdb.add_alias(args.alias)
+mycdb.modify_device(args.alias, top)
 
-    top.set('XTPG.CuDelay'   , 160000, 'UINT32')
-    top.set('XTPG.CuBeamCode',     40, 'UINT8')
-    top.set('XTPG.CuInput'   ,      2, 'UINT8')
-    v = [90]*8
-    top.set('PART.L0Delay', v, 'UINT32')
+mycdb.print_configs()
 
-    if not args.alias in mycdb.get_aliases():
-        mycdb.add_alias(args.alias)
-    mycdb.modify_device(args.alias, top)
-
-    mycdb.print_configs()
-
-if args.load:
-
-    print('Loading with url {:}  inst {:}  db {:}  alias {:}  name {:}'.format(args.url, args.inst, args.db, args.alias, args.name))
-    cfg = get_config_with_params(args.url, args.inst, args.db, args.alias, args.name)
-    print('Loaded {:}'.format(cfg))

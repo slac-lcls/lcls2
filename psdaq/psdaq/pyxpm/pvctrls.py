@@ -209,7 +209,7 @@ class CuGenCtrls(object):
 
         try:
             cuDelay    = dbinit['XTPG']['CuDelay']
-            cuBeamCode = dbInit['XTPG']['CuBeamCode']
+            cuBeamCode = dbinit['XTPG']['CuBeamCode']
             cuInput    = dbinit['XTPG']['CuInput']
             print('Read XTPG parameters CuDelay {}, CuBeamCode {}, CuInput {}'.format(cuDelay,cuBeamCode,cuInput))
         except:
@@ -529,7 +529,7 @@ class PVCtrls(object):
                 # save config
                 print('Updating {}'.format(self._db))
                 db_url, db_name, db_instrument, db_alias = self._db.split(',',4)
-                mycdb = cdb.configdb(db_url, db_instrument, True, db_name)
+                mycdb = cdb.configdb(db_url, db_instrument, True, db_name, user=db_instrument+'opr', password='pcds')
                 mycdb.add_device_config('xpm')
 
                 top = cdict()
