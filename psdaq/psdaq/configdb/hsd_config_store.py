@@ -35,11 +35,11 @@ help_str += "\nuser.fex.xpost    : keep N samples trailing excursion"
 
 top.set("help:RO", help_str, 'CHARSTR')
 
-top.set('user.raw.start_ns', 107692, 'UINT32')
-top.set('user.raw.gate_ns' ,    200, 'UINT32')
+top.set('user.raw.start_ns',  93000, 'UINT32')
+top.set('user.raw.gate_ns' ,  10000, 'UINT32')
 top.set('user.raw.prescale',      1, 'UINT32')
 
-top.set('user.fex.start_ns', 107692, 'UINT32')
+top.set('user.fex.start_ns',  93000, 'UINT32')
 top.set('user.fex.gate_ns' ,    200, 'UINT32')
 top.set('user.fex.prescale',      0, 'UINT32')
 top.set('user.fex.ymin' ,      2000, 'UINT32')
