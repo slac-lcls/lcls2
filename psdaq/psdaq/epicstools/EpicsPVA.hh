@@ -132,6 +132,7 @@ namespace Pds_Epics {
     EpicsPVA(const char *channelName, const int maxElements=0);
     EpicsPVA(const char *channelName, PVMonitorCb*, const int maxElements=0);
     EpicsPVA(const char* provider, const char *channelName, PVMonitorCb*, const int maxElements=0);
+    EpicsPVA(const char* provider, const char *channelName, PVMonitorCb*, const int maxElements, bool nType);
     virtual ~EpicsPVA();
 
     static void setProvider(const char*);
@@ -204,6 +205,7 @@ namespace Pds_Epics {
     pvd::PVStructure::const_shared_pointer _strct;
 
     PVMonitorCb*     _monitorCB;
+    bool  _nType;
     bool  _connected;
 
     bool getComplete();
