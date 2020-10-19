@@ -451,7 +451,6 @@ void PvaDetector::_worker()
                                               {"partition", std::to_string(m_para->partition)},
                                               {"detname", m_para->detName},
                                               {"detseg", std::to_string(m_para->detSegment)},
-                                              {"PV", m_para->alias}, // Leave for backward compatibility for now
                                               {"alias", m_para->alias}};
     m_nEvents = 0;
     m_exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
@@ -924,23 +923,6 @@ void PvaApp::handleReset(const nlohmann::json& msg)
 
 } // namespace Drp
 
-
-void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
-    std::istringstream ss(kwargs_str);
-    std::string kwarg;
-    while (getline(ss, kwarg, ',')) {
-        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
-        auto pos = kwarg.find("=", 0);
-        if (pos == std::string::npos) {
-            logging::critical("Keyword argument with no equal sign");
-            throw "error: keyword argument with no equal sign: "+kwargs_str;
-        }
-        std::string key = kwarg.substr(0,pos);
-        std::string value = kwarg.substr(pos+1,kwarg.length());
-        //cout << kwarg << " " << key << " " << value << endl;
-        para.kwargs[key] = value;
-    }
-}
 
 int main(int argc, char* argv[])
 {
