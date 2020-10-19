@@ -448,7 +448,8 @@ EbCtrbApp::EbCtrbApp(const TebCtrbParams&                   prms,
   _prms         (prms)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition",  std::to_string(prms.partition)}};
+                                            {"partition",  std::to_string(prms.partition)},
+                                            {"alias", prms.alias}};
   exporter->add("TCtbO_AlPdg", labels, MetricType::Gauge, [&](){ return _drpSim.allocPending(); });
 }
 
@@ -875,6 +876,7 @@ int main(int argc, char **argv)
                            /* .ports         = */ { },
                            /* .instrument    = */ {"tst"},
                            /* .partition     = */ NO_PARTITION,
+                           /* .alias         = */ { }, // Unique name from cmd line
                            /* .id            = */ -1u,
                            /* .maxEvents     = */ 0,  // Filled in @ connect time
                            /* .maxEvSize     = */ MON_BUF_SIZE,
@@ -908,6 +910,11 @@ int main(int argc, char **argv)
   if ( (mebPrms.partition = tebPrms.partition) == NO_PARTITION)
   {
     fprintf(stderr, "Missing '%s' parameter\n", "-p <Partition number>");
+    return 1;
+  }
+  if ( (mebPrms.alias = tebPrms.alias) == std::string({ }))
+  {
+    fprintf(stderr, "Missing '%s' parameter\n", "-u <Alias>");
     return 1;
   }
   if (collSrv.empty())

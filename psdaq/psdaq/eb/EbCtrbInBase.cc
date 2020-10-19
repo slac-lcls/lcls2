@@ -62,7 +62,9 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
   _regSize      (0),
   _region       (nullptr)
 {
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},{"partition", std::to_string(prms.partition)}};
+  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
+                                            {"partition", std::to_string(prms.partition)},
+                                            {"alias", prms.alias}};
   exporter->add("TCtbI_RxPdg", labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
   exporter->add("TCtbI_BatCt", labels, MetricType::Counter, [&](){ return _batchCount;          });
   exporter->add("TCtbI_EvtCt", labels, MetricType::Counter, [&](){ return _eventCount;          });

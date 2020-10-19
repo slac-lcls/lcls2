@@ -272,7 +272,8 @@ Meb::Meb(const MebParams&        prms,
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.alias}};
+                                            {"detname", prms.alias},
+                                            {"alias", prms.alias}};
   exporter->add("MEB_EvtRt", labels, MetricType::Rate,    [&](){ return _eventCount;      });
   exporter->add("MEB_EvtCt", labels, MetricType::Counter, [&](){ return _eventCount;      });
   exporter->add("MEB_ReqRt", labels, MetricType::Rate,    [&](){ return _requestCount;    });

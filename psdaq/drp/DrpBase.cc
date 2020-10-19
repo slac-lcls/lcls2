@@ -405,6 +405,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition = para.partition;
+    m_tPrms.alias     = para.alias;
     m_tPrms.batching  = m_para.kwargs["batching"] == "yes"; // Default to "no"
     m_tPrms.core[0]   = -1;
     m_tPrms.core[1]   = -1;
@@ -413,6 +414,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
     m_mPrms.instrument = para.instrument;
     m_mPrms.partition = para.partition;
+    m_mPrms.alias     = para.alias;
     m_mPrms.maxEvents = 8;
     m_mPrms.maxEvSize = pool.bufferSize();
     m_mPrms.maxTrSize = para.maxTrSize;
