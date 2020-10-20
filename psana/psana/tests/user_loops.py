@@ -19,9 +19,7 @@ sys.excepthook = global_except_hook
 
 # for debugging...
 #import logging
-#logging.basicConfig(level=logging.DEBUG,
-#                format='(%(threadName)-10s) %(message)s',
-#                        )
+#logging.basicConfig(level=logging.DEBUG, format='(%(threadName)-10s) %(message)s',)
 
 import os
 import vals

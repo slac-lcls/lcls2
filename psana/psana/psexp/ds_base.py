@@ -65,6 +65,9 @@ class DataSourceBase(abc.ABC):
                 if k in kwargs:
                     setattr(self, k, kwargs[k])
 
+            if self.destination != 0:
+                self.batch_size = 1 # reset batch_size to prevent L1 transmitted before BeginRun (FIXME?: Mona)
+
             if 'run' in kwargs:
                 setattr(self, 'run_num', int(kwargs['run']))
 

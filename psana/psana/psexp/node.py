@@ -241,8 +241,6 @@ def repack_for_bd(smd_batch, step_views, configs, calibconst_pkt, client):
     # add calibconst packet
     new_chunk_pf = PacketFooter(2)
     new_chunk_pf.set_size(0, memoryview(extended_batch).nbytes)
-    logging.debug(f"extended_batch={memoryview(extended_batch).nbytes}") 
-    logging.debug(f"calibconst_pkt={memoryview(calibconst_pkt).nbytes}")
     extended_batch.extend(calibconst_pkt)
     new_chunk_pf.set_size(1, memoryview(calibconst_pkt).nbytes)
     extended_batch.extend(new_chunk_pf.footer)
@@ -397,10 +395,7 @@ class EventBuilderNode(object):
                     self._request_rank(rankreq)
                     
                     missing_step_views = self.step_hist.get_buffer(rankreq[0])
-                    
                     missing_calib_view = self.calib_hist.get_buffer(rankreq[0])[0]
-                    logging.debug(f"node.py: run_mpi extend_buffers for {rankreq[0]} missing_calib_view={memoryview(missing_calib_view).nbytes}")
-                    
                     batch = repack_for_bd(smd_batch, missing_step_views, self.configs, missing_calib_view, rankreq[0])
                     bd_comm.Send(batch, dest=rankreq[0])
                     
@@ -469,14 +464,14 @@ class BigDataNode(object):
             bd_comm = self.comms.bd_comm
             bd_rank = self.comms.bd_rank
             bd_comm.Send(np.array([bd_rank], dtype='i'), dest=0)
+            
+            st = time.time()
             info = MPI.Status()
             bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
             count = info.Get_elements(MPI.BYTE)
             if count == 0:
                 return bytearray()
-
             extended_chunk = bytearray(count)
-            st = time.time()
             bd_comm.Recv(extended_chunk, source=0)
             en = time.time()
             
