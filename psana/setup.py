@@ -171,6 +171,17 @@ if 'PEAKFINDER' in BUILD_LIST :
     )
     CYTHON_EXTS.append(ext)
 
+    ext = Extension("peakfinder8",
+                    sources=["psana/peakFinder/peakfinder8.pyx",
+                             "psana/peakFinder/peakfinder8.cc"],
+                    libraries = ['utils'], # for SysLog
+                    language="c++",
+                    extra_compile_args = extra_cxx_compile_args,
+                    extra_link_args = extra_link_args_rpath,
+                    include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
+                    library_dirs = [os.path.join(instdir, 'lib')],
+    )
+    CYTHON_EXTS.append(ext)
 
 if 'HEXANODE' in BUILD_LIST :
     # ugly: only build hexanode apps if the roentdek software exists.
