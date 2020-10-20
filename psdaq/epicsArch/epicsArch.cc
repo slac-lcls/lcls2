@@ -529,23 +529,6 @@ void EpicsArchApp::handleReset(const nlohmann::json& msg)
 } // namespace Drp
 
 
-void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
-    std::istringstream ss(kwargs_str);
-    std::string kwarg;
-    while (getline(ss, kwarg, ',')) {
-        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
-        auto pos = kwarg.find("=", 0);
-        if (!pos) {
-            logging::critical("Keyword argument with no equal sign");
-            throw "error: keyword argument with no equal sign: "+kwargs_str;
-        }
-        std::string key = kwarg.substr(0,pos);
-        std::string value = kwarg.substr(pos+1,kwarg.length());
-        //cout << kwarg << " " << key << " " << value << endl;
-        para.kwargs[key] = value;
-    }
-}
-
 static void usage(const char* name)
 {
     printf( "Usage:  %s  [OPTIONS] <configuration filename>\n"

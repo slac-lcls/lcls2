@@ -162,8 +162,8 @@ namespace Pds {
       {
         if (idx == _bufFreeList.peek(i))
         {
-          logging::error("Attempted double free of list entry %u: idx %u, dg %p, ts %u.%09u",
-                         i, idx, dg, dg->time.seconds(), dg->time.nanoseconds());
+          logging::error("Attempted double free of list entry %u: idx %u, dg %p, ts %u.%09u, svc %s",
+                         i, idx, dg, dg->time.seconds(), dg->time.nanoseconds(), TransitionId::name(dg->service()));
           // Does the dg still need to be freed?  Apparently so.
           Pool::free((void*)dg);
           return;
@@ -272,7 +272,8 @@ Meb::Meb(const MebParams&        prms,
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.alias}};
+                                            {"detname", prms.alias},
+                                            {"alias", prms.alias}};
   exporter->add("MEB_EvtRt", labels, MetricType::Rate,    [&](){ return _eventCount;      });
   exporter->add("MEB_EvtCt", labels, MetricType::Counter, [&](){ return _eventCount;      });
   exporter->add("MEB_ReqRt", labels, MetricType::Rate,    [&](){ return _requestCount;    });

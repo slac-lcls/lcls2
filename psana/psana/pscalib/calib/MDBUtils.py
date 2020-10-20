@@ -880,7 +880,7 @@ def insert_constants(data, experiment, detector, ctype, run, time_sec, **kwargs)
                                                 time_stamp=kwargs.get('time_stamp', None))
     _version = kwargs.get('version', 'v00')
     _comment = kwargs.get('comment', 'default comment')
-    _detector = pro_detector_name(detector)
+    _detector = pro_detector_name(detector, add_shortname=True)
 
     valid_experiment(experiment)
     valid_detector(_detector)
@@ -1456,6 +1456,26 @@ def _doc_detector_name(detname, dettype, detnum):
 
 #------------------------------
 
+def _short_for_partial_name(detname, ldocs):
+    """Returns full from partial detector name or None if not found.
+    """
+    logger.debug('detname: %s\nlist of docs: %s'%(detname, str(ldocs)))
+    name_fields = detname.split('_')
+    if len(name_fields)<2: return None
+    pnames = name_fields[1:]
+
+    for doc in ldocs:
+        longname = doc.get('long', None)
+        if longname is None: continue
+        #print('XXX doc longname:', long)
+        if all([name in longname for name in pnames]):
+            shortname = doc.get('short', None)
+            logger.debug('associated detector names\n  long: %s\n  short: %s'%(longname, shortname))
+            return shortname # longname
+    return None
+
+#------------------------------
+
 def _add_detector_name(col, colname, detname, detnum):
     #client = connect_to_server(host=cc.HOST, port=cc.PORT) # , user=cc.USERNAME, upwd=cc.USERPW)
     #db = database(client, dbname)
@@ -1467,7 +1487,7 @@ def _add_detector_name(col, colname, detname, detnum):
 
 #------------------------------
 
-def _short_detector_name(detname, dbname=cc.DETNAMESDB):
+def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
     colname = detname.split('_',1)[0]
 
     client = connect_to_server(host=cc.HOST, port=cc.PORT) # , user=cc.USERNAME, upwd=cc.USERPW)
@@ -1490,6 +1510,14 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB):
     # find all docs in the collection
     ldocs = find_docs(col, query={})
 
+    # find detector for partial name
+    shortname = mu._short_for_partial_name(detname, ldocs)
+    #print('XXX shortname:', shortname)
+    if shortname is not None: return shortname
+
+    if not add_shortname: return None
+
+    # add new short name to the db
     detnum = 0
     if ldocs is None: # empty list
         logger.debug('list of documents in db/collection: %s/%s IS EMPTY' % (dbname, colname))
@@ -1509,10 +1537,10 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB):
 
 #------------------------------
 
-def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE):
+def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
     """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars.
     """
-    return detname if len(detname)<maxsize else _short_detector_name(detname)
+    return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
 
 #------------------------------
 #----------- TEST -------------

@@ -59,6 +59,7 @@ EbAppBase::EbAppBase(const EbParams&         prms,
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
                                             {"detname", prms.alias},
+                                            {"alias", prms.alias},
                                             {"eb", pfx}};
   uint64_t depth = (maxBuffers + TransitionId::NumberOf) * maxEntries;
   exporter->constant("EB_EvPlDp", labels, depth);
@@ -139,6 +140,7 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
                                             {"detname", prms.alias},
+                                            {"alias", prms.alias},
                                             {"eb", _pfx}};
 
   _links        .resize(nCtrbs);

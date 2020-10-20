@@ -156,7 +156,8 @@ Teb::Teb(const EbParams&         prms,
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.alias}};
+                                            {"detname", prms.alias},
+                                            {"alias", prms.alias}};
   exporter->add("TEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;             });
   exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;             });
   exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;             });

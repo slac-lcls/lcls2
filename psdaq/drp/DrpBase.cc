@@ -55,6 +55,23 @@ static unsigned nextPowerOf2(unsigned n)
     return 1 << count;
 }
 
+void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
+    std::istringstream ss(kwargs_str);
+    std::string kwarg;
+    while (getline(ss, kwarg, ',')) {
+        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
+        auto pos = kwarg.find("=", 0);
+        if (pos == std::string::npos) {
+            logging::critical("Keyword argument with no equal sign");
+            throw "drp.cc error: keyword argument with no equal sign: "+kwargs_str;
+        }
+        std::string key = kwarg.substr(0,pos);
+        std::string value = kwarg.substr(pos+1,kwarg.length());
+        //std::cout << "kwarg = '" << kwarg << "' key = '" << key << "' value = '" << value << "'" << std::endl;
+        para.kwargs[key] = value;
+    }
+}
+
 MemPool::MemPool(Parameters& para) :
     m_transitionBuffers(para.nTrBuffers),
     m_inUse(0),
@@ -83,11 +100,11 @@ MemPool::MemPool(Parameters& para) :
     // Also include space in the pebble for a pool of transition buffers of
     // worst case size so that they will be part of the memory region that can
     // be RDMAed from to the MEB
-    //auto pebbleBufSize = para.kwargs["pebbleBufSize"];
-    //if (pbs.empty())                    // Allow overriding the Pebble size
+    auto pebbleBufSize = para.kwargs["pebbleBufSize"];
+    if (pebbleBufSize.empty())          // Allow overriding the Pebble size
         m_bufferSize = __builtin_popcount(para.laneMask) * m_dmaSize;
-    //else
-    //    m_bufferSize = std::stoul(pebbleBufSize);
+    else
+        m_bufferSize = std::stoul(pebbleBufSize);
     pebble.resize(m_nbuffers, m_bufferSize, para.nTrBuffers, para.maxTrSize);
     logging::info("nbuffers %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
     logging::info("nTrBuffers %u  transition buffer size %u", para.nTrBuffers, para.maxTrSize);
@@ -119,8 +136,8 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
   m_mon(mon),
-  m_fileWriter(4194304),
-  m_smdWriter(4194304),
+  m_fileWriter(8388672), //4194304),
+  m_smdWriter(8388672), //4194304),
   m_writing(false),
   m_inprocSend(inprocSend),
   m_count(0),
@@ -388,6 +405,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition = para.partition;
+    m_tPrms.alias     = para.alias;
     m_tPrms.batching  = m_para.kwargs["batching"] == "yes"; // Default to "no"
     m_tPrms.core[0]   = -1;
     m_tPrms.core[1]   = -1;
@@ -396,6 +414,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
     m_mPrms.instrument = para.instrument;
     m_mPrms.partition = para.partition;
+    m_mPrms.alias     = para.alias;
     m_mPrms.maxEvents = 8;
     m_mPrms.maxEvSize = pool.bufferSize();
     m_mPrms.maxTrSize = para.maxTrSize;

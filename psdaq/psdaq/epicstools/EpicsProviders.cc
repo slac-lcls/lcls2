@@ -13,15 +13,15 @@ namespace Pds_Epics {
     pvac::ClientProvider& EpicsProviders::pva() { return *_pva; }
     pvac::ClientProvider& EpicsProviders::ca () { return *_ca ; }
 
-    EpicsProviders::EpicsProviders() 
+    EpicsProviders::EpicsProviders()
     {
-        pva::Configuration::shared_pointer 
+        pva::Configuration::shared_pointer
           configuration(pva::ConfigurationBuilder()
                         .push_env()
                         .build());
-          pva::ca::CAClientFactory::start();
-          _ca  = new pvac::ClientProvider("ca" , configuration); 
-          _pva = new pvac::ClientProvider("pva", configuration);
+        pva::ca::CAClientFactory::start();
+        _ca  = new pvac::ClientProvider("ca" , configuration);
+        _pva = new pvac::ClientProvider("pva", configuration);
     }
 
     static EpicsProviders _providers;

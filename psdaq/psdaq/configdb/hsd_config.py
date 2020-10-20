@@ -20,12 +20,17 @@ def hsd_config(connect_str,epics_prefix,cfgtype,detname,detsegm,group):
     #
     raw            = cfg['user']['raw']
     raw_start      = (raw['start_ns']*1300/7000 - partitionDelay*200)*160/200 # in "160MHz"(*13/14) clks
+    # raw_start register is 14 bits
     if raw_start < 0:
         print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.format(partitionDelay,raw['start_ns'],raw_start))
-        raise ValueError('raw_start computes to < 0')
+        raise ValueError('raw_start is too small by {:} ns'.format(-raw_start/0.16*14./13))
+    if raw_start > 0x3fff:
+        print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.format(partitionDelay,raw['start_ns'],raw_start))
+        raise ValueError('start_ns is too large by {:} ns'.format((raw_start-0x3fff)/0.16*14./13))
 
     raw_gate     = int(raw['gate_ns']*0.160*13/14) # in "160" MHz clks
     raw_nsamples = raw_gate*40
+    # raw_gate register is 14 bits
     if raw_gate < 0:
         raise ValueError('raw_gate computes to < 0')
 

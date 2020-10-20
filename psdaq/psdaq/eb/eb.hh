@@ -65,6 +65,7 @@ namespace Pds {
       vecstr_t ports;              // MEB ports
       string_t instrument;         // Instrument name for monitoring
       unsigned partition;          // The chosen system
+      string_t alias;              // Unique name passed on cmd line
       unsigned id;                 // Contributor instance identifier
       unsigned maxEvents;          // Max # of events to provide for
       size_t   maxEvSize;          // Max event size

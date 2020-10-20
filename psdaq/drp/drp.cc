@@ -9,23 +9,6 @@
 using logging = psalg::SysLog;
 using json = nlohmann::json;
 
-void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
-    std::istringstream ss(kwargs_str);
-    std::string kwarg;
-    while (getline(ss, kwarg, ',')) {
-        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
-        auto pos = kwarg.find("=", 0);
-        if (pos == std::string::npos) {
-            logging::critical("Keyword argument with no equal sign");
-            throw "drp.cc error: keyword argument with no equal sign: "+kwargs_str;
-        }
-        std::string key = kwarg.substr(0,pos);
-        std::string value = kwarg.substr(pos+1,kwarg.length());
-        //std::cout << "kwarg = '" << kwarg << "' key = '" << key << "' value = '" << value << "'" << std::endl;
-        para.kwargs[key] = value;
-    }
-}
-
 int main(int argc, char* argv[])
 {
     Drp::Parameters para;

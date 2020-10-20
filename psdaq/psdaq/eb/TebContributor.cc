@@ -44,7 +44,8 @@ TebContributor::TebContributor(const TebCtrbParams&                   prms,
   _batchCount  (0)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)}};
+                                            {"partition", std::to_string(prms.partition)},
+                                            {"alias", prms.alias}};
 
   exporter->constant("TCtb_IUMax",  labels, MAX_BATCHES);
   exporter->constant("TCtbO_IFMax", labels, _pending.size());

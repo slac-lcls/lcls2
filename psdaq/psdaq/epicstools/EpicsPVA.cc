@@ -50,22 +50,24 @@ template<typename T> pvd::shared_vector<const T> vecT(const char*& v, unsigned n
 namespace Pds_Epics {
 
     EpicsPVA::EpicsPVA(const char *channelName, const int maxElements) :
-      _channel(EpicsProviders::pva().connect(channelName)), _monitorCB(NULL)
+      _channel(EpicsProviders::pva().connect(channelName)), _monitorCB(NULL), _nType(true)
     {
         _channel.addConnectListener(this);
     }
     EpicsPVA::EpicsPVA(const char *channelName, PVMonitorCb* monitor, const int maxElements) :
       _channel(EpicsProviders::pva().connect(channelName)),
-      _monitorCB(monitor)
+      _monitorCB(monitor),
+      _nType(true)
     {
         _channel.addConnectListener(this);
     }
 
-    EpicsPVA::EpicsPVA(const char* provider, const char *channelName, PVMonitorCb* monitor, const int maxElements) :
+  EpicsPVA::EpicsPVA(const char* provider, const char *channelName, PVMonitorCb* monitor, const int maxElements, bool nType) :
       _channel(strcmp(provider,"ca")==0 ?
                EpicsProviders::ca ().connect(channelName) :
                EpicsProviders::pva().connect(channelName)),
-      _monitorCB(monitor)
+      _monitorCB(monitor),
+      _nType(nType)
     {
         _channel.addConnectListener(this);
     }
@@ -81,7 +83,10 @@ namespace Pds_Epics {
       } else if (evt.event == pvac::GetEvent::Success)  {
           _promise.set_value(evt.value);
           if(_monitorCB) {
-              _pvmon = _channel.monitor(this, pvd::createRequest("field(timeStamp,value)"));
+              if(_nType)
+                  _pvmon = _channel.monitor(this, pvd::createRequest("field(timeStamp,value)"));
+              else
+                  _pvmon = _channel.monitor(this);
           }
       } else {
           std::cerr << "Cancelled getting the value of PV " << name() << " " << evt.event << "\n";

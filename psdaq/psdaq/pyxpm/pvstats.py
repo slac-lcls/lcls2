@@ -455,18 +455,22 @@ class PVStats(object):
 
     def update(self):
         try:
-            for i in range(32):
+            #
+            #  Reduce number of transactions for stability
+            #for i in range(32):
+            for i in range(16):
                 self._links[i].update()
-            for i in range(2):
-                self._amcPll[i].update()
-            for i in range(8):
+            #for i in range(2):
+            #    self._amcPll[i].update()
+            #for i in range(8):
+            for i in range(7):
                 self._groups[i].update()
 
             self._usTiming.update()
             self._cuTiming.update()
             self._cuGen   .update()
-            self._monClks .update()
-            self._sfpStat .update()
+            #self._monClks .update()
+            #self._sfpStat .update()
         except:
             exc = sys.exc_info()
             if exc[0]==KeyboardInterrupt:
