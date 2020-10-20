@@ -243,9 +243,9 @@ class CGWMainConfiguration(QGroupBox):
 
         wd = CGWConfigSelect(parent=self, type_def=self.but_type_text())
         w = QWDialog(None, wd, is_frameless=False)
+        w.setWindowTitle('Select config Type & Detector')
         w.but_apply.setText('Edit')
         w.but_apply.setEnabled(False)
-        #w.setWindowTitle('Select to edit')
         #w.move(QCursor.pos() + QPoint(-20, -20))
         w.move(self.mapToGlobal(self.but_edit.pos()) + QPoint(0, 0))
 

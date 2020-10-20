@@ -82,8 +82,6 @@ class CGWConfigSelect(QGroupBox):
 #--------------------
 
     def set_tool_tips(self):
-        #self.setToolTip('Configuration') 
-        #self.but_edit.setToolTip('Edit configuration dictionary.')
         self.but_type.setToolTip('Select configuration type.') 
         self.but_dev .setToolTip('Select device for configuration.') 
 
@@ -105,7 +103,6 @@ class CGWConfigSelect(QGroupBox):
         from psdaq.control_gui.Styles import style
         self.setStyleSheet(style.qgrbox_title)
         self.set_buts_enabled()
-        self.setWindowTitle('Select config type & device')
 
         #self.layout().setContentsMargins(0,0,0,0)
         #self.but_edit.setFixedWidth(60)
