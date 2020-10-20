@@ -24,4 +24,4 @@ def find_blobs(img,threshold,min_sum):
 
 if __name__ == "__main__" :
     img = np.array(([1,1,1,1],[1,3,3,1],[1,3,3,1],[1,1,1,1]))
-    print find_blobs(img,2,1)
+    print(find_blobs(img,2,1))
