@@ -105,10 +105,10 @@ class CGWConfigSelect(QGroupBox):
         from psdaq.control_gui.Styles import style
         self.setStyleSheet(style.qgrbox_title)
         self.set_buts_enabled()
+        self.setWindowTitle('Select config type & device')
 
         #self.layout().setContentsMargins(0,0,0,0)
         #self.but_edit.setFixedWidth(60)
-        #self.setWindowTitle('File name selection widget')
         #self.setFixedHeight(34) # 50 if self.show_frame else 34)
  
 #--------------------

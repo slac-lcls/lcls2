@@ -263,38 +263,47 @@ class CGWMainConfiguration(QGroupBox):
 
 #--------------------
  
+    def select_configuration_dict_to_edit(self):
+        logger.debug('select_configuration_dict_to_edit')
+        resp = self.select_config_type_and_dev()
+        if resp is None: return None
+        cfgtype, dev = resp
+        self.device_edit = dev
+        self.cfgtype_edit = cfgtype
+
+        inst, confdb = self.inst_configdb('on_but_edit: ')
+
+        try:
+            self.config = confdb.get_configuration(cfgtype, dev, hutch=inst)
+        except ValueError as err:
+            logger.error('ValueError: %s' % err)
+            return None
+        except Exception as err:
+            logger.error('Exception: %s' % err)
+            return None
+
+        msg = 'get_configuration(%s, %s, %s):\n' % (cfgtype, dev, inst)\
+            + '%s\n    type(config): %s'%(str_json(self.config), type(self.config))
+        logger.debug(msg)
+
+        return self.config
+
+#--------------------
+ 
     def on_but_edit(self):
         logger.debug('on_but_edit')
         #if self.w_edit is None:
         if cp.cgwconfigeditor is None:
-            logger.debug("TBD Open configuration editor window")
-            resp = self.select_config_type_and_dev()
-            if resp is None: return
-            cfgtype, dev = resp
-            self.device_edit = dev
-            self.cfgtype_edit = cfgtype
+            dictj = self.select_configuration_dict_to_edit()
+            if dictj is None: return
 
-            inst, confdb = self.inst_configdb('on_but_edit: ')
-
-            try:
-                self.config = confdb.get_configuration(cfgtype, dev, hutch=inst)
-            except ValueError as err:
-                logger.error('ValueError: %s' % err)
-                return
-            except Exception as err:
-                logger.error('Exception: %s' % err)
-                return
-
-            msg = 'get_configuration(%s, %s, %s):\n' % (cfgtype, dev, inst)\
-                + '%s\n    type(config): %s'%(str_json(self.config), type(self.config))
-            logger.debug(msg)
-
-            self.w_edit = CGWConfigEditor(dictj=self.config)
+            logger.debug('Open configuration editor window')
+            self.w_edit = CGWConfigEditor(dictj=dictj)
             self.w_edit.move(self.mapToGlobal(QPoint(self.width()+10,0)))
             self.w_edit.show()
 
         else:
-            logger.debug("Close configuration editor window")
+            logger.debug('Close configuration editor window')
             self.w_edit.close()
 
 #--------------------
