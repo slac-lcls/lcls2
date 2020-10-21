@@ -191,12 +191,32 @@ class CGWMainPartition(QGroupBox):
             self.w_show.show()
 
             if cp.cgwmain is not None:
-               # THIS DOES NOT WORK AT LEAST IN MY WM ...
+               # THIS DOES NOT WORK AT LEAST IN OUR WM ...
                #logger.debug('force to activate cgwmain window')
                #cp.cgwmain.setWindowTitle('Activate it')
                cp.cgwmain.raise_()
-               cp.cgwmain.setWindowState(cp.cgwmain.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
                cp.cgwmain.activateWindow()
+
+            """
+               # THIS WAS A FIGHT FOR ACTIVATION OF OTHER WINDOW, BUT
+               # ALL THIS DOES NOT WORK AT LEAST IN OUR WM ...
+               #cp.cgwmain.setWindowState(cp.cgwmain.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
+               #cp.cgwmain.show()
+               #cp.cgwmain.setFocus(Qt.PopupFocusReason)
+               #cp.cgwmain.setFocus()
+               #cp.cgwmain.update()
+
+            if cp.qapplication is not None:
+                for w in cp.qapplication.allWindows():
+                    print('window in allWindows():', str(w), type(w), w.title(), ' isActive:', w.isActive(),' isModal:', w.isModal())
+                    if str(w.title())=='DAQ Control':
+                        print('window %s is found' % w.title())
+                        #w.show()
+                        w.requestActivate()
+
+            from PyQt5.QtTest import QTest
+            QTest.mouseClick(self, Qt.LeftButton)
+            """
 
         else:
             self.w_show.close()
