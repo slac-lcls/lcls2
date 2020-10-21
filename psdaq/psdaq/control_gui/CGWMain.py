@@ -448,6 +448,8 @@ def proc_control_gui(parser=None):
     from PyQt5.QtWidgets import QApplication
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
     app = QApplication(sys.argv)
+
+    cp.qapplication = app
     w = CGWMain(parser)
 
     w.show()
