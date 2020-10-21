@@ -191,6 +191,9 @@ class CGWMain(QWZMQListener):
         #self.setWindowIcon(icon.icon_button_ok)
         self.setWindowIcon(icon.icon_lcls)
 
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.setFocusPolicy(Qt.StrongFocus)
+
         #pmap = icon.icon_lcls.pixmap(QSize(200,100)) # change icon.pixmap size
         #self.setWindowIcon(QIcon(pmap))
 
