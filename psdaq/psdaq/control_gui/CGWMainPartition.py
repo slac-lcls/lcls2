@@ -190,14 +190,13 @@ class CGWMainPartition(QGroupBox):
             self.w_show.setWindowTitle('Partitions')
             self.w_show.show()
 
-            #self.w_show.setWindowState(Qt.WindowNoState)
-            #if cp.cgwmain is not None:
-            #   logger.debug('force to activate cgwmain window')
-            #   cp.cgwmain.setWindowState(cp.cgwmain.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
-            #   cp.cgwmain.setWindowTitle('Activate it')
-            #   cp.cgwmain.raise_()
-            #   cp.cgwmain.activateWindow()
-            #   self.but_show.setFocus()
+            if cp.cgwmain is not None:
+               # THIS DOES NOT WORK AT LEAST IN MY WM ...
+               #logger.debug('force to activate cgwmain window')
+               #cp.cgwmain.setWindowTitle('Activate it')
+               cp.cgwmain.raise_()
+               cp.cgwmain.setWindowState(cp.cgwmain.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
+               cp.cgwmain.activateWindow()
 
         else:
             self.w_show.close()
