@@ -1,3 +1,6 @@
+"""Data access BASIC METHODS for
+   composite detectors made of epix10ka panels.
+"""
 
 #from psana.pscalib.geometry.SegGeometry import *
 from psana.detector.areadetector import AreaDetector
