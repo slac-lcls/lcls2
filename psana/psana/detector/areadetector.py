@@ -1,3 +1,5 @@
+"""Data access methods common for all AREA DETECTORS.
+"""
 
 from psana.detector.detector_impl import DetectorImpl
 

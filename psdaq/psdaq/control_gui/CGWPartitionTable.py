@@ -20,6 +20,7 @@ from psdaq.control_gui.QWTableOfCheckBoxes import QWTableOfCheckBoxes, QStandard
 from psdaq.control_gui.QWPopupSelectItem import popup_select_item_from_list
 #from re import search as re_search
 from PyQt5.QtGui import QBrush, QColor
+from psdaq.control_gui.CGConfigParameters import cp
 
 #----------
 
@@ -30,6 +31,8 @@ class CGWPartitionTable(QWTableOfCheckBoxes) :
 
     def __init__(self, **kwargs) :
         QWTableOfCheckBoxes.__init__(self, **kwargs)
+        cp.cgwpartitiontable = self
+
         self.sort_items()
         self.collapse_all()
 
@@ -219,6 +222,14 @@ class CGWPartitionTable(QWTableOfCheckBoxes) :
         for r in range(model.rowCount()) :
             model.item(r, col_id)._is_collapser = False
  
+
+    def closeEvent(self, event):
+        logger.debug('closeEvent')
+        QWTableOfCheckBoxes.closeEvent(self, event)
+        cp.cgwpartitiontable = None
+        if cp.cgwmainpartition is not None:
+           cp.cgwmainpartition.set_but_show_title()
+
 
 #    def insert_group_titles(self):
 #        model = self._si_model

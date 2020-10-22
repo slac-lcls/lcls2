@@ -65,6 +65,7 @@ class CGWConfigEditor(QWidget):
         self.dictj = dictj
         if dictj is None: self.load_dict() # fills self.dictj
 
+        self.but_select= QPushButton('Select')
         self.but_close= QPushButton('Close')
         self.but_apply= QPushButton('Apply')
         self.but_expn = QPushButton('Expand %s'%char_expand)
@@ -81,6 +82,7 @@ class CGWConfigEditor(QWidget):
         self.hbox = QHBoxLayout() 
         self.hbox.addWidget(self.but_apply)
         self.hbox.addWidget(self.but_close)
+        self.hbox.addWidget(self.but_select)
         self.hbox.addWidget(self.but_expn)
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.box_more)
@@ -97,6 +99,7 @@ class CGWConfigEditor(QWidget):
         self.but_expn.clicked.connect(self.on_but_expn)
         self.but_apply.clicked.connect(self.on_but_apply)
         self.but_close.clicked.connect(self.on_but_close)
+        self.but_select.clicked.connect(self.on_but_select)
         self.box_type.currentIndexChanged[int].connect(self.on_box_type)
         self.box_more.currentIndexChanged[int].connect(self.on_box_more)
 
@@ -119,6 +122,7 @@ class CGWConfigEditor(QWidget):
         self.but_expn.setToolTip('Expand/Collapse tree-like content')
         self.but_apply.setToolTip('Apply content changes to configuration DB')
         self.but_close.setToolTip('Close window, cancel all modifications since last click on Apply button')
+        self.but_select.setToolTip('Select other configuration type and device to edit')
         self.box_more.setToolTip('More options:'\
                                 +'\n * Load content from file'\
                                 +'\n * Save content in file')
@@ -128,26 +132,21 @@ class CGWConfigEditor(QWidget):
     def set_style(self):
         from psdaq.control_gui.Styles import style
         self.setWindowTitle('Configuration Editor')
+        self.set_window_title()
         self.setMinimumSize(400,800)
         self.layout().setContentsMargins(0,0,0,0)
   
         self.but_apply.setStyleSheet(style.styleButtonGood) 
+        #self.but_select.setStyleSheet(style.styleButtonGood) 
         #self.but_save.setVisible(True)
  
         #self.setMinimumWidth(300)
         #self.edi.setMinimumWidth(210)
         #self.setFixedHeight(34) # 50 if self.show_frame else 34)
-        #if not self.show_frame:
         #self.layout().setContentsMargins(0,0,0,0)
 
         #style = "background-color: rgb(255, 255, 220); color: rgb(0, 0, 0);" # Yellowish
-        #style = "background-color: rgb(100, 240, 200); color: rgb(0, 0, 0);" # Greenish
-        #style = "background-color: rgb(255, 200, 220); color: rgb(0, 0, 0);" # Pinkish
-        #style = "background-color: rgb(240, 240, 100); color: rgb(0, 0, 0);" # YellowBkg
         #self.setStyleSheet(style)
-
-        #self.setFixedSize(750,270)
-        #self.setMaximumWidth(800)
  
 #--------------------
 
@@ -241,6 +240,33 @@ class CGWConfigEditor(QWidget):
             return
         else:
             cp.cgwmainconfiguration.save_dictj_in_db(dj, msg='CGWConfigEditor: ')
+
+#--------------------
+ 
+    def on_but_select(self):
+        logger.debug('on_but_select')
+
+        w = cp.cgwmainconfiguration
+
+        if w is None:
+            logger.warning("cgwmainconfiguration is None - can't select other configuration")
+            return
+        else:
+            dictj = w.select_configuration_dict_to_edit()
+            if dictj is None: return
+
+            logger.debug('selected to edit dictj:\n%s' % str(dictj))
+            self.dictj = dictj
+
+            self.wedi.set_content(self.dictj)
+            self.set_window_title()
+
+#--------------------
+ 
+    def set_window_title(self):
+        w = cp.cgwmainconfiguration
+        if w is None: return
+        self.setWindowTitle('Config Editor for %s %s'%(w.cfgtype_edit, w.device_edit))
 
 #--------------------
  

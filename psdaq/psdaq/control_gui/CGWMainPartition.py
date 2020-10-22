@@ -25,7 +25,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QGroupBox, QPushButton, QHBoxLayout, QVBoxLayout, QDialog, QSizePolicy
-from PyQt5.QtCore import QPoint, QSize
+from PyQt5.QtCore import Qt, QPoint, QSize
 from PyQt5.QtGui import QCursor
 
 from psdaq.control_gui.CGDaqControl import daq_control
@@ -46,21 +46,17 @@ class CGWMainPartition(QGroupBox):
     def __init__(self, parent=None):
 
         QGroupBox.__init__(self, 'Partition', parent)
-        cp.cgwmainpartition  = self
+        cp.cgwmainpartition = self
 
-        #self.but_roll_call = QPushButton('Roll call')
-        self.but_select    = QPushButton('Select')
-        self.but_show    = QPushButton('Show')
-        #self.but_display   = QPushButton('Display')
+        self.but_select = QPushButton('Select')
+        self.but_show   = QPushButton('Show')
 
         self.wcoll = CGWMainCollection()
 
         self.hbox = QHBoxLayout() 
-        #self.hbox.addWidget(self.but_roll_call)
         self.hbox.addWidget(self.but_select)
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.but_show)
-        #self.hbox.addWidget(self.but_display)
 
         self.vbox = QVBoxLayout() 
         self.vbox.addLayout(self.hbox)
@@ -71,10 +67,8 @@ class CGWMainPartition(QGroupBox):
         self.set_tool_tips()
         self.set_style()
 
-        #self.but_roll_call.clicked.connect(self.on_but_roll_call)
         self.but_select.clicked.connect(self.on_but_select)
         self.but_show.clicked.connect(self.on_but_show)
-        #self.but_display.clicked.connect(self.on_but_display)
 
         self.w_select = None
         self.w_show = None
@@ -85,9 +79,8 @@ class CGWMainPartition(QGroupBox):
 
     def set_tool_tips(self):
         self.setToolTip('Partition GUI')
-        self.but_select.setToolTip('Click and select state')
-        self.but_show.setToolTip('Click to show partitions')
-        #self.but_roll_call.setToolTip('Submits "rollcall" command.')
+        self.but_select.setToolTip('Select partitions')
+        self.but_show.setToolTip('Show partitions')
 
 #--------------------
 
@@ -168,6 +161,7 @@ class CGWMainPartition(QGroupBox):
 
     def update_show_window(self):
         logger.debug('update_show_window')
+        if cp.cgwpartitiontable is None: self.w_show = None
         if self.w_show is None: return
         _, list2d = get_platform() # list2d = [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
         self.w_show.fill_table_model(tableio=list2d,\
@@ -179,6 +173,7 @@ class CGWMainPartition(QGroupBox):
     def on_but_show(self):
         logger.debug('on_but_show')
 
+        if cp.cgwpartitiontable is None: self.w_show = None
         if self.w_show is None:
             _, list2d = get_platform() # [[[True,''], 'test/19670/daq-tst-dev02', 'testClient2b'], ...]
 
@@ -192,12 +187,51 @@ class CGWMainPartition(QGroupBox):
 
             self.w_show.setToolTip('Processes selection is only available\nin the "Select" window.')
             self.w_show.move(QCursor.pos()+QPoint(50,10))
-            self.w_show.setWindowTitle('Show partitions')
+            self.w_show.setWindowTitle('Partitions')
             self.w_show.show()
-            #self.but_show.setFocus()
+
+            if cp.cgwmain is not None:
+               # THIS DOES NOT WORK AT LEAST IN OUR WM ...
+               #logger.debug('force to activate cgwmain window')
+               #cp.cgwmain.setWindowTitle('Activate it')
+               cp.cgwmain.raise_()
+               cp.cgwmain.activateWindow()
+
+            """
+               # THIS WAS A FIGHT FOR ACTIVATION OF OTHER WINDOW, BUT
+               # ALL THIS DOES NOT WORK AT LEAST IN OUR WM ...
+               #cp.cgwmain.setWindowState(cp.cgwmain.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
+               #cp.cgwmain.show()
+               #cp.cgwmain.setFocus(Qt.PopupFocusReason)
+               #cp.cgwmain.setFocus()
+               #cp.cgwmain.update()
+
+            if cp.qapplication is not None:
+                for w in cp.qapplication.allWindows():
+                    print('window in allWindows():', str(w), type(w), w.title(), ' isActive:', w.isActive(),' isModal:', w.isModal())
+                    if str(w.title())=='DAQ Control':
+                        print('window %s is found' % w.title())
+                        #w.show()
+                        w.requestActivate()
+
+            from PyQt5.QtTest import QTest
+            QTest.mouseClick(self, Qt.LeftButton)
+            """
+
         else:
             self.w_show.close()
             self.w_show = None
+
+        self.set_but_show_title()
+
+
+    def set_but_show_title(self):
+        """Change but_show title depending on status of the cp.cgwpartitiontable window,
+           which can be closed at click on but_show or window [x].
+        """
+        status = cp.cgwpartitiontable is None
+        self.but_show.setText('Show' if status else 'Close')
+        self.but_show.setToolTip('Show partitions' if status else 'Close partitions window')
 
 #--------------------
  
@@ -224,6 +258,7 @@ class CGWMainPartition(QGroupBox):
         self.but_select.setEnabled(enabled)
         self.but_show.setEnabled(not enabled)
 
+        if cp.cgwpartitiontable is None: self.w_show = None
         if enabled and self.w_show is not None:
             self.w_show.close()
             self.w_show = None
@@ -236,13 +271,13 @@ class CGWMainPartition(QGroupBox):
            if self.w_select is None: self.open_select_window()
         else:
            if self.w_select is not None:
-               self.w_select.close()
-               self.w_select = None
+              self.w_select.close()
+              self.w_select = None
 
 #--------------------
 
     def closeEvent(self, e):
-        #logger.debug('closeEvent')
+        logger.debug('closeEvent')
         QGroupBox.closeEvent(self, e)
         cp.cgwmainpartition = None
 

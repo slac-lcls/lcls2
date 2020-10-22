@@ -54,6 +54,7 @@ class CGConfigParameters(ConfigParameters) :
         #self.printParameters()
 
         # Registration of widgets/objects
+        self.qapplication      = None
         self.cgwmain           = None
         self.cgwmaincollection = None
         self.cgwmainpartition  = None
@@ -61,6 +62,7 @@ class CGConfigParameters(ConfigParameters) :
         self.cgwmaintabuser    = None
         self.cgwmainconfiguration = None
         self.cgwconfigeditor   = None
+        self.cgwpartitiontable = None
 
         # DAQ status cache
         self.s_transition      = None

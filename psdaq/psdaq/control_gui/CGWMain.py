@@ -191,6 +191,9 @@ class CGWMain(QWZMQListener):
         #self.setWindowIcon(icon.icon_button_ok)
         self.setWindowIcon(icon.icon_lcls)
 
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.setFocusPolicy(Qt.StrongFocus)
+
         #pmap = icon.icon_lcls.pixmap(QSize(200,100)) # change icon.pixmap size
         #self.setWindowIcon(QIcon(pmap))
 
@@ -445,6 +448,8 @@ def proc_control_gui(parser=None):
     from PyQt5.QtWidgets import QApplication
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
     app = QApplication(sys.argv)
+
+    cp.qapplication = app
     w = CGWMain(parser)
 
     w.show()

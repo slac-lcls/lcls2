@@ -1,0 +1,31 @@
+if not platform: platform = '1'
+hutch, user, password = ('tst', 'tstopr', 'pcds')
+
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
+
+collect_host = 'drp-tst-dev009'
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+ {                        id:'groupca',flags:'s', env:epics_env, cmd:'groupca DAQ:LAB2 2 1'},
+ {                        id:'procstat', flags:'p', cmd:'procstat p'+platform+'.cnf.last'},
+ { host: collect_host,    id:'control', flags:'sxpu', env:epics_env, cmd:'control -v -C BEAM -P '+hutch+' -B DAQ:LAB2 -x 2 --user '+user+' --password '+password},
+ {                        flags:'xp', id:'control_gui', cmd:'control_gui -E -t 30000 -l WARNING -H '+collect_host},
+ # trigger event builder
+ { host: 'drp-tst-dev009', id:'teb1', flags:'xpu', cmd:'teb -P '+hutch+' -C '+collect_host},
+ # encoder
+ { host: 'daq-tst-dev03',  id:'usdusb',    flags:'sx',   cmd:'usdusb -a 239.255.25.4 -i enp1s0f1 -1 43 -v -T /dev/tpra4,0,0,10'},
+ # drp
+ { host: 'drp-tst-dev009', id:'drp_bld_0', flags:'sxpu', cmd:'drp_bld -o ~caf/data -l 0x1 -k "interface=eno1,batching=no" -D usdusb -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
+]
