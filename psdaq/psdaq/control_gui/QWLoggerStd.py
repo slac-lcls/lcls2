@@ -38,6 +38,7 @@ from PyQt5.QtCore import Qt, QSize
 from psdaq.control_gui.Styles import style
 
 import psdaq.control_gui.Utils as gu
+from psdaq.control_gui.QWLoggerError import QWLoggerError
 
 #------------------------------
 
@@ -135,7 +136,8 @@ class QWLoggerStd(QWidget) :
         self.level_names = list(logging._levelToName.values())
         
         self.edi_txt   = QTextEdit('ALL messages')
-        self.edi_err   = QTextEdit('Error messages')
+        #self.edi_err   = QTextEdit('Error messages')
+        self.edi_err   = QWLoggerError()
         self.lab_level = QLabel('Log level:')
         self.but_close = QPushButton('&Close') 
         self.but_save  = QPushButton('&Save log-file') 
@@ -276,8 +278,8 @@ class QWLoggerStd(QWidget) :
         self.cmb_level .setStyleSheet(style.styleButton) 
         self.edi_txt   .setReadOnly(True)
         self.edi_txt   .setStyleSheet(style.styleWhiteFixed) 
-        self.edi_err   .setReadOnly(True)
-        self.edi_err   .setStyleSheet(style.styleYellowish) 
+        #self.edi_err   .setReadOnly(True)
+        #self.edi_err   .setStyleSheet(style.styleYellowish) 
         #self.edi_txt   .ensureCursorVisible()
         #self.lab_title.setAlignment(QtCore.Qt.AlignCenter)
         #self.titTitle.setBold()
@@ -396,7 +398,7 @@ class QWLoggerStd(QWidget) :
 
     def append_qwlogger(self, msg='...'):
         self.edi_txt.append(msg)
-        self.scrollDown()
+        self.scroll_down_txt()
 
 
     def add_separator(self, sep='\n\n\n\n\n%s'%(50*'_')):
@@ -405,21 +407,17 @@ class QWLoggerStd(QWidget) :
 
     def append_qwlogger_err(self, msg='...'):
         self.edi_err.append(msg)
-        self.scrollDown()
+        self.edi_err.scroll_down()
 
 
     def add_separator_err(self, sep='\n\n\n\n\n%s'%(50*'_')):
         self.append_qwlogger_err(msg=sep)
 
 
-    def scrollDown(self):
-        #logger.debug('scrollDown')
-        #scrol_bar_v = self.edi_txt.verticalScrollBar() # QScrollBar
-        #scrol_bar_v.setValue(scrol_bar_v.maximum()) 
+    def scroll_down_txt(self):
+        #logger.debug('scroll_down_txt')
         self.edi_txt.moveCursor(QTextCursor.End)
         self.edi_txt.repaint()
-        #self.raise_()
-        #self.edi_txt.update()
 
     if __name__ == "__main__" :
 

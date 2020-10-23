@@ -194,7 +194,7 @@ class CGWMainPartition(QGroupBox):
                # THIS DOES NOT WORK AT LEAST IN OUR WM ...
                #logger.debug('force to activate cgwmain window')
                #cp.cgwmain.setWindowTitle('Activate it')
-               cp.cgwmain.raise_()
+               #cp.cgwmain.raise_()
                cp.cgwmain.activateWindow()
 
             """

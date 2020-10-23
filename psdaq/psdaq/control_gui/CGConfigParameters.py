@@ -63,6 +63,7 @@ class CGConfigParameters(ConfigParameters) :
         self.cgwmainconfiguration = None
         self.cgwconfigeditor   = None
         self.cgwpartitiontable = None
+        self.qwloggererror     = None
 
         # DAQ status cache
         self.s_transition      = None
