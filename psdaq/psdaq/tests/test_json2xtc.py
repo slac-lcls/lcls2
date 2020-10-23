@@ -119,8 +119,7 @@ class Test_JSON2XTC:
         subprocess.call(["json2xtc", json_file, xtc_file])
         # Now, let's read it in!
         ds = DataSource(files=xtc_file)
-        myrun = next(ds.runs())
-        dg = myrun.configs[0]
+        dg = ds._configs[0]
         print(dir(dg.software), c.dict['detId:RO'])
         assert dg.software.test1[0].detid == c.dict['detId:RO']
         assert dg.software.test1[0].dettype == c.dict['detType:RO']
