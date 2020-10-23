@@ -54,6 +54,9 @@ namespace Pds {
       Fabrics::MemoryRegion* _mr;      // Memory Region
       Fabrics::RemoteAddress _ra;      // Remote address descriptor
       const unsigned&        _verbose; // Print some stuff if set
+    public:
+      int                    _depth;
+      int64_t                _credits;
     };
 
     class EbLfSvrLink : public EbLfLink

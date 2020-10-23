@@ -47,7 +47,7 @@ private:
     ZmqContext* m_context;
 };
 
-std::string getNicIp();
+std::string getNicIp(bool forceEnet);
 
 class CollectionApp
 {

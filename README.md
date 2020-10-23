@@ -9,6 +9,7 @@
 # most developers can eliminate all the arguments to build_all.sh
 source setup_env.sh
 ./build_all.sh -c {Release, Debug, RelWithDebInfo} -p {develop, install}
+
 ```
 
 To run the psana automated tests run "pytest psana/psana/tests/" in your git root directory.

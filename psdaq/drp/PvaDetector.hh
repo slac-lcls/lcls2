@@ -19,10 +19,11 @@ class PvaDetector;
 class PvaMonitor : public Pds_Epics::PvMonitorBase
 {
 public:
-    PvaMonitor(Parameters& para, const std::string& channelName, PvaDetector& det, const std::string& provider) :
+    PvaMonitor(Parameters& para, const std::string& channelName, const std::string& provider) :
       Pds_Epics::PvMonitorBase(channelName, provider),
-      m_para(para),
-      m_pvaDetector(det)
+      m_para                  (para),
+      m_provider              (provider),
+      m_pvaDetector           (nullptr)
     {
     }
 public:
@@ -30,17 +31,20 @@ public:
     void onDisconnect() override;
     void updated()      override;
 public:
+    bool ready(PvaDetector* pvaDetector);
+    void clear() { m_pvaDetector = nullptr; }
     void getVarDef(XtcData::VarDef&, size_t& payloadSize, size_t rankHack); // Revisit: Hack!
 private:
-    Parameters&  m_para;
-    PvaDetector& m_pvaDetector;
+    Parameters&         m_para;
+    const std::string&  m_provider;
+    PvaDetector*        m_pvaDetector;
 };
 
 
 class PvaDetector : public XpmDetector
 {
 public:
-    PvaDetector(Parameters& para, const std::string& pvName, DrpBase& drp);
+    PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonitor, DrpBase& drp);
     ~PvaDetector();
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
@@ -58,7 +62,6 @@ private:
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
     enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
-    const std::string m_pvDescriptor;
     DrpBase& m_drp;
     std::shared_ptr<PvaMonitor> m_pvaMonitor;
     std::thread m_workerThread;
@@ -83,7 +86,7 @@ private:
 class PvaApp : public CollectionApp
 {
 public:
-    PvaApp(Parameters& para, const std::string& pvaName);
+    PvaApp(Parameters& para, std::shared_ptr<PvaMonitor> pvaMonitor);
     ~PvaApp();
     void handleReset(const nlohmann::json& msg) override;
 private:
