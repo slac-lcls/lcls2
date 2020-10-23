@@ -970,13 +970,13 @@ def exportdb(host, port, dbname, fname, **kwa):
 def importdb(host, port, dbname, fname, **kwa):
 
     if fname is None:
-        logger.warning('WARNING input archive file name should be specified as --iofname <fname>')
+        logger.debug('WARNING input archive file name should be specified as --iofname <fname>')
         return 
 
     client = connect_to_server(host, port)
     dbnames = database_names(client)
     if dbname in dbnames:
-        logger.warning('WARNING: --dbname %s is already available in the list:\n%s' % (dbname, dbnames))
+        logger.debug('WARNING: --dbname %s is already available in the list:\n%s' % (dbname, dbnames))
         return
 
     cmd = 'mongorestore --host %s --port %s --db %s --archive %s' % (host, port, dbname, fname)
@@ -1075,7 +1075,7 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
 
     db_det, db_exp = db_prefixed_name(_det), db_prefixed_name(str(exp))
     if None in (db_det, db_exp):
-        logger.warning('dbnames_collection_query: db_det:%s db_exp:%s' % (db_det, db_exp))
+        logger.debug('WARNING: dbnames_collection_query: db_det:%s db_exp:%s' % (db_det, db_exp))
         return None,None,None,None
 
     if 'None' in db_det: db_det = None
@@ -1545,7 +1545,7 @@ def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False)
     """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars.
     """
     if detname is None:
-        logger.warning('pro_detector_name: input detname is None')
+        logger.debug('WARNING: pro_detector_name: input detname is None')
         return None
     return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
 
