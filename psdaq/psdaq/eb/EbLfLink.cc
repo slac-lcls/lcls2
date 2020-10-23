@@ -99,7 +99,9 @@ EbLfLink::EbLfLink(Endpoint*       ep,
   _id     (-1),
   _ep     (ep),
   _mr     (nullptr),
-  _verbose(verbose)
+  _verbose(verbose),
+  _depth  (depth),
+  _credits(0)
 {
   postCompRecv(depth);
 }
@@ -519,6 +521,8 @@ int EbLfLink::poll(uint64_t* data)      // Sample only, don't wait
   rc = _ep->rxcq()->comp(&cqEntry, nEntries);
   if (rc > 0)
   {
+    _credits -= rc;
+    if (_credits < 0)  printf("*** 1 link %p credits (%ld) < 0\n", this, _credits);
     if (postCompRecv(nEntries))
     {
       fprintf(stderr, "%s:\n  Failed to post %d CQ buffers\n",
@@ -549,6 +553,8 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
     rc = cq->comp_wait(&cqEntry, nEntries, msTmo);
     if (rc > 0)
     {
+      _credits -= rc;
+      if (_credits < 0)  printf("*** 2 link %p credits (%ld) < 0\n", this, _credits);
       if (postCompRecv(nEntries))
       {
         fprintf(stderr, "%s:\n  Failed to post %d CQ buffers\n",
@@ -577,8 +583,23 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
 // replenish the completion receive buffers
 ssize_t EbLfLink::postCompRecv()
 {
-  ssize_t rc = 0;
-  if ((rc = _ep->recv_comp_data(this)) < 0)
+  //ssize_t rc = 0;
+  //if ((rc = _ep->recv_comp_data(this)) < 0)
+  //{
+  //  if (rc != -FI_EAGAIN)
+  //    fprintf(stderr, "%s:\n  Link ID %d failed to post a CQ buffer: %s\n",
+  //            __PRETTY_FUNCTION__, _id, _ep->error());
+  //  else
+  //    rc = 0;
+  //}
+
+  ssize_t rc = _ep->recv_comp_data(this);
+  if      (rc == 0)
+  {
+    ++_credits;
+    if (_credits > _depth)  printf("***   link %p credits (%ld) > rxDepth (%d)\n", this, _credits, _depth);
+  }
+  else if (rc  < 0)
   {
     if (rc != -FI_EAGAIN)
       fprintf(stderr, "%s:\n  Link ID %d failed to post a CQ buffer: %s\n",
