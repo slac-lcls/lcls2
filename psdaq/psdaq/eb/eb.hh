@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <map>
 
 
 namespace Pds {
@@ -80,6 +81,7 @@ namespace Pds {
       using vecstr_t  = std::vector<std::string>;
       using vecsize_t = std::vector<size_t>;
       using u64arr_t  = std::array<uint64_t, NUM_READOUT_GROUPS>;
+      using kwmap_t   = std::map<std::string,std::string>;
 
       string_t  ifAddr;            // Network interface to use
       string_t  ebPort;            // EB port to serve
@@ -97,6 +99,7 @@ namespace Pds {
       size_t    maxResultSize;     // Max result EbDgram size
       unsigned  numMrqs;           // Number of Mon request servers
       string_t  prometheusDir;     // Run-time monitoring prometheus config file
+      kwmap_t   kwargs;            // Keyword arguments for 'forceEnet'
       int       core[2];           // Cores to pin threads to
       mutable
       unsigned  verbose;           // Level of detail to print

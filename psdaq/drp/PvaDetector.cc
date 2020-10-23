@@ -790,7 +790,7 @@ void PvaApp::_unconfigure()
 
 json PvaApp::connectionInfo()
 {
-    std::string ip = getNicIp();
+    std::string ip = getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
     json info = m_det->connectionInfo();

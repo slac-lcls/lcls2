@@ -21,6 +21,7 @@
 #include <vector>
 #include <bitset>
 #include <iostream>
+#include <sstream>
 #include <atomic>
 #include <climits>                      // For HOST_NAME_MAX
 
@@ -530,7 +531,7 @@ std::string MebApp::_error(const json&        msg,
 json MebApp::connectionInfo()
 {
   // Allow the default NIC choice to be overridden
-  if (_prms.ifAddr.empty())  _prms.ifAddr = getNicIp();
+  if (_prms.ifAddr.empty())  _prms.ifAddr = getNicIp(_prms.kwargs["forceEnet"] == "yes");
 
   // If port is not user specified, reset the previously allocated port number
   if (_ebPortEph)            _prms.ebPort.clear();
@@ -770,6 +771,25 @@ void MebApp::_printParams(const EbParams& prms, unsigned groups) const
 using namespace Pds;
 
 
+static
+void get_kwargs(EbParams& para, const std::string& kwargs_str) {
+    std::istringstream ss(kwargs_str);
+    std::string kwarg;
+    while (getline(ss, kwarg, ',')) {
+        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
+        auto pos = kwarg.find("=", 0);
+        if (pos == std::string::npos) {
+            logging::critical("Keyword argument with no equal sign");
+            throw "drp.cc error: keyword argument with no equal sign: "+kwargs_str;
+        }
+        std::string key = kwarg.substr(0,pos);
+        std::string value = kwarg.substr(pos+1,kwarg.length());
+        //std::cout << "kwarg = '" << kwarg << "' key = '" << key << "' value = '" << value << "'" << std::endl;
+        para.kwargs[key] = value;
+    }
+}
+
+static
 void usage(char* progname)
 {
   printf("Usage: %s -C <collection server> "
@@ -784,6 +804,7 @@ void usage(char* progname)
                   "[-1 <core to pin App thread to>]"
                   "[-2 <core to pin other threads to>]" // Revisit: None?
                   "[-M <Prometheus config file directory>]"
+                  "[-k <keyword arguments>]"
                   "[-v] "
                   "[-h] "
                   "\n", progname);
@@ -794,6 +815,7 @@ int main(int argc, char** argv)
   const unsigned NO_PARTITION = unsigned(-1u);
   std::string    collSrv;
   MebParams      prms;
+  std::string    kwargs_str;
 
   prms.partition = NO_PARTITION;
   prms.core[0]   = CORE_0;
@@ -806,7 +828,7 @@ int main(int argc, char** argv)
   prms.ldist         = false;
 
   int c;
-  while ((c = getopt(argc, argv, "p:P:n:t:q:dA:C:1:2:u:M:vh")) != -1)
+  while ((c = getopt(argc, argv, "p:P:n:t:q:dA:C:1:2:u:M:k:vh")) != -1)
   {
     errno = 0;
     char* endPtr;
@@ -830,13 +852,14 @@ int main(int argc, char** argv)
       case 'd':
         prms.ldist = true;
         break;
-      case 'A':  prms.ifAddr        = optarg;        break;
-      case 'C':  collSrv            = optarg;        break;
-      case '1':  prms.core[0]       = atoi(optarg);  break;
-      case '2':  prms.core[1]       = atoi(optarg);  break;
-      case 'u':  prms.alias         = optarg;        break;
-      case 'M':  prms.prometheusDir = optarg;        break;
-      case 'v':  ++prms.verbose;                     break;
+      case 'A':  prms.ifAddr        = optarg;               break;
+      case 'C':  collSrv            = optarg;               break;
+      case '1':  prms.core[0]       = atoi(optarg);         break;
+      case '2':  prms.core[1]       = atoi(optarg);         break;
+      case 'u':  prms.alias         = optarg;               break;
+      case 'M':  prms.prometheusDir = optarg;               break;
+      case 'k':  kwargs_str         = std::string(optarg);  break;
+      case 'v':  ++prms.verbose;                            break;
       case 'h':                         // help
         usage(argv[0]);
         return 0;
@@ -888,6 +911,8 @@ int main(int argc, char** argv)
 
   if (prms.tag.empty())  prms.tag = prms.instrument;
   logging::info("Partition Tag: '%s'", prms.tag.c_str());
+
+  get_kwargs(prms, kwargs_str);
 
   struct sigaction sigAction;
 

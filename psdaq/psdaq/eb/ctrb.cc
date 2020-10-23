@@ -558,7 +558,8 @@ CtrbApp::CtrbApp(const std::string&                     collSrv,
 json CtrbApp::connectionInfo()
 {
   // Allow the default NIC choice to be overridden
-  if (_tebPrms.ifAddr.empty())  _tebPrms.ifAddr = getNicIp();
+  const bool forceEnet = false;
+  if (_tebPrms.ifAddr.empty())  _tebPrms.ifAddr = getNicIp(forceEnet);
 
   // Make a guess at the size of the Result entries
   size_t resSizeGuess = sizeof(EbDgram) + 2  * sizeof(uint32_t);

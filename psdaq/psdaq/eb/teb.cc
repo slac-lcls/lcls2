@@ -30,6 +30,7 @@
 #include <vector>
 #include <cassert>
 #include <iostream>
+#include <sstream>
 #include <exception>
 #include <algorithm>                    // For std::fill()
 #include <Python.h>
@@ -709,7 +710,7 @@ std::string TebApp::_error(const json&        msg,
 json TebApp::connectionInfo()
 {
   // Allow the default NIC choice to be overridden
-  if (_prms.ifAddr.empty())  _prms.ifAddr = getNicIp();
+  if (_prms.ifAddr.empty())  _prms.ifAddr = getNicIp(_prms.kwargs["forceEnet"] == "yes");
 
   // If port is not user specified, reset the previously allocated port number
   if (_ebPortEph)            _prms.ebPort.clear();
@@ -1008,7 +1009,27 @@ void TebApp::_printParams(const EbParams& prms, unsigned groups) const
 }
 
 
-static void usage(char *name, char *desc, const EbParams& prms)
+static
+void get_kwargs(EbParams& para, const std::string& kwargs_str) {
+    std::istringstream ss(kwargs_str);
+    std::string kwarg;
+    while (getline(ss, kwarg, ',')) {
+        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
+        auto pos = kwarg.find("=", 0);
+        if (pos == std::string::npos) {
+            logging::critical("Keyword argument with no equal sign");
+            throw "drp.cc error: keyword argument with no equal sign: "+kwargs_str;
+        }
+        std::string key = kwarg.substr(0,pos);
+        std::string value = kwarg.substr(pos+1,kwarg.length());
+        //std::cout << "kwarg = '" << kwarg << "' key = '" << key << "' value = '" << value << "'" << std::endl;
+        para.kwargs[key] = value;
+    }
+}
+
+
+static
+void usage(char *name, char *desc, const EbParams& prms)
 {
   fprintf(stderr, "Usage:\n");
   fprintf(stderr, "  %s [OPTIONS]\n", name);
@@ -1051,6 +1072,7 @@ int main(int argc, char **argv)
   int            op           = 0;
   std::string    collSrv;
   EbParams       prms;
+  std::string    kwargs_str;
 
   prms.instrument = {};
   prms.partition = NO_PARTITION;
@@ -1058,7 +1080,7 @@ int main(int argc, char **argv)
   prms.core[1]   = CORE_1;
   prms.verbose   = 0;
 
-  while ((op = getopt(argc, argv, "C:p:P:A:E:R:1:2:u:M:h?v")) != -1)
+  while ((op = getopt(argc, argv, "C:p:P:A:E:R:1:2:u:M:k:h?v")) != -1)
   {
     switch (op)
     {
@@ -1072,6 +1094,7 @@ int main(int argc, char **argv)
       case '2':  prms.core[1]       = atoi(optarg);                 break;
       case 'u':  prms.alias         = optarg;                       break;
       case 'M':  prms.prometheusDir = optarg;                       break;
+      case 'k':  kwargs_str         = std::string(optarg);          break;
       case 'v':  ++prms.verbose;                                    break;
       case '?':
       case 'h':
@@ -1102,6 +1125,8 @@ int main(int argc, char **argv)
     logging::critical("-u: alias is mandatory");
     return 1;
   }
+
+  get_kwargs(prms, kwargs_str);
 
   struct sigaction sigAction;
 

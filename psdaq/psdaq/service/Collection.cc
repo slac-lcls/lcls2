@@ -28,7 +28,7 @@ json createAsyncErrMsg(const std::string& alias, const std::string& errMsg)
     return createMsg("error", "0", 0, body);
 }
 
-std::string getNicIp()
+std::string getNicIp(bool forceEnet)
 {
     struct ifaddrs* ifaddr;
     getifaddrs(&ifaddr);
@@ -52,11 +52,14 @@ std::string getNicIp()
             }
         }
     }
-    if (interface_name == nullptr) {
+    if ((interface_name == nullptr) || forceEnet) {
         if (ethernet_name == nullptr) {
             throw "No Infiniband or Ethernet interface found";
         }
-        logging::warning("No Infiniband interface found - using Ethernet");
+        if (!forceEnet)
+            logging::warning("No Infiniband interface found - using Ethernet");
+        else
+            logging::warning("Using Ethernet instead of Infiniband");
         interface_name = ethernet_name;
     }
 
