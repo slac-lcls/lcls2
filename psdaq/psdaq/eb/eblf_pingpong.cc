@@ -4,6 +4,8 @@
 #include "EbLfLink.hh"
 #include "utilities.hh"
 
+#include "psdaq/epicstools/PvMonitorBase.hh"
+
 #ifndef _GNU_SOURCE
 #  define _GNU_SOURCE
 #endif
@@ -107,8 +109,8 @@ int main(int argc, char **argv)
   }
   std::string srvPort(std::to_string(srvBase));
 
-  std::string cltAddr;
-  std::string cltPort;
+  std::vector<std::string> cltAddr(1);
+  std::vector<std::string> cltPort(1);
   if (optind < argc)
   {
     char*    peer    = argv[optind];
@@ -119,8 +121,8 @@ int main(int argc, char **argv)
               USHRT_MAX, cltBase);
       return 1;
     }
-    cltAddr = std::string(peer);
-    cltPort = std::string(std::to_string(cltBase));
+    cltAddr[0] = std::string(peer);
+    cltPort[0] = std::string(std::to_string(cltBase));
   }
   else
   {
@@ -149,27 +151,43 @@ int main(int argc, char **argv)
     return rc;
   }
 
+  class PvMon : public Pds_Epics::PvMonitorBase
+  {
+  public:
+    PvMon(const std::string& channelName,
+          const std::string& provider = "pva") :
+      Pds_Epics::PvMonitorBase(channelName, provider)
+    {
+    }
+  public:
+    void onConnect()    override {};
+    void onDisconnect() override {};
+    void updated()      override {};
+  };
+
+  PvMon* pvMon = nullptr;
+
   unsigned     id      = 0;
-  EbLfServer*  svr     = nullptr;
+  EbLfServer*  srv     = nullptr;
   EbLfClient*  clt     = nullptr;
   unsigned     nLinks  = 1;
-  EbLfSvrLink* svrLink;
-  EbLfCltLink* cltLink;
+  std::vector<EbLfSvrLink*> srvLinks(nLinks);
+  std::vector<EbLfCltLink*> cltLinks(nLinks);
   if (!start)
   {
-    svr = new EbLfServer(verbose);
-    if ( (rc = svr->initialize(ifAddr, srvPort.c_str(), nLinks)) )
+    srv = new EbLfServer(verbose);
+    if ( (rc = linksStart(*srv, ifAddr, srvPort, nLinks, "Srv")) )
     {
       fprintf(stderr, "Failed to initialize EbLfServer\n");
       return rc;
     }
-    if ( (rc = svr->connect(&svrLink, id)) )
+    if ( (rc = linksConnect(*srv, srvLinks, "Srv")) )
     {
       fprintf(stderr, "Error connecting to client\n");
       return rc;
     }
     size_t snkSize;
-    if ( (rc = svrLink->prepare(&snkSize)) < 0 )
+    if ( (rc = srvLinks[0]->prepare(id, &snkSize, "Srv")) < 0 )
     {
       fprintf(stderr, "Failed to prepare server's link\n");
       return rc;
@@ -180,60 +198,56 @@ int main(int argc, char **argv)
       fprintf(stderr, "posix_memalign failed for sink buffer: %s", strerror(rc));
       return rc;
     }
-    if ( (rc = svrLink->setupMr(snkBuf, snkSize)) )
+    if ( (rc = srvLinks[0]->setupMr(snkBuf, snkSize, "Srv")) )
     {
       fprintf(stderr, "Failed to set up MemoryRegion\n");
       return rc;
     }
-    if ( (rc = svrLink->postCompRecv()) )
-    {
-      fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
-    }
-    printf("EbLfClient (ID %d) connected\n", svrLink->id());
+    printf("EbLfClient (ID %d) connected\n", srvLinks[0]->id());
 
-    const unsigned msTmo(120000);
     clt = new EbLfClient(verbose);
-    if ( (rc = clt->connect(&cltLink, cltAddr.c_str(), cltPort.c_str(), id, msTmo)) )
+    if ( (rc = linksConnect(*clt, cltLinks, cltAddr, cltPort, "Srv")) )
     {
       fprintf(stderr, "Error connecting to server\n");
       return rc;
     }
-    if ( (rc = cltLink->prepare(srcBuf, srcSize)) < 0)
+    if ( (rc = linksConfigure(cltLinks, id, srcBuf, srcSize, "Srv")) < 0)
     {
       fprintf(stderr, "Failed to prepare client's link\n");
       return rc;
     }
-    printf("EbLfServer (ID %d) connected\n", cltLink->id());
+    printf("EbLfServer (ID %d) connected\n", cltLinks[0]->id());
   }
   else
   {
-    const unsigned msTmo(120000);
+    pvMon = new PvMon("EM1K0:GMD:HPS:STR0:STREAM_SHORT2", "ca");
+
     clt = new EbLfClient(verbose);
-    if ( (rc = clt->connect(&cltLink, cltAddr.c_str(), cltPort.c_str(), id, msTmo)) )
+    if ( (rc = linksConnect(*clt, cltLinks, cltAddr, cltPort, "Clt")) )
     {
       fprintf(stderr, "Error connecting to server\n");
       return rc;
     }
-    if ( (rc = cltLink->prepare(srcBuf, srcSize)) < 0)
+    if ( (rc = linksConfigure(cltLinks, id, srcBuf, srcSize, "Clt")) < 0)
     {
       fprintf(stderr, "Failed to prepare client's link\n");
       return rc;
     }
-    printf("EbLfServer (ID %d) connected\n", cltLink->id());
+    printf("EbLfServer (ID %d) connected\n", cltLinks[0]->id());
 
-    svr = new EbLfServer(verbose);
-    if ( (rc = svr->initialize(ifAddr, srvPort.c_str(), nLinks)) )
+    srv = new EbLfServer(verbose);
+    if ( (rc = linksStart(*srv, ifAddr, srvPort, nLinks, "Clt")) )
     {
       fprintf(stderr, "Failed to initialize EbLfServer\n");
       return rc;
     }
-    if ( (rc = svr->connect(&svrLink, id)) )
+    if ( (rc = linksConnect(*srv, srvLinks, "Clt")) )
     {
       fprintf(stderr, "Error connecting to client\n");
       return rc;
     }
     size_t snkSize;
-    if ( (rc = svrLink->prepare(&snkSize)) < 0)
+    if ( (rc = srvLinks[0]->prepare(id, &snkSize, "Clt")) < 0)
     {
       fprintf(stderr, "Failed to prepare server's link\n");
       return rc;
@@ -244,18 +258,14 @@ int main(int argc, char **argv)
       fprintf(stderr, "posix_memalign failed for sink buffer: %s", strerror(rc));
       return rc;
     }
-    if ( (rc = svrLink->setupMr(snkBuf, snkSize)) )
+    if ( (rc = srvLinks[0]->setupMr(snkBuf, snkSize, "Clt")) )
     {
       fprintf(stderr, "Failed to set up MemoryRegion\n");
       return rc;
     }
-    if ( (rc = svrLink->postCompRecv()) )
-    {
-      fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
-    }
-    printf("EbLfClient (ID %d) connected\n", svrLink->id());
+    printf("EbLfClient (ID %d) connected\n", srvLinks[0]->id());
 
-    if (cltLink->post(srcBuf, srcSize, 0, 0))
+    if (cltLinks[0]->post(srcBuf, srcSize, 0, 0))
     {
       fprintf(stderr, "Clt: failed to post a buffer\n");
       return 1;
@@ -269,7 +279,7 @@ int main(int argc, char **argv)
   {
     fi_cq_data_entry wc;
     const int msTmo = 5000;
-    if ( (rc = svr->pend(&wc, msTmo)) < 0 )
+    if ( (rc = srv->pend(&wc, msTmo)) < 0 )
     {
       fprintf(stderr, "Failed pending for a buffer: %s(%d)\n",
               fi_strerror(-rc), rc);
@@ -278,14 +288,9 @@ int main(int argc, char **argv)
     rc = 0;
     ++rcnt;
 
-    if ( (rc = svrLink->postCompRecv()) )
-    {
-      fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
-    }
-
     if (scnt < iters)
     {
-      if ( (rc = cltLink->post(srcBuf, srcSize, 0, 0)) )
+      if ( (rc = cltLinks[0]->post(srcBuf, srcSize, 0, 0)) )
       {
         fprintf(stderr, "Failed to post a buffer: %s(%d)\n",
                 fi_strerror(-rc), rc);
@@ -310,18 +315,23 @@ int main(int argc, char **argv)
     fprintf(stderr, "Exiting with error %d\n", rc);
   }
 
-  if (svr)
+  if (srv)
   {
-    svr->disconnect(svrLink);
-    delete svr;
+    srv->disconnect(srvLinks[0]);
+    delete srv;
   }
   if (clt)
   {
-    clt->disconnect(cltLink);
+    clt->disconnect(cltLinks[0]);
     delete clt;
   }
   free(snkBuf);
   free(srcBuf);
+
+  if (pvMon)
+  {
+    printf("pvMon: name %s, connected %d\n", pvMon->name().c_str(), pvMon->connected());
+  }
 
   return rc;
 }
