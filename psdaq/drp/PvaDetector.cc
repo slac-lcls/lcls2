@@ -81,6 +81,17 @@ static const XtcData::Name::DataType xtype[] = {
   XtcData::Name::CHARSTR, // pvString
 };
 
+bool PvaMonitor::ready(PvaDetector* pvaDetector)
+{
+    m_pvaDetector = pvaDetector;
+
+    const std::string request = m_provider == "pva"
+                              ? "field(value,timeStamp,dimension)"
+                              : "field(value,timeStamp)";
+    const unsigned tmo = 3;
+    return PvMonitorBase::ready(request, tmo);
+}
+
 void PvaMonitor::getVarDef(XtcData::VarDef& varDef, size_t& payloadSize, size_t rankHack)
 {
     std::string     name = "value";
@@ -120,7 +131,7 @@ void PvaMonitor::updated()
     //static XtcData::TimeStamp ts_prv(0, 0);
     //
     //if (timestamp > ts_prv) {
-        m_pvaDetector.process(timestamp);
+    if (m_pvaDetector)  m_pvaDetector->process(timestamp);
     //}
     //else {
     //  printf("Updated: ts didn't advance: new %016lx  prv %016lx  d %ld\n",
@@ -293,16 +304,16 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
 }
 
 
-PvaDetector::PvaDetector(Parameters& para, const std::string& pvDescriptor, DrpBase& drp) :
-    XpmDetector(&para, &drp.pool),
-    m_pvDescriptor(pvDescriptor),
-    m_drp(drp),
-    m_pgpQueue(drp.pool.nbuffers()),
-    m_pvQueue(8),                       // Revisit size
+PvaDetector::PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonitor, DrpBase& drp) :
+    XpmDetector     (&para, &drp.pool),
+    m_drp           (drp),
+    m_pvaMonitor    (pvaMonitor),
+    m_pgpQueue      (drp.pool.nbuffers()),
+    m_pvQueue       (8),                  // Revisit size
     m_bufferFreelist(m_pvQueue.size()),
-    m_terminate(false),
-    m_running(false),
-    m_firstDimKw(0)
+    m_terminate     (false),
+    m_running       (false),
+    m_firstDimKw    (0)
 {
     auto firstDimKw = para.kwargs["firstdim"];
     if (!firstDimKw.empty())
@@ -330,22 +341,7 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
         m_drp.exposer()->RegisterCollectable(m_exporter);
     }
 
-    std::string provider = "pva";
-    std::string pvName   = m_pvDescriptor;
-    auto pos = m_pvDescriptor.find("/", 0);
-    if (pos != std::string::npos) {
-        provider = m_pvDescriptor.substr(0, pos);
-        pvName   = pvName.substr(pos+1);
-    }
-
-    m_pvaMonitor = std::make_shared<PvaMonitor>(*m_para, pvName, *this, provider);
-
-    std::string request = provider == "pva"
-                        ? "field(value,timeStamp,dimension)"
-                        : "field(value,timeStamp)";
-    unsigned tmo = 3;
-    bool ready = m_pvaMonitor->ready(request, tmo);
-    if (!ready) {
+    if (!m_pvaMonitor->ready(this)) {
         std::string error = "Failed to connect with " + m_pvaMonitor->name();
         logging::error(error.c_str());
         //return error;
@@ -440,7 +436,7 @@ void PvaDetector::shutdown()
     if (m_workerThread.joinable()) {
         m_workerThread.join();
     }
-    m_pvaMonitor.reset();
+    m_pvaMonitor->clear();
     m_namesLookup.clear();   // erase all elements
 }
 
@@ -606,7 +602,6 @@ void PvaDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
     uint32_t pgpIdx;
     m_pgpQueue.try_pop(pgpIdx);         // Actually consume the element
 
-    ++m_nMatch;
     logging::debug("PV matches PGP!!  "
                    "TimeStamps: PV %u.%09u == PGP %u.%09u",
                    pvDg.time.seconds(), pvDg.time.nanoseconds(),
@@ -614,6 +609,8 @@ void PvaDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
 
     if (pgpDg.service() == XtcData::TransitionId::L1Accept) {
         memcpy((void*)&pgpDg.xtc, (const void*)&pvDg.xtc, pvDg.xtc.extent);
+
+        ++m_nMatch;
 
         _sendToTeb(pgpDg, pgpIdx);
     }
@@ -666,14 +663,15 @@ void PvaDetector::_handleOlder(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
     XtcData::Dgram* dgram;
     m_pvQueue.try_pop(dgram);           // Actually consume the element
 
-    ++m_nTooOld;
-    logging::debug("PV too old!!      "
-                   "TimeStamps: PV %u.%09u < PGP %u.%09u [0x%08x%04x.%05x < 0x%08x%04x.%05x]",
-                   pvDg.time.seconds(), pvDg.time.nanoseconds(),
-                   pgpDg.time.seconds(), pgpDg.time.nanoseconds(),
-                   pvDg.time.seconds(), (pvDg.time.nanoseconds()>>16)&0xfffe, pvDg.time.nanoseconds()&0x1ffff,
-                   pgpDg.time.seconds(), (pgpDg.time.nanoseconds()>>16)&0xfffe, pgpDg.time.nanoseconds()&0x1ffff);
-
+    if (pgpDg.service() == XtcData::TransitionId::L1Accept) {
+        ++m_nTooOld;
+        logging::debug("PV too old!!      "
+                       "TimeStamps: PV %u.%09u < PGP %u.%09u [0x%08x%04x.%05x < 0x%08x%04x.%05x]",
+                       pvDg.time.seconds(), pvDg.time.nanoseconds(),
+                       pgpDg.time.seconds(), pgpDg.time.nanoseconds(),
+                       pvDg.time.seconds(), (pvDg.time.nanoseconds()>>16)&0xfffe, pvDg.time.nanoseconds()&0x1ffff,
+                       pgpDg.time.seconds(), (pgpDg.time.nanoseconds()>>16)&0xfffe, pgpDg.time.nanoseconds()&0x1ffff);
+    }
     m_bufferFreelist.push(dgram);       // Return buffer to freelist
 }
 
@@ -746,11 +744,11 @@ void PvaDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
 }
 
 
-PvaApp::PvaApp(Parameters& para, const std::string& pvDescriptor) :
+PvaApp::PvaApp(Parameters& para, std::shared_ptr<PvaMonitor> pvaMonitor) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
     m_para(para),
-    m_det(std::make_unique<PvaDetector>(m_para, pvDescriptor, m_drp))
+    m_det(std::make_unique<PvaDetector>(m_para, pvaMonitor, m_drp))
 {
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
@@ -1022,9 +1020,9 @@ int main(int argc, char* argv[])
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
     // Provider is "pva" (default) or "ca"
-    std::string pvDescriptor;           // [<provider>/]<PV name>
+    std::string pv;                     // [<provider>/]<PV name>
     if (optind < argc)
-        pvDescriptor = argv[optind];
+        pv = argv[optind];
     else {
         logging::critical("A PV ([<provider>/]<PV name>) is mandatory");
         return 1;
@@ -1037,8 +1035,15 @@ int main(int argc, char* argv[])
     try {
         get_kwargs(para, kwargs_str);
 
+        std::string provider = "pva";
+        auto pos = pv.find("/", 0);
+        if (pos != std::string::npos) {
+            provider = pv.substr(0, pos);
+            pv       = pv.substr(pos+1);
+        }
+
         Py_Initialize(); // for use by configuration
-        Drp::PvaApp app(para, pvDescriptor);
+        Drp::PvaApp app(para, std::make_shared<Drp::PvaMonitor>(para, pv, provider));
         app.run();
         app.handleReset(json({}));
         Py_Finalize(); // for use by configuration
