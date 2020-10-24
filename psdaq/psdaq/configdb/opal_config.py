@@ -59,6 +59,11 @@ def opal_init(arg,xpmpv=None):
         cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
         time.sleep(0.1)
 
+    # the opal seems to intermittently lose lock back to the XPM
+    # and empirically this fixes it.  not sure if we need the sleep - cpo
+    cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+    time.sleep(0.1)
+
     return cl
 
 def opal_init_feb(slane=None,schan=None):
