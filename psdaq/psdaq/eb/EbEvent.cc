@@ -33,7 +33,7 @@ EbEvent::EbEvent(uint64_t        contract,
                  unsigned        prm) :
   _contract (contract),
   _prm      (prm),
-  _damage   (cdg->xtc.damage.value()),
+  _damage   (0),
   _last     (_contributions)
 {
   *_last++   = cdg;
@@ -114,8 +114,6 @@ EbEvent* EbEvent::_add(const EbDgram* cdg)
             cdg->readoutGroups(), _contract);
     throw "Fatal: _remaining == remaining";
   }
-
-  _damage.increase(cdg->xtc.damage.value());
 
   return this;
 }
