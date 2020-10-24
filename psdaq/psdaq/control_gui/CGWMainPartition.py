@@ -190,12 +190,12 @@ class CGWMainPartition(QGroupBox):
             self.w_show.setWindowTitle('Partitions')
             self.w_show.show()
 
-            if cp.cgwmain is not None:
+            #if cp.cgwmain is not None:
                # THIS DOES NOT WORK AT LEAST IN OUR WM ...
                #logger.debug('force to activate cgwmain window')
                #cp.cgwmain.setWindowTitle('Activate it')
                #cp.cgwmain.raise_()
-               cp.cgwmain.activateWindow()
+               #cp.cgwmain.activateWindow()
 
             """
                # THIS WAS A FIGHT FOR ACTIVATION OF OTHER WINDOW, BUT
