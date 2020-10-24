@@ -76,6 +76,7 @@ class Styles():
         self.styleStatusWarning= self.styleYellow
         self.styleStatusAlarm  = self.styleRed
         self.styleTitleBold    = self.styleTitle + 'font-size: 18pt; font-family: Courier; font-weight: bold;'
+        self.styleBold         = 'font-weight: bold;'
         self.styleWhiteFixed   = self.styleWhite + 'font-family: Fixed;'
         self.styleTitleInFrame = self.styleWhite # self.styleDefault # self.styleWhite # self.styleGray
 

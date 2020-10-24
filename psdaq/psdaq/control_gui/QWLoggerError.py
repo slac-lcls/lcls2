@@ -113,9 +113,10 @@ class QWLoggerError(QGroupBox):
     #    cp.qwloggererror = None
 
 
-    if __name__ == "__main__" :
+    if __name__ == "__main__":
+    #if True:
 
-      def key_usage(self) :
+      def key_usage(self):
         return 'Keys:'\
                '\n  ESC - exit'\
                '\n  M - add message in error logger window'\
@@ -123,22 +124,22 @@ class QWLoggerError(QGroupBox):
                '\n'
 
 
-      def keyPressEvent(self, e) :
-        if   e.key() == Qt.Key_Escape :
+      def keyPressEvent(self, e):
+        if   e.key() == Qt.Key_Escape:
             self.close()
 
-        elif e.key() == Qt.Key_S : 
+        elif e.key() == Qt.Key_S:
             self.add_separator_err()
 
-        elif e.key() == Qt.Key_M : 
+        elif e.key() == Qt.Key_M:
             self.append_qwlogger_err(msg='new message')
 
-        else :
+        else:
             logger.info(self.key_usage())
 
 #----
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import sys
 
     from PyQt5.QtWidgets import QApplication

@@ -34,6 +34,7 @@ from PyQt5.QtCore import Qt, QSize, QPoint
 
 from psdaq.control_gui.CGConfigParameters   import cp
 from psdaq.control_gui.CGWMainConfiguration import CGWMainConfiguration
+from psdaq.control_gui.CGWMainInfo          import CGWMainInfo
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
 from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl,\
                                                    daq_control_get_status, daq_control_get_instrument
@@ -77,11 +78,13 @@ class CGWMain(QWZMQListener):
         self.wconf = CGWMainConfiguration()
         #self.wtabs = CGWMainTabs()
         self.wtabs = CGWMainTabExpert()
+        self.winfo = CGWMainInfo()
 
         self.vspl = QSplitter(Qt.Vertical)
-        self.vspl.addWidget(self.wconf) 
-        self.vspl.addWidget(self.wtabs) 
-        self.vspl.addWidget(self.wlogr) 
+        self.vspl.addWidget(self.wconf)
+        self.vspl.addWidget(self.wtabs)
+        self.vspl.addWidget(self.winfo)
+        self.vspl.addWidget(self.wlogr)
 
         self.mbox = QHBoxLayout() 
         self.mbox.addWidget(self.vspl)
@@ -331,6 +334,9 @@ class CGWMain(QWZMQListener):
 
         w = cp.cgwmainconfiguration
         if w is not None: w.set_buts_enabled()
+
+        w = cp.cgwmaininfo
+        if w is not None: w.update_info()
 
 #------------------------------
 
