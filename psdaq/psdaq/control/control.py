@@ -1721,6 +1721,9 @@ class CollectionManager():
         try:
             for level, val1 in body.items():
                 for key2, val2 in val1.items():
+                    if level == 'control' and body[level][key2]['active'] == 0:
+                        self.report_warning('ignoring attempt to clear the control level active flag')
+                        body[level][key2]['active'] = 1
                     self.cmstate[level][int(key2)]['active'] = body[level][key2]['active']
                     if level == 'drp':
                         # drp readout group
