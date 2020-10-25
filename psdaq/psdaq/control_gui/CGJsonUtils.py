@@ -150,7 +150,6 @@ def get_platform():
         for pname in dict_platf: # iterate over top key-wards
             #logger.debug("json top key name: %s" % str(pname))
             for k,v in dict_platf[pname].items() :
-                if v['hidden'] == 1 : continue    # skip hidden entry
                 display = _display_name(pname, v) # 'pname/pid/host alias'
                 flds = display.split(' ')
                 alias = flds[1] if len(flds)==2 else ''
