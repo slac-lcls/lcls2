@@ -296,9 +296,9 @@ void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
     for (int i=0; i<4; i++) {
         if (event->mask & (1 << i)) {
             data_size = event->buffers[i].size - sizeof(Pds::TimingHeader);
-            if (data_size > 0x400000) {
-              logging::info("Invalid DMA size %u (0x%x).  Skipping event.",
-                            data_size, data_size);
+            if (data_size >= 1000000) {
+              logging::info("Invalid lane %d DMA size %u (0x%x).  Skipping event.",
+                            i, data_size, data_size);
               const uint32_t* p = reinterpret_cast<const uint32_t*>(timing_header);
               for(unsigned i=0; i<8; i++)
                 printf(" %08x",p[i]);
