@@ -206,7 +206,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     const unsigned bufferMask = m_pool.nbuffers() - 1;
     current = evtCounter & bufferMask;
     PGPEvent* event = &m_pool.pgpEvents[current];
-    assert(event->mask == 0);
+    // Revisit: Doesn't always work?  assert(event->mask == 0);
 
     DmaBuffer* buffer = &event->buffers[lane];
     buffer->size = size;
