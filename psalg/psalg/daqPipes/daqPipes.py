@@ -58,6 +58,9 @@ class PromMetric:
         return data
 
     def query_range(self, query, start, stop, step="5s"):
+        if stop is None:
+            return self.query(query, start)
+
         srvurl = self._srvurl
         payload = {"query": query, "start": int(start), "end": int(stop), "step": step}
         url = f"{srvurl}/api/v1/query_range"
@@ -70,7 +73,7 @@ class PromMetric:
 
     def get(self, time):
         #print("query:", self._query)
-        data = self.query(self._query, time)
+        #data = self.query(self._query, time)
         #print("query data: ", data)
 
         #stop  = datetime.now()
@@ -88,7 +91,9 @@ class PromMetric:
         #print('start:', start)
         #print('stop:',  stop)
         #
-        #data = self.query_range(self._query, start.timestamp(), stop.timestamp())
+        start = time
+        stop  = start + 15 if time is not None else None
+        data = self.query_range(self._query, start, stop)
         #print("query_range data: ", data)
 
         self._status = data['status']
@@ -118,7 +123,7 @@ def update(metrics, time):
                 samples[instance] = [detName, {}]
             if detName and not samples[instance][0]:
                 samples[instance][0] = detName
-            samples[instance][1][column] = values
+            samples[instance][1][column] = values[0]
             #print('instance:', instance, ', column:', column, ', values:', values)
 
     return samples
@@ -161,6 +166,9 @@ def showHelp(stdscr, args, metrics):
         keys = [('Arrow keys', 'Scroll by column or row'),
                 ('Page up/down', 'Scroll rows by page'),
                 ('i', 'Toggle display of the process "instance" name'),
+                ('n/p', 'Advance/retreat time by one step'),
+                ('+/-', 'Increase/decrease time step size by 1 second'),
+                ('t', 'Toggle use of current vs "start" parameter time'),
                 ('h', 'Help'),
                 ('q', 'Quit'),]
 
@@ -227,11 +235,11 @@ def draw(stdscr, args, metrics, size_x):
     new_y_size = size_y
     new_x_size = size_x
     showInstance = False
-    time = None
-    step = 5                    # Seconds
-
     if args.start is not None:
         time = datetime.fromisoformat(args.start).timestamp()
+    else:
+        time = None
+    step = 5                    # Seconds
 
     try:
         while (k != ord('q')):
@@ -257,6 +265,15 @@ def draw(stdscr, args, metrics, size_x):
                 time += step
             elif k == ord('p') and time is not None:
                 time -= step
+            elif k == ord('+') and time is not None:
+                step += 1
+            elif k == ord('-') and time is not None:
+                if step > 1:  step -= 1
+            elif k == ord('t') and time is not None:
+                time = None
+            elif k == ord('t') and time is None:
+                if args.start is not None:
+                    time = datetime.fromisoformat(args.start).timestamp()
             elif k == ord('i'):
                 showInstance = not showInstance
                 new_x_size += 20 if showInstance else -20
@@ -399,6 +416,9 @@ def draw(stdscr, args, metrics, size_x):
                 pad.addch(start_y, min(size_x - 1, start_x + width - 2), curses.ACS_UARROW, curses.A_STANDOUT)
             if tot_rows > rows and start_row < tot_rows - rows:
                 pad.addch(min(size_y - 1, start_y + height - 1), min(size_x - 1, start_x + width - 1), curses.ACS_DARROW, curses.A_STANDOUT)
+
+            if time is not None:
+                pad.addstr(size_y - 1, 0, str(datetime.fromtimestamp(time)))
 
             # Refresh the screen
             stdscr.refresh()
