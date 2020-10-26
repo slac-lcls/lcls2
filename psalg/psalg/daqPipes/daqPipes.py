@@ -495,7 +495,7 @@ def daqPipes(srvurl, args):
                          'Percentage of allocated TEB event buffers'),
         'TEB->DRP'    : (q(args, 'TEB_TxPdg'),
                          'Indicator of when traffic from TEB to DRP is stalled'),
-        '%_FileW_occ' : (f'100.0*{DRP_RecDp}/{DRP_RecDpMax}',
+        '%_FileW_occ' : (f'100.0*(1.0 - {DRP_RecDp}/{DRP_RecDpMax})',
                          'Percentage occupancy of the recording queue'),
         'DRP->MEB'    : (q(args, 'MCtbO_TxPdg'),
                          'Indicator of when traffic from DRP to MEB is blocked'),
