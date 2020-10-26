@@ -61,8 +61,10 @@ class CGConfigParameters(ConfigParameters) :
         self.cgwmaincontrol    = None
         self.cgwmaintabuser    = None
         self.cgwmainconfiguration = None
+        self.cgwmaininfo       = None
         self.cgwconfigeditor   = None
         self.cgwpartitiontable = None
+        self.qwloggererror     = None
 
         # DAQ status cache
         self.s_transition      = None
@@ -70,6 +72,9 @@ class CGConfigParameters(ConfigParameters) :
         self.s_cfgtype         = None
         self.s_recording       = None
         self.s_platform        = None
+        self.s_experiment_name = None
+        self.s_run_number      = None
+        self.s_last_run_number = None
 
         self.instr             = None
 

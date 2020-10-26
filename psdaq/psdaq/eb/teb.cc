@@ -487,21 +487,27 @@ void Teb::process(EbEvent* event)
 // to flush out any in-progress batch
 void Teb::flush()
 {
-  //const EbDgram* start = _batchStart;
-  //const EbDgram* end   = _batchEnd;
-  //
-  //if (_batchStart)
-  //{
-  //  _post(start, end);
-  //
-  //  // Start a new batch
-  //  _batchStart = nullptr;
-  //  _batchEnd   = nullptr;
-  //}
+  const EbDgram* start = _batchStart;
+  const EbDgram* end   = _batchEnd;
+
+  //printf("TEB::flush: start %p, end %p\n", start, end);
+
+  if (start)
+  {
+    //printf("TEB::flush:    posting %014lx - %014lx\n", start->pulseId(), end->pulseId());
+
+    _post(start, end);
+
+    _batchStart = nullptr;
+    _batchEnd   = nullptr;
+    _resultDsts = 0;
+  }
 }
 
 void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts)
 {
+  //printf("tryPost: pid %014lx, batchStart %014lx\n", dgram->pulseId(), _batchStart ? _batchStart->pulseId() : 0ul);
+
   // The batch start is the first dgram seen
   if (!_batchStart)  _batchStart = dgram;
 
@@ -511,6 +517,8 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts)
   bool                flush   = !((svc == TransitionId::L1Accept) ||
                                   (svc == TransitionId::SlowUpdate));
   bool                expired = _batMan.expired(dgram->pulseId(), start->pulseId());
+
+  //printf("tryPost: flush %d, expired %d\n", flush, expired);
 
   if (expired || flush)
   {
@@ -522,6 +530,8 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts)
         _resultDsts |= dsts;
       }
 
+      //printf("tryPost: e||f  posting %014lx - %014lx\n", start->pulseId(), end->pulseId());
+
       _post(start, end);
 
       // Start a new batch
@@ -529,11 +539,17 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts)
       _batchEnd   = end == dgram ? nullptr : dgram;
       _resultDsts = end == dgram ? 0       : dsts;
       start       = _batchStart;
+
+      //printf("tryPost: e||f  batchStart %014lx, batchEnd %014lx\n",
+      //       _batchStart ? _batchStart->pulseId() : 0ul,
+      //       _batchEnd   ? _batchEnd->pulseId()   : 0ul);
     }
 
     if (flush && start)     // Post the batch + transition if it wasn't just done
     {
       _resultDsts |= dsts;
+
+      //printf("tryPost: f     posting %014lx - %014lx\n", start->pulseId(), dgram->pulseId());
 
       _post(start, dgram);
 
@@ -547,6 +563,10 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts)
   {
     _batchEnd    = dgram;   // The batch end is the one before the current dgram
     _resultDsts |= dsts;
+
+      //printf("tryPost: else  batchStart %014lx, batchEnd %014lx\n",
+      //       _batchStart ? _batchStart->pulseId() : 0ul,
+      //       _batchEnd   ? _batchEnd->pulseId()   : 0ul);
   }
 }
 

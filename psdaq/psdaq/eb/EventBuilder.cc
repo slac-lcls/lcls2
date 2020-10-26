@@ -393,25 +393,28 @@ void EventBuilder::_flush(const EbEvent* const due)
 
 void EventBuilder::expired()            // Periodically called upon a timeout
 {
-  //// Order matters: Wait one additional timeout period after _flush() has
-  //// emptied the EB of events before calling the application's flush().
-  //const EbEpoch* const lastEpoch = _pending.empty();
-  //EbEpoch*             epoch     = _pending.forward();
-  //if (epoch == lastEpoch)
-  //{
-  //  flush();
-  //  return;
-  //}
-  //else
-  //{
-  //  const EbEvent* const lastEvent = epoch->pending.empty();
-  //  EbEvent*             event     = epoch->pending.forward();
-  //  if (event == lastEvent)
-  //  {
-  //    flush();
-  //    return;
-  //  }
-  //}
+  // Order matters: Wait one additional timeout period after _flush() has
+  // emptied the EB of events before calling the application's flush().
+  const EbEpoch* const lastEpoch = _pending.empty();
+  EbEpoch*             epoch     = _pending.forward();
+
+  //printf("EB::expired: epoch %p, lastEpoch %p\n", epoch, lastEpoch);
+  if (epoch == lastEpoch)
+  {
+    flush();
+    return;
+  }
+  else
+  {
+    const EbEvent* const lastEvent = epoch->pending.empty();
+    EbEvent*             event     = epoch->pending.forward();
+    //printf("EB::expired: event %p, lastEvent %p\n", event, lastEvent);
+    if (event == lastEvent)
+    {
+      flush();
+      return;
+    }
+  }
 
   _flush(nullptr);                      // Try to flush everything
 }

@@ -127,9 +127,9 @@ def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL):
     try:
         return r.json()
     except:
-        msg = '**** find_docs responce: %s' % str(r)\
+        msg = 'WARNING: find_docs responce: %s' % str(r)\
             + '\n     conversion to json failed, return None for query: %s' % str(query)
-        logger.warning(msg)
+        logger.debug(msg)
         return None
 
 #------------------------------

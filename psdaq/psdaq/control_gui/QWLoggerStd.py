@@ -38,6 +38,7 @@ from PyQt5.QtCore import Qt, QSize
 from psdaq.control_gui.Styles import style
 
 import psdaq.control_gui.Utils as gu
+from psdaq.control_gui.QWLoggerError import QWLoggerError
 
 #------------------------------
 
@@ -59,14 +60,14 @@ MSG_LEVEL_TO_TEXT_COLOR = {'<C>' : Qt.gray,
 
 #------------------------------
 
-def is_error_msg(rec) :
+def is_error_msg(rec):
     return rec.levelname == '<E>'
 
 
-def log_file_name(lfpath='.') :
+def log_file_name(lfpath='.'):
     """Returns (str) log file name like /reg/g/psdm/logs/calibman/lcls2/20180518T122407-dubrovin.txt
     """
-    if lfpath in (None,'') : return None
+    if lfpath in (None,''): return None
 
     from time import time, strftime, localtime
     from getpass import getuser
@@ -78,22 +79,22 @@ def log_file_name(lfpath='.') :
 
 #------------------------------
 
-class QWFilter(logging.Filter) :
-    def __init__(self, qwlogger) :
+class QWFilter(logging.Filter):
+    def __init__(self, qwlogger):
         #logging.Filter.__init__(self)#, name='')
         self.qwl = qwlogger
 
 
-    def filter(self, rec) :
+    def filter(self, rec):
         msg = self.qwl.formatter.format(rec)
         self.qwl.set_msg_style(rec.levelname)
         self.qwl.append_qwlogger(msg)
-        if is_error_msg(rec) : self.qwl.append_qwlogger_err(msg)
+        if is_error_msg(rec): self.qwl.append_qwlogger_err(msg)
         #self.print_filter_attributes(rec)
         return True
 
 
-    def print_filter_attributes(self, rec) :
+    def print_filter_attributes(self, rec):
         print('type(rec): %s'%type(rec))
         print('dir(rec): %s'%dir(rec))
         #print('dir(logger): %s'%dir(logger))
@@ -102,10 +103,10 @@ class QWFilter(logging.Filter) :
 
 #------------------------------
 
-class QWLoggerStd(QWidget) :
+class QWLoggerStd(QWidget):
     _name = 'QWLoggerStd'
 
-    def __init__(self, **kwargs) :
+    def __init__(self, **kwargs):
 
         QWidget.__init__(self, parent=None)
 
@@ -116,10 +117,10 @@ class QWLoggerStd(QWidget) :
 
         if self.instrument is None: self.instrument='None'
 
-        if self.log_level=='DEBUG' :
+        if self.log_level=='DEBUG':
             print('%s.__init__ log_fname: %s' % (self._name, self.log_fname))
 
-        if self.log_fname is not None :
+        if self.log_fname is not None:
             #depth = 6 if self.log_fname[0]=='/' else 1
             gu.create_path(self.log_fname, mode=0o0777)
             #print('Log file: %s' % log_fname)
@@ -135,7 +136,8 @@ class QWLoggerStd(QWidget) :
         self.level_names = list(logging._levelToName.values())
         
         self.edi_txt   = QTextEdit('ALL messages')
-        self.edi_err   = QTextEdit('Error messages')
+        #self.edi_err   = QTextEdit('Error messages')
+        self.edi_err   = QWLoggerError()
         self.lab_level = QLabel('Log level:')
         self.but_close = QPushButton('&Close') 
         self.but_save  = QPushButton('&Save log-file') 
@@ -162,7 +164,7 @@ class QWLoggerStd(QWidget) :
         self.vbox.addLayout(self.hboxB)
         self.setLayout(self.vbox)
 
-        if self.show_buttons : self.connect_buttons()
+        if self.show_buttons: self.connect_buttons()
 
         self.set_style()
         self.set_tool_tips()
@@ -170,14 +172,14 @@ class QWLoggerStd(QWidget) :
         self.config_logger()
 
 
-    def config_logger(self) :
+    def config_logger(self):
         
         levname = self.log_level
         level = self.dict_name_to_level.get(levname, logging.DEBUG)
 
         self.syslog = SysLog(instrument=self.instrument, level=level)
 
-        for h in logger.handlers :
+        for h in logger.handlers:
             print('XXX handler:', str(h))
 
         tsfmt='%Y-%m-%dT%H:%M:%S'
@@ -195,7 +197,7 @@ class QWLoggerStd(QWidget) :
 
 
 
-    def config_logger_v0(self, log_fname='control_gui.txt') :
+    def config_logger_v0(self, log_fname='control_gui.txt'):
 
         self.append_qwlogger('Start logger\nLog file: %s' % log_fname)
 
@@ -232,7 +234,7 @@ class QWLoggerStd(QWidget) :
         print('logging.FileHandler file: %s' % fname)
 
 
-    def set_level(self, level_name='DEBUG') :
+    def set_level(self, level_name='DEBUG'):
         #self.append_qwlogger('Set logger layer: %s' % level_name)
         #logger.setLevel(level_name) # {0: 'NOTSET'}
         level = self.dict_name_to_level.get(level_name, logging.DEBUG)
@@ -276,8 +278,8 @@ class QWLoggerStd(QWidget) :
         self.cmb_level .setStyleSheet(style.styleButton) 
         self.edi_txt   .setReadOnly(True)
         self.edi_txt   .setStyleSheet(style.styleWhiteFixed) 
-        self.edi_err   .setReadOnly(True)
-        self.edi_err   .setStyleSheet(style.styleYellowish) 
+        #self.edi_err   .setReadOnly(True)
+        #self.edi_err   .setStyleSheet(style.styleYellowish) 
         #self.edi_txt   .ensureCursorVisible()
         #self.lab_title.setAlignment(QtCore.Qt.AlignCenter)
         #self.titTitle.setBold()
@@ -288,7 +290,7 @@ class QWLoggerStd(QWidget) :
         self.but_rand  .setVisible(self.show_buttons)
         self.but_close .setVisible(self.show_buttons)
 
-        #if not self.show_buttons : 
+        #if not self.show_buttons:
         self.layout().setContentsMargins(2,2,2,2)
 
         self.edi_err.setMinimumHeight(50)
@@ -306,7 +308,7 @@ class QWLoggerStd(QWidget) :
 
 #--------------------
 
-    #def setParent(self,parent) :
+    #def setParent(self,parent):
     #    self.parent = parent
 
 
@@ -373,7 +375,7 @@ class QWLoggerStd(QWidget) :
                                            )
         logger.debug('save_log_in_file resp: %s' % str(resp))
         path, ftype = resp
-        if path == '' :
+        if path == '':
             logger.debug('Saving is cancelled.')
             return 
         self.log_fname = path
@@ -396,7 +398,7 @@ class QWLoggerStd(QWidget) :
 
     def append_qwlogger(self, msg='...'):
         self.edi_txt.append(msg)
-        self.scrollDown()
+        self.scroll_down_txt()
 
 
     def add_separator(self, sep='\n\n\n\n\n%s'%(50*'_')):
@@ -405,25 +407,21 @@ class QWLoggerStd(QWidget) :
 
     def append_qwlogger_err(self, msg='...'):
         self.edi_err.append(msg)
-        self.scrollDown()
+        self.edi_err.scroll_down()
 
 
     def add_separator_err(self, sep='\n\n\n\n\n%s'%(50*'_')):
         self.append_qwlogger_err(msg=sep)
 
 
-    def scrollDown(self):
-        #logger.debug('scrollDown')
-        #scrol_bar_v = self.edi_txt.verticalScrollBar() # QScrollBar
-        #scrol_bar_v.setValue(scrol_bar_v.maximum()) 
+    def scroll_down_txt(self):
+        #logger.debug('scroll_down_txt')
         self.edi_txt.moveCursor(QTextCursor.End)
         self.edi_txt.repaint()
-        #self.raise_()
-        #self.edi_txt.update()
 
-    if __name__ == "__main__" :
+    if __name__ == "__main__":
 
-      def key_usage(self) :
+      def key_usage(self):
         return 'Keys:'\
                '\n  ESC - exit'\
                '\n  A - add separator in main logger window'\
@@ -431,23 +429,23 @@ class QWLoggerStd(QWidget) :
                '\n'
 
 
-      def keyPressEvent(self, e) :
+      def keyPressEvent(self, e):
         #logger.info('keyPressEvent, key=', e.key())
-        if   e.key() == Qt.Key_Escape :
+        if   e.key() == Qt.Key_Escape:
             self.close()
 
-        elif e.key() == Qt.Key_S : 
+        elif e.key() == Qt.Key_S:
             self.add_separator_err()
 
-        elif e.key() == Qt.Key_A : 
+        elif e.key() == Qt.Key_A:
             self.add_separator()
 
-        else :
+        else:
             logger.info(self.key_usage())
 
 #------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import sys
 
     from PyQt5.QtWidgets import QApplication

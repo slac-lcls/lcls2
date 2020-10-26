@@ -13,6 +13,7 @@
 #include <iostream>
 #include <map>
 #include <algorithm>
+#include <limits>
 #include <Python.h>
 #include "DataDriver.h"
 #include "RunInfoDef.hh"
@@ -27,6 +28,8 @@
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 
+static const XtcData::TimeStamp TimeMax(std::numeric_limits<unsigned>::max(),
+                                        std::numeric_limits<unsigned>::max());
 static unsigned tsMatchDegree = 2;
 
 //
@@ -36,7 +39,7 @@ static int _compare(const XtcData::TimeStamp& ts1,
                     const XtcData::TimeStamp& ts2) {
   int result = 0;
 
-  if (tsMatchDegree == 0)
+  if ((tsMatchDegree == 0) && !(ts2 == TimeMax))
       return result;
 
   if (tsMatchDegree == 1) {
@@ -47,15 +50,10 @@ static int _compare(const XtcData::TimeStamp& ts1,
     uint64_t ts1m = ts1.value()&mask;
     uint64_t ts2m = ts2.value()&mask;
 
-    /*
-      if      (ts1m > ts2m) result = 1;
-      else if (ts1m < ts2m) result = -1;
-    */
-    int64_t dt = int64_t(ts1m) - int64_t(ts2m);
-    const int64_t delta = 10000000; // 10 ms!
-    if      (dt >  delta) result = 1;
-    else if (dt < -delta) result = -1;
-    //if (result != 0)  printf("ts1 %016lx,  ts2 %016lx,  dT %016lx\n", ts1.value(), ts2.value(), dt);
+    const uint64_t delta = 10000000; // 10 ms!
+    if      (ts1m > ts2m)  result = ts1m - ts2m > delta ?  1 : 0;
+    else if (ts2m > ts1m)  result = ts2m - ts1m > delta ? -1 : 0;
+
     return result;
   }
 
@@ -208,7 +206,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     const unsigned bufferMask = m_pool.nbuffers() - 1;
     current = evtCounter & bufferMask;
     PGPEvent* event = &m_pool.pgpEvents[current];
-    assert(event->mask == 0);
+    // Revisit: Doesn't always work?  assert(event->mask == 0);
 
     DmaBuffer* buffer = &event->buffers[lane];
     buffer->size = size;
@@ -527,7 +525,7 @@ void PvaDetector::_worker()
                 else if (service == XtcData::TransitionId::Disable) { // Sweep out L1As
                     m_running = false;
                     logging::debug("Sweeping out L1Accepts and SlowUpdates");
-                    _timeout(dgram->time);
+                    _timeout(TimeMax);
                 }
 
                 _sendToTeb(*dgram, index);
