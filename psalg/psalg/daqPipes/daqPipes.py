@@ -123,7 +123,7 @@ def update(metrics, time):
                 samples[instance] = [detName, {}]
             if detName and not samples[instance][0]:
                 samples[instance][0] = detName
-            samples[instance][1][column] = values[0]
+            samples[instance][1][column] = values if time is None else values[0]
             #print('instance:', instance, ', column:', column, ', values:', values)
 
     return samples
