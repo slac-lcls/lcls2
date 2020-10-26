@@ -126,6 +126,11 @@ Pds::Eb::Batch* Pds::Eb::BatchManager::fetchW(uint64_t pid)
     // Block when the head tries to pass the tail, unless empty or stopping
     {
       std::unique_lock<std::mutex> lock(_lock);
+      //printf("Fetch   pid %014lx, prvPid %014lx, diff %ld, max %ld, numAlloc %lu, numFree %lu, numInUse %lu\n",
+      //       pid, _lastFreed.load(),
+      //       pid - _lastFreed.load(std::memory_order_acquire),
+      //       MAX_LATENCY - BATCH_DURATION,
+      //       _numAllocs.load(), _numFrees.load(), _numInUse.load());
       ++_waiting;
       _cv.wait(lock, [&]{ return ((pid - _lastFreed.load(std::memory_order_acquire)) <
                                   (MAX_LATENCY - BATCH_DURATION))               ||
@@ -151,6 +156,8 @@ void Pds::Eb::BatchManager::release(uint64_t pid)
   _cv.notify_one();
   _numFrees.fetch_add(1, std::memory_order_acq_rel);
   _numInUse.fetch_sub(1, std::memory_order_acq_rel);
+  //printf("Release pid %014lx, numAlloc %lu, numFree %lu, numInUse %lu\n",
+  //       pid, _numAllocs.load(), _numFrees.load(), _numInUse.load());
 }
 
 inline
