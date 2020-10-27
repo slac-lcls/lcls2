@@ -25,14 +25,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QGroupBox, QLabel, QLineEdit, QGridLayout
-# QPushButton, QHBoxLayout, QVBoxLayout #, QCheckBox, QComboBox
 from psdaq.control_gui.CGConfigParameters import cp
 from psdaq.control_gui.Styles import style
-#from psdaq.control_gui.CGDaqControl import daq_control, DaqControlEmulator, daq_control_get_instrument
-#from PyQt5.QtGui import QCursor
 
-from PyQt5.QtCore import Qt#, QPoint
-
+from PyQt5.QtCore import Qt
 
 #----
 
@@ -47,10 +43,10 @@ class CGWMainInfo(QGroupBox):
         self.lab_run = QLabel('run:')
         self.lab_evt = QLabel('events:')
         self.lab_evd = QLabel('drops:')
-        self.edi_exp = QLabel('N/A') # QLineEdit('N/A')
-        self.edi_run = QLabel('N/A') # QLineEdit('N/A')
-        self.edi_evt = QLabel('N/A') # QLineEdit('N/A')
-        self.edi_evd = QLabel('N/A') # QLineEdit('N/A')
+        self.edi_exp = QLabel('N/A')
+        self.edi_run = QLabel('N/A')
+        self.edi_evt = QLabel('N/A')
+        self.edi_evd = QLabel('N/A')
 
         self.grid = QGridLayout()
         self.grid.addWidget(self.lab_exp,      0, 0, 1, 1)
@@ -84,17 +80,6 @@ class CGWMainInfo(QGroupBox):
             fld.setStyleSheet(style.styleDefault) #styleLabel
 
         self.set_visible_line2(False)
-
-        #self.edi_run.setReadOnly(True)
-        #self.layout().setContentsMargins(5,5,5,5)
-        #self.layout().setContentsMargins(0,0,0,0)
-        #self.but_edit.setFixedWidth(60)
-        #self.setMinimumWidth(350)
-        #self.setWindowTitle('File name selection widget')
-        #self.setFixedHeight(34) # 50 if self.show_frame else 34)
-        #self.setMinimumSize(725,360)
-        #self.setFixedSize(750,270)
-        #self.setMaximumHeight(60)
  
 
     def set_visible_line2(self, is_visible):
@@ -103,17 +88,16 @@ class CGWMainInfo(QGroupBox):
 
 
     def update_info(self):
-        run_number = cp.s_run_number if cp.s_run_number is not None else cp.s_last_run_number
-        self.edi_run.setText(str(run_number)) #.ljust(4))
-        self.edi_exp.setText(str(cp.s_experiment_name)) #.ljust(9))
+        run_number = cp.s_run_number if cp.s_recording else cp.s_last_run_number
+        self.lab_run.setText('run' if cp.s_recording else 'last run')
+        self.edi_run.setText(str(run_number))
+        self.edi_exp.setText(str(cp.s_experiment_name))
 
 
     def closeEvent(self, e):
         logger.debug('CGWMainInfo.closeEvent')
         QGroupBox.closeEvent(self, e)
         cp.cgwmaininfo = None
-
-
 
 #----
 
