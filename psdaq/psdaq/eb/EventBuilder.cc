@@ -331,7 +331,7 @@ void EventBuilder::_flush(const EbEvent* const due)
       if (event->_remaining)
       {
         // Time out incomplete events
-        bool timedOut(now - epoch->t0 > EventTimeout);
+        bool timedOut(std::chrono::duration_cast<std::chrono::milliseconds>(now - epoch->t0) > EventTimeout);
 
         if (!timedOut)
         {
@@ -346,7 +346,12 @@ void EventBuilder::_flush(const EbEvent* const due)
           ++_fixupCnt;
         }
         else
+        {
+          auto dT = std::chrono::duration_cast<std::chrono::milliseconds>(now - epoch->t0);
+          printf("Event timed out: now %ld - t0 %ld = %ld vs %d\n",
+                 now.time_since_epoch().count(), epoch->t0.time_since_epoch().count(), dT.count(), EventTimeout.count());
           ++_tmoEvtCnt;
+        }
 
         if (_verbose >= VL_EVENT)
         {
