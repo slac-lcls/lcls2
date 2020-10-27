@@ -38,7 +38,7 @@ from psdaq.control_gui.Utils import load_textfile
 
 #--------------------
 
-def _display_name(pname, v) :
+def _display_name(pname, v):
     """returns (str) like 'pname/pid/host alias' """
     pinfo = v['proc_info']
     host  = pinfo.get('host', 'non-def')
@@ -51,7 +51,7 @@ def _display_name(pname, v) :
 def dict_platform():
     """ returns control.getPlatform() or cp.s_platform or None
     """
-    if cp.s_platform is not None : return cp.s_platform
+    if cp.s_platform is not None: return cp.s_platform
 
     dict_platf = None
     try:
@@ -85,8 +85,8 @@ def get_status(header=['drp','teb','meb']):
             in_header = pname in header
             #logger.debug('XXX: proc grp %s %s found in header'%\
             #      (pname,{True:'is', False:'is not'}[in_header]))
-            for k,v in dict_platf[pname].items() :
-                if pname in header : row_counter[pname] += 1
+            for k,v in dict_platf[pname].items():
+                if pname in header: row_counter[pname] += 1
 
     except Exception as ex:
         logger.error('Exception in parsing dict_platform (1): %s' % ex)
@@ -103,19 +103,19 @@ def get_status(header=['drp','teb','meb']):
     try:
         for pname in dict_platf:
             #logger.debug("json top key name: %s" % str(pname))
-            if not(pname in header) : continue
+            if not(pname in header): continue
             col = header.index(pname)
-            for k,v in dict_platf[pname].items() :
+            for k,v in dict_platf[pname].items():
                 display = _display_name(pname, v) # 'pname/pid/host alias'
                 flds = display.split(' ')
                 alias = flds[1] if len(flds)==2 else ''
                 name = alias if alias else flds[0]
 
-                if not (v['active']==1) : continue
+                if not (v['active']==1): continue
 
                 row = row_counter[pname]
 
-                #if pname=='drp' : list2d[row][0] = str(v['readout'])
+                #if pname=='drp': list2d[row][0] = str(v['readout'])
 
                 #print('XXX fill field row:%d col:%d name:%s' % (row,col,name))
                 list2d[row][col] = name
@@ -141,7 +141,7 @@ def get_platform():
         - [True,'', <int-flag>] (list)  - field of check-box with flags
         - [True,'cbx-descr', <int-flag>, "<validator reg.exp.>"] (list) - field of check-box and text with flags and validator
         after control.getPlatform() request.
-        <int-flag> = 1/2/4/8 : BIT_CHECKABLE/ENABLED/EDITABLE/SELECTABLE (see QWTableOfCheckBoxes.py)
+        <int-flag> = 1/2/4/8/16: BIT_CHECKABLE/ENABLED/EDITABLE/SELECTABLE/HIDDENROW (see QWTableOfCheckBoxes.py)
     """
     list2d = []
     dict_platf = dict_platform()
@@ -149,7 +149,8 @@ def get_platform():
     try:
         for pname in dict_platf: # iterate over top key-wards
             #logger.debug("json top key name: %s" % str(pname))
-            for k,v in dict_platf[pname].items() :
+            for k,v in dict_platf[pname].items():
+                #if v['hidden'] == 1: continue    # skip hidden entry
                 display = _display_name(pname, v) # 'pname/pid/host alias'
                 flds = display.split(' ')
                 alias = flds[1] if len(flds)==2 else ''
@@ -158,6 +159,7 @@ def get_platform():
                 readgr = v['det_info']['readout'] if is_drp else ''
 
                 flag = 6 if is_drp else 2
+                if v['hidden'] == 1: flag += 16
                 list2d.append([[v['active']==1, ''],\
                                [False, str(readgr), flag, "^([0-9]|1[0-5])$"],\
                                [False, flds[0], 2],\
@@ -182,25 +184,25 @@ def set_platform(dict_platf, list2d):
         s = ''
         for pname in dict_platf:
             #print("proc_name: %s" % str(pname))
-            for k,v in dict_platf[pname].items() :
+            for k,v in dict_platf[pname].items():
                 display = _display_name(pname, v) # 'pname/pid/host alias'
                 proc_pid_host = display.split(' ')[0]
                 # find record/row in the table
                 rec = None
-                for rec in list2d :
-                    if rec[2][1] == proc_pid_host : break
-                if rec is None :
+                for rec in list2d:
+                    if rec[2][1] == proc_pid_host: break
+                if rec is None:
                     logger.error('proc/pid/host "%s" is not found in the table' % proc_pid_host)
                     continue
 
                 status = rec[0][0] # bool
                 int_active = {True:1, False:0}[status]
                 dict_platf[pname][k]['active'] = int_active
-                if pname=='drp' :
+                if pname=='drp':
                     val = rec[1][1]
-                    if isinstance(val, str) and val.isdigit() :
+                    if isinstance(val, str) and val.isdigit():
                         dict_platf[pname][k]['det_info']['readout'] = int(val)
-                    else :
+                    else:
                         logger.error('set_platform WRONG drp "group readout" value "%s" for "%s"'%\
                                      (str(val), display))
  
@@ -224,7 +226,7 @@ def list_active_procs(lst):
 
 #--------------------
 
-def load_json_from_file(fname) :
+def load_json_from_file(fname):
     s = load_textfile(fname)
     #ucode = s.decode('utf8').replace("\'t", ' not').replace("'", '"')
     #ss = s.replace(' ', '').replace("'", '"')
@@ -232,12 +234,12 @@ def load_json_from_file(fname) :
 
 #--------------------
 
-def json_from_str(s) :
+def json_from_str(s):
     return json.loads(s)
 
 #--------------------
 
-def str_json(jo, indent=4, sort_keys=False, separators=(', ', ': ')) :
+def str_json(jo, indent=4, sort_keys=False, separators=(', ', ': ')):
     """ returns formatted str with json kwargs: indent=2, sort_keys=False
     """
     return json.dumps(jo, indent=indent, sort_keys=sort_keys, separators=separators)
