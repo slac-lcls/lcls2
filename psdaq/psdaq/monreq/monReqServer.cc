@@ -279,7 +279,7 @@ Meb::Meb(const MebParams&        prms,
   exporter->add("MEB_EvtCt", labels, MetricType::Counter, [&](){ return _eventCount;      });
   exporter->add("MEB_ReqRt", labels, MetricType::Rate,    [&](){ return _requestCount;    });
   exporter->add("MEB_ReqCt", labels, MetricType::Counter, [&](){ return _requestCount;    });
-  exporter->add("MRQ_BufCt", labels, MetricType::Counter, [&](){ return _apps ? _apps->bufListCount() : 0; });
+  exporter->add("MRQ_BufCt", labels, MetricType::Gauge,   [&](){ return _apps ? _apps->bufListCount() : 0; });
   exporter->constant("MRQ_BufCtMax", labels, prms.numEvBuffers);
 }
 
