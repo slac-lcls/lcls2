@@ -119,10 +119,7 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
 {
     logging::info("XpmDetector connect");
     m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
-}
 
-unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
-{
     // FIXME make configureable
     m_length = 100;
     std::map<std::string,std::string>::iterator it = m_para->kwargs.find("sim_length");
@@ -151,7 +148,10 @@ unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& x
             dmaWriteRegister(fd, 0x00a00000+4*(i&3), (m_length&0xffffff) | (1<<31));  // enable
           }
       }
+}
 
+unsigned XpmDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
+{
     return 0;
 }
 
