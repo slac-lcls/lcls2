@@ -347,9 +347,9 @@ void EventBuilder::_flush(const EbEvent* const due)
         }
         else
         {
-          auto dT = std::chrono::duration_cast<std::chrono::milliseconds>(now - epoch->t0);
-          printf("Event timed out: now %ld - t0 %ld = %ld vs %d\n",
-                 now.time_since_epoch().count(), epoch->t0.time_since_epoch().count(), dT.count(), EventTimeout.count());
+          //auto dT = std::chrono::duration_cast<std::chrono::milliseconds>(now - epoch->t0);
+          //printf("Event timed out: now %ld - t0 %ld = %ld vs %d\n",
+          //       now.time_since_epoch().count(), epoch->t0.time_since_epoch().count(), dT.count(), EventTimeout.count());
           ++_tmoEvtCnt;
         }
 
