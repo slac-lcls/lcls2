@@ -993,6 +993,15 @@ class CollectionManager():
             self.instrument = args.P
             self.station = self.platform
         logging.debug('instrument=%s, station=%d' % (self.instrument, self.station))
+
+        self.experiment_name = self.get_experiment()
+        if self.experiment_name:
+            self.last_run_number = self.get_last_run_number()
+        else:
+            err_msg = 'get_experiment() failed (instrument=\'%s\', station=%d)' % (self.instrument, self.station)
+            self.report_error(err_msg)
+        logging.debug('__init__(): experiment_name=%s, last_run_number=%d' % (self.experiment_name, self.last_run_number))
+
         self.ids = set()
         self.handle_request = {
             'selectplatform': self.handle_selectplatform,
@@ -2022,6 +2031,36 @@ class CollectionManager():
         if not ok:
             self.report_error(err_msg)
         return
+
+    def get_last_run_number(self):
+        logging.debug('get_last_run_number()')
+        last_run_number = 0
+
+        # authentication is not required, adjust url accordingly
+        uurl = self.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
+
+        try:
+            resp = requests.get((uurl + "/" if not uurl.endswith("/") else uurl) + \
+                                "lgbk/" + self.experiment_name + "/ws/current_run",
+                                timeout=10)
+        except requests.exceptions.RequestException as ex:
+            logging.error("get_last_run_number(): request exception: %s" % ex)
+        else:
+            logging.debug("current_run request response: %s" % resp.text)
+            if resp.status_code == requests.codes.ok:
+                logging.debug("current_run request response headers: %s" % resp.headers)
+                if 'application/json' in resp.headers['Content-Type']:
+                    try:
+                        last_run_number = resp.json().get("value", {}).get("num", 0)
+                    except json.decoder.JSONDecodeError:
+                        logging.error("Error: failed to decode JSON")
+                else:
+                    logging.error("Error: failed to receive JSON")
+            else:
+                logging.error("Error: status code %d" % resp.status_code)
+
+        # last run number, or 0
+        return last_run_number
 
     def get_experiment(self):
         logging.debug('get_experiment()')
