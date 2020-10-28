@@ -137,8 +137,6 @@ class StepHistory(object):
             # For Smd0
             for i_smd, view in enumerate(views):
                 self.bufs[i_smd].extend(view)
-                if as_calib:
-                    logging.debug(f"node.py: extend_buffers[{i_smd}] client={client_id} self.bufs[{i_smd}]={memoryview(self.bufs[i_smd]).nbytes}")
                 if not as_calib:
                     self.send_history[idx][i_smd] += memoryview(view).nbytes
         else:
@@ -190,7 +188,6 @@ def repack_for_eb(smd_chunk, step_views, configs, calibconst_pkt):
     new_chunk_pf.set_size(0, memoryview(smd_extended).nbytes)
     smd_extended.extend(calibconst_pkt)
     new_chunk_pf.set_size(1, memoryview(calibconst_pkt).nbytes)
-    logging.debug(f"node.py: repack_for_eb smd_chunk={memoryview(smd_chunk).nbytes} n_step_views={len(step_views)} calibconst_pkt={memoryview(calibconst_pkt).nbytes}")
     smd_extended.extend(new_chunk_pf.footer)
     
     return smd_extended
@@ -245,7 +242,6 @@ def repack_for_bd(smd_batch, step_views, configs, calibconst_pkt, client):
     new_chunk_pf.set_size(1, memoryview(calibconst_pkt).nbytes)
     extended_batch.extend(new_chunk_pf.footer)
     
-    logging.debug(f"node.py: repack_for_bd {client} smd_batch={memoryview(smd_batch).nbytes} n_step_views={len(step_views)} calibconst_pkt={memoryview(calibconst_pkt).nbytes} new_chunk={memoryview(extended_batch).nbytes}")
     return extended_batch
 
 
@@ -261,8 +257,6 @@ class Smd0(object):
         self.step_hist = StepHistory(self.comms.smd_size, self.smdr_man.n_files)
         self.calib_hist= StepHistory(self.comms.smd_size, 1)
         self.c_sent    = self.smdr_man.dsparms.prom_man.get_metric('psana_smd0_sent')
-        self.run_mpi()
-
 
     def run_mpi(self):
         rankreq = np.empty(1, dtype='i')
@@ -437,18 +431,21 @@ class EventBuilderNode(object):
                             else:
                                 self.waiting_bds.append(dest_rank)
                 
-
-
-        # Done 
+                # end if 0 in ...
+            
+            # end for smdbatch, ...
+        
+        # end while ...
+                
         # - kill idling nodes
         for dest_rank in self.waiting_bds:
             bd_comm.Send(bytearray(), dest=dest_rank)
-        
+
         # - kill all other nodes
         for i in range(n_bd_nodes-len(self.waiting_bds)):
             self._request_rank(rankreq)
             bd_comm.Send(bytearray(), dest=rankreq[0])
-
+        
 
 class BigDataNode(object):
     def __init__(self, comms, configs, dsparms, dm):
@@ -458,43 +455,27 @@ class BigDataNode(object):
         self.dm         = dm
         self.calib_store= []
 
-    def run_mpi(self):
-        @s_bd_wait_eb.time()
-        def get_smd():
-            bd_comm = self.comms.bd_comm
-            bd_rank = self.comms.bd_rank
-            bd_comm.Send(np.array([bd_rank], dtype='i'), dest=0)
-            
-            st = time.time()
-            info = MPI.Status()
-            bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
-            count = info.Get_elements(MPI.BYTE)
-            if count == 0:
-                return bytearray()
-            extended_chunk = bytearray(count)
-            bd_comm.Recv(extended_chunk, source=0)
-            en = time.time()
-            
-            pf = PacketFooter(view=extended_chunk)
-            chunk, calibconst_pkt = pf.split_packets()
-            calib_pf = PacketFooter(view=calibconst_pkt)
-            for calib_bytes in calib_pf.split_packets():
-                self.calib_store.append(pickle.loads(calib_bytes))
+    @s_bd_wait_eb.time()
+    def get_smd(self):
+        bd_comm = self.comms.bd_comm
+        bd_rank = self.comms.bd_rank
+        bd_comm.Send(np.array([bd_rank], dtype='i'), dest=0)
+        
+        st = time.time()
+        info = MPI.Status()
+        bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
+        count = info.Get_elements(MPI.BYTE)
+        if count == 0:
+            return bytearray()
+        extended_chunk = bytearray(count)
+        bd_comm.Recv(extended_chunk, source=0)
+        en = time.time()
+        
+        pf = PacketFooter(view=extended_chunk)
+        chunk, calibconst_pkt = pf.split_packets()
+        calib_pf = PacketFooter(view=calibconst_pkt)
+        for calib_bytes in calib_pf.split_packets():
+            self.calib_store.append(pickle.loads(calib_bytes))
 
-            logging.debug(f"node.py: BigData{bd_rank} got {count/1e6:.5f}MB (waiting time: {en-st:.5f} s) calib store has {len(self.calib_store)} items")
-            return chunk
-        
-        events = Events(self.configs, self.dm, self.dsparms.prom_man, 
-                filter_callback=self.dsparms.filter, get_smd=get_smd)
-        
-        for evt in events:
-            if evt.service() == TransitionId.BeginRun:
-                for calib_const in self.calib_store:
-                    for key, _ in calib_const.items():
-                        det_name = key
-                        break
-                    runnum = calib_const[det_name]['pedestals'][1]['run']
-                    if evt._dgrams[0].runinfo[0].runinfo.runnum == runnum:
-                        self.dsparms.calibconst = calib_const
-                        break
-            yield evt
+        return chunk
+    

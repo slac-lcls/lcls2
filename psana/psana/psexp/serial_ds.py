@@ -3,6 +3,7 @@ from psana.psexp import Events, TransitionId, SmdReaderManager
 from psana.dgrammanager import DgramManager
 import numpy as np
 import os
+from psana.smalldata import SmallData
 
 class SerialDataSource(DataSourceBase):
 
@@ -17,6 +18,8 @@ class SerialDataSource(DataSourceBase):
         self._set_configinfo()
         self._start_prometheus_client()
         self.dm = DgramManager(self.xtc_files, configs=self._configs)
+        # prepare comms for running SmallData
+        self.smalldata_obj = SmallData(**self.smalldata_kwargs)
     
     def runs(self):
         events = Events(self._configs, self.dm, self.prom_man, filter_callback=self.filter, smdr_man=self.smdr_man)

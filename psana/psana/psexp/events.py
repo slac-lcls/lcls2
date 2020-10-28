@@ -24,7 +24,7 @@ class Events:
     def __next__(self):
         if self.flag_empty_smd_batch:
             raise StopIteration
-        
+
         if self.smdr_man:
             # RunSerial
             try:
@@ -48,19 +48,18 @@ class Events:
                 return next(self._evt_man) 
             except StopIteration: 
                 smd_batch = self.get_smd()
-
                 if smd_batch == bytearray():
                     self.flag_empty_smd_batch = True
                     raise StopIteration
-                else:
-                    self.c_read.labels('batches','None').inc()
-                    self._evt_man = EventManager(smd_batch, 
-                            self.configs, 
-                            self.dm, 
-                            filter_fn           = self.filter_callback,
-                            prometheus_counter  = self.c_read)
-                    evt = next(self._evt_man)
-                    return evt
+
+                self.c_read.labels('batches','None').inc()
+                self._evt_man = EventManager(smd_batch, 
+                        self.configs, 
+                        self.dm, 
+                        filter_fn           = self.filter_callback,
+                        prometheus_counter  = self.c_read)
+                evt = next(self._evt_man)
+                return evt
         else: 
             # RunSingleFile or RunShmem - get event from DgramManager
             return next(self.dm) 

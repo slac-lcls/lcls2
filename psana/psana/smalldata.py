@@ -319,9 +319,7 @@ class Server: # (hdf5 handling)
 
 class SmallData: # (client)
 
-    def __init__(self, server_group=None, client_group=None, 
-                 filename=None, batch_size=10000, cache_size=None,
-                 callbacks=[]):
+    def __init__(self, server_group=None, client_group=None):
         """
         Parameters
         ----------
@@ -330,7 +328,19 @@ class SmallData: # (client)
 
         client_group : MPI.Group
             The MPI group to allocate to client processes
+        """
+        if MODE == 'PARALLEL':
 
+            self._server_group = server_group
+            self._client_group = client_group
+
+            self._comm_partition()
+
+    def setup_parms(self, filename=None, batch_size=10000, cache_size=None,
+                 callbacks=[]):
+        """
+        Parameters
+        ----------
         filename : str
             The file path of the (new) HDF5 file to write data to,
             will be overwritten if it exits -- if "None", data
@@ -370,9 +380,6 @@ class SmallData: # (client)
 
         if MODE == 'PARALLEL':
 
-            self._server_group = server_group
-            self._client_group = client_group
-
             # hide intermediate files -- join later via VDS
             if filename is not None:
                 self._srv_filename = _format_srv_filename(self._dirname,
@@ -381,7 +388,6 @@ class SmallData: # (client)
             else:
                 self._srv_filename = None
 
-            self._comm_partition()
             if self._type == 'server':
                 self._server = Server(filename=self._srv_filename, 
                                       smdcomm=self._srvcomm, 

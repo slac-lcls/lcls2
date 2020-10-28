@@ -6,7 +6,6 @@ import numpy as np
 import pathlib
 
 from psana.dgrammanager import DgramManager
-from psana.smalldata import SmallData
 
 from psana.psexp import PrometheusManager
 import threading
@@ -144,7 +143,8 @@ class DataSourceBase(abc.ABC):
 
 
     def smalldata(self, **kwargs):
-        return SmallData(**self.smalldata_kwargs, **kwargs)
+        self.smalldata_obj.setup_parms(**kwargs)
+        return self.smalldata_obj
 
     def _start_prometheus_client(self, mpi_rank=0):
         if not self.monitor:

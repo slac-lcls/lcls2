@@ -5,6 +5,7 @@ from mpi4py import MPI
 from psana.psexp import *
 from psana import dgram
 from psana.dgrammanager import DgramManager
+from psana.smalldata import SmallData
 import logging
 import time
 
@@ -36,7 +37,8 @@ class RunParallel(Run):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
                 self.esm.update_by_event(evt)
-                if evt.service() == TransitionId.EndRun: return
+                if evt.service() == TransitionId.EndRun: 
+                    return
                 continue
             st = time.time()
             yield evt
@@ -50,6 +52,16 @@ class RunParallel(Run):
             if evt.service() == TransitionId.BeginStep:
                 yield Step(evt, self._evt_iter, self.esm)
     
+class NullRun(object):
+    def __init__(self):
+        self.expt = None
+        self.runnum = None
+    def Detector(self, *args):
+        return None
+    def events(self):
+        return iter([])
+    def steps(self):
+        return iter([])
 
 class MPIDataSource(DataSourceBase):
 
@@ -121,32 +133,47 @@ class MPIDataSource(DataSourceBase):
                 raise(InvalidEventBuilderCores("Invalid no. of eventbuilder cores: %d. There must be only one eventbuilder core when destionation callback is set."%(nsmds)))
 
         
-        self._start_prometheus_client(mpi_rank=rank)
+        # prepare comms for running SmallData
+        PS_SRV_NODES = int(os.environ.get('PS_SRV_NODES', 0))
+        if PS_SRV_NODES > 0:
+            self.smalldata_obj = SmallData(**self.smalldata_kwargs)
+        else:
+            self.smalldata_obj = None
 
-    def runs(self):
-        events = self.run_node()
-        for evt in events:
-            logging.debug(f"mpi_ds.py: rank {self.comms.psana_comm.Get_rank()} got evt.service={evt.service()}")
-            if evt.service() == TransitionId.BeginRun:
-                run = RunParallel(self.comms, evt, events, self._configs, self.dsparms)
-                yield run 
+        self._start_prometheus_client(mpi_rank=rank)
         
-        self._end_prometheus_client()
-        
-        if self.comms.psana_comm.Get_rank() == 0:
+        if self.comms._nodetype == 'smd0':
+            smd0 = Smd0(self.comms, self._configs, self.smdr_man)
+            smd0.run_mpi()
             for smd_fd in self.smd_fds:
                 os.close(smd_fd)
-
-    def run_node(self):
-        if self.comms._nodetype == 'smd0':
-            Smd0(self.comms, self._configs, self.smdr_man)
         elif self.comms._nodetype == 'eb':
             eb_node = EventBuilderNode(self.comms, self._configs, self.dsparms)
             eb_node.run_mpi()
         elif self.comms._nodetype == 'bd':
-            bd_node = BigDataNode(self.comms, self._configs, self.dsparms, self.dm)
-            for evt in bd_node.run_mpi():
-                yield evt
-        elif self.comms._nodetype == 'srv':
-            # tell the iterator to do nothing
-            return
+            self.bd_node = BigDataNode(self.comms, self._configs, self.dsparms, self.dm)
+            self.events  = Events(self._configs, self.dm, self.dsparms.prom_man, 
+                                  filter_callback = self.dsparms.filter, 
+                                  get_smd         = self.bd_node.get_smd)
+
+    def __del__(self):
+        self._end_prometheus_client(mpi_rank=self.comms.psana_comm.Get_rank())
+
+    def runs(self):
+        if self.comms._nodetype == 'bd': 
+            for evt in self.events:
+                if evt.service() == TransitionId.BeginRun:
+                    for calib_const in self.bd_node.calib_store:
+                        for key, _ in calib_const.items():
+                            det_name = key
+                            break
+                        runnum = calib_const[det_name]['pedestals'][1]['run']
+                        if evt._dgrams[0].runinfo[0].runinfo.runnum == runnum:
+                            self.dsparms.calibconst = calib_const
+                            break
+                    run = RunParallel(self.comms, evt, self.events, self._configs, self.dsparms)
+                    yield run 
+        else:
+            run = NullRun()
+            yield run
+

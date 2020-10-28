@@ -41,20 +41,19 @@ for run in ds.runs():
 
     # Environment values are accessed also through detector interface
     edet = run.Detector('HX2:DVD:GCC:01:PMON')
-    assert edet.dtype == float
     sdet = run.Detector('motor2')
-    assert sdet.dtype == float
 
     for evt in run.events():
         padarray = vals.padarray
         # 4 segments, two per file
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
+        assert edet.dtype == float
+        assert sdet.dtype == float
         assert edet(evt) is None or edet(evt) == 41.0
         assert sdet(evt) == 42.0
-
-    assert run.expt == 'xpptut15' # this is from xtc file
-    assert run.runnum == 14
-    assert run.timestamp == 4294967297
+        assert run.expt == 'xpptut15' # this is from xtc file
+        assert run.runnum == 14
+        assert run.timestamp == 4294967297
     #endRunCode
 #endJobCode
 
