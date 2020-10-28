@@ -6,14 +6,27 @@ import numpy as np
 import pathlib
 
 from psana.dgrammanager import DgramManager
-from psana.smalldata import SmallData
 
 from psana.psexp import PrometheusManager
 import threading
 import logging
+from psana import dgram
 
-class InvalidFileType(Exception): pass
+from psana.detector import detectors
+
 class XtcFileNotFound(Exception): pass
+class InvalidDataSourceArgument(Exception): pass
+
+class DsParms(object):
+    def __init__(self, batch_size=1, max_events=0, filter=0, destination=0, prom_man=None):
+        self.batch_size  = batch_size
+        self.max_events  = max_events
+        self.filter      = filter
+        self.destination = destination 
+        self.prom_man    = prom_man
+
+    def set_det_class_table(self, det_classes, xtc_info, det_info_table):
+        self.det_classes, self.xtc_info, self.det_info_table = det_classes, xtc_info, det_info_table
 
 class DataSourceBase(abc.ABC):
     filter      = 0         # callback that takes an evt and return True/False.
@@ -24,11 +37,10 @@ class DataSourceBase(abc.ABC):
     run_num     = -1        # run no. 
     live        = False     # turns live mode on/off 
     dir         = None      # manual entry for path to xtc files
-    files       = None      # list of xtc files 
+    files        = None      # xtc2 file path
     shmem       = None
-    run_dict    = {}
     destination = 0         # callback that returns rank no. (used by EventBuilder)
-    monitor     = False      # turns prometheus monitoring client of/off
+    monitor     = False     # turns prometheus monitoring client of/off
 
     def __init__(self, **kwargs):
         """Initializes datasource base"""
@@ -52,6 +64,9 @@ class DataSourceBase(abc.ABC):
                 if k in kwargs:
                     setattr(self, k, kwargs[k])
 
+            if self.destination != 0:
+                self.batch_size = 1 # reset batch_size to prevent L1 transmitted before BeginRun (FIXME?: Mona)
+
             if 'run' in kwargs:
                 setattr(self, 'run_num', int(kwargs['run']))
 
@@ -63,6 +78,7 @@ class DataSourceBase(abc.ABC):
         assert self.batch_size > 0
         
         self.prom_man = PrometheusManager(os.environ['PS_PROMETHEUS_JOBID'])
+        self.dsparms  = DsParms(self.batch_size, self.max_events, self.filter, self.destination, self.prom_man) 
 
     @abc.abstractmethod
     def runs(self):
@@ -71,90 +87,64 @@ class DataSourceBase(abc.ABC):
     # to be added at a later date...
     #@abc.abstractmethod
     #def steps(self):
-    #    return
+    #    retur
     
+    def _get_run_files(self, run_num):
+        smd_dir = os.path.join(self.xtc_path, 'smalldata')
+        smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(run_num).zfill(4))))
+            
+        xtc_files = [os.path.join(self.xtc_path, \
+                     os.path.basename(smd_file).split('.smd')[0] + '.xtc2') \
+                     for smd_file in smd_files \
+                     if os.path.isfile(os.path.join(self.xtc_path, \
+                     os.path.basename(smd_file).split('.smd')[0] + '.xtc2'))]
+        return smd_files, xtc_files
+
     def _setup_xtcs(self):
-        exp = None
-        run_dict = {} # stores list of runs with corresponding xtc_files, smd_files, and epic file
+        """
+        DataSource accepts:
+        - exp
+        - exp, run
+        - files
+        - shmem
+
+        This returns first starting xtc2 file. 
+        - exp:      returns smallest run no. xtc2 file
+        - exp, run: returns xtc2 file of this run
+        - files:     returns files
+        """
 
         if self.shmem:
             self.tag = self.shmem
-            run_dict[-1] = (['shmem'], None, None)
-            return exp, run_dict
+            return
 
-        # Reading xtc files in one of these two ways
-        assert self.exp != self.files
-        
-        read_exp = False
         if self.exp:
-            read_exp = True
-        elif self.files:
-            if isinstance(self.files, (str)):
-                f = pathlib.Path(self.files)
-                if not f.exists():
-                    err = f"File {self.files} not found" 
-                    raise XtcFileNotFound(err)
-                xtc_files = [self.files]
-            elif isinstance(self.files, (list, np.ndarray)):
-                for xtc_file in self.files:
-                    f = pathlib.Path(xtc_file)
-                    if not f.exists():
-                        err = f"File {xtc_file} not found"
-                        raise XtcFileNotFound(err)
-                xtc_files = self.files
-            else:
-                raise InvalidFileType("Only accept filename string or list of files.")
-
-            # In case of reading file(s), user negative integers for the index.
-            # If files is a list, separate each file to an individual run.
-            for num, xtc_file in enumerate(xtc_files):
-                run_dict[-1*(num+1)] = ([xtc_file], None, None)
-
-        # Reads list of xtc files from experiment folder
-        if read_exp:
             if self.dir:
-                xtc_path = self.dir
+                self.xtc_path = self.dir
             else:
                 xtc_dir = os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm')
-                xtc_path = os.path.join(xtc_dir, self.exp[:3], self.exp, 'xtc')
-
-            # Get a list of runs (or just one run if user specifies it) then
-            # setup corresponding xtc_files and smd_files for each run in run_dict
-            run_list = []
-            if self.run_num > -1:
-                run_list = [self.run_num]
-            else:
+                self.xtc_path = os.path.join(xtc_dir, self.exp[:3], self.exp, 'xtc')
+            
+            if self.run_num == -1:
                 run_list = [int(os.path.splitext(os.path.basename(_dummy))[0].split('-r')[1].split('-')[0]) \
-                        for _dummy in glob.glob(os.path.join(xtc_path, '*-r*.xtc2'))]
+                        for _dummy in glob.glob(os.path.join(self.xtc_path, '*-r*.xtc2'))]
+                assert run_list
                 run_list.sort()
+                self.run_num = run_list[0]
+            self.smd_files, self.xtc_files = self._get_run_files(self.run_num)
 
-            smd_dir = os.path.join(xtc_path, 'smalldata')
-            for r in run_list:
-                all_smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(r).zfill(4))))
-                if self.detectors:
-                    # Create a dgrammanager to access the configs. This will be
-                    # done on only core 0.
-                    s1 = set(self.detectors)
-                    smd_dm = DgramManager(all_smd_files)
-                    smd_files = [all_smd_files[i] for i in range(len(all_smd_files)) \
-                                if s1.intersection(set(smd_dm.configs[i].__dict__.keys()))]
-                else:
-                    smd_files = all_smd_files
-                    
-                xtc_files = [os.path.join(xtc_path, \
-                             os.path.basename(smd_file).split('.smd')[0] + '.xtc2') \
-                             for smd_file in smd_files \
-                             if os.path.isfile(os.path.join(xtc_path, \
-                             os.path.basename(smd_file).split('.smd')[0] + '.xtc2'))]
-                all_files = glob.glob(os.path.join(xtc_path, '*r%s-*.xtc2'%(str(r).zfill(4))))
-                other_files = [f for f in all_files if f not in xtc_files]
-                run_dict[r] = (xtc_files, smd_files, other_files)
-        
-        return self.exp, run_dict
+        elif self.files:
+            f = pathlib.Path(self.files)
+            if not f.exists():
+                err = f"File {self.files} not found" 
+                raise XtcFileNotFound(err)
+        else:
+            raise InvalidDataSourceArgument("Missing exp or files input")
 
 
     def smalldata(self, **kwargs):
-        return SmallData(**self.smalldata_kwargs, **kwargs)
+        self.smalldata_obj.setup_parms(**kwargs)
+        return self.smalldata_obj
 
     def _start_prometheus_client(self, mpi_rank=0):
         if not self.monitor:
@@ -174,4 +164,107 @@ class DataSourceBase(abc.ABC):
 
         logging.debug('END PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
         self.e.set()
+    
+    def _setup_det_class_table(self):
+        """
+        this function gets the version number for a (det, drp_class) combo
+        maps (dettype,software,version) to associated python class and
+        detector info for a det_name maps to dettype, detid tuple.
+        """
+        det_classes = {'epics': {}, 'scan': {}, 'normal': {}}
 
+        xtc_info = []
+        det_info_table = {}
+
+        # loop over the dgrams in the configuration
+        # if a detector/drp_class combo exists in two cfg dgrams
+        # it will be OK... they should give the same final Detector class
+
+        for cfg_dgram in self._configs:
+            for det_name, det_dict in cfg_dgram.software.__dict__.items():
+                # go find the class of the first segment in the dict
+                # they should all be identical
+                first_key = next(iter(det_dict.keys()))
+                det = det_dict[first_key]
+
+                if det_name not in det_classes:
+                    det_class_table = det_classes['normal']
+                else:
+                    det_class_table = det_classes[det_name]
+
+
+                dettype, detid = (None, None)
+                for drp_class_name, drp_class in det.__dict__.items():
+
+                    # collect detname maps to dettype and detid
+                    if drp_class_name == 'dettype':
+                        dettype = drp_class
+                        continue
+
+                    if drp_class_name == 'detid':
+                        detid = drp_class
+                        continue
+
+                    # FIXME: we want to skip '_'-prefixed drp_classes
+                    #        but this needs to be fixed upstream
+                    if drp_class_name.startswith('_'): continue
+
+                    # use this info to look up the desired Detector class
+                    versionstring = [str(v) for v in drp_class.version]
+                    class_name = '_'.join([det.dettype, drp_class.software] + versionstring)
+                    xtc_entry = (det_name,det.dettype,drp_class_name,'_'.join(versionstring))
+                    if xtc_entry not in xtc_info:
+                        xtc_info.append(xtc_entry)
+                    if hasattr(detectors, class_name):
+                        DetectorClass = getattr(detectors, class_name) # return the class object
+                        det_class_table[(det_name, drp_class_name)] = DetectorClass
+                    else:
+                        pass
+
+                det_info_table[det_name] = (dettype, detid)
+
+        self.dsparms.set_det_class_table(det_classes, xtc_info, det_info_table)
+
+    def _set_configinfo(self):
+        """ From configs, we generate a dictionary lookup with det_name as a key.
+        The information stored the value field contains:
+        
+        - configs specific to that detector
+        - sorted_segment_ids
+          used by Detector cls for checking if an event has correct no. of segments
+        - detid_dict
+          has segment_id as a key
+        - dettype
+        - uniqueid
+        """
+        self.dsparms.configinfo_dict = {}
+
+        for _, det_class in self.dsparms.det_classes.items(): # det_class is either normal or envstore
+            for (det_name, _), _ in det_class.items():
+                # Create a copy of list of configs for this detector
+                det_configs = [dgram.Dgram(view=config) for config in self._configs \
+                        if hasattr(config.software, det_name)]
+                sorted_segment_ids = []
+                # a dictionary of the ids (a.k.a. serial-number) of each segment
+                detid_dict = {}
+                dettype = ""
+                uniqueid = ""
+                for config in det_configs:
+                    seg_dict = getattr(config.software, det_name)
+                    sorted_segment_ids += list(seg_dict.keys())
+                    for segment, det in seg_dict.items():
+                        detid_dict[segment] = det.detid
+                        dettype = det.dettype
+                
+                sorted_segment_ids.sort()
+                
+                uniqueid = dettype
+                for segid in sorted_segment_ids:
+                    uniqueid += '_'+detid_dict[segid]
+
+                self.dsparms.configinfo_dict[det_name] = type("ConfigInfo", (), {\
+                        "configs": det_configs, \
+                        "sorted_segment_ids": sorted_segment_ids, \
+                        "detid_dict": detid_dict, \
+                        "dettype": dettype, \
+                        "uniqueid": uniqueid})

@@ -50,3 +50,4 @@ class Test:
         # should be 64 but hope for 2
         assert nevents >= 2,'incorrect number of l1accepts. found/expected: '+str(nevents)+'/'+str(dgram_count)
         srv.wait()
+

@@ -27,8 +27,12 @@ cdef class ParallelReader:
     cdef Buffer     *bufs
     cdef Buffer     *step_bufs
     cdef unsigned   L1Accept
+    cdef unsigned   BeginRun 
     cdef uint64_t   got                  # summing the size of new reads used by prometheus
     cdef uint64_t   chunk_overflown
+    cdef char*      beginrun_buf
+    cdef uint64_t   beginrun_offset
+    cdef unsigned   n_beginruns
 
     cdef void _init_buffers(self)
     cdef void _reset_buffers(self, Buffer* bufs)

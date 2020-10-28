@@ -14,5 +14,5 @@ from .ds_base import XtcFileNotFound
 from . import legion_node
 from .ds_base import DataSourceBase
 from .run import Run, RunShmem, RunSingleFile, RunLegion, RunSerial
-from .node import Smd0, SmdNode, BigDataNode
+from .node import Smd0, EventBuilderNode, BigDataNode
 from .step import Step

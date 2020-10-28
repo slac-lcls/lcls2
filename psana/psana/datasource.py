@@ -77,7 +77,7 @@ def DataSource(*args, **kwargs):
                                     'client_group' : comms.bd_group()}
                 kwargs['smalldata_kwargs'] = smalldata_kwargs
 
-                if comms._nodetype in ['smd0', 'smd', 'bd']:
+                if comms._nodetype in ['smd0', 'eb', 'bd']:
                     return MPIDataSource(comms, *args, **kwargs)
                 else:
                     return NullDataSource(*args, **kwargs)
@@ -92,7 +92,7 @@ def DataSource(*args, **kwargs):
             raise InvalidDataSource("Incorrect mode. DataSource mode only supports either mpi, legion, or none (non parallel mode).")
     
     # ==== from XTC file(s) ====
-    elif 'files' in kwargs: # list of files
+    elif 'files' in kwargs: # an xtc file
         return SingleFileDataSource(*args, **kwargs)
 
 

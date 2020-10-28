@@ -15,6 +15,9 @@ def global_except_hook(exctype, value, traceback):
     sys.__excepthook__(exctype, value, traceback)
 sys.excepthook = global_except_hook
 
+#import logging
+#logging.basicConfig(level=logging.DEBUG, format='(%(threadName)-10s) %(message)s',)
+
 import os
 from psana import DataSource
 import numpy as np
@@ -42,7 +45,6 @@ def test_standard():
         det = run.Detector('xppcspad')
         edet = run.Detector('HX2:DVD:GCC:01:PMON')
         infodet = run.Detector('epicsinfo')
-        assert 'HX2:DVD:GCC:01:PMON' in infodet.epicsinfo()
         for evt in run.events():
             sendbuf += 1
             padarray = vals.padarray
@@ -170,5 +172,6 @@ if __name__ == "__main__":
     test_no_bigdata()
     test_step()
     test_select_detectors()
-    test_callback(1)
-    test_callback(5)
+    if size >= 3:
+        test_callback(1)
+        test_callback(5)
