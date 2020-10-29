@@ -48,7 +48,8 @@ target_link_libraries(drp
 )
 
 add_executable(drp_bld
-    BldDetector.cc
+#    BldDetector.cc
+    BldDetectorSlow.cc
 )
 
 target_link_libraries(drp_bld

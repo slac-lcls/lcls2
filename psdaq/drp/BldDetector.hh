@@ -38,6 +38,7 @@ public:
     uint64_t next       ();
     uint8_t* payload    () const { return m_payload; }
     unsigned payloadSize() const { return m_payloadSize; }
+    unsigned fd         () const { return m_sockfd; }
 private:
     uint64_t headerTimestamp  () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_timestampPos) - m_timestampCorr;}
     unsigned m_timestampPos;
@@ -96,7 +97,7 @@ class Pgp
 public:
     Pgp(Parameters& para, DrpBase& drp, Detector* det);
 
-    Pds::EbDgram* next(uint64_t timestamp, uint32_t& evtIndex, uint64_t& bytes);
+    Pds::EbDgram* next(uint32_t& evtIndex, uint64_t& bytes);
     void worker(std::shared_ptr<Pds::MetricExporter> exporter);
     void shutdown();
 private:

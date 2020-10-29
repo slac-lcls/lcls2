@@ -1,5 +1,7 @@
 #import bitstruct
 import numpy as np
+import typing
+import amitypes
 from collections import namedtuple
 from psana.detector.detector_impl import DetectorImpl
 
@@ -100,7 +102,11 @@ class ts_ts_0_0_1(DetectorImpl):
     def __init__(self, *args):
         super(ts_ts_0_0_1, self).__init__(*args)
 
-        self._add_fields()
+        #self._add_fields()
+
+    def eventcodes(self,evt) -> amitypes.Array1d:
+        seqV = self._info(evt).sequenceValues
+        return [float((seqV[i>>4]>>(i&0xf))&1) for i in range(256)]
 
     def l1fid(self,evt) -> int:
         return self._info(evt).timeStamp&0x1ffff

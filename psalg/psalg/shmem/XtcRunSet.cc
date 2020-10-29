@@ -185,10 +185,11 @@ void XtcRunSet::addPathsFromDir(string dirPath, string matchString) {
   struct dirent *dirp;
   while ((dirp = readdir(dp)) != NULL) {
     if (strstr(dirp->d_name, ".xtc")) {
-      cout << "dirp->d_name = [" << dirp->d_name << "]" << endl;
+      // cout << "dirp->d_name = [" << dirp->d_name << "]" << endl;
       string path = (dirPath == "" ? dirp->d_name : (dirPath + "/" + dirp->d_name));
-      cout << "path = [" << path << "]" << endl;
+      // cout << "path = [" << path << "]" << endl;
       if (matchString.empty() || (path.find(matchString) != string::npos)) {
+        cout << "path = [" << path << "]" << endl;
         newPaths.push_back(path);
       }
     }
