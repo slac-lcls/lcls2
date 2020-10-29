@@ -1431,6 +1431,10 @@ class CollectionManager():
         if 'drp' in active_state:
             for i, node in enumerate(active_state['drp']):
                 self.cmstate['drp'][node]['drp_id'] = i
+        else:
+            self.report_error('at least one DRP is required')
+            logging.debug('condition_alloc() returning False')
+            return False
 
         # assign the readout groups bitmask
         self.groups = get_readout_group_mask(active_state)
