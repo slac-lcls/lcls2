@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 #from psana.detector.epix10k import DetectorImpl
 
 from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
-#----------
+#----
 
 fname0 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2'
 fname1 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005-seg1and3.xtc2'
 
-#----------
+#----
 
 def print_det_raw_attrs(det):
     print('dir(det):', dir(det))
@@ -40,7 +40,7 @@ def print_det_raw_attrs(det):
     print('r.raw:', r.raw)
     #print('r.dtype:', r.dtype)
 
-#----------
+#----
 
 def test_raw(fname, args):
     logger.info('in test_raw data from file:\n  %s' % fname)
@@ -97,7 +97,7 @@ def test_raw(fname, args):
             print(segment,panel.shape)
     print(50*'-')
 
-#----------
+#----
 
 if __name__ == "__main__":
 
@@ -139,5 +139,5 @@ if __name__ == "__main__":
 
     sys.exit('END OF %s' % SCRNAME)
 
-#----------
+#----
 

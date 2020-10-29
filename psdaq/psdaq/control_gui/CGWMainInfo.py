@@ -88,8 +88,9 @@ class CGWMainInfo(QGroupBox):
 
 
     def update_info(self):
-        run_number = cp.s_run_number if cp.s_recording else cp.s_last_run_number
-        self.lab_run.setText('run' if cp.s_recording else 'last run')
+        cond = cp.s_recording and cp.s_state in ('starting', 'paused', 'running')
+        run_number = cp.s_run_number if cond else cp.s_last_run_number
+        self.lab_run.setText('run' if cond else 'last run')
         self.edi_run.setText(str(run_number))
         self.edi_exp.setText(str(cp.s_experiment_name))
 
