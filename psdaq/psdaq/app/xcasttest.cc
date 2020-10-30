@@ -22,7 +22,7 @@
 
 static void usage(const char* p)
 {
-  printf("Usage: %p [options]\n",p);
+  printf("Usage: %s [options]\n",p);
   printf("\t-i\tNetwork interface: name or address\n");
   printf("\t-a\tDestination address, dotted notation\n");
   printf("\t-p\tDestination port\n");
