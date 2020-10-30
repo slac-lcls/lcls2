@@ -61,10 +61,18 @@ class DgramManager(object):
                     view = self.shmem_cli.get(self.shmem_kwargs)
                     assert view
                     # Release shmem buffer after copying Transition data
-                    if _service(view) != TransitionId.L1Accept:
-                        barray = bytes(view[:_dgSize(view)])
-                        self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
-                        view = memoryview(barray)
+                    #if _service(view) != TransitionId.L1Accept:
+                    # cpo: copy L1Accepts too because some shmem
+                    # applications like AMI's pickN can hold references
+                    # to dgrams for a long time, consuming the shmem buffers
+                    # and creating a deadlock situation. could revisit this
+                    # later and only deep-copy arrays inside pickN, for example
+                    # but would be more fragile.  Also, without this copy
+                    # we are seeing arrays get corrupted when held onto
+                    # by pickN for a long time (cpo needs to understand this)
+                    barray = bytes(view[:_dgSize(view)])
+                    self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
+                    view = memoryview(barray)
                     d = dgram.Dgram(view=view, \
                                     shmem_index=self.shmem_kwargs['index'], \
                                     shmem_size=self.shmem_kwargs['size'], \
@@ -103,10 +111,18 @@ class DgramManager(object):
             view = self.shmem_cli.get(self.shmem_kwargs)
             if view:
                 # Release shmem buffer after copying Transition data
-                if _service(view) != TransitionId.L1Accept:
-                    barray = bytes(view[:_dgSize(view)])
-                    self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
-                    view = memoryview(barray)
+                #if _service(view) != TransitionId.L1Accept:
+                # cpo: copy L1Accepts too because some shmem
+                # applications like AMI's pickN can hold references
+                # to dgrams for a long time, consuming the shmem buffers
+                # and creating a deadlock situation. could revisit this
+                # later and only deep-copy arrays inside pickN, for example
+                # but would be more fragile.  Also, without this copy
+                # we are seeing arrays get corrupted when held onto
+                # by pickN for a long time (cpo needs to understand this)
+                barray = bytes(view[:_dgSize(view)])
+                self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
+                view = memoryview(barray)
                 # use the most recent configure datagram
                 config = self.configs[len(self.configs)-1]
                 d = dgram.Dgram(config=config,view=view, \
