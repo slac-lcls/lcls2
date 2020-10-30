@@ -101,19 +101,18 @@ class ts_ts_1_2_3(DetectorImpl):
 class ts_ts_0_0_1(DetectorImpl):
     def __init__(self, *args):
         super(ts_ts_0_0_1, self).__init__(*args)
-
         #self._add_fields()
 
     def eventcodes(self,evt) -> amitypes.Array1d:
         seqV = self._info(evt).sequenceValues
-        return [float((seqV[i>>4]>>(i&0xf))&1) for i in range(256)]
+        return [int((seqV[i>>4]>>(i&0xf))&1) for i in range(256)]
 
-    def l1fid(self,evt) -> int:
-        return self._info(evt).timeStamp&0x1ffff
+    #def l1fid(self,evt) -> int:
+    #    return self._info(evt).timeStamp&0x1ffff
 
-    def seconds(self,evt) -> float:
-        ts = self._info(evt).timeStamp
-        return float(ts>>32) + float(ts&0xffffffff)*1.e-9
+    #def seconds(self,evt) -> float:
+    #    ts = self._info(evt).timeStamp
+    #    return float(ts>>32) + float(ts&0xffffffff)*1.e-9
 
     def _info(self,evt):
         # check for missing data
