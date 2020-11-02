@@ -71,6 +71,13 @@ class Run(object):
         default: (when no run is given) is set to -1"""
         return self.run_no
     
+    def _check_empty_calibconst(self, det_name):
+        # Some detectors do not have calibration constant - set default value to None
+        if not hasattr(self.dsparms, 'calibconst'):
+            self.dsparms.calibconst = {det_name: None}
+        else:
+            if det_name not in self.dsparms.calibconst:
+                self.dsparms.calibconst[det_name]  = None
 
     def Detector(self, name, accept_missing=False):
         if name not in self.dsparms.configinfo_dict and self.esm.env_from_variable(name) is None:
@@ -98,6 +105,8 @@ class Run(object):
                     env_store = self.esm.stores[det_name]
                     setattr(det, "step", StepEvent(env_store))
 
+                self._check_empty_calibconst(det_name)
+
                 setattr(det,drp_class_name,drp_class(det_name, drp_class_name, self.dsparms.configinfo_dict[det_name], self.dsparms.calibconst[det_name], env_store, var_name))
                 setattr(det,'_configs', self.configs)
                 setattr(det,'calibconst', self.dsparms.calibconst[det_name])
@@ -122,13 +131,8 @@ class Run(object):
                 det_class_table = self.dsparms.det_classes[det_name]
                 drp_class = det_class_table[(det_name, drp_class_name)]
 
-                # Some detectors do not have calibration constant - set default value to None
-                if not hasattr(self.dsparms, 'calibconst'):
-                    self.dsparms.calibconst = {det_name: None}
-                else:
-                    if det_name not in self.dsparms.calibconst:
-                        self.dsparms.calibconst[det_name]  = None
-
+                self._check_empty_calibconst(det_name)
+                
                 det = drp_class(det_name, drp_class_name, self.dsparms.configinfo_dict[det_name], self.dsparms.calibconst[det_name], self.esm.stores[env_name], var_name)
                 setattr(det, '_det_name', det_name)
 
