@@ -32,16 +32,18 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2017-12-12 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-20
 """
-#------------------------------
+
 from PyQt5.QtWidgets import QGraphicsItem
 from PyQt5.QtGui import QFont, QPen, QBrush, QColor, QPainterPath
 from PyQt5.QtCore import Qt, QPointF, QPoint, QRectF
 
-from psana.graphqt.AxisLabeling import best_label_locs
-#------------------------------
+from AxisLabeling import best_label_locs
 
-class FWRuler() :
-    def __init__(self, view, side='U', **kwargs) :
+#----
+
+class FWRuler():
+
+    def __init__(self, view, side='U', **kwargs):
 
         self.view   = view
         self.scene  = self.view.scene()
@@ -79,46 +81,43 @@ class FWRuler() :
         self.add()
 
 
-    def set_pars(self) :
+    def set_pars(self):
         r = self.rect
         w,h = r.width(), r.height()
         v = self.view
-
-
-
         sv = 1 if v._origin_u else -1
         sh = 1 if v._origin_l else -1
         self.dtxt0 = QPointF(0, 0)
 
         #print('Scales sv, sh=', sv, sh)
 
-        if self.axside == 'D' :
-            if sv > 0 :
+        if self.axside == 'D':
+            if sv > 0:
               self.p1   = r.bottomLeft()
               self.p2   = r.bottomRight()
-            else :
+            else:
               self.p1   = r.topLeft()
               self.p2   = r.topRight()
             self.dt1  = QPointF(0, -sv*self.tick_fr * h)
             self.dtxt = QPointF(-0.5, -1)
             self.vort = self.p2.y()
 
-        elif self.axside == 'U' :
-            if sv > 0 :
+        elif self.axside == 'U':
+            if sv > 0:
               self.p1   = r.topLeft()
               self.p2   = r.topRight()
-            else :
+            else:
               self.p1   = r.bottomLeft()
               self.p2   = r.bottomRight()
             self.dt1  = QPointF(0, sv*self.tick_fr * h)
             self.dtxt = QPointF(-0.5, 0.1)
             self.vort = self.p1.y()
  
-        elif self.axside == 'L' :
-            if sh > 0 :
+        elif self.axside == 'L':
+            if sh > 0:
               self.p1   = r.topLeft()
               self.p2   = r.bottomLeft()
-            else :
+            else:
               self.p1   = r.topRight()
               self.p2   = r.bottomRight()
             self.dt1  = QPointF(sh*self.tick_fr * w, 0)
@@ -126,11 +125,11 @@ class FWRuler() :
             self.dtxt0 = QPointF(6, 0)
             self.vort = self.p1.x()
 
-        elif self.axside == 'R' : 
-            if sh > 0 :
+        elif self.axside == 'R': 
+            if sh > 0:
               self.p1   = r.topRight()
               self.p2   = r.bottomRight()
-            else :
+            else:
               self.p1   = r.topLeft()
               self.p2   = r.bottomLeft()
             self.dt1  = QPointF(-sh*self.tick_fr * w, 0)
@@ -140,13 +139,13 @@ class FWRuler() :
 
             #print('p1,p2, dt1, dtxt, vort', self.p1, self.p2, self.dt1, self.dtxt, self.vort)
 
-        else :
+        else:
             print('ERROR: non-defined axis side "%s". Use L, R, U, or D.' % str(self.axside))
 
 
-    def add(self) :
+    def add(self):
         # add ruller to the path of the scene
-        if self.path_item is not None : self.scene.removeItem(self.path_item)
+        if self.path_item is not None: self.scene.removeItem(self.path_item)
 
         self.path = QPainterPath(self.p1)
         #self.path.closeSubpath()
@@ -156,7 +155,7 @@ class FWRuler() :
         #print('self.p1', self.p1)
         #print('self.p2', self.p2)
 
-        for v in self.labels :
+        for v in self.labels:
             pv = QPointF(v, self.vort) if self.horiz else QPointF(self.vort, v)
             self.path.moveTo(pv)
             self.path.lineTo(pv+self.dt1)
@@ -174,7 +173,7 @@ class FWRuler() :
         r = self.rect
         w,h = r.width(), r.height()
         # add labels to scene 
-        for v in self.labels :
+        for v in self.labels:
             pv = QPointF(v, self.vort) if self.horiz else QPointF(self.vort, v)
             vstr = self.fmt%v
             txtitem = self.scene.addText(vstr, self.font)
@@ -203,8 +202,9 @@ class FWRuler() :
 
         #self.item_group = self.scene.createItemGroup(self.lst_of_items)
 
-    def remove(self) :
-        for item in self.lst_of_items :
+
+    def remove(self):
+        for item in self.lst_of_items:
             self.scene.removeItem(item)
         self.lst_of_items=[]
 
@@ -212,17 +212,18 @@ class FWRuler() :
         #self.scene.destroyItemGroup(self.item_group)
 
 
-    def update(self) :
+    def update(self):
         self.remove()
         self.set_pars()
         self.add()
 
 
-    def __del__(self) :
+    def __del__(self):
         self.remove()
 
-#-----------------------------
-if __name__ == "__main__" :
+#----
+
+if __name__ == "__main__":
 
     import sys
     from PyQt5.QtWidgets import QApplication, QGraphicsScene, QGraphicsView
@@ -254,8 +255,6 @@ if __name__ == "__main__" :
     v.show()
     app.exec_()
 
-    #s.clear()
-
     ruler1.remove()
     ruler2.remove()
     ruler3.remove()
@@ -263,4 +262,4 @@ if __name__ == "__main__" :
 
     del app
 
-#-----------------------------
+#----

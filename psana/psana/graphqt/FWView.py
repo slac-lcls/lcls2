@@ -1,4 +1,3 @@
-#------------------------------
 """
 Class :py:class:`FWView` is a QGraphicsView QWidget with interactive scalable scene
 =====================================================================================
@@ -98,7 +97,6 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2017-01-03 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-16
 """
-#------------------------------
 
 import logging
 logger = logging.getLogger(__name__)
@@ -107,11 +105,9 @@ from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QApplication
 from PyQt5.QtGui import QBrush, QPen, QCursor, QColor
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPointF, QTimer
 
-#from time import time, sleep       
-#t0_sec = time()
-#logger.debug('time = %.6f' % (time() - t0_sec))
+from QWGraphicsRectItem import QWGraphicsRectItem
 
-#------------------------------
+#----
 
 class FWView(QGraphicsView):
     #wheel_is_stopped = pyqtSignal()
@@ -205,7 +201,7 @@ class FWView(QGraphicsView):
     def set_style(self):
         self.setGeometry(20, 20, 600, 600)
         self.setWindowTitle("FWView")
-        #self.setContentsMargins(0,0,0,0)
+        #self.layout().setContentsMargins(0,0,0,0)
         #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         #self.setAttribute(Qt.WA_TranslucentBackground)
         #self.setInteractive(True)
@@ -386,7 +382,7 @@ class FWView(QGraphicsView):
         self.emit_signal_if_scene_rect_changed()
         #self.emit(QtCore.SIGNAL('wheel_is_stopped()'))
 
-#------------------------------
+#----
 
 #    def connect_wheel_is_stopped_to(self, recip):
 #        self.connect(self, QtCore.SIGNAL('wheel_is_stopped()'), recip)
@@ -397,7 +393,14 @@ class FWView(QGraphicsView):
 #    def test_wheel_is_stopped_reception(self):
 #        logger.debug('GUView.test_wheel_is_stopped_reception')
 
-#------------------------------
+#    def scale_drag_points(self):
+#        sx, sy = self.transform().m11(), self.transform().m22()
+#        print('scalex=%.3f, scaley=%.3f' %(sx, sy))
+#        from psana.graphqt.DragPoint import DragPoint 
+#        for item in self.scene().items():
+#            if isinstance(item, DragPoint):
+#                 item.setScale(item.sx0/sx)
+
 
     def emit_signal_if_scene_rect_changed(self):
         """Checks if scene rect have changed and submits signal with new rect.
@@ -410,26 +413,18 @@ class FWView(QGraphicsView):
             self.rs_old = rs
             #self.emit(QtCore.SIGNAL('scene_rect_changed(QRectF)'), rs)
             self.scene_rect_changed.emit(rs)
+            #self.scale_drag_points()
             
-#            self.scale_drag_points()
-            
-#    def scale_drag_points(self):
-#        sx, sy = self.transform().m11(), self.transform().m22()
-#        print('scalex=%.3f, scaley=%.3f' %(sx, sy))
-#        from psana.graphqt.DragPoint import DragPoint 
-#        for item in self.scene().items():
-#            if isinstance(item, DragPoint):
-#                 item.setScale(item.sx0/sx)
-
-#------------------------------
 
     def connect_scene_rect_changed_to(self, recip):
         #self.connect(self, QtCore.SIGNAL('scene_rect_changed(QRectF)'), recip)
         #self.scene_rect_changed('QRectF').connect(recip)
         self.scene_rect_changed.connect(recip)
+ 
 
     def disconnect_scene_rect_changed_from(self, recip):
         self.scene_rect_changed.disconnect(recip)
+
 
     def test_scene_rect_changed_reception(self, rs):
         #from psana.graphqt.QWUtils import print_rect
@@ -437,7 +432,6 @@ class FWView(QGraphicsView):
         #logger.debug('GUView.test_scene_rect_changed_reception:', rs)
         print_rect(rs, cmt='FWView.test_scene_rect_changed_reception')
 
-#------------------------------
 
     def enterEvent(self, e):
     #    logger.debug('enterEvent')
@@ -465,7 +459,6 @@ class FWView(QGraphicsView):
     #    logger.debug('moveEvent')
     #    logger.debug('Geometry rect:', self.geometry())
 
-#-----------------------------
 
     def add_rect_to_scene_v1(self, rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine)):
         """Adds rect to scene, returns QGraphicsRectItem"""
@@ -475,11 +468,7 @@ class FWView(QGraphicsView):
 
     def add_rect_to_scene(self, rect, brush=QBrush(), pen=QPen(Qt.yellow, 4, Qt.DashLine)):
         """Adds rect to scene, returns QWGraphicsRectItem - for interactive stuff"""
-
         #logger.debug('XXX:QWGraphicsRectItem TBD')
-
-        #from psana.graphqt.QWGraphicsRectItem import QWGraphicsRectItem
-        from QWGraphicsRectItem import QWGraphicsRectItem
         pen.setCosmetic(True)
         item = QWGraphicsRectItem(rect, parent=None, scene=self.scene())
         item.setPen(pen)
@@ -497,33 +486,34 @@ class FWView(QGraphicsView):
             ror=QRectF(-1, -1, 2, 2)
             self.rori = self.add_rect_to_scene_v1(ror, pen=QPen(colori, 0, Qt.SolidLine), brush=QBrush(colori))
 
-#------------------------------
 
     def connect_mouse_press_event_to(self, recip):
         self.mouse_press_event.connect(recip)
 
+
     def disconnect_mouse_press_event_from(self, recip):
         self.mouse_press_event.disconnect(recip)
+
 
     def test_mouse_press_event_reception(self, e):
         print('FWViewImage.mouse_press_event, QMouseEvent point: x=%d y=%d' % (e.x(), e.y()))
 
-#-----------------------------
 
     def connect_mouse_move_event_to(self, recip):
         #self.connect(self, QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), recip)
         self.mouse_move_event['QMouseEvent'].connect(recip)
 
+
     def disconnect_mouse_move_event_from(self, recip):
         #self.disconnect(self, QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), recip)
         self.mouse_move_event['QMouseEvent'].disconnect(recip)
+
 
     def test_mouse_move_event_reception(self, e):
         #logger.debug('mouseMoveEvent, current point: ', e.x(), e.y(), ' on scene: %.1f  %.1f' % (p.x(), p.y()))
         p = self.mapToScene(e.pos())
         self.setWindowTitle('FWView: x=%.1f y=%.1f %s' % (p.x(), p.y(), 25*' '))
 
-#-----------------------------
 
     def resizeEvent(self, e):
         QGraphicsView.resizeEvent(self, e)
@@ -534,6 +524,12 @@ class FWView(QGraphicsView):
     #def paintEvent(self, e):
     #    logger.debug('paintEvent')  
     #    QGraphicsView.paintEvent(self, e)
+
+
+    #def drawBackground(self, painter, rect):
+        #painter.fillRect(rect, QBrush(QColor(0,0,0), Qt.SolidPattern))
+
+#----
 
     if __name__ == "__main__":
 
@@ -566,21 +562,24 @@ class FWView(QGraphicsView):
         else:
             print(self.key_usage())
 
-#-----------------------------
+#----
 
-    #def drawBackground(self, painter, rect):
-        #painter.fillRect(rect, QBrush(QColor(0,0,0), Qt.SolidPattern))
-
-#-----------------------------
-#-----------------------------
-#-----------------------------
 if __name__ == "__main__":
+
+  logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
+
   import sys
-  sys.path.append('..')
-  print('sys.path:',sys.path)
-  #import NDArrGenerators as ag; global ag
-  import pyalgos.generic.NDArrGenerators as ag; global ag
-  import numpy as np; global np
+  sys.path.append('..') # use relative path from parent dir
+  logger.debug('sys.path: %s'%str(sys.path))
+  import psana.pyalgos.generic.NDArrGenerators as ag
+
+  import numpy as np
+
+  def usage(tname):
+    scrname = sys.argv[0].split('/')[-1]
+    s = '\nUsage: python %s <tname [0-8]>' %scrname\
+      + ' # then activate graphics window and use keyboad keys R/W/D/<Esc>'
+    return s
 
   def test_fwview(tname):
     print('%s:' % sys._getframe().f_code.co_name)
@@ -617,14 +616,16 @@ if __name__ == "__main__":
     del w
     del app
 
-#------------------------------
+#----
 
 if __name__ == "__main__":
     
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
+    print(usage(tname))
     print(50*'_', '\nTest %s' % tname)
     test_fwview(tname)
+    print(usage(tname))
     sys.exit('End of Test %s' % tname)
 
-#------------------------------
+#----
 
