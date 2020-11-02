@@ -121,6 +121,14 @@ class Run(object):
                 drp_class_name = alg
                 det_class_table = self.dsparms.det_classes[det_name]
                 drp_class = det_class_table[(det_name, drp_class_name)]
+
+                # Some detectors do not have calibration constant - set default value to None
+                if not hasattr(self.dsparms, 'calibconst'):
+                    self.dsparms.calibconst = {det_name: None}
+                else:
+                    if det_name not in self.dsparms.calibconst:
+                        self.dsparms.calibconst[det_name]  = None
+
                 det = drp_class(det_name, drp_class_name, self.dsparms.configinfo_dict[det_name], self.dsparms.calibconst[det_name], self.esm.stores[env_name], var_name)
                 setattr(det, '_det_name', det_name)
 

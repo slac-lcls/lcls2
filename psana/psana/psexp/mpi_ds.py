@@ -166,7 +166,7 @@ class MPIDataSource(DataSourceBase):
                     for calib_const in self.bd_node.calib_store:
                         runnum = None
                         for det_name, det_dict in calib_const.items():
-                            for det_dtype, dtype_list in calib_const[det_name].items():
+                            for det_dtype, dtype_list in det_dict.items():
                                 for dtype_dict in dtype_list:
                                     if not isinstance(dtype_dict, dict): continue
                                     for field_name, field_val in dtype_dict.items():
