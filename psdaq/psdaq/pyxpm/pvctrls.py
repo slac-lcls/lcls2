@@ -77,7 +77,17 @@ class RegH(PVHandler):
         if self._archive:
             countdn = countrst
 
-    
+class CuDelayH(RegH):
+    def __init__(self, valreg, archive, pvu):
+        super(CuDelayH,self).__init__(valref,archive)
+        self.pvu = pvu
+
+    def handle(self, pv, value):
+        self.RegH.handle(pv,value)
+        curr = self.pvu.current()
+        curr['value'] = value*7000./1300
+        self.pvu.post(curr)
+
 class IdxRegH(PVHandler):
     def __init__(self, valreg, idxreg, idx):
         super(IdxRegH,self).__init__(self.handle)
@@ -94,12 +104,17 @@ class IdxRegH(PVHandler):
         retry_wlock(self.cmd,pv,value)
 
 class L0DelayH(IdxRegH):
-    def __init__(self, valreg, idxreg, idx):
+    def __init__(self, valreg, idxreg, idx, pvu):
         super(L0DelayH,self).__init__(valreg, idxreg, idx)
+        self.pvu = pvu
 
     def handle(self, pv, value):
         global countdn
         retry_wlock(self.cmd,pv,pipelinedepth_from_delay(value))
+
+        curr = self.pvu.current()
+        curr['value'] = value*1400/1.3
+        self.pvu.post(curr)
         countdn = countrst
 
 class CmdH(PVHandler):
@@ -200,13 +215,6 @@ class LinkCtrls(object):
 class CuGenCtrls(object):
     def __init__(self, name, xpm, dbinit=None):
 
-        def addPV(label, init, reg, archive):
-            pv = SharedPV(initial=NTScalar('I').wrap(init), 
-                          handler=RegH(reg,archive=archive))
-            provider.add(name+':'+label,pv)
-            reg.set(init)
-            return pv
-
         try:
             cuDelay    = dbinit['XTPG']['CuDelay']
             cuBeamCode = dbinit['XTPG']['CuBeamCode']
@@ -218,7 +226,26 @@ class CuGenCtrls(object):
             cuInput    = 1
             print('Defaulting XTPG parameters')
             
+        def addPV(label, init, reg, archive):
+            pvu = SharedPV(initial=NTScalar('f').wrap(init*7000./1300), 
+                          handler=DefaultPVHandler())
+            provider.add(name+':'+label+'_ns',pvu)
+
+            pv = SharedPV(initial=NTScalar('I').wrap(init), 
+                          handler=CuDelayH(reg,archive=archive,pvu))
+            provider.add(name+':'+label,pv)
+            reg.set(init)
+            return pv
+
         self._pv_cuDelay    = addPV('CuDelay'   ,    cuDelay, xpm.CuGenerator.cuDelay          , True)
+
+        def addPV(label, init, reg, archive):
+            pv = SharedPV(initial=NTScalar('I').wrap(init), 
+                          handler=RegH(reg,archive=archive))
+            provider.add(name+':'+label,pv)
+            reg.set(init)
+            return pv
+
         self._pv_cuBeamCode = addPV('CuBeamCode', cuBeamCode, xpm.CuGenerator.cuBeamCode       , True)
         self._pv_clearErr   = addPV('ClearErr'  ,          0, xpm.CuGenerator.cuFiducialIntvErr, False)
 
@@ -310,8 +337,12 @@ class GroupSetup(object):
         self._pv_MsgPayload = addPV('MsgPayload', app.msgPayl,  0, set=True)
 
         def addPV(label,reg,init=0,set=False):
+            pvu = SharedPV(initial=NTScalar('f').wrap(init*1400/1.3),
+                           handler=DefaultPVHandler())
+            provider.add(name+':'+label+'_ns',pvu)
+
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
-                          handler=L0DelayH(reg,self._app.partition,group))
+                          handler=L0DelayH(reg,self._app.partition,group,pvu))
             provider.add(name+':'+label,pv)
             if set:
                 self._app.partition.set(group)
