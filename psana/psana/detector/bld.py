@@ -57,7 +57,17 @@ class gmd_raw_2_0_0(DetectorImpl):
         super(gmd_raw_2_0_0, self).__init__(*args)
         self._add_fields()
 
+class gmd_raw_2_1_0(DetectorImpl):
+    def __init__(self, *args):
+        super(gmd_raw_2_1_0, self).__init__(*args)
+        self._add_fields()
+
 class xgmd_raw_2_0_0(DetectorImpl):
     def __init__(self, *args):
         super(xgmd_raw_2_0_0, self).__init__(*args)
+        self._add_fields()
+
+class xgmd_raw_2_1_0(DetectorImpl):
+    def __init__(self, *args):
+        super(xgmd_raw_2_1_0, self).__init__(*args)
         self._add_fields()

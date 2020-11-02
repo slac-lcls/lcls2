@@ -146,21 +146,27 @@ BldFactory::BldFactory(const char* name,
     }
     else if (strncmp("gmd",name,3)==0) {
         mcaddr = 0xefff1902;
-        _alg    = XtcData::Alg("raw", 2, 0, 0);
+        _alg    = XtcData::Alg("raw", 2, 1, 0);
         _varDef.NameVec.push_back(XtcData::Name("energy"      , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("xpos"        , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("ypos"        , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("avgIntensity", XtcData::Name::DOUBLE));
-        payloadSize = 32;
+        _varDef.NameVec.push_back(XtcData::Name("rmsElectronSum", XtcData::Name::INT64));
+        _varDef.NameVec.push_back(XtcData::Name("electron1BkgNoiseAvg", XtcData::Name::INT16));
+        _varDef.NameVec.push_back(XtcData::Name("electron2BkgNoiseAvg", XtcData::Name::INT16));
+        payloadSize = 44;
     }
     else if (strcmp("xgmd",name)==0) {
         mcaddr = 0xefff1903;
-        _alg    = XtcData::Alg("raw", 2, 0, 0);
+        _alg    = XtcData::Alg("raw", 2, 1, 0);
         _varDef.NameVec.push_back(XtcData::Name("energy"      , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("xpos"        , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("ypos"        , XtcData::Name::DOUBLE));
         _varDef.NameVec.push_back(XtcData::Name("avgIntensity", XtcData::Name::DOUBLE));
-        payloadSize = 32;
+        _varDef.NameVec.push_back(XtcData::Name("rmsElectronSum", XtcData::Name::INT64));
+        _varDef.NameVec.push_back(XtcData::Name("electron1BkgNoiseAvg", XtcData::Name::INT16));
+        _varDef.NameVec.push_back(XtcData::Name("electron2BkgNoiseAvg", XtcData::Name::INT16));
+        payloadSize = 44;
     }
     else {
         throw std::string("BLD name ")+name+" not recognized";
