@@ -164,13 +164,25 @@ class MPIDataSource(DataSourceBase):
             for evt in self.events:
                 if evt.service() == TransitionId.BeginRun:
                     for calib_const in self.bd_node.calib_store:
-                        for key, _ in calib_const.items():
-                            det_name = key
-                            break
-                        runnum = calib_const[det_name]['pedestals'][1]['run']
-                        if evt._dgrams[0].runinfo[0].runinfo.runnum == runnum:
-                            self.dsparms.calibconst = calib_const
-                            break
+                        runnum = None
+                        for det_name, det_dict in calib_const.items():
+                            for det_dtype, dtype_list in calib_const[det_name].items():
+                                for dtype_dict in dtype_list:
+                                    if not isinstance(dtype_dict, dict): continue
+                                    for field_name, field_val in dtype_dict.items():
+                                        if field_name == 'run':
+                                            runnum = field_val
+                                            break
+                                        if runnum: break
+                                    if runnum: break
+                                if runnum: break
+                            if runnum: break
+                        
+                        if runnum:
+                            if evt._dgrams[0].runinfo[0].runinfo.runnum == runnum:
+                                self.dsparms.calibconst = calib_const
+                                break
+
                     run = RunParallel(self.comms, evt, self.events, self._configs, self.dsparms)
                     yield run 
         else:
