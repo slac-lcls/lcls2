@@ -22,6 +22,7 @@ setup(
             'console_scripts': [
                 'syslog   = psalg.utils.syslog:main',
                 'daqPipes = psalg.daqPipes.daqPipes:main',
+                'daqStats = psalg.daqPipes.daqStats:main',
               ]
        },
 )
