@@ -23,10 +23,10 @@ procmgr_config_worker = []
 
 for N, worker_node in enumerate(ami_worker_nodes):
     for n in range(ami_workers_per_node):
-      procmgr_config_worker.append({ 'host': worker_node, 'id': f'ami-worker_{N}_{n}', 'flags':'sx', 'conda':conda_rel,
-      				     'cmd': f'ami-worker -N {n} -n {ami_num_workers} -b {heartbeat_period} -H {ami_manager_node} psana:////reg/neh/home/claus/lclsii/daq/lcls2/psdaq/psdaq/cnf/worker.json'})
+        procmgr_config_worker.append({'host': worker_node, 'id': f'ami-worker_{N}_{n}', 'flags':'sx', 'conda':conda_rel,
+                                      'cmd': f'ami-worker -N {n} -n {ami_num_workers} -b {heartbeat_period} -H {ami_manager_node} psana:////cds/home/c/claus/lclsii/daq/lcls2/psdaq/psdaq/cnf/worker.json'})
 
-    procmgr_config_worker.append({ 'host': worker_node, 'id': f'ami-node_{N}', 'flags':'s', 'conda':conda_rel,
-    				   'cmd': f'ami-node -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level debug'})
+    procmgr_config_worker.append({'host': worker_node, 'id': f'ami-node_{N}', 'flags':'s', 'conda':conda_rel,
+                                  'cmd': f'ami-node -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level debug'})
 
 procmgr_config = procmgr_config_worker + procmgr_config_global
