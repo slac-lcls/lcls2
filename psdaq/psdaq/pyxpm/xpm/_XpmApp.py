@@ -415,6 +415,8 @@ class XpmApp(pr.Device):
             bitSize      =  320,
             bitOffset    =  0x00,
             base         = pr.UInt,
+            minimum      =  0.,
+            maximum      =  1.,
             mode         = "RO",
         ))
 
@@ -612,6 +614,8 @@ class XpmApp(pr.Device):
             bitSize      =  1024,
             bitOffset    =  0x00,
             base         = pr.UInt,
+            minimum      =  0.,
+            maximum      =  1.,
             mode         = "RO",
         ))
 
@@ -633,6 +637,8 @@ class XpmApp(pr.Device):
             bitSize      =  1024,
             bitOffset    =  0x00,
             base         = pr.UInt,
+            minimum      =  0.,
+            maximum      =  1.,
             mode         = "RO",
         ))
 

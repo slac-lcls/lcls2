@@ -79,7 +79,7 @@ class RegH(PVHandler):
 
 class CuDelayH(RegH):
     def __init__(self, valreg, archive, pvu):
-        super(CuDelayH,self).__init__(valref,archive)
+        super(CuDelayH,self).__init__(valreg,archive)
         self.pvu = pvu
 
     def handle(self, pv, value):
@@ -232,7 +232,7 @@ class CuGenCtrls(object):
             provider.add(name+':'+label+'_ns',pvu)
 
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
-                          handler=CuDelayH(reg,archive=archive,pvu))
+                          handler=CuDelayH(reg,archive,pvu))
             provider.add(name+':'+label,pv)
             reg.set(init)
             return pv

@@ -39,13 +39,16 @@ class SfpI2c(pr.Device):
             base        = pr.UInt,          
         )) 
 
+#  latest rogue breaks with large integers
         self.add(pr.RemoteVariable(   
             name         = 'ExtCalConstantsBlock',
             description  = 'Diagnostic Calibration Constants for Ext Cal',
             offset       = ((256+56) << 2),
-            bitSize      = 32*36,
+            bitSize      = 32*36,            
             mode         = 'RO',
             base         = pr.UInt,
+            minimum      =  0.,
+            maximum      =  1.,
         ))           
 
         self.add(pr.RemoteVariable(   
@@ -55,6 +58,8 @@ class SfpI2c(pr.Device):
             bitSize      = 32*10,
             mode         = 'RO',
             base         = pr.UInt,
+            minimum      =  0.,
+            maximum      =  1.,
         ))              
 
     def get_pwr(self):
