@@ -9,7 +9,7 @@ Usage ::
     # Test
     #-----
     import sys
-    from psana.graphqt.FWView import *
+    from FWView import *
     app = QApplication(sys.argv)
     w = FWView(None, rscene=QRectF(0, 0, 100, 100), origin='UL', scale_ctl='HV')
     w.show()
@@ -17,7 +17,7 @@ Usage ::
 
     # Constructor and destructor
     #---------------------------
-    from psana.graphqt.FWView import FWView
+    from FWView import FWView
     w = FWView(parent=None, rscene=QRectF(0, 0, 10, 10), origin='UL', scale_ctl='HV', show_mode=0)
     w.__del__() # on w.close()
 
@@ -106,6 +106,7 @@ from PyQt5.QtGui import QBrush, QPen, QCursor, QColor
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPointF, QTimer
 
 from QWGraphicsRectItem import QWGraphicsRectItem
+from QWUtils import print_rect
 
 #----
 
@@ -396,7 +397,7 @@ class FWView(QGraphicsView):
 #    def scale_drag_points(self):
 #        sx, sy = self.transform().m11(), self.transform().m22()
 #        print('scalex=%.3f, scaley=%.3f' %(sx, sy))
-#        from psana.graphqt.DragPoint import DragPoint 
+#        from DragPoint import DragPoint 
 #        for item in self.scene().items():
 #            if isinstance(item, DragPoint):
 #                 item.setScale(item.sx0/sx)
@@ -427,8 +428,6 @@ class FWView(QGraphicsView):
 
 
     def test_scene_rect_changed_reception(self, rs):
-        #from psana.graphqt.QWUtils import print_rect
-        from QWUtils import print_rect
         #logger.debug('GUView.test_scene_rect_changed_reception:', rs)
         print_rect(rs, cmt='FWView.test_scene_rect_changed_reception')
 
@@ -571,15 +570,16 @@ if __name__ == "__main__":
   import sys
   sys.path.append('..') # use relative path from parent dir
   logger.debug('sys.path: %s'%str(sys.path))
-  import psana.pyalgos.generic.NDArrGenerators as ag
-
+  import pyalgos.generic.NDArrGenerators as ag
   import numpy as np
+
 
   def usage(tname):
     scrname = sys.argv[0].split('/')[-1]
     s = '\nUsage: python %s <tname [0-8]>' %scrname\
       + ' # then activate graphics window and use keyboad keys R/W/D/<Esc>'
     return s
+
 
   def test_fwview(tname):
     print('%s:' % sys._getframe().f_code.co_name)
