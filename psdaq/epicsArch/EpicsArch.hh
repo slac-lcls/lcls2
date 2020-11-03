@@ -14,11 +14,14 @@ namespace Drp {
 class EaDetector : public XpmDetector
 {
 public:
-    EaDetector(Parameters& para, const std::string& pvName, DrpBase& drp);
+    EaDetector(Parameters& para, const std::string& pvCfgFile, DrpBase& drp);
     ~EaDetector();
+    std::string connect();
+    unsigned disconnect();
+    unsigned unconfigure();
+public:                                 // Detector virtuals
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
-    void shutdown() override;
 private:
     void _worker();
     void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);
@@ -54,7 +57,7 @@ private:
 private:
     DrpBase m_drp;
     Drp::Parameters& m_para;
-    std::unique_ptr<Detector> m_det;
+    std::unique_ptr<EaDetector> m_det;
     bool m_unconfigure;
 };
 

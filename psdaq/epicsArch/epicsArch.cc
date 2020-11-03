@@ -182,9 +182,47 @@ EaDetector::EaDetector(Parameters& para, const std::string& pvCfgFile, DrpBase& 
 
 EaDetector::~EaDetector()
 {
-    shutdown();
-
     EpicsArchMonitor::close();
+}
+
+std::string EaDetector::connect()
+{
+    try
+    {
+        std::string configFileWarning;
+        m_monitor = std::make_unique<EpicsArchMonitor>(m_pvCfgFile.c_str(), m_para->verbose, configFileWarning);
+        if (!configFileWarning.empty()) {
+            logging::warning("%s", configFileWarning.c_str());
+        }
+    }
+    catch(std::string& error)
+    {
+        logging::error("Failed to create EpicsArchMonitor( %s ): %s",
+                       m_pvCfgFile.c_str(), error.c_str());
+        m_monitor.reset();
+        return error;
+    }
+
+    // Wait for PVs to connect or be timed out
+    unsigned pvCount = 0;
+    unsigned nNotConnected = m_monitor->validate(pvCount);
+    if (nNotConnected) {
+        std::string msg("Number of PVs that didn't connect: " + std::to_string(nNotConnected) + "(of " + std::to_string(pvCount) + ")");
+        if (nNotConnected < pvCount)
+            logging::warning(msg.c_str());
+        else {
+            logging::error(msg.c_str());
+            return msg;
+        }
+    }
+
+    return std::string{};
+}
+
+unsigned EaDetector::disconnect()
+{
+    m_monitor.reset();
+    return 0;
 }
 
 unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
@@ -200,29 +238,6 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
         m_drp.exposer()->RegisterCollectable(m_exporter);
     }
 
-    try
-    {
-        std::string configFileWarning;
-        m_monitor = std::make_unique<EpicsArchMonitor>(m_pvCfgFile.c_str(), m_para->verbose, configFileWarning);
-        if (!configFileWarning.empty()) {
-            logging::warning("%s", configFileWarning.c_str());
-        }
-    }
-    catch(std::string& error)
-    {
-        logging::error("%s: Failed to create EpicsArchMonitor( %s ): %s",
-                       __PRETTY_FUNCTION__, m_pvCfgFile.c_str(), error.c_str());
-        m_monitor.reset();
-        return 1;
-    }
-
-    // Wait for PVs to connect or be timed out
-    unsigned pvCount = 0;
-    unsigned nNotConnected = m_monitor->validate(pvCount);
-    if (nNotConnected) {
-        logging::warning("Number of PVs that didn't connect: %d (of %d)", nNotConnected, pvCount);
-    }
-
     size_t payloadSize;
     m_monitor->addNames(m_para->detName, m_para->detType, m_para->serNo,
                         xtc, m_namesLookup, nodeId, payloadSize);
@@ -236,21 +251,22 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
     return 0;
 }
 
-void EaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
-{
-    auto payloadSize = m_para->maxTrSize - sizeof(Pds::EbDgram);
-
-    m_monitor->getData(dgram.xtc, m_namesLookup, nodeId, payloadSize);
-}
-
-void EaDetector::shutdown()
+unsigned EaDetector::unconfigure()
 {
     m_terminate.store(true, std::memory_order_release);
     if (m_workerThread.joinable()) {
         m_workerThread.join();
     }
-    m_monitor.reset();
     m_namesLookup.clear();   // erase all elements
+
+    return 0;
+}
+
+void EaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
+{
+    auto payloadSize = m_para->maxTrSize - sizeof(Pds::EbDgram);
+
+    m_monitor->getData(dgram.xtc, m_namesLookup, nodeId, payloadSize);
 }
 
 void EaDetector::_worker()
@@ -353,9 +369,9 @@ void EaDetector::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
 
 EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp(para, context()),
-    m_para(para),
-    m_det(std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp))
+    m_drp        (para, context()),
+    m_para       (para),
+    m_det        (std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp))
 {
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
@@ -385,12 +401,14 @@ void EpicsArchApp::_shutdown()
 void EpicsArchApp::_disconnect()
 {
     m_drp.disconnect();
+    m_det->disconnect();
 }
 
 void EpicsArchApp::_unconfigure()
 {
     m_drp.unconfigure();  // TebContributor must be shut down before the worker
-    m_det->shutdown();
+    m_det->Detector::shutdown();
+    m_det->unconfigure();
 }
 
 json EpicsArchApp::connectionInfo()
@@ -398,7 +416,7 @@ json EpicsArchApp::connectionInfo()
     std::string ip = getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
-    json info = m_det->connectionInfo();
+    json info = m_det->Detector::connectionInfo();
     body["connect_info"].update(info);
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
@@ -415,16 +433,23 @@ void EpicsArchApp::_error(const std::string& which, const nlohmann::json& msg, c
 
 void EpicsArchApp::handleConnect(const nlohmann::json& msg)
 {
-    std::string errorMsg = m_drp.connect(msg, getId());
+    m_det->nodeId = msg["body"]["drp"][std::to_string(getId())]["drp_id"];
+    m_det->Detector::connect(msg, std::to_string(getId()));
+
+    std::string errorMsg = m_det->connect();
+    if (!errorMsg.empty()) {
+        logging::error("Error in EaDetector::connect");
+        _error("connect", msg, errorMsg);
+        return;
+    }
+
+    errorMsg = m_drp.connect(msg, getId());
     if (!errorMsg.empty()) {
         logging::error("Error in DrpBase::connect");
         logging::error("%s", errorMsg.c_str());
         _error("connect", msg, errorMsg);
         return;
     }
-
-    m_det->nodeId = m_drp.nodeId();
-    m_det->connect(msg, std::to_string(getId()));
 
     m_unconfigure = false;
 
