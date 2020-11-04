@@ -57,7 +57,8 @@ private:
 private:
     DrpBase m_drp;
     Drp::Parameters& m_para;
-    std::unique_ptr<EaDetector> m_det;
+    std::unique_ptr<EaDetector> m_eaDetector;
+    Detector* m_det;
     bool m_unconfigure;
 };
 

@@ -501,10 +501,12 @@ void PvaDetector::_worker()
                 // prompt contributions from timing out before latent ones arrive.
                 // If the PV is updating, _timeout() never finds anything to do.
                 XtcData::TimeStamp timestamp;
-                //const uint64_t msTmo = tsMatchDegree==2 ? 100 : 4400;
-                const uint64_t ebTmo = Pds::Eb::EB_TMO_MS/2 - 100;
-                const uint64_t msTmo = tsMatchDegree==2 ? 100 : ebTmo;
+                const uint64_t msTmo = tsMatchDegree==2 ? 100 : 110; //4400;
+                //const uint64_t ebTmo = 6000; // This overflows PGP (?) buffers: Pds::Eb::EB_TMO_MS/2 - 100;
+                //const uint64_t msTmo = tsMatchDegree==2 ? 100 : ebTmo;
+                //printf("*** tsMatchDegree %d, ebTmo %lu, msTmo %lu\n", tsMatchDegree, ebTmo, msTmo);
                 const uint64_t nsTmo = msTmo * 1000000;
+                //printf("*** dg %016lx, to %016lx, diff %ld\n", dgram->time.to_ns(), nsTmo, dgram->time.to_ns() - nsTmo);
                 _timeout(timestamp.from_ns(dgram->time.to_ns() - nsTmo));
             }
             else {
@@ -583,6 +585,7 @@ void PvaDetector::_matchUp()
         //        if      (pvDg->time == pgpDg->time)  _handleMatch  (*pvDg, *pgpDg);
 
         int result = _compare(pvDg->time,pgpDg->time);
+        //printf("pv %016lx, pgp %016lx, diff %ld, compare %d\n", pvDg->time.value(), pgpDg->time.value(), pvDg->time.value() - pgpDg->time.value(), _compare(pvDg->time, pgpDg->time));
         if      (result==0) _handleMatch  (*pvDg, *pgpDg);
         else if (result >0) _handleYounger(*pvDg, *pgpDg);
         else                _handleOlder  (*pvDg, *pgpDg);
@@ -682,6 +685,7 @@ void PvaDetector::_timeout(const XtcData::TimeStamp& timestamp)
 
         Pds::EbDgram& dgram = *reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[index]);
         if (_compare(dgram.time,timestamp)>=0) {
+          //printf("*** dg %016lx, ts %016lx, diff %ld, compare %d\n", dgram.time.to_ns(), timestamp.to_ns(), dgram.time.to_ns() - timestamp.to_ns(), _compare(dgram.time,timestamp));
             break;                  // dgram is newer than the timeout timestamp
         }
 
@@ -745,7 +749,8 @@ PvaApp::PvaApp(Parameters& para, std::shared_ptr<PvaMonitor> pvaMonitor) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
     m_para(para),
-    m_det(std::make_unique<PvaDetector>(m_para, pvaMonitor, m_drp))
+    m_pvaDetector(std::make_unique<PvaDetector>(m_para, pvaMonitor, m_drp)),
+    m_det(m_pvaDetector.get())
 {
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
@@ -775,13 +780,13 @@ void PvaApp::_shutdown()
 void PvaApp::_disconnect()
 {
     m_drp.disconnect();
-    m_det->Detector::shutdown();
+    m_det->shutdown();
 }
 
 void PvaApp::_unconfigure()
 {
     m_drp.unconfigure();  // TebContributor must be shut down before the worker
-    m_det->unconfigure();
+    m_pvaDetector->unconfigure();
 }
 
 json PvaApp::connectionInfo()
@@ -789,7 +794,7 @@ json PvaApp::connectionInfo()
     std::string ip = getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
-    json info = m_det->Detector::connectionInfo();
+    json info = m_det->connectionInfo();
     body["connect_info"].update(info);
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
@@ -807,7 +812,7 @@ void PvaApp::_error(const std::string& which, const nlohmann::json& msg, const s
 void PvaApp::handleConnect(const nlohmann::json& msg)
 {
     m_det->nodeId = msg["body"]["drp"][std::to_string(getId())]["drp_id"];
-    m_det->Detector::connect(msg, std::to_string(getId()));
+    m_det->connect(msg, std::to_string(getId()));
 
     std::string errorMsg = m_drp.connect(msg, getId());
     if (!errorMsg.empty()) {

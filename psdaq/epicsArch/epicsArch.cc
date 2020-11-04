@@ -368,7 +368,8 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp        (para, context()),
     m_para       (para),
-    m_det        (std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp))
+    m_eaDetector (std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp)),
+    m_det        (m_eaDetector.get())
 {
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
@@ -398,14 +399,14 @@ void EpicsArchApp::_shutdown()
 void EpicsArchApp::_disconnect()
 {
     m_drp.disconnect();
-    m_det->Detector::shutdown();
-    m_det->disconnect();
+    m_det->shutdown();
+    m_eaDetector->disconnect();
 }
 
 void EpicsArchApp::_unconfigure()
 {
     m_drp.unconfigure();  // TebContributor must be shut down before the worker
-    m_det->unconfigure();
+    m_eaDetector->unconfigure();
 }
 
 json EpicsArchApp::connectionInfo()
@@ -413,7 +414,7 @@ json EpicsArchApp::connectionInfo()
     std::string ip = getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
-    json info = m_det->Detector::connectionInfo();
+    json info = m_det->connectionInfo();
     body["connect_info"].update(info);
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
@@ -431,10 +432,10 @@ void EpicsArchApp::_error(const std::string& which, const nlohmann::json& msg, c
 void EpicsArchApp::handleConnect(const nlohmann::json& msg)
 {
     m_det->nodeId = msg["body"]["drp"][std::to_string(getId())]["drp_id"];
-    m_det->Detector::connect(msg, std::to_string(getId()));
+    m_det->connect(msg, std::to_string(getId()));
 
     // Connecting the PVs needs to take place before making IB connections
-    std::string errorMsg = m_det->connect();
+    std::string errorMsg = m_eaDetector->connect();
     if (!errorMsg.empty()) {
         logging::error("Error in EaDetector::connect");
         _error("connect", msg, errorMsg);

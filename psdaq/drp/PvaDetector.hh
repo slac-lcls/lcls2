@@ -100,7 +100,8 @@ private:
 private:
     DrpBase m_drp;
     Parameters& m_para;
-    std::unique_ptr<PvaDetector> m_det;
+    std::unique_ptr<PvaDetector> m_pvaDetector;
+    Detector* m_det;
     bool m_unconfigure;
 };
 
