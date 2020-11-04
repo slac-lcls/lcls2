@@ -47,6 +47,8 @@ class DgramManager(object):
         self.configs = []
         self._timestamps = [] # built when iterating
         self._run = run
+        self.found_endrun = True
+        self.buffered_beginruns = []
 
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
@@ -105,8 +107,34 @@ class DgramManager(object):
     def __iter__(self):
         return self
 
+    def _check_missing_endrun(self, beginruns=None):
+        fake_endruns = None
+        if not self.found_endrun: # there's no previous EndRun
+            sec = (self._timestamps[-1] >> 32) & 0xffffffff
+            usec = int((self._timestamps[-1] & 0xffffffff) * 1e3 + 1)
+            if beginruns:
+                self.buffered_beginruns = [dgram.Dgram(config=config,
+                        view=d, offset=0, size=d._size)      
+                        for d, config in zip(beginruns, self.configs)]
+            fake_endruns = [dgram.Dgram(config=config, fake_endrun=1, \
+                    fake_endrun_sec=sec, fake_endrun_usec=usec) \
+                    for config in self.configs]
+            print(f"creating fake endruns sec={sec} usec={usec}")
+            self.found_endrun = True
+        else:
+            self.found_endrun = False
+        return fake_endruns
+
     def __next__(self):
         """ only support sequential read - no event building"""
+        if self.buffered_beginruns:
+            self.found_endrun = False
+            evt = Event(self.buffered_beginruns, run=self.run())
+            self._timestamps += [evt.timestamp]
+            self.buffered_beginruns = []
+            print(f"returning buffered beginruns")
+            return evt
+
         if self.shmem_cli:
             view = self.shmem_cli.get(self.shmem_kwargs)
             if view:
@@ -134,7 +162,28 @@ class DgramManager(object):
             else:
                 raise StopIteration
         else:
-            dgrams = [dgram.Dgram(config=config) for config in self.configs]
+            try:
+                dgrams = [dgram.Dgram(config=config) for config in self.configs]
+            except StopIteration:
+                print(f"catch StopIteration")
+                fake_endruns = self._check_missing_endrun()
+                if fake_endruns:
+                    dgrams = fake_endruns
+                    self.force_stopiteration = True
+                else:
+                    print(f"found endrun raise StopIteration")
+                    raise StopIteration
+                
+
+        # Check BeginRun - EndRun pairing
+        service = dgrams[0].service()
+        if service == TransitionId.BeginRun:
+            fake_endruns = self._check_missing_endrun(beginruns=dgrams)
+            if fake_endruns:
+                dgrams = fake_endruns
+        
+        if service == TransitionId.EndRun:
+            self.found_endrun = True
 
         evt = Event(dgrams, run=self.run())
         self._timestamps += [evt.timestamp]

@@ -657,6 +657,14 @@ static PyObject* timestamp(PyDgramObject* self) {
   return PyLong_FromLong(self->dgram->time.value());
 }
 
+Dgram& createTransition(TransitionId::Value transId, unsigned sec, unsigned usec) {
+    TypeId tid(TypeId::Parent, 0);
+    uint32_t env = 0;
+    void* buf = malloc(sizeof(Dgram));
+    Transition tr(Dgram::Event, transId, TimeStamp(sec, usec), env);
+    return *new(buf) Dgram(tr, Xtc(tid));
+}
+
 static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 {
     static char* kwlist[] = {(char*)"file_descriptor",
@@ -668,6 +676,9 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"shmem_size",
                              (char*)"shmem_cli_cptr",
                              (char*)"shmem_cli_pyobj",
+                             (char*)"fake_endrun",
+                             (char*)"fake_endrun_sec",
+                             (char*)"fake_endrun_usec",
                              NULL};
 
     self->namesIter = 0;
@@ -682,8 +693,12 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     self->shmem_cli_cptr=0;
     self->shmem_cli_pyobj=0;
     PyObject* shmem_cli_cptr=0;
+    int fake_endrun=0;
+    unsigned fake_endrun_sec=0;
+    unsigned fake_endrun_usec=0;
+
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iOllOiiOO", kwlist,
+                                     "|iOllOiiOOiII", kwlist,
                                      &fd,
                                      &configDgram,
                                      &self->offset,
@@ -692,7 +707,10 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                                      &self->shmem_index,
                                      &self->shmem_size,
                                      &shmem_cli_cptr,
-                                     &self->shmem_cli_pyobj)) {
+                                     &self->shmem_cli_pyobj,
+                                     &fake_endrun, 
+                                     &fake_endrun_sec,
+                                     &fake_endrun_usec)) {
         return -1;
     }
 
@@ -716,20 +734,26 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         // 2. Dgram(config=config)          create data dgram by read
         // 3. Dgram(file_descriptor=fd, config=config, offset=int, size=int)
         //                                  create data dgram by pread
+        // 4. Dgram(config=config, fake_endrun=1, fake_endrun_sec=0, fake_endrun_usec=0)
 
         if (fd==-1 && configDgram==0) {
             PyErr_SetString(PyExc_RuntimeError, "Creating empty dgram is no longer supported.");
             return -1;
         } else {
             if (fd==-1) {
-                // For (2)
+                // For (2) and (4)
                 self->file_descriptor=((PyDgramObject*)configDgram)->file_descriptor;
             } else {
                 // For (1) and (3)
                 self->file_descriptor=fd;
             }
+            
+            // We know size for 3 and 4
+            if (fake_endrun == 1) {
+                self->size = sizeof(Dgram);
+            }
 
-            // For (3), size is already given.
+            // For (1) and (2),
             if (self->size == 0) {
                 // For (1) and (2), obtain dgram_header from fd then extract size
                 int readSuccess = read_with_retries(self->file_descriptor, &dgram_header, sizeof(Dgram), 0);
@@ -758,9 +782,15 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
         if (self->dgrambytes == NULL) {
             return -1;
         }
-        self->dgram = (Dgram*)(PyByteArray_AS_STRING(self->dgrambytes));
 
-    } else {
+        if (fake_endrun == 1) {
+            Dgram& endRunTr = createTransition(TransitionId::EndRun, fake_endrun_sec, fake_endrun_usec);
+            self->dgram = &endRunTr;
+        } else {
+            self->dgram = (Dgram*)(PyByteArray_AS_STRING(self->dgrambytes));
+        }
+
+    } else { // if (!isview) {
         // Creating a dgram from view (any objects with a buffer interface) can be done by:
         // 4. Dgram(view=view, offset=int) --> create a config dgram from the view
         // 5. Dgram(view=view, config=config, offset=int) --> create a data dgram using the config and view
@@ -790,7 +820,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             else
                 self->shmem_cli_cptr = (ShmemClient*)(((char *)buf.buf));
         }
-    }
+    } // else if (!isView) 
 
     if (self->dgram == NULL) {
         PyErr_SetString(PyExc_MemoryError, "insufficient memory to create Dgram object");
@@ -798,7 +828,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     }
 
     // Read the data if this dgram is not a view
-    if (!isView) {
+    if (!isView && fake_endrun == 0) {
         bool sequential = (fd==-1) != (configDgram==0);
         if (sequential) {
           memcpy((void*)self->dgram, (const void*)&dgram_header, sizeof(dgram_header));
