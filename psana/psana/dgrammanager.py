@@ -119,7 +119,6 @@ class DgramManager(object):
             fake_endruns = [dgram.Dgram(config=config, fake_endrun=1, \
                     fake_endrun_sec=sec, fake_endrun_usec=usec) \
                     for config in self.configs]
-            print(f"creating fake endruns sec={sec} usec={usec}")
             self.found_endrun = True
         else:
             self.found_endrun = False
@@ -132,7 +131,6 @@ class DgramManager(object):
             evt = Event(self.buffered_beginruns, run=self.run())
             self._timestamps += [evt.timestamp]
             self.buffered_beginruns = []
-            print(f"returning buffered beginruns")
             return evt
 
         if self.shmem_cli:
@@ -165,13 +163,11 @@ class DgramManager(object):
             try:
                 dgrams = [dgram.Dgram(config=config) for config in self.configs]
             except StopIteration:
-                print(f"catch StopIteration")
                 fake_endruns = self._check_missing_endrun()
                 if fake_endruns:
                     dgrams = fake_endruns
                     self.force_stopiteration = True
                 else:
-                    print(f"found endrun raise StopIteration")
                     raise StopIteration
                 
 
