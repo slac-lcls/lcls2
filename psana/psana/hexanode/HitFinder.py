@@ -53,8 +53,8 @@ class HitFinder:
             u1u2_sum = u1[:,np.newaxis] + u2[np.newaxis,:] - 2*McpT 
             v1v2_sum = v1[:,np.newaxis] + v2[np.newaxis,:] - 2*McpT            
             
-            u1_ind, u2_ind = np.where(True | (u1u2_sum>self.uTSumLow) | (u1u2_sum<self.uTSumHigh))
-            v1_ind, v2_ind = np.where(True | (v1v2_sum>self.vTSumLow) | (v1v2_sum<self.vTSumHigh))            
+            u1_ind, u2_ind = np.where((u1u2_sum>self.uTSumLow) & (u1u2_sum<self.uTSumHigh))
+            v1_ind, v2_ind = np.where((v1v2_sum>self.vTSumLow) & (v1v2_sum<self.vTSumHigh))            
             
            
             sub_u = u1[u1_ind]-u2[u2_ind]
