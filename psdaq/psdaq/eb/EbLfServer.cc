@@ -118,7 +118,7 @@ int EbLfServer::connect(EbLfSvrLink** link, int msTmo)
   auto dT(std::chrono::duration_cast<ms_t>(t1 - t0).count());
   if (_verbose > 1)  printf("EbLfServer: dT to connect: %lu ms\n", dT);
 
-  int rxDepth = 300; //ep->fabric()->info()->rx_attr->size;
+  int rxDepth = ep->fabric()->info()->rx_attr->size;
   if (_verbose > 1)  printf("EbLfServer: rx_attr.size = %d\n", rxDepth);
   *link = new EbLfSvrLink(ep, rxDepth, _verbose);
   if (!*link)

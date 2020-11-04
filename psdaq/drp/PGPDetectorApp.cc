@@ -159,14 +159,11 @@ void PGPDetectorApp::shutdown()
 void PGPDetectorApp::disconnect()
 {
     m_drp.disconnect();
+    m_det->shutdown();
 }
 
 void PGPDetectorApp::unconfigure()
 {
-    if (m_det) {
-        m_det->shutdown();
-    }
-
     if (m_pgpDetector) {
         m_drp.stop();                   // Release allocate()
         m_pgpDetector->shutdown();

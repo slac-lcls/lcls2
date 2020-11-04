@@ -320,9 +320,6 @@ PvaDetector::PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonit
 
 PvaDetector::~PvaDetector()
 {
-    // Try to take things down gracefully when an exception takes us off the
-    // normal path so that the most chance is given for prints to show up
-    shutdown();
 }
 
   //std::string PvaDetector::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc)
@@ -393,6 +390,18 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
     return 0;
 }
 
+unsigned PvaDetector::unconfigure()
+{
+    m_terminate.store(true, std::memory_order_release);
+    if (m_workerThread.joinable()) {
+        m_workerThread.join();
+    }
+    m_pvaMonitor->clear();
+    m_namesLookup.clear();   // erase all elements
+
+    return 0;
+}
+
 void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
 {
     XtcData::NamesId namesId(nodeId, RawNamesIndex);
@@ -426,16 +435,6 @@ void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
     //  printf("%08x ", buf[i]);
     //}
     //printf("\n");
-}
-
-void PvaDetector::shutdown()
-{
-    m_terminate.store(true, std::memory_order_release);
-    if (m_workerThread.joinable()) {
-        m_workerThread.join();
-    }
-    m_pvaMonitor->clear();
-    m_namesLookup.clear();   // erase all elements
 }
 
 void PvaDetector::_worker()
@@ -776,12 +775,13 @@ void PvaApp::_shutdown()
 void PvaApp::_disconnect()
 {
     m_drp.disconnect();
+    m_det->Detector::shutdown();
 }
 
 void PvaApp::_unconfigure()
 {
     m_drp.unconfigure();  // TebContributor must be shut down before the worker
-    m_det->shutdown();
+    m_det->unconfigure();
 }
 
 json PvaApp::connectionInfo()
@@ -789,7 +789,7 @@ json PvaApp::connectionInfo()
     std::string ip = getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
-    json info = m_det->connectionInfo();
+    json info = m_det->Detector::connectionInfo();
     body["connect_info"].update(info);
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
@@ -806,6 +806,9 @@ void PvaApp::_error(const std::string& which, const nlohmann::json& msg, const s
 
 void PvaApp::handleConnect(const nlohmann::json& msg)
 {
+    m_det->nodeId = msg["body"]["drp"][std::to_string(getId())]["drp_id"];
+    m_det->Detector::connect(msg, std::to_string(getId()));
+
     std::string errorMsg = m_drp.connect(msg, getId());
     if (!errorMsg.empty()) {
         logging::error("Error in DrpBase::connect");
@@ -813,9 +816,6 @@ void PvaApp::handleConnect(const nlohmann::json& msg)
         _error("connect", msg, errorMsg);
         return;
     }
-
-    m_det->nodeId = m_drp.nodeId();
-    m_det->connect(msg, std::to_string(getId()));
 
     m_unconfigure = false;
 

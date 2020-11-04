@@ -396,7 +396,6 @@ class BldDetector : public XpmDetector
 public:
     BldDetector(Parameters& para, DrpBase& drp) : XpmDetector(&para, &drp.pool) {}
     void event(XtcData::Dgram& dgram, PGPEvent* event) override {}
-    void shutdown() override {}
 };
 
 
@@ -592,7 +591,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
         if (it != m_para.kwargs.end())
             tmo = strtoul(it->second.c_str(),NULL,0);
     }
-        
+
     unsigned nfds = m_config.size()+1;
     pollfd pfd[nfds];
     pfd[0].fd = m_drp.pool.fd();
@@ -806,6 +805,7 @@ void BldApp::_shutdown()
 void BldApp::_disconnect()
 {
     m_drp.disconnect();
+    m_det->shutdown();
 }
 
 void BldApp::_unconfigure()
@@ -818,7 +818,6 @@ void BldApp::_unconfigure()
          }
          m_pgp.reset();
     }
-    m_det->shutdown();
 }
 
 json BldApp::connectionInfo()

@@ -395,7 +395,6 @@ class BldDetector : public XpmDetector
 public:
     BldDetector(Parameters& para, DrpBase& drp) : XpmDetector(&para, &drp.pool) {}
     void event(XtcData::Dgram& dgram, PGPEvent* event) override {}
-    void shutdown() override {}
 };
 
 
@@ -799,6 +798,7 @@ void BldApp::_shutdown()
 void BldApp::_disconnect()
 {
     m_drp.disconnect();
+    m_det->shutdown();
 }
 
 void BldApp::_unconfigure()
@@ -811,7 +811,6 @@ void BldApp::_unconfigure()
          }
          m_pgp.reset();
     }
-    m_det->shutdown();
 }
 
 json BldApp::connectionInfo()

@@ -354,15 +354,12 @@ void EaDetector::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
     PGPEvent* event = &m_drp.pool.pgpEvents[index];
     if (event->l3InpBuf) { // else shutting down
         Pds::EbDgram* l3InpDg = new(event->l3InpBuf) Pds::EbDgram(dgram);
-        if (dgram.isEvent()) {
+        if (l3InpDg->isEvent()) {
             if (m_drp.triggerPrimitive()) { // else this DRP doesn't provide input
                 m_drp.triggerPrimitive()->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc); // Produce
             }
         }
         m_drp.tebContributor().process(l3InpDg);
-    }
-    else {
-        logging::error("Attempted to send to TEB without an Input buffer");
     }
 }
 
@@ -401,13 +398,13 @@ void EpicsArchApp::_shutdown()
 void EpicsArchApp::_disconnect()
 {
     m_drp.disconnect();
+    m_det->Detector::shutdown();
     m_det->disconnect();
 }
 
 void EpicsArchApp::_unconfigure()
 {
     m_drp.unconfigure();  // TebContributor must be shut down before the worker
-    m_det->Detector::shutdown();
     m_det->unconfigure();
 }
 
@@ -436,6 +433,7 @@ void EpicsArchApp::handleConnect(const nlohmann::json& msg)
     m_det->nodeId = msg["body"]["drp"][std::to_string(getId())]["drp_id"];
     m_det->Detector::connect(msg, std::to_string(getId()));
 
+    // Connecting the PVs needs to take place before making IB connections
     std::string errorMsg = m_det->connect();
     if (!errorMsg.empty()) {
         logging::error("Error in EaDetector::connect");
@@ -510,7 +508,7 @@ void EpicsArchApp::handlePhase1(const json& msg)
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc);
         if (error) {
-            std::string errorMsg = "Phase 1 error in Detector::configure";
+            std::string errorMsg = "Failed transition phase 1";
             logging::error("%s", errorMsg.c_str());
             _error(key, msg, errorMsg);
             return;

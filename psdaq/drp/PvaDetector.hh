@@ -49,8 +49,7 @@ public:
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
-    void shutdown() override;
-    void connect();
+    unsigned unconfigure();
     void process(const XtcData::TimeStamp&);
 private:
     void _worker();
@@ -101,7 +100,7 @@ private:
 private:
     DrpBase m_drp;
     Parameters& m_para;
-    std::unique_ptr<Detector> m_det;
+    std::unique_ptr<PvaDetector> m_det;
     bool m_unconfigure;
 };
 
