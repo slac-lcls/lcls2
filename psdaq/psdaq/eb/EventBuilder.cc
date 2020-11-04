@@ -31,6 +31,7 @@ EventBuilder::EventBuilder(unsigned        epochs,
   _eventLut(epochs * entries),
   _tmoEvtCnt(0),
   _fixupCnt(0),
+  _missing(0),
   _verbose(verbose)
 {
   if (duration & (duration - 1))
@@ -90,6 +91,7 @@ void EventBuilder::clear()
   _epochFreelist.clearCounters();
   _tmoEvtCnt = 0;
   _fixupCnt  = 0;
+  _missing   = 0;
 
   for (auto it = _epochLut.begin(); it != _epochLut.end(); ++it)
     *it = nullptr;
@@ -352,6 +354,7 @@ void EventBuilder::_flush(const EbEvent* const due)
           //       now.time_since_epoch().count(), epoch->t0.time_since_epoch().count(), dT.count(), EventTimeout.count());
           ++_tmoEvtCnt;
         }
+        _missing = event->_remaining;
 
         if (_verbose >= VL_EVENT)
         {

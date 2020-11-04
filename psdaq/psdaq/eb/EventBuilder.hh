@@ -48,6 +48,7 @@ namespace Pds {
       const uint64_t&    eventFreeCnt()  const;
       const uint64_t&    timeoutCnt()    const;
       const uint64_t&    fixupCnt()      const;
+      const uint64_t&    missing()       const;
     private:
       unsigned          _epIndex(uint64_t key) const;
       unsigned          _evIndex(uint64_t key) const;
@@ -77,6 +78,7 @@ namespace Pds {
       std::vector<EbEvent*> _eventLut;      // LUT of allocated events
       uint64_t              _tmoEvtCnt;     // Count of timed out events
       uint64_t              _fixupCnt;      // Count of flushed   events
+      uint64_t              _missing;       // Bit list of missing contributors
       const unsigned&       _verbose;       // Print progress info
     };
   };
@@ -110,6 +112,11 @@ inline const uint64_t& Pds::Eb::EventBuilder::timeoutCnt() const
 inline const uint64_t& Pds::Eb::EventBuilder::fixupCnt() const
 {
   return _fixupCnt;
+}
+
+inline const uint64_t& Pds::Eb::EventBuilder::missing() const
+{
+  return _missing;
 }
 
 #endif

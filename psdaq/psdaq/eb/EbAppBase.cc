@@ -70,6 +70,7 @@ EbAppBase::EbAppBase(const EbParams&         prms,
   exporter->add("EB_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
   exporter->add("EB_ToEvCt", labels, MetricType::Counter, [&](){ return  timeoutCnt();        });
   exporter->add("EB_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();          });
+  exporter->add("EB_CbMsMk", labels, MetricType::Gauge,   [&](){ return  missing();           });
 }
 
 EbAppBase::~EbAppBase()

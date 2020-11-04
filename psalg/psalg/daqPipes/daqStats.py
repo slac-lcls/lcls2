@@ -545,6 +545,7 @@ def daqStats(srvurl, args):
 	      'EvFrCt'       : (_q(args, 'EB_EvFrCt', 'TEB'), _fmtN,   '# of Freed events',      8),
 	      'FxUpCt'       : (_q(args, 'EB_FxUpCt', 'TEB'), _fmtN,   '# of Swept out events',  8),
 	      'ToEvCt'       : (_q(args, 'EB_ToEvCt', 'TEB'), _fmtN,   '# of Timed out events',  8),
+	      'CbMsMk'       : (_q(args, 'EB_CbMsMk', 'TEB'), _fmtHex, 'Missing contributors',   16),
 # Unused: 'BtWtg'        : (_q(args, 'TEB_BtWtg'),       _fmtBool, 'Result batch pool exhaustion flag', 5),
 	      'BatCt'        : (_q(args, 'TEB_BatCt'),        _fmtN,   '# of Result Batches',    8),
 	      'BtAlCt'       : (_q(args, 'TEB_BtAlCt'),       _fmtN,   '# of Batches Allocated', 8),
@@ -557,14 +558,18 @@ def daqStats(srvurl, args):
     }
 
     mebQueries = {
-	      'ReqRt'        : (_q(args, 'MEB_ReqRt'),        _fmtF, 'Monitor request rate ',          8),
-	      'ReqCt'        : (_q(args, 'MEB_ReqCt'),        _fmtN, '# of Monitor requests',          8),
-	      'EvtRt'        : (_q(args, 'MEB_EvtRt'),        _fmtF, 'Event rate',                     8),
-	      'EvtCt'        : (_q(args, 'MEB_EvtCt'),        _fmtN, '# of Events handled',            8),
-	      'RxPdg'        : (_q(args, 'EB_RxPdg',  'MEB'), _fmtN, 'Receive pending flag',           5),
-	      'EvAlCt'       : (_q(args, 'EB_EvAlCt', 'MEB'), _fmtN, '# of Allocated events',          8),
-	      'EvFrCt'       : (_q(args, 'EB_EvFrCt', 'MEB'), _fmtN, '# of Freed events',              8),
-        'RqBufCt'      : (_q(args, 'MRQ_BufCt'),        _fmtN, '# of Available Request buffers', 8),
+	      'EvtRt'        : (_q(args, 'MEB_EvtRt'),        _fmtF,   'Event rate',                     8),
+	      'EvtCt'        : (_q(args, 'MEB_EvtCt'),        _fmtN,   '# of Events handled',            8),
+	      'RxPdg'        : (_q(args, 'EB_RxPdg',  'MEB'), _fmtN,   'Receive pending flag',           5),
+	      'BfInCt'       : (_q(args, 'EB_BfInCt', 'MEB'), _fmtN,   '# of Input Batches',             8),
+	      'EvAlCt'       : (_q(args, 'EB_EvAlCt', 'MEB'), _fmtN,   '# of Allocated events',          8),
+	      'EvFrCt'       : (_q(args, 'EB_EvFrCt', 'MEB'), _fmtN,   '# of Freed events',              8),
+	      'FxUpCt'       : (_q(args, 'EB_FxUpCt', 'MEB'), _fmtN,   '# of Swept out events',          8),
+	      'ToEvCt'       : (_q(args, 'EB_ToEvCt', 'MEB'), _fmtN,   '# of Timed out events',          8),
+	      'CbMsMk'       : (_q(args, 'EB_CbMsMk', 'MEB'), _fmtHex, 'Missing contributors',   16),
+        'RqBufCt'      : (_q(args, 'MRQ_BufCt'),        _fmtN,   '# of Available Request buffers', 8),
+	      'ReqRt'        : (_q(args, 'MEB_ReqRt'),        _fmtF,   'Monitor request rate ',          8),
+	      'ReqCt'        : (_q(args, 'MEB_ReqCt'),        _fmtN,   '# of Monitor requests',          8),
     }
 
     #width  = 0
