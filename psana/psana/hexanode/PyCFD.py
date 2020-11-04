@@ -57,7 +57,7 @@ class PyCFD:
         wf_cal_ind_ind = np.where(self.polarity*wf_1[wf_cal_ind] > (self.threshold+self.polarity*self.offset))[0]  
 
         
-        t_cfd_list = []
+        t_cfd_arr = np.empty([0,])
         
         
         #The arrival time t_cfd is obtained from the Newton Polynomial fitted to the 4 data points around the location found from above.
@@ -79,9 +79,8 @@ class PyCFD:
             
                 t_cfd = bisect(self.NewtonPolynomial3,t_arr[1],t_arr[2],args=(t_arr, wf_cal_m_walk_arr),xtol=self.xtol)
             
-                t_cfd_list.append(t_cfd)
+                t_cfd_arr = np.append(t_cfd_arr,t_cfd)
         except:
-            print('Newton Polynomial escaped.')
-            t_cfd_list.append(wt[wf_cal_ind[ind]])
+            t_cfd_arr = np.append(t_cfd_arr,wt[wf_cal_ind[ind]])
 
-        return t_cfd_list
+        return t_cfd_arr
