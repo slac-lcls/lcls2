@@ -40,6 +40,16 @@ class MmcmPhaseLock(pr.Device):
             mode         = "RW",
         ))
 
+        self.add(pr.RemoteVariable(    
+            name         = "bypassLock",
+            description  = "Bypass external lock",
+            offset       =  0x00,
+            bitSize      =  1,
+            bitOffset    =  0x1d,
+            base         = pr.UInt,
+            mode         = "RW",
+        ))
+
         self.add(pr.RemoteVariable(
             name         = "status",
             description  = "Lock status",
