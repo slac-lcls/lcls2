@@ -1,3 +1,4 @@
+from psana.dgram import Dgram
 from psana.smdreader import SmdReader
 from psana.eventbuilder import EventBuilder
 from psana.psexp import *
@@ -65,6 +66,7 @@ class SmdReaderManager(object):
         self.smdr = SmdReader(smd_fds, self.chunksize)
         self.processed_events = 0
         self.got_events = -1
+        self.force_stopiteration = False
         
         # Collecting Smd0 performance using prometheus
         self.c_read = self.dsparms.prom_man.get_metric('psana_smd0_read')
@@ -115,12 +117,29 @@ class SmdReaderManager(object):
         The iterator stops reading under two conditions. Either there's
         no more data or max_events reached.
         """
-        if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
+        if self.force_stopiteration or \
+                (self.dsparms.max_events and self.processed_events >= self.dsparms.max_events):
             raise StopIteration
         
         if not self.smdr.is_complete():
             self._get()
             if not self.smdr.is_complete():
+                if not self.smdr.found_endrun():
+                    endrun_bufs = []
+                    for i, config in enumerate(self.configs):
+                        sec = (self.smdr.timestamp(i) >> 32) & 0xffffffff
+                        usec = int((self.smdr.timestamp(i) & 0xffffffff) * 1e3 + 1)
+                        d = Dgram(config=config, fake_endrun=1,
+                                fake_endrun_sec=sec, fake_endrun_usec=usec)
+                        endrun_bufs.append(bytearray(d))
+                    batch_iter = BatchIterator(endrun_bufs, self.configs, 
+                            batch_size  = self.dsparms.batch_size, 
+                            filter_fn   = self.dsparms.filter, 
+                            destination = self.dsparms.destination)
+                    self.got_events = 1
+                    self.processed_events += self.got_events
+                    self.force_stopiteration = True
+                    return batch_iter
                 raise StopIteration
         
         mmrv_bufs, _ = self.smdr.view(batch_size=self.batch_size)

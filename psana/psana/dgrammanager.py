@@ -166,7 +166,6 @@ class DgramManager(object):
                 fake_endruns = self._check_missing_endrun()
                 if fake_endruns:
                     dgrams = fake_endruns
-                    self.force_stopiteration = True
                 else:
                     raise StopIteration
                 

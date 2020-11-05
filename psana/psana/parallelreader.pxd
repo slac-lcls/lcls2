@@ -18,6 +18,7 @@ cdef struct Buffer:
     uint64_t timestamp                   # ts of the last dgram
     uint64_t ts_arr[0x100000]            # dgram timestamps 
     uint64_t next_offset_arr[0x100000]   # their offset + size of dgram and payload
+    unsigned services[0x100000] 
 
 cdef class ParallelReader:
     cdef int[:]     file_descriptors

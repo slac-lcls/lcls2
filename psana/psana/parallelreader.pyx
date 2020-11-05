@@ -127,6 +127,7 @@ cdef class ParallelReader:
 
                         # check if this a non L1
                         service = (d.env>>24)&0xf
+                        buf.services[buf.n_ready_events] = service
                         if service != self.L1Accept:
                             memcpy(step_buf.chunk + step_buf.ready_offset, d, sizeof(Dgram) + payload)
                             step_buf.ts_arr[step_buf.n_ready_events] = buf.ts_arr[buf.n_ready_events]

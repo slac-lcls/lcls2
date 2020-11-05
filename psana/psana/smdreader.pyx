@@ -16,6 +16,7 @@ cdef class SmdReader:
     cdef int            max_retries, sleep_secs
     cdef array.array    buf_offsets, stepbuf_offsets, buf_sizes, stepbuf_sizes
     cdef array.array    i_evts, founds
+    cdef unsigned       EndRun
 
     def __init__(self, int[:] fds, int chunksize):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
@@ -30,6 +31,7 @@ cdef class SmdReader:
         self.stepbuf_sizes      = array.array('Q', [0]*fds.size)
         self.i_evts             = array.array('Q', [0]*fds.size)
         self.founds             = array.array('Q', [0]*fds.size)
+        self.EndRun             = 5
 
     def is_complete(self):
         """ Checks that all buffers have at least one event 
@@ -195,3 +197,15 @@ cdef class SmdReader:
     def reset_beginrun(self):
         self.prl_reader.beginrun_offset = 0
         self.prl_reader.n_beginruns = 0
+
+    def found_endrun(self):
+        found = False
+        for i in range(self.prl_reader.nfiles):
+            buf = &(self.prl_reader.bufs[i])
+            if buf.services[buf.n_ready_events] == self.EndRun:
+                found = True
+                break
+        return found
+
+    def timestamp(self, buf_i):
+        return self.prl_reader.bufs[buf_i].timestamp
