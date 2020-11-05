@@ -4,7 +4,7 @@
 
 import sys
 
-# check Python v/rsion
+# check Python version
 if sys.version_info[0] == 2:
     raise Exception("Python 2 not supported")
 
@@ -310,6 +310,7 @@ elif command == 'restart':
         rv = _stop(sys.argv[0], args, runconfig, lastconfig, configfile, options)
         if rv != 0:
           print("*** %s: error occurred during stop" % sys.argv[0])
+          sys.exit(1)
         # sleep
         sleep (0.5)
         # start
