@@ -28,6 +28,13 @@ json createAsyncErrMsg(const std::string& alias, const std::string& errMsg)
     return createMsg("error", "0", 0, body);
 }
 
+json createAsyncWarnMsg(const std::string& alias, const std::string& warnMsg)
+{
+    json body = json({});
+    body["err_info"] = alias + ": " + warnMsg;
+    return createMsg("warning", "0", 0, body);
+}
+
 std::string getNicIp(bool forceEnet)
 {
     struct ifaddrs* ifaddr;
