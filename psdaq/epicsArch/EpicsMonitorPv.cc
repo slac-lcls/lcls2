@@ -80,7 +80,7 @@ namespace Drp
 
   void EpicsMonitorPv::onConnect()
   {
-    logging::info("%s connected\n", name().c_str());
+    logging::debug("%s connected\n", name().c_str());
 
     if (_bDebug)
       printStructure();
@@ -88,7 +88,7 @@ namespace Drp
 
   void EpicsMonitorPv::onDisconnect()
   {
-    logging::info("%s disconnected\n", name().c_str());
+    logging::warning("%s disconnected\n", name().c_str());
   }
 
   void EpicsMonitorPv::updated()

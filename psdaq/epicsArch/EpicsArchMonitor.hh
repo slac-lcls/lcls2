@@ -29,6 +29,7 @@ namespace Drp
                       XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId,
                       size_t& payloadSize);
     int      getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId, size_t payloadSize);
+    unsigned validate(unsigned& iPvCount, unsigned tmo);
     unsigned validate(unsigned& iPvCount);
 
     static void close();

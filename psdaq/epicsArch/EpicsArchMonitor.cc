@@ -7,6 +7,7 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <chrono>
 #include "xtcdata/xtc/Dgram.hh"
 #include "xtcdata/xtc/Damage.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -221,6 +222,32 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
   return 0;     // All PV values are outputted successfully
 }
 
+unsigned EpicsArchMonitor::validate(unsigned& iPvCount, unsigned tmo)
+{
+  const size_t iNumPv = _lpvPvList.size();
+  iPvCount = iNumPv;
+
+  // Wait for PVs to connect
+  std::chrono::seconds sTmo(tmo);
+  auto t0(std::chrono::steady_clock::now());
+  unsigned nNotConnected;
+  do {
+    nNotConnected = 0;
+    for (unsigned iPvName = 0; iPvName < iNumPv; iPvName++)
+    {
+      EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
+
+      if (!epicsPvCur.isConnected()) {
+        nNotConnected++;
+      }
+    }
+    if (std::chrono::steady_clock::now() - t0 > sTmo)  break;
+  } while (nNotConnected);
+
+  // Check readiness and report on problematic PVs
+  return validate(iPvCount);
+}
+
 unsigned EpicsArchMonitor::validate(unsigned& iPvCount)
 {
   const size_t iNumPv = _lpvPvList.size();
@@ -231,17 +258,22 @@ unsigned EpicsArchMonitor::validate(unsigned& iPvCount)
   {
     EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
 
-    // Take select fields of interest and ignore uninteresting ones
-    const std::string request("field(value,timeStamp,dimension)");
+    if (epicsPvCur.isConnected()) {
+      // Take select fields of interest and ignore uninteresting ones
+      const std::string request("field(value,timeStamp,dimension)");
 
-    // Revisit: Test ready here?  It blocks with timeout
-    unsigned tmo = 1;
-    bool ready = epicsPvCur.ready(request, tmo);
-    if (!ready || !epicsPvCur.isConnected()) {
-      epicsPvCur.disable();
-      printf("%s (%s) is not %s\n",
-             epicsPvCur.getPvDescription().c_str(), epicsPvCur.getPvName().c_str(),
-             ready ? "ready" : "connected");
+      unsigned tmo = 1;                 // Seconds
+      if (!epicsPvCur.ready(request, tmo)) {
+        epicsPvCur.disable();
+        logging::warning("%s (%s) is not ready\n",
+                         epicsPvCur.getPvDescription().c_str(), epicsPvCur.getPvName().c_str());
+        nNotConnected++;
+      }
+    }
+    else {
+      epicsPvCur.disable();             //reconnect();
+      logging::warning("%s (%s) is not connected\n",
+                       epicsPvCur.getPvDescription().c_str(), epicsPvCur.getPvName().c_str());
       nNotConnected++;
     }
   }

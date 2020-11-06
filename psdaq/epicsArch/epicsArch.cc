@@ -204,9 +204,9 @@ unsigned EaDetector::connect(std::string& msg)
         return 1;
     }
 
-    // Wait for PVs to connect or be timed out
     unsigned pvCount = 0;
-    unsigned nNotConnected = m_monitor->validate(pvCount);
+    unsigned tmo = 1;                   // Seconds
+    unsigned nNotConnected = m_monitor->validate(pvCount, tmo);
     if (nNotConnected) {
         msg = "Number of PVs that didn't connect: " + std::to_string(nNotConnected) + " (of " + std::to_string(pvCount) + ")";
         if (nNotConnected == pvCount) {
