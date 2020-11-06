@@ -474,6 +474,10 @@ void PvaDetector::_worker()
                     [&](){return m_pgpQueue.guess_size();});
     m_exporter->constant("drp_worker_queue_depth", labels, m_pgpQueue.size());
 
+    // Borrow this for awhile
+    m_exporter->add("drp_worker_output_queue", labels, Pds::MetricType::Gauge,
+                    [&](){return m_pvQueue.guess_size();});
+
     Pgp pgp(*m_para, m_drp, m_running);
 
     while (true) {
@@ -501,8 +505,9 @@ void PvaDetector::_worker()
                 // prompt contributions from timing out before latent ones arrive.
                 // If the PV is updating, _timeout() never finds anything to do.
                 XtcData::TimeStamp timestamp;
-                const uint64_t msTmo = tsMatchDegree==2 ? 100 : 110; //4400;
+                const uint64_t msTmo = tsMatchDegree==2 ? 100 : 4400;
                 //const uint64_t ebTmo = 6000; // This overflows PGP (?) buffers: Pds::Eb::EB_TMO_MS/2 - 100;
+                //const uint64_t ebTmo = Pds::Eb::EB_TMO_MS/2 - 100; // This overflows PGP (?) buffers
                 //const uint64_t msTmo = tsMatchDegree==2 ? 100 : ebTmo;
                 //printf("*** tsMatchDegree %d, ebTmo %lu, msTmo %lu\n", tsMatchDegree, ebTmo, msTmo);
                 const uint64_t nsTmo = msTmo * 1000000;
