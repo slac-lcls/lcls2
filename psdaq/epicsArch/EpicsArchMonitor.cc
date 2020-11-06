@@ -235,7 +235,7 @@ unsigned EpicsArchMonitor::validate(unsigned& iPvCount)
     const std::string request("field(value,timeStamp,dimension)");
 
     // Revisit: Test ready here?  It blocks with timeout
-    unsigned tmo = 3;
+    unsigned tmo = 1;
     bool ready = epicsPvCur.ready(request, tmo);
     if (!ready || !epicsPvCur.isConnected()) {
       epicsPvCur.disable();

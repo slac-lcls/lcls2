@@ -16,7 +16,7 @@ class EaDetector : public XpmDetector
 public:
     EaDetector(Parameters& para, const std::string& pvCfgFile, DrpBase& drp);
     ~EaDetector();
-    std::string connect();
+    unsigned connect(std::string& msg);
     unsigned disconnect();
     unsigned unconfigure();
 public:                                 // Detector virtuals

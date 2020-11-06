@@ -185,14 +185,14 @@ EaDetector::~EaDetector()
     EpicsArchMonitor::close();
 }
 
-std::string EaDetector::connect()
+unsigned EaDetector::connect(std::string& msg)
 {
     try
     {
         std::string configFileWarning;
         m_monitor = std::make_unique<EpicsArchMonitor>(m_pvCfgFile.c_str(), m_para->verbose, configFileWarning);
         if (!configFileWarning.empty()) {
-            logging::warning("%s", configFileWarning.c_str());
+            msg = configFileWarning;
         }
     }
     catch(std::string& error)
@@ -200,23 +200,21 @@ std::string EaDetector::connect()
         logging::error("Failed to create EpicsArchMonitor( %s ): %s",
                        m_pvCfgFile.c_str(), error.c_str());
         m_monitor.reset();
-        return error;
+        msg = error;
+        return 1;
     }
 
     // Wait for PVs to connect or be timed out
     unsigned pvCount = 0;
     unsigned nNotConnected = m_monitor->validate(pvCount);
     if (nNotConnected) {
-        std::string msg("Number of PVs that didn't connect: " + std::to_string(nNotConnected) + "(of " + std::to_string(pvCount) + ")");
-        if (nNotConnected < pvCount)
-            logging::warning(msg.c_str());
-        else {
-            logging::error(msg.c_str());
-            return msg;
+        msg = "Number of PVs that didn't connect: " + std::to_string(nNotConnected) + " (of " + std::to_string(pvCount) + ")";
+        if (nNotConnected == pvCount) {
+            return 1;
         }
     }
 
-    return std::string{};
+    return 0;
 }
 
 unsigned EaDetector::disconnect()
@@ -431,23 +429,29 @@ void EpicsArchApp::_error(const std::string& which, const nlohmann::json& msg, c
 
 void EpicsArchApp::handleConnect(const nlohmann::json& msg)
 {
-    m_det->nodeId = msg["body"]["drp"][std::to_string(getId())]["drp_id"];
-    m_det->connect(msg, std::to_string(getId()));
-
-    // Connecting the PVs needs to take place before making IB connections
-    std::string errorMsg = m_eaDetector->connect();
-    if (!errorMsg.empty()) {
-        logging::error("Error in EaDetector::connect");
-        _error("connect", msg, errorMsg);
-        return;
-    }
-
-    errorMsg = m_drp.connect(msg, getId());
+    std::string errorMsg = m_drp.connect(msg, getId());
     if (!errorMsg.empty()) {
         logging::error("Error in DrpBase::connect");
         logging::error("%s", errorMsg.c_str());
         _error("connect", msg, errorMsg);
         return;
+    }
+
+    m_det->nodeId = m_drp.nodeId();
+    m_det->connect(msg, std::to_string(getId()));
+
+    unsigned rc = m_eaDetector->connect(errorMsg);
+    if (!errorMsg.empty()) {
+        if (!rc) {
+            logging::warning(("EaDetector::connect: " + errorMsg).c_str());
+            json warning = createAsyncWarnMsg(m_para.alias, errorMsg);
+            reply(warning);
+        }
+        else {
+            logging::error(("EaDetector::connect: " + errorMsg).c_str());
+            _error("connect", msg, errorMsg);
+            return;
+        }
     }
 
     m_unconfigure = false;
