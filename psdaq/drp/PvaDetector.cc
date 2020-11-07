@@ -505,7 +505,7 @@ void PvaDetector::_worker()
                 // prompt contributions from timing out before latent ones arrive.
                 // If the PV is updating, _timeout() never finds anything to do.
                 XtcData::TimeStamp timestamp;
-                const uint64_t msTmo = tsMatchDegree==2 ? 100 : 4400;
+                const uint64_t msTmo = tsMatchDegree==2 ? 100 : 1000; //4400;
                 //const uint64_t ebTmo = 6000; // This overflows PGP (?) buffers: Pds::Eb::EB_TMO_MS/2 - 100;
                 //const uint64_t ebTmo = Pds::Eb::EB_TMO_MS/2 - 100; // This overflows PGP (?) buffers
                 //const uint64_t msTmo = tsMatchDegree==2 ? 100 : ebTmo;
