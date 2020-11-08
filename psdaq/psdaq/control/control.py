@@ -2049,6 +2049,8 @@ class CollectionManager():
                                 timeout=10)
         except requests.exceptions.RequestException as ex:
             logging.error("get_last_run_number(): request exception: %s" % ex)
+        except Exception as ex:
+            logging.error("get_last_run_number(): exception: %s" % ex)
         else:
             logging.debug("current_run request response: %s" % resp.text)
             if resp.status_code == requests.codes.ok:
@@ -2058,6 +2060,8 @@ class CollectionManager():
                         last_run_number = resp.json().get("value", {}).get("num", 0)
                     except json.decoder.JSONDecodeError:
                         logging.error("Error: failed to decode JSON")
+                    except Exception as ex:
+                        logging.error("get_last_run_number(): exception: %s" % ex)
                 else:
                     logging.error("Error: failed to receive JSON")
             else:
