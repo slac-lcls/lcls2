@@ -8,9 +8,9 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 
-from psana.pscalib.geometry.GeometryAccess import GeometryAccess #, img_from_pixel_arrays
+from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
-from psana.detector.UtilsAreaDetector import dict_from_arr3d # arr3d_from_dict
+from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict
 
 #----
 
@@ -34,12 +34,25 @@ class AreaDetector(DetectorImpl):
 
 
     def raw(self,evt):
-        data = {}
+        """ Returns dense 3-d numpy array of segment data
+        from dict self._segments(evt)
+        """
         segs = self._segments(evt)
-        if segs is None: return None
-        for k,v in segs.items():
-            data[k]=v.raw
-        return data
+        if segs is None:
+            logger.warning('self._segments(evt) is None')
+            return None
+        return arr3d_from_dict({k:v.raw for k,v in segs.items()})
+
+
+    def segments(self,evt) :
+        """ Returns dense 1-d numpy array of segment indexes.
+        from dict self._segments(evt)    
+        """
+        segs = self._segments(evt)
+        if segs is None: 
+            logger.warning('self._segments(evt) is None')
+            return None
+        return np.array(sorted(segs.keys()), dtype=np.uint16)
 
 
     def det_calibconst(self):
@@ -73,35 +86,39 @@ class AreaDetector(DetectorImpl):
         return self.geo
         
 
-    def evaluate_pixel_coord_indexes(self, **kwa):
-        """ uses from kwa
+    def pixel_coord_indexes(self, **kwa):
         """
-        logger.debug('AreaDetector.det_pixel_coords')
+        """
+        logger.debug('AreaDetector.pixel_coord_indexes')
         #print('XXX dir(self):', dir(self))
         geo = self.det_geo()
         if geo is None:
             logger.warning('geo is None')
-            return
+            return None
             
-        #geo.print_list_of_geos()
-        #resp = geo.get_pixel_coords(cframe=kwa.get('cframe',0))
-
-        resp = rows, cols = geo.get_pixel_coord_indexes(\
+        return geo.get_pixel_coord_indexes(\
             pix_scale_size_um  = kwa.get('pix_scale_size_um',None),\
             xy0_off_pix        = kwa.get('xy0_off_pix',None),\
             do_tilt            = kwa.get('do_tilt',True),\
             cframe             = kwa.get('cframe',0))
 
-        if any(v is None for v in resp): return
 
-        s = 'responce of geo.get_pixel_coords:'
-        for i,v in enumerate(resp): s += info_ndarr(v, '\n  pix coordinate inds rc[%d]: '%i, last=3)
-        logger.info(s)
+    def cached_pixel_coord_indexes(self, evt, **kwa):
+        logger.debug('AreaDetector.cached_pixel_coord_indexes')
 
-        self.inds_rc = [dict_from_arr3d(reshape_to_3d(v)) for v in resp]
+        resp = self.pixel_coord_indexes(**kwa)
+        if resp is None: return None
 
-        s = 'evaluate_pixel_coords content of X:'
-        for k,v in self.inds_rc[0].items(): s += info_ndarr(v, '\n  panel:%02d '%k, last=3)
+        # PRESERVE PIXEL INDEXES FOR USED SEGMENTS ONLY
+        segs = self.segments(evt)
+        if segs is None: return None
+        logger.info(info_ndarr(segs, 'preserve pixel indices for segments '))
+
+        self.inds_rc = [reshape_to_3d(a)[segs,:,:] for a in resp]
+        #self.inds_rc = [dict_from_arr3d(reshape_to_3d(v)) for v in resp]
+
+        s = 'evaluate_pixel_coord_indexes:'
+        for i,a in enumerate(self.inds_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
         logger.info(s)
 
 
@@ -118,19 +135,22 @@ class AreaDetector(DetectorImpl):
     def image(self, evt, **kwa):
         logger.debug('in AreaDretector.image')
         if any(v is None for v in self.inds_rc):
-            self.evaluate_pixel_coord_indexes(**kwa)
+            self.cached_pixel_coord_indexes(evt, **kwa)
             if any(v is None for v in self.inds_rc): return None
 
-        dicdata = self.calib(evt)
+        data = self.calib(evt)
         #logger.info(info_ndarr(calib, 'calib'))
         #logger.info('XXX calib:' + str(calib))
-        if dicdata is None: return None
+        if data is None: return None
             
-        s = 'AreaDretector.image content of dicdata:'
-        for k,v in dicdata.items(): s += info_ndarr(v, '\n  panel:%02d '%k, last=3)
-        logger.info(s)
+        #s = 'AreaDretector.image content of data:'
+        #for k,v in data.items(): s += info_ndarr(v, '\n  panel:%02d '%k, last=3)
+        
+        logger.info(info_ndarr(data, 'data ', last=3))
 
-        return img_from_pixel_dicts(self.inds_rc[0], self.inds_rc[1], weight=dicdata, vbase=1)
+        return img_from_pixel_arrays(self.inds_rc[0], self.inds_rc[1], W=data, vbase=1)
+
+        #return img_from_pixel_dicts(self.inds_rc[0], self.inds_rc[1], weight=data, vbase=1)
         #return img_from_pixel_dicts(self.inds_rc[0], self.inds_rc[1], weight=2.0, vbase=1)
 
 #----
