@@ -2057,11 +2057,17 @@ class CollectionManager():
                 logging.debug("current_run request response headers: %s" % resp.headers)
                 if 'application/json' in resp.headers['Content-Type']:
                     try:
-                        last_run_number = resp.json().get("value", {}).get("num", 0)
+                        json_response = resp.json()
                     except json.decoder.JSONDecodeError:
                         logging.error("Error: failed to decode JSON")
-                    except Exception as ex:
-                        logging.error("get_last_run_number(): exception: %s" % ex)
+                    else:
+                        if json_response is None or json_response.get("value", {}) is None:
+                            logging.debug("get_last_run_number(): JSON response is None")
+                        else:
+                            try:
+                                last_run_number = json_response.get("value", {}).get("num", 0)
+                            except Exception as ex:
+                                logging.error("get_last_run_number(): failed to get num: %s" % ex)
                 else:
                     logging.error("Error: failed to receive JSON")
             else:
