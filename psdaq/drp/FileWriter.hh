@@ -20,11 +20,13 @@ public:
     int open(const std::string& fileName);
     int close();
     void writeEvent(void* data, size_t size, XtcData::TimeStamp ts);
+    const uint64_t& writing() const { return m_writing; }
 private:
     int m_fd;
     size_t m_count;
     XtcData::TimeStamp m_batch_starttime;
     std::vector<uint8_t> m_buffer;
+    uint64_t m_writing;
 };
 
 class BufferedFileWriterMT
@@ -37,11 +39,17 @@ public:
     void writeEvent(void* data, size_t size, XtcData::TimeStamp ts);
     void run();
     const uint64_t& depth() const { return m_depth; }
-    const uint64_t& size() const { return m_size; }
+    const uint64_t& size()  const { return m_size; }
+    const uint64_t& writing() const { return m_writing; }
+    const uint64_t& freeBlocked()  const { return m_freeBlocked; }
+    const uint64_t& pendBlocked()  const { return m_pendBlocked; }
 private:
     size_t m_bufferSize;
     uint64_t m_depth;
     uint64_t m_size;
+    uint64_t m_writing;
+    uint64_t m_freeBlocked;
+    uint64_t m_pendBlocked;
     int m_fd;
     XtcData::TimeStamp m_batch_starttime;
     class Buffer {

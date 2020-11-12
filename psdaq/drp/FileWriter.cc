@@ -13,13 +13,15 @@ using logging = psalg::SysLog;
 namespace Drp {
 
 BufferedFileWriter::BufferedFileWriter(size_t bufferSize) :
-    m_count(0), m_batch_starttime(0,0), m_buffer(bufferSize)
+    m_count(0), m_batch_starttime(0,0), m_buffer(bufferSize), m_writing(0)
 {
 }
 
 BufferedFileWriter::~BufferedFileWriter()
 {
+    ++m_writing;
     write(m_fd, m_buffer.data(), m_count);
+    --m_writing;
     m_count = 0;
 }
 
@@ -91,11 +93,13 @@ void BufferedFileWriter::writeEvent(void* data, size_t size, XtcData::TimeStamp 
     // can't be 1 second without a more precise age calculation, since
     // the seconds field could have "rolled over" since the last event
     if ((size > (m_buffer.size() - m_count)) || age_seconds>2) {
+        ++m_writing;
         if (write(m_fd, m_buffer.data(), m_count) == -1) {
             // %m will be replaced by the string strerror(errno)
             logging::error("write error: %m");
             throw std::string("File writing failed");
         }
+        --m_writing;
         // reset these to prepare for the new batch
         m_count = 0;
         m_batch_starttime = timestamp;
@@ -127,6 +131,9 @@ BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize) :
     }
     m_size  = m_free.size();
     m_depth = m_free.count();
+    m_writing     = 0;
+    m_freeBlocked = 0;
+    m_pendBlocked = 0;
 }
 
 BufferedFileWriterMT::~BufferedFileWriterMT()
@@ -138,6 +145,7 @@ BufferedFileWriterMT::~BufferedFileWriterMT()
         m_free.pop(b);
         delete[] b.p;
     }
+    m_depth = m_free.count();
 }
 
 int BufferedFileWriterMT::open(const std::string& fileName)
@@ -178,9 +186,12 @@ int BufferedFileWriterMT::close()
             m_free.pop(b);
             logging::debug("Flushing %zu bytes to fd %d", b.count, m_fd);
             m_pend.push(b);
+            m_depth = m_free.count();
             m_batch_starttime = XtcData::TimeStamp(0,0);
         }
+        ++m_pendBlocked;
         m_pend.pendn();  // block until writing complete
+        --m_pendBlocked;
         logging::debug("Closing fd %d", m_fd);
         rv = ::close(m_fd);
     } else {
@@ -209,15 +220,19 @@ void BufferedFileWriterMT::writeEvent(void* data, size_t size, XtcData::TimeStam
     // write out data if buffer full or batch is too old
     // can't be 1 second without a more precise age calculation, since
     // the seconds field could have "rolled over" since the last event
-    m_depth = m_free.count();
+    ++m_freeBlocked;
     m_free.pend();
+    --m_freeBlocked;
     if ((size > (m_bufferSize - m_free.front().count)) || age_seconds>2) {
         Buffer b = m_free.front();
         m_free.pop(b);
         m_pend.push(b);
+        m_depth = m_free.count();
         // reset these to prepare for the new batch
         m_batch_starttime = timestamp;
+        ++m_freeBlocked;
         m_free.pend();
+        --m_freeBlocked;
     }
 
     Buffer& b = m_free.front();
@@ -233,7 +248,9 @@ void BufferedFileWriterMT::run()
 {
     while (true) {
         std::chrono::milliseconds tmo{100};
+        ++m_pendBlocked;
         m_pend.pend(tmo);
+        --m_pendBlocked;
         if (m_pend.empty()) {
             if (m_terminate.load(std::memory_order_relaxed)) {
                 break;
@@ -242,14 +259,17 @@ void BufferedFileWriterMT::run()
                 continue;
         }
         Buffer& b = m_pend.front();
+        ++m_writing;
         if (write(m_fd, b.p, b.count) == -1) {
             // %m will be replaced by the string strerror(errno)
             logging::error("write error: %m");
             throw std::string("File writing failed");
         }
+        --m_writing;
         m_pend.pop(b);
         b.count = 0;
         m_free.push(b);
+        m_depth = m_free.count();
     }
 }
 

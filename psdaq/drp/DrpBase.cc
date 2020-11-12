@@ -150,11 +150,15 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
          {"partition", std::to_string(para.partition)},
          {"detname", para.detName},
          {"alias", para.alias}};
-    exporter->add("DRP_Damage"    , labels, Pds::MetricType::Gauge  , [&](){ return m_damage; });
-    exporter->add("DRP_RecordSize", labels, Pds::MetricType::Counter, [&](){ return m_offset; });
-    exporter->add("DRP_RecordDepth", labels, Pds::MetricType::Gauge , [&](){ return m_fileWriter.depth(); });
+    exporter->add("DRP_Damage"    ,   labels, Pds::MetricType::Gauge,   [&](){ return m_damage; });
+    exporter->add("DRP_RecordSize",   labels, Pds::MetricType::Counter, [&](){ return m_offset; });
+    exporter->add("DRP_RecordDepth",  labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.depth(); });
     exporter->constant("DRP_RecordDepthMax", labels, m_fileWriter.size());
     m_dmgType = exporter->histogram("DRP_DamageType", labels, 16);
+    exporter->add("DRP_smdWriting",   labels, Pds::MetricType::Gauge,   [&](){ return m_smdWriter.writing(); });
+    exporter->add("DRP_fileWriting",  labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.writing(); });
+    exporter->add("DRP_bufFreeBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.freeBlocked(); });
+    exporter->add("DRP_bufPendBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.pendBlocked(); });
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId)
