@@ -135,7 +135,7 @@ BldFactory::BldFactory(const char* name,
             mcaddr = 0xefff1801;
         }
         else {
-            mcaddr = 0xeff1901;
+            mcaddr = 0xefff1901;
         }
         _alg    = XtcData::Alg("raw", 2, 0, 0);
         _varDef.NameVec.push_back(XtcData::Name("fitTime1"      , XtcData::Name::DOUBLE));

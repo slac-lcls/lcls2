@@ -125,7 +125,9 @@ void Module134::setup_timing()
   }
 }
 
-void Module134::setup_jesd(bool lAbortOnErr)
+void Module134::setup_jesd(bool lAbortOnErr,
+                           std::string& adc0,
+                           std::string& adc1)
 {
   i2c_lock(I2cSwitch::PrimaryFmc);
   Fmc134Cpld* cpld = &i2c().fmc_cpld;
@@ -139,7 +141,7 @@ void Module134::setup_jesd(bool lAbortOnErr)
     usleep(1000);
   }
 
-  while (cpld->default_adc_init()) {
+  while (cpld->default_adc_init(Fmc134Cpld::FG_CAL,adc0,adc1)) {
     if (lAbortOnErr)
       abort();
     usleep(1000);

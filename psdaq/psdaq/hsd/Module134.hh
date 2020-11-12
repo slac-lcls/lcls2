@@ -5,6 +5,7 @@
 #include "psdaq/hsd/Globals.hh"
 #include "psdaq/hsd/I2cSwitch.hh"
 #include "psdaq/service/Semaphore.hh"
+#include <string>
 #include <stdint.h>
 #include <stdio.h>
 #include <vector>
@@ -54,7 +55,10 @@ namespace Pds {
       uint64_t device_dna() const;
 
       void     setup_timing();
-      void     setup_jesd  (bool lAbortOnErr=true);
+      void     setup_jesd  (bool lAbortOnErr,
+                            std::string& calib_adc0,
+                            std::string& calib_adc1);
+      void     write_calib (const char*);
       void     board_status();
 
       void     set_local_id(unsigned bus);

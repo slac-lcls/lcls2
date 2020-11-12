@@ -1,3 +1,5 @@
+find_package(PythonLibs REQUIRED)
+
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
@@ -39,9 +41,11 @@ add_library(hsd SHARED
 target_include_directories(hsd PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${PYTHON_INCLUDE_DIRS}
 )
 
 target_link_libraries(hsd
+    ${PYTHON_LIBRARIES}
     xtcdata::xtc
     service
     mmhw

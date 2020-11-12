@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <string>
 #include <cctype>
 #include <stdio.h>
 #include <unistd.h>
@@ -70,8 +71,9 @@ namespace Pds {
       }
 
       _m.i2c().fmc_cpld.adc_range(fmc,PVGET(fs_range_vpp));
-      _m.i2c_unlock();
 
+      _m.i2c_unlock();
+      
       FexCfg& fex = _m.chip(fmc).fex;
 
       if (PVGET(enable)==1) {
@@ -132,7 +134,8 @@ namespace Pds {
       }
       if (PVGET(jesdsetup)) {
         printf("--jesdsetup\n");
-        _m.setup_jesd(false);
+        std::string adc[2];
+        _m.setup_jesd(false,adc[0],adc[1]);
       }
       if (PVGET(jesdinit)) {
         printf("--jesdinit\n");
