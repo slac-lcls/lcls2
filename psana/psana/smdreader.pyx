@@ -198,14 +198,5 @@ cdef class SmdReader:
         self.prl_reader.beginrun_offset = 0
         self.prl_reader.n_beginruns = 0
 
-    def found_endrun(self):
-        found = False
-        for i in range(self.prl_reader.nfiles):
-            buf = &(self.prl_reader.bufs[i])
-            if buf.services[buf.n_ready_events] == self.EndRun:
-                found = True
-                break
-        return found
-
     def timestamp(self, buf_i):
         return self.prl_reader.bufs[buf_i].timestamp

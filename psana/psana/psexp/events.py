@@ -1,4 +1,4 @@
-from psana.psexp import EventManager, TransitionId
+from psana.psexp import EventManager
 import logging
 import types
 
@@ -28,7 +28,9 @@ class Events:
         if self.smdr_man:
             # RunSerial
             try:
-                return next(self._evt_man)
+                evt = next(self._evt_man)
+                self.smdr_man.last_seen_event = evt
+                return evt
             except StopIteration:
                 try:
                     batch_dict, _ = next(self._batch_iter)
@@ -41,7 +43,10 @@ class Events:
                         self.dm, 
                         filter_fn           = self.filter_callback,
                         prometheus_counter  = self.c_read)
-                return next(self._evt_man)
+                evt = next(self._evt_man)
+                self.smdr_man.last_seen_event = evt
+                return evt 
+
         elif self.get_smd:
             # RunParallel
             try:

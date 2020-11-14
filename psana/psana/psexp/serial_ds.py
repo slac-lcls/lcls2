@@ -18,14 +18,16 @@ class SerialDataSource(DataSourceBase):
         self._set_configinfo()
         self._start_prometheus_client()
         self.dm = DgramManager(self.xtc_files, configs=self._configs)
+        
         # prepare comms for running SmallData
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
+
+        self.events = Events(self._configs, self.dm, self.prom_man, filter_callback=self.filter, smdr_man=self.smdr_man)
     
     def runs(self):
-        events = Events(self._configs, self.dm, self.prom_man, filter_callback=self.filter, smdr_man=self.smdr_man)
-        for evt in events:
+        for evt in self.events:
             if evt.service() == TransitionId.BeginRun:
-                run = RunSerial(evt, events, self.dsparms)
+                run = RunSerial(evt, self.events, self.dsparms)
                 yield run 
         
         self._end_prometheus_client()
