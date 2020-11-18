@@ -19,9 +19,9 @@ BufferedFileWriter::BufferedFileWriter(size_t bufferSize) :
 
 BufferedFileWriter::~BufferedFileWriter()
 {
-    ++m_writing;
+    m_writing += 2;
     write(m_fd, m_buffer.data(), m_count);
-    --m_writing;
+    m_writing -= 2;
     m_count = 0;
 }
 
@@ -189,9 +189,9 @@ int BufferedFileWriterMT::close()
             m_depth = m_free.count();
             m_batch_starttime = XtcData::TimeStamp(0,0);
         }
-        ++m_pendBlocked;
+        m_pendBlocked += 2;
         m_pend.pendn();  // block until writing complete
-        --m_pendBlocked;
+        m_pendBlocked -= 2;
         logging::debug("Closing fd %d", m_fd);
         rv = ::close(m_fd);
     } else {
@@ -230,9 +230,9 @@ void BufferedFileWriterMT::writeEvent(void* data, size_t size, XtcData::TimeStam
         m_depth = m_free.count();
         // reset these to prepare for the new batch
         m_batch_starttime = timestamp;
-        ++m_freeBlocked;
+        m_freeBlocked += 2;
         m_free.pend();
-        --m_freeBlocked;
+        m_freeBlocked -= 2;
     }
 
     Buffer& b = m_free.front();
