@@ -56,7 +56,7 @@ namespace Pds {
       uint32_t persist () const { return _data & m_persists;  }
       uint32_t monitor () const { return _data & m_monitors;  }
       uint32_t prescale() const { return _data & m_prescales; }
-
+      uint32_t data()     const { return _data; }
       void     monBufNo(uint32_t monBufNo_) { _monBufNo = monBufNo_; }
       uint32_t monBufNo() const { return _monBufNo; }
     private:

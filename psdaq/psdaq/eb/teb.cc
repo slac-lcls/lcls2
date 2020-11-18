@@ -410,12 +410,16 @@ void Teb::process(EbEvent* event)
       if (rdg->persist())  _writeCount++;
       if (rdg->monitor())
       {
-        _monitorCount++;
-
         uint64_t data;
         int      rc = _mrqTransport.poll(&data);
-        if (rc < 0)  rdg->monitor(line, false);
-        else         rdg->monBufNo(data);
+        if (rc > 0)
+        {
+          _monitorCount++;
+
+          rdg->monBufNo(data);
+        }
+        else
+          rdg->monitor(line, false);
       }
     }
 

@@ -24,7 +24,8 @@
 
 #include <list>
 
-//#define DBUG
+//#define DBUG                            // Print client connection info
+//#define DBUG2                           // Print buffer management info
 //#define NO_STEAL
 
 using std::queue;
@@ -260,6 +261,9 @@ XtcMonitorServer::Result XtcMonitorServer::events(Dgram* dg)
         perror("Error sending transition");
         _transitionCache->deallocate(itr,i);
       }
+#ifdef DBUG2
+      printf("*** outputTr   sent idx %d to client %d\n", _myMsg.bufferIndex(), i);
+#endif
     }
 
   }
@@ -385,8 +389,12 @@ void XtcMonitorServer::routine()
         while(mq_timedreceive(_myInputEvQueue, (char*)&msg, sizeof(msg), NULL, &no_wait) > 0) {
           if (mq_timedsend(_requestQueue, (const char*)&msg, sizeof(msg), 0, &_tmo))
             perror("Writing to requestQ");
-          else
+          else {
             _requestDatagram();
+#ifdef DBUG2
+            printf("*** receiveEv  got  idx %d\n", msg.bufferIndex());
+#endif
+          }
         }
       }
 
@@ -394,6 +402,9 @@ void XtcMonitorServer::routine()
       //  Handle events ready for distribution
       //
       if (_pfd[2].revents & POLLIN) {
+#ifdef DBUG2
+        static uint64_t nevt = 0;
+#endif
         ShMsg m;
         if (mq_receive(_shuffleQueue, (char*)&m, sizeof(m), NULL) < 0)
           perror("mq_receive");
@@ -409,6 +420,9 @@ void XtcMonitorServer::routine()
             if (mq_timedsend(_myOutputEvQueue[i], (const char*)&m.msg(), sizeof(m.msg()), 0, &_tmo))
               ; //          printf("outputEv timed out to client %d\n",i);
             else {
+#ifdef DBUG2
+              printf("*** outputEv 1 sent idx %d to client %d, %u.%09u, nL1A %lu\n", m.msg().bufferIndex(), i, m.dg()->time.seconds(), m.dg()->time.nanoseconds(), nevt);
+#endif
               _msgDest[m.msg().bufferIndex()]=i;
               break;
             }
@@ -424,6 +438,9 @@ void XtcMonitorServer::routine()
             if (mq_timedsend(oq, (const char*)&m.msg(), sizeof(m.msg()), 0, &_tmo))
               ;
             else {
+#ifdef DBUG2
+              printf("*** outputEv 2 sent idx %d to client %d, %u.%09u, nL1A %lu\n", m.msg().bufferIndex(), oc, m.dg()->time.seconds(), m.dg()->time.nanoseconds(), nevt);
+#endif
               _msgDest[m.msg().bufferIndex()]=oc;
               lsent=true;
               break;
@@ -434,6 +451,9 @@ void XtcMonitorServer::routine()
               perror("Unable to distribute or reclaim event");
           }
         }
+#ifdef DBUG2
+        ++nevt;
+#endif
       }
 
       //
@@ -451,6 +471,9 @@ void XtcMonitorServer::routine()
                   int itr=msg.bufferIndex()-_numberOfEvBuffers;
                   if (_transitionCache->deallocate(itr,q))
                     _update(q,reinterpret_cast<Dgram*>(_myShm+_sizeOfBuffers*msg.bufferIndex())->service());
+#ifdef DBUG2
+                  printf("*** receiveTr freed idx %d from client %d\n", msg.bufferIndex(), q);
+#endif
                 }
                 else { // retire client
                   printf("Retiring client %d [%d]\n",q,_pfd[i].fd);

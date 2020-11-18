@@ -203,12 +203,14 @@ namespace psalg {
         else {
           int i = myMsg.bufferIndex();
 #ifdef DBUG
-          printf("Received ev buffer %d [%d] numBuffers %d size %d\n",i,iq,myMsg.numberOfBuffers(),myMsg.sizeOfBuffers());
+          printf("*** Received ev buffer %d [%d] numBuffers %d size %zd\n",i,iq,myMsg.numberOfBuffers(),myMsg.sizeOfBuffers());
 #endif
           if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
             XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
 #ifdef DBUG2
-            printf("*** received event id %d (%s)\n",dg->service(), XtcData::TransitionId::name(dg->service()));
+            static uint64_t nevt = 0;
+            printf("*** received ev svc %d (%s) %u.%09u, nL1A %lu\n",dg->service(), XtcData::TransitionId::name(dg->service()), dg->time.seconds(), dg->time.nanoseconds(), nevt);
+            if (dg->service() == XtcData::TransitionId::L1Accept)  ++nevt;
 #endif
             index = i;
             size = myMsg.sizeOfBuffers();

@@ -429,8 +429,8 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
       auto svc    = TransitionId::name(result->service());
       auto extent = sizeof(*result) + result->xtc.sizeofPayload();
       printf("CtrbIn  found  %15s  [%8lu]    @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u, deliver %c [%014lx]\n",
-             svc, idx, result, ctl, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid);
+             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u, dlvr %c [%014lx], res %08x, %08x \n",
+             svc, idx, result, ctl, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid, result->data(), result->monBufNo());
     }
 
     if (rPid == iPid)

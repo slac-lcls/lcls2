@@ -59,7 +59,7 @@ if sys.platform == 'darwin':
     openmp_compile_args = ['-fopenmp=libgomp']
     openmp_link_args = ['-fopenmp=libgomp']
 else:
-    # Flag -Wno-cpp hides warning: 
+    # Flag -Wno-cpp hides warning:
     #warning "Using deprecated NumPy API, disable it with " "#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION" [-Wcpp]
     extra_c_compile_args=['-Wno-cpp']
     extra_cxx_compile_args=['-std=c++11', '-Wno-cpp']
@@ -126,6 +126,7 @@ if 'PSANA' in BUILD_LIST :
             'xtcavLasingOff      = psana.xtcav.app.xtcavLasingOff',
             'xtcavLasingOn       = psana.xtcav.app.xtcavLasingOn',
             'xtcavDisplay        = psana.xtcav.app.xtcavDisplay',
+            'shmemClientSimple   = psana.app.shmemClientSimple:main',
         ]
     }
 
@@ -261,7 +262,7 @@ if 'DGRAM' in BUILD_LIST :
     CYTHON_EXTS.append(ext)
 
     ext = Extension("psana.eventbuilder",
-                    sources=["psana/eventbuilder.pyx"],  
+                    sources=["psana/eventbuilder.pyx"],
                     include_dirs=["psana"],
                     extra_compile_args=extra_c_compile_args,
                     extra_link_args=extra_link_args,
