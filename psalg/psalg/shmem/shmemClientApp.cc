@@ -45,6 +45,7 @@ void usage(char* progname) {
           "[-i <index>] "
           "[-r <rate>] "
           "[-t] dgram timing"
+          "[-R] make reconnect attempts"
           "[-v] "
           "[-V] "
           "[-h]\n", progname);
