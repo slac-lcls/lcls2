@@ -8,9 +8,10 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 
-from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
+from psana.pscalib.geometry.GeometryAccess import GeometryAccess #, img_from_pixel_arrays
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
-from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict
+from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
+        img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean, img_interpolated
 
 #----
 
@@ -21,7 +22,7 @@ class AreaDetector(DetectorImpl):
         DetectorImpl.__init__(self, *args, **kwargs)
         # caching
         self.geo = None
-        self.inds_rc = None, None
+        self.pix_rc = None, None
 
         #logger.info('XXX dir(self):\n' + str(dir(self)))
         #logger.info('XXX self._segments:\n' + str(self._segments))
@@ -29,6 +30,8 @@ class AreaDetector(DetectorImpl):
 
     # example of some possible common behavior
     def _common_mode(self, *args, **kwargs):
+        """
+        """
         logger.debug('in %s._common_mode' % self.__class__.__name__)
         pass
 
@@ -76,6 +79,8 @@ class AreaDetector(DetectorImpl):
 
 
     def det_geo(self):
+        """
+        """
         if self.geo is None:
             geotxt, meta = self.det_geotxt_and_meta()
             if geotxt is None:
@@ -90,7 +95,6 @@ class AreaDetector(DetectorImpl):
         """
         """
         logger.debug('AreaDetector.pixel_coord_indexes')
-        #print('XXX dir(self):', dir(self))
         geo = self.det_geo()
         if geo is None:
             logger.warning('geo is None')
@@ -104,6 +108,8 @@ class AreaDetector(DetectorImpl):
 
 
     def cached_pixel_coord_indexes(self, evt, **kwa):
+        """
+        """
         logger.debug('AreaDetector.cached_pixel_coord_indexes')
 
         resp = self.pixel_coord_indexes(**kwa)
@@ -112,17 +118,21 @@ class AreaDetector(DetectorImpl):
         # PRESERVE PIXEL INDEXES FOR USED SEGMENTS ONLY
         segs = self.segments(evt)
         if segs is None: return None
-        logger.info(info_ndarr(segs, 'preserve pixel indices for segments '))
+        logger.debug(info_ndarr(segs, 'preserve pixel indices for segments '))
 
-        self.inds_rc = [reshape_to_3d(a)[segs,:,:] for a in resp]
-        #self.inds_rc = [dict_from_arr3d(reshape_to_3d(v)) for v in resp]
+        rows, cols = self.pix_rc = [reshape_to_3d(a)[segs,:,:] for a in resp]
+        #self.pix_rc = [dict_from_arr3d(reshape_to_3d(v)) for v in resp]
 
         s = 'evaluate_pixel_coord_indexes:'
-        for i,a in enumerate(self.inds_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
+        for i,a in enumerate(self.pix_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
         logger.info(s)
+
+        self.img_entries, self.dict_pix_to_img_idx, self.dict_imgidx_numentries = statistics_of_pixel_arrays(rows, cols)
 
 
     def calib(self,evt):
+        """
+        """
         logger.warning('AreaDetector.calib TBD currently returns raw')
         #print('XXX dir(self):', dir(self))
         #cc = self.det_calibconst()
@@ -132,60 +142,33 @@ class AreaDetector(DetectorImpl):
         return self.raw(evt)
 
 
-    def image(self, evt, **kwa):
+    def image(self, evt, nda=None, **kwa):
         logger.debug('in AreaDretector.image')
-        if any(v is None for v in self.inds_rc):
+        if any(v is None for v in self.pix_rc):
             self.cached_pixel_coord_indexes(evt, **kwa)
-            if any(v is None for v in self.inds_rc): return None
+            if any(v is None for v in self.pix_rc): return None
 
-        data = self.calib(evt)
-        #logger.info(info_ndarr(calib, 'calib'))
-        #logger.info('XXX calib:' + str(calib))
-        if data is None: return None
+        vbase = kwa.get('vbase',0)
+        mapmode = kwa.get('mapmode',1)
+
+        if mapmode==0: return self.img_entries
+
+        data = self.calib(evt) if nda is None else nda
+        if data is None:
+            logger.warning('AreaDetector.image calib returns None')
+            return None
             
-        #s = 'AreaDretector.image content of data:'
-        #for k,v in data.items(): s += info_ndarr(v, '\n  panel:%02d '%k, last=3)
-        
         logger.info(info_ndarr(data, 'data ', last=3))
 
-        return img_from_pixel_arrays(self.inds_rc[0], self.inds_rc[1], W=data, vbase=1)
+        rows, cols = self.pix_rc
+        
+        img = img_from_pixel_arrays(rows, cols, weight=data, vbase=vbase)
 
-        #return img_from_pixel_dicts(self.inds_rc[0], self.inds_rc[1], weight=data, vbase=1)
-        #return img_from_pixel_dicts(self.inds_rc[0], self.inds_rc[1], weight=2.0, vbase=1)
-
-#----
-
-def img_from_pixel_dicts(rows, cols, weight=2.0, dtype=np.float32, vbase=0):
-    """Returns image from rows, cols index arrays and associated weights W.
-       Methods like matplotlib imshow(img) plot 2-d image array oriented as matrix(rows,cols).
-    """
-    assert isinstance(rows, dict)
-    assert isinstance(cols, dict)
-    assert (isinstance(weight, (dict,float)))
-
-    rsize = 0
-    csize = 0
-    for k,v in rows.items():
-        rsize = int(max(rsize, v.max()))
-        csize = int(max(rsize, cols[k].max()))
-
-    logger.debug('evaluated image shape = (%d, %d)' % (rsize, csize))
-
-    img = np.ones((rsize+1,csize+1), dtype=dtype)*vbase if vbase else\
-         np.zeros((rsize+1,csize+1), dtype=dtype)
-
-    if isinstance(weight, float):
-        for k,v in rows.items():
-            rowsfl = v.flatten()
-            colsfl = cols[k].flatten()
-            img[rowsfl,colsfl] = weight
-    else:
-        for k,v in weight.items():
-            rowsfl = rows[k].flatten()
-            colsfl = cols[k].flatten()
-            img[rowsfl,colsfl] = v.flatten()
-
-    return img
+        if   mapmode==1: return img
+        elif mapmode==2: return img_multipixel_max(img, data, self.dict_pix_to_img_idx)
+        elif mapmode==3: return img_multipixel_mean(img, data, self.dict_pix_to_img_idx, self.dict_imgidx_numentries)
+        elif mapmode==4: return img_interpolated()
+        else: return self.img_entries
 
 #----
 

@@ -12,7 +12,6 @@ print('np import consumed time (sec) = %.6f' % dt_sec)
 
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 
-#exit('TEST EXIT')
 #----
 
 fname0 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2'
@@ -127,42 +126,46 @@ def test_image(fname, args):
     logger.info('in test_image data from file:\n  %s' % fname)
     ds, run, det = ds_run_det(fname, args)
 
-    gr, fig, axim, axcb = None, None, None, None
-    imsh, cbar = None, None
-    h_in = 8 # inch figure height
-
-    if args.dograph:
-        import psana.pyalgos.generic.Graphics as gg
-        from UtilsGraphics import gr
-        fig = gr.figure(figsize=(9,8), title='Image', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=None)# **kwargs)
-        fig, axim, axcb = gr.fig_img_cbar_axes(fig=fig, win_axim=(0.05,0.03,0.87,0.93), win_axcb=(0.923,0.03,0.02,0.93))
+    flimg = None
 
     for evnum,evt in enumerate(run.events()):
         print('%s\nEvent %04d' % (50*'_',evnum))
-        img = det.raw.image(evt)
+        arr = det.raw.calib(evt)
+        logger.info(info_ndarr(arr, 'arr   '))
+        if arr is None: continue
+
+        #=======================
+        #arr = np.ones_like(arr)
+        #=======================
+
+
+        t0_sec = time()
+
+        img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
+        #img = det.raw.image(evt)
+        dt_sec = time()-t0_sec
+        logger.info('image composition time = %.6f sec ' % dt_sec)
+
         logger.info(info_ndarr(img, 'image '))
+        if img is None: continue
+
+        alimits = None if args.mapmode else (0,4)
 
         if args.dograph:
-            arr = det.raw.calib(evt)
-            #ave, rms = arr.mean(), arr.std()
-            med = np.median(arr)
-            spr = np.median(np.abs(arr-med))
-            amin, amax = med-1*spr, med+3*spr
-            print('median:%.1f spread:%.1f amin:%.1f amax:%.1f' % (med, spr, amin, amax))
 
-            if imsh is None :
-              asp_ratio = float(img.shape[1])/img.shape[0]
-              fig.set_size_inches(h_in*asp_ratio, h_in)
-              imsh, cbar = gr.imshow_cbar(fig, axim, axcb, img, amin=amin, amax=amax, extent=None,\
-                interpolation='nearest', aspect='auto', origin='upper',\
-                orientation='vertical', cmap='inferno') #, **kwargs)
-            else :
-              imsh.set_data(img)
-              imsh.set_clim(amin, amax)
+            if flimg is None:
+                from UtilsGraphics import gr, fleximage
+                flimg = fleximage(img, arr=arr, h_in=8, nneg=1, npos=3, alimits=alimits) #, cmap='jet')
+                #flimg = fleximage(img, h_in=8, alimits=(0,4)) #, cmap='jet')
+            else:
+                flimg.update(img, arr=arr)
 
-        gr.show(mode=1)
+            gr.show(mode=1)
 
-    if args.dograph: gr.show()
+    if args.dograph:
+        gr.show()
+        if args.ofname is not None:
+            gr.save_fig(flimg.fig, fname=args.ofname, verb=True)
 
     print(50*'-')
 
@@ -182,24 +185,36 @@ if __name__ == "__main__":
       + '\n    1 - test_raw("%s")'%fname1\
       + '\n    2 - test_image("%s")'%fname0\
       + '\n    3 - test_image("%s")'%fname1\
+      + '\n ==== '\
+      + '\n    ./%s 2 -m0 -s101' % SCRNAME\
+      + '\n    ./%s 2 -m1' % SCRNAME\
+      + '\n    ./%s 2 -m2 -lDEBUG' % SCRNAME\
+      + '\n    ./%s 2 -m3 -s101 -o img.png' % SCRNAME\
 
     d_loglev  = 'INFO' #'INFO' #'DEBUG'
     d_pattrs  = False
     d_dograph = True
     d_detname = 'epix10k2M'
     d_expname = 'mfxc00318'
+    d_ofname  = None
+    d_mapmode = 1
+    d_pscsize = 100
 
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
+    h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
 
     import argparse
 
     parser = argparse.ArgumentParser(usage=usage)
     parser.add_argument('tname', type=str, help='test name')
-    parser.add_argument('-l', '--loglev', default=d_loglev, type=str, help=h_loglev)
-    parser.add_argument('-P', '--pattrs', default=d_pattrs, action='store_true', help='print objects attrubutes, def=%s' % d_pattrs)
-    parser.add_argument('-G', '--dograph', default=d_dograph, action='store_false', help='plot graphics, def=%s' % d_pattrs)
+    parser.add_argument('-l', '--loglev',  default=d_loglev,  type=str, help=h_loglev)
     parser.add_argument('-d', '--detname', default=d_detname, type=str, help='detector name, def=%s' % d_detname)
     parser.add_argument('-e', '--expname', default=d_expname, type=str, help='experiment name, def=%s' % d_expname)
+    parser.add_argument('-P', '--pattrs',  default=d_pattrs,  action='store_true',  help='print objects attrubutes, def=%s' % d_pattrs)
+    parser.add_argument('-G', '--dograph', default=d_dograph, action='store_false', help='plot graphics, def=%s' % d_pattrs)
+    parser.add_argument('-o', '--ofname',  default=d_ofname,  type=str, help='output image file name, def=%s' % d_ofname)
+    parser.add_argument('-m', '--mapmode', default=d_mapmode, type=int, help=h_mapmode)
+    parser.add_argument('-s', '--pscsize', default=d_pscsize, type=float, help='pixel scale size [um], def=%.1f' % d_pscsize)
 
     args = parser.parse_args()
     kwa = vars(args)
@@ -218,7 +233,7 @@ if __name__ == "__main__":
     elif tname=='3': test_image(fname1, args)
     else: logger.warning('NON-IMPLEMENTED TEST: %s' % tname)
 
-    sys.exit('END OF %s' % SCRNAME)
+    exit('END OF %s' % SCRNAME)
 
 #----
 
