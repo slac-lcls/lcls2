@@ -6,6 +6,7 @@ class Step(object):
         self.evt    = step_evt
         self._events= events
         self.esm    = esm
+        self.esm.update_by_event(step_evt)
     
     def events(self):
         for evt in self._events:
