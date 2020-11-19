@@ -54,7 +54,9 @@ class POP:
     def Peel(self, img, s=[1,1,1,1]):
     
         Q_cart = GetQuadrant(img,self.X0, self.Y0, self.Rmax,s=s)        
-        self.Q_polar = Cart2Polar(Q_cart,self.inds_cart,self.cs_cart)        
+        self.Q_polar = Cart2Polar(Q_cart,self.inds_cart,self.cs_cart) 
+        
+        self.betas = np.zeros([len(self.num_elms_at_R[:-1]),self.lnum])       
 
         
         ind = 0          
@@ -64,7 +66,9 @@ class POP:
                                           self.reg*np.identity(self.LegMatS_lst[i].shape[0])), 
                      np.dot(self.LegMatS_lst[i], 
                      np.dot(self.LegMatUt_lst[i], self.Q_polar[ind:(ind+num)]))))             
-       
+            
+            self.betas[i] = c_arr_i/c_arr_i[0]
+            
             self.Q_polar_3D_slice_fit[ind:(ind+num)] = np.dot(self.LegMat_lst[i], c_arr_i)
        
             rbf = np.repeat((num/self.num_elms_at_R[(i+1):])*self.RBFs[self.Rmax-i][1:],\
@@ -97,6 +101,8 @@ class POP:
         
         return slice_img  
     
+    def GetBetas(self):
+        return self.betas[::-1]      
     
     def GetRadialDist(self):
         DistR,_ = np.histogram(self.Rarrs,bins = self.rbins,weights=self.Q_polar_3D_slice_fit*self.scf)    
