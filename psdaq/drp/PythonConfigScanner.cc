@@ -181,6 +181,14 @@ unsigned PythonConfigScanner::step(const json&  stepInfo,
     PyObject* mybytes = _check(PyObject_CallFunction(pFunc, "s",
                                                      stepInfo.dump().c_str()));
     
+    // returns new reference
+    PyObject * json_bytes = _check(PyUnicode_AsASCIIString(mybytes));
+    char* json = (char*)PyBytes_AsString(json_bytes);
+  
+    logging::info("stepScan json [%s]",json);
+
+    // convert json to xtc
+    const unsigned BUFSIZE = 1024*1024;
     char buffer[BUFSIZE];
     Xtc* jsonxtc = new (buffer) Xtc(TypeId(TypeId::Parent, 0));
 
@@ -199,7 +207,7 @@ unsigned PythonConfigScanner::step(const json&  stepInfo,
     if (jsonxtc->extent>BUFSIZE)
         throw "**** Config json output too large for buffer\n";
 
-    logging::debug("Adding stepscan extent 0x%x",jsonxtc->extent);
+    logging::info("Adding stepscan extent 0x%x",jsonxtc->extent);
 
     memcpy((void*)xtc.next(),(const void*)jsonxtc->payload(),jsonxtc->sizeofPayload());
     xtc.alloc(jsonxtc->sizeofPayload());

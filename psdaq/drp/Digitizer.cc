@@ -1,4 +1,5 @@
 #include "Digitizer.hh"
+#include "PythonConfigScanner.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -54,100 +55,112 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     printf("*** found epics name %s\n",m_epics_name.c_str());
 }
 
-static void check(PyObject* obj) {
+static PyObject* check(PyObject* obj) {
     if (!obj) {
         PyErr_Print();
         throw "**** python error";
     }
+    return obj;
 }
 
-unsigned Digitizer::_getPaddr()
+Digitizer::Digitizer(Parameters* para, MemPool* pool) :
+    Detector    (para, pool),
+    m_evtNamesId(-1, -1), // placeholder
+    m_epics_name(para->kwargs["hsd_epics_prefix"])
 {
+    printf("*** found epics name %s\n",m_epics_name.c_str());
+
+    //
     // Check PGP reference clock, reprogram if necessary
+    //
     int fd = m_pool->fd();
     AxiVersion vsn;
     axiVersionGet(fd, &vsn);
     if (vsn.userValues[2] == 0) {  // Only one PCIe interface has access to I2C bus
-      unsigned pgpclk;
-      dmaReadRegister(fd, 0x80010c, &pgpclk);
-      printf("PGP RefClk %f MHz\n", double(pgpclk&0x1fffffff)*1.e-6);
-      if ((pgpclk&0x1fffffff) < 185000000) { // target is 185.7 MHz
-        //  Set the I2C Mux
-        dmaWriteRegister(fd, 0x00e00000, (1<<2));
-        //  Configure the Si570
-        Si570 s(fd, 0x00e00800);
-        s.program();
-      }
+        unsigned pgpclk;
+        dmaReadRegister(fd, 0x80010c, &pgpclk);
+        printf("PGP RefClk %f MHz\n", double(pgpclk&0x1fffffff)*1.e-6);
+        if ((pgpclk&0x1fffffff) < 185000000) { // target is 185.7 MHz
+            //  Set the I2C Mux
+            dmaWriteRegister(fd, 0x00e00000, (1<<2));
+            //  Configure the Si570
+            Si570 s(fd, 0x00e00800);
+            s.program();
+        }
     }
 
+    //
+    //  Assign data link return ID
+    //
     { struct addrinfo hints;
-      struct addrinfo* result;
+        struct addrinfo* result;
 
-      memset(&hints, 0, sizeof(struct addrinfo));
-      hints.ai_family = AF_INET;       /* Allow IPv4 or IPv6 */
-      hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
-      hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
+        memset(&hints, 0, sizeof(struct addrinfo));
+        hints.ai_family = AF_INET;       /* Allow IPv4 or IPv6 */
+        hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
+        hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
 
-      char hname[64];
-      gethostname(hname,64);
-      int s = getaddrinfo(hname, NULL, &hints, &result);
-      if (s != 0) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-        exit(EXIT_FAILURE);
-      }
+        char hname[64];
+        gethostname(hname,64);
+        int s = getaddrinfo(hname, NULL, &hints, &result);
+        if (s != 0) {
+            fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
+            exit(EXIT_FAILURE);
+        }
 
-      sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
+        sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
 
+        unsigned id = 0xfb000000 |
+            (ntohl(saddr->sin_addr.s_addr)&0xffff);
 
-      unsigned id = 0xfb000000 |
-        (ntohl(saddr->sin_addr.s_addr)&0xffff);
-
-      for(unsigned i=0; i<4; i++) {
-        unsigned link = (vsn.userValues[2] == 0) ? i : i+4;
-        dmaWriteRegister(fd, 0x00a40010+4*(link&3), id | (link<<16));
-      }
+        for(unsigned i=0; i<4; i++) {
+            unsigned link = (vsn.userValues[2] == 0) ? i : i+4;
+            dmaWriteRegister(fd, 0x00a40010+4*(link&3), id | (link<<16));
+        }
     }
 
-    // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.hsd_connect");
-    check(pModule);
+    //
+    //  Initialize python calls, get paddr
+    //
+    {
+        char module_name[64];
+        sprintf(module_name,"psdaq.configdb.hsd_config");
 
-    // returns borrowed reference
-    PyObject* pDict = PyModule_GetDict(pModule);
-    check(pDict);
-    // returns borrowed reference
-    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_connect");
-    check(pFunc);
+        char func_name[64];
 
-    // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"s",
-                                              m_epics_name.c_str());
+        // returns new reference
+        m_module = check(PyImport_ImportModule(module_name));
 
-    check(mybytes);
+        PyObject* pDict = check(PyModule_GetDict(m_module));
+        {
+            sprintf(func_name,"hsd_connect");
+            PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)func_name));
 
-    PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
-    check(json_bytes);
-    char* json_str = (char*)PyBytes_AsString(json_bytes);
+            // returns new reference
+            PyObject* mbytes = PyObject_CallFunction(pFunc,"s",
+                                                     m_epics_name.c_str());
 
-    Document *d = new Document();
-    d->Parse(json_str);
-    if (d->HasParseError()) {
-        logging::critical("Parse error: %s, location %zu",
-                          GetParseError_En(d->GetParseError()), d->GetErrorOffset());
-        throw "Parse error";
+            m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
+
+            if (!m_paddr) {
+                throw "XPM Remote link id register is zero";
+            }
+            else
+                logging::info("paddr %x",m_paddr);
+
+            // _connect(mbytes);
+
+            Py_DECREF(mbytes);
+        }
+
+        m_configScanner = new PythonConfigScanner(*m_para,*m_module);
     }
-    const Value& a = (*d)["paddr"];
+}
 
-    unsigned reg = a.GetInt();
-    if (!reg) {
-        throw "XPM Remote link id register is zero";
-    }
-
-    Py_DECREF(pModule);
-    Py_DECREF(mybytes);
-    Py_DECREF(json_bytes);
-
-    return reg;
+Digitizer::~Digitizer()
+{
+    delete m_configScanner;
+    Py_DECREF(m_module);
 }
 
 json Digitizer::connectionInfo()
@@ -169,36 +182,26 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string
            double(tv.tv_sec-tv_b.tv_sec)+1.e-9*(double(tv.tv_nsec)-double(tv_b.tv_nsec))); }
 
 
-    // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.hsd_config");
-    check(pModule);
-
-    CHECK_TIME(PyImport);
-
     // returns borrowed reference
-    PyObject* pDict = PyModule_GetDict(pModule);
-    check(pDict);
+    PyObject* pDict = check(PyModule_GetDict(m_module));
     // returns borrowed reference
-    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_config");
-    check(pFunc);
+    PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)"hsd_config"));
 
     CHECK_TIME(PyDict_Get);
 
     // returns new reference
-    PyObject* mybytes = PyObject_CallFunction(pFunc,"ssssii",
-                                              m_connect_json.c_str(),
-                                              m_epics_name.c_str(),
-                                              config_alias.c_str(),
-                                              m_para->detName.c_str(),
-                                              m_para->detSegment,
-                                              m_readoutGroup);
+    PyObject* mybytes = check(PyObject_CallFunction(pFunc,"ssssii",
+                                                    m_connect_json.c_str(),
+                                                    m_epics_name.c_str(),
+                                                    config_alias.c_str(),
+                                                    m_para->detName.c_str(),
+                                                    m_para->detSegment,
+                                                    m_readoutGroup));
 
     CHECK_TIME(PyObj_Call);
 
-    check(mybytes);
     // returns new reference
-    PyObject * json_bytes = PyUnicode_AsASCIIString(mybytes);
-    check(json_bytes);
+    PyObject * json_bytes = check(PyUnicode_AsASCIIString(mybytes));
     char* json = (char*)PyBytes_AsString(json_bytes);
     printf("json: %s\n",json);
 
@@ -224,7 +227,6 @@ unsigned Digitizer::_addJson(Xtc& xtc, NamesId& configNamesId, const std::string
     unsigned lane_mask = 1;
     printf("hsd lane_mask is 0x%x\n",lane_mask);
 
-    Py_DECREF(pModule);
     Py_DECREF(mybytes);
     Py_DECREF(json_bytes);
 
@@ -320,21 +322,27 @@ void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
 
 void Digitizer::shutdown()
 {
-    // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.hsd_config");
-    check(pModule);
-
     // returns borrowed reference
-    PyObject* pDict = PyModule_GetDict(pModule);
-    check(pDict);
+    PyObject* pDict = check(PyModule_GetDict(m_module));
     // returns borrowed reference
-    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"hsd_unconfig");
-    check(pFunc);
+    PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)"hsd_unconfig"));
 
     // returns new reference
     PyObject_CallFunction(pFunc,"s",
                           m_epics_name.c_str());
-    Py_DECREF(pModule);
+}
+
+unsigned Digitizer::configureScan(const json& scan_keys,
+                                  Xtc&        xtc)
+{
+    NamesId namesId(nodeId,UpdateNamesIndex);
+    return m_configScanner->configure(scan_keys,xtc,namesId,m_namesLookup);
+}
+
+unsigned Digitizer::stepScan(const json& stepInfo, Xtc& xtc)
+{
+    NamesId namesId(nodeId,UpdateNamesIndex);
+    return m_configScanner->step(stepInfo,xtc,namesId,m_namesLookup);
 }
 
 }

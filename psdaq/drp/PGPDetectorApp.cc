@@ -89,7 +89,6 @@ static json _getscanvalues(const json& stepInfo, const char* detname, const char
             size_t delim = it.key().find(":");
             if (delim != string::npos) {
                 string src = it.key().substr(0,delim);
-                    update[it.key().substr(delim+1)] = it.value();
                 if (src == alias)
                     update[it.key().substr(delim+1)] = it.value();
 //              if (src.substr(0,src.rfind("_",delim)) == detname)
