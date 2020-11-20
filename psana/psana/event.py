@@ -4,12 +4,14 @@
 from psana import dgram
 from psana.psexp import PacketFooter, TransitionId
 import numpy as np
+import datetime
 
 # TO DO
 # 1) remove comments
 # 2) pass detector class table from run > dgrammgr > event
 # 3) hook up the detector class table
 
+epoch = datetime.datetime(1990, 1, 1)
 
 class DrpClassContainer(object):
     def __init__(self):
@@ -157,3 +159,8 @@ class Event():
                     ofsz[i,1] = d._size
         return ofsz
 
+    def datetime(self):
+        sec = (self.timestamp>>32)
+        usec = (self.timestamp&0xffffffff)/1000
+        delta_t = datetime.timedelta(seconds=sec,microseconds=usec)
+        return epoch + delta_t
