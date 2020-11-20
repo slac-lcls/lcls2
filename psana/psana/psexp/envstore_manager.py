@@ -30,6 +30,13 @@ class EnvStoreManager(object):
         for envstore_name in envstore_names:
             self.stores[envstore_name] = EnvStore(configs, envstore_name)
     
+    def _update_config(self, objori, objupd):
+        for key, _ in objupd.__dict__.items():
+            if hasattr(getattr(objupd, key), "__dict__"):
+                self._update_config(getattr(objori, key), getattr(objupd, key))
+            else:
+                setattr(objori, key, getattr(objupd, key))
+
     def update_by_event(self, evt):
         if not evt:
             return
@@ -51,9 +58,9 @@ class EnvStoreManager(object):
                     cfgold = getattr(self.configs[i], key)
 
                     for segid, segment in getattr(new_d, key).items():
-                        # Only apply fiedls with .config
-                        if not hasattr(segment, "config"): continue
-                        cfgold[segid] = copy.deepcopy(segment) 
+                        # Only apply to fields with .config
+                        if hasattr(segment, "config"):
+                            self._update_config(cfgold[segid].config, getattr(segment, "config"))
 
     def update_by_views(self, views):
         if not views:
