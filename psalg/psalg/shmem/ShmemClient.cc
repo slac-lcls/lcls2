@@ -44,20 +44,17 @@ static mqd_t _openQueue(const char* name, unsigned flags, unsigned perms,
   while(1) {
     queue = mq_open(name, flags, perms, &mymq_attr);
     if (queue == (mqd_t)-1) {
+      if (!lwait) {
+        printf("Failed to open queue %s\n",name);
+        break;
+      }
       if (first) {
         first = false;
-        printf("mq_open %s",name);
+        printf("Waiting for queue %s to appear\n",name);
       }
-      else {
-        printf(".");
-      }
-      fflush(stdout);
       sleep(1);
-      if (!lwait) break;
     }
     else {
-      if (!first)
-        printf("\n");
       printf("Opened queue %s (%d)\n",name,queue);
       break;
     }

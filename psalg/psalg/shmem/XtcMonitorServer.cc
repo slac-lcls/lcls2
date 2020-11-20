@@ -341,6 +341,7 @@ void XtcMonitorServer::discover()
         int rc;
         int tmo = 1000;
         if ((rc = ::poll(&pfd,nfd,tmo)) > 0) {
+          if (_terminate.load(std::memory_order_relaxed))  break;
           if (pfd.revents & POLLIN) {
             sockaddr_in client;
             socklen_t   len = sizeof(sockaddr_in);
@@ -376,6 +377,7 @@ void XtcMonitorServer::routine()
 
     int tmo = 1000;                     // ms
     if ((::poll(_pfd,_nfd,tmo)) > 0) {
+      if (_terminate.load(std::memory_order_relaxed))  break;
 
       if (_pfd[0].revents & POLLIN)
         _initialize_client();

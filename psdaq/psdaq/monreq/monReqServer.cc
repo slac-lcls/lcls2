@@ -246,7 +246,6 @@ namespace Pds {
     int  beginrun();
     void unconfigure();
     void disconnect();
-    void shutdown();
     void run();
   private:                              // For EventBuilder
     virtual
@@ -295,15 +294,6 @@ int Meb::resetCounters()
   _requestCount = 0;
 
   return 0;
-}
-
-void Meb::shutdown()
-{
-  if (!_mrqLinks.empty())           // Avoid shutting down if already done
-  {
-    unconfigure();
-    disconnect();
-  }
 }
 
 void Meb::disconnect()
@@ -478,6 +468,7 @@ private:
        _error(const json& msg, const std::string& errorMsg);
   int  _configure(const json& msg);
   void _unconfigure();
+  void _shutdown();
   int  _parseConnectionParams(const json& msg);
   void _printParams(const EbParams& prms, unsigned groups) const;
   void _printGroups(unsigned groups, const u64arr_t& array) const;
@@ -586,6 +577,18 @@ void MebApp::_unconfigure()
   _meb->unconfigure();
 }
 
+void MebApp::_shutdown()
+{
+  // Carry out the queued Unconfigure, if there was one
+  if (_unconfigFlag)
+  {
+    _unconfigure();
+    _unconfigFlag = false;
+  }
+
+  _meb->disconnect();
+}
+
 void MebApp::handlePhase1(const json& msg)
 {
   json        body = json({});
@@ -633,14 +636,7 @@ void MebApp::handlePhase1(const json& msg)
 
 void MebApp::handleDisconnect(const json &msg)
 {
-  // Carry out the queued Unconfigure, if there was one
-  if (_unconfigFlag)
-  {
-    _unconfigure();
-    _unconfigFlag = false;
-  }
-
-  _meb->disconnect();
+  _shutdown();
 
   // Reply to collection with connect status
   json body = json({});
@@ -649,10 +645,8 @@ void MebApp::handleDisconnect(const json &msg)
 
 void MebApp::handleReset(const json &msg)
 {
-  lRunning = 0;
-  if (_appThread.joinable())  _appThread.join();
-
-  _meb->shutdown();
+  _unconfigFlag = true;
+  _shutdown();
 }
 
 int MebApp::_parseConnectionParams(const json& body)
