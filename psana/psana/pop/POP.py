@@ -10,8 +10,8 @@ class POP:
     def __init__(self, lmax=4,reg=0,alpha=1,img=None,X0=None,Y0=None,Rmax=None,RBFs_dict = None,RBFs_fnm=None,edge_w=10):
     
         print('Start initialization......')                          
-        lnum = int(lmax/2 + 1)         
-        ls = np.arange(0,lnum)*2 
+        self.lnum = int(lmax/2 + 1)         
+        ls = np.arange(0,self.lnum)*2 
         self.reg = reg 
         self.alpha = alpha         
                      
@@ -41,7 +41,7 @@ class POP:
         self.inds_ext = self.Rarrs>(self.Rmax-edge_w)                       
             
         self.LegMat_lst, self.LegMatUt_lst, self.LegMatS_lst, self.LegMatV_lst, self.LegMat_Rr_lst = \
-        self.LegendreMat_SVD(lnum, ls)   
+        self.LegendreMat_SVD(self.lnum, ls)   
         
         self.rbins = np.arange(0,self.Rmax+1)
         self.Ebins = np.linspace(0,self.alpha*(self.Rmax+1)**2,int(len(self.rbins)/2))
