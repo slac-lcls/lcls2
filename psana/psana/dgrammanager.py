@@ -68,18 +68,11 @@ class DgramManager(object):
                     # to dgrams for a long time, consuming the shmem buffers
                     # and creating a deadlock situation. could revisit this
                     # later and only deep-copy arrays inside pickN, for example
-                    # but would be more fragile.  Also, without this copy
-                    # we are seeing arrays get corrupted when held onto
-                    # by pickN for a long time (cpo needs to understand this)
-                    if _service(view) != TransitionId.L1Accept:
-                        barray = bytes(view[:_dgSize(view)])
-                        self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
-                        view = memoryview(barray)
-                    d = dgram.Dgram(view=view, \
-                                    shmem_index=self.shmem_kwargs['index'], \
-                                    shmem_size=self.shmem_kwargs['size'], \
-                                    shmem_cli_cptr=self.shmem_kwargs['cli_cptr'], \
-                                    shmem_cli_pyobj=self.shmem_cli)
+                    # but would be more fragile.
+                    barray = bytes(view[:_dgSize(view)])
+                    self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
+                    view = memoryview(barray)
+                    d = dgram.Dgram(view=view)
                     self.configs += [d]
                 else:
                     self.xtc_files = np.asarray(xtc_files, dtype='U%s'%FN_L)
@@ -142,20 +135,13 @@ class DgramManager(object):
                 # to dgrams for a long time, consuming the shmem buffers
                 # and creating a deadlock situation. could revisit this
                 # later and only deep-copy arrays inside pickN, for example
-                # but would be more fragile.  Also, without this copy
-                # we are seeing arrays get corrupted when held onto
-                # by pickN for a long time (cpo needs to understand this)
-                if _service(view) != TransitionId.L1Accept:
-                    barray = bytes(view[:_dgSize(view)])
-                    self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
-                    view = memoryview(barray)
+                # but would be more fragile.
+                barray = bytes(view[:_dgSize(view)])
+                self.shmem_cli.freeByIndex(self.shmem_kwargs['index'], self.shmem_kwargs['size'])
+                view = memoryview(barray)
                 # use the most recent configure datagram
                 config = self.configs[len(self.configs)-1]
-                d = dgram.Dgram(config=config,view=view, \
-                                shmem_index=self.shmem_kwargs['index'], \
-                                shmem_size=self.shmem_kwargs['size'], \
-                                shmem_cli_cptr=self.shmem_kwargs['cli_cptr'], \
-                                shmem_cli_pyobj=self.shmem_cli)
+                d = dgram.Dgram(config=config,view=view)
                 dgrams = [d]
             else:
                 raise StopIteration
