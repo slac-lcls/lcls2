@@ -149,7 +149,9 @@ def test_image(fname, args):
         logger.info(info_ndarr(img, 'image '))
         if img is None: continue
 
-        alimits = None if args.mapmode else (0,4)
+        alimits = (img.min(),img.max()) if args.mapmode == 4 else\
+                  None if args.mapmode else\
+                  (0,4)
 
         if args.dograph:
 
@@ -190,6 +192,7 @@ if __name__ == "__main__":
       + '\n    ./%s 2 -m1' % SCRNAME\
       + '\n    ./%s 2 -m2 -lDEBUG' % SCRNAME\
       + '\n    ./%s 2 -m3 -s101 -o img.png' % SCRNAME\
+      + '\n    ./%s 2 -m4' % SCRNAME\
 
     d_loglev  = 'INFO' #'INFO' #'DEBUG'
     d_pattrs  = False

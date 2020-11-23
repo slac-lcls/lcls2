@@ -11,7 +11,8 @@ import numpy as np
 from psana.pscalib.geometry.GeometryAccess import GeometryAccess #, img_from_pixel_arrays
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
 from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
-        img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean, img_interpolated
+        img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
+        img_interpolated, init_interpolation_parameters
 
 #----
 
@@ -23,7 +24,8 @@ class AreaDetector(DetectorImpl):
         # caching
         self.geo = None
         self.pix_rc = None, None
-
+        self.pix_xyz = None, None, None
+        self.interpol_pars = None
         #logger.info('XXX dir(self):\n' + str(dir(self)))
         #logger.info('XXX self._segments:\n' + str(self._segments))
 
@@ -107,6 +109,20 @@ class AreaDetector(DetectorImpl):
             cframe             = kwa.get('cframe',0))
 
 
+    def pixel_coords(self, **kwa):
+        """
+        """
+        logger.debug('AreaDetector.pixel_coords')
+        geo = self.det_geo()
+        if geo is None:
+            logger.warning('geo is None')
+            return None
+        #return geo.get_pixel_xy_at_z(self, zplane=None, oname=None, oindex=0, do_tilt=True, cframe=0)
+        return geo.get_pixel_coords(\
+            do_tilt            = kwa.get('do_tilt',True),\
+            cframe             = kwa.get('cframe',0))
+
+
     def cached_pixel_coord_indexes(self, evt, **kwa):
         """
         """
@@ -127,7 +143,20 @@ class AreaDetector(DetectorImpl):
         for i,a in enumerate(self.pix_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
         logger.info(s)
 
-        self.img_entries, self.dict_pix_to_img_idx, self.dict_imgidx_numentries = statistics_of_pixel_arrays(rows, cols)
+        mapmode = kwa.get('mapmode',1)
+        if mapmode in (0,2,3):
+          self.img_entries, self.dict_pix_to_img_idx, self.dict_imgidx_numentries=\
+            statistics_of_pixel_arrays(rows, cols)
+
+        if mapmode==4:
+            rsp = self.pixel_coords(**kwa)
+            if rsp is None: return None
+            x,y,z = self.pix_xyz = [reshape_to_3d(a)[segs,:,:] for a in rsp]
+            self.interpol_pars = init_interpolation_parameters(rows, cols, x, y)
+
+        #TBD
+
+
 
 
     def calib(self,evt):
@@ -167,7 +196,7 @@ class AreaDetector(DetectorImpl):
         if   mapmode==1: return img
         elif mapmode==2: return img_multipixel_max(img, data, self.dict_pix_to_img_idx)
         elif mapmode==3: return img_multipixel_mean(img, data, self.dict_pix_to_img_idx, self.dict_imgidx_numentries)
-        elif mapmode==4: return img_interpolated()
+        elif mapmode==4: return img_interpolated(data, self.interpol_pars)
         else: return self.img_entries
 
 #----
