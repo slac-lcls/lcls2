@@ -1,6 +1,8 @@
 from psana.psexp import EventManager
 import logging
 import types
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
 
 class Events:
     """
@@ -15,16 +17,12 @@ class Events:
         self.smdr_man       = smdr_man         # RunSerial
         self._evt_man               = iter([])
         self._batch_iter            = iter([])
-        self.flag_empty_smd_batch   = False
         self.c_read = self.prom_man.get_metric('psana_bd_read')
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self.flag_empty_smd_batch:
-            raise StopIteration
-
         if self.smdr_man:
             # RunSerial
             try:
@@ -50,11 +48,11 @@ class Events:
         elif self.get_smd:
             # RunParallel
             try:
-                return next(self._evt_man) 
+                evt = next(self._evt_man)
+                return evt
             except StopIteration: 
                 smd_batch = self.get_smd()
                 if smd_batch == bytearray():
-                    self.flag_empty_smd_batch = True
                     raise StopIteration
 
                 self.c_read.labels('batches','None').inc()

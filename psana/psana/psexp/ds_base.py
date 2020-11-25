@@ -13,8 +13,8 @@ import logging
 from psana import dgram
 
 from psana.detector import detectors
+import psana.pscalib.calib.MDBWebUtils as wu
 
-class XtcFileNotFound(Exception): pass
 class InvalidDataSourceArgument(Exception): pass
 
 class DsParms(object):
@@ -24,6 +24,7 @@ class DsParms(object):
         self.filter      = filter
         self.destination = destination 
         self.prom_man    = prom_man
+        self.calibconst  = {}
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table):
         self.det_classes, self.xtc_info, self.det_info_table = det_classes, xtc_info, det_info_table
@@ -34,7 +35,7 @@ class DataSourceBase(abc.ABC):
     max_events  = 0         # no. of maximum events
     detectors   = []        # user-selected detector names
     exp         = None      # experiment id (e.g. xpptut13)
-    run_num     = -1        # run no. 
+    runnum     = None      # run no. 
     live        = False     # turns live mode on/off 
     dir         = None      # manual entry for path to xtc files
     files        = None      # xtc2 file path
@@ -68,7 +69,11 @@ class DataSourceBase(abc.ABC):
                 self.batch_size = 1 # reset batch_size to prevent L1 transmitted before BeginRun (FIXME?: Mona)
 
             if 'run' in kwargs:
-                setattr(self, 'run_num', int(kwargs['run']))
+                setattr(self, 'runnum', kwargs['run'])
+
+            if 'files' in kwargs:
+                if isinstance(self.files, str):
+                    self.files = [self.files]
 
             if not self.live:
                 os.environ['PS_SMD_MAX_RETRIES'] = '0' # do not retry when not in live mode
@@ -89,58 +94,49 @@ class DataSourceBase(abc.ABC):
     #def steps(self):
     #    retur
     
-    def _get_run_files(self, run_num):
+    def _setup_run_files(self, runnum):
         smd_dir = os.path.join(self.xtc_path, 'smalldata')
-        smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(run_num).zfill(4))))
+        smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(runnum).zfill(4))))
             
         xtc_files = [os.path.join(self.xtc_path, \
                      os.path.basename(smd_file).split('.smd')[0] + '.xtc2') \
                      for smd_file in smd_files \
                      if os.path.isfile(os.path.join(self.xtc_path, \
                      os.path.basename(smd_file).split('.smd')[0] + '.xtc2'))]
-        return smd_files, xtc_files
+        self.smd_files = smd_files
+        self.xtc_files = xtc_files
 
-    def _setup_xtcs(self):
+    def _setup_runnum_list(self):
         """
-        DataSource accepts:
-        - exp
-        - exp, run
-        - files
-        - shmem
-
-        This returns first starting xtc2 file. 
-        - exp:      returns smallest run no. xtc2 file
-        - exp, run: returns xtc2 file of this run
-        - files:     returns files
+        Requires:
+        1) exp
+        2) exp, run=N or [N, M, ...]
+        
+        Build runnum_list for the experiment.
         """
 
-        if self.shmem:
-            self.tag = self.shmem
-            return
-
-        if self.exp:
-            if self.dir:
-                self.xtc_path = self.dir
-            else:
-                xtc_dir = os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm')
-                self.xtc_path = os.path.join(xtc_dir, self.exp[:3], self.exp, 'xtc')
-            
-            if self.run_num == -1:
-                run_list = [int(os.path.splitext(os.path.basename(_dummy))[0].split('-r')[1].split('-')[0]) \
-                        for _dummy in glob.glob(os.path.join(self.xtc_path, '*-r*.xtc2'))]
-                assert run_list
-                run_list.sort()
-                self.run_num = run_list[0]
-            self.smd_files, self.xtc_files = self._get_run_files(self.run_num)
-
-        elif self.files:
-            f = pathlib.Path(self.files)
-            if not f.exists():
-                err = f"File {self.files} not found" 
-                raise XtcFileNotFound(err)
-        else:
+        if not self.exp:
             raise InvalidDataSourceArgument("Missing exp or files input")
-
+            
+        if self.dir:
+            self.xtc_path = self.dir
+        else:
+            xtc_dir = os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm')
+            self.xtc_path = os.path.join(xtc_dir, self.exp[:3], self.exp, 'xtc')
+        
+        if self.runnum is None:
+            run_list = [int(os.path.splitext(os.path.basename(_dummy))[0].split('-r')[1].split('-')[0]) \
+                    for _dummy in glob.glob(os.path.join(self.xtc_path, '*-r*.xtc2'))]
+            assert run_list
+            run_list = list(set(run_list))
+            run_list.sort()
+            self.runnum_list = run_list
+        elif isinstance(self.runnum, list):
+            self.runnum_list = self.runnum
+        elif isinstance(self.runnum, int):
+            self.runnum_list = [self.runnum]
+        else:
+            raise InvalidDataSourceArgument("run accepts only int or list. Leave out run arugment to process all available runs.")
 
     def smalldata(self, **kwargs):
         self.smalldata_obj.setup_parms(**kwargs)
@@ -148,9 +144,9 @@ class DataSourceBase(abc.ABC):
 
     def _start_prometheus_client(self, mpi_rank=0):
         if not self.monitor:
-            logging.debug('not monitoring performance with prometheus')
+            logging.info('ds_base: RUN W/O PROMETHEUS CLENT')
         else:
-            logging.debug('START PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
+            logging.info('ds_base: START PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
             self.e = threading.Event()
             self.t = threading.Thread(name='PrometheusThread%s'%(mpi_rank),
                     target=self.prom_man.push_metrics,
@@ -162,7 +158,7 @@ class DataSourceBase(abc.ABC):
         if not self.monitor:
             return
 
-        logging.debug('END PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
+        logging.info('ds_base: END PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
         self.e.set()
     
     def _setup_det_class_table(self):
@@ -268,3 +264,53 @@ class DataSourceBase(abc.ABC):
                         "detid_dict": detid_dict, \
                         "dettype": dettype, \
                         "uniqueid": uniqueid})
+    
+    def _setup_run_calibconst(self):
+        """
+        note: calibconst is set differently in RunParallel (see node.py: BigDataNode)
+        """
+        runinfo = self._get_runinfo()
+        if not runinfo:
+            return
+        expt, runnum, _ = runinfo
+        
+        self.dsparms.calibconst = {}
+        for det_name, configinfo in self.dsparms.configinfo_dict.items():
+            if expt: 
+                if expt == "cxid9114": # mona: hack for cctbx
+                    det_uniqueid = "cspad_0002"
+                elif expt == "xpptut15":
+                    det_uniqueid = "cspad_detnum1234"
+                else:
+                    det_uniqueid = configinfo.uniqueid
+                calib_const = wu.calib_constants_all_types(det_uniqueid, exp=expt, run=runnum)
+                
+                # mona - hopefully this will be removed once the calibconst
+                # db all use uniqueid as an identifier
+                if not calib_const:
+                    calib_const = wu.calib_constants_all_types(det_name, exp=expt, run=runnum)
+                self.dsparms.calibconst[det_name] = calib_const
+            else:
+                print(f"ds_base: Warning: cannot access calibration constant (exp is None)")
+                self.dsparms.calibconst[det_name] = None
+    
+    def _get_runinfo(self):
+        if not self.beginruns : return
+
+        beginrun_dgram = self.beginruns[0]
+        if hasattr(beginrun_dgram, 'runinfo'): # some xtc2 do not have BeginRun
+            expt = beginrun_dgram.runinfo[0].runinfo.expt 
+            runnum = beginrun_dgram.runinfo[0].runinfo.runnum
+            timestamp = beginrun_dgram.timestamp()
+            return expt, runnum, timestamp
+
+    def _close_opened_smd_files(self):
+        # Make sure to close all smd files opened by previous run
+        if self.smd_fds is not None:
+            txt = "ds_base: "
+            for fd in self.smd_fds:
+                os.close(fd)
+                txt += f' close smd fd:{fd}'
+            logging.info(txt)
+
+

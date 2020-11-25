@@ -6,6 +6,7 @@ from cython.parallel import prange
 import os
 from dgramlite cimport Xtc, Sequence, Dgram
 cimport cython
+from psana.psexp import TransitionId
 
 cdef class ParallelReader:
     
@@ -13,13 +14,11 @@ cdef class ParallelReader:
         self.file_descriptors   = file_descriptors
         self.chunksize          = chunksize
         self.nfiles             = self.file_descriptors.shape[0]
-        self.L1Accept           = 12
-        self.BeginRun           = 4
+        self.Configure          = TransitionId.Configure
+        self.BeginRun           = TransitionId.BeginRun
+        self.L1Accept           = TransitionId.L1Accept
         self.bufs               = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
         self.step_bufs          = <Buffer *>malloc(sizeof(Buffer)*self.nfiles)
-        self.beginrun_buf       = <char *>malloc(self.chunksize)
-        self.beginrun_offset    = 0
-        self.n_beginruns        = 0
         self.got                = 0
         self.chunk_overflown    = 0     # set to dgram size if it's too big
         self._init_buffers()
@@ -35,7 +34,6 @@ cdef class ParallelReader:
             for i in range(self.nfiles):
                 free(self.step_bufs[i].chunk)
             free(self.step_bufs)
-        free(self.beginrun_buf)
 
     cdef void _init_buffers(self):
         cdef Py_ssize_t i
@@ -56,6 +54,7 @@ cdef class ParallelReader:
             buf.seen_offset     = 0     # offset of the event seen (yielded) so far
             buf.n_seen_events   = 0     # no. of seen events
             buf.timestamp       = 0       
+            buf.found_endrun    = 0
     
     @cython.boundscheck(False)
     cdef void just_read(self):
@@ -79,8 +78,6 @@ cdef class ParallelReader:
         cdef uint64_t payload   = 0
         cdef unsigned service   = 0
         self.got                = 0
-        self.beginrun_offset    = 0
-        self.n_beginruns        = 0
         
         for i in prange(self.nfiles, nogil=True):
             buf = &(self.bufs[i])
@@ -125,30 +122,28 @@ cdef class ParallelReader:
                         buf.ts_arr[buf.n_ready_events] = <uint64_t>d.seq.high << 32 | d.seq.low
                         buf.next_offset_arr[buf.n_ready_events] = buf.ready_offset + sizeof(Dgram) + payload
 
-                        # check if this a non L1
                         service = (d.env>>24)&0xf
-                        buf.services[buf.n_ready_events] = service
+                        buf.sv_arr[buf.n_ready_events] = service
+                        
+                        # check if this a non L1
                         if service != self.L1Accept:
                             memcpy(step_buf.chunk + step_buf.ready_offset, d, sizeof(Dgram) + payload)
                             step_buf.ts_arr[step_buf.n_ready_events] = buf.ts_arr[buf.n_ready_events]
                             step_buf.next_offset_arr[step_buf.n_ready_events] = step_buf.ready_offset + sizeof(Dgram) + payload
+                            step_buf.sv_arr[step_buf.n_ready_events] = service
                             step_buf.n_ready_events += 1
                             step_buf.ready_offset += sizeof(Dgram) + payload
                             step_buf.timestamp = buf.ts_arr[buf.n_ready_events]
-
-                            if service == self.BeginRun and i == 0:
-                                memcpy(self.beginrun_buf + self.beginrun_offset, d, sizeof(Dgram) + payload)
-                                self.beginrun_offset += sizeof(Dgram) + payload
-                                self.n_beginruns += 1
-
                         
                         buf.timestamp = buf.ts_arr[buf.n_ready_events] 
                         buf.ready_offset += sizeof(Dgram) + payload
                         buf.n_ready_events += 1
-                        
-                    else:
+
+                    else: # if (buf.got - buf.ready_offset) >= sizeof(Dgram) + payload
                         break
-                else:
+                else: #if buf.got - buf.ready_offset >= sizeof(Dgram)
                     break
+            
+            # end while buf.ready_offset < buf.got:
 
 

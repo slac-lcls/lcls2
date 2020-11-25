@@ -16,7 +16,7 @@ def global_except_hook(exctype, value, traceback):
 sys.excepthook = global_except_hook
 
 #import logging
-#logging.basicConfig(level=logging.DEBUG, format='(%(threadName)-10s) %(message)s',)
+#logging.basicConfig(level=logging.INFO, format='(%(threadName)-10s) %(message)s',)# filename="log.log", filemode="w")
 
 import os
 from psana import DataSource
@@ -156,11 +156,12 @@ def test_callback(batch_size):
     for run in ds.runs():
         det = run.Detector('xppcspad')
         edet = run.Detector('HX2:DVD:GCC:01:PMON')
-        for evt in run.events():
-            sendbuf += 1
-            padarray = vals.padarray
-            assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
-            assert evt._size == 2 # check that two dgrams are in there
+        for step in run.steps():
+            for evt in step.events():
+                sendbuf += 1
+                padarray = vals.padarray
+                assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
+                assert evt._size == 2 # check that two dgrams are in there
 
     comm.Gather(sendbuf, recvbuf, root=0)
     if rank == 0:

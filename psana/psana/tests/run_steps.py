@@ -14,53 +14,11 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
+import logging
+#logging.basicConfig(level=logging.INFO, format='(%(threadName)-10s) %(message)s', )# filename="log.log", filemode="w")
+
 test_xtc_dir = os.environ.get('TEST_XTC_DIR', '.')
 xtc_dir = os.path.join(test_xtc_dir, '.tmp_smd0')
-
-def run_smd0(n_events):
-    filenames = glob.glob(os.path.join(xtc_dir, '.tmp', 'smalldata', '*.xtc2'))
-    fds = [os.open(filename, os.O_RDONLY) for filename in filenames]
-
-    # Move file ptrs to datagram part
-    configs = [Dgram(file_descriptor=fd) for fd in fds]
-    
-    limit = len(filenames)
-    if len(sys.argv) > 1:
-        limit = int(sys.argv[1])
-    
-    st = time.time()
-    smdr = SmdReader(fds[:limit])
-    got_events = -1
-    processed_events = 0
-    smdr.get(n_events)
-    got_events = smdr.got_events
-    result = {'each_read':[], 'total_n_events':0}
-    cn_i = 0
-    while got_events != 0:
-        step_chunk_nbytes = 0
-        smd_chunk_nbytes = 0
-        for i in range(limit):
-            smd_view = smdr.view(i)
-            if smd_view:
-                smd_chunk_nbytes += smd_view.nbytes
-            step_view = smdr.view(i, update=True)
-            if step_view:
-                step_chunk_nbytes += step_view.nbytes
-        result['each_read'].append([got_events, smd_chunk_nbytes, step_chunk_nbytes])
-        processed_events += got_events
-       
-        # Read more events
-        smdr.get(n_events)
-        got_events = smdr.got_events
-        cn_i += 1
-
-    en = time.time()
-    result['total_n_events'] = processed_events
-
-    for fd in fds:
-        os.close(fd)
-
-    return result
 
 def my_filter(evt):
     return True
@@ -68,11 +26,11 @@ def my_filter(evt):
 def run_serial_read(n_events, batch_size=1, filter_fn=0):
     exp_xtc_dir = os.path.join(xtc_dir, '.tmp')
     os.environ['PS_SMD_N_EVENTS'] = str(n_events)
-    ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir, batch_size=batch_size, filter=filter_fn)
+    ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir, batch_size=batch_size, filter=filter_fn, monitor=True)
     cn_steps = 0
     cn_events = 0
     result = {'evt_per_step':[0,0,0], 'n_steps': 0, 'n_events':0}
-    for run in ds.runs():
+    for r, run in enumerate(ds.runs()):
         edet = run.Detector('HX2:DVD:GCC:01:PMON')
         sdet = run.Detector('motor2')
         for i, step in enumerate(run.steps()):
@@ -85,6 +43,7 @@ def run_serial_read(n_events, batch_size=1, filter_fn=0):
         
     result['n_steps'] = cn_steps
     result['n_events'] = cn_events
+    print(f'rank={rank} result={result}')
     return result
     
 def check_results(results, expected_result):
@@ -120,25 +79,6 @@ if __name__ == "__main__":
     
     comm.Barrier()
     
-    """
-    # Expected result: 
-    # each_read n_events, smd_chunk_nbytes, step_chunk_nbytes
-    # total_n_events
-    # Test 1: No. of chunk-read events covers the entire smds
-    expected_result = {'each_read': [[30, 7896, 3108]], 'total_n_events': 30}
-    result = run_smd0(51)
-    assert result == expected_result
-
-    # Test 2: No. of chunk-read events covers beyond the next BeginStep
-    expected_result = {'each_read': [[20, 5208, 1848], [10, 2688, 1260]], 'total_n_events': 30}
-    result = run_smd0(20)
-    assert result == expected_result
-
-    # Test 3: No. of chunk-read events covers the next BeginStep
-    expected_result = {'each_read': [[19, 5040, 1848], [11, 2856, 1260]], 'total_n_events': 30}
-    result = run_smd0(19)
-    assert result == expected_result
-    """
     # Test run.steps() 
     test_cases = [\
             (51, 1, 0), \

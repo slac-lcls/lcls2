@@ -2,17 +2,18 @@ from psana.psexp import TransitionId
 
 class Step(object):
     
-    def __init__(self, step_evt, events, esm):
-        self.evt    = step_evt
-        self._events= events
-        self.esm    = esm
+    def __init__(self, step_evt, evt_iter, esm):
+        self.evt        = step_evt
+        self.evt_iter   = evt_iter
+        self.esm        = esm
         self.esm.update_by_event(step_evt)
     
     def events(self):
-        for evt in self._events:
+        for evt in self.evt_iter:
             if evt.service() != TransitionId.L1Accept:
                 self.esm.update_by_event(evt)
-                if evt.service() == TransitionId.EndStep: return
+                if evt.service() == TransitionId.EndStep: 
+                    return
                 continue
             yield evt
         

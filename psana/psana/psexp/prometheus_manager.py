@@ -40,7 +40,7 @@ class PrometheusManager(object):
     def push_metrics(self, e, from_whom=''):
         while not e.isSet():
             push_to_gateway(PUSH_GATEWAY, job='psana_pushgateway', grouping_key={'jobid': self.jobid, 'rank': from_whom}, registry=registry)
-            logging.debug('TS: %s PUSHED JOBID: %s RANK: %s e.isSet():%s'%(time.time(), self.jobid, from_whom, e.isSet()))
+            logging.info('TS: %s PUSHED JOBID: %s RANK: %s e.isSet():%s'%(time.time(), self.jobid, from_whom, e.isSet()))
             time.sleep(PUSH_INTERVAL_SECS)
         
     @staticmethod

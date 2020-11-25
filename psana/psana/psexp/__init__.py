@@ -10,7 +10,6 @@ from .packet_footer import PacketFooter
 from .step import Step
 from . import TransitionId
 from .events import Events
-from .ds_base import XtcFileNotFound
 from . import legion_node
 from .ds_base import DataSourceBase
 from .run import Run, RunShmem, RunSingleFile, RunLegion, RunSerial

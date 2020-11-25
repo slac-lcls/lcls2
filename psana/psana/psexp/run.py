@@ -166,30 +166,6 @@ class Run(object):
     def xtcinfo(self):
         return self.dsparms.xtc_info
 
-    def _set_calibconst(self):
-        """
-        note: calibconst is set differently in RunParallel (see node.py: BigDataNode)
-        """
-        self.dsparms.calibconst = {}
-        for det_name, configinfo in self.dsparms.configinfo_dict.items():
-            if self.expt: 
-                if self.expt == "cxid9114": # mona: hack for cctbx
-                    det_uniqueid = "cspad_0002"
-                elif self.expt == "xpptut15":
-                    det_uniqueid = "cspad_detnum1234"
-                else:
-                    det_uniqueid = configinfo.uniqueid
-                calib_const = wu.calib_constants_all_types(det_uniqueid, exp=self.expt, run=self.runnum)
-                
-                # mona - hopefully this will be removed once the calibconst
-                # db all use uniqueid as an identifier
-                if not calib_const:
-                    calib_const = wu.calib_constants_all_types(det_name, exp=self.expt, run=self.runnum)
-                self.dsparms.calibconst[det_name] = calib_const
-            else:
-                logging.debug(f"Cannot access calibration constants without experiment code: self.expt={self.expt}")
-                self.dsparms.calibconst[det_name] = None
-
     def analyze(self, event_fn=None, det=None):
         for event in self.events():
             if event_fn is not None:
@@ -210,26 +186,29 @@ class Run(object):
 class RunShmem(Run):
     """ Yields list of events from a shared memory client (no event building routine). """
     
-    def __init__(self, run_evt, events, dsparms):
-        super(RunShmem, self).__init__(dsparms)
+    def __init__(self, ds, run_evt):
+        super(RunShmem, self).__init__(ds.dsparms)
         self._evt      = run_evt
         self.beginruns = run_evt._dgrams
-        self._evt_iter = events
-        self.configs   = events.configs
+        self.configs   = ds._configs
         super()._get_runinfo()
-        super()._set_calibconst()
         self.esm = EnvStoreManager(self.configs)
-
+        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms.prom_man, 
+                filter_callback=ds.dsparms.filter)
+    
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
                 self.esm.update_by_event(evt)
                 if evt.service() == TransitionId.EndRun: return
                 continue
+            st = time.time()
             yield evt
+            en = time.time()
+            self.c_ana.labels('seconds','None').inc(en-st)
+            self.c_ana.labels('batches','None').inc()
         
     def steps(self):
-        """ Generates events between steps. """
         for evt in self._evt_iter:
             if evt.service() == TransitionId.EndRun: return
             if evt.service() == TransitionId.BeginStep:
@@ -238,43 +217,46 @@ class RunShmem(Run):
 class RunSingleFile(Run):
     """ Yields list of events from a single bigdata file. """
     
-    def __init__(self, run_evt, events, dsparms):
-        super(RunSingleFile, self).__init__(dsparms)
+    def __init__(self, ds, run_evt):
+        super(RunSingleFile, self).__init__(ds.dsparms)
         self._evt      = run_evt
         self.beginruns = run_evt._dgrams
-        self._evt_iter = events
-        self.configs   = events.configs
+        self.configs   = ds._configs
         super()._get_runinfo()
-        super()._set_calibconst()
         self.esm = EnvStoreManager(self.configs)
-
+        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms.prom_man, 
+                filter_callback=ds.dsparms.filter)
+    
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
                 self.esm.update_by_event(evt)
                 if evt.service() == TransitionId.EndRun: return
                 continue
+            st = time.time()
             yield evt
+            en = time.time()
+            self.c_ana.labels('seconds','None').inc(en-st)
+            self.c_ana.labels('batches','None').inc()
         
     def steps(self):
-        """ Generates events between steps. """
         for evt in self._evt_iter:
             if evt.service() == TransitionId.EndRun: return
             if evt.service() == TransitionId.BeginStep:
                 yield Step(evt, self._evt_iter, self.esm)
-    
+
 class RunSerial(Run):
     """ Yields list of events from multiple smd/bigdata files using single core."""
 
-    def __init__(self, run_evt, events, dsparms):
-        super(RunSerial, self).__init__(dsparms)
+    def __init__(self, ds, run_evt):
+        super(RunSerial, self).__init__(ds.dsparms)
         self._evt      = run_evt
         self.beginruns = run_evt._dgrams
-        self._evt_iter = events
-        self.configs   = events.configs
+        self.configs   = ds._configs
         super()._get_runinfo()
-        super()._set_calibconst()
         self.esm = EnvStoreManager(self.configs)
+        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms.prom_man, 
+                filter_callback=ds.dsparms.filter, smdr_man=ds.smdr_man)
     
     def events(self):
         for evt in self._evt_iter:
@@ -315,7 +297,6 @@ class RunLegion(Run):
         self.smd_dm = DgramManager(smd_files, configs=self.configs, fds=self.smd_fds)
         self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
         super()._set_configinfo()
-        super()._set_calibconst()
         self.esm = EnvStoreManager(self.configs)
 
     def analyze(self, **kwargs):
