@@ -41,7 +41,7 @@ class CMWDBTree(QWTree) :
     db_and_collection_selected = pyqtSignal('QString','QString')
 
     def __init__(self, parent=None) :
-
+        logger.debug('CMWDBTree.__init__')
         self.thread = None
         QWTree.__init__(self, parent)
         self._name = self.__class__.__name__
@@ -51,6 +51,7 @@ class CMWDBTree(QWTree) :
 
 
     def fill_tree_model(self, pattern='') :
+        logger.debug('CMWDBTree.fill_tree_model')
         self._pattern = pattern
         self.clear_model()
 
@@ -65,7 +66,6 @@ class CMWDBTree(QWTree) :
 
     def fill_tree_model_for_client(self) :
         #client = dbu.connect_client()
-
         client = self.thread.client()
         stat = self.thread.quit()
 
@@ -79,6 +79,9 @@ class CMWDBTree(QWTree) :
         #pattern = 'cspad'
         pattern = self._pattern
         dbnames = dbu.database_names(client)
+
+        logger.debug('CMWDBTree.fill_tree_model_for_client dbnames: %s' % str(dbnames))
+
         if pattern :
             dbnames = [name for name in dbnames if pattern in name]
 

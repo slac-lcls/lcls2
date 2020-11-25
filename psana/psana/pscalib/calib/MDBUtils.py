@@ -189,7 +189,7 @@ def _uri(host, port, user, upwd):
 
     # for Calibration DB client
     if host==cc.HOST and port==cc.PORT:
-        rhs = '%s:%s@%s' % (user, cc.USERPW if upwd in ('', None) else upwd, rhs)
+        rhs = '%s:%s@%s' % (user, cc.OPER if upwd in ('', None) else upwd, rhs)
 
     # for all other mongod clients
     else:
@@ -544,7 +544,7 @@ def connect(**kwargs):
     host    = kwargs.get('host', cc.HOST)
     port    = kwargs.get('port', cc.PORT)
     user    = kwargs.get('user', cc.USERNAME)
-    upwd    = kwargs.get('upwd', cc.USERPW)
+    upwd    = kwargs.get('upwd', cc.OPER)
     expname = kwargs.get('experiment', None)
     detname = kwargs.get('detector', 'camera-0-cxids1-0')
 
@@ -1595,7 +1595,7 @@ if __name__ == "__main__":
     elif tname == '2': data, ctype = get_test_nda(), 'testnda';  logger.debug(info_ndarr(data, 'nda'))
     elif tname == '3': data, ctype = get_test_dic(), 'testdict'; logger.debug('dict: %s' % str(data))
 
-    kwa = {'user': gu.get_login()}
+    kwa = {'user': gu.get_login(), 'upwd':cc.OPER}
     t0_sec = int(time())
     insert_constants(data, TEST_EXPNAME, TEST_DETNAME, ctype, 20+int(tname), t0_sec,\
                      time_stamp=_timestamp(t0_sec), **kwa)

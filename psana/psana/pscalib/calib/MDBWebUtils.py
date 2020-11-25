@@ -245,9 +245,40 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
     if doc is None :
         # commented out by cpo since this happens routinely the way
         # that Mona is fetching calibration constants in psana.
-        #logger.warning('document is not available for query: %s' % str(query))
+        logger.debug('document is not available for query: %s' % str(query))
         return (None, None)
     return (get_data_for_doc(dbname, colname, doc, url), doc)
+
+#------------------------------
+
+def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, url=cc.URL):
+    """ try to add constants of missing types in resp using detector db
+    """
+    exp=None
+    run=9999
+    ctype=None
+    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
+    dbname = db_det
+    docs = find_docs(dbname, colname, query, url)
+    #logger.debug('find_docs: number of docs found: %d' % len(docs))
+    if docs is None : return None
+
+    ctypes = set([d.get('ctype',None) for d in docs])
+    ctypes.discard(None)
+    logger.debug('calib_constants_missing_types - found ctypes: %s' % str(ctypes))
+
+    ctypes_resp = resp.keys()
+    _ctypes = [ct for ct in ctypes if not(ct in ctypes_resp)]
+
+    logger.debug('calib_constants_missing_types - found additional ctypes: %s' % str(_ctypes))
+
+    for ct in _ctypes:
+        docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
+        doc = select_latest_doc(docs_for_type, query)
+        if doc is None : continue
+        resp[ct] = (get_data_for_doc(dbname, colname, doc, url), doc)
+
+    return resp
 
 #------------------------------
 
@@ -266,11 +297,13 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
     logger.debug('calib_constants_all_types - found ctypes: %s' % str(ctypes))
 
     resp = {}
-    for ct in ctypes :
+    for ct in ctypes:
         docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
         doc = select_latest_doc(docs_for_type, query)
         if doc is None : continue
         resp[ct] = (get_data_for_doc(dbname, colname, doc, url), doc)
+
+    resp = calib_constants_of_missing_types(resp, det, time_sec, vers, url)
 
     return resp
 

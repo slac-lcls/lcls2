@@ -48,13 +48,11 @@ from psana.graphqt.Styles import style
 
 #------------------------------
 
-#class CMWMain(Frame) :
-class CMWMain(QWidget) :
+class CMWMain(QWidget):
 
     _name = 'CMWMain'
 
-    def __init__(self, parser=None) : # **dict_opts) :
-        #Frame.__init__(self, parent=None, mlw=1)
+    def __init__(self, parser=None): # **dict_opts):
         QWidget.__init__(self, parent=None)
         #self._name = self.__class__.__name__
 
@@ -105,17 +103,17 @@ class CMWMain(QWidget) :
         #self.move(self.pos()) # + QPoint(self.width()+5, 0))
 
 
-    def connect_signals_to_slots(self) :
+    def connect_signals_to_slots(self):
         pass
         #self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
         #self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
 
 #------------------------------
 
-    def proc_parser(self, parser=None) :
+    def proc_parser(self, parser=None):
         self.parser=parser
 
-        if parser is None :
+        if parser is None:
             return
 
         (popts, pargs) = parser.parse_args()
@@ -132,33 +130,33 @@ class CMWMain(QWidget) :
         loglevel   = popts.loglevel.upper()
         logdir     = popts.logdir
 
-        #if host     != self.defs['host']       : cp.cdb_host.setValue(host)
-        #if port     != self.defs['port']       : cp.cdb_port.setValue(port)
-        #if exp      != self.defs['experiment'] : cp.exp_name.setValue(exp)
-        #if det      != self.defs['detector']   : cp.data_source.setValue(det)
-        #if loglevel != self.defs['loglevel']   : cp.log_level.setValue(loglevel)
-        #if logdir   != self.defs['logdir']     : cp.log_prefix.setValue(logdir)
+        #if host     != self.defs['host']      : cp.cdb_host.setValue(host)
+        #if port     != self.defs['port']      : cp.cdb_port.setValue(port)
+        #if exp      != self.defs['experiment']: cp.exp_name.setValue(exp)
+        #if det      != self.defs['detector']  : cp.data_source.setValue(det)
+        #if loglevel != self.defs['loglevel']  : cp.log_level.setValue(loglevel)
+        #if logdir   != self.defs['logdir']    : cp.log_prefix.setValue(logdir)
 
-        if is_in_command_line(None, '--host')       : cp.cdb_host.setValue(host)
-        if is_in_command_line(None, '--port')       : cp.cdb_port.setValue(port)
-        if is_in_command_line('-e', '--experiment') : cp.exp_name.setValue(exp)
-        if is_in_command_line('-d', '--detector')   : cp.data_source.setValue(det)
-        if is_in_command_line('-l', '--loglevel')   : cp.log_level.setValue(loglevel)
-        if is_in_command_line('-L', '--logdir')     : cp.log_prefix.setValue(logdir)
+        if is_in_command_line(None, '--host')      : cp.cdb_host.setValue(host)
+        if is_in_command_line(None, '--port')      : cp.cdb_port.setValue(port)
+        if is_in_command_line('-e', '--experiment'): cp.exp_name.setValue(exp)
+        if is_in_command_line('-d', '--detector')  : cp.data_source.setValue(det)
+        if is_in_command_line('-l', '--loglevel')  : cp.log_level.setValue(loglevel)
+        if is_in_command_line('-L', '--logdir')    : cp.log_prefix.setValue(logdir)
 
-        if loglevel == 'DEBUG' :
+        if loglevel == 'DEBUG':
             print(40*'_')
             print_parser(parser)
             print_kwargs(self.opts)
 
 #------------------------------
 
-    def set_tool_tips(self) :
+    def set_tool_tips(self):
         pass
         #self.butStop.setToolTip('Not implemented yet...')
 
 
-    def set_style(self) :
+    def set_style(self):
         #self.setGeometry(50, 50, 500, 600)
         self.setGeometry(self.main_win_pos_x .value(),\
                          self.main_win_pos_y .value(),\
@@ -199,11 +197,11 @@ class CMWMain(QWidget) :
         #self.but1.raise_()
 
 
-    def closeEvent(self, e) :
+    def closeEvent(self, e):
         logger.debug('%s.closeEvent' % self._name)
 
-        #try : self.wspe.close()
-        #except : pass
+        #try: self.wspe.close()
+        #except: pass
 
         self.wtab.close()
 
@@ -218,7 +216,7 @@ class CMWMain(QWidget) :
         pass
 
 
-    def moveEvent(self, e) :
+    def moveEvent(self, e):
         #logger.debug('moveEvent', self._name) 
         #self.position = self.mapToGlobal(self.pos())
         #self.position = self.pos()
@@ -228,19 +226,19 @@ class CMWMain(QWidget) :
         pass
 
 
-    def key_usage(self) :
+    def key_usage(self):
         return 'Keys:'\
                '\n  V - view/hide tabs'\
                '\n'
 
-    if __name__ == "__main__" :
-      def keyPressEvent(self, e) :
+    if __name__ == "__main__":
+      def keyPressEvent(self, e):
         #print('keyPressEvent, key=', e.key())       
-        if   e.key() == Qt.Key_Escape :
+        if   e.key() == Qt.Key_Escape:
             self.close()
-        elif e.key() == Qt.Key_V : 
+        elif e.key() == Qt.Key_V: 
             self.wtab.view_hide_tabs()
-        else :
+        else:
             logger.info(self.key_usage())
 
 
@@ -248,7 +246,7 @@ class CMWMain(QWidget) :
 
         point, size = self.mapToGlobal(QPoint(-5,-22)), self.size() # Offset (-5,-22) for frame size.
         x,y,w,h = point.x(), point.y(), size.width(), size.height()
-        msg = 'Save main window x,y,w,h : %d, %d, %d, %d' % (x,y,w,h)
+        msg = 'Save main window x,y,w,h: %d, %d, %d, %d' % (x,y,w,h)
         logger.info(msg) #, self._name)
         #print(msg)
 
@@ -267,7 +265,7 @@ class CMWMain(QWidget) :
         cp.printParameters()
         cp.saveParametersInFile() # moved to PSConfigParameters
 
-        if cp.save_log_at_exit.value() :
+        if cp.save_log_at_exit.value():
             pass
             # ?????
             #log.saveLogInFile(cp.log_file.value())
@@ -276,12 +274,12 @@ class CMWMain(QWidget) :
 
 #------------------------------
 
-def calibman(parser=None) :
+def calibman(parser=None):
     import sys
     #sys.stdout = sys.stderr = open('/dev/null', 'w') # open('%s-stdout-stderr' % cp.log_file.value(), 'w')
 
     from PyQt5.QtWidgets import QApplication
-    #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
+    #logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
     app = QApplication(sys.argv)
     w = CMWMain(parser)
     w.show()
@@ -291,7 +289,7 @@ def calibman(parser=None) :
 
 #------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     calibman()
 
 #------------------------------

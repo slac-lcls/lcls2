@@ -35,13 +35,14 @@ from urllib.parse import urlparse
 URL_ENV = os.environ.get('LCLS_CALIB_HTTP', None)
 URL     = 'https://pswww.slac.stanford.edu/calib_ws' if URL_ENV is None else URL_ENV
 URL_KRB = 'https://pswww.slac.stanford.edu/ws-kerb/calib_ws/'
-HOST = 'psdb-dev' # 'psanaphi103'
-PORT = 9306       # 27017
+HOST = 'psdbdev01' # 'psdb-dev' # 'psanaphi103'
+PORT = 9306                     # 27017
 USERNAME = 'calibuser'
 USERPW   = USERNAME[:5]
 DBNAME_PREFIX = 'cdb_'
 DETNAMESDB = '%sdetnames' % DBNAME_PREFIX
 MAX_DETNAME_SIZE = 55
+OPER = 'pcds'
 
 try: KRBHEADERS = KerberosTicket("HTTP@" + urlparse(URL_KRB).hostname).getAuthHeaders()
 #except kerberos.GSSError as e:

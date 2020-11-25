@@ -170,6 +170,7 @@ class QWLoggerStd(QWidget) :
         #logger.setLevel(level_name) # {0: 'NOTSET'}
         level = self.dict_name_to_level[level_name]
         logger.setLevel(level)
+        #logging.getLogger().setLevel(level)
         #msg = 'Set logger level %s of the list: %s' % (level_name, ', '.join(self.level_names))
         #logger.debug(msg)
         logger.info('Set logger level %s' % level_name)

@@ -7,6 +7,7 @@ Created on 2018-02-26 by Mikhail Dubrovin
 import sys
 import psana.pscalib.calib.CalibConstants as cc
 from psana.graphqt.CMWMain import calibman, logging
+import psana.pyalgos.generic.Utils as gu
 
 LEVEL_NAMES = ', '.join(list(logging._levelToName.values()))
 
@@ -16,7 +17,7 @@ def usage():
     return 'command examples for app %s\n'%sys.argv[0]\
          + '  calibman\n'\
          + '  calibman -u <username> -p <password>\n'\
-         + '  calibman --host=psanagpu115 --port=27017\n'\
+         + '  calibman --host=psdbdev01 --port=9306\n'\
          + '  calibman --host=psanaphi103 -l DEBUG -L cm-log'
     #return '%s - TBD' % (sys._getframe().f_code.co_name)
  
@@ -54,7 +55,7 @@ def input_option_parser() :
 
     d_host       = cc.HOST
     d_port       = cc.PORT
-    d_user       = cc.USERNAME
+    d_user       = gu.get_login() #cc.USERNAME
     d_upwd       = ''
     d_experiment = 'exp12345'
     d_detector   = 'detector_1234'
