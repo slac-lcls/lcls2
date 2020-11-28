@@ -18,23 +18,78 @@ using namespace XtcData;
 using logging = psalg::SysLog;
 using json = nlohmann::json;
 
+//#define INCLUDE_ENV
+
 namespace Drp {
 
-  class RawDef : public VarDef
-  {
-  public:
-    enum index { image };
-    RawDef() { NameVec.push_back({"image", Name::UINT16, 3}); }
-  } rawDef;
+#define ADD_FIELD(name,ntype,ndim)  NameVec.push_back({#name, Name::ntype, ndim})
+
+    class EpixQuadDef : public VarDef
+    {
+    public:
+        enum index { raw, aux, 
+                     sht31Hum, sht31TempC,
+                     nctLocTempC, nctFpgaTempC,
+                     asicA0_2V5_CurrmA,
+                     asicA1_2V5_CurrmA,
+                     asicA2_2V5_CurrmA,
+                     asicA3_2V5_CurrmA,
+                     asicD0_2V5_CurrmA,
+                     asicD1_2V5_CurrmA,
+                     therm0TempC,
+                     therm1TempC,
+                     pwrDigCurr,
+                     pwrDigVin,
+                     pwrDigTempC,
+                     pwrAnaCurr,
+                     pwrAnaVin,
+                     pwrAnaTempC,
+                     asic_temp, 
+                     num_fields
+        };
+
+        EpixQuadDef() { 
+
+            ADD_FIELD(raw              ,UINT16,2);
+            ADD_FIELD(aux              ,UINT16,2);
+#ifdef INCLUDE_ENV
+            ADD_FIELD(sht31Hum         ,FLOAT,0);
+            ADD_FIELD(sht31TempC       ,FLOAT,0);
+            ADD_FIELD(nctLocTempC      ,UINT16 ,0);
+            ADD_FIELD(nctFpgaTempC     ,FLOAT,0);
+            ADD_FIELD(asicA0_2V5_CurrmA,FLOAT,0);
+            ADD_FIELD(asicA1_2V5_CurrmA,FLOAT,0);
+            ADD_FIELD(asicA2_2V5_CurrmA,FLOAT,0);
+            ADD_FIELD(asicA3_2V5_CurrmA,FLOAT,0);
+            ADD_FIELD(asicD0_2V5_CurrmA,FLOAT,0);
+            ADD_FIELD(asicD1_2V5_CurrmA,FLOAT,0);
+            ADD_FIELD(therm0TempC      ,FLOAT,0);
+            ADD_FIELD(therm1TempC      ,FLOAT,0);
+            ADD_FIELD(pwrDigCurr       ,FLOAT,0);
+            ADD_FIELD(pwrDigVin        ,FLOAT,0);
+            ADD_FIELD(pwrDigTempC      ,FLOAT,0);
+            ADD_FIELD(pwrAnaCurr       ,FLOAT,0);
+            ADD_FIELD(pwrAnaVin        ,FLOAT,0);
+            ADD_FIELD(pwrAnaTempC      ,FLOAT,0);
+            ADD_FIELD(asic_temp        ,UINT16,1);
+#endif
+        }
+    } epixQuadDef;
 };
+            
+#undef ADD_FIELD
 
 using Drp::EpixQuad;
 
 EpixQuad::EpixQuad(Parameters* para, MemPool* pool) :
     BEBDetector   (para, pool),
-    m_evtNamesId  (-1, -1) // placeholder
+    m_evtNamesId({NamesId(0,0),
+                NamesId(0,0),
+                NamesId(0,0),
+                NamesId(0,0)})
 {
-  _init(para->detName.c_str());  // an argument is required here
+    virtChan = 0;
+    _init(para->detName.c_str());  // an argument is required here
 }
 
 EpixQuad::~EpixQuad()
@@ -48,33 +103,128 @@ void EpixQuad::_connect(PyObject* mbytes)
 
 json EpixQuad::connectionInfo()
 {
-  return BEBDetector::connectionInfo();
+    return BEBDetector::connectionInfo();
 }
 
 unsigned EpixQuad::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
 {
     // set up the names for L1Accept data
-    m_evtNamesId = NamesId(nodeId, EventNamesIndex);
-    Alg alg("raw", 2, 0, 0);
-    Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
-                                        m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
+    for (unsigned seg=0; seg < 4; seg++) {
+        m_evtNamesId[seg] = NamesId(nodeId, EventNamesIndex+seg);
+        Alg alg("raw", 2, 0, 1);
+        Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
+                                            "epix", m_para->serNo.c_str(), m_evtNamesId[seg], 
+                                            seg+4*m_para->detSegment);
 
-    eventNames.add(xtc, rawDef);
-    m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
+        eventNames.add(xtc, epixQuadDef);
+        m_namesLookup[m_evtNamesId[seg]] = NameIndex(eventNames);
+    }
 
     return 0;
 }
 
+static float _getThermistorTemp(uint16_t x)
+{
+    float tthermk = 0.;
+    if (x) {
+        float umeas = float(x)*2.5/16383.;
+        float itherm = umeas/100000.;
+        float rtherm = (2.5-umeas)/itherm;
+        if (rtherm>0) {
+            float lnrtr25 = log(rtherm/10000.);
+            tthermk = 1.0 / (3.3538646E-03 + 2.5654090E-04 * lnrtr25 + 1.9243889E-06 * (lnrtr25*lnrtr25) + 1.0969244E-07 * (lnrtr25*lnrtr25*lnrtr25));
+            tthermk -= 273.15;
+        }
+    }
+    return 0.;
+}
+
 void EpixQuad::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
-  CreateData cd(xtc, m_namesLookup, m_evtNamesId);
+    unsigned shape[MaxRank] = {0,0,0,0,0};
+  
+    //  A super row crosses 2 elements; each element contains 2x2 ASICs
+    const unsigned asicRows     = 176;
+    const unsigned elemRowSize  = 2*192;
+  
+    for(unsigned seg=0; seg<4; seg++) {
+        CreateData cd(xtc, m_namesLookup, m_evtNamesId[seg]);
+        shape[0] = asicRows*2; shape[1] = elemRowSize;
+        Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixQuadDef::raw, shape);
 
-  unsigned shape[MaxRank];
-  shape[0] = m_rows;
-  shape[1] = m_columns;
-  shape[2] = 4;         // 4 ASICs in a quad
-  Array<uint16_t> arrayT = cd.allocate<uint16_t>(RawDef::image, shape);
-  memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
+        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[2].data()) + 16;
+      
+#define MMCPY(a,el,row,src,sz) {                \
+            if (seg==el) {                      \
+                uint16_t* dst = &a(row,0);      \
+                for(unsigned k=0; k<sz; k++) {  \
+                    dst[sz-1-k] = src[k];       \
+                }                               \
+            }                                   \
+            src += sz;                          \
+        }
+
+        // Frame data
+        for(unsigned i=0; i<asicRows; i++) { // 4 super rows at a time
+            unsigned dnRow = asicRows+i;
+            unsigned upRow = asicRows-i-1;
+            
+            MMCPY(aframe, 2, upRow, u, elemRowSize);
+            MMCPY(aframe, 3, upRow, u, elemRowSize);
+            MMCPY(aframe, 2, dnRow, u, elemRowSize);
+            MMCPY(aframe, 3, dnRow, u, elemRowSize);
+            MMCPY(aframe, 0, upRow, u, elemRowSize);
+            MMCPY(aframe, 1, upRow, u, elemRowSize);
+            MMCPY(aframe, 0, dnRow, u, elemRowSize);
+            MMCPY(aframe, 1, dnRow, u, elemRowSize);
+        }
+
+        // Calibration rows
+        const unsigned calibRows = 4;
+        shape[0] = calibRows; shape[1] = elemRowSize;
+        Array<uint16_t> acalib = cd.allocate<uint16_t>(EpixQuadDef::aux, shape);
+
+        for(unsigned i=0; i<calibRows; i++) {
+            MMCPY(acalib, 2, i, u, elemRowSize);
+            MMCPY(acalib, 3, i, u, elemRowSize);
+            MMCPY(acalib, 0, i, u, elemRowSize);
+            MMCPY(acalib, 1, i, u, elemRowSize);
+        }
+
+#ifdef INCLUDE_ENV
+#define ADD_FIELD(name,ntype,val) cd.set_value<ntype>(EpixQuadDef::name, val)
+    
+        const uint8_t* u8 = reinterpret_cast<const uint8_t*>(u);
+        ADD_FIELD(sht31Hum         ,float_t, (float(u[0])*100./65535.));
+        ADD_FIELD(sht31TempC       ,float_t, (float(u[1])*175./65535.-45.));
+        ADD_FIELD(nctLocTempC      ,uint16_t, u[2]);
+        ADD_FIELD(nctFpgaTempC     ,float_t, (float(u8[7])+float(u8[6]>>6)*0.25));
+        ADD_FIELD(asicA0_2V5_CurrmA,float_t, (float(u[4])*2.5e6/(16383.*330.)));
+        ADD_FIELD(asicA1_2V5_CurrmA,float_t, (float(u[5])*2.5e6/(16383.*330.)));
+        ADD_FIELD(asicA2_2V5_CurrmA,float_t, (float(u[6])*2.5e6/(16383.*330.)));
+        ADD_FIELD(asicA3_2V5_CurrmA,float_t, (float(u[7])*2.5e6/(16383.*330.)));
+        ADD_FIELD(asicD0_2V5_CurrmA,float_t, (float(u[8])*2.5e6/(16383.*330.*2.)));
+        ADD_FIELD(asicD1_2V5_CurrmA,float_t, (float(u[9])*2.5e6/(16383.*330.*2.)));
+        ADD_FIELD(therm0TempC      ,float_t, _getThermistorTemp(u[10]));
+        ADD_FIELD(therm1TempC      ,float_t, _getThermistorTemp(u[11]));
+        ADD_FIELD(pwrDigCurr       ,float_t, (float(u[12])*0.1024/(4095.*0.02)));
+        ADD_FIELD(pwrDigVin        ,float_t, (float(u[13])*102.4/4095.));
+        ADD_FIELD(pwrDigTempC      ,float_t, (float(u[14])*2.048/4095.*(130./(0.882-1.951)) + 0.882/0.0082 + 100));
+        ADD_FIELD(pwrAnaCurr       ,float_t, (float(u[15])*0.1024/(4095.*0.02)));
+        ADD_FIELD(pwrAnaVin        ,float_t, (float(u[16])*102.4/4095.));
+        ADD_FIELD(pwrAnaTempC      ,float_t, (float(u[17])*2.048/4095.*(130./(0.882-1.951)) + 0.882/0.0082 + 100));
+
+        u += 2*elemRowSize;
+
+        // Temperatures
+        const unsigned tempSize = 4;
+        u += tempSize*seg;
+        shape[0] = tempSize; shape[1] = 0;
+        Array<uint16_t> atemp = cd.allocate<uint16_t>(EpixQuadDef::asic_temp, shape);
+        for(unsigned i=0; i<tempSize; i++)
+            atemp(tempSize-i-1) = *u++;
+#endif
+    }
 }
 
 void     EpixQuad::slowupdate(XtcData::Xtc& xtc)

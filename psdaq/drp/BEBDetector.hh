@@ -20,7 +20,10 @@
 namespace Drp {
   class PythonConfigScanner;
 
-  enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex, UpdateNamesIndex}; // index for xtc NamesId
+  enum { MaxSegsPerNode = 10 };
+  enum {ConfigNamesIndex = NamesIndex::BASE, 
+        EventNamesIndex  = ConfigNamesIndex + MaxSegsPerNode, 
+        UpdateNamesIndex = EventNamesIndex  + MaxSegsPerNode }; // index for xtc NamesId
 
 class BEBDetector : public Detector
 {
@@ -42,6 +45,7 @@ public:  // Implementation of Detector
         EvtBatcherHeader& ebh = *static_cast<EvtBatcherHeader*>(m_pool->dmaBuffers[index]);
         return static_cast<Pds::TimingHeader*>(ebh.next());
     }
+    static PyObject* _check(PyObject*);
 protected:  // This is the sub class interface
     virtual void           _connect  (PyObject*) {}     // handle dictionary entries returned by <detType>_connect python
     virtual unsigned       _configure(XtcData::Xtc&, XtcData::ConfigIter&)=0; // attach descriptions to xtc
@@ -51,7 +55,6 @@ protected:
     void _init(const char*);  // Must call from subclass constructor
     void _init_feb();         // Must call from subclass constructor
     // Helper functions
-    static PyObject* _check(PyObject*);
     static std::string _string_from_PyDict(PyObject*, const char* key);
 protected:
     std::string          m_connect_json;  // info passed on connect phase

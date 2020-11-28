@@ -19,7 +19,7 @@ protected:
     void           _event    (XtcData::Xtc&,
                               std::vector< XtcData::Array<uint8_t> >&) override;
 protected:
-    XtcData::NamesId  m_evtNamesId;
+    XtcData::NamesId  m_evtNamesId[4];
   };
 
 }

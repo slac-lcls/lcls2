@@ -6,6 +6,7 @@
 #include "TimeTool.hh"
 #include "AreaDetector.hh"
 #include "Digitizer.hh"
+#include "EpixQuad.hh"
 #include "Opal.hh"
 #include "Wave8.hh"
 #include "psdaq/service/MetricExporter.hh"
@@ -111,13 +112,14 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     Py_Initialize(); // for use by configuration
 
     Factory<Detector> f;
-    f.register_type<TimingSystem>("ts");
-    f.register_type<Digitizer>("hsd");
     f.register_type<AreaDetector>("fakecam");
     f.register_type<AreaDetector>("cspad");
-    f.register_type<TimeTool>("tt");
-    f.register_type<Wave8>("wave8");
-    f.register_type<Opal>("opal");
+    f.register_type<Digitizer>   ("hsd");
+    f.register_type<EpixQuad>    ("epixquad");
+    f.register_type<Opal>        ("opal");
+    f.register_type<TimeTool>    ("tt");
+    f.register_type<TimingSystem>("ts");
+    f.register_type<Wave8>       ("wave8");
 
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {

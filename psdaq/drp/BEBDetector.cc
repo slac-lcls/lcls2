@@ -74,7 +74,11 @@ void BEBDetector::_init(const char* arg)
       // returns new reference
 #define MLOOKUP(m,name,dflt) (m.find(name)==m.end() ? dflt : m[name].c_str())
       const char* xpmpv = MLOOKUP(m_para->kwargs,"xpmpv",0);
-      m_root = _check(PyObject_CallFunction(pFunc,"ss",arg,xpmpv));
+      m_root = _check(PyObject_CallFunction(pFunc,"ssis",
+                                            arg,
+                                            m_para->device.c_str(),
+                                            m_para->laneMask,
+                                            xpmpv));
     }
 
     {
@@ -122,6 +126,56 @@ json BEBDetector::connectionInfo()
     return info;
 }
 
+static int _translate( PyObject* item, Xtc& xtc, NamesId namesID) 
+{
+    int result = -1;
+
+    // returns new reference
+    PyObject * json_bytes = BEBDetector::_check(PyUnicode_AsASCIIString(item));
+    char* json = (char*)PyBytes_AsString(json_bytes);
+
+    NamesLookup nl;
+    Value jsonv;
+
+    Document *d = new Document();
+    d->Parse(json);
+
+    while(1) {
+        const char* detname;
+        unsigned    segment = 0;
+        if (!d->HasMember("detName:RO")) {
+            logging::info("No detName member in config json");
+            break;
+        }
+
+        //  Extract detname, segment from document detName field
+        std::string sdetName((*d)["detName:RO"].GetString());
+        {
+            size_t pos = sdetName.rfind('_');
+            if (pos==std::string::npos) {
+                logging::info("No segment number in config json");
+                break;
+            }
+            sscanf(sdetName.c_str()+pos+1,"%u",&segment);
+            detname = sdetName.substr(0,pos).c_str();
+        }
+
+        if (Pds::translateJson2XtcNames(d, &xtc, nl, namesID, jsonv, detname, segment) < 0)
+            break;
+    
+        if (Pds::translateJson2XtcData (d, &xtc, nl, namesID, jsonv) < 0)
+            break;
+
+        result = 0;
+        break;
+    }
+
+    delete d;
+    Py_DECREF(json_bytes);
+
+    return result;
+}
+
 unsigned BEBDetector::configure(const std::string& config_alias,
                                 Xtc&               xtc)
 {
@@ -136,30 +190,38 @@ unsigned BEBDetector::configure(const std::string& config_alias,
                                                      m_root, m_connect_json.c_str(), config_alias.c_str(),
                                                      m_para->detName.c_str(), m_para->detSegment, m_readoutGroup));
 
-    // returns new reference
-    PyObject * json_bytes = _check(PyUnicode_AsASCIIString(mybytes));
-    char* json = (char*)PyBytes_AsString(json_bytes);
+    char* buffer = new char[m_para->maxTrSize];
+    Xtc& jsonxtc = *new (buffer) Xtc(TypeId(TypeId::Parent, 0));
 
-    // convert json to xtc
-    const int BUFSIZE = 1024*1024;
-    char* buffer = new char[BUFSIZE];
-    NamesId configNamesId(nodeId,ConfigNamesIndex);
-    if (Pds::translateJson2Xtc(json, buffer, configNamesId, m_para->detName.c_str(), m_para->detSegment) < 0)
-        throw "**** Config json translation error\n";
+    if (PyList_Check(mybytes)) {
+        for(unsigned seg=0; seg<PyList_Size(mybytes); seg++) {
+            PyObject* item = PyList_GetItem(mybytes,seg);
+            NamesId namesId(nodeId,ConfigNamesIndex+seg);
+            if (_translate( item, jsonxtc, namesId ))
+                return -1;
+        }
+    }
+    else if ( _translate( mybytes, jsonxtc, NamesId(nodeId,ConfigNamesIndex) ) )
+        return -1;
 
-    Xtc& jsonxtc = *(Xtc*)buffer;
-    if (jsonxtc.extent>BUFSIZE)
+    if (jsonxtc.extent>m_para->maxTrSize)
         throw "**** Config json output too large for buffer\n";
 
-    XtcData::ConfigIter iter(&jsonxtc);
-    unsigned r = _configure(xtc,iter);
-
+    unsigned r = 0;
+    {
+        //
+        //  There's a funny memory overwrite here
+        //
+        XtcData::ConfigIter* iter = new XtcData::ConfigIter(&jsonxtc);
+        r = _configure(xtc,*iter);
+        delete iter;
+    }
+        
     // append the config xtc info to the dgram
     memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
     xtc.alloc(jsonxtc.sizeofPayload());
 
     Py_DECREF(mybytes);
-    Py_DECREF(json_bytes);
     delete[] buffer;
 
     return r;
