@@ -42,7 +42,7 @@ public:
     CTOR_TYPE constructor_type() const {return _ctor_type;}
 
 private:
-    ShapesData* _shapesData[2];
+    std::unordered_map<unsigned,ShapesData*> _shapesData;
     DescData* _desc_shape = NULL;
     DescData* _desc_value = NULL;
     CTOR_TYPE _ctor_type;

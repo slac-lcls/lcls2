@@ -29,12 +29,12 @@ class DescData {
 public:
     // reading an existing ShapesData
     DescData(ShapesData& shapesdata, NameIndex& nameindex) :
+        _offset(nameindex.names().num()+1),
         _shapesdata(shapesdata),
         _nameindex(nameindex),
         _numarrays(0)
     {
         Names& names = _nameindex.names();
-        assert(names.num()<MaxNames);
         _unused(names);
         _offset[0]=0;
         _numentries = names.num();
@@ -53,6 +53,7 @@ public:
         }
     }
     
+    ~DescData() {}
 
     static void checkType(uint8_t val, Name& name) {
         assert(Name::UINT8==name.type());
@@ -144,24 +145,24 @@ public:
 protected:
     // creating a new ShapesData to be filled in
     DescData(NameIndex& nameindex, Xtc& parent, NamesId& namesId) :
+        _offset(nameindex.names().num()+1),
         _shapesdata(*new (parent) ShapesData(namesId)),
         _nameindex(nameindex),
         _numarrays(0)
     {
         Names& names = _nameindex.names();
-        assert(names.num()<MaxNames);
         _unused(names);
         _offset[0]=0;
         _numentries=0;
     }
 
     DescData(NameIndex& nameindex, Xtc& parent, VarDef& V, NamesId& namesId) :
+        _offset(nameindex.names().num()+1),
         _shapesdata(*new (parent) ShapesData(namesId)),
         _nameindex(nameindex),
         _numarrays(0)
     {
         Names& names = _nameindex.names();
-        assert(names.num()<MaxNames);
         _unused(names);
         _offset[0]=0;
         _numentries=0;
@@ -181,8 +182,7 @@ protected:
     }
 
 
-    enum {MaxNames=1000};
-    unsigned    _offset[MaxNames+1]; // +1 since we set up the offsets 1 in advance, for convenience
+    std::vector<unsigned> _offset;
     ShapesData& _shapesdata;
     unsigned    _numentries;
     NameIndex&  _nameindex;
