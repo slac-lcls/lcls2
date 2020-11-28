@@ -6,6 +6,9 @@
 using namespace XtcData;
 using namespace rapidjson;
 
+#include "psalg/utils/SysLog.hh"
+using logging = psalg::SysLog;
+
 namespace Pds {
 std::map<std::string, enum Name::DataType> JsonIterator::typeMap = {
     {"UINT8",    Name::UINT8},
@@ -287,18 +290,15 @@ int translateJson2XtcNames(Document* d, Xtc* xtc, NamesLookup& nl, NamesId names
     if (d->HasParseError()) {
         printf("Parse error: %s, location %zu\n",
                GetParseError_En(d->GetParseError()), d->GetErrorOffset());
-        delete d;
         return -1;
     }
     if (!d->IsObject()) {
         printf("Document is not an object!\n");
-        delete d;
         return -1;
     }
     if (!d->HasMember("alg:RO") || !d->HasMember("detName:RO") || !d->HasMember("detType:RO") ||
         !d->HasMember("detId:RO") || !d->HasMember("doc:RO")) {
         printf("Document is missing a mandatory field (alg, detName, detType, detId, or doc)!\n");
-        delete d;
         return -1;
     }
     const Value& a = (*d)["alg:RO"];
@@ -307,7 +307,7 @@ int translateJson2XtcNames(Document* d, Xtc* xtc, NamesLookup& nl, NamesId names
                   v[1].GetInt(), v[2].GetInt());
     // Set alg._doc from a["doc"].GetString()?
     d->RemoveMember("alg:RO");
-    Names& names = *new(xtc) Names(detname ? detname : (*d)["detName:RO"].GetString(), 
+    Names& names = *new(xtc) Names(detname,
                                    alg,
                                    (*d)["detType:RO"].GetString(),
                                    (*d)["detId:RO"].GetString(), namesID, segment);
