@@ -307,7 +307,7 @@ int translateJson2XtcNames(Document* d, Xtc* xtc, NamesLookup& nl, NamesId names
                   v[1].GetInt(), v[2].GetInt());
     // Set alg._doc from a["doc"].GetString()?
     d->RemoveMember("alg:RO");
-    Names& names = *new(xtc) Names(detname,
+    Names& names = *new(xtc) Names(detname ? detname : (*d)["detName:RO"].GetString(),
                                    alg,
                                    (*d)["detType:RO"].GetString(),
                                    (*d)["detId:RO"].GetString(), namesID, segment);
