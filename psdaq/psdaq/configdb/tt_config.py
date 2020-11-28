@@ -26,10 +26,10 @@ def cl_poll(uart):
             break
         time.sleep(0.01)
 
-def tt_init(arg,xpmpv=None):
+def tt_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
     global cl
 
-    myargs = { 'dev'         : '/dev/datadev_0',
+    myargs = { 'dev'         : dev,
                'pgp3'        : False,
                'pollEn'      : False,
                'initRead'    : False,

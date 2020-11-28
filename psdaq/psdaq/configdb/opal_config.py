@@ -11,6 +11,7 @@ from collections import deque
 
 cl = None
 pv = None
+lm = 1
 
 #FEB parameters
 lane = 0
@@ -31,13 +32,14 @@ def dict_compare(new,curr,result):
             else:
                 result[k] = new[k]
 
-def opal_init(arg,xpmpv=None):
+def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
 
     global pv
     global cl
+    global lm
     print('opal_init')
 
-    myargs = { 'dev'         : '/dev/datadev_0',
+    myargs = { 'dev'         : dev,
                'pollEn'      : False,
                'initRead'    : True,
                'camType'     : ['Opal1000'],
@@ -64,6 +66,7 @@ def opal_init(arg,xpmpv=None):
     cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
     time.sleep(0.1)
 
+    lm=lanemask
     return cl
 
 def opal_init_feb(slane=None,schan=None):

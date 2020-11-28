@@ -40,7 +40,7 @@ def epics_put(cfg,epics_prefix,names,values):
             names.append(epics_prefix+key)
             values.append(val)
         
-def wave8_init(epics_prefix, xpmpv=None):
+def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None):
     global prefix
     prefix = epics_prefix
     return epics_prefix

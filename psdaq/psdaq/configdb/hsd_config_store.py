@@ -36,7 +36,7 @@ help_str += "\nuser.fex.xpost    : keep N samples trailing excursion"
 top.set("help:RO", help_str, 'CHARSTR')
 
 top.set('user.raw.start_ns',  93000, 'UINT32')
-top.set('user.raw.gate_ns' ,  10000, 'UINT32')
+top.set('user.raw.gate_ns' ,    200, 'UINT32')
 top.set('user.raw.prescale',      1, 'UINT32')
 
 top.set('user.fex.start_ns',  93000, 'UINT32')
@@ -68,6 +68,23 @@ top.set('expert.fs_range_vpp', 65535, 'UINT32')
 top.set('expert.trig_shift'  , 0, 'UINT32')
 top.set('expert.sync_ph_even', 0, 'UINT32')
 top.set('expert.sync_ph_odd' , 0, 'UINT32')
+
+top.set('adccal.oadj_a_vina', 0x0800, 'UINT16')
+top.set('adccal.oadj_a_vinb', 0x0800, 'UINT16')
+top.set('adccal.oadj_b_vina', 0x0800, 'UINT16')
+top.set('adccal.oadj_b_vinb', 0x0800, 'UINT16')
+top.set('adccal.gain_trim_a', 0x80, 'UINT8')
+top.set('adccal.gain_trim_b', 0x80, 'UINT8')
+top.set('adccal.b0_time_0'  , 0x80, 'UINT8')
+top.set('adccal.b0_time_90' , 0x80, 'UINT8')
+top.set('adccal.b1_time_0'  , 0x80, 'UINT8')
+top.set('adccal.b1_time_90' , 0x80, 'UINT8')
+top.set('adccal.b4_time_0'  , 0x80, 'UINT8')
+top.set('adccal.b4_time_90' , 0x80, 'UINT8')
+top.set('adccal.b5_time_0'  , 0x80, 'UINT8')
+top.set('adccal.b5_time_90' , 0x80, 'UINT8')
+top.set('adccal.tadj_a_fg90', 0x80, 'UINT8')
+top.set('adccal.tadj_b_fg0' , 0x80, 'UINT8')
 
 mycdb.add_alias(args.alias)
 

@@ -711,7 +711,6 @@ class cdict(object):
 
     def setInfo(self, detType=None, detName=None, detSegm=None, detId=None, doc=None):
         self.setString("detType:RO", detType)
-        self.setString("detName:RO", detName)
         self.setString("detName:RO", detName if detSegm is None else detName+'_%d'%detSegm)
         self.setString("detId:RO", detId)
         self.setString("doc:RO", doc)

@@ -1,110 +1,105 @@
 from psdaq.configdb.get_config import get_config
+from psdaq.configdb.typed_json import cdict
 from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
-from .epixquad import *
 import rogue
-import epix
+import epix_l2sidaq
+import ePixQuad
+import lcls2_pgp_pcie_apps
 import time
 import json
+import os
+import numpy as np
 import IPython
 from collections import deque
 
 pv = None
+lane = 0
+chan = None
 
-#
-#  Need a reorganized epixQuad.Top (a la cameralink-gateway)
-#    Factor into devTarget (KCU, PgpG4,...) and devRoot
-#      devTarget(pr.Device) contains register description on host card
-#      devRoot(shared.Root):
-#        maps PCIe
-#        instanciates devTarget
-#        creates streams
-#        instanciates and connects feb
+def dumpvars(prefix,c):
+    print(prefix)
+    for key,val in c.nodes.items():
+        name = prefix+'.'+key
+        dumpvars(name,val)
 
-class EpixRoot(lcls2_pgp_pcie_apps.DevRoot):
-    def __init__(self):
+def apply_dict(pathbase,base,cfg):
+    depth = 0
+    my_queue  =  deque([[pathbase,depth,base,cfg]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
+    while(my_queue):
+        path,depth,rogue_node, configdb_node = my_queue.pop()
+        if(dict is type(configdb_node)):
+            for i in configdb_node:
+                try:
+                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[i],configdb_node[i]])
+                except KeyError:
+                    print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
 
-        self.devTarget = lcls2_pgp_pcie_apps.Kcu1500
-        numLanes  = 4
-
-        myargs = { 'dev'         : '/dev/datadev_0',
-                   'pollEn'      : False,
-                   'initRead'    : True,
-                   'pgp3'        : True,
-                   'dataVc'      : 0,
-                   'enLclsI'     : False,
-                   'enLclsII'    : True,
-                   'startupMode' : True,
-                   'standAloneMode' : False,
-                   'numLanes'    : numLanes,
-                   'devTarget'   : self.devTarget,}
-
-        super().__init__(**kwargs)
-
-        lane = 0
-        dev  = myargs['dev']
-        self.pgpVc0 = rogue.hardware.axi.AxiStreamDma(dev,256*lane+0,True) # Data & cmds
-        self.pgpVc1 = rogue.hardware.axi.AxiStreamDma(dev,256*lane+1,True) # Registers for ePix board
-        self.pgpVc2 = rogue.hardware.axi.AxiStreamDma(dev,256*lane+2,True) # PseudoScope
-        self.pgpVc3 = rogue.hardware.axi.AxiStreamDma(dev,256*lane+3,True) # Monitoring (Slow ADC)        
-
-        # Connect the SRPv3 to PGPv3.VC[0]
-        memMap = rogue.protocols.srp.SrpV3()                
-        pr.streamConnectBiDir(self.pgpVc1, memMap)             
-      
-        #pyrogue.streamConnect(self.pgpVc0, dataWriter.getChannel(0x1))
-        # Add pseudoscope to file writer
-        #pyrogue.streamConnect(self.pgpVc2, dataWriter.getChannel(0x2))
-        #pyrogue.streamConnect(self.pgpVc3, dataWriter.getChannel(0x3))
-        
-        #cmdVc1 = rogue.protocols.srp.Cmd()
-        #pyrogue.streamConnect(cmdVc1, self.pgpVc0)
-        cmdVc3 = rogue.protocols.srp.Cmd()
-        pyrogue.streamConnect(cmdVc3, self.pgpVc3)
-
-        self.add(EpixQuad(name    = 'EpixQuad',
-                          memMap  = memMap))
-
-    @self.command()
-    def MonStrEnable():
-        cmdVc3.sendCmd(1, 0)
-      
-    @self.command()
-    def MonStrDisable():
-        cmdVc3.sendCmd(0, 0)
-      
-      
+        #  Apply
+        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not pathbase ):
+            rogue_node.set(configdb_node)
 
 
-def epixquad_init(arg,xpmpv=None):
+def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
 
     global pv
     print('epixquad_init')
+    print('pwd {}'.format(os.getcwd()))
 
-    # in older versions we didn't have to use the "with" statement
-    # but now the register accesses don't seem to work without it -cpo
-    base = EpixRoot()
-    base.__enter__()
+    base = {}
+    #  Configure the PCIe card first (timing, datavctap)
+    if True:
+        pbase = lcls2_pgp_pcie_apps.DevRoot(dev           =dev,
+                                            enLclsI       =False,
+                                            enLclsII      =True,
+                                            startupMode   =True,
+                                            standAloneMode=xpmpv is not None,
+                                            pgp3          =True,
+                                            dataVc        =0,
+                                            pollEn        =False,
+                                            initRead      =False,
+                                            numLanes      =4,
+                                            devTarget     =lcls2_pgp_pcie_apps.Kcu1500)
+        #dumpvars('pbase',pbase)
 
-    # Open a new thread here
-    if xpmpv is not None:
-        base.DevPcie.Hsio.TimingRx.ConfigureXpmMini()
-        pv = PVCtrls(xpmpv,base.DevPcie.Hsio.TimingRx.XpmMiniWrapper)
-        pv.start()
-    else:
-        base.DevPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-        time.sleep(0.1)
+        pbase.__enter__()
 
+        # Open a new thread here
+        if xpmpv is not None:
+            #pbase.DevPcie.Hsio.TimingRx.ConfigureXpmMini()
+            pv = PVCtrls(xpmpv,pbase.DevPcie.Hsio.TimingRx.XpmMiniWrapper)
+            pv.start()
+        else:
+            #pbase.DevPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+            time.sleep(0.1)
+        base['pci'] = pbase
+
+    #  Connect to the camera
+    cbase = ePixQuad.Top(dev='/dev/datadev_1',hwType='datadev',lane=lane,pollEn=False)
+    #dumpvars('cbase',cbase)
+    cbase.__enter__()
+    base['cam'] = cbase
     return base
+
+def epixquad_init_feb(slane=None,schan=None):
+    global lane
+    global chan
+    if slane is not None:
+        lane = int(slane)
+    if schan is not None:
+        chan = int(schan)
 
 def epixquad_connect(base):
 
-    txId = timTxId('epixquad')
-
-    rxId = base.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
-    base.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
-
-    print('rxId {:x}'.format(rxId))
+    if 'pci' in base:
+        pbase = base['pci']
+        rxId = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
+        print('RxId {:x}'.format(rxId))
+        txId = timTxId('epixquad')
+        print('TxId {:x}'.format(txId))
+        pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
+    else:
+        rxId = 0xffffffff
 
     # fetch the serial number
     # SystemRegs->CarrierIdLow/High[0:3]
@@ -116,7 +111,7 @@ def epixquad_connect(base):
     # {"CarrierId1"}
     # 0x30-0x33,0x3b-0x3c
 
-    epixquadid = 0
+    epixquadid = '-'
 
     d = {}
     d['paddr'] = rxId
@@ -126,64 +121,128 @@ def epixquad_connect(base):
 
 def epixquad_config(base,connect_str,cfgtype,detname,detsegm,group):
 
+    print('epixquad_config')
+
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
 
-    # Clear the pipeline
-    getattr(base.DevPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(True)
+    if 'pci' in base:
+        print('epixquad_config pbase')
+        pbase = base['pci']
+        # Clear the pipeline
+        #getattr(pbase.DevPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(True)
 
-    # overwrite the low-level configuration parameters with calculations from the user configuration
+        # overwrite the low-level configuration parameters with calculations from the user configuration
 
-    partitionDelay = getattr(base.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
-    rawStart       = cfg['user']['start_ns']
-    triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
-    print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
-    if triggerDelay < 0:
+        partitionDelay = getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
+        rawStart       = cfg['user']['start_ns']
+        triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
         print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
-        raise ValueError('triggerDelay computes to < 0')
+        if triggerDelay < 0:
+            print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+            raise ValueError('triggerDelay computes to < 0')
 
-    cfg['expert']['DevPcie']['Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer[0]']['TriggerDelay'] = triggerDelay
-    cfg['expert']['DevPcie']['Hsio']['TimingRx']['TriggerEventManager']['TriggerEventBuffer[0]']['Partition'] = group
+        cteb = cfg['expert']['DevPcie']['Hsio']['TimingRx']['TriggerEventManager'][f'TriggerEventBuffer[{lane}]']
+        cteb['TriggerDelay'] = triggerDelay
+        cteb['Partition'] = group
 
-    depth = 0
-    path  = 'base'
-    my_queue  =  deque([[path,depth,base,cfg['expert']]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
-    while(my_queue):
-        path,depth,rogue_node, configdb_node = my_queue.pop()
-        if(dict is type(configdb_node)):
-            for i in configdb_node:
-                try:
-                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[i],configdb_node[i]])
-                except KeyError:
-                    print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
+        apply_dict('pbase.DevPcie',pbase.DevPcie,cfg['expert']['DevPcie'])
 
-        #  Apply
-        if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'base' ):
-            rogue_node.set(configdb_node)
+    print('epixquad_config cbase')
+    cbase = base['cam']
 
     #
     #  Configure the pixel gains
     #
     gain_mode = cfg['user']['gain_mode']
     if gain_mode==5:
-        #  load from file
-        base.EpixQuad.SaciConfigCore.setAsicsMatrix(None,None,cfg['user']['gain_file'])
+        for i in range(16):
+            cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] = cfg['user']['gain_map'][i][0][0]&1
+        a = np.array(cfg['user']['gain_map'],dtype=np.uint8) & 0xc
+        pixelConfigMap = np.reshape(a,(16,178,192))
     else:
         mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode]
         trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
+        # Now what?
+        # Collect the mapv bits in a memArray and write like SaciConfigCore.setAsicsMatrix()
+        # The trbit goes into the asic configuration
+        a = np.zeros((16,178,192),dtype=np.uint8) | mapv
+        print(f'a {a.shape} {a.dtype}')
+        b = np.array(cfg['user']['gain_map'])
+        print(f'b {b.shape} {b.dtype}')
+        pixelConfigMap = a.copy()
+        for i in range(16):
+            cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] = trbit
+            a[i] = a[i] | trbit
+    cfg['user']['gain_map'] = a.reshape(-1).tolist()
 
+    apply_dict('cbase',cbase,cfg['expert']['EpixQuad'])
 
-    base.DevPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
-    base.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(True)
-    getattr(base.DevPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(False)
+    #  Write the pixel gain maps
+    #  Would like to send a 3d array
+    core = cbase.SaciConfigCore
+    #core.SetAsicsMatrix(core,'setAsicsMatrixArray',pixelConfigMap)
+    core.SetAsicsMatrix(json.dumps(pixelConfigMap.tolist()))
+    print('SetAsicsMatrix complete')
+
+    if 'pci' in base:
+        #pbase.DevPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
+        #getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]').MasterEnable.set(True)
+        #getattr(pbase.DevPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(False)
+        pbase.StartRun()
 
     #  Capture the firmware version to persist in the xtc
-    #cfg['firmwareVersion'] = base.ClinkPcie.AxiPcieCore.AxiVersion.FpgaVersion.get()
-    #cfg['firmwareBuild'  ] = base.ClinkPcie.AxiPcieCore.AxiVersion.BuildStamp.get()
+    firmwareVersion = cbase.AxiVersion.FpgaVersion.get()
+    #cfg['firmwareVersion:RO'] = cbase.AxiVersion.FpgaVersion.get()
+    #cfg['firmwareBuild:RO'  ] = cbase.AxiVersion.BuildStamp.get()
 
-    #base.StartRun()
+    #return [json.dumps(cfg)]
 
-    return json.dumps(cfg)
+    #
+    #  Create the segment configurations from parameters required for analysis
+    #
+
+    trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] for i in range(16)]
+
+    scfg = {}
+    scfg[0] = cfg
+
+    for seg in range(4):
+        #  Construct the ID
+        carrierId = [ cbase.SystemRegs.CarrierIdLow [seg].get(),
+                      cbase.SystemRegs.CarrierIdHigh[seg].get() ]
+        digitalId = [ 0, 0 ]
+        analogId  = [ 0, 0 ]
+        id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'.format(firmwareVersion,
+                                                                carrierId[0], carrierId[1],
+                                                                digitalId[0], digitalId[1],
+                                                                analogId [0], analogId [1])
+        top = cdict()
+        top.setAlg('config', [2,0,0])
+        topname = cfg['detName:RO'].split('_')
+        top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
+        top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4].tolist(), 'UINT8')
+        top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
+        scfg[seg+1] = top.typed_json()
+
+    result = []
+    for i in range(5):
+        print('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
+        result.append( json.dumps(scfg[i]) )
+    return result
 
 def epixquad_unconfig(base):
-    base.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(False)
+    pbase = base['pci']
+    #getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]').MasterEnable.set(False)
+    pbase.StopRun()
     return base
+
+def epixquad_scan_keys(update):
+    print('epixquad_scan_keys')
+    cfg = {}
+    return json.dumps(cfg)
+
+def epixquad_update(update):
+    print('epixquad_update')
+    cfg = {}
+    return json.dumps(cfg)
+
