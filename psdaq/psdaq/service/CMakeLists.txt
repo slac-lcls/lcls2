@@ -1,3 +1,5 @@
+find_package(PythonLibs REQUIRED)
+
 add_library(service SHARED
     SysClk.cc
     Semaphore.cc
@@ -17,6 +19,7 @@ add_library(service SHARED
 target_include_directories(service PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
+    ${PYTHON_INCLUDE_DIRS}
     ${RAPIDJSON_INCLUDE_DIRS}
 )
 
@@ -24,6 +27,7 @@ target_link_libraries(service PUBLIC
     xtcdata::xtc
     dl
     rt
+    ${PYTHON_LIBRARIES}
 )
 
 add_library(collection SHARED

@@ -15,28 +15,17 @@ def epixquad_cdict():
 
     help_str  = "-- user interface --"
     help_str += "\nstart_ns     : nanoseconds to exposure start"
-    help_str += "\ngain.mode    : High/Med/Low/AutoHiLo/AutoMedLo/Map"
-    help_str += "\ngain.map     : 3D-map of pixel gain settings"
-    help_str += "\n  -- charge injection --"
-    help_str += "\nchg_inj.mode : Disable/Map/Square(spacing)"
-    help_str += "\nchg_inj.map  : 3D-map of chg inj settings (Map mode)"
-    help_str += "\nchg_inj.sq_spacing : Pixels btw inj sites (Square mode)"
-    help_str += "\nchg_inj.sq_site    : Pixel idx [0..spacing^2] (Square mode)"
+    help_str += "\ngain_mode    : High/Med/Low/AutoHiLo/AutoMedLo/Map"
+    help_str += "\npixel_map    : 3D-map of pixel gain/inj settings"
     #top.set("help.user:RO", help_str, 'CHARSTR')
 
     pixelMap = np.zeros((16,178,192),dtype=np.uint8)
-    top.set("user.gain_map", pixelMap)
-
-    top.define_enum('gainEnum', {'High':0, 'Medium':1, 'Low':2, 'AutoHiLo':3, 'AutoMedLo':4, 'Map':5})
-    top.define_enum('chargeModeEnum', {'Disable':0, 'Map':1, 'Square':2})
+    top.set("user.pixel_map", pixelMap)
 
     top.set("user.start_ns" , 107749, 'UINT32')    # segment 0 only
-    top.set("user.gain_mode",      0, 'gainEnum')  
 
-    top.set("user.chg_inj.mode",    0, 'chargeModeEnum')
-    top.set("user.chg_inj.map", pixelMap)
-    top.set("user.chg_inj.sq_spacing", 7, 'UINT8')
-    top.set("user.chg_inj.sq_site"   , 0, 'UINT16')
+    top.define_enum('gainEnum', {'High':0, 'Medium':1, 'Low':2, 'AutoHiLo':3, 'AutoMedLo':4, 'Map':5})
+    top.set("user.gain_mode",      0, 'gainEnum')  
 
     # timing system
     top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].PauseThreshold',16,'UINT32')

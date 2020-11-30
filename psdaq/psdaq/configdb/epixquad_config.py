@@ -1,4 +1,5 @@
 from psdaq.configdb.get_config import get_config
+from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import cdict
 from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
@@ -13,9 +14,12 @@ import numpy as np
 import IPython
 from collections import deque
 
+base = None
 pv = None
 lane = 0
 chan = None
+group = None
+ocfg = None
 
 def dumpvars(prefix,c):
     print(prefix)
@@ -23,6 +27,9 @@ def dumpvars(prefix,c):
         name = prefix+'.'+key
         dumpvars(name,val)
 
+#
+#  Apply the configuration dictionary to the rogue registers
+#
 def apply_dict(pathbase,base,cfg):
     depth = 0
     my_queue  =  deque([[pathbase,depth,base,cfg]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
@@ -39,14 +46,31 @@ def apply_dict(pathbase,base,cfg):
         if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not pathbase ):
             rogue_node.set(configdb_node)
 
+#
+#  Construct an asic pixel mask with square spacing
+#
+def pixel_mask_square(value0,value1,spacing,position):
+    ny,nx=352,384;
+    if position>=spacing**2:
+        print('position out of range')
+        position=0;
+    out=np.zeros((ny,nx),dtype=np.int)+value0;
+    position_x=position%spacing; position_y=position//spacing;
+    out[position_y::spacing,position_x::spacing]=value1;
+    return out;
 
+#
+#  Initialize the rogue accessor
+#
 def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
-
+    global base
     global pv
+    global lane
     print('epixquad_init')
-    print('pwd {}'.format(os.getcwd()))
 
     base = {}
+#    base['log'] = open('config.log','w')
+
     #  Configure the PCIe card first (timing, datavctap)
     if True:
         pbase = lcls2_pgp_pcie_apps.DevRoot(dev           =dev,
@@ -81,6 +105,9 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
     base['cam'] = cbase
     return base
 
+#
+#  Set the PGP lane
+#
 def epixquad_init_feb(slane=None,schan=None):
     global lane
     global chan
@@ -89,6 +116,9 @@ def epixquad_init_feb(slane=None,schan=None):
     if schan is not None:
         chan = int(schan)
 
+#
+#  Set the local timing ID and fetch the remote timing ID
+#
 def epixquad_connect(base):
 
     if 'pci' in base:
@@ -119,20 +149,21 @@ def epixquad_connect(base):
 
     return d
 
-def epixquad_config(base,connect_str,cfgtype,detname,detsegm,group):
+#
+#  Translate the 'user' components of the cfg dictionary into 'expert' settings
+#  The cfg dictionary may be partial (scanning), so the ocfg dictionary is
+#  reference for the full set.
+#
+def user_to_expert(base, cfg, full=False):
+    global ocfg
+    global group
+    global lane
 
-    print('epixquad_config')
+    pbase = base['pci']
 
-    cfg = get_config(connect_str,cfgtype,detname,detsegm)
-
-    if 'pci' in base:
-        print('epixquad_config pbase')
-        pbase = base['pci']
-        # Clear the pipeline
-        #getattr(pbase.DevPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(True)
-
-        # overwrite the low-level configuration parameters with calculations from the user configuration
-
+    d = {}
+    hasUser = 'user' in cfg
+    if (hasUser and 'start_ns' in cfg['user']):
         partitionDelay = getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
         rawStart       = cfg['user']['start_ns']
         triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
@@ -141,70 +172,109 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,group):
             print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
             raise ValueError('triggerDelay computes to < 0')
 
-        cteb = cfg['expert']['DevPcie']['Hsio']['TimingRx']['TriggerEventManager'][f'TriggerEventBuffer[{lane}]']
-        cteb['TriggerDelay'] = triggerDelay
-        cteb['Partition'] = group
+        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[{lane}].TriggerDelay']=triggerDelay
 
+    if full:
+        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[{lane}].Partition']=group
+
+    pixel_map_changed = False
+    a = None
+    if (hasUser and ('gain_mode' in cfg['user'] or 
+                     'pixel_map' in cfg['user'])):
+        gain_mode = cfg['user']['gain_mode']
+        if gain_mode==5:
+            a  = cfg['user']['pixel_map']
+        else:
+            mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode]
+            trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
+            a  = (np.array(ocfg['user']['pixel_map'],dtype=np.uint8) & 0x3) | mapv
+            a = a.reshape(-1).tolist()
+            for i in range(16):
+                d[f'expert.EpixQuad.Epix10kaSaci[{i}].trbit'] = trbit
+        print('pixel_map len {}'.format(len(a)))
+        d['user.pixel_map'] = a
+        pixel_map_changed = True
+
+    update_config_entry(cfg,ocfg,d)
+
+    return pixel_map_changed
+
+#
+#  Apply the cfg dictionary settings
+#
+def config_expert(base, cfg, writePixelMap=True):
+    # Clear the pipeline
+    #getattr(pbase.DevPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(True)
+
+    # overwrite the low-level configuration parameters with calculations from the user configuration
+    pbase = base['pci']
+    if ('expert' in cfg and 'DevPcie' in cfg['expert']):
         apply_dict('pbase.DevPcie',pbase.DevPcie,cfg['expert']['DevPcie'])
 
-    print('epixquad_config cbase')
     cbase = base['cam']
+    if ('expert' in cfg and 'EpixQuad' in cfg['expert']):
+        apply_dict('cbase',cbase,cfg['expert']['EpixQuad'])
+
+    if writePixelMap:
+        if 'user' in cfg and 'pixel_map' in cfg['user']:
+            #  Write the pixel gain maps
+            #  Would like to send a 3d array
+            a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+            pixelConfigMap = np.reshape(a,(16,178,192))
+            core = cbase.SaciConfigCore
+            core.enable.set(True)
+            core.SetAsicsMatrix(json.dumps(pixelConfigMap.tolist()))
+            core.enable.set(False)
+            print('SetAsicsMatrix complete')
+        else:
+            print('writePixelMap but no new map')
+            print(cfg)
+
+#
+#  Called on Configure
+#
+def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
+    global ocfg
+    global group
+    group = rog
 
     #
-    #  Configure the pixel gains
+    #  Retrieve the full configuration from the configDB
     #
-    gain_mode = cfg['user']['gain_mode']
-    if gain_mode==5:
-        for i in range(16):
-            cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] = cfg['user']['gain_map'][i][0][0]&1
-        a = np.array(cfg['user']['gain_map'],dtype=np.uint8) & 0xc
-        pixelConfigMap = np.reshape(a,(16,178,192))
-    else:
-        mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode]
-        trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
-        # Now what?
-        # Collect the mapv bits in a memArray and write like SaciConfigCore.setAsicsMatrix()
-        # The trbit goes into the asic configuration
-        a = np.zeros((16,178,192),dtype=np.uint8) | mapv
-        print(f'a {a.shape} {a.dtype}')
-        b = np.array(cfg['user']['gain_map'])
-        print(f'b {b.shape} {b.dtype}')
-        pixelConfigMap = a.copy()
-        for i in range(16):
-            cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] = trbit
-            a[i] = a[i] | trbit
-    cfg['user']['gain_map'] = a.reshape(-1).tolist()
+    cfg = get_config(connect_str,cfgtype,detname,detsegm)
+    ocfg = cfg
 
-    apply_dict('cbase',cbase,cfg['expert']['EpixQuad'])
+    #  Translate user settings to the expert fields
+    user_to_expert(base, cfg, full=True)
 
-    #  Write the pixel gain maps
-    #  Would like to send a 3d array
-    core = cbase.SaciConfigCore
-    #core.SetAsicsMatrix(core,'setAsicsMatrixArray',pixelConfigMap)
-    core.SetAsicsMatrix(json.dumps(pixelConfigMap.tolist()))
-    print('SetAsicsMatrix complete')
+    #  Apply the expert settings to the device
+    config_expert(base, cfg)
 
-    if 'pci' in base:
-        #pbase.DevPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
-        #getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]').MasterEnable.set(True)
-        #getattr(pbase.DevPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(False)
-        pbase.StartRun()
+    pbase = base['pci']
+    #pbase.DevPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
+    #getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]').MasterEnable.set(True)
+    #getattr(pbase.DevPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(False)
+    pbase.StartRun()
 
     #  Capture the firmware version to persist in the xtc
+    cbase = base['cam']
     firmwareVersion = cbase.AxiVersion.FpgaVersion.get()
     #cfg['firmwareVersion:RO'] = cbase.AxiVersion.FpgaVersion.get()
     #cfg['firmwareBuild:RO'  ] = cbase.AxiVersion.BuildStamp.get()
 
+    ocfg = cfg
     #return [json.dumps(cfg)]
 
     #
     #  Create the segment configurations from parameters required for analysis
     #
-
     trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] for i in range(16)]
 
     scfg = {}
     scfg[0] = cfg
+
+    a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+    pixelConfigMap = np.reshape(a,(16,178,192))
 
     for seg in range(4):
         #  Construct the ID
@@ -236,13 +306,117 @@ def epixquad_unconfig(base):
     pbase.StopRun()
     return base
 
+#
+#  Build the set of all configuration parameters that will change 
+#  in response to the scan parameters
+#
 def epixquad_scan_keys(update):
     print('epixquad_scan_keys')
+    global ocfg
+    global base
     cfg = {}
-    return json.dumps(cfg)
+    copy_reconfig_keys(cfg,ocfg,json.loads(update))
+    # Apply to expert
+    pixelMapChanged = user_to_expert(base,cfg,full=False)
+    #  Retain mandatory fields for XTC translation
+    for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
+        copy_config_entry(cfg,ocfg,key)
+        copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
 
+    scfg = {}
+    scfg[0] = cfg
+
+    if pixelMapChanged:
+        a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+        pixelConfigMap = np.reshape(a,(16,178,192))
+        trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] for i in range(16)]
+
+        cbase = base['cam']
+        firmwareVersion = cbase.AxiVersion.FpgaVersion.get()
+        for seg in range(4):
+            carrierId = [ cbase.SystemRegs.CarrierIdLow [seg].get(),
+                          cbase.SystemRegs.CarrierIdHigh[seg].get() ]
+            digitalId = [ 0, 0 ]
+            analogId  = [ 0, 0 ]
+            id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'.format(firmwareVersion,
+                                                                    carrierId[0], carrierId[1],
+                                                                    digitalId[0], digitalId[1],
+                                                                    analogId [0], analogId [1])
+            top = cdict()
+            top.setAlg('config', [2,0,0])
+            topname = cfg['detName:RO'].split('_')
+            top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
+            top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4].tolist(), 'UINT8')
+            top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
+            scfg[seg+1] = top.typed_json()
+
+    result = []
+    for i in range(len(scfg)):
+        result.append( json.dumps(scfg[i]) )
+
+#    for i in range(len(result)):
+#        base['log'].write('--scan keys-- {}\n'.format(i))
+#        base['log'].write(result[i])
+
+    return result
+
+#
+#  Return the set of configuration updates for a scan step
+#
 def epixquad_update(update):
     print('epixquad_update')
+    global ocfg
+    global base
+    # extract updates
     cfg = {}
-    return json.dumps(cfg)
+    update_config_entry(cfg,ocfg,json.loads(update))
+    #  Apply to expert
+    writePixelMap = user_to_expert(base,cfg,full=False)
+    #  Apply config
+    config_expert(base, cfg, writePixelMap)
+    #  Retain mandatory fields for XTC translation
+    for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
+        copy_config_entry(cfg,ocfg,key)
+        copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
+
+    scfg = {}
+    scfg[0] = cfg
+
+    if writePixelMap:
+        a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+        pixelConfigMap = np.reshape(a,(16,178,192))
+        try:
+            trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] for i in range(16)]
+        except:
+            trbit = None
+
+        cbase = base['cam']
+        firmwareVersion = cbase.AxiVersion.FpgaVersion.get()
+        for seg in range(4):
+            carrierId = [ cbase.SystemRegs.CarrierIdLow [seg].get(),
+                          cbase.SystemRegs.CarrierIdHigh[seg].get() ]
+            digitalId = [ 0, 0 ]
+            analogId  = [ 0, 0 ]
+            id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'.format(firmwareVersion,
+                                                                    carrierId[0], carrierId[1],
+                                                                    digitalId[0], digitalId[1],
+                                                                    analogId [0], analogId [1])
+            top = cdict()
+            top.setAlg('config', [2,0,0])
+            topname = cfg['detName:RO'].split('_')
+            top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
+            top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4].tolist(), 'UINT8')
+            if trbit is not None:
+                top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
+            scfg[seg+1] = top.typed_json()
+
+    result = []
+    for i in range(len(scfg)):
+        result.append( json.dumps(scfg[i]) )
+
+#    for i in range(len(scfg)):
+#        base['log'].write('--update-- {}\n'.format(i))
+#        base['log'].write(result[i])
+
+    return result
 

@@ -175,7 +175,7 @@ public:
             data[i] = getVal<T>(val[i], typ);
     }
     void process(Value &val) {
-        Value *typ = findJsonType();
+        Value *typ = findJsonType();            
         if (typ->IsArray()) {
             unsigned i;
             unsigned shape[MaxRank], size = 1;
@@ -390,6 +390,56 @@ int translateJson2Xtc(char *in, char *out, NamesId namesID, const char* detname,
 
     delete d;
     return xtc->extent;
+}
+
+int translateJson2Xtc( PyObject* item, Xtc& xtc, NamesId namesID) 
+{
+    int result = -1;
+
+    // returns new reference
+    PyObject * json_bytes = PyUnicode_AsASCIIString(item);
+    char* json = (char*)PyBytes_AsString(json_bytes);
+
+    NamesLookup nl;
+    Value jsonv;
+
+    Document *d = new Document();
+    d->Parse(json);
+
+    while(1) {
+        const char* detname;
+        unsigned    segment = 0;
+        if (!d->HasMember("detName:RO")) {
+            logging::info("No detName member in config json");
+            break;
+        }
+
+        //  Extract detname, segment from document detName field
+        std::string sdetName((*d)["detName:RO"].GetString());
+        {
+            size_t pos = sdetName.rfind('_');
+            if (pos==std::string::npos) {
+                logging::info("No segment number in config json");
+                break;
+            }
+            sscanf(sdetName.c_str()+pos+1,"%u",&segment);
+            detname = sdetName.substr(0,pos).c_str();
+        }
+
+        if (Pds::translateJson2XtcNames(d, &xtc, nl, namesID, jsonv, detname, segment) < 0)
+            break;
+    
+        if (Pds::translateJson2XtcData (d, &xtc, nl, namesID, jsonv) < 0)
+            break;
+
+        result = 0;
+        break;
+    }
+
+    delete d;
+    Py_DECREF(json_bytes);
+
+    return result;
 }
 
 } // namespace Pds

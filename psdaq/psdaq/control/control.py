@@ -1592,7 +1592,7 @@ class CollectionManager():
 
     def condition_beginstep(self):
         # phase 1
-        ok = self.condition_common('beginstep', 6000)
+        ok = self.condition_common('beginstep', 30000)
         if not ok:
             logging.error('condition_beginstep(): beginstep phase1 failed')
             return False

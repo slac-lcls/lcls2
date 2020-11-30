@@ -250,3 +250,26 @@ class cspad_raw_1_2_3(DetectorImpl):
             geometry_access = GeometryAccess()
             geometry_access.load_pars_from_str(geometry_string)
         return geometry_access
+
+class epix_raw_2_0_1(DetectorImpl):
+    def __init__(self, *args):
+        super(epix_raw_2_0_1,self).__init__(*args)
+    def array(self, evt) -> Array2d:
+        f = None
+        segs = self._segments(evt)
+        if segs is None:
+            pass
+        else:
+            nsegs = len(segs)
+            if nsegs==4:
+                nx = segs[0].raw.shape[1]
+                ny = segs[0].raw.shape[0]
+                f = np.zeros((ny*2,nx*2), dtype=segs[0].raw.dtype)
+                for i in range(4):
+                    x = int(i/2)*nx
+                    y = int(i%2)*ny
+                    f[y:y+ny,x:x+nx] = segs[i].raw & 0x3fff
+        return f
+    def __call__(self, evt) -> Array2d:
+        """Alias for self.raw(evt)"""
+        return self.array(evt)

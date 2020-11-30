@@ -126,56 +126,6 @@ json BEBDetector::connectionInfo()
     return info;
 }
 
-static int _translate( PyObject* item, Xtc& xtc, NamesId namesID) 
-{
-    int result = -1;
-
-    // returns new reference
-    PyObject * json_bytes = BEBDetector::_check(PyUnicode_AsASCIIString(item));
-    char* json = (char*)PyBytes_AsString(json_bytes);
-
-    NamesLookup nl;
-    Value jsonv;
-
-    Document *d = new Document();
-    d->Parse(json);
-
-    while(1) {
-        const char* detname;
-        unsigned    segment = 0;
-        if (!d->HasMember("detName:RO")) {
-            logging::info("No detName member in config json");
-            break;
-        }
-
-        //  Extract detname, segment from document detName field
-        std::string sdetName((*d)["detName:RO"].GetString());
-        {
-            size_t pos = sdetName.rfind('_');
-            if (pos==std::string::npos) {
-                logging::info("No segment number in config json");
-                break;
-            }
-            sscanf(sdetName.c_str()+pos+1,"%u",&segment);
-            detname = sdetName.substr(0,pos).c_str();
-        }
-
-        if (Pds::translateJson2XtcNames(d, &xtc, nl, namesID, jsonv, detname, segment) < 0)
-            break;
-    
-        if (Pds::translateJson2XtcData (d, &xtc, nl, namesID, jsonv) < 0)
-            break;
-
-        result = 0;
-        break;
-    }
-
-    delete d;
-    Py_DECREF(json_bytes);
-
-    return result;
-}
-
 unsigned BEBDetector::configure(const std::string& config_alias,
                                 Xtc&               xtc)
 {
@@ -197,25 +147,18 @@ unsigned BEBDetector::configure(const std::string& config_alias,
         for(unsigned seg=0; seg<PyList_Size(mybytes); seg++) {
             PyObject* item = PyList_GetItem(mybytes,seg);
             NamesId namesId(nodeId,ConfigNamesIndex+seg);
-            if (_translate( item, jsonxtc, namesId ))
+            if (Pds::translateJson2Xtc( item, jsonxtc, namesId ))
                 return -1;
         }
     }
-    else if ( _translate( mybytes, jsonxtc, NamesId(nodeId,ConfigNamesIndex) ) )
+    else if ( Pds::translateJson2Xtc( mybytes, jsonxtc, NamesId(nodeId,ConfigNamesIndex) ) )
         return -1;
 
     if (jsonxtc.extent>m_para->maxTrSize)
         throw "**** Config json output too large for buffer\n";
 
-    unsigned r = 0;
-    {
-        //
-        //  There's a funny memory overwrite here
-        //
-        XtcData::ConfigIter* iter = new XtcData::ConfigIter(&jsonxtc);
-        r = _configure(xtc,*iter);
-        delete iter;
-    }
+    XtcData::ConfigIter iter(&jsonxtc);
+    unsigned r = _configure(xtc,iter);
         
     // append the config xtc info to the dgram
     memcpy((void*)xtc.next(),(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());

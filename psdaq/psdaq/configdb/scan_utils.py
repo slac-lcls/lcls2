@@ -39,7 +39,12 @@ def update_config_entry(r,old,update):
                 d[k] = {}
                 d = d[k]
         d[keys[-1]] = value
-        print('[{:}] : {:}'.format(key,value))
+        sval = '{:}'.format(value)
+        if len(sval)<64:
+            print('[{:}] : {:}'.format(key,sval))
+        else:
+            print('[{:}] : (truncated)'.format(key))
+        
 
 def copy_reconfig_keys(r,old,update):
     # Still need special handling for enums

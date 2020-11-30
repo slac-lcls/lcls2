@@ -9,6 +9,7 @@
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "xtcdata/xtc/DescData.hh"
+#include <Python.h>
 
 namespace Pds
 {
@@ -30,6 +31,7 @@ namespace Pds
     };
 
     int translateJson2Xtc(char *in, char *out, XtcData::NamesId namesID, const char* detname=0, unsigned segment=0);
+    int translateJson2Xtc( PyObject* item, XtcData::Xtc& xtc, XtcData::NamesId namesID);
     int translateJson2XtcNames(rapidjson::Document* d, 
                                XtcData::Xtc* xtc, 
                                XtcData::NamesLookup& nl, 
@@ -42,7 +44,7 @@ namespace Pds
                                XtcData::NamesLookup& nl, 
                                XtcData::NamesId namesID, 
                                rapidjson::Value& json);
-  
+
 }; // namespace Pds
 
 #endif // JSON2XTC__H
