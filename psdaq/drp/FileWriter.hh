@@ -40,16 +40,11 @@ public:
     void run();
     const uint64_t& depth() const { return m_depth; }
     const uint64_t& size()  const { return m_size; }
-    const uint64_t& writing() const { return m_writing; }
-    const uint64_t& freeBlocked()  const { return m_freeBlocked; }
-    const uint64_t& pendBlocked()  const { return m_pendBlocked; }
+    const uint64_t& writing() const { return *const_cast<uint64_t*>(&m_writing); }
+    const uint64_t& freeBlocked()  const { return *const_cast<uint64_t*>(&m_freeBlocked); }
+    const uint64_t& pendBlocked()  const { return *const_cast<uint64_t*>(&m_pendBlocked); }
 private:
     size_t m_bufferSize;
-    uint64_t m_depth;
-    uint64_t m_size;
-    uint64_t m_writing;
-    uint64_t m_freeBlocked;
-    uint64_t m_pendBlocked;
     int m_fd;
     XtcData::TimeStamp m_batch_starttime;
     class Buffer {
@@ -59,6 +54,11 @@ private:
     };
     Pds::FifoW<Buffer> m_free;
     Pds::FifoW<Buffer> m_pend;
+    uint64_t m_depth;
+    uint64_t m_size;
+    volatile uint64_t m_writing;
+    volatile uint64_t m_freeBlocked;
+    volatile uint64_t m_pendBlocked;
     std::atomic<bool> m_terminate;
     std::thread m_thread;
 };
