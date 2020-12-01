@@ -39,8 +39,18 @@ class AreaDetector(DetectorImpl):
 
 
     def raw(self,evt):
-        """ Returns dense 3-d numpy array of segment data
+        """
+        Returns dense 3-d numpy array of segment data
         from dict self._segments(evt)
+
+        Parameters
+        ----------
+        evt: event
+            psana event object, ex. run.events().next().
+
+        Returns
+        -------
+        raw data: np.array, ndim=3, shape: as data
         """
         segs = self._segments(evt)
         if segs is None:
@@ -175,6 +185,7 @@ class AreaDetector(DetectorImpl):
 
     def calib(self,evt):
         """
+        Create calibrated data array.
         """
         logger.warning('AreaDetector.calib TBD currently returns raw')
         #print('XXX dir(self):', dir(self))
@@ -186,6 +197,30 @@ class AreaDetector(DetectorImpl):
 
 
     def image(self, evt, nda=None, **kwa):
+        """
+        Create 2-d image.
+
+        Parameters
+        ----------
+        evt: event
+            psana event object, ex. run.events().next().
+
+        mapmode: int, optional, default: 2
+            control on overlapping pixels on image map.
+            0/1/2/3/4: statistics of entries / last / max / mean pixel intensity / interpolated (TBD) - ascending data index.
+
+        fillholes: bool, optional, default: True
+            control on map bins inside the panel with 0 entries from data.
+            True/False: fill empty bin with minimal intensity of four neares neighbors/ do not fill.
+
+        vbase: float, optional, default: 0
+            value substituted for all image map bins without entry from data.  
+
+        Returns
+        -------
+        image: np.array, ndim=2
+        
+        """
         logger.debug('in AreaDretector.image')
         if any(v is None for v in self.pix_rc):
             self.cached_pixel_coord_indexes(evt, **kwa)

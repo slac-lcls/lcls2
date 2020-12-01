@@ -16,10 +16,16 @@ USAGE = '\n  python %s <test-name>' % SCRNAME\
       + '\n    2 - opal - test tutorials/ami2/tmo/pop_raw_imgs.xtc2'\
       + '\n    3 - opal - real exp:tmolw0518, run:102, detname:tmoopal'\
       + '\n    4 - opal - real exp:tmolw0618, run:52, detname:tmoopal'\
+      + '\n    5 - opal - real exp:tstx00117, run:144'\
 
 print(USAGE)
 
 tname = sys.argv[1] if len(sys.argv)>1 else '2'
+
+
+def datasource_run(**kwa):
+    ds = DataSource(**kwa)
+    return ds, next(ds.runs())
 
 
 def datasource_run_det(**kwa):
@@ -53,47 +59,9 @@ if tname in ('0','1'):
     print('WHAT IS THAT? c0.raw.raw', c0.raw.raw)
 
 
-    """
-    Christopher O'Grady <chrismwg@gmail.com>
-    Thu 11/19/2020 1:14 PM
-    Hi Mikhail,  (cc: Xiang)
-    
-    When we run Xiang?s ?pop? algorithm on the opal camera we use calibration constants 
-    stored in the database associated for the run/expt in this xtc file:
-    
-    /reg/g/psdm/tutorials/ami2/tmo/pop_raw_imgs.xtc2
-    
-    I think this might be stored under this uniqueid:
-    
-    (ps-4.1.0) psanagpu111:~$ detnames -i /reg/g/psdm/tutorials/ami2/tmo/pop_raw_imgs.xtc2
-    -------------------------------------------
-    Name | Data Type | Segments | UniqueId     
-    -------------------------------------------
-    opal | raw       | 0        | ele_opal_1234
-    
-    Can you copy those calibration constants to the ?global? calibration directory
-    (i.e. *not* the per-expt calibration directory) for the opal in, for example, 
-    exp=tmolw0518,run=102?  This has an imperfect uniqueid, but hopefully still usable:
-    
-    (ps-4.1.0) psanagpu111:~$ detnames -i exp=tmolw0518,run=102
-    --------------------------------------------------------------------
-    Name      | Data Type | Segments              | UniqueId            
-    --------------------------------------------------------------------
-    tmoopal   | raw       | 0                     | opal_serial1234     
-    
-    Could this be done in time for the running tomorrow? If this isn?t clear we can discuss on zoom:  
-    https://stanford.zoom.us/j/8843568564?pwd=K0JoMG5KcWZESlVXZUhJbXhEZktJZz09
-    
-    Thanks! chris
-    """
-
 elif tname in('2','3','4'):
 
     from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
-
-    ds = DataSource(files='/reg/g/psdm/tutorials/ami2/tmo/pop_raw_imgs.xtc2')
-    run = next(ds.runs())
-    det = run.Detector('opal')
 
     kwa = {'files':'/reg/g/psdm/tutorials/ami2/tmo/pop_raw_imgs.xtc2'} if tname=='2' else\
           {'exp':'tmolw0518', 'run':102, 'detname':'tmoopal'} if tname=='3' else\
@@ -124,13 +92,23 @@ elif tname in('2','3','4'):
     print('XXX type(rbfs_meta): ', type(rbfs_meta)) # <class 'dict'>
     print('XXX rbfs_meta: ', rbfs_meta) #
 
-elif tname == '4':
-    from psana import DataSource
-    import numpy as np
-    ds = DataSource(exp='tmolw0618',run=52)
-    myrun = next(ds.runs())
-    det = myrun.Detector('tmoopal')
-    print(det.calibconst)
+elif tname == '5':
+    #on daq-det-drp01:
+    #detnames /u2/lcls2/tst/tstx00117/xtc/tstx00117-r0144-s000-c000.xtc2
+
+    #ds,run = datasource_run(exp='tstx00117', run=144)
+    ds,run = datasource_run(files='/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0144-s000-c000.xtc2')
+
+    print('XXX dir(run):\n', dir(run))
+
+    print('XXX run.runnum  : ', run.runnum)   # 101
+    print('XXX run.detnames: ', run.detnames) # {'opal'}
+    print('XXX run.expt    : ', run.expt)     # amox27716
+    print('XXX run.id      : ', run.id)       # 0
+
+    #print('XXX dir(det):\n', dir(det))
+    #print('XXX det.calibconst.keys(): ', det.calibconst.keys())   # dict_keys(['pop_rbfs'])
+    #print(det.calibconst)
 
 else:
     print(USAGE)
