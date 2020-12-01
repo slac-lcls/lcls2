@@ -49,7 +49,7 @@ class EventManager(object):
         rate = 0
         if sum_read_nbytes > 0:
             rate = (sum_read_nbytes/1e6)/(en-st)
-        logging.debug(f"EventManager: BigData reads chunk {sum_read_nbytes/1e6:.2f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
+        logging.info(f"event_manager: bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
         self._inc_prometheus_counter('MB', sum_read_nbytes/1e6)
         return 
     
@@ -62,7 +62,7 @@ class EventManager(object):
         rate            = 0
         if sum_read_nbytes > 0:
             rate = (sum_read_nbytes/1e6)/(en-st)
-        logging.debug(f"EventManager: BigData reads single {sum_read_nbytes/1e6:.2f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
+        logging.info(f"event_manager: bd reads single {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
         return data 
             
     def _read_bigdata_in_chunk(self):

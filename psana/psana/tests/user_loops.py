@@ -57,14 +57,6 @@ for run in ds.runs():
     #endRunCode
 #endJobCode
 
-# Usecase 1b : two iterators without filter function
-ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
-for run in ds.runs():
-    det = run.Detector('xppcspad')
-    for evt in run.events():
-        padarray = vals.padarray
-        assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
-
 
 # Usecase#2 looping through steps
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)

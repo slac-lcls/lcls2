@@ -5,7 +5,7 @@ from psana.dgram import Dgram
 import os
 from mpi4py import MPI
 import logging
-import time, pickle
+import time
 
 s_eb_wait_smd0 = PrometheusManager.get_metric('psana_eb_wait_smd0')
 s_bd_wait_eb = PrometheusManager.get_metric('psana_bd_wait_eb')
@@ -57,7 +57,7 @@ class Communicators(object):
 
         PS_SRV_NODES = int(os.environ.get('PS_SRV_NODES', 0))
         PS_EB_NODES = int(os.environ.get('PS_EB_NODES', 1))
-        self.n_eb_nodes = PS_EB_NODES
+        self.n_smd_nodes = PS_EB_NODES
 
         if (self.world_size - PS_SRV_NODES) < 3:
             raise Exception('Too few MPI cores to run parallel psana.'
@@ -117,46 +117,51 @@ class Communicators(object):
 
 class StepHistory(object):
     """ Keeps step data and their send history. """
-    def __init__(self, client_size, n_bufs):
-        self.n_bufs = n_bufs
+    def __init__(self, client_size, n_smds):
+        self.n_smds = n_smds
         self.bufs = []
-        for i in range(self.n_bufs):
+        for i in range(self.n_smds):
             self.bufs.append(bytearray())
         self.send_history = []
         # Initialize no. of sent bytes to 0 for clients
         # [[offset_update0, offset_update1, ], [offset_update0, offset_update1, ], ...]
         # [ -----------client 0------------- ,  ----------- client 1------------ ,
         for i in range(1, client_size):
-            self.send_history.append(np.zeros(self.n_bufs, dtype=np.int))
+            self.send_history.append(np.zeros(self.n_smds, dtype=np.int))
 
 
-    def extend_buffers(self, views, client_id, as_event=False, as_calib=False):
+    def extend_buffers(self, views, client_id, as_event=False):
         idx = client_id - 1 # rank 0 has no send history.
         # Views is either list of smdchunks or events
         if not as_event:
             # For Smd0
             for i_smd, view in enumerate(views):
                 self.bufs[i_smd].extend(view)
-                if not as_calib:
-                    self.send_history[idx][i_smd] += memoryview(view).nbytes
+                self.send_history[idx][i_smd] += view.nbytes
         else:
             # For EventBuilder
             for i_evt, evt_bytes in enumerate(views):
                 pf = PacketFooter(view=evt_bytes)
-                assert pf.n_packets == self.n_bufs
+                assert pf.n_packets == self.n_smds
                 for i_smd, dg_bytes in enumerate(pf.split_packets()):
                     self.bufs[i_smd].extend(dg_bytes)
-                    if not as_calib:
-                        self.send_history[idx][i_smd] += dg_bytes.nbytes
+                    self.send_history[idx][i_smd] += dg_bytes.nbytes
     
-    def get_buffer(self, client_id):
+
+    def update_history(self, views, client_id):
+        indexed_id = client_id - 1 # rank 0 has no send history.
+        for i, view in enumerate(views):
+            self.send_history[indexed_id][i] += view.nbytes
+
+
+    def get_buffer(self, client_id, smd0=False):
         """ Returns new step data (if any) for this client
         then updates the sent record."""
         views = []
         
-        if self.n_bufs: # do nothing if no step data found
+        if self.n_smds: # do nothing if no step data found
             indexed_id = client_id - 1 # rank 0 has no send history.
-            views = [bytearray() for i in range(self.n_bufs)]
+            views = [bytearray() for i in range(self.n_smds)]
             for i, buf in enumerate(self.bufs):
                 current_buf = self.bufs[i]
                 current_offset = self.send_history[indexed_id][i]
@@ -164,41 +169,37 @@ class StepHistory(object):
                 if current_offset < current_buf_size:
                     views[i].extend(current_buf[current_offset:])
                     self.send_history[indexed_id][i] = current_buf_size
-        
         return views
 
 
-def repack_for_eb(smd_chunk, step_views, configs, calibconst_pkt):
+
+def repack_for_eb(smd_chunk, step_views, configs):
     """ Smd0 uses this to prepend missing step views
     to the smd_chunk (just data with the same limit timestamp from all
     smd files - not event-built yet). 
     """
-    smd_extended = smd_chunk
     if step_views:
         smd_chunk_pf = PacketFooter(view=smd_chunk)
-        smd_extended_pf = PacketFooter(n_packets=smd_chunk_pf.n_packets)
-        smd_extended = bytearray()
-        for i, (smd_view, step_view) in enumerate(zip(smd_chunk_pf.split_packets(), step_views)):
-            smd_extended.extend(step_view+bytearray(smd_view))
-            smd_extended_pf.set_size(i, memoryview(step_view).nbytes + smd_view.nbytes)
-        smd_extended.extend(smd_extended_pf.footer)
-    
-    # add calibconst packet
-    new_chunk_pf = PacketFooter(2)
-    new_chunk_pf.set_size(0, memoryview(smd_extended).nbytes)
-    smd_extended.extend(calibconst_pkt)
-    new_chunk_pf.set_size(1, memoryview(calibconst_pkt).nbytes)
-    smd_extended.extend(new_chunk_pf.footer)
-    
-    return smd_extended
+        new_chunk_pf = PacketFooter(n_packets=len(step_views))
+        new_chunk = bytearray()
+        smd_views = smd_chunk_pf.split_packets()
+        if not smd_views:
+            smd_views = [bytearray() for i in range(len(step_views))]
+
+        for i, (smd_view, step_view) in enumerate(zip(smd_views, step_views)):
+            new_chunk.extend(step_view+smd_view)
+            new_chunk_pf.set_size(i, memoryview(step_view).nbytes + memoryview(smd_view).nbytes)
+        new_chunk.extend(new_chunk_pf.footer)
+        return new_chunk
+    else:
+        return smd_chunk 
 
 
 
-def repack_for_bd(smd_batch, step_views, configs, calibconst_pkt, client):
+def repack_for_bd(smd_batch, step_views, configs, client=-1):
     """ EventBuilder Node uses this to prepend missing step views 
     to the smd_batch. Unlike repack_for_eb (used by Smd0), this output 
     chunk contains list of pre-built events."""
-    extended_batch = smd_batch
     if step_views:
         batch_pf = PacketFooter(view=smd_batch)
         
@@ -222,27 +223,22 @@ def repack_for_bd(smd_batch, step_views, configs, calibconst_pkt, client):
             step_sizes.append(step_size + memoryview(step_pf.footer).nbytes)
             n_steps += 1
         
-        # Create extended batch with total_events = smd_batch_events + step_events 
-        extended_batch_pf = PacketFooter(n_packets = batch_pf.n_packets + n_steps)
+        # Create new batch with total_events = smd_batch_events + step_events 
+        new_batch_pf = PacketFooter(n_packets = batch_pf.n_packets + n_steps)
         for i in range(n_steps):
-            extended_batch_pf.set_size(i, step_sizes[i])
+            new_batch_pf.set_size(i, step_sizes[i])
         
-        for i in range(n_steps, extended_batch_pf.n_packets):
-            extended_batch_pf.set_size(i, batch_pf.get_size(i-n_steps))
+        for i in range(n_steps, new_batch_pf.n_packets):
+            new_batch_pf.set_size(i, batch_pf.get_size(i-n_steps))
 
-        extended_batch = bytearray()
-        extended_batch.extend(steps)
-        extended_batch.extend(smd_batch[:memoryview(smd_batch).nbytes-memoryview(batch_pf.footer).nbytes])
-        extended_batch.extend(extended_batch_pf.footer)
+        new_batch = bytearray()
+        new_batch.extend(steps)
+        new_batch.extend(smd_batch[:memoryview(smd_batch).nbytes-memoryview(batch_pf.footer).nbytes])
+        new_batch.extend(new_batch_pf.footer)
+        return new_batch
+    else:
+        return smd_batch
 
-    # add calibconst packet
-    new_chunk_pf = PacketFooter(2)
-    new_chunk_pf.set_size(0, memoryview(extended_batch).nbytes)
-    extended_batch.extend(calibconst_pkt)
-    new_chunk_pf.set_size(1, memoryview(calibconst_pkt).nbytes)
-    extended_batch.extend(new_chunk_pf.footer)
-    
-    return extended_batch
 
 
 class Smd0(object):
@@ -250,18 +246,21 @@ class Smd0(object):
     Identifies limit timestamp of the slowest detector then
     sends all smds within that timestamp to an smd_node.
     """
-    def __init__(self, comms, configs, smdr_man):
-        self.comms     = comms  
-        self.configs   = configs
-        self.smdr_man  = smdr_man
-        self.step_hist = StepHistory(self.comms.smd_size, self.smdr_man.n_files)
-        self.calib_hist= StepHistory(self.comms.smd_size, 1)
-        self.c_sent    = self.smdr_man.dsparms.prom_man.get_metric('psana_smd0_sent')
-
-    def run_mpi(self):
+    def __init__(self, comms, configs, smdr_man, dsparms):
+        self.comms = comms
+        self.smdr_man = smdr_man
+        self.configs = configs
+        self.step_hist = StepHistory(self.comms.smd_size, len(self.configs))
+        
+        # Collecting Smd0 performance using prometheus
+        self.c_sent = dsparms.prom_man.get_metric('psana_smd0_sent')
+        
+    def start(self):
         rankreq = np.empty(1, dtype='i')
-        for (smd_chunk, step_chunk, calibconst_pkt) in self.smdr_man.chunks():
-            # Creates a chunk from smd and epics data to send to EventBuilder node 
+        waiting_ebs = []
+
+        for (smd_chunk, step_chunk) in self.smdr_man.chunks():
+            # Creates a chunk from smd and epics data to send to SmdNode
             # Anatomy of a chunk (pf=packet_footer):
             # [ [smd0][smd1][smd2][pf] ][ [epics0][epics1][epics2][pf] ][ pf ]
             #   ----- smd_chunk ------    ---------epics_chunk------- 
@@ -269,23 +268,21 @@ class Smd0(object):
             
             # Read new epics data as available in the queue
             # then send only unseen portion of data to the evtbuilder rank.
-            if not smd_chunk: break
+            if not (smd_chunk or step_chunk): break
             
             st_req = time.time()
             self.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             en_req = time.time()
             
             # Check missing steps for the current client
-            missing_step_views = self.step_hist.get_buffer(rankreq[0])
-            self.calib_hist.extend_buffers([calibconst_pkt], rankreq[0], as_calib=True)
-            missing_calib_view = self.calib_hist.get_buffer(rankreq[0])[0]
+            missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
 
-            # Update step buffers after getting the missing steps
+            # Update step buffers (after getting the missing steps
             step_pf = PacketFooter(view=step_chunk)
             step_views = step_pf.split_packets()
             self.step_hist.extend_buffers(step_views, rankreq[0])
 
-            smd_extended = repack_for_eb(smd_chunk, missing_step_views, self.configs, missing_calib_view)
+            smd_extended = repack_for_eb(smd_chunk, missing_step_views, self.configs)
             
             self.comms.smd_comm.Send(smd_extended, dest=rankreq[0])
         
@@ -294,12 +291,33 @@ class Smd0(object):
             self.c_sent.labels('batches', rankreq[0]).inc()
             self.c_sent.labels('MB', rankreq[0]).inc(memoryview(smd_extended).nbytes/1e6)
             self.c_sent.labels('seconds', rankreq[0]).inc(en_req - st_req)
-            logging.debug(f'node.py: Smd0 sent {self.smdr_man.got_events} events to {rankreq[0]} (waiting for this rank took {en_req-st_req:.5f} seconds)')
+            logging.info(f'node: smd0 sent {self.smdr_man.got_events} events to {rankreq[0]} (waiting for this rank took {en_req-st_req:.5f} seconds)')
+            
+            found_endrun = self.smdr_man.smdr.found_endrun()
+            if found_endrun: 
+                logging.info("node: smd0 found_endrun")
+                break
         
-        for i in range(self.comms.n_eb_nodes):
+        # end for (smd_chunk, step_chunk)
+
+        # check if there are missing steps to be sent 
+        for i in range(self.comms.n_smd_nodes):
+            self.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
+            missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
+            smd_extended = repack_for_eb(bytearray(), missing_step_views, self.configs)
+            if smd_extended:
+                self.comms.smd_comm.Send(smd_extended, dest=rankreq[0])
+            else:
+                waiting_ebs.append(rankreq[0])
+        
+        # kill waiting bd nodes
+        for dest_rank in waiting_ebs:
+            self.comms.smd_comm.Send(bytearray(), dest=dest_rank)
+
+        for i in range(self.comms.n_smd_nodes-len(waiting_ebs)):
             self.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             self.comms.smd_comm.Send(bytearray(), dest=rankreq[0])
-
+    
 
 class EventBuilderNode(object):
     """Handles both smd_0 and bd_nodes
@@ -311,9 +329,8 @@ class EventBuilderNode(object):
         self.configs    = configs
         self.dsparms    = dsparms
         self.step_hist  = StepHistory(self.comms.bd_size, len(self.configs))
-        self.calib_hist = StepHistory(self.comms.bd_size, 1)
-        self.waiting_bds= []
-        self.c_sent     = self.dsparms.prom_man.get_metric('psana_eb_sent')
+        # Collecting Smd0 performance using prometheus
+        self.c_sent     = dsparms.prom_man.get_metric('psana_eb_sent')
 
 
     def pack(self, *args):
@@ -326,14 +343,11 @@ class EventBuilderNode(object):
         return batch
 
 
-    def _send_to_dest(self, dest_rank, smd_batch_dict, step_batch_dict, eb_man, calibconst_pkt):
+    def _send_to_dest(self, dest_rank, smd_batch_dict, step_batch_dict, eb_man):
         bd_comm = self.comms.bd_comm
         smd_batch, _ = smd_batch_dict[dest_rank]
-        
         missing_step_views = self.step_hist.get_buffer(dest_rank)
-        missing_calib_view = self.calib_hist.get_buffer(dest_rank)[0]
-        
-        batch = repack_for_bd(smd_batch, missing_step_views, self.configs, missing_calib_view, dest_rank)
+        batch = repack_for_bd(smd_batch, missing_step_views, self.configs, client=dest_rank)
         bd_comm.Send(batch, dest=dest_rank)
         del smd_batch_dict[dest_rank] # done sending
         
@@ -348,7 +362,7 @@ class EventBuilderNode(object):
         self.comms.bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
         en_req = time.time()
         self.c_sent.labels('seconds',rankreq[0]).inc(en_req-st_req)
-        logging.debug("node.py: EventBuilder %d got BigData %d (request took %.5f seconds)"%(self.comms.smd_rank, rankreq[0], (en_req-st_req)))
+        logging.info("node: eb%d got bd %d (request took %.5f seconds)"%(self.comms.smd_rank, rankreq[0], (en_req-st_req)))
 
     @s_eb_wait_smd0.time()
     def _request_data(self, smd_comm):
@@ -358,26 +372,23 @@ class EventBuilderNode(object):
         count = info.Get_elements(MPI.BYTE)
         smd_chunk = bytearray(count)
         smd_comm.Recv(smd_chunk, source=0)
-        logging.debug(f"node.py: EventBuilder {self.comms.smd_rank} received {count/1e6:.5f} MB from Smd0")
+        logging.info(f"node: eb{self.comms.smd_rank} received {count/1e6:.5f} MB from smd0")
         return smd_chunk
 
-    def run_mpi(self):
+    def start(self):
         rankreq = np.empty(1, dtype='i')
         smd_comm   = self.comms.smd_comm
         n_bd_nodes = self.comms.bd_comm.Get_size() - 1
         bd_comm    = self.comms.bd_comm
         smd_rank   = self.comms.smd_rank
+        waiting_bds   = []
         
         while True:
-            smd_extended = self._request_data(smd_comm)
-            if not smd_extended:
+            smd_chunk = self._request_data(smd_comm)
+            if not smd_chunk:
                 break
            
-            # Unpack smd_chunk for calibconst_pkt
-            smd_extended_pf = PacketFooter(view=smd_extended)
-            smd_chunk, calibconst_pkt = smd_extended_pf.split_packets()
             eb_man = EventBuilderManager(smd_chunk, self.configs, self.dsparms) 
-            self.calib_hist.extend_buffers([calibconst_pkt], 0, as_calib=True) # no need to update send_history
         
             # Build batch of events
             for smd_batch_dict, step_batch_dict  in eb_man.batches():
@@ -386,15 +397,18 @@ class EventBuilderNode(object):
                 if 0 in smd_batch_dict.keys():
                     smd_batch, _ = smd_batch_dict[0]
                     step_batch, _ = step_batch_dict[0]
-                    self._request_rank(rankreq)
+
+                    if waiting_bds:
+                        rankreq[0] = waiting_bds.pop()
+                    else:
+                        self._request_rank(rankreq)
                     
                     missing_step_views = self.step_hist.get_buffer(rankreq[0])
-                    missing_calib_view = self.calib_hist.get_buffer(rankreq[0])[0]
-                    batch = repack_for_bd(smd_batch, missing_step_views, self.configs, missing_calib_view, rankreq[0])
+                    batch = repack_for_bd(smd_batch, missing_step_views, self.configs, client=rankreq[0])
                     bd_comm.Send(batch, dest=rankreq[0])
                     
                     # sending data to prometheus
-                    logging.debug('node.py: EventBuilder sent %d events (%.5f MB) to rank %d'%(eb_man.eb.nevents, memoryview(batch).nbytes/1e6, rankreq[0]))
+                    logging.info(f'node: eb{self.comms.smd_rank} sent {eb_man.eb.nevents} events ({memoryview(smd_batch).nbytes} bytes) to bd{rankreq[0]}')
                     self.c_sent.labels('evts', rankreq[0]).inc(eb_man.eb.nevents)
                     self.c_sent.labels('batches', rankreq[0]).inc()
                     self.c_sent.labels('MB', rankreq[0]).inc(memoryview(batch).nbytes/1e6)
@@ -414,38 +428,57 @@ class EventBuilderNode(object):
                         break
 
                     while smd_batch_dict:
-                        sent = False
-                        if self.waiting_bds: # Check first if there are bd nodes waiting
-                            copied_waiting_bds = self.waiting_bds[:]
+                        
+                        if waiting_bds: # Check first if there are bd nodes waiting
+                            copied_waiting_bds = waiting_bds[:]
                             for dest_rank in copied_waiting_bds:
                                 if dest_rank in smd_batch_dict:
-                                    self._send_to_dest(dest_rank, smd_batch_dict, step_batch_dict, eb_man, calibconst_pkt)
-                                    self.waiting_bds.remove(dest_rank)
-                                    sent = True
+                                    self._send_to_dest(dest_rank, smd_batch_dict, step_batch_dict, eb_man)
+                                    waiting_bds.remove(dest_rank)
                         
-                        if not sent:
+                        if smd_batch_dict:
                             self._request_rank(rankreq)
                             dest_rank = rankreq[0]
                             if dest_rank in smd_batch_dict:
-                                self._send_to_dest(dest_rank, smd_batch_dict, step_batch_dict, eb_man, calibconst_pkt)
+                                self._send_to_dest(dest_rank, smd_batch_dict, step_batch_dict, eb_man)
                             else:
-                                self.waiting_bds.append(dest_rank)
-                
-                # end if 0 in ...
+                                waiting_bds.append(dest_rank)
+               
+                # end else -> if 0 in smd_batch_dict.keys() 
             
-            # end for smdbatch, ...
-        
-        # end while ...
-                
-        # - kill idling nodes
-        for dest_rank in self.waiting_bds:
-            bd_comm.Send(bytearray(), dest=dest_rank)
+            # end for smd_batch_dict in
 
+            # Check if there are missing steps to be sent for this batch
+            copied_waiting_bds = waiting_bds[:]
+            for dest_rank in copied_waiting_bds:
+                missing_step_views = self.step_hist.get_buffer(dest_rank)
+                batch = repack_for_bd(bytearray(), missing_step_views, self.configs, client=dest_rank)
+                if batch:
+                    bd_comm.Send(batch, dest_rank)
+                    waiting_bds.remove(dest_rank)
+
+            for i in range(n_bd_nodes-len(waiting_bds)):
+                self._request_rank(rankreq)
+                missing_step_views = self.step_hist.get_buffer(rankreq[0])
+                batch = repack_for_bd(bytearray(), missing_step_views, self.configs, client=rankreq[0])
+                if batch:
+                    bd_comm.Send(batch, dest=rankreq[0])
+                else:
+                    waiting_bds.append(rankreq[0])
+        
+        # end While True: done - kill idling nodes
+        for dest_rank in waiting_bds:
+            bd_comm.Send(bytearray(), dest=dest_rank)
+            logging.info(f"node: eb{self.comms.smd_rank} send null byte to bd{dest_rank}")
+        
         # - kill all other nodes
-        for i in range(n_bd_nodes-len(self.waiting_bds)):
+        for i in range(n_bd_nodes-len(waiting_bds)):
             self._request_rank(rankreq)
             bd_comm.Send(bytearray(), dest=rankreq[0])
+            logging.info(f"node: eb{self.comms.smd_rank} send null byte to bd{rankreq[0]}")
         
+
+
 
 class BigDataNode(object):
     def __init__(self, comms, configs, dsparms, dm):
@@ -453,29 +486,23 @@ class BigDataNode(object):
         self.configs    = configs
         self.dsparms    = dsparms
         self.dm         = dm
-        self.calib_store= []
 
-    @s_bd_wait_eb.time()
-    def get_smd(self):
-        bd_comm = self.comms.bd_comm
-        bd_rank = self.comms.bd_rank
-        bd_comm.Send(np.array([bd_rank], dtype='i'), dest=0)
+    def start(self):
         
-        st = time.time()
-        info = MPI.Status()
-        bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
-        count = info.Get_elements(MPI.BYTE)
-        if count == 0:
-            return bytearray()
-        extended_chunk = bytearray(count)
-        bd_comm.Recv(extended_chunk, source=0)
-        en = time.time()
+        @s_bd_wait_eb.time()
+        def get_smd():
+            bd_comm = self.comms.bd_comm
+            bd_rank = self.comms.bd_rank
+            bd_comm.Send(np.array([bd_rank], dtype='i'), dest=0)
+            info = MPI.Status()
+            bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
+            count = info.Get_elements(MPI.BYTE)
+            chunk = bytearray(count)
+            bd_comm.Recv(chunk, source=0)
+            return chunk
         
-        pf = PacketFooter(view=extended_chunk)
-        chunk, calibconst_pkt = pf.split_packets()
-        calib_pf = PacketFooter(view=calibconst_pkt)
-        for calib_bytes in calib_pf.split_packets():
-            self.calib_store.append(pickle.loads(calib_bytes))
+        events = Events(self.configs, self.dm, self.dsparms.prom_man, 
+                filter_callback=self.dsparms.filter, get_smd=get_smd)
 
-        return chunk
-    
+        for evt in events:
+            yield evt

@@ -23,6 +23,7 @@ class PacketFooter(object):
             self.view = view
         else:
             self.n_packets = 0
+            self.footer = bytearray()
 
     def set_size(self, idx, size):
         """ Set size of the given packet index. """
