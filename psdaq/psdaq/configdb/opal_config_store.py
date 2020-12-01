@@ -32,15 +32,15 @@ def opal_cdict(args):
     top.define_enum('binEnum', {'x%d'%(2**key):key for key in range(4)})
 
     #Create a user interface that is an abstraction of the common inputs
-    top.set("user.start_ns", 107749, 'UINT32')
-    top.set("user.gate_ns" ,    100, 'UINT32')  
+    top.set("user.start_ns",  92000, 'UINT32')
+    top.set("user.gate_ns" ,  10000, 'UINT32')  
     top.set("user.black_level",  32, 'UINT32')  
     top.set("user.vertical_bin",  0, 'binEnum')  
 
     # timing system
     top.set('expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.PauseThreshold',16,'UINT32')
     top.set('expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay',42,'UINT32')
-    top.set('expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition',0,'UINT32')
+    top.set('expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition:RO',0,'UINT32')
 
     top.define_enum('rateEnum', {'929kHz':0, '71kHz':1, '10kHz':2, '1kHz':3, '100Hz':4, '10Hz':5, '1Hz':6})
     top.set('expert.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.Config_L0Select_RateSel',6,'rateEnum')
@@ -95,6 +95,16 @@ if __name__ == "__main__":
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
     args = cdb.createArgs().args
+
+    args.name = 'tmoopal2'
+    args.segm = 0
+    args.id = 'opal_serial1235'
+    args.alias = 'BEAM'
+    args.prod = True
+    args.inst = 'tmo'
+    args.user = 'tmoopr'
+    args.password = 'pcds'
+
     db   = 'configdb' if args.prod else 'devconfigdb'
     url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
 
