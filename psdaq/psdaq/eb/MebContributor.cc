@@ -171,8 +171,11 @@ int MebContributor::post(const EbDgram* ddg)
     int rc = link->poll(&imm);          // Get a free buffer index
     if (rc)
     {
-      logging::error("%s:\n  Failed to read buffer index from MEB ID %d: rc %d\n",
-                     __PRETTY_FUNCTION__, src, rc);
+      auto pid = ddg->pulseId();
+      auto ts  = ddg->time;
+      logging::error("%s:\n  Failed to read buffer index from MEB ID %d "
+                     "needed for %s (%014lx, %9u.%09u): rc %d\n",
+                     __PRETTY_FUNCTION__, src, TransitionId::name(svc), pid, ts.seconds(), ts.nanoseconds(), rc);
       continue;                         // Revisit: Skip on error?
     }
 
