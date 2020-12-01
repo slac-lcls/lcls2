@@ -12,7 +12,7 @@ from psana.pscalib.geometry.GeometryAccess import GeometryAccess #, img_from_pix
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, reshape_to_3d # print_ndarr,shape_as_2d, shape_as_3d, reshape_to_2d
 from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
-        img_interpolated, init_interpolation_parameters
+        img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes
 
 #----
 
@@ -143,9 +143,9 @@ class AreaDetector(DetectorImpl):
         for i,a in enumerate(self.pix_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
         logger.info(s)
 
-        mapmode = kwa.get('mapmode',1)
-        if mapmode in (0,2,3):
-          self.img_entries, self.dict_pix_to_img_idx, self.dict_imgidx_numentries=\
+        mapmode = kwa.get('mapmode',2)
+        if mapmode <4:
+          self.img_entries, self.dmulti_pix_to_img_idx, self.dmulti_imgidx_numentries=\
             statistics_of_pixel_arrays(rows, cols)
 
         if mapmode==4:
@@ -154,9 +154,23 @@ class AreaDetector(DetectorImpl):
             x,y,z = self.pix_xyz = [reshape_to_3d(a)[segs,:,:] for a in rsp]
             self.interpol_pars = init_interpolation_parameters(rows, cols, x, y)
 
-        #TBD
+        if mapmode <4 and kwa.get('fillholes',True):
+            self.img_pix_ascend_ind, self.img_holes, self.hole_rows, self.hole_cols, self.hole_inds1d =\
+               statistics_of_holes(rows, cols, **kwa)
 
-
+        # TBD parameters for image interpolation
+        if False:
+            t0_sec = time()
+            self.imgind_to_seg_row_col = image_of_pixel_seg_row_col(img_pix_ascend_ind, arr_shape)
+            logger.debug('statistics_of_holes.imgind_to_seg_row_col time (sec) = %.6f' % (time()-t0_sec)) # 47ms
+            logger.debug(info_ndarr(self.imgind_to_seg_row_col, ' imgind_to_seg_row_col '))
+    
+            if False:
+                s = ' imgind_to_seg_row_col '
+                # (n,352,384)
+                first = (352+5)*384 + 380
+                for i in range(first,first+10): s += '\n    s:%02d r:%03d c:%03d' % tuple(imgind_to_seg_row_col[i])
+                logger.debug(s)
 
 
     def calib(self,evt):
@@ -177,8 +191,9 @@ class AreaDetector(DetectorImpl):
             self.cached_pixel_coord_indexes(evt, **kwa)
             if any(v is None for v in self.pix_rc): return None
 
-        vbase = kwa.get('vbase',0)
-        mapmode = kwa.get('mapmode',1)
+        vbase     = kwa.get('vbase',0)
+        mapmode   = kwa.get('mapmode',2)
+        fillholes = kwa.get('fillholes',True)
 
         if mapmode==0: return self.img_entries
 
@@ -187,17 +202,18 @@ class AreaDetector(DetectorImpl):
             logger.warning('AreaDetector.image calib returns None')
             return None
             
-        logger.info(info_ndarr(data, 'data ', last=3))
+        #logger.debug(info_ndarr(data, 'data ', last=3))
 
         rows, cols = self.pix_rc
-        
-        img = img_from_pixel_arrays(rows, cols, weight=data, vbase=vbase)
+        img = img_from_pixel_arrays(rows, cols, weight=data, vbase=vbase) # mapmode==1
+        if   mapmode==2: img_multipixel_max(img, data, self.dmulti_pix_to_img_idx)
+        elif mapmode==3: img_multipixel_mean(img, data, self.dmulti_pix_to_img_idx, self.dmulti_imgidx_numentries)
 
-        if   mapmode==1: return img
-        elif mapmode==2: return img_multipixel_max(img, data, self.dict_pix_to_img_idx)
-        elif mapmode==3: return img_multipixel_mean(img, data, self.dict_pix_to_img_idx, self.dict_imgidx_numentries)
-        elif mapmode==4: return img_interpolated(data, self.interpol_pars)
-        else: return self.img_entries
+        if mapmode<4 and fillholes: fill_holes(img, self.hole_rows, self.hole_cols)
+
+        return img if mapmode<4 else\
+               img_interpolated(data, self.interpol_pars) if mapmode==4 else\
+               self.img_entries
 
 #----
 

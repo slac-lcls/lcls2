@@ -337,6 +337,13 @@ def collection_names(db, include_system_collections=False):
     """
     if not is_valid_database(db): return []
     return db.list_collection_names(include_system_collections)
+    
+    #try:
+    #    return db.list_collection_names(include_system_collections)
+    #except:
+    ##except SystemExit as err
+    #    print('Authorithation issue... try -u<user-name> -p<password-for-mongodb>')
+    #    exit()
 
 #------------------------------
 

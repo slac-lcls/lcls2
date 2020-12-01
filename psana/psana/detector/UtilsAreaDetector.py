@@ -58,8 +58,8 @@ def statistics_of_pixel_arrays(rows, cols):
     img_sta = np.zeros(img_shape, dtype=np.uint16)
     for r,c in zipped_rows_cols: img_sta[r,c]+=1 # 1.8 sec
     # DOES NOT WORK FOR MULTI-ENTRIES... img_sta[rows.ravel(),cols.ravel()] += np.ones(rows.size, dtype=np.uint16) # 11ms
-    logger.info('XXX statistics_of_pixel_arrays consumed time (sec) = %.6f' % (time()-t0_sec)) # 1.8 sec
-    logger.info('XXX np.bincount(img_sta): %s' % str(np.bincount(img_sta.ravel(), minlength=10)))
+    logger.debug('XXX statistics_of_pixel_arrays consumed time (sec) = %.6f' % (time()-t0_sec)) # 1.8 sec
+    logger.debug('XXX np.bincount(img_sta): %s' % str(np.bincount(img_sta.ravel(), minlength=10)))
 
     t0_sec = time()
     cond = img_sta>1
@@ -68,13 +68,13 @@ def statistics_of_pixel_arrays(rows, cols):
 
     nrows, ncols = img_sta.shape
     multinds = {i:int(r*ncols+c) for i,(r,c) in enumerate(zipped_rows_cols) if cond[r,c]}
-    #logger.info('XXX dict multinds production time (sec) = %.6f' % (time()-t0_sec)) # 170us
+    #logger.debug('XXX dict multinds production time (sec) = %.6f' % (time()-t0_sec)) # 170us
     #exit('TEST EXIT') #############
 
 
     s = '\n multiple mapping of pixels to image:'
     for k,v in multinds.items(): s += '\n  pix:%06d img:%06d' % (k,v)
-    logger.info(s)
+    logger.debug(s)
 
     # count number of entries in overlapping image pixels for epix10kaquad (4, 352, 384)
     # image bin scale size 100 - 11 multiple pixels
@@ -86,7 +86,7 @@ def statistics_of_pixel_arrays(rows, cols):
 
     s = '\n number of multiple entries to image index:'
     for i,(k,n) in enumerate(nentries.items()): s += '\n  %03d img_ind:%06d entries:%d' % (i+1,k,n)
-    logger.info(s)
+    logger.debug(s)
 
     return img_sta, multinds, nentries
 
@@ -119,7 +119,7 @@ def img_from_pixel_arrays(rows, cols, weight=1.0, dtype=np.float32, vbase=0):
     img[rows.ravel(),cols.ravel()] = _weight.ravel()
 
     #for r,c,v in zip(rows.ravel(), cols.ravel(), _weight): img[r,c] = max(img[r,c],v)
-    logger.info('TIME img_from_pixel_arrays consumed time (sec) = %.6f' % (time()-t0_sec))
+    logger.debug('TIME img_from_pixel_arrays consumed time (sec) = %.6f' % (time()-t0_sec))
 
     return img
 
@@ -135,9 +135,8 @@ def img_multipixel_max(img, weight, dict_pix_to_img_idx):
         s += '\n  == img_multipixel_max result:'
         for i in sorted(set(dict_pix_to_img_idx.values())):
             s += '\n  inds in img:%06d max: %.1f' % (i, imgrav[i])
-        logger.info(s)
-
-    return img
+        logger.debug(s)
+    #return img
 
 
 def img_multipixel_mean(img, weight, dict_pix_to_img_idx, dict_imgidx_numentries):
@@ -154,9 +153,8 @@ def img_multipixel_mean(img, weight, dict_pix_to_img_idx, dict_imgidx_numentries
         s += '\n  == img_multipixel_mean result:'
         for i in imgidx: 
             s += '\n  inds in img:%06d mean: %.1f for %d entries' % (i, imgrav[i], dict_imgidx_numentries[i])
-        logger.info(s)
-
-    return img
+        logger.debug(s)
+    #return img
     
 
 def size_for_shape(shape): return np.empty(shape).size
@@ -202,9 +200,9 @@ def image_of_pixel_seg_row_col(img_ascend_pix_ind, arr_shape, dtype=np.int32):
     return imgind_to_seg_row_col
 
 
-def holes(busy_img_bins):
-    """Works with image-size arrays.
-       Returns list of image ravel indeces of holes.
+def image_of_holes(busy_img_bins):
+    """Works with image-shaped arrays.
+       Returns image of holes marked by True values.
     """
     nonem = busy_img_bins
     nrows, ncols = shape = nonem.shape
@@ -216,11 +214,28 @@ def holes(busy_img_bins):
     return empty
 
 
-def init_interpolation_parameters(rows, cols, x, y, **kwa):
+def hole_inds_ravel(img_holes):
+    return np.where(img_holes.ravel())[0] # [0] because np.where returns tuple for all axes
+
+
+def hole_rows_cols(img_holes):
+    """ Returns hole rows and cols on image shaped array
+    """
+    return np.where(img_holes)
+
+
+def fill_holes(img, hrows, hcols):
+    img[hrows, hcols] = np.minimum(\
+             np.minimum(img[hrows-1, hcols], img[hrows+1, hcols]),
+             np.minimum(img[hrows, hcols-1], img[hrows, hcols+1]))
+    #return img
+
+
+def statistics_of_holes(rows, cols, **kwa):
     """generates and returns a few useful arrays
        img_pix_ascend_ind - image-shaped [int32] contains ravel index in pixel (data) array
-       busy_img_bins - image-shaped [bool]
-       imgind_to_seg_row_col - shape=(img_size,3) [int32] indexes (seg, row, col)
+       img_holes - image-shaped [bool]
+       hole_rows, hole_cols - arrays of hole rows and cols in image
     """
     assert isinstance(rows, np.ndarray)
     assert isinstance(cols, np.ndarray)
@@ -232,51 +247,40 @@ def init_interpolation_parameters(rows, cols, x, y, **kwa):
     # make img_pix_ascend_ind mapping [r,c] to index in pixelarray
     t0_sec = time()
     img_pix_ascend_ind = image_of_pixel_array_ascending_index(rows, cols, img_shape, np.int32)
-    logger.info('XXXA init_interpol...image_of_pixel_array_ascending_index time (sec) = %.6f' % (time()-t0_sec)) # 8ms
-    logger.info(info_ndarr(img_pix_ascend_ind, ' img_pix_ascend_ind:'))
+    logger.debug('statistics_of_holes.image_of_pixel_array_ascending_index time (sec) = %.6f' % (time()-t0_sec)) # 8ms
+    logger.debug(info_ndarr(img_pix_ascend_ind, ' img_pix_ascend_ind:'))
 
     busy_img_bins = img_pix_ascend_ind>-1
     n_img_pixbins = np.sum(busy_img_bins) #np.count_nonzero(busy_img_bins)
     fr_noon_empty = float(n_img_pixbins)/busy_img_bins.size
-    logger.info('XXX busy image bins/total: %d/%d = %.3f' %(n_img_pixbins, busy_img_bins.size, fr_noon_empty))
+    logger.debug('statistics_of_holes busy image bins/total: %d/%d = %.3f' %(n_img_pixbins, busy_img_bins.size, fr_noon_empty))
 
     t0_sec = time()
-    img_holes = holes(busy_img_bins)
-    logger.info('XXXC init_interpol...holes time (sec) = %.6f' % (time()-t0_sec)) # 
-    logger.info('XXXC init_interpol... number of holes = %d' % np.sum(img_holes)) # 
+    img_holes = image_of_holes(busy_img_bins)
+    logger.debug('statistics_of_holes hole finding time (sec) = %.6f' % (time()-t0_sec))
+    logger.debug('statistics_of_holes number of holes = %d' % np.sum(img_holes))
 
-    hole_inds = np.where(img_holes.ravel())[0] # [0] because np.where returns tuple
-    logger.info('XXXC init_interpol... hole indexes = %s' % str(hole_inds)) # 
-    logger.info(info_ndarr(hole_inds, ' hole_inds:'))
+    hole_inds1d = hole_inds_ravel(img_holes) #np.where(img_holes.ravel())[0] # [0] because np.where returns tuple
+    logger.debug('statistics_of_holes hole indexes ravel = %s' % str(hole_inds1d))
+    logger.debug(info_ndarr(hole_inds1d, 'hole_inds1d:'))
 
-    exit('TEST EXIT') #############
+    hole_rows, hole_cols = hole_rows_cols(img_holes)
+    logger.debug(info_ndarr(hole_rows, 'XXXC statistics_of_holes hole hrows:',last=10))
+    logger.debug(info_ndarr(hole_cols, 'XXXC statistics_of_holes hole hcols:',last=10))
 
-    t0_sec = time()
-    imgind_to_seg_row_col = image_of_pixel_seg_row_col(img_pix_ascend_ind, arr_shape)
-    logger.info('XXXC init_interpol...imgind_to_seg_row_col time (sec) = %.6f' % (time()-t0_sec)) # 47ms
-    logger.info(info_ndarr(imgind_to_seg_row_col, ' imgind_to_seg_row_col '))
-    s = ' imgind_to_seg_row_col '
-    # (n,352,384)
-    first = (352+5)*384 + 380
-    for i in range(first,first+10): s += '\n    s:%02d r:%03d c:%03d' % tuple(imgind_to_seg_row_col[i])
-    logger.info(s)
-
-    #exit('TEST EXIT') #############
-
-    #logger.info('XXX np.bincount(img_sta): %s' % str(np.bincount(img_sta.ravel(), minlength=10)))
-
-    address_table_4 = -np.ones((nrows,ncols,4), dtype=np.int32)
-    weights_table_4 = np.zeros((nrows,ncols,4), dtype=np.int32)
-
-# TBD WITH imgind_to_seg_row_col
-
-    #### address_table_1 (CSPadPixCoords) === img_pix_ascend_ind
-    return img_pix_ascend_ind # img_holes # img_pix_ascend_ind # busy_img_bins, imgind_to_seg_row_col
+    return img_pix_ascend_ind, img_holes, hole_rows, hole_cols, hole_inds1d
 
 
-
-
-
+def init_interpolation_parameters(rows, cols, x, y, **kwa):
+    """TBD: currently returns image of ascending index in data array
+    """
+    assert isinstance(rows, np.ndarray)
+    assert isinstance(cols, np.ndarray)
+    assert rows.size == cols.size
+    #address_table_4 = -np.ones((nrows,ncols,4), dtype=np.int32)
+    #weights_table_4 = np.zeros((nrows,ncols,4), dtype=np.int32)
+    img_shape = image_shape(rows, cols)
+    return image_of_pixel_array_ascending_index(rows, cols, img_shape, np.int32)
 
 
 def img_default(arr):
