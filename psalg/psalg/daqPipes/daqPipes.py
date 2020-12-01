@@ -375,6 +375,7 @@ def draw(stdscr, args, metrics, size_x):
                     sr += 1
                 sx = x + cw
                 for item, values in sample[1].items():      # Columns
+                    dbg.write('item %s, value %s\n' % (item, values))
                     x = sx + metrics[item].column()
                     entry, color = metrics[item].dpyFmt(values[1])
                     if x - start_x + len(entry) <= width:
@@ -484,7 +485,17 @@ def daqPipes(srvurl, args):
     def _fmtBool(value):
         number = int(value)
         color  = 3 if number == 0 else 4
-        entry  = '   ok' if number == 0 else '  blk'
+        #entry  = '   ok' if number == 0 else '  blk' if number < 2 else ('  blk%d' % number)
+        if number == 0:
+            entry = '   ok'
+        elif number == 1:
+            entry = '  blk'
+        elif number < 10:
+            entry = ' blk%1d' % number
+        elif number < 100:
+            entry = 'blk%2d' % number
+        else:
+            entry = value #hex(number)
         return entry, color
 
     def _fmtHex(value):
