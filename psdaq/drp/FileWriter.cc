@@ -120,6 +120,11 @@ BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize) :
     m_batch_starttime(0,0),
     m_free(FIFO_DEPTH),
     m_pend(FIFO_DEPTH),
+    m_depth(m_free.size()),
+    m_size(m_free.size()),
+    m_writing(0),
+    m_freeBlocked(0),
+    m_pendBlocked(0),
     m_terminate(false),
     m_thread{&BufferedFileWriterMT::run,this}
 {
@@ -129,11 +134,6 @@ BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize) :
         b.p = new uint8_t[bufferSize];
         m_free.push(b);
     }
-    m_size  = m_free.size();
-    m_depth = m_free.count();
-    m_writing     = 0;
-    m_freeBlocked = 0;
-    m_pendBlocked = 0;
 }
 
 BufferedFileWriterMT::~BufferedFileWriterMT()
