@@ -38,6 +38,16 @@ class DetectorImpl(object):
         self._env_store         = env_store
         self._var_name          = var_name    
     
+    def _seg_configs(self):
+        """
+        Gather up all the segment configs into an easier-to-use dictionary
+        """
+        seg_configs = {}
+        for dgram in self._configs:
+            if hasattr(dgram,self._det_name):
+                seg_configs.update(getattr(dgram,self._det_name))
+        return seg_configs
+
     def _segments(self,evt):
         """
         Look in the event to find all the dgrams for our detector/drp_class
