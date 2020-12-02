@@ -16,7 +16,8 @@ USAGE = '\n  python %s <test-name>' % SCRNAME\
       + '\n    2 - opal - test tutorials/ami2/tmo/pop_raw_imgs.xtc2'\
       + '\n    3 - opal - real exp:tmolw0518, run:102, detname:tmoopal'\
       + '\n    4 - opal - real exp:tmolw0618, run:52, detname:tmoopal'\
-      + '\n    5 - opal - real exp:tstx00117, run:144'\
+      + '\n    5 - epixquasd - exp:tstx00117, run:144 - pedestals calibration run.config'\
+      + '\n    6 - epixquasd - exp:tstx00117, run:147 - pedestals calibration det.config'\
 
 print(USAGE)
 
@@ -93,22 +94,125 @@ elif tname in('2','3','4'):
     print('XXX rbfs_meta: ', rbfs_meta) #
 
 elif tname == '5':
+    from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
+
     #on daq-det-drp01:
     #detnames /u2/lcls2/tst/tstx00117/xtc/tstx00117-r0144-s000-c000.xtc2
+    #Name     | Data Type
+    #--------------------
+    #epixquad | raw      
 
-    #ds,run = datasource_run(exp='tstx00117', run=144)
-    ds,run = datasource_run(files='/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0144-s000-c000.xtc2')
+    # cdb add -e tstx00117 -d epixquad -c geometry -r0 -f /reg/g/psdm/detector/alignment/epix10kaquad/2020-11-20-epix10kaquad0-ued/2020-11-20-epix10kaquad0-ued-geometry.txt
 
-    print('XXX dir(run):\n', dir(run))
+    ds,run,det = datasource_run_det(files='/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0144-s000-c000.xtc2', detname='epixquad')
 
-    print('XXX run.runnum  : ', run.runnum)   # 101
-    print('XXX run.detnames: ', run.detnames) # {'opal'}
-    print('XXX run.expt    : ', run.expt)     # amox27716
+    print('\nXXX dir(run):\n', dir(run))
+
+    print('XXX run.runnum  : ', run.runnum)   # 144
+    print('XXX run.detnames: ', run.detnames) # {'epixquad'}
+    print('XXX run.expt    : ', run.expt)     # tstx00117
     print('XXX run.id      : ', run.id)       # 0
 
-    #print('XXX dir(det):\n', dir(det))
-    #print('XXX det.calibconst.keys(): ', det.calibconst.keys())   # dict_keys(['pop_rbfs'])
+    print('\nXXX dir(det):\n', dir(det))
+    print('XXX det.calibconst.keys(): ', det.calibconst.keys())   # dict_keys(['geometry'])
     #print(det.calibconst)
+    print('XXX det._det_name: ', det._det_name) # epixquad
+    print('XXX det._dettype : ', det._dettype)  # epix
+    print('XXX det._detid   : ', det._detid)    # -
+
+    print('run.configs:', run.configs)          # [<dgram.Dgram object at 0x7fac52b5ddf0>] ???? WHY IT IS A LIST? HOW TO GET LIST INDEX FOR DETECTOR?
+    cfg = run.configs[0]
+    print('\ndir(cfg):', dir(cfg))              # [..., 'epixquad', 'service', 'software', 'timestamp']
+
+    c0 = cfg.epixquad[0]                        # WHAT ????
+    print('\ndir(c0):', dir(c0))                # [..., 'config']
+
+    cfd = c0.config
+    print('\ndir(c0.config):', dir(cfd))        # [..., 'asicPixelConfig', 'expert', 'trbit', 'user']
+    print(info_ndarr(cfd.asicPixelConfig,'cfd.asicPixelConfig: ', last=10)) # PER ASIC ARRAY (4, 178, 192) !!!
+                                                # shape:(4, 178, 192) size:136704 dtype:uint8 [12 12 12...
+    print('cfd.trbit :', cfd.trbit)             # [1 1 1 1]
+    print('cfd.user  :', cfd.user)              # <container.Container object at 0x7f284c06db70>
+    print('cfd.expert:', cfd.expert)            # <container.Container object at 0x7f284c06db70>
+
+    cfuser = cfd.user
+    print('\ndir(cfd.user): ', dir(cfuser))     # [..., 'gain_mode', 'pixel_map', 'start_ns']
+    print(info_ndarr(cfuser.pixel_map,'cfuser.pixel_map: ', last=10))
+                                                # shape:(16, 178, 192) size:546816 dtype:uint8 [12 12 12...
+    print('cfuser.start_ns:', cfuser.start_ns)  # 107749
+    print('cfuser.gain_mode:', cfuser.gain_mode)# <container.Container object at 0x7fb005426b50>
+    cfgm = cfuser.gain_mode
+    print('\ndir(cfuser.gain_mode):', dir(cfgm)) # [..., 'names', 'value']
+    print('cfgm.names:', cfgm.names)             # {3: 'AutoHiLo', 4: 'AutoMedLo', 0: 'High', 2: 'Low', 5: 'Map', 1: 'Medium'} WHAT IS MAP???
+    print('cfgm.value:', cfgm.value)             # 0
+
+    cfexpert = cfd.expert
+    print('\ndir(cfd.cfexpert): ', dir(cfexpert))# 
+
+
+elif tname == '6':
+    from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
+
+    ds,run,det = datasource_run_det(files='/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0147-s000-c000.xtc2', detname='epixquad')
+
+    print('\nXXX dir(run):\n', dir(run))
+
+    print('XXX run.runnum  : ', run.runnum)   # 144
+    print('XXX run.detnames: ', run.detnames) # {'epixquad'}
+    print('XXX run.expt    : ', run.expt)     # tstx00117
+    print('XXX run.id      : ', run.id)       # 0
+
+    print('\nXXX dir(det):\n', dir(det))      # [..., '_configs', '_det_name', '_detid', '_dettype', 'calibconst', 'raw', 'step']
+    print('XXX det.calibconst.keys(): ', det.calibconst.keys())   # dict_keys(['geometry'])
+    #print(det.calibconst)
+    print('XXX det._det_name: ', det._det_name) # epixquad
+    print('XXX det._dettype : ', det._dettype)  # epix
+    print('XXX det._detid   : ', det._detid)    # -
+
+    cfgs = det._configs
+
+    print('det._configs:', cfgs)                # [<dgram.Dgram object at 0x7f5a36a1bd40>]
+    cfg = cfgs[0]
+    print('\ndir(cfg):', dir(cfg))              # [..., 'epixquad', 'service', 'software', 'timestamp'] 
+
+    cfquad = cfg.epixquad                       # WHAT, epixquad ????
+    print('c0=cfg.epixquad :', cfquad)          # {0: <container.Container object at 0x7f79cfdd5fd0>, 
+                                                #  1: <container.Container object at 0x7f79cfd9cbb0>, 
+                                                #  2: <container.Container object at 0x7f79cfd9cc10>,
+                                                #  3: <container.Container object at 0x7f79cfd9cc70>} # PER PANEL?
+    cfp0 = cfquad[0]
+    print('\ndir(cfp0):', dir(cfp0))            # [..., '_xtc', 'config']
+
+    cfp = cfp0.config
+    print('\ndir(cfp):', dir(cfp))              # [..., 'asicPixelConfig', 'expert', 'trbit', 'user']
+
+    print(info_ndarr(cfp.asicPixelConfig,'cfp.asicPixelConfig: ', last=10)) # PER ASIC ARRAY (4, 178, 192) !!! 
+                                                # shape:(4, 178, 192) size:136704 dtype:uint8 [12 12 ...
+    print('cfp.trbit :', cfp.trbit)             # [1 1 1 1]
+
+
+    if False:
+        print('cfp.user  :', cfp.user)              # <container.Container object at 0x7f284c06db70>
+        print('cfp.expert:', cfp.expert)            # <container.Container object at 0x7f284c06db70>
+        
+        cfuser = cfp.user
+        print('\ndir(cfuser):', dir(cfuser))        # [..., 'gain_mode', 'pixel_map', 'start_ns'
+        print(info_ndarr(cfuser.pixel_map,'cfuser.pixel_map: ', last=10))
+                                                    # shape:(16, 178, 192) size:546816 dtype:uint8 [12 12 12...
+        print('cfuser.start_ns:', cfuser.start_ns)  # 107749
+        print('cfuser.gain_mode:', cfuser.gain_mode)# <container.Container object at 0x7fb005426b50>
+        cfgm = cfuser.gain_mode
+        print('\ndir(cfuser.gain_mode):', dir(cfgm)) # [..., 'names', 'value']
+        print('cfgm.names:', cfgm.names)             # {3: 'AutoHiLo', 4: 'AutoMedLo', 0: 'High', 2: 'Low', 5: 'Map', 1: 'Medium'} WHAT IS MAP???
+        print('cfgm.value:', cfgm.value)             # 0
+        
+        cfexpert = cfp.expert
+        print('\ndir(cfexpert):', dir(cfexpert))      # ['DevPcie', 'EpixQuad', ...]
+        print('cfexpert.DevPcie:', cfexpert.DevPcie)  # <container.Container object at 0x7f4ba0e05070>
+        print('cfexpert.EpixQuad:', cfexpert.EpixQuad)# <container.Container object at 0x7feee97901b0>
+        
+        print('\ndir(cfexpert.DevPcie):', dir(cfexpert.DevPcie))  # ['Hsio', ...]
+        print('\ndir(cfexpert.EpixQuad):', dir(cfexpert.EpixQuad))# ['AcqCore', 'Ad9249Config[7]', 'Ad9249Readout[0]', 'Ad9249Readout[1]', 'Ad9249Readout[2]', 'Ad9249Readout[3]', 'Ad9249Readout[4]', 'Ad9249Readout[5]', 'Ad9249Readout[6]', 'Ad9249Readout[7]', 'Ad9249Readout[8]', 'Ad9249Readout[9]', 'Ad9249Tester', 'Epix10kaSaci[0]', 'Epix10kaSaci[10]', 'Epix10kaSaci[11]', 'Epix10kaSaci[12]', 'Epix10kaSaci[13]', 'Epix10kaSaci[14]', 'Epix10kaSaci[15]', 'Epix10kaSaci[1]', 'Epix10kaSaci[2]', 'Epix10kaSaci[3]', 'Epix10kaSaci[4]', 'Epix10kaSaci[5]', 'Epix10kaSaci[6]', 'Epix10kaSaci[7]', 'Epix10kaSaci[8]', 'Epix10kaSaci[9]', 'PseudoScopeCore', 'RdoutCore', 'SystemRegs', 'VguardDac', ...]
 
 else:
     print(USAGE)
