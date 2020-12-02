@@ -169,6 +169,21 @@ elif tname == '6':
     print('XXX det._dettype : ', det._dettype)  # epix
     print('XXX det._detid   : ', det._detid)    # -
 
+    raw = det.raw
+    print('\nXXX dir(det.raw):\n', dir(raw)) # [..., '_add_fields', '_calibconst', '_configs', '_det_name', '_dettype', '_drp_class_name', '_env_store', '_info', '_return_types', '_segments', '_sorted_segment_ids', '_uniqueid', '_var_name', 'array']
+
+    
+    print('XXX raw._uniqueid: ', raw._uniqueid)
+                                                # epix_3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000_-_3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000_3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000
+    print('XXX raw._sorted_segment_ids: ', raw._sorted_segment_ids) # [0, 1, 2, 3]
+
+    print('XXX raw._det_name: ', raw._det_name) # epixquad
+    print('XXX raw._dettype : ', raw._dettype)  # epix
+ 
+    #exit()
+    ######
+
+
     cfgs = det._configs
 
     print('det._configs:', cfgs)                # [<dgram.Dgram object at 0x7f5a36a1bd40>]
