@@ -25,15 +25,18 @@ class EdgeFinder(object):
 
         #validating that we're getting the correct number of pixels
         if(image is not None):
-            assert len(image) == 2048
 
             # check if IIR exists 
             if IIR is None:
                 IIR = np.zeros(image.shape, dtype=image.dtype)
 
             # do the matchy filter and normalize
+            delayed_denominator = self.delayed_denominator
+            if self.delayed_denominator is None:
+                delayed_denominator = np.ones(image.shape, dtype=image.dtype)
+            
             convolved = np.convolve( \
-                (image-IIR)/ self.delayed_denominator, \
+                (image-IIR)/ delayed_denominator, \
                 self.kernel)
             convolved /= np.max(convolved)
 
