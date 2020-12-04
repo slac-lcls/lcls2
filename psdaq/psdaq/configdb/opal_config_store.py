@@ -53,7 +53,6 @@ def opal_cdict(args):
     # ClinkTop.TapCount
     # All serial commands are enumerated as registers
     top.set('expert.ClinkFeb.TrigCtrl.EnableTrig', 1, 'UINT8')   # rogue wants 'bool'
-    top.set('expert.ClinkFeb.TrigCtrl.InvCC'     , 0, 'UINT8')   # rogue wants 'bool'
     top.set('expert.ClinkFeb.TrigCtrl.TrigMap'   , 0, 'UINT32')  # ChanA/ChanB
     top.set('expert.ClinkFeb.TrigCtrl.TrigMask'  , 1, 'UINT32')  # CC1
     top.set('expert.ClinkFeb.TrigCtrl.TrigPulseWidth', 32.768, 'FLOAT')

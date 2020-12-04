@@ -221,12 +221,24 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     fwver = uart._rx._last.split(';')
     if len(fwver)>2:
         major,minor = fwver[2].split('.')[:2]
-        if int(major)<1 or int(minor)<20:
+        # CCE is a special command in the rogue surf. it waits for
+        # both CCE[0] and CCE[1] to be filled in before transmitting.
+        # a possible issue: when we do a second configure, the
+        # fields will be non-empty, so we think we will do two
+        # uart writes of the same value.  not ideal, but should be ok.
+        # we inherited this information about firmware version
+        # numbers from LCLS1, but we are not confident it is solid.
+        # for a given camera, the exposure time should be checked
+        # by looking at the second set of 4 pixels of an image after
+        # a long time between triggers which have an exposure time
+        # measurement.  CCE[1] is the "polarity" portion of CCE:
+        if int(major)<1 or (int(major)==1 and int(minor)<20):
             print('Normal polarity')
             getattr(uart,'CCE[1]').set(0)
         else:
             print('Inverted polarity')
             getattr(uart,'CCE[1]').set(1)
+    # CCE[0] is the "trigger input source" portion of CCE.
     getattr(uart,'CCE[0]').set(0)  # trigger on CC1
     uart.MO.set(1)  # set to triggered mode
 
