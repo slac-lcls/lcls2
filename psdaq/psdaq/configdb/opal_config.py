@@ -232,12 +232,22 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
         # by looking at the second set of 4 pixels of an image after
         # a long time between triggers which have an exposure time
         # measurement.  CCE[1] is the "polarity" portion of CCE:
-        if int(major)<1 or (int(major)==1 and int(minor)<20):
-            print('Normal polarity')
-            getattr(uart,'CCE[1]').set(0)
-        else:
-            print('Inverted polarity')
-            getattr(uart,'CCE[1]').set(1)
+
+        # cpo: somehow this logic is wrong because this response
+        # from a camera's BS command @"1.10;1.11;1.11 wanted
+        # normal polarity, but the exposure time (after a pause)
+        # was very large. So hardwire inverted-polarity for now.
+
+        #if int(major)<1 or (int(major)==1 and int(minor)<20):
+        #    print('Normal polarity')
+        #    getattr(uart,'CCE[1]').set(0)
+        #else:
+        #    print('Inverted polarity')
+        #    getattr(uart,'CCE[1]').set(1)
+
+        print('Inverted polarity')
+        getattr(uart,'CCE[1]').set(1)
+
     # CCE[0] is the "trigger input source" portion of CCE.
     getattr(uart,'CCE[0]').set(0)  # trigger on CC1
     uart.MO.set(1)  # set to triggered mode
