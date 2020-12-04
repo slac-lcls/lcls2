@@ -1,0 +1,124 @@
+if not platform: platform = '2'
+
+import os
+ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
+hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
+
+#collect_host = os.uname()[1]
+collect_host = 'drp-neh-ctl001'
+
+groups = platform
+hutch, station, user, password = ('rix', 0, 'rixopr', 'pcds')
+auth = ' --user {:} --password {:} '.format(user,password)
+url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
+cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
+
+#
+#  drp variables
+#
+prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
+data_dir = '/ffb01/data'
+
+task_set = 'taskset 0xffbfeffbfe '
+std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir+' -d /dev/datadev_%d'
+
+drp_cmd0 = task_set+'drp '      +(std_opts%0)+' -k batching=no '
+drp_cmd1 = task_set+'drp '      +(std_opts%1)+' -k batching=no '
+pva_cmd0 = task_set+'drp_pva '  +(std_opts%0)+' -k batching=no '
+pva_cmd1 = task_set+'drp_pva '  +(std_opts%1)+' -k batching=no '
+bld_cmd0 = task_set+'drp_bld '  +(std_opts%0)+' -k batching=no,interface=eno1 '
+bld_cmd1 = task_set+'drp_bld '  +(std_opts%1)+' -k batching=no,interface=eno1 '
+
+ea_cfg = '/cds/group/pcds/dist/pds/rix/misc/epicsArch.txt'
+ea_cmd0 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
+ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
+
+#
+#  ami variables
+#
+heartbeat_period = 1000 # units are ms
+
+ami_workers_per_node = 4
+ami_worker_nodes = ["drp-neh-cmp013"]
+ami_num_workers = len(ami_worker_nodes)
+ami_manager_node = "drp-neh-ctl001"
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#                "X" open xterm
+#                "s" send signal to child when stopping
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+# {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2'},
+ {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups+' --prod'},
+ {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
+
+# { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 0 -C NOBEAM {auth} {url} -d {cdb}/configDB -r /dev/null -t trigger -S 1 -T 20000'},
+ { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
+ {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
+
+ { host: 'drp-neh-cmp013', id:'teb0',        flags:'spu',                cmd:task_set+'teb '+'-P '+hutch+' -C '+collect_host+' -M '+prom_dir},
+
+ { host: 'drp-neh-cmp014', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
+
+ { host: 'drp-neh-cmp014', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
+
+ { host: 'drp-neh-cmp014', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4'},
+
+ { host: 'drp-neh-cmp015', id:'manta_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x1 IM2K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8388672 -1'},
+]
+
+hsd_epics = 'DAQ:RIX:HSD:1'
+
+# Swapped hsd_5 and hsd_7. hsd_5 has a problem, we need to investigate when we have more time
+#  Map (host,hsd_segm,datadev,epicsPV)
+procmgr_hsd = [
+# {host:'drp-neh-cmp020', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
+# {host:'drp-neh-cmp017', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
+# {host:'drp-neh-cmp019', id:'hsd_4',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:A'},
+# {host:'drp-neh-cmp018', id:'hsd_7',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:B'},
+# {host:'drp-neh-cmp021', id:'hsd_6',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:A'},
+# {host:'drp-neh-cmp018', id:'hsd_5',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:B'},
+# {host:'drp-neh-cmp022', id:'hsd_8',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:A'},
+# {host:'drp-neh-cmp022', id:'hsd_9',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
+# {host:'drp-neh-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
+# {host:'drp-neh-cmp021', id:'hsd_12', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:A'},
+# {host:'drp-neh-cmp019', id:'hsd_13', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:B'},
+]
+
+#procmgr_config.extend(procmgr_hsd)
+
+procmgr_ami = [
+#
+# ami
+#
+ { 'host': ami_manager_node, 'id':'ami-global',  'flags':'s', 'cmd':f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}'},
+ { 'host': ami_manager_node, 'id':'ami-manager', 'flags':'s', 'cmd':f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}'},
+ {                           'id':'ami-client',  'flags':'s', 'cmd':f'ami-client -H {ami_manager_node}'},
+]
+
+#
+# ami workers
+#
+extra_shmem_queues=1
+for N, worker_node in enumerate(ami_worker_nodes):
+    procmgr_ami.append({ host: worker_node, id:f'meb{N}', flags:'spu',
+                         cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node+extra_shmem_queues}'})
+    for n in range(ami_workers_per_node):
+      procmgr_ami.append({ 'host': worker_node, 'id': f'ami-worker_{N}_{n}', 'flags':'s', 
+                           'cmd': f'ami-worker --hutch {hutch} --prometheus-dir {prom_dir} -N {N*ami_num_workers+n} -n {ami_num_workers} -b {heartbeat_period} -H {ami_manager_node} psana://shmem={hutch}_{platform}'})
+
+    procmgr_ami.append({ 'host': worker_node, 'id': f'ami-node_{N}', 'flags':'s', 
+    	                 'cmd': f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning'})
+
+procmgr_config.extend(procmgr_ami)
