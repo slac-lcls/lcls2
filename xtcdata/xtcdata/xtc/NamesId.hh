@@ -24,6 +24,8 @@ public:
     // so we try not to make it too large
     enum {NumberOf=1<<20};
 
+    NamesId() : Src() {}  // undefined Src
+
     NamesId(unsigned nodeId, unsigned namesId) : Src(((nodeId&0xfff)<<8)|(namesId&0xff)) {
         assert ((nodeId&0xfff) == nodeId);
         assert ((namesId&0xff)  == namesId);

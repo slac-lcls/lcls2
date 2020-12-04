@@ -182,8 +182,8 @@ public:
             Names& names = *(Names*)xtc;
             _namesLookup[names.namesId()] = NameIndex(names);
             Alg& alg = names.alg();
-	    printf("*** DetName: %s, Segment %d, DetType: %s, Alg: %s, Version: 0x%6.6x, namesid: 0x%x, Names:\n",
-                   names.detName(), names.segment(), names.detType(),
+	    printf("*** DetName: %s, Segment %d, DetType: %s, DetId: %s, Alg: %s, Version: 0x%6.6x, namesid: 0x%x, Names:\n",
+                   names.detName(), names.segment(), names.detType(), names.detId(),
                    alg.name(), alg.version(), (int)names.namesId());
 
             for (unsigned i = 0; i < names.num(); i++) {
