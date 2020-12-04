@@ -48,9 +48,13 @@ class SerialDataSource(DataSourceBase):
         1) New run found in the same smalldata files
         2) New run found in the new smalldata files
         """
-        self.beginruns = self.smdr_man.get_next_dgrams() 
-        if not self.beginruns: return False
-        return True
+        dgrams = self.smdr_man.get_next_dgrams() 
+        while dgrams is not None:
+            if dgrams[0].service() == TransitionId.BeginRun:
+                self.beginruns = dgrams
+                return True
+            dgrams = self.smdr_man.get_next_dgrams() 
+        return False
 
     def _start_run(self):
         found_next_run = False

@@ -182,36 +182,39 @@ class MPIDataSource(DataSourceBase):
         1) New run found in the same smalldata files
         2) New run found in the new smalldata files
         """
-        if nodetype == 'smd0':
-            self.beginruns = self.smdr_man.get_next_dgrams() 
-            if self.beginruns:
-                nbytes = np.array([memoryview(beginrun).shape[0] \
-                        for beginrun in self.beginruns], dtype='i')
-            else:
+        while True:
+            if nodetype == 'smd0':
+                dgrams = self.smdr_man.get_next_dgrams() 
                 nbytes = np.zeros(len(self.smd_files), dtype='i')
-        else:
-            self.beginruns = None
-            nbytes = np.empty(len(self.smd_files), dtype='i')
-        
-        self.comms.psana_comm.Bcast(nbytes, root=0) 
+                if dgrams is not None:
+                    nbytes = np.array([memoryview(d).shape[0] for d in dgrams], dtype='i')
+            else:
+                dgrams = None
+                nbytes = np.empty(len(self.smd_files), dtype='i')
+            
+            self.comms.psana_comm.Bcast(nbytes, root=0) 
 
-        if np.sum(nbytes) == 0: return False
+            if np.sum(nbytes) == 0: return False
 
-        if nodetype != 'smd0':
-            self.beginruns = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
-        
-        for i in range(len(self.beginruns)):
-            self.comms.psana_comm.Bcast([self.beginruns[i], nbytes[i], MPI.BYTE], root=0)
-        
-        if nodetype != 'smd0':
-            self.beginruns = [dgram.Dgram(view=beginrun, config=config, offset=0) \
-                    for beginrun, config in zip(self.beginruns,self._configs)]
-        return True
+            if nodetype != 'smd0':
+                dgrams = [np.empty(nbyte, dtype='b') for nbyte in nbytes]
+            
+            for i in range(len(dgrams)):
+                self.comms.psana_comm.Bcast([dgrams[i], nbytes[i], MPI.BYTE], root=0)
+            
+            if nodetype != 'smd0':
+                dgrams = [dgram.Dgram(view=d, config=config, offset=0) \
+                        for d, config in zip(dgrams,self._configs)]
+
+            if dgrams[0].service() == TransitionId.BeginRun:
+                self.beginruns = dgrams
+                return True
+        # end while True
 
     def _setup_run_calibconst(self):
         if nodetype == 'smd0':
             super()._setup_run_calibconst()
-        else: # if nodetype == 'smd0'
+        else: 
             self.dsparms.calibconst = None
 
         self.dsparms.calibconst = self.comms.psana_comm.bcast(self.dsparms.calibconst, root=0)

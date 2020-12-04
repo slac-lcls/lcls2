@@ -32,13 +32,11 @@ class ShmemDataSource(DataSourceBase):
         return True
     
     def _setup_beginruns(self):
-        try: 
-            beginrun_evt = next(self.dm)
-        except StopIteration:
-            return False
-        
-        self.beginruns = beginrun_evt._dgrams 
-        return True
+        for evt in self.dm:
+            if evt.service() == TransitionId.BeginRun:
+                self.beginruns = evt._dgrams
+                return True
+        return False
 
     def _start_run(self):
         found_next_run = False

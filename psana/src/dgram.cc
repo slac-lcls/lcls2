@@ -23,7 +23,7 @@ static const char EnumDelim=':';
 
 using namespace std;
 
-#define MAXRETRIES 3
+#define MAXRETRIES 2
 #define SLEEP_SECS 1
 
 // to avoid compiler warnings for debug variables
@@ -44,7 +44,7 @@ struct PyDgramObject {
     Py_buffer buf;
     ContainerInfo contInfo;
     NamesIter* namesIter; // only nonzero in the config dgram
-    size_t size; // size of dgram - for allocating dgram of any size
+    ssize_t size; // size of dgram - for allocating dgram of any size
 };
 
 static void addObjToPyObj(PyObject* parent, const char* name, PyObject* obj, PyObject* pycontainertype) {
@@ -571,9 +571,9 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
-ssize_t read_with_retries(int fd, void* buf, size_t count, size_t offset)
+ssize_t read_with_retries(int fd, void* buf, ssize_t count, size_t offset)
 {
-    size_t readSuccess = 0;
+    ssize_t readSuccess = 0;
     for (int i=0; i<MAXRETRIES; i++) {
         if (offset == 0) {
             readSuccess = read(fd, buf, count);
@@ -597,38 +597,23 @@ ssize_t read_with_retries(int fd, void* buf, size_t count, size_t offset)
 static int dgram_read(PyDgramObject* self, int sequential)
 {
     ssize_t readSuccess=0;
-    char s[TMPSTRINGSIZE];
     if (sequential) {
         // When read sequentially, self->dgram already has header data
         // - only reads the payload content if it is larger than 0.
-        unsigned sizeofPayload = self->dgram->xtc.sizeofPayload();
+        ssize_t sizeofPayload = self->dgram->xtc.sizeofPayload();
         if (sizeofPayload>0) {
             readSuccess = read_with_retries(self->file_descriptor, self->dgram->xtc.payload(), sizeofPayload, 0);
-            if (readSuccess <= 0) {
-                PyErr_SetString(PyExc_StopIteration, "Problem reading dgram payload.");
-                return -1;
-            }
         } else {
-            readSuccess = 1;
-        }
-        if (readSuccess <= 0) {
-            printf("dgram.cc: timeout reading datagram, raising StopIteration.\n");
-            snprintf(s, sizeof(s), "loading dgram was unsuccessful -- %s", strerror(errno));
-            PyErr_SetString(PyExc_StopIteration, s);
-            return -1;
+            readSuccess = 1; //no payload
         }
 
     } else {
         off_t fOffset = (off_t)self->offset;
-        //readSuccess = pread(self->file_descriptor, self->dgram, self->size, fOffset); // for read with offset
-        readSuccess = pread(self->file_descriptor, self->dgram, self->size, fOffset); // for read with offset
-        if (readSuccess <= 0) {
-            snprintf(s, sizeof(s), "loading dgram with offset was unsuccessful -- %s", strerror(errno));
-            PyErr_SetString(PyExc_StopIteration, s);
-            return -1;
-        }
+        readSuccess = read_with_retries(self->file_descriptor, self->dgram, self->size, fOffset);
     }
-    return 0;
+    
+    //cout << "dgram_read offset=" << self->offset << " size=" << self->size << " readSuccess=" << readSuccess << endl;
+    return readSuccess;
 }
 
 static PyObject* service(PyDgramObject* self) {
@@ -717,7 +702,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                 self->file_descriptor=fd;
             }
             
-            // We know size for 3 and 4
+            // We know size for 3 (already set at parsed arg) and 4
             if (fake_endrun == 1) {
                 self->size = sizeof(Dgram);
             }
@@ -761,8 +746,8 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
 
     } else { // if (!isview) {
         // Creating a dgram from view (any objects with a buffer interface) can be done by:
-        // 4. Dgram(view=view, offset=int) --> create a config dgram from the view
-        // 5. Dgram(view=view, config=config, offset=int) --> create a data dgram using the config and view
+        // 5. Dgram(view=view, offset=int) --> create a config dgram from the view
+        // 6. Dgram(view=view, config=config, offset=int) --> create a data dgram using the config and view
 
         // this next line is needed because arrays will increase the reference count
         // of the view (actually a PyByteArray) in dictAssign.  This is the mechanism we
@@ -788,8 +773,14 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
           memcpy((void*)self->dgram, (const void*)&dgram_header, sizeof(dgram_header));
         }
 
-        int err = dgram_read(self, sequential);
-        if (err) return err;
+        ssize_t readSuccess = dgram_read(self, sequential);
+        if (readSuccess == 0) {
+            char s[TMPSTRINGSIZE];
+            printf("dgram.cc: , dgram read error raising StopIteration.\n");
+            snprintf(s, sizeof(s), "loading dgram was unsuccessful -- %s", strerror(errno));
+            PyErr_SetString(PyExc_StopIteration, s);
+            return -1;
+        }
     }
 
     assignDict(self, (PyDgramObject*)configDgram);
