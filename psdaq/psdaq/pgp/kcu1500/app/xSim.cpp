@@ -355,11 +355,23 @@ int main(int argc, char* argv[])
         exit(EXIT_FAILURE);
       }
 
-      sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
+      while(result) {
+          sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
+          unsigned ip = ntohl(saddr->sin_addr.s_addr);
+          if ((ip>>16)==0xac15) {
+              unsigned id = 0xfb000000 | (ip&0xffff);
+              set_reg32( 0x00c20020, id);
+              break;
+          }
+          result = result->ai_next;
+      }
 
-      unsigned id = 0xfb000000 |
-        (ntohl(saddr->sin_addr.s_addr)&0xffff);
-      set_reg32( 0x00c20020, id);
+      if (!result) {
+          printf("No 172.21 address found.  Defaulting");
+          unsigned id = 0xfb000000;
+          set_reg32( 0x00c20020, id);
+      }
+
     }
 
     //
