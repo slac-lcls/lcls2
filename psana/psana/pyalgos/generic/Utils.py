@@ -42,6 +42,7 @@ Usage::
 
     arr  = gu.load_textfile(path)
     gu.save_textfile(text, path, mode='w') # mode: 'w'-write, 'a'-append 
+    gu.set_file_access_mode(fname, mode=0o777)
 
     jo = gu.load_json(fname)
     gu.save_json(jo, fname)
@@ -198,11 +199,11 @@ def file_mode(fname) :
 
 #------------------------------
 
-def log_rec_on_start() :
+def log_rec_on_start(tsfmt='%Y-%m-%dT%H:%M:%S%z') :
     """Returns (str) record containing timestamp, login, host, cwd, and command line
     """
-    return '\n%s user:%s@%s cwd:%s\n  command:%s'%\
-           (str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%z'), get_login(), get_hostname(), get_cwd(), ' '.join(sys.argv))
+    return '\n%s user:%s@%s cwd:%s command:%s'%\
+           (str_tstamp(fmt=tsfmt), get_login(), get_hostname(), get_cwd(), ' '.join(sys.argv))
 
 #------------------------------
 
@@ -310,6 +311,10 @@ def print_parsed_path(path) :                       # Output for path:
     print('split(path)   =', os.path.split(path))   # ('/reg/d/psdm/XCS/xcsi0112/xtc', 'e167-r0015-s00-c00.xtc') 
 
 #------------------------------
+
+def set_file_access_mode(fname, mode=0o777):
+    os.chmod(fname, mode)
+
 #------------------------------
 
 def save_textfile(text, path, mode='w', verb=False) :

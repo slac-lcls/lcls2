@@ -1,6 +1,7 @@
 import numpy as np
 from psana.detector.detector_impl import DetectorImpl
 from amitypes import Array1d, Array2d, Array3d
+from psana.detector.epix10ka_base import epix10ka_base
 
 class hsd_raw_0_0_0(DetectorImpl):
     def __init__(self, *args):
@@ -251,9 +252,13 @@ class cspad_raw_1_2_3(DetectorImpl):
             geometry_access.load_pars_from_str(geometry_string)
         return geometry_access
 
-class epix_raw_2_0_1(DetectorImpl):
-    def __init__(self, *args):
-        super(epix_raw_2_0_1,self).__init__(*args)
+#class epix_raw_2_0_1(DetectorImpl):
+#    def __init__(self, *args):
+#        super(epix_raw_2_0_1,self).__init__(*args)
+
+class epix_raw_2_0_1(epix10ka_base):
+    def __init__(self, *args, **kwargs):
+        epix10ka_base.__init__(self, *args, **kwargs)
     def array(self, evt) -> Array2d:
         f = None
         segs = self._segments(evt)

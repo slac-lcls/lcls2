@@ -22,6 +22,12 @@ def arr_rot_n90(arr, rot_ang_n90=0) :
     else                  : return arr
 
 
+def sec_nsec_from_tstamp(ts):
+   nsec = ts & 0xffffffff
+   sec = (ts >> 32) & 0xffffffff
+   return sec, nsec
+
+
 def dict_from_arr3d(a):
     """Converts 3d array of shape=(n0,n1,n2) to dict {k[0:n0-1] : nd.array.shape(n1,n2)}
        Consumes 25us for epix10ka2m array shape:(16, 352, 384) size:2162688 dtype:float32

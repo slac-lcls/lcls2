@@ -11,11 +11,17 @@ dt_sec = time()-t0_sec
 print('np import consumed time (sec) = %.6f' % dt_sec)
 
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
+from psana import DataSource
 
 #----
 
 fname0 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2'
 fname1 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005-seg1and3.xtc2'
+
+
+#on daq-det-drp01:
+fname2 = '/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0147-s000-c000.xtc2'
+detname='epixquad'
 
 #----
 
@@ -73,10 +79,27 @@ def det_calib_constants(det, ctype):
       return None, None
 
 
+def datasource_run(**kwa):
+    ds = DataSource(**kwa)
+    return ds, next(ds.runs())
+
+
+def datasource_run_det(**kwa):
+    ds = DataSource(**kwa)
+    print('\nXXX dir(ds):', dir(ds))
+    
+    run = next(ds.runs())
+    print('\nXXX dir(run):', dir(run))
+
+    det = run.Detector(kwa.get('detname','opal'))
+    print('\nXXX dir(det):', dir(det))
+    
+    return ds, run, det
+
+
 def ds_run_det(fname, args):
     logger.info('ds_run_det input file:\n  %s' % fname)
 
-    from psana import DataSource
     ds = DataSource(files=fname)
     orun = next(ds.runs())
     det = orun.Detector(args.detname)
@@ -94,7 +117,7 @@ def ds_run_det(fname, args):
     expname = orun.expt if orun.expt is not None else args.expname # 'mfxc00318'
     runnum = orun.runnum
     print('expname:', expname)
-    print('runnum:', runnum)
+    print('runnum :', runnum)
     #print('detname:', oraw._det_name)
     print('detname:', det._det_name)
     print('split detnameid:', '\n'.join(detnameid.split('_')))
@@ -119,6 +142,79 @@ def test_raw(fname, args):
         logger.info(info_ndarr(segs, 'segs '))
         logger.info(info_ndarr(raw,  'raw  '))
     print(50*'-')
+
+
+def test_calib(fname, args):
+    from time import time
+
+    logger.info('in test_raw data from file:\n  %s' % fname)
+
+    ds = DataSource(files=fname, detname=args.detname)
+
+    run = next(ds.runs())
+    #print('\nXXX dir(run):', dir(run))
+    print('XXX runnum       : ', run.runnum)   # 147
+    print('XXX run.detnames : ', run.detnames) # {'epixquad'}
+    print('XXX run.expt     : ', run.expt)     # tstx00117
+    print('XXX run.id       : ', run.id)       # 0
+    print('XXX run.timestamp: ', run.timestamp)# 4190613356186573936 (int)
+    t_sec = int(time())
+    print('XXX tnow time %d sec as tstamp: %d' % (t_sec,t_sec<<32))
+    print('XXX run.stepinfo : ', run.stepinfo) # {('epixquad', 'step'): ['value', 'docstring'], ('epixquadhw', 'step'): ['value', 'docstring']}
+
+    #ts = run.timestamp
+    #sec = float(ts >> 32) #& 0xffffffff
+    #nsec = ts & 0xffffffff
+    #print('XXX timestamp: %d sec %d nsec'%(sec,nsec))# 4190613356186573936 today sec:1607015429
+
+    det = run.Detector(args.detname)
+    print('XXX det.calibconst.keys(): ', det.calibconst.keys()) # dict_keys(['geometry'])
+    #print(det.calibconst)
+    print('XXX det._det_name: ', det._det_name) # epixquad
+    print('XXX det._dettype : ', det._dettype)  # epix
+    print('XXX det._detid   : ', det._detid)    # -
+
+    print('det._configs:', det._configs)        # [<dgram.Dgram object at 0x7f7794082d40>]???? WHY IT IS A LIST? HOW TO GET LIST INDEX FOR DETECTOR?
+    cfg = det._configs[0]
+    print('\ndir(cfg):', dir(cfg))              # [..., '_dgrambytes', '_file_descriptor', '_offset', '_size', '_xtc', 'epixquad', 'epixquadhw', 'service', 'software', 'timestamp']
+
+    print('\ndir(det.raw):', dir(det.raw))      # [..., '_add_fields', '_calibconst', '_common_mode', '_configs', '_det_name', '_dettype', '_drp_class_name', '_env_store', '_info', '_return_types', '_seg_configs', '_segments', '_sorted_segment_ids', '_uniqueid', '_var_name', 'array', 'cached_pixel_coord_indexes', 'calib', 'det_calibconst', 'det_geo', 'det_geotxt_and_meta', 'geo', 'image', 'interpol_pars', 'pix_rc', 'pix_xyz', 'pixel_coord_indexes', 'pixel_coords', 'raw', 'segments']
+
+    seg_cfgs = det.raw._seg_configs()
+    print('det.raw._seg_configs():', det.raw._seg_configs())
+
+    for i,scfg in seg_cfgs.items():
+        print('\n== Segment %d'%i)
+        #print('  scfg', scfg) # container.Container object
+        #print('  dir(scfg.config):', dir(scfg.config)) # [..., 'asicPixelConfig', 'trbit']
+        print(info_ndarr(scfg.config.asicPixelConfig, '  scfg.config.asicPixelConfig: ')) # shape:(4, 178, 192) size:136704 dtype:uint8 [12 12 12 12 12]...
+        print('  scfg.config.trbit:', scfg.config.trbit) # [1 1 1 1]
+
+#    exit('TEST EXIT')
+#################
+
+
+    for stepnum,step in enumerate(run.steps()):
+
+        print('%s\nStep %1d' % (50*'_',stepnum))
+        #print('STEP dir(step):', dir(step))   # [..., 'esm', 'events', 'evt', 'evt_iter']            #print('STEP dir(det.step):', dir(det.step)) #'dgrams', 'docstring', 'env_store', 'value']
+
+        #continue
+
+
+        for evnum,evt in enumerate(step.events()):
+            if evnum>5 and evnum%200!=0: continue
+            print('%s\nStep %1d Event %04d' % (50*'_',stepnum, evnum))
+            segs = det.raw._segments(evt)
+            raw  = det.raw.raw(evt)
+            logger.info('segs: %s' % str(segs))
+            logger.info(info_ndarr(raw,  'raw  '))
+
+            print('STEP det.step.docstring(evt):', det.step.docstring(evt))
+            print('STEP det.step.value(evt):', det.step.value(evt))
+
+
+        print(50*'-')
 
 
 def test_image(fname, args):
@@ -180,6 +276,8 @@ if __name__ == "__main__":
     LEVEL_NAMES = [k for k in DICT_NAME_TO_LEVEL.keys() if isinstance(k,str)]
     STR_LEVEL_NAMES = ', '.join(LEVEL_NAMES)
 
+
+    tname = sys.argv[1] if len(sys.argv)>1 else '100'
     usage =\
         '\n  python %s <test-name> [optional-arguments]' % SCRNAME\
       + '\n  where test-name: '\
@@ -187,6 +285,7 @@ if __name__ == "__main__":
       + '\n    1 - test_raw("%s")'%fname1\
       + '\n    2 - test_image("%s")'%fname0\
       + '\n    3 - test_image("%s")'%fname1\
+      + '\n    4 - test_calib("%s") DATA FILE IS AVAILABLE ON daq-det-drp01 ONLY'%fname2\
       + '\n ==== '\
       + '\n    ./%s 2 -m0 -s101' % SCRNAME\
       + '\n    ./%s 2 -m1' % SCRNAME\
@@ -197,8 +296,8 @@ if __name__ == "__main__":
     d_loglev  = 'INFO' #'INFO' #'DEBUG'
     d_pattrs  = False
     d_dograph = True
-    d_detname = 'epix10k2M'
-    d_expname = 'mfxc00318'
+    d_detname = 'epixquad'  if tname=='4' else 'epix10k2M'
+    d_expname = 'tstx00117' if tname=='4' else 'mfxc00318'
     d_ofname  = None
     d_mapmode = 1
     d_pscsize = 100
@@ -234,6 +333,7 @@ if __name__ == "__main__":
     elif tname=='1': test_raw  (fname1, args)
     elif tname=='2': test_image(fname0, args)
     elif tname=='3': test_image(fname1, args)
+    elif tname=='4': test_calib(fname2, args)
     else: logger.warning('NON-IMPLEMENTED TEST: %s' % tname)
 
     exit('END OF %s' % SCRNAME)
