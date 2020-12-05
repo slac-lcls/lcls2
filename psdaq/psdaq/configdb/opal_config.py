@@ -270,6 +270,11 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     ocfg = cfg
     return json.dumps(cfg)
 
+    #ncfg = cfg.copy()
+    #del ncfg['expert']['ClinkFeb']
+    #return json.dumps(ncfg)
+
+
 def opal_scan_keys(update):
     global ocfg
     global cl

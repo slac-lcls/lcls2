@@ -55,7 +55,7 @@ def epixquad_cdict():
     top.set(base+'AsicAcqWidth', 0x2710, 'UINT32')
     top.set(base+'AsicAcqLToPPmatL', 0x3e8, 'UINT32')
     top.set(base+'AsicPpmatToReadout', 0x0, 'UINT32')
-    top.set(base+'AsicRoClkHalfT', 0xaaaa0002, 'UINT32')
+    top.set(base+'AsicRoClkHalfT', 0x3, 'UINT32')
     top.set(base+'AsicAcqForce', 0, 'boolEnum')
     top.set(base+'AsicAcqValue', 0, 'boolEnum')
     top.set(base+'AsicR0Force' , 0, 'boolEnum')
@@ -75,7 +75,7 @@ def epixquad_cdict():
 
     base = 'expert.EpixQuad.RdoutCore.'
     top.set(base+'RdoutEn', 1, 'boolEnum')
-    top.set(base+'AdcPipelineDelay', 0x5a, 'UINT32')
+    top.set(base+'AdcPipelineDelay', 0x44, 'UINT32')
     top.set(base+'TestData', 0, 'boolEnum')
     top.set(base+'OverSampleEn', 0, 'boolEnum')
     top.set(base+'OverSampleSize', 0, 'UINT8')
@@ -178,7 +178,8 @@ def epixquad_cdict():
     top.define_enum('ClockDivideChEnum',{ '{}'.format(i+1):i for i in range(8)})
     top.define_enum('OutputFormatEnum', { 'TwosComplement':0, 'OffsetBinary':1})
 
-    for i in range(10):
+    #for i in range(10):
+    if False:
         base = 'expert.EpixQuad.Ad9249Readout[{}].'.format(i)
         top.set(base+'FrameDelay', 0, 'UINT16')
         top.set(base+'Invert'    , 0, 'boolEnum')

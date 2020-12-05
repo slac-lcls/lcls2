@@ -21,6 +21,14 @@ chan = None
 group = None
 ocfg = None
 
+def mode(a):
+    uniqueValues = np.unique(a).tolist()
+    uniqueCounts = [len(np.nonzero(a == uv)[0])
+                    for uv in uniqueValues]
+
+    modeIdx = uniqueCounts.index(max(uniqueCounts))
+    return itemArray[modeIdx]
+
 def dumpvars(prefix,c):
     print(prefix)
     for key,val in c.nodes.items():
@@ -54,10 +62,10 @@ def pixel_mask_square(value0,value1,spacing,position):
     if position>=spacing**2:
         print('position out of range')
         position=0;
-    out=np.zeros((ny,nx),dtype=np.int)+value0;
-    position_x=position%spacing; position_y=position//spacing;
-    out[position_y::spacing,position_x::spacing]=value1;
-    return out;
+    out=np.zeros((ny,nx),dtype=np.int)+value0
+    position_x=position%spacing; position_y=position//spacing
+    out[position_y::spacing,position_x::spacing]=value1
+    return out
 
 #
 #  Initialize the rogue accessor
@@ -212,8 +220,17 @@ def config_expert(base, cfg, writePixelMap=True):
         apply_dict('pbase.DevPcie',pbase.DevPcie,cfg['expert']['DevPcie'])
 
     cbase = base['cam']
+    #  Important that Asic IsEn is True while configuring and false when running
+    for i in range(16):
+        getattr(cbase,f'Epix10kaSaci[{i}]').IsEn.set(True)
+
     if ('expert' in cfg and 'EpixQuad' in cfg['expert']):
-        apply_dict('cbase',cbase,cfg['expert']['EpixQuad'])
+        epixQuad = cfg['expert']['EpixQuad'].copy()
+        if 'AcqCore' in epixQuad and 'AsicRoClkHalfT' in epixQuad['AcqCore']:
+            epixQuad['AcqCore']['AsicRoClkHalfT'] |= 0xaaaa0000
+        if 'RdoutCore' in epixQuad and 'AdcPipelineDelay' in epixQuad['RdoutCore']:
+            epixQuad['RdoutCore']['AdcPipelineDelay'] |= 0xaaaa0000
+        apply_dict('cbase',cbase,epixQuad)
 
     if writePixelMap:
         if 'user' in cfg and 'pixel_map' in cfg['user']:
@@ -221,14 +238,52 @@ def config_expert(base, cfg, writePixelMap=True):
             #  Would like to send a 3d array
             a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
             pixelConfigMap = np.reshape(a,(16,178,192))
-            core = cbase.SaciConfigCore
-            core.enable.set(True)
-            core.SetAsicsMatrix(json.dumps(pixelConfigMap.tolist()))
-            core.enable.set(False)
+            if True:
+                #
+                #  Accelerated matrix configuration (~2 seconds)
+                #
+                core = cbase.SaciConfigCore
+                core.enable.set(True)
+                core.SetAsicsMatrix(json.dumps(pixelConfigMap.tolist()))
+                core.enable.set(False)
+            else:
+                #
+                #  Pixel by pixel matrix configuration (up to 15 minutes)
+                #
+                # save TrigEn state and stop
+                cbase.SystemRegs.enable.set(True)
+                trigEn = cbase.SystemRegs.TrigEn.get()
+                cbase.SystemRegs.TrigEn.set(False)
+                # clear matrix in all enabled ASICs
+                for i in range(16):
+                    # iterate through enabled (preset) ASICs
+                    saci = cbase.Epix10kaSaci[i]
+                    saci.enable.set(True)
+                    if saci.enable.get() == True:
+                        print('Setting pulsed region in ASIC %d'%i)
+                        # pulse arbitrary square region of 3x3 pixels in each bank
+                        for x in range(178):
+                            row = pixelConfigMap[i,x]
+                            m = mode(row)
+                            b = row==m
+                            saci.RowCounter(x)
+                            saci.WriteRowData(m)
+                            for y in range(192):
+                                if not b[y]:
+                                    saci.ColCounter(y)
+                                    v = pixelConfigMap[i,x,y]
+                                    saci.WritePixelData ('%d'%v)
+                # restore TrigEn state
+                cbase.SystemRegs.TrigEn.set(trigEn)
+                
             print('SetAsicsMatrix complete')
         else:
             print('writePixelMap but no new map')
             print(cfg)
+
+    #  Important that Asic IsEn is True while configuring and false when running
+    for i in range(16):
+        getattr(cbase,f'Epix10kaSaci[{i}]').IsEn.set(False)
 
 #
 #  Called on Configure
@@ -262,6 +317,9 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #cfg['firmwareVersion:RO'] = cbase.AxiVersion.FpgaVersion.get()
     #cfg['firmwareBuild:RO'  ] = cbase.AxiVersion.BuildStamp.get()
 
+#    print('--Configuring AsicMatrix for injection--')
+#    cbase.SetAsicMatrixTest()
+
     ocfg = cfg
     #return [json.dumps(cfg)]
 
@@ -270,8 +328,14 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #
     trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] for i in range(16)]
 
+    topname = cfg['detName:RO'].split('_')
+
     scfg = {}
-    scfg[0] = cfg
+
+    #  Rename the complete config detector
+    scfg[0] = cfg.copy()
+    scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
+
 
     a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
     pixelConfigMap = np.reshape(a,(16,178,192))
@@ -282,15 +346,14 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
                       cbase.SystemRegs.CarrierIdHigh[seg].get() ]
         digitalId = [ 0, 0 ]
         analogId  = [ 0, 0 ]
-        id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'.format(firmwareVersion,
-                                                                carrierId[0], carrierId[1],
-                                                                digitalId[0], digitalId[1],
-                                                                analogId [0], analogId [1])
+        id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(firmwareVersion,
+                                                          carrierId[0], carrierId[1],
+                                                          digitalId[0], digitalId[1],
+                                                          analogId [0], analogId [1])
         top = cdict()
         top.setAlg('config', [2,0,0])
-        topname = cfg['detName:RO'].split('_')
         top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
-        top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4].tolist(), 'UINT8')
+        top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4,:176].tolist(), 'UINT8')  # only the rows which have readable pixels
         top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
         scfg[seg+1] = top.typed_json()
 
@@ -323,8 +386,13 @@ def epixquad_scan_keys(update):
         copy_config_entry(cfg,ocfg,key)
         copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
 
+    topname = cfg['detName:RO'].split('_')
+
     scfg = {}
-    scfg[0] = cfg
+
+    #  Rename the complete config detector
+    scfg[0] = cfg.copy()
+    scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
 
     if pixelMapChanged:
         a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
@@ -338,13 +406,12 @@ def epixquad_scan_keys(update):
                           cbase.SystemRegs.CarrierIdHigh[seg].get() ]
             digitalId = [ 0, 0 ]
             analogId  = [ 0, 0 ]
-            id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'.format(firmwareVersion,
-                                                                    carrierId[0], carrierId[1],
-                                                                    digitalId[0], digitalId[1],
-                                                                    analogId [0], analogId [1])
+            id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(firmwareVersion,
+                                                              carrierId[0], carrierId[1],
+                                                              digitalId[0], digitalId[1],
+                                                              analogId [0], analogId [1])
             top = cdict()
             top.setAlg('config', [2,0,0])
-            topname = cfg['detName:RO'].split('_')
             top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
             top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4].tolist(), 'UINT8')
             top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
@@ -379,7 +446,14 @@ def epixquad_update(update):
         copy_config_entry(cfg,ocfg,key)
         copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
 
+    topname = cfg['detName:RO'].split('_')
+
     scfg = {}
+
+    #  Rename the complete config detector
+    scfg[0] = cfg.copy()
+    scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
+
     scfg[0] = cfg
 
     if writePixelMap:
@@ -397,13 +471,12 @@ def epixquad_update(update):
                           cbase.SystemRegs.CarrierIdHigh[seg].get() ]
             digitalId = [ 0, 0 ]
             analogId  = [ 0, 0 ]
-            id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'.format(firmwareVersion,
-                                                                    carrierId[0], carrierId[1],
-                                                                    digitalId[0], digitalId[1],
-                                                                    analogId [0], analogId [1])
+            id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(firmwareVersion,
+                                                              carrierId[0], carrierId[1],
+                                                              digitalId[0], digitalId[1],
+                                                              analogId [0], analogId [1])
             top = cdict()
             top.setAlg('config', [2,0,0])
-            topname = cfg['detName:RO'].split('_')
             top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
             top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4].tolist(), 'UINT8')
             if trbit is not None:

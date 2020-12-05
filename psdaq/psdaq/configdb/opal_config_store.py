@@ -4,7 +4,7 @@ import sys
 import IPython
 import argparse
 
-def opal_cdict(args):
+def opal_cdict():
 
     #database contains collections which are sets of documents (aka json objects).
     #each type of device has a collection.  The elements of that collection are configurations of that type of device.
@@ -18,7 +18,6 @@ def opal_cdict(args):
     #ID point to the actuall Mongo DB collection and document
 
     top = cdict()
-    top.setInfo('opal', args.name, args.segm, args.id, 'No comment')
     top.setAlg('config', [2,0,0])
 
     top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
@@ -27,7 +26,7 @@ def opal_cdict(args):
     help_str  = "-- user interface --"
     help_str += "\nstart_ns : nanoseconds from fiducial to exposure start"
     help_str += "\ngate_ns  : nanoseconds of exposure; rounded up to 10 microseconds"
-    top.set("help:RO", help_str, 'CHARSTR')
+#    top.set("help:RO", help_str, 'CHARSTR')
 
     top.define_enum('binEnum', {'x%d'%(2**key):key for key in range(4)})
 
@@ -112,6 +111,7 @@ if __name__ == "__main__":
     mycdb.add_alias(args.alias)
     mycdb.add_device_config('opal')
 
-    top = opal_cdict(args)
+    top = opal_cdict()
+    top.setInfo('opal', args.name, args.segm, args.id, 'No comment')
 
     mycdb.modify_device(args.alias, top)

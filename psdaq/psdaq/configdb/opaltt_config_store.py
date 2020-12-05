@@ -5,10 +5,9 @@ import sys
 import IPython
 import argparse
 
-def opaltt_cdict(args):
+def opaltt_cdict():
 
-    # load the "base" opal configuration
-    top = opal.opal_cdict(args)
+    top = opal.opal_cdict()
 
     #  append to the help string
     help_str = top.get("help:RO")
@@ -45,6 +44,9 @@ def opaltt_cdict(args):
     top.set("fex.sb.roi.y0",     0, 'UINT32')
     top.set("fex.sb.roi.x1",  1023, 'UINT32')
     top.set("fex.sb.roi.y1",   149, 'UINT32')
+
+#    top.define_enum('boolEnum', {'False':0, 'True':1})
+#    top.set("fex.subtractAndNormalize" 1, 'boolEnum')
 
     top.define_enum('axisEnum', {'X':0, 'Y':1})
     top.set("fex.project.axis"       ,  0, 'axisEnum')
@@ -88,6 +90,7 @@ if __name__ == "__main__":
     mycdb.add_alias(args.alias)
     mycdb.add_device_config('opal')
 
-    top = opaltt_cdict(args)
+    top = opaltt_cdict()
+    top.setInfo('opal', args.name, args.segm, args.id, 'No comment')
 
     mycdb.modify_device(args.alias, top)
