@@ -48,7 +48,6 @@ public:
 
 Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     Detector    (para, pool),
-    m_evtNamesId(-1, -1), // placeholder
     m_epics_name(para->kwargs["hsd_epics_prefix"]),
     m_paddr     (_getPaddr())
 {

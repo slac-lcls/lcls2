@@ -30,8 +30,7 @@ public:
 } TTDef;
 
 TimeTool::TimeTool(Parameters* para, MemPool* pool) :
-    BEBDetector(para, pool),
-    m_evtNamesId(-1, -1) // placeholder
+    BEBDetector(para, pool)
 {
     _init(para->detName.c_str());
     _init_feb();

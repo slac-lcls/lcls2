@@ -76,7 +76,6 @@ public:
 
 TimingSystem::TimingSystem(Parameters* para, MemPool* pool) :
     XpmDetector   (para, pool),
-    m_evtNamesId  (-1, -1), // placeholder
     m_connect_json(""),
     m_module      (0)
 {

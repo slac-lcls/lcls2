@@ -1,8 +1,10 @@
 #include "OpalTTFex.hh"
+#include "drp.hh"
 
 #include "xtcdata/xtc/DescData.hh"
 #include "psalg/calib/NDArray.hh"
 #include "psalg/detector/UtilsConfig.hh"
+#include "psalg/utils/SysLog.hh"
 
 #include <list>
 #include <math.h>
@@ -12,6 +14,7 @@
 using namespace Drp;
 using namespace XtcData;
 using psalg::NDArray;
+using logging = psalg::SysLog;
 
 enum Cuts { _NCALLS, _NOLASER, _FRAMESIZE, _PROJCUT, 
             _NOBEAM, _NOREF, _NOFITS, _NCUTS };
@@ -38,15 +41,48 @@ static std::list<unsigned> find_peaks(std::vector<double>&, double, unsigned);
 static std::vector<double> parab_fit(double* input, unsigned len);
 static std::vector<double> parab_fit(double* qwf, unsigned ix, unsigned len, double nxta);
 
-OpalTTFex::OpalTTFex() :
+#define MLOOKUP(m,name,dflt) (m.find(name)==m.end() ? dflt : m[name])
+
+OpalTTFex::OpalTTFex(Parameters* para) :
   m_eventcodes_beam_incl (0),
   m_eventcodes_beam_excl (0),
   m_eventcodes_laser_incl(0),
   m_eventcodes_laser_excl(0)
 {
+  std::string fname = MLOOKUP(para->kwargs,"ttreffile",
+                              para->detName+".ttref");
+  if (fname[0]=='/') {
+      m_fname = fname;
+  }
+  else {
+      const char* dir = getenv("HOME");
+      m_fname = std::string(dir ? dir : "/tmp") + "/" + fname;
+  }
+
+  m_ref_avg.resize(0);
+  FILE* f = fopen(m_fname.c_str(),"r");
+  if (f) {
+      double v;
+      while( fscanf(f,"%lf",&v)==1 )
+          m_ref_avg.push_back(v);
+      fclose(f);
+      logging::info("OpalTTFex read reference from %s",m_fname.c_str());
+  }
 }
 
-OpalTTFex::~OpalTTFex() {}
+OpalTTFex::~OpalTTFex() 
+{
+  // Record accumulated reference
+  FILE* f = fopen(m_fname.c_str(),"w");
+  if (f) {
+      for(unsigned i=0; i<m_ref_avg.size(); i++)
+          fprintf(f," %lf",m_ref_avg[i]);
+      fprintf(f,"\n");
+      fclose(f);
+      logging::info("OpalTTFex saved reference to %s",m_fname.c_str());
+  }
+
+}
 
 void OpalTTFex::configure(XtcData::ConfigIter& configo,
                           unsigned      columns,
@@ -55,16 +91,6 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
   m_columns = columns;
   m_rows    = rows;
   
-  /*
-    char buff[128];
-    if (_fname[0]=='/')
-    strcpy(buff,_fname.c_str());
-    else {
-    const char* dir = getenv("HOME");
-    sprintf(buff,"%s/%s", dir ? dir : "/tmp", _fname.c_str());
-    }
-  */
-
   XtcData::Names& names = detector::configNames(configo);
   XtcData::DescData& descdata = configo.desc_shape();
   
@@ -144,12 +170,18 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
   default: break;
   }
   printf("fex.ref.record %u m_record_ref_image %c  m_record_ref_projection %c\n",
-         descdata.get_value<int32_t>("fex.ref.record:recordAxis"),
+         descdata.get_value<int32_t>("fex.ref.record:recordEnum"),
          m_record_ref_image ? 'T':'F',
          m_record_ref_projection ? 'T':'F');
+#undef GET_ENUM
+#define GET_ENUM(a,b) {                                                 \
+      m_##a = descdata.get_value<int32_t>("fex." #a ":" #b);            \
+          printf("m_" #a " = %u\n", m_##a);                             \
+  }
+  //  GET_ENUM(subtractAndNormalize,boolEnum);
   
   m_sb_avg.resize(0);
-  m_ref_avg.resize(0);
+//  m_ref_avg.resize(0); // reset reference
 
   m_cut.clear();
   m_cut.resize(_NCUTS,0);
@@ -160,19 +192,6 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
       
 void OpalTTFex::unconfigure()
 {
-  /*
-  // Record accumulated reference
-  char buff[128];
-  const char* dir = getenv("HOME");
-  sprintf(buff,"%s/timetool.ref.%08x", dir ? dir : "/tmp", m_get_key);
-  FILE* f = fopen(buff,"w");
-  if (f) {
-  for(unsigned i=0; i<m_ref_avg.size(); i++)
-  fprintf(f," %f",m_ref_avg[i]);
-  fprintf(f,"\n");
-  fclose(f);
-  }
-  */
   if (m_cut.size() && m_cut[_NCALLS]>0) {
     printf("TimeTool::Fex Summary\n");
     for(unsigned i=0; i<_NCUTS; i++)

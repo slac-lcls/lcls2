@@ -13,6 +13,7 @@ class Roi {
 public:
   unsigned x0, y0, x1, y1;
 };
+class Parameters;
 
 class EventInfo {
 public:
@@ -35,7 +36,7 @@ public:
 
 class OpalTTFex {
 public:
-    OpalTTFex();
+    OpalTTFex(Parameters*);
     ~OpalTTFex();
  public:
     void configure  (XtcData::ConfigIter&,unsigned,unsigned);
@@ -66,6 +67,8 @@ public:
   virtual void _monitor_sub_sig (std::vector<double>&);
   virtual void _monitor_flt_sig (std::vector<double>&);
 private:
+    std::string m_fname;
+
     unsigned m_columns;
     unsigned m_rows;
 
@@ -76,6 +79,8 @@ private:
 
     unsigned m_project_axis    ;  // project image onto Y axis
     int      m_project_minvalue;  // valid projection must be at least this large
+
+    //    int      m_subtractAndNormalize;
 
     unsigned m_use_ref_roi;
     unsigned m_use_sb_roi;

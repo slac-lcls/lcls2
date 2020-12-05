@@ -158,9 +158,7 @@ namespace Drp {
   };
 
 Wave8::Wave8(Parameters* para, MemPool* pool) :
-    BEBDetector(para, pool),
-    m_evtNamesRaw(-1, -1), // placeholder
-    m_evtNamesFex(-1, -1)  // placeholder
+    BEBDetector(para, pool)
 {
     _init(para->kwargs["epics_prefix"].c_str());
 }

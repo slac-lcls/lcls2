@@ -91,11 +91,22 @@ json XpmDetector::connectionInfo()
         exit(EXIT_FAILURE);
       }
 
-      sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
+      while(result) {
+          sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
+          unsigned ip = ntohl(saddr->sin_addr.s_addr);
+          if ((ip>>16)==0xac15) {
+              unsigned id = 0xfb000000 | (ip&0xffff);
+              dmaWriteRegister(fd, &tem->xma().txId, id);
+              break;
+          }
+          result = result->ai_next;
+      }
 
-      unsigned id = 0xfb000000 |
-        (ntohl(saddr->sin_addr.s_addr)&0xffff);
-      dmaWriteRegister(fd, &tem->xma().txId, id);
+      if (!result) {
+          logging::info("No 172.21 address found.  Defaulting");
+          unsigned id = 0xfb000000;
+          dmaWriteRegister(fd, &tem->xma().txId, id);
+      }
     }
 
     //  Retrieve the timing link ID

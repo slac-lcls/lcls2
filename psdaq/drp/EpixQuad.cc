@@ -110,10 +110,14 @@ unsigned EpixQuad::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
 {
     // set up the names for L1Accept data
     for (unsigned seg=0; seg < 4; seg++) {
-        m_evtNamesId[seg] = NamesId(nodeId, EventNamesIndex+seg);
         Alg alg("raw", 2, 0, 1);
-        Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
-                                            "epix", m_para->serNo.c_str(), m_evtNamesId[seg], 
+        // copy the detName, detType, detId from the Config Names
+        Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+seg)].names();
+        m_evtNamesId[seg] = NamesId(nodeId, EventNamesIndex+seg);
+        Names& eventNames = *new(xtc) Names(configNames.detName(), alg, 
+                                            configNames.detType(),
+                                            configNames.detId(), 
+                                            m_evtNamesId[seg], 
                                             seg+4*m_para->detSegment);
 
         eventNames.add(xtc, epixQuadDef);

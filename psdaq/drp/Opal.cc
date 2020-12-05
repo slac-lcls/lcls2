@@ -19,6 +19,8 @@ using namespace XtcData;
 using logging = psalg::SysLog;
 using json = nlohmann::json;
 
+//#define DBUG
+
 namespace Drp {
 
   class RawDef : public VarDef
@@ -171,7 +173,6 @@ using Drp::OpalTTSim;
 
 Opal::Opal(Parameters* para, MemPool* pool) :
     BEBDetector   (para, pool),
-    m_evtNamesId  (-1, -1), // placeholder
     m_tt          (0),
     m_sim         (0)
 {
@@ -274,12 +275,11 @@ void     Opal::shutdown()
 }
 
 OpalTT::OpalTT(Opal& d, Parameters* para) :
-  m_det         (d),
-  m_para        (para),
-  m_fexNamesId  (-1, -1),
-  m_refNamesId  (-1, -1),
-  m_background_sem(Pds::Semaphore::FULL),
-  m_background_empty(true)
+  m_det             (d),
+  m_para            (para),
+  m_background_sem  (Pds::Semaphore::FULL),
+  m_background_empty(true),
+  m_fex             (para)
 {
 }
 
@@ -384,7 +384,7 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
 OpalTTSim::OpalTTSim(const char* evtxtc, Opal& d, Parameters* para) :
   m_det         (d),
   m_para        (para),
-  m_simNamesId  (-1,-1),
+  m_simNamesId  (0,0),
   m_framebuffer  (2*1024*1024),
   m_evtindex     (0)
 
@@ -444,6 +444,11 @@ void OpalTTSim::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
 
    shape[0] = m_det.m_rows*m_det.m_columns*sizeof(uint16_t);
    subframes[2] = Array<uint8_t>(m_framebuffer.data(), shape, 1);
+
+#ifdef DBUG
+   printf("Copied %d/%d rows x %d/%d cols into subframes\n", 
+          f._height, shape[1], f._width, shape[0]);
+#endif
 
   // transfer event codes into EventInfo
   { EventInfo& info = *reinterpret_cast<EventInfo*>(subframes[3].data());
