@@ -6,7 +6,11 @@ def atcaIp(v):
 
 def hostName(v):
     ip = '172.21.{:d}.{:d}'.format((v>>8)&0xff,(v>>0)&0xff)
-    return socket.gethostbyaddr(ip)[0].split('.')[0].split('-')[-1]
+    try:
+        name = socket.gethostbyaddr(ip)[0].split('.')[0].split('-')[-1]
+    except:
+        name = '{:x}'.format(v)
+    return name
 
 def nameLinkXpm(v):
     return ('XPM:{:}'.format((v>>20)&0xf), atcaIp(v))
