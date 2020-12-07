@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <bitset>
 #include <climits>                      // HOST_NAME_MAX
+#include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
 #include <DmaDriver.h>
 #include "DrpBase.hh"
@@ -55,22 +56,6 @@ static unsigned nextPowerOf2(unsigned n)
     return 1 << count;
 }
 
-void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str) {
-    std::istringstream ss(kwargs_str);
-    std::string kwarg;
-    while (getline(ss, kwarg, ',')) {
-        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
-        auto pos = kwarg.find("=", 0);
-        if (pos == std::string::npos) {
-            logging::critical("Keyword argument with no equal sign");
-            throw "drp.cc error: keyword argument with no equal sign: "+kwargs_str;
-        }
-        std::string key = kwarg.substr(0,pos);
-        std::string value = kwarg.substr(pos+1,kwarg.length());
-        //std::cout << "kwarg = '" << kwarg << "' key = '" << key << "' value = '" << value << "'" << std::endl;
-        para.kwargs[key] = value;
-    }
-}
 
 MemPool::MemPool(Parameters& para) :
     m_transitionBuffers(para.nTrBuffers),
@@ -79,14 +64,14 @@ MemPool::MemPool(Parameters& para) :
 {
     m_fd = open(para.device.c_str(), O_RDWR);
     if (m_fd < 0) {
-        logging::critical("Error opening %s", para.device.c_str());
+        logging::critical("Error opening %s: %s", para.device.c_str(), strerror(errno));
         throw "Error opening kcu1500!!";
     }
 
     uint32_t dmaCount;
     dmaBuffers = dmaMapDma(m_fd, &dmaCount, &m_dmaSize);
     if (dmaBuffers == NULL ) {
-        logging::critical("Failed to map dma buffers!");
+        logging::critical("Failed to map dma buffers: %s", strerror(errno));
         throw "Error calling dmaMapDma!!";
     }
     logging::info("dmaCount %u  dmaSize %u", dmaCount, m_dmaSize);
@@ -414,6 +399,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_tPrms.core[0]   = -1;
     m_tPrms.core[1]   = -1;
     m_tPrms.verbose   = para.verbose;
+    m_tPrms.kwargs    = para.kwargs;
     m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, m_exporter);
 
     m_mPrms.instrument = para.instrument;
@@ -423,6 +409,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_mPrms.maxEvSize = pool.bufferSize();
     m_mPrms.maxTrSize = para.maxTrSize;
     m_mPrms.verbose   = para.verbose;
+    m_mPrms.kwargs    = para.kwargs;
     m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, m_exporter);
 
     m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *m_mebContributor, m_exporter);

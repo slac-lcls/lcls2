@@ -8,6 +8,7 @@
 
 #include "psdaq/eb/utilities.hh"
 
+#include "psdaq/service/kwargs.hh"
 #include "psdaq/service/Fifo.hh"
 #include "psdaq/service/GenericPool.hh"
 #include "psdaq/service/Collection.hh"
@@ -268,7 +269,7 @@ Meb::Meb(const MebParams&        prms,
   _eventCount  (0),
   _requestCount(0),
   _prms        (prms),
-  _mrqTransport(prms.verbose)
+  _mrqTransport(prms.verbose, prms.kwargs)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
@@ -522,7 +523,12 @@ std::string MebApp::_error(const json&        msg,
 json MebApp::connectionInfo()
 {
   // Allow the default NIC choice to be overridden
-  if (_prms.ifAddr.empty())  _prms.ifAddr = getNicIp(_prms.kwargs["forceEnet"] == "yes");
+  if (_prms.ifAddr.empty())
+  {
+    _prms.ifAddr = _prms.kwargs.find("ep_domain") != _prms.kwargs.end()
+                 ? getNicIp(_prms.kwargs["ep_domain"])
+                 : getNicIp(_prms.kwargs["forceEnet"] == "yes");
+  }
 
   // If port is not user specified, reset the previously allocated port number
   if (_ebPortEph)            _prms.ebPort.clear();
@@ -766,24 +772,6 @@ using namespace Pds;
 
 
 static
-void get_kwargs(EbParams& para, const std::string& kwargs_str) {
-    std::istringstream ss(kwargs_str);
-    std::string kwarg;
-    while (getline(ss, kwarg, ',')) {
-        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
-        auto pos = kwarg.find("=", 0);
-        if (pos == std::string::npos) {
-            logging::critical("Keyword argument with no equal sign");
-            throw "drp.cc error: keyword argument with no equal sign: "+kwargs_str;
-        }
-        std::string key = kwarg.substr(0,pos);
-        std::string value = kwarg.substr(pos+1,kwarg.length());
-        //std::cout << "kwarg = '" << kwarg << "' key = '" << key << "' value = '" << value << "'" << std::endl;
-        para.kwargs[key] = value;
-    }
-}
-
-static
 void usage(char* progname)
 {
   printf("Usage: %s -C <collection server> "
@@ -846,14 +834,16 @@ int main(int argc, char** argv)
       case 'd':
         prms.ldist = true;
         break;
-      case 'A':  prms.ifAddr        = optarg;               break;
-      case 'C':  collSrv            = optarg;               break;
-      case '1':  prms.core[0]       = atoi(optarg);         break;
-      case '2':  prms.core[1]       = atoi(optarg);         break;
-      case 'u':  prms.alias         = optarg;               break;
-      case 'M':  prms.prometheusDir = optarg;               break;
-      case 'k':  kwargs_str         = std::string(optarg);  break;
-      case 'v':  ++prms.verbose;                            break;
+      case 'A':  prms.ifAddr        = optarg;                      break;
+      case 'C':  collSrv            = optarg;                      break;
+      case '1':  prms.core[0]       = atoi(optarg);                break;
+      case '2':  prms.core[1]       = atoi(optarg);                break;
+      case 'u':  prms.alias         = optarg;                      break;
+      case 'M':  prms.prometheusDir = optarg;                      break;
+      case 'k':  kwargs_str         = kwargs_str.empty()
+                                    ? optarg
+                                    : kwargs_str + ", " + optarg;  break;
+      case 'v':  ++prms.verbose;                                   break;
       case 'h':                         // help
         usage(argv[0]);
         return 0;
@@ -906,7 +896,7 @@ int main(int argc, char** argv)
   if (prms.tag.empty())  prms.tag = prms.instrument;
   logging::info("Partition Tag: '%s'", prms.tag.c_str());
 
-  get_kwargs(prms, kwargs_str);
+  get_kwargs(kwargs_str, prms.kwargs);
 
   struct sigaction sigAction;
 

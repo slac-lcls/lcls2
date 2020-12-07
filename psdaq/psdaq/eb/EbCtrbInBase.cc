@@ -52,7 +52,7 @@ static void dumpBatch(const TebContributor& ctrb,
 
 EbCtrbInBase::EbCtrbInBase(const TebCtrbParams&                   prms,
                            const std::shared_ptr<MetricExporter>& exporter) :
-  _transport    (prms.verbose),
+  _transport    (prms.verbose, prms.kwargs),
   _maxResultSize(0),
   _batchCount   (0),
   _eventCount   (0),

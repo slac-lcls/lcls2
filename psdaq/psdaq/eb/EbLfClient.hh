@@ -13,6 +13,8 @@ namespace Pds {
     {
     public:
       EbLfClient(const unsigned& verbose);
+      EbLfClient(const unsigned&                           verbose,
+                 const std::map<std::string, std::string>& kwargs);
     public:
       int connect(EbLfCltLink** link,
                   const char*   peer,
@@ -20,10 +22,11 @@ namespace Pds {
                   unsigned      tmo);
       int disconnect(EbLfCltLink*);
     public:
-      const uint64_t& pending() const  { return _pending; }
+      const uint64_t& pending() const  { return *const_cast<uint64_t*>(&_pending); } // Cast away volatile
     private:
-      uint64_t        _pending;         // Bit list of IDs currently posting
-      const unsigned& _verbose;         // Print some stuff if set
+      volatile uint64_t _pending;       // Bit list of IDs currently posting
+      const unsigned&   _verbose;       // Print some stuff if set
+      Fabrics::Info     _info;          // Connection options
     };
 
     // --- Revisit: The following maybe better belongs somewhere else

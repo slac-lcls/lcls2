@@ -19,7 +19,6 @@ namespace Drp {
 static const char* const RED_ON  = "\033[0;31m";
 static const char* const RED_OFF = "\033[0m";
 
-void get_kwargs(Drp::Parameters& para, const std::string& kwargs_str);
 
 struct RunInfo
 {

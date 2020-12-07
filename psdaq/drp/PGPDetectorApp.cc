@@ -408,7 +408,9 @@ void PGPDetectorApp::handleReset(const json& msg)
 
 json PGPDetectorApp::connectionInfo()
 {
-    std::string ip = getNicIp(m_para.kwargs["forceEnet"] == "yes");
+    std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
+                   ? getNicIp(m_para.kwargs["ep_domain"])
+                   : getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
     json info = m_det->connectionInfo();

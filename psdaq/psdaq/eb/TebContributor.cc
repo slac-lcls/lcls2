@@ -33,7 +33,7 @@ using logging  = psalg::SysLog;
 TebContributor::TebContributor(const TebCtrbParams&                   prms,
                                const std::shared_ptr<MetricExporter>& exporter) :
   _prms        (prms),
-  _transport   (prms.verbose),
+  _transport   (prms.verbose, prms.kwargs),
   _id          (-1),
   _numEbs      (0),
   _pending     (MAX_LATENCY), // Revisit: MAX_BATCHES),

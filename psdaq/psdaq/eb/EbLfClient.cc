@@ -20,17 +20,31 @@ EbLfClient::EbLfClient(const unsigned& verbose) :
 {
 }
 
+EbLfClient::EbLfClient(const unsigned&                           verbose,
+                       const std::map<std::string, std::string>& kwargs) :
+  _pending(0),
+  _verbose(verbose),
+  _info   (kwargs)
+{
+}
+
 int EbLfClient::connect(EbLfCltLink** link,
                         const char*   peer,
                         const char*   port,
                         unsigned      msTmo)
 {
+  if (!_info.ready()) {
+    fprintf(stderr, "%s:\n  Failed to set up Info structure: %s\n",
+            __PRETTY_FUNCTION__, _info.error());
+    return _info.error_num();
+  }
+
   _pending = 0;
 
   const uint64_t flags  = 0;
-  const size_t   txSize = 0; //192;          // Tunable parameter
-  const size_t   rxSize = 0;            // Default for the return path
-  Fabric* fab = new Fabric(peer, port, flags, txSize, rxSize);
+  _info.hints->tx_attr->size = 0; //192;     // Tunable parameter
+  _info.hints->rx_attr->size = 0;       // Default for the return path
+  Fabric* fab = new Fabric(peer, port, flags, &_info);
   if (!fab || !fab->up())
   {
     fprintf(stderr, "%s:\n  Failed to create Fabric for %s:%s: %s\n",
@@ -41,8 +55,8 @@ int EbLfClient::connect(EbLfCltLink** link,
   if (_verbose)
   {
     void* data = fab;                   // Something since data can't be NULL
-    printf("LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
-           fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
+    printf("Client: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
+           fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
   }
 
   struct fi_info*  info   = fab->info();

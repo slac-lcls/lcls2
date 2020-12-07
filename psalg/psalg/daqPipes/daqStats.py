@@ -609,7 +609,7 @@ def main():
 
     partition = '0'
     hutch     = 'tst'
-    start     = None
+    start     = None            # Format is 'YYYY-MM-DD hh:mm:ss'
 
     parser = argparse.ArgumentParser(description='DAQ statistics display')
     parser.add_argument('-p', '--part', help='partition ['+partition+']', type=str, default=partition)

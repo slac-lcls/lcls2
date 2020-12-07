@@ -57,7 +57,7 @@ static size_t* _trSpace(size_t* size)
 }
 
 int server(const std::string& ifAddr,
-           const std::string& srvPort,
+           std::string&       srvPort,
            unsigned           id,
            unsigned           numClients,
            unsigned           numBuffers)
@@ -68,7 +68,7 @@ int server(const std::string& ifAddr,
   EbLfServer*    svr      = new EbLfServer(verbose);
   int            rc;
 
-  if ( (rc = svr->initialize(ifAddr, srvPort.c_str(), numClients)) )
+  if ( (rc = svr->listen(ifAddr, srvPort, numClients)) )
   {
     fprintf(stderr, "%s:\n  Failed to initialize EbLfServer\n",
             __PRETTY_FUNCTION__);
@@ -81,13 +81,13 @@ int server(const std::string& ifAddr,
   for (unsigned i = 0; i < links.size(); ++i)
   {
     const unsigned tmo(120000);
-    if ( (rc = svr->connect(&links[i], id, tmo)) )
+    if ( (rc = svr->connect(&links[i], tmo)) )
     {
       fprintf(stderr, "Error connecting to EbLfClient[%d]\n", i);
       return rc;
     }
     size_t regSize;
-    if ( (rc = links[i]->prepare(&regSize)) < 0)
+    if ( (rc = links[i]->prepare(id, &regSize, "Client")) < 0)
     {
       fprintf(stderr, "Failed to prepare link[%d]\n", i);
       return rc;
@@ -99,14 +99,10 @@ int server(const std::string& ifAddr,
               i, regSize);
       return -1;
     }
-    if ( (rc = links[i]->setupMr(regions[i], regSize)) )
+    if ( (rc = links[i]->setupMr(regions[i], regSize, "Client")) )
     {
       fprintf(stderr, "Failed to set up MemoryRegion %d\n", i);
       return rc;
-    }
-    if ( (rc = links[i]->postCompRecv()) )
-    {
-      fprintf(stderr, "Failed to post CQ buffers: %d\n", rc);
     }
 
     bufSize[i] = (regSize - trSize) / numBuffers;
@@ -182,12 +178,12 @@ int client(std::vector<std::string>& svrAddrs,
     const char* svrAddr = svrAddrs[i].c_str();
     const char* svrPort = svrPorts[i].c_str();
 
-    if ( (rc = clt->connect(&links[i], svrAddr, svrPort, id, tmo)) )
+    if ( (rc = clt->connect(&links[i], svrAddr, svrPort, tmo)) )
     {
       fprintf(stderr, "Error connecting to EbLfServer[%d]\n", i);
       return rc;
     }
-    if ( (rc = links[i]->prepare(region, regSize)) < 0)
+    if ( (rc = links[i]->prepare(id, region, regSize, "Server")) < 0)
     {
       fprintf(stderr, "Failed to prepare link[%d]\n", i);
       return rc;

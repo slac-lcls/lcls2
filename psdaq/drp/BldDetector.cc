@@ -11,6 +11,7 @@
 #include <net/if.h>
 #include "DataDriver.h"
 #include "RunInfoDef.hh"
+#include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/ShapesData.hh"
@@ -815,7 +816,9 @@ void BldApp::_unconfigure()
 
 json BldApp::connectionInfo()
 {
-    std::string ip = getNicIp(m_para.kwargs["forceEnet"] == "yes");
+    std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
+                   ? getNicIp(m_para.kwargs["ep_domain"])
+                   : getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
     json info = m_det->connectionInfo();
@@ -1064,7 +1067,7 @@ int main(int argc, char* argv[])
     }
     para.detName = "bld";  //para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
-    get_kwargs(para, kwargs_str);
+    get_kwargs(kwargs_str, para.kwargs);
 
     para.maxTrSize = 256 * 1024;
     para.nTrBuffers = 32; // Power of 2 greater than the maximum number of

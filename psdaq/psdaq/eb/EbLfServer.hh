@@ -26,6 +26,8 @@ namespace Pds {
     {
     public:
       EbLfServer(const unsigned& verbose);
+      EbLfServer(const unsigned&                           verbose,
+                 const std::map<std::string, std::string>& kwargs);
       ~EbLfServer();
     public:
       int  listen(const std::string& addr,    // Interface to use
@@ -41,7 +43,7 @@ namespace Pds {
       int  pollEQ();
       int  setupMr(void* region, size_t size);
     public:
-      const uint64_t& pending() const { return _pending; }
+      const uint64_t& pending() const { return *const_cast<uint64_t*>(&_pending); } // Cast away volatile
     private:
       int _poll(fi_cq_data_entry*, uint64_t flags);
     private:                              // Arranged in order of access frequency
@@ -54,6 +56,7 @@ namespace Pds {
     private:
       Fabrics::PassiveEndpoint* _pep;     // EP for establishing connections
       LinkMap                   _linkByEp;// Map to retrieve link given raw EP
+      Fabrics::Info             _info;    // Connection options
     };
 
     // --- Revisit: The following maybe better belongs somewhere else
@@ -99,8 +102,8 @@ int Pds::Eb::EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
         printf("*** 3 link %p credits (%ld) < 0\n", link, link->_credits);
       link->postCompRecv(rc);
     }
-    else
-      printf("cqEntry->op_context is NULL\n");
+    //else
+    //  printf("cqEntry->op_context is NULL\n");
 
 #ifdef DBG
     if ((cqEntry->flags & flags) != flags)

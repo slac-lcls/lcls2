@@ -10,6 +10,7 @@
 
 #include "psdaq/trigger/Trigger.hh"
 #include "psdaq/trigger/utilities.hh"
+#include "psdaq/service/kwargs.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/Dl.hh"
@@ -138,7 +139,7 @@ using namespace Pds::Eb;
 Teb::Teb(const EbParams&         prms,
          const MetricExporter_t& exporter) :
   EbAppBase     (prms, exporter, "TEB", BATCH_DURATION, MAX_ENTRIES, MAX_BATCHES),
-  _mrqTransport (prms.verbose),
+  _mrqTransport (prms.verbose, prms.kwargs),
   _id           (-1),
   _batchStart   (nullptr),
   _batchEnd     (nullptr),
@@ -153,7 +154,7 @@ Teb::Teb(const EbParams&         prms,
   _monitorCount (0),
   _prescaleCount(0),
   _prms         (prms),
-  _l3Transport  (prms.verbose)
+  _l3Transport  (prms.verbose, prms.kwargs)
 {
   std::map<std::string, std::string> labels{{"instrument", prms.instrument},
                                             {"partition", std::to_string(prms.partition)},
@@ -734,11 +735,17 @@ std::string TebApp::_error(const json&        msg,
 json TebApp::connectionInfo()
 {
   // Allow the default NIC choice to be overridden
-  if (_prms.ifAddr.empty())  _prms.ifAddr = getNicIp(_prms.kwargs["forceEnet"] == "yes");
+  if (_prms.ifAddr.empty())
+  {
+    _prms.ifAddr = _prms.kwargs.find("ep_domain") != _prms.kwargs.end()
+                 ? getNicIp(_prms.kwargs["ep_domain"])
+                 : getNicIp(_prms.kwargs["forceEnet"] == "yes");
+  }
+  logging::debug("nic ip  %s", _prms.ifAddr.c_str());
 
   // If port is not user specified, reset the previously allocated port number
-  if (_ebPortEph)            _prms.ebPort.clear();
-  if (_mrqPortEph)           _prms.mrqPort.clear();
+  if (_ebPortEph)   _prms.ebPort.clear();
+  if (_mrqPortEph)  _prms.mrqPort.clear();
 
   int rc = _teb->startConnection(_prms.ebPort, _prms.mrqPort);
   if (rc)  throw "Error starting connection";
@@ -1034,25 +1041,6 @@ void TebApp::_printParams(const EbParams& prms, unsigned groups) const
 
 
 static
-void get_kwargs(EbParams& para, const std::string& kwargs_str) {
-    std::istringstream ss(kwargs_str);
-    std::string kwarg;
-    while (getline(ss, kwarg, ',')) {
-        kwarg.erase(std::remove(kwarg.begin(), kwarg.end(), ' '), kwarg.end());
-        auto pos = kwarg.find("=", 0);
-        if (pos == std::string::npos) {
-            logging::critical("Keyword argument with no equal sign");
-            throw "drp.cc error: keyword argument with no equal sign: "+kwargs_str;
-        }
-        std::string key = kwarg.substr(0,pos);
-        std::string value = kwarg.substr(pos+1,kwarg.length());
-        //std::cout << "kwarg = '" << kwarg << "' key = '" << key << "' value = '" << value << "'" << std::endl;
-        para.kwargs[key] = value;
-    }
-}
-
-
-static
 void usage(char *name, char *desc, const EbParams& prms)
 {
   fprintf(stderr, "Usage:\n");
@@ -1080,6 +1068,8 @@ void usage(char *name, char *desc, const EbParams& prms)
           "Alias for teb process");
   fprintf(stderr, " %-23s %s\n",                      "-M <directory>",
           "Prometheus config file directory");
+  fprintf(stderr, " %-23s %s\n",                      "-k <key=value>[, ...]",
+          "Keyword arguments");
   fprintf(stderr, " %-23s %s (default: %u)\n",        "-1 <core>",
           "Core number for pinning App thread to",    CORE_0);
   fprintf(stderr, " %-23s %s (default: %u)\n",        "-2 <core>",
@@ -1118,7 +1108,9 @@ int main(int argc, char **argv)
       case '2':  prms.core[1]       = atoi(optarg);                 break;
       case 'u':  prms.alias         = optarg;                       break;
       case 'M':  prms.prometheusDir = optarg;                       break;
-      case 'k':  kwargs_str         = std::string(optarg);          break;
+      case 'k':  kwargs_str         = kwargs_str.empty()
+                                    ? optarg
+                                    : kwargs_str + ", " + optarg;   break;
       case 'v':  ++prms.verbose;                                    break;
       case '?':
       case 'h':
@@ -1150,7 +1142,7 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  get_kwargs(prms, kwargs_str);
+  get_kwargs(kwargs_str, prms.kwargs);
 
   struct sigaction sigAction;
 

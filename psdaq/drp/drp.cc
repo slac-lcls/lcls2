@@ -1,11 +1,11 @@
 #include <getopt.h>
-#include <sstream>
 #include <iostream>
 #include <algorithm>
 #include "drp.hh"
 #include "PGPDetectorApp.hh"
 #include "rapidjson/document.h"
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/service/kwargs.hh"
 using logging = psalg::SysLog;
 using json = nlohmann::json;
 
@@ -42,7 +42,9 @@ int main(int argc, char* argv[])
                 para.device = optarg;
                 break;
             case 'k':
-                kwargs_str = std::string(optarg);
+                kwargs_str = kwargs_str.empty()
+                           ? optarg
+                           : kwargs_str + ", " + optarg;
                 break;
             case 'P':
                 para.instrument = optarg;
@@ -95,7 +97,7 @@ int main(int argc, char* argv[])
     para.detName = para.alias.substr(0, found);
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
-    get_kwargs(para, kwargs_str);
+    get_kwargs(kwargs_str, para.kwargs);
 
     para.nworkers = 10;
     para.batchSize = 32; // Must be a power of 2

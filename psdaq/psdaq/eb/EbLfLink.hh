@@ -78,7 +78,7 @@ namespace Pds {
     class EbLfCltLink : public EbLfLink
     {
     public:
-      EbLfCltLink(Fabrics::Endpoint*, int rxDepth, const unsigned& verbose, uint64_t& pending);
+      EbLfCltLink(Fabrics::Endpoint*, int rxDepth, const unsigned& verbose, volatile uint64_t& pending);
     public:
       int prepare(unsigned    id,
                   const char* peer);
@@ -102,7 +102,7 @@ namespace Pds {
       int _synchronizeBegin();
       int _synchronizeEnd();
     private:                           // Arranged in order of access frequency
-      uint64_t& _pending;              // Bit list of IDs currently posting
+      volatile uint64_t& _pending;     // Bit list of IDs currently posting
     };
   };
 };

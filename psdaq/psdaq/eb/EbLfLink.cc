@@ -320,10 +320,10 @@ int EbLfSvrLink::setupMr(void*       region,
 
 // ---
 
-EbLfCltLink::EbLfCltLink(Endpoint*       ep,
-                         int             depth,
-                         const unsigned& verbose,
-                         uint64_t&       pending) :
+EbLfCltLink::EbLfCltLink(Endpoint*          ep,
+                         int                depth,
+                         const unsigned&    verbose,
+                         volatile uint64_t& pending) :
   EbLfLink(ep, depth, verbose),
   _pending(pending)
 {

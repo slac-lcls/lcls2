@@ -38,6 +38,7 @@ namespace Pds {
     {
       using string_t = std::string;
       using vecstr_t = std::vector<std::string>;
+      using kwmap_t  = std::map<std::string,std::string>;
 
       string_t ifAddr;             // Network interface to use
       string_t port;               // Served port to receive results
@@ -55,12 +56,14 @@ namespace Pds {
       uint16_t readoutGroup;       // RO group receiving trigger result data
       uint16_t contractor;         // RO group supplying trigger input  data
       bool     batching;           // Batching enable flag
+      kwmap_t  kwargs;             // Keyword arguments
     };
 
     struct MebCtrbParams           // Used by MEB contributors (DRPs)
     {
       using vecstr_t = std::vector<std::string>;
       using string_t = std::string;
+      using kwmap_t  = std::map<std::string,std::string>;
 
       vecstr_t addrs;              // MEB addresses
       vecstr_t ports;              // MEB ports
@@ -73,6 +76,7 @@ namespace Pds {
       size_t   maxTrSize;          // Max non-event size
       mutable
       unsigned verbose;            // Level of detail to print
+      kwmap_t  kwargs;             // Keyword arguments
     };
 
     struct EbParams                // Used with both TEBs and MEBs
@@ -99,7 +103,7 @@ namespace Pds {
       size_t    maxResultSize;     // Max result EbDgram size
       unsigned  numMrqs;           // Number of Mon request servers
       string_t  prometheusDir;     // Run-time monitoring prometheus config file
-      kwmap_t   kwargs;            // Keyword arguments for 'forceEnet'
+      kwmap_t   kwargs;            // Keyword arguments
       int       core[2];           // Cores to pin threads to
       mutable
       unsigned  verbose;           // Level of detail to print

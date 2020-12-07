@@ -27,6 +27,18 @@ EbLfServer::EbLfServer(const unsigned& verbose) :
 {
 }
 
+EbLfServer::EbLfServer(const unsigned&                           verbose,
+                       const std::map<std::string, std::string>& kwargs) :
+  _eq     (nullptr),
+  _rxcq   (nullptr),
+  _tmo    (0),                          // Start by polling
+  _verbose(verbose),
+  _pending(0),
+  _pep    (nullptr),
+  _info   (kwargs)
+{
+}
+
 EbLfServer::~EbLfServer()
 {
   shutdown();
@@ -36,12 +48,18 @@ int EbLfServer::listen(const std::string& addr,
                        std::string&       port,
                        unsigned           nLinks)
 {
+  if (!_info.ready()) {
+    fprintf(stderr, "%s:\n  Failed to set up Info structure: %s\n",
+            __PRETTY_FUNCTION__, _info.error());
+    return _info.error_num();
+  }
+
   _pending = 0;
 
-  const uint64_t flags  = 0;
-  const size_t   txSize = 0;         // Default for the return path
-  const size_t   rxSize = 0; //1152 + 64; // Tunable parameter
-  _pep = new PassiveEndpoint(addr.c_str(), port.c_str(), flags, txSize, rxSize);
+  const uint64_t flags = 0;               // For fi_getinfo(), e.g., FI_SOURCE
+  _info.hints->tx_attr->size = 0;         // Default for the return path
+  _info.hints->rx_attr->size = 0; //1152 + 64; // Tunable parameter
+  _pep = new PassiveEndpoint(addr.c_str(), port.c_str(), flags, &_info);
   if (!_pep || (_pep->state() != EP_UP))
   {
     fprintf(stderr, "%s:\n  Failed to create Passive Endpoint for %s:%s: %s\n",
@@ -54,8 +72,8 @@ int EbLfServer::listen(const std::string& addr,
   if (_verbose)
   {
     void* data = fab;                   // Something since data can't be NULL
-    printf("LibFabric version '%s', fabric '%s', '%s' provider version %08x\n",
-           fi_tostr(data, FI_TYPE_VERSION), fab->name(), fab->provider(), fab->version());
+    printf("Server: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
+           fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
   }
 
   _eq = new EventQueue(fab, 0);

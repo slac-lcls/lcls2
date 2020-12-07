@@ -74,7 +74,7 @@ add_executable(ft_writemsg_server ft_writemsg_server.cc)
 
 add_executable(eblf_pingpong    eblf_pingpong.cc)
 
-#add_executable(tstEbLfLink      tstEbLfLink.cc)
+add_executable(tstEbLfLink      tstEbLfLink.cc)
 
 #add_executable(ibMon            ibMon.cc)
 
@@ -143,11 +143,11 @@ target_link_libraries(eblf_pingpong
   epicstools
 )
 
-#target_link_libraries(tstEbLfLink
-#  utilities
-#  Threads::Threads
-#  rt
-#)
+target_link_libraries(tstEbLfLink
+  utilities
+  Threads::Threads
+  rt
+)
 
 #target_link_libraries(ibMon
 #  zmq

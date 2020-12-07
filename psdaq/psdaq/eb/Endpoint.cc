@@ -642,14 +642,98 @@ void ErrorHandler::set_custom_error(const char* fmt, ...)
 }
 
 
-Fabric::Fabric(const char* node, const char* service, uint64_t flags, size_t tx_size, size_t rx_size) :
+Info::Info() :
+  _owner(true)
+{
+  _ready = initialize();
+}
+
+Info::Info(const std::map<std::string, std::string>& kwargs) :
+  _owner(true),
+  _ready(false)
+{
+  if (initialize()) {
+    if (kwargs.find("ep_fabric") != kwargs.end()) {
+      if (!hints->fabric_attr) {
+        hints->fabric_attr = new struct fi_fabric_attr;
+      }
+      auto& kwa = const_cast<std::map<std::string, std::string>&>(kwargs); // Yuck!
+      hints->fabric_attr->name = strdup(kwa["ep_fabric"].c_str());
+    }
+    if (kwargs.find("ep_domain") != kwargs.end()) {
+      if (!hints->domain_attr) {
+        hints->domain_attr = new struct fi_domain_attr;
+      }
+      auto& kwa = const_cast<std::map<std::string, std::string>&>(kwargs); // Yuck!
+      hints->domain_attr->name = strdup(kwa["ep_domain"].c_str());
+    }
+    if (kwargs.find("ep_provider") != kwargs.end()) {
+      if (!hints->fabric_attr) {
+        hints->fabric_attr = new struct fi_fabric_attr;
+      }
+      auto& kwa = const_cast<std::map<std::string, std::string>&>(kwargs); // Yuck!
+      hints->fabric_attr->prov_name = strdup(kwa["ep_provider"].c_str());
+    }
+  }
+  _ready = true;
+}
+
+Info::~Info()
+{
+  shutdown();
+}
+
+void Info::take_hints() { _owner = false; }
+
+bool Info::ready() const { return _ready; }
+
+bool Info::initialize()
+{
+  hints = fi_allocinfo();
+  if (!hints) {
+    _errno = -FI_ENOMEM;
+    set_error("fi_allocinfo");
+    return false;
+  }
+
+  hints->addr_format = FI_SOCKADDR_IN;
+  hints->ep_attr->type = FI_EP_MSG;
+  hints->domain_attr->mr_mode = FI_MR_LOCAL | FI_MR_VIRT_ADDR | FI_MR_ALLOCATED | FI_MR_PROV_KEY;
+  hints->caps = FI_MSG | FI_RMA;
+  hints->mode = FI_LOCAL_MR | FI_RX_CQ_DATA;
+  hints->domain_attr->cq_data_size = 4;  /* required minimum */
+
+  return true;
+}
+
+void Info::shutdown()
+{
+  if (hints) {
+    if (_owner)  fi_freeinfo(hints);
+    hints = nullptr;
+  }
+  _ready = false;
+}
+
+
+Fabric::Fabric(const char* node, const char* service, uint64_t flags, Info* hints) :
   _up(false),
-  _hints(0),
+  _hints_owner(false),
   _info(0),
   _fabric(0),
   _domain(0)
 {
-  _up = initialize(node, service, flags, tx_size, rx_size);
+  if (!hints) {
+    Info info;
+    if (!info.ready())  return;
+    info.take_hints();
+    _hints = info.hints;
+    _hints_owner = true;
+  } else {
+    _hints = hints->hints;
+  }
+
+  _up = initialize(node, service, flags);
 }
 
 Fabric::~Fabric()
@@ -754,7 +838,16 @@ bool Fabric::has_rma_event_support() const
   }
 }
 
-const char* Fabric::name() const
+const char* Fabric::domain_name() const
+{
+  if (_info) {
+    return _info->domain_attr->name;
+  } else {
+    return NULL;
+  }
+}
+
+const char* Fabric::fabric_name() const
 {
   if (_info) {
     return _info->fabric_attr->name;
@@ -789,13 +882,12 @@ struct fid_fabric* Fabric::fabric() const { return _fabric; }
 
 struct fid_domain* Fabric::domain() const { return _domain; }
 
-bool Fabric::initialize(const char* node, const char* service, uint64_t flags, size_t tx_size, size_t rx_size)
+bool Fabric::initialize(const char* node, const char* service, uint64_t flags)
 {
   if (!_up) {
-    _hints = fi_allocinfo();
     if (!_hints) {
-      _errno = -FI_ENOMEM;
-      set_error("fi_allocinfo");
+      _errno = -FI_ENODATA;
+      set_error("Info::hints");
       return false;
     }
 
@@ -813,17 +905,6 @@ bool Fabric::initialize(const char* node, const char* service, uint64_t flags, s
       _errno = -FI_ENODATA;
       return false;
     }
-
-    _hints->addr_format = FI_SOCKADDR_IN;
-    _hints->ep_attr->type = FI_EP_MSG;
-    _hints->domain_attr->mr_mode = FI_MR_LOCAL | FI_MR_VIRT_ADDR | FI_MR_ALLOCATED | FI_MR_PROV_KEY;
-    _hints->caps = FI_MSG | FI_RMA;
-    _hints->mode = FI_LOCAL_MR | FI_RX_CQ_DATA;
-    if (tx_size)
-      _hints->tx_attr->size = tx_size;
-    if (rx_size)
-      _hints->rx_attr->size = rx_size;
-    _hints->domain_attr->cq_data_size = 4;  /* required minimum */
 
     CHECK_ERR(fi_getinfo(FIVER, node ? node : ANY_ADDR, service, flags, _hints, &_info), "fi_getinfo");
     // sockets provider and maybe others ignore the hints so let's explicitly set the mr_mode bits.
@@ -853,7 +934,7 @@ void Fabric::shutdown()
       _fabric = 0;
     }
     if (_hints) {
-      fi_freeinfo(_hints);
+      if (_hints_owner)  fi_freeinfo(_hints);
       _hints = 0;
     }
     if (_info) {
@@ -865,13 +946,13 @@ void Fabric::shutdown()
 }
 
 
-EndpointBase::EndpointBase(const char* addr, const char* port, uint64_t flags, size_t tx_size, size_t rx_size) :
+EndpointBase::EndpointBase(const char* addr, const char* port, uint64_t flags, Info* hints) :
   _state(EP_INIT),
   _fab_owner(true),
   _eq_owner(true),
   _txcq_owner(true),
   _rxcq_owner(true),
-  _fabric(new Fabric(addr, port, flags, tx_size, rx_size)),
+  _fabric(new Fabric(addr, port, flags, hints)),
   _eq(0),
   _txcq(0),
   _rxcq(0)
@@ -1008,8 +1089,8 @@ bool EndpointBase::initialize()
 }
 
 
-Endpoint::Endpoint(const char* addr, const char* port, uint64_t flags, size_t tx_size, size_t rx_size) :
-  EndpointBase(addr, port, flags, tx_size, rx_size),
+Endpoint::Endpoint(const char* addr, const char* port, uint64_t flags, Info* hints) :
+  EndpointBase(addr, port, flags, hints),
   _counter(0),
   _ep(0)
 {}
@@ -1592,8 +1673,8 @@ ssize_t Endpoint::check_connection_state()
   return rret;
 }
 
-PassiveEndpoint::PassiveEndpoint(const char* addr, const char* port, uint64_t flags, size_t tx_size, size_t rx_size) :
-  EndpointBase(addr, port, flags | FI_SOURCE, tx_size, rx_size),
+PassiveEndpoint::PassiveEndpoint(const char* addr, const char* port, uint64_t flags, Info* hints) :
+  EndpointBase(addr, port, flags | FI_SOURCE, hints),
   _flags(flags),
   _pep(0)
 {}

@@ -9,7 +9,6 @@
 #include <bitset>
 #include <chrono>
 #include <unistd.h>
-#include <sstream>
 #include <iostream>
 #include <map>
 #include <algorithm>
@@ -21,6 +20,7 @@
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
+#include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
@@ -796,7 +796,9 @@ void PvaApp::_unconfigure()
 
 json PvaApp::connectionInfo()
 {
-    std::string ip = getNicIp(m_para.kwargs["forceEnet"] == "yes");
+    std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
+                   ? getNicIp(m_para.kwargs["ep_domain"])
+                   : getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
     json info = m_det->connectionInfo();
@@ -1041,7 +1043,7 @@ int main(int argc, char* argv[])
                           // transitions in the system at any given time, e.g.,
                           // MAX_LATENCY * (SlowUpdate rate), in same units
     try {
-        get_kwargs(para, kwargs_str);
+        get_kwargs(kwargs_str, para.kwargs);
 
         std::string provider = "pva";
         auto pos = pv.find("/", 0);

@@ -7,6 +7,9 @@
 #include <rdma/fi_rma.h>
 
 #include <vector>
+#include <string>
+#include <memory>
+#include <map>
 #include <poll.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
@@ -173,9 +176,26 @@ namespace Pds {
       char* _error;
     };
 
+    class Info : public ErrorHandler {
+    public:
+      Info();
+      Info(const std::map<std::string, std::string>& kwargs);
+      ~Info();
+      void take_hints();
+      bool ready() const;
+    private:
+      bool initialize();
+      void shutdown();
+    public:
+      struct fi_info* hints;
+    private:
+      bool _owner;
+      bool _ready;
+    };
+
     class Fabric : public ErrorHandler {
     public:
-      Fabric(const char* node, const char* service, uint64_t flags=0, size_t tx_size=0, size_t rx_size=0);
+      Fabric(const char* node, const char* service, uint64_t flags=0, Info* hints=0);
       ~Fabric();
       MemoryRegion* register_memory(void* start, size_t len);
       MemoryRegion* register_memory(LocalAddress* laddr);
@@ -185,7 +205,8 @@ namespace Pds {
       bool lookup_memory_iovec(LocalIOVec* iov) const;
       bool up() const;
       bool has_rma_event_support() const;
-      const char* name() const;
+      const char* domain_name() const;
+      const char* fabric_name() const;
       const char* provider() const;
       uint32_t version() const;
       struct addrinfo* addrInfo() const;
@@ -193,10 +214,11 @@ namespace Pds {
       struct fid_fabric* fabric() const;
       struct fid_domain* domain() const;
     private:
-      bool initialize(const char* node, const char* service, uint64_t flags, size_t tx_size, size_t rx_size);
+      bool initialize(const char* node, const char* service, uint64_t flags);
       void shutdown();
     private:
       bool                        _up;
+      bool                        _hints_owner;
       struct addrinfo*            _addrInfo;
       struct fi_info*             _hints;
       struct fi_info*             _info;
@@ -207,7 +229,7 @@ namespace Pds {
 
     class EndpointBase : public ErrorHandler {
     protected:
-      EndpointBase(const char* addr, const char* port, uint64_t flags=0, size_t tx_size=0, size_t rx_size=0);
+      EndpointBase(const char* addr, const char* port, uint64_t flags=0, Info* hints=0);
       EndpointBase(Fabric* fabric, EventQueue* eq=0, CompletionQueue* txcq=0, CompletionQueue* rxcq=0);
       virtual ~EndpointBase();
     public:
@@ -236,7 +258,7 @@ namespace Pds {
     };
     class Endpoint : public EndpointBase {
     public:
-      Endpoint(const char* addr, const char* port, uint64_t flags=0, size_t tx_size=0, size_t rx_size=0);
+      Endpoint(const char* addr, const char* port, uint64_t flags=0, Info* hints=0);
       Endpoint(Fabric* fabric, EventQueue* eq=0, CompletionQueue* txcq=0, CompletionQueue* rxcq=0);
       ~Endpoint();
     public:
@@ -305,7 +327,7 @@ namespace Pds {
 
     class PassiveEndpoint : public EndpointBase {
     public:
-      PassiveEndpoint(const char* addr, const char* port, uint64_t flags=0, size_t tx_size=0, size_t rx_size=0);
+      PassiveEndpoint(const char* addr, const char* port, uint64_t flags=0, Info* hints=0);
       ~PassiveEndpoint();
     public:
       void shutdown();

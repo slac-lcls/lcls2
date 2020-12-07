@@ -35,15 +35,41 @@ json createAsyncWarnMsg(const std::string& alias, const std::string& warnMsg)
     return createMsg("warning", "0", 0, body);
 }
 
+static
+std::string _getNicIp(const struct ifaddrs* ifaddr,
+                      const std::string& ifaceName)
+{
+    char host[NI_MAXHOST];
+    host[0] = '\0';
+
+    for (const struct ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == NULL) {
+            continue;
+        }
+        int family = ifa->ifa_addr->sa_family;
+        std::string ifName(ifa->ifa_name);
+
+        if ((family == AF_INET) && (ifName == ifaceName)) {
+            int s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in),
+                                host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
+            if (s != 0) {
+                logging::error("getnameinfo() failed: %s\n", gai_strerror(s));
+            }
+            logging::debug("Interface address %s: <%s>\n", ifa->ifa_name, host);
+        }
+    }
+    if (!host[0])  throw "NIC '" + ifaceName + "' not found";
+    return std::string(host);
+}
+
 std::string getNicIp(bool forceEnet)
 {
     struct ifaddrs* ifaddr;
     getifaddrs(&ifaddr);
 
-    char host[NI_MAXHOST];
     char* interface_name = nullptr;
     char* ethernet_name  = nullptr;
-    // find name of first infiniband, otherwise fall back ethernet
+    // find name of first infiniband, otherwise fall back to ethernet
     for (struct ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
         if (ifa->ifa_addr == NULL) {
             continue;
@@ -70,22 +96,21 @@ std::string getNicIp(bool forceEnet)
         interface_name = ethernet_name;
     }
 
-    // get address of the first infiniband device found above
-    for (struct ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
-        if (ifa->ifa_addr == NULL) {
-            continue;
-        }
-        int family = ifa->ifa_addr->sa_family;
+    // get address of the first device found above
+    std::string host = _getNicIp(ifaddr, std::string(interface_name));
 
-        if ((family == AF_INET) && (strcmp(ifa->ifa_name, interface_name)==0)) {
-            int s = getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in),
-                                 host, NI_MAXHOST, NULL, 0, NI_NUMERICHOST);
-            if (s != 0) {
-                logging::error("getnameinfo() failed: %s\n", gai_strerror(s));
-            }
-            logging::debug("Interface address %s: <%s>\n", ifa->ifa_name, host);
-        }
-    }
+    freeifaddrs(ifaddr);
+    return std::string(host);
+}
+
+std::string getNicIp(const std::string& ifaceName)
+{
+    struct ifaddrs* ifaddr;
+    getifaddrs(&ifaddr);
+
+    // get address of the interface
+    std::string host = _getNicIp(ifaddr, ifaceName);
+
     freeifaddrs(ifaddr);
     return std::string(host);
 }
