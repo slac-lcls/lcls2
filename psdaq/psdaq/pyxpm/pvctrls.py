@@ -548,6 +548,10 @@ class PVCtrls(object):
                                       handler=CmdH(xpm.CuTiming.C_RxReset))
         provider.add(name+':Cu:RxReset',self._pv_cuRxReset)
 
+        self._pv_l0HoldReset = SharedPV(initial=NTScalar('I').wrap(0),
+                                        handler=RegH(app.l0HoldReset,archive=False))
+        provider.add(name+':L0HoldReset',self._pv_l0HoldReset)
+
         self._thread = threading.Thread(target=self.notify)
         self._thread.start()
 

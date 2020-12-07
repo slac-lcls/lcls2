@@ -109,11 +109,17 @@ class PVCuPhase(object):
 
 class PVXTpg(object):
 
-    def __init__(self, p, m, name, xpm, devs, cuMode=False):
+    def __init__(self, p, m, name, xpm, devs, cuMode=False, bypassLock=False):
         global provider
         provider = p
         global lock
         lock     = m
+
+        if bypassLock:
+            print('Bypassing AMC PLL lock')
+            app = xpm.find(name=devs[3][0])[0]
+            app.bypassLock.set(1)
+            time.sleep(1)
 
         self._mmcm = []
         for i in range(3,-1,-1):

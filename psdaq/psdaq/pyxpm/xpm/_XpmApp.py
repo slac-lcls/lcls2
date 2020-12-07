@@ -521,15 +521,25 @@ class XpmApp(pr.Device):
                 mode         = "RO",
             ))
 
-            self.add(pr.RemoteVariable(    
-                name         = "anaTagRd",
-                description  = "Analysis tag read counts",
-                offset       =  0x68,
-                bitSize      =  32,
-                bitOffset    =  0x00,
-                base         = pr.UInt,
-                mode         = "RO",
-            ))
+#            self.add(pr.RemoteVariable(    
+#                name         = "anaTagRd",
+#                description  = "Analysis tag read counts",
+#                offset       =  0x68,
+#                bitSize      =  32,
+#                bitOffset    =  0x00,
+#                base         = pr.UInt,
+#                mode         = "RO",
+#            )) 
+
+        self.add(pr.RemoteVariable(    
+            name         = "l0HoldReset",
+            description  = "Hold L0Select Reset",
+            offset       =  0x68,
+            bitSize      =  1,
+            bitOffset    =  0x00,
+            base         = pr.UInt,
+            mode         = "RW",
+        ))
             
         self.add(pr.RemoteVariable(    
             name         = "pipelineDepth",

@@ -44,8 +44,8 @@ class MmcmPhaseLock(pr.Device):
             name         = "bypassLock",
             description  = "Bypass external lock",
             offset       =  0x00,
-            bitSize      =  1,
-            bitOffset    =  0x1d,
+            bitSize      =  2,
+            bitOffset    =  0x10,
             base         = pr.UInt,
             mode         = "RW",
         ))
