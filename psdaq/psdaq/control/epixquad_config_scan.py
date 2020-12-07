@@ -2,7 +2,7 @@ from psdaq.control.config_scan import scan
 from psdaq.configdb.get_config import *
 import numpy as np
 
-getDarks = False  # or charge injection
+getDarks = True  # or charge injection
 spacing  = 2
 detName  = 'epixquad_0'
 

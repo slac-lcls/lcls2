@@ -107,7 +107,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
         base['pci'] = pbase
 
     #  Connect to the camera
-    cbase = ePixQuad.Top(dev='/dev/datadev_1',hwType='datadev',lane=lane,pollEn=False)
+    cbase = ePixQuad.Top(dev=dev,hwType='datadev',lane=lane,pollEn=False)
     #dumpvars('cbase',cbase)
     cbase.__enter__()
     base['cam'] = cbase
