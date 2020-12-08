@@ -47,14 +47,6 @@ public:
     }
 };
 
-Digitizer::Digitizer(Parameters* para, MemPool* pool) :
-    Detector    (para, pool),
-    m_epics_name(para->kwargs["hsd_epics_prefix"]),
-    m_paddr     (_getPaddr())
-{
-    printf("*** found epics name %s\n",m_epics_name.c_str());
-}
-
 static PyObject* check(PyObject* obj) {
     if (!obj) {
         PyErr_Print();
@@ -65,7 +57,6 @@ static PyObject* check(PyObject* obj) {
 
 Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     Detector    (para, pool),
-    m_evtNamesId(-1, -1), // placeholder
     m_epics_name(para->kwargs["hsd_epics_prefix"])
 {
     printf("*** found epics name %s\n",m_epics_name.c_str());
