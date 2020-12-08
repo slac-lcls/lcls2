@@ -131,6 +131,13 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
       GET_VECTOR(fir_weights);
       GET_VECTOR(calib_poly);
 #undef GET_VECTOR
+
+    int invert = descdata.get_value<int32_t>("fex.invert:boolEnum");
+    if (invert) {
+      for(unsigned k=0; k<m_fir_weights.size(); k++)
+        m_fir_weights[k] = -1.*m_fir_weights[k];
+      printf("weights inverted\n");
+    }
   }
 
 #define GET_ENUM(a,b,c) {                                                \
