@@ -312,8 +312,10 @@ unsigned OpalTT::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
     // set up the data for slow update
     { m_refNamesId = NamesId(m_det.nodeId, EventNamesIndex+3);
       Alg alg("opaltt", 2, 0, 0);
-      Names& bkgNames = *new(xtc) Names("epics", alg,
-                                        "epics", m_para->serNo.c_str(), m_refNamesId, m_para->detSegment);
+      // cpo: rename this away from "epics" for now because the
+      // segment number can conflict with epicsarch.
+      Names& bkgNames = *new(xtc) Names("epics_dontuse", alg,
+                                        "epics_dontuse", m_para->serNo.c_str(), m_refNamesId, m_para->detSegment);
       RefDef refDef(m_para->detName.c_str(),"opaltt");
       bkgNames.add(xtc, refDef);
       m_det.namesLookup()[m_refNamesId] = NameIndex(bkgNames);
