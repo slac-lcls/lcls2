@@ -150,8 +150,10 @@ class EventManager(object):
         dgrams = [None] * self.n_smd_files
         ofsz = self.ofsz_batch[self.cn_events,:,:]
         for j in range(self.n_smd_files):
-            if ofsz[j,1]:
-                dgrams[j] = dgram.Dgram(view=self.bigdata[j], config=self.dm.configs[j], offset=ofsz[j,0])
+            d_offset, d_size = ofsz[j]
+            if d_size and d_offset + d_size <= \
+                    memoryview(self.bigdata[j]).nbytes:
+                dgrams[j] = dgram.Dgram(view=self.bigdata[j], config=self.dm.configs[j], offset=d_offset)
         bd_evt = Event(dgrams, run=self.dm.run())
         self.cn_events += 1
         self._inc_prometheus_counter('evts')

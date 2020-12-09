@@ -180,7 +180,11 @@ class DgramManager(object):
             if offset==0 and size==0:
                 d = None
             else:
-                d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)
+                try:
+                    d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)
+                except StopIteration:
+                    d = None
+
             dgrams += [d]
 
         evt = Event(dgrams, run=self.run())

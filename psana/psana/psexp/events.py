@@ -27,6 +27,7 @@ class Events:
             # RunSerial
             try:
                 evt = next(self._evt_man)
+                if not any(evt._dgrams): return self.__next__() # FIXME: MONA find better way to handle empty event.
                 self.smdr_man.last_seen_event = evt
                 return evt
             except StopIteration:
@@ -42,6 +43,7 @@ class Events:
                         filter_fn           = self.filter_callback,
                         prometheus_counter  = self.c_read)
                 evt = next(self._evt_man)
+                if not any(evt._dgrams): return self.__next__()
                 self.smdr_man.last_seen_event = evt
                 return evt 
 
@@ -49,6 +51,7 @@ class Events:
             # RunParallel
             try:
                 evt = next(self._evt_man)
+                if not any(evt._dgrams): return self.__next__()
                 return evt
             except StopIteration: 
                 smd_batch = self.get_smd()
@@ -62,10 +65,13 @@ class Events:
                         filter_fn           = self.filter_callback,
                         prometheus_counter  = self.c_read)
                 evt = next(self._evt_man)
+                if not any(evt._dgrams): return self.__next__()
                 return evt
         else: 
             # RunSingleFile or RunShmem - get event from DgramManager
-            return next(self.dm) 
+            evt = next(self.dm)
+            if not any(evt._dgrams): return self.__next__()
+            return evt
 
 
 
