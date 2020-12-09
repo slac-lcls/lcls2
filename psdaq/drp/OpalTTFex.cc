@@ -59,6 +59,7 @@ OpalTTFex::OpalTTFex(Parameters* para) :
       m_fname = std::string(dir ? dir : "/tmp") + "/" + fname;
   }
 
+  m_sig_avg.resize(0);
   m_ref_avg.resize(0);
   FILE* f = fopen(m_fname.c_str(),"r");
   if (f) {
@@ -93,6 +94,7 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
   
   XtcData::Names& names = detector::configNames(configo);
   XtcData::DescData& descdata = configo.desc_shape();
+  IndexMap& nameMap = descdata.nameindex().nameMap();
   
   for (unsigned i = 0; i < names.num(); i++) {
       XtcData::Name& name = names.get(i);
@@ -132,11 +134,15 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
       GET_VECTOR(calib_poly);
 #undef GET_VECTOR
 
-    int invert = descdata.get_value<int32_t>("fex.invert:boolEnum");
-    if (invert) {
-      for(unsigned k=0; k<m_fir_weights.size(); k++)
-        m_fir_weights[k] = -1.*m_fir_weights[k];
-      printf("weights inverted\n");
+    {
+      if (nameMap.find("fex.invert:boolEnum") != nameMap.end()) {
+        int invert = descdata.get_value<int32_t>("fex.invert:boolEnum");
+        if (invert) {
+          for(unsigned k=0; k<m_fir_weights.size(); k++)
+            m_fir_weights[k] = -1.*m_fir_weights[k];
+          printf("weights inverted\n");
+        }
+      }
     }
   }
 
@@ -153,12 +159,15 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
   GET_VALUE(prescale,image);
   GET_VALUE(prescale,projections);
 #undef GET_VALUE
-#define GET_VALUE(a,b) {                                        \
-    m_##a##_##b = descdata.get_value<double>("fex." #a "." #b); \
+#define GET_VALUE(a,b,v) {                                      \
+    if (nameMap.find("fex." #a "." #b) != nameMap.end()) {      \
+      m_##a##_##b = descdata.get_value<double>("fex." #a "." #b);     \
       printf("m_" #a "_" #b " = %f\n", m_##a##_##b);            \
+    } else { m_##a##_##b = v; } \
   }
-  GET_VALUE(ref,convergence);
-  GET_VALUE(sb ,convergence);
+  GET_VALUE(sig,convergence,1.);
+  GET_VALUE(ref,convergence,1.);
+  GET_VALUE(sb ,convergence,1.);
 #undef GET_VALUE
   m_pedestal = descdata.get_value<unsigned>("user.black_level");
 
@@ -377,10 +386,15 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   }
 
   //
+  //  Average the signal
+  //
+  rolling_average(sigd, m_sig_avg, m_sig_convergence);
+
+  //
   //  Divide by the reference
   //
   for(unsigned i=0; i<sigd.size(); i++)
-    sigd[i] = sigd[i]/m_ref_avg[i] - 1;
+    sigd[i] = m_sig_avg[i]/m_ref_avg[i] - 1;
 
 #ifdef DBUG
     printf("--ratio--\n");

@@ -51,6 +51,7 @@ def opaltt_cdict():
     top.define_enum('axisEnum', {'X':0, 'Y':1})
     top.set("fex.project.axis"       ,  0, 'axisEnum')
     top.set("fex.project.minvalue"   ,  0, 'UINT32')
+    top.set("fex.sig.convergence" ,  1.00, 'DOUBLE') # IIR with timescale = 1/N, 0 to disable
     top.set("fex.ref.convergence" ,  1.00, 'DOUBLE') # IIR with timescale = 1/N, 0 to disable
     top.set("fex.sb.convergence"  ,  0.05, 'DOUBLE') # IIR with timescale = 1/N, 0 to disable
 

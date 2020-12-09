@@ -94,6 +94,7 @@ private:
     bool     m_record_ref_image;
     bool     m_record_ref_projection;
 
+    double   m_sig_convergence;
     double   m_ref_convergence;
     double   m_sb_convergence;
 
@@ -101,6 +102,7 @@ private:
     std::vector<double> m_calib_poly;
 
     bool m_ref_empty;
+    std::vector<double> m_sig_avg; // accumulated signal
     std::vector<double> m_ref_avg; // accumulated reference
     std::vector<double> m_sb_avg;  // averaged sideband region
     std::vector<int>    m_sig;     // signal region projection
