@@ -127,13 +127,13 @@ class Top(pr.Device):
             expand       =  False,
         ))
 
-        self.add(timing.TimingFrameRx(
+        self.add(xpm.TimingFrameRx(
             memBase = self.srp,
             name = 'UsTiming',
             offset = 0x08000000,
         ))
 
-        self.add(timing.TimingFrameRx(
+        self.add(xpm.TimingFrameRx(
             memBase = self.srp,
             name = 'CuTiming',
             offset = 0x08400000,

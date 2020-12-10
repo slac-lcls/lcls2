@@ -83,7 +83,7 @@ class CuDelayH(RegH):
         self.pvu = pvu
 
     def handle(self, pv, value):
-        self.RegH.handle(pv,value)
+        super(CuDelayH,self).handle(pv,value)
         curr = self.pvu.current()
         curr['value'] = value*7000./1300
         self.pvu.post(curr)
@@ -486,7 +486,7 @@ class GroupCtrls(object):
 
 class PVCtrls(object):
 
-    def __init__(self, p, m, name=None, ip=None, xpm=None, stats=None, db=None, cuInit=False):
+    def __init__(self, p, m, name=None, ip=None, xpm=None, stats=None, handle=None, db=None, cuInit=False):
         global provider
         provider = p
         global lock
@@ -503,6 +503,7 @@ class PVCtrls(object):
         self._ip    = ip
         self._xpm   = xpm
         self._db    = db
+        self._handle= handle
 
         init = None
         try:
@@ -555,6 +556,10 @@ class PVCtrls(object):
         self._thread = threading.Thread(target=self.notify)
         self._thread.start()
 
+        print('monStreamPeriod {}'.format(app.monStreamPeriod.get()))
+        app.monStreamPeriod.set(125000000)
+        app.monStreamEnable.set(1)
+
     def update(self):
         global countdn
         # check for config save
@@ -598,11 +603,10 @@ class PVCtrls(object):
         client.send(msg)
         
         while True:
-            msg = client.recv(256)
+            msg = client.recv(4096)
             s = struct.Struct('H')
             siter = s.iter_unpack(msg)
             src = next(siter)[0]
-            print('src {:x}'.format(src))
             if src==0:   # sequence notify message
                 mask = next(siter)[0]
                 i=0
@@ -617,5 +621,6 @@ class PVCtrls(object):
             elif src==1: # step end message
                 group = next(siter)[0]
                 self._group._groups[group].stepDone(True)
-
+            elif src==2: # stats message
+                self._handle(msg)
             

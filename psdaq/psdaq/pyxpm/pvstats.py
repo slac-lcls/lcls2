@@ -1,6 +1,7 @@
 import sys
 import time
 import traceback
+import struct
 from p4p.nt import NTScalar
 from p4p.nt import NTTable
 from p4p.server.thread import SharedPV
@@ -46,6 +47,13 @@ def addPVT(name,t):
                   handler=DefaultPVHandler())
     provider.add(name,pv)
     return pv
+
+def updatePv(pv,v,timev):
+    if v is not None:
+        value = pv.current()
+        value['value'] = v
+        value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
+        pv.post(value)
 
 NFPLINKS = 14
 sfpStatus  = {'LossOfSignal' : ('ai',[0]*NFPLINKS),
@@ -104,43 +112,34 @@ class LinkStatus(object):
         self._pv_rxIsXpm      = addPVI('LinkRxIsXpm')
         self._pv_remoteLinkId = addPVI('RemoteLinkId')
 
-    def update(self):
+    def handle(self,msg,offset,timev):
+        w = struct.unpack_from('<LLL',msg,offset)
+        offset += 12
+        u = (w[2]<<64) + (w[1]<<32) + w[0]
+        updatePv(self._pv_txResetDone,(u>>0)&1,timev)
+        updatePv(self._pv_txReady    ,(u>>1)&1,timev)
+        updatePv(self._pv_rxResetDone,(u>>2)&1,timev)
+        updatePv(self._pv_rxReady    ,(u>>3)&1,timev)
 
-        def updatePv(pv,v):
-            if v is not None:
-                value = pv.current()
-                value['value'] = v
-                value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
-                pv.post(value)
+        v = (u>>5)&0xffff
+        updatePv(self._pv_rxErr,v-self._rxErr,timev)
+        self._rxErr = v
 
-        timev = divmod(float(time.time_ns()), 1.0e9)
-        lock.acquire()
-        self._app.link.set(self._idx)
-        status = self._app.dsLinkStatus.get()
-        if status is not None:
-            updatePv(self._pv_txResetDone,(status>>16)&1)
-            updatePv(self._pv_txReady    ,(status>>17)&1)
-            updatePv(self._pv_rxResetDone,(status>>18)&1)
-            updatePv(self._pv_rxReady    ,(status>>19)&1)
-            updatePv(self._pv_rxIsXpm    ,(status>>20)&1)
-            if self._idx==16:
-                pass
-            else:
-                value = status&0xffff
-                updatePv(self._pv_rxErr,value-self._rxErr)
-                self._rxErr = value
-        value = self._app.dsLinkRxCnt.get()
-        if value is not None:
-            updatePv(self._pv_rxRcv,value-self._rxRcv)
-            self._rxRcv = value
-        updatePv(self._pv_remoteLinkId,self._app.remId.get())
-        lock.release()
+        v = (u>>21)&0xffffffff
+        updatePv(self._pv_rxRcv,v-self._rxRcv,timev)
+        self._rxRcv = v
+
+        updatePv(self._pv_rxIsXpm,(u>>53)&1,timev)
+        updatePv(self._pv_remoteLinkId, (u>>54)&0xffffffff,timev)
+        return offset
 
 class TimingStatus(object):
     def __init__(self, name, device):
+        self._name = name
         self._device = device
-        self._rxClkCount      = device.RxClkCount.get()
-        self._txClkCount      = device.TxClkCount.get()
+        self._device.update()
+        self._rxClkCount      = device.RxClkCount.get()<<4
+        self._txClkCount      = device.TxClkCount.get()<<4
         self._rxRstCount      = device.RxRstCount.get()
         self._crcErrCount     = device.CrcErrCount.get()
         self._rxDecErrCount   = device.RxDecErrCount.get()
@@ -182,8 +181,9 @@ class TimingStatus(object):
 
         timev = divmod(float(time.time_ns()), 1.0e9)
 
-        self._rxClkCount      = updatePv(self._pv_rxClkCount, self._device.RxClkCount.get(), self._rxClkCount)
-        self._txClkCount      = updatePv(self._pv_txClkCount, self._device.TxClkCount.get(), self._txClkCount)
+        self._device.update()
+        self._rxClkCount      = updatePv(self._pv_rxClkCount, self._device.RxClkCount.get()<<4, self._rxClkCount)
+        self._txClkCount      = updatePv(self._pv_txClkCount, self._device.TxClkCount.get()<<4, self._txClkCount)
         self._rxRstCount      = updatePv(self._pv_rxRstCount, self._device.RxRstCount.get(), self._rxRstCount)
         self._crcErrCount     = updatePv(self._pv_crcErrCount, self._device.CrcErrCount.get(), self._crcErrCount)
         self._rxDecErrCount   = updatePv(self._pv_rxDecErrs, self._device.RxDecErrCount.get(), self._rxDecErrCount)
@@ -215,23 +215,14 @@ class AmcPLLStatus(object):
         self._pv_los    = addPVI('PLL_LOS')
         self._pv_losCnt = addPVI('PLL_LOSCNT')
 
-    def update(self):
-
-        def updatePv(pv,v):
-            if v is not None:
-                value = pv.current()
-                value['value'] = v
-                value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
-                pv.post(value)
-
-        timev = divmod(float(time.time_ns()), 1.0e9)
-        lock.acquire()
-        self._idxreg.set(self._idx)
-        updatePv(self._pv_lol   ,self._device.lol   .get())
-        updatePv(self._pv_lolCnt,self._device.lolCnt.get())
-        updatePv(self._pv_los   ,self._device.los   .get())
-        updatePv(self._pv_losCnt,self._device.losCnt.get())
-        lock.release()
+    def handle(self, msg, offset, timev):
+        w = struct.unpack_from('<B',msg,offset)
+        offset += 1
+        updatePv(self._pv_lolCnt,(w[0]>>0)&7, timev)
+        updatePv(self._pv_lol   ,(w[0]>>3)&1, timev)
+        updatePv(self._pv_losCnt,(w[0]>>4)&7, timev)
+        updatePv(self._pv_los   ,(w[0]>>7)&1, timev)
+        return offset
 
 class CuStatus(object):
     def __init__(self, name, device, phase):
@@ -271,19 +262,13 @@ class MonClkStatus(object):
         print('MonClkStatus: refClk {:} MHz  recClk {:} MHz'.format(self._app.monClk_1.get()*1.e-6,
                                                                     self._app.monClk_2.get()*1.e-6))
 
-    def update(self):
-
-        def updatePv(pv,v):
-            if v is not None:
-                value = pv.current()
-                value['value'] = v
-                value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
-                pv.post(value)
-
-        timev = divmod(float(time.time_ns()), 1.0e9)
-        updatePv(self._pv_bpClk , self._app.monClk_0.get())
-        updatePv(self._pv_fbClk , self._app.monClk_1.get())
-        updatePv(self._pv_recClk, self._app.monClk_2.get())
+    def handle(self, msg, offset, timev):
+        w = struct.unpack_from('<LLL',msg,offset)
+        offset += 16
+        updatePv(self._pv_bpClk , w[0]&0xfffffff, timev)
+        updatePv(self._pv_fbClk , w[1]&0xfffffff, timev)
+        updatePv(self._pv_recClk, w[2]&0xfffffff, timev)
+        return offset
 
 class GroupStats(object):
     def __init__(self, name, app, group):
@@ -298,13 +283,8 @@ class GroupStats(object):
         self._numL0    = self._app.numL0   (l0Stats)
         self._numL0Acc = self._app.numL0Acc(l0Stats)
         self._numL0Inh = self._app.numL0Inh(l0Stats)
-        linkInhEvReg   = self._app.inhEvCnt.get()
-        linkInhTmReg   = self._app.inhTmCnt.get()
-        self._linkInhEv = []
-        self._linkInhTm = []
-        for i in range(32):
-            self._linkInhEv.append((linkInhEvReg>>(32*i))&0xffffffff)
-            self._linkInhTm.append((linkInhTmReg>>(32*i))&0xffffffff)
+        self._linkInhEv = None
+        self._linkInhTm = None
 
         def addPVF(label):
             return addPV(name+':'+label,'f')
@@ -323,89 +303,74 @@ class GroupStats(object):
 
         self._pv_deadFLink = addPV(name+':DeadFLnk','af',[0.]*32)
 
-    def update(self):
+    def handle(self,msg,offset,timev):
+        linkInhEv = {}
+        linkInhTm = {}
+        for k in range(32):
+            linkInhEv[k]=struct.unpack_from('<L',msg,offset)[0]
+            offset += 4
+            linkInhTm[k]=struct.unpack_from('<L',msg,offset)[0]
+            offset += 4
 
-        def updatePv(pv,v):
-            if v is not None:
-                value = pv.current()
-                value['value'] = v
-                value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
-                pv.post(value)
+        def bytes2Int(msg,offset):
+            b = struct.unpack_from('<BBBBB',msg,offset)
+            offset += 5
+            w = 0
+            for i,v in enumerate(b):
+                w += v<<(8*i)
+            return (w,offset)
 
-        timeval = float(time.time_ns())
-        timev = divmod(timeval, 1.0e9)
-        lock.acquire()
-        self._app.partition.set(self._group)
+        (l0Ena   ,offset) = bytes2Int(msg,offset)
+        (l0Inh   ,offset) = bytes2Int(msg,offset)
+        (numL0   ,offset) = bytes2Int(msg,offset)
+        (numL0Inh,offset) = bytes2Int(msg,offset)
+        (numL0Acc,offset) = bytes2Int(msg,offset)
+        updatePv(self._pv_runTime , l0Ena*FID_PERIOD, timev)
+        updatePv(self._pv_msgDelay, self._app.l0Delay.get(), timev)
+
         if self._master:
-            l0Stats  = self._app.l0Stats.get()
-            if l0Stats is not None:
-                l0Ena    = self._app.l0EnaCnt(l0Stats)
-                l0Inh    = self._app.l0InhCnt(l0Stats)
-                numL0    = self._app.numL0   (l0Stats)
-                numL0Acc = self._app.numL0Acc(l0Stats)
-                numL0Inh = self._app.numL0Inh(l0Stats)
+            dL0Ena   = l0Ena    - self._l0Ena
+            dL0Inh   = l0Inh    - self._l0Inh
+            dt       = dL0Ena*FID_PERIOD
+            dnumL0   = numL0    - self._numL0
+            dnumL0Acc= numL0Acc - self._numL0Acc
+            dnumL0Inh= numL0Inh - self._numL0Inh
+            if dL0Ena:
+                l0InpRate = dnumL0/dt
+                l0AccRate = dnumL0Acc/dt
+                updatePv(self._pv_deadTime, dL0Inh/dL0Ena, timev)
+            else:
+                l0InpRate = 0
+                l0AccRate = 0
+            updatePv(self._pv_l0InpRate, l0InpRate, timev)
+            updatePv(self._pv_l0AccRate, l0AccRate, timev)
+            updatePv(self._pv_numL0Inp, numL0, timev)
+            updatePv(self._pv_numL0Inh, numL0Inh, timev)
+            updatePv(self._pv_numL0Acc, numL0Acc, timev)
+            if dnumL0:
+                deadFrac = dnumL0Inh/dnumL0
+            else:
+                deadFrac = 0
+            updatePv(self._pv_deadFrac, deadFrac, timev)
 
-                updatePv(self._pv_runTime, l0Ena*FID_PERIOD)
-                updatePv(self._pv_msgDelay, self._app.l0Delay.get())
-                dL0Ena   = l0Ena    - self._l0Ena
-                dL0Inh   = l0Inh    - self._l0Inh
-                dt       = dL0Ena*FID_PERIOD
-                dnumL0   = numL0    - self._numL0
-                dnumL0Acc= numL0Acc - self._numL0Acc
-                dnumL0Inh= numL0Inh - self._numL0Inh
-                if dL0Ena:
-                    l0InpRate = dnumL0/dt
-                    l0AccRate = dnumL0Acc/dt
-                    updatePv(self._pv_deadTime, dL0Inh/dL0Ena)
-                    #   
-                    #  Choose the time based calculation instead
-                    #    More intuitive, updates when not running
-                    #
-                    if False:
-                        linkInhEvReg = self._app.inhEvCnt.get()
-                        linkInhEv = []
-                        for i in range(32):
-                            linkInh = (linkInhEvReg>>(32*i))&0xffffffff
-                            if dnumL0:
-                                linkInhEv.append((linkInh - self._linkInhEv[i])/dnumL0)
-                            else:
-                                linkInhEv.append(0)
-                            self._linkInhEv[i] = linkInh
-                        updatePv(self._pv_deadFLink, linkInhEv)
-                else:
-                    l0InpRate = 0
-                    l0AccRate = 0
-                updatePv(self._pv_l0InpRate, l0InpRate)
-                updatePv(self._pv_l0AccRate, l0AccRate)
-                updatePv(self._pv_numL0Inp, numL0)
-                updatePv(self._pv_numL0Inh, numL0Inh)
-                updatePv(self._pv_numL0Acc, numL0Acc)
-                if dnumL0:
-                    deadFrac = dnumL0Inh/dnumL0
-                else:
-                    deadFrac = 0
-                updatePv(self._pv_deadFrac, deadFrac)
+            self._l0Ena   = l0Ena
+            self._l0Inh   = l0Inh
+            self._numL0   = numL0
+            self._numL0Acc= numL0Acc
+            self._numL0Inh= numL0Inh
 
-                self._l0Ena   = l0Ena
-                self._l0Inh   = l0Inh
-                self._numL0   = numL0
-                self._numL0Acc= numL0Acc
-                self._numL0Inh= numL0Inh
-                
-        #else:
         if True:
-            nfid = (timeval - self._timeval)/FID_PERIOD_NS
-            linkInhTmReg = self._app.inhTmCnt.get()
-            if linkInhTmReg is not None:
-                linkInhTm = []
+            if self._linkInhTm:
+                den = FID_PERIOD
+                linkInhTmV = []
                 for i in range(32):
-                    linkInh = (linkInhTmReg>>(32*i))&0xffffffff
-                    linkInhTm.append((linkInh - self._linkInhTm[i])/nfid)
-                    self._linkInhTm[i] = linkInh
-                updatePv(self._pv_deadFLink, linkInhTm)
-        lock.release()
+                    linkInhTmV.append((linkInhTm[i] - self._linkInhTm[i])*den)
+            else:
+                linkInhTmV = [0 for i in range(32)]
+            self._linkInhTm = linkInhTm
+            updatePv(self._pv_deadFLink, linkInhTmV, timev)
 
-        self._timeval = timeval
+        return offset
 
 class PVMmcmPhaseLock(object):
     def __init__(self, name, mmcm):
@@ -453,24 +418,22 @@ class PVStats(object):
     def init(self):
         pass
 
+    def handle(self, msg):
+        timev = divmod(float(time.time_ns()), 1.0e9)
+        offset = 4
+        for i in range(14):
+            offset = self._links[i].handle(msg,offset,timev)
+        for i in range(8):
+            offset = self._groups[i].handle(msg,offset,timev)
+        for i in range(2):
+            offset = self._amcPll[i].handle(msg,offset,timev)
+        offset = self._monClks.handle(msg,offset,timev)
+
     def update(self):
         try:
-            #
-            #  Reduce number of transactions for stability
-            #for i in range(32):
-            for i in range(16):
-                self._links[i].update()
-            #for i in range(2):
-            #    self._amcPll[i].update()
-            #for i in range(8):
-            for i in range(7):
-                self._groups[i].update()
-
             self._usTiming.update()
             self._cuTiming.update()
             self._cuGen   .update()
-            #self._monClks .update()
-            #self._sfpStat .update()
         except:
             exc = sys.exc_info()
             if exc[0]==KeyboardInterrupt:

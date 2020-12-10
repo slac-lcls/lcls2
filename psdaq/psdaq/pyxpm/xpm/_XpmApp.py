@@ -652,6 +652,68 @@ class XpmApp(pr.Device):
             mode         = "RO",
         ))
 
+        self.add(pr.RemoteVariable(
+            name         = "monStreamPeriod",
+            description  = "AxiLite clks between stat tmits",
+            offset       = 0x1A0,
+            bitSize      = 27,
+            bitOffset    = 0,
+            base         = pr.UInt,
+            mode         = "RW",
+            verify       = False,
+        ))
+
+        self.add(pr.RemoteVariable(
+            name         = "monStreamEnable",
+            description  = "Enable monitor stream",
+            offset       = 0x1A0,
+            bitSize      = 1,
+            bitOffset    = 31,
+            base         = pr.UInt,
+            mode         = "RW",
+            verify       = False,
+        ))
+
+        self.add(pr.RemoteVariable(
+            name         = "monStreamCount",
+            description  = "AxiLite clks since transmit",
+            offset       = 0x1A4,
+            bitSize      = 27,
+            bitOffset    = 0,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
+        self.add(pr.RemoteVariable(
+            name         = "monStreamIndex",
+            description  = "Word in transmit",
+            offset       = 0x1A8,
+            bitSize      = 10,
+            bitOffset    = 0,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
+        self.add(pr.RemoteVariable(
+            name         = "monStreamBusy",
+            description  = "Transmit in progress",
+            offset       = 0x1A8,
+            bitSize      = 1,
+            bitOffset    = 31,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
+        self.add(pr.RemoteVariable(
+            name         = "monStreamId",
+            description  = "Packet in progress",
+            offset       = 0x1AC,
+            bitSize      = 32,
+            bitOffset    = 0,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
         self.add(pr.RemoteVariable(    
             name         = "groupL0Reset",
             description  = "Group L0 reset",
