@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BEBDetector.hh"
+#include "psdaq/service/Semaphore.hh"
 
 namespace Drp {
 
@@ -20,6 +21,8 @@ protected:
     void           _event    (XtcData::Xtc&,
                               std::vector< XtcData::Array<uint8_t> >&) override;
 protected:
+    Pds::Semaphore    m_env_sem;
+    bool              m_env_empty;
     XtcData::NamesId  m_evtNamesId[8];
   };
 

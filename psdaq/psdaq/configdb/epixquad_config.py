@@ -52,11 +52,17 @@ def apply_dict(pathbase,base,cfg):
 
         #  Apply
         if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not pathbase ):
-            if 'Saci' in path and 'trbit' not in path: 
+#            if False:
+            if (('Saci' in path and 'PixelDummy' in path) or
+                ('Saci[3]' in path and 'CompEn' in path) or
+                ('Saci[3]' in path and 'Preamp' in path) or
+                ('Saci[3]' in path and 'MonostPulser' in path) or
+                ('Saci[3]' in path and 'PulserDac' in path)):
                 print(f'NOT setting {path} to {configdb_node}')
             else:
                 print(f'Setting {path} to {configdb_node}')
                 rogue_node.set(configdb_node)
+#                time.sleep(0.0001)
 
 #
 #  Construct an asic pixel mask with square spacing
@@ -226,19 +232,14 @@ def config_expert(base, cfg, writePixelMap=True):
     cbase = base['cam']
 
     #  Make list of enabled ASICs
-    asics = []
-    for i in range(16):
-        if (ocfg['expert']['EpixQuad']['SystemRegs']['AsicMask']&(1<<i)):
-            asics.append(i)
-        else:
-            print(f'Skipping disabled ASIC {i}')
+    asics = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
 
     #  Important that Asic IsEn is True while configuring and false when running
     for i in asics:
         print(f'Enabling ASIC {i}')
         saci = cbase.Epix10kaSaci[i]
         saci.enable.set(True)  # Saci disabled by default!
-#        saci.IsEn.set(True)
+        saci.IsEn.set(True)
 
     if ('expert' in cfg and 'EpixQuad' in cfg['expert']):
         epixQuad = cfg['expert']['EpixQuad'].copy()
@@ -323,7 +324,7 @@ def config_expert(base, cfg, writePixelMap=True):
     #  Important that Asic IsEn is True while configuring and false when running
     for i in asics:
         saci = cbase.Epix10kaSaci[i]
-#        saci.IsEn.set(False)
+        saci.IsEn.set(False)
         saci.enable.set(False)
 
 #
