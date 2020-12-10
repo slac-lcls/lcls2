@@ -18,17 +18,17 @@ from psdaq.control.DaqScan import DaqScan
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
+parser.add_argument('-B', metavar='PVBASE', default='DAQ:NEH', help='PV base (default DAQ:NEH)')
 parser.add_argument('-p', type=int, choices=range(0, 8), default=2,
                     help='platform (default 2)')
-parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
-parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost',
-                    help='collection host (default localhost)')
+parser.add_argument('-x', metavar='XPM', type=int, default=0, help='master XPM (default 0)')
+parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-neh-ctl001',
+                    help='collection host (default drp-neh-ctl001)')
 parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                     help='timeout msec (default 10000)')
-parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=1, help='# of events to aquire at each step (default 1)')
-parser.add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
-parser.add_argument('--config', metavar='ALIAS', help='configuration alias (e.g. BEAM)')
+parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=100, help='# of events to aquire at each step (default 100)')
+parser.add_argument('-g', type=int, metavar='GROUP_MASK', default=6, help='bit mask of readout groups (default 6)')
+parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (default BEAM)')
 parser.add_argument('-v', action='store_true', help='be verbose')
 args = parser.parse_args()
 
