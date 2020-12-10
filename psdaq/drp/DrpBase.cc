@@ -136,8 +136,8 @@ EbReceiver::EbReceiver(const Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   EbCtrbInBase(tPrms, exporter),
   m_pool(pool),
   m_mon(mon),
-  m_fileWriter(8388672), //4194304),
-  m_smdWriter(8388672), //4194304),
+  m_fileWriter(8388688), // sized for the Manta 4MPixel camera
+  m_smdWriter(8388688),  // ideally would be sized with the pebble
   m_writing(false),
   m_inprocSend(inprocSend),
   m_count(0),
