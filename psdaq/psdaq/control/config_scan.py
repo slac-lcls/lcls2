@@ -1,6 +1,7 @@
 import sys
 import logging
 from psalg.utils.syslog import SysLog
+import dgramCreate as dc
 import threading
 import zmq
 import json
@@ -170,7 +171,7 @@ class MyDAQ:
         # EndStep
         self.push_socket.send_string('starting')
 
-def scan( keys, steps):
+def scan( keys, steps ):
     parser = argparse.ArgumentParser()
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
@@ -232,10 +233,12 @@ def scan( keys, steps):
 
     # -- begin script --------------------------------------------------------
 
-    configure_dict = {"configure": {"step_keys": keys}}
+    configure_dict = {"configure": {"step_keys": keys,
+                                    "NamesBlockHex":scanNamesBlock()}}
 
     for step in steps():
-        beginstep_dict = {"beginstep": {"step_values": step}}
+        beginstep_dict = {"beginstep": {"step_values": step[0],
+                                        "ShapesDataBlockHex":shapesDataBlock(step)}}
         # trigger
         mydaq.trigger(phase1Info = dict(configure_dict, **beginstep_dict))
 
@@ -245,6 +248,32 @@ def scan( keys, steps):
 
     mydaq.push_socket.send_string('shutdown') #shutdown the daq communicator thread
     mydaq.comm_thread.join()
+
+
+def setupXtc(step=None):
+    d = {'step_value'    :0,
+         'step_docstring':''}
+    if step and len(step)==3:
+        d['step_value'    ]=step[1]
+        d['step_docstring']=step[2]
+    print(f'setupXtc {d}')
+
+    nameinfo = dc.nameinfo('scan','scan','1234',253)
+    alg      = dc.alg('raw',[2,0,0])
+    cydgram  = dc.CyDgram()
+    cydgram.addDet(nameinfo, alg, d)
+    return cydgram
+
+def scanNamesBlock():
+    cydgram = setupXtc()
+    return cydgram.getSelect(0, DaqControl.transitionId['Configure'],
+                             add_names=True, add_shapes_data=False)[12:].hex()
+
+def shapesDataBlock(step):
+    cydgram = setupXtc(step)
+    return cydgram.getSelect(0, DaqControl.transitionId['BeginStep'],
+                             add_names=False, add_shapes_data=True)[12:].hex()
+
 
 if __name__ == '__main__':
     main()

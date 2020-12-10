@@ -28,15 +28,22 @@ def pixel_mask(value0,value1,spacing,position):
 
 def steps():
     d = {}
+    metad = {}
+    metad['detname'] = detName
     if getDarks:
         #  Darks
+        metad['scantype'] = 'pedestal'
         for gain in range(5):
+            #  Set the detector level config change
             d[f'{detName}:user.gain_mode'] = gain
-            yield d
+            #  Set the global meta data
+            metad['step'] = gain
+            yield (d, gain, json.dumps(metad))
     else:
         #
         #  Charge Injection
         #
+        metad['scantype'] = 'chargeinj'
         d[f'{detName}:user.gain_mode'] = 5  # Map
         for a in range(16):
             saci = f'{detName}:expert.EpixQuad.Epix10kaSaci[{a}]'
@@ -51,7 +58,10 @@ def steps():
             for s in range(spacing**2):
                 pmask = pixel_mask(0,1,spacing,s)
                 d[f'{detName}:user.pixel_map'] = pmask.reshape(-1).tolist()
-                yield d
+                #  Set the global meta data
+                metad['step'] = s+trbit+spacing**2
+
+                yield (d, s+trbit+spacing**2, json.dumps(metad))
 
 if __name__ == '__main__':
 

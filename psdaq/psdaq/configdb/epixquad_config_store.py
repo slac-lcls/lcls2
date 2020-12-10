@@ -219,6 +219,7 @@ def epixquad_cdict():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Write a new TimeTool configuration into the database')
+    parser.add_argument('--prod', help='production', action='store_true')
     parser.add_argument('--inst', help='instrument', type=str, default='tst')
     parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
     parser.add_argument('--name', help='detector name', type=str, default='tsttt')
@@ -231,7 +232,8 @@ if __name__ == "__main__":
     create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
-    mycdb = cdb.configdb('https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/', args.inst, create,
+    db = 'configdb' if args.prod else 'devconfigdb'
+    mycdb = cdb.configdb(f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/', args.inst, create,
                          root=dbname, user=args.user, password=args.password)
     mycdb.add_alias(args.alias)
     mycdb.add_device_config('epixquad')

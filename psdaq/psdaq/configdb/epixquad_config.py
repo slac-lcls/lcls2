@@ -27,7 +27,7 @@ def mode(a):
                     for uv in uniqueValues]
 
     modeIdx = uniqueCounts.index(max(uniqueCounts))
-    return itemArray[modeIdx]
+    return uniqueValues[modeIdx]
 
 def dumpvars(prefix,c):
     print(prefix)
@@ -52,7 +52,11 @@ def apply_dict(pathbase,base,cfg):
 
         #  Apply
         if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not pathbase ):
-            rogue_node.set(configdb_node)
+            if 'Saci' in path and 'trbit' not in path: 
+                print(f'NOT setting {path} to {configdb_node}')
+            else:
+                print(f'Setting {path} to {configdb_node}')
+                rogue_node.set(configdb_node)
 
 #
 #  Construct an asic pixel mask with square spacing
@@ -193,7 +197,7 @@ def user_to_expert(base, cfg, full=False):
         if gain_mode==5:
             a  = cfg['user']['pixel_map']
         else:
-            mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode]
+            mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
             trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
             a  = (np.array(ocfg['user']['pixel_map'],dtype=np.uint8) & 0x3) | mapv
             a = a.reshape(-1).tolist()
@@ -220,12 +224,25 @@ def config_expert(base, cfg, writePixelMap=True):
         apply_dict('pbase.DevPcie',pbase.DevPcie,cfg['expert']['DevPcie'])
 
     cbase = base['cam']
-    #  Important that Asic IsEn is True while configuring and false when running
+
+    #  Make list of enabled ASICs
+    asics = []
     for i in range(16):
-        getattr(cbase,f'Epix10kaSaci[{i}]').IsEn.set(True)
+        if (ocfg['expert']['EpixQuad']['SystemRegs']['AsicMask']&(1<<i)):
+            asics.append(i)
+        else:
+            print(f'Skipping disabled ASIC {i}')
+
+    #  Important that Asic IsEn is True while configuring and false when running
+    for i in asics:
+        print(f'Enabling ASIC {i}')
+        saci = cbase.Epix10kaSaci[i]
+        saci.enable.set(True)  # Saci disabled by default!
+#        saci.IsEn.set(True)
 
     if ('expert' in cfg and 'EpixQuad' in cfg['expert']):
         epixQuad = cfg['expert']['EpixQuad'].copy()
+        #  Add write protection word to upper range
         if 'AcqCore' in epixQuad and 'AsicRoClkHalfT' in epixQuad['AcqCore']:
             epixQuad['AcqCore']['AsicRoClkHalfT'] |= 0xaaaa0000
         if 'RdoutCore' in epixQuad and 'AdcPipelineDelay' in epixQuad['RdoutCore']:
@@ -242,6 +259,9 @@ def config_expert(base, cfg, writePixelMap=True):
                 #
                 #  Accelerated matrix configuration (~2 seconds)
                 #
+                #  Found that gain_mode is mapping to [M/M/L/M/M]
+                #    Like trbit is always zero (Saci was disabled!)
+                #
                 core = cbase.SaciConfigCore
                 core.enable.set(True)
                 core.SetAsicsMatrix(json.dumps(pixelConfigMap.tolist()))
@@ -250,40 +270,61 @@ def config_expert(base, cfg, writePixelMap=True):
                 #
                 #  Pixel by pixel matrix configuration (up to 15 minutes)
                 #
-                # save TrigEn state and stop
-                cbase.SystemRegs.enable.set(True)
-                trigEn = cbase.SystemRegs.TrigEn.get()
-                cbase.SystemRegs.TrigEn.set(False)
-                # clear matrix in all enabled ASICs
-                for i in range(16):
-                    # iterate through enabled (preset) ASICs
+                #  Found that gain_mode is mapping to [H/M/M/H/M]
+                #    Like pixelmap is always 0xc
+                #
+                for i in asics:
                     saci = cbase.Epix10kaSaci[i]
-                    saci.enable.set(True)
-                    if saci.enable.get() == True:
-                        print('Setting pulsed region in ASIC %d'%i)
-                        # pulse arbitrary square region of 3x3 pixels in each bank
-                        for x in range(178):
-                            row = pixelConfigMap[i,x]
-                            m = mode(row)
-                            b = row==m
-                            saci.RowCounter(x)
-                            saci.WriteRowData(m)
-                            for y in range(192):
-                                if not b[y]:
-                                    saci.ColCounter(y)
-                                    v = pixelConfigMap[i,x,y]
-                                    saci.WritePixelData ('%d'%v)
-                # restore TrigEn state
-                cbase.SystemRegs.TrigEn.set(trigEn)
-                
+                    saci.PrepareMultiConfig()
+                    
+                #  Set the whole ASIC to its most common value
+                masic = {}
+                for i in asics:
+                    masic[i] = mode(pixelConfigMap[i])
+                    saci = cbase.Epix10kaSaci[i]
+                    saci.WriteMatrixData(masic)  # 0x4000 v 0x84000
+
+                #  Now fix any pixels not at the common value
+                banks = ((0xe<<7),(0xd<<7),(0xb<<7),(0x7<<7))
+                for i in asics:
+                    saci = cbase.Epix10kaSaci[i]
+                    nrows = pixelConfigMap.shape[1]
+                    ncols = pixelConfigMap.shape[2]
+                    for y in range(nrows):
+                        for x in range(ncols):
+                            if pixeConfigMap[i,y,x]!=masic[i]:
+                                if row >= (nrows>>1):
+                                    mrow = row - (nrows>>1)
+                                    if col < (ncols>>1):
+                                        offset = 3
+                                        mcol = col
+                                    else:
+                                        offset = 0
+                                        mcol = col - (ncols>>1)
+                                else:
+                                    mrow = (nrows>>1)-1 - row
+                                    if col < (ncols>>1):
+                                        offset = 2
+                                        mcol = (ncols>>1)-1 - col
+                                    else:
+                                        offset = 1
+                                        mcol = (ncols-1) - col
+                                bank = (mcol % (48<<2)) / 48
+                                bankOffset = banks[bank]
+                                saci.RowCounter(y)
+                                saci.ColCounter(bankOffset | (mcol%48))
+                                saci.WritePixelData(pixelConfigMap[i,y,x])
+
             print('SetAsicsMatrix complete')
         else:
             print('writePixelMap but no new map')
             print(cfg)
 
     #  Important that Asic IsEn is True while configuring and false when running
-    for i in range(16):
-        getattr(cbase,f'Epix10kaSaci[{i}]').IsEn.set(False)
+    for i in asics:
+        saci = cbase.Epix10kaSaci[i]
+#        saci.IsEn.set(False)
+        saci.enable.set(False)
 
 #
 #  Called on Configure
@@ -292,6 +333,9 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     global ocfg
     global group
     group = rog
+
+    _checkADCs()
+#    _resetSequenceCount()
 
     #
     #  Retrieve the full configuration from the configDB
@@ -493,3 +537,33 @@ def epixquad_update(update):
 
     return result
 
+#
+#  Check that ADC startup has completed successfully
+#
+def _checkADCs():
+    cbase = base['cam']
+    tmo = 0
+    while True:
+        time.sleep(0.001)
+        if cbase.SystemRegs.AdcTestFailed.get()==1:
+            print('Adc Test Failed - restarting!')
+            cbase.SystemRegs.AdcReqStart.set(1)
+            time.sleep(1.e-6)
+            cbase.SystemRegs.AdcReqStart.set(0)
+        else:
+            tmo += 1
+            if tmo > 1000:
+                print('Adc Test Timedout')
+                return 1
+        if cbase.SystemRegs.AdcTestDone.get()==1:
+            break
+    print(f'Adc Test Done after {tmo} cycles')
+    return 0
+
+def _resetSequenceCount():
+    cbase = base['cam']
+    cbase.AcqCore.AcqCountReset.set(1)
+    cbase.RdoutCore.SeqCountReset.set(1)
+    time.sleep(1.e6)
+    cbase.AcqCore.AcqCountReset.set(0)
+    cbase.RdoutCore.SeqCountReset.set(0)

@@ -73,6 +73,10 @@ def xpmLinkId(value):
 def timTxId(timDevTypeStr):
     tdt = timDevType[timDevTypeStr]
     if tdt<timDevType['hsd']:
-        ip   = socket.inet_aton(socket.gethostbyname(socket.gethostname()))
-        return (tdt<<24) | (ip[2]<<8) | (ip[3])
+        info = socket.getaddrinfo(socket.gethostname(),None,0,0,socket.IPPROTO_UDP)
+        for a in info:
+            ip = a[4][0].split('.')
+            if ip[0]=='172' and ip[1]=='21':
+                break
+        return (tdt<<24) | (int(ip[2])<<8) | int(ip[3])
     return 0

@@ -11,6 +11,7 @@ public:
     ~EpixQuad();
     nlohmann::json connectionInfo() override;
     void slowupdate(XtcData::Xtc&) override;
+    bool scanEnabled() override;
     void shutdown() override;
     void write_image(XtcData::Xtc&, std::vector< XtcData::Array<uint8_t> >&, XtcData::NamesId&);
 protected:
@@ -19,7 +20,7 @@ protected:
     void           _event    (XtcData::Xtc&,
                               std::vector< XtcData::Array<uint8_t> >&) override;
 protected:
-    XtcData::NamesId  m_evtNamesId[4];
+    XtcData::NamesId  m_evtNamesId[8];
   };
 
 }

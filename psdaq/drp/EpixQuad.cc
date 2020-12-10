@@ -24,11 +24,29 @@ namespace Drp {
 
 #define ADD_FIELD(name,ntype,ndim)  NameVec.push_back({#name, Name::ntype, ndim})
 
+    class EpixPanelDef : public VarDef
+    {
+    public:
+        enum index { raw, aux, numfields };
+
+        EpixPanelDef() { 
+            ADD_FIELD(raw              ,UINT16,2);
+            ADD_FIELD(aux              ,UINT16,2);
+        }
+    } epixPanelDef;
+
+    class EpixQuadHwDef : public VarDef
+    {
+    public:
+        EpixQuadHwDef() {
+            ADD_FIELD(var, UINT32, 0);
+        }
+    } epixQuadHwDef;
+
     class EpixQuadDef : public VarDef
     {
     public:
-        enum index { raw, aux, 
-                     sht31Hum, sht31TempC,
+        enum index { sht31Hum, sht31TempC,
                      nctLocTempC, nctFpgaTempC,
                      asicA0_2V5_CurrmA,
                      asicA1_2V5_CurrmA,
@@ -45,14 +63,9 @@ namespace Drp {
                      pwrAnaVin,
                      pwrAnaTempC,
                      asic_temp, 
-                     num_fields
-        };
-
+                     num_fields };
+        
         EpixQuadDef() { 
-
-            ADD_FIELD(raw              ,UINT16,2);
-            ADD_FIELD(aux              ,UINT16,2);
-#ifdef INCLUDE_ENV
             ADD_FIELD(sht31Hum         ,FLOAT,0);
             ADD_FIELD(sht31TempC       ,FLOAT,0);
             ADD_FIELD(nctLocTempC      ,UINT16 ,0);
@@ -72,7 +85,6 @@ namespace Drp {
             ADD_FIELD(pwrAnaVin        ,FLOAT,0);
             ADD_FIELD(pwrAnaTempC      ,FLOAT,0);
             ADD_FIELD(asic_temp        ,UINT16,1);
-#endif
         }
     } epixQuadDef;
 };
@@ -82,11 +94,7 @@ namespace Drp {
 using Drp::EpixQuad;
 
 EpixQuad::EpixQuad(Parameters* para, MemPool* pool) :
-    BEBDetector   (para, pool),
-    m_evtNamesId({NamesId(0,0),
-                NamesId(0,0),
-                NamesId(0,0),
-                NamesId(0,0)})
+    BEBDetector   (para, pool)
 {
     virtChan = 0;
     _init(para->detName.c_str());  // an argument is required here
@@ -109,20 +117,60 @@ json EpixQuad::connectionInfo()
 unsigned EpixQuad::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
 {
     // set up the names for L1Accept data
-    for (unsigned seg=0; seg < 4; seg++) {
-        Alg alg("raw", 2, 0, 1);
+    unsigned seg=0;
+    for (unsigned q=0; q < 4; q++) {
+        // Generic panel data
+        {
+            Alg alg("raw", 2, 0, 1);
+            // copy the detName, detType, detId from the Config Names
+            Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+seg+1)].names();
+            m_evtNamesId[seg] = NamesId(nodeId, EventNamesIndex+seg);
+            Names& eventNames = *new(xtc) Names(configNames.detName(), alg, 
+                                                configNames.detType(),
+                                                configNames.detId(), 
+                                                m_evtNamesId[seg], 
+                                                q+4*m_para->detSegment);
+            
+            eventNames.add(xtc, epixPanelDef);
+            m_namesLookup[m_evtNamesId[seg]] = NameIndex(eventNames);
+            seg++;
+        }
+#ifdef INCLUDE_ENV
+        // Quad-specific data
+        {
+            Alg alg("raw", 2, 0, 0);
+            // copy the detName, detType, detId from the Config Names
+            Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex)].names();
+            m_evtNamesId[seg] = NamesId(nodeId, EventNamesIndex+seg);
+            Names& eventNames = *new(xtc) Names(configNames.detName(), alg, 
+                                                configNames.detType(),
+                                                configNames.detId(), 
+                                                m_evtNamesId[seg], 
+                                                q+4*m_para->detSegment);
+            
+            eventNames.add(xtc, epixQuadDef);
+            m_namesLookup[m_evtNamesId[seg]] = NameIndex(eventNames);
+        }
+#endif
+    }
+
+#ifndef INCLUDE_ENV
+    // Quad-specific data
+    {
+        Alg alg("raw", 2, 0, 0);
         // copy the detName, detType, detId from the Config Names
-        Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+seg)].names();
+        Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex)].names();
         m_evtNamesId[seg] = NamesId(nodeId, EventNamesIndex+seg);
         Names& eventNames = *new(xtc) Names(configNames.detName(), alg, 
                                             configNames.detType(),
                                             configNames.detId(), 
                                             m_evtNamesId[seg], 
-                                            seg+4*m_para->detSegment);
-
-        eventNames.add(xtc, epixQuadDef);
+                                            m_para->detSegment);
+        
+        eventNames.add(xtc, epixQuadHwDef);
         m_namesLookup[m_evtNamesId[seg]] = NameIndex(eventNames);
     }
+#endif
 
     return 0;
 }
@@ -150,16 +198,17 @@ void EpixQuad::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
     const unsigned asicRows     = 176;
     const unsigned elemRowSize  = 2*192;
-  
-    for(unsigned seg=0; seg<4; seg++) {
+
+    unsigned seg=0;
+    for(unsigned q=0; q<4; q++) {
         CreateData cd(xtc, m_namesLookup, m_evtNamesId[seg]);
         shape[0] = asicRows*2; shape[1] = elemRowSize;
-        Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixQuadDef::raw, shape);
+        Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixPanelDef::raw, shape);
 
         const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[2].data()) + 16;
       
 #define MMCPY(a,el,row,src,sz) {                \
-            if (seg==el) {                      \
+            if (q==el) {                        \
                 uint16_t* dst = &a(row,0);      \
                 for(unsigned k=0; k<sz; k++) {  \
                     dst[sz-1-k] = src[k];       \
@@ -186,7 +235,7 @@ void EpixQuad::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
         // Calibration rows
         const unsigned calibRows = 4;
         shape[0] = calibRows; shape[1] = elemRowSize;
-        Array<uint16_t> acalib = cd.allocate<uint16_t>(EpixQuadDef::aux, shape);
+        Array<uint16_t> acalib = cd.allocate<uint16_t>(EpixPanelDef::aux, shape);
 
         for(unsigned i=0; i<calibRows; i++) {
             MMCPY(acalib, 2, i, u, elemRowSize);
@@ -194,10 +243,13 @@ void EpixQuad::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
             MMCPY(acalib, 0, i, u, elemRowSize);
             MMCPY(acalib, 1, i, u, elemRowSize);
         }
+        seg++;
 
 #ifdef INCLUDE_ENV
-#define ADD_FIELD(name,ntype,val) cd.set_value<ntype>(EpixQuadDef::name, val)
+#define ADD_FIELD(name,ntype,val) qcd.set_value<ntype>(EpixQuadDef::name, val)
     
+        CreateData qcd(xtc, m_namesLookup, m_evtNamesId[seg]);
+
         const uint8_t* u8 = reinterpret_cast<const uint8_t*>(u);
         ADD_FIELD(sht31Hum         ,float_t, (float(u[0])*100./65535.));
         ADD_FIELD(sht31TempC       ,float_t, (float(u[1])*175./65535.-45.));
@@ -222,17 +274,29 @@ void EpixQuad::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
 
         // Temperatures
         const unsigned tempSize = 4;
-        u += tempSize*seg;
+        u += tempSize*q;
         shape[0] = tempSize; shape[1] = 0;
-        Array<uint16_t> atemp = cd.allocate<uint16_t>(EpixQuadDef::asic_temp, shape);
+        Array<uint16_t> atemp = qcd.allocate<uint16_t>(EpixQuadDef::asic_temp, shape);
         for(unsigned i=0; i<tempSize; i++)
             atemp(tempSize-i-1) = *u++;
+
+        seg++;
 #endif
     }
+
+#ifndef INCLUDE_ENV
+    CreateData qcd(xtc, m_namesLookup, m_evtNamesId[seg]);
+    qcd.set_value<uint32_t>(0, 0xdeadbeef);
+#endif
 }
 
 void     EpixQuad::slowupdate(XtcData::Xtc& xtc)
 {
+}
+
+bool     EpixQuad::scanEnabled()
+{
+    return true;
 }
 
 void     EpixQuad::shutdown()
