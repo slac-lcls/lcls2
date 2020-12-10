@@ -19,9 +19,14 @@ fname0 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-
 fname1 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005-seg1and3.xtc2'
 
 
-#on daq-det-drp01:
-fname2 = '/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0147-s000-c000.xtc2'
+#print('DATA FILE AS AVAILABLE ON daq-det-drp01 ONLY')
+#fname2 = '/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0147-s000-c000.xtc2'
+
+print('DATA FILE AS AVAILABLE ON drp-ued-cmp001 ONLY')
+fname2 = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0014-s000-c000.xtc2'
+
 detname='epixquad'
+
 
 #----
 
@@ -173,6 +178,12 @@ def test_calib(fname, args):
     print('XXX det._det_name: ', det._det_name) # epixquad
     print('XXX det._dettype : ', det._dettype)  # epix
     print('XXX det._detid   : ', det._detid)    # -
+    print('XXX det.raw._det_name: ', det.raw._det_name) # epixquad
+    print('XXX det.raw._dettype : ', det.raw._dettype)  # epix
+    print('XXX det.raw._calibconst.keys(): ', det.raw._calibconst.keys()) # dict_keys(['geometry'])
+    print('XXX det.raw._seg_configs(): ', det.raw._seg_configs()) 
+    print('XXX det.raw._uniqueid: ', det.raw._uniqueid)
+    print('XXX det.raw._sorted_segment_ids: ', det.raw._sorted_segment_ids) # [0, 1, 2, 3]
 
     print('det._configs:', det._configs)        # [<dgram.Dgram object at 0x7f7794082d40>]???? WHY IT IS A LIST? HOW TO GET LIST INDEX FOR DETECTOR?
     cfg = det._configs[0]
@@ -201,17 +212,17 @@ def test_calib(fname, args):
 
         #continue
 
-
         for evnum,evt in enumerate(step.events()):
-            if evnum>5 and evnum%200!=0: continue
+            if evnum>2 and evnum%500!=0: continue
             print('%s\nStep %1d Event %04d' % (50*'_',stepnum, evnum))
             segs = det.raw._segments(evt)
             raw  = det.raw.raw(evt)
             logger.info('segs: %s' % str(segs))
             logger.info(info_ndarr(raw,  'raw  '))
 
-            print('STEP det.step.docstring(evt):', det.step.docstring(evt))
-            print('STEP det.step.value(evt):', det.step.value(evt))
+            print('EVT det.raw._segments(evt).keys(): ', det.raw._segments(evt).keys())
+            print('EVT det.step.docstring(evt):', det.step.docstring(evt))
+            print('EVT det.step.value(evt):', det.step.value(evt))
 
 
         print(50*'-')
@@ -297,7 +308,8 @@ if __name__ == "__main__":
     d_pattrs  = False
     d_dograph = True
     d_detname = 'epixquad'  if tname=='4' else 'epix10k2M'
-    d_expname = 'tstx00117' if tname=='4' else 'mfxc00318'
+    #d_expname = 'tstx00117' if tname=='4' else 'mfxc00318'
+    d_expname = 'ueddaq02' if tname=='4' else 'mfxc00318'
     d_ofname  = None
     d_mapmode = 1
     d_pscsize = 100
