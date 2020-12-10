@@ -26,7 +26,7 @@ parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-neh-ctl001',
                     help='collection host (default drp-neh-ctl001)')
 parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                     help='timeout msec (default 10000)')
-parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=100, help='# of events to aquire at each step (default 100)')
+parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=120, help='# of events to aquire at each step (default 120)')
 parser.add_argument('-g', type=int, metavar='GROUP_MASK', default=6, help='bit mask of readout groups (default 6)')
 parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (default BEAM)')
 parser.add_argument('-v', action='store_true', help='be verbose')
