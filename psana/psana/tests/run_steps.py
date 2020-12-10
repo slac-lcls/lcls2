@@ -4,7 +4,6 @@ See https://docs.google.com/spreadsheets/d/1VlVCwEVGahab3omAFJLaF8DJWFcz-faI9Q9a
 
 """
 import os, time, glob, sys
-from psana.smdreader import SmdReader
 from psana.dgram import Dgram
 from setup_input_files import setup_input_files
 from psana import DataSource

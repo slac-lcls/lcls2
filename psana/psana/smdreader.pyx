@@ -18,13 +18,13 @@ cdef class SmdReader:
     cdef array.array    buf_offsets, stepbuf_offsets, buf_sizes, stepbuf_sizes
     cdef array.array    i_evts, founds
 
-    def __init__(self, int[:] fds, int chunksize):
+    def __init__(self, int[:] fds, int chunksize, int max_retries):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
         self.prl_reader         = ParallelReader(fds, chunksize)
         
         # max retries has no default value (set when creating datasource)
-        self.max_retries        = int(os.environ['PS_SMD_MAX_RETRIES']) 
-        self.sleep_secs         = int(os.environ.get('PS_SMD_SLEEP_SECS', '1'))
+        self.max_retries        = max_retries
+        self.sleep_secs         = 1
         self.buf_offsets        = array.array('Q', [0]*fds.size)
         self.stepbuf_offsets    = array.array('Q', [0]*fds.size)
         self.buf_sizes          = array.array('Q', [0]*fds.size)
@@ -53,10 +53,10 @@ cdef class SmdReader:
             cn_retries = 0
             while not self.is_complete():
                 time.sleep(self.sleep_secs)
-                print('waiting for an event...')
+                print(f'waiting for an event...retry#{cn_retries+1} (max_retries={self.max_retries})')
                 self.prl_reader.just_read()
                 cn_retries += 1
-                if cn_retries > self.max_retries:
+                if cn_retries >= self.max_retries:
                     break
 
     @cython.boundscheck(False)

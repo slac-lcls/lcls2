@@ -18,7 +18,8 @@ class EventManager(object):
           replace smalldata view with the read out bigdata.
           Yield one bigdata event.
     """
-    def __init__(self, view, smd_configs, dm, filter_fn=0, prometheus_counter=None):
+    def __init__(self, view, smd_configs, dm,  
+            filter_fn=0, prometheus_counter=None, max_retries=0):
         if view:
             pf = PacketFooter(view=view)
             self.smd_events = pf.split_packets()
@@ -33,6 +34,7 @@ class EventManager(object):
         self.filter_fn = filter_fn
         self.cn_events = 0
         self.prometheus_counter = prometheus_counter
+        self.max_retries = max_retries
 
         if not self.filter_fn and len(self.dm.xtc_files) > 0:
             self._read_bigdata_in_chunk()
@@ -42,8 +44,17 @@ class EventManager(object):
         sum_read_nbytes = 0 # for prometheus counter
         st = time.time()
         for i in range(self.n_smd_files):
-            os.lseek(fds[i], offsets[i], 0)
-            self.bigdata[i].extend(os.read(fds[i], sizes[i]))
+            offset = offsets[i]
+            size = sizes[i]
+            chunk = bytearray()
+            for j in range(self.max_retries+1):
+                chunk.extend(os.pread(fds[i], size, offset))
+                got = memoryview(chunk).nbytes
+                if got == sizes[i]:
+                    break
+                offset += got
+                size -= got
+            self.bigdata[i].extend(chunk)
             sum_read_nbytes += sizes[i]
         en = time.time()
         rate = 0

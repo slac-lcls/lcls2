@@ -61,7 +61,7 @@ class SmdReaderManager(object):
                 self.smd0_n_events = self.dsparms.max_events
         
         self.chunksize = int(os.environ.get('PS_SMD_CHUNKSIZE', 0x1000000))
-        self.smdr = SmdReader(smd_fds, self.chunksize)
+        self.smdr = SmdReader(smd_fds, self.chunksize, self.dsparms.max_retries)
         self.processed_events = 0
         self.got_events = -1
         

@@ -8,10 +8,11 @@ class Events:
     """
     Needs prom_man, configs, dm, filter_callback
     """
-    def __init__(self, configs, dm, prom_man, filter_callback=None, get_smd=None, smdr_man=None):
+    def __init__(self, configs, dm, dsparms, filter_callback=None, get_smd=None, smdr_man=None):
         self.dm             = dm                   
         self.configs        = configs
-        self.prom_man       = prom_man
+        self.prom_man       = dsparms.prom_man
+        self.max_retries    = dsparms.max_retries
         self.filter_callback= filter_callback
         self.get_smd        = get_smd          # RunParallel
         self.smdr_man       = smdr_man         # RunSerial
@@ -41,7 +42,8 @@ class Events:
                         self.configs, 
                         self.dm, 
                         filter_fn           = self.filter_callback,
-                        prometheus_counter  = self.c_read)
+                        prometheus_counter  = self.c_read,
+                        max_retries         = self.max_retries)
                 evt = next(self._evt_man)
                 if not any(evt._dgrams): return self.__next__()
                 self.smdr_man.last_seen_event = evt
@@ -63,7 +65,8 @@ class Events:
                         self.configs, 
                         self.dm, 
                         filter_fn           = self.filter_callback,
-                        prometheus_counter  = self.c_read)
+                        prometheus_counter  = self.c_read,
+                        max_retries         = self.max_retries)
                 evt = next(self._evt_man)
                 if not any(evt._dgrams): return self.__next__()
                 return evt

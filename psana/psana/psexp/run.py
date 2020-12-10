@@ -193,7 +193,7 @@ class RunShmem(Run):
         self.configs   = ds._configs
         super()._get_runinfo()
         self.esm = EnvStoreManager(self.configs)
-        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms.prom_man, 
+        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms, 
                 filter_callback=ds.dsparms.filter)
     
     def events(self):
@@ -224,7 +224,7 @@ class RunSingleFile(Run):
         self.configs   = ds._configs
         super()._get_runinfo()
         self.esm = EnvStoreManager(self.configs)
-        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms.prom_man, 
+        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms, 
                 filter_callback=ds.dsparms.filter)
     
     def events(self):
@@ -255,7 +255,7 @@ class RunSerial(Run):
         self.configs   = ds._configs
         super()._get_runinfo()
         self.esm = EnvStoreManager(self.configs)
-        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms.prom_man, 
+        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms, 
                 filter_callback=ds.dsparms.filter, smdr_man=ds.smdr_man)
     
     def events(self):

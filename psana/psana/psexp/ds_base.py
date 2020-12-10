@@ -18,13 +18,14 @@ import psana.pscalib.calib.MDBWebUtils as wu
 class InvalidDataSourceArgument(Exception): pass
 
 class DsParms(object):
-    def __init__(self, batch_size=1, max_events=0, filter=0, destination=0, prom_man=None):
+    def __init__(self, batch_size=1, max_events=0, filter=0, destination=0, prom_man=None, max_retries=0):
         self.batch_size  = batch_size
         self.max_events  = max_events
         self.filter      = filter
         self.destination = destination 
         self.prom_man    = prom_man
         self.calibconst  = {}
+        self.max_retries = max_retries
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table):
         self.det_classes, self.xtc_info, self.det_info_table = det_classes, xtc_info, det_info_table
@@ -75,15 +76,13 @@ class DataSourceBase(abc.ABC):
                 if isinstance(self.files, str):
                     self.files = [self.files]
 
-            if not self.live:
-                os.environ['PS_SMD_MAX_RETRIES'] = '0' # do not retry when not in live mode
-            else:
-                os.environ['PS_SMD_MAX_RETRIES'] = '30'
+            max_retries = 0
+            if self.live: max_retries = 3 
 
         assert self.batch_size > 0
         
         self.prom_man = PrometheusManager(os.environ['PS_PROMETHEUS_JOBID'])
-        self.dsparms  = DsParms(self.batch_size, self.max_events, self.filter, self.destination, self.prom_man) 
+        self.dsparms  = DsParms(self.batch_size, self.max_events, self.filter, self.destination, self.prom_man, max_retries) 
 
     @abc.abstractmethod
     def runs(self):

@@ -37,7 +37,7 @@ def _dgSize(view):
 
 class DgramManager(object):
 
-    def __init__(self, xtc_files, configs=[], fds=[], tag=None, run=None):
+    def __init__(self, xtc_files, configs=[], fds=[], tag=None, run=None, max_retries=0):
         """ Opens xtc_files and stores configs.
         If file descriptors (fds) is given, reuse the given file descriptors.
         """
@@ -49,6 +49,7 @@ class DgramManager(object):
         self._run = run
         self.found_endrun = True
         self.buffered_beginruns = []
+        self.max_retries = max_retries
 
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
@@ -88,7 +89,7 @@ class DgramManager(object):
         if given_configs:
             self.configs = configs
         elif xtc_files[0] != 'shmem':
-            self.configs = [dgram.Dgram(file_descriptor=fd) for fd in self.fds]
+            self.configs = [dgram.Dgram(file_descriptor=fd, max_retries=self.max_retries) for fd in self.fds]
 
         self.calibconst = {} # initialize to empty dict - will be populated by run class
 
@@ -147,7 +148,7 @@ class DgramManager(object):
                 raise StopIteration
         else:
             try:
-                dgrams = [dgram.Dgram(config=config) for config in self.configs]
+                dgrams = [dgram.Dgram(config=config, max_retries=self.max_retries) for config in self.configs]
             except StopIteration:
                 fake_endruns = self._check_missing_endrun()
                 if fake_endruns:
@@ -181,7 +182,7 @@ class DgramManager(object):
                 d = None
             else:
                 try:
-                    d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size)
+                    d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size, max_retries=self.max_retries)
                 except StopIteration:
                     d = None
 

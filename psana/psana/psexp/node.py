@@ -501,7 +501,7 @@ class BigDataNode(object):
             bd_comm.Recv(chunk, source=0)
             return chunk
         
-        events = Events(self.configs, self.dm, self.dsparms.prom_man, 
+        events = Events(self.configs, self.dm, self.dsparms, 
                 filter_callback=self.dsparms.filter, get_smd=get_smd)
 
         for evt in events:

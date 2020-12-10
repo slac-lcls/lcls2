@@ -23,7 +23,6 @@ static const char EnumDelim=':';
 
 using namespace std;
 
-#define MAXRETRIES 2
 #define SLEEP_SECS 1
 
 // to avoid compiler warnings for debug variables
@@ -43,8 +42,9 @@ struct PyDgramObject {
     ssize_t offset;
     Py_buffer buf;
     ContainerInfo contInfo;
-    NamesIter* namesIter; // only nonzero in the config dgram
-    ssize_t size; // size of dgram - for allocating dgram of any size
+    NamesIter* namesIter;   // only nonzero in the config dgram
+    ssize_t size;           // size of dgram - for allocating dgram of any size
+    int max_retries;        // set no. of retries when reading data (default=0)
 };
 
 static void addObjToPyObj(PyObject* parent, const char* name, PyObject* obj, PyObject* pycontainertype) {
@@ -571,10 +571,13 @@ static PyObject* dgram_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     return (PyObject*)self;
 }
 
-ssize_t read_with_retries(int fd, void* buf, ssize_t count, size_t offset)
+ssize_t read_with_retries(int fd, void* buf, ssize_t count, size_t offset, int max_retries)
 {
     ssize_t readSuccess = 0;
-    for (int i=0; i<MAXRETRIES; i++) {
+    for (int i=0; i<max_retries+1; i++) {
+        if (i>0) {
+            cout << "dgram read retry#" << i << " (max_retries=" << max_retries << ")" << endl;
+        }
         if (offset == 0) {
             readSuccess = read(fd, buf, count);
         } else {
@@ -602,14 +605,14 @@ static int dgram_read(PyDgramObject* self, int sequential)
         // - only reads the payload content if it is larger than 0.
         ssize_t sizeofPayload = self->dgram->xtc.sizeofPayload();
         if (sizeofPayload>0) {
-            readSuccess = read_with_retries(self->file_descriptor, self->dgram->xtc.payload(), sizeofPayload, 0);
+            readSuccess = read_with_retries(self->file_descriptor, self->dgram->xtc.payload(), sizeofPayload, 0, self->max_retries);
         } else {
             readSuccess = 1; //no payload
         }
 
     } else {
         off_t fOffset = (off_t)self->offset;
-        readSuccess = read_with_retries(self->file_descriptor, self->dgram, self->size, fOffset);
+        readSuccess = read_with_retries(self->file_descriptor, self->dgram, self->size, fOffset, self->max_retries);
     }
     
     //cout << "dgram_read offset=" << self->offset << " size=" << self->size << " readSuccess=" << readSuccess << endl;
@@ -642,6 +645,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                              (char*)"fake_endrun",
                              (char*)"fake_endrun_sec",
                              (char*)"fake_endrun_usec",
+                             (char*)"max_retries",
                              NULL};
 
     self->namesIter = 0;
@@ -654,9 +658,10 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
     int fake_endrun=0;
     unsigned fake_endrun_sec=0;
     unsigned fake_endrun_usec=0;
+    self->max_retries=0;
 
     if (!PyArg_ParseTupleAndKeywords(args, kwds,
-                                     "|iOllOiII", kwlist,
+                                     "|iOllOiIIi", kwlist,
                                      &fd,
                                      &configDgram,
                                      &self->offset,
@@ -664,7 +669,8 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
                                      &view,
                                      &fake_endrun, 
                                      &fake_endrun_sec,
-                                     &fake_endrun_usec)) {
+                                     &fake_endrun_usec,
+                                     &self->max_retries)) {
         return -1;
     }
 
@@ -710,7 +716,7 @@ static int dgram_init(PyDgramObject* self, PyObject* args, PyObject* kwds)
             // For (1) and (2),
             if (self->size == 0) {
                 // For (1) and (2), obtain dgram_header from fd then extract size
-                int readSuccess = read_with_retries(self->file_descriptor, &dgram_header, sizeof(Dgram), 0);
+                int readSuccess = read_with_retries(self->file_descriptor, &dgram_header, sizeof(Dgram), 0, self->max_retries);
                 if (readSuccess <= 0) {
                     PyErr_SetString(PyExc_StopIteration, "Problem reading dgram header.");
                     return -1;
