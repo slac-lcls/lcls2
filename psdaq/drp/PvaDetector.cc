@@ -13,6 +13,7 @@
 #include <map>
 #include <algorithm>
 #include <limits>
+#include <thread>
 #include <Python.h>
 #include "DataDriver.h"
 #include "RunInfoDef.hh"
@@ -83,10 +84,11 @@ bool PvaMonitor::ready(PvaDetector* pvaDetector)
 {
     m_pvaDetector = pvaDetector;
 
+
     const std::string request = m_provider == "pva"
                               ? "field(value,timeStamp,dimension)"
                               : "field(value,timeStamp)";
-    const unsigned tmo = 3;
+    const unsigned tmo = 3;             // seconds
     return PvMonitorBase::ready(request, tmo);
 }
 
@@ -108,7 +110,7 @@ void PvaMonitor::getVarDef(XtcData::VarDef& varDef, size_t& payloadSize, size_t 
 
 void PvaMonitor::onConnect()
 {
-    logging::info("%s connected\n", name().c_str());
+    logging::info("%s connected", name().c_str());
 
     if (m_para.verbose) {
         printStructure();
@@ -117,7 +119,7 @@ void PvaMonitor::onConnect()
 
 void PvaMonitor::onDisconnect()
 {
-    logging::info("%s disconnected\n", name().c_str());
+    logging::info("%s disconnected", name().c_str());
 }
 
 void PvaMonitor::updated()

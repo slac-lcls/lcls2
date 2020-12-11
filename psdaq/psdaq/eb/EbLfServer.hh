@@ -97,9 +97,6 @@ int Pds::Eb::EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
     if (cqEntry->op_context)
     {
       auto link = static_cast<Pds::Eb::EbLfLink*>(cqEntry->op_context);
-      link->_credits -= rc;
-      if (link->_credits < 0)
-        printf("*** 3 link %p credits (%ld) < 0\n", link, link->_credits);
       link->postCompRecv(rc);
     }
     //else

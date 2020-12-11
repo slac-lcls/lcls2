@@ -24,7 +24,7 @@ void PvMonitorBase::printStructure() const
         switch (fields[i]->getType()) {
             case pvd::scalar: {
                 auto pvScalar = _strct->getSubField<pvd::PVScalar>(offset);
-                std::cout << "PVScalar: " << pvScalar << "\n";
+                //std::cout << "PVScalar: " << pvScalar << "\n";
                 auto scalar   = pvScalar->getScalar();
                 auto fType = pvd::ScalarTypeFunc::name(scalar->getScalarType());
                 std::cout << "  Scalar type: " << fType << "\n";
@@ -32,7 +32,7 @@ void PvMonitorBase::printStructure() const
             }
             case pvd::scalarArray: {
                 auto pvScalarArray = _strct->getSubField<pvd::PVScalarArray>(offset);
-                std::cout << "PVScalarArray: " << pvScalarArray << "\n";
+                //std::cout << "PVScalarArray: " << pvScalarArray << "\n";
                 auto scalarArray   = pvScalarArray->getScalarArray();
                 auto fType = pvd::ScalarTypeFunc::name(scalarArray->getElementType());
                 std::cout << "  ScalarArray type: " << fType << "\n";
@@ -40,7 +40,7 @@ void PvMonitorBase::printStructure() const
             }
             case pvd::union_: {
                 auto pvUnion = _strct->getSubField<pvd::PVUnion>(offset);
-                std::cout << "PVUnion: " << pvUnion << "\n";
+                //std::cout << "PVUnion: " << pvUnion << "\n";
                 auto union_   = pvUnion->getUnion();
                 //std::cout << "  Union: " << union_ << "\n";
                 printf("  Union has %zu fields\n", union_->getNumberFields());
@@ -56,7 +56,7 @@ void PvMonitorBase::printStructure() const
             }
             case pvd::structure: {
                 auto pvStructure = _strct->getSubField<pvd::PVStructure>(offset);
-                std::cout << "PVStructure: " << pvStructure << "\n";
+                //std::cout << "PVStructure: " << pvStructure << "\n";
                 auto structure   = pvStructure->getStructure();
                 //std::cout << "  Structure: " << structure << "\n";
                 auto fieldNames = structure->getFieldNames();
@@ -121,7 +121,9 @@ int PvMonitorBase::getParams(const std::string& name,
     switch (field->getField()->getType()) {
         case pvd::scalar: {
             auto pvScalar = _strct->getSubField<pvd::PVScalar>(offset);
+            if (!pvScalar)  throw "pvScalar is NULL";
             auto scalar   = pvScalar->getScalar();
+            if (!scalar)  throw "scalar is NULL";
             type          = scalar->getScalarType();
             nelem         = 1;
             rank          = 0;
@@ -138,16 +140,18 @@ int PvMonitorBase::getParams(const std::string& name,
 //              case pvd::pvULong:   getData = [&](void* data, size_t& length) -> size_t { return _getScalar<uint64_t>(data, length); };  break;
 //              case pvd::pvFloat:   getData = [&](void* data, size_t& length) -> size_t { return _getScalar<float   >(data, length); };  break;
 //              case pvd::pvDouble:  getData = [&](void* data, size_t& length) -> size_t { return _getScalar<double  >(data, length); };  break;
-            logging::info("PV name: %s,  %s type: '%s' (%d)",
+            logging::info("scalar PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
                           fullName.c_str(),
                           pvd::TypeFunc::name(field->getField()->getType()),
-                          pvd::ScalarTypeFunc::name(scalar->getScalarType()),
-                          type);
+                          pvd::ScalarTypeFunc::name(type),
+                          type, nelem, rank);
             break;
         }
         case pvd::scalarArray: {
             auto pvScalarArray = _strct->getSubField<pvd::PVScalarArray>(offset);
+            if (!pvScalarArray)  throw "pvScalarArray is NULL";
             auto scalarArray   = pvScalarArray->getScalarArray();
+            if (!scalarArray)  throw "scalarArray is NULL";
             type               = scalarArray->getElementType();
             nelem              = pvScalarArray->getLength();
 // This was tested and is known to work
@@ -163,18 +167,22 @@ int PvMonitorBase::getParams(const std::string& name,
 //              case pvd::pvULong:   getData = [&](void* data, size_t& length) -> size_t { return _getArray<uint64_t>(data, length); };  break;
 //              case pvd::pvFloat:   getData = [&](void* data, size_t& length) -> size_t { return _getArray<float   >(data, length); };  break;
 //              case pvd::pvDouble:  getData = [&](void* data, size_t& length) -> size_t { return _getArray<double  >(data, length); };  break;
-            logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd",
+            logging::info("scalarArray PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
                           fullName.c_str(),
                           pvd::TypeFunc::name(field->getField()->getType()),
-                          pvd::ScalarTypeFunc::name(scalarArray->getElementType()),
-                          type, nelem);
+                          pvd::ScalarTypeFunc::name(type),
+                          type, nelem, rank);
             break;
         }
          case pvd::union_: {
             auto pvUnion       = _strct->getSubField<pvd::PVUnion>(offset);
+            if (!pvUnion)  throw "pvUnion is NULL";
             auto union_        = pvUnion->getUnion();
+            if (!union_)  throw "union is NULL";
             auto pvScalarArray = pvUnion->get<pvd::PVScalarArray>();
+            if (!pvScalarArray)  throw "Union's pvScalarArray is NULL";
             auto scalarArray   = pvScalarArray->getScalarArray();
+            if (!scalarArray)  throw "Union's scalarArray is NULL";
             type               = scalarArray->getElementType();
             nelem              = pvScalarArray->getLength();
 // This has NOT been tested
@@ -190,11 +198,11 @@ int PvMonitorBase::getParams(const std::string& name,
 //              case pvd::pvULong:   getData = [&](void* data, size_t& length) -> size_t { return _getUnion<uint64_t>(data, length); };  break;
 //              case pvd::pvFloat:   getData = [&](void* data, size_t& length) -> size_t { return _getUnion<float   >(data, length); };  break;
 //              case pvd::pvDouble:  getData = [&](void* data, size_t& length) -> size_t { return _getUnion<double  >(data, length); };  break;
-            logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd",
+            logging::info("union PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
                           fullName.c_str(),
                           pvd::TypeFunc::name(field->getField()->getType()),
-                          pvd::ScalarTypeFunc::name(scalarArray->getElementType()),
-                          type, nelem);
+                          pvd::ScalarTypeFunc::name(type),
+                          type, nelem, rank);
             break;
         }
         default: {
