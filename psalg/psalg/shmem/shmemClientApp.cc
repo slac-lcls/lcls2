@@ -134,11 +134,12 @@ int main(int argc, char* argv[]) {
     myClient.connect(partitionTag,index);
     while(1)
       {
-      int ev_index,buf_size;
-      Dgram *dgram = (Dgram*)myClient.get(ev_index,buf_size);
+      int ev_index;
+      size_t buf_size;
+      Dgram *dgram = (Dgram*)myClient.get(ev_index, buf_size);
       if(!dgram) break;
       if(veryverbose)
-        printf("shmemClient dgram trId %d index %d size %d\n",dgram->service(),ev_index,buf_size);
+        printf("shmemClient dgram trId %d index %d size %lu\n",dgram->service(),ev_index,buf_size);
       if(!timing)
         myClient.processDgram(dgram);
       if(dgram->service() == TransitionId::L1Accept)

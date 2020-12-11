@@ -112,13 +112,13 @@ namespace psalg {
       ** --
       */
 
-      void free(int index, int size) {
+      void free(int index, size_t size) {
           XtcMonitorMsg myMsg = _myMsg;
           myMsg.bufferIndex(index);
           mqd_t* oq = _evqout;
           unsigned ioq = _ev_index;
           unsigned priority(0);
-          XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (size * index));
+          XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (size * (size_t)index));
 
           if(dg->service()==XtcData::TransitionId::L1Accept) {
 #ifdef DBUG
@@ -143,7 +143,7 @@ namespace psalg {
       ** --
       */
 
-      XtcData::Dgram* transition(int &index, int &size) {
+      XtcData::Dgram* transition(int &index, size_t &size) {
         XtcMonitorMsg myMsg;
         int nb = ::recv(_trfd, (char*)&myMsg, sizeof(myMsg), 0);
         if (nb < 0) {
@@ -161,7 +161,7 @@ namespace psalg {
         printf("Received tr buffer %d [%d]\n",i,_trfd);
 #endif
         if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
-          XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
+          XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * (size_t)i));
 #ifdef DBUG2
           printf("*** received transition id %d (%s)\n",dg->service(), XtcData::TransitionId::name(dg->service()));
 #endif
@@ -187,7 +187,7 @@ namespace psalg {
       ** --
       */
 
-      XtcData::Dgram* event(int &index, int &size) {
+      XtcData::Dgram* event(int &index, size_t &size) {
         mqd_t  iq = _evqin;
 
         XtcMonitorMsg myMsg;
@@ -203,7 +203,7 @@ namespace psalg {
           printf("*** Received ev buffer %d [%d] numBuffers %d size %zd\n",i,iq,myMsg.numberOfBuffers(),myMsg.sizeOfBuffers());
 #endif
           if ( (i>=0) && (i<myMsg.numberOfBuffers())) {
-            XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * i));
+            XtcData::Dgram* dg = (XtcData::Dgram*) (_shm + (myMsg.sizeOfBuffers() * (size_t)i));
 #ifdef DBUG2
             static uint64_t nevt = 0;
             printf("*** received ev svc %d (%s) %u.%09u, nL1A %lu\n",dg->service(), XtcData::TransitionId::name(dg->service()), dg->time.seconds(), dg->time.nanoseconds(), nevt);
@@ -243,7 +243,7 @@ using namespace psalg::shmem;
 ** --
 */
 
-void ShmemClient::free(int index, int size)
+void ShmemClient::free(int index, size_t size)
 {
   _handler->free(index,size);
 }
@@ -255,7 +255,7 @@ void ShmemClient::free(int index, int size)
 ** --
 */
 
-void* ShmemClient::get(int& index, int& size)
+void* ShmemClient::get(int& index, size_t& size)
 {
   index = -1;
   size = 0;

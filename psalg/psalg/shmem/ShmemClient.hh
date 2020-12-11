@@ -26,8 +26,8 @@ namespace psalg {
       //  common values of ev_index produce a set of clients competing for events
       //
       int connect(const char* tag, int tr_index=0);
-      void* get(int& index,int& size);
-      void free(int index, int size);
+      void* get(int& index, size_t& size);
+      void free(int index, size_t size);
     
     private:
       int _myTrFd;

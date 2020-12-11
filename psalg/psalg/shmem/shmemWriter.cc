@@ -109,13 +109,14 @@ int main(int argc, char* argv[]) {
   myClient.connect(partitionTag,index);
   while(1)
     {
-    int ev_index,buf_size;
+    int ev_index;
+    size_t buf_size;
     Dgram *dgram = (Dgram*)myClient.get(ev_index,buf_size);
     if(!dgram) break;
     if(verbose)
-      printf("shmemWriter dgram trId %d index %d size %d\n",dgram->service(),ev_index,buf_size);
+      printf("shmemWriter dgram trId %d index %d size %lu\n",dgram->service(),ev_index,buf_size);
     myClient.processDgram(dgram);
-    myClient.free(ev_index,buf_size);
+    myClient.free(ev_index, buf_size);
     }
 
   return 1;
