@@ -133,7 +133,7 @@ class CGWPartitionTable(QWTableOfCheckBoxes) :
 
     def detname(self, segname):
         """splits trailed segment number"""
-        return segname.rsplit('_')[0]
+        return segname.rsplit('_', 1)[0]
 
 
     def in_collapsed_group(self, item):
