@@ -391,5 +391,12 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
   event->damage(Damage::DroppedContribution);
 
+  if (!event->creator()->isEvent())
+  {
+    logging::warning("Fixup %s, %014lx, size %zu, source %d\n",
+                     TransitionId::name(event->creator()->service()),
+                     event->sequence(), event->size(), srcId);
+  }
+
   _fixupSrc->observe(double(srcId));
 }
