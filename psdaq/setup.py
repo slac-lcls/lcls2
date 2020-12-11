@@ -46,7 +46,6 @@ setup(
                 'pykcu = psdaq.pykcu.pykcu:main',
                 'control_gui = psdaq.control_gui.app.control_gui:control_gui',
                 'bluesky_simple = psdaq.control.bluesky_simple:main',
-                'bluesky_rix = psdaq.control.bluesky_rix:main',
                 'opal_config_scan = psdaq.control.opal_config_scan:main',
                 'ts_config_scan = psdaq.control.ts_config_scan:main',
                 'epics_exporter = psdaq.cas.epics_exporter:main',
