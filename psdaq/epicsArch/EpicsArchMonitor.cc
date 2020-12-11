@@ -93,6 +93,9 @@ void EpicsArchMonitor::close()
 
 void EpicsArchMonitor::_initDef(size_t& payloadSize)
 {
+  _epicsArchDef.NameVec.clear();
+  _epicsArchDef.NameVec.push_back({"StaleFlags", XtcData::Name::UINT32, 1});
+
   payloadSize = 0;
   for (unsigned iPvName = 0; iPvName < _lpvPvList.size(); iPvName++)
   {
@@ -105,15 +108,18 @@ void EpicsArchMonitor::_initDef(size_t& payloadSize)
 
 void EpicsArchMonitor::_initInfoDef()
 {
+  _epicsInfoDef.NameVec.clear();
   _epicsInfoDef.NameVec.push_back({"keys", XtcData::Name::CHARSTR, 1});
 
   for (unsigned iPvName = 0; iPvName < _lpvPvList.size(); iPvName++)
   {
     EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
-
-    auto& descr   = epicsPvCur.getPvDescription();
-    auto  detName = !descr.empty() ? descr : epicsPvCur.getPvName();
-    _epicsInfoDef.NameVec.push_back({detName.c_str(), XtcData::Name::CHARSTR, 1});
+    if (!epicsPvCur.isDisabled())
+    {
+      auto& descr   = epicsPvCur.getPvDescription();
+      auto  detName = !descr.empty() ? descr : epicsPvCur.getPvName();
+      _epicsInfoDef.NameVec.push_back({detName.c_str(), XtcData::Name::CHARSTR, 1});
+    }
   }
 }
 
@@ -127,8 +133,10 @@ void EpicsArchMonitor::_addInfo(XtcData::CreateData& epicsInfo)
   for (unsigned iPvName = 0; iPvName < _lpvPvList.size(); iPvName++)
   {
     EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
-
-    epicsInfo.set_string(1 + iPvName, epicsPvCur.getPvName().c_str()); // + "," + 2ndString).c_str()
+    if (!epicsPvCur.isDisabled())
+    {
+      epicsInfo.set_string(1 + iPvName, epicsPvCur.getPvName().c_str()); // + "," + 2ndString).c_str()
+    }
   }
 }
 
