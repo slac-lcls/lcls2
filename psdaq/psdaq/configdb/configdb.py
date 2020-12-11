@@ -474,7 +474,7 @@ def main():
 
     # create the top-level parser
     parser = argparse.ArgumentParser(description='configuration database CLI')
-    parser.add_argument('--url', default='https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/',
+    parser.add_argument('--url', default='https://pswww.slac.stanford.edu/ws-auth/configdb/ws/',
                         help='configuration database connection')
     parser.add_argument('--root', default='configDB', help='configuration database root (default: configDB)')
     subparsers = parser.add_subparsers()
