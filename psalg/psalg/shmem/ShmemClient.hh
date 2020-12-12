@@ -2,6 +2,7 @@
 #define PsAlg_ShMem_ShmemClient_hh
 
 #include <poll.h>
+#include <stddef.h>
 
 namespace XtcData {
 
