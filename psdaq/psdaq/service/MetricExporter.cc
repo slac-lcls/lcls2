@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sys/stat.h>
 #include "MetricExporter.hh"
 #include "psalg/utils/SysLog.hh"
 
@@ -22,14 +23,21 @@ std::unique_ptr<prometheus::Exposer>
             exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
             if (!prometheusDir.empty()) {
                 std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i) + ".yaml";
-                FILE* file = fopen(fileName.c_str(), "w");
-                if (file) {
-                    fprintf(file, "- targets:\n    - '%s:%d'\n", hostname.c_str(), port);
-                    fclose(file);
+                struct stat buf;
+                if (stat(fileName.c_str(), &buf) != 0) {
+                    FILE* file = fopen(fileName.c_str(), "w");
+                    if (file) {
+                        logging::debug("Writing %s\n", fileName.c_str());
+                        fprintf(file, "- targets:\n    - '%s:%d'\n", hostname.c_str(), port);
+                        fclose(file);
+                    }
+                    else {
+                        // %m will be replaced by the string strerror(errno)
+                        logging::warning("Error creating file %s: %m", fileName.c_str());
+                    }
                 }
                 else {
-                    // %m will be replaced by the string strerror(errno)
-                    logging::warning("Error creating file %s: %m", fileName.c_str());
+                    // File already exists; no need to rewrite it
                 }
             }
             else {
