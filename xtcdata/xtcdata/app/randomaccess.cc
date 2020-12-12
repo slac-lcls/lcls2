@@ -64,7 +64,7 @@ public:
     }
     void reset() {offset=-1;}
     int64_t offset;
-    
+
 private:
     NamesLookup _namesLookup;
 };
@@ -114,7 +114,7 @@ int main(int argc, char* argv[])
         exit(-1);
     }
 
-    static const unsigned bigdgBufferSize = 0x4000000;
+    static const size_t bigdgBufferSize = 0x4000000;
     Dgram* bigdg = (Dgram*)malloc(bigdgBufferSize);
 
     XtcFileIterator iter(smallfd, 0x4000000);
@@ -142,9 +142,9 @@ int main(int argc, char* argv[])
             printf("Big dgram header read error\n");
             exit(-1);
         }
-        unsigned bigdgsize = sizeof(Dgram)+bigdg->xtc.extent;
+        size_t bigdgsize = sizeof(Dgram)+bigdg->xtc.extent;
         if (bigdgsize>bigdgBufferSize) {
-            printf("Big dgram too large %s\n",bigdgsize);
+            printf("Big dgram too large %zu\n",bigdgsize);
             exit(-1);
         }
         if (::read(bigfd, bigdg->xtc.payload(), bigdg->xtc.extent) == 0) {

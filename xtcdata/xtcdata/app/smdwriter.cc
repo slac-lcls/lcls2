@@ -76,10 +76,10 @@ public:
         case(Name::UINT64):{
             if(data_rank > 0){
                 Array<uint64_t> arrT = descdata.get_array<uint64_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("%s: %llu, %llu, %llu\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<uint64_t>(i));
+                printf("%s: %llu\n",name.name(),descdata.get_value<uint64_t>(i));
             }
             break;
         }
@@ -120,10 +120,10 @@ public:
         case(Name::INT64):{
             if(data_rank > 0){
                 Array<int64_t> arrT = descdata.get_array<int64_t>(i);
-                printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("%s: %lld, %lld, %lld\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %d\n",name.name(),descdata.get_value<int64_t>(i));
+                printf("%s: %lld\n",name.name(),descdata.get_value<int64_t>(i));
             }
             break;
         }
@@ -202,7 +202,7 @@ public:
                 Name& name = names.get(i);
                 printf("Name: %s Type: %d Rank: %d\n",name.name(),name.type(), name.rank());
             }
-            
+
             break;
         }
         case (TypeId::ShapesData): {
@@ -227,7 +227,7 @@ public:
         }
         return Continue;
     }
-    
+
 private:
     NamesLookup _namesLookup;
 };
@@ -239,7 +239,7 @@ void save(Dgram& dg, FILE* xtcFile) {
 }
 
 void show(Dgram& dg) {
-    printf("%s transition: time %d.%09d, env 0x%lu, "
+    printf("%s transition: time %d.%09d, env 0x%u, "
            "payloadSize %d extent %d\n",
            TransitionId::name(dg.service()), dg.time.seconds(),
            dg.time.nanoseconds(),
@@ -261,7 +261,7 @@ int main(int argc, char* argv[])
     * The smdwriter reads an xtc file, extracts
     * payload size for each event datagram,
     * then writes out (fseek) offset in smd.xtc2 file.
-    */ 
+    */
     int c;
     int writeTs = 0;
     char* tsname = 0;
@@ -336,8 +336,8 @@ int main(int argc, char* argv[])
         nsec_arr[i] = nsec;
         cout << sec_arr[i] << " " << nsec_arr[i] << endl;
         i++;
-    }  
-    printf("found %d timestamps", i); 
+    }
+    printf("found %d timestamps", i);
     }
 
     // Writing out data
@@ -348,15 +348,15 @@ int main(int argc, char* argv[])
     unsigned nodeId=512; // choose a nodeId that the DAQ will not use.  this is checked in addNames()
     NamesLookup namesLookup;
     NamesId namesId(nodeId, 0);
-    
-    printf("\nStart writing offsets.\n"); 
-    
+
+    printf("\nStart writing offsets.\n");
+
     Smd smd;
     Dgram* dgOut;
     while ((dgIn = iter.next())) {
-        nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload()); 
+        nowDgramSize = (uint64_t)(sizeof(*dgIn) + dgIn->xtc.sizeofPayload());
         dgOut = smd.generate(dgIn, buf, nowOffset, nowDgramSize, namesLookup, namesId);
-        
+
         save(*dgOut, xtcFile);
         eventId++;
         nowOffset += nowDgramSize;
@@ -366,8 +366,8 @@ int main(int argc, char* argv[])
                 break;
             }
         }
-        
-        
+
+
         if (n_mod > 0) {
             if (eventId == 1) {
                 cout << eventId << " sleep...3s " << endl;
@@ -383,7 +383,7 @@ int main(int argc, char* argv[])
   fclose(xtcFile);
   ::close(fd);
   free(buf);
-  
+
   return 0;
 
 }

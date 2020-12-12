@@ -72,7 +72,7 @@ void dump(const char* comment, DescData& descdata) {
     for (unsigned i = 0; i < names.num(); i++) {
         Name& name = names.get(i);
         if (name.type()==Name::INT64 and name.rank()==0) {
-            printf("Name %s has value %d\n",name.name(),descdata.get_value<int64_t>(name.name()));
+            printf("Name %s has value %lld\n",name.name(),descdata.get_value<int64_t>(name.name()));
         }
     }
     printf("\n\n");

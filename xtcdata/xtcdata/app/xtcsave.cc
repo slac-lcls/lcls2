@@ -60,13 +60,13 @@ int main(int argc, char* argv[])
     for (unsigned i = 0; i < nevents; i++) {
         dg = iter.next();
         printf("Event: %d\n", i);
-        printf("%s transition: time %d.%09d, env 0x%lux, "
+        printf("%s transition: time %d.%09d, env 0x%08x, "
                "payloadSize %d\n",
                TransitionId::name(dg->service()), dg->time.seconds(),
-               dg->time.nanoseconds(), 
+               dg->time.nanoseconds(),
                dg->env, dg->xtc.sizeofPayload());
         printf("*** dg xtc extent %d\n",dg->xtc.extent);
-        printf("$$$$ %u %u %u\n", sizeof(*dg), sizeof(dg), sizeof(&dg));
+        printf("$$$$ %zu %zu %zu\n", sizeof(*dg), sizeof(dg), sizeof(&dg));
 
         if (fwrite(dg, sizeof(*dg) + dg->xtc.sizeofPayload(), 1, outFile) != 1) {
             printf("Error writing to output xtc file.\n");

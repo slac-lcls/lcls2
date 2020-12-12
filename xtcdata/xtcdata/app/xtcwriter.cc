@@ -55,7 +55,7 @@ public:
 } EpicsDef;
 
 void epicsExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
-{ 
+{
     CreateData epics(parent, namesLookup, namesId);
     epics.set_value(EpicsDef::HX2_DVD_GCC_01_PMON, (double)41.0);
     epics.set_string(EpicsDef::HX2_DVD_GPI_01_PMON, "Test String");
@@ -108,13 +108,13 @@ public:
       array1Pgp
     };
 
-  
+
    PgpDef()
    {
      NameVec.push_back({"floatPgp",Name::DOUBLE,0});
      NameVec.push_back({"array0Pgp",Name::FLOAT,2});
      NameVec.push_back({"intPgp",Name::INT64,0});
-     NameVec.push_back({"array1Pgp",Name::FLOAT,2});     
+     NameVec.push_back({"array1Pgp",Name::FLOAT,2});
    }
 } PgpDef;
 
@@ -126,8 +126,8 @@ public:
     {
       arrayRaw
     };
-  
-  
+
+
   PadDef()
    {
      Alg segmentAlg("cspadseg",2,3,42);
@@ -171,10 +171,9 @@ public:
 
     void get_value(int i, Name& name, DescData& descdata){
         int data_rank = name.rank();
-        int data_type = name.type();
 
         switch(name.type()){
-        case(0):{
+        case(Name::UINT8):{
             if(data_rank > 0){
                 Array<uint8_t> arrT = descdata.get_array<uint8_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
@@ -185,7 +184,7 @@ public:
             break;
         }
 
-        case(1):{
+        case(Name::UINT16):{
             if(data_rank > 0){
                 Array<uint16_t> arrT = descdata.get_array<uint16_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
@@ -196,7 +195,7 @@ public:
             break;
         }
 
-        case(2):{
+        case(Name::UINT32):{
             if(data_rank > 0){
                 Array<uint32_t> arrT = descdata.get_array<uint32_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
@@ -207,7 +206,7 @@ public:
             break;
         }
 
-        case(3):{
+        case(Name::UINT64):{
             if(data_rank > 0){
                 Array<uint64_t> arrT = descdata.get_array<uint64_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
@@ -218,7 +217,7 @@ public:
             break;
         }
 
-        case(4):{
+        case(Name::INT8):{
             if(data_rank > 0){
                 Array<int8_t> arrT = descdata.get_array<int8_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
@@ -229,7 +228,7 @@ public:
             break;
         }
 
-        case(5):{
+        case(Name::INT16):{
             if(data_rank > 0){
                 Array<int16_t> arrT = descdata.get_array<int16_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
@@ -240,7 +239,7 @@ public:
             break;
         }
 
-        case(6):{
+        case(Name::INT32):{
             if(data_rank > 0){
                 Array<int32_t> arrT = descdata.get_array<int32_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
@@ -251,7 +250,7 @@ public:
             break;
         }
 
-        case(7):{
+        case(Name::INT64):{
             if(data_rank > 0){
                 Array<int64_t> arrT = descdata.get_array<int64_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
@@ -262,7 +261,7 @@ public:
             break;
         }
 
-        case(8):{
+        case(Name::FLOAT):{
             if(data_rank > 0){
                 Array<float> arrT = descdata.get_array<float>(i);
                 // printf("%s: %f, %f\n",name.name(),arrT(0),arrT(1));
@@ -273,13 +272,44 @@ public:
             break;
         }
 
-        case(9):{
+        case(Name::DOUBLE):{
             if(data_rank > 0){
                 Array<double> arrT = descdata.get_array<double>(i);
                 // printf("%s: %f, %f, %f\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
                 // printf("%s: %f\n",name.name(),descdata.get_value<double>(i));
+            }
+            break;
+        }
+
+        case(Name::CHARSTR):{
+            if(data_rank > 0){
+                Array<char> arrT = descdata.get_array<char>(i);
+                //printf("%s: \"%s\"\n",name.name(),arrT.data());
+                    }
+            else{
+                printf("%s: string with no rank?!?\n",name.name());
+            }
+            break;
+        }
+
+        case(Name::ENUMVAL):{
+            if(data_rank > 0){
+                Array<int32_t> arrT = descdata.get_array<int32_t>(i);
+                //printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                    }
+            else{
+                //printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
+            }
+            break;
+        }
+
+        case(Name::ENUMDICT):{
+            if(data_rank > 0){
+                printf("%s: enumdict with rank?!?\n", name.name());
+            } else{
+                //printf("%s: %d\n",name.name(),descdata.get_value<int32_t>(i));
             }
             break;
         }
@@ -357,7 +387,7 @@ public:
 class PadData
 {
 public:
-  
+
     void* operator new(size_t size, void* p)
     {
         return p;
@@ -397,7 +427,7 @@ void pgpExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
 }
 
 void fexExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
-{ 
+{
     CreateData fex(parent, namesLookup, namesId);
     fex.set_value(FexDef::floatFex, (double)41.0);
 
@@ -408,7 +438,7 @@ void fexExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
             arrayT(i,j) = 142.0+i*shape[1]+j;
         }
     };
-    
+
     fex.set_value(FexDef::intFex, (int64_t) 42);
 
     fex.set_string(FexDef::charStrFex, "Test String");
@@ -421,10 +451,10 @@ void fexExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
     fex.set_value(FexDef::enumFex3_On, (int32_t) -7);
     fex.set_value(FexDef::enumFex3_Off, (int32_t) 12);
 }
-   
+
 
 void padExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
-{ 
+{
     DescribedData pad(parent, namesLookup, namesId);
 
     // simulates PGP data arriving, and shows the address that should be given to PGP driver
@@ -644,8 +674,8 @@ int main(int argc, char* argv[])
     addRunInfoNames(config.xtc, namesLookup, nodeid1);
     // only add epics and scan info to the first stream
     if (starting_segment==0) {
-        addEpicsNames(config.xtc, namesLookup, nodeid1, iseg); 
-        addEpicsInfo(config.xtc, namesLookup, nodeid1, iseg); 
+        addEpicsNames(config.xtc, namesLookup, nodeid1, iseg);
+        addEpicsInfo(config.xtc, namesLookup, nodeid1, iseg);
         addScanNames(config.xtc, namesLookup, nodeid1, iseg);
     }
     for (unsigned iseg=0; iseg<nSegments; iseg++) {

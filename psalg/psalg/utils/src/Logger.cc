@@ -44,10 +44,10 @@ namespace {
 
 //-------------------
 
-  const char* tstampNow(std::string fmt) {
-    std::stringstream ss; 
+  std::string tstampNow(std::string fmt) {
+    std::stringstream ss;
     formattedTime(fmt, ss);
-    return ss.str().c_str(); 
+    return ss.str();
   }
 
 } // namespace unnamed
@@ -70,7 +70,7 @@ namespace Logger {
 Logger::~Logger() {
   for (HandlerList::const_iterator it = _handlers.begin(); it != _handlers.end(); ++it) delete *it;
   delete _pinstance;
-} 
+}
 
 //-------------------
 
@@ -126,7 +126,7 @@ void Logger::logmsg(const LogStream& ss, const Logger::LEVEL& sev) {
   std::cout << std::setfill('0') << std::setw(4)<< _counter <<  ' ' << LEVELC3[sev] << ' ' << ss.str();
   if(sev>Logger::INFO) std::cout << " from:" << ss.file() <<  " line:" << ss.line() << '\n';
   else std::cout << '\n';
-} 
+}
 
 //-------------------
 
@@ -141,7 +141,7 @@ void Logger::log(const LogRecord& rec) {
 //-------------------
 
 void Logger::setTimeFormat(const std::string& timefmt) {
-  for (HandlerList::const_iterator it = _handlers.begin(); it != _handlers.end(); ++it) 
+  for (HandlerList::const_iterator it = _handlers.begin(); it != _handlers.end(); ++it)
       (*it)->formatter().setTimeFormat(timefmt);
 }
 //-------------------
@@ -207,8 +207,8 @@ LogFormatter::format(const LogRecord& rec, std::ostream& out)
 
   std::string s = rec.file();
   std::size_t pos = s.rfind('/');
-  std::string str = (pos != std::string::npos) ? s.substr(pos+1) : s; 
-  if(!_timefmt.empty()) out << ' '; 
+  std::string str = (pos != std::string::npos) ? s.substr(pos+1) : s;
+  if(!_timefmt.empty()) out << ' ';
   out << std::setfill('0') << std::setw(4) << LOGGER.counter()
       << ' ' << LOGGER.levelToName(rec.level());
 
@@ -230,7 +230,7 @@ void
 LogHandler::setFormatter(LogFormatter* formatter){delete _formatter; _formatter = formatter;}
 
 // get the formatter
-LogFormatter& 
+LogFormatter&
 LogHandler::formatter() const {
   if (! _formatter) _formatter = new LogFormatter;
   return *_formatter ;

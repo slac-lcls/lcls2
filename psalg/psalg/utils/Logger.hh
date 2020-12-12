@@ -8,7 +8,7 @@
 /**  Usage mainstream:
  *   =================
  *   #include "psalg/include/Logger.hh" // MSG, MSGLOG, LOGGER, MSGSTREAM
- *   
+ *
  *   MSG(INFO, LOGGER.tstampStart() << " Logger started"); // optional record
  *   LOGGER.setLogger(LL::DEBUG, "%H:%M:%S.%f");           // set level and time format
  *
@@ -19,8 +19,8 @@
  *   MSG(ERROR,   "Test MSG ERROR");
  *   MSG(FATAL,   "Test MSG FATAL");
  *   MSG(NOLOG,   "Test MSG NOLOG");
- *   MSGSTREAM(INFO, out){out << "Test MSGSTREAM INFO"; out << " which supports block of output statements as a single message";} 
- *   
+ *   MSGSTREAM(INFO, out){out << "Test MSGSTREAM INFO"; out << " which supports block of output statements as a single message";}
+ *
  *   Usage optional
  *   ==============
  *   LOGGER.setLevel(LL::DEBUG);
@@ -29,7 +29,7 @@
  */
 
 //-------------------
- 
+
 //extern "C" {}
 
 #include <vector>
@@ -42,7 +42,7 @@
 /*
 namespace {
   void formattedTime(std::string fmt, std::ostream& out);
-  const char* tstampNow(std::string fmt="%Y-%m-%d %H:%M:%S.f");
+  std::string tstampNow(std::string fmt="%Y-%m-%d %H:%M:%S.f");
 }
 */
 
@@ -75,7 +75,7 @@ public:
   void logmsg(const LogStream& ss, const LEVEL& sev=DEBUG);
 
   void loggerInfo(std::ostream& out);
-  const char* tstampStart() {return _tstamp_start.c_str();}
+  const std::string& tstampStart() const {return _tstamp_start;}
 
   inline void setLogname(const std::string& logname) {_logname=logname;}
   inline void setLevel(const LEVEL& level) {_level=level;}
@@ -83,7 +83,7 @@ public:
   const char* levelToName(const LEVEL& level);
   LEVEL name_to_level(const std::string& name);
   void log(const LogRecord& rec);
-  const unsigned counter() {return _counter;} 
+  const unsigned counter() {return _counter;}
   void setLogger(const LEVEL& level=DEBUG, const std::string& timefmt="%H:%M:%S.%f");
 
   /// add a handler for the messages, takes ownership of the object
@@ -94,8 +94,8 @@ private:
   typedef std::vector<LogHandler*> HandlerList;
 
   Logger();
- 
-  virtual ~Logger(); 
+
+  virtual ~Logger();
   void _initLevelNames();
 
   static Logger* _pinstance; // !!! Singleton instance

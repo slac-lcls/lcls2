@@ -13,8 +13,8 @@ int NamesIter::process(Xtc* xtc)
         Names& names = *(Names*)xtc;
         NamesId& namesId = names.namesId();
         if (_namesLookup.find(namesId) != _namesLookup.end()) {
-            printf("NamesIter.cc: Found duplicate namesId 0x%x\n",namesId);
-            throw "NamesIter.cc: Found duplicate namesId 0x%x";
+            printf("NamesIter.cc: Found duplicate namesId 0x%x\n",unsigned(namesId));
+            throw "NamesIter.cc: Found duplicate namesId";
         }
         _namesLookup[namesId] = NameIndex(names);
         break;
