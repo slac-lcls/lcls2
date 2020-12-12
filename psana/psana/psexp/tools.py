@@ -1,5 +1,6 @@
 import weakref
 import os
+import logging
 
 # mode can be 'mpi' or 'legion' or 'none' for non parallel 
 mode = os.environ.get('PS_PARALLEL', 'mpi')
@@ -47,4 +48,8 @@ class ConfigHelper(object):
             self.ds.xtc_files = sel_xtc_files
             self.ds._configs  = sel_configs
 
+class Logging(object):
 
+    @staticmethod
+    def info(msg):
+        logging.debug(msg)

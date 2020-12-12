@@ -4,7 +4,7 @@ from psana.psexp import *
 from psana.dgram import Dgram
 import os
 from mpi4py import MPI
-import logging
+from psana.psexp.tools import Logging as logging
 import time
 
 s_eb_wait_smd0 = PrometheusManager.get_metric('psana_eb_wait_smd0')

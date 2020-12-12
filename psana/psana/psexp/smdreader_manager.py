@@ -1,10 +1,10 @@
 from psana.smdreader import SmdReader
 from psana.eventbuilder import EventBuilder
+from psana.psexp.tools import Logging as logging
 from psana.psexp import *
 import os, time
 from psana import dgram
 from psana.event import Event
-import logging
 
 s_smd0_disk = PrometheusManager.get_metric('psana_smd0_wait_disk')
 
@@ -49,10 +49,10 @@ class BatchIterator(object):
 
 
 class SmdReaderManager(object):
-    def __init__(self, smd_fds, dsparms):
+    def __init__(self, smd_fds, dsparms, configs=None):
         self.n_files = len(smd_fds)
         self.dsparms = dsparms
-        self.configs = None
+        self.configs = configs
         assert self.n_files > 0
         
         self.smd0_n_events = int(os.environ.get('PS_SMD_N_EVENTS', 1000))

@@ -7,9 +7,9 @@ import pathlib
 
 from psana.dgrammanager import DgramManager
 
-from psana.psexp import PrometheusManager
+from psana.psexp import PrometheusManager, SmdReaderManager
+from psana.psexp.tools import Logging as logging
 import threading
-import logging
 from psana import dgram
 
 from psana.detector import detectors
@@ -159,6 +159,33 @@ class DataSourceBase(abc.ABC):
 
         logging.info('ds_base: END PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
         self.e.set()
+
+    def _apply_detector_selection(self):
+        if self.detectors:
+            s1 = set(self.detectors)
+            xtc_files = []
+            smd_files = []
+            smd_fds = []
+            configs = []
+            for i, config in enumerate(self._configs):
+                if s1.intersection(set(config.__dict__.keys())):
+                    if self.xtc_files: xtc_files.append(self.xtc_files[i])
+                    if self.smd_files: 
+                        smd_files.append(self.smd_files[i])
+                        smd_fds.append(self.smd_fds[i])
+                    configs.append(config)
+            print(f"self.xtc_files={self.xtc_files}")
+            print(f"xtc_files={xtc_files}")
+            print(f"self.smd_files={self.smd_files}")
+            print(f"smd_files={smd_files}")
+            if not (self.smd_files==smd_files and self.xtc_files==xtc_files):
+                print("update all files")
+                self.xtc_files = xtc_files
+                self.smd_files = smd_files
+                self.smd_fds = np.array(smd_fds, dtype=np.int32)
+                self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms, configs=configs)
+                self._configs = configs 
+
     
     def _setup_det_class_table(self):
         """

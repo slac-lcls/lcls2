@@ -1,6 +1,6 @@
 import time
 from prometheus_client import CollectorRegistry, Counter, push_to_gateway, Summary, Gauge
-import logging
+from psana.psexp.tools import Logging as logging
 
 PUSH_INTERVAL_SECS  = 5
 PUSH_GATEWAY        = 'psdm03:9091'

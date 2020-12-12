@@ -3,7 +3,7 @@ from psana.event import Event
 from psana.psexp import PacketFooter, TransitionId, PrometheusManager
 import numpy as np
 import os
-import logging
+from psana.psexp.tools import Logging as logging
 import time
 
 s_bd_disk = PrometheusManager.get_metric('psana_bd_wait_disk')

@@ -8,7 +8,7 @@ from psana.event import Event
 from psana.dgrammanager import DgramManager
 from psana.smalldata import SmallData
 import time
-import logging
+from psana.psexp.tools import Logging as logging
 
 class InvalidEventBuilderCores(Exception): pass
 
@@ -128,6 +128,7 @@ class MPIDataSource(DataSourceBase):
             logging.info(f'mpi_ds: smd0 opened smd_fds: {self.smd_fds}')
             self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms)
             self._configs = self.smdr_man.get_next_dgrams()
+            super()._apply_detector_selection()
             super()._setup_det_class_table()
             super()._set_configinfo()
             g_ts.labels("first_event").set(time.time())
