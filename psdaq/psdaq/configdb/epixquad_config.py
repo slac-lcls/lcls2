@@ -192,6 +192,14 @@ def user_to_expert(base, cfg, full=False):
 
         d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[{lane}].TriggerDelay']=triggerDelay
 
+    if (hasUser and 'gate_ns' in cfg['user']):
+        triggerWidth = int(cfg['user']['gate_ns']/10)
+        if triggerWidth < 1:
+            print(f'triggerWidth {triggerWidth} ({cfg['user']['gate_ns']} ns)')
+            raise ValueError('triggerWidth computes to < 1')
+
+        d[f'expert.EpixQuad.AcqCore.AsicAcqWidth']=triggerWidth
+
     if full:
         d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[{lane}].Partition']=group
 
