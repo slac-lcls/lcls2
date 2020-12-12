@@ -9,7 +9,7 @@ using namespace psalg::shmem;
 ** --
 */
 
-void ShmemClient::free(int index, int size)
+void ShmemClient::free(int index, size_t size)
 {
 }
 
@@ -20,7 +20,7 @@ void ShmemClient::free(int index, int size)
 ** --
 */
 
-void* ShmemClient::get(int& index, int& size)
+void* ShmemClient::get(int& index, size_t& size)
 {
   return 0;
 }
