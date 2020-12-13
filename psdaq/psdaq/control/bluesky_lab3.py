@@ -1,4 +1,4 @@
-# bluesky_rix.py
+# bluesky_lab3.py
 
 from bluesky import RunEngine
 from ophyd.status import Status
