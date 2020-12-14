@@ -12,6 +12,7 @@ USAGE = '\nUsage:'\
       + '\n    1 - issue_2020_11_09 - cpo something about epix10k2M/quad raw'\
       + '\n    2 - issue_2020_11_24 - cpo opal access to consatants for the same detector but other experiment'\
       + '\n    3 - issue_2020_12_02 - new file for epixquad issue with ds.runs loors like event loop ????'\
+      + '\n    4 - issue_2020_12_10 - cpo access metadata from step'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -44,7 +45,7 @@ def issue_2020_11_24():
 
 def issue_2020_12_02():
     from psana import DataSource
-    print('DATA FILE AS AVAILABLE ON daq-det-drp01 ONLY')
+    print('DATA FILE IS AVAILABLE ON daq-det-drp01 ONLY')
 
     ds = DataSource(files='/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0147-s000-c000.xtc2')
 
@@ -62,11 +63,48 @@ def issue_2020_12_02():
         #det = run.Detector('epixquad') 
     exit('TEST EXIT') 
 
+
+def issue_2020_12_10():
+    """
+    O'Grady, Paul Christopher <cpo@slac.stanford.edu>
+    Thu 12/10/2020 9:37 PM
+    On Dec 10, 2020, at 10:47 AM, Dubrovin, Mikhail <dubrovin@slac.stanford.edu> wrote:
+
+    >> Detector scan_raw_2_0_0 is implemented in detector/envstore.py
+    >>but I can't get anything useful from this detector. Something is still missing.
+
+    The script below works for me for the ued epix-scan.
+    At the moment I?ve forgotten why we did it with two Detectors 
+    instead of putting the information into one detector 
+    or the Step object (like we do with the runinfo).
+    Perhaps Mona/ChrisF/Matt (cc?d) can remind me post tag-up.
+    We?ve had several long discussions about this and changed it a few times ...
+    my apologies for forgetting.   This time I will capture what we say here:
+    https://confluence.slac.stanford.edu/pages/viewpage.action?pageId=247694685
+    chris
+    """
+    print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
+    from psana import DataSource
+    import sys
+    #ds = DataSource(exp='ueddaq02',run=28)
+    fname = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
+    detname='epixquad'
+    ds = DataSource(files=fname)
+    myrun = next(ds.runs())
+    step_value = myrun.Detector('step_value')
+    step_docstring = myrun.Detector('step_docstring')
+    for nstep,step in enumerate(myrun.steps()):
+        print('step:',nstep,step_value(step),step_docstring(step))
+        for nevt,evt in enumerate(step.events()):
+            if nevt==3: print('evt3:',nstep,step_value(evt),step_docstring(evt))
+
+
 #if __name__ == "__main__":
 
 if   TNAME in ('1',): issue_2020_11_09()
 elif TNAME in ('2',): issue_2020_11_24()
 elif TNAME in ('3',): issue_2020_12_02()
+elif TNAME in ('4',): issue_2020_12_10()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)

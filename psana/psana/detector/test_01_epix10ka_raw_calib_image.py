@@ -19,11 +19,15 @@ fname0 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-
 fname1 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005-seg1and3.xtc2'
 
 
-#print('DATA FILE AS AVAILABLE ON daq-det-drp01 ONLY')
+#print('DATA FILE IS AVAILABLE ON daq-det-drp01 ONLY')
 #fname2 = '/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0147-s000-c000.xtc2'
-
-print('DATA FILE AS AVAILABLE ON drp-ued-cmp001 ONLY')
-fname2 = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0014-s000-c000.xtc2'
+"""
+Wed 12/9/2020 8:13 PM
+Runs 27 and 28 are properly configured pedestal calibrations.  Run 29 is a partial charge injection calibration (for the usual reasons).
+-Matt
+"""
+print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
+fname2 = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0028-s000-c000.xtc2' #dark
 
 detname='epixquad'
 

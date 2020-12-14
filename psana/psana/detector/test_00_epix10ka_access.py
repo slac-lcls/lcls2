@@ -18,8 +18,9 @@ USAGE = '\n  python %s <test-name>' % SCRNAME\
       + '\n    3 - opal - real exp:tmolw0518, run:102, detname:tmoopal'\
       + '\n    4 - opal - real exp:tmolw0618, run:52, detname:tmoopal'\
       + '\n    5 - epixquasd - exp:tstx00117, run:144 - pedestals calibration run.config'\
-      + '\n    6 - epixquasd - exp:ueddaq02,  run:14 - pedestals calibration det.config'\
-      + '\n    7 - epixquasd - exp:ueddaq02,  run:14 - another version'\
+      + '\n    6 - epixquasd - exp:ueddaq02,  run:27,28 - pedestals calibration det.config'\
+      + '\n    7 - epixquasd - exp:ueddaq02,  run:27,28 - another version'\
+      + '\n    8 - epixquasd - exp:ueddaq02,  run:27,28 - metadata from step'\
 
 #print(USAGE)
 
@@ -152,11 +153,11 @@ elif tname == '5':
 
 elif tname == '6':
 
-    #print('DATA FILE AS AVAILABLE ON daq-det-drp01 ONLY')
+    #print('DATA FILE IS AVAILABLE ON daq-det-drp01 ONLY')
     #ds,run,det = datasource_run_det(files='/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0147-s000-c000.xtc2', detname='epixquad')
 
-    print('DATA FILE AS AVAILABLE ON drp-ued-cmp001 ONLY')
-    ds,run,det = datasource_run_det(files='/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0014-s000-c000.xtc2', detname='epixquad')
+    print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
+    ds,run,det = datasource_run_det(files='/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0028-s000-c000.xtc2', detname='epixquad')
 
     print('\nXXX dir(run):\n', dir(run)) # ['Detector', ..., '_check_empty_calibconst', '_evt', '_evt_iter', '_get_runinfo', 'analyze', 'beginruns', 'c_ana', 'configs', 'detinfo', 'detnames', 'dm', 'dsparms', 'epicsinfo', 'esm', 'events', 'expt', 'id', 'nfiles', 'run', 'runnum', 'scan', 'scaninfo', 'smd_dm', 'smd_fds', 'stepinfo', 'steps', 'timestamp', 'xtcinfo']
 
@@ -255,8 +256,8 @@ elif tname == '7':
     #print('DATA FILE IS AVAILABLE ON daq-det-drp01 ONLY')
     #fname = '/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0147-s000-c000.xtc2'
 
-    print('DATA FILE AS AVAILABLE ON drp-ued-cmp001 ONLY')
-    fname = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0014-s000-c000.xtc2'
+    print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
+    fname = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
     detname='epixquad'
 
     ds = DataSource(files=fname)
@@ -318,13 +319,30 @@ elif tname == '7':
         #################
 
         for evnum,evt in enumerate(step.events()):
-            if evnum>5 and evnum%200!=0: continue
+            if evnum>2 and evnum%500!=0: continue
             print('%s\nStep %1d Event %04d' % (50*'_',stepnum, evnum))
             segs = det.raw._segments(evt)
             raw  = det.raw.raw(evt)
             logger.info('segs: %s' % str(segs))
             logger.info(info_ndarr(raw,  'raw  '))
         print(50*'-')
+
+
+elif tname == '8':
+    print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
+    from psana import DataSource
+    import sys
+    #ds = DataSource(exp='ueddaq02',run=28)
+    fname = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
+    detname='epixquad'
+    ds = DataSource(files=fname)
+    myrun = next(ds.runs())
+    step_value = myrun.Detector('step_value')
+    step_docstring = myrun.Detector('step_docstring')
+    for nstep,step in enumerate(myrun.steps()):
+        print('step:',nstep,step_value(step),step_docstring(step))
+        for nevt,evt in enumerate(step.events()):
+            if nevt==3: print('evt3:',nstep,step_value(evt),step_docstring(evt))
 
 
 else:
