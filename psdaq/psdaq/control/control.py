@@ -1445,9 +1445,9 @@ class CollectionManager():
             logging.error('condition_alloc(): group_run(False) failed')
             return False
 
-        # if you don't want steps, set StepGroups = 0
-        if not self.step_groups(mask=0):
-            logging.error('condition_alloc(): step_groups(mask=0) failed')
+        # if you don't want steps, set StepGroups = 0 for each group in partition
+        if not self.step_groups_clear(self.groups):
+            logging.error('condition_alloc(): step_groups_clear() failed')
             return False
 
         # create group-dependent PVs
@@ -2208,7 +2208,23 @@ class CollectionManager():
             rv = self.pva.pv_put(self.pva.pvGroupL0Disable, self.groups)
         return rv
 
-    # if you don't want steps, set StepGroups = 0
+    # step_groups_clear - clear all StepGroups PVs included in mask
+    # Returns False on error
+    def step_groups_clear(self, groups):
+        logging.debug("step_groups_clear()")
+        retval = True
+        for g in range(8):
+            if groups & (1 << g):
+                pv = self.pva.pv_xpm_base + f':PART:{g}:StepGroups'
+                logging.debug(f'step_groups_clear(): clearing {pv}')
+                if not self.pva.pv_put(pv, 0):
+                    logging.error(f'step_groups_clear(): clearing {pv} failed')
+                    retval = False
+
+        return retval
+
+    # step_groups -
+    # Returns False on error
     def step_groups(self, *, mask):
         logging.debug("step_groups(mask=%d)" % mask)
         return self.pva.pv_put(self.pva.pvStepGroups, mask)
