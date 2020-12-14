@@ -4,7 +4,6 @@ username = 'lcls2'
 
 epics_host = 'daq-tst-dev02'
 
-conda_rel = 'ps-3.1.16'
 ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'+' '+ld_lib_path
 
@@ -31,20 +30,20 @@ pyxpm_opts = '-P DAQ:LAB2:XPM:%d'
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- { host: epics_host,  id:'pyxpm-2'  , port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.2.102 '+pyxpm_optsdb%2},
- { host: epics_host,  id:'pyxpm-1'  , port:'29452', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.1.103 '+pyxpm_opts%1},
- { host: epics_host,  id:'pyxpm-3'  , port:'29453', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.2.107 '+pyxpm_opts%3},
+ { host: epics_host,  id:'pyxpm-2'  , port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.2.102 '+pyxpm_optsdb%2},
+ { host: epics_host,  id:'pyxpm-1'  , port:'29452', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.103 '+pyxpm_opts%1},
+ { host: epics_host,  id:'pyxpm-3'  , port:'29453', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.2.107 '+pyxpm_opts%3},
 
 ## EPICS camera
- { host: epics_host,  id:'pvcamcas', port:'29465', flags:'s', conda:conda_rel, env:epics_env, cmd:'campvs -P DAQ:LAB2:PVCAM'},
- { host: 'daq-tst-dev03',  id:'pvcam', port:'29466', flags:'s', conda:conda_rel, env:epics_env, cmd:'pvcam -p DAQ:LAB2:PVCAM -e 40'},
+ { host: epics_host,  id:'pvcamcas', port:'29465', flags:'s', env:epics_env, cmd:'campvs -P DAQ:LAB2:PVCAM'},
+ { host: 'daq-tst-dev03',  id:'pvcam', port:'29466', flags:'s', env:epics_env, cmd:'pvcam -p DAQ:LAB2:PVCAM -e 40'},
 
 ## EPICS PV exporter
- {                    id:'pvrtmon',  port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -H '+hutch+' -P DAQ:LAB2:XPM:2 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+ {                    id:'pvrtmon',  port:'29467', flags:'s', env:epics_env, cmd:'epics_exporter -H '+hutch+' -P DAQ:LAB2:XPM:2 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
   ]
 
 for n in drp_nodes:
-    procmgr_config.append({host:'drp-tst-dev'+n, id:'pykcu-'+n, port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pykcu'})
+    procmgr_config.append({host:'drp-tst-dev'+n, id:'pykcu-'+n, port:'29451', flags:'s', env:epics_env, cmd:'pykcu'})
 
 # HSD: 6.4 GS/s digitizer
 bus  = 0
@@ -64,5 +63,5 @@ hsds = [
 ]
 
 for e in hsds:
-    procmgr_config.append({ port:'%d'%(e[svc]+0), id:'hsdpvs_%s_a'%e[bus], flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':A'})
-    procmgr_config.append({ port:'%d'%(e[svc]+1), id:'hsdpvs_%s_b'%e[bus], flags:'s', conda:conda_rel, env:epics_env, cmd:'hsdpvs -P '+e[pv]+':B'})
+    procmgr_config.append({ port:'%d'%(e[svc]+0), id:'hsdpvs_%s_a'%e[bus], flags:'s', env:epics_env, cmd:'hsdpvs -P '+e[pv]+':A'})
+    procmgr_config.append({ port:'%d'%(e[svc]+1), id:'hsdpvs_%s_b'%e[bus], flags:'s', env:epics_env, cmd:'hsdpvs -P '+e[pv]+':B'})
