@@ -165,28 +165,26 @@ class DataSourceBase(abc.ABC):
             s1 = set(self.detectors)
             xtc_files = []
             smd_files = []
-            smd_fds = []
-            configs = []
-            for i, config in enumerate(self._configs):
+
+            # Get tmp configs using SmdReader
+            # this smd_fds, configs, and SmdReader will not be used later
+            smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
+            logging.info(f'ds: smd0 opened tmp smd_fds: {smd_fds}')
+            smdr_man = SmdReaderManager(smd_fds, self.dsparms)
+            configs = smdr_man.get_next_dgrams()
+            for i, config in enumerate(configs):
                 if s1.intersection(set(config.__dict__.keys())):
                     if self.xtc_files: xtc_files.append(self.xtc_files[i])
-                    if self.smd_files: 
-                        smd_files.append(self.smd_files[i])
-                        smd_fds.append(self.smd_fds[i])
-                    configs.append(config)
-            print(f"self.xtc_files={self.xtc_files}")
-            print(f"xtc_files={xtc_files}")
-            print(f"self.smd_files={self.smd_files}")
-            print(f"smd_files={smd_files}")
+                    if self.smd_files: smd_files.append(self.smd_files[i])
+            
             if not (self.smd_files==smd_files and self.xtc_files==xtc_files):
-                print("update all files")
                 self.xtc_files = xtc_files
                 self.smd_files = smd_files
-                self.smd_fds = np.array(smd_fds, dtype=np.int32)
-                self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms, configs=configs)
-                self._configs = configs 
+                
+                for smd_fds in smd_fds:
+                    os.close(smd_fds)
+                logging.info(f'ds_base: detector(s) selected #smd_files={len(self.smd_files)}') 
 
-    
     def _setup_det_class_table(self):
         """
         this function gets the version number for a (det, drp_class) combo
