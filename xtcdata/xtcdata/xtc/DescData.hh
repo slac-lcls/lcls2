@@ -278,6 +278,7 @@ protected:
             charStrShape[0] = bytes;
             Array<char> charArray = allocate<char>(index,charStrShape);
             // strncat(): string in dest is always null-terminated.
+            *(charArray.data()) = '\0';
             strncat(charArray.data(),xtcstring,MaxStrLen-1);
         }
 
