@@ -56,7 +56,7 @@ namespace Drp
 
   int EpicsMonitorPv::addDef(EpicsArchDef& def, size_t& size)
   {
-    if (_bDisabled)  return 1;
+    if (_bDisabled)  { size = 0;  return 1; }
 
     std::string     name = "value";
     pvd::ScalarType type;

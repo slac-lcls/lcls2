@@ -128,14 +128,15 @@ void EpicsArchMonitor::_addInfo(XtcData::CreateData& epicsInfo)
   // add dictionary of information for each epics detname above.
   // first name is required to be "keys".  keys and values
   // are delimited by ",".
-  epicsInfo.set_string(0, "epicsname"); // "," "2nd string"...
+  unsigned index = 0;
+  epicsInfo.set_string(index++, "epicsname"); // "," "2nd string"...
 
   for (unsigned iPvName = 0; iPvName < _lpvPvList.size(); iPvName++)
   {
     EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
     if (!epicsPvCur.isDisabled())
     {
-      epicsInfo.set_string(1 + iPvName, epicsPvCur.getPvName().c_str()); // + "," + 2ndString).c_str()
+      epicsInfo.set_string(index++, epicsPvCur.getPvName().c_str()); // + "," + 2ndString).c_str()
     }
   }
 }
@@ -295,8 +296,8 @@ int EpicsArchMonitor::_setupPvList(const PvConfigFile::TPvList& vPvList,
   if (vPvList.empty())
     return 0;
   if (vPvList.size() >= iMaxNumPv)
-    printf("EpicsArchMonitor::_setupPvList(): Number of PVs (%zd) has reached capacity (%d), "
-           "some PVs in the list were skipped.\n", vPvList.size(), iMaxNumPv);
+    logging::warning("EpicsArchMonitor::_setupPvList(): Number of PVs (%zd) has reached capacity (%d), "
+                     "some PVs in the list were skipped.\n", vPvList.size(), iMaxNumPv);
 
   for (unsigned iPvName = 0; iPvName < vPvList.size(); iPvName++)
   {
