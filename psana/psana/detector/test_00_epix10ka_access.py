@@ -104,9 +104,9 @@ elif tname == '5':
 
     # cdb add -e tstx00117 -d epixquad -c geometry -r0 -f /reg/g/psdm/detector/alignment/epix10kaquad/2020-11-20-epix10kaquad0-ued/2020-11-20-epix10kaquad0-ued-geometry.txt
 
-    print('DATA FILE IS AVAILABLE ON daq-det-drp01 ONLY')
-    ds,run,det = datasource_run_det(files='/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0144-s000-c000.xtc2', detname='epixquad')
-
+    #print('DATA FILE IS AVAILABLE ON daq-det-drp01 ONLY')
+    #ds,run,det = datasource_run_det(files='/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0144-s000-c000.xtc2', detname='epixquad')
+    ds,run,det = datasource_run_det(files='/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2', detname='epixquad')
     print('\nXXX dir(run):\n', dir(run))
 
     print('XXX run.runnum  : ', run.runnum)   # 144
@@ -156,8 +156,9 @@ elif tname == '6':
     #print('DATA FILE IS AVAILABLE ON daq-det-drp01 ONLY')
     #ds,run,det = datasource_run_det(files='/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0147-s000-c000.xtc2', detname='epixquad')
 
-    print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
-    ds,run,det = datasource_run_det(files='/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0028-s000-c000.xtc2', detname='epixquad')
+    #print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
+    #ds,run,det = datasource_run_det(files='/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0028-s000-c000.xtc2', detname='epixquad')
+    ds,run,det = datasource_run_det(files='/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2', detname='epixquad')
 
     print('\nXXX dir(run):\n', dir(run)) # ['Detector', ..., '_check_empty_calibconst', '_evt', '_evt_iter', '_get_runinfo', 'analyze', 'beginruns', 'c_ana', 'configs', 'detinfo', 'detnames', 'dm', 'dsparms', 'epicsinfo', 'esm', 'events', 'expt', 'id', 'nfiles', 'run', 'runnum', 'scan', 'scaninfo', 'smd_dm', 'smd_fds', 'stepinfo', 'steps', 'timestamp', 'xtcinfo']
 
@@ -255,9 +256,10 @@ elif tname == '6':
 elif tname == '7':
     #print('DATA FILE IS AVAILABLE ON daq-det-drp01 ONLY')
     #fname = '/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0147-s000-c000.xtc2'
+    #print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
+    #fname = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
 
-    print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
-    fname = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
+    fname='/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
     detname='epixquad'
 
     ds = DataSource(files=fname)
@@ -329,13 +331,12 @@ elif tname == '7':
 
 
 elif tname == '8':
-    print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
+    #print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
+    #fname = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
     from psana import DataSource
     import sys
     #ds = DataSource(exp='ueddaq02',run=28)
-    fname = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
-    detname='epixquad'
-    ds = DataSource(files=fname)
+    ds = DataSource(files='/reg/d/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2')
     myrun = next(ds.runs())
     step_value = myrun.Detector('step_value')
     step_docstring = myrun.Detector('step_docstring')

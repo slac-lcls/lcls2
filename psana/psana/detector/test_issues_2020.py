@@ -5,17 +5,6 @@ logging.basicConfig(format='[%(levelname).1s]: %(message)s', level=logging.INFO)
 
 import sys
 SCRNAME = sys.argv[0].rsplit('/')[-1]
-USAGE = '\nUsage:'\
-      + '\n  python %s <test-name>' % SCRNAME\
-      + '\n  where test-name: '\
-      + '\n    0 - print usage'\
-      + '\n    1 - issue_2020_11_09 - cpo something about epix10k2M/quad raw'\
-      + '\n    2 - issue_2020_11_24 - cpo opal access to consatants for the same detector but other experiment'\
-      + '\n    3 - issue_2020_12_02 - new file for epixquad issue with ds.runs loors like event loop ????'\
-      + '\n    4 - issue_2020_12_10 - cpo access metadata from step'\
-
-TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
-
 
 def issue_2020_11_09():
     from psana import DataSource
@@ -83,13 +72,13 @@ def issue_2020_12_10():
     https://confluence.slac.stanford.edu/pages/viewpage.action?pageId=247694685
     chris
     """
-    print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
+    #print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
+    #fname = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
+
     from psana import DataSource
-    import sys
-    #ds = DataSource(exp='ueddaq02',run=28)
-    fname = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
-    detname='epixquad'
-    ds = DataSource(files=fname)
+    ds = DataSource(exp='ueddaq02',run=28)
+    #ds = DataSource(files='/reg/d/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2')
+    #detname='epixquad'
     myrun = next(ds.runs())
     step_value = myrun.Detector('step_value')
     step_docstring = myrun.Detector('step_docstring')
@@ -98,13 +87,60 @@ def issue_2020_12_10():
         for nevt,evt in enumerate(step.events()):
             if nevt==3: print('evt3:',nstep,step_value(evt),step_docstring(evt))
 
+def issue_2020_12_16():
+    """Chriss access to config does not work, Matts' works """
+    from psana.pyalgos.generic.NDArrUtils import print_ndarr
+    from psana import DataSource
+    ds = DataSource(files='/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2')
+    detname = 'epixquad'
+
+    for orun in ds.runs():
+      print('run.runnum: %d detnames: %s expt: %s' % (orun.runnum, str(orun.detnames), orun.expt))
+
+      det = orun.Detector(detname)
+      print('det.raw._det_name: %s' % det.raw._det_name) # epixquad
+      print('det.raw._dettype : %s' % det.raw._dettype)  # epix
+
+      scfg = None
+      for config in det._configs:
+          if not detname in config.__dict__:
+              print('Skipping config {:}'.format(config.__dict__))
+              continue
+          scfg = getattr(config,detname)
+
+      for nstep, step in enumerate(orun.steps()):
+          print('\n==== step:%02d' %nstep)
+
+          print('DOES NOT WORK')
+          for k,v in det.raw._seg_configs().items():
+              cob = v.config
+              print_ndarr(cob.asicPixelConfig, 'seg:%02d trbits: %s asicPixelConfig:'%(k, str(cob.trbit)))
+
+          print('WORKS')
+          for k,v in scfg.items():
+              cob = v.config
+              print_ndarr(cob.asicPixelConfig, 'seg:%02d trbits: %s asicPixelConfig:'%(k, str(cob.trbit)))
+              
+
 
 #if __name__ == "__main__":
+USAGE = '\nUsage:'\
+      + '\n  python %s <test-name>' % SCRNAME\
+      + '\n  where test-name: '\
+      + '\n    0 - print usage'\
+      + '\n    1 - issue_2020_11_09 - cpo something about epix10k2M/quad raw'\
+      + '\n    2 - issue_2020_11_24 - cpo opal access to consatants for the same detector but other experiment'\
+      + '\n    3 - issue_2020_12_02 - new file for epixquad issue with ds.runs loors like event loop ????'\
+      + '\n    4 - issue_2020_12_10 - cpo access metadata from step'\
+      + '\n    5 - issue_2020_12_16 - Chris access to config does not work, Matts works'\
+
+TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
 if   TNAME in ('1',): issue_2020_11_09()
 elif TNAME in ('2',): issue_2020_11_24()
 elif TNAME in ('3',): issue_2020_12_02()
 elif TNAME in ('4',): issue_2020_12_10()
+elif TNAME in ('5',): issue_2020_12_16()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)

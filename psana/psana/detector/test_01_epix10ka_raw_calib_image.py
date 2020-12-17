@@ -26,8 +26,9 @@ Wed 12/9/2020 8:13 PM
 Runs 27 and 28 are properly configured pedestal calibrations.  Run 29 is a partial charge injection calibration (for the usual reasons).
 -Matt
 """
-print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
-fname2 = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0028-s000-c000.xtc2' #dark
+#print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
+#fname2 = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0028-s000-c000.xtc2' #dark
+fname2 = '/reg/d/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2' #dark
 
 detname='epixquad'
 
@@ -300,7 +301,7 @@ if __name__ == "__main__":
       + '\n    1 - test_raw("%s")'%fname1\
       + '\n    2 - test_image("%s")'%fname0\
       + '\n    3 - test_image("%s")'%fname1\
-      + '\n    4 - test_calib("%s") DATA FILE IS AVAILABLE ON daq-det-drp01 ONLY'%fname2\
+      + '\n    4 - test_calib("%s")'%fname2\
       + '\n ==== '\
       + '\n    ./%s 2 -m0 -s101' % SCRNAME\
       + '\n    ./%s 2 -m1' % SCRNAME\
