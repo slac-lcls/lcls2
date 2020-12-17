@@ -25,10 +25,9 @@ def run_smd0_task(run):
         run_smd_task(smd_chunk, run, point=i)
     # Block before returning so that the caller can use this task's future for synchronization
     pygion.execution_fence(block=True)
-    run.close() # FIXME: Check with Elliott if this is a good place to close all open files
 
 def smd_batches(smd_chunk, run):
-    eb_man = EventBuilderManager(smd_chunk, run)
+    eb_man = EventBuilderManager(smd_chunk, run.configs, run.dsparms) 
     for smd_batch_dict, step_batch_dict in eb_man.batches():
         smd_batch, _ = smd_batch_dict[0]
         yield smd_batch
@@ -44,7 +43,8 @@ def batch_events(smd_batch, run):
         for this_batch in batch_iter:
             return this_batch
 
-    events = Events(run, get_smd=get_smd)
+    events = Events(run.configs, run.dm, run.dsparms, 
+            filter_callback=run.dsparms.filter, get_smd=get_smd)
     for evt in events:
         if evt.service() != TransitionId.L1Accept: continue
         yield evt
@@ -55,9 +55,8 @@ def run_bigdata_task(batch, run):
         run.event_fn(evt, run.det)
 
 run_to_process = []
-def analyze(run, event_fn=None, start_run_fn=None, det=None):
+def analyze(run, event_fn=None, det=None):
     run.event_fn = event_fn
-    run.start_run_fn = start_run_fn
     run.det = det
     if pygion.is_script:
         num_procs = pygion.Tunable.select(pygion.Tunable.GLOBAL_PYS).get()

@@ -277,28 +277,17 @@ class RunSerial(Run):
                 yield Step(evt, self._evt_iter, self.esm)
 
 class RunLegion(Run):
-
-    def __init__(self, exp, run_no, run_src, **kwargs):
-        """ Parallel read using Legion """
-        super(RunLegion, self).__init__(exp, run_no, 
-                max_events      = kwargs['max_events'], 
-                batch_size      = kwargs['batch_size'], 
-                filter_callback = kwargs['filter_callback'],
-                prom_man        = kwargs['prom_man'])
-        xtc_files, smd_files, other_files = run_src
-        
-        # get Configure and BeginRun using SmdReader
-        self.smd_fds = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in smd_files], dtype=np.int32)
-        self.smdr_man = SmdReaderManager(self)
-        self.configs = self.smdr_man.get_next_dgrams()
-        self.beginruns = self.smdr_man.get_next_dgrams(configs=self.configs)
-        
-        self._get_runinfo()
-        self.smd_dm = DgramManager(smd_files, configs=self.configs, fds=self.smd_fds)
-        self.dm = DgramManager(xtc_files, configs=self.smd_dm.configs)
-        super()._set_configinfo()
-        self.esm = EnvStoreManager(self.configs)
-
+    def __init__(self, ds, run_evt):
+        super(RunLegion, self).__init__(ds.dsparms)
+        self._evt       = run_evt
+        self.beginruns  = run_evt._dgrams
+        self.smdr_man   = ds.smdr_man
+        self.dm         = ds.dm
+        self.configs    = ds._configs
+        self.esm        = EnvStoreManager(self.configs)
+        super()._get_runinfo()
+    
     def analyze(self, **kwargs):
         return legion_node.analyze(self, **kwargs)
-
+    
+    

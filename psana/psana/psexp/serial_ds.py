@@ -17,11 +17,11 @@ class SerialDataSource(DataSourceBase):
         
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
         self._setup_run()
-        super(). _start_prometheus_client()
+        super()._start_prometheus_client()
 
     def __del__(self):
         super()._close_opened_smd_files()
-        super(). _end_prometheus_client()
+        super()._end_prometheus_client()
 
     def _setup_configs(self):
         super()._close_opened_smd_files()
