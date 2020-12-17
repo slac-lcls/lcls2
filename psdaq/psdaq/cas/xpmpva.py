@@ -351,6 +351,7 @@ def addCuTab(self,pvbase):
     LblEditIntX( lor, pvbase+'XTPG:', 'CuInput'   )
     LblEditIntX( lor, pvbase+'XTPG:', 'CuBeamCode')
     LblEditIntX( lor, pvbase+'XTPG:', 'CuDelay'   )
+    PvLabel(self,lor, pvbase+'XTPG:', 'CuDelay_ns')
     PvLabel(self,lor, pvbase+'XTPG:', 'PulseId', isInt=True)
     PvLabel(self,lor, pvbase+'XTPG:', 'TimeStamp', isTime=True)
     PvLabel(self,lor, pvbase+'XTPG:', 'FiducialIntv', isInt=True)
