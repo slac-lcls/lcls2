@@ -27,7 +27,8 @@ import os
 from psana.pyalgos.generic.Utils import save_textfile, load_textfile #log_rec_on_start, str_tstamp, create_directory, save_textfile, set_file_access_mode
 
 # default parameters
-CALIB_REPO_EPIX10KA = '/reg/g/psdm/detector/gains2/epix10ka/panels' #'./panels'
+#CALIB_REPO_EPIX10KA = '/reg/g/psdm/detector/gains2/epix10ka/panels' #'./panels'
+CALIB_REPO_EPIX10KA = '/cds/group/psdm/detector/gains2/epix10ka/panels'
 FNAME_PANEL_ID_ALIASES = '.aliases.txt'
 
 #----

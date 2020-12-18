@@ -27,8 +27,6 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
 import psana.detector.UtilsEpix10ka as ue
 #from psana.detector.Utils import selected_record
 
-from cfg_utils import dump_det_config
-
 #----
 
 def save_log_record_on_start(dirrepo, procname, fac_mode=0o777, tsfmt='%Y-%m-%dT%H:%M:%S%z'):
@@ -210,7 +208,7 @@ def proc_dark_block(block, **opts):
        block.shape = (nrecs, 352, 384), where nrecs <= 1024
     """
     exp        = opts.get('exp', None)
-    detname    = opts.get('detname', None)
+    detname    = opts.get('det', None)
 
     int_lo     = opts.get('int_lo', 1)       # lowest  intensity accepted for dark evaluation
     int_hi     = opts.get('int_hi', 16000)   # highest intensity accepted for dark evaluation
@@ -372,7 +370,7 @@ def data_source_kwargs(**opts):
     """Makes from input **opts and returns dict of arguments **kwa for DataSource(**kwa)
     """
     fname      = opts.get('fname', None)
-    detname    = opts.get('detname', None)
+    detname    = opts.get('det', None)
     exp        = opts.get('exp', None)
     runs       = opts.get('runs', None)
     dirxtc     = opts.get('dirxtc', None)
@@ -394,7 +392,7 @@ def pedestals_calibration(*args, **opts):
        all-panel or selected-panel one-step (gain range) or all steps calibration of pedestals
     """
     fname      = opts.get('fname', None)
-    detname    = opts.get('detname', None)
+    detname    = opts.get('det', None)
     exp        = opts.get('exp', None)
     runs       = opts.get('runs', None)
     nbs        = opts.get('nbs', 1024)
@@ -578,7 +576,7 @@ def pedestals_calibration(*args, **opts):
 
         for idx, panel_id in zip(segment_inds,segment_ids):
 
-            if idx_sel is not None and idx_sel != idx: continue # skip panels if idx_sel is specified
+            if idx_sel is not None and idx_sel != idx: continue # skip panels with inices other than idx_sel if specified
 
             logger.info('\n%s\nprocess panel:%02d id:%s' % (96*'=', idx, panel_id))
 
@@ -661,7 +659,7 @@ def pedestals_calibration(*args, **opts):
 
 def get_config_info_for_dataset_detname(**kwargs):
 
-    detname = kwargs.get('detname', None)
+    detname = kwargs.get('det', None)
     idx     = kwargs.get('idx', None)
 
     ds = DataSource(**data_source_kwargs(**kwargs))
@@ -822,7 +820,7 @@ def deploy_constants(*args, **opts):
     from psana.pscalib.calib.NDArrIO import save_txt; global save_txt
 
     exp        = opts.get('exp', None)     
-    detname    = opts.get('detname', None)   
+    detname    = opts.get('det', None)   
     runs       = opts.get('runs', None)    
     tstamp     = opts.get('tstamp', None)    
     dirxtc     = opts.get('dirxtc', None) 
@@ -965,12 +963,12 @@ if __name__ == "__main__":
     #  fname = '/reg/d/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2',\
     pedestals_calibration(
       fname = '/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2',\
-      detname = 'epixquad',\
+      det     = 'epixquad',\
       exp     = 'ueddaq02',\
       runs    = [27,],\
       nbs     = 1024,\
       errskip = True,\
-      inds_sel= None,\
+      idx     = None,\
       )
       #stepnum = 1,\
       #mode    = 'AML-M',\
@@ -986,7 +984,7 @@ if __name__ == "__main__":
   def test_deploy_constants_epix10ka(tname):
     deploy_constants(
       exp     = 'ueddaq02',\
-      detname = 'epixquad',\
+      det     = 'epixquad',\
       runs    = 27,\
       tstamp  = 20201216000000,\
       dirxtc  = '/cds/data/psdm/ued/ueddaq02/xtc/',\
