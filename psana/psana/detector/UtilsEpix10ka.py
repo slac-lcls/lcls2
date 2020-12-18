@@ -15,6 +15,7 @@ import os
 import numpy as np
 from time import time
 
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -32,20 +33,32 @@ M14 =  0x3fff # 16383 or (1<<14)-1 - 14-bit mask
 #----
 
 def seconds(ts, epoch_offset_sec=631152000) -> float:
-    """ The epoch used is 1-Jan-1990 rather than 1970. -Matt
+    """
+    Converts LCLS2 timestamp to unix epoch time.
+    The epoch used is 1-Jan-1990 rather than 1970. -Matt
+
+    Receives  ts = orun.timestamp  # 4193682596073796843 relative to 1990-01-01
+    Returns unix epoch time in sec # 1607569818.532117 sec
+
+    import datetime
+    epoch_offset_sec=(datetime.datetime(1990, 1, 1)-datetime.datetime(1970, 1, 1)) / datetime.timedelta(seconds=1)
     """
     return float(ts>>32) + float(ts&0xffffffff)*1.e-9 + epoch_offset_sec
-
-
-def fullname_epix10ka_detector(det):
-    """Returns epix10ka detector full name, e.g. epix_3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000_3926196238-0174824449-0268435478-0000000000-0000000000-0000000000-0000000000_3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000_3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000
-    """    
-    return det.raw._uniqueid
 
 
 def segment_indices_epix10ka_detector(det):
     """Returns list det.raw._sorted_segment_ids, e.g. [0, 1, 2, 3]""" 
     return det.raw._sorted_segment_ids
+
+
+def fullname_epix10ka_detector(det):
+    """Returns epix10ka detector full name, e.g. 
+       epix_3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000\
+           _3926196238-0174824449-0268435478-0000000000-0000000000-0000000000-0000000000\
+           _3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000\
+           _3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000
+    """    
+    return det.raw._uniqueid
 
 
 def segment_ids_epix10ka_detector(det):
@@ -59,17 +72,15 @@ def segment_ids_epix10ka_detector(det):
 
 
 def config_object_epix10ka(det, detname=None):
-    """Returns configuration object for detector with optional name.
+    """Returns [dict]={<seg-index>:<cob>} of configuration objects for detector with optional name.
     """    
-    co = None
-    _detname = detname if detname is not None else det.raw._det_name
+    _detname = det.raw._det_name if detname is None else detname
     for config in det._configs:
         if not _detname in config.__dict__:
             logger.debug('Skipping config {:}'.format(config.__dict__))
             continue
-        co = getattr(config,_detname)
-        break
-    return co
+        return getattr(config,_detname)
+    return None
 
 
 def cbits_config_epix10ka(cob):
