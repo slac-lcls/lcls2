@@ -29,17 +29,14 @@ def do_main():
     opts = vars(args)
     defs = vars(parser.parse_args([])) # dict of defaults only
 
-    #print('Arguments:\n')
-    #for k,v in opts.items() : print('  %12s : %s' % (k, str(v)))
-
     if len(sys.argv)<3: exit('\n%s\n' % usage())
 
     assert args.exp is not None,  'WARNING: option "-e <experiment>" MUST be specified.'
     assert args.det is not None,  'WARNING: option "-d <detector-name>" MUST be specified.'
     assert args.runs is not None, 'WARNING: option "-r <run-number(s)>" MUST be specified.'
 
-    #logging.basicConfig(format='%(levelname)s: %(message)s', level=DICT_NAME_TO_LEVEL[args.logmode])
-    logging.basicConfig(format='[%(levelname).1s] %(name)s %(message)s', level=DICT_NAME_TO_LEVEL[args.logmode])
+    fmt = '[%(levelname).1s] %(name)s %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
+    logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
     
     logger.debug('%s\nIn epix10ka_deploy_constants' % (50*'_'))
     logger.debug(info_command_line_arguments(parser))
@@ -86,6 +83,9 @@ def argument_parser():
     #High gain: 132 ADU / 8.05 keV = 16.40 ADU/keV
     #Medium gain: 132 ADU / 8.05 keV / 3 = 5.466 ADU/keV
     #Low gain: 132 ADU / 8.05 keV / 100 = 0.164 ADU/keV
+    d_version = None
+    d_run_end = None
+    d_comment = None
 
     h_exp     = 'experiment name, default = %s' % d_exp
     h_det     = 'detector name, default = %s' % d_det
@@ -103,6 +103,10 @@ def argument_parser():
     h_proc    = '(str) keyword for processing of "p"-pedestals, "r"-rms, "s"-status, "g" or "c" - gain or charge-injection gain,'\
               + '  default = %s' % d_proc
     h_paninds = 'comma-separated panel indexds to generate constants for subset of panels (ex.: quad from 2M), default = %s' % d_paninds
+    h_version = 'constants version, default = %s' % str(d_version)
+    h_run_end = 'last run for validity range, default = %s' % str(d_run_end)
+    h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
+    #h_     = ', default = %s' % str(d_)
 
     parser = ArgumentParser(description=usage(1)) #, usage = usage())
     parser.add_argument('-e', '--exp',     default=d_exp,      type=str,   help=h_exp)
@@ -119,6 +123,9 @@ def argument_parser():
     parser.add_argument(      '--low',     default=d_low,      type=float, help=h_low)
     parser.add_argument('-p', '--proc',    default=d_proc,     type=str,   help=h_proc)
     parser.add_argument('-I', '--paninds', default=d_paninds,  type=str,   help=h_paninds)
+    parser.add_argument('-v', '--version', default=d_version,  type=str,   help=h_version)
+    parser.add_argument('-R', '--run_end', default=d_run_end,  type=int,   help=h_run_end)
+    parser.add_argument('-C', '--comment', default=d_comment,  type=str,   help=h_comment)
 
     return parser
 

@@ -18,14 +18,10 @@ import numpy as np
 
 import json
 from psana import DataSource
-from psana.detector.UtilsEpix import CALIB_REPO_EPIX10KA, FNAME_PANEL_ID_ALIASES, alias_for_id #,\
-                      #id_epix, create_directory, set_file_access_mode
+from psana.detector.UtilsEpix import CALIB_REPO_EPIX10KA, FNAME_PANEL_ID_ALIASES, alias_for_id
 from psana.pyalgos.generic.Utils import log_rec_on_start, str_tstamp, create_directory, save_textfile, set_file_access_mode
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
-#from psana.detector.UtilsEpix10ka import find_gain_mode, GAIN_MODES_IN, info_pixel_gain_mode_fractions 
-#store, GAIN_MODES, config_objects, get_epix10ka_any_co
 import psana.detector.UtilsEpix10ka as ue
-#from psana.detector.Utils import selected_record
 
 #----
 
@@ -139,7 +135,7 @@ def file_name_prefix(dirrepo, panel_id, tstamp, exp, irun):
 
 
 def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
-    """Returns (str) tstamp_run, tstamp_now#, e.g. (int) 20201209191018, 20201217140026
+    """Returns (str) tstamp_run, tstamp_now#, e.g. (str) 20201209191018, 20201217140026
     """
     ts_run = str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=trun_sec)
     ts_now = str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=None)
@@ -674,10 +670,10 @@ def get_config_info_for_dataset_detname(**kwargs):
       logger.debug('  run.detnames : %s' % str(orun.detnames)) # {'epixquad'}
       logger.debug('  run.expt     : %s', orun.expt)           # ueddaq02
 
-      runtstamp = orun.timestamp    # 4193682596073796843 relative to 1990-01-01
+      runtstamp = orun.timestamp       # 4193682596073796843 relative to 1990-01-01
       trun_sec = ue.seconds(runtstamp) # 1607569818.532117 sec
       #tstamp_run = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
-      tstamp_run, tstamp_now = tstamps_run_and_now(int(trun_sec))
+      tstamp_run, tstamp_now = tstamps_run_and_now(int(trun_sec)) # (str) 20201209191018, 20201217140026
       logger.debug('  run.timestamp: %d' % orun.timestamp) 
       logger.debug('  run unix epoch time %06f sec' % trun_sec)
       logger.debug('  run tstamp: %s' % tstamp_run)
@@ -695,8 +691,12 @@ def get_config_info_for_dataset_detname(**kwargs):
       cpdic['gain_mode']  = ue.find_gain_mode(co, data=None) #data=raw: distinguish 5-modes w/o data
       cpdic['panel_ids']  = ue.segment_ids_epix10ka_detector(det)
       cpdic['panel_inds'] = ue.segment_indices_epix10ka_detector(det)
-      cpdic['dettype']    = det._dettype
-      cpdic['tstamp']     = tstamp_run
+      cpdic['longname']   = ue.fullname_epix10ka_detector(det) #det.raw._uniqueid
+      cpdic['dettype']    = det._dettype # epix
+      cpdic['tstamp']     = tstamp_run # (str) 20201209191018
+      cpdic['tstamp_now'] = tstamp_now # (str) 20201217140026
+      cpdic['trun_sec']   = int(trun_sec) # 1607569818.532117 sec
+      cpdic['tsrun_db']   = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
 
       return cpdic
 
@@ -917,10 +917,12 @@ def deploy_constants(*args, **opts):
             else:                    dic_consts[octype] = [nda,]
 
 
-    #sys.exit('TEST EXIT')
-    #####################
+    logger.info('\n%s\nMERGE PANEL CONSTANTS AND DEPLOY THEM\n' % (80*'_'))
 
-    logger.info('\n%s\nmerge panel constants and deploy them' % (80*'_'))
+    if deploy:
+       import psana.pscalib.calib.MDBUtils as mu
+       import psana.pscalib.calib.MDBWebUtils as wu
+       cc = wu.cc
 
     dmerge = dir_merge(dirrepo)
     create_directory(dmerge, mode=dirmode)
@@ -928,30 +930,38 @@ def deploy_constants(*args, **opts):
 
     for octype, lst in dic_consts.items():
         mrg_nda = merge_panels(lst)
-        logger.info(info_ndarr(mrg_nda, 'merged constants for %s' % octype))
+        logger.info(info_ndarr(mrg_nda, 'merged constants for %s ' % octype))
         fmerge = '%s-%s.txt' % (fmerge_prefix, octype)
         fmt = CTYPE_FMT.get(octype,'%.5f')
         save_ndarray_in_textfile(mrg_nda, fmerge, filemode, fmt)
 
 
-        continue
-        ########
-
-
-        if dircalib is not None: calibdir = dircalib
-        #ctypedir = .../calib/Epix10ka::CalibV1/MfxEndstation.0:Epix10ka.0/'
-        calibgrp = calib_group(dettype) # 'Epix10ka::CalibV1'
-        ctypedir = '%s/%s/%s' % (calibdir, calibgrp, strsrc)
-        #----------
         if deploy:
-            ofname   = '%d-end.data' % irun
-            lfname   = None
-            verbos   = True
-            logger.info('deploy calib files under %s' % ctypedir)
-            deploy_file(fmerge, ctypedir, octype, ofname, lfname, verbos=(logmode=='DEBUG'))
-        else:
-            logger.warning('Add option -D to deploy files under directory %s' % ctypedir)
-        #----------
+
+          dtype = 'ndarray'
+
+          kwa = {
+            'iofname': fmerge,
+            'experiment': exp,
+            'ctype': octype,
+            'dtype': dtype,
+            'detector': detname,
+            'longname': cpdic.get('longname', None),
+            'time_sec': cpdic.get('trun_sec', None),
+            'time_stamp': cpdic.get('tsrun_db', None),
+            'run': irun,
+            'run_end': opts.get('run_end', None),
+            'version': opts.get('version', None),
+            'comment': opts.get('comment', None),
+          }
+
+          logger.debug('DEPLOY metadata:', str(kwa))
+
+          _detname = detname # cpdic.get('longname', None)
+
+          data = mu.data_from_file(fmerge, octype, dtype, True)
+          id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
+            wu.add_data_and_two_docs(data, exp, _detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
 
 #----
 

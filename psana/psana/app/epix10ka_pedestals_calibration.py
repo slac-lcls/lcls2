@@ -35,8 +35,13 @@ def do_main():
     assert args.runs is not None, 'WARNING: option "-r <run-number(s)>" MUST be specified.'
 
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
-    #logging.basicConfig(format='%(levelname)s: %(message)s', level=DICT_NAME_TO_LEVEL[args.logmode])
-    logging.basicConfig(format='[%(levelname).1s] %(name)s %(message)s', level=DICT_NAME_TO_LEVEL[args.logmode])
+    fmt = '[%(levelname).1s] %(name)s %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
+    #logging.basicConfig(filename='log.txt', filemode='w', format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
+    logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
+
+    #fh = logging.FileHandler('log.txt')
+    #fh.setLevel(logging.DEBUG)
+    #logger.addHandler(fh)
 
     logger.debug('%s\nIn epix10ka_pedestals_calibration' % (50*'_'))
     logger.debug(info_command_line_arguments(parser))
