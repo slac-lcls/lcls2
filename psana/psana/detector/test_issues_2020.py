@@ -122,6 +122,41 @@ def issue_2020_12_16():
               print_ndarr(cob.asicPixelConfig, 'seg:%02d trbits: %s asicPixelConfig:'%(k, str(cob.trbit)))
               
 
+def issue_2020_12_19():
+    """First version of det.raw.calib"""
+    from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
+    from psana import DataSource
+
+    ds = DataSource(exp='ueddaq02',run=28)
+
+    for run in ds.runs():
+        print('====== run.runnum: ', run.runnum) 
+
+        det = run.Detector('epixquad')
+        det.raw._det_at_raw = det
+
+        print('det._det_name      : ', det._det_name) # epixquad
+        print('det._dettype       : ', det._dettype)  # epix
+        print('det.raw._det_name  : ', det.raw._det_name) # epixquad
+        print('det.raw._dettype   : ', det.raw._dettype)  # epix
+        print('det.raw._uniqueid  : ', det.raw._uniqueid)  # epix_3926196238-017....
+        print('_sorted_segment_ids: ', det.raw._sorted_segment_ids) # [0, 1, 2, 3]
+
+        for stepnum,step in enumerate(run.steps()):
+
+          print('%s\n==== Step %1d ====' % (50*'_',stepnum))
+
+          for evnum,evt in enumerate(step.events()):
+            if evnum>2 and evnum%500!=0: continue
+            print('%s\nStep %1d Event %04d' % (50*'_',stepnum, evnum))
+
+            calib  = det.raw.calib(evt)
+            ###########################
+            print(info_ndarr(det.raw.pedestals(), 'peds  '))
+            print(info_ndarr(det.raw.raw(evt),    'raw   '))
+            print(info_ndarr(calib,               'calib '))
+
+
 
 #if __name__ == "__main__":
 USAGE = '\nUsage:'\
@@ -133,6 +168,7 @@ USAGE = '\nUsage:'\
       + '\n    3 - issue_2020_12_02 - new file for epixquad issue with ds.runs loors like event loop ????'\
       + '\n    4 - issue_2020_12_10 - cpo access metadata from step'\
       + '\n    5 - issue_2020_12_16 - Chris access to config does not work, Matts works'\
+      + '\n    6 - issue_2020_12_19 - First version of det.raw.calib'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -141,6 +177,7 @@ elif TNAME in ('2',): issue_2020_11_24()
 elif TNAME in ('3',): issue_2020_12_02()
 elif TNAME in ('4',): issue_2020_12_10()
 elif TNAME in ('5',): issue_2020_12_16()
+elif TNAME in ('6',): issue_2020_12_19()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)

@@ -13,6 +13,7 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr, reshape_to_3d # print_n
 from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
         img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes
+import psana.detector.UtilsEpix10ka as ue
 
 #----
 
@@ -26,6 +27,11 @@ class AreaDetector(DetectorImpl):
         self.pix_rc = None, None
         self.pix_xyz = None, None, None
         self.interpol_pars = None
+        self._pedestals = None
+        self._gain = None
+        self._rms = None
+        self._status = None
+        self._common_mode = None
         #logger.info('XXX dir(self):\n' + str(dir(self)))
         #logger.info('XXX self._segments:\n' + str(self._segments))
 
@@ -79,8 +85,33 @@ class AreaDetector(DetectorImpl):
         return cc
 
 
+    def calibcons_and_meta_for_ctype(self, ctype='pedestals'):
+        logger.debug('AreaDetector.calibcons_and_meta_for_ctype(ctype="%s")'%ctype)
+        cc = self.det_calibconst()
+        if cc is None: return None
+        cons_and_meta = cc.get(ctype, None)
+        if cons_and_meta is None:
+            logger.warning('calibconst["%s"] is None'%ctype)
+            return None, None
+        return cons_and_meta
+
+
+    def cached_array(self, p, ctype='pedestals'):
+        """cached array
+        """
+        if p is None: p = self.calibcons_and_meta_for_ctype(ctype)[0] # 0-data/1-metadata
+        return p
+
+    def pedestals(self): return self.cached_array(self._pedestals, 'pedestals')
+    def gain(self):      return self.cached_array(self._gain, 'pixel_gain')
+    def rms(self):       return self.cached_array(self._rms, 'pixel_rms')
+    def status(self):    return self.cached_array(self._status, 'pixel_status')
+
+    def common_mode(self): return None # self.cached_array(self._common_mode, 'common_mode')
+
+
     def det_geotxt_and_meta(self):
-        logger.debug('AreaDetector.det_geometry_txt')
+        logger.debug('AreaDetector.det_geotxt_and_meta')
         cc = self.det_calibconst()
         if cc is None: return None
         geotxt_and_meta = cc.get('geometry', None)
@@ -187,13 +218,9 @@ class AreaDetector(DetectorImpl):
         """
         Create calibrated data array.
         """
-        logger.warning('AreaDetector.calib TBD currently returns raw')
-        #print('XXX dir(self):', dir(self))
-        #cc = self.det_calibconst()
-        #if cc is None: return None
-        #peds, peds_meta = cc.get('pedestals', None)
-        #...
-        return self.raw(evt)
+        logger.info('AreaDetector.calib')
+        #return self.raw(evt)
+        return ue.calib_epix10ka_any(self, evt)
 
 
     def image(self, evt, nda=None, **kwa):

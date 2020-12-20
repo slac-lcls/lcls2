@@ -28,8 +28,8 @@ Runs 27 and 28 are properly configured pedestal calibrations.  Run 29 is a parti
 """
 #print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
 #fname2 = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0028-s000-c000.xtc2' #dark
-fname2 = '/reg/d/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2' #dark
-
+#fname2 = '/reg/d/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2' #dark
+fname2 = '/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2' #dark
 detname='epixquad'
 
 
@@ -63,7 +63,7 @@ def print_det_raw_attrs(det):
 def test_calib_constants_directly(expname, runnum, detnameid):
     logger.info('in test_calib_constants_directly')
     from psana.pscalib.calib.MDBWebUtils import calib_constants
-
+    #'pixel_rms', 'pixel_status', 'pedestals', 'pixel_gain', 'geometry'
     pedestals, _ = calib_constants(detnameid, exp=expname, ctype='pedestals',    run=runnum)
     gain, _      = calib_constants(detnameid, exp=expname, ctype='pixel_gain',   run=runnum)
     rms, _       = calib_constants(detnameid, exp=expname, ctype='pixel_rms',    run=runnum)
@@ -76,8 +76,8 @@ def test_calib_constants_directly(expname, runnum, detnameid):
 
 
 def det_calib_constants(det, ctype):
+    #ctype = 'pixel_rms', 'pixel_status', 'pedestals', 'pixel_gain', 'geometry'
     calib_const = det.calibconst if hasattr(det,'calibconst') else None
-
     if calib_const is not None:
       logger.info('det.calibconst.keys(): ' + str(calib_const.keys()))
       cdata, cmeta = calib_const[ctype]
@@ -178,6 +178,8 @@ def test_calib(fname, args):
     #print('XXX timestamp: %d sec %d nsec'%(sec,nsec))# 4190613356186573936 today sec:1607015429
 
     det = run.Detector(args.detname)
+    det.raw._det_at_raw = det
+
     print('XXX det.calibconst.keys(): ', det.calibconst.keys()) # dict_keys(['geometry'])
     #print(det.calibconst)
     print('XXX det._det_name: ', det._det_name) # epixquad
@@ -189,6 +191,27 @@ def test_calib(fname, args):
     print('XXX det.raw._seg_configs(): ', det.raw._seg_configs()) 
     print('XXX det.raw._uniqueid: ', det.raw._uniqueid)
     print('XXX det.raw._sorted_segment_ids: ', det.raw._sorted_segment_ids) # [0, 1, 2, 3]
+
+    #'pixel_rms', 'pixel_status', 'pedestals', 'pixel_gain', 'geometry'
+
+    #peds   =  det.raw._calibconst['pedestals'][0]
+    #status =  det.raw._calibconst['pixel_status'][0]
+    #rms    =  det.raw._calibconst['pixel_rms'][0]
+    #gain   =  det.raw._calibconst['pixel_gain'][0]
+    #geom   =  det.raw._calibconst['geometry'][0]
+
+    peds   = det.raw.pedestals()
+    status = det.raw.status() 
+    rms    = det.raw.rms()
+    gain   = det.raw.gain()
+
+    print(info_ndarr(peds  , 'pedestals    '))
+    print(info_ndarr(status, 'pixel_status '))
+    print(info_ndarr(rms   , 'pixel_rms    '))
+    print(info_ndarr(gain  , 'pixel_gain   '))
+    #print('geometry', geom[:200], '...')
+
+    #exit('TEST EXIT')
 
     print('det._configs:', det._configs)        # [<dgram.Dgram object at 0x7f7794082d40>]???? WHY IT IS A LIST? HOW TO GET LIST INDEX FOR DETECTOR?
     cfg = det._configs[0]
@@ -213,22 +236,24 @@ def test_calib(fname, args):
     for stepnum,step in enumerate(run.steps()):
 
         print('%s\nStep %1d' % (50*'_',stepnum))
-        #print('STEP dir(step):', dir(step))   # [..., 'esm', 'events', 'evt', 'evt_iter']            #print('STEP dir(det.step):', dir(det.step)) #'dgrams', 'docstring', 'env_store', 'value']
+        #print('STEP dir(step):', dir(step))   # [..., 'esm', 'events', 'evt', 'evt_iter']
+        #print('STEP dir(det.step):', dir(det.step)) #'dgrams', 'docstring', 'env_store', 'value']
 
         #continue
 
         for evnum,evt in enumerate(step.events()):
             if evnum>2 and evnum%500!=0: continue
             print('%s\nStep %1d Event %04d' % (50*'_',stepnum, evnum))
-            segs = det.raw._segments(evt)
-            raw  = det.raw.raw(evt)
-            logger.info('segs: %s' % str(segs))
-            logger.info(info_ndarr(raw,  'raw  '))
+            #segs = det.raw._segments(evt)
+            #raw  = det.raw.raw(evt)
+            #logger.info('segs: %s' % str(segs))
+            #logger.info(info_ndarr(raw,  'raw: '))
 
-            print('EVT det.raw._segments(evt).keys(): ', det.raw._segments(evt).keys())
-            print('EVT det.step.docstring(evt):', det.step.docstring(evt))
-            print('EVT det.step.value(evt):', det.step.value(evt))
-
+            calib  = det.raw.calib(evt)
+            ###########################
+            logger.info(info_ndarr(det.raw.pedestals(), 'peds  '))
+            logger.info(info_ndarr(det.raw.raw(evt),    'raw   '))
+            logger.info(info_ndarr(calib,               'calib '))
 
         print(50*'-')
 
@@ -249,7 +274,6 @@ def test_image(fname, args):
         #=======================
         #arr = np.ones_like(arr)
         #=======================
-
 
         t0_sec = time()
 
