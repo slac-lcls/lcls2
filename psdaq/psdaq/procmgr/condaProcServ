@@ -26,6 +26,7 @@
 #   10: rcfile not found
 #   11: CONDABASE not defined in rcfile
 #   12: PROCSERVBIN not defined in rcfile
+#   13: CONDA_PREFIX not defined in environment
 #   other: procServ error
 
 if (( "$#" < 11 )); then
@@ -96,17 +97,23 @@ if [[ ! -z $condaEnv ]]; then
         echo "error: conda.sh not found"
         exit 8
     fi
-    if ! conda activate "$condaEnv"; then
-        echo "error: conda activate $condaEnv"
-        exit 6
-    fi
+#   if ! conda activate "$condaEnv"; then
+#       echo "error: conda activate $condaEnv"
+#       exit 6
+#   fi
 fi
 
-# if TESTRELDIR has been set, update paths
+if ! [[ -v CONDA_PREFIX ]]; then
+    echo "error: CONDA_PREFIX not defined in environment"
+    exit 13
+fi
+
+# update paths
 if [[ -v TESTRELDIR ]]; then
     echo "TESTRELDIR=${TESTRELDIR}"
+    echo "CONDA_PREFIX=${CONDA_PREFIX}"
     # TESTRELDIR before condaEnv in PATH
-    export PATH="${TESTRELDIR}/bin:${PATH}"
+    export PATH="${TESTRELDIR}/bin:${CONDA_PREFIX}/bin:${PATH}"
     # SET LD_LIBRARY_PATH
     export LD_LIBRARY_PATH="${TESTRELDIR}/lib"
     if [ ! -z $pythonVer ]; then
@@ -114,7 +121,8 @@ if [[ -v TESTRELDIR ]]; then
         export PYTHONPATH="${TESTRELDIR}/lib/python${pythonVer}/site-packages"
     fi
 else
-    echo "TESTRELDIR has not been set"
+    echo "CONDA_PREFIX=${CONDA_PREFIX}"
+    export PATH="${CONDA_PREFIX}/bin:${PATH}"
 fi
 
 # expand command to absolute path

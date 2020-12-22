@@ -35,6 +35,8 @@ def printError(errorCode, args):
         print("*** ERR: failed to run '%s' (CONDABASE not defined in rcfile)" % args)
     elif (errorCode == 12):
         print("*** ERR: failed to run '%s' (PROCSERVBIN not defined in rcfile)" % args)
+    elif (errorCode == 13):
+        print("*** ERR: failed to run '%s' (CONDA_PREFIX not defined in environment)" % args)
     elif (errorCode != 0):
         print("*** ERR: failed to run '%s' (procServ returned %d)" % \
             (args, errorCode))
@@ -921,10 +923,14 @@ class ProcMgr:
         xlist = list()
         Xlist = list()
 
+        if not 'CONDA_PREFIX' in os.environ:
+            print('CONDA_PREFIX not defined in environment')
+            return 1
+
         if self.isEmpty():
             # configuration is empty -- nothing to start
             if verbose:
-                print('startAll: empty configuration')
+                print('start: empty configuration')
             return 1
 
         if (self.PLATFORM < 0) or (self.PLATFORM > 9):
@@ -1011,6 +1017,8 @@ class ProcMgr:
                       outfile.write("# PLATFORM:%s\n" % self.PLATFORM)
                       outfile.write("# HOST:    %s\n" % loghost)
                       outfile.write("# CMDLINE: %s\n" % value[self.DICT_CMD])
+                      if 'CONDA_PREFIX' in os.environ:
+                        outfile.write("# CONDA_PREFIX:%s\n" % os.environ['CONDA_PREFIX'])
                       if 'TESTRELDIR' in os.environ:
                         outfile.write("# TESTRELDIR:%s\n" % os.environ['TESTRELDIR'])
                         if len(value[self.DICT_CONDA]) > 2:
@@ -1116,9 +1124,11 @@ class ProcMgr:
 
                         if 'TESTRELDIR' in os.environ:
                           # set env var on remote host using subshell
-                          nextcmd = '(setenv TESTRELDIR %s; %s; echo "[return=$?]")' % (os.environ['TESTRELDIR'], nextcmd)
+                          nextcmd = '(setenv CONDA_PREFIX %s; setenv TESTRELDIR %s; %s; echo "[return=$?]")' % \
+                                     (os.environ['CONDA_PREFIX'], os.environ['TESTRELDIR'], nextcmd)
                         else:
-                          nextcmd = '%s; echo "[return=$?]"' % nextcmd
+                          nextcmd = '(setenv CONDA_PREFIX %s; %s; echo "[return=$?]")' % \
+                                     (os.environ['CONDA_PREFIX'], nextcmd)
 
                         # send command
                         self.telnet.write(bytes('%s\n' % nextcmd, 'utf-8'))
