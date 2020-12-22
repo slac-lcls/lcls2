@@ -339,7 +339,9 @@ void     EpixQuad::slowupdate(XtcData::Xtc& xtc)
 
 bool     EpixQuad::scanEnabled()
 {
-    return true;
+    //  Only needed this when the TimingSystem could not be used
+    //    return true;
+    return false;
 }
 
 void     EpixQuad::shutdown()

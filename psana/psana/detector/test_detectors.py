@@ -270,9 +270,11 @@ class epix_raw_2_0_1(epix10ka_base):
                 nx = segs[0].raw.shape[1]
                 ny = segs[0].raw.shape[0]
                 f = np.zeros((ny*2,nx*2), dtype=segs[0].raw.dtype)
+                xa = [nx, 0, nx, 0]
+                ya = [ny, ny, 0, 0]
                 for i in range(4):
-                    x = int(i/2)*nx
-                    y = int(i%2)*ny
+                    x = xa[i]
+                    y = ya[i]
                     f[y:y+ny,x:x+nx] = segs[i].raw & 0x3fff
         return f
     def __call__(self, evt) -> Array2d:
