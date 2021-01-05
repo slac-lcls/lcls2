@@ -261,9 +261,9 @@ class DataSourceBase(abc.ABC):
 
         for _, det_class in self.dsparms.det_classes.items(): # det_class is either normal or envstore
             for (det_name, _), _ in det_class.items():
-                # Create a copy of list of configs for this detector
-                det_configs = [dgram.Dgram(view=config) for config in self._configs \
-                        if hasattr(config.software, det_name)]
+                # we lose a "one-to-one" correspondence with event dgrams.  we may have
+                # to put in None placeholders at some point? - mona and cpo
+                det_configs = [cfg for cfg in self._configs if hasattr(cfg.software, det_name)]
                 sorted_segment_ids = []
                 # a dictionary of the ids (a.k.a. serial-number) of each segment
                 detid_dict = {}
