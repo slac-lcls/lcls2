@@ -1391,7 +1391,7 @@ class CollectionManager():
         ids = self.filter_active_set(self.ids)
         ids = self.filter_level('drp', ids)
         # make sure all the clients respond to transition before timeout
-        missing, answers, reports = self.confirm_response(self.back_pull, self.phase2_timeout, None, ids)
+        missing, answers, reports = self.confirm_response(self.back_pull, self.phase2_timeout, None, ids, progress_txt=transition+' phase 2')
         try:
             self.process_reports(reports)
         except ConfigDBError as ex:
@@ -1401,7 +1401,7 @@ class CollectionManager():
         if missing:
             logging.error('%s phase2 failed' % transition)
             for alias in self.get_aliases(missing):
-                self.report_error('%s did not respond to %s' % (alias, transition))
+                self.report_error('%s did not respond to %s phase 2' % (alias, transition))
             return False
         return True
 
