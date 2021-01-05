@@ -35,6 +35,20 @@ def dumpvars(prefix,c):
         name = prefix+'.'+key
         dumpvars(name,val)
 
+def retry(cmd,val):
+    itry=0
+    while(True):
+        try:
+            cmd(val)
+        except Exception as e:
+            print(f'Try {itry} of {cmd}({val}) failed.')
+            if itry < 3:
+                itry+=1
+                continue
+            else:
+                raise e
+        break
+
 #
 #  Apply the configuration dictionary to the rogue registers
 #
@@ -61,7 +75,8 @@ def apply_dict(pathbase,base,cfg):
                 print(f'NOT setting {path} to {configdb_node}')
             else:
                 print(f'Setting {path} to {configdb_node}')
-                rogue_node.set(configdb_node)
+                #rogue_node.set(configdb_node)
+                retry(rogue_node.set,configdb_node)
 #                time.sleep(0.0001)
 
 #
@@ -246,8 +261,10 @@ def config_expert(base, cfg, writePixelMap=True):
     for i in asics:
         print(f'Enabling ASIC {i}')
         saci = cbase.Epix10kaSaci[i]
-        saci.enable.set(True)  # Saci disabled by default!
-        saci.IsEn.set(True)
+        #saci.enable.set(True)  # Saci disabled by default!
+        #saci.IsEn.set(True)
+        retry(saci.enable.set,True)
+        retry(saci.IsEn.set,True)
 
     if ('expert' in cfg and 'EpixQuad' in cfg['expert']):
         epixQuad = cfg['expert']['EpixQuad'].copy()
@@ -332,8 +349,12 @@ def config_expert(base, cfg, writePixelMap=True):
     #  Important that Asic IsEn is True while configuring and false when running
     for i in asics:
         saci = cbase.Epix10kaSaci[i]
-        saci.IsEn.set(False)
-        saci.enable.set(False)
+        #saci.IsEn.set(False)
+        #saci.enable.set(False)
+        retry(saci.IsEn.set,False)
+        retry(saci.enable.set,False)
+
+    print('config_expert complete')
 
 #
 #  Called on Configure
@@ -539,6 +560,8 @@ def epixquad_update(update):
     result = []
     for i in range(len(scfg)):
         result.append( json.dumps(scfg[i]) )
+
+    print('update complete')
 
 #    for i in range(len(scfg)):
 #        base['log'].write('--update-- {}\n'.format(i))
