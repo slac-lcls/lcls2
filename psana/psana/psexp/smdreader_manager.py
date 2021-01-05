@@ -14,10 +14,11 @@ class BatchIterator(object):
 
     SmdReaderManager returns this object when a chunk is read.
     """
-    def __init__(self, views, configs, batch_size=1, filter_fn=0, destination=0):
-        self.batch_size = batch_size
-        self.filter_fn = filter_fn
-        self.destination = destination
+    def __init__(self, views, configs, run, batch_size=1, filter_fn=0, destination=0):
+        self.batch_size     = batch_size
+        self.filter_fn      = filter_fn
+        self.destination    = destination
+        self.run            = run 
         
         empty_view = True
         for view in views:
@@ -41,8 +42,10 @@ class BatchIterator(object):
         # while updating offsets of each smd memoryview
         if not self.eb: raise StopIteration
 
-        batch_dict, step_dict = self.eb.build(batch_size=self.batch_size, filter_fn=self.filter_fn, \
-                destination=self.destination)
+        batch_dict, step_dict = self.eb.build(batch_size=self.batch_size, 
+                filter_fn=self.filter_fn, 
+                destination=self.destination,
+                run=self.run)
         if self.eb.nevents == 0 and self.eb.nsteps == 0: raise StopIteration
         return batch_dict, step_dict
 
@@ -64,6 +67,7 @@ class SmdReaderManager(object):
         self.smdr = SmdReader(smd_fds, self.chunksize, self.dsparms.max_retries)
         self.processed_events = 0
         self.got_events = -1
+        self._run = None
         
         # Collecting Smd0 performance using prometheus
         self.c_read = self.dsparms.prom_man.get_metric('psana_smd0_read')
@@ -121,7 +125,7 @@ class SmdReaderManager(object):
                 raise StopIteration
         
         mmrv_bufs, _ = self.smdr.view(batch_size=self.smd0_n_events)
-        batch_iter = BatchIterator(mmrv_bufs, self.configs, 
+        batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, 
                 batch_size  = self.dsparms.batch_size, 
                 filter_fn   = self.dsparms.filter, 
                 destination = self.dsparms.destination)
@@ -188,4 +192,10 @@ class SmdReaderManager(object):
     @property
     def max_ts(self):
         return self.smdr.max_ts
+
+    def set_run(self, run):
+        self._run = run
+
+    def get_run(self):
+        return self._run
 

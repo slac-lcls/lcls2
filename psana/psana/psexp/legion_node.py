@@ -27,7 +27,7 @@ def run_smd0_task(run):
     pygion.execution_fence(block=True)
 
 def smd_batches(smd_chunk, run):
-    eb_man = EventBuilderManager(smd_chunk, run.configs, run.dsparms) 
+    eb_man = EventBuilderManager(smd_chunk, run.configs, run.dsparms, run) 
     for smd_batch_dict, step_batch_dict in eb_man.batches():
         smd_batch, _ = smd_batch_dict[0]
         yield smd_batch

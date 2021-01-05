@@ -19,7 +19,7 @@ class RunParallel(Run):
     """ Yields list of events from multiple smd/bigdata files using > 3 cores."""
 
     def __init__(self, ds, run_evt):
-        super(RunParallel, self).__init__(ds.dsparms)
+        super(RunParallel, self).__init__(ds)
         self.ds         = ds
         self.comms      = ds.comms
         self._evt       = run_evt
@@ -172,7 +172,7 @@ class MPIDataSource(DataSourceBase):
         if nodetype == 'smd0':
             self.smd0 = Smd0(self.comms, self._configs, self.smdr_man, self.dsparms)
         elif nodetype == 'eb':
-            self.eb_node = EventBuilderNode(self.comms, self._configs, self.dsparms)
+            self.eb_node = EventBuilderNode(self.comms, self._configs, self.dsparms, self.dm)
         elif nodetype == 'bd':
             self.bd_node = BigDataNode(self.comms, self._configs, self.dsparms, self.dm)
 

@@ -167,7 +167,7 @@ class DgramManager(object):
         if service == TransitionId.EndRun:
             self.found_endrun = True
 
-        evt = Event(dgrams, run=self.run())
+        evt = Event(dgrams, run=self.get_run())
         self._timestamps += [evt.timestamp]
         return evt
 
@@ -188,13 +188,16 @@ class DgramManager(object):
 
             dgrams += [d]
 
-        evt = Event(dgrams, run=self.run())
+        evt = Event(dgrams, run=self._run)
         return evt
 
     def get_timestamps(self):
         return np.asarray(self._timestamps, dtype=np.uint64) # return numpy array for easy search later
 
-    def run(self):
+    def set_run(self, run):
+        self._run = run
+    
+    def get_run(self):
         return self._run
 
 

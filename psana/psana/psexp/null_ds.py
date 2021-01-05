@@ -11,7 +11,7 @@ class NullDataSource(DataSourceBase):
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
 
     def runs(self):
-        run = Run(self.dsparms)
+        run = Run(self)
         def events():
             return iter([])
         setattr(run, "events", events)

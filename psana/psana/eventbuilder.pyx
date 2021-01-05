@@ -71,7 +71,7 @@ cdef class EventBuilder:
                 return True
         return False
 
-    def build(self, batch_size=1, filter_fn=0, destination=0, limit_ts=-1, prometheus_counter=None):
+    def build(self, batch_size=1, filter_fn=0, destination=0, limit_ts=-1, prometheus_counter=None, run=None):
         """
         Builds a list of batches.
 
@@ -234,11 +234,9 @@ cdef class EventBuilder:
                 
                 evt_bytes.extend(evt_footer_view)
 
-                if filter_fn != 0:
-                    py_evt = Event._from_bytes(self.configs, evt_bytes) 
-                    # mona removed evt._complete() - I think smd events do not
-                    # need det interface. The evt._complete() is called in def _from_bytes()
-                    # and this is how bigdata events are created.
+                if filter_fn != 0 and service == self.L1Accept:
+                    py_evt = Event._from_bytes(self.configs, evt_bytes, run=run) 
+                    py_evt._complete() 
                     st_filter = time.time()
                     accept = filter_fn(py_evt)
                     en_filter = time.time()

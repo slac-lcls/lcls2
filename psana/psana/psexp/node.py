@@ -324,10 +324,11 @@ class EventBuilderNode(object):
     Receives blocks of smds from smd_0 then assembles
     offsets and dgramsizes into a numpy array. Sends
     this np array to bd_nodes that are registered to it."""
-    def __init__(self, comms, configs, dsparms):
+    def __init__(self, comms, configs, dsparms, dm):
         self.comms      = comms
         self.configs    = configs
         self.dsparms    = dsparms
+        self.dm         = dm
         self.step_hist  = StepHistory(self.comms.bd_size, len(self.configs))
         # Collecting Smd0 performance using prometheus
         self.c_sent     = dsparms.prom_man.get_metric('psana_eb_sent')
@@ -388,7 +389,7 @@ class EventBuilderNode(object):
             if not smd_chunk:
                 break
            
-            eb_man = EventBuilderManager(smd_chunk, self.configs, self.dsparms) 
+            eb_man = EventBuilderManager(smd_chunk, self.configs, self.dsparms, self.dm.get_run())
         
             # Build batch of events
             for smd_batch_dict, step_batch_dict  in eb_man.batches():

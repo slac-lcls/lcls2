@@ -94,7 +94,7 @@ class EventManager(object):
         first_L1_pos = -1
         for i, event_bytes in enumerate(self.smd_events):
             if event_bytes:
-                smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.run())
+                smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.get_run())
                 ofsz = smd_evt.get_offsets_and_sizes() 
                 if smd_evt.service() == TransitionId.L1Accept:
                     offsets = ofsz[:,0]
@@ -114,7 +114,7 @@ class EventManager(object):
         for i, event_bytes in enumerate(self.smd_events[first_L1_pos:]):
             j = i + first_L1_pos
             if event_bytes:
-                smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.run())
+                smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.get_run())
                 ofsz = smd_evt.get_offsets_and_sizes()
 
                 if j > 0:
@@ -140,13 +140,13 @@ class EventManager(object):
         if self.cn_events == self.n_events: 
             raise StopIteration
         if len(self.dm.xtc_files) == 0:
-            smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.run())
+            smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.get_run())
             self.cn_events += 1
             self._inc_prometheus_counter('evts')
             return smd_evt
         
         if self.filter_fn:
-            smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.run())
+            smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.get_run())
             self.cn_events += 1
             if smd_evt.service() == TransitionId.L1Accept:
                 offset_and_size_array = smd_evt.get_offsets_and_sizes()
@@ -165,7 +165,7 @@ class EventManager(object):
             if d_size and d_offset + d_size <= \
                     memoryview(self.bigdata[j]).nbytes:
                 dgrams[j] = dgram.Dgram(view=self.bigdata[j], config=self.dm.configs[j], offset=d_offset)
-        bd_evt = Event(dgrams, run=self.dm.run())
+        bd_evt = Event(dgrams, run=self.dm.get_run())
         self.cn_events += 1
         self._inc_prometheus_counter('evts')
         return bd_evt

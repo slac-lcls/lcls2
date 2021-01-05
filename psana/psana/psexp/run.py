@@ -61,10 +61,13 @@ class Run(object):
     scan    = False # True when looping over steps
     smd_fds = None
     
-    def __init__(self, dsparms):
-        self.dsparms = dsparms
+    def __init__(self, ds):
+        self.dsparms = ds.dsparms
         self.c_ana   = self.dsparms.prom_man.get_metric('psana_bd_ana')
+        if hasattr(ds, "dm"): ds.dm.set_run(self)
+        if hasattr(ds, "smdr_man"): ds.smdr_man.set_run(self)
         RunHelper(self)
+        self._dets   = {}
 
     def run(self):
         """ Returns integer representaion of run no.
@@ -80,6 +83,9 @@ class Run(object):
                 self.dsparms.calibconst[det_name]  = None
 
     def Detector(self, name, accept_missing=False):
+        if name in self._dets:
+            return self._dets[name]
+
         if name not in self.dsparms.configinfo_dict and self.esm.env_from_variable(name) is None:
             if not accept_missing:
                 err_msg = f"Cannot find {name} detector in configs. Available detectors: {','.join(list(self.dsparms.configinfo_dict.keys()))}"
@@ -136,6 +142,7 @@ class Run(object):
                 det = drp_class(det_name, drp_class_name, self.dsparms.configinfo_dict[det_name], self.dsparms.calibconst[det_name], self.esm.stores[env_name], var_name)
                 setattr(det, '_det_name', det_name)
 
+        self._dets[name] = det
         return det
 
     @property
@@ -187,7 +194,7 @@ class RunShmem(Run):
     """ Yields list of events from a shared memory client (no event building routine). """
     
     def __init__(self, ds, run_evt):
-        super(RunShmem, self).__init__(ds.dsparms)
+        super(RunShmem, self).__init__(ds)
         self._evt      = run_evt
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
@@ -218,7 +225,7 @@ class RunSingleFile(Run):
     """ Yields list of events from a single bigdata file. """
     
     def __init__(self, ds, run_evt):
-        super(RunSingleFile, self).__init__(ds.dsparms)
+        super(RunSingleFile, self).__init__(ds)
         self._evt      = run_evt
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
@@ -249,7 +256,7 @@ class RunSerial(Run):
     """ Yields list of events from multiple smd/bigdata files using single core."""
 
     def __init__(self, ds, run_evt):
-        super(RunSerial, self).__init__(ds.dsparms)
+        super(RunSerial, self).__init__(ds)
         self._evt      = run_evt
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
@@ -278,7 +285,9 @@ class RunSerial(Run):
 
 class RunLegion(Run):
     def __init__(self, ds, run_evt):
-        super(RunLegion, self).__init__(ds.dsparms)
+        self.dsparms = ds.dsparms
+        self.c_ana   = self.dsparms.prom_man.get_metric('psana_bd_ana')
+        RunHelper(self)
         self._evt       = run_evt
         self.beginruns  = run_evt._dgrams
         self.smdr_man   = ds.smdr_man

@@ -3,11 +3,12 @@ from psana.psexp        import PacketFooter, PrometheusManager
 
 class EventBuilderManager(object):
 
-    def __init__(self, view, configs, dsparms): 
+    def __init__(self, view, configs, dsparms, run): 
         self.configs        = configs 
         self.batch_size     = dsparms.batch_size
         self.filter_fn      = dsparms.filter
         self.destination    = dsparms.destination
+        self.run            = run
         self.n_files        = len(self.configs)
 
         pf                  = PacketFooter(view=view)
@@ -21,7 +22,8 @@ class EventBuilderManager(object):
                     batch_size          = self.batch_size, 
                     filter_fn           = self.filter_fn, 
                     destination         = self.destination,
-                    prometheus_counter  = self.c_filter)
+                    prometheus_counter  = self.c_filter,
+                    run                 = self.run) 
             self.min_ts = self.eb.min_ts
             self.max_ts = self.eb.max_ts
             if self.eb.nevents==0 and self.eb.nsteps==0: break
