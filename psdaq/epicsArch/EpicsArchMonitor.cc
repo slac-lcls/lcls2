@@ -101,7 +101,8 @@ void EpicsArchMonitor::_initDef(size_t& payloadSize)
   {
     EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
     size_t size;
-    epicsPvCur.addDef(_epicsArchDef, size);
+    if (epicsPvCur.addDef(_epicsArchDef, size))
+      logging::warning("addDef failed for %s", epicsPvCur.getPvName().c_str());
     payloadSize += size;
   }
 }

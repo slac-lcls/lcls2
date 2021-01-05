@@ -9,55 +9,70 @@ using logging = psalg::SysLog;
 namespace Pds_Epics
 {
 
-void PvMonitorBase::printStructure() const
+int PvMonitorBase::printStructure() const
 {
+    if (!_strct)  { logging::error("_strct is NULL");  return 1; }
     auto structure = _strct->getStructure();
+    if (!structure)  { logging::error("structure is NULL");  return 1; }
     auto names = structure->getFieldNames();
     auto fields = structure->getFields();
     //std::cout << "Fields are: " << structure << "\n";
     for (unsigned i=0; i<names.size(); i++) {
-        auto field = _strct->getSubField<pvd::PVField>(names[i]);
-        auto offset = field->getFieldOffset();
+        auto pvField = _strct->getSubField<pvd::PVField>(names[i]);
+        if (!pvField)  { logging::error("pvField %s is NULL", names[i].c_str());  return 1; }
+        auto offset = pvField->getFieldOffset();
         logging::info("PV Name: %s  FieldName: %s  Offset: %zu  FieldType: %s",
                       name().c_str(), names[i].c_str(), offset, pvd::TypeFunc::name(fields[i]->getType()));
-        std::cout << "Field type: " << field->getField()->getType() << "\n";
+        std::cout << "Field type: " << pvField->getField()->getType() << "\n";
         switch (fields[i]->getType()) {
             case pvd::scalar: {
                 auto pvScalar = _strct->getSubField<pvd::PVScalar>(offset);
+                if (!pvScalar)  { logging::error("pvScalar is NULL");  return 1; }
                 //std::cout << "PVScalar: " << pvScalar << "\n";
                 auto scalar   = pvScalar->getScalar();
+                if (!scalar)  { logging::error("scalar is NULL");  return 1; }
                 auto fType = pvd::ScalarTypeFunc::name(scalar->getScalarType());
                 std::cout << "  Scalar type: " << fType << "\n";
                 break;
             }
             case pvd::scalarArray: {
                 auto pvScalarArray = _strct->getSubField<pvd::PVScalarArray>(offset);
+                if (!pvScalarArray)  { logging::error("pvScalarArray is NULL");  return 1; }
                 //std::cout << "PVScalarArray: " << pvScalarArray << "\n";
                 auto scalarArray   = pvScalarArray->getScalarArray();
+                if (!scalarArray)  { logging::error("scalarArray is NULL");  return 1; }
                 auto fType = pvd::ScalarTypeFunc::name(scalarArray->getElementType());
                 std::cout << "  ScalarArray type: " << fType << "\n";
                 break;
             }
             case pvd::union_: {
                 auto pvUnion = _strct->getSubField<pvd::PVUnion>(offset);
+                if (!pvUnion)  { logging::error("pvUnion is NULL");  return 1; }
                 //std::cout << "PVUnion: " << pvUnion << "\n";
-                auto union_   = pvUnion->getUnion();
+                auto union_ = pvUnion->getUnion();
+                if (!union_)  { logging::error("union is NULL");  return 1; }
                 //std::cout << "  Union: " << union_ << "\n";
                 printf("  Union has %zu fields\n", union_->getNumberFields());
                 printf("  Union is variant: %d\n", union_->isVariant());
                 std::cout << "  PVUnion numberFields: " << pvUnion->getNumberFields() << "\n";
-                std::cout << "  PVUnion type: " << pvUnion->get()->getField()->getType() << "\n";
-                std::cout << "  PVUnion subtype: " << pvUnion->get()->getField()->getID() << "\n";
+                auto pvField = pvUnion->get();
+                if (!pvField)  { logging::error("pvField is NULL");  return 1; }
+                std::cout << "  PVUnion type: " << pvField->getField()->getType() << "\n";
+                std::cout << "  PVUnion subtype: " << pvField->getField()->getID() << "\n";
                 auto pvScalarArray = pvUnion->get<pvd::PVScalarArray>();
+                if (!pvScalarArray)  { logging::error("Union's pvScalarArray is NULL");  return 1; }
                 auto scalarArray   = pvScalarArray->getScalarArray();
+                if (!scalarArray)  { logging::error("Union's scalarArray is NULL");  return 1; }
                 auto fType = pvd::ScalarTypeFunc::name(scalarArray->getElementType());
                 std::cout << "  ScalarArray offset: " << pvScalarArray->getFieldOffset() << "  Type: " << fType << "\n";
                 break;
             }
             case pvd::structure: {
                 auto pvStructure = _strct->getSubField<pvd::PVStructure>(offset);
+                if (!pvStructure)  { logging::error("pvStructure is NULL");  return 1; }
                 //std::cout << "PVStructure: " << pvStructure << "\n";
                 auto structure   = pvStructure->getStructure();
+                if (!structure)  { logging::error("structure is NULL");  return 1; }
                 //std::cout << "  Structure: " << structure << "\n";
                 auto fieldNames = structure->getFieldNames();
                 for (unsigned k = 0; k < fieldNames.size(); k++) {
@@ -69,8 +84,10 @@ void PvMonitorBase::printStructure() const
             }
             case pvd::structureArray: {
                 auto pvStructureArray = _strct->getSubField<pvd::PVStructureArray>(offset);
+                if (!pvStructureArray)  { logging::error("pvStructureArray is NULL");  return 1; }
                 std::cout << "PVStructureArray: " << pvStructureArray << "\n";
                 auto structureArray   = pvStructureArray->getStructureArray();
+                if (!structureArray)  { logging::error("structureArray is NULL");  return 1; }
                 //std::cout << "StructureArray: " << structureArray << "\n";
                 printf("  StructureArray has length %zu\n", pvStructureArray->getLength());
                 std::vector<int> sizes(pvStructureArray->getLength());
@@ -80,6 +97,7 @@ void PvMonitorBase::printStructure() const
                     auto fieldNames = pvStructure[j]->getStructure()->getFieldNames();
                     for (unsigned k = 0; k < fieldNames.size(); k++) {
                         auto pvField = pvStructure[j]->getSubField(fieldNames[k]);
+                        if (!pvField)  { logging::error("pvField is NULL");  return 1; }
                         if (names[i] == "dimension" && fieldNames[k] == "size") {
                             auto pvInt = pvStructure[j]->getSubField<pvd::PVInt>("size");
                             sizes[j] = pvInt ? pvInt->getAs<int>() : 0;
@@ -101,6 +119,8 @@ void PvMonitorBase::printStructure() const
             }
         }
     }
+
+    return 0;
 }
 
 int PvMonitorBase::getParams(const std::string& name,
@@ -108,7 +128,9 @@ int PvMonitorBase::getParams(const std::string& name,
                              size_t&            nelem,
                              size_t&            rank)
 {
+    if (!_strct)  { logging::error("_strct is NULL");  return 1; }
     auto pvStructureArray = _strct->getSubField<pvd::PVStructureArray>("dimension");
+    if (!pvStructureArray)  { logging::error("pvStructureArray is NULL");  return 1; }
     rank = pvStructureArray ? pvStructureArray->getLength() : 1;
 
     auto field  = _strct->getSubField<pvd::PVField>(name);
@@ -121,9 +143,9 @@ int PvMonitorBase::getParams(const std::string& name,
     switch (field->getField()->getType()) {
         case pvd::scalar: {
             auto pvScalar = _strct->getSubField<pvd::PVScalar>(offset);
-            if (!pvScalar)  throw "pvScalar is NULL";
+            if (!pvScalar)  { logging::error("pvScalar is NULL");  return 1; }
             auto scalar   = pvScalar->getScalar();
-            if (!scalar)  throw "scalar is NULL";
+            if (!scalar)  { logging::error("scalar is NULL");  return 1; }
             type          = scalar->getScalarType();
             nelem         = 1;
             rank          = 0;
@@ -149,9 +171,9 @@ int PvMonitorBase::getParams(const std::string& name,
         }
         case pvd::scalarArray: {
             auto pvScalarArray = _strct->getSubField<pvd::PVScalarArray>(offset);
-            if (!pvScalarArray)  throw "pvScalarArray is NULL";
+            if (!pvScalarArray)  { logging::error("pvScalarArray is NULL");  return 1; }
             auto scalarArray   = pvScalarArray->getScalarArray();
-            if (!scalarArray)  throw "scalarArray is NULL";
+            if (!scalarArray)  { logging::error("scalarArray is NULL");  return 1; }
             type               = scalarArray->getElementType();
             nelem              = pvScalarArray->getLength();
 // This was tested and is known to work
@@ -176,13 +198,13 @@ int PvMonitorBase::getParams(const std::string& name,
         }
          case pvd::union_: {
             auto pvUnion       = _strct->getSubField<pvd::PVUnion>(offset);
-            if (!pvUnion)  throw "pvUnion is NULL";
+            if (!pvUnion)  { logging::error("pvUnion is NULL");  return 1; }
             auto union_        = pvUnion->getUnion();
-            if (!union_)  throw "union is NULL";
+            if (!union_)  { logging::error("union is NULL");  return 1; }
             auto pvScalarArray = pvUnion->get<pvd::PVScalarArray>();
-            if (!pvScalarArray)  throw "Union's pvScalarArray is NULL";
+            if (!pvScalarArray)  { logging::error("Union's pvScalarArray is NULL");  return 1; }
             auto scalarArray   = pvScalarArray->getScalarArray();
-            if (!scalarArray)  throw "Union's scalarArray is NULL";
+            if (!scalarArray)  { logging::error("Union's scalarArray is NULL");  return 1; }
             type               = scalarArray->getElementType();
             nelem              = pvScalarArray->getLength();
 // This has NOT been tested

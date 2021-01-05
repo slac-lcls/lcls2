@@ -33,7 +33,7 @@ public:
 public:
     bool ready(PvaDetector* pvaDetector);
     void clear() { m_pvaDetector = nullptr; }
-    void getVarDef(XtcData::VarDef&, size_t& payloadSize, size_t rankHack); // Revisit: Hack!
+    int  getVarDef(XtcData::VarDef&, size_t& payloadSize, size_t rankHack); // Revisit: Hack!
 private:
     Parameters&         m_para;
     const std::string&  m_provider;

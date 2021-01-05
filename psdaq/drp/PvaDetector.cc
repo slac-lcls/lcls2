@@ -92,13 +92,13 @@ bool PvaMonitor::ready(PvaDetector* pvaDetector)
     return PvMonitorBase::ready(request, tmo);
 }
 
-void PvaMonitor::getVarDef(XtcData::VarDef& varDef, size_t& payloadSize, size_t rankHack)
+int PvaMonitor::getVarDef(XtcData::VarDef& varDef, size_t& payloadSize, size_t rankHack)
 {
     std::string     name = "value";
     pvd::ScalarType type;
     size_t          nelem;
     size_t          rank;
-    getParams(name, type, nelem, rank);
+    if (getParams(name, type, nelem, rank))  return 1;
 
     if (rankHack != size_t(-1))  rank = rankHack; // Revisit: Hack!
 
@@ -106,6 +106,8 @@ void PvaMonitor::getVarDef(XtcData::VarDef& varDef, size_t& payloadSize, size_t 
     varDef.NameVec.push_back(XtcData::Name(name.c_str(), xtcType, rank));
 
     payloadSize = nelem * XtcData::Name::get_element_size(xtcType);
+
+    return 0;
 }
 
 void PvaMonitor::onConnect()
@@ -113,7 +115,8 @@ void PvaMonitor::onConnect()
     logging::info("%s connected", name().c_str());
 
     if (m_para.verbose) {
-        printStructure();
+        if (printStructure())
+            logging::error("onConnect: printStructure() failed");
     }
 }
 
@@ -352,7 +355,7 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
     size_t           payloadSize;
     XtcData::VarDef  rawVarDef;
     size_t           rankHack = m_firstDimKw != 0 ? 2 : -1; // Revisit: Hack!
-    m_pvaMonitor->getVarDef(rawVarDef, payloadSize, rankHack);
+    if (m_pvaMonitor->getVarDef(rawVarDef, payloadSize, rankHack))  return 1;
     payloadSize += (sizeof(Pds::EbDgram)    + // An EbDgram is needed by the MEB
                     24                      + // Space needed by DescribedData
                     sizeof(XtcData::Shapes) + // Needed by DescribedData
@@ -557,11 +560,11 @@ void PvaDetector::process(const XtcData::TimeStamp& timestamp)
 {
     // Protect against namesLookup not being stable before Enable
     if (m_running.load(std::memory_order_relaxed)) {
+        ++m_nUpdates;
+        logging::debug("%s updated @ %u.%09u", m_pvaMonitor->name().c_str(), timestamp.seconds(), timestamp.nanoseconds());
+
         XtcData::Dgram* dgram;
         if (m_bufferFreelist.try_pop(dgram)) { // If a buffer is available...
-            ++m_nUpdates;
-            logging::debug("%s updated @ %u.%09u", m_pvaMonitor->name().c_str(), timestamp.seconds(), timestamp.nanoseconds());
-
             //static uint64_t last_ts = 0;
             //uint64_t ts = timestamp.to_ns();
             //int64_t  dT = ts - last_ts;

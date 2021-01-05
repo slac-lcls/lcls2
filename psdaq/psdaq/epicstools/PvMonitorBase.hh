@@ -19,7 +19,7 @@ public:
     }
   virtual ~PvMonitorBase() {}
 public:
-    void printStructure() const;
+    int printStructure() const;
     bool ready(const std::string& request, unsigned tmo)
     {
         return getComplete(request, tmo);

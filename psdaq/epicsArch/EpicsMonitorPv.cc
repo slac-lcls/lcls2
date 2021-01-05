@@ -56,13 +56,15 @@ namespace Drp
 
   int EpicsMonitorPv::addDef(EpicsArchDef& def, size_t& size)
   {
-    if (_bDisabled)  { size = 0;  return 1; }
+    size = 0;
+
+    if (_bDisabled)  return 1;
 
     std::string     name = "value";
     pvd::ScalarType type;
     size_t          nelem;
     size_t          rank;
-    getParams(name, type, nelem, rank);
+    if (getParams(name, type, nelem, rank))  { _bDisabled = true;  return 1; }
 
     auto detName = !_sPvDescription.empty() ? _sPvDescription : name;
     auto xtcType = xtype[type];
@@ -83,7 +85,8 @@ namespace Drp
     logging::debug("%s connected\n", name().c_str());
 
     if (_bDebug)
-      printStructure();
+      if (printStructure())
+        logging::error("onConnect: printStructure() failed");
   }
 
   void EpicsMonitorPv::onDisconnect()
