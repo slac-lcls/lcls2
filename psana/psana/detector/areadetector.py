@@ -23,10 +23,10 @@ class AreaDetector(DetectorImpl):
         logger.debug('AreaDetector.__init__') #  self.__class__.__name__
         DetectorImpl.__init__(self, *args, **kwargs)
         # caching
-        self.geo = None
-        self.pix_rc = None, None
-        self.pix_xyz = None, None, None
-        self.interpol_pars = None
+        self._geo = None
+        self._pix_rc = None, None
+        self._pix_xyz = None, None, None
+        self._interpol_pars = None
         self._pedestals = None
         self._gain = None
         self._rms = None
@@ -124,14 +124,14 @@ class AreaDetector(DetectorImpl):
     def det_geo(self):
         """
         """
-        if self.geo is None:
+        if self._geo is None:
             geotxt, meta = self.det_geotxt_and_meta()
             if geotxt is None:
                 logger.warning('det_geo geotxt is None')
                 return None            
-            self.geo = GeometryAccess()
-            self.geo.load_pars_from_str(geotxt)
-        return self.geo
+            self._geo = GeometryAccess()
+            self._geo.load_pars_from_str(geotxt)
+        return self._geo
         
 
     def pixel_coord_indexes(self, **kwa):
@@ -169,7 +169,7 @@ class AreaDetector(DetectorImpl):
         """
         logger.debug('AreaDetector.cached_pixel_coord_indexes')
 
-        resp = self.pixel_coord_indexes(**kwa)
+        resp = self._pixel_coord_indexes(**kwa)
         if resp is None: return None
 
         # PRESERVE PIXEL INDEXES FOR USED SEGMENTS ONLY
@@ -177,11 +177,11 @@ class AreaDetector(DetectorImpl):
         if segs is None: return None
         logger.debug(info_ndarr(segs, 'preserve pixel indices for segments '))
 
-        rows, cols = self.pix_rc = [reshape_to_3d(a)[segs,:,:] for a in resp]
-        #self.pix_rc = [dict_from_arr3d(reshape_to_3d(v)) for v in resp]
+        rows, cols = self._pix_rc = [reshape_to_3d(a)[segs,:,:] for a in resp]
+        #self._pix_rc = [dict_from_arr3d(reshape_to_3d(v)) for v in resp]
 
         s = 'evaluate_pixel_coord_indexes:'
-        for i,a in enumerate(self.pix_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
+        for i,a in enumerate(self._pix_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
         logger.info(s)
 
         mapmode = kwa.get('mapmode',2)
@@ -190,10 +190,10 @@ class AreaDetector(DetectorImpl):
             statistics_of_pixel_arrays(rows, cols)
 
         if mapmode==4:
-            rsp = self.pixel_coords(**kwa)
+            rsp = self._pixel_coords(**kwa)
             if rsp is None: return None
-            x,y,z = self.pix_xyz = [reshape_to_3d(a)[segs,:,:] for a in rsp]
-            self.interpol_pars = init_interpolation_parameters(rows, cols, x, y)
+            x,y,z = self._pix_xyz = [reshape_to_3d(a)[segs,:,:] for a in rsp]
+            self._interpol_pars = init_interpolation_parameters(rows, cols, x, y)
 
         if mapmode <4 and kwa.get('fillholes',True):
             self.img_pix_ascend_ind, self.img_holes, self.hole_rows, self.hole_cols, self.hole_inds1d =\
@@ -249,9 +249,9 @@ class AreaDetector(DetectorImpl):
         
         """
         logger.debug('in AreaDretector.image')
-        if any(v is None for v in self.pix_rc):
+        if any(v is None for v in self._pix_rc):
             self.cached_pixel_coord_indexes(evt, **kwa)
-            if any(v is None for v in self.pix_rc): return None
+            if any(v is None for v in self._pix_rc): return None
 
         vbase     = kwa.get('vbase',0)
         mapmode   = kwa.get('mapmode',2)
@@ -266,7 +266,7 @@ class AreaDetector(DetectorImpl):
             
         #logger.debug(info_ndarr(data, 'data ', last=3))
 
-        rows, cols = self.pix_rc
+        rows, cols = self._pix_rc
         img = img_from_pixel_arrays(rows, cols, weight=data, vbase=vbase) # mapmode==1
         if   mapmode==2: img_multipixel_max(img, data, self.dmulti_pix_to_img_idx)
         elif mapmode==3: img_multipixel_mean(img, data, self.dmulti_pix_to_img_idx, self.dmulti_imgidx_numentries)
@@ -274,7 +274,7 @@ class AreaDetector(DetectorImpl):
         if mapmode<4 and fillholes: fill_holes(img, self.hole_rows, self.hole_cols)
 
         return img if mapmode<4 else\
-               img_interpolated(data, self.interpol_pars) if mapmode==4 else\
+               img_interpolated(data, self._interpol_pars) if mapmode==4 else\
                self.img_entries
 
 #----
