@@ -180,6 +180,10 @@ def test_calib(fname, args):
     det = run.Detector(args.detname)
     det.raw._det_at_raw = det
 
+
+    print('dir(det.raw): ', dir(det.raw))
+    exit('TEST EXIT')
+
     print('XXX det.calibconst.keys(): ', det.calibconst.keys()) # dict_keys(['geometry'])
     #print(det.calibconst)
     print('XXX det._det_name: ', det._det_name) # epixquad
