@@ -172,6 +172,10 @@ def cbits_config_epix10ka_any(dcfg):
     #      logger.debug('YYY dcfg[0].config.trbit: %s' % (k,str(dcfg[0].config.trbit))) # [1 1 1 1]
     #      logger.debug(info_ndarr(scob.asicPixelConfig, '...[%d].config.asicPixelConfig: '%k))
  
+    #for k,v in dcfg.items(): 
+    #    print('AAAA dir(k)', dir(k))
+    #    print('AAAA dir(v)', dir(v))
+
     lst_cbits = [cbits_config_epix10ka(v.config) for k,v in dcfg.items()]
     cbits = np.stack(tuple(lst_cbits))
     return cbits
@@ -362,10 +366,10 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(352, 384) or suppose to be later (<nsegs>, 352, 384) dtype:uint16
     if raw is None: return None
 
-    _cmpars  = det_raw.common_mode() if cmpars is None else cmpars
+    _cmpars  = det_raw._common_mode() if cmpars is None else cmpars
 
-    gain = det_raw.gain()      # - 4d gains  (7, <nsegs>, 352, 384)
-    peds = det_raw.pedestals() # - 4d pedestals
+    gain = det_raw._gain()      # - 4d gains  (7, <nsegs>, 352, 384)
+    peds = det_raw._pedestals() # - 4d pedestals
     if gain is None: return None # gain = np.ones_like(peds)  # - 4d gains
     if peds is None: return None # peds = np.zeros_like(peds) # - 4d gains
 

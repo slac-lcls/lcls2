@@ -13,7 +13,8 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr, reshape_to_3d # print_n
 from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
         img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes
-import psana.detector.UtilsEpix10ka as ue
+
+from amitypes import Array2d, Array3d
 
 #----
 
@@ -23,28 +24,20 @@ class AreaDetector(DetectorImpl):
         logger.debug('AreaDetector.__init__') #  self.__class__.__name__
         DetectorImpl.__init__(self, *args, **kwargs)
         # caching
-        self._geo = None
-        self._pix_rc = None, None
-        self._pix_xyz = None, None, None
-        self._interpol_pars = None
-        self._pedestals = None
-        self._gain = None
-        self._rms = None
-        self._status = None
-        self._common_mode = None
+        self._geo_ = None
+        self._pix_rc_ = None, None
+        self._pix_xyz_ = None, None, None
+        self._interpol_pars_ = None
+        self._pedestals_ = None
+        self._gain_ = None
+        self._rms_ = None
+        self._status_ = None
+        self._common_mode_ = None
         #logger.info('XXX dir(self):\n' + str(dir(self)))
         #logger.info('XXX self._segments:\n' + str(self._segments))
 
 
-    # example of some possible common behavior
-    def _common_mode(self, *args, **kwargs):
-        """
-        """
-        logger.debug('in %s._common_mode' % self.__class__.__name__)
-        pass
-
-
-    def raw(self,evt):
+    def raw(self,evt) -> Array3d:
         """
         Returns dense 3-d numpy array of segment data
         from dict self._segments(evt)
@@ -76,8 +69,8 @@ class AreaDetector(DetectorImpl):
         return np.array(sorted(segs.keys()), dtype=np.uint16)
 
 
-    def det_calibconst(self):
-        logger.debug('AreaDetector.det_calibconst')
+    def _det_calibconst(self):
+        logger.debug('AreaDetector._det_calibconst')
         cc = self._calibconst
         if cc is None:
             logger.warning('self._calibconst is None')
@@ -85,9 +78,9 @@ class AreaDetector(DetectorImpl):
         return cc
 
 
-    def calibcons_and_meta_for_ctype(self, ctype='pedestals'):
-        logger.debug('AreaDetector.calibcons_and_meta_for_ctype(ctype="%s")'%ctype)
-        cc = self.det_calibconst()
+    def _calibcons_and_meta_for_ctype(self, ctype='pedestals'):
+        logger.debug('AreaDetector._calibcons_and_meta_for_ctype(ctype="%s")'%ctype)
+        cc = self._det_calibconst()
         if cc is None: return None
         cons_and_meta = cc.get(ctype, None)
         if cons_and_meta is None:
@@ -96,23 +89,27 @@ class AreaDetector(DetectorImpl):
         return cons_and_meta
 
 
-    def cached_array(self, p, ctype='pedestals'):
+    def _cached_array(self, p, ctype='pedestals'):
         """cached array
         """
-        if p is None: p = self.calibcons_and_meta_for_ctype(ctype)[0] # 0-data/1-metadata
+        if p is None: p = self._calibcons_and_meta_for_ctype(ctype)[0] # 0-data/1-metadata
         return p
 
-    def pedestals(self): return self.cached_array(self._pedestals, 'pedestals')
-    def gain(self):      return self.cached_array(self._gain, 'pixel_gain')
-    def rms(self):       return self.cached_array(self._rms, 'pixel_rms')
-    def status(self):    return self.cached_array(self._status, 'pixel_status')
+    def _pedestals(self): return self._cached_array(self._pedestals_, 'pedestals')
+    def _gain(self):      return self._cached_array(self._gain_, 'pixel_gain')
+    def _rms(self):       return self._cached_array(self._rms_, 'pixel_rms')
+    def _status(self):    return self._cached_array(self._status_, 'pixel_status')
 
-    def common_mode(self): return None # self.cached_array(self._common_mode, 'common_mode')
+    def _common_mode(self, *args, **kwargs):
+        """returns tuple of common mode parameters
+        """
+        logger.debug('in %s._common_mode' % self.__class__.__name__)
+        return None # self._cached_array(self._common_mode_, 'common_mode')
 
 
-    def det_geotxt_and_meta(self):
-        logger.debug('AreaDetector.det_geotxt_and_meta')
-        cc = self.det_calibconst()
+    def _det_geotxt_and_meta(self):
+        logger.debug('AreaDetector._det_geotxt_and_meta')
+        cc = self._det_calibconst()
         if cc is None: return None
         geotxt_and_meta = cc.get('geometry', None)
         if geotxt_and_meta is None:
@@ -121,24 +118,24 @@ class AreaDetector(DetectorImpl):
         return geotxt_and_meta
 
 
-    def det_geo(self):
+    def _det_geo(self):
         """
         """
-        if self._geo is None:
-            geotxt, meta = self.det_geotxt_and_meta()
+        if self._geo_ is None:
+            geotxt, meta = self._det_geotxt_and_meta()
             if geotxt is None:
-                logger.warning('det_geo geotxt is None')
+                logger.warning('_det_geo geotxt is None')
                 return None            
-            self._geo = GeometryAccess()
-            self._geo.load_pars_from_str(geotxt)
-        return self._geo
+            self._geo_ = GeometryAccess()
+            self._geo_.load_pars_from_str(geotxt)
+        return self._geo_
         
 
-    def pixel_coord_indexes(self, **kwa):
+    def _pixel_coord_indexes(self, **kwa):
         """
         """
-        logger.debug('AreaDetector.pixel_coord_indexes')
-        geo = self.det_geo()
+        logger.debug('AreaDetector._pixel_coord_indexes')
+        geo = self._det_geo()
         if geo is None:
             logger.warning('geo is None')
             return None
@@ -150,11 +147,11 @@ class AreaDetector(DetectorImpl):
             cframe             = kwa.get('cframe',0))
 
 
-    def pixel_coords(self, **kwa):
+    def _pixel_coords(self, **kwa):
         """
         """
-        logger.debug('AreaDetector.pixel_coords')
-        geo = self.det_geo()
+        logger.debug('AreaDetector._pixel_coords')
+        geo = self._det_geo()
         if geo is None:
             logger.warning('geo is None')
             return None
@@ -164,10 +161,10 @@ class AreaDetector(DetectorImpl):
             cframe             = kwa.get('cframe',0))
 
 
-    def cached_pixel_coord_indexes(self, evt, **kwa):
+    def _cached_pixel_coord_indexes(self, evt, **kwa):
         """
         """
-        logger.debug('AreaDetector.cached_pixel_coord_indexes')
+        logger.debug('AreaDetector._cached_pixel_coord_indexes')
 
         resp = self._pixel_coord_indexes(**kwa)
         if resp is None: return None
@@ -177,11 +174,11 @@ class AreaDetector(DetectorImpl):
         if segs is None: return None
         logger.debug(info_ndarr(segs, 'preserve pixel indices for segments '))
 
-        rows, cols = self._pix_rc = [reshape_to_3d(a)[segs,:,:] for a in resp]
-        #self._pix_rc = [dict_from_arr3d(reshape_to_3d(v)) for v in resp]
+        rows, cols = self._pix_rc_ = [reshape_to_3d(a)[segs,:,:] for a in resp]
+        #self._pix_rc_ = [dict_from_arr3d(reshape_to_3d(v)) for v in resp]
 
         s = 'evaluate_pixel_coord_indexes:'
-        for i,a in enumerate(self._pix_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
+        for i,a in enumerate(self._pix_rc_): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
         logger.info(s)
 
         mapmode = kwa.get('mapmode',2)
@@ -192,8 +189,8 @@ class AreaDetector(DetectorImpl):
         if mapmode==4:
             rsp = self._pixel_coords(**kwa)
             if rsp is None: return None
-            x,y,z = self._pix_xyz = [reshape_to_3d(a)[segs,:,:] for a in rsp]
-            self._interpol_pars = init_interpolation_parameters(rows, cols, x, y)
+            x,y,z = self._pix_xyz_ = [reshape_to_3d(a)[segs,:,:] for a in rsp]
+            self._interpol_pars_ = init_interpolation_parameters(rows, cols, x, y)
 
         if mapmode <4 and kwa.get('fillholes',True):
             self.img_pix_ascend_ind, self.img_holes, self.hole_rows, self.hole_cols, self.hole_inds1d =\
@@ -214,16 +211,7 @@ class AreaDetector(DetectorImpl):
                 logger.debug(s)
 
 
-    def calib(self,evt):
-        """
-        Create calibrated data array.
-        """
-        logger.info('AreaDetector.calib')
-        #return self.raw(evt)
-        return ue.calib_epix10ka_any(self, evt)
-
-
-    def image(self, evt, nda=None, **kwa):
+    def image(self, evt, nda=None, **kwa) -> Array2d:
         """
         Create 2-d image.
 
@@ -249,9 +237,9 @@ class AreaDetector(DetectorImpl):
         
         """
         logger.debug('in AreaDretector.image')
-        if any(v is None for v in self._pix_rc):
-            self.cached_pixel_coord_indexes(evt, **kwa)
-            if any(v is None for v in self._pix_rc): return None
+        if any(v is None for v in self._pix_rc_):
+            self._cached_pixel_coord_indexes(evt, **kwa)
+            if any(v is None for v in self._pix_rc_): return None
 
         vbase     = kwa.get('vbase',0)
         mapmode   = kwa.get('mapmode',2)
@@ -266,7 +254,7 @@ class AreaDetector(DetectorImpl):
             
         #logger.debug(info_ndarr(data, 'data ', last=3))
 
-        rows, cols = self._pix_rc
+        rows, cols = self._pix_rc_
         img = img_from_pixel_arrays(rows, cols, weight=data, vbase=vbase) # mapmode==1
         if   mapmode==2: img_multipixel_max(img, data, self.dmulti_pix_to_img_idx)
         elif mapmode==3: img_multipixel_mean(img, data, self.dmulti_pix_to_img_idx, self.dmulti_imgidx_numentries)
@@ -274,7 +262,7 @@ class AreaDetector(DetectorImpl):
         if mapmode<4 and fillholes: fill_holes(img, self.hole_rows, self.hole_cols)
 
         return img if mapmode<4 else\
-               img_interpolated(data, self._interpol_pars) if mapmode==4 else\
+               img_interpolated(data, self._interpol_pars_) if mapmode==4 else\
                self.img_entries
 
 #----

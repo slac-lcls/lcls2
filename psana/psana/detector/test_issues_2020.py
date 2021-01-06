@@ -152,7 +152,7 @@ def issue_2020_12_19():
 
             calib  = det.raw.calib(evt)
             ###########################
-            print(info_ndarr(det.raw.pedestals(), 'peds  '))
+            print(info_ndarr(det.raw._pedestals(), 'peds  '))
             print(info_ndarr(det.raw.raw(evt),    'raw   '))
             print(info_ndarr(calib,               'calib '))
 

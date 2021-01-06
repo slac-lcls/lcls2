@@ -44,7 +44,7 @@ def print_det_raw_attrs(det):
     print('dir(det.raw):', dir(r))
     print('r._add_fields:', r._add_fields)
     print('r._calibconst:', r._calibconst)
-    print('r._common_mode:', r._common_mode)
+    print('r._common_mode_:', r._common_mode_)
     print('r._configs:', r._configs)
     print('r._det_name:', r._det_name)
     print('r._dettype:', r._dettype)
@@ -178,11 +178,7 @@ def test_calib(fname, args):
     #print('XXX timestamp: %d sec %d nsec'%(sec,nsec))# 4190613356186573936 today sec:1607015429
 
     det = run.Detector(args.detname)
-    det.raw._det_at_raw = det
-
-
-    print('dir(det.raw): ', dir(det.raw))
-    exit('TEST EXIT')
+    det.raw._det_at_raw = det # TEMPORARY SOLUTION
 
     print('XXX det.calibconst.keys(): ', det.calibconst.keys()) # dict_keys(['geometry'])
     #print(det.calibconst)
@@ -204,10 +200,10 @@ def test_calib(fname, args):
     #gain   =  det.raw._calibconst['pixel_gain'][0]
     #geom   =  det.raw._calibconst['geometry'][0]
 
-    peds   = det.raw.pedestals()
-    status = det.raw.status() 
-    rms    = det.raw.rms()
-    gain   = det.raw.gain()
+    peds   = det.raw._pedestals()
+    status = det.raw._status() 
+    rms    = det.raw._rms()
+    gain   = det.raw._gain()
 
     print(info_ndarr(peds  , 'pedestals    '))
     print(info_ndarr(status, 'pixel_status '))
@@ -221,7 +217,7 @@ def test_calib(fname, args):
     cfg = det._configs[0]
     print('\ndir(cfg):', dir(cfg))              # [..., '_dgrambytes', '_file_descriptor', '_offset', '_size', '_xtc', 'epixquad', 'epixquadhw', 'service', 'software', 'timestamp']
 
-    print('\ndir(det.raw):', dir(det.raw))      # [..., '_add_fields', '_calibconst', '_common_mode', '_configs', '_det_name', '_dettype', '_drp_class_name', '_env_store', '_info', '_return_types', '_seg_configs', '_segments', '_sorted_segment_ids', '_uniqueid', '_var_name', 'array', 'cached_pixel_coord_indexes', 'calib', 'det_calibconst', 'det_geo', 'det_geotxt_and_meta', 'geo', 'image', 'interpol_pars', 'pix_rc', 'pix_xyz', 'pixel_coord_indexes', 'pixel_coords', 'raw', 'segments']
+    print('\ndir(det.raw):', dir(det.raw))      # [..., '_add_fields', '_calibconst', '_common_mode_', '_configs', '_det_name', '_dettype', '_drp_class_name', '_env_store', '_info', '_return_types', '_seg_configs', '_segments', '_sorted_segment_ids', '_uniqueid', '_var_name', 'array', '_cached_pixel_coord_indexes', 'calib', '_det_calibconst', '_det_geo', '_det_geotxt_and_meta', '_geo_', 'image', '_interpol_pars_', '_pix_rc_', '_pix_xyz_', '_pixel_coord_indexes', '_pixel_coords', 'raw', 'segments']
 
     seg_cfgs = det.raw._seg_configs()
     print('det.raw._seg_configs():', det.raw._seg_configs())
@@ -255,17 +251,20 @@ def test_calib(fname, args):
 
             calib  = det.raw.calib(evt)
             ###########################
-            logger.info(info_ndarr(det.raw.pedestals(), 'peds  '))
+            logger.info(info_ndarr(det.raw._pedestals(), 'peds  '))
             logger.info(info_ndarr(det.raw.raw(evt),    'raw   '))
             logger.info(info_ndarr(calib,               'calib '))
 
         print(50*'-')
+
+    print('dir(det.raw): ', dir(det.raw))
 
 
 def test_image(fname, args):
 
     logger.info('in test_image data from file:\n  %s' % fname)
     ds, run, det = ds_run_det(fname, args)
+    det.raw._det_at_raw = det # TEMPORARY SOLUTION
 
     flimg = None
 
