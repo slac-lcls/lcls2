@@ -303,7 +303,7 @@ def test_image(fname, args):
         if args.dograph:
 
             if flimg is None:
-                from UtilsGraphics import gr, fleximage
+                from psana.detector.UtilsGraphics import gr, fleximage
                 flimg = fleximage(img, arr=arr, h_in=8, nneg=1, npos=3, alimits=alimits) #, cmap='jet')
                 #flimg = fleximage(img, h_in=8, alimits=(0,4)) #, cmap='jet')    
 
