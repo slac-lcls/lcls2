@@ -27,6 +27,12 @@ import numpy as np
 from psana import DataSource
 
 def filter_fn(evt):
+    # Create a detector within filter is possible
+    run = evt.run()
+    det = run.Detector('xppcspad')
+    
+    # Access step event
+    step_evt = run.step(evt)
     return True
 
 xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')

@@ -18,7 +18,7 @@ class EnvStoreManager(object):
     
     def __init__(self, configs):
         self.configs    = configs
-        envstore_names  = ['epics', 'scan']
+        envstore_names  = ['epics', 'scan', 'step']
 
         # Locate detectors with cfgscan in DrpClassName
         for detname, segments in self.configs[0].software.__dict__.items():
@@ -50,8 +50,13 @@ class EnvStoreManager(object):
                 if key in self.stores:
                     self.stores[key].add_to(new_d, i)
 
-                # For BeginStep, checks if self.configs need to be updated.
                 if new_d.service() == TransitionId.BeginStep:
+                    # Always store step - FIXME: mona this creates an extra ref.
+                    # of beginstep in case 'scan' is also available. Find a way
+                    # to not store this extra ref.
+                    self.stores['step'].add_to(new_d, i)
+
+                    # For BeginStep, checks if self.configs need to be updated.
                     # Only apply fields w/o leading "_" and exist in the 
                     # original config
                     if key.startswith("_") or not hasattr(self.configs[i], key): continue
@@ -62,20 +67,6 @@ class EnvStoreManager(object):
                         if hasattr(segment, "config"):
                             self._update_config(cfgold[segid].config, getattr(segment, "config"))
 
-    def update_by_views(self, views):
-        if not views:
-            return
-        for i in range(len(views)):
-            view = bytearray(views[i])
-            offset = 0
-            while offset < memoryview(view).shape[0]:
-                d = Dgram(view=view, config=self.configs[i], offset=offset)
-                for key, val in d.__dict__.items():
-                    if key in self.stores:
-                        self.stores[key].add_to(d, i)
-                    
-                offset += d._size
-                    
     def env_from_variable(self, variable_name):
         for env_name, store in self.stores.items():
             found = store.locate_variable(variable_name)

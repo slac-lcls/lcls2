@@ -8,6 +8,7 @@ from psana import dgram
 from psana.dgrammanager import DgramManager
 import psana.pscalib.calib.MDBWebUtils as wu
 from psana.detector.detector_impl import MissingDet
+from psana.event import Event
 from psana.psexp import *
 import logging
 
@@ -176,6 +177,10 @@ class Run(object):
             self.expt = beginrun_dgram.runinfo[0].runinfo.expt 
             self.runnum = beginrun_dgram.runinfo[0].runinfo.runnum
             self.timestamp = beginrun_dgram.timestamp()
+
+    def step(self, evt):
+        step_dgrams = self.esm.stores['step'].get_step_dgrams_of_event(evt)
+        return Event(dgrams=step_dgrams, run=self)
     
 class RunShmem(Run):
     """ Yields list of events from a shared memory client (no event building routine). """
