@@ -96,6 +96,13 @@ def config_object_epix10ka(det, detname=None):
     return None
 
 
+def config_object_epix10ka_raw(det_raw):
+    """Returns [dict]={<seg-index>:<cob>} of configuration objects for det.raw
+    """    
+    logger.debug('det_raw._seg_configs(): ' + str(det_raw._seg_configs()))
+    return det_raw._seg_configs()
+
+
 def cbits_config_epix10ka(cob):
     """
     Creates array of control bits shape=(352, 384) from det.raw._seg_configs()[<seg-ind>].config object
@@ -120,7 +127,7 @@ def cbits_config_epix10ka(cob):
     xxxx: np.array, dtype:uint8, ndim=2, shape=(352, 384)
     """
     trbits = cob.trbit # [1 1 1 1]
-    pca = cob.asicPixelConfig[:,:-2,:] # shape:(4, 176, 192) size:135168 dtype:uint8 [8 8 8 8 8...]
+    pca = cob.asicPixelConfig[:,:176,:] # shape:(4, 176, 192) size:135168 dtype:uint8 [8 8 8 8 8...]
     #logger.debug(info_ndarr(pca, 'trbits: %s asicPixelConfig:'%str(trbits)))
 
     #t0_sec = time()
@@ -390,12 +397,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
     gfac = store.gfac
 
-    # 
-    # !!!! det object (NOT det.raw) should be passed to config_object_epix10ka ???? XXXX
-    # det_raw._det_at_raw - is current hack of how to bypath this issue
-    #
-
-    if store.dcfg is None: store.dcfg = config_object_epix10ka(det_raw._det_at_raw)
+    if store.dcfg is None: store.dcfg = config_object_epix10ka_raw(det_raw)
 
     gmaps = gain_maps_epix10ka_any(store.dcfg, raw)
     if gmaps is None: return None
@@ -404,10 +406,6 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     factor = np.select(gmaps,\
                        (gfac[0,:], gfac[1,:], gfac[2,:], gfac[3,:],\
                         gfac[4,:], gfac[5,:], gfac[6,:]), default=1) # 2msec
-
-    #==================== TEST RETURN MAP OF PIXEL GAIN MODES
-    #return map_pixel_gain_mode(gr0, gr1, gr2, gr3, gr4, gr5, gr6)
-    #====================
 
     pedest = np.select(gmaps,\
                        (peds[0,:], peds[1,:], peds[2,:], peds[3,:],\

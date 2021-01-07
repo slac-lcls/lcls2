@@ -133,7 +133,6 @@ def issue_2020_12_19():
         print('====== run.runnum: ', run.runnum) 
 
         det = run.Detector('epixquad')
-        det.raw._det_at_raw = det
 
         print('det._det_name      : ', det._det_name) # epixquad
         print('det._dettype       : ', det._dettype)  # epix
