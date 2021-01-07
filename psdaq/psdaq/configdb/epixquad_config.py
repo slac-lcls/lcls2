@@ -132,7 +132,8 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
         base['pci'] = pbase
 
     #  Connect to the camera
-    cbase = ePixQuad.Top(dev=dev,hwType='datadev',lane=lane,pollEn=False)
+    cbase = ePixQuad.Top(dev=dev,hwType='datadev',lane=lane,pollEn=False,
+                         enVcMask=0x2,enWriter=False,enPrbs=False)
     #dumpvars('cbase',cbase)
     cbase.__enter__()
     base['cam'] = cbase
@@ -487,7 +488,7 @@ def epixquad_scan_keys(update):
             top = cdict()
             top.setAlg('config', [2,0,0])
             top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
-            top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4].tolist(), 'UINT8')
+            top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4,:176].tolist(), 'UINT8')
             top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
             scfg[seg+1] = top.typed_json()
 
@@ -552,7 +553,7 @@ def epixquad_update(update):
             top = cdict()
             top.setAlg('config', [2,0,0])
             top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
-            top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4].tolist(), 'UINT8')
+            top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4,:176].tolist(), 'UINT8')
             if trbit is not None:
                 top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
             scfg[seg+1] = top.typed_json()
