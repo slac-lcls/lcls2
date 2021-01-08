@@ -130,7 +130,6 @@ int PvMonitorBase::getParams(const std::string& name,
 {
     if (!_strct)  { logging::error("_strct is NULL");  return 1; }
     auto pvStructureArray = _strct->getSubField<pvd::PVStructureArray>("dimension");
-    if (!pvStructureArray)  { logging::error("pvStructureArray is NULL");  return 1; }
     rank = pvStructureArray ? pvStructureArray->getLength() : 1;
 
     auto field  = _strct->getSubField<pvd::PVField>(name);
