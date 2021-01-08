@@ -1,7 +1,6 @@
 import numpy as np
 from psana.detector.detector_impl import DetectorImpl
 from amitypes import Array1d, Array2d, Array3d
-from psana.detector.epix10ka_base import epix10ka_base
 
 class hsd_raw_0_0_0(DetectorImpl):
     def __init__(self, *args):
@@ -252,55 +251,3 @@ class cspad_raw_1_2_3(DetectorImpl):
             geometry_access.load_pars_from_str(geometry_string)
         return geometry_access
 
-#class epix_raw_2_0_1(DetectorImpl):
-#    def __init__(self, *args):
-#        super(epix_raw_2_0_1,self).__init__(*args)
-
-class epix_raw_2_0_1(epix10ka_base):
-    def __init__(self, *args, **kwargs):
-        epix10ka_base.__init__(self, *args, **kwargs)
-    def array(self, evt) -> Array2d:
-        f = None
-        segs = self._segments(evt)
-        if segs is None:
-            pass
-        else:
-            nsegs = len(segs)
-            if nsegs==4:
-                nx = segs[0].raw.shape[1]
-                ny = segs[0].raw.shape[0]
-                f = np.zeros((ny*2,nx*2), dtype=segs[0].raw.dtype)
-                xa = [nx, 0, nx, 0]
-                ya = [ny, ny, 0, 0]
-                for i in range(4):
-                    x = xa[i]
-                    y = ya[i]
-                    f[y:y+ny,x:x+nx] = segs[i].raw & 0x3fff
-        return f
-    def __call__(self, evt) -> Array2d:
-        """Alias for self.raw(evt)"""
-        return self.array(evt)
-
-class epixquad_raw_2_0_0(DetectorImpl):
-    def __init__(self, *args):
-        super(epixquad_raw_2_0_0,self).__init__(*args)
-        self._add_fields()
-
-    def _info(self,evt):
-        # check for missing data
-        segments = self._segments(evt)
-        if segments is None: return None
-
-        return segments[0]
-
-class epixquad_raw_2_0_1(DetectorImpl):
-    def __init__(self, *args):
-        super(epixquad_raw_2_0_1,self).__init__(*args)
-        self._add_fields()
-
-    def _info(self,evt):
-        # check for missing data
-        segments = self._segments(evt)
-        if segments is None: return None
-
-        return segments[0]
