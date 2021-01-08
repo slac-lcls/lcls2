@@ -76,7 +76,7 @@ class EnvStoreManager(object):
         return None
 
     def get_stepinfo(self):
-        config_stores = set(self.stores.keys()).difference({'epics', 'scan'})
+        config_stores = set(self.stores.keys()).difference({'epics', 'scan', 'step'})
         stepinfo = {}
         for config_store in config_stores:
             stepinfo[(config_store, 'step')] = ['value', 'docstring'] 

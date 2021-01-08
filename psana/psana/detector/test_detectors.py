@@ -292,3 +292,15 @@ class epixquad_raw_2_0_0(DetectorImpl):
         if segments is None: return None
 
         return segments[0]
+
+class epixquad_raw_2_0_1(DetectorImpl):
+    def __init__(self, *args):
+        super(epixquad_raw_2_0_1,self).__init__(*args)
+        self._add_fields()
+
+    def _info(self,evt):
+        # check for missing data
+        segments = self._segments(evt)
+        if segments is None: return None
+
+        return segments[0]

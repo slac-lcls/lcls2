@@ -191,7 +191,7 @@ class DataSourceBase(abc.ABC):
         maps (dettype,software,version) to associated python class and
         detector info for a det_name maps to dettype, detid tuple.
         """
-        det_classes = {'epics': {}, 'scan': {}, 'normal': {}}
+        det_classes = {'epics': {}, 'scan': {}, 'step': {}, 'normal': {}}
 
         xtc_info = []
         det_info_table = {}
@@ -259,7 +259,7 @@ class DataSourceBase(abc.ABC):
         """
         self.dsparms.configinfo_dict = {}
 
-        for _, det_class in self.dsparms.det_classes.items(): # det_class is either normal or envstore
+        for detcls_name, det_class in self.dsparms.det_classes.items(): # det_class is either normal or envstore ('epics', 'scan', 'step')
             for (det_name, _), _ in det_class.items():
                 # we lose a "one-to-one" correspondence with event dgrams.  we may have
                 # to put in None placeholders at some point? - mona and cpo

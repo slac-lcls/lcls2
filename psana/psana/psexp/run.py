@@ -40,6 +40,19 @@ def _enumerate_attrs(obj):
     mygetattr(obj)
     return found
 
+class StepEvent(object):
+    """ Use by AMI to access """
+    def __init__(self, env_store):
+        self.env_store = env_store
+    def dgrams(self, evt):
+        return self.env_store.get_step_dgrams_of_event(evt)
+    def docstring(self, evt) -> str:
+        env_values = self.env_store.values([evt], 'step_docstring')
+        return env_values[0]
+    def value(self, evt) -> float:
+        env_values = self.env_store.values([evt], 'step_value')
+        return env_values[0]
+
 class Run(object):
     expt    = 0
     runnum  = 0 
@@ -77,7 +90,7 @@ class Run(object):
 
         if name not in self.dsparms.configinfo_dict and self.esm.env_from_variable(name) is None:
             if not accept_missing:
-                err_msg = f"Cannot find {name} detector in configs. Available detectors: {','.join(list(self.dsparms.configinfo_dict.keys()))}"
+                err_msg = f"No available detector class matched with {name}. If this is a new detector/version, make sure to add new class in detector folder."
                 raise DetectorNameError(err_msg)
             else:
                 return MissingDet()
@@ -98,6 +111,7 @@ class Run(object):
                 var_name  = None
                 if det_name in self.esm.stores:
                     env_store = self.esm.stores[det_name]
+                    setattr(det, "step", StepEvent(env_store))
 
                 self._check_empty_calibconst(det_name)
 
