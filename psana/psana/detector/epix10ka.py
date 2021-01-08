@@ -38,18 +38,14 @@ class epix_raw_2_0_1(epix10ka_base):
         return self.array(evt)
 
 
-class epixquad_raw_2_0_0(epix10ka_base):
-    def __init__(self, *args, **kwargs):
-        epix10ka_base.__init__(self, *args, **kwargs)
-        self._add_fields()
+#class epixquad_raw_2_0_0(epix10ka_base):
+#    def __init__(self, *args, **kwargs):
+#        epix10ka_base.__init__(self, *args, **kwargs)
+#        self._add_fields()
+#    def _info(self,evt):
+#        # check for missing data
+#        segments = self._segments(evt)
+#        if segments is None: return None
+#        return segments[0]
 
-    def _info(self,evt):
-        # check for missing data
-        segments = self._segments(evt)
-        if segments is None: return None
-        return segments[0]
-
-epixquad_raw_2_0_1 = epixquad_raw_2_0_0 # ???
-
-
-#----
+# EOF
