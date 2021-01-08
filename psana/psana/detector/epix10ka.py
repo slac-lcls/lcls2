@@ -49,4 +49,7 @@ class epixquad_raw_2_0_0(epix10ka_base):
         if segments is None: return None
         return segments[0]
 
+epixquad_raw_2_0_1 = epixquad_raw_2_0_0 # ???
+
+
 #----
