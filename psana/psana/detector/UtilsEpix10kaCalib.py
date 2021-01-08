@@ -955,7 +955,7 @@ def deploy_constants(*args, **opts):
             'comment': opts.get('comment', None),
           }
 
-          logger.debug('DEPLOY metadata:', str(kwa))
+          logger.debug('DEPLOY metadata: %s' % str(kwa))
 
           _detname = detname # cpdic.get('longname', None)
 
