@@ -130,6 +130,8 @@ public:
     void startup()
     {
         m_terminate.store(false);
+        m_write_index.store(0);
+        m_read_index.store(0);
     }
 
 private:
