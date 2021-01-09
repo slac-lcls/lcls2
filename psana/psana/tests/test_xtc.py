@@ -130,3 +130,18 @@ class Test:
         detnames(xtc_file)
         det_container(xtc_file)
 
+    def test_step_det(self):
+        xtc_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data-w-step.xtc2')
+        ds = DataSource(files=xtc_file)
+        run = next(ds.runs())
+        step_value_det = run.Detector('step_value')
+        step_docstring_det = run.Detector('step_docstring')
+        evt = next(run.events())
+        step_value = step_value_det(evt)
+        step_docstring = step_docstring_det(evt)
+        assert step_value == 0
+        assert step_docstring == '{"detname": "epixquad_0", "scantype": "pedestal", "step": 0}'
+
+
+
+
