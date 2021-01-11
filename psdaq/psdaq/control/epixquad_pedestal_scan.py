@@ -18,6 +18,11 @@ def steps():
 
 if __name__ == '__main__':
 
+    # default command line arguments
+    if len(sys.argv)==1:
+        defargs = ['-B','DAQ:UED','-p','0','-x','0','-C','drp-ued-cmp002','-c 1000','--config','BEAM']
+        sys.argv.extend(defargs)
+
     keys = []
     keys.append(f'{detName}:user.gain_mode')
 

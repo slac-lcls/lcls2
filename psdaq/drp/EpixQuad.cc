@@ -165,26 +165,6 @@ unsigned EpixQuad::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
         seg++;
     }
 
-#ifndef INCLUDE_ENV
-    // Quad-specific data
-    {
-        logging::debug("Constructing quad eventNames seg %d\n",seg);      
-        Alg alg("raw", 2, 0, 0);
-        // copy the detName, detType, detId from the Config Names
-        Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex)].names();
-        m_evtNamesId[seg] = NamesId(nodeId, EventNamesIndex+seg);
-        Names& eventNames = *new(xtc) Names(configNames.detName(), alg, 
-                                            configNames.detType(),
-                                            configNames.detId(), 
-                                            m_evtNamesId[seg], 
-                                            m_para->detSegment);
-        
-        eventNames.add(xtc, epixQuadHwDef);
-        m_namesLookup[m_evtNamesId[seg]] = NameIndex(eventNames);
-        seg++;
-    }
-#endif
-
     return 0;
 }
 
@@ -309,12 +289,6 @@ void EpixQuad::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
 #endif
         seg++;
     }
-
-#ifndef INCLUDE_ENV
-    CreateData qcd(xtc, m_namesLookup, m_evtNamesId[seg]);
-    qcd.set_value<uint32_t>(0, 0xdeadbeef);
-    seg++;
-#endif
 
 #ifdef SLOW_UPDATE_ENV
     if (env_empty) {

@@ -12,7 +12,7 @@ class epix10k_raw_0_0_1(epix10ka_base):
         epix10ka_base.__init__(self, *args, **kwargs)
 
 
-class epix_raw_2_0_1(epix10ka_base):
+class epix10ka_raw_2_0_1(epix10ka_base):
     def __init__(self, *args, **kwargs):
         epix10ka_base.__init__(self, *args, **kwargs)
     def array(self, evt) -> Array2d:
@@ -37,15 +37,6 @@ class epix_raw_2_0_1(epix10ka_base):
         """Alias for self.raw(evt)"""
         return self.array(evt)
 
+#  Old detType for epix10ka
+epix_raw_2_0_1     = epix10ka_raw_2_0_1
 
-#class epixquad_raw_2_0_0(epix10ka_base):
-#    def __init__(self, *args, **kwargs):
-#        epix10ka_base.__init__(self, *args, **kwargs)
-#        self._add_fields()
-#    def _info(self,evt):
-#        # check for missing data
-#        segments = self._segments(evt)
-#        if segments is None: return None
-#        return segments[0]
-
-# EOF

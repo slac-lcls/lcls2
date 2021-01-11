@@ -4,7 +4,7 @@ from psdaq.configdb.typed_json import cdict
 from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
 import rogue
-import epix_l2sidaq
+import epix
 import ePixQuad
 import lcls2_pgp_pcie_apps
 import time
@@ -20,6 +20,8 @@ lane = 0
 chan = None
 group = None
 ocfg = None
+segids = None
+seglist = [0,1,2,3,4]
 
 def mode(a):
     uniqueValues = np.unique(a).tolist()
@@ -109,6 +111,8 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
         pbase = lcls2_pgp_pcie_apps.DevRoot(dev           =dev,
                                             enLclsI       =False,
                                             enLclsII      =True,
+                                            yamlFileLclsI =None,
+                                            yamlFileLclsII=None,
                                             startupMode   =True,
                                             standAloneMode=xpmpv is not None,
                                             pgp3          =True,
@@ -137,6 +141,12 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
     #dumpvars('cbase',cbase)
     cbase.__enter__()
     base['cam'] = cbase
+
+    epixquad_unconfig(base)
+    pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(1)
+    pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSel.set(1)
+    pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
+
     return base
 
 #
@@ -363,6 +373,8 @@ def config_expert(base, cfg, writePixelMap=True):
 def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     global ocfg
     global group
+    global segids
+
     group = rog
 
     _checkADCs()
@@ -406,6 +418,7 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     topname = cfg['detName:RO'].split('_')
 
     scfg = {}
+    segids = {}
 
     #  Rename the complete config detector
     scfg[0] = cfg.copy()
@@ -425,15 +438,16 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
                                                           carrierId[0], carrierId[1],
                                                           digitalId[0], digitalId[1],
                                                           analogId [0], analogId [1])
+        segids[seg] = id
         top = cdict()
         top.setAlg('config', [2,0,0])
-        top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
+        top.setInfo(detType='epix10ka', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
         top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4,:176].tolist(), 'UINT8')  # only the rows which have readable pixels
         top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
         scfg[seg+1] = top.typed_json()
 
     result = []
-    for i in range(5):
+    for i in seglist:
         print('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
         result.append( json.dumps(scfg[i]) )
     return result
@@ -452,6 +466,8 @@ def epixquad_scan_keys(update):
     print('epixquad_scan_keys')
     global ocfg
     global base
+    global segids
+
     cfg = {}
     copy_reconfig_keys(cfg,ocfg,json.loads(update))
     # Apply to expert
@@ -475,16 +491,8 @@ def epixquad_scan_keys(update):
         trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] for i in range(16)]
 
         cbase = base['cam']
-        firmwareVersion = cbase.AxiVersion.FpgaVersion.get()
         for seg in range(4):
-            carrierId = [ cbase.SystemRegs.CarrierIdLow [seg].get(),
-                          cbase.SystemRegs.CarrierIdHigh[seg].get() ]
-            digitalId = [ 0, 0 ]
-            analogId  = [ 0, 0 ]
-            id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(firmwareVersion,
-                                                              carrierId[0], carrierId[1],
-                                                              digitalId[0], digitalId[1],
-                                                              analogId [0], analogId [1])
+            id = segids[seg]
             top = cdict()
             top.setAlg('config', [2,0,0])
             top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
@@ -540,16 +548,8 @@ def epixquad_update(update):
             trbit = None
 
         cbase = base['cam']
-        firmwareVersion = cbase.AxiVersion.FpgaVersion.get()
         for seg in range(4):
-            carrierId = [ cbase.SystemRegs.CarrierIdLow [seg].get(),
-                          cbase.SystemRegs.CarrierIdHigh[seg].get() ]
-            digitalId = [ 0, 0 ]
-            analogId  = [ 0, 0 ]
-            id = '%010d-%010d-%010d-%010d-%010d-%010d-%010d'%(firmwareVersion,
-                                                              carrierId[0], carrierId[1],
-                                                              digitalId[0], digitalId[1],
-                                                              analogId [0], analogId [1])
+            id = segids[seg]
             top = cdict()
             top.setAlg('config', [2,0,0])
             top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
@@ -559,7 +559,7 @@ def epixquad_update(update):
             scfg[seg+1] = top.typed_json()
 
     result = []
-    for i in range(len(scfg)):
+    for i in seglist:
         result.append( json.dumps(scfg[i]) )
 
     print('update complete')

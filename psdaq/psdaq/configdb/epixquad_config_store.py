@@ -241,5 +241,5 @@ if __name__ == "__main__":
     mycdb.add_device_config('epixquad')
 
     top = epixquad_cdict()
-    top.setInfo('epixquad', args.name, args.segm, args.id, 'No comment')
+    top.setInfo('epix10kaquad', args.name, args.segm, args.id, 'No comment')
     mycdb.modify_device(args.alias, top)

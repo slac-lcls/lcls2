@@ -46,15 +46,15 @@ def steps():
             pmask = pixel_mask(0,1,spacing,s)
             d[f'{detName}:user.pixel_map'] = pmask.reshape(-1).tolist()
             #  Set the global meta data
-            metad['step'] = s+trbit+spacing**2
+            metad['step'] = s+trbit*spacing**2
 
-            yield (d, s+trbit+spacing**2, json.dumps(metad))
+            yield (d, s+trbit*spacing**2, json.dumps(metad))
 
 if __name__ == '__main__':
 
     # default command line arguments
     if len(sys.argv)==1:
-        defargs = ['-B','DAQ:UED','-p','0','-x','0','-C','drp-ued-cmp002','-c 1000','--config','BEAM']
+        defargs = ['-B','DAQ:UED','-p','0','-x','0','-C','drp-ued-cmp002','-c 2000','--config','BEAM']
         sys.argv.extend(defargs)
 
     keys = []
