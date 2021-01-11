@@ -100,10 +100,13 @@ void EpicsArchMonitor::_initDef(size_t& payloadSize)
   for (unsigned iPvName = 0; iPvName < _lpvPvList.size(); iPvName++)
   {
     EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
-    size_t size;
-    if (epicsPvCur.addDef(_epicsArchDef, size))
-      logging::warning("addDef failed for %s", epicsPvCur.getPvName().c_str());
-    payloadSize += size;
+    if (!epicsPvCur.isDisabled())
+    {
+      size_t size;
+      if (epicsPvCur.addVarDef(_epicsArchDef, size))
+        logging::warning("addVarDef failed for %s", epicsPvCur.getPvName().c_str());
+      payloadSize += size;
+    }
   }
 }
 
@@ -171,7 +174,7 @@ void EpicsArchMonitor::addNames(const std::string& detName, const std::string& d
   _addInfo(epicsInfo);
 }
 
-int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId, size_t payloadSize)
+int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId, size_t payloadSize, uint64_t& nStales)
 {
   XtcData::NamesId namesId(nodeId, iRawNamesIndex);
   XtcData::DescribedData desc(xtc, namesLookup, namesId);
@@ -184,6 +187,7 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
   uint32_t* staleFlags = static_cast<uint32_t*>(desc.data());
   memset(staleFlags, 0, nWords * sizeof(*staleFlags));
   payloadSize -= nWords * sizeof(*staleFlags);
+  uint64_t staleCount = 0;
 
   std::vector<std::vector<uint32_t> > shapes(iNumPv);
   char* pXtc = reinterpret_cast<char*>(&staleFlags[nWords]);
@@ -191,12 +195,12 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
   {
     auto& epicsPvCur = *_lpvPvList[iPvName];
 
-    if (_iDebugLevel >= 1)
+    if ((_iDebugLevel >= 1) && epicsPvCur.isConnected())
       epicsPvCur.printPv();
 
     size_t size = payloadSize;
     bool stale;
-    if (!epicsPvCur.addToXtc(stale, pXtc, size, shapes[iPvName]))
+    if (!epicsPvCur.addToXtc(xtc.damage, stale, pXtc, size, shapes[iPvName]))
     {
       if (shapes[iPvName].size() != 0)         // If rank is non-zero,
         payloadSize -= sizeof(XtcData::Shape); // reserve space for Shape data
@@ -207,7 +211,11 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
         xtc.damage.increase(XtcData::Damage::Truncated);
         size = payloadSize;
       }
-      if (stale) staleFlags[iPvName >> 5] |= 1 << (iPvName & 0x1f);
+
+      if (stale) {
+        staleFlags[iPvName >> 5] |= 1 << (iPvName & 0x1f);
+        ++staleCount;
+      }
 
       pXtc        += size;
       payloadSize -= size;
@@ -221,6 +229,7 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
   uint32_t shape[XtcData::MaxRank];
   shape[0] = uint32_t(nWords);
   desc.set_array_shape(EpicsArchDef::Stale, shape);
+  nStales = staleCount;
 
   // Set array shape information for non-zero rank data
   for (unsigned iPvName = 0; iPvName < iNumPv; iPvName++)
@@ -270,20 +279,9 @@ unsigned EpicsArchMonitor::validate(unsigned& iPvCount)
   {
     EpicsMonitorPv& epicsPvCur = *_lpvPvList[iPvName];
 
-    if (epicsPvCur.isConnected()) {
-      // Take select fields of interest and ignore uninteresting ones
-      const std::string request("field(value,timeStamp,dimension)");
-
-      unsigned tmo = 1;                 // Seconds
-      if (!epicsPvCur.ready(request, tmo)) {
-        epicsPvCur.disable();
-        logging::warning("%s (%s) is not ready\n",
-                         epicsPvCur.getPvDescription().c_str(), epicsPvCur.getPvName().c_str());
-        nNotConnected++;
-      }
-    }
-    else {
-      epicsPvCur.disable();             //reconnect();
+    if (!epicsPvCur.isConnected())
+    {
+      epicsPvCur.disable();
       logging::warning("%s (%s) is not connected\n",
                        epicsPvCur.getPvDescription().c_str(), epicsPvCur.getPvName().c_str());
       nNotConnected++;
@@ -304,10 +302,13 @@ int EpicsArchMonitor::_setupPvList(const PvConfigFile::TPvList& vPvList,
 
   for (unsigned iPvName = 0; iPvName < vPvList.size(); iPvName++)
   {
+    // Take select fields of interest and ignore uninteresting ones
+    const std::string request("field(value,timeStamp,dimension)");
     std::shared_ptr<EpicsMonitorPv> epicsPvCur =
       std::make_shared<EpicsMonitorPv>(vPvList[iPvName].sPvName,
                                        vPvList[iPvName].sPvDescription,
                                        vPvList[iPvName].sProvider,
+                                       request,
                                        _iDebugLevel != 0);
     lpvPvList.push_back(epicsPvCur);
   }

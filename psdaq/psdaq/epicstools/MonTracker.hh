@@ -3,7 +3,6 @@
 
 #include <string>
 #include <deque>
-#include <future>
 
 #include "epicsEvent.h"
 #include "epicsMutex.h"
@@ -48,7 +47,6 @@ private:
 };
 
 class MonTracker : public pvac::ClientChannel::ConnectCallback,
-                   public pvac::ClientChannel::GetCallback,
                    public pvac::ClientChannel::MonitorCallback,
                    public Worker,
                    public std::tr1::enable_shared_from_this<MonTracker>,
@@ -58,28 +56,29 @@ public:
   static void close();
 public:
   POINTER_DEFINITIONS(MonTracker);
-  MonTracker(const std::string& name);
-  MonTracker(const std::string& provider, const std::string& name);
+  MonTracker(const std::string& name,
+             const std::string& request = "field()");
+  MonTracker(const std::string& provider,
+             const std::string& name,
+             const std::string& request = "field()");
   virtual ~MonTracker();
 
   const std::string name() const { return _channel.name(); }
   bool connected() const { return _connected; }
 
-  virtual void getDone (const pvac::GetEvent &evt) OVERRIDE FINAL;
   virtual void connectEvent (const pvac::ConnectEvent &evt) OVERRIDE FINAL;
   virtual void monitorEvent(const pvac::MonitorEvent& evt) OVERRIDE FINAL;
   virtual void process(const pvac::MonitorEvent& evt) OVERRIDE FINAL;
 protected:
-  bool getComplete(const std::string& request = "field()", unsigned tmo = 30);
   void disconnect();
+  void reconnect();
 private:
   static WorkQueue _monwork;            // Static to start only one WorkQueue
-  std::promise<pvd::PVStructure::const_shared_pointer> _promise;
 protected:
   pvd::PVStructure::const_shared_pointer _strct;
   pvac::ClientChannel _channel;
-  pvac::Operation _op;
   pvac::Monitor _mon;
+  std::string _request;
   bool _connected;
 };
 

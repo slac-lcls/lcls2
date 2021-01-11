@@ -28,13 +28,20 @@ namespace Drp
     XtcData::Name::CHARSTR, // pvString
   };
 
+  // One mutex & condition variable shared by all EpicsMonitorPv instances
+  std::mutex              EpicsMonitorPv::_mutex;
+  std::condition_variable EpicsMonitorPv::_condition;
+
   EpicsMonitorPv::EpicsMonitorPv(const std::string& sPvName,
                                  const std::string& sPvDescription,
                                  const std::string& sProvider,
+                                 const std::string& sRequest,
                                  bool               bDebug) :
-    Pds_Epics::PvMonitorBase(sPvName, sProvider),
+    Pds_Epics::PvMonitorBase(sPvName, sProvider, sRequest),
     _sPvDescription(sPvDescription),
     _size(0),
+    _pvField("value"),
+    _state(NotReady),
     _bUpdated(false),
     _bDisabled(false),
     _bDebug(bDebug)
@@ -54,28 +61,31 @@ namespace Drp
     return 0;
   }
 
-  int EpicsMonitorPv::addDef(EpicsArchDef& def, size_t& size)
+  int EpicsMonitorPv::addVarDef(EpicsArchDef& varDef, size_t& size)
   {
     size = 0;
 
     if (_bDisabled)  return 1;
 
-    std::string     name = "value";
-    pvd::ScalarType type;
-    size_t          nelem;
-    size_t          rank;
-    if (getParams(name, type, nelem, rank))  { _bDisabled = true;  return 1; }
+    {
+      std::unique_lock<std::mutex> lock(_mutex);
 
-    auto detName = !_sPvDescription.empty() ? _sPvDescription : name;
-    auto xtcType = xtype[type];
-    def.NameVec.push_back(XtcData::Name(detName.c_str(), xtcType, rank));
-    size = nelem * XtcData::Name::get_element_size(xtcType);
-    _pData.resize(size);
+      const std::chrono::seconds tmo(3);
+      _condition.wait_for(lock, tmo, [this] { return _state == Ready; });
+      if (_state != Ready)  return 1;
 
-    std::string fnames("VarDef.NameVec fields: ");
-    for (auto& elem: def.NameVec)
-      fnames += std::string(elem.name()) + "[" + elem.str_type() + "],";
-    logging::debug("%s",fnames.c_str());
+      auto& detName = !_sPvDescription.empty() ? _sPvDescription : _pvField;
+      varDef.NameVec.push_back(XtcData::Name(detName.c_str(), xtype[_type], _rank));
+      size = _pData.size();
+    }
+
+    if (_bDebug)
+    {
+      std::string fnames("VarDef.NameVec fields: ");
+      for (auto& elem: varDef.NameVec)
+        fnames += std::string(elem.name()) + "[" + elem.str_type() + "],";
+      logging::debug("%s",fnames.c_str());
+    }
 
     return 0;
   }
@@ -98,52 +108,76 @@ namespace Drp
   {
     //logging::debug("EpicsMonitorPv::updated(): Called for '%s'", name().c_str());
 
-    _bUpdated = true;
+    std::lock_guard<std::mutex> lock(_mutex);
+
+    if (_state == Ready)
+    {
+      auto size = _pData.size();
+      _shape = getData(_pData.data(), size);
+      _size = size;
+      _bUpdated = true;
+    }
+    else
+    {
+      if (getParams(_pvField, _type, _nelem, _rank) == 0)
+      {
+        _pData.resize(_nelem * XtcData::Name::get_element_size(xtype[_type]));
+
+        _state = Ready;
+      }
+      else
+        _bDisabled = true;
+
+      _condition.notify_one();
+    }
   }
 
   int EpicsMonitorPv::printPv() const
   {
     if (!isConnected())
     {
-      logging::error("EpicsMonitorPv::printPv(): PV %s not Connected",
+      logging::error("EpicsMonitorPv::printPv(): PV %s is not Connected",
                      name().c_str());
       return 1;
     }
 
-    printf("\n> PV %s\n", name().c_str());
+    std::cout << "\n> PV "       << name()   << "\n";
     std::cout << "  channel:   " << _channel << "\n";
-    std::cout << "  operation: " << _op      << "\n";
     std::cout << "  monitor:   " << _mon     << "\n";
 
     return 0;
   }
 
-  int EpicsMonitorPv::addToXtc(bool& stale, char* pcXtcMem, size_t& iSizeXtc, std::vector<uint32_t>& sShape)
+  int EpicsMonitorPv::addToXtc(XtcData::Damage& damage, bool& stale, char* pcXtcMem, size_t& iSizeXtc, std::vector<uint32_t>& sShape)
   {
-    if (pcXtcMem == NULL || _bDisabled)
+    stale = _bDisabled;
+
+    if (_bDisabled)
       return 1;
 
-    auto size = _pData.size();
-    if (isConnected())
-    {
-      _shape = getData(_pData.data(), size);
-      _size = size;
-    }
+    std::lock_guard<std::mutex> lock(_mutex);
 
-    auto sizeXtc = _size;
+    auto sizeXtc = _pData.size();
     if (sizeXtc > iSizeXtc)  sizeXtc = iSizeXtc; // Possibly truncate
     memcpy(pcXtcMem, _pData.data(), sizeXtc);
 
-    if (size > _pData.size())  _pData.resize(size);
+    if (_size > _pData.size())
+    {
+      logging::error("EpicsMonitorPv::updated: %s data truncated; size %zu vs %zu\n",
+                     name().c_str(), _pData.size(), _size);
+      damage.increase(XtcData::Damage::Truncated);
+      _pData.resize(_size);
+    }
 
-    stale = !(isConnected() && _bUpdated && !_bDisabled);
+    // Consider the PV stale if it hasn't updated since the last addToXtc call
+    stale = !_bUpdated;
+    if (stale)  logging::debug("PV is stale: %s\n", name().c_str());
 
-    //printf("isConnected %d, updated %d, stale %c\n", isConnected(), _bUpdated, stale ? 'Y' : 'N');
-    //printf("XtcSize %zd, shape ", _size);
+    //printf("XtcSize %zd, shape ", sizeXtc);
     //for (auto dim: _shape)  printf("%d ", dim);
     //printf("\n");
 
-    iSizeXtc = _size;
+    iSizeXtc = sizeXtc;
     sShape   = _shape;
 
     _bUpdated = false;

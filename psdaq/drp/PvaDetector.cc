@@ -80,32 +80,47 @@ static const XtcData::Name::DataType xtype[] = {
   XtcData::Name::CHARSTR, // pvString
 };
 
-bool PvaMonitor::ready(PvaDetector* pvaDetector)
+PvaMonitor::PvaMonitor(const Parameters&  para,
+                       const std::string& pvName,
+                       const std::string& provider,
+                       const std::string& request) :
+  Pds_Epics::PvMonitorBase(pvName, provider, request),
+  m_para                  (para),
+  m_pvField               ("value"),
+  m_state                 (NotReady),
+  m_pvaDetector           (nullptr)
 {
-    m_pvaDetector = pvaDetector;
-
-
-    const std::string request = m_provider == "pva"
-                              ? "field(value,timeStamp,dimension)"
-                              : "field(value,timeStamp)";
-    const unsigned tmo = 3;             // seconds
-    return PvMonitorBase::ready(request, tmo);
 }
 
-int PvaMonitor::getVarDef(XtcData::VarDef& varDef, size_t& payloadSize, size_t rankHack)
+void PvaMonitor::clear()
 {
-    std::string     name = "value";
-    pvd::ScalarType type;
-    size_t          nelem;
-    size_t          rank;
-    if (getParams(name, type, nelem, rank))  return 1;
+    std::lock_guard<std::mutex> lock(m_mutex);
 
+    disconnect();
+    m_pvaDetector = nullptr;
+    m_state = NotReady;
+    reconnect();
+}
+
+int PvaMonitor::getVarDef(PvaDetector*     pvaDetector,
+                          XtcData::VarDef& varDef,
+                          size_t&          payloadSize,
+                          size_t           rankHack)
+{
+    std::unique_lock<std::mutex> lock(m_mutex);
+    const std::chrono::seconds tmo(3);
+    m_condition.wait_for(lock, tmo, [this] { return m_state == Ready; });
+    if (m_state != Ready)  return 1;
+
+    m_pvaDetector = pvaDetector;
+
+    size_t rank = m_rank;
     if (rankHack != size_t(-1))  rank = rankHack; // Revisit: Hack!
 
-    auto xtcType = xtype[type];
-    varDef.NameVec.push_back(XtcData::Name(name.c_str(), xtcType, rank));
+    auto xtcType = xtype[m_type];
+    varDef.NameVec.push_back(XtcData::Name(m_pvField.c_str(), xtcType, rank));
 
-    payloadSize = nelem * XtcData::Name::get_element_size(xtcType);
+    payloadSize = m_nelem * XtcData::Name::get_element_size(xtcType);
 
     return 0;
 }
@@ -127,33 +142,46 @@ void PvaMonitor::onDisconnect()
 
 void PvaMonitor::updated()
 {
-    int64_t seconds;
-    int32_t nanoseconds;
-    getTimestamp(seconds, nanoseconds);
-    XtcData::TimeStamp timestamp(seconds, nanoseconds);
-    //static XtcData::TimeStamp ts_prv(0, 0);
-    //
-    //if (timestamp > ts_prv) {
-    if (m_pvaDetector)  m_pvaDetector->process(timestamp);
-    //}
-    //else {
-    //  printf("Updated: ts didn't advance: new %016lx  prv %016lx  d %ld\n",
-    //         timestamp.value(), ts_prv.value(), timestamp.to_ns() - ts_prv.to_ns());
-    //}
-    //ts_prv = timestamp;
-    //
-    //if (nanoseconds > 1000000000) {
-    //  printf("Updated: nsec > 1 second: %016lx  s %ld  ns %d\n",
-    //         timestamp.value(), seconds, nanoseconds);
-    //}
-    //
-    //if ((timestamp.to_ns() > ts_prv.to_ns()) &&
-    //    !(timestamp.value() > ts_prv.value())) {
-    //  printf("Updated: > disagreement: ts to_ns %016lx  val %016lx\n"
-    //         "                        prv to_ns %016lx  val %016lx\n",
-    //         timestamp.to_ns(), timestamp.value(),
-    //         ts_prv.to_ns(), ts_prv.value());
-    //}
+    if (m_state == Ready) {
+        int64_t seconds;
+        int32_t nanoseconds;
+        getTimestamp(seconds, nanoseconds);
+        XtcData::TimeStamp timestamp(seconds, nanoseconds);
+        //static XtcData::TimeStamp ts_prv(0, 0);
+        //
+        //if (timestamp > ts_prv) {
+        if (m_pvaDetector)  m_pvaDetector->process(timestamp);
+        //}
+        //else {
+        //  printf("Updated: ts didn't advance: new %016lx  prv %016lx  d %ld\n",
+        //         timestamp.value(), ts_prv.value(), timestamp.to_ns() - ts_prv.to_ns());
+        //}
+        //ts_prv = timestamp;
+        //
+        //if (nanoseconds > 1000000000) {
+        //  printf("Updated: nsec > 1 second: %016lx  s %ld  ns %d\n",
+        //         timestamp.value(), seconds, nanoseconds);
+        //}
+        //
+        //if ((timestamp.to_ns() > ts_prv.to_ns()) &&
+        //    !(timestamp.value() > ts_prv.value())) {
+        //  printf("Updated: > disagreement: ts to_ns %016lx  val %016lx\n"
+        //         "                        prv to_ns %016lx  val %016lx\n",
+        //         timestamp.to_ns(), timestamp.value(),
+        //         ts_prv.to_ns(), ts_prv.value());
+        //}
+    }
+    else {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+        if (getParams(m_pvField, m_type, m_nelem, m_rank))  {
+            logging::error("updated: getParams() failed");
+        }
+        else {
+            m_state = Ready;
+        }
+        m_condition.notify_one();
+    }
 }
 
 
@@ -323,10 +351,6 @@ PvaDetector::PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonit
         m_firstDimKw = std::stoul(firstDimKw);
 }
 
-PvaDetector::~PvaDetector()
-{
-}
-
   //std::string PvaDetector::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc)
 unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
 {
@@ -341,13 +365,6 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
         m_drp.exposer()->RegisterCollectable(m_exporter);
     }
 
-    if (!m_pvaMonitor->ready(this)) {
-        std::string error = "Failed to connect with " + m_pvaMonitor->name();
-        logging::error(error.c_str());
-        //return error;
-        return 1;
-    }
-
     XtcData::Alg     rawAlg("raw", 1, 0, 0);
     XtcData::NamesId rawNamesId(nodeId, RawNamesIndex);
     XtcData::Names&  rawNames = *new(xtc) XtcData::Names(m_para->detName.c_str(), rawAlg,
@@ -355,7 +372,10 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
     size_t           payloadSize;
     XtcData::VarDef  rawVarDef;
     size_t           rankHack = m_firstDimKw != 0 ? 2 : -1; // Revisit: Hack!
-    if (m_pvaMonitor->getVarDef(rawVarDef, payloadSize, rankHack))  return 1;
+    if (m_pvaMonitor->getVarDef(this, rawVarDef, payloadSize, rankHack)) {
+        logging::error("Failed to connect with %s", m_pvaMonitor->name().c_str());
+        return 1;
+    }
     payloadSize += (sizeof(Pds::EbDgram)    + // An EbDgram is needed by the MEB
                     24                      + // Space needed by DescribedData
                     sizeof(XtcData::Shapes) + // Needed by DescribedData
@@ -384,6 +404,10 @@ unsigned PvaDetector::configure(const std::string& config_alias, XtcData::Xtc& x
     epicsInfo.set_string(0, "epicsname"); //  "," "provider");
     epicsInfo.set_string(1, (m_pvaMonitor->name()).c_str()); // + "," + provider).c_str());
 
+    // (Re)initialize the queues
+    m_pvQueue.startup();
+    m_pgpQueue.startup();
+    m_bufferFreelist.startup();
     size_t bufSize = m_pool->pebble.bufferSize();
     m_buffer.resize(m_pvQueue.size() * bufSize);
     for(unsigned i = 0; i < m_pvQueue.size(); ++i) {
@@ -404,7 +428,10 @@ unsigned PvaDetector::unconfigure()
     if (m_workerThread.joinable()) {
         m_workerThread.join();
     }
-    m_pvaMonitor->clear();
+    m_pvQueue.shutdown();
+    m_pgpQueue.shutdown();
+    m_bufferFreelist.shutdown();
+    m_pvaMonitor->clear();   // Start afresh
     m_namesLookup.clear();   // erase all elements
 
     return 0;
@@ -414,9 +441,9 @@ void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
 {
     XtcData::NamesId namesId(nodeId, RawNamesIndex);
     XtcData::DescribedData desc(dgram.xtc, m_namesLookup, namesId);
-    auto ohSize      = (sizeof(Pds::EbDgram)      -
-                        dgram.xtc.sizeofPayload() - // = the '24' in configure()
-                        sizeof(XtcData::Shapes)   -
+    auto ohSize      = (sizeof(Pds::EbDgram)      +
+                        dgram.xtc.sizeofPayload() + // = the '24' in configure()
+                        sizeof(XtcData::Shapes)   +
                         sizeof(XtcData::Shape));
     auto payloadSize = m_pool->pebble.bufferSize() - ohSize; // Subtract overhead
     auto size        = payloadSize;     // size available for data
@@ -1079,9 +1106,11 @@ int main(int argc, char* argv[])
             provider = pv.substr(0, pos);
             pv       = pv.substr(pos+1);
         }
+        auto request(provider == "pva" ? "field(value,timeStamp,dimension)"
+                                       : "field(value,timeStamp)");
 
         Py_Initialize(); // for use by configuration
-        Drp::PvaApp app(para, std::make_shared<Drp::PvaMonitor>(para, pv, provider));
+        Drp::PvaApp app(para, std::make_shared<Drp::PvaMonitor>(para, pv, provider, request));
         app.run();
         app.handleReset(json({}));
         Py_Finalize(); // for use by configuration

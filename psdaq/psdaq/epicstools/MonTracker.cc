@@ -74,18 +74,22 @@ void WorkQueue::run()
 
 Pds_Epics::WorkQueue MonTracker::_monwork;
 
-MonTracker::MonTracker(const std::string& name) :
+MonTracker::MonTracker(const std::string& name,
+                       const std::string& request) :
   _channel(EpicsProviders::pva().connect(name)),
+  _request(request),
   _connected(false)
 {
   _channel.addConnectListener(this);
 }
 
 MonTracker::MonTracker(const std::string& provider,
-                       const std::string& name) :
+                       const std::string& name,
+                       const std::string& request) :
   _channel(provider == "ca" ?
            EpicsProviders::ca ().connect(name) :
            EpicsProviders::pva().connect(name)),
+  _request(request),
   _connected(false)
 {
   _channel.addConnectListener(this);
@@ -103,22 +107,11 @@ void MonTracker::close()
   _monwork.close();
 }
 
-void MonTracker::getDone(const pvac::GetEvent &evt)
-{
-  if (evt.event == pvac::GetEvent::Fail) {
-    std::cerr << "Error getting the value of PV " << name() << " " << evt.message << "\n";
-  } else if (evt.event == pvac::GetEvent::Success)  {
-    _promise.set_value(evt.value);
-  } else {
-    std::cerr << "Cancelled getting the value of PV " << name() << " " << evt.event << "\n";
-  }
-}
-
 void MonTracker::connectEvent(const pvac::ConnectEvent &evt)
 {
   _connected = evt.connected;
   if (_connected) {
-    _op = _channel.get(this);
+    _mon = _channel.monitor(this, pvd::createRequest(_request));
   }
 }
 
@@ -132,30 +125,19 @@ void MonTracker::monitorEvent(const pvac::MonitorEvent& evt)
   _monwork.push(shared_from_this(), evt);
 }
 
-bool MonTracker::getComplete(const std::string& request, unsigned tmo)
-{
-  if (_strct != NULL) { return true; }
-
-  std::future<pvd::PVStructure::const_shared_pointer> ft = _promise.get_future();
-  std::future_status status = ft.wait_for(std::chrono::seconds(tmo));
-  if (status == std::future_status::ready) {
-    _strct = ft.get();
-    // Sending the onConnect message after the get; most users expect the data to be available on connect.
-    onConnect();
-    _mon = _channel.monitor(this, pvd::createRequest(request));
-    return true;
-  } else {
-    std::cerr << "Timeout getting the value of PV " << name() << "\n";
-    return false;
-  }
-}
-
 void MonTracker::disconnect()
 {
   if (_connected) {
     _channel.removeConnectListener(this);
-    _op.cancel();
+    _mon.cancel();
     _connected = false;
+  }
+}
+
+void MonTracker::reconnect()
+{
+  if (!_connected) {
+    _channel.addConnectListener(this);
   }
 }
 

@@ -265,7 +265,7 @@ void EaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
 {
     auto payloadSize = m_para->maxTrSize - sizeof(Pds::EbDgram);
 
-    m_monitor->getData(dgram.xtc, m_namesLookup, nodeId, payloadSize);
+    m_monitor->getData(dgram.xtc, m_namesLookup, nodeId, payloadSize, m_nStales);
 }
 
 void EaDetector::_worker()
@@ -285,6 +285,9 @@ void EaDetector::_worker()
     m_nUpdates = 0;
     m_exporter->add("ea_update_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nUpdates;});
+    m_nStales = 0;
+    m_exporter->add("ea_stale_count", labels, Pds::MetricType::Counter,
+                    [&](){return m_nStales;});
 
     Pgp pgp(*m_para, m_drp, m_running);
 

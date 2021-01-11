@@ -11,19 +11,16 @@ namespace Pds_Epics {
 class PvMonitorBase : public MonTracker
 {
 public:
-    PvMonitorBase(const std::string& channelName,
-                  const std::string& provider = "pva") :
-      MonTracker(provider, channelName),
+    PvMonitorBase(const std::string& pvName,
+                  const std::string& provider = "pva",
+                  const std::string& request  = "field()") :
+      MonTracker(provider, pvName, request),
       m_epochDiff(provider == "pva" ? 0 : POSIX_TIME_AT_EPICS_EPOCH)
     {
     }
   virtual ~PvMonitorBase() {}
 public:
     int printStructure() const;
-    bool ready(const std::string& request, unsigned tmo)
-    {
-        return getComplete(request, tmo);
-    }
     int getParams(const std::string& name,
                   pvd::ScalarType&   type,
                   size_t&            size,

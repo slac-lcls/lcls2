@@ -28,7 +28,7 @@ namespace Drp
     void     addNames(const std::string& detName, const std::string& detType, const std::string& serNo,
                       XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId,
                       size_t& payloadSize);
-    int      getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId, size_t payloadSize);
+    int      getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId, size_t payloadSize, uint64_t& nStales);
     unsigned validate(unsigned& iPvCount, unsigned tmo);
     unsigned validate(unsigned& iPvCount);
 

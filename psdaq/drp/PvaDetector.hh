@@ -3,7 +3,6 @@
 #include <thread>
 #include <atomic>
 #include <string>
-#include <functional>
 #include <mutex>
 #include <condition_variable>
 #include "DrpBase.hh"
@@ -19,25 +18,29 @@ class PvaDetector;
 class PvaMonitor : public Pds_Epics::PvMonitorBase
 {
 public:
-    PvaMonitor(Parameters& para, const std::string& channelName, const std::string& provider) :
-      Pds_Epics::PvMonitorBase(channelName, provider),
-      m_para                  (para),
-      m_provider              (provider),
-      m_pvaDetector           (nullptr)
-    {
-    }
+    PvaMonitor(const Parameters&  para,
+               const std::string& pvName,
+               const std::string& provider,
+               const std::string& request);
 public:
     void onConnect()    override;
     void onDisconnect() override;
     void updated()      override;
 public:
-    bool ready(PvaDetector* pvaDetector);
-    void clear() { m_pvaDetector = nullptr; }
-    int  getVarDef(XtcData::VarDef&, size_t& payloadSize, size_t rankHack); // Revisit: Hack!
+    void clear();
+    int  getVarDef(PvaDetector* pvaDetector, XtcData::VarDef&, size_t& payloadSize, size_t rankHack); // Revisit: rankHack!
 private:
-    Parameters&         m_para;
-    const std::string&  m_provider;
-    PvaDetector*        m_pvaDetector;
+    enum State { NotReady, Ready };
+private:
+    const Parameters&               m_para;
+    mutable std::mutex              m_mutex;
+    mutable std::condition_variable m_condition;
+    const std::string               m_pvField;
+    pvd::ScalarType                 m_type;
+    size_t                          m_nelem;
+    size_t                          m_rank;
+    State                           m_state;
+    PvaDetector*                    m_pvaDetector;
 };
 
 
@@ -45,7 +48,6 @@ class PvaDetector : public XpmDetector
 {
 public:
     PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonitor, DrpBase& drp);
-    ~PvaDetector();
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;

@@ -35,7 +35,7 @@ private:
     std::shared_ptr<Pds::MetricExporter> m_exporter;
     uint64_t m_nEvents;
     uint64_t m_nUpdates;
-    uint64_t m_nConnected;
+    uint64_t m_nStales;
 };
 
 
