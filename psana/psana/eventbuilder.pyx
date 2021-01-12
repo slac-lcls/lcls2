@@ -83,7 +83,7 @@ cdef class EventBuilder:
 
         batch_size: no. of events in a batch
         filter_fn: takes an event and return True/False
-        destination: takes a timestamp and return rank no.
+        destination: takes an event and returns rank no.
         """
         cdef unsigned got = 0
         cdef unsigned got_step = 0
@@ -157,8 +157,6 @@ cdef class EventBuilder:
                 if self.timestamps[smd_id] == 0:
                     continue
 
-                accept = 1
-
                 array.zero(self.event_timestamps)
                 self.event_timestamps[smd_id] = self.timestamps[smd_id]
                 self.offsets[smd_id] += self.dgram_sizes[smd_id]
@@ -200,11 +198,36 @@ cdef class EventBuilder:
                     PyBuffer_Release(&buf)
                 
                 
-                # Put this event in the correct batch (determined by destionation callback). 
+                # Generate event as bytes from the dgrams
+                evt_size = 0
+                evt_bytes = bytearray()
+                for dgram_idx in range(self.nsmds):
+                    dgram = event_dgrams[dgram_idx]
+                    evt_footer_view[dgram_idx] = 0
+                    if dgram: 
+                        evt_footer_view[dgram_idx] = dgram.nbytes
+                        evt_bytes.extend(bytearray(dgram))
+                    evt_size += evt_footer_view[dgram_idx]
+                evt_bytes.extend(evt_footer_view)
+
+
                 # If destination() is not specifed, use batch 0.
                 dest_rank = 0
-                if destination:
-                    dest_rank = destination(self.event_timestamps[smd_id])
+                accept = 1
+                if (filter_fn or destination) and service == self.L1Accept:
+                    py_evt = Event._from_bytes(self.configs, evt_bytes, run=run) 
+                    py_evt._complete() 
+
+                    if filter_fn:
+                        st_filter = time.time()
+                        accept = filter_fn(py_evt)
+                        en_filter = time.time()
+                        if prometheus_counter is not None:
+                            prometheus_counter.labels('seconds', 'None').inc(en_filter - st_filter)
+                            prometheus_counter.labels('batches', 'None').inc()
+                    
+                    if destination:
+                        dest_rank = destination(py_evt)
                 
                 if batch_dict:
                     if dest_rank not in batch_dict:
@@ -222,28 +245,6 @@ cdef class EventBuilder:
 
                 # Extend this batch bytearray to include this event and collect
                 # the size of this event for batch footer.
-                evt_size = 0
-                evt_bytes = bytearray()
-                for dgram_idx in range(self.nsmds):
-                    dgram = event_dgrams[dgram_idx]
-                    evt_footer_view[dgram_idx] = 0
-                    if dgram: 
-                        evt_footer_view[dgram_idx] = dgram.nbytes
-                        evt_bytes.extend(bytearray(dgram))
-                    evt_size += evt_footer_view[dgram_idx]
-                
-                evt_bytes.extend(evt_footer_view)
-
-                if filter_fn != 0 and service == self.L1Accept:
-                    py_evt = Event._from_bytes(self.configs, evt_bytes, run=run) 
-                    py_evt._complete() 
-                    st_filter = time.time()
-                    accept = filter_fn(py_evt)
-                    en_filter = time.time()
-                    if prometheus_counter is not None:
-                        prometheus_counter.labels('seconds', 'None').inc(en_filter - st_filter)
-                        prometheus_counter.labels('batches', 'None').inc()
-
                 if accept == 1:
                     batch.extend(evt_bytes)
                     evt_sizes.append(evt_size + evt_footer_size)

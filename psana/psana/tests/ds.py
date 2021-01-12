@@ -140,9 +140,9 @@ def test_select_detectors():
     if rank == 0:
         assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
 
-def destination(timestamp):
+def destination(evt):
     n_bd_nodes = size - 2 
-    dest = (timestamp % n_bd_nodes) + 1
+    dest = (evt.timestamp % n_bd_nodes) + 1
     return dest 
 
 def test_callback(batch_size):
