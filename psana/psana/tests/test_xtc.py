@@ -133,14 +133,21 @@ class Test:
     def test_step_det(self):
         xtc_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data-w-step.xtc2')
         ds = DataSource(files=xtc_file)
-        run = next(ds.runs())
-        step_value_det = run.Detector('step_value')
-        step_docstring_det = run.Detector('step_docstring')
-        evt = next(run.events())
-        step_value = step_value_det(evt)
-        step_docstring = step_docstring_det(evt)
-        assert step_value == 0
-        assert step_docstring == '{"detname": "epixquad_0", "scantype": "pedestal", "step": 0}'
+        myrun = next(ds.runs())
+        det = myrun.scaninfo
+        expected_det = {('step_value', 'raw'): 'raw', ('step_docstring', 'raw'): 'raw'}
+        assert det == expected_det
+        step_v = myrun.Detector('step_value')
+        step_s = myrun.Detector('step_docstring')
+        for nstep,step in enumerate(myrun.steps()):
+            if nstep == 0:
+                assert step_v(step) == 0
+                assert step_s(step) == '{"detname": "epixquad_0", "scantype": "pedestal", "step": 0}'
+            elif nstep == 1:
+                assert step_v(step) == 1
+                assert step_s(step) == '{"detname": "epixquad_0", "scantype": "pedestal", "step": 1}'
+            for nevt,evt in enumerate(step.events()):
+                pass
 
 
 
