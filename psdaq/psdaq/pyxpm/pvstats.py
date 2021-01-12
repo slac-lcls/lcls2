@@ -325,6 +325,7 @@ class GroupStats(object):
         (numL0   ,offset) = bytes2Int(msg,offset)
         (numL0Inh,offset) = bytes2Int(msg,offset)
         (numL0Acc,offset) = bytes2Int(msg,offset)
+        offset += 1
         updatePv(self._pv_runTime , l0Ena*FID_PERIOD, timev)
         updatePv(self._pv_msgDelay, self._app.l0Delay.get(), timev)
 
