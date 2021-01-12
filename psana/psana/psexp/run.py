@@ -168,10 +168,6 @@ class Run(object):
         return self.esm.stores['scan'].get_info()
 
     @property
-    def stepinfo(self):
-        return self.esm.get_stepinfo()
-    
-    @property
     def xtcinfo(self):
         return self.dsparms.xtc_info
 
@@ -193,7 +189,7 @@ class Run(object):
             self.timestamp = beginrun_dgram.timestamp()
 
     def step(self, evt):
-        step_dgrams = self.esm.stores['step'].get_step_dgrams_of_event(evt)
+        step_dgrams = self.esm.stores['scan'].get_step_dgrams_of_event(evt)
         return Event(dgrams=step_dgrams, run=self)
     
 class RunShmem(Run):

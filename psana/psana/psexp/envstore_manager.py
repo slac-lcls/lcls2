@@ -18,14 +18,7 @@ class EnvStoreManager(object):
     
     def __init__(self, configs):
         self.configs    = configs
-        envstore_names  = ['epics', 'scan', 'step']
-
-        # Locate detectors with cfgscan in DrpClassName
-        for detname, segments in self.configs[0].software.__dict__.items():
-            for segid, segment in segments.items():
-                if 'config' in segment.__dict__:
-                    if detname not in envstore_names: 
-                        envstore_names.append(detname)
+        envstore_names  = ['epics', 'scan']
 
         for envstore_name in envstore_names:
             self.stores[envstore_name] = EnvStore(configs, envstore_name)
@@ -46,19 +39,16 @@ class EnvStoreManager(object):
             # This releases the original dgram object (friendly
             # with shared memory which has limited capacity).
             new_d = Dgram(view=d, config=self.configs[i], offset=0)
-            for key, val in d.__dict__.items():
-                if key in self.stores:
-                    self.stores[key].add_to(new_d, i)
 
-                if new_d.service() == TransitionId.BeginStep:
-                    # Always store step - FIXME: mona this creates an extra ref.
-                    # of beginstep in case 'scan' is also available. Find a way
-                    # to not store this extra ref.
-                    self.stores['step'].add_to(new_d, i)
-
-                    # For BeginStep, checks if self.configs need to be updated.
-                    # Only apply fields w/o leading "_" and exist in the 
-                    # original config
+            if new_d.service() == TransitionId.SlowUpdate:
+                self.stores['epics'].add_to(new_d, i)
+            elif new_d.service() == TransitionId.BeginStep:
+                self.stores['scan'].add_to(new_d, i)
+                
+                # For BeginStep, checks if self.configs need to be updated.
+                # Only apply fields w/o leading "_" and exist in the 
+                # original config
+                for key, val in d.__dict__.items():
                     if key.startswith("_") or not hasattr(self.configs[i], key): continue
                     cfgold = getattr(self.configs[i], key)
 
@@ -75,12 +65,6 @@ class EnvStoreManager(object):
                 return env_name, alg
         return None
 
-    def get_stepinfo(self):
-        config_stores = set(self.stores.keys()).difference({'epics', 'scan', 'step'})
-        stepinfo = {}
-        for config_store in config_stores:
-            stepinfo[(config_store, 'step')] = ['value', 'docstring'] 
-        return stepinfo
 
     
 
