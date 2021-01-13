@@ -1110,7 +1110,7 @@ class ProcMgr:
                     except EOFError:
                         response = ""
                     if not response.count(self.MSG_PROMPT):
-                        print('*** ERR: no prompt at %s port %s' % \
+                        print('*** NOTE: no prompt 10 sec after sending ^U at %s port %s' % \
                             (key2host(key), self.EXECMGRCTRL))
 
                     # process list of commands
@@ -1143,7 +1143,7 @@ class ProcMgr:
                             printError(int(m.group(0)), args)
 
                         if not response.count(self.MSG_PROMPT):
-                            print('*** ERR: no prompt at %s port %s' % \
+                            print('*** NOTE: no prompt 10 sec after sending command at %s port %s' % \
                                 (host, self.EXECMGRCTRL))
                         else:
                             #
