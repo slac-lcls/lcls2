@@ -114,10 +114,15 @@ json XpmDetector::connectionInfo()
     dmaReadRegister(fd, &tem->xma().rxId, &reg);
 
     // there is currently a failure mode where the register reads
-    // back as zero (incorrectly). This is not the best longterm
-    // fix, but throw here to highlight the problem. - cpo
-    if (!reg) {
-        throw "XPM Remote link id register is zero";
+    // back as zero or 0xffffffff (incorrectly). This is not the best
+    // longterm fix, but throw here to highlight the problem. the
+    // difficulty is that Matt says this register has to work
+    // so that an automated software solution would know which
+    // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
+    if (!reg || reg==0xffffffff) {
+        char errstr[500];
+        sprintf(errstr,"XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",reg);
+        throw errstr;
     }
     int xpm  = (reg >> 20) & 0x0F;
     int port = (reg >>  0) & 0xFF;

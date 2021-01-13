@@ -90,8 +90,16 @@ void BEBDetector::_init(const char* arg)
 
       m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
 
-      if (!m_paddr) {
-        throw "XPM Remote link id register is zero";
+      // there is currently a failure mode where the register reads
+      // back as zero or 0xffffffff (incorrectly). This is not the best
+      // longterm fix, but throw here to highlight the problem. the
+      // difficulty is that Matt says this register has to work
+      // so that an automated software solution would know which
+      // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
+      if (!m_paddr || m_paddr==0xffffffff) {
+          char errstr[500];
+          sprintf(errstr,"XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
+          throw errstr;
       }
 
       _connect(mbytes);
