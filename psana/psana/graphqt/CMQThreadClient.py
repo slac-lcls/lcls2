@@ -9,7 +9,7 @@ Usage ::
     t1.connect_client_is_ready_to(receive_client_is_ready)
     t1.start()
 
-    def receive_client_is_ready() :
+    def receive_client_is_ready():
         client = t1.client()
         stat = t1.quit()
 
@@ -20,19 +20,16 @@ See:
 
 Created on 2018-05-30 by Mikhail Dubrovin
 """
-#------------------------------
 
-#from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.CMDBUtils import connect_client, database_names
-
 from PyQt5.QtCore import QThread, pyqtSignal
 
-#------------------------------
+#---
 
-class CMQThreadClient(QThread) :
+class CMQThreadClient(QThread):
     client_is_ready = pyqtSignal()
 
-    def __init__(self, parent=None, host=None, port=None) :
+    def __init__(self, parent=None, host=None, port=None):
         """Connects to MongoDB client
         """
         QThread.__init__(self, parent)
@@ -41,17 +38,17 @@ class CMQThreadClient(QThread) :
         self._port = port
 
 
-    def run(self) :
+    def run(self):
         """Launched on start()
         """
         #logger.debug('In CMQThreadClient.run - connect client')
         self._client = connect_client(self._host, self._port)
 
-        if self._client is None :
+        if self._client is None:
             #logger.warning("Can't connect to server")
             #print("Can't connect to server")
             pass
-        else :
+        else:
             #logger.debug('Connection to server is ready')
             #print('Connection to server is ready')
             pass
@@ -59,16 +56,16 @@ class CMQThreadClient(QThread) :
         self.client_is_ready.emit()
 
 
-    def connect_client_is_ready_to(self, recip) :
+    def connect_client_is_ready_to(self, recip):
         self.client_is_ready.connect(recip)
 
 
-    def disconnect_client_is_ready_from(self, recip) :
+    def disconnect_client_is_ready_from(self, recip):
         self.client_is_ready.disconnect(recip)
 
 
-    def receive_client_is_ready(self) :
-        if self._client is None :
+    def receive_client_is_ready(self):
+        if self._client is None:
             print("Can't connect to server")
 
         dbnames = database_names(self._client)
@@ -76,20 +73,20 @@ class CMQThreadClient(QThread) :
         print('Signal "client_is_ready" received, dbnames: %s' % str(dbnames))
 
 
-    def client(self) :
+    def client(self):
         return self._client
 
 
-    def is_running(self) :
+    def is_running(self):
         return self.isRunning()
 
 
-    def is_finished(self) :
+    def is_finished(self):
         return self.isFinished()
 
-#------------------------------
 
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
 
     import sys
 
@@ -97,10 +94,10 @@ if __name__ == "__main__" :
     logger = logging.getLogger(__name__)
     logging.basicConfig(format='%(levelname)s %(name)s: %(message)s', level=logging.DEBUG)
 
-    def on_but_play() :
+    def on_but_play():
         logger.debug('XXX: on_but_play')
 
-    def on_but_exit() :
+    def on_but_exit():
         logger.debug('XXX: on_but_exit')
         sys.exit()
 
@@ -129,4 +126,4 @@ if __name__ == "__main__" :
     b2.clicked.connect(on_but_exit)
     stat = app.exec_()
 
-#------------------------------
+# EOF
