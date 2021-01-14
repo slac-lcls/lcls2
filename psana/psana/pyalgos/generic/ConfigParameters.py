@@ -324,7 +324,7 @@ class ConfigParameters :
 
         if not os.path.exists(self.fname) :
             msg = 'The file %s is not found, use default parameters.' % self.fname
-            logger.warning(msg)
+            logger.debug(msg)
             #print(msg)
             return
  

@@ -49,13 +49,15 @@ class CMWMain(QWidget):
 
     _name = 'CMWMain'
 
-    def __init__(self, parser=None): # **dict_opts):
+    #def __init__(self, parser=None): # **dict_opts):
+    def __init__(self, *args, **opts): # **dict_opts):
         QWidget.__init__(self, parent=None)
         #self._name = self.__class__.__name__
 
         cp.cmwmain = self
 
-        self.proc_parser(parser)
+        #self.proc_parser(parser)
+        self.proc_opts(**opts)
 
         from psana.graphqt.CMWMainTabs import CMWMainTabs # AFTER proc_parser !!!!
 
@@ -90,6 +92,31 @@ class CMWMain(QWidget):
         pass
         #self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
         #self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
+
+
+    def proc_opts(self, **opts):
+
+        host       = opts.get('host', None) # self.opts['host']
+        port       = opts.get('port', None) # self.opts['port']
+        cp.user    = opts.get('user', None)
+        cp.upwd    = opts.get('upwd', None)
+        exp        = opts.get('experiment', None)
+        det        = opts.get('detector', None)
+        logdir     = opts.get('logdir', None)
+        loglevel   = opts.get('loglevel', None).upper()
+        if isinstance(loglevel,str): loglevel = loglevel.upper()
+
+        if is_in_command_line(None, '--host')      : cp.cdb_host.setValue(host)
+        if is_in_command_line(None, '--port')      : cp.cdb_port.setValue(port)
+        if is_in_command_line('-e', '--experiment'): cp.exp_name.setValue(exp)
+        if is_in_command_line('-d', '--detector')  : cp.data_source.setValue(det)
+        if is_in_command_line('-l', '--loglevel')  : cp.log_level.setValue(loglevel)
+        if is_in_command_line('-L', '--logdir')    : cp.log_prefix.setValue(logdir)
+
+        if loglevel == 'DEBUG':
+            print(40*'_')
+            print_kwargs(opts)
+            exit('TEST EXIT')
 
 
     def proc_parser(self, parser=None):
@@ -255,14 +282,16 @@ class CMWMain(QWidget):
             #log.saveLogTotalInFile(fnm.log_file_total())
 
 
-def calibman(parser=None):
+#def calibman(parser=None):
+def calibman(*args,**opts):
     import sys
     #sys.stdout = sys.stderr = open('/dev/null', 'w') # open('%s-stdout-stderr' % cp.log_file.value(), 'w')
 
     from PyQt5.QtWidgets import QApplication
     #logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
     app = QApplication(sys.argv)
-    w = CMWMain(parser)
+    #w = CMWMain(parser)
+    w = CMWMain(*args,**opts)
     w.show()
     app.exec_()
     del w

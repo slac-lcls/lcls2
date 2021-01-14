@@ -542,7 +542,7 @@ class ConfigParameters :
 
         if not os.path.exists(self.fname) :
             msg = 'The file ' + self.fname + ' is not found, use default parameters.'
-            logger.warning(msg, self.name)
+            logger.debug(msg, self.name)
             #print(msg)
             return
  
