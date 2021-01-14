@@ -19,7 +19,7 @@ import numpy as np
 import json
 from psana import DataSource
 from psana.detector.UtilsEpix import CALIB_REPO_EPIX10KA, FNAME_PANEL_ID_ALIASES, alias_for_id
-from psana.pyalgos.generic.Utils import log_rec_on_start, str_tstamp, create_directory, save_textfile, set_file_access_mode
+from psana.pyalgos.generic.Utils import log_rec_on_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
 import psana.detector.UtilsEpix10ka as ue
 
@@ -696,7 +696,7 @@ def get_config_info_for_dataset_detname(**kwargs):
       cpdic['tstamp']     = tstamp_run # (str) 20201209191018
       cpdic['tstamp_now'] = tstamp_now # (str) 20201217140026
       cpdic['trun_sec']   = int(trun_sec) # 1607569818.532117 sec
-      cpdic['tsrun_db']   = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
+      cpdic['tsrun_dark']   = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
 
       return cpdic
 
@@ -822,7 +822,7 @@ def deploy_constants(*args, **opts):
     exp        = opts.get('exp', None)     
     detname    = opts.get('det', None)   
     runs       = opts.get('runs', None)    
-    tstamp     = opts.get('tstamp', None)    
+    tstamp     = opts.get('tstamp', None) # (int) time stamp in format YYYYmmddHHMMSS or run number(<10000)
     dirxtc     = opts.get('dirxtc', None) 
     dirrepo    = opts.get('dirrepo', CALIB_REPO_EPIX10KA)
     dircalib   = opts.get('dircalib', None)
@@ -849,7 +849,7 @@ def deploy_constants(*args, **opts):
     save_log_record_on_start(dirrepo, _name, dirmode)
 
     cpdic = get_config_info_for_dataset_detname(**opts)
-    tstamp_run  = cpdic.get('tstamp',    None)
+    tstamp_run  = cpdic.get('tstamp',    None) # str
     expnum      = cpdic.get('expnum',    None)
     shape       = cpdic.get('shape',     None)
     calibdir    = cpdic.get('calibdir',  None)
@@ -872,13 +872,10 @@ def deploy_constants(*args, **opts):
 
     logger.debug('detector "%s" panel ids:\n  %s' % (detname, '\n  '.join(panel_ids)))
 
-    #tstamp = tstamp_run if tstamp is None else tstamp
-             #tstamp if int(tstamp)>9999 else\
-             #tstamp_for_dataset('exp=%s:run=%d'%(exp,tstamp))
+    #if tstamp is None: tstamp = tstamp_run
+    _tstamp = tstamp_run
 
-    if tstamp is None: tstamp = tstamp_run
-
-    logger.debug('search for calibration files with tstamp <= %s' % tstamp)
+    logger.debug('search for calibration files with tstamp <= %s' % _tstamp)
 
     # dict_consts for constants octype: 'pixel_gain', 'pedestals', etc.
     dic_consts = {} 
@@ -889,7 +886,7 @@ def deploy_constants(*args, **opts):
         logger.info('%s\nmerge constants for panel:%02d id: %s' % (98*'_', ind, panel_id))
 
         dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status = dir_names(dirrepo, panel_id)
-        fname_prefix, panel_alias = file_name_prefix(dirrepo, panel_id, tstamp, exp, irun)
+        fname_prefix, panel_alias = file_name_prefix(dirrepo, panel_id, _tstamp, exp, irun)
 
         prefix_offset, prefix_peds, prefix_plots, prefix_gain, prefix_rms, prefix_status =\
             path_prefixes(fname_prefix, dir_offset, dir_peds, dir_plots, dir_gain, dir_rms, dir_status)
@@ -912,7 +909,7 @@ def deploy_constants(*args, **opts):
             fmt = CTYPE_FMT.get(octype,'%.5f')
             logger.debug('begin merging for ctype:%s, octype:%s, fmt:%s,\n  prefix:%s' % (ctype, octype, fmt, prefix))
             fname = '%s_%s.txt' % (prefix, ctype)
-            nda = merge_panel_gain_ranges(dir_ctype, panel_id, ctype, tstamp, shape, fname, fmt, filemode)
+            nda = merge_panel_gain_ranges(dir_ctype, panel_id, ctype, _tstamp, shape, fname, fmt, filemode)
             if octype in dic_consts: dic_consts[octype].append(nda) # append for panel per ctype
             else:                    dic_consts[octype] = [nda,]
 
@@ -926,7 +923,7 @@ def deploy_constants(*args, **opts):
 
     dmerge = dir_merge(dirrepo)
     create_directory(dmerge, mode=dirmode)
-    fmerge_prefix = fname_prefix_merge(dmerge, detname, tstamp, exp, irun)
+    fmerge_prefix = fname_prefix_merge(dmerge, detname, _tstamp, exp, irun)
 
     for octype, lst in dic_consts.items():
         mrg_nda = merge_panels(lst)
@@ -940,6 +937,17 @@ def deploy_constants(*args, **opts):
 
           dtype = 'ndarray'
 
+          _ivalid_run = irun
+          _tvalid_sec = cpdic.get('trun_sec', None) 
+          _tvalid_stamp = tstamp_run # 'YYYYmmddHHMMSS'
+          if tstamp is not None:
+            if tstamp>9999:
+              str_ts = str(tstamp)
+              _tvalid_sec = time_sec_from_stamp(fmt='%Y%m%d%H%M%S', time_stamp=str_ts)
+              _tvalid_stamp = str_ts
+            else: 
+              _ivalid_run = tstamp
+
           kwa = {
             'iofname': fmerge,
             'experiment': exp,
@@ -947,10 +955,12 @@ def deploy_constants(*args, **opts):
             'dtype': dtype,
             'detector': detname,
             'longname': cpdic.get('longname', None),
-            'time_sec': cpdic.get('trun_sec', None),
-            'time_stamp': cpdic.get('tsrun_db', None),
-            'run': irun,
+            'time_sec':_tvalid_sec,
+            'time_stamp': _tvalid_stamp,
+            'time_stamp_dark': cpdic.get('tsrun_dark', None),
+            'run': _ivalid_run,
             'run_end': opts.get('run_end', None),
+            'run_dark': irun,
             'version': opts.get('version', None),
             'comment': opts.get('comment', None),
           }
