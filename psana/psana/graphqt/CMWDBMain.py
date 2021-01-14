@@ -1,16 +1,9 @@
 """
-Class :py:class:`CMWDBMain` is a QWidget for interactive image
+Class :py:class:`CMWDBMain` is a QWidget for calibman
 ===========================================================
 
 Usage ::
-
-    import sys
-    from PyQt5.QtWidgets import QApplication
-    from psana.graphqt.CMWDBMain import CMWDBMain
-    app = QApplication(sys.argv)
-    w = CMWDBMain(None, app)
-    w.show()
-    app.exec_()
+    See test_CMWDBMain() at the end
 
 See:
     - :class:`CMWDBMain`
@@ -21,18 +14,14 @@ See:
 Created on 2017-02-01 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 """
-#------------------------------
 
 import logging
 logger = logging.getLogger(__name__)
 
-#------------------------------
-
-from PyQt5.QtWidgets import QWidget, QSplitter, QTextEdit, QVBoxLayout#, QVBoxLayout
+from PyQt5.QtWidgets import QWidget, QSplitter, QTextEdit, QVBoxLayout
 from PyQt5.QtCore import Qt, QPoint
 
 from psana.graphqt.CMConfigParameters import cp
-#from psana.pyalgos.generic.Logger import logger
 from psana.graphqt.CMWDBTree import CMWDBTree
 from psana.graphqt.CMWDBButtons import CMWDBButtons
 
@@ -43,13 +32,13 @@ from psana.graphqt.CMWDBDocEditor import CMWDBDocEditor
 #from psana.graphqt.QWIcons import icon
 #from psana.graphqt.Styles import style
 
-#------------------------------
+#---
 
-class CMWDBMain(QWidget) :
+class CMWDBMain(QWidget):
 
     _name = 'CMWDBMain'
 
-    def __init__(self, parent=None) :
+    def __init__(self, parent=None):
         QWidget.__init__(self, parent=parent)
         #self._name = self.__class__.__name__
         cp.cmwdbmain = self
@@ -89,30 +78,28 @@ class CMWDBMain(QWidget) :
         self.connect_signals_to_slots()
 
 
-    def connect_signals_to_slots(self) :
+    def connect_signals_to_slots(self):
         pass
         # connect button which turn on/of tabs
         #self.wbuts.but_tabs.clicked.connect(cp.cmwmaintabs.view_hide_tabs)
         #self.wbuts.but_tabs.clicked.connect(self.on_but_tabs_clicked_test)
 
-    def on_but_tabs_clicked_test(self) :
+    def on_but_tabs_clicked_test(self):
         logger.debug('on_but_tabs_clicked')
 
-#------------------------------
 
-    def proc_parser(self, parser=None) :
+    def proc_parser(self, parser=None):
         self.parser=parser
 
-        if parser is None :
+        if parser is None:
             return
         return
 
-#------------------------------
 
-    def proc_parser_v0(self, parser=None) :
+    def proc_parser_v0(self, parser=None):
         self.parser=parser
 
-        if parser is None :
+        if parser is None:
             return
 
         (popts, pargs) = parser.parse_args()
@@ -130,10 +117,10 @@ class CMWDBMain(QWidget) :
         vrb = popts.vrb
 
         #cp.instr_dir .setValue() # val_def='/reg/d/psdm'
-        if exp != self.defs['exp'] : cp.instr_name.setValue(exp[:3].upper())
-        if exp != self.defs['exp'] : cp.exp_name  .setValue(exp)
-        if run != self.defs['run'] : cp.str_runnum.setValue('%d'%run)
-        if clb != self.defs['clb'] : cp.calib_dir .setValue(clb)
+        if exp != self.defs['exp']: cp.instr_name.setValue(exp[:3].upper())
+        if exp != self.defs['exp']: cp.exp_name  .setValue(exp)
+        if run != self.defs['run']: cp.str_runnum.setValue('%d'%run)
+        if clb != self.defs['clb']: cp.calib_dir .setValue(clb)
 
         self.verbos = vrb
  
@@ -141,39 +128,36 @@ class CMWDBMain(QWidget) :
                  self.args[0] if nargs > 0 else\
                  None
         
-        if ifname is not None :
+        if ifname is not None:
             logger.info('Input image file name: %s' % ifname)
             cp.fname_img.setValue(ifname)
             cp.current_tab.setValue('File')
-        #else :
+        #else:
         #    cp.current_tab.setValue('Data')
 
-#------------------------------
 
-    def set_tool_tips(self) :
+    def set_tool_tips(self):
         pass
         #self.butStop.setToolTip('Not implemented yet...')
 
 
-#------------------------------
-
-    def set_hsplitter_sizes(self, s0=None, s1=None, s2=None) :
+    def set_hsplitter_sizes(self, s0=None, s1=None, s2=None):
         _s0 = cp.cdb_hsplitter0.value() if s0 is None else s0
         _s1 = cp.cdb_hsplitter1.value() if s1 is None else s1
         _s2 = cp.cdb_hsplitter2.value() if s2 is None else s2
         self.hspl.setSizes((_s0, _s1, _s2))
 
 
-    def set_hsplitter_size2(self, s2=0) :
+    def set_hsplitter_size2(self, s2=0):
         _s0, _s1, _s2 = self.hsplitter_sizes()
         self.set_hsplitter_sizes(_s0, _s1+_s2-s2, s2 )
 
 
-    def hsplitter_sizes(self) :
+    def hsplitter_sizes(self):
         return self.hspl.sizes() #[0]
 
 
-    def save_hsplitter_sizes(self) :
+    def save_hsplitter_sizes(self):
         """Save hsplitter sizes in configuration parameters.
         """
         s0, s1, s2 = self.hsplitter_sizes()
@@ -184,9 +168,8 @@ class CMWDBMain(QWidget) :
         cp.cdb_hsplitter1.setValue(s1)
         cp.cdb_hsplitter2.setValue(s2)
 
-#------------------------------
 
-    def set_style(self) :
+    def set_style(self):
         #self.setGeometry(self.main_win_pos_x .value(),\
         #                 self.main_win_pos_y .value(),\
         #                 self.main_win_width .value(),\
@@ -223,11 +206,11 @@ class CMWDBMain(QWidget) :
         #self.but1.raise_()
 
 
-    def closeEvent(self, e) :
+    def closeEvent(self, e):
         logger.debug('%s.closeEvent' % self._name)
 
-        #try : self.wspe.close()
-        #except : pass
+        #try: self.wspe.close()
+        #except: pass
 
         self.on_save()
 
@@ -240,7 +223,7 @@ class CMWDBMain(QWidget) :
         pass
 
 
-    def moveEvent(self, e) :
+    def moveEvent(self, e):
         #logger.debug('moveEvent') 
         #self.position = self.mapToGlobal(self.pos())
         #self.position = self.pos()
@@ -250,35 +233,35 @@ class CMWDBMain(QWidget) :
         pass
 
 
-    def view_hide_tabs(self) :
+    def view_hide_tabs(self):
         #self.set_tabs_visible(not self.tab_bar.isVisible())
         #self.wbuts.tab_bar.setVisible(not self.tab_bar.isVisible())
         self.wbuts.view_hide_tabs()
 
 
-    def key_usage(self) :
+    def key_usage(self):
         return 'Keys:'\
                '\n  V - view/hide tabs'\
                '\n'
 
-    if __name__ == "__main__" :
-      def keyPressEvent(self, e) :
+    if __name__ == "__main__":
+      def keyPressEvent(self, e):
         #logger.debug('keyPressEvent, key=', e.key())       
         logger.info('%s.keyPressEvent, key=%d' % (self._name, e.key()))         
-        if   e.key() == Qt.Key_Escape :
+        if   e.key() == Qt.Key_Escape:
             self.close()
 
-        elif e.key() == Qt.Key_V : 
+        elif e.key() == Qt.Key_V: 
             self.view_hide_tabs()
 
-        else :
+        else:
             logger.debug(self.key_usage())
 
 
     def on_save(self):
         #point, size = self.mapToGlobal(QPoint(-5,-22)), self.size() # Offset (-5,-22) for frame size.
         #x,y,w,h = point.x(), point.y(), size.width(), size.height()
-        #msg = 'Save main window x,y,w,h : %d, %d, %d, %d' % (x,y,w,h)
+        #msg = 'Save main window x,y,w,h: %d, %d, %d, %d' % (x,y,w,h)
         #logger.info(msg)
 
         self.save_hsplitter_sizes()
@@ -287,10 +270,10 @@ class CMWDBMain(QWidget) :
         #self.main_win_width .setValue(w)
         #self.main_win_height.setValue(h)
 
-#------------------------------
+#---
 
-if __name__ == "__main__" :
-  def test_CMWDBMain() :
+if __name__ == "__main__":
+  def test_CMWDBMain():
     import sys
     from PyQt5.QtWidgets import QApplication
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', level=logging.DEBUG)
@@ -302,9 +285,9 @@ if __name__ == "__main__" :
     del w
     del app
 
-#------------------------------
+#---
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     test_CMWDBMain()
 
-#------------------------------
+# EOF
