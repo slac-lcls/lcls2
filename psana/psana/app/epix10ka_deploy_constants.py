@@ -58,6 +58,7 @@ def usage(mode=0):
            + '\n  %s -e ueddaq02 -d epixquad -r27 -t 396 -o ./work -D -c ./calib # deploys 394-end.data for all calibrations found for runs <= 386' % scrname\
            + '\n  %s -e ueddaq02 -d epixquad -r27 -o ./work -D -c ./calib' % scrname\
            + '\n  %s -e ueddaq02 -d epixquad -r27 -o ./work -D -c ./calib --proc=g --low=0.25 --medium=1 --high=1' % scrname\
+           + '\n  %s -e ueddaq02 -d epixquad -r65 -t 60 -DTrue # deploy constants for earlier runs (>=60) of the same experiment' % scrname\
            + '\n\n  Try: %s -h' % scrname
 
 def argument_parser():
