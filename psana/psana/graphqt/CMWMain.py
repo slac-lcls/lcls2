@@ -21,32 +21,29 @@ See:
 Created on 2017-02-01 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 """
-#import os
-#import math
-
-#------------------------------
-
 import logging
 logger = logging.getLogger(__name__)
 
-#------------------------------
+#---
 
 from math import floor
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtGui import QPen, QBrush
 from PyQt5.QtCore import Qt, QPoint
 
+from psana.pyalgos.generic.Utils import print_kwargs, print_parser, is_in_command_line, log_rec_on_start
 from psana.graphqt.CMConfigParameters import cp
-from psana.graphqt.QWLoggerStd import QWLoggerStd#, QWFilter
-from psana.pyalgos.generic.Utils import print_kwargs, print_parser, is_in_command_line
-
-#from psana.graphqt.QWUtils import selectFromListInPopupMenu
-
+from psana.graphqt.QWLoggerStd import QWLoggerStd
 from psana.graphqt.Frame  import Frame
 from psana.graphqt.QWIcons import icon
 from psana.graphqt.Styles import style
 
-#------------------------------
+
+
+
+#from psana.graphqt.CMWMainTabs import CMWMainTabs # AFTER proc_parser !!!!
+
+#---
 
 class CMWMain(QWidget):
 
@@ -60,6 +57,8 @@ class CMWMain(QWidget):
 
         self.proc_parser(parser)
 
+        from psana.graphqt.CMWMainTabs import CMWMainTabs # AFTER proc_parser !!!!
+
         self.main_win_width  = cp.main_win_width 
         self.main_win_height = cp.main_win_height
         self.main_win_pos_x  = cp.main_win_pos_x 
@@ -67,29 +66,13 @@ class CMWMain(QWidget):
 
         #icon.set_icons()
 
-        from psana.graphqt.CMWMainTabs import CMWMainTabs
-
         self.wtab = CMWMainTabs()
-        #self.wlog = QWLogger(log, cp, show_buttons=False)
         self.wlog = QWLoggerStd(cp, show_buttons=False)
         self.wtmp = QTextEdit('Some text')
 
-        #self.vbox = QVBoxLayout() 
-        #self.vbox.addWidget(self.wtab) 
-        #self.vbox.addStretch(1)
-
-        #self.wrig = QWidget()
-        #self.wrig.setLayout(self.vbox)
-
         self.vspl = QSplitter(Qt.Vertical)
-        #self.vspl.addWidget(self.wrig) 
         self.vspl.addWidget(self.wtab) 
         self.vspl.addWidget(self.wlog) 
-
-        #self.hspl = QSplitter(Qt.Horizontal)
-        #self.hspl.addWidget(self.vspl)
-        #self.hspl.addWidget(self.wtmp)
-        #self.hspl.addWidget(self.wrig)
 
         self.mbox = QHBoxLayout() 
         self.mbox.addWidget(self.vspl)
@@ -99,8 +82,8 @@ class CMWMain(QWidget):
         #self.set_tool_tips()
 
         self.connect_signals_to_slots()
-
         #self.move(self.pos()) # + QPoint(self.width()+5, 0))
+        logger.info(log_rec_on_start('%Y-%m-%dT%H:%M:%S%z'))
 
 
     def connect_signals_to_slots(self):
@@ -108,7 +91,6 @@ class CMWMain(QWidget):
         #self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
         #self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
 
-#------------------------------
 
     def proc_parser(self, parser=None):
         self.parser=parser
@@ -149,7 +131,6 @@ class CMWMain(QWidget):
             print_parser(parser)
             print_kwargs(self.opts)
 
-#------------------------------
 
     def set_tool_tips(self):
         pass
@@ -231,6 +212,7 @@ class CMWMain(QWidget):
                '\n  V - view/hide tabs'\
                '\n'
 
+
     if __name__ == "__main__":
       def keyPressEvent(self, e):
         #print('keyPressEvent, key=', e.key())       
@@ -272,7 +254,6 @@ class CMWMain(QWidget):
             #print('Saved log file: %s' % cp.log_file.value())
             #log.saveLogTotalInFile(fnm.log_file_total())
 
-#------------------------------
 
 def calibman(parser=None):
     import sys
@@ -287,9 +268,8 @@ def calibman(parser=None):
     del w
     del app
 
-#------------------------------
 
 if __name__ == "__main__":
     calibman()
 
-#------------------------------
+# EOF
