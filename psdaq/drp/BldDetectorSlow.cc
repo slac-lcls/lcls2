@@ -963,9 +963,7 @@ void BldApp::handlePhase1(const json& msg)
             return;
         }
 
-        if (runInfo.runNumber > 0) {
-            m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
-        }
+	m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
     }
     else if (key == "endrun") {
         std::string errorMsg = m_drp.endrun(phase1Info);

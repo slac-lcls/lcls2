@@ -960,7 +960,7 @@ void PvaApp::handlePhase1(const json& msg)
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
-        else if (runInfo.runNumber > 0) {
+        else {
             m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
         }
     }
