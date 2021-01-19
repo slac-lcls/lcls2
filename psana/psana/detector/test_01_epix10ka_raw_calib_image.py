@@ -178,7 +178,7 @@ def test_calib(fname, args):
     print('XXX run.timestamp: ', run.timestamp)# 4190613356186573936 (int)
     t_sec = int(time())
     print('XXX tnow time %d sec as tstamp: %d' % (t_sec,t_sec<<32))
-    print('XXX run.stepinfo : ', run.stepinfo) # {('epixquad', 'step'): ['value', 'docstring'], ('epixquadhw', 'step'): ['value', 'docstring']}
+    #print('XXX run.stepinfo : ', run.stepinfo) # {('epixquad', 'step'): ['value', 'docstring'], ('epixquadhw', 'step'): ['value', 'docstring']}
 
     #ts = run.timestamp
     #sec = float(ts >> 32) #& 0xffffffff
@@ -247,9 +247,11 @@ def test_calib(fname, args):
             #raw  = det.raw.raw(evt)
             #logger.info('segs: %s' % str(segs))
             #logger.info(info_ndarr(raw,  'raw: '))
+            t0_sec = time()
 
             calib  = det.raw.calib(evt)
             ###########################
+            print('det.raw.calib(evt) time (sec) = %.6f' % (time()-t0_sec))
             logger.info(info_ndarr(det.raw._pedestals(), 'peds  '))
             logger.info(info_ndarr(det.raw.raw(evt),    'raw   '))
             logger.info(info_ndarr(calib,               'calib '))
@@ -291,7 +293,7 @@ def test_image(fname, args):
         img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
         #img = det.raw.image(evt)
         dt_sec = time()-t0_sec
-        logger.info('image composition time = %.6f sec ' % dt_sec)
+        print('image composition time = %.6f sec ' % dt_sec)
 
         logger.info(info_ndarr(img, 'image '))
         if img is None: continue
@@ -337,21 +339,22 @@ if __name__ == "__main__":
       + '\n  where test-name: '\
       + '\n    0 - test_raw("%s")'%fname0\
       + '\n    1 - test_raw("%s")'%fname1\
-      + '\n    4 - test_image("%s")'%fname2\
-      + '\n    5 - test_calib("%s")'%fname2\
-      + '\n    10 - test_raw  (args)'\
-      + '\n    20 - test_calib(args)'\
-      + '\n    30 - test_image(args)'\
+      + '\n    4 - test_calib("%s")'%fname2\
+      + '\n    5 - test_image("%s")'%fname2\
+      + '\n    raw   - test_raw  (args)'\
+      + '\n    calib - test_calib(args)'\
+      + '\n    image - test_image(args)'\
       + '\n ==== '\
-      + '\n    ./%s 2 -m0 -s101' % SCRNAME\
-      + '\n    ./%s 2 -m1' % SCRNAME\
-      + '\n    ./%s 2 -m2 -lDEBUG' % SCRNAME\
-      + '\n    ./%s 2 -m3 -s101 -o img.png' % SCRNAME\
-      + '\n    ./%s 2 -m4' % SCRNAME\
-      + '\n ==== '\
-      + '\n    ./%s 10 -e ueddaq02 -d epixquad -r27 # raw' % SCRNAME\
-      + '\n    ./%s 20 -e ueddaq02 -d epixquad -r27 # calib' % SCRNAME\
-      + '\n    ./%s 30 -e ueddaq02 -d epixquad -r27 -N100000 # image' % SCRNAME\
+      + '\n    ./%s raw -e ueddaq02 -d epixquad -r27 # raw' % SCRNAME\
+      + '\n    ./%s calib -e ueddaq02 -d epixquad -r27 # calib' % SCRNAME\
+      + '\n    ./%s image -e ueddaq02 -d epixquad -r27 -N100000 # image' % SCRNAME\
+
+      #+ '\n ==== '\
+      #+ '\n    ./%s 2 -m0 -s101' % SCRNAME\
+      #+ '\n    ./%s 2 -m1' % SCRNAME\
+      #+ '\n    ./%s 2 -m2 -lDEBUG' % SCRNAME\
+      #+ '\n    ./%s 2 -m3 -s101 -o img.png' % SCRNAME\
+      #+ '\n    ./%s 2 -m4' % SCRNAME\
       #+ '\n    2 - does not contain config for calib....test_image("%s")'%fname0\
       #+ '\n    3 - does not contain config for calib....test_image("%s")'%fname1\
 
@@ -401,9 +404,9 @@ if __name__ == "__main__":
     #elif tname=='3': test_image(fname1, args)
     elif tname=='4':  test_calib(fname2, args)
     elif tname=='5':  test_image(fname2, args)
-    elif tname=='10': test_raw  (None, args)
-    elif tname=='20': test_calib(None, args)
-    elif tname=='30': test_image(None, args)
+    elif tname=='raw':   test_raw  (None, args)
+    elif tname=='calib': test_calib(None, args)
+    elif tname=='image': test_image(None, args)
     else: logger.warning('NON-IMPLEMENTED TEST: %s' % tname)
 
     exit('END OF %s' % SCRNAME)
