@@ -171,23 +171,27 @@ class DgramManager(object):
         self._timestamps += [evt.timestamp]
         return evt
 
+    def jumps(self, dgram_i, offset, size):
+        if offset == 0 and size == 0:
+            d = None
+        else:
+            try:
+                d = dgram.Dgram(file_descriptor=self.fds[dgram_i], 
+                    config=self.configs[dgram_i], 
+                    offset=offset, 
+                    size=size, 
+                    max_retries=self.max_retries)
+            except StopIteration:
+                d = None
+        return d
+
     def jump(self, offsets, sizes):
         """ Jumps to the offset and reads out dgram on each xtc file.
         This is used in normal mode (multiple detectors with MPI).
         """
         assert len(offsets) > 0 and len(sizes) > 0
-        dgrams = []
-        for fd, config, offset, size in zip(self.fds, self.configs, offsets, sizes):
-            if offset==0 and size==0:
-                d = None
-            else:
-                try:
-                    d = dgram.Dgram(file_descriptor=fd, config=config, offset=offset, size=size, max_retries=self.max_retries)
-                except StopIteration:
-                    d = None
-
-            dgrams += [d]
-
+        dgrams = [self.jumps(dgram_i, offset, size) for dgram_i, (offset, size)
+            in enumerate(zip(offsets, sizes))]
         evt = Event(dgrams, run=self._run)
         return evt
 

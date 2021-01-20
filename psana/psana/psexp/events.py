@@ -11,6 +11,7 @@ class Events:
     def __init__(self, configs, dm, dsparms, filter_callback=None, get_smd=None, smdr_man=None):
         self.dm             = dm                   
         self.configs        = configs
+        self.dsparms        = dsparms
         self.prom_man       = dsparms.prom_man
         self.max_retries    = dsparms.max_retries
         self.filter_callback= filter_callback
@@ -43,7 +44,9 @@ class Events:
                         self.dm, 
                         filter_fn           = self.filter_callback,
                         prometheus_counter  = self.c_read,
-                        max_retries         = self.max_retries)
+                        max_retries         = self.max_retries,
+                        use_smds            = self.dsparms.use_smds,
+                        )
                 evt = next(self._evt_man)
                 if not any(evt._dgrams): return self.__next__()
                 self.smdr_man.last_seen_event = evt
@@ -66,7 +69,9 @@ class Events:
                         self.dm, 
                         filter_fn           = self.filter_callback,
                         prometheus_counter  = self.c_read,
-                        max_retries         = self.max_retries)
+                        max_retries         = self.max_retries,
+                        use_smds            = self.dsparms.use_smds,
+                        )
                 evt = next(self._evt_man)
                 if not any(evt._dgrams): return self.__next__()
                 return evt

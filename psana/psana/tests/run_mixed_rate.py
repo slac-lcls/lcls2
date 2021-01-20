@@ -11,7 +11,7 @@ def filter_fn(evt):
     return True
 
 # Test mixed rate detectors
-xtc_mixedrate_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'mixed_rate')
+xtc_mixedrate_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_data', 'mixed_rate')
 ds = DataSource(exp='xpptut15', run=1, dir=xtc_mixedrate_dir)
 sendbuf = np.zeros(1, dtype='i')
 recvbuf = None

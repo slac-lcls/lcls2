@@ -65,7 +65,7 @@ for run in ds.runs():
 
 
 # Usecase#2 looping through steps
-ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
+ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, batch_size=10)
 for run in ds.runs():
     det = run.Detector('xppcspad')
     for step in run.steps():

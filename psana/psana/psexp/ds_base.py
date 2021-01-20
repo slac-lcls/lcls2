@@ -26,26 +26,31 @@ class DsParms(object):
         self.prom_man    = prom_man
         self.calibconst  = {}
         self.max_retries = max_retries
+        self.use_smds    = [] # flag showing True for smd files swapped with bigdata files
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table):
         self.det_classes, self.xtc_info, self.det_info_table = det_classes, xtc_info, det_info_table
 
-class DataSourceBase(abc.ABC):
-    filter      = 0         # callback that takes an evt and return True/False.
-    batch_size  = 1         # length of batched offsets
-    max_events  = 0         # no. of maximum events
-    detectors   = []        # user-selected detector names
-    exp         = None      # experiment id (e.g. xpptut13)
-    runnum     = None      # run no. 
-    live        = False     # turns live mode on/off 
-    dir         = None      # manual entry for path to xtc files
-    files        = None      # xtc2 file path
-    shmem       = None
-    destination = 0         # callback that returns rank no. (used by EventBuilder)
-    monitor     = False     # turns prometheus monitoring client of/off
+    def set_use_smds(self, use_smds):
+        self.use_smds = use_smds
 
+class DataSourceBase(abc.ABC):
     def __init__(self, **kwargs):
         """Initializes datasource base"""
+        self.filter      = 0         # callback that takes an evt and return True/False.
+        self.batch_size  = 1         # length of batched offsets
+        self.max_events  = 0         # no. of maximum events
+        self.detectors   = []        # user-selected detector names
+        self.exp         = None      # experiment id (e.g. xpptut13)
+        self.runnum      = None      # run no. 
+        self.live        = False     # turns live mode on/off 
+        self.dir         = None      # manual entry for path to xtc files
+        self.files       = None      # xtc2 file path
+        self.shmem       = None
+        self.destination = 0         # callback that returns rank no. (used by EventBuilder)
+        self.monitor     = False     # turns prometheus monitoring client of/off
+        self.as_smds     = []        # swap smd file(s) with bigdata files for these detetors
+
         if kwargs is not None:
             self.smalldata_kwargs = {}
             keywords = ('exp', 
@@ -60,7 +65,9 @@ class DataSourceBase(abc.ABC):
                     'destination',
                     'live',
                     'smalldata_kwargs', 
-                    'monitor')
+                    'monitor',
+                    'as_smds',
+                    )
             
             for k in keywords:
                 if k in kwargs:
@@ -104,6 +111,7 @@ class DataSourceBase(abc.ABC):
                      os.path.basename(smd_file).split('.smd')[0] + '.xtc2'))]
         self.smd_files = smd_files
         self.xtc_files = xtc_files
+        self.dsparms.set_use_smds([False]*len(self.smd_files))
 
     def _setup_runnum_list(self):
         """
@@ -161,29 +169,65 @@ class DataSourceBase(abc.ABC):
         self.e.set()
 
     def _apply_detector_selection(self):
-        if self.detectors:
-            s1 = set(self.detectors)
-            xtc_files = []
-            smd_files = []
-
+        """
+        Handles two arguments
+        1) detectors=[detname,]
+            Reduce no. of smd/xtc files to only those with selectec detectors
+        2) as_smds=[detname,]
+            Swap out smd files with these given detectors with bigdata files
+        """
+        use_smds = [False] * len(self.smd_files)
+        if self.detectors or self.as_smds:
             # Get tmp configs using SmdReader
             # this smd_fds, configs, and SmdReader will not be used later
             smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
-            logging.info(f'ds: smd0 opened tmp smd_fds: {smd_fds}')
+            logging.info(f'ds_base: smd0 opened tmp smd_fds: {smd_fds}')
             smdr_man = SmdReaderManager(smd_fds, self.dsparms)
-            configs = smdr_man.get_next_dgrams()
-            for i, config in enumerate(configs):
-                if s1.intersection(set(config.__dict__.keys())):
-                    if self.xtc_files: xtc_files.append(self.xtc_files[i])
-                    if self.smd_files: smd_files.append(self.smd_files[i])
+            all_configs = smdr_man.get_next_dgrams()
             
-            if not (self.smd_files==smd_files and self.xtc_files==xtc_files):
-                self.xtc_files = xtc_files
-                self.smd_files = smd_files
-                
-                for smd_fds in smd_fds:
-                    os.close(smd_fds)
-                logging.info(f'ds_base: detector(s) selected #smd_files={len(self.smd_files)}') 
+            xtc_files = []
+            smd_files = []
+            configs = []
+            if self.detectors:
+                s1 = set(self.detectors)
+                for i, config in enumerate(all_configs):
+                    if s1.intersection(set(config.software.__dict__.keys())):
+                        if self.xtc_files: xtc_files.append(self.xtc_files[i])
+                        if self.smd_files: smd_files.append(self.smd_files[i])
+                        configs.append(config)
+                msg = f"""ds_base: applying detector selection
+    selected detectors: {self.detectors}
+    smd_files n_selected/n_total: {len(smd_files)}/{len(self.smd_files)}
+    {','.join([os.path.basename(smd_file) for smd_file in smd_files])}
+    xtc_files n_selected/n_total: {len(xtc_files)}/{len(self.xtc_files)}
+    {','.join([os.path.basename(xtc_file) for xtc_file in xtc_files])}
+    """
+                logging.info(msg)
+            else:
+                xtc_files = self.xtc_files[:]
+                smd_files = self.smd_files[:]
+                configs = all_configs
+
+            use_smds = [False] * len(smd_files)
+            if self.as_smds:
+                s1 = set(self.as_smds)
+                msg = f"""ds_base: applying smd files swap
+    selected detectors: {self.as_smds}\n"""
+                for i, config in enumerate(configs):
+                    if s1.intersection(set(config.software.__dict__.keys())):
+                        smd_files[i] = xtc_files[i]
+                        use_smds[i] = True
+                    msg += f'   smd_files[{i}]={os.path.basename(smd_files[i])} use_smds[{i}]={use_smds[i]}\n'
+                logging.info(msg)
+            
+            self.xtc_files = xtc_files
+            self.smd_files = smd_files
+            
+            for smd_fd in smd_fds:
+                os.close(smd_fd)
+            logging.info(f"ds_base: close tmp smd fds:{smd_fds}")
+
+        self.dsparms.set_use_smds(use_smds)
 
     def _setup_det_class_table(self):
         """
@@ -200,7 +244,7 @@ class DataSourceBase(abc.ABC):
         # if a detector/drp_class combo exists in two cfg dgrams
         # it will be OK... they should give the same final Detector class
 
-        for cfg_dgram in self._configs:
+        for i, cfg_dgram in enumerate(self._configs):
             for det_name, det_dict in cfg_dgram.software.__dict__.items():
                 # go find the class of the first segment in the dict
                 # they should all be identical
@@ -331,10 +375,8 @@ class DataSourceBase(abc.ABC):
     def _close_opened_smd_files(self):
         # Make sure to close all smd files opened by previous run
         if self.smd_fds is not None:
-            txt = "ds_base: "
             for fd in self.smd_fds:
                 os.close(fd)
-                txt += f' close smd fd:{fd}'
-            logging.info(txt)
+            logging.info(f'ds_base: close smd fds: {self.smd_fds}')
 
 

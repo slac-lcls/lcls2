@@ -149,15 +149,26 @@ class Event():
         return service
 
     def get_offsets_and_sizes(self):
-        ofsz = np.zeros((self._size, 2), dtype=np.int)
-        for i, d in enumerate(self._dgrams):
-            if d:
-                if self.service() == TransitionId.L1Accept:
-                    ofsz[i,:] = [d.smdinfo[0].offsetAlg.intOffset, \
-                            d.smdinfo[0].offsetAlg.intDgramSize]
-                else:
-                    ofsz[i,1] = d._size
-        return ofsz
+        offset_and_size_arr = np.zeros((self._size, 2), dtype=np.int)
+        for i in range(self._size):
+            offset_and_size_arr[i, :] = self.get_offset_and_size(i)
+        return offset_and_size_arr
+
+    def get_offset_and_size(self, i):
+        """
+        Returns value of offset and size stored in smdinfo event
+        * For other event, return 0 of offset and size of the dgram
+        for size.
+        """
+        d = self._dgrams[i]
+        offset_and_size = np.zeros((1,2), dtype=np.int)
+        if d:
+            if hasattr(d, "smdinfo"):
+                offset_and_size[:] = [d.smdinfo[0].offsetAlg.intOffset, \
+                        d.smdinfo[0].offsetAlg.intDgramSize]
+            else:
+                offset_and_size[0,1] = d._size
+        return offset_and_size
 
     def datetime(self):
         sec = (self.timestamp>>32)

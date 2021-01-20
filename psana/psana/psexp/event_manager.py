@@ -19,7 +19,8 @@ class EventManager(object):
           Yield one bigdata event.
     """
     def __init__(self, view, smd_configs, dm,  
-            filter_fn=0, prometheus_counter=None, max_retries=0):
+            filter_fn=0, prometheus_counter=None, 
+            max_retries=0, use_smds=[]):
         if view:
             pf = PacketFooter(view=view)
             self.smd_events = pf.split_packets()
@@ -35,6 +36,7 @@ class EventManager(object):
         self.cn_events = 0
         self.prometheus_counter = prometheus_counter
         self.max_retries = max_retries
+        self.use_smds = use_smds
 
         if not self.filter_fn and len(self.dm.xtc_files) > 0:
             self._read_bigdata_in_chunk()
@@ -43,38 +45,44 @@ class EventManager(object):
     def _read_chunks_from_disk(self, fds, offsets, sizes):
         sum_read_nbytes = 0 # for prometheus counter
         st = time.time()
-        for i in range(self.n_smd_files):
-            offset = offsets[i]
-            size = sizes[i]
+        
+
+        for i_smd in range(self.n_smd_files):
+            if self.use_smds[i_smd]: continue # smd data were already copied
+            
+            offset = offsets[i_smd]
+            size = sizes[i_smd]
             chunk = bytearray()
-            for j in range(self.max_retries+1):
-                chunk.extend(os.pread(fds[i], size, offset))
+            logging.info(f'event_manager: _read_chunks_from_disk i_smd={i_smd}')
+            for _ in range(self.max_retries+1):
+                chunk.extend(os.pread(fds[i_smd], size, offset))
                 got = memoryview(chunk).nbytes
-                if got == sizes[i]:
+                if got == sizes[i_smd]:
                     break
                 offset += got
                 size -= got
-            self.bigdata[i].extend(chunk)
-            sum_read_nbytes += sizes[i]
+            self.bigdata[i_smd].extend(chunk)
+            sum_read_nbytes += sizes[i_smd]
         en = time.time()
         rate = 0
         if sum_read_nbytes > 0:
             rate = (sum_read_nbytes/1e6)/(en-st)
-        #logging.info(f"event_manager: bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
+        logging.info(f"event_manager: bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
         self._inc_prometheus_counter('MB', sum_read_nbytes/1e6)
         return 
     
     @s_bd_disk.time()
-    def _read_event_from_disk(self, offsets, sizes):
-        sum_read_nbytes = np.sum(sizes)
+    def _read_dgram_from_disk(self, dgram_i, offset_and_size):
+        offset = offset_and_size[0,0]
+        size   = offset_and_size[0,1]
         st              = time.time()
-        data            = self.dm.jump(offsets, sizes)
+        dgram           = self.dm.jumps(dgram_i, offset, size)
         en              = time.time()
         rate            = 0
-        if sum_read_nbytes > 0:
-            rate = (sum_read_nbytes/1e6)/(en-st)
-        logging.info(f"event_manager: bd reads single {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
-        return data 
+        if dgram._size > 0:
+            rate = (dgram._size/1e6)/(en-st)
+        logging.info(f"event_manager: bd reads dgram{dgram_i} {dgram._size/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
+        return dgram
             
     def _read_bigdata_in_chunk(self):
         """ Read bigdata chunks of 'size' bytes and store them in views
@@ -92,37 +100,49 @@ class EventManager(object):
         
         # Look for first L1 event - copy all non L1 to bigdata buffers
         first_L1_pos = -1
-        for i, event_bytes in enumerate(self.smd_events):
+        for i_evt, event_bytes in enumerate(self.smd_events):
             if event_bytes:
                 smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.get_run())
                 ofsz = smd_evt.get_offsets_and_sizes() 
                 if smd_evt.service() == TransitionId.L1Accept:
-                    offsets = ofsz[:,0]
-                    first_L1_pos = i
+                    for i_smd, smd_dgram in enumerate(smd_evt._dgrams):
+                        if self.use_smds[i_smd]:
+                            # use smd_event, offset indicates index of the first event to be used
+                            offsets[i_smd] = i_evt 
+                        else:
+                            offsets[i_smd] = ofsz[i_smd, 0]
+                    first_L1_pos = i_evt
                     break
                 else:
                     for smd_id, d in enumerate(smd_evt._dgrams):
                         if not d: continue
                         self.bigdata[smd_id].extend(d)
 
-                if i > 0:
-                    self.ofsz_batch[i,:,0] = self.ofsz_batch[i-1,:,0] + self.ofsz_batch[i-1,:,1]
-                self.ofsz_batch[i,:,1] = ofsz[:,1]
+                if i_evt > 0:
+                    self.ofsz_batch[i_evt,:,0] = self.ofsz_batch[i_evt-1,:,0] + self.ofsz_batch[i_evt-1,:,1]
+                self.ofsz_batch[i_evt,:,1] = ofsz[:,1]
                 
         if first_L1_pos == -1: return
 
-        for i, event_bytes in enumerate(self.smd_events[first_L1_pos:]):
-            j = i + first_L1_pos
+        for i_evt, event_bytes in enumerate(self.smd_events[first_L1_pos:]):
+            j_evt = i_evt + first_L1_pos
             if event_bytes:
                 smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.get_run())
-                ofsz = smd_evt.get_offsets_and_sizes()
-
-                if j > 0:
-                    self.ofsz_batch[j,:,0] = self.ofsz_batch[j-1,:,0] + self.ofsz_batch[j-1,:,1]
-                self.ofsz_batch[j,:,1] = ofsz[:,1]
-
-                sizes += ofsz[:,1]
-       
+                for i_smd, smd_dgram in enumerate(smd_evt._dgrams):
+                    if self.use_smds[i_smd]:
+                        d_size = smd_dgram._size
+                        self.bigdata[i_smd].extend(smd_dgram)
+                    else:
+                        d_size = smd_evt.get_offset_and_size(i_smd)[0,1] # only need size
+                    if j_evt > 0:
+                        prev_d_offset = self.ofsz_batch[j_evt-1, i_smd, 0]
+                        prev_d_size = self.ofsz_batch[j_evt-1, i_smd, 1]
+                        d_offset = prev_d_offset + prev_d_size
+                    else:
+                        d_offset = 0
+                    self.ofsz_batch[j_evt, i_smd] = [d_offset, d_size] 
+                    sizes[i_smd] += d_size
+                       
         # If no data were filtered, we can assume that all bigdata
         # dgrams starting from the first offset are stored consecutively
         # in the file. We read a chunk of sum(all dgram sizes) and
@@ -139,32 +159,37 @@ class EventManager(object):
     def __next__(self):
         if self.cn_events == self.n_events: 
             raise StopIteration
-        if len(self.dm.xtc_files) == 0:
-            smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.get_run())
+        
+        smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.get_run())
+        if len(self.dm.xtc_files)==0 or smd_evt.service() != TransitionId.L1Accept:
             self.cn_events += 1
             self._inc_prometheus_counter('evts')
             return smd_evt
         
         if self.filter_fn:
-            smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.get_run())
+            bd_dgrams = []
+            read_size = 0
+            for smd_i, smd_dgram in enumerate(smd_evt._dgrams):
+                if self.use_smds[smd_i]:
+                    bd_dgrams.append(smd_dgram)
+                else:
+                    offset_and_size = smd_evt.get_offset_and_size(smd_i)
+                    read_size += offset_and_size[0,1]
+                    bd_dgrams.append(self._read_dgram_from_disk(smd_i, offset_and_size))
+            bd_evt = Event(dgrams=bd_dgrams, run=self.dm.get_run())
             self.cn_events += 1
-            if smd_evt.service() == TransitionId.L1Accept:
-                offset_and_size_array = smd_evt.get_offsets_and_sizes()
-                bd_evt = self._read_event_from_disk(offset_and_size_array[:,0], offset_and_size_array[:,1])
-                self._inc_prometheus_counter('MB', np.sum(offset_and_size_array[:,1])/1e6)
-            else:
-                bd_evt = smd_evt
-
+            self._inc_prometheus_counter('MB', read_size/1e6)
             self._inc_prometheus_counter('evts')
             return bd_evt
         
         dgrams = [None] * self.n_smd_files
         ofsz = self.ofsz_batch[self.cn_events,:,:]
-        for j in range(self.n_smd_files):
-            d_offset, d_size = ofsz[j]
+        for i_smd in range(self.n_smd_files):
+            d_offset, d_size = ofsz[i_smd]
             if d_size and d_offset + d_size <= \
-                    memoryview(self.bigdata[j]).nbytes:
-                dgrams[j] = dgram.Dgram(view=self.bigdata[j], config=self.dm.configs[j], offset=d_offset)
+                    memoryview(self.bigdata[i_smd]).nbytes:
+                dgrams[i_smd] = dgram.Dgram(view=self.bigdata[i_smd], 
+                        config=self.dm.configs[i_smd], offset=d_offset)
         bd_evt = Event(dgrams, run=self.dm.get_run())
         self.cn_events += 1
         self._inc_prometheus_counter('evts')

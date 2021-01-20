@@ -163,8 +163,10 @@ class MPIDataSource(DataSourceBase):
         else:
             self.xtc_files = None
             self.smd_files = None
+            self.dsparms.use_smds = None
         self.xtc_files = self.comms.psana_comm.bcast(self.xtc_files, root=0)
         self.smd_files = self.comms.psana_comm.bcast(self.smd_files, root=0)
+        self.dsparms.use_smds = self.comms.psana_comm.bcast(self.dsparms.use_smds, root=0)
         
         self._setup_configs()
         self.dm = DgramManager(self.xtc_files, configs=self._configs)

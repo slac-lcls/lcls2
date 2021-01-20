@@ -50,6 +50,8 @@ class ConfigHelper(object):
 
 class Logging(object):
 
-    @staticmethod
-    def info(msg):
-        logging.debug(msg)
+    @classmethod
+    def info(self, msg):
+        if not hasattr(self, 'logger'): 
+            self.logger = logging.getLogger('psana_psexp')
+        self.logger.debug(msg)
