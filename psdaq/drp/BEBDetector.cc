@@ -45,7 +45,8 @@ std::string BEBDetector::_string_from_PyDict(PyObject* dict, const char* key)
 BEBDetector::BEBDetector(Parameters* para, MemPool* pool) :
     Detector      (para, pool),
     m_connect_json(""),
-    m_module      (0)
+    m_module      (0),
+    m_configScanner (0)
 {
     virtChan = 1;
 }
@@ -97,9 +98,8 @@ void BEBDetector::_init(const char* arg)
       // so that an automated software solution would know which
       // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
       if (!m_paddr || m_paddr==0xffffffff) {
-          char errstr[500];
-          sprintf(errstr,"XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
-          throw errstr;
+          printf("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
+          abort();
       }
 
       _connect(mbytes);
