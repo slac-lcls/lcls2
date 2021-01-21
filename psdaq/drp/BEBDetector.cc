@@ -98,7 +98,7 @@ void BEBDetector::_init(const char* arg)
       // so that an automated software solution would know which
       // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
       if (!m_paddr || m_paddr==0xffffffff) {
-          printf("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
+          logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
           abort();
       }
 

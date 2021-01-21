@@ -120,9 +120,8 @@ json XpmDetector::connectionInfo()
     // so that an automated software solution would know which
     // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
     if (!reg || reg==0xffffffff) {
-        char errstr[500];
-        sprintf(errstr,"XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",reg);
-        throw errstr;
+        logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",reg);
+        abort();
     }
     int xpm  = (reg >> 20) & 0x0F;
     int port = (reg >>  0) & 0xFF;

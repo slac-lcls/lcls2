@@ -140,9 +140,8 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
             // so that an automated software solution would know which
             // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
             if (!m_paddr || m_paddr==0xffffffff) {
-                char errstr[500];
-                sprintf(errstr,"XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
-                throw errstr;
+                logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
+                abort();
             }
             else
                 logging::info("paddr %x",m_paddr);
