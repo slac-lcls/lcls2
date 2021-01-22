@@ -43,7 +43,7 @@ def do_main():
 
     deploy_constants(**opts)
 
-    logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
+    logger.info('is completed, consumed time %.3f sec' % (time() - t0_sec))
 
 
 def usage(mode=0):
@@ -84,9 +84,9 @@ def argument_parser():
     #High gain: 132 ADU / 8.05 keV = 16.40 ADU/keV
     #Medium gain: 132 ADU / 8.05 keV / 3 = 5.466 ADU/keV
     #Low gain: 132 ADU / 8.05 keV / 100 = 0.164 ADU/keV
-    d_version = None
-    d_run_end = None
-    d_comment = None
+    d_version = 'V2021-01-21'
+    d_run_end = 'end'
+    d_comment = 'no comment'
 
     h_exp     = 'experiment name, default = %s' % d_exp
     h_det     = 'detector name, default = %s' % d_det
@@ -125,7 +125,7 @@ def argument_parser():
     parser.add_argument('-p', '--proc',    default=d_proc,     type=str,   help=h_proc)
     parser.add_argument('-I', '--paninds', default=d_paninds,  type=str,   help=h_paninds)
     parser.add_argument('-v', '--version', default=d_version,  type=str,   help=h_version)
-    parser.add_argument('-R', '--run_end', default=d_run_end,  type=int,   help=h_run_end)
+    parser.add_argument('-R', '--run_end', default=d_run_end,  type=str,   help=h_run_end)
     parser.add_argument('-C', '--comment', default=d_comment,  type=str,   help=h_comment)
 
     return parser
@@ -136,4 +136,4 @@ if __name__ == "__main__":
     do_main()
     exit('End of %s'%scrname)
 
-#---- EOF
+# EOF
