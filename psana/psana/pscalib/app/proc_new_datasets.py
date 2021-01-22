@@ -34,7 +34,7 @@ def proc_exp_runs(exp_runs, procname='pixel_status', do_proc=False, qname='psneh
                        dt_sec=60, sources='cspad,opal,epix100,pnccd,princeton,andor') :
 
     njobs_in_queue = number_of_batch_jobs(qname=qname)
-    print('%d jobs found in queue %s' % (njobs_in_queue, qname)))
+    print('%d jobs found in queue %s' % (njobs_in_queue, qname))
 
     for kstatus in ('SSUSP','UNKWN') :
       for id in batch_job_ids(status=kstatus, user=None, qname=qname) : 

@@ -52,7 +52,7 @@ def proc_control(parser) :
     logfname = '%s-%s.txt' % (logpref, tstamp)
 
     for i in range(10) :
-        if gu.create_path(logfname, depth=6, mode=0774, verb=False) : continue
+        if gu.create_path(logfname, depth=6, mode=0o774, verb=False) : continue
 
     gu.save_textfile('\nCreated path: %s' % logfname, logfname, mode='a')
     os.chmod(logfname, 0664)    
