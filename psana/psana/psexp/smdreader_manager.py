@@ -83,6 +83,11 @@ class SmdReaderManager(object):
             raise ValueError(msg)
 
     def get_next_dgrams(self):
+        if self.dsparms.max_events > 0 and \
+                self.processed_events >= self.dsparms.max_events:
+            logging.info(f'smdreader_manager: get_next_dgrams max_events={self.dsparms.max_events} reached')
+            return None
+
         dgrams = None
         if not self.smdr.is_complete():
             self._get()
@@ -154,6 +159,7 @@ class SmdReaderManager(object):
                 self.c_read.labels('batches', 'None').inc()
 
                 if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
+                    logging.info(f'smdreader_manager: max_events={self.dsparms.max_events} reached')
                     is_done = True
                 
                 smd_view = bytearray()
