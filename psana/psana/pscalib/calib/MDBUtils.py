@@ -34,8 +34,8 @@ Usage ::
     mu.delete_document_from_collection(col, id)
 
     dbname = mu.db_prefixed_name(name)
-    dbname = mu.get_dbname(**kwargs)
-    dbname = mu.get_colname(**kwargs)
+    dbname = mu.get_dbname(**kwa)
+    dbname = mu.get_colname(**kwa)
 
     # All connect methods in one call
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
@@ -44,10 +44,10 @@ Usage ::
     ts    = mu._timestamp(time_sec:int,int,float)
     ts    = mu.timestamp_id(id)
     ts    = mu.timestamp_doc(doc)
-    t, ts = mu.time_and_timestamp(**kwargs)
+    t, ts = mu.time_and_timestamp(**kwa)
 
     # Make document
-    doc = mu.docdic(data, id_data, **kwargs)
+    doc = mu.docdic(data, id_data, **kwa)
 
     # Print document content
     mu.print_doc(doc)
@@ -59,9 +59,9 @@ Usage ::
     # Insert data
     binarydata = encode_data(data)
     id_data = mu.insert_data(data, fs)
-    id_data, id_doc = mu.insert_data_and_doc(data, fs, col, **kwargs)
-    id_data_exp, id_data_det, id_exp, id_det = mu.insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs)
-    mu.insert_calib_data(data, **kwargs)
+    id_data, id_doc = mu.insert_data_and_doc(data, fs, col, **kwa)
+    id_data_exp, id_data_det, id_exp, id_det = mu.insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwa)
+    mu.insert_calib_data(data, **kwa)
 
     msg = mu._error_msg(msg:str) 
     mu.valid_experiment(experiment:str)
@@ -72,7 +72,7 @@ Usage ::
     mu.valid_comment(comment:str)
     mu.valid_data(data, detector:str, ctype:str)
 
-    mu.insert_constants(data, experiment:str, detector:str, ctype:str, run:int, time_sec:int, **kwargs)
+    mu.insert_constants(data, experiment:str, detector:str, ctype:str, run:int, time_sec:int, **kwa)
 
     mu.exec_command(cmd)
     mu.exportdb(host, port, dbname, fname, **kwa) 
@@ -128,6 +128,7 @@ from collections.abc import Iterable
 import os
 import sys
 from time import time
+import json
 
 import numpy as np
 import psana.pyalgos.generic.Utils as gu
@@ -504,17 +505,17 @@ def db_prefixed_name(name, prefix=cc.DBNAME_PREFIX):
 
 #------------------------------
 
-def get_dbname(**kwargs):
+def get_dbname(**kwa):
     """Returns (str) dbname or None.
        Implements logics for dbname selection:
        -- dbname is used if defined else
        -- prefixed experiment else
        -- prefixed detector else None
     """
-    exp    = kwargs.get('experiment', None)
-    det    = kwargs.get('detector', None)
-    dbname = kwargs.get('dbname', None)
-    mode   = kwargs.get('cli_mode', None)
+    exp    = kwa.get('experiment', None)
+    det    = kwa.get('detector', None)
+    dbname = kwa.get('dbname', None)
+    mode   = kwa.get('cli_mode', None)
 
     if dbname is None:
         name = exp if not (exp is None) else det
@@ -527,33 +528,33 @@ def get_dbname(**kwargs):
 
 #------------------------------
 
-def get_colname(**kwargs):
+def get_colname(**kwa):
     """Returns (str) collection name or None.
        Implements logics for collection selection:
        -- dbname is not defined returns None
        -- colname is defined returns colname
        -- returns detector name, it might be None
     """
-    dbname = get_dbname(**kwargs)
+    dbname = get_dbname(**kwa)
     if dbname is None: return None
 
-    colname = kwargs.get('colname', None)
+    colname = kwa.get('colname', None)
     if colname is not None: return colname
 
-    return kwargs.get('detector', None)
+    return kwa.get('detector', None)
 
 #------------------------------
 
-def connect(**kwargs):
+def connect(**kwa):
     """Connects to host, port with authorization.
        Returns client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det
     """
-    host    = kwargs.get('host', cc.HOST)
-    port    = kwargs.get('port', cc.PORT)
-    user    = kwargs.get('user', cc.USERNAME)
-    upwd    = kwargs.get('upwd', cc.OPER)
-    expname = kwargs.get('experiment', None)
-    detname = kwargs.get('detector', 'camera-0-cxids1-0')
+    host    = kwa.get('host', cc.HOST)
+    port    = kwa.get('port', cc.PORT)
+    user    = kwa.get('user', cc.USERNAME)
+    upwd    = kwa.get('upwd', cc.OPER)
+    expname = kwa.get('experiment', None)
+    detname = kwa.get('detector', 'camera-0-cxids1-0')
 
     dbname_exp = db_prefixed_name(expname)
     dbname_det = db_prefixed_name(detname)
@@ -613,13 +614,13 @@ def timestamp_doc(doc):
 
 #------------------------------
 
-def time_and_timestamp(**kwargs):
-    """Returns "time_sec" and "time_stamp" from **kwargs.
+def time_and_timestamp(**kwa):
+    """Returns "time_sec" and "time_stamp" from **kwa.
        If one of these parameters is missing, another is reconstructed from available one.
        If both missing - current time is used.
     """
-    time_sec   = kwargs.get('time_sec', None)
-    time_stamp = kwargs.get('time_stamp', None)
+    time_sec   = kwa.get('time_sec', None)
+    time_stamp = kwa.get('time_stamp', None)
 
     if time_sec is not None:
         time_sec = int(time_sec)
@@ -639,30 +640,35 @@ def time_and_timestamp(**kwargs):
 
 #------------------------------
 
-def docdic(data, dataid, **kwargs):
+def docdic(data, dataid, **kwa):
     """Returns dictionary for db document in style of JSON object.
     """
     #if not is_valid_objectid(dataid):
     #    logger.warning('Data id "%s" IS NOT VALID' % str(dataid))
 
+    dic_extpars = kwa.get('extpars', {'content':'extended parameters dict->json->str',})
+    str_extpars = json.dumps(dic_extpars)
+
     doc = {
-          'experiment': kwargs.get('experiment', None),
-          'run'       : kwargs.get('run', 0),
-          'run_end'   : kwargs.get('run_end', 'end'),
-          'detector'  : kwargs.get('detector', None),
-          'ctype'     : kwargs.get('ctype', None),
-          'dtype'     : kwargs.get('dtype', None),
-          'time_sec'  : kwargs.get('time_sec', None),
-          'time_stamp': kwargs.get('time_stamp', None),
-          'version'   : kwargs.get('version', 'v00'),
-          'comment'   : kwargs.get('comment', ''),
-          'extpars'   : kwargs.get('extpars', None),
+          'experiment': kwa.get('experiment', None),
+          'run'       : kwa.get('run', 0),
+          'run_end'   : kwa.get('run_end', 'end'),
+          'detector'  : kwa.get('detector', None),
+          'ctype'     : kwa.get('ctype', None),
+          'dtype'     : kwa.get('dtype', None),
+          'time_sec'  : kwa.get('time_sec', None),
+          'time_stamp': kwa.get('time_stamp', None),
+          'version'   : kwa.get('version', 'v00'),
+          'comment'   : kwa.get('comment', 'no comment'),
           'uid'       : gu.get_login(),
           'host'      : gu.get_hostname(),
           'cwd'       : gu.get_cwd(),
           'id_data'   : dataid,
-          'longname'  : kwargs.get('longname', None),
-          }
+          'longname'  : kwa.get('longname', None),
+          'run_orig'  : kwa.get('run_orig', 0),
+          'tstamp_orig': kwa.get('tstamp_orig', None),
+          'extpars'   : str_extpars,
+         }
 
     if isinstance(data, np.ndarray):
         doc['data_type']  = 'ndarray'
@@ -782,7 +788,7 @@ def insert_data(data, fs):
 
 #------------------------------
 
-def insert_data_and_doc(data, fs, col, **kwargs):
+def insert_data_and_doc(data, fs, col, **kwa):
     """For open collection col and GridFS fs inserts calib data and document.
        Returns inserted id_data in fs and id_doc in col.
     """
@@ -794,14 +800,14 @@ def insert_data_and_doc(data, fs, col, **kwargs):
 
     id_data = insert_data(data, fs)
     logger.debug('  - in fs %s id_data: %s' % (fs, id_data))
-    doc = docdic(data, id_data, **kwargs)
+    doc = docdic(data, id_data, **kwa)
     id_doc = insert_document(doc, col)
     logger.debug('  - in collection %s id_det: %s' % (col.name, id_doc))
     return id_data, id_doc
 
 #------------------------------
 
-def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs):
+def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwa):
     """For open connection inserts calib data and two documents.
        Returns inserted id_data, id_exp, id_det.
     """
@@ -814,7 +820,7 @@ def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs):
         + '\n  - in fs_det %s id_data_det: %s' % (fs_det, id_data_det)
     logger.debug(msg)
 
-    doc = docdic(data, id_data_exp, **kwargs)
+    doc = docdic(data, id_data_exp, **kwa)
     logger.debug(doc_info(doc, fmt='  %s:%s')) #sep='\n  %16s: %s'
 
     t0_sec = time()
@@ -833,12 +839,12 @@ def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs):
 
 #------------------------------
 
-def insert_calib_data(data, **kwargs):
+def insert_calib_data(data, **kwa):
     """Connects to calibration data base and inserts calib data.
     """
-    client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(**kwargs)
+    client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(**kwa)
     #id_data_exp, id_data_det, id_exp, id_det = \
-    _,_,_,_ = insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwargs)
+    _,_,_,_ = insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwa)
 
 #------------------------------
 
@@ -880,13 +886,13 @@ def valid_data(data, detector, ctype):
 
 #------------------------------
 
-def insert_constants(data, experiment, detector, ctype, run, time_sec, **kwargs):
+def insert_constants(data, experiment, detector, ctype, run, time_sec, **kwa):
     """Checks validity of input parameters and call insert_calib_data.
     """
     _time_sec, _time_stamp = time_and_timestamp(time_sec=time_sec,\
-                                                time_stamp=kwargs.get('time_stamp', None))
-    _version = kwargs.get('version', 'v00')
-    _comment = kwargs.get('comment', 'default comment')
+                                                time_stamp=kwa.get('time_stamp', None))
+    _version = kwa.get('version', 'v00')
+    _comment = kwa.get('comment', 'default comment')
     _detector = pro_detector_name(detector, add_shortname=True)
 
     valid_experiment(experiment)
@@ -900,18 +906,18 @@ def insert_constants(data, experiment, detector, ctype, run, time_sec, **kwargs)
     kwa = {
           'experiment': experiment,
           'run'       : run,
-          'run_end'   : kwargs.get('run_end', 'end'),
+          'run_end'   : kwa.get('run_end', 'end'),
           'detector'  : _detector,
           'ctype'     : ctype,
           'time_sec'  : _time_sec,
           'time_stamp': _time_stamp,
           'version'   : _version,
           'comment'   : _comment,
-          'host'      : kwargs.get('host', cc.HOST),
-          'port'      : kwargs.get('port', cc.PORT),
-          'user'      : kwargs.get('user', cc.USERNAME),
-          'upwd'      : kwargs.get('upwd', cc.USERPW),
-          'extpars'   : kwargs.get('extpars', None),
+          'host'      : kwa.get('host', cc.HOST),
+          'port'      : kwa.get('port', cc.PORT),
+          'user'      : kwa.get('user', cc.USERNAME),
+          'upwd'      : kwa.get('upwd', cc.USERPW),
+          'extpars'   : kwa.get('extpars', None),
           }
 
     insert_calib_data(data, **kwa)
