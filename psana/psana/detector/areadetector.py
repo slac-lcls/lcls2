@@ -265,6 +265,35 @@ class AreaDetector(DetectorImpl):
                img_interpolated(data, self._interpol_pars_) if mapmode==4 else\
                self.img_entries
 
+
+    def _mask_from_status(self, **kwa) -> Array3d:
+        """
+        For simple detectors w/o multi-gain ranges
+
+        Parameters **kwa
+        ----------------
+        ##mode - int 0/1/2 masks zero/four/eight neighbors around each bad pixel
+
+        Returns
+        -------
+        mask made of status: np.array, ndim=3, shape: as full detector data
+        """
+
+        status = self._status()
+        #logger.debug(info_ndarr(status, 'status '))
+        return np.asarray(np.select((status>0,), (0,), default=1), dtype=np.uint8)
+
+
+#     def _mask_neighbors(self, **kwa) -> Array3d:
+       #mode = kwargs.get('mode', 0)
+        #if mode: smask = gu.mask_neighbors(smask, allnbrs=(True if mode>=2 else False))
+
+        #segs = self._segments(evt)
+        #if segs is None:
+        #    logger.warning('self._segments(evt) is None')
+        #    return None
+        #return arr3d_from_dict({k:v.raw for k,v in segs.items()})
+
 #----
 
 if __name__ == "__main__":
