@@ -701,19 +701,20 @@ def get_config_info_for_dataset_detname(**kwargs):
       return cpdic
 
 
-def merge_panel_gain_ranges(dir_ctype, panel_id, ctype, tstamp, shape, ofname, fmt='%.3f', fac_mode=0o777):
+def merge_panel_gain_ranges(dir_ctype, panel_id, ctype, tstamp, shape, dtype, ofname, fmt='%.3f', fac_mode=0o777):
 
-    logger.debug('In merge_panel_gain_ranges for\n  dir_ctype: %s\n  id: %s\n  ctype=%s tstamp=%s shape=%s'%\
-                 (dir_ctype, panel_id, ctype, str(tstamp), str(shape)))
+    logger.debug('In merge_panel_gain_ranges for\n  dir_ctype: %s\n  id: %s\n  ctype=%s tstamp=%s shape=%s dtype=%s fmt=%s'%\
+                 (dir_ctype, panel_id, ctype, str(tstamp), str(shape), str(dtype), str(fmt)))
 
-    nda_def = np.ones(shape, dtype=np.float32) if ctype in ('gain', 'gainci', 'rms') else\
-              np.zeros(shape, dtype=np.float32)
+    #dtype = np.uint64 if ctype in ('status', ) else np.float32
+    nda_def = np.ones(shape, dtype=dtype) if ctype in ('gain', 'gainci', 'rms') else\
+              np.zeros(shape, dtype=dtype)
 
     lstnda = []
     for igm,gm in enumerate(ue.GAIN_MODES):
         fname = None if gm in ue.GAIN_MODES[5:] and ctype in ('status', 'rms') else\
                 find_file_for_timestamp(dir_ctype, '%s_%s' % (ctype,gm), tstamp)
-        nda = np.loadtxt(fname, dtype=np.float32) if fname is not None else\
+        nda = np.loadtxt(fname, dtype=dtype) if fname is not None else\
               nda_def*GAIN_FACTOR_DEF[igm] if ctype in ('gain', 'gainci') else\
               nda_def 
 
@@ -785,8 +786,9 @@ def merge_panels(lst):
     npanels = len(lst)   # 16 or 4 or 1
     shape = lst[0].shape # (7, 1, 352, 384)
     ngmods = shape[0]    # 7
+    dtype = lst[0].dtype #
 
-    logger.debug('In merge_panels: number of panels %d number of gain modes %d' % (npanels,ngmods))
+    logger.debug('In merge_panels: number of panels %d number of gain modes %d dtype %s' % (npanels,ngmods,str(dtype)))
 
     # make list for merging of (352,384) blocks in right order
     mrg_lst = []
@@ -816,8 +818,10 @@ def add_links_for_gainci_fixed_modes(dir_gain, fname_prefix):
 
 def deploy_constants(*args, **opts):
 
-    #from PSCalib.NDArrIO import save_txt; global save_txt
     from psana.pscalib.calib.NDArrIO import save_txt; global save_txt
+    import psana.pscalib.calib.MDBUtils as mu
+    import psana.pscalib.calib.MDBWebUtils as wu
+    cc = wu.cc # import psana.pscalib.calib.CalibConstants as cc
 
     exp        = opts.get('exp', None)     
     detname    = opts.get('det', None)   
@@ -839,6 +843,9 @@ def deploy_constants(*args, **opts):
     low        = opts.get('low',    0.164) # ADU/keV#Low gain: 132 ADU / 8.05 keV / 100 = 0.164 ADU/keV
     proc       = opts.get('proc', 'prsg')
     paninds    = opts.get('paninds', None)
+    version    = opts.get('version', 'N/A')
+    run_end    = opts.get('run_end', 'end')
+    comment    = opts.get('comment', 'no comment')
 
     logger.setLevel(DICT_NAME_TO_LEVEL[logmode])
 
@@ -869,6 +876,8 @@ def deploy_constants(*args, **opts):
                  'pixel_gain'  : fmt_gain,
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status}
+
+    CTYPE_DTYPE = cc.dic_calib_name_to_dtype # {'pedestals': np.float32,...}
 
     logger.debug('detector "%s" panel ids:\n  %s' % (detname, '\n  '.join(panel_ids)))
 
@@ -907,19 +916,17 @@ def deploy_constants(*args, **opts):
 
         for (ctype, octype, prefix, dir_ctype) in mpars:
             fmt = CTYPE_FMT.get(octype,'%.5f')
+            nda_dtype = CTYPE_DTYPE.get(octype, np.float32)
+
             logger.debug('begin merging for ctype:%s, octype:%s, fmt:%s,\n  prefix:%s' % (ctype, octype, fmt, prefix))
             fname = '%s_%s.txt' % (prefix, ctype)
-            nda = merge_panel_gain_ranges(dir_ctype, panel_id, ctype, _tstamp, shape, fname, fmt, filemode)
+            nda = merge_panel_gain_ranges(dir_ctype, panel_id, ctype, _tstamp, shape, nda_dtype, fname, fmt, filemode)
             if octype in dic_consts: dic_consts[octype].append(nda) # append for panel per ctype
             else:                    dic_consts[octype] = [nda,]
 
-
     logger.info('\n%s\nMERGE PANEL CONSTANTS AND DEPLOY THEM\n' % (80*'_'))
 
-    if deploy:
-       import psana.pscalib.calib.MDBUtils as mu
-       import psana.pscalib.calib.MDBWebUtils as wu
-       cc = wu.cc
+    #if deploy:
 
     dmerge = dir_merge(dirrepo)
     create_directory(dmerge, mode=dirmode)
@@ -932,21 +939,27 @@ def deploy_constants(*args, **opts):
         fmt = CTYPE_FMT.get(octype,'%.5f')
         save_ndarray_in_textfile(mrg_nda, fmerge, filemode, fmt)
 
-
-        if deploy:
+        if True: # deploy:
 
           dtype = 'ndarray'
 
           _ivalid_run = irun
           _tvalid_sec = cpdic.get('trun_sec', None) 
-          _tvalid_stamp = tstamp_run # 'YYYYmmddHHMMSS'
           if tstamp is not None:
             if tstamp>9999:
               str_ts = str(tstamp)
               _tvalid_sec = time_sec_from_stamp(fmt='%Y%m%d%H%M%S', time_stamp=str_ts)
-              _tvalid_stamp = str_ts
+              _ivalid_run = 0
             else: 
               _ivalid_run = tstamp
+
+          _tvalid_stamp = str_tstamp(fmt=cc.TSFORMAT, time_sec=_tvalid_sec)
+          _longname = cpdic.get('longname', detname)
+
+          dic_extpars = {
+            'content':'extended parameters dict->json->str',
+            'command':' '.join(sys.argv)
+          }
 
           kwa = {
             'iofname': fmerge,
@@ -954,24 +967,31 @@ def deploy_constants(*args, **opts):
             'ctype': octype,
             'dtype': dtype,
             'detector': detname,
-            'longname': cpdic.get('longname', None),
+            'longname': _longname,
             'time_sec':_tvalid_sec,
             'time_stamp': _tvalid_stamp,
-            'time_stamp_dark': cpdic.get('tsrun_dark', None),
+            'tstamp_orig': cpdic.get('tsrun_dark', None),
             'run': _ivalid_run,
-            'run_end': opts.get('run_end', None),
-            'run_dark': irun,
-            'version': opts.get('version', None),
-            'comment': opts.get('comment', None),
+            'run_end': run_end,
+            'run_orig': irun,
+            'version': version,
+            'comment': comment,
+            'extpars': dic_extpars,
           }
 
           logger.debug('DEPLOY metadata: %s' % str(kwa))
 
-          _detname = detname # cpdic.get('longname', None)
+          _detname = _longname # cpdic.get('longname', detname)
 
           data = mu.data_from_file(fmerge, octype, dtype, True)
-          id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
-            wu.add_data_and_two_docs(data, exp, _detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+
+          logger.info(info_ndarr(data, 'merged constants loaded from file'))
+
+          if deploy:
+            id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
+              wu.add_data_and_two_docs(data, exp, _detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+          else:
+            logger.warning('TO DEPLOY CONSTANTS ADD OPTION -D True')
 
 #----
 
