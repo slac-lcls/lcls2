@@ -17,9 +17,8 @@ def global_except_hook(exctype, value, traceback):
     sys.__excepthook__(exctype, value, traceback)
 sys.excepthook = global_except_hook
 
-# for debugging...
-#import logging
-#logging.basicConfig(level=logging.DEBUG, format='(%(threadName)-10s) %(message)s',)
+#from psana.psexp.tools import show_log
+#show_log()
 
 import os
 import vals
