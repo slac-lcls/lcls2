@@ -71,7 +71,7 @@ LASINGOFFREFERENCE = 11
 
 ctype_tuple = (
     (PEDESTALS,      'pedestals',     np.float32), 
-    (PIXEL_STATUS,   'pixel_status',  np.uint16 ), 
+    (PIXEL_STATUS,   'pixel_status',  np.uint64 ),
     (PIXEL_RMS,      'pixel_rms',     np.float32), 
     (PIXEL_GAIN,     'pixel_gain',    np.float32), 
     (PIXEL_MASK,     'pixel_mask',    np.uint8  ), 
@@ -84,13 +84,14 @@ ctype_tuple = (
     (LASINGOFFREFERENCE, 'lasingoffreference', 'hdf5')
 )
 
-list_calib_types  = [rec[0] for rec in ctype_tuple]
-list_calib_names  = [rec[1] for rec in ctype_tuple]
-list_calib_dtypes = [rec[2] for rec in ctype_tuple]
+list_calib_types  = [rec[0] for rec in ctype_tuple] # (PEDESTALS, PIXEL_STATUS,...)
+list_calib_names  = [rec[1] for rec in ctype_tuple] # ('pedestals','pixel_status',...)
+list_calib_dtypes = [rec[2] for rec in ctype_tuple] # (np.float32,  np.uint64,...)
 
 dic_calib_type_to_name  = dict(zip(list_calib_types, list_calib_names))
 dic_calib_name_to_type  = dict(zip(list_calib_names, list_calib_types))
 dic_calib_type_to_dtype = dict(zip(list_calib_types, list_calib_dtypes))
+dic_calib_name_to_dtype = dict(zip(list_calib_names, list_calib_dtypes))
 
 #------------------------------
 
