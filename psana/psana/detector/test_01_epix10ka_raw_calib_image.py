@@ -107,10 +107,11 @@ def datasource_run_det(**kwa):
     return ds, run, det
 
 
-def ds_run_det(fname, args):
-    logger.info('ds_run_det input file:\n  %s' % fname)
+def ds_run_det(args):
 
-    kwa = {'files':fname,} if fname is not None else\
+    logger.info('ds_run_det input file:\n  %s' % args.fname)
+
+    kwa = {'files':args.fname,} if args.fname is not None else\
           {'exp':args.expname,'run':int(args.runs.split(',')[0])}
     #ds = DataSource(exp=args.expt, run=args.run, dir=f'/cds/data/psdm/{args.expt[:3]}/{args.expt}/xtc')
     ds = DataSource(**kwa)
@@ -129,12 +130,17 @@ def ds_run_det(fname, args):
     detnameid = oraw._uniqueid
     expname = orun.expt if orun.expt is not None else args.expname # 'mfxc00318'
     runnum = orun.runnum
+
+    print('run.detnames : ', orun.detnames) # {'epixquad'}
+    print('run.expt     : ', orun.expt)     # tstx00117
+    print('run.id       : ', orun.id)       # 0
+    print('run.timestamp: ', orun.timestamp)# 4190613356186573936 (int)
+
+    print('fname:', args.fname)
     print('expname:', expname)
     print('runnum :', runnum)
-    #print('detname:', oraw._det_name)
     print('detname:', det._det_name)
     print('split detnameid:', '\n'.join(detnameid.split('_')))
-
     print(50*'=')
     test_calib_constants_directly(expname, runnum, detnameid)
 
@@ -143,16 +149,23 @@ def ds_run_det(fname, args):
     return ds, orun, det
 
 
-def test_raw(fname, args):
-    logger.info('in test_raw data from file:\n  %s' % fname)
-    ds, run, det = ds_run_det(fname, args)
+def selected_record(nrec):
+    return nrec<5\
+       or (nrec<50 and not nrec%10)\
+       or (nrec<500 and not nrec%100)\
+       or (not nrec%1000)
+
+
+def test_raw(args):
+
+    ds, run, det = ds_run_det(args)
 
     for stepnum,step in enumerate(run.steps()):
       print('%s\nStep %1d' % (50*'_',stepnum))
 
       for evnum,evt in enumerate(step.events()):
         if evnum>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
-        if evnum>100 and evnum%100!=0: continue
+        if not selected_record(evnum): continue
         print('%s\nEvent %04d' % (50*'_',evnum))
         segs = det.raw.segments(evt)
         raw  = det.raw.raw(evt)
@@ -161,21 +174,11 @@ def test_raw(fname, args):
     print(50*'-')
 
 
-def test_calib(fname, args):
+def test_calib(args):
     from time import time
 
-    logger.info('in test_raw data from file:\n  %s' % fname)
+    ds, run, det = ds_run_det(args)
 
-    #ds = DataSource(files=fname, detname=args.detname)
-    ds, run, det = ds_run_det(fname, args)
-
-    #run = next(ds.runs())
-    #print('\nXXX dir(run):', dir(run))
-    print('XXX runnum       : ', run.runnum)   # 147
-    print('XXX run.detnames : ', run.detnames) # {'epixquad'}
-    print('XXX run.expt     : ', run.expt)     # tstx00117
-    print('XXX run.id       : ', run.id)       # 0
-    print('XXX run.timestamp: ', run.timestamp)# 4190613356186573936 (int)
     t_sec = int(time())
     print('XXX tnow time %d sec as tstamp: %d' % (t_sec,t_sec<<32))
     #print('XXX run.stepinfo : ', run.stepinfo) # {('epixquad', 'step'): ['value', 'docstring'], ('epixquadhw', 'step'): ['value', 'docstring']}
@@ -241,7 +244,7 @@ def test_calib(fname, args):
         print('%s\nStep %1d' % (50*'_',stepnum))
         for evnum,evt in enumerate(step.events()):
             if evnum>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
-            if evnum>2 and evnum%500!=0: continue
+            if not selected_record(evnum): continue
             print('%s\nStep %1d Event %04d' % (50*'_',stepnum, evnum))
             #segs = det.raw._segments(evt)
             #raw  = det.raw.raw(evt)
@@ -262,11 +265,9 @@ def test_calib(fname, args):
     print('\ndir(det.raw): ', dir(det.raw))
 
 
-def test_image(fname, args):
+def test_image(args):
 
-    logger.info('in test_image data from file:\n  %s' % fname)
-    ds, run, det = ds_run_det(fname, args)
-    #det.raw._det_at_raw = det # TEMPORARY SOLUTION
+    ds, run, det = ds_run_det(args)
 
     flimg = None
 
@@ -324,6 +325,28 @@ def test_image(fname, args):
 
     print(50*'-')
 
+
+def test_mask(args):
+    ds, run, det = ds_run_det(args)
+    mask = det.raw._mask_from_status()
+    print(info_ndarr(mask, 'mask '))
+
+    if args.dograph:
+        from psana.detector.UtilsGraphics import gr, fleximage
+        evnum,evt = None, None
+        for evnum,evt in enumerate(run.events()):
+            if evt is None: print('Event %d is None' % evnum); continue
+            print('Found non-empty event %d' % evnum); break
+        if evt is None: exit('ALL events are None')
+
+        #arr = det.raw.raw(evt)
+        arr = mask + 1
+        img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
+        flimg = fleximage(img, arr=arr, h_in=8, nneg=1, npos=3)#, alimits=alimits) #, cmap='jet')
+        gr.show()
+        if args.ofname is not None:
+            gr.save_fig(flimg.fig, fname=args.ofname, verb=True)
+
 #----
 
 if __name__ == "__main__":
@@ -337,17 +360,18 @@ if __name__ == "__main__":
     usage =\
         '\n  python %s <test-name> [optional-arguments]' % SCRNAME\
       + '\n  where test-name: '\
-      + '\n    0 - test_raw("%s")'%fname0\
-      + '\n    1 - test_raw("%s")'%fname1\
-      + '\n    4 - test_calib("%s")'%fname2\
-      + '\n    5 - test_image("%s")'%fname2\
+      + '\n    0 - test_raw("fname=%s")'%fname0\
+      + '\n    1 - test_raw("fname=%s")'%fname1\
+      + '\n    4 - test_calib("fname=%s")'%fname1\
+      + '\n    5 - test_image("fname=%s")'%fname1\
       + '\n    raw   - test_raw  (args)'\
       + '\n    calib - test_calib(args)'\
       + '\n    image - test_image(args)'\
       + '\n ==== '\
-      + '\n    ./%s raw -e ueddaq02 -d epixquad -r27 # raw' % SCRNAME\
-      + '\n    ./%s calib -e ueddaq02 -d epixquad -r27 # calib' % SCRNAME\
-      + '\n    ./%s image -e ueddaq02 -d epixquad -r27 -N100000 # image' % SCRNAME\
+      + '\n    ./%s raw -e ueddaq02 -d epixquad -r66 # raw' % SCRNAME\
+      + '\n    ./%s calib -e ueddaq02 -d epixquad -r66 # calib' % SCRNAME\
+      + '\n    ./%s image -e ueddaq02 -d epixquad -r66 -N100000 # image' % SCRNAME\
+      + '\n    ./%s mask -e ueddaq02 -d epixquad -r66 # mask' % SCRNAME\
 
       #+ '\n ==== '\
       #+ '\n    ./%s 2 -m0 -s101' % SCRNAME\
@@ -358,12 +382,16 @@ if __name__ == "__main__":
       #+ '\n    2 - does not contain config for calib....test_image("%s")'%fname0\
       #+ '\n    3 - does not contain config for calib....test_image("%s")'%fname1\
 
+    d_fname   = fname0 if tname in ('0','2') else\
+                fname1 if tname in ('1','3') else\
+                fname2 if tname in ('4','5') else\
+                None
     d_loglev  = 'INFO' #'INFO' #'DEBUG'
     d_pattrs  = False
     d_dograph = True
     d_detname = 'epix10k2M' if tname in ('0','1','2','3') else 'epixquad'
-    d_expname = None #'ueddaq02' if tname=='4' else 'mfxc00318'
-    d_runs    = '27' # '27,29'
+    d_expname = 'ueddaq02' # None #'ueddaq02' if tname=='4' else 'mfxc00318'
+    d_runs    = '66' # '27,29'
     d_ofname  = None
     d_mapmode = 1
     d_pscsize = 100
@@ -376,6 +404,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(usage=usage)
     parser.add_argument('tname', type=str, help='test name')
+    parser.add_argument('-f', '--fname',   default=d_fname,   type=str, help='xtc file name, def=%s' % d_fname)
     parser.add_argument('-l', '--loglev',  default=d_loglev,  type=str, help=h_loglev)
     parser.add_argument('-d', '--detname', default=d_detname, type=str, help='detector name, def=%s' % d_detname)
     parser.add_argument('-e', '--expname', default=d_expname, type=str, help='experiment name, def=%s' % d_expname)
@@ -398,18 +427,19 @@ if __name__ == "__main__":
     logger.info(s)
 
     tname = args.tname
-    if   tname=='0':  test_raw  (fname0, args)
-    elif tname=='1':  test_raw  (fname1, args)
-    #elif tname=='2': test_image(fname0, args)
-    #elif tname=='3': test_image(fname1, args)
-    elif tname=='4':  test_calib(fname2, args)
-    elif tname=='5':  test_image(fname2, args)
-    elif tname=='raw':   test_raw  (None, args)
-    elif tname=='calib': test_calib(None, args)
-    elif tname=='image': test_image(None, args)
+    if   tname=='0': test_raw(args)
+    elif tname=='1': test_raw(args)
+    #elif tname=='2': test_image(args)
+    #elif tname=='3': test_image(args))
+    elif tname=='4':     test_calib(args)
+    elif tname=='5':     test_image(args)
+    elif tname=='raw':   test_raw  (args)
+    elif tname=='calib': test_calib(args)
+    elif tname=='image': test_image(args)
+    elif tname=='mask':  test_mask(args)
     else: logger.warning('NON-IMPLEMENTED TEST: %s' % tname)
 
     exit('END OF %s' % SCRNAME)
 
-#----
+# EOF
 
