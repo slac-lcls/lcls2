@@ -47,11 +47,11 @@ Usage ::
 import logging
 logger = logging.getLogger(__name__)
 
+import sys
 import numpy as np
 
 import psana.pscalib.calib.CalibConstants as cc
 from requests import get, post, delete #put
-import json
 from time import time
 from numpy import fromstring
 #from psana.pscalib.calib.MDBUtils import dbnames_collection_query, object_from_data_string
@@ -74,8 +74,7 @@ def check_kerberos_ticket(exit_if_invalid=True):
     if has_kerberos_ticket(): return True
     logger.warning('KERBEROS TICKET IS UNAVAILABLE OR EXPIRED. Requested operation requires valid kerberos ticket')
     if exit_if_invalid : 
-        import sys
-        sys.exit('FIX KERBEROS TICKET - use command "kinit" or check its status with command "klist"')
+        exit('FIX KERBEROS TICKET - use command "kinit" or check its status with command "klist"')
     return False
 
 #------------------------------
@@ -89,12 +88,16 @@ def query_id_pro(query):
 #------------------------------
 
 def request(url, query=None):
-    #logger.debug('==== query: %s' % str(query))
     #t0_sec = time()
-    #r = get(url, query)
+    r = get(url, query)
     #dt = time()-t0_sec # ~30msec
-    #logger.debug('CONSUMED TIME by request %.6f sec\n  for url=%s  query=%s' % (dt, url, str(query)))
-    return get(url, query)
+    #logger.debug('CONSUMED TIME by request %.3f sec\n  for url=%s  query=%s' % (dt, url, str(query)))
+    if r.ok: return r
+    s = 'get url: %s query: %s\n  response status: %s status_code: %s reason: %s'%\
+        (url, str(query), r.ok, r.status_code, r.reason)
+    s += '\nTry command: curl -s "%s"' % url
+    logger.warning(s)
+    return None
 
 #------------------------------
 
@@ -104,6 +107,7 @@ def database_names(url=cc.URL, pattern=None):
     """
     r = request(url)
     #print(r.json(), type(r.json()))
+    if r is None: return None
     return r.json() if pattern is None else [name for name in r.json() if str(pattern) in name]
 
 #------------------------------
@@ -113,6 +117,7 @@ def collection_names(dbname, url=cc.URL):
     """Returns list of collection names for dbname and url.
     """
     r = request('%s/%s'%(url,dbname))
+    if r is None: return None
     return r.json()
 
 #------------------------------
@@ -124,6 +129,7 @@ def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL):
     query_string=str(query).replace("'",'"')
     logger.debug('find_docs uri: %s query: %s' % (uri, query_string))
     r = request(uri, {"query_string": query_string})
+    if r is None: return None
     try:
         return r.json()
     except:
@@ -176,6 +182,7 @@ def get_doc_for_docid(dbname, colname, docid, url=cc.URL):
     """Returns document for docid.
     """
     r = request('%s/%s/%s/%s'%(url,dbname,colname,docid))
+    if r is None: return None
     return r.json()
 
 #------------------------------
@@ -185,6 +192,7 @@ def get_data_for_id(dbname, dataid, url=cc.URL):
     """Returns raw data from GridFS, at this level there is no info for parsing.
     """
     r = request('%s/%s/gridfs/%s'%(url,dbname,dataid))
+    if r is None: return None
     logger.debug('get_data_for_docid:'\
                 +'\n  r.status_code: %s\n  r.headers: %s\n  r.encoding: %s\n  r.content: %s...\n' % 
                  (str(r.status_code),  str(r.headers),  str(r.encoding),  str(r.content[:50])))
@@ -212,6 +220,7 @@ def get_data_for_doc(dbname, colname, doc, url=cc.URL):
         return None
 
     r2 = request('%s/%s/gridfs/%s'%(url,dbname,idd))
+    if r2 is None: return None
     s = r2.content
 
     return mu.object_from_data_string(s, doc)
@@ -420,9 +429,11 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
     # find a single doc for long detname
     ldocs = find_docs(dbname, colname, query={'long':detname})
 
+    if ldocs is None:
+        exit('EXIT: db/collection %s/%s NO DOCUMENT FOUND FOR long detname %s' % (dbname, colname, detname))
     if len(ldocs)>1:
         logger.error('UNEXPECTED ERROR: db/collection: %s/%s has >1 document for detname: %s' % (dbname, colname, detname))
-        sys.exit('db/collection: %s/%s HAS TO BE FIXED' % (dbname, colname))
+        exit('EXIT: db/collection %s/%s HAS TO BE FIXED' % (dbname, colname))
 
     if ldocs:
         return ldocs[0].get('short', None)
@@ -513,7 +524,7 @@ def delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders
     ldocs = find_docs(dbname, colname, query=query_id_pro({"_id":doc_id}))
     if len(ldocs)>1:
         logger.error('UNEXPECTED ERROR: db/collection: %s/%s HAS MORE THAN ONE DOCUMENT FOR _id: %s' % (dbname, colname, doc_id))
-        sys.exit('db/collection: %s/%s HAS TO BE FIXED' % (dbname, colname))
+        exit('EXIT: db/collection %s/%s HAS TO BE FIXED' % (dbname, colname))
 
     logger.debug('XXXX ldocs: %s' % str(ldocs))
 
@@ -586,17 +597,20 @@ def info_webclient(**kwargs):
     width = kwargs.get('width', 24)
     ptrn = mu.db_prefixed_name('') if kwargs.get('cdbonly', False) else None
     dbnames = database_names(url=cc.URL, pattern=ptrn)
+    if dbnames is None: return 'NO dbnames found for url: %s pattern: %s' % (cc.URL, ptrn)
 
     dbname = mu.get_dbname(**kwargs)
     if dbname is None:
-        s = '\n=== web client %s contains %d databases for name pattern "%s":\n%s\n\n' % (cc.URL, len(dbnames), str(ptrn), str_formatted_list(dbnames))
+        s = '\n=== web client %s contains %d databases for name pattern "%s":\n%s\n\n'%\
+            (cc.URL, len(dbnames), str(ptrn), str_formatted_list(dbnames))
         for name in dbnames:
              colnames = collection_names(name, url=cc.URL)
              s += '%s %2d cols: %s\n' % (str(name).ljust(width), len(colnames), str(colnames))
         return s
 
     if not (dbname in dbnames):
-        return '\n=== database %s is not found in the list of known:\n%s' % (dbname, str_formatted_list(dbnames))
+        return '\n=== database %s is not found in the list of known:\n%s'%\
+               (dbname, str_formatted_list(dbnames))
 
     colname = mu.get_colname(**kwargs)
     colnames = collection_names(dbname, url=cc.URL)
@@ -925,7 +939,6 @@ if __name__ == "__main__" :
 
 if __name__ == "__main__":
     import os
-    import sys
     from psana.pyalgos.generic.NDArrUtils import print_ndarr # info_ndarr, print_ndarr
     global print_ndarr
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG) # logging.INFO
@@ -956,6 +969,6 @@ if __name__ == "__main__":
     elif tname =='20' : test_pro_detector_name()
     elif tname =='00' : test_tmp()
     else : logger.info('Not-recognized test name: %s' % tname)
-    sys.exit('End of test %s' % tname)
+    exit('End of test %s' % tname)
 
 #------------------------------
