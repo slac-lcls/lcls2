@@ -329,6 +329,10 @@ def test_image(args):
 def test_mask(args):
     ds, run, det = ds_run_det(args)
     mask = det.raw._mask_from_status()
+    #raw = det.raw.raw()
+    #mask = det.raw._mask_calib()
+    #mask_edges = det.raw._mask_edges(mask, edge_rows=20, edge_cols=10)
+    mask = det.raw._mask_edges(edge_rows=20, edge_cols=10, center_rows=4, center_cols=2)
     print(info_ndarr(mask, 'mask '))
 
     if args.dograph:
@@ -342,7 +346,8 @@ def test_mask(args):
         #arr = det.raw.raw(evt)
         arr = mask + 1
         img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
-        flimg = fleximage(img, arr=arr, h_in=8, nneg=1, npos=3)#, alimits=alimits) #, cmap='jet')
+        #flimg = fleximage(img, arr=None, h_in=8, nneg=1, npos=3)#, alimits=alimits) #, cmap='jet')
+        flimg = fleximage(img, arr=None, h_in=8, alimits=(-1,2))#, cmap='jet')
         gr.show()
         if args.ofname is not None:
             gr.save_fig(flimg.fig, fname=args.ofname, verb=True)
