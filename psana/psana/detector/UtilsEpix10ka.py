@@ -5,6 +5,26 @@
 Usage::
     from psana.detector.UtilsEpix10ka import ...
 
+    t_sec = seconds(ts, epoch_offset_sec=631152000) #Converts LCLS2 timestamp to unix epoch time
+
+    inds = segment_indices_epix10ka_detector(det)
+    long_name = fullname_epix10ka_detector(det)
+    ids = segment_ids_epix10ka_detector(det)
+    o = config_object_epix10ka(det, detname=None)
+    o = config_object_epix10ka_raw(det_raw)
+    cbits = cbits_config_epix10ka(cob)
+    cbits = cbits_config_epix10ka_any(dcfg)
+    cbits = cbits_total_epix10ka_any(dcfg, data=None)
+    maps = gain_maps_epix10ka_any(dcfg, data=None)
+    s = def info_gain_mode_arrays(gmaps, first=0, last=5)
+    gmstatist = pixel_gain_mode_statistics(gmaps)
+    s = info_pixel_gain_mode_statistics(gmaps)
+    s = info_pixel_gain_mode_statistics_for_raw(dcfg, data=None, msg='pixel gain mode statistics: ')
+    gmfs = pixel_gain_mode_fractions(dcfg, data=None)
+    s = info_pixel_gain_mode_fractions(dcfg, data=None, msg='pixel gain mode fractions: ')
+    gmode = find_gain_mode(dcfg, data=None)
+    calib = calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa)
+
 This software was developed for the LCLS project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
