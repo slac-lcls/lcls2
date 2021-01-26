@@ -14,6 +14,10 @@ from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
         img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes
 
+#import psana.pscalib.calib.CalibConstants as CC
+from psana.detector.UtilsMask import CC, DTYPE_MASK, DTYPE_STATUS, mask_edges
+
+
 from amitypes import Array2d, Array3d
 
 #----
@@ -33,6 +37,8 @@ class AreaDetector(DetectorImpl):
         self._rms_ = None
         self._status_ = None
         self._common_mode_ = None
+        self._mask_calib_ = None
+        self._mask_ = None
         #logger.info('XXX dir(self):\n' + str(dir(self)))
         #logger.info('XXX self._segments:\n' + str(self._segments))
 
@@ -266,7 +272,18 @@ class AreaDetector(DetectorImpl):
                self.img_entries
 
 
-    def _mask_from_status(self, **kwa) -> Array3d:
+    def _mask_calib(self): # -> Array3d:
+        mask = self._cached_array(self._mask_calib_, 'pixel_mask')
+        if mask is None:
+            peds = self._cached_array(self._pedestals_, 'pedestals')
+            if peds is None: return None
+            shape = peds.shape if peds.ndim<4 else peds.shape[-3:]
+            mask = self._mask_calib_ = np.ones(shape, dtype=DTYPE_MASK)
+            #logger.debug(info_ndarr(mask, 'XXXX mask '))
+        return mask
+
+
+    def _mask_from_status(self, **kwa): # -> Array3d:
         """
         For simple detectors w/o multi-gain ranges
 
@@ -278,10 +295,18 @@ class AreaDetector(DetectorImpl):
         -------
         mask made of status: np.array, ndim=3, shape: as full detector data
         """
-
         status = self._status()
-        #logger.debug(info_ndarr(status, 'status '))
-        return np.asarray(np.select((status>0,), (0,), default=1), dtype=np.uint8)
+        if status == None:
+            logger.warning('pixel_status is None')
+            return None
+        return np.asarray(np.select((status>0,), (0,), default=1), dtype=DTYPE_MASK)
+
+
+    def _mask_edges(self, mask, **kwa): # -> Array3d:
+        return mask_edges(mask,\
+          edge_rows=kwa.get('edge_rows', 1),\
+          edge_cols=kwa.get('edge_cols', 1),\
+          dtype=DTYPE_MASK) # kwa.get('dtype', DTYPE_MASK)):
 
 
 #     def _mask_neighbors(self, **kwa) -> Array3d:
