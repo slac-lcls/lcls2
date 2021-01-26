@@ -50,7 +50,7 @@ class epix10ka_base(AreaDetector):
         #return statmrg
 
 
-    def _mask_edges(self, edge_rows=1, edge_cols=1, center_rows=0, center_cols=0, dtype=DTYPE_MASK):
+    def _mask_edges(self, edge_rows=1, edge_cols=1, center_rows=0, center_cols=0, dtype=DTYPE_MASK, **kwa):
         mask1 = seg.pixel_mask_array(edge_rows, edge_cols, center_rows, center_cols, dtype)
         status = self._status()
         if status is None:
