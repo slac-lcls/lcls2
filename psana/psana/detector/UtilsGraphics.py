@@ -26,6 +26,7 @@ import psana.pyalgos.generic.Graphics as gr
 def arr_median_limits(arr, nneg=1, npos=3):
     """ returns tuple of intensity limits (amin, amax) evaluated from arr.
     """
+    if arr is None: return nneg, npos
     med = np.median(arr)
     spr = np.median(np.abs(arr-med))
     amin, amax = med-nneg*spr, med+npos*spr
