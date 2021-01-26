@@ -1,7 +1,35 @@
 """
-Utilities for area detector.
+Utilities for area detector
+===========================
 
-from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict
+Usage::
+
+  from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict
+  from psana.detector.UtilsAreaDetector import  *
+
+  a = arr_rot_n90(arr, rot_ang_n90=0)
+  sec, nsec = sec_nsec_from_tstamp(ts)
+  d = dict_from_arr3d(a)
+  a = arr3d_from_dict(d, keys=None)
+  img_sta, multinds, nentries = statistics_of_pixel_arrays(rows, cols)
+  img = img_from_pixel_arrays(rows, cols, weight=1.0, dtype=np.float32, vbase=0)
+  img = img_multipixel_max(img, weight, dict_pix_to_img_idx)
+  img_multipixel_max(img, weight, dict_pix_to_img_idx)
+  img_multipixel_mean(img, weight, dict_pix_to_img_idx, dict_imgidx_numentries)
+  size = size_for_shape(shape)
+  a = ascending_index_array_for_shape(shape, dtype=np.int32)
+  shape = image_shape(arr_rows, arr_cols)
+  img = image_of_pixel_array_ascending_index(rows, cols, img_shape=None, dtype=np.int32)
+  img = image_of_pixel_seg_row_col(img_ascend_pix_ind, arr_shape, dtype=np.int32)
+  img = image_of_holes(busy_img_bins)
+  inds = hole_inds_ravel(img_holes)
+  rows_cols = hole_rows_cols(img_holes)
+  fill_holes(img, hrows, hcols)
+  statistics_of_holes(rows, cols, **kwa)
+  img = img_default(arr)
+
+  #TBD init_interpolation_parameters(rows, cols, x, y, **kwa)
+  #TBD img = img_interpolated(data, interpol_pars, **kwa)
 
 2020-11-06 created by Mikhail Dubrovin
 """
@@ -277,6 +305,15 @@ def statistics_of_holes(rows, cols, **kwa):
     return img_pix_ascend_ind, img_holes, hole_rows, hole_cols, hole_inds1d
 
 
+def img_default(arr):
+    med = np.median(arr)
+    spr = np.median(np.abs(arr-med))
+    amin, amax = med-1*spr, med+3*spr
+    a = np.arange(amin, amax, (amax-amin)/12, dtype=np.float32)
+    a.shape =(3,4)
+    return a
+
+
 def init_interpolation_parameters(rows, cols, x, y, **kwa):
     """TBD: currently returns image of ascending index in data array
     """
@@ -287,15 +324,6 @@ def init_interpolation_parameters(rows, cols, x, y, **kwa):
     #weights_table_4 = np.zeros((nrows,ncols,4), dtype=np.int32)
     img_shape = image_shape(rows, cols)
     return image_of_pixel_array_ascending_index(rows, cols, img_shape, np.int32)
-
-
-def img_default(arr):
-    med = np.median(arr)
-    spr = np.median(np.abs(arr-med))
-    amin, amax = med-1*spr, med+3*spr
-    a = np.arange(amin, amax, (amax-amin)/12, dtype=np.float32)
-    a.shape =(3,4)
-    return a
 
 
 def img_interpolated(data, interpol_pars, **kwa):
@@ -312,5 +340,5 @@ def img_interpolated(data, interpol_pars, **kwa):
     """
     return interpol_pars # img_default(data)
 
-#----
+# EOF
 
