@@ -3,7 +3,7 @@
 """
 
 #from psana.pscalib.geometry.SegGeometry import *
-from psana.detector.areadetector import AreaDetector, np
+from psana.detector.areadetector import AreaDetector, np, DTYPE_MASK, DTYPE_STATUS
 from psana.detector.UtilsEpix10ka import calib_epix10ka_any
 
 from amitypes import Array3d
@@ -11,8 +11,10 @@ from amitypes import Array3d
 import logging
 logger = logging.getLogger(__name__)
 
-from psana.detector.Utils import merge_status
+from psana.detector.UtilsMask import merge_status
+from psana.pscalib.geometry.SegGeometryEpix10kaV1 import epix10ka_one as seg
 
+from psana.pyalgos.generic.NDArrUtils import info_ndarr
 #----
 
 class epix10ka_base(AreaDetector):
@@ -35,18 +37,31 @@ class epix10ka_base(AreaDetector):
         """
         Parameters **kwa
         ----------------
-        ##mode - int 0/1/2 masks zero/four/eight neighbors around each bad pixel
-        'indexes', (0,1,2,3,4)) # indexes stand for gain ranges 'FH','FM','FL','AHL-H','AML-M'
+        'grinds', (0,1,2,3,4)) # gain range indexes for 'FH','FM','FL','AHL-H','AML-M'
         Returns 
         -------
         mask made of status: np.array, ndim=3, shape: as full detector data
         """
-
+        _grinds = kwa.get('grinds',(0,1,2,3,4))
         status = self._status() # pixel_status from calibration constants
-        statmrg = merge_status(status, **kwa) # grinds=(0,1,2,3,4), dtype=np.uint32
-        return np.asarray(np.select((statmrg>0,), (0,), default=1), dtype=np.uint8)
+        statmrg = merge_status(status, grinds=_grinds, dtype=DTYPE_STATUS) # dtype=np.uint64
+        return np.asarray(np.select((statmrg>0,), (0,), default=1), dtype=DTYPE_MASK)
         #logger.info(info_ndarr(status, 'status '))
         #return statmrg
+
+
+    def _mask_edges(self, edge_rows=1, edge_cols=1, center_rows=0, center_cols=0, dtype=DTYPE_MASK):
+        mask1 = seg.pixel_mask_array(edge_rows, edge_cols, center_rows, center_cols, dtype)
+        status = self._status()
+        if status is None:
+            logger.warning('status is None - can not define number of segments in full detector')
+            return None
+        nsegs = status.shape[-3] # (7,n,352,384) - define through calibration constants
+        logger.info('XXX _mask_edges for %d-segment epix10ka'%nsegs)
+        mask = np.stack([mask1 for i in range(nsegs)])
+        logger.info(info_ndarr(mask, 'XXX _mask_edges '))
+        return mask
+
 
     # example of some possible common behavior
     #def _common_mode(self, **kwargs):
