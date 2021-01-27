@@ -646,8 +646,11 @@ def docdic(data, dataid, **kwa):
     #if not is_valid_objectid(dataid):
     #    logger.warning('Data id "%s" IS NOT VALID' % str(dataid))
 
-    dic_extpars = kwa.get('extpars', {'content':'extended parameters dict->json->str',})
-    str_extpars = json.dumps(dic_extpars)
+    dic_extpars = kwa.get('extpars', {\
+      'content':'extended parameters dict->json->str',\
+      'command':' '.join(sys.argv)
+    })
+    str_extpars = str(json.dumps(dic_extpars))
 
     doc = {
           'experiment': kwa.get('experiment', None),
@@ -655,18 +658,20 @@ def docdic(data, dataid, **kwa):
           'run_end'   : kwa.get('run_end', 'end'),
           'detector'  : kwa.get('detector', None),
           'ctype'     : kwa.get('ctype', None),
-          'dtype'     : kwa.get('dtype', None),
+          'dtype'     : kwa.get('dtype', ''),
           'time_sec'  : kwa.get('time_sec', None),
           'time_stamp': kwa.get('time_stamp', None),
-          'version'   : kwa.get('version', 'v00'),
+          'version'   : kwa.get('version', 'V2021-01-27'),
           'comment'   : kwa.get('comment', 'no comment'),
           'uid'       : gu.get_login(),
           'host'      : gu.get_hostname(),
           'cwd'       : gu.get_cwd(),
           'id_data'   : dataid,
-          'longname'  : kwa.get('longname', None),
+          'id_doc_exp': kwa.get('id_doc_exp', 0),
+          'id_data_exp':kwa.get('id_data_exp', 0),
+          'longname'  : kwa.get('longname', ''),
           'run_orig'  : kwa.get('run_orig', 0),
-          'tstamp_orig': kwa.get('tstamp_orig', None),
+          'tstamp_orig':kwa.get('tstamp_orig', ''),
           'extpars'   : str_extpars,
          }
 
@@ -1357,10 +1362,10 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
 
 #------------------------------
 
-def request_confirmation():
+def request_confirmation(msg=''):
     """Dumps request for confirmation of specified (delete) action.
     """
-    logger.warning('Use confirm "-C" option to proceed with request.')
+    logger.warning(msg+'Use confirm "-C" option to proceed with request.')
 
 
 #-----------------------------
