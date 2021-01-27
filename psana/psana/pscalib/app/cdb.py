@@ -34,6 +34,7 @@ def usage():
            '  cdb get -e cxic0415 -d cspad_0001 -c geometry -r 100 -f mygeo\n'\
            '  cdb get -d cspad_0001 -c pedestals -r 100 -f mypeds\n'\
            '  cdb get -d opal1000_test -c pop_rbfs -r 50 -i pkl -f my_pop_rbfs\n'\
+           '  cdb add -e cxic0415 -d cspad_0001 -c geometry -r 100 -f mygeo -i txt -l DEBUG\n'\
            '  cdb add -e testexper -d testdet_1234 -c test_ctype -r 123 -f cm-confpars.txt -i txt -l DEBUG\n'\
            '  cdb add -e exp12345 -d detector_1234 -c pedestals -r 123 -f mypeds.data -u dubrovin\n'\
            '  cdb add -e new55555 -d detnew_5555   -c pedestals -r 123 -f mypeds.data -u dubrovin\n'\
@@ -76,13 +77,13 @@ def input_option_parser() :
     d_ctype      = None # cc.list_calib_names[0], 'pedestals'
     d_dtype      = None
     d_run        = None
-    d_run_end    = None
+    d_run_end    = 'end'
     d_time_stamp = None # '2001-09-08T18:46:40-0700'
     d_time_sec   = None
-    d_version    = None
+    d_version    = 'V2021-01-21'
     d_confirm    = False
     d_iofname    = None # './fname.txt'
-    d_comment    = 'No comment'
+    d_comment    = 'no comment'
     d_strloglev  = 'INFO'
     d_webcli     = True
     d_cdbonly    = True
