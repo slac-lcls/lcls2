@@ -646,10 +646,9 @@ def docdic(data, dataid, **kwa):
     #if not is_valid_objectid(dataid):
     #    logger.warning('Data id "%s" IS NOT VALID' % str(dataid))
 
-    dic_extpars = kwa.get('extpars', {\
-      'content':'extended parameters dict->json->str',\
-      'command':' '.join(sys.argv)
-    })
+    dic_extpars = kwa.get('extpars', {})
+    dic_extpars['content'] = 'extended parameters dict->json->str'
+    dic_extpars['command'] = ' '.join(sys.argv)
     str_extpars = str(json.dumps(dic_extpars))
 
     doc = {

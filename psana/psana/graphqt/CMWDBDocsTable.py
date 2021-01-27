@@ -82,7 +82,7 @@ class CMWDBDocsTable(CMWDBDocsBase, QWTable) :
                      v = str(doc.get(key,'N/A'))
                      #s = v if (isinstance(v,str) and len(v)<128) else 'str longer 128 chars'
                      cond = any([isinstance(v,o) for o in (str,dict,ObjectId)])
-                     s = str(v) if (cond and len(str(v))<512) else 'str longer 512 chars'
+                     s = str(v) if (cond and len(str(v))<2048) else 'str longer 2048 chars'
                      item = QStandardItem(s)
                      item.setEditable(False)
                      self.model.setItem(r,c,item)
