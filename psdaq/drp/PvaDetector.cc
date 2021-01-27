@@ -1032,6 +1032,7 @@ int main(int argc, char* argv[])
                 tsMatchDegree = 0;
                 break;
             case '1':
+                fprintf(stderr, "Option -1 is disabled\n");  exit(EXIT_FAILURE);
                 tsMatchDegree = 1;
                 break;
             case 'v':
