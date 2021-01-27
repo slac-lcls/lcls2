@@ -292,6 +292,7 @@ def calibman(*args,**opts):
     app = QApplication(sys.argv)
     #w = CMWMain(parser)
     w = CMWMain(*args,**opts)
+    w.move(0,20)
     w.show()
     app.exec_()
     del w
