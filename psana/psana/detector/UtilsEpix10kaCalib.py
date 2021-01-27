@@ -377,7 +377,7 @@ def data_source_kwargs(**opts):
     kwa = {'files':fname} if fname else {'exp':exp,'run':irun}
     if dirxtc: kwa['dir'] = dirxtc
     logger.debug('DataSource **kwargs: %s' % str(kwa))
-    #exit('TEST EXIT')
+    #sys.exit('TEST EXIT')
     return kwa
 
 
@@ -958,7 +958,6 @@ def deploy_constants(*args, **opts):
 
           dic_extpars = {
             'content':'extended parameters dict->json->str',
-            'command':' '.join(sys.argv)
           }
 
           kwa = {
