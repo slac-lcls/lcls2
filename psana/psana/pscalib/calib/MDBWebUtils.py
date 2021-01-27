@@ -39,6 +39,7 @@ Usage ::
     s = wu.str_formatted_list(lst, ncols=5, width=24)
     s = wu.info_docs(dbname, colname, query={}, url=cc.URL, strlen=120)
     s = wu.info_webclient(**kwargs)
+    resp = wu.valid_post_privilege(dbname, url_krb=cc.URL_KRB)
 
     test_*()
 """
@@ -49,9 +50,11 @@ logger = logging.getLogger(__name__)
 
 import sys
 import numpy as np
+import io
 
 import psana.pscalib.calib.CalibConstants as cc
 from requests import get, post, delete #put
+
 from time import time
 from numpy import fromstring
 #from psana.pscalib.calib.MDBUtils import dbnames_collection_query, object_from_data_string
@@ -60,7 +63,7 @@ import psana.pscalib.calib.MDBUtils as mu
 
 import psana.pyalgos.generic.Utils as gu
 
-#------------------------------
+
 
 from subprocess import call
 #from psana.pyalgos.generic.Utils import has_kerberos_ticket
@@ -68,16 +71,16 @@ def has_kerberos_ticket():
     """Checks to see if the user has a valid Kerberos ticket"""
     return not call(["klist", "-s"])
 
-#------------------------------
+
 
 def check_kerberos_ticket(exit_if_invalid=True):
     if has_kerberos_ticket(): return True
     logger.warning('KERBEROS TICKET IS UNAVAILABLE OR EXPIRED. Requested operation requires valid kerberos ticket')
     if exit_if_invalid : 
-        exit('FIX KERBEROS TICKET - use command "kinit" or check its status with command "klist"')
+        sys.exit('FIX KERBEROS TICKET - use command "kinit" or check its status with command "klist"')
     return False
 
-#------------------------------
+
 
 def query_id_pro(query):
     id = query.get('_id', None)
@@ -85,7 +88,7 @@ def query_id_pro(query):
     query['_id'] = 'ObjectId(%s)'%id
     return query
 
-#------------------------------
+
 
 def request(url, query=None):
     #t0_sec = time()
@@ -99,7 +102,7 @@ def request(url, query=None):
     logger.warning(s)
     return None
 
-#------------------------------
+
 
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/test_db"
 def database_names(url=cc.URL, pattern=None):
@@ -110,7 +113,7 @@ def database_names(url=cc.URL, pattern=None):
     if r is None: return None
     return r.json() if pattern is None else [name for name in r.json() if str(pattern) in name]
 
-#------------------------------
+
 
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/test_db/test_coll"
 def collection_names(dbname, url=cc.URL):
@@ -120,7 +123,8 @@ def collection_names(dbname, url=cc.URL):
     if r is None: return None
     return r.json()
 
-#------------------------------
+
+
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/test_db/test_coll?query_string=%7B%20%22item%22..."
 def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL):
     """Returns list of documents for query, e.g. query={'ctype':'pedestals', "run":{ "$gte":80}}
@@ -138,7 +142,7 @@ def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL):
         logger.debug(msg)
         return None
 
-#------------------------------
+
 
 def find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL):
     """Returns document for query.
@@ -150,7 +154,7 @@ def find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL):
 
     return select_latest_doc(docs, query)
 
-#------------------------------
+
 
 def select_latest_doc(docs, query):
     """Returns a single document for query selected by time_sec (if available) or run
@@ -175,7 +179,7 @@ def select_latest_doc(docs, query):
             return d
     return None
 
-#------------------------------
+
 
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/5b6893e81ead141643fe4344"
 def get_doc_for_docid(dbname, colname, docid, url=cc.URL):
@@ -185,7 +189,7 @@ def get_doc_for_docid(dbname, colname, docid, url=cc.URL):
     if r is None: return None
     return r.json()
 
-#------------------------------
+
 
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/gridfs/5b6893d91ead141643fe3f6a" 
 def get_data_for_id(dbname, dataid, url=cc.URL):
@@ -198,7 +202,7 @@ def get_data_for_id(dbname, dataid, url=cc.URL):
                  (str(r.status_code),  str(r.headers),  str(r.encoding),  str(r.content[:50])))
     return r.content
 
-#------------------------------
+
 
 def get_data_for_docid(dbname, colname, docid, url=cc.URL):
     """Returns data from GridFS using docid.
@@ -207,7 +211,7 @@ def get_data_for_docid(dbname, colname, docid, url=cc.URL):
     logger.debug('get_data_for_docid: %s' % str(doc))
     return get_data_for_doc(dbname, colname, doc, url)
 
-#------------------------------
+
 
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/gridfs/5b6893e81ead141643fe4344"
 def get_data_for_doc(dbname, colname, doc, url=cc.URL):
@@ -225,7 +229,7 @@ def get_data_for_doc(dbname, colname, doc, url=cc.URL):
 
     return mu.object_from_data_string(s, doc)
 
-#------------------------------
+
 
 def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, dtype=None):
     """wrapper for MDBUtils.dbnames_collection_query,
@@ -235,7 +239,7 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     logger.debug('short: %s' % short)
     return mu.dbnames_collection_query(short, exp, ctype, run, time_sec, vers, dtype)
 
-#------------------------------
+
 
 def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL):
     """Returns calibration constants and document with metadata for specified parameters. 
@@ -258,7 +262,7 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
         return (None, None)
     return (get_data_for_doc(dbname, colname, doc, url), doc)
 
-#------------------------------
+
 
 def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, url=cc.URL):
     """ try to add constants of missing types in resp using detector db
@@ -289,7 +293,7 @@ def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, url=cc
 
     return resp
 
-#------------------------------
+
 
 def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL):
     """ returns constants for all ctype-s
@@ -332,14 +336,13 @@ def add_data_from_file(dbname, fname, sfx=None, url=cc.URL_KRB, krbheaders=cc.KR
     #jdic = resp.json() # type <class 'dict'>
     return resp.json().get('_id',None)
 
-#------------------------------
+
 
 def add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     """Adds binary data to the database/gridfs.
     """
     check_kerberos_ticket()
 
-    import io
     headers = dict(krbheaders) # krbheaders <class 'dict'>
     headers['Content-Type'] = 'application/octet-stream'
     f = io.BytesIO(mu.encode_data(data))   # io.StringIO(data)
@@ -351,7 +354,7 @@ def add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     if id is None : logger.warning('id_data is None')
     return id
 
-#------------------------------
+
 
 def add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     """Adds document to database collection.
@@ -364,21 +367,62 @@ def add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     if id is None : logger.warning('id_document is None')
     return id
 
-#------------------------------
 
-def add_data_and_doc(data, dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
+
+def add_data_and_doc(data, _dbname, _colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
     """Adds data and document to the db
     """
-    id_data = add_data(dbname, data, url, krbheaders)
-    if id_data is None : return None
+    # check permission
+    t0_sec = time()
+    if not valid_post_privilege(_dbname, url_krb=url): return None
+
+    id_data = add_data(_dbname, data, url, krbheaders)
+    if id_data is None: return None
     doc = mu.docdic(data, id_data, **kwargs) # ObjectId(id_data)???
-    id_doc = add_document(dbname, colname, doc, url, krbheaders)
-    if id_doc is None : return None
+    logger.debug(mu.doc_info(doc, fmt='  %s:%s')) #sep='\n  %16s : %s'
+
+    id_doc = add_document(_dbname, _colname, doc, url, krbheaders)
+    if id_doc is None: return None
+
+    msg = 'Add data and doc time %.6f sec' % (time()-t0_sec)\
+        + '\n  - data in %s/gridfs id: %s and doc in collection %s id: %s' % (_dbname, id_data, _colname, id_doc)
+    logger.debug(msg)
+
     return id_data, id_doc
 
-#------------------------------
+
 
 def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
+    """ Check permission and add data and document to experiment and detector data bases.
+    """
+    detname = pro_detector_name(det, add_shortname=True)
+    colname = detname
+    dbname_exp = mu.db_prefixed_name(exp)
+    dbname_det = mu.db_prefixed_name(detname)
+
+    kwargs['detector'] = detname # ex: epix_000001
+    kwargs['longname'] = det
+
+    logger.debug('add_data_and_two_docs kwargs:', str(kwargs))
+
+    resp = add_data_and_doc(data, dbname_exp, colname, url=url, krbheaders=krbheaders, **kwargs)
+    if resp is None: return None
+    id_data_exp, id_doc_exp = resp
+
+    #logger.warning('Deployment of constants in the %s needs in expert-privilage\n' % dbname_det)
+    #if not kwargs.get('confirm', False):
+        #mu.request_confirmation()
+        #return id_data_exp, None, id_doc_exp, None
+
+    kwargs['id_data_exp'] = id_data_exp # override
+    kwargs['id_doc_exp']  = id_doc_exp  # add
+    resp = add_data_and_doc(data, dbname_det, colname, url=url, krbheaders=krbheaders, **kwargs)
+    id_data_det, id_doc_det = resp if resp is not None else (None, None)
+    return id_data_exp, id_data_det, id_doc_exp, id_doc_det
+
+
+
+def add_data_and_two_docs_v0(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
     """ Adds data and document to experiment and detector data bases.
     """
     t0_sec = time()
@@ -410,7 +454,7 @@ def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADE
 
     return id_data_exp, id_data_det, id_doc_exp, id_doc_det
 
-#------------------------------
+
 
 def _add_detector_name(dbname, colname, detname, detnum):
     """ Adds document for detector names and returns short detector name for long input name detname.
@@ -420,7 +464,7 @@ def _add_detector_name(dbname, colname, detname, detnum):
     id_doc = add_document(dbname, colname, doc) #, url, krbheaders)
     return doc.get('short', None) if id_doc is not None else None
 
-#------------------------------
+
 
 def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
     """Returns short detector name for long input name detname.
@@ -430,10 +474,10 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
     ldocs = find_docs(dbname, colname, query={'long':detname})
 
     if ldocs is None:
-        exit('EXIT: db/collection %s/%s NO DOCUMENT FOUND FOR long detname %s' % (dbname, colname, detname))
+        sys.exit('EXIT: db/collection %s/%s NO DOCUMENT FOUND FOR long detname %s' % (dbname, colname, detname))
     if len(ldocs)>1:
         logger.error('UNEXPECTED ERROR: db/collection: %s/%s has >1 document for detname: %s' % (dbname, colname, detname))
-        exit('EXIT: db/collection %s/%s HAS TO BE FIXED' % (dbname, colname))
+        sys.exit('EXIT: db/collection %s/%s HAS TO BE FIXED' % (dbname, colname))
 
     if ldocs:
         return ldocs[0].get('short', None)
@@ -463,14 +507,14 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
 
     return short_name
 
-#------------------------------
+
 
 def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
     """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars.
     """
     return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
 
-#------------------------------
+
 
 def delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     """Deletes database for (str) dbname, e.g. dbname='cdb_opal_0001'.
@@ -480,7 +524,7 @@ def delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     logger.debug(resp.text)
     return resp
 
-#------------------------------
+
 
 def delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     """ Deletes collection from database.
@@ -490,7 +534,7 @@ def delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     logger.debug(resp.text)
     return resp
 
-#------------------------------
+
 
 def delete_document(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     """Deletes document for specified _id from database/collection.
@@ -500,7 +544,7 @@ def delete_document(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHE
     logger.debug(resp.text)
     return resp
 
-#------------------------------
+
 
 def delete_data(dbname, data_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     """Deletes data for specified data_id from database/gridfs.
@@ -513,7 +557,7 @@ def delete_data(dbname, data_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     logger.debug('delete %s responce: %s' % (uri, resp_data.text))
     return resp_data
 
-#------------------------------
+
 
 def delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     """Deletes document for specified _id from database/collection and associated data from database/gridfs.
@@ -524,7 +568,7 @@ def delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders
     ldocs = find_docs(dbname, colname, query=query_id_pro({"_id":doc_id}))
     if len(ldocs)>1:
         logger.error('UNEXPECTED ERROR: db/collection: %s/%s HAS MORE THAN ONE DOCUMENT FOR _id: %s' % (dbname, colname, doc_id))
-        exit('EXIT: db/collection %s/%s HAS TO BE FIXED' % (dbname, colname))
+        sys.exit('EXIT: db/collection %s/%s HAS TO BE FIXED' % (dbname, colname))
 
     logger.debug('XXXX ldocs: %s' % str(ldocs))
 
@@ -544,7 +588,7 @@ def delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders
 
     return delete_data(dbname, data_id, url, krbheaders)
 
-#------------------------------
+
 
 def str_formatted_list(lst, ncols=5, width=24):
     s=''
@@ -557,7 +601,7 @@ def str_formatted_list(lst, ncols=5, width=24):
         c=0
     return s
 
-#------------------------------
+
 
 def info_doc(dbname, colname, docid, strlen=150):
     ldocs = find_docs(dbname, colname, query=query_id_pro({"_id":docid}), url=cc.URL)
@@ -571,7 +615,7 @@ def info_doc(dbname, colname, docid, strlen=150):
         s += '\n  %s : %s' % (k.ljust(20), str(v)[:strlen])
     return s
         
-#------------------------------
+
 
 def info_docs_list(docs, strlen=150):
     if not isinstance(docs, list):
@@ -581,7 +625,7 @@ def info_docs_list(docs, strlen=150):
         s += '\n%04d %s ...' % (i, str(d)[:strlen])
     return s
 
-#------------------------------
+
 
 def info_docs(dbname, colname, query={}, url=cc.URL, strlen=150):
     docs = find_docs(dbname, colname, query, url=cc.URL)
@@ -590,7 +634,7 @@ def info_docs(dbname, colname, query={}, url=cc.URL, strlen=150):
     return 'DB/collection %s/%s contains %d documents:%s' %\
            (dbname, colname, len(docs), info_docs_list(docs, strlen=150))
 
-#------------------------------
+
 
 def info_webclient(**kwargs):
 
@@ -630,6 +674,35 @@ def info_webclient(**kwargs):
 
     return info_doc(dbname, colname, docid)
 
+
+def valid_post_privilege(dbname, url_krb=cc.URL_KRB):
+    """2021-01-25 Murali suggested this interface to test privilage to write in db
+
+    ws_url = "https://pswww.slac.stanford.edu/ws-kerb/calib_ws/cdb_xpptut15/test_post_privilege"
+    krbheaders = KerberosTicket("HTTP@" + urlparse(ws_url).hostname).getAuthHeaders()
+    try:
+        r = get(ws_url, headers=krbh_test)
+        r.raise_for_status()
+        print(r.json())
+    except:
+        print("Exception; possibly no privilege")
+    """
+
+    ws_url = "%s%s/test_post_privilege" % (url_krb, dbname)
+    try:
+         krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(ws_url).hostname).getAuthHeaders()
+    except Exception as err: #except kerberos.GSSError as err:
+        logger.warning(str(err))
+        return False
+
+    r = get(ws_url, headers=krbh_test)
+
+    logger.debug('get url: %s response status: %s status_code: %s reason: %s'%\
+            (ws_url, r.ok, r.status_code, r.reason))
+    if not r.ok:
+        logger.warning('\nNO PRIVILAGE TO WRITE IN DB: %s' % dbname)
+    return r.ok
+
 #------------------------------
 #---------  TESTS  ------------
 #------------------------------
@@ -640,18 +713,18 @@ if __name__ == "__main__" :
   TEST_EXPNAME = 'testexper'
   TEST_DETNAME = 'testdet_1234'
 
-#------------------------------
+
 
   def test_database_names():
     print('test_database_names:', database_names())
 
-#------------------------------
+
 
   def test_collection_names():
     dbname = sys.argv[2] if len(sys.argv) > 2 else 'cdb_cspad_0001'
     print('test_collection_names:', collection_names(dbname))
 
-#------------------------------
+
 
   def test_find_docs():
     docs = find_docs('cdb_cspad_0001', 'cspad_0001')
@@ -666,7 +739,7 @@ if __name__ == "__main__" :
     print('doc0:', doc0)
     print('doc0.keys():', doc0.keys())
 
-#------------------------------
+
 
   def test_get_random_doc_and_data_ids(det='cspad_0001'):
     dbname = mu.db_prefixed_name(det)
@@ -679,7 +752,7 @@ if __name__ == "__main__" :
     print('_id : %s   id_data : %s' % (id_doc, id_data))
     return id_doc, id_data, dbname, colname
 
-#------------------------------
+
 
   def test_find_doc():
     #doc = find_doc('cdb_cxic0415', 'cspad_0001', query={'ctype':'pedestals', 'run':{'$lte':40}})
@@ -691,14 +764,14 @@ if __name__ == "__main__" :
     _,_,_,_ = test_get_random_doc_and_data_ids(det='cspad_0001') 
     _,_,_,_ = test_get_random_doc_and_data_ids(det='cspad_0002') 
 
-#------------------------------
+
 
   def test_get_data_for_id():
     id_doc, id_data, dbname, colname = test_get_random_doc_and_data_ids(det='cspad_0001')
     o = get_data_for_id(dbname, id_data)
     print('test_get_data_for_id: r.content raw data: %s ...' % str(o[:500]))
 
-#------------------------------
+
 
   def test_get_data_for_docid():
     id_doc, id_data, dbname, colname = test_get_random_doc_and_data_ids(det='cspad_0001')
@@ -706,14 +779,14 @@ if __name__ == "__main__" :
     #o = get_data_for_docid('cdb_cxid9114', 'cspad_0001', '5b6cdde71ead144f115319be')
     print_ndarr(o, 'test_get_data_for_docid o:', first=0, last=10)
 
-#------------------------------
+
 
   def test_dbnames_collection_query():
     det='cspad_0001'
     db_det, db_exp, colname, query = dbnames_collection_query(det, exp=None, ctype='pedestals', run=50, time_sec=None, vers=None)
     print('test_dbnames_collection_query:', db_det, db_exp, colname, query)
 
-#------------------------------
+
 
   def test_calib_constants():
     det = 'cspad_0001'
@@ -721,7 +794,7 @@ if __name__ == "__main__" :
     print_ndarr(data, '==== test_calib_constants', first=0, last=5)
     print('==== doc: %s' % str(doc))
 
-#------------------------------
+
 
   def test_calib_constants_text():
     det = 'cspad_0001'
@@ -734,7 +807,7 @@ if __name__ == "__main__" :
     print('==== test_calib_constants_text data:', data)
     print('==== doc: %s' % str(doc))
 
-#------------------------------
+
 
   def test_calib_constants_dict():
     det = 'opal1000_0059'
@@ -745,7 +818,7 @@ if __name__ == "__main__" :
     print('XXXX ==== type(doc) ', type(doc))
     print('==== doc: %s' % doc)
 
-#------------------------------
+
 
   def test_calib_constants_all_types():
     #resp = calib_constants_all_types('tmo_quadanode', exp='amox27716', run=100, time_sec=None, vers=None) #, url=cc.URL)
@@ -760,7 +833,7 @@ if __name__ == "__main__" :
     s = pickle.dumps(resp)
     print('IF YOU SEE THIS, dict FOR ctypes SHOULD BE pickle-d')
 
-#------------------------------
+
 
   def test_insert_constants(expname=TEST_EXPNAME, detname=TEST_DETNAME, ctype='test_ctype', runnum=10, data='test text sampele'):
     """ Inserts constants using direct MongoDB interface from MDBUtils.
@@ -780,7 +853,7 @@ if __name__ == "__main__" :
                         time_stamp=ts, **kwa)
     print('test_delete_database 2:', database_names())
 
-#------------------------------
+
 
   def test_delete_database(dbname='cdb_testexper'):
     print('test_delete_database %s' % dbname)
@@ -788,7 +861,7 @@ if __name__ == "__main__" :
     resp = delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_database AFTER :', database_names())
 
-#------------------------------
+
 
   def test_delete_collection(dbname='cdb_testexper', colname=TEST_DETNAME):
     print('test_delete_collection %s collection: %s' % (dbname, colname))
@@ -796,7 +869,7 @@ if __name__ == "__main__" :
     resp = delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_collection AFTER :', collection_names(dbname, url=cc.URL))
 
-#------------------------------
+
 
   def test_delete_document(dbname='cdb_testexper', colname=TEST_DETNAME, query={'ctype':'test_ctype'}):
     doc = find_doc(dbname, colname, query=query, url=cc.URL)
@@ -809,7 +882,7 @@ if __name__ == "__main__" :
     resp = delete_document(dbname, colname, id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_document resp:', resp)
 
-#------------------------------
+
 
   def test_delete_document_and_data(dbname='cdb_testexper', colname=TEST_DETNAME):
     ldocs = find_docs(dbname, colname, query={}, url=cc.URL)
@@ -823,13 +896,13 @@ if __name__ == "__main__" :
     resp = delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_delete_document_and_data resp:', resp)
 
-#------------------------------
+
 
   def test_add_data_from_file(dbname='cdb_testexper', fname=TEST_FNAME_PNG):
     resp = add_data_from_file(dbname, fname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_add_data_from_file resp: %s of type: %s' % (resp, type(resp)))
 
-#------------------------------
+
 
   def test_add_data(dbname='cdb_testexper'):
     #data = 'some text is here'
@@ -837,7 +910,7 @@ if __name__ == "__main__" :
     resp = add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('test_add_data: %s\n  to: %s/gridfs/\n  resp: %s' % (str(data), dbname, resp))
 
-#------------------------------
+
 
   def test_add_document(dbname='cdb_testexper', colname=TEST_DETNAME, doc={'ctype':'test_ctype'}):
     from psana.pyalgos.generic.Utils import str_tstamp
@@ -845,7 +918,7 @@ if __name__ == "__main__" :
     resp = add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     print('\ntest_add_document: %s\n  to: %s/%s\n  resp: %s' % (str(doc), dbname, colname, resp))
 
-#------------------------------
+
 
   def test_add_data_and_two_docs(exp=TEST_EXPNAME, det=TEST_DETNAME):
     from psana.pyalgos.generic.Utils import get_login
@@ -864,7 +937,7 @@ if __name__ == "__main__" :
 
     print('time to insert data and two docs: %.6f sec' % (time()-t0_sec))
 
-#------------------------------
+
 
   def test_pro_detector_name(shortname=TEST_DETNAME):
     longname = shortname + '_this_is_insane_long_detector_name_exceeding_55_characters_in_length_or_longer'
@@ -876,7 +949,15 @@ if __name__ == "__main__" :
     name = pro_detector_name(dname)
     print('Returned protected detector name:', name)
 
-#------------------------------
+
+
+  def test_valid_post_privilege():
+      for dbname in ('cdb_xpptut15', 'cdb_epix_000001', 'cdb_ueddaq02'):
+          print('\n=== test_test_post_privilege for DB: %s' % dbname)
+          r = valid_post_privilege(dbname)
+          print('     responce: %s' % r)
+
+
 
   def test_tmp():
 
@@ -906,7 +987,7 @@ if __name__ == "__main__" :
     #print('==== query={"_id":doc_id}} ldocs:\n', ldocs)
 
 
-#------------------------------
+
 
 if __name__ == "__main__" :
   def usage(): 
@@ -932,10 +1013,11 @@ if __name__ == "__main__" :
            + '\n 18: test_add_document'\
            + '\n 19: test_add_data_and_two_docs'\
            + '\n 20: test_pro_detector_name [test-number=0-short name, 1-fixed long name, n-long name +"_n"]'\
+           + '\n 21: test_valid_post_privilege'\
            + '\n 00: test_tmp'\
            + ''
 
-#------------------------------
+
 
 if __name__ == "__main__":
     import os
@@ -967,8 +1049,9 @@ if __name__ == "__main__":
     elif tname =='18' : test_add_document()
     elif tname =='19' : test_add_data_and_two_docs()
     elif tname =='20' : test_pro_detector_name()
+    elif tname =='21' : test_valid_post_privilege()
     elif tname =='00' : test_tmp()
     else : logger.info('Not-recognized test name: %s' % tname)
-    exit('End of test %s' % tname)
+    sys.exit('End of test %s' % tname)
 
-#------------------------------
+# EOF
