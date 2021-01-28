@@ -8,8 +8,9 @@ hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
 #collect_host = os.uname()[1]
 collect_host = 'drp-neh-ctl001'
 
-groups = platform
-hutch, station, user, password = ('rix', 0, 'rixopr', 'pcds')
+# readout group 5 is for manta
+groups = f'{platform} 5'
+hutch, station, user, password = ('rix', 2, 'rixopr', 'pcds')
 auth = ' --user {:} --password {:} '.format(user,password)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
@@ -73,9 +74,15 @@ procmgr_config = [
 
  { host: 'drp-neh-cmp014', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
 
- { host: 'drp-neh-cmp014', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4'},
+ # make transition buffer size large to accomodate a non-timestamped camera
+ { host: 'drp-neh-cmp015', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4 -T 4000000'},
 
- { host: 'drp-neh-cmp015', id:'manta_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x1 IM2K4:PPM:CAM:DATA1:Pva:Image -k pebbleBufSize=8388672 -1'},
+ #     Note: '-1' specifies fuzzy timestamping
+ #           '-0' specifies no timestamp matching (-0 may have problems)
+ #           ''   specifies precise timestamp matching
+ # pebbleBufSize was 8388672
+ { host: 'drp-neh-cmp015', id:'manta_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x1 SL1K2:EXIT:CAM:DATA1:Pva:Image  -k pebbleBufSize=8400000'},
+#{ host: 'drp-neh-cmp015', id:'opal_0',      flags:'spux', env:epics_env, cmd:pva_cmd1+' -l 0x1 IM2K0:XTES:CAM:IMAGE1:Pva:Image -k pebbleBufSize=8400000'},
 ]
 
 hsd_epics = 'DAQ:RIX:HSD:1'
@@ -102,9 +109,9 @@ procmgr_ami = [
 #
 # ami
 #
- { 'host': ami_manager_node, 'id':'ami-global',  'flags':'s', 'cmd':f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}'},
- { 'host': ami_manager_node, 'id':'ami-manager', 'flags':'s', 'cmd':f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}'},
- {                           'id':'ami-client',  'flags':'s', 'cmd':f'ami-client -H {ami_manager_node}'},
+ { host:ami_manager_node, id:'ami-global',  flags:'s', cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
+ { host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
+ {                        id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir}/{hutch}' },
 ]
 
 #
@@ -112,13 +119,9 @@ procmgr_ami = [
 #
 extra_shmem_queues=1
 for N, worker_node in enumerate(ami_worker_nodes):
-    procmgr_ami.append({ host: worker_node, id:f'meb{N}', flags:'spu',
-                         cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node+extra_shmem_queues}'})
-    for n in range(ami_workers_per_node):
-      procmgr_ami.append({ 'host': worker_node, 'id': f'ami-worker_{N}_{n}', 'flags':'s', 
-                           'cmd': f'ami-worker --hutch {hutch} --prometheus-dir {prom_dir} -N {N*ami_num_workers+n} -n {ami_num_workers} -b {heartbeat_period} -H {ami_manager_node} psana://shmem={hutch}_{platform}'})
-
-    procmgr_ami.append({ 'host': worker_node, 'id': f'ami-node_{N}', 'flags':'s', 
-    	                 'cmd': f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning'})
+    procmgr_ami.append({ host:worker_node, id:f'meb{N}', flags:'spu',
+                         cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node+extra_shmem_queues}' })
+    procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}', flags:'s',
+                         cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}' })
 
 procmgr_config.extend(procmgr_ami)

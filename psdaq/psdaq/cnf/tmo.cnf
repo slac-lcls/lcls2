@@ -1,22 +1,48 @@
-if not platform: platform = '4'
+if not platform: platform = '0'
 
 import os
 ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
+hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
 
-epics_host = 'daq-tst-dev03'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'+' '+ld_lib_path
-conda_rel = 'ps-3.1.16'
-hsd_epics_dev03 = 'DAQ:LAB2:HSD:DEV03'
-hsd_epics_dev06 = 'DAQ:LAB2:HSD:DEV06'
+#collect_host = os.uname()[1]
+collect_host = 'drp-neh-ctl001'
 
-collect_host = 'drp-tst-acc06'
-groups = platform + ' 7' + ' 2'
-#hutch, user, password = ('tmo', 'tmoopr', 'pcds')
-hutch, user, password = ('tst', 'tstopr', 'pcds')
-#lgbk = 'https://pswww.slac.stanford.edu/ws-auth/lgbk/'
-lgbk = 'https://pswww.slac.stanford.edu/ws-auth/devlgbk/'
-prom_dir = '/reg/g/psdm/psdatmgr/etc/config/prom' # Prometheus
+groups = platform+' 1'
+hutch, user, password = ('tmo', 'tmoopr', 'pcds')
+auth = ' --user {:} --password {:} '.format(user,password)
+url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
+cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
+
+#
+#  drp variables
+#
+prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
 data_dir = '/ffb01/data'
+
+task_set = 'taskset 0xffbfeffbfe '
+std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir+' -d /dev/datadev_%d'
+
+drp_cmd0 = task_set+'drp '      +(std_opts%0)+' -k batching=no '
+drp_cmd1 = task_set+'drp '      +(std_opts%1)+' -k batching=no '
+pva_cmd0 = task_set+'drp_pva '  +(std_opts%0)+' -k batching=no '
+pva_cmd1 = task_set+'drp_pva '  +(std_opts%1)+' -k batching=no '
+bld_cmd0 = task_set+'drp_bld '  +(std_opts%0)+' -k batching=no,interface=eno1 '
+bld_cmd1 = task_set+'drp_bld '  +(std_opts%1)+' -k batching=no,interface=eno1 '
+
+ea_cfg = '/cds/group/pcds/dist/pds/tmo/misc/epicsArch_tmo.txt'
+ea_cmd0 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
+ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
+
+#
+#  ami variables
+#
+heartbeat_period = 1000 # units are ms
+
+ami_workers_per_node = 4
+ami_worker_nodes = ["drp-neh-cmp003"]
+ami_num_workers = len(ami_worker_nodes)
+ami_manager_node = "drp-neh-cmp003"
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -31,107 +57,76 @@ data_dir = '/ffb01/data'
 #        'x' or 'X'  -> xterm: open small or large xterm for process console
 #        's'         -> stop: sends ctrl-c to process
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
-task_set = 'taskset 0xffbfeffbfe '
-std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir+' -d /dev/datadev_%d'
-
-# temporary bld server stuff (will be moved elsewhere)
-bld_str = 'ebeam'
-bldcas_str = 'HPSEX'
-ea_cfg = '/reg/neh/home/claus/lclsii/daq/runs/eb/epicsArch.txt'
-
-drp_cmd0 = task_set+'drp '      +(std_opts%0)+' -l 0x1'
-drp_cmd1 = task_set+'drp '      +(std_opts%1)+' -l 0x1'
-bld_cmd  = task_set+'drp_bld '  +(std_opts%1)+' -l 0x1 -k "interface=eno2,batching=no" -D '+bld_str
-pva_cmd  = task_set+'drp_pva '  +(std_opts%1)+' -k batching=no '
-ea_cmd   = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
-
-teb_cmd = task_set+'teb -P tst -C '+collect_host+' -M '+prom_dir
-meb_cmd = task_set+'monReqServer -P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -d -q 4'
-
-fields = [
-               'RawBuffers:TrigCnt',
-               'RawBuffers:FifoPauseCnt','RawBuffers:FifoPauseThreshold',
-               'Integrators:IntFifoPauseCnt' ,'Integrators:IntFifoPauseThreshold',
-               'Integrators:ProcFifoPauseCnt','Integrators:ProcFifoPauseThreshold',
-               'TriggerEventManager:TriggerEventBuffer[0]:FifoWrCnt',
-               'TriggerEventManager:TriggerEventBuffer[0]:PauseThreshold',
-]
 
 procmgr_config = [
- {                         id:'groupca',     flags:'s',    conda:conda_rel, env:epics_env, cmd:'groupca DAQ:LAB2 2 '+groups},
- {                         id:'xpmpva',      flags:'s',    conda:conda_rel, env:epics_env, cmd:'xpmpva DAQ:LAB2:XPM:1 DAQ:LAB2:XPM:2'},
- { host: collect_host,     id:'control',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:'control -C BEAM -B DAQ:LAB2 -x 2 -P '+hutch+' --url '+lgbk+' --user '+user+' --password '+password+' -S 1'},
- {                         id:'control_gui', flags:'p',    conda:conda_rel,                cmd:'control_gui -E -l INFO -H '+collect_host+' --user '+user+' --password '+password},
+# {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2'},
+ {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups+' --prod'},
+ {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
 
- # TEB
- { host: 'drp-tst-dev016', id:'teb0',        flags:'spu',  conda:conda_rel, cmd:teb_cmd},
+# set the phase2 transition timeout to 20s. this is because the teb
+# has a 16s timeout for slow PVA detectors coming through the gateway.
+# both can be reduced if/when we get consistent behavior from gateways.
+ { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
+ {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- # MEB
- { host: 'drp-tst-dev016', id:'meb0' ,       flags:'spu',  conda:conda_rel, cmd:meb_cmd},
- { host: 'drp-tst-dev015', id:'meb1',        flags:'spu',  conda:conda_rel, cmd:meb_cmd},
+ { host: 'drp-neh-cmp016', id:'teb0',        flags:'spu',                cmd:task_set+'teb '+'-P '+hutch+' -C '+collect_host+' -M '+prom_dir},
 
- # PVA
- { host: 'drp-tst-dev017', id:'tmoandor_0',  flags:'spu',  conda:conda_rel, cmd:pva_cmd+'-l 0x2 -D andor DAQ:LAB2:PVCAM'},
- #{ host: 'drp-tst-dev017', id:'tmoxtcav_0',  flags:'spu',  conda:conda_rel, cmd:pva_cmd+'-l 0x2 -D xtcav DAQ:LAB2:PVCAM'},
+ { host: 'drp-neh-cmp001', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
- # EpicsArch
- #{ host: 'drp-tst-dev004', id:'epics_0',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:ea_cmd+' -l 0x4'},
- { host: 'drp-tst-dev017', id:'epics_0',     flags:'spu',  conda:conda_rel, env:epics_env, cmd:ea_cmd+' -l 0x4'},
+ { host: 'drp-neh-cmp001', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
 
- # BLD - must currently run on dev018 since that's where the bld enet xface is
- { host: 'daq-tst-dev03',  id:'lclsbldsvc',  flags:'s',    conda:conda_rel, env:epics_env, cmd:'lclsBldServer -i enp1s0f1 -r 4 -e 40 -b '+bld_str},
- { host: epics_host,       id:'bldcas',      flags:'s',    conda:conda_rel, env:epics_env, cmd:'bldcas -P DAQ:LAB2 '+bldcas_str},
- { host: 'drp-tst-dev018', id:'bld_0',       flags:'pu',   conda:conda_rel, env:epics_env, cmd:bld_cmd},
+ { host: 'drp-neh-cmp001', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4'},
 
- # TimeTool
- #{ host: 'drp-tst-dev012', id:'tmott_0',     flags:'pu',   conda:conda_rel, cmd:drp_cmd0+' -D tt -k batching=no'},
- #{ host: 'drp-tst-dev003', id:'tmoopaltt_0', flags:'pu',   conda:conda_rel, cmd:drp_cmd0+' -D opal -k batching=no'},
+ { host: 'drp-neh-cmp001', id:'andor_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x8 TMO:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2097216'},
 
- # Opal (non-timetool)
- #{ host: 'drp-tst-dev003', id:'tmoopal_0',   flags:'pu',   conda:conda_rel, env:epics_env, cmd:drp_cmd0+' -D opal -k batching=no'},
+# { host: 'drp-neh-cmp011', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
- # Timing System
- #{ host: 'drp-tst-dev013', id:'tmots_0',     flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D ts' },
- { host: 'drp-tst-dev017', id:'tmots_0',     flags:'sxpu', conda:conda_rel, cmd:drp_cmd1+' -D ts' },
+# { host: 'drp-neh-cmp012', id:'tmo_opal2_0',  flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
- # Wave8
- #{ host: 'drp-tst-dev005', id:'wave8pvs',    flags:'s',    conda:conda_rel, cmd:'wave8pvs --l 1'},
- #{ host: 'drp-tst-dev005', id:'tmowave8_0',  flags:'spu',  conda:conda_rel, cmd:drp_cmd0+' -D wave8 -k epics_prefix=DAQ:WAVE8'},
+# { host: 'drp-neh-cmp005', id:'tmo_atmopal_0',  flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
- # Cam
- { host: 'drp-tst-dev014', id:'tmocam0_0',   flags:'spu',  conda:conda_rel, cmd:drp_cmd1+' -D fakecam -k "sim_length=14,batching=no"'},
- { host: 'drp-tst-dev015', id:'tmocam1_0',   flags:'spu',  conda:conda_rel, cmd:drp_cmd1+' -D fakecam -k "sim_length=14,batching=no"'},
- { host: 'drp-tst-dev004', id:'tmocam2_0',   flags:'spu',  conda:conda_rel, cmd:drp_cmd1+' -D fakecam -k "sim_length=14,batching=no"'},
-
- # procstat
- {                         id:'procstat',    flags:'p',    conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
+  {host: 'drp-neh-cmp007', id:'meb1', flags:'spu', cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}'},
 ]
 
-# HSD: 6.4 GS/s digitizer
-node = 0
-bus  = 1
-pv   = 2
-drp  = 3
-hsds = [
-    ##{node:'daq-tst-dev07',bus:'1b',pv:'DAQ:LAB2:HSD:DEV07_1B',drp:'drp-tst-dev008'},
-    {node:'daq-tst-dev07',bus:'1a',pv:'DAQ:LAB2:HSD:DEV07_1A',drp:'drp-tst-dev010'},
-    {node:'daq-tst-dev07',bus:'88',pv:'DAQ:LAB2:HSD:DEV07_88',drp:'drp-tst-dev019'},
-    {node:'daq-tst-dev07',bus:'89',pv:'DAQ:LAB2:HSD:DEV07_89',drp:'drp-tst-dev020'},
-    {node:'daq-tst-dev07',bus:'b1',pv:'DAQ:LAB2:HSD:DEV07_B1',drp:'drp-tst-dev021'},
-    {node:'daq-tst-dev07',bus:'b2',pv:'DAQ:LAB2:HSD:DEV07_B2',drp:'drp-tst-dev022'},
-    ##{node:'daq-tst-dev07',bus:'5e',pv:'DAQ:LAB2:HSD:DEV07_5E',drp:'drp-tst-dev024'},
+hsd_epics = 'DAQ:TMO:HSD:1'
+
+# Swapped hsd_5 and hsd_7. hsd_5 has a problem, we need to investigate when we have more time
+#  Map (host,hsd_segm,datadev,epicsPV)
+procmgr_hsd = [
+ {host:'drp-neh-cmp020', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
+# {host:'drp-neh-cmp020', id:'hsd_1',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
+ {host:'drp-neh-cmp017', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
+# {host:'drp-neh-cmp017', id:'hsd_3',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
+ {host:'drp-neh-cmp019', id:'hsd_4',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:A'},
+ {host:'drp-neh-cmp018', id:'hsd_7',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:B'},
+ {host:'drp-neh-cmp021', id:'hsd_6',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:A'},
+ {host:'drp-neh-cmp018', id:'hsd_5',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:B'},
+ {host:'drp-neh-cmp022', id:'hsd_8',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:A'},
+ {host:'drp-neh-cmp022', id:'hsd_9',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
+ {host:'drp-neh-cmp024', id:'hsd_10', flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
+ {host:'drp-neh-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
+ {host:'drp-neh-cmp021', id:'hsd_12', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:A'},
+ {host:'drp-neh-cmp019', id:'hsd_13', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:B'},
 ]
 
-segm=0
-pvlist = []
-for e in hsds:
-    procmgr_config.append({ host: e[node], id:'hsdioc_%s'%e[bus], flags:'', conda:conda_rel, env:epics_env, cmd:'hsd134PVs -P '+e[pv]+' -d /dev/pcie_adc_%s'%e[bus]})
-    procmgr_config.append({ host: e[drp], id:'tmohsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:drp_cmd0+' -D hsd -k hsd_epics_prefix='+e[pv]+':A'})
-    segm += 1
-    procmgr_config.append({ host: e[drp], id:'tmohsd_%d'%segm, flags:'pu', conda:conda_rel, cmd:drp_cmd1+' -D hsd -k hsd_epics_prefix='+e[pv]+':B'})
-    segm += 1
-    pvlist.append(e[pv]+':A')
-    pvlist.append(e[pv]+':B')
+procmgr_config.extend(procmgr_hsd)
 
-if pvlist != []:
-    procmgr_config.append({id:'hsdpva', flags:'', conda:conda_rel, env:epics_env, cmd:'hsdpva '+' '.join(pvlist)})
+procmgr_ami = [
+#
+# ami
+#
+ { host:ami_manager_node, id:'ami-global',  flags:'s', cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
+ { host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
+ {                        id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir}/{hutch}' },
+]
+
+#
+# ami workers
+#
+for N, worker_node in enumerate(ami_worker_nodes):
+    procmgr_ami.append({ host:worker_node, id:f'meb{N}', flags:'spu',
+                         cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}' })
+    procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}', flags:'s',
+                         cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}' })
+
+procmgr_config.extend(procmgr_ami)
