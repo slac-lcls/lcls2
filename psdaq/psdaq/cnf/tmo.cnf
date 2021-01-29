@@ -4,6 +4,7 @@ import os
 ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
+andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.89 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 
 #collect_host = os.uname()[1]
 collect_host = 'drp-neh-ctl001'
@@ -77,15 +78,15 @@ procmgr_config = [
 
  { host: 'drp-neh-cmp001', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4'},
 
- { host: 'drp-neh-cmp001', id:'andor_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x8 TMO:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2097216'},
+ { host: 'drp-neh-cmp001', id:'andor_0',     flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x8 TMO:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2097216'},
 
-# { host: 'drp-neh-cmp011', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
+ { host: 'drp-neh-cmp011', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
-# { host: 'drp-neh-cmp012', id:'tmo_opal2_0',  flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
+ { host: 'drp-neh-cmp012', id:'tmo_opal2_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
-# { host: 'drp-neh-cmp005', id:'tmo_atmopal_0',  flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
+ { host: 'drp-neh-cmp005', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
-  {host: 'drp-neh-cmp007', id:'meb1', flags:'spu', cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}'},
+ { host: 'drp-neh-cmp007', id:'meb1', flags:'spu', cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}'},
 ]
 
 hsd_epics = 'DAQ:TMO:HSD:1'
