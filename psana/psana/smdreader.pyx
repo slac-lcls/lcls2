@@ -104,7 +104,11 @@ cdef class SmdReader:
             buf_offsets[i] = buf.seen_offset
             
             # All the events before found_pos are within max_ts
-            i_evts[i] = buf.n_seen_events
+            if buf.n_seen_events < buf.n_ready_events:
+                i_evts[i] = buf.n_seen_events # safe to move index up
+            else:
+                i_evts[i] = buf.n_seen_events - 1 # keep idx fixed (-1: index vs. no.) 
+
             founds[i] = 0
             while i_evts[i] < buf.n_ready_events - 1 and        \
                     buf.ts_arr[i_evts[i]] < limit_ts  and    \
@@ -112,9 +116,13 @@ cdef class SmdReader:
                 i_evts[i] += 1
 
             if buf.ts_arr[i_evts[i]] > limit_ts:
-                i_evts[i] -= 1
-
-            view_size = i_evts[i] + 1 - buf.n_seen_events
+                if i_evts[i] == 0:
+                    view_size = 0
+                else:
+                    i_evts[i] -= 1
+                    view_size = i_evts[i] + 1 - buf.n_seen_events
+            else:
+                view_size = i_evts[i] + 1 - buf.n_seen_events
             
             # Update view_size in case exit with EndRun found
             if i == self.winner:
@@ -137,7 +145,11 @@ cdef class SmdReader:
             stepbuf_offsets[i] = buf.seen_offset
             
             # All the events before found_pos are within max_ts
-            i_evts[i] = buf.n_seen_events  
+            if buf.n_seen_events < buf.n_ready_events:
+                i_evts[i] = buf.n_seen_events     # safe to move index up
+            else:
+                i_evts[i] = buf.n_seen_events - 1 # keep idx fixed (-1: index vs. no.) 
+
             founds[i] = 0
             while i_evts[i] < buf.n_ready_events - 1 and        \
                     buf.ts_arr[i_evts[i]] < limit_ts  and    \
@@ -146,9 +158,14 @@ cdef class SmdReader:
 
             # Correct the index in case over count by one
             if buf.ts_arr[i_evts[i]] > limit_ts:
-                i_evts[i] -= 1
+                if i_evts[i] == 0: 
+                    view_size = 0
+                else:
+                    i_evts[i] -= 1
+                    view_size = i_evts[i] + 1 - buf.n_seen_events
+            else:
+                view_size = i_evts[i] + 1 - buf.n_seen_events
 
-            view_size = i_evts[i] + 1 - buf.n_seen_events
             if view_size == 0:
                 stepbuf_sizes[i] = 0
             else:
@@ -156,7 +173,7 @@ cdef class SmdReader:
                 buf.seen_offset = buf.next_offset_arr[founds[i]]
                 buf.n_seen_events = founds[i] + 1
                 stepbuf_sizes[i] = buf.seen_offset - stepbuf_offsets[i]
-                
+        
         # output as a list of memoryviews for both L1 and step buffers
         mmrv_bufs = []
         mmrv_step_bufs = []
