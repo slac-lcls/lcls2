@@ -2,6 +2,16 @@ import os
 from psana.psexp import Run, mode, DataSourceBase
 from psana.smalldata import SmallData
 
+class NullRun(object):
+    def __init__(self):
+        self.expt = None
+        self.runnum = None
+    def Detector(self, *args):
+        return None
+    def events(self):
+        return iter([])
+    def steps(self):
+        return iter([])
 
 class NullDataSource(DataSourceBase):
 
@@ -11,9 +21,4 @@ class NullDataSource(DataSourceBase):
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
 
     def runs(self):
-        run = Run(self)
-        def events():
-            return iter([])
-        setattr(run, "events", events)
-        yield run
-        
+        yield NullRun()

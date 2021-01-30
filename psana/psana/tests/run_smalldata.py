@@ -25,7 +25,7 @@ def global_except_hook(exctype, value, traceback):
     mpi4py.MPI.COMM_WORLD.Abort(1)
     sys.__excepthook__(exctype, value, traceback)
 
-#sys.excepthook = global_except_hook
+sys.excepthook = global_except_hook
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -53,6 +53,9 @@ def gen_h5(source='xtc', pid=None):
                        callbacks=[test_callback])
 
     for run in ds.runs():
+        # test that we can make a Detector, which is somewhat subtle
+        # because SRV cores make dummy detectors using NullDataSource/NullRun
+        dummydet = run.Detector('xppcspad')
         for i,evt in enumerate(run.events()):
 
             print('event:', i)
