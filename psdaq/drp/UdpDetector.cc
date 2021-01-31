@@ -79,7 +79,7 @@ public:
 
   RawDef()
    {
-       NameVec.push_back({"encoderValue", XtcData::Name::UINT32});
+       NameVec.push_back({"encoderValue", XtcData::Name::UINT32,1});  // array
        NameVec.push_back({"frameCount", XtcData::Name::UINT16});
    }
 } RawDef;
@@ -672,7 +672,9 @@ void UdpDetector::process(const XtcData::TimeStamp& timestamp)
             // create data
             XtcData::NamesId namesId1(nodeId, segment);
             XtcData::CreateData raw(dgram->xtc, m_namesLookup, namesId1);
-            raw.set_value(RawDef::encoderValue, encoderValue);
+            unsigned shape[XtcData::MaxRank] = {1};
+            XtcData::Array<uint32_t> arrayT = raw.allocate<uint32_t>(RawDef::encoderValue,shape);
+            arrayT(0) = encoderValue;
             raw.set_value(RawDef::frameCount, frameCount);
 
             m_pvQueue.push(dgram);
