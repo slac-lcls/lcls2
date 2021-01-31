@@ -42,6 +42,7 @@ struct Parameters
         partition(-1),
         detSegment(0),
         laneMask(0x1),
+        loopbackPort(0),
         verbose(0)
     {
     }
@@ -61,6 +62,7 @@ struct Parameters
     std::string prometheusDir;
     std::map<std::string,std::string> kwargs;
     uint32_t rogMask;
+    int loopbackPort;
     unsigned verbose;
     size_t maxTrSize;
     unsigned nTrBuffers;

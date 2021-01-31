@@ -71,6 +71,16 @@ target_link_libraries(drp_pva
     readline
 )
 
+add_executable(drp_udp
+    UdpDetector.cc
+)
+
+target_link_libraries(drp_udp
+    drpbase
+    trigger
+    readline
+)
+
 add_executable(configdb_obj_2xtc
     configdb_obj_2xtc.cc
 )
@@ -170,7 +180,7 @@ target_link_libraries(opaltt_test
 )
 
 
-install(TARGETS drp drp_bld drp_pva
+install(TARGETS drp drp_bld drp_pva drp_udp
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
