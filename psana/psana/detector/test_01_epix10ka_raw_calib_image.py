@@ -328,11 +328,15 @@ def test_image(args):
 
 def test_mask(args):
     ds, run, det = ds_run_det(args)
-    mask = det.raw._mask_from_status()
+    #mask = det.raw._mask_from_status()
     #raw = det.raw.raw()
     #mask = det.raw._mask_calib()
     #mask_edges = det.raw._mask_edges(mask, edge_rows=20, edge_cols=10)
-    mask = det.raw._mask_edges(edge_rows=20, edge_cols=10, center_rows=4, center_cols=2)
+    #mask = det.raw._mask_edges(edge_rows=20, edge_cols=10, center_rows=4, center_cols=2)
+    #mask = det.raw._mask(calib=True, status=True, edges=True,\
+    #                     edge_rows=20, edge_cols=10, center_rows=4, center_cols=2)
+    mask = det.raw._mask_comb(mbits=0o7,\
+                              edge_rows=20, edge_cols=10, center_rows=4, center_cols=2)
     print(info_ndarr(mask, 'mask '))
 
     if args.dograph:

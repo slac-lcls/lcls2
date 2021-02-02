@@ -15,7 +15,7 @@ from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes
 
 #import psana.pscalib.calib.CalibConstants as CC
-from psana.detector.UtilsMask import CC, DTYPE_MASK, DTYPE_STATUS, mask_edges
+from psana.detector.UtilsMask import CC, DTYPE_MASK, DTYPE_STATUS, mask_edges, merge_masks
 
 
 from amitypes import Array2d, Array3d
@@ -101,10 +101,13 @@ class AreaDetector(DetectorImpl):
         if p is None: p = self._calibcons_and_meta_for_ctype(ctype)[0] # 0-data/1-metadata
         return p
 
+
     def _pedestals(self): return self._cached_array(self._pedestals_, 'pedestals')
     def _gain(self):      return self._cached_array(self._gain_, 'pixel_gain')
     def _rms(self):       return self._cached_array(self._rms_, 'pixel_rms')
     def _status(self):    return self._cached_array(self._status_, 'pixel_status')
+    def _mask_calib(self):return self._cached_array(self._mask_calib_, 'pixel_mask')
+
 
     def _common_mode(self, *args, **kwargs):
         """returns tuple of common mode parameters
@@ -272,18 +275,30 @@ class AreaDetector(DetectorImpl):
                self.img_entries
 
 
-    def _mask_calib(self): # -> Array3d:
-        mask = self._cached_array(self._mask_calib_, 'pixel_mask')
-        if mask is None:
-            peds = self._cached_array(self._pedestals_, 'pedestals')
-            if peds is None: return None
-            shape = peds.shape if peds.ndim<4 else peds.shape[-3:]
-            mask = self._mask_calib_ = np.ones(shape, dtype=DTYPE_MASK)
-            #logger.debug(info_ndarr(mask, 'XXXX mask '))
-        return mask
+    def _shape_as_daq(self):
+        peds = self._pedestals()
+        if peds is None: 
+            logger.warning('In _shape_as_daq pedestals are None, can not define daq data shape')
+            return None
+        return peds.shape if peds.ndim<4 else peds.shape[-3:]
 
 
-    def _mask_from_status(self, **kwa): # -> Array3d:
+    def _number_of_segments_total(self):
+        shape = self._shape_as_daq()
+        return None if shape is None else shape[-3] # (7,n,352,384) - define through calibration constants
+
+
+    def _mask_default(self, dtype=DTYPE_MASK):
+        shape = self._shape_as_daq()
+        return None if shape is None else np.ones(shape, dtype=dtype)
+
+
+    def _mask_calib_or_default(self, dtype=DTYPE_MASK):
+        mask = self._mask_calib()
+        return self._mask_default(dtype) if mask is None else mask.astype(dtype)
+
+
+    def _mask_from_status(self, **kwa):
         """
         For simple detectors w/o multi-gain ranges
 
@@ -296,17 +311,19 @@ class AreaDetector(DetectorImpl):
         mask made of status: np.array, ndim=3, shape: as full detector data
         """
         status = self._status()
-        if status == None:
+        if status is None:
             logger.warning('pixel_status is None')
             return None
         return np.asarray(np.select((status>0,), (0,), default=1), dtype=DTYPE_MASK)
 
 
-    def _mask_edges(self, mask, **kwa): # -> Array3d:
-        return mask_edges(mask,\
-          edge_rows=kwa.get('edge_rows', 1),\
-          edge_cols=kwa.get('edge_cols', 1),\
-          dtype=DTYPE_MASK) # kwa.get('dtype', DTYPE_MASK)):
+    def _mask_edges(self, **kwa): # -> Array3d:
+        mask = self._mask_default(self, dtype=DTYPE_MASK)
+        return None if mask is None else\
+          mask_edges(mask,\
+            edge_rows=kwa.get('edge_rows', 1),\
+            edge_cols=kwa.get('edge_cols', 1),\
+            dtype=DTYPE_MASK) # kwa.get('dtype', DTYPE_MASK)):
 
 
 #     def _mask_neighbors(self, **kwa) -> Array3d:
@@ -318,6 +335,34 @@ class AreaDetector(DetectorImpl):
         #    logger.warning('self._segments(evt) is None')
         #    return None
         #return arr3d_from_dict({k:v.raw for k,v in segs.items()})
+
+
+    def _mask(self, calib=False, status=False, edges=False, **kwa):
+        """Returns per-pixel array with mask values (per-pixel product of all requested masks).
+           Parameters
+           - calib   : bool - True/False = on/off mask from calib directory.
+           - status  : bool - True/False = on/off mask generated from calib pixel_status. 
+           - edges   : bool - True/False = on/off mask of edges. 
+           - kwa     : dict - additional parameters passed to low level methods (width,...) 
+                       for edges: edge_rows=1, edge_cols=1, center_rows=0, center_cols=0, dtype=DTYPE_MASK
+                       for status of epix10ka: grinds=(0,1,2,3,4)
+           Returns
+           - np.array - per-pixel mask values 1/0 for good/bad pixels.
+        """
+        dtype = kwa.get('dtype', DTYPE_MASK) 
+        mask = self._mask_calib_or_default(dtype) if calib else self._mask_default(dtype)
+        if status: mask = merge_masks(mask, self._mask_from_status(**kwa)) 
+        if edges: mask = merge_masks(mask, self._mask_edges(**kwa))
+        return mask
+
+
+    def _mask_comb(self, **kwa):
+        mbits=kwa.get('mbits', 1)      
+        return self._mask(\
+          calib  = mbits & 1,\
+          status = mbits & 2,\
+          edges  = mbits & 4,\
+          **kwa)
 
 #----
 

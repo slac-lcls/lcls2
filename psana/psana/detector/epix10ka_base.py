@@ -33,7 +33,7 @@ class epix10ka_base(AreaDetector):
         return calib_epix10ka_any(self, evt)
 
 
-    def _mask_from_status(self, **kwa) -> Array3d:
+    def _mask_from_status(self, **kwa):
         """
         Parameters **kwa
         ----------------
@@ -52,14 +52,13 @@ class epix10ka_base(AreaDetector):
 
     def _mask_edges(self, edge_rows=1, edge_cols=1, center_rows=0, center_cols=0, dtype=DTYPE_MASK, **kwa):
         mask1 = seg.pixel_mask_array(edge_rows, edge_cols, center_rows, center_cols, dtype)
-        status = self._status()
-        if status is None:
-            logger.warning('status is None - can not define number of segments in full detector')
+        nsegs = self._number_of_segments_total()
+        if nsegs is None:
+            logger.warning('_number_of_segments_total is None')
             return None
-        nsegs = status.shape[-3] # (7,n,352,384) - define through calibration constants
-        logger.info('XXX _mask_edges for %d-segment epix10ka'%nsegs)
+        logger.info('_mask_edges for %d-segment epix10ka'%nsegs)
         mask = np.stack([mask1 for i in range(nsegs)])
-        logger.info(info_ndarr(mask, 'XXX _mask_edges '))
+        logger.info(info_ndarr(mask, '_mask_edges '))
         return mask
 
 

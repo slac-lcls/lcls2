@@ -89,6 +89,9 @@ def mask_edges(mask, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK):
        edge_rows: int - number of edge rows to mask
        edge_cols: int - number of edge columns to mask
     """
+
+    assert isinstance(mask, np.ndarray), 'input mask should be numpy array'
+
     erows = edge_rows
     ecols = edge_cols
 
@@ -157,7 +160,7 @@ def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
     if mask1 is None: return mask2
     if mask2 is None: return mask1
 
-    if shape1 != shape2:
+    if mask1.shape != mask2.shape:
         if mask1.ndim > mask2.ndim: mask2.shape = mask1.shape
         else                      : mask1.shape = mask2.shape
 
