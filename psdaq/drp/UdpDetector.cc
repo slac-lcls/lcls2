@@ -118,24 +118,6 @@ void UdpMonitor::onDisconnect()
     logging::info("%s disconnected", name().c_str());
 }
 
-#if 0
-std::vector<uint32_t> UdpMonitor::_getDimensions(size_t count)
-{
-    // FIXME
-    return std::vector<uint32_t>(1, count);
-}
-
-std::vector<uint32_t> UdpMonitor::getData(void* data, size_t& payloadSize)
-{
-    // FIXME
-    assert(payloadSize == sizeof(uint32_t));
-
-    *((uint32_t *)data) = 170001;
-
-    return _getDimensions(payloadSize);
-}
-#endif /* 0 */
-
 class Pgp
 {
 public:
@@ -440,7 +422,10 @@ void UdpDetector::_loopbackSend()
     }
 #endif
     pHeader->channelMask = 0x01;
+    sprintf(pHeader->hardwareID, "%s", "LOOPBACK");
+
     pChannel->encoderValue = htonl(170000);
+    sprintf(pChannel->hardwareID, "%s", "LOOPBACK CH0");
 
     int sent = sendto(m_loopbackFd, (void *)mybuf, sizeof(mybuf), 0,
                   (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));
@@ -605,15 +590,14 @@ void UdpDetector::_udpReceiver()
             break;
         }
         if (FD_ISSET(_dataFd, &readfds)) {
-            XtcData::TimeStamp timestamp(0, 0);
             logging::debug("%s read FD is set", __PRETTY_FUNCTION__);
-            process(timestamp);
+            process();
         }
     }
     logging::info("UDP receiver thread finished");
 }
 
-void UdpDetector::process(const XtcData::TimeStamp& timestamp)
+void UdpDetector::process()
 {
     unsigned    segment = 0;
     uint32_t    encoderValue;
@@ -624,7 +608,7 @@ void UdpDetector::process(const XtcData::TimeStamp& timestamp)
 
     logging::debug("%s: frame = %hu  encoderValue = %u", __PRETTY_FUNCTION__, frameCount, encoderValue);
 
-    // handle frame counter
+    // reset frame counter
     if (_resetHwCount) {
         _count = 0;
         _countOffset = frameCount - 1;
@@ -636,25 +620,23 @@ void UdpDetector::process(const XtcData::TimeStamp& timestamp)
     ++_count;
     uint16_t sum16 = (uint16_t)(_count + _countOffset);
 
-    if (true) {
-        // check for out-of-order condition
-        if (frameCount == stuck16) {
-            logging::error("%s: frame count %hu repeated in consecutive frames", __PRETTY_FUNCTION__, stuck16);
-            // latch error
-            _outOfOrder = true;
-        } else if (frameCount != sum16) {
-           logging::error("%s: hw count (%hu) != sw count (%hu) + offset (%u) == (%hu)\n",
-                          __PRETTY_FUNCTION__, frameCount, _count, _countOffset, sum16);
+    // check for out-of-order condition
+    if (frameCount == stuck16) {
+        logging::error("%s: frame count %hu repeated in consecutive frames", __PRETTY_FUNCTION__, stuck16);
+        // latch error
+        _outOfOrder = true;
+    } else if (frameCount != sum16) {
+       logging::error("%s: hw count (%hu) != sw count (%hu) + offset (%u) == (%hu)\n",
+                      __PRETTY_FUNCTION__, frameCount, _count, _countOffset, sum16);
 
-            // latch error
-            _outOfOrder = true;
-        }
+        // latch error
+        _outOfOrder = true;
     }
 
     // Protect against namesLookup not being stable before Enable
     if (m_running.load(std::memory_order_relaxed)) {
         ++m_nUpdates;
-        logging::debug("%s process @ %u.%09u", m_udpMonitor->name().c_str(), timestamp.seconds(), timestamp.nanoseconds());
+        logging::debug("%s process", m_udpMonitor->name().c_str());
 
         XtcData::Dgram* dgram;
         if (m_bufferFreelist.try_pop(dgram)) { // If a buffer is available...
@@ -747,34 +729,13 @@ void UdpDetector::_matchUp()
 
         Pds::EbDgram* pgpDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[pgpIdx]);
 
-        logging::debug("PV: %u.%09d, PGP: %u.%09d, PGP - PV: %10ld ns, svc %2d",
-      //printf        ("PV: %u.%09d, PGP: %u.%09d, PGP - PV: %10ld ns, svc %2d",
-                       pvDg->time.seconds(), pvDg->time.nanoseconds(),
-                       pgpDg->time.seconds(), pgpDg->time.nanoseconds(),
-                       pgpDg->time.to_ns() - pvDg->time.to_ns(),
-                       pgpDg->service());
-
-        //  Mask out fiducial until it's understood
-        //        if      (pvDg->time == pgpDg->time)  _handleMatch  (*pvDg, *pgpDg);
-
-        int result = _compare(pvDg->time,pgpDg->time);
-        //printf("pv %016lx, pgp %016lx, diff %ld, compare %d\n", pvDg->time.value(), pgpDg->time.value(), pvDg->time.value() - pgpDg->time.value(), _compare(pvDg->time, pgpDg->time));
-        if      (result==0) { _handleMatch  (*pvDg, *pgpDg); /*printf("  Matched\n");*/ }
-        else if (result >0) { _handleYounger(*pvDg, *pgpDg); /*printf("  Younger\n");*/ }
-        else                { _handleOlder  (*pvDg, *pgpDg); /*printf("  Older\n");  */ }
-
-        //_handleMatch  (*pvDg, *pgpDg);
+        _handleMatch  (*pvDg, *pgpDg);
     }
     //printf("\n");
 }
 
 void UdpDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
 {
-    logging::debug("PV matches PGP!!  "
-                   "TimeStamps: PV %u.%09u == PGP %u.%09u",
-                   pvDg.time.seconds(), pvDg.time.nanoseconds(),
-                   pgpDg.time.seconds(), pgpDg.time.nanoseconds());
-
     uint32_t pgpIdx;
     m_pgpQueue.try_pop(pgpIdx);         // Actually consume the element
 
@@ -805,53 +766,6 @@ void UdpDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
     }
 
     _sendToTeb(pgpDg, pgpIdx);
-}
-
-void UdpDetector::_handleYounger(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
-{
-    uint32_t pgpIdx;
-    m_pgpQueue.try_pop(pgpIdx);       // Actually consume the element
-
-    if (pgpDg.service() == XtcData::TransitionId::L1Accept) {
-        // No corresponding PV data so mark event damaged
-        pgpDg.xtc.damage.increase(XtcData::Damage::MissingData);
-
-        ++m_nEmpty;
-
-        logging::debug("PV too young!!    "
-                       "TimeStamps: PV %u.%09u > PGP %u.%09u",
-                       pvDg.time.seconds(), pvDg.time.nanoseconds(),
-                       pgpDg.time.seconds(), pgpDg.time.nanoseconds());
-    }
-    else { // SlowUpdate
-        // Allocate a transition dgram from the pool and initialize its header
-        Pds::EbDgram* trDg = m_pool->allocateTr();
-        *trDg = pgpDg;
-        PGPEvent* pgpEvent = &m_pool->pgpEvents[pgpIdx];
-        pgpEvent->transitionDgram = trDg;
-
-        // Provide an empty XTC
-        trDg->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
-    }
-
-    _sendToTeb(pgpDg, pgpIdx);
-}
-
-void UdpDetector::_handleOlder(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
-{
-    if (pgpDg.service() == XtcData::TransitionId::L1Accept) {
-        ++m_nTooOld;
-        logging::debug("PV too old!!      "
-                       "TimeStamps: PV %u.%09u < PGP %u.%09u [0x%08x%04x.%05x < 0x%08x%04x.%05x]",
-                       pvDg.time.seconds(), pvDg.time.nanoseconds(),
-                       pgpDg.time.seconds(), pgpDg.time.nanoseconds(),
-                       pvDg.time.seconds(), (pvDg.time.nanoseconds()>>16)&0xfffe, pvDg.time.nanoseconds()&0x1ffff,
-                       pgpDg.time.seconds(), (pgpDg.time.nanoseconds()>>16)&0xfffe, pgpDg.time.nanoseconds()&0x1ffff);
-    }
-
-    XtcData::Dgram* dgram;
-    m_pvQueue.try_pop(dgram);           // Actually consume the element
-    m_bufferFreelist.push(dgram);       // Return buffer to freelist
 }
 
 void UdpDetector::_timeout(const XtcData::TimeStamp& timestamp)

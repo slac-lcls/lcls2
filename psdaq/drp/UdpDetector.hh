@@ -56,7 +56,7 @@ public:
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
     unsigned unconfigure();
-    void process(const XtcData::TimeStamp&);
+    void process();
     void addNames(unsigned segment, XtcData::Xtc& xtc);
     int drainFd(int fd);
     int reset();
@@ -71,8 +71,6 @@ private:
     void _timeout(const XtcData::TimeStamp& timestamp);
     void _matchUp();
     void _handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
-    void _handleYounger(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
-    void _handleOlder(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
     enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
