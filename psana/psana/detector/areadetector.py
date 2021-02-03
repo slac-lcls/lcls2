@@ -1,4 +1,45 @@
-"""Data access methods common for all AREA DETECTORS.
+"""
+Data access methods common for all AREA DETECTORS
+=================================================
+
+Usage::
+
+  from psana.detector.areadetector import AreaDetector
+
+  o = AreaDetector(*args, **kwargs) # enherits from DetectorImpl
+
+  a = o.raw(evt)
+  a = o.segments(evt)
+  a = o._det_calibconst()
+  a = o._calibcons_and_meta_for_ctype(ctype='pedestals')
+  a = o._cached_array(p, ctype='pedestals')
+  a = o._pedestals()
+  a = o._gain()
+  a = o._rms()
+  a = o._status()
+  a = o._mask_calib()
+  a = o._common_mode()
+  a = o._det_geotxt_and_meta()
+  a = o._det_geo()
+  a = o._pixel_coord_indexes(**kwa) # 'pix_scale_size_um',None; 'xy0_off_pix',None; # do_tilt',True; 'cframe',0
+  a = o._pixel_coords(**kwa) # do_tilt',True; 'cframe',0
+  a = o._cached_pixel_coord_indexes(evt, **kwa) # the same as above
+
+  a = o._shape_as_daq()
+  a = o._number_of_segments_total()
+  m = _mask_default(dtype=DTYPE_MASK)
+  m = o.o._mask_calib_or_default(dtype=DTYPE_MASK)
+  m = o._mask_from_status(**kwa)
+  m = o._mask_edges(**kwa) # 'edge_rows', 1;'edge_cols', 1
+  m = o._mask(calib=False, status=False, edges=False, **kwa) #'dtype', DTYPE_MASK
+  m = o._mask_comb**kwa) # 'mbits', 1
+
+  a = o.calib(evt, cmpars=(7,2,100,10),\
+                            mbits=0o7, mask=None, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)
+  a = o.calib(evt, **kwa)
+  a = o.image(self, evt, nda=None, **kwa)
+
+2020-11-06 created by Mikhail Dubrovin
 """
 
 from psana.detector.detector_impl import DetectorImpl
@@ -13,10 +54,7 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr, reshape_to_3d # print_n
 from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
         img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes
-
-#import psana.pscalib.calib.CalibConstants as CC
 from psana.detector.UtilsMask import CC, DTYPE_MASK, DTYPE_STATUS, mask_edges, merge_masks
-
 
 from amitypes import Array2d, Array3d
 
@@ -64,7 +102,7 @@ class AreaDetector(DetectorImpl):
         return arr3d_from_dict({k:v.raw for k,v in segs.items()})
 
 
-    def segments(self,evt) :
+    def segments(self,evt):
         """ Returns dense 1-d numpy array of segment indexes.
         from dict self._segments(evt)    
         """
@@ -107,13 +145,7 @@ class AreaDetector(DetectorImpl):
     def _rms(self):       return self._cached_array(self._rms_, 'pixel_rms')
     def _status(self):    return self._cached_array(self._status_, 'pixel_status')
     def _mask_calib(self):return self._cached_array(self._mask_calib_, 'pixel_mask')
-
-
-    def _common_mode(self, *args, **kwargs):
-        """returns tuple of common mode parameters
-        """
-        logger.debug('in %s._common_mode' % self.__class__.__name__)
-        return None # self._cached_array(self._common_mode_, 'common_mode')
+    def _common_mode(self):return self._cached_array(self._common_mode_, 'common_mode')
 
 
     def _det_geotxt_and_meta(self):
@@ -218,6 +250,23 @@ class AreaDetector(DetectorImpl):
                 first = (352+5)*384 + 380
                 for i in range(first,first+10): s += '\n    s:%02d r:%03d c:%03d' % tuple(imgind_to_seg_row_col[i])
                 logger.debug(s)
+
+
+    def calib(self, evt, **kwa) -> Array3d:
+        """
+        """
+        logger.debug('%s.calib(evt) is implemented for generic case of area detector as raw - pedestals' % self.__class__.__name__\
+                      +'\n  If needed more, it needs to be re-implemented for this detector type.')
+        raw = self.raw(evt)
+        if raw is None:
+            logger.debug('det.raw.raw(evt) is None')
+            return None
+
+        peds = self._pedestals()
+        if peds is None:
+            logger.debug('det.raw._pedestals() is None - return det.raw.raw(evt)')
+            return raw
+        return raw - peds
 
 
     def image(self, evt, nda=None, **kwa) -> Array2d:
@@ -337,15 +386,16 @@ class AreaDetector(DetectorImpl):
         #return arr3d_from_dict({k:v.raw for k,v in segs.items()})
 
 
-    def _mask(self, calib=False, status=False, edges=False, **kwa):
+    def _mask(self, calib=False, status=False, edges=False, neighbors=False, **kwa):
         """Returns per-pixel array with mask values (per-pixel product of all requested masks).
            Parameters
-           - calib   : bool - True/False = on/off mask from calib directory.
-           - status  : bool - True/False = on/off mask generated from calib pixel_status. 
-           - edges   : bool - True/False = on/off mask of edges. 
-           - kwa     : dict - additional parameters passed to low level methods (width,...) 
-                       for edges: edge_rows=1, edge_cols=1, center_rows=0, center_cols=0, dtype=DTYPE_MASK
-                       for status of epix10ka: grinds=(0,1,2,3,4)
+           - calib    : bool - True/False = on/off mask from calib directory.
+           - status   : bool - True/False = on/off mask generated from calib pixel_status. 
+           - edges    : bool - True/False = on/off mask of edges. 
+           - neighbors: bool - True/False = on/off mask of neighbors. 
+           - kwa      : dict - additional parameters passed to low level methods (width,...) 
+                        for edges: edge_rows=1, edge_cols=1, center_rows=0, center_cols=0, dtype=DTYPE_MASK
+                        for status of epix10ka: grinds=(0,1,2,3,4)
            Returns
            - np.array - per-pixel mask values 1/0 for good/bad pixels.
         """
@@ -353,15 +403,17 @@ class AreaDetector(DetectorImpl):
         mask = self._mask_calib_or_default(dtype) if calib else self._mask_default(dtype)
         if status: mask = merge_masks(mask, self._mask_from_status(**kwa)) 
         if edges: mask = merge_masks(mask, self._mask_edges(**kwa))
+        #if neighbors: mask = merge_masks(mask, self._mask_neighbors(self, **kwa))
         return mask
 
 
     def _mask_comb(self, **kwa):
         mbits=kwa.get('mbits', 1)      
         return self._mask(\
-          calib  = mbits & 1,\
-          status = mbits & 2,\
-          edges  = mbits & 4,\
+          calib     = mbits & 1,\
+          status    = mbits & 2,\
+          edges     = mbits & 4,\
+          neighbors = mbits & 8,\
           **kwa)
 
 #----
