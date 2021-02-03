@@ -1,0 +1,103 @@
+if not platform: platform = '2'
+
+import os
+ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
+hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
+
+#collect_host = os.uname()[1]
+collect_host = 'drp-neh-ctl001'
+
+groups = '2 5'
+hutch, user, password = ('tmo', 'tmoopr', 'pcds')
+auth = ' --user {:} --password {:} '.format(user,password)
+url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
+cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
+
+#
+#  drp variables
+#
+prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
+data_dir = '/ffb01/data'
+
+task_set = 'taskset 0xffbfeffbfe '
+std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir+' -d /dev/datadev_%d'
+
+drp_cmd0 = task_set+'drp '      +(std_opts%0)+' -k batching=no ' #,forceEnet=yes '
+drp_cmd1 = task_set+'drp '      +(std_opts%1)+' -k batching=no ' #,forceEnet=yes '
+pva_cmd0 = task_set+'drp_pva '  +(std_opts%0)+' -k batching=no ' #,forceEnet=yes '
+pva_cmd1 = task_set+'drp_pva '  +(std_opts%1)+' -k batching=no ' #,forceEnet=yes '
+bld_cmd0 = task_set+'drp_bld '  +(std_opts%0)+' -k batching=no,interface=eno1 ' #,forceEnet=yes '
+bld_cmd1 = task_set+'drp_bld '  +(std_opts%1)+' -k batching=no,interface=eno1 ' #,forceEnet=yes '
+
+ea_cfg = '/cds/group/pcds/dist/pds/tmo/misc/epicsArch_fee.txt'
+ea_cmd0 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg #,forceEnet=yes '+ea_cfg
+ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg #,forceEnet=yes '+ea_cfg
+
+#
+#  ami variables
+#
+heartbeat_period = 1000 # units are ms
+
+ami_workers_per_node = 4
+ami_worker_nodes = ["drp-neh-cmp013"]
+ami_num_workers = len(ami_worker_nodes)
+ami_manager_node = "drp-neh-cmp016"
+
+# procmgr FLAGS: <port number> static port number to keep executable
+#                              running across multiple start/stop commands.
+#                "X" open xterm
+#                "s" send signal to child when stopping
+#
+# HOST       UNIQUEID      FLAGS  COMMAND+ARGS
+# list of processes to run
+#   required fields: id, cmd
+#   optional fields: host, port, flags, conda, env, rtprio
+#     flags:
+#        'x' or 'X'  -> xterm: open small or large xterm for process console
+#        's'         -> stop: sends ctrl-c to process
+#        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
+
+procmgr_config = [
+# {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:1'},
+ {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups+' --prod'},
+ {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
+
+ { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1'},
+ {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
+
+ { host: 'drp-neh-cmp016', id:'teb0',        flags:'spu',                cmd:task_set+'teb '+'-P '+hutch+' -C '+collect_host+' -M '+prom_dir}, #+' -k forceEnet=yes'},
+
+ { host: 'drp-neh-cmp014', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
+
+ { host: 'drp-neh-cmp014', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
+
+ { host: 'drp-neh-cmp014', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4'},
+
+ { host: 'drp-neh-cmp014', id:'gmdstr0_0',   flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x8 ca/EM1K0:GMD:HPS:STR0:STREAM_SHORT0'},  # Electron waveforms
+ { host: 'drp-neh-cmp015', id:'gmdstr2_0',   flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x1 ca/EM1K0:GMD:HPS:STR0:STREAM_SHORT2'},  # Ion waveforms
+ { host: 'drp-neh-cmp015', id:'xgmdstr0_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT0'}, # Electron 1 waveforms
+ { host: 'drp-neh-cmp015', id:'xgmdstr1_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x4 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT1'}, # Electron 2 waveforms
+ { host: 'drp-neh-cmp015', id:'xgmdstr2_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x8 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT2'}, # Ion waveforms
+]
+
+procmgr_ami = [
+#
+# ami
+#
+ { host: ami_manager_node, id:'ami-global',  flags:'s', cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
+ { host: ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
+ {                         id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir}/{hutch}' },
+]
+
+#
+# ami workers
+#
+for N, worker_node in enumerate(ami_worker_nodes):
+    procmgr_ami.append({ host:worker_node, id:f'meb{N}', flags:'spu',
+                         #cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -k forceEnet=yes -d -q {ami_workers_per_node}' })
+                         cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}' })
+    procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}', flags:'s',
+                         cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level debug worker -b {heartbeat_period} psana://shmem={hutch}' })
+
+procmgr_config.extend(procmgr_ami)
