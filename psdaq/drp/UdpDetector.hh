@@ -35,10 +35,6 @@ public:
 public:
     bool ready(UdpDetector* udpDetector);
     void clear() { m_udpDetector = nullptr; }
-#if 0
-    std::vector<uint32_t> _getDimensions(size_t length);
-    std::vector<uint32_t> getData(void* data, size_t& length);
-#endif /* 0 */
 protected:
     bool                _connected;
 private:
@@ -56,6 +52,8 @@ public:
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
     unsigned unconfigure();
+    void setOutOfOrder(std::string errMsg);
+    bool getOutOfOrder() { return (m_outOfOrder); }
     void process();
     void addNames(unsigned segment, XtcData::Xtc& xtc);
     int drainFd(int fd);
@@ -96,14 +94,15 @@ private:
     uint64_t m_nEmpty;
     uint64_t m_nTooOld;
     uint64_t m_nTimedOut;
-    uint32_t m_firstDimKw;              // Revisit: Hack!
     int _dataFd;
     char *_discard;
     // out-of-order support
-    unsigned _count;
-    unsigned _countOffset;
-    bool _resetHwCount;
-    bool _outOfOrder;
+    unsigned m_count;
+    unsigned m_countOffset;
+    bool m_resetHwCount;
+    bool m_outOfOrder;
+    ZmqContext m_context;
+    ZmqSocket m_notifySocket;
 };
 
 

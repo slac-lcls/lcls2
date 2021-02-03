@@ -38,36 +38,6 @@ static unsigned tsMatchDegree = 0;
 int setrcvbuf(int socketFd, unsigned size);
 int createUdpSocket(int port);
 
-//
-//  Put all the ugliness of non-global timestamps here
-//
-static int _compare(const XtcData::TimeStamp& ts1,
-                    const XtcData::TimeStamp& ts2) {
-  int result = 0;
-
-  if ((tsMatchDegree == 0) && !(ts2 == TimeMax))
-      return result;
-
-  if (tsMatchDegree == 1) {
-    /*
-    **  Mask out the fiducial
-    */
-    const uint64_t mask = 0xfffffffffffe0000ULL;
-    uint64_t ts1m = ts1.value()&mask;
-    uint64_t ts2m = ts2.value()&mask;
-
-    const uint64_t delta = 10000000; // 10 ms!
-    if      (ts1m > ts2m)  result = ts1m - ts2m > delta ?  1 : 0;
-    else if (ts2m > ts1m)  result = ts2m - ts1m > delta ? -1 : 0;
-
-    return result;
-  }
-
-  if      (ts1 > ts2) result = 1;
-  else if (ts2 > ts1) result = -1;
-  return result;
-}
-
 class RawDef:public XtcData::VarDef
 {
 public:
@@ -277,18 +247,17 @@ UdpDetector::UdpDetector(Parameters& para, std::shared_ptr<UdpMonitor>& udpMonit
     m_bufferFreelist(m_pvQueue.size()),
     m_terminate     (false),
     m_running       (false),
-    m_firstDimKw    (0),
-    _resetHwCount   (true),
-    _outOfOrder     (false)
+    m_resetHwCount  (true),
+    m_outOfOrder    (false),
+    m_notifySocket{&m_context, ZMQ_PUSH}
 {
-    auto firstDimKw = para.kwargs["firstdim"];
-    if (!firstDimKw.empty())
-        m_firstDimKw = std::stoul(firstDimKw);
-
     // allocate buffers
     _discard = new char[DiscardBufSize];
 
-    // create data socket
+    // ZMQ socket for reporting errors
+    m_notifySocket.connect({"tcp://" + m_para->collectionHost + ":" + std::to_string(CollectionApp::zmq_base_port + m_para->partition)});
+
+    // UDP socket for receiving data
     int dataPort = (m_para->loopbackPort) ? m_para->loopbackPort : DefaultDataPort;
     _dataFd = createUdpSocket(dataPort);
     logging::debug("createUdpSocket(%d) returned %d", dataPort, _dataFd);
@@ -343,7 +312,7 @@ unsigned UdpDetector::configure(const std::string& config_alias, XtcData::Xtc& x
         m_bufferFreelist.push(reinterpret_cast<XtcData::Dgram*>(&m_buffer[i * bufSize]));
     }
 
-    _resetHwCount = true;
+    m_resetHwCount = true;
 
     m_terminate.store(false, std::memory_order_release);
 
@@ -597,6 +566,16 @@ void UdpDetector::_udpReceiver()
     logging::info("UDP receiver thread finished");
 }
 
+void UdpDetector::setOutOfOrder(std::string errMsg)
+{
+    if (!m_outOfOrder) {
+        m_outOfOrder = true;
+        logging::critical("%s", errMsg.c_str());
+        json msg = createAsyncErrMsg(m_para->alias, errMsg);
+        m_notifySocket.send(msg.dump());
+    }
+}
+
 void UdpDetector::process()
 {
     unsigned    segment = 0;
@@ -609,28 +588,31 @@ void UdpDetector::process()
     logging::debug("%s: frame = %hu  encoderValue = %u", __PRETTY_FUNCTION__, frameCount, encoderValue);
 
     // reset frame counter
-    if (_resetHwCount) {
-        _count = 0;
-        _countOffset = frameCount - 1;
-        _resetHwCount = false;
+    if (m_resetHwCount) {
+        m_count = 0;
+        m_countOffset = frameCount - 1;
+        m_resetHwCount = false;
     }
 
     // update frame counter
-    uint16_t stuck16 = (uint16_t)(_count + _countOffset);
-    ++_count;
-    uint16_t sum16 = (uint16_t)(_count + _countOffset);
+    uint16_t stuck16 = (uint16_t)(m_count + m_countOffset);
+    ++m_count;
+    uint16_t sum16 = (uint16_t)(m_count + m_countOffset);
 
-    // check for out-of-order condition
-    if (frameCount == stuck16) {
-        logging::error("%s: frame count %hu repeated in consecutive frames", __PRETTY_FUNCTION__, stuck16);
-        // latch error
-        _outOfOrder = true;
-    } else if (frameCount != sum16) {
-       logging::error("%s: hw count (%hu) != sw count (%hu) + offset (%u) == (%hu)\n",
-                      __PRETTY_FUNCTION__, frameCount, _count, _countOffset, sum16);
+    if (!getOutOfOrder()) {
+        char errmsg[80];
+        // check for out-of-order condition
+        if (frameCount == stuck16) {
+            snprintf(errmsg, sizeof(errmsg),
+                     "Out-of-order: frame count %hu repeated in consecutive frames", stuck16);
+            setOutOfOrder(errmsg);
 
-        // latch error
-        _outOfOrder = true;
+        } else if (frameCount != sum16) {
+            snprintf(errmsg, sizeof(errmsg),
+                     "Out-of-order: hw count (%hu) != sw count (%hu) + offset (%u) == (%hu)",
+                     frameCount, m_count, m_countOffset, sum16);
+            setOutOfOrder(errmsg);
+        }
     }
 
     // Protect against namesLookup not being stable before Enable
@@ -644,7 +626,7 @@ void UdpDetector::process()
             dgram->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
 
             // record damage
-            if (_outOfOrder) {
+            if (m_outOfOrder) {
                 dgram->xtc.damage.increase(XtcData::Damage::OutOfOrder);
             }
             if (rv) {
