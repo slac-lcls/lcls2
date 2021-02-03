@@ -53,7 +53,6 @@ class EventManager(object):
             offset = offsets[i_smd]
             size = sizes[i_smd]
             chunk = bytearray()
-            logging.info(f'event_manager: _read_chunks_from_disk i_smd={i_smd}')
             for _ in range(self.max_retries+1):
                 chunk.extend(os.pread(fds[i_smd], size, offset))
                 got = memoryview(chunk).nbytes

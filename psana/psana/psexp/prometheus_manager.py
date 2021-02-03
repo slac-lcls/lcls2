@@ -17,7 +17,7 @@ metrics ={'psana_smd0_wait_disk': ('Summary', 'Time spent (s) reading smalldata'
         'psana_eb_wait_smd0'    : ('Summary', 'time spent (s) waiting for Smd0'),
         'psana_bd_read'         : ('Counter', 'Counting no. of events processed by BigData'),
         'psana_bd_wait_disk'    : ('Summary', 'time spent (s) reading bigdata'),
-        'psana_bd_wait_eb'      : ('Summary', 'time spent (s) waiting for EventBuilder cores'),
+        'psana_bd_wait_eb'      : ('Counter', 'time spent (s) waiting for EventBuilder cores'),
         'psana_bd_ana'          : ('Counter', 'time spent (s) in analysis fn on                 \
                                     BigData core'),
         'psana_timestamp'       : ('Gauge',   'Uses different labels (e.g. python_init,         \

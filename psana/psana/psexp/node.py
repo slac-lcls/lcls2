@@ -8,7 +8,6 @@ from psana.psexp.tools import Logging as logging
 import time
 
 s_eb_wait_smd0 = PrometheusManager.get_metric('psana_eb_wait_smd0')
-s_bd_wait_eb = PrometheusManager.get_metric('psana_bd_wait_eb')
 
 # Setting up group communications
 # Ex. PS_EB_NODES=3 mpirun -n 13
@@ -487,10 +486,10 @@ class BigDataNode(object):
         self.configs    = configs
         self.dsparms    = dsparms
         self.dm         = dm
+        self.bd_wait_eb = PrometheusManager.get_metric('psana_bd_wait_eb')
 
     def start(self):
         
-        @s_bd_wait_eb.time()
         def get_smd():
             bd_comm = self.comms.bd_comm
             bd_rank = self.comms.bd_rank
@@ -499,7 +498,10 @@ class BigDataNode(object):
             bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
             count = info.Get_elements(MPI.BYTE)
             chunk = bytearray(count)
+            st_req = time.time()
             bd_comm.Recv(chunk, source=0)
+            en_req = time.time()
+            self.bd_wait_eb.labels('seconds', self.comms.world_rank).inc(en_req - st_req)
             return chunk
         
         events = Events(self.configs, self.dm, self.dsparms, 
