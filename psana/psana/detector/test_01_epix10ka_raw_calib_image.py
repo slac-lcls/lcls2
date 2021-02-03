@@ -12,6 +12,7 @@ print('np import consumed time (sec) = %.6f' % dt_sec)
 
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 from psana import DataSource
+from psana.detector.UtilsMask import CC, DTYPE_MASK
 
 #----
 
@@ -268,21 +269,30 @@ def test_calib(args):
 def test_image(args):
 
     ds, run, det = ds_run_det(args)
-
     flimg = None
+
+    break_event_loop = False
 
     for stepnum,step in enumerate(run.steps()):
       print('%s\nStep %1d' % (50*'_',stepnum))
 
       for evnum,evt in enumerate(step.events()):
         if evnum>args.evtmax:
-            exit('exit by number of events limit %d' % args.evtmax)
-            #break
+            print('break by number of events limit %d set in option -N' % args.evtmax)
+            break_event_loop = True
+            break
         if evnum>2 and evnum%500!=0: continue
         print('%s\nStep %1d Event %04d' % (50*'_',stepnum, evnum))
 
-        arr = det.raw.calib(evt)
-        logger.info(info_ndarr(arr, 'arr   '))
+        user_mask = np.ones_like(det.raw.raw(evt), dtype=DTYPE_MASK) #np.uint8
+        user_mask[0,100:150,200:250] = 0
+
+        arr = det.raw.calib(evt, cmpars=(7,2,100,10),\
+                            mbits=0o7, mask=user_mask, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)\
+              if args.appcorr else det.raw.calib(evt)
+        if args.appcorr: arr += 1 # to see panel edges
+
+        logger.info(info_ndarr(arr, 'arr '))
         if arr is None: continue
 
         #=======================
@@ -316,9 +326,10 @@ def test_image(args):
 
             gr.show(mode=1)
 
-    print('\n  !!! TO EXIT - close graphical window - click on [x] in the window corner')
+      if break_event_loop: break
 
     if args.dograph:
+        print('\n  !!! TO EXIT - close graphical window - click on [x] in the window corner')
         gr.show()
         if args.ofname is not None:
             gr.save_fig(flimg.fig, fname=args.ofname, verb=True)
@@ -398,6 +409,7 @@ if __name__ == "__main__":
     d_loglev  = 'INFO' #'INFO' #'DEBUG'
     d_pattrs  = False
     d_dograph = True
+    d_appcorr = True
     d_detname = 'epix10k2M' if tname in ('0','1','2','3') else 'epixquad'
     d_expname = 'ueddaq02' # None #'ueddaq02' if tname=='4' else 'mfxc00318'
     d_runs    = '66' # '27,29'
@@ -420,6 +432,7 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--runs',    default=d_runs,    type=str, help='run or comma separated list of runs, def=%s' % d_runs)
     parser.add_argument('-P', '--pattrs',  default=d_pattrs,  action='store_true',  help='print objects attrubutes, def=%s' % d_pattrs)
     parser.add_argument('-G', '--dograph', default=d_dograph, action='store_false', help='plot graphics, def=%s' % d_pattrs)
+    parser.add_argument('-A', '--appcorr', default=d_appcorr, action='store_false', help='in image apply mask and cm-correction, def=%s' % d_appcorr)
     parser.add_argument('-o', '--ofname',  default=d_ofname,  type=str, help='output image file name, def=%s' % d_ofname)
     parser.add_argument('-m', '--mapmode', default=d_mapmode, type=int, help=h_mapmode)
     parser.add_argument('-N', '--evtmax',  default=d_evtmax,  type=int, help='maximal number of events, def=%s' % d_evtmax)
