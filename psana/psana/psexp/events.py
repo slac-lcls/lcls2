@@ -1,8 +1,6 @@
 from psana.psexp import EventManager
 import logging
 import types
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
 
 class Events:
     """

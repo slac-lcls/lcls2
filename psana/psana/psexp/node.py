@@ -3,7 +3,11 @@ import numpy as np
 from psana.psexp import *
 from psana.dgram import Dgram
 import os
-from mpi4py import MPI
+
+from psana.psexp.tools import mode
+if mode == 'mpi':
+    from mpi4py import MPI
+
 from psana.psexp.tools import Logging as logging
 import time
 

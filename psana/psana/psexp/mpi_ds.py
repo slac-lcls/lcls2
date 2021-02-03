@@ -1,7 +1,6 @@
 import sys
 import os
 import numpy as np
-from mpi4py import MPI
 from psana.psexp import *
 from psana import dgram
 from psana.event import Event
@@ -10,10 +9,13 @@ from psana.smalldata import SmallData
 import time
 from psana.psexp.tools import Logging as logging
 
+from psana.psexp.tools import mode
+if mode == 'mpi':
+    from mpi4py import MPI
+
 class InvalidEventBuilderCores(Exception): pass
 
 nodetype = None
-comm = MPI.COMM_WORLD
 
 class RunParallel(Run):
     """ Yields list of events from multiple smd/bigdata files using > 3 cores."""
