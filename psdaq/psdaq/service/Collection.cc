@@ -223,14 +223,12 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_subSocket{&m_context, ZMQ_SUB},
     m_inprocRecv{&m_context, ZMQ_PAIR}
 {
-    const int base_port = 29980;
+    m_pushSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(zmq_base_port + platform)});
 
-    m_pushSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(base_port + platform)});
-
-    m_subSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)});
+    m_subSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(zmq_base_port + 10 + platform)});
     m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "all", 3);
     std::ostringstream ss;
-    ss << std::string{"tcp://" + managerHostname + ":" + std::to_string(base_port + 10 + platform)};
+    ss << std::string{"tcp://" + managerHostname + ":" + std::to_string(zmq_base_port + 10 + platform)};
     logging::debug("%s", ss.str().c_str());
     m_inprocRecv.bind("inproc://drp");
 

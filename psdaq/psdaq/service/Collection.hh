@@ -56,6 +56,7 @@ public:
     CollectionApp(const std::string& managerHostname, int platform, const std::string& level, const std::string& alias);
     virtual ~CollectionApp() {};
     void run();
+    enum {zmq_base_port = 29980};
 protected:
     void handleRollcall(const nlohmann::json& msg);
     void handleAlloc(const nlohmann::json& msg);
