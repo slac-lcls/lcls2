@@ -1,5 +1,5 @@
 """Data access VERSIONS
-   for composite detectors made of epix10ka panels.
+   for composite detectors made of epix10ka segments/panels.
 """
 import numpy as np
 from amitypes import Array2d
@@ -38,5 +38,5 @@ class epix10ka_raw_2_0_1(epix10ka_base):
         return self.array(evt)
 
 #  Old detType for epix10ka
-epix_raw_2_0_1     = epix10ka_raw_2_0_1
+epix_raw_2_0_1 = epix10ka_raw_2_0_1
 
