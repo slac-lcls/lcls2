@@ -49,7 +49,7 @@ class DataSourceBase(abc.ABC):
         self.shmem       = None
         self.destination = 0         # callback that returns rank no. (used by EventBuilder)
         self.monitor     = False     # turns prometheus monitoring client of/off
-        self.as_smds     = []        # swap smd file(s) with bigdata files for these detetors
+        self.small_xtc   = []        # swap smd file(s) with bigdata files for these detetors
 
         if kwargs is not None:
             self.smalldata_kwargs = {}
@@ -66,7 +66,7 @@ class DataSourceBase(abc.ABC):
                     'live',
                     'smalldata_kwargs', 
                     'monitor',
-                    'as_smds',
+                    'small_xtc',
                     )
             
             for k in keywords:
@@ -173,11 +173,11 @@ class DataSourceBase(abc.ABC):
         Handles two arguments
         1) detectors=[detname,]
             Reduce no. of smd/xtc files to only those with selectec detectors
-        2) as_smds=[detname,]
+        2) small_xtc=[detname,]
             Swap out smd files with these given detectors with bigdata files
         """
         use_smds = [False] * len(self.smd_files)
-        if self.detectors or self.as_smds:
+        if self.detectors or self.small_xtc:
             # Get tmp configs using SmdReader
             # this smd_fds, configs, and SmdReader will not be used later
             smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
@@ -209,10 +209,10 @@ class DataSourceBase(abc.ABC):
                 configs = all_configs
 
             use_smds = [False] * len(smd_files)
-            if self.as_smds:
-                s1 = set(self.as_smds)
+            if self.small_xtc:
+                s1 = set(self.small_xtc)
                 msg = f"""ds_base: applying smd files swap
-    selected detectors: {self.as_smds}\n"""
+    selected detectors: {self.small_xtc}\n"""
                 for i, config in enumerate(configs):
                     if s1.intersection(set(config.software.__dict__.keys())):
                         smd_files[i] = xtc_files[i]
