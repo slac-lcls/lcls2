@@ -80,6 +80,7 @@ private:
     uint64_t m_nEmpty;
     uint64_t m_nTooOld;
     uint64_t m_nTimedOut;
+    uint64_t m_timeDiff;
     uint32_t m_firstDimKw;              // Revisit: Hack!
 };
 

@@ -507,6 +507,9 @@ void PvaDetector::_worker()
     m_nTimedOut = 0;
     m_exporter->add("pva_timeout_count", labels, Pds::MetricType::Counter,
                     [&](){return m_nTimedOut;});
+    m_timeDiff = 0;
+    m_exporter->add("pva_time_diff", labels, Pds::MetricType::Gauge,
+                    [&](){return m_timeDiff;});
 
     m_exporter->add("drp_worker_input_queue", labels, Pds::MetricType::Gauge,
                     [&](){return m_pgpQueue.guess_size();});
@@ -622,12 +625,13 @@ void PvaDetector::_matchUp()
 
         Pds::EbDgram* pgpDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[pgpIdx]);
 
+        m_timeDiff = pgpDg->time.to_ns() - pvDg->time.to_ns();
+
         logging::debug("PV: %u.%09d, PGP: %u.%09d, PGP - PV: %10ld ns, svc %2d",
       //printf        ("PV: %u.%09d, PGP: %u.%09d, PGP - PV: %10ld ns, svc %2d",
                        pvDg->time.seconds(), pvDg->time.nanoseconds(),
                        pgpDg->time.seconds(), pgpDg->time.nanoseconds(),
-                       pgpDg->time.to_ns() - pvDg->time.to_ns(),
-                       pgpDg->service());
+                       m_timeDiff, pgpDg->service());
 
         //  Mask out fiducial until it's understood
         //        if      (pvDg->time == pgpDg->time)  _handleMatch  (*pvDg, *pgpDg);
