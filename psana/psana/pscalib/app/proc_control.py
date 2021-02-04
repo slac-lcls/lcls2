@@ -55,7 +55,7 @@ def proc_control(parser) :
         if gu.create_path(logfname, depth=6, mode=0o774, verb=False) : continue
 
     gu.save_textfile('\nCreated path: %s' % logfname, logfname, mode='a')
-    os.chmod(logfname, 0664)    
+    os.chmod(logfname, 0o664)
 
     ofprefix='%s/nda-#exp-#run-#src-#evts-#type.txt' % rpu.work_dir(exp, procname)
     gu.save_textfile('\nOutput work files: %s' % ofprefix, logfname, mode='a')
