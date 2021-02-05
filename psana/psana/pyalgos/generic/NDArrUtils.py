@@ -86,8 +86,9 @@ def info_ndarr(nda, name=' ', first=0, last=5):
     elif isinstance(nda, list) : s += info_ndarr(np.array(nda), 'ndarray from list: %s' % name)
     elif not isinstance(nda, np.ndarray):
                      s = '%s%s' % (name, type(nda))
-    else: s = '%sshape:%s size:%d dtype:%s%s%s...]'%\
-               (name, str(nda.shape), nda.size, nda.dtype, gap, str(nda.flatten()[first:last]).rstrip(']'))
+    else: s = '%sshape:%s size:%d dtype:%s%s%s%s'%\
+               (name, str(nda.shape), nda.size, nda.dtype, gap, str(nda.flatten()[first:last]).rstrip(']'),\
+                ('...]' if nda.size>last else ']'))
     return s
 
 
