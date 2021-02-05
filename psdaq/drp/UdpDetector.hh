@@ -17,6 +17,44 @@
 
 namespace Drp {
 
+// encoder header: 32 bytes
+typedef struct {
+    uint16_t    frameCount;         // network byte ordrer
+    char        reserved1[2];
+    char        version[4];
+    char        hardwareID[16];
+    char        reserved2;
+    char        channelMask;
+    char        errorMask;
+    char        mode;
+    char        reserved3[4];
+} encoder_header_t;
+
+static_assert(sizeof(encoder_header_t) == 32, "Data structure encoder_header_t is not size 32");
+
+
+// encoder channel: 32 bytes
+typedef struct {
+    uint32_t    encoderValue;       // network byte ordrer
+    char        reserved1[4];
+    char        hardwareID[16];
+    char        reserved2;
+    char        channel;
+    char        error;
+    char        mode;
+    char        reserved3[4];
+} encoder_channel_t;
+
+static_assert(sizeof(encoder_channel_t) == 32, "Data structure encoder_channel_t is not size 32");
+
+
+// encoder frame: 64 bytes
+typedef struct {
+    encoder_header_t    header;
+    encoder_channel_t   channel[1];
+} encoder_frame_t;
+
+static_assert(sizeof(encoder_frame_t) == 64, "Data structure encoder_channel_t is not size 64");
 class UdpDetector;
 
 class UdpMonitor
@@ -60,7 +98,7 @@ public:
     int reset();
     enum { DefaultDataPort = 5006 };
 private:
-    int _readData(uint32_t *encoderValue, uint16_t *frameCount);
+    int _readFrame(encoder_frame_t *frame);
     void _loopbackInit();
     void _loopbackFini();
     void _loopbackSend();
@@ -128,36 +166,5 @@ private:
     Detector* m_det;
     bool m_unconfigure;
 };
-
-
-// encoder header: 32 bytes
-typedef struct {
-    uint16_t    frameCount;         // network byte ordrer
-    char        reserved1[2];
-    char        version[4];
-    char        hardwareID[16];
-    char        reserved2;
-    char        channelMask;
-    char        errorMask;
-    char        mode;
-    char        reserved3[4];
-} encoder_header_t;
-
-static_assert(sizeof(encoder_header_t) == 32, "Data structure encoder_header_t is not size 32");
-
-
-// encoder channel: 32 bytes
-typedef struct {
-    uint32_t    encoderValue;       // network byte ordrer
-    char        reserved1[4];
-    char        hardwareID[16];
-    char        reserved2;
-    char        channel;
-    char        error;
-    char        mode;
-    char        reserved3[4];
-} encoder_channel_t;
-
-static_assert(sizeof(encoder_channel_t) == 32, "Data structure encoder_channel_t is not size 32");
 
 }

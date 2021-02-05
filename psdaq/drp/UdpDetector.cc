@@ -44,13 +44,19 @@ public:
   enum index
     {
       encoderValue,
-      frameCount
+      frameCount,
+      mode,
+      error,
+      hardwareID
     };
 
   RawDef()
    {
        NameVec.push_back({"encoderValue", XtcData::Name::UINT32,1});  // array
        NameVec.push_back({"frameCount", XtcData::Name::UINT16});
+       NameVec.push_back({"mode", XtcData::Name::INT8});
+       NameVec.push_back({"error", XtcData::Name::INT8});
+       NameVec.push_back({"hardwareID", XtcData::Name::CHARSTR,1});
    }
 } RawDef;
 
@@ -391,10 +397,9 @@ void UdpDetector::_loopbackSend()
     }
 #endif
     pHeader->channelMask = 0x01;
-    sprintf(pHeader->hardwareID, "%s", "LOOPBACK");
+    sprintf(pHeader->hardwareID, "%s", "LOOPBACK SIM");
 
     pChannel->encoderValue = htonl(170000);
-    sprintf(pChannel->hardwareID, "%s", "LOOPBACK CH0");
 
     int sent = sendto(m_loopbackFd, (void *)mybuf, sizeof(mybuf), 0,
                   (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));
@@ -579,46 +584,49 @@ void UdpDetector::setOutOfOrder(std::string errMsg)
 void UdpDetector::process()
 {
     unsigned    segment = 0;
-    uint32_t    encoderValue;
-    uint16_t    frameCount;
+    encoder_frame_t frame;
 
     // read from the udp socket that triggered select()
-    int rv = _readData(&encoderValue, &frameCount);
+    int rv = _readFrame(&frame);
 
-    logging::debug("%s: frame = %hu  encoderValue = %u", __PRETTY_FUNCTION__, frameCount, encoderValue);
-
-    // reset frame counter
-    if (m_resetHwCount) {
-        m_count = 0;
-        m_countOffset = frameCount - 1;
-        m_resetHwCount = false;
-    }
-
-    // update frame counter
-    uint16_t stuck16 = (uint16_t)(m_count + m_countOffset);
-    ++m_count;
-    uint16_t sum16 = (uint16_t)(m_count + m_countOffset);
-
-    if (!getOutOfOrder()) {
-        char errmsg[80];
-        // check for out-of-order condition
-        if (frameCount == stuck16) {
-            snprintf(errmsg, sizeof(errmsg),
-                     "Out-of-order: frame count %hu repeated in consecutive frames", stuck16);
-            setOutOfOrder(errmsg);
-
-        } else if (frameCount != sum16) {
-            snprintf(errmsg, sizeof(errmsg),
-                     "Out-of-order: hw count (%hu) != sw count (%hu) + offset (%u) == (%hu)",
-                     frameCount, m_count, m_countOffset, sum16);
-            setOutOfOrder(errmsg);
-        }
-    }
+    logging::debug("%s: frame=%hu  encoderValue=%u  mode=%u  error=%u", __PRETTY_FUNCTION__,
+                   frame.header.frameCount,
+                   frame.channel[0].encoderValue,
+                   (unsigned) frame.channel[0].mode,
+                   (unsigned) frame.channel[0].error);
 
     // Protect against namesLookup not being stable before Enable
     if (m_running.load(std::memory_order_relaxed)) {
         ++m_nUpdates;
         logging::debug("%s process", m_udpMonitor->name().c_str());
+
+        // reset frame counter
+        if (m_resetHwCount) {
+            m_count = 0;
+            m_countOffset = frame.header.frameCount - 1;
+            m_resetHwCount = false;
+        }
+
+        // update frame counter
+        uint16_t stuck16 = (uint16_t)(m_count + m_countOffset);
+        ++m_count;
+        uint16_t sum16 = (uint16_t)(m_count + m_countOffset);
+
+        if (!getOutOfOrder()) {
+            char errmsg[80];
+            // check for out-of-order condition
+            if (frame.header.frameCount == stuck16) {
+                snprintf(errmsg, sizeof(errmsg),
+                         "Out-of-order: frame count %hu repeated in consecutive frames", stuck16);
+                setOutOfOrder(errmsg);
+
+            } else if (frame.header.frameCount != sum16) {
+                snprintf(errmsg, sizeof(errmsg),
+                         "Out-of-order: hw count (%hu) != sw count (%hu) + offset (%u) == (%hu)",
+                         frame.header.frameCount, m_count, m_countOffset, sum16);
+                setOutOfOrder(errmsg);
+            }
+        }
 
         XtcData::Dgram* dgram;
         if (m_bufferFreelist.try_pop(dgram)) { // If a buffer is available...
@@ -633,13 +641,33 @@ void UdpDetector::process()
                 dgram->xtc.damage.increase(XtcData::Damage::UserDefined);
             }
 
-            // create data
+            // ----- begin CreateData  ----------------------------------
+
             XtcData::NamesId namesId1(nodeId, segment);
             XtcData::CreateData raw(dgram->xtc, m_namesLookup, namesId1);
             unsigned shape[XtcData::MaxRank] = {1};
+
+            // ...encoderValue
             XtcData::Array<uint32_t> arrayT = raw.allocate<uint32_t>(RawDef::encoderValue,shape);
-            arrayT(0) = encoderValue;
-            raw.set_value(RawDef::frameCount, frameCount);
+            arrayT(0) = frame.channel[0].encoderValue;
+
+            // ...frameCount
+            raw.set_value(RawDef::frameCount, frame.header.frameCount);
+
+            // ...mode
+            XtcData::Array<int8_t> arrayU = raw.allocate<int8_t>(RawDef::mode,shape);
+            arrayU(0) = frame.channel[0].mode;
+
+            // ...error
+            XtcData::Array<int8_t> arrayV = raw.allocate<int8_t>(RawDef::error,shape);
+            arrayV(0) = frame.channel[0].error;
+
+            // ...hardwareID
+            char buf[16];
+            snprintf(buf, sizeof(buf), "%s", frame.header.hardwareID);
+            raw.set_string(RawDef::hardwareID, buf);
+
+            // ----- end CreateData  ------------------------------------
 
             m_pvQueue.push(dgram);
         }
@@ -647,55 +675,33 @@ void UdpDetector::process()
             ++m_nMissed;                       // Else count it as missed
         }
     } else {
-        logging::debug("%s: m_running is false (frameCount = %u)", __PRETTY_FUNCTION__, frameCount);
+        logging::debug("%s: m_running is false (frameCount = %u)", __PRETTY_FUNCTION__,
+                       frame.header.frameCount);
     }
 }
 
-int UdpDetector::_readData(uint32_t *encoderValue, uint16_t *frameCount)
+int UdpDetector::_readFrame(encoder_frame_t *frame)
 {
-    char mybuf[512];
-    int recvlen;
-    encoder_header_t *pHeader = (encoder_header_t *)mybuf;
-    encoder_channel_t *pChannel = (encoder_channel_t *)(pHeader + 1);
-    char        version[4];
-    char        errorMask;
-    char        channelMask;
-    char        mode;
-    char        channel;
-    char        error;
     int rv = 0;
 
     // read data
-    recvlen = recvfrom(_dataFd, mybuf, sizeof(mybuf), MSG_DONTWAIT, 0, 0);
-    if (recvlen != (sizeof(encoder_header_t) + sizeof(encoder_channel_t))) {
-        logging::error("received unexpected UDP length = %d", recvlen);
+    ssize_t recvlen = recvfrom(_dataFd, frame, sizeof(encoder_frame_t), MSG_DONTWAIT, 0, 0);
+    // check length
+    if (recvlen != sizeof(encoder_frame_t)) {
+        logging::error("received UDP length %zd, expected %zd", recvlen, sizeof(encoder_frame_t));
         rv = 1; // error
     } else {
-        // header
-        *frameCount  = ntohs(pHeader->frameCount);
-        channelMask  = pHeader->channelMask;
-        errorMask    = pHeader->errorMask;
-        mode         = pHeader->mode;
+        // byte swap
+        frame->header.frameCount = ntohs(frame->header.frameCount);
+        frame->channel[0].encoderValue = ntohl(frame->channel[0].encoderValue);
 
-        logging::debug("============================");
-        logging::debug("header  frameCount  %5d", *frameCount);
-        logging::debug("header  version     0x%02x 0x%02x 0x%02x 0x%02x",
-                      version[0], version[1], version[2], version[3]);
-        logging::debug("header  channelMask 0x%02x", channelMask);
-        logging::debug("header  errorMask   0x%02x", errorMask);
-        logging::debug("header  mode        0x%02x", mode);
-
-        // channel
-        *encoderValue = ntohl(pChannel->encoderValue);
-        channel       = pChannel->channel;
-        error         = pChannel->error;
-        mode          = pChannel->mode;
-
-        logging::debug("ch0     encoderValue  %4u (0x%08x)",
-                      *encoderValue, *encoderValue);
-        logging::debug("ch0     channel     0x%02x", channel);
-        logging::debug("ch0     error       0x%02x", error);
-        logging::debug("ch0     mode        0x%02x", mode);
+        logging::debug("     frameCount    %7u", frame->header.frameCount);
+        char buf[16];
+        snprintf(buf, sizeof(buf), "%s", frame->header.hardwareID);
+        logging::debug("     hardwareID    \"%s\"",  buf);
+        logging::debug("ch0  encoderValue  %7u", frame->channel[0].encoderValue);
+        logging::debug("ch0  error         %7u", (unsigned)frame->channel[0].error);
+        logging::debug("ch0  mode          %7u", (unsigned)frame->channel[0].mode);
     }
     return (rv);
 }
