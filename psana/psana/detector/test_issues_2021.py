@@ -168,6 +168,42 @@ def issue_2021_01_11():
     print('d.keys():',d.keys())
     print(50*'-')
 
+def issue_2021_02_03():
+  """Data access example for confluence
+     run, step, event loops
+  """
+  class Arguments:
+    expt    = 'ueddaq02'
+    run     = 66
+    evtmax  = 5
+    detname = 'epixquad'
+
+  args = Arguments()
+
+  from psana.pyalgos.generic.NDArrUtils import info_ndarr
+  from psana import DataSource
+  ds = DataSource(exp=args.expt, run=args.run, dir=f'/cds/data/psdm/{args.expt[:3]}/{args.expt}/xtc')
+
+  for irun,run in enumerate(ds.runs()):
+    print('\n==== %02d run: %d exp: %s detnames: %s' % (irun, run.runnum, run.expt, ','.join(run.detnames)))
+
+    print('make %s detector object' % args.detname)
+    det = run.Detector(args.detname)
+
+    for istep,step in enumerate(run.steps()):
+      print('\nStep %1d' % istep)
+
+      for ievt,evt in enumerate(step.events()):
+        if ievt>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
+
+        print('%s\nEvent %04d' % (80*'_',ievt))
+        segs = det.raw.segments(evt)
+        raw  = det.raw.raw(evt)
+
+        print(info_ndarr(segs, 'segsments '))
+        print(info_ndarr(raw,  'raw '))
+
+
 
 #if __name__ == "__main__":
 USAGE = '\nUsage:'\
@@ -181,6 +217,7 @@ USAGE = '\nUsage:'\
       + '\n    5 - issue_2020_12_16 - Chris access to config does not work, Matts works'\
       + '\n    6 - issue_2020_12_19 - First version of det.raw.calib'\
       + '\n    7 - issue_2021_01_11 - access to calibration constants for run=0 ... det.raw.calib'\
+      + '\n    8 - issue_2021_02_03 - Data access example for confluence'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -191,6 +228,7 @@ elif TNAME in ('4',): issue_2020_12_10()
 elif TNAME in ('5',): issue_2020_12_16()
 elif TNAME in ('6',): issue_2020_12_19()
 elif TNAME in ('7',): issue_2021_01_11()
+elif TNAME in ('8',): issue_2021_02_03()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
