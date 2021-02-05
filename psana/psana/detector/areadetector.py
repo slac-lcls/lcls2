@@ -6,7 +6,7 @@ Usage::
 
   from psana.detector.areadetector import AreaDetector
 
-  o = AreaDetector(*args, **kwargs) # enherits from DetectorImpl
+  o = AreaDetector(*args, **kwa) # enherits from DetectorImpl(*args, **kwa)
 
   a = o.raw(evt)
   a = o.segments(evt)
