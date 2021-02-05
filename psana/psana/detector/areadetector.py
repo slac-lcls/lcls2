@@ -21,18 +21,18 @@ Usage::
   a = o._common_mode()
   a = o._det_geotxt_and_meta()
   a = o._det_geo()
-  a = o._pixel_coord_indexes(**kwa) # 'pix_scale_size_um',None; 'xy0_off_pix',None; # do_tilt',True; 'cframe',0
-  a = o._pixel_coords(**kwa) # do_tilt',True; 'cframe',0
-  a = o._cached_pixel_coord_indexes(evt, **kwa) # the same as above
+  a = o._pixel_coord_indexes(pix_scale_size_um=None, xy0_off_pix=None, do_tilt=True, cframe=0, **kwa)
+  a = o._pixel_coords(do_tilt=True, cframe=0, **kwa)
+  a = o._cached_pixel_coord_indexes(evt, **kwa) # **kwa - the same as above
 
   a = o._shape_as_daq()
   a = o._number_of_segments_total()
-  m = _mask_default(dtype=DTYPE_MASK)
-  m = o.o._mask_calib_or_default(dtype=DTYPE_MASK)
-  m = o._mask_from_status(**kwa)
-  m = o._mask_edges(**kwa) # 'edge_rows', 1;'edge_cols', 1
-  m = o._mask(calib=False, status=False, edges=False, **kwa) #'dtype', DTYPE_MASK
-  m = o._mask_comb**kwa) # 'mbits', 1
+  m = o._mask_default(dtype=DTYPE_MASK)
+  m = o._mask_calib_or_default(dtype=DTYPE_MASK)
+  m = o._mask_from_status()
+  m = o._mask_edges(edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa)
+  m = o._mask(calib=False, status=False, edges=False, dtype=DTYPE_MASK, **kwa) # TBD: neighbors=False
+  m = o._mask_comb(mbits=0o377, **kwa)
 
   a = o.calib(evt, cmpars=(7,2,100,10),\
                             mbits=0o7, mask=None, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)
