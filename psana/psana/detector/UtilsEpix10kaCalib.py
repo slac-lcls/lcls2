@@ -632,7 +632,7 @@ def pedestals_calibration(*args, **opts):
                 gain_hl_l   = load_panel_constants(dir_gain,   'gainci_AHL-L', tstamp)
 
                 #if offset is not None:
-                if not None in (offset_hl_h, offset_hl_l, gain_hl_h, gain_hl_l):
+                if all([v is not None for v in (offset_hl_h, offset_hl_l, gain_hl_h, gain_hl_l)]):
                     ped_hl_l = offset_hl_l - (offset_hl_h - ped_hl_h) * divide_protected(gain_hl_l, gain_hl_h) #V3 Gabriel's
                     fname = '%s_pedestals_AHL-L.dat' % prefix_peds
                     save_2darray_in_textfile(ped_hl_l, fname, filemode, fmt_peds)
@@ -646,7 +646,7 @@ def pedestals_calibration(*args, **opts):
                 gain_ml_l   = load_panel_constants(dir_gain,   'gainci_AML-L', tstamp)
 
                 #if offset is not None:
-                if not None in (offset_ml_m, offset_ml_l, gain_ml_m, gain_ml_l):
+                if all([v is not None for v in (offset_ml_m, offset_ml_l, gain_ml_m, gain_ml_l)]):
                     ped_ml_l = offset_ml_l - (offset_ml_m - ped_ml_m) * divide_protected(gain_ml_l, gain_ml_m) #V3 Gabriel's
                     fname = '%s_pedestals_AML-L.dat' % prefix_peds
                     save_2darray_in_textfile(ped_ml_l, fname, filemode, fmt_peds)
