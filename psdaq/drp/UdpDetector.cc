@@ -52,10 +52,11 @@ public:
 
   RawDef()
    {
-       NameVec.push_back({"encoderValue", XtcData::Name::UINT32,1});  // array
+       NameVec.push_back({"encoderValue", XtcData::Name::UINT32,1});
+       // frameCount is common to all channels
        NameVec.push_back({"frameCount", XtcData::Name::UINT16});
-       NameVec.push_back({"mode", XtcData::Name::INT8});
-       NameVec.push_back({"error", XtcData::Name::INT8});
+       NameVec.push_back({"mode", XtcData::Name::INT8,1});
+       NameVec.push_back({"error", XtcData::Name::INT8,1});
        NameVec.push_back({"hardwareID", XtcData::Name::CHARSTR,1});
    }
 } RawDef;
