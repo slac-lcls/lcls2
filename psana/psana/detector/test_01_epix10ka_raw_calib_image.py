@@ -289,8 +289,10 @@ def test_image(args):
 
         arr = det.raw.calib(evt, cmpars=(7,2,100,10),\
                             mbits=0o7, mask=user_mask, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)\
-              if args.appcorr else det.raw.calib(evt)
-        if args.appcorr: arr += 1 # to see panel edges
+              if args.selcorr == 'calibcm' else\
+              det.raw.calib(evt) if args.selcorr == 'calib' else\
+              det.raw.raw(evt)
+        if args.selcorr == 'calibcm': arr += 1 # to see panel edges
 
         logger.info(info_ndarr(arr, 'arr '))
         if arr is None: continue
@@ -409,7 +411,7 @@ if __name__ == "__main__":
     d_loglev  = 'INFO' #'INFO' #'DEBUG'
     d_pattrs  = False
     d_dograph = True
-    d_appcorr = True
+    d_selcorr = 'calibcm'
     d_detname = 'epix10k2M' if tname in ('0','1','2','3') else 'epixquad'
     d_expname = 'ueddaq02' # None #'ueddaq02' if tname=='4' else 'mfxc00318'
     d_runs    = '66' # '27,29'
@@ -420,7 +422,7 @@ if __name__ == "__main__":
 
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
-
+    h_selcorr = 'select image correction from raw/calib/calibcm, def=%s' % d_selcorr
     import argparse
 
     parser = argparse.ArgumentParser(usage=usage)
@@ -432,7 +434,7 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--runs',    default=d_runs,    type=str, help='run or comma separated list of runs, def=%s' % d_runs)
     parser.add_argument('-P', '--pattrs',  default=d_pattrs,  action='store_true',  help='print objects attrubutes, def=%s' % d_pattrs)
     parser.add_argument('-G', '--dograph', default=d_dograph, action='store_false', help='plot graphics, def=%s' % d_pattrs)
-    parser.add_argument('-A', '--appcorr', default=d_appcorr, action='store_false', help='in image apply mask and cm-correction, def=%s' % d_appcorr)
+    parser.add_argument('-S', '--selcorr', default=d_selcorr, type=str, help=h_selcorr)
     parser.add_argument('-o', '--ofname',  default=d_ofname,  type=str, help='output image file name, def=%s' % d_ofname)
     parser.add_argument('-m', '--mapmode', default=d_mapmode, type=int, help=h_mapmode)
     parser.add_argument('-N', '--evtmax',  default=d_evtmax,  type=int, help='maximal number of events, def=%s' % d_evtmax)
