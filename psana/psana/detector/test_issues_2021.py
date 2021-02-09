@@ -168,6 +168,7 @@ def issue_2021_01_11():
     print('d.keys():',d.keys())
     print(50*'-')
 
+
 def issue_2021_02_03():
   """Data access example for confluence
      run, step, event loops
@@ -204,6 +205,28 @@ def issue_2021_02_03():
         print(info_ndarr(raw,  'raw '))
 
 
+def issue_2021_02_08():
+  """
+     Issue: enumerate(run.steps()) DOES NOT WORK FOR RUN 65 and other
+     problem arise due to misconfiguration of ueddaq02, runnum = 27 # WORKS, runnum = 65 # DOES NOT WORK
+     solution: DataSource(files=...)
+  """
+  from psana import DataSource
+  #runnum = 27 # WORKS
+  runnum = 65 # DOES NOT WORK
+  #ds = DataSource(exp='ueddaq02', run=runnum) #, dir=f'/cds/data/psdm/ued/ueddaq02/xtc', max_events=1000)
+  ds = DataSource(files='/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0065-s001-c000.xtc2') #86-charge injection
+  for irun,run in enumerate(ds.runs()):
+    print('\n==== %02d run: %d exp: %s detnames: %s' % (irun, run.runnum, run.expt, ','.join(run.detnames)))
+
+    det = run.Detector('epixquad')
+    step_docstring = run.Detector('step_docstring')
+    print('step_docstring is created')
+
+    for istep,step in enumerate(run.steps()):
+      print('\nStep %1d' % istep)
+      print('  step metadata: %s' % str(step_docstring(step)))
+
 
 #if __name__ == "__main__":
 USAGE = '\nUsage:'\
@@ -218,6 +241,7 @@ USAGE = '\nUsage:'\
       + '\n    6 - issue_2020_12_19 - First version of det.raw.calib'\
       + '\n    7 - issue_2021_01_11 - access to calibration constants for run=0 ... det.raw.calib'\
       + '\n    8 - issue_2021_02_03 - Data access example for confluence'\
+      + '\n    9 - issue_2021_02_08 - docstring access is crashing'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -229,6 +253,7 @@ elif TNAME in ('5',): issue_2020_12_16()
 elif TNAME in ('6',): issue_2020_12_19()
 elif TNAME in ('7',): issue_2021_01_11()
 elif TNAME in ('8',): issue_2021_02_03()
+elif TNAME in ('9',): issue_2021_02_08()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
