@@ -7,6 +7,9 @@ Usage::
   from psana.detector.Utils *
 
   is_selected = selected_record(nrec)
+  s = info_dict(d, fmt='  %12s: %s', separator='\n')
+  s = info_namespace(o, fmt='  %12s: %s', separator='\n')
+  s = info_command_line(separator=' ')
   s = info_command_line_parameters(parser) # for OptionParser
   s = info_command_line_arguments(parser) # for ArgumentParser
 
@@ -23,6 +26,18 @@ def selected_record(nrec):
        or (nrec<50 and not nrec%10)\
        or (nrec<500 and not nrec%100)\
        or (not nrec%1000)
+
+
+def info_dict(d, fmt='  %12s: %s', separator='\n'):
+    return separator.join([fmt % (k, str(v)) for k,v in d.items()])
+
+
+def info_namespace(o, fmt='  %12s: %s', separator='\n'):
+    return separator.join([fmt %(n,str(getattr(o,n,None))) for n in dir(o) if n[0]!='_'])
+
+
+def info_command_line(separator=' '):
+    return separator.join(sys.argv)
 
 
 def info_command_line_parameters(parser):
