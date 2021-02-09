@@ -19,15 +19,17 @@ namespace Drp {
 
 // encoder header: 32 bytes
 typedef struct {
-    uint16_t    frameCount;         // network byte ordrer
-    char        reserved1[2];
-    char        version[4];
+    uint16_t    frameCount;         // network byte order
+    uint8_t     reserved1[2];
+    uint16_t    majorVersion;       // network byte order
+    uint8_t     minorVersion;
+    uint8_t     microVersion;
     char        hardwareID[16];
-    char        reserved2;
-    char        channelMask;
-    char        errorMask;
-    char        mode;
-    char        reserved3[4];
+    uint8_t     reserved2;
+    uint8_t     channelMask;
+    uint8_t     errorMask;
+    uint8_t     mode;
+    uint8_t     reserved3[4];
 } encoder_header_t;
 
 static_assert(sizeof(encoder_header_t) == 32, "Data structure encoder_header_t is not size 32");
@@ -35,14 +37,15 @@ static_assert(sizeof(encoder_header_t) == 32, "Data structure encoder_header_t i
 
 // encoder channel: 32 bytes
 typedef struct {
-    uint32_t    encoderValue;       // network byte ordrer
-    char        reserved1[4];
+    uint32_t    encoderValue;       // network byte order
+    uint32_t    timing;             // network byte order
+    uint16_t    scale;              // network byte order
     char        hardwareID[16];
-    char        reserved2;
-    char        channel;
-    char        error;
-    char        mode;
-    char        reserved3[4];
+    uint8_t     reserved1;
+    uint8_t     channel;
+    uint8_t     error;
+    uint8_t     mode;
+    uint8_t     reserved2[2];
 } encoder_channel_t;
 
 static_assert(sizeof(encoder_channel_t) == 32, "Data structure encoder_channel_t is not size 32");
@@ -54,7 +57,7 @@ typedef struct {
     encoder_channel_t   channel[1];
 } encoder_frame_t;
 
-static_assert(sizeof(encoder_frame_t) == 64, "Data structure encoder_channel_t is not size 64");
+static_assert(sizeof(encoder_frame_t) == 64, "Data structure encoder_frame_t is not size 64");
 class UdpDetector;
 
 class UdpMonitor

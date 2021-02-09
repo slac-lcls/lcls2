@@ -45,6 +45,8 @@ public:
     {
       encoderValue,
       frameCount,
+      timing,
+      scale,
       mode,
       error,
       hardwareID
@@ -55,6 +57,8 @@ public:
        NameVec.push_back({"encoderValue", XtcData::Name::UINT32,1});
        // frameCount is common to all channels
        NameVec.push_back({"frameCount", XtcData::Name::UINT16});
+       NameVec.push_back({"timing", XtcData::Name::UINT32,1});
+       NameVec.push_back({"scale", XtcData::Name::UINT16,1});
        NameVec.push_back({"mode", XtcData::Name::INT8,1});
        NameVec.push_back({"error", XtcData::Name::INT8,1});
        NameVec.push_back({"hardwareID", XtcData::Name::CHARSTR,1});
@@ -391,6 +395,9 @@ void UdpDetector::_loopbackSend()
 
     ++ m_loopbackFrameCount;     // advance the simulated frame counter
     pHeader->frameCount = htons(m_loopbackFrameCount);
+    pHeader->majorVersion = htons(1);
+    pHeader->majorVersion = 2;
+    pHeader->microVersion = 3;
 #if 0
     // error injection
     if ((m_loopbackFrameCount > 0) && ((m_loopbackFrameCount % 50) == 0)) {
@@ -401,6 +408,8 @@ void UdpDetector::_loopbackSend()
     sprintf(pHeader->hardwareID, "%s", "LOOPBACK SIM");
 
     pChannel->encoderValue = htonl(170000);
+    pChannel->timing = htonl(54321);
+    pChannel->scale = htons(1000);
 
     int sent = sendto(m_loopbackFd, (void *)mybuf, sizeof(mybuf), 0,
                   (struct sockaddr *)&m_loopbackAddr, sizeof(m_loopbackAddr));
@@ -590,9 +599,12 @@ void UdpDetector::process()
     // read from the udp socket that triggered select()
     int rv = _readFrame(&frame);
 
-    logging::debug("%s: frame=%hu  encoderValue=%u  mode=%u  error=%u", __PRETTY_FUNCTION__,
+    logging::debug("%s: frame=%hu  encoderValue=%u  timing=%u  scale=%u  mode=%u  error=%u",
+                   __PRETTY_FUNCTION__,
                    frame.header.frameCount,
                    frame.channel[0].encoderValue,
+                   frame.channel[0].timing,
+                   (unsigned) frame.channel[0].scale,
                    (unsigned) frame.channel[0].mode,
                    (unsigned) frame.channel[0].error);
 
@@ -655,6 +667,14 @@ void UdpDetector::process()
             // ...frameCount
             raw.set_value(RawDef::frameCount, frame.header.frameCount);
 
+            // ...timing
+            XtcData::Array<uint32_t> arrayX = raw.allocate<uint32_t>(RawDef::timing,shape);
+            arrayX(0) = frame.channel[0].timing;
+
+            // ...scale
+            XtcData::Array<uint16_t> arrayY = raw.allocate<uint16_t>(RawDef::scale,shape);
+            arrayY(0) = frame.channel[0].scale;
+
             // ...mode
             XtcData::Array<int8_t> arrayU = raw.allocate<int8_t>(RawDef::mode,shape);
             arrayU(0) = frame.channel[0].mode;
@@ -688,19 +708,27 @@ int UdpDetector::_readFrame(encoder_frame_t *frame)
     // read data
     ssize_t recvlen = recvfrom(_dataFd, frame, sizeof(encoder_frame_t), MSG_DONTWAIT, 0, 0);
     // check length
-    if (recvlen != sizeof(encoder_frame_t)) {
-        logging::error("received UDP length %zd, expected %zd", recvlen, sizeof(encoder_frame_t));
+    if (recvlen < (ssize_t) sizeof(encoder_frame_t)) {
+        logging::error("received UDP length %zd, expected at least %zd", recvlen, sizeof(encoder_frame_t));
         rv = 1; // error
     } else {
         // byte swap
         frame->header.frameCount = ntohs(frame->header.frameCount);
+        frame->header.majorVersion = ntohs(frame->header.majorVersion);
         frame->channel[0].encoderValue = ntohl(frame->channel[0].encoderValue);
+        frame->channel[0].timing = ntohl(frame->channel[0].timing);
+        frame->channel[0].scale = ntohs(frame->channel[0].scale);
 
         logging::debug("     frameCount    %7u", frame->header.frameCount);
+        logging::debug("        version    %d.%d.%d", frame->header.majorVersion,
+                                                      frame->header.minorVersion,
+                                                      frame->header.microVersion);
         char buf[16];
         snprintf(buf, sizeof(buf), "%s", frame->header.hardwareID);
         logging::debug("     hardwareID    \"%s\"",  buf);
         logging::debug("ch0  encoderValue  %7u", frame->channel[0].encoderValue);
+        logging::debug("ch0  timing        %7u", frame->channel[0].timing);
+        logging::debug("ch0  scale         %7u", (unsigned)frame->channel[0].scale);
         logging::debug("ch0  error         %7u", (unsigned)frame->channel[0].error);
         logging::debug("ch0  mode          %7u", (unsigned)frame->channel[0].mode);
     }
