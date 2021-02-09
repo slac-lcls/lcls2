@@ -228,6 +228,32 @@ def issue_2021_02_08():
       print('  step metadata: %s' % str(step_docstring(step)))
 
 
+def issue_2021_02_09():
+  """
+     Issue: Peck, Ariana N <apeck@slac.stanford.edu> Thu 1/28/2021 2:47 PM
+     What?s the equivalent function to the det.calib(evt) method in psana2?
+  """
+  from psana.pyalgos.generic.NDArrUtils import info_ndarr
+  from psana import DataSource
+
+  ds = DataSource(exp='tmoc00118', run=123, max_events=100)
+  run = next(ds.runs())
+  det = run.Detector('tmoopal')
+
+  print('det._det_name      : ', det._det_name) # epixquad
+  print('det._dettype       : ', det._dettype)  # epix
+  print('det.raw._det_name  : ', det.raw._det_name) # epixquad
+  print('det.raw._dettype   : ', det.raw._dettype)  # epix
+  print('det.raw._uniqueid  : ', det.raw._uniqueid)  # epix_3926196238-017....
+  print('_sorted_segment_ids: ', det.raw._sorted_segment_ids) # [0, 1, 2, 3]
+
+  for evt in run.events():
+    raw = det.raw.raw(evt)
+    #calib = det.raw.calib(evt)
+    print(info_ndarr(raw, 'raw ', last=10))
+    #print(info_ndarr(calib, 'calib '))
+
+
 #if __name__ == "__main__":
 USAGE = '\nUsage:'\
       + '\n  python %s <test-name>' % SCRNAME\
@@ -242,18 +268,20 @@ USAGE = '\nUsage:'\
       + '\n    7 - issue_2021_01_11 - access to calibration constants for run=0 ... det.raw.calib'\
       + '\n    8 - issue_2021_02_03 - Data access example for confluence'\
       + '\n    9 - issue_2021_02_08 - docstring access is crashing'\
+      + '\n   10 - issue_2021_02_09 - Peck, Ariana - missing calibration for opal detector'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
-if   TNAME in ('1',): issue_2020_11_09()
-elif TNAME in ('2',): issue_2020_11_24()
-elif TNAME in ('3',): issue_2020_12_02()
-elif TNAME in ('4',): issue_2020_12_10()
-elif TNAME in ('5',): issue_2020_12_16()
-elif TNAME in ('6',): issue_2020_12_19()
-elif TNAME in ('7',): issue_2021_01_11()
-elif TNAME in ('8',): issue_2021_02_03()
-elif TNAME in ('9',): issue_2021_02_08()
+if   TNAME in  ('1',): issue_2020_11_09()
+elif TNAME in  ('2',): issue_2020_11_24()
+elif TNAME in  ('3',): issue_2020_12_02()
+elif TNAME in  ('4',): issue_2020_12_10()
+elif TNAME in  ('5',): issue_2020_12_16()
+elif TNAME in  ('6',): issue_2020_12_19()
+elif TNAME in  ('7',): issue_2021_01_11()
+elif TNAME in  ('8',): issue_2021_02_03()
+elif TNAME in  ('9',): issue_2021_02_08()
+elif TNAME in ('10',): issue_2021_02_09()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
