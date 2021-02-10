@@ -49,6 +49,9 @@ public:
       scale,
       mode,
       error,
+      majorVersion,
+      minorVersion,
+      microVersion,
       hardwareID
     };
 
@@ -59,8 +62,11 @@ public:
        NameVec.push_back({"frameCount", XtcData::Name::UINT16});
        NameVec.push_back({"timing", XtcData::Name::UINT32,1});
        NameVec.push_back({"scale", XtcData::Name::UINT16,1});
-       NameVec.push_back({"mode", XtcData::Name::INT8,1});
-       NameVec.push_back({"error", XtcData::Name::INT8,1});
+       NameVec.push_back({"mode", XtcData::Name::UINT8,1});
+       NameVec.push_back({"error", XtcData::Name::UINT8,1});
+       NameVec.push_back({"majorVersion", XtcData::Name::UINT16,1});
+       NameVec.push_back({"minorVersion", XtcData::Name::UINT8,1});
+       NameVec.push_back({"microVersion", XtcData::Name::UINT8,1});
        NameVec.push_back({"hardwareID", XtcData::Name::CHARSTR,1});
    }
 } RawDef;
@@ -395,9 +401,9 @@ void UdpDetector::_loopbackSend()
 
     ++ m_loopbackFrameCount;     // advance the simulated frame counter
     pHeader->frameCount = htons(m_loopbackFrameCount);
-    pHeader->majorVersion = htons(1);
-    pHeader->majorVersion = 2;
-    pHeader->microVersion = 3;
+    pHeader->majorVersion = htons(11);
+    pHeader->minorVersion = 22;
+    pHeader->microVersion = 33;
 #if 0
     // error injection
     if ((m_loopbackFrameCount > 0) && ((m_loopbackFrameCount % 50) == 0)) {
@@ -599,14 +605,17 @@ void UdpDetector::process()
     // read from the udp socket that triggered select()
     int rv = _readFrame(&frame);
 
-    logging::debug("%s: frame=%hu  encoderValue=%u  timing=%u  scale=%u  mode=%u  error=%u",
+    logging::debug("%s: frame=%hu  encoderValue=%u  timing=%u  scale=%u  mode=%u  error=%u  version=%u.%u.%u",
                    __PRETTY_FUNCTION__,
                    frame.header.frameCount,
                    frame.channel[0].encoderValue,
                    frame.channel[0].timing,
                    (unsigned) frame.channel[0].scale,
                    (unsigned) frame.channel[0].mode,
-                   (unsigned) frame.channel[0].error);
+                   (unsigned) frame.channel[0].error,
+                   (unsigned) frame.header.majorVersion,
+                   (unsigned) frame.header.minorVersion,
+                   (unsigned) frame.header.microVersion);
 
     // Protect against namesLookup not being stable before Enable
     if (m_running.load(std::memory_order_relaxed)) {
@@ -661,27 +670,39 @@ void UdpDetector::process()
             unsigned shape[XtcData::MaxRank] = {1};
 
             // ...encoderValue
-            XtcData::Array<uint32_t> arrayT = raw.allocate<uint32_t>(RawDef::encoderValue,shape);
-            arrayT(0) = frame.channel[0].encoderValue;
+            XtcData::Array<uint32_t> arrayA = raw.allocate<uint32_t>(RawDef::encoderValue,shape);
+            arrayA(0) = frame.channel[0].encoderValue;
 
             // ...frameCount
             raw.set_value(RawDef::frameCount, frame.header.frameCount);
 
             // ...timing
-            XtcData::Array<uint32_t> arrayX = raw.allocate<uint32_t>(RawDef::timing,shape);
-            arrayX(0) = frame.channel[0].timing;
+            XtcData::Array<uint32_t> arrayB = raw.allocate<uint32_t>(RawDef::timing,shape);
+            arrayB(0) = frame.channel[0].timing;
 
             // ...scale
-            XtcData::Array<uint16_t> arrayY = raw.allocate<uint16_t>(RawDef::scale,shape);
-            arrayY(0) = frame.channel[0].scale;
+            XtcData::Array<uint16_t> arrayC = raw.allocate<uint16_t>(RawDef::scale,shape);
+            arrayC(0) = frame.channel[0].scale;
 
             // ...mode
-            XtcData::Array<int8_t> arrayU = raw.allocate<int8_t>(RawDef::mode,shape);
-            arrayU(0) = frame.channel[0].mode;
+            XtcData::Array<uint8_t> arrayD = raw.allocate<uint8_t>(RawDef::mode,shape);
+            arrayD(0) = frame.channel[0].mode;
 
             // ...error
-            XtcData::Array<int8_t> arrayV = raw.allocate<int8_t>(RawDef::error,shape);
-            arrayV(0) = frame.channel[0].error;
+            XtcData::Array<uint8_t> arrayE = raw.allocate<uint8_t>(RawDef::error,shape);
+            arrayE(0) = frame.channel[0].error;
+
+            // ...majorVersion
+            XtcData::Array<uint8_t> arrayF = raw.allocate<uint8_t>(RawDef::majorVersion,shape);
+            arrayF(0) = frame.header.majorVersion;
+
+            // ...minorVersion
+            XtcData::Array<uint8_t> arrayG = raw.allocate<uint8_t>(RawDef::minorVersion,shape);
+            arrayG(0) = frame.header.minorVersion;
+
+            // ...microVersion
+            XtcData::Array<uint8_t> arrayH = raw.allocate<uint8_t>(RawDef::microVersion,shape);
+            arrayH(0) = frame.header.microVersion;
 
             // ...hardwareID
             char buf[16];
@@ -719,8 +740,8 @@ int UdpDetector::_readFrame(encoder_frame_t *frame)
         frame->channel[0].timing = ntohl(frame->channel[0].timing);
         frame->channel[0].scale = ntohs(frame->channel[0].scale);
 
-        logging::debug("     frameCount    %7u", frame->header.frameCount);
-        logging::debug("        version    %d.%d.%d", frame->header.majorVersion,
+        logging::debug("     frameCount    %-7u", frame->header.frameCount);
+        logging::debug("     version       %u.%u.%u", frame->header.majorVersion,
                                                       frame->header.minorVersion,
                                                       frame->header.microVersion);
         char buf[16];
