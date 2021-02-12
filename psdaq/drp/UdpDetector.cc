@@ -290,8 +290,6 @@ UdpDetector::~UdpDetector()
 
 void UdpDetector::addNames(unsigned segment, XtcData::Xtc& xtc)
 {
-    logging::debug("entered %s", __PRETTY_FUNCTION__);
-
     // do what the xtcwriter.cc addNames() does on configure (for RawDef)
     XtcData::Alg encoderRawAlg("raw",0,0,1);
     XtcData::NamesId namesId1(nodeId, segment);
@@ -356,9 +354,109 @@ unsigned UdpDetector::unconfigure()
 
 void UdpDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
 {
-    logging::debug("entered %s", __PRETTY_FUNCTION__);
+    encoder_frame_t frame;
 
-    // TODO
+    // read from the udp socket that triggered select()
+    int rv = _readFrame(&frame);
+
+    // if reading frame failed, record damage and return early
+    if (rv) {
+        dgram.xtc.damage.increase(XtcData::Damage::UserDefined);
+        logging::critical("%s: failed to read UDP frame", __PRETTY_FUNCTION__);
+        return;
+    }
+
+    logging::debug("%s: frame=%hu  encoderValue=%u  timing=%u  scale=%u  mode=%u  error=%u  version=%u.%u.%u",
+                   __PRETTY_FUNCTION__,
+                   frame.header.frameCount,
+                   frame.channel[0].encoderValue,
+                   frame.channel[0].timing,
+                   (unsigned) frame.channel[0].scale,
+                   (unsigned) frame.channel[0].mode,
+                   (unsigned) frame.channel[0].error,
+                   (unsigned) frame.header.majorVersion,
+                   (unsigned) frame.header.minorVersion,
+                   (unsigned) frame.header.microVersion);
+
+    // reset frame counter
+    if (m_resetHwCount) {
+        m_count = 0;
+        m_countOffset = frame.header.frameCount - 1;
+        m_resetHwCount = false;
+    }
+
+    // update frame counter
+    uint16_t stuck16 = (uint16_t)(m_count + m_countOffset);
+    ++m_count;
+    uint16_t sum16 = (uint16_t)(m_count + m_countOffset);
+
+    if (!getOutOfOrder()) {
+        char errmsg[80];
+        // check for out-of-order condition
+        if (frame.header.frameCount == stuck16) {
+            snprintf(errmsg, sizeof(errmsg),
+                     "Out-of-order: frame count %hu repeated in consecutive frames", stuck16);
+            setOutOfOrder(errmsg);
+
+        } else if (frame.header.frameCount != sum16) {
+            snprintf(errmsg, sizeof(errmsg),
+                     "Out-of-order: hw count (%hu) != sw count (%hu) + offset (%u) == (%hu)",
+                     frame.header.frameCount, m_count, m_countOffset, sum16);
+            setOutOfOrder(errmsg);
+        }
+    }
+
+    // record damage
+    if (m_outOfOrder) {
+        dgram.xtc.damage.increase(XtcData::Damage::OutOfOrder);
+    }
+
+    // ----- CreateData  ------------------------------------------------------
+    unsigned segment = 0;
+
+    XtcData::NamesId namesId1(nodeId, segment);
+    XtcData::CreateData raw(dgram.xtc, m_namesLookup, namesId1);
+    unsigned shape[XtcData::MaxRank] = {1};
+
+    // ...encoderValue
+    XtcData::Array<uint32_t> arrayA = raw.allocate<uint32_t>(RawDef::encoderValue,shape);
+    arrayA(0) = frame.channel[0].encoderValue;
+
+    // ...frameCount
+    raw.set_value(RawDef::frameCount, frame.header.frameCount);
+
+    // ...timing
+    XtcData::Array<uint32_t> arrayB = raw.allocate<uint32_t>(RawDef::timing,shape);
+    arrayB(0) = frame.channel[0].timing;
+
+    // ...scale
+    XtcData::Array<uint16_t> arrayC = raw.allocate<uint16_t>(RawDef::scale,shape);
+    arrayC(0) = frame.channel[0].scale;
+
+    // ...mode
+    XtcData::Array<uint8_t> arrayD = raw.allocate<uint8_t>(RawDef::mode,shape);
+    arrayD(0) = frame.channel[0].mode;
+
+    // ...error
+    XtcData::Array<uint8_t> arrayE = raw.allocate<uint8_t>(RawDef::error,shape);
+    arrayE(0) = frame.channel[0].error;
+
+    // ...majorVersion
+    XtcData::Array<uint8_t> arrayF = raw.allocate<uint8_t>(RawDef::majorVersion,shape);
+    arrayF(0) = frame.header.majorVersion;
+
+    // ...minorVersion
+    XtcData::Array<uint8_t> arrayG = raw.allocate<uint8_t>(RawDef::minorVersion,shape);
+    arrayG(0) = frame.header.minorVersion;
+
+    // ...microVersion
+    XtcData::Array<uint8_t> arrayH = raw.allocate<uint8_t>(RawDef::microVersion,shape);
+    arrayH(0) = frame.header.microVersion;
+
+    // ...hardwareID
+    char buf[16];
+    snprintf(buf, sizeof(buf), "%s", frame.header.hardwareID);
+    raw.set_string(RawDef::hardwareID, buf);
 }
 
 void UdpDetector::_loopbackInit()
@@ -599,126 +697,29 @@ void UdpDetector::setOutOfOrder(std::string errMsg)
 
 void UdpDetector::process()
 {
-    unsigned    segment = 0;
-    encoder_frame_t frame;
-
-    // read from the udp socket that triggered select()
-    int rv = _readFrame(&frame);
-
-    logging::debug("%s: frame=%hu  encoderValue=%u  timing=%u  scale=%u  mode=%u  error=%u  version=%u.%u.%u",
-                   __PRETTY_FUNCTION__,
-                   frame.header.frameCount,
-                   frame.channel[0].encoderValue,
-                   frame.channel[0].timing,
-                   (unsigned) frame.channel[0].scale,
-                   (unsigned) frame.channel[0].mode,
-                   (unsigned) frame.channel[0].error,
-                   (unsigned) frame.header.majorVersion,
-                   (unsigned) frame.header.minorVersion,
-                   (unsigned) frame.header.microVersion);
+    encoder_frame_t junk;
 
     // Protect against namesLookup not being stable before Enable
     if (m_running.load(std::memory_order_relaxed)) {
         ++m_nUpdates;
         logging::debug("%s process", m_udpMonitor->name().c_str());
 
-        // reset frame counter
-        if (m_resetHwCount) {
-            m_count = 0;
-            m_countOffset = frame.header.frameCount - 1;
-            m_resetHwCount = false;
-        }
-
-        // update frame counter
-        uint16_t stuck16 = (uint16_t)(m_count + m_countOffset);
-        ++m_count;
-        uint16_t sum16 = (uint16_t)(m_count + m_countOffset);
-
-        if (!getOutOfOrder()) {
-            char errmsg[80];
-            // check for out-of-order condition
-            if (frame.header.frameCount == stuck16) {
-                snprintf(errmsg, sizeof(errmsg),
-                         "Out-of-order: frame count %hu repeated in consecutive frames", stuck16);
-                setOutOfOrder(errmsg);
-
-            } else if (frame.header.frameCount != sum16) {
-                snprintf(errmsg, sizeof(errmsg),
-                         "Out-of-order: hw count (%hu) != sw count (%hu) + offset (%u) == (%hu)",
-                         frame.header.frameCount, m_count, m_countOffset, sum16);
-                setOutOfOrder(errmsg);
-            }
-        }
-
         XtcData::Dgram* dgram;
         if (m_bufferFreelist.try_pop(dgram)) { // If a buffer is available...
 
             dgram->xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}};
 
-            // record damage
-            if (m_outOfOrder) {
-                dgram->xtc.damage.increase(XtcData::Damage::OutOfOrder);
-            }
-            if (rv) {
-                dgram->xtc.damage.increase(XtcData::Damage::UserDefined);
-            }
-
-            // ----- begin CreateData  ----------------------------------
-
-            XtcData::NamesId namesId1(nodeId, segment);
-            XtcData::CreateData raw(dgram->xtc, m_namesLookup, namesId1);
-            unsigned shape[XtcData::MaxRank] = {1};
-
-            // ...encoderValue
-            XtcData::Array<uint32_t> arrayA = raw.allocate<uint32_t>(RawDef::encoderValue,shape);
-            arrayA(0) = frame.channel[0].encoderValue;
-
-            // ...frameCount
-            raw.set_value(RawDef::frameCount, frame.header.frameCount);
-
-            // ...timing
-            XtcData::Array<uint32_t> arrayB = raw.allocate<uint32_t>(RawDef::timing,shape);
-            arrayB(0) = frame.channel[0].timing;
-
-            // ...scale
-            XtcData::Array<uint16_t> arrayC = raw.allocate<uint16_t>(RawDef::scale,shape);
-            arrayC(0) = frame.channel[0].scale;
-
-            // ...mode
-            XtcData::Array<uint8_t> arrayD = raw.allocate<uint8_t>(RawDef::mode,shape);
-            arrayD(0) = frame.channel[0].mode;
-
-            // ...error
-            XtcData::Array<uint8_t> arrayE = raw.allocate<uint8_t>(RawDef::error,shape);
-            arrayE(0) = frame.channel[0].error;
-
-            // ...majorVersion
-            XtcData::Array<uint8_t> arrayF = raw.allocate<uint8_t>(RawDef::majorVersion,shape);
-            arrayF(0) = frame.header.majorVersion;
-
-            // ...minorVersion
-            XtcData::Array<uint8_t> arrayG = raw.allocate<uint8_t>(RawDef::minorVersion,shape);
-            arrayG(0) = frame.header.minorVersion;
-
-            // ...microVersion
-            XtcData::Array<uint8_t> arrayH = raw.allocate<uint8_t>(RawDef::microVersion,shape);
-            arrayH(0) = frame.header.microVersion;
-
-            // ...hardwareID
-            char buf[16];
-            snprintf(buf, sizeof(buf), "%s", frame.header.hardwareID);
-            raw.set_string(RawDef::hardwareID, buf);
-
-            // ----- end CreateData  ------------------------------------
+            event(*dgram, nullptr);            // PGPEvent not needed in this case
 
             m_pvQueue.push(dgram);
         }
         else {
             ++m_nMissed;                       // Else count it as missed
+            (void) _readFrame(&junk);
         }
     } else {
-        logging::debug("%s: m_running is false (frameCount = %u)", __PRETTY_FUNCTION__,
-                       frame.header.frameCount);
+        logging::debug("%s: m_running is false", __PRETTY_FUNCTION__);
+        (void) _readFrame(&junk);
     }
 }
 
