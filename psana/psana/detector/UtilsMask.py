@@ -19,7 +19,7 @@ import psana.pscalib.calib.CalibConstants as CC
 DTYPE_MASK   = CC.dic_calib_type_to_dtype[CC.PIXEL_MASK]   # np.uint8
 DTYPE_STATUS = CC.dic_calib_type_to_dtype[CC.PIXEL_STATUS] # np.uint64
 
-from psana.detector.Utils import shape_nda_as_3d # shape_as_3d# info_ndarr, shape_as_3d
+from psana.pyalgos.generic.NDArrUtils import shape_nda_as_3d # shape_as_3d# info_ndarr, shape_as_3d
 
 def merge_status(stnda, grinds=(0,1,2,3,4), dtype=DTYPE_STATUS): # indexes stand gain ranges for 'FH','FM','FL','AHL-H','AML-M'
     """Merges status bits over gain range index.
