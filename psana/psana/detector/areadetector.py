@@ -6,7 +6,7 @@ Usage::
 
   from psana.detector.areadetector import AreaDetector
 
-  o = AreaDetector(*args, **kwa) # enherits from DetectorImpl(*args, **kwa)
+  o = AreaDetector(*args, **kwa) # inherits from DetectorImpl(*args, **kwa)
 
   a = o.raw(evt)
   a = o.segments(evt)
@@ -294,6 +294,7 @@ class AreaDetector(DetectorImpl):
         image: np.array, ndim=2
         
         """
+        #print('in AreaDretector.image')
         logger.debug('in AreaDretector.image')
         if any(v is None for v in self._pix_rc_):
             self._cached_pixel_coord_indexes(evt, **kwa)
