@@ -7,9 +7,9 @@ Usage::
   from psana.detector.Utils *
 
   is_selected = selected_record(nrec)
-  s = info_dict(d, fmt='  %12s: %s', separator='\n')
-  s = info_namespace(o, fmt='  %12s: %s', separator='\n')
-  s = info_command_line(separator=' ')
+  s = info_dict(d, fmt='  %12s: %s', sep='\n')
+  s = info_namespace(o, fmt='  %12s: %s', sep='\n')
+  s = info_command_line(sep=' ')
   s = info_command_line_parameters(parser) # for OptionParser
   s = info_command_line_arguments(parser) # for ArgumentParser
 
@@ -26,16 +26,18 @@ def selected_record(nrec):
        or (not nrec%1000)
 
 
-def info_dict(d, fmt='  %12s: %s', separator='\n'):
-    return separator.join([fmt % (k, str(v)) for k,v in d.items()])
+def info_dict(d, fmt='  %12s: %s', sep='\n', sepnext=13*' '):
+    return (sep if len(d)>1 else '')\
+         + sep.join([fmt % (k, info_dict(v, fmt=fmt, sep=sep+sepnext)\
+               if isinstance(v,dict) else str(v)) for k,v in d.items()])
 
 
-def info_namespace(o, fmt='  %12s: %s', separator='\n'):
-    return separator.join([fmt %(n,str(getattr(o,n,None))) for n in dir(o) if n[0]!='_'])
+def info_namespace(o, fmt='  %12s: %s', sep='\n'):
+    return sep.join([fmt %(n,str(getattr(o,n,None))) for n in dir(o) if n[0]!='_'])
 
 
-def info_command_line(separator=' '):
-    return separator.join(sys.argv)
+def info_command_line(sep=' '):
+    return sep.join(sys.argv)
 
 
 def info_command_line_parameters(parser):
