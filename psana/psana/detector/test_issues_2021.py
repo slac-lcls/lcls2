@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import logging
 #logger = logging.getLogger(__name__)
-logging.basicConfig(format='[%(levelname).1s]: %(message)s', level=logging.INFO)
+logging.basicConfig(format='[%(levelname).1s]: %(message)s', level=logging.DEBUG)
 
 import sys
 SCRNAME = sys.argv[0].rsplit('/')[-1]
@@ -233,6 +233,7 @@ def issue_2021_02_09():
      Issue: Peck, Ariana N <apeck@slac.stanford.edu> Thu 1/28/2021 2:47 PM
      What?s the equivalent function to the det.calib(evt) method in psana2?
   """
+  import numpy as np
   from psana.pyalgos.generic.NDArrUtils import info_ndarr
   from psana import DataSource
 
@@ -247,11 +248,17 @@ def issue_2021_02_09():
   print('det.raw._uniqueid  : ', det.raw._uniqueid)  # epix_3926196238-017....
   print('_sorted_segment_ids: ', det.raw._sorted_segment_ids) # [0, 1, 2, 3]
 
-  for evt in run.events():
-    raw = det.raw.raw(evt)
-    #calib = det.raw.calib(evt)
-    print(info_ndarr(raw, 'raw ', last=10))
-    #print(info_ndarr(calib, 'calib '))
+  for ievt, evt in enumerate(run.events()):
+    print('Event %03d' % ievt)
+
+    raw   = det.raw.raw(evt)
+    print(info_ndarr(raw, 'A raw   ', last=10))
+
+    calib = det.raw.calib(evt)
+    print(info_ndarr(calib, 'B calib '))
+
+    image = det.raw.image(evt) #, dtype=np.float32)
+    print(info_ndarr(image, 'C image '))
 
 
 #if __name__ == "__main__":
