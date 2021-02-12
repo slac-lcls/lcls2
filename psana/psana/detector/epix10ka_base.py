@@ -6,7 +6,7 @@ Usage::
 
   from psana.detector.epix10ka_base import epix10ka_base
 
-  o = epix10ka_base(*args, **kwargs) # enherits from AreaDetector
+  o = epix10ka_base(*args, **kwargs) # inherits from AreaDetector
   a = o.calib(evt)
   m = o._mask_from_status(grinds=(0,1,2,3,4), **kwa)
   m = o._mask_edges(self, edge_rows=1, edge_cols=1, center_rows=0, center_cols=0, dtype=DTYPE_MASK, **kwa)
