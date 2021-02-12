@@ -18,3 +18,10 @@ def test_ipython():
 
     detsd = run.Detector('step_docstring') #Out[6]: <psana.detector.envstore.scan_raw_2_0_0 at 0x7f1a24735c10>
     detsv = run.Detector('step_value') #Out[8]: <psana.detector.envstore.scan_raw_2_0_0 at 0x7f1a0b205c10>
+
+#---
+    from psana import DataSource
+    ds = DataSource(exp='tmoc00118', run=123, max_events=100)
+    run = next(ds.runs())
+    det = run.Detector('tmoopal')
+    print('run.dsparms.det_classes dict content:\n  %s' str(run.dsparms.det_classes))
