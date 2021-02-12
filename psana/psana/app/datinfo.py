@@ -39,7 +39,7 @@ def ds_run_det(args):
         return
 
     ds_kwa = datasource_arguments(args)
-    print('DataSource kwargs: %s' % info_dict(ds_kwa, fmt='%s: %s', separator=', '))
+    print('DataSource kwargs: %s' % info_dict(ds_kwa, fmt='%s: %s', sep=', '))
     ds = DataSource(**ds_kwa)
     run = next(ds.runs())
     det = run.Detector(args.detname)
@@ -139,7 +139,7 @@ def do_main():
     logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
 
     print('command line: %s' % info_command_line())
-    print('input parameters: %s' % info_dict(opts, fmt='%s: %s', separator=', '))
+    print('input parameters: %s' % info_dict(opts, fmt='%s: %s', sep=', '))
     #pedestals_calibration(*args, **opts)
     #pedestals_calibration(**opts)
     ds_run_det(args)
