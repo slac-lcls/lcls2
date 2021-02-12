@@ -86,11 +86,10 @@ void Client::setup(unsigned output, unsigned delay, unsigned width, unsigned pol
 }
 
   //  Enable the trigger
-void Client::start(unsigned partn)
+void Client::start(TprBase::Partition partn)
 {
   _dump();
-  //  _dev->base.setupDaq(0,partn);
-  _dev->base.setupChannel(_channel, TprBase::Any, (TprBase::FixedRate)partn, 0, 0, 0);
+  _dev->base.setupChannel(_channel, (TprBase::Partition)partn, 0, 0, 1);
   _dump();
 
   char buff[32];

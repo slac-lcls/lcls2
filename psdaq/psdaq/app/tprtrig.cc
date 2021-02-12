@@ -27,7 +27,9 @@ static void usage(const char* p) {
   printf("          -o <outp> : bit mask of outputs\n");
   printf("          -d <clks> : delay\n");
   printf("          -w <clks> : width\n");
+  printf("          -e <code> : event code\n");
   printf("          -r <rate> : fixed rate\n");
+  printf("          -p <part> : partition\n");
 }
 
 int main(int argc, char** argv) {
@@ -39,14 +41,14 @@ int main(int argc, char** argv) {
   bool lUsage = false;
   unsigned output  = 0;
   unsigned channel = 10;
-  int      rate    = 5;
-  int      evcode  = -1;
+  int      mode    = -1;
+  int      rate    = -1;
   unsigned delay   = 0;
   unsigned width   = 1;
 
   //char* endptr;
 
-  while ( (c=getopt( argc, argv, "c:d:w:o:t:r:e:h?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "c:d:w:o:t:r:e:p:h?")) != EOF ) {
     switch(c) {
     case 'c':
       channel = strtoul(optarg,NULL,0);
@@ -67,11 +69,29 @@ int main(int argc, char** argv) {
     case 'o':
       output = strtoul(optarg,NULL,0);
       break;
-    case 'r':
+    case 'e':
+      if (mode>=0) {
+        printf("Only one rate selection mode (r/e/p) allowed\n");
+        lUsage = true;
+      }
+      mode = 0;
       rate = strtoul(optarg,NULL,0);
       break;
-    case 'e':
-      evcode = strtoul(optarg,NULL,0);
+    case 'r':
+      if (mode>=0) {
+        printf("Only one rate selection mode (r/e/p) allowed\n");
+        lUsage = true;
+      }
+      mode = 1;
+      rate = strtoul(optarg,NULL,0);
+      break;
+    case 'p':
+      if (mode>=0) {
+        printf("Only one rate selection mode (r/e/p) allowed\n");
+        lUsage = true;
+      }
+      mode = 2;
+      rate = strtoul(optarg,NULL,0);
       break;
     case 'h':
       usage(argv[0]);
@@ -96,11 +116,13 @@ int main(int argc, char** argv) {
   char evrdev[16];
   sprintf(evrdev,"/dev/tpr%c",tprid);
 
+  static const char* names[] = {"EventCode","FixedRate","Partition"};
   printf("Configuring channel %u outputs 0x%x for %s %u\n",
-         channel, output, evcode<0 ? "FixedRate":"EventCode",
-         evcode<0 ? rate:evcode);
+         channel, output, names[mode], rate);
 
-  Client client(evrdev,channel,evcode<0);
+  Client client(evrdev,channel,mode>0);
+
+  client.reg().tpr.dump();
 
   for(unsigned i=0; output; i++) {
     if (output & (1<<i)) {
@@ -108,10 +130,13 @@ int main(int argc, char** argv) {
       output &= ~(1<<i);
     }
   }
-  if (evcode < 0)
-    client.start(TprBase::FixedRate(rate));
-  else
-    client.start(TprBase::EventCode(evcode));
+
+  switch( mode ) {
+  case 0: client.start(TprBase::EventCode(rate)); break;
+  case 1: client.start(TprBase::FixedRate(rate)); break;
+  case 2: client.start(TprBase::Partition(rate)); break;
+  };
+
   client.reg().base.dump();
   client.release();
 

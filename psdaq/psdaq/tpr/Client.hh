@@ -22,11 +22,10 @@ namespace Pds {
       enum Polarity { Falling=0, Rising=1 };
       void setup(unsigned output, unsigned delay, unsigned width, unsigned polarity=Rising);
       //  Enable the trigger
-      void start(unsigned partn);
-      //  Enable the trigger (full rate)
       void start(TprBase::FixedRate rate=TprBase::FixedRate::_1M);
       void start(TprBase::ACRate    rate, unsigned timeSlotMask);
       void start(TprBase::EventCode evcode);
+      void start(TprBase::Partition partition);
       //  Disable the trigger
       void stop();
       //  Release control

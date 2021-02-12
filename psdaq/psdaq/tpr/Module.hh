@@ -65,10 +65,9 @@ namespace Pds {
       enum FixedRate { _1M, _71K, _10K, _1K, _100H, _10H, _1H };
       enum ACRate    { _60HA, _30HA, _10HA, _5HA, _1HA, _0_5HA };
       enum EventCode { _0, _1 };
+      enum Partition { _P0, _P1, _P2, _P3, _P4, _P5, _P6, _P7 };
     public:
       void dump() const;
-      void setupDaq    (unsigned i,
-                        unsigned partition);
       void setupChannel(unsigned i,
                         Destination d,
                         FixedRate   r,
@@ -84,6 +83,11 @@ namespace Pds {
                         unsigned    bsaWidth);
       void setupChannel(unsigned i,
                         EventCode   r,
+                        unsigned    bsaPresample,
+                        unsigned    bsaDelay,
+                        unsigned    bsaWidth);
+      void setupChannel(unsigned i,
+                        Partition   p,
                         unsigned    bsaPresample,
                         unsigned    bsaDelay,
                         unsigned    bsaWidth);
