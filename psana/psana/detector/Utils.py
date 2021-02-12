@@ -19,8 +19,6 @@ Usage::
 import sys
 import numpy as np
 
-from psana.pyalgos.generic.NDArrUtils import shape_nda_as_3d # shape_as_3d# info_ndarr, shape_as_3d
-
 def selected_record(nrec):
     return nrec<5\
        or (nrec<50 and not nrec%10)\
