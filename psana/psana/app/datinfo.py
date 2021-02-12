@@ -7,9 +7,8 @@ import json
 
 from psana.detector.Utils import info_dict, info_command_line, info_namespace
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
-#from psana.detector.UtilsEpix10ka import seconds, config_object_epix10ka, info_pixel_gain_mode_statistics, info_pixel_gain_mode_fractions
 import psana.detector.UtilsEpix10ka as ue
-from psana.pyalgos.generic.Utils import str_tstamp #log_rec_on_start, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp
+from psana.detector.UtilsAreaCalib import datasource_arguments, info_detector, info_run
 from psana import DataSource
 
 import logging
@@ -29,18 +28,9 @@ USAGE = '\n %s <detector> -e <experiment> -r <run-number(s)> [kwargs]' % SCRNAME
       + '\n  %s epixquad -e ueddaq02 -r 27 -L DEBUG' % SCRNAME\
       + '\n  %s epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0065-s001-c000.xtc2' % SCRNAME\
       + '\n  %s epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0086-s001-c000.xtc2' % SCRNAME\
+      + '\n  %s tmoopal -e tmoc00118 -r 123' % SCRNAME\
       + '\nHELP: %s -h' % SCRNAME
 #----
-
-def ds_arguments(args):
-    assert args.fname is not None\
-           or None not in (args.expname,args.runs), 'experiment name and run or xtc2 file name need to be specified for DataSource'
-
-    kwa = {'files':args.fname,} if args.fname is not None else\
-          {'exp':args.expname,'run':[int(v) for v in args.runs.split(',')]}
-    if args.evtmax: kwa['max_events'] = args.evtmax
-    return kwa
-
 
 def ds_run_det(args):
 
@@ -48,29 +38,21 @@ def ds_run_det(args):
         print('detector information is not requested by -td option - skip it')
         return
 
-    ds = DataSource(**ds_arguments(args))
+    ds_kwa = datasource_arguments(args)
+    print('DataSource kwargs: %s' % info_dict(ds_kwa, fmt='%s: %s', separator=', '))
+    ds = DataSource(**ds_kwa)
     run = next(ds.runs())
     det = run.Detector(args.detname)
 
-    detnameid = det.raw._uniqueid
-    is_epix10ka = 'epix' in detnameid
     expname = run.expt if run.expt is not None else args.expname # 'mfxc00318'
-    runnum = run.runnum
-    print('run.detnames : ', run.detnames) # {'epixquad'}
-    print('run.expt     : ', run.expt)     # tstx00117
-    #print('run.id       : ', run.id)       # 0
-    #print('run.timestamp: ', run.timestamp)# 4190613356186573936 (int)
-    t_sec = ue.seconds(run.timestamp)#, epoch_offset_sec=631152000)
-    ts_run = str_tstamp(fmt='%Y-%m-%dT%H:%M:%S', time_sec=t_sec)
-    print('run timestamp: ', ts_run)
 
     print('fname:', args.fname)
-    print('expname:', expname)
-    print('runnum :', runnum)
-    print('detname:', det._det_name)
-    print('split detnameid:', '\n'.join(detnameid.split('_')))
+    #print('expname:', expname)
+    #print('runnum :', run.runnum)
+    #print('run.timestamp :', run.timestamp)
 
-    print('det.raw._calibconst.keys(): ', ', '.join(det.raw._calibconst.keys()))
+    print(info_run(run, cmt='run info\n    ', sep='\n    '))
+    print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
 
 
 def selected_record(nrec):
@@ -98,7 +80,7 @@ def loop_run_step_evt(args):
   #from psana import DataSource
   #ds = DataSource(exp=args.expt, run=args.run, dir=f'/cds/data/psdm/{args.expt[:3]}/{args.expt}/xtc', max_events=1000)
 
-  ds = DataSource(**ds_arguments(args))
+  ds = DataSource(**datasource_arguments(args))
 
   if do_loopruns:
     for irun,run in enumerate(ds.runs()):
@@ -107,18 +89,17 @@ def loop_run_step_evt(args):
       if not do_loopsteps: continue
       print('%s detector object' % args.detname)
       det = run.Detector(args.detname)
-      detnameid = det.raw._uniqueid
-      is_epix10ka = 'epix' in detnameid
-      step_docstring = run.Detector('step_docstring')
-      #step_value = run.Detector('step_value')
-      print('step_docstring detector object is created')
+      is_epix10ka = 'epix' in det.raw._uniqueid
+      try:    step_docstring = run.Detector('step_docstring')
+      except: step_docstring = None
+      print('step_docstring detector object is %s' % ('missing' if step_docstring is None else 'created'))
+
       dcfg = ue.config_object_epix10ka(det) if is_epix10ka else None
 
       for istep,step in enumerate(run.steps()):
         print('\nStep %02d' % istep, end='')
 
-        sds = step_docstring(step)
-        metadic = json.loads(sds)
+        metadic = None if step_docstring is None else json.loads(step_docstring(step))
         print('  metadata: %s' % str(metadic))
 
         if not do_loopevts: continue
