@@ -4,6 +4,7 @@ install
 *.pyc
 *.egg-info/
 *~
+\#*#
 *.so
 *.xtc
 *.h5
