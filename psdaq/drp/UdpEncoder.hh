@@ -58,7 +58,7 @@ typedef struct {
 } encoder_frame_t;
 
 static_assert(sizeof(encoder_frame_t) == 64, "Data structure encoder_frame_t is not size 64");
-class UdpDetector;
+class UdpEncoder;
 
 class UdpMonitor
 {
@@ -74,21 +74,21 @@ public:
     const std::string name() const { return "encoder"; }    // FIXME
     bool connected() const { return _connected; }
 public:
-    bool ready(UdpDetector* udpDetector);
+    bool ready(UdpEncoder* udpDetector);
     void clear() { m_udpDetector = nullptr; }
 protected:
     bool                _connected;
 private:
     Parameters&         m_para;
-    UdpDetector*        m_udpDetector;
+    UdpEncoder*        m_udpDetector;
 };
 
 
-class UdpDetector : public XpmDetector
+class UdpEncoder : public XpmDetector
 {
 public:
-    UdpDetector(Parameters& para, std::shared_ptr<UdpMonitor>& udpMonitor, DrpBase& drp);
-    ~UdpDetector();
+    UdpEncoder(Parameters& para, std::shared_ptr<UdpMonitor>& udpMonitor, DrpBase& drp);
+    ~UdpEncoder();
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) override;
     void event(XtcData::Dgram& dgram, PGPEvent* event) override;
@@ -165,7 +165,7 @@ private:
 private:
     DrpBase m_drp;
     Parameters& m_para;
-    std::unique_ptr<UdpDetector> m_udpDetector;
+    std::unique_ptr<UdpEncoder> m_udpDetector;
     Detector* m_det;
     bool m_unconfigure;
 };

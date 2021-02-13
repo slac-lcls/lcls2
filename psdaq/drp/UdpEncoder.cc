@@ -1,4 +1,4 @@
-#include "UdpDetector.hh"
+#include "UdpEncoder.hh"
 
 #ifdef NDEBUG
 #undef NDEBUG
@@ -88,7 +88,7 @@ static const XtcData::Name::DataType xtype[] = {
   XtcData::Name::CHARSTR, // pvString
 };
 
-bool UdpMonitor::ready(UdpDetector* udpDetector)
+bool UdpMonitor::ready(UdpEncoder* udpDetector)
 {
     m_udpDetector = udpDetector;
 
@@ -255,7 +255,7 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex, uint64_t& bytes)
 }
 
 
-UdpDetector::UdpDetector(Parameters& para, std::shared_ptr<UdpMonitor>& udpMonitor, DrpBase& drp) :
+UdpEncoder::UdpEncoder(Parameters& para, std::shared_ptr<UdpMonitor>& udpMonitor, DrpBase& drp) :
     XpmDetector     (&para, &drp.pool),
     m_drp           (drp),
     m_udpMonitor    (udpMonitor),
@@ -280,7 +280,7 @@ UdpDetector::UdpDetector(Parameters& para, std::shared_ptr<UdpMonitor>& udpMonit
     logging::debug("createUdpSocket(%d) returned %d", dataPort, _dataFd);
 }
 
-UdpDetector::~UdpDetector()
+UdpEncoder::~UdpEncoder()
 {
     delete[] _discard;
     if (_dataFd > 0) {
@@ -288,7 +288,7 @@ UdpDetector::~UdpDetector()
     }
 }
 
-void UdpDetector::addNames(unsigned segment, XtcData::Xtc& xtc)
+void UdpEncoder::addNames(unsigned segment, XtcData::Xtc& xtc)
 {
     // do what the xtcwriter.cc addNames() does on configure (for RawDef)
     XtcData::Alg encoderRawAlg("raw",0,0,1);
@@ -298,8 +298,8 @@ void UdpDetector::addNames(unsigned segment, XtcData::Xtc& xtc)
     m_namesLookup[namesId1] = XtcData::NameIndex(rawNames);
 }
 
-  //std::string UdpDetector::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc)
-unsigned UdpDetector::configure(const std::string& config_alias, XtcData::Xtc& xtc)
+  //std::string UdpEncoder::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc)
+unsigned UdpEncoder::configure(const std::string& config_alias, XtcData::Xtc& xtc)
 {
     logging::info("UDP configure");
 
@@ -331,13 +331,13 @@ unsigned UdpDetector::configure(const std::string& config_alias, XtcData::Xtc& x
 
     m_terminate.store(false, std::memory_order_release);
 
-    m_workerThread = std::thread{&UdpDetector::_worker, this};
-    m_udpReceiverThread = std::thread{&UdpDetector::_udpReceiver, this};
+    m_workerThread = std::thread{&UdpEncoder::_worker, this};
+    m_udpReceiverThread = std::thread{&UdpEncoder::_udpReceiver, this};
 
     return 0;
 }
 
-unsigned UdpDetector::unconfigure()
+unsigned UdpEncoder::unconfigure()
 {
     m_terminate.store(true, std::memory_order_release);
     if (m_workerThread.joinable()) {
@@ -352,7 +352,7 @@ unsigned UdpDetector::unconfigure()
     return 0;
 }
 
-void UdpDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
+void UdpEncoder::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
 {
     encoder_frame_t frame;
 
@@ -459,7 +459,7 @@ void UdpDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
     raw.set_string(RawDef::hardwareID, buf);
 }
 
-void UdpDetector::_loopbackInit()
+void UdpEncoder::_loopbackInit()
 {
     logging::debug("%s (port = %d)", __PRETTY_FUNCTION__, m_para->loopbackPort);
 
@@ -478,7 +478,7 @@ void UdpDetector::_loopbackInit()
 
 }
 
-void UdpDetector::_loopbackFini()
+void UdpEncoder::_loopbackFini()
 {
     logging::debug("%s", __PRETTY_FUNCTION__);
 
@@ -489,7 +489,7 @@ void UdpDetector::_loopbackFini()
     }
 }
 
-void UdpDetector::_loopbackSend()
+void UdpEncoder::_loopbackSend()
 {
     char mybuf[sizeof(encoder_header_t) + sizeof(encoder_channel_t)];
     memset((void *)mybuf, 0, sizeof(mybuf));
@@ -526,7 +526,7 @@ void UdpDetector::_loopbackSend()
     }
 }
 
-void UdpDetector::_worker()
+void UdpEncoder::_worker()
 {
     logging::info("Worker thread started");
 
@@ -650,7 +650,7 @@ void UdpDetector::_worker()
 
 #include <unistd.h>
 
-void UdpDetector::_udpReceiver()
+void UdpEncoder::_udpReceiver()
 {
     logging::info("UDP receiver thread started");
 
@@ -685,7 +685,7 @@ void UdpDetector::_udpReceiver()
     logging::info("UDP receiver thread finished");
 }
 
-void UdpDetector::setOutOfOrder(std::string errMsg)
+void UdpEncoder::setOutOfOrder(std::string errMsg)
 {
     if (!m_outOfOrder) {
         m_outOfOrder = true;
@@ -695,7 +695,7 @@ void UdpDetector::setOutOfOrder(std::string errMsg)
     }
 }
 
-void UdpDetector::process()
+void UdpEncoder::process()
 {
     encoder_frame_t junk;
 
@@ -723,7 +723,7 @@ void UdpDetector::process()
     }
 }
 
-int UdpDetector::_readFrame(encoder_frame_t *frame)
+int UdpEncoder::_readFrame(encoder_frame_t *frame)
 {
     int rv = 0;
 
@@ -757,7 +757,7 @@ int UdpDetector::_readFrame(encoder_frame_t *frame)
     return (rv);
 }
 
-void UdpDetector::_matchUp()
+void UdpEncoder::_matchUp()
 {
     while (true) {
         XtcData::Dgram* pvDg;
@@ -773,7 +773,7 @@ void UdpDetector::_matchUp()
     //printf("\n");
 }
 
-void UdpDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
+void UdpEncoder::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
 {
     uint32_t pgpIdx;
     m_pgpQueue.try_pop(pgpIdx);         // Actually consume the element
@@ -807,7 +807,7 @@ void UdpDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
     _sendToTeb(pgpDg, pgpIdx);
 }
 
-void UdpDetector::_timeout(const XtcData::TimeStamp& timestamp)
+void UdpEncoder::_timeout(const XtcData::TimeStamp& timestamp)
 {
     while (true) {
         uint32_t index;
@@ -855,7 +855,7 @@ void UdpDetector::_timeout(const XtcData::TimeStamp& timestamp)
     }
 }
 
-void UdpDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
+void UdpEncoder::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
 {
     // Make sure the datagram didn't get too big
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
@@ -881,7 +881,7 @@ void UdpDetector::_sendToTeb(const Pds::EbDgram& dgram, uint32_t index)
     }
 }
 
-int UdpDetector::drainFd(int fd)
+int UdpEncoder::drainFd(int fd)
 {
   int rv;
 
@@ -891,7 +891,7 @@ int UdpDetector::drainFd(int fd)
   return (rv);
 }
 
-int UdpDetector::reset()
+int UdpEncoder::reset()
 {
   int rv = -1;  // ERROR
 
@@ -907,7 +907,7 @@ UdpApp::UdpApp(Parameters& para, std::shared_ptr<UdpMonitor> udpMonitor) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
     m_para(para),
-    m_udpDetector(std::make_unique<UdpDetector>(m_para, udpMonitor, m_drp)),
+    m_udpDetector(std::make_unique<UdpEncoder>(m_para, udpMonitor, m_drp)),
     m_det(m_udpDetector.get())
 {
     if (m_det == nullptr) {
@@ -1006,7 +1006,7 @@ void UdpApp::handleDisconnect(const json& msg)
 void UdpApp::handlePhase1(const json& msg)
 {
     std::string key = msg["header"]["key"];
-    logging::debug("handlePhase1 for %s in UdpDetectorApp", key.c_str());
+    logging::debug("handlePhase1 for %s in UdpEncoderApp", key.c_str());
 
     XtcData::Xtc& xtc = m_det->transitionXtc();
     XtcData::TypeId tid(XtcData::TypeId::Parent, 0);

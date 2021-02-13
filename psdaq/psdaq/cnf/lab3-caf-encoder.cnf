@@ -27,9 +27,9 @@ procmgr_config = [
  # meb
  { host: 'drp-tst-dev009', id:'meb1', flags:'spu', cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host},
  # ...drp: loopback on port 5007
- { host: 'drp-tst-dev009', id:'encoder_0', flags:'sxpu', cmd:'drp_udp -o /cds/home/c/caf/data -L 5007    -P tst -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
+ { host: 'drp-tst-dev009', id:'encoder_0', flags:'sxpu', cmd:'drp_udpencoder -o /cds/home/c/caf/data -L 5007    -P tst -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
  # ...drp: verbose
- #{ host: 'drp-tst-dev009', id:'encoder_0', flags:'sxpu', cmd:'drp_udp -o /cds/home/c/caf/data         -v -P tst -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
+ #{ host: 'drp-tst-dev009', id:'encoder_0', flags:'sxpu', cmd:'drp_udpencoder -o /cds/home/c/caf/data         -v -P tst -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
  #  ...drp: loopback on port 5007 AND verbose
- #{ host: 'drp-tst-dev009', id:'encoder_0', flags:'sxpu', cmd:'drp_udp -o /cds/home/c/caf/data -L 5007 -v -P tst -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
+ #{ host: 'drp-tst-dev009', id:'encoder_0', flags:'sxpu', cmd:'drp_udpencoder -o /cds/home/c/caf/data -L 5007 -v -P tst -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
 ]
