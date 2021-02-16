@@ -58,6 +58,10 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
         pv = PVCtrls(xpmpv,cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper)
         pv.start()
     else:
+        #  Empirically found that we need to cycle to LCLS1 timing
+        #  to get the timing feedback link to lock
+        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV1()
+        time.sleep(0.1)
         cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
         time.sleep(0.1)
 

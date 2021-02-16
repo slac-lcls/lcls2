@@ -365,6 +365,8 @@ def config_expert(base, cfg, writePixelMap=True):
         retry(saci.IsEn.set,False)
         retry(saci.enable.set,False)
 
+    epixquad_disable(base)
+
     print('config_expert complete')
 
 #
@@ -600,3 +602,19 @@ def _resetSequenceCount():
     time.sleep(1.e6)
     cbase.AcqCore.AcqCountReset.set(0)
     cbase.RdoutCore.SeqCountReset.set(0)
+
+def epixquad_enable(base):
+    cbase = base['cam']
+    #  Switch to external triggering
+    cbase.SystemRegs.AutoTrigEn.set(0)
+    cbase.SystemRegs.TrigSrcSel.set(0)
+    #  Enable frame readout
+    cbase.RdoutCore.RdoutEn.set(1)
+
+def epixquad_disable(base):
+    cbase = base['cam']
+    #  Disable frame readout
+    cbase.RdoutCore.RdoutEn.set(0)
+    #  Switch to internal triggering
+    cbase.SystemRegs.TrigSrcSel.set(3)
+    cbase.SystemRegs.AutoTrigEn.set(1)

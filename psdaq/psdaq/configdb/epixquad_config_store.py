@@ -38,16 +38,16 @@ def epixquad_cdict():
     top.set('expert.DevPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.Config_L0Select_RateSel',6,'rateEnum')
 
     top.define_enum('boolEnum', {'False':0, 'True':1})
-    top.define_enum('trigSrcEnum', {'PGP':0, 'TTL':1, 'Cmd':2, 'Auto':3 })
+##    top.define_enum('trigSrcEnum', {'PGP':0, 'TTL':1, 'Cmd':2, 'Auto':3 })
     base = 'expert.EpixQuad.SystemRegs.'
-    top.set(base+'AutoTrigEn' , 0, 'boolEnum')
-    top.set(base+'AutoTrigPer', 270000, 'UINT32')
+##    top.set(base+'AutoTrigEn' , 0, 'boolEnum')
+##    top.set(base+'AutoTrigPer', 270000, 'UINT32')
     top.set(base+'DcDcEnable' , 0xf, 'UINT8')
     top.set(base+'AsicAnaEn'  , 1, 'boolEnum')
     top.set(base+'AsicDigEn'  , 1, 'boolEnum')
     top.set(base+'DdrVttEn'   , 0, 'boolEnum')
-    top.set(base+'TrigSrcSel' , 0, 'trigSrcEnum')
-    top.set(base+'TrigEn'     , 1, 'boolEnum')
+##    top.set(base+'TrigSrcSel' , 0, 'trigSrcEnum')
+##    top.set(base+'TrigEn'     , 1, 'boolEnum')
     top.set(base+'AsicMask'   , 0xffff, 'UINT16')
 
     base = 'expert.EpixQuad.AcqCore.'
@@ -76,7 +76,7 @@ def epixquad_cdict():
     top.set(base+'DummyAcqEn', 0, 'boolEnum')  # ghost correction?
 
     base = 'expert.EpixQuad.RdoutCore.'
-    top.set(base+'RdoutEn', 1, 'boolEnum')
+##    top.set(base+'RdoutEn', 1, 'boolEnum')
     top.set(base+'AdcPipelineDelay', 0x44, 'UINT32')
     top.set(base+'TestData', 0, 'boolEnum')
     top.set(base+'OverSampleEn', 0, 'boolEnum')
