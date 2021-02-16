@@ -388,11 +388,30 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
     }
+    else if (key == "enable") {
+        unsigned error = m_det->enable(xtc, phase1Info);
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::enable()";
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        }
+    }
+    else if (key == "disable") {
+        unsigned error = m_det->disable(xtc, phase1Info);
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::disable()";
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
+        }
+        logging::debug("handlePhase1 disable complete");
+    }
 
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);
+
+    logging::debug("handlePhase1 complete");
 }
 
 void PGPDetectorApp::handleReset(const json& msg)

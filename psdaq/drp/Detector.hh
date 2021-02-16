@@ -23,8 +23,10 @@ public:
     virtual nlohmann::json connectionInfo() {return nlohmann::json({});}
     virtual void connect(const nlohmann::json&, const std::string& collectionId) {};
     virtual unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc) = 0;
-    virtual unsigned beginrun(XtcData::Xtc& xtc, const nlohmann::json& runInfo) {return 0;}
+    virtual unsigned beginrun (XtcData::Xtc& xtc, const nlohmann::json& runInfo) {return 0;}
     virtual unsigned beginstep(XtcData::Xtc& xtc, const nlohmann::json& stepInfo) {return 0;};
+    virtual unsigned enable   (XtcData::Xtc& xtc, const nlohmann::json& info) {return 0;};
+    virtual unsigned disable  (XtcData::Xtc& xtc, const nlohmann::json& info) {return 0;};
     virtual void slowupdate(XtcData::Xtc& xtc) { XtcData::Xtc& trXtc = transitionXtc();
                                                  memcpy((void*)&xtc, (const void*)&trXtc, trXtc.extent); };
     virtual void event(XtcData::Dgram& dgram, PGPEvent* event) = 0;

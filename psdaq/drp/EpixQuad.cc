@@ -112,6 +112,18 @@ void EpixQuad::_connect(PyObject* mbytes)
     m_para->serNo = _string_from_PyDict(mbytes,"serno");
 }
 
+unsigned EpixQuad::enable(XtcData::Xtc& xtc, const nlohmann::json& info)
+{
+    _monStreamDisable();
+    return 0;
+}
+
+unsigned EpixQuad::disable(XtcData::Xtc& xtc, const nlohmann::json& info)
+{
+    _monStreamEnable();
+    return 0;
+}
+
 json EpixQuad::connectionInfo()
 {
     // Exclude connection info until cameralink-gateway timingTxLink is fixed
@@ -192,8 +204,8 @@ void EpixQuad::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
     const unsigned asicRows     = 176;
     const unsigned elemRowSize  = 2*192;
 
-    bool env_empty = m_env_empty;
 #ifdef SLOW_UPDATE_ENV
+    bool env_empty = m_env_empty;
     if (env_empty) {
         m_env_sem.take();
         transitionXtc().extent = sizeof(Xtc);
@@ -322,3 +334,26 @@ void     EpixQuad::shutdown()
 {
 }
 
+void     EpixQuad::_monStreamEnable()
+{
+    PyObject* pDict = _check(PyModule_GetDict(m_module));
+    char func_name[64];
+    sprintf(func_name,"%s_disable",m_para->detType.c_str());
+    PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
+
+    // returns new reference
+    PyObject* mybytes = _check(PyObject_CallFunction(pFunc, "O", m_root));
+    Py_DECREF(mybytes);
+}
+
+void     EpixQuad::_monStreamDisable()
+{
+    PyObject* pDict = _check(PyModule_GetDict(m_module));
+    char func_name[64];
+    sprintf(func_name,"%s_enable",m_para->detType.c_str());
+    PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
+
+    // returns new reference
+    PyObject* mybytes = _check(PyObject_CallFunction(pFunc, "O", m_root));
+    Py_DECREF(mybytes);
+}
