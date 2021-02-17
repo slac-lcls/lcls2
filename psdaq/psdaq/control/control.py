@@ -2013,6 +2013,28 @@ class CollectionManager():
         logging.info("start_run: run number = %s" % run_num)
         return run_num
 
+    def add_run_params(self, experiment_name, params):
+        ok = False
+        err_msg = "add_run_params error"
+        serverURLPrefix = "{0}run_control/{1}/ws/".format(self.url + "/" if not self.url.endswith("/") else self.url, experiment_name)
+        logging.debug('serverURLPrefix = %s' % serverURLPrefix)
+        try:
+            resp = requests.post(serverURLPrefix + "add_run_params", json=params, auth=HTTPBasicAuth(self.user, self.password))
+        except Exception as ex:
+            err_msg = "add_run_params error (user=%s): %s" % (self.user, ex)
+        else:
+            logging.debug("add_run_params response: %s" % resp.text)
+            if resp.status_code == requests.codes.ok:
+                if resp.json().get("success", None):
+                    logging.debug("add_run_params success")
+                    ok = True
+            else:
+                err_msg = "add_run_params error (user=%s): status code %d" % (self.user, resp.status_code)
+
+        if not ok:
+            self.report_error(err_msg)
+        return
+
     def end_run(self, experiment_name):
         run_num = 0
         ok = False
