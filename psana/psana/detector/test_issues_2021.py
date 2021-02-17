@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 import logging
 #logger = logging.getLogger(__name__)
-logging.basicConfig(format='[%(levelname).1s]: %(message)s', level=logging.DEBUG)
+#logging.basicConfig(format='[%(levelname).1s]: %(message)s', level=logging.INFO)
+logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=logging.DEBUG)
 
 import sys
 SCRNAME = sys.argv[0].rsplit('/')[-1]
@@ -260,6 +261,12 @@ def issue_2021_02_09():
     image = det.raw.image(evt) #, dtype=np.float32)
     print(info_ndarr(image, 'C image '))
 
+def issue_2021_02_16():
+  """
+  """
+  import psana.pscalib.calib.MDBWebUtils as wu
+  det_uniqueid = 'epix10ka_3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000_3926196238-0174824449-0268435478-0000000000-0000000000-0000000000-0000000000_3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000_3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000'
+  calib_const = wu.calib_constants_all_types(det_uniqueid, exp='ueddaq02', run=86)
 
 #if __name__ == "__main__":
 USAGE = '\nUsage:'\
@@ -276,6 +283,7 @@ USAGE = '\nUsage:'\
       + '\n    8 - issue_2021_02_03 - Data access example for confluence'\
       + '\n    9 - issue_2021_02_08 - docstring access is crashing'\
       + '\n   10 - issue_2021_02_09 - Peck, Ariana - missing calibration for opal detector'\
+      + '\n   11 - issue_2021_02_16 - cpo - passing None as a detector name'\
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -289,6 +297,7 @@ elif TNAME in  ('7',): issue_2021_01_11()
 elif TNAME in  ('8',): issue_2021_02_03()
 elif TNAME in  ('9',): issue_2021_02_08()
 elif TNAME in ('10',): issue_2021_02_09()
+elif TNAME in ('11',): issue_2021_02_16()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
