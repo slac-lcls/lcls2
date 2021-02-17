@@ -5,8 +5,6 @@
 Usage::
     from psana.detector.UtilsEpix10ka import ...
 
-    t_sec = seconds(ts, epoch_offset_sec=631152000) #Converts LCLS2 timestamp to unix epoch time
-    ts = timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S')
     inds = segment_indices_epix10ka_detector(det)
     long_name = fullname_epix10ka_detector(det)
     ids = segment_ids_epix10ka_detector(det)
@@ -37,11 +35,9 @@ import os
 import numpy as np
 from time import time
 
-
 import logging
 logger = logging.getLogger(__name__)
 
-from psana.pyalgos.generic.Utils import str_tstamp #log_rec_on_start, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
 from psana.detector.UtilsMask import merge_masks, DTYPE_MASK
 from psana.detector.UtilsCommonMode import common_mode_cols,\
@@ -69,26 +65,6 @@ class Storage:
 store = Storage() # singleton
 
 #----
-
-def seconds(ts, epoch_offset_sec=631152000) -> float:
-    """
-    Converts LCLS2 timestamp to unix epoch time.
-    The epoch used is 1-Jan-1990 rather than 1970. -Matt
-
-    Receives  ts = orun.timestamp  # 4193682596073796843 relative to 1990-01-01
-    Returns unix epoch time in sec # 1607569818.532117 sec
-
-    import datetime
-    epoch_offset_sec=(datetime.datetime(1990, 1, 1)-datetime.datetime(1970, 1, 1)) / datetime.timedelta(seconds=1)
-    """
-    return float(ts>>32) + float(ts&0xffffffff)*1.e-9 + epoch_offset_sec
-
-
-def timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S'):
-    """converts LCLS2 run.timestamp to human readable timestamp, e.g. 2020-10-27T12:54:47
-    """
-    return str_tstamp(fmt=fmt, time_sec=seconds(run.timestamp))
-
 
 def segment_indices_epix10ka_detector(det):
     """Returns list det.raw._sorted_segment_ids, e.g. [0, 1, 2, 3]""" 
