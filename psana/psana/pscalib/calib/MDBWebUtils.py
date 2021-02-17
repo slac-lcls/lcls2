@@ -403,7 +403,7 @@ def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADE
     kwargs['detector'] = detname # ex: epix_000001
     kwargs['longname'] = det
 
-    logger.debug('add_data_and_two_docs kwargs:', str(kwargs))
+    logger.debug('add_data_and_two_docs kwargs: %s' % str(kwargs))
 
     resp = add_data_and_doc(data, dbname_exp, colname, url=url, krbheaders=krbheaders, **kwargs)
     if resp is None: return None
