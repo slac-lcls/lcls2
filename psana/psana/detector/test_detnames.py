@@ -1,3 +1,7 @@
+
+import logging
+logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=logging.DEBUG)
+
 from psana import DataSource
 
 import argparse
@@ -39,11 +43,16 @@ def detnames():
       
     print('XXX kwargs:', kwargs)
     ds = DataSource(**kwargs)
+    print('XXX DataSource is created')
   else:
     # filename specified
     ds = DataSource(files=args.dsname)
 
+  print('XXX before next(ds.runs())' + 100*'=')
   myrun = next(ds.runs())
+  print('XXX after next(ds.runs())' + 100*'=')
+
+
   if args.raw:
     headers = ['Name','Det Type','Data Type','Version']
     format_string = '{0:%d} | {1:%d} | {2:%d} | {3:%d}'
@@ -73,6 +82,7 @@ def detnames():
     headers = ['Name','Data Type']
     format_string = '{0:%d} | {1:%d}'
     names = myrun.detinfo.keys()
+    print('XXX myrun.detinfo.keys()', myrun.detinfo.keys())
 
   maxlen = [len(h) for h in headers]
   for ntuple in names:
