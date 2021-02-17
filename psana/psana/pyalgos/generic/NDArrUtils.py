@@ -54,6 +54,10 @@ Usage::
     winds_bkgd = [(s, 10, 100, 270, 370) for s in (4,12,20,28)] # use part of segments 4,12,20, and 28 to subtract bkgd
     nda = subtract_bkgd(nda_data, nda_bkgd, mask=nda_mask, winds=winds_bkgd, pbits=0)
 
+    gu.set_file_access_mode(fname, mode=0o777)
+    gu.save_2darray_in_textfile(nda, fname, fmode, fmt)
+    gu.save_ndarray_in_textfile(nda, fname, fmode, fmt)
+
 See:
     - :py:class:`Utils`
     - :py:class:`NDArrUtils`
@@ -66,10 +70,12 @@ Created: 2018-01-25 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-02
 """
 
-#import os
+import os
 #from time import localtime, strftime, time
 
 import numpy as np
+
+from psana.pscalib.calib.NDArrIO import save_txt
 
 #----
 
@@ -475,6 +481,25 @@ def locxymax(nda, order=1, mode='clip'):
     #print('indr.shape:', indr.shape)
     
     return msk_ext_rows * msk_ext_cols
+
+
+def set_file_access_mode(fname, mode=0o777):
+    os.chmod(fname, mode)
+
+
+def save_2darray_in_textfile(nda, fname, fmode, fmt):
+    fexists = os.path.exists(fname)
+    np.savetxt(fname, nda, fmt=fmt)
+    if not fexists: set_file_access_mode(fname, fmode)
+    logger.info('saved:  %s' % fname)
+
+
+def save_ndarray_in_textfile(nda, fname, fmode, fmt):
+    fexists = os.path.exists(fname)
+    save_txt(fname=fname, arr=nda, fmt=fmt)
+    if not fexists: set_file_access_mode(fname, fmode)
+    logger.debug('saved: %s fmode: %s fmt: %s' % (fname, oct(fmode), fmt))
+
 
 #------------------------------
 #----------- TEST -------------
