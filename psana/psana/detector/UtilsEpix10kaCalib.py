@@ -20,8 +20,9 @@ import json
 from psana import DataSource
 from psana.detector.UtilsEpix import CALIB_REPO_EPIX10KA, FNAME_PANEL_ID_ALIASES, alias_for_id
 from psana.pyalgos.generic.Utils import log_rec_on_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp
-from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
+from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
+from psana.detector.utils_psana import seconds
 
 #----
 
@@ -41,20 +42,6 @@ def save_log_record_on_start(dirrepo, procname, fac_mode=0o777, tsfmt='%Y-%m-%dT
 
     logger.debug('Record on start: %s' % rec)
     logger.info('Saved: %s' % logfname)
-
-
-def save_2darray_in_textfile(nda, fname, fmode, fmt):
-    fexists = os.path.exists(fname)
-    np.savetxt(fname, nda, fmt=fmt)
-    if not fexists: set_file_access_mode(fname, fmode)
-    logger.info('saved:  %s' % fname)
-
-
-def save_ndarray_in_textfile(nda, fname, fmode, fmt):
-    fexists = os.path.exists(fname)
-    save_txt(fname=fname, arr=nda, fmt=fmt)
-    if not fexists: set_file_access_mode(fname, fmode)
-    logger.debug('saved: %s fmode: %s fmt: %s' % (fname, oct(fmode), fmt))
 
 
 def find_file_for_timestamp(dirname, pattern, tstamp):
@@ -317,9 +304,9 @@ def proc_dark_block(block, **opts):
 
     logger.info('Bad pixel status:'\
                +'\n  status  1: %8d pixel rms       > %.3f' % (arr_sta_rms_hi.sum(), rms_max)\
-               +'\n  status  8: %8d pixel rms       < %.3f' % (arr_sta_rms_lo.sum(), rms_min)\
-               +'\n  status  2: %8d pixel intensity > %g in more than %g fraction of events' % (arr_sta_int_hi.sum(), int_hi, fraclm)\
-               +'\n  status  4: %8d pixel intensity < %g in more than %g fraction of events' % (arr_sta_int_lo.sum(), int_lo, fraclm)\
+               +'\n  status  2: %8d pixel rms       < %.3f' % (arr_sta_rms_lo.sum(), rms_min)\
+               +'\n  status  4: %8d pixel intensity > %g in more than %g fraction of events' % (arr_sta_int_hi.sum(), int_hi, fraclm)\
+               +'\n  status  8: %8d pixel intensity < %g in more than %g fraction of events' % (arr_sta_int_lo.sum(), int_lo, fraclm)\
                +'\n  status 16: %8d pixel average   > %g'   % (arr_sta_ave_hi.sum(), ave_max)\
                +'\n  status 32: %8d pixel average   < %g'   % (arr_sta_ave_lo.sum(), ave_min)\
                )
@@ -327,9 +314,9 @@ def proc_dark_block(block, **opts):
     #0/1/2/4/8/16/32 for good/hot-rms/saturated/cold/cold-rms/average above limit/average below limit, 
     arr_sta = np.zeros(shape, dtype=np.int64)
     arr_sta += arr_sta_rms_hi    # hot rms
-    arr_sta += arr_sta_rms_lo*8  # cold rms
-    arr_sta += arr_sta_int_hi*2  # satturated
-    arr_sta += arr_sta_int_lo*4  # cold
+    arr_sta += arr_sta_rms_lo*2  # cold rms
+    arr_sta += arr_sta_int_hi*4  # satturated
+    arr_sta += arr_sta_int_lo*8  # cold
     arr_sta += arr_sta_ave_hi*16 # too large average
     arr_sta += arr_sta_ave_lo*32 # too small average
     
@@ -456,7 +443,7 @@ def pedestals_calibration(*args, **opts):
       logger.debug('  run.expt     : %s', orun.expt)           # ueddaq02
 
       runtstamp = orun.timestamp    # 4193682596073796843 relative to 1990-01-01
-      trun_sec = ue.seconds(runtstamp) # 1607569818.532117 sec
+      trun_sec = seconds(runtstamp) # 1607569818.532117 sec
       #tstamp = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
 
       tstamp_run, tstamp_now = tstamps_run_and_now(int(trun_sec))
@@ -670,8 +657,8 @@ def get_config_info_for_dataset_detname(**kwargs):
       logger.debug('  run.detnames : %s' % str(orun.detnames)) # {'epixquad'}
       logger.debug('  run.expt     : %s', orun.expt)           # ueddaq02
 
-      runtstamp = orun.timestamp       # 4193682596073796843 relative to 1990-01-01
-      trun_sec = ue.seconds(runtstamp) # 1607569818.532117 sec
+      runtstamp = orun.timestamp    # 4193682596073796843 relative to 1990-01-01
+      trun_sec = seconds(runtstamp) # 1607569818.532117 sec
       #tstamp_run = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
       tstamp_run, tstamp_now = tstamps_run_and_now(int(trun_sec)) # (str) 20201209191018, 20201217140026
       logger.debug('  run.timestamp: %d' % orun.timestamp) 
