@@ -1,21 +1,25 @@
 #!/usr/bin/env python
 #----
-import os
 import sys
 from time import time
-
-from psana.detector.Utils import info_command_line_arguments
-from psana.detector.UtilsEpix10kaCalib import pedestals_calibration
-from psana.detector.UtilsEpix10ka import GAIN_MODES_IN
-from psana.detector.UtilsEpix import CALIB_REPO_EPIX10KA
+from psana.detector.Utils import info_parser_arguments
+from psana.detector.UtilsEpix10kaCalib import pedestals_calibration, CALIB_REPO_EPIX10KA
 
 import logging
 logger = logging.getLogger(__name__)
-DICT_NAME_TO_LEVEL = logging._nameToLevel #{'CRITICAL': 50, 'FATAL': 50, 'ERROR': 40, 'WARN': 30, 'WARNING': 30, 'INFO': 20, 'DEBUG': 10, 'NOTSET': 0}
-STR_LEVEL_NAMES = ', '.join(DICT_NAME_TO_LEVEL.keys())
+DICT_NAME_TO_LEVEL = logging._nameToLevel
 
-#scrname = sys.argv[0].rsplit('/')[-1]
-scrname = os.path.basename(sys.argv[0])
+SCRNAME = sys.argv[0].rsplit('/')[-1]
+
+USAGE = 'Usage:'\
+      + '\n  %s -e <experiment> -d <detector> -r <run-number(s)>' % SCRNAME\
+      + '\n     [-x <xtc-directory>] [-o <output-result-directory>] [-L <logging-mode>] [...]'\
+      + '\nExamples:'\
+      + '\n  %s -e ueddaq02 -d epixquad -r27' % SCRNAME\
+      + '\n  %s -e ueddaq02 -d epixquad -r83 -o ./work' % SCRNAME\
+      + '\n  %s -e ueddaq02 -d epixquad -r27 -i15 -o ./work -L DEBUG' % SCRNAME\
+      + '\n  mpirun -n 5 epix10ka_pedestals_calibration -e ueddaq02 -d epixquad -r27 -o ./work -L DEBUG'\
+      + '\n\n  Try: %s -h' % SCRNAME
 
 #----
 
@@ -25,47 +29,27 @@ def do_main():
 
     parser = argument_parser()
     args = parser.parse_args()
-    opts = vars(args)
-    defs = vars(parser.parse_args([])) # dict of defaults only
+    kwa = vars(args)
+    #defs = vars(parser.parse_args([])) # dict of defaults only
 
-    if len(sys.argv)<3: exit('\n%s\n' % usage())
+    if len(sys.argv)<3: exit('\n%s\n' % USAGE)
 
     assert args.exp is not None, 'WARNING: option "-e <experiment>" MUST be specified.'
     assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
     assert args.runs is not None, 'WARNING: option "-r <run-number(s)>" MUST be specified.'
 
-    #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
     fmt = '[%(levelname).1s] %(name)s %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
-    #logging.basicConfig(filename='log.txt', filemode='w', format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
     logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
-
-    #fh = logging.FileHandler('log.txt')
-    #fh.setLevel(logging.DEBUG)
-    #logger.addHandler(fh)
+    #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s %(filename)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
+    #logging.basicConfig(filename='log.txt', filemode='w', format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
 
     logger.debug('%s\nIn epix10ka_pedestals_calibration' % (50*'_'))
-    logger.debug(info_command_line_arguments(parser))
+    logger.debug('Command line:%s' % ' '.join(sys.argv))
+    logger.info(info_parser_arguments(parser))
 
-    #pedestals_calibration(*args, **opts)
-    pedestals_calibration(**opts)
+    pedestals_calibration(**kwa)
 
     logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
-
-
-def usage(mode=0):
-    if   mode == 1: return 'Proceses dark run xtc data for epix10ka.'
-    elif mode == 2: return 'Try: %s -h' % scrname
-    else: return\
-           '\n%s -e <experiment> [-d <detector>] [-r <run-number(s)>]' % scrname\
-           + '\n     [-x <xtc-directory>] [-o <output-result-directory>] [-L <logging-mode>]'\
-           + '\nTEST COMMAND:'\
-           + '\n  %s -e ueddaq02 -d epixquad -r27 -n2 -x /cds/data/psdm/ued/ueddaq02/xtc' % scrname\
-           + '\nREGULAR COMMAND:'\
-           + '\n  %s -e ueddaq02 -d epixquad -r83  -L DEBUG' % scrname\
-           + '\n  %s -e ueddaq02 -d epixquad -r27 -o ./work' % scrname\
-           + '\n  %s -e ueddaq02 -d epixquad -r27 -c1 -i15 -o ./work' % scrname\
-           + '\n  mpirun -n 5 epix10ka_pedestals_calibration -e ueddaq02 -d epixquad -r27 -o ./work -L INFO'\
-           + '\n\n  Try: %s -h' % scrname
 
 
 def argument_parser():
@@ -96,9 +80,6 @@ def argument_parser():
     d_rmsnhi     = 6.0     # rms ditribution number-of-sigmas high
     d_fraclm     = 0.1     # allowed fraction limit
     d_nsigma     = 6.0     # number of sigmas for gated eveluation
-    #d_fmt_peds   = '%.3f'
-    #d_fmt_rms    = '%.3f'
-    #d_fmt_status = '%4i'
 
     h_fname   = 'input xtc file name, default = %s' % d_fname
     h_exp     = 'experiment name, default = %s' % d_exp
@@ -109,7 +90,7 @@ def argument_parser():
     h_dirxtc  = 'non-default xtc directory, default = %s' % d_dirxtc
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
     h_usesmd  = 'add "smd" in dataset string, default = %s' % d_usesmd
-    h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
+    h_logmode = 'logging mode, one of %s, default = %s' % (' '.join(DICT_NAME_TO_LEVEL.keys()), d_logmode)
     h_errskip = 'flag to skip errors and keep processing, stop otherwise, default = %s' % d_errskip
     h_stepnum    = 'step number to process or None for all steps, default = %s' % str(d_stepnum)
     h_stepmax    = 'maximum number of steps to process, default = %s' % str(d_stepmax)
@@ -125,11 +106,8 @@ def argument_parser():
     h_rmsnhi     = 'rms ditribution number-of-sigmas high, default = %f' % d_rmsnhi
     h_fraclm     = 'allowed fraction limit, default = %f' % d_fraclm
     h_nsigma     = 'number of sigmas for gated eveluation, default = %f' % d_nsigma
-    #h_fmt_peds   = 'format of values in pedestals file, default = %s' % str(d_fmt_peds)
-    #h_fmt_rms    = 'format of values in pixel_rms file, default = %s' % str(d_fmt_rms)
-    #h_fmt_status = 'format of values in pixel_status file, default = %s' % str(d_fmt_status)
 
-    parser = ArgumentParser(description=usage(1))
+    parser = ArgumentParser(description='Proceses dark run xtc data for epix10ka')
     parser.add_argument('-f', '--fname',   default=d_fname,      type=str,   help=h_fname)
     parser.add_argument('-e', '--exp',     default=d_exp,        type=str,   help=h_exp)
     parser.add_argument('-d', '--det',     default=d_det,        type=str,   help=h_det)
@@ -155,10 +133,6 @@ def argument_parser():
     parser.add_argument('--rmsnhi',        default=d_rmsnhi,     type=float, help=h_rmsnhi)
     parser.add_argument('--fraclm',        default=d_fraclm,     type=float, help=h_fraclm)
     parser.add_argument('--nsigma',        default=d_nsigma,     type=float, help=h_nsigma)
-    # DO NOT WORK...
-    #parser.add_argument('--fmt_peds',      default=d_fmt_peds,   type=str,   help=h_fmt_peds)
-    #parser.add_argument('--fmt_rms',       default=d_fmt_rms,    type=str,   help=h_fmt_rms)
-    #parser.add_argument('--fmt_status',    default=d_fmt_status, type=str,   help=h_fmt_status)
 
     return parser
 
@@ -166,6 +140,6 @@ def argument_parser():
 
 if __name__ == "__main__":
     do_main()
-    exit('End of %s'%scrname)
+    exit('End of %s'%SCRNAME)
 
 # EOF
