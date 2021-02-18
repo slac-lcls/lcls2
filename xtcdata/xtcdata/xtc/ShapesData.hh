@@ -62,11 +62,11 @@ public:
         // from python, since python only support INT64/DOUBLE
         // (apart from arrays)
         // assert(rank != 0 && (type=INT64 || type = DOUBLE));
-
         assert(rank < MaxRank);assert(strlen(name) < MaxNameSize);
         strncpy(_name, name, MaxNameSize-1);
         _type = (uint32_t)type;
         _rank = rank;
+        _checkname();
     }
 
     Name(const char* name, DataType type, int rank, Alg& alg) : _alg(alg) {
@@ -74,6 +74,7 @@ public:
         strncpy(_name, name, MaxNameSize-1);
         _type = (uint32_t)type;
         _rank = rank;
+        _checkname();
     }
 
     Name(const char* name, Alg& alg) : _alg(alg) {
@@ -81,6 +82,7 @@ public:
         strncpy(_name, name, MaxNameSize-1);
         _type = (uint32_t)Name::UINT8;
         _rank = 1;
+        _checkname();
     }
 
     const char* name() {return _name;}
@@ -95,6 +97,23 @@ private:
     char     _name[MaxNameSize];
     uint32_t _type;
     uint32_t _rank;
+    void _checkname() {
+        const char* ptr = _name;
+        char val;
+        // check for allowed characters
+        // ".": 46, "0-9": 48-57, ":": 58, "A-Z": 65-90, "_": 95, "a-z": 97-122
+        // allow "." for attribute hierarchies
+        // allow ":" for step-scan epics vars which have no clean python xtc name
+        while(*ptr!='\0' && (ptr-_name)<MaxNameSize) {
+            val=*ptr;
+            if ((val<46) || (val==47) || (val>58 && val<65) || (val>90 && val<95)
+                || (val>95 && val<97) || (val>122)) {
+                printf("*** Error: illegal xtc name: %s. Aborting.\n",_name);
+                abort();
+            }
+            ptr++;
+        }
+    }
 };
 
 
