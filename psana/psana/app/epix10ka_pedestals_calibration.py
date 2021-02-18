@@ -61,7 +61,7 @@ def usage(mode=0):
            + '\nTEST COMMAND:'\
            + '\n  %s -e ueddaq02 -d epixquad -r27 -n2 -x /cds/data/psdm/ued/ueddaq02/xtc' % scrname\
            + '\nREGULAR COMMAND:'\
-           + '\n  %s -e ueddaq02 -d epixquad -r27  -L INFO' % scrname\
+           + '\n  %s -e ueddaq02 -d epixquad -r83  -L DEBUG' % scrname\
            + '\n  %s -e ueddaq02 -d epixquad -r27 -o ./work' % scrname\
            + '\n  %s -e ueddaq02 -d epixquad -r27 -c1 -i15 -o ./work' % scrname\
            + '\n  mpirun -n 5 epix10ka_pedestals_calibration -e ueddaq02 -d epixquad -r27 -o ./work -L INFO'\
@@ -80,13 +80,10 @@ def argument_parser():
     d_dirxtc  = None # '/cds/data/psdm/ued/ueddaq02/xtc'
     d_dirrepo = CALIB_REPO_EPIX10KA # './myrepo' 
     d_usesmd  = True
-    d_logmode = 'DEBUG'
+    d_logmode = 'INFO'
     d_errskip = True
     d_stepnum    = None
     d_stepmax    = 5
-    d_fmt_peds   = '%.3f'
-    d_fmt_rms    = '%.3f'
-    d_fmt_status = '%4i'
     d_dirmode    = 0o777
     d_filemode   = 0o666
     d_int_lo     = 1       # lowest  intensity accepted for dark evaluation
@@ -99,6 +96,9 @@ def argument_parser():
     d_rmsnhi     = 6.0     # rms ditribution number-of-sigmas high
     d_fraclm     = 0.1     # allowed fraction limit
     d_nsigma     = 6.0     # number of sigmas for gated eveluation
+    #d_fmt_peds   = '%.3f'
+    #d_fmt_rms    = '%.3f'
+    #d_fmt_status = '%4i'
 
     h_fname   = 'input xtc file name, default = %s' % d_fname
     h_exp     = 'experiment name, default = %s' % d_exp
@@ -113,9 +113,6 @@ def argument_parser():
     h_errskip = 'flag to skip errors and keep processing, stop otherwise, default = %s' % d_errskip
     h_stepnum    = 'step number to process or None for all steps, default = %s' % str(d_stepnum)
     h_stepmax    = 'maximum number of steps to process, default = %s' % str(d_stepmax)
-    h_fmt_peds   = 'format of values in pedestals file, default = %s' % d_fmt_peds
-    h_fmt_rms    = 'format of values in pixel_rms file, default = %s' % d_fmt_rms
-    h_fmt_status = 'format of values in pixel_status file, default = %s' % d_fmt_status
     h_dirmode    = 'directory access mode, default = %s' % oct(d_dirmode)
     h_filemode   = 'file access mode, default = %s' % oct(d_filemode)
     h_int_lo     = 'lowest  intensity accepted for dark evaluation, default = %d' % d_int_lo
@@ -128,6 +125,9 @@ def argument_parser():
     h_rmsnhi     = 'rms ditribution number-of-sigmas high, default = %f' % d_rmsnhi
     h_fraclm     = 'allowed fraction limit, default = %f' % d_fraclm
     h_nsigma     = 'number of sigmas for gated eveluation, default = %f' % d_nsigma
+    #h_fmt_peds   = 'format of values in pedestals file, default = %s' % str(d_fmt_peds)
+    #h_fmt_rms    = 'format of values in pixel_rms file, default = %s' % str(d_fmt_rms)
+    #h_fmt_status = 'format of values in pixel_status file, default = %s' % str(d_fmt_status)
 
     parser = ArgumentParser(description=usage(1))
     parser.add_argument('-f', '--fname',   default=d_fname,      type=str,   help=h_fname)
@@ -143,9 +143,6 @@ def argument_parser():
     parser.add_argument('-E', '--errskip', default=d_errskip,    type=bool,  help=h_errskip)
     parser.add_argument('--stepnum',       default=d_stepnum,    type=int,   help=h_stepnum)
     parser.add_argument('--stepmax',       default=d_stepmax,    type=int,   help=h_stepmax)
-    parser.add_argument('--fmt_peds',      default=d_fmt_peds,   type=str,   help=h_fmt_peds)
-    parser.add_argument('--fmt_rms',       default=d_fmt_rms,    type=str,   help=h_fmt_rms)
-    parser.add_argument('--fmt_status',    default=d_fmt_status, type=str,   help=h_fmt_status)
     parser.add_argument('--dirmode',       default=d_dirmode,    type=int,   help=h_dirmode)
     parser.add_argument('--filemode',      default=d_filemode,   type=int,   help=h_filemode)
     parser.add_argument('--int_lo',        default=d_int_lo,     type=int,   help=h_int_lo)
@@ -158,6 +155,10 @@ def argument_parser():
     parser.add_argument('--rmsnhi',        default=d_rmsnhi,     type=float, help=h_rmsnhi)
     parser.add_argument('--fraclm',        default=d_fraclm,     type=float, help=h_fraclm)
     parser.add_argument('--nsigma',        default=d_nsigma,     type=float, help=h_nsigma)
+    # DO NOT WORK...
+    #parser.add_argument('--fmt_peds',      default=d_fmt_peds,   type=str,   help=h_fmt_peds)
+    #parser.add_argument('--fmt_rms',       default=d_fmt_rms,    type=str,   help=h_fmt_rms)
+    #parser.add_argument('--fmt_status',    default=d_fmt_status, type=str,   help=h_fmt_status)
 
     return parser
 
