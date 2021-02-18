@@ -4,7 +4,7 @@ import os
 import sys
 from time import time
 
-from psana.detector.Utils import info_command_line_arguments
+from psana.detector.Utils import info_parser_arguments
 from psana.detector.UtilsEpix10kaCalib import deploy_constants
 from psana.detector.UtilsEpix10ka import GAIN_MODES_IN
 from psana.detector.UtilsEpix import CALIB_REPO_EPIX10KA
@@ -39,7 +39,8 @@ def do_main():
     logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
     
     logger.debug('%s\nIn epix10ka_deploy_constants' % (50*'_'))
-    logger.debug(info_command_line_arguments(parser))
+    logger.debug('Command line:%s' % ' '.join(sys.argv))
+    logger.info(info_parser_arguments(parser))
 
     deploy_constants(**opts)
 
