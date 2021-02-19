@@ -62,7 +62,8 @@ public:
         // from python, since python only support INT64/DOUBLE
         // (apart from arrays)
         // assert(rank != 0 && (type=INT64 || type = DOUBLE));
-        assert(rank < MaxRank);assert(strlen(name) < MaxNameSize);
+        assert(rank < MaxRank);
+        assert(strlen(name) < MaxNameSize);
         strncpy(_name, name, MaxNameSize-1);
         _type = (uint32_t)type;
         _rank = rank;
@@ -70,7 +71,8 @@ public:
     }
 
     Name(const char* name, DataType type, int rank, Alg& alg) : _alg(alg) {
-        assert(rank < MaxRank);assert(sizeof(name) < MaxNameSize);
+        assert(rank < MaxRank);
+        assert(strlen(name) < MaxNameSize);
         strncpy(_name, name, MaxNameSize-1);
         _type = (uint32_t)type;
         _rank = rank;
@@ -78,7 +80,7 @@ public:
     }
 
     Name(const char* name, Alg& alg) : _alg(alg) {
-        assert(sizeof(name) < MaxNameSize);
+        assert(strlen(name) < MaxNameSize);
         strncpy(_name, name, MaxNameSize-1);
         _type = (uint32_t)Name::UINT8;
         _rank = 1;
