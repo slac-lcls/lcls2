@@ -73,16 +73,17 @@ def datasource_kwargs(**kwargs):
     - kwa: dict of DataSource keyword arguments
     """
     fname   = kwargs.get('fname', None)
-    expname = kwargs.get('expname', )
+    exp     = kwargs.get('exp', None)
     runs    = kwargs.get('runs', None)
-    evtmax  = kwargs.get('evtmax', 100)
+    events  = kwargs.get('events', 0)
 
     assert fname is not None\
-           or None not in (expname, runs), 'experiment name and run or xtc2 file name need to be specified for DataSource'
+           or None not in (exp, runs), 'experiment name and run or xtc2 file name need to be specified for DataSource'
     kwa = {'files':fname,} if fname is not None else\
-          {'exp':expname,'run':[int(v) for v in runs.split(',')]}
-    if evtmax: kwa['max_events'] = evtmax
+          {'exp':exp,'run':[int(v) for v in runs.split(',')]}
+    if events: kwa['max_events'] = events
     return kwa
+
 
 def info_run_dsparms_det_classes_v1(run, cmt='run.dsparms.det_classes:', sep='\n '):
     return cmt + sep.join(['%8s : %s' % (str(k),str(v)) for k,v in run.dsparms.det_classes.items()])
