@@ -219,6 +219,10 @@ class DaqScan:
         my_data = {}
         for motor in self.motors:
             my_data.update({motor.name: motor.position})
+            # derive step_docstring from step_value
+            if motor.name == 'step_value':
+                docstring = '{"step": %d}' % motor.position
+                my_data.update({'step_docstring': docstring})
 
         detname       = 'scan'
         dettype       = 'scan'

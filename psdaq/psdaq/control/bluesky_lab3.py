@@ -75,19 +75,25 @@ bec = BestEffortCallback()
 # Send all metadata/data captured to the BestEffortCallback.
 RE.subscribe(bec)
 
-from ophyd.sim import motor1
-from bluesky.plans import scan
+from ophyd.sim import motor1, SynAxis
+from bluesky.plans import list_scan
+
+step_value = SynAxis(name='step_value')
 
 # instantiate DaqScan object
 mydaq = DaqScan(control, daqState=daqState, args=args)
 dets = [mydaq]   # just one in this case, but it could be more than one
 
 # configure DaqScan object with a set of motors
-mydaq.configure(motors=[motor1])
+mydaq.configure(motors=[motor1, step_value])
 
 # Scan motor1 from -10 to 10, stopping
 # at 15 equally-spaced points along the way and reading dets.
-RE(scan(dets, motor1, -10, 10, 15))
+# [-10.000, -8.571, ... 10.000]
+motor1_points = [-10 + i*20/14 for i in range(15)]
+
+RE(list_scan(dets, motor1,     motor1_points,
+                   step_value, [*range(15)]))
 
 mydaq.push_socket.send_string('shutdown') #shutdown the daq thread
 mydaq.comm_thread.join()
