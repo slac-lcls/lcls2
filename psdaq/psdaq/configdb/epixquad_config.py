@@ -497,7 +497,7 @@ def epixquad_scan_keys(update):
             id = segids[seg]
             top = cdict()
             top.setAlg('config', [2,0,0])
-            top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
+            top.setInfo(detType='epix10ka', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
             top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4,:176].tolist(), 'UINT8')
             top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
             scfg[seg+1] = top.typed_json()
@@ -554,7 +554,7 @@ def epixquad_update(update):
             id = segids[seg]
             top = cdict()
             top.setAlg('config', [2,0,0])
-            top.setInfo(detType='epix', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
+            top.setInfo(detType='epix10ka', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
             top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4,:176].tolist(), 'UINT8')
             if trbit is not None:
                 top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
