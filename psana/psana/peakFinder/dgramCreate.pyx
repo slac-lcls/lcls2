@@ -357,8 +357,8 @@ class CyDgram():
                 data_type = 10 # from xtcdata/xtc/ShapesData Name::DataType::CHARSTR
             else:
                 data_type = parse_type(arr) # uint8, int32, etc...
-            # Copy the name to the block, after replacing dots with underscores
-            py_name.addName(fix_encoding(name.replace(".","_")), pyalg, data_type, array_rank)
+            # Copy the name to the block
+            py_name.addName(fix_encoding(name), pyalg, data_type, array_rank)
 
             # Copy the shape to the block
             if array_rank > 0:
