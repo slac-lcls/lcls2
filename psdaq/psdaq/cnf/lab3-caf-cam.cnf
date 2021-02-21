@@ -27,6 +27,6 @@ procmgr_config = [
  # meb
  { host: 'drp-tst-dev009', id:'meb1', flags:'sxpu', cmd:'monReqServer -P '+hutch+' -d -q 4 -C '+collect_host},
  # drp
- { host: 'drp-tst-dev009', id:'cam_0', flags:'sxpu', cmd:'drp -o ~caf/data -l 0x1 -D fakecam -d /dev/datadev_1 -P '+hutch+' -C '+collect_host},
- { host: 'drp-tst-dev009', id:'cam_1', flags:'sxpu', cmd:'drp -o ~caf/data -l 0x2 -D fakecam -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
+ { host: 'drp-tst-dev009', id:'timing_0', flags:'sxpu', cmd:'drp -o ~caf/data -l 0x1 -D ts -d /dev/datadev_1 -P '+hutch+' -C '+collect_host},
+ { host: 'drp-tst-dev009', id:'cam_0', flags:'sxpu', cmd:'drp -o ~caf/data -l 0x2 -D fakecam -d /dev/datadev_1 -P '+hutch+' -C '+collect_host}
 ]
