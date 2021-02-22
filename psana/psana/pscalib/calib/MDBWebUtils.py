@@ -400,8 +400,9 @@ def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADE
     dbname_exp = mu.db_prefixed_name(exp)
     dbname_det = mu.db_prefixed_name(detname)
 
-    kwargs['detector'] = detname # ex: epix_000001
-    kwargs['longname'] = det
+    #kwargs['detector'] = detname # ex: epixquad
+    kwargs['shortname'] = detname # ex: epix10ka_000001
+    kwargs['longname']  = det     # ex: epix10ka_<detector-id>
 
     logger.debug('add_data_and_two_docs kwargs: %s' % str(kwargs))
 
