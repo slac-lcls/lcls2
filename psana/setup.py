@@ -116,7 +116,6 @@ if 'PSANA' in BUILD_LIST :
             'proc_info           = psana.pscalib.app.proc_info:do_main',
             'proc_control        = psana.pscalib.app.proc_control:do_main',
             'proc_new_datasets   = psana.pscalib.app.proc_new_datasets:do_main',
-            'det_raw_dark_proc   = psana.pscalib.app.det_raw_dark_proc:do_main',
             'timeconverter       = psana.graphqt.app.timeconverter:timeconverter',
             'calibman            = psana.graphqt.app.calibman:calibman_gui',
             'hdf5explorer        = psana.graphqt.app.hdf5explorer:hdf5explorer_gui',
@@ -130,6 +129,7 @@ if 'PSANA' in BUILD_LIST :
             'epix10ka_pedestals_calibration = psana.app.epix10ka_pedestals_calibration:do_main',
             'epix10ka_deploy_constants = psana.app.epix10ka_deploy_constants:do_main',
             'datinfo             = psana.app.datinfo:do_main',
+            'det_dark_proc       = psana.app.det_dark_proc:do_main',
         ]
     }
 
