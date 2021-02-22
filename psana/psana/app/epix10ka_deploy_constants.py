@@ -118,7 +118,6 @@ def argument_parser():
     parser.add_argument('-x', '--dirxtc',  default=d_dirxtc,   type=str,   help=h_dirxtc)
     parser.add_argument('-o', '--dirrepo', default=d_dirrepo,  type=str,   help=h_dirrepo)
     parser.add_argument('-c', '--dircalib',default=d_dircalib, type=str,   help=h_dircalib)
-    parser.add_argument('-D', '--deploy',  default=d_deploy,   type=bool,  help=h_deploy)
     parser.add_argument('-L', '--logmode', default=d_logmode,  type=str,   help=h_logmode)
     parser.add_argument(      '--high',    default=d_high,     type=float, help=h_high)
     parser.add_argument(      '--medium',  default=d_medium,   type=float, help=h_medium)
@@ -128,6 +127,7 @@ def argument_parser():
     parser.add_argument('-v', '--version', default=d_version,  type=str,   help=h_version)
     parser.add_argument('-R', '--run_end', default=d_run_end,  type=str,   help=h_run_end)
     parser.add_argument('-C', '--comment', default=d_comment,  type=str,   help=h_comment)
+    parser.add_argument('-D', '--deploy',  action='store_true', help=h_deploy)
 
     return parser
 
