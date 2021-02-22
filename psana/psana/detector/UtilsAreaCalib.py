@@ -114,7 +114,7 @@ def deploy_constants(dic_consts, **kwa):
             id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
               wu.add_data_and_two_docs(data, expname, detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
         else:
-            logger.warning('TO DEPLOY CONSTANTS ADD OPTION -D True')
+            logger.warning('TO DEPLOY CONSTANTS ADD OPTION -D')
 
 
 def add_metadata_kwargs(orun, odet, **kwa):
