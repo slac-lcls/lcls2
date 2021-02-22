@@ -683,7 +683,7 @@ def get_config_info_for_dataset_detname(**kwargs):
       cpdic['tstamp']     = tstamp_run # (str) 20201209191018
       cpdic['tstamp_now'] = tstamp_now # (str) 20201217140026
       cpdic['trun_sec']   = int(trun_sec) # 1607569818.532117 sec
-      cpdic['tsrun_dark']   = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
+      cpdic['tsrun_dark'] = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
 
       return cpdic
 
@@ -851,6 +851,7 @@ def deploy_constants(*args, **opts):
     panel_ids   = cpdic.get('panel_ids', None)
     panel_inds  = cpdic.get('panel_inds',None)
     dettype     = cpdic.get('dettype',   None)
+    longname    = cpdic.get('longname', detname)
 
     req_inds = None if paninds is None else [int(i) for i in paninds.split(',')] # conv str '0,1,2,3' to list [0,1,2,3] 
     logger.info('In %s\n      detector: "%s" \n      requested_inds: %s' % (_name, detname, str(req_inds)))
@@ -928,54 +929,44 @@ def deploy_constants(*args, **opts):
 
         if True: # deploy:
 
+          # check opt "-t" if constants need to be deployed with diffiernt time stamp or run number
+          use_external_run = tstamp is not None and tstamp<10000
+          use_external_ts  = tstamp is not None and tstamp>9999
+          tvalid_sec = time_sec_from_stamp(fmt=cc.TSFORMAT_SHORT, time_stamp=str(tstamp))\
+                  if use_external_ts else cpdic.get('trun_sec', None)
+          ivalid_run = tstamp if use_external_run else irun\
+                  if not use_external_ts else 0
+
           dtype = 'ndarray'
 
-          _ivalid_run = irun
-          _tvalid_sec = cpdic.get('trun_sec', None) 
-          if tstamp is not None:
-            if tstamp>9999:
-              str_ts = str(tstamp)
-              _tvalid_sec = time_sec_from_stamp(fmt='%Y%m%d%H%M%S', time_stamp=str_ts)
-              _ivalid_run = 0
-            else: 
-              _ivalid_run = tstamp
-
-          _tvalid_stamp = str_tstamp(fmt=cc.TSFORMAT, time_sec=_tvalid_sec)
-          _longname = cpdic.get('longname', detname)
-
-          dic_extpars = {
-            'content':'extended parameters dict->json->str',
-          }
-
           kwa = {
-            'iofname': fmerge,
-            'experiment': exp,
-            'ctype': octype,
-            'dtype': dtype,
-            'detector': detname,
-            'longname': _longname,
-            'time_sec':_tvalid_sec,
-            'time_stamp': _tvalid_stamp,
+            'iofname'    : fmerge,
+            'experiment' : exp,
+            'ctype'      : octype,
+            'dtype'      : dtype,
+            'detector'   : detname,
+            'longname'   : longname,
+            'time_sec'   : tvalid_sec,
+            'time_stamp' : str_tstamp(fmt=cc.TSFORMAT, time_sec=int(tvalid_sec)),
+            'tsshort'    : str_tstamp(fmt=cc.TSFORMAT_SHORT, time_sec=int(tvalid_sec)),
             'tstamp_orig': cpdic.get('tsrun_dark', None),
-            'run': _ivalid_run,
-            'run_end': run_end,
-            'run_orig': irun,
-            'version': version,
-            'comment': comment,
-            'extpars': dic_extpars,
+            'run'        : ivalid_run,
+            'run_end'    : run_end,
+            'run_orig'   : irun,
+            'version'    : version,
+            'comment'    : comment,
+            'extpars'    : {'content':'extended parameters dict->json->str',},
+            'dettype'    : dettype
           }
 
           logger.debug('DEPLOY metadata: %s' % str(kwa))
 
-          _detname = _longname # cpdic.get('longname', detname)
-
           data = mu.data_from_file(fmerge, octype, dtype, True)
-
-          logger.info(info_ndarr(data, 'merged constants loaded from file'))
+          logger.debug(info_ndarr(data, 'merged constants loaded from file'))
 
           if deploy:
             id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
-              wu.add_data_and_two_docs(data, exp, _detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+              wu.add_data_and_two_docs(data, exp, longname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
           else:
             logger.warning('TO DEPLOY CONSTANTS ADD OPTION -D True')
 
