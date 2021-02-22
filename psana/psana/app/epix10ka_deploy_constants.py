@@ -74,7 +74,7 @@ def argument_parser():
     d_dirrepo = CALIB_REPO_EPIX10KA # './myrepo' 
     d_dircalib= None # './calib
     d_deploy  = False
-    d_logmode = 'DEBUG'
+    d_logmode = 'INFO'
     d_proc    = 'psrg'
     d_paninds = None
     d_high    = 16.40 # 1.
