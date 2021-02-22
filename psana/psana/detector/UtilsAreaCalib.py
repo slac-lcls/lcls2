@@ -20,19 +20,19 @@ import logging
 logger = logging.getLogger(__name__)
 import sys
 import numpy as np
-from psana.pyalgos.generic.Utils import create_directory # log_rec_on_start, str_tstamp, save_textfile, set_file_access_mode, time_sec_from_stamp
+from psana.pyalgos.generic.Utils import create_directory, log_rec_on_start, str_tstamp, time_sec_from_stamp
 from psana.detector.Utils import info_dict, info_namespace, info_command_line
 from psana.detector.UtilsEpix10kaCalib import proc_dark_block
-from psana.detector.utils_psana import seconds, timestamp_run, datasource_kwargs, info_run
+from psana.detector.utils_psana import seconds, datasource_kwargs, info_run #, timestamp_run
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, save_2darray_in_textfile#, save_ndarray_in_textfile
 from psana import DataSource
 
 #from psana.pscalib.calib.NDArrIO import save_txt; global save_txt
-#import psana.pscalib.calib.MDBUtils as mu
+from psana.pscalib.calib.MDBUtils import data_from_file
 import psana.pscalib.calib.MDBWebUtils as wu
 
 cc = wu.cc # import psana.pscalib.calib.CalibConstants as cc
-
+#cc.TSFORMAT_SHORT = '%Y%m%d%H%M%S'
 
 def selected_record(nrec):
     return nrec<5\
@@ -66,15 +66,15 @@ def deploy_constants(dic_consts, **kwa):
 
     CTYPE_DTYPE = cc.dic_calib_name_to_dtype # {'pedestals': np.float32,...}
 
-    expname  = kwa.get('expname',None)
-    detname  = kwa.get('detname',None)
-    do_deploy= kwa.get('do_deploy', False)
+    expname  = kwa.get('exp',None)
+    detname  = kwa.get('det',None)
+    deploy   = kwa.get('deploy', False)
     dirrepo  = kwa.get('dirrepo', './work')
     dirmode  = kwa.get('dirmode',  0o774)
     filemode = kwa.get('filemode', 0o664)
     tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
     tsshort  = kwa.get('tsshort', '20100101000000')
-    runnum   = kwa.get('runnum',None)
+    runnum   = kwa.get('run_orig',None)
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
@@ -96,88 +96,61 @@ def deploy_constants(dic_consts, **kwa):
         #save_ndarray_in_textfile(nda, fname, filemode, fmt)
         save_2darray_in_textfile(nda, fname, filemode, fmt)
 
-        if False: # deploy:
+        dtype = 'ndarray'
+        kwa['ctype'] = ctype
+        kwa['dtype'] = dtype
+        kwa['extpars'] = {'content':'extended parameters dict->json->str',}
+        #kwa['extpars'] = {'content':'other script parameters', 'script_parameters':kwa}
+        _ = kwa.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
+        _ = kwa.pop('det',None)
 
-          dtype = 'ndarray'
+        logger.info('DEPLOY metadata: %s' % info_dict(kwa, fmt='%12s : %s', sep='\n  '))
 
-          _ivalid_run = irun
-          _tvalid_sec = cpdic.get('trun_sec', None) 
-          if tstamp is not None:
-            if tstamp>9999:
-              str_ts = str(tstamp)
-              _tvalid_sec = time_sec_from_stamp(fmt='%Y%m%d%H%M%S', time_stamp=str_ts)
-              _ivalid_run = 0
-            else: 
-              _ivalid_run = tstamp
+        data = data_from_file(fname, ctype, dtype, True)
+        logger.info(info_ndarr(data, 'constants loaded from file'))
 
-          _tvalid_stamp = str_tstamp(fmt=cc.TSFORMAT, time_sec=_tvalid_sec)
-          _longname = cpdic.get('longname', detname)
-
-          dic_extpars = {
-            'content':'extended parameters dict->json->str',
-          }
-
-          kwa = {
-            'experiment': exp,
-            'ctype': octype,
-            'dtype': dtype,
-            'detector': detname,
-            'longname': _longname,
-            'time_sec':_tvalid_sec,
-            'time_stamp': _tvalid_stamp,
-            'tstamp_orig': cpdic.get('tsrun_dark', None),
-            'run': _ivalid_run,
-            'run_end': run_end,
-            'run_orig': irun,
-            'version': version,
-            'comment': comment,
-            'extpars': dic_extpars,
-          }
-
-          logger.debug('DEPLOY metadata: %s' % str(kwa))
-
-          _detname = _longname # cpdic.get('longname', detname)
-
-          data = mu.data_from_file(fmerge, octype, dtype, True)
-
-          logger.info(info_ndarr(data, 'merged constants loaded from file'))
-
-          if do_deploy:
+        if deploy:
+            detname = kwa['longname']
             id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
-              wu.add_data_and_two_docs(data, exp, _detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
-          else:
+              wu.add_data_and_two_docs(data, expname, detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+        else:
             logger.warning('TO DEPLOY CONSTANTS ADD OPTION -D True')
 
 
+def add_metadata_kwargs(orun, odet, **kwa):
 
+    trun_sec = seconds(orun.timestamp) # 1607569818.532117 sec
 
-def deployment_kwargs(run, det, **kwa):
-    detname  = kwa.get('detname', det.raw._det_name)
-    longname = kwa.get('longname', det.raw._uniqueid)
-    expname  = kwa.get('expname', None)
-    runnum   = kwa.get('runnum', None)
-    tstamp   = kwa.get('tstamp', None)
-    tsshort  = kwa.get('tsshort', None)
-    version  = kwa.get('version', 'N/A')
-    dettype  = kwa.get('dettype', det.raw._dettype)
+    # check opt "-t" if constants need to be deployed with diffiernt time stamp or run number
+    tstamp = kwa.get('tstamp', None)
+    use_external_run = tstamp is not None and tstamp<10000
+    use_external_ts  = tstamp is not None and tstamp>9999
+    tvalid_sec = time_sec_from_stamp(fmt=cc.TSFORMAT_SHORT, time_stamp=str(tstamp))\
+                  if use_external_ts else trun_sec
+    ivalid_run = tstamp if use_external_run else orun.runnum\
+                  if not use_external_ts else 0
 
-    runtstamp = run.timestamp    # 4193682596073796843 relative to 1990-01-01
-    trun_sec = seconds(runtstamp) # 1607569818.532117 sec
-    #tstamp = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
-
-    if runnum  is None: kwa['runnum']  = run.runnum # 1-st file in case of list, non-defined
-    if expname is None: kwa['expname'] = run.expt # owerride expname in case of input from xtc2 file
-    if tstamp  is None: kwa['tstamp']  = timestamp_run(run, fmt=cc.TSFORMAT) # '%Y-%m-%dT%H:%M:%S'
-    if tsshort is None: kwa['tsshort'] = timestamp_run(run, fmt='%Y%m%d%H%M%S')
-
-
-    print('deployment_kwargs: %s' % info_dict(kwa, fmt='%s: %s', sep='\n  '))
-
+    kwa['experiment'] = kwa.get('exp', orun.expt)
+    kwa['detector']   = kwa.get('det', odet.raw._det_name)
+    kwa['dettype']    = odet.raw._dettype
+    kwa['longname']   = odet.raw._uniqueid # kwa.get('longname', odet.raw._uniqueid)
+    kwa['time_sec']   = tvalid_sec
+    kwa['time_stamp'] = str_tstamp(fmt=cc.TSFORMAT, time_sec=int(tvalid_sec))
+    kwa['tsshort']    = str_tstamp(fmt=cc.TSFORMAT_SHORT, time_sec=int(tvalid_sec))
+    kwa['tstamp_orig']= str_tstamp(fmt=cc.TSFORMAT, time_sec=int(trun_sec))
+    kwa['run']        = ivalid_run
+    kwa['run_end']    = kwa.get('run_end', 'end')
+    kwa['run_orig']   = orun.runnum
+    kwa['version']    = kwa.get('version', 'N/A')
+    kwa['comment']    = kwa.get('comment', 'no comment')
+    kwa['dettype']    = odet.raw._dettype
     return kwa
 
 
 
 def pedestals_calibration(**kwa):
+
+  print('log_rec_on_start: %s' % log_rec_on_start()) # tsfmt='%Y-%m-%dT%H:%M:%S%z'
 
   print('command line: %s' % info_command_line())
   #print('input parameters:\n%s' % info_namespace(pars)) #, fmt='%s: %s', sep=', '))
@@ -188,8 +161,8 @@ def pedestals_calibration(**kwa):
   #ds = DataSource(exp='tmoc00118', run=123, max_events=100)
   #ds = DataSource(exp=pars.expname, run=pars.runs, max_events=pars.evtmax)
 
-  detname = kwa.get('detname',None)
-  expname = kwa.get('expname',None)
+  detname = kwa.get('det',None)
+  expname = kwa.get('exp',None)
   nrecs   = kwa.get('nrecs',100)
 
   block = None
@@ -198,30 +171,30 @@ def pedestals_calibration(**kwa):
   break_loop = False
   kwa_depl = None
 
-  for irun,run in enumerate(ds.runs()):
-    print('\n==== %02d run: %d exp: %s' % (irun, run.runnum, run.expt))
-    print(info_run(run, cmt='run info:\n    ', sep='\n    ', verb=3))
+  for irun,orun in enumerate(ds.runs()):
+    print('\n==== %02d run: %d exp: %s' % (irun, orun.runnum, orun.expt))
+    print(info_run(orun, cmt='run info:\n    ', sep='\n    ', verb=3))
 
-    det = run.Detector(detname)
+    odet = orun.Detector(detname)
     print('\n  created %s detector object' % detname)
-    print(info_detector(det, cmt='  detector info:\n      ', sep='\n      '))
+    print(info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
 
-    if kwa_depl is None: kwa_depl = deployment_kwargs(run, det, **kwa)
+    if kwa_depl is None: kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
 
-    for istep,step in enumerate(run.steps()):
+    for istep,step in enumerate(orun.steps()):
       print('\nStep %1d' % istep)
 
       for ievt,evt in enumerate(step.events()):
         print('Event %04d' % ievt, end='')
 
-        raw  = det.raw.raw(evt)
+        raw  = odet.raw.raw(evt)
         if raw is None:
             logger.info('raw is None')
             continue
 
         rows, cols = raw.shape
         if block is None:
-           segs = det.raw.segments(evt)
+           segs = odet.raw.segments(evt)
            print(info_ndarr(segs, '\n det.raw.segments(evt) '))
            block=np.zeros((nrecs, rows, cols),dtype=raw.dtype)
            print(info_ndarr(block,' Createsd array for accumulation of raw data block[nrecs, nrows, ncols]\n '))
@@ -250,7 +223,7 @@ def pedestals_calibration(**kwa):
 
   print(info_ndarr(arr_av1, 'arr_av1 '))
   print(info_ndarr(arr_rms, 'arr_rms '))
-  print(info_ndarr(arr_sta, 'arr_sta ', last=20))
+  print(info_ndarr(arr_sta, 'arr_sta ', last=10))
 
   dic_consts = {
     'pedestals'    : arr_av1,\
@@ -272,11 +245,11 @@ if __name__ == "__main__":
   
     kwa = {\
         'fname'   : None,\
-        'expname' : 'tmoc00118',\
+        'exp'     : 'tmoc00118',\
         'runs'    : '123',\
-        'detname' : 'tmoopal',\
-        'evtmax'  : 200,\
+        'det'     : 'tmoopal',\
         'nrecs'   : 100,\
+        #'evtmax'  : 200,\
     }
 
     pedestals_calibration(**kwa)
