@@ -67,8 +67,8 @@ def find_file_for_timestamp(dirname, pattern, tstamp):
                      logger.info('  selected %s for %s and %s' % (os.path.basename(fname),pattern,tstamp))
                      return fname
 
-    logger.warning('directory %s\n         DOES NOT CONTAIN file for pattern %s and timestamp <= %s'%\
-                   (dirname,pattern,tstamp))
+    logger.debug('directory %s\n         DOES NOT CONTAIN file for pattern %s and timestamp <= %s'%\
+                 (dirname,pattern,tstamp))
     return None
 
 
@@ -79,8 +79,8 @@ def load_panel_constants(dir_ctype, pattern, tstamp):
         arr=np.loadtxt(fname)
         logger.info('Loaded: %s' % fname)
     else:
-        logger.warning('file DOES NOT EXIST: %s' % fname)
-        logger.warning('DO NOT save save constants for missing files')
+        logger.debug('file DOES NOT EXIST: %s' % fname)
+        logger.debug('DO NOT save save constants for missing files')
     return arr
 
 
@@ -967,8 +967,11 @@ def deploy_constants(*args, **opts):
           if deploy:
             id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
               wu.add_data_and_two_docs(data, exp, longname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+            logger.debug('deployed with id_data_exp:%s and id_data_det:%s' % (id_data_exp, id_data_det))
+            logger.info('%s are deployed in DB(s) for exp:%s det:%s' % (16*' ', exp, detname))
+
           else:
-            logger.warning('TO DEPLOY CONSTANTS ADD OPTION -D True')
+            logger.warning('TO DEPLOY CONSTANTS ADD OPTION -D')
 
 #----
 
