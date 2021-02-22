@@ -90,7 +90,7 @@ mydaq.configure(motors=[motor1, step_value])
 # Scan motor1 from -10 to 10, stopping
 # at 15 equally-spaced points along the way and reading dets.
 # [-10.000, -8.571, ... 10.000]
-motor1_points = [-10 + i*20/14 for i in range(15)]
+motor1_points = [round(-10 + i*20/14, 3) for i in range(15)]
 
 RE(list_scan(dets, motor1,     motor1_points,
                    step_value, [*range(15)]))
