@@ -20,16 +20,15 @@ STR_LEVEL_NAMES = ', '.join(DICT_NAME_TO_LEVEL.keys())
 #SCRNAME = sys.argv[0].rsplit('/')[-1]
 SCRNAME = os.path.basename(sys.argv[0])
 
-USAGE = '\n %s <detector> -e <experiment> -r <run-number(s)> [kwargs]' % SCRNAME\
+USAGE = '\n  %s -d <detector> -e <experiment> -r <run-number(s)> [kwargs]' % SCRNAME\
       + '\nCOMMAND EXAMPLES:'\
-      + '\n  %s epixquad -e ueddaq02 -r 27 <--- WORKS' % SCRNAME\
-      + '\n  %s epixquad -e ueddaq02 -r 30-82 <--- DO NOT WORK' % SCRNAME\
-      + '\n  %s epixquad -e ueddaq02 -r 83 <--- WORKS dark' % SCRNAME\
-      + '\n  %s epixquad -e ueddaq02 -r 84 <--- PARTLY WORKS charge injection' % SCRNAME\
-      + '\n  %s epixquad -e ueddaq02 -r 27 -L DEBUG' % SCRNAME\
-      + '\n  %s epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0065-s001-c000.xtc2' % SCRNAME\
-      + '\n  %s epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0086-s001-c000.xtc2' % SCRNAME\
-      + '\n  %s tmoopal -e tmoc00118 -r 123' % SCRNAME\
+      + '\n  %s -d epixquad -e ueddaq02 -r 27 -td -L DEBUG' % SCRNAME\
+      + '\n  %s -d epixquad -e ueddaq02 -r 30-82 <--- DOES NOT WORK - missconfigured' % SCRNAME\
+      + '\n  %s -d epixquad -e ueddaq02 -r 83 <--- dark' % SCRNAME\
+      + '\n  %s -d epixquad -e ueddaq02 -r 84 <--- PARTLY WORKS charge injection' % SCRNAME\
+      + '\n  %s -d epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0065-s001-c000.xtc2' % SCRNAME\
+      + '\n  %s -d epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0086-s001-c000.xtc2' % SCRNAME\
+      + '\n  %s -d tmoopal -e tmoc00118 -r 123 -td' % SCRNAME\
       + '\nHELP: %s -h' % SCRNAME
 #----
 
@@ -172,7 +171,7 @@ def argument_parser():
     h_typeinfo= 'type of information for output D-detector, R-run-loop, S-step-loop, E-event-loop, default = %s' % d_typeinfo
 
     parser = ArgumentParser(description='Print info about experiment detector and run')
-    parser.add_argument('detname', type=str, help=h_detname)
+    parser.add_argument('-d', '--detname', type=str, help=h_detname)
     parser.add_argument('-e', '--expname', type=str, help=h_expname)
     parser.add_argument('-r', '--runs',    type=str, help=h_runs)
     parser.add_argument('-f', '--fname', default=d_fname, type=str, help=h_fname)
