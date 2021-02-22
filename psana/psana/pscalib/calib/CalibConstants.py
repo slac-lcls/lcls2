@@ -53,6 +53,7 @@ except Exception as e:
     KRBHEADERS = None 
 
 TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T08:40:28-0800
+TSFORMAT_SHORT = '%Y%m%d%H%M%S'  # e.g. 20180207084028
 
 # Enumerated and named parameters
 
