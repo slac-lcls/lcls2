@@ -123,9 +123,9 @@ def argument_parser():
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
     parser.add_argument('-x', '--dirxtc',  default=d_dirxtc,     type=str,   help=h_dirxtc)
     parser.add_argument('-o', '--dirrepo', default=d_dirrepo,    type=str,   help=h_dirrepo)
-    parser.add_argument('-S', '--usesmd',  default=d_usesmd,     type=bool,  help=h_usesmd)
+    parser.add_argument('-S', '--usesmd',  action='store_false',             help=h_usesmd)
     parser.add_argument('-L', '--logmode', default=d_logmode,    type=str,   help=h_logmode)
-    parser.add_argument('-E', '--errskip', default=d_errskip,    type=bool,  help=h_errskip)
+    parser.add_argument('-E', '--errskip', action='store_false',             help=h_errskip)
     parser.add_argument('--stepnum',       default=d_stepnum,    type=int,   help=h_stepnum)
     parser.add_argument('--stepmax',       default=d_stepmax,    type=int,   help=h_stepmax)
     parser.add_argument('--dirmode',       default=d_dirmode,    type=int,   help=h_dirmode)
@@ -140,11 +140,11 @@ def argument_parser():
     parser.add_argument('--rmsnhi',        default=d_rmsnhi,     type=float, help=h_rmsnhi)
     parser.add_argument('--fraclm',        default=d_fraclm,     type=float, help=h_fraclm)
     parser.add_argument('--nsigma',        default=d_nsigma,     type=float, help=h_nsigma)
-    parser.add_argument('-D', '--deploy',  action='store_true', help=h_deploy)
-    parser.add_argument('-t', '--tstamp',  default=d_tstamp,   type=int,   help=h_tstamp)
-    parser.add_argument('-v', '--version', default=d_version,  type=str,   help=h_version)
-    parser.add_argument('-R', '--run_end', default=d_run_end,  type=str,   help=h_run_end)
-    parser.add_argument('-C', '--comment', default=d_comment,  type=str,   help=h_comment)
+    parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
+    parser.add_argument('-t', '--tstamp',  default=d_tstamp,     type=int,   help=h_tstamp)
+    parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
+    parser.add_argument('-R', '--run_end', default=d_run_end,    type=str,   help=h_run_end)
+    parser.add_argument('-C', '--comment', default=d_comment,    type=str,   help=h_comment)
 
     return parser
 
