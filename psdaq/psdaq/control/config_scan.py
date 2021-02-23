@@ -122,6 +122,8 @@ class MyDAQ:
                 # stop monitoring the StepDone PV
                 sub.close()
 
+                self.ready.set()
+
             elif state=='shutdown':
                 break
 
@@ -169,9 +171,13 @@ class MyDAQ:
             self.push_socket.send_string('running,%s' % json.dumps(phase1Info))
 
         # EndStep
+        self.ready.wait()
+        self.ready.clear()
         self.push_socket.send_string('starting')
+        self.ready.wait()
+        self.ready.clear()
 
-def scan( keys, steps ):
+def scan( keys, steps, setupStep=None ):
     parser = argparse.ArgumentParser()
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
@@ -237,6 +243,9 @@ def scan( keys, steps ):
                                     "NamesBlockHex":scanNamesBlock()}}
 
     for step in steps():
+        if setupStep is not None:
+            setupStep(step)
+
         beginstep_dict = {"beginstep": {"step_values": step[0],
                                         "ShapesDataBlockHex":shapesDataBlock(step)}}
         # trigger
@@ -251,7 +260,7 @@ def scan( keys, steps ):
 
 
 def setupXtc(step=None):
-    d = {'step_value'    :0,
+    d = {'step_value'    :0.,
          'step_docstring':''}
     if step and len(step)==3:
         d['step_value'    ]=step[1]

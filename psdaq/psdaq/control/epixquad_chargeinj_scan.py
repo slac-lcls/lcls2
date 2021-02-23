@@ -48,7 +48,7 @@ def steps():
             #  Set the global meta data
             metad['step'] = s+trbit*spacing**2
 
-            yield (d, s+trbit*spacing**2, json.dumps(metad))
+            yield (d, float(s+trbit*spacing**2), json.dumps(metad))
 
 if __name__ == '__main__':
 

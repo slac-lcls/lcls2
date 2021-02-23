@@ -1,6 +1,7 @@
 from psdaq.control.config_scan import scan
 from psdaq.configdb.get_config import *
 import numpy as np
+import sys
 
 detName  = 'epixquad_0'
 
@@ -14,7 +15,7 @@ def steps():
         d[f'{detName}:user.gain_mode'] = gain
         #  Set the global meta data
         metad['step'] = gain
-        yield (d, gain, json.dumps(metad))
+        yield (d, float(gain), json.dumps(metad))
 
 if __name__ == '__main__':
 
