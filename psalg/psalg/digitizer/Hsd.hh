@@ -2,6 +2,12 @@
 #define HSD_EVENTHEADER_HH
 
 /*
+ * This file was an early attempt to have C code that could use both
+ * malloc (for psana) and a non-malloc "stack" (for the DAQ).  in the
+ * end this code felt too complex, so it has been removed from the DAQ.
+ */
+
+/*
  * Summary of design ideas from cpo/yoon82 (9/11/19)
  *
  * The Channel class here are intended to be used both in the drp (C++) and

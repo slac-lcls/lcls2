@@ -7,7 +7,7 @@
 #include "psdaq/service/Json2Xtc.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
-#include "psalg/digitizer/Hsd.hh"
+// #include "psalg/digitizer/Hsd.hh"
 #include "DataDriver.h"
 #include "Si570.hh"
 #include "psalg/utils/SysLog.hh"
@@ -309,10 +309,12 @@ void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
             Array<uint8_t> arrayT = hsd.allocate<uint8_t>(i+1, shape);
             uint32_t dmaIndex = event->buffers[i].index;
             memcpy(arrayT.data(), (uint8_t*)m_pool->dmaBuffers[dmaIndex] + sizeof(Pds::TimingHeader), data_size);
-            // example showing how to use psalg Hsd code to extract data
-            Pds::HSD::Channel channel(&m_allocator,
-                                      (const uint32_t*)arrayH.data(),
-                                      (const uint8_t*)arrayT.data());
+            // example showing how to use psalg Hsd code to extract data.
+            // we are now not using this code since it was too complex
+            // (see comment at top of Hsd.hh)
+            // Pds::HSD::Channel channel(&m_allocator,
+            //                           (const uint32_t*)arrayH.data(),
+            //                           (const uint8_t*)arrayT.data());
             //printf("*** npeaks %d\n",channel.npeaks());
          }
     }

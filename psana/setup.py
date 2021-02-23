@@ -283,10 +283,8 @@ if 'DGRAM' in BUILD_LIST :
 
 if 'HSD' in BUILD_LIST :
     ext = Extension("hsd",
-                    sources=["psana/hsd/hsd.pyx",
-                             "../psalg/psalg/peaks/src/PeakFinderAlgos.cc",
-                             "../psalg/psalg/peaks/src/LocalExtrema.cc"],
-                    libraries=['xtc','psalg','digitizer','utils'],
+                    sources=["psana/hsd/hsd.pyx"],
+                    libraries=[],
                     language="c++",
                     extra_compile_args=extra_cxx_compile_args,
                     include_dirs=[np.get_include(),

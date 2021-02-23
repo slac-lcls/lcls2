@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <cinttypes>
 
-#include "xtcdata/xtc/Dgram.hh"
 #include "Stream.hh"
 
 namespace Pds {
