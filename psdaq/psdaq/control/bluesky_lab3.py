@@ -25,6 +25,8 @@ parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
 parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=10, help='# of events to aquire at each step (default 10)')
 parser.add_argument('-g', type=int, metavar='GROUP_MASK', default=2, help='bit mask of readout groups (default 2)')
 parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (default BEAM)')
+parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
+parser.add_argument('--scantype', default='scan', help="scan type (default 'scan')")
 parser.add_argument('-v', action='store_true', help='be verbose')
 args = parser.parse_args()
 
@@ -76,7 +78,7 @@ bec = BestEffortCallback()
 RE.subscribe(bec)
 
 from ophyd.sim import motor1, SynAxis
-from bluesky.plans import list_scan
+from bluesky.plans import scan
 
 step_value = SynAxis(name='step_value')
 
@@ -87,13 +89,9 @@ dets = [mydaq]   # just one in this case, but it could be more than one
 # configure DaqScan object with a set of motors
 mydaq.configure(motors=[motor1, step_value])
 
-# Scan motor1 from -10 to 10, stopping
+# Scan motor1 from -10 to 10 and step_value from 0 to 14, stopping
 # at 15 equally-spaced points along the way and reading dets.
-# [-10.000, -8.571, ... 10.000]
-motor1_points = [round(-10 + i*20/14, 3) for i in range(15)]
-
-RE(list_scan(dets, motor1,     motor1_points,
-                   step_value, [*range(15)]))
+RE(scan(dets, motor1, -10, 10, step_value, 0, 14, 15))
 
 mydaq.push_socket.send_string('shutdown') #shutdown the daq thread
 mydaq.comm_thread.join()

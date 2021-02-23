@@ -39,6 +39,8 @@ class DaqScan:
         self.mon_thread.start()
         self.verbose = args.v
         self.pv_base = args.B
+        self.detname = args.detname
+        self.scantype = args.scantype
 
         if args.g is None:
             self.groupMask = 1 << args.p
@@ -221,7 +223,7 @@ class DaqScan:
             my_data.update({motor.name: motor.position})
             # derive step_docstring from step_value
             if motor.name == 'step_value':
-                docstring = f'{{"step": {motor.position}}}'
+                docstring = f'{{"detname": "{self.detname}", "scantype": "{self.scantype}", "step": {motor.position}}}'
                 my_data.update({'step_docstring': docstring})
 
         detname       = 'scan'
