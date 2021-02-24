@@ -179,6 +179,13 @@ target_link_libraries(opaltt_test
     xtcdata::xtc
 )
 
+add_executable(fileWriteTest
+    fileWriteTest.cc
+)
+
+target_link_libraries(fileWriteTest
+    drpbase
+)
 
 install(TARGETS drp drp_bld drp_pva drp_udpencoder
   ARCHIVE DESTINATION lib

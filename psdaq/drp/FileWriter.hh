@@ -19,7 +19,7 @@ public:
     ~BufferedFileWriter();
     int open(const std::string& fileName);
     int close();
-    void writeEvent(void* data, size_t size, XtcData::TimeStamp ts);
+    void writeEvent(const void* data, size_t size, XtcData::TimeStamp ts);
     const uint64_t& writing() const { return m_writing; }
 private:
     int m_fd;
@@ -36,7 +36,7 @@ public:
     ~BufferedFileWriterMT();
     int open(const std::string& fileName);
     int close();
-    void writeEvent(void* data, size_t size, XtcData::TimeStamp ts);
+    void writeEvent(const void* data, size_t size, XtcData::TimeStamp ts);
     void run();
     const uint64_t& depth() const { return m_depth; }
     const uint64_t& size()  const { return m_size; }
@@ -61,6 +61,25 @@ private:
     volatile uint64_t m_pendBlocked;
     std::atomic<bool> m_terminate;
     std::thread m_thread;
+};
+
+class BufferedMultiFileWriterMT
+{
+public:
+  BufferedMultiFileWriterMT(size_t bufferSize, size_t numFiles);
+    ~BufferedMultiFileWriterMT();
+    int open(const std::string& fileName);
+    int close();
+    void writeEvent(const void* data, size_t size, XtcData::TimeStamp ts);
+    void run();
+    const uint64_t& depth      (size_t i) const { return m_fileWriters[i]->depth(); }
+    const uint64_t& size       (size_t i) const { return m_fileWriters[i]->size(); }
+    const uint64_t& writing    (size_t i) const { return m_fileWriters[i]->writing(); }
+    const uint64_t& freeBlocked(size_t i) const { return m_fileWriters[i]->freeBlocked(); }
+    const uint64_t& pendBlocked(size_t i) const { return m_fileWriters[i]->pendBlocked(); }
+private:
+    std::vector< std::unique_ptr<BufferedFileWriterMT> > m_fileWriters;
+    size_t m_index;
 };
 
 class SmdDef : public XtcData::VarDef

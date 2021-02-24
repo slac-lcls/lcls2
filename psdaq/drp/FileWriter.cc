@@ -4,6 +4,8 @@
 #include <fcntl.h>
 #include <cstring>
 #include <iostream>
+#include <sstream>
+#include <iomanip>      // std::setfill, std::setw
 #include "FileWriter.hh"
 #include "psalg/utils/SysLog.hh"
 
@@ -11,6 +13,22 @@ using logging = psalg::SysLog;
 
 
 namespace Drp {
+
+static inline ssize_t _write(int fd, const void* buffer, size_t count)
+{
+    auto sz = write(fd, buffer, count);
+    while (size_t(sz) != count) {
+        if (sz < 0) {
+            // %m will be replaced by the string strerror(errno)
+            logging::error("write error: %m");
+            return sz;
+        }
+        count -= sz;
+        sz = write(fd, (uint8_t*)buffer + sz, count);
+    }
+    return sz;
+}
+
 
 BufferedFileWriter::BufferedFileWriter(size_t bufferSize) :
     m_count(0), m_batch_starttime(0,0), m_buffer(bufferSize), m_writing(0)
@@ -20,7 +38,7 @@ BufferedFileWriter::BufferedFileWriter(size_t bufferSize) :
 BufferedFileWriter::~BufferedFileWriter()
 {
     m_writing += 2;
-    write(m_fd, m_buffer.data(), m_count);
+    _write(m_fd, m_buffer.data(), m_count);
     m_writing -= 2;
     m_count = 0;
 }
@@ -60,7 +78,7 @@ int BufferedFileWriter::close()
     if (m_fd > 0) {
         if (m_count > 0) {
             logging::debug("Flushing %zu bytes to fd %d", m_count, m_fd);
-            write(m_fd, m_buffer.data(), m_count);
+            _write(m_fd, m_buffer.data(), m_count);
             m_count = 0;
             m_batch_starttime = XtcData::TimeStamp(0,0);
         }
@@ -78,10 +96,10 @@ int BufferedFileWriter::close()
     return rv;
 }
 
-void BufferedFileWriter::writeEvent(void* data, size_t size, XtcData::TimeStamp timestamp)
+void BufferedFileWriter::writeEvent(const void* data, size_t size, XtcData::TimeStamp timestamp)
 {
     // cpo: uncomment these two lines to get "unbuffered" writing
-    // write(m_fd, data, size);
+    // _write(m_fd, data, size);
     // return;
 
     // triggered only when starting from scratch
@@ -94,9 +112,7 @@ void BufferedFileWriter::writeEvent(void* data, size_t size, XtcData::TimeStamp 
     // the seconds field could have "rolled over" since the last event
     if ((size > (m_buffer.size() - m_count)) || age_seconds>2) {
         ++m_writing;
-        if (write(m_fd, m_buffer.data(), m_count) == -1) {
-            // %m will be replaced by the string strerror(errno)
-            logging::error("write error: %m");
+        if (_write(m_fd, m_buffer.data(), m_count) == -1) {
             throw std::string("File writing failed");
         }
         --m_writing;
@@ -117,6 +133,7 @@ static const unsigned FIFO_DEPTH = 64;
 
 BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize) :
     m_bufferSize(bufferSize),
+    m_fd(0),
     m_batch_starttime(0,0),
     m_free(FIFO_DEPTH),
     m_pend(FIFO_DEPTH),
@@ -206,10 +223,10 @@ int BufferedFileWriterMT::close()
     return rv;
 }
 
-void BufferedFileWriterMT::writeEvent(void* data, size_t size, XtcData::TimeStamp timestamp)
+void BufferedFileWriterMT::writeEvent(const void* data, size_t size, XtcData::TimeStamp timestamp)
 {
     // cpo: uncomment these two lines to get "unbuffered" writing
-    // write(m_fd, data, size);
+    // _write(m_fd, data, size);
     // return;
 
     // triggered only when starting from scratch
@@ -260,9 +277,7 @@ void BufferedFileWriterMT::run()
         }
         Buffer& b = m_pend.front();
         ++m_writing;
-        if (write(m_fd, b.p, b.count) == -1) {
-            // %m will be replaced by the string strerror(errno)
-            logging::error("write error: %m");
+        if (_write(m_fd, b.p, b.count) == -1) {
             throw std::string("File writing failed");
         }
         --m_writing;
@@ -271,6 +286,62 @@ void BufferedFileWriterMT::run()
         m_free.push(b);
         m_depth = m_free.count();
     }
+}
+
+BufferedMultiFileWriterMT::BufferedMultiFileWriterMT(size_t bufferSize,
+                                                     size_t numFiles) :
+    m_index(0)
+{
+    while (numFiles--) {
+        m_fileWriters.push_back(std::make_unique<BufferedFileWriterMT>(bufferSize));
+    }
+}
+
+
+BufferedMultiFileWriterMT::~BufferedMultiFileWriterMT()
+{
+}
+
+int BufferedMultiFileWriterMT::open(const std::string& fileName)
+{
+  auto& fn(fileName);
+  auto dot = fn.find_last_of(".");
+  if (dot == std::string::npos)  {
+      logging::error("No '.' found in file spec '%s'", fileName.c_str());
+      return -1;
+  }
+  auto base(fn.substr(0, dot));
+  auto ext(fn.substr(dot));
+  int rv = -1;
+  unsigned i = 0;
+
+  for (auto& writer : m_fileWriters) {
+      std::ostringstream ss;
+      ss << base << "-i" << std::setfill('0') << std::setw(2) << i++ << ext;
+      rv = writer->open(ss.str());
+      if (rv)  break;
+      logging::debug("Opened file '%s'", ss.str().c_str());
+      ss.seekp(0).clear();
+  }
+  return rv;
+}
+
+
+int BufferedMultiFileWriterMT::close()
+{
+  int rv = 0;
+
+  for (auto& writer : m_fileWriters) {
+      rv = writer->close();
+      if (rv)  break;
+  }
+  return rv;
+}
+
+void BufferedMultiFileWriterMT::writeEvent(const void* data, size_t size, XtcData::TimeStamp timestamp)
+{
+  m_fileWriters[m_index]->writeEvent(data, size, timestamp);
+  m_index = (m_index + 1) % m_fileWriters.size();
 }
 
 SmdWriter::SmdWriter(size_t bufferSize) : BufferedFileWriter(bufferSize)
