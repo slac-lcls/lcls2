@@ -165,7 +165,9 @@ void MonTracker::process(const pvac::MonitorEvent& evt)
         //std::cout<<"Event "<<name()<<" "<<fld
         //         <<" Changed:"<<_mon.changed
         //         <<" overrun:"<<_mon.overrun<<"\n";
+        auto strct = _strct;
         _strct = _mon.root;
+        if (!strct && _strct)  onConnect();
         updated();
       }
       if(n==2) {
