@@ -1,0 +1,88 @@
+# A test CA PV
+#*a_test_CA_PV
+#claus:ca:arch:vec1   ca
+
+# A good test PVA PV and alias
+*a_test_PVA_PV
+claus:pva:arch:vec1  pva
+
+# Should get duplicate PV error
+*a_2nd_test_PVA_PV
+claus:pva:arch:vec1  pva
+
+# Should get bad character in alias error for '.'
+*a_bad_test_PVA_PV_1.0
+claus:pva:arch:vec2  pva
+
+# Should get bad character in alias error for '1'
+*1_bad_test_PVA_PV
+claus:pva:arch:vec3  pva
+
+# Should get missing alias error
+claus:pva:arch:vec4  pva
+
+# Should get missing alias error
+#*
+claus:pva:arch:vec5  pva
+
+# Should give alias 'vec6'
+#* descr6
+* vec6
+claus:pva:arch:vec6  pva
+
+# Should give alias 'vec7'
+* descr7
+#* vec7
+claus:pva:arch:vec7  pva
+
+# Should get bad character in alias error for ' '
+*alias1 alias2
+claus:pva:arch:vec8  pva
+
+# Should get bad character in alias error for '.'
+*Pneu.RVAL
+OTRS:DMPS:695:FLT1_PNEU.RVAL
+
+# Should be a good PV and alias
+* XPM_RecClk
+DAQ:LAB2:XPM:1:RecClk pva
+
+# Should get duplicate alias error
+*XPM_RecClk
+DAQ:LAB2:XPM:2:RecClk pva
+
+# Should get an error for the bad provider
+*XPM_0_RecClk
+DAQ:LAB2:XPM:0:RecClk aBadProvider
+
+# A proper PV and alias
+* some_pv
+Some_PV
+
+# Should give 'alias == existing PV' error
+* Some_PV
+Some:PV
+
+# A proper PV and alias
+* A_PV
+A:PV
+
+# Should give 'PV == existing alias' error
+* a_pv
+A_PV
+
+# Should give missing file error
+#< epicsArch_noFile.txt
+
+
+#< epicsArch_modCa1.txt
+#< epicsArch_modCa2.txt
+
+* EM1K0_GMD
+EM1K0:GMD:HPS:STR0:STREAM_SHORT1 ca
+
+* Manta_pva
+TST:GIGE:RIX:01:IMAGE1:Pva:Image pva
+
+* Manta_ca
+TST:GIGE:RIX:01:IMAGE1:ArrayData ca
