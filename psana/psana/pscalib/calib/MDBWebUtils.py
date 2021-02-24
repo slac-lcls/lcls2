@@ -300,6 +300,10 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
     """
     ctype=None
     db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
+
+    #print('YYYY db_det, db_exp, colname, query', db_det, db_exp, colname, query)
+
+
     dbname = db_det if exp is None else db_exp
     docs = find_docs(dbname, colname, query, url)
     #logger.debug('find_docs: number of docs found: %d' % len(docs))
@@ -400,7 +404,7 @@ def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADE
     dbname_exp = mu.db_prefixed_name(exp)
     dbname_det = mu.db_prefixed_name(detname)
 
-    #kwargs['detector'] = detname # ex: epixquad
+    kwargs['detector']  = detname # ex: epix10ka_000001
     kwargs['shortname'] = detname # ex: epix10ka_000001
     kwargs['longname']  = det     # ex: epix10ka_<detector-id>
 
