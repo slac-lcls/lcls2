@@ -212,10 +212,10 @@ def proc_dark_block(block, **opts):
     nrecs, ny, nx = block.shape
     shape = (ny, nx)
 
-    arr0       = np.zeros(shape, dtype=np.int64)
-    arr1       = np.ones (shape, dtype=np.int64)
+    #arr0       = np.zeros(shape, dtype=np.uint64)
+    arr1       = np.ones (shape, dtype=np.uint64)
 
-    arr_sum0   = np.zeros(shape, dtype=np.int64)
+    arr_sum0   = np.zeros(shape, dtype=np.uint64)
     arr_sum1   = np.zeros(shape, dtype=np.double)
     arr_sum2   = np.zeros(shape, dtype=np.double)
 
@@ -251,16 +251,16 @@ def proc_dark_block(block, **opts):
 
     # 2nd loop over recs in block to evaluate gated parameters
 
-    sta_int_lo = np.zeros(shape, dtype=np.int64)
-    sta_int_hi = np.zeros(shape, dtype=np.int64)
+    sta_int_lo = np.zeros(shape, dtype=np.uint64)
+    sta_int_hi = np.zeros(shape, dtype=np.uint64)
 
     arr_max = np.zeros(shape, dtype=block.dtype)
-    arr_min = np.ones (shape, dtype=block.dtype) * 0x3ffff
+    arr_min = np.ones (shape, dtype=block.dtype) * 0x3fff
 
     gate_hi = np.minimum(arr_av1 + gate_half, gate_hi).astype(dtype=raw.dtype)
     gate_lo = np.maximum(arr_av1 - gate_half, gate_lo).astype(dtype=raw.dtype)
 
-    arr_sum0 = np.zeros(shape, dtype=np.int64)
+    arr_sum0 = np.zeros(shape, dtype=np.uint64)
     arr_sum1 = np.zeros(shape, dtype=np.double)
     arr_sum2 = np.zeros(shape, dtype=np.double)
 
@@ -312,7 +312,7 @@ def proc_dark_block(block, **opts):
                )
 
     #0/1/2/4/8/16/32 for good/hot-rms/saturated/cold/cold-rms/average above limit/average below limit, 
-    arr_sta = np.zeros(shape, dtype=np.int64)
+    arr_sta = np.zeros(shape, dtype=np.uint64)
     arr_sta += arr_sta_rms_hi    # hot rms
     arr_sta += arr_sta_rms_lo*2  # cold rms
     arr_sta += arr_sta_int_hi*4  # satturated
@@ -536,7 +536,7 @@ def pedestals_calibration(*args, **opts):
         shape_block = [nbs,] + list(sh) # [nbs, <number-of-segments>, 352, 384]
         logger.info('Accumulate raw frames in block shape = %s' % str(shape_block))
 
-        block=np.zeros(shape_block,dtype=np.int16)
+        block=np.zeros(shape_block,dtype=np.uint16)
         nrec,nevt = -1,0
 
         for nevt,evt in enumerate(step.events()):
@@ -551,7 +551,7 @@ def pedestals_calibration(*args, **opts):
                 #if raw.ndim > 2: raw=raw[idx,:]
                 nrec += 1
                 if do_print: logger.info(info_ndarr(raw & ue.M14, 'Ev:%04d rec:%04d raw & M14 ' % (nevt,nrec)))
-                block[nrec]=raw & ue.M14
+                block[nrec]=(raw & ue.M14)
 
         print_statistics(nevt, nrec)
 
