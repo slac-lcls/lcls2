@@ -84,7 +84,8 @@ procmgr_config = [
  { host: 'drp-neh-cmp015', id:'xgmdstr1_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x4 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT1'}, # Electron 2 waveforms
  { host: 'drp-neh-cmp015', id:'xgmdstr2_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x8 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT2'}, # Ion waveforms
 
- { host: 'drp-neh-cmp002', id:'opal_0',      flags:'spu', env:opal_epics_env, cmd:pva_cmd1+' -l 0x1 IM2K0:XTES:CAM:IMAGE1:Pva:Image -k pebbleBufSize=2097240'},
+ { host: 'drp-neh-cmp002', id:'opal_0',      flags:'spu', env:opal_epics_env, cmd:pva_cmd1+' -l 0x1 IM2K0:XTES:CAM:IMAGE1:Pva:Image -k pebbleBufSize=2097240 -k match_tmo_ms=1333'},
+# { host: 'drp-neh-cmp002', id:'opal_0',      flags:'spu', env:opal_epics_env, cmd:pva_cmd1+' -l 0x1 ca/IM2K0:XTES:CAM:IMAGE1:ArrayData -k firstdim=1024 -k pebbleBufSize=2097240 -k match_tmo_ms=1333'},
 ]
 
 procmgr_ami = [
