@@ -268,20 +268,29 @@ def test_calib(args):
 
 def test_image(args):
 
+    import psana.detector.UtilsEpix10ka as ue
+
     ds, run, det = ds_run_det(args)
     flimg = None
+      
+    is_epix10ka = 'epix' in det.raw._uniqueid
+    dcfg = ue.config_object_epix10ka(det) if is_epix10ka else None
 
     break_event_loop = False
 
     for stepnum,step in enumerate(run.steps()):
       print('%s\nStep %1d' % (50*'_',stepnum))
 
+      if args.stepsel is not None and stepnum != args.stepsel:
+          print('  skip - step selected in option -M is %1d' % (args.stepsel))
+          continue
+
       for evnum,evt in enumerate(step.events()):
         if evnum>args.evtmax:
             print('break by number of events limit %d set in option -N' % args.evtmax)
             break_event_loop = True
             break
-        if evnum>2 and evnum%500!=0: continue
+        if evnum>2 and evnum%args.evjump!=0: continue
         print('%s\nStep %1d Event %04d' % (50*'_',stepnum, evnum))
 
         user_mask = np.ones_like(det.raw.raw(evt), dtype=DTYPE_MASK) #np.uint8
@@ -291,11 +300,18 @@ def test_image(args):
                             mbits=0o7, mask=user_mask, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)\
               if args.selcorr == 'calibcm' else\
               det.raw.calib(evt) if args.selcorr == 'calib' else\
-              det.raw.raw(evt)
+              (det.raw.raw(evt) & args.bitmask)
+
+              #det.raw.raw(evt)
         if args.selcorr == 'calibcm': arr += 1 # to see panel edges
 
         logger.info(info_ndarr(arr, 'arr '))
         if arr is None: continue
+
+        if dcfg is not None:
+            s = '    gain mode fractions for: FH       FM       FL'\
+                '       AHL-H    AML-M    AHL-L    AML-L\n%s' % (29*' ')
+            print(ue.info_pixel_gain_mode_fractions(dcfg, data=det.raw.raw(evt), msg=s))
 
         #=======================
         #arr = np.ones_like(arr)
@@ -311,9 +327,10 @@ def test_image(args):
         logger.info(info_ndarr(img, 'image '))
         if img is None: continue
 
-        alimits = (img.min(),img.max()) if args.mapmode == 4 else\
-                  None if args.mapmode else\
-                  (0,4)
+        #alimits = (img.min(),img.max()) if args.mapmode == 4 else\
+        #          None if args.mapmode else\
+        #          (0,4)
+        alimits = None
 
         if args.dograph:
 
@@ -419,6 +436,9 @@ if __name__ == "__main__":
     d_mapmode = 1
     d_pscsize = 100
     d_evtmax  = 1000
+    d_evjump  = 100
+    d_stepsel = None
+    d_bitmask = 0xffff
 
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
@@ -438,7 +458,10 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--ofname',  default=d_ofname,  type=str, help='output image file name, def=%s' % d_ofname)
     parser.add_argument('-m', '--mapmode', default=d_mapmode, type=int, help=h_mapmode)
     parser.add_argument('-N', '--evtmax',  default=d_evtmax,  type=int, help='maximal number of events, def=%s' % d_evtmax)
+    parser.add_argument('-j', '--evjump',  default=d_evjump,  type=int, help='number of events to jump, def=%s' % d_evjump)
     parser.add_argument('-s', '--pscsize', default=d_pscsize, type=float, help='pixel scale size [um], def=%.1f' % d_pscsize)
+    parser.add_argument('-M', '--stepsel', default=d_stepsel, type=int, help='step selected to show or None for all, def=%s' % d_stepsel)
+    parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int, help='bitmask for raw 0x3fff=16383, def=%s' % hex(d_bitmask))
 
     args = parser.parse_args()
     kwa = vars(args)
