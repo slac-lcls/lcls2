@@ -4,8 +4,11 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
-
+#include <regex>
+#include "psalg/utils/SysLog.hh"
 #include "PvConfigFile.hh"
+
+using logging = psalg::SysLog;
 
 using std::string;
 using std::stringstream;
@@ -41,19 +44,18 @@ int PvConfigFile::_readConfigFile(const std::string & sFnConfig,
                                   TPvList & vPvList, std::string & sConfigFileWarning, int maxDepth)
 {
   if (maxDepth <= 0) {
-    printf("%s: exceeded maximum include depth (%d)\n", __FUNCTION__, _iMaxDepth);
-    printf("skipping file %s\n", sFnConfig.c_str());
+    logging::warning("exceeded maximum include depth (%d)", _iMaxDepth);
+    logging::warning("skipping file %s", sFnConfig.c_str());
     return 1;
   }
 
   std::ifstream ifsConfig(sFnConfig.c_str());
   if (!ifsConfig) {
-    printf("failed to open file %s\n", sFnConfig.c_str());
+    logging::error("failed to open file %s", sFnConfig.c_str());
     return 1;     // Cannot open file
   }
-  if (_verbose) {
-    printf("processing file %s\n", sFnConfig.c_str());
-  }
+  logging::debug("processing file %s", sFnConfig.c_str());
+
   string sFnPath;
   size_t uOffsetPathEnd = sFnConfig.find_last_of('/');
   if (uOffsetPathEnd != string::npos)
@@ -61,6 +63,7 @@ int PvConfigFile::_readConfigFile(const std::string & sFnConfig,
 
   int iLineNumber = 0;
 
+  int nErrors = 0;
   string sPvDescription;
   while (!ifsConfig.eof())
   {
@@ -69,7 +72,7 @@ int PvConfigFile::_readConfigFile(const std::string & sFnConfig,
     std::getline(ifsConfig, sLine);
 
     if (sLine[0] == '*' ||
-      (sLine[0] == '#' && sLine.size() > 1 && sLine[1] == '*') ) // description line
+      (sLine[0] == '#' && sLine.size() > 1 && sLine[1] == '*') ) // alias line
     {
       _getPvDescription(sLine, sPvDescription);
       continue;
@@ -97,8 +100,8 @@ int PvConfigFile::_readConfigFile(const std::string & sFnConfig,
         int iFail = _readConfigFile(sFnRef, vPvList, sConfigFileWarning, maxDepth - 1);
         if (iFail != 0)
         {
-          printf("%s: Invalid file reference \"%s\", in file \"%s\":line %d\n",
-                 __FUNCTION__, sFnRef.c_str(), sFnConfig.c_str(), iLineNumber);
+          logging::error("Error in file \"%s\", included from \"%s\":line %d",
+                         sFnRef.c_str(), sFnConfig.c_str(), iLineNumber);
           return 1;
         }
       }
@@ -109,13 +112,12 @@ int PvConfigFile::_readConfigFile(const std::string & sFnConfig,
     int iError = _addPv(sLine, sPvDescription, vPvList, bAddPv, sFnConfig, iLineNumber, sConfigFileWarning);
 
     if (iError != 0)
-      return 1;
-
-    if (!bAddPv)
+      ++nErrors;
+    else if (!bAddPv)
       sPvDescription.clear();
   }
 
-  return 0;
+  return nErrors;
 }
 
 int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
@@ -134,8 +136,7 @@ int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
 
   if ((int) vPvList.size() >= _iMaxNumPv)
   {
-    printf("%s: Pv number > maximal allowable value (%d)\n",
-           __FUNCTION__, _iMaxNumPv);
+    logging::error("PV number > maximal allowable value (%d)", _iMaxNumPv);
     return 1;
   }
 
@@ -160,9 +161,9 @@ int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
       else
       {
         char strMessage[256];
-        snprintf(strMessage, sizeof(strMessage), "PV %s: Unrecognized provider '%s'; choose from 'ca' or 'pva'\n",
-                sPvName.c_str(), &sPvLine.c_str()[uOffsetInterval]);
-        printf("%s: %s\n", __FUNCTION__, strMessage);
+        snprintf(strMessage, sizeof(strMessage), "PV %s: Unrecognized provider '%s' (must be 'ca' or 'pva')",
+                 sPvName.c_str(), &sPvLine.c_str()[uOffsetInterval]);
+        logging::error("%s, in file \"%s\":line %d", strMessage, sFnConfig.c_str(), iLineNumber);
         sConfigFileWarning = strMessage;
         return 0;
       }
@@ -172,8 +173,8 @@ int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
   if ( _setPvName.find(sPvName) != _setPvName.end() )
   {
     char strMessage[256];
-    snprintf(strMessage, sizeof(strMessage), "Duplicated PV name %s", sPvName.c_str());
-    printf("%s: %s\n", __FUNCTION__, strMessage);
+    snprintf(strMessage, sizeof(strMessage), "Duplicated PV name \"%s\"", sPvName.c_str());
+    logging::warning("%s, in file \"%s\":line %d", strMessage, sFnConfig.c_str(), iLineNumber);
     sConfigFileWarning = strMessage;
     return 0;
   }
@@ -181,8 +182,8 @@ int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
   if ( _setPvDescription.find(sPvName) != _setPvDescription.end() )
   {
     char strMessage[256];
-    snprintf(strMessage, sizeof(strMessage), "PV name %s was used as another PV's description", sPvName.c_str());
-    printf("%s: %s\n", __FUNCTION__, strMessage);
+    snprintf(strMessage, sizeof(strMessage), "PV name \"%s\" was used as another PV's alias", sPvName.c_str());
+    logging::error("%s, in file \"%s\":line %d", strMessage, sFnConfig.c_str(), iLineNumber);
     sConfigFileWarning = strMessage;
     return 1;
   }
@@ -193,8 +194,8 @@ int PvConfigFile::_addPv(const string & sPvLine, string & sPvDescription,
   if ( _setPvName.find(sPvDescriptionUpdate) != _setPvName.end() )
   {
     char strMessage[256];
-    snprintf(strMessage, sizeof(strMessage), "PV name %s was used as another PV's description", sPvDescriptionUpdate.c_str());
-    printf("%s: %s\n", __FUNCTION__, strMessage);
+    snprintf(strMessage, sizeof(strMessage), "Alias %s was used as another PV's name", sPvDescriptionUpdate.c_str());
+    logging::error("%s, in file \"%s\":line %d", strMessage, sFnConfig.c_str(), iLineNumber);
     sConfigFileWarning = strMessage;
     return 1;
   }
@@ -280,30 +281,45 @@ int PvConfigFile::_updatePvDescription(const std::string& sPvName, const std::st
   {
     if ( _setPvDescription.find(sPvDescription) == _setPvDescription.end() )
     {
-      _setPvDescription.insert(sPvDescription);
-      return 0;
+      if (std::regex_match(sPvDescription, std::regex("[a-zA-Z_][a-zA-Z_0-9]*")))
+      {
+        _setPvDescription.insert(sPvDescription);
+        return 0;
+      }
+      std::smatch sm;
+      std::regex_search(sPvDescription, sm, std::regex("[a-zA-Z_][a-zA-Z_0-9]*"));
+      snprintf( strMessage, sizeof(strMessage), "Invalid character '%c' in alias \"%s\"",
+                sPvDescription.c_str()[sm.position() != 0 ? 0 : sm.length()], sPvDescription.c_str());
+      logging::error("%s, in file \"%s\":line %d\n", strMessage, sFnConfig.c_str(), iLineNumber);
+      return 1;
     }
-    snprintf( strMessage, sizeof(strMessage), "%s has duplicated title \"%s\".", sPvName.c_str(), sPvDescription.c_str());
-    sPvDescription  += '-' + sPvName;
+    else
+    {
+      snprintf( strMessage, sizeof(strMessage), "%s has duplicated alias \"%s\"", sPvName.c_str(), sPvDescription.c_str());
+      // This could result in a bad alias:
+      //sPvDescription  += '-' + sPvName;
+    }
   }
   else
   {
-    sPvDescription = sPvName;
-    snprintf( strMessage, sizeof(strMessage), "%s has no title.", sPvName.c_str());
+    // This could result in a bad alias:
+    //sPvDescription = sPvName;
+    snprintf( strMessage, sizeof(strMessage), "%s is missing an alias", sPvName.c_str());
+    logging::error("%s, in file \"%s\":line %d\n", strMessage, sFnConfig.c_str(), iLineNumber);
+    return 1;
   }
 
-  if ( _setPvDescription.find(sPvDescription) == _setPvDescription.end() )
-  {
-    snprintf(strMessage2, sizeof(strMessage2), "%s\nUse \"%s\"\n", strMessage, sPvDescription.c_str() );
-    if (_verbose) {
-      printf("%s: %s", __FUNCTION__, strMessage2);
-    }
-    if (sConfigFileWarning.empty())
-      sConfigFileWarning = strMessage2;
-
-    _setPvDescription.insert(sPvDescription);
-    return 0;
-  }
+  // This is now obsolete since the alias is no longer updated above
+  //if ( _setPvDescription.find(sPvDescription) == _setPvDescription.end() )
+  //{
+  //  snprintf(strMessage2, sizeof(strMessage2), "%s\nUsing \"%s\"", strMessage, sPvDescription.c_str() );
+  //  logging::debug("%s, in file \"%s\":line %d", strMessage2, sFnConfig.c_str(), iLineNumber);
+  //  if (sConfigFileWarning.empty())
+  //    sConfigFileWarning = strMessage2;
+  //
+  //  _setPvDescription.insert(sPvDescription);
+  //  return 0;
+  //}
 
   static const int iMaxPvSerial = 10000;
   for (int iPvSerial = 2; iPvSerial < iMaxPvSerial; ++iPvSerial)
@@ -312,16 +328,14 @@ int PvConfigFile::_updatePvDescription(const std::string& sPvName, const std::st
     sNumber << iPvSerial;
 
     string sPvDesecriptionNew;
-    sPvDesecriptionNew = sPvDescription + '-' + sNumber.str();
+    sPvDesecriptionNew = sPvDescription + '_' + sNumber.str();
 
     if ( _setPvDescription.find(sPvDesecriptionNew) == _setPvDescription.end() )
     {
       sPvDescription = sPvDesecriptionNew;
 
-      snprintf(strMessage2, sizeof(strMessage2), " %s Use %s\n", strMessage, sPvDescription.c_str() );
-      if (_verbose) {
-        printf("%s: %s", __FUNCTION__, strMessage2);
-      }
+      snprintf(strMessage2, sizeof(strMessage2), "%s.  Using %s.", strMessage, sPvDescription.c_str() );
+      logging::debug("%s, in file \"%s\":line %d\n  Using %s", strMessage, sFnConfig.c_str(), iLineNumber, sPvDescription.c_str() );
       if (sConfigFileWarning.empty())
         sConfigFileWarning = strMessage2;
 
@@ -330,11 +344,11 @@ int PvConfigFile::_updatePvDescription(const std::string& sPvName, const std::st
     }
   }
 
-  printf("%s: Cannot generate proper PV name for %s (%s).\n",
-    __FUNCTION__, sPvDescription.c_str(), sPvName.c_str());
+  logging::error("Cannot generate proper PV alias for %s (%s).",
+                 sPvDescription.c_str(), sPvName.c_str());
 
-  snprintf(strMessage2, sizeof(strMessage2), "%s No proper title found.\n", strMessage);
-  printf("%s: %s", __FUNCTION__, strMessage2);
+  snprintf(strMessage2, sizeof(strMessage2), "%s.  No proper alias found.", strMessage);
+  logging::error("%s, in file \"%s\":line %d\n  No proper alias found.", strMessage, sFnConfig.c_str(), iLineNumber);
   sConfigFileWarning = strMessage2;
 
   return 1;
