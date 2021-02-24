@@ -138,6 +138,13 @@ void PvaMonitor::onConnect()
 void PvaMonitor::onDisconnect()
 {
     logging::info("%s disconnected", name().c_str());
+
+    // Try to bring the connection up again
+    printf("*** Calling disconnect()\n");
+    disconnect();
+    m_state = NotReady;
+    printf("*** Calling reconnect()\n");
+    reconnect();
 }
 
 void PvaMonitor::updated()
@@ -340,7 +347,7 @@ PvaDetector::PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonit
     m_drp           (drp),
     m_pvaMonitor    (pvaMonitor),
     m_pgpQueue      (drp.pool.nbuffers()),
-    m_pvQueue       (8),                  // Revisit size
+    m_pvQueue       (drp.pool.nbuffers()),
     m_bufferFreelist(m_pvQueue.size()),
     m_terminate     (false),
     m_running       (false),
@@ -523,7 +530,7 @@ void PvaDetector::_worker()
 
     const uint64_t msTmo = m_para->kwargs.find("match_tmo_ms") != m_para->kwargs.end()
                          ? std::stoul(m_para->kwargs["match_tmo_ms"])
-                         : 100;
+                         : 1333; // Avoid event rate multiples and factors
 
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
