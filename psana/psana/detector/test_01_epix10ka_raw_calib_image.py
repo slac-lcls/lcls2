@@ -272,7 +272,7 @@ def test_image(args):
 
     ds, run, det = ds_run_det(args)
     flimg = None
-      
+
     is_epix10ka = 'epix' in det.raw._uniqueid
     dcfg = ue.config_object_epix10ka(det) if is_epix10ka else None
 
