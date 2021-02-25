@@ -147,6 +147,8 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
     pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSel.set(1)
     pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
 
+    epixquad_internal_trigger(base)
+
     return base
 
 #
@@ -255,6 +257,10 @@ def user_to_expert(base, cfg, full=False):
 #  Apply the cfg dictionary settings
 #
 def config_expert(base, cfg, writePixelMap=True):
+
+    #  Disable internal triggers during configuration
+    epixquad_external_trigger(base)
+
     # Clear the pipeline
     #getattr(pbase.DevPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(True)
 
@@ -365,7 +371,8 @@ def config_expert(base, cfg, writePixelMap=True):
         retry(saci.IsEn.set,False)
         retry(saci.enable.set,False)
 
-    epixquad_disable(base)
+    #  Enable triggers to continue monitoring
+    epixquad_internal_trigger(base)
 
     print('config_expert complete')
 
@@ -452,6 +459,7 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     for i in seglist:
         print('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
         result.append( json.dumps(scfg[i]) )
+
     return result
 
 def epixquad_unconfig(base):
@@ -576,6 +584,9 @@ def epixquad_update(update):
 #  Check that ADC startup has completed successfully
 #
 def _checkADCs():
+
+    epixquad_external_trigger(base)
+
     cbase = base['cam']
     tmo = 0
     while True:
@@ -593,6 +604,9 @@ def _checkADCs():
         if cbase.SystemRegs.AdcTestDone.get()==1:
             break
     print(f'Adc Test Done after {tmo} cycles')
+
+    epixquad_internal_trigger(base)
+
     return 0
 
 def _resetSequenceCount():
@@ -603,7 +617,7 @@ def _resetSequenceCount():
     cbase.AcqCore.AcqCountReset.set(0)
     cbase.RdoutCore.SeqCountReset.set(0)
 
-def epixquad_enable(base):
+def epixquad_external_trigger(base):
     cbase = base['cam']
     #  Switch to external triggering
     cbase.SystemRegs.AutoTrigEn.set(0)
@@ -611,10 +625,16 @@ def epixquad_enable(base):
     #  Enable frame readout
     cbase.RdoutCore.RdoutEn.set(1)
 
-def epixquad_disable(base):
+def epixquad_internal_trigger(base):
     cbase = base['cam']
     #  Disable frame readout
     cbase.RdoutCore.RdoutEn.set(0)
     #  Switch to internal triggering
     cbase.SystemRegs.TrigSrcSel.set(3)
     cbase.SystemRegs.AutoTrigEn.set(1)
+
+def epixquad_enable(base):
+    epixquad_external_trigger(base)
+
+def epixquad_disable(base):
+    epixquad_internal_trigger(base)
