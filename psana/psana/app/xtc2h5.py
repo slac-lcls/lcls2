@@ -16,7 +16,7 @@ ds = DataSource(exp=exp,run=runnum)
 outfile='/cds/data/psdm/xpp/xpptut15/scratch/cpo/run'+str(runnum)+'.h5'
 smd = ds.smalldata(filename=outfile, batch_size=5)
 
-def get_public_attrs(mydict, obj, evt, name, epics):
+def fill_dict(mydict, obj, evt, name, epics):
     mydict[name]={}
     localdict = mydict[name]
     for attrstr in dir(obj):
@@ -33,7 +33,7 @@ def get_public_attrs(mydict, obj, evt, name, epics):
                 else:
                     localdict[attrstr] = val
         else:
-            get_public_attrs(localdict,attr,evt,attrstr,epics)
+            fill_dict(localdict,attr,evt,attrstr,epics)
 
 for myrun in ds.runs():
     detnames = myrun.detinfo.keys()
@@ -46,10 +46,10 @@ for myrun in ds.runs():
     for nevt,evt in enumerate(myrun.events()):
         mydict = {}
         for name,det in dets:
-            get_public_attrs(mydict, det, evt, name, False)
+            fill_dict(mydict, det, evt, name, False)
         mydict['epics'] = {}
         for name,det in epicsdets:
-            get_public_attrs(mydict['epics'], det, evt, name, True)
+            fill_dict(mydict['epics'], det, evt, name, True)
         smd.event(evt, mydict)
 
 smd.done()
