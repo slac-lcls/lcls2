@@ -1,3 +1,5 @@
+#include <chrono>
+
 #include "EbEpoch.hh"
 
 using namespace Pds::Eb;
@@ -14,10 +16,11 @@ using namespace Pds::Eb;
 
 void EbEpoch::dump(int number)
 {
-  printf("  Epoch #%d @ address %p is tagged as %014lX\n",
-         number, this, key);
-  printf("   Forward link -> %p, Backward link -> %p\n",
-         forward(), reverse());
+  auto now = fast_monotonic_clock::now();
+  auto age = std::chrono::duration_cast<std::chrono::milliseconds>(now - t0).count();
+
+  printf(" Epoch #%2d  @ %16p nxt %16p prv %16p key %014lx        age %5ld ms\n",
+         number, this, forward(), reverse(), key, age);
 
   EbEvent* end   = pending.empty();
   EbEvent* event = pending.forward();

@@ -130,32 +130,39 @@ EbEvent* EbEvent::_add(const EbDgram* cdg)
 
 void EbEvent::dump(int number)
 {
-  printf("   Event #%d @ address %p has sequence %014lX\n",
-         number, this, sequence());
-  printf("    Forward link -> %p, Backward link -> %p\n",
-         forward(), reverse());
-  printf("    Contributors remaining/requested = %016lX/%016lX\n",
-         _remaining, _contract);
-  printf("    Total size (in bytes) = %zd\n", _size);
-
-  const EbDgram** const  last    = end();
   const EbDgram*  const* current = begin();
   const EbDgram*         contrib = *current;
 
-  printf("    Creator (%p) was @ source %02x with an environment of 0x%08x\n",
-         contrib,
-         contrib->xtc.src.value(),
-         contrib->env);
+  auto ctl = contrib->control();
+  auto env = contrib->env;
+  auto src = contrib->xtc.src.value();
 
-  printf("    Contributors to this event:\n");
-  while(++current != last)
-  {
-    contrib = *current;
-    printf("     %p: src %02x seq %014lx size %08x env 0x%08x\n",
-           contrib,
-           contrib->xtc.src.value(),
-           contrib->pulseId(),
-           contrib->xtc.sizeofPayload(),
-           contrib->env);
-  }
+  printf("  Event #%2d @ %16p nxt %16p prv %16p seq %014lx ctl %02x env %08x sz %6zd src %2u rem %016lx req %016lx\n",
+         number, this, forward(), reverse(), sequence(), ctl, env, _size, src, _remaining, _contract);
+
+  //printf("   Event #%d @ address %p has sequence %014lX\n",
+  //       number, this, sequence());
+  //printf("    Forward link -> %p, Backward link -> %p\n",
+  //       forward(), reverse());
+  //printf("    Contributors remaining/requested = %016lX/%016lX\n",
+  //       _remaining, _contract);
+  //printf("    Total size (in bytes) = %zd\n", _size);
+  //
+  //printf("    Creator (%p) was @ source %02x with an environment of 0x%08x\n",
+  //       contrib,
+  //       contrib->xtc.src.value(),
+  //       contrib->env);
+  //
+  //const EbDgram** const  last    = end();
+  //printf("    Contributors to this event:\n");
+  //while(++current != last)
+  //{
+  //  contrib = *current;
+  //  printf("     %p: src %02x seq %014lx size %08x env 0x%08x\n",
+  //         contrib,
+  //         contrib->xtc.src.value(),
+  //         contrib->pulseId(),
+  //         contrib->xtc.sizeofPayload(),
+  //         contrib->env);
+  //}
 }

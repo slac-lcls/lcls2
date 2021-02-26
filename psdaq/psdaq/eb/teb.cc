@@ -299,9 +299,7 @@ int Teb::configure(Trigger* object,
 
 int Teb::beginrun()
 {
-  _eventCount    = 0;
-  _writeCount    = 0;
-  _monitorCount  = 0;
+  resetCounters();
   return 0;
 }
 

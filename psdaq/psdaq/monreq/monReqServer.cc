@@ -357,7 +357,7 @@ int Meb::configure()
 
 int Meb::beginrun()
 {
-  _eventCount = 0;
+  resetCounters();
 
   return 0;
 }

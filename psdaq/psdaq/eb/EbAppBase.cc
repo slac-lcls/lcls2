@@ -121,6 +121,7 @@ int EbAppBase::resetCounters()
   _bufferCnt = 0;
   if (_fixupSrc)  _fixupSrc->clear();
   if (_ctrbSrc)   _ctrbSrc ->clear();
+  EventBuilder::resetCounters();
 
   return 0;
 }
@@ -323,6 +324,24 @@ int EbAppBase::process()
     printf("EbAp rcvd %9lu %15s[%8u]   @ "
            "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, data %08lx, lnk %p, src %2u\n",
            _bufferCnt, svc, idx, idg, ctl, pid, env, lnk->id(), data, lnk, src);
+  }
+  else
+  {
+    auto svc = idg->service();
+    if (svc != XtcData::TransitionId::L1Accept) {
+      if (svc != XtcData::TransitionId::SlowUpdate) {
+        logging::info("EbAppBase  saw %s transition @ %u.%09u (%014lx)",
+                      XtcData::TransitionId::name(svc),
+                      idg->time.seconds(), idg->time.nanoseconds(),
+                      idg->pulseId());
+      }
+      else {
+        logging::debug("EbAppBase  saw %s transition @ %u.%09u (%014lx)",
+                       XtcData::TransitionId::name(svc),
+                       idg->time.seconds(), idg->time.nanoseconds(),
+                       idg->pulseId());
+      }
+    }
   }
 
   // Tr space bufSize value is irrelevant since maxEntries will be 1 for that case

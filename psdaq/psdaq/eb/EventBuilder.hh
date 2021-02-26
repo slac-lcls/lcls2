@@ -40,6 +40,7 @@ namespace Pds {
                                  const size_t        bufSize,
                                  unsigned            prm);
     public:
+      void               resetCounters();
       void               clear();
       void               dump(unsigned detail) const;
       const uint64_t&    epochAllocCnt() const;

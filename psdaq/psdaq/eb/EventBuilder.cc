@@ -60,6 +60,15 @@ EventBuilder::~EventBuilder()
 {
 }
 
+void EventBuilder::resetCounters()
+{
+  _eventFreelist.clearCounters();
+  _epochFreelist.clearCounters();
+  _tmoEvtCnt = 0;
+  _fixupCnt  = 0;
+  _missing   = 0;
+}
+
 void EventBuilder::clear()
 {
   const EbEpoch* const lastEpoch = _pending.empty();
@@ -87,11 +96,7 @@ void EventBuilder::clear()
 
   _flushBefore(_pending.reverse());
 
-  _eventFreelist.clearCounters();
-  _epochFreelist.clearCounters();
-  _tmoEvtCnt = 0;
-  _fixupCnt  = 0;
-  _missing   = 0;
+  resetCounters();
 
   for (auto it = _epochLut.begin(); it != _epochLut.end(); ++it)
     *it = nullptr;
@@ -207,9 +212,11 @@ EbEvent* EventBuilder::_event(const EbDgram* ctrb,
     return event;
   }
 
-  fprintf(stderr, "%s:\n  Unable to allocate event\n", __PRETTY_FUNCTION__);
-  printf("  eventFreelist:\n");
-  _eventFreelist.dump();
+  fprintf(stderr, "%s:\n  Unable to allocate event: %15s %014lx\n",
+          __PRETTY_FUNCTION__, TransitionId::name(ctrb->service()), ctrb->pulseId());
+  //printf("  eventFreelist:\n");
+  //_eventFreelist.dump();
+  dump(1);
   throw "Unable to allocate event";
 }
 
