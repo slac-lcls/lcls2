@@ -30,9 +30,9 @@ def epixquad_cdict():
     top.set("user.gain_mode",      0, 'gainEnum')  
 
     # timing system
-    top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].PauseThreshold',16,'UINT32')
-    top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].TriggerDelay',42,'UINT32')
-    top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition',0,'UINT32')
+    top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.PauseThreshold',16,'UINT32')
+    top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay',42,'UINT32')
+    top.set('expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition',0,'UINT32')
 
     top.define_enum('rateEnum', {'929kHz':0, '71kHz':1, '10kHz':2, '1kHz':3, '100Hz':4, '10Hz':5, '1Hz':6})
     top.set('expert.DevPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.Config_L0Select_RateSel',6,'rateEnum')
@@ -70,9 +70,9 @@ def epixquad_cdict():
     top.set(base+'AsicRoClkValue', 0, 'boolEnum')
     top.set(base+'AsicSyncInjEn', 1, 'boolEnum')
     top.set(base+'AsicSyncInjDly', 0x3e8, 'UINT32')
-    top.set(base+'DbgOutSel[0]', 0, 'UINT32')
-    top.set(base+'DbgOutSel[1]', 0, 'UINT32')
-    top.set(base+'DbgOutSel[2]', 0, 'UINT32')
+    top.set(base+'DbgOutSel0', 0, 'UINT32')
+    top.set(base+'DbgOutSel1', 0, 'UINT32')
+    top.set(base+'DbgOutSel2', 0, 'UINT32')
     top.set(base+'DummyAcqEn', 0, 'boolEnum')  # ghost correction?
 
     base = 'expert.EpixQuad.RdoutCore.'
@@ -101,7 +101,7 @@ def epixquad_cdict():
     top.set(base+'VguardDacRaw', 0, 'UINT16')
 
     for i in range(16):
-        base = 'expert.EpixQuad.Epix10kaSaci[{}].'.format(i)
+        base = 'expert.EpixQuad.Epix10kaSaci{}.'.format(i)
         top.set(base+'CompTH_DAC', 0x22, 'UINT8')
         top.set(base+'CompEn0', 0, 'UINT8')
         top.set(base+'CompEn1', 1, 'UINT8')
@@ -242,4 +242,5 @@ if __name__ == "__main__":
 
     top = epixquad_cdict()
     top.setInfo('epix10kaquad', args.name, args.segm, args.id, 'No comment')
+
     mycdb.modify_device(args.alias, top)

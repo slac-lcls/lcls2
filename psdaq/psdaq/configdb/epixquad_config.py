@@ -55,14 +55,19 @@ def retry(cmd,val):
 #  Apply the configuration dictionary to the rogue registers
 #
 def apply_dict(pathbase,base,cfg):
+    rogue_translate = {'TriggerEventBuffer' : f'TriggerEventBuffer[{lane}]',
+                       f'Epix10kaSaci{i}'   : f'Epix10kaSaci[{i}]' for i in range(16),
+                       f'DbgOutSel{i}'      : f'DbgOutSel[{i}]' for i in range(3)}
+
     depth = 0
     my_queue  =  deque([[pathbase,depth,base,cfg]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
     while(my_queue):
         path,depth,rogue_node, configdb_node = my_queue.pop()
         if(dict is type(configdb_node)):
             for i in configdb_node:
+                k = rogue_translate[i] if i in rogue_translate else i
                 try:
-                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[i],configdb_node[i]])
+                    my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[k],configdb_node[i]])
                 except KeyError:
                     print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
 
@@ -70,16 +75,14 @@ def apply_dict(pathbase,base,cfg):
         if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not pathbase ):
 #            if False:
             if (('Saci' in path and 'PixelDummy' in path) or
-                ('Saci[3]' in path and 'CompEn' in path) or
-                ('Saci[3]' in path and 'Preamp' in path) or
-                ('Saci[3]' in path and 'MonostPulser' in path) or
-                ('Saci[3]' in path and 'PulserDac' in path)):
+                ('Saci3' in path and 'CompEn' in path) or
+                ('Saci3' in path and 'Preamp' in path) or
+                ('Saci3' in path and 'MonostPulser' in path) or
+                ('Saci3' in path and 'PulserDac' in path)):
                 print(f'NOT setting {path} to {configdb_node}')
             else:
                 print(f'Setting {path} to {configdb_node}')
-                #rogue_node.set(configdb_node)
                 retry(rogue_node.set,configdb_node)
-#                time.sleep(0.0001)
 
 #
 #  Construct an asic pixel mask with square spacing
@@ -104,7 +107,6 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
     print('epixquad_init')
 
     base = {}
-#    base['log'] = open('config.log','w')
 
     #  Configure the PCIe card first (timing, datavctap)
     if True:
@@ -127,18 +129,15 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
 
         # Open a new thread here
         if xpmpv is not None:
-            #pbase.DevPcie.Hsio.TimingRx.ConfigureXpmMini()
             pv = PVCtrls(xpmpv,pbase.DevPcie.Hsio.TimingRx.XpmMiniWrapper)
             pv.start()
         else:
-            #pbase.DevPcie.Hsio.TimingRx.ConfigLclsTimingV2()
             time.sleep(0.1)
         base['pci'] = pbase
 
     #  Connect to the camera
     cbase = ePixQuad.Top(dev=dev,hwType='datadev',lane=lane,pollEn=False,
                          enVcMask=0x2,enWriter=False,enPrbs=False)
-    #dumpvars('cbase',cbase)
     cbase.__enter__()
     base['cam'] = cbase
 
@@ -177,15 +176,6 @@ def epixquad_connect(base):
     else:
         rxId = 0xffffffff
 
-    # fetch the serial number
-    # SystemRegs->CarrierIdLow/High[0:3]
-    # {"DigitalCardId0"},
-    # {"DigitalCardId1"},
-    # {"AnalogCardId0"},
-    # {"AnalogCardId1"},
-    # {"CarrierId0"},
-    # {"CarrierId1"}
-    # 0x30-0x33,0x3b-0x3c
 
     epixquadid = '-'
 
@@ -218,7 +208,7 @@ def user_to_expert(base, cfg, full=False):
             print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
             raise ValueError('triggerDelay computes to < 0')
 
-        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[{lane}].TriggerDelay']=triggerDelay
+        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
 
     if (hasUser and 'gate_ns' in cfg['user']):
         triggerWidth = int(cfg['user']['gate_ns']/10)
@@ -229,7 +219,7 @@ def user_to_expert(base, cfg, full=False):
         d[f'expert.EpixQuad.AcqCore.AsicAcqWidth']=triggerWidth
 
     if full:
-        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[{lane}].Partition']=group
+        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition']=group
 
     pixel_map_changed = False
     a = None
@@ -244,7 +234,7 @@ def user_to_expert(base, cfg, full=False):
             a  = (np.array(ocfg['user']['pixel_map'],dtype=np.uint8) & 0x3) | mapv
             a = a.reshape(-1).tolist()
             for i in range(16):
-                d[f'expert.EpixQuad.Epix10kaSaci[{i}].trbit'] = trbit
+                d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
         print('pixel_map len {}'.format(len(a)))
         d['user.pixel_map'] = a
         pixel_map_changed = True
@@ -261,9 +251,6 @@ def config_expert(base, cfg, writePixelMap=True):
     #  Disable internal triggers during configuration
     epixquad_external_trigger(base)
 
-    # Clear the pipeline
-    #getattr(pbase.DevPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(True)
-
     # overwrite the low-level configuration parameters with calculations from the user configuration
     pbase = base['pci']
     if ('expert' in cfg and 'DevPcie' in cfg['expert']):
@@ -278,8 +265,6 @@ def config_expert(base, cfg, writePixelMap=True):
     for i in asics:
         print(f'Enabling ASIC {i}')
         saci = cbase.Epix10kaSaci[i]
-        #saci.enable.set(True)  # Saci disabled by default!
-        #saci.IsEn.set(True)
         retry(saci.enable.set,True)
         retry(saci.IsEn.set,True)
 
@@ -366,8 +351,6 @@ def config_expert(base, cfg, writePixelMap=True):
     #  Important that Asic IsEn is True while configuring and false when running
     for i in asics:
         saci = cbase.Epix10kaSaci[i]
-        #saci.IsEn.set(False)
-        #saci.enable.set(False)
         retry(saci.IsEn.set,False)
         retry(saci.enable.set,False)
 
@@ -387,7 +370,6 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     group = rog
 
     _checkADCs()
-#    _resetSequenceCount()
 
     #
     #  Retrieve the full configuration from the configDB
@@ -402,27 +384,18 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     config_expert(base, cfg)
 
     pbase = base['pci']
-    #pbase.DevPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
-    #getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]').MasterEnable.set(True)
-    #getattr(pbase.DevPcie.Application,'AppLane[%d]'%lane).EventBuilder.Blowoff.set(False)
     pbase.StartRun()
 
     #  Capture the firmware version to persist in the xtc
     cbase = base['cam']
     firmwareVersion = cbase.AxiVersion.FpgaVersion.get()
-    #cfg['firmwareVersion:RO'] = cbase.AxiVersion.FpgaVersion.get()
-    #cfg['firmwareBuild:RO'  ] = cbase.AxiVersion.BuildStamp.get()
-
-#    print('--Configuring AsicMatrix for injection--')
-#    cbase.SetAsicMatrixTest()
 
     ocfg = cfg
-    #return [json.dumps(cfg)]
 
     #
     #  Create the segment configurations from parameters required for analysis
     #
-    trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] for i in range(16)]
+    trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] for i in range(16)]
 
     topname = cfg['detName:RO'].split('_')
 
@@ -464,7 +437,6 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
 def epixquad_unconfig(base):
     pbase = base['pci']
-    #getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]').MasterEnable.set(False)
     pbase.StopRun()
     return base
 
@@ -498,7 +470,7 @@ def epixquad_scan_keys(update):
     if pixelMapChanged:
         a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
         pixelConfigMap = np.reshape(a,(16,178,192))
-        trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] for i in range(16)]
+        trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] for i in range(16)]
 
         cbase = base['cam']
         for seg in range(4):
@@ -513,10 +485,6 @@ def epixquad_scan_keys(update):
     result = []
     for i in range(len(scfg)):
         result.append( json.dumps(scfg[i]) )
-
-#    for i in range(len(result)):
-#        base['log'].write('--scan keys-- {}\n'.format(i))
-#        base['log'].write(result[i])
 
     return result
 
@@ -553,7 +521,7 @@ def epixquad_update(update):
         a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
         pixelConfigMap = np.reshape(a,(16,178,192))
         try:
-            trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci[{i}]']['trbit'] for i in range(16)]
+            trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] for i in range(16)]
         except:
             trbit = None
 
@@ -573,10 +541,6 @@ def epixquad_update(update):
         result.append( json.dumps(scfg[i]) )
 
     print('update complete')
-
-#    for i in range(len(scfg)):
-#        base['log'].write('--update-- {}\n'.format(i))
-#        base['log'].write(result[i])
 
     return result
 
