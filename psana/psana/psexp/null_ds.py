@@ -6,6 +6,8 @@ class NullRun(object):
     def __init__(self):
         self.expt = None
         self.runnum = None
+        self.epicsinfo = {}
+        self.detinfo = {}
     def Detector(self, *args):
         return None
     def events(self):

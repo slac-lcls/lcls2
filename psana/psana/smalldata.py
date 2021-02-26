@@ -249,7 +249,7 @@ class Server: # (hdf5 handling)
             maxshape = (None,) + data.shape
             dtype = data.dtype
         else:
-            raise TypeError('Type: %s not compatible' % type(data))
+            raise TypeError('Type: Dataset %s type %s not compatible' % (dataset_name, type(data)))
 
         self._dsets[dataset_name] = (dtype, shape)
 
