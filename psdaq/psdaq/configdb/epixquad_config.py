@@ -55,9 +55,12 @@ def retry(cmd,val):
 #  Apply the configuration dictionary to the rogue registers
 #
 def apply_dict(pathbase,base,cfg):
-    rogue_translate = {'TriggerEventBuffer' : f'TriggerEventBuffer[{lane}]',
-                       f'Epix10kaSaci{i}'   : f'Epix10kaSaci[{i}]' for i in range(16),
-                       f'DbgOutSel{i}'      : f'DbgOutSel[{i}]' for i in range(3)}
+    rogue_translate = {}
+    rogue_translate['TriggerEventBuffer0'] = f'TriggerEventBuffer[{lane}]'
+    for i in range(16):
+        rogue_translate[f'Epix10kaSaci{i}'] = f'Epix10kaSaci[{i}]'
+    for i in range(3):
+        rogue_translate[f'DbgOutSel{i}'] = f'DbgOutSel[{i}]'
 
     depth = 0
     my_queue  =  deque([[pathbase,depth,base,cfg]]) #contains path, dfs depth, rogue hiearchy, and daq configdb dict tree node
@@ -208,7 +211,7 @@ def user_to_expert(base, cfg, full=False):
             print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
             raise ValueError('triggerDelay computes to < 0')
 
-        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
+        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.TriggerDelay']=triggerDelay
 
     if (hasUser and 'gate_ns' in cfg['user']):
         triggerWidth = int(cfg['user']['gate_ns']/10)
@@ -219,7 +222,7 @@ def user_to_expert(base, cfg, full=False):
         d[f'expert.EpixQuad.AcqCore.AsicAcqWidth']=triggerWidth
 
     if full:
-        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition']=group
+        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.Partition']=group
 
     pixel_map_changed = False
     a = None
