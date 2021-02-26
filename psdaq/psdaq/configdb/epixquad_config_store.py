@@ -220,25 +220,16 @@ def epixquad_cdict():
     return top
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Write a new TimeTool configuration into the database')
-    parser.add_argument('--prod', help='production', action='store_true')
-    parser.add_argument('--inst', help='instrument', type=str, default='tst')
-    parser.add_argument('--alias', help='alias name', type=str, default='BEAM')
-    parser.add_argument('--name', help='detector name', type=str, default='tsttt')
-    parser.add_argument('--segm', help='detector segment', type=int, default=0)
-    parser.add_argument('--id', help='device id/serial num', type=str, default='serial1234')
-    parser.add_argument('--user', help='user for HTTP authentication', type=str, default='xppopr')
-    parser.add_argument('--password', help='password for HTTP authentication', type=str, default='pcds')
-    args = parser.parse_args()
-
     create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
+
+    args = cdb.createArgs().args
 
     db = 'configdb' if args.prod else 'devconfigdb'
     mycdb = cdb.configdb(f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/', args.inst, create,
                          root=dbname, user=args.user, password=args.password)
     mycdb.add_alias(args.alias)
-    mycdb.add_device_config('epixquad')
+    mycdb.add_device_config('epix10kaquad')
 
     top = epixquad_cdict()
     top.setInfo('epix10kaquad', args.name, args.segm, args.id, 'No comment')
