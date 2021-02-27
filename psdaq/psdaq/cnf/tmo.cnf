@@ -5,6 +5,7 @@ ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_6
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
 andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.89 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+xtcav_epics_env = 'EPICS_PVA_ADDR_LIST=192.168.0.1 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 
 #collect_host = os.uname()[1]
 collect_host = 'drp-neh-ctl001'
@@ -74,11 +75,13 @@ procmgr_config = [
 
  { host: 'drp-neh-cmp001', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
- { host: 'drp-neh-cmp001', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
+ { host: 'drp-neh-cmp001', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd,pcav'},
 
  { host: 'drp-neh-cmp001', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4'},
 
  { host: 'drp-neh-cmp001', id:'andor_0',     flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x8 TMO:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2097216'},
+
+# { host: 'drp-neh-cmp010', id:'xtcav_0',     flags:'spu', env:xtcav_epics_env, cmd:pva_cmd1+' -l 0x1 OTRS:DMPS:695:RAW -k pebbleBufSize=2097300 -k match_tmo_ms=133'},
 
  { host: 'drp-neh-cmp011', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
@@ -95,9 +98,9 @@ hsd_epics = 'DAQ:TMO:HSD:1'
 #  Map (host,hsd_segm,datadev,epicsPV)
 procmgr_hsd = [
  {host:'drp-neh-cmp020', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
-# {host:'drp-neh-cmp020', id:'hsd_1',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
+ #{host:'drp-neh-cmp020', id:'hsd_1',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
  {host:'drp-neh-cmp017', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
-# {host:'drp-neh-cmp017', id:'hsd_3',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
+ {host:'drp-neh-cmp017', id:'hsd_3',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
  {host:'drp-neh-cmp019', id:'hsd_4',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:A'},
  {host:'drp-neh-cmp018', id:'hsd_7',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:B'},
  {host:'drp-neh-cmp021', id:'hsd_6',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:A'},
@@ -110,15 +113,18 @@ procmgr_hsd = [
  {host:'drp-neh-cmp019', id:'hsd_13', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:B'},
 ]
 
-procmgr_config.extend(procmgr_hsd)
+#procmgr_config.extend(procmgr_hsd)
 
 procmgr_ami = [
 #
 # ami
 #
- { host:ami_manager_node, id:'ami-global',  flags:'s', cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
+ { host:ami_manager_node, id:'ami-global',  flags:'s', env:epics_env, cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
  { host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
  {                        id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir}/{hutch}' },
+
+#  Add a second AMI window for timetool feedback graph
+{                        id:'ami-client-tt',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir}/{hutch} -g "tt_graph" -l /cds/group/pcds/dist/pds/tmo/scripts/tt-feedback.fc' },
 ]
 
 #
@@ -127,7 +133,7 @@ procmgr_ami = [
 for N, worker_node in enumerate(ami_worker_nodes):
     procmgr_ami.append({ host:worker_node, id:f'meb{N}', flags:'spu',
                          cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}' })
-    procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}', flags:'s',
+    procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}', flags:'s', env:epics_env,
                          cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}' })
 
 procmgr_config.extend(procmgr_ami)
