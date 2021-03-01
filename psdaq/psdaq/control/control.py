@@ -891,6 +891,21 @@ class DaqPVA():
         return self.pv_put(self.pvStepGroups, mask)
 
     #
+    # DaqPVA.pv_get -
+    #
+    # Return a list of PV values, or throw exception on error.
+    #
+    def pv_get(self, pvList):
+        if pvList is None:
+            retval = []
+        elif isinstance(pvList, list):
+            retval = self.ctxt.get(pvList)
+        else:
+            retval = self.ctxt.get([pvList])
+        logging.debug(f"DaqPVA.pv_get({pvList}) = {retval}")
+        return retval
+
+    #
     # DaqPVA.pv_put -
     #
     def pv_put(self, pvName, val):
