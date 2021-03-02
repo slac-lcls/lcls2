@@ -23,4 +23,7 @@ echo find . -name build -type d -exec rm -rf {} +
 echo find . -name __pycache__ -type d -exec rm -rf {} +
      find . -name __pycache__ -type d -exec rm -rf {} +
 
+echo find . -name dist -type d -exec rm -rf {} +
+     find . -name dist -type d -exec rm -rf {} +
+
 echo "Cleaning is done"
