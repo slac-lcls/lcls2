@@ -474,6 +474,23 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
     return arrf * factor if mask is None else arrf * factor * mask # gain correction
 
+
+def map_gain_range_index(det_raw, evt, **kwa):
+    """
+    Returns array of epix10ka per pixel gain range indices [0:6]
+    """
+    if store.dcfg is None: store.dcfg = config_object_epix10ka_raw(det_raw)
+
+    nda_raw = kwa.get('nda_raw', None)
+    raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(352, 384) or suppose to be later (<nsegs>, 352, 384) dtype:uint16
+    if raw is None: return None
+
+    gmaps = gain_maps_epix10ka_any(store.dcfg, raw)
+    if gmaps is None: return None
+    #gr0, gr1, gr2, gr3, gr4, gr5, gr6 = gmaps
+
+    return np.select(gmaps, (0, 1, 2, 3, 4, 5, 6), default=10)
+
 #--------------------
 
 calib_epix10ka = calib_epix10ka_any
