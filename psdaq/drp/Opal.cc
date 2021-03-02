@@ -56,7 +56,7 @@ namespace Drp {
       NameVec.push_back({"amplnxt"   , Name::DOUBLE});
       NameVec.push_back({"refampl"   , Name::DOUBLE});
       if (fex.write_projections()) {
-        NameVec.push_back({"proj_sig"   , Name::INT32 , 1});
+        NameVec.push_back({"proj_sig"   , Name::DOUBLE, 1});
         NameVec.push_back({"proj_ref"   , Name::DOUBLE, 1});
       }
     }
@@ -224,7 +224,7 @@ unsigned Opal::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
 {
     // set up the names for L1Accept data
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
-    Alg alg("raw", 2, 0, 0);
+    Alg alg("raw", 2, 0, 1);
     Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
                                         m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
 
@@ -351,7 +351,7 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
       memcpy(a.data(), src.data(), src.size()*sizeof(atype)); }
 
     if (m_fex.write_evt_projections()) {
-      copy_projection(int   , m_fex.sig_projection(), FexDef::proj_sig);
+      copy_projection(double, m_fex.sig_projection(), FexDef::proj_sig);
       copy_projection(double, m_fex.ref_projection(), FexDef::proj_ref);
     }
   }

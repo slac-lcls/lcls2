@@ -4,6 +4,8 @@
 #include "xtcdata/xtc/Array.hh"
 #include "xtcdata/xtc/ConfigIter.hh"
 
+#include "psalg/calib/NDArray.hh"
+
 #include <vector>
 #include <string>
 
@@ -59,7 +61,7 @@ public:
     double amplitude        () const { return m_amplitude; }
     double next_amplitude   () const { return m_nxt_amplitude; }
     double ref_amplitude    () const { return m_ref_amplitude; }
-    std::vector<int>&    sig_projection() { return m_sig; }
+    std::vector<double>& sig_projection() { return m_sig_avg; }
     std::vector<double>& ref_projection() { return m_ref_avg; }
  public:
   virtual void _monitor_raw_sig (std::vector<double>&);
@@ -109,6 +111,10 @@ private:
     std::vector<int>    m_sb;      // sideband region
     std::vector<int>    m_ref;     // reference region projection
     unsigned m_pedestal; // from Opal camera configuration
+
+    //  Divide then project
+    bool m_divide_then_project;
+    psalg::NDArray<double>     m_ref_avg_2d;
 
     double m_flt_position;
     double m_flt_position_ps;
