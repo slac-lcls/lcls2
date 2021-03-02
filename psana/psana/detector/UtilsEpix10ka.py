@@ -440,13 +440,13 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     mask = store.mask if store.mask is not None else np.ones_like(raw, dtype=DTYPE_MASK)
 
     if _cmpars is not None:
-      mode, cormax = int(_cmpars[1]), _cmpars[2]
+      alg, mode, cormax = int(_cmpars[0]), int(_cmpars[1]), _cmpars[2]
       npixmin = _cmpars[3] if len(_cmpars)>3 else 10
       if mode>0:
         t0_sec_cm = time()
         #t2_sec_cm = time()
         arr1 = store.arr1 # np.ones_like(mask, dtype=np.uint8)
-        grhm = np.select((gr0,  gr1,  gr3,  gr4), (arr1, arr1, arr1, arr1), default=0)
+        grhm = np.select((gr0,  gr1,  gr3,  gr4), (arr1, arr1, arr1, arr1), default=0) if alg==7 else arr1
         gmask = np.bitwise_and(grhm, mask) if mask is not None else grhm
         #logger.debug(info_ndarr(arr1, '\n  arr1'))
         #logger.debug(info_ndarr(grhm, 'XXXX grhm'))
