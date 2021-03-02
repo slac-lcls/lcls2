@@ -272,6 +272,7 @@ def test_image(args):
 
     ds, run, det = ds_run_det(args)
     flimg = None
+    peds   = det.raw._pedestals()[args.grindex,:]
 
     is_epix10ka = 'epix' in det.raw._uniqueid
     dcfg = ue.config_object_epix10ka(det) if is_epix10ka else None
@@ -293,16 +294,20 @@ def test_image(args):
         if evnum>2 and evnum%args.evjump!=0: continue
         print('%s\nStep %1d Event %04d' % (50*'_',stepnum, evnum))
 
-        user_mask = np.ones_like(det.raw.raw(evt), dtype=DTYPE_MASK) #np.uint8
-        user_mask[0,100:150,200:250] = 0
+        #user_mask = np.ones_like(det.raw.raw(evt), dtype=DTYPE_MASK) #np.uint8
+        #user_mask[0,100:150,200:250] = 0
+        user_mask = None
 
-        arr = det.raw.calib(evt, cmpars=(7,2,100,10),\
+        arr = det.raw.calib(evt, cmpars=(7,7,10000,10),\
                             mbits=0o7, mask=user_mask, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)\
-              if args.selcorr == 'calibcm' else\
-              det.raw.calib(evt) if args.selcorr == 'calib' else\
+                                                 if args.selcorr == 'calibcm'  else\
+              det.raw.calib(evt)                 if args.selcorr == 'calib'    else\
+              peds                               if args.selcorr == 'peds'     else\
+              det.raw._gain_range_index(evt)     if args.selcorr == 'grind'    else\
+              (det.raw.raw(evt) & 0x3fff) - peds if args.selcorr == 'raw-peds' else\
+              (det.raw.raw(evt) & 0x3fff)        if args.selcorr == 'rawbm'    else\
               (det.raw.raw(evt) & args.bitmask)
 
-              #det.raw.raw(evt)
         if args.selcorr == 'calibcm': arr += 1 # to see panel edges
 
         logger.info(info_ndarr(arr, 'arr '))
@@ -411,6 +416,7 @@ if __name__ == "__main__":
       + '\n    ./%s calib -e ueddaq02 -d epixquad -r66 # calib' % SCRNAME\
       + '\n    ./%s image -e ueddaq02 -d epixquad -r66 -N100000 # image' % SCRNAME\
       + '\n    ./%s mask -e ueddaq02 -d epixquad -r66 # mask' % SCRNAME\
+      + '\n    ./%s image -e ueddaq02 -d epixquad -r108 -N100 -M2 -S grind' % SCRNAME\
 
       #+ '\n ==== '\
       #+ '\n    ./%s 2 -m0 -s101' % SCRNAME\
@@ -439,10 +445,11 @@ if __name__ == "__main__":
     d_evjump  = 100
     d_stepsel = None
     d_bitmask = 0xffff
+    d_grindex = 2
 
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
-    h_selcorr = 'select image correction from raw/calib/calibcm, def=%s' % d_selcorr
+    h_selcorr = 'select image correction from raw/calib/calibcm/grind/rawbm/raw-peds/peds, def=%s' % d_selcorr
     import argparse
 
     parser = argparse.ArgumentParser(usage=usage)
@@ -462,6 +469,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--pscsize', default=d_pscsize, type=float, help='pixel scale size [um], def=%.1f' % d_pscsize)
     parser.add_argument('-M', '--stepsel', default=d_stepsel, type=int, help='step selected to show or None for all, def=%s' % d_stepsel)
     parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int, help='bitmask for raw 0x3fff=16383, def=%s' % hex(d_bitmask))
+    parser.add_argument('-g', '--grindex', default=d_grindex, type=int, help='gain range index [0,6] for peds, def=%d' % d_grindex)
 
     args = parser.parse_args()
     kwa = vars(args)
