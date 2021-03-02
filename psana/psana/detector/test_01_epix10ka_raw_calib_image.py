@@ -298,9 +298,11 @@ def test_image(args):
         #user_mask[0,100:150,200:250] = 0
         user_mask = None
 
-        arr = det.raw.calib(evt, cmpars=(7,7,10000,10),\
+        arr = det.raw.calib(evt, cmpars=(7,7,100,10),\
                             mbits=0o7, mask=user_mask, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)\
                                                  if args.selcorr == 'calibcm'  else\
+              det.raw.calib(evt, cmpars=(8,7,50,10))\
+                                                 if args.selcorr == 'calibcm8' else\
               det.raw.calib(evt)                 if args.selcorr == 'calib'    else\
               peds                               if args.selcorr == 'peds'     else\
               det.raw._gain_range_index(evt)     if args.selcorr == 'grind'    else\
@@ -417,6 +419,8 @@ if __name__ == "__main__":
       + '\n    ./%s image -e ueddaq02 -d epixquad -r66 -N100000 # image' % SCRNAME\
       + '\n    ./%s mask -e ueddaq02 -d epixquad -r66 # mask' % SCRNAME\
       + '\n    ./%s image -e ueddaq02 -d epixquad -r108 -N100 -M2 -S grind' % SCRNAME\
+      + '\n    ./%s image -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8' % SCRNAME\
+      + '\n    ./%s image -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8  -o img-ueddaq02-epixquad-r140-ev0002-cm8-7-100-10.png -N3' % SCRNAME\
 
       #+ '\n ==== '\
       #+ '\n    ./%s 2 -m0 -s101' % SCRNAME\
@@ -449,7 +453,7 @@ if __name__ == "__main__":
 
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
-    h_selcorr = 'select image correction from raw/calib/calibcm/grind/rawbm/raw-peds/peds, def=%s' % d_selcorr
+    h_selcorr = 'select image correction from raw/calib/calibcm/calibcm8/grind/rawbm/raw-peds/peds, def=%s' % d_selcorr
     import argparse
 
     parser = argparse.ArgumentParser(usage=usage)
