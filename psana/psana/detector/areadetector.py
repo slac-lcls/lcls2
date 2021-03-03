@@ -97,7 +97,7 @@ class AreaDetector(DetectorImpl):
         """
         segs = self._segments(evt)
         if segs is None:
-            logger.warning('self._segments(evt) is None')
+            logger.debug('self._segments(evt) is None')
             return None
         return arr3d_from_dict({k:v.raw for k,v in segs.items()})
 
@@ -108,7 +108,7 @@ class AreaDetector(DetectorImpl):
         """
         segs = self._segments(evt)
         if segs is None: 
-            logger.warning('self._segments(evt) is None')
+            logger.debug('self._segments(evt) is None')
             return None
         return np.array(sorted(segs.keys()), dtype=np.uint16)
 
@@ -117,7 +117,7 @@ class AreaDetector(DetectorImpl):
         logger.debug('AreaDetector._det_calibconst')
         cc = self._calibconst
         if cc is None:
-            logger.warning('self._calibconst is None')
+            logger.debug('self._calibconst is None')
             return None
         return cc
 
@@ -128,7 +128,7 @@ class AreaDetector(DetectorImpl):
         if cc is None: return None
         cons_and_meta = cc.get(ctype, None)
         if cons_and_meta is None:
-            logger.warning('calibconst["%s"] is None'%ctype)
+            logger.debug('calibconst["%s"] is None'%ctype)
             return None, None
         return cons_and_meta
 
@@ -154,7 +154,7 @@ class AreaDetector(DetectorImpl):
         if cc is None: return None
         geotxt_and_meta = cc.get('geometry', None)
         if geotxt_and_meta is None:
-            logger.warning('calibconst[geometry] is None')
+            logger.debug('calibconst[geometry] is None')
             return None, None
         return geotxt_and_meta
 
@@ -165,7 +165,7 @@ class AreaDetector(DetectorImpl):
         if self._geo_ is None:
             geotxt, meta = self._det_geotxt_and_meta()
             if geotxt is None:
-                logger.warning('_det_geo geotxt is None')
+                logger.debug('_det_geo geotxt is None')
                 return None            
             self._geo_ = GeometryAccess()
             self._geo_.load_pars_from_str(geotxt)
@@ -178,7 +178,7 @@ class AreaDetector(DetectorImpl):
         logger.debug('AreaDetector._pixel_coord_indexes')
         geo = self._det_geo()
         if geo is None:
-            logger.warning('geo is None')
+            logger.debug('geo is None')
             return None
             
         return geo.get_pixel_coord_indexes(\
@@ -194,7 +194,7 @@ class AreaDetector(DetectorImpl):
         logger.debug('AreaDetector._pixel_coords')
         geo = self._det_geo()
         if geo is None:
-            logger.warning('geo is None')
+            logger.debug('geo is None')
             return None
         #return geo.get_pixel_xy_at_z(self, zplane=None, oname=None, oindex=0, do_tilt=True, cframe=0)
         return geo.get_pixel_coords(\
@@ -308,7 +308,7 @@ class AreaDetector(DetectorImpl):
 
         data = self.calib(evt) if nda is None else nda
         if data is None:
-            logger.warning('AreaDetector.image calib returns None')
+            logger.debug('AreaDetector.image calib returns None')
             return None
             
         #logger.debug(info_ndarr(data, 'data ', last=3))
@@ -328,7 +328,7 @@ class AreaDetector(DetectorImpl):
     def _shape_as_daq(self):
         peds = self._pedestals()
         if peds is None: 
-            logger.warning('In _shape_as_daq pedestals are None, can not define daq data shape')
+            logger.debug('In _shape_as_daq pedestals are None, can not define daq data shape')
             return None
         return peds.shape if peds.ndim<4 else peds.shape[-3:]
 
@@ -362,7 +362,7 @@ class AreaDetector(DetectorImpl):
         """
         status = self._status()
         if status is None:
-            logger.warning('pixel_status is None')
+            logger.debug('pixel_status is None')
             return None
         return np.asarray(np.select((status>0,), (0,), default=1), dtype=DTYPE_MASK)
 
@@ -382,7 +382,7 @@ class AreaDetector(DetectorImpl):
 
         #segs = self._segments(evt)
         #if segs is None:
-        #    logger.warning('self._segments(evt) is None')
+        #    logger.debug('self._segments(evt) is None')
         #    return None
         #return arr3d_from_dict({k:v.raw for k,v in segs.items()})
 

@@ -137,7 +137,7 @@ def img_from_pixel_arrays(rows, cols, weight=1.0, dtype=np.float32, vbase=0):
     or (weight is not None and rows.size !=  weight.size):
         msg = 'img_from_pixel_arrays(): input array sizes are different;' \
             + ' rows.size=%d, cols.size=%d, W.size=%d' % (rows.size, cols.size, weight.size)
-        logger.warning(msg)
+        logger.debug(msg)
         return img_default()
 
     img_shape = image_shape(rows, cols)

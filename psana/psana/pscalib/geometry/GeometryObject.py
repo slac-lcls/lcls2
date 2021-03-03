@@ -271,7 +271,7 @@ class GeometryObject:
         xac, yac, zac = None, None, None
         for ind, child in enumerate(self.list_of_children):
             if child.oindex != ind:
-                logger.warning('Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
+                logger.debug('Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
                       (child.oname, child.oindex, ind))
 
             xch, ych, zch = child.get_pixel_coords(do_tilt)
@@ -307,7 +307,7 @@ class GeometryObject:
         aar = None
         for ind, child in enumerate(self.list_of_children):
             if child.oindex != ind:
-                logger.warning('Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
+                logger.debug('Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
                       (child.oname, child.oindex, ind))
 
             ach = child.get_pixel_areas()
@@ -339,7 +339,7 @@ class GeometryObject:
         oar = None
         for ind, child in enumerate(self.list_of_children):
             if child.oindex != ind:
-                logger.warning('Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
+                logger.debug('Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
                       (child.oname, child.oindex, ind))
 
             car = child.get_pixel_mask(mbits=mbits, **kwargs)

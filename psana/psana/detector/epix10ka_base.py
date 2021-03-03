@@ -86,7 +86,7 @@ class epix10ka_base(AreaDetector):
         mask1 = seg.pixel_mask_array(edge_rows, edge_cols, center_rows, center_cols, dtype)
         nsegs = self._number_of_segments_total()
         if nsegs is None:
-            logger.warning('_number_of_segments_total is None')
+            logger.debug('_number_of_segments_total is None')
             return None
         logger.info('_mask_edges for %d-segment epix10ka'%nsegs)
         mask = np.stack([mask1 for i in range(nsegs)])

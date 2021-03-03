@@ -144,7 +144,7 @@ class GeometryAccess:
         self.valid = False
 
         if self.path is None or not os.path.exists(self.path):
-            logger.warning('%s: geometry file "%s" does not exist' % (self.__class__.__name__, self.path))
+            logger.debug('%s: geometry file "%s" does not exist' % (self.__class__.__name__, self.path))
             return
 
         self.load_pars_from_file()
@@ -297,7 +297,7 @@ class GeometryAccess:
         keys = ['pname','pindex','oname','oindex','x0','y0','z0','rot_z','rot_y','rot_x','tilt_z','tilt_y','tilt_x']
         f = line.split()
         if len(f) != len(keys):
-            logger.warning('The list length for fields from file: %d is not equal to expected: %d' % (len(f), len(keys)))
+            logger.debug('The list length for fields from file: %d is not equal to expected: %d' % (len(f), len(keys)))
             return
     
         vals = [str  (f[0]),
@@ -733,7 +733,7 @@ def img_from_pixel_arrays(rows, cols, W=None, dtype=np.float32, vbase=0):
     or (W is not None and rows.size !=  W.size):
         msg = 'img_from_pixel_arrays(): input array sizes are different;' \
             + ' rows.size=%d, cols.size=%d, W.size=%d' % (rows.size, cols.size, W.size)
-        logger.warning(msg)
+        logger.debug(msg)
         return img_default()
 
     rowsfl = rows.flatten()
