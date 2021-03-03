@@ -86,7 +86,7 @@ def det_calib_constants(det, ctype):
       logger.info(info_ndarr(cdata, '%s data'%ctype))
       return cdata, cmeta
     else:
-      logger.warning('det.calibconst is None')
+      logger.debug('det.calibconst is None')
       return None, None
 
 
@@ -285,8 +285,13 @@ def test_image(args):
       if args.stepsel is not None and stepnum != args.stepsel:
           print('  skip - step selected in option -M is %1d' % (args.stepsel))
           continue
-
+      print('%s\n  begin event loop' % (50*'_'))
       for evnum,evt in enumerate(step.events()):
+        if evnum<args.evskip:
+            print('Step %1d Event %04d - skip first %04d events' % (stepnum, evnum, args.evskip),\
+                   end=('\r' if evnum<args.evskip-1 else '\n'))
+            continue
+            
         if evnum>args.evtmax:
             print('break by number of events limit %d set in option -N' % args.evtmax)
             break_event_loop = True
@@ -417,10 +422,10 @@ if __name__ == "__main__":
       + '\n    ./%s raw -e ueddaq02 -d epixquad -r66 # raw' % SCRNAME\
       + '\n    ./%s calib -e ueddaq02 -d epixquad -r66 # calib' % SCRNAME\
       + '\n    ./%s image -e ueddaq02 -d epixquad -r66 -N100000 # image' % SCRNAME\
-      + '\n    ./%s mask -e ueddaq02 -d epixquad -r66 # mask' % SCRNAME\
+      + '\n    ./%s mask  -e ueddaq02 -d epixquad -r66 # mask' % SCRNAME\
       + '\n    ./%s image -e ueddaq02 -d epixquad -r108 -N100 -M2 -S grind' % SCRNAME\
       + '\n    ./%s image -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8' % SCRNAME\
-      + '\n    ./%s image -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8  -o img-ueddaq02-epixquad-r140-ev0002-cm8-7-100-10.png -N3' % SCRNAME\
+      + '\n    ./%s image -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8 -o img-ueddaq02-epixquad-r140-ev0002-cm8-7-100-10.png -N3' % SCRNAME\
 
       #+ '\n ==== '\
       #+ '\n    ./%s 2 -m0 -s101' % SCRNAME\
@@ -446,6 +451,7 @@ if __name__ == "__main__":
     d_mapmode = 1
     d_pscsize = 100
     d_evtmax  = 1000
+    d_evskip  = 0
     d_evjump  = 100
     d_stepsel = None
     d_bitmask = 0xffff
@@ -469,7 +475,8 @@ if __name__ == "__main__":
     parser.add_argument('-o', '--ofname',  default=d_ofname,  type=str, help='output image file name, def=%s' % d_ofname)
     parser.add_argument('-m', '--mapmode', default=d_mapmode, type=int, help=h_mapmode)
     parser.add_argument('-N', '--evtmax',  default=d_evtmax,  type=int, help='maximal number of events, def=%s' % d_evtmax)
-    parser.add_argument('-j', '--evjump',  default=d_evjump,  type=int, help='number of events to jump, def=%s' % d_evjump)
+    parser.add_argument('-K', '--evskip',  default=d_evskip,  type=int, help='number of events to skip in the beginning of run, def=%s' % d_evskip)
+    parser.add_argument('-J', '--evjump',  default=d_evjump,  type=int, help='number of events to jump, def=%s' % d_evjump)
     parser.add_argument('-s', '--pscsize', default=d_pscsize, type=float, help='pixel scale size [um], def=%.1f' % d_pscsize)
     parser.add_argument('-M', '--stepsel', default=d_stepsel, type=int, help='step selected to show or None for all, def=%s' % d_stepsel)
     parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int, help='bitmask for raw 0x3fff=16383, def=%s' % hex(d_bitmask))
