@@ -22,7 +22,7 @@ auth = ' --user {:} --password {:} '.format(user,password)
 prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom/ued' # Prometheus
 data_dir = '/u2/pcds/pds'
 kwargs   = 'ep_fabric="172.21.36.0/24",ep_domain=enp129s0'
-task_set = 'taskset 0xffbfeffbfe '
+task_set = 'taskset 0xfffefffe '
 std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir+' -k '+kwargs+' -d /dev/datadev_%d'
 
 drp_cmd0 = task_set+'drp '      +(std_opts%0)+' -k batching=no '
