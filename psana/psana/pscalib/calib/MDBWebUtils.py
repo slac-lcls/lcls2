@@ -406,7 +406,8 @@ def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADE
 
     kwargs['detector']  = detname # ex: epix10ka_000001
     kwargs['shortname'] = detname # ex: epix10ka_000001
-    kwargs['longname']  = det     # ex: epix10ka_<detector-id>
+    kwargs['longname']  = det     # ex: epix10ka_<_uniqueid>
+    #kwargs['detname']  = det_name # already in kwargs ex: epixquad
 
     logger.debug('add_data_and_two_docs kwargs: %s' % str(kwargs))
 
