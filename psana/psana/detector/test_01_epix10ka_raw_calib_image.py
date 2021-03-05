@@ -348,7 +348,7 @@ def test_image(args):
 
             if flimg is None:
                 from psana.detector.UtilsGraphics import gr, fleximage
-                flimg = fleximage(img, arr=arr, h_in=8, nneg=1, npos=3, alimits=alimits) #, cmap='jet')
+                flimg = fleximage(img, arr=arr, h_in=8, nneg=3, npos=3, alimits=alimits) #, cmap='jet')
                 #flimg = fleximage(img, h_in=8, alimits=(0,4)) #, cmap='jet')    
 
             else:
