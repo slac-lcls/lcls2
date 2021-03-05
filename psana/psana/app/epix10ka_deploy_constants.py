@@ -85,7 +85,7 @@ def argument_parser():
     #High gain: 132 ADU / 8.05 keV = 16.40 ADU/keV
     #Medium gain: 132 ADU / 8.05 keV / 3 = 5.466 ADU/keV
     #Low gain: 132 ADU / 8.05 keV / 100 = 0.164 ADU/keV
-    d_version = 'V2021-01-21'
+    d_version = 'V2021-03-04'
     d_run_end = 'end'
     d_comment = 'no comment'
 
