@@ -186,8 +186,12 @@ def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=16000, cmt=''):
     return lo, hi
 
 
-def proc_dark_block(block, **opts):
-    """Returns per-panel (352, 384) arrays of mean, rms, ...
+def proc_dark_block_v1(block, **opts):
+    """
+       2021-03-04 DEPRECATED due to bad behavior in case of outlier events, 
+       ueddaq02 run=168 epixquad
+
+       Returns per-panel (352, 384) arrays of mean, rms, ...
        block.shape = (nrecs, 352, 384), where nrecs <= 1024
     """
     exp        = opts.get('exp', None)
@@ -197,7 +201,7 @@ def proc_dark_block(block, **opts):
     int_hi     = opts.get('int_hi', 16000)   # highest intensity accepted for dark evaluation
     intnlo     = opts.get('intnlo', 6.0)     # intensity ditribution number-of-sigmas low
     intnhi     = opts.get('intnhi', 6.0)     # intensity ditribution number-of-sigmas high
-                                 
+
     rms_lo     = opts.get('rms_lo', 0.001)   # rms ditribution low
     rms_hi     = opts.get('rms_hi', 16000)   # rms ditribution high
     rmsnlo     = opts.get('rmsnlo', 6.0)     # rms ditribution number-of-sigmas low
@@ -229,9 +233,7 @@ def proc_dark_block(block, **opts):
         raw    = block[nrec,:]
         rawdbl = blockdbl[nrec,:]
 
-        cond_lo = raw<gate_lo
-        cond_hi = raw>gate_hi
-        condlist = (np.logical_not(np.logical_or(cond_lo, cond_hi)),)
+        condlist = (np.logical_not(np.logical_or(raw<gate_lo, raw>gate_hi)),)
 
         arr_sum0 += np.select(condlist, (arr1,), 0)
         arr_sum1 += np.select(condlist, (rawdbl,), 0)
@@ -247,7 +249,7 @@ def proc_dark_block(block, **opts):
 
     logger.debug(info_ndarr(arr_av1, '1st loop proc time = %.3f sec arr_av1' % (time()-t0_sec)))
     gate_half = nsigma*rms_ave
-    logger.debug('set gate_half=%.3f for intensity gated average, which is %.3f * sigma' % (gate_half,nsigma))
+    logger.info('set gate_half=%.3f for intensity gated average, which is %.3f * sigma' % (gate_half,nsigma))
 
     # 2nd loop over recs in block to evaluate gated parameters
 
@@ -268,9 +270,7 @@ def proc_dark_block(block, **opts):
         raw    = block[nrec,:]
         rawdbl = blockdbl[nrec,:]
 
-        cond_lo = raw<gate_lo
-        cond_hi = raw>gate_hi
-        condlist = (np.logical_not(np.logical_or(cond_lo, cond_hi)),)
+        condlist = (np.logical_not(np.logical_or(raw<gate_lo, raw>gate_hi)),)
 
         arr_sum0 += np.select(condlist, (arr1,), 0)
         arr_sum1 += np.select(condlist, (rawdbl,), 0)
@@ -327,6 +327,172 @@ def proc_dark_block(block, **opts):
     logger.debug(info_ndarr(arr_sta, 'pixel_status'))
 
     #return block.mean(0)
+    return arr_av1, arr_rms, arr_sta
+
+
+def proc_dark_block(block, **opts):
+    """Returns per-panel (352, 384) arrays of mean, rms, ...
+       block.shape = (nrecs, 352, 384), where nrecs <= 1024
+    """
+    exp        = opts.get('exp', None)
+    detname    = opts.get('det', None)
+    int_lo     = opts.get('int_lo', 1)       # lowest  intensity accepted for dark evaluation
+    int_hi     = opts.get('int_hi', 16000)   # highest intensity accepted for dark evaluation
+    intnlo     = opts.get('intnlo', 6.0)     # intensity ditribution number-of-sigmas low
+    intnhi     = opts.get('intnhi', 6.0)     # intensity ditribution number-of-sigmas high
+    rms_lo     = opts.get('rms_lo', 0.001)   # rms ditribution low
+    rms_hi     = opts.get('rms_hi', 16000)   # rms ditribution high
+    rmsnlo     = opts.get('rmsnlo', 6.0)     # rms ditribution number-of-sigmas low
+    rmsnhi     = opts.get('rmsnhi', 6.0)     # rms ditribution number-of-sigmas high
+    fraclm     = opts.get('fraclm', 0.1)     # allowed fraction limit
+    fracgate   = opts.get('fracgate', 0.9)   # fraction of "good" statistics inside gates 
+    frac_lo   = (1 - fracgate)/2             # 0.05
+    frac_hi   = 1 - (1 - fracgate)/2         # 0.95
+
+    logger.debug('in proc_dark_block for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
+    logger.info(info_ndarr(block, 'begin 1st iteration pricessing of the data block:\n    '))
+    logger.info('fraction of statistics for gate limits low: %.3f high: %.3f' % (frac_lo, frac_hi))
+
+    nrecs, ny, nx = block.shape
+    shape = (ny, nx)
+
+    arr1_u16   = np.ones (shape, dtype=np.uint16)
+    arr1       = np.ones (shape, dtype=np.uint64)
+
+    t0_sec = time()
+    arr_med = np.median(block, axis=0)
+    #arr_med = np.quantile(block, 0.5, axis=0, interpolation='linear')
+    logger.info('block array median/quantile(0.5) time = %.3f sec' % (time()-t0_sec))
+
+    arr_qlo = np.quantile(block, 0.05, axis=0, interpolation='linear')
+    arr_qhi = np.quantile(block, 0.95, axis=0, interpolation='linear')
+
+    med_med = np.median(arr_med)
+    med_qlo = np.median(arr_qlo)
+    med_qhi = np.median(arr_qhi)
+
+    arr_dev_3d = block[:,] - arr_med # .astype(dtype=np.float64)
+    arr_abs_dev = np.median(np.abs(arr_dev_3d), axis=0)
+    med_abs_dev = np.median(arr_abs_dev)
+
+    #print(info_ndarr(arr_dev_3d[80,50,100:120],   'XXX arr_dev_3d[80,50,100:120] ', last=5))
+    #print('arr_med[100,0:384]:\n', arr_med[100,0:384])
+    logger.info(info_ndarr(arr_med, '    arr_med ', last=8))
+    logger.info(info_ndarr(arr_qlo, '    arr_qlo ', last=8))
+    logger.info(info_ndarr(arr_qhi, '    arr_qhi ', last=8))
+    logger.info(info_ndarr(arr_abs_dev, '    arr_abs_dev ', last=8))
+
+    logger.info('    med_qlo    : %.3f' % med_qlo)
+    logger.info('    med_qhi    : %.3f' % med_qhi)
+    logger.info('    med_med    : %.3f' % med_med)
+    logger.info('    med_abs_dev: %.3f' % med_abs_dev)
+
+    logger.info(info_ndarr(arr_med, '1st iteration proc time = %.3f sec arr_av1' % (time()-t0_sec)))
+    #gate_half = nsigma*rms_ave
+    #logger.debug('set gate_half=%.3f for intensity gated average, which is %.3f * sigma' % (gate_half,nsigma))
+    #gate_half = nsigma*abs_dev_med
+    #logger.debug('set gate_half=%.3f for intensity gated average, which is %.3f * abs_dev_med' % (gate_half,nsigma))
+
+    # 2nd loop over recs in block to evaluate gated parameters
+    logger.info('Begin 2nd iteration')
+
+    sta_int_lo = np.zeros(shape, dtype=np.uint64)
+    sta_int_hi = np.zeros(shape, dtype=np.uint64)
+
+    arr_max = np.zeros(shape, dtype=block.dtype)
+    arr_min = np.ones (shape, dtype=block.dtype) * 0x3fff
+
+    gate_lo    = arr1_u16 * int_lo
+    gate_hi    = arr1_u16 * int_hi
+
+    #gate_hi = np.minimum(arr_av1 + gate_half, gate_hi).astype(dtype=block.dtype)
+    #gate_lo = np.maximum(arr_av1 - gate_half, gate_lo).astype(dtype=block.dtype)
+    gate_lo = np.maximum(arr_qlo, gate_lo).astype(dtype=block.dtype)
+    gate_hi = np.minimum(arr_qhi, gate_hi).astype(dtype=block.dtype)
+    cond = gate_hi>gate_lo
+    gate_hi[np.logical_not(cond)] +=1
+    #gate_hi = np.select((cond, np.logical_not(cond)), (gate_hi, gate_hi+1), 0)
+
+    logger.info(info_ndarr(gate_lo, '    gate_lo '))
+    logger.info(info_ndarr(gate_hi, '    gate_hi '))
+
+    arr_sum0 = np.zeros(shape, dtype=np.uint64)
+    arr_sum1 = np.zeros(shape, dtype=np.float64)
+    arr_sum2 = np.zeros(shape, dtype=np.float64)
+
+    #blockdbl = np.array(block, dtype=np.float64)
+
+    for nrec in range(nrecs):
+        raw    = block[nrec,:]
+        rawdbl = raw.astype(dtype=np.uint64) # blockdbl[nrec,:]
+
+        logger.debug('== nrec:%03d median(raw-ave): %.3f' % (nrec, np.median(raw.astype(dtype=np.float64) - arr_med)))
+
+        condlist = (np.logical_not(np.logical_or(raw<gate_lo, raw>gate_hi)),)
+
+        arr_sum0 += np.select(condlist, (arr1,), 0)
+        arr_sum1 += np.select(condlist, (rawdbl,), 0)
+        arr_sum2 += np.select(condlist, (np.square(rawdbl),), 0)
+
+        sta_int_lo += np.select((raw<int_lo,), (arr1,), 0)
+        sta_int_hi += np.select((raw>int_hi,), (arr1,), 0)
+
+        arr_max = np.maximum(arr_max, raw)
+        arr_min = np.minimum(arr_min, raw)
+
+    arr_av1 = divide_protected(arr_sum1, arr_sum0)
+    arr_av2 = divide_protected(arr_sum2, arr_sum0)
+
+    frac_int_lo = np.array(sta_int_lo/nrecs, dtype=np.float32)
+    frac_int_hi = np.array(sta_int_hi/nrecs, dtype=np.float32)
+
+    arr_rms = np.sqrt(arr_av2 - np.square(arr_av1))
+    #rms_ave = arr_rms.mean()
+    rms_ave = mean_constrained(arr_rms, rms_lo, rms_hi)
+
+    rms_min, rms_max = evaluate_limits(arr_rms, rmsnlo, rmsnhi, rms_lo, rms_hi, cmt='RMS')
+    ave_min, ave_max = evaluate_limits(arr_av1, intnlo, intnhi, int_lo, int_hi, cmt='AVE')
+
+    arr_sta_rms_hi = np.select((arr_rms>rms_max,),    (arr1,), 0)
+    arr_sta_rms_lo = np.select((arr_rms<rms_min,),    (arr1,), 0)
+    arr_sta_int_hi = np.select((frac_int_hi>fraclm,), (arr1,), 0)
+    arr_sta_int_lo = np.select((frac_int_lo>fraclm,), (arr1,), 0)
+    arr_sta_ave_hi = np.select((arr_av1>ave_max,),    (arr1,), 0)
+    arr_sta_ave_lo = np.select((arr_av1<ave_min,),    (arr1,), 0)
+
+    logger.info('Bad pixel status:'\
+               +'\n  status  1: %8d pixel rms       > %.3f' % (arr_sta_rms_hi.sum(), rms_max)\
+               +'\n  status  2: %8d pixel rms       < %.3f' % (arr_sta_rms_lo.sum(), rms_min)\
+               +'\n  status  4: %8d pixel intensity > %g in more than %g fraction of events' % (arr_sta_int_hi.sum(), int_hi, fraclm)\
+               +'\n  status  8: %8d pixel intensity < %g in more than %g fraction of events' % (arr_sta_int_lo.sum(), int_lo, fraclm)\
+               +'\n  status 16: %8d pixel average   > %g'   % (arr_sta_ave_hi.sum(), ave_max)\
+               +'\n  status 32: %8d pixel average   < %g'   % (arr_sta_ave_lo.sum(), ave_min)\
+               )
+
+    #0/1/2/4/8/16/32 for good/hot-rms/saturated/cold/cold-rms/average above limit/average below limit, 
+    arr_sta = np.zeros(shape, dtype=np.uint64)
+    arr_sta += arr_sta_rms_hi    # hot rms
+    arr_sta += arr_sta_rms_lo*2  # cold rms
+    arr_sta += arr_sta_int_hi*4  # satturated
+    arr_sta += arr_sta_int_lo*8  # cold
+    arr_sta += arr_sta_ave_hi*16 # too large average
+    arr_sta += arr_sta_ave_lo*32 # too small average
+
+    #arr_msk  = np.select((arr_sta>0,), (arr0,), 1)
+    cond = np.abs(arr_av1-arr_med) > med_abs_dev
+    arr_av1[cond] = arr_med[cond]
+
+    arr_sta_bad = np.select((cond,), (arr1,), 0)
+    frac_bad = arr_sta_bad.sum()/float(arr_av1.size)
+    logger.info('fraction of panel pixels with gated average deviated from and replaced by median: %.6f' % frac_bad)
+
+    logger.debug(info_ndarr(arr_av1, 'proc time = %.3f sec arr_av1' % (time()-t0_sec)))
+    logger.debug(info_ndarr(arr_rms, 'pixel_rms'))
+    logger.debug(info_ndarr(arr_sta, 'pixel_status'))
+    logger.debug(info_ndarr(arr_med, 'arr mediane'))
+
+    #sys.exit('TEST EXIT')
+
     return arr_av1, arr_rms, arr_sta
 
 
@@ -679,12 +845,12 @@ def get_config_info_for_dataset_detname(**kwargs):
       cpdic['panel_ids']  = ue.segment_ids_epix10ka_detector(det)
       cpdic['panel_inds'] = ue.segment_indices_epix10ka_detector(det)
       cpdic['longname']   = ue.fullname_epix10ka_detector(det) #det.raw._uniqueid
+      cpdic['det_name']   = det._det_name # det.raw._det_name epixquad
       cpdic['dettype']    = det._dettype # epix
       cpdic['tstamp']     = tstamp_run # (str) 20201209191018
       cpdic['tstamp_now'] = tstamp_now # (str) 20201217140026
       cpdic['trun_sec']   = int(trun_sec) # 1607569818.532117 sec
       cpdic['tsrun_dark'] = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
-
       return cpdic
 
 
@@ -851,6 +1017,7 @@ def deploy_constants(*args, **opts):
     panel_ids   = cpdic.get('panel_ids', None)
     panel_inds  = cpdic.get('panel_inds',None)
     dettype     = cpdic.get('dettype',   None)
+    det_name    = cpdic.get('det_name',  None)
     longname    = cpdic.get('longname', detname)
 
     req_inds = None if paninds is None else [int(i) for i in paninds.split(',')] # conv str '0,1,2,3' to list [0,1,2,3] 
@@ -945,6 +1112,7 @@ def deploy_constants(*args, **opts):
             'ctype'      : octype,
             'dtype'      : dtype,
             'detector'   : detname,
+            'detname'    : det_name,
             'longname'   : longname,
             'time_sec'   : tvalid_sec,
             'time_stamp' : str_tstamp(fmt=cc.TSFORMAT, time_sec=int(tvalid_sec)),
