@@ -668,6 +668,7 @@ def docdic(data, dataid, **kwa):
           'id_data'   : dataid,
           'id_doc_exp': kwa.get('id_doc_exp', 0),
           'id_data_exp':kwa.get('id_data_exp', 0),
+          'detname'   : kwa.get('detname', ''),
           'longname'  : kwa.get('longname', ''),
           'shortname' : kwa.get('shortname', ''),
           'dettype'   : kwa.get('dettype', ''),
