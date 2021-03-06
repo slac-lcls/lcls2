@@ -271,11 +271,17 @@ class Smd0(object):
             
             # Read new epics data as available in the queue
             # then send only unseen portion of data to the evtbuilder rank.
+
+
+
             if not (smd_chunk or step_chunk): break
             
-            st_req = time.time()
+            st_req = time.monotonic()
+            logging.debug(f'node.py:RANK{self.comms.world_rank} 1. SMD0GOTCHUNK {st_req}')
+
             self.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-            en_req = time.time()
+            en_req = time.monotonic()
+            logging.debug(f'node.py:RANK{self.comms.world_rank} 2. SMD0GOTEB{rankreq[0]} {en_req}')
             
             # Check missing steps for the current client
             missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
@@ -287,7 +293,13 @@ class Smd0(object):
 
             smd_extended = repack_for_eb(smd_chunk, missing_step_views, self.configs)
             
+            logging.debug(f'node.py:RANK{self.comms.world_rank} 3. SMD0SENDTOEB{rankreq[0]} {time.monotonic()}')
+            
+            
             self.comms.smd_comm.Send(smd_extended, dest=rankreq[0])
+            
+            
+            logging.debug(f'node.py:RANK{self.comms.world_rank} 4. SMD0DONEWITHEB{rankreq[0]} {time.monotonic()}')
         
             # sending data to prometheus
             self.c_sent.labels('evts', rankreq[0]).inc(self.smdr_man.got_events)
@@ -362,20 +374,23 @@ class EventBuilderNode(object):
         del step_batch_dict[dest_rank] # done adding
 
     def _request_rank(self, rankreq):
-        st_req = time.time()
+        st_req = time.monotonic()
         self.comms.bd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-        en_req = time.time()
+        en_req = time.monotonic()
         self.c_sent.labels('seconds',rankreq[0]).inc(en_req-st_req)
         logging.info("node: eb%d got bd %d (request took %.5f seconds)"%(self.comms.smd_rank, rankreq[0], (en_req-st_req)))
 
     @s_eb_wait_smd0.time()
     def _request_data(self, smd_comm):
+        logging.debug(f'node.py:RANK{self.comms.world_rank} 5. EB{self.comms.world_rank}SENDREQTOSMD0 {time.monotonic()}')
         smd_comm.Send(np.array([self.comms.smd_rank], dtype='i'), dest=0)
+        logging.debug(f'node.py:RANK{self.comms.world_rank} 6. EB{self.comms.world_rank}DONESENDREQ {time.monotonic()}')
         info = MPI.Status()
         smd_comm.Probe(source=0, status=info)
         count = info.Get_elements(MPI.BYTE)
         smd_chunk = bytearray(count)
         smd_comm.Recv(smd_chunk, source=0)
+        logging.debug(f'node.py:RANK{self.comms.world_rank} 7. EB{self.comms.world_rank}RECVDATA {time.monotonic()}')
         logging.info(f"node: eb{self.comms.smd_rank} received {count/1e6:.5f} MB from smd0")
         return smd_chunk
 
@@ -393,6 +408,7 @@ class EventBuilderNode(object):
                 break
            
             eb_man = EventBuilderManager(smd_chunk, self.configs, self.dsparms, self.dm.get_run())
+            logging.debug(f'node.py:RANK{self.comms.world_rank} 8. EB{self.comms.world_rank}DONEBUILDINGEVENTS {time.monotonic()}')
         
             # Build batch of events
             for smd_batch_dict, step_batch_dict  in eb_man.batches():
@@ -402,14 +418,21 @@ class EventBuilderNode(object):
                     smd_batch, _ = smd_batch_dict[0]
                     step_batch, _ = step_batch_dict[0]
 
+                    logging.debug(f'node.py:RANK{self.comms.world_rank} 9. EB{self.comms.world_rank}REQBD {time.monotonic()}')
                     if waiting_bds:
+                        logging.debug(f'before waiting_bds={waiting_bds}')
                         rankreq[0] = waiting_bds.pop()
+                        logging.debug(f'after pop waiting_bds={waiting_bds}')
+                        logging.debug(f'node.py:RANK{self.comms.world_rank} 10. EB{self.comms.world_rank}GOTBD{rankreq[0]+1}FROMQUEUE {time.monotonic()}')
                     else:
                         self._request_rank(rankreq)
+                        logging.debug(f'node.py:RANK{self.comms.world_rank} 10. EB{self.comms.world_rank}GOTBD{rankreq[0]+1}FROMREQ {time.monotonic()}')
                     
                     missing_step_views = self.step_hist.get_buffer(rankreq[0])
                     batch = repack_for_bd(smd_batch, missing_step_views, self.configs, client=rankreq[0])
+                    logging.debug(f'node.py:RANK{self.comms.world_rank} 11. EB{self.comms.world_rank}SENDDATATOBD{rankreq[0]+1} {time.monotonic()}')
                     bd_comm.Send(batch, dest=rankreq[0])
+                    logging.debug(f'node.py:RANK{self.comms.world_rank} 12. EB{self.comms.world_rank}DONESENDDATATOBD{rankreq[0]+1} {time.monotonic()}')
                     
                     # sending data to prometheus
                     logging.info(f'node: eb{self.comms.smd_rank} sent {eb_man.eb.nevents} events ({memoryview(smd_batch).nbytes} bytes) to bd{rankreq[0]}')
@@ -424,11 +447,11 @@ class EventBuilderNode(object):
                           
                 # With > 1 dest_rank, start looping until all dest_rank batches
                 # have been sent.
-                else:
+                else: # if 0 in smd_batch_dict ...
                     # Check if destinations are valid 
                     destinations = np.asarray(list(smd_batch_dict.keys()))
                     if any(destinations > n_bd_nodes):
-                        print(f"Found invalid destination ({destinations}). Must be <= {n_bd_nodes} (#big data nodes)")
+                        logging.debug(f"Found invalid destination ({destinations}). Must be <= {n_bd_nodes} (#big data nodes)")
                         break
 
                     while smd_batch_dict:
@@ -450,25 +473,39 @@ class EventBuilderNode(object):
                
                 # end else -> if 0 in smd_batch_dict.keys() 
             
-            # end for smd_batch_dict in
+            # end for smd_batch_dict in ...
+            logging.debug(f'node.py:RANK{self.comms.world_rank} 12.1 EB{self.comms.world_rank}DONEALLBATCHES {time.monotonic()}')
 
-            # Check if there are missing steps to be sent for this batch
-            copied_waiting_bds = waiting_bds[:]
-            for dest_rank in copied_waiting_bds:
-                missing_step_views = self.step_hist.get_buffer(dest_rank)
-                batch = repack_for_bd(bytearray(), missing_step_views, self.configs, client=dest_rank)
-                if batch:
-                    bd_comm.Send(batch, dest_rank)
-                    waiting_bds.remove(dest_rank)
+        # Check if any of the waiting bds need missing steps from the last batch
+        copied_waiting_bds = waiting_bds[:]
+        for dest_rank in copied_waiting_bds:
+            missing_step_views = self.step_hist.get_buffer(dest_rank)
+            batch = repack_for_bd(bytearray(), missing_step_views, self.configs, client=dest_rank)
+            if batch:
+                logging.debug(f'node.py:RANK{self.comms.world_rank} 12.2 EB{self.comms.world_rank}SENDMISSINGSTEPTOBD{dest_rank+1} {time.monotonic()}')
+                bd_comm.Send(batch, dest_rank)
+                logging.debug(f'node.py:RANK{self.comms.world_rank} 12.3 EB{self.comms.world_rank}SENDMISSINGSTEPTOBD{dest_rank+1} {time.monotonic()}')
+                waiting_bds.remove(dest_rank)
+                logging.debug(f'after remove waiting_bds={waiting_bds}')
+        
+        logging.debug(f'node.py:RANK{self.comms.world_rank} 12.4 EB{self.comms.world_rank}DONEMISSSTEPS {time.monotonic()}')
 
-            for i in range(n_bd_nodes-len(waiting_bds)):
-                self._request_rank(rankreq)
-                missing_step_views = self.step_hist.get_buffer(rankreq[0])
-                batch = repack_for_bd(bytearray(), missing_step_views, self.configs, client=rankreq[0])
-                if batch:
-                    bd_comm.Send(batch, dest=rankreq[0])
-                else:
-                    waiting_bds.append(rankreq[0])
+        # Check if the rest of bds need missing steps from the last batch
+        for i in range(n_bd_nodes-len(waiting_bds)):
+            logging.debug(f'i={i} n_bd_nodes={n_bd_nodes} len(waiting_bds)={len(waiting_bds)}')
+            self._request_rank(rankreq)
+            missing_step_views = self.step_hist.get_buffer(rankreq[0])
+            batch = repack_for_bd(bytearray(), missing_step_views, self.configs, client=rankreq[0])
+            if batch:
+                logging.debug(f'node.py:RANK{self.comms.world_rank} 12.5 EB{self.comms.world_rank}SENDMISSINGSTEPTOBD{rankreq[0]+1} {time.monotonic()}')
+                bd_comm.Send(batch, dest=rankreq[0])
+                logging.debug(f'node.py:RANK{self.comms.world_rank} 12.6 EB{self.comms.world_rank}SENDMISSINGSTEPTOBD{rankreq[0]+1} {time.monotonic()}')
+            else:
+                waiting_bds.append(rankreq[0])
+                logging.debug(f'after append waiting_bds={waiting_bds}')
+
+        logging.debug(f'node.py:RANK{self.comms.world_rank} 12.7 EB{self.comms.world_rank}DONE {time.monotonic()}')
+
         
         # end While True: done - kill idling nodes
         for dest_rank in waiting_bds:
@@ -497,14 +534,17 @@ class BigDataNode(object):
         def get_smd():
             bd_comm = self.comms.bd_comm
             bd_rank = self.comms.bd_rank
+            logging.debug(f'node.py:RANK{self.comms.world_rank} 13. BD{self.comms.world_rank}SENDREQTOEB {time.monotonic()}')
             bd_comm.Send(np.array([bd_rank], dtype='i'), dest=0)
+            logging.debug(f'node.py:RANK{self.comms.world_rank} 14. BD{self.comms.world_rank}DONESENDREQTOEB {time.monotonic()}')
             info = MPI.Status()
             bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
             count = info.Get_elements(MPI.BYTE)
             chunk = bytearray(count)
-            st_req = time.time()
+            st_req = time.monotonic()
             bd_comm.Recv(chunk, source=0)
-            en_req = time.time()
+            logging.debug(f'node.py:RANK{self.comms.world_rank} 15. BD{self.comms.world_rank}RECVDATA {time.monotonic()}')
+            en_req = time.monotonic()
             self.bd_wait_eb.labels('seconds', self.comms.world_rank).inc(en_req - st_req)
             return chunk
         
