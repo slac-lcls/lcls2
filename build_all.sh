@@ -42,10 +42,6 @@ while getopts ":c:p:s:b:f:dam" opt; do
 done
 
 pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
-# don't build the daq for python2
-if [ $pyver == 2.7 ]; then
-    no_daq=1
-fi
 
 echo "CMAKE_BUILD_TYPE:" $cmake_option
 echo "Python install option:" $pyInstallStyle
@@ -79,6 +75,11 @@ function cmake_build() {
 # "python setup.py develop" seems to not create this for you
 # (although "install" does)
 mkdir -p $INSTDIR/lib/python$pyver/site-packages/
+if [ $pyInstallStyle == "develop" ]; then
+    pipOptions="--editable"
+else
+    pipOptions=""
+fi
 
 cmake_build xtcdata
 
@@ -88,13 +89,13 @@ else
     cmake_build psalg -DBUILD_SHMEM=OFF
 fi
 cd psalg
-python setup.py $pyInstallStyle --prefix=$INSTDIR
+pip install --prefix=$INSTDIR $pipOptions .
 cd ..
 
 if [ $no_daq == 0 ]; then
     cmake_build psdaq
     cd psdaq
-    python setup.py $pyInstallStyle --prefix=$INSTDIR
+    pip install --prefix=$INSTDIR $pipOptions .
     cd ..
 fi
 
@@ -104,6 +105,31 @@ if [ $no_ana == 0 ]; then
     # force build of the extensions.  do this because in some cases
     # setup.py is unable to detect if an external header file changed
     # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
-    python setup.py build_ext --instdir=$INSTDIR --ext_list=$build_ext_list -f --inplace
-    python setup.py $pyInstallStyle $psana_setup_args --instdir=$INSTDIR --prefix=$INSTDIR --ext_list=$build_ext_list
+    if [ $pyInstallStyle == "develop" ]; then
+        python setup.py build_ext -f --inplace
+    fi
+    pip install --prefix=$INSTDIR $pipOptions .
+fi
+# The removeal of site.py in setup 49.0.0 breaks "develop" installations
+# which are outside the normal system directories: /usr, /usr/local,
+# $HOME/.local. etc. See: https://github.com/pypa/setuptools/issues/2295
+# The suggested fix, in the bug report, is the following: "I recommend
+# that the project use pip install --prefix or possibly pip install
+# --target to install packages and supply a sitecustomize.py to ensure
+# that directory ends up as a site dir and gets .pth processing. That
+# approach should be future-proof (at least against the sunset of
+# easy_install). All python setup.py commands in the code above have
+# been replaced with pip commands. The following code implements the
+# sitecustomize.py file. Pip bilds the python modules in a sandbox,
+# so it requires all the code for the module to be in the same
+# folder. The C++ code for the modules built in psana was therefore
+# moved from psalg to psana.
+if [ $pyInstallStyle == "develop" ]; then
+  if [ ! -f $INSTDIR/lib/python$pyver/site-packages/site.py ]; then
+cat << EOF > $INSTDIR/lib/python$pyver/site-packages/sitecustomize.py
+import site
+
+site.addsitedir('$INSTDIR/lib/python$pyver/site-packages')
+EOF
+  fi
 fi
