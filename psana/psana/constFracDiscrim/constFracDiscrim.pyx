@@ -2,7 +2,7 @@ from libcpp.vector cimport vector
 
 ctypedef vector[double] Waveform
 
-cdef extern from "psalg/constFracDiscrim/ConstFracDiscrim.hh" namespace "psalgos":
+cdef extern from "ConstFracDiscrim.hh" namespace "psalgos":
     double getcfd(const double sampleInterval,
                   const double horpos,
                   const double gain,

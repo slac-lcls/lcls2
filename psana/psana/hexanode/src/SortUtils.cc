@@ -1,7 +1,7 @@
 
 //-----------------------------
 
-#include "psalg/hexanode/SortUtils.hh"
+#include "../SortUtils.hh"
 
 #include <termios.h> // termios
 #include <string.h>  // memcpy

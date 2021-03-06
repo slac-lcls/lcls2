@@ -1,10 +1,16 @@
+import os
 from setuptools import setup, find_packages
+
+VERSION = '0.0.0'
+version_env = os.environ.get('VERSION')
+if version_env:
+    VERSION = version_env
 
 setup(
        name = 'psdaq',
        license = 'LCLS II',
        description = 'LCLS II DAQ package',
-
+       version = VERSION,
        packages = find_packages(),
        package_data={'psdaq.control_gui': ['data/icons/*.png','data/icons/*.gif'],},
 

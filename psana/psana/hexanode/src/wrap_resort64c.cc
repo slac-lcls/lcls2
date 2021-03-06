@@ -1,14 +1,14 @@
 
 
 // #include "roentdec/resort64c.h"
-#include "psalg/hexanode/wrap_resort64c.hh"
+#include "wrap_resort64c.hh"
 
 #include <iostream>
 using namespace std;
 
 void test_resort()
 {
-  cout << "In psalg/hexanode/src/wrap_resort64c.cc which includes roentdec/resort64c.h through the local wrap_resort64c.hh\n"; 
+  cout << "In psana/src/wrap_resort64c.cc which includes roentdec/resort64c.h through the local wrap_resort64c.hh\n"; 
   cout << "test sort_class()\n";
 
   sort_class* sorter = new sort_class();

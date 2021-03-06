@@ -1,4 +1,3 @@
-
 import os
 import sys
 import numpy as np
@@ -14,30 +13,25 @@ for k, v in cfg_vars.items():
 
 print('Begin: %s' % ' '.join(sys.argv))
 
-arg = [arg for arg in sys.argv if arg.startswith('--instdir')]
-if not arg:
+instdir_env = os.environ.get('INSTDIR')
+if not instdir_env:
     raise Exception('Parameter --instdir is missing')
-instdir = arg[0].split('=')[1]
-sys.argv.remove(arg[0])
-
+instdir = instdir_env
 
 # Shorter BUILD_LIST can be used to speedup development loop.
 #Command example: ./build_all.sh -b PEAKFINDER:HEXANODE:CFD -md
 BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY')# ,'XTCAV')
-arg = [arg for arg in sys.argv if arg.startswith('--ext_list')]
-if arg:
-    s_exts = arg[0].split('=')[1]
-    sys.argv.remove(arg[0])
-    if s_exts : BUILD_LIST = s_exts.split(':')
+build_list_env = os.environ.get('BUILD_LIST')
+if build_list_env:
+    BUILD_LIST = build_list_env.split(':')
     #print('Build c++ python-extensions: %s' % s_exts)
 
 
 # allows a version number to be passed to the setup
 VERSION = '0.0.0'
-arg = [arg for arg in sys.argv if arg.startswith('--version')]
-if arg:
-    VERSION = arg[0].split('=')[1]
-    sys.argv.remove(arg[0])
+version_env = os.environ.get('VERSION')
+if version_env:
+    VERSION = version_env
 
 
 print('-- psana.setup.py build extensions  : %s' % ' '.join(BUILD_LIST))
@@ -121,10 +115,10 @@ if 'PSANA' in BUILD_LIST :
             'hdf5explorer        = psana.graphqt.app.hdf5explorer:hdf5explorer_gui',
             'screengrabber       = psana.graphqt.ScreenGrabberQt5:run_GUIScreenGrabber',
             'detnames            = psana.app.detnames:detnames',
-            'xtcavDark           = psana.xtcav.app.xtcavDark',
-            'xtcavLasingOff      = psana.xtcav.app.xtcavLasingOff',
-            'xtcavLasingOn       = psana.xtcav.app.xtcavLasingOn',
-            'xtcavDisplay        = psana.xtcav.app.xtcavDisplay',
+            'xtcavDark           = psana.xtcav.app.xtcavDark:__main__',
+            'xtcavLasingOff      = psana.xtcav.app.xtcavLasingOff:__main__',
+            'xtcavLasingOn       = psana.xtcav.app.xtcavLasingOn:__main__',
+            'xtcavDisplay        = psana.xtcav.app.xtcavDisplay:__main__',
             'shmemClientSimple   = psana.app.shmemClientSimple:main',
             'epix10ka_pedestals_calibration = psana.app.epix10ka_pedestals_calibration:do_main',
             'epix10ka_deploy_constants = psana.app.epix10ka_deploy_constants:do_main',
@@ -150,8 +144,8 @@ if 'SHMEM' in BUILD_LIST :
 if 'PEAKFINDER' in BUILD_LIST :
     ext = Extension("peakFinder",
                     sources=["psana/peakFinder/peakFinder.pyx",
-                             "../psalg/psalg/peaks/src/PeakFinderAlgos.cc",
-                             "../psalg/psalg/peaks/src/LocalExtrema.cc"],
+                             "psana/peakFinder/src/PeakFinderAlgos.cc",
+                             "psana/peakFinder/src/LocalExtrema.cc"],
                     libraries = ['utils'], # for SysLog
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
@@ -164,8 +158,8 @@ if 'PEAKFINDER' in BUILD_LIST :
     # direct LCLS1 version of peak-finders
     ext = Extension("psalg_ext",
                     sources=["psana/peakFinder/psalg_ext.pyx",
-                             "../psalg/psalg/peaks/src/PeakFinderAlgosLCLS1.cc",
-                             "../psalg/psalg/peaks/src/LocalExtrema.cc"],
+                             "psana/peakFinder/src/PeakFinderAlgosLCLS1.cc",
+                             "psana/peakFinder/src/LocalExtrema.cc"],
                     libraries = ['utils'], # for SysLog
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
@@ -194,10 +188,10 @@ if 'HEXANODE' in BUILD_LIST :
     if(os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
         ext = Extension("hexanode",
                         sources=["psana/hexanode/hexanode_ext.pyx",
-                                 "../psalg/psalg/hexanode/src/cfib.cc",
-                                 "../psalg/psalg/hexanode/src/wrap_resort64c.cc",
-                                 "../psalg/psalg/hexanode/src/SortUtils.cc",
-                                 "../psalg/psalg/hexanode/src/LMF_IO.cc"],
+                                 "psana/hexanode/src/cfib.cc",
+                                 "psana/hexanode/src/wrap_resort64c.cc",
+                                 "psana/hexanode/src/SortUtils.cc",
+                                 "psana/hexanode/src/LMF_IO.cc"],
                         language="c++",
                         extra_compile_args = extra_cxx_compile_args,
                         include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
@@ -212,8 +206,8 @@ if 'HEXANODE_TEST' in BUILD_LIST :
   if(os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
     ext = Extension("hexanode",
                     sources=["psana/hexanode/test_ext.pyx",
-                             "../psalg/psalg/hexanode/src/LMF_IO.cc",
-                             "../psalg/psalg/hexanode/src/cfib.cc"],
+                             "psana/hexanode/src/LMF_IO.cc",
+                             "psana/hexanode/src/cfib.cc"],
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
@@ -226,7 +220,7 @@ if 'HEXANODE_TEST' in BUILD_LIST :
 if 'CFD' in BUILD_LIST :
     ext = Extension("constFracDiscrim",
                     sources=["psana/constFracDiscrim/constFracDiscrim.pyx",
-                             "../psalg/psalg/constFracDiscrim/src/ConstFracDiscrim.cc"],
+                             "psana/constFracDiscrim/src/ConstFracDiscrim.cc"],
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args,
@@ -296,18 +290,18 @@ if 'HSD' in BUILD_LIST :
     CYTHON_EXTS.append(ext)
 
 
-if 'NDARRAY' in BUILD_LIST :
-    ext = Extension("ndarray",
-                    sources=["psana/pycalgos/NDArray_ext.pyx",
-                             "../psalg/psalg/peaks/src/WFAlgos.cc"],
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args,
-                    include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
-                    libraries=[],
-                    extra_link_args = extra_link_args,
-    )
-    CYTHON_EXTS.append(ext)
+#if 'NDARRAY' in BUILD_LIST :
+#    ext = Extension("ndarray",
+#                    sources=["psana/pycalgos/NDArray_ext.pyx",
+#                             "psana/peakFinder/src/WFAlgos.cc"],
+#                    language="c++",
+#                    extra_compile_args = extra_cxx_compile_args,
+#                    include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
+#                    library_dirs = [os.path.join(instdir, 'lib')],
+#                    libraries=[],
+#                    extra_link_args = extra_link_args,
+#    )
+#    CYTHON_EXTS.append(ext)
 
 
 setup(
@@ -322,6 +316,3 @@ setup(
     ext_modules = EXTS + cythonize(CYTHON_EXTS, build_dir=CYT_BLD_DIR, language_level=2),
     entry_points = ENTRY_POINTS,
 )
-
-
-# ===== EOF ======

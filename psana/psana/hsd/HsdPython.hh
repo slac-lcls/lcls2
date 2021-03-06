@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <cinttypes>
 
-#include "Stream.hh"
+#include "psalg/digitizer/Stream.hh"
 
 namespace Pds {
   namespace HSD {

@@ -1,16 +1,11 @@
 
-if (ROENTDEK_FOUND)
-    add_subdirectory(hexanode)
-endif()
 add_subdirectory(utils)
 add_subdirectory(calib)
 add_subdirectory(geometry)
 add_subdirectory(alloc)
-add_subdirectory(peaks)
 add_subdirectory(digitizer)
 add_subdirectory(detector)
 add_subdirectory(shmem)
-add_subdirectory(constFracDiscrim)
 
 add_library(psalg SHARED
     calib/src/ArrayIO.cc
@@ -39,23 +34,11 @@ if(APPLE)
         digitizer
         detector
     )
-elseif(ROENTDEK_FOUND)
-    target_link_libraries(psalg
-        utils
-        calib
-        geometry
-        peaks
-        digitizer
-        detector
-        hexanode
-        rt
-    )
 else()
   target_link_libraries(psalg
         utils
         calib
         geometry
-        peaks
         digitizer
         detector
         rt
@@ -94,17 +77,6 @@ target_link_libraries(test_array
     xtcdata::xtc
 )
 add_test(NAME test_array COMMAND ${CMAKE_BINARY_DIR}/psalg/test_array
-         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-
-# Test 2: Peak finder
-add_executable(test_peakFinder
-    tests/peakHeap.cc
-)
-target_link_libraries(test_peakFinder
-    psalg
-    xtcdata::xtc
-)
-add_test(NAME test_peakFinder COMMAND ${CMAKE_BINARY_DIR}/psalg/test_peakFinder
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Test 3: Hsd
@@ -172,52 +144,6 @@ target_link_libraries(test_MDBWebUtils
     psalg
     xtcdata::xtc
     CURL::libcurl
-)
-
-# Test include "roentdek/resort64c.h"
-if (ROENTDEK_FOUND)
-    add_executable(ex01_resort64c
-        tests/ex01_resort64c.cc
-    )
-    target_link_libraries(ex01_resort64c
-        psalg
-        roentdek::resort64c
-        #$ENV{CONDA_PREFIX}/lib/libResort64c_x64.a
-        #/reg/g/psdm/sw/conda2/inst/envs/ps-2.0.3/lib/libResort64c_x64.a
-    )
-
-    ## Test ex02_read_lmf_data
-    add_executable(ex02_read_lmf_data
-	tests/ex02_read_lmf_data.cc
-    )
-    target_link_libraries(ex02_read_lmf_data
-	psalg
-    )
-
-    ## Test ex03_lmf2txt
-    add_executable(ex03_lmf2txt
-	tests/ex03_lmf2txt.cc
-    )
-    target_link_libraries(ex03_lmf2txt
-	psalg
-    )
-
-    ## Test ex04_sort
-    add_executable(ex04_sort
-        tests/ex04_sort.cc
-    )
-    target_link_libraries(ex04_sort
-        psalg
-        roentdek::resort64c
-    )
-endif()
-
-## test_WFAlgos
-add_executable(test_WFAlgos
-    tests/test_WFAlgos.cc
-)
-target_link_libraries(test_WFAlgos
-    psalg
 )
 
 ## test_NDArray

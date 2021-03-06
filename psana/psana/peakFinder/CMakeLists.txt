@@ -15,19 +15,3 @@ target_include_directories(peaks PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
-
-install(FILES
-    LocalExtrema.hh
-    PeakFinderAlgos.hh
-    PeakFinderAlgosLCLS1.hh
-    Types.hh
-    WFAlgos.hh
-    DESTINATION include/psalg/peaks
-)
-
-install(TARGETS peaks
-    EXPORT psalgTargets
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-    RUNTIME DESTINATION bin
-)

@@ -13,8 +13,8 @@
 #include <cmath>    // for sqrt
 
 #include "Types.hh"
-#include "../alloc/AllocArray.hh"
-#include "../alloc/Allocator.hh"
+#include "psalg/alloc/AllocArray.hh"
+#include "psalg/alloc/Allocator.hh"
 
 //-----------------------------
 

@@ -1,7 +1,7 @@
 #define WINVER 0x0501
 // #pragma warning(disable : 4996)
 
-#include "psalg/hexanode/LMF_IO.hh"
+#include "../LMF_IO.hh"
 
 #define LMF_IO_CLASS_VERSION (2014)
 

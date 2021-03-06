@@ -80,7 +80,7 @@ def met1():
     print("HELL of cython is here")
 
 
-cdef extern from "psalg/hexanode/cfib.hh":
+cdef extern from "cfib.hh":
     double cfib(int n)
 
 
@@ -90,7 +90,7 @@ def fib(n):
 
 #------------------------------
 
-cdef extern from "psalg/utils/ctest_utils.hh" namespace "psalg":
+cdef extern from "ctest_utils.hh" namespace "psalg":
     #void ctest_nda[T](T *arr, int r, int c) except +
     void ctest_nda_f8(double   *arr, int r, int c) except +
     void ctest_nda_i2(int16_t  *arr, int r, int c) except +
@@ -164,7 +164,7 @@ def test_nda(dtypes2d nda):
 #------------------------------
 #------------------------------
 
-cdef extern from "psalg/hexanode/wrap_resort64c.hh":
+cdef extern from "wrap_resort64c.hh":
     void test_resort()
 
 def ctest_resort():
@@ -178,7 +178,7 @@ def ctest_resort():
 #------------------------------
 
 #cdef extern from "roentdek/resort64c.h":
-cdef extern from "psalg/hexanode/resort64c.hh":
+cdef extern from "resort64c.hh":
     cdef cppclass hit_class:
         double x, y, time
         int32_t method
@@ -237,7 +237,7 @@ cdef class py_hit_class:
 ## cdef extern from "psalg/hexanode/resort64c.hh":
 
 #cdef extern from "roentdek/resort64c.h":
-cdef extern from "psalg/hexanode/resort64c.hh":
+cdef extern from "resort64c.hh":
     cdef cppclass scalefactors_calibration_class:
 
         double best_fv, best_fw, best_w_offset
@@ -303,7 +303,7 @@ cdef class py_scalefactors_calibration_class:
 #------------------------------
 
 #cdef extern from "roentdek/resort64c.h":
-cdef extern from "psalg/hexanode/resort64c.hh":
+cdef extern from "resort64c.hh":
     cdef cppclass sort_class:
         int Cu1, Cu2, Cv1, Cv2, Cw1, Cw2, Cmcp 
         bint use_sum_correction 
@@ -749,7 +749,7 @@ cdef class py_sort_class:
 #------------------------------
 #------------------------------
 
-cdef extern from "psalg/hexanode/SortUtils.hh":
+cdef extern from "SortUtils.hh":
     bint read_config_file(const char* fname, sort_class *& sorter, int& command,
                           double& offset_sum_u, double& offset_sum_v, double& offset_sum_w, 
                           double& w_offset, double& pos_offset_x, double& pos_offset_y)
@@ -796,7 +796,7 @@ def py_sorter_scalefactors_calibration_map_is_full_enough(py_sort_class sorter) 
 #------------------------------
 #------------------------------
 
-cdef extern from "psalg/hexanode/resort64c.hh":
+cdef extern from "resort64c.hh":
     cdef cppclass interpolate_class:
 
         #friend class sort_class
@@ -832,7 +832,7 @@ cdef class py_interpolate_class:
 #------------------------------
 #------------------------------
 
-cdef extern from "psalg/hexanode/resort64c.hh":
+cdef extern from "resort64c.hh":
     cdef cppclass signal_corrector_class:
 
         interpolate_class * sum_corrector_U
@@ -876,7 +876,7 @@ cdef class py_signal_corrector_class:
 #------------------------------
 #------------------------------
 
-cdef extern from "psalg/hexanode/LMF_IO.hh":
+cdef extern from "LMF_IO.hh":
     cdef struct TDC8HP_struct:
         int32_t UserHeaderVersion
         int32_t TriggerChannel_p64
@@ -904,7 +904,7 @@ cdef class tdc8hp_struct:
 
 #------------------------------
 
-cdef extern from "psalg/hexanode/LMF_IO.hh":
+cdef extern from "LMF_IO.hh":
     cdef cppclass LMF_IO:
         time_t Starttime
         time_t Stoptime

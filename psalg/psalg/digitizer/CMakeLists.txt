@@ -16,7 +16,6 @@ target_include_directories(digitizer PUBLIC
 
 install(FILES
     Hsd.hh
-    HsdPython.hh
     Stream.hh
     DESTINATION include/psalg/digitizer
 )
