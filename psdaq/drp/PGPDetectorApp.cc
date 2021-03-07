@@ -318,7 +318,6 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             else {
                 m_drp.runInfoSupport(xtc, m_det->namesLookup());
             }
-            m_pgpDetector->resetEventCounter();
         }
     }
     else if (key == "unconfigure") {
@@ -379,7 +378,6 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         else {
             m_drp.runInfoData(xtc, m_det->namesLookup(), runInfo);
         }
-        m_pgpDetector->resetEventCounter();
     }
     else if (key == "endrun") {
         std::string errorMsg = m_drp.endrun(phase1Info);

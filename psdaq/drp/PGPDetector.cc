@@ -198,6 +198,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     XtcData::TransitionId::Value lastTid = XtcData::TransitionId::Reset;
     uint32_t lastData[6];
     memset(lastData,0,sizeof(lastData));
+    resetEventCounter();
     while (1) {
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
@@ -245,6 +246,9 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                                        XtcData::TransitionId::name(transitionId),
                                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                        timingHeader->pulseId());
+                    }
+                    if (transitionId == XtcData::TransitionId::BeginRun) {
+                        resetEventCounter();
                     }
                 }
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {

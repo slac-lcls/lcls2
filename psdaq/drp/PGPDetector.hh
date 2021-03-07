@@ -29,8 +29,9 @@ public:
     ~PGPDetector();
     void reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector* det, Pds::Eb::TebContributor& tebContributor);
     void collector(Pds::Eb::TebContributor& tebContributor);
-    void resetEventCounter();
     void shutdown();
+private:
+    void resetEventCounter();
 private:
     const Parameters& m_para;
     MemPool& m_pool;
