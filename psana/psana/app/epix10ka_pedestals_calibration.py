@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#----
+
 import sys
 from time import time
 from psana.detector.Utils import info_parser_arguments
@@ -59,10 +59,10 @@ def argument_parser():
     d_exp     = None # 'ueddaq02'
     d_det     = None # 'epixquad'
     d_runs    = None # 1021 or 1021,1022-1025
-    d_nbs     = 1024 # number of frames 
+    d_nbs     = 1000 # number of frames
     d_idx     = None # 0-15 for epix10ka2m, 0-3 for epix10kaquad
     d_dirxtc  = None # '/cds/data/psdm/ued/ueddaq02/xtc'
-    d_dirrepo = CALIB_REPO_EPIX10KA # './myrepo' 
+    d_dirrepo = CALIB_REPO_EPIX10KA # './myrepo'
     d_usesmd  = True
     d_logmode = 'INFO'
     d_errskip = True
@@ -80,6 +80,7 @@ def argument_parser():
     d_rmsnhi     = 6.0     # rms ditribution number-of-sigmas high
     d_fraclm     = 0.1     # allowed fraction limit
     d_fracgate   = 0.9     # fraction of good statistics [0,1] in the gate
+    d_evskip     = 0       # number of events to skip in the beginning of each step
     #d_nsigma     = 6.0     # number of sigmas for gated eveluation
 
     h_fname   = 'input xtc file name, default = %s' % d_fname
@@ -107,6 +108,7 @@ def argument_parser():
     h_rmsnhi     = 'rms ditribution number-of-sigmas high, default = %f' % d_rmsnhi
     h_fraclm     = 'allowed fraction limit, default = %f' % d_fraclm
     h_fracgate   = 'fraction of good statistics [0,1] in the gate, default = %f' % d_fracgate
+    h_evskip     = 'number of frames to calibrate pedestals, default = %s' % str(d_evskip)
     #h_nsigma     = 'number of sigmas for gated eveluation, default = %f' % d_nsigma
 
     parser = ArgumentParser(description='Proceses dark run xtc data for epix10ka')
@@ -135,6 +137,7 @@ def argument_parser():
     parser.add_argument('--rmsnhi',        default=d_rmsnhi,     type=float, help=h_rmsnhi)
     parser.add_argument('--fraclm',        default=d_fraclm,     type=float, help=h_fraclm)
     parser.add_argument('--fracgate',      default=d_fracgate,   type=float, help=h_fracgate)
+    parser.add_argument('--evskip',        default=d_evskip,     type=int,   help=h_evskip)
     #parser.add_argument('--nsigma',        default=d_nsigma,     type=float, help=h_nsigma)
 
     return parser
