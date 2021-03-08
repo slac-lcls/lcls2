@@ -24,4 +24,4 @@ def test_ipython():
     ds = DataSource(exp='tmoc00118', run=123, max_events=100)
     run = next(ds.runs())
     det = run.Detector('tmoopal')
-    print('run.dsparms.det_classes dict content:\n  %s' str(run.dsparms.det_classes))
+    print('run.dsparms.det_classes dict content:\n  %s' % str(run.dsparms.det_classes))

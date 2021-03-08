@@ -61,7 +61,7 @@ def proc_control(parser) :
     gu.save_textfile('\nOutput work files: %s' % ofprefix, logfname, mode='a')
 
     for i in range(5) :
-        if gu.create_path(ofprefix, depth=8, mode=0774, verb=False) : continue
+        if gu.create_path(ofprefix, depth=8, mode=0o774, verb=False) : continue
 
     msg = '\nproc_control exp: %s run: %s procname: %s qname: %s logfname %s'%\
           (exp, str(run), procname, qname, logfname)
