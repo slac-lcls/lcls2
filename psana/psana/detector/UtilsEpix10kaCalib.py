@@ -350,8 +350,8 @@ def proc_dark_block(block, **opts):
     frac_hi   = 1 - (1 - fracgate)/2         # 0.95
 
     logger.debug('in proc_dark_block for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
-    logger.info(info_ndarr(block, 'begin 1st iteration pricessing of the data block:\n    '))
-    logger.info('fraction of statistics for gate limits low: %.3f high: %.3f' % (frac_lo, frac_hi))
+    logger.debug(info_ndarr(block, 'begin 1st iteration pricessing of the data block:\n    '))
+    logger.debug('fraction of statistics for gate limits low: %.3f high: %.3f' % (frac_lo, frac_hi))
 
     nrecs, ny, nx = block.shape
     shape = (ny, nx)
@@ -362,7 +362,7 @@ def proc_dark_block(block, **opts):
     t0_sec = time()
     arr_med = np.median(block, axis=0)
     #arr_med = np.quantile(block, 0.5, axis=0, interpolation='linear')
-    logger.info('block array median/quantile(0.5) time = %.3f sec' % (time()-t0_sec))
+    logger.debug('block array median/quantile(0.5) time = %.3f sec' % (time()-t0_sec))
 
     arr_qlo = np.quantile(block, 0.05, axis=0, interpolation='linear')
     arr_qhi = np.quantile(block, 0.95, axis=0, interpolation='linear')
@@ -377,24 +377,24 @@ def proc_dark_block(block, **opts):
 
     #print(info_ndarr(arr_dev_3d[80,50,100:120],   'XXX arr_dev_3d[80,50,100:120] ', last=5))
     #print('arr_med[100,0:384]:\n', arr_med[100,0:384])
-    logger.info(info_ndarr(arr_med, '    arr_med ', last=8))
-    logger.info(info_ndarr(arr_qlo, '    arr_qlo ', last=8))
-    logger.info(info_ndarr(arr_qhi, '    arr_qhi ', last=8))
-    logger.info(info_ndarr(arr_abs_dev, '    arr_abs_dev ', last=8))
+    logger.debug(info_ndarr(arr_med, '    arr_med ', last=8))
+    logger.debug(info_ndarr(arr_qlo, '    arr_qlo ', last=8))
+    logger.debug(info_ndarr(arr_qhi, '    arr_qhi ', last=8))
+    logger.debug(info_ndarr(arr_abs_dev, '    arr_abs_dev ', last=8))
 
-    logger.info('    med_qlo    : %.3f' % med_qlo)
-    logger.info('    med_qhi    : %.3f' % med_qhi)
-    logger.info('    med_med    : %.3f' % med_med)
-    logger.info('    med_abs_dev: %.3f' % med_abs_dev)
+    logger.debug('    med_qlo    : %.3f' % med_qlo)
+    logger.debug('    med_qhi    : %.3f' % med_qhi)
+    logger.debug('    med_med    : %.3f' % med_med)
+    logger.debug('    med_abs_dev: %.3f' % med_abs_dev)
 
-    logger.info(info_ndarr(arr_med, '1st iteration proc time = %.3f sec arr_av1' % (time()-t0_sec)))
+    logger.debug(info_ndarr(arr_med, '1st iteration proc time = %.3f sec arr_av1' % (time()-t0_sec)))
     #gate_half = nsigma*rms_ave
     #logger.debug('set gate_half=%.3f for intensity gated average, which is %.3f * sigma' % (gate_half,nsigma))
     #gate_half = nsigma*abs_dev_med
     #logger.debug('set gate_half=%.3f for intensity gated average, which is %.3f * abs_dev_med' % (gate_half,nsigma))
 
     # 2nd loop over recs in block to evaluate gated parameters
-    logger.info('Begin 2nd iteration')
+    logger.debug('Begin 2nd iteration')
 
     sta_int_lo = np.zeros(shape, dtype=np.uint64)
     sta_int_hi = np.zeros(shape, dtype=np.uint64)
@@ -413,8 +413,8 @@ def proc_dark_block(block, **opts):
     gate_hi[np.logical_not(cond)] +=1
     #gate_hi = np.select((cond, np.logical_not(cond)), (gate_hi, gate_hi+1), 0)
 
-    logger.info(info_ndarr(gate_lo, '    gate_lo '))
-    logger.info(info_ndarr(gate_hi, '    gate_hi '))
+    logger.debug(info_ndarr(gate_lo, '    gate_lo '))
+    logger.debug(info_ndarr(gate_hi, '    gate_hi '))
 
     arr_sum0 = np.zeros(shape, dtype=np.uint64)
     arr_sum1 = np.zeros(shape, dtype=np.float64)
@@ -484,7 +484,7 @@ def proc_dark_block(block, **opts):
 
     arr_sta_bad = np.select((cond,), (arr1,), 0)
     frac_bad = arr_sta_bad.sum()/float(arr_av1.size)
-    logger.info('fraction of panel pixels with gated average deviated from and replaced by median: %.6f' % frac_bad)
+    logger.debug('fraction of panel pixels with gated average deviated from and replaced by median: %.6f' % frac_bad)
 
     logger.debug(info_ndarr(arr_av1, 'proc time = %.3f sec arr_av1' % (time()-t0_sec)))
     logger.debug(info_ndarr(arr_rms, 'pixel_rms'))
@@ -544,9 +544,11 @@ def pedestals_calibration(*args, **opts):
     detname    = opts.get('det', None)
     exp        = opts.get('exp', None)
     runs       = opts.get('runs', None)
-    nbs        = opts.get('nbs', 1024)
+    nbs        = opts.get('nbs', 1000)
     stepnum    = opts.get('stepnum', None)
     stepmax    = opts.get('stepmax', 5)
+    evskip     = opts.get('evskip', 0)
+    events     = opts.get('events', 1000)
     dirxtc     = opts.get('dirxtc', None)
     dirrepo    = opts.get('dirrepo', CALIB_REPO_EPIX10KA)
     fmt_peds   = opts.get('fmt_peds', '%.3f')
@@ -558,7 +560,6 @@ def pedestals_calibration(*args, **opts):
     usesmd     = opts.get('usesmd', False)
     logmode    = opts.get('logmode', 'DEBUG')
     errskip    = opts.get('errskip', False)
-    evskip     = opts.get('evskip', 0)
 
     logger.setLevel(DICT_NAME_TO_LEVEL[logmode])
 
@@ -692,7 +693,7 @@ def pedestals_calibration(*args, **opts):
             if mode != mode_in_step:
               logger.warning('INCONSISTENT GAIN MODES IN CONFIGURATION AND STEP NUMBER/METADATA')
               if not errskip: sys.exit()
-              logger.warning('FLAG ERRSKIP IS %s - keep processing next step' % errskip)
+              logger.warning('FLAG ERRSKIP IS %s - keep processing assuming gain mode %s' % (errskip,mode))
               #continue
         else:
             logger.warning('UNRECOGNIZED GAIN MODE: %s, DARKS NOT UPDATED...'%mode)
@@ -713,12 +714,15 @@ def pedestals_calibration(*args, **opts):
                 logger.debug('==== Ev:%04d rec:%04d raw=None' % (nevt,nrec))
                 continue
             if nevt < evskip:
-                logger.debug('==== Ev:%04d is skipped due to --evskip=%d' % (nevt,evskip))
+                logger.debug('==== Ev:%04d is skipped --evskip=%d' % (nevt,evskip))
                 continue
-            if nrec>nbs-2:       # stop after collecting sufficient frames
+            if nevt > events-1:
+                logger.debug('==== Ev:%04d event loop is terminated --events=%d' % (nevt,events))
+                break
+            if nrec > nbs-2:
+                logger.debug('==== Ev:%04d event loop is terminated - collected sufficient number of frames --nbs=%d' % (nevt,nbs))
                 break
             else:
-                #if raw.ndim > 2: raw=raw[idx,:]
                 nrec += 1
                 if do_print: logger.info(info_ndarr(raw & ue.M14, 'Ev:%04d rec:%04d raw & M14 ' % (nevt,nrec)))
                 block[nrec]=(raw & ue.M14)
