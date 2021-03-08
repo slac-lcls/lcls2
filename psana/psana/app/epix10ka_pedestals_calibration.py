@@ -68,6 +68,8 @@ def argument_parser():
     d_errskip = True
     d_stepnum    = None
     d_stepmax    = 5
+    d_evskip     = 0       # number of events to skip in the beginning of each step
+    d_events     = 1000    # number of events to process from the beginning of each step
     d_dirmode    = 0o777
     d_filemode   = 0o666
     d_int_lo     = 1       # lowest  intensity accepted for dark evaluation
@@ -80,14 +82,12 @@ def argument_parser():
     d_rmsnhi     = 6.0     # rms ditribution number-of-sigmas high
     d_fraclm     = 0.1     # allowed fraction limit
     d_fracgate   = 0.9     # fraction of good statistics [0,1] in the gate
-    d_evskip     = 0       # number of events to skip in the beginning of each step
-    #d_nsigma     = 6.0     # number of sigmas for gated eveluation
 
     h_fname   = 'input xtc file name, default = %s' % d_fname
     h_exp     = 'experiment name, default = %s' % d_exp
     h_det     = 'detector name, default = %s' % d_det
     h_runs    = 'run number or list of runs e.g. 12,14-18, default = %s' % str(d_runs)
-    h_nbs     = 'number of frames to calibrate pedestals, default = %s' % str(d_nbs)
+    h_nbs     = 'maximal number of frames to calibrate pedestals, default = %s' % str(d_nbs)
     h_idx     = 'segment index (0-15 for epix10ka2m, 0-3 for quad) or all by default for processing, default = %s' % str(d_idx)
     h_dirxtc  = 'non-default xtc directory, default = %s' % d_dirxtc
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
@@ -96,6 +96,8 @@ def argument_parser():
     h_errskip = 'flag to skip errors and keep processing, stop otherwise, default = %s' % d_errskip
     h_stepnum    = 'step number to process or None for all steps, default = %s' % str(d_stepnum)
     h_stepmax    = 'maximum number of steps to process, default = %s' % str(d_stepmax)
+    h_evskip     = 'number of events to skip in the beginning of each step, default = %s' % str(d_evskip)
+    h_events     = 'number of events to process from the beginning of each step, default = %s' % str(d_events)
     h_dirmode    = 'directory access mode, default = %s' % oct(d_dirmode)
     h_filemode   = 'file access mode, default = %s' % oct(d_filemode)
     h_int_lo     = 'lowest  intensity accepted for dark evaluation, default = %d' % d_int_lo
@@ -108,8 +110,6 @@ def argument_parser():
     h_rmsnhi     = 'rms ditribution number-of-sigmas high, default = %f' % d_rmsnhi
     h_fraclm     = 'allowed fraction limit, default = %f' % d_fraclm
     h_fracgate   = 'fraction of good statistics [0,1] in the gate, default = %f' % d_fracgate
-    h_evskip     = 'number of frames to calibrate pedestals, default = %s' % str(d_evskip)
-    #h_nsigma     = 'number of sigmas for gated eveluation, default = %f' % d_nsigma
 
     parser = ArgumentParser(description='Proceses dark run xtc data for epix10ka')
     parser.add_argument('-f', '--fname',   default=d_fname,      type=str,   help=h_fname)
@@ -125,6 +125,8 @@ def argument_parser():
     parser.add_argument('-E', '--errskip', action='store_false',             help=h_errskip)
     parser.add_argument('--stepnum',       default=d_stepnum,    type=int,   help=h_stepnum)
     parser.add_argument('--stepmax',       default=d_stepmax,    type=int,   help=h_stepmax)
+    parser.add_argument('--evskip',        default=d_evskip,     type=int,   help=h_evskip)
+    parser.add_argument('--events',        default=d_events,     type=int,   help=h_events)
     parser.add_argument('--dirmode',       default=d_dirmode,    type=int,   help=h_dirmode)
     parser.add_argument('--filemode',      default=d_filemode,   type=int,   help=h_filemode)
     parser.add_argument('--int_lo',        default=d_int_lo,     type=int,   help=h_int_lo)
@@ -137,8 +139,6 @@ def argument_parser():
     parser.add_argument('--rmsnhi',        default=d_rmsnhi,     type=float, help=h_rmsnhi)
     parser.add_argument('--fraclm',        default=d_fraclm,     type=float, help=h_fraclm)
     parser.add_argument('--fracgate',      default=d_fracgate,   type=float, help=h_fracgate)
-    parser.add_argument('--evskip',        default=d_evskip,     type=int,   help=h_evskip)
-    #parser.add_argument('--nsigma',        default=d_nsigma,     type=float, help=h_nsigma)
 
     return parser
 
