@@ -558,6 +558,7 @@ def pedestals_calibration(*args, **opts):
     usesmd     = opts.get('usesmd', False)
     logmode    = opts.get('logmode', 'DEBUG')
     errskip    = opts.get('errskip', False)
+    evskip     = opts.get('evskip', 0)
 
     logger.setLevel(DICT_NAME_TO_LEVEL[logmode])
 
@@ -709,7 +710,10 @@ def pedestals_calibration(*args, **opts):
             raw = det.raw.raw(evt)
             do_print = selected_record(nevt)
             if raw is None:
-                logger.warning('==== Ev:%04d rec:%04d raw=None' % (nevt,nrec))
+                logger.debug('==== Ev:%04d rec:%04d raw=None' % (nevt,nrec))
+                continue
+            if nevt < evskip:
+                logger.debug('==== Ev:%04d is skipped due to --evskip=%d' % (nevt,evskip))
                 continue
             if nrec>nbs-2:       # stop after collecting sufficient frames
                 break
