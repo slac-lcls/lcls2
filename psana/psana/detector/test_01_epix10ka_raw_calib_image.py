@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+"""
+"""
 import sys
 import logging
 logger = logging.getLogger(__name__)
@@ -7,32 +9,11 @@ logger = logging.getLogger(__name__)
 from time import time
 t0_sec = time()
 import numpy as np
-dt_sec = time()-t0_sec
-print('np import consumed time (sec) = %.6f' % dt_sec)
+print('np import consumed time (sec) = %.6f' % (time()-t0_sec))
 
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 from psana import DataSource
 from psana.detector.UtilsMask import CC, DTYPE_MASK
-
-#----
-
-fname0 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2'
-fname1 = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005-seg1and3.xtc2'
-
-
-#print('DATA FILE IS AVAILABLE ON daq-det-drp01 ONLY')
-#fname2 = '/u2/lcls2/tst/tstx00117/xtc/tstx00117-r0147-s000-c000.xtc2'
-"""
-Wed 12/9/2020 8:13 PM
-Runs 27 and 28 are properly configured pedestal calibrations.  Run 29 is a partial charge injection calibration (for the usual reasons).
--Matt
-"""
-#print('DATA FILE IS AVAILABLE ON drp-ued-cmp001 ONLY')
-#fname2 = '/u2/pcds/pds/ued/ueddaq02/xtc/ueddaq02-r0028-s000-c000.xtc2' #dark
-#fname2 = '/reg/d/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2' #dark
-fname2 = '/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2' #dark
-detname='epixquad'
-
 
 #----
 
@@ -272,7 +253,7 @@ def test_image(args):
 
     ds, run, det = ds_run_det(args)
     flimg = None
-    peds   = det.raw._pedestals()[args.grindex,:]
+    peds  = det.raw._pedestals()[args.grindex,:]
 
     is_epix10ka = 'epix' in det.raw._uniqueid
     dcfg = ue.config_object_epix10ka(det) if is_epix10ka else None
@@ -305,17 +286,20 @@ def test_image(args):
 
         arr = det.raw.calib(evt, cmpars=(7,7,100,10),\
                             mbits=0o7, mask=user_mask, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)\
-                                                 if args.selcorr == 'calibcm'  else\
-              det.raw.calib(evt, cmpars=(8,7,50,10))\
-                                                 if args.selcorr == 'calibcm8' else\
-              det.raw.calib(evt)                 if args.selcorr == 'calib'    else\
-              peds                               if args.selcorr == 'peds'     else\
-              det.raw._gain_range_index(evt)     if args.selcorr == 'grind'    else\
-              (det.raw.raw(evt) & 0x3fff) - peds if args.selcorr == 'raw-peds' else\
-              (det.raw.raw(evt) & 0x3fff)        if args.selcorr == 'rawbm'    else\
+                                                 if args.show == 'calibcm'  else\
+              det.raw.calib(evt, cmpars=(8,7,10,10))\
+                                                 if args.show == 'calibcm8' else\
+              det.raw.calib(evt)                 if args.show == 'calib'    else\
+              peds                               if args.show == 'peds'     else\
+              det.raw._gain_range_index(evt)     if args.show == 'grind'    else\
+              (det.raw.raw(evt) & 0x3fff) - peds if args.show == 'raw-peds' else\
+              (det.raw.raw(evt) & 0x3fff)        if args.show == 'rawbm'    else\
+               np.ones_like(det.raw.raw(evt))    if args.show == 'ones'     else\
               (det.raw.raw(evt) & args.bitmask)
 
-        if args.selcorr == 'calibcm': arr += 1 # to see panel edges
+        #if args.show == 'calibcm': arr += 1 # to see panel edges
+
+        #arr[arr<100]=100
 
         logger.info(info_ndarr(arr, 'arr '))
         if arr is None: continue
@@ -325,32 +309,17 @@ def test_image(args):
                 '       AHL-H    AML-M    AHL-L    AML-L\n%s' % (29*' ')
             print(ue.info_pixel_gain_mode_fractions(dcfg, data=det.raw.raw(evt), msg=s))
 
-        #=======================
-        #arr = np.ones_like(arr)
-        #=======================
-
         t0_sec = time()
-
         img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
-        #img = det.raw.image(evt)
-        dt_sec = time()-t0_sec
-        print('image composition time = %.6f sec ' % dt_sec)
+        print('image composition time = %.6f sec ' % (time()-t0_sec))
 
         logger.info(info_ndarr(img, 'image '))
         if img is None: continue
 
-        #alimits = (img.min(),img.max()) if args.mapmode == 4 else\
-        #          None if args.mapmode else\
-        #          (0,4)
-        alimits = None
-
         if args.dograph:
-
             if flimg is None:
                 from psana.detector.UtilsGraphics import gr, fleximage
-                flimg = fleximage(img, arr=arr, h_in=8, nneg=3, npos=3, alimits=alimits) #, cmap='jet')
-                #flimg = fleximage(img, h_in=8, alimits=(0,4)) #, cmap='jet')    
-
+                flimg = fleximage(img, arr=arr, h_in=8, nneg=3, npos=3) #, cmap='jet', alimits=(100,120)(arr.min(),arr.max())
             else:
                 flimg.update(img, arr=arr)
                 flimg.fig.canvas.set_window_title('Event %d' % evnum)
@@ -392,7 +361,6 @@ def test_mask(args):
         #arr = det.raw.raw(evt)
         arr = mask + 1
         img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
-        #flimg = fleximage(img, arr=None, h_in=8, nneg=1, npos=3)#, alimits=alimits) #, cmap='jet')
         flimg = fleximage(img, arr=None, h_in=8, alimits=(-1,2))#, cmap='jet')
         gr.show()
         if args.ofname is not None:
@@ -411,10 +379,6 @@ if __name__ == "__main__":
     usage =\
         '\n  python %s <test-name> [optional-arguments]' % SCRNAME\
       + '\n  where test-name: '\
-      + '\n    0 - test_raw("fname=%s")'%fname0\
-      + '\n    1 - test_raw("fname=%s")'%fname1\
-      + '\n    4 - test_calib("fname=%s")'%fname1\
-      + '\n    5 - test_image("fname=%s")'%fname1\
       + '\n    raw   - test_raw  (args)'\
       + '\n    calib - test_calib(args)'\
       + '\n    image - test_image(args)'\
@@ -423,30 +387,20 @@ if __name__ == "__main__":
       + '\n    ./%s calib -e ueddaq02 -d epixquad -r66 # calib' % SCRNAME\
       + '\n    ./%s image -e ueddaq02 -d epixquad -r66 -N100000 # image' % SCRNAME\
       + '\n    ./%s mask  -e ueddaq02 -d epixquad -r66 # mask' % SCRNAME\
-      + '\n    ./%s image -e ueddaq02 -d epixquad -r108 -N100 -M2 -S grind' % SCRNAME\
+      + '\n    ./%s image -e ueddaq02 -d epixquad -r108 -N1 -S grind' % SCRNAME\
       + '\n    ./%s image -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8' % SCRNAME\
       + '\n    ./%s image -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8 -o img-ueddaq02-epixquad-r140-ev0002-cm8-7-100-10.png -N3' % SCRNAME\
+      + '\n    ./%s image -e ueddaq02 -d epixquad -r211 -N1 -M0 -Speds -g0 # - plot pedestals for gain group 0/FH' % SCRNAME\
+      + '\n    ./%s image -e ueddaq02 -d epixquad -r211 -N100 -Sraw-peds -M2 -g2 # - plot calib[step=2] - pedestals[gain group 2]' % SCRNAME\
 
-      #+ '\n ==== '\
-      #+ '\n    ./%s 2 -m0 -s101' % SCRNAME\
-      #+ '\n    ./%s 2 -m1' % SCRNAME\
-      #+ '\n    ./%s 2 -m2 -lDEBUG' % SCRNAME\
-      #+ '\n    ./%s 2 -m3 -s101 -o img.png' % SCRNAME\
-      #+ '\n    ./%s 2 -m4' % SCRNAME\
-      #+ '\n    2 - does not contain config for calib....test_image("%s")'%fname0\
-      #+ '\n    3 - does not contain config for calib....test_image("%s")'%fname1\
-
-    d_fname   = fname0 if tname in ('0','2') else\
-                fname1 if tname in ('1','3') else\
-                fname2 if tname in ('4','5') else\
-                None
     d_loglev  = 'INFO' #'INFO' #'DEBUG'
+    d_fname   = None   #fname2 = '/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2' #dark
     d_pattrs  = False
     d_dograph = True
-    d_selcorr = 'calibcm'
-    d_detname = 'epix10k2M' if tname in ('0','1','2','3') else 'epixquad'
-    d_expname = 'ueddaq02' # None #'ueddaq02' if tname=='4' else 'mfxc00318'
-    d_runs    = '66' # '27,29'
+    d_show    = 'calibcm'
+    d_detname = 'epixquad'
+    d_expname = 'ueddaq02'
+    d_runs    = '66'
     d_ofname  = None
     d_mapmode = 1
     d_pscsize = 100
@@ -459,7 +413,7 @@ if __name__ == "__main__":
 
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
-    h_selcorr = 'select image correction from raw/calib/calibcm/calibcm8/grind/rawbm/raw-peds/peds, def=%s' % d_selcorr
+    h_show = 'select image correction from raw/calib/calibcm/calibcm8/grind/rawbm/raw-peds/peds/ones, def=%s' % d_show
     import argparse
 
     parser = argparse.ArgumentParser(usage=usage)
@@ -471,15 +425,15 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--runs',    default=d_runs,    type=str, help='run or comma separated list of runs, def=%s' % d_runs)
     parser.add_argument('-P', '--pattrs',  default=d_pattrs,  action='store_true',  help='print objects attrubutes, def=%s' % d_pattrs)
     parser.add_argument('-G', '--dograph', default=d_dograph, action='store_false', help='plot graphics, def=%s' % d_pattrs)
-    parser.add_argument('-S', '--selcorr', default=d_selcorr, type=str, help=h_selcorr)
+    parser.add_argument('-S', '--show',    default=d_show,    type=str, help=h_show)
     parser.add_argument('-o', '--ofname',  default=d_ofname,  type=str, help='output image file name, def=%s' % d_ofname)
     parser.add_argument('-m', '--mapmode', default=d_mapmode, type=int, help=h_mapmode)
     parser.add_argument('-N', '--evtmax',  default=d_evtmax,  type=int, help='maximal number of events, def=%s' % d_evtmax)
     parser.add_argument('-K', '--evskip',  default=d_evskip,  type=int, help='number of events to skip in the beginning of run, def=%s' % d_evskip)
     parser.add_argument('-J', '--evjump',  default=d_evjump,  type=int, help='number of events to jump, def=%s' % d_evjump)
     parser.add_argument('-s', '--pscsize', default=d_pscsize, type=float, help='pixel scale size [um], def=%.1f' % d_pscsize)
-    parser.add_argument('-M', '--stepsel', default=d_stepsel, type=int, help='step selected to show or None for all, def=%s' % d_stepsel)
     parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int, help='bitmask for raw 0x3fff=16383, def=%s' % hex(d_bitmask))
+    parser.add_argument('-M', '--stepsel', default=d_stepsel, type=int, help='step selected to show or None for all, def=%s' % d_stepsel)
     parser.add_argument('-g', '--grindex', default=d_grindex, type=int, help='gain range index [0,6] for peds, def=%d' % d_grindex)
 
     args = parser.parse_args()
@@ -488,18 +442,11 @@ if __name__ == "__main__":
     for k,v in kwa.items(): s += '\n %8s: %s' % (k, str(v))
 
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=DICT_NAME_TO_LEVEL[args.loglev])
-    #logger.setLevel(intlevel)
 
     logger.info(s)
 
     tname = args.tname
-    if   tname=='0': test_raw(args)
-    elif tname=='1': test_raw(args)
-    #elif tname=='2': test_image(args)
-    #elif tname=='3': test_image(args))
-    elif tname=='4':     test_calib(args)
-    elif tname=='5':     test_image(args)
-    elif tname=='raw':   test_raw  (args)
+    if   tname=='raw':   test_raw  (args)
     elif tname=='calib': test_calib(args)
     elif tname=='image': test_image(args)
     elif tname=='mask':  test_mask(args)
