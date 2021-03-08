@@ -15,9 +15,11 @@ class Events:
         self.filter_callback= filter_callback
         self.get_smd        = get_smd          # RunParallel
         self.smdr_man       = smdr_man         # RunSerial
-        self._evt_man               = iter([])
-        self._batch_iter            = iter([])
-        self.c_read = self.prom_man.get_metric('psana_bd_read')
+        self._evt_man       = iter([])
+        self._batch_iter    = iter([])
+        self.c_read         = self.prom_man.get_metric('psana_bd_read')
+        self.st_yield       = 0
+        self.en_yield       = 0
 
     def __iter__(self):
         return self
@@ -61,7 +63,6 @@ class Events:
                 if smd_batch == bytearray():
                     raise StopIteration
 
-                self.c_read.labels('batches','None').inc()
                 self._evt_man = EventManager(smd_batch, 
                         self.configs, 
                         self.dm, 
@@ -72,6 +73,7 @@ class Events:
                         )
                 evt = next(self._evt_man)
                 if not any(evt._dgrams): return self.__next__()
+                
                 return evt
         else: 
             # RunSingleFile or RunShmem - get event from DgramManager

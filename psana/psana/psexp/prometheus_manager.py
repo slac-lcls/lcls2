@@ -6,7 +6,7 @@ PUSH_INTERVAL_SECS  = 5
 PUSH_GATEWAY        = 'psdm03:9091'
 
 registry = CollectorRegistry()
-metrics ={'psana_smd0_wait_disk': ('Summary', 'Time spent (s) reading smalldata'),
+metrics ={
         'psana_smd0_read'       : ('Counter', 'Counting no. of events/batches/MB read by Smd0'), 
         'psana_smd0_sent'       : ('Counter', 'Counting no. of events/batches/MB and wait time  \
                                     communicating with EventBuilder cores'), 
@@ -16,7 +16,9 @@ metrics ={'psana_smd0_wait_disk': ('Summary', 'Time spent (s) reading smalldata'
                                     in filter callback'), 
         'psana_eb_wait_smd0'    : ('Summary', 'time spent (s) waiting for Smd0'),
         'psana_bd_read'         : ('Counter', 'Counting no. of events processed by BigData'),
-        'psana_bd_wait_disk'    : ('Summary', 'time spent (s) reading bigdata'),
+        'psana_bd_just_read'    : ('Summary', 'time spent (s) reading bigdata'),
+        'psana_bd_gen_smd_batch': ('Summary', 'time spent (s) creating a batch of smd events'),
+        'psana_bd_gen_evt'      : ('Summary', 'time spent (s) creating an evt'),
         'psana_bd_wait_eb'      : ('Counter', 'time spent (s) waiting for EventBuilder cores'),
         'psana_bd_ana'          : ('Counter', 'time spent (s) in analysis fn on                 \
                                     BigData core'),
@@ -39,7 +41,7 @@ class PrometheusManager(object):
 
     def push_metrics(self, e, from_whom=''):
         while not e.isSet():
-            push_to_gateway(PUSH_GATEWAY, job='psana_pushgateway', grouping_key={'jobid': self.jobid, 'rank': from_whom}, registry=registry)
+            push_to_gateway(PUSH_GATEWAY, job='psana_pushgateway', grouping_key={'jobid': self.jobid, 'rank': from_whom}, registry=registry, timeout=None)
             logging.info('TS: %s PUSHED JOBID: %s RANK: %s e.isSet():%s'%(time.time(), self.jobid, from_whom, e.isSet()))
             time.sleep(PUSH_INTERVAL_SECS)
         

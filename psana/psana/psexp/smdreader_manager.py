@@ -6,8 +6,6 @@ import os, time
 from psana import dgram
 from psana.event import Event
 
-s_smd0_disk = PrometheusManager.get_metric('psana_smd0_wait_disk')
-
 
 class BatchIterator(object):
     """ Iterates over batches of events.
@@ -72,11 +70,13 @@ class SmdReaderManager(object):
         # Collecting Smd0 performance using prometheus
         self.c_read = self.dsparms.prom_man.get_metric('psana_smd0_read')
 
-    @s_smd0_disk.time()
     def _get(self):
+        st = time.time()
         self.smdr.get()
-        logging.info('smdreader_manager: read %.5f MB'%(self.smdr.got/1e6))
+        en = time.time()
+        logging.info(f'smdreader_manager: read {self.smdr.got/1e6:.5f} MB took {en-st}s. rate: {self.smdr.got/(1e6*(en-st))} MB/s')
         self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
+        self.c_read.labels('seconds', 'None').inc(en-st)
         
         if self.smdr.chunk_overflown > 0:
             msg = f"SmdReader found dgram ({self.smdr.chunk_overflown} MB) larger than chunksize ({self.chunksize/1e6} MB)"
@@ -137,10 +137,6 @@ class SmdReaderManager(object):
         self.got_events = self.smdr.view_size
         self.processed_events += self.got_events
 
-        # sending data to prometheus
-        self.c_read.labels('evts', 'None').inc(self.got_events)
-        self.c_read.labels('batches', 'None').inc()
-
         return batch_iter
         
 
@@ -155,8 +151,6 @@ class SmdReaderManager(object):
                 
                 # sending data to prometheus
                 logging.info('smdreader_manager: smd0 got %d events'%(self.got_events))
-                self.c_read.labels('evts', 'None').inc(self.got_events)
-                self.c_read.labels('batches', 'None').inc()
 
                 if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
                     logging.info(f'smdreader_manager: max_events={self.dsparms.max_events} reached')

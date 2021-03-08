@@ -6,7 +6,9 @@ import os
 from psana.psexp.tools import Logging as logging
 import time
 
-s_bd_disk = PrometheusManager.get_metric('psana_bd_wait_disk')
+s_bd_just_read = PrometheusManager.get_metric('psana_bd_just_read')
+s_bd_gen_smd_batch = PrometheusManager.get_metric('psana_bd_gen_smd_batch')
+s_bd_gen_evt = PrometheusManager.get_metric('psana_bd_gen_evt')
 
 class EventManager(object):
     """ Return an event from the received smalldata memoryview (view)
@@ -41,7 +43,7 @@ class EventManager(object):
         if not self.filter_fn and len(self.dm.xtc_files) > 0:
             self._read_bigdata_in_chunk()
 
-    @s_bd_disk.time()
+    @s_bd_just_read.time()
     def _read_chunks_from_disk(self, fds, offsets, sizes):
         sum_read_nbytes = 0 # for prometheus counter
         st = time.time()
@@ -68,9 +70,10 @@ class EventManager(object):
             rate = (sum_read_nbytes/1e6)/(en-st)
         logging.info(f"event_manager: bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
         self._inc_prometheus_counter('MB', sum_read_nbytes/1e6)
+        self._inc_prometheus_counter('seconds', en-st)
         return 
     
-    @s_bd_disk.time()
+    @s_bd_just_read.time()
     def _read_dgram_from_disk(self, dgram_i, offset_and_size):
         offset = offset_and_size[0,0]
         size   = offset_and_size[0,1]
@@ -81,14 +84,38 @@ class EventManager(object):
         if dgram._size > 0:
             rate = (dgram._size/1e6)/(en-st)
         logging.info(f"event_manager: bd reads dgram{dgram_i} {dgram._size/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
+        self._inc_prometheus_counter('MB', dgram._size/1e6)
+        self._inc_prometheus_counter('seconds', en-st)
         return dgram
-            
+
+    @s_bd_gen_smd_batch.time()
+    def _calc_offset_and_size(self, first_L1_pos, offsets, sizes):
+        for i_evt, event_bytes in enumerate(self.smd_events[first_L1_pos:]):
+            j_evt = i_evt + first_L1_pos
+            if event_bytes:
+                smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.get_run())
+                for i_smd, smd_dgram in enumerate(smd_evt._dgrams):
+                    if self.use_smds[i_smd]:
+                        d_size = smd_dgram._size
+                        self.bigdata[i_smd].extend(smd_dgram)
+                    else:
+                        d_size = smd_evt.get_offset_and_size(i_smd)[0,1] # only need size
+                    if j_evt > 0:
+                        prev_d_offset = self.ofsz_batch[j_evt-1, i_smd, 0]
+                        prev_d_size = self.ofsz_batch[j_evt-1, i_smd, 1]
+                        d_offset = prev_d_offset + prev_d_size
+                    else:
+                        d_offset = 0
+                    self.ofsz_batch[j_evt, i_smd] = [d_offset, d_size] 
+                    sizes[i_smd] += d_size
+
     def _read_bigdata_in_chunk(self):
         """ Read bigdata chunks of 'size' bytes and store them in views
         Note that views here contain bigdata (and not smd) events.
         All non L1 dgrams are copied from smd_events and prepend
         directly to bigdata chunks.
         """
+        st = time.time()
         self.bigdata = []
         for i in range(self.n_smd_files):
             self.bigdata.append(bytearray())
@@ -120,33 +147,17 @@ class EventManager(object):
                 if i_evt > 0:
                     self.ofsz_batch[i_evt,:,0] = self.ofsz_batch[i_evt-1,:,0] + self.ofsz_batch[i_evt-1,:,1]
                 self.ofsz_batch[i_evt,:,1] = ofsz[:,1]
-                
+        
         if first_L1_pos == -1: return
 
-        for i_evt, event_bytes in enumerate(self.smd_events[first_L1_pos:]):
-            j_evt = i_evt + first_L1_pos
-            if event_bytes:
-                smd_evt = Event._from_bytes(self.smd_configs, event_bytes, run=self.dm.get_run())
-                for i_smd, smd_dgram in enumerate(smd_evt._dgrams):
-                    if self.use_smds[i_smd]:
-                        d_size = smd_dgram._size
-                        self.bigdata[i_smd].extend(smd_dgram)
-                    else:
-                        d_size = smd_evt.get_offset_and_size(i_smd)[0,1] # only need size
-                    if j_evt > 0:
-                        prev_d_offset = self.ofsz_batch[j_evt-1, i_smd, 0]
-                        prev_d_size = self.ofsz_batch[j_evt-1, i_smd, 1]
-                        d_offset = prev_d_offset + prev_d_size
-                    else:
-                        d_offset = 0
-                    self.ofsz_batch[j_evt, i_smd] = [d_offset, d_size] 
-                    sizes[i_smd] += d_size
-                       
+        self._calc_offset_and_size(first_L1_pos, offsets, sizes)
+        en_batch = time.time()
         # If no data were filtered, we can assume that all bigdata
         # dgrams starting from the first offset are stored consecutively
         # in the file. We read a chunk of sum(all dgram sizes) and
         # store in a view.
         self._read_chunks_from_disk(self.dm.fds, offsets, sizes)
+        en = time.time()
             
     def __iter__(self):
         return self
@@ -155,6 +166,7 @@ class EventManager(object):
         if self.prometheus_counter:
             self.prometheus_counter.labels(unit,'None').inc(value)
 
+    @s_bd_gen_evt.time()
     def __next__(self):
         if self.cn_events == self.n_events: 
             raise StopIteration
@@ -177,7 +189,6 @@ class EventManager(object):
                     bd_dgrams.append(self._read_dgram_from_disk(smd_i, offset_and_size))
             bd_evt = Event(dgrams=bd_dgrams, run=self.dm.get_run())
             self.cn_events += 1
-            self._inc_prometheus_counter('MB', read_size/1e6)
             self._inc_prometheus_counter('evts')
             return bd_evt
         
