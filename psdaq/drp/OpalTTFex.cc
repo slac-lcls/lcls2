@@ -68,7 +68,7 @@ OpalTTFex::OpalTTFex(Parameters* para) :
 
   m_sig_avg.resize(0);
   m_ref_avg.resize(0);
-  m_ref_avg_2d = NDArray<double>();
+  //  m_ref_avg_2d = NDArray<double>();
 
   FILE* f = fopen(m_fname.c_str(),"r");
   if (f) {
