@@ -11,7 +11,7 @@ t0_sec = time()
 import numpy as np
 print('np import consumed time (sec) = %.6f' % (time()-t0_sec))
 
-from psana.pyalgos.generic.NDArrUtils import info_ndarr
+from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
 from psana import DataSource
 from psana.detector.UtilsMask import CC, DTYPE_MASK
 
@@ -146,7 +146,7 @@ def test_raw(args):
       print('%s\nStep %1d' % (50*'_',stepnum))
 
       for evnum,evt in enumerate(step.events()):
-        if evnum>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
+        if evnum>args.events: exit('exit by number of events limit %d' % args.events)
         if not selected_record(evnum): continue
         print('%s\nEvent %04d' % (50*'_',evnum))
         segs = det.raw.segments(evt)
@@ -225,7 +225,7 @@ def test_calib(args):
     for stepnum,step in enumerate(run.steps()):
         print('%s\nStep %1d' % (50*'_',stepnum))
         for evnum,evt in enumerate(step.events()):
-            if evnum>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
+            if evnum>args.events: exit('exit by number of events limit %d' % args.events)
             if not selected_record(evnum): continue
             print('%s\nStep %1d Event %04d' % (50*'_',stepnum, evnum))
             #segs = det.raw._segments(evt)
@@ -260,6 +260,11 @@ def test_image(args):
 
     break_event_loop = False
 
+    nframes = 0
+    sum_arr, sum_sta = None, None
+    med_vs_evt = np.zeros(args.events-args.evskip+10, dtype=np.float64)
+    nrec_med = 0
+
     for stepnum,step in enumerate(run.steps()):
       print('%s\nStep %1d' % (50*'_',stepnum))
 
@@ -273,8 +278,8 @@ def test_image(args):
                    end=('\r' if evnum<args.evskip-1 else '\n'))
             continue
             
-        if evnum>args.evtmax:
-            print('break by number of events limit %d set in option -N' % args.evtmax)
+        if evnum>args.events:
+            print('break by number of events limit %d set in option -N' % args.events)
             break_event_loop = True
             break
         if evnum>2 and evnum%args.evjump!=0: continue
@@ -307,7 +312,33 @@ def test_image(args):
         if dcfg is not None:
             s = '    gain mode fractions for: FH       FM       FL'\
                 '       AHL-H    AML-M    AHL-L    AML-L\n%s' % (29*' ')
-            print(ue.info_pixel_gain_mode_fractions(dcfg, data=det.raw.raw(evt), msg=s))
+            #ue.info_pixel_gain_mode_for_fractions(dcfg, data=det.raw.raw(evt), msg=s))
+            gmfracs = ue.pixel_gain_mode_fractions(dcfg, data=det.raw.raw(evt))
+            print(ue.info_pixel_gain_mode_for_fractions(gmfracs, msg=s))
+            gmind = ue.gain_mode_index_from_fractions(gmfracs)
+            gmname = ue.gain_mode_name_for_index(gmind).upper()
+            print('  == major gain mode %d : %s' % (gmind, gmname))
+            #print('  == gain mode: %s' % ue.find_gain_mode(dcfg, data=None).upper())
+
+        med = np.median(arr)
+        med_vs_evt[nrec_med] = med; nrec_med+=1
+
+        if args.cumulat:
+          if (med > args.thrmin) and (med < args.thrmax):
+            nframes +=1
+            cond = arr > args.thrpix
+            if nframes != 1:
+                _ = np.add(sum_arr[cond], arr[cond], out=sum_arr[cond])
+                sum_sta[cond] += 1
+            else:
+                sum_arr = np.array(arr,dtype=np.float64)
+                sum_sta = np.zeros_like(arr,dtype=np.uint64)
+
+            #if nframes > 1: arr = sum_arr/float(nframes)
+            if nframes > 1: arr = divide_protected(sum_arr, sum_sta)
+            print('Step %1d event:%04d nframes:%04d arr median:%.3f' % (stepnum, evnum, nframes, med))
+          else:
+            continue
 
         t0_sec = time()
         img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
@@ -319,7 +350,7 @@ def test_image(args):
         if args.dograph:
             if flimg is None:
                 from psana.detector.UtilsGraphics import gr, fleximage
-                flimg = fleximage(img, arr=arr, h_in=8, nneg=3, npos=3) #, cmap='jet', alimits=(100,120)(arr.min(),arr.max())
+                flimg = fleximage(img, arr=arr, h_in=8, fraclo=0.05, frachi=0.95) #nneg=3, npos=3, cmap='jet', alimits=(100,120)(arr.min(),arr.max())
             else:
                 flimg.update(img, arr=arr)
                 flimg.fig.canvas.set_window_title('Event %d' % evnum)
@@ -327,6 +358,16 @@ def test_image(args):
             gr.show(mode=1)
 
       if break_event_loop: break
+
+    med_vs_evt = med_vs_evt[:nrec_med]
+    med = np.median(med_vs_evt)
+    q05 = np.quantile(med_vs_evt, 0.05, interpolation='linear')
+    q95 = np.quantile(med_vs_evt, 0.95, interpolation='linear')
+
+    print(info_ndarr(med_vs_evt, 'per event median  ', last=nrec_med-1))
+    print('  median over %d event-records: %.3f' % (nrec_med, med))
+    print('  quantile(med_vs_evt, 0.05): %.3f' % q05)
+    print('  quantile(med_vs_evt, 0.95): %.3f' % q95)
 
     if args.dograph:
         print('\n  !!! TO EXIT - close graphical window - click on [x] in the window corner')
@@ -397,6 +438,7 @@ if __name__ == "__main__":
     d_fname   = None   #fname2 = '/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2' #dark
     d_pattrs  = False
     d_dograph = True
+    d_cumulat = False
     d_show    = 'calibcm'
     d_detname = 'epixquad'
     d_expname = 'ueddaq02'
@@ -404,12 +446,15 @@ if __name__ == "__main__":
     d_ofname  = None
     d_mapmode = 1
     d_pscsize = 100
-    d_evtmax  = 1000
+    d_events  = 1000
     d_evskip  = 0
     d_evjump  = 100
     d_stepsel = None
     d_bitmask = 0xffff
     d_grindex = 2
+    d_thrmin  = -0.344 # -0.598 as in dark 211, -0.344 r134
+    d_thrmax  = 0.582 # 0.582 r134
+    d_thrpix  = -10000
 
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
@@ -425,16 +470,20 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--runs',    default=d_runs,    type=str, help='run or comma separated list of runs, def=%s' % d_runs)
     parser.add_argument('-P', '--pattrs',  default=d_pattrs,  action='store_true',  help='print objects attrubutes, def=%s' % d_pattrs)
     parser.add_argument('-G', '--dograph', default=d_dograph, action='store_false', help='plot graphics, def=%s' % d_pattrs)
+    parser.add_argument('-C', '--cumulat', default=d_cumulat, action='store_true', help='plot cumulative image, def=%s' % d_cumulat)
     parser.add_argument('-S', '--show',    default=d_show,    type=str, help=h_show)
     parser.add_argument('-o', '--ofname',  default=d_ofname,  type=str, help='output image file name, def=%s' % d_ofname)
     parser.add_argument('-m', '--mapmode', default=d_mapmode, type=int, help=h_mapmode)
-    parser.add_argument('-N', '--evtmax',  default=d_evtmax,  type=int, help='maximal number of events, def=%s' % d_evtmax)
+    parser.add_argument('-N', '--events',  default=d_events,  type=int, help='maximal number of events, def=%s' % d_events)
     parser.add_argument('-K', '--evskip',  default=d_evskip,  type=int, help='number of events to skip in the beginning of run, def=%s' % d_evskip)
     parser.add_argument('-J', '--evjump',  default=d_evjump,  type=int, help='number of events to jump, def=%s' % d_evjump)
     parser.add_argument('-s', '--pscsize', default=d_pscsize, type=float, help='pixel scale size [um], def=%.1f' % d_pscsize)
     parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int, help='bitmask for raw 0x3fff=16383, def=%s' % hex(d_bitmask))
     parser.add_argument('-M', '--stepsel', default=d_stepsel, type=int, help='step selected to show or None for all, def=%s' % d_stepsel)
     parser.add_argument('-g', '--grindex', default=d_grindex, type=int, help='gain range index [0,6] for peds, def=%d' % d_grindex)
+    parser.add_argument('-t', '--thrmin',  default=d_thrmin,  type=float, help='minimal threshold on median to accumulate events with -C, def=%f' % d_thrmin)
+    parser.add_argument('-T', '--thrmax',  default=d_thrmax,  type=float, help='maximal threshold on median to accumulate events with -C, def=%f' % d_thrmax)
+    parser.add_argument('--thrpix',        default=d_thrpix,  type=float, help='per pixel intensity threshold to accumulate events with -C, def=%f' % d_thrpix)
 
     args = parser.parse_args()
     kwa = vars(args)
