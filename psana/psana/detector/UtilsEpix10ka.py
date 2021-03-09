@@ -20,6 +20,7 @@ Usage::
     s = info_pixel_gain_mode_statistics_for_raw(dcfg, data=None, msg='pixel gain mode statistics: ')
     gmfs = pixel_gain_mode_fractions(dcfg, data=None)
     s = info_pixel_gain_mode_fractions(dcfg, data=None, msg='pixel gain mode fractions: ')
+    gmind = find_gain_mode_index(dcfg, data=None)
     gmode = find_gain_mode(dcfg, data=None)
     calib = calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa)
     calib = calib_epix10ka_any(det_raw, evt, cmpars=(7,2,100,10),\
@@ -332,18 +333,22 @@ def info_pixel_gain_mode_fractions(dcfg, data=None, msg='pixel gain mode fractio
     return '%s%s' % (msg, ', '.join(['%.5f'%p for p in grp_prob]))
 
 
+def find_gain_mode_index(dcfg, data=None):
+    """Returns int gain mode index or None.
+       if data=None: distinguish 5-modes w/o data
+    """
+    grp_prob = pixel_gain_mode_fractions(dcfg, data)
+    return next((i for i,p in enumerate(grp_prob) if p>0.5), None)
+
+
 def find_gain_mode(dcfg, data=None):
     """Returns str gain mode from the list GAIN_MODES or None.
        if data=None: distinguish 5-modes w/o data
     """
     grp_prob = pixel_gain_mode_fractions(dcfg, data)
-
     ind = next((i for i,p in enumerate(grp_prob) if p>0.5), None)
     if ind is None: return None
-    gain_mode = GAIN_MODES[ind] if ind<len(grp_prob) else None 
-    #logger.debug('Gain mode %s is selected from %s' % (gain_mode, ', '.join(GAIN_MODES)))
-
-    return gain_mode
+    return GAIN_MODES[ind] if ind<len(grp_prob) else None
 
 
 def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
