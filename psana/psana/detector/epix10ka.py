@@ -15,7 +15,7 @@ class epix10k_raw_0_0_1(epix10ka_base):
 class epix10ka_raw_2_0_1(epix10ka_base):
     def __init__(self, *args, **kwargs):
         epix10ka_base.__init__(self, *args, **kwargs)
-    def array(self, evt) -> Array2d:
+    def _array(self, evt) -> Array2d:
         f = None
         segs = self._segments(evt)
         if segs is None:
@@ -33,9 +33,6 @@ class epix10ka_raw_2_0_1(epix10ka_base):
                     y = ya[i]
                     f[y:y+ny,x:x+nx] = segs[i].raw & 0x3fff
         return f
-    def __call__(self, evt) -> Array2d:
-        """Alias for self.raw(evt)"""
-        return self.array(evt)
 
 #  Old detType for epix10ka
 epix_raw_2_0_1 = epix10ka_raw_2_0_1
