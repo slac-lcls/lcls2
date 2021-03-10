@@ -78,13 +78,13 @@ def datasource_run(**kwa):
 
 def datasource_run_det(**kwa):
     ds = DataSource(**kwa)
-    print('\nXXX dir(ds):', dir(ds))
+    print('\n  dir(ds):', dir(ds))
     
     run = next(ds.runs())
-    print('\nXXX dir(run):', dir(run))
+    print('\n  dir(run):', dir(run))
 
     det = run.Detector(kwa.get('detname','opal'))
-    print('\nXXX dir(det):', dir(det))
+    print('\n  dir(det):', dir(det))
     
     return ds, run, det
 
@@ -250,10 +250,13 @@ def test_calib(args):
 def test_image(args):
 
     import psana.detector.UtilsEpix10ka as ue
+    from psana.detector.UtilsGraphics import gr, fleximage, flexhist, fleximagespec
+
+    dograph = args.dograph.lower()
+    flimg, flspe, flims = None, None, None
 
     ds, run, det = ds_run_det(args)
-    flimg = None
-    peds  = det.raw._pedestals()[args.grindex,:]
+    peds = None if args.grindex is None else det.raw._pedestals()[args.grindex,:]
 
     is_epix10ka = 'epix' in det.raw._uniqueid
     dcfg = ue.config_object_epix10ka(det) if is_epix10ka else None
@@ -285,6 +288,19 @@ def test_image(args):
         if evnum>2 and evnum%args.evjump!=0: continue
         print('%s\nStep %1d Event %04d' % (50*'_',stepnum, evnum))
 
+        if dcfg is not None:
+            s = '    gain mode fractions for: FH       FM       FL'\
+                '       AHL-H    AML-M    AHL-L    AML-L\n%s' % (29*' ')
+            #ue.info_pixel_gain_mode_for_fractions(dcfg, data=det.raw.raw(evt), msg=s))
+            gmfracs = ue.pixel_gain_mode_fractions(dcfg, data=det.raw.raw(evt))
+            print(ue.info_pixel_gain_mode_for_fractions(gmfracs, msg=s))
+            gmind = ue.gain_mode_index_from_fractions(gmfracs)
+            gmname = ue.gain_mode_name_for_index(gmind).upper()
+            print('  == major gain mode %d : %s' % (gmind, gmname))
+            #print('  == gain mode: %s' % ue.find_gain_mode(dcfg, data=None).upper())
+
+            if peds is None: peds = det.raw._pedestals()[gmind,:]
+
         #user_mask = np.ones_like(det.raw.raw(evt), dtype=DTYPE_MASK) #np.uint8
         #user_mask[0,100:150,200:250] = 0
         user_mask = None
@@ -304,21 +320,8 @@ def test_image(args):
 
         #if args.show == 'calibcm': arr += 1 # to see panel edges
 
-        #arr[arr<100]=100
-
         logger.info(info_ndarr(arr, 'arr '))
         if arr is None: continue
-
-        if dcfg is not None:
-            s = '    gain mode fractions for: FH       FM       FL'\
-                '       AHL-H    AML-M    AHL-L    AML-L\n%s' % (29*' ')
-            #ue.info_pixel_gain_mode_for_fractions(dcfg, data=det.raw.raw(evt), msg=s))
-            gmfracs = ue.pixel_gain_mode_fractions(dcfg, data=det.raw.raw(evt))
-            print(ue.info_pixel_gain_mode_for_fractions(gmfracs, msg=s))
-            gmind = ue.gain_mode_index_from_fractions(gmfracs)
-            gmname = ue.gain_mode_name_for_index(gmind).upper()
-            print('  == major gain mode %d : %s' % (gmind, gmname))
-            #print('  == gain mode: %s' % ue.find_gain_mode(dcfg, data=None).upper())
 
         med = np.median(arr)
         med_vs_evt[nrec_med] = med; nrec_med+=1
@@ -344,16 +347,38 @@ def test_image(args):
         img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
         print('image composition time = %.6f sec ' % (time()-t0_sec))
 
-        logger.info(info_ndarr(img, 'image '))
+        logger.info(info_ndarr(img, 'img '))
+        logger.info(info_ndarr(arr, 'arr '))
         if img is None: continue
 
-        if args.dograph:
+        title = '%s %s run:%s ev:%d' % (args.detname, args.expname, args.runs, evnum)
+
+        if 'i' in dograph:
             if flimg is None:
-                from psana.detector.UtilsGraphics import gr, fleximage
-                flimg = fleximage(img, arr=arr, h_in=8, fraclo=0.05, frachi=0.95) #nneg=3, npos=3, cmap='jet', alimits=(100,120)(arr.min(),arr.max())
+                flimg = fleximage(img, arr=arr, fraclo=0.05, frachi=0.95)
+                flimg.move(10,20)
             else:
                 flimg.update(img, arr=arr)
-                flimg.fig.canvas.set_window_title('Event %d' % evnum)
+                flimg.fig.canvas.set_window_title(title)
+                flimg.axtitle(title)
+
+        if 'h' in dograph:
+            if flspe is None:
+                flspe = flexhist(arr, bins=50, color='green', fraclo=0.001, frachi=0.999)
+                flspe.move(800,20)
+            else:
+                flspe.update(arr, bins=50, color='green', fraclo=0.001, frachi=0.999)
+                flspe.fig.canvas.set_window_title(title)
+                flspe.axtitle(title)
+
+        if 'c' in dograph:
+            if flims is None:
+                flims = fleximagespec(img, arr=arr, bins=100, color='lightgreen', fraclo=0.001, frachi=0.999)
+                flims.move(10,20)
+            else:
+                #print(info_ndarr(arr, 'YYY before update arr: ', last=5))
+                flims.update(img, arr=arr)
+                flims.axtitle(title)
 
             gr.show(mode=1)
 
@@ -370,10 +395,12 @@ def test_image(args):
     print('  quantile(med_vs_evt, 0.95): %.3f' % q95)
 
     if args.dograph:
-        print('\n  !!! TO EXIT - close graphical window - click on [x] in the window corner')
+        print('\n  !!! TO EXIT - close graphical window(s) - click on [x] in the window corner')
         gr.show()
         if args.ofname is not None:
-            gr.save_fig(flimg.fig, fname=args.ofname, verb=True)
+            if 'i' in dograph: gr.save_fig(flimg.fig, fname=args.ofname+'-img', verb=True)
+            if 'h' in dograph: gr.save_fig(flspe.fig, fname=args.ofname+'-spe', verb=True)
+            if 'c' in dograph: gr.save_fig(flims.fig, fname=args.ofname+'-imgspe', verb=True)
 
     print(50*'-')
 
@@ -437,7 +464,7 @@ if __name__ == "__main__":
     d_loglev  = 'INFO' #'INFO' #'DEBUG'
     d_fname   = None   #fname2 = '/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2' #dark
     d_pattrs  = False
-    d_dograph = True
+    d_dograph = 'c' # 'ihc' 
     d_cumulat = False
     d_show    = 'calibcm'
     d_detname = 'epixquad'
@@ -451,7 +478,7 @@ if __name__ == "__main__":
     d_evjump  = 100
     d_stepsel = None
     d_bitmask = 0xffff
-    d_grindex = 2
+    d_grindex = None
     d_thrmin  = -0.344 # -0.598 as in dark 211, -0.344 r134
     d_thrmax  = 0.582 # 0.582 r134
     d_thrpix  = -10000
@@ -469,7 +496,7 @@ if __name__ == "__main__":
     parser.add_argument('-e', '--expname', default=d_expname, type=str, help='experiment name, def=%s' % d_expname)
     parser.add_argument('-r', '--runs',    default=d_runs,    type=str, help='run or comma separated list of runs, def=%s' % d_runs)
     parser.add_argument('-P', '--pattrs',  default=d_pattrs,  action='store_true',  help='print objects attrubutes, def=%s' % d_pattrs)
-    parser.add_argument('-G', '--dograph', default=d_dograph, action='store_false', help='plot graphics, def=%s' % d_pattrs)
+    parser.add_argument('-G', '--dograph', default=d_dograph, type=str, help='plot i/h/c=image/hist/comb, def=%s' % d_dograph)
     parser.add_argument('-C', '--cumulat', default=d_cumulat, action='store_true', help='plot cumulative image, def=%s' % d_cumulat)
     parser.add_argument('-S', '--show',    default=d_show,    type=str, help=h_show)
     parser.add_argument('-o', '--ofname',  default=d_ofname,  type=str, help='output image file name, def=%s' % d_ofname)
@@ -480,7 +507,7 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--pscsize', default=d_pscsize, type=float, help='pixel scale size [um], def=%.1f' % d_pscsize)
     parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int, help='bitmask for raw 0x3fff=16383, def=%s' % hex(d_bitmask))
     parser.add_argument('-M', '--stepsel', default=d_stepsel, type=int, help='step selected to show or None for all, def=%s' % d_stepsel)
-    parser.add_argument('-g', '--grindex', default=d_grindex, type=int, help='gain range index [0,6] for peds, def=%d' % d_grindex)
+    parser.add_argument('-g', '--grindex', default=d_grindex, type=int, help='gain range index [0,6] for peds, def=%s' % str(d_grindex))
     parser.add_argument('-t', '--thrmin',  default=d_thrmin,  type=float, help='minimal threshold on median to accumulate events with -C, def=%f' % d_thrmin)
     parser.add_argument('-T', '--thrmax',  default=d_thrmax,  type=float, help='maximal threshold on median to accumulate events with -C, def=%f' % d_thrmax)
     parser.add_argument('--thrpix',        default=d_thrpix,  type=float, help='per pixel intensity threshold to accumulate events with -C, def=%f' % d_thrpix)
