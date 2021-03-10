@@ -161,7 +161,7 @@ class Event():
         for size.
         """
         d = self._dgrams[i]
-        offset_and_size = np.zeros((1,2), dtype=np.int)
+        offset_and_size = np.zeros((1,2), dtype=int)
         if d:
             if hasattr(d, "smdinfo"):
                 offset_and_size[:] = [d.smdinfo[0].offsetAlg.intOffset, \

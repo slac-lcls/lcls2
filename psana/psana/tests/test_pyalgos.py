@@ -17,7 +17,7 @@ def test_hbins():
     from psana.pyalgos.generic.HBins import HBins
     o = HBins((1,6), 5)
     print('  binedges():', o.binedges())
-    assert(np.array_equal(o.binedges(), np.array((1,2,3,4,5,6), dtype=np.float)))
+    assert(np.array_equal(o.binedges(), np.array((1,2,3,4,5,6), dtype=float)))
 
 #------------------------------
 

@@ -63,7 +63,7 @@ def hist_probabilities(nda) :
     #print('%s for array dtype=%s'%(FR().f_code.co_name, str(nda.dtype)))
 
     nvals = nda.size
-    ph = np.array(hist_values(nda), dtype=np.float)
+    ph = np.array(hist_values(nda), dtype=float)
     ph /= nvals
     #print('Check sum of probabilities: %.6f for number of values in array = %d' % (ph.sum(), nvals))
     return ph

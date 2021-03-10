@@ -50,7 +50,7 @@ def set_random_state(seed=1234567) :
 
 #-----------------------------
 
-def random_standard(shape=(40,60), mu=200, sigma=25, dtype=np.float) :
+def random_standard(shape=(40,60), mu=200, sigma=25, dtype=float) :
     """Returns numpy array of requested shape and type filled with normal distribution for mu and sigma.
     """
     a = mu + sigma*np.random.standard_normal(size=shape)
@@ -58,7 +58,7 @@ def random_standard(shape=(40,60), mu=200, sigma=25, dtype=np.float) :
 
 #-----------------------------
 
-def random_exponential(shape=(40,60), a0=100, dtype=np.float) :
+def random_exponential(shape=(40,60), a0=100, dtype=float) :
     """Returns numpy array of requested shape and type filled with exponential distribution for width a0.
     """
     a = a0*np.random.standard_exponential(size=shape)
@@ -66,7 +66,7 @@ def random_exponential(shape=(40,60), a0=100, dtype=np.float) :
 
 #-----------------------------
 
-def random_one(shape=(40,60), dtype=np.float) :
+def random_one(shape=(40,60), dtype=float) :
     """Returns numpy array of requested shape and type filled with random numbers in the range [0,1].
     """
     a = np.random.random(shape)

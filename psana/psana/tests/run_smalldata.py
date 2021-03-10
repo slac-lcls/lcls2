@@ -64,8 +64,8 @@ def gen_h5(source='xtc', pid=None):
                       timestamp=evt.timestamp, 
                       oneint=1, 
                       twofloat=2.0,
-                      arrint=np.ones(2, dtype=np.int),
-                      arrfloat=np.ones(2, dtype=np.float)
+                      arrint=np.ones(2, dtype=int),
+                      arrfloat=np.ones(2, dtype=float)
                       # ragged_
                       )
 
@@ -106,14 +106,14 @@ class SmallDataTest:
         a = np.array(self.f['/arrint'])
         assert np.all(a == 1), a
         assert a.shape[1] == 2, a
-        assert a.dtype == np.int, a
+        assert a.dtype == int, a
         return
 
     def test_arrfloat(self):
         a = np.array(self.f['/arrfloat'])
         assert np.all(a == 1.0), a
         assert a.shape[1] == 2, a 
-        assert a.dtype == np.float, a
+        assert a.dtype == float, a
         return
 
     def test_unaligned(self, mode):

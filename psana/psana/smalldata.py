@@ -87,8 +87,8 @@ MISSING_INT   = -99999
 MISSING_FLOAT = np.nan
 
 INT_TYPES   = [int, np.int8, np.int16, np.int32, np.int64,
-               np.int, np.uint8, np.uint16, np.uint32, np.uint64, np.uint]
-FLOAT_TYPES = [float, np.float16, np.float32, np.float64, np.float128, np.float]
+               int, np.uint8, np.uint16, np.uint32, np.uint64, np.uint]
+FLOAT_TYPES = [float, np.float16, np.float32, np.float64, np.float128, float]
 
 RAGGED_PREFIX   = 'ragged_'
 UNALIGED_PREFIX = 'unaligned_'

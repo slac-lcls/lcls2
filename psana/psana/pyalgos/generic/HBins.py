@@ -297,14 +297,14 @@ class HBins() :
         return np.bincount(indarr, weights, self.nbins())
 
 
-    def set_bin_data(self, data, dtype=np.float) :
+    def set_bin_data(self, data, dtype=float) :
         if len(data)!=self.nbins() :
             self._bin_data = None
             return
         self._bin_data = np.array(data, dtype)
 
 
-    def bin_data(self, dtype=np.float) :
+    def bin_data(self, dtype=float) :
         return self._bin_data.astype(dtype)
         
 
