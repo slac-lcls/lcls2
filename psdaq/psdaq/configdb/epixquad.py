@@ -1,6 +1,6 @@
 import rogue
 import pyrogue as pr
-import epix
+import epix_l2sidaq
 
 #
 #  Need a reorganized epixQuad.Top (a la cameralink-gateway)
@@ -25,13 +25,13 @@ import ePixAsics as epix
 import ePixQuad
 
 class EpixQuad(pr.Device):
-   def __init__(   self,       
+   def __init__(   self,
                    name        = "Top",
                    description = "Container for EpixQuad",
                    memMap      = None,
                    **kwargs):
       super().__init__(name=name, description=description, **kwargs)
-      
+
       @self.command()
       def ClearAsicMatrix():
          # save TrigEn state and stop
@@ -43,95 +43,95 @@ class EpixQuad(pr.Device):
             self.Epix10kaSaci[i].ClearMatrix()
          # restore TrigEn state
          self.SystemRegs.TrigEn.set(trigEn)
-      
+
       ######################################################################
-      
+
       # Add devices
-      self.add(ePixQuad.EpixVersion( 
-         name    = 'AxiVersion', 
-         memBase = memMap, 
-         offset  = 0x00000000, 
+      self.add(ePixQuad.EpixVersion(
+         name    = 'AxiVersion',
+         memBase = memMap,
+         offset  = 0x00000000,
          expand  = False,
       ))
-      
-      self.add(ePixQuad.SystemRegs( 
-         name    = 'SystemRegs', 
-         memBase = memMap, 
-         offset  = 0x00100000, 
+
+      self.add(ePixQuad.SystemRegs(
+         name    = 'SystemRegs',
+         memBase = memMap,
+         offset  = 0x00100000,
          expand  = False,
       ))
-      
-      self.add(ePixQuad.AcqCore( 
-         name    = 'AcqCore', 
-         memBase = memMap, 
-         offset  = 0x01000000, 
+
+      self.add(ePixQuad.AcqCore(
+         name    = 'AcqCore',
+         memBase = memMap,
+         offset  = 0x01000000,
          expand  = False,
       ))
-      
-      self.add(ePixQuad.RdoutCore( 
-         name    = 'RdoutCore', 
-         memBase = memMap, 
-         offset  = 0x01100000, 
+
+      self.add(ePixQuad.RdoutCore(
+         name    = 'RdoutCore',
+         memBase = memMap,
+         offset  = 0x01100000,
          expand  = False,
       ))
-      
-      self.add(axi.AxiStreamMonitoring( 
-         name    = 'RdoutStreamMonitoring', 
-         memBase = memMap, 
-         offset  = 0x01300000, 
+
+      self.add(axi.AxiStreamMonitoring(
+         name    = 'RdoutStreamMonitoring',
+         memBase = memMap,
+         offset  = 0x01300000,
          expand  = False,
       ))
-      
+
       self.add(ssi.SsiPrbsTx(
          name    = 'PrbsTx',
-         memBase = memMap, 
-         offset  = 0x01400000, 
-         expand  = False, 
+         memBase = memMap,
+         offset  = 0x01400000,
+         expand  = False,
          enabled = False,
       ))
-      
-      self.add(ePixQuad.PseudoScopeCore( 
-         name    = 'PseudoScopeCore', 
-         memBase = memMap, 
-         offset  = 0x01200000, 
+
+      self.add(ePixQuad.PseudoScopeCore(
+         name    = 'PseudoScopeCore',
+         memBase = memMap,
+         offset  = 0x01200000,
          expand  = False,
       ))
-      
-      if (hwType != 'simulation'): 
-         self.add(ePixQuad.VguardDac( 
-            name    = 'VguardDac', 
-            memBase = memMap, 
-            offset  = 0x00500000, 
+
+      if (hwType != 'simulation'):
+         self.add(ePixQuad.VguardDac(
+            name    = 'VguardDac',
+            memBase = memMap,
+            offset  = 0x00500000,
             expand  = False,
          ))
-      
-      self.add(ePixQuad.EpixQuadMonitor( 
-         name    = 'EpixQuadMonitor', 
-         memBase = memMap, 
-         offset  = 0x00700000, 
+
+      self.add(ePixQuad.EpixQuadMonitor(
+         name    = 'EpixQuadMonitor',
+         memBase = memMap,
+         offset  = 0x00700000,
          expand  = False,
       ))
-      
+
       ##################################################
-      ## DO NOT MAP. MICROBLAZE IS THE ONLY 
+      ## DO NOT MAP. MICROBLAZE IS THE ONLY
       ## AXI LITE MASTER THAT SHOULD ACCESS THIS DEVICE
       ##################################################
-      #self.add(ePixQuad.AxiI2cMaster( 
-      #    name    = 'AxiI2cMaster', 
-      #    memBase = memMap, 
-      #    offset  = 0x00600000, 
+      #self.add(ePixQuad.AxiI2cMaster(
+      #    name    = 'AxiI2cMaster',
+      #    memBase = memMap,
+      #    offset  = 0x00600000,
       #    expand  = False,
       #    hidden  = True,
       #))
-      
-      self.add(axi.AxiMemTester( 
-         name    = 'AxiMemTester', 
-         memBase = memMap, 
-         offset  = 0x00400000, 
+
+      self.add(axi.AxiMemTester(
+         name    = 'AxiMemTester',
+         memBase = memMap,
+         offset  = 0x00400000,
          expand  = False,
          enabled = False,
       ))
-      
+
       for i in range(16):
          asicSaciAddr = [
             0x04000000, 0x04400000, 0x04800000, 0x04C00000,
@@ -141,81 +141,81 @@ class EpixQuad(pr.Device):
          ]
          self.add(epix.Epix10kaAsic(
             name    = ('Epix10kaSaci[%d]'%i),
-            memBase = memMap, 
-            offset  = asicSaciAddr[i], 
+            memBase = memMap,
+            offset  = asicSaciAddr[i],
             enabled = False,
             expand  = False,
             size    = 0x3fffff,
          ))
-      
-      self.add(ePixQuad.SaciConfigCore( 
-         name       = 'SaciConfigCore', 
-         memBase    = memMap, 
-         offset     = 0x08000000, 
+
+      self.add(ePixQuad.SaciConfigCore(
+         name       = 'SaciConfigCore',
+         memBase    = memMap,
+         offset     = 0x08000000,
          expand     = False,
          enabled    = False,
          simSpeedup = (hwType == 'simulation'),
       ))
-      
-      if (hwType != 'simulation'):     
-      
+
+      if (hwType != 'simulation'):
+
          confAddr = [
-            0x02A00000, 0x02A00800, 0x02A01000, 0x02A01800, 0x02B00000, 
+            0x02A00000, 0x02A00800, 0x02A01000, 0x02A01800, 0x02B00000,
             0x02B00800, 0x02B01000, 0x02B01800, 0x02C00000, 0x02C00800
          ]
-         for i in range(10):      
+         for i in range(10):
             self.add(analog_devices.Ad9249ConfigGroup(
                name    = ('Ad9249Config[%d]'%i),
-               memBase = memMap, 
-               offset  = confAddr[i], 
+               memBase = memMap,
+               offset  = confAddr[i],
                enabled = False,
                expand  = False,
             ))
-      
-      for i in range(10):      
+
+      for i in range(10):
          self.add(analog_devices.Ad9249ReadoutGroup(
             name    = ('Ad9249Readout[%d]'%i),
-            memBase = memMap, 
-            offset  = (0x02000000+i*0x00100000), 
+            memBase = memMap,
+            offset  = (0x02000000+i*0x00100000),
             enabled = False,
             expand  = False,
             fpga    = 'ultrascale',
          ))
-      
-      self.add(ePixQuad.AdcTester( 
-         name    = 'Ad9249Tester', 
-         memBase = memMap, 
-         offset  = 0x02D00000, 
+
+      self.add(ePixQuad.AdcTester(
+         name    = 'Ad9249Tester',
+         memBase = memMap,
+         offset  = 0x02D00000,
          enabled = False,
          expand  = False,
          hidden  = False,
       ))
-               
+
       if (hwType != 'simulation'):
-      
+
          self.add(cypress.CypressS25Fl(
-            offset   = 0x00300000, 
+            offset   = 0x00300000,
             memBase  = memMap,
-            expand   = False, 
-            addrMode = True, 
-            hidden   = True, 
-         ))                   
-      
-      
+            expand   = False,
+            addrMode = True,
+            hidden   = True,
+         ))
+
+
       # ADC startup parameters
       self.adcRstTime = 0.01
       self.serRstTime = 0.01
       self.retries = 5
-      
+
       if path.exists('ePixQuadAdcTrainingData.txt'):
          with open('ePixQuadAdcTrainingData.txt') as f:
             self.allDelays = f.readlines()
-         self.allDelays = [int(i) for i in self.allDelays] 
+         self.allDelays = [int(i) for i in self.allDelays]
          if len(self.allDelays) < 90:
             self.allDelays = [-1] * 90
       else:
          self.allDelays = [-1] * 90
-      
+
       @self.command()
       def AdcStartup():
          self.SystemRegs.enable.set(True)
@@ -226,12 +226,12 @@ class EpixQuad(pr.Device):
          for adc in range(10):
             self.Ad9249Readout[adc].enable.set(True)
             self.Ad9249Config[adc].enable.set(True)
-         
+
          # disable and stop all internal ADC startup activity
          self.SystemRegs.AdcBypass.set(True)
          # Wait 100 ms
          time.sleep(0.1)
-         
+
          #load trained delays
          for adc in range(10):
             newDly = self.allDelays[adc*9]
@@ -245,7 +245,7 @@ class EpixQuad(pr.Device):
                   self.Ad9249Readout[adc].ChannelDelay[lane].set(0x200+newDly)
                else:
                   print("Bad stored delay. Train ADCs!")
-         
+
          # test ADCs and reset if needed
          for adc in range(10):
             while True:
@@ -253,38 +253,38 @@ class EpixQuad(pr.Device):
                   self.resetAdc(self, adc)
                else:
                   break
-         
+
          # re-enable internal ADC startup
          self.SystemRegs.AdcBypass.set(False)
-         
+
          self.Ad9249Tester.enable.set(False)
          print('Done')
-      
+
       @self.command()
       def AdcTrain():
-         
+
          self.SystemRegs.enable.set(True)
          self.Ad9249Tester.enable.set(True)
          for adc in range(10):
             self.Ad9249Readout[adc].enable.set(True)
             self.Ad9249Config[adc].enable.set(True)
-         
+
          # disable and stop all internal ADC startup activity
          self.SystemRegs.AdcBypass.set(True)
          # Wait 100 ms
          time.sleep(0.1)
-         
+
          for adc in range(10):
-            
+
             result = 0
-            
+
             while True:
-            
+
                self.resetAdc(self, adc)
-               
+
                prevDly = self.Ad9249Readout[adc].FrameDelay.get()
                newDly = self.trainFrameAdc(self, adc, self.retries)
-               
+
                # skip ADC if the frame training failed all times
                if newDly >= 0:
                   result = result + 1
@@ -300,26 +300,26 @@ class EpixQuad(pr.Device):
                         print('Diff delay %d'%(prevDly-newDly))
                         self.Ad9249Readout[adc].ChannelDelay[lane].set(0x200+newDly)
                         self.allDelays[adc*9+lane+1] = newDly
-               
+
                if result < 9:
                   print('ADC %d failed. Retrying forever.'%(adc))
                   result = 0
                else:
                   break
-                     
+
          self.Ad9249Tester.enable.set(False)
-         
+
          # flash training data
          self.flashAdcDelays(self)
-         
+
          # save training data
          with open('ePixQuadAdcTrainingData.txt', 'w') as f:
             for item in self.allDelays:
                f.write("%s\n" % item)
-         
+
          # re-enable internal ADC startup
          self.SystemRegs.AdcBypass.set(False)
-   
+
       @self.command()
       def ClearAdcProm():
          self.CypressS25Fl.enable.set(True)
@@ -328,21 +328,21 @@ class EpixQuad(pr.Device):
          # use space at 48MB (mcs size 16MB)
          # mcs end 0xf43efc
          self.CypressS25Fl.eraseCmd(0x3000000)
-         
+
          # create empty prom data array
          writeArray = [0] * 64
-         
+
          self.CypressS25Fl.setDataReg(writeArray)
          self.CypressS25Fl.writeCmd(0x3000000)
-         
+
          # Wait for last transaction to finish
          self.CypressS25Fl.waitForFlashReady()
-         
+
          # Start address of a burst transfer
          self.CypressS25Fl.readCmd(0x3000000)
          # Get the data
          readArray = self.CypressS25Fl.getDataReg()
-         
+
          if readArray != writeArray:
             click.secho(
                "\n\n\
@@ -363,28 +363,28 @@ class EpixQuad(pr.Device):
                ***************************************************\n\n"
                , bg='green',
             )
-   
+
    @staticmethod
    def resetAdc(self, adc):
-      
+
       print('Reseting ADC deserializer %d ... '%(adc), end='')
       self.SystemRegs.AdcClkRst.set(0x1<<adc)
       time.sleep(self.serRstTime)
       self.SystemRegs.AdcClkRst.set(0x0)
       time.sleep(self.serRstTime)
       print('Done')
-      
+
       print('Reseting ADC %d ... '%(adc), end='')
       self.Ad9249Config[adc].InternalPdwnMode.set(3)
       time.sleep(self.adcRstTime)
       self.Ad9249Config[adc].InternalPdwnMode.set(0)
       time.sleep(self.adcRstTime)
       print('Done')
-      
+
       print('Setting ADC in offset binary mode ...', end='')
       self.Ad9249Config[adc].OutputFormat.set(0)
       print('Done')
-   
+
    @staticmethod
    def trainFrameAdc(self, adc, retry):
       print('ADC %d frame delay training'%adc)
@@ -417,7 +417,7 @@ class EpixQuad(pr.Device):
                delayCnt = 0
             if delayLoc == 1 and delay == 511:
                delayLen.append(delayCnt)
-               
+
          print(' ')
          if len(delayInd) > 0:
             #print(delayInd)
@@ -434,9 +434,9 @@ class EpixQuad(pr.Device):
             else:
                print('Failed ADC %d'%(adc))
                delaySet = -1
-      
+
       return delaySet
-      
+
    @staticmethod
    def trainDataLaneAdc(self, adc, lane, retry):
       # enable mixed bit frequency pattern
@@ -456,15 +456,15 @@ class EpixQuad(pr.Device):
       while retryCnt > 0:
          for delay in range(512):
             self.Ad9249Readout[adc].ChannelDelay[lane].set(0x200+delay)
-            
+
             # start testing
             self.Ad9249Tester.TestRequest.set(True)
             self.Ad9249Tester.TestRequest.set(False)
-            
+
             while (self.Ad9249Tester.TestPassed.get() != True) and (self.Ad9249Tester.TestFailed.get() != True):
                pass
             testPassed = self.Ad9249Tester.TestPassed.get()
-            
+
             if testPassed == True:
                print('1', end='')
                if delayLoc == 0:
@@ -479,7 +479,7 @@ class EpixQuad(pr.Device):
                delayCnt = 0
             if delayLoc == 1 and delay == 511:
                delayLen.append(delayCnt)
-               
+
          print(' ')
          if len(delayInd) > 0:
             #print(delayInd)
@@ -496,16 +496,16 @@ class EpixQuad(pr.Device):
             else:
                print('Failed ADC %d'%(adc))
                delaySet = -1
-      
+
       # disable mixed bit frequency pattern
       self.Ad9249Config[adc].OutputTestMode.set(0)
       return delaySet
-   
+
    @staticmethod
    def testAdc(self, adc, pattern):
       print('ADC %d testing'%adc)
-      
-      
+
+
       result = 0
       # Reset lost lock counter
       self.Ad9249Readout[adc].LostLockCountReset()
@@ -518,8 +518,8 @@ class EpixQuad(pr.Device):
          result = result + 1
       else:
          print('ADC %d frame clock locking failed'%adc)
-      
-      
+
+
       # enable mixed bit frequency pattern
       if pattern == 0:
          self.Ad9249Config[adc].OutputTestMode.set(12)
@@ -540,26 +540,26 @@ class EpixQuad(pr.Device):
          # start testing
          self.Ad9249Tester.TestRequest.set(True)
          self.Ad9249Tester.TestRequest.set(False)
-         
+
          while (self.Ad9249Tester.TestPassed.get() != True) and (self.Ad9249Tester.TestFailed.get() != True):
             pass
          testPassed = self.Ad9249Tester.TestPassed.get()
-         
+
          if testPassed == True:
             result = result + 1
          else:
             print('ADC %d data lane %d locking failed'%(adc, lane))
-         
+
       # disable mixed bit frequency pattern
       self.Ad9249Config[adc].OutputTestMode.set(0)
-      
-      
+
+
       if result < 9:
          return -1
       else:
          return 0
-   
-   
+
+
    @staticmethod
    def flashAdcDelays(self):
       self.CypressS25Fl.enable.set(True)
@@ -568,15 +568,15 @@ class EpixQuad(pr.Device):
       # use space at 48MB (mcs size 16MB)
       # mcs end 0xf43efc
       self.CypressS25Fl.eraseCmd(0x3000000)
-      
-      
+
+
       # Create a burst data array
-      #print(", ".join("0x{:04x}".format(num) for num in self.allDelays))  
+      #print(", ".join("0x{:04x}".format(num) for num in self.allDelays))
       #print("-----------------------------------------------------------------------")
 
       # create prom data array
       writeArray = [0] * 64
-      
+
       # copy ADC frame (1st) and lane (x8) delays words 0 to 44
       for adc in range(10):
          wordCnt = int((adc*9)/2) # 0 to 39
@@ -590,21 +590,21 @@ class EpixQuad(pr.Device):
             #print('wordCnt  %d'%wordCnt)
             #print('shiftCnt %d'%shiftCnt)
             writeArray[wordCnt] |= ((self.allDelays[adc*9+lane+1]) & 0xffff) << shiftCnt
-      
-      #print(", ".join("0x{:04x}".format(num) for num in writeArray)) 
-      #print("-----------------------------------------------------------------------")      
-      
+
+      #print(", ".join("0x{:04x}".format(num) for num in writeArray))
+      #print("-----------------------------------------------------------------------")
+
       self.CypressS25Fl.setDataReg(writeArray)
       self.CypressS25Fl.writeCmd(0x3000000)
-      
+
       # Wait for last transaction to finish
       self.CypressS25Fl.waitForFlashReady()
-      
+
       # Start address of a burst transfer
       self.CypressS25Fl.readCmd(0x3000000)
       # Get the data
       readArray = self.CypressS25Fl.getDataReg()
-      
+
       if readArray != writeArray:
          click.secho(
             "\n\n\
@@ -625,9 +625,9 @@ class EpixQuad(pr.Device):
             ***************************************************\n\n"
             , bg='green',
          )
-      
+
       #print(", ".join("0x{:04x}".format(num) for num in readArray))
       #print("-----------------------------------------------------------------------")
-      
-      
-      
+
+
+

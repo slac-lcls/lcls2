@@ -4,7 +4,7 @@ from psdaq.configdb.typed_json import cdict
 from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
 import rogue
-import epix
+import epix_l2sidaq
 import ePixQuad
 import lcls2_pgp_pcie_apps
 import time
@@ -226,7 +226,7 @@ def user_to_expert(base, cfg, full=False):
 
     pixel_map_changed = False
     a = None
-    if (hasUser and ('gain_mode' in cfg['user'] or 
+    if (hasUser and ('gain_mode' in cfg['user'] or
                      'pixel_map' in cfg['user'])):
         gain_mode = cfg['user']['gain_mode']
         if gain_mode==5:
@@ -307,7 +307,7 @@ def config_expert(base, cfg, writePixelMap=True):
                 for i in asics:
                     saci = cbase.Epix10kaSaci[i]
                     saci.PrepareMultiConfig()
-                    
+
                 #  Set the whole ASIC to its most common value
                 masic = {}
                 for i in asics:
@@ -444,7 +444,7 @@ def epixquad_unconfig(base):
     return base
 
 #
-#  Build the set of all configuration parameters that will change 
+#  Build the set of all configuration parameters that will change
 #  in response to the scan parameters
 #
 def epixquad_scan_keys(update):
