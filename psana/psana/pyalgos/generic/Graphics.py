@@ -126,9 +126,24 @@ def fig_img_cbar_axes(fig=None,\
     """ Returns figure and axes for image and color bar
     """
     _fig = figure() if fig is None else fig
-    axim = _fig.add_axes(win_axim, **kwa)
-    axcb = _fig.add_axes(win_axcb, **kwa)
-    return _fig, axim, axcb
+    return _fig,\
+           _fig.add_axes(win_axim, **kwa),\
+           _fig.add_axes(win_axcb, **kwa)
+
+
+FYMIN, FYMAX = 0.050, 0.90
+def fig_img_cbar_hist_axes(fig=None,\
+                      win_axim=(0.02,  FYMIN, 0.8,  FYMAX),\
+                      win_axcb=(0.915, FYMIN, 0.01, FYMAX),\
+                      win_axhi=(0.76,  FYMIN, 0.15, FYMAX),\
+                      **kwa):
+    """ Returns figure and axes for image, color bar, and spectral histogram
+    """
+    _fig = figure() if fig is None else fig
+    return _fig,\
+           _fig.add_axes(win_axim, **kwa),\
+           _fig.add_axes(win_axcb, **kwa),\
+           _fig.add_axes(win_axhi, **kwa)
 
 
 def add_title_labels_to_axes(axes, title=None, xlabel=None, ylabel=None, fslab=14, fstit=20, color='k', **kwa):
