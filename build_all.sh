@@ -89,13 +89,13 @@ else
     cmake_build psalg -DBUILD_SHMEM=OFF
 fi
 cd psalg
-pip install --prefix=$INSTDIR $pipOptions .
+pip install --no-deps --prefix=$INSTDIR $pipOptions .
 cd ..
 
 if [ $no_daq == 0 ]; then
     cmake_build psdaq
     cd psdaq
-    pip install --prefix=$INSTDIR $pipOptions .
+    pip install --no-deps --prefix=$INSTDIR $pipOptions .
     cd ..
 fi
 
@@ -108,7 +108,7 @@ if [ $no_ana == 0 ]; then
     if [ $pyInstallStyle == "develop" ]; then
         python setup.py build_ext -f --inplace
     fi
-    pip install --prefix=$INSTDIR $pipOptions .
+    pip install --no-deps --prefix=$INSTDIR $pipOptions .
 fi
 # The removeal of site.py in setup 49.0.0 breaks "develop" installations
 # which are outside the normal system directories: /usr, /usr/local,
