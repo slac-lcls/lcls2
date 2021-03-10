@@ -20,12 +20,13 @@ using logging  = psalg::SysLog;
 
 MebContributor::MebContributor(const MebCtrbParams&            prms,
                                std::shared_ptr<MetricExporter> exporter) :
+  _prms      (prms),
   _maxEvSize (roundUpSize(prms.maxEvSize)),
   _maxTrSize (prms.maxTrSize),
   _bufRegSize(prms.maxEvents * _maxEvSize),
   _transport (prms.verbose, prms.kwargs),
-  _enabled   (false),
   _id        (-1),
+  _enabled   (false),
   _verbose   (prms.verbose),
   _eventCount(0)
 {
@@ -69,8 +70,9 @@ int MebContributor::connect(const MebCtrbParams& prms,
                             void*                region,
                             size_t               regSize)
 {
-  _links.resize(prms.addrs.size());
-  _id   = prms.id;
+  _links    .resize(prms.addrs.size());
+  _trBuffers.resize(_links.size());
+  _id       = prms.id;
 
   int rc = linksConnect(_transport, _links, prms.addrs, prms.ports, "MEB");
   if (rc)  return rc;
@@ -82,18 +84,28 @@ int MebContributor::connect(const MebCtrbParams& prms,
     if (rc)  return rc;
   }
 
-
   return 0;
 }
 
 int MebContributor::configure(void*  region,
                               size_t regSize)
 {
-  int rc;
-
   //printf("*** MC::cfg: region %p, regSize %zu\n", region, regSize);
-  rc = linksConfigure(_links, _id, region, regSize, _bufRegSize, "MEB");
+  int rc = linksConfigure(_links, _id, region, regSize, _bufRegSize, "MEB");
   if (rc)  return rc;
+
+  // Code added here involving the links must be coordinated with the other side
+
+  for (auto link : _links)
+  {
+    auto& lst = _trBuffers[link->id()];
+    lst.clear();
+
+    for (unsigned buf = 0; buf < MEB_TR_BUFFERS; ++buf)
+    {
+      lst.push_back(buf);
+    }
+  }
 
   _enabled = true;
 
@@ -115,14 +127,14 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
   {
     logging::critical("L1Accept of size %zd is too big for target buffer of size %zd",
                       sz, _maxEvSize);
-    throw "L1Accept too big for target buffer";
+    abort();
   }
 
   if (ddg->xtc.src.value() != _id)
   {
-    logging::critical("L1Accept src %u does not match DRP's ID %d: PID %014lx, sz, %zd, dest %08x, data %08x, ofs %08x",
+    logging::critical("L1Accept src %u does not match DRP's ID %u: PID %014lx, sz, %zd, dest %08x, data %08x, ofs %08x",
                       ddg->xtc.src.value(), _id, ddg->pulseId(), sz, destination, data, offset);
-    throw "L1Accept source ID mismatch";
+    abort();
   }
 
   if (_verbose >= VL_BATCH)
@@ -143,65 +155,94 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
   return 0;
 }
 
-int MebContributor::post(const EbDgram* ddg)
+// This is the same as in TebContributor as we have no good common place for it
+static int _getTrBufIdx(EbLfLink* lnk, MebContributor::listU32_t& lst, uint32_t& idx)
 {
-  ddg->setEOL();                        // Set end-of-list marker
+  // Try to replenish the transition buffer index list
+  while (true)
+  {
+    uint64_t imm;
+    int rc = lnk->poll(&imm);           // Attempt to get a free buffer index
+    if (rc)  break;
+    lst.push_back(ImmData::idx(imm));
+  }
 
-  size_t sz  = sizeof(*ddg) + ddg->xtc.sizeofPayload();
-  auto   svc = ddg->service();
+  // If the list is still empty, wait for one
+  if (lst.empty())
+  {
+    uint64_t imm;
+    unsigned tmo = 5000;
+    int rc = lnk->poll(&imm, tmo);      // Wait for a free buffer index
+    if (rc)  return rc;
+    idx = ImmData::idx(imm);
+    return 0;
+  }
+
+  // Return the index at the head of the list
+  idx = lst.front();
+  lst.pop_front();
+
+  return 0;
+}
+
+int MebContributor::post(const EbDgram* dgram)
+{
+  dgram->setEOL();                        // Set end-of-list marker
+
+  size_t sz  = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+  auto   svc = dgram->service();
 
   if (sz > _maxTrSize)
   {
     logging::critical("%s transition of size %zd is too big for target buffer of size %zd",
                       TransitionId::name(svc), sz, _maxTrSize);
-    throw std::string(TransitionId::name(svc)) + " too big for target buffer";
+    abort();
   }
 
-  if (ddg->xtc.src.value() != _id)
+  if (dgram->xtc.src.value() != _id)
   {
-    logging::critical("%s transition src %u does not match DRP's ID %d for PID %014lx",
-                      TransitionId::name(svc), ddg->xtc.src.value(), _id, ddg->pulseId());
-    throw std::string(TransitionId::name(svc)) + " source ID mismatch";
+    logging::critical("%s transition src %u does not match DRP's ID %u for PID %014lx",
+                      TransitionId::name(svc), dgram->xtc.src.value(), _id, dgram->pulseId());
+    abort();
   }
 
   for (auto link : _links)
   {
-    unsigned src  = link->id();
-    uint64_t imm;
-    int rc = link->poll(&imm);          // Get a free buffer index
+    unsigned src = link->id();
+    uint32_t idx;
+    int rc = _getTrBufIdx(link, _trBuffers[src], idx);
     if (rc)
     {
-      auto pid = ddg->pulseId();
-      auto ts  = ddg->time;
-      logging::error("%s:\n  Failed to read buffer index from MEB ID %d "
-                     "needed for %s (%014lx, %9u.%09u): rc %d\n",
-                     __PRETTY_FUNCTION__, src, TransitionId::name(svc), pid, ts.seconds(), ts.nanoseconds(), rc);
-      continue;                         // Revisit: Skip on error?
+      auto pid = dgram->pulseId();
+      auto ts  = dgram->time;
+      logging::critical("%s:\n  No transition buffer index received from MEB ID %u "
+                        "needed for %s (%014lx, %9u.%09u): rc %d",
+                        __PRETTY_FUNCTION__, src, TransitionId::name(svc), pid, ts.seconds(), ts.nanoseconds(), rc);
+      abort();
     }
 
-    uint32_t idx    = ImmData::idx(imm);
     uint64_t offset = _bufRegSize + idx * _maxTrSize;
     uint32_t data   = ImmData::value(ImmData::Transition, _id, idx);
 
     if (unlikely(_verbose >= VL_BATCH))
     {
       printf("MebCtrb rcvd transition buffer           [%2u] @ "
-             "%16p, ofs %016lx = %08lx + %2u * %08lx,     src %2u, imm %08lx\n",
-             idx, (void*)link->rmtAdx(0), offset, _bufRegSize, idx, _maxTrSize, src, imm);
+             "%16p, ofs %016lx = %08lx + %2u * %08lx,     src %2u\n",
+             idx, (void*)link->rmtAdx(0), offset, _bufRegSize, idx, _maxTrSize, src);
 
-      uint64_t pid    = ddg->pulseId();
-      unsigned ctl    = ddg->control();
-      uint32_t env    = ddg->env;
+      uint64_t pid    = dgram->pulseId();
+      unsigned ctl    = dgram->control();
+      uint32_t env    = dgram->env;
       void*    rmtAdx = (void*)link->rmtAdx(offset);
       printf("MebCtrb posts %9lu %15s       @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p - %16p, data %08x\n",
-             _eventCount, TransitionId::name(svc), ddg, ctl, pid, env, sz, src, rmtAdx, (char*)rmtAdx + sz, data);
+             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x\n",
+             _eventCount, TransitionId::name(svc), dgram, ctl, pid, env, sz, src, rmtAdx, data);
     }
 
-    rc = link->post(ddg, sz, offset, data); // Not a batch; Continue on error
+    rc = link->post(dgram, sz, offset, data); // Not a batch; Continue on error
     if (rc)
     {
-      logging::error("%s:\n  Failed to post buffer number to MEB ID %d: rc %d, data %08x",
+      logging::error("%s:\n  Failed to post buffer number to MEB ID %u: rc %d, data %08x",
                      __PRETTY_FUNCTION__, src, rc, data);
     }
   }

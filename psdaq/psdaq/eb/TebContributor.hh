@@ -12,6 +12,7 @@
 #include <vector>
 #include <atomic>
 #include <thread>
+#include <list>
 
 
 namespace Pds {
@@ -47,13 +48,16 @@ namespace Pds {
       BatchQueue& pending()                    { return _pending; }
       const void* retrieve(uint64_t pid) const { return _batMan.retrieve(pid); }
     private:
-      void       _post(const Pds::EbDgram* nonEvent) const;
+      void       _post(const Pds::EbDgram* nonEvent);
       void       _post(const Pds::EbDgram* start, const Pds::EbDgram* end);
+    public:
+      using listU32_t = std::list<uint32_t>;
     private:
       const TebCtrbParams&      _prms;
       BatchManager              _batMan;
       EbLfClient                _transport;
       std::vector<EbLfCltLink*> _links;
+      std::vector<listU32_t >   _trBuffers;
       unsigned                  _id;
       unsigned                  _numEbs;
       BatchQueue                _pending; // Time ordered list of completed batches

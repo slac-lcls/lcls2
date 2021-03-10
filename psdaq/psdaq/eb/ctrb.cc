@@ -781,10 +781,11 @@ int CtrbApp::_parseConnectionParams(const json& body)
       _mebPrms.addrs.push_back(it.value()["connect_info"]["nic_ip"]);
       _mebPrms.ports.push_back(it.value()["connect_info"]["meb_port"]);
 
-      unsigned count = it.value()["connect_info"]["buf_count"];
+      unsigned count = it.value()["connect_info"]["max_ev_count"];
       if (!_mebPrms.maxEvents)  _mebPrms.maxEvents = count;
       if (count != _mebPrms.maxEvents) {
-        printf("Error: maxEvents must be the same for all MEBs\n");
+        fprintf(stderr, "Error: maxEvents must be the same for all MEBs\n");
+        return 1;
       }
     }
   }

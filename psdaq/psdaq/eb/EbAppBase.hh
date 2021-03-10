@@ -37,7 +37,9 @@ namespace Pds {
                 const std::string& pfx,
                 const uint64_t duration,
                 const unsigned maxEntries,
-                const unsigned maxBuffers);
+                const unsigned maxEvBuffers,
+                const unsigned maxTrBuffers,
+                const unsigned msTimeout);
       virtual ~EbAppBase();
     public:
       int              checkEQ()  { return _transport.pollEQ(); }
@@ -71,7 +73,8 @@ namespace Pds {
       std::vector<size_t>       _maxTrSize;
       std::vector<size_t>       _maxBufSize;
       const unsigned            _maxEntries;
-      const unsigned            _maxBuffers;
+      const unsigned            _maxEvBuffers;
+      const unsigned            _maxTrBuffers;
       const unsigned&           _verbose;
       uint64_t                  _bufferCnt;
       PromHisto_t               _fixupSrc;

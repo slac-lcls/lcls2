@@ -138,7 +138,8 @@ using namespace Pds::Eb;
 
 Teb::Teb(const EbParams&         prms,
          const MetricExporter_t& exporter) :
-  EbAppBase     (prms, exporter, "TEB", BATCH_DURATION, MAX_ENTRIES, MAX_BATCHES),
+  EbAppBase     (prms, exporter, "TEB",
+                 BATCH_DURATION, MAX_ENTRIES, MAX_BATCHES, TEB_TR_BUFFERS, TEB_TMO_MS),
   _mrqTransport (prms.verbose, prms.kwargs),
   _id           (-1),
   _batchStart   (nullptr),
@@ -179,6 +180,7 @@ int Teb::resetCounters()
 {
   EbAppBase::resetCounters();
 
+  //_trimmed       = 0;
   _eventCount    = 0;
   _splitCount    = 0;
   _batchCount    = 0;
@@ -294,6 +296,8 @@ int Teb::configure(Trigger* object,
   rc = linksConfigure(_mrqLinks, _id, "MRQ");
   if (rc)  return rc;
 
+  // Code added here involving the links must be coordinated with the other side
+
   return 0;
 }
 
@@ -317,13 +321,8 @@ void Teb::run()
   _batchStart    = nullptr;
   _batchEnd      = nullptr;
   _resultDsts    = 0;
-  //_trimmed       = 0;
-  _eventCount    = 0;
-  _splitCount    = 0;
-  _batchCount    = 0;
-  _writeCount    = 0;
-  _monitorCount  = 0;
-  _prescaleCount = 0;
+
+  resetCounters();
 
   while (lRunning)
   {
@@ -764,7 +763,7 @@ void TebApp::handleConnect(const json& msg)
   int  rc   = _parseConnectionParams(msg["body"]);
   if (rc)
   {
-    _error(msg, "Error parsing connection parameters");
+    _error(msg, "Connection parameters error - see log");
     return;
   }
 
@@ -797,7 +796,7 @@ void TebApp::_buildContract(const Document& top)
 
     if (buildAll || top.HasMember(detName.c_str()))
     {
-      auto group = unsigned(it.value()["det_info"]["readout"]);
+      unsigned group(it.value()["det_info"]["readout"]);
       _prms.contractors[group] |= 1ul << drpId;
     }
   }
@@ -972,7 +971,7 @@ int TebApp::_parseConnectionParams(const json& body)
     _prms.addrs.push_back(it.value()["connect_info"]["nic_ip"]);
     _prms.ports.push_back(it.value()["connect_info"]["drp_port"]);
 
-    auto group = unsigned(it.value()["det_info"]["readout"]);
+    unsigned group(it.value()["det_info"]["readout"]);
     if (group > NUM_READOUT_GROUPS - 1)
     {
       logging::error("Readout group %u is out of range 0 - %u", group, NUM_READOUT_GROUPS - 1);
@@ -981,6 +980,17 @@ int TebApp::_parseConnectionParams(const json& body)
     _prms.contractors[group] |= 1ul << drpId; // Possibly overridden during Configure
     _prms.receivers[group]   |= 1ul << drpId; // All contributors receive results
     _groups |= 1 << group;
+  }
+
+  // These buffers aren't used if there is only one TEB in the system, but...
+  unsigned suRate(body["control"]["0"]["control_info"]["slow_update_rate"]);
+  if (1000 * TEB_TR_BUFFERS < suRate * TEB_TMO_MS)
+  {
+    // Adjust TEB_TMO_MS, TEB_TR_BUFFERS (in eb.hh) or the SlowUpdate rate
+    logging::error("Increase # of TEB transition buffers from %u to > %u "
+                   "for %u Hz of SlowUpdates and %u ms TEB timeout\n",
+                   TEB_TR_BUFFERS, (suRate * TEB_TMO_MS + 999) / 1000, suRate, TEB_TMO_MS);
+    return 1;
   }
 
   auto& vec =_prms.maxTrSize;
@@ -1023,7 +1033,7 @@ void TebApp::_printParams(const EbParams& prms, unsigned groups) const
                                                                  prms.ifAddr.c_str(), prms.ebPort.c_str());
   printf("  Thread core numbers:          %d, %d\n",             prms.core[0], prms.core[1]);
   printf("  Partition:                    %u\n",                 prms.partition);
-  printf("  Bit list of contributors:     0x%016lx, cnt: %zd\n", prms.contributors,
+  printf("  Bit list of contributors:     0x%016lx, cnt: %zu\n", prms.contributors,
                                                                  std::bitset<64>(prms.contributors).count());
   printf("  Readout group contractors:    ");                    _printGroups(groups, prms.contractors);
   printf("  Readout group receivers:      ");                    _printGroups(groups, prms.receivers);
@@ -1032,8 +1042,9 @@ void TebApp::_printParams(const EbParams& prms, unsigned groups) const
   printf("  Batch pool depth:             0x%08x = %u\n",        MAX_BATCHES, MAX_BATCHES);
   printf("  Max # of entries / batch:     0x%08x = %u\n",        MAX_ENTRIES, MAX_ENTRIES);
   printf("  # of contrib. buffers:        0x%08x = %u\n",        MAX_LATENCY, MAX_LATENCY);
-  printf("  Max result     EbDgram size:  0x%08zx = %zd\n",      prms.maxResultSize, prms.maxResultSize);
-  printf("  Max transition EbDgram size:  0x%08zx = %zd\n",      prms.maxTrSize[0], prms.maxTrSize[0]);
+  printf("  Max result     EbDgram size:  0x%08zx = %zu\n",      prms.maxResultSize, prms.maxResultSize);
+  printf("  Max transition EbDgram size:  0x%08zx = %zu\n",      prms.maxTrSize[0], prms.maxTrSize[0]);
+  printf("  # of transition buffers:      0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
   printf("\n");
 }
 
@@ -1087,10 +1098,10 @@ int main(int argc, char **argv)
   std::string    kwargs_str;
 
   prms.instrument = {};
-  prms.partition = NO_PARTITION;
-  prms.core[0]   = CORE_0;
-  prms.core[1]   = CORE_1;
-  prms.verbose   = 0;
+  prms.partition  = NO_PARTITION;
+  prms.core[0]    = CORE_0;
+  prms.core[1]    = CORE_1;
+  prms.verbose    = 0;
 
   while ((op = getopt(argc, argv, "C:p:P:A:E:R:1:2:u:M:k:h?v")) != -1)
   {

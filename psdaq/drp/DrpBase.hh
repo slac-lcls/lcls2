@@ -84,7 +84,7 @@ public:
     MemPool pool;
 private:
     int setupTriggerPrimitives(const nlohmann::json& body);
-    void parseConnectionParams(const nlohmann::json& body, size_t id);
+    int parseConnectionParams(const nlohmann::json& body, size_t id);
     void printParams() const;
     Parameters& m_para;
     unsigned m_nodeId;

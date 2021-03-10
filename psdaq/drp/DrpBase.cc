@@ -58,7 +58,7 @@ static unsigned nextPowerOf2(unsigned n)
 
 
 MemPool::MemPool(Parameters& para) :
-    m_transitionBuffers(para.nTrBuffers),
+    m_transitionBuffers(nextPowerOf2(Pds::Eb::TEB_TR_BUFFERS)), // See eb.hh
     m_inUse(0),
     m_dmaBuffersInUse(0)
 {
@@ -90,15 +90,16 @@ MemPool::MemPool(Parameters& para) :
         m_bufferSize = __builtin_popcount(para.laneMask) * m_dmaSize;
     else
         m_bufferSize = std::stoul(pebbleBufSize);
-    pebble.resize(m_nbuffers, m_bufferSize, para.nTrBuffers, para.maxTrSize);
+    auto nTrBuffers = m_transitionBuffers.size();
+    pebble.resize(m_nbuffers, m_bufferSize, nTrBuffers, para.maxTrSize);
     logging::info("nbuffers %u  pebble buffer size %u", m_nbuffers, m_bufferSize);
-    logging::info("nTrBuffers %u  transition buffer size %u", para.nTrBuffers, para.maxTrSize);
+    logging::info("nTrBuffers %u  transition buffer size %u", nTrBuffers, para.maxTrSize);
 
     pgpEvents.resize(m_nbuffers);
 
     // Put the transition buffer pool at the end of the pebble buffers
     uint8_t* buffer = pebble[m_nbuffers];
-    for (unsigned i = 0; i < para.nTrBuffers; i++) {
+    for (size_t i = 0; i < m_transitionBuffers.size(); i++) {
         m_transitionBuffers.push(&buffer[i * para.maxTrSize]);
     }
 }
@@ -236,13 +237,22 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     unsigned index = (uintptr_t)appPrm;
     Pds::EbDgram* dgram = (Pds::EbDgram*)m_pool.pebble[index];
     XtcData::TransitionId::Value transitionId = dgram->service();
-    if (transitionId == 0) {
-        logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
+    if (transitionId != XtcData::TransitionId::L1Accept) {
+        if (transitionId == 0) {
+            logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
+        }
+        dgram = m_pool.pgpEvents[index].transitionDgram;
+        if (transitionId != dgram->service()) {
+            logging::error("tid mismatch: pebble %u, trDgram %u, idx %u", transitionId, dgram->service(), index);
+        }
+    }
+    if (transitionId != result.service()) {
+        logging::error("tid mismatch: pebble %u, result %u, idx %u", transitionId, result.service(), index);
     }
     uint64_t pulseId = dgram->pulseId();
     if (pulseId == 0) {
-      logging::critical("%spulseId %14lx, ts %u.%09u, tid %d, env %08x%s",
-                        RED_ON, pulseId, dgram->time.seconds(), dgram->time.nanoseconds(), dgram->service(), dgram->env, RED_OFF);
+        logging::critical("%spulseId %14lx, ts %u.%09u, tid %d, env %08x%s",
+                          RED_ON, pulseId, dgram->time.seconds(), dgram->time.nanoseconds(), dgram->service(), dgram->env, RED_OFF);
     }
 
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
@@ -265,16 +275,8 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     m_lastTid = transitionId;
 
     // Transfer Result damage to the datagram
-    uint16_t damage;
-    if ((transitionId == XtcData::TransitionId::L1Accept)) {
-      dgram->xtc.damage.increase(result.xtc.damage.value());
-      damage = dgram->xtc.damage.value();
-    }
-    else {
-      auto trDgram = m_pool.pgpEvents[index].transitionDgram;
-      trDgram->xtc.damage.increase(result.xtc.damage.value());
-      damage = trDgram->xtc.damage.value();
-    }
+    dgram->xtc.damage.increase(result.xtc.damage.value());
+    uint16_t damage = dgram->xtc.damage.value();
     if (damage) {
         m_damage++;
         while (damage) {
@@ -289,9 +291,8 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         if (transitionId != XtcData::TransitionId::SlowUpdate) {
             if (transitionId == XtcData::TransitionId::Configure) {
                 // Cache Configure Dgram for writing out after files are opened
-                XtcData::Dgram* configDgram = m_pool.pgpEvents[index].transitionDgram;
-                size_t size = sizeof(*configDgram) + configDgram->xtc.sizeofPayload();
-                memcpy(m_configureBuffer.data(), configDgram, size);
+                size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+                memcpy(m_configureBuffer.data(), dgram, size);
             }
             if (transitionId == XtcData::TransitionId::BeginRun)
               m_offset = 0;// reset for monitoring (and not recording)
@@ -320,7 +321,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
                 m_offset = 0; // reset offset when writing out a new file
                 _writeDgram(reinterpret_cast<XtcData::Dgram*>(m_configureBuffer.data()));
             }
-            _writeDgram(m_pool.pgpEvents[index].transitionDgram);
+            _writeDgram(dgram);
             if (transitionId == XtcData::TransitionId::EndRun) {
                 logging::debug("%s calling closeFiles()", __PRETTY_FUNCTION__);
                 closeFiles();
@@ -337,16 +338,18 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         }
         // Other Transition
         else {
-            m_mon.post(m_pool.pgpEvents[index].transitionDgram);
+            m_mon.post(dgram);
         }
+    }
+
+    // Free the transition datagram buffer
+    if (!dgram->isEvent()) {
+        m_pool.freeTr(dgram);
     }
 
     // Return buffers and reset event.  Careful with order here!
     // index could be reused as soon as dmaRetIndexes() completes
     PGPEvent* event = &m_pool.pgpEvents[index];
-    if (!dgram->isEvent()) {
-        m_pool.freeTr(event->transitionDgram);
-    }
     for (int i=0; i<4; i++) {
         if (event->mask &  (1 << i)) {
             event->mask ^= (1 << i);    // Zero out mask before dmaRetIndexes()
@@ -452,12 +455,15 @@ std::string DrpBase::connect(const json& msg, size_t id)
     m_connectMsg = msg;
     m_collectionId = id;
 
-    parseConnectionParams(msg["body"], id);
+    int rc = parseConnectionParams(msg["body"], id);
+    if (rc) {
+        return std::string{"Connection parameters error - see log"};
+    }
 
     // Make a guess at the size of the Input entries
     size_t inpSizeGuess = sizeof(Pds::EbDgram) + 2 * sizeof(uint32_t);
 
-    int rc = m_tebContributor->connect(inpSizeGuess);
+    rc = m_tebContributor->connect(inpSizeGuess);
     if (rc) {
         return std::string{"TebContributor connect failed"};
     }
@@ -639,7 +645,7 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     return 0;
 }
 
-void DrpBase::parseConnectionParams(const json& body, size_t id)
+int DrpBase::parseConnectionParams(const json& body, size_t id)
 {
     std::string stringId = std::to_string(id);
     logging::debug("id %zu", id);
@@ -669,12 +675,12 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
     // Also prepare the mask for placing the service bits at the top of Env
     m_para.rogMask = 0x00ff0000;
     for (auto it : body["drp"].items()) {
-        unsigned rog = unsigned(it.value()["det_info"]["readout"]);
+        unsigned rog(it.value()["det_info"]["readout"]);
         if (rog < Pds::Eb::NUM_READOUT_GROUPS - 1) {
             m_para.rogMask |= 1 << rog;
         }
         else {
-          logging::error("Ignoring Readout Group %d > max (%d)", rog, Pds::Eb::NUM_READOUT_GROUPS - 1);
+            logging::warning("Ignoring Readout Group %d > max (%d)", rog, Pds::Eb::NUM_READOUT_GROUPS - 1);
         }
     }
 
@@ -689,37 +695,42 @@ void DrpBase::parseConnectionParams(const json& body, size_t id)
             logging::debug("MEB: %u  %s:%s", mebId, address.c_str(), port.c_str());
             m_mPrms.addrs.push_back(address);
             m_mPrms.ports.push_back(port);
-            unsigned count = it.value()["connect_info"]["buf_count"];
+            unsigned count = it.value()["connect_info"]["max_ev_count"];
             if (!m_mPrms.maxEvents)  m_mPrms.maxEvents = count;
             if (count != m_mPrms.maxEvents) {
                 logging::error("maxEvents must be the same for all MEBs");
+                return 1;
             }
         }
     }
+
+    return 0;
 }
 
 void DrpBase::printParams() const
 {
     using namespace Pds::Eb;
 
-    printf("\nParameters of Contributor ID %d (%s:%s):\n",       m_tPrms.id,
-                                                                 m_tPrms.ifAddr.c_str(), m_tPrms.port.c_str());
-    printf("  Thread core numbers:        %d, %d\n",             m_tPrms.core[0], m_tPrms.core[1]);
-    printf("  Partition:                  %d\n",                 m_tPrms.partition);
-    printf("  Readout group receipient:   0x%02x\n",             m_tPrms.readoutGroup);
-    printf("  Readout group contractor:   0x%02x\n",             m_tPrms.contractor);
-    printf("  Bit list of TEBs:           0x%016lx, cnt: %zd\n", m_tPrms.builders,
-                                                                 std::bitset<64>(m_tPrms.builders).count());
-    printf("  Number of MEBs:             %zd\n",                m_mPrms.addrs.size());
-    printf("  Batching state:             %s\n",                 m_tPrms.batching ? "Enabled" : "Disabled");
-    printf("  Batch duration:             0x%014lx = %ld uS\n",  BATCH_DURATION, BATCH_DURATION);
-    printf("  Batch pool depth:           0x%08x = %u\n",        MAX_BATCHES, MAX_BATCHES);
-    printf("  Max # of entries / batch:   0x%08x = %u\n",        MAX_ENTRIES, MAX_ENTRIES);
-    printf("  # of TEB contrib. buffers:  0x%08x = %u\n",        MAX_LATENCY, MAX_LATENCY);
-    printf("  Max TEB contribution size:  0x%08zx = %zu\n",      m_tPrms.maxInputSize, m_tPrms.maxInputSize);
-    printf("  Max MEB L1Accept     size:  0x%08zx = %zu\n",      m_mPrms.maxEvSize, m_mPrms.maxEvSize);
-    printf("  Max MEB transition   size:  0x%08zx = %zu\n",      m_mPrms.maxTrSize, m_mPrms.maxTrSize);
-    printf("  # of MEB contrib. buffers:  0x%08x = %u\n",        m_mPrms.maxEvents, m_mPrms.maxEvents);
+    printf("\nParameters of Contributor ID %d (%s:%s):\n",         m_tPrms.id,
+                                                                   m_tPrms.ifAddr.c_str(), m_tPrms.port.c_str());
+    printf("  Thread core numbers:          %d, %d\n",             m_tPrms.core[0], m_tPrms.core[1]);
+    printf("  Partition:                    %u\n",                 m_tPrms.partition);
+    printf("  Readout group receipient:     0x%02x\n",             m_tPrms.readoutGroup);
+    printf("  Readout group contractor:     0x%02x\n",             m_tPrms.contractor);
+    printf("  Bit list of TEBs:             0x%016lx, cnt: %zu\n", m_tPrms.builders,
+                                                                   std::bitset<64>(m_tPrms.builders).count());
+    printf("  Number of MEBs:               %zu\n",                m_mPrms.addrs.size());
+    printf("  Batching state:               %s\n",                 m_tPrms.batching ? "Enabled" : "Disabled");
+    printf("  Batch duration:               0x%014lx = %lu uS\n",  BATCH_DURATION, BATCH_DURATION);
+    printf("  Batch pool depth:             0x%08x = %u\n",        MAX_BATCHES, MAX_BATCHES);
+    printf("  Max # of entries / batch:     0x%08x = %u\n",        MAX_ENTRIES, MAX_ENTRIES);
+    printf("  # of TEB contrib.   buffers:  0x%08x = %u\n",        MAX_LATENCY, MAX_LATENCY);
+    printf("  # of TEB transition buffers:  0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
+    printf("  Max  TEB contribution  size:  0x%08zx = %zu\n",      m_tPrms.maxInputSize, m_tPrms.maxInputSize);
+    printf("  Max  MEB L1Accept      size:  0x%08zx = %zu\n",      m_mPrms.maxEvSize, m_mPrms.maxEvSize);
+    printf("  Max  MEB transition    size:  0x%08zx = %zu\n",      m_mPrms.maxTrSize, m_mPrms.maxTrSize);
+    printf("  # of MEB contrib.   buffers:  0x%08x = %u\n",        m_mPrms.maxEvents, m_mPrms.maxEvents);
+    printf("  # of MEB transition buffers:  0x%08x = %u\n",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
     printf("\n");
 }
 

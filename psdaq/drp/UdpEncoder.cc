@@ -1223,9 +1223,6 @@ int main(int argc, char* argv[])
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
     para.maxTrSize = 256 * 1024;
-    para.nTrBuffers = 32; // Power of 2 greater than the maximum number of
-                          // transitions in the system at any given time, e.g.,
-                          // MAX_LATENCY * (SlowUpdate rate), in same units
     try {
         Py_Initialize(); // for use by configuration
         Drp::UdpApp app(para, std::make_shared<Drp::UdpMonitor>(para));

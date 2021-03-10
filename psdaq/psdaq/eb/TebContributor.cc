@@ -82,6 +82,9 @@ void TebContributor::startup(EbCtrbInBase& in)
   _batchStart = nullptr;
   _batchEnd   = nullptr;
 
+  resetCounters();
+  in.resetCounters();
+
   _running.store(true, std::memory_order_release);
   _rcvrThread = std::thread([&] { in.receiver(*this, _running); });
 }
@@ -120,9 +123,10 @@ void TebContributor::unconfigure()
 
 int TebContributor::connect(size_t inpSizeGuess)
 {
-  _links  .resize(_prms.addrs.size());
-  _id     = _prms.id;
-  _numEbs = std::bitset<64>(_prms.builders).count();
+  _links    .resize(_prms.addrs.size());
+  _trBuffers.resize(_links.size());
+  _id       = _prms.id;
+  _numEbs   = std::bitset<64>(_prms.builders).count();
 
   int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, "TEB");
   if (rc)  return rc;
@@ -166,6 +170,19 @@ int TebContributor::configure()
   int rc = linksConfigure(_links, _id, region, regSize, "TEB");
   if (rc)  return rc;
 
+  // Code added here involving the links must be coordinated with the other side
+
+  for (auto link : _links)
+  {
+    auto& lst = _trBuffers[link->id()];
+    lst.clear();
+
+    for (unsigned buf = 0; buf < TEB_TR_BUFFERS; ++buf)
+    {
+      lst.push_back(buf);
+    }
+  }
+
   return 0;
 }
 
@@ -174,9 +191,9 @@ void* TebContributor::allocate(const TimingHeader& hdr, const void* appPrm)
   auto pid = hdr.pulseId();
   if (!(pid > _previousPid))
   {
-    fprintf(stderr, "%s:\n  Pulse ID did not advance: %014lx vs %014lx\n",
-           __PRETTY_FUNCTION__, pid, _previousPid);
-    throw "Pulse ID did not advance";
+    logging::critical("%s:\n  Pulse ID did not advance: %014lx vs %014lx",
+                      __PRETTY_FUNCTION__, pid, _previousPid);
+    abort();
   }
   _previousPid = pid;
 
@@ -256,7 +273,10 @@ void TebContributor::process(const EbDgram* dgram)
     dgram->setEOL();          // Terminate for clarity and dump-ability
     _pending.push(dgram);
     if (!(size_t(_pending.guess_size()) < _pending.size()))
-      throw std::string(__PRETTY_FUNCTION__) + ": _pending overflow";
+    {
+      logging::critical("%s: _pending queue overflow", __PRETTY_FUNCTION__);
+      abort();
+    }
 
     // Start a new batch
     _batchStart = nullptr;
@@ -286,7 +306,10 @@ void TebContributor::_post(const EbDgram* start, const EbDgram* end)
   end->setEOL();        // Avoid race: terminate before adding batch to pending list
   _pending.push(start); // Get the batch on the queue before any corresponding result can show up
   if (!(size_t(_pending.guess_size()) < _pending.size()))
-    throw std::string(__PRETTY_FUNCTION__) + ": _pending overflow";
+  {
+    logging::critical("%s: _pending queue overflow", __PRETTY_FUNCTION__);
+    abort();
+  }
 
   if (unlikely(_prms.verbose >= VL_BATCH))
   {
@@ -301,31 +324,73 @@ void TebContributor::_post(const EbDgram* start, const EbDgram* end)
   ++_batchCount;                        // Count all batches handled
 }
 
-void TebContributor::_post(const EbDgram* dgram) const
+// This is the same as in MebContributor as we have no good common place for it
+static int _getTrBufIdx(EbLfLink* lnk, TebContributor::listU32_t& lst, uint32_t& idx)
+{
+  // Try to replenish the transition buffer index list
+  while (true)
+  {
+    uint64_t imm;
+    int rc = lnk->poll(&imm);           // Attempt to get a free buffer index
+    if (rc)  break;
+    lst.push_back(ImmData::idx(imm));
+  }
+
+  // If the list is still empty, wait for one
+  if (lst.empty())
+  {
+    uint64_t imm;
+    unsigned tmo = 5000;
+    int rc = lnk->poll(&imm, tmo);      // Wait for a free buffer index
+    if (rc)  return rc;
+    idx = ImmData::idx(imm);
+    return 0;
+  }
+
+  // Return the index at the head of the list
+  idx = lst.front();
+  lst.pop_front();
+
+  return 0;
+}
+
+void TebContributor::_post(const EbDgram* dgram)
 {
   // Send transition datagrams to all TEBs, except the one that got the
-  // batch containing it.  These TEBs won't generate responses.
+  // batch containing it.  These TEBs don't generate responses.
   if (_links.size() < 2)  return;
+
+  dgram->setEOL();                      // Terminate the "batch" of 1 entry
 
   uint64_t pid = dgram->pulseId();
   unsigned dst = (Batch::index(pid) / MAX_ENTRIES) % _numEbs;
-  size_t   sz  = sizeof(*dgram);  if (dgram->xtc.sizeofPayload())  throw "Unexpected XTC payload";
+  size_t   sz  = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+
+  if (sz > sizeof(*dgram))
+  {
+    auto svc = dgram->service();
+    logging::critical("%s transition has unexpected XTC payload of size %zd",
+                      TransitionId::name(svc), dgram->xtc.sizeofPayload());
+    abort();
+  }
 
   for (auto link : _links)
   {
-    unsigned src  = link->id();
+    unsigned src = link->id();
     if (src != dst)      // Skip dst, which received batch including this Dgram
     {
-      uint64_t imm;
-      int rc = link->poll(&imm);        // Get a free buffer index
+      uint32_t idx;
+      int rc = _getTrBufIdx(link, _trBuffers[src], idx);
       if (rc)
       {
-        logging::error("%s:\n  Failed to read buffer index from TEB ID %d: rc %d\n",
-                       __PRETTY_FUNCTION__, src, rc);
-        continue;                       // Revisit: Skip on error?
+        auto svc = dgram->service();
+        auto ts  = dgram->time;
+        logging::critical("%s:\n  No transition buffer index received from TEB ID %u "
+                          "needed for %s (%014lx, %9u.%09u): rc %d",
+                          __PRETTY_FUNCTION__, src, TransitionId::name(svc), pid, ts.seconds(), ts.nanoseconds(), rc);
+        abort();
       }
 
-      uint32_t idx    = ImmData::idx(imm);
       unsigned offset = _batMan.batchRegionSize() + idx * sizeof(*dgram);
       uint32_t data   = ImmData::value(ImmData::Transition |
                                        ImmData::NoResponse, _id, idx);
@@ -344,7 +409,7 @@ void TebContributor::_post(const EbDgram* dgram) const
       rc = link->post(dgram, sz, offset, data); // Not a batch; Continue on error
       if (rc)
       {
-        logging::error("%s:\n  Failed to post buffer number to TEB ID %d: rc %d, data %08x",
+        logging::error("%s:\n  Failed to post buffer number to TEB ID %u: rc %d, data %08x",
                        __PRETTY_FUNCTION__, src, rc, data);
       }
     }

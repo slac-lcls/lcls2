@@ -40,15 +40,19 @@ EbAppBase::EbAppBase(const EbParams&         prms,
                      const std::string&      pfx,
                      const uint64_t          duration,
                      const unsigned          maxEntries,
-                     const unsigned          maxBuffers) :
-  EventBuilder (maxBuffers + TransitionId::NumberOf,
+                     const unsigned          maxEvBuffers,
+                     const unsigned          maxTrBuffers,
+                     const unsigned          msTimeout) :
+  EventBuilder (maxEvBuffers + maxTrBuffers,
                 maxEntries,
                 MAX_DRPS, //Revisit: std::bitset<64>(prms.contributors).count(),
                 duration,
+                msTimeout,
                 prms.verbose),
   _transport   (prms.verbose, prms.kwargs),
   _maxEntries  (maxEntries),
-  _maxBuffers  (maxBuffers),
+  _maxEvBuffers(maxEvBuffers),
+  _maxTrBuffers(maxTrBuffers),
   _verbose     (prms.verbose),
   _bufferCnt   (0),
   _contributors(0),
@@ -61,8 +65,7 @@ EbAppBase::EbAppBase(const EbParams&         prms,
                                             {"detname", prms.alias},
                                             {"alias", prms.alias},
                                             {"eb", pfx}};
-  uint64_t depth = (maxBuffers + TransitionId::NumberOf) * maxEntries;
-  exporter->constant("EB_EvPlDp", labels, depth);
+  exporter->constant("EB_EvPlDp", labels, eventPoolDepth());
 
   exporter->add("EB_EvAlCt", labels, MetricType::Counter, [&](){ return  eventAllocCnt();     });
   exporter->add("EB_EvFrCt", labels, MetricType::Counter, [&](){ return  eventFreeCnt();      });
@@ -167,8 +170,8 @@ int EbAppBase::connect(const EbParams& prms, size_t inpSizeGuess)
     if (!_region[i])                    // No need to guess again
     {
       // Make a guess at the size of the Input region
-      size_t regSizeGuess = (inpSizeGuess * _maxBuffers * _maxEntries +
-                             roundUpSize(NUM_TRANSITION_BUFFERS * prms.maxTrSize[i]));
+      size_t regSizeGuess = (inpSizeGuess * _maxEvBuffers * _maxEntries +
+                             roundUpSize(_maxTrBuffers * prms.maxTrSize[i]));
       //printf("*** EAB::connect: region %p, regSize %zu, regSizeGuess %zu\n",
       //       _region[i], _regSize[i], regSizeGuess);
 
@@ -198,24 +201,7 @@ int EbAppBase::configure(const EbParams& prms)
   int rc = _linksConfigure(prms, _links, _id, "DRP");
   if (rc)  return rc;
 
-  for (unsigned buf = 0; buf < NUM_TRANSITION_BUFFERS; ++buf)
-  {
-    for (auto link : _links)
-    {
-      uint64_t imm  = ImmData::value(ImmData::Transition, _id, buf);
-
-      if (unlikely(_verbose >= VL_EVENT))
-        printf("EbAp posts transition buffer index %u to src %2u, %08lx\n",
-               buf, link->id(), imm);
-
-      rc = link->post(nullptr, 0, imm);
-      if (rc)
-      {
-        logging::error("%s:\n  Failed to post buffer number to DRP ID %d: rc %d, imm %08lx",
-                       __PRETTY_FUNCTION__, link->id(), rc, imm);
-      }
-    }
-  }
+  // Code added here involving the links must be coordinated with the other side
 
   return 0;
 }
@@ -242,9 +228,9 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
     tmpLinks[rmtId]    = link;
 
     _bufRegSize[rmtId] = regSize;
-    _maxBufSize[rmtId] = regSize / (_maxBuffers * _maxEntries);
+    _maxBufSize[rmtId] = regSize / (_maxEvBuffers * _maxEntries);
     _maxTrSize[rmtId]  = prms.maxTrSize[rmtId];
-    regSize           += roundUpSize(NUM_TRANSITION_BUFFERS * _maxTrSize[rmtId]);  // Ctrbs don't have a transition space
+    regSize           += roundUpSize(_maxTrBuffers * _maxTrSize[rmtId]);  // Ctrbs don't have a transition space
 
     // Allocate the region, and reallocate if the required size is larger
     if (regSize > _regSize[rmtId])
@@ -344,7 +330,7 @@ int EbAppBase::process()
     }
   }
 
-  // Tr space bufSize value is irrelevant since maxEntries will be 1 for that case
+  // Tr space bufSize value is irrelevant since idg has EOL set in that case
   EventBuilder::process(idg, _maxBufSize[src], data);
 
   return 0;
@@ -358,18 +344,18 @@ void EbAppBase::post(const EbDgram* const* begin, const EbDgram** const end)
     unsigned src = idg->xtc.src.value();
     auto     lnk = _links[src];
     size_t   ofs = lnk->lclOfs(reinterpret_cast<const void*>(idg));
-    unsigned buf = (ofs - _bufRegSize[src]) / _maxTrSize[src];
-    uint64_t imm = ImmData::value(ImmData::Transition, _id, buf);
+    unsigned idx = (ofs - _bufRegSize[src]) / _maxTrSize[src];
+    uint64_t imm = ImmData::value(ImmData::Transition, _id, idx);
 
     if (unlikely(_verbose >= VL_EVENT))
       printf("EbAp posts transition buffer index %u to src %2u, %08lx\n",
-             buf, src, imm);
+             idx, src, imm);
 
     int rc = lnk->post(nullptr, 0, imm);
     if (rc)
     {
-      logging::error("%s:\n  Failed to post buffer number to DRP ID %d: rc %d, imm %08lx",
-                     __PRETTY_FUNCTION__, src, rc, imm);
+      logging::error("%s:\n  Failed to post transition buffer index %u to DRP ID %u: rc %d, imm %08lx",
+                     __PRETTY_FUNCTION__, idx, src, rc, imm);
     }
   }
 }

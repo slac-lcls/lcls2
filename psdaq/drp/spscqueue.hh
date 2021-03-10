@@ -13,7 +13,11 @@ class SPSCQueue
 public:
     SPSCQueue(int capacity) : m_terminate(false), m_write_index(0), m_read_index(0)
     {
-        assert((capacity & (capacity - 1)) == 0);
+        if ((capacity & (capacity - 1)) != 0) {
+            // Need a better solution: don't want to include stdio.h in an hh file
+            fprintf(stderr, "SPSCQueue capacity must be a power of 2, got %d\n", capacity);
+            throw "SPSCQueue capacity must be a power of 2";
+        };
         m_ring_buffer.resize(capacity);
         m_capacity = capacity;
         m_buffer_mask = capacity - 1;

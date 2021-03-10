@@ -26,6 +26,7 @@ namespace Pds {
                    unsigned        entries,
                    unsigned        sources,
                    uint64_t        mask,
+                   unsigned        timeout,
                    const unsigned& verbose);
       virtual ~EventBuilder();
     public:
@@ -43,13 +44,14 @@ namespace Pds {
       void               resetCounters();
       void               clear();
       void               dump(unsigned detail) const;
-      const uint64_t&    epochAllocCnt() const;
-      const uint64_t&    epochFreeCnt()  const;
-      const uint64_t&    eventAllocCnt() const;
-      const uint64_t&    eventFreeCnt()  const;
-      const uint64_t&    timeoutCnt()    const;
-      const uint64_t&    fixupCnt()      const;
-      const uint64_t&    missing()       const;
+      const uint64_t&    epochAllocCnt()  const;
+      const uint64_t&    epochFreeCnt()   const;
+      const uint64_t&    eventAllocCnt()  const;
+      const uint64_t&    eventFreeCnt()   const;
+      const uint64_t     eventPoolDepth() const; // Right: not a ref
+      const uint64_t&    timeoutCnt()     const;
+      const uint64_t&    fixupCnt()       const;
+      const uint64_t&    missing()        const;
     private:
       unsigned          _epIndex(uint64_t key) const;
       unsigned          _evIndex(uint64_t key) const;
@@ -68,6 +70,7 @@ namespace Pds {
       EbEvent*          _insert(EbEpoch*, const Pds::EbDgram*, EbEvent*, unsigned prm);
     private:
       friend class EbEvent;
+      using Duration_ms_t = std::chrono::duration<int, std::milli>;
     private:
       LinkedList<EbEpoch>   _pending;       // Listhead, Epochs with events pending
       fast_monotonic_clock::time_point
@@ -77,6 +80,7 @@ namespace Pds {
       std::vector<EbEpoch*> _epochLut;      // LUT of allocated epochs
       GenericPool           _eventFreelist; // Freelist for new events
       std::vector<EbEvent*> _eventLut;      // LUT of allocated events
+      const Duration_ms_t   _eventTimeout;  // Maximum event age in ms
       uint64_t              _tmoEvtCnt;     // Count of timed out events
       uint64_t              _fixupCnt;      // Count of flushed   events
       uint64_t              _missing;       // Bit list of missing contributors
@@ -103,6 +107,13 @@ inline const uint64_t& Pds::Eb::EventBuilder::eventAllocCnt() const
 inline const uint64_t& Pds::Eb::EventBuilder::eventFreeCnt() const
 {
   return _eventFreelist.numberofFrees();
+}
+
+inline const uint64_t Pds::Eb::EventBuilder::eventPoolDepth() const
+{
+  // Return a copy of the value instead of a reference
+  // since it is nominally called only once by MetricExporter
+  return _eventFreelist.numberofObjects();
 }
 
 inline const uint64_t& Pds::Eb::EventBuilder::timeoutCnt() const

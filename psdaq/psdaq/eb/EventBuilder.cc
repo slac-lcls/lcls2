@@ -15,13 +15,13 @@ using namespace Pds;
 using namespace Pds::Eb;
 
 static constexpr unsigned CLS = 64;     // Cache Line Size
-static constexpr auto                   // Maximum event age in ms
-  EventTimeout(std::chrono::duration<int, std::milli>(Pds::Eb::EB_TMO_MS)); //2000));
+
 
 EventBuilder::EventBuilder(unsigned        epochs,
                            unsigned        entries,
                            unsigned        sources,
                            uint64_t        duration,
+                           unsigned        timeout,
                            const unsigned& verbose) :
   _pending(),
   _mask(~PulseId(duration - 1).pulseId()),
@@ -29,6 +29,7 @@ EventBuilder::EventBuilder(unsigned        epochs,
   _epochLut(epochs),
   _eventFreelist(sizeof(EbEvent) + sources * sizeof(EbDgram*), epochs * entries, CLS),
   _eventLut(epochs * entries),
+  _eventTimeout(timeout),
   _tmoEvtCnt(0),
   _fixupCnt(0),
   _missing(0),
@@ -340,7 +341,7 @@ void EventBuilder::_flush(const EbEvent* const due)
       if (event->_remaining)
       {
         // Time out incomplete events
-        bool timedOut(std::chrono::duration_cast<std::chrono::milliseconds>(now - epoch->t0) > EventTimeout);
+        bool timedOut(std::chrono::duration_cast<std::chrono::milliseconds>(now - epoch->t0) > _eventTimeout);
 
         if (!timedOut)
         {
@@ -358,7 +359,7 @@ void EventBuilder::_flush(const EbEvent* const due)
         {
           //auto dT = std::chrono::duration_cast<std::chrono::milliseconds>(now - epoch->t0);
           //printf("Event timed out: now %ld - t0 %ld = %ld vs %d\n",
-          //       now.time_since_epoch().count(), epoch->t0.time_since_epoch().count(), dT.count(), EventTimeout.count());
+          //       now.time_since_epoch().count(), epoch->t0.time_since_epoch().count(), dT.count(), _eventTimeout.count());
           ++_tmoEvtCnt;
         }
         _missing = event->_remaining;

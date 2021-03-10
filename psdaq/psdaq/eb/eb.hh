@@ -11,26 +11,47 @@
 namespace Pds {
   namespace Eb {
 
-    const unsigned MAX_DRPS       = 64;         // Maximum possible number of Contributors
-    const unsigned MAX_TEBS       =  4;         // Maximum possible number of Event Builders
-    const unsigned MAX_MEBS       =  4;         // Maximum possible number of Monitors
-    const unsigned MAX_MRQS       = MAX_MEBS;   // Maximum possible number of Monitor Requestors
+    // The following are limited by the number of bits in a uint64_t
+    const unsigned MAX_DRPS       = 64;         // Max # of Contributors
+    const unsigned MAX_TEBS       =  4;         // Max # of Event Builders
+    const unsigned MAX_MEBS       =  4;         // Max # of Monitors
+    const unsigned MAX_MRQS       = MAX_MEBS;   // Max # of Monitor Requestors
 
-    const unsigned TICK_RATE      = 928500;     // System clock rate in Hz
+    const unsigned NUM_READOUT_GROUPS = 8;      // # of RoGs supported
+
+    // On picking the following constants:
+    // - Determine the contribution arrival time skew that needs to be
+    //   accomodated by the TEBs and MEBs.  This determines the event timeout
+    //   times TEB_TMO_MS and MEB_TMO_MS.
+    // - The TEB event timeout time divided by the pulse ID resolution
+    //   (1/TICK_RATE) gives the amount of TEB buffering needed in units of
+    //   events.  MAX_LATENCY is this value rounded up to a power of 2.
+    // - Batch sizes must also be a power of 2.  In units of events, it is
+    //   MAX_ENTRIES.  In units of pulse Id ticks, it is BATCH_DURATION.
+    // - When there are multiple TEBs in the system, only one receives an event
+    //   batch at a time.  However, if there is a transition in the batch, the
+    //   others must also receive it.  The number of transition buffers set
+    //   aside for this is determined by the TEB event timeout time multiplied
+    //   by the SlowUpdate rate.  This number does not need to be a power of 2.
+    //   These buffers are small (sizeof(EbDgram)).
+    // - The MEB event timeout time multiplied by the SlowUpdate rate gives the
+    //   minimum number of transition buffers needed by the MEB.  This number
+    //   does not need to be a power of 2.  MEB transition buffers are large.
+
+    const unsigned TICK_RATE      = 928500; // System clock rate in Hz
+
+    const unsigned TEB_TMO_MS     = 12000;  // Must be < MAX_LATENCY/TICK_RATE
+    const unsigned MEB_TMO_MS     = 2000;   // <= TEB_TMO_MS
+    const unsigned TEB_TR_BUFFERS = 128;    // # of TEB transition buffers
+                                            // > TEB_TMO * SlowUpdate rate
+    const unsigned MEB_TR_BUFFERS = 24;     // # of MEB transition buffers
+                                            // > MEB_TMO * SlowUpdate rate
 
     const unsigned MAX_ENTRIES    = 64;                        // <= BATCH_DURATION
     const uint64_t BATCH_DURATION = MAX_ENTRIES;               // >= MAX_ENTRIES; power of 2; beam pulse ticks (1 uS)
+    //const unsigned MAX_LATENCY    = nextPwrOf2(TEB_TMO_MS * TICK_RATE / 1000);
     const unsigned MAX_LATENCY    = 16 * 1024 * 1024;          // In beam pulse ticks (1 uS)
     const unsigned MAX_BATCHES    = MAX_LATENCY / MAX_ENTRIES; // Max # of batches in circulation
-
-    const unsigned EB_TMO_MS      = 1000ul * MAX_LATENCY/TICK_RATE - 2000; // ms
-
-    const unsigned NUM_READOUT_GROUPS     = 16; // # of RoGs supported
-    const unsigned NUM_TRANSITION_BUFFERS =  8; // # of buffers for implementing
-                                                // flow control for transitions
-                                                // (not batches) transferred between
-                                                // DRPs and EBs; May be different
-                                                // from DRP's para.nTrBuffers
 
     enum { VL_NONE, VL_DEFAULT, VL_BATCH, VL_EVENT, VL_DETAILED }; // Verbosity levels
 
@@ -112,6 +133,7 @@ namespace Pds {
     // Sanity checks
     static_assert((BATCH_DURATION & (BATCH_DURATION - 1)) == 0, "BATCH_DURATION must be a power of 2");
     static_assert((MAX_BATCHES & (MAX_BATCHES - 1)) == 0, "MAX_BATCHES must be a power of 2");
+    static_assert((TEB_TMO_MS <= 1000ul * MAX_LATENCY/TICK_RATE), "TEB_TMO_MS is too large");
   };
 };
 

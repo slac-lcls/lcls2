@@ -1928,6 +1928,7 @@ class CollectionManager():
             self.cmstate['control'][0]['control_info']['pv_base'] = self.pv_base
             self.cmstate['control'][0]['control_info']['cfg_dbase'] = self.cfg_dbase
             self.cmstate['control'][0]['control_info']['instrument'] = self.instrument
+            self.cmstate['control'][0]['control_info']['slow_update_rate'] = self.slow_update_rate
             self.cmstate['control'][0]['proc_info']['alias'] = self.alias
             self.cmstate['control'][0]['proc_info']['host'] = socket.gethostname()
             self.cmstate['control'][0]['proc_info']['pid'] = os.getpid()

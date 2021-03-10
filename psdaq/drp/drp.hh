@@ -65,7 +65,6 @@ struct Parameters
     int loopbackPort;
     unsigned verbose;
     size_t maxTrSize;
-    unsigned nTrBuffers;
 };
 
 class Pebble

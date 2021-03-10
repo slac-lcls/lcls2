@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+#include <list>
 
 
 namespace Pds {
@@ -33,14 +34,18 @@ namespace Pds {
       int  post(const Pds::EbDgram* dataDatagram); // Transitions
       int  post(const Pds::EbDgram* dataDatagram,
                 uint32_t            destination);  // L1Accepts
+    public:
+      using listU32_t = std::list<uint32_t>;
     private:
+      const MebCtrbParams&      _prms;
       size_t                    _maxEvSize;
       size_t                    _maxTrSize;
       size_t                    _bufRegSize;
       EbLfClient                _transport;
       std::vector<EbLfCltLink*> _links;
-      bool                      _enabled;
+      std::vector<listU32_t >   _trBuffers;
       unsigned                  _id;
+      bool                      _enabled;
       unsigned                  _verbose;
     private:
       uint64_t                  _eventCount;

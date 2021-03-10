@@ -98,7 +98,7 @@ namespace Pds {
         if (_bufFreeList.push(i))
         {
           logging::critical("%s:\n  _bufFreeList.push(%u) failed", __PRETTY_FUNCTION__, i);
-          throw "_bufFreeList.push() failed";
+          abort();
         }
       }
 
@@ -265,7 +265,8 @@ namespace Pds {
 
 Meb::Meb(const MebParams&        prms,
          const MetricExporter_t& exporter) :
-  EbAppBase    (prms, exporter, "MEB", EPOCH_DURATION, 1, prms.numEvBuffers),
+  EbAppBase    (prms, exporter, "MEB",
+                EPOCH_DURATION, 1, prms.numEvBuffers, MEB_TR_BUFFERS, MEB_TMO_MS),
   _eventCount  (0),
   _requestCount(0),
   _prms        (prms),
@@ -348,6 +349,8 @@ int Meb::configure()
   rc = linksConfigure(_mrqLinks, _prms.id, "TEB");
   if (rc)  return rc;
 
+  // Code added here involving the links must be coordinated with the other side
+
   _apps = std::make_unique<MyXtcMonitorServer>(_mrqLinks, _requestCount, _prms);
 
   _apps->distribute(_prms.ldist);
@@ -415,7 +418,7 @@ void Meb::process(EbEvent* event)
     _pool->dump();
     printf("Meb::process event dump:\n");
     event->dump(-1);
-    throw "Dgram pool exhausted";
+    abort();
   }
 
   Dgram* dg  = new(buffer) Dgram(*(event->creator()));
@@ -531,14 +534,14 @@ json MebApp::connectionInfo()
   }
 
   // If port is not user specified, reset the previously allocated port number
-  if (_ebPortEph)            _prms.ebPort.clear();
+  if (_ebPortEph)  _prms.ebPort.clear();
 
   int rc = _meb->startConnection(_prms.ifAddr, _prms.ebPort, MAX_DRPS);
   if (rc)  throw "Error starting connection";
 
-  json body = {{"connect_info", {{"nic_ip",    _prms.ifAddr},
-                                 {"meb_port",  _prms.ebPort},
-                                 {"buf_count", _prms.numEvBuffers}}}};
+  json body = {{"connect_info", {{"nic_ip",       _prms.ifAddr},
+                                 {"meb_port",     _prms.ebPort},
+                                 {"max_ev_count", _prms.numEvBuffers}}}};
   return body;
 }
 
@@ -548,7 +551,7 @@ void MebApp::handleConnect(const json &msg)
   int  rc   = _parseConnectionParams(msg["body"]);
   if (rc)
   {
-    _error(msg, "Error parsing connection parameters");
+    _error(msg, "Connection parameters error - see log");
     return;
   }
 
@@ -711,6 +714,16 @@ int MebApp::_parseConnectionParams(const json& body)
   // shmem buffers must fit both built events and transitions of worst case size
   _prms.maxBufferSize = maxBufferSize > maxTrSize ? maxBufferSize : maxTrSize;
 
+  unsigned suRate(body["control"]["0"]["control_info"]["slow_update_rate"]);
+  if (1000 * MEB_TR_BUFFERS < suRate * MEB_TMO_MS)
+  {
+    // Adjust MEB_TMO_MS, MEB_TR_BUFFERS (in eb.hh) or the SlowUpdate rate
+    logging::error("Increase # of MEB transition buffers from %u to > %u "
+                   "for %u Hz of SlowUpdates and %u ms MEB timeout\n",
+                   MEB_TR_BUFFERS, (suRate * MEB_TMO_MS + 999) / 1000, suRate, MEB_TMO_MS);
+    return 1;
+  }
+
   if (body.find("teb") == body.end())
   {
     logging::error("Missing required TEB specs");
@@ -753,15 +766,16 @@ void MebApp::_printParams(const EbParams& prms, unsigned groups) const
                                                                _prms.ifAddr.c_str(), _prms.ebPort.c_str());
   printf("  Thread core numbers:        %d, %d\n",             _prms.core[0], _prms.core[1]);
   printf("  Partition:                  %u\n",                 _prms.partition);
-  printf("  Bit list of contributors:   0x%016lx, cnt: %zd\n", _prms.contributors,
+  printf("  Bit list of contributors:   0x%016lx, cnt: %zu\n", _prms.contributors,
                                                                std::bitset<64>(_prms.contributors).count());
   printf("  Readout group contractors:  ");                    _printGroups(_groups, _prms.contractors);
-  printf("  Number of TEB requestees:   %zd\n",                _prms.addrs.size());
-  printf("  Buffer duration:            0x%014lx\n",           BATCH_DURATION);
-  printf("  Number of event buffers:    0x%08x = %u\n",        _prms.numEvBuffers, _prms.numEvBuffers);
+  printf("  # of TEB requestees:        %zu\n",                _prms.addrs.size());
+  printf("  Buffer duration:            %u\n",                 EPOCH_DURATION);
   printf("  Max # of entries / buffer:  0x%08x = %u\n",        1, 1);
-  printf("  shmem buffer size:          0x%08x = %u\n",        _prms.maxBufferSize, _prms.maxBufferSize);
-  printf("  Number of event queues:     0x%08x = %u\n",        _prms.nevqueues, _prms.nevqueues);
+  printf("  # of transition buffers:    0x%08x = %u\n",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
+  printf("  # of event      buffers:    0x%08x = %u\n",        _prms.numEvBuffers, _prms.numEvBuffers);
+  printf("  Max buffer size:            0x%08x = %u\n",        _prms.maxBufferSize, _prms.maxBufferSize);
+  printf("  # of event message queues:  0x%08x = %u\n",        _prms.nevqueues, _prms.nevqueues);
   printf("  Distribute:                 %s\n",                 _prms.ldist ? "yes" : "no");
   printf("  Tag:                        %s\n",                 _prms.tag.c_str());
   printf("\n");
@@ -804,7 +818,7 @@ int main(int argc, char** argv)
   prms.core[1]   = CORE_1;
   prms.verbose   = 0;
 
-  prms.maxBufferSize = 0;     // Filled in @ connect
+  prms.maxBufferSize = 0;               // Filled in @ connect
   prms.numEvBuffers  = NUMBEROF_XFERBUFFERS;
   prms.nevqueues     = 1;
   prms.ldist         = false;

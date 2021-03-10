@@ -576,7 +576,6 @@ static void usage(const char* name)
       "    -l      Set the PGP lane mask\n"
       "    -k      Option for supplying kwargs\n"
       "    -M      Prometheus config file directory\n"
-      "    -t      Number of transition buffers (power of 2)\n"
       "    -T      Transition buffer size\n"
       "    -v      Verbosity level (repeat for increased detail)\n"
       "    -h      Show usage\n"
@@ -607,13 +606,10 @@ int main(int argc, char* argv[])
 {
     Drp::Parameters para;
     para.maxTrSize = 256 * 1024;
-    para.nTrBuffers = 32; // Power of 2 greater than the maximum number of
-                          // transitions in the system at any given time, e.g.,
-                          // MAX_LATENCY * (SlowUpdate rate), in same units
 
     std::string kwargs_str;
     int c;
-    while((c = getopt(argc, argv, "p:o:l:C:d:u:k:P:M:t:T:vh")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:C:d:u:k:P:M:T:vh")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -643,9 +639,6 @@ int main(int argc, char* argv[])
                 break;
             case 'M':
                 para.prometheusDir = optarg;
-                break;
-            case 't':
-                para.nTrBuffers = std::stoul(optarg, nullptr, 0);
                 break;
             case 'T':
                 para.maxTrSize  = std::stoul(optarg, nullptr, 0);
