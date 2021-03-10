@@ -49,7 +49,10 @@ namespace Drp {
             EvtBatcherSubFrameTail* save = (EvtBatcherSubFrameTail*)_next;
             if (!save) return save; // no more subframes
             // see if we've jumped backwards too far
-            if (_next-(save->_totSize()) < _end) psalg::SysLog::critical("*** corrupt EvtBatcherOutput: %li %d\n",_next-_end,save->_totSize());
+            if (_next-(save->_totSize()) < _end) {
+                psalg::SysLog::critical("*** corrupt EvtBatcherOutput: %li %d\n",_next-_end,save->_totSize());
+                throw std::runtime_error("corrupt AxiStreamEventBuilder");
+            }
             // compute the next subframe ptr
             if (_next-(save->_totSize()) == _end) {
                 // indicates this is the last one

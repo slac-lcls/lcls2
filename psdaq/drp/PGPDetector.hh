@@ -39,6 +39,8 @@ private:
     int32_t dmaRet[MAX_RET_CNT_C];
     uint32_t dmaIndex[MAX_RET_CNT_C];
     uint32_t dest[MAX_RET_CNT_C];
+    uint32_t dmaFlags [MAX_RET_CNT_C];
+    uint32_t dmaErrors[MAX_RET_CNT_C];
     std::vector<SPSCQueue<Batch> > m_workerInputQueues;
     std::vector<SPSCQueue<Batch> > m_workerOutputQueues;
     std::vector<std::thread> m_workerThreads;

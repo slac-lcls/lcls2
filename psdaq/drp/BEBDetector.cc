@@ -203,16 +203,25 @@ void BEBDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
     int lane = __builtin_ffs(event->mask) - 1;
     uint32_t dmaIndex = event->buffers[lane].index;
     unsigned data_size = event->buffers[lane].size;
-    EvtBatcherIterator ebit = EvtBatcherIterator((EvtBatcherHeader*)m_pool->dmaBuffers[dmaIndex], data_size);
-    EvtBatcherSubFrameTail* ebsft = ebit.next();
-    unsigned nsubs = ebsft->tdest()+1;
-    std::vector< XtcData::Array<uint8_t> > subframes(nsubs, XtcData::Array<uint8_t>(0, 0, 1) );
 
-    do {
-        subframes[ebsft->tdest()] = XtcData::Array<uint8_t>(ebsft->data(), &ebsft->size(), 1);
-    } while ((ebsft=ebit.next()));
-
-    _event(dgram.xtc, subframes);
+    try {
+        EvtBatcherIterator ebit = EvtBatcherIterator((EvtBatcherHeader*)m_pool->dmaBuffers[dmaIndex], data_size);
+        EvtBatcherSubFrameTail* ebsft = ebit.next();
+        unsigned nsubs = ebsft->tdest()+1;
+        std::vector< XtcData::Array<uint8_t> > subframes(nsubs, XtcData::Array<uint8_t>(0, 0, 1) );
+        do {
+            subframes[ebsft->tdest()] = XtcData::Array<uint8_t>(ebsft->data(), &ebsft->size(), 1);
+        } while ((ebsft=ebit.next()));
+        _event(dgram.xtc, subframes);
+    } catch (std::runtime_error& e) {
+        logging::critical("BatcherIterator error");
+        const uint32_t* p = reinterpret_cast<const uint32_t*>(m_pool->dmaBuffers[dmaIndex]);
+        for(unsigned j=0; j<data_size; j+= 32) {
+            logging::critical("%08x %08x %08x %08x %08x %08x %08x %08x",
+                              p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7]);
+            p += 8;
+        }
+    }                           
 }
 
 void BEBDetector::shutdown()

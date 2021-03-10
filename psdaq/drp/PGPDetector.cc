@@ -203,7 +203,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
         if (m_terminate.load(std::memory_order_relaxed)) {
             break;
         }
-        int32_t ret = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, NULL, NULL, dest);
+        int32_t ret = dmaReadBulkIndex(m_pool.fd(), MAX_RET_CNT_C, dmaRet, dmaIndex, dmaFlags, dmaErrors, dest);
         for (int b=0; b < ret; b++) {
             uint32_t size = dmaRet[b];
             uint32_t index = dmaIndex[b];
@@ -212,6 +212,15 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
             if (size > m_pool.dmaSize()) {
                 logging::critical("DMA overflowed buffer: %u vs %u", size, m_pool.dmaSize());
                 throw "DMA overflowed buffer";
+            }
+
+            uint32_t flag = dmaFlags[b];
+            uint32_t err  = dmaErrors[b];
+            if (err) {
+                logging::error("DMA with error 0x%x  flag 0x%x",err,flag);
+                //  How do I return this buffer?
+                dmaRetIndex(m_pool.fd(), index);
+                continue;
             }
 
             const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
@@ -227,11 +236,12 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
 
             const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
             if (m_para.verbose < 2)
-                logging::debug("PGPReader  lane %u  size %u  hdr %016lx.%016lx.%08x",
+                logging::debug("PGPReader  lane %u  size %u  hdr %016lx.%016lx.%08x  flag 0x%x  err 0x%x",
                                lane, size,
                                reinterpret_cast<const uint64_t*>(data)[0],
                                reinterpret_cast<const uint64_t*>(data)[1],
-                               reinterpret_cast<const uint32_t*>(data)[4]);
+                               reinterpret_cast<const uint32_t*>(data)[4],
+                               flag, err);
 
             if (event->mask == m_para.laneMask) {
                 XtcData::TransitionId::Value transitionId = timingHeader->service();
@@ -261,7 +271,9 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                     logging::critical("lastData: %08x %08x %08x %08x %08x %08x",
                                       lastData[0], lastData[1], lastData[2], lastData[3], lastData[4], lastData[5]);
 
-                    throw "Jump in event counter";
+                    //  Do we still need to throw an exception?
+                    //  Sometimes we have genuine frame errors
+                    //throw "Jump in event counter";
 
                     for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
                         PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
