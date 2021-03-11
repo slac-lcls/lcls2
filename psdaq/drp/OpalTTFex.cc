@@ -50,11 +50,14 @@ static std::vector<double> parab_fit(double* qwf, unsigned ix, unsigned len, dou
 
 #define MLOOKUP(m,name,dflt) (m.find(name)==m.end() ? dflt : m[name])
 
+static const unsigned no_shape[] = {0,0};
+
 OpalTTFex::OpalTTFex(Parameters* para) :
   m_eventcodes_beam_incl (0),
   m_eventcodes_beam_excl (0),
   m_eventcodes_laser_incl(0),
-  m_eventcodes_laser_excl(0)
+  m_eventcodes_laser_excl(0),
+  m_ref_avg_2d           (no_shape, 2, new char[1])
 {
   std::string fname = MLOOKUP(para->kwargs,"ttreffile",
                               para->detName+".ttref");
@@ -633,6 +636,9 @@ void rolling_average(NDArray<double>& a, NDArray<double>& avg, double fraction)
 {
   if (avg.size()==0)
     avg = a;
+  else if (avg.size()!=a.size()) {
+      throw std::string("rolling average with different sizes");
+  }
   else {
     double g = (1-fraction);
     double f = fraction;

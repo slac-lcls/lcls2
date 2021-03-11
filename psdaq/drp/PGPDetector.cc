@@ -273,7 +273,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
 
                     //  Do we still need to throw an exception?
                     //  Sometimes we have genuine frame errors
-                    //throw "Jump in event counter";
+                    throw "Jump in event counter";
 
                     for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
                         PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
