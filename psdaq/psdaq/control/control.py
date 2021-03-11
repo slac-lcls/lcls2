@@ -949,7 +949,7 @@ class CollectionManager():
         self.back_pub.bind('tcp://*:%d' % back_pub_port(args.p))
         self.front_rep.bind('tcp://*:%d' % front_rep_port(args.p))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(args.p))
-        self.slow_update_rate = args.S
+        self.slow_update_rate = args.S if args.S else 0
         self.slow_update_enabled = False    # setter: self.set_slow_update_enabled()
         self.slow_update_exit = Event()
         self.phase2_timeout = args.T
