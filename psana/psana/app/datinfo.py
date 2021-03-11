@@ -108,7 +108,7 @@ def loop_run_step_evt(args):
           #if ievt>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
           if not selected_record(ievt): continue
           if segs is None:
-             segs = det.raw.segments(evt)
+             segs = det.raw._segment_numbers(evt)
              print('  Event %05d %s'% (ievt, info_ndarr(segs,'segments ')))
              #print('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
              if dcfg is not None:
