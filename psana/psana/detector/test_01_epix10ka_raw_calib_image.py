@@ -149,7 +149,7 @@ def test_raw(args):
         if evnum>args.events: exit('exit by number of events limit %d' % args.events)
         if not selected_record(evnum): continue
         print('%s\nEvent %04d' % (50*'_',evnum))
-        segs = det.raw.segments(evt)
+        segs = det.raw._segment_numbers(evt)
         raw  = det.raw.raw(evt)
         logger.info(info_ndarr(segs, 'segs '))
         logger.info(info_ndarr(raw,  'raw  '))
@@ -373,7 +373,11 @@ def test_image(args):
 
         if 'c' in dograph:
             if flims is None:
-                flims = fleximagespec(img, arr=arr, bins=100, color='lightgreen', fraclo=0.001, frachi=0.999)
+                flims = fleximagespec(img, arr=arr, bins=100, color='lightgreen',\
+                                      amin=args.gramin,   amax=args.gramax,\
+                                      nneg=args.grnneg,   npos=args.grnpos,\
+                                      fraclo=args.grfrlo, frachi=args.grfrhi,\
+                )
                 flims.move(10,20)
             else:
                 #print(info_ndarr(arr, 'YYY before update arr: ', last=5))
@@ -429,7 +433,7 @@ def test_mask(args):
         #arr = det.raw.raw(evt)
         arr = mask + 1
         img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
-        flimg = fleximage(img, arr=None, h_in=8, alimits=(-1,2))#, cmap='jet')
+        flimg = fleximage(img, arr=None, h_in=8, amin=-1, amax=2)#, cmap='jet')
         gr.show()
         if args.ofname is not None:
             gr.save_fig(flimg.fig, fname=args.ofname, verb=True)
@@ -482,6 +486,12 @@ if __name__ == "__main__":
     d_thrmin  = -0.344 # -0.598 as in dark 211, -0.344 r134
     d_thrmax  = 0.582 # 0.582 r134
     d_thrpix  = -10000
+    d_gramin  = None
+    d_gramax  = None
+    d_grnneg  = None
+    d_grnpos  = None
+    d_grfrlo  = 0.01
+    d_grfrhi  = 0.99
 
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
@@ -505,12 +515,18 @@ if __name__ == "__main__":
     parser.add_argument('-K', '--evskip',  default=d_evskip,  type=int, help='number of events to skip in the beginning of run, def=%s' % d_evskip)
     parser.add_argument('-J', '--evjump',  default=d_evjump,  type=int, help='number of events to jump, def=%s' % d_evjump)
     parser.add_argument('-s', '--pscsize', default=d_pscsize, type=float, help='pixel scale size [um], def=%.1f' % d_pscsize)
-    parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int, help='bitmask for raw 0x3fff=16383, def=%s' % hex(d_bitmask))
-    parser.add_argument('-M', '--stepsel', default=d_stepsel, type=int, help='step selected to show or None for all, def=%s' % d_stepsel)
-    parser.add_argument('-g', '--grindex', default=d_grindex, type=int, help='gain range index [0,6] for peds, def=%s' % str(d_grindex))
+    parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int,   help='bitmask for raw 0x3fff=16383, def=%s' % hex(d_bitmask))
+    parser.add_argument('-M', '--stepsel', default=d_stepsel, type=int,   help='step selected to show or None for all, def=%s' % d_stepsel)
+    parser.add_argument('-g', '--grindex', default=d_grindex, type=int,   help='gain range index [0,6] for peds, def=%s' % str(d_grindex))
     parser.add_argument('-t', '--thrmin',  default=d_thrmin,  type=float, help='minimal threshold on median to accumulate events with -C, def=%f' % d_thrmin)
     parser.add_argument('-T', '--thrmax',  default=d_thrmax,  type=float, help='maximal threshold on median to accumulate events with -C, def=%f' % d_thrmax)
     parser.add_argument('--thrpix',        default=d_thrpix,  type=float, help='per pixel intensity threshold to accumulate events with -C, def=%f' % d_thrpix)
+    parser.add_argument('--gramin',        default=d_gramin,  type=float, help='minimal intensity for grphics, def=%s' % str(d_gramin))
+    parser.add_argument('--gramax',        default=d_gramax,  type=float, help='maximal intensity for grphics, def=%s' % str(d_gramax))
+    parser.add_argument('--grnneg',        default=d_grnneg,  type=float, help='number of mean deviations of intensity negative limit for grphics, def=%s' % str(d_grnneg))
+    parser.add_argument('--grnpos',        default=d_grnpos,  type=float, help='number of mean deviations of intensity negative limit for grphics, def=%s' % str(d_grnpos))
+    parser.add_argument('--grfrlo',        default=d_grfrlo,  type=float, help='fraqction of statistics [0,1] below low  limit for grphics, def=%s' % str(d_grfrlo))
+    parser.add_argument('--grfrhi',        default=d_grfrhi,  type=float, help='fraqction of statistics [0,1] below high limit for grphics, def=%s' % str(d_grfrhi))
 
     args = parser.parse_args()
     kwa = vars(args)
