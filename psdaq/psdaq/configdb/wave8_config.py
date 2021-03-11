@@ -23,16 +23,12 @@ lane   = 0
 def ctxt_get(names):
     v = None
     if isinstance(names,str):
-        print(f'Get {names}')
         v = epics.PV(names).get()
-        print(f'Get {names} {v}')
     else:
         if isinstance(names,list):
             v = []
             for i,n in enumerate(names):
-                print(f'Get {n}')
                 v.append(epics.PV(n).get())
-                print(f'Get {n} {v[-1]}')
     return v
 
 def ctxt_put(names, values):
@@ -205,8 +201,6 @@ def wave8_config(prefix,connect_str,cfgtype,detname,detsegm,grp):
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
     ocfg = cfg
 
-    pprint.pprint(cfg)
-
     #  Apply the user configs
     epics_prefix = prefix + ':Top:'
     user_to_expert(epics_prefix, cfg, full=True) 
@@ -331,7 +325,6 @@ def wave8_config(prefix,connect_str,cfgtype,detname,detsegm,grp):
         if k[0][0]=='[':
             elem = int(k[0][1:-1])
             c[elem] = v
-            print(f'Ass array [{elem}] {v}')
         else:
             c[k[0]] = v
 
