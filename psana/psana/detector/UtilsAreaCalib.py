@@ -194,8 +194,8 @@ def pedestals_calibration(**kwa):
 
         rows, cols = raw.shape
         if block is None:
-           segs = odet.raw.segments(evt)
-           print(info_ndarr(segs, '\n det.raw.segments(evt) '))
+           segs = odet.raw._segment_numbers(evt)
+           print(info_ndarr(segs, '\n det.raw._segment_numbers(evt) '))
            block=np.zeros((nrecs, rows, cols),dtype=raw.dtype)
            print(info_ndarr(block,' Createsd array for accumulation of raw data block[nrecs, nrows, ncols]\n '))
            print(end=10*' ')
