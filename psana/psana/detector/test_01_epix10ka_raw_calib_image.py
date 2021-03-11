@@ -305,7 +305,15 @@ def test_image(args):
         #user_mask[0,100:150,200:250] = 0
         user_mask = None
 
-        arr = det.raw.calib(evt, cmpars=(7,7,100,10),\
+        arr = None
+        if args.show == 'raw-peds-med':
+           arr = (det.raw.raw(evt) & 0x3fff) - peds
+           med = np.median(arr)
+           print('XXX from raw-peds subtract its median = %.3f' % med)
+           arr -= med
+
+        if arr is None:
+           arr = det.raw.calib(evt, cmpars=(7,7,100,10),\
                             mbits=0o7, mask=user_mask, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)\
                                                  if args.show == 'calibcm'  else\
               det.raw.calib(evt, cmpars=(8,7,10,10))\
@@ -495,7 +503,7 @@ if __name__ == "__main__":
 
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
-    h_show = 'select image correction from raw/calib/calibcm/calibcm8/grind/rawbm/raw-peds/peds/ones, def=%s' % d_show
+    h_show = 'select image correction from raw/calib/calibcm/calibcm8/grind/rawbm/raw-peds/raw-peds-med/peds/ones, def=%s' % d_show
     import argparse
 
     parser = argparse.ArgumentParser(usage=usage)
