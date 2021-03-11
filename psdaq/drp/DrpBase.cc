@@ -227,7 +227,7 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
     Smd smd;
     XtcData::NamesId namesId(dgram->xtc.src.value(), NamesIndex::OFFSETINFO);
     XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, m_offset, size,
-            m_smdWriter.namesLookup, namesId);
+                                            m_smdWriter.namesLookup, namesId);
     m_smdWriter.writeEvent(smdDgram, sizeof(XtcData::Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
     m_offset += size;
 }
@@ -291,8 +291,9 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
         if (transitionId != XtcData::TransitionId::SlowUpdate) {
             if (transitionId == XtcData::TransitionId::Configure) {
                 // Cache Configure Dgram for writing out after files are opened
-                size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
-                memcpy(m_configureBuffer.data(), dgram, size);
+                XtcData::Dgram* configDgram = dgram;
+                size_t size = sizeof(*configDgram) + configDgram->xtc.sizeofPayload();
+                memcpy(m_configureBuffer.data(), configDgram, size);
             }
             if (transitionId == XtcData::TransitionId::BeginRun)
               m_offset = 0;// reset for monitoring (and not recording)
