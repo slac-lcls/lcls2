@@ -1,11 +1,13 @@
 #!/usr/bin/env python
-import logging
-#logger = logging.getLogger(__name__)
-#logging.basicConfig(format='[%(levelname).1s]: %(message)s', level=logging.INFO)
-logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=logging.DEBUG)
 
 import sys
 SCRNAME = sys.argv[0].rsplit('/')[-1]
+STRLOGLEV = sys.argv[2] if len(sys.argv)>2 else 'INFO'
+
+import logging
+INTLOGLEV = logging._nameToLevel[STRLOGLEV]
+logger = logging.getLogger(__name__)
+logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV) #logging.DEBUG)
 
 def issue_2020_11_09():
     from psana import DataSource
@@ -199,7 +201,7 @@ def issue_2021_02_03():
         if ievt>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
 
         print('%s\nEvent %04d' % (80*'_',ievt))
-        segs = det.raw.segments(evt)
+        segs = det.raw._segment_numbers(evt)
         raw  = det.raw.raw(evt)
 
         print(info_ndarr(segs, 'segsments '))
@@ -270,7 +272,7 @@ def issue_2021_02_16():
 
 #if __name__ == "__main__":
 USAGE = '\nUsage:'\
-      + '\n  python %s <test-name>' % SCRNAME\
+      + '\n  python %s <test-name> <loglevel-e.g.-DEBUG-or-INFO>' % SCRNAME\
       + '\n  where test-name: '\
       + '\n    0 - print usage'\
       + '\n    1 - issue_2020_11_09 - cpo something about epix10k2M/quad raw'\
@@ -284,6 +286,22 @@ USAGE = '\nUsage:'\
       + '\n    9 - issue_2021_02_08 - docstring access is crashing'\
       + '\n   10 - issue_2021_02_09 - Peck, Ariana - missing calibration for opal detector'\
       + '\n   11 - issue_2021_02_16 - cpo - passing None as a detector name'\
+      + '\n   12 - issue_2021_03_10 - matplotlib and libGL error messages'\
+
+def issue_2021_03_10():
+  """
+  Any call to matplotlib cause messages:
+  libGL error: unable to load driver: swrast_dri.so
+  libGL error: failed to load driver: swrast
+  FIX: Valserio found that 
+  export LIBGL_ALWAYS_INDIRECT=1
+  fixes this issue
+  """
+  import numpy as np
+  import matplotlib.pyplot  as plt
+  plt.imshow(np.arange(12).reshape((3, 4)))
+  plt.show()
+
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -298,6 +316,7 @@ elif TNAME in  ('8',): issue_2021_02_03()
 elif TNAME in  ('9',): issue_2021_02_08()
 elif TNAME in ('10',): issue_2021_02_09()
 elif TNAME in ('11',): issue_2021_02_16()
+elif TNAME in ('12',): issue_2021_03_10()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
