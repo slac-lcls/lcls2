@@ -1427,7 +1427,7 @@ class CollectionManager():
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
 
         # make sure all the clients respond to alloc message with their connection info
-        retlist, answers, reports = self.confirm_response(self.back_pull, 1000, msg['header']['msg_id'], ids)
+        retlist, answers, reports = self.confirm_response(self.back_pull, 2000, msg['header']['msg_id'], ids)
         self.process_reports(reports)
         ret = len(retlist)
         if ret:
