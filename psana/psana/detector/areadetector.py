@@ -9,7 +9,7 @@ Usage::
   o = AreaDetector(*args, **kwa) # inherits from DetectorImpl(*args, **kwa)
 
   a = o.raw(evt)
-  a = o.segments(evt)
+  a = o._segment_numbers(evt)
   a = o._det_calibconst()
   a = o._calibcons_and_meta_for_ctype(ctype='pedestals')
   a = o._cached_array(p, ctype='pedestals')
@@ -102,7 +102,7 @@ class AreaDetector(DetectorImpl):
         return arr3d_from_dict({k:v.raw for k,v in segs.items()})
 
 
-    def segments(self,evt):
+    def _segment_numbers(self,evt):
         """ Returns dense 1-d numpy array of segment indexes.
         from dict self._segments(evt)    
         """
@@ -211,7 +211,7 @@ class AreaDetector(DetectorImpl):
         if resp is None: return None
 
         # PRESERVE PIXEL INDEXES FOR USED SEGMENTS ONLY
-        segs = self.segments(evt)
+        segs = self._segment_numbers(evt)
         if segs is None: return None
         logger.debug(info_ndarr(segs, 'preserve pixel indices for segments '))
 
