@@ -23,43 +23,47 @@ import psana.pyalgos.generic.Graphics as gr
 #from psana.pyalgos.generic.NDArrUtils import info_ndarr
 #----
 
-def arr_median_limits(arr, nneg=None, npos=None, fraclo=0.05, frachi=0.95):
-    """ returns tuple of intensity limits (amin, amax) evaluated from arr.
+def arr_median_limits(arr, amin=None, amax=None, nneg=None, npos=None, fraclo=0.05, frachi=0.95):
+    """ returns tuple of intensity limits (amin, amax) evaluated from arr or passed directly.
     """
-    if arr is None: return nneg, npos
+    if not(None in (amin, amax)): return amin, amax
+
     if None in (nneg, npos):
         qlo = np.quantile(arr, fraclo, interpolation='linear')
         qhi = np.quantile(arr, frachi, interpolation='linear')
         logger.debug('quantile(%.3f):%.1f quantile(%.3f):%.1f' % (fraclo, qlo, frachi, qhi))
-        #print('  quantile(%.3f):%.1f quantile(%.3f):%.1f' % (fraclo, qlo, frachi, qhi))
         return qlo, qhi
-    med = np.median(arr)
-    spr = np.median(np.abs(arr-med))
-    amin, amax = med-nneg*spr, med+npos*spr
-    logger.debug('median:%.1f spread:%.1f amin:%.1f amax:%.1f' % (med, spr, amin, amax))
-    return amin, amax
+    else:
+        med = np.median(arr)
+        spr = np.median(np.abs(arr-med))
+        _amin, _amax = med-nneg*spr, med+npos*spr
+        logger.debug('median:%.1f spread:%.1f amin:%.1f amax:%.1f' % (med, spr, _amin, _amax))
+        return _amin, _amax
 
 
 class flexbase:
     def __init__(self, **kwa):
-        self.nneg    = kwa.setdefault('nneg', None) #1
-        self.npos    = kwa.setdefault('npos', None) #3
+        self.amin    = kwa.setdefault('amin', None)
+        self.amax    = kwa.setdefault('amax', None)
+        self.nneg    = kwa.setdefault('nneg', None)
+        self.npos    = kwa.setdefault('npos', None)
         self.fraclo  = kwa.setdefault('fraclo', 0.05)
         self.frachi  = kwa.setdefault('frachi', 0.95)
-        self.alimits = kwa.setdefault('alimits', None)
+        #self.alimits = kwa.setdefault('alimits', None)
 
     def _intensity_limits(self, a, kwa):
         """ returns tuple of intensity limits (amin, amax)
-            NOTE: kwa is dict (NOT **kwa) because need to clean dict of parameters
+            NOTE: kwa is MUTABLE dict (NOT **kwa) because it needs (???) to be cleaned up of parameters not used in other places
         """
-        alimits = kwa.pop('alimits', self.alimits)
         return arr_median_limits(
-                   arr    = kwa.get('arr', a),\
-                   nneg   = kwa.pop('nneg', self.nneg),
-                   npos   = kwa.pop('npos', self.npos),
-                   fraclo = kwa.pop('fraclo', self.fraclo),
-                   frachi = kwa.pop('frachi', self.frachi))\
-               if alimits is None else alimits
+            arr    = kwa.get('arr', a),\
+            amin   = kwa.pop('amin',   self.amin),
+            amax   = kwa.pop('amax',   self.amax),
+            nneg   = kwa.pop('nneg',   self.nneg),
+            npos   = kwa.pop('npos',   self.npos),
+            fraclo = kwa.pop('fraclo', self.fraclo),
+            frachi = kwa.pop('frachi', self.frachi))
+
 
     def move(self, x0=100, y0=10):
         gr.move_fig(self.fig, x0, y0)
@@ -115,7 +119,7 @@ class fleximage(flexbase):
 
 
     def update(self, img, **kwa):
-        """use kwa: arr=arr, nneg=1, npos=3 OR arr, fraclo=0.05, frachi=0.95 OR alimits=(amin,amax)
+        """use kwa: arr=arr, nneg=1, npos=3 OR arr, fraclo=0.05, frachi=0.95
         """
         amin, amax = self._intensity_limits(img, kwa)
         self.imsh.set_data(img)
@@ -153,7 +157,7 @@ class flexhist(flexbase):
 
 
     def update(self, arr, **kwa):
-        """use kwa: arr=arr, nneg=1, npos=3 OR arr, fraclo=0.05, frachi=0.95 OR alimits=(amin,amax)
+        """use kwa: arr=arr, nneg=1, npos=3 OR arr, fraclo=0.05, frachi=0.95
         """
         amin, amax = self._intensity_limits(arr, kwa)
         self.axhi.cla()
@@ -222,7 +226,7 @@ class fleximagespec(flexbase):
 
 
     def update_his(self, nda, **kwa):
-        """use kwa: arr=arr, nneg=1, npos=3 OR arr, fraclo=0.05, frachi=0.95 OR alimits=(amin,amax)
+        """use kwa: arr=arr, nneg=1, npos=3 OR arr, fraclo=0.05, frachi=0.95
         """
         amp_range = amin, amax = self._intensity_limits(nda, kwa)
 
@@ -256,13 +260,12 @@ class fleximagespec(flexbase):
     def update(self, img, **kwa):
         """
         """        
-        amp_range = amin, amax = self._intensity_limits(img, kwa)
+        amin, amax = self._intensity_limits(img, kwa)
         self.imsh.set_data(img)
         self.imsh.set_clim(amin, amax)
         self.axcb.set_ylim(amin, amax)
 
         arr = kwa.get('arr', img)
-        #print(info_ndarr(arr, 'XXX in update arr: ', last=5))
         self.update_his(arr, **kwa)
 
 
