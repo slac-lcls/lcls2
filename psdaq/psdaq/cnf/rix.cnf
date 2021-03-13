@@ -3,6 +3,7 @@ if not platform: platform = '2'
 import os
 ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
+manta_env = 'EPICS_PVA_ADDR_LIST=172.21.156.91 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
 
 #collect_host = os.uname()[1]
@@ -41,7 +42,7 @@ ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
 heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
-ami_worker_nodes = ["drp-neh-cmp013"]
+ami_worker_nodes = ["drp-neh-cmp013","drp-neh-cmp017","drp-neh-cmp018"]
 ami_num_workers = len(ami_worker_nodes)
 ami_manager_node = "drp-neh-ctl001"
 
@@ -61,7 +62,7 @@ ami_manager_node = "drp-neh-ctl001"
 
 procmgr_config = [
 # {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2'},
- {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups+' --prod'},
+# {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups},
  {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
 
 # { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 0 -C NOBEAM {auth} {url} -d {cdb}/configDB -r /dev/null -t trigger -S 1 -T 20000'},
@@ -81,8 +82,10 @@ procmgr_config = [
  #           '-0' specifies no timestamp matching (-0 may have problems)
  #           ''   specifies precise timestamp matching
  # pebbleBufSize was 8388672
- { host: 'drp-neh-cmp015', id:'manta_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x1 SL1K2:EXIT:CAM:DATA1:Pva:Image  -k pebbleBufSize=8400000'},
-#{ host: 'drp-neh-cmp015', id:'opal_0',      flags:'spux', env:epics_env, cmd:pva_cmd1+' -l 0x1 IM2K0:XTES:CAM:IMAGE1:Pva:Image -k pebbleBufSize=8400000'},
+ { host: 'drp-neh-cmp002', id:'manta_0',     flags:'spu', env:manta_env, cmd:pva_cmd1+' -l 0x1 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8380000'},
+ # 9MPixel G-917C manta untimestamped image @1Hz (hence the "-0" flag)
+ # set the pebbleBufSize smaller since filewriter only supports 8388688 currently
+ { host: 'drp-neh-cmp015', id:'mr2k1_0',      flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x1 MR2K1:MONO:CAM:04:DATA1:Pva:Image -k pebbleBufSize=8380000 -0'},
 ]
 
 hsd_epics = 'DAQ:RIX:HSD:1'
@@ -117,7 +120,7 @@ procmgr_ami = [
 #
 # ami workers
 #
-extra_shmem_queues=1
+extra_shmem_queues=0
 for N, worker_node in enumerate(ami_worker_nodes):
     procmgr_ami.append({ host:worker_node, id:f'meb{N}', flags:'spu',
                          cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node+extra_shmem_queues}' })
