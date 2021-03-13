@@ -674,6 +674,7 @@ def docdic(data, dataid, **kwa):
           'dettype'   : kwa.get('dettype', ''),
           'run_orig'  : kwa.get('run_orig', 0),
           'tstamp_orig':kwa.get('tstamp_orig', ''),
+          'iofname'   : kwa.get('iofname', ''),
           'extpars'   : str_extpars,
          }
 
