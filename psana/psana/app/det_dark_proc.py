@@ -65,7 +65,9 @@ def argument_parser():
     d_logmode = 'INFO'
     d_errskip = True
     d_stepnum    = None
-    d_stepmax    = 5
+    d_stepmax    = 1
+    d_evskip     = 100     # number of events to skip in the beginning of each step
+    d_events     = 1000    # number of events to process from the beginning of each step
     d_dirmode    = 0o777
     d_filemode   = 0o666
     d_int_lo     = 1       # lowest  intensity accepted for dark evaluation
@@ -77,10 +79,11 @@ def argument_parser():
     d_rmsnlo     = 6.0     # rms ditribution number-of-sigmas low
     d_rmsnhi     = 6.0     # rms ditribution number-of-sigmas high
     d_fraclm     = 0.1     # allowed fraction limit
-    d_nsigma     = 6.0     # number of sigmas for gated eveluation
+    d_fraclo     = 0.05    # fraction of statistics [0,1] below low limit
+    d_frachi     = 0.95    # fraction of statistics [0,1] below high limit
     d_deploy  = False
     d_tstamp  = None # 20180910111049 or run number <10000
-    d_version = 'V2021-01-21'
+    d_version = 'V2021-03-12'
     d_run_end = 'end'
     d_comment = 'no comment'
 
@@ -96,6 +99,8 @@ def argument_parser():
     h_errskip = 'flag to skip errors and keep processing, stop otherwise, default = %s' % d_errskip
     h_stepnum    = 'step number to process or None for all steps, default = %s' % str(d_stepnum)
     h_stepmax    = 'maximum number of steps to process, default = %s' % str(d_stepmax)
+    h_evskip     = 'number of events to skip in the beginning of each step, default = %s' % str(d_evskip)
+    h_events     = 'number of events to process from the beginning of each step, default = %s' % str(d_events)
     h_dirmode    = 'directory access mode, default = %s' % oct(d_dirmode)
     h_filemode   = 'file access mode, default = %s' % oct(d_filemode)
     h_int_lo     = 'lowest  intensity accepted for dark evaluation, default = %d' % d_int_lo
@@ -107,7 +112,8 @@ def argument_parser():
     h_rmsnlo     = 'rms ditribution number-of-sigmas low, default = %f' % d_rmsnlo
     h_rmsnhi     = 'rms ditribution number-of-sigmas high, default = %f' % d_rmsnhi
     h_fraclm     = 'allowed fraction limit, default = %f' % d_fraclm
-    h_nsigma     = 'number of sigmas for gated eveluation, default = %f' % d_nsigma
+    h_fraclo     = 'fraction of statistics [0,1] below low  limit of the gate, default = %f' % d_fraclo
+    h_frachi     = 'fraction of statistics [0,1] below high limit of the gate, default = %f' % d_frachi
     h_deploy  = 'deploy constants to the calib dir, default = %s' % d_deploy
     h_tstamp  = 'non-default time stamp in format YYYYmmddHHMMSS or run number(<10000) for constants selection in repo. '\
                 'By default run time is used, default = %s' % str(d_tstamp)
@@ -128,6 +134,8 @@ def argument_parser():
     parser.add_argument('-E', '--errskip', action='store_false',             help=h_errskip)
     parser.add_argument('--stepnum',       default=d_stepnum,    type=int,   help=h_stepnum)
     parser.add_argument('--stepmax',       default=d_stepmax,    type=int,   help=h_stepmax)
+    parser.add_argument('--evskip',        default=d_evskip,     type=int,   help=h_evskip)
+    parser.add_argument('--events',        default=d_events,     type=int,   help=h_events)
     parser.add_argument('--dirmode',       default=d_dirmode,    type=int,   help=h_dirmode)
     parser.add_argument('--filemode',      default=d_filemode,   type=int,   help=h_filemode)
     parser.add_argument('--int_lo',        default=d_int_lo,     type=int,   help=h_int_lo)
@@ -139,7 +147,8 @@ def argument_parser():
     parser.add_argument('--rmsnlo',        default=d_rmsnlo,     type=float, help=h_rmsnlo)
     parser.add_argument('--rmsnhi',        default=d_rmsnhi,     type=float, help=h_rmsnhi)
     parser.add_argument('--fraclm',        default=d_fraclm,     type=float, help=h_fraclm)
-    parser.add_argument('--nsigma',        default=d_nsigma,     type=float, help=h_nsigma)
+    parser.add_argument('--fraclo',        default=d_fraclo,     type=float, help=h_fraclo)
+    parser.add_argument('--frachi',        default=d_frachi,     type=float, help=h_frachi)
     parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
     parser.add_argument('-t', '--tstamp',  default=d_tstamp,     type=int,   help=h_tstamp)
     parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
