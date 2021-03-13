@@ -376,6 +376,8 @@ def add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
 def add_data_and_doc(data, _dbname, _colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
     """Adds data and document to the db
     """
+    logger.debug('add_data_and_doc kwargs: %s' % str(kwargs))
+
     # check permission
     t0_sec = time()
     if not valid_post_privilege(_dbname, url_krb=url): return None
@@ -399,6 +401,8 @@ def add_data_and_doc(data, _dbname, _colname, url=cc.URL_KRB, krbheaders=cc.KRBH
 def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
     """ Check permission and add data and document to experiment and detector data bases.
     """
+    logger.debug('add_data_and_two_docs kwargs: %s' % str(kwargs))
+
     detname = pro_detector_name(det, add_shortname=True)
     colname = detname
     dbname_exp = mu.db_prefixed_name(exp)
@@ -408,8 +412,6 @@ def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADE
     kwargs['shortname'] = detname # ex: epix10ka_000001
     kwargs['longname']  = det     # ex: epix10ka_<_uniqueid>
     #kwargs['detname']  = det_name # already in kwargs ex: epixquad
-
-    logger.debug('add_data_and_two_docs kwargs: %s' % str(kwargs))
 
     resp = add_data_and_doc(data, dbname_exp, colname, url=url, krbheaders=krbheaders, **kwargs)
     if resp is None: return None
@@ -693,12 +695,14 @@ def valid_post_privilege(dbname, url_krb=cc.URL_KRB):
     except:
         print("Exception; possibly no privilege")
     """
-
     ws_url = "%s%s/test_post_privilege" % (url_krb, dbname)
+    logger.debug('valid_post_privilege ws_url: %s'% ws_url)
+
     try:
-         krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(ws_url).hostname).getAuthHeaders()
+        krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(ws_url).hostname).getAuthHeaders()
     except Exception as err: #except kerberos.GSSError as err:
-        logger.warning(str(err))
+        logger.warning('KerberosTicket error: %s' % str(err))
+        logger.info('Before running this script try command: kinit')
         return False
 
     r = get(ws_url, headers=krbh_test)
