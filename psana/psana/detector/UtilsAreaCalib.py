@@ -97,6 +97,7 @@ def deploy_constants(dic_consts, **kwa):
         save_2darray_in_textfile(nda, fname, filemode, fmt)
 
         dtype = 'ndarray'
+        kwa['iofname'] = fname
         kwa['ctype'] = ctype
         kwa['dtype'] = dtype
         kwa['extpars'] = {'content':'extended parameters dict->json->str',}
@@ -104,15 +105,20 @@ def deploy_constants(dic_consts, **kwa):
         _ = kwa.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
         _ = kwa.pop('det',None)
 
-        logger.info('DEPLOY metadata: %s' % info_dict(kwa, fmt='%12s : %s', sep='\n  '))
+        logger.info('DEPLOY metadata: %s' % info_dict(kwa, fmt='%s: %s', sep='  ')) #fmt='%12s: %s'
 
         data = data_from_file(fname, ctype, dtype, True)
-        logger.info(info_ndarr(data, 'constants loaded from file'))
+        logger.info(info_ndarr(data, 'constants loaded from file', last=10))
 
         if deploy:
             detname = kwa['longname']
-            id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
-              wu.add_data_and_two_docs(data, expname, detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+            resp = wu.add_data_and_two_docs(data, expname, detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+            if resp:
+                #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
+                logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
+            else:
+                logger.info('constants are not deployed')
+                sys.exit()
         else:
             logger.warning('TO DEPLOY CONSTANTS ADD OPTION -D')
 
@@ -130,10 +136,11 @@ def add_metadata_kwargs(orun, odet, **kwa):
     ivalid_run = tstamp if use_external_run else orun.runnum\
                   if not use_external_ts else 0
 
-    kwa['experiment'] = kwa.get('exp', orun.expt)
-    kwa['detector']   = kwa.get('det', odet.raw._det_name)
+    kwa['experiment'] = orun.expt
+    kwa['detector']   = odet.raw._uniqueid
+    kwa['detname']    = odet.raw._det_name
     kwa['dettype']    = odet.raw._dettype
-    kwa['longname']   = odet.raw._uniqueid # kwa.get('longname', odet.raw._uniqueid)
+    kwa['longname']   = odet.raw._uniqueid
     kwa['time_sec']   = tvalid_sec
     kwa['time_stamp'] = str_tstamp(fmt=cc.TSFORMAT, time_sec=int(tvalid_sec))
     kwa['tsshort']    = str_tstamp(fmt=cc.TSFORMAT_SHORT, time_sec=int(tvalid_sec))
@@ -143,18 +150,17 @@ def add_metadata_kwargs(orun, odet, **kwa):
     kwa['run_orig']   = orun.runnum
     kwa['version']    = kwa.get('version', 'N/A')
     kwa['comment']    = kwa.get('comment', 'no comment')
-    kwa['dettype']    = odet.raw._dettype
+    kwa['extpars']    = {'content':'extended parameters dict->json->str',}
     return kwa
-
 
 
 def pedestals_calibration(**kwa):
 
-  print('log_rec_on_start: %s' % log_rec_on_start()) # tsfmt='%Y-%m-%dT%H:%M:%S%z'
+  logger.info('log_rec_on_start: %s' % log_rec_on_start()) # tsfmt='%Y-%m-%dT%H:%M:%S%z'
 
-  print('command line: %s' % info_command_line())
-  #print('input parameters:\n%s' % info_namespace(pars)) #, fmt='%s: %s', sep=', '))
-  print('input parameters: %s' % info_dict(kwa, fmt='%s: %s', sep=' '))
+  logger.info('command line: %s' % info_command_line())
+  #logger.info('input parameters:\n%s' % info_namespace(pars)) #, fmt='%s: %s', sep=', '))
+  logger.info('input parameters: %s' % info_dict(kwa, fmt='%s: %s', sep=' '))
 
   #ds = DataSource(**datasource_arguments(pars_namespace))
   ds = DataSource(**datasource_kwargs(**kwa))
@@ -164,6 +170,10 @@ def pedestals_calibration(**kwa):
   detname = kwa.get('det',None)
   expname = kwa.get('exp',None)
   nrecs   = kwa.get('nrecs',100)
+  stepnum = kwa.get('stepnum', None)
+  stepmax = kwa.get('stepmax', 5)
+  evskip  = kwa.get('evskip', 0)
+  events  = kwa.get('events', 1000)
 
   block = None
   nrecs2 = nrecs-2
@@ -172,58 +182,84 @@ def pedestals_calibration(**kwa):
   kwa_depl = None
 
   for irun,orun in enumerate(ds.runs()):
-    print('\n==== %02d run: %d exp: %s' % (irun, orun.runnum, orun.expt))
-    print(info_run(orun, cmt='run info:\n    ', sep='\n    ', verb=3))
+    logger.info('\n==== %02d run: %d exp: %s' % (irun, orun.runnum, orun.expt))
+    logger.info(info_run(orun, cmt='run info:\n    ', sep='\n    ', verb=3))
 
     odet = orun.Detector(detname)
-    print('\n  created %s detector object' % detname)
-    print(info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
+    logger.info('created %s detector object' % detname)
+    logger.info(info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
 
     if kwa_depl is None: kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
 
     for istep,step in enumerate(orun.steps()):
-      print('\nStep %1d' % istep)
+      logger.info('Step %1d' % istep)
+
+      if istep>=stepmax:
+          logger.debug('==== Step:02d loop is terminated --stepmax=%d' % (istep, stepmax))
+          break
+
+      elif stepnum is not None:
+          if   istep < stepnum:
+              logger.debug('==== Step:02d is skipped --stepnum=%d' % (istep, stepnum))
+              continue
+          elif istep > stepnum:
+              logger.debug('==== Step:02d loop is terminated --stepnum=%d' % (istep, stepnum))
+              break
 
       for ievt,evt in enumerate(step.events()):
-        print('Event %04d' % ievt, end='')
+        print('Event %04d' % ievt, end='\r')
 
         raw  = odet.raw.raw(evt)
         if raw is None:
             logger.info('raw is None')
             continue
 
+        if raw is None:
+            logger.debug('==== Ev:%04d raw is None' % (ievt,nrec))
+            continue
+
+        if ievt < evskip:
+            logger.debug('==== Ev:%04d is skipped --evskip=%d' % (ievt,evskip))
+            continue
+        elif evskip>0 and (ievt == evskip):
+            s = 'Events < %d are skipped, option --evskip' % evskip
+            print(s)
+            logger.debug(s)
+
+        if ievt > events-1:
+            logger.debug('==== Ev:%04d event loop is terminated --events=%d' % (ievt,events))
+            break_loop = True
+            break
+
         rows, cols = raw.shape
         if block is None:
            segs = odet.raw._segment_numbers(evt)
-           print(info_ndarr(segs, '\n det.raw._segment_numbers(evt) '))
+           logger.info(info_ndarr(segs, 'det.raw._segment_numbers(evt) '))
            block=np.zeros((nrecs, rows, cols),dtype=raw.dtype)
-           print(info_ndarr(block,' Createsd array for accumulation of raw data block[nrecs, nrows, ncols]\n '))
-           print(end=10*' ')
+           logger.info(info_ndarr(block,'Created array for accumulation of raw data block[nrecs, nrows, ncols]\n '))
+           #print(end=10*' ')
 
         iblrec += 1
         block[iblrec,:] = raw
-        print(info_ndarr(raw,  ' record %04d   raw ' % iblrec), end='\r')
-        if selected_record(ievt): print() # new line
+        print(info_ndarr(raw,  'Event %04d record %04d   raw ' % (ievt, iblrec)), end='\r')
+        if selected_record(ievt) or selected_record(iblrec): print() # new line
 
         if iblrec > nrecs2:
-            print('\nNumber of records limit is reached, iblrec=%d' % iblrec)
+            logger.info('\nNumber of records limit is reached, iblrec=%d, option --nrecs' % iblrec)
             break_loop = True
             break          # break evt  loop
       if break_loop: break # break step loop
     if break_loop: break   # break run  loop
 
-  print('Run/step/event loop is completed')
+  logger.info('Run/step/event loop is completed')
   blk = block[:iblrec+1,:]
-  print(info_ndarr(blk,'Begin processing of the data block '))
+  logger.info(info_ndarr(blk,'Begin processing of the data block '))
 
-  arr_av1, arr_rms, arr_sta = proc_dark_block(block, **{\
-  'exp': expname,\
-  'det': detname,\
-  })
+  arr_av1, arr_rms, arr_sta = proc_dark_block(block, **kwa)
 
-  print(info_ndarr(arr_av1, 'arr_av1 '))
-  print(info_ndarr(arr_rms, 'arr_rms '))
-  print(info_ndarr(arr_sta, 'arr_sta ', last=10))
+  logger.info(info_ndarr(arr_av1, 'arr_av1 '))
+  logger.info(info_ndarr(arr_rms, 'arr_rms '))
+  logger.info(info_ndarr(arr_sta, 'arr_sta ', last=10))
 
   dic_consts = {
     'pedestals'    : arr_av1,\
