@@ -186,150 +186,6 @@ def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=16000, cmt=''):
     return lo, hi
 
 
-def proc_dark_block_v1(block, **opts):
-    """
-       2021-03-04 DEPRECATED due to bad behavior in case of outlier events, 
-       ueddaq02 run=168 epixquad
-
-       Returns per-panel (352, 384) arrays of mean, rms, ...
-       block.shape = (nrecs, 352, 384), where nrecs <= 1024
-    """
-    exp        = opts.get('exp', None)
-    detname    = opts.get('det', None)
-
-    int_lo     = opts.get('int_lo', 1)       # lowest  intensity accepted for dark evaluation
-    int_hi     = opts.get('int_hi', 16000)   # highest intensity accepted for dark evaluation
-    intnlo     = opts.get('intnlo', 6.0)     # intensity ditribution number-of-sigmas low
-    intnhi     = opts.get('intnhi', 6.0)     # intensity ditribution number-of-sigmas high
-
-    rms_lo     = opts.get('rms_lo', 0.001)   # rms ditribution low
-    rms_hi     = opts.get('rms_hi', 16000)   # rms ditribution high
-    rmsnlo     = opts.get('rmsnlo', 6.0)     # rms ditribution number-of-sigmas low
-    rmsnhi     = opts.get('rmsnhi', 6.0)     # rms ditribution number-of-sigmas high
-
-    fraclm     = opts.get('fraclm', 0.1)     # allowed fraction limit
-    nsigma     = opts.get('nsigma', 6.0)     # number of sigmas for gated eveluation
-
-    blockdbl = np.array(block, dtype=np.double)
-
-    logger.debug('in proc_dark_block for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
-    nrecs, ny, nx = block.shape
-    shape = (ny, nx)
-
-    #arr0       = np.zeros(shape, dtype=np.uint64)
-    arr1       = np.ones (shape, dtype=np.uint64)
-
-    arr_sum0   = np.zeros(shape, dtype=np.uint64)
-    arr_sum1   = np.zeros(shape, dtype=np.double)
-    arr_sum2   = np.zeros(shape, dtype=np.double)
-
-    gate_lo    = arr1 * int_lo
-    gate_hi    = arr1 * int_hi
-
-    t0_sec = time()
-
-    # 1st loop over recs(non-empty events) in block
-    for nrec in range(min(nrecs,500)):
-        raw    = block[nrec,:]
-        rawdbl = blockdbl[nrec,:]
-
-        condlist = (np.logical_not(np.logical_or(raw<gate_lo, raw>gate_hi)),)
-
-        arr_sum0 += np.select(condlist, (arr1,), 0)
-        arr_sum1 += np.select(condlist, (rawdbl,), 0)
-        arr_sum2 += np.select(condlist, (np.square(rawdbl),), 0)
-
-    arr_av1 = divide_protected(arr_sum1, arr_sum0)
-    arr_av2 = divide_protected(arr_sum2, arr_sum0)
-
-    arr_rms = np.sqrt(arr_av2 - np.square(arr_av1))
-
-    #rms_ave = arr_rms.mean()
-    rms_ave = mean_constrained(arr_rms, rms_lo, rms_hi)
-
-    logger.debug(info_ndarr(arr_av1, '1st loop proc time = %.3f sec arr_av1' % (time()-t0_sec)))
-    gate_half = nsigma*rms_ave
-    logger.info('set gate_half=%.3f for intensity gated average, which is %.3f * sigma' % (gate_half,nsigma))
-
-    # 2nd loop over recs in block to evaluate gated parameters
-
-    sta_int_lo = np.zeros(shape, dtype=np.uint64)
-    sta_int_hi = np.zeros(shape, dtype=np.uint64)
-
-    arr_max = np.zeros(shape, dtype=block.dtype)
-    arr_min = np.ones (shape, dtype=block.dtype) * 0x3fff
-
-    gate_hi = np.minimum(arr_av1 + gate_half, gate_hi).astype(dtype=raw.dtype)
-    gate_lo = np.maximum(arr_av1 - gate_half, gate_lo).astype(dtype=raw.dtype)
-
-    arr_sum0 = np.zeros(shape, dtype=np.uint64)
-    arr_sum1 = np.zeros(shape, dtype=np.double)
-    arr_sum2 = np.zeros(shape, dtype=np.double)
-
-    for nrec in range(nrecs):
-        raw    = block[nrec,:]
-        rawdbl = blockdbl[nrec,:]
-
-        condlist = (np.logical_not(np.logical_or(raw<gate_lo, raw>gate_hi)),)
-
-        arr_sum0 += np.select(condlist, (arr1,), 0)
-        arr_sum1 += np.select(condlist, (rawdbl,), 0)
-        arr_sum2 += np.select(condlist, (np.square(rawdbl),), 0)
-
-        sta_int_lo += np.select((raw<int_lo,), (arr1,), 0)
-        sta_int_hi += np.select((raw>int_hi,), (arr1,), 0)
-
-        arr_max = np.maximum(arr_max, raw)
-        arr_min = np.minimum(arr_min, raw)
-
-    arr_av1 = divide_protected(arr_sum1, arr_sum0)
-    arr_av2 = divide_protected(arr_sum2, arr_sum0)
-
-    frac_int_lo = np.array(sta_int_lo/nrecs, dtype=np.float32)
-    frac_int_hi = np.array(sta_int_hi/nrecs, dtype=np.float32)
-
-    arr_rms = np.sqrt(arr_av2 - np.square(arr_av1))
-    #rms_ave = arr_rms.mean()
-    rms_ave = mean_constrained(arr_rms, rms_lo, rms_hi)
- 
-    rms_min, rms_max = evaluate_limits(arr_rms, rmsnlo, rmsnhi, rms_lo, rms_hi, cmt='RMS')
-    ave_min, ave_max = evaluate_limits(arr_av1, intnlo, intnhi, int_lo, int_hi, cmt='AVE')
-
-    arr_sta_rms_hi = np.select((arr_rms>rms_max,),    (arr1,), 0)
-    arr_sta_rms_lo = np.select((arr_rms<rms_min,),    (arr1,), 0)
-    arr_sta_int_hi = np.select((frac_int_hi>fraclm,), (arr1,), 0)
-    arr_sta_int_lo = np.select((frac_int_lo>fraclm,), (arr1,), 0)
-    arr_sta_ave_hi = np.select((arr_av1>ave_max,),    (arr1,), 0)
-    arr_sta_ave_lo = np.select((arr_av1<ave_min,),    (arr1,), 0)
-
-    logger.info('Bad pixel status:'\
-               +'\n  status  1: %8d pixel rms       > %.3f' % (arr_sta_rms_hi.sum(), rms_max)\
-               +'\n  status  2: %8d pixel rms       < %.3f' % (arr_sta_rms_lo.sum(), rms_min)\
-               +'\n  status  4: %8d pixel intensity > %g in more than %g fraction of events' % (arr_sta_int_hi.sum(), int_hi, fraclm)\
-               +'\n  status  8: %8d pixel intensity < %g in more than %g fraction of events' % (arr_sta_int_lo.sum(), int_lo, fraclm)\
-               +'\n  status 16: %8d pixel average   > %g'   % (arr_sta_ave_hi.sum(), ave_max)\
-               +'\n  status 32: %8d pixel average   < %g'   % (arr_sta_ave_lo.sum(), ave_min)\
-               )
-
-    #0/1/2/4/8/16/32 for good/hot-rms/saturated/cold/cold-rms/average above limit/average below limit, 
-    arr_sta = np.zeros(shape, dtype=np.uint64)
-    arr_sta += arr_sta_rms_hi    # hot rms
-    arr_sta += arr_sta_rms_lo*2  # cold rms
-    arr_sta += arr_sta_int_hi*4  # satturated
-    arr_sta += arr_sta_int_lo*8  # cold
-    arr_sta += arr_sta_ave_hi*16 # too large average
-    arr_sta += arr_sta_ave_lo*32 # too small average
-    
-    #arr_msk  = np.select((arr_sta>0,), (arr0,), 1)
-
-    logger.debug(info_ndarr(arr_av1, 'proc time = %.3f sec arr_av1' % (time()-t0_sec)))
-    logger.debug(info_ndarr(arr_rms, 'pixel_rms'))
-    logger.debug(info_ndarr(arr_sta, 'pixel_status'))
-
-    #return block.mean(0)
-    return arr_av1, arr_rms, arr_sta
-
-
 def proc_dark_block(block, **opts):
     """Returns per-panel (352, 384) arrays of mean, rms, ...
        block.shape = (nrecs, 352, 384), where nrecs <= 1024
@@ -345,27 +201,28 @@ def proc_dark_block(block, **opts):
     rmsnlo     = opts.get('rmsnlo', 6.0)     # rms ditribution number-of-sigmas low
     rmsnhi     = opts.get('rmsnhi', 6.0)     # rms ditribution number-of-sigmas high
     fraclm     = opts.get('fraclm', 0.1)     # allowed fraction limit
-    fracgate   = opts.get('fracgate', 0.9)   # fraction of "good" statistics inside gates 
-    frac_lo   = (1 - fracgate)/2             # 0.05
-    frac_hi   = 1 - (1 - fracgate)/2         # 0.95
+    fraclo     = opts.get('fraclo', 0.05)    # fraction of statistics below low gate limit
+    frachi     = opts.get('frachi', 0.95)    # fraction of statistics below high gate limit
 
     logger.debug('in proc_dark_block for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
     logger.debug(info_ndarr(block, 'begin 1st iteration pricessing of the data block:\n    '))
-    logger.debug('fraction of statistics for gate limits low: %.3f high: %.3f' % (frac_lo, frac_hi))
+    logger.debug('fraction of statistics for gate limits low: %.3f high: %.3f' % (fraclo, frachi))
 
     nrecs, ny, nx = block.shape
     shape = (ny, nx)
 
-    arr1_u16   = np.ones (shape, dtype=np.uint16)
-    arr1       = np.ones (shape, dtype=np.uint64)
+    arr1_u16 = np.ones(shape, dtype=np.uint16)
+    arr1     = np.ones(shape, dtype=np.uint64)
 
     t0_sec = time()
+
+    #blockf64 = block.astype(dtype=np.float64)
     arr_med = np.median(block, axis=0)
     #arr_med = np.quantile(block, 0.5, axis=0, interpolation='linear')
     logger.debug('block array median/quantile(0.5) time = %.3f sec' % (time()-t0_sec))
 
-    arr_qlo = np.quantile(block, 0.05, axis=0, interpolation='linear')
-    arr_qhi = np.quantile(block, 0.95, axis=0, interpolation='linear')
+    arr_qlo = np.quantile(block, fraclo, axis=0, interpolation='linear')
+    arr_qhi = np.quantile(block, frachi, axis=0, interpolation='linear')
 
     med_med = np.median(arr_med)
     med_qlo = np.median(arr_qlo)
@@ -382,10 +239,15 @@ def proc_dark_block(block, **opts):
     logger.debug(info_ndarr(arr_qhi, '    arr_qhi ', last=8))
     logger.debug(info_ndarr(arr_abs_dev, '    arr_abs_dev ', last=8))
 
-    logger.debug('    med_qlo    : %.3f' % med_qlo)
-    logger.debug('    med_qhi    : %.3f' % med_qhi)
-    logger.debug('    med_med    : %.3f' % med_med)
-    logger.debug('    med_abs_dev: %.3f' % med_abs_dev)
+    s = 'Pre-processing time %.3f sec' % (time()-t0_sec)\
+      + '\nResults for median over pixels intensities:'\
+      + '\n    %.3f fraction of the event spectrum is below %.3f ADU - pedestal estimator' % (0.5, med_med)\
+      + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate low limit' % (fraclo, med_qlo)\
+      + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate upper limit' % (frachi, med_qhi)\
+      + '\n    event spectrum spread    median(abs(raw-med)): %.3f ADU - spectral peak width estimator' % med_abs_dev
+    logger.info(s)
+
+    #sys.exit('TEST EXIT')
 
     logger.debug(info_ndarr(arr_med, '1st iteration proc time = %.3f sec arr_av1' % (time()-t0_sec)))
     #gate_half = nsigma*rms_ave
@@ -426,7 +288,10 @@ def proc_dark_block(block, **opts):
         raw    = block[nrec,:]
         rawdbl = raw.astype(dtype=np.uint64) # blockdbl[nrec,:]
 
-        logger.debug('== nrec:%03d median(raw-ave): %.3f' % (nrec, np.median(raw.astype(dtype=np.float64) - arr_med)))
+        logger.debug('nrec:%03d median(raw-ave): %f' % (nrec, np.median(raw.astype(dtype=np.float64).ravel() - arr_med.ravel())))
+        #logger.debug('nrec:%03d median(raw-ave): %.6f' % (nrec, np.median(raw.astype(dtype=np.float64) - arr_med)))
+        #logger.debug(info_ndarr(raw, '  raw     '))
+        #logger.debug(info_ndarr(arr_med, '  arr_med '))
 
         condlist = (np.logical_not(np.logical_or(raw<gate_lo, raw>gate_hi)),)
 
@@ -660,12 +525,17 @@ def pedestals_calibration(*args, **opts):
         #    if nstep < rank: continue
         #    if nstep > rank: break
 
-        if nstep_tot>=stepmax: break
+        if nstep_tot>=stepmax:
+            logger.debug('==== Step:02d loop is terminated --stepmax=%d' % (nstep_tot, stepmax))
+            break
 
         elif stepnum is not None:
-            # process step stepnum ONLY if stepnum is specified and MPI is not used!!!
-            if   nstep < stepnum: continue
-            elif nstep > stepnum: break
+            if   nstep < stepnum:
+                logger.debug('==== Step:02d is skipped --stepnum=%d' % (nstep, stepnum))
+                continue
+            elif nstep > stepnum:
+                logger.debug('==== Step:02d loop is terminated --stepnum=%d' % (nstep, stepnum))
+                break
 
         #for k,v in det.raw._seg_configs().items(): # cpo's pattern DOES NOT WORK
         for k,v in dcfg.items():
@@ -711,7 +581,7 @@ def pedestals_calibration(*args, **opts):
             raw = det.raw.raw(evt)
             do_print = selected_record(nevt)
             if raw is None:
-                logger.debug('==== Ev:%04d rec:%04d raw=None' % (nevt,nrec))
+                logger.debug('==== Ev:%04d rec:%04d raw is None' % (nevt,nrec))
                 continue
             if nevt < evskip:
                 logger.debug('==== Ev:%04d is skipped --evskip=%d' % (nevt,evskip))
