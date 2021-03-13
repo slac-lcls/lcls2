@@ -81,7 +81,8 @@ def argument_parser():
     d_rmsnlo     = 6.0     # rms ditribution number-of-sigmas low
     d_rmsnhi     = 6.0     # rms ditribution number-of-sigmas high
     d_fraclm     = 0.1     # allowed fraction limit
-    d_fracgate   = 0.9     # fraction of good statistics [0,1] in the gate
+    d_fraclo     = 0.05    # fraction of statistics [0,1] below low limit
+    d_frachi     = 0.95    # fraction of statistics [0,1] below high limit
 
     h_fname   = 'input xtc file name, default = %s' % d_fname
     h_exp     = 'experiment name, default = %s' % d_exp
@@ -109,7 +110,8 @@ def argument_parser():
     h_rmsnlo     = 'rms ditribution number-of-sigmas low, default = %f' % d_rmsnlo
     h_rmsnhi     = 'rms ditribution number-of-sigmas high, default = %f' % d_rmsnhi
     h_fraclm     = 'allowed fraction limit, default = %f' % d_fraclm
-    h_fracgate   = 'fraction of good statistics [0,1] in the gate, default = %f' % d_fracgate
+    h_fraclo     = 'fraction of statistics [0,1] below low  limit of the gate, default = %f' % d_fraclo
+    h_frachi     = 'fraction of statistics [0,1] below high limit of the gate, default = %f' % d_frachi
 
     parser = ArgumentParser(description='Proceses dark run xtc data for epix10ka')
     parser.add_argument('-f', '--fname',   default=d_fname,      type=str,   help=h_fname)
@@ -138,7 +140,8 @@ def argument_parser():
     parser.add_argument('--rmsnlo',        default=d_rmsnlo,     type=float, help=h_rmsnlo)
     parser.add_argument('--rmsnhi',        default=d_rmsnhi,     type=float, help=h_rmsnhi)
     parser.add_argument('--fraclm',        default=d_fraclm,     type=float, help=h_fraclm)
-    parser.add_argument('--fracgate',      default=d_fracgate,   type=float, help=h_fracgate)
+    parser.add_argument('--fraclo',        default=d_fraclo,     type=float, help=h_fraclo)
+    parser.add_argument('--frachi',        default=d_frachi,     type=float, help=h_frachi)
 
     return parser
 
