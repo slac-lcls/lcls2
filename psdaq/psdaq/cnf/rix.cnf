@@ -82,7 +82,7 @@ procmgr_config = [
  #           '-0' specifies no timestamp matching (-0 may have problems)
  #           ''   specifies precise timestamp matching
  # pebbleBufSize was 8388672
- { host: 'drp-neh-cmp002', id:'manta_0',     flags:'spu', env:manta_env, cmd:pva_cmd1+' -l 0x1 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8380000'},
+ { host: 'drp-neh-cmp002', id:'manta_0',     flags:'spu', env:manta_env, cmd:pva_cmd1+' -l 0x1 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
  # 9MPixel G-917C manta untimestamped image @1Hz (hence the "-0" flag)
  # set the pebbleBufSize smaller since filewriter only supports 8388688 currently
  { host: 'drp-neh-cmp015', id:'mr2k1_0',      flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x1 MR2K1:MONO:CAM:04:DATA1:Pva:Image -k pebbleBufSize=8380000 -0'},
