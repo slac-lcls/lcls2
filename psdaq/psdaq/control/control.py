@@ -22,6 +22,144 @@ POSIX_TIME_AT_EPICS_EPOCH = 631152000
 
 report_keys = ['error', 'warning', 'fileReport']
 
+class PvInfo:
+    """PV"""
+    def __init__(self, name, desc):
+        self.name = name
+        self.desc = desc
+
+    def get_name(self):
+        return self.name
+
+    def get_desc(self):
+        return self.name if self.desc is None else self.desc
+
+    def __repr__(self):
+        return f'PvInfo(name={self.name} desc={self.desc})'
+
+class RunParams:
+    """Run Parameters"""
+    def __init__(self, path, collection, pva):
+        self.path = path
+        self.collection = collection
+        self.pva = pva
+        self.dirname = os.path.dirname(path)
+        self.fileSet = set()
+        self.pvSet = set()
+
+    def updateFileSet(self, fileSet):
+        logging.debug(f"RunParams updateFileSet({fileSet})")
+        found = set()
+        for ff in fileSet:
+            try:
+                with open(ff, "r") as fd:
+                    for rawline in fd.readlines():
+                        # remove comments and leading/trailing whitespace
+                        line = rawline.split('#')[0].strip()
+                        if line.startswith('<'):
+                            # parse CSV
+                            for rawname in line[1:].split(","):
+                                rarename = rawname.strip()
+                                if os.path.isabs(rarename):
+                                    found.add(rarename)
+                                else:
+                                    found.add(self.dirname + '/' + rarename)
+            except Exception as ex:
+                logging.error('updateFileSet() Exception: %s' % ex)
+        logging.debug(f"RunParams updateFileSet(): found={found}")
+        return fileSet | found
+
+    def updatePvSet(self):
+        logging.debug("RunParams updatePvSet()")
+        found = set()
+        desc = None
+        for ff in self.fileSet:
+            try:
+                with open(ff, "r") as fd:
+                    for veryrawline in fd.readlines():
+                        rawline = veryrawline.strip()
+                        if rawline.startswith('<'):
+                            # file include
+                            desc = None
+                            continue
+                        if rawline.startswith('*') or rawline.startswith('#*'):
+                            # PV description
+                            desc = rawline.split('*')[1].strip()
+                        elif len(rawline) == 0 or rawline.startswith('#'):
+                            # comment
+                            desc = None
+                            continue
+                        else:
+                            # PV name
+                            name = rawline.strip()
+                            logging.debug(f'updatePvSet(): name={name} desc={desc}')
+                            found.add(PvInfo(name, desc))
+            except Exception as ex:
+                logging.error('updatePvSet() Exception: %s' % ex)
+        logging.debug(f"RunParams updatePvSet(): found={found}")
+        self.pvSet = found
+        return
+
+    def configure(self):
+        if (self.path != '/dev/null') and not os.path.isfile(self.path):
+            self.collection.report_error(f"logbook run parameter file not found: {self.path}")
+        else:
+            logging.info(f"logbook run parameter file: {self.path}")
+            before = set([self.path])
+            while True:
+                self.fileSet |= before
+                after = self.updateFileSet(before)
+                newfound = after - self.fileSet
+                if len(newfound) > 0:
+                    # new files found, so recurse
+                    before = newfound
+                    continue
+                else:
+                    # no new files found, so we're done
+                    break
+            missingFiles = set()
+            for filename in self.fileSet:
+                if (filename != '/dev/null') and not os.path.isfile(filename):
+                    missingFiles.add(filename)
+                    self.collection.report_error(f"logbook run parameter file not found: {filename}")
+            # do not modify self.fileSet while iterating over it
+            self.fileSet -= missingFiles
+        logging.debug(f"RunParams configure(): fileSet={self.fileSet}")
+        if len(self.fileSet) > 0:
+            self.updatePvSet()
+        logging.debug(f"RunParams configure(): pvSet={self.pvSet}")
+
+    def unconfigure(self):
+        logging.debug("RunParams unconfigure()")
+        self.fileSet = set()
+        self.pvSet = set()
+
+    def beginrun(self, experiment_name):
+        logging.debug(f"RunParams beginrun() experiment_name={experiment_name}")
+        inCount = len(self.pvSet)
+        errorCount = 0
+        params = {}
+        for ppp in self.pvSet:
+            name = ppp.get_name()
+            logging.debug(f"reading PV {name}")
+            try:
+                value = self.pva.pv_get(name)
+            except Exception as ex:
+                self.collection.report_error(f"failed to read PV {name}")
+                errorCount += 1
+                if errorCount > 1:
+                    break
+            else:
+                params[name] = value.pop()
+                logging.debug(f"PV {name} = {params[name]}")
+
+        # add_run_params
+        outCount = self.collection.add_run_params(experiment_name, params)
+        if outCount < inCount:
+            self.collection.report_error(f"{outCount} of {inCount} run parameters recorded in logbook")
+        else:
+            logging.info(f"{outCount} run parameters recorded in logbook")
+
 class MyFloatPv:
     """Fake float PV"""
     def __init__(self, name):
@@ -964,6 +1102,9 @@ class CollectionManager():
         # instantiate DaqPVA object
         self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base)
 
+        # instantiate RunParams object
+        self.runParams = RunParams(args.V, self, self.pva)
+
         if args.r:
             # active detectors file from command line
             self.activedetfilename = args.r
@@ -1537,6 +1678,7 @@ class CollectionManager():
                 err_msg = "Failed to start a run with recording enabled"
             else:
                 self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':self.run_number}}
+                self.runParams.beginrun(self.experiment_name)
         else:
             # NOT RECORDING: by convention, run_number == 0
             self.run_number = 0
@@ -2030,25 +2172,30 @@ class CollectionManager():
         return run_num
 
     def add_run_params(self, experiment_name, params):
-        ok = False
-        err_msg = "add_run_params error"
-        serverURLPrefix = "{0}run_control/{1}/ws/".format(self.url + "/" if not self.url.endswith("/") else self.url, experiment_name)
-        logging.debug('serverURLPrefix = %s' % serverURLPrefix)
-        try:
-            resp = requests.post(serverURLPrefix + "add_run_params", json=params, auth=HTTPBasicAuth(self.user, self.password))
-        except Exception as ex:
-            err_msg = "add_run_params error (user=%s): %s" % (self.user, ex)
-        else:
-            logging.debug("add_run_params response: %s" % resp.text)
-            if resp.status_code == requests.codes.ok:
-                if resp.json().get("success", None):
-                    logging.debug("add_run_params success")
-                    ok = True
+        param_count = len(params)
+        if param_count > 0:
+            ok = False
+            err_msg = "add_run_params error"
+            serverURLPrefix = "{0}run_control/{1}/ws/".format(self.url + "/" if not self.url.endswith("/") else self.url, experiment_name)
+            logging.debug('serverURLPrefix = %s' % serverURLPrefix)
+            try:
+                resp = requests.post(serverURLPrefix + "add_run_params", json=params, auth=HTTPBasicAuth(self.user, self.password))
+            except Exception as ex:
+                err_msg = "add_run_params error (user=%s): %s" % (self.user, ex)
             else:
-                err_msg = "add_run_params error (user=%s): status code %d" % (self.user, resp.status_code)
+                logging.debug("add_run_params response: %s" % resp.text)
+                if resp.status_code == requests.codes.ok:
+                    if resp.json().get("success", None):
+                        logging.debug("add_run_params success")
+                        ok = True
+                else:
+                    err_msg = "add_run_params error (user=%s): status code %d" % (self.user, resp.status_code)
+            if not ok:
+                self.report_error(err_msg)
+        return param_count
 
-        if not ok:
-            self.report_error(err_msg)
+    def add_update_run_param_descriptions(self):
+        # TODO
         return
 
     def end_run(self, experiment_name):
@@ -2192,6 +2339,8 @@ class CollectionManager():
             logging.error('condition_configure(): configure phase1 failed')
             return False
 
+        self.runParams.configure()
+
         # phase 2
         # ...clear readout
         self.pva.pv_put(self.pva.pvGroupL0Reset, self.groups)
@@ -2218,6 +2367,8 @@ class CollectionManager():
 
     def condition_unconfigure(self):
         self.phase1Info = {}    # clear phase1Info
+
+        self.runParams.unconfigure()
         # phase 1
         ok = self.condition_common('unconfigure', 6000)
         if not ok:
@@ -2389,6 +2540,7 @@ def main():
     parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
     parser.add_argument('--rollcall_timeout', type=int, default=30, help='rollcall timeout sec (default 30)')
     parser.add_argument('-v', action='store_true', help='be verbose')
+    parser.add_argument('-V', metavar='LOGBOOK_FILE', default='/dev/null', help='run parameters file')
     parser.add_argument("--user", default="tstopr", help='HTTP authentication user')
     parser.add_argument("--password", default="pcds", help='HTTP authentication password')
     defaultURL = "https://pswww.slac.stanford.edu/ws-auth/devlgbk/"
