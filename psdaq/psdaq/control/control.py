@@ -139,6 +139,8 @@ class RunParams:
         inCount = len(self.pvSet)
         errorCount = 0
         params = {}
+
+        # gather PV run parameters
         for ppp in self.pvSet:
             name = ppp.get_name()
             logging.debug(f"reading PV {name}")
@@ -151,9 +153,24 @@ class RunParams:
                     break
             else:
                 params[name] = value.pop()
-                logging.debug(f"PV {name} = {params[name]}")
 
-        # add_run_params
+        # gather detector run parameters
+        for level, item in self.collection.cmstate_levels().items():
+            if level != "control":
+                for xid in item.keys():
+                    try:
+                        if item[xid]['active'] != 1:
+                            # skip inactive detector
+                            continue
+                        else:
+                            alias = item[xid]['proc_info']['alias']
+                    except KeyError as ex:
+                        logging.error('KeyError: %s' % ex)
+                    else:
+                        params[f"DAQ Detectors/{level}/{alias}"] = True
+                        inCount += 1
+
+        # add run parameters to logbook
         outCount = self.collection.add_run_params(experiment_name, params)
         if outCount < inCount:
             self.collection.report_error(f"{outCount} of {inCount} run parameters recorded in logbook")
