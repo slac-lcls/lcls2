@@ -203,10 +203,13 @@ def proc_dark_block(block, **opts):
     fraclm     = opts.get('fraclm', 0.1)     # allowed fraction limit
     fraclo     = opts.get('fraclo', 0.05)    # fraction of statistics below low gate limit
     frachi     = opts.get('frachi', 0.95)    # fraction of statistics below high gate limit
+    frac05     = 0.5
 
     logger.debug('in proc_dark_block for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
     logger.debug(info_ndarr(block, 'begin 1st iteration pricessing of the data block:\n    '))
     logger.debug('fraction of statistics for gate limits low: %.3f high: %.3f' % (fraclo, frachi))
+
+    t0_sec = time()
 
     nrecs, ny, nx = block.shape
     shape = (ny, nx)
@@ -214,34 +217,46 @@ def proc_dark_block(block, **opts):
     arr1_u16 = np.ones(shape, dtype=np.uint16)
     arr1     = np.ones(shape, dtype=np.uint64)
 
-    t0_sec = time()
-
+    t1_sec = time()
+    #blockf64 = block # do nothing
     #blockf64 = block.astype(dtype=np.float64)
-    arr_med = np.median(block, axis=0)
-    #arr_med = np.quantile(block, 0.5, axis=0, interpolation='linear')
-    logger.debug('block array median/quantile(0.5) time = %.3f sec' % (time()-t0_sec))
+    """
+    NOTE:
+    - our data is uint16.
+    - np.median(block, axis=0) or np.quantile(...,interpolation='linear') return result rounded to int
+    - in order to return interpolated float values apply the trick:
+      data_block + random [0,1)-0.5
+    - this would distort data in the range [-0.5,+0.5) ADU, but would allow to get better interpolation for median and quantile values
+    """
+    blockf64 = np.random.random(block.shape) - 0.5 + block
+    logger.debug(info_ndarr(blockf64, '\nconversion uint16 to float64, add random [0,1)-0.5 time = %.3f sec '%(time()-t1_sec), last=10))
 
-    arr_qlo = np.quantile(block, fraclo, axis=0, interpolation='linear')
-    arr_qhi = np.quantile(block, frachi, axis=0, interpolation='linear')
+    t1_sec = time()
+    #arr_med = np.median(block, axis=0)
+    arr_med = np.quantile(blockf64, frac05, axis=0, interpolation='linear')
+    arr_qlo = np.quantile(blockf64, fraclo, axis=0, interpolation='linear')
+    arr_qhi = np.quantile(blockf64, frachi, axis=0, interpolation='linear')
+    logger.debug('block array median/quantile(0.5) for med, qlo, qhi time = %.3f sec' % (time()-t1_sec))
 
     med_med = np.median(arr_med)
     med_qlo = np.median(arr_qlo)
     med_qhi = np.median(arr_qhi)
+    #med_med = np.quantile(arr_med, frac05, interpolation='linear')
+    #med_qlo = np.quantile(arr_qlo, frac05, interpolation='linear')
+    #med_qhi = np.quantile(arr_qhi, frac05, interpolation='linear')
 
     arr_dev_3d = block[:,] - arr_med # .astype(dtype=np.float64)
     arr_abs_dev = np.median(np.abs(arr_dev_3d), axis=0)
     med_abs_dev = np.median(arr_abs_dev)
 
-    #print(info_ndarr(arr_dev_3d[80,50,100:120],   'XXX arr_dev_3d[80,50,100:120] ', last=5))
-    #print('arr_med[100,0:384]:\n', arr_med[100,0:384])
-    logger.debug(info_ndarr(arr_med, '    arr_med ', last=8))
-    logger.debug(info_ndarr(arr_qlo, '    arr_qlo ', last=8))
-    logger.debug(info_ndarr(arr_qhi, '    arr_qhi ', last=8))
-    logger.debug(info_ndarr(arr_abs_dev, '    arr_abs_dev ', last=8))
+    logger.info(info_ndarr(arr_med,     '    arr_med[100:105] ', first=100, last=105))
+    logger.info(info_ndarr(arr_qlo,     '    arr_qlo[100:105] ', first=100, last=105))
+    logger.info(info_ndarr(arr_qhi,     '    arr_qhi[100:105] ', first=100, last=105))
+    logger.info(info_ndarr(arr_abs_dev, '    abs_dev[100:105] ', first=100, last=105))
 
     s = 'Pre-processing time %.3f sec' % (time()-t0_sec)\
       + '\nResults for median over pixels intensities:'\
-      + '\n    %.3f fraction of the event spectrum is below %.3f ADU - pedestal estimator' % (0.5, med_med)\
+      + '\n    %.3f fraction of the event spectrum is below %.3f ADU - pedestal estimator' % (frac05, med_med)\
       + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate low limit' % (fraclo, med_qlo)\
       + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate upper limit' % (frachi, med_qhi)\
       + '\n    event spectrum spread    median(abs(raw-med)): %.3f ADU - spectral peak width estimator' % med_abs_dev
@@ -288,7 +303,7 @@ def proc_dark_block(block, **opts):
         raw    = block[nrec,:]
         rawdbl = raw.astype(dtype=np.uint64) # blockdbl[nrec,:]
 
-        logger.debug('nrec:%03d median(raw-ave): %f' % (nrec, np.median(raw.astype(dtype=np.float64).ravel() - arr_med.ravel())))
+        logger.debug('nrec:%03d median(raw-ave): %f' % (nrec, np.median(raw.astype(dtype=np.float64) - arr_med)))
         #logger.debug('nrec:%03d median(raw-ave): %.6f' % (nrec, np.median(raw.astype(dtype=np.float64) - arr_med)))
         #logger.debug(info_ndarr(raw, '  raw     '))
         #logger.debug(info_ndarr(arr_med, '  arr_med '))
@@ -343,18 +358,22 @@ def proc_dark_block(block, **opts):
     arr_sta += arr_sta_ave_hi*16 # too large average
     arr_sta += arr_sta_ave_lo*32 # too small average
 
-    #arr_msk  = np.select((arr_sta>0,), (arr0,), 1)
-    cond = np.abs(arr_av1-arr_med) > med_abs_dev
+    absdiff_av1_med = np.abs(arr_av1-arr_med)
+    logger.debug(info_ndarr(absdiff_av1_med, 'np.abs(arr_av1-arr_med)', first=100, last=105))
+    logger.info('estimator of difference between gated average and median np.median(np.abs(arr_av1-arr_med)): %.3f' % np.median(absdiff_av1_med))
+
+    cond = absdiff_av1_med > med_abs_dev
     arr_av1[cond] = arr_med[cond]
 
     arr_sta_bad = np.select((cond,), (arr1,), 0)
     frac_bad = arr_sta_bad.sum()/float(arr_av1.size)
     logger.debug('fraction of panel pixels with gated average deviated from and replaced by median: %.6f' % frac_bad)
 
-    logger.debug(info_ndarr(arr_av1, 'proc time = %.3f sec arr_av1' % (time()-t0_sec)))
-    logger.debug(info_ndarr(arr_rms, 'pixel_rms'))
-    logger.debug(info_ndarr(arr_sta, 'pixel_status'))
-    logger.debug(info_ndarr(arr_med, 'arr mediane'))
+    logger.info('proc time = %.3f sec arr_av1' % (time()-t0_sec))
+    logger.info(info_ndarr(arr_av1, 'arr_av1     [100:105] ', first=100, last=105))
+    logger.info(info_ndarr(arr_rms, 'pixel_rms   [100:105] ', first=100, last=105))
+    logger.info(info_ndarr(arr_sta, 'pixel_status[100:105] ', first=100, last=105))
+    logger.info(info_ndarr(arr_med, 'arr mediane [100:105] ', first=100, last=105))
 
     #sys.exit('TEST EXIT')
 
