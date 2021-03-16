@@ -9,6 +9,7 @@ INTLOGLEV = logging._nameToLevel[STRLOGLEV]
 logger = logging.getLogger(__name__)
 logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV) #logging.DEBUG)
 
+
 def issue_2020_11_09():
     from psana import DataSource
     ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2')
@@ -270,6 +271,105 @@ def issue_2021_02_16():
   det_uniqueid = 'epix10ka_3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000_3926196238-0174824449-0268435478-0000000000-0000000000-0000000000-0000000000_3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000_3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000'
   calib_const = wu.calib_constants_all_types(det_uniqueid, exp='ueddaq02', run=86)
 
+
+def issue_2021_03_10():
+  """
+  Any call to matplotlib cause messages:
+  libGL error: unable to load driver: swrast_dri.so
+  libGL error: failed to load driver: swrast
+  FIX: Valerio found that
+  export LIBGL_ALWAYS_INDIRECT=1
+  fixes this issue
+  """
+  import numpy as np
+  import matplotlib.pyplot  as plt
+  plt.imshow(np.arange(12).reshape((3, 4)))
+  plt.show()
+
+
+def issue_2021_03_13_full():
+  """np.median and quntile return rounded values...
+  """
+  from time import time
+  import numpy as np
+  from psana.pyalgos.generic.NDArrUtils import info_ndarr
+  #a = np.arange(12).reshape((3, 4))
+  mu, sigma = 32, 3
+  arr3d = mu + sigma*np.random.standard_normal(size=(100, 352, 384)).astype(dtype=np.float64)
+  print(info_ndarr(arr3d, 'arr3d simulated ',last=20))
+
+  arr3d = arr3d.astype(np.uint16) #+ 0.1
+  print(info_ndarr(arr3d, 'arr3d dtype u16 ',last=20))
+
+  fraclo, frachi = 0.05, 0.95
+
+  t0_sec = time()
+  #arr_med = np.median(arr3d, axis=0)
+  arr_med = np.quantile(arr3d, 0.5, axis=0, interpolation='linear')
+  print('median/quantile(0.5) time = %.3f sec' % (time()-t0_sec))
+  arr_qlo = np.quantile(arr3d, fraclo, axis=0, interpolation='linear')
+  arr_qhi = np.quantile(arr3d, frachi, axis=0, interpolation='linear')
+  arr_dev_3d = arr3d[:,] - arr_med # .astype(dtype=np.float64)
+  arr_abs_dev = np.median(np.abs(arr_dev_3d), axis=0)
+
+  print(info_ndarr(arr_med,     'arr_med ',last=20))
+  print(info_ndarr(arr_qlo,     'arr_qlo ',last=20))
+  print(info_ndarr(arr_qhi,     'arr_qhi ',last=20))
+  print(info_ndarr(arr_abs_dev, 'arr_abs_dev ', last=20))
+
+  med_med = np.median(arr_med)
+  med_qlo = np.median(arr_qlo)
+  med_qhi = np.median(arr_qhi)
+  med_abs_dev = np.median(arr_abs_dev)
+
+  s = 'Pre-processing time %.3f sec' % (time()-t0_sec)\
+    + '\nResults for median over pixels intensities:'\
+    + '\n    %.3f fraction of the event spectrum is below %.3f ADU - pedestal estimator' % (0.5, med_med)\
+    + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate low limit' % (fraclo, med_qlo)\
+    + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate upper limit' % (frachi, med_qhi)\
+    + '\n    event spectrum spread    median(abs(raw-med)): %.3f ADU - spectral peak width estimator' % med_abs_dev
+  print(s)
+
+
+def issue_2021_03_13():
+  """np.median and quntile return rounded values...
+  """
+  from time import time
+  import numpy as np
+  from psana.pyalgos.generic.NDArrUtils import info_ndarr
+
+  shape = (1000, 352, 384)
+  mu, sigma = 32, 5
+
+  t0_sec = time()
+  arr3d = mu + sigma*np.random.standard_normal(size=shape).astype(dtype=np.uint16)
+  print(info_ndarr(arr3d, '\narr3d generator time = %.3f sec '%(time()-t0_sec), last=20))
+
+  t0_sec = time()
+  arr3d_f64 = arr3d.astype(dtype=np.float64)
+  arr3d_f64 += np.random.random(arr3d.shape) - 0.5 # + random [0,1)
+
+  print(info_ndarr(arr3d_f64, '\nconversion uint16 to float64 ane add random [0,1] time = %.3f sec '%(time()-t0_sec), last=10))
+
+  t0_sec = time()
+  arr_med = np.median(arr3d_f64, axis=0)
+  print(info_ndarr(arr_med, '\nnp.median time = %.3f sec '%(time()-t0_sec), last=10))
+
+  t0_sec = time()
+  arr_qua = np.quantile(arr3d_f64, 0.5, axis=0, interpolation='linear')
+  print(info_ndarr(arr_qua, '\nnp.quantile(0.5) time = %.3f sec '%(time()-t0_sec), last=10))
+
+  med_med = np.median(arr_med)
+  print('\nmed_med = %.6f' % med_med)
+
+  med_qua = np.median(arr_qua)
+  print('med_qua = %.6f' % med_qua)
+
+  a = [1,2,2]
+  q = 0.5
+  print('\nmedian(%s) = %.3f' % (str(a), np.median(a)))
+  print('quantile(%s, %.3f) = %.3f' % (str(a), q, np.quantile(a, q, interpolation='linear')))
+
 #if __name__ == "__main__":
 USAGE = '\nUsage:'\
       + '\n  python %s <test-name> <loglevel-e.g.-DEBUG-or-INFO>' % SCRNAME\
@@ -287,20 +387,8 @@ USAGE = '\nUsage:'\
       + '\n   10 - issue_2021_02_09 - Peck, Ariana - missing calibration for opal detector'\
       + '\n   11 - issue_2021_02_16 - cpo - passing None as a detector name'\
       + '\n   12 - issue_2021_03_10 - matplotlib and libGL error messages'\
+      + '\n   13 - issue_2021_03_13 - mine - np.median and quntile return rounded values'\
 
-def issue_2021_03_10():
-  """
-  Any call to matplotlib cause messages:
-  libGL error: unable to load driver: swrast_dri.so
-  libGL error: failed to load driver: swrast
-  FIX: Valserio found that 
-  export LIBGL_ALWAYS_INDIRECT=1
-  fixes this issue
-  """
-  import numpy as np
-  import matplotlib.pyplot  as plt
-  plt.imshow(np.arange(12).reshape((3, 4)))
-  plt.show()
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
@@ -317,6 +405,7 @@ elif TNAME in  ('9',): issue_2021_02_08()
 elif TNAME in ('10',): issue_2021_02_09()
 elif TNAME in ('11',): issue_2021_02_16()
 elif TNAME in ('12',): issue_2021_03_10()
+elif TNAME in ('13',): issue_2021_03_13()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
