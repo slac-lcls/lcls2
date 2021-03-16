@@ -222,13 +222,14 @@ def pedestals_calibration(**kwa):
             logger.debug('==== Ev:%04d is skipped --evskip=%d' % (ievt,evskip))
             continue
         elif evskip>0 and (ievt == evskip):
-            s = 'Events < %d are skipped, option --evskip' % evskip
+            s = 'Events < --evskip=%d are skipped' % evskip
             print(s)
-            logger.debug(s)
+            logger.info(s)
 
         if ievt > events-1:
             logger.debug('==== Ev:%04d event loop is terminated --events=%d' % (ievt,events))
             break_loop = True
+            print() # new line
             break
 
         rows, cols = raw.shape
@@ -241,10 +242,15 @@ def pedestals_calibration(**kwa):
 
         iblrec += 1
         block[iblrec,:] = raw
-        print(info_ndarr(raw,  'Event %04d record %04d   raw ' % (ievt, iblrec)), end='\r')
-        if selected_record(ievt) or selected_record(iblrec): print() # new line
+        s = info_ndarr(raw, 'Event %04d record %04d   raw[0,100:110] '%(ievt, iblrec), first=100, last=110)
+        print(s, end='\r')
+        if selected_record(ievt) or selected_record(iblrec):
+            logger.info(s)
+            #print() # new line
 
         if iblrec > nrecs2:
+            logger.info(s)
+            #print() # new line
             logger.info('\nNumber of records limit is reached, iblrec=%d, option --nrecs' % iblrec)
             break_loop = True
             break          # break evt  loop
@@ -256,10 +262,6 @@ def pedestals_calibration(**kwa):
   logger.info(info_ndarr(blk,'Begin processing of the data block '))
 
   arr_av1, arr_rms, arr_sta = proc_dark_block(block, **kwa)
-
-  logger.info(info_ndarr(arr_av1, 'arr_av1 '))
-  logger.info(info_ndarr(arr_rms, 'arr_rms '))
-  logger.info(info_ndarr(arr_sta, 'arr_sta ', last=10))
 
   dic_consts = {
     'pedestals'    : arr_av1,\
