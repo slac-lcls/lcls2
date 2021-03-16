@@ -32,6 +32,7 @@ class opal_base(AreaDetector):
 
 
     def raw(self,evt) -> Array3d:
+        logger.debug('opal_base.raw')
         segs = self._segments(evt)
         if segs is None: return None
         return arr3d_from_dict({k:v.image for k,v in segs.items()}) if len(segs.items())>1 else\
@@ -66,12 +67,9 @@ class opal_base(AreaDetector):
         return divide_protected(arr, gain)
 
 
-    def image(self, evt, **kwa) -> Array2d:
-        print('YYY opal_base.image')
-        #logger.debug('opal_base.image')
-        arr = self.calib(self, evt, **kwa)
-        print(info_ndarr(arr, 'XXX arr:'))
-
+    def image(self, evt, nda=None, **kwa) -> Array2d:
+        logger.debug('opal_base.image')
+        arr = self.calib(evt, **kwa) if nda is None else nda
         return arr if arr.ndim==2 else reshape_to_2d(arr)
 
 #----
