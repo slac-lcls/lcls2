@@ -54,7 +54,7 @@ def random_standard(shape=(40,60), mu=200, sigma=25, dtype=np.float) :
     """Returns numpy array of requested shape and type filled with normal distribution for mu and sigma.
     """
     a = mu + sigma*np.random.standard_normal(size=shape)
-    return np.require(a, dtype)
+    return a.astype(dtype)
 
 #-----------------------------
 
@@ -62,7 +62,7 @@ def random_exponential(shape=(40,60), a0=100, dtype=np.float) :
     """Returns numpy array of requested shape and type filled with exponential distribution for width a0.
     """
     a = a0*np.random.standard_exponential(size=shape)
-    return np.require(a, dtype) 
+    return a.astype(dtype)
 
 #-----------------------------
 
@@ -70,7 +70,7 @@ def random_one(shape=(40,60), dtype=np.float) :
     """Returns numpy array of requested shape and type filled with random numbers in the range [0,1].
     """
     a = np.random.random(shape)
-    return np.require(a, dtype) 
+    return a.astype(dtype)
 
 #-----------------------------
 
@@ -82,7 +82,7 @@ def random_256(shape=(40,60), dtype=np.uint8) :
     """Returns numpy array of requested shape and type filled with random numbers in the range [0,255].
     """
     a = 255*np.random.random(shape)
-    return np.require(a, dtype) 
+    return a.astype(dtype)
 
 #-----------------------------
 
@@ -91,7 +91,7 @@ def random_xffffffff(shape=(40,60), dtype=np.uint32, add=0xff000000) :
        filled with random numbers in the range [0,0xffffff] with bits 0xff000000 for alpha mask.  
     """
     a = 0xffffff*np.random.random(shape) + add
-    return np.require(a, dtype)
+    return a.astype(dtype)
 
 #------------------------------
 
