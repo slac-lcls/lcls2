@@ -294,7 +294,6 @@ class AreaDetector(DetectorImpl):
         image: np.array, ndim=2
         
         """
-        #print('in AreaDretector.image')
         logger.debug('in AreaDretector.image')
         if any(v is None for v in self._pix_rc_):
             self._cached_pixel_coord_indexes(evt, **kwa)
