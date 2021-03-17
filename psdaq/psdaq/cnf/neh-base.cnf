@@ -1,0 +1,21 @@
+if not platform: platform = '7'
+
+import os
+ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
+
+conda_rel = os.environ['CONDA_DEFAULT_ENV']
+
+pyxpm_optsdb = '--db https://pswww.slac.stanford.edu/ws-auth/configdb/ws/,configDB,tmo,XPM -P DAQ:NEH:XPM:%d'
+#pyxpm_optsdb = '-P DAQ:NEH:XPM:%d'
+
+base_host = 'drp-neh-ctl002'
+
+procmgr_config = [
+ { host: base_host, id:'pyxpm-2' , port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.1.102 '+pyxpm_optsdb%0}, # XTPG
+# { host: base_host, id:'pyxpm-3' , port:'29452', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.1.103 '+pyxpm_optsdb%1}, # XPM
+ { host: base_host, id:'pyxpm-4' , port:'29453', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.3.102 '+pyxpm_optsdb%2}, # XPM
+## EPICS PV exporter
+ { host: base_host, id:'pvrtmon',  port:'29460', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -H tmo -P DAQ:NEH:XPM:0 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+]
+
