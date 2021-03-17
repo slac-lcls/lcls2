@@ -58,7 +58,8 @@ def argument_parser():
     d_exp     = None # 'tmoc00118'
     d_det     = None # 'tmoopal'
     d_runs    = None # 123 or 123,125-126
-    d_nrecs   = 100  # number of records
+    d_nrecs   = 200  # number of records to collect and process
+    d_nrecs1  = 100  # number of records to process at 1st stage
     d_dirxtc  = None # '/cds/data/psdm/tmo/tmoc00118/xtc'
     d_dirrepo = './work' 
     d_usesmd  = True
@@ -92,6 +93,7 @@ def argument_parser():
     h_det     = 'detector name, default = %s' % d_det
     h_runs    = 'run number or list of runs e.g. 12,14-18, default = %s' % str(d_runs)
     h_nrecs   = 'number of records to calibrate pedestals, default = %s' % str(d_nrecs)
+    h_nrecs1  = 'number of records to process at 1st stage, default = %s' % str(d_nrecs1)
     h_dirxtc  = 'non-default xtc directory, default = %s' % d_dirxtc
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
     h_usesmd  = 'add "smd" in dataset string, default = %s' % d_usesmd
@@ -127,6 +129,7 @@ def argument_parser():
     parser.add_argument('-d', '--det',     default=d_det,        type=str,   help=h_det)
     parser.add_argument('-r', '--runs',    default=d_runs,       type=str,   help=h_runs)
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
+    parser.add_argument('--nrecs1',        default=d_nrecs1,     type=int,   help=h_nrecs1)
     parser.add_argument('-x', '--dirxtc',  default=d_dirxtc,     type=str,   help=h_dirxtc)
     parser.add_argument('-o', '--dirrepo', default=d_dirrepo,    type=str,   help=h_dirrepo)
     parser.add_argument('-S', '--usesmd',  action='store_false',             help=h_usesmd)
