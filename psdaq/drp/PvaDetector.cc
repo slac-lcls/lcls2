@@ -347,7 +347,7 @@ PvaDetector::PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonit
     m_drp           (drp),
     m_pvaMonitor    (pvaMonitor),
     m_pgpQueue      (drp.pool.nbuffers()),
-    m_pvQueue       (drp.pool.nbuffers()),
+    m_pvQueue       (8),                // Revisit size
     m_bufferFreelist(m_pvQueue.size()),
     m_terminate     (false),
     m_running       (false),
@@ -630,6 +630,17 @@ void PvaDetector::_matchUp()
         uint32_t pgpIdx;
         if (!m_pgpQueue.peek(pgpIdx))  break;
 
+        // Try to drain all but one or two when PV timestamps are being ignored
+        // If an additional entry appears, it is left in the queue for next time
+        if (tsMatchDegree == 0) {
+            auto sz = m_pvQueue.guess_size(); // Size may grow during this loop
+            while (--sz) {
+                m_pvQueue.try_pop(pvDg);      // Pop and drop oldest
+                m_bufferFreelist.push(pvDg);  // Return buffer to freelist
+            }
+            m_pvQueue.peek(pvDg);             // Procede with most recent entry
+        }
+
         Pds::EbDgram* pgpDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[pgpIdx]);
 
         m_timeDiff = pgpDg->time.to_ns() - pvDg->time.to_ns();
@@ -680,9 +691,9 @@ void PvaDetector::_handleMatch(const XtcData::Dgram& pvDg, Pds::EbDgram& pgpDg)
         PGPEvent* pgpEvent = &m_pool->pgpEvents[pgpIdx];
         pgpEvent->transitionDgram = trDg;
 
-        if (tsMatchDegree == 2) {       // Keep PV for the next L1A
-          m_pvQueue.try_pop(dgram);     // Actually consume the element
-          m_bufferFreelist.push(dgram); // Return buffer to freelist
+        if (tsMatchDegree == 2) {         // Keep PV for the next L1A
+            m_pvQueue.try_pop(dgram);     // Actually consume the element
+            m_bufferFreelist.push(dgram); // Return buffer to freelist
         }
 
         // Ignore PV data on SlowUpdates and instead provide an empty XTC
