@@ -4,7 +4,8 @@ from psdaq.configdb.typed_json import cdict
 from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
 import rogue
-import epix_l2sidaq
+#import epix_l2sidaq
+import epix
 import ePixQuad
 import lcls2_pgp_pcie_apps
 import time
@@ -362,6 +363,16 @@ def config_expert(base, cfg, writePixelMap=True):
 
     print('config_expert complete')
 
+def reset_counters(base):
+    # Reset the timing counters
+    base['pci'].DevPcie.Hsio.TimingRx.TimingFrameRx.countReset()
+    
+    # Reset the trigger counters
+    base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].countReset()
+
+    # Reset the Epix counters
+    base['cam'].RdoutStreamMonitoring.countReset()
+
 #
 #  Called on Configure
 #
@@ -388,6 +399,9 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     pbase = base['pci']
     pbase.StartRun()
+
+    #  Add some counter resets here
+    reset_counters(base)
 
     #  Capture the firmware version to persist in the xtc
     cbase = base['cam']

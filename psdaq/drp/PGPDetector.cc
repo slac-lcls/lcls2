@@ -196,6 +196,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
     uint64_t batchId = 0L;
     const unsigned bufferMask = m_pool.nbuffers() - 1;
     XtcData::TransitionId::Value lastTid = XtcData::TransitionId::Reset;
+    double lastTime = 0;
     uint32_t lastData[6];
     memset(lastData,0,sizeof(lastData));
     resetEventCounter();
@@ -273,9 +274,12 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
 
                     //  Do we still need to throw an exception?
                     //  Sometimes we have genuine frame errors
-                    throw "Jump in event counter";
+                    if (transitionId != XtcData::TransitionId::L1Accept ||
+                        (timingHeader->time.asDouble()-lastTime)>1. ||
+                        (timingHeader->time.asDouble()-lastTime)<0.)
+                        throw "Jump in event counter";
 
-                    for (unsigned e=m_lastComplete+1; e<evtCounter; e++) {
+                    for (unsigned e=m_lastComplete+1; e!=evtCounter; e++) {
                         PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
                         logging::error("broken event:  %08x", brokenEvent->mask);
                         brokenEvent->mask = 0;
@@ -283,6 +287,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                     }
                 }
                 m_lastComplete = evtCounter;
+                lastTime = timingHeader->time.asDouble();
                 lastTid = transitionId;
                 memcpy(lastData, data, 24);
 
