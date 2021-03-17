@@ -81,7 +81,7 @@ def datasource_kwargs(**kwargs):
            or None not in (exp, runs), 'experiment name and run or xtc2 file name need to be specified for DataSource'
     kwa = {'files':fname,} if fname is not None else\
           {'exp':exp,'run':[int(v) for v in runs.split(',')]}
-    if events: kwa['max_events'] = events
+    #if events: kwa['max_events'] = events
     return kwa
 
 
