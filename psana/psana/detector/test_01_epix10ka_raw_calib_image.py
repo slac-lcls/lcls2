@@ -256,7 +256,7 @@ def test_image(args):
     flimg, flspe, flims = None, None, None
 
     ds, run, det = ds_run_det(args)
-    peds = None if args.grindex is None else det.raw._pedestals()[args.grindex,:]
+    peds = det.raw._pedestals() if args.grindex is None else det.raw._pedestals()[args.grindex,:]
 
     is_epix10ka = 'epix' in det.raw._uniqueid
     dcfg = ue.config_object_epix10ka(det) if is_epix10ka else None
