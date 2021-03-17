@@ -204,22 +204,23 @@ def proc_dark_block(block, **opts):
     fraclo     = opts.get('fraclo', 0.05)    # fraction of statistics below low gate limit
     frachi     = opts.get('frachi', 0.95)    # fraction of statistics below high gate limit
     frac05     = 0.5
+    nrecs1     = opts.get('nrecs1', None)    # number of records for the 1st stage processing
 
     logger.debug('in proc_dark_block for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
-    logger.debug(info_ndarr(block, 'begin 1st iteration pricessing of the data block:\n    '))
+    logger.info(info_ndarr(block, 'Begin pricessing of the data block:\n    ', first=100, last=105))
     logger.debug('fraction of statistics for gate limits low: %.3f high: %.3f' % (fraclo, frachi))
 
     t0_sec = time()
 
     nrecs, ny, nx = block.shape
     shape = (ny, nx)
+    if nrecs1 is None or nrecs1>nrecs: nrecs1 = nrecs
 
     arr1_u16 = np.ones(shape, dtype=np.uint16)
     arr1     = np.ones(shape, dtype=np.uint64)
 
     t1_sec = time()
-    #blockf64 = block # do nothing
-    #blockf64 = block.astype(dtype=np.float64)
+
     """
     NOTE:
     - our data is uint16.
@@ -227,9 +228,11 @@ def proc_dark_block(block, **opts):
     - in order to return interpolated float values apply the trick:
       data_block + random [0,1)-0.5
     - this would distort data in the range [-0.5,+0.5) ADU, but would allow to get better interpolation for median and quantile values
+    - use nrecs1 (< nrecs) due to memory and time consumption
     """
-    blockf64 = np.random.random(block.shape) - 0.5 + block
-    logger.debug(info_ndarr(blockf64, '\nconversion uint16 to float64, add random [0,1)-0.5 time = %.3f sec '%(time()-t1_sec), last=10))
+    #blockf64 = np.random.random(block.shape) - 0.5 + block
+    blockf64 = np.random.random((nrecs1, ny, nx)) - 0.5 + block[:nrecs1,:]
+    logger.debug(info_ndarr(blockf64, '1-st stage conversion uint16 to float64, add random [0,1)-0.5 time = %.3f sec '%(time()-t1_sec), first=100, last=105))
 
     t1_sec = time()
     #arr_med = np.median(block, axis=0)
@@ -241,9 +244,6 @@ def proc_dark_block(block, **opts):
     med_med = np.median(arr_med)
     med_qlo = np.median(arr_qlo)
     med_qhi = np.median(arr_qhi)
-    #med_med = np.quantile(arr_med, frac05, interpolation='linear')
-    #med_qlo = np.quantile(arr_qlo, frac05, interpolation='linear')
-    #med_qhi = np.quantile(arr_qhi, frac05, interpolation='linear')
 
     arr_dev_3d = block[:,] - arr_med # .astype(dtype=np.float64)
     arr_abs_dev = np.median(np.abs(arr_dev_3d), axis=0)
@@ -369,13 +369,11 @@ def proc_dark_block(block, **opts):
     frac_bad = arr_sta_bad.sum()/float(arr_av1.size)
     logger.debug('fraction of panel pixels with gated average deviated from and replaced by median: %.6f' % frac_bad)
 
-    logger.info('proc time = %.3f sec arr_av1' % (time()-t0_sec))
-    logger.info(info_ndarr(arr_av1, 'arr_av1     [100:105] ', first=100, last=105))
-    logger.info(info_ndarr(arr_rms, 'pixel_rms   [100:105] ', first=100, last=105))
-    logger.info(info_ndarr(arr_sta, 'pixel_status[100:105] ', first=100, last=105))
-    logger.info(info_ndarr(arr_med, 'arr mediane [100:105] ', first=100, last=105))
-
-    #sys.exit('TEST EXIT')
+    logger.info('data block processing time = %.3f sec' % (time()-t0_sec))
+    logger.debug(info_ndarr(arr_av1, 'arr_av1     [100:105] ', first=100, last=105))
+    logger.debug(info_ndarr(arr_rms, 'pixel_rms   [100:105] ', first=100, last=105))
+    logger.debug(info_ndarr(arr_sta, 'pixel_status[100:105] ', first=100, last=105))
+    logger.debug(info_ndarr(arr_med, 'arr mediane [100:105] ', first=100, last=105))
 
     return arr_av1, arr_rms, arr_sta
 
@@ -383,8 +381,8 @@ def proc_dark_block(block, **opts):
 def selected_record(nrec):
     return nrec<5\
        or (nrec<50 and not nrec%10)\
-       or (nrec<500 and not nrec%100)\
-       or (not nrec%1000)
+       or (not nrec%100)
+       #or (nrec<500 and not nrec%100)\
 
 
 def print_statistics(nevt, nrec):
@@ -428,7 +426,7 @@ def pedestals_calibration(*args, **opts):
     detname    = opts.get('det', None)
     exp        = opts.get('exp', None)
     runs       = opts.get('runs', None)
-    nbs        = opts.get('nbs', 1000)
+    nrecs      = opts.get('nrecs', 1000)
     stepnum    = opts.get('stepnum', None)
     stepmax    = opts.get('stepmax', 5)
     evskip     = opts.get('evskip', 0)
@@ -545,15 +543,15 @@ def pedestals_calibration(*args, **opts):
         #    if nstep > rank: break
 
         if nstep_tot>=stepmax:
-            logger.debug('==== Step:02d loop is terminated --stepmax=%d' % (nstep_tot, stepmax))
+            logger.info('==== Step:%02d loop is terminated, --stepmax=%d' % (nstep_tot, stepmax))
             break
 
         elif stepnum is not None:
             if   nstep < stepnum:
-                logger.debug('==== Step:02d is skipped --stepnum=%d' % (nstep, stepnum))
+                logger.info('==== Step:%02d is skipped, --stepnum=%d' % (nstep, stepnum))
                 continue
             elif nstep > stepnum:
-                logger.debug('==== Step:02d loop is terminated --stepnum=%d' % (nstep, stepnum))
+                logger.info('==== Step:%02d loop is terminated, --stepnum=%d' % (nstep, stepnum))
                 break
 
         #for k,v in det.raw._seg_configs().items(): # cpo's pattern DOES NOT WORK
@@ -590,31 +588,45 @@ def pedestals_calibration(*args, **opts):
             #return
 
         sh = gmaps[0].shape
-        shape_block = [nbs,] + list(sh) # [nbs, <number-of-segments>, 352, 384]
+        shape_block = [nrecs,] + list(sh) # [nrecs, <number-of-segments>, 352, 384]
         logger.info('Accumulate raw frames in block shape = %s' % str(shape_block))
 
         block=np.zeros(shape_block,dtype=np.uint16)
         nrec,nevt = -1,0
 
+        ss = None
         for nevt,evt in enumerate(step.events()):
             raw = det.raw.raw(evt)
             do_print = selected_record(nevt)
             if raw is None:
-                logger.debug('==== Ev:%04d rec:%04d raw is None' % (nevt,nrec))
+                logger.info('==== Ev:%04d rec:%04d raw is None' % (nevt,nrec))
                 continue
+
             if nevt < evskip:
-                logger.debug('==== Ev:%04d is skipped --evskip=%d' % (nevt,evskip))
+                logger.debug('==== Ev:%04d is skipped, --evskip=%d' % (nevt,evskip))
                 continue
+            elif evskip>0 and (nevt == evskip):
+                s = 'Events < --evskip=%d are skipped' % evskip
+                #print(s)
+                logger.info(s)
+
             if nevt > events-1:
-                logger.debug('==== Ev:%04d event loop is terminated --events=%d' % (nevt,events))
+                logger.info(ss)
+                logger.info('==== Ev:%04d event loop is terminated, --events=%d' % (nevt,events))
+                print()
                 break
-            if nrec > nbs-2:
-                logger.debug('==== Ev:%04d event loop is terminated - collected sufficient number of frames --nbs=%d' % (nevt,nbs))
+
+            if nrec > nrecs-2:
+                logger.info(ss)
+                logger.info('==== Ev:%04d event loop is terminated - collected sufficient number of frames, --nrecs=%d' % (nevt,nrecs))
                 break
             else:
                 nrec += 1
-                if do_print: logger.info(info_ndarr(raw & ue.M14, 'Ev:%04d rec:%04d raw & M14 ' % (nevt,nrec)))
+                ss = info_ndarr(raw & ue.M14, 'Ev:%04d rec:%04d raw & M14 ' % (nevt,nrec))
+                if do_print: logger.info(ss)
                 block[nrec]=(raw & ue.M14)
+
+        if nevt < events: logger.info('==== Ev:%04d end of events in run step %d' % (nevt,nstep_run))
 
         print_statistics(nevt, nrec)
 
@@ -1051,7 +1063,7 @@ if __name__ == "__main__":
       det     = 'epixquad',\
       exp     = 'ueddaq02',\
       runs    = [27,],\
-      nbs     = 1024,\
+      nrecs   = 1024,\
       errskip = True,\
       idx     = None,\
       )
