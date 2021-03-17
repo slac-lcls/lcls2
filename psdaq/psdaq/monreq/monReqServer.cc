@@ -897,13 +897,17 @@ int main(int argc, char** argv)
     return 1;
   }
 
+  // The number of event buffers cannot be greater than the system's max allowed.
+  // See /proc/sys/fs/mqueue/msg_max for current value.  Use sysctl to change it.
   if (prms.numEvBuffers < NUMBEROF_XFERBUFFERS)
     prms.numEvBuffers = NUMBEROF_XFERBUFFERS;
+  if (prms.numEvBuffers < prms.nevqueues)
+    prms.numEvBuffers = prms.nevqueues; // Require numEvBuffers / nevqueues > 0
   if (prms.numEvBuffers > 255)
   {
     // The problem is that there are only 8 bits available in the env
     // Could use the lower 24 bits, but then we have a nonstandard env
-    logging::critical("%s:\n  Number of event buffers > 255 is not supported: got %u", prms.numEvBuffers);
+    logging::critical("Number of event buffers > 255 is not supported: got %u", prms.numEvBuffers);
     return 1;
   }
 
