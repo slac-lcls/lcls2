@@ -59,7 +59,8 @@ def argument_parser():
     d_exp     = None # 'ueddaq02'
     d_det     = None # 'epixquad'
     d_runs    = None # 1021 or 1021,1022-1025
-    d_nbs     = 1000 # number of frames
+    d_nrecs   = 800  # number of records to collect and process
+    d_nrecs1  = 200  # number of records to process at 1st stage
     d_idx     = None # 0-15 for epix10ka2m, 0-3 for epix10kaquad
     d_dirxtc  = None # '/cds/data/psdm/ued/ueddaq02/xtc'
     d_dirrepo = CALIB_REPO_EPIX10KA # './myrepo'
@@ -68,8 +69,8 @@ def argument_parser():
     d_errskip = True
     d_stepnum    = None
     d_stepmax    = 5
-    d_evskip     = 0       # number of events to skip in the beginning of each step
-    d_events     = 1000    # number of events to process from the beginning of each step
+    d_evskip     = 100     # number of events to skip in the beginning of each step
+    d_events     = 1000    # last event number in the step to process
     d_dirmode    = 0o777
     d_filemode   = 0o666
     d_int_lo     = 1       # lowest  intensity accepted for dark evaluation
@@ -88,7 +89,8 @@ def argument_parser():
     h_exp     = 'experiment name, default = %s' % d_exp
     h_det     = 'detector name, default = %s' % d_det
     h_runs    = 'run number or list of runs e.g. 12,14-18, default = %s' % str(d_runs)
-    h_nbs     = 'maximal number of frames to calibrate pedestals, default = %s' % str(d_nbs)
+    h_nrecs   = 'number of records to calibrate pedestals, default = %s' % str(d_nrecs)
+    h_nrecs1  = 'number of records to process at 1st stage, default = %s' % str(d_nrecs1)
     h_idx     = 'segment index (0-15 for epix10ka2m, 0-3 for quad) or all by default for processing, default = %s' % str(d_idx)
     h_dirxtc  = 'non-default xtc directory, default = %s' % d_dirxtc
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
@@ -118,7 +120,8 @@ def argument_parser():
     parser.add_argument('-e', '--exp',     default=d_exp,        type=str,   help=h_exp)
     parser.add_argument('-d', '--det',     default=d_det,        type=str,   help=h_det)
     parser.add_argument('-r', '--runs',    default=d_runs,       type=str,   help=h_runs)
-    parser.add_argument('-b', '--nbs',     default=d_nbs,        type=int,   help=h_nbs)
+    parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
+    parser.add_argument('--nrecs1',        default=d_nrecs1,     type=int,   help=h_nrecs1)
     parser.add_argument('-i', '--idx',     default=d_idx,        type=int,   help=h_idx)
     parser.add_argument('-x', '--dirxtc',  default=d_dirxtc,     type=str,   help=h_dirxtc)
     parser.add_argument('-o', '--dirrepo', default=d_dirrepo,    type=str,   help=h_dirrepo)
