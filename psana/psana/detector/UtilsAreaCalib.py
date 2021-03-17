@@ -195,27 +195,24 @@ def pedestals_calibration(**kwa):
       logger.info('Step %1d' % istep)
 
       if istep>=stepmax:
-          logger.debug('==== Step:02d loop is terminated --stepmax=%d' % (istep, stepmax))
+          logger.info('==== Step:%02d loop is terminated --stepmax=%d' % (istep, stepmax))
           break
 
       elif stepnum is not None:
           if   istep < stepnum:
-              logger.debug('==== Step:02d is skipped --stepnum=%d' % (istep, stepnum))
+              logger.info('==== Step:%02d is skipped --stepnum=%d' % (istep, stepnum))
               continue
           elif istep > stepnum:
-              logger.debug('==== Step:02d loop is terminated --stepnum=%d' % (istep, stepnum))
+              logger.info('==== Step:%02d loop is terminated --stepnum=%d' % (istep, stepnum))
               break
-
+      ss = None
       for ievt,evt in enumerate(step.events()):
         print('Event %04d' % ievt, end='\r')
 
         raw  = odet.raw.raw(evt)
-        if raw is None:
-            logger.info('raw is None')
-            continue
 
         if raw is None:
-            logger.debug('==== Ev:%04d raw is None' % (ievt,nrec))
+            logger.info('==== Ev:%04d raw is None' % (ievt))
             continue
 
         if ievt < evskip:
@@ -223,13 +220,13 @@ def pedestals_calibration(**kwa):
             continue
         elif evskip>0 and (ievt == evskip):
             s = 'Events < --evskip=%d are skipped' % evskip
-            print(s)
+            #print(s)
             logger.info(s)
 
         if ievt > events-1:
-            logger.debug('==== Ev:%04d event loop is terminated --events=%d' % (ievt,events))
+            logger.info(ss)
+            logger.info('\n==== Ev:%04d event loop is terminated --events=%d' % (ievt,events))
             break_loop = True
-            print() # new line
             break
 
         rows, cols = raw.shape
@@ -242,26 +239,29 @@ def pedestals_calibration(**kwa):
 
         iblrec += 1
         block[iblrec,:] = raw
-        s = info_ndarr(raw, 'Event %04d record %04d   raw[0,100:110] '%(ievt, iblrec), first=100, last=110)
-        print(s, end='\r')
+        ss = info_ndarr(raw, 'Event %04d record %04d   raw[0,100:110] '%(ievt, iblrec), first=100, last=110)
+        print(ss, end='\r')
         if selected_record(ievt) or selected_record(iblrec):
-            logger.info(s)
+            logger.info(ss)
             #print() # new line
 
         if iblrec > nrecs2:
-            logger.info(s)
+            logger.info(ss)
             #print() # new line
-            logger.info('\nNumber of records limit is reached, iblrec=%d, option --nrecs' % iblrec)
+            logger.info('\nNumber of records limit is reached, option --nrecs=%d' % nrecs)
             break_loop = True
             break          # break evt  loop
+
+      if ievt < events: logger.info('==== Ev:%04d end of events in run step %d' % (ievt,istep))
+
       if break_loop: break # break step loop
     if break_loop: break   # break run  loop
 
-  logger.info('Run/step/event loop is completed')
+  logger.debug('run/step/event loop is completed')
   blk = block[:iblrec+1,:]
-  logger.info(info_ndarr(blk,'Begin processing of the data block '))
+  logger.debug(info_ndarr(blk,'Begin processing of the data block '))
 
-  arr_av1, arr_rms, arr_sta = proc_dark_block(block, **kwa)
+  arr_av1, arr_rms, arr_sta = proc_dark_block(blk, **kwa)
 
   dic_consts = {
     'pedestals'    : arr_av1,\
