@@ -156,7 +156,7 @@ class RunParams:
 
         # gather detector run parameters
         for level, item in self.collection.cmstate_levels().items():
-            if level != "control":
+            if level == "drp":
                 for xid in item.keys():
                     try:
                         if item[xid]['active'] != 1:
