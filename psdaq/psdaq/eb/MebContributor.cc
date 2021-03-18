@@ -23,7 +23,6 @@ MebContributor::MebContributor(const MebCtrbParams&            prms,
   _prms      (prms),
   _maxEvSize (roundUpSize(prms.maxEvSize)),
   _maxTrSize (prms.maxTrSize),
-  _bufRegSize(prms.maxEvents * _maxEvSize),
   _transport (prms.verbose, prms.kwargs),
   _id        (-1),
   _enabled   (false),
@@ -70,9 +69,10 @@ int MebContributor::connect(const MebCtrbParams& prms,
                             void*                region,
                             size_t               regSize)
 {
-  _links    .resize(prms.addrs.size());
-  _trBuffers.resize(_links.size());
-  _id       = prms.id;
+  _links      .resize(prms.addrs.size());
+  _trBuffers  .resize(_links.size());
+  _id         = prms.id;
+  _bufRegSize = _prms.maxEvents * _maxEvSize; // Needs MEB's connect_info
 
   int rc = linksConnect(_transport, _links, prms.addrs, prms.ports, "MEB");
   if (rc)  return rc;

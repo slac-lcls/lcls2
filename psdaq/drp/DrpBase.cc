@@ -409,7 +409,6 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_mPrms.instrument = para.instrument;
     m_mPrms.partition = para.partition;
     m_mPrms.alias     = para.alias;
-    m_mPrms.maxEvents = 8;
     m_mPrms.maxEvSize = pool.bufferSize();
     m_mPrms.maxTrSize = para.maxTrSize;
     m_mPrms.verbose   = para.verbose;
@@ -699,7 +698,8 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
             unsigned count = it.value()["connect_info"]["max_ev_count"];
             if (!m_mPrms.maxEvents)  m_mPrms.maxEvents = count;
             if (count != m_mPrms.maxEvents) {
-                logging::error("maxEvents must be the same for all MEBs");
+                logging::error("maxEvents (%u) must be the same for all MEBs, got %u from ID %u",
+                               m_mPrms.maxEvents, count, mebId);
                 return 1;
             }
         }
