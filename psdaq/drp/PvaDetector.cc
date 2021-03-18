@@ -347,7 +347,7 @@ PvaDetector::PvaDetector(Parameters& para, std::shared_ptr<PvaMonitor>& pvaMonit
     m_drp           (drp),
     m_pvaMonitor    (pvaMonitor),
     m_pgpQueue      (drp.pool.nbuffers()),
-    m_pvQueue       (8),                // Revisit size
+    m_pvQueue       (drp.pool.nbuffers()),
     m_bufferFreelist(m_pvQueue.size()),
     m_terminate     (false),
     m_running       (false),
@@ -638,7 +638,7 @@ void PvaDetector::_matchUp()
                 m_pvQueue.try_pop(pvDg);      // Pop and drop oldest
                 m_bufferFreelist.push(pvDg);  // Return buffer to freelist
             }
-            m_pvQueue.peek(pvDg);             // Procede with most recent entry
+            m_pvQueue.peek(pvDg);             // Proceed with most recent entry
         }
 
         Pds::EbDgram* pgpDg = reinterpret_cast<Pds::EbDgram*>(m_pool->pebble[pgpIdx]);
