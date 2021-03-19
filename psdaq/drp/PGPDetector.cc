@@ -55,6 +55,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
         for (unsigned i=0; i<batch.size; i++) {
             unsigned index = (batch.start + i) % nbuffers;
             PGPEvent* event = &pool.pgpEvents[index];
+            if (event->mask == 0)
+                continue;               // Skip broken event
             checkPulseIds(det, event);
 
             // get transitionId from the first lane in the event
@@ -221,6 +223,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                 logging::error("DMA with error 0x%x  flag 0x%x",err,flag);
                 //  How do I return this buffer?
                 dmaRetIndex(m_pool.fd(), index);
+                nevents++;
                 continue;
             }
 
@@ -283,7 +286,7 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                         PGPEvent* brokenEvent = &m_pool.pgpEvents[e & bufferMask];
                         logging::error("broken event:  %08x", brokenEvent->mask);
                         brokenEvent->mask = 0;
-
+                        m_batch.size++; // Broken events are included in the batch
                     }
                 }
                 m_lastComplete = evtCounter;
@@ -326,6 +329,8 @@ void PGPDetector::collector(Pds::Eb::TebContributor& tebContributor)
         for (unsigned i=0; i<batch.size; i++) {
             unsigned index = (batch.start + i) % nbuffers;
             PGPEvent* event = &m_pool.pgpEvents[index];
+            if (event->mask == 0)
+                continue;               // Skip broken event
             if (event->l3InpBuf) // else shutting down
             {
                 Pds::EbDgram* dgram = static_cast<Pds::EbDgram*>(event->l3InpBuf);
