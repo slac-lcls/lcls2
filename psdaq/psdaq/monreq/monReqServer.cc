@@ -415,7 +415,7 @@ void Meb::process(EbEvent* event)
        // This can happen only for a split event (I think), which was fixed up and
        // posted earlier, so return to dismiss this counterpart and not post it
        ++_splitCount;
-       logging::error("%s:\n  Split event: pid %014lx, prv %014lx, rem %08lx, prm %08x, svc %u, ts %u.09u\n",
+       logging::error("%s:\n  Split event: pid %014lx, prv %014lx, rem %08lx, prm %08x, svc %u, ts %u.%09u\n",
                       __PRETTY_FUNCTION__, pid, _pidPrv, event->remaining(), event->parameter(), dgram->service(), dgram->time.seconds(), dgram->time.nanoseconds());
        return;
      }
