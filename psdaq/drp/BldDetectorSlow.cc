@@ -586,7 +586,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     XtcData::NamesLookup& namesLookup = m_det->namesLookup();
 
     //  Poll
-    unsigned tmo = 4; // milliseconds
+    unsigned tmo = 50; // milliseconds
     {
         std::map<std::string,std::string>::iterator it = m_para.kwargs.find("timeout");
         if (it != m_para.kwargs.end())

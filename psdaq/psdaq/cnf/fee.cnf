@@ -4,12 +4,12 @@ import os
 ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
-opal_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.90 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+im2k0_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.90 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
 
 #collect_host = os.uname()[1]
 collect_host = 'drp-neh-ctl001'
 
-groups = platform+' 5'
+groups = platform
 hutch, user, password = ('tmo', 'tmoopr', 'pcds')
 auth = ' --user {:} --password {:} '.format(user,password)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
@@ -61,7 +61,7 @@ ami_manager_node = "drp-neh-cmp016"
 
 procmgr_config = [
 # {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2'},
- {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups+' --prod'},
+# {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups+' --prod'},
  {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
 
 # set the phase2 transition timeout to 20s. this is because the teb
@@ -78,14 +78,13 @@ procmgr_config = [
 
  { host: 'drp-neh-cmp014', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4'},
 
- { host: 'drp-neh-cmp014', id:'gmdstr0_0',   flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x8 ca/EM1K0:GMD:HPS:STR0:STREAM_SHORT0'},  # Electron waveforms
- { host: 'drp-neh-cmp015', id:'gmdstr2_0',   flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x1 ca/EM1K0:GMD:HPS:STR0:STREAM_SHORT2'},  # Ion waveforms
- { host: 'drp-neh-cmp015', id:'xgmdstr0_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT0'}, # Electron 1 waveforms
- { host: 'drp-neh-cmp015', id:'xgmdstr1_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x4 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT1'}, # Electron 2 waveforms
- { host: 'drp-neh-cmp015', id:'xgmdstr2_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x8 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT2'}, # Ion waveforms
+ #{ host: 'drp-neh-cmp013', id:'gmdstr0_0',   flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x8 ca/EM1K0:GMD:HPS:STR0:STREAM_SHORT0'},  # Electron waveforms
+ #{ host: 'drp-neh-cmp015', id:'gmdstr2_0',   flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x1 ca/EM1K0:GMD:HPS:STR0:STREAM_SHORT2'},  # Ion waveforms
+ #{ host: 'drp-neh-cmp015', id:'xgmdstr0_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x2 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT0'}, # Electron 1 waveforms
+ #{ host: 'drp-neh-cmp015', id:'xgmdstr1_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x4 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT1'}, # Electron 2 waveforms
+ #{ host: 'drp-neh-cmp015', id:'xgmdstr2_0',  flags:'spu', env:epics_env, cmd:pva_cmd0+' -l 0x8 ca/EM2K0:XGMD:HPS:STR0:STREAM_SHORT2'}, # Ion waveforms
 
- { host: 'drp-neh-cmp002', id:'opal_0',      flags:'spu', env:opal_epics_env, cmd:pva_cmd1+' -l 0x1 IM2K0:XTES:CAM:IMAGE1:Pva:Image -k pebbleBufSize=2097240 -k match_tmo_ms=1333'},
-# { host: 'drp-neh-cmp002', id:'opal_0',      flags:'spu', env:opal_epics_env, cmd:pva_cmd1+' -l 0x1 ca/IM2K0:XTES:CAM:IMAGE1:ArrayData -k firstdim=1024 -k pebbleBufSize=2097240 -k match_tmo_ms=1333'},
+ { host: 'drp-neh-cmp002', id:'im2k0_0',      flags:'spu', env:im2k0_epics_env, cmd:pva_cmd1+' -l 0x1 IM2K0:XTES:CAM:IMAGE1:Pva:Image -k pebbleBufSize=2097240 -k match_tmo_ms=1333'},
 ]
 
 procmgr_ami = [
