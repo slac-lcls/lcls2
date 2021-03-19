@@ -41,7 +41,7 @@ namespace Pds {
     const unsigned TICK_RATE      = 928500; // System clock rate in Hz
 
     const unsigned TEB_TMO_MS     = 12000;  // Must be < MAX_LATENCY/TICK_RATE
-    const unsigned MEB_TMO_MS     = 2000;   // <= TEB_TMO_MS
+    const unsigned MEB_TMO_MS     = 12000;  // <= TEB_TMO_MS
     const unsigned TEB_TR_BUFFERS = 128;    // # of TEB transition buffers
                                             // > TEB_TMO * SlowUpdate rate
     const unsigned MEB_TR_BUFFERS = 24;     // # of MEB transition buffers
