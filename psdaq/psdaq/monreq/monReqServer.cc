@@ -167,7 +167,7 @@ namespace Pds {
           logging::error("Attempted double free of list entry %u: idx %u, dg %p, ts %u.%09u, svc %s",
                          i, idx, dg, dg->time.seconds(), dg->time.nanoseconds(), TransitionId::name(dg->service()));
           // Does the dg still need to be freed?  Apparently so.
-          Pool::free((void*)dg);
+          //Pool::free((void*)dg);
           return;
         }
       }
@@ -255,7 +255,9 @@ namespace Pds {
     std::unique_ptr<MyXtcMonitorServer> _apps;
     std::vector<EbLfCltLink*>           _mrqLinks;
     std::unique_ptr<GenericPool>        _pool;
+    uint64_t                            _pidPrv;
     uint64_t                            _eventCount;
+    uint64_t                            _splitCount;
     uint64_t                            _requestCount;
     const MebParams&                    _prms;
     EbLfClient                          _mrqTransport;
@@ -267,7 +269,9 @@ Meb::Meb(const MebParams&        prms,
          const MetricExporter_t& exporter) :
   EbAppBase    (prms, exporter, "MEB",
                 EPOCH_DURATION, 1, prms.numEvBuffers, MEB_TR_BUFFERS, MEB_TMO_MS),
+  _pidPrv      (0),
   _eventCount  (0),
+  _splitCount  (0),
   _requestCount(0),
   _prms        (prms),
   _mrqTransport(prms.verbose, prms.kwargs)
@@ -276,11 +280,12 @@ Meb::Meb(const MebParams&        prms,
                                             {"partition", std::to_string(prms.partition)},
                                             {"detname", prms.alias},
                                             {"alias", prms.alias}};
-  exporter->add("MEB_EvtRt", labels, MetricType::Rate,    [&](){ return _eventCount;      });
-  exporter->add("MEB_EvtCt", labels, MetricType::Counter, [&](){ return _eventCount;      });
-  exporter->add("MEB_ReqRt", labels, MetricType::Rate,    [&](){ return _requestCount;    });
-  exporter->add("MEB_ReqCt", labels, MetricType::Counter, [&](){ return _requestCount;    });
-  exporter->add("MRQ_BufCt", labels, MetricType::Gauge,   [&](){ return _apps ? _apps->bufListCount() : 0; });
+  exporter->add("MEB_EvtRt",  labels, MetricType::Rate,    [&](){ return _eventCount;      });
+  exporter->add("MEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;      });
+  exporter->add("MEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;      });
+  exporter->add("MEB_ReqRt",  labels, MetricType::Rate,    [&](){ return _requestCount;    });
+  exporter->add("MEB_ReqCt",  labels, MetricType::Counter, [&](){ return _requestCount;    });
+  exporter->add("MRQ_BufCt",  labels, MetricType::Gauge,   [&](){ return _apps ? _apps->bufListCount() : 0; });
   exporter->constant("MRQ_BufCtMax", labels, prms.numEvBuffers);
 }
 
@@ -293,6 +298,7 @@ int Meb::resetCounters()
   EbAppBase::resetCounters();
 
   _eventCount   = 0;
+  _splitCount   = 0;
   _requestCount = 0;
 
   return 0;
@@ -399,6 +405,29 @@ void Meb::process(EbEvent* event)
     printf("Meb::process event dump:\n");
     event->dump(++cnt);
   }
+
+   const EbDgram* dgram = event->creator();
+   uint64_t pid = dgram->pulseId();
+   if (!(pid > _pidPrv))
+   {
+     if (event->remaining())             // I.e., this event was fixed up
+     {
+       // This can happen only for a split event (I think), which was fixed up and
+       // posted earlier, so return to dismiss this counterpart and not post it
+       ++_splitCount;
+       logging::error("%s:\n  Split event: pid %014lx, prv %014lx, rem %08lx, prm %08x, svc %u, ts %u.09u\n",
+                      __PRETTY_FUNCTION__, pid, _pidPrv, event->remaining(), event->parameter(), dgram->service(), dgram->time.seconds(), dgram->time.nanoseconds());
+       return;
+     }
+
+     event->damage(Damage::OutOfOrder);
+
+     logging::error("%s:\n  Pulse ID did not advance: %014lx vs %014lx, rem %08lx, prm %08x, svc %u, ts %u.09u\n",
+                    __PRETTY_FUNCTION__, pid, _pidPrv, event->remaining(), event->parameter(), dgram->service(), dgram->time.seconds(), dgram->time.nanoseconds());
+     // Revisit: fatal?  throw "Pulse ID did not advance";
+   }
+   _pidPrv = pid;
+
   ++_eventCount;
 
   // Create a Dgram with a payload that is a directory of contribution

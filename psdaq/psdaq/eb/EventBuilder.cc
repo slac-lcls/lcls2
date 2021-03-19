@@ -364,7 +364,8 @@ void EventBuilder::_flush(const EbEvent* const due)
         }
         _missing = event->_remaining;
 
-        if (_verbose >= VL_EVENT)
+        //if (_verbose >= VL_EVENT)
+        if (_fixupCnt + _tmoEvtCnt < 1000)
         {
           const EbDgram* dg = event->creator();
           printf("%-9s %15s %014lx, size %5zu, for remaining %016lx, RoGs %04hx, contract %016lx\n",
