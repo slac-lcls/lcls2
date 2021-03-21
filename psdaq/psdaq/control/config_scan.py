@@ -190,6 +190,7 @@ def scan( keys, steps, setupStep=None ):
     parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=1, help='# of events to aquire at each step (default 1)')
     parser.add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
     parser.add_argument('--config', metavar='ALIAS', help='configuration alias (e.g. BEAM)')
+    parser.add_argument('--record', type=int, choices=range(0, 2), help='recording flag')
     parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
 
@@ -231,6 +232,15 @@ def scan( keys, steps, setupStep=None ):
         rv = control.setConfig(args.config)
         if rv is not None:
             logging.error('%s' % rv)
+
+    if args.record is not None:
+        # recording flag request
+        if args.record == 0:
+            rv = control.setRecord(False)
+        else:
+            rv = control.setRecord(True)
+        if rv is not None:
+            print('Error: %s' % rv)
 
     # instantiate MyDAQ
     mydaq = MyDAQ(control, daqState=daqState, args=args)
