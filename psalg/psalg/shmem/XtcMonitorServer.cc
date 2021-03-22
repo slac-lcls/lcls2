@@ -737,7 +737,7 @@ mqd_t XtcMonitorServer::_openQueue(const char* name, mq_attr& attr)
   mqd_t q = mq_open(name,  O_CREAT|O_RDWR, PERMS, &attr);
   if (q == (mqd_t)-1) {
     perror("mq_open output");
-    printf("name: '%s'\nmq_attr:\n\tmq_flags 0x%0lx\n\tmq_maxmsg 0x%0lx\n\tmq_msgsize 0x%0lx\n\t mq_curmsgs 0x%0lx\n",
+    printf("name: '%s'\nmq_attr:\n\tmq_flags 0x%0lx\n\tmq_maxmsg 0x%0lx\n\tmq_msgsize 0x%0lx\n\tmq_curmsgs 0x%0lx\n",
            name, attr.mq_flags, attr.mq_maxmsg, attr.mq_msgsize, attr.mq_curmsgs );
     fprintf(stderr, "Initializing XTC monitor server encountered an error!\n");
     delete this;
@@ -828,24 +828,24 @@ void XtcMonitorServer::unlink()
   _terminate.store(true, std::memory_order_release);
 
   //printf("Unlinking Message Queues... \n");
-  int rc = mq_close(_myInputEvQueue);    if (rc) perror("mq_close(InputQueue)");
+  if (_myInputEvQueue != (mqd_t)-1)        mq_close(_myInputEvQueue);
 
   for(unsigned i=0; i<_numberOfEvQueues; i++) {
-    rc = mq_close(_myOutputEvQueue[i]);  if (rc) perror (("mq_close(OutputQueue_"+std::to_string(i)+")").c_str());
+    if (_myOutputEvQueue[i] != (mqd_t)-1)  mq_close(_myOutputEvQueue[i]);
   }
-  rc = mq_close(_requestQueue);          if (rc) perror("mq_close(RequestQueue)");
-  rc = mq_close(_shuffleQueue);          if (rc) perror("mq_close(ShuffleQueue)");
-  rc = mq_close(_discoveryQueue);        if (rc) perror("mq_close(DiscoveryQueue)");
+  if (_requestQueue   != (mqd_t)-1)        mq_close(_requestQueue);
+  if (_shuffleQueue   != (mqd_t)-1)        mq_close(_shuffleQueue);
+  if (_discoveryQueue != (mqd_t)-1)        mq_close(_discoveryQueue);
 
 
   char* qname = new char[128];
   for(unsigned i=0; i<_numberOfEvQueues; i++) {
-    XtcMonitorMsg::eventInputQueue    (_tag,i,qname); rc = mq_unlink(qname); if (rc) perror(("mq_unlink("+std::string(qname)+")").c_str());
+    XtcMonitorMsg::eventInputQueue    (_tag,i,qname); mq_unlink(qname);
   }
   unsigned n = _numberOfEvQueues;
-  XtcMonitorMsg::eventInputQueue      (_tag,n,qname); rc = mq_unlink(qname); if (rc) perror(("mq_unlink("+std::string(qname)+")").c_str());
-  sprintf(qname, "/PdsRequestQueue_%s",_tag);         rc = mq_unlink(qname); if (rc) perror(("mq_unlink("+std::string(qname)+")").c_str());
-  sprintf(qname, "/PdsShuffleQueue_%s",_tag);         rc = mq_unlink(qname); if (rc) perror(("mq_unlink("+std::string(qname)+")").c_str());
-  XtcMonitorMsg::discoveryQueue       (_tag,qname);   rc = mq_unlink(qname); if (rc) perror(("mq_unlink("+std::string(qname)+")").c_str());
+  XtcMonitorMsg::eventInputQueue      (_tag,n,qname); mq_unlink(qname);
+  sprintf(qname, "/PdsRequestQueue_%s",_tag);         mq_unlink(qname);
+  sprintf(qname, "/PdsShuffleQueue_%s",_tag);         mq_unlink(qname);
+  XtcMonitorMsg::discoveryQueue       (_tag,qname);   mq_unlink(qname);
   delete[] qname;
 }

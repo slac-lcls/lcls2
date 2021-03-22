@@ -3,6 +3,7 @@
 
 #include <poll.h>
 #include <stddef.h>
+#include <mqueue.h>
 
 namespace XtcData {
 
@@ -14,11 +15,11 @@ namespace psalg {
   namespace shmem {
 
     class DgramHandler;
-    
+
     class ShmemClient {
     public:
-      ShmemClient() {}
-      virtual ~ShmemClient() {};
+      ShmemClient();
+      virtual ~ShmemClient();
 
     public:
       //
@@ -29,12 +30,18 @@ namespace psalg {
       int connect(const char* tag, int tr_index=0);
       void* get(int& index, size_t& size);
       void free(int index, size_t size);
-    
+      void unlink();
+
     private:
-      int _myTrFd;
-      int _nfd = 2;
-      pollfd _pfd[2];
+      const char*   _tag;               // name of the complete shared memory segment
+      int           _myTrFd;
+      int           _nfd = 2;
+      pollfd        _pfd[2];
       DgramHandler* _handler;
+      unsigned      _inputEvQueueIdx;
+      unsigned      _numberOfEvQueues;  // number of message queues for events
+      mqd_t         _myInputEvQueue;    // message queue for returned events
+      mqd_t*        _myOutputEvQueue;   // message queues[nclients] for distributing events
     };
   };
 };

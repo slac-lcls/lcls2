@@ -236,6 +236,29 @@ namespace psalg {
 using namespace XtcData;
 using namespace psalg::shmem;
 
+ShmemClient::ShmemClient() :
+  _tag             (nullptr),
+  _myTrFd          (-1),
+  _handler         (0),
+  _inputEvQueueIdx (0),
+  _numberOfEvQueues(0),
+  _myInputEvQueue  ((mqd_t)-1),
+  _myOutputEvQueue (nullptr)
+{
+}
+
+ShmemClient::~ShmemClient()
+{
+  printf("Not Unlinking Shared Memory... \n");
+
+  unlink();
+
+  if (_handler)  delete _handler;
+  delete [] _myOutputEvQueue;
+
+  if (!(_myTrFd < 0))  ::close(_myTrFd);
+}
+
 /*
 ** ++
 **
@@ -282,14 +305,14 @@ void* ShmemClient::get(int& index, size_t& size)
 
 int ShmemClient::connect(const char* tag, int tr_index) {
   int error = 0;
-  char* qname             = new char[128];
+  char* qname = new char[128];
 
   umask(0);   // Need this to set group/other write permissions on mqueue
 
   XtcMonitorMsg myMsg;
   unsigned priority;
 
-  mqd_t* myOutputEvQueues = 0;
+  _tag = tag;
 
   //
   //  Request initialization
@@ -308,10 +331,11 @@ int ShmemClient::connect(const char* tag, int tr_index) {
 
   if (mq_receive(discoveryQueue, (char*)&myMsg, sizeof(myMsg), &priority) < 0) {
 	perror("mq_receive discoveryQ");
+        delete[] qname;
 	return ++error;
     }
 
-  mq_close(discoveryQueue);
+  mq_close(discoveryQueue);  printf("Closed queue %s\n", qname);
 
   sockaddr_in saddr;
   saddr.sin_family = AF_INET;
@@ -335,6 +359,7 @@ int ShmemClient::connect(const char* tag, int tr_index) {
 
   if (::read(_myTrFd,&myMsg,sizeof(myMsg))!=sizeof(myMsg)) {
     printf("Connection rejected by shmem server [too many clients]\n");
+    delete[] qname;
     return ++error;
     }
 
@@ -357,28 +382,33 @@ int ShmemClient::connect(const char* tag, int tr_index) {
   if (myShm == MAP_FAILED) perror("mmap");
   else printf("Shared memory at %p\n", (void*)myShm);
 
+  close(shm);  // Done with the file descriptor
+
   int ev_index = myMsg.bufferIndex();
+  _inputEvQueueIdx = ev_index;
   XtcMonitorMsg::eventInputQueue(tag,ev_index,qname);
-  mqd_t myInputEvQueue = _openQueue(qname, O_RDONLY, PERMS_IN);
-  if (myInputEvQueue == (mqd_t)-1)
+  _myInputEvQueue = _openQueue(qname, O_RDONLY, PERMS_IN);
+  if (_myInputEvQueue == (mqd_t)-1)
     error++;
 
-  myOutputEvQueues = new mqd_t[myMsg.numberOfQueues()+1];
+  _numberOfEvQueues = myMsg.numberOfQueues()+1;
+  _myOutputEvQueue = new mqd_t[_numberOfEvQueues];
   for(int i=0; i<=myMsg.numberOfQueues(); i++)
-    myOutputEvQueues[i]=-1;
+    _myOutputEvQueue[i]=-1;
 
   if (myMsg.serial()) {
     XtcMonitorMsg::eventOutputQueue(tag,ev_index,qname);
-    myOutputEvQueues[ev_index] = _openQueue(qname, O_WRONLY, PERMS_OUT);
-    if (myOutputEvQueues[ev_index] == (mqd_t)-1)
+    _myOutputEvQueue[ev_index] = _openQueue(qname, O_WRONLY, PERMS_OUT);
+    if (_myOutputEvQueue[ev_index] == (mqd_t)-1)
       error++;
   }
   else {
     XtcMonitorMsg::eventInputQueue(tag,myMsg.return_queue(),qname);
-    myOutputEvQueues[ev_index] = _openQueue(qname, O_WRONLY, PERMS_OUT);
-    if (myOutputEvQueues[ev_index] == (mqd_t)-1)
+    _myOutputEvQueue[ev_index] = _openQueue(qname, O_WRONLY, PERMS_OUT);
+    if (_myOutputEvQueue[ev_index] == (mqd_t)-1)
       error++;
   }
+  delete[] qname;
 
   if (error) {
     fprintf(stderr, "Could not open at least one message queue!\n");
@@ -392,7 +422,7 @@ int ShmemClient::connect(const char* tag, int tr_index) {
   _pfd[0].fd      = _myTrFd;
   _pfd[0].events  = POLLIN | POLLERR;
   _pfd[0].revents = 0;
-  _pfd[1].fd      = myInputEvQueue;
+  _pfd[1].fd      = _myInputEvQueue;
   _pfd[1].events  = POLLIN | POLLERR;
   _pfd[1].revents = 0;
   _nfd = 2;
@@ -400,10 +430,31 @@ int ShmemClient::connect(const char* tag, int tr_index) {
   // Assumption: myMsg numberOfBuffers and sizeOfBuffers are constant
   // throughout lifetime of client connection.
   _handler = new DgramHandler(*this,
-           myMsg,
-		   _myTrFd,
-		   myInputEvQueue,myOutputEvQueues,ev_index,
-		   tag,myShm);
+                              myMsg,
+                              _myTrFd,
+                              _myInputEvQueue, _myOutputEvQueue, ev_index,
+                              tag,myShm);
 
   return 0;
+}
+
+void ShmemClient::unlink()
+{
+  if (_myInputEvQueue != (mqd_t)-1)                mq_close(_myInputEvQueue);
+
+  for (unsigned i = 0; i < _numberOfEvQueues; ++i)
+  {
+    if (_myOutputEvQueue[i] != (mqd_t)-1)          mq_close(_myOutputEvQueue[i]);
+  }
+
+  char* qname = new char[128];
+  for(unsigned i=0; i<_numberOfEvQueues; i++)
+  {
+    XtcMonitorMsg::eventInputQueue(_tag,i,qname);  mq_unlink(qname);  printf("Closed & unlinked queue %s\n", qname);
+  }
+  unsigned n = _inputEvQueueIdx;
+  XtcMonitorMsg::eventInputQueue  (_tag,n,qname);  mq_unlink(qname);  printf("Closed & unlinked queue %s\n", qname);
+
+  // Avoid race with server and let it unlink the discovery queue
+  //XtcMonitorMsg::discoveryQueue   (_tag,qname);    mq_unlink(qname);
 }
