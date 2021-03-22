@@ -257,6 +257,8 @@ ShmemClient::~ShmemClient()
   delete [] _myOutputEvQueue;
 
   if (!(_myTrFd < 0))  ::close(_myTrFd);
+
+  ::free((void*)_tag);
 }
 
 /*
@@ -312,7 +314,7 @@ int ShmemClient::connect(const char* tag, int tr_index) {
   XtcMonitorMsg myMsg;
   unsigned priority;
 
-  _tag = tag;
+  _tag = strdup(tag);
 
   //
   //  Request initialization
