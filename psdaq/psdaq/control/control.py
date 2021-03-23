@@ -128,6 +128,7 @@ class RunParams:
         if len(self.fileSet) > 0:
             self.updatePvSet()
         logging.debug(f"RunParams configure(): pvSet={self.pvSet}")
+        self.recordedExperiments = set()    # updated in beginrun
 
     def unconfigure(self):
         logging.debug("RunParams unconfigure()")
@@ -139,6 +140,16 @@ class RunParams:
         inCount = len(self.pvSet)
         errorCount = 0
         params = {}
+        param_descs = {}
+
+        if not experiment_name in self.recordedExperiments:
+            # gather PV run parameter descriptions
+            for ppp in self.pvSet:
+                desc = ppp.get_desc()
+                param_descs[ppp.get_name()] = desc
+            self.recordedExperiments.add(experiment_name)
+
+        logging.debug(f"RunParams: param_descs = {param_descs}")
 
         # gather PV run parameters
         for ppp in self.pvSet:
@@ -173,9 +184,17 @@ class RunParams:
         # add run parameters to logbook
         outCount = self.collection.add_run_params(experiment_name, params)
         if outCount < inCount:
-            self.collection.report_error(f"{outCount} of {inCount} run parameters recorded in logbook")
+            self.collection.report_error(f"{outCount} of {inCount} run parameters recorded in logbook (experiment={experiment_name})")
         else:
-            logging.info(f"{outCount} run parameters recorded in logbook")
+            logging.info(f"{outCount} run parameters recorded in logbook (experiment={experiment_name})")
+
+        # add run parameter descriptions to logbook
+        inCount = len(param_descs)
+        outCount = self.collection.add_update_run_param_descriptions(experiment_name, param_descs)
+        if outCount < inCount:
+            self.collection.report_error(f"{outCount} of {inCount} run parameter descriptions recorded in logbook (experiment={experiment_name})")
+        elif outCount > 0:
+            logging.info(f"{outCount} run parameter descriptions recorded in logbook (experiment={experiment_name})")
 
 class MyFloatPv:
     """Fake float PV"""
@@ -2208,12 +2227,33 @@ class CollectionManager():
                 else:
                     err_msg = "add_run_params error (user=%s): status code %d" % (self.user, resp.status_code)
             if not ok:
+                param_count = 0
                 self.report_error(err_msg)
         return param_count
 
-    def add_update_run_param_descriptions(self):
-        # TODO
-        return
+    def add_update_run_param_descriptions(self, experiment_name, param_descs):
+        param_desc_count = len(param_descs)
+        if param_desc_count > 0:
+            ok = False
+            err_msg = "add_update_run_param_descriptions error"
+            serverURLPrefix = "{0}run_control/{1}/ws/".format(self.url + "/" if not self.url.endswith("/") else self.url, experiment_name)
+            logging.debug('serverURLPrefix = %s' % serverURLPrefix)
+            try:
+                resp = requests.post(serverURLPrefix + "add_update_run_param_descriptions", json=param_descs, auth=HTTPBasicAuth(self.user, self.password))
+            except Exception as ex:
+                err_msg = "add_update_run_param_descriptions error (user=%s): %s" % (self.user, ex)
+            else:
+                logging.debug("add_update_run_param_descriptions response: %s" % resp.text)
+                if resp.status_code == requests.codes.ok:
+                    if resp.json().get("success", None):
+                        logging.debug("add_update_run_param_descriptions success")
+                        ok = True
+                else:
+                    err_msg = "add_update_run_param_descriptions error (user=%s): status code %d" % (self.user, resp.status_code)
+            if not ok:
+                param_desc_count = 0
+                self.report_error(err_msg)
+        return param_desc_count
 
     def end_run(self, experiment_name):
         run_num = 0
