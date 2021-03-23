@@ -258,7 +258,7 @@ ShmemClient::~ShmemClient()
 
   if (!(_myTrFd < 0))  ::close(_myTrFd);
 
-  ::free((void*)_tag);
+  if (_tag)  ::free((void*)_tag);
 }
 
 /*
