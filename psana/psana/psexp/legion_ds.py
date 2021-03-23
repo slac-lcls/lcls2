@@ -1,8 +1,11 @@
 from psana.psexp import RunLegion, DataSourceBase, SmdReaderManager, TransitionId
 from psana.dgrammanager import DgramManager
 from psana.event import Event
-from psana.psexp.tools import Logging as logging
 import numpy as np
+
+import logging
+logger = logging.getLogger(__name__)
+
 import os
 
 class LegionDataSource(DataSourceBase):
@@ -22,7 +25,7 @@ class LegionDataSource(DataSourceBase):
     def _setup_configs(self):
         super()._close_opened_smd_files()
         self.smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
-        logging.info(f'legion_ds: opened smd_fds: {self.smd_fds}')
+        logger.debug(f'legion_ds: opened smd_fds: {self.smd_fds}')
         self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms)
         self._configs = self.smdr_man.get_next_dgrams()
         super()._setup_det_class_table()

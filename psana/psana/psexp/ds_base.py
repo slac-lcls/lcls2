@@ -8,12 +8,14 @@ import pathlib
 from psana.dgrammanager import DgramManager
 
 from psana.psexp import PrometheusManager, SmdReaderManager
-from psana.psexp.tools import Logging as logging
 import threading
 from psana import dgram
 
 from psana.detector import detectors
 import psana.pscalib.calib.MDBWebUtils as wu
+
+import logging
+logger = logging.getLogger(__name__)
 
 class InvalidDataSourceArgument(Exception): pass
 
@@ -151,9 +153,9 @@ class DataSourceBase(abc.ABC):
 
     def _start_prometheus_client(self, mpi_rank=0):
         if not self.monitor:
-            logging.info('ds_base: RUN W/O PROMETHEUS CLENT')
+            logger.debug('ds_base: RUN W/O PROMETHEUS CLENT')
         else:
-            logging.info('ds_base: START PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
+            logger.debug('ds_base: START PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
             self.e = threading.Event()
             self.t = threading.Thread(name='PrometheusThread%s'%(mpi_rank),
                     target=self.prom_man.push_metrics,
@@ -165,7 +167,7 @@ class DataSourceBase(abc.ABC):
         if not self.monitor:
             return
 
-        logging.info('ds_base: END PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
+        logger.debug('ds_base: END PROMETHEUS CLIENT (JOBID:%s RANK: %d)'%(self.prom_man.jobid, mpi_rank))
         self.e.set()
 
     def _apply_detector_selection(self):
@@ -181,7 +183,7 @@ class DataSourceBase(abc.ABC):
             # Get tmp configs using SmdReader
             # this smd_fds, configs, and SmdReader will not be used later
             smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
-            logging.info(f'ds_base: smd0 opened tmp smd_fds: {smd_fds}')
+            logger.debug(f'ds_base: smd0 opened tmp smd_fds: {smd_fds}')
             smdr_man = SmdReaderManager(smd_fds, self.dsparms)
             all_configs = smdr_man.get_next_dgrams()
             
@@ -202,7 +204,7 @@ class DataSourceBase(abc.ABC):
     xtc_files n_selected/n_total: {len(xtc_files)}/{len(self.xtc_files)}
     {','.join([os.path.basename(xtc_file) for xtc_file in xtc_files])}
     """
-                logging.info(msg)
+                logger.debug(msg)
             else:
                 xtc_files = self.xtc_files[:]
                 smd_files = self.smd_files[:]
@@ -218,14 +220,14 @@ class DataSourceBase(abc.ABC):
                         smd_files[i] = xtc_files[i]
                         use_smds[i] = True
                     msg += f'   smd_files[{i}]={os.path.basename(smd_files[i])} use_smds[{i}]={use_smds[i]}\n'
-                logging.info(msg)
+                logger.debug(msg)
             
             self.xtc_files = xtc_files
             self.smd_files = smd_files
             
             for smd_fd in smd_fds:
                 os.close(smd_fd)
-            logging.info(f"ds_base: close tmp smd fds:{smd_fds}")
+            logger.debug(f"ds_base: close tmp smd fds:{smd_fds}")
 
         self.dsparms.set_use_smds(use_smds)
 
@@ -377,6 +379,6 @@ class DataSourceBase(abc.ABC):
         if self.smd_fds is not None:
             for fd in self.smd_fds:
                 os.close(fd)
-            logging.info(f'ds_base: close smd fds: {self.smd_fds}')
+            logger.debug(f'ds_base: close smd fds: {self.smd_fds}')
 
 

@@ -1,10 +1,12 @@
 from psana.smdreader import SmdReader
 from psana.eventbuilder import EventBuilder
-from psana.psexp.tools import Logging as logging
 from psana.psexp import *
 import os, time
 from psana import dgram
 from psana.event import Event
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class BatchIterator(object):
@@ -74,7 +76,7 @@ class SmdReaderManager(object):
         st = time.time()
         self.smdr.get()
         en = time.time()
-        logging.info(f'smdreader_manager: read {self.smdr.got/1e6:.5f} MB took {en-st}s. rate: {self.smdr.got/(1e6*(en-st))} MB/s')
+        logger.debug(f'smdreader_manager: read {self.smdr.got/1e6:.5f} MB took {en-st}s. rate: {self.smdr.got/(1e6*(en-st))} MB/s')
         self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
         self.c_read.labels('seconds', 'None').inc(en-st)
         
@@ -85,7 +87,7 @@ class SmdReaderManager(object):
     def get_next_dgrams(self):
         if self.dsparms.max_events > 0 and \
                 self.processed_events >= self.dsparms.max_events:
-            logging.info(f'smdreader_manager: get_next_dgrams max_events={self.dsparms.max_events} reached')
+            logger.debug(f'smdreader_manager: get_next_dgrams max_events={self.dsparms.max_events} reached')
             return None
 
         dgrams = None
@@ -150,10 +152,10 @@ class SmdReaderManager(object):
                 self.processed_events += self.got_events
                 
                 # sending data to prometheus
-                logging.info('smdreader_manager: smd0 got %d events'%(self.got_events))
+                logger.debug('smdreader_manager: smd0 got %d events'%(self.got_events))
 
                 if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
-                    logging.info(f'smdreader_manager: max_events={self.dsparms.max_events} reached')
+                    logger.debug(f'smdreader_manager: max_events={self.dsparms.max_events} reached')
                     is_done = True
                 
                 smd_view = bytearray()

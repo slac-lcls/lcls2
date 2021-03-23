@@ -48,31 +48,4 @@ class ConfigHelper(object):
             self.ds.xtc_files = sel_xtc_files
             self.ds._configs  = sel_configs
 
-logger_name = "psana_psexp"
-dlogger_name = "psana_psexp_debug"
-class Logging(object):
-
-    @classmethod
-    def info(self, msg):
-        if not hasattr(self, 'logger'): 
-            self.logger = logging.getLogger(logger_name)
-        self.logger.debug(msg)
-    
-    @classmethod
-    def debug(self, msg):
-        if not hasattr(self, 'dlogger'): 
-            self.dlogger = logging.getLogger(dlogger_name)
-        self.dlogger.debug(msg)
-
-def show_log(debug=False):
-    if debug:
-        logger = logging.getLogger(dlogger_name)
-    else:
-        logger = logging.getLogger(logger_name)
-    logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('(%(threadName)-10s) %(message)s')
-    ch.setFormatter(formatter)
-    logger.addHandler(ch)
 

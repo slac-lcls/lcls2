@@ -10,7 +10,6 @@ import psana.pscalib.calib.MDBWebUtils as wu
 from psana.detector.detector_impl import MissingDet
 from psana.event import Event
 from psana.psexp import *
-import logging
 
 
 class DetectorNameError(Exception): pass

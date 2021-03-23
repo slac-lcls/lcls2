@@ -5,7 +5,9 @@ from psana.dgrammanager import DgramManager
 import numpy as np
 import os
 from psana.smalldata import SmallData
+
 import logging
+logger = logging.getLogger(__name__)
 
 class SerialDataSource(DataSourceBase):
 
@@ -26,7 +28,7 @@ class SerialDataSource(DataSourceBase):
     def _setup_configs(self):
         super()._close_opened_smd_files()
         self.smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
-        logging.info(f'serial_ds: opened smd_fds: {self.smd_fds}')
+        logger.debug(f'serial_ds: opened smd_fds: {self.smd_fds}')
         self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms)
         self._configs = self.smdr_man.get_next_dgrams()
         super()._setup_det_class_table()

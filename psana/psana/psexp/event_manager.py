@@ -3,8 +3,10 @@ from psana.event import Event
 from psana.psexp import PacketFooter, TransitionId, PrometheusManager
 import numpy as np
 import os
-from psana.psexp.tools import Logging as logging
 import time
+
+import logging
+logger = logging.getLogger(__name__)
 
 s_bd_just_read = PrometheusManager.get_metric('psana_bd_just_read')
 s_bd_gen_smd_batch = PrometheusManager.get_metric('psana_bd_gen_smd_batch')
@@ -68,7 +70,7 @@ class EventManager(object):
         rate = 0
         if sum_read_nbytes > 0:
             rate = (sum_read_nbytes/1e6)/(en-st)
-        logging.info(f"event_manager: bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
+        logger.debug(f"event_manager: bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
         self._inc_prometheus_counter('MB', sum_read_nbytes/1e6)
         self._inc_prometheus_counter('seconds', en-st)
         return 
@@ -83,7 +85,7 @@ class EventManager(object):
         rate            = 0
         if dgram._size > 0:
             rate = (dgram._size/1e6)/(en-st)
-        logging.info(f"event_manager: bd reads dgram{dgram_i} {dgram._size/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
+        logger.debug(f"event_manager: bd reads dgram{dgram_i} {dgram._size/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
         self._inc_prometheus_counter('MB', dgram._size/1e6)
         self._inc_prometheus_counter('seconds', en-st)
         return dgram

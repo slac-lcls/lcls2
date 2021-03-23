@@ -1,5 +1,4 @@
 from psana.psexp import EventManager
-import logging
 import types
 
 class Events:

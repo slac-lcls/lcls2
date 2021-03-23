@@ -17,8 +17,14 @@ def global_except_hook(exctype, value, traceback):
     sys.__excepthook__(exctype, value, traceback)
 sys.excepthook = global_except_hook
 
-#from psana.psexp.tools import show_log
-#show_log()
+#import logging
+#logger = logging.getLogger('psana.psexp.node')
+#logger.setLevel(logging.DEBUG)
+#ch = logging.StreamHandler()
+#ch.setLevel(logging.DEBUG)
+#formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#ch.setFormatter(formatter)
+#logger.addHandler(ch)
 
 import os
 import vals

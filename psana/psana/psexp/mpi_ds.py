@@ -7,7 +7,9 @@ from psana.event import Event
 from psana.dgrammanager import DgramManager
 from psana.smalldata import SmallData
 import time
-from psana.psexp.tools import Logging as logging
+
+import logging
+logger = logging.getLogger(__name__)
 
 from psana.psexp.tools import mode
 if mode == 'mpi':
@@ -127,7 +129,7 @@ class MPIDataSource(DataSourceBase):
         if nodetype == 'smd0':
             super()._close_opened_smd_files()
             self.smd_fds  = np.array([os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files], dtype=np.int32)
-            logging.info(f'mpi_ds: smd0 opened smd_fds: {self.smd_fds}')
+            logger.debug(f'mpi_ds: smd0 opened smd_fds: {self.smd_fds}')
             self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms)
             self._configs = self.smdr_man.get_next_dgrams()
             super()._setup_det_class_table()

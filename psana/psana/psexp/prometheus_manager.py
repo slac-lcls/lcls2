@@ -1,6 +1,8 @@
 import time
 from prometheus_client import CollectorRegistry, Counter, push_to_gateway, Summary, Gauge
-from psana.psexp.tools import Logging as logging
+
+import logging
+logger = logging.getLogger(__name__)
 
 PUSH_INTERVAL_SECS  = 5
 PUSH_GATEWAY        = 'psdm03:9091'
@@ -42,7 +44,7 @@ class PrometheusManager(object):
     def push_metrics(self, e, from_whom=''):
         while not e.isSet():
             push_to_gateway(PUSH_GATEWAY, job='psana_pushgateway', grouping_key={'jobid': self.jobid, 'rank': from_whom}, registry=registry, timeout=None)
-            logging.info('TS: %s PUSHED JOBID: %s RANK: %s e.isSet():%s'%(time.time(), self.jobid, from_whom, e.isSet()))
+            logger.debug('TS: %s PUSHED JOBID: %s RANK: %s e.isSet():%s'%(time.time(), self.jobid, from_whom, e.isSet()))
             time.sleep(PUSH_INTERVAL_SECS)
         
     @staticmethod
