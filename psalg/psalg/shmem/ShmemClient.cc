@@ -237,28 +237,29 @@ using namespace XtcData;
 using namespace psalg::shmem;
 
 ShmemClient::ShmemClient() :
-  _tag             (nullptr),
-  _myTrFd          (-1),
-  _handler         (0),
-  _inputEvQueueIdx (0),
-  _numberOfEvQueues(0),
-  _myInputEvQueue  ((mqd_t)-1),
-  _myOutputEvQueue (nullptr)
+  _myTrFd           (-1),
+  _handler          (0),
+  _numberOfEvQueues (0),
+  _myInputEvQueue   ((mqd_t)-1),
+  _myOutputEvQueue  (nullptr)
 {
 }
 
 ShmemClient::~ShmemClient()
 {
-  printf("Not Unlinking Shared Memory... \n");
+  if (_myInputEvQueue != (mqd_t)-1)        mq_close(_myInputEvQueue);
 
-  unlink();
+  for (unsigned i = 0; i < _numberOfEvQueues; ++i)
+  {
+    if (_myOutputEvQueue[i] != (mqd_t)-1)  mq_close(_myOutputEvQueue[i]);
+  }
+
+  // Avoid race with server and let it unlink the mqueues
 
   if (_handler)  delete _handler;
   delete [] _myOutputEvQueue;
 
   if (!(_myTrFd < 0))  ::close(_myTrFd);
-
-  if (_tag)  ::free((void*)_tag);
 }
 
 /*
@@ -313,8 +314,6 @@ int ShmemClient::connect(const char* tag, int tr_index) {
 
   XtcMonitorMsg myMsg;
   unsigned priority;
-
-  _tag = strdup(tag);
 
   //
   //  Request initialization
@@ -387,7 +386,6 @@ int ShmemClient::connect(const char* tag, int tr_index) {
   close(shm);  // Done with the file descriptor
 
   int ev_index = myMsg.bufferIndex();
-  _inputEvQueueIdx = ev_index;
   XtcMonitorMsg::eventInputQueue(tag,ev_index,qname);
   _myInputEvQueue = _openQueue(qname, O_RDONLY, PERMS_IN);
   if (_myInputEvQueue == (mqd_t)-1)
@@ -438,25 +436,4 @@ int ShmemClient::connect(const char* tag, int tr_index) {
                               tag,myShm);
 
   return 0;
-}
-
-void ShmemClient::unlink()
-{
-  if (_myInputEvQueue != (mqd_t)-1)                mq_close(_myInputEvQueue);
-
-  for (unsigned i = 0; i < _numberOfEvQueues; ++i)
-  {
-    if (_myOutputEvQueue[i] != (mqd_t)-1)          mq_close(_myOutputEvQueue[i]);
-  }
-
-  char* qname = new char[128];
-  for(unsigned i=0; i<_numberOfEvQueues; i++)
-  {
-    XtcMonitorMsg::eventInputQueue(_tag,i,qname);  mq_unlink(qname);  printf("Closed & unlinked queue %s\n", qname);
-  }
-  unsigned n = _inputEvQueueIdx;
-  XtcMonitorMsg::eventInputQueue  (_tag,n,qname);  mq_unlink(qname);  printf("Closed & unlinked queue %s\n", qname);
-
-  // Avoid race with server and let it unlink the discovery queue
-  //XtcMonitorMsg::discoveryQueue   (_tag,qname);    mq_unlink(qname);
 }
