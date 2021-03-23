@@ -336,7 +336,7 @@ int ShmemClient::connect(const char* tag, int tr_index) {
 	return ++error;
     }
 
-  mq_close(discoveryQueue);  printf("Closed queue %s\n", qname);
+  mq_close(discoveryQueue);
 
   sockaddr_in saddr;
   saddr.sin_family = AF_INET;
