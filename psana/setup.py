@@ -128,7 +128,7 @@ if 'PSANA' in BUILD_LIST :
     }
 
 
-if 'SHMEM' in BUILD_LIST :
+if 'SHMEM' in BUILD_LIST and sys.platform != 'darwin':
     ext = Extension('shmem',
                     sources=["psana/shmem/shmem.pyx"],
                     libraries = ['xtc','shmemcli'],
