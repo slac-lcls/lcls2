@@ -1,4 +1,5 @@
 import os
+import gc
 from psana.psexp.tools import mode
 world_size = 1
 if mode == 'mpi':
@@ -26,6 +27,9 @@ from psana.psexp.legion_ds     import LegionDataSource
 from psana.psexp.null_ds       import NullDataSource
 
 def DataSource(*args, **kwargs):
+    # force garbage collection to clean up old DataSources, in
+    # particular to cause destructors to run to close old shmem msg queues
+    gc.collect()
     args = tuple(map(str, args)) # Hack: workaround for unicode and str being different types in Python 2
 
     # ==== shared memory ====
