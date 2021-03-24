@@ -32,7 +32,6 @@ if(APPLE)
         utils
         calib
         geometry
-        peaks
         digitizer
         detector
     )
