@@ -5,7 +5,9 @@ add_subdirectory(geometry)
 add_subdirectory(alloc)
 add_subdirectory(digitizer)
 add_subdirectory(detector)
-add_subdirectory(shmem)
+if (NOT APPLE)
+  add_subdirectory(shmem)
+endif()
 
 add_library(psalg SHARED
     calib/src/ArrayIO.cc
