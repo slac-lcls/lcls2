@@ -3,7 +3,11 @@ import time
 import getopt
 import pprint
 
-from shmem import PyShmemClient
+try:
+    # doesn't exist on macos
+    from shmem import PyShmemClient
+except:
+    pass
 from psana import dgram
 from psana.event import Event
 from psana.detector import detectors
