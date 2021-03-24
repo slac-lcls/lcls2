@@ -80,7 +80,7 @@ ENTRY_POINTS = {}
 if 'PSANA' in BUILD_LIST :
     dgram_module = Extension('psana.dgram',
                             sources = ['src/dgram.cc'],
-                            libraries = ['xtc','shmemcli'],
+                            libraries = ['xtc'],
                             include_dirs = ['src', np.get_include(), os.path.join(instdir, 'include')],
                             library_dirs = [os.path.join(instdir, 'lib')],
                             extra_link_args = extra_link_args_rpath,
