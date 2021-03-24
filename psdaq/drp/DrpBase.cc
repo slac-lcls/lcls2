@@ -301,12 +301,12 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
             json msg = createPulseIdMsg(pulseId);
             m_inprocSend.send(msg.dump());
 
-            logging::info("EbReceiver saw %s transition @ %u.%09u (%014lx)",
+            logging::info("EbReceiver saw %s @ %u.%09u (%014lx)",
                            XtcData::TransitionId::name(transitionId),
                           dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }
         else {
-            logging::debug("EbReceiver saw %s transition @ %u.%09u (%014lx)",
+            logging::debug("EbReceiver saw %s @ %u.%09u (%014lx)",
                            XtcData::TransitionId::name(transitionId),
                            dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }

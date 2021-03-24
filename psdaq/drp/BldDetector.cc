@@ -451,13 +451,13 @@ Pds::EbDgram* Pgp::_handle(uint32_t& current, uint64_t& bytes)
     XtcData::TransitionId::Value transitionId = timingHeader->service();
     if (transitionId != XtcData::TransitionId::L1Accept) {
         if (transitionId != XtcData::TransitionId::SlowUpdate) {
-            logging::info("PGPReader  saw %s transition @ %u.%09u (%014lx)",
+            logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
                           XtcData::TransitionId::name(transitionId),
                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                           timingHeader->pulseId());
         }
         else {
-            logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",
+            logging::debug("PGPReader  saw %s @ %u.%09u (%014lx)",
                            XtcData::TransitionId::name(transitionId),
                            timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                            timingHeader->pulseId());

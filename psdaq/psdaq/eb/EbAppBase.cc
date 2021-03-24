@@ -316,16 +316,16 @@ int EbAppBase::process()
     auto svc = idg->service();
     if (svc != XtcData::TransitionId::L1Accept) {
       if (svc != XtcData::TransitionId::SlowUpdate) {
-        logging::info("EbAppBase  saw %s transition @ %u.%09u (%014lx)",
+        logging::info("EbAppBase  saw %s @ %u.%09u (%014lx) from DRP ID %2u @ %16p (%08zx + %2u * %08zx)",
                       XtcData::TransitionId::name(svc),
                       idg->time.seconds(), idg->time.nanoseconds(),
-                      idg->pulseId());
+                      idg->pulseId(), src, idg, _bufRegSize[src], idx, _maxTrSize[src]);
       }
       else {
-        logging::debug("EbAppBase  saw %s transition @ %u.%09u (%014lx)",
+        logging::debug("EbAppBase  saw %s @ %u.%09u (%014lx) from DRP ID %2u @ %16p (%08zx + %2u * %08zx)",
                        XtcData::TransitionId::name(svc),
                        idg->time.seconds(), idg->time.nanoseconds(),
-                       idg->pulseId());
+                       idg->pulseId(), src, idg, _bufRegSize[src], idx, _maxTrSize[src]);
       }
     }
   }

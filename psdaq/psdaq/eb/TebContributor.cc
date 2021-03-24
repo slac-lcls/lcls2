@@ -405,6 +405,25 @@ void TebContributor::_post(const EbDgram* dgram)
                "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u @ %16p, data %08x\n",
                svc, dgram, ctl, pid, env, sz, src, rmtAdx, data);
       }
+      else
+      {
+        auto svc = dgram->service();
+        if (svc != XtcData::TransitionId::L1Accept) {
+          void* rmtAdx = (void*)link->rmtAdx(offset);
+          if (svc != XtcData::TransitionId::SlowUpdate) {
+            logging::info("TebCtrb   sent %s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08zx + %u * %08zx)",
+                          XtcData::TransitionId::name(svc),
+                          dgram->time.seconds(), dgram->time.nanoseconds(),
+                          dgram->pulseId(), src, rmtAdx, _batMan.batchRegionSize(), idx, sizeof(*dgram));
+          }
+          else {
+            logging::debug("TebCtrb   sent %s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08zx + %u * %08zx)",
+                           XtcData::TransitionId::name(svc),
+                           dgram->time.seconds(), dgram->time.nanoseconds(),
+                           dgram->pulseId(), src, rmtAdx, _batMan.batchRegionSize(), idx, sizeof(*dgram));
+          }
+        }
+      }
 
       rc = link->post(dgram, sz, offset, data); // Not a batch; Continue on error
       if (rc)

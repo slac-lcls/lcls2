@@ -92,7 +92,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
             }
             // transitions
             else {
-                logging::debug("PGPDetector saw %s transition @ %u.%09u (%014lx)",
+                logging::debug("PGPDetector saw %s @ %u.%09u (%014lx)",
                                XtcData::TransitionId::name(transitionId),
                                dgram->time.seconds(), dgram->time.nanoseconds(), timingHeader->pulseId());
                 // Allocate a transition dgram from the pool and initialize its header
@@ -251,12 +251,12 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                 XtcData::TransitionId::Value transitionId = timingHeader->service();
                 if (transitionId != XtcData::TransitionId::L1Accept) {
                     if (transitionId!=XtcData::TransitionId::SlowUpdate) {
-                        logging::info("PGPReader  saw %s transition @ %u.%09u (%014lx)",
+                        logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
                                       XtcData::TransitionId::name(transitionId),
                                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                       timingHeader->pulseId());
                     } else {
-                        logging::debug("PGPReader  saw %s transition @ %u.%09u (%014lx)",
+                        logging::debug("PGPReader  saw %s @ %u.%09u (%014lx)",
                                        XtcData::TransitionId::name(transitionId),
                                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                        timingHeader->pulseId());

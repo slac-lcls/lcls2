@@ -227,7 +227,7 @@ int MebContributor::post(const EbDgram* dgram)
     if (unlikely(_verbose >= VL_BATCH))
     {
       printf("MebCtrb rcvd transition buffer           [%2u] @ "
-             "%16p, ofs %016lx = %08lx + %2u * %08lx,     src %2u\n",
+             "%16p, ofs %016lx = %08zx + %2u * %08zx,     src %2u\n",
              idx, (void*)link->rmtAdx(0), offset, _bufRegSize, idx, _maxTrSize, src);
 
       uint64_t pid    = dgram->pulseId();
@@ -237,6 +237,25 @@ int MebContributor::post(const EbDgram* dgram)
       printf("MebCtrb posts %9lu %15s       @ "
              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x\n",
              _eventCount, TransitionId::name(svc), dgram, ctl, pid, env, sz, src, rmtAdx, data);
+    }
+    else
+    {
+      auto svc = dgram->service();
+      if (svc != XtcData::TransitionId::L1Accept) {
+        void* rmtAdx = (void*)link->rmtAdx(offset);
+        if (svc != XtcData::TransitionId::SlowUpdate) {
+          logging::info("MebCtrb   sent %s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08zx + %u * %08zx)",
+                        XtcData::TransitionId::name(svc),
+                        dgram->time.seconds(), dgram->time.nanoseconds(),
+                        dgram->pulseId(), src, rmtAdx, _bufRegSize, idx, _maxTrSize);
+        }
+        else {
+          logging::debug("MebCtrb   sent %s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08zx + %u * %08zx)",
+                         XtcData::TransitionId::name(svc),
+                         dgram->time.seconds(), dgram->time.nanoseconds(),
+                         dgram->pulseId(), src, rmtAdx, _bufRegSize, idx, _maxTrSize);
+        }
+      }
     }
 
     rc = link->post(dgram, sz, offset, data); // Not a batch; Continue on error
