@@ -1016,7 +1016,9 @@ int main(int argc, char* argv[])
                 para.instrument = optarg;
                 break;
             case 'k':
-                kwargs_str = std::string(optarg);
+                kwargs_str = kwargs_str.empty()
+                           ? optarg
+                           : kwargs_str + ", " + optarg;
                 break;
             case 'M':
                 para.prometheusDir = optarg;
