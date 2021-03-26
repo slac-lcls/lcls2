@@ -30,6 +30,7 @@ static void usage(const char* p) {
   printf("          -e <code> : event code\n");
   printf("          -r <rate> : fixed rate\n");
   printf("          -p <part> : partition\n");
+  printf("          -z        : wait for key before exit\n");
 }
 
 int main(int argc, char** argv) {
@@ -39,6 +40,7 @@ int main(int argc, char** argv) {
 
   int c;
   bool lUsage = false;
+  bool lSleep = false;
   unsigned output  = 0;
   unsigned channel = 10;
   int      mode    = -1;
@@ -48,7 +50,7 @@ int main(int argc, char** argv) {
 
   //char* endptr;
 
-  while ( (c=getopt( argc, argv, "c:d:w:o:t:r:e:p:h?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "c:d:w:o:t:r:e:p:zh?")) != EOF ) {
     switch(c) {
     case 'c':
       channel = strtoul(optarg,NULL,0);
@@ -92,6 +94,9 @@ int main(int argc, char** argv) {
       }
       mode = 2;
       rate = strtoul(optarg,NULL,0);
+      break;
+    case 'z':
+      lSleep = true;
       break;
     case 'h':
       usage(argv[0]);
@@ -139,6 +144,14 @@ int main(int argc, char** argv) {
 
   client.reg().base.dump();
   client.release();
+
+  if (lSleep) {
+    printf("%s: waiting for <Ctrl-C> (SIGINT)\n", argv[0]);
+    while (true) {
+      sleep(30);
+    }
+    printf("done\n");
+  }
 
   return 0;
 }
