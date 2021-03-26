@@ -224,7 +224,7 @@ unsigned Opal::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
 {
     // set up the names for L1Accept data
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
-    Alg alg("raw", 2, 0, 1);
+    Alg alg("raw", 2, 0, 0);
     Names& eventNames = *new(xtc) Names(m_para->detName.c_str(), alg,
                                         m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
 

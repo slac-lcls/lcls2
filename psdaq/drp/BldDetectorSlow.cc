@@ -586,7 +586,10 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     XtcData::NamesLookup& namesLookup = m_det->namesLookup();
 
     //  Poll
-    unsigned tmo = 50; // milliseconds
+    // this was 4ms, but EBeam bld timed out in rix intermittently,
+    // increased it to 50ms, but then we get deadtime running bld
+    // with no eventcode 136 @120Hz.  120Hz corresponds to 8ms, so try 7ms.
+    unsigned tmo = 7; // milliseconds
     {
         std::map<std::string,std::string>::iterator it = m_para.kwargs.find("timeout");
         if (it != m_para.kwargs.end())
