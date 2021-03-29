@@ -612,13 +612,15 @@ class ProcMgr:
               (gotid != bytes(self.uniqueid, 'utf-8')) and \
               (not gotid.endswith(bytes(self.uniqueid+".log", 'utf-8')))):
               print("*** ERR: found %r, expected %r on host %s port %s" % \
-                  (gotid, self.uniqueid, self.host, self.ctrlport))
-          else:
-              # add an entry to the dictionary
-              key = makekey(self.host, self.uniqueid)
-              self.d[key] = \
-                [ self.tmpstatus, self.pid, self.cmd, self.ctrlport, self.ppid, self.flags, self.getid, self.conda, self.env, self.rtprio]
-                # DICT_STATUS  DICT_PID  DICT_CMD  DICT_CTRL      DICT_PPID  DICT_FLAGS  DICT_GETID DICT_CONDA DICT_ENV DICT_RTPRIO
+                  (gotid.decode(), self.uniqueid, self.host, self.ctrlport))
+              self.uniqueid = gotid.decode()
+              self.cmd = 'error'
+
+          # add an entry to the dictionary
+          key = makekey(self.host, self.uniqueid)
+          self.d[key] = \
+            [ self.tmpstatus, self.pid, self.cmd, self.ctrlport, self.ppid, self.flags, self.getid, self.conda, self.env, self.rtprio]
+            # DICT_STATUS  DICT_PID  DICT_CMD  DICT_CTRL      DICT_PPID  DICT_FLAGS  DICT_GETID DICT_CONDA DICT_ENV DICT_RTPRIO
 
     def spawnXterm(self, name, host, port, large=False):
         if large:
@@ -747,7 +749,7 @@ class ProcMgr:
 
             if (nonePrinted == 1):
               # print heading, once
-              print("Host          UniqueID     Status     PID    PORT   Command+Args")
+              print("Host           UniqueID     Status     PID     PORT   Command+Args")
               nonePrinted = 0
 
             if (self.d[key][self.DICT_STATUS] == self.STATUS_NOCONNECT):
@@ -759,7 +761,7 @@ class ProcMgr:
             if showhost == 'localhost':
                 showhost = self.procmgr_macro.get('HOST', 'localhost')
 
-            print("%-13s %-12s %-10s %-5s  %-5s  %s" % \
+            print("%-14s %-12s %-10s %-6s  %-5s  %s" % \
                     (showhost, showId, \
                     self.d[key][self.DICT_STATUS], \
                     self.d[key][self.DICT_PID].decode(), \
