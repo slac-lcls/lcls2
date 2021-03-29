@@ -32,6 +32,7 @@ class RunParallel(Run):
         
         self._get_runinfo()
         self.esm = EnvStoreManager(self.configs)
+        self.esm.update_by_event(self._evt)
 
     def events(self):
         evt_iter = self.start()

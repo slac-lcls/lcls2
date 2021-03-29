@@ -25,7 +25,7 @@ def global_except_hook(exctype, value, traceback):
     mpi4py.MPI.COMM_WORLD.Abort(1)
     sys.__excepthook__(exctype, value, traceback)
 
-sys.excepthook = global_except_hook
+#sys.excepthook = global_except_hook
 
 from mpi4py import MPI
 comm = MPI.COMM_WORLD

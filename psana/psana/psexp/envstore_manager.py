@@ -42,7 +42,8 @@ class EnvStoreManager(object):
 
             if new_d.service() == TransitionId.SlowUpdate:
                 self.stores['epics'].add_to(new_d, i)
-            elif new_d.service() == TransitionId.BeginStep:
+            elif new_d.service() == TransitionId.BeginStep or \
+                    new_d.service() == TransitionId.BeginRun:
                 self.stores['scan'].add_to(new_d, i)
                 
                 # For BeginStep, checks if self.configs need to be updated.

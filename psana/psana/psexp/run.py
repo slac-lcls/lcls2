@@ -201,6 +201,7 @@ class RunShmem(Run):
         self.configs   = ds._configs
         super()._get_runinfo()
         self.esm = EnvStoreManager(self.configs)
+        self.esm.update_by_event(self._evt)
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms, 
                 filter_callback=ds.dsparms.filter)
     
@@ -232,6 +233,7 @@ class RunSingleFile(Run):
         self.configs   = ds._configs
         super()._get_runinfo()
         self.esm = EnvStoreManager(self.configs)
+        self.esm.update_by_event(self._evt)
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms, 
                 filter_callback=ds.dsparms.filter)
     
@@ -263,6 +265,7 @@ class RunSerial(Run):
         self.configs   = ds._configs
         super()._get_runinfo()
         self.esm = EnvStoreManager(self.configs)
+        self.esm.update_by_event(self._evt)
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms, 
                 filter_callback=ds.dsparms.filter, smdr_man=ds.smdr_man)
     
@@ -295,6 +298,7 @@ class RunLegion(Run):
         self.dm         = ds.dm
         self.configs    = ds._configs
         self.esm        = EnvStoreManager(self.configs)
+        self.esm.update_by_event(self._evt)
         super()._get_runinfo()
     
     def analyze(self, **kwargs):
