@@ -4,7 +4,6 @@ from bluesky import RunEngine
 from ophyd.status import Status
 import sys
 import logging
-from psalg.utils.syslog import SysLog
 import threading
 import asyncio
 import time
@@ -52,7 +51,7 @@ if args.v:
     level=logging.DEBUG
 else:
     level=logging.WARNING
-logger = SysLog(instrument=instrument, level=level)
+logging.basicConfig(level=level)
 logging.info('logging initialized')
 
 # get initial DAQ state

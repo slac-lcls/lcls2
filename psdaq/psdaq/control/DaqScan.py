@@ -4,7 +4,6 @@ from bluesky import RunEngine
 from ophyd.status import Status
 import sys
 import logging
-from psalg.utils.syslog import SysLog
 import threading
 import zmq
 import asyncio
