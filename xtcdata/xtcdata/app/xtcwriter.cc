@@ -20,7 +20,7 @@ using namespace XtcData;
 
 #define BUFSIZE 0x4000000
 
-enum MyNamesId {HsdRaw,HsdFex,Cspad,Epics,EpicsInfo,Scan,RunInfo,NumberOf};
+enum MyNamesId {HsdRaw,HsdFex,Cspad,Epics,EpicsInfo,Scan,RunInfo,HsdCfg,HsdRun,NumberOf};
 
 class RunInfoDef:public VarDef
 {
@@ -119,6 +119,22 @@ public:
 } PgpDef;
 
 
+class PgpScanDef:public VarDef
+{
+public:
+  enum index
+    {
+      intPgp
+    };
+
+
+   PgpScanDef()
+   {
+     NameVec.push_back({"intPgp",Name::INT64,0});
+   }
+} PgpScanDef;
+
+
 class PadDef:public VarDef
 {
 public:
@@ -160,6 +176,36 @@ void scanExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
     scan.set_value(ScanDef::Motor1, (float)41.0);
     scan.set_value(ScanDef::Motor2, (double)42.0);
 }
+
+class HsdCfgDef:public VarDef
+{
+public:
+  enum index
+    {
+      enable,
+      raw_prescale
+    };
+
+  HsdCfgDef()
+   {
+       NameVec.push_back({"enable",Name::UINT64,1});
+       NameVec.push_back({"raw_prescale",Name::UINT64,1});
+   }
+} HsdCfgDef;
+
+class HsdRunDef:public VarDef
+{
+public:
+  enum index
+    {
+        raw_prescale
+    };
+
+  HsdRunDef()
+   {
+       NameVec.push_back({"raw_prescale",Name::UINT64,1});
+   }
+} HsdRunDef;
 
 class DebugIter : public XtcIterator
 {
@@ -490,6 +536,45 @@ void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned seg
     namesLookup[namesId2] = NameIndex(padNames);
 }
 
+void addCfgNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
+    // Configuration data
+    Alg hsdCfgAlg("config",2,0,0);
+    NamesId namesId0(nodeId,MyNamesId::HsdCfg+MyNamesId::NumberOf*segment);
+    Names& cfgNames = *new(xtc) Names("xpphsd", hsdCfgAlg, "hsd", "detnum1234", namesId0, segment);
+    cfgNames.add(xtc, HsdCfgDef);
+    namesLookup[namesId0] = NameIndex(cfgNames);
+
+    // Configuration update on BeginRun data
+    Alg hsdRunAlg("config",2,0,0);
+    NamesId namesId1(nodeId,MyNamesId::HsdRun+MyNamesId::NumberOf*segment);
+    Names& runNames = *new(xtc) Names("xpphsd", hsdRunAlg, "hsd", "detnum1234", namesId1, segment);
+    runNames.add(xtc, HsdRunDef);
+    namesLookup[namesId1] = NameIndex(runNames);
+}
+
+void addCfgData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
+    NamesId namesId(nodeId,MyNamesId::HsdCfg+MyNamesId::NumberOf*segment);
+    CreateData cd(xtc, namesLookup, namesId);
+    unsigned shape[MaxRank];
+    shape[0] = 4;
+    { Array<uint64_t> arrayT = cd.allocate<uint64_t>(HsdCfgDef::enable,shape);
+        for(unsigned i=0; i<shape[0]; i++)
+            arrayT(i) = i; }
+    { Array<uint64_t> arrayT = cd.allocate<uint64_t>(HsdCfgDef::raw_prescale,shape);
+        for(unsigned i=0; i<shape[0]; i++)
+            arrayT(i) = i+100*segment; }
+}
+
+void addCfgRunData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
+    NamesId namesId(nodeId,MyNamesId::HsdRun+MyNamesId::NumberOf*segment);
+    CreateData cd(xtc, namesLookup, namesId);
+    unsigned shape[MaxRank];
+    shape[0] = 4;
+    { Array<uint64_t> arrayT = cd.allocate<uint64_t>(HsdRunDef::raw_prescale,shape);
+        for(unsigned i=0; i<shape[0]; i++)
+            arrayT(i) = i+100*segment+1000; }
+}
+
 void addData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
     NamesId namesId0(nodeId,MyNamesId::HsdRaw+MyNamesId::NumberOf*segment);
     pgpExample(xtc, namesLookup, namesId0);
@@ -498,22 +583,6 @@ void addData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segme
     NamesId namesId2(nodeId,MyNamesId::Cspad+MyNamesId::NumberOf*segment);
     padExample(xtc, namesLookup, namesId2);
 }
-
-class HsdConfigDef:public VarDef
-{
-public:
-  enum index
-    {
-      enable,
-      raw_prescale
-    };
-
-  HsdConfigDef()
-   {
-       NameVec.push_back({"enable",Name::UINT64,1});
-       NameVec.push_back({"raw_prescale",Name::UINT64,1});
-   }
-} HsdConfigDef;
 
 void usage(char* progname)
 {
@@ -679,8 +748,10 @@ int main(int argc, char* argv[])
         addScanNames(config.xtc, namesLookup, nodeid1, iseg);
     }
     for (unsigned iseg=0; iseg<nSegments; iseg++) {
-        addNames(config.xtc, namesLookup, nodeid1, iseg+starting_segment);
-        addData(config.xtc, namesLookup, nodeid1, iseg+starting_segment);
+        addNames   (config.xtc, namesLookup, nodeid1, iseg+starting_segment);
+        addData    (config.xtc, namesLookup, nodeid1, iseg+starting_segment);
+        addCfgNames(config.xtc, namesLookup, nodeid1, iseg+starting_segment);
+        addCfgData (config.xtc, namesLookup, nodeid1, iseg+starting_segment);
     }
 
     save(config,xtcFile);
@@ -692,6 +763,9 @@ int main(int argc, char* argv[])
                                        counting_timestamps,
                                        timestamp_val);
     addRunInfoData(beginRunTr.xtc, namesLookup, nodeid1);
+    for (unsigned iseg=0; iseg<nSegments; iseg++) {
+        addCfgRunData (beginRunTr.xtc, namesLookup, nodeid1, iseg);
+    }
     save(beginRunTr, xtcFile);
 
     for (unsigned istep=0; istep<nmotorsteps; istep++) {
