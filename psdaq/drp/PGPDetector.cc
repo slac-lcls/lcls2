@@ -95,8 +95,9 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 logging::debug("PGPDetector saw %s @ %u.%09u (%014lx)",
                                XtcData::TransitionId::name(transitionId),
                                dgram->time.seconds(), dgram->time.nanoseconds(), timingHeader->pulseId());
-                // Allocate a transition dgram from the pool and initialize its header
-                Pds::EbDgram* trDgram = pool.allocateTr();
+                // Initialize the transition dgram's header
+                Pds::EbDgram* trDgram = event->transitionDgram;
+                if (!trDgram)  continue; // Can occur when shutting down
                 memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
                 if (transitionId != XtcData::TransitionId::SlowUpdate) {
                    // copy the temporary xtc created on phase 1 of the transition
@@ -110,14 +111,18 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
                 // make sure the detector hasn't made the transition too big
                 size_t size = sizeof(*trDgram) + trDgram->xtc.sizeofPayload();
                 if (size > para.maxTrSize) {
-                    logging::critical("Transition: buffer size (%zd) too small for Dgram (%zd)", para.maxTrSize, size);
+                    logging::critical("%s: buffer size (%zd) too small for Dgram (%zd)",
+                                      XtcData::TransitionId::name(transitionId), para.maxTrSize, size);
                     throw "Buffer too small";
+                }
+                if (event->transitionDgram->pulseId() != dgram->pulseId()) {
+                    logging::critical("%s: pulseId (%014lx) doesn't match dgram's (%014lx)",
+                                      XtcData::TransitionId::name(transitionId), event->transitionDgram->pulseId(), dgram->pulseId());
                 }
 
                 if (event->l3InpBuf) { // else shutting down
                     new(event->l3InpBuf) Pds::EbDgram(*dgram);
                 }
-                event->transitionDgram = trDgram;
             }
         }
 
@@ -296,6 +301,13 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
 
                 nevents++;
                 m_batch.size++;
+
+                // Allocate a transition datagram from the pool.  Since a
+                // SPSCQueue is used (not an SPMC queue), this can be done here,
+                // but not in the workers or there will be concurrency issues.
+                if (transitionId != XtcData::TransitionId::L1Accept) {
+                    event->transitionDgram = m_pool.allocateTr();
+                }
 
                 // To ensure L3 Input Dgrams appear in the batch in sequential
                 // order, entry allocation must occur here rather than in the

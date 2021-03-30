@@ -107,10 +107,9 @@ MemPool::MemPool(Parameters& para) :
 Pds::EbDgram* MemPool::allocateTr()
 {
     void* dgram = nullptr;
-    if (!m_transitionBuffers.try_pop(dgram)) {
-        // See comment for setting para.nTrBuffers in drp.cc
-        logging::critical("Empty transition buffer pool");
-        throw "Empty transition buffer pool";
+    if (!m_transitionBuffers.pop(dgram)) {
+        // See comments for setting the number of transition buffers in eb.hh
+        return nullptr;
     }
     return static_cast<Pds::EbDgram*>(dgram);
 }
@@ -234,40 +233,51 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
 
 void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
 {
+    bool error = false;
     unsigned index = (uintptr_t)appPrm;
+    if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
+        logging::critical("%sEbReceiver: jumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
+        error = true;
+    }
+
     Pds::EbDgram* dgram = (Pds::EbDgram*)m_pool.pebble[index];
+    uint64_t pulseId = dgram->pulseId();
     XtcData::TransitionId::Value transitionId = dgram->service();
     if (transitionId != XtcData::TransitionId::L1Accept) {
         if (transitionId == 0) {
             logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
         }
         dgram = m_pool.pgpEvents[index].transitionDgram;
+        if (pulseId != dgram->pulseId()) {
+            logging::error("pulseId mismatch: pebble %014lx, trDgram %014lx, xor %014lx, diff %ld",
+                           pulseId, dgram->pulseId(), pulseId ^ dgram->pulseId(), pulseId - dgram->pulseId());
+            error = true;
+        }
         if (transitionId != dgram->service()) {
-            logging::error("tid mismatch: pebble %u, trDgram %u, idx %u", transitionId, dgram->service(), index);
+            logging::error("tid mismatch: pebble %u, trDgram %u", transitionId, dgram->service());
+            error = true;
         }
     }
-    if (transitionId != result.service()) {
-        logging::error("tid mismatch: pebble %u, result %u, idx %u", transitionId, result.service(), index);
-    }
-    uint64_t pulseId = dgram->pulseId();
     if (pulseId == 0) {
         logging::critical("%spulseId %14lx, ts %u.%09u, tid %d, env %08x%s",
                           RED_ON, pulseId, dgram->time.seconds(), dgram->time.nanoseconds(), dgram->service(), dgram->env, RED_OFF);
+        error = true;
+    }
+    if (pulseId != result.pulseId()) {
+        logging::critical("pulseId mismatch: pebble %014lx, result %014lx, xor %014lx, diff %ld",
+                          pulseId, result.pulseId(), pulseId ^ result.pulseId(), pulseId - result.pulseId());
+        error = true;
+    }
+    if (transitionId != result.service()) {
+        logging::error("tid mismatch: pebble %u, result %u", transitionId, result.service());
+        error = true;
     }
 
-    if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
-        logging::critical("%sEbReceiver: jumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
+    if (error) {
         logging::critical("pid     %014lx, tid     %s, env %08x", pulseId, XtcData::TransitionId::name(transitionId), dgram->env);
         logging::critical("lastPid %014lx, lastTid %s", m_lastPid, XtcData::TransitionId::name(m_lastTid));
-    }
-
-    if (pulseId != result.pulseId()) {
-        logging::critical("pulseIds don't match");
         logging::critical("index %u  previous index %u", index, m_lastIndex);
-        uint64_t tPid = pulseId;
-        uint64_t rPid = result.pulseId();
-        logging::critical("pebble pulseId %014lx, result dgram pulseId %014lx, xor %014lx, diff %ld", tPid, rPid, tPid ^ rPid, tPid - rPid);
-        throw "Pulse ID mismatch";
+        abort();
     }
 
     m_lastIndex = index;
