@@ -25,7 +25,7 @@ static bool     verbose = false;
 
 extern int optind;
 
-static void link_test          (TprReg&, bool lcls2, bool lring);
+static void link_test          (TprReg&, bool lcls2, int mode, bool lring);
 static void frame_rates        (TprReg&, bool lcls2);
 static void frame_capture      (TprReg&, char, bool lcls2);
 static void dump_frame         (const uint32_t*);
@@ -41,8 +41,10 @@ static void usage(const char* p) {
   printf("          -d <dev>  : <tpr a/b>\n");
   printf("          -1        : test LCLS-I timing\n");
   printf("          -2        : test LCLS-II timing\n");
+  printf("          -m <mode> : force timing protocol (0=LCLS1,1=LCLS2)\n");
   printf("          -n        : skip frame capture test\n");
   printf("          -r        : dump ring buffers\n");
+  printf("          -L        : set xbar to loopback\n");
   printf("          -D delay[,width[,polarity]]  : trigger parameters\n");
   printf("          -T <sec>  : link test period\n");
 }
@@ -58,13 +60,16 @@ int main(int argc, char** argv) {
   bool lTestI  = false;
   bool lTestII = false;
   bool lFrameTest = true;
+  bool loopback   = false;
   bool lDumpRingb = false;
+  int mode = -1;
   char* endptr;
 
-  while ( (c=getopt( argc, argv, "12d:nrT:D:h?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "12d:m:nrT:D:Lh?")) != EOF ) {
     switch(c) {
     case '1': lTestI  = true; break;
     case '2': lTestII = true; break;
+    case 'm': mode   = strtoul(optarg,NULL,0); break;
     case 'n': lFrameTest = false; break;
     case 'r': lDumpRingb = true; break;
     case 'd':
@@ -81,6 +86,9 @@ int main(int argc, char** argv) {
         triggerWidth = strtoul(endptr+1,&endptr,0);
       if (endptr[0]==',') 
         triggerPolarity = strtoul(endptr+1,&endptr,0);
+      break;
+    case 'L':
+      loopback = true;
       break;
     case 'T':
       linktest_period = strtoul(optarg,NULL,0);
@@ -136,16 +144,24 @@ int main(int argc, char** argv) {
     printf("FpgaVersion: %08X\n", reg.version.FpgaVersion);
     printf("BuildStamp: %s\n", reg.version.buildStamp().c_str());
 
-    reg.xbar.setEvr( XBar::StraightIn );
-    reg.xbar.setEvr( XBar::StraightOut);
-    reg.xbar.setTpr( XBar::StraightIn );
-    reg.xbar.setTpr( XBar::StraightOut);
+    if (loopback) {
+        reg.xbar.setEvr( XBar::LoopIn );
+        reg.xbar.setEvr( XBar::LoopOut);
+        reg.xbar.setTpr( XBar::LoopIn );
+        reg.xbar.setTpr( XBar::LoopOut);
+    }
+    else {
+        reg.xbar.setEvr( XBar::StraightIn );
+        reg.xbar.setEvr( XBar::StraightOut);
+        reg.xbar.setTpr( XBar::StraightIn );
+        reg.xbar.setTpr( XBar::StraightOut);
+    }
 
     if (lTestII) {
       //
       //  Validate LCLS-II link
       //
-      link_test(reg, true, lDumpRingb);
+      link_test(reg, true, mode, lDumpRingb);
 
       //
       //  Capture series of timing frames (show table)
@@ -164,7 +180,7 @@ int main(int argc, char** argv) {
     if (lTestI) {
       //
       //  Validate LCLS-I link
-      link_test(reg, false, lDumpRingb);
+      link_test(reg, false, mode, lDumpRingb);
 
       //
       //  Capture series of timing frames (show table)
@@ -184,7 +200,7 @@ int main(int argc, char** argv) {
   return 0;
 }
 
-void link_test(TprReg& reg, bool lcls2, bool lring)
+void link_test(TprReg& reg, bool lcls2, int mode, bool lring)
 {
   static const double ClkMin[] = { 118, 184 };
   static const double ClkMax[] = { 120, 187 };
@@ -193,6 +209,8 @@ void link_test(TprReg& reg, bool lcls2, bool lring)
   unsigned ilcls = lcls2 ? 1:0;
 
   reg.tpr.clkSel(lcls2);
+  reg.tpr.modeSel(mode!=0);
+  reg.tpr.modeSelEn(mode>=0);
   reg.tpr.rxPolarity(false);
   usleep(100000);
   reg.tpr.resetCounts();

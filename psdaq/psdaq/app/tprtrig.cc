@@ -143,6 +143,9 @@ int main(int argc, char** argv) {
   };
 
   client.reg().base.dump();
+  usleep(1000000);
+  client.reg().base.dump();
+
   client.release();
 
   if (lSleep) {
