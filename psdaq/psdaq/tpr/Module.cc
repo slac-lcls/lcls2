@@ -160,6 +160,28 @@ void TprCore::clkSel    (bool lcls2) {
   CSR = v;
 }
 
+bool TprCore::modeSel   () const {
+  uint32_t v = CSR;
+  return v&(1<<9);
+}
+
+void TprCore::modeSel   (bool lcls2) {
+  volatile uint32_t v = CSR;
+  v = lcls2 ? (v|(1<<9)) : (v&~(1<<9));
+  CSR = v;
+}
+
+bool TprCore::modeSelEn () const {
+  uint32_t v = CSR;
+  return v&(1<<10);
+}
+
+void TprCore::modeSelEn (bool lcls2) {
+  volatile uint32_t v = CSR;
+  v = lcls2 ? (v|(1<<10)) : (v&~(1<<10));
+  CSR = v;
+}
+
 bool TprCore::rxPolarity() const {
   uint32_t v = CSR;
   return v&(1<<2);
