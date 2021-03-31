@@ -1,6 +1,5 @@
 import sys
 import logging
-from psalg.utils.syslog import SysLog
 import dgramCreate as dc
 import threading
 import zmq
@@ -217,7 +216,7 @@ def scan( keys, steps, setupStep=None ):
         level=logging.DEBUG
     else:
         level=logging.WARNING
-    logger = SysLog(instrument=instrument, level=level)
+    logging.basicConfig(level=level)
     logging.info('logging initialized')
 
     # get initial DAQ state

@@ -1,6 +1,5 @@
 import sys
 import logging
-from psalg.utils.syslog import SysLog # FIXME remove
 import threading
 import zmq
 from psdaq.control.ControlDef import ControlDef
@@ -48,7 +47,7 @@ def main():
         level=logging.DEBUG
     else:
         level=logging.WARNING
-    logger = SysLog(instrument=instrument, level=level)
+    logging.basicConfig(level=level)
     logging.info('logging initialized')
 
     # get initial DAQ state
