@@ -2,7 +2,7 @@
 """
 showPlatform command
 """
-from psdaq.control.control import DaqControl
+from psdaq.control.DaqControl import DaqControl
 import pprint
 import argparse
 from operator import itemgetter

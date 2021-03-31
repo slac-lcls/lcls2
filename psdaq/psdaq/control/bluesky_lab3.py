@@ -9,8 +9,8 @@ import asyncio
 import time
 
 from DaqControl import DaqControl
-from DaqScan import DaqScan
-from DaqDefs import front_pub_port
+from BlueskyScan import BlueskyScan
+from ControlDef import front_pub_port
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -82,11 +82,11 @@ from bluesky.plans import scan
 
 step_value = SynAxis(name='step_value')
 
-# instantiate DaqScan object
-mydaq = DaqScan(control, daqState=daqState, args=args)
+# instantiate BlueskyScan object
+mydaq = BlueskyScan(control, daqState=daqState, args=args)
 dets = [mydaq]   # just one in this case, but it could be more than one
 
-# configure DaqScan object with a set of motors
+# configure BlueskyScan object with a set of motors
 mydaq.configure(motors=[motor1, step_value])
 
 # Scan motor1 from -10 to 10 and step_value from 0 to 14, stopping

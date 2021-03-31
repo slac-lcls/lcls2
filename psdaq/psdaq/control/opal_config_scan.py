@@ -5,7 +5,9 @@ import threading
 import zmq
 import json
 
-from psdaq.control.control import DaqControl, DaqPVA, ConfigurationScan, MyFloatPv, MyStringPv
+from psdaq.control.control import DaqPVA, MyFloatPv, MyStringPv
+from psdaq.control.DaqControl import DaqControl
+from psdaq.control.ConfigScan import ConfigScan
 import argparse
 
 def main():
@@ -63,8 +65,8 @@ def main():
         if rv is not None:
             logging.error('%s' % rv)
 
-    # instantiate ConfigurationScan
-    scan = ConfigurationScan(control, daqState=daqState, args=args)
+    # instantiate ConfigScan
+    scan = ConfigScan(control, daqState=daqState, args=args)
 
     scan.stage()
 

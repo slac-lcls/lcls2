@@ -1,11 +1,12 @@
 import sys
 import logging
-from psalg.utils.syslog import SysLog
+from psalg.utils.syslog import SysLog # FIXME remove
 import threading
 import zmq
-import json
-
-from psdaq.control.control import DaqControl, DaqPVA, ConfigurationScan, MyFloatPv, MyStringPv
+from psdaq.control.ControlDef import ControlDef
+from psdaq.control.DaqControl import DaqControl
+from psdaq.control.ConfigScan import ConfigScan
+from psdaq.control.control import DaqPVA, MyFloatPv, MyStringPv
 import argparse
 
 def main():
@@ -63,8 +64,8 @@ def main():
         if rv is not None:
             logging.error('%s' % rv)
 
-    # instantiate ConfigurationScan
-    scan = ConfigurationScan(control, daqState=daqState, args=args)
+    # instantiate ConfigScan
+    scan = ConfigScan(control, daqState=daqState, args=args)
 
     scan.stage()
 
@@ -74,9 +75,9 @@ def main():
     motors = [MyFloatPv("tstts_step_value"), MyStringPv("tstts_step_docstring")]
     scan.configure(motors = motors)
 
-    # configuration scan setup
+    # config scan setup
     keys_dict = {"configure": {"step_keys":     ["tstts_0:expert.group0.inhibit0.interval"],
-                               "NamesBlockHex": scan.getBlock(transitionid=DaqControl.transitionId['Configure'],
+                               "NamesBlockHex": scan.getBlock(transitionid=ControlDef.transitionId['Configure'],
                                                               add_names=True, add_shapes_data=False).hex()}}
     # scan loop
     for interval in [10,20,30]:
@@ -84,7 +85,7 @@ def main():
         scan.update(value=scan.step_count())
         values_dict = \
           {"beginstep": {"step_values":        {"tstts_0:expert.group0.inhibit0.interval": interval},
-                         "ShapesDataBlockHex": scan.getBlock(transitionid=DaqControl.transitionId['BeginStep'],
+                         "ShapesDataBlockHex": scan.getBlock(transitionid=ControlDef.transitionId['BeginStep'],
                                                              add_names=False, add_shapes_data=True).hex()}}
         # trigger
         scan.trigger(phase1Info={**keys_dict, **values_dict})

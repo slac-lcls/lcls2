@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-class DaqDefs:
+class ControlDef:
 
     # transitionId is a subset of the TransitionId.hh enum
     transitionId = {
@@ -44,7 +44,7 @@ class DaqDefs:
 def timestampStr():
     current = datetime.now(timezone.utc)
     nsec = 1000 * current.microsecond
-    sec = int(current.timestamp()) - DaqDefs.POSIX_TIME_AT_EPICS_EPOCH
+    sec = int(current.timestamp()) - ControlDef.POSIX_TIME_AT_EPICS_EPOCH
     return '%010d-%09d' % (sec, nsec)
 
 def create_msg(key, msg_id=None, sender_id=None, body={}):
@@ -74,14 +74,14 @@ def progress_msg(transition, elapsed, total):
     return create_msg('progress', body=body)
 
 def back_pull_port(platform):
-    return DaqDefs.PORT_BASE + platform
+    return ControlDef.PORT_BASE + platform
 
 def back_pub_port(platform):
-    return DaqDefs.PORT_BASE + platform + 10
+    return ControlDef.PORT_BASE + platform + 10
 
 def front_rep_port(platform):
-    return DaqDefs.PORT_BASE + platform + 20
+    return ControlDef.PORT_BASE + platform + 20
 
 def front_pub_port(platform):
-    return DaqDefs.PORT_BASE + platform + 30
+    return ControlDef.PORT_BASE + platform + 30
 
