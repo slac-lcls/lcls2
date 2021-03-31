@@ -1,4 +1,4 @@
-# bluesky_rix.py
+# rix_bluesky_scan.py
 
 from bluesky import RunEngine
 from ophyd.status import Status
@@ -7,7 +7,6 @@ import logging
 import threading
 import asyncio
 import time
-
 from DaqControl import DaqControl
 from BlueskyScan import BlueskyScan
 from ControlDef import front_pub_port
