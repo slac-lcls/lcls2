@@ -40,7 +40,8 @@ Created on 2019-02-01 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 from time import time
-from psdaq.control.control import DaqControl
+from psdaq.control.DaqDefs import DaqDefs
+from psdaq.control.DaqControl import DaqControl
 
 #----------
 

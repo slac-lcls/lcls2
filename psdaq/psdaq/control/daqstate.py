@@ -2,7 +2,8 @@
 """
 daqstate command
 """
-from psdaq.control.control import DaqControl
+from psdaq.control.DaqControl import DaqControl
+from psdaq.control.DaqDefs import DaqDefs
 import argparse
 import json
 
@@ -21,8 +22,8 @@ def main():
     parser.add_argument('--phase1', metavar='JSON', default=None,
                         help='phase1Info (only use with --state)')
     group = parser.add_mutually_exclusive_group()
-    group.add_argument('--state', choices=DaqControl.states)
-    group.add_argument('--transition', choices=DaqControl.transitions)
+    group.add_argument('--state', choices=DaqDefs.states)
+    group.add_argument('--transition', choices=DaqDefs.transitions)
     group.add_argument('--monitor', action="store_true")
     group.add_argument('--config', metavar='ALIAS', help='configuration alias')
     group.add_argument('--record', type=int, choices=range(0, 2), help='recording flag')
@@ -108,7 +109,7 @@ def main():
                 print('data file: %s' % part2)
             elif part1 == 'progress':
                 print('progress: %s (%d/%d)' % (part2, part3, part4))
-            elif part1 in DaqControl.transitions:
+            elif part1 in DaqDefs.transitions:
                 print('transition: %-11s  state: %-11s  config: %s  recording: %s  bypass_activedet: %s  experiment_name: %s  run_number: %d  last_run_number: %d' %\
                       (part1, part2, part3, part4, part5, part6, part7, part8))
             else:

@@ -11,8 +11,8 @@ import time
 import dgramCreate as dc
 import numpy as np
 
-from psdaq.control.control import DaqControl, DaqPVA
-import argparse
+from psdaq.control.DaqDefs import DaqDefs
+from psdaq.control.control import DaqPVA
 
 class DaqScan:
     def __init__(self, control, *, daqState, args):
@@ -106,10 +106,10 @@ class DaqScan:
 
                 # set DAQ state
                 errMsg = self.control.setState('running',
-                    {'configure':{'NamesBlockHex':self.getBlock(transitionid=DaqControl.transitionId['Configure'],
+                    {'configure':{'NamesBlockHex':self.getBlock(transitionid=DaqDefs.transitionId['Configure'],
                                                                 add_names=True,
                                                                 add_shapes_data=False).hex()},
-                     'beginstep':{'ShapesDataBlockHex':self.getBlock(transitionid=DaqControl.transitionId['BeginStep'],
+                     'beginstep':{'ShapesDataBlockHex':self.getBlock(transitionid=DaqDefs.transitionId['BeginStep'],
                                                                 add_names=False,
                                                                 add_shapes_data=True).hex()}})
                 if errMsg is not None:
@@ -152,7 +152,7 @@ class DaqScan:
             part1, part2, part3, part4, part5, part6, part7, part8 = self.control.monitorStatus()
             if part1 is None:
                 break
-            elif part1 not in DaqControl.transitions:
+            elif part1 not in DaqDefs.transitions:
                 continue
 
             # part1=transition, part2=state, part3=config

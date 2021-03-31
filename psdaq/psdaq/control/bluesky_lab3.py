@@ -8,8 +8,9 @@ import threading
 import asyncio
 import time
 
-from psdaq.control.control import DaqControl
-from psdaq.control.DaqScan import DaqScan
+from DaqControl import DaqControl
+from DaqScan import DaqScan
+from DaqDefs import front_pub_port
 import argparse
 
 parser = argparse.ArgumentParser()
