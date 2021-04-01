@@ -66,7 +66,7 @@ class Storage:
         self.dcfg = None
         self.counter = -1
 
-store = Storage() # singleton
+dic_store = {} # {det.name:Storage()} in stead of singleton
 
 #----
 
@@ -411,7 +411,13 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     if gain is None: return None # gain = np.ones_like(peds)  # - 4d gains
     if peds is None: return None # peds = np.zeros_like(peds) # - 4d gains
 
-    if store.gfac is None: 
+    store = dic_store.get(det_raw._det_name, None)
+
+    if store is None:
+
+        logger.info('create new store for %s' % det_raw._det_name)
+        store = dic_store[det_raw._det_name] = Storage()
+
         # do ONCE this initialization 
         logger.debug(info_ndarr(raw,  '\n  raw ')\
                     +info_ndarr(gain, '\n  gain')\
