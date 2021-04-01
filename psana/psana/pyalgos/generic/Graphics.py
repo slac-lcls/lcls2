@@ -7,10 +7,11 @@ Usage::
     import psana.pyalgos.generic.Graphics as gr
 
     # Methods
-
+    ddict_for_keys = dict_subset(d, keys)
     fig = gr.figure(figsize=(13,12), title='Image', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=None)
     gr.move_fig(fig, x0=200, y0=100)
     gr.move(x0=200, y0=100)
+    axim, axcb = gr.fig_axes(fig, windows=((0.05,  0.03, 0.87, 0.93), (0.923, 0.03, 0.02, 0.93)), **kwa)
     fig, axis = gr.add_axes(fig, axwin=(0.05, 0.03, 0.87, 0.93))
     fig, axim, axcb = gr.fig_img_cbar_axes(fig=None, win_axim=(0.05,0.03,0.87,0.93), win_axcb=(0.923,0.03,0.02,0.93))
     gr.set_win_title(fig, titwin='Image')
@@ -22,6 +23,7 @@ Usage::
     gr.save_fig(fig, fname='img.png', verb=True)
     gr.save(fname='img.png', do_save=True, pbits=0o377)
 
+    hi = gr.pp_hist(axis, x, **kwa) # pyplot.hist
     hi = gr.hist(axhi, arr, bins=None, amp_range=None, weights=None, color=None, log=False)
     imsh = gr.imshow(axim, img, amp_range=None, extent=None, interpolation='nearest', aspect='auto', origin='upper', orientation='horizontal', cmap='inferno')
     cbar = gr.colorbar(fig, imsh, axcb, orientation='vertical', amp_range=None)
@@ -54,6 +56,10 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Modified on 2018-01-25 by Mikhail Dubrovin
 """
 
+import os
+os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
+#export LIBGL_ALWAYS_INDIRECT=1
+
 import logging
 logger = logging.getLogger('Graphics')
 
@@ -70,6 +76,23 @@ plt.rcParams.update({'figure.max_open_warning': 0}) #get rid of warning: More th
 
 #----
 
+def dict_subset(d, keys):
+    return {k:v for k,v in d.items() if k in keys}
+
+
+#def figure(**kwa):
+#    """ Creates and returns figure.
+#        figsize=(13,12), title='Image', dpi=80, facecolor='w', edgecolor='w', frameon=True
+#    """
+#    fig = plt.figure(**dict_subset(kwa, ('num', 'figsize', 'dpi', 'facecolor', 'edgecolor', 'frameon', 'FigureClass', 'clear',\
+#                                         'linewidth', 'subplotpars', 'tight_layout', 'constrained_layout')))
+#    move = kwa.get('move', None)
+#    title = kwa.get('title', '')
+#    if title: fig.canvas.set_window_title(title)
+#    if move: move_fig(fig, x0=move[0], y0=move[1])
+#    return fig
+
+
 def figure(**kwa):
     """ Creates and returns figure.
         local pars: title='Image', move=None
@@ -80,14 +103,19 @@ def figure(**kwa):
     kwa.setdefault('facecolor','w')
     kwa.setdefault('edgecolor','w')
     kwa.setdefault('frameon', True)
-
-    title = kwa.pop('title', 'Image')
-    move  = kwa.pop('move', None)
-
-    fig = plt.figure(**kwa)
-
-    fig.canvas.set_window_title(title) #, **kwa)
-    if move is not None: move_fig(fig, x0=move[0], y0=move[1])
+    #kwa.setdefault('FigureClass', <class 'matplotlib.figure.Figure'>)
+    kwa.setdefault('clear', False)
+    kwa.setdefault('linewidth', 1)
+    #kwa.setdefault('subplotpars', )
+    kwa.setdefault('tight_layout', False)
+    kwa.setdefault('constrained_layout', False)
+    kwa_f = dict_subset(kwa, ('num', 'figsize', 'dpi', 'facecolor', 'edgecolor', 'frameon', 'FigureClass', 'clear',\
+               'linewidth', 'subplotpars', 'tight_layout', 'constrained_layout'))
+    fig = plt.figure(**kwa_f)
+    title = kwa.get('title', 'Image')
+    move  = kwa.get('move', None)
+    if title: fig.canvas.set_window_title(title) #, **kwa)
+    if move: move_fig(fig, x0=move[0], y0=move[1])
     return fig
 
 
@@ -103,6 +131,28 @@ def move_fig(fig, x0=200, y0=100):
 def move(x0=200,y0=100):
     plt.get_current_fig_manager().window.move(x0, y0)
     #plt.get_current_fig_manager().window.geometry('+%d+%d' % (x0, y0))
+
+
+def fig_axes(fig, **kwa):
+    """ Returns list of figure axes for input list of windows
+    """
+    windows = kwa.get('windows', ((0.05,  0.03, 0.87, 0.93), (0.923, 0.03, 0.02, 0.93)))
+    kwa.setdefault('projection',None) # projection{None, 'aitoff', 'hammer', 'lambert', 'mollweide', 'polar', 'rectilinear', str}, optional
+    kwa.setdefault('polar', False)
+    #kwa.setdefault('sharex', )  #sharex, shareyAxes, optional - Share the x or y axis with sharex and/or sharey. 
+    #kwa.setdefault('sharey',)   # The axis will have the same limits, ticks, and scale as the axis of the shared axes.
+    #kwa.setdefault('label', '') # label str -A label for the returned axes.
+    kwa_aa = dict_subset(kwa,\
+     ('projection','polar','sharex','sharey','label',\
+      'adjustable', 'agg_filter','alpha','anchor','aspect','autoscale_on','autoscalex_on','autoscaley_on',\
+      'axes_locator','axisbelow','clip_box','clip_on','clip_path','contains','facecolor','fc',\
+      'figure','frame_on','gid','in_layout','label','navigate','navigate_mode','path_effects',\
+      'picker','position','prop_cycle','rasterization_zorder','rasterized','sketch_params',\
+      'snap','title','transform','url','visible',\
+      'xbound','xlabel','xlim','xmargin','xscale','xticklabels','xticklabels','xticks',\
+      'ybound','ylabel','ylim','ymargin','yscale','yticklabels','yticks','zorder'))
+
+    return [fig.add_axes(w, **kwa_aa) for w in windows]
 
 
 def add_axes(fig, axwin=(0.05, 0.03, 0.87, 0.93), **kwa):
@@ -256,11 +306,35 @@ def hist(axhi, arr, bins=None, amp_range=None, weights=None, color=None, log=Fal
     """Makes historgam from input array of values (arr), which are sorted in number of bins (bins) in the range (amp_range=(amin,amax))
     """
     #axhi.cla()
-    hi = axhi.hist(arr.flatten(), bins=bins, range=amp_range, weights=weights, color=color, log=log, **kwa) #, log=logYIsOn)
+    hi = axhi.hist(arr.ravel(), bins=bins, range=amp_range, weights=weights, color=color, log=log, **kwa) #, log=logYIsOn)
     if amp_range is not None: axhi.set_xlim(amp_range) # axhi.set_autoscale_on(False) # suppress autoscailing
     wei, bins, patches = hi
     add_stat_text(axhi, wei, bins)
     return hi
+
+
+def pp_hist(axis, x, **kwa):
+    """ matplotlib.pyplot.hist(x,
+                       bins=10,
+                       range=None,
+                       normed=False,
+                       weights=None,
+                       cumulative=False,
+                       bottom=None,
+                       histtype=u'bar',
+                       align=u'mid',
+                       orientation=u'vertical',
+                       rwidth=None,
+                       log=False,
+                       color=None,
+                       label=None,
+                       stacked=False,
+                       hold=None,
+                       **kwargs)
+    """
+    return axis.hist(x, **dict_subset(kwa,\
+           ('bins', 'range', 'normed', 'weights', 'cumulative', 'bottom', 'histtype', 'align',\
+            'orientation', 'rwidth', 'log', 'color', 'label', 'stacked', 'hold')))
 
 
 def imshow(axim, img, amp_range=None, extent=None,\
@@ -388,7 +462,7 @@ def hist1d(arr, bins=None, amp_range=None, weights=None, color=None, show_stat=T
     elif title  is not None: fig.canvas.set_window_title(title)
     axhi = fig.add_axes(axwin)
     hbins = bins if bins is not None else 100
-    hi = axhi.hist(arr.flatten(), bins=hbins, range=amp_range, weights=weights, color=color, log=log) #, log=logYIsOn)
+    hi = axhi.hist(arr.ravel(), bins=hbins, range=amp_range, weights=weights, color=color, log=log) #, log=logYIsOn)
     if amp_range is not None: axhi.set_xlim(amp_range) # axhi.set_autoscale_on(False) # suppress autoscailing
     if title  is not None: axhi.set_title(title, color='k', fontsize=20)
     if xlabel is not None: axhi.set_xlabel(xlabel, fontsize=14)
@@ -417,13 +491,13 @@ def img_from_pixel_arrays(rows, cols, W=None, dtype=np.float32, vbase=0):
         logger.warning(msg)
         return img_default()
 
-    rowsfl = rows.flatten()
-    colsfl = cols.flatten()
+    rowsfl = rows.ravel()
+    colsfl = cols.ravel()
 
     rsize = int(rowsfl.max())+1 
     csize = int(colsfl.max())+1
 
-    weight = W.flatten() if W is not None else np.ones_like(rowsfl)
+    weight = W.ravel() if W is not None else np.ones_like(rowsfl)
     img = vbase*np.ones((rsize,csize), dtype=dtype)
     img[rowsfl,colsfl] = weight # Fill image array with data 
     return img
