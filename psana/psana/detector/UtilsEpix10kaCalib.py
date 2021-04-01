@@ -186,25 +186,25 @@ def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=16000, cmt=''):
     return lo, hi
 
 
-def proc_dark_block(block, **opts):
+def proc_dark_block(block, **kwa):
     """Returns per-panel (352, 384) arrays of mean, rms, ...
        block.shape = (nrecs, 352, 384), where nrecs <= 1024
     """
-    exp        = opts.get('exp', None)
-    detname    = opts.get('det', None)
-    int_lo     = opts.get('int_lo', 1)       # lowest  intensity accepted for dark evaluation
-    int_hi     = opts.get('int_hi', 16000)   # highest intensity accepted for dark evaluation
-    intnlo     = opts.get('intnlo', 6.0)     # intensity ditribution number-of-sigmas low
-    intnhi     = opts.get('intnhi', 6.0)     # intensity ditribution number-of-sigmas high
-    rms_lo     = opts.get('rms_lo', 0.001)   # rms ditribution low
-    rms_hi     = opts.get('rms_hi', 16000)   # rms ditribution high
-    rmsnlo     = opts.get('rmsnlo', 6.0)     # rms ditribution number-of-sigmas low
-    rmsnhi     = opts.get('rmsnhi', 6.0)     # rms ditribution number-of-sigmas high
-    fraclm     = opts.get('fraclm', 0.1)     # allowed fraction limit
-    fraclo     = opts.get('fraclo', 0.05)    # fraction of statistics below low gate limit
-    frachi     = opts.get('frachi', 0.95)    # fraction of statistics below high gate limit
+    exp        = kwa.get('exp', None)
+    detname    = kwa.get('det', None)
+    int_lo     = kwa.get('int_lo', 1)       # lowest  intensity accepted for dark evaluation
+    int_hi     = kwa.get('int_hi', 16000)   # highest intensity accepted for dark evaluation
+    intnlo     = kwa.get('intnlo', 6.0)     # intensity ditribution number-of-sigmas low
+    intnhi     = kwa.get('intnhi', 6.0)     # intensity ditribution number-of-sigmas high
+    rms_lo     = kwa.get('rms_lo', 0.001)   # rms ditribution low
+    rms_hi     = kwa.get('rms_hi', 16000)   # rms ditribution high
+    rmsnlo     = kwa.get('rmsnlo', 6.0)     # rms ditribution number-of-sigmas low
+    rmsnhi     = kwa.get('rmsnhi', 6.0)     # rms ditribution number-of-sigmas high
+    fraclm     = kwa.get('fraclm', 0.1)     # allowed fraction limit
+    fraclo     = kwa.get('fraclo', 0.05)    # fraction of statistics below low gate limit
+    frachi     = kwa.get('frachi', 0.95)    # fraction of statistics below high gate limit
     frac05     = 0.5
-    nrecs1     = opts.get('nrecs1', None)    # number of records for the 1st stage processing
+    nrecs1     = kwa.get('nrecs1', None)    # number of records for the 1st stage processing
 
     logger.debug('in proc_dark_block for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
     logger.info(info_ndarr(block, 'Begin pricessing of the data block:\n    ', first=100, last=105))
@@ -397,15 +397,15 @@ def irun_first(runs):
            int(runs.split(',',1)[0].split('-',1)[0])
 
 
-def data_source_kwargs(**opts):
-    """Makes from input **opts and returns dict of arguments **kwa for DataSource(**kwa)
+def data_source_kwargs(**kwa):
+    """Makes from input **kwa and returns dict of arguments **kwa for DataSource(**kwa)
     """
-    fname      = opts.get('fname', None)
-    detname    = opts.get('det', None)
-    exp        = opts.get('exp', None)
-    runs       = opts.get('runs', None)
-    dirxtc     = opts.get('dirxtc', None)
-    usesmd     = opts.get('usesmd', False)
+    fname      = kwa.get('fname', None)
+    detname    = kwa.get('det', None)
+    exp        = kwa.get('exp', None)
+    runs       = kwa.get('runs', None)
+    dirxtc     = kwa.get('dirxtc', None)
+    usesmd     = kwa.get('usesmd', False)
 
     irun = irun_first(runs)
 
@@ -416,32 +416,32 @@ def data_source_kwargs(**opts):
     return kwa
 
 
-def pedestals_calibration(*args, **opts):
+def pedestals_calibration(*args, **kwa):
     """NEWS significant ACCELERATION is acheived:
        - accumulate data for entire epix10kam_2m/quad array
        - use MPI 
        all-panel or selected-panel one-step (gain range) or all steps calibration of pedestals
     """
-    fname      = opts.get('fname', None)
-    detname    = opts.get('det', None)
-    exp        = opts.get('exp', None)
-    runs       = opts.get('runs', None)
-    nrecs      = opts.get('nrecs', 1000)
-    stepnum    = opts.get('stepnum', None)
-    stepmax    = opts.get('stepmax', 5)
-    evskip     = opts.get('evskip', 0)
-    events     = opts.get('events', 1000)
-    dirxtc     = opts.get('dirxtc', None)
-    dirrepo    = opts.get('dirrepo', CALIB_REPO_EPIX10KA)
-    fmt_peds   = opts.get('fmt_peds', '%.3f')
-    fmt_rms    = opts.get('fmt_rms',  '%.3f')
-    fmt_status = opts.get('fmt_status', '%4i')
-    idx_sel    = opts.get('idx', None)
-    dirmode    = opts.get('dirmode', 0o777)
-    filemode   = opts.get('filemode', 0o666)
-    usesmd     = opts.get('usesmd', False)
-    logmode    = opts.get('logmode', 'DEBUG')
-    errskip    = opts.get('errskip', False)
+    fname      = kwa.get('fname', None)
+    detname    = kwa.get('det', None)
+    exp        = kwa.get('exp', None)
+    runs       = kwa.get('runs', None)
+    nrecs      = kwa.get('nrecs', 1000)
+    stepnum    = kwa.get('stepnum', None)
+    stepmax    = kwa.get('stepmax', 5)
+    evskip     = kwa.get('evskip', 0)
+    events     = kwa.get('events', 1000)
+    dirxtc     = kwa.get('dirxtc', None)
+    dirrepo    = kwa.get('dirrepo', CALIB_REPO_EPIX10KA)
+    fmt_peds   = kwa.get('fmt_peds', '%.3f')
+    fmt_rms    = kwa.get('fmt_rms',  '%.3f')
+    fmt_status = kwa.get('fmt_status', '%4i')
+    idx_sel    = kwa.get('idx', None)
+    dirmode    = kwa.get('dirmode', 0o777)
+    filemode   = kwa.get('filemode', 0o666)
+    usesmd     = kwa.get('usesmd', False)
+    logmode    = kwa.get('logmode', 'DEBUG')
+    errskip    = kwa.get('errskip', False)
 
     logger.setLevel(DICT_NAME_TO_LEVEL[logmode])
 
@@ -478,7 +478,7 @@ def pedestals_calibration(*args, **opts):
 
     #=================
 
-    kwa = data_source_kwargs(**opts)
+    kwa = data_source_kwargs(**kwa)
     ds = DataSource(**kwa)
     logger.debug('ds.runnum_list = %s' % str(ds.runnum_list))
     logger.debug('ds.detectors = %s' % str(ds.detectors))
@@ -668,7 +668,7 @@ def pedestals_calibration(*args, **opts):
             #dark=block[:nrec,:].mean(0)  #Calculate mean
 
             #block.sahpe = (1024, 16, 352, 384)
-            dark, rms, status = proc_dark_block(block[:nrec,idx,:], **opts) # process pedestals per-panel (352, 384)
+            dark, rms, status = proc_dark_block(block[:nrec,idx,:], **kwa) # process pedestals per-panel (352, 384)
 
 
             #continue # TEST
@@ -878,36 +878,36 @@ def add_links_for_gainci_fixed_modes(dir_gain, fname_prefix):
     return
 
 
-def deploy_constants(*args, **opts):
+def deploy_constants(*args, **kwa):
 
     from psana.pscalib.calib.NDArrIO import save_txt; global save_txt
     import psana.pscalib.calib.MDBUtils as mu
     import psana.pscalib.calib.MDBWebUtils as wu
     cc = wu.cc # import psana.pscalib.calib.CalibConstants as cc
 
-    exp        = opts.get('exp', None)     
-    detname    = opts.get('det', None)   
-    runs       = opts.get('runs', None)    
-    tstamp     = opts.get('tstamp', None) # (int) time stamp in format YYYYmmddHHMMSS or run number(<10000)
-    dirxtc     = opts.get('dirxtc', None) 
-    dirrepo    = opts.get('dirrepo', CALIB_REPO_EPIX10KA)
-    dircalib   = opts.get('dircalib', None)
-    deploy     = opts.get('deploy', False)
-    fmt_peds   = opts.get('fmt_peds', '%.3f')
-    fmt_gain   = opts.get('fmt_gain', '%.6f')
-    fmt_rms    = opts.get('fmt_rms',  '%.3f')
-    fmt_status = opts.get('fmt_status', '%4i')
-    logmode    = opts.get('logmode', 'DEBUG')
-    dirmode    = opts.get('dirmode',  0o777)
-    filemode   = opts.get('filemode', 0o666)
-    high       = opts.get('high',   16.40) # ADU/keV #High gain: 132 ADU / 8.05 keV = 16.40 ADU/keV
-    medium     = opts.get('medium', 5.466) # ADU/keV #Medium gain: 132 ADU / 8.05 keV / 3 = 5.466 ADU/keV
-    low        = opts.get('low',    0.164) # ADU/keV#Low gain: 132 ADU / 8.05 keV / 100 = 0.164 ADU/keV
-    proc       = opts.get('proc', 'prsg')
-    paninds    = opts.get('paninds', None)
-    version    = opts.get('version', 'N/A')
-    run_end    = opts.get('run_end', 'end')
-    comment    = opts.get('comment', 'no comment')
+    exp        = kwa.get('exp', None)
+    detname    = kwa.get('det', None)
+    runs       = kwa.get('runs', None)
+    tstamp     = kwa.get('tstamp', None) # (int) time stamp in format YYYYmmddHHMMSS or run number(<10000)
+    dirxtc     = kwa.get('dirxtc', None)
+    dirrepo    = kwa.get('dirrepo', CALIB_REPO_EPIX10KA)
+    dircalib   = kwa.get('dircalib', None)
+    deploy     = kwa.get('deploy', False)
+    fmt_peds   = kwa.get('fmt_peds', '%.3f')
+    fmt_gain   = kwa.get('fmt_gain', '%.6f')
+    fmt_rms    = kwa.get('fmt_rms',  '%.3f')
+    fmt_status = kwa.get('fmt_status', '%4i')
+    logmode    = kwa.get('logmode', 'DEBUG')
+    dirmode    = kwa.get('dirmode',  0o777)
+    filemode   = kwa.get('filemode', 0o666)
+    high       = kwa.get('high',   16.40) # ADU/keV #High gain: 132 ADU / 8.05 keV = 16.40 ADU/keV
+    medium     = kwa.get('medium', 5.466) # ADU/keV #Medium gain: 132 ADU / 8.05 keV / 3 = 5.466 ADU/keV
+    low        = kwa.get('low',    0.164) # ADU/keV#Low gain: 132 ADU / 8.05 keV / 100 = 0.164 ADU/keV
+    proc       = kwa.get('proc', 'prsg')
+    paninds    = kwa.get('paninds', None)
+    version    = kwa.get('version', 'N/A')
+    run_end    = kwa.get('run_end', 'end')
+    comment    = kwa.get('comment', 'no comment')
 
     logger.setLevel(DICT_NAME_TO_LEVEL[logmode])
 
@@ -917,7 +917,7 @@ def deploy_constants(*args, **opts):
 
     save_log_record_on_start(dirrepo, _name, dirmode)
 
-    cpdic = get_config_info_for_dataset_detname(**opts)
+    cpdic = get_config_info_for_dataset_detname(**kwa)
     tstamp_run  = cpdic.get('tstamp',    None) # str
     expnum      = cpdic.get('expnum',    None)
     shape       = cpdic.get('shape',     None)
