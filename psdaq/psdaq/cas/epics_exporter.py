@@ -1,12 +1,16 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import time
 import argparse
 import logging
+import socket
 from p4p.client.thread import Context
 from prometheus_client import start_http_server
 from prometheus_client.core import GaugeMetricFamily, REGISTRY
+
+PROM_PORT_BASE = 9200
 
 class CustomCollector():
     def __init__(self,hutch):
@@ -40,10 +44,39 @@ class CustomCollector():
                 g.add_metric([self._hutch,str(i)], values[i].raw.value)
             yield g
 
+def createExposer(prometheusDir):
+    if prometheusDir == '':
+        logging.warning('Unable to update Prometheus configuration: directory not provided')
+        return
+
+    hostname = socket.gethostname()
+    port = PROM_PORT_BASE
+    while port < PROM_PORT_BASE + 100:
+        try:
+            start_http_server(port)
+            fileName = f'{prometheusDir}/drpmon_{hostname}_{port - PROM_PORT_BASE}.yaml'
+            if not os.path.exists(fileName):
+                try:
+                    with open(fileName, 'wt') as f:
+                        f.write(f'- targets:\n    - {hostname}:{port}\n')
+                except Exception as ex:
+                    logging.error(f'Error creating file {fileName}: {ex}')
+                    return False
+            else:
+                pass            # File exists; no need to rewrite it
+            logging.info(f'Providing run-time monitoring data on port {port}')
+            return True
+        except OSError:
+            pass                # Port in use
+        port += 1
+    logging.error('No available port found for providing run-time monitoring')
+    return False
+
 def main():
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for XPM')
 
     parser.add_argument('-H', required=False, help='e.g. tst', metavar='HUTCH', default='tst')
+    parser.add_argument('-M', required=False, help='Prometheus config file directory', metavar='PROMETHEUS_DIR', default='')
     parser.add_argument('-P', required=True, help='e.g. DAQ:LAB2:XPM:2', metavar='PREFIX')
     parser.add_argument('-G', required=False, help='Global PVs like CuTiming:CrcErrs', metavar='GLOBALS', default='')
     parser.add_argument('N', help='e.g. DeadFrac', nargs='+', metavar='NAME')
@@ -62,8 +95,9 @@ def main():
     for name in args.N:
         c.registerPV(name, args.P + ':PART:%d:' + name)
     c.collect()
-    start_http_server(9200)
-    while True:
+    #start_http_server(9200)
+    rc = createExposer(args.M)
+    while rc:
         time.sleep(5)
 
 if __name__ == '__main__':
