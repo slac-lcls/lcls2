@@ -1,8 +1,9 @@
-platform = '7'
-username = 'lcls2'
+if not platform: platform = '7'
 
-conda_rel = 'ps-3.1.11'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
+import os
+ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'+' '+ld_lib_path
+prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -19,13 +20,10 @@ epics_env = 'EPICS_PVA_ADDR_LIST=172.21.151.255'
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- { id:'pyxpm',   port:'29451', flags:'s', conda:conda_rel, env:epics_env, cmd:'pyxpm --ip 10.0.0.103 -P DAQ:ASC:XPM:0'},
+ { id:'pyxpm',   port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.0.103 -P DAQ:ASC:XPM:0'},
 
 ## EPICS PV exporter
- { id:'pvrtmon', port:'29467', flags:'s', conda:conda_rel, env:epics_env, cmd:'epics_exporter -H asc -P DAQ:ASC:XPM:0 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+ { id:'pvrtmon', port:'29467', flags:'s', env:epics_env, cmd:f'epics_exporter -H asc -M {prom_dir} -P DAQ:ASC:XPM:0 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
 
 # { id:'pykcu',   port:'29471', flags:'s', conda:conda_rel, env:epics_env, cmd:'pykcu'},
-
-## procstat
- { id:'procstat', flags:'p', conda:conda_rel, cmd:'procstat p'+platform+'.cnf.last'},
 ]
