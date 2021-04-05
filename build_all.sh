@@ -125,7 +125,8 @@ fi
 # folder. The C++ code for the modules built in psana was therefore
 # moved from psalg to psana.
 if [ $pyInstallStyle == "develop" ]; then
-  if [ ! -f $INSTDIR/lib/python$pyver/site-packages/site.py ]; then
+  if [ ! -f $INSTDIR/lib/python$pyver/site-packages/site.py ] && \
+     [ ! -f $INSTDIR/lib/python$pyver/site-packages/sitecustomize.py ]; then
 cat << EOF > $INSTDIR/lib/python$pyver/site-packages/sitecustomize.py
 import site
 
