@@ -37,7 +37,7 @@ class ControlDef:
         'running'
     ]
 
-
+    STEPINFO = 253          # psdaq/drp/drp.hh
     PORT_BASE = 29980
     POSIX_TIME_AT_EPICS_EPOCH = 631152000
 
@@ -84,4 +84,7 @@ def front_rep_port(platform):
 
 def front_pub_port(platform):
     return ControlDef.PORT_BASE + platform + 30
+
+def fast_rep_port(platform):
+    return ControlDef.PORT_BASE + platform + 40
 
