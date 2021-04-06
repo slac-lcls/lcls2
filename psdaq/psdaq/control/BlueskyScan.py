@@ -104,14 +104,32 @@ class BlueskyScan:
                     self.stepDone = 0
                     self.stepDone_cv.notify()
 
+                my_data = {}
+                for motor in self.motors:
+                    my_data.update({motor.name: motor.position})
+                    # derive step_docstring from step_value
+                    if motor.name == 'step_value':
+                        docstring = f'{{"detname": "{self.detname}", "scantype": "{self.scantype}", "step": {motor.position}}}'
+                        my_data.update({'step_docstring': docstring})
+
+                data = {
+                  "motors":           my_data,
+                  "timestamp":        0,
+                  "detname":          "scan",
+                  "dettype":          "scan",
+                  "scantype":         "scan",
+                  "serial_number":    "1234",
+                  "alg_name":         "raw",
+                  "alg_version":      [2,0,0]
+                }
+
+                configureBlock = self.getBlock(transition="Configure", data=data)
+                beginStepBlock = self.getBlock(transition="BeginStep", data=data)
+
                 # set DAQ state
                 errMsg = self.control.setState('running',
-                    {'configure':{'NamesBlockHex':self.getBlock(transitionid=ControlDef.transitionId['Configure'],
-                                                                add_names=True,
-                                                                add_shapes_data=False).hex()},
-                     'beginstep':{'ShapesDataBlockHex':self.getBlock(transitionid=ControlDef.transitionId['BeginStep'],
-                                                                add_names=False,
-                                                                add_shapes_data=True).hex()}})
+                    {'configure':{'NamesBlockHex':configureBlock.hex()},
+                     'beginstep':{'ShapesDataBlockHex':beginStepBlock.hex()}})
                 if errMsg is not None:
                     logging.error('%s' % errMsg)
                     continue
@@ -216,29 +234,48 @@ class BlueskyScan:
         
         return [self]
 
-    def getBlock(self, *, transitionid, add_names, add_shapes_data):
-        my_data = {}
-        for motor in self.motors:
-            my_data.update({motor.name: motor.position})
-            # derive step_docstring from step_value
-            if motor.name == 'step_value':
-                docstring = f'{{"detname": "{self.detname}", "scantype": "{self.scantype}", "step": {motor.position}}}'
-                my_data.update({'step_docstring': docstring})
+#
+# data = {
+#   "motors":           {"motor1": 0.0, "step_value": 0.0},
+#   "transition":       "Configure",
+#   "timestamp":        0,
+#   "add_names":        True,
+#   "add_shapes_data":  False,
+#   "detname":          "scan",
+#   "dettype":          "scan",
+#   "scantype":         "scan",
+#   "serial_number":    "1234",
+#   "alg_name":         "raw",
+#   "alg_version":      [2,0,0]
+# }
+#
 
-        detname       = 'scan'
-        dettype       = 'scan'
-        serial_number = '1234'
-        namesid       = 253     # STEPINFO = 253 (psdaq/drp/drp.hh)
+    def getBlock(self, *, transition, data):
+        logging.debug('getBlock: motors=%s' % data["motors"])
+        if transition == "Configure":
+            data["add_names"] = True
+            data["add_shapes_data"] = False
+        else:
+            data["add_names"] = False
+            data["add_shapes_data"] = True
+        detname       = data["detname"]
+        dettype       = data["dettype"]
+        serial_number = data["serial_number"]
+        namesid       = ControlDef.STEPINFO
         nameinfo      = dc.nameinfo(detname,dettype,serial_number,namesid)
-
-        alg           = dc.alg('raw',[2,0,0])
-
-        self.cydgram.addDet(nameinfo, alg, my_data)
+        alg_name      = data["alg_name"]
+        alg_version   = data["alg_version"]
+        alg           = dc.alg(data["alg_name"], data["alg_version"])
+        self.cydgram.addDet(nameinfo, alg, data["motors"])
 
         # create dgram
-        timestamp    = 0
+        add_names       = data["add_names"]
+        add_shapes_data = data["add_shapes_data"]
+        timestamp       = data["timestamp"]
+        transitionid    = ControlDef.transitionId[transition]
+
         xtc_bytes    = self.cydgram.getSelect(timestamp, transitionid, add_names=add_names, add_shapes_data=add_shapes_data)
-        logging.debug('transitionid %d dgram is %d bytes (with header)' % (transitionid, len(xtc_bytes)))
+        logging.debug('getBlock: transitionid %d dgram is %d bytes (with header)' % (transitionid, len(xtc_bytes)))
 
         # remove first 12 bytes (dgram header), and keep next 12 bytes (xtc header)
         return xtc_bytes[12:]

@@ -18,7 +18,7 @@ from threading import Thread, Event, Condition
 import dgramCreate as dc
 from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_msg,  \
                                   progress_msg, fileReport_msg, front_pub_port, \
-                                  back_pub_port, front_rep_port, back_pull_port
+                                  back_pub_port, front_rep_port, back_pull_port, fast_rep_port
 
 report_keys = ['error', 'warning', 'fileReport']
 
@@ -471,14 +471,17 @@ class CollectionManager():
         self.back_pull = self.context.socket(zmq.PULL)
         self.back_pub = self.context.socket(zmq.PUB)
         self.front_rep = self.context.socket(zmq.REP)
+        self.fast_rep = self.context.socket(zmq.REP)
         self.front_pub = self.context.socket(zmq.PUB)
         self.back_pull.bind('tcp://*:%d' % back_pull_port(args.p))
         self.back_pub.bind('tcp://*:%d' % back_pub_port(args.p))
         self.front_rep.bind('tcp://*:%d' % front_rep_port(args.p))
+        self.fast_rep.bind('tcp://*:%d' % fast_rep_port(args.p))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(args.p))
         self.slow_update_rate = args.S if args.S else 0
+        self.fast_reply_rate = 1            # Hz
         self.slow_update_enabled = False    # setter: self.set_slow_update_enabled()
-        self.slow_update_exit = Event()
+        self.threads_exit = Event()
         self.phase2_timeout = args.T
         self.user = args.user
         self.password = args.password
@@ -508,6 +511,9 @@ class CollectionManager():
             logging.warning("active detectors file disabled. Default settings will be used.")
         else:
             logging.info("active detectors file: %s" % self.activedetfilename)
+
+        # initialize fast reply thread
+        self.fast_reply_thread = Thread(target=self.fast_reply_func, name='fastreply')
 
         if self.slow_update_rate:
             # initialize slow update thread
@@ -550,10 +556,12 @@ class CollectionManager():
         self.ids = set()
         self.handle_request = {
             'selectplatform': self.handle_selectplatform,
-            'getinstrument': self.handle_getinstrument,
             'getstate': self.handle_getstate,
             'storejsonconfig': self.handle_storejsonconfig,
             'getstatus': self.handle_getstatus
+        }
+        self.handle_fast = {
+            'getinstrument': self.handle_getinstrument
         }
         self.lastTransition = 'reset'
         self.recording = False
@@ -601,13 +609,15 @@ class CollectionManager():
             self.set_slow_update_enabled(False)
             self.slow_update_thread.start()
 
+        # start fast reply thread
+        self.fast_reply_thread.start()
+
         # start main loop
         self.run()
 
-        if self.slow_update_rate:
-            # stop slow update thread
-            self.slow_update_exit.set()
-            time.sleep(0.5)
+        # stop other thread(s)
+        self.threads_exit.set()
+        time.sleep(0.5)
 
     #
     # cmstate_levels - return copy of cmstate with only drp/teb/meb entries
@@ -677,6 +687,32 @@ class CollectionManager():
             answer = create_msg('error')
         if answer is not None:
             self.front_rep.send_json(answer)
+
+    def service_fast(self):
+        logging.debug('entered service_fast()')
+        answer = None
+        try:
+            msg = self.fast_rep.recv_json()
+            key = msg['header']['key'].split(".")
+            logging.debug("service_fast: key = %s" % key)
+            body = msg['body']
+
+            if key[0] == 'setrecord':
+                # handle_setrecord() sends reply internally
+                if key[1] == '0':
+                    self.handle_setrecord(False)
+                else:
+                    self.handle_setrecord(True)
+                answer = None
+            else:
+                answer = self.handle_fast[key[0]](body)
+
+        except KeyError:
+            answer = create_msg('error')
+        if answer is not None:
+            self.fast_rep.send_json(answer)
+
+        return
 
     #
     # register_file -
@@ -874,14 +910,14 @@ class CollectionManager():
             logging.error(errMsg)
             answer = create_msg('error', body={'err_info': errMsg})
             # reply 'error'
-            self.front_rep.send_json(answer)
+            self.fast_rep.send_json(answer)
         else:
             if newrecording != self.recording:
                 self.recording = newrecording
                 self.report_status()
             answer = create_msg('ok')
             # reply 'ok'
-            self.front_rep.send_json(answer)
+            self.fast_rep.send_json(answer)
 
     def handle_setbypass(self, newbypass):
         logging.debug('handle_setbypass(\'%s\') in state %s' % (newbypass, self.state))
@@ -1927,12 +1963,24 @@ class CollectionManager():
         slow_front_req.connect('tcp://localhost:%d' % front_rep_port(self.platform))
         msg = create_msg('slowupdate')
 
-        while not self.slow_update_exit.wait(1.0 / self.slow_update_rate):
+        while not self.threads_exit.wait(1.0 / self.slow_update_rate):
             if self.slow_update_enabled:
                 slow_front_req.send_json(msg)
                 answer = slow_front_req.recv_multipart()
 
         logging.debug('slowupdate thread shutting down')
+
+    def fast_reply_func(self):
+        logging.debug('fastreply thread starting up')
+
+        # zmq sockets are not thread-safe
+        # so create a zmq socket for the fastreply thread
+        fast_reply_rep = self.context.socket(zmq.REP)
+
+        while not self.threads_exit.wait(1.0 / self.fast_reply_rate):
+            self.service_fast()
+
+        logging.debug('fastreply thread shutting down')
 
 
 def main():

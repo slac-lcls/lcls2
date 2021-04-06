@@ -1,6 +1,6 @@
 import logging
 import zmq
-from psdaq.control.ControlDef import ControlDef, front_pub_port, front_rep_port, create_msg
+from psdaq.control.ControlDef import ControlDef, front_pub_port, front_rep_port, fast_rep_port, create_msg
 
 class DaqControl:
     'Base class for controlling data acquisition'
@@ -20,6 +20,9 @@ class DaqControl:
         self.front_req = None
         self.front_req_endpoint = 'tcp://%s:%d' % (host, front_rep_port(platform))
         self.front_req_init()
+        self.fast_req = None
+        self.fast_req_endpoint = 'tcp://%s:%d' % (host, fast_rep_port(platform))
+        self.fast_req_init()
 
     #
     # DaqControl.getState - get current state
@@ -139,8 +142,8 @@ class DaqControl:
         r1 = None
         try:
             msg = create_msg('getinstrument')
-            self.front_req.send_json(msg)
-            reply = self.front_req.recv_json()
+            self.fast_req.send_json(msg)
+            reply = self.fast_req.recv_json()
         except Exception as ex:
             print('getInstrument() Exception: %s' % ex)
         else:
@@ -283,8 +286,8 @@ class DaqControl:
 
             try:
                 msg = create_msg('setrecord.' + record)
-                self.front_req.send_json(msg)
-                reply = self.front_req.recv_json()
+                self.fast_req.send_json(msg)            # FIXME front
+                reply = self.fast_req.recv_json()       # FIXME front
             except Exception as ex:
                 errorMessage = 'setRecord() Exception: %s' % ex
             else:
@@ -360,6 +363,19 @@ class DaqControl:
         self.front_req.linger = 0
         self.front_req.RCVTIMEO = self.timeout
         self.front_req.connect(self.front_req_endpoint)
+
+    #
+    # DaqControl.fast_req_init - (re)initialize the fast_req zmq socket
+    #
+    def fast_req_init(self):
+        # if socket previouly created, close it
+        if self.fast_req is not None:
+            self.fast_req.close()
+        # create new socket
+        self.fast_req = self.context.socket(zmq.REQ)
+        self.fast_req.linger = 0
+        self.fast_req.RCVTIMEO = self.timeout
+        self.fast_req.connect(self.fast_req_endpoint)
 
 next_dict = {
     'reset' :       { 'unallocated' : 'rollcall',
