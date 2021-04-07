@@ -5,11 +5,9 @@ from ophyd.status import Status
 import sys
 import logging
 import threading
-import asyncio
 import time
 from DaqControl import DaqControl
 from BlueskyScan import BlueskyScan
-from ControlDef import front_pub_port
 import argparse
 
 parser = argparse.ArgumentParser()
