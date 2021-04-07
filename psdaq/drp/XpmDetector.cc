@@ -23,6 +23,11 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
 {
     int fd = pool->fd();
 
+    static const double flo[] = {115.,180.};
+    static const double fhi[] = {125.,190.};
+
+    unsigned index = (para->kwargs["timebase"]=="119M") ? 0:1;
+
     // Check timing reference clock, program if necessary
     unsigned ccnt0,ccnt1;
     dmaReadRegister(fd, 0x00C00028, &ccnt0);
@@ -31,7 +36,7 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
     ccnt1 -= ccnt0;
     double clkr = double(ccnt1)*16.e-5;
     logging::info("Timing RefClk %f MHz\n", clkr);
-    if (clkr < 180 || clkr > 190) {
+    if (clkr < flo[index] || clkr > fhi[index]) {
       AxiVersion vsn;
       axiVersionGet(fd, &vsn);
       if (vsn.userValues[2]) {  // Only one PCIe interface has access to I2C bus
@@ -47,7 +52,7 @@ XpmDetector::XpmDetector(Parameters* para, MemPool* pool) :
       dmaWriteRegister(fd, 0x00E00000, (1<<2));
 
       Si570 rclk(fd,0x00E00800);
-      rclk.program();
+      rclk.program(index);
 
       logging::info("Reset timing PLL\n");
       unsigned v;

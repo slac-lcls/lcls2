@@ -8,7 +8,7 @@ namespace Drp {
     ~Si570();
   public:
     void   reset();   // Back to factory defaults
-    void   program(); // Set for 185.7 MHz
+    void   program(int index=1); // Set for 185.7 MHz
     double read();    // Read factory calibration
   private:
     int      _fd;

@@ -145,9 +145,8 @@ static void reset_si570()
 static double read_si570()
 {
   //  Read factory calibration for 156.25 MHz
-  static const unsigned hsd_divn[] = {4,5,6,7,9,11};
   unsigned v = get_reg32(SI570(7));
-  unsigned hs_div = hsd_divn[(v>>5)&7];
+  unsigned hs_div = ((v>>5)&7) + 4;
   unsigned n1 = (v&0x1f)<<2;
   v = get_reg32(SI570(8));
   n1 |= (v>>6)&3;
@@ -159,6 +158,11 @@ static double read_si570()
     ((get_reg32(SI570(12))&0xff)<< 0);
 
   double f = (156.25 * double(hs_div * (n1+1))) * double(1<<28)/ double(rfreq);
+
+  printf("Reg[7:12]:");
+  for(unsigned i=7; i<13; i++)
+      printf(" %02x", get_reg32(SI570(i)));
+  printf("\n");
 
   printf("Read: hs_div %x  n1 %x  rfreq %lx  f %f MHz\n",
          hs_div, n1, rfreq, f);
@@ -186,8 +190,54 @@ static void set_si570(double f)
   set_reg32(SI570(11),(rfreq>> 8)&0xff);
   set_reg32(SI570(12),(rfreq>> 0)&0xff);
 
+  printf("Reg[7:12]:");
+  for(unsigned i=7; i<13; i++)
+      printf(" %02x", get_reg32(SI570(i)));
+  printf("\n");
+
   printf("Wrote: hs_div %x  n1 %x  rfreq %lx  f %f MHz\n",
-         hs_div, n1, rfreq, f);
+         hs_div+4, n1, rfreq, f);
+
+  //  Unfreeze DCO
+  v = get_reg32(SI570(137));
+  v &= ~(1<<4);
+  set_reg32(SI570(137),v);
+
+  v = get_reg32(SI570(135));
+  v |= (1<<6);
+  set_reg32(SI570(135),v);
+}
+
+static void set_si570_119m(double f)
+{
+  //  Program for 119 MHz
+
+  //  Freeze DCO
+  unsigned v = get_reg32(SI570(137));
+  v |= (1<<4);
+  set_reg32(SI570(137),v);
+
+  // DCO = 476M * 11 = 5236M
+  // HSDIV = 11
+  // N1 = 4
+  unsigned hs_div = 7; // =11
+  unsigned n1     = 3; // =4
+  uint64_t rfreq  = uint64_t(5236. / f * double(1<<28));
+
+  set_reg32(SI570( 7),((hs_div&7)<<5) | ((n1>>2)&0x1f));
+  set_reg32(SI570( 8),((n1&3)<<6) | ((rfreq>>32)&0x3f));
+  set_reg32(SI570( 9),(rfreq>>24)&0xff);
+  set_reg32(SI570(10),(rfreq>>16)&0xff);
+  set_reg32(SI570(11),(rfreq>> 8)&0xff);
+  set_reg32(SI570(12),(rfreq>> 0)&0xff);
+
+  printf("Reg[7:12]:");
+  for(unsigned i=7; i<13; i++)
+      printf(" %02x", get_reg32(SI570(i)));
+  printf("\n");
+
+  printf("Wrote: hs_div %x  n1 %x  rfreq %lx  f %f MHz\n",
+         hs_div+4, n1, rfreq, f);
 
   //  Unfreeze DCO
   v = get_reg32(SI570(137));
@@ -263,6 +313,7 @@ static void usage(const char* p)
   printf("         -T              [reset timing PLL]\n");
   printf("         -F              [reset frame counters]\n");
   printf("         -C partition[,length[,links]] [configure simcam]\n");
+  printf("         -1              [use 119MHz for refclk]\n");
   printf("Requires -b or -d\n");
 }
 
@@ -275,6 +326,7 @@ int main(int argc, char* argv[])
     bool timingRst = false;
     bool tcountRst = false;
     bool frameRst  = false;
+    int clksel     = 1; // LCLS2 default
     int dramMon    = -1;
     int delayVal   = -1;
     bool updateId  = true;
@@ -285,8 +337,9 @@ int main(int argc, char* argv[])
     char* endptr;
 
     int c;
-    while((c = getopt(argc, argv, "cd:l:rsStTmMFD:C:")) != EOF) {
+    while((c = getopt(argc, argv, "cd:l:rsStTmMFD:C:1")) != EOF) {
       switch(c) {
+      case '1': clksel = 0; break;
       case 'd': dev = optarg; break;
       case 'c': setup_clk = true; updateId = true; break;
       case 'l': lanes = strtoul(optarg,&endptr,0); break;
@@ -380,14 +433,22 @@ int main(int argc, char* argv[])
     if (core_pcie) {
       double txrefclk, rxrefclk;
       measure_clks(txrefclk,rxrefclk);
-      setup_clk |= ( txrefclk < 185 || txrefclk > 186 );
+
+      static const unsigned txrefclk_min[] = {118,185};
+      static const unsigned txrefclk_max[] = {120,186};
+
+      setup_clk |= ( txrefclk < txrefclk_min[clksel] ||
+                     txrefclk > txrefclk_max[clksel] );
 
       if (setup_clk) {
         select_si570();
         reset_si570();
 
         double f = read_si570();
-        set_si570(f);
+        if (clksel)
+            set_si570(f);
+        else
+            set_si570_119m(f);
         read_si570();
 
         double txrefclk, rxrefclk;

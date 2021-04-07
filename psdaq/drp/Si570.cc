@@ -49,8 +49,11 @@ double Si570::read()
   return f;
 }
 
-void Si570::program()
+void Si570::program(int index)
 {
+  static const unsigned _hsd_div[] = { 7, 3 };
+  static const unsigned _n1     [] = { 3, 3 };
+  static const double   _rfreq  [] = { 5236., 5200. };
   reset();
 
   double fcal = read();
@@ -63,9 +66,9 @@ void Si570::program()
   v |= (1<<4);
   dmaWriteRegister(_fd, _off+4*137, v);
 
-  unsigned hs_div = 3; // =7
-  unsigned n1     = 3; // =4
-  uint64_t rfreq  = uint64_t(5200. / fcal * double(1<<28));
+  unsigned hs_div = _hsd_div[index];
+  unsigned n1     = _n1     [index];
+  uint64_t rfreq  = uint64_t(_rfreq[index] / fcal * double(1<<28));
 
   dmaWriteRegister(_fd, _off+4*7 , ((hs_div&7)<<5) | ((n1>>2)&0x1f) );
   dmaWriteRegister(_fd, _off+4*8 , ((n1&3)    <<6) | ((rfreq>>32)&0x3f) );
