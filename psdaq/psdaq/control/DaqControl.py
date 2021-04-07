@@ -286,8 +286,8 @@ class DaqControl:
 
             try:
                 msg = create_msg('setrecord.' + record)
-                self.fast_req.send_json(msg)            # FIXME front
-                reply = self.fast_req.recv_json()       # FIXME front
+                self.fast_req.send_json(msg)
+                reply = self.fast_req.recv_json()
             except Exception as ex:
                 errorMessage = 'setRecord() Exception: %s' % ex
             else:
@@ -299,6 +299,26 @@ class DaqControl:
             errorMessage = 'setRecord() requires True or False'
 
         return errorMessage
+
+    #
+    # DaqControl.getBlock -
+    #
+    def getBlock(self, data):
+        r1 = None
+        try:
+            msg = create_msg('getblock', body=data)
+            self.fast_req.send_json(msg)
+            reply = self.fast_req.recv_json()
+            logging.debug(f'getBlock reply={reply}')
+        except Exception as ex:
+            print('getBlock() Exception 1: %s' % ex)
+        else:
+            try:
+                r1 = reply['body']
+            except Exception as ex:
+                print('getBlock() Exception 2: %s' % ex)
+
+        return r1
 
     #
     # DaqControl.setBypass - set bypass_activedet flag

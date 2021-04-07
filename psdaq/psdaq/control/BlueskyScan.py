@@ -8,7 +8,6 @@ import threading
 import zmq
 import asyncio
 import time
-import dgramCreate as dc
 import numpy as np
 
 from psdaq.control.ControlDef import ControlDef
@@ -28,7 +27,6 @@ class BlueskyScan:
         self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
         self.motors = []                # set in configure()
-        self.cydgram = dc.CyDgram()
         self.daqState = daqState
         self.args = args
         self.daqState_cv = threading.Condition()
@@ -115,12 +113,12 @@ class BlueskyScan:
                 data = {
                   "motors":           my_data,
                   "timestamp":        0,
-                  "detname":          "scan",
+                  "detname":          self.detname,
                   "dettype":          "scan",
-                  "scantype":         "scan",
+                  "scantype":         self.scantype,
                   "serial_number":    "1234",
                   "alg_name":         "raw",
-                  "alg_version":      [2,0,0]
+                  "alg_version":      [1,0,0]
                 }
 
                 configureBlock = self.getBlock(transition="Configure", data=data)
@@ -128,8 +126,8 @@ class BlueskyScan:
 
                 # set DAQ state
                 errMsg = self.control.setState('running',
-                    {'configure':{'NamesBlockHex':configureBlock.hex()},
-                     'beginstep':{'ShapesDataBlockHex':beginStepBlock.hex()}})
+                    {'configure':{'NamesBlockHex':configureBlock},
+                     'beginstep':{'ShapesDataBlockHex':beginStepBlock}})
                 if errMsg is not None:
                     logging.error('%s' % errMsg)
                     continue
@@ -252,30 +250,18 @@ class BlueskyScan:
 
     def getBlock(self, *, transition, data):
         logging.debug('getBlock: motors=%s' % data["motors"])
+        if transition in ControlDef.transitionId.keys():
+            data["transitionid"] = ControlDef.transitionId[transition]
+        else:
+            logging.error(f'invalid transition: {transition}')
+
         if transition == "Configure":
             data["add_names"] = True
             data["add_shapes_data"] = False
         else:
             data["add_names"] = False
             data["add_shapes_data"] = True
-        detname       = data["detname"]
-        dettype       = data["dettype"]
-        serial_number = data["serial_number"]
-        namesid       = ControlDef.STEPINFO
-        nameinfo      = dc.nameinfo(detname,dettype,serial_number,namesid)
-        alg_name      = data["alg_name"]
-        alg_version   = data["alg_version"]
-        alg           = dc.alg(data["alg_name"], data["alg_version"])
-        self.cydgram.addDet(nameinfo, alg, data["motors"])
 
-        # create dgram
-        add_names       = data["add_names"]
-        add_shapes_data = data["add_shapes_data"]
-        timestamp       = data["timestamp"]
-        transitionid    = ControlDef.transitionId[transition]
+        data["namesid"] = ControlDef.STEPINFO
 
-        xtc_bytes    = self.cydgram.getSelect(timestamp, transitionid, add_names=add_names, add_shapes_data=add_shapes_data)
-        logging.debug('getBlock: transitionid %d dgram is %d bytes (with header)' % (transitionid, len(xtc_bytes)))
-
-        # remove first 12 bytes (dgram header), and keep next 12 bytes (xtc header)
-        return xtc_bytes[12:]
+        return self.control.getBlock(data)

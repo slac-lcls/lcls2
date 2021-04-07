@@ -490,6 +490,7 @@ class CollectionManager():
         self.run_number = self.last_run_number = 0
         self.rollcall_timeout = args.rollcall_timeout
         self.bypass_activedet = False
+        self.cydgram = dc.CyDgram()
 
         # instantiate DaqPVA object
         self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base)
@@ -561,7 +562,8 @@ class CollectionManager():
             'getstatus': self.handle_getstatus
         }
         self.handle_fast = {
-            'getinstrument': self.handle_getinstrument
+            'getinstrument': self.handle_getinstrument,
+            'getblock': self.handle_getblock
         }
         self.lastTransition = 'reset'
         self.recording = False
@@ -629,8 +631,6 @@ class CollectionManager():
         # msg['header']['key'] formats:
         #  setstate.STATE
         #  setconfig.CONFIG_ALIAS
-        #  setrecord.RECORD_FLAG
-        #  setbypass.BYPASS_FLAG
         #  TRANSITION
         #  REQUEST
         answer = None
@@ -647,20 +647,6 @@ class CollectionManager():
             elif key[0] == 'setconfig':
                 # handle_setconfig() sends reply internally
                 self.handle_setconfig(key[1])
-                answer = None
-            elif key[0] == 'setrecord':
-                # handle_setrecord() sends reply internally
-                if key[1] == '0':
-                    self.handle_setrecord(False)
-                else:
-                    self.handle_setrecord(True)
-                answer = None
-            elif key[0] == 'setbypass':
-                # handle_setbypass() sends reply internally
-                if key[1] == '0':
-                    self.handle_setbypass(False)
-                else:
-                    self.handle_setbypass(True)
                 answer = None
             elif key[0] in ControlDef.transitions:
                 # is body dict not-empty?
@@ -689,6 +675,10 @@ class CollectionManager():
             self.front_rep.send_json(answer)
 
     def service_fast(self):
+        # msg['header']['key'] formats:
+        #  setrecord.RECORD_FLAG
+        #  setbypass.BYPASS_FLAG
+        #  REQUEST
         logging.debug('entered service_fast()')
         answer = None
         try:
@@ -704,8 +694,16 @@ class CollectionManager():
                 else:
                     self.handle_setrecord(True)
                 answer = None
+            elif key[0] == 'setbypass':
+                # handle_setbypass() sends reply internally
+                if key[1] == '0':
+                    self.handle_setbypass(False)
+                else:
+                    self.handle_setbypass(True)
+                answer = None
             else:
                 answer = self.handle_fast[key[0]](body)
+                logging.debug(f'service_fast: answer={answer}')
 
         except KeyError:
             answer = create_msg('error')
@@ -927,14 +925,14 @@ class CollectionManager():
             logging.error(errMsg)
             answer = create_msg('error', body={'err_info': errMsg})
             # reply 'error'
-            self.front_rep.send_json(answer)
+            self.fast_rep.send_json(answer)
         else:
             if newbypass != self.bypass_activedet:
                 self.bypass_activedet = newbypass
                 self.report_status()
             answer = create_msg('ok')
             # reply 'ok'
-            self.front_rep.send_json(answer)
+            self.fast_rep.send_json(answer)
 
     def status_msg(self):
         if not self.experiment_name:
@@ -1305,6 +1303,39 @@ class CollectionManager():
         logging.debug('handle_getinstrument()')
         body = {'instrument': self.instrument, 'station': self.station}
         return create_msg('instrument', body=body)
+
+    def handle_getblock(self, body):
+        if body is None or type(body) != type({}):
+            msg = 'getblock requires dict'
+            self.report_error(msg)
+            return error_msg(msg)
+
+        logging.debug(f'handle_getblock: body={body}')
+
+        try:
+            detname       = body["detname"]
+            dettype       = body["dettype"]
+            serial_number = body["serial_number"]
+            namesid       = body["namesid"]
+
+            nameinfo      = dc.nameinfo(detname,dettype,serial_number,namesid)
+            alg           = dc.alg(body["alg_name"], body["alg_version"])
+            self.cydgram.addDet(nameinfo, alg, body["motors"])
+
+            # create dgram
+            add_names       = body["add_names"]
+            add_shapes_data = body["add_shapes_data"]
+            timestamp       = body["timestamp"]
+            transitionid    = body["transitionid"]
+        except Exception as ex:
+            logging.error(f'handle_getblock Exception: {ex}')
+
+        xtc_bytes = self.cydgram.getSelect(timestamp, transitionid, add_names=add_names, add_shapes_data=add_shapes_data)
+        logging.debug('handle_getblock: transitionid %d dgram is %d bytes (with header)' % (transitionid, len(xtc_bytes)))
+
+        # remove first 12 bytes (dgram header), and keep next 12 bytes (xtc header)
+        reply = xtc_bytes[12:]
+        return create_msg('block', body=reply.hex())
 
     def handle_selectplatform(self, body):
         logging.debug('handle_selectplatform()')
