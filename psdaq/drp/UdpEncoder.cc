@@ -290,12 +290,12 @@ UdpEncoder::~UdpEncoder()
 
 void UdpEncoder::addNames(unsigned segment, XtcData::Xtc& xtc)
 {
-    // do what the xtcwriter.cc addNames() does on configure (for RawDef)
     XtcData::Alg encoderRawAlg("raw",0,0,1);
-    XtcData::NamesId namesId1(nodeId, segment);
-    XtcData::Names& rawNames = *new(xtc) XtcData::Names("rixencoder", encoderRawAlg, "encoder","detnum1234", namesId1, segment);
+    XtcData::NamesId rawNamesId(nodeId, segment);
+    XtcData::Names&  rawNames = *new(xtc) XtcData::Names(m_para->detName.c_str(), encoderRawAlg,
+                                                         m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId, segment);
     rawNames.add(xtc, RawDef);
-    m_namesLookup[namesId1] = XtcData::NameIndex(rawNames);
+    m_namesLookup[rawNamesId] = XtcData::NameIndex(rawNames);
 }
 
   //std::string UdpEncoder::sconfigure(const std::string& config_alias, XtcData::Xtc& xtc)
