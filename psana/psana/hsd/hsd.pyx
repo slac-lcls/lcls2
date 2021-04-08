@@ -33,10 +33,12 @@ cdef extern from "HsdPython.hh" namespace "Pds::HSD":
         ChannelPython()
         ChannelPython(const evthdr_t *evtheader, const si.uint8_t *data)
         si.uint16_t* waveform(unsigned &numsamples)
+        #si.uint16_t* sparse(unsigned &numsamples)
         unsigned next_peak(unsigned &sPos, si.uint16_t** peakPtr)
 
 cdef class PyChannelPython:
     cdef public cnp.ndarray waveform
+    #cdef public cnp.ndarray sparse
     cdef public list peakList
     cdef public list startPosList
     def __init__(self, cnp.ndarray[evthdr_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan, dgram):
@@ -60,6 +62,15 @@ cdef class PyChannelPython:
             Py_INCREF(dgram)
         else:
             self.waveform = None
+
+#        wf_ptr = chanpy.sparse(numsamples)
+#        shape[0] = numsamples
+#        if numsamples:
+#            self.sparse = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16, wf_ptr)
+#            self.sparse.base = <PyObject*> dgram
+#            Py_INCREF(dgram)
+#        else:
+#            self.sparse = None
 
         self.peakList = None
         self.startPosList = None
@@ -110,6 +121,7 @@ cdef class cyhsd_base_1_2_3:
 
     def __init__(self):
         self._wvDict = {}
+        self._spDict = {}
         self._fexPeaks = []
         self._peaksDict = {}
         self._peakTimesDict = {}
@@ -124,6 +136,7 @@ cdef class cyhsd_base_1_2_3:
 
     def _parseEvt(self, evt):
         self._wvDict = {}
+        self._spDict = {}
         self._peaksDict = {}
         self._fexPeaks = []
         self._hsdsegments = self._segments(evt)
@@ -145,6 +158,10 @@ cdef class cyhsd_base_1_2_3:
                                 # perhaps both for 5GHz and 6GHz models
                                 self._wvDict[iseg]["times"] = np.arange(len(pychan.waveform)) * 1/(6.4*1e9*13/14)
                             self._wvDict[iseg][chanNum] = pychan.waveform
+#                        if pychan.sparse is not None:
+#                            if iseg not in self._spDict.keys():
+#                                self._spDict[iseg] = {}
+#                                self._spDict[iseg][chanNum] = pychan.sparse
                         if pychan.peakList is not None:
                             if iseg not in self._peaksDict.keys():
                                 self._peaksDict[iseg]={}
@@ -182,6 +199,25 @@ cdef class cyhsd_base_1_2_3:
             return None
         else:
             return self._wvDict
+
+    # adding this decorator allows access to the signature information of the function in python
+    # this is used for AMI type safety
+#    @cython.binding(True)
+#    def sparse(self, evt) -> HSDWaveforms:
+#        """Return a dictionary of available waveforms in the event.
+#        0:    raw waveform intensity from channel 0
+#        1:    raw waveform intensity from channel 1
+#        ...
+#        16:   raw waveform intensity from channel 16
+#        times:  time axis (s)
+#        """
+#        cdef cnp.ndarray wv # TODO: make readonly
+#        if self._isNewEvt(evt):
+#            self._parseEvt(evt)
+#        if not self._spDict:
+#            return None
+#        else:
+#            return self._spDict
 
     # adding this decorator allows access to the signature information of the function in python
     # this is used for AMI type safety

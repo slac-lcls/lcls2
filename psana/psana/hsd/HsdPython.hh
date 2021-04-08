@@ -44,6 +44,14 @@ namespace Pds {
             return wf;
         }
 
+        //  For debugging the processing in this class
+        // uint16_t* sparse(unsigned& numsamples) {
+        //     if (!_sh_fex) return 0;
+        //     numsamples = _sh_fex->num_samples();
+        //     uint16_t* wf = (uint16_t*)(_sh_fex+1);
+        //     return wf;
+        // }
+
         unsigned next_peak(unsigned& startPos, uint16_t** peakPtr) {
             unsigned peakLen = 0; // indicate that, by default, we haven't found a peak
             if (!_sh_fex) return peakLen; // no more peaks to look for
@@ -55,8 +63,8 @@ namespace Pds {
                     for (unsigned j=0; j<4; j++, i++) {
                         _ns += (q[i]&0x7fff); // increment the number-of-skips
                     }
-                    _totWidth += _width; // add the width of the last peak to the cumulative sum
                     if (_in) { // if we were previously in a peak, this completes that peak
+                        _totWidth += _width; // add the width of the last peak to the cumulative sum
                         peakLen = _width;
                         _startSample = i; // remember where to start for next call
                         _in = false; // we're not in a peak anymore
