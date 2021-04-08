@@ -96,6 +96,8 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     expert['fex_gate' ] = fex_gate
     expert['fex_xpre' ] = fex_xpre
     expert['fex_xpost'] = fex_xpost
+    expert['fex_ymin' ] = fex['ymin']
+    expert['fex_ymax' ] = fex['ymax']
     expert['fex_prescale'] = fex['prescale']
 
     # program the values
