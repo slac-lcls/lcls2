@@ -115,6 +115,7 @@ cdef class cyhsd_base_1_2_3:
     cdef dict _wvDict
     cdef list _fexPeaks
     cdef dict _peaksDict
+    cdef dict _padDict
 
     def __cinit__(self):
         pass
@@ -128,6 +129,18 @@ cdef class cyhsd_base_1_2_3:
         self._evt = None
         self._hsdsegments = None
 
+        self._padDict = {}
+        self._padValue = {}
+        self._padLength = {}
+        for config in self._configs:
+            if not hasattr(config,self._det_name):
+                continue
+            seg_dict = getattr(config,self._det_name)
+            for seg,seg_config in seg_dict.items():
+                self._padValue[seg] = (seg_config.config.user.fex.ymin+
+                                       seg_config.config.user.fex.ymax)//2
+                self._padLength[seg] = int(seg_config.config.user.fex.gate_ns*0.160*13/14)*40
+
     def _isNewEvt(self, evt):
         if self._evt == None or not (evt._nanoseconds == self._evt._nanoseconds and evt._seconds == self._evt._seconds):
             return True
@@ -138,6 +151,7 @@ cdef class cyhsd_base_1_2_3:
         self._wvDict = {}
         self._spDict = {}
         self._peaksDict = {}
+        self._padDict = {}
         self._fexPeaks = []
         self._hsdsegments = self._segments(evt)
         if self._hsdsegments is None: return # no segments at all
@@ -166,12 +180,19 @@ cdef class cyhsd_base_1_2_3:
                             if iseg not in self._peaksDict.keys():
                                 self._peaksDict[iseg]={}
                                 self._peakTimesDict[iseg]={}
+                                self._padDict[iseg]={}
                             self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
 
                             times = []
                             for start, peak in zip(pychan.startPosList, pychan.peakList):
                                 times.append(np.arange(start, start+len(peak)) * 1/(6.4*1e9*13/14))
                             self._peakTimesDict[iseg][chanNum] = times
+
+                            padvalues = [self._padValue[iseg]]*self._padLength[iseg]
+                            for start, peak in zip(pychan.startPosList, pychan.peakList):
+                                padvalues[start:start+len(peak)]=peak
+                            self._padDict[iseg][chanNum] = padvalues
+                            self._padDict[iseg]["times"] = np.arange(self._padLength[iseg]) * 1/(6.4e9*13/14)
 
         # maybe check that we have all segments in the event?
         # FIXME: also check that we have all the channels we expect?
@@ -250,6 +271,25 @@ cdef class cyhsd_base_1_2_3:
             return None
         else:
             return self._peakTimesDict
+
+    # adding this decorator allows access to the signature information of the function in python
+    # this is used for AMI type safety
+    @cython.binding(True)
+    def padded(self, evt) -> HSDWaveforms:
+        """Return a dictionary of available padded waveforms in the event.
+        0:    reconstructed waveform intensity from channel 0
+        1:    reconstructed waveform intensity from channel 1
+        ...
+        16:   reconstructed waveform intensity from channel 16
+        times:  time axis (s)
+        """
+        cdef cnp.ndarray wv # TODO: make readonly
+        if self._isNewEvt(evt):
+            self._parseEvt(evt)
+        if not self._padDict:
+            return None
+        else:
+            return self._padDict
 
 
 class hsd_raw_2_0_0(hsd_hsd_1_2_3):
