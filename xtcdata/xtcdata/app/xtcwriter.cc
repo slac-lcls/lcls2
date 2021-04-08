@@ -764,7 +764,7 @@ int main(int argc, char* argv[])
                                        timestamp_val);
     addRunInfoData(beginRunTr.xtc, namesLookup, nodeid1);
     for (unsigned iseg=0; iseg<nSegments; iseg++) {
-        addCfgRunData (beginRunTr.xtc, namesLookup, nodeid1, iseg);
+        addCfgRunData (beginRunTr.xtc, namesLookup, nodeid1, iseg+starting_segment);
     }
     save(beginRunTr, xtcFile);
 
