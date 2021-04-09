@@ -13,14 +13,26 @@ def test_hsd():
 
     for nevt,evt in enumerate(myrun.events()):
         wfs = det.hsd.waveforms(evt)
+        pad = det.hsd.padded(evt)
         fex = det.hsd.peaks(evt)
 
         # make sure we return None if there are no entries
         if not wfs: assert wfs is None
+        if not pad: assert pad is None
         if not fex: assert fex is None
 
         if wfs:
             for ndigi,(digitizer,wfsdata) in enumerate(wfs.items()):
+                times = wfsdata['times']
+                nwf = 0
+                for channel,waveform in wfsdata.items():
+                    if type(channel) is int: # skip over the 'times'
+                        nwf+=1
+                        assert len(waveform)== len(times)
+                assert nwf == 1, nwf # counting from one
+            assert ndigi == 1, ndigi # enumerate counting from zero
+        if pad:
+            for ndigi,(digitizer,wfsdata) in enumerate(pad.items()):
                 times = wfsdata['times']
                 nwf = 0
                 for channel,waveform in wfsdata.items():
