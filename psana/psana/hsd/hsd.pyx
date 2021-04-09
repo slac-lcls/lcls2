@@ -92,7 +92,18 @@ class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
     def __init__(self, *args):
         DetectorImpl.__init__(self, *args)
         cyhsd_base_1_2_3.__init__(self)
+        self._load_config()
 
+    def _load_config(self):
+        for config in self._configs:
+            if not hasattr(config,self._det_name):
+                continue
+            seg_dict = getattr(config,self._det_name)
+            for seg,seg_config in seg_dict.items():
+                self._padValue[seg] = (seg_config.config.fex.ymin+
+                                       seg_config.config.fex.ymax)//2
+                self._padLength[seg] = seg_config.config.fex.gate*40
+        
     # this routine is used by ami/data.py
     def _seg_chans(self):
         """
@@ -132,14 +143,6 @@ cdef class cyhsd_base_1_2_3:
         self._padDict = {}
         self._padValue = {}
         self._padLength = {}
-        for config in self._configs:
-            if not hasattr(config,self._det_name):
-                continue
-            seg_dict = getattr(config,self._det_name)
-            for seg,seg_config in seg_dict.items():
-                self._padValue[seg] = (seg_config.config.user.fex.ymin+
-                                       seg_config.config.user.fex.ymax)//2
-                self._padLength[seg] = int(seg_config.config.user.fex.gate_ns*0.160*13/14)*40
 
     def _isNewEvt(self, evt):
         if self._evt == None or not (evt._nanoseconds == self._evt._nanoseconds and evt._seconds == self._evt._seconds):
@@ -188,7 +191,7 @@ cdef class cyhsd_base_1_2_3:
                                 times.append(np.arange(start, start+len(peak)) * 1/(6.4*1e9*13/14))
                             self._peakTimesDict[iseg][chanNum] = times
 
-                            padvalues = [self._padValue[iseg]]*self._padLength[iseg]
+                            padvalues = np.zeros(self._padLength[iseg])+self._padValue[iseg]
                             for start, peak in zip(pychan.startPosList, pychan.peakList):
                                 padvalues[start:start+len(peak)]=peak
                             self._padDict[iseg][chanNum] = padvalues
@@ -296,3 +299,13 @@ class hsd_raw_2_0_0(hsd_hsd_1_2_3):
 
     def __init__(self, *args):
         hsd_hsd_1_2_3.__init__(self, *args)
+
+    def _load_config(self):
+        for config in self._configs:
+            if not hasattr(config,self._det_name):
+                continue
+            seg_dict = getattr(config,self._det_name)
+            for seg,seg_config in seg_dict.items():
+                self._padValue[seg] = (seg_config.config.user.fex.ymin+
+                                       seg_config.config.user.fex.ymax)//2
+                self._padLength[seg] = int(seg_config.config.user.fex.gate_ns*0.160*13/14)*40
