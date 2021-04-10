@@ -232,7 +232,16 @@ public:
             Name::DataType dtyp = (typeMap.find(s) == typeMap.end()) ? Name::ENUMVAL : typeMap[s];
             switch (dtyp) {
             case Name::UINT8:
-                _cd.set_value(_cnt, (uint8_t) val.GetUint());
+                if (val.IsBool()) {
+                    bool bool_val = val.GetBool();
+                    if (bool_val == true) {
+                        _cd.set_value(_cnt, (uint8_t) 1);
+                    } else {
+                        _cd.set_value(_cnt, (uint8_t) 0);
+                    }
+                } else {
+                    _cd.set_value(_cnt, (uint8_t) val.GetUint());
+                }
                 break;
             case Name::UINT16:
                 _cd.set_value(_cnt, (uint16_t) val.GetUint());
