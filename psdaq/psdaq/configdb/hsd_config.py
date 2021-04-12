@@ -48,7 +48,7 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     #  Validate user raw values
     #
     raw            = cfg['user']['raw']
-    raw_start      = (raw['start_ns']*1300/7000 - partitionDelay*200)*160/200 # in "160MHz"(*13/14) clks
+    raw_start      = int((raw['start_ns']*1300/7000 - partitionDelay*200)*160/200) # in "160MHz"(*13/14) clks
     # raw_start register is 14 bits
     if raw_start < 0:
         print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.format(partitionDelay,raw['start_ns'],raw_start))
@@ -152,7 +152,7 @@ def user_to_expert(cfg, full=False):
         hasRaw = 'raw' in cfg['user']
         raw = cfg['user']['raw']
         if (hasRaw and 'start_ns' in raw):
-            raw_start      = (raw['start_ns']*1300/7000 - partitionDelay*200)*160/200
+            raw_start      = int((raw['start_ns']*1300/7000 - partitionDelay*200)*160/200)
 
             if raw_start < 0:
                 print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.
