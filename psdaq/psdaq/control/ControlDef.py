@@ -73,6 +73,10 @@ def progress_msg(transition, elapsed, total):
     body = {'transition': transition, 'elapsed': int(elapsed), 'total': int(total)}
     return create_msg('progress', body=body)
 
+def step_msg(doneFlag):
+    body = {'step_done': doneFlag}
+    return create_msg('step', body=body)
+
 def back_pull_port(platform):
     return ControlDef.PORT_BASE + platform
 

@@ -107,6 +107,8 @@ def main():
                 print('warning: %s' % part2)
             elif part1 == 'fileReport':
                 print('data file: %s' % part2)
+            elif part1 == 'step':
+                print('step_done: %d' % part2)
             elif part1 == 'progress':
                 print('progress: %s (%d/%d)' % (part2, part3, part4))
             elif part1 in ControlDef.transitions:

@@ -16,8 +16,8 @@ import string
 from p4p.client.thread import Context
 from threading import Thread, Event, Condition
 import dgramCreate as dc
-from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_msg,  \
-                                  progress_msg, fileReport_msg, front_pub_port, \
+from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_msg, step_msg, \
+                                  progress_msg, fileReport_msg, front_pub_port, step_pub_port, \
                                   back_pub_port, front_rep_port, back_pull_port, fast_rep_port
 
 report_keys = ['error', 'warning', 'fileReport']
@@ -479,7 +479,7 @@ class CollectionManager():
         self.fast_rep.bind('tcp://*:%d' % fast_rep_port(args.p))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(args.p))
         self.slow_update_rate = args.S if args.S else 0
-        self.fast_reply_rate = 1            # Hz
+        self.fast_reply_rate = 10           # Hz
         self.slow_update_enabled = False    # setter: self.set_slow_update_enabled()
         self.threads_exit = Event()
         self.phase2_timeout = args.T
@@ -491,6 +491,7 @@ class CollectionManager():
         self.rollcall_timeout = args.rollcall_timeout
         self.bypass_activedet = False
         self.cydgram = dc.CyDgram()
+        self.step_done = Event()
 
         # instantiate DaqPVA object
         self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base)
@@ -519,11 +520,20 @@ class CollectionManager():
         if self.slow_update_rate:
             # initialize slow update thread
             self.slow_update_thread = Thread(target=self.slow_update_func, name='slowupdate')
+        else:
+            self.slow_update_thread = None
+
+        # initialize stepdone thread
+        self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
 
         # initialize poll set
         self.poller = zmq.Poller()
         self.poller.register(self.back_pull, zmq.POLLIN)
         self.poller.register(self.front_rep, zmq.POLLIN)
+
+        # initialize fast poll set
+        self.fast_poller = zmq.Poller()
+        self.fast_poller.register(self.fast_rep, zmq.POLLIN)
 
         # initialize EPICS context
         self.ctxt = Context('pva')
@@ -614,12 +624,18 @@ class CollectionManager():
         # start fast reply thread
         self.fast_reply_thread.start()
 
+        # start step done thread
+        self.step_done_thread.start()
+
         # start main loop
         self.run()
 
         # stop other thread(s)
         self.threads_exit.set()
-        time.sleep(0.5)
+
+        self.fast_reply_thread.join()
+        if self.slow_update_thread is not None:
+            self.slow_update_thread.join()
 
     #
     # cmstate_levels - return copy of cmstate with only drp/teb/meb entries
@@ -2009,9 +2025,48 @@ class CollectionManager():
         fast_reply_rep = self.context.socket(zmq.REP)
 
         while not self.threads_exit.wait(1.0 / self.fast_reply_rate):
-            self.service_fast()
+            socks = dict(self.fast_poller.poll(500))        # timeout (ms)
+            if self.fast_rep in socks and socks[self.fast_rep] == zmq.POLLIN:
+                self.service_fast()
+            if self.threads_exit.is_set():
+                break
 
         logging.debug('fastreply thread shutting down')
+
+    def step_done_func(self):
+        logging.debug('stepdone thread starting up')
+
+        # zmq sockets are not thread-safe
+        # so create a zmq socket for the stepdone thread
+        self.context = zmq.Context(1)
+        self.step_pub = self.context.socket(zmq.PUB)
+        self.step_pub.bind('tcp://*:%d' % step_pub_port(self.platform))
+
+        # define nested function for monitoring the StepDone PV
+        def callback(done):
+            doneFlag = int(done)
+            if doneFlag:
+                if self.state != 'running':
+                    logging.info(f'StepDone PV={doneFlag} in state {self.state} (ignore)')
+                elif doneFlag:
+                    logging.info(f'StepDone PV={doneFlag} in state {self.state} (set step_done event)')
+                    self.step_done.set()
+
+        # start monitoring the StepDone PV
+        sub = self.pva.monitor_StepDone(callback=callback)
+
+        while not self.threads_exit.is_set():
+            if self.step_done.wait(0.5):
+                self.step_done.clear()
+                # stepDone event received
+                logging.debug('stepDone event received')
+                # publish the stepDone event with zmq
+                self.step_pub.send_json(step_msg(1))
+
+        # stop monitoring the StepDone PV
+        sub.close()
+
+        logging.debug('stepdone thread shutting down')
 
 
 def main():
