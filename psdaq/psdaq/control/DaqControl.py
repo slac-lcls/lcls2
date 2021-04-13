@@ -219,7 +219,7 @@ class DaqControl:
                     return 'progress', msg['body']['transition'], msg['body']['elapsed'], msg['body']['total'], 'error', 'error', 'error', 'error'
 
                 elif msg['header']['key'] == 'step':
-                    # return 'progress', step_done, 'error', 'error', 'error', 'error', 'error', 'error'
+                    # return 'step', step_done, 'error', 'error', 'error', 'error', 'error', 'error'
                     return 'step', msg['body']['step_done'], 'error', 'error', 'error', 'error', 'error', 'error'
 
             except KeyboardInterrupt:
