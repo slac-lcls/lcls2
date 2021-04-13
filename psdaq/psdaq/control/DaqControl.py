@@ -1,6 +1,7 @@
 import logging
 import zmq
 from psdaq.control.ControlDef import ControlDef, front_pub_port, front_rep_port, fast_rep_port, create_msg
+from psdaq.control.ControlDef import step_pub_port
 
 class DaqControl:
     'Base class for controlling data acquisition'
@@ -16,6 +17,7 @@ class DaqControl:
         self.context = zmq.Context(1)
         self.front_sub = self.context.socket(zmq.SUB)
         self.front_sub.connect('tcp://%s:%d' % (host, front_pub_port(platform)))
+        self.front_sub.connect('tcp://%s:%d' % (host, step_pub_port(platform)))
         self.front_sub.setsockopt(zmq.SUBSCRIBE, b'')
         self.front_req = None
         self.front_req_endpoint = 'tcp://%s:%d' % (host, front_rep_port(platform))
