@@ -88,3 +88,5 @@ def front_pub_port(platform):
 def fast_rep_port(platform):
     return ControlDef.PORT_BASE + platform + 40
 
+def step_pub_port(platform):
+    return ControlDef.PORT_BASE + platform + 50
