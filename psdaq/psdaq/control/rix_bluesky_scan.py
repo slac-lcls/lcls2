@@ -13,7 +13,6 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', type=int, choices=range(0, 8), default=2,
                     help='platform (default 2)')
-parser.add_argument('-x', metavar='XPM', type=int, default=0, help='master XPM (default 0)')
 parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-neh-ctl001',
                     help='collection host (default drp-neh-ctl001)')
 parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
