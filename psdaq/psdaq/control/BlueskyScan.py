@@ -11,7 +11,6 @@ import time
 import numpy as np
 
 from psdaq.control.ControlDef import ControlDef
-from psdaq.control.control import DaqPVA
 
 class BlueskyScan:
     def __init__(self, control, *, daqState, args):
@@ -35,9 +34,9 @@ class BlueskyScan:
         self.comm_thread.start()
         self.mon_thread.start()
         self.verbose = args.v
-        self.pv_base = args.B
         self.detname = args.detname
         self.scantype = args.scantype
+        self.step_done = threading.Event()
 
         if args.g is None:
             self.groupMask = 1 << args.p
@@ -47,9 +46,6 @@ class BlueskyScan:
         # StepEnd is a cumulative count
         self.readoutCount = args.c
         self.readoutCumulative = 0
-
-        # instantiate DaqPVA object
-        self.pva = DaqPVA(platform=args.p, xpm_master=args.x, pv_base=args.B)
 
     def read(self):
         # stuff we want to give back to user running bluesky
@@ -92,16 +88,6 @@ class BlueskyScan:
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
 
-                # set EPICS PVs.
-                # StepEnd is a cumulative count.
-                self.readoutCumulative += self.readoutCount
-                self.pva.pv_put(self.pva.pvStepEnd, self.readoutCumulative)
-                self.pva.step_groups(mask=self.groupMask)
-                self.pva.pv_put(self.pva.pvStepDone, 0)
-                with self.stepDone_cv:
-                    self.stepDone = 0
-                    self.stepDone_cv.notify()
-
                 my_data = {}
                 for motor in self.motors:
                     my_data.update({motor.name: motor.position})
@@ -126,35 +112,25 @@ class BlueskyScan:
 
                 # set DAQ state
                 errMsg = self.control.setState('running',
-                    {'configure':{'NamesBlockHex':configureBlock},
-                     'beginstep':{'ShapesDataBlockHex':beginStepBlock}})
+                    {'configure':   {'NamesBlockHex':configureBlock},
+                     'beginstep':   {'ShapesDataBlockHex':beginStepBlock},
+                     'enable':      {'readout_count':self.readoutCount, 'group_mask':self.groupMask}})
                 if errMsg is not None:
                     logging.error('%s' % errMsg)
                     continue
 
+                # wait for running
                 with self.daqState_cv:
                     while self.daqState != 'running':
                         logging.debug('daqState \'%s\', waiting for \'running\'...' % self.daqState)
                         self.daqState_cv.wait(1.0)
                     logging.debug('daqState \'%s\'' % self.daqState)
 
-                # define nested function for monitoring the StepDone PV
-                def callback(stepDone):
-                    with self.stepDone_cv:
-                        self.stepDone = int(stepDone)
-                        self.stepDone_cv.notify()
-
-                # start monitoring the StepDone PV
-                sub = self.pva.monitor_StepDone(callback=callback)
-
-                with self.stepDone_cv:
-                    while self.stepDone != 1:
-                        logging.debug('PV \'StepDone\' is %d, waiting for 1...' % self.stepDone)
-                        self.stepDone_cv.wait(1.0)
-                logging.debug('PV \'StepDone\' is %d' % self.stepDone)
-
-                # stop monitoring the StepDone PV
-                sub.close()
+                # wait for step done
+                logging.debug('Waiting for step done...')
+                self.step_done.wait()
+                self.step_done.clear()
+                logging.debug('step done.')
 
                 # tell bluesky step is complete
                 # this line is needed in ReadableDevice mode to flag completion
@@ -168,6 +144,9 @@ class BlueskyScan:
             part1, part2, part3, part4, part5, part6, part7, part8 = self.control.monitorStatus()
             if part1 is None:
                 break
+            elif part1 == 'step':
+                self.step_done.set()
+                continue
             elif part1 not in ControlDef.transitions:
                 continue
 

@@ -492,6 +492,7 @@ class CollectionManager():
         self.bypass_activedet = False
         self.cydgram = dc.CyDgram()
         self.step_done = Event()
+        self.readoutCumulative = 0
 
         # instantiate DaqPVA object
         self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base)
@@ -1849,6 +1850,8 @@ class CollectionManager():
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
         self.step_groups(mask=0)    # default is no scanning
 
+        self.readoutCumulative = 0
+
         ok = self.get_phase2_replies('configure')
         if not ok:
             return False
@@ -1925,6 +1928,15 @@ class CollectionManager():
             self.set_slow_update_enabled(True)
 
     def condition_enable(self):
+        # readout_count and group_mask are optional
+        try:
+            readout_count = self.phase1Info['enable']['readout_count']
+            group_mask = self.phase1Info['enable']['group_mask']
+        except KeyError:
+            readout_count = 0
+            group_mask = 1 << self.platform
+        logging.debug(f'condition_enable(): readout_count={readout_count} group_mask={group_mask}')
+
         # phase 1
         ok = self.condition_common('enable', 6000)
         if not ok:
@@ -1932,6 +1944,16 @@ class CollectionManager():
             return False
 
         # phase 2
+        if (readout_count > 0):
+            # set EPICS PVs.
+            # StepEnd is a cumulative count.
+            self.readoutCumulative += readout_count
+            self.pva.pv_put(self.pva.pvStepEnd, self.readoutCumulative)
+            self.pva.step_groups(mask=group_mask)
+            self.pva.pv_put(self.pva.pvStepDone, 0)
+        else:
+            self.step_groups(mask=0)    # default is no scanning
+
         for pv in self.pva.pvListMsgHeader:
             self.pva.pv_put(pv, ControlDef.transitionId['Enable'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
@@ -2047,9 +2069,9 @@ class CollectionManager():
             doneFlag = int(done)
             if doneFlag:
                 if self.state != 'running':
-                    logging.info(f'StepDone PV={doneFlag} in state {self.state} (ignore)')
+                    logging.debug(f'StepDone PV={doneFlag} in state {self.state} (ignore)')
                 elif doneFlag:
-                    logging.info(f'StepDone PV={doneFlag} in state {self.state} (set step_done event)')
+                    logging.debug(f'StepDone PV={doneFlag} in state {self.state} (set step_done event)')
                     self.step_done.set()
 
         # start monitoring the StepDone PV

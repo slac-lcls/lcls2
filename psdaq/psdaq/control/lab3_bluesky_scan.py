@@ -11,7 +11,6 @@ from BlueskyScan import BlueskyScan
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-B', metavar='PVBASE', default='DAQ:LAB2', help='PV base (default DAQ:LAB2)')
 parser.add_argument('-p', type=int, choices=range(0, 8), default=1,
                     help='platform (default 1)')
 parser.add_argument('-x', metavar='XPM', type=int, default=2, help='master XPM (default 2)')
