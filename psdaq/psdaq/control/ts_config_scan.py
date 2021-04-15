@@ -10,10 +10,8 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
                         help='platform (default 0)')
-    parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
     parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost',
                         help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
@@ -27,6 +25,9 @@ def main():
     if args.g is not None:
         if args.g < 1 or args.g > 255:
             parser.error('readout group mask (-g) must be 1-255')
+        group_mask = args.g
+    else:
+        group_mask = 1 << args.p
 
     if args.c < 1:
         parser.error('readout count (-c) must be >= 1')
@@ -77,7 +78,9 @@ def main():
     # config scan setup
     keys_dict = {"configure": {"step_keys":     ["tstts_0:expert.group0.inhibit0.interval"],
                                "NamesBlockHex": scan.getBlock(transitionid=ControlDef.transitionId['Configure'],
-                                                              add_names=True, add_shapes_data=False).hex()}}
+                                                              add_names=True, add_shapes_data=False).hex()},
+                 "enable":    {"readout_count": args.c,
+                               "group_mask":    group_mask}}
     # scan loop
     for interval in [10,20,30]:
         # update
@@ -87,7 +90,7 @@ def main():
                          "ShapesDataBlockHex": scan.getBlock(transitionid=ControlDef.transitionId['BeginStep'],
                                                              add_names=False, add_shapes_data=True).hex()}}
         # trigger
-        scan.trigger(phase1Info={**keys_dict, **values_dict})
+        scan.trigger(phase1Info = {**keys_dict, **values_dict})
 
     # -- end script ----------------------------------------------------------
 

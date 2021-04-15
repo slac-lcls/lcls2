@@ -3,7 +3,6 @@ import zmq
 from threading import Thread, Event, Condition
 import json as oldjson
 import dgramCreate as dc
-from psdaq.control.control import DaqPVA
 from psdaq.control.ControlDef import ControlDef, front_pub_port, front_rep_port, create_msg
 
 class ConfigScan:
@@ -20,6 +19,7 @@ class ConfigScan:
         self.comm_thread = Thread(target=self.daq_communicator_thread, args=())
         self.mon_thread = Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = Event()
+        self.step_done = Event()
         self.daqState = daqState
         self.args = args
         self.daqState_cv = Condition()
@@ -28,7 +28,6 @@ class ConfigScan:
         self.comm_thread.start()
         self.mon_thread.start()
         self.verbose = args.v
-        self.pv_base = args.B
         self.motors = []                # set in configure()
         self._step_count = 0
         self.cydgram = dc.CyDgram()
@@ -37,13 +36,6 @@ class ConfigScan:
             self.groupMask = 1 << args.p
         else:
             self.groupMask = args.g
-
-        # StepEnd is a cumulative count
-        self.readoutCount = args.c
-        self.readoutCumulative = 0
-
-        # instantiate DaqPVA object
-        self.pva = DaqPVA(platform=args.p, xpm_master=args.x, pv_base=args.B)
 
     # this thread tells the daq to do a step and waits for the completion
     def daq_communicator_thread(self):
@@ -79,16 +71,6 @@ class ConfigScan:
                 # launch the step with 'daqstate(running)' (with the
                 # scan values for the daq to record to xtc2).
 
-                # set EPICS PVs.
-                # StepEnd is a cumulative count.
-                self.readoutCumulative += self.readoutCount
-                self.pva.pv_put(self.pva.pvStepEnd, self.readoutCumulative)
-                self.pva.step_groups(mask=self.groupMask)
-                self.pva.pv_put(self.pva.pvStepDone, 0)
-                with self.stepDone_cv:
-                    self.stepDone = 0
-                    self.stepDone_cv.notify()
-
                 # set DAQ state
                 if phase1 is None:
                     errMsg = self.control.setState(state)
@@ -98,29 +80,18 @@ class ConfigScan:
                     logging.error('%s' % errMsg)
                     continue
 
+                # wait for running
                 with self.daqState_cv:
                     while self.daqState != 'running':
                         logging.debug('daqState \'%s\', waiting for \'running\'...' % self.daqState)
                         self.daqState_cv.wait(1.0)
                     logging.debug('daqState \'%s\'' % self.daqState)
 
-                # define nested function for monitoring the StepDone PV
-                def callback(stepDone):
-                    with self.stepDone_cv:
-                        self.stepDone = int(stepDone)
-                        self.stepDone_cv.notify()
-
-                # start monitoring the StepDone PV
-                sub = self.pva.monitor_StepDone(callback=callback)
-
-                with self.stepDone_cv:
-                    while self.stepDone != 1:
-                        logging.debug('PV \'StepDone\' is %d, waiting for 1...' % self.stepDone)
-                        self.stepDone_cv.wait(1.0)
-                logging.debug('PV \'StepDone\' is %d' % self.stepDone)
-
-                # stop monitoring the StepDone PV
-                sub.close()
+                # wait for step done
+                logging.debug('Waiting for step done...')
+                self.step_done.wait()
+                self.step_done.clear()
+                logging.debug('step done.')
 
             elif state=='shutdown':
                 break
@@ -131,6 +102,9 @@ class ConfigScan:
             part1, part2, part3, part4, part5, part6, part7, part8 = self.control.monitorStatus()
             if part1 is None:
                 break
+            elif part1 == 'step':
+                self.step_done.set()
+                continue
             elif part1 not in ControlDef.transitions:
                 continue
 

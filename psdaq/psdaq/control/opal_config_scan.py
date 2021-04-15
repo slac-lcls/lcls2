@@ -2,19 +2,16 @@ import sys
 import logging
 import threading
 import zmq
-import json
-
-from psdaq.control.control import DaqPVA, MyFloatPv, MyStringPv
+from psdaq.control.ControlDef import ControlDef
 from psdaq.control.DaqControl import DaqControl
 from psdaq.control.ConfigScan import ConfigScan
+from psdaq.control.control import DaqPVA, MyFloatPv, MyStringPv
 import argparse
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
                         help='platform (default 0)')
-    parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
     parser.add_argument('-C', metavar='COLLECT_HOST', default='localhost',
                         help='collection host (default localhost)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
@@ -28,6 +25,9 @@ def main():
     if args.g is not None:
         if args.g < 1 or args.g > 255:
             parser.error('readout group mask (-g) must be 1-255')
+        group_mask = args.g
+    else:
+        group_mask = 1 << args.p
 
     if args.c < 1:
         parser.error('readout count (-c) must be >= 1')
@@ -75,10 +75,12 @@ def main():
     motors = [MyFloatPv("tmoopal_step_value"), MyStringPv("tmoopal_step_docstring")]
     scan.configure(motors = motors)
 
-    # configuration scan setup
+    # config scan setup
     keys_dict = {"configure": {"step_keys":     ["tmoopal_0:user.black_level"],
-                               "NamesBlockHex": scan.getBlock(transitionid=DaqControl.transitionId['Configure'],
-                                                              add_names=True, add_shapes_data=False).hex()}}
+                               "NamesBlockHex": scan.getBlock(transitionid=ControlDef.transitionId['Configure'],
+                                                              add_names=True, add_shapes_data=False).hex()},
+                 "enable":    {"readout_count": args.c,
+                               "group_mask":    group_mask}}
     # scan loop
     for black_level in [15, 31, 47]:
         # update
