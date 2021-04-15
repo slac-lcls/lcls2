@@ -42,7 +42,8 @@ ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
 heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
-ami_worker_nodes = ["drp-neh-cmp013","drp-neh-cmp017","drp-neh-cmp018"]
+#ami_worker_nodes = ["drp-neh-cmp013","drp-neh-cmp017","drp-neh-cmp018"]
+ami_worker_nodes = ["drp-neh-cmp013"]
 ami_num_workers = len(ami_worker_nodes)
 ami_manager_node = "drp-neh-ctl001"
 
@@ -64,6 +65,8 @@ procmgr_config = [
 # {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2'},
 # {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups},
  {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
+# { host: 'drp-neh-ctl002', id:'tprtrig',     flags:'sp',                 cmd:'tprtrig -t a -c 0 -o 1 -d 2 -w 10'},
+# { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:50,  cmd:f'drp_udpencoder -l 0x8 -o {data_dir} -P {hutch} -d /dev/datadev_0 -C {collect_host}'},
 
 # { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 0 -C NOBEAM {auth} {url} -d {cdb}/configDB -r /dev/null -t trigger -S 1 -T 20000'},
  { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
@@ -85,7 +88,8 @@ procmgr_config = [
  { host: 'drp-neh-cmp002', id:'manta_0',     flags:'spu', env:manta_env, cmd:pva_cmd1+' -l 0x1 SL1K2:EXIT:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
  # 9MPixel G-917C manta untimestamped image @1Hz (hence the "-0" flag)
  # set the pebbleBufSize smaller since filewriter only supports 8388688 currently
- { host: 'drp-neh-cmp015', id:'mr2k1_0',      flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x1 MR2K1:MONO:CAM:04:DATA1:Pva:Image -k pebbleBufSize=8380000 -0'},
+# { host: 'drp-neh-cmp015', id:'mr2k1_0',      flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x1 MR2K1:MONO:CAM:04:DATA1:Pva:Image -k pebbleBufSize=8380000 -0'},
+# { host: 'drp-neh-cmp007', id:'mebuser0', flags:'spu', cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}'},
 ]
 
 hsd_epics = 'DAQ:RIX:HSD:1'
@@ -114,7 +118,7 @@ procmgr_ami = [
 #
  { host:ami_manager_node, id:'ami-global',  flags:'s', cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
  { host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
- {                        id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir}/{hutch}' },
+ {                        id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}' },
 ]
 
 #
