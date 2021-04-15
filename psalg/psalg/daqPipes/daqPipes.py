@@ -3,7 +3,6 @@
 
 import os
 import time
-import jmespath
 from datetime import datetime, timedelta
 import requests
 import argparse
