@@ -2,7 +2,6 @@ import logging
 import zmq
 from threading import Thread, Event, Condition
 import json as oldjson
-import dgramCreate as dc
 from psdaq.control.ControlDef import ControlDef, front_pub_port, front_rep_port, create_msg
 
 class ConfigScan:
@@ -30,7 +29,6 @@ class ConfigScan:
         self.verbose = args.v
         self.motors = []                # set in configure()
         self._step_count = 0
-        self.cydgram = dc.CyDgram()
         self.detname = args.detname
         self.scantype = args.scantype
 
