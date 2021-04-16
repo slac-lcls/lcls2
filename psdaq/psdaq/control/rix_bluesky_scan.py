@@ -1,11 +1,11 @@
 # rix_bluesky_scan.py
 
 from bluesky import RunEngine
-from ophyd.status import Status
 import sys
 import logging
 import threading
 import time
+from ControlDef import ControlDef
 from DaqControl import DaqControl
 from BlueskyScan import BlueskyScan
 import argparse
@@ -75,7 +75,7 @@ RE.subscribe(bec)
 from ophyd.sim import motor1, SynAxis
 from bluesky.plans import scan
 
-step_value = SynAxis(name='step_value')
+step_value = SynAxis(name=ControlDef.STEP_VALUE)
 
 # instantiate BlueskyScan object
 mydaq = BlueskyScan(control, daqState=daqState, args=args)

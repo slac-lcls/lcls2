@@ -92,7 +92,7 @@ class BlueskyScan:
                 for motor in self.motors:
                     my_data.update({motor.name: motor.position})
                     # derive step_docstring from step_value
-                    if motor.name == 'step_value':
+                    if motor.name == ControlDef.STEP_VALUE:
                         docstring = f'{{"detname": "{self.detname}", "scantype": "{self.scantype}", "step": {motor.position}}}'
                         my_data.update({'step_docstring': docstring})
 
