@@ -2,10 +2,9 @@ import sys
 import logging
 import threading
 import zmq
-from psdaq.control.ControlDef import ControlDef
+from psdaq.control.ControlDef import ControlDef, MyFloatPv, MyStringPv
 from psdaq.control.DaqControl import DaqControl
 from psdaq.control.ConfigScan import ConfigScan
-from psdaq.control.control import DaqPVA, MyFloatPv, MyStringPv
 import argparse
 
 def main():
@@ -19,6 +18,8 @@ def main():
     parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=1, help='# of events to aquire at each step (default 1)')
     parser.add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
     parser.add_argument('--config', metavar='ALIAS', help='configuration alias (e.g. BEAM)')
+    parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
+    parser.add_argument('--scantype', default='scan', help="scan type (default 'scan')")
     parser.add_argument('-v', action='store_true', help='be verbose')
     args = parser.parse_args()
 
@@ -72,23 +73,54 @@ def main():
     # -- begin script --------------------------------------------------------
 
     # PV scan setup
-    motors = [MyFloatPv("tmoopal_step_value"), MyStringPv("tmoopal_step_docstring")]
+    motors = [MyFloatPv(ControlDef.STEP_VALUE)]
     scan.configure(motors = motors)
+
+    my_config_data = {}
+    for motor in scan.getMotors():
+        my_config_data.update({motor.name: motor.position})
+        # derive step_docstring from step_value
+        if motor.name == ControlDef.STEP_VALUE:
+            docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {motor.position}}}'
+            my_config_data.update({'step_docstring': docstring})
+
+    data = {
+      "motors":           my_config_data,
+      "timestamp":        0,
+      "detname":          args.detname,
+      "dettype":          "scan",
+      "scantype":         args.scantype,
+      "serial_number":    "1234",
+      "alg_name":         "raw",
+      "alg_version":      [1,0,0]
+    }
+
+    configureBlock = scan.getBlock(transition="Configure", data=data)
 
     # config scan setup
     keys_dict = {"configure": {"step_keys":     ["tmoopal_0:user.black_level"],
-                               "NamesBlockHex": scan.getBlock(transitionid=ControlDef.transitionId['Configure'],
-                                                              add_names=True, add_shapes_data=False).hex()},
+                               "NamesBlockHex": configureBlock},
                  "enable":    {"readout_count": args.c,
                                "group_mask":    group_mask}}
     # scan loop
     for black_level in [15, 31, 47]:
         # update
         scan.update(value=scan.step_count())
+
+        my_step_data = {}
+        for motor in scan.getMotors():
+            my_step_data.update({motor.name: motor.position})
+            # derive step_docstring from step_value
+            if motor.name == ControlDef.STEP_VALUE:
+                docstring = f'{{"detname": "{args.detname}", "scantype": "{args.scantype}", "step": {motor.position}}}'
+                my_step_data.update({'step_docstring': docstring})
+
+        data["motors"] = my_step_data
+
+        beginStepBlock = scan.getBlock(transition="BeginStep", data=data)
         values_dict = \
           {"beginstep": {"step_values":        {"tmoopal_0:user.black_level": black_level},
-                         "ShapesDataBlockHex": scan.getBlock(transitionid=DaqControl.transitionId['BeginStep'],
-                                                             add_names=False, add_shapes_data=True).hex()}}
+                         "ShapesDataBlockHex": beginStepBlock}}
         # trigger
         scan.trigger(phase1Info = {**keys_dict, **values_dict})
 
