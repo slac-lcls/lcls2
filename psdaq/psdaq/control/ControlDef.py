@@ -40,6 +40,32 @@ class ControlDef:
     STEPINFO = 253          # psdaq/drp/drp.hh
     PORT_BASE = 29980
     POSIX_TIME_AT_EPICS_EPOCH = 631152000
+    #  name of simulated motor reserved for step value
+    STEP_VALUE = 'step_value'
+
+class MyFloatPv:
+    """Fake float PV"""
+    def __init__(self, name):
+        self.name = name
+        self.position = 0.0
+
+    def update(self, value):
+        if type(value) == float:
+            self.position = value
+        elif type(value) == int:
+            self.position = float(value)
+
+class MyStringPv:
+    """Fake string PV"""
+    def __init__(self, name):
+        self.name = name
+        self.position = "step0"
+
+    def update(self, value):
+        if type(value) == str:
+            self.position = value
+        elif type(value) == int:
+            self.position = "step%d" % value
 
 def timestampStr():
     current = datetime.now(timezone.utc)
