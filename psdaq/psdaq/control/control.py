@@ -196,30 +196,6 @@ class RunParams:
         elif outCount > 0:
             logging.info(f"{outCount} run parameter descriptions recorded in logbook (experiment={experiment_name})")
 
-class MyFloatPv:
-    """Fake float PV"""
-    def __init__(self, name):
-        self.name = name
-        self.position = 0.0
-
-    def update(self, value):
-        if type(value) == float:
-            self.position = value
-        elif type(value) == int:
-            self.position = float(value)
-
-class MyStringPv:
-    """Fake string PV"""
-    def __init__(self, name):
-        self.name = name
-        self.position = "step0"
-
-    def update(self, value):
-        if type(value) == str:
-            self.position = value
-        elif type(value) == int:
-            self.position = "step%d" % value
-
 class ControlError(Exception):
     """Base class for exceptions in this module."""
     pass

@@ -31,6 +31,8 @@ class ConfigScan:
         self.motors = []                # set in configure()
         self._step_count = 0
         self.cydgram = dc.CyDgram()
+        self.detname = args.detname
+        self.scantype = args.scantype
 
         if args.g is None:
             self.groupMask = 1 << args.p
@@ -131,30 +133,6 @@ class ConfigScan:
         logging.debug('*** unstage: step count = %d' % self._step_count)
         self._set_connected()
 
-    def getBlock(self, *, transitionid, add_names, add_shapes_data):
-        my_data = {}
-        for motor in self.motors:
-            my_data.update({motor.name: motor.position})
-
-        detname       = 'scan'
-        dettype       = 'scan'
-        serial_number = '1234'
-        namesid       = 253     # STEPINFO = 253 (psdaq/drp/drp.hh)
-        nameinfo      = dc.nameinfo(detname,dettype,serial_number,namesid)
-
-        alg           = dc.alg('raw',[2,0,0])
-
-        self.cydgram.addDet(nameinfo, alg, my_data)
-
-        # create dgram
-        timestamp    = 0
-        xtc_bytes    = self.cydgram.getSelect(timestamp, transitionid, add_names=add_names, add_shapes_data=add_shapes_data)
-        logging.debug('transitionid %d dgram is %d bytes (with header)' % (transitionid, len(xtc_bytes)))
-
-        # remove first 12 bytes (dgram header), and keep next 12 bytes (xtc header)
-        return xtc_bytes[12:]
-
-
     # use 'motors' keyword arg to specify a set of motors
     def configure(self, *args, **kwargs):
         logging.debug("*** here in configure")
@@ -164,6 +142,9 @@ class ConfigScan:
             logging.info('configure: %d motors' % len(self.motors))
         else:
             logging.error('configure: no motors')
+
+    def getMotors(self):
+        return self.motors
 
     def step_count(self):
         return self._step_count
@@ -194,3 +175,36 @@ class ConfigScan:
         self.push_socket.send_string('starting')
         self._step_count += 1
 
+#
+# data = {
+#   "motors":           {"motor1": 0.0, "step_value": 0.0},
+#   "transition":       "Configure",
+#   "timestamp":        0,
+#   "add_names":        True,
+#   "add_shapes_data":  False,
+#   "detname":          "scan",
+#   "dettype":          "scan",
+#   "scantype":         "scan",
+#   "serial_number":    "1234",
+#   "alg_name":         "raw",
+#   "alg_version":      [2,0,0]
+# }
+#
+
+    def getBlock(self, *, transition, data):
+        logging.debug('getBlock: motors=%s' % data["motors"])
+        if transition in ControlDef.transitionId.keys():
+            data["transitionid"] = ControlDef.transitionId[transition]
+        else:
+            logging.error(f'invalid transition: {transition}')
+
+        if transition == "Configure":
+            data["add_names"] = True
+            data["add_shapes_data"] = False
+        else:
+            data["add_names"] = False
+            data["add_shapes_data"] = True
+
+        data["namesid"] = ControlDef.STEPINFO
+
+        return self.control.getBlock(data)
