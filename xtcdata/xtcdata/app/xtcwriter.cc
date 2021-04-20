@@ -19,6 +19,7 @@
 using namespace XtcData;
 
 #define BUFSIZE 0x4000000
+static const unsigned nSegments=2;
 
 enum MyNamesId {HsdRaw,HsdFex,Cspad,Epics,EpicsInfo,Scan,RunInfo,HsdCfg,HsdRun,NumberOf};
 
@@ -518,19 +519,19 @@ void padExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
 
 void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
     Alg hsdRawAlg("raw",0,0,0);
-    NamesId namesId0(nodeId,MyNamesId::HsdRaw+MyNamesId::NumberOf*segment);
+    NamesId namesId0(nodeId,MyNamesId::HsdRaw+MyNamesId::NumberOf*(segment%nSegments));
     Names& frontEndNames = *new(xtc) Names("xpphsd", hsdRawAlg, "hsd", "detnum1234", namesId0, segment);
     frontEndNames.add(xtc,PgpDef);
     namesLookup[namesId0] = NameIndex(frontEndNames);
 
     Alg hsdFexAlg("fex",4,5,6);
-    NamesId namesId1(nodeId,MyNamesId::HsdFex+MyNamesId::NumberOf*segment);
+    NamesId namesId1(nodeId,MyNamesId::HsdFex+MyNamesId::NumberOf*(segment%nSegments));
     Names& fexNames = *new(xtc) Names("xpphsd", hsdFexAlg, "hsd","detnum1234", namesId1, segment);
     fexNames.add(xtc, FexDef);
     namesLookup[namesId1] = NameIndex(fexNames);
 
     Alg cspadRawAlg("raw",2,3,42);
-    NamesId namesId2(nodeId,MyNamesId::Cspad+MyNamesId::NumberOf*segment);
+    NamesId namesId2(nodeId,MyNamesId::Cspad+MyNamesId::NumberOf*(segment%nSegments));
     Names& padNames = *new(xtc) Names("xppcspad", cspadRawAlg, "cspad", "detnum1234", namesId2, segment);
     padNames.add(xtc, PadDef);
     namesLookup[namesId2] = NameIndex(padNames);
@@ -539,21 +540,21 @@ void addNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned seg
 void addCfgNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
     // Configuration data
     Alg hsdCfgAlg("config",2,0,0);
-    NamesId namesId0(nodeId,MyNamesId::HsdCfg+MyNamesId::NumberOf*segment);
+    NamesId namesId0(nodeId,MyNamesId::HsdCfg+MyNamesId::NumberOf*(segment%nSegments));
     Names& cfgNames = *new(xtc) Names("xpphsd", hsdCfgAlg, "hsd", "detnum1234", namesId0, segment);
     cfgNames.add(xtc, HsdCfgDef);
     namesLookup[namesId0] = NameIndex(cfgNames);
 
     // Configuration update on BeginRun data
     Alg hsdRunAlg("config",2,0,0);
-    NamesId namesId1(nodeId,MyNamesId::HsdRun+MyNamesId::NumberOf*segment);
+    NamesId namesId1(nodeId,MyNamesId::HsdRun+MyNamesId::NumberOf*(segment%nSegments));
     Names& runNames = *new(xtc) Names("xpphsd", hsdRunAlg, "hsd", "detnum1234", namesId1, segment);
     runNames.add(xtc, HsdRunDef);
     namesLookup[namesId1] = NameIndex(runNames);
 }
 
 void addCfgData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
-    NamesId namesId(nodeId,MyNamesId::HsdCfg+MyNamesId::NumberOf*segment);
+    NamesId namesId(nodeId,MyNamesId::HsdCfg+MyNamesId::NumberOf*(segment%nSegments));
     CreateData cd(xtc, namesLookup, namesId);
     unsigned shape[MaxRank];
     shape[0] = 4;
@@ -566,7 +567,7 @@ void addCfgData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned se
 }
 
 void addCfgRunData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
-    NamesId namesId(nodeId,MyNamesId::HsdRun+MyNamesId::NumberOf*segment);
+    NamesId namesId(nodeId,MyNamesId::HsdRun+MyNamesId::NumberOf*(segment%nSegments));
     CreateData cd(xtc, namesLookup, namesId);
     unsigned shape[MaxRank];
     shape[0] = 4;
@@ -576,11 +577,11 @@ void addCfgRunData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned
 }
 
 void addData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
-    NamesId namesId0(nodeId,MyNamesId::HsdRaw+MyNamesId::NumberOf*segment);
+    NamesId namesId0(nodeId,MyNamesId::HsdRaw+MyNamesId::NumberOf*(segment%nSegments));
     pgpExample(xtc, namesLookup, namesId0);
-    NamesId namesId1(nodeId,MyNamesId::HsdFex+MyNamesId::NumberOf*segment);
+    NamesId namesId1(nodeId,MyNamesId::HsdFex+MyNamesId::NumberOf*(segment%nSegments));
     fexExample(xtc, namesLookup, namesId1);
-    NamesId namesId2(nodeId,MyNamesId::Cspad+MyNamesId::NumberOf*segment);
+    NamesId namesId2(nodeId,MyNamesId::Cspad+MyNamesId::NumberOf*(segment%nSegments));
     padExample(xtc, namesLookup, namesId2);
 }
 
@@ -615,20 +616,20 @@ void save(Dgram& dg, FILE* xtcFile) {
 
 void addEpicsNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
     Alg xppEpicsAlg("raw",2,0,0);
-    NamesId namesId(nodeId,MyNamesId::Epics+MyNamesId::NumberOf*segment);
+    NamesId namesId(nodeId,MyNamesId::Epics+MyNamesId::NumberOf*(segment%nSegments));
     Names& epicsNames = *new(xtc) Names("epics", xppEpicsAlg, "epics","detnum1234", namesId, segment);
     epicsNames.add(xtc, EpicsDef);
     namesLookup[namesId] = NameIndex(epicsNames);
 }
 
 void addEpicsData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
-    NamesId namesId(nodeId,MyNamesId::Epics+MyNamesId::NumberOf*segment);
+    NamesId namesId(nodeId,MyNamesId::Epics+MyNamesId::NumberOf*(segment%nSegments));
     epicsExample(xtc, namesLookup, namesId);
 }
 
 void addEpicsInfo(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
     Alg xppEpicsInfoAlg("epicsinfo",1,0,0);
-    NamesId namesId(nodeId,MyNamesId::EpicsInfo+MyNamesId::NumberOf*segment);
+    NamesId namesId(nodeId,MyNamesId::EpicsInfo+MyNamesId::NumberOf*(segment%nSegments));
     Names& epicsInfoNames = *new(xtc) Names("epicsinfo", xppEpicsInfoAlg, "epicsinfo","detnum1234", namesId, segment);
     VarDef epicsInfo;
     epicsInfo.NameVec.push_back({"keys",Name::CHARSTR,1});
@@ -647,14 +648,14 @@ void addEpicsInfo(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned
 
 void addScanNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
     Alg scanAlg("raw",2,0,0);
-    NamesId namesId(nodeId,MyNamesId::Scan+MyNamesId::NumberOf*segment);
+    NamesId namesId(nodeId,MyNamesId::Scan+MyNamesId::NumberOf*(segment%nSegments));
     Names& scanNames = *new(xtc) Names("scan", scanAlg, "scan", "detnum1234", namesId, segment);
     scanNames.add(xtc, ScanDef);
     namesLookup[namesId] = NameIndex(scanNames);
 }
 
 void addScanData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
-    NamesId namesId(nodeId,MyNamesId::Scan+MyNamesId::NumberOf*segment);
+    NamesId namesId(nodeId,MyNamesId::Scan+MyNamesId::NumberOf*(segment%nSegments));
     scanExample(xtc, namesLookup, namesId);
 }
 
@@ -690,14 +691,18 @@ int main(int argc, char* argv[])
     // this is used to create uniform timestamps across files
     // so we can do offline event-building.
     bool counting_timestamps = false;
+    unsigned starting_nodeid = 1;
 
-    while ((c = getopt(argc, argv, "hf:n:s:e:m:t")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:s:e:m:ti:")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
                 exit(0);
             case 'n':
                 nevents = atoi(optarg);
+                break;
+            case 'i':
+                starting_nodeid = atoi(optarg);
                 break;
             case 'm':
                 nmotorsteps = atoi(optarg);
@@ -735,10 +740,9 @@ int main(int argc, char* argv[])
                                      counting_timestamps,
                                      timestamp_val);
 
-    unsigned nodeid1 = 1;
-    unsigned nodeid2 = 2;
+    unsigned nodeid1 = starting_nodeid;
+    unsigned nodeid2 = starting_nodeid+1;
     NamesLookup namesLookup;
-    unsigned nSegments=2;
     unsigned iseg = 1; // add to 2nd segment for testing
     addRunInfoNames(config.xtc, namesLookup, nodeid1);
     // only add epics and scan info to the first stream
