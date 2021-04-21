@@ -1,7 +1,6 @@
 import sys
 import logging
 import threading
-import zmq
 from psdaq.control.ControlDef import ControlDef, MyFloatPv, MyStringPv
 from psdaq.control.DaqControl import DaqControl
 from psdaq.control.ConfigScan import ConfigScan
