@@ -44,6 +44,7 @@
  *  std::cout << "ostream array: " << a << '\n';
  */
 
+#include <assert.h>
 #include <algorithm>    // std::sort, reverse, replace
 #include <iostream> //ostream
 #include "xtcdata/xtc/Array.hh" // Array

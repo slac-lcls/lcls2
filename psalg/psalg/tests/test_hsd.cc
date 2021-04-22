@@ -7,6 +7,7 @@
 #include <vector>
 #include <stdlib.h>
 #include <fstream>
+#include <assert.h>
 
 #include <fcntl.h>
 #include <map>

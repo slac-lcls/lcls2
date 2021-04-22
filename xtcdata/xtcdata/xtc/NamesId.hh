@@ -3,7 +3,6 @@
 
 #include "xtcdata/xtc/Src.hh"
 #include <stdint.h>
-#include <assert.h>
 
 namespace XtcData
 {
@@ -27,8 +26,14 @@ public:
     NamesId() : Src() {}  // undefined Src
 
     NamesId(unsigned nodeId, unsigned namesId) : Src(((nodeId&0xfff)<<8)|(namesId&0xff)) {
-        assert ((nodeId&0xfff) == nodeId);
-        assert ((namesId&0xff)  == namesId);
+        if ((nodeId&0xfff) != nodeId) {
+            printf("*** %s:%d: nodeId too large %d\n",__FILE__,__LINE__,nodeId);
+            abort();
+        }
+        if ((namesId&0xff) != namesId) {
+            printf("*** %s:%d: namesId too large %d\n",__FILE__,__LINE__,namesId);
+            abort();
+        }
     }
 
     operator unsigned() const {return value();}

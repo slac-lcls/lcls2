@@ -56,38 +56,71 @@ public:
     ~DescData() {}
 
     static void checkType(uint8_t val, Name& name) {
-        assert(Name::UINT8==name.type());
+        if (Name::UINT8!=name.type()) {
+            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
+            abort();
+        }
     }
     static void checkType(uint16_t val, Name& name) {
-        assert(Name::UINT16==name.type());
+        if (Name::UINT16!=name.type()) {
+            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
+            abort();
+        }
     }
     static void checkType(uint32_t val, Name& name) {
-        assert(Name::UINT32==name.type());
+        if (Name::UINT32!=name.type() && Name::ENUMVAL!=name.type() && Name::ENUMDICT!=name.type()) {
+            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
+            abort();
+        }
     }
     static void checkType(uint64_t val, Name& name) {
-        assert(Name::UINT64==name.type());
+        if (Name::UINT64!=name.type()) {
+            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
+            abort();
+        }
     }
     static void checkType(int8_t val, Name& name) {
-        assert(Name::INT8==name.type());
+        if (Name::INT8!=name.type()) {
+            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
+            abort();
+        }
     }
     static void checkType(int16_t val, Name& name) {
-        assert(Name::INT16==name.type());
+        if (Name::INT16!=name.type()) {
+            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
+            abort();
+        }
     }
     static void checkType(int32_t val, Name& name) {
-        assert(Name::INT32==name.type() || Name::ENUMVAL==name.type() ||
-               Name::ENUMDICT==name.type());
+        if (Name::INT32!=name.type() && Name::ENUMVAL!=name.type() &&
+            Name::ENUMDICT!=name.type()) {
+            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
+            abort();
+        }
     }
     static void checkType(int64_t val, Name& name) {
-        assert(Name::INT64==name.type());
+        if (Name::INT64!=name.type()) {
+            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
+            abort();
+        }
     }
     static void checkType(float val, Name& name) {
-        assert(Name::FLOAT==name.type());
+        if (Name::FLOAT!=name.type()) {
+            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
+            abort();
+        }
     }
     static void checkType(double val, Name& name) {
-        assert(Name::DOUBLE==name.type());
+        if (Name::DOUBLE!=name.type()) {
+            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
+            abort();
+        }
     }
     static void checkType(char val, Name& name) {
-        assert(Name::CHARSTR==name.type());
+        if (Name::CHARSTR!=name.type()) {
+            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
+            abort();
+        }
     }
 
 
@@ -110,7 +143,10 @@ public:
     T get_value(const char* name)
     {
         IndexMap& nameMap = _nameindex.nameMap();
-        assert(nameMap.find(name) != nameMap.end());
+        if (nameMap.find(name) == nameMap.end()) {
+            printf("*** %s:%d: failed to find name %s\n",__FILE__,__LINE__,name);
+            abort();
+        }
         unsigned index = nameMap[name];
 
         return get_value<T>(index);
@@ -119,7 +155,10 @@ public:
     template <class T>
     T get_value(unsigned index)
     {
-        assert(index <= _numentries);
+        if (index > _numentries) {
+            printf("*** %s:%d: index %d out of range %d\n",__FILE__,__LINE__,index,_numentries);
+            abort();
+        }
         Data& data = _shapesdata.data();
         Name& name = _nameindex.names().get(index);
 
@@ -171,8 +210,14 @@ protected:
 
         unsigned rank = _nameindex.names().get(index).rank();
 
-        assert (rank!=0); // should not be called for scalars
-        assert (shapeIndex==_numarrays); // check that shapes are filled in order
+        if (rank==0) {
+            printf("*** %s:%d: can't set_array_shape for scalers\n",__FILE__,__LINE__);
+            abort();
+        }
+        if (shapeIndex!=_numarrays) {
+            printf("*** %s:%d: array filled out of order\n",__FILE__,__LINE__);
+            abort();
+        }
         _unused(shapeIndex);
         Shape& sh = _shapesdata.shapes().get(_numarrays);
         for (unsigned i=0; i<rank; i++) {
@@ -315,7 +360,10 @@ protected:
         void set_array_shape(unsigned index,unsigned shape[MaxRank]) {
             unsigned int shapeIndex = _numarrays;
 
-            assert (shapeIndex==_numarrays);
+            if (shapeIndex!=_numarrays) {
+                printf("*** %s:%d: array filled out of order\n",__FILE__,__LINE__);
+                abort();
+            }
             _numentries++;
             DescData::set_array_shape(index, shapeIndex, shape);
             Names& names = _nameindex.names();

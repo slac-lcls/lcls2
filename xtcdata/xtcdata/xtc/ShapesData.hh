@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <cstring>
-#include <assert.h>
 #include <iostream>
 
 #include "xtcdata/xtc/Xtc.hh"
@@ -62,8 +61,14 @@ public:
         // from python, since python only support INT64/DOUBLE
         // (apart from arrays)
         // assert(rank != 0 && (type=INT64 || type = DOUBLE));
-        assert(rank < MaxRank);
-        assert(strlen(name) < MaxNameSize);
+        if (rank >= MaxRank) {
+            printf("*** %s:%d: rank %d too large for array\n",__FILE__,__LINE__,rank);
+            abort();
+        }
+        if (strlen(name) >= MaxNameSize) {
+            printf("*** %s:%d: namelength %zu too large\n",__FILE__,__LINE__,strlen(name));
+            abort();
+        }
         strncpy(_name, name, MaxNameSize-1);
         _type = (uint32_t)type;
         _rank = rank;
@@ -71,8 +76,14 @@ public:
     }
 
     Name(const char* name, DataType type, int rank, Alg& alg) : _alg(alg) {
-        assert(rank < MaxRank);
-        assert(strlen(name) < MaxNameSize);
+        if (rank >= MaxRank) {
+            printf("*** %s:%d: rank %d too large for array\n",__FILE__,__LINE__,rank);
+            abort();
+        }
+        if (strlen(name) >= MaxNameSize) {
+            printf("*** %s:%d: namelength %zu too large\n",__FILE__,__LINE__,strlen(name));
+            abort();
+        }
         strncpy(_name, name, MaxNameSize-1);
         _type = (uint32_t)type;
         _rank = rank;
@@ -80,7 +91,10 @@ public:
     }
 
     Name(const char* name, Alg& alg) : _alg(alg) {
-        assert(strlen(name) < MaxNameSize);
+        if (strlen(name) >= MaxNameSize) {
+            printf("*** %s:%d: namelength %zu too large\n",__FILE__,__LINE__,strlen(name));
+            abort();
+        }
         strncpy(_name, name, MaxNameSize-1);
         _type = (uint32_t)Name::UINT8;
         _rank = 1;
@@ -226,7 +240,10 @@ public:
     unsigned num()
     {
         unsigned sizeOfNames = (char*)next()-(char*)(this+1);
-        assert (sizeOfNames%sizeof(Name)==0);
+        if (sizeOfNames%sizeof(Name)!=0) {
+            printf("*** %s:%d: Name object alignment error %u\n",__FILE__,__LINE__,unsigned(sizeOfNames%sizeof(Name)));
+            abort();
+        }
         return sizeOfNames / sizeof(Name);
     }
 
@@ -304,12 +321,18 @@ public:
     {
         if (_firstIsShapes()) {
             Data& d = reinterpret_cast<Data&>(_second());
-            assert(d.contains.id()==TypeId::Data);
+            if (d.contains.id()!=TypeId::Data) {
+                printf("*** %s:%d: incorrect TypeId %d\n",__FILE__,__LINE__,d.contains.id());
+                abort();
+            }
             return d;
         }
         else {
             Data& d = reinterpret_cast<Data&>(_first());
-            assert(d.contains.id()==TypeId::Data);
+            if (d.contains.id()!=TypeId::Data) {
+                printf("*** %s:%d: incorrect TypeId %d\n",__FILE__,__LINE__,d.contains.id());
+                abort();
+            }
             return d;
         }
     }
@@ -322,7 +345,10 @@ public:
         }
         else {
             Shapes& d = reinterpret_cast<Shapes&>(_second());
-            assert(d.contains.id()==TypeId::Shapes);
+            if (d.contains.id()!=TypeId::Shapes) {
+                printf("*** %s:%d: incorrect TypeId %d\n",__FILE__,__LINE__,d.contains.id());
+                abort();
+            }
             return d;
         }
     }

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "psalg/alloc/AllocArray.hh"
 #include "psalg/alloc/Allocator.hh"

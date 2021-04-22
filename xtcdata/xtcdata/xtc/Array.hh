@@ -2,7 +2,8 @@
 #define XTCDATA_ARRAY__H
 
 #include <stdint.h>
-#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 namespace XtcData
 {
@@ -29,23 +30,23 @@ public:
         return *this;
     }
     T& operator()(unsigned i){
-        assert(i<_shape[0]);
+        _checkOutOfBounds(i,_shape[0]);
         return _data[i];
     }
     T& operator()(unsigned i, unsigned j){
-        assert(i<_shape[0]);assert(j<_shape[1]);
+        _checkOutOfBounds(i,_shape[0]);_checkOutOfBounds(j,_shape[1]);
         return _data[i * _shape[1] + j];
     }
     T& operator()(unsigned i, unsigned j, unsigned k){
-        assert(i<_shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);
+        _checkOutOfBounds(i,_shape[0]);_checkOutOfBounds(j,_shape[1]);_checkOutOfBounds(k,_shape[2]);
         return _data[(i * _shape[1] + j) * _shape[2] + k];
     }
     T& operator()(unsigned i, unsigned j, unsigned k, unsigned l){
-        assert(i<_shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);assert(l<_shape[3]);
+        _checkOutOfBounds(i,_shape[0]);_checkOutOfBounds(j,_shape[1]);_checkOutOfBounds(k,_shape[2]);_checkOutOfBounds(l,_shape[3]);
         return _data[((i * _shape[1] + j) * _shape[2] + k) * _shape[3] + l];
     }
     T& operator()(unsigned i, unsigned j, unsigned k, unsigned l, unsigned m){
-        assert(i<_shape[0]);assert(j<_shape[1]);assert(k<_shape[2]);assert(l<_shape[3]);assert(m<_shape[4]);
+        _checkOutOfBounds(i,_shape[0]);_checkOutOfBounds(j,_shape[1]);_checkOutOfBounds(k,_shape[2]);_checkOutOfBounds(l,_shape[3]);_checkOutOfBounds(m,_shape[4]);
         return _data[(((i * _shape[1] + j) * _shape[2] + k) * _shape[3] + l) * _shape[4] + m];
     }
     inline uint32_t rank() const {
@@ -67,8 +68,14 @@ public:
         return _num_elem;
     }
     void shape(uint32_t a, uint32_t b=0, uint32_t c=0, uint32_t d=0, uint32_t e=0){
-        assert(_rank > 0);
-        assert(_rank < MaxRank);
+        if (_rank <= 0) {
+            printf("*** %s:%d: rank %d too small for array\n",__FILE__,__LINE__,_rank);
+            abort();
+        }
+        if (_rank >= MaxRank) {
+            printf("*** %s:%d: rank %d too large for array\n",__FILE__,__LINE__,_rank);
+            abort();
+        }
         _shape[0] = a;
         _shape[1] = b;
         _shape[2] = c;
@@ -83,6 +90,15 @@ protected:
     uint32_t *_shape;
     T        *_data;
     uint32_t  _rank;
+
+private:
+    void _checkOutOfBounds(unsigned index, uint32_t shape) {
+        if (index>=shape) {
+            printf("*** %s:%d: index %d out of range for shape %d\n",__FILE__,__LINE__,index,shape);
+            abort();
+        }
+    }
+
 };
 
 }; // namespace XtcData
