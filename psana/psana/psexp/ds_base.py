@@ -86,7 +86,8 @@ class DataSourceBase(abc.ABC):
                     self.files = [self.files]
 
             max_retries = 0
-            if self.live: max_retries = 3 
+            if self.live: 
+                max_retries = int(os.environ.get('PS_R_MAX_RETRIES', '3'))
 
         assert self.batch_size > 0
         
