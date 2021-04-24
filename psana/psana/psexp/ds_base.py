@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class InvalidDataSourceArgument(Exception): pass
 
 class DsParms(object):
-    def __init__(self, batch_size=1, max_events=0, filter=0, destination=0, prom_man=None, max_retries=0):
+    def __init__(self, batch_size=1, max_events=0, filter=0, destination=0, prom_man=None, max_retries=0, live=False):
         self.batch_size  = batch_size
         self.max_events  = max_events
         self.filter      = filter
@@ -29,6 +29,7 @@ class DsParms(object):
         self.calibconst  = {}
         self.max_retries = max_retries
         self.use_smds    = [] # flag showing True for smd files swapped with bigdata files
+        self.live        = live
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table):
         self.det_classes, self.xtc_info, self.det_info_table = det_classes, xtc_info, det_info_table
@@ -92,7 +93,7 @@ class DataSourceBase(abc.ABC):
         assert self.batch_size > 0
         
         self.prom_man = PrometheusManager(os.environ['PS_PROMETHEUS_JOBID'])
-        self.dsparms  = DsParms(self.batch_size, self.max_events, self.filter, self.destination, self.prom_man, max_retries) 
+        self.dsparms  = DsParms(self.batch_size, self.max_events, self.filter, self.destination, self.prom_man, max_retries, live=self.live) 
 
     @abc.abstractmethod
     def runs(self):
@@ -104,16 +105,34 @@ class DataSourceBase(abc.ABC):
     #    retur
     
     def _setup_run_files(self, runnum):
+        """
+        Generate list of smd and xtc files given a run number.
+        Priority is given to .inprogress files.
+        """
         smd_dir = os.path.join(self.xtc_path, 'smalldata')
-        smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(runnum).zfill(4))))
+        all_smd_files = glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2'%(str(runnum).zfill(4)))) + \
+                glob.glob(os.path.join(smd_dir, '*r%s-s*.smd.xtc2.inprogress'%(str(runnum).zfill(4))))
+        logger.debug(f'all_smd_files={all_smd_files}')
+
+        smd_files = [smd_file for smd_file in all_smd_files if smd_file.endswith('.inprogress')]
+
+        # No .inprogress files found
+        if not smd_files: 
+            smd_files = all_smd_files
+            xtc_ext = '.xtc2'
+        else:
+            xtc_ext = '.xtc2.inprogress' 
             
         xtc_files = [os.path.join(self.xtc_path, \
-                     os.path.basename(smd_file).split('.smd')[0] + '.xtc2') \
+                     os.path.basename(smd_file).split('.smd')[0] + xtc_ext) \
                      for smd_file in smd_files \
                      if os.path.isfile(os.path.join(self.xtc_path, \
-                     os.path.basename(smd_file).split('.smd')[0] + '.xtc2'))]
+                     os.path.basename(smd_file).split('.smd')[0] + xtc_ext))]
         self.smd_files = smd_files
         self.xtc_files = xtc_files
+
+        logger.debug(f'smd_files={smd_files}')
+        logger.debug(f'xtc_files={xtc_files}')
         self.dsparms.set_use_smds([False]*len(self.smd_files))
 
     def _setup_runnum_list(self):
