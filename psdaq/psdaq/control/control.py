@@ -1022,7 +1022,7 @@ def wait_for_answers(socket, wait_time, msg_id):
 def levels_to_activedet(src):
     dst = {"activedet": {}}
     for level, item1 in src.items():
-        if level == "control":
+        if level != "drp":
             continue    # skip
         if level not in dst["activedet"]:
             dst["activedet"][level] = {}
@@ -2052,7 +2052,10 @@ class CollectionManager():
                         self.cmstate[level] = {}
                     id = answer['header']['sender_id']
                     self.cmstate[level][id] = item
-                    self.cmstate[level][id]['hidden'] = 0
+                    if level == 'drp':
+                        self.cmstate[level][id]['hidden'] = 0
+                    else:
+                        self.cmstate[level][id]['hidden'] = 1
                     if self.bypass_activedet:
                         # active detectors file disabled: default to active=1
                         self.cmstate[level][id]['active'] = 1
@@ -2061,11 +2064,14 @@ class CollectionManager():
                             self.cmstate[level][id]['det_info']['readout'] = self.platform
                     elif responder in newfound_set:
                         # new detector + active detectors file enabled: default to active=0
-                        self.cmstate[level][id]['active'] = 0
                         if level == 'drp':
+                            self.cmstate[level][id]['active'] = 0
+                            self.report_warning('rollcall: %s NOT selected for data collection' % responder)
                             self.cmstate[level][id]['det_info'] = {}
                             self.cmstate[level][id]['det_info']['readout'] = self.platform
-                        self.report_warning('rollcall: %s NOT selected for data collection' % responder)
+                        else:
+                            # not a detector: default to active=1
+                            self.cmstate[level][id]['active'] = 1
                     else:
                         # copy values from active detectors file
                         self.cmstate[level][id]['active'] = json_data['activedet'][level][alias]['active']
