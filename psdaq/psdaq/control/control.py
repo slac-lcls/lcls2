@@ -1022,7 +1022,7 @@ def wait_for_answers(socket, wait_time, msg_id):
 def levels_to_activedet(src):
     dst = {"activedet": {}}
     for level, item1 in src.items():
-        if level != "drp":
+        if level == "control":
             continue    # skip
         if level not in dst["activedet"]:
             dst["activedet"][level] = {}
