@@ -10,7 +10,8 @@ using namespace Pds::Tpr;
 
 Client::Client(const char* devname,
                unsigned    channel,
-               bool        lcls2) :
+               bool        clksel,
+               ModeSel     modsel) :
   _channel(channel)
 {
   _fd = ::open(devname, O_RDWR);
@@ -27,9 +28,28 @@ Client::Client(const char* devname,
 
   _dev = reinterpret_cast<Pds::Tpr::TprReg*>(ptr);
 
-  if (_dev->tpr.clkSel() != lcls2) {
-    _dev->tpr.clkSel(lcls2);
-    printf("Changed clk xbar to %s mode\n", lcls2 ? "LCLS2":"LCLS1");
+  if (_dev->tpr.clkSel() != clksel) {
+    _dev->tpr.clkSel(clksel);
+    printf("Changed clk xbar to %s mode\n", clksel ? "LCLS2":"LCLS1");
+  }
+
+  bool l2mode = (modsel==Lcls2Proto);
+  if (_dev->tpr.modeSelEn()) {
+      if (modsel != ClkSel) {
+          if (_dev->tpr.modeSel() != l2mode) {
+              _dev->tpr.modeSel( l2mode );
+              printf("Changed mode sel to %s mode\n", l2mode ? "LCLS2":"LCLS1");
+          }
+      }
+      else {
+          _dev->tpr.modeSelEn(false);
+          printf("Disabled mode sel\n");
+      }
+  }
+  else if (modsel != ClkSel) {
+      _dev->tpr.modeSel(l2mode);
+      _dev->tpr.modeSelEn(true);
+      printf("Enabled mode sel for %s mode\n", l2mode ? "LCLS2":"LCLS1");
   }
 
   _dev->xbar.setTpr( XBar::StraightIn );

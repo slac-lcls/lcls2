@@ -30,6 +30,8 @@ static void usage(const char* p) {
   printf("          -e <code> : event code\n");
   printf("          -r <rate> : fixed rate\n");
   printf("          -p <part> : partition\n");
+  printf("          -C        : clksel (0=LCLS1,1=LCLS2[default]\n");
+  printf("          -M        : modsel (0=clksel[default],1=LCLS1,2=LCLS2\n");
   printf("          -z        : wait for key before exit\n");
 }
 
@@ -47,11 +49,19 @@ int main(int argc, char** argv) {
   int      rate    = -1;
   unsigned delay   = 0;
   unsigned width   = 1;
+  int  clksel      = 1;
+  int  modsel      = 0;
 
   //char* endptr;
 
-  while ( (c=getopt( argc, argv, "c:d:w:o:t:r:e:p:zh?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "c:d:w:o:t:r:e:p:zC:M:h?")) != EOF ) {
     switch(c) {
+    case 'C':
+        clksel = strtoul(optarg,NULL,0);
+        break;
+    case 'M':
+        modsel = strtoul(optarg,NULL,0);
+        break;
     case 'c':
       channel = strtoul(optarg,NULL,0);
       break;
@@ -125,7 +135,7 @@ int main(int argc, char** argv) {
   printf("Configuring channel %u outputs 0x%x for %s %u\n",
          channel, output, names[mode], rate);
 
-  Client client(evrdev,channel,mode>0);
+  Client client(evrdev,channel,clksel>0,(Client::ModeSel)modsel);
 
   client.reg().tpr.dump();
 

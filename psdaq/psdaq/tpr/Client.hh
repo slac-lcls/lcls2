@@ -13,9 +13,11 @@ namespace Pds {
 
     class Client {
     public:
+      enum ModeSel { ClkSel, Lcls1Proto, Lcls2Proto };
       Client(const char* devname,
              unsigned    channel = 0,
-             bool        lcls2 = true);
+             bool        clksel  = true,
+             ModeSel     modsel  = ClkSel);
       ~Client();
     public:
       //  Setup the trigger channel
