@@ -1,6 +1,7 @@
 #pragma once
 
 #include "BEBDetector.hh"
+#include "psdaq/service/Collection.hh"
 
 namespace Drp {
 
@@ -21,6 +22,7 @@ protected:
     unsigned       _configure(XtcData::Xtc&, XtcData::ConfigIter&) override;
     void           _event    (XtcData::Xtc&,
                               std::vector< XtcData::Array<uint8_t> >&) override;
+    void           _fatal_error(std::string errMsg);
 protected:
     friend class OpalTT;
     friend class OpalTTSim;
@@ -31,6 +33,9 @@ protected:
 
     OpalTT*           m_tt;
     OpalTTSim*        m_sim;
+private:
+    ZmqContext m_context;
+    ZmqSocket m_notifySocket;
   };
 
 }

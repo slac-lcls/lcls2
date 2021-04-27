@@ -174,8 +174,12 @@ using Drp::OpalTTSim;
 Opal::Opal(Parameters* para, MemPool* pool) :
     BEBDetector   (para, pool),
     m_tt          (0),
-    m_sim         (0)
+    m_sim         (0),
+    m_notifySocket{&m_context, ZMQ_PUSH}
 {
+  // ZMQ socket for reporting errors
+  m_notifySocket.connect({"tcp://" + para->collectionHost + ":" + std::to_string(CollectionApp::zmq_base_port + para->partition)});
+
   _init(para->detName.c_str());  // an argument is required here
   _init_feb();
 
@@ -192,6 +196,14 @@ Opal::~Opal()
   if (m_tt ) delete m_tt;
 }
 
+void Opal::_fatal_error(std::string errMsg)
+{
+    logging::critical("%s", errMsg.c_str());
+    json msg = createAsyncErrMsg(m_para->alias, errMsg);
+    m_notifySocket.send(msg.dump());
+    throw errMsg;
+}
+
 void Opal::_connect(PyObject* mbytes)
 {
     unsigned modelnum = strtoul( _string_from_PyDict(mbytes,"model").c_str(), NULL, 10);
@@ -204,7 +216,8 @@ void Opal::_connect(PyObject* mbytes)
         MODEL(8000,2472,3296);
 #undef MODEL
     default:
-        throw std::string("Opal camera model not recognized");
+        _fatal_error("Opal camera model " + std::to_string(modelnum) +
+                     " not recognized");
         break;
     }
 
