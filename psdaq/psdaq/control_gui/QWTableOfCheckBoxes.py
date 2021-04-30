@@ -92,6 +92,7 @@ class QWTableOfCheckBoxes(QWTable):
                         item.setEditable ((flags & BIT_EDITABLE) and do_ctrl)
                         item.setSelectable(flags & BIT_SELECTABLE)
                         if flags & BIT_HIDDENROW: row_is_hidden = True
+
                         if lsize>3: item.valid_reg_exp = fld[3]
 
                 else: # text field
@@ -111,10 +112,24 @@ class QWTableOfCheckBoxes(QWTable):
 
     def hide_hidden_rows(self):
         for row in self._list_hidden_rows:
-            #self.setRowHidden(row, True)
-            self.hideRow(row)
+            # 2021-04-29 Chris F. requested to show rows but not editable
+            #self.hideRow(row)
+            self.set_items_in_hidden_row(row)
             logger.debug('row %d isRowHidden: %s'%(row, self.isRowHidden(row)))
         self.set_exact_widget_size()
+
+
+    def set_items_in_hidden_row(self, row):
+        """ 2021-04-29 Chris F. requested to show rows but not editable.
+            this method is used in stead of self.hideRow(row)
+        """
+        model = self._si_model
+        for col in range(model.columnCount()):
+            item = model.item(row, col)
+            #item.setEditable(False)
+            #item.setSelectable(False)
+            #item.setCheckable(False)
+            item.setEnabled(False)
 
 #----------
 
