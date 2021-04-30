@@ -37,7 +37,7 @@ from psdaq.control_gui.CGConfigParameters import cp
 class CGWMainCollection(QWidget) :
     """
     """
-    TABTITLE_H = ['drp']
+    TABTITLE_H = ['drp','teb','meb']
 
     def __init__(self, parent=None):
 
