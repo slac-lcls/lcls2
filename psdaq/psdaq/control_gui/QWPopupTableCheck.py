@@ -44,6 +44,8 @@ class QWPopupTableCheck(QWidget):
         QWidget.__init__(self, parent)
  
         self.kwargs = kwargs
+        self.list2d_out = []
+
         win_title = kwargs.get('win_title', None)
         if win_title is not None : self.setWindowTitle(win_title)
 
@@ -80,8 +82,8 @@ class QWPopupTableCheck(QWidget):
 #-----------------------------  
 
     def set_style(self):
-        if not self.do_frame :
-           self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        #if not self.do_frame:
+        #   self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         styleGray = "background-color: rgb(230, 240, 230); color: rgb(0, 0, 0);" # Gray
         #styleTest = "background-color: rgb(100, 240, 200); color: rgb(0, 0, 0);"
         styleDefault = ""
@@ -111,7 +113,7 @@ class QWPopupTableCheck(QWidget):
         #self.but_cancel.setVisible(False)        
 
         #self.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
-        self.setWindowFlags(Qt.Window | Qt.CustomizeWindowHint)
+        #self.setWindowFlags(Qt.Window | Qt.CustomizeWindowHint)
 
     def setIcons(self):
         try :
@@ -169,6 +171,9 @@ class QWPopupTableCheck(QWidget):
 #------------------------------
 
 if __name__ == "__main__" :
+    import os
+    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
+
     import sys
     from PyQt5.QtWidgets import QApplication
 
@@ -176,13 +181,18 @@ if __name__ == "__main__" :
 
     app = QApplication(sys.argv)
 
-    title_h = ['proc/pid/host', 'alias']
+    title_h = ['sel', 'grp', 'level/pid/host', 'ID']
     tableio = [\
-      [[False,'name 1'], 'alias 1'],\
-      [[True, 'name 2'], 'alias 2'],\
-      [[True, 'name 3'], 'alias 3'],\
-      ['name 4', [True, 'alias 4']],\
-      ['name 5',         'alias 5'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'cookie_9'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'cookie_1'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'cookie_8'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'cookie_0'],\
+               [[False, ''],  '', 'teb/123458/drp-tst-dev001', 'teb1'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_5'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_6'],\
+               [[True,  ''], '1', 'drp/123456/drp-tst-dev008', 'tokie_8'],\
+               [[True,  ''], '1', 'drp/123457/drp-tst-dev009', 'tokie_1'],\
+               [[False, ''],  '', 'ctr/123459/drp-tst-acc06',  'control'],\
     ]
 
     print('%s\nI/O  table:' % (50*'_'))
@@ -190,7 +200,9 @@ if __name__ == "__main__" :
 
     w = QWPopupTableCheck(tableio=tableio, title_h=title_h, do_ctrl=True, do_edit=True)
     w.move(200,100)
-    resp=w.exec_()
+    w.show()
+    app.exec_()
+    #resp=w.exec_()
     #logger.debug('resp: %s' % {QDialog.Rejected:'Rejected', QDialog.Accepted:'Accepted'}[resp])
     #for name,state in dict_in.items() : logger.debug('%s checkbox state %s' % (name.ljust(10), state))
 
