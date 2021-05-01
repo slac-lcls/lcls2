@@ -57,7 +57,7 @@ public:
 
     static void checkType(uint8_t val, Name& name) {
         if (Name::UINT8!=name.type()) {
-            printf("*** %s:%d: incorrect type %d\n",__FILE__,__LINE__,name.type());
+            printf("*** %s:%d: incorrect type %d for %s\n",__FILE__,__LINE__,name.type(),name.name());
             abort();
         }
     }
