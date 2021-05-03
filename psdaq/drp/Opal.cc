@@ -272,7 +272,7 @@ void Opal::write_image(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >
   unsigned shape[MaxRank];
   shape[0] = m_rows;
   shape[1] = m_columns;
-  Array<uint8_t> arrayT = cd.allocate<uint8_t>(RawDef::image, shape);
+  Array<uint16_t> arrayT = cd.allocate<uint16_t>(RawDef::image, shape);
   memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
 }
 
@@ -378,7 +378,7 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
         unsigned shape[MaxRank];
         shape[0] =m_fex.write_ref_image() ?  m_det.m_rows : 0;
         shape[1] = m_det.m_columns;
-        Array<uint8_t> arrayT = cd.allocate<uint8_t>(RefDef::image, shape);
+        Array<uint16_t> arrayT = cd.allocate<uint16_t>(RefDef::image, shape);
         memcpy(arrayT.data(), subframes[2].data(), m_fex.write_ref_image() ? subframes[2].shape()[0] : 0);
       }
       {
