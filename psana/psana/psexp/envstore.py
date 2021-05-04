@@ -83,11 +83,8 @@ class EnvStore(object):
                         self.env_variables[alg] = env_dict
                     else:
                         for segment_id, var_dict in env_dict.items():
-                            if segment_id not in self.env_variables[alg]:
-                                self.env_variables[alg] = {segment_id: var_dict}
-                            else:
-                                self.env_variables[alg][segment_id].update(var_dict)
-
+                            self.env_variables[alg].update({segment_id: var_dict})
+            
             self.env_info = []
             for alg, env_dict in self.env_variables.items():
                 var_names = []
