@@ -128,6 +128,16 @@ class DataSourceBase(abc.ABC):
                      for smd_file in smd_files \
                      if os.path.isfile(os.path.join(self.xtc_path, \
                      os.path.basename(smd_file).split('.smd')[0] + xtc_ext))]
+
+        # For chunking test, xtc_files are in -cNN format.
+        if not xtc_files:
+            logger.debug(f'WARNING: looks like bigdata could have been chunked.')
+            xtc_files = [os.path.join(self.xtc_path, \
+                         os.path.basename(smd_file).split('.smd')[0] + '-c00' + xtc_ext) \
+                         for smd_file in smd_files \
+                         if os.path.isfile(os.path.join(self.xtc_path, \
+                         os.path.basename(smd_file).split('.smd')[0] + '-c00' + xtc_ext))]
+
         self.smd_files = smd_files
         self.xtc_files = xtc_files
 
