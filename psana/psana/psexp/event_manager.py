@@ -22,7 +22,7 @@ class EventManager(object):
           replace smalldata view with the read out bigdata.
           Yield one bigdata event.
     """
-    def __init__(self, view, smd_configs, dm,  
+    def __init__(self, view, smd_configs, dm, esm, 
             filter_fn=0, prometheus_counter=None, 
             max_retries=0, use_smds=[]):
         if view:
@@ -35,6 +35,7 @@ class EventManager(object):
 
         self.smd_configs = smd_configs
         self.dm = dm
+        self.esm = esm
         self.n_smd_files = len(self.smd_configs)
         self.filter_fn = filter_fn
         self.cn_events = 0
@@ -182,6 +183,14 @@ class EventManager(object):
             raise StopIteration
         
         smd_evt = Event._from_bytes(self.smd_configs, self.smd_events[self.cn_events], run=self.dm.get_run())
+        print(f'debug event_manager got smd_evt={smd_evt.service()}')
+
+        # Update EnvStore - this is the earliest we know if this event is a Transition
+        # make sure we update the envstore now rather than later.
+        if smd_evt.service() != TransitionId.L1Accept:
+            print(f'debug event_manager update esm service={smd_evt.service()}')
+            self.esm.update_by_event(smd_evt)
+
         if len(self.dm.xtc_files)==0 or smd_evt.service() != TransitionId.L1Accept:
             self.cn_events += 1
             self._inc_prometheus_counter('evts')
@@ -202,7 +211,7 @@ class EventManager(object):
             self._inc_prometheus_counter('evts')
             return bd_evt
         
-        #print(f'got smd_evt={smd_evt.get_offsets_and_sizes()}')
+        #print(f'debug event_manager got smd_evt={smd_evt.get_offsets_and_sizes()}')
         dgrams = [None] * self.n_smd_files
         ofsz = self.ofsz_batch[self.cn_events,:,:]
         for i_smd in range(self.n_smd_files):

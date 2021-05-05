@@ -195,7 +195,10 @@ class Run(object):
         assert hasattr(self, 'configs')
         assert hasattr(self, '_evt') # BeginRun
         self.esm = EnvStoreManager(self.configs)
-        self.esm.update_by_event(self._evt)
+        # Special case for BeginRun - normally EnvStore gets updated 
+        # by EventManager but we get BeginRun w/o EventManager
+        # so we need to update the EnvStore here.
+        self.esm.update_by_event(self._evt) 
         
         # EnvStore will be passed around so bigdata nodes can 
         # query SlowUpdate chunk ID
@@ -219,7 +222,6 @@ class RunShmem(Run):
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
-                self.esm.update_by_event(evt)
                 if evt.service() == TransitionId.EndRun: return
                 continue
             st = time.time()
@@ -232,7 +234,7 @@ class RunShmem(Run):
         for evt in self._evt_iter:
             if evt.service() == TransitionId.EndRun: return
             if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, self._evt_iter, self.esm)
+                yield Step(evt, self._evt_iter)
 
 class RunSingleFile(Run):
     """ Yields list of events from a single bigdata file. """
@@ -250,7 +252,6 @@ class RunSingleFile(Run):
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
-                self.esm.update_by_event(evt)
                 if evt.service() == TransitionId.EndRun: return
                 continue
             st = time.time()
@@ -263,7 +264,7 @@ class RunSingleFile(Run):
         for evt in self._evt_iter:
             if evt.service() == TransitionId.EndRun: return
             if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, self._evt_iter, self.esm)
+                yield Step(evt, self._evt_iter)
 
 class RunSerial(Run):
     """ Yields list of events from multiple smd/bigdata files using single core."""
@@ -281,7 +282,6 @@ class RunSerial(Run):
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
-                self.esm.update_by_event(evt)
                 if evt.service() == TransitionId.EndRun: return
                 continue
             st = time.time()
@@ -294,7 +294,7 @@ class RunSerial(Run):
         for evt in self._evt_iter:
             if evt.service() == TransitionId.EndRun: return
             if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, self._evt_iter, self.esm)
+                yield Step(evt, self._evt_iter)
 
 class RunLegion(Run):
     def __init__(self, ds, run_evt):

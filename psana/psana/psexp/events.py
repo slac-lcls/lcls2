@@ -1,4 +1,4 @@
-from psana.psexp import EventManager
+from psana.psexp import EventManager, TransitionId
 import types
 
 class Events:
@@ -41,12 +41,17 @@ class Events:
                 self._evt_man = EventManager(batch_dict[0][0], 
                         self.configs, 
                         self.dm, 
+                        self.dsparms.esm,
                         filter_fn           = self.filter_callback,
                         prometheus_counter  = self.c_read,
                         max_retries         = self.max_retries,
                         use_smds            = self.dsparms.use_smds,
                         )
+                #print(f'debug events get next event')
                 evt = next(self._evt_man)
+                #epics_store = self.dsparms.esm.stores['epics']
+                #chunk_id = epics_store.values([evt], '_NEW_CHUNK_ID_S00')
+                #print(f'debug events got next event evt={[d.service() for d in evt._dgrams]} chunk_id={chunk_id}')
                 if not any(evt._dgrams): return self.__next__()
                 self.smdr_man.last_seen_event = evt
                 return evt 
@@ -65,6 +70,7 @@ class Events:
                 self._evt_man = EventManager(smd_batch, 
                         self.configs, 
                         self.dm, 
+                        self.dsparms.esm,
                         filter_fn           = self.filter_callback,
                         prometheus_counter  = self.c_read,
                         max_retries         = self.max_retries,
@@ -77,6 +83,13 @@ class Events:
         else: 
             # RunSingleFile or RunShmem - get event from DgramManager
             evt = next(self.dm)
+
+            # TODO: MONA Update EnvStore here instead of inside DgramManager.
+            # To mirror withe RunSerial/RunParallel, consider moving update
+            # into DgramManager.
+            if evt.service() != TransitionId.L1Accept:
+                self.dsparms.esm.update_by_event(evt)
+
             if not any(evt._dgrams): return self.__next__()
             return evt
 
