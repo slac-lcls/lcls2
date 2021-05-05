@@ -191,6 +191,18 @@ class Run(object):
         step_dgrams = self.esm.stores['scan'].get_step_dgrams_of_event(evt)
         return Event(dgrams=step_dgrams, run=self)
     
+    def _setup_envstore(self):
+        assert hasattr(self, 'configs')
+        assert hasattr(self, '_evt') # BeginRun
+        self.esm = EnvStoreManager(self.configs)
+        self.esm.update_by_event(self._evt)
+        
+        # EnvStore will be passed around so bigdata nodes can 
+        # query SlowUpdate chunk ID
+        self.dsparms.esm = self.esm
+
+        
+    
 class RunShmem(Run):
     """ Yields list of events from a shared memory client (no event building routine). """
     
@@ -200,8 +212,7 @@ class RunShmem(Run):
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
         super()._get_runinfo()
-        self.esm = EnvStoreManager(self.configs)
-        self.esm.update_by_event(self._evt)
+        super()._setup_envstore()
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms, 
                 filter_callback=ds.dsparms.filter)
     
@@ -232,8 +243,7 @@ class RunSingleFile(Run):
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
         super()._get_runinfo()
-        self.esm = EnvStoreManager(self.configs)
-        self.esm.update_by_event(self._evt)
+        super()._setup_envstore()
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms, 
                 filter_callback=ds.dsparms.filter)
     
@@ -264,8 +274,7 @@ class RunSerial(Run):
         self.beginruns = run_evt._dgrams
         self.configs   = ds._configs
         super()._get_runinfo()
-        self.esm = EnvStoreManager(self.configs)
-        self.esm.update_by_event(self._evt)
+        super()._setup_envstore()
         self._evt_iter = Events(self.configs, ds.dm, ds.dsparms, 
                 filter_callback=ds.dsparms.filter, smdr_man=ds.smdr_man)
     
@@ -297,9 +306,8 @@ class RunLegion(Run):
         self.smdr_man   = ds.smdr_man
         self.dm         = ds.dm
         self.configs    = ds._configs
-        self.esm        = EnvStoreManager(self.configs)
-        self.esm.update_by_event(self._evt)
         super()._get_runinfo()
+        super()._setup_envstore()
     
     def analyze(self, **kwargs):
         return legion_node.analyze(self, **kwargs)

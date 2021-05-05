@@ -31,8 +31,7 @@ class RunParallel(Run):
         self.configs    = ds._configs
         
         self._get_runinfo()
-        self.esm = EnvStoreManager(self.configs)
-        self.esm.update_by_event(self._evt)
+        super()._setup_envstore()
 
     def events(self):
         evt_iter = self.start()
