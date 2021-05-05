@@ -57,7 +57,7 @@ class EventManager(object):
             offset = offsets[i_smd]
             size = sizes[i_smd]
             chunk = bytearray()
-            for _ in range(self.max_retries+1):
+            for i_retry in range(self.max_retries+1):
                 chunk.extend(os.pread(fds[i_smd], size, offset))
                 got = memoryview(chunk).nbytes
                 if got == sizes[i_smd]:
@@ -70,7 +70,7 @@ class EventManager(object):
         rate = 0
         if sum_read_nbytes > 0:
             rate = (sum_read_nbytes/1e6)/(en-st)
-        logger.debug(f"event_manager: bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
+        logger.debug(f"bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
         self._inc_prometheus_counter('MB', sum_read_nbytes/1e6)
         self._inc_prometheus_counter('seconds', en-st)
         return 
@@ -85,7 +85,7 @@ class EventManager(object):
         rate            = 0
         if dgram._size > 0:
             rate = (dgram._size/1e6)/(en-st)
-        logger.debug(f"event_manager: bd reads dgram{dgram_i} {dgram._size/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
+        logger.debug(f"bd reads dgram{dgram_i} {dgram._size/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)")
         self._inc_prometheus_counter('MB', dgram._size/1e6)
         self._inc_prometheus_counter('seconds', en-st)
         return dgram
@@ -110,6 +110,14 @@ class EventManager(object):
                         d_offset = 0
                     self.ofsz_batch[j_evt, i_smd] = [d_offset, d_size] 
                     sizes[i_smd] += d_size
+
+    #def end_of_chunk(self, d):
+    #    """ Check if this dgram a SlowUpdate that contains
+    #    _NEW_CHUNK_ID_SNN (NN is stream id) with value other than 0.
+    #    """
+    #    is_eoc = False
+    #    if d.service == TransitionId.SlowUpdate:
+    #        if hasattr(d,'epics'):
 
     def _read_bigdata_in_chunk(self):
         """ Read bigdata chunks of 'size' bytes and store them in views
@@ -194,6 +202,7 @@ class EventManager(object):
             self._inc_prometheus_counter('evts')
             return bd_evt
         
+        #print(f'got smd_evt={smd_evt.get_offsets_and_sizes()}')
         dgrams = [None] * self.n_smd_files
         ofsz = self.ofsz_batch[self.cn_events,:,:]
         for i_smd in range(self.n_smd_files):
