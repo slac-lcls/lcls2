@@ -539,6 +539,14 @@ class SmallData: # (client)
         return self._reduction(value, MPI.SUM)
 
 
+    def max(self, value):
+        return self._reduction(value, MPI.MAX)
+
+
+    def min(self, value):
+        return self._reduction(value, MPI.MIN)
+
+
     def _reduction(self, value, op):
         """
         perform a reduction across the worker MPI procs
