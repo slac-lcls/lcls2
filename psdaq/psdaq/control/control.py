@@ -16,9 +16,9 @@ import string
 from p4p.client.thread import Context
 from threading import Thread, Event, Condition
 import dgramCreate as dc
-
-PORT_BASE = 29980
-POSIX_TIME_AT_EPICS_EPOCH = 631152000
+from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_msg, step_msg, \
+                                  progress_msg, fileReport_msg, front_pub_port, step_pub_port, \
+                                  back_pub_port, front_rep_port, back_pull_port, fast_rep_port
 
 report_keys = ['error', 'warning', 'fileReport']
 
@@ -196,30 +196,6 @@ class RunParams:
         elif outCount > 0:
             logging.info(f"{outCount} run parameter descriptions recorded in logbook (experiment={experiment_name})")
 
-class MyFloatPv:
-    """Fake float PV"""
-    def __init__(self, name):
-        self.name = name
-        self.position = 0.0
-
-    def update(self, value):
-        if type(value) == float:
-            self.position = value
-        elif type(value) == int:
-            self.position = float(value)
-
-class MyStringPv:
-    """Fake string PV"""
-    def __init__(self, name):
-        self.name = name
-        self.position = "step0"
-
-    def update(self, value):
-        if type(value) == str:
-            self.position = value
-        elif type(value) == int:
-            self.position = "step%d" % value
-
 class ControlError(Exception):
     """Base class for exceptions in this module."""
     pass
@@ -231,400 +207,6 @@ class ConfigDBError(ControlError):
     """
     def __init__(self, message):
         self.message = message
-
-class DaqControl:
-    'Base class for controlling data acquisition'
-
-    # transitionId is a subset of the TransitionId.hh enum
-    transitionId = {
-        'ClearReadout'      : 0,
-        'Reset'             : 1,
-        'Configure'         : 2,
-        'Unconfigure'       : 3,
-        'BeginRun'          : 4,
-        'EndRun'            : 5,
-        'BeginStep'         : 6,
-        'EndStep'           : 7,
-        'Enable'            : 8,
-        'Disable'           : 9,
-        'SlowUpdate'        : 10,
-        'L1Accept'          : 12,
-    }
-
-    transitions = ['rollcall', 'alloc', 'dealloc',
-                   'connect', 'disconnect',
-                   'configure', 'unconfigure',
-                   'beginrun', 'endrun',
-                   'beginstep', 'endstep',
-                   'enable', 'disable',
-                   'slowupdate', 'reset']
-
-    states = [
-        'reset',
-        'unallocated',
-        'allocated',
-        'connected',
-        'configured',
-        'starting',
-        'paused',
-        'running'
-    ]
-
-    # default readout group is self.platform
-
-    def __init__(self, *, host, platform, timeout):
-        self.host = host
-        self.platform = platform
-        self.timeout = timeout
-
-        # initialize zmq socket
-        self.context = zmq.Context(1)
-        self.front_sub = self.context.socket(zmq.SUB)
-        self.front_sub.connect('tcp://%s:%d' % (host, front_pub_port(platform)))
-        self.front_sub.setsockopt(zmq.SUBSCRIBE, b'')
-        self.front_req = None
-        self.front_req_endpoint = 'tcp://%s:%d' % (host, front_rep_port(platform))
-        self.front_req_init()
-
-    #
-    # DaqControl.getState - get current state
-    #
-    def getState(self):
-        retval = 'error'
-        try:
-            msg = create_msg('getstate')
-            self.front_req.send_json(msg)
-            reply = self.front_req.recv_json()
-        except zmq.Again:
-            logging.error('getState() timeout (%.1f sec)' % (self.timeout / 1000.))
-            logging.info('getState() reinitializing zmq socket')
-            self.front_req_init()
-        except Exception as ex:
-            logging.error('getState() Exception: %s' % ex)
-        except KeyboardInterrupt:
-            print('KeyboardInterrupt')
-        else:
-            try:
-                retval = reply['header']['key']
-            except KeyError:
-                pass
-
-        return retval
-
-    #
-    # DaqControl.getPlatform - get platform
-    #
-    def getPlatform(self):
-        retval = {}
-        try:
-            msg = create_msg('getstate')
-            self.front_req.send_json(msg)
-            reply = self.front_req.recv_json()
-        except zmq.Again:
-            logging.error('getPlatform() timeout (%.1f sec)' % (self.timeout / 1000.))
-            logging.info('getPlatform() reinitializing zmq socket')
-            self.front_req_init()
-        except Exception as ex:
-            logging.error('getPlatform() Exception: %s' % ex)
-        except KeyboardInterrupt:
-            print('KeyboardInterrupt')
-        else:
-            try:
-                retval = reply['body']
-            except KeyError:
-                pass
-
-        return retval
-
-    #
-    # DaqControl.getJsonConfig - get json configuration
-    #
-    def getJsonConfig(self):
-        src = self.getPlatform()
-        dst = levels_to_activedet(src)
-        retval =  oldjson.dumps(dst, sort_keys=True, indent=4)
-        logging.debug('getJsonConfig() return value: %s' % retval)
-        return retval
-
-    #
-    # DaqControl.storeJsonConfig - store json configuration
-    #
-    def storeJsonConfig(self, json_data):
-        retval = {}
-        body = {"json_data": json_data}
-        try:
-            msg = create_msg('storejsonconfig', body=body)
-            self.front_req.send_json(msg)
-            reply = self.front_req.recv_json()
-        except zmq.Again:
-            logging.error('storeJsonConfig() timeout (%.1f sec)' % (self.timeout / 1000.))
-            logging.info('storeJsonConfig() reinitializing zmq socket')
-            self.front_req_init()
-        except Exception as ex:
-            logging.error('storeJsonConfig() Exception: %s' % ex)
-        except KeyboardInterrupt:
-            print('KeyboardInterrupt')
-        else:
-            try:
-                retval = reply['body']
-            except KeyError:
-                pass
-
-        return retval
-
-    #
-    # DaqControl.selectPlatform - select platform
-    #
-    def selectPlatform(self, body):
-        retval = {}
-        try:
-            msg = create_msg('selectplatform', body=body)
-            self.front_req.send_json(msg)
-            reply = self.front_req.recv_json()
-        except zmq.Again:
-            logging.error('selectPlatform() timeout (%.1f sec)' % (self.timeout / 1000.))
-            logging.info('selectPlatform() reinitializing zmq socket')
-            self.front_req_init()
-        except Exception as ex:
-            logging.error('selectPlatform() Exception: %s' % ex)
-        except KeyboardInterrupt:
-            print('KeyboardInterrupt')
-        else:
-            try:
-                retval = reply['body']
-            except KeyError:
-                pass
-
-        return retval
-
-    #
-    # DaqControl.getInstrument - get instrument name
-    #
-    def getInstrument(self):
-        r1 = None
-        try:
-            msg = create_msg('getinstrument')
-            self.front_req.send_json(msg)
-            reply = self.front_req.recv_json()
-        except Exception as ex:
-            print('getInstrument() Exception: %s' % ex)
-        else:
-            try:
-                r1 = reply['body']['instrument']
-            except Exception as ex:
-                print('getInstrument() Exception: %s' % ex)
-
-        return r1
-
-    #
-    # DaqControl.getStatus - get status
-    #
-    def getStatus(self):
-        r1 = r2 = r3 = r4 = r6 = 'error'
-        r5 = {}
-        r7 = r8 = r9 = 'error'
-        try:
-            msg = create_msg('getstatus')
-            self.front_req.send_json(msg)
-            reply = self.front_req.recv_json()
-        except Exception as ex:
-            print('getStatus() Exception: %s' % ex)
-        except KeyboardInterrupt:
-            print('KeyboardInterrupt')
-        else:
-            try:
-                r1 = reply['body']['transition']
-                r2 = reply['body']['state']
-                r3 = reply['body']['config_alias']
-                r4 = reply['body']['recording']
-                r5 = reply['body']['platform']
-                r6 = reply['body']['bypass_activedet']
-                r7 = reply['body']['experiment_name']
-                r8 = reply['body']['run_number']
-                r9 = reply['body']['last_run_number']
-            except KeyError:
-                pass
-
-        return (r1, r2, r3, r4, r5, r6, r7, r8, r9)
-
-    #
-    # DaqControl.monitorStatus - monitor the status
-    #
-    def monitorStatus(self):
-
-        # process messages
-        while True:
-            try:
-                msg = self.front_sub.recv_json()
-
-                if msg['header']['key'] == 'status':
-                    # return transition, state, config_alias, recording, bypass_activedet, experiment_name, run_number, last_run_number
-                    return msg['body']['transition'], msg['body']['state'], msg['body']['config_alias'], msg['body']['recording'], msg['body']['bypass_activedet'],\
-                           msg['body']['experiment_name'], msg['body']['run_number'], msg['body']['last_run_number']
-
-                elif msg['header']['key'] == 'error':
-                    # return 'error', error message, 'error', 'error', 'error', 'error', 'error', 'error'
-                    return 'error', msg['body']['err_info'], 'error', 'error', 'error', 'error', 'error', 'error'
-
-                elif msg['header']['key'] == 'warning':
-                    # return 'error', error message, 'error', 'error', 'error', 'error', 'error', 'error'
-                    return 'warning', msg['body']['err_info'], 'error', 'error', 'error', 'error', 'error', 'error'
-
-                elif msg['header']['key'] == 'fileReport':
-                    # return 'fileReport', path, 'error', 'error', 'error', 'error', 'error', 'error'
-                    return 'fileReport', msg['body']['path'], 'error', 'error', 'error', 'error', 'error', 'error'
-
-                elif msg['header']['key'] == 'progress':
-                    # return 'progress', transition, elapsed, total, 'error', 'error', 'error', 'error'
-                    return 'progress', msg['body']['transition'], msg['body']['elapsed'], msg['body']['total'], 'error', 'error', 'error', 'error'
-
-            except KeyboardInterrupt:
-                break
-
-            except KeyError as ex:
-                logging.error('KeyError: %s' % ex)
-                break
-
-        return None, None, None, None, None, None, None, None
-
-    #
-    # DaqControl.setState - change the state
-    # The optional second argument is a dictionary containing
-    # one entry per transition that contains information that
-    # will be put into the phase1-json of the transition. An example:
-    # {'beginstep': {'myvalue1':3 , 'myvalue2': {'myvalue3':72}},
-    #  'enable':    {'myvalue5':37, 'myvalue6': 'hello'}}
-    #
-    def setState(self, state, phase1Info={}):
-        errorMessage = None
-        try:
-            msg = create_msg('setstate.' + state, body=phase1Info)
-            self.front_req.send_json(msg)
-            reply = self.front_req.recv_json()
-        except zmq.Again:
-            errorMessage = 'setState() timeout (%.1f sec)' % (self.timeout / 1000.)
-            logging.info('setState() reinitializing zmq socket')
-            self.front_req_init()
-        except Exception as ex:
-            errorMessage = 'setState() Exception: %s' % ex
-        else:
-            try:
-                errorMessage = reply['body']['err_info']
-            except KeyError:
-                pass
-
-        return errorMessage
-
-    #
-    # DaqControl.setConfig - set BEAM/NOBEAM
-    #
-    def setConfig(self, config):
-        errorMessage = None
-        try:
-            msg = create_msg('setconfig.' + config)
-            self.front_req.send_json(msg)
-            reply = self.front_req.recv_json()
-        except Exception as ex:
-            errorMessage = 'setConfig() Exception: %s' % ex
-        else:
-            try:
-                errorMessage = reply['body']['err_info']
-            except KeyError:
-                pass
-
-        return errorMessage
-
-    #
-    # DaqControl.setRecord - set record flag
-    #   True or False
-    #
-    def setRecord(self, recordIn):
-        errorMessage = None
-        if type(recordIn) == type(True):
-            if recordIn:
-                record = '1'
-            else:
-                record = '0'
-
-            try:
-                msg = create_msg('setrecord.' + record)
-                self.front_req.send_json(msg)
-                reply = self.front_req.recv_json()
-            except Exception as ex:
-                errorMessage = 'setRecord() Exception: %s' % ex
-            else:
-                try:
-                    errorMessage = reply['body']['err_info']
-                except KeyError:
-                    pass
-        else:
-            errorMessage = 'setRecord() requires True or False'
-
-        return errorMessage
-
-    #
-    # DaqControl.setBypass - set bypass_activedet flag
-    #   True or False
-    #
-    def setBypass(self, bypassIn):
-        errorMessage = None
-        if type(bypassIn) == type(True):
-            if bypassIn:
-                bypass = '1'
-            else:
-                bypass = '0'
-
-            try:
-                msg = create_msg('setbypass.' + bypass)
-                self.front_req.send_json(msg)
-                reply = self.front_req.recv_json()
-            except Exception as ex:
-                errorMessage = 'setBypass() Exception: %s' % ex
-            else:
-                try:
-                    errorMessage = reply['body']['err_info']
-                except KeyError:
-                    pass
-        else:
-            errorMessage = 'setBypass() requires True or False'
-
-        return errorMessage
-
-    #
-    # DaqControl.setTransition - trigger a transition
-    # The optional second argument is a dictionary containing
-    # information that will be put into the phase1-json of the transition.
-    # An example:
-    # {'myvalue1':3 , 'myvalue2': {'myvalue3':72}}
-    #
-    def setTransition(self, transition, phase1Info={}):
-        errorMessage = None
-        try:
-            msg = create_msg(transition, body=phase1Info)
-            self.front_req.send_json(msg)
-            reply = self.front_req.recv_json()
-        except Exception as ex:
-            errorMessage = 'setTransition() Exception: %s' % ex
-        else:
-            try:
-                errorMessage = reply['body']['err_info']
-            except KeyError:
-                pass
-
-        return errorMessage
-
-    #
-    # DaqControl.front_req_init - (re)initialize the front_req zmq socket
-    #
-    def front_req_init(self):
-        # if socket previouly created, close it
-        if self.front_req is not None:
-            self.front_req.close()
-        # create new socket
-        self.front_req = self.context.socket(zmq.REQ)
-        self.front_req.linger = 0
-        self.front_req.RCVTIMEO = self.timeout
-        self.front_req.connect(self.front_req_endpoint)
 
 next_dict = {
     'reset' :       { 'unallocated' : 'rollcall',
@@ -692,221 +274,6 @@ next_dict = {
                       'paused' :      'disable' }
 }
 
-
-class ConfigurationScan:
-    def __init__(self, control, *, daqState, args):
-        self.zmq_port = 5550+args.p     # one port per platform
-        self.control = control
-        self.name = 'mydaq'
-        self.parent = None
-        self.context = zmq.Context()
-        self.push_socket = self.context.socket(zmq.PUSH)
-        self.push_socket.bind('tcp://*:%s' % self.zmq_port)
-        self.pull_socket = self.context.socket(zmq.PULL)
-        self.pull_socket.connect('tcp://localhost:%s' % self.zmq_port)
-        self.comm_thread = Thread(target=self.daq_communicator_thread, args=())
-        self.mon_thread = Thread(target=self.daq_monitor_thread, args=(), daemon=True)
-        self.ready = Event()
-        self.daqState = daqState
-        self.args = args
-        self.daqState_cv = Condition()
-        self.stepDone_cv = Condition()
-        self.stepDone = 0
-        self.comm_thread.start()
-        self.mon_thread.start()
-        self.verbose = args.v
-        self.pv_base = args.B
-        self.motors = []                # set in configure()
-        self._step_count = 0
-        self.cydgram = dc.CyDgram()
-
-        if args.g is None:
-            self.groupMask = 1 << args.p
-        else:
-            self.groupMask = args.g
-
-        # StepEnd is a cumulative count
-        self.readoutCount = args.c
-        self.readoutCumulative = 0
-
-        # instantiate DaqPVA object
-        self.pva = DaqPVA(platform=args.p, xpm_master=args.x, pv_base=args.B)
-
-    # this thread tells the daq to do a step and waits for the completion
-    def daq_communicator_thread(self):
-        logging.debug('*** daq_communicator_thread')
-        while True:
-            sss = self.pull_socket.recv().decode("utf-8")
-            if ',' in sss:
-                state, phase1 = sss.split(',', maxsplit=1)
-            else:
-                state, phase1 = sss, None
-
-            logging.debug('*** received %s' % state)
-            if state in ('connected', 'starting'):
-                # send 'daqstate(state)' and wait for complete
-                if phase1 is None:
-                    errMsg = self.control.setState(state)
-                else:
-                    errMsg = self.control.setState(state, oldjson.loads(phase1))
-
-                if errMsg is not None:
-                    logging.error('%s' % errMsg)
-                    continue
-
-                with self.daqState_cv:
-                    while self.daqState != state:
-                        logging.debug('daqState \'%s\', waiting for \'%s\'...' % (self.daqState, state))
-                        self.daqState_cv.wait(1.0)
-                    logging.debug('daqState \'%s\'' % self.daqState)
-
-                self.ready.set()
-
-            elif state=='running':
-                # launch the step with 'daqstate(running)' (with the
-                # scan values for the daq to record to xtc2).
-
-                # set EPICS PVs.
-                # StepEnd is a cumulative count.
-                self.readoutCumulative += self.readoutCount
-                self.pva.pv_put(self.pva.pvStepEnd, self.readoutCumulative)
-                self.pva.step_groups(mask=self.groupMask)
-                self.pva.pv_put(self.pva.pvStepDone, 0)
-                with self.stepDone_cv:
-                    self.stepDone = 0
-                    self.stepDone_cv.notify()
-
-                # set DAQ state
-                if phase1 is None:
-                    errMsg = self.control.setState(state)
-                else:
-                    errMsg = self.control.setState(state, oldjson.loads(phase1))
-                if errMsg is not None:
-                    logging.error('%s' % errMsg)
-                    continue
-
-                with self.daqState_cv:
-                    while self.daqState != 'running':
-                        logging.debug('daqState \'%s\', waiting for \'running\'...' % self.daqState)
-                        self.daqState_cv.wait(1.0)
-                    logging.debug('daqState \'%s\'' % self.daqState)
-
-                # define nested function for monitoring the StepDone PV
-                def callback(stepDone):
-                    with self.stepDone_cv:
-                        self.stepDone = int(stepDone)
-                        self.stepDone_cv.notify()
-
-                # start monitoring the StepDone PV
-                sub = self.pva.monitor_StepDone(callback=callback)
-
-                with self.stepDone_cv:
-                    while self.stepDone != 1:
-                        logging.debug('PV \'StepDone\' is %d, waiting for 1...' % self.stepDone)
-                        self.stepDone_cv.wait(1.0)
-                logging.debug('PV \'StepDone\' is %d' % self.stepDone)
-
-                # stop monitoring the StepDone PV
-                sub.close()
-
-            elif state=='shutdown':
-                break
-
-    def daq_monitor_thread(self):
-        logging.debug('*** daq_monitor_thread')
-        while True:
-            part1, part2, part3, part4, part5, part6, part7, part8 = self.control.monitorStatus()
-            if part1 is None:
-                break
-            elif part1 not in DaqControl.transitions:
-                continue
-
-            # part1=transition, part2=state, part3=config
-            with self.daqState_cv:
-                self.daqState = part2
-                self.daqState_cv.notify()
-
-    def _set_connected(self):
-        self.push_socket.send_string('connected')
-        # wait for complete
-        self.ready.wait()
-        self.ready.clear()
-
-    def stage(self):
-        # done once at start of scan
-        # put the daq into the right state ('connected')
-        self._set_connected()
-        self._step_count = 0
-
-    def unstage(self):
-        # done once at end of scan
-        # put the daq into the right state ('connected')
-        logging.debug('*** unstage: step count = %d' % self._step_count)
-        self._set_connected()
-
-    def getBlock(self, *, transitionid, add_names, add_shapes_data):
-        my_data = {}
-        for motor in self.motors:
-            my_data.update({motor.name: motor.position})
-
-        detname       = 'scan'
-        dettype       = 'scan'
-        serial_number = '1234'
-        namesid       = 253     # STEPINFO = 253 (psdaq/drp/drp.hh)
-        nameinfo      = dc.nameinfo(detname,dettype,serial_number,namesid)
-
-        alg           = dc.alg('raw',[2,0,0])
-
-        self.cydgram.addDet(nameinfo, alg, my_data)
-
-        # create dgram
-        timestamp    = 0
-        xtc_bytes    = self.cydgram.getSelect(timestamp, transitionid, add_names=add_names, add_shapes_data=add_shapes_data)
-        logging.debug('transitionid %d dgram is %d bytes (with header)' % (transitionid, len(xtc_bytes)))
-
-        # remove first 12 bytes (dgram header), and keep next 12 bytes (xtc header)
-        return xtc_bytes[12:]
-
-
-    # use 'motors' keyword arg to specify a set of motors
-    def configure(self, *args, **kwargs):
-        logging.debug("*** here in configure")
-
-        if 'motors' in kwargs:
-            self.motors = kwargs['motors']
-            logging.info('configure: %d motors' % len(self.motors))
-        else:
-            logging.error('configure: no motors')
-
-    def step_count(self):
-        return self._step_count
-
-    def update(self, *, value):
-        # update 'motors'
-        for motor in self.motors:
-            motor.update(value)
-
-    def trigger(self, *, phase1Info=None):
-        # do one step
-        logging.debug('*** trigger: step count = %d' % self._step_count)
-        if phase1Info is None:
-            phase1Info = {}
-        if "beginstep" not in phase1Info:
-            phase1Info.update({"beginstep": {}})
-        if "configure" not in phase1Info:
-            phase1Info.update({"configure": {}})
-        if "step_keys" not in phase1Info["configure"]:
-            phase1Info["configure"].update({"step_keys": []})
-        if "step_values" not in phase1Info["beginstep"]:
-            phase1Info["beginstep"].update({"step_values": {}})
-
-        logging.debug('*** phase1Info = %s' % oldjson.dumps(phase1Info))
-        # BeginStep
-        self.push_socket.send_string('running,%s' % oldjson.dumps(phase1Info))
-        # EndStep
-        self.push_socket.send_string('starting')
-        self._step_count += 1
-
 # Translate drp alias to detector name
 # For example: 'cam_1' -> 'cam'
 def detector_name(drp_alias):
@@ -933,44 +300,6 @@ def timestampStr():
     nsec = 1000 * current.microsecond
     sec = int(current.timestamp()) - POSIX_TIME_AT_EPICS_EPOCH
     return '%010d-%09d' % (sec, nsec)
-
-def create_msg(key, msg_id=None, sender_id=None, body={}):
-    if msg_id is None:
-        msg_id = timestampStr()
-    msg = {'header': {
-               'key': key,
-               'msg_id': msg_id,
-               'sender_id': sender_id},
-           'body': body}
-    return msg
-
-def error_msg(message):
-    body = {'err_info': message}
-    return create_msg('error', body=body)
-
-def warning_msg(message):
-    body = {'err_info': message}
-    return create_msg('warning', body=body)
-
-def fileReport_msg(path):
-    body = {'path': path}
-    return create_msg('fileReport', body=body)
-
-def progress_msg(transition, elapsed, total):
-    body = {'transition': transition, 'elapsed': int(elapsed), 'total': int(total)}
-    return create_msg('progress', body=body)
-
-def back_pull_port(platform):
-    return PORT_BASE + platform
-
-def back_pub_port(platform):
-    return PORT_BASE + platform + 10
-
-def front_rep_port(platform):
-    return PORT_BASE + platform + 20
-
-def front_pub_port(platform):
-    return PORT_BASE + platform + 30
 
 def get_readout_group_mask(body):
     mask = 0
@@ -1118,14 +447,17 @@ class CollectionManager():
         self.back_pull = self.context.socket(zmq.PULL)
         self.back_pub = self.context.socket(zmq.PUB)
         self.front_rep = self.context.socket(zmq.REP)
+        self.fast_rep = self.context.socket(zmq.REP)
         self.front_pub = self.context.socket(zmq.PUB)
         self.back_pull.bind('tcp://*:%d' % back_pull_port(args.p))
         self.back_pub.bind('tcp://*:%d' % back_pub_port(args.p))
         self.front_rep.bind('tcp://*:%d' % front_rep_port(args.p))
+        self.fast_rep.bind('tcp://*:%d' % fast_rep_port(args.p))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(args.p))
         self.slow_update_rate = args.S if args.S else 0
+        self.fast_reply_rate = 10           # Hz
         self.slow_update_enabled = False    # setter: self.set_slow_update_enabled()
-        self.slow_update_exit = Event()
+        self.threads_exit = Event()
         self.phase2_timeout = args.T
         self.user = args.user
         self.password = args.password
@@ -1134,6 +466,9 @@ class CollectionManager():
         self.run_number = self.last_run_number = 0
         self.rollcall_timeout = args.rollcall_timeout
         self.bypass_activedet = False
+        self.cydgram = dc.CyDgram()
+        self.step_done = Event()
+        self.readoutCumulative = 0
 
         # instantiate DaqPVA object
         self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base)
@@ -1156,14 +491,26 @@ class CollectionManager():
         else:
             logging.info("active detectors file: %s" % self.activedetfilename)
 
+        # initialize fast reply thread
+        self.fast_reply_thread = Thread(target=self.fast_reply_func, name='fastreply')
+
         if self.slow_update_rate:
             # initialize slow update thread
             self.slow_update_thread = Thread(target=self.slow_update_func, name='slowupdate')
+        else:
+            self.slow_update_thread = None
+
+        # initialize stepdone thread
+        self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
 
         # initialize poll set
         self.poller = zmq.Poller()
         self.poller.register(self.back_pull, zmq.POLLIN)
         self.poller.register(self.front_rep, zmq.POLLIN)
+
+        # initialize fast poll set
+        self.fast_poller = zmq.Poller()
+        self.fast_poller.register(self.fast_rep, zmq.POLLIN)
 
         # initialize EPICS context
         self.ctxt = Context('pva')
@@ -1197,15 +544,18 @@ class CollectionManager():
         self.ids = set()
         self.handle_request = {
             'selectplatform': self.handle_selectplatform,
-            'getinstrument': self.handle_getinstrument,
             'getstate': self.handle_getstate,
             'storejsonconfig': self.handle_storejsonconfig,
             'getstatus': self.handle_getstatus
         }
+        self.handle_fast = {
+            'getinstrument': self.handle_getinstrument,
+            'getblock': self.handle_getblock
+        }
         self.lastTransition = 'reset'
         self.recording = False
 
-        self.collectMachine = Machine(self, DaqControl.states, initial='reset')
+        self.collectMachine = Machine(self, ControlDef.states, initial='reset')
 
         self.collectMachine.add_transition('reset', '*', 'reset',
                                            conditions='condition_reset', after='report_status')
@@ -1248,13 +598,21 @@ class CollectionManager():
             self.set_slow_update_enabled(False)
             self.slow_update_thread.start()
 
+        # start fast reply thread
+        self.fast_reply_thread.start()
+
+        # start step done thread
+        self.step_done_thread.start()
+
         # start main loop
         self.run()
 
-        if self.slow_update_rate:
-            # stop slow update thread
-            self.slow_update_exit.set()
-            time.sleep(0.5)
+        # stop other thread(s)
+        self.threads_exit.set()
+
+        self.fast_reply_thread.join()
+        if self.slow_update_thread is not None:
+            self.slow_update_thread.join()
 
     #
     # cmstate_levels - return copy of cmstate with only drp/teb/meb entries
@@ -1266,8 +624,6 @@ class CollectionManager():
         # msg['header']['key'] formats:
         #  setstate.STATE
         #  setconfig.CONFIG_ALIAS
-        #  setrecord.RECORD_FLAG
-        #  setbypass.BYPASS_FLAG
         #  TRANSITION
         #  REQUEST
         answer = None
@@ -1285,21 +641,7 @@ class CollectionManager():
                 # handle_setconfig() sends reply internally
                 self.handle_setconfig(key[1])
                 answer = None
-            elif key[0] == 'setrecord':
-                # handle_setrecord() sends reply internally
-                if key[1] == '0':
-                    self.handle_setrecord(False)
-                else:
-                    self.handle_setrecord(True)
-                answer = None
-            elif key[0] == 'setbypass':
-                # handle_setbypass() sends reply internally
-                if key[1] == '0':
-                    self.handle_setbypass(False)
-                else:
-                    self.handle_setbypass(True)
-                answer = None
-            elif key[0] in DaqControl.transitions:
+            elif key[0] in ControlDef.transitions:
                 # is body dict not-empty?
                 if body:
                     self.phase1Info[key[1]] = body
@@ -1324,6 +666,44 @@ class CollectionManager():
             answer = create_msg('error')
         if answer is not None:
             self.front_rep.send_json(answer)
+
+    def service_fast(self):
+        # msg['header']['key'] formats:
+        #  setrecord.RECORD_FLAG
+        #  setbypass.BYPASS_FLAG
+        #  REQUEST
+        logging.debug('entered service_fast()')
+        answer = None
+        try:
+            msg = self.fast_rep.recv_json()
+            key = msg['header']['key'].split(".")
+            logging.debug("service_fast: key = %s" % key)
+            body = msg['body']
+
+            if key[0] == 'setrecord':
+                # handle_setrecord() sends reply internally
+                if key[1] == '0':
+                    self.handle_setrecord(False)
+                else:
+                    self.handle_setrecord(True)
+                answer = None
+            elif key[0] == 'setbypass':
+                # handle_setbypass() sends reply internally
+                if key[1] == '0':
+                    self.handle_setbypass(False)
+                else:
+                    self.handle_setbypass(True)
+                answer = None
+            else:
+                answer = self.handle_fast[key[0]](body)
+                logging.debug(f'service_fast: answer={answer}')
+
+        except KeyError:
+            answer = create_msg('error')
+        if answer is not None:
+            self.fast_rep.send_json(answer)
+
+        return
 
     #
     # register_file -
@@ -1470,7 +850,7 @@ class CollectionManager():
         logging.debug('handle_setstate(\'%s\') in state %s' % (newstate, self.state))
         stateBefore = self.state
 
-        if newstate not in DaqControl.states:
+        if newstate not in ControlDef.states:
             stateError = 'state \'%s\' not recognized' % newstate
             errMsg = stateError.replace("\"", "")
             logging.error(errMsg)
@@ -1521,14 +901,14 @@ class CollectionManager():
             logging.error(errMsg)
             answer = create_msg('error', body={'err_info': errMsg})
             # reply 'error'
-            self.front_rep.send_json(answer)
+            self.fast_rep.send_json(answer)
         else:
             if newrecording != self.recording:
                 self.recording = newrecording
                 self.report_status()
             answer = create_msg('ok')
             # reply 'ok'
-            self.front_rep.send_json(answer)
+            self.fast_rep.send_json(answer)
 
     def handle_setbypass(self, newbypass):
         logging.debug('handle_setbypass(\'%s\') in state %s' % (newbypass, self.state))
@@ -1538,14 +918,14 @@ class CollectionManager():
             logging.error(errMsg)
             answer = create_msg('error', body={'err_info': errMsg})
             # reply 'error'
-            self.front_rep.send_json(answer)
+            self.fast_rep.send_json(answer)
         else:
             if newbypass != self.bypass_activedet:
                 self.bypass_activedet = newbypass
                 self.report_status()
             answer = create_msg('ok')
             # reply 'ok'
-            self.front_rep.send_json(answer)
+            self.fast_rep.send_json(answer)
 
     def status_msg(self):
         if not self.experiment_name:
@@ -1734,12 +1114,12 @@ class CollectionManager():
         # ...clear readout
         self.pva.pv_put(self.pva.pvGroupL0Reset, self.groups)
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, DaqControl.transitionId['ClearReadout'])
+            self.pva.pv_put(pv, ControlDef.transitionId['ClearReadout'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
         time.sleep(1.0)
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, DaqControl.transitionId['BeginRun'])
+            self.pva.pv_put(pv, ControlDef.transitionId['BeginRun'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
 
@@ -1765,7 +1145,7 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, DaqControl.transitionId['EndRun'])
+            self.pva.pv_put(pv, ControlDef.transitionId['EndRun'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
         self.step_groups(mask=0)    # default is no scanning
@@ -1792,7 +1172,7 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, DaqControl.transitionId['BeginStep'])
+            self.pva.pv_put(pv, ControlDef.transitionId['BeginStep'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
 
@@ -1812,7 +1192,7 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, DaqControl.transitionId['EndStep'])
+            self.pva.pv_put(pv, ControlDef.transitionId['EndStep'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
 
@@ -1829,7 +1209,7 @@ class CollectionManager():
         # phase 1 not needed
         # phase 2 no replies needed
         for pv in self.pva.pvListMsgHeader:
-            if not self.pva.pv_put(pv, DaqControl.transitionId['SlowUpdate']):
+            if not self.pva.pv_put(pv, ControlDef.transitionId['SlowUpdate']):
                 update_ok = False
                 break
 
@@ -1916,6 +1296,39 @@ class CollectionManager():
         logging.debug('handle_getinstrument()')
         body = {'instrument': self.instrument, 'station': self.station}
         return create_msg('instrument', body=body)
+
+    def handle_getblock(self, body):
+        if body is None or type(body) != type({}):
+            msg = 'getblock requires dict'
+            self.report_error(msg)
+            return error_msg(msg)
+
+        logging.debug(f'handle_getblock: body={body}')
+
+        try:
+            detname       = body["detname"]
+            dettype       = body["dettype"]
+            serial_number = body["serial_number"]
+            namesid       = body["namesid"]
+
+            nameinfo      = dc.nameinfo(detname,dettype,serial_number,namesid)
+            alg           = dc.alg(body["alg_name"], body["alg_version"])
+            self.cydgram.addDet(nameinfo, alg, body["motors"])
+
+            # create dgram
+            add_names       = body["add_names"]
+            add_shapes_data = body["add_shapes_data"]
+            timestamp       = body["timestamp"]
+            transitionid    = body["transitionid"]
+        except Exception as ex:
+            logging.error(f'handle_getblock Exception: {ex}')
+
+        xtc_bytes = self.cydgram.getSelect(timestamp, transitionid, add_names=add_names, add_shapes_data=add_shapes_data)
+        logging.debug('handle_getblock: transitionid %d dgram is %d bytes (with header)' % (transitionid, len(xtc_bytes)))
+
+        # remove first 12 bytes (dgram header), and keep next 12 bytes (xtc header)
+        reply = xtc_bytes[12:]
+        return create_msg('block', body=reply.hex())
 
     def handle_selectplatform(self, body):
         logging.debug('handle_selectplatform()')
@@ -2408,16 +1821,18 @@ class CollectionManager():
         # ...clear readout
         self.pva.pv_put(self.pva.pvGroupL0Reset, self.groups)
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, DaqControl.transitionId['ClearReadout'])
+            self.pva.pv_put(pv, ControlDef.transitionId['ClearReadout'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
         time.sleep(1.0)
         # ...configure
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, DaqControl.transitionId['Configure'])
+            self.pva.pv_put(pv, ControlDef.transitionId['Configure'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
         self.step_groups(mask=0)    # default is no scanning
+
+        self.readoutCumulative = 0
 
         ok = self.get_phase2_replies('configure')
         if not ok:
@@ -2440,7 +1855,7 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, DaqControl.transitionId['Unconfigure'])
+            self.pva.pv_put(pv, ControlDef.transitionId['Unconfigure'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
 
@@ -2495,6 +1910,15 @@ class CollectionManager():
             self.set_slow_update_enabled(True)
 
     def condition_enable(self):
+        # readout_count and group_mask are optional
+        try:
+            readout_count = self.phase1Info['enable']['readout_count']
+            group_mask = self.phase1Info['enable']['group_mask']
+        except KeyError:
+            readout_count = 0
+            group_mask = 1 << self.platform
+        logging.debug(f'condition_enable(): readout_count={readout_count} group_mask={group_mask}')
+
         # phase 1
         ok = self.condition_common('enable', 6000)
         if not ok:
@@ -2502,8 +1926,18 @@ class CollectionManager():
             return False
 
         # phase 2
+        if (readout_count > 0):
+            # set EPICS PVs.
+            # StepEnd is a cumulative count.
+            self.readoutCumulative += readout_count
+            self.pva.pv_put(self.pva.pvStepEnd, self.readoutCumulative)
+            self.pva.step_groups(mask=group_mask)
+            self.pva.pv_put(self.pva.pvStepDone, 0)
+        else:
+            self.step_groups(mask=0)    # default is no scanning
+
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, DaqControl.transitionId['Enable'])
+            self.pva.pv_put(pv, ControlDef.transitionId['Enable'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
 
@@ -2543,7 +1977,7 @@ class CollectionManager():
 
         # phase 2
         for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, DaqControl.transitionId['Disable'])
+            self.pva.pv_put(pv, ControlDef.transitionId['Disable'])
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
 
@@ -2580,12 +2014,63 @@ class CollectionManager():
         slow_front_req.connect('tcp://localhost:%d' % front_rep_port(self.platform))
         msg = create_msg('slowupdate')
 
-        while not self.slow_update_exit.wait(1.0 / self.slow_update_rate):
+        while not self.threads_exit.wait(1.0 / self.slow_update_rate):
             if self.slow_update_enabled:
                 slow_front_req.send_json(msg)
                 answer = slow_front_req.recv_multipart()
 
         logging.debug('slowupdate thread shutting down')
+
+    def fast_reply_func(self):
+        logging.debug('fastreply thread starting up')
+
+        # zmq sockets are not thread-safe
+        # so create a zmq socket for the fastreply thread
+        fast_reply_rep = self.context.socket(zmq.REP)
+
+        while not self.threads_exit.wait(1.0 / self.fast_reply_rate):
+            socks = dict(self.fast_poller.poll(500))        # timeout (ms)
+            if self.fast_rep in socks and socks[self.fast_rep] == zmq.POLLIN:
+                self.service_fast()
+            if self.threads_exit.is_set():
+                break
+
+        logging.debug('fastreply thread shutting down')
+
+    def step_done_func(self):
+        logging.debug('stepdone thread starting up')
+
+        # zmq sockets are not thread-safe
+        # so create a zmq socket for the stepdone thread
+        self.context = zmq.Context(1)
+        self.step_pub = self.context.socket(zmq.PUB)
+        self.step_pub.bind('tcp://*:%d' % step_pub_port(self.platform))
+
+        # define nested function for monitoring the StepDone PV
+        def callback(done):
+            doneFlag = int(done)
+            if doneFlag:
+                if self.state != 'running':
+                    logging.debug(f'StepDone PV={doneFlag} in state {self.state} (ignore)')
+                elif doneFlag:
+                    logging.debug(f'StepDone PV={doneFlag} in state {self.state} (set step_done event)')
+                    self.step_done.set()
+
+        # start monitoring the StepDone PV
+        sub = self.pva.monitor_StepDone(callback=callback)
+
+        while not self.threads_exit.is_set():
+            if self.step_done.wait(0.5):
+                self.step_done.clear()
+                # stepDone event received
+                logging.debug('stepDone event received')
+                # publish the stepDone event with zmq
+                self.step_pub.send_json(step_msg(1))
+
+        # stop monitoring the StepDone PV
+        sub.close()
+
+        logging.debug('stepdone thread shutting down')
 
 
 def main():

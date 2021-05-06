@@ -35,7 +35,7 @@ from PyQt5.QtCore import Qt, QTimer, QSize # pyqtSignal, QRectF, QPointF
 
 from psdaq.control_gui.QWIcons import icon
 from psdaq.control_gui.Styles import style
-from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_set_record, DaqControl
+from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_set_record, DaqControl, ControlDef
                                            #daq_control_get_state, daq_control_get_status
 from psdaq.control_gui.CGConfigParameters import cp
 from psdaq.control_gui.QWProgressBar import QWProgressBar
@@ -68,7 +68,7 @@ class CGWMainControl(QGroupBox):
         self.but_ctrls      = QPushButton('Ready')
         self.bar_progress   = QWProgressBar() # label='', vmin=0, vmax=100
 
-        self.states = ['Select',] + [s.upper() for s in DaqControl.states]
+        self.states = ['Select',] + [s.upper() for s in ControlDef.states]
         self.box_state.addItems(self.states)
 
         self.state_is_after_reset = False

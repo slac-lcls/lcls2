@@ -1,28 +1,24 @@
-# bluesky_lab3.py
+# rix_bluesky_scan.py
 
 from bluesky import RunEngine
-from ophyd.status import Status
 import sys
 import logging
 import threading
-import asyncio
 import time
-
-from psdaq.control.control import DaqControl
-from psdaq.control.DaqScan import DaqScan
+from ControlDef import ControlDef
+from DaqControl import DaqControl
+from BlueskyScan import BlueskyScan
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-B', metavar='PVBASE', default='DAQ:LAB2', help='PV base (default DAQ:LAB2)')
-parser.add_argument('-p', type=int, choices=range(0, 8), default=1,
-                    help='platform (default 1)')
-parser.add_argument('-x', metavar='XPM', type=int, default=2, help='master XPM (default 2)')
-parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-tst-dev009',
-                    help='collection host (default drp-tst-dev009)')
+parser.add_argument('-p', type=int, choices=range(0, 8), default=2,
+                    help='platform (default 2)')
+parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-neh-ctl001',
+                    help='collection host (default drp-neh-ctl001)')
 parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                     help='timeout msec (default 10000)')
-parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=10, help='# of events to aquire at each step (default 10)')
-parser.add_argument('-g', type=int, metavar='GROUP_MASK', default=2, help='bit mask of readout groups (default 2)')
+parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=120, help='# of events to aquire at each step (default 120)')
+parser.add_argument('-g', type=int, metavar='GROUP_MASK', default=36, help='bit mask of readout groups (default 36)')
 parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (default BEAM)')
 parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
 parser.add_argument('--scantype', default='scan', help="scan type (default 'scan')")
@@ -79,13 +75,13 @@ RE.subscribe(bec)
 from ophyd.sim import motor1, SynAxis
 from bluesky.plans import scan
 
-step_value = SynAxis(name='step_value')
+step_value = SynAxis(name=ControlDef.STEP_VALUE)
 
-# instantiate DaqScan object
-mydaq = DaqScan(control, daqState=daqState, args=args)
+# instantiate BlueskyScan object
+mydaq = BlueskyScan(control, daqState=daqState, args=args)
 dets = [mydaq]   # just one in this case, but it could be more than one
 
-# configure DaqScan object with a set of motors
+# configure BlueskyScan object with a set of motors
 mydaq.configure(motors=[motor1, step_value])
 
 # Scan motor1 from -10 to 10 and step_value from 0 to 14, stopping

@@ -36,7 +36,7 @@ from psdaq.control_gui.CGConfigParameters   import cp
 from psdaq.control_gui.CGWMainConfiguration import CGWMainConfiguration
 from psdaq.control_gui.CGWMainInfo          import CGWMainInfo
 from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
-from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl,\
+from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl, ControlDef,\
                                                    daq_control_get_status, daq_control_get_instrument
 from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
 from psdaq.control_gui.QWUtils              import confirm_or_cancel_dialog_box

@@ -1,4 +1,4 @@
-# DaqScan.py
+# BlueskyScan.py
 
 from bluesky import RunEngine
 from ophyd.status import Status
@@ -8,13 +8,11 @@ import threading
 import zmq
 import asyncio
 import time
-import dgramCreate as dc
 import numpy as np
 
-from psdaq.control.control import DaqControl, DaqPVA
-import argparse
+from psdaq.control.ControlDef import ControlDef
 
-class DaqScan:
+class BlueskyScan:
     def __init__(self, control, *, daqState, args):
         self.control = control
         self.name = 'mydaq'
@@ -28,7 +26,6 @@ class DaqScan:
         self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
         self.motors = []                # set in configure()
-        self.cydgram = dc.CyDgram()
         self.daqState = daqState
         self.args = args
         self.daqState_cv = threading.Condition()
@@ -37,9 +34,9 @@ class DaqScan:
         self.comm_thread.start()
         self.mon_thread.start()
         self.verbose = args.v
-        self.pv_base = args.B
         self.detname = args.detname
         self.scantype = args.scantype
+        self.step_done = threading.Event()
 
         if args.g is None:
             self.groupMask = 1 << args.p
@@ -49,9 +46,6 @@ class DaqScan:
         # StepEnd is a cumulative count
         self.readoutCount = args.c
         self.readoutCumulative = 0
-
-        # instantiate DaqPVA object
-        self.pva = DaqPVA(platform=args.p, xpm_master=args.x, pv_base=args.B)
 
     def read(self):
         # stuff we want to give back to user running bluesky
@@ -94,51 +88,49 @@ class DaqScan:
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
 
-                # set EPICS PVs.
-                # StepEnd is a cumulative count.
-                self.readoutCumulative += self.readoutCount
-                self.pva.pv_put(self.pva.pvStepEnd, self.readoutCumulative)
-                self.pva.step_groups(mask=self.groupMask)
-                self.pva.pv_put(self.pva.pvStepDone, 0)
-                with self.stepDone_cv:
-                    self.stepDone = 0
-                    self.stepDone_cv.notify()
+                my_data = {}
+                for motor in self.motors:
+                    my_data.update({motor.name: motor.position})
+                    # derive step_docstring from step_value
+                    if motor.name == ControlDef.STEP_VALUE:
+                        docstring = f'{{"detname": "{self.detname}", "scantype": "{self.scantype}", "step": {motor.position}}}'
+                        my_data.update({'step_docstring': docstring})
+
+                data = {
+                  "motors":           my_data,
+                  "timestamp":        0,
+                  "detname":          self.detname,
+                  "dettype":          "scan",
+                  "scantype":         self.scantype,
+                  "serial_number":    "1234",
+                  "alg_name":         "raw",
+                  "alg_version":      [1,0,0]
+                }
+
+                configureBlock = self.getBlock(transition="Configure", data=data)
+                beginStepBlock = self.getBlock(transition="BeginStep", data=data)
 
                 # set DAQ state
                 errMsg = self.control.setState('running',
-                    {'configure':{'NamesBlockHex':self.getBlock(transitionid=DaqControl.transitionId['Configure'],
-                                                                add_names=True,
-                                                                add_shapes_data=False).hex()},
-                     'beginstep':{'ShapesDataBlockHex':self.getBlock(transitionid=DaqControl.transitionId['BeginStep'],
-                                                                add_names=False,
-                                                                add_shapes_data=True).hex()}})
+                    {'configure':   {'NamesBlockHex':configureBlock},
+                     'beginstep':   {'ShapesDataBlockHex':beginStepBlock},
+                     'enable':      {'readout_count':self.readoutCount, 'group_mask':self.groupMask}})
                 if errMsg is not None:
                     logging.error('%s' % errMsg)
                     continue
 
+                # wait for running
                 with self.daqState_cv:
                     while self.daqState != 'running':
                         logging.debug('daqState \'%s\', waiting for \'running\'...' % self.daqState)
                         self.daqState_cv.wait(1.0)
                     logging.debug('daqState \'%s\'' % self.daqState)
 
-                # define nested function for monitoring the StepDone PV
-                def callback(stepDone):
-                    with self.stepDone_cv:
-                        self.stepDone = int(stepDone)
-                        self.stepDone_cv.notify()
-
-                # start monitoring the StepDone PV
-                sub = self.pva.monitor_StepDone(callback=callback)
-
-                with self.stepDone_cv:
-                    while self.stepDone != 1:
-                        logging.debug('PV \'StepDone\' is %d, waiting for 1...' % self.stepDone)
-                        self.stepDone_cv.wait(1.0)
-                logging.debug('PV \'StepDone\' is %d' % self.stepDone)
-
-                # stop monitoring the StepDone PV
-                sub.close()
+                # wait for step done
+                logging.debug('Waiting for step done...')
+                self.step_done.wait()
+                self.step_done.clear()
+                logging.debug('step done.')
 
                 # tell bluesky step is complete
                 # this line is needed in ReadableDevice mode to flag completion
@@ -152,7 +144,10 @@ class DaqScan:
             part1, part2, part3, part4, part5, part6, part7, part8 = self.control.monitorStatus()
             if part1 is None:
                 break
-            elif part1 not in DaqControl.transitions:
+            elif part1 == 'step':
+                self.step_done.set()
+                continue
+            elif part1 not in ControlDef.transitions:
                 continue
 
             # part1=transition, part2=state, part3=config
@@ -216,29 +211,36 @@ class DaqScan:
         
         return [self]
 
-    def getBlock(self, *, transitionid, add_names, add_shapes_data):
-        my_data = {}
-        for motor in self.motors:
-            my_data.update({motor.name: motor.position})
-            # derive step_docstring from step_value
-            if motor.name == 'step_value':
-                docstring = f'{{"detname": "{self.detname}", "scantype": "{self.scantype}", "step": {motor.position}}}'
-                my_data.update({'step_docstring': docstring})
+#
+# data = {
+#   "motors":           {"motor1": 0.0, "step_value": 0.0},
+#   "transition":       "Configure",
+#   "timestamp":        0,
+#   "add_names":        True,
+#   "add_shapes_data":  False,
+#   "detname":          "scan",
+#   "dettype":          "scan",
+#   "scantype":         "scan",
+#   "serial_number":    "1234",
+#   "alg_name":         "raw",
+#   "alg_version":      [2,0,0]
+# }
+#
 
-        detname       = 'scan'
-        dettype       = 'scan'
-        serial_number = '1234'
-        namesid       = 253     # STEPINFO = 253 (psdaq/drp/drp.hh)
-        nameinfo      = dc.nameinfo(detname,dettype,serial_number,namesid)
+    def getBlock(self, *, transition, data):
+        logging.debug('getBlock: motors=%s' % data["motors"])
+        if transition in ControlDef.transitionId.keys():
+            data["transitionid"] = ControlDef.transitionId[transition]
+        else:
+            logging.error(f'invalid transition: {transition}')
 
-        alg           = dc.alg('raw',[2,0,0])
+        if transition == "Configure":
+            data["add_names"] = True
+            data["add_shapes_data"] = False
+        else:
+            data["add_names"] = False
+            data["add_shapes_data"] = True
 
-        self.cydgram.addDet(nameinfo, alg, my_data)
+        data["namesid"] = ControlDef.STEPINFO
 
-        # create dgram
-        timestamp    = 0
-        xtc_bytes    = self.cydgram.getSelect(timestamp, transitionid, add_names=add_names, add_shapes_data=add_shapes_data)
-        logging.debug('transitionid %d dgram is %d bytes (with header)' % (transitionid, len(xtc_bytes)))
-
-        # remove first 12 bytes (dgram header), and keep next 12 bytes (xtc header)
-        return xtc_bytes[12:]
+        return self.control.getBlock(data)
