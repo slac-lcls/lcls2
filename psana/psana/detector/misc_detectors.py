@@ -33,7 +33,7 @@ class pv_raw_1_0_0(DetectorImpl):
 class encoder_raw_0_0_1(DetectorImpl):
     def __init__(self, *args):
         super().__init__(*args)
-    def value(self,evt):
+    def value(self,evt) -> float:
         """
         From Zach:
         “Scale” is copied from the configured “units per encoderValue”

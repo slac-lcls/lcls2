@@ -442,7 +442,7 @@ void UdpEncoder::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
     arrayE(0) = frame.channel[0].error;
 
     // ...majorVersion
-    XtcData::Array<uint8_t> arrayF = raw.allocate<uint8_t>(RawDef::majorVersion,shape);
+    XtcData::Array<uint16_t> arrayF = raw.allocate<uint16_t>(RawDef::majorVersion,shape);
     arrayF(0) = frame.header.majorVersion;
 
     // ...minorVersion
@@ -1208,9 +1208,9 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // Allow detType to be overridden, but generally, psana will expect 'udp'
+    // Allow detType to be overridden, but generally, psana expects 'encoder'
     if (para.detType.empty()) {
-      para.detType = "udp";
+      para.detType = "encoder";
     }
 
     // Alias must be of form <detName>_<detSegment>
