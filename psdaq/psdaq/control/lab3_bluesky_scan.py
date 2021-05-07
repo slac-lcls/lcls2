@@ -5,9 +5,9 @@ import sys
 import logging
 import threading
 import time
-from ControlDef import ControlDef
-from DaqControl import DaqControl
-from BlueskyScan import BlueskyScan
+from psdaq.control.ControlDef import ControlDef
+from psdaq.control.DaqControl import DaqControl
+from psdaq.control.BlueskyScan import BlueskyScan
 import argparse
 
 parser = argparse.ArgumentParser()
