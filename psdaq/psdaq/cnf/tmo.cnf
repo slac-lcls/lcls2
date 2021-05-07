@@ -32,6 +32,8 @@ pva_cmd1 = task_set+'drp_pva '  +(std_opts%1)+' -k batching=no '
 bld_cmd0 = task_set+'drp_bld '  +(std_opts%0)+' -k batching=no,interface=eno1 '
 bld_cmd1 = task_set+'drp_bld '  +(std_opts%1)+' -k batching=no,interface=eno1 '
 
+elog_cfg = '/cds/group/pcds/dist/pds/tmo/misc/elog_tmo.txt'
+
 ea_cfg = '/cds/group/pcds/dist/pds/tmo/misc/epicsArch_tmo.txt'
 ea_cmd0 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
 ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
@@ -68,6 +70,7 @@ procmgr_config = [
 # set the phase2 transition timeout to 20s. this is because the teb
 # has a 16s timeout for slow PVA detectors coming through the gateway.
 # both can be reduced if/when we get consistent behavior from gateways.
+# { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 40000 -V {elog_cfg}'},
  { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 40000'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
@@ -98,15 +101,15 @@ procmgr_config = [
 
 hsd_epics = 'DAQ:TMO:HSD:1'
 
-# 12.20: Swapped hsd_5 and hsd_7. hsd_5 has a problem, we need to investigate when we have more time
+# 12.20.20: Swapped hsd_5 and hsd_7. hsd_5 has a problem, we need to investigate when we have more time
 # 03.26.21: Took out hsd_7 because it kept giving errors like this (looks like bit corruption):
 # <C> PGPReader: Jump in complete l1Count 37577 -> 37450 | difference -127, tid L1Accept
 # hsd_1 removed because hsdpva gui PGP-tab showed one of 4 pgp lanes not locking - cpo 04/27/21
 # hsd_2 was also commented out.  it seems to work, but L1 rate fluctuates in grafana down to 100Hz and up to 127Hz.
-# hsd_0 commented out.  100% deadtime after 3 hsdioc_1b restarts. 05/04/21 - cpo
+# hsd_0 commented out.  100% deadtime after 3 hsdioc_1b restarts. traced down to enabling fex.  05/04/21 - cpo
 #  Map (host,hsd_segm,datadev,epicsPV)
 procmgr_hsd = [
- #{host:'drp-neh-cmp020', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
+ {host:'drp-neh-cmp020', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
  #{host:'drp-neh-cmp020', id:'hsd_1',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
  #{host:'drp-neh-cmp017', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
  {host:'drp-neh-cmp017', id:'hsd_3',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
