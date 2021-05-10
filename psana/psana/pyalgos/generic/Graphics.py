@@ -124,13 +124,21 @@ def set_win_title(fig, titwin='Image', **kwa):
 
 
 def move_fig(fig, x0=200, y0=100):
-    fig.canvas.manager.window.move(x0, y0)
     #fig.canvas.manager.window.geometry('+%d+%d' % (x0, y0)) # in previous version of matplotlib
+    backend = matplotlib.get_backend()
+    logger.debug('matplotlib.get_backend(): %s' % backend)
+    if backend == 'TkAgg': # this is our case
+        fig.canvas.manager.window.wm_geometry("+%d+%d" % (x0, y0))
+    elif backend == 'WXAgg':
+        fig.canvas.manager.window.SetPosition((x0, y0))
+    else:
+        # This works for QT and GTK
+        # You can also use window.setGeometry
+        fig.canvas.manager.window.move(x0, y0)
 
 
-def move(x0=200,y0=100):
-    plt.get_current_fig_manager().window.move(x0, y0)
-    #plt.get_current_fig_manager().window.geometry('+%d+%d' % (x0, y0))
+def move(x0=200,y0=100) :
+    move_fig(plt.gcf(), x0, y0)
 
 
 def fig_axes(fig, **kwa):
@@ -398,6 +406,63 @@ def imshow_cbar(fig, axim, axcb, img, amin=None, amax=None, **kwa):
     return imsh, cbar
 
 
+def fig_img_cbar(img, **kwa):
+    fig = figure(figsize=kwa.pop('figsize', (12,11)))
+    axim, axcb = fig_axes(fig, windows=((0.06, 0.03, 0.87, 0.93), (0.923,0.03, 0.02, 0.93)))
+    imsh = axim.imshow(img, **kwa)
+    imsh.set_clim(kwa.get('vmin', None), kwa.get('vmax', None))
+    cbar = fig.colorbar(imsh, cax=axcb, orientation='vertical')
+    return fig, axim, axcb, imsh, cbar
+
+
+def fig_img_proj_cbar(img, **kwa):
+    """image and its r-phi projection
+    """
+    fig = figure(figsize=kwa.pop('figsize', (6,12)))
+    fymin, fymax = 0.050, 0.90
+    winds =((0.07,  fymin, 0.685, fymax),\
+            (0.76,  fymin, 0.15, fymax),\
+            (0.915, fymin, 0.01, fymax))
+
+    axim, axhi, axcb = fig_axes(fig, windows=winds)
+    imsh = axim.imshow(img, **kwa)
+    imsh.set_clim(kwa.get('vmin', None), kwa.get('vmax', None))
+    cbar = fig.colorbar(imsh, cax=axcb, orientation='vertical')
+    axim.grid(b=None, which='both', axis='both')#, **kwargs)'major'
+
+    sh = img.shape
+    w = np.sum(img, axis=1)
+    phimin, phimax, radmin, radmax = kwa.get('extent', (0, 360, 1, 100))
+    hbins = np.linspace(radmin, radmax, num=sh[0], endpoint=False)
+
+    #print(info_ndarr(img,'r-phi img'))
+    #print(info_ndarr(w,'r-phi weights'))
+    #print(info_ndarr(hbins,'hbins'))
+
+    kwh={'bins'       : kwa.get('bins', img.shape[0]),\
+         'range'      : kwa.get('range', (radmin, radmax)),\
+         'weights'    : kwa.get('weights', w),\
+         'color'      : kwa.get('color', 'lightgreen'),\
+         'log'        : kwa.get('log',False),\
+         'bottom'     : kwa.get('bottom', 0),\
+         'align'      : kwa.get('align', 'mid'),\
+         'histtype'   : kwa.get('histtype',u'bar'),\
+         'label'      : kwa.get('label', ''),\
+         'orientation': kwa.get('orientation',u'horizontal'),\
+        }
+
+    axhi.set_ylim((radmin, radmax))
+    axhi.set_yticklabels([]) # removes axes labels, not ticks
+    axhi.tick_params(axis='y', direction='in')
+
+    wei, bins, patches = his = pp_hist(axhi, hbins, **kwh)
+    add_stat_text(axhi, wei, bins)
+
+    #gr.add_title_labels_to_axes(axim, title='r vs $\phi$', xlabel='$\phi$, deg', ylabel='r, mm')#, fslab=14, fstit=20, color='k')
+    #gr.draw_fig(fig)
+    return fig, axim, axcb, imsh, cbar
+
+
 def drawCircle(axes, xy0, radius, **kwa): 
     kwa.setdefault('radius', radius)
     kwa.setdefault('linewidth', 1)
@@ -518,7 +583,7 @@ if __name__ == "__main__":
     #fig = figure(figsize=(6,5), title='Test imshow', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=(100,10))    
     #axim = add_axes(fig, axwin=(0.10, 0.08, 0.85, 0.88))
     fig, axim = fig_img_axes()
-    move_fig(fig, x0=200, y0=100)
+    move_fig(fig, x0=50, y0=20)
     imsh = imshow(axim, img, amp_range=None, extent=None,\
            interpolation='nearest', aspect='auto', origin='upper',\
            orientation='horizontal', cmap='jet') 
@@ -532,6 +597,7 @@ if __name__ == "__main__":
     #fig = figure(figsize=(6,5), title='Test hist', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=(100,10))    
     #axhi = add_axes(fig, axwin=(0.10, 0.08, 0.85, 0.88))
     fig, axhi = fig_img_axes()
+    move_fig(fig, x0=50, y0=20)
     his = hist(axhi, arr, bins=100, amp_range=(mu-6*sigma,mu+6*sigma), weights=None, color=None, log=False)
 
 
@@ -541,6 +607,7 @@ if __name__ == "__main__":
     #fig = figure(figsize=(6,5), title='Test hist', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=(100,10))
     #axim = add_axes(fig, axwin=(0.10, 0.08, 0.85, 0.88))
     fig, axim = fig_img_axes()
+    move_fig(fig, x0=50, y0=20)
     imsh = None
     for i in range(10):
        print('Event %3d' % i)
@@ -599,6 +666,21 @@ if __name__ == "__main__":
        show(mode=1)  # !!!!!!!!!!       
        #draw_fig(fig) # !!!!!!!!!!
 
+  def test06():
+    """ fig_img_cbar
+    """
+    img = random_standard((1000,1000), mu=100, sigma=10)
+    fig, axim, axcb, imsh, cbar = fig_img_cbar(img)#, **kwa)
+    move_fig(fig, x0=200, y0=0)
+
+
+  def test07():
+    """ r-phi fig_img_proj_cbar
+    """
+    img = random_standard((200,200), mu=100, sigma=10)
+    fig, axim, axcb, imsh, cbar = fig_img_proj_cbar(img)
+    move_fig(fig, x0=200, y0=0)
+
 
   def usage():
     msg = 'Usage: python psalgos/examples/ex-02-localextrema.py <test-number>'\
@@ -607,7 +689,9 @@ if __name__ == "__main__":
           '\n  2 - single random histgram'\
           '\n  3 - in loop 2d random images'\
           '\n  4 - in loop random histgrams'\
-          '\n  5 - in loop 2d large random images'
+          '\n  5 - in loop 2d large random images'\
+          '\n  6 - fig_img_cbar'\
+          '\n  7 - r-phi projection fig_img_proj_cbar'
     print(msg)
 
 
@@ -627,6 +711,8 @@ if __name__ == "__main__":
     elif tname == '3': test03()
     elif tname == '4': test04()
     elif tname == '5': test05()
+    elif tname == '6': test06()
+    elif tname == '7': test07()
     else: usage(); sys.exit('Test %s is not implemented' % tname)
     msg = 'Test %s consumed time %.3f' % (tname, time()-t0_sec)
     show()
