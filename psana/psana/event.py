@@ -149,7 +149,7 @@ class Event():
         return service
 
     def get_offsets_and_sizes(self):
-        offset_and_size_arr = np.zeros((self._size, 2), dtype=np.int)
+        offset_and_size_arr = np.zeros((self._size, 2), dtype=np.int64)
         for i in range(self._size):
             offset_and_size_arr[i, :] = self.get_offset_and_size(i)
         return offset_and_size_arr
