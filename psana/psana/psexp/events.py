@@ -47,11 +47,7 @@ class Events:
                         max_retries         = self.max_retries,
                         use_smds            = self.dsparms.use_smds,
                         )
-                #print(f'debug events get next event')
                 evt = next(self._evt_man)
-                #epics_store = self.dsparms.esm.stores['epics']
-                #chunk_id = epics_store.values([evt], '_NEW_CHUNK_ID_S00')
-                #print(f'debug events got next event evt={[d.service() for d in evt._dgrams]} chunk_id={chunk_id}')
                 if not any(evt._dgrams): return self.__next__()
                 self.smdr_man.last_seen_event = evt
                 return evt 
