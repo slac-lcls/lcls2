@@ -22,15 +22,20 @@ class Test:
         #callback_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_callbacks.py')
         #subprocess.check_call(['mpirun','-n','3','python',callback_based], env=env)
         
-        loop_exhaustive_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ds.py')
-        subprocess.check_call(['mpirun','-n','3','python',loop_exhaustive_based], env=env)
-        
         # Test more than 1 bigdata node
         loop_exhaustive_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ds.py')
         subprocess.check_call(['mpirun','-n','5','python',loop_exhaustive_based], env=env)
         
         run_mixed_rate = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_mixed_rate.py')
         subprocess.check_call(['mpirun','-n','5','python',run_mixed_rate], env=env)
+        
+        run_chunking = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_chunking.py')
+        subprocess.check_call(['mpirun','-n','5','python',run_chunking], env=env)
+        
+        # Test more than 1 eb node
+        env['PS_SRV_NODES'] = '2'
+        subprocess.check_call(['mpirun','-n','7','python',run_mixed_rate], env=env)
+        subprocess.check_call(['mpirun','-n','7','python',run_chunking], env=env)
         
         env['PS_EB_NODES'] = '1' # reset no. of eventbuilder cores
         env['PS_SRV_NODES'] = '2'

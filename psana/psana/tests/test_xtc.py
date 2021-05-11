@@ -10,6 +10,7 @@ import hashlib
 from psana import DataSource
 import dgramCreate as dc
 from setup_input_files import setup_input_files
+from run_chunking import run_test_chunking
 
 
 class Test:
@@ -148,7 +149,10 @@ class Test:
                 assert step_s(step) == '{"detname": "epixquad_0", "scantype": "pedestal", "step": 1}'
             for nevt,evt in enumerate(step.events()):
                 pass
-
+    
+    def test_chunking(self):
+        run_test_chunking()
+    
 
 
 
