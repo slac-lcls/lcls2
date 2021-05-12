@@ -30,12 +30,12 @@ class Test:
         subprocess.check_call(['mpirun','-n','5','python',run_mixed_rate], env=env)
         
         run_chunking = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_chunking.py')
-        #subprocess.check_call(['mpirun','-n','5','python',run_chunking], env=env)
+        subprocess.check_call(['mpirun','-n','5','python',run_chunking], env=env)
         
         # Test more than 1 eb node
         env['PS_SRV_NODES'] = '2'
         subprocess.check_call(['mpirun','-n','7','python',run_mixed_rate], env=env)
-        #subprocess.check_call(['mpirun','-n','7','python',run_chunking], env=env)
+        subprocess.check_call(['mpirun','-n','7','python',run_chunking], env=env)
         
         env['PS_EB_NODES'] = '1' # reset no. of eventbuilder cores
         env['PS_SRV_NODES'] = '2'

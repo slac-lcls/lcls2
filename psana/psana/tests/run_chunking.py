@@ -16,7 +16,7 @@ def run_test_chunking():
 
     run = next(ds.runs())
     det = run.Detector('_NEW_CHUNK_ID_S00')
-    for evt in run.events():
+    for i, evt in enumerate(run.events()):
         sendbuf += 1
         new_chunk_id = det(evt)
         if evt._nanoseconds < 15:

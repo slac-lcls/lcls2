@@ -151,8 +151,7 @@ class Test:
                 pass
     
     def test_chunking(self):
-        #run_test_chunking()
-        pass
+        run_test_chunking()
     
 
 
