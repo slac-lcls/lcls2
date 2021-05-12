@@ -3,18 +3,19 @@ import zmq
 from threading import Thread, Event, Condition
 import json as oldjson
 from psdaq.control.ControlDef import ControlDef, front_pub_port, front_rep_port, create_msg
+from psdaq.control.ControlDef import scan_pull_port
 
 class ConfigScan:
     def __init__(self, control, *, daqState, args):
-        self.zmq_port = 5550+args.p     # one port per platform
+        self.zmq_port = scan_pull_port(args.p)
         self.control = control
         self.name = 'mydaq'
         self.parent = None
         self.context = zmq.Context()
         self.push_socket = self.context.socket(zmq.PUSH)
-        self.push_socket.bind('tcp://*:%s' % self.zmq_port)
+        self.push_socket.bind('tcp://*:%d' % self.zmq_port)
         self.pull_socket = self.context.socket(zmq.PULL)
-        self.pull_socket.connect('tcp://localhost:%s' % self.zmq_port)
+        self.pull_socket.connect('tcp://localhost:%d' % self.zmq_port)
         self.comm_thread = Thread(target=self.daq_communicator_thread, args=())
         self.mon_thread = Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = Event()

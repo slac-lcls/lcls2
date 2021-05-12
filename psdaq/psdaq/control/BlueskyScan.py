@@ -11,23 +11,24 @@ import time
 import numpy as np
 
 from psdaq.control.ControlDef import ControlDef
+from psdaq.control.ControlDef import scan_pull_port
 
 class BlueskyScan:
     def __init__(self, control, *, daqState, args):
+        self.zmq_port = scan_pull_port(args.p)
         self.control = control
         self.name = 'mydaq'
         self.parent = None
         self.context = zmq.Context()
         self.push_socket = self.context.socket(zmq.PUSH)
-        self.push_socket.bind('tcp://*:5555')
+        self.push_socket.bind('tcp://*:%d' % self.zmq_port)
         self.pull_socket = self.context.socket(zmq.PULL)
-        self.pull_socket.connect('tcp://localhost:5555')
+        self.pull_socket.connect('tcp://localhost:%d' % self.zmq_port)
         self.comm_thread = threading.Thread(target=self.daq_communicator_thread, args=())
         self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
         self.motors = []                # set in configure()
         self.daqState = daqState
-        self.args = args
         self.daqState_cv = threading.Condition()
         self.stepDone_cv = threading.Condition()
         self.stepDone = 0
@@ -37,9 +38,11 @@ class BlueskyScan:
         self.detname = args.detname
         self.scantype = args.scantype
         self.step_done = threading.Event()
+#       self.step_count = 0
+        self.platform = args.p
 
         if args.g is None:
-            self.groupMask = 1 << args.p
+            self.groupMask = 1 << self.platform
         else:
             self.groupMask = args.g
 
@@ -82,6 +85,8 @@ class BlueskyScan:
                         logging.debug('daqState \'%s\', waiting for \'%s\'...' % (self.daqState, state))
                         self.daqState_cv.wait(1.0)
                     logging.debug('daqState \'%s\'' % self.daqState)
+#                   if self.daqState == 'connected':
+#                       self.step_count = 0
                 self.ready.set()
             elif state=='running':
                 # launch the step with 'daqstate(running)' (with the
