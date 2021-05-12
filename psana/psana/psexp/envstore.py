@@ -17,6 +17,7 @@ class EnvManager(object):
         self.dgrams     = []
         self.timestamps = []
         self.n_items    = 0
+
         self._init_env_variables()
 
     def _init_env_variables(self):
@@ -80,7 +81,8 @@ class EnvStore(object):
             for envm in self.env_managers:
                 for alg, env_dict in envm.env_variables.items(): 
                     if alg not in self.env_variables:
-                        self.env_variables[alg] = env_dict
+                        self.env_variables[alg] = {}
+                        self.env_variables[alg].update(env_dict)
                     else:
                         for segment_id, var_dict in env_dict.items():
                             self.env_variables[alg].update({segment_id: var_dict})
