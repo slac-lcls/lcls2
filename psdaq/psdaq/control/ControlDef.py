@@ -120,3 +120,6 @@ def fast_rep_port(platform):
 
 def step_pub_port(platform):
     return ControlDef.PORT_BASE + platform + 50
+
+def scan_pull_port(platform):
+    return ControlDef.PORT_BASE + platform + 60
