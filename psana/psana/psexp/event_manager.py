@@ -43,7 +43,7 @@ class EventManager(object):
         self.i_evt = 0
 
         self._get_offset_and_size()
-        if len(self.dm.xtc_files) > 0:
+        if self.dm.n_files > 0:
             self._fill_bd_bufs() # only fill bigdata buffers when bigdata files exist.
 
     def __iter__(self):
@@ -123,13 +123,16 @@ class EventManager(object):
                 # For L1 with bigdata files, store offset and size found in smd dgrams.
                 # For SlowUpdate, store new chunk id (if found). TODO: check if
                 # we need to always check for epics for SlowUpdate.
-                if d.service() == TransitionId.L1Accept and len(self.dm.xtc_files) > 0:
+                if d.service() == TransitionId.L1Accept and self.dm.n_files > 0:
                     i_first_L1 = i_evt
                     self._get_bd_offset_and_size(d, current_bd_offsets, i_evt, i_smd, i_first_L1)
                 elif d.service() == TransitionId.SlowUpdate and hasattr(d, 'epics'):
-                    epics_var = f'_NEW_CHUNK_ID_S{str(i_smd).zfill(2)}'
-                    _chunk_ids = [getattr(d.epics[seg_id].raw, epics_var) for seg_id in d.epics if hasattr(d.epics[seg_id].raw, epics_var)]
-                    if _chunk_ids: self.new_chunk_id_array[i_evt, i_smd] = _chunk_ids[0] # there must be only one unique epics var
+                    # We only support chunking on bigdata
+                    if self.dm.n_files > 0: 
+                        stream_id = self.dm.get_stream_id(i_smd)
+                        epics_var = f'_NEW_CHUNK_ID_S{str(stream_id).zfill(2)}'
+                        _chunk_ids = [getattr(d.epics[seg_id].raw, epics_var) for seg_id in d.epics if hasattr(d.epics[seg_id].raw, epics_var)]
+                        if _chunk_ids: self.new_chunk_id_array[i_evt, i_smd] = _chunk_ids[0] # there must be only one unique epics var
             
             offset += smd_aux_sizes[i_smd]            
             i_smd += 1
@@ -146,6 +149,7 @@ class EventManager(object):
         new_filename = filename.replace(filename[found:found+4], '-c'+str(new_chunk_id).zfill(2))
         fd = os.open(os.path.join(xtc_dir, new_filename), os.O_RDONLY)
         self.dm.fds[i_smd] = fd
+        self.dm.xtc_files[i_smd] = new_filename
     
     @s_bd_just_read.time()
     def _read(self, fd, size, offset):
@@ -214,7 +218,7 @@ class EventManager(object):
         """
         dgrams = [None] * self.n_smd_files
         for i_smd in range(self.n_smd_files):
-            if len(self.dm.xtc_files) == 0 or                               \
+            if self.dm.n_files == 0 or                               \
                     self.services[self.i_evt] != TransitionId.L1Accept or   \
                     self.use_smds[i_smd]:
                 view = self.smd_view
