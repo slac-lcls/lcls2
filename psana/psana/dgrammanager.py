@@ -96,6 +96,7 @@ class DgramManager(object):
             self.configs = [dgram.Dgram(file_descriptor=fd, max_retries=self.max_retries) for fd in self.fds]
 
         self.calibconst = {} # initialize to empty dict - will be populated by run class
+        self.n_files = len(self.xtc_files)
 
     def close(self):
         if not self.given_fds:
@@ -208,6 +209,13 @@ class DgramManager(object):
     def get_run(self):
         return self._run
 
+    def get_stream_id(self, ind):
+        """ Returns stream id as shown as part of xtc data file"""
+        xtc_dir = os.path.dirname(self.xtc_files[ind])
+        filename = os.path.basename(self.xtc_files[ind])
+        found = filename.find('-s')
+        stream_id = int(filename[found+2:found+4])
+        return stream_id
 
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:f:')
