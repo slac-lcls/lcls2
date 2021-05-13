@@ -131,6 +131,13 @@ class CMWDBTree(QWTree):
         if itemsel is not None:
             cp.last_selection = cp.DB_COLS
 
+
+    def closeEvent(self, e):
+        logger.debug('closeEvent')
+        if self.thread is not None: self.thread.stop()
+        del self.thread
+        QWTree.closeEvent(self, e)
+
 #---
 
 if __name__ == "__main__":
