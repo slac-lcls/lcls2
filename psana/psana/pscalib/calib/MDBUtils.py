@@ -111,7 +111,6 @@ Usage ::
     # Test methods
     ...
 """
-#------------------------------
 
 import logging
 logger = logging.getLogger(__name__)
@@ -140,7 +139,6 @@ from psana.pscalib.calib.Time import Time
 
 TSFORMAT = cc.TSFORMAT #'%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T09:11:09-0800
 
-#------------------------------
 
 def connect_to_server(host=cc.HOST, port=cc.PORT,\
                       user=cc.USERNAME, upwd=cc.USERPW,\
@@ -178,7 +176,6 @@ def connect_to_server(host=cc.HOST, port=cc.PORT,\
         logger.exception(msg) 
         sys.exit()
 
-#------------------------------
 
 def _uri(host, port, user, upwd):
     """ Returns (str) uri like 'mongodb://[username:password@]host1[:port1]'
@@ -201,14 +198,12 @@ def _uri(host, port, user, upwd):
     logger.debug('MDBUtils uri: %s' % uri)
     return uri
 
-#------------------------------
 
 def is_valid_type(pname, o, otype):
     if isinstance(o, otype): return True
     logger.warning('parameter "%s" type "%s" IS NOT %s' % (pname, str(o), str(otype)))
     return False
 
-#------------------------------
 
 def is_valid_port(port):
     """Port must be an integer between 0 and 65535"""
@@ -223,62 +218,50 @@ def is_valid_port(port):
         return False
     return True
 
-#------------------------------
 
 def is_valid_host(host):
     return is_valid_type('host', host, str)
 
-#------------------------------
 
 def is_valid_uri(uri):
     return is_valid_type('uri', uri, str) and 'mongodb://' in uri
 
-#------------------------------
 
 def is_valid_client(client):
     return is_valid_type('client', client, MongoClient)
 
-#------------------------------
 
 def is_valid_dbname(dbname):
     return is_valid_type('dbname', dbname, str)
 
-#------------------------------
 
 def is_valid_cname(cname):
     return is_valid_type('cname', cname, str)
 
-#------------------------------
 
 def is_valid_database(db):
     return is_valid_type('db', db, Database)
 
-#------------------------------
 
 def is_valid_collection(col):
     return is_valid_type('col', col, Collection)
 
-#------------------------------
 
 def is_valid_objectid(id):
     return is_valid_type('id', id, ObjectId)
 
-#------------------------------
 
 def is_valid_iterable(itr, pname='iterable'):
     return is_valid_type(pname, itr, Iterable)
 
-#------------------------------
 
 def is_valid_fs(fs):
     return is_valid_type('fs', fs, gridfs.GridFS)
 
-#------------------------------
 
 def is_valid_time_sec(time_sec):
     return is_valid_type('time_sec', time_sec, int)
 
-#------------------------------
 
 def database(client, dbname):
     """Returns db for client and (str) dbname, e.g. dbname='cdb_camera_1234'
@@ -287,7 +270,6 @@ def database(client, dbname):
     if not is_valid_dbname(dbname): return None, None
     return client[dbname]
 
-#------------------------------
 
 def db_and_fs(client, dbname):
     """Returns db and fs for client and (str) dbname, e.g. dbname='cdb_exp12345'.
@@ -298,7 +280,6 @@ def db_and_fs(client, dbname):
     fs = gridfs.GridFS(db)
     return db, fs
 
-#------------------------------
 
 def collection(db, cname):
     """Returns collection for db and (str) cname, e.g. cname='detector_1234'.
@@ -307,7 +288,6 @@ def collection(db, cname):
     or not is_valid_cname(cname): return None
     return db[cname]
 
-#------------------------------
 
 def client_host(client):
     """Returns default host: localhost
@@ -315,7 +295,6 @@ def client_host(client):
     if not is_valid_client(client): return None
     return client.HOST
 
-#------------------------------
 
 def client_port(client):
     """Returns default port: 27017
@@ -323,7 +302,6 @@ def client_port(client):
     if not is_valid_client(client): return None
     return client.PORT
 
-#------------------------------
 
 def database_names(client):
     """Returns list of database names for client.
@@ -331,7 +309,6 @@ def database_names(client):
     if not is_valid_client(client): return None
     return client.list_database_names()
 
-#------------------------------
 
 def collection_names(db, include_system_collections=False):
     """Returns list of collection names.
@@ -346,7 +323,6 @@ def collection_names(db, include_system_collections=False):
     #    print('Authorithation issue... try -u<user-name> -p<password-for-mongodb>')
     #    exit()
 
-#------------------------------
 
 def database_exists(client, dbname):
     """Returns True if (str) dbname in the list of databases and False otherwise.
@@ -355,7 +331,6 @@ def database_exists(client, dbname):
     or not is_valid_dbname(dbname): return False
     return dbname in database_names(client)
 
-#------------------------------
 
 def collection_exists(db, cname):
     """Returns True if (str) cname in the list of collections and False otherwise.
@@ -364,7 +339,6 @@ def collection_exists(db, cname):
     or not is_valid_cname(cname): return False
     return cname in collection_names(db)
 
-#------------------------------
 
 def delete_database(client, dbname):
     """Deletes database for client and (str) dbname, e.g. dbname='cdb_cspad_0001'.
@@ -386,7 +360,6 @@ def delete_database(client, dbname):
         logger.warning('delete_database unexpected ERROR')
         return
 
-#------------------------------
 
 def delete_database_obj(odb):
     """Deletes database for database object.
@@ -408,7 +381,6 @@ def delete_database_obj(odb):
         logger.warning('delete_database_obj "%s" unexpected ERROR' % str(odb))
         #sys.exit(msg)
 
-#------------------------------
 
 def delete_databases(client, dbnames):
     """Deletes databases for client and (list of str) dbnames,
@@ -430,8 +402,7 @@ def delete_databases(client, dbnames):
         except: 
             logger.warning('delete_database_obj "%s" unexpected ERROR' % str(odb))
             #sys.exit(msg)
-            
-#------------------------------
+
 
 def delete_collection(db, cname):
     """Deletes db collection for database and (str) cname, e.g. cname='cspad_0001'.
@@ -445,7 +416,6 @@ def delete_collection(db, cname):
     except: 
         logger.warning('delete_collection "%s" unexpected ERROR' % str(cname))
 
-#------------------------------
 
 def delete_collection_obj(ocol):
     if not is_valid_collection(ocol):
@@ -453,7 +423,6 @@ def delete_collection_obj(ocol):
         return
     ocol.drop()
 
-#------------------------------
 
 def delete_collections(db, cnames):
     """Deletes list of collections from database db, e.g. cname='cspad_0001'.
@@ -464,7 +433,6 @@ def delete_collections(db, cnames):
         return
     for cname in cnames: db.drop_collection(cname)
 
-#------------------------------
 
 def delete_document_from_collection(col, oid):
     if not is_valid_collection(col)\
@@ -490,7 +458,6 @@ def delete_document_from_collection(col, oid):
         #sys.exit(msg)
         return
 
-#------------------------------
 
 def db_prefixed_name(name, prefix=cc.DBNAME_PREFIX):
     """Returns database name with prefix, e.g. name='exp12345' -> 'cdb_exp12345'.
@@ -503,7 +470,6 @@ def db_prefixed_name(name, prefix=cc.DBNAME_PREFIX):
     logger.debug('db_prefixed_name: %s' % dbname)
     return dbname
 
-#------------------------------
 
 def get_dbname(**kwa):
     """Returns (str) dbname or None.
@@ -526,7 +492,6 @@ def get_dbname(**kwa):
         dbname = db_prefixed_name(name)
     return dbname
 
-#------------------------------
 
 def get_colname(**kwa):
     """Returns (str) collection name or None.
@@ -543,7 +508,6 @@ def get_colname(**kwa):
 
     return kwa.get('detector', None)
 
-#------------------------------
 
 def connect(**kwa):
     """Connects to host, port with authorization.
@@ -578,9 +542,6 @@ def connect(**kwa):
 
     return client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det
 
-#------------------------------
-#------------------------------
-#------------------------------
 
 def _timestamp(time_sec):
     """Converts time_sec in timestamp of adopted format TSFORMAT.
@@ -612,7 +573,6 @@ def timestamp_doc(doc):
     """
     return timestamp_id(doc['_id'])
 
-#------------------------------
 
 def time_and_timestamp(**kwa):
     """Returns "time_sec" and "time_stamp" from **kwa.
@@ -638,7 +598,6 @@ def time_and_timestamp(**kwa):
 
     return time_sec, time_stamp
 
-#------------------------------
 
 def docdic(data, dataid, **kwa):
     """Returns dictionary for db document in style of JSON object.
@@ -696,7 +655,6 @@ def docdic(data, dataid, **kwa):
 
     return doc
 
-#------------------------------
 
 def doc_add_id_ts(doc):
     """add items with timestamp for id-s as '_id_ts', 'id_data_ts', 'id_exp_ts'
@@ -705,7 +663,6 @@ def doc_add_id_ts(doc):
         v = doc.get(k, None)
         if v is not None: doc['%s_ts'%k] = timestamp_id(v)
 
-#------------------------------
 
 def doc_info(doc, fmt='\n  %16s: %s'):
     s = 'Data document attributes'
@@ -713,24 +670,20 @@ def doc_info(doc, fmt='\n  %16s: %s'):
     for k,v in doc.items(): s += fmt % (k,v)
     return s
 
-#------------------------------
 
 def doc_keys_info(doc, keys=('run', 'time_stamp', 'data_size', 'id_data', 'extpars'), fmt='  %s: %s'):
     s = ''
     for k in keys: s += fmt % (k, doc.get(k,'N/A'))
     return s
 
-#------------------------------
 
 def print_doc(doc):
     print(doc_info(doc))
 
-#------------------------------
 
 def print_doc_keys(doc, keys=('run', 'time_stamp', 'data_size', 'id_data', 'extpars')):
     print(doc_keys_info(doc, keys))
 
-#------------------------------
 
 def insert_document(doc, col):
     """Returns inserted document id.
@@ -754,7 +707,6 @@ def insert_document(doc, col):
         logger.exception(msg)
         sys.exit(msg)
 
-#------------------------------
 
 def encode_data(data):
     """Converts any data type into octal string to save in gridfs.
@@ -768,7 +720,6 @@ def encode_data(data):
         s = pickle.dumps(data)
     return s      
 
-#------------------------------
 
 def insert_data(data, fs):
     """Returns inserted data id.
@@ -794,7 +745,6 @@ def insert_data(data, fs):
         logger.exception('Unexpected ERROR: %s' % sys.exc_info()[0])
         return None
 
-#------------------------------
 
 def insert_data_and_doc(data, fs, col, **kwa):
     """For open collection col and GridFS fs inserts calib data and document.
@@ -813,7 +763,6 @@ def insert_data_and_doc(data, fs, col, **kwa):
     logger.debug('  - in collection %s id_det: %s' % (col.name, id_doc))
     return id_data, id_doc
 
-#------------------------------
 
 def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwa):
     """For open connection inserts calib data and two documents.
@@ -845,7 +794,7 @@ def insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwa):
 
     return id_data_exp, id_data_det, id_doc_exp, id_doc_det
 
-#------------------------------
+
 
 def insert_calib_data(data, **kwa):
     """Connects to calibration data base and inserts calib data.
@@ -854,12 +803,10 @@ def insert_calib_data(data, **kwa):
     #id_data_exp, id_data_det, id_exp, id_det = \
     _,_,_,_ = insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwa)
 
-#------------------------------
 
 def _error_msg(msg):
     return 'wrong parameter %s' % msg
 
-#------------------------------
 
 def valid_experiment(experiment):
     assert isinstance(experiment,str), _error_msg('type')
@@ -892,7 +839,6 @@ def valid_comment(comment):
 def valid_data(data, detector, ctype):
     pass
 
-#------------------------------
 
 def insert_constants(data, experiment, detector, ctype, run, time_sec, **kwa):
     """Checks validity of input parameters and call insert_calib_data.
@@ -930,7 +876,6 @@ def insert_constants(data, experiment, detector, ctype, run, time_sec, **kwa):
 
     insert_calib_data(data, **kwa)
 
-#------------------------------
 
 def del_document_data(doc, fs):
     """From fs removes data associated with a single document.
@@ -948,7 +893,6 @@ def del_document_data(doc, fs):
         logger.warning('ERROR OperationFailure... Check authorization: calibman -u <username> -p <password>')
         return
 
-#------------------------------
 
 def del_collection_data(col, fs):
     """From fs removes data associated with multiple documents in collection col.
@@ -964,7 +908,6 @@ def del_collection_data(col, fs):
         #if oid is None: return
         #fs.delete(oid)
 
-#------------------------------
 
 def exec_command(cmd):
     from psana.pscalib.proc.SubprocUtils import subproc
@@ -974,7 +917,6 @@ def exec_command(cmd):
     if out or err:
         logger.warning('err: %s\nout: %s' % (err,out))
 
-#------------------------------
 
 def exportdb(host, port, dbname, fname, **kwa):
     client = connect_to_server(host, port)
@@ -986,7 +928,6 @@ def exportdb(host, port, dbname, fname, **kwa):
     cmd = 'mongodump --host %s --port %s --db %s --archive %s' % (host, port, dbname, fname) # --gzip 
     exec_command(cmd)
 
-#------------------------------
 
 def importdb(host, port, dbname, fname, **kwa):
 
@@ -1003,7 +944,6 @@ def importdb(host, port, dbname, fname, **kwa):
     cmd = 'mongorestore --host %s --port %s --db %s --archive %s' % (host, port, dbname, fname)
     exec_command(cmd)
 
-#------------------------------
 
 def dict_from_data_string(s):
     import ast
@@ -1016,7 +956,6 @@ def dict_from_data_string(s):
     deserialize_dict(d)     # deserialize dict values
     return d
 
-#------------------------------
 
 def object_from_data_string(s, doc):
     """Returns str, ndarray, or dict
@@ -1048,7 +987,6 @@ def object_from_data_string(s, doc):
         logger.warning('get_data_for_doc: UNEXPECTED data_type: %s' % data_type)
         return None
 
-#------------------------------
 
 def get_data_for_doc(fs, doc):
     """Returns data referred by the document.
@@ -1077,7 +1015,6 @@ def get_data_for_doc(fs, doc):
 
     return object_from_data_string(s, doc)
 
-#------------------------------
 
 def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, dtype=None):
     """Returns dbnames for detector, experiment, collection name, and query.
@@ -1103,12 +1040,10 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     if 'None' in db_exp: db_exp = None
     return db_det, db_exp, _det, query
 
-#------------------------------
 
 def number_of_docs(col, query={}):
     return col.count_documents(query)
 
-#------------------------------
 
 def find_docs(col, query={'ctype':'pedestals'}):
     """Returns list of documents for query.
@@ -1126,7 +1061,7 @@ def find_docs(col, query={'ctype':'pedestals'}):
         return None
     else: return docs
 
-#------------------------------
+
 
 def find_doc(col, query={'ctype':'pedestals'}):
     """Returns the document with latest time_sec or run number for specified query.
@@ -1154,7 +1089,6 @@ def find_doc(col, query={'ctype':'pedestals'}):
 
     return doc
 
-#------------------------------
 
 def document_keys(doc):
     """Returns formatted strings of document keys. 
@@ -1167,7 +1101,6 @@ def document_keys(doc):
     return s
     #return '%d doc keys:\n      %s' % (len(keys), '\n      '.join([k for k in keys]))
 
-#------------------------------
 
 def document_info(doc, keys=('time_sec','time_stamp','experiment',\
                   'detector','ctype','run','id_data','id_data_ts', 'data_type','data_dtype','version'),\
@@ -1189,7 +1122,6 @@ def document_info(doc, keys=('time_sec','time_stamp','experiment',\
         info = '  '.join(vals)
         return info, title
 
-#------------------------------
 
 def collection_info(client, dbname, cname):
     """Returns (str) info regarding collection documents. 
@@ -1233,7 +1165,6 @@ def collection_info(client, dbname, cname):
 
     return s
 
-#------------------------------
 
 def database_info(client, dbname, level=10, gap='  '):
     """Returns (str) info about database
@@ -1280,7 +1211,6 @@ def database_info(client, dbname, level=10, gap='  '):
             s += '\n%s%s%4d %s' % (gap, gap, idoc, vals)
     return s
 
-#------------------------------
 
 def database_fs_info(db, gap='  '):
     """Returns (str) info about database fs collections 
@@ -1295,7 +1225,6 @@ def database_fs_info(db, gap='  '):
            s += '\n%s   COL: %s has %d docs' % (gap, cname.ljust(9), docs.count())
     return s
 
-#------------------------------
 
 def client_info(client=None, host=cc.HOST, port=cc.PORT, level=10, gap='  '):
     """Returns (str) with generic information about MongoDB client (or host:port) 
@@ -1326,7 +1255,6 @@ def client_info(client=None, host=cc.HOST, port=cc.PORT, level=10, gap='  '):
             if level==3: continue
     return s
 
-#------------------------------
 
 def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, **kwa):
     """Returns calibration constants for specified parameters. 
@@ -1363,15 +1291,12 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
 
     return (get_data_for_doc(fs, doc), doc)
 
-#------------------------------
 
 def request_confirmation(msg=''):
     """Dumps request for confirmation of specified (delete) action.
     """
     logger.warning(msg+'Use confirm "-C" option to proceed with request.')
 
-
-#-----------------------------
 
 def out_fname_prefix(fmt='clb-%s-%s-r%04d-%s', **kwa):
     """Returns output file name prefix like "doc-cxid9114-cspad_0001-r0116-pixel_rms"
@@ -1383,7 +1308,6 @@ def out_fname_prefix(fmt='clb-%s-%s-r%04d-%s', **kwa):
     ctype = kwa.get('ctype', 'ctype')
     return fmt % (exp, _det, run, ctype)
 
-#-----------------------------
 
 def save_doc_and_data_in_file(doc, data, prefix, control={'data': True, 'meta': True}):
     """Saves document and associated data in files.
@@ -1437,7 +1361,7 @@ def save_doc_and_data_in_file(doc, data, prefix, control={'data': True, 'meta': 
         gu.save_textfile(msg, fname, mode='w', verb=verb)
         logger.info('saved file: %s' % fname)
 
-#------------------------------
+
 
 def data_from_file(fname, ctype, dtype, verb=False):
     """Returns data object loaded from file.
@@ -1462,7 +1386,7 @@ def data_from_file(fname, ctype, dtype, verb=False):
                  (fname, ctype, dtype, verb, str(data)[:1000]))
     return data
 
-#------------------------------
+
 # 2020-05-11
 
 def _doc_detector_name(detname, dettype, detnum):
@@ -1479,7 +1403,6 @@ def _doc_detector_name(detname, dettype, detnum):
             'time_stamp': _timestamp(int(t0_sec))
            }
 
-#------------------------------
 
 def _short_for_partial_name(detname, ldocs):
     """Returns full from partial detector name or None if not found.
@@ -1499,7 +1422,6 @@ def _short_for_partial_name(detname, ldocs):
             return shortname # longname
     return None
 
-#------------------------------
 
 def _add_detector_name(col, colname, detname, detnum):
     #client = connect_to_server(host=cc.HOST, port=cc.PORT) # , user=cc.USERNAME, upwd=cc.USERPW)
@@ -1510,7 +1432,6 @@ def _add_detector_name(col, colname, detname, detnum):
     id_doc = insert_document(doc, col)
     return doc['short'] if id_doc is not None else None   
 
-#------------------------------
 
 def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
     colname = detname.split('_',1)[0]
@@ -1560,7 +1481,6 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
 
     return short_name
 
-#------------------------------
 
 def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
     """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars.
@@ -1570,9 +1490,8 @@ def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False)
         return None
     return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
 
-#------------------------------
+
 #----------- TEST -------------
-#------------------------------
 
 def get_test_nda():
     """Returns random standard nupmpy array for test purpose.
@@ -1592,7 +1511,7 @@ def get_test_txt():
     """
     return '%s\nThis is a string\n to test\ncalibration storage' % gu.str_tstamp()
 
-#------------------------------
+
 if __name__ == "__main__":
 
   TEST_FNAME_PNG = '/reg/g/psdm/detector/data2_test/misc/small_img.png'
@@ -1606,7 +1525,6 @@ if __name__ == "__main__":
         connect(host=cc.HOST, port=cc.PORT, experiment='cxid9114', detector='cspad_0001') 
         #connect(host=cc.HOST, port=cc.PORT, detector='cspad_0001') 
 
-#------------------------------
 
   def test_insert_one(tname):
     """Insert one calibration data in data base.
@@ -1621,7 +1539,6 @@ if __name__ == "__main__":
     insert_constants(data, TEST_EXPNAME, TEST_DETNAME, ctype, 20+int(tname), t0_sec,\
                      time_stamp=_timestamp(t0_sec), **kwa)
 
-#------------------------------
 
   def test_insert_many(tname):
     """Insert many documents in loop
@@ -1656,7 +1573,6 @@ if __name__ == "__main__":
 
     logger.info('Average time to insert data and two docs: %.6f sec' % (t_data/nloops))
 
-#------------------------------
 
   def test_get_data(tname):
     """Get doc and data
@@ -1680,7 +1596,6 @@ if __name__ == "__main__":
     s = info_ndarr(data, '', first=0, last=100) if isinstance(data, np.ndarray) else str(data)
     logger.info('data:\n%s' % s)
 
-#------------------------------
 
   #def test_get_data_for_id(tname, det='cspad_0001', data_id='5bbbc6de41ce5546e8959bcf'):
   def test_get_data_for_id(tname, det='cspad_0001', data_id='5bca02bbd1cc55246a67f263'):
@@ -1702,7 +1617,7 @@ if __name__ == "__main__":
     nda = np.fromstring(s, dtype=np.float32)
     print_ndarr(nda, 'XXX: nda: ', first=0, last=10)
 
-#------------------------------
+
 
   def test_database_content(tname, level=3):
     """Print in loop database content
@@ -1737,7 +1652,6 @@ if __name__ == "__main__":
                 doc = docs[0]
                 logger.info('%s doc[0] %s' % (10*' ', str(doc.keys())))
 
-#------------------------------
 
   def test_dbnames_colnames():
     """Prints the list of DBs and in loop list of collections for each DB.
@@ -1751,7 +1665,6 @@ if __name__ == "__main__":
         cnames = collection_names(db)
         print('== collections of %s: %s' % (dbname.ljust(20),cnames))
 
-#------------------------------
 
   def test_calib_constants_nda():
     det = 'cspad_0001'
@@ -1759,7 +1672,6 @@ if __name__ == "__main__":
     print('== doc: %s' % str(doc))
     print_ndarr(data, '== test_calib_constants_nda data', first=0, last=5)
 
-#------------------------------
 
   def test_calib_constants_text():
     #det = 'cspad_0001'
@@ -1772,7 +1684,6 @@ if __name__ == "__main__":
     print('==== test_calib_constants_text data:\n', data)
     print('==== doc: %s' % str(doc))
 
-#--------------------
 
   def test_print_dict(d, offset='  '):
     """ prints dict content
@@ -1784,7 +1695,6 @@ if __name__ == "__main__":
         if isinstance(v, np.ndarray): print_ndarr(v, '%sk:%s nda' % (offset,k), first=0, last=5)
         else: print('%sk:%s t:%s v:%s' % (offset, str(k).ljust(10), type(v).__name__, str(v)[:120]))
 
-#------------------------------
 
   def test_calib_constants_dict():
     det = 'opal1000_0059'
@@ -1794,7 +1704,6 @@ if __name__ == "__main__":
     print('==== doc: %s' % str(doc))
     test_print_dict(data)
 
-#------------------------------
 
   def test_pro_detector_name(shortname='testdet_1234'):
     longname = shortname + '_this_is_insane_long_detector_name_exceeding_55_characters_in_length_or_longer'
@@ -1806,7 +1715,6 @@ if __name__ == "__main__":
     name = pro_detector_name(dname)
     print('Returned protected detector name:', name)
 
-#------------------------------
 
   def dict_usage(tname=None):
       d = {'0': 'test_connect',
@@ -1828,14 +1736,12 @@ if __name__ == "__main__":
       if tname is None: return d
       return d.get(tname, 'NON IMPEMENTED TEST')
 
-#------------------------------
 
   def usage(tname=None):
     s = '%s\nUsage:' % (50*'_')
     for k,v in dict_usage().items(): s += '\n  %2s: %s' % (k,v)
     print('%s\n%s'%(s,50*'_'))
 
-#------------------------------
 
 if __name__ == "__main__":
     #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
@@ -1859,4 +1765,4 @@ if __name__ == "__main__":
     else: logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 
-#------------------------------
+# EOF
