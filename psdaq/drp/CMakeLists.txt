@@ -45,6 +45,7 @@ target_link_libraries(drp
     xtcdata::xtc
     Threads::Threads
     drpbase
+    epicstools
     trigger
 )
 

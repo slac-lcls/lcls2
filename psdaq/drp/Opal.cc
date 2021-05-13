@@ -1,6 +1,7 @@
 #include "Opal.hh"
 #include "OpalTTFex.hh"
 #include "psdaq/service/Semaphore.hh"
+#include "psdaq/epicstools/EpicsPVA.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
@@ -91,6 +92,7 @@ namespace Drp {
     Pds::Semaphore        m_background_sem;
     std::atomic<bool>     m_background_empty; // cache image for slow update transition
     OpalTTFex             m_fex;
+    Pds_Epics::EpicsPVA*  m_fex_pv;
   };
 
   class OpalTTSim {
@@ -292,8 +294,12 @@ OpalTT::OpalTT(Opal& d, Parameters* para) :
   m_para            (para),
   m_background_sem  (Pds::Semaphore::FULL),
   m_background_empty(true),
-  m_fex             (para)
+  m_fex             (para),
+  m_fex_pv          (0)
 {
+  const char* ttpv = MLOOKUP(m_para->kwargs,"ttpv",0);
+  if (ttpv)
+    m_fex_pv = new Pds_Epics::EpicsPVA("ca",ttpv,NULL,0,true);
 }
 
 OpalTT::~OpalTT() {}
@@ -349,6 +355,18 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
     xtc.damage.increase(Damage::UserDefined);
   }
   else if (result == OpalTTFex::VALID) {
+    //  Live feedback
+    if (m_fex_pv) {
+        pvd::shared_vector<double> ttvec(6);
+        ttvec[0] = m_fex.amplitude();
+        ttvec[1] = m_fex.filtered_position();
+        ttvec[2] = m_fex.filtered_pos_ps();
+        ttvec[3] = m_fex.filtered_fwhm();
+        ttvec[4] = m_fex.next_amplitude();
+        ttvec[5] = m_fex.ref_amplitude();
+        m_fex_pv->putFromVector(freeze(ttvec));
+    }
+
     //  Insert the results
     cd.set_value(FexDef::ampl      , m_fex.amplitude());
     cd.set_value(FexDef::fltpos    , m_fex.filtered_position());
