@@ -297,9 +297,25 @@ OpalTT::OpalTT(Opal& d, Parameters* para) :
   m_fex             (para),
   m_fex_pv          (0)
 {
-  const char* ttpv = MLOOKUP(m_para->kwargs,"ttpv",0);
-  if (ttpv)
-    m_fex_pv = new Pds_Epics::EpicsPVA("ca",ttpv,NULL,0,true);
+    const char* ttpv = MLOOKUP(m_para->kwargs,"ttpv",0);
+    if (ttpv) {
+        logging::info("Connecting to pv %s\n", ttpv);
+        m_fex_pv = new Pds_Epics::EpicsPVA("ca",ttpv,NULL,0,true);
+        for(unsigned i=0; i<10; i++) {
+            if (m_fex_pv->connected())
+                break;
+            else
+                usleep(50000);
+        }
+        if (!m_fex_pv->connected()) {
+            logging::error("m_fex_pv failed to connect.  Disabling.");
+            delete m_fex_pv;
+            m_fex_pv = 0;
+        }
+    }
+    else {
+        logging::info("No feedback pv specified\n");
+    }
 }
 
 OpalTT::~OpalTT() {}

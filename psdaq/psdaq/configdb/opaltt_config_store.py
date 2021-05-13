@@ -81,15 +81,6 @@ def opaltt_cdict():
 if __name__ == "__main__":
     args = cdb.createArgs().args
 
-    args.name = 'tmoopal2'
-    args.segm = 0
-    args.id = 'opal_serial1235'
-    args.alias = 'BEAM'
-    args.prod = True
-    args.inst = 'tmo'
-    args.user = 'tmoopr'
-    args.password = 'pcds'
-
     create = True
     dbname = 'configDB'     #this is the name of the database running on the server.  Only client care about this name.
 
