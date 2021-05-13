@@ -1,4 +1,4 @@
-#------------------------------
+
 """Class :py:class:`QWTree` is a QTreeView->QWidget for tree model
 ===================================================================
 
@@ -11,7 +11,7 @@ Usage ::
 
 Created on 2017-03-23 by Mikhail Dubrovin
 """
-#------------------------------
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -23,9 +23,8 @@ from PyQt5.QtCore import Qt, QModelIndex
 #from psana.pyalgos.generic.Logger import logger
 from psana.graphqt.QWIcons import icon
 
-#------------------------------
 
-class QWTree(QTreeView) :
+class QWTree(QTreeView):
     """Widget for tree
     """
     dic_smodes = {'single'      : QAbstractItemView.SingleSelection,
@@ -34,13 +33,14 @@ class QWTree(QTreeView) :
                   'multi'       : QAbstractItemView.MultiSelection,
                   'no selection': QAbstractItemView.NoSelection}
 
-    def __init__(self, parent=None) :
+    def __init__(self, parent=None, tname='1'):
 
         QTreeView.__init__(self, parent)
         #self._name = self.__class__.__name__
 
         icon.set_icons()
 
+        self.tname = tname
         self.model = QStandardItemModel()
         self.set_selection_mode()
 
@@ -60,17 +60,17 @@ class QWTree(QTreeView) :
         #self.doubleClicked[QModelIndex].connect(self.on_double_click)
  
 
-    def set_selection_mode(self, smode='extended') :
+    def set_selection_mode(self, smode='extended'):
         logger.debug('Set selection mode: %s'%smode)
         mode = self.dic_smodes[smode]
         self.setSelectionMode(mode)
 
 
-    def connect_item_selected_to(self, recipient) :
+    def connect_item_selected_to(self, recipient):
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].connect(recipient)
 
 
-    def disconnect_item_selected_from(self, recipient) :
+    def disconnect_item_selected_from(self, recipient):
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].disconnect(recipient)
 
 
@@ -89,8 +89,13 @@ class QWTree(QTreeView) :
 
 
     def fill_tree_model(self):
+        if self.tname=='2': self.fill_tree_model_v2()
+        else:               self.fill_tree_model_v1()
+
+
+    def fill_tree_model_v1(self):
         self.clear_model()
-        for k in range(0, 4):
+        for k in range(0, 5):
             parentItem = self.model.invisibleRootItem()
             parentItem.setIcon(icon.icon_folder_open)
             for i in range(0, k):
@@ -107,7 +112,7 @@ class QWTree(QTreeView) :
 
     def on_item_expanded(self, ind):
         item = self.model.itemFromIndex(ind) # get QStandardItem
-        if item.hasChildren() :
+        if item.hasChildren():
            item.setIcon(icon.icon_folder_open)
         #msg = 'on_item_expanded: %s' % item.text()
         #logger.debug(msg)
@@ -115,7 +120,7 @@ class QWTree(QTreeView) :
 
     def on_item_collapsed(self, ind):
         item = self.model.itemFromIndex(ind)
-        if item.hasChildren() :
+        if item.hasChildren():
            item.setIcon(icon.icon_folder_closed)
         #msg = 'on_item_collapsed: %s' % item.text()
         #logger.debug(msg)
@@ -123,14 +128,14 @@ class QWTree(QTreeView) :
 
     def on_item_selected(self, selected, deselected):
         itemsel = self.model.itemFromIndex(selected)
-        if itemsel is not None :
+        if itemsel is not None:
             parent = itemsel.parent()
             parname = parent.text() if parent is not None else None
             msg = 'selected item: %s row: %d parent: %s' % (itemsel.text(), selected.row(), parname) 
             logger.debug(msg)
 
         #itemdes = self.model.itemFromIndex(deselected)
-        #if itemdes is not None :
+        #if itemdes is not None:
         #    msg = 'on_item_selected row: %d deselected %s' % (deselected.row(), itemdes.text())
         #    logger.debug(msg)
 
@@ -147,6 +152,7 @@ class QWTree(QTreeView) :
         spar = parent.text() if parent is not None else None
         msg = 'clicked item: %s parent: %s' % (item.text(), spar) # index.row()
         logger.debug(msg)
+        if self.tname=='2': self.fill_item_test_v2(item)
 
 
     def on_double_click(self, index):
@@ -154,8 +160,6 @@ class QWTree(QTreeView) :
         msg = 'on_double_click item in row:%02d text: %s' % (index.row(), item.text())
         logger.debug(msg)
 
-    #--------------------------
-    #--------------------------
 
     def process_expand(self):
         logger.debug('process_expand')
@@ -172,12 +176,9 @@ class QWTree(QTreeView) :
 
 
     #def expand_collapse(self):
-    #    if self.isExpanded() : self.collapseAll()
-    #    else                 : self.expandAll()
+    #    if self.isExpanded(): self.collapseAll()
+    #    else                : self.expandAll()
 
-    #--------------------------
-    #--------------------------
-    #--------------------------
 
     def show_tool_tips(self):
         self.setToolTip('Tree model') 
@@ -208,12 +209,11 @@ class QWTree(QTreeView) :
     def closeEvent(self, e):
         logger.debug('closeEvent')
         QTreeView.closeEvent(self, e)
-        #try    : self.gui_win.close()
-        #except : pass
+        #try   : self.gui_win.close()
+        #except: pass
 
-        #try    : del self.gui_win
-        #except : pass
-
+        #try   : del self.gui_win
+        #except: pass
 
 
     def on_exit(self):
@@ -221,43 +221,74 @@ class QWTree(QTreeView) :
         self.close()
 
 
-    if __name__ == "__main__" :
+    if __name__ == "__main__":
 
-      def key_usage(self) :
-        return 'Keys:'\
-               '\n  ESC - exit'\
-               '\n  E - expand'\
-               '\n  C - collapse'\
-               '\n'
+      def fill_tree_model_v2(self):
+        from time import time
+        t0_sec = time()
+
+        self.clear_model()
+        parentItem = self.model.invisibleRootItem()
+        #parentItem.setIcon(icon.icon_folder_open)
+
+        for k in range(0, 1000):
+            item = QStandardItem('itemTop %04d'%(k))
+            item.setIcon(icon.icon_folder_closed)
+            parentItem.appendRow(item)
+
+        logger.info('model is completed %.3f sec' % (time()-t0_sec))
 
 
-      def keyPressEvent(self, e) :
-        #logger.debug('keyPressEvent, key = %s'%e.key())       
-        if   e.key() == Qt.Key_Escape :
+      def fill_item_test_v2(self, parent_item):
+        m = self.model
+        pindex = m.indexFromItem(parent_item)
+        if m.hasChildren(pindex):
+            logger.info('XXX item already has children - update')
+            #print('XXX rowCount %d' % m.rowCount(pindex))
+            m.removeRows(0, m.rowCount(pindex), pindex)
+            #print('XXX removeRows rowCount %d' % m.rowCount(pindex))
+
+        nextcol = pindex.column() + 1
+        for k in range(0, 5):
+           item = QStandardItem('itemA %02d col:%d' % (k,nextcol))
+           item.setIcon(icon.icon_folder_closed)
+           parent_item.appendRow(item)
+
+
+      def keyPressEvent(self, e):
+        logger.debug('keyPressEvent, key = %s'%e.key())
+        if   e.key() == Qt.Key_Escape:
             self.close()
 
-        elif e.key() == Qt.Key_E : 
+        elif e.key() == Qt.Key_E:
             self.process_expand()
 
-        elif e.key() == Qt.Key_C : 
+        elif e.key() == Qt.Key_C:
             self.process_collapse()
 
-        else :
-            logger.debug(self.key_usage())
+        else:
+            logger.debug('Keys:'\
+              '\n  ESC - exit'\
+              '\n  E - expand'\
+              '\n  C - collapse'\
+              '\n')
 
 
-#------------------------------
-#------------------------------
-#------------------------------
-
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import sys
+    tname = sys.argv[1] if len(sys.argv) > 1 else '1'
+    scrname = sys.argv[0].split('/')[-1]
+    print('%s\nUSAGE:' % (60*'_')\
+      +'\n  python %s 1 - (default) - pyramide item model ' % (scrname)\
+      +'\n  python %s 2 - dynamically added item model ' % (scrname)\
+    )
+
     from PyQt5.QtWidgets import QApplication
 
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
     #logger.setPrintBits(0o177777)
     app = QApplication(sys.argv)
-    w = QWTree()
+    w = QWTree(tname=tname)
     w.setGeometry(10, 25, 400, 600)
     w.setWindowTitle('QWTree')
     w.move(100,50)
@@ -266,4 +297,4 @@ if __name__ == "__main__" :
     del w
     del app
 
-#------------------------------
+# EOF
