@@ -44,6 +44,7 @@ class CMConfigParameters(PSConfigParameters):
     COLS    = 'collections'
     DBS     = 'DBs'
     cc      = cc
+    kwargs  = {'webint':True, 'loglevel':'DEBUG'}
  
     def __init__(self, fname=None):
         """fname: str - the file name with configuration parameters, if not specified then use default.
@@ -82,6 +83,9 @@ class CMConfigParameters(PSConfigParameters):
         self.cmwdbdoceditor = None
 
         self.last_selection = None # self.DB_COLS, DOCS
+
+        self.user = cc.USERNAME
+        self.upwd = None
 
         
     def declareParameters(self):
