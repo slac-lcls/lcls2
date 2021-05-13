@@ -13,26 +13,22 @@ See:
 
 Created on 2017-02-01 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
+2021-05-12 extend to web service interface, switch --webint
 """
 
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QSplitter, QTextEdit, QVBoxLayout
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtWidgets import QWidget, QSplitter, QVBoxLayout, QTextEdit
+from PyQt5.QtCore import Qt #, QPoint
 
 from psana.graphqt.CMConfigParameters import cp
-from psana.graphqt.CMWDBTree import CMWDBTree
-from psana.graphqt.CMWDBButtons import CMWDBButtons
-
-
 from psana.graphqt.CMWDBDocs import CMWDBDocs
 from psana.graphqt.CMWDBDocEditor import CMWDBDocEditor
 
-#from psana.graphqt.QWIcons import icon
-#from psana.graphqt.Styles import style
+from psana.graphqt.CMWDBTree import CMWDBTree
+#from psana.graphqt.CMWDBTreeOld import CMWDBTree
 
-#---
 
 class CMWDBMain(QWidget):
 
@@ -40,22 +36,21 @@ class CMWDBMain(QWidget):
 
     def __init__(self, parent=None):
         QWidget.__init__(self, parent=parent)
-        #self._name = self.__class__.__name__
         cp.cmwdbmain = self
 
-        #icon.set_icons()
+        logger.debug('switch webint: %s' % str(cp.kwargs.get('webint', True)))
 
-        self.wbuts = CMWDBButtons(parent=self)
+        if cp.kwargs.get('webint', True):
+            from psana.graphqt.CMWDBButtonsWeb import CMWDBButtonsWeb
+            self.wbuts = CMWDBButtonsWeb(parent=self)
+
+        else:
+            from psana.graphqt.CMWDBButtons import CMWDBButtons
+            self.wbuts = CMWDBButtons(parent=self)
+
         self.wtree = CMWDBTree()
-        self.wdocs = CMWDBDocs() # QTextEdit('Some text')
-        self.wdoce = CMWDBDocEditor()
-        #self.wdoce = QTextEdit('Template for doc editor') # MWDBDocs()
-
-        #self.vbox = QVBoxLayout() 
-        #self.vbox.addWidget(self.wtab) 
-        #self.vbox.addStretch(1)
-        #self.wrig = QWidget()
-        #self.wrig.setLayout(self.vbox)
+        self.wdocs = CMWDBDocs() # QTextEdit('Template for docs')
+        self.wdoce = CMWDBDocEditor() #QTextEdit('Template for doc editor')
 
         # Horizontal splitter widget
         self.hspl = QSplitter(Qt.Horizontal)
@@ -90,50 +85,9 @@ class CMWDBMain(QWidget):
 
     def proc_parser(self, parser=None):
         self.parser=parser
-
         if parser is None:
             return
         return
-
-
-    def proc_parser_v0(self, parser=None):
-        self.parser=parser
-
-        if parser is None:
-            return
-
-        (popts, pargs) = parser.parse_args()
-        self.args = pargs
-        self.opts = vars(popts)
-        self.defs = vars(parser.get_default_values())
-
-        nargs =len(self.args)
-
-        exp = popts.exp # self.opts['exp']
-        run = popts.run # self.opts['run']
-        nev = popts.nev
-        clb = popts.clb
-        ifn = popts.ifn
-        vrb = popts.vrb
-
-        #cp.instr_dir .setValue() # val_def='/reg/d/psdm'
-        if exp != self.defs['exp']: cp.instr_name.setValue(exp[:3].upper())
-        if exp != self.defs['exp']: cp.exp_name  .setValue(exp)
-        if run != self.defs['run']: cp.str_runnum.setValue('%d'%run)
-        if clb != self.defs['clb']: cp.calib_dir .setValue(clb)
-
-        self.verbos = vrb
- 
-        ifname = ifn          if ifn != self.defs['ifn'] else\
-                 self.args[0] if nargs > 0 else\
-                 None
-        
-        if ifname is not None:
-            logger.info('Input image file name: %s' % ifname)
-            cp.fname_img.setValue(ifname)
-            cp.current_tab.setValue('File')
-        #else:
-        #    cp.current_tab.setValue('Data')
 
 
     def set_tool_tips(self):
