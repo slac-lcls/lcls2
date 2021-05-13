@@ -8,6 +8,7 @@ Created on 2019-11-13 by Mikhail Dubrovin
 #logger = logging.getLogger(__name__)
 
 import os
+os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' # get rid of libGL error: unable to load driver: swrast_dri.so
 import sys
 from psana.graphqt.H5VMain import hdf5explorer
 
@@ -19,13 +20,12 @@ FNAME_TEST = '/reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3
  #------------------------------
 
 
-def usage():
-    return 'command examples for app %s\n'%sys.argv[0]\
-         + '  hdf5explorer\n'\
-         + '  hdf5explorer <hdf5-file-name> [options]\n'\
-         + '  hdf5explorer /reg/g/psdm/detector/data_test/hdf5/amox27716-r0100-e060000-single-node.h5\n'\
-         + '  hdf5explorer /reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5\n'\
-         + '  hdf5explorer /reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5 -l INFO' 
+USAGE = 'command examples for app %s\n'%sys.argv[0]\
+      + '  hdf5explorer\n'\
+      + '  hdf5explorer <hdf5-file-name> [options]\n'\
+      + '  hdf5explorer /reg/g/psdm/detector/data_test/hdf5/amox27716-r0100-e060000-single-node.h5\n'\
+      + '  hdf5explorer /reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5\n'\
+      + '  hdf5explorer /reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5 -l INFO' 
  
 #------------------------------
 
@@ -62,17 +62,17 @@ def input_option_parser() :
 
     d_loglevel   = 'INFO'
     d_logdir     = '%s/hdf5explorer-log' % os.path.expanduser('~')
-    d_savelog    = True 
+    d_savelog    = False 
 
     h_loglevel   = 'logging level, default = %s' % d_loglevel
     h_logdir     = 'logger directory, default = %s' % d_logdir
     h_savelog    = 'save log-file at exit, default = %s' % d_savelog
 
-    parser = OptionParser(description='Calibration manager UI', usage=usage())
+    parser = OptionParser(description='HDF5 Explorer GUI', usage=USAGE)
 
     parser.add_option('-l', '--loglevel',   default=d_loglevel,   action='store', type='string', help=h_loglevel)
     parser.add_option('-L', '--logdir',     default=d_logdir,     action='store', type='string', help=h_logdir)
-    parser.add_option('-S', '--savelog',    default=d_savelog,    action='store_false',          help=h_savelog)
+    parser.add_option('-S', '--savelog',    default=d_savelog,    action='store_true',           help=h_savelog)
 
     return parser
   
