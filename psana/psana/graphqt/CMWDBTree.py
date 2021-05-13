@@ -1,4 +1,4 @@
-#------------------------------
+
 """Class :py:class:`CMWDBTree` is a QWTree for database-collection tree presentation
 ======================================================================================
 
@@ -23,15 +23,16 @@ logger = logging.getLogger(__name__)
 
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWTree import *
-##import psana.pscalib.calib.MDBUtils as dbu
-#import psana.graphqt.CMDBUtils as dbu
-##import psana.pscalib.calib.MDBWebUtils as wu
-import psana.graphqt.CMDBWebUtils as wu
-from psana.graphqt.CMQThreadClient import CMQThreadClient
+
+#from psana.graphqt.CMQThreadClient import CMQThreadClient
+if cp.kwargs.get('webint', True):
+    import psana.graphqt.CMDBUtilsWeb as dbu
+else:
+    import psana.graphqt.CMDBUtils as dbu
+
 
 from PyQt5.QtCore import pyqtSignal # Qt 
 
-#---
 
 class CMWDBTree(QWTree):
     """GUI for database-collection tree 
@@ -50,35 +51,33 @@ class CMWDBTree(QWTree):
 
     def fill_tree_model(self, pattern=''):
         logger.debug('CMWDBTree.fill_tree_model')
+        from time import time
+        t0_sec = time()
+
         self._pattern = pattern
         self.clear_model()
 
-        #self.fill_tree_model_for_client()
+        self.fill_tree_model_dbs()
+
+        logger.info('XXX tree-model filling time %.3f sec' % (time()-t0_sec))
 
         # connect in thread
-        if self.thread is not None: self.thread.quit()
-        self.thread = CMQThreadClient()
-        self.thread.connect_client_is_ready_to(self.fill_tree_model_for_client)
-        self.thread.start()
+        #if self.thread is not None: self.thread.quit()
+        #self.thread = CMQThreadClient()
+        #self.thread.connect_client_is_ready_to(self.fill_tree_model_web)
+        #self.thread.start()
 
 
-    def fill_tree_model_for_client(self):
-        #client = dbu.connect_client()
-        client = self.thread.client()
-        stat = self.thread.quit()
-
-        if client is None:
-            host = cp.cdb_host.value()
-            port = cp.cdb_port.value()
-            logger.warning("Can't connect to host: %s port: %d" % (host, port))
-            return
+    def fill_tree_model_dbs(self):
 
         #pattern = 'cdb_xcs'
         #pattern = 'cspad'
         pattern = self._pattern
-        dbnames = dbu.database_names(client)
+        dbnames = dbu.database_names()
 
-        logger.debug('CMWDBTree.fill_tree_model_for_client dbnames: %s' % str(dbnames))
+        s = 'CMWDBTree.fill_tree_model_web dbnames: %s\nnumber of dbs: %d' % (str(dbnames), len(dbnames))
+        logger.debug(s)
+        print(s)
 
         if pattern:
             dbnames = [name for name in dbnames if pattern in name]
@@ -93,9 +92,11 @@ class CMWDBTree(QWTree):
             #itdb.setCheckable(True) 
             parentItem.appendRow(itdb)
 
-            db = dbu.database(client, dbname) 
+            #db = dbu.database(client, dbname)
 
-            for col in dbu.collection_names(db):
+            if False: # DO NOT FILL COLLECTIONS
+
+              for col in dbu.collection_names(dbname):
                 if not col: continue
                 itcol = QStandardItem(col)  
                 itcol.setIcon(icon.icon_folder_closed)
@@ -107,6 +108,31 @@ class CMWDBTree(QWTree):
                 #print('append item %s' % (item.text()))
 
 
+    def fill_tree_model_collections(self, index):
+        m = self.model
+        item = m.itemFromIndex(index)
+        itemname = item.text()
+        if m.hasChildren(index):
+            logger.info('XXX item %s already has children - update' % itemname)
+            m.removeRows(0, m.rowCount(index), index)
+
+        parent = item.parent()
+        if parent is not None:
+            logger.debug('clicked item %s is not at DB level - do not add collections' % itemname)
+            return
+
+        #parname = parent.text() if parent is not None else None
+        dbname = itemname
+        itdb = item
+        for col in dbu.collection_names(dbname):
+            if not col: continue
+            itcol = QStandardItem(col)
+            itcol.setIcon(icon.icon_folder_closed)
+            itcol.setEditable(False)
+            itdb.appendRow(itcol)
+        self.expand(index)
+
+
     def on_click(self, index):
         """Override method in QWTree"""
         item = self.model.itemFromIndex(index)
@@ -115,6 +141,7 @@ class CMWDBTree(QWTree):
         parname = parent.text() if parent is not None else None
         msg = 'clicked item: %s parent: %s' % (itemname, parname) # index.row()
         logger.debug(msg)
+        self.fill_tree_model_collections(index)
         if parent is not None: self.db_and_collection_selected.emit(parname, itemname)
 
 
@@ -133,9 +160,15 @@ class CMWDBTree(QWTree):
         if itemsel is not None:
             cp.last_selection = cp.DB_COLS
 
-#---
 
 if __name__ == "__main__":
+
+    logging.getLogger('matplotlib').setLevel(logging.WARNING) # supress messages from other logs
+    logging.getLogger('urllib3').setLevel(logging.WARNING)
+
+    logging.basicConfig(format='[%(levelname).1s] L:%(lineno)03d %(name)s %(message)s', level=logging.DEBUG)
+    logger.info('set logger for module %s' % __name__)
+
     import sys
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
