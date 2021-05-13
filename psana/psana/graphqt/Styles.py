@@ -83,6 +83,10 @@ class Styles() :
 
         self.styleStat         = self.styleBkgdGray + "color: white;"
 
+        self.qgrbox_title  = "QGroupBox::title{left:10px; top:-5px;}"\
+                             "QGroupBox{margin-top:10px; padding-top:10px;}"\
+                             "QGroupBox{border: 1px solid; border-color: #AA00B0B0; border-radius:5px;}"
+
         #self.colorEditInfo     = QtGui.QColor(100, 255, 200)
         #self.colorEditBad      = QtGui.QColor(255,   0,   0)
         #self.colorEdit         = QtGui.QColor('white')
