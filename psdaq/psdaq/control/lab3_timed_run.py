@@ -33,7 +33,7 @@ def main():
     daqState = control.getState()
     logging.info('initial state: %s' % daqState)
     if daqState == 'error':
-        sys.exit(1)
+        sys.exit('failed to get initial DAQ state')
 
     # instantiate TimedRun
     run = TimedRun(control, daqState=daqState, args=args)
