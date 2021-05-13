@@ -46,14 +46,23 @@ cdef class SmdReader:
         return is_complete
 
 
-    def get(self):
+    def get(self, found_xtc2):
         self.prl_reader.just_read()
         
         if self.max_retries > 0:
+
             cn_retries = 0
             while not self.is_complete():
+                flag_founds = found_xtc2('smd') 
+
+                # Only when .inprogress file is used and ALL xtc2 files are found 
+                # that this will return a list of all(True). If we have a mixed
+                # of True and False, we let ParallelReader decides which file
+                # to read but we'll still need to do sleep.
+                if all(flag_founds): break
+
                 time.sleep(self.sleep_secs)
-                print(f'waiting for an event...retry#{cn_retries+1} (max_retries={self.max_retries})')
+                print(f'smdreader waiting for an event...retry#{cn_retries+1} (max_retries={self.max_retries})')
                 self.prl_reader.just_read()
                 cn_retries += 1
                 if cn_retries >= self.max_retries:

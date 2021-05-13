@@ -74,7 +74,7 @@ class SmdReaderManager(object):
 
     def _get(self):
         st = time.time()
-        self.smdr.get()
+        self.smdr.get(self.dsparms.found_xtc2_callback)
         en = time.time()
         logger.debug(f'smdreader_manager: read {self.smdr.got/1e6:.5f} MB took {en-st}s. rate: {self.smdr.got/(1e6*(en-st))} MB/s')
         self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
