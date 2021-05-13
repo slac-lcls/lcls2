@@ -14,6 +14,7 @@ def opaltt_cdict():
     help_str += "\nfex.eventcodes.beam  : beam present  = AND(.incl) and not OR(.excl)"
     help_str += "\nfex.eventcodes.laser : laser present = AND(.incl) and not OR(.excl)"
     help_str += "\nfex.roi              : inclusive columns (x) and rows (y)"
+    help_str += "\nfex.pedestal_adj     : extra offset to image values"
     help_str += "\nfex.signal.minvalue  : minimum signal (ADU) to report valid value"
     help_str += "\nfex..convergence     : rolling average timescale (1/N); 0 to disable correction"
     help_str += "\nfex.prescale..       : record 1/N events; 0 to disable recording"
@@ -46,7 +47,8 @@ def opaltt_cdict():
     top.set("fex.sb.roi.y1",   149, 'UINT32')
 
     top.define_enum('boolEnum', {'False':0, 'True':1})
-    top.set("fex.divide_then_project", 0, 'boolEnum')
+
+    top.set("fex.pedestal_adj", 0, 'INT32')
 
 #    top.define_enum('boolEnum', {'False':0, 'True':1})
 #    top.set("fex.subtractAndNormalize" 1, 'boolEnum')

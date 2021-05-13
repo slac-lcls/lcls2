@@ -112,10 +112,6 @@ private:
     std::vector<int>    m_ref;     // reference region projection
     unsigned m_pedestal; // from Opal camera configuration
 
-    //  Divide then project
-    bool m_divide_then_project;
-    psalg::NDArray<double>     m_ref_avg_2d;
-
     double m_flt_position;
     double m_flt_position_ps;
     double m_flt_fwhm;

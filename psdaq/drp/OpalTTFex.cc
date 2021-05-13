@@ -56,8 +56,7 @@ OpalTTFex::OpalTTFex(Parameters* para) :
   m_eventcodes_beam_incl (0),
   m_eventcodes_beam_excl (0),
   m_eventcodes_laser_incl(0),
-  m_eventcodes_laser_excl(0),
-  m_ref_avg_2d           (no_shape, 2, new char[1])
+  m_eventcodes_laser_excl(0)
 {
   std::string fname = MLOOKUP(para->kwargs,"ttreffile",
                               para->detName+".ttref");
@@ -71,7 +70,6 @@ OpalTTFex::OpalTTFex(Parameters* para) :
 
   m_sig_avg.resize(0);
   m_ref_avg.resize(0);
-  //  m_ref_avg_2d = NDArray<double>();
 
   FILE* f = fopen(m_fname.c_str(),"r");
   if (f) {
@@ -103,7 +101,6 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
   
   m_columns = columns;
   m_rows    = rows;
-  m_divide_then_project = true;  // hack to initialize
 
   XtcData::Names& names = detector::configNames(configo);
   XtcData::DescData& descdata = configo.desc_shape();
@@ -157,9 +154,6 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
         }
       }
     }
-    if (nameMap.find("fex.divide_then_project:boolEnum") != nameMap.end()) {
-        m_divide_then_project = descdata.get_value<int32_t>("fex.divide_then_project:boolEnum");
-    }
   }
 
 #define GET_ENUM(a,b,c) {                                                \
@@ -186,6 +180,10 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
   GET_VALUE(sb ,convergence,1.);
 #undef GET_VALUE
   m_pedestal = descdata.get_value<unsigned>("user.black_level");
+  if (nameMap.find("fex.pedestal_adj") != nameMap.end()) {
+    m_pedestal -= descdata.get_value<int>("fex.pedestal_adj");
+    printf("m_pedestal adjusted to subtract %d\n",m_pedestal);
+  }
 
   m_use_ref_roi = descdata.get_value<uint8_t>("fex.ref.enable");
   m_use_sb_roi  = descdata.get_value<uint8_t>("fex.sb.enable");
@@ -298,161 +296,108 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
 
   std::vector<double> sigd;
 
-  if (!m_divide_then_project) {
-      //
-      //  Project signal ROI
-      //
-      if (m_project_axis==0) {
-          m_sig = project_x(f, m_sig_roi, m_pedestal);
-          if (m_use_ref_roi)
-              m_ref = project_x(f, m_ref_roi, m_pedestal);
-          if (m_use_sb_roi)
-              m_sb  = project_x(f, m_sb_roi , m_pedestal);
-      }
-      else {
-          m_sig = project_y(f, m_sig_roi, m_pedestal);
-          if (m_use_ref_roi)
-              m_ref = project_y(f, m_ref_roi, m_pedestal);
-          if (m_use_sb_roi)
-              m_sb  = project_y(f, m_sb_roi , m_pedestal);
-      }
+  //
+  //  Project signal ROI
+  //
+  if (m_project_axis==0) {
+      m_sig = project_x(f, m_sig_roi, m_pedestal);
+      if (m_use_ref_roi)
+          m_ref = project_x(f, m_ref_roi, m_pedestal);
+      if (m_use_sb_roi)
+          m_sb  = project_x(f, m_sb_roi , m_pedestal);
+  }
+  else {
+      m_sig = project_y(f, m_sig_roi, m_pedestal);
+      if (m_use_ref_roi)
+          m_ref = project_y(f, m_ref_roi, m_pedestal);
+      if (m_use_sb_roi)
+          m_sb  = project_y(f, m_sb_roi , m_pedestal);
+  }
 
-      m_prescale_projections_counter++;
+  m_prescale_projections_counter++;
 
-      sigd.resize(m_sig.size());
-      std::vector<double> refd(m_sig.size());
+  sigd.resize(m_sig.size());
+  std::vector<double> refd(m_sig.size());
 
-      //
-      //  Correct projection for common mode found in sideband
-      //
-      if (m_use_sb_roi) {
-          rolling_average(m_sb, m_sb_avg, m_sb_convergence);
+  //
+  //  Correct projection for common mode found in sideband
+  //
+  if (m_use_sb_roi) {
+      rolling_average(m_sb, m_sb_avg, m_sb_convergence);
 
-          //    ndarray<const double,1> sbc = commonModeLROE(m_sb, m_sb_avg);
-          std::vector<double>& sbc = m_sb_avg;
+      //    ndarray<const double,1> sbc = commonModeLROE(m_sb, m_sb_avg);
+      std::vector<double>& sbc = m_sb_avg;
 
-          if (m_use_ref_roi)
-              for(unsigned i=0; i<m_sig.size(); i++) {
-                  sigd[i] = double(m_sig[i])-sbc[i];
-                  refd[i] = double(m_ref[i])-sbc[i];
-              }
-          else
-              for(unsigned i=0; i<m_sig.size(); i++)
-                  sigd[i] = double(m_sig[i])-sbc[i];
-      }
-      else {
-          if (m_use_ref_roi)
-              for(unsigned i=0; i<m_sig.size(); i++) {
-                  sigd[i] = double(m_sig[i]);
-                  refd[i] = double(m_ref[i]);
-              }
-          else
-              for(unsigned i=0; i<m_sig.size(); i++)
-        sigd[i] = double(m_sig[i]);
-      }
+      if (m_use_ref_roi)
+          for(unsigned i=0; i<m_sig.size(); i++) {
+              sigd[i] = double(m_sig[i])-sbc[i];
+              refd[i] = double(m_ref[i])-sbc[i];
+          }
+      else
+          for(unsigned i=0; i<m_sig.size(); i++)
+              sigd[i] = double(m_sig[i])-sbc[i];
+  }
+  else {
+      if (m_use_ref_roi)
+          for(unsigned i=0; i<m_sig.size(); i++) {
+              sigd[i] = double(m_sig[i]);
+              refd[i] = double(m_ref[i]);
+          }
+      else
+          for(unsigned i=0; i<m_sig.size(); i++)
+              sigd[i] = double(m_sig[i]);
+  }
 
-      if (!m_use_ref_roi)
-          refd = sigd;
+  if (!m_use_ref_roi)
+      refd = sigd;
 
-      //
-      //  Require projection has a minimum amplitude (else no laser)
-      //
-      bool lcut=true;
-      for(unsigned i=0; i<sigd.size(); i++)
-          if (sigd[i]>m_project_minvalue)
-              lcut=false;
+  //
+  //  Require projection has a minimum amplitude (else no laser)
+  //
+  bool lcut=true;
+  for(unsigned i=0; i<sigd.size(); i++)
+      if (sigd[i]>m_project_minvalue)
+          lcut=false;
 
-      if (lcut) { m_cut[_PROJCUT]++; return INVALID; }
+  if (lcut) { m_cut[_PROJCUT]++; return INVALID; }
 
-      if (nobeam) {
-          _monitor_ref_sig( refd );
-          rolling_average(refd, m_ref_avg, m_ref_convergence);
+  if (nobeam) {
+      _monitor_ref_sig( refd );
+      rolling_average(refd, m_ref_avg, m_ref_convergence);
 
 #ifdef DBUG
-          printf("--refavg--\n");
-          for(unsigned i=0; i<sigd.size(); i+= 16)
-              printf(" %g",sigd[i]);
-          printf("\n");
+      printf("--refavg--\n");
+      for(unsigned i=0; i<sigd.size(); i+= 16)
+          printf(" %g",sigd[i]);
+      printf("\n");
 #endif
 
-          m_cut[_NOBEAM]++;
-          return NOBEAM;
-      }
-      else if (m_use_ref_roi) {
-          _monitor_ref_sig( refd );
-          rolling_average(refd, m_ref_avg, m_ref_convergence);
-      }
+      m_cut[_NOBEAM]++;
+      return NOBEAM;
+  }
+  else if (m_use_ref_roi) {
+      _monitor_ref_sig( refd );
+      rolling_average(refd, m_ref_avg, m_ref_convergence);
+  }
 
-      _monitor_raw_sig( sigd );
+  _monitor_raw_sig( sigd );
 
-      if (m_ref_avg.size()==0) {
-          m_cut[_NOREF]++;
-          return INVALID;
-      }
+  if (m_ref_avg.size()==0) {
+      m_cut[_NOREF]++;
+      return INVALID;
+  }
 
-      //
-      //  Average the signal
-      //
-      rolling_average(sigd, m_sig_avg, m_sig_convergence);
+  //
+  //  Average the signal
+  //
+  rolling_average(sigd, m_sig_avg, m_sig_convergence);
 
-      //
-      //  Divide by the reference
-      //
-      for(unsigned i=0; i<sigd.size(); i++)
-          sigd[i] = m_sig_avg[i]/m_ref_avg[i] - 1;
+  //
+  //  Divide by the reference
+  //
+  for(unsigned i=0; i<sigd.size(); i++)
+      sigd[i] = m_sig_avg[i]/m_ref_avg[i] - 1;
       
-  }
-  else {  // Divide then project
-      unsigned sshape[2];
-      sshape[0] = m_sig_roi.y1 - m_sig_roi.y0 + 1;
-      sshape[1] = m_sig_roi.x1 - m_sig_roi.x0 + 1;
-      NDArray<double> sig_2d(sshape, 2);
-      sigd.resize(sshape[1-m_project_axis]);
-      if (nobeam) {  // just ROI
-          for(unsigned i=m_sig_roi.y0,iy=0; i<=m_sig_roi.y1; i++,iy++) {
-              for(unsigned j=m_sig_roi.x0,ix=0; j<=m_sig_roi.x1; j++,ix++) {
-                  sig_2d(iy,ix) = double(f(i,j));
-              }
-          }
-          rolling_average(sig_2d, m_ref_avg_2d, m_ref_convergence);
-          m_cut[_NOBEAM]++;
-          return NOBEAM;
-      }
-      else {  // ROI, divide, project
-          if (m_ref_avg_2d.size()==0) {
-              m_cut[_NOREF]++;
-              return INVALID;
-          }
-          for(unsigned i=m_sig_roi.y0,iy=0; i<=m_sig_roi.y1; i++,iy++) {
-              for(unsigned j=m_sig_roi.x0,ix=0; j<=m_sig_roi.x1; j++,ix++) {
-                  sig_2d(iy,ix) = double(f(i,j)) / m_ref_avg_2d(iy,ix);
-              }
-          }
-          //  now project
-          if (m_project_axis==0) {
-              for(unsigned i=0; i<sshape[1]; i++)
-                  sigd[i]=0.;
-              for(unsigned i=0; i<sshape[0]; i++)
-                  for(unsigned j=0; j<sshape[1]; j++)
-                      sigd[j] += sig_2d(i,j);
-              for(unsigned i=0; i<sshape[1]; i++)
-                  sigd[i] /= double(sshape[0]);
-          }
-          else {
-              for(unsigned i=0; i<sshape[0]; i++) {
-                  double sum=0.;
-                  for(unsigned j=0; j<sshape[1]; j++)
-                      sum += sig_2d(i,j);
-                  sigd[i] = sum / double(sshape[1]);
-              }
-          }
-          //
-          //  Average the signal
-          //
-          rolling_average(sigd, m_sig_avg, m_sig_convergence);
-      }
-  }
-
   _monitor_sub_sig( sigd );
 
   //
