@@ -1,4 +1,4 @@
-#------------------------------
+
 """Class :py:class:`CMWMainTabs` is a QWidget for tabs and switching window
 ==============================================================================
 
@@ -8,31 +8,22 @@ Usage ::
 Created on 2017-02-18 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 """
-#------------------------------
 
 import logging
 logger = logging.getLogger(__name__)
 
-#------------------------------
-
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTabBar, QTextEdit, QSplitter
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTabBar, QTextEdit #, QSplitter
 from PyQt5.QtGui import QColor # QPalette, QSizePolicy
 from PyQt5.QtCore import Qt #, QPoint
-
 from psana.graphqt.CMConfigParameters import cp
 
-from psana.graphqt.QWDateTimeSec import QWDateTimeSec
-from psana.graphqt.CMWConfig     import CMWConfig
-from psana.graphqt.CMWDBMain     import CMWDBMain
 
-#------------------------------
-
-class CMWMainTabs(QWidget) :
+class CMWMainTabs(QWidget):
     """GUI for tabs and associated widgets
     """
-    tab_names   = ['CDB', 'Configuration', 't-converter', 'Mon-A', 'Mon-B']
+    tab_names   = ['CDB', 'Configuration', 't-converter', 'HDF5', 'Mon-A', 'Mon-B']
 
-    def __init__ (self, parent=None, app=None) :
+    def __init__ (self, parent=None, app=None):
 
         QWidget.__init__(self, parent)
 
@@ -68,7 +59,6 @@ class CMWMainTabs(QWidget) :
         #logger.debug('End of init')
         #self.set_tabs_visible(False)
 
-    #--------------------------
 
     def show_tool_tips(self):
         self.setToolTip('Main tab window')
@@ -108,13 +98,12 @@ class CMWMainTabs(QWidget) :
         #self.butExit.setFlat(True)
         #self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
  
-    #-------------------
 
-    def make_tab_bar(self) :
+    def make_tab_bar(self):
         self.tab_bar = QTabBar()
 
         #len(self.tab_names)
-        for tab_name in self.tab_names :
+        for tab_name in self.tab_names:
             tab_ind = self.tab_bar.addTab(tab_name)
             self.tab_bar.setTabTextColor(tab_ind, QColor('blue')) #gray, red, grayblue
 
@@ -130,32 +119,40 @@ class CMWMainTabs(QWidget) :
         self.tab_bar.tabCloseRequested.connect(self.on_tab_close_request)
         self.tab_bar.tabMoved[int,int].connect(self.on_tab_moved)
 
-    #--------------------------
 
     def gui_selector(self, tab_name):
 
-        if self.gui_win is not None :
+        if self.gui_win is not None:
             #self.box_layout.removeWidget(self.gui_win)
             #self.gui_win.setVisible(False)
             self.gui_win.close()
             del self.gui_win
 
         w_height = 200
+        if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(True)
 
-        if tab_name == 'CDB' :
+        if tab_name == 'CDB': #tab_names[0]
+            from psana.graphqt.CMWDBMain import CMWDBMain
             self.gui_win = CMWDBMain()
             w_height = 500
 
-        elif tab_name == 'Configuration' :
+        elif tab_name == 'Configuration': #tab_names[1]
+            from psana.graphqt.CMWConfig import CMWConfig
             self.gui_win = CMWConfig()
 
-        elif tab_name == 't-converter' :
+        elif tab_name == 't-converter': #tab_names[2]
+            from psana.graphqt.QWDateTimeSec import QWDateTimeSec
             self.gui_win = QWDateTimeSec()
             self.gui_win.setMaximumWidth(500)
-            w_height = 80
+            #w_height = 80
             #self.gui_win.setMaximumHeight(w_height)
 
-        else :
+        elif tab_name == 'HDF5': #tab_names[3]
+            from psana.graphqt.H5VMain import H5VMain
+            if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
+            self.gui_win = H5VMain()
+
+        else:
             self.gui_win = QTextEdit('Default window for tab %s' % tab_name)
 
         #self.gui_win.setFixedHeight(w_height)
@@ -165,14 +162,12 @@ class CMWMainTabs(QWidget) :
 
         #self.setStatus(0, s_msg)
 
-    #-------------------
 
     def current_tab_index_and_name(self):
         tab_ind  = self.tab_bar.currentIndex()
         tab_name = str(self.tab_bar.tabText(tab_ind))
         return tab_ind, tab_name
 
-    #-------------------
 
     def on_tab_bar(self, ind):
         tab_ind, tab_name = self.current_tab_index_and_name()
@@ -180,19 +175,16 @@ class CMWMainTabs(QWidget) :
         cp.main_tab_name.setValue(tab_name)
         self.gui_selector(tab_name)
 
-    #-------------------
 
     def on_tab_close_request(self, ind):
         logger.debug('on_tab_close_request ind:%d' % ind)
         #self.tab_bar.removeTab(ind)
         #logger.debug('on_tab_close_request tab index:%d' % (itab))
 
-    #-------------------
 
-    def on_tab_moved(self, inew, iold) :
+    def on_tab_moved(self, inew, iold):
         logger.debug('on_tab_close_request tab index begin:%d -> end:%d' % (iold, inew))
 
-    #-------------------
  
     #def resizeEvent(self, e):
         #pass
@@ -212,13 +204,13 @@ class CMWMainTabs(QWidget) :
     def closeEvent(self, e):
         logger.debug('closeEvent')
 
-        #try    : self.gui_win.close()
-        #except : pass
+        #try   : self.gui_win.close()
+        #except: pass
 
-        #try    : del self.gui_win
-        #except : pass
+        #try   : del self.gui_win
+        #except: pass
 
-        if self.gui_win is not None :
+        if self.gui_win is not None:
             self.gui_win.close()
 
         QWidget.closeEvent(self, e)
@@ -234,39 +226,38 @@ class CMWMainTabs(QWidget) :
         self.tab_bar.setVisible(is_visible)
 
 
-    def tab_bar_is_visible(self) :
+    def tab_bar_is_visible(self):
         return self.tab_bar.isVisible()
 
 
-    def view_hide_tabs(self) :
+    def view_hide_tabs(self):
         self.tab_bar.setVisible(not self.tab_bar.isVisible())
 
 
-    def key_usage(self) :
+    def key_usage(self):
         return 'Keys:'\
                '\n  V - view/hide tabs'\
                '\n'
 
-    if __name__ == "__main__" :
-      def keyPressEvent(self, e) :
+    if __name__ == "__main__":
+      def keyPressEvent(self, e):
         #logger.debug('keyPressEvent, key=%s' % e.key())       
-        if   e.key() == Qt.Key_Escape :
+        if   e.key() == Qt.Key_Escape:
             self.close()
 
-        elif e.key() == Qt.Key_V : 
+        elif e.key() == Qt.Key_V: 
             self.view_hide_tabs()
 
-        else :
+        else:
             logger.debug(self.key_usage())
 
-#------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     import sys
     from PyQt5.QtWidgets import QApplication
 
-    logging.basicConfig(format='%(message)s', level=logging.DEBUG)
+    logging.basicConfig(format='[%(levelname).1s] L:%(lineno)03d %(name)s %(message)s', level=logging.DEBUG)
 
     app = QApplication(sys.argv)
     w = CMWMainTabs()
@@ -278,4 +269,4 @@ if __name__ == "__main__" :
     del w
     del app
 
-#------------------------------
+# EOF
