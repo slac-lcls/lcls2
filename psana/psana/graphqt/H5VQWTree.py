@@ -1,4 +1,4 @@
-#------------------------------
+
 """Class :py:class:`QWTree` is a QTreeView->QWidget for tree model
 ===================================================================
 
@@ -11,37 +11,26 @@ Usage ::
 
 Created on 2019-11-12 by Mikhail Dubrovin
 """
-#------------------------------
+
 import logging
 logger = logging.getLogger(__name__)
 
 import sys
 import h5py
-
-#from PyQt5.QtWidgets import QTreeView, QVBoxLayout, QAbstractItemView
-#from PyQt5.QtGui import QStandardItemModel, QStandardItem
-#from PyQt5.QtCore import Qt, QModelIndex
-
-#from psana.graphqt.CMConfigParameters import cp
-#from psana.pyalgos.generic.Logger import logger
-#from psana.graphqt.QWIcons import icon
-
 from psana.graphqt.QWTree import Qt, QWTree, icon, QStandardItem
-#------------------------------
 
-def name_in_path(path,sep='/') :
+
+def name_in_path(path,sep='/'):
     return path.rsplit(sep,1)[-1]
 
-#------------------------------
 
-class H5VQWTree(QWTree) :
+class H5VQWTree(QWTree):
     """Widget for HDF5 tree
     """
     #TEST_FNAME = '/reg/g/psdm/detector/data_test/hdf5/amox27716-r0100-e060000-single-node.h5'
     TEST_FNAME = '/reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5'
 
-
-    def __init__(self, **kwargs) :
+    def __init__(self, **kwargs):
 
         parent = kwargs.get('parent',None)
         self.fname = kwargs.get('fname', self.TEST_FNAME)
@@ -67,12 +56,19 @@ class H5VQWTree(QWTree) :
         self.process_expand()
  
 
+    def set_file(self, fname):
+        self.collapseAll()
+        self.fname = fname
+        self.fill_tree_model()
+        self.expandAll()
+
+
     def fill_tree_model(self, g=None, parent_item=None):
 
         item = None
 
         # initialization at 1-st call
-        if g is None : # on first call
+        if g is None: # on first call
             self.clear_model()
             logger.debug('Open file: %s' % self.fname)
             self.model.setHorizontalHeaderLabels(('.../%s'%name_in_path(self.fname),))
@@ -80,7 +76,7 @@ class H5VQWTree(QWTree) :
             self.fill_tree_model(g)
             return # !!!
 
-        if isinstance(g, h5py.File) :
+        if isinstance(g, h5py.File):
             logger.debug('(File) %s %s' % (g.filename, g.name))
             #logger.debug(g.__dir__())
             root_item = self.model.invisibleRootItem()
@@ -90,7 +86,7 @@ class H5VQWTree(QWTree) :
             item.setData(g)
             root_item.appendRow(item)
         
-        elif isinstance(g,h5py.Group) :
+        elif isinstance(g,h5py.Group):
             logger.debug('(Group) %s' % g.name)
             item = QStandardItem(name_in_path(g.name))
             #item.setCheckable(True) 
@@ -98,7 +94,7 @@ class H5VQWTree(QWTree) :
             item.setData(g)
             parent_item.appendRow(item)
 
-        elif isinstance(g,h5py.Dataset) :
+        elif isinstance(g,h5py.Dataset):
             logger.debug('(Dataset) %s   len=%s   dtype=%s' % (g.name, g.shape, g.dtype)) #, g.dtype
             item = QStandardItem('%s: %s %s' % (name_in_path(g.name), g.shape, g.dtype))
             item.setIcon(icon.icon_table)
@@ -106,19 +102,18 @@ class H5VQWTree(QWTree) :
             item.setData(g)
             parent_item.appendRow(item)
 
-        else :
+        else:
             print('WORNING: UNKNOWN ITEM IN HDF5 FILE', g.name)
             sys.exit ( "EXECUTION IS TERMINATED" )
         
-        if isinstance(g, h5py.File) or isinstance(g, h5py.Group) :
-            #if item is None : return
-            for k,v in dict(g).items() :
+        if isinstance(g, h5py.File) or isinstance(g, h5py.Group):
+            #if item is None: return
+            for k,v in dict(g).items():
                 subg = v
                 #logger.debug('    k: %s v: %s' % (k, str(v))) #,"   ", subg.name #, val, subg.len(), type(subg),
                 self.fill_tree_model(subg, item)
             return
 
-    #--------------------------
 
     def show_tool_tips(self):
         self.setToolTip('HDF5 tree') 
@@ -128,17 +123,17 @@ class H5VQWTree(QWTree) :
         QWTree.set_style(self)
         #self.header().hide()
         self.header().show()
-        self.setMinimumSize(400, 900)
-
+        #self.setMinimumSize(400, 900)
+        #self.setSizeHint(400, 900)
 
     def on_item_selected(self, selected, deselected):
         itemsel = self.model.itemFromIndex(selected)
-        if itemsel is not None :
+        if itemsel is not None:
             parent = itemsel.parent()
             parname = parent.text() if parent is not None else None
             msg = 'selected item: %s row: %d parent: %s' % (itemsel.text(), selected.row(), parname) 
             logger.debug(msg)
-            if isinstance(itemsel.data(), h5py.Dataset) :
+            if isinstance(itemsel.data(), h5py.Dataset):
                 msg = 'data.value:\n%s' % str(itemsel.data()[()]) #.value)
                 logger.debug(msg)
 
@@ -168,46 +163,44 @@ class H5VQWTree(QWTree) :
         logger.debug('closeEvent')
         QWTree.closeEvent(self, e)
 
-        #try    : self.gui_win.close()
-        #except : pass
+        #try   : self.gui_win.close()
+        #except: pass
 
-        #try    : del self.gui_win
-        #except : pass
+        #try   : del self.gui_win
+        #except: pass
 
 
     #def on_exit(self):
     #    logger.debug('on_exit')
     #    self.close()
 
-#------------------------------
-#------------------------------
 
-#    if __name__ == "__main__" :
+#    if __name__ == "__main__":
 
-    def key_usage(self) :
+    def key_usage(self):
         return 'Keys:'\
                '\n  ESC - exit'\
                '\n  E - expand'\
                '\n  C - collapse'\
                '\n'
 
-    def keyPressEvent(self, e) :
+    def keyPressEvent(self, e):
         #logger.debug('keyPressEvent, key = %s'%e.key())       
-        if   e.key() == Qt.Key_Escape :
+        if   e.key() == Qt.Key_Escape:
             self.close()
 
-        elif e.key() == Qt.Key_E : 
+        elif e.key() == Qt.Key_E: 
             self.process_expand()
 
-        elif e.key() == Qt.Key_C : 
+        elif e.key() == Qt.Key_C: 
             self.process_collapse()
 
-        else :
+        else:
             logger.debug(self.key_usage())
 
-#------------------------------
 
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
     import sys
     from PyQt5.QtWidgets import QApplication
     fmt = '%(asctime)s %(name)s %(levelname)s: %(message)s'
@@ -223,4 +216,4 @@ if __name__ == "__main__" :
     del w
     del app
 
-#------------------------------
+# EOF

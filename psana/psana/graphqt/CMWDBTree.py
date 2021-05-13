@@ -23,10 +23,12 @@ logger = logging.getLogger(__name__)
 
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWTree import *
-import psana.graphqt.CMDBUtils as dbu
+##import psana.pscalib.calib.MDBUtils as dbu
+#import psana.graphqt.CMDBUtils as dbu
+##import psana.pscalib.calib.MDBWebUtils as wu
+import psana.graphqt.CMDBWebUtils as wu
 from psana.graphqt.CMQThreadClient import CMQThreadClient
 
-#import psana.pscalib.calib.MDBUtils as dbu
 from PyQt5.QtCore import pyqtSignal # Qt 
 
 #---

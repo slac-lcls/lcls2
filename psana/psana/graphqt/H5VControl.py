@@ -21,13 +21,14 @@ from PyQt5.QtCore import QSize # Qt, QEvent, QPoint,
 from psana.graphqt.H5VConfigParameters import cp
 from psana.graphqt.Styles import style
 from psana.graphqt.QWIcons import icon
+from psana.graphqt.QWFileName import QWFileName
 
 #----------
 
-class H5VControl(QWidget) :
+class H5VControl(QWidget):
     """QWidget for H5V control fields"""
 
-    def __init__(self, **kwargs) :
+    def __init__(self, **kwargs):
 
         parent = kwargs.get('parent',None)
 
@@ -37,10 +38,15 @@ class H5VControl(QWidget) :
 
         self.but_exp_col  = QPushButton('Collapse')
 
+        fname = cp.h5vmain.wtree.fname if cp.h5vmain is not None else './test.h5'
+        self.w_fname = QWFileName(None, butname='Select', label='File:',\
+           path=fname, fltr='*.h5 *.hdf5 \n*', show_frame=True)
+
         self.hbox = QHBoxLayout() 
         self.hbox.addWidget(self.lab_ctrl)
         self.hbox.addWidget(self.but_exp_col)
         self.hbox.addStretch(1) 
+        self.hbox.addWidget(self.w_fname)
         #self.hbox.addSpacing(20)
 
         #self.hbox.addLayout(self.grid)
@@ -48,6 +54,9 @@ class H5VControl(QWidget) :
  
         #self.but_exp_col.clicked.connect(self.on_but_clicked)
         self.but_exp_col.clicked.connect(self.on_but_exp_col)
+
+        if cp.h5vmain is not None:
+            self.w_fname.connect_path_is_changed_to_recipient(cp.h5vmain.wtree.set_file)
 
         self.set_tool_tips()
         self.set_style()
@@ -68,37 +77,37 @@ class H5VControl(QWidget) :
 
 
     def on_but_exp_col(self):
-        if cp.h5vmain is None : return
+        if cp.h5vmain is None: return
 
         wtree = cp.h5vmain.wtree
         but = self.but_exp_col
-        if but.text() == 'Expand' :
+        if but.text() == 'Expand':
             wtree.process_expand()
             self.but_exp_col.setIcon(icon.icon_folder_closed)
             but.setText('Collapse')
-        else :
+        else:
             wtree.process_collapse()
             self.but_exp_col.setIcon(icon.icon_folder_open)
             but.setText('Expand')
 
 
 #    def on_but_clicked(self):
-#        for but in self.list_of_buts :
-#            if but.hasFocus() : break
+#        for but in self.list_of_buts:
+#            if but.hasFocus(): break
 #        logger.info('Click on "%s"' % but.text())
-#        if   but == self.but_exp_col  : self.expand_collapse_dbtree()
-#        elif but == self.but_tabs     : self.view_hide_tabs()
-#        elif but == self.but_buts     : self.select_visible_buttons()
-#        elif but == self.but_del      : self.delete_selected_items()
-#        elif but == self.but_docs     : self.select_doc_widget()
-#        elif but == self.but_selm     : self.set_selection_mode()
-#        elif but == self.but_add      : self.add_selected_item()
-#        elif but == self.but_save     : self.save_selected_item()
-#        #elif but == self.but_level    : self.set_logger_level()
+#        if   but == self.but_exp_col : self.expand_collapse_dbtree()
+#        elif but == self.but_tabs    : self.view_hide_tabs()
+#        elif but == self.but_buts    : self.select_visible_buttons()
+#        elif but == self.but_del     : self.delete_selected_items()
+#        elif but == self.but_docs    : self.select_doc_widget()
+#        elif but == self.but_selm    : self.set_selection_mode()
+#        elif but == self.but_add     : self.add_selected_item()
+#        elif but == self.but_save    : self.save_selected_item()
+#        #elif but == self.but_level   : self.set_logger_level()
 
 #----------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     import sys
     app = QApplication(sys.argv)
