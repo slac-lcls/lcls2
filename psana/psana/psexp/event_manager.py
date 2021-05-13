@@ -162,6 +162,8 @@ class EventManager(object):
                 break
             offset += got
             size -= got
+            if i_retry > 0:
+                print(f'bigdata read retry#{i_retry} - waiting for {size/1e6} MB') 
         
         en = time.monotonic()
         sum_read_nbytes = memoryview(chunk).nbytes # for prometheus counter
