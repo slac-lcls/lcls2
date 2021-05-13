@@ -146,7 +146,7 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
 
     {
       if (nameMap.find("fex.invert_weights:boolEnum") != nameMap.end()) {
-        int invert = descdata.get_value<int32_t>("fex.invert:boolEnum");
+        int invert = descdata.get_value<int32_t>("fex.invert_weights:boolEnum");
         if (invert) {
           for(unsigned k=0; k<m_fir_weights.size(); k++)
             m_fir_weights[k] = -1.*m_fir_weights[k];
