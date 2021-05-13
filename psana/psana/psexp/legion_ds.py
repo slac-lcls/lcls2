@@ -39,7 +39,8 @@ class LegionDataSource(DataSourceBase):
         self.runnum_list_index += 1
         super()._setup_run_files(runnum)
         self._setup_configs()
-        self.dm = DgramManager(self.xtc_files, configs=self._configs)
+        self.dm = DgramManager(self.xtc_files, configs=self._configs,
+                found_xtc2_callback=super().found_xtc2_callback)
         return True
     
     def _setup_beginruns(self):

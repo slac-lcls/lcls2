@@ -162,8 +162,14 @@ class EventManager(object):
                 break
             offset += got
             size -= got
-            if i_retry > 0:
-                print(f'bigdata read retry#{i_retry} - waiting for {size/1e6} MB') 
+
+            found_xtc2_flags = self.dm.found_xtc2('bd')
+            if got == 0 and all(found_xtc2_flags):
+                print(f'bigddata got 0 byte and .xtc2 files found on disk. stop reading this .inprogress file')
+                break
+
+            print(f'bigdata read retry#{i_retry} - waiting for {size/1e6} MB, max_retries: {self.max_retries} (PS_R_MAX_RETRIES), sleeping 1 second...') 
+            time.sleep(1)
         
         en = time.monotonic()
         sum_read_nbytes = memoryview(chunk).nbytes # for prometheus counter

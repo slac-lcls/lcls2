@@ -41,7 +41,9 @@ def _dgSize(view):
 
 class DgramManager(object):
 
-    def __init__(self, xtc_files, configs=[], fds=[], tag=None, run=None, max_retries=0):
+    def __init__(self, xtc_files, configs=[], fds=[], 
+            tag=None, run=None, max_retries=0,
+            found_xtc2_callback=None):
         """ Opens xtc_files and stores configs.
         If file descriptors (fds) is given, reuse the given file descriptors.
         """
@@ -54,6 +56,11 @@ class DgramManager(object):
         self.found_endrun = True
         self.buffered_beginruns = []
         self.max_retries = max_retries
+        
+        # Add ability for dgrammanager to check if xtc2 files exist (in case 
+        # .inprogress file is use).
+        if found_xtc2_callback:
+            setattr(self, 'found_xtc2', found_xtc2_callback) 
 
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype='U%s'%FN_L)
