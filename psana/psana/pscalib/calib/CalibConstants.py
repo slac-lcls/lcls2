@@ -31,12 +31,14 @@ import numpy as np
 #import kerberos
 from krtc import KerberosTicket
 from urllib.parse import urlparse
+import getpass
 
 URL_ENV = os.environ.get('LCLS_CALIB_HTTP', None)
 URL     = 'https://pswww.slac.stanford.edu/calib_ws' if URL_ENV is None else URL_ENV
 URL_KRB = 'https://pswww.slac.stanford.edu/ws-kerb/calib_ws/'
 HOST = 'psdbdev01' # 'psdb-dev' # 'psanaphi103'
 PORT = 9306                     # 27017
+USERLOGIN = getpass.getuser()
 USERNAME = 'calibuser'
 USERPW   = USERNAME[:5]
 DBNAME_PREFIX = 'cdb_'
