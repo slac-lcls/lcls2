@@ -1,4 +1,4 @@
-#------------------------------
+
 """
 :py:class:`QWDateTimeSec` - time(sec) <-> time-stamp converter
 ============================================================================================
@@ -21,7 +21,7 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2017-06-14 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-15
 """
-#------------------------------
+
 #import os
 import sys
 
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 from time import time, strptime, strftime, mktime, localtime, struct_time
 
-from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QApplication
+from PyQt5.QtWidgets import QGroupBox, QLabel, QPushButton, QLineEdit, QHBoxLayout, QVBoxLayout, QApplication # QWidget,
 from PyQt5.QtGui import QIntValidator
 from PyQt5.QtCore import pyqtSignal
 
@@ -38,24 +38,24 @@ from PyQt5.QtCore import pyqtSignal
 from psana.graphqt.Styles import style
 from psana.graphqt.QWPopupSelectItem import popup_select_item_from_list
 
-#------------------------------
 
-def str_tstamp(fmt='%Y-%m-%dT%H:%M:%S', time_sec=None) :
+
+def str_tstamp(fmt='%Y-%m-%dT%H:%M:%S', time_sec=None):
     """Returns string timestamp for specified format and time in sec or current time by default
     """
     return strftime(fmt, localtime(time_sec))
 
-#------------------------------
 
-def time_sec(year, month=1, day=1, hour=0, minute=0, second=0) :
+
+def time_sec(year, month=1, day=1, hour=0, minute=0, second=0):
     s_tstamp = '%04d %02d %02d %02d %02d %02d' % (year, month, day, hour, minute, second)
     struct = strptime(s_tstamp, '%Y %m %d %H %M %S')
     tsec   = mktime(struct)
     return tsec
  
-#------------------------------
 
-class QWDateTimeSec(QWidget) : # Frame
+
+class QWDateTimeSec(QGroupBox):
     """Widget for date and time selection
     """
     year_now = int(str_tstamp(fmt='%Y', time_sec=None))
@@ -67,9 +67,10 @@ class QWDateTimeSec(QWidget) : # Frame
 
     path_is_changed = pyqtSignal('QString')
 
-    def __init__(self, parent=None, show_frame=False, verb=False) :
+    def __init__(self, parent=None, show_frame=False, verb=False):
 
-        QWidget.__init__(self, parent)
+        #QWidget.__init__(self, parent)
+        QGroupBox.__init__(self, 'Time converter', parent)
         #Frame.__init__(self, parent, mlw=1, vis=show_frame)
         self._name = self.__class__.__name__
         self.verb = verb
@@ -132,13 +133,16 @@ class QWDateTimeSec(QWidget) : # Frame
         self.edi       .editingFinished.connect(self.on_edi)
 
 
-    def set_tool_tips(self) :
+    def set_tool_tips(self):
         self.setToolTip('Select date and time to get time in second')
         self.edi.setToolTip('Edit seconds to get date and time')
 
-    def set_style(self) :
+    def set_style(self):
+
+        self.setStyleSheet(style.qgrbox_title)
+
         self.setMinimumSize(300,40)
-        self.layout().setContentsMargins(0,0,0,0)
+        self.layout().setContentsMargins(5,5,5,5) #(2,0,2,2)
         #self.but_year  .setStyleSheet(style.styleButton)
         w2d = 30
         self.but_year  .setFixedWidth(50)
@@ -170,7 +174,7 @@ class QWDateTimeSec(QWidget) : # Frame
     def on_edi(self):
         tsec = int(self.edi.displayText())
         self.set_date_time_fields(tsec)
-        if self.verb : self.print_tsec_tstamp(tsec)
+        if self.verb: self.print_tsec_tstamp(tsec)
         self.msg_to_logger(tsec)
 
 
@@ -202,7 +206,7 @@ class QWDateTimeSec(QWidget) : # Frame
         logger.info(msg)
 
 
-    def set_tsec(self) :
+    def set_tsec(self):
         """Sets self.edi (tsec) field from date and time fields.
         """
         year   = int(self.but_year.text())
@@ -215,7 +219,7 @@ class QWDateTimeSec(QWidget) : # Frame
         self.edi.setText('%10d'%tsec)
         #logger.debug('Cross-check: set t(sec): %10d for tstamp: %s' % (tsec, str_tstamp('%Y-%m-%dT%H:%M:%S', tsec)))
 
-        if self.verb : self.print_tsec_tstamp(tsec)
+        if self.verb: self.print_tsec_tstamp(tsec)
         self.msg_to_logger(tsec)
 
 
@@ -223,15 +227,15 @@ class QWDateTimeSec(QWidget) : # Frame
         #logger.debug('on_but')
         but = None
         lst = None
-        if self.but_year.hasFocus() :
+        if self.but_year.hasFocus():
             but = self.but_year
             lst = self.years
 
-        elif self.but_month.hasFocus() :
+        elif self.but_month.hasFocus():
             but = self.but_month
             lst = self.months
 
-        elif self.but_day.hasFocus() :
+        elif self.but_day.hasFocus():
             but = self.but_day
             year  = int(self.but_year.text())
             month = int(self.but_month.text())
@@ -239,42 +243,40 @@ class QWDateTimeSec(QWidget) : # Frame
             days_in_month = [0, 31, days_in_feb, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
             lst = ['%02d'%d for d in range(1,days_in_month[month]+1)]
 
-        elif self.but_hour.hasFocus() :
+        elif self.but_hour.hasFocus():
             but = self.but_hour
             lst = self.hours
 
-        elif self.but_minute.hasFocus() :
+        elif self.but_minute.hasFocus():
             but = self.but_minute
             lst = self.minutes
 
-        elif self.but_second.hasFocus() :
+        elif self.but_second.hasFocus():
             but = self.but_second
             lst = self.seconds
 
-        else : return
+        else: return
 
         v = popup_select_item_from_list(but, lst)
         #logger.debug('Selected: %s' % v)
-        if v is None : return
+        if v is None: return
         but.setText(v)
 
         self.set_tsec()
 
-#------------------------------
-#------------------------------
-#----------- TESTS ------------
-#------------------------------
-#------------------------------
-if __name__ == "__main__" :
 
-  def test_gui(tname) :
+#----------- TESTS ------------
+
+if __name__ == "__main__":
+
+  def test_gui(tname):
     w = QWDateTimeSec(None, show_frame=True)
     w.setWindowTitle('Convertor of date and time to sec')
     w.show()
     app.exec_()
 
 
-  def test_select_time(tname, fmt='%Y-%m-%d %H:%M:%S') :
+  def test_select_time(tname, fmt='%Y-%m-%d %H:%M:%S'):
     #lst = sorted(os.listdir('/reg/d/psdm/CXI/'))
     #logger.debug('lst: %s' % str(lst))
 
@@ -311,15 +313,15 @@ if __name__ == "__main__" :
     struct = strptime(s_tstamp, fmt)
     tsec   = mktime(struct)
 
-    logger.debug('Input date/time  : %s  time(sec) %d' % (s_tstamp, tsec))
-    logger.debug('Reco ts from sec : %s' % str_tstamp(fmt, time_sec=tsec))
+    logger.debug('Input date/time : %s  time(sec) %d' % (s_tstamp, tsec))
+    logger.debug('Reco ts from sec: %s' % str_tstamp(fmt, time_sec=tsec))
 
     #exp_name = popup_select_item_from_list(None, lst)
     #logger.debug('exp_name = %s' % exp_name)
 
-#------------------------------
 
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
@@ -329,11 +331,11 @@ if __name__ == "__main__" :
 
     if   tname == '0': test_select_time(tname)
     elif tname == '1': test_gui(tname)
-    else : sys.exit('Test %s is not implemented' % tname)
+    else: sys.exit('Test %s is not implemented' % tname)
 
     del app
 
     sys.exit('End of Test %s' % tname)
 
-#------------------------------
+# EOF
 
