@@ -17,25 +17,27 @@ import psana.pscalib.calib.MDBWebUtils as wu
 import logging
 logger = logging.getLogger(__name__)
 
+from dataclasses import dataclass
+
 class InvalidDataSourceArgument(Exception): pass
 
-class DsParms(object):
-    def __init__(self, batch_size=1, max_events=0, filter=0, destination=0, prom_man=None, max_retries=0, live=False):
-        self.batch_size  = batch_size
-        self.max_events  = max_events
-        self.filter      = filter
-        self.destination = destination 
-        self.prom_man    = prom_man
-        self.calibconst  = {}
-        self.max_retries = max_retries
-        self.use_smds    = [] # flag showing True for smd files swapped with bigdata files
-        self.live        = live
+@dataclass
+class DsParms:
+    batch_size: int
+    max_events: int
+    filter: int
+    destination: int
+    prom_man: int
+    max_retries: int
+    live: bool
+    found_xtc2_callback: int
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table):
         self.det_classes, self.xtc_info, self.det_info_table = det_classes, xtc_info, det_info_table
 
     def set_use_smds(self, use_smds):
         self.use_smds = use_smds
+
 
 class DataSourceBase(abc.ABC):
     def __init__(self, **kwargs):
@@ -93,8 +95,37 @@ class DataSourceBase(abc.ABC):
         assert self.batch_size > 0
         
         self.prom_man = PrometheusManager(os.environ['PS_PROMETHEUS_JOBID'])
-        self.dsparms  = DsParms(self.batch_size, self.max_events, self.filter, self.destination, self.prom_man, max_retries, live=self.live) 
+        self.dsparms  = DsParms(self.batch_size, 
+                self.max_events, 
+                self.filter, 
+                self.destination, 
+                self.prom_man, 
+                max_retries, 
+                self.live,
+                self.found_xtc2_callback) 
 
+    def found_xtc2_callback(self, file_type):
+        """ Returns a list of True/False if .xtc2 file is found 
+        
+        Required file_type is either 'smd' or 'bd'.
+
+        For each xtc file, returns True ONLY IF using .inprogress files and .xtc2 files 
+        are found on disk. We return False in the case where .inprogress
+        files are not used because this callback is used to check if we
+        should wait for more data on the xtc files. The read-retry will not
+        happen if this callback returns True and there's 0 byte read out."""
+        found_flags = [False] * self.n_files 
+
+        xtc_files = []
+        if file_type == 'smd':
+            xtc_files = self.smd_files
+        elif file_type == 'bd':
+            xtc_files = self.xtc_files
+
+        if self.xtc_ext == '.xtc2.inprogress' and xtc_files: 
+            found_flags = [os.path.isfile(os.path.splitext(xtc_file)[0]) for xtc_file  in xtc_files] 
+        return found_flags
+    
     @abc.abstractmethod
     def runs(self):
         return
@@ -119,31 +150,32 @@ class DataSourceBase(abc.ABC):
         # No .inprogress files found
         if not smd_files: 
             smd_files = all_smd_files
-            xtc_ext = '.xtc2'
+            self.xtc_ext = '.xtc2'
         else:
-            xtc_ext = '.xtc2.inprogress' 
+            self.xtc_ext = '.xtc2.inprogress' 
             
         xtc_files = [os.path.join(self.xtc_path, \
-                     os.path.basename(smd_file).split('.smd')[0] + xtc_ext) \
+                     os.path.basename(smd_file).split('.smd')[0] + self.xtc_ext) \
                      for smd_file in smd_files \
                      if os.path.isfile(os.path.join(self.xtc_path, \
-                     os.path.basename(smd_file).split('.smd')[0] + xtc_ext))]
+                     os.path.basename(smd_file).split('.smd')[0] + self.xtc_ext))]
 
         # For chunking test, xtc_files are in -cNN format.
         if not xtc_files:
             logger.debug(f'WARNING: looks like bigdata could have been chunked.')
             xtc_files = [os.path.join(self.xtc_path, \
-                         os.path.basename(smd_file).split('.smd')[0] + '-c00' + xtc_ext) \
+                         os.path.basename(smd_file).split('.smd')[0] + '-c00' + self.xtc_ext) \
                          for smd_file in smd_files \
                          if os.path.isfile(os.path.join(self.xtc_path, \
-                         os.path.basename(smd_file).split('.smd')[0] + '-c00' + xtc_ext))]
+                         os.path.basename(smd_file).split('.smd')[0] + '-c00' + self.xtc_ext))]
 
         self.smd_files = smd_files
         self.xtc_files = xtc_files
+        self.n_files   = len(self.smd_files)
 
         logger.debug(f'smd_files={smd_files}')
         logger.debug(f'xtc_files={xtc_files}')
-        self.dsparms.set_use_smds([False]*len(self.smd_files))
+        self.dsparms.set_use_smds([False] * self.n_files)
 
     def _setup_runnum_list(self):
         """
