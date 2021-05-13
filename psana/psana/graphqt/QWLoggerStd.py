@@ -139,8 +139,8 @@ class QWLoggerStd(QWidget) :
         level = self.dict_name_to_level[levname] # e.g. logging.DEBUG
 
         tsfmt='%Y-%m-%dT%H:%M:%S'
-        fmt = '%(levelname)s %(name)s: %(message)s' if level==logging.DEBUG else\
-              '%(asctime)s %(levelname)s %(name)s: %(message)s'
+        fmt = '[%(levelname).1s] %(name)s:L%(lineno)04d %(message)s' if level==logging.DEBUG else\
+              '[%(levelname).1s] %(asctime)s %(name)s: %(message)s' # %(filename)s
 
         #sys.stdout = sys.stderr = open('/dev/null', 'w')
 
