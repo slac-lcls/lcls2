@@ -1,7 +1,6 @@
 import sys
 import logging
 import threading
-from psdaq.control.ControlDef import ControlDef
 from psdaq.control.DaqControl import DaqControl
 from psdaq.control.TimedRun import TimedRun
 import argparse
@@ -21,14 +20,6 @@ def main():
 
     # instantiate DaqControl object
     control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
-
-    try:
-        instrument = control.getInstrument()
-    except KeyboardInterrupt:
-        instrument = None
-
-    if instrument is None:
-        sys.exit('Error: failed to read instrument name (check -C <COLLECT_HOST>)')
 
     # configure logging handlers
     if args.v:
