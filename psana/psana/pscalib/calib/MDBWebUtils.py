@@ -197,11 +197,11 @@ def get_data_for_docid(dbname, colname, docid, url=cc.URL):
     """
     doc = get_doc_for_docid(dbname, colname, docid, url)
     logger.debug('get_data_for_docid: %s' % str(doc))
-    return get_data_for_doc(dbname, colname, doc, url)
+    return get_data_for_doc(dbname, doc, url)
 
 
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/gridfs/5b6893e81ead141643fe4344"
-def get_data_for_doc(dbname, colname, doc, url=cc.URL):
+def get_data_for_doc(dbname, doc, url=cc.URL):
     """Returns data from GridFS using doc.
     """
     logger.debug('get_data_for_doc: %s', str(doc))
@@ -548,7 +548,7 @@ def delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders
         logger.error('UNEXPECTED ERROR: db/collection: %s/%s HAS MORE THAN ONE DOCUMENT FOR _id: %s' % (dbname, colname, doc_id))
         sys.exit('EXIT: db/collection %s/%s HAS TO BE FIXED' % (dbname, colname))
 
-    logger.debug('XXXX ldocs: %s' % str(ldocs))
+    logger.debug('ldocs: %s' % str(ldocs))
 
     if not ldocs:
         logger.warning('db/collection: %s/%s HAS NO DOCUMENT FOR _id: %s' % (dbname, colname, doc_id))
@@ -720,6 +720,12 @@ def collection_info(dbname, cname, **kwa):
     return s
 
 
+def list_of_documents(dbname, cname):
+    docs = find_docs(dbname, cname)
+    if not docs: return []
+    docs = sorted(docs, key=my_sort_parameter) #, reverse=True
+    return docs
+
 #---------  TESTS  ------------
 
 if __name__ == "__main__" :
@@ -818,8 +824,8 @@ if __name__ == "__main__" :
     #data, doc = calib_constants(det, exp='amox23616', ctype='lasingoffreference', run=60, time_sec=None, vers=None)
     data, doc = calib_constants(det, exp=None, ctype='lasingoffreference', run=60, time_sec=None, vers=None)
     print('==== test_calib_constants_dict data:', data)
-    print('XXXX ==== type(data)', type(data))
-    print('XXXX ==== type(doc) ', type(doc))
+    print('==== type(data)', type(data))
+    print('==== type(doc) ', type(doc))
     print('==== doc: %s' % doc)
 
 
