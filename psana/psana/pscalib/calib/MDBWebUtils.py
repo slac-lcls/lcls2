@@ -16,7 +16,7 @@ Usage ::
     _ = wu.get_doc_for_docid(dbname, colname, docid, url=cc.URL)
     _ = wu.get_data_for_id(dbname, dataid, url=cc.URL)
     _ = wu.get_data_for_docid(dbname, colname, docid, url=cc.URL)
-    _ = wu.get_data_for_doc(dbname, colname, doc, url=cc.URL)
+    _ = wu.get_data_for_doc(dbname, doc, url=cc.URL)
     data,doc = wu.calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL)
     d = wu.calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL)
     d = {ctype:(data,doc),}
@@ -245,7 +245,7 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
         # that Mona is fetching calibration constants in psana.
         logger.debug('document is not available for query: %s' % str(query))
         return (None, None)
-    return (get_data_for_doc(dbname, colname, doc, url), doc)
+    return (get_data_for_doc(dbname, doc, url), doc)
 
 
 def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, url=cc.URL):
@@ -273,7 +273,7 @@ def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, url=cc
         docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
         doc = select_latest_doc(docs_for_type, query)
         if doc is None : continue
-        resp[ct] = (get_data_for_doc(dbname, colname, doc, url), doc)
+        resp[ct] = (get_data_for_doc(dbname, doc, url), doc)
 
     return resp
 
@@ -301,7 +301,7 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
         docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
         doc = select_latest_doc(docs_for_type, query)
         if doc is None : continue
-        resp[ct] = (get_data_for_doc(dbname, colname, doc, url), doc)
+        resp[ct] = (get_data_for_doc(dbname, doc, url), doc)
 
     resp = calib_constants_of_missing_types(resp, det, time_sec, vers, url)
 
