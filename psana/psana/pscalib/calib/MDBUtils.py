@@ -826,10 +826,6 @@ def valid_run(run):
 
 def valid_version(version):
     assert isinstance(version,str), _error_msg('type')
-    assert 1 < len(version) < 32, _error_msg('length')
-
-def valid_version(version):
-    assert isinstance(version,str), _error_msg('type')
     assert len(version) < 128, _error_msg('length')
 
 def valid_comment(comment):
