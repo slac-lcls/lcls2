@@ -24,8 +24,7 @@ logger = logging.getLogger(__name__)
 from psana.graphqt.CMConfigParameters import cp
 
 from psana.graphqt.QWTable import QWTable, QStandardItem, icon
-from psana.graphqt.CMDBUtils import ObjectId, get_data_for_doc, doc_add_id_ts, time_and_timestamp #, timestamp_id
-#from psana.pscalib.calib.MDBUtils import ObjectId
+from psana.graphqt.CMDBUtils import dbu #ObjectId, get_data_for_doc, doc_add_id_ts, time_and_timestamp #, timestamp_id
 
 from psana.graphqt.QWUtils import get_open_fname_through_dialog_box
 
@@ -97,7 +96,7 @@ class CMWDBDocEditor(QWTable) :
         #for doc in docs : print(doc)
         self.fill_table_model(doc)
 
-        self.data_nda = get_data_for_doc(dbname, doc)
+        self.data_nda = dbu.get_data_for_doc(dbname, doc)
         logger.debug(info_ndarr(self.data_nda, 'array from DB linked to the document'))
 
 #------------------------------
@@ -122,7 +121,7 @@ class CMWDBDocEditor(QWTable) :
             self.model.setHorizontalHeaderLabels(('key', 'value')) 
             self.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
 
-            doc_add_id_ts(doc) # adds time stamps for all id-s
+            dbu.doc_add_id_ts(doc) # adds time stamps for all id-s
 
             for r,k in enumerate(sorted(doc.keys())):
                 v = doc[k]
@@ -134,7 +133,7 @@ class CMWDBDocEditor(QWTable) :
                 self.model.setItem(r,0,item)
 
                 # set value item
-                cond = any([isinstance(v,o) for o in (int,str,dict,ObjectId)])
+                cond = any([isinstance(v,o) for o in (int, str, dict, dbu.ObjectId)])
                 s = str(v) if (cond and len(str(v))<512) else 'str longer 512 chars'
                 item = QStandardItem(s)
 
@@ -250,7 +249,7 @@ class CMWDBDocEditor(QWTable) :
         m = self.model
         d = dict([(m.item(r, 0).text(), m.item(r, 1).text()) for r in range(m.rowCount())])
         if d[self.data_fname] == self.data_fname_value : d[self.data_fname] = None
-        d['time_sec'] = time_and_timestamp(**d)[0] # 'time_stamp' is used to fill 'time_sec'
+        d['time_sec'] = dbu.time_and_timestamp(**d)[0] # 'time_stamp' is used to fill 'time_sec'
 
         # remove info items added for display purpose
         if discard_id_ts :

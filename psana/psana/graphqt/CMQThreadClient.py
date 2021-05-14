@@ -21,7 +21,7 @@ See:
 Created on 2018-05-30 by Mikhail Dubrovin
 """
 
-from psana.graphqt.CMDBUtils import connect_client, database_names
+from psana.graphqt.CMDBUtils import dbu # connect_client, database_names
 from PyQt5.QtCore import QThread, pyqtSignal
 
 #---
@@ -42,7 +42,7 @@ class CMQThreadClient(QThread):
         """Launched on start()
         """
         #logger.debug('In CMQThreadClient.run - connect client')
-        self._client = connect_client(self._host, self._port)
+        self._client = dbu.connect_client(self._host, self._port)
 
         if self._client is None:
             #logger.warning("Can't connect to server")
@@ -68,7 +68,7 @@ class CMQThreadClient(QThread):
         if self._client is None:
             print("Can't connect to server")
 
-        dbnames = database_names(self._client)
+        dbnames = dbu.database_names(self._client)
         #logger.debug('Signal "client_is_ready" received, dbnames: %s' % str(dbnames))
         print('Signal "client_is_ready" received, dbnames: %s' % str(dbnames))
 

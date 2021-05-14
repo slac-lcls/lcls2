@@ -33,7 +33,7 @@ from psana.graphqt.QWUtils import change_check_box_dict_in_popup_menu,\
      get_existing_directory_through_dialog_box,\
      get_open_fname_through_dialog_box
 
-import psana.graphqt.CMDBUtils as dbu
+from psana.graphqt.CMDBUtils import dbu
 
 
 class CMWDBButtons(QWidget):
