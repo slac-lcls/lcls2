@@ -7,7 +7,7 @@ Usage ::
     # Test: python lcls2/psana/psana/graphqt/CMDBUtils.py
 
     # Import
-    import psana.graphqt.CMDBUtils as dbu
+    from psana.graphqt.CMDBUtils import dbu
 
     # See test at the EOF
 
