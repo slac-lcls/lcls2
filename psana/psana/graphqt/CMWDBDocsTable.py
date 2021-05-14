@@ -16,13 +16,9 @@ Created on 2017-04-20 by Mikhail Dubrovin
 """
 #------------------------------
 
-from psana.graphqt.CMWDBDocsBase import *
+from psana.graphqt.CMWDBDocsBase import * # dbu.   ObjectId, doc_add_id_ts, timestamp_id
 from psana.graphqt.QWTable import QWTable, QStandardItem, icon
 
-#from psana.pscalib.calib.MDBUtils import ObjectId
-from psana.graphqt.CMDBUtils import ObjectId, doc_add_id_ts
-
-#from psana.graphqt.CMDBUtils import timestamp_id # use dbu
 logger = logging.getLogger(__name__)
 
 #------------------------------
@@ -71,7 +67,7 @@ class CMWDBDocsTable(CMWDBDocsBase, QWTable) :
             #    if col==3 : item.setText('Some text')
             #    #self.model.appendRow(item)
         else :
-            for doc in docs : doc_add_id_ts(doc) # add timestamps for all ids
+            for doc in docs : dbu.doc_add_id_ts(doc) # add timestamps for all ids
 
             keys = sorted(docs[0].keys())
             #self.model.setVerticalHeaderLabels(keys) 
@@ -81,7 +77,7 @@ class CMWDBDocsTable(CMWDBDocsBase, QWTable) :
                 for c,key in enumerate(keys):
                      v = str(doc.get(key,'N/A'))
                      #s = v if (isinstance(v,str) and len(v)<128) else 'str longer 128 chars'
-                     cond = any([isinstance(v,o) for o in (str,dict,ObjectId)])
+                     cond = any([isinstance(v,o) for o in (str, dict, dbu.ObjectId)])
                      s = str(v) if (cond and len(str(v))<2048) else 'str longer 2048 chars'
                      item = QStandardItem(s)
                      item.setEditable(False)

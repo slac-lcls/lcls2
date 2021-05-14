@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.Styles import style
 
-from psana.graphqt.CMDBUtils import list_of_documents
+from psana.graphqt.CMDBUtils import dbu #list_of_documents
 from psana.graphqt.CMWDBDocsText  import CMWDBDocsText 
 from psana.graphqt.CMWDBDocsList  import CMWDBDocsList
 from psana.graphqt.CMWDBDocsTable import CMWDBDocsTable
@@ -119,7 +119,7 @@ class CMWDBDocs(QWidget) :
 
         if ((dbname, colname) != (self.dbname, self.colname))\
         or force_update :
-            self.current_docs = list_of_documents(dbname, colname)
+            self.current_docs = dbu.list_of_documents(dbname, colname)
             self.dbname, self.colname = dbname, colname
 
         self.gui_win.show_documents(dbname, colname, self.current_docs)

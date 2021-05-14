@@ -22,16 +22,12 @@ from PyQt5.QtWidgets import QTextEdit
 from PyQt5.QtCore import Qt
 
 from psana.graphqt.CMConfigParameters import cp
-
-if cp.kwargs.get('webint', True):
-    import psana.graphqt.CMDBUtilsWeb as dbu
-else:
-    import psana.graphqt.CMDBUtils as dbu
+from psana.graphqt.CMDBUtils import dbu
     
 
 class CMWDBDocsBase() :
     def __init__(self) :
-        logger.debug('in c-tor for webint %s' % cp.kwargs.get('webint', True))
+        logger.debug('in c-tor')
         self.dbname  = None
         self.colname = None
         self.current_docs = []
