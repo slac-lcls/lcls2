@@ -52,3 +52,6 @@ class scan_raw_2_0_0(EnvImpl):
     def __init__(self, *args):
         super().__init__(*args)
 
+class scan_raw_1_0_0(EnvImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
