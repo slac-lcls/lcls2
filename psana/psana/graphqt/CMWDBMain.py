@@ -13,7 +13,6 @@ See:
 
 Created on 2017-02-01 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
-2021-05-12 extend to web service interface, switch --webint
 """
 
 import logging
@@ -25,9 +24,9 @@ from PyQt5.QtCore import Qt #, QPoint
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.CMWDBDocs import CMWDBDocs
 from psana.graphqt.CMWDBDocEditor import CMWDBDocEditor
-
 from psana.graphqt.CMWDBTree import CMWDBTree
 #from psana.graphqt.CMWDBTreeOld import CMWDBTree
+from psana.graphqt.CMWDBButtons import CMWDBButtons
 
 
 class CMWDBMain(QWidget):
@@ -38,16 +37,7 @@ class CMWDBMain(QWidget):
         QWidget.__init__(self, parent=parent)
         cp.cmwdbmain = self
 
-        logger.debug('switch webint: %s' % str(cp.kwargs.get('webint', True)))
-
-        if cp.kwargs.get('webint', True):
-            from psana.graphqt.CMWDBButtonsWeb import CMWDBButtonsWeb
-            self.wbuts = CMWDBButtonsWeb(parent=self)
-
-        else:
-            from psana.graphqt.CMWDBButtons import CMWDBButtons
-            self.wbuts = CMWDBButtons(parent=self)
-
+        self.wbuts = CMWDBButtons(parent=self)
         self.wtree = CMWDBTree()
         self.wdocs = CMWDBDocs() # QTextEdit('Template for docs')
         self.wdoce = CMWDBDocEditor() #QTextEdit('Template for doc editor')
