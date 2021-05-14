@@ -25,10 +25,7 @@ from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWTree import *
 
 #from psana.graphqt.CMQThreadClient import CMQThreadClient
-if cp.kwargs.get('webint', True):
-    import psana.graphqt.CMDBUtilsWeb as dbu
-else:
-    import psana.graphqt.CMDBUtils as dbu
+from psana.graphqt.CMDBUtils import dbu
 
 
 from PyQt5.QtCore import pyqtSignal # Qt 
@@ -59,7 +56,7 @@ class CMWDBTree(QWTree):
 
         self.fill_tree_model_dbs()
 
-        logger.info('XXX tree-model filling time %.3f sec' % (time()-t0_sec))
+        logger.info('tree-model filling time %.3f sec' % (time()-t0_sec))
 
         # connect in thread
         #if self.thread is not None: self.thread.quit()
@@ -113,7 +110,7 @@ class CMWDBTree(QWTree):
         item = m.itemFromIndex(index)
         itemname = item.text()
         if m.hasChildren(index):
-            logger.info('XXX item %s already has children - update' % itemname)
+            logger.info('item %s already has children - update' % itemname)
             m.removeRows(0, m.rowCount(index), index)
 
         parent = item.parent()
