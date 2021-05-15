@@ -116,11 +116,13 @@ cdef class EventBuilder:
         cdef short dgram_idx = 0
         cdef short view_idx = 0
         cdef unsigned evt_idx = 0
+        cdef unsigned aux_idx =0
 
         cdef unsigned reach_limit_ts = 0
         
         # For checking step dgrams
         cdef unsigned service = 0
+        cdef unsigned long aux_ts = 0
 
         cdef int accept = 1 # for filter callback
 
@@ -128,11 +130,14 @@ cdef class EventBuilder:
             array.zero(self.timestamps)
             array.zero(self.dgram_sizes)
             array.zero(self.services)
+            array.zero(self.event_timestamps)
             service = 0
             
-            # Get dgrams for all smd files then
-            # collect their timestamps and sizes for sorting.
+            # Get dgrams and collect their timestamps for any smd with ts=0.
             for view_idx in range(self.nsmds):
+                event_dgrams[view_idx] = 0
+                if self.timestamps[view_idx] != 0: continue
+
                 view = self.views[view_idx]
                 if self.offsets[view_idx] < self.sizes[view_idx]:
                     # Fill buf with data from memoryview 'view'.
@@ -147,123 +152,112 @@ cdef class EventBuilder:
                     raw_dgrams[view_idx] = <char[:self.dgram_sizes[view_idx]]>view_ptr
                     PyBuffer_Release(&buf)
 
-            sorted_smd_id = np.argsort(self.timestamps)
-
             # Pick the oldest timestamp dgram as the first event
             # then look for other dgrams (in the rest of smd views)
             # for matching timestamps. An event is build (as bytearray)
             # with packet_footer. All dgrams in an event have the same timestamp.
-            for smd_id in sorted_smd_id:
-                if self.timestamps[smd_id] == 0:
+            smd_id = np.argmin(self.timestamps) 
+            if self.timestamps[smd_id] == 0:
+                continue
+
+            self.event_timestamps[smd_id] = self.timestamps[smd_id]
+            self.timestamps[smd_id] = 0 # prepare for next reload
+            self.offsets[smd_id] += self.dgram_sizes[smd_id]
+            event_dgrams[smd_id] = raw_dgrams[smd_id] # this is the selected dgram
+            service = self.services[smd_id]
+            
+            if self.min_ts == 0:
+                self.min_ts = self.event_timestamps[smd_id] # records first timestamp
+            self.max_ts = self.event_timestamps[smd_id]
+
+            # In other smd views, find matching timestamp dgrams
+            for view_idx in range(self.nsmds):
+                if view_idx == smd_id or self.offsets[view_idx] >= self.sizes[view_idx]:
                     continue
-
-                array.zero(self.event_timestamps)
-                self.event_timestamps[smd_id] = self.timestamps[smd_id]
-                self.offsets[smd_id] += self.dgram_sizes[smd_id]
-                event_dgrams[smd_id] = raw_dgrams[smd_id] # this is the selected dgram
-                service = self.services[smd_id]
                 
-                if self.min_ts == 0:
-                    self.min_ts = self.event_timestamps[smd_id] # records first timestamp
-
-                # In other smd views, find matching timestamp dgrams
-                for view_idx in range(self.nsmds):
-                    view = self.views[view_idx]
-                    if view_idx == smd_id or self.offsets[view_idx] >= self.sizes[view_idx]:
-                        continue
-                    
-                    event_dgrams[view_idx] = 0
-                    PyObject_GetBuffer(view, &buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
-                    view_ptr = <char *>buf.buf
-                    view_ptr += self.offsets[view_idx]
-                    d = <Dgram *>(view_ptr)
-                    self.max_ts = <unsigned long>d.seq.high << 32 | d.seq.low
-                    payload = d.xtc.extent - self.XTC_SIZE
-                    while self.max_ts <= self.event_timestamps[smd_id]:
-                        if self.max_ts == self.event_timestamps[smd_id]:
-                            self.event_timestamps[view_idx] = self.max_ts
-                            self.timestamps[view_idx] = 0
-                            event_dgrams[view_idx] = <char[:self.DGRAM_SIZE+payload]>view_ptr
-
-                        self.offsets[view_idx] += (self.DGRAM_SIZE + payload)
-
-                        if self.offsets[view_idx] == self.sizes[view_idx]:
-                            break
-
-                        view_ptr += (self.DGRAM_SIZE + payload)
-                        d = <Dgram *>(view_ptr)
-                        self.max_ts = <unsigned long>d.seq.high << 32 | d.seq.low
-                        payload = d.xtc.extent - self.XTC_SIZE
-                    
-                    PyBuffer_Release(&buf)
+                view = self.views[view_idx]
+                event_dgrams[view_idx] = 0
+                PyObject_GetBuffer(view, &buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
+                view_ptr = <char *>buf.buf
+                view_ptr += self.offsets[view_idx]
+                d = <Dgram *>(view_ptr)
+                aux_ts = <unsigned long>d.seq.high << 32 | d.seq.low
+                payload = d.xtc.extent - self.XTC_SIZE
+                if aux_ts == self.event_timestamps[smd_id]:
+                    # found matching timestamp dgram
+                    self.event_timestamps[view_idx] = aux_ts
+                    self.timestamps[view_idx] = 0 # prepare for next reload
+                    self.offsets[view_idx] += (self.DGRAM_SIZE + payload)
+                    event_dgrams[view_idx] = <char[:self.DGRAM_SIZE+payload]>view_ptr
                 
+                PyBuffer_Release(&buf)
+            
+            # Generate event as bytes from the dgrams
+            evt_size = 0
+            evt_bytes = bytearray()
+            for dgram_idx in range(self.nsmds):
+                dgram = event_dgrams[dgram_idx]
+                evt_footer_view[dgram_idx] = 0
+                if dgram: 
+                    evt_footer_view[dgram_idx] = dgram.nbytes
+                    evt_bytes.extend(bytearray(dgram))
+                evt_size += evt_footer_view[dgram_idx]
+            evt_bytes.extend(evt_footer_view)
+
+            # If destination() is not specifed, use batch 0.
+            dest_rank = 0
+            accept = 1
+            if (filter_fn or destination) and service == self.L1Accept:
+                py_evt = Event._from_bytes(self.configs, evt_bytes, run=run) 
+                py_evt._complete() 
+
+                if filter_fn:
+                    st_filter = time.time()
+                    accept = filter_fn(py_evt)
+                    en_filter = time.time()
+                    if prometheus_counter is not None:
+                        prometheus_counter.labels('seconds', 'None').inc(en_filter - st_filter)
+                        prometheus_counter.labels('batches', 'None').inc()
                 
-                # Generate event as bytes from the dgrams
-                evt_size = 0
-                evt_bytes = bytearray()
-                for dgram_idx in range(self.nsmds):
-                    dgram = event_dgrams[dgram_idx]
-                    evt_footer_view[dgram_idx] = 0
-                    if dgram: 
-                        evt_footer_view[dgram_idx] = dgram.nbytes
-                        evt_bytes.extend(bytearray(dgram))
-                    evt_size += evt_footer_view[dgram_idx]
-                evt_bytes.extend(evt_footer_view)
+                if destination:
+                    dest_rank = destination(py_evt)
+            
+            if batch_dict:
+                if dest_rank not in batch_dict:
+                    batch_dict[dest_rank] = (bytearray(), []) # (events as bytes, event sizes)
+            else:
+                batch_dict[dest_rank] = (bytearray(), [])
+            batch, evt_sizes = batch_dict[dest_rank]
 
-
-                # If destination() is not specifed, use batch 0.
-                dest_rank = 0
-                accept = 1
-                if (filter_fn or destination) and service == self.L1Accept:
-                    py_evt = Event._from_bytes(self.configs, evt_bytes, run=run) 
-                    py_evt._complete() 
-
-                    if filter_fn:
-                        st_filter = time.time()
-                        accept = filter_fn(py_evt)
-                        en_filter = time.time()
-                        if prometheus_counter is not None:
-                            prometheus_counter.labels('seconds', 'None').inc(en_filter - st_filter)
-                            prometheus_counter.labels('batches', 'None').inc()
-                    
-                    if destination:
-                        dest_rank = destination(py_evt)
-                
-                if batch_dict:
-                    if dest_rank not in batch_dict:
-                        batch_dict[dest_rank] = (bytearray(), []) # (events as bytes, event sizes)
-                else:
-                    batch_dict[dest_rank] = (bytearray(), [])
-                batch, evt_sizes = batch_dict[dest_rank]
-
-                if step_dict:
-                    if dest_rank not in step_dict:
-                        step_dict[dest_rank] = (bytearray(), [])
-                else:
+            if step_dict:
+                if dest_rank not in step_dict:
                     step_dict[dest_rank] = (bytearray(), [])
-                step_batch, step_sizes = step_dict[dest_rank] 
+            else:
+                step_dict[dest_rank] = (bytearray(), [])
+            step_batch, step_sizes = step_dict[dest_rank] 
 
-                # Extend this batch bytearray to include this event and collect
-                # the size of this event for batch footer.
-                if accept == 1:
-                    batch.extend(evt_bytes)
-                    evt_sizes.append(evt_size + evt_footer_size)
-                    got += 1
-                    
-                    # Add step
-                    if service != self.L1Accept:
-                        step_batch.extend(evt_bytes)
-                        step_sizes.append(evt_size + evt_footer_size)
-                        got_step += 1
+            # Extend this batch bytearray to include this event and collect
+            # the size of this event for batch footer.
+            if accept == 1:
+                batch.extend(evt_bytes)
+                evt_sizes.append(evt_size + evt_footer_size)
+                got += 1
+                
+                # Add step
+                if service != self.L1Accept:
+                    step_batch.extend(evt_bytes)
+                    step_sizes.append(evt_size + evt_footer_size)
+                    got_step += 1
 
-                if limit_ts > -1:
-                    if self.max_ts >= limit_ts:
-                        reach_limit_ts = 1
-                        break
-
-                if got == batch_size:
+            if limit_ts > -1:
+                if self.max_ts >= limit_ts:
+                    reach_limit_ts = 1
                     break
 
+            if got == batch_size:
+                break
+
+        # end while got < batch_size...
         
         self.nevents = got
         self.nsteps = got_step
