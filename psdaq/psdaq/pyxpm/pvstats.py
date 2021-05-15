@@ -10,8 +10,7 @@ from psdaq.pyxpm.pvhandler import *
 provider = None
 lock     = None
 
-FID_PERIOD    = 1400e-6/1300.
-FID_PERIOD_NS = 1400e3 /1300.
+fidPeriod   = 1400e-6/1300.
 
 def addPV(name,ctype,init=0):
     pv = SharedPV(initial=NTScalar(ctype).wrap(init), handler=DefaultPVHandler())
@@ -304,6 +303,7 @@ class GroupStats(object):
         self._pv_deadFLink = addPV(name+':DeadFLnk','af',[0.]*32)
 
     def handle(self,msg,offset,timev):
+        global fidPeriod
         linkInhEv = {}
         linkInhTm = {}
         for k in range(32):
@@ -326,13 +326,14 @@ class GroupStats(object):
         (numL0Inh,offset) = bytes2Int(msg,offset)
         (numL0Acc,offset) = bytes2Int(msg,offset)
         offset += 1
-        updatePv(self._pv_runTime , l0Ena*FID_PERIOD, timev)
+        rT = l0Ena*fidPeriod
+        updatePv(self._pv_runTime , rT, timev)
         updatePv(self._pv_msgDelay, self._app.l0Delay.get(), timev)
 
         if self._master:
             dL0Ena   = l0Ena    - self._l0Ena
             dL0Inh   = l0Inh    - self._l0Inh
-            dt       = dL0Ena*FID_PERIOD
+            dt       = dL0Ena*fidPeriod
             dnumL0   = numL0    - self._numL0
             dnumL0Acc= numL0Acc - self._numL0Acc
             dnumL0Inh= numL0Inh - self._numL0Inh
@@ -362,7 +363,7 @@ class GroupStats(object):
 
         if True:
             if self._linkInhTm:
-                den = FID_PERIOD
+                den = fidPeriod
                 linkInhTmV = []
                 for i in range(32):
                     linkInhTmV.append((linkInhTm[i] - self._linkInhTm[i])*den)
@@ -382,11 +383,13 @@ class PVMmcmPhaseLock(object):
         
 
 class PVStats(object):
-    def __init__(self, p, m, name, xpm):
+    def __init__(self, p, m, name, xpm, fiducialPeriod):
         global provider
         provider = p
         global lock
         lock     = m
+        global fidPeriod
+        fidPeriod  = fiducialPeriod
 
         self._xpm  = xpm
         self._app  = xpm.XpmApp
