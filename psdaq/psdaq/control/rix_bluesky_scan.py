@@ -72,21 +72,19 @@ bec = BestEffortCallback()
 # Send all metadata/data captured to the BestEffortCallback.
 RE.subscribe(bec)
 
-from ophyd.sim import motor1, SynAxis
+from ophyd.sim import motor1
 from bluesky.plans import scan
-
-step_value = SynAxis(name=ControlDef.STEP_VALUE)
 
 # instantiate BlueskyScan object
 mydaq = BlueskyScan(control, daqState=daqState, args=args)
 dets = [mydaq]   # just one in this case, but it could be more than one
 
 # configure BlueskyScan object with a set of motors
-mydaq.configure(motors=[motor1, step_value])
+mydaq.configure(motors=[motor1])
 
-# Scan motor1 from -10 to 10 and step_value from 0 to 14, stopping
+# Scan motor1 from -10 to 10, stopping
 # at 15 equally-spaced points along the way and reading dets.
-RE(scan(dets, motor1, -10, 10, step_value, 0, 14, 15))
+RE(scan(dets, motor1, -10, 10, 15))
 
 mydaq.push_socket.send_string('shutdown') #shutdown the daq thread
 mydaq.comm_thread.join()
