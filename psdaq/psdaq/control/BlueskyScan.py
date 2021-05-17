@@ -91,6 +91,13 @@ class BlueskyScan:
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
 
+                # allow user to override step count
+                for motor in self.motors:
+                    if motor.name == ControlDef.STEP_VALUE:
+                        self.step_count = int(motor.position)
+                        logging.debug(f'override: step count = {self.step_count}')
+                        break
+
                 my_data = {}
 
                 # record step_count and step_docstring
@@ -100,6 +107,8 @@ class BlueskyScan:
 
                 # record motor positions
                 for motor in self.motors:
+                    if motor.name == ControlDef.STEP_VALUE:
+                        continue
                     my_data.update({motor.name: motor.position})
 
                 data = {
