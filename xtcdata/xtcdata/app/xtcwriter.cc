@@ -21,7 +21,7 @@ using namespace XtcData;
 #define BUFSIZE 0x4000000
 static const unsigned nSegments=2;
 
-enum MyNamesId {HsdRaw,HsdFex,Cspad,Epics,EpicsInfo,Scan,RunInfo,HsdCfg,HsdRun,NumberOf};
+enum MyNamesId {HsdRaw,HsdFex,Cspad,Epics,EpicsInfo,Scan,RunInfo,HsdCfg,HsdRun,ChunkInfo,NumberOf};
 
 class RunInfoDef:public VarDef
 {
@@ -38,6 +38,22 @@ public:
        NameVec.push_back({"runnum",Name::UINT32});
    }
 } RunInfoDef;
+
+class ChunkInfoDef:public VarDef
+{
+public:
+  enum index
+    {
+        CHUNKID,
+        FILENAME
+    };
+
+  ChunkInfoDef()
+   {
+       NameVec.push_back({"chunkid",Name::UINT32});
+       NameVec.push_back({"filename",Name::CHARSTR,1});
+   }
+} ChunkInfoDef;
 
 class EpicsDef:public VarDef
 {
@@ -675,6 +691,21 @@ void addRunInfoData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId) {
     runinfo.set_value(RunInfoDef::RUNNUM, (uint32_t)14);
 }
 
+void addChunkInfoNames(Xtc& xtc, NamesLookup& namesLookup, unsigned& nodeId, unsigned segment) {
+    Alg chunkInfoAlg("chunkinfo",0,0,1);
+    NamesId namesId(nodeId,MyNamesId::ChunkInfo+MyNamesId::NumberOf*(segment%nSegments));
+    Names& chunkInfoNames = *new(xtc) Names("chunkinfo", chunkInfoAlg, "chunkinfo", "", namesId, segment);
+    chunkInfoNames.add(xtc, ChunkInfoDef);
+    namesLookup[namesId] = NameIndex(chunkInfoNames);
+}
+
+void addChunkInfoData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsigned segment) {
+    NamesId namesId(nodeId,MyNamesId::ChunkInfo+MyNamesId::NumberOf*(segment%nSegments));
+    CreateData chunkinfo(xtc, namesLookup, namesId);
+    chunkinfo.set_value(ChunkInfoDef::CHUNKID, (uint32_t)1);
+    chunkinfo.set_string(ChunkInfoDef::FILENAME, "data-r0001-s00-c01.xtc2");
+}
+
 
 #define MAX_FNAME_LEN 256
 
@@ -692,8 +723,9 @@ int main(int argc, char* argv[])
     // so we can do offline event-building.
     bool counting_timestamps = false;
     unsigned starting_nodeid = 1;
+    bool adding_chunkinfo = false;
 
-    while ((c = getopt(argc, argv, "hf:n:s:e:m:ti:")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:s:e:m:ti:c")) != -1) {
         switch (c) {
             case 'h':
                 usage(argv[0]);
@@ -718,6 +750,9 @@ int main(int argc, char* argv[])
                 break;
             case 't':
                 counting_timestamps = true;
+                break;
+            case 'c':
+                adding_chunkinfo = true;
                 break;
             default:
                 parseErr++;
@@ -751,6 +786,11 @@ int main(int argc, char* argv[])
         addEpicsInfo(config.xtc, namesLookup, nodeid1, iseg);
         addScanNames(config.xtc, namesLookup, nodeid1, iseg);
     }
+    
+    if (adding_chunkinfo) {
+        addChunkInfoNames(config.xtc, namesLookup, nodeid1, starting_segment);
+    }
+    
     for (unsigned iseg=0; iseg<nSegments; iseg++) {
         addNames   (config.xtc, namesLookup, nodeid1, iseg+starting_segment);
         addData    (config.xtc, namesLookup, nodeid1, iseg+starting_segment);
@@ -804,7 +844,14 @@ int main(int argc, char* argv[])
 
                     unsigned iseg = 1; // add epics to second segment
                     // only add epics to the first stream
-                    if (starting_segment==0) addEpicsData(dgram.xtc, namesLookup, nodeid1, iseg);
+                    if (starting_segment==0) {
+                        addEpicsData(dgram.xtc, namesLookup, nodeid1, iseg);
+                    }
+
+                    if (adding_chunkinfo) {
+                        addChunkInfoData(dgram.xtc, namesLookup, nodeid1, starting_segment);
+                    }
+
                     save(dgram,xtcFile);
                 }
             }
