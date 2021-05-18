@@ -86,15 +86,18 @@ procmgr_config = [
 
  { host: 'drp-neh-cmp010', id:'xtcav_0',     flags:'spu', env:xtcav_epics_env, cmd:pva_cmd1+' -l 0x1 OTRS:DMPS:695:RAW -k pebbleBufSize=2097300 -k match_tmo_ms=133'},
 
- { host: 'drp-neh-cmp007', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR2K4:FIM:W8:01 -l 0x2'},
+# { host: 'drp-neh-cmp007', id:'tmo_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR2K4:FIM:W8:01 -l 0x2'},
 
- { host: 'drp-neh-cmp007', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K4:FIM:W8:01 -l 0x1'},
+# { host: 'drp-neh-cmp007', id:'tmo_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K4:FIM:W8:01 -l 0x4'}, # QSFP # lane 0 broken?
 
-# { host: 'drp-neh-cmp011', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
+ { host: 'drp-neh-cmp011', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
 # { host: 'drp-neh-cmp012', id:'tmo_opal2_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
- { host: 'drp-neh-cmp005', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
+# { host: 'drp-neh-cmp005', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
+# { host: 'drp-neh-cmp005', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=TMO:TIMETOOL:TTALL'},
+ { host: 'drp-neh-cmp005', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=/tmp/ttall.txt'},
+ { host: 'drp-neh-cmp005', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
 
  { host: 'drp-neh-cmp007', id:'meb1', flags:'spu', cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}'},
 ]
@@ -119,8 +122,8 @@ procmgr_hsd = [
  {host:'drp-neh-cmp018', id:'hsd_5',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:B'},
  {host:'drp-neh-cmp022', id:'hsd_8',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:A'},
  {host:'drp-neh-cmp022', id:'hsd_9',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
- {host:'drp-neh-cmp024', id:'hsd_10', flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
- {host:'drp-neh-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
+ {host:'drp-neh-cmp024', id:'hsd_10', flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
+ {host:'drp-neh-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
  {host:'drp-neh-cmp021', id:'hsd_12', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:A'},
  {host:'drp-neh-cmp019', id:'hsd_13', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:B'},
 ]

@@ -12,8 +12,8 @@ prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
 
 procmgr_config = [
  { host: base_host, id:'pyxpm-2' , port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.102 '+pyxpm_optsdb%0}, # XTPG
-# { host: base_host, id:'pyxpm-3' , port:'29452', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.103 '+pyxpm_optsdb%1}, # XPM
- { host: base_host, id:'pyxpm-4' , port:'29453', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.3.102 '+pyxpm_optsdb%2}, # XPM
+ { host: base_host, id:'pyxpm-3' , port:'29452', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.2.103 '+pyxpm_optsdb%3}, # RIX XPM
+ { host: base_host, id:'pyxpm-4' , port:'29453', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.3.102 '+pyxpm_optsdb%2}, # TMO XPM
 ## EPICS PV exporter
  { host: base_host, id:'pvrtmon',  port:'29460', flags:'s', env:epics_env, cmd:f'epics_exporter -H tmo -M {prom_dir} -P DAQ:NEH:XPM:0 RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
 ]

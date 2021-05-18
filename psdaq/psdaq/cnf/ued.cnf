@@ -69,12 +69,12 @@ procmgr_config = [
 
  { host: 'drp-ued-cmp001', id:'epixquad_0',  flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epixquad'},
 
- { host: 'drp-ued-cmp002', id:'timing_0',    flags:'spu',                cmd:drp_cmd0+' -l 0x1 -D ts'},
+ { host: 'drp-ued-cmp002', id:'timing_0',    flags:'spu',                cmd:drp_cmd0+' -l 0x1 -D ts -k timebase=119M'},
 
- { host: 'drp-ued-cmp002', id:'epics_0',     flags:'spu', env:ued_epics_env, cmd:ea_cmd0+' -l 0x2'},
+ { host: 'drp-ued-cmp002', id:'epics_0',     flags:'spu', env:ued_epics_env, cmd:ea_cmd0+' -l 0x2 -k timebase=119M'},
 
 #  This one only updates on timeslot 1 (eventcode 11)
-# { host: 'drp-ued-cmp002', id:'fastpv_0',    flags:'spu', env:ued_epics_env, cmd:pva_cmd0+' -l 0x4 ca/KLYS:AS01:11:C4T1:PACT_FAST'},
+# { host: 'drp-ued-cmp002', id:'fastpv_0',    flags:'spu', env:ued_epics_env, cmd:pva_cmd0+' -l 0x4 ca/KLYS:AS01:11:C4T1:PACT_FAST -k timebase=119M'},
 ]
 
 #

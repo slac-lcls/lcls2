@@ -1,0 +1,45 @@
+if not platform: platform = '6'
+
+import os
+ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
+#epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
+epics_env = 'EPICS_PVA_ADDR_LIST=10.0.3.255'+' '+ld_lib_path
+hsd_epics_env = ld_lib_path
+
+conda_rel = os.environ['CONDA_DEFAULT_ENV']
+
+pyxpm_optsdb = '-P DAQ:NEH:XPM:%d'
+
+ioc_node = 'daq-tmo-hsd-01'
+pva_node = 'drp-neh-ctl002'
+hsd_epics = 'DAQ:TMO:HSD:1'
+hsd_ids = ['1b','1a','3e','3d','5e','da','b2']
+
+procmgr_config = []
+iport = 29071
+for hsd in hsd_ids:
+    for ch in ['a','b']:
+        procmgr_config.append({host:pva_node, id:'hsdpvs_{:}_{:}'.format(hsd,ch), port:'%d'%iport, flags:'s', conda:conda_rel, env:hsd_epics_env, cmd:'hsdpvs -P {:}_{:}:{:}'.format(hsd_epics,hsd.upper(),ch.upper())})
+        iport += 1
+
+for hsd in hsd_ids:
+    procmgr_config.append({host:ioc_node, id:'hsdioc_{:}'.format(hsd), port:'%d'%iport, flags:'s', conda:conda_rel, env:hsd_epics_env, cmd:'hsd134PVs -P {:}_{:} -d /dev/pcie_adc_{:}'.format(hsd_epics,hsd.upper(),hsd)})
+    iport += 1
+
+#  Map of HSD connections
+#  hsd_0  1B:A   drp-neh-cmp020:0   OK
+#  hsd_1  1B:B   drp-neh-cmp020:4   no conn  [RxPwr at DRP OK] [3 lanes OK]
+#  hsd_2  1A:A   drp-neh-cmp017:0   OK
+#  hsd_3  1A:B   drp-neh-cmp017:4   OK [PGP lane 1 intermittent error]
+#  hsd_4  3E:A   drp-neh-cmp019:4   OK
+#  hsd_7  3E:B   drp-neh-cmp018:0   OK (??)
+#  hsd_6  3D:A   drp-neh-cmp021:4   OK
+#  hsd_5  3D:B   drp-neh-cmp018:4   OK
+#  hsd_8  5E:A   drp-neh-cmp022:0   OK
+#  hsd_9  5E:B   drp-neh-cmp022:4   OK
+#  hsd_10 DA:B   drp-neh-cmp024:0   OK
+#  hsd_11 DA:A   drp-neh-cmp024:4   OK
+#  hsd_12 B2:A   drp-neh-cmp021:0   OK
+#  hsd_13 B2:B   drp-neh-cmp019:0   OK
+#  
+# hsdpva DAQ:TMO:HSD:1_1B:A DAQ:TMO:HSD:1_1B:B DAQ:TMO:HSD:1_1A:A DAQ:TMO:HSD:1_1A:B DAQ:TMO:HSD:1_3E:A DAQ:TMO:HSD:1_3E:B DAQ:TMO:HSD:1_3D:A DAQ:TMO:HSD:1_3D:B DAQ:TMO:HSD:1_5E:A DAQ:TMO:HSD:1_5E:B DAQ:TMO:HSD:1_DA:A DAQ:TMO:HSD:1_DA:B DAQ:TMO:HSD:1_B2:A DAQ:TMO:HSD:1_B2:B
