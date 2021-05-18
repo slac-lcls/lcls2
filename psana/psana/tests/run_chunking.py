@@ -15,15 +15,8 @@ def run_test_chunking():
         recvbuf = np.empty([size, 1], dtype='i')
 
     run = next(ds.runs())
-    det = run.Detector('_NEW_CHUNK_ID_S00')
     for i, evt in enumerate(run.events()):
         sendbuf += 1
-        new_chunk_id = det(evt)
-        if evt._nanoseconds < 15:
-            assert new_chunk_id == None
-        else:
-            assert new_chunk_id == 1
-
 
     comm.Gather(sendbuf, recvbuf, root=0)
     if rank == 0:
