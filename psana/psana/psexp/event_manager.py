@@ -126,12 +126,11 @@ class EventManager(object):
                 if d.service() == TransitionId.L1Accept and self.dm.n_files > 0:
                     i_first_L1 = i_evt
                     self._get_bd_offset_and_size(d, current_bd_offsets, i_evt, i_smd, i_first_L1)
-                elif d.service() == TransitionId.SlowUpdate and hasattr(d, 'epics'):
+                elif d.service() == TransitionId.SlowUpdate and hasattr(d, 'chunkinfo'):
                     # We only support chunking on bigdata
                     if self.dm.n_files > 0: 
                         stream_id = self.dm.get_stream_id(i_smd)
-                        epics_var = f'_NEW_CHUNK_ID_S{str(stream_id).zfill(2)}'
-                        _chunk_ids = [getattr(d.epics[seg_id].raw, epics_var) for seg_id in d.epics if hasattr(d.epics[seg_id].raw, epics_var)]
+                        _chunk_ids = [getattr(d.chunkinfo[seg_id].chunkinfo, 'chunkid') for seg_id in d.chunkinfo]
                         if _chunk_ids: self.new_chunk_id_array[i_evt, i_smd] = _chunk_ids[0] # there must be only one unique epics var
             
             offset += smd_aux_sizes[i_smd]            
