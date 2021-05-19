@@ -151,7 +151,7 @@ def idFoundInList(id, substrings):
 #
 def deduce_platform(configfilename):
     rv = -1   # return -1 on error
-    cc = {'platform': None, 'procmgr_config': None, 'TESTRELDIR': None,
+    cc = {'platform': None, 'procmgr_config': None, 'TESTRELDIR': None, 'CONDA_PREFIX': os.environ['CONDA_PREFIX'],
           'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host', '__file__':configfilename,
           'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': {}}
     try:
@@ -172,7 +172,7 @@ def deduce_platform2(configfilename, platform=None):
     platform_rv = -1   # return -1 on error
     macro_rv = {}
     testreldir_rv = ''
-    cc = {'platform': platform, 'procmgr_config': None, 'TESTRELDIR': '',
+    cc = {'platform': platform, 'procmgr_config': None, 'TESTRELDIR': '', 'CONDA_PREFIX': os.environ['CONDA_PREFIX'],
           'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host', '__file__':configfilename,
           'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': {}}
     try:
@@ -393,7 +393,7 @@ class ProcMgr:
 
         configlist = []         # start out with empty list
 
-        config = {'platform': repr(self.PLATFORM), 'procmgr_config': None, 'TESTRELDIR': None,
+        config = {'platform': repr(self.PLATFORM), 'procmgr_config': None, 'TESTRELDIR': None, 'CONDA_PREFIX': os.environ['CONDA_PREFIX'],
                   'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host', '__file__':configfilename,
                   'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': procmgr_macro}
         try:
