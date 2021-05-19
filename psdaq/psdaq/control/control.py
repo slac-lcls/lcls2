@@ -1045,6 +1045,8 @@ class CollectionManager():
         if 'meb' in active_state:
             for i, node in enumerate(active_state['meb']):
                 self.cmstate['meb'][node]['meb_id'] = i
+        else:
+            self.report_warning('ami NOT supported in absence of MEB')
 
         logging.debug('cmstate after alloc:\n%s' % self.cmstate)
 
@@ -1465,10 +1467,11 @@ class CollectionManager():
                         self.cmstate[level] = {}
                     id = answer['header']['sender_id']
                     self.cmstate[level][id] = item
-                    if level == 'drp':
+                    if level == 'drp' or level == 'meb':
                         self.cmstate[level][id]['hidden'] = 0
                     else:
                         self.cmstate[level][id]['hidden'] = 1
+                    logging.debug('rollcall: responder (%s) in newfound_set = %s' % (newfound_set, responder in newfound_set))
                     if self.bypass_activedet:
                         # active detectors file disabled: default to active=1
                         self.cmstate[level][id]['active'] = 1
@@ -1476,14 +1479,15 @@ class CollectionManager():
                             self.cmstate[level][id]['det_info'] = {}
                             self.cmstate[level][id]['det_info']['readout'] = self.platform
                     elif responder in newfound_set:
-                        # new detector + active detectors file enabled: default to active=0
-                        if level == 'drp':
+                        # new detector or meb + active detectors file enabled: default to active=0
+                        if level == 'drp' or level == 'meb':
                             self.cmstate[level][id]['active'] = 0
                             self.report_warning('rollcall: %s NOT selected for data collection' % responder)
-                            self.cmstate[level][id]['det_info'] = {}
-                            self.cmstate[level][id]['det_info']['readout'] = self.platform
+                            if level == 'drp':
+                                self.cmstate[level][id]['det_info'] = {}
+                                self.cmstate[level][id]['det_info']['readout'] = self.platform
                         else:
-                            # not a detector: default to active=1
+                            # neither detector nor meb: default to active=1
                             self.cmstate[level][id]['active'] = 1
                     else:
                         # copy values from active detectors file
