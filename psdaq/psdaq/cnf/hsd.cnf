@@ -37,8 +37,8 @@ for hsd in hsd_ids:
 #  hsd_5  3D:B   drp-neh-cmp018:4   OK
 #  hsd_8  5E:A   drp-neh-cmp022:0   OK
 #  hsd_9  5E:B   drp-neh-cmp022:4   OK
-#  hsd_10 DA:B   drp-neh-cmp024:0   OK
-#  hsd_11 DA:A   drp-neh-cmp024:4   OK
+#  hsd_10 DA:B   drp-neh-cmp024:4   OK
+#  hsd_11 DA:A   drp-neh-cmp024:0   OK
 #  hsd_12 B2:A   drp-neh-cmp021:0   OK
 #  hsd_13 B2:B   drp-neh-cmp019:0   OK
 #  
