@@ -1471,7 +1471,7 @@ class CollectionManager():
                         self.cmstate[level][id]['hidden'] = 0
                     else:
                         self.cmstate[level][id]['hidden'] = 1
-                    logging.debug('rollcall: responder (%s) in newfound_set = %s' % (newfound_set, responder in newfound_set))
+                    logging.debug('rollcall: responder (%s) in newfound_set = %s' % (responder, responder in newfound_set))
                     if self.bypass_activedet:
                         # active detectors file disabled: default to active=1
                         self.cmstate[level][id]['active'] = 1
