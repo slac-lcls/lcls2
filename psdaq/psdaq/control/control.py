@@ -14,6 +14,7 @@ import logging
 from psalg.utils.syslog import SysLog
 import string
 from p4p.client.thread import Context
+import epics
 from threading import Thread, Event, Condition
 import dgramCreate as dc
 from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_msg, step_msg, \
@@ -45,7 +46,8 @@ class RunParams:
         self.pva = pva
         self.dirname = os.path.dirname(path)
         self.fileSet = set()
-        self.pvSet = set()
+        self.pvaList = []
+        self.caList = []
 
     def updateFileSet(self, fileSet):
         logging.debug(f"RunParams updateFileSet({fileSet})")
@@ -71,7 +73,8 @@ class RunParams:
 
     def updatePvSet(self):
         logging.debug("RunParams updatePvSet()")
-        found = set()
+        pvaFound = []
+        caFound = []
         desc = None
         for ff in self.fileSet:
             try:
@@ -91,13 +94,22 @@ class RunParams:
                             continue
                         else:
                             # PV name
-                            name = rawline.strip()
-                            logging.debug(f'updatePvSet(): name={name} desc={desc}')
-                            found.add(PvInfo(name, desc))
+                            # PV names may be followed by a provider type (ca or pva), else ca is used
+                            nnn = rawline.strip().split()
+                            name = nnn[0]
+                            if len(nnn) == 2 and nnn[1] == 'pva':
+                                # pva...
+                                pvaFound.append(PvInfo(name, desc))
+                                logging.debug(f'PV: name=\'{name}\' desc=\'{desc}\' provider=\'pva\'')
+                            else:
+                                # ca...
+                                caFound.append(PvInfo(name, desc))
+                                logging.debug(f'PV: name=\'{name}\' desc=\'{desc}\' provider=\'ca\'')
             except Exception as ex:
                 logging.error('updatePvSet() Exception: %s' % ex)
-        logging.debug(f"RunParams updatePvSet(): found={found}")
-        self.pvSet = found
+        logging.debug(f"RunParams updatePvSet(): pvaFound={pvaFound} caFound={caFound}")
+        self.pvaList = pvaFound
+        self.caList = caFound
         return
 
     def configure(self):
@@ -127,32 +139,34 @@ class RunParams:
         logging.debug(f"RunParams configure(): fileSet={self.fileSet}")
         if len(self.fileSet) > 0:
             self.updatePvSet()
-        logging.debug(f"RunParams configure(): pvSet={self.pvSet}")
+        logging.debug(f"RunParams configure(): pvaList={self.pvaList} caList={self.caList}")
         self.recordedExperiments = set()    # updated in beginrun
 
     def unconfigure(self):
         logging.debug("RunParams unconfigure()")
         self.fileSet = set()
-        self.pvSet = set()
+        self.pvaList = []
+        self.caList = []
 
     def beginrun(self, experiment_name):
+        logging.debug("mmm")
         logging.debug(f"RunParams beginrun() experiment_name={experiment_name}")
-        inCount = len(self.pvSet)
+        inCount = len(self.pvaList) + len(self.caList)
         errorCount = 0
         params = {}
         param_descs = {}
 
         if not experiment_name in self.recordedExperiments:
             # gather PV run parameter descriptions
-            for ppp in self.pvSet:
+            for ppp in self.pvaList + self.caList:
                 desc = ppp.get_desc()
                 param_descs[ppp.get_name()] = desc
             self.recordedExperiments.add(experiment_name)
 
         logging.debug(f"RunParams: param_descs = {param_descs}")
 
-        # gather PV run parameters
-        for ppp in self.pvSet:
+        # gather pva run parameters
+        for ppp in self.pvaList:
             name = ppp.get_name()
             logging.debug(f"reading PV {name}")
             try:
@@ -164,6 +178,15 @@ class RunParams:
                     break
             else:
                 params[name] = value.pop()
+
+        # gather ca run parameters
+        nameList = []
+        for ppp in self.caList:
+            nameList.append(ppp.get_name())
+        valueList = epics.caget_many(nameList)
+        for name, value in zip(nameList, valueList):
+            if value is not None:
+                params[name] = value
 
         # gather detector run parameters
         for level, item in self.collection.cmstate_levels().items():
