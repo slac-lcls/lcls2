@@ -166,18 +166,15 @@ class RunParams:
         logging.debug(f"RunParams: param_descs = {param_descs}")
 
         # gather pva run parameters
+        nameList = []
         for ppp in self.pvaList:
-            name = ppp.get_name()
-            logging.debug(f"reading PV {name}")
-            try:
-                value = self.pva.pv_get(name)
-            except Exception as ex:
-                self.collection.report_error(f"failed to read PV {name}")
-                errorCount += 1
-                if errorCount > 1:
-                    break
+            nameList.append(ppp.get_name())
+        valueList = self.pva.pv_get(nameList)
+        for name, value in zip(nameList, valueList):
+            if isinstance(value, TimeoutError):
+                self.collection.report_error(f"failed to read PVA PV {name}")
             else:
-                params[name] = value.pop()
+                params[name] = value
 
         # gather ca run parameters
         nameList = []
@@ -185,7 +182,9 @@ class RunParams:
             nameList.append(ppp.get_name())
         valueList = epics.caget_many(nameList)
         for name, value in zip(nameList, valueList):
-            if value is not None:
+            if value is None:
+                self.collection.report_error(f"failed to read CA PV {name}")
+            else:
                 params[name] = value
 
         # gather detector run parameters
@@ -419,15 +418,15 @@ class DaqPVA():
     #
     # DaqPVA.pv_get -
     #
-    # Return a list of PV values, or throw exception on error.
+    # Return a list of PV values or exceptions.
     #
     def pv_get(self, pvList):
         if pvList is None:
             retval = []
         elif isinstance(pvList, list):
-            retval = self.ctxt.get(pvList)
+            retval = self.ctxt.get(pvList, throw=False)
         else:
-            retval = self.ctxt.get([pvList])
+            retval = self.ctxt.get([pvList], throw=False)
         logging.debug(f"DaqPVA.pv_get({pvList}) = {retval}")
         return retval
 
