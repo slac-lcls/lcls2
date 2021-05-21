@@ -100,6 +100,17 @@ EpixQuad::EpixQuad(Parameters* para, MemPool* pool) :
     m_env_empty   (true)
 {
     virtChan = 0;
+    if (para->kwargs.find("timebase")!=para->kwargs.end()) {
+        PyObject* pDict = _check(PyModule_GetDict(m_module));
+        char func_name[64];
+        sprintf(func_name,"%s_timebase",m_para->detType.c_str());
+        PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
+
+        // returns new reference
+        PyObject* mybytes = _check(PyObject_CallFunction(pFunc, "s", para->kwargs["timebase"].c_str()));
+        Py_DECREF(mybytes);
+    }
+
     _init(para->detName.c_str());  // an argument is required here
 }
 

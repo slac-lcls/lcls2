@@ -4,7 +4,6 @@ from psdaq.configdb.typed_json import cdict
 from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
 import rogue
-#import epix_l2sidaq
 import epix
 import ePixQuad
 import lcls2_pgp_pcie_apps
@@ -14,6 +13,7 @@ import os
 import numpy as np
 import IPython
 from collections import deque
+import logging
 
 base = None
 pv = None
@@ -23,6 +23,7 @@ group = None
 ocfg = None
 segids = None
 seglist = [0,1,2,3,4]
+timebase = "186M"
 
 def mode(a):
     uniqueValues = np.unique(a).tolist()
@@ -44,7 +45,7 @@ def retry(cmd,val):
         try:
             cmd(val)
         except Exception as e:
-            print(f'Try {itry} of {cmd}({val}) failed.')
+            logging.warning(f'Try {itry} of {cmd}({val}) failed.')
             if itry < 3:
                 itry+=1
                 continue
@@ -73,7 +74,7 @@ def apply_dict(pathbase,base,cfg):
                 try:
                     my_queue.appendleft([path+"."+i,depth+1,rogue_node.nodes[k],configdb_node[i]])
                 except KeyError:
-                    print('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
+                    logging.warning('Lookup failed for node [{:}] in path [{:}]'.format(i,path))
 
         #  Apply
         if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not pathbase ):
@@ -83,9 +84,9 @@ def apply_dict(pathbase,base,cfg):
                 ('Saci3' in path and 'Preamp' in path) or
                 ('Saci3' in path and 'MonostPulser' in path) or
                 ('Saci3' in path and 'PulserDac' in path)):
-                print(f'NOT setting {path} to {configdb_node}')
+                logging.info(f'NOT setting {path} to {configdb_node}')
             else:
-                print(f'Setting {path} to {configdb_node}')
+                logging.info(f'Setting {path} to {configdb_node}')
                 retry(rogue_node.set,configdb_node)
 
 #
@@ -94,7 +95,7 @@ def apply_dict(pathbase,base,cfg):
 def pixel_mask_square(value0,value1,spacing,position):
     ny,nx=352,384;
     if position>=spacing**2:
-        print('position out of range')
+        logging.error('position out of range')
         position=0;
     out=np.zeros((ny,nx),dtype=np.int)+value0
     position_x=position%spacing; position_y=position//spacing
@@ -108,7 +109,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
     global base
     global pv
     global lane
-    print('epixquad_init')
+    logging.debug('epixquad_init')
 
     base = {}
 
@@ -146,10 +147,18 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
     base['cam'] = cbase
 
     epixquad_unconfig(base)
-    pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(1)
-    pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSel.set(1)
-    pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
 
+    if timebase=="119M":
+        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.set(1)
+        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(0)
+        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
+        base['period'] = 1000/119. 
+    else:
+        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(1)
+        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
+        base['period'] = 7000/1300. # default 185.7 MHz clock
+
+    time.sleep(1)
     epixquad_internal_trigger(base)
 
     return base
@@ -166,6 +175,13 @@ def epixquad_init_feb(slane=None,schan=None):
         chan = int(schan)
 
 #
+#  Set the timebase for ns to clock tick computations
+#
+def epixquad_timebase(arg):
+    global timebase
+    timebase=arg
+
+#
 #  Set the local timing ID and fetch the remote timing ID
 #
 def epixquad_connect(base):
@@ -173,9 +189,9 @@ def epixquad_connect(base):
     if 'pci' in base:
         pbase = base['pci']
         rxId = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
-        print('RxId {:x}'.format(rxId))
+        logging.debug('RxId {:x}'.format(rxId))
         txId = timTxId('epixquad')
-        print('TxId {:x}'.format(txId))
+        logging.debug('TxId {:x}'.format(txId))
         pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
     else:
         rxId = 0xffffffff
@@ -206,10 +222,10 @@ def user_to_expert(base, cfg, full=False):
     if (hasUser and 'start_ns' in cfg['user']):
         partitionDelay = getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
         rawStart       = cfg['user']['start_ns']
-        triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
-        print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+        triggerDelay   = int(rawStart/base['period'] - partitionDelay*200)
+        logging.debug('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
         if triggerDelay < 0:
-            print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
+            logging.error('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
             raise ValueError('triggerDelay computes to < 0')
 
         d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer0.TriggerDelay']=triggerDelay
@@ -217,7 +233,7 @@ def user_to_expert(base, cfg, full=False):
     if (hasUser and 'gate_ns' in cfg['user']):
         triggerWidth = int(cfg['user']['gate_ns']/10)
         if triggerWidth < 1:
-            print('triggerWidth {} ({} ns)'.format(triggerWidth,cfg['user']['gate_ns']))
+            logging.error('triggerWidth {} ({} ns)'.format(triggerWidth,cfg['user']['gate_ns']))
             raise ValueError('triggerWidth computes to < 1')
 
         d[f'expert.EpixQuad.AcqCore.AsicAcqWidth']=triggerWidth
@@ -239,7 +255,7 @@ def user_to_expert(base, cfg, full=False):
             a = a.reshape(-1).tolist()
             for i in range(16):
                 d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
-        print('pixel_map len {}'.format(len(a)))
+        logging.debug('pixel_map len {}'.format(len(a)))
         d['user.pixel_map'] = a
         pixel_map_changed = True
 
@@ -267,7 +283,7 @@ def config_expert(base, cfg, writePixelMap=True):
 
     #  Important that Asic IsEn is True while configuring and false when running
     for i in asics:
-        print(f'Enabling ASIC {i}')
+        logging.debug(f'Enabling ASIC {i}')
         saci = cbase.Epix10kaSaci[i]
         retry(saci.enable.set,True)
         retry(saci.IsEn.set,True)
@@ -275,6 +291,8 @@ def config_expert(base, cfg, writePixelMap=True):
     if ('expert' in cfg and 'EpixQuad' in cfg['expert']):
         epixQuad = cfg['expert']['EpixQuad'].copy()
         #  Add write protection word to upper range
+        if 'AcqCore' in epixQuad and 'AsicRoClkT' in epixQuad['AcqCore']:
+            epixQuad['AcqCore']['AsicRoClkT'] |= 0xaaaa0000
         if 'AcqCore' in epixQuad and 'AsicRoClkHalfT' in epixQuad['AcqCore']:
             epixQuad['AcqCore']['AsicRoClkHalfT'] |= 0xaaaa0000
         if 'RdoutCore' in epixQuad and 'AdcPipelineDelay' in epixQuad['RdoutCore']:
@@ -347,10 +365,10 @@ def config_expert(base, cfg, writePixelMap=True):
                                 saci.ColCounter(bankOffset | (mcol%48))
                                 saci.WritePixelData(pixelConfigMap[i,y,x])
 
-            print('SetAsicsMatrix complete')
+            logging.debug('SetAsicsMatrix complete')
         else:
             print('writePixelMap but no new map')
-            print(cfg)
+            logging.debug(cfg)
 
     #  Important that Asic IsEn is True while configuring and false when running
     for i in asics:
@@ -361,7 +379,7 @@ def config_expert(base, cfg, writePixelMap=True):
     #  Enable triggers to continue monitoring
     epixquad_internal_trigger(base)
 
-    print('config_expert complete')
+    logging.debug('config_expert complete')
 
 def reset_counters(base):
     # Reset the timing counters
@@ -447,7 +465,7 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     result = []
     for i in seglist:
-        print('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
+        logging.debug('json seg {}  detname {}'.format(i, scfg[i]['detName:RO']))
         result.append( json.dumps(scfg[i]) )
 
     return result
@@ -462,7 +480,7 @@ def epixquad_unconfig(base):
 #  in response to the scan parameters
 #
 def epixquad_scan_keys(update):
-    print('epixquad_scan_keys')
+    logging.debug('epixquad_scan_keys')
     global ocfg
     global base
     global segids
@@ -509,7 +527,7 @@ def epixquad_scan_keys(update):
 #  Return the set of configuration updates for a scan step
 #
 def epixquad_update(update):
-    print('epixquad_update')
+    logging.debug('epixquad_update')
     global ocfg
     global base
     # extract updates
@@ -557,7 +575,7 @@ def epixquad_update(update):
     for i in seglist:
         result.append( json.dumps(scfg[i]) )
 
-    print('update complete')
+    logging.debug('update complete')
 
     return result
 
@@ -573,18 +591,18 @@ def _checkADCs():
     while True:
         time.sleep(0.001)
         if cbase.SystemRegs.AdcTestFailed.get()==1:
-            print('Adc Test Failed - restarting!')
+            logging.warning('Adc Test Failed - restarting!')
             cbase.SystemRegs.AdcReqStart.set(1)
             time.sleep(1.e-6)
             cbase.SystemRegs.AdcReqStart.set(0)
         else:
             tmo += 1
             if tmo > 1000:
-                print('Adc Test Timedout')
+                logging.warning('Adc Test Timedout')
                 return 1
         if cbase.SystemRegs.AdcTestDone.get()==1:
             break
-    print(f'Adc Test Done after {tmo} cycles')
+    logging.debug(f'Adc Test Done after {tmo} cycles')
 
     epixquad_internal_trigger(base)
 
