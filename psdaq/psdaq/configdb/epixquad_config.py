@@ -23,7 +23,6 @@ group = None
 ocfg = None
 segids = None
 seglist = [0,1,2,3,4]
-timebase = "186M"
 
 def mode(a):
     uniqueValues = np.unique(a).tolist()
@@ -105,7 +104,7 @@ def pixel_mask_square(value0,value1,spacing,position):
 #
 #  Initialize the rogue accessor
 #
-def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
+def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"):
     global base
     global pv
     global lane
@@ -146,23 +145,24 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
     cbase.__enter__()
     base['cam'] = cbase
 
+    logging.info('epixquad_unconfig')
     epixquad_unconfig(base)
 
+    pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.set(1)
     if timebase=="119M":
-        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.set(1)
-        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(0)
-        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
+        logging.info('Using timebase 119M')
         base['clk_period'] = 1000/119. 
         base['msg_period'] = 238
+        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(0)
     else:
-        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(1)
-        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
+        logging.info('Using timebase 186M')
         base['clk_period'] = 7000/1300. # default 185.7 MHz clock
         base['msg_period'] = 200
+        pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(1)
+    pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
 
     time.sleep(1)
     epixquad_internal_trigger(base)
-
     return base
 
 #
@@ -175,13 +175,6 @@ def epixquad_init_feb(slane=None,schan=None):
         lane = int(slane)
     if schan is not None:
         chan = int(schan)
-
-#
-#  Set the timebase for ns to clock tick computations
-#
-def epixquad_timebase(arg):
-    global timebase
-    timebase=arg
 
 #
 #  Set the local timing ID and fetch the remote timing ID
@@ -574,7 +567,7 @@ def epixquad_update(update):
             scfg[seg+1] = top.typed_json()
 
     result = []
-    for i in seglist:
+    for i in range(len(scfg)):
         result.append( json.dumps(scfg[i]) )
 
     logging.debug('update complete')

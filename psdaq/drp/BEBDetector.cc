@@ -75,11 +75,14 @@ void BEBDetector::_init(const char* arg)
       // returns new reference
 #define MLOOKUP(m,name,dflt) (m.find(name)==m.end() ? dflt : m[name].c_str())
       const char* xpmpv = MLOOKUP(m_para->kwargs,"xpmpv",0);
-      m_root = _check(PyObject_CallFunction(pFunc,"ssis",
+      const char* timebase = MLOOKUP(m_para->kwargs,"timebase","186M");
+
+      m_root = _check(PyObject_CallFunction(pFunc,"ssiss",
                                             arg,
                                             m_para->device.c_str(),
                                             m_para->laneMask,
-                                            xpmpv));
+                                            xpmpv,
+					    timebase));
     }
 
     {
