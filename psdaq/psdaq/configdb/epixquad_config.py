@@ -152,11 +152,13 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
         pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.set(1)
         pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(0)
         pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
-        base['period'] = 1000/119. 
+        base['clk_period'] = 1000/119. 
+        base['msg_period'] = 238
     else:
         pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(1)
         pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
-        base['period'] = 7000/1300. # default 185.7 MHz clock
+        base['clk_period'] = 7000/1300. # default 185.7 MHz clock
+        base['msg_period'] = 200
 
     time.sleep(1)
     epixquad_internal_trigger(base)
@@ -222,7 +224,7 @@ def user_to_expert(base, cfg, full=False):
     if (hasUser and 'start_ns' in cfg['user']):
         partitionDelay = getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
         rawStart       = cfg['user']['start_ns']
-        triggerDelay   = int(rawStart/base['period'] - partitionDelay*200)
+        triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
         logging.debug('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
         if triggerDelay < 0:
             logging.error('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
