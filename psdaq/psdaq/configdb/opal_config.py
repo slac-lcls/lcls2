@@ -32,7 +32,7 @@ def dict_compare(new,curr,result):
             else:
                 result[k] = new[k]
 
-def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None):
+def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"):
 
     global pv
     global cl
