@@ -249,6 +249,7 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   //  EventInfo is in subframe 3
   const EventInfo& info = *reinterpret_cast<const EventInfo*>(subframes[3].data());
 
+
   bool beam = true;
   for(unsigned i=0; i<m_eventcodes_beam_incl.size(); i++)
     beam &= info.eventCode(m_eventcodes_beam_incl[i]);
@@ -449,6 +450,7 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
     m_cut[_NOFITS]++;
     return INVALID;
   }
+
   return VALID;
 }
 
