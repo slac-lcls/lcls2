@@ -65,9 +65,9 @@ procmgr_config = [
 # { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -r /dev/null'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- { host: 'drp-ued-cmp001', id:'teb0',        flags:'spux',                cmd:teb_cmd},
+ { host: 'drp-ued-cmp001', id:'teb0',        flags:'spu',                cmd:teb_cmd},
 
- { host: 'drp-ued-cmp001', id:'epixquad_0',  flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epixquad'},
+ { host: 'drp-ued-cmp001', id:'epixquad_0',  flags:'spux', env:epics_env, cmd:drp_cmd0+' -l 0x1 -D epixquad -k timebase=119M'},
 
  { host: 'drp-ued-cmp002', id:'timing_0',    flags:'spu',                cmd:drp_cmd0+' -l 0x1 -D ts -k timebase=119M'},
 
