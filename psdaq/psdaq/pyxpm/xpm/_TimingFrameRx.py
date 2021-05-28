@@ -21,9 +21,17 @@
 import pyrogue as pr
 import time 
 
+#TimingBitField = pr.RemoteVariable
+
+#class TimingBitField(pr.RemoteVariable):
+#
+#    def __init__(self, name, description, offset, bitSize, bitOffset,**kwargs):
+#        super().__init__(name=name, description=description, offset=offset, bitSize=bitSize, bitOffset=bitOffset,**kwargs)
+
 class TimingBitField(object):
 
     _block = 0
+    _set = None
 
     def __init__(  self, name, description, offset, bitSize, bitOffset, **kwargs):
         self._name      = name
@@ -34,6 +42,11 @@ class TimingBitField(object):
     def get(self):
         return (self._block >> (8*self._offset+self._bitOffset))&((1<<self._bitSize)-1)
 
+    def set(self,v):
+        w = self._block & ~(((1<<self._bitSize)-1) << (8*self._offset+self._bitOffset))
+        w |= v << (8*self._offset+self._bitOffset)
+        self._set(w)
+        
 #pr.RemoteVariable replaced by TimingBitField
 
 class TimingFrameRx(pr.Device):
@@ -255,10 +268,10 @@ class TimingFrameRx(pr.Device):
         ##############################
         @self.command(name="C_RxReset", description="Reset Rx Link",)
         def C_RxReset():
-            #self.RxReset.set(1)
-            #time.sleep(0.001)
-            #self.RxReset.set(0)    
-            print('C_RxReset not implemented')
+            self.RxReset.set(1)
+            time.sleep(0.001)
+            self.RxReset.set(0)    
+            #print('C_RxReset not implemented')
 
         @self.command(name="ClearRxCounters", description="Clear the Rx status counters",)
         def ClearRxCounters():
@@ -268,12 +281,29 @@ class TimingFrameRx(pr.Device):
             print('ClearRxCounters not implemented')
 
     def Dump(self):
+        print(self._name)
         for k,v in self._nodes.items():
             if hasattr(v,'get'):
+                print('{:} : {:}'.format(k,v.get()))
+
+#        self.update()
+#        txclk = -self.TxClkCount.get()
+#        rxclk = -self.RxClkCount.get()
+#        sof   = -self.sofCount  .get()
+#        time.sleep(1)
+#        self.update()
+#        txclk += self.TxClkCount.get()
+#        rxclk += self.RxClkCount.get()
+#        sof   += self.sofCount  .get()
+#        print('txclk {:}  rxclk {:}  sof {:}'.format(txclk*16.e-6,rxclk*16.e-6,sof))
+        for k in vars(self):
+            v = getattr(self,k)
+            if hasattr(v,'_block'):
                 print('{:} : {:}'.format(k,v.get()))
 
     def addField(self,node):
         setattr(self,node._name,node)
         
     def update(self):
+        TimingBitField._set = self.block.set
         TimingBitField._block = self.block.get()

@@ -530,6 +530,7 @@ class PVCtrls(object):
             self._pv_amcDumpPLL.append(pv)
 
         self._cu    = CuGenCtrls(name+':XTPG', xpm, dbinit=init)
+        #self._cu   = None
 
         self._group = GroupCtrls(name, app, stats, init=init)
 

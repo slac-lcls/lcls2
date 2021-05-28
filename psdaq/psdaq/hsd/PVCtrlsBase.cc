@@ -135,20 +135,20 @@ namespace Pds {
         fex._base[0].setGate(PVGET(raw_start),
                              PVGET(raw_gate));
         fex._base[0].setFull(fullSize,fullEvt);
-        fex._base[0]._prescale=PVGET(raw_prescale)-1;
+        fex._base[0].setPrescale(PVGET(raw_prescale)-1);
       }
       if (PVGET(fex_prescale)) {
         streamMask |= (1<<1);
         fex._base[1].setGate(PVGET(fex_start),
                              PVGET(fex_gate));
         fex._base[1].setFull(fullSize,fullEvt);
-        fex._base[1]._prescale=PVGET(fex_prescale)-1;
+        fex._base[1].setPrescale(PVGET(fex_prescale)-1);
         fex._stream[1].parms[0].v=PVGET(fex_ymin);
         fex._stream[1].parms[1].v=PVGET(fex_ymax);
         fex._stream[1].parms[2].v=PVGET(fex_xpre);
         fex._stream[1].parms[3].v=PVGET(fex_xpost);
       }
-      fex._streams= streamMask | (fullEvt<<4);
+      fex._streams= streamMask | (fullEvt<<8);
     
 #define PRINT_FEX_FIELD(title,arg,op) {         \
         printf("%12.12s:",title);               \
@@ -160,11 +160,11 @@ namespace Pds {
       printf("\n");                              
 
       if (streamMask) {
-        PRINT_FEX_FIELD("GateBeg", _gate, &0x3fff);
-        PRINT_FEX_FIELD("GateLen", _gate, >>16&0x3fff);
-        PRINT_FEX_FIELD("FullRow", _full, &0xffff);
-        PRINT_FEX_FIELD("FullEvt", _full, >>16&0x1f);
-        PRINT_FEX_FIELD("Prescal", _prescale, &0x3ff);
+        PRINT_FEX_FIELD("GateBeg", _reg[0], &0xffffffff);
+        PRINT_FEX_FIELD("GateLen", _reg[1], &0xfffff);
+        PRINT_FEX_FIELD("FullRow", _reg[2], &0xffff);
+        PRINT_FEX_FIELD("FullEvt", _reg[2], >>16&0x1f);
+        PRINT_FEX_FIELD("Prescal", _reg[1], >>20&0x3ff);
       }
 #undef PRINT_FEX_FIELD
 

@@ -8,7 +8,7 @@
 #include "TprCore.hh"
 #include "Fmc134Ctrl.hh"
 
-#include "psdaq/mmhw/TriggerEventManager.hh"
+#include "psdaq/mmhw/TriggerEventManager2.hh"
 
 #include "psdaq/epicstools/EpicsPVA.hh"
 using Pds_Epics::EpicsPVA;
