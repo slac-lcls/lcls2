@@ -11,13 +11,14 @@
 #include "OptFmc.hh"
 
 #include "psdaq/mmhw/Pgp3Axil.hh"
-#include "psdaq/mmhw/TriggerEventManager.hh"
+#include "psdaq/mmhw/TriggerEventManager2.hh"
 #include "psdaq/mmhw/Xvc.hh"
 
 using Pds::Mmhw::AxiVersion;
 using Pds::Mmhw::Pgp3Axil;
 using Pds::Mmhw::RingBuffer;
-using Pds::Mmhw::TriggerEventManager;
+using Pds::Mmhw::TriggerEventManager2;
+using Pds::Mmhw::TriggerEventBuffer;
 
 #include <string>
 #include <unistd.h>
@@ -43,8 +44,9 @@ namespace Pds {
       ModuleBase  base                ; // 0
       //  App registers
       ChipAdcCore chip[2]             ; // 0x80000, 0x82000
-      TriggerEventManager tem         ; // 0x84000
-      uint32_t    rsvd_88000[(0x4000-sizeof(tem))>>2];
+        //      TriggerEventManager tem         ; // 0x84000
+        //      uint32_t    rsvd_88000[(0x4000-sizeof(tem))>>2];
+      uint32_t    rsvd_84000[0x4000>>2];
       Fmc134Ctrl  fmc_ctrl            ; // 0x88000
       uint32_t    rsvd_88800[(0x800-sizeof(fmc_ctrl))>>2];
       Mmcm        mmcm                ; // 0x88800
@@ -55,6 +57,9 @@ namespace Pds {
       vuint32_t   qsfp1_i2c[0x1000>>2]; // 0x9A000
       uint32_t    surf_jesd0[0x800>>2]; // 0x9B000
       uint32_t    surf_jesd1[0x800>>2]; // 0x9B800
+      uint32_t    rsvd_9C000[0x4000>>2];
+      TriggerEventManager2 tem         ; // 0xA0000
+      uint32_t    rsvd_tem[2*sizeof(TriggerEventBuffer)>>2];
     };
   };
 };
@@ -69,7 +74,7 @@ Module134* Module134::create(int fd)
     return 0;
   }
 
-  printf("Module134 mapped at %p\n", ptr);
+  printf("Module134 mapped at %p with size %zx\n", ptr, sizeof(Module134::PrivateData));
 
   Module134* m = new Module134;
   m->p = reinterpret_cast<Module134::PrivateData*>(ptr);
@@ -252,6 +257,7 @@ void Module134::dumpMap() const
   printf("Fmc134Ctrl     : 0x%lx\n", OFFS(fmc_ctrl));
   printf("mmcm           : 0x%lx\n", OFFS(mmcm));
   printf("Pgp            : 0x%lx\n", OFFS(pgp_reg[0]));
+  printf("Tem            : 0x%lx\n", OFFS(tem));
 #undef OFFS
 }
 
@@ -358,7 +364,7 @@ std::vector<Pgp*> Module134::pgp() {
   return v;
 }
 
-TriggerEventManager& Module134::tem() { return p->tem; }
+TriggerEventManager2& Module134::tem() { return p->tem; }
 
 Fmc134Ctrl& Module134::jesdctl() { return p->fmc_ctrl; }
 

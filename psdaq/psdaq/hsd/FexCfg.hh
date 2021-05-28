@@ -18,11 +18,16 @@ namespace Pds {
       public:
         StreamBase() {}
       public:
-        void setGate(unsigned begin, unsigned length) { _gate = (begin&0xffff) | (length<<16); }
-        void setFull(unsigned rows, unsigned events) { _full = (rows&0xffff) | (events<<16); }
+        void setGate(unsigned begin, unsigned length) { 
+          _reg[0] = begin;
+          _reg[1] = (_reg[1] & ~0xfffff) | (length & 0xfffff);
+        }
+        void setFull(unsigned rows, unsigned events) { 
+          _reg[2] = (rows&0xffff) | (events<<16); 
+        }
         void getFree(unsigned& rows, unsigned& events, unsigned& oflow) {
 #if 1   // machine check exception
-          unsigned v = _free;
+          unsigned v = _reg[3];
 #else
           unsigned v = 0;
 #endif 
@@ -30,11 +35,11 @@ namespace Pds {
           events = (v>>16)&0x1f;
           oflow  = (v>>24)&0xff;
         }
+        void setPrescale(unsigned prescale) {
+          _reg[1] = (_reg[1] & 0xfffff) | (prescale<<20);
+        }
       public:
-        vuint32_t _prescale;
-        vuint32_t _gate;
-        vuint32_t _full; 
-        vuint32_t _free;
+        vuint32_t _reg[4];
       } _base  [4];
 
       vuint32_t _rsvd_50[0xb0>>2];

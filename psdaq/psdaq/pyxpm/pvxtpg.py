@@ -2,6 +2,7 @@ import time
 from p4p.nt import NTScalar
 from p4p.server.thread import SharedPV
 from psdaq.pyxpm.pvhandler import *
+import logging
 
 provider = None
 lock     = None
@@ -114,6 +115,19 @@ class PVXTpg(object):
         provider = p
         global lock
         lock     = m
+
+        #  Sanity check first
+        #  Check input clock source for the board
+        if cuMode:
+            if xpm.CuTiming.RxLinkUp.get()==0:
+                logging.error("CuTiming not locked")
+                #raise RuntimeError("CuTiming not locked")
+        else:
+            if xpm.UsTiming.RxLinkUp.get()==0:
+                logging.error("CuTiming not locked")
+                #raise RuntimeError("UsTiming not locked")
+            else:
+                xpm.UsTiming.Dump()
 
         if bypassLock:
             print('Bypassing AMC PLL lock')

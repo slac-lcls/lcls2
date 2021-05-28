@@ -11,7 +11,7 @@
 #include "Jesd204b.hh"
 #include "TprCore.hh"
 
-#include "psdaq/mmhw/TriggerEventManager.hh"
+#include "psdaq/mmhw/TriggerEventManager2.hh"
 #include "psdaq/epicstools/EpicsPVA.hh"
 
 #include <algorithm>

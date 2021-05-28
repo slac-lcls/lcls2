@@ -138,14 +138,14 @@ namespace Pds {
       //      if ((reg.csr&0x10)==0) {
       if (1) {
         { MonBuf v;
-          v.freesz  = (fex._base[0]._free>> 0)&0xffff;
-          v.freeevt = (fex._base[0]._free>>16)&0x1f;
-          v.fifoof  = (fex._base[0]._free>>24)&0xff;
+          v.freesz  = (fex._base[0]._reg[3]>> 0)&0xffff;
+          v.freeevt = (fex._base[0]._reg[3]>>16)&0x1f;
+          v.fifoof  = (fex._base[0]._reg[3]>>24)&0xff;
           PVPUT(monRawBuf); }
         { MonBuf v;
-          v.freesz  = (fex._base[1]._free>> 0)&0xffff;
-          v.freeevt = (fex._base[1]._free>>16)&0x1f;
-          v.fifoof  = (fex._base[1]._free>>24)&0xff;
+          v.freesz  = (fex._base[1]._reg[3]>> 0)&0xffff;
+          v.freeevt = (fex._base[1]._reg[3]>>16)&0x1f;
+          v.fifoof  = (fex._base[1]._reg[3]>>24)&0xff;
           PVPUT(monFexBuf); }
       }
 

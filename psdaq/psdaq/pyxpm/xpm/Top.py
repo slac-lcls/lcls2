@@ -176,13 +176,15 @@ class Top(pr.Device):
             self.add(amc)
             self.amcs.append(amc)
 
-        self.add(timing.GthRxAlignCheck(
+#        self.add(timing.GthRxAlignCheck(
+        self.add(xpm.GthRxAlignCheck(
             memBase = self.srp,
             name   = 'UsGthRxAlign',
             offset = 0x0b000000,
         ))        
                        
-        self.add(timing.GthRxAlignCheck(
+#        self.add(timing.GthRxAlignCheck(
+        self.add(xpm.GthRxAlignCheck(
             memBase = self.srp,
             name   = 'CuGthRxAlign',
             offset = 0x0c000000,

@@ -8,6 +8,7 @@ from ._SfpI2c import *
 from ._SfpSummary import *
 from ._Si5317 import *
 from ._TimingFrameRx import *
+from ._GthRxAlignCheck import *
 from ._XpmApp import *
 from ._XpmPhase import *
 from ._XpmSequenceEngine import *
