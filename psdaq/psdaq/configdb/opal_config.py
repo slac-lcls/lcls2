@@ -37,12 +37,13 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"):
     global pv
     global cl
     global lm
+    global lane
     print('opal_init')
 
     myargs = { 'dev'         : dev,
                'pollEn'      : False,
                'initRead'    : True,
-               'camType'     : ['Opal1000'],
+               'camType'     : ['Opal1000','Opal1000','Opal1000','Opal1000'],
                'dataDebug'   : False,
                'enLclsII'    : True,
     }
@@ -71,13 +72,13 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"):
     time.sleep(0.1)
 
     lm=lanemask
+    lane = (lm&-lm).bit_length()-1
+    assert(lm==(1<<lane)) # check that lanemask only has 1 bit for opal
     return cl
 
 def opal_init_feb(slane=None,schan=None):
-    global lane
+    # cpo: ignore "slane" because lanemask is given to opal_init() above
     global chan
-    if slane is not None:
-        lane = int(slane)
     if schan is not None:
         chan = int(schan)
 
@@ -205,7 +206,7 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
     ocfg = cfg
 
-    if(cl.ClinkPcie.Hsio.PgpMon[0].RxRemLinkReady.get() != 1):
+    if(cl.ClinkPcie.Hsio.PgpMon[lane].RxRemLinkReady.get() != 1):
         raise ValueError(f'PGP Link is down' )
 
     # drain any data in the event pipeline
@@ -264,7 +265,7 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     config_expert(cl,cfg['expert'])
 
     cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
-    cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable.set(True)
+    cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[lane].MasterEnable.set(True)
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(False)
     getattr(cl.ClinkPcie.Application,appLane).EventBuilder.Blowoff.set(False)
 
