@@ -40,10 +40,13 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"):
     global lane
     print('opal_init')
 
+    lm=lanemask
+    lane = (lm&-lm).bit_length()-1
+    assert(lm==(1<<lane)) # check that lanemask only has 1 bit for opal
     myargs = { 'dev'         : dev,
                'pollEn'      : False,
                'initRead'    : True,
-               'camType'     : ['Opal1000','Opal1000','Opal1000','Opal1000'],
+               'laneConfig'  : {lane:'Opal1000'},
                'dataDebug'   : False,
                'enLclsII'    : True,
     }
@@ -71,9 +74,6 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"):
     cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
     time.sleep(0.1)
 
-    lm=lanemask
-    lane = (lm&-lm).bit_length()-1
-    assert(lm==(1<<lane)) # check that lanemask only has 1 bit for opal
     return cl
 
 def opal_init_feb(slane=None,schan=None):
