@@ -12,6 +12,7 @@
 #include "AxiBatcherParser.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/service/Json2Xtc.hh"
+#include "drp.hh"
 #include <unistd.h>
 #include <getopt.h>
 #include <time.h>
@@ -67,7 +68,7 @@ Dgram& createTransition(TransitionId::Value transId,
 
 unsigned dmaDest(unsigned lane, unsigned vc)
 {
-    return (lane<<8) | vc;
+    return (lane<<PGP_MAX_LANES) | vc;
 }
 
 void int_handler(int dummy)
@@ -263,7 +264,7 @@ int main(int argc, char* argv[])
 
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
-    for (unsigned i=0; i<4; i++) {
+    for (unsigned i=0; i<PGP_MAX_LANES; i++) {
         dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, channel));
     }
 

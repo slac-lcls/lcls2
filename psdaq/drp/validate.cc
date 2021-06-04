@@ -3,6 +3,7 @@
 #include <chrono>
 #include <iostream>
 #include <cstdio>
+#include "drp.hh"
 #include "DataDriver.h"
 
 #define MAX_RET_CNT_C 1000
@@ -16,7 +17,7 @@ struct DmaBuffer
 
 struct PGPEvent
 {
-    DmaBuffer buffers[4];
+    DmaBuffer buffers[PGP_MAX_LANES];
     // uint8_t bufferMask = 0;
     uint8_t counter = 0;
 };

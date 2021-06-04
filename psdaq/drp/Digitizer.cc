@@ -292,7 +292,7 @@ void Digitizer::event(XtcData::Dgram& dgram, PGPEvent* event)
     if ((timing_header->_opaque[1] & (1<<31))==0)  // check JESD status bit
       dgram.xtc.damage.increase(Damage::UserDefined);
 
-    for (int i=0; i<4; i++) {
+    for (int i=0; i<PGP_MAX_LANES; i++) {
         if (event->mask & (1 << i)) {
             data_size = event->buffers[i].size - sizeof(Pds::TimingHeader);
             if (data_size >= 1000000) {

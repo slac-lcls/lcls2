@@ -115,7 +115,7 @@ public:
         m_nodeId = drp.nodeId();
         uint8_t mask[DMA_MASK_SIZE];
         dmaInitMaskBytes(mask);
-        for (unsigned i=0; i<4; i++) {
+        for (unsigned i=0; i<PGP_MAX_LANES; i++) {
             if (para.laneMask & (1 << i)) {
                 logging::info("setting lane  %d", i);
                 dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, 0));
@@ -1203,7 +1203,7 @@ int main(int argc, char* argv[])
     }
 
     // Only one lane is supported by this DRP
-    if (std::bitset<8>(para.laneMask).count() != 1) {
+    if (std::bitset<PGP_MAX_LANES>(para.laneMask).count() != 1) {
         logging::critical("-l: lane mask must have only 1 bit set");
         return 1;
     }

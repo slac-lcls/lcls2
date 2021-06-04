@@ -18,7 +18,7 @@ using namespace Drp;
 bool checkPulseIds(const Detector* det, PGPEvent* event)
 {
     uint64_t pulseId = 0;
-    for (int i=0; i<4; i++) {
+    for (int i=0; i<PGP_MAX_LANES; i++) {
         if (event->mask & (1 << i)) {
             uint32_t index = event->buffers[i].index;
             const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
@@ -136,7 +136,7 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
     m_nodeId = det->nodeId;
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
-    for (int i=0; i<8; i++) {
+    for (int i=0; i<PGP_MAX_LANES; i++) {
         if (para.laneMask & (1 << i)) {
             uint32_t channel = i;
             uint32_t dest = dmaDest(channel, det->virtChan);
