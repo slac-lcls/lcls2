@@ -70,7 +70,7 @@ procmgr_config = [
  { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:50,  cmd:f'drp_udpencoder -l 0x8 -o {data_dir} -P {hutch} -d /dev/datadev_0 -C {collect_host}'},
 
 # { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 0 -C NOBEAM {auth} {url} -d {cdb}/configDB -r /dev/null -t trigger -S 1 -T 20000'},
- { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
+ { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
  { host: 'drp-neh-cmp013', id:'teb0',        flags:'spu',                cmd:task_set+'teb '+'-P '+hutch+' -C '+collect_host+' -M '+prom_dir},
@@ -83,6 +83,10 @@ procmgr_config = [
 
  # make transition buffer size large to accomodate a non-timestamped camera
  { host: 'drp-neh-cmp015', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4 -T 4000000'},
+
+ { host: 'drp-neh-cmp013', id:'rix_fim2_0',  flags:'spux',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x1'},
+ { host: 'drp-neh-cmp013', id:'rix_fim1_0',  flags:'spux',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR4K2:FIM:W8:02 -l 0x2'},
+ { host: 'drp-neh-cmp013', id:'rix_fim0_0',  flags:'spux',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K2:FIM:W8:01 -l 0x4'},
 
  #     Note: '-1' specifies fuzzy timestamping
  #           '-0' specifies no timestamp matching (-0 may have problems)
@@ -97,20 +101,9 @@ procmgr_config = [
 
 hsd_epics = 'DAQ:RIX:HSD:1'
 
-# Swapped hsd_5 and hsd_7. hsd_5 has a problem, we need to investigate when we have more time
-#  Map (host,hsd_segm,datadev,epicsPV)
 procmgr_hsd = [
-# {host:'drp-neh-cmp020', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
-# {host:'drp-neh-cmp017', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
-# {host:'drp-neh-cmp019', id:'hsd_4',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:A'},
-# {host:'drp-neh-cmp018', id:'hsd_7',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:B'},
-# {host:'drp-neh-cmp021', id:'hsd_6',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:A'},
-# {host:'drp-neh-cmp018', id:'hsd_5',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:B'},
-# {host:'drp-neh-cmp022', id:'hsd_8',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:A'},
-# {host:'drp-neh-cmp022', id:'hsd_9',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_5E:B'},
-# {host:'drp-neh-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:B'},
-# {host:'drp-neh-cmp021', id:'hsd_12', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:A'},
-# {host:'drp-neh-cmp019', id:'hsd_13', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:B'},
+ {host:'drp-neh-cmp023', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
+ {host:'drp-neh-cmp023', id:'hsd_1',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
 ]
 
 #procmgr_config.extend(procmgr_hsd)
