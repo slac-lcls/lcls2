@@ -138,8 +138,10 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det) :
     dmaInitMaskBytes(mask);
     for (int i=0; i<8; i++) {
         if (para.laneMask & (1 << i)) {
-            logging::info("setting lane  %d", i);
-            dmaAddMaskBytes(mask, dmaDest(i, det->virtChan));
+            uint32_t channel = i;
+            uint32_t dest = dmaDest(channel, det->virtChan);
+            logging::info("setting lane  %d, dest 0x%x", i, dest);
+            dmaAddMaskBytes(mask, dest);
         }
     }
     dmaSetMaskBytes(drp.pool.fd(), mask);
