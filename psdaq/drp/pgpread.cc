@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <AxisDriver.h>
 #include <stdlib.h>
+#include "drp.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "EventBatcher.hh"
 #include "xtcdata/xtc/Dgram.hh"
@@ -19,7 +20,7 @@ using namespace Drp;
 
 unsigned dmaDest(unsigned lane, unsigned vc)
 {
-    return (lane<<8) | vc;
+    return (lane<<PGP_MAX_LANES) | vc;
 }
 
 void int_handler(int dummy)
@@ -58,7 +59,7 @@ int main(int argc, char* argv[])
 
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
-    for (unsigned i=0; i<4; i++) {
+    for (unsigned i=0; i<PGP_MAX_LANES; i++) {
         dmaAddMaskBytes((uint8_t*)mask, dmaDest(i, virtChan));
     }
 

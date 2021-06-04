@@ -37,7 +37,8 @@ int main()
     }
     printf("dmaCount %u  dmaSize %u\n", dmaCount, dmaSize);
 
-    uint32_t lastEvtCounter[4] = {0, 0, 0, 0};
+    // The number of 0s should be ajusted depending on PGP_MAX_LANES
+    uint32_t lastEvtCounter[PGP_MAX_LANES] = {0, 0, 0, 0, 0, 0, 0, 0};
 
     while (1) {
         int32_t ret = dmaReadBulkIndex(fd, MAX_RET_CNT_C, dmaRet, dmaIndex, rxFlags, rxErrors, dest);

@@ -115,7 +115,7 @@ void AreaDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
     DescribedData raw(dgram.xtc, m_namesLookup, rawNamesId);
     unsigned size = 0;
     unsigned nlanes = 0;
-    for (int i=0; i<4; i++) {
+    for (int i=0; i<PGP_MAX_LANES; i++) {
         if (event->mask & (1 << i)) {
             // size without Event header
             int dataSize = event->buffers[i].size - 32;

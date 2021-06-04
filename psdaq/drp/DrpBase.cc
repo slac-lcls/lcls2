@@ -361,7 +361,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, const void* appPrm)
     // Return buffers and reset event.  Careful with order here!
     // index could be reused as soon as dmaRetIndexes() completes
     PGPEvent* event = &m_pool.pgpEvents[index];
-    for (int i=0; i<4; i++) {
+    for (int i=0; i<PGP_MAX_LANES; i++) {
         if (event->mask &  (1 << i)) {
             event->mask ^= (1 << i);    // Zero out mask before dmaRetIndexes()
             m_indices[m_count] = event->buffers[i].index;
