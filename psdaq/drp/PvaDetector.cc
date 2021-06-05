@@ -467,7 +467,7 @@ void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
       shapeHack[1] = shape[0] / m_firstDimKw;
     }
     desc.set_data_length(size);
-    desc.set_array_shape(0, m_firstDimKw == 0 ? shape.data() : shapeHack); // Revisit: Hack!
+    if (m_pvaMonitor->rank()>0) desc.set_array_shape(0, m_firstDimKw == 0 ? shape.data() : shapeHack); // Revisit: Hack!
 
     //size_t sz = (sizeof(dgram) + dgram.xtc.sizeofPayload()) >> 2;
     //uint32_t* payload = (uint32_t*)dgram.xtc.payload();

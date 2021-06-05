@@ -29,6 +29,7 @@ public:
 public:
     void clear();
     int  getVarDef(PvaDetector* pvaDetector, XtcData::VarDef&, size_t& payloadSize, size_t rankHack); // Revisit: rankHack!
+    size_t rank() {return m_rank;}
 private:
     enum State { NotReady, Ready };
 private:
