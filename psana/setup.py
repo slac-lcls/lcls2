@@ -124,6 +124,7 @@ if 'PSANA' in BUILD_LIST :
             'epix10ka_deploy_constants = psana.app.epix10ka_deploy_constants:do_main',
             'datinfo             = psana.app.datinfo:do_main',
             'det_dark_proc       = psana.app.det_dark_proc:do_main',
+            'parallel_proc       = psana.app.parallel_proc:do_main',
         ]
     }
 
