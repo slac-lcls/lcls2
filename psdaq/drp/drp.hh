@@ -8,6 +8,8 @@
 
 #include "spscqueue.hh"
 
+#define PGP_MAX_LANES 8
+
 namespace Pds {
     class EbDgram;
 };
@@ -30,7 +32,7 @@ struct DmaBuffer
 
 struct PGPEvent
 {
-    DmaBuffer buffers[4];
+    DmaBuffer buffers[PGP_MAX_LANES];
     uint8_t mask = 0;
     void* l3InpBuf;
     Pds::EbDgram* transitionDgram;
