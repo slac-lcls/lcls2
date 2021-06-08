@@ -64,7 +64,7 @@ ami_manager_node = "drp-neh-cmp003"
 
 procmgr_config = [
 # {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2'},
-# {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups+' --prod'},
+ {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups+' --prod'},
  {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
 
 # set the phase2 transition timeout to 20s. this is because the teb

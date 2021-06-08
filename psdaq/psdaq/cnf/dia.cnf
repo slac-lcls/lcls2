@@ -59,8 +59,8 @@ procmgr_config = [
  { host: 'drp-neh-cmp010', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
 # { host: 'drp-neh-cmp010', id:'andor_0',     flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x8 TMO:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2097216'},
  { host: 'drp-neh-cmp014', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
-# { host: 'drp-neh-cmp014', id:'xcusbr_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x2 ca/BPMS:CLTS:420:XCUSBR -k pebbleBufSize=8192'},
-# { host: 'drp-neh-cmp014', id:'tmitcusbr_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x4 ca/BPMS:UNDS:4790:TMITCUSBR -k pebbleBufSize=8192'},
+ { host: 'drp-neh-cmp014', id:'xcusbr_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x2 ca/BPMS:CLTS:420:XCUSBR -k pebbleBufSize=8192'},
+ { host: 'drp-neh-cmp014', id:'tmitcusbr_0',     flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x4 ca/BPMS:UNDS:4790:TMITCUSBR -k pebbleBufSize=8192'},
 ]
 
 procmgr_ami = [

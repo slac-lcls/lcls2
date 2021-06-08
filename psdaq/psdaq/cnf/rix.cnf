@@ -44,9 +44,9 @@ heartbeat_period = 1000 # units are ms
 
 ami_workers_per_node = 4
 #ami_worker_nodes = ["drp-neh-cmp013","drp-neh-cmp017","drp-neh-cmp018"]
-ami_worker_nodes = ["drp-neh-cmp013"]
+ami_worker_nodes = ["drp-neh-cmp017"]
 ami_num_workers = len(ami_worker_nodes)
-ami_manager_node = "drp-neh-ctl001"
+ami_manager_node = "drp-neh-cmp018"
 
 # procmgr FLAGS: <port number> static port number to keep executable
 #                              running across multiple start/stop commands.
@@ -84,9 +84,9 @@ procmgr_config = [
  # make transition buffer size large to accomodate a non-timestamped camera
  { host: 'drp-neh-cmp015', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x4 -T 4000000'},
 
- { host: 'drp-neh-cmp013', id:'rix_fim2_0',  flags:'spux',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x1'},
- { host: 'drp-neh-cmp013', id:'rix_fim1_0',  flags:'spux',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR4K2:FIM:W8:02 -l 0x2'},
- { host: 'drp-neh-cmp013', id:'rix_fim0_0',  flags:'spux',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K2:FIM:W8:01 -l 0x4'},
+ { host: 'drp-neh-cmp007', id:'rix_fim2_0',  flags:'spux',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x10'},
+ { host: 'drp-neh-cmp007', id:'rix_fim1_0',  flags:'spux',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR4K2:FIM:W8:02 -l 0x20'},
+ { host: 'drp-neh-cmp007', id:'rix_fim0_0',  flags:'spux',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K2:FIM:W8:01 -l 0x40'},
 
  #     Note: '-1' specifies fuzzy timestamping
  #           '-0' specifies no timestamp matching (-0 may have problems)
@@ -106,7 +106,7 @@ procmgr_hsd = [
  {host:'drp-neh-cmp023', id:'hsd_1',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
 ]
 
-#procmgr_config.extend(procmgr_hsd)
+procmgr_config.extend(procmgr_hsd)
 
 procmgr_ami = [
 #
