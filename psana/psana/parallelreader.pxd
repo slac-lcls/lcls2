@@ -18,8 +18,10 @@ cdef struct Buffer:
     uint64_t timestamp                   # ts of the last dgram
     uint64_t ts_arr[0x100000]            # dgram timestamp
     unsigned sv_arr[0x100000]            # dgram service
-    uint64_t next_offset_arr[0x100000]   # their offset + size of dgram and payload
+    uint64_t st_offset_arr[0x100000]     # start offset
+    uint64_t en_offset_arr[0x100000]     # end offset (start offset + size)
     int      found_endrun
+    uint64_t endrun_ts
 
 cdef class ParallelReader:
     cdef int[:]     file_descriptors
@@ -31,8 +33,10 @@ cdef class ParallelReader:
     cdef unsigned   Configure
     cdef unsigned   BeginRun
     cdef unsigned   L1Accept
+    cdef unsigned   EndRun
     cdef uint64_t   got                  # summing the size of new reads used by prometheus
     cdef uint64_t   chunk_overflown
+    cdef int        num_threads
 
     cdef void _init_buffers(self)
     cdef void _reset_buffers(self, Buffer* bufs)

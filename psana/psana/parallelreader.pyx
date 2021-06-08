@@ -17,11 +17,13 @@ cdef class ParallelReader:
         self.Configure          = TransitionId.Configure
         self.BeginRun           = TransitionId.BeginRun
         self.L1Accept           = TransitionId.L1Accept
+        self.EndRun             = TransitionId.EndRun
         self.bufs               = <Buffer *>malloc(sizeof(Buffer) * self.nfiles)
         self.step_bufs          = <Buffer *>malloc(sizeof(Buffer)*self.nfiles)
         self.got                = 0
         self.chunk_overflown    = 0     # set to dgram size if it's too big
         self._init_buffers()
+        self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
 
 
     def __dealloc__(self):
@@ -55,6 +57,7 @@ cdef class ParallelReader:
             buf.n_seen_events   = 0     # no. of seen events
             buf.timestamp       = 0       
             buf.found_endrun    = 0
+            buf.endrun_ts       = 0
     
     @cython.boundscheck(False)
     cdef void just_read(self):
@@ -63,6 +66,7 @@ cdef class ParallelReader:
 
         If there's some data left at the bottom of the buffer due to cutoff,
         copy this remaining data to the begining of the buffer then read to 
+        nef.num_threads         = os.e
         fill the rest of the chunk. Sets the following variables when done:
         - got = remaining (from copying) + new got (from reading)
         - ready_offset = offset of the last event that fits in the buffer
@@ -76,10 +80,9 @@ cdef class ParallelReader:
         cdef Buffer* buf
         cdef Buffer* step_buf
         cdef uint64_t payload   = 0
-        cdef unsigned service   = 0
         self.got                = 0
         
-        for i in prange(self.nfiles, nogil=True):
+        for i in prange(self.nfiles, nogil=True, num_threads=self.num_threads):
             buf = &(self.bufs[i])
             step_buf = &(self.step_bufs[i])
 
@@ -120,20 +123,25 @@ cdef class ParallelReader:
 
                     if (buf.got - buf.ready_offset) >= sizeof(Dgram) + payload:
                         buf.ts_arr[buf.n_ready_events] = <uint64_t>d.seq.high << 32 | d.seq.low
-                        buf.next_offset_arr[buf.n_ready_events] = buf.ready_offset + sizeof(Dgram) + payload
+                        buf.st_offset_arr[buf.n_ready_events] = buf.ready_offset
+                        buf.en_offset_arr[buf.n_ready_events] = buf.ready_offset + sizeof(Dgram) + payload
 
-                        service = (d.env>>24)&0xf
-                        buf.sv_arr[buf.n_ready_events] = service
+                        #service = (d.env>>24)&0xf
+                        buf.sv_arr[buf.n_ready_events] = (d.env>>24)&0xf
                         
                         # check if this a non L1
-                        if service != self.L1Accept:
+                        if buf.sv_arr[buf.n_ready_events] != self.L1Accept:
                             memcpy(step_buf.chunk + step_buf.ready_offset, d, sizeof(Dgram) + payload)
                             step_buf.ts_arr[step_buf.n_ready_events] = buf.ts_arr[buf.n_ready_events]
-                            step_buf.next_offset_arr[step_buf.n_ready_events] = step_buf.ready_offset + sizeof(Dgram) + payload
-                            step_buf.sv_arr[step_buf.n_ready_events] = service
+                            step_buf.st_offset_arr[step_buf.n_ready_events] = step_buf.ready_offset
+                            step_buf.en_offset_arr[step_buf.n_ready_events] = step_buf.ready_offset + sizeof(Dgram) + payload
+                            step_buf.sv_arr[step_buf.n_ready_events] = buf.sv_arr[buf.n_ready_events]
                             step_buf.n_ready_events += 1
                             step_buf.ready_offset += sizeof(Dgram) + payload
                             step_buf.timestamp = buf.ts_arr[buf.n_ready_events]
+
+                            if buf.sv_arr[buf.n_ready_events] == self.EndRun:
+                                buf.endrun_ts = buf.ts_arr[buf.n_ready_events]
                         
                         buf.timestamp = buf.ts_arr[buf.n_ready_events] 
                         buf.ready_offset += sizeof(Dgram) + payload
