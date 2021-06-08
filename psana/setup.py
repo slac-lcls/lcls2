@@ -254,8 +254,10 @@ if 'DGRAM' in BUILD_LIST :
     ext = Extension("psana.smdreader",
                     sources=["psana/smdreader.pyx"],
                     include_dirs=["psana"],
-                    extra_compile_args=extra_c_compile_args,
-                    extra_link_args=extra_link_args,
+                    #extra_compile_args=extra_c_compile_args,
+                    extra_compile_args=extra_c_compile_args + openmp_compile_args,
+                    #extra_link_args=extra_link_args,
+                    extra_link_args=extra_link_args + openmp_link_args,
     )
     CYTHON_EXTS.append(ext)
 
@@ -314,6 +316,6 @@ setup(
     packages = PACKAGES,
     package_data = PACKAGE_DATA,
     #cmdclass={'build_ext': my_build_ext},
-    ext_modules = EXTS + cythonize(CYTHON_EXTS, build_dir=CYT_BLD_DIR, language_level=2),
+    ext_modules = EXTS + cythonize(CYTHON_EXTS, build_dir=CYT_BLD_DIR, language_level=2, annotate=True),
     entry_points = ENTRY_POINTS,
 )
