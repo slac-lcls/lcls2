@@ -96,12 +96,12 @@ if __name__ == "__main__":
         result = run_serial_read(test_case[0], batch_size=test_case[1], filter_fn=test_case[2])
         result = comm.gather(result, root=0)
         if rank == 0:
-            sum_events_per_step = np.zeros(3, dtype=np.int)
+            sum_events_per_step = np.zeros(3, dtype=np.int32)
             sum_events = 0
             n_steps = 0
             for i in range(size):
                 if result[i]['evt_per_step']:
-                    sum_events_per_step += np.asarray(result[i]['evt_per_step'], dtype=np.int)
+                    sum_events_per_step += np.asarray(result[i]['evt_per_step'], dtype=np.int32)
                 sum_events += result[i]['n_events']
                 n_steps = np.max([n_steps, result[i]['n_steps']])
             
