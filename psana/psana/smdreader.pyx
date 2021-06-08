@@ -9,14 +9,21 @@ from cpython cimport array
 import time, os
 cimport cython
 from psana.psexp import TransitionId
+import numpy as np
+from cython.parallel import prange
 
 
 cdef class SmdReader:
     cdef ParallelReader prl_reader
-    cdef int            winner, view_size
-    cdef int            max_retries, sleep_secs
-    cdef array.array    buf_offsets, stepbuf_offsets, buf_sizes, stepbuf_sizes
-    cdef array.array    i_evts, founds
+    cdef int        winner, n_view_events
+    cdef int        max_retries, sleep_secs
+    cdef uint64_t   i_starts[100]
+    cdef uint64_t   i_ends[100]
+    cdef uint64_t   i_stepbuf_starts[100]
+    cdef uint64_t   i_stepbuf_ends[100]
+    cdef uint64_t   block_sizes[100]
+    cdef float      total_time
+    cdef int        num_threads
 
     def __init__(self, int[:] fds, int chunksize, int max_retries):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
@@ -25,12 +32,8 @@ cdef class SmdReader:
         # max retries has no default value (set when creating datasource)
         self.max_retries        = max_retries
         self.sleep_secs         = 1
-        self.buf_offsets        = array.array('Q', [0]*fds.size)
-        self.stepbuf_offsets    = array.array('Q', [0]*fds.size)
-        self.buf_sizes          = array.array('Q', [0]*fds.size)
-        self.stepbuf_sizes      = array.array('Q', [0]*fds.size)
-        self.i_evts             = array.array('Q', [0]*fds.size)
-        self.founds             = array.array('Q', [0]*fds.size)
+        self.total_time         = 0
+        self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
 
     def is_complete(self):
         """ Checks that all buffers have at least one event 
@@ -42,6 +45,7 @@ cdef class SmdReader:
             if self.prl_reader.bufs[i].n_ready_events - \
                     self.prl_reader.bufs[i].n_seen_events == 0:
                 is_complete = 0
+                break
 
         return is_complete
 
@@ -67,6 +71,15 @@ cdef class SmdReader:
                 cn_retries += 1
                 if cn_retries >= self.max_retries:
                     break
+        
+        # SmdReaderManager only calls this function when there's no more event.
+        # We need to reset all the moving indices for these new data.
+        cdef int i=0
+        for i in range(self.prl_reader.nfiles):
+            self.i_starts[i] = 0
+            self.i_ends[i] = 0
+            self.i_stepbuf_starts[i] = 0
+            self.i_stepbuf_ends[i] = 0
 
     @cython.boundscheck(False)
     def view(self, int batch_size=1000):
@@ -76,9 +89,10 @@ cdef class SmdReader:
         all buffers have at least one event). It returns events of batch_size if
         possible or as many as it has for the buffer.
         """
+        st_all = time.monotonic()
 
         # Find the winning buffer
-        cdef int i, i_evt
+        cdef int i=0
         cdef uint64_t limit_ts=0
         
         for i in range(self.prl_reader.nfiles):
@@ -89,129 +103,117 @@ cdef class SmdReader:
         # Apply batch_size
         # Find the boundary or limit ts of the winning buffer
         # this is either the nth or the batch_size event.
-        self.view_size = self.prl_reader.bufs[self.winner].n_ready_events - \
+        self.n_view_events = self.prl_reader.bufs[self.winner].n_ready_events - \
                 self.prl_reader.bufs[self.winner].n_seen_events
-        if self.view_size > batch_size:
+        if self.n_view_events > batch_size:
             limit_ts = self.prl_reader.bufs[self.winner].ts_arr[\
                     self.prl_reader.bufs[self.winner].n_seen_events - 1 + batch_size]
-            self.view_size = batch_size
+            self.n_view_events = batch_size
 
         # Locate the viewing window and update seen_offset for each buffer
-        cdef uint64_t[:] ts_view
-        cdef uint64_t prev_seen_offset  = 0
-        cdef uint64_t block_size
         cdef Buffer* buf
-        cdef uint64_t[:] buf_offsets    = self.buf_offsets
-        cdef uint64_t[:] buf_sizes      = self.buf_sizes
-        cdef uint64_t[:] stepbuf_offsets= self.stepbuf_offsets
-        cdef uint64_t[:] stepbuf_sizes  = self.stepbuf_sizes
-        cdef uint64_t[:] i_evts         = self.i_evts 
-        cdef uint64_t[:] founds         = self.founds
-        cdef unsigned view_size         = 0
-        for i in range(self.prl_reader.nfiles):
+        #cdef uint64_t[:] buf_ts_arr     
+        cdef uint64_t[:] i_starts           = self.i_starts
+        cdef uint64_t[:] i_ends             = self.i_ends 
+        cdef uint64_t[:] i_stepbuf_starts   = self.i_stepbuf_starts
+        cdef uint64_t[:] i_stepbuf_ends     = self.i_stepbuf_ends 
+        cdef uint64_t[:] block_sizes        = self.block_sizes 
+        cdef uint64_t i_st_bufs[100]
+        cdef uint64_t i_st_stepbufs[100]
+        cdef uint64_t block_size_bufs[100]
+        cdef uint64_t block_size_stepbufs[100]
+        cdef unsigned endrun_id = TransitionId.EndRun
+        
+        st_search = time.monotonic()
+        
+        for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
             buf = &(self.prl_reader.bufs[i])
-            buf_offsets[i] = buf.seen_offset
+            i_st_bufs[i] = 0
+            block_size_bufs[i] = 0
             
-            # All the events before found_pos are within max_ts
-            if buf.n_seen_events < buf.n_ready_events:
-                i_evts[i] = buf.n_seen_events # safe to move index up
-            else:
-                i_evts[i] = buf.n_seen_events - 1 # keep idx fixed (-1: index vs. no.) 
+            # Find boundary using limit_ts
+            i_ends[i] = i_starts[i] 
+            if i_ends[i] < buf.n_ready_events:
+                if buf.ts_arr[i_ends[i]] != limit_ts:
+                    ## Reduce the size of the search by searching from the next unseen event
+                    #i_ends[i] = np.searchsorted(buf_ts_arr[buf.n_seen_events:buf.n_ready_events], limit_ts) + buf.n_seen_events
 
-            founds[i] = 0
-            while i_evts[i] < buf.n_ready_events - 1 and        \
-                    buf.ts_arr[i_evts[i]] < limit_ts  and    \
-                    buf.sv_arr[i_evts[i]] != TransitionId.EndRun:
-                i_evts[i] += 1
-
-            if buf.ts_arr[i_evts[i]] > limit_ts:
-                if i_evts[i] == 0:
-                    view_size = 0
-                else:
-                    i_evts[i] -= 1
-                    view_size = i_evts[i] + 1 - buf.n_seen_events
-            else:
-                view_size = i_evts[i] + 1 - buf.n_seen_events
-            
-            # Update view_size in case exit with EndRun found
-            if i == self.winner:
-                self.view_size = view_size
-
-            if view_size == 0:
-                buf_sizes[i] = 0
-            else:
-                founds[i] = i_evts[i]              
-                buf.seen_offset = buf.next_offset_arr[founds[i]]
-                buf.n_seen_events = founds[i] + 1
-                buf_sizes[i] = buf.seen_offset - buf_offsets[i]
-
-                # Check if this viewing window has EndRun at the end 
-                if buf.sv_arr[founds[i]] == TransitionId.EndRun:
+                    ## Note that limit_ts should be at this found index or its left index
+                    ## If the found index is 0, then this buffer has nothing to share.
+                    #if buf.ts_arr[i_ends[i]] != limit_ts:
+                    #    if i_ends[i] == 0:
+                    #        i_ends[i] = i_starts[i] - 1
+                    #    else:
+                    #        i_ends[i] -= 1
+                    
+                    while buf.ts_arr[i_ends[i] + 1] <= limit_ts \
+                            and i_ends[i] < buf.n_ready_events - 1:
+                        i_ends[i] += 1
+                
+                block_sizes[i] = buf.en_offset_arr[i_ends[i]] - buf.st_offset_arr[i_starts[i]]
+               
+                i_st_bufs[i] = i_starts[i]
+                block_size_bufs[i] = block_sizes[i]
+                
+                buf.seen_offset = buf.en_offset_arr[i_ends[i]]
+                buf.n_seen_events =  i_ends[i] + 1
+                if buf.sv_arr[i_ends[i]] == endrun_id:
                     buf.found_endrun = 1
+                i_starts[i] = i_ends[i] + 1
             
             # Handle step buffers the same way
             buf = &(self.prl_reader.step_bufs[i])
-            stepbuf_offsets[i] = buf.seen_offset
+            i_st_stepbufs[i] = 0
+            block_size_stepbufs[i] = 0
             
-            # All the events before found_pos are within max_ts
-            if buf.n_seen_events < buf.n_ready_events:
-                i_evts[i] = buf.n_seen_events     # safe to move index up
-            else:
-                i_evts[i] = buf.n_seen_events - 1 # keep idx fixed (-1: index vs. no.) 
-
-            founds[i] = 0
-            while i_evts[i] < buf.n_ready_events - 1 and        \
-                    buf.ts_arr[i_evts[i]] < limit_ts  and    \
-                    buf.sv_arr[i_evts[i]] != TransitionId.EndRun:
-                i_evts[i] += 1
-
-            # Correct the index in case over count by one
-            if buf.ts_arr[i_evts[i]] > limit_ts:
-                if i_evts[i] == 0: 
-                    view_size = 0
-                else:
-                    i_evts[i] -= 1
-                    view_size = i_evts[i] + 1 - buf.n_seen_events
-            else:
-                view_size = i_evts[i] + 1 - buf.n_seen_events
-
-            if view_size == 0:
-                stepbuf_sizes[i] = 0
-            else:
-                founds[i] = i_evts[i]
-                buf.seen_offset = buf.next_offset_arr[founds[i]]
-                buf.n_seen_events = founds[i] + 1
-                stepbuf_sizes[i] = buf.seen_offset - stepbuf_offsets[i]
+            # Find boundary using limit_ts (omit check for exact match here because it's unlikely
+            # for transition buffers.
+            i_stepbuf_ends[i] = i_stepbuf_starts[i] 
+            if i_stepbuf_ends[i] <  buf.n_ready_events \
+                    and buf.ts_arr[i_stepbuf_ends[i]] <= limit_ts: 
+                while buf.ts_arr[i_stepbuf_ends[i] + 1] <= limit_ts \
+                        and i_stepbuf_ends[i] < buf.n_ready_events - 1:
+                    i_stepbuf_ends[i] += 1
+                
+                block_sizes[i] = buf.en_offset_arr[i_stepbuf_ends[i]] - buf.st_offset_arr[i_stepbuf_starts[i]]
+                
+                i_st_stepbufs[i] = i_stepbuf_starts[i]
+                block_size_stepbufs[i] = block_sizes[i]
+                
+                buf.seen_offset = buf.en_offset_arr[i_stepbuf_ends[i]]
+                buf.n_seen_events = i_stepbuf_ends[i] + 1
+                i_stepbuf_starts[i]  = i_stepbuf_ends[i] + 1
+            
+        # end for i in ...
         
-        # output as a list of memoryviews for both L1 and step buffers
-        mmrv_bufs = []
-        mmrv_step_bufs = []
+        st_pack = time.monotonic()
+
+        cdef list mmrv_bufs = [0] * self.prl_reader.nfiles
+        cdef list mmrv_step_bufs = [0] * self.prl_reader.nfiles
         cdef char[:] view
         for i in range(self.prl_reader.nfiles):
             buf = &(self.prl_reader.bufs[i])
-            if buf_sizes[i] > 0:
-                prev_seen_offset = buf_offsets[i]
-                block_size = buf_sizes[i]
-                view = <char [:block_size]> (buf.chunk + prev_seen_offset)
-                mmrv_bufs.append(view)
-            else:
-                mmrv_bufs.append(0) # add 0 as a place=holder for empty buffer
+            if block_size_bufs[i] > 0:
+                view = <char [:block_size_bufs[i]]> (buf.chunk + buf.st_offset_arr[i_st_bufs[i]])
+                mmrv_bufs[i] = view
             
             buf = &(self.prl_reader.step_bufs[i])
-            if self.stepbuf_sizes[i] > 0:
-                prev_seen_offset = stepbuf_offsets[i]
-                block_size = stepbuf_sizes[i]
-                view = <char [:block_size]> (buf.chunk + prev_seen_offset)
-                mmrv_step_bufs.append(view)
-            else:
-                mmrv_step_bufs.append(0) # add 0 as a place=holder for empty buffer
+            if block_size_stepbufs[i] > 0:
+                view = <char [:block_size_stepbufs[i]]> (buf.chunk + buf.st_offset_arr[i_st_stepbufs[i]])
+                mmrv_step_bufs[i] = view
         
-        return mmrv_bufs, mmrv_step_bufs
+        en_all = time.monotonic()
 
+        self.total_time += en_all - st_all
+        return mmrv_bufs, mmrv_step_bufs
 
     @property
     def view_size(self):
-        return self.view_size
+        return self.n_view_events
+
+    @property
+    def total_time(self):
+        return self.total_time
 
 
     @property
