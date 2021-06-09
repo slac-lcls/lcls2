@@ -41,6 +41,7 @@ class SerialDataSource(DataSourceBase):
         runnum = self.runnum_list[self.runnum_list_index]
         self.runnum_list_index += 1
         super()._setup_run_files(runnum)
+        super()._apply_detector_selection()
         self._setup_configs()
         self.dm = DgramManager(self.xtc_files, configs=self._configs, 
                 found_xtc2_callback=super().found_xtc2_callback)
