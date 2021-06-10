@@ -126,7 +126,6 @@ cdef class ParallelReader:
                         buf.st_offset_arr[buf.n_ready_events] = buf.ready_offset
                         buf.en_offset_arr[buf.n_ready_events] = buf.ready_offset + sizeof(Dgram) + payload
 
-                        #service = (d.env>>24)&0xf
                         buf.sv_arr[buf.n_ready_events] = (d.env>>24)&0xf
                         
                         # check if this a non L1
