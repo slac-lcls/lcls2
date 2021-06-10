@@ -49,8 +49,18 @@ cdef class SmdReader:
 
         return is_complete
 
-
     def get(self, found_xtc2):
+        # SmdReaderManager only calls this function when there's no more event
+        # in one or more buffers. Reset the indices for buffers that need re-read.
+        cdef int i=0
+        for i in range(self.prl_reader.nfiles):
+            buf = &(self.prl_reader.bufs[i])
+            if buf.n_ready_events - buf.n_seen_events > 0: continue 
+            self.i_starts[i] = 0
+            self.i_ends[i] = 0
+            self.i_stepbuf_starts[i] = 0
+            self.i_stepbuf_ends[i] = 0
+
         self.prl_reader.just_read()
         
         if self.max_retries > 0:
@@ -72,14 +82,6 @@ cdef class SmdReader:
                 if cn_retries >= self.max_retries:
                     break
         
-        # SmdReaderManager only calls this function when there's no more event.
-        # We need to reset all the moving indices for these new data.
-        cdef int i=0
-        for i in range(self.prl_reader.nfiles):
-            self.i_starts[i] = 0
-            self.i_ends[i] = 0
-            self.i_stepbuf_starts[i] = 0
-            self.i_stepbuf_ends[i] = 0
 
     @cython.boundscheck(False)
     def view(self, int batch_size=1000):
@@ -160,6 +162,7 @@ cdef class SmdReader:
                 if buf.sv_arr[i_ends[i]] == endrun_id:
                     buf.found_endrun = 1
                 i_starts[i] = i_ends[i] + 1
+
             
             # Handle step buffers the same way
             buf = &(self.prl_reader.step_bufs[i])
