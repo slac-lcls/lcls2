@@ -66,9 +66,9 @@ def main():
     
     # Start the system
     base.start(
-        pollEn   = False,
-        initRead = False,
-        zmqPort  = None,
+#        pollEn   = False,
+#        initRead = False,
+#        zmqPort  = None,
     )
 
     xpm = base.XPM
@@ -82,7 +82,8 @@ def main():
     lock = Lock()
 
     pvstats = PVStats(provider, lock, args.P, xpm, args.F)
-    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=True) #cuInit=args.I)
+#    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=True)
+    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=args.I)
     pvxtpg  = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms, cuMode='xtpg' in xpm.AxiVersion.ImageName.get(), bypassLock=args.L)
 
     # process PVA transactions
