@@ -76,7 +76,7 @@ class SmdReaderManager(object):
         st = time.time()
         self.smdr.get(self.dsparms.found_xtc2_callback)
         en = time.time()
-        logger.debug(f'smdreader_manager: read {self.smdr.got/1e6:.5f} MB took {en-st}s. rate: {self.smdr.got/(1e6*(en-st))} MB/s')
+        logger.debug(f'smdreader_manager: read {self.smdr.got/1e6:.3f} MB took {en-st}s. rate: {self.smdr.got/(1e6*(en-st))} MB/s')
         self.c_read.labels('MB', 'None').inc(self.smdr.got/1e6)
         self.c_read.labels('seconds', 'None').inc(en-st)
         
@@ -95,11 +95,11 @@ class SmdReaderManager(object):
             self._get()
          
         if self.smdr.is_complete():
-            mmrv_bufs, _ = self.smdr.view(batch_size=1)
+            self.smdr.view(batch_size=1)
 
             # For configs, we need to copy data from smdreader's buffers
             # This prevents it from getting overwritten by other dgrams.
-            bytearray_bufs = [bytearray(mmrv_buf) for mmrv_buf in mmrv_bufs]
+            bytearray_bufs = [bytearray(self.smdr.show(i)) for i in range(self.n_files)]
             
             if self.configs is None:
                 dgrams = [dgram.Dgram(view=ba_buf, offset=0) for ba_buf in bytearray_bufs]
@@ -131,7 +131,8 @@ class SmdReaderManager(object):
             if not self.smdr.is_complete():
                 raise StopIteration
         
-        mmrv_bufs, _ = self.smdr.view(batch_size=self.smd0_n_events)
+        self.smdr.view(batch_size=self.smd0_n_events)
+        mmrv_bufs = [self.smdr.show(i) for i in range(self.n_files)]
         batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, 
                 batch_size  = self.dsparms.batch_size, 
                 filter_fn   = self.dsparms.filter, 
@@ -145,10 +146,22 @@ class SmdReaderManager(object):
     def chunks(self):
         """ Generates a tuple of smd and step dgrams """
         is_done = False
+        d_view, d_read = 0, 0
+        cn_chunks = 0
         while not is_done:
+            st_view, en_view, st_read, en_read = 0,0,0,0
+
+            l1_size = 0
+            tr_size = 0
+            got_events = 0
             if self.smdr.is_complete():
-                mmrv_bufs, mmrv_step_bufs = self.smdr.view(batch_size=self.smd0_n_events)
+
+                st_view = time.monotonic()
+
+                #mmrv_bufs, mmrv_step_bufs = self.smdr.view(batch_size=self.smd0_n_events)
+                self.smdr.view(batch_size=self.smd0_n_events)
                 self.got_events = self.smdr.view_size
+                got_events = self.got_events
                 self.processed_events += self.got_events
                 
                 # sending data to prometheus
@@ -158,33 +171,22 @@ class SmdReaderManager(object):
                     logger.debug(f'smdreader_manager: max_events={self.dsparms.max_events} reached')
                     is_done = True
                 
-                smd_view = bytearray()
-                smd_pf = PacketFooter(n_packets=self.n_files)
-                step_view = bytearray()
-                step_pf = PacketFooter(n_packets=self.n_files)
-                
-                for i, (mmrv_buf, mmrv_step_buf) in enumerate(zip(mmrv_bufs, mmrv_step_bufs)):
-                    if mmrv_buf != 0:
-                        smd_view.extend(mmrv_buf)
-                        smd_pf.set_size(i, memoryview(mmrv_buf).nbytes)
-                    
-                    if mmrv_step_buf != 0:
-                        step_view.extend(mmrv_step_buf)
-                        step_pf.set_size(i, memoryview(mmrv_step_buf).nbytes)
+                en_view = time.monotonic()
+                d_view += en_view - st_view
 
-                if smd_view or step_view:
-                    if smd_view:
-                        smd_view.extend(smd_pf.footer)
-                    if step_view:
-                        step_view.extend(step_pf.footer)
-                    yield (smd_view, step_view)
+                if self.got_events:
+                    cn_chunks += 1
+                    yield cn_chunks
 
             else: # if self.smdr.is_complete()
+                st_read = time.monotonic()
                 self._get()
+                en_read = time.monotonic()
+                d_read += en_read - st_read
                 if not self.smdr.is_complete():
                     is_done = True
                     break
-        
+            #print(f'chunks() view:{d_view:.3f} read:{d_read:.3f} tot:{d_view+d_read:.3f}') 
 
     @property
     def min_ts(self):
