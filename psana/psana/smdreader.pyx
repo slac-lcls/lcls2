@@ -17,11 +17,15 @@ cdef class SmdReader:
     cdef ParallelReader prl_reader
     cdef int        winner, n_view_events
     cdef int        max_retries, sleep_secs
-    cdef uint64_t   i_starts[100]
-    cdef uint64_t   i_ends[100]
-    cdef uint64_t   i_stepbuf_starts[100]
-    cdef uint64_t   i_stepbuf_ends[100]
-    cdef uint64_t   block_sizes[100]
+    cdef uint64_t   i_starts[100]           # these 5 are aux. local variables 
+    cdef uint64_t   i_ends[100]             #    
+    cdef uint64_t   i_stepbuf_starts[100]   #
+    cdef uint64_t   i_stepbuf_ends[100]     #
+    cdef uint64_t   block_sizes[100]        # 
+    cdef uint64_t   i_st_bufs[100]          # these 4 are global - can be used for
+    cdef uint64_t   block_size_bufs[100]    # sharing viewing windows.
+    cdef uint64_t   i_st_stepbufs[100]      #
+    cdef uint64_t   block_size_stepbufs[100]#
     cdef float      total_time
     cdef int        num_threads
 
@@ -120,10 +124,10 @@ cdef class SmdReader:
         cdef uint64_t[:] i_stepbuf_starts   = self.i_stepbuf_starts
         cdef uint64_t[:] i_stepbuf_ends     = self.i_stepbuf_ends 
         cdef uint64_t[:] block_sizes        = self.block_sizes 
-        cdef uint64_t i_st_bufs[100]
-        cdef uint64_t i_st_stepbufs[100]
-        cdef uint64_t block_size_bufs[100]
-        cdef uint64_t block_size_stepbufs[100]
+        cdef uint64_t[:] i_st_bufs          = self.i_st_bufs
+        cdef uint64_t[:] block_size_bufs    = self.block_size_bufs
+        cdef uint64_t[:] i_st_stepbufs      = self.i_st_stepbufs
+        cdef uint64_t[:] block_size_stepbufs= self.block_size_stepbufs
         cdef unsigned endrun_id = TransitionId.EndRun
         
         st_search = time.monotonic()
@@ -188,27 +192,32 @@ cdef class SmdReader:
                 i_stepbuf_starts[i]  = i_stepbuf_ends[i] + 1
             
         # end for i in ...
-        
-        st_pack = time.monotonic()
-
-        cdef list mmrv_bufs = [0] * self.prl_reader.nfiles
-        cdef list mmrv_step_bufs = [0] * self.prl_reader.nfiles
-        cdef char[:] view
-        for i in range(self.prl_reader.nfiles):
-            buf = &(self.prl_reader.bufs[i])
-            if block_size_bufs[i] > 0:
-                view = <char [:block_size_bufs[i]]> (buf.chunk + buf.st_offset_arr[i_st_bufs[i]])
-                mmrv_bufs[i] = view
-            
-            buf = &(self.prl_reader.step_bufs[i])
-            if block_size_stepbufs[i] > 0:
-                view = <char [:block_size_stepbufs[i]]> (buf.chunk + buf.st_offset_arr[i_st_stepbufs[i]])
-                mmrv_step_bufs[i] = view
-        
         en_all = time.monotonic()
 
         self.total_time += en_all - st_all
-        return mmrv_bufs, mmrv_step_bufs
+
+    def show(self, int i_buf, step_buf=False):
+        """ Returns memoryview of buffer i_buf at the current viewing
+        i_st and block_size"""
+        cdef Buffer* buf
+        cdef uint64_t[:] block_size_bufs
+        cdef uint64_t[:] i_st_bufs      
+        if step_buf:
+            buf = &(self.prl_reader.step_bufs[i_buf])
+            block_size_bufs = self.block_size_stepbufs
+            i_st_bufs = self.i_st_stepbufs
+        else:
+            buf = &(self.prl_reader.bufs[i_buf])
+            block_size_bufs = self.block_size_bufs
+            i_st_bufs = self.i_st_bufs
+        
+        cdef char[:] view
+        if block_size_bufs[i_buf] > 0:
+            view = <char [:block_size_bufs[i_buf]]> (buf.chunk + buf.st_offset_arr[i_st_bufs[i_buf]])
+            return view
+        else:
+            return memoryview(bytearray()) 
+
 
     @property
     def view_size(self):

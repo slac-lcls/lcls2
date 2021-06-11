@@ -178,28 +178,29 @@ class StepHistory(object):
 
 
 
-def repack_for_eb(smd_chunk, step_views, configs):
+def repack_for_eb(smdr_man, step_views):
     """ Smd0 uses this to prepend missing step views
     to the smd_chunk (just data with the same limit timestamp from all
     smd files - not event-built yet). 
     """
-    if step_views:
-        smd_chunk_pf = PacketFooter(view=smd_chunk)
-        new_chunk_pf = PacketFooter(n_packets=len(step_views))
-        new_chunk = bytearray()
-        smd_views = smd_chunk_pf.split_packets()
-        if not smd_views:
-            smd_views = [bytearray() for i in range(len(step_views))]
-
-        for i, (smd_view, step_view) in enumerate(zip(smd_views, step_views)):
-            new_chunk.extend(step_view+smd_view)
-            new_chunk_pf.set_size(i, memoryview(step_view).nbytes + memoryview(smd_view).nbytes)
-        new_chunk.extend(new_chunk_pf.footer)
-        return new_chunk
+    if smdr_man:
+        n_files = smdr_man.n_files
     else:
-        return smd_chunk 
+        n_files = len(step_views)
 
-
+    new_chunk_pf = PacketFooter(n_packets=n_files)
+    new_chunk = bytearray()
+    for i in range(n_files):
+        step_view = bytearray()
+        smd_view = bytearray()
+        if step_views:
+            step_view = step_views[i]
+        if smdr_man:
+            smd_view = smdr_man.smdr.show(i)
+        new_chunk.extend(step_view+smd_view)
+        new_chunk_pf.set_size(i, memoryview(step_view).nbytes + memoryview(smd_view).nbytes)
+    new_chunk.extend(new_chunk_pf.footer)
+    return new_chunk
 
 def repack_for_bd(smd_batch, step_views, configs, client=-1):
     """ EventBuilder Node uses this to prepend missing step views 
@@ -264,20 +265,9 @@ class Smd0(object):
         rankreq = np.empty(1, dtype='i')
         waiting_ebs = []
 
-        for (smd_chunk, step_chunk) in self.smdr_man.chunks():
-            # Creates a chunk from smd and epics data to send to SmdNode
-            # Anatomy of a chunk (pf=packet_footer):
-            # [ [smd0][smd1][smd2][pf] ][ [epics0][epics1][epics2][pf] ][ pf ]
-            #   ----- smd_chunk ------    ---------epics_chunk------- 
-            # -------------------------- chunk ------------------------------
-            
-            # Read new epics data as available in the queue
-            # then send only unseen portion of data to the evtbuilder rank.
-
-
-
-            if not (smd_chunk or step_chunk): break
-            
+        # Indentify viewing windows. SmdReaderManager has starting index and block size
+        # that it needs to share later when data are packaged for sending to EventBuilders.
+        for i_chunk in self.smdr_man.chunks():
             st_req = time.monotonic()
             logger.debug(f'RANK{self.comms.world_rank} 1. SMD0GOTCHUNK {st_req}')
 
@@ -289,17 +279,14 @@ class Smd0(object):
             missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
 
             # Update step buffers (after getting the missing steps
-            step_pf = PacketFooter(view=step_chunk)
-            step_views = step_pf.split_packets()
+            step_views = [self.smdr_man.smdr.show(i, step_buf=True) for i in range(self.smdr_man.n_files)]
             self.step_hist.extend_buffers(step_views, rankreq[0])
 
-            smd_extended = repack_for_eb(smd_chunk, missing_step_views, self.configs)
+            smd_extended = repack_for_eb(self.smdr_man, missing_step_views)
             
             logger.debug(f'RANK{self.comms.world_rank} 3. SMD0SENDTOEB{rankreq[0]} {time.monotonic()}')
             
-            
             self.comms.smd_comm.Send(smd_extended, dest=rankreq[0])
-            
             
             logger.debug(f'RANK{self.comms.world_rank} 4. SMD0DONEWITHEB{rankreq[0]} {time.monotonic()}')
         
@@ -321,7 +308,7 @@ class Smd0(object):
         for i in range(self.comms.n_smd_nodes):
             self.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
-            smd_extended = repack_for_eb(bytearray(), missing_step_views, self.configs)
+            smd_extended = repack_for_eb(None, missing_step_views)
             if smd_extended:
                 self.comms.smd_comm.Send(smd_extended, dest=rankreq[0])
             else:
