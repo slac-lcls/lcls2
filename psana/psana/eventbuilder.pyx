@@ -8,8 +8,6 @@ from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONT
 
 from dgramlite cimport Xtc, Sequence, Dgram
 
-from libc.stdlib cimport malloc, free
-from libc.string cimport memcpy
 from libc.stdint cimport uint32_t, uint64_t
 
 from psana.event import Event
