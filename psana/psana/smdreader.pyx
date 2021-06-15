@@ -11,6 +11,7 @@ cimport cython
 from psana.psexp import TransitionId
 import numpy as np
 from cython.parallel import prange
+from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 
 
 cdef class SmdReader:
@@ -28,6 +29,7 @@ cdef class SmdReader:
     cdef uint64_t   block_size_stepbufs[100]#
     cdef float      total_time
     cdef int        num_threads
+    cdef char*      send_buf                # contains repacked data for each EventBuilder node
 
     def __init__(self, int[:] fds, int chunksize, int max_retries):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
@@ -38,7 +40,11 @@ cdef class SmdReader:
         self.sleep_secs         = 1
         self.total_time         = 0
         self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
+        self.send_buf           = <char *>malloc(0x8000000) 
 
+    def __dealloc__(self):
+        free(self.send_buf)
+    
     def is_complete(self):
         """ Checks that all buffers have at least one event 
         """
@@ -217,7 +223,14 @@ cdef class SmdReader:
             return view
         else:
             return memoryview(bytearray()) 
-
+    
+    def get_total_view_size(self):
+        """ Returns sum of the viewing window sizes for all buffers."""
+        cdef int i
+        cdef uint64_t total_size = 0
+        for i in range(self.prl_reader.nfiles):
+            total_size += self.block_size_bufs[i]
+        return total_size
 
     @property
     def view_size(self):
@@ -247,4 +260,40 @@ cdef class SmdReader:
             found = True
         return found
 
+    def repack(self, step_views, only_steps=False):
+        cdef Buffer* smd_buf
+        cdef Py_buffer step_buf
+        cdef int i=0, offset=0
+        cdef uint64_t smd_size=0, step_size=0, footer_size=0, total_size=0
+        cdef unsigned footer[1000]
+        footer[self.prl_reader.nfiles] = self.prl_reader.nfiles 
+        cdef char[:] view
+        
+        # Copy step and smd buffers if exist
+        for i in range(self.prl_reader.nfiles):
+            PyObject_GetBuffer(step_views[i], &step_buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
+            view_ptr = <char *>step_buf.buf
+            step_size = step_buf.len
+            if step_size > 0:
+                memcpy(self.send_buf + offset, view_ptr, step_size)
+                offset += step_size
+            PyBuffer_Release(&step_buf)
+
+            smd_size = 0
+            if not only_steps:
+                smd_size = self.block_size_bufs[i]
+                if smd_size > 0:
+                    smd_buf = &(self.prl_reader.bufs[i])
+                    memcpy(self.send_buf + offset, smd_buf.chunk + smd_buf.st_offset_arr[self.i_st_bufs[i]], smd_size)
+                    offset += smd_size
+            
+            footer[i] = step_size + smd_size
+            total_size += footer[i]
+
+        # Copy footer 
+        footer_size = sizeof(unsigned) * (self.prl_reader.nfiles + 1)
+        memcpy(self.send_buf + offset, &footer, footer_size) 
+        total_size += footer_size
+        view = <char [:total_size]> (self.send_buf) 
+        return view
 
