@@ -176,36 +176,9 @@ class StepHistory(object):
                     self.send_history[indexed_id][i] = current_buf_size
         return views
 
-
-
-def repack_for_eb(smdr_man, step_views):
-    """ Smd0 uses this to prepend missing step views
-    to the smd_chunk (just data with the same limit timestamp from all
-    smd files - not event-built yet). 
-    """
-    if smdr_man:
-        n_files = smdr_man.n_files
-    else:
-        n_files = len(step_views)
-
-    new_chunk_pf = PacketFooter(n_packets=n_files)
-    new_chunk = bytearray()
-    for i in range(n_files):
-        step_view = bytearray()
-        smd_view = bytearray()
-        if step_views:
-            step_view = step_views[i]
-        if smdr_man:
-            smd_view = smdr_man.smdr.show(i)
-        new_chunk.extend(step_view+smd_view)
-        new_chunk_pf.set_size(i, memoryview(step_view).nbytes + memoryview(smd_view).nbytes)
-    new_chunk.extend(new_chunk_pf.footer)
-    return new_chunk
-
 def repack_for_bd(smd_batch, step_views, configs, client=-1):
     """ EventBuilder Node uses this to prepend missing step views 
-    to the smd_batch. Unlike repack_for_eb (used by Smd0), this output 
-    chunk contains list of pre-built events."""
+    to the smd_batch. This output chunk contains list of pre-built events."""
     if step_views:
         batch_pf = PacketFooter(view=smd_batch)
         
@@ -277,23 +250,25 @@ class Smd0(object):
             
             # Check missing steps for the current client
             missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
+            logger.debug(f'RANK{self.comms.world_rank} 2.1 SMD0GOTSTEPHIST {time.monotonic()}')
 
             # Update step buffers (after getting the missing steps
             step_views = [self.smdr_man.smdr.show(i, step_buf=True) for i in range(self.smdr_man.n_files)]
             self.step_hist.extend_buffers(step_views, rankreq[0])
+            logger.debug(f'RANK{self.comms.world_rank} 2.2 SMD0GOTSTEP {time.monotonic()}')
 
-            smd_extended = repack_for_eb(self.smdr_man, missing_step_views)
+            repack_smd = self.smdr_man.smdr.repack(missing_step_views)
             
-            logger.debug(f'RANK{self.comms.world_rank} 3. SMD0SENDTOEB{rankreq[0]} {time.monotonic()}')
+            logger.debug(f'RANK{self.comms.world_rank} 3. SMD0GOTREPACK {time.monotonic()}')
             
-            self.comms.smd_comm.Send(smd_extended, dest=rankreq[0])
+            self.comms.smd_comm.Send(repack_smd, dest=rankreq[0])
             
             logger.debug(f'RANK{self.comms.world_rank} 4. SMD0DONEWITHEB{rankreq[0]} {time.monotonic()}')
         
             # sending data to prometheus
             self.c_sent.labels('evts', rankreq[0]).inc(self.smdr_man.got_events)
             self.c_sent.labels('batches', rankreq[0]).inc()
-            self.c_sent.labels('MB', rankreq[0]).inc(memoryview(smd_extended).nbytes/1e6)
+            self.c_sent.labels('MB', rankreq[0]).inc(memoryview(repack_smd).nbytes/1e6)
             self.c_sent.labels('seconds', rankreq[0]).inc(en_req - st_req)
             logger.debug(f'node: smd0 sent {self.smdr_man.got_events} events to {rankreq[0]} (waiting for this rank took {en_req-st_req:.5f} seconds)')
             
@@ -308,9 +283,9 @@ class Smd0(object):
         for i in range(self.comms.n_smd_nodes):
             self.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
-            smd_extended = repack_for_eb(None, missing_step_views)
-            if smd_extended:
-                self.comms.smd_comm.Send(smd_extended, dest=rankreq[0])
+            repack_smd = self.smdr_man.smdr.repack(missing_step_views, only_steps=True)
+            if memoryview(repack_smd).nbytes > 0:
+                self.comms.smd_comm.Send(repack_smd, dest=rankreq[0])
             else:
                 waiting_ebs.append(rankreq[0])
         
@@ -395,7 +370,7 @@ class EventBuilderNode(object):
             smd_chunk = self._request_data(smd_comm)
             if not smd_chunk:
                 break
-           
+
             eb_man = EventBuilderManager(smd_chunk, self.configs, self.dsparms, self.dm.get_run())
             logger.debug(f'RANK{self.comms.world_rank} 8. EB{self.comms.world_rank}DONEBUILDINGEVENTS {time.monotonic()}')
         
