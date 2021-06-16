@@ -119,7 +119,7 @@ def collection_names(dbname, url=cc.URL):
 
 
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/test_db/test_coll?query_string=%7B%20%22item%22..."
-def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL):
+def find_docs(dbname, colname, query={}, url=cc.URL):
     """Returns list of documents for query, e.g. query={'ctype':'pedestals', "run":{ "$gte":80}}
     """
     uri = '%s/%s/%s'%(url,dbname,colname)
@@ -136,7 +136,7 @@ def find_docs(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL):
         return None
 
 
-def find_doc(dbname, colname, query={'ctype':'pedestals'}, url=cc.URL):
+def find_doc(dbname, colname, query={}, url=cc.URL): #query={'ctype':'pedestals'}
     """Returns document for query.
        1. finds all documents for query
        2. select the latest for run or time_sec
@@ -507,6 +507,16 @@ def delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     return resp
 
 
+def delete_databases(list_db_names, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
+    """Delete databases specified in the list_db_names
+    """
+    msg = 'delete databases: %s' % (' '.join(list_db_names))
+    for dbname in list_db_names:
+        resp = delete_database(dbname, url, krbheaders)
+        msg += '\n  delete: %s resp: %s' % (dbname, resp.text)
+    logger.debug(msg)
+
+
 def delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     """ Deletes collection from database.
     """
@@ -514,6 +524,18 @@ def delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     resp = delete(url+dbname+'/'+colname, headers=krbheaders)
     logger.debug(resp.text)
     return resp
+
+
+def delete_collections(dic_db_cols, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
+    """Delete collections specified in the dic_db_cols consisting of pairs {dbname:lstcols}
+    """
+    msg = 'Delete collections:'
+    for dbname, lstcols in dic_db_cols.items():
+        msg += '\nFrom database: %s delete collections: %s' % (dbname, ' '.join(lstcols))
+        for colname in lstcols:
+            resp = delete_collection(dbname, colname, url, krbheaders)
+            msg += '\n  delete: %s resp: %s' % (colname, resp.text)
+    logger.debug(msg)
 
 
 def delete_document(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
@@ -565,6 +587,13 @@ def delete_document_and_data(dbname, colname, doc_id, url=cc.URL_KRB, krbheaders
         return False
 
     return delete_data(dbname, data_id, url, krbheaders)
+
+
+def delete_documents(dbname, colname, doc_ids, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
+    resp = None
+    for doc_id in doc_ids:
+        resp = delete_document_and_data(dbname, colname, doc_id, url, krbheaders)
+        logger.debug(resp.text)
 
 
 def str_formatted_list(lst, ncols=5, width=24):
@@ -713,7 +742,7 @@ def collection_info(dbname, cname, **kwa):
 
     for idoc, doc in enumerate(docs):
         #id_data = doc.get('id_data', None)
-        #if id_data is not None: doc['id_data_ts'] = timestamp_id(id_data)
+        #if id_data is not None: doc['id_data_ts'] = timestamp_idid_data)
         vals,_ = mu.document_info(doc, **kwa)
         s += '\n  %4d %s' % (idoc, vals)
 
@@ -932,8 +961,8 @@ if __name__ == "__main__" :
            'time_stamp': mu._timestamp(int(t0_sec)),
           }
     data = mu.get_test_nda()
-    id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
-      add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
+    res = add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
+    if res is None: print('\n!!!! add_data_and_two_docs responce is None')
 
     print('time to insert data and two docs: %.6f sec' % (time()-t0_sec))
 

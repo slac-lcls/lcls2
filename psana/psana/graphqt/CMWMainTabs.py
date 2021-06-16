@@ -21,7 +21,7 @@ from psana.graphqt.CMConfigParameters import cp
 class CMWMainTabs(QWidget):
     """GUI for tabs and associated widgets
     """
-    tab_names   = ['CDB', 'Configuration', 't-converter', 'HDF5', 'Mon-A', 'Mon-B']
+    tab_names   = ['CDB', 'Configuration', 't-converter', 'HDF5', 'IV', 'Win-A', 'Win-B']
 
     def __init__ (self, parent=None, app=None):
 
@@ -147,10 +147,15 @@ class CMWMainTabs(QWidget):
             #w_height = 80
             #self.gui_win.setMaximumHeight(w_height)
 
-        elif tab_name == 'HDF5': #tab_names[3]
+        elif tab_name == 'HDF5':
             from psana.graphqt.H5VMain import H5VMain
             if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
             self.gui_win = H5VMain()
+
+        elif tab_name == 'IV':
+            from psana.graphqt.IVMain import IVMain
+            if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
+            self.gui_win = IVMain()
 
         else:
             self.gui_win = QTextEdit('Default window for tab %s' % tab_name)

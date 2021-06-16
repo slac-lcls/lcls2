@@ -121,6 +121,7 @@ class CMWDBTree(QWTree):
         #parname = parent.text() if parent is not None else None
         dbname = itemname
         itdb = item
+
         for col in dbu.collection_names(dbname):
             if not col: continue
             itcol = QStandardItem(col)

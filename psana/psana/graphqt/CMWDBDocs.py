@@ -1,4 +1,4 @@
-#------------------------------
+
 """Class :py:class:`CMWDBDocs` is a QWidget for configuration parameters
 ========================================================================
 
@@ -17,7 +17,6 @@ See:
 
 Created on 2017-04-05 by Mikhail Dubrovin
 """
-#------------------------------
 
 import logging
 logger = logging.getLogger(__name__)
@@ -34,8 +33,6 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTextEdit #, QTab
 #from PyQt5.QtGui import QColor#, QFont
 #from PyQt5.QtCore import Qt
 
-#------------------------------
-
 def docs_widget_selector(dwtype):
     """Factory method for selection of the document widget.
     """
@@ -43,19 +40,18 @@ def docs_widget_selector(dwtype):
 
     logger.info('Set document browser in mode %s' % dwtype)
 
-    if   dwtype == dwtypes[0] : return CMWDBDocsText()
-    elif dwtype == dwtypes[1] : return CMWDBDocsList()
-    elif dwtype == dwtypes[2] : return CMWDBDocsTable()
-    else :
+    if   dwtype == dwtypes[0]: return CMWDBDocsText()
+    elif dwtype == dwtypes[1]: return CMWDBDocsList()
+    elif dwtype == dwtypes[2]: return CMWDBDocsTable()
+    else:
         logger.warning('Unknown doc widget type "%s"' % dwtype)
         return QTextEdit(dwtype)
 
-#------------------------------
 
-class CMWDBDocs(QWidget) :
+class CMWDBDocs(QWidget):
     """CMWDBDocs is a QWidget with tabs for configuration management"""
 
-    def __init__(self, parent=None) :
+    def __init__(self, parent=None):
         QWidget.__init__(self, parent)
         self._name = 'CMWDBDocs'
 
@@ -98,7 +94,7 @@ class CMWDBDocs(QWidget) :
 
     def set_docs_widget(self, docw=None):
 
-        if self.gui_win is not None : 
+        if self.gui_win is not None:
             self.gui_win.close()
             del self.gui_win
 
@@ -113,12 +109,12 @@ class CMWDBDocs(QWidget) :
         self.show_documents(self.dbname, self.colname)
 
 
-    def show_documents(self, dbname, colname, force_update=False) :
+    def show_documents(self, dbname, colname, force_update=False):
 
-        if None in (dbname, colname) : return
+        if None in (dbname, colname): return
 
         if ((dbname, colname) != (self.dbname, self.colname))\
-        or force_update :
+        or force_update:
             self.current_docs = dbu.list_of_documents(dbname, colname)
             self.dbname, self.colname = dbname, colname
 
@@ -146,12 +142,12 @@ class CMWDBDocs(QWidget) :
     def closeEvent(self, e):
         logger.debug('closeEvent')
         #self.tab_bar.close()        
-        if self.gui_win is not None : self.gui_win.close()
+        if self.gui_win is not None: self.gui_win.close()
         QWidget.close(self)
 
-    if __name__ == "__main__" :
+    if __name__ == "__main__":
 
-      def key_usage(self) :
+      def key_usage(self):
         return 'Keys:'\
                '\n  ESC - exit'\
                '\n  0 - set widget'\
@@ -160,21 +156,20 @@ class CMWDBDocs(QWidget) :
                '\n'
 
 
-      def keyPressEvent(self, e) :
+      def keyPressEvent(self, e):
         logger.info('keyPressEvent, key=', e.key())       
 
-        if   e.key() == Qt.Key_Escape :
+        if   e.key() == Qt.Key_Escape:
             self.close()
-        elif e.key() in (Qt.Key_0, Qt.Key_1, Qt.Key_2)  : 
+        elif e.key() in (Qt.Key_0, Qt.Key_1, Qt.Key_2):
             docw_type = self.list_of_doc_widgets[int(e.key())]
             cp.cdb_docw.setValue(docw_type)
             self.set_docs_widget()
-        else :
+        else:
             logger.info(self.key_usage())
 
-#-----------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     import sys
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
@@ -192,4 +187,4 @@ if __name__ == "__main__" :
     del w
     del app
 
-#-----------------------------
+# EOF

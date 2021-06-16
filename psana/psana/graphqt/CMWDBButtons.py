@@ -195,7 +195,7 @@ class CMWDBButtons(QWidget):
         #self.but_test.setFixedHeight(100) 
         #self.but_test.setIconSize(QSize(96,96)) 
 
-        self.layout().setContentsMargins(0,0,0,0) # L,U,R,D
+        self.layout().setContentsMargins(10,0,10,0) # L,U,R,D
         self.setMinimumWidth(500)
         self.setFixedHeight(30)
 
