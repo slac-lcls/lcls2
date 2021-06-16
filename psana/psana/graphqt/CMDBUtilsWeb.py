@@ -14,4 +14,7 @@ list_of_documents= wu.list_of_documents
 doc_add_id_ts    = wu.mu.doc_add_id_ts
 ObjectId         = wu.mu.ObjectId
 get_data_for_doc = wu.get_data_for_doc
-
+timestamp_id     = wu.mu.timestamp_id
+delete_documents = wu.delete_documents
+delete_collections = wu.delete_collections
+delete_databases = wu.delete_databases

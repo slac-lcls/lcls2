@@ -13,10 +13,10 @@ LEVEL_NAMES = ', '.join(list(logging._levelToName.values()))
 
 USAGE = 'Calibration Management GUI\n\n'\
       + 'command examples for app %s\n'%sys.argv[0]\
-      + '  calibman\n'\
-      + '  calibman -u <username> -p <password>\n'\
-      + '  calibman --host=psdbdev01 --port=9306\n'\
-      + '  calibman --host=psanaphi103 -l DEBUG -L cm-log'
+      + '  calibman\n'
+#      + '  calibman -u <username> -p <password>\n'\
+#      + '  calibman --host=psdbdev01 --port=9306\n'\
+#      + '  calibman --host=psanaphi103 -l DEBUG -L cm-log'
 
 
 def calibman_gui():
