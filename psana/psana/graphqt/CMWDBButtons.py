@@ -590,8 +590,8 @@ class CMWDBButtons(QWidget):
         logger.debug('add_doc resp: %s' % resp)
 
         if resp==1:
-            if d[dbnexp]: _,_=dbu.insert_document_and_data(dbnexp, colname, dicdoc, nda)
-            if d[dbndet]: _,_=dbu.insert_document_and_data(dbndet, colname, dicdoc, nda)
+            if d[dbnexp]: respe = dbu.insert_document_and_data(dbnexp, colname, dicdoc, nda)
+            if d[dbndet]: respd = dbu.insert_document_and_data(dbndet, colname, dicdoc, nda)
 
             wdocs = cp.cmwdbdocswidg
             if wdocs is None: return
