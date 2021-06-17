@@ -257,7 +257,7 @@ class Smd0(object):
             self.step_hist.extend_buffers(step_views, rankreq[0])
             logger.debug(f'RANK{self.comms.world_rank} 2.2 SMD0GOTSTEP {time.monotonic()}')
 
-            repack_smd = self.smdr_man.smdr.repack(missing_step_views)
+            repack_smd = self.smdr_man.smdr.repack_parallel(missing_step_views)
             
             logger.debug(f'RANK{self.comms.world_rank} 3. SMD0GOTREPACK {time.monotonic()}')
             
@@ -283,7 +283,7 @@ class Smd0(object):
         for i in range(self.comms.n_smd_nodes):
             self.comms.smd_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
-            repack_smd = self.smdr_man.smdr.repack(missing_step_views, only_steps=True)
+            repack_smd = self.smdr_man.smdr.repack_parallel(missing_step_views, only_steps=1)
             if memoryview(repack_smd).nbytes > 0:
                 self.comms.smd_comm.Send(repack_smd, dest=rankreq[0])
             else:
