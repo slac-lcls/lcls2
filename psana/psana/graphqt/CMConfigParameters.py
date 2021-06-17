@@ -1,4 +1,4 @@
-#------------------------------
+
 """
 Class :py:class:`CMConfigParameters` supports configuration parameters for application
 ======================================================================================
@@ -21,7 +21,6 @@ See:
 Created on 2016-11-22 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 """
-#---
 
 import logging
 logger = logging.getLogger(__name__)
@@ -30,7 +29,6 @@ from psana.pyalgos.generic.PSConfigParameters import PSConfigParameters
 from psana.pyalgos.generic.Utils import list_of_hosts as lshosts
 import psana.pscalib.calib.CalibConstants as cc
 
-#---
 
 class CMConfigParameters(PSConfigParameters):
     """A storage of configuration parameters for LCLS-2 Calibration Manager (CM)
@@ -116,15 +114,6 @@ class CMConfigParameters(PSConfigParameters):
         self.cdb_docw = self.declareParameter(name='CDB_DOC_WIDGET', val_def='List', type='str')
         self.cdb_selection_mode = self.declareParameter(name='CDB_SELECTION_MODE', val_def='extended', type='str')
 
-        
-#    def __del__(self):
-#        logger.debug('In d-tor: %s')
-#        logger.debug('In CMConfigParameters d-tor')
-#        if self.save_cp_at_exit.value():
-#            self.saveParametersInFile()
-#        #ConfigParameters.__del__(self)
-
-#---
 
 cp = CMConfigParameters()
 
