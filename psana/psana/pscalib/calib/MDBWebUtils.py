@@ -377,6 +377,12 @@ def add_data_and_doc(data, _dbname, _colname, url=cc.URL_KRB, krbheaders=cc.KRBH
     return id_data, id_doc
 
 
+def insert_document_and_data(dbname, colname, dicdoc, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
+    """wrapper for pymongo compatability
+    """
+    return add_data_and_doc(data, dbname, colname, url, krbheaders, **dicdoc)
+
+
 def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
     """ Check permission and add data and document to experiment and detector data bases.
     """
