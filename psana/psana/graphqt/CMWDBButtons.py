@@ -608,7 +608,7 @@ class CMWDBButtons(QWidget):
         if   cp.last_selection == cp.DB_COLS: self.save_db()
         elif cp.last_selection == cp.DOCS  : self.save_doc()
         else:
-            logger.warning('Nothing selected to delete. Select DBs, collections, '\
+            logger.warning('Nothing selected to save. Select DBs, collections, '\
                            'or documents then click on Delete button again.')
             return
 

@@ -61,11 +61,10 @@ Adopted for LCLS2 on 2018-02-16
 """
 
 from math import floor
-import ColorTable as ct
-from FWView import *
+from psana.graphqt import ColorTable as ct
+from psana.graphqt.FWView import *
 from PyQt5.QtGui import QImage, QPixmap
 
-#----
 
 class FWViewImage(FWView):
     
@@ -90,7 +89,7 @@ class FWViewImage(FWView):
         FWView.set_style(self)
         self.setWindowTitle('FWViewImage%s' %(30*' '))
         self.setAttribute(Qt.WA_TranslucentBackground)
-        #self.setContentsMargins(0,0,0,0)
+        #self.layout().setContentsMargins(0,0,0,0)
         #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
 
 
@@ -145,7 +144,6 @@ class FWViewImage(FWView):
         else: v = self.arr[iy,ix]
         return ix, iy, v
 
-#----
 
     if __name__ == "__main__":
 
@@ -196,18 +194,17 @@ class FWViewImage(FWView):
         else:
             print(self.key_usage())
 
-#----
 
 if __name__ == "__main__":
 
   import sys
   sys.path.append('..') # use relative path from parent dir
-  import pyalgos.generic.NDArrGenerators as ag
+  import psana.pyalgos.generic.NDArrGenerators as ag
   import numpy as np
 
 
   def image_with_random_peaks(shape=(500, 500)):
-    from pyalgos.generic.NDArrUtils import print_ndarr
+    from psana.pyalgos.generic.NDArrUtils import print_ndarr
 
     print('XXX1 shape:', shape)
     img = ag.random_standard(shape, mu=0, sigma=10)
@@ -265,7 +262,6 @@ if __name__ == "__main__":
     del w
     del app
 
-#----
 
 if __name__ == "__main__":
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
@@ -273,4 +269,4 @@ if __name__ == "__main__":
     test_wfviewimage(tname)
     sys.exit('End of Test %s' % tname)
 
-#----
+# EOF

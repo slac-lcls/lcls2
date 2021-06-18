@@ -60,8 +60,12 @@ def apply_color_table(arr, ctable=None, amin=None, amax=None) :
     # color_table_linear(ncolors=100)
     ctab = ctable if ctable is not None else color_table_rainbow(ncolors=1000, hang1=0, hang2=360)
     # color_table_monochr256() # color_table_def()
-    min = np.amin(arr) if amin is None else amin
-    max = np.amax(arr) if amax is None else amax
+    #min = np.amin(arr) if amin is None else amin
+    #max = np.amax(arr) if amax is None else amax
+
+    min = np.quantile(arr.ravel(), 0.05, axis=0, interpolation='lower')  if amin is None else amin
+    max = np.quantile(arr.ravel(), 0.95, axis=0, interpolation='higher') if amax is None else amax
+
     if min==max : max+=1
     f = float(ctab.size-1)/(max-min)
     ict = np.require(f*(arr-min), dtype=np.int) # array of indexes in color table

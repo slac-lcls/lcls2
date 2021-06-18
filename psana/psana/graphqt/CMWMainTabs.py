@@ -139,12 +139,13 @@ class CMWMainTabs(QWidget):
         elif tab_name == 'Configuration': #tab_names[1]
             from psana.graphqt.CMWConfig import CMWConfig
             self.gui_win = CMWConfig()
+            w_height = 500
 
         elif tab_name == 't-converter': #tab_names[2]
             from psana.graphqt.QWDateTimeSec import QWDateTimeSec
             self.gui_win = QWDateTimeSec()
             self.gui_win.setMaximumWidth(500)
-            #w_height = 80
+            w_height = 80
             #self.gui_win.setMaximumHeight(w_height)
 
         elif tab_name == 'HDF5':

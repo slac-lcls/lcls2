@@ -79,6 +79,7 @@ class CMConfigParameters(PSConfigParameters):
         self.cmwdbdocswidg=None
         self.qwloggerstd = None
         self.cmwdbdoceditor = None
+        self.wimage      = None
 
         self.last_selection = None # self.DB_COLS, DOCS
 
