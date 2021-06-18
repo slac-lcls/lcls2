@@ -1,6 +1,6 @@
 """
 :py:class:`NDArrUtils` - a set of utilities working on numpy arrays
-=================================================================
+=====================================================================
 
 Usage::
 
@@ -77,12 +77,10 @@ import numpy as np
 
 from psana.pscalib.calib.NDArrIO import save_txt
 
-#----
 
 import logging
 logger = logging.getLogger('NDArrUtils')
 
-#----
 
 def info_ndarr(nda, name='', first=0, last=5):
     _name = '%s '%name if name!='' else name
@@ -502,9 +500,7 @@ def save_ndarray_in_textfile(nda, fname, fmode, fmt):
     logger.debug('saved: %s fmode: %s fmt: %s' % (fname, oct(fmode), fmt))
 
 
-#------------------------------
 #----------- TEST -------------
-#------------------------------
 
 if __name__ == "__main__":
 
@@ -640,7 +636,6 @@ if __name__ == "__main__":
     elif tname =='12': test_02()
     else: sys.exit ('Not recognized test name: "%s"    Try tests 1-8' % tname)
 
-#----
 
 if __name__ == "__main__":
     import sys; global sys
@@ -651,4 +646,4 @@ if __name__ == "__main__":
     do_test()
     sys.exit('\nEnd of test')
 
-#----
+# EOF

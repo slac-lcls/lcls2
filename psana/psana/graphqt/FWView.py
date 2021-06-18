@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`FWView` is a QGraphicsView QWidget with interactive scalable scene
 =====================================================================================
@@ -9,7 +10,7 @@ Usage ::
     # Test
     #-----
     import sys
-    from FWView import *
+    from .FWView import *
     app = QApplication(sys.argv)
     w = FWView(None, rscene=QRectF(0, 0, 100, 100), origin='UL', scale_ctl='HV')
     w.show()
@@ -17,7 +18,7 @@ Usage ::
 
     # Constructor and destructor
     #---------------------------
-    from FWView import FWView
+    from .FWView import FWView
     w = FWView(parent=None, rscene=QRectF(0, 0, 10, 10), origin='UL', scale_ctl='HV', show_mode=0)
     w.__del__() # on w.close()
 
@@ -101,14 +102,19 @@ Adopted for LCLS2 on 2018-02-16
 import logging
 logger = logging.getLogger(__name__)
 
+#import sys
+#sys.path.append('.') # use relative path from parent dir
+#sys.path.append('..') # use relative path from parent dir
+#logger.debug('sys.path: %s'%str(sys.path))
+
+
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsScene, QApplication
 from PyQt5.QtGui import QBrush, QPen, QCursor, QColor
 from PyQt5.QtCore import Qt, pyqtSignal, QRectF, QPointF, QTimer
 
-from QWGraphicsRectItem import QWGraphicsRectItem
-from QWUtils import print_rect
+from psana.graphqt.QWGraphicsRectItem import QWGraphicsRectItem
+from psana.graphqt.QWUtils import print_rect
 
-#----
 
 class FWView(QGraphicsView):
     #wheel_is_stopped = pyqtSignal()
@@ -200,8 +206,8 @@ class FWView(QGraphicsView):
 
 
     def set_style(self):
-        self.setGeometry(20, 20, 600, 600)
-        self.setWindowTitle("FWView")
+        #self.setGeometry(20, 20, 600, 600)
+        #self.setWindowTitle("FWView")
         #self.layout().setContentsMargins(0,0,0,0)
         #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         #self.setAttribute(Qt.WA_TranslucentBackground)
@@ -383,7 +389,6 @@ class FWView(QGraphicsView):
         self.emit_signal_if_scene_rect_changed()
         #self.emit(QtCore.SIGNAL('wheel_is_stopped()'))
 
-#----
 
 #    def connect_wheel_is_stopped_to(self, recip):
 #        self.connect(self, QtCore.SIGNAL('wheel_is_stopped()'), recip)
@@ -528,7 +533,6 @@ class FWView(QGraphicsView):
     #def drawBackground(self, painter, rect):
         #painter.fillRect(rect, QBrush(QColor(0,0,0), Qt.SolidPattern))
 
-#----
 
     if __name__ == "__main__":
 
@@ -561,16 +565,16 @@ class FWView(QGraphicsView):
         else:
             print(self.key_usage())
 
-#----
 
 if __name__ == "__main__":
 
   logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
 
   import sys
-  sys.path.append('..') # use relative path from parent dir
-  logger.debug('sys.path: %s'%str(sys.path))
-  import pyalgos.generic.NDArrGenerators as ag
+  #sys.path.append('.') # use relative path from packege dir
+  #sys.path.append('..') # use relative path from parent dir
+  #logger.debug('sys.path: %s'%str(sys.path))
+  import psana.pyalgos.generic.NDArrGenerators as ag
   import numpy as np
 
 
@@ -603,6 +607,8 @@ if __name__ == "__main__":
     w.connect_scene_rect_changed_to(w.test_scene_rect_changed_reception)
     w.connect_mouse_press_event_to(w.test_mouse_press_event_reception)
 
+    w.setWindowTitle("FWView")
+    w.setGeometry(20, 20, 600, 600)
     w.show()
 
     #w.disconnect_mouse_move_event_from(w.test_mouse_move_event_reception)
@@ -616,7 +622,6 @@ if __name__ == "__main__":
     del w
     del app
 
-#----
 
 if __name__ == "__main__":
     
@@ -627,5 +632,5 @@ if __name__ == "__main__":
     print(usage(tname))
     sys.exit('End of Test %s' % tname)
 
-#----
+# EOF
 

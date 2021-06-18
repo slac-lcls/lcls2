@@ -13,13 +13,23 @@ Created on 2021-06-14 by Mikhail Dubrovin
 """
 
 import logging
-#logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 import os
 import sys
 from psana.graphqt.CMWControlBase import cp, CMWControlBase
-from PyQt5.QtWidgets import QVBoxLayout #QWidget, QLabel, QComboBox, QPushButton, QLineEdit
+from PyQt5.QtWidgets import QGridLayout, QPushButton# QHBoxLayout #QWidget, QLabel, QComboBox, QPushButton, QLineEdit
 from psana.graphqt.QWFileName import QWFileName
+
+
+def load_image_from_file(fname):
+    from psana.pyalgos.generic.UtilsFS import load_ndarray_from_file
+    from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
+    nda = load_ndarray_from_file(fname)
+    logger.debug(info_ndarr(nda,'nda'))
+    img = reshape_to_2d(nda)
+    logger.debug(info_ndarr(img,'img'))
+    return img
 
 
 class IVControl(CMWControlBase):
@@ -34,33 +44,30 @@ class IVControl(CMWControlBase):
 
         CMWControlBase.__init__(self, **kwargs)
 
-        self.w_fname_nda = QWFileName(None, butname='Select', label='N-d array:',\
+        self.w_fname_nda = QWFileName(None, butname='Select', label='Array:',\
            path=fname_nda, fltr='*.txt *.npy\n*', show_frame=True)
 
         self.w_fname_geo = QWFileName(None, butname='Select', label='Geometry:',\
            path=fname_geo, fltr='*.txt *.data\n*', show_frame=True)
 
-        self.box1 = QVBoxLayout() 
-        #self.box1.addWidget(self.lab_ctrl)
-        #self.box1.addWidget(self.but_exp_col)
-        self.box1.addWidget(self.w_fname_geo)
-        self.box1.addStretch(1)
-        self.box1.addWidget(self.w_fname_nda)
-        #self.box1.addSpacing(20)
-        self.box1.addStretch(1)
-        self.box1.addWidget(self.but_tabs)
+        self.but_reset = QPushButton('Reset')
+
+
+        self.box = QGridLayout()
+        self.box.addWidget(self.w_fname_nda, 0, 0, 1, 9)
+        self.box.addWidget(self.w_fname_geo, 1, 0, 1, 9)
+        self.box.addWidget(self.but_tabs,    0, 10)
+        self.box.addWidget(self.but_reset,   1, 10)
 
         #self.box1.addLayout(self.grid)
-        self.setLayout(self.box1)
+        self.setLayout(self.box)
  
-        #self.but_exp_col.clicked.connect(self.on_but_clicked)
-        #self.but_exp_col.clicked.connect(self.on_but_exp_col)
-
-        #if cp.h5vmain is not None:
-        #    self.w_fname_nda.connect_path_is_changed_to_recipient(cp.h5vmain.wtree.set_file)
+        self.but_reset.clicked.connect(self.on_but_reset)
+        self.w_fname_nda.connect_path_is_changed_to_recipient(self.on_changed_fname_nda)
+        self.w_fname_geo.connect_path_is_changed_to_recipient(self.on_changed_fname_geo)
 
         self.set_tool_tips()
-        #self.set_style()
+        self.set_style()
         #self.set_buttons_visiable()
 
         #from psana.graphqt.UtilsFS import list_of_instruments
@@ -68,18 +75,30 @@ class IVControl(CMWControlBase):
 
 
     def set_tool_tips(self):
-        self.setToolTip('Control fields/buttons')
+        CMWControlBase.set_tool_tips(self)
+        self.but_reset.setToolTip('Reset original image size')
 
 
     def set_style(self):
-        pass
-        #from psana.graphqt.Styles import style
-        #self.         setStyleSheet(style.styleBkgd)
-        #self.lab_db_filter.setStyleSheet(style.styleLabel)
-        #self.lab_ctrl.setStyleSheet(style.styleLabel)
+        self.but_tabs.setFixedWidth(50)
+        self.but_reset.setFixedWidth(50)
 
-        #icon.set_icons()
-        #self.but_exp_col.setIcon(icon.icon_folder_open)
+
+    def on_but_reset(self):
+        logger.debug('on_but_reset')
+        if cp.wimage is not None:
+           cp.wimage.reset_original_size()
+
+
+    def on_changed_fname_nda(self, fname):
+        logger.debug('on_changed_fname_nda: %s' % fname)
+        if cp.wimage is not None:
+           img = load_image_from_file(fname)
+           cp.wimage.set_pixmap_from_arr(img, set_def=True)
+
+
+    def on_changed_fname_geo(self, s):
+        logger.debug('on_changed_fname_geo: %s' % s)
 
 
 if __name__ == "__main__":
@@ -87,7 +106,7 @@ if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
     w = IVControl()
-    #w.setGeometry(200, 400, 500, 200)
+    w.setGeometry(100, 50, 500, 80)
     w.setWindowTitle('IV Control Panel')
     w.show()
     app.exec_()

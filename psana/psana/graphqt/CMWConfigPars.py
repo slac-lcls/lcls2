@@ -1,4 +1,4 @@
-#------------------------------
+
 """Class :py:class:`CMWConfigPars` is a QWidget for configuration parameters
 ==============================================================================
 
@@ -17,28 +17,19 @@ See:
 
 Created on 2017-04-05 by Mikhail Dubrovin
 """
-#------------------------------
-
-#import os
 
 import logging
 logger = logging.getLogger(__name__)
-#from psana.pyalgos.generic.Logger import logger
 
-#from PyQt5.QtGui import QIntValidator, QDoubleValidator# QRegExpValidator
 from PyQt5.QtWidgets import QWidget, QLabel, QGridLayout, QComboBox, QLineEdit
-# QLineEdit,  QPushButton, QComboBox, QCheckBox, QFileDialog
-# QTextEdit, QComboBox, QHBoxLayout, QVBoxLayout
-
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.Styles import style
 
-#------------------------------
 
-class CMWConfigPars(QWidget) :
+class CMWConfigPars(QWidget):
     """QWidget for managements of configuration parameters"""
 
-    def __init__(self, parent=None) :
+    def __init__(self, parent=None):
         QWidget.__init__(self, parent)
         self._name = 'CMWConfigPars'
 
@@ -47,8 +38,10 @@ class CMWConfigPars(QWidget) :
         self.lab_host = QLabel('Host:')
         self.lab_port = QLabel('Port:')
         self.lab_level= QLabel('Log level:')
+        self.lab_dir_ins= QLabel('Instrument dir:')
         self.lab_log_file = QLabel('Log dir:')
-        self.edi_log_file = QLineEdit(cp.log_prefix.value())        
+        self.edi_log_file = QLineEdit(cp.log_prefix.value())
+        self.edi_dir_ins = QLineEdit(cp.instr_dir.value())
 
         self.cmb_host = QComboBox(self)        
         self.cmb_host.addItems(cp.list_of_hosts)
@@ -64,33 +57,6 @@ class CMWConfigPars(QWidget) :
         self.cmb_level.addItems(self.log_level_names)
         self.cmb_level.setCurrentIndex(self.log_level_names.index(cp.log_level.value()))
 
-#        #self.tit_dir_work = QtGui.QLabel('Parameters:')
-#
-#        self.edi_dir_work = QLineEdit(cp.dir_work.value())        
-#        self.but_dir_work = QPushButton('Dir work:')
-#        self.edi_dir_work.setReadOnly(True)  
-#
-#        self.edi_dir_results = QLineEdit(cp.dir_results.value())        
-#        self.but_dir_results = PushButton('Dir results:')
-#        self.edi_dir_results.setReadOnly( True )  
-#
-#        self.lab_bat_queue  = QLabel('Queue:') 
-#        self.box_bat_queue  = QComboBox(self) 
-#        self.box_bat_queue.addItems(cp.list_of_queues)
-#        self.box_bat_queue.setCurrentIndex(cp.list_of_queues.index(cp.bat_queue.value()))
-#
-#        self.lab_dark_start = QLabel('Event start:') 
-
-#        self.but_show_vers  = QPushButton('Soft Vers')
-#        self.edi_dark_start = QLineEdit(str(cp.bat_dark_start.value()))#
-
-#        self.edi_dark_start .setValidator(QIntValidator(0,9999999,self))
-#        self.edi_rms_thr_min.setValidator(QDoubleValidator(0,65000,3,self))
-#        #self.edi_events.setValidator(QtGui.QRegExpValidator(QtCore.QRegExp("[0-9]\\d{0,3}|end$"),self))
-#
-#        self.cbx_deploy_hotpix = QCheckBox('Deploy pixel_status')
-#        self.cbx_deploy_hotpix.setChecked(cp.dark_deploy_hotpix.value())
-
         self.grid = QGridLayout()
         self.grid.addWidget(self.lab_host, 0, 0)
         self.grid.addWidget(self.cmb_host, 0, 1, 1, 1)
@@ -98,40 +64,26 @@ class CMWConfigPars(QWidget) :
         self.grid.addWidget(self.lab_port, 2, 0)
         self.grid.addWidget(self.cmb_port, 2, 1, 1, 1)
 
-        self.grid.addWidget(self.lab_level, 3, 0)
-        self.grid.addWidget(self.cmb_level, 3, 1, 1, 1)
+        self.grid.addWidget(self.lab_dir_ins, 3, 0)
+        self.grid.addWidget(self.edi_dir_ins, 3, 1, 1, 1)
 
-        self.grid.addWidget(self.lab_log_file, 4, 0)
-        self.grid.addWidget(self.edi_log_file, 4, 1, 1, 1)
+        self.grid.addWidget(self.lab_level, 4, 0)
+        self.grid.addWidget(self.cmb_level, 4, 1, 1, 1)
 
-#        self.grid_row = 0
-#        #self.grid.addWidget(self.tit_dir_work,      self.grid_row,   0, 1, 9)
-#        self.grid.addWidget(self.but_dir_work,      self.grid_row+1, 0)
-#        self.grid.addWidget(self.edi_dir_work,      self.grid_row+1, 1, 1, 8)
-#        self.grid.addWidget(self.but_dir_results,   self.grid_row+2, 0)
-#        self.grid.addWidget(self.edi_dir_results,   self.grid_row+2, 1, 1, 8)
+        self.grid.addWidget(self.lab_log_file, 5, 0)
+        self.grid.addWidget(self.edi_log_file, 5, 1, 1, 1)
 
         self.setLayout(self.grid)
-#
-#        self.vbox = QVBoxLayout() 
-#        self.vbox.addLayout(self.grid)
-#        self.vbox.addStretch(1)
-#        self.setLayout(self.vbox)
-#
-#        self.connect(self.but_dir_work,     QtCore.SIGNAL('clicked()'),          self.onButDirWork)
-#        self.connect(self.box_bat_queue,    QtCore.SIGNAL('currentIndexChanged(int)'), self.onBoxBatQueue)
-#        self.connect(self.cbx_deploy_hotpix,QtCore.SIGNAL('stateChanged(int)'),  self.on_cbx_deploy_hotpix) 
-
-        #self.cbx_host.stateChanged[int].connect(self.on_cbx_host_changed)
         
         self.cmb_host.currentIndexChanged[int].connect(self.on_cmb_host_changed)
         self.cmb_port.currentIndexChanged[int].connect(self.on_cmb_port_changed)
         self.cmb_level.currentIndexChanged[int].connect(self.on_cmb_level_changed)
         self.edi_log_file.editingFinished.connect(self.on_edi_log_file)
+        self.edi_dir_ins.editingFinished.connect(self.on_edi_dir_ins)
 
         self.set_tool_tips()
         self.set_style()
-#
+
     def set_tool_tips(self):
         self.cmb_host.setToolTip('Select DB host')
         self.cmb_port.setToolTip('Select DB port')
@@ -139,25 +91,12 @@ class CMWConfigPars(QWidget) :
     def set_style(self):
         self.         setStyleSheet(style.styleBkgd)
         self.lab_host.setStyleSheet(style.styleLabel)
+        self.lab_port.setStyleSheet(style.styleLabel)
+        self.lab_level.setStyleSheet(style.styleLabel)
+        self.lab_log_file.setStyleSheet(style.styleLabel)
+        self.lab_dir_ins.setStyleSheet(style.styleLabel)
 
-        self.setMaximumSize(200,120)
-#        self.setMinimumSize(500,300)
-#
-#        self.tit_dir_work     .setStyleSheet(style.styleTitle)
-#        self.edi_dir_work     .setStyleSheet(style.styleEditInfo)       
-#        self.but_dir_work     .setStyleSheet(style.styleButton) 
-#        self.lab_fname_prefix .setStyleSheet(style.styleLabel)
-#        self.edi_fname_prefix .setStyleSheet(style.styleEdit)
-#        self.lab_pix_status   .setStyleSheet(style.styleTitleBold)
-#
-#        self.edi_dir_work    .setAlignment(QtCore.Qt.AlignRight)
-#        self.lab_pix_status  .setAlignment(QtCore.Qt.AlignLeft)
-#
-#        self.edi_dir_work    .setMinimumWidth(300)
-#        self.but_dir_work    .setFixedWidth(80)
-#
-#    def set_parent(self,parent) :
-#        self.parent = parent
+        self.setMaximumSize(400,600)
 
     #def resizeEvent(self, e):
     #    logger.debug('resizeEvent size: %s' % str(e.size())) 
@@ -169,8 +108,8 @@ class CMWConfigPars(QWidget) :
 
     def closeEvent(self, event):
         logger.debug('closeEvent')
-        #try    : del cp.guiworkresdirs # CMWConfigPars
-        #except : pass # silently ignore
+        #try   : del cp.guiworkresdirs # CMWConfigPars
+        #except: pass # silently ignore
 #
 #
 #   def onClose(self):
@@ -180,7 +119,7 @@ class CMWConfigPars(QWidget) :
 #    def onButShowVers(self):
 #        #list_of_pkgs = ['CalibManager', 'ImgAlgos'] #, 'CSPadPixCoords', 'PSCalib', 'pdscalibdata']
 #        #msg = 'Package versions:\n'
-#        #for pkg in list_of_pkgs :
+#        #for pkg in list_of_pkgs:
 #        #    msg += '%s  %s\n' % (gu.get_pkg_version(pkg).ljust(10), pkg.ljust(32))
 #
 #        #msg = cp.package_versions.text_version_for_all_packages()
@@ -212,7 +151,7 @@ class CMWConfigPars(QWidget) :
 #        path, name = os.path.split(dir0)
 #        dir = str(QtGui.QFileDialog.getExistingDirectory(None,'Select directory for '+label,path))
 #
-#        if dir == dir0 or dir == '' :
+#        if dir == dir0 or dir == '':
 #            logger.info('Directiry for ' + label + ' has not been changed.')
 #            return
 #        edi.setText(dir)        
@@ -244,11 +183,11 @@ class CMWConfigPars(QWidget) :
 #    def onEdiTimeOut(self):
 #        str_value = str(self.edi_timeout.displayText())
 #        cp.job_timeout_sec.setValue(int(str_value))      
-#        logger.info('Job execution timout, sec : %s' % str_value)
+#        logger.info('Job execution timout, sec: %s' % str_value)
 #
 #    def onEdiDarkSele(self):
 #        str_value = str(self.edi_dark_sele.displayText())
-#        if str_value == '' : str_value = 'None'
+#        if str_value == '': str_value = 'None'
 #        cp.bat_dark_sele.setValue(str_value)      
 #        logger.info('Set the event code for selector: %s' % str_value)
 #
@@ -295,7 +234,7 @@ class CMWConfigPars(QWidget) :
 
 
 #    def on_cbx(self, par, cbx):
-#        #if cbx.hasFocus() :
+#        #if cbx.hasFocus():
 #        par.setValue(cbx.isChecked())
 #        msg = 'check box %s is set to: %s' % (cbx.text(), str(par.value()))
 #        logger.info(msg)
@@ -324,24 +263,32 @@ class CMWConfigPars(QWidget) :
         cp.log_level.setValue(selected) 
         logger.info('Set logger level %s' % selected)
 
+    def on_edi(self, par, but):
+        #logger.debug('on_edi')
+        par.setValue(str(but.displayText()))
+        logger.info('Set field: %s' % str(par.value()))
+
     def on_edi_log_file(self):
-        #logger.debug('on_edi_log_file')
-        cp.log_prefix.setValue(str(self.edi_log_file.displayText()))
-        logger.info('Set logger file name: ' + str(cp.log_prefix.value()))
+        ##logger.debug('on_edi_log_file')
+        self.on_edi(cp.log_prefix, self.edi_log_file)
+        #cp.log_prefix.setValue(str(self.edi_log_file.displayText()))
+        #logger.info('Set logger file name: ' + str(cp.log_prefix.value()))
 
-#-----------------------------
+    def on_edi_dir_ins(self):
+        self.on_edi(cp.instr_dir, self.edi_dir_ins)
 
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     import sys
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
     w = CMWConfigPars()
-    #w.setGeometry(200, 400, 500, 200)
+    w.setGeometry(200, 400, 500, 200)
     w.setWindowTitle('Config Parameters')
     w.show()
     app.exec_()
     del w
     del app
 
-#-----------------------------
+# EOF
