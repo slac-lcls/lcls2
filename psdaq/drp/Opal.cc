@@ -378,7 +378,9 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
     }
     else if (result == OpalTTFex::VALID) {
         //  Live feedback
-        double vec[6];
+        // we believe this memory will be freed when the shared_vector's
+        // reference count drops to zero. - weaver, valmar, ddamiani, cpo
+        double* vec = new double[6];
         pvd::shared_vector<const double> ttvec(vec,0,6);
         vec[0] = m_fex.amplitude();
         vec[1] = m_fex.filtered_position();
