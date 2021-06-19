@@ -7,7 +7,7 @@ assert(len(sys.argv)==2)
 
 # from psdaq/drp/BldDetector.cc
 server_address = ('', 10148) # BldDetectorSlow.cc says 12148 eventually
-if sys.argv[1]=="-e": #HXR ebeam
+if sys.argv[1]=="-h": #HXR ebeam
     multicast_group = '239.255.24.0'
     print('EBeam:')
 elif sys.argv[1]=="-s": #SXR ebeam
