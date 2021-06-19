@@ -68,8 +68,8 @@ class IVMain(QWidget):
         #import psana.graphqt.ColorTable as ct
         img = ag.random_standard((8,8), mu=0, sigma=10) # img = image_with_random_peaks(shape=(500, 500))
         #ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
-        ctab = ct.color_table_monochr256()
-        #ctab = ct.color_table_interpolated()
+        #ctab = ct.color_table_monochr256()
+        ctab = ct.color_table_interpolated()
         return FWViewImage(self, img, origin='UL', scale_ctl='HV', coltab=ctab)
 
 

@@ -21,13 +21,14 @@ from psana.graphqt.CMWControlBase import cp, CMWControlBase
 from PyQt5.QtWidgets import QGridLayout, QPushButton# QHBoxLayout #QWidget, QLabel, QComboBox, QPushButton, QLineEdit
 from psana.graphqt.QWFileName import QWFileName
 
+import psana.pyalgos.generic.PSUtils as psu
+from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
 
-def load_image_from_file(fname):
-    from psana.pyalgos.generic.UtilsFS import load_ndarray_from_file
-    from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
-    nda = load_ndarray_from_file(fname)
-    logger.debug(info_ndarr(nda,'nda'))
-    img = reshape_to_2d(nda)
+
+def image_from_ndarray(nda):
+    img = psu.table_nxn_epix10ka_from_ndarr(nda) if (nda.size % (352*384) == 0) else\
+          psu.table_nxm_cspad2x1_from_ndarr(nda) if (nda.size % (185*388) == 0) else\
+          reshape_to_2d(nda)
     logger.debug(info_ndarr(img,'img'))
     return img
 
@@ -93,7 +94,9 @@ class IVControl(CMWControlBase):
     def on_changed_fname_nda(self, fname):
         logger.debug('on_changed_fname_nda: %s' % fname)
         if cp.wimage is not None:
-           img = load_image_from_file(fname)
+           nda = psu.load_ndarray_from_file(fname)
+           logger.debug(info_ndarr(nda,'nda'))
+           img = image_from_ndarray(nda)
            cp.wimage.set_pixmap_from_arr(img, set_def=True)
 
 
