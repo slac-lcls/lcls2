@@ -1,7 +1,6 @@
 if not platform: platform = '0'
 
-import os
-ld_lib_path = 'LD_LIBRARY_PATH=%s/epics/lib/linux-x86_64:%s/pcas/lib/linux-x86_64'%((os.getenv('CONDA_PREFIX'),)*2)
+ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
 hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
 andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.89 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
@@ -64,7 +63,7 @@ ami_manager_node = "drp-neh-cmp003"
 
 procmgr_config = [
 # {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2'},
- {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups+' --prod'},
+# {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups+' --prod'},
  {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
 
 # set the phase2 transition timeout to 20s. this is because the teb
@@ -109,15 +108,18 @@ hsd_epics = 'DAQ:TMO:HSD:1'
 # 03.26.21: Took out hsd_7 because it kept giving errors like this (looks like bit corruption):
 # <C> PGPReader: Jump in complete l1Count 37577 -> 37450 | difference -127, tid L1Accept
 # hsd_1 removed because hsdpva gui PGP-tab showed one of 4 pgp lanes not locking - cpo 04/27/21
+#       this looks like a problem in the wiring from pc820 to alpha data card
 # hsd_2 was also commented out.  it seems to work, but L1 rate fluctuates in grafana down to 100Hz and up to 127Hz.
+#       this looks like it is the drp node (cmp017)
+#       moved to cmp020, now see low-rate PGP errors 
 # hsd_0 commented out.  100% deadtime after 3 hsdioc_1b restarts. traced down to enabling fex.  05/04/21 - cpo
 #  Map (host,hsd_segm,datadev,epicsPV)
 procmgr_hsd = [
- {host:'drp-neh-cmp020', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
+ #Razib did this{host:'drp-neh-cmp020', id:'hsd_0',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:A'},
  #{host:'drp-neh-cmp020', id:'hsd_1',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1B:B'},
- #{host:'drp-neh-cmp017', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
+ {host:'drp-neh-cmp020', id:'hsd_2',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:A'},
  {host:'drp-neh-cmp017', id:'hsd_3',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_1A:B'},
- {host:'drp-neh-cmp019', id:'hsd_4',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:A'},
+# For now{host:'drp-neh-cmp019', id:'hsd_4',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:A'},
 # {host:'drp-neh-cmp018', id:'hsd_7',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3E:B'},
  {host:'drp-neh-cmp021', id:'hsd_6',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:A'},
  {host:'drp-neh-cmp018', id:'hsd_5',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_3D:B'},
@@ -127,6 +129,9 @@ procmgr_hsd = [
  {host:'drp-neh-cmp024', id:'hsd_11', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_DA:A'},
  {host:'drp-neh-cmp021', id:'hsd_12', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:A'},
  {host:'drp-neh-cmp019', id:'hsd_13', flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B2:B'},
+#  See PGP link problems and JESD problems here
+# {host:'drp-neh-cmp020', id:'hsd_15',  flags:'spu', env:epics_env, cmd:drp_cmd0+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B1:B'},
+# For now{host:'drp-neh-cmp017', id:'hsd_14',  flags:'spu', env:epics_env, cmd:drp_cmd1+f' -D hsd -k hsd_epics_prefix={hsd_epics}_B1:A'},
 ]
 
 procmgr_config.extend(procmgr_hsd)
