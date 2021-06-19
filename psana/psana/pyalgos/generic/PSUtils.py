@@ -43,6 +43,7 @@ import math
 import numpy as np
 from time import time, strptime, strftime, localtime, mktime
 from psana.pyalgos.generic.UtilsFS import *
+#from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
 #from psana.pyalgos.generic.PSNameManager import nm
 
 
@@ -214,6 +215,61 @@ def cross_check_cspad_psana_cctbx(nda, arr):
     dt2 = time() - t0_sec
     print('psana ndarray is equal to converted from cctbx: %s, time = %.6f sec' % (np.array_equal(nda, nda_c), dt1))
     print('cctbx ndarray is equal to converted from psana: %s, time = %.6f sec' % (np.array_equal(arr, arr_c), dt2))
+
+
+def table_nxm_cspad2x1_from_ndarr(nda):
+    """returns table of cspad2x1 panels shaped as (nxm)
+       generated from cspad array shaped as (N,185,388) in data. 
+    """
+    segsize = 185*388
+    a = np.array(nda) # make a copy
+
+    if a.size == segsize:
+       a.shape = (185,388)
+       return a
+
+    elif a.size == 2*segsize:
+       if a.shape[-1]==2:
+           from psana.pscalib.geometry.GeometryObject import data2x2ToTwo2x1 # ,two2x1ToData2x2
+           a = data2x2ToTwo2x1(a)
+       a.shape = (2*185,388)
+       return a
+
+    elif a.size == 8*segsize:
+       sh = a.shape = (2,4*185,388)
+       return np.hstack([a[q,:] for q in range(sh[0])])
+
+    elif a.size == 32*segsize:
+       sh = a.shape = (4,8*185,388)
+       return np.hstack([a[q,:] for q in range(sh[0])])
+
+    else:
+       from psana.pyalgos.generic.NDArrUtils import reshape_to_2d
+       return reshape_to_2d(a)
+
+
+def table_nxn_epix10ka_from_ndarr(nda):
+    """returns table of epix10ka panels shaped as (nxn)
+       generated from epix10ka array shaped as (N, 352, 384) in data. 
+    """
+    segsize = 352*384
+    a = np.array(nda) # make a copy
+
+    if a.size == segsize:
+       a.shape = (352,384)
+       return a
+
+    elif a.size == 4*segsize:
+       sh = a.shape = (2,2*352,384)
+       return np.hstack([a[q,:] for q in range(sh[0])])
+
+    elif a.size == 16*segsize:
+       sh = a.shape = (4,4*352,384)
+       return np.hstack([a[q,:] for q in range(sh[0])])
+
+    else:
+       from psana.pyalgos.generic.NDArrUtils import reshape_to_2d
+       return reshape_to_2d(a)
 
 
 """Aliases"""
