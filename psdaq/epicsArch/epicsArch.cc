@@ -239,6 +239,7 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
 
     size_t payloadSize;
     m_monitor->addNames(m_para->detName, m_para->detType, m_para->serNo,
+                        m_para->detSegment,
                         xtc, m_namesLookup, nodeId, payloadSize);
     if (payloadSize > m_para->maxTrSize) {
         logging::warning("Increase Parameter::maxTrSize (%zd) to avoid truncation of data (%zd)",
