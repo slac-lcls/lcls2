@@ -145,6 +145,14 @@ int PvMonitorBase::getParams(const std::string& name,
             auto scalar   = pvScalar->getScalar();
             if (!scalar)  { logging::error("scalar is NULL");  return 1; }
             type          = scalar->getScalarType();
+            if (type==pvd::pvString) {
+                logging::critical("%s: Unsupported %s type %s (%d)",
+                                  MonTracker::name().c_str(),
+                                  pvd::TypeFunc::name(pvScalar->getField()->getType()),
+                                  pvd::ScalarTypeFunc::name(scalar->getScalarType()),
+                                  scalar->getScalarType());
+                throw "Unsupported string type";
+            }
             nelem         = 1;
             rank          = 0;
 // This was tested and is known to work
@@ -173,6 +181,14 @@ int PvMonitorBase::getParams(const std::string& name,
             auto scalarArray   = pvScalarArray->getScalarArray();
             if (!scalarArray)  { logging::error("scalarArray is NULL");  return 1; }
             type               = scalarArray->getElementType();
+            if (type==pvd::pvString) {
+                logging::critical("%s: Unsupported %s type '%s' (%d)",
+                                  MonTracker::name().c_str(),
+                                  pvd::TypeFunc::name(pvScalarArray->getField()->getType()),
+                                  pvd::ScalarTypeFunc::name(scalarArray->getElementType()),
+                                  scalarArray->getElementType());
+                throw "Unsupported string type";
+            }
             nelem              = pvScalarArray->getLength();
 // This was tested and is known to work
 //          switch (scalarArray->getElementType()) {
@@ -204,6 +220,14 @@ int PvMonitorBase::getParams(const std::string& name,
             auto scalarArray   = pvScalarArray->getScalarArray();
             if (!scalarArray)  { logging::error("Union's scalarArray is NULL");  return 1; }
             type               = scalarArray->getElementType();
+            if (type==pvd::pvString) {
+                logging::critical("%s: Unsupported %s type '%s' (%d)",
+                                  MonTracker::name().c_str(),
+                                  pvd::TypeFunc::name(pvScalarArray->getField()->getType()),
+                                  pvd::ScalarTypeFunc::name(scalarArray->getElementType()),
+                                  scalarArray->getElementType());
+                throw "Unsupported string type";
+            }
             nelem              = pvScalarArray->getLength();
 // This has NOT been tested
 //          switch (scalarArray->getElementType()) {
