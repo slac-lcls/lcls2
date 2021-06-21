@@ -19,7 +19,7 @@ import os
 import sys
 from psana.graphqt.CMWControlBase import cp, CMWControlBase
 from PyQt5.QtWidgets import QGridLayout, QPushButton# QHBoxLayout #QWidget, QLabel, QComboBox, QPushButton, QLineEdit
-from psana.graphqt.QWFileName import QWFileName
+from psana.graphqt.QWFileNameV2 import QWFileNameV2
 
 import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
@@ -40,15 +40,17 @@ class IVControl(CMWControlBase):
 
         parent = kwargs.get('parent',None)
         d = '/reg/g/psdm/detector/alignment/epix10ka2m/calib-xxx-epix10ka2m.1-2021-02-02/'
-        fname_nda = d + 'det-calib-mfxc00118-r242-e5000-max.txt'
-        fname_geo = d + '2021-02-02-epix10ks2m.1-geometry-recentred-for-psana.txt'
+        #fname_nda = d + 'det-calib-mfxc00118-r242-e5000-max.txt'
+        #fname_geo = d + '2021-02-02-epix10ks2m.1-geometry-recentred-for-psana.txt'
+        fname_nda = d + 'Select'
+        fname_geo = d + 'Select'
 
         CMWControlBase.__init__(self, **kwargs)
 
-        self.w_fname_nda = QWFileName(None, butname='Select', label='Array:',\
-           path=fname_nda, fltr='*.txt *.npy\n*', show_frame=True)
+        self.w_fname_nda = QWFileNameV2(None, label='Array:',\
+           path=fname_nda, fltr='*.txt *.npy *.data *.dat\n*', show_frame=True)
 
-        self.w_fname_geo = QWFileName(None, butname='Select', label='Geometry:',\
+        self.w_fname_geo = QWFileNameV2(None, label='Geometry:',\
            path=fname_geo, fltr='*.txt *.data\n*', show_frame=True)
 
         self.but_reset = QPushButton('Reset')
