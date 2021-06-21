@@ -145,14 +145,14 @@ void EpicsArchMonitor::_addInfo(XtcData::CreateData& epicsInfo)
   }
 }
 
-void EpicsArchMonitor::addNames(const std::string& detName, const std::string& detType, const std::string& serNo,
+void EpicsArchMonitor::addNames(const std::string& detName, const std::string& detType, const std::string& serNo, unsigned segment,
                                 XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId,
                                 size_t& payloadSize)
 {
   XtcData::Alg     rawAlg("raw", 2, 0, 0);
   XtcData::NamesId rawNamesId(nodeId, iRawNamesIndex);
   XtcData::Names&  rawNames = *new(xtc) XtcData::Names(detName.c_str(), rawAlg,
-                                                       detType.c_str(), serNo.c_str(), rawNamesId);
+                                                       detType.c_str(), serNo.c_str(), rawNamesId, segment);
   _initDef(payloadSize);
   payloadSize += (sizeof(Pds::EbDgram)    + // An EbDgram is needed by the MEB
                   24                      + // Space needed by DescribedData
@@ -165,7 +165,7 @@ void EpicsArchMonitor::addNames(const std::string& detName, const std::string& d
   XtcData::Alg     infoAlg("epicsinfo", 1, 0, 0);
   XtcData::NamesId infoNamesId(nodeId, iInfoNamesIndex);
   XtcData::Names&  infoNames = *new(xtc) XtcData::Names("epicsinfo", infoAlg,
-                                                        "epicsinfo", "detnum1234", infoNamesId);
+                                                        "epicsinfo", "detnum1234", infoNamesId, segment);
   _initInfoDef();
   infoNames.add(xtc, _epicsInfoDef);
   namesLookup[infoNamesId] = XtcData::NameIndex(infoNames);

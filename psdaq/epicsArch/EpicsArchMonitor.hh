@@ -25,7 +25,7 @@ namespace Drp
                      std::string& sConfigFileWarning);
     ~EpicsArchMonitor();
   public:
-    void     addNames(const std::string& detName, const std::string& detType, const std::string& serNo,
+    void     addNames(const std::string& detName, const std::string& detType, const std::string& serNo, unsigned segment,
                       XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId,
                       size_t& payloadSize);
     int      getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, unsigned nodeId, size_t payloadSize, uint64_t& nStales);
