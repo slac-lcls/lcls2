@@ -3,7 +3,6 @@
 
 from cpython cimport array
 import array
-import numpy as np
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 
 from dgramlite cimport Xtc, Sequence, Dgram
@@ -121,8 +120,11 @@ cdef class EventBuilder:
         # For checking step dgrams
         cdef unsigned service = 0
         cdef unsigned long aux_ts = 0
+        cdef unsigned long aux_min_ts = 0
+        cdef int smd_id=0
 
         cdef int accept = 1 # for filter callback
+
 
         while got < batch_size and self._has_more() and not reach_limit_ts:
             array.zero(self.timestamps)
@@ -131,11 +133,12 @@ cdef class EventBuilder:
             array.zero(self.event_timestamps)
             service = 0
             
-            # Get dgrams and collect their timestamps for any smd with ts=0.
+            # Get dgrams and collect their timestamps for all smds, then locate
+            # smd_id with the smallest timestamp.
+            aux_min_ts = 0
+            smd_id = 0
             for view_idx in range(self.nsmds):
                 event_dgrams[view_idx] = 0
-                if self.timestamps[view_idx] != 0: continue
-
                 view = self.views[view_idx]
                 if self.offsets[view_idx] < self.sizes[view_idx]:
                     # Fill buf with data from memoryview 'view'.
@@ -148,15 +151,17 @@ cdef class EventBuilder:
                     self.dgram_sizes[view_idx] = self.DGRAM_SIZE + payload
                     self.services[view_idx] = (d.env>>24)&0xf
                     raw_dgrams[view_idx] = <char[:self.dgram_sizes[view_idx]]>view_ptr
-                    PyBuffer_Release(&buf)
 
-            # Pick the oldest timestamp dgram as the first event
-            # then look for other dgrams (in the rest of smd views)
-            # for matching timestamps. An event is build (as bytearray)
-            # with packet_footer. All dgrams in an event have the same timestamp.
-            smd_id = np.argmin(self.timestamps) 
-            if self.timestamps[smd_id] == 0:
-                continue
+                    # Check for the smallest timestamp
+                    if aux_min_ts == 0:
+                        aux_min_ts = self.timestamps[view_idx]
+                        smd_id = view_idx
+                    else:
+                        if self.timestamps[view_idx] < aux_min_ts:
+                            aux_min_ts = self.timestamps[view_idx]
+                            smd_id = view_idx
+
+                    PyBuffer_Release(&buf)
 
             self.event_timestamps[smd_id] = self.timestamps[smd_id]
             self.timestamps[smd_id] = 0 # prepare for next reload
@@ -187,7 +192,6 @@ cdef class EventBuilder:
                     self.timestamps[view_idx] = 0 # prepare for next reload
                     self.offsets[view_idx] += (self.DGRAM_SIZE + payload)
                     event_dgrams[view_idx] = <char[:self.DGRAM_SIZE+payload]>view_ptr
-                
                 PyBuffer_Release(&buf)
             
             # Generate event as bytes from the dgrams
