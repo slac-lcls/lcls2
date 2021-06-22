@@ -4,9 +4,10 @@
 from libc.stdlib cimport malloc, free
 from libc.string cimport memcpy
 from posix.unistd cimport read, sleep
+from libc.errno cimport errno
 from cpython cimport array
 import array
-from libc.stdint cimport uint32_t, uint64_t
+from libc.stdint cimport uint32_t, uint64_t, int64_t
 
 cdef struct Buffer:
     char*    chunk
