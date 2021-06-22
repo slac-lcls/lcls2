@@ -74,7 +74,8 @@ cdef class ParallelReader:
 
         """
         cdef Py_ssize_t i       = 0
-        cdef uint64_t got       = 0
+        cdef int64_t got       = 0
+        cdef int64_t gots[1000]
         cdef uint64_t offset    = 0
         cdef Dgram* d
         cdef Buffer* buf
@@ -83,6 +84,7 @@ cdef class ParallelReader:
         self.got                = 0
         
         for i in prange(self.nfiles, nogil=True, num_threads=self.num_threads):
+            gots[i] = 0
             buf = &(self.bufs[i])
             step_buf = &(self.step_bufs[i])
 
@@ -94,13 +96,13 @@ cdef class ParallelReader:
                 memcpy(buf.chunk, buf.chunk + buf.ready_offset, buf.got - buf.ready_offset)
             
             # read more data to fill up the buffer
-            got = read( self.file_descriptors[i], buf.chunk + (buf.got - buf.ready_offset), \
+            gots[i] = read( self.file_descriptors[i], buf.chunk + (buf.got - buf.ready_offset), \
                     self.chunksize - (buf.got - buf.ready_offset) )
-            
+
             # summing the size of all the new reads
-            self.got += got
+            self.got += gots[i]
             
-            buf.got = (buf.got - buf.ready_offset) + got
+            buf.got = (buf.got - buf.ready_offset) + gots[i]
             
             # reset the offsets and no. of events
             buf.ready_offset        = 0
