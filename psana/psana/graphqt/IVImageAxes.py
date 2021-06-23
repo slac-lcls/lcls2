@@ -1,6 +1,6 @@
 
 """Class :py:class:`IVImageAxes` is a QWidget with image and two axes
-==========================================================================================
+=====================================================================
 
 Usage ::
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 from psana.graphqt.FWViewImage import FWViewImage
 from psana.graphqt.FWViewAxis import FWViewAxis
 import psana.graphqt.ColorTable as ct
-from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton
+from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton#, QSizePolicy
 from PyQt5.QtCore import Qt, QRectF #, QPointF, QPoint, QRectF
 
 def test_image():
@@ -39,48 +39,40 @@ class IVImageAxes(QWidget):
         ctab = ct.color_table_interpolated()
 
         self.wimg = FWViewImage(self, image, coltab=ctab, origin='UL', scale_ctl='HV')
-        #self.wimg.layout().setContentsMargins(0,0,0,0)
 
         r = self.wimg.sceneRect()
-        print('XXX .sceneRect:', self.wimg.sceneRect())
-
         rscx = QRectF(r.x(), 0, r.width(), 1)
         rscy = QRectF(0, r.y(), 1, r.height())
-        #print('XXX rscx:', rscx)
-        #print('XXX rscy:', rscy)
 
-        self.waxx = FWViewAxis(None, rscx, side='U', origin='UL', scale_ctl=True, wwidth=50, wlength=200)
-        self.waxy = FWViewAxis(None, rscy, side='R', origin='UR', scale_ctl=True, wwidth=50, wlength=200)
+        self.waxx = FWViewAxis(None, rscx, side='U', origin='UL', scale_ctl=True, wwidth=30, wlength=200)
+        self.waxy = FWViewAxis(None, rscy, side='R', origin='UR', scale_ctl=True, wwidth=60, wlength=200)
 
         self.but_reset = QPushButton('Reset')
 
         self.box = QGridLayout()
+        self.box.setSpacing(0)
         self.box.setVerticalSpacing(0)
         self.box.setHorizontalSpacing(0)
-        self.box.addWidget(self.waxy,      0, 0, 9, 1)
-        self.box.addWidget(self.wimg,      0, 1, 9, 9)
-        self.box.addWidget(self.waxx,      9, 1, 1, 9)
-        self.box.addWidget(self.but_reset, 9, 0, alignment=Qt.AlignCenter)
+        self.box.addWidget(self.waxy,      0,  0, 20,  1)
+        self.box.addWidget(self.wimg,      0,  1, 20, 20)
+        self.box.addWidget(self.waxx,      20, 1,  1, 20)
+        self.box.addWidget(self.but_reset, 20, 0, alignment=Qt.AlignCenter)
         self.setLayout(self.box)
  
         self.set_tool_tips()
         self.set_style()
-        #self.set_buttons_visiable()
 
-        #from psana.graphqt.UtilsFS import list_of_instruments
-        #print('lst:', list_of_instruments(cp.instr_dir.value()))
-
-        self.connect_scene_rect_changed_slow()
+        self.connect_scene_rect_changed()
         self.but_reset.clicked.connect(self.on_but_reset)
 
 
-    def connect_scene_rect_changed_slow(self):
+    def connect_scene_rect_changed(self):
         self.wimg.connect_scene_rect_changed_to(self.on_wimg_scene_rect_changed)
         self.waxx.connect_scene_rect_changed_to(self.on_waxx_scene_rect_changed)
         self.waxy.connect_scene_rect_changed_to(self.on_waxy_scene_rect_changed)
 
 
-    def disconnect_scene_rect_changed_slow(self):
+    def disconnect_scene_rect_changed(self):
         self.wimg.disconnect_scene_rect_changed_from(self.on_wimg_scene_rect_changed)
         self.waxx.disconnect_scene_rect_changed_from(self.on_waxx_scene_rect_changed)
         self.waxy.disconnect_scene_rect_changed_from(self.on_waxy_scene_rect_changed)
@@ -116,9 +108,18 @@ class IVImageAxes(QWidget):
 
     def set_style(self):
         self.layout().setContentsMargins(0,0,0,0)
-        #self.but_tabs.setFixedWidth(50)
-        #self.setStyleSheet('background: transparent; background-color: rgb(0,0,0);') #rgb(0,0,0);')QColor(black)
-        self.but_reset.setFixedSize(48,45)
+        self.but_reset.setFixedSize(60,30)
+
+
+    def set_pixmap_from_arr(self, arr, set_def=True):
+        """shortcat to image"""
+        self.wimg.set_pixmap_from_arr(arr, set_def)
+
+
+    def reset_original_size(self):
+        """shortcat to image"""
+        self.wimg.reset_original_size()
+
 
 if __name__ == "__main__":
     import os

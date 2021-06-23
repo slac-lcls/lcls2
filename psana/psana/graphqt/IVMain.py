@@ -20,7 +20,7 @@ from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextE
 from psana.graphqt.IVControl import IVControl
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.FWViewImage import FWViewImage, ct
-
+from psana.graphqt.IVImageAxes import IVImageAxes
 
 class IVMain(QWidget):
 
@@ -70,7 +70,8 @@ class IVMain(QWidget):
         #ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
         #ctab = ct.color_table_monochr256()
         ctab = ct.color_table_interpolated()
-        return FWViewImage(self, img, origin='UL', scale_ctl='HV', coltab=ctab)
+        #return FWViewImage(self, img, origin='UL', scale_ctl='HV', coltab=ctab)
+        return IVImageAxes(parent=self, image=img, origin='UL', scale_ctl='HV', coltab=ctab)
 
 
     def connect_signals_to_slots(self):

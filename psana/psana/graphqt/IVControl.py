@@ -27,6 +27,7 @@ from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
 
 def image_from_ndarray(nda):
     img = psu.table_nxn_epix10ka_from_ndarr(nda) if (nda.size % (352*384) == 0) else\
+          psu.table_nxm_jungfrau_from_ndarr(nda) if (nda.size % (512*1024) == 0) else\
           psu.table_nxm_cspad2x1_from_ndarr(nda) if (nda.size % (185*388) == 0) else\
           reshape_to_2d(nda)
     logger.debug(info_ndarr(img,'img'))
