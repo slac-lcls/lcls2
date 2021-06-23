@@ -37,7 +37,7 @@ Usage ::
     sctrl = w.scale_control()
     w.set_style()
     w._set_signs_of_transform()
-    w.set_background_style(bkgd="background-color:black; border: 0px solid green")
+    w.set_background_style(bkgd_color=QColor(50,5,50))
     w._set_scene_item_rect_zvalue(sc_zvalue=20)
 
     # Re-calls
@@ -117,15 +117,13 @@ from psana.graphqt.QWUtils import print_rect
 
 
 class FWView(QGraphicsView):
-    #wheel_is_stopped = pyqtSignal()
-    #view_is_closed = pyqtSignal()
     mouse_move_event   = pyqtSignal('QMouseEvent')
     mouse_press_event  = pyqtSignal('QMouseEvent')
     scene_rect_changed = pyqtSignal('QRectF')
 
     def __init__(self, parent=None, rscene=QRectF(0, 0, 10, 10),\
                  origin='UL', scale_ctl='HV',\
-                 show_mode=0):
+                 show_mode=0, signal_fast=True):
         """
         Parameters
 
@@ -134,6 +132,7 @@ class FWView(QGraphicsView):
         - origin (str) - location of origin U(T)=Upper(Top), L=Left, other letters are not used but mean Down(Bottom), Right
         - scale_ctl (str) - scale control at mouse move, scroll, H=Horizontal, V=Vertical
         - show_mode (int) - 0(def) - draw nothing, +1 - field of scene rect, +2 - origin
+        - signal_fast (bool) - send fast signal if the scene rect is changed
         """
 
         sc = QGraphicsScene()
@@ -158,6 +157,7 @@ class FWView(QGraphicsView):
         self.twheel_msec = 500 # timeout for wheelEvent
         self.timer = QTimer()
         self.timer.timeout.connect(self.on_timeout)
+        self.signal_fast = signal_fast
 
 
     def __del__(self):
@@ -206,13 +206,6 @@ class FWView(QGraphicsView):
 
 
     def set_style(self):
-        #self.setGeometry(20, 20, 600, 600)
-        #self.setWindowTitle("FWView")
-        #self.layout().setContentsMargins(0,0,0,0)
-        #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-        #self.setAttribute(Qt.WA_TranslucentBackground)
-        #self.setInteractive(True)
-        #self.setFixedSize(600, 22)
 
         self.brudf = QBrush()
         self.brubx = QBrush(Qt.black, Qt.SolidPattern)
@@ -222,14 +215,9 @@ class FWView(QGraphicsView):
 
         self.set_background_style()
 
-        #self.setViewportUpdateMode(QGraphicsView.SmartViewportUpdate)
-
 
     def set_background_style(self, bkgd_color = QColor(50,5,50)):
         """Sets self.bkgd (str) - background style"""
-        # it seems like in pyqt5 setStyleSheet is not enough to re-paint bkgd at drug, zoom etc.
-        #bkgd_style="background-color:black; border: 0px solid green",
-        #self.setStyleSheet(bkgd_style)
         self.setBackgroundBrush(QBrush(bkgd_color, Qt.SolidPattern))
 
 
@@ -297,12 +285,9 @@ class FWView(QGraphicsView):
         QApplication.restoreOverrideCursor()
         QGraphicsView.mouseReleaseEvent(self, e)
         #logger.debug('FWView.mouseReleaseEvent, at point: '+str(e.pos()))
-        #self.pos_click = e.pos()
         self.pos_click = None
-        ### self.set_cursor_type_on_scene_rect()
 
         self.emit_signal_if_scene_rect_changed()
-        #self.update_my_scene()
 
 
 #    def mouseDoubleCkickEvent(self, e):
@@ -311,10 +296,6 @@ class FWView(QGraphicsView):
 
 
     def mousePressEvent(self, e):
-        #logger.debug('FWView.mousePressEvent, at point: ', e.pos() #e.globalX(), e.globalY())
-        #QApplication.setOverrideCursor(QCursor(Qt.ClosedHandCursor)) #Qt.SizeAllCursor))# ClosedHandCursor
-        #self.emit(QtCore.SIGNAL('mouse_press_event(QMouseEvent)'), e)
-
         logger.debug('FWView.mousePressEvent but=%d %s scene x=%.1f y=%.1f'%\
                      (e.button(), str(e.pos()), self.x(), self.y())) # self.__class__.__name__
 
@@ -331,7 +312,6 @@ class FWView(QGraphicsView):
     def mouseMoveEvent(self, e):
         QGraphicsView.mouseMoveEvent(self, e)
         #logger.debug('FWView.mouseMoveEvent, at point: %s' % str(e.pos()))
-        #self.emit(QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), e)
         self.mouse_move_event.emit(e)
 
         if self._scale_ctl==0: return
@@ -347,7 +327,7 @@ class FWView(QGraphicsView):
         rs.moveCenter(self.rs_center - dpsc)
         sc.setSceneRect(rs)
 
-        #self.update_my_scene()
+        if self.signal_fast: self.emit_signal_if_scene_rect_changed()
 
 
     def wheelEvent(self, e):
@@ -378,7 +358,8 @@ class FWView(QGraphicsView):
 
         self.set_view(rs)
 
-        self.timer.start(self.twheel_msec)
+        if self.signal_fast: self.emit_signal_if_scene_rect_changed()
+        else: self.timer.start(self.twheel_msec)
 
 
     def on_timeout(self):
@@ -390,41 +371,16 @@ class FWView(QGraphicsView):
         #self.emit(QtCore.SIGNAL('wheel_is_stopped()'))
 
 
-#    def connect_wheel_is_stopped_to(self, recip):
-#        self.connect(self, QtCore.SIGNAL('wheel_is_stopped()'), recip)
-
-#    def disconnect_wheel_is_stopped_from(self, recip):
-#        self.disconnect(self, QtCore.SIGNAL('wheel_is_stopped()'), recip)
-
-#    def test_wheel_is_stopped_reception(self):
-#        logger.debug('GUView.test_wheel_is_stopped_reception')
-
-#    def scale_drag_points(self):
-#        sx, sy = self.transform().m11(), self.transform().m22()
-#        print('scalex=%.3f, scaley=%.3f' %(sx, sy))
-#        from DragPoint import DragPoint 
-#        for item in self.scene().items():
-#            if isinstance(item, DragPoint):
-#                 item.setScale(item.sx0/sx)
-
-
     def emit_signal_if_scene_rect_changed(self):
         """Checks if scene rect have changed and submits signal with new rect.
         """
         rs = self.scene().sceneRect()
-        #logger.debug('XXX FWView.emit_signal_if_scene_rect_changed old, new:', self.rs_old, rs)
-
-        #if not equal_rects(rs, self.rs_old):
         if rs != self.rs_old:
             self.rs_old = rs
-            #self.emit(QtCore.SIGNAL('scene_rect_changed(QRectF)'), rs)
             self.scene_rect_changed.emit(rs)
-            #self.scale_drag_points()
             
 
     def connect_scene_rect_changed_to(self, recip):
-        #self.connect(self, QtCore.SIGNAL('scene_rect_changed(QRectF)'), recip)
-        #self.scene_rect_changed('QRectF').connect(recip)
         self.scene_rect_changed.connect(recip)
  
 
@@ -433,7 +389,6 @@ class FWView(QGraphicsView):
 
 
     def test_scene_rect_changed_reception(self, rs):
-        #logger.debug('GUView.test_scene_rect_changed_reception:', rs)
         print_rect(rs, cmt='FWView.test_scene_rect_changed_reception')
 
 
@@ -504,17 +459,14 @@ class FWView(QGraphicsView):
 
 
     def connect_mouse_move_event_to(self, recip):
-        #self.connect(self, QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), recip)
         self.mouse_move_event['QMouseEvent'].connect(recip)
 
 
     def disconnect_mouse_move_event_from(self, recip):
-        #self.disconnect(self, QtCore.SIGNAL('mouse_move_event(QMouseEvent)'), recip)
         self.mouse_move_event['QMouseEvent'].disconnect(recip)
 
 
     def test_mouse_move_event_reception(self, e):
-        #logger.debug('mouseMoveEvent, current point: ', e.x(), e.y(), ' on scene: %.1f  %.1f' % (p.x(), p.y()))
         p = self.mapToScene(e.pos())
         self.setWindowTitle('FWView: x=%.1f y=%.1f %s' % (p.x(), p.y(), 25*' '))
 
@@ -571,9 +523,6 @@ if __name__ == "__main__":
   logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
 
   import sys
-  #sys.path.append('.') # use relative path from packege dir
-  #sys.path.append('..') # use relative path from parent dir
-  #logger.debug('sys.path: %s'%str(sys.path))
   import psana.pyalgos.generic.NDArrGenerators as ag
   import numpy as np
 
