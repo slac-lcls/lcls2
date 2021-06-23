@@ -248,10 +248,35 @@ def table_nxm_cspad2x1_from_ndarr(nda):
        return reshape_to_2d(a)
 
 
+def table_nxm_jungfrau_from_ndarr(nda):
+    """returns table of epix10ka panels shaped as (nxn)
+       generated from epix10ka array shaped as (N, 352, 384) in data. 
+    """
+    segsize = 512*1024
+    a = np.array(nda) # make a copy
+
+    if a.size == segsize:
+       a.shape = (512,1024)
+       return a
+
+    elif a.size == 2*segsize:
+       sh = a.shape = (2,512,1024)
+       return np.vstack([a[q,:] for q in (1,0)])
+
+    elif a.size == 8*segsize:
+       sh = a.shape = (8,512,1024)
+       return np.hstack([np.vstack([a[q,:] for q in (7,6,5,4)]),\
+                         np.vstack([a[q,:] for q in (3,2,1,0)])])
+    else:
+       from psana.pyalgos.generic.NDArrUtils import reshape_to_2d
+       return reshape_to_2d(a)
+
+
 def table_nxn_epix10ka_from_ndarr(nda):
     """returns table of epix10ka panels shaped as (nxn)
        generated from epix10ka array shaped as (N, 352, 384) in data. 
     """
+    gapv = 20
     segsize = 352*384
     a = np.array(nda) # make a copy
 
@@ -266,6 +291,16 @@ def table_nxn_epix10ka_from_ndarr(nda):
     elif a.size == 16*segsize:
        sh = a.shape = (4,4*352,384)
        return np.hstack([a[q,:] for q in range(sh[0])])
+
+    elif a.size == 7*4*segsize:
+       sh = a.shape = (7,2,2*352,384)
+       agap = np.zeros((gapv,2*384))
+       return np.vstack([np.vstack([np.hstack([a[g,q,:] for q in range(2)]), agap]) for g in range(7)])
+
+    elif a.size == 7*16*segsize:
+       sh = a.shape = (7,4,4*352,384)
+       agap = np.zeros((gapv,4*384))
+       return np.vstack([np.vstack([np.hstack([a[g,q,:] for q in range(4)]), agap]) for g in range(7)])
 
     else:
        from psana.pyalgos.generic.NDArrUtils import reshape_to_2d
