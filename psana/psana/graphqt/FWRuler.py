@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`FWRuler` adds a ruller to one of the sides of the scene rectangle
 ==================================================================================
@@ -37,9 +38,8 @@ from PyQt5.QtWidgets import QGraphicsItem
 from PyQt5.QtGui import QFont, QPen, QBrush, QColor, QPainterPath
 from PyQt5.QtCore import Qt, QPointF, QPoint, QRectF
 
-from AxisLabeling import best_label_locs
+from psana.graphqt.AxisLabeling import best_label_locs
 
-#----
 
 class FWRuler():
 
@@ -221,7 +221,6 @@ class FWRuler():
     def __del__(self):
         self.remove()
 
-#----
 
 if __name__ == "__main__":
 
@@ -262,4 +261,4 @@ if __name__ == "__main__":
 
     del app
 
-#----
+# EOF

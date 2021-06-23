@@ -91,3 +91,6 @@ self.setMaximumWidth(800)
 
 
 self.dtxt0 = QPointF(0, 0)
+
+self.setStyleSheet('background: transparent; background-color: rgb(0,0,0);') #rgb(0,0,0);')QColor(black)
+self.but_reset.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)

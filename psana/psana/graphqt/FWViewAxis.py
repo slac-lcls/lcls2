@@ -10,7 +10,7 @@ Usage ::
     --------------------------------------------------
     import sys
     from PyQt4 import QtGui, QtCore
-    from graphqt.FWViewAxis import FWViewAxis
+    from psana.graphqt.FWViewAxis import FWViewAxis
 
     app = QApplication(sys.argv)
     rscene=QRectF(0, 0, 100, 100)
@@ -52,8 +52,8 @@ Created on 2017-12-12 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-20
 """
 
-from FWView import * # FWView, QtGui, QtCore, Qt
-from FWRuler import FWRuler
+from psana.graphqt.FWView import * # FWView, QtGui, QtCore, Qt
+from psana.graphqt.FWRuler import FWRuler
 from PyQt5.QtGui import QColor, QFont
 
 #----
