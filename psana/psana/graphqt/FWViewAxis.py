@@ -62,11 +62,12 @@ class FWViewAxis(FWView):
     
     def __init__(self, parent=None, rscene=QRectF(0, 0, 10, 10), origin='UL', side='U', **kwargs):
 
+        self.bgcolor_def = 'black'
         self.scale_ctl = kwargs.get('scale_ctl', True)
         self.wlength   = kwargs.get('wlength',   400)
         self.wwidth    = kwargs.get('wwidth',    60)
-        self.bgcolor   = kwargs.get('bgcolor',   None)
-        self.fgcolor   = kwargs.get('fgcolor',  'black')
+        self.bgcolor   = kwargs.get('bgcolor',   self.bgcolor_def)
+        self.fgcolor   = kwargs.get('fgcolor',  'yellow')
 
         self.side  = side.upper()
         self.ruler = None
@@ -91,9 +92,10 @@ class FWViewAxis(FWView):
 
         #style_default = "background-color: rgb(239, 235, 231, 255); color: rgb(0, 0, 0);" # Gray bkgd 
         #bgcolor = self.palette().color(QPalette.Background)
-        style_default = '' if self.bgcolor is None else 'background-color: %s' % self.bgcolor
-        self.setStyleSheet(style_default)
+        #style_default = '' if self.bgcolor is None else 'background-color: %s' % self.bgcolor
+        #self.setStyleSheet(style_default)
 
+        #self.layout().setContentsMargins(0,0,0,0)
         #color = Qt.white
         color = QColor(self.fgcolor)
         self.colax = QColor(color)
@@ -112,9 +114,10 @@ class FWViewAxis(FWView):
 
     def update_my_scene(self):
         FWView.update_my_scene(self)
-        #sc = self.scene()
-        #rs = sc.sceneRect()
-        #ra = rs
+        if self.bgcolor != self.bgcolor_def:
+            s = self.scene()
+            r = s.sceneRect()
+            s.addRect(r, pen=QPen(Qt.black, 0, Qt.SolidLine), brush=QBrush(QColor(self.bgcolor)))
         if self.ruler is not None: self.ruler.remove()
         view = self
         self.ruler = FWRuler(view, side=self.side, color=self.colax, pen=self.penax, font=self.fonax)
@@ -193,6 +196,8 @@ if __name__ == "__main__":
 #----
 
 if __name__ == "__main__":
+    import os
+    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     print(50*'_', '\nTest %s' % tname)
     test_guiview(tname)

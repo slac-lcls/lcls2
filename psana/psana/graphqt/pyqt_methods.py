@@ -11,6 +11,10 @@ from psana.graphqt.QWFileName import QWFileName
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QFileDialog
 from PyQt5.QtCore import pyqtSignal #, Qt, QRectF, QPointF, QTimer
 
+#from PyQt5.QtWidgets import QGraphicsItem
+from PyQt5.QtGui import QPen, QBrush, QColor, QPainterPath #QFont, 
+from PyQt5.QtCore import Qt, QRectF #QPoint, QPointF, 
+
 logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
 logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG)
 logging.basicConfig(format='[%(levelname).1s] %(asctime)s %(name)s %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
@@ -84,3 +88,6 @@ self.setStyleSheet(style)
 self.setMinimumSize(725,360)
 self.setFixedSize(750,270)
 self.setMaximumWidth(800)
+
+
+self.dtxt0 = QPointF(0, 0)

@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`FWViewHist` is a widget with interactive axes
 ==============================================================
@@ -52,22 +53,26 @@ Created on 2020-11-02 by Mikhail Dubrovin
 """
 
 from FWView import * # FWView, QtGui, QtCore, Qt
-from FWHist import FWHist
+from FWHist import FWHist, test_histogram
 from PyQt5.QtGui import QColor, QFont
 
 logger = logging.getLogger(__name__)
 
-#----
 
 class FWViewHist(FWView):
     
     def __init__(self, parent=None, rscene=QRectF(0, 0, 10, 10), origin='DL', **kwargs):
 
+        self.bgcolor_def = 'black'
+
         self.scale_ctl = kwargs.get('scale_ctl', 'H')
-        self.wlength   = kwargs.get('wlength',   400)
-        self.wwidth    = kwargs.get('wwidth',    60)
-        self.bgcolor   = kwargs.get('bgcolor',   None)
-        self.fgcolor   = kwargs.get('fgcolor',  'black')
+        self.orient    = kwargs.get('orient',    'H') # histogram orientation H or V
+        self.zvalue    = kwargs.get('zvalue',   10)   # z value for visibility
+        self.wlength   = kwargs.get('wlength', 400)
+        self.wwidth    = kwargs.get('wwidth',   60)
+        self.bgcolor   = kwargs.get('bgcolor', self.bgcolor_def)
+        self.fgcolor   = kwargs.get('fgcolor', 'blue')
+        #self.kwargs    = kwargs
 
         self.hist = None
         self.side = 'D'
@@ -91,14 +96,16 @@ class FWViewHist(FWView):
 
         #style_default = "background-color: rgb(239, 235, 231, 255); color: rgb(0, 0, 0);" # Gray bkgd 
         #bgcolor = self.palette().color(QPalette.Background)
-        style_default = '' if self.bgcolor is None else 'background-color: %s' % self.bgcolor
-        self.setStyleSheet(style_default)
+        #style_default = '' if self.bgcolor is None else 'background-color: %s' % self.bgcolor
+        #self.setStyleSheet(style_default)
+
+        #self.layout().setContentsMargins(0,0,0,0)
 
         #color = Qt.white
         color = QColor(self.fgcolor)
-        self.colax = QColor(color)
-        self.fonax = QFont('Courier', 12, QFont.Normal)
-        self.penax = QPen(color, 1, Qt.SolidLine)
+        self.colhi = QColor(color)
+        #self.fonax = QFont('Courier', 12, QFont.Normal)
+        self.penhi = QPen(color, 1, Qt.SolidLine)
 
         #if self.side in ('U','D') :
         #    self.setMinimumSize(self.wlength, 2)
@@ -110,11 +117,16 @@ class FWViewHist(FWView):
         #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
 
 
-    def update_my_scene(self):
+    def update_my_scene(self, hbins=test_histogram()):
         FWView.update_my_scene(self)
         if self.hist is not None: self.hist.remove()
         view = self
-        self.hist = FWHist(view, side=self.side, color=self.colax, pen=self.penax, font=self.fonax)
+        if self.bgcolor != self.bgcolor_def:
+            s = self.scene()
+            r = s.sceneRect()
+            s.addRect(r, pen=QPen(Qt.black, 0, Qt.SolidLine), brush=QBrush(QColor(self.bgcolor)))
+
+        self.hist = FWHist(view, hbins=hbins, color=self.colhi, brush=QBrush(), orient=self.orient, zvalue=self.zvalue)
 
 
     def reset_original_image_size(self):
@@ -143,7 +155,6 @@ class FWViewHist(FWView):
         FWView.closeEvent(self, e)
         #print('FWViewHist.closeEvent')
 
-#----
 
 if __name__ == "__main__":
 
@@ -153,11 +164,15 @@ if __name__ == "__main__":
     print('%s:' % sys._getframe().f_code.co_name)
     app = QApplication(sys.argv)
     w = None
-    rs=QRectF(0, 0, 1000, 10)
-    if   tname ==  '0': w=FWViewHist(None, rs, origin='UL', scale_ctl='V', fgcolor='red', bgcolor='yellow')
-    elif tname ==  '1': w=FWViewHist(None, rs, origin='DL', scale_ctl='H')
+
+    rs = QRectF(0, 0, 100, 1000)
+
+    if   tname ==  '0': w=FWViewHist(None, rs, origin='UL', scale_ctl='V', fgcolor='white', bgcolor='gray')
+    elif tname ==  '1': w=FWViewHist(None, rs, origin='DL', scale_ctl='H', fgcolor='black', bgcolor='yellow')
     elif tname ==  '2': w=FWViewHist(None, rs, origin='DR')
     elif tname ==  '3': w=FWViewHist(None, rs, origin='UR')
+    elif tname ==  '4': w=FWViewHist(None, rs, origin='DR', scale_ctl='V', fgcolor='yellow', bgcolor='gray', orient='V')
+    elif tname ==  '5': w=FWViewHist(None, rs, origin='DR', scale_ctl='V', fgcolor='white', orient='V')
     else:
         print('test %s is not implemented' % tname)
         return
@@ -172,12 +187,13 @@ if __name__ == "__main__":
     del w
     del app
 
-#----
 
 if __name__ == "__main__":
+    import os
+    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     print(50*'_', '\nTest %s' % tname)
     test_guiview(tname)
     sys.exit('End of Test %s' % tname)
 
-#----
+# EOF
