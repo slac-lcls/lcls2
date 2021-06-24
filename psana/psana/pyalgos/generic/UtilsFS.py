@@ -43,8 +43,12 @@ def load_ndarray_from_file(path):
     if ext in ('.npy', ):
         import numpy as np
         return np.load(path)
-    if ext in ('.txt', '.data'):
+    elif ext in ('.txt', '.data', '.dat'):
         from psana.pscalib.calib.NDArrIO import load_txt#, save_txt
+        return load_txt(path)
+    else:
+        logger.debug('not recognized file extension "%s", try to load as text file' % ext)
+        from psana.pscalib.calib.NDArrIO import load_txt
         return load_txt(path)
 
 
