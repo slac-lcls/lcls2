@@ -26,6 +26,9 @@ from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
 
 
 def image_from_ndarray(nda):
+    if nda is None:
+       logger.debug('nda is None - return None for image')
+       return None
     img = psu.table_nxn_epix10ka_from_ndarr(nda) if (nda.size % (352*384) == 0) else\
           psu.table_nxm_jungfrau_from_ndarr(nda) if (nda.size % (512*1024) == 0) else\
           psu.table_nxm_cspad2x1_from_ndarr(nda) if (nda.size % (185*388) == 0) else\
@@ -40,9 +43,7 @@ class IVControl(CMWControlBase):
     def __init__(self, **kwargs):
 
         parent = kwargs.get('parent',None)
-        d = '/reg/g/psdm/detector/alignment/epix10ka2m/calib-xxx-epix10ka2m.1-2021-02-02/'
-        #fname_nda = d + 'det-calib-mfxc00118-r242-e5000-max.txt'
-        #fname_geo = d + '2021-02-02-epix10ks2m.1-geometry-recentred-for-psana.txt'
+        d = '/cds/group/psdm/detector/data2_test/misc/'
         fname_nda = d + 'Select'
         fname_geo = d + 'Select'
 
