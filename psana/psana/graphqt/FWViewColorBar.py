@@ -1,3 +1,4 @@
+
 """
 Class :py:class:`FWViewColorBar` is a FWView for interactive color bar
 ======================================================================
@@ -46,12 +47,14 @@ Created on 2017-11-08 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-20
 """
 
+import logging
+logger = logging.getLogger(__name__)
+
 import ColorTable as ct
 from FWViewImage import *
 from QWPopupSelectColorBar import popup_select_color_table
 import numpy as np
 
-#----
 
 class FWViewColorBar(FWViewImage):
 
@@ -93,8 +96,8 @@ class FWViewColorBar(FWViewImage):
 
 
     def on_colorbar(self, e):
-        #print('QWSpectrum.on_colorbar')
         ctab_ind = popup_select_color_table(None)
+        #logger.debug('on_colorbar - selected index %s'% str(ctab_ind))
         if ctab_ind is None: return
         if ctab_ind != self._ctab_ind:
             self._ctab_ind = ctab_ind
@@ -163,7 +166,6 @@ class FWViewColorBar(FWViewImage):
         #print('%s.closeEvent' % self._name)
         #QWidget.closeEvent(self, e)
 
-#----
 
     if __name__ == "__main__":
 
@@ -193,11 +195,14 @@ class FWViewColorBar(FWViewImage):
         else:
             print(self.key_usage())
   
-#----
 
 if __name__ == "__main__":
 
+  import os
   import sys
+  logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG)
+
+  os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
 
   def test_wfviewcolorbar(tname):
     print('%s:' % sys._getframe().f_code.co_name)
@@ -227,7 +232,6 @@ if __name__ == "__main__":
     del w
     del app
 
-#----
 
 if __name__ == "__main__":
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
@@ -235,4 +239,4 @@ if __name__ == "__main__":
     test_wfviewcolorbar(tname)
     sys.exit('End of Test %s' % tname)
 
-#----
+# EOF
