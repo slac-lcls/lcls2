@@ -631,4 +631,5 @@ def epixquad_enable(base):
     epixquad_external_trigger(base)
 
 def epixquad_disable(base):
+    time.sleep(0.005)  # Need to make sure readout of last event is complete
     epixquad_internal_trigger(base)
