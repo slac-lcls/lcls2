@@ -52,8 +52,8 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2020-11-02 by Mikhail Dubrovin 
 """
 
-from FWView import * # FWView, QtGui, QtCore, Qt
-from FWHist import FWHist, test_histogram
+from psana.graphqt.FWView import * # FWView, QtGui, QtCore, Qt
+from psana.graphqt.FWHist import FWHist, test_histogram
 from PyQt5.QtGui import QColor, QFont
 
 logger = logging.getLogger(__name__)

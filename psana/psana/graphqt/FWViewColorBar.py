@@ -50,9 +50,9 @@ Adopted for LCLS2 on 2018-02-20
 import logging
 logger = logging.getLogger(__name__)
 
-import ColorTable as ct
-from FWViewImage import *
-from QWPopupSelectColorBar import popup_select_color_table
+import psana.graphqt.ColorTable as ct
+from psana.graphqt.FWViewImage import *
+from psana.graphqt.QWPopupSelectColorBar import popup_select_color_table
 import numpy as np
 
 
