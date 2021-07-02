@@ -17,10 +17,12 @@ import logging
 #logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
+from PyQt5.QtCore import Qt
 from psana.graphqt.IVControl import IVControl
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.FWViewImage import FWViewImage, ct
 from psana.graphqt.IVImageAxes import IVImageAxes
+from psana.graphqt.IVSpectrum import IVSpectrum
 
 class IVMain(QWidget):
 
@@ -32,16 +34,15 @@ class IVMain(QWidget):
 
         self.proc_kwargs(**kwargs)
 
-        #if self.wlog is None: self.wlog = QWLoggerStd(cp, show_buttons=False)
         self.wctrl = IVControl(**kwargs)
-        #self.wtext = QTextEdit('Some text')
         self.wimage = cp.wimage = self.set_wimage()
-
+        self.wspec = IVSpectrum()
+        self.hspl = QSplitter(Qt.Horizontal)
+        self.hspl.addWidget(self.wimage)
+        self.hspl.addWidget(self.wspec)
         self.vbox = QVBoxLayout()
         self.vbox.addWidget(self.wctrl)
-        self.vbox.addWidget(self.wimage)
-        #self.vbox.addLayout(self.hspl)
-        #self.vbox.addStretch(1)
+        self.vbox.addWidget(self.hspl)
         self.setLayout(self.vbox)
 
         self.set_style()
@@ -87,6 +88,7 @@ class IVMain(QWidget):
     def set_style(self):
         self.layout().setContentsMargins(0,0,0,0)
         self.wctrl.setFixedHeight(80)
+        self.wspec.setMaximumWidth(300)
 
 
     def closeEvent(self, e):
@@ -105,7 +107,7 @@ def do_main(**kwargs):
 
     a = QApplication(sys.argv)
     w = IVMain(**kwargs)
-    w.setGeometry(10, 100, 800, 800)
+    w.setGeometry(10, 100, 1000, 800)
     w.setWindowTitle('Image Viewer')
     if __name__ == "__main__": w.wctrl.but_tabs_is_visible(False)
 
