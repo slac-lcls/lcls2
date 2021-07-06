@@ -38,7 +38,7 @@ class BlueskyScan:
         self.detname = args.detname
         self.scantype = args.scantype
         self.step_done = threading.Event()
-        self.step_count = 1
+        self.step_value = 1
         self.platform = args.p
 
         if args.g is None:
@@ -91,18 +91,18 @@ class BlueskyScan:
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
 
-                # allow user to override step count
+                # allow user to override step value
                 for motor in self.motors:
                     if motor.name == ControlDef.STEP_VALUE:
-                        self.step_count = int(motor.position)
-                        logging.debug(f'override: step count = {self.step_count}')
+                        self.step_value = int(motor.position)
+                        logging.debug(f'override: step value = {self.step_value}')
                         break
 
                 my_data = {}
 
-                # record step_count and step_docstring
-                my_data.update({'step_count': self.step_count})
-                docstring = f'{{"detname": "{self.detname}", "scantype": "{self.scantype}", "step": {self.step_count}}}'
+                # record step_value and step_docstring
+                my_data.update({'step_value': self.step_value})
+                docstring = f'{{"detname": "{self.detname}", "scantype": "{self.scantype}", "step": {self.step_value}}}'
                 my_data.update({'step_docstring': docstring})
 
                 # record motor positions
@@ -145,8 +145,8 @@ class BlueskyScan:
                 logging.debug('Waiting for step done...')
                 self.step_done.wait()
                 self.step_done.clear()
-                logging.debug(f'step {self.step_count} done.')
-                self.step_count += 1
+                logging.debug(f'step {self.step_value} done.')
+                self.step_value += 1
 
                 # tell bluesky step is complete
                 # this line is needed in ReadableDevice mode to flag completion
@@ -168,8 +168,8 @@ class BlueskyScan:
 
             # part1=transition, part2=state, part3=config
             if part1 == 'endrun':
-                self.step_count = 1
-                logging.debug(f'step count reset to {self.step_count}')
+                self.step_value = 1
+                logging.debug(f'step value reset to {self.step_value}')
 
             with self.daqState_cv:
                 self.daqState = part2
