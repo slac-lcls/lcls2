@@ -13,7 +13,7 @@ pyxpm_optsdb = '-P DAQ:NEH:XPM:%d'
 ioc_node = 'daq-tmo-hsd-01'
 pva_node = 'drp-neh-ctl002'
 hsd_epics = 'DAQ:TMO:HSD:1'
-hsd_ids = ['1b','1a','3e','3d','5e','da','b2']
+hsd_ids = ['1b','1a','3e','3d','5e','da','b2','b1']
 
 procmgr_config = []
 iport = 29071
@@ -41,5 +41,7 @@ for hsd in hsd_ids:
 #  hsd_11 DA:A   drp-neh-cmp024:0   OK
 #  hsd_12 B2:A   drp-neh-cmp021:0   OK
 #  hsd_13 B2:B   drp-neh-cmp019:0   OK
+#  hsd_14 B1:    drp-neh-cmp019:0   OK
+#  hsd_15 B1:    drp-neh-cmp019:0   OK
 #  
-# hsdpva DAQ:TMO:HSD:1_1B:A DAQ:TMO:HSD:1_1B:B DAQ:TMO:HSD:1_1A:A DAQ:TMO:HSD:1_1A:B DAQ:TMO:HSD:1_3E:A DAQ:TMO:HSD:1_3E:B DAQ:TMO:HSD:1_3D:A DAQ:TMO:HSD:1_3D:B DAQ:TMO:HSD:1_5E:A DAQ:TMO:HSD:1_5E:B DAQ:TMO:HSD:1_DA:A DAQ:TMO:HSD:1_DA:B DAQ:TMO:HSD:1_B2:A DAQ:TMO:HSD:1_B2:B
+# hsdpva DAQ:TMO:HSD:1_1B:A DAQ:TMO:HSD:1_1B:B DAQ:TMO:HSD:1_1A:A DAQ:TMO:HSD:1_1A:B DAQ:TMO:HSD:1_3E:A DAQ:TMO:HSD:1_3E:B DAQ:TMO:HSD:1_3D:A DAQ:TMO:HSD:1_3D:B DAQ:TMO:HSD:1_5E:A DAQ:TMO:HSD:1_5E:B DAQ:TMO:HSD:1_DA:A DAQ:TMO:HSD:1_DA:B DAQ:TMO:HSD:1_B2:A DAQ:TMO:HSD:1_B2:B DAQ:TMO:HSD:1_B1:A DAQ:TMO:HSD:1_B1:B
