@@ -92,9 +92,8 @@ procmgr_config = [
 
  { host: 'drp-neh-cmp011', id:'tmo_opal1_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
-# { host: 'drp-neh-cmp012', id:'tmo_opal2_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
+ { host: 'drp-neh-cmp012', id:'tmo_opal2_0',   flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 
-# { host: 'drp-neh-cmp005', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
  { host: 'drp-neh-cmp005', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=TMO:TIMETOOL:TTALL'},
 # { host: 'drp-neh-cmp005', id:'tmo_atmopal_0', flags:'spu', env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=/tmp/ttall.txt'},
  { host: 'drp-neh-cmp005', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
