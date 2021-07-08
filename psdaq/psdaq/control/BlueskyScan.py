@@ -11,19 +11,17 @@ import time
 import numpy as np
 
 from psdaq.control.ControlDef import ControlDef
-from psdaq.control.ControlDef import scan_pull_port
 
 class BlueskyScan:
     def __init__(self, control, *, daqState, args):
-        self.zmq_port = scan_pull_port(args.p)
         self.control = control
         self.name = 'mydaq'
         self.parent = None
         self.context = zmq.Context()
         self.push_socket = self.context.socket(zmq.PUSH)
-        self.push_socket.bind('tcp://*:%d' % self.zmq_port)
+        self.push_socket.bind('inproc://bluesky_scan')
         self.pull_socket = self.context.socket(zmq.PULL)
-        self.pull_socket.connect('tcp://localhost:%d' % self.zmq_port)
+        self.pull_socket.connect('inproc://bluesky_scan')
         self.comm_thread = threading.Thread(target=self.daq_communicator_thread, args=())
         self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
