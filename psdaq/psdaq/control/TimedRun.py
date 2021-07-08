@@ -2,19 +2,17 @@ import logging
 import zmq
 from threading import Thread, Event, Condition
 from psdaq.control.ControlDef import ControlDef, front_pub_port, front_rep_port, create_msg
-from psdaq.control.ControlDef import scan_pull_port
 import time
 
 class TimedRun:
     def __init__(self, control, *, daqState, args):
-        self.zmq_port = scan_pull_port(args.p)
         self.control = control
         self.name = 'mydaq'
         self.context = zmq.Context()
         self.push_socket = self.context.socket(zmq.PUSH)
-        self.push_socket.bind('tcp://*:%d' % self.zmq_port)
+        self.push_socket.bind('inproc://timed_run')
         self.pull_socket = self.context.socket(zmq.PULL)
-        self.pull_socket.connect('tcp://localhost:%d' % self.zmq_port)
+        self.pull_socket.connect('inproc://timed_run')
         self.comm_thread = Thread(target=self.daq_communicator_thread, args=())
         self.mon_thread = Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = Event()
