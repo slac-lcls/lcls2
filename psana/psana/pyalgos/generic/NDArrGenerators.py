@@ -190,6 +190,12 @@ def cspad_ndarr(n2x1=32, dtype=np.float32) :
     arr.shape = [n2x1, rows, cols]
     return arr
  
+
+def test_image(**kwa):
+    tname = kwa.get('tname', 'standard')
+    if tname == 'standard':
+        return random_standard(kwa.get('shape', (8,12)), mu=kwa.get('mu', 0), sigma=kwa.get('sigma', 10))
+
 #-----------------------------
 #-----------------------------
 #-----------------------------
