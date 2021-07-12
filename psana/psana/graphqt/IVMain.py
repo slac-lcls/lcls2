@@ -21,7 +21,7 @@ from PyQt5.QtCore import Qt
 from psana.graphqt.IVControl import IVControl
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.FWViewImage import FWViewImage, ct
-from psana.graphqt.IVImageAxes import IVImageAxes
+from psana.graphqt.IVImageAxes import IVImageAxes, test_image
 from psana.graphqt.IVSpectrum import IVSpectrum
 
 class IVMain(QWidget):
@@ -34,9 +34,9 @@ class IVMain(QWidget):
 
         self.proc_kwargs(**kwargs)
 
+        self.wimage = self.set_wimage()
+        self.wspec = IVSpectrum(signal_fast=self.signal_fast)
         self.wctrl = IVControl(**kwargs)
-        self.wimage = cp.wimage = self.set_wimage()
-        self.wspec = IVSpectrum()
         self.hspl = QSplitter(Qt.Horizontal)
         self.hspl.addWidget(self.wimage)
         self.hspl.addWidget(self.wspec)
@@ -57,6 +57,7 @@ class IVMain(QWidget):
         logdir     = kwargs.get('logdir', './')
         savelog    = kwargs.get('savelog', False)
         self.wlog  = kwargs.get('wlog', None)
+        self.signal_fast = kwargs.get('signal_fast', True)
         #if is_in_command_line('-l', '--loglevel'): cp.log_level.setValue(loglevel)
         #if is_in_command_line('-S', '--saveloglogdir'):
         #if is_in_command_line('-L', '--logdir'):
@@ -65,14 +66,9 @@ class IVMain(QWidget):
 
 
     def set_wimage(self):
-        import psana.pyalgos.generic.NDArrGenerators as ag
-        #import psana.graphqt.ColorTable as ct
-        img = ag.random_standard((8,8), mu=0, sigma=10) # img = image_with_random_peaks(shape=(500, 500))
-        #ctab = ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)
-        #ctab = ct.color_table_monochr256()
+        img = test_image(shape=(8,8), mu=0, sigma=10)
         ctab = ct.color_table_interpolated()
-        #return FWViewImage(self, img, origin='UL', scale_ctl='HV', coltab=ctab)
-        return IVImageAxes(parent=self, image=img, origin='UL', scale_ctl='HV', coltab=ctab)
+        return IVImageAxes(parent=self, image=img, origin='UL', scale_ctl='HV', coltab=ctab, signal_fast=self.signal_fast)
 
 
     def connect_signals_to_slots(self):
@@ -95,12 +91,11 @@ class IVMain(QWidget):
         #logger.debug('closeEvent')
         QWidget.closeEvent(self, e)
         cp.ivmain = None
-        cp.wimage = None
 
 
 def do_main(**kwargs):
 
-    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG)
+    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
 
     import sys
     from PyQt5.QtWidgets import QApplication
@@ -109,7 +104,7 @@ def do_main(**kwargs):
     w = IVMain(**kwargs)
     w.setGeometry(10, 100, 1000, 800)
     w.setWindowTitle('Image Viewer')
-    if __name__ == "__main__": w.wctrl.but_tabs_is_visible(False)
+    #if __name__ == "__main__": w.wctrl.but_tabs_is_visible(False)
 
     w.move(50,20)
     w.show()
