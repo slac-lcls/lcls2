@@ -79,7 +79,10 @@ class CMConfigParameters(PSConfigParameters):
         self.cmwdbdocswidg=None
         self.qwloggerstd = None
         self.cmwdbdoceditor = None
-        self.wimage      = None
+        self.ivspectrum  = None
+        self.ivcontrol   = None
+        self.ivmain      = None
+        self.ivimageaxes = None
 
         self.last_selection = None # self.DB_COLS, DOCS
 
@@ -114,6 +117,7 @@ class CMConfigParameters(PSConfigParameters):
         self.cdb_buttons = self.declareParameter(name='CDB_BUTTONS', val_def=3259, type='int')
         self.cdb_docw = self.declareParameter(name='CDB_DOC_WIDGET', val_def='List', type='str')
         self.cdb_selection_mode = self.declareParameter(name='CDB_SELECTION_MODE', val_def='extended', type='str')
+        self.iv_buttons = self.declareParameter(name='IV_BUTTONS', val_def=2+4+8+32, type='int')
 
 
 cp = CMConfigParameters()
