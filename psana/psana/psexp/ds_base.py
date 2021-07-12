@@ -130,6 +130,26 @@ class DataSourceBase(abc.ABC):
     def runs(self):
         return
 
+    @abc.abstractmethod
+    def is_mpi(self):
+        return
+
+    def unique_user_rank(self):
+        """ Only applicable to MPIDataSource
+        All other types of DataSource always return True.
+        For MPIDataSource, only the last bigdata rank returns True."""
+        if not self.is_mpi():
+            return True
+
+        n_srv_ranks = int(os.environ.get('PS_SRV_NODES', 0))
+        my_rank = self.comms.world_rank
+        world_size = self.comms.world_size
+
+        if my_rank == (world_size - n_srv_ranks - 1):
+            return True
+        else:
+            return False
+
     # to be added at a later date...
     #@abc.abstractmethod
     #def steps(self):
