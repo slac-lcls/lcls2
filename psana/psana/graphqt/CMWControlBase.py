@@ -56,7 +56,7 @@ class CMWControlBase(QWidget):
         #self.lab.setStyleSheet(style.styleLabel)
 
         self.but_tabs.setStyleSheet(style.styleButtonGood)
-        self.but_tabs .setFixedWidth(55)
+        self.but_tabs.setFixedWidth(55)
 
 
     def on_but_tabs(self):
