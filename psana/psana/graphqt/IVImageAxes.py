@@ -18,45 +18,48 @@ logger = logging.getLogger(__name__)
 from psana.graphqt.FWViewImage import FWViewImage
 from psana.graphqt.FWViewAxis import FWViewAxis
 import psana.graphqt.ColorTable as ct
-from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton#, QSizePolicy
-from PyQt5.QtCore import Qt, QRectF #, QPointF, QPoint, QRectF
-
-def test_image():
-  import psana.pyalgos.generic.NDArrGenerators as ag
-  return ag.random_standard((8,12), mu=0, sigma=10)
+from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QTextEdit#, QSizePolicy
+from PyQt5.QtCore import Qt, pyqtSignal, QRectF #, QPointF, QPoint, QRect
+from psana.pyalgos.generic.NDArrGenerators import test_image
+from psana.graphqt.CMConfigParameters import cp
 
 
 class IVImageAxes(QWidget):
     """QWidget for Image Viewer"""
+    image_scene_rect_changed = pyqtSignal('QRectF')
 
     def __init__(self, **kwargs):
 
         parent = kwargs.get('parent', None)
         image = kwargs.get('image', test_image())
+        ctab = kwargs.get('ctab', ct.color_table_interpolated())
+        signal_fast = kwargs.get('signal_fast', True)
 
         QWidget.__init__(self, parent)
+        cp.ivimageaxes = self
 
-        ctab = ct.color_table_interpolated()
+        self.wimg = FWViewImage(self, image, coltab=ctab, origin='UL', scale_ctl='HV', signal_fast=signal_fast)
 
-        self.wimg = FWViewImage(self, image, coltab=ctab, origin='UL', scale_ctl='HV')
-
+        self.rs_old = None
         r = self.wimg.sceneRect()
         rscx = QRectF(r.x(), 0, r.width(), 1)
         rscy = QRectF(0, r.y(), 1, r.height())
 
-        self.waxx = FWViewAxis(None, rscx, side='U', origin='UL', scale_ctl=True, wwidth=30, wlength=200)
-        self.waxy = FWViewAxis(None, rscy, side='R', origin='UR', scale_ctl=True, wwidth=60, wlength=200)
+        self.wax = FWViewAxis(None, rscx, side='U', origin='UL', scale_ctl=True, wwidth=30, wlength=200, signal_fast=signal_fast)
+        self.way = FWViewAxis(None, rscy, side='R', origin='UR', scale_ctl=True, wwidth=60, wlength=200, signal_fast=signal_fast)
 
         self.but_reset = QPushButton('Reset')
+        self.edi_info = QTextEdit('Info')
 
         self.box = QGridLayout()
         self.box.setSpacing(0)
         self.box.setVerticalSpacing(0)
         self.box.setHorizontalSpacing(0)
-        self.box.addWidget(self.waxy,      0,  0, 20,  1)
-        self.box.addWidget(self.wimg,      0,  1, 20, 20)
-        self.box.addWidget(self.waxx,      20, 1,  1, 20)
-        self.box.addWidget(self.but_reset, 20, 0, alignment=Qt.AlignCenter)
+        self.box.addWidget(self.edi_info,  0,  0,  1, 11)
+        self.box.addWidget(self.way,       1,  0,  9,  1)
+        self.box.addWidget(self.wimg,      1,  1,  9, 10)
+        self.box.addWidget(self.wax,      10,  1,  1, 10)
+        self.box.addWidget(self.but_reset,10,  0, alignment=Qt.AlignCenter)
         self.setLayout(self.box)
  
         self.set_tool_tips()
@@ -64,61 +67,121 @@ class IVImageAxes(QWidget):
 
         self.connect_scene_rect_changed()
         self.but_reset.clicked.connect(self.on_but_reset)
+        self.set_info_visible(True)
+
+
+    def set_signal_fast(self, is_fast=True):
+        self.wimg.signal_fast = is_fast
+        self.wax.signal_fast = is_fast
+        self.way.signal_fast = is_fast
+
+
+    def set_info_visible(self, is_visible=True):
+        self.edi_info.setVisible(is_visible)
+        if self.edi_info.isVisible() and is_visible or\
+           (not self.edi_info.isVisible()) and (not is_visible): return
+        elif is_visible: self.wimg.connect_mouse_move_event_to(self.on_mouse_move_event)
+        else: self.wimg.disconnect_mouse_move_event_from(self.on_mouse_move_event)
 
 
     def connect_scene_rect_changed(self):
         self.wimg.connect_scene_rect_changed_to(self.on_wimg_scene_rect_changed)
-        self.waxx.connect_scene_rect_changed_to(self.on_waxx_scene_rect_changed)
-        self.waxy.connect_scene_rect_changed_to(self.on_waxy_scene_rect_changed)
+        self.wax.connect_scene_rect_changed_to(self.on_wax_scene_rect_changed)
+        self.way.connect_scene_rect_changed_to(self.on_way_scene_rect_changed)
 
 
     def disconnect_scene_rect_changed(self):
         self.wimg.disconnect_scene_rect_changed_from(self.on_wimg_scene_rect_changed)
-        self.waxx.disconnect_scene_rect_changed_from(self.on_waxx_scene_rect_changed)
-        self.waxy.disconnect_scene_rect_changed_from(self.on_waxy_scene_rect_changed)
+        self.wax.disconnect_scene_rect_changed_from(self.on_wax_scene_rect_changed)
+        self.way.disconnect_scene_rect_changed_from(self.on_way_scene_rect_changed)
 
 
     def on_but_reset(self):
         logger.debug('on_but_reset')
-        if self.wimg is not None:
-           self.wimg.reset_original_size()
+        self.wimg.reset_original_size()
+        self.wax.reset_original_size()
+        self.way.reset_original_size()
+#        if self.wimg is not None: self.wimg.reset_original_size()
+#        if self.wax  is not None: self.wax.reset_original_size()
+#        if self.way  is not None: self.way.reset_original_size()
 
 
     def on_wimg_scene_rect_changed(self, r):
         #logger.debug('on_wimg_scene_rect_changed: %s'%str(r))
-        self.waxx.set_view(rs=QRectF(r.x(), 0, r.width(), 1))
-        self.waxy.set_view(rs=QRectF(0, r.y(), 1, r.height()))
+        self.wax.set_view(rs=QRectF(r.x(), 0, r.width(), 1))
+        self.way.set_view(rs=QRectF(0, r.y(), 1, r.height()))
+        self.emit_signal_if_image_scene_rect_changed()
 
 
-    def on_waxx_scene_rect_changed(self, r):
-        #logger.debug('on_waxx_scene_rect_changed: %s'%str(r))
+    def on_wax_scene_rect_changed(self, r):
+        #logger.debug('on_wax_scene_rect_changed: %s'%str(r))
         rs = self.wimg.scene().sceneRect()
         self.wimg.set_view(rs=QRectF(r.x(), rs.y(), r.width(), rs.height()))
+        self.emit_signal_if_image_scene_rect_changed()
 
 
-    def on_waxy_scene_rect_changed(self, r):
-        #logger.debug('on_waxy_scene_rect_changed: %s'%str(r))
+    def on_way_scene_rect_changed(self, r):
+        #logger.debug('on_way_scene_rect_changed: %s'%str(r))
         rs = self.wimg.scene().sceneRect()
         self.wimg.set_view(rs=QRectF(rs.x(), r.y(), rs.width(), r.height()))
+        self.emit_signal_if_image_scene_rect_changed()
+
+
+    def emit_signal_if_image_scene_rect_changed(self):
+        """Checks if scene rect have changed and submits signal with new rect.
+        """
+        rs = self.wimg.scene().sceneRect()
+        if rs != self.rs_old:
+            self.rs_old = rs
+            self.image_scene_rect_changed.emit(rs)
+
+
+    def connect_image_scene_rect_changed(self, recip):
+        self.image_scene_rect_changed.connect(recip)
+ 
+
+    def disconnect_image_scene_rect_changed(self, recip):
+        self.image_scene_rect_changed.disconnect(recip)
 
 
     def set_tool_tips(self):
-        self.wimg.setToolTip('Image')
+        self.wimg.setToolTip('Image\npixel map')
+        self.wax.setToolTip('Image columns\nH-scale')
+        self.way.setToolTip('Image rows\nV-scale')
+        self.edi_info.setToolTip('Information field')
 
 
     def set_style(self):
         self.layout().setContentsMargins(0,0,0,0)
         self.but_reset.setFixedSize(60,30)
+        self.edi_info.setMaximumHeight(30)
 
 
     def set_pixmap_from_arr(self, arr, set_def=True):
-        """shortcat to image"""
+        """shortcut to image"""
         self.wimg.set_pixmap_from_arr(arr, set_def)
 
 
     def reset_original_size(self):
-        """shortcat to image"""
+        """shortcut to image"""
         self.wimg.reset_original_size()
+
+
+    def on_mouse_move_event(self, e):
+        """Overrides method from FWView"""
+        wimg = self.wimg
+        p = wimg.mapToScene(e.pos())
+        ix, iy, v = wimg.cursor_on_image_pixcoords_and_value(p)
+        fv = 0 if v is None else v
+        s = 'x:%d y:%d v:%s%s' % (ix, iy, '%.1f'%fv, 25*' ')
+        #self.setWindowTitle('FWViewImage %s'%s)
+        self.edi_info.setText(s)
+
+
+    def closeEvent(self, e):
+        logger.debug('closeEvent')
+        QWidget.closeEvent(self, e)
+        cp.ivimageaxes = None
 
 
 if __name__ == "__main__":
