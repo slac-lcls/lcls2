@@ -36,7 +36,7 @@ class FWHist():
 
         self.view   = view
         self.scene  = view.scene()
-        self.rect   = self.scene.sceneRect()
+        #self.rect   = self.scene.sceneRect()
 
         color       = kwargs.get('color', QColor(Qt.black)) # color for default pen (histogram sline)
         self.pen_def = QPen(color, 0, Qt.SolidLine)
@@ -111,7 +111,7 @@ class FWHist():
 
       def add_test(self):
 
-        r = self.rect
+        r = self.scene.sceneRect()
         w,h = r.width(), r.height()
         v = self.view
         sv = 1 if v._origin_u else -1
@@ -145,7 +145,6 @@ class FWHist():
         self.lst_of_items.append(self.path_item)
 
         print('test path_item is created')
-
 
 
 def test_histogram():
