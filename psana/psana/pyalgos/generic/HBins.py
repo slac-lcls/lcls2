@@ -299,22 +299,30 @@ class HBins():
         return np.bincount(indarr, weights, self.nbins())
 
 
-    def set_bin_data(self, data, dtype=float):
-        if len(data)!=self.nbins():
-            self._bin_data = None
-            return
+    def set_bin_data(self, data, dtype=np.float64):
+        assert len(data)==self.nbins()
+            #self._bin_data = None
+            #return
         self._bin_data = np.array(data, dtype)
 
 
-    def bin_data(self, dtype=float):
+    def bin_data(self, dtype=np.float64):
         return self._bin_data.astype(dtype) if self._bin_data is not None else None
+
+
+    def bin_data_max(self):
+        return self._bin_data.max() if self._bin_data is not None else None
+
+
+    def bin_data_min(self):
+        return self._bin_data.min() if self._bin_data is not None else None
 
 
     def set_bin_data_from_array(self, arr, dtype=np.float64, edgemode=0):
         aravel = arr.ravel()
         hisarr = self.bin_count(aravel, edgemode=edgemode)
         self.set_bin_data(hisarr, dtype=dtype)
-        return hisarr
+        #return hisarr
 
 
     def strrange(self, fmt='%.0f-%.0f-%d'):
