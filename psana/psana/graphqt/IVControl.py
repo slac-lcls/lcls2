@@ -11,12 +11,9 @@ Usage ::
 
 Created on 2021-06-14 by Mikhail Dubrovin
 """
-
 import logging
 logger = logging.getLogger(__name__)
 
-import os
-import sys
 from psana.graphqt.CMWControlBase import cp, CMWControlBase
 from PyQt5.QtWidgets import QGridLayout, QPushButton# QHBoxLayout #QWidget, QLabel, QComboBox, QPushButton, QLineEdit
 from psana.graphqt.QWFileNameV2 import QWFileNameV2
@@ -155,7 +152,7 @@ class IVControl(CMWControlBase):
     def on_image_pixmap_changed(self):
         logger.debug('TBD on_image_pixmap_changed')
         wimg = cp.ivimageaxes.wimg
-        arr = wimg.arr
+        arr = wimg.array_in_rect() # wimg.arr
         coltab = wimg.coltab
         self.set_spectrum_from_arr(arr)
 
@@ -216,21 +213,21 @@ class IVControl(CMWControlBase):
     def on_buts(self):
         logger.debug('on_buts')
         d = self.buttons_dict()
-        logger.info('initial visible buttons: %s' % str(d))
+        logger.debug('initial visible buttons: %s' % str(d))
         resp = change_check_box_dict_in_popup_menu(d, 'Select buttons', msg='Check visible buttons then click Apply or Cancel', parent=self.but_buts)
         #logger.debug('select_visible_buttons resp: %s' % resp)
         if resp == 0:
-            logger.info('Visible buttons selection is cancelled')
+            logger.debug('Visible buttons selection is cancelled')
             return
         else:
-            logger.info('selected visible buttons: %s' % str(d))
+            logger.debug('selected visible buttons: %s' % str(d))
             self.set_buttons_visiable(d)
             self.set_buttons_config_bitword(d)
 
 
     def set_buttons_visiable(self, dic_buts=None):
         d = self.buttons_dict() if dic_buts is None else dic_buts
-        #logger.info('dic_buts: %s' % str(d))
+        #logger.debug('dic_buts: %s' % str(d))
         self.wfnm_geo.setVisible(d['Geometry'])
         self.but_reset.setVisible(d['Reset'])
         self.but_tabs.setVisible(d['Tabs'])
@@ -262,12 +259,15 @@ class IVControl(CMWControlBase):
 
 
     def closeEvent(self, e):
-        #logger.debug('closeEvent')
+        logger.debug('closeEvent')
         CMWControlBase.closeEvent(self, e)
         cp.ivcontrol = None
 
 
 if __name__ == "__main__":
+    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
+    import os
+    import sys
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)

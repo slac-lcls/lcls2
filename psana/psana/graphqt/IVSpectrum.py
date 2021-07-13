@@ -161,7 +161,7 @@ class IVSpectrum(QWidget):
           if resp is not None:
             mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w, ibeg, iend = resp
             s += '\nentries: %d  nbins: %d [%d:%d]' % (sum_w, iend-ibeg, ibeg, iend)\
-              + u'\nmean: %.3f \u00B1 %.3f  rms: %.3f \u00B1 %.3f' % (mean, err_mean, rms, err_rms)\
+              + u'\nmean: %.3f \u00B1 %.3f\nrms: %.3f \u00B1 %.3f' % (mean, err_mean, rms, err_rms)\
               + u'\n\u03B31 skew: %.3f  \u03B32 kurt: %.3f' % (skew, kurt)
         self.edi_info.setText(s)
 
@@ -177,7 +177,7 @@ class IVSpectrum(QWidget):
     def set_style(self):
         self.layout().setContentsMargins(0,0,0,0)
         self.wcbar.setFixedWidth(25)
-        self.edi_info.setMaximumHeight(70)
+        self.edi_info.setMaximumHeight(80)
 
 
     def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):

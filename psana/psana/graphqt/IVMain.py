@@ -1,5 +1,5 @@
 
-"""Class :py:class:`IVMain` is a QWidget for main window of hdf5viewer 
+"""Class :py:class:`IVMain` is a QWidget for main window of Image Viewer
 ========================================================================
 
 Usage ::
@@ -34,8 +34,9 @@ class IVMain(QWidget):
 
         self.proc_kwargs(**kwargs)
 
-        image = kwargs.get('image', test_image(shape=(50,50)))
-        ctab = kwargs.get('ctab', ct.color_table_default())
+        fname = kwargs.get('fname', None)
+        image = kwargs.get('image', test_image(shape=(32,32)))
+        ctab  = kwargs.get('ctab', ct.color_table_default())
 
         self.wimage= IVImageAxes(parent=self, image=image, origin='UL', scale_ctl='HV', coltab=ctab, signal_fast=self.signal_fast)
         self.wspec = IVSpectrum(signal_fast=self.signal_fast, image=image, ctab=ctab)
@@ -51,6 +52,7 @@ class IVMain(QWidget):
         self.set_style()
         self.set_tool_tips()
 
+        if fname is not None: self.wctrl.on_changed_fname_nda(fname)
         #self.connect_signals_to_slots()
 
 
@@ -90,21 +92,24 @@ class IVMain(QWidget):
         cp.ivmain = None
 
 
-def do_main(**kwargs):
-
-    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)#INFO)
-
+def image_viewer(**kwargs):
     import sys
     from PyQt5.QtWidgets import QApplication
-
     a = QApplication(sys.argv)
     w = IVMain(**kwargs)
     w.setGeometry(10, 100, 1000, 800)
-    w.setWindowTitle('Image Viewer')
-    #if __name__ == "__main__": w.wctrl.but_tabs_is_visible(False)
-
     w.move(50,20)
     w.show()
+    return a,w
+
+
+def do_main(**kwargs):
+
+    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.INFO)
+
+    a,w = image_viewer(**kwargs)
+    w.setWindowTitle('Image Viewer')
+    #if __name__ == "__main__": w.wctrl.but_tabs_is_visible(False)
     a.exec_()
     del w
     del a
@@ -114,10 +119,9 @@ if __name__ == "__main__":
     import os
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
     kwargs = {\
-      'fname':'/reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5',\
+      'fname':'/cds/group/psdm/detector/data2_test/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy',\
       'loglevel':'INFO',\
-      'logdir':'%s/hdf5explorer-log' % os.path.expanduser('~'),\
-      'savelog':True}
+    }
     do_main(**kwargs)
 
 # EOF

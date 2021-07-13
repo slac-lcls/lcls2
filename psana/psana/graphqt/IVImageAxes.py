@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 from psana.graphqt.FWViewImage import FWViewImage
 from psana.graphqt.FWViewAxis import FWViewAxis
 import psana.graphqt.ColorTable as ct
-from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QTextEdit#, QSizePolicy
-from PyQt5.QtCore import Qt, pyqtSignal, QRectF #, QPointF, QPoint, QRect
+from PyQt5.QtWidgets import QWidget, QGridLayout, QPushButton, QTextEdit
+from PyQt5.QtCore import Qt, pyqtSignal, QRectF
 from psana.pyalgos.generic.NDArrGenerators import test_image
 from psana.graphqt.CMConfigParameters import cp
 
@@ -31,7 +31,7 @@ class IVImageAxes(QWidget):
     def __init__(self, **kwargs):
 
         parent = kwargs.get('parent', None)
-        image = kwargs.get('image', test_image())
+        image = kwargs.get('image', test_image(shape=(16,16)))
         ctab = kwargs.get('ctab', ct.color_table_interpolated())
         signal_fast = kwargs.get('signal_fast', True)
 
