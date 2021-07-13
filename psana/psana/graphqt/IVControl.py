@@ -1,6 +1,6 @@
 
 """Class :py:class:`IVControl` is a Image Viewer QWidget with control fields
-==========================================================================================
+============================================================================
 
 Usage ::
 
@@ -50,6 +50,8 @@ class IVControl(CMWControlBase):
 
         CMWControlBase.__init__(self, **kwargs)
         cp.ivcontrol = self
+        self.arr_his_old = None
+        self.arr_img_old = None
 
         self.wfnm_nda = QWFileNameV2(None, label='Array:',\
            path=fname_nda, fltr='*.txt *.npy *.data *.dat\n*', show_frame=True)
@@ -158,9 +160,12 @@ class IVControl(CMWControlBase):
         self.set_spectrum_from_arr(arr)
 
 
-    def set_spectrum_from_arr(self, arr):
+    def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
+        if arr is self.arr_his_old: return
+        self.arr_his_old = arr
         w = cp.ivspectrum
-        if w is not None: w.set_spectrum_from_arr(arr)
+        if w is not None: w.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode)
+        #if w is not None: w.set_spectrum_from_arr(arr)
 
 
     def connect_histogram_scene_rect_changed(self):
@@ -175,6 +180,14 @@ class IVControl(CMWControlBase):
 
     def on_histogram_scene_rect_changed(self, r):
         logger.debug('TBD on_histogram_scene_rect_changed: %s'%str(r))
+        x1,y1,x2,y2 = r.getCoords()
+        logger.debug('on_histogram_scene_rect_changed: reset image for spectal value in range %.3f:%.3f'%(y1,y2))
+        w = cp.ivimageaxes
+        if w is not None:
+            wi = w.wimg
+            rs=wi.scene().sceneRect() # preserve current scene rect
+            wi.set_pixmap_from_arr(wi.arr, set_def=False, amin=y1, amax=y2)
+            wi.set_rect_scene(rs, set_def=False)
 
 
     def on_but_reset(self):
@@ -193,7 +206,7 @@ class IVControl(CMWControlBase):
            nda = psu.load_ndarray_from_file(fname)
            logger.debug(info_ndarr(nda,'nda'))
            img = image_from_ndarray(nda)
-           w.wimg.set_pixmap_from_arr(img, set_def=True)
+           w.wimg.set_pixmap_from_arr(img, set_def=True, amin=None, amax=None, frmin=0.001, frmax=0.999)
 
 
     def on_changed_fname_geo(self, s):
