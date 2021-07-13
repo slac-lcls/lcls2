@@ -32,8 +32,14 @@ class IVSpectrum(QWidget):
 
         parent = kwargs.get('parent', None)
         image = kwargs.get('image', test_image())
-        ctab = kwargs.get('ctab', ct.color_table_interpolated())
+        ctab = kwargs.get('ctab', ct.color_table_default())
         signal_fast = kwargs.get('signal_fast', True)
+        nbins = kwargs.get('nbins', 1000)
+        amin  = kwargs.get('amin', None)
+        amax  = kwargs.get('amax', None)
+        frmin = kwargs.get('frmin', 0.001)
+        frmax = kwargs.get('frmax', 0.999)
+        edgemode = kwargs.get('edgemode', 0)
 
         QWidget.__init__(self, parent)
 
@@ -41,7 +47,9 @@ class IVSpectrum(QWidget):
 
         self.rs_old = None
         rs=QRectF(0, 0, 100, 1000)
-        self.whis = FWViewHist(self, rs, origin='DR', scale_ctl='V', fgcolor='yellow', bgcolor='dark', orient='V', signal_fast=signal_fast)
+        self.whis = FWViewHist(self, rs, origin='DR', scale_ctl='V', fgcolor='yellow', bgcolor='dark', orient='V', signal_fast=signal_fast, hbins=None)
+        self.whis.set_histogram_from_arr(image, nbins, amin, amax, frmin, frmax, edgemode)
+
         self.wcbar = FWViewColorBar(self, coltab=ctab, orient='V')
 
         r = self.whis.sceneRect()
@@ -172,14 +180,14 @@ class IVSpectrum(QWidget):
         self.edi_info.setMaximumHeight(70)
 
 
-    def set_spectrum_from_arr(self, arr):
-        logger.debug('set_spectrum_from_arr size=%d' % arr.size)
-        self.whis.set_histogram_from_arr(arr) # arr, nbins=1000, amin=None, amax=None, frmin=0.05, frmax=0.95, edgemode=0
+    def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
+        #logger.debug('set_spectrum_from_arr size=%d' % arr.size)
+        self.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode)
 
 
     def reset_original_size(self):
         """shortcut to whis.reset_original_size"""
-        logger.debug('reset_original_size')
+        #logger.debug('reset_original_size')
         self.whis.reset_original_size()
 
 
