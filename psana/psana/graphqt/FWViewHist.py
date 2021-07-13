@@ -80,7 +80,7 @@ class FWViewHist(FWView):
 
         self.hist = None
         self.side = 'D'
-
+        self.arr_old = None
         #scctl = ('H' if self.side in ('U','D') else 'V') if self.scale_ctl else ''
         #scctl = 'HV'
         FWView.__init__(self, parent, rscene, origin, scale_ctl=self.scale_ctl, signal_fast=signal_fast)
@@ -142,7 +142,12 @@ class FWViewHist(FWView):
         #print('FWViewHist.closeEvent')
 
 
-    def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.0001, frmax=0.9999, edgemode=0):
+    def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
+
+        #if np.array_equal(arr, self.arr_old): return
+        if arr is self.arr_old: return
+        self.arr_old = arr
+
         aravel = arr.ravel()
         vmin = amin if amin is not None else\
                aravel.min() if frmin==0 else\
@@ -153,13 +158,12 @@ class FWViewHist(FWView):
 
         logger.debug('set_histogram_from_arr vmin(%.5f%%):%.3f vmax(%.5f%%):%.3f'%(frmin,vmin,frmax,vmax))
         hb = HBins((vmin,vmax), nbins=nbins)
-        hisarr = hb.set_bin_data_from_array(aravel, dtype=np.float64, edgemode=edgemode)
-        #hisarr = hb.bin_count(aravel, edgemode=edgemode)
-        #hb.set_bin_data(hisarr, dtype=np.float64)
+        #hisarr = 
+        hb.set_bin_data_from_array(aravel, dtype=np.float64, edgemode=edgemode)
 
-        hmin, hmax = hisarr.min(), hisarr.max()
         hmin = 0
-        logger.debug('set_histogram_from_arr hmin:%.3f hmax:%.3f'%(hmin, hmax))
+        hmax = hb.bin_data_max()
+        logger.debug('XXX set_histogram_from_arr hmin: %.3f hmax: %.3f' % (hmin, hmax))
         hgap = 0.05*(hmax-hmin)
         rs = QRectF(hmin-hgap, hb.vmin(), hmax-hmin+2*hgap, hb.vmax()-hb.vmin())
         self.set_rect_scene(rs, set_def=True)
