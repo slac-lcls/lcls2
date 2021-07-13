@@ -157,9 +157,9 @@ class IVImageAxes(QWidget):
         self.edi_info.setMaximumHeight(30)
 
 
-    def set_pixmap_from_arr(self, arr, set_def=True):
+    def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.01, frmax=0.99):
         """shortcut to image"""
-        self.wimg.set_pixmap_from_arr(arr, set_def)
+        self.wimg.set_pixmap_from_arr(arr, set_def, amin, amax, frmin, frmax)
 
 
     def reset_original_size(self):
