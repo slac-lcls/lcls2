@@ -34,8 +34,11 @@ class IVMain(QWidget):
 
         self.proc_kwargs(**kwargs)
 
-        self.wimage = self.set_wimage()
-        self.wspec = IVSpectrum(signal_fast=self.signal_fast)
+        image = kwargs.get('image', test_image(shape=(50,50)))
+        ctab = kwargs.get('ctab', ct.color_table_default())
+
+        self.wimage= IVImageAxes(parent=self, image=image, origin='UL', scale_ctl='HV', coltab=ctab, signal_fast=self.signal_fast)
+        self.wspec = IVSpectrum(signal_fast=self.signal_fast, image=image, ctab=ctab)
         self.wctrl = IVControl(**kwargs)
         self.hspl = QSplitter(Qt.Horizontal)
         self.hspl.addWidget(self.wimage)
@@ -65,12 +68,6 @@ class IVMain(QWidget):
         #cp.save_log_at_exit.setValue(savelog)
 
 
-    def set_wimage(self):
-        img = test_image(shape=(8,8), mu=0, sigma=10)
-        ctab = ct.color_table_interpolated()
-        return IVImageAxes(parent=self, image=img, origin='UL', scale_ctl='HV', coltab=ctab, signal_fast=self.signal_fast)
-
-
     def connect_signals_to_slots(self):
         pass
         #self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
@@ -95,7 +92,7 @@ class IVMain(QWidget):
 
 def do_main(**kwargs):
 
-    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
+    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)#INFO)
 
     import sys
     from PyQt5.QtWidgets import QApplication
