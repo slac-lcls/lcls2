@@ -15,7 +15,7 @@ Created on 2021-06-16 by Mikhail Dubrovin
 #import logging
 #logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton#, QLabel, QComboBox, QPushButton, QLineEdit
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.Styles import style
 
@@ -49,17 +49,12 @@ class CMWControlBase(QWidget):
  
 
     def set_style(self):
-        #from psana.graphqt.QWIcons import icon
-        #icon.set_icons()
-        #self.but_exp_col.setIcon(icon.icon_folder_open)
-        #self.x.setStyleSheet(style.styleBkgd)
-        #self.lab.setStyleSheet(style.styleLabel)
-
         self.but_tabs.setStyleSheet(style.styleButtonGood)
         self.but_tabs.setFixedWidth(55)
 
 
     def on_but_tabs(self):
+        #logger.debug('on_but_tabs')
         self.view_hide_tabs()
 
 
@@ -76,8 +71,8 @@ class CMWControlBase(QWidget):
 
 
 if __name__ == "__main__":
-    import sys
     import os
+    import sys
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
     from PyQt5.QtWidgets import QApplication
     app = QApplication(sys.argv)
