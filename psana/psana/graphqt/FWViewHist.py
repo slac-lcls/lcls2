@@ -57,6 +57,7 @@ from psana.graphqt.FWHist import FWHist, test_histogram
 from PyQt5.QtGui import QColor, QFont
 
 from psana.pyalgos.generic.HBins import HBins, np
+from psana.pyalgos.generic.NDArrUtils import info_ndarr
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +144,6 @@ class FWViewHist(FWView):
 
 
     def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
-
         #if np.array_equal(arr, self.arr_old): return
         if arr is self.arr_old: return
         self.arr_old = arr
@@ -156,14 +156,12 @@ class FWViewHist(FWView):
                aravel.max() if frmax==0 else\
                np.quantile(aravel, frmax, axis=0, interpolation='higher')
 
-        logger.debug('set_histogram_from_arr vmin(%.5f%%):%.3f vmax(%.5f%%):%.3f'%(frmin,vmin,frmax,vmax))
         hb = HBins((vmin,vmax), nbins=nbins)
-        #hisarr = 
         hb.set_bin_data_from_array(aravel, dtype=np.float64, edgemode=edgemode)
+        hmin, hmax = 0, hb.bin_data_max()
 
-        hmin = 0
-        hmax = hb.bin_data_max()
-        logger.debug('XXX set_histogram_from_arr hmin: %.3f hmax: %.3f' % (hmin, hmax))
+        logger.debug('set_histogram_from_arr %s\n    vmin(%.5f%%):%.3f vmax(%.5f%%):%.3f hmin: %.3f hmax: %.3f'%\
+                     (info_ndarr(aravel, 'arr.ravel'), frmin,vmin,frmax,vmax,hmin,hmax))
         hgap = 0.05*(hmax-hmin)
         rs = QRectF(hmin-hgap, hb.vmin(), hmax-hmin+2*hgap, hb.vmax()-hb.vmin())
         self.set_rect_scene(rs, set_def=True)
