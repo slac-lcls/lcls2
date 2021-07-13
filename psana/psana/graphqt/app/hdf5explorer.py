@@ -1,9 +1,8 @@
-#------------------------------
+#!/usr/bin/env python
+
 """
 Created on 2019-11-13 by Mikhail Dubrovin
 """
-#------------------------------
-
 #import logging
 #logger = logging.getLogger(__name__)
 
@@ -12,13 +11,7 @@ os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' # get rid of libGL error: unable to lo
 import sys
 from psana.graphqt.H5VMain import hdf5explorer
 
-#------------------------------
-
-#FNAME_TEST = '/reg/g/psdm/detector/data_test/hdf5/amox27716-r0100-e060000-single-node.h5'
 FNAME_TEST = '/reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5'
-
- #------------------------------
-
 
 USAGE = 'command examples for app %s\n'%sys.argv[0]\
       + '  hdf5explorer\n'\
@@ -26,18 +19,14 @@ USAGE = 'command examples for app %s\n'%sys.argv[0]\
       + '  hdf5explorer /reg/g/psdm/detector/data_test/hdf5/amox27716-r0100-e060000-single-node.h5\n'\
       + '  hdf5explorer /reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5\n'\
       + '  hdf5explorer /reg/g/psdm/detector/calib/jungfrau/jungfrau-171113-154920171025-3d00fb.h5 -l INFO' 
- 
-#------------------------------
 
-def hdf5explorer_gui() :
-    """hdf5explorer
-    """
+
+def hdf5explorer_gui():
     parser = input_option_parser()
 
-    if len(sys.argv) == 1 :
-        #print(80*'_')
-        #parser.print_help()
+    if len(sys.argv) == 1:
         print(80*'_')
+        #parser.print_help()
         parser.print_usage()
         print(80*'_')
 
@@ -48,15 +37,10 @@ def hdf5explorer_gui() :
     fname = pargs[0] if len(pargs) else FNAME_TEST
     kwargs['fname'] = fname
 
-    #print_kwargs(kwargs)
-    #print_parser(parser)
-    #sys.exit('TEST EXIT')
-
     hdf5explorer(**kwargs)
 
-#------------------------------
 
-def input_option_parser() :
+def input_option_parser():
 
     from optparse import OptionParser
 
@@ -75,11 +59,10 @@ def input_option_parser() :
     parser.add_option('-S', '--savelog',    default=d_savelog,    action='store_true',           help=h_savelog)
 
     return parser
-  
-#------------------------------
 
-if __name__ == "__main__" :
+
+if __name__ == "__main__":
     hdf5explorer_gui()
     sys.exit(0)
 
-#------------------------------
+# EOF
