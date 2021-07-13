@@ -116,12 +116,12 @@ class FWViewImage(FWView):
         else               : self.pmi.setPixmap(pixmap)
 
 
-    def set_pixmap_from_arr(self, arr, set_def=True):
+    def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.01, frmax=0.99):
         """Input array is scailed by color table. If color table is None arr set as is.
         """
         self.arr = arr
         anorm = arr if self.coltab is None else\
-                ct.apply_color_table(arr, ctable=self.coltab) 
+                ct.apply_color_table(arr, ctable=self.coltab, amin=amin, amax=amax, frmin=frmin, frmax=frmax)
         h, w = arr.shape
 
         image = QImage(anorm, w, h, QImage.Format_ARGB32)
