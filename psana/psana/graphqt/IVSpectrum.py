@@ -167,11 +167,12 @@ class IVSpectrum(QWidget):
 
 
     def set_tool_tips(self):
-        self.whis.setToolTip('Spectral intennsity\ndistribution')
+        self.whis.setToolTip('Spectral intensity\ndistribution')
         self.wax.setToolTip('Spectral\nintensity')
         self.way.setToolTip('Spectral\nvalue')
         self.edi_info.setToolTip('Spectral statistics')
         self.but_reset.setToolTip('Reset to default\nspectrum')
+        self.wcbar.setToolTip('Color bar for color\nto intensity conversion\nclick on it to select another')
 
 
     def set_style(self):
