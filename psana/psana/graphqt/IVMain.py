@@ -15,8 +15,9 @@ Created on 2021-06-14 by Mikhail Dubrovin
 
 import logging
 #logger = logging.getLogger(__name__)
+import sys
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt
 from psana.graphqt.IVControl import IVControl
 from psana.graphqt.CMConfigParameters import cp
@@ -93,35 +94,59 @@ class IVMain(QWidget):
 
 
 def image_viewer(**kwargs):
-    import sys
-    from PyQt5.QtWidgets import QApplication
+
+    loglevel = kwargs.get('loglevel', 'DEBUG').upper()
+    intlevel = logging._nameToLevel[loglevel]
+    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=intlevel)
+
     a = QApplication(sys.argv)
     w = IVMain(**kwargs)
     w.setGeometry(10, 100, 1000, 800)
     w.move(50,20)
     w.show()
-    return a,w
-
-
-def do_main(**kwargs):
-
-    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.INFO)
-
-    a,w = image_viewer(**kwargs)
     w.setWindowTitle('Image Viewer')
     #if __name__ == "__main__": w.wctrl.but_tabs_is_visible(False)
     a.exec_()
     del w
     del a
+    #return a,w
+
+
+def do_main(**kwargs):
+    #logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.INFO)
+    image_viewer(**kwargs)
+
+
+def do_work(dt_sec=1, nloops=20):
+    from time import sleep
+    for i in range(nloops):
+        print('do_work loop: %3d' % i)
+        sleep(dt_sec)
+
+
+def do_python_threads(**kwargs):
+    import threading
+    #logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.INFO)
+
+    #tg = threading.Thread(target=image_viewer)
+    #tg.daemon = True
+    #tg.start()
+
+    tw = threading.Thread(target=do_work)
+    #tw.daemon = True
+    tw.start()
+
+    image_viewer(**kwargs)
 
 
 if __name__ == "__main__":
     import os
-    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
+    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
     kwargs = {\
       'fname':'/cds/group/psdm/detector/data2_test/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy',\
       'loglevel':'INFO',\
     }
-    do_main(**kwargs)
+    #do_main(**kwargs)
+    do_python_threads(**kwargs)
 
 # EOF
