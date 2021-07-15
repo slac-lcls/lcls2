@@ -12,16 +12,16 @@ Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTabBar, QTextEdit #, QSplitter
-from PyQt5.QtGui import QColor # QPalette, QSizePolicy
-from PyQt5.QtCore import Qt #, QPoint
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTabBar, QTextEdit
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import Qt
 from psana.graphqt.CMConfigParameters import cp
 
 
 class CMWMainTabs(QWidget):
     """GUI for tabs and associated widgets
     """
-    tab_names   = ['CDB', 'Configuration', 't-converter', 'HDF5', 'IV', 'Win-A', 'Win-B']
+    tab_names   = ['CDB', 'IV', 'HDF5', 'Configuration', 't-converter', 'Mask Editor', 'Test Window']
 
     def __init__ (self, parent=None, app=None):
 
@@ -37,27 +37,20 @@ class CMWMainTabs(QWidget):
 
         #self.whbox = QWidget(self)
         #self.whbox.setLayout(self.box_layout)
-
         #self.vspl = QSplitter(Qt.Vertical)
         #self.vspl.addWidget(self.tab_bar)
         #self.vspl.addWidget(self.whbox)
+        #self.box.addStretch(1)
+        #self.box.addWidget(self.vspl)
 
         self.box = QVBoxLayout(self)
         self.box.addWidget(self.tab_bar)
         self.box.addLayout(self.box_layout)
-        #self.box.addStretch(1)
-        #self.box.addWidget(self.vspl)
 
         self.setLayout(self.box)
 
         self.show_tool_tips()
         self.set_style()
-        #gu.printStyleInfo(self)
-
-        #self.move(10,25)
-        
-        #logger.debug('End of init')
-        #self.set_tabs_visible(False)
 
 
     def show_tool_tips(self):
@@ -65,44 +58,17 @@ class CMWMainTabs(QWidget):
 
 
     def set_style(self):
-
         from psana.graphqt.Styles import style
         from psana.graphqt.QWIcons import icon
         icon.set_icons()
-
-        #self.tab_bar.setContentsMargins(0,0,0,0)
-
         self.setWindowIcon(icon.icon_monitor)
         self.setStyleSheet(style.styleBkgd)
         self.layout().setContentsMargins(0,0,0,0)
-
-        #self.palette = QPalette()
-        #self.resetColorIsSet = False
-
-        #self.butELog    .setIcon(icon.icon_mail_forward)
-        #self.butFile    .setIcon(icon.icon_save)
-        #self.butExit    .setIcon(icon.icon_exit)
-        #self.butLogger  .setIcon(icon.icon_logger)
-        #self.butFBrowser.setIcon(icon.icon_browser)
-        #self.butSave    .setIcon(icon.icon_save_cfg)
-        #self.butStop    .setIcon(icon.icon_stop)
-
-        #self.setMinimumHeight(250)
-        #self.setMinimumWidth(550)
-
-        #self.adjustSize()
-        #self.        setStyleSheet(style.styleBkgd)
-        #self.butSave.setStyleSheet(style.styleButton)
-        #self.butFBrowser.setVisible(False)
-        #self.butExit.setText('')
-        #self.butExit.setFlat(True)
-        #self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
  
 
     def make_tab_bar(self):
         self.tab_bar = QTabBar()
 
-        #len(self.tab_names)
         for tab_name in self.tab_names:
             tab_ind = self.tab_bar.addTab(tab_name)
             self.tab_bar.setTabTextColor(tab_ind, QColor('blue')) #gray, red, grayblue
@@ -123,30 +89,27 @@ class CMWMainTabs(QWidget):
     def gui_selector(self, tab_name):
 
         if self.gui_win is not None:
-            #self.box_layout.removeWidget(self.gui_win)
-            #self.gui_win.setVisible(False)
             self.gui_win.close()
             del self.gui_win
 
         w_height = 200
         if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(True)
 
-        if tab_name == 'CDB': #tab_names[0]
+        if tab_name == 'CDB':
             from psana.graphqt.CMWDBMain import CMWDBMain
             self.gui_win = CMWDBMain()
             w_height = 500
 
-        elif tab_name == 'Configuration': #tab_names[1]
+        elif tab_name == 'Configuration':
             from psana.graphqt.CMWConfig import CMWConfig
             self.gui_win = CMWConfig()
             w_height = 500
 
-        elif tab_name == 't-converter': #tab_names[2]
+        elif tab_name == 't-converter':
             from psana.graphqt.QWDateTimeSec import QWDateTimeSec
             self.gui_win = QWDateTimeSec()
             self.gui_win.setMaximumWidth(500)
             w_height = 80
-            #self.gui_win.setMaximumHeight(w_height)
 
         elif tab_name == 'HDF5':
             from psana.graphqt.H5VMain import H5VMain
@@ -158,15 +121,14 @@ class CMWMainTabs(QWidget):
             if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
             self.gui_win = IVMain()
 
+        elif tab_name == 'Mask Editor':
+            self.gui_win = QTextEdit('Selected tab "%s". Yes, I know, you want it, but ... you know what.' % tab_name)
         else:
-            self.gui_win = QTextEdit('Default window for tab %s' % tab_name)
+            self.gui_win = QTextEdit('Selected tab "%s"' % tab_name)
 
-        #self.gui_win.setFixedHeight(w_height)
         self.gui_win.setMinimumHeight(w_height)
         self.gui_win.setVisible(True)
         self.box_layout.addWidget(self.gui_win)
-
-        #self.setStatus(0, s_msg)
 
 
     def current_tab_index_and_name(self):
@@ -192,19 +154,15 @@ class CMWMainTabs(QWidget):
         logger.debug('on_tab_close_request tab index begin:%d -> end:%d' % (iold, inew))
 
  
-    #def resizeEvent(self, e):
-        #pass
-        #self.frame.setGeometry(self.rect())
-        #logger.debug('resizeEvent') 
-        #logger.debug('CMWMainTabs resizeEvent: %s' % str(self.size()))
+#    def resizeEvent(self, e):
+#        self.frame.setGeometry(self.rect())
+#        logger.debug('resizeEvent: %s' % str(self.size()))
 
 
-    #def moveEvent(self, e):
-        #logger.debug('moveEvent') 
-        #self.position = self.mapToGlobal(self.pos())
-        #self.position = self.pos()
-        #logger.debug('moveEvent - pos:' + str(self.position))       
-        #pass
+#    def moveEvent(self, e):
+#        logger.debug('moveEvent - pos:' + str(self.position))       
+#        self.position = self.mapToGlobal(self.pos())
+#        self.position = self.pos()
 
 
     def closeEvent(self, e):
