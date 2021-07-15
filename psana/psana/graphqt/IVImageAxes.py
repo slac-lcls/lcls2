@@ -101,9 +101,6 @@ class IVImageAxes(QWidget):
         self.wimg.reset_original_size()
         self.wax.reset_original_size()
         self.way.reset_original_size()
-#        if self.wimg is not None: self.wimg.reset_original_size()
-#        if self.wax  is not None: self.wax.reset_original_size()
-#        if self.way  is not None: self.way.reset_original_size()
 
 
     def on_wimg_scene_rect_changed(self, r):
@@ -157,7 +154,7 @@ class IVImageAxes(QWidget):
         self.edi_info.setMaximumHeight(30)
 
 
-    def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.01, frmax=0.99):
+    def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.001, frmax=0.999):
         """shortcut to image"""
         self.wimg.set_pixmap_from_arr(arr, set_def, amin, amax, frmin, frmax)
 
