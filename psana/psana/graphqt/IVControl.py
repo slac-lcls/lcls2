@@ -15,7 +15,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 from psana.graphqt.CMWControlBase import cp, CMWControlBase
-from PyQt5.QtWidgets import QGridLayout, QPushButton# QHBoxLayout #QWidget, QLabel, QComboBox, QPushButton, QLineEdit
+from PyQt5.QtWidgets import QGridLayout, QPushButton
+from PyQt5.QtCore import QRectF
 from psana.graphqt.QWFileNameV2 import QWFileNameV2
 from psana.graphqt.IVControlSpec import IVControlSpec
 
@@ -96,6 +97,7 @@ class IVControl(CMWControlBase):
             rs=wi.scene().sceneRect() # preserve current scene rect
             mode, nbins, amin, amax, frmin, frmax = self.spectrum_parameters()
             w.wimg.set_pixmap_from_arr(wi.arr, set_def=True, amin=amin, amax=amax, frmin=frmin, frmax=frmax)
+            wi.set_rect_scene(rs, set_def=False)
 
 
     def on_color_table_changed(self):
@@ -147,7 +149,6 @@ class IVControl(CMWControlBase):
     def on_image_scene_rect_changed(self, r):
         logger.debug('on_image_scene_rect_changed: %s'%str(r))
         wimg = cp.ivimageaxes.wimg
-        #coltab = wimg.coltab
         a = wimg.array_in_rect(r)
         logger.debug(info_ndarr(a, 'on_image_scene_rect_changed: selected array in rect'))
         self.set_spectrum_from_arr(a)
@@ -166,7 +167,7 @@ class IVControl(CMWControlBase):
     def on_image_pixmap_changed(self):
         logger.debug('TBD on_image_pixmap_changed')
         wimg = cp.ivimageaxes.wimg
-        arr = wimg.array_in_rect() # wimg.arr
+        arr = wimg.array_in_rect()
         coltab = wimg.coltab
         self.set_spectrum_from_arr(arr)
 
@@ -178,7 +179,6 @@ class IVControl(CMWControlBase):
         if w is not None:
             mode, nbins, amin, amax, frmin, frmax = self.spectrum_parameters()
             w.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode)
-        #if w is not None: w.set_spectrum_from_arr(arr)
 
 
     def connect_histogram_scene_rect_changed(self):
@@ -225,14 +225,21 @@ class IVControl(CMWControlBase):
 
     def on_changed_fname_nda(self, fname):
         logger.debug('on_changed_fname_nda: %s' % fname)
-        w = cp.ivimageaxes
-        if w is not None:
+        wia = cp.ivimageaxes
+        if wia is not None:
            nda = psu.load_ndarray_from_file(fname)
            logger.debug(info_ndarr(nda,'nda'))
            img = image_from_ndarray(nda)
-           self.wctl_spec.set_amin_amax_def(img.min(), img.max())
+           self.wctl_spec.set_amin_amax_def(nda.min(), nda.max())
            mode, nbins, amin, amax, frmin, frmax = self.spectrum_parameters()
-           w.wimg.set_pixmap_from_arr(img, set_def=True, amin=amin, amax=amax, frmin=frmin, frmax=frmax)
+           wia.wimg.set_pixmap_from_arr(img, set_def=True, amin=amin, amax=amax, frmin=frmin, frmax=frmax)
+
+           h,w = img.shape
+           aspect = float(w)/h
+           if aspect>1.5 or aspect<0.7:
+               ww = max(h,w)
+               rs = QRectF(-0.5*(ww-min(h,w)), 0, ww, ww)
+               wia.wimg.set_rect_scene(rs, set_def=False)
 
 
     def on_changed_fname_geo(self, s):
