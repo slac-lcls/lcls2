@@ -36,13 +36,12 @@ class CMConfigParameters(PSConfigParameters):
     char_expand    = u' \u25BC' # down-head triangle
     char_shrink    = u' \u25B2' # solid up-head triangle
 
-    # delete flags:
     DB_COLS = 1
     DOCS    = 4
     COLS    = 'collections'
     DBS     = 'DBs'
     cc      = cc
-    kwargs  = {'webint':True, 'loglevel':'DEBUG'}
+    kwargs  = {'webint':True, 'loglevel':'INFO'}
  
     def __init__(self, fname=None):
         """fname: str - the file name with configuration parameters, if not specified then use default.
@@ -58,10 +57,6 @@ class CMConfigParameters(PSConfigParameters):
         self.readParametersFromFile()
         #self.printParameters()
 
-        #nm.set_config_pars(self)
-
-        #self.list_of_hosts = lshosts(filter='psanaphi') # ('psanaphi105', 'psanaphi106', 'psanaphi107')
-        #self.list_of_hosts += lshosts(filter='psanagpu')
         self.list_of_hosts = ['psanagpu114', 'psanaphi105', 'psanaphi106', 'psanaphi107','psdbdev01']
         self.list_of_hosts.append('psdb-dev')
 
@@ -84,8 +79,7 @@ class CMConfigParameters(PSConfigParameters):
         self.ivmain      = None
         self.ivimageaxes = None
 
-        self.last_selection = None # self.DB_COLS, DOCS
-
+        self.last_selection = None
         self.user = cc.USERNAME
         self.upwd = None
 
@@ -134,7 +128,6 @@ if __name__ == "__main__":
 
 
 if __name__ == "__main__":
-    #import sys
     test_CMConfigParameters()
     sys.exit(0)
 
