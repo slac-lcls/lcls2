@@ -150,18 +150,18 @@ class FWViewHist(FWView):
 
         aravel = arr.ravel()
         vmin = amin if amin is not None else\
-               aravel.min() if frmin==0 else\
+               aravel.min() if frmin in (0,None) else\
                np.quantile(aravel, frmin, axis=0, interpolation='lower')
         vmax = amax if amax is not None else\
-               aravel.max() if frmax==0 else\
+               aravel.max() if frmax in (1,None) else\
                np.quantile(aravel, frmax, axis=0, interpolation='higher')
 
         hb = HBins((vmin,vmax), nbins=nbins)
         hb.set_bin_data_from_array(aravel, dtype=np.float64, edgemode=edgemode)
         hmin, hmax = 0, hb.bin_data_max()
 
-        logger.debug('set_histogram_from_arr %s\n    vmin(%.5f%%):%.3f vmax(%.5f%%):%.3f hmin: %.3f hmax: %.3f'%\
-                     (info_ndarr(aravel, 'arr.ravel'), frmin,vmin,frmax,vmax,hmin,hmax))
+        #logger.debug('set_histogram_from_arr %s\n    vmin(%.5f%%):%.3f vmax(%.5f%%):%.3f hmin: %.3f hmax: %.3f'%\
+        #             (info_ndarr(aravel, 'arr.ravel'), frmin,vmin,frmax,vmax,hmin,hmax))
         hgap = 0.05*(hmax-hmin)
         rs = QRectF(hmin-hgap, hb.vmin(), hmax-hmin+2*hgap, hb.vmax()-hb.vmin())
         self.set_rect_scene(rs, set_def=True)
