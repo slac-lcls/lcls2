@@ -90,6 +90,12 @@ class IVControl(CMWControlBase):
 
     def on_spectrum_range_changed(self, d):
         logger.debug('on_spectrum_range_changed: %s' % str(d))
+        w = cp.ivimageaxes
+        if w is not None:
+            wi = w.wimg
+            rs=wi.scene().sceneRect() # preserve current scene rect
+            mode, nbins, amin, amax, frmin, frmax = self.spectrum_parameters()
+            w.wimg.set_pixmap_from_arr(wi.arr, set_def=True, amin=amin, amax=amax, frmin=frmin, frmax=frmax)
 
 
     def on_color_table_changed(self):
