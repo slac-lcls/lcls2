@@ -15,7 +15,7 @@ Created on 2021-07-14 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QLabel, QComboBox#, QPushButton
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QLineEdit, QLabel, QComboBox
 from PyQt5.QtCore import pyqtSignal, QRegExp
 from PyQt5.QtGui import QRegExpValidator, QIntValidator
 from math import floor, ceil
@@ -69,7 +69,6 @@ class IVControlSpec(QWidget):
         self.box.addWidget(self.lab_nbins)
         self.box.addWidget(self.edi_nbins)
         self.box.addWidget(self.cmb_mode)
-        #self.box.addSpacing(20)
         self.setLayout(self.box)
 
         self.set_tool_tips()
@@ -161,7 +160,6 @@ class IVControlSpec(QWidget):
 
     def set_style(self):
         self.layout().setContentsMargins(5,0,5,0)
-        #self.but_min.setStyleSheet(style.styleButtonGood)
         self.edi_nbins.setFixedWidth(55)
         self.edi_min.setFixedWidth(55)
         self.edi_max.setFixedWidth(55)
