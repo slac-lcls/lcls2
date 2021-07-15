@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 from psana.graphqt.CMWControlBase import cp, CMWControlBase
 from PyQt5.QtWidgets import QGridLayout, QPushButton# QHBoxLayout #QWidget, QLabel, QComboBox, QPushButton, QLineEdit
 from psana.graphqt.QWFileNameV2 import QWFileNameV2
+from psana.graphqt.IVControlSpec import IVControlSpec
 
 import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
@@ -58,19 +59,22 @@ class IVControl(CMWControlBase):
 
         self.but_reset = QPushButton('Reset')
         self.but_buts  = QPushButton('Buts %s' % cp.char_expand)
+        self.wctl_spec = IVControlSpec()
 
         self.box = QGridLayout()
-        self.box.addWidget(self.wfnm_nda, 0, 0, 1, 7)
-        self.box.addWidget(self.but_reset,   0, 7)
-        self.box.addWidget(self.but_buts,    0, 8)
-        self.box.addWidget(self.but_tabs,    0, 9)
-        self.box.addWidget(self.wfnm_geo, 1, 0, 1, 7)
+        self.box.addWidget(self.wfnm_nda, 0, 0, 1, 5)
+        self.box.addWidget(self.but_reset,   0, 6)
+        self.box.addWidget(self.but_buts,    0, 7)
+        self.box.addWidget(self.but_tabs,    0, 8)
+        self.box.addWidget(self.wfnm_geo, 1, 0, 1, 5)
+        self.box.addWidget(self.wctl_spec,1, 5, 1, 4)
         self.setLayout(self.box)
  
         self.but_reset.clicked.connect(self.on_but_reset)
         self.wfnm_nda.connect_path_is_changed_to_recipient(self.on_changed_fname_nda)
         self.wfnm_geo.connect_path_is_changed_to_recipient(self.on_changed_fname_geo)
         self.but_buts.clicked.connect(self.on_buts)
+        self.wctl_spec.connect_signal_spectrum_range_changed(self.on_spectrum_range_changed)
 
         self.connect_image_scene_rect_changed()
         self.connect_histogram_scene_rect_changed()
@@ -82,6 +86,10 @@ class IVControl(CMWControlBase):
         self.set_tool_tips()
         self.set_style()
         self.set_buttons_visiable()
+
+
+    def on_spectrum_range_changed(self, d):
+        logger.debug('on_spectrum_range_changed: %s' % str(d))
 
 
     def on_color_table_changed(self):
@@ -157,11 +165,13 @@ class IVControl(CMWControlBase):
         self.set_spectrum_from_arr(arr)
 
 
-    def set_spectrum_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
+    def set_spectrum_from_arr(self, arr, edgemode=0): #, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
         if arr is self.arr_his_old: return
         self.arr_his_old = arr
         w = cp.ivspectrum
-        if w is not None: w.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode)
+        if w is not None:
+            mode, nbins, amin, amax, frmin, frmax = self.spectrum_parameters()
+            w.whis.set_histogram_from_arr(arr, nbins, amin, amax, frmin, frmax, edgemode)
         #if w is not None: w.set_spectrum_from_arr(arr)
 
 
@@ -196,6 +206,17 @@ class IVControl(CMWControlBase):
            cp.ivspectrum.reset_original_size()
 
 
+    def spectrum_parameters(self):
+        d = self.wctl_spec.spectrum_parameters()
+        return\
+          d.get('mode', 'fraction'),\
+          d.get('nbins', 1000),\
+          d.get('amin',  None),\
+          d.get('amax',  None),\
+          d.get('frmin', 0.001),\
+          d.get('frmax', 0.999)
+
+
     def on_changed_fname_nda(self, fname):
         logger.debug('on_changed_fname_nda: %s' % fname)
         w = cp.ivimageaxes
@@ -203,7 +224,9 @@ class IVControl(CMWControlBase):
            nda = psu.load_ndarray_from_file(fname)
            logger.debug(info_ndarr(nda,'nda'))
            img = image_from_ndarray(nda)
-           w.wimg.set_pixmap_from_arr(img, set_def=True, amin=None, amax=None, frmin=0.001, frmax=0.999)
+           self.wctl_spec.set_amin_amax_def(img.min(), img.max())
+           mode, nbins, amin, amax, frmin, frmax = self.spectrum_parameters()
+           w.wimg.set_pixmap_from_arr(img, set_def=True, amin=amin, amax=amax, frmin=frmin, frmax=frmax)
 
 
     def on_changed_fname_geo(self, s):
@@ -234,27 +257,30 @@ class IVControl(CMWControlBase):
         if cp.ivimageaxes is not None: cp.ivimageaxes.but_reset.setVisible(d['Reset image'])
         if cp.ivimageaxes is not None: cp.ivimageaxes.set_info_visible(d['Cursor position'])
         if cp.ivspectrum  is not None: cp.ivspectrum.but_reset.setVisible(d['Reset spectrum'])
+        self.wctl_spec.setVisible(d['Control spectrum'])
 
 
     def buttons_dict(self):
         r = cp.iv_buttons.value()
-        return {'Geometry'       : r & 1,\
-                'Tabs'           : r & 2,\
-                'Reset'          : r & 4,\
-                'Reset image'    : r & 8,\
-                'Reset spectrum' : r & 16,\
-                'Cursor position': r & 32,\
+        return {'Geometry'        : r & 1,\
+                'Tabs'            : r & 2,\
+                'Reset'           : r & 4,\
+                'Reset image'     : r & 8,\
+                'Reset spectrum'  : r & 16,\
+                'Cursor position' : r & 32,\
+                'Control spectrum': r & 64,\
                }
 
 
     def set_buttons_config_bitword(self, d):
         w = 0
-        if d['Geometry']       : w |= 1
-        if d['Tabs']           : w |= 2
-        if d['Reset']          : w |= 4
-        if d['Reset image']    : w |= 8
-        if d['Reset spectrum'] : w |= 16
-        if d['Cursor position']: w |= 32
+        if d['Geometry']        : w |= 1
+        if d['Tabs']            : w |= 2
+        if d['Reset']           : w |= 4
+        if d['Reset image']     : w |= 8
+        if d['Reset spectrum']  : w |= 16
+        if d['Cursor position'] : w |= 32
+        if d['Control spectrum']: w |= 64
         cp.iv_buttons.setValue(w)
 
 
