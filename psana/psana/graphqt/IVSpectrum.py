@@ -30,16 +30,16 @@ class IVSpectrum(QWidget):
 
     def __init__(self, **kwargs):
 
-        parent = kwargs.get('parent', None)
+        parent= kwargs.get('parent', None)
         image = kwargs.get('image', test_image())
-        ctab = kwargs.get('ctab', ct.color_table_default())
-        signal_fast = kwargs.get('signal_fast', True)
+        ctab  = kwargs.get('ctab', ct.color_table_default())
         nbins = kwargs.get('nbins', 1000)
         amin  = kwargs.get('amin', None)
         amax  = kwargs.get('amax', None)
         frmin = kwargs.get('frmin', 0.001)
         frmax = kwargs.get('frmax', 0.999)
         edgemode = kwargs.get('edgemode', 0)
+        signal_fast = kwargs.get('signal_fast', True)
 
         QWidget.__init__(self, parent)
 
@@ -209,7 +209,7 @@ class IVSpectrum(QWidget):
 
 
       def keyPressEvent(self, e):
-        #print('keyPressEvent, key=', e.key())
+        print('keyPressEvent key=%s' % e.key())
         if   e.key() == Qt.Key_Escape:
             print('Close app')
             self.close()
