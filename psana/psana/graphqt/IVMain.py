@@ -14,7 +14,7 @@ Created on 2021-06-14 by Mikhail Dubrovin
 """
 
 import logging
-#logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 import sys
 
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
@@ -29,7 +29,6 @@ class IVMain(QWidget):
 
     def __init__(self, **kwargs):
         QWidget.__init__(self, parent=None)
-        #self._name = self.__class__.__name__
 
         cp.ivmain = self
 
@@ -54,7 +53,11 @@ class IVMain(QWidget):
         self.set_tool_tips()
 
         if fname is not None: self.wctrl.on_changed_fname_nda(fname)
-        #self.connect_signals_to_slots()
+
+#        self.connect_signals_to_slots()
+#    def connect_signals_to_slots(self):
+#        self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
+#        self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
 
 
     def proc_kwargs(self, **kwargs):
@@ -65,16 +68,7 @@ class IVMain(QWidget):
         self.wlog  = kwargs.get('wlog', None)
         self.signal_fast = kwargs.get('signal_fast', True)
         #if is_in_command_line('-l', '--loglevel'): cp.log_level.setValue(loglevel)
-        #if is_in_command_line('-S', '--saveloglogdir'):
-        #if is_in_command_line('-L', '--logdir'):
-        #cp.log_prefix.setValue(logdir)
         #cp.save_log_at_exit.setValue(savelog)
-
-
-    def connect_signals_to_slots(self):
-        pass
-        #self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
-        #self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
 
 
     def set_tool_tips(self):
@@ -88,13 +82,12 @@ class IVMain(QWidget):
 
 
     def closeEvent(self, e):
-        #logger.debug('closeEvent')
+        logger.debug('closeEvent')
         QWidget.closeEvent(self, e)
         cp.ivmain = None
 
 
 def image_viewer(**kwargs):
-
     loglevel = kwargs.get('loglevel', 'DEBUG').upper()
     intlevel = logging._nameToLevel[loglevel]
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=intlevel)
@@ -105,15 +98,12 @@ def image_viewer(**kwargs):
     w.move(50,20)
     w.show()
     w.setWindowTitle('Image Viewer')
-    #if __name__ == "__main__": w.wctrl.but_tabs_is_visible(False)
     a.exec_()
     del w
     del a
-    #return a,w
 
 
 def do_main(**kwargs):
-    #logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.INFO)
     image_viewer(**kwargs)
 
 
@@ -125,17 +115,14 @@ def do_work(dt_sec=1, nloops=20):
 
 
 def do_python_threads(**kwargs):
+    """Test python's multi-threading to run data processing paralel to qt widget.
+    """
     import threading
-    #logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.INFO)
-
     #tg = threading.Thread(target=image_viewer)
     #tg.daemon = True
     #tg.start()
-
     tw = threading.Thread(target=do_work)
-    #tw.daemon = True
     tw.start()
-
     image_viewer(**kwargs)
 
 
@@ -144,9 +131,12 @@ if __name__ == "__main__":
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
     kwargs = {\
       'fname':'/cds/group/psdm/detector/data2_test/misc/cspad2x2.1-ndarr-ave-meca6113-r0028.npy',\
-      'loglevel':'INFO',\
+      'loglevel':'DEBUG',\
     }
-    #do_main(**kwargs)
-    do_python_threads(**kwargs)
+
+    tname = sys.argv[1] if len(sys.argv) > 1 else '0'
+    if   tname == '0': do_main(**kwargs)
+    elif tname == '1': do_python_threads(**kwargs)
+    else: logger.debug('Not-implemented test "%s"' % tname)
 
 # EOF
