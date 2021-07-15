@@ -55,9 +55,15 @@ def apply_color_table(arr, ctable=None, amin=None, amax=None, frmin=0.01, frmax=
     """ Returns numpy array with colors in stead of intensities
     """
     ctab = ctable if ctable is not None else color_table_default
-
-    min = np.quantile(arr.ravel(), frmin, axis=0, interpolation='lower')  if amin is None else amin
-    max = np.quantile(arr.ravel(), frmax, axis=0, interpolation='higher') if amax is None else amax
+    #min = np.quantile(arr.ravel(), frmin, axis=0, interpolation='lower')  if amin is None else amin
+    #max = np.quantile(arr.ravel(), frmax, axis=0, interpolation='higher') if amax is None else amax
+    aravel = arr.ravel()
+    min = amin if amin is not None else\
+          aravel.min() if frmin in (0,None) else\
+          np.quantile(aravel, frmin, axis=0, interpolation='lower')
+    max = amax if amax is not None else\
+          aravel.max() if frmax in (1,None) else\
+          np.quantile(aravel, frmax, axis=0, interpolation='higher')
 
     if min==max: max+=1
     f = float(ctab.size-1)/(max-min)
