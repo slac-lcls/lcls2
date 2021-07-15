@@ -130,6 +130,30 @@ void Module134::setup_timing()
   }
 }
 
+void Module134::_jesd_init(unsigned mode) 
+{
+  Fmc134Ctrl& ctrl = jesdctl();
+  Fmc134Cpld& cpld = i2c().fmc_cpld;
+  Reg* jesd0  = &p->surf_jesd0[0];
+  Reg* jesd1  = &p->surf_jesd1[0];
+  while(1) {
+      if (!ctrl.default_init(cpld, mode)) {
+          usleep(2000000);
+          unsigned dvalid=0;
+          for(unsigned i=0; i<8; i++) {
+              dvalid |= (jesd0[0x10+i]&2) ? (0x001<<i) : 0;
+              dvalid |= (jesd1[0x10+i]&2) ? (0x100<<i) : 0;
+          }
+          if (dvalid == 0xffff)
+              break;
+          printf("dvalid: 0x%x\n",dvalid);
+      }
+      usleep(1000);
+  }            
+
+  ctrl.dump();
+}
+
 void Module134::setup_jesd(bool lAbortOnErr,
                            std::string& adc0,
                            std::string& adc1)
@@ -153,19 +177,15 @@ void Module134::setup_jesd(bool lAbortOnErr,
   }
 
   cpld->dump();
-  jesd0[0] = 0xff;
+  jesd0[0] = 0xff;  // enable rx lanes
   jesd1[0] = 0xff;
-  jesd0[4] = 0x27;
+  jesd0[4] = 0x27;  // subclass 1, replace enable, reset GTs, scramble enable
   jesd1[4] = 0x27;
   usleep(100);
-  jesd0[4] = 0x23;
+  jesd0[4] = 0x23;  // remove reset GTs
   jesd1[4] = 0x23;
 
-  while (ctrl->default_init(*cpld, 0)) {
-    if (lAbortOnErr)
-      abort();
-    usleep(1000);
-  }
+  _jesd_init(0);
 
   ctrl->dump();
   i2c_unlock();
@@ -271,14 +291,16 @@ uint64_t Module134::device_dna() const
 
 void Module134::enable_test_pattern(TestPattern p)
 {
-  jesdctl().default_init(i2c().fmc_cpld, unsigned(p)); 
-  jesdctl().dump();
+  i2c_lock(I2cSwitch::PrimaryFmc);
+  _jesd_init(unsigned(p));
+  i2c_unlock();
 }
 
 void Module134::disable_test_pattern()
 {
-  jesdctl().default_init(i2c().fmc_cpld, 0);
-  jesdctl().dump();
+  i2c_lock(I2cSwitch::PrimaryFmc);
+  _jesd_init(0);
+  i2c_unlock();
 }
 
 // Update ID advertised on timing link

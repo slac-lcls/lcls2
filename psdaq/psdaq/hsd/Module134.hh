@@ -82,6 +82,8 @@ namespace Pds {
     private:
       Module134() : _sem_i2c(Semaphore::FULL) {}
 
+      void _jesd_init(unsigned);
+
       class PrivateData;
       PrivateData*      p;
 
