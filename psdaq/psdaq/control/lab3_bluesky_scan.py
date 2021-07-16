@@ -13,8 +13,8 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', type=int, choices=range(0, 8), default=1,
                     help='platform (default 1)')
-parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-tst-dev009',
-                    help='collection host (default drp-tst-dev009)')
+parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-tst-dev008',
+                    help='collection host (default drp-tst-dev008)')
 parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                     help='timeout msec (default 10000)')
 parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=10, help='# of events to aquire at each step (default 10)')
