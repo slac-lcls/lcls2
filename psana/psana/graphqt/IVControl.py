@@ -53,10 +53,10 @@ class IVControl(CMWControlBase):
         self.arr_img_old = None
 
         self.wfnm_nda = QWFileNameV2(None, label='Array:',\
-           path=fname_nda, fltr='*.txt *.npy *.data *.dat\n*', show_frame=True)
+           path=fname_nda, fltr='*.txt *.npy *.data *.dat\n*')
 
         self.wfnm_geo = QWFileNameV2(None, label='Geometry:',\
-           path=fname_geo, fltr='*.txt *.data\n*', show_frame=True)
+           path=fname_geo, fltr='*.txt *.data\n*')
 
         self.but_reset = QPushButton('Reset')
         self.but_buts  = QPushButton('Buts %s' % cp.char_expand)
