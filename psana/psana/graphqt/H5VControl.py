@@ -1,7 +1,6 @@
-#------------------------------
+
 """Class :py:class:`H5VControl` is a QWidget with control fields
 ===================================================================
-
 Usage ::
 
     # Run test: python lcls2/psana/psana/graphqt/H5VControl.py
@@ -11,19 +10,18 @@ Usage ::
 
 Created on 2020-01-04 by Mikhail Dubrovin
 """
-#----------
 import logging
 #logger = logging.getLogger(__name__)
 
 import sys
 from PyQt5.QtWidgets import QWidget, QLabel, QComboBox, QPushButton, QHBoxLayout, QLineEdit
-from PyQt5.QtCore import QSize # Qt, QEvent, QPoint, 
+from PyQt5.QtCore import QSize
 from psana.graphqt.H5VConfigParameters import cp
 from psana.graphqt.Styles import style
 from psana.graphqt.QWIcons import icon
-from psana.graphqt.QWFileName import QWFileName
+from psana.graphqt.QWFileNameV2 import QWFileNameV2
+#from psana.graphqt.QWFileName import QWFileName
 
-#----------
 
 class H5VControl(QWidget):
     """QWidget for H5V control fields"""
@@ -39,8 +37,9 @@ class H5VControl(QWidget):
         self.but_exp_col  = QPushButton('Collapse')
 
         fname = cp.h5vmain.wtree.fname if cp.h5vmain is not None else './test.h5'
-        self.w_fname = QWFileName(None, butname='Select', label='File:',\
-           path=fname, fltr='*.h5 *.hdf5 \n*', show_frame=True)
+
+        self.w_fname = QWFileNameV2(None, label='HDF5 file:',\
+           path=fname, fltr='*.h5 *.hdf5 \n*')
 
         self.hbox = QHBoxLayout() 
         self.hbox.addWidget(self.lab_ctrl)
@@ -71,7 +70,6 @@ class H5VControl(QWidget):
         #self.         setStyleSheet(style.styleBkgd)
         #self.lab_db_filter.setStyleSheet(style.styleLabel)
         self.lab_ctrl.setStyleSheet(style.styleLabel)
-
         icon.set_icons()
         self.but_exp_col.setIcon(icon.icon_folder_open)
 
@@ -97,21 +95,13 @@ class H5VControl(QWidget):
 #        logger.info('Click on "%s"' % but.text())
 #        if   but == self.but_exp_col : self.expand_collapse_dbtree()
 #        elif but == self.but_tabs    : self.view_hide_tabs()
-#        elif but == self.but_buts    : self.select_visible_buttons()
-#        elif but == self.but_del     : self.delete_selected_items()
-#        elif but == self.but_docs    : self.select_doc_widget()
-#        elif but == self.but_selm    : self.set_selection_mode()
-#        elif but == self.but_add     : self.add_selected_item()
-#        elif but == self.but_save    : self.save_selected_item()
 #        #elif but == self.but_level   : self.set_logger_level()
 
-#----------
 
 if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     import sys
     app = QApplication(sys.argv)
-    #logger.setPrintBits(0o177777)
     w = H5VControl()
     #w.setGeometry(200, 400, 500, 200)
     w.setWindowTitle('H5V Control Panel')
@@ -120,4 +110,4 @@ if __name__ == "__main__":
     del w
     del app
 
-#----------
+# EOF
