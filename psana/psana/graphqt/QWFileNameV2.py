@@ -39,27 +39,24 @@ class QWFileNameV2(QWidget):
                  path='/cds/group/psdm/detector/data2_test/npy/Select',\
                  mode='r',\
                  fltr='*.txt *.data *.png *.gif *.jpg *.jpeg\n *',\
-                 show_frame=False,\
                  but_style_on_start = 'background-color: rgb(100, 255, 100); color: rgb(0, 0, 0);',\
-                 but_style_selected = ''):
+                 but_style_selected = '',\
+                 dirs=('./', './calib')):
 
         QWidget.__init__(self, parent)
 
         self.mode = mode
         self.path = path
         self.fltr = fltr
-        self.show_frame = show_frame
         self.but_style_on_start = but_style_on_start
         self.but_style_selected = but_style_selected
+        self.dirs = dirs
 
         self.lab = QLabel(label)
         self.but = QPushButton(path.rsplit('/',1)[-1])
-        #self.edi = QLineEdit(path)
-        #self.edi.setReadOnly(True) 
 
         self.hbox = QHBoxLayout() 
         self.hbox.addWidget(self.lab)
-        #self.hbox.addWidget(self.edi)
         self.hbox.addWidget(self.but)
         self.hbox.addStretch(1)
         self.setLayout(self.hbox)
@@ -76,13 +73,11 @@ class QWFileNameV2(QWidget):
 
     def set_tool_tips(self):
         self.but.setToolTip('Click and select input file.')
-        #self.edi.setToolTip('Path to the file (read-only).\nClick on button to change it.') 
 
 
     def set_style(self):
         self.setWindowTitle('File name selection widget')
         self.setMinimumWidth(300)
-        #self.edi.setMinimumWidth(210)
         self.but.setMinimumWidth(250)
         self.setFixedHeight(34)
         self.layout().setContentsMargins(5,0,5,0)
@@ -94,9 +89,18 @@ class QWFileNameV2(QWidget):
 
         path_old = self.path
 
-        resp = QFileDialog.getSaveFileName(self, 'Output file', self.path, filter=self.fltr) \
+        qfdial = QFileDialog(directory=self.path, filter=self.fltr)
+        qfdial.setHistory(self.dirs)
+        #qbytearr = qfdial.saveState()
+        #resp = qfdial.restoreState(qbytearr)
+        #print('XXX QFileDialog.history:', qfdial.history())
+        resp = qfdial.getSaveFileName(parent=self, caption='Output file')\
                if self.mode == 'w' else \
-               QFileDialog.getOpenFileName(self, 'Input file', self.path, filter=self.fltr)
+               qfdial.getOpenFileName(parent=self, caption='Input file')
+
+        #resp = QFileDialog.getSaveFileName(self, 'Output file', self.path, filter=self.fltr) \
+        #       if self.mode == 'w' else \
+        #       QFileDialog.getOpenFileName(self, 'Input file', self.path, filter=self.fltr)
 
         logger.debug('response: %s len=%d' % (resp, len(resp)))
 
@@ -119,7 +123,6 @@ class QWFileNameV2(QWidget):
 
         else:
             logger.debug('selected file: %s' % self.path)
-            #self.edi.setText(self.path)
             self.but.setText(self.path.rsplit('/',1)[-1])
             self.path_is_changed.emit(self.path)
             self.but.setStyleSheet(self.but_style_selected)
@@ -141,7 +144,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
-    w = QWFileNameV2(None, label='Path:', path='/cds/group/psdm/detector/data2_test/npy/Select', show_frame=True)
+    w = QWFileNameV2(None, label='Path:', path='/cds/group/psdm/detector/data2_test/npy/Select')
     w.setGeometry(100, 50, 350, 80)
     w.connect_path_is_changed_to_recipient(w.test_signal_reception)
     w.show()
