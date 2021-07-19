@@ -68,6 +68,8 @@ class EventManager(object):
         return evt
     
     def _get_bd_offset_and_size(self, d, current_bd_offsets, i_evt, i_smd, i_first_L1):
+        if self.use_smds[i_smd]: return
+
         self.bd_offset_array[i_evt, i_smd] = d.smdinfo[0].offsetAlg.intOffset
         self.bd_size_array[i_evt, i_smd] = d.smdinfo[0].offsetAlg.intDgramSize 
         
