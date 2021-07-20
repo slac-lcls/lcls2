@@ -108,7 +108,7 @@ class CMWMainTabs(QWidget):
         elif tab_name == 't-converter':
             from psana.graphqt.QWDateTimeSec import QWDateTimeSec
             self.gui_win = QWDateTimeSec()
-            self.gui_win.setMaximumWidth(500)
+            self.gui_win.setMaximumWidth(400)
             w_height = 80
 
         elif tab_name == 'HDF5':
@@ -122,7 +122,8 @@ class CMWMainTabs(QWidget):
             self.gui_win = IVMain()
 
         elif tab_name == 'Mask Editor':
-            self.gui_win = QTextEdit('Selected tab "%s". Yes, I know, you want it, but ... you know what.' % tab_name)
+            pass
+
         else:
             self.gui_win = QTextEdit('Selected tab "%s"' % tab_name)
 
