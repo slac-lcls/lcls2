@@ -9,7 +9,7 @@ from psana.graphqt.QWDateTimeSec import QWDateTimeSec, QApplication, sys
 def timeconverter():
     print('Start convertor date and time <-> sec')
     app = QApplication(sys.argv)
-    w = QWDateTimeSec(None, show_frame=True, verb=True)
+    w = QWDateTimeSec()
     w.setWindowTitle('Date and time <-> sec')
     w.show()
     app.exec_()
