@@ -122,12 +122,12 @@ class CMWMainTabs(QWidget):
             self.gui_win = IVMain()
 
         elif tab_name == 'Mask Editor':
-            pass
+            self.gui_win = QTextEdit('Selected tab "%s"' % tab_name)
 
         else:
             self.gui_win = QTextEdit('Selected tab "%s"' % tab_name)
 
-        self.gui_win.setMinimumHeight(w_height)
+        #self.gui_win.setMinimumHeight(w_height)
         self.gui_win.setVisible(True)
         self.box_layout.addWidget(self.gui_win)
 
