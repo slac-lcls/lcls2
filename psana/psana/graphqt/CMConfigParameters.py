@@ -21,6 +21,7 @@ See:
 Created on 2016-11-22 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 """
+import os
 
 import logging
 logger = logging.getLogger(__name__)
@@ -28,6 +29,15 @@ logger = logging.getLogger(__name__)
 from psana.pyalgos.generic.PSConfigParameters import PSConfigParameters
 from psana.pyalgos.generic.Utils import list_of_hosts as lshosts
 import psana.pscalib.calib.CalibConstants as cc
+
+
+def dir_calib(dirdef='./calib'):
+    return dirdef if cp.exp_name.is_default() else\
+           os.path.join(cp.instr_dir.value(), cp.instr_name.value(), cp.exp_name.value(), 'calib')
+
+
+def dirs_to_search():
+    return [dir_calib(), os.getcwd()]# os.path.expanduser('~')
 
 
 class CMConfigParameters(PSConfigParameters):
@@ -82,6 +92,8 @@ class CMConfigParameters(PSConfigParameters):
         self.last_selection = None
         self.user = cc.USERNAME
         self.upwd = None
+
+        self.h5vmain = None
 
         
     def declareParameters(self):
