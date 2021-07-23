@@ -40,8 +40,8 @@ class CMWConfigPars(QWidget):
         self.lab_port = QLabel('Port:')
         self.lab_level= QLabel('Log level:')
         self.lab_exp  = QLabel('Experiment:')
-        self.fld_log_file = QWDirNameV2(self, label='Log dir:', path=cp.log_prefix.value(), split=False)
-        self.fld_dir_ins = QWDirNameV2(self, label='Instrument dir:', path=cp.instr_dir.value(), split=False)
+        self.fld_log_file = QWDirNameV2(self, label='Log dir:', path=cp.log_prefix.value(), hide_path=False)
+        self.fld_dir_ins = QWDirNameV2(self, label='Instrument dir:', path=cp.instr_dir.value(), hide_path=False)
         self.cmb_host = QComboBox(self)        
         self.cmb_host.addItems(cp.list_of_hosts)
         hostname = cp.cdb_host.value()
@@ -56,7 +56,7 @@ class CMWConfigPars(QWidget):
         self.cmb_level.addItems(self.log_level_names)
         self.cmb_level.setCurrentIndex(self.log_level_names.index(cp.log_level.value()))
 
-        self.but_exp = QPushButton('Select')
+        self.but_exp = QPushButton(cp.exp_name.value())
 
         self.grid = QGridLayout()
         self.grid.addWidget(self.lab_host, 0, 0)
@@ -164,9 +164,12 @@ class CMWConfigPars(QWidget):
     def on_but_exp(self):
         from psana.graphqt.PSPopupSelectExp import select_instrument_experiment
         dir_instr = cp.instr_dir.value()
-        exp_name = select_instrument_experiment(self.but_exp, dir_instr)
+        instr_name, exp_name = select_instrument_experiment(self.but_exp, dir_instr)
         logger.debug('selected experiment: %s' % exp_name)
-        if exp_name: self.but_exp.setText(exp_name)
+        if exp_name:
+            self.but_exp.setText(exp_name)
+            cp.exp_name.setValue(exp_name)
+        if instr_name: cp.instr_name.setValue(instr_name)
 
 
 if __name__ == "__main__":
