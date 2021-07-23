@@ -42,7 +42,7 @@ class QWFileNameV2(QWidget):
                  but_style_on_start = 'background-color: rgb(100, 255, 100); color: rgb(0, 0, 0);',\
                  but_style_selected = '',\
                  dirs=[os.path.expanduser('~'), './calib'],\
-                 split=True): #os.getcwd(),
+                 hide_path=True): #os.getcwd(),
 
         QWidget.__init__(self, parent)
 
@@ -52,7 +52,7 @@ class QWFileNameV2(QWidget):
         self.but_style_on_start = but_style_on_start
         self.but_style_selected = but_style_selected
         self.dirs = dirs
-        self.split = split
+        self.hide_path = hide_path
 
         self.lab = QLabel(label)
         self.but = QPushButton(self.but_text())
@@ -74,7 +74,11 @@ class QWFileNameV2(QWidget):
 
 
     def but_text(self):
-        return self.path.rsplit('/',1)[-1] if self.split else self.path
+        return self.path.rsplit('/',1)[-1] if self.hide_path else self.path
+
+
+    def set_dirs_to_search(self, dirs):
+        self.dirs = dirs
 
 
     def set_tool_tips(self):
@@ -93,9 +97,9 @@ class QWFileNameV2(QWidget):
         path_old = self.path
 
         qfdial = QFileDialog(directory=self.path, filter=self.fltr)
-        qfdial.setHistory(set(qfdial.history() + self.dirs))
-        #qfdial.saveState()
-        #resp = qfdial.restoreState(qbytearr)
+        qfdial.setHistory([]) # clear history
+        rsp = qfdial.restoreState(qfdial.saveState())
+        qfdial.setHistory(self.dirs)
         logger.debug('QFileDialog.history: %s' % str(qfdial.history()))
         resp = qfdial.getSaveFileName(parent=self, caption='Output file')\
                if self.mode == 'w' else \
