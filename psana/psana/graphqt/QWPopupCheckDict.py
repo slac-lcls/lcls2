@@ -93,7 +93,7 @@ class QWPopupCheckDict(QDialog) :
 
     def setStyle(self):
         #self.setFixedWidth(200)
-        self.setMinimumWidth(200)
+        #self.setMinimumWidth(200)
         styleGray = "background-color: rgb(230, 240, 230); color: rgb(0, 0, 0);" # Gray
         styleDefault = ""
 
@@ -112,7 +112,8 @@ class QWPopupCheckDict(QDialog) :
         #s = self.edi_msg.document().size()
         #print('XXX:document().size()', s.width(), s.height())
         #self.edi_msg.setMinimumSize(200,50)
-        self.edi_msg.setFixedSize(180,50)
+        #self.edi_msg.setFixedSize(180,50)
+        self.edi_msg.setFixedSize(300,50)
 
     def setIcons(self):
         from psana.graphqt.QWIcons import icon
