@@ -17,12 +17,12 @@ import logging
 #logger = logging.getLogger(__name__)
 
 import sys
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from psana.graphqt.QWLoggerStd import QWLoggerStd#, QWFilter
 
 from psana.graphqt.H5VControl import H5VControl
 from psana.graphqt.H5VQWTree import Qt, H5VQWTree
-from psana.graphqt.H5VConfigParameters import cp
+from psana.graphqt.CMConfigParameters import cp
 from psana.pyalgos.generic.Utils import print_kwargs, is_in_command_line
 
 
@@ -36,10 +36,13 @@ class H5VMain(QWidget):
 
         self.proc_kwargs(**kwargs)
 
+        kwargs['parent'] = self
+
         if self.wlog is None: self.wlog = QWLoggerStd(cp, show_buttons=False)
         self.wtree = H5VQWTree(**kwargs)
         self.wctrl = H5VControl(**kwargs)
         #self.wtext = QTextEdit('Some text')
+        self.wtree.wctrl = self.wctrl
 
         self.hspl = QSplitter(Qt.Horizontal)
         self.hspl.addWidget(self.wtree)
@@ -139,14 +142,14 @@ class H5VMain(QWidget):
 
 
 def hdf5explorer(**kwargs):
+    import os
+    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
     #fmt = '%(asctime)s %(name)s %(levelname)s: %(message)s'
     #logging.basicConfig(format=fmt, datefmt='%H:%M:%S', level=logging.DEBUG)
 
-    from PyQt5.QtWidgets import QApplication
-
     a = QApplication(sys.argv)
     w = H5VMain(**kwargs)
-    w.setGeometry(10, 25, 200, 600)
+    w.setGeometry(10, 25, 900, 700)
     w.setWindowTitle('HDF5 explorer')
     w.move(50,20)
     w.show()
