@@ -32,9 +32,9 @@ class QWDirNameV2(QWFileNameV2):
                  mode='r',\
                  fltr=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks,\
                  dirs=[os.path.expanduser('~'), './calib'],\
-                 split=True):
+                 hide_path=True):
 
-        QWFileNameV2.__init__(self, parent, label, path, mode, fltr, dirs=dirs, split=split)
+        QWFileNameV2.__init__(self, parent, label, path, mode, fltr, dirs=dirs, hide_path=hide_path)
 
  
     def on_but(self):
