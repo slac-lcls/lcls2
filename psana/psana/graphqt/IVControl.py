@@ -11,6 +11,8 @@ Usage ::
 
 Created on 2021-06-14 by Mikhail Dubrovin
 """
+import os
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -22,7 +24,7 @@ from psana.graphqt.IVControlSpec import IVControlSpec
 
 import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
-from psana.graphqt.CMConfigParameters import cp
+from psana.graphqt.CMConfigParameters import cp, dirs_to_search
 from psana.graphqt.QWUtils import change_check_box_dict_in_popup_menu
 
 def image_from_ndarray(nda):
@@ -53,17 +55,19 @@ class IVControl(CMWControlBase):
         self.arr_img_old = None
 
         self.wfnm_nda = QWFileNameV2(None, label='Array:',\
-           path=fname_nda, fltr='*.txt *.npy *.data *.dat\n*')
+           path=fname_nda, fltr='*.txt *.npy *.data *.dat\n*', dirs=dirs_to_search())
 
         self.wfnm_geo = QWFileNameV2(None, label='Geometry:',\
-           path=fname_geo, fltr='*.txt *.data\n*')
+                                     path=fname_geo, fltr='*.txt *.data\n*', dirs=dirs_to_search())
 
+        self.but_exp = QPushButton(cp.exp_name.value())
         self.but_reset = QPushButton('Reset')
         self.but_buts  = QPushButton('Buts %s' % cp.char_expand)
         self.wctl_spec = IVControlSpec()
 
         self.box = QGridLayout()
         self.box.addWidget(self.wfnm_nda, 0, 0, 1, 5)
+        self.box.addWidget(self.but_exp,     0, 5)
         self.box.addWidget(self.but_reset,   0, 6)
         self.box.addWidget(self.but_buts,    0, 7)
         self.box.addWidget(self.but_tabs,    0, 8)
@@ -71,10 +75,11 @@ class IVControl(CMWControlBase):
         self.box.addWidget(self.wctl_spec,1, 5, 1, 4)
         self.setLayout(self.box)
  
+        self.but_exp.clicked.connect(self.on_but_exp)
         self.but_reset.clicked.connect(self.on_but_reset)
+        self.but_buts.clicked.connect(self.on_buts)
         self.wfnm_nda.connect_path_is_changed_to_recipient(self.on_changed_fname_nda)
         self.wfnm_geo.connect_path_is_changed_to_recipient(self.on_changed_fname_geo)
-        self.but_buts.clicked.connect(self.on_buts)
         self.wctl_spec.connect_signal_spectrum_range_changed(self.on_spectrum_range_changed)
 
         self.connect_image_scene_rect_changed()
@@ -121,12 +126,14 @@ class IVControl(CMWControlBase):
         self.but_reset.setToolTip('Reset original image size')
         self.but_buts.setToolTip('Show/hide buttons')
         self.but_tabs.setToolTip('Show/hide tabs')
+        self.but_exp.setToolTip('Select experiment')
 
 
     def set_style(self):
         self.but_tabs.setFixedWidth(50)
         self.but_reset.setFixedWidth(50)
         self.but_buts.setFixedWidth(50)
+        self.but_exp.setFixedWidth(80)
          #self.but_buts.setStyleSheet(style.styleButton)
         #self.but_tabs.setVisible(True)
 
@@ -203,6 +210,22 @@ class IVControl(CMWControlBase):
             wi.set_rect_scene(rs, set_def=False)
 
 
+    def on_but_exp(self):
+        from psana.graphqt.PSPopupSelectExp import select_instrument_experiment
+        dir_instr = cp.instr_dir.value()
+        instr_name, exp_name = select_instrument_experiment(self.but_exp, dir_instr, show_frame=True)
+        logger.debug('selected experiment: %s' % exp_name)
+        if instr_name:
+            cp.instr_name.setValue(instr_name)
+        if exp_name:
+            self.but_exp.setText(exp_name)
+            cp.exp_name.setValue(exp_name)
+            dirs = dirs_to_search()
+            logger.debug('set dirs_to_search: %s' % str(dirs))
+            self.wfnm_nda.set_dirs_to_search(dirs)
+            self.wfnm_geo.set_dirs_to_search(dirs)
+
+
     def on_but_reset(self):
         logger.debug('on_but_reset')
         if cp.ivimageaxes is not None:
@@ -267,6 +290,7 @@ class IVControl(CMWControlBase):
         self.wfnm_geo.setVisible(d['Geometry'])
         self.but_reset.setVisible(d['Reset'])
         self.but_tabs.setVisible(d['Tabs'])
+        self.but_exp.setVisible(d['Experiment'])
         if cp.ivimageaxes is not None: cp.ivimageaxes.but_reset.setVisible(d['Reset image'])
         if cp.ivimageaxes is not None: cp.ivimageaxes.set_info_visible(d['Cursor position'])
         if cp.ivspectrum  is not None: cp.ivspectrum.but_reset.setVisible(d['Reset spectrum'])
@@ -282,6 +306,7 @@ class IVControl(CMWControlBase):
                 'Reset spectrum'  : r & 16,\
                 'Cursor position' : r & 32,\
                 'Control spectrum': r & 64,\
+                'Experiment'      : r & 128,\
                }
 
 
@@ -294,6 +319,7 @@ class IVControl(CMWControlBase):
         if d['Reset spectrum']  : w |= 16
         if d['Cursor position'] : w |= 32
         if d['Control spectrum']: w |= 64
+        if d['Experiment']      : w |= 128
         cp.iv_buttons.setValue(w)
 
 
@@ -305,7 +331,6 @@ class IVControl(CMWControlBase):
 
 if __name__ == "__main__":
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
-    import os
     import sys
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
     from PyQt5.QtWidgets import QApplication
