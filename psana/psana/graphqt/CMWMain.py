@@ -17,7 +17,7 @@ Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QSplitter, QTextEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt, QPoint
 
 from psana.pyalgos.generic.Utils import print_kwargs, is_in_command_line, log_rec_on_start
@@ -167,8 +167,6 @@ def calibman(**kwargs):
     import sys
     #sys.stdout = sys.stderr = open('/dev/null', 'w') # open('%s-stdout-stderr' % cp.log_file.value(), 'w')
     #logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
-
-    from PyQt5.QtWidgets import QApplication
 
     global app # to prevent crash on exit
     app = QApplication(sys.argv)
