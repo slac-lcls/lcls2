@@ -32,10 +32,12 @@ class H5VQWTree(QWTree):
 
     def __init__(self, **kwargs):
 
-        parent = kwargs.get('parent',None)
+        wparent = kwargs.get('parent', None)
         self.fname = kwargs.get('fname', self.TEST_FNAME)
 
-        QWTree.__init__(self, parent)
+        QWTree.__init__(self, wparent)
+
+        self.h5py = h5py
 
         #self._name = self.__class__.__name__
 
@@ -126,12 +128,26 @@ class H5VQWTree(QWTree):
         #self.setMinimumSize(400, 900)
         #self.setSizeHint(400, 900)
 
+
+    def full_path(self, item, path=''):
+        if item is None: return path
+        if isinstance(item.data(), h5py.File): return 'fd-%s' % path
+        else:
+          txt = item.text()
+          #name = txt.split(':')[0]
+          txt = txt.strip().replace(' ','').replace('(','-').replace(')','-')
+          txt = txt.replace(',','-').replace(':','').replace('|','-').replace('/','-')
+          txt = txt.replace('--','-').replace('--','-')
+          path_ext = '%s-%s' % (txt,path) if path else txt
+          return self.full_path(item.parent(), path_ext)
+
+
     def on_item_selected(self, selected, deselected):
         itemsel = self.model.itemFromIndex(selected)
         if itemsel is not None:
             parent = itemsel.parent()
             parname = parent.text() if parent is not None else None
-            msg = 'selected item: %s row: %d parent: %s' % (itemsel.text(), selected.row(), parname) 
+            msg = 'selected item: %s row: %d parent: %s dtype: %s' % (itemsel.text(), selected.row(), parname, type(itemsel.data())) 
             logger.debug(msg)
             if isinstance(itemsel.data(), h5py.Dataset):
                 msg = 'data.value:\n%s' % str(itemsel.data()[()]) #.value)
