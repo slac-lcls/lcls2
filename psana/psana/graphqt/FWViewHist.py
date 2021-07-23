@@ -155,6 +155,7 @@ class FWViewHist(FWView):
         vmax = amax if amax is not None else\
                aravel.max() if frmax in (1,None) else\
                np.quantile(aravel, frmax, axis=0, interpolation='higher')
+        if not vmin<vmax: vmax=vmin+1
 
         hb = HBins((vmin,vmax), nbins=nbins)
         hb.set_bin_data_from_array(aravel, dtype=np.float64, edgemode=edgemode)
