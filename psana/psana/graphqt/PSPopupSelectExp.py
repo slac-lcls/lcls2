@@ -70,12 +70,13 @@ def lst_exp_for_year(lst_exp, year):
 class PSPopupSelectExp(QDialog):
     """
     """
-    def __init__(self, parent=None, lst_exp=[]):
+    def __init__(self, parent=None, lst_exp=[], show_frame=False):
 
         QDialog.__init__(self, parent)
 
         self.name_sel = None
         self.list = QListWidget(parent)
+        self.show_frame = show_frame
 
         self.fill_list(lst_exp)
 
@@ -131,7 +132,8 @@ class PSPopupSelectExp(QDialog):
         self.setWindowTitle('Select experiment')
         self.setFixedWidth(120)
         self.setMinimumHeight(600)
-        #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        if not self.show_frame:
+          self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         self.layout().setContentsMargins(2,2,2,2)
         parent = self.parentWidget()
         if parent is None:
@@ -186,23 +188,26 @@ class PSPopupSelectExp(QDialog):
 #        self.done(QDialog.Accepted)
 
 
-def select_experiment(parent, lst_exp):
-    w = PSPopupSelectExp(parent, lst_exp)
+def select_experiment(parent, lst_exp, show_frame=False):
+    w = PSPopupSelectExp(parent, lst_exp, show_frame)
     resp=w.exec_()
     logger.debug('responce from w.exec_(): %s' % str(resp))
     return w.selectedName()
 
 
-def select_instrument_experiment(parent=None, dir_instr='/cds/data/psdm'):
+def select_instrument_experiment(parent=None, dir_instr='/cds/data/psdm', show_frame=False):
     import os
     from psana.graphqt.QWPopupSelectItem import popup_select_item_from_list
     from psana.pyalgos.generic.PSUtils import list_of_instruments, list_of_experiments
     instrs = sorted(list_of_instruments(dir_instr))
-    instr = popup_select_item_from_list(parent, instrs, min_height=200, dx=-110, dy=-50)
+    instr = popup_select_item_from_list(parent, instrs, min_height=200, dx=-110, dy=-50, show_frame=show_frame)
+    if instr is None:
+       logger.debug('instrument selection is cancelled')
+       return None
     dir_exp = os.path.join(dir_instr, instr)
     logger.debug('direxp:%s' % dir_exp)
     lst_exp = list_of_experiments(dir_exp) # os.listdir(dir_exp))
-    return select_experiment(parent, lst_exp)
+    return instr, select_experiment(parent, lst_exp, show_frame)
 
 #----------- TESTS ------------
 
