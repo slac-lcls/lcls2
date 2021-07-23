@@ -37,12 +37,13 @@ from PyQt5.QtGui import QCursor
 
 class QWPopupSelectItem(QDialog):
 
-    def __init__(self, parent=None, lst=[]):
+    def __init__(self, parent=None, lst=[], show_frame=False):
 
         QDialog.__init__(self, parent)
 
         self.name_sel = None
         self.list = QListWidget(parent)
+        self.show_frame = show_frame
 
         self.fill_list(lst)
         #self.fill_list_icons(lst_icons)
@@ -90,7 +91,8 @@ class QWPopupSelectItem(QDialog):
 
     def set_style(self):
         self.setWindowTitle('Select')
-        self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        if not self.show_frame:
+          self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
         self.layout().setContentsMargins(0,0,0,0)
         parent = self.parentWidget()
         if parent is None:
@@ -144,8 +146,8 @@ class QWPopupSelectItem(QDialog):
 #        self.done(QDialog.Accepted)
 
 
-def popup_select_item_from_list(parent, lst, min_height=200, dx=0, dy=0):
-    w = QWPopupSelectItem(parent, lst)
+def popup_select_item_from_list(parent, lst, min_height=200, dx=0, dy=0, show_frame=False):
+    w = QWPopupSelectItem(parent, lst, show_frame)
     #w.setMinimumHeight(min_height)
     size = len(lst)
     nchars = max([len(s) for s in lst])
