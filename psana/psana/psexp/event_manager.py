@@ -126,7 +126,8 @@ class EventManager(object):
                 # For SlowUpdate, store new chunk id (if found). TODO: check if
                 # we need to always check for epics for SlowUpdate.
                 if d.service() == TransitionId.L1Accept and self.dm.n_files > 0:
-                    i_first_L1 = i_evt
+                    if i_first_L1 == -1:
+                        i_first_L1 = i_evt
                     self._get_bd_offset_and_size(d, current_bd_offsets, i_evt, i_smd, i_first_L1)
                 elif d.service() == TransitionId.SlowUpdate and hasattr(d, 'chunkinfo'):
                     # We only support chunking on bigdata
