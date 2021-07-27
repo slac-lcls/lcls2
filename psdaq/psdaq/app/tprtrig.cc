@@ -27,6 +27,7 @@ static void usage(const char* p) {
   printf("          -o <outp> : bit mask of outputs\n");
   printf("          -d <clks> : delay\n");
   printf("          -w <clks> : width\n");
+  printf("          -D <unit> : delay tap\n");
   printf("          -e <code> : event code\n");
   printf("          -r <rate> : fixed rate\n");
   printf("          -p <part> : partition\n");
@@ -49,12 +50,13 @@ int main(int argc, char** argv) {
   int      rate    = -1;
   unsigned delay   = 0;
   unsigned width   = 1;
+  unsigned tap     = 0;
   int  clksel      = 1;
   int  modsel      = 0;
 
   //char* endptr;
 
-  while ( (c=getopt( argc, argv, "c:d:w:o:t:r:e:p:zC:M:h?")) != EOF ) {
+  while ( (c=getopt( argc, argv, "c:d:D:w:o:t:r:e:p:zC:M:h?")) != EOF ) {
     switch(c) {
     case 'C':
         clksel = strtoul(optarg,NULL,0);
@@ -67,6 +69,9 @@ int main(int argc, char** argv) {
       break;
     case 'd':
       delay = strtoul(optarg,NULL,0);
+      break;
+    case 'D':
+      tap = strtoul(optarg,NULL,0);
       break;
     case 'w':
       width = strtoul(optarg,NULL,0);
@@ -141,7 +146,7 @@ int main(int argc, char** argv) {
 
   for(unsigned i=0; output; i++) {
     if (output & (1<<i)) {
-      client.setup(i, delay, width);
+      client.setup(i, delay, width, Client::Falling, tap);
       output &= ~(1<<i);
     }
   }
