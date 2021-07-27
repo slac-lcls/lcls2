@@ -86,6 +86,3 @@ mydaq.configure(motors=[motor1])
 # at 15 equally-spaced points along the way and reading dets.
 RE(scan(dets, motor1, -10, 10, 15))
 
-mydaq.push_socket.send_string('shutdown') #shutdown the daq thread
-mydaq.comm_thread.join()
-
