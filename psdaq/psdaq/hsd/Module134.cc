@@ -134,8 +134,8 @@ void Module134::_jesd_init(unsigned mode)
 {
   Fmc134Ctrl& ctrl = jesdctl();
   Fmc134Cpld& cpld = i2c().fmc_cpld;
-  Reg* jesd0  = &p->surf_jesd0[0];
-  Reg* jesd1  = &p->surf_jesd1[0];
+  vuint32_t* jesd0  = &p->surf_jesd0[0];
+  vuint32_t* jesd1  = &p->surf_jesd1[0];
   while(1) {
       if (!ctrl.default_init(cpld, mode)) {
           usleep(2000000);
