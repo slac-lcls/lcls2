@@ -21,7 +21,7 @@ void TprCsr::dump() const {
   printf("irqEnable [%p]: %08x\n",&irqEnable,irqEnable);
   printf("irqStatus [%p]: %08x\n",&irqStatus,irqStatus);
   printf("gtxDebug  [%p]: %08x\n",&gtxDebug  ,gtxDebug);
-  printf("trigSel   [%p]: %08x\n",&trigMaster,trigMaster);
+  printf("trigSel   [%p]: %d\n",&trigMaster,trigMaster);
 }
 
 void TprBase::dump() const {
