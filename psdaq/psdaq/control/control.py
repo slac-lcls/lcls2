@@ -1147,6 +1147,8 @@ class CollectionManager():
         self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
         self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
 
+        self.readoutCumulative = 0
+
         ok = self.get_phase2_replies('beginrun')
         if not ok:
             return False
