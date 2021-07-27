@@ -22,6 +22,7 @@ parser.add_argument('-g', type=int, metavar='GROUP_MASK', default=2, help='bit m
 parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (default BEAM)')
 parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
 parser.add_argument('--scantype', default='scan', help="scan type (default 'scan')")
+parser.add_argument('--record', action='store_true', help='enable recording of data')
 parser.add_argument('-v', action='store_true', help='be verbose')
 args = parser.parse_args()
 
@@ -76,11 +77,11 @@ from ophyd.sim import motor1
 from bluesky.plans import scan
 
 # instantiate BlueskyScan object
-mydaq = BlueskyScan(control, daqState=daqState, args=args)
+mydaq = BlueskyScan(control, daqState=daqState)
 dets = [mydaq]   # just one in this case, but it could be more than one
 
 # configure BlueskyScan object with a set of motors
-mydaq.configure(motors=[motor1])
+mydaq.configure(motors=[motor1], group_mask=args.g, events=args.c, record=args.record, detname=args.detname, scantype=args.scantype)
 
 # Scan motor1 from -10 to 10, stopping
 # at 15 equally-spaced points along the way and reading dets.

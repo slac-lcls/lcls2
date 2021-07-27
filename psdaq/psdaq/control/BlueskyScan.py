@@ -13,7 +13,7 @@ import numpy as np
 from psdaq.control.ControlDef import ControlDef
 
 class BlueskyScan:
-    def __init__(self, control, *, daqState, args):
+    def __init__(self, control, *, daqState):
         self.control = control
         self.name = 'mydaq'
         self.parent = None
@@ -32,20 +32,10 @@ class BlueskyScan:
         self.stepDone = 0
         self.comm_thread.start()
         self.mon_thread.start()
-        self.verbose = args.v
-        self.detname = args.detname
-        self.scantype = args.scantype
         self.step_done = threading.Event()
         self.step_value = 1
-        self.platform = args.p
-
-        if args.g is None:
-            self.groupMask = 1 << self.platform
-        else:
-            self.groupMask = args.g
 
         # StepEnd is a cumulative count
-        self.readoutCount = args.c
         self.readoutCumulative = 0
 
     def read(self):
@@ -83,8 +73,16 @@ class BlueskyScan:
                         logging.debug('daqState \'%s\', waiting for \'%s\'...' % (self.daqState, state))
                         self.daqState_cv.wait(1.0)
                     logging.debug('daqState \'%s\'' % self.daqState)
+
+                if self.daqState == 'connected':
+                    rv = self.control.setRecord(self.record)
+                    if rv is not None:
+                        logging.error('setRecord(%s): %s' % (self.record, rv))
+
                 self.ready.set()
             elif state=='running':
+                if len(self.motors) == 0:
+                    logging.error('motors not configured')
                 # launch the step with 'daqstate(running)' (with the
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
@@ -127,7 +125,7 @@ class BlueskyScan:
                 errMsg = self.control.setState('running',
                     {'configure':   {'NamesBlockHex':configureBlock},
                      'beginstep':   {'ShapesDataBlockHex':beginStepBlock},
-                     'enable':      {'readout_count':self.readoutCount, 'group_mask':self.groupMask}})
+                     'enable':      {'readout_count':self.events, 'group_mask':self.group_mask}})
                 if errMsg is not None:
                     logging.error('%s' % errMsg)
                     continue
@@ -196,15 +194,26 @@ class BlueskyScan:
         # the metadata for read_configuration()
         return {}
 
-    # use 'motors' keyword arg to specify a set of motors
-    def configure(self, *args, **kwargs):
+    # use 'motors' keyword arg to specify a set of motors.
+    # use 'group_mask' keyword arg to specify a readout group mask (e.g., 1 << platform).
+    # additional keyword args are optional.
+    def configure(self, *, motors, group_mask, events=1, record=False, detname='scan', scantype='scan', serial_number='1234', alg_name='raw', alg_version=[1,0,0]):
         logging.debug("*** here in configure")
 
-        if 'motors' in kwargs:
-            self.motors = kwargs['motors']
+        if len(motors) > 0:
+            self.motors = motors
             logging.info('configure: %d motors' % len(self.motors))
         else:
             logging.error('configure: no motors')
+        self.group_mask = group_mask
+        self.events = events
+        self.record = record
+        self.detname = detname
+        self.scantype = scantype
+        self.serial_number = serial_number
+        self.alg_name = alg_name
+        self.alg_version = alg_version
+
         return (self.read_configuration(),self.read_configuration())
 
     def _set_connected(self):
