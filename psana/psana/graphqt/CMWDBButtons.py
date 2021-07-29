@@ -668,6 +668,8 @@ class CMWDBButtons(QWidget):
         if resp==1:
             logger.info('Save document data and metadata in file(s) with prefix: %s' % prefix)
             dbu.save_doc_and_data_in_file(doc, data, prefix, control)
+            cp.last_selected_fname.setValue('%s.npy' % prefix)
+
         else: 
             logger.warning('Command "Save" is cancelled')
 
