@@ -200,10 +200,10 @@ def select_instrument_experiment(parent=None, dir_instr='/cds/data/psdm', show_f
     from psana.graphqt.QWPopupSelectItem import popup_select_item_from_list
     from psana.pyalgos.generic.PSUtils import list_of_instruments, list_of_experiments
     instrs = sorted(list_of_instruments(dir_instr))
-    instr = popup_select_item_from_list(parent, instrs, min_height=200, dx=-110, dy=-50, show_frame=show_frame)
+    instr = popup_select_item_from_list(parent, instrs, min_height=250, dx=-110, dy=-50, show_frame=show_frame)
     if instr is None:
        logger.debug('instrument selection is cancelled')
-       return None
+       return None, None
     dir_exp = os.path.join(dir_instr, instr)
     logger.debug('direxp:%s' % dir_exp)
     lst_exp = list_of_experiments(dir_exp) # os.listdir(dir_exp))
