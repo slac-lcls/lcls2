@@ -10,20 +10,12 @@ Usage ::
 
 Created on 2020-01-04 by Mikhail Dubrovin
 """
-import logging
-logger = logging.getLogger(__name__)
 
-import sys
-
-from psana.graphqt.CMWControlBase import CMWControlBase
-from PyQt5.QtWidgets import QApplication, QLabel, QComboBox, QPushButton, QHBoxLayout, QLineEdit
-from PyQt5.QtCore import QSize
-from psana.graphqt.CMConfigParameters import cp, dirs_to_search
-from psana.graphqt.Styles import style
-from psana.graphqt.QWIcons import icon
+from psana.graphqt.CMWControlBase import *  # CMWControlBase, QApplication, QSize, ..., icon, style, cp, logging, os, sys
 from psana.graphqt.QWFileNameV2 import QWFileNameV2
-
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, np
+
+logger = logging.getLogger(__name__)
 
 def save_data_in_file(data, prefix, control={'txt': True, 'npy': True}, fmt='%.3f'):
     #elif data_type == 'any':
@@ -51,7 +43,6 @@ class H5VControl(CMWControlBase):
         self.lab_ctrl = QLabel('Control:')
 
         self.but_exp_col = QPushButton('Collapse')
-        self.but_save    = QPushButton('Save')
 
         fname = cp.h5vmain.wtree.fname if cp.h5vmain is not None else './test.h5'
 
@@ -64,12 +55,13 @@ class H5VControl(CMWControlBase):
         self.hbox.addWidget(self.but_exp_col)
         self.hbox.addStretch(1) 
         self.hbox.addWidget(self.but_save)
+        self.hbox.addWidget(self.but_view)
         self.hbox.addWidget(self.but_tabs)
         #self.hbox.addSpacing(20)
         self.setLayout(self.hbox)
  
         self.but_exp_col.clicked.connect(self.on_but_exp_col)
-        self.but_save.clicked.connect(self.on_but_save)
+        #self.but_save.clicked.connect(self.on_but_save)
 
         if cp.h5vmain is not None:
             self.w_fname.connect_path_is_changed_to_recipient(cp.h5vmain.wtree.set_file)
@@ -90,11 +82,11 @@ class H5VControl(CMWControlBase):
 
 
     def set_style(self):
+        CMWControlBase.set_style(self)
         self.lab_ctrl.setStyleSheet(style.styleLabel)
         self.w_fname.lab.setStyleSheet(style.styleLabel)
-        icon.set_icons()
         self.but_exp_col.setIcon(icon.icon_folder_open)
-        self.but_save.setIcon(icon.icon_save)
+        #self.but_save.setIcon(icon.icon_save)
         #self.but_save.setStyleSheet('') #style.styleButton, style.styleButtonGood
         self.enable_but_save()
         self.but_tabs.setFixedWidth(50)
@@ -176,13 +168,12 @@ class H5VControl(CMWControlBase):
 
 if __name__ == "__main__":
 
-    import os
-    import sys
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
+    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
 
     app = QApplication(sys.argv)
     w = H5VControl()
-    #w.setGeometry(200, 400, 500, 200)
+    w.setGeometry(50, 100, 500, 50)
     w.setWindowTitle('H5V Control Panel')
     w.show()
     app.exec_()
