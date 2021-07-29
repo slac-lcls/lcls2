@@ -6,8 +6,6 @@ import sys
 import logging
 import threading
 import zmq
-import asyncio
-import time
 import numpy as np
 
 from psdaq.control.ControlDef import ControlDef
@@ -25,7 +23,15 @@ class BlueskyScan:
         self.comm_thread = threading.Thread(target=self.daq_communicator_thread, args=(), daemon=True)
         self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
-        self.motors = []                # set in configure()
+        self.motors = []                        # set in configure()
+        self.group_mask = 1 << control.platform # set in configure()
+        self.events=1                           # set in configure()
+        self.record=False                       # set in configure()
+        self.detname='scan'                     # set in configure()
+        self.scantype='scan'                    # set in configure()
+        self.serial_number='1234'               # set in configure()
+        self.alg_name='raw'                     # set in configure()
+        self.alg_version=[1,0,0]                # set in configure()
         self.daqState = daqState
         self.daqState_cv = threading.Condition()
         self.stepDone_cv = threading.Condition()
@@ -194,25 +200,77 @@ class BlueskyScan:
         # the metadata for read_configuration()
         return {}
 
-    # use 'motors' keyword arg to specify a set of motors.
-    # use 'group_mask' keyword arg to specify a readout group mask (e.g., 1 << platform).
-    # additional keyword args are optional.
-    def configure(self, *, motors, group_mask, events=1, record=False, detname='scan', scantype='scan', serial_number='1234', alg_name='raw', alg_version=[1,0,0]):
+    def configure(self, *, motors=None, group_mask=None, events=None, record=None, detname=None, scantype=None, serial_number=None, alg_name=None, alg_version=None):
+        """Set parameters for scan.
+
+        Keyword arguments:
+        motors -- list of motors, optional
+            Motors with positions to include in the data stream
+        group_mask -- int, optional
+            Bit mask of readout groups
+        events -- int, optional
+            Number of events per scan point
+        record -- bool, optional
+            Enable recording of data
+        detname -- str, optional
+            Detector name
+        scantype -- str, optional
+            Scan type
+        serial_number -- str, optional
+            Serial number
+        alg_name -- str, optional
+            Algorithm name
+        alg_version -- list of 3 version numbers, optional
+            Algorithm version
+        """
         logging.debug("*** here in configure")
 
-        if len(motors) > 0:
-            self.motors = motors
-            logging.info('configure: %d motors' % len(self.motors))
-        else:
-            logging.error('configure: no motors')
-        self.group_mask = group_mask
-        self.events = events
-        self.record = record
-        self.detname = detname
-        self.scantype = scantype
-        self.serial_number = serial_number
-        self.alg_name = alg_name
-        self.alg_version = alg_version
+        if motors is not None:
+            if isinstance(motors, list):
+                self.motors = motors
+                logging.info('configure: %d motors' % len(self.motors))
+            else:
+                raise TypeError('motors must be of type list')
+        if group_mask is not None:
+            if isinstance(group_mask, int):
+                self.group_mask = group_mask
+            else:
+                raise TypeError('group_mask must be of type int')
+        if events is not None:
+            if isinstance(events, int):
+                self.events = events
+            else:
+                raise TypeError('events must be of type int')
+        if record is not None:
+            if isinstance(record, bool):
+                self.record = record
+            else:
+                raise TypeError('record must be of type bool')
+        if detname is not None:
+            if isinstance(detname, str):
+                self.detname = detname
+            else:
+                raise TypeError('detname must be of type str')
+        if scantype is not None:
+            if isinstance(scantype, str):
+                self.scantype = scantype
+            else:
+                raise TypeError('scantype must be of type str')
+        if serial_number is not None:
+            if isinstance(serial_number, str):
+                self.serial_number = serial_number
+            else:
+                raise TypeError('serial_number must be of type str')
+        if alg_name is not None:
+            if isinstance(alg_name, str):
+                self.alg_name = alg_name
+            else:
+                raise TypeError('alg_name must be of type str')
+        if alg_version is not None:
+            if isinstance(alg_version, list):
+                self.alg_version = alg_version
+            else:
+                raise TypeError('alg_version must be of type list')
 
         return (self.read_configuration(),self.read_configuration())
 
