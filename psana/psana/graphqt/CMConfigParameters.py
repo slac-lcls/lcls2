@@ -31,9 +31,13 @@ from psana.pyalgos.generic.Utils import list_of_hosts as lshosts
 import psana.pscalib.calib.CalibConstants as cc
 
 
-def dir_calib(dirdef='./calib'):
+def dir_exp(dirdef='/cds/data/psdm/XPP/xpptut13'):
     return dirdef if cp.exp_name.is_default() else\
-           os.path.join(cp.instr_dir.value(), cp.instr_name.value(), cp.exp_name.value(), 'calib')
+           os.path.join(cp.instr_dir.value(), cp.instr_name.value(), cp.exp_name.value())
+
+
+def dir_calib(dirdef='/cds/data/psdm/XPP/xpptut13'):
+    return os.path.join(dir_exp(dirdef), 'calib')
 
 
 def dirs_to_search():
@@ -94,8 +98,11 @@ class CMConfigParameters(PSConfigParameters):
         self.upwd = None
 
         self.h5vmain = None
+        self.fstree  = None
+        self.fmwtabs = None
+        self.fmw1main = None
 
-        
+
     def declareParameters(self):
         # Possible typs for declaration: 'str', 'int', 'long', 'float', 'bool'
         self.log_level = self.declareParameter(name='LOG_LEVEL', val_def='INFO', type='str') # val_def='NOTSET'
@@ -123,7 +130,10 @@ class CMConfigParameters(PSConfigParameters):
         self.cdb_buttons = self.declareParameter(name='CDB_BUTTONS', val_def=3259, type='int')
         self.cdb_docw = self.declareParameter(name='CDB_DOC_WIDGET', val_def='List', type='str')
         self.cdb_selection_mode = self.declareParameter(name='CDB_SELECTION_MODE', val_def='extended', type='str')
-        self.iv_buttons = self.declareParameter(name='IV_BUTTONS', val_def=4+32+64, type='int')
+        self.iv_buttons = self.declareParameter(name='IV_BUTTONS', val_def=2+4+32+64, type='int')
+
+        self.fmwtab_tab_name = self.declareParameter(name='FMWTAB_TAB_NAME', val_def='LCLS1', type='str')
+        self.last_selected_fname = self.declareParameter(name='LAST_SELECTED_FNAME', val_def=None, type='str')
 
 
 cp = CMConfigParameters()
