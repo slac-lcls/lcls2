@@ -251,6 +251,8 @@ class IVControl(CMWControlBase):
         wia = cp.ivimageaxes
         if wia is not None:
            nda = psu.load_ndarray_from_file(fname)
+           cp.last_selected_fname.setValue(fname)
+
            logger.debug(info_ndarr(nda,'nda'))
            img = image_from_ndarray(nda)
            self.wctl_spec.set_amin_amax_def(nda.min(), nda.max())
