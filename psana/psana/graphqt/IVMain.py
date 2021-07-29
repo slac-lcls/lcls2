@@ -35,6 +35,9 @@ class IVMain(QWidget):
         self.proc_kwargs(**kwargs)
 
         fname = kwargs.get('fname', None)
+        last_selected_fname = cp.last_selected_fname.value()
+
+        if fname is None and last_selected_fname is not None: fname = last_selected_fname
         image = kwargs.get('image', test_image(shape=(32,32)))
         ctab  = kwargs.get('ctab', ct.color_table_default())
 
@@ -52,7 +55,9 @@ class IVMain(QWidget):
         self.set_style()
         self.set_tool_tips()
 
-        if fname is not None: self.wctrl.on_changed_fname_nda(fname)
+        if fname is not None:
+            self.wctrl.wfnm_nda.but.setText(fname)
+            self.wctrl.on_changed_fname_nda(fname)
 
 #        self.connect_signals_to_slots()
 #    def connect_signals_to_slots(self):
