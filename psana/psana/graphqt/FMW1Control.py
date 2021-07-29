@@ -11,19 +11,10 @@ Usage ::
 
 Created on 2021-07-27 by Mikhail Dubrovin
 """
-import os
 
-import logging
+from psana.graphqt.CMWControlBase import * # CMWControlBase, QApplication, ..., icon, style, cp, logging, os, sys
+
 logger = logging.getLogger(__name__)
-
-from psana.graphqt.CMWControlBase import CMWControlBase
-from PyQt5.QtWidgets import QApplication, QGridLayout, QPushButton
-from psana.graphqt.CMConfigParameters import cp, dir_calib
-from psana.graphqt.QWUtils import change_check_box_dict_in_popup_menu
-from PyQt5.QtCore import pyqtSignal, QModelIndex
-
-from psana.graphqt.QWIcons import icon
-
 
 class FMW1Control(CMWControlBase):
     """QWidget for File Manager control fields"""
@@ -37,21 +28,23 @@ class FMW1Control(CMWControlBase):
         CMWControlBase.__init__(self, **kwargs)
         cp.fmw1control = self
 
+        self.lab_exp     = QLabel('Exp:')
         self.but_exp     = QPushButton(cp.exp_name.value())
         self.but_exp_col = QPushButton('Collapse')
-        self.but_save    = QPushButton('Save')
 
-        self.box = QGridLayout()
-        self.box.addWidget(self.but_exp,     0, 0)
-        self.box.addWidget(self.but_exp_col, 0, 1)
-        self.box.addWidget(self.but_save,    0, 2)
-        self.box.addWidget(self.but_tabs,    0, 9)
+        self.box = QHBoxLayout() #QGridLayout()
+        self.box.addWidget(self.lab_exp)
+        self.box.addWidget(self.but_exp)
+        self.box.addStretch(1)
+        self.box.addWidget(self.but_exp_col)
+        self.box.addWidget(self.but_save)
+        self.box.addWidget(self.but_view)
+        self.box.addWidget(self.but_tabs)
         self.setLayout(self.box)
  
         self.but_exp.clicked.connect(self.on_but_exp)
         self.but_exp_col.clicked.connect(self.on_but_exp_col)
-        self.but_save.clicked.connect(self.on_but_save)
-
+#        self.but_save.clicked.connect(self.on_but_save)
 #        self.connect_instr_exp_is_changed(self.on_instr_exp_is_changed)
 
         self.set_tool_tips()
@@ -66,28 +59,28 @@ class FMW1Control(CMWControlBase):
 
     def set_tool_tips(self):
         CMWControlBase.set_tool_tips(self)
-        self.but_tabs.setToolTip('Show/hide tabs')
         self.but_exp.setToolTip('Select experiment')
         self.but_save.setToolTip('To save array in file\nclick on *.data file in the tree\nthen click on this Save button')
         self.but_exp_col.setToolTip('Collapse/expand directory/file tree')
 
 
     def set_style(self):
-        icon.set_icons()
+        CMWControlBase.set_style(self)
+        self.lab_exp.setStyleSheet(style.styleLabel)
+        self.lab_exp.setFixedWidth(25)
         self.but_exp_col.setIcon(icon.icon_folder_open)
-        self.but_save.setIcon(icon.icon_save)
-        self.but_tabs.setFixedWidth(50)
         self.but_exp.setFixedWidth(80)
         self.but_exp_col.setFixedWidth(80)
-        self.but_save.setFixedWidth(80)
-         #self.but_buts.setStyleSheet(style.styleButton)
+        #self.but_buts.setStyleSheet(style.styleButton)
         #self.but_tabs.setVisible(True)
 
 
     def on_but_exp(self):
         from psana.graphqt.PSPopupSelectExp import select_instrument_experiment
+        from psana.graphqt.CMConfigParameters import dir_calib #cp, 
+
         dir_instr = cp.instr_dir.value()
-        instr_name, exp_name = select_instrument_experiment(self.but_exp, dir_instr, show_frame=True)
+        instr_name, exp_name = select_instrument_experiment(None, dir_instr, show_frame=True) # parent=self.but_exp
         logger.debug('selected experiment: %s' % exp_name)
         if instr_name and exp_name and exp_name!=cp.exp_name.value():
             self.but_exp.setText(exp_name)
@@ -114,7 +107,8 @@ class FMW1Control(CMWControlBase):
 
 
     def on_but_save(self):
-        logger.debug('TBD on_but_save')
+        """Re-implementation of the CMWControlBase.on_but_save"""
+        logger.warning('on_but_save - TBD - FILE SAVING IS NOT IMPLEMENTED YET')
         if cp.fmw1main is None: return
         wtree = cp.fmw1main.wfstree
 
@@ -123,7 +117,7 @@ class FMW1Control(CMWControlBase):
 
         return
 
-
+    """
         prefix = self.dname
 
         data = self.data
@@ -142,7 +136,7 @@ class FMW1Control(CMWControlBase):
             save_data_in_file(data, prefix, control, fmt)
         else: 
             logger.info('command "Save" is cancelled')
-
+    """
 
 #            self.instr_exp_is_changed.emit(instr_name, exp_name)
 
@@ -160,10 +154,10 @@ class FMW1Control(CMWControlBase):
 
     def view_hide_tabs(self):
         CMWControlBase.view_hide_tabs(self)
+        # set file manager tabs in/visible too
         wtabs = cp.fmwtabs
         if wtabs is None: return
         is_visible = wtabs.tab_bar_is_visible()
-        #self.but_tabs.setText('Tabs %s'%cp.char_shrink if is_visible else 'Tabs %s'%cp.char_expand)
         wtabs.set_tabs_visible(not is_visible)
 
 
@@ -193,9 +187,8 @@ class FMW1Control(CMWControlBase):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
-    import sys
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
+    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
 
     app = QApplication(sys.argv)
     w = FMW1Control()
