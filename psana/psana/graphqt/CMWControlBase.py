@@ -11,13 +11,18 @@ Usage ::
 
 Created on 2021-06-16 by Mikhail Dubrovin
 """
+import os
+import sys
 
-#import logging
-#logger = logging.getLogger(__name__)
+import logging
+logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton
-from psana.graphqt.CMConfigParameters import cp
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QGridLayout, QPushButton, QLabel, QComboBox, QLineEdit
+from PyQt5.QtCore import QSize, QRectF, pyqtSignal, QModelIndex
+
+from psana.graphqt.CMConfigParameters import cp, dirs_to_search
 from psana.graphqt.Styles import style
+from psana.graphqt.QWIcons import icon
 
 
 class CMWControlBase(QWidget):
@@ -29,16 +34,20 @@ class CMWControlBase(QWidget):
         QWidget.__init__(self, parent)
 
         self.but_tabs = QPushButton('Tabs %s' % cp.char_expand)
+        self.but_save = QPushButton('Save')
+        self.but_view = QPushButton('View')
+
         self.but_tabs.clicked.connect(self.on_but_tabs)
+        self.but_save.clicked.connect(self.on_but_save)
+        self.but_view.clicked.connect(self.on_but_view)
 
         if __name__ == "__main__":
-            self.box1 = QVBoxLayout() 
-            #self.box1.addSpacing(20)
+            self.box1 = QHBoxLayout()
             self.box1.addStretch(1) 
             self.box1.addWidget(self.but_tabs)
-            #self.box1.addLayout(self.grid)
+            self.box1.addWidget(self.but_save)
+            self.box1.addWidget(self.but_view)
             self.setLayout(self.box1)
-            #self.set_buttons_visiable()
 
             self.set_tool_tips()
             self.set_style()
@@ -46,16 +55,30 @@ class CMWControlBase(QWidget):
 
     def set_tool_tips(self):
         self.but_tabs.setToolTip('Show/hide tabs')
+        self.but_save.setToolTip('Save button')
+        self.but_view.setToolTip('Use the last selected item to view in IV')
  
 
     def set_style(self):
+        icon.set_icons()
+        self.but_save.setIcon(icon.icon_save)
         self.but_tabs.setStyleSheet(style.styleButtonGood)
-        self.but_tabs.setFixedWidth(55)
+        self.but_tabs.setFixedWidth(50)
+        self.but_save.setFixedWidth(50)
+        self.but_view.setFixedWidth(50)
 
 
     def on_but_tabs(self):
-        #logger.debug('on_but_tabs')
+        logger.debug('on_but_tabs switch between visible and invisible tabs')
         self.view_hide_tabs()
+
+
+    def on_but_save(self):
+        logger.debug('on_but_save - NEEDS TO BE RE_IMPLEMENTED')
+
+
+    def on_but_view(self):
+        logger.debug('on_but_view - NEEDS TO BE RE_IMPLEMENTED')
 
 
     def view_hide_tabs(self):
@@ -71,14 +94,13 @@ class CMWControlBase(QWidget):
 
 
 if __name__ == "__main__":
-    import os
-    import sys
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
-    from PyQt5.QtWidgets import QApplication
+    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d: %(message)s', level=logging.DEBUG)
+
     app = QApplication(sys.argv)
     w = CMWControlBase()
-    w.setGeometry(100, 50, 200, 50)
-    w.setWindowTitle('Control Base')
+    w.setGeometry(100, 50, 500, 50)
+    w.setWindowTitle('CMWControlBase')
     w.show()
     app.exec_()
     del w
