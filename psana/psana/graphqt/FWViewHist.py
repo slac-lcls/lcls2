@@ -147,6 +147,7 @@ class FWViewHist(FWView):
         #if np.array_equal(arr, self.arr_old): return
         if arr is self.arr_old: return
         self.arr_old = arr
+        if arr.size<1: return
 
         aravel = arr.ravel()
         vmin = amin if amin is not None else\
