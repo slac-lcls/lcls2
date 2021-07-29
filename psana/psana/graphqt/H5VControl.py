@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 import sys
 
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QComboBox, QPushButton, QHBoxLayout, QLineEdit
+from psana.graphqt.CMWControlBase import CMWControlBase
+from PyQt5.QtWidgets import QApplication, QLabel, QComboBox, QPushButton, QHBoxLayout, QLineEdit
 from PyQt5.QtCore import QSize
 from psana.graphqt.CMConfigParameters import cp, dirs_to_search
 from psana.graphqt.Styles import style
@@ -40,17 +41,17 @@ def save_data_in_file(data, prefix, control={'txt': True, 'npy': True}, fmt='%.3
         logger.warning('DO NOT SAVE unexpected data type: %s' % type(data))
 
 
-class H5VControl(QWidget):
-    """QWidget for H5V control fields"""
+class H5VControl(CMWControlBase):
+    """CMWControlBase for H5V control fields"""
 
     def __init__(self, **kwargs):
 
-        parent = kwargs.get('parent',None)
-        QWidget.__init__(self, parent)
+        parent = kwargs.get('parent', None)
+        CMWControlBase.__init__(self, **kwargs)
         self.lab_ctrl = QLabel('Control:')
 
-        self.but_exp_col  = QPushButton('Collapse')
-        self.but_save  = QPushButton('Save')
+        self.but_exp_col = QPushButton('Collapse')
+        self.but_save    = QPushButton('Save')
 
         fname = cp.h5vmain.wtree.fname if cp.h5vmain is not None else './test.h5'
 
@@ -63,6 +64,7 @@ class H5VControl(QWidget):
         self.hbox.addWidget(self.but_exp_col)
         self.hbox.addStretch(1) 
         self.hbox.addWidget(self.but_save)
+        self.hbox.addWidget(self.but_tabs)
         #self.hbox.addSpacing(20)
         self.setLayout(self.hbox)
  
@@ -79,6 +81,8 @@ class H5VControl(QWidget):
 
 
     def set_tool_tips(self):
+        CMWControlBase.set_tool_tips(self)
+        #self.but_tabs.setToolTip('Show/hide tabs')
         #self.setToolTip('Control fields/buttons')
         self.but_save.setToolTip('To save array in file\nclick on numpy.array in the tree\nthen click on this Save button')
         self.but_exp_col.setToolTip('Collapse/expand hdf5 tree')
@@ -93,6 +97,7 @@ class H5VControl(QWidget):
         self.but_save.setIcon(icon.icon_save)
         #self.but_save.setStyleSheet('') #style.styleButton, style.styleButtonGood
         self.enable_but_save()
+        self.but_tabs.setFixedWidth(50)
 
 
     def on_but_exp_col(self):
@@ -111,7 +116,7 @@ class H5VControl(QWidget):
 
 
     def on_but_save(self):
-        logger.debug(' on_but_save')
+        logger.debug('on_but_save')
 
         prefix = self.dname
         data = self.data
@@ -128,6 +133,7 @@ class H5VControl(QWidget):
             logger.info('save hdf5 data in file(s) with prefix: %s' % prefix)
             fmt = '%d' if 'int' in str(data.dtype) else '%.3f'
             save_data_in_file(data, prefix, control, fmt)
+            cp.last_selected_fname.setValue('%s.npy' % prefix)
         else: 
             logger.info('command "Save" is cancelled')
 
