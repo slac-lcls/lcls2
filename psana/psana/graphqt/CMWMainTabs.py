@@ -21,7 +21,7 @@ from psana.graphqt.CMConfigParameters import cp
 class CMWMainTabs(QWidget):
     """GUI for tabs and associated widgets
     """
-    tab_names   = ['CDB', 'IV', 'HDF5', 'Configuration', 't-converter', 'Mask Editor', 'Test Window']
+    tab_names   = ['CDB', 'IV', 'HDF5', 'File Manager', 'Configuration', 't-converter', 'Mask Editor', 'Test Window']
 
     def __init__ (self, parent=None, app=None):
 
@@ -31,9 +31,10 @@ class CMWMainTabs(QWidget):
 
         self.box_layout = QHBoxLayout()
 
+        start_tab_name = cp.main_tab_name.value()
         self.gui_win = None
-        self.make_tab_bar()
-        self.gui_selector(cp.main_tab_name.value()) # USES self.box_layout
+        self.make_tab_bar(start_tab_name)
+        self.gui_selector(start_tab_name)
 
         #self.whbox = QWidget(self)
         #self.whbox.setLayout(self.box_layout)
@@ -66,7 +67,7 @@ class CMWMainTabs(QWidget):
         self.layout().setContentsMargins(0,0,0,0)
  
 
-    def make_tab_bar(self):
+    def make_tab_bar(self, start_tab_name):
         self.tab_bar = QTabBar()
 
         for tab_name in self.tab_names:
@@ -77,7 +78,7 @@ class CMWMainTabs(QWidget):
         #self.tab_bar.setMovable(True)
         self.tab_bar.setShape(QTabBar.RoundedNorth)
 
-        tab_index = self.tab_names.index(cp.main_tab_name.value())            
+        tab_index = self.tab_names.index(start_tab_name)
         self.tab_bar.setCurrentIndex(tab_index)
         logger.debug('make_tab_bar - set tab index: %d'%tab_index)
 
@@ -115,6 +116,10 @@ class CMWMainTabs(QWidget):
             from psana.graphqt.H5VMain import H5VMain
             if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
             self.gui_win = H5VMain()
+
+        elif tab_name == 'File Manager':
+            from psana.graphqt.FMWTabs import FMWTabs
+            self.gui_win = FMWTabs()
 
         elif tab_name == 'IV':
             from psana.graphqt.IVMain import IVMain
