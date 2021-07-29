@@ -1,4 +1,4 @@
-#------------------------------
+
 """
 :py:class:`QWLoggerStd` - GUI for python logger
 ===============================================
@@ -20,7 +20,7 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2018-04-11 by Mikhail Dubrovin
 """
-#------------------------------
+
 import logging
 logger = logging.getLogger() # need in root to intercept messages from all other loggers
 #logger = logging.getLogger(__name__)
@@ -29,15 +29,14 @@ import os
 import sys
 from random import randint
 
-from PyQt5.QtWidgets import QWidget, QTextEdit, QLabel, QPushButton, QComboBox,\
+from PyQt5.QtWidgets import QApplication, QWidget, QTextEdit, QLabel, QPushButton, QComboBox,\
                             QHBoxLayout, QVBoxLayout, QFileDialog
 from PyQt5.QtGui import QTextCursor
 from psana.graphqt.Styles import style
-
-#------------------------------
 import psana.pyalgos.generic.Utils as gu
 
-def log_file_name(lfpath) :
+
+def log_file_name(lfpath):
     """Returns (str) log file name like /reg/g/psdm/logs/calibman/lcls2/2018/20180518T122407-dubrovin.txt
     """
     t0_sec = gu.time()
@@ -46,35 +45,32 @@ def log_file_name(lfpath) :
     year = gu.str_tstamp('%Y', time_sec=None) 
     return '%s/%s/%s-%s.txt' % (lfpath, year, tstamp, gu.get_login())#, os.getpid())
 
-#------------------------------
 
-class QWFilter(logging.Filter) :
-    def __init__(self, qwlogger) :
+class QWFilter(logging.Filter):
+    def __init__(self, qwlogger):
         #logging.Filter.__init__(self)#, name='')
         self.qwl = qwlogger
 
-    def filter(self, rec) :
+    def filter(self, rec):
         msg = self.qwl.formatter.format(rec)
         self.qwl.append_qwlogger(msg)
         #self.print_filter_attributes(rec)
         return True
 
 
-    def print_filter_attributes(self, rec) :
+    def print_filter_attributes(self, rec):
         logger.debug('type(rec): %s'%type(rec))
         logger.debug('dir(rec): %s'%dir(rec))
         logger.debug('dir(logger): %s'%dir(logger))
         #logger.debug('dir(syslog): %s'%dir(self.syslog))
         logger.debug(rec.created, rec.name, rec.levelname, rec.msg)
 
-#------------------------------
-#------------------------------
 
-class QWLoggerStd(QWidget) :
+class QWLoggerStd(QWidget):
 
     _name = 'QWLoggerStd'
 
-    def __init__(self, cp, show_buttons=True) :
+    def __init__(self, cp, show_buttons=True):
 
         QWidget.__init__(self, parent=None)
 
@@ -123,7 +119,7 @@ class QWLoggerStd(QWidget) :
         self.vbox.addLayout(self.hboxB)
         self.setLayout(self.vbox)
 
-        if self.show_buttons : self.connect_buttons()
+        if self.show_buttons: self.connect_buttons()
 
         self.set_style()
         self.set_tool_tips()
@@ -131,7 +127,7 @@ class QWLoggerStd(QWidget) :
         self.config_logger(log_fname)
 
 
-    def config_logger(self, log_fname='log.txt') :
+    def config_logger(self, log_fname='log.txt'):
 
         self.append_qwlogger('Start logger\nLog file: %s' % log_fname)
 
@@ -149,11 +145,11 @@ class QWLoggerStd(QWidget) :
 
         # TRICK: add filter to handler to intercept ALL messages
 
-        if self.save_log_at_exit : 
+        if self.save_log_at_exit:
             depth = 6 if log_fname[0]=='/' else 1
             gu.create_path(log_fname, depth, mode=0o0777)
             self.handler = logging.FileHandler(log_fname, 'w')
-        else :
+        else:
             self.handler = logging.StreamHandler()
 
         self.handler.addFilter(QWFilter(self))
@@ -165,7 +161,7 @@ class QWLoggerStd(QWidget) :
         #logger.debug('dir(self.handler):' , dir(self.handler))
 
 
-    def set_level(self, level_name='DEBUG') :
+    def set_level(self, level_name='DEBUG'):
         #self.append_qwlogger('Set logger layer: %s' % level_name)
         #logger.setLevel(level_name) # {0: 'NOTSET'}
         level = self.dict_name_to_level[level_name]
@@ -219,13 +215,13 @@ class QWLoggerStd(QWidget) :
         self.but_rand  .setVisible(self.show_buttons)
         self.but_close .setVisible(self.show_buttons)
 
-        #if not self.show_buttons : 
+        #if not self.show_buttons: 
         self.layout().setContentsMargins(0,0,0,0)
         #self.setMinimumSize(300,50)
         #self.setBaseSize(500,200)
 
 
-    #def setParent(self,parent) :
+    #def setParent(self,parent):
     #    self.parent = parent
 
 
@@ -286,7 +282,7 @@ class QWLoggerStd(QWidget) :
                                                directory = self.log_file.value(),
                                                filter    = '*.txt'
                                                ))
-        if path == '' :
+        if path == '':
             logger.debug('Saving is cancelled.')
             return 
         self.log_file.setValue(path)
@@ -314,15 +310,10 @@ class QWLoggerStd(QWidget) :
         #self.raise_()
         #self.edi_txt.update()
 
-#------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import sys
     from psana.pyalgos.generic.PSConfigParameters import PSConfigParameters
-    from PyQt5.QtWidgets import QApplication
-
-    #from psana.pyalgos.generic.Logger import logger as log
-    #logging.basicConfig(format='%(message)s', level=logging.DEBUG)
 
     cp = PSConfigParameters()
 
@@ -339,4 +330,4 @@ if __name__ == "__main__" :
     app.exec_()
     sys.exit(0)
 
-#------------------------------
+# EOF
