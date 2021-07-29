@@ -15,6 +15,15 @@ logger = logging.getLogger(__name__)
 import os
 
 
+def islink(path):
+    return os.path.islink(path)
+
+
+def isdir(path):
+    return os.path.isdir(path)
+
+
+
 def list_of_files_in_dir(dirname):
     return os.listdir(dirname)
 
