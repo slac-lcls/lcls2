@@ -22,6 +22,8 @@ Adopted for LCLS2 on 2021-07-21
  - latest version of CalibManager/src/GUIPopupSelectExp.py
 """
 
+import os
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -137,7 +139,7 @@ class PSPopupSelectExp(QDialog):
         self.layout().setContentsMargins(2,2,2,2)
         parent = self.parentWidget()
         if parent is None:
-           self.move(QCursor.pos().__add__(QPoint(-110,-50)))
+           self.move(QCursor.pos().__add__(QPoint(0,-50)))
         logger.debug('use %s position for popup findow' % ('CURSOR' if parent is None else 'BUTTON'))
 
 
@@ -196,11 +198,10 @@ def select_experiment(parent, lst_exp, show_frame=False):
 
 
 def select_instrument_experiment(parent=None, dir_instr='/cds/data/psdm', show_frame=False):
-    import os
     from psana.graphqt.QWPopupSelectItem import popup_select_item_from_list
     from psana.pyalgos.generic.PSUtils import list_of_instruments, list_of_experiments
     instrs = sorted(list_of_instruments(dir_instr))
-    instr = popup_select_item_from_list(parent, instrs, min_height=250, dx=-110, dy=-50, show_frame=show_frame)
+    instr = popup_select_item_from_list(parent, instrs, min_height=250, dx=10, dy=-100, show_frame=show_frame)
     if instr is None:
        logger.debug('instrument selection is cancelled')
        return None, None
@@ -213,7 +214,6 @@ def select_instrument_experiment(parent=None, dir_instr='/cds/data/psdm', show_f
 
 if __name__ == "__main__":
   logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)
-  import os
 
   def test_all(tname):
     lst_exp = sorted(os.listdir('/reg/d/psdm/SXR/'))
