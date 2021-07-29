@@ -11,21 +11,15 @@ Usage ::
 
 Created on 2021-06-14 by Mikhail Dubrovin
 """
-import os
 
-import logging
-logger = logging.getLogger(__name__)
-
-from psana.graphqt.CMWControlBase import cp, CMWControlBase
-from PyQt5.QtWidgets import QGridLayout, QPushButton
-from PyQt5.QtCore import QRectF
+from psana.graphqt.CMWControlBase import * #cp, CMWControlBase, QApplication, os, sys, logging, QRectF
 from psana.graphqt.QWFileNameV2 import QWFileNameV2
 from psana.graphqt.IVControlSpec import IVControlSpec
-
 import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
-from psana.graphqt.CMConfigParameters import cp, dirs_to_search
-from psana.graphqt.QWUtils import change_check_box_dict_in_popup_menu
+
+logger = logging.getLogger(__name__)
+
 
 def image_from_ndarray(nda):
     if nda is None:
@@ -60,19 +54,22 @@ class IVControl(CMWControlBase):
         self.wfnm_geo = QWFileNameV2(None, label='Geometry:',\
                                      path=fname_geo, fltr='*.txt *.data\n*', dirs=dirs_to_search())
 
-        self.but_exp = QPushButton(cp.exp_name.value())
+        self.but_view.setVisible(False) # from CMWControlBase
+
+        self.but_exp   = QPushButton(cp.exp_name.value())
         self.but_reset = QPushButton('Reset')
         self.but_buts  = QPushButton('Buts %s' % cp.char_expand)
         self.wctl_spec = IVControlSpec()
 
         self.box = QGridLayout()
         self.box.addWidget(self.wfnm_nda, 0, 0, 1, 5)
-        self.box.addWidget(self.but_exp,     0, 5)
-        self.box.addWidget(self.but_reset,   0, 6)
-        self.box.addWidget(self.but_buts,    0, 7)
-        self.box.addWidget(self.but_tabs,    0, 8)
+        self.box.addWidget(self.but_save,    0, 6)
+        self.box.addWidget(self.but_exp,     0, 7)
+        self.box.addWidget(self.but_reset,   0, 8)
+        self.box.addWidget(self.but_buts,    0, 9)
+        self.box.addWidget(self.but_tabs,    0, 10)
         self.box.addWidget(self.wfnm_geo, 1, 0, 1, 5)
-        self.box.addWidget(self.wctl_spec,1, 5, 1, 4)
+        self.box.addWidget(self.wctl_spec,1, 5, 1, 6)
         self.setLayout(self.box)
  
         self.but_exp.clicked.connect(self.on_but_exp)
@@ -125,16 +122,18 @@ class IVControl(CMWControlBase):
         CMWControlBase.set_tool_tips(self)
         self.but_reset.setToolTip('Reset original image size')
         self.but_buts.setToolTip('Show/hide buttons')
-        self.but_tabs.setToolTip('Show/hide tabs')
         self.but_exp.setToolTip('Select experiment')
 
 
     def set_style(self):
-        self.but_tabs.setFixedWidth(50)
+        CMWControlBase.set_style(self)
+        #self.but_tabs.setFixedWidth(50)
         self.but_reset.setFixedWidth(50)
         self.but_buts.setFixedWidth(50)
         self.but_exp.setFixedWidth(80)
-         #self.but_buts.setStyleSheet(style.styleButton)
+        self.wfnm_nda.lab.setStyleSheet(style.styleLabel)
+        self.wfnm_geo.lab.setStyleSheet(style.styleLabel)
+         #self.but_buts.setStyleSheet(style.styleButtonstyleLabel)
         #self.but_tabs.setVisible(True)
 
 
@@ -273,9 +272,11 @@ class IVControl(CMWControlBase):
 
     def on_buts(self):
         logger.debug('on_buts')
+        from psana.graphqt.QWUtils import change_check_box_dict_in_popup_menu
         d = self.buttons_dict()
         logger.debug('initial visible buttons: %s' % str(d))
-        resp = change_check_box_dict_in_popup_menu(d, 'Select buttons', msg='Check visible buttons then click Apply or Cancel', parent=self.but_buts)
+        resp = change_check_box_dict_in_popup_menu(d, 'Select buttons',\
+                msg='Check visible buttons then click Apply or Cancel', parent=self.but_buts)
         #logger.debug('select_visible_buttons resp: %s' % resp)
         if resp == 0:
             logger.debug('Visible buttons selection is cancelled')
@@ -293,6 +294,7 @@ class IVControl(CMWControlBase):
         self.but_reset.setVisible(d['Reset'])
         self.but_tabs.setVisible(d['Tabs'])
         self.but_exp.setVisible(d['Experiment'])
+        self.but_save.setVisible(d['Save'])
         if cp.ivimageaxes is not None: cp.ivimageaxes.but_reset.setVisible(d['Reset image'])
         if cp.ivimageaxes is not None: cp.ivimageaxes.set_info_visible(d['Cursor position'])
         if cp.ivspectrum  is not None: cp.ivspectrum.but_reset.setVisible(d['Reset spectrum'])
@@ -309,6 +311,7 @@ class IVControl(CMWControlBase):
                 'Cursor position' : r & 32,\
                 'Control spectrum': r & 64,\
                 'Experiment'      : r & 128,\
+                'Save'            : r & 256,\
                }
 
 
@@ -322,6 +325,7 @@ class IVControl(CMWControlBase):
         if d['Cursor position'] : w |= 32
         if d['Control spectrum']: w |= 64
         if d['Experiment']      : w |= 128
+        if d['Save']            : w |= 256
         cp.iv_buttons.setValue(w)
 
 
@@ -332,10 +336,10 @@ class IVControl(CMWControlBase):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
-    import sys
+
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1' #export LIBGL_ALWAYS_INDIRECT=1
-    from PyQt5.QtWidgets import QApplication
+    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
+
     app = QApplication(sys.argv)
     w = IVControl()
     w.setGeometry(100, 50, 500, 80)
