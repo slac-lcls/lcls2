@@ -105,7 +105,7 @@ class CMConfigParameters(PSConfigParameters):
 
     def declareParameters(self):
         # Possible typs for declaration: 'str', 'int', 'long', 'float', 'bool'
-        self.log_level = self.declareParameter(name='LOG_LEVEL', val_def='INFO', type='str') # val_def='NOTSET'
+        self.log_level = self.declareParameter(name='LOG_LEVEL', val_def='DEBUG', type='str') # val_def='NOTSET'
 
         #self.log_file - DEPRICATED
         self.log_file  = self.declareParameter(name='LOG_FILE_NAME', val_def='cm-log.txt', type='str')
@@ -114,8 +114,8 @@ class CMConfigParameters(PSConfigParameters):
 
         self.main_win_pos_x  = self.declareParameter(name='MAIN_WIN_POS_X',  val_def=5,    type='int')
         self.main_win_pos_y  = self.declareParameter(name='MAIN_WIN_POS_Y',  val_def=5,    type='int')
-        self.main_win_width  = self.declareParameter(name='MAIN_WIN_WIDTH',  val_def=1200, type='int')
-        self.main_win_height = self.declareParameter(name='MAIN_WIN_HEIGHT', val_def=700,  type='int')
+        self.main_win_width  = self.declareParameter(name='MAIN_WIN_WIDTH',  val_def=800, type='int')
+        self.main_win_height = self.declareParameter(name='MAIN_WIN_HEIGHT', val_def=800,  type='int')
 
         self.main_vsplitter  = self.declareParameter(name='MAIN_VSPLITTER', val_def=600, type='int')
         self.main_tab_name   = self.declareParameter(name='MAIN_TAB_NAME', val_def='CDB', type='str')
@@ -123,17 +123,18 @@ class CMConfigParameters(PSConfigParameters):
         self.current_config_tab = self.declareParameter(name='CURRENT_CONFIG_TAB', val_def='Parameters', type='str')
         self.cdb_host = self.declareParameter(name='CDB_HOST', val_def=cc.HOST, type='str')
         self.cdb_port = self.declareParameter(name='CDB_PORT', val_def=cc.PORT, type='int')
-        self.cdb_hsplitter0 = self.declareParameter(name='CDB_HSPLITTER0', val_def=250, type='int')
+        self.cdb_hsplitter0 = self.declareParameter(name='CDB_HSPLITTER0', val_def=300, type='int')
         self.cdb_hsplitter1 = self.declareParameter(name='CDB_HSPLITTER1', val_def=1000, type='int')
         self.cdb_hsplitter2 = self.declareParameter(name='CDB_HSPLITTER2', val_def=0, type='int')
         self.cdb_filter  = self.declareParameter(name='CDB_FILTER', val_def='', type='str')
-        self.cdb_buttons = self.declareParameter(name='CDB_BUTTONS', val_def=3259, type='int')
+        self.cdb_buttons = self.declareParameter(name='CDB_BUTTONS', val_def=1+2+8+16+32+128+1024+2048+8192, type='int')
         self.cdb_docw = self.declareParameter(name='CDB_DOC_WIDGET', val_def='List', type='str')
         self.cdb_selection_mode = self.declareParameter(name='CDB_SELECTION_MODE', val_def='extended', type='str')
         self.iv_buttons = self.declareParameter(name='IV_BUTTONS', val_def=2+4+32+64, type='int')
 
         self.fmwtab_tab_name = self.declareParameter(name='FMWTAB_TAB_NAME', val_def='LCLS1', type='str')
         self.last_selected_fname = self.declareParameter(name='LAST_SELECTED_FNAME', val_def=None, type='str')
+        self.last_selected_data = None # not persistent
 
 
 cp = CMConfigParameters()
