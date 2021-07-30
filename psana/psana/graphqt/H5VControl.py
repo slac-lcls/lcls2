@@ -107,6 +107,12 @@ class H5VControl(CMWControlBase):
             but.setText('Expand')
 
 
+    def on_but_view(self):
+        logger.debug(info_ndarr(self.data, 'on_but_view data:'))
+        if cp.cmwmaintabs is not None:
+            cp.cmwmaintabs.view_data(data=self.data)
+
+
     def on_but_save(self):
         logger.debug('on_but_save')
 
