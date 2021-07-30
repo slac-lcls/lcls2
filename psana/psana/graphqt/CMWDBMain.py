@@ -18,15 +18,14 @@ Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QSplitter, QVBoxLayout, QTextEdit
-from PyQt5.QtCore import Qt #, QPoint
+from PyQt5.QtWidgets import QApplication, QWidget, QSplitter, QVBoxLayout, QTextEdit
+from PyQt5.QtCore import Qt
 
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.CMWDBDocs import CMWDBDocs
 from psana.graphqt.CMWDBDocEditor import CMWDBDocEditor
 from psana.graphqt.CMWDBTree import CMWDBTree
-#from psana.graphqt.CMWDBTreeOld import CMWDBTree
-from psana.graphqt.CMWDBButtons import CMWDBButtons
+from psana.graphqt.CMWDBControl import CMWDBControl
 
 
 class CMWDBMain(QWidget):
@@ -37,10 +36,10 @@ class CMWDBMain(QWidget):
         QWidget.__init__(self, parent=parent)
         cp.cmwdbmain = self
 
-        self.wbuts = CMWDBButtons(parent=self)
+        self.wbuts = CMWDBControl(parent=self)
         self.wtree = CMWDBTree()
-        self.wdocs = CMWDBDocs() # QTextEdit('Template for docs')
-        self.wdoce = CMWDBDocEditor() #QTextEdit('Template for doc editor')
+        self.wdocs = CMWDBDocs()
+        self.wdoce = CMWDBDocEditor()
 
         # Horizontal splitter widget
         self.hspl = QSplitter(Qt.Horizontal)
@@ -214,12 +213,10 @@ class CMWDBMain(QWidget):
         #self.main_win_width .setValue(w)
         #self.main_win_height.setValue(h)
 
-#---
 
 if __name__ == "__main__":
   def test_CMWDBMain():
     import sys
-    from PyQt5.QtWidgets import QApplication
     logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
     w = CMWDBMain()
@@ -229,7 +226,6 @@ if __name__ == "__main__":
     del w
     del app
 
-#---
 
 if __name__ == "__main__":
     test_CMWDBMain()
