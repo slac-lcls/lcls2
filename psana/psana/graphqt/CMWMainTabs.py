@@ -21,7 +21,19 @@ from psana.graphqt.CMConfigParameters import cp
 class CMWMainTabs(QWidget):
     """GUI for tabs and associated widgets
     """
-    tab_names   = ['CDB', 'IV', 'HDF5', 'File Manager', 'Configuration', 't-converter', 'Mask Editor', 'Test Window']
+    tab_names = ['CDB', 'IV', 'TV', 'HDF5', 'File Manager', 'Configuration', 't-converter', 'Mask Editor', 'Test']
+
+    tool_tips = [\
+      'Calibration Data Base\nviewer/manager',\
+      'Image Viewer',\
+      'Text Viewer',\
+      'HDF5 file browser',\
+      'File Manager for calibration constants',\
+      'Configuration manager for this app',\
+      'Mask Editor for images',\
+      'Test Window',\
+    ]
+
 
     def __init__ (self, parent=None, app=None):
 
@@ -50,12 +62,14 @@ class CMWMainTabs(QWidget):
 
         self.setLayout(self.box)
 
-        self.show_tool_tips()
+        self.set_tool_tips()
         self.set_style()
 
 
-    def show_tool_tips(self):
-        self.setToolTip('Main tab window')
+    def set_tool_tips(self):
+        for t,s in zip(self.tab_names, self.tool_tips):
+          self.tab_bar.setTabToolTip(self.tab_names.index(t), s)
+        #self.setToolTip('Main tab window')
 
 
     def set_style(self):
@@ -114,7 +128,7 @@ class CMWMainTabs(QWidget):
 
         elif tab_name == 'HDF5':
             from psana.graphqt.H5VMain import H5VMain
-            if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
+            #if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
             self.gui_win = H5VMain()
 
         elif tab_name == 'File Manager':
@@ -123,8 +137,11 @@ class CMWMainTabs(QWidget):
 
         elif tab_name == 'IV':
             from psana.graphqt.IVMain import IVMain
-            if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
+            #if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
             self.gui_win = IVMain()
+
+        elif tab_name == 'TV':
+            self.gui_win = QTextEdit('Selected tab "%s"' % tab_name)
 
         elif tab_name == 'Mask Editor':
             self.gui_win = QTextEdit('Selected tab "%s"' % tab_name)
@@ -185,6 +202,8 @@ class CMWMainTabs(QWidget):
 
         QWidget.closeEvent(self, e)
 
+        cp.cmwmaintabs = None
+
 
     def onExit(self):
         logger.debug('onExit')
@@ -202,6 +221,37 @@ class CMWMainTabs(QWidget):
 
     def view_hide_tabs(self):
         self.tab_bar.setVisible(not self.tab_bar.isVisible())
+
+
+    def view_data(self, data=None, fname=None):
+        from psana.pyalgos.generic.NDArrUtils import info_ndarr, np
+        if data is None and fname is None:
+            logger.debug('data and fname are None - do not switch to viewer')
+        elif data is None:
+            cp.last_selected_data = None
+            cp.last_selected_fname.setValue(fname)
+            tabname = 'TV' if 'geometry' in fname or 'common_mode' in fname else 'IV'
+            self.set_tab(tabname)
+        elif isinstance(data, np.ndarray):
+            cp.last_selected_data = data
+            cp.last_selected_fname.setValue(fname)
+            logger.info(info_ndarr(data, 'switch to Image Viewer to view data:'))
+            logger.warning('TBD: IV NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
+            self.set_tab(tabname='IV')
+        elif isinstance(data, str):
+            cp.last_selected_data = data
+            cp.last_selected_fname.setValue(fname)
+            logger.info(info_ndarr(data, 'switch to Text Viewer to view data:'))
+            logger.warning('TBD: TV NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
+            self.set_tab(tabname='TV')
+        else:
+            logger.debug('data of the selected document is not numpy array - do not switch to IV')
+            cp.last_selected_data = None
+
+
+    def set_tab(self, tabname='IV'):
+        logger.debug('switch tab to %s' % str(tabname))
+        self.tab_bar.setCurrentIndex(self.tab_names.index(tabname))
 
 
     def key_usage(self):
