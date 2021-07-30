@@ -1,9 +1,9 @@
 
-"""Class :py:class:`CMWDBButtons` is a QWidget for configuration parameters
+"""Class :py:class:`CMWDBControl` is a QWidget for configuration parameters
 ==============================================================================
 
 Usage ::
-    # Test: python lcls2/psana/psana/graphqt/CMWDBButtons.py
+    # Test: python lcls2/psana/psana/graphqt/CMWDBControl.py
 
     # Import
     from psana.graphqt.CMConfigParameters import
@@ -26,16 +26,17 @@ from psana.graphqt.QWUtils import change_check_box_dict_in_popup_menu,\
      get_open_fname_through_dialog_box
 
 from psana.graphqt.CMDBUtils import dbu
+from psana.pyalgos.generic.NDArrUtils import info_ndarr
 
 logger = logging.getLogger(__name__)
 
 
-class CMWDBButtons(CMWControlBase):
+class CMWDBControl(CMWControlBase):
     """QWidget for managements of configuration parameters"""
 
     def __init__(self, parent=None):
         CMWControlBase.__init__(self, parent=parent)
-        self._name = 'CMWDBButtons'
+        self._name = 'CMWDBControl'
 
         self.log_level_names = list(logging._levelToName.values())
 
@@ -202,7 +203,7 @@ class CMWDBButtons(CMWControlBase):
 
     def closeEvent(self, event):
         logger.debug('closeEvent')
-        #try   : del cp.guiworkresdirs # CMWDBButtons
+        #try   : del cp.guiworkresdirs # CMWDBControl
         #except: pass # silently ignore
 
 
@@ -508,7 +509,6 @@ class CMWDBButtons(CMWControlBase):
 
         msg = '\n  '.join(['%12s: %s' % (k,v) for k,v in dicdoc.items()])
 
-        from psana.pyalgos.generic.NDArrUtils import info_ndarr
         logger.debug('add_doc \n%s  \n%s' % (msg, info_ndarr(nda, 'data n-d array ')))
 
         dbnexp = dbu.db_prefixed_name(dicdoc.get('experiment', 'exp_def'))
@@ -626,7 +626,16 @@ class CMWDBButtons(CMWControlBase):
 
     def on_but_view(self):
         """Re-implementation of the CMWControlBase.on_but_view"""
-        logger.debug('on_but_view TBD')
+        logger.debug('on_but_view')
+        wdoce = cp.cmwdbdoceditor
+        if wdoce is None or wdoce.data_nda is None:
+            logger.warning('Document editor is not selected. Select collection in DB then document in the List mode.')
+            return
+        #doc  = wdoce.get_model_dicdoc(discard_id_ts=False)
+        #data = wdoce.get_data_nda()
+
+        if cp.cmwmaintabs is not None:
+           cp.cmwmaintabs.view_data(data=wdoce.get_data_nda(), fname=None)
 
 
     def on_but_pressed(self):
@@ -657,7 +666,7 @@ if __name__ == "__main__":
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG)
 
     app = QApplication(sys.argv)
-    w = CMWDBButtons()
+    w = CMWDBControl()
     w.setGeometry(50, 100, 500, 100)
     w.setWindowTitle('Config Parameters')
     w.show()
