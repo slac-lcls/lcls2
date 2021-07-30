@@ -20,7 +20,12 @@ from psana.graphqt.CMConfigParameters import cp
 class FMWTabs(QWidget):
     """GUI for tabs and associated widgets
     """
-    tab_names = ['LCLS1', 'LCLS1->LCLS2', 'LCLS2']
+    tab_names = ['LCLS1', 'LCLS1->LCLS2']
+    tool_tips = [\
+      'LCLS1 - easy access to calibration constants\nin the <experiment>/calib directory',
+      'Upploader of LCLS calibratiuon constants\nto LCLS2 calibration DB',\
+    ]
+
 
     def __init__ (self, parent=None, app=None):
 
@@ -41,12 +46,14 @@ class FMWTabs(QWidget):
 
         self.setLayout(self.box)
 
-        self.show_tool_tips()
+        self.set_tool_tips()
         self.set_style()
 
 
-    def show_tool_tips(self):
-        self.setToolTip('Main tab window')
+    def set_tool_tips(self):
+        for t,s in zip(self.tab_names, self.tool_tips):
+          self.tab_bar.setTabToolTip(self.tab_names.index(t), s)
+        #self.setToolTip('Main tab window')
 
 
     def set_style(self):
