@@ -106,47 +106,39 @@ class FMW1Control(CMWControlBase):
             but.setText('Expand')
 
 
+    def on_but_view(self):
+        """Re-implementation of the CMWControlBase.on_but_view"""
+        logger.info('on_but_view - set file name and switch to IV')
+        fname = cp.last_selected_fname.value()
+        if fname is None:
+            logger.warning('data file is not selected, do not switch to IV')
+            return
+        if cp.cmwmaintabs is not None:
+            cp.cmwmaintabs.view_data(fname=fname)
+        else:
+            logger.info('tab bar object is not defined - do not switch to IV')
+
+
     def on_but_save(self):
         """Re-implementation of the CMWControlBase.on_but_save"""
-        logger.warning('on_but_save - TBD - FILE SAVING IS NOT IMPLEMENTED YET')
+        logger.warning('on_but_save - show the list of selected files')
         if cp.fmw1main is None: return
         wtree = cp.fmw1main.wfstree
 
         names_selected = [full_path_for_item(i) for i in wtree.selected_items()]
-        logger.info('on_but_save selected names:\n  %s' % '\n  '.join(names_selected))
+        if len(names_selected)==0:
+            logger.warning('nothing is selected - click on desired dataset(s) it the tree.')
+            return
 
-        return
+        logger.info('selected file names:\n  %s' % '\n  '.join(names_selected))
 
-    """
-        prefix = self.dname
-
-        data = self.data
-        logger.info(info_ndarr(data, 'data:'))
-        logger.info('data name prefix: %s' % prefix)
-
-        from psana.graphqt.QWUtils import change_check_box_dict_in_popup_menu
-
-        control = {'txt': True, 'npy': True}
-        resp = change_check_box_dict_in_popup_menu(control, 'Select and confirm',\
-                 msg='save selected data in file\n%s\nfor types:'%prefix, parent=None) #self.but_save)
-
-        if resp==1:
-            logger.info('save hdf5 data in file(s) with prefix: %s' % prefix)
-            fmt = '%d' if 'int' in str(data.dtype) else '%.3f'
-            save_data_in_file(data, prefix, control, fmt)
-        else: 
-            logger.info('command "Save" is cancelled')
-    """
-
-#            self.instr_exp_is_changed.emit(instr_name, exp_name)
+#        self.instr_exp_is_changed.emit(instr_name, exp_name)
 
 #    def connect_instr_exp_is_changed(self, recip):
 #        self.instr_exp_is_changed.connect(recip)
 
-
 #    def disconnect_instr_exp_is_changed(self, recip):
 #        self.instr_exp_is_changed.disconnect(recip)
-
 
 #    def on_instr_exp_is_changed(self, instr, exp):
 #        logger.debug('selected instrument: %s experiment: %s' % (instr, exp))
@@ -164,12 +156,15 @@ class FMW1Control(CMWControlBase):
     def save_item_path(self, index):
         i = cp.fmw1main.wfstree.model.itemFromIndex(index)
         if i is None:
-           logger.debug('on_item_selected: item is None')
+           logger.info('on_item_selected: item is None')
+           cp.last_selected_fname.setValue(None)
+           cp.last_selected_data = None
            return
         fname = full_path_for_item(i)
         if os.path.exists(fname) and (not os.path.isdir(fname)):
             logger.info('save_item_path save last_selected_fname: %s path: %s' % (str(i.text()), fname))
             cp.last_selected_fname.setValue(fname)
+            cp.last_selected_data = None
 
 
     def on_item_selected(self, selected, deselected):
