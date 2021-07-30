@@ -19,7 +19,7 @@ import sys
 
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt
-from psana.graphqt.IVControl import IVControl
+from psana.graphqt.IVControl import IVControl, image_from_ndarray
 from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.FWViewImage import FWViewImage, ct
 from psana.graphqt.IVImageAxes import IVImageAxes, test_image
@@ -36,9 +36,16 @@ class IVMain(QWidget):
 
         fname = kwargs.get('fname', None)
         last_selected_fname = cp.last_selected_fname.value()
+        last_selected_data = cp.last_selected_data
 
         if fname is None and last_selected_fname is not None: fname = last_selected_fname
-        image = kwargs.get('image', test_image(shape=(32,32)))
+        image = kwargs.get('image', None)
+        image = image if image is not None else\
+                image_from_ndarray(last_selected_data) if last_selected_data is not None else\
+                None
+        if image is None: image = test_image(shape=(32,32))
+        else: fname = None
+
         ctab  = kwargs.get('ctab', ct.color_table_default())
 
         self.wimage= IVImageAxes(parent=self, image=image, origin='UL', scale_ctl='HV', coltab=ctab, signal_fast=self.signal_fast)
