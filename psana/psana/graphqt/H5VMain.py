@@ -38,7 +38,9 @@ class H5VMain(QWidget):
 
         kwargs['parent'] = self
 
+        self.wlog = kwargs.get('wlog', cp.wlog)
         if self.wlog is None: self.wlog = QWLoggerStd(cp, show_buttons=False)
+
         self.wtree = H5VQWTree(**kwargs)
         self.wctrl = H5VControl(**kwargs)
         #self.wtext = QTextEdit('Some text')
@@ -46,7 +48,7 @@ class H5VMain(QWidget):
 
         self.hspl = QSplitter(Qt.Horizontal)
         self.hspl.addWidget(self.wtree)
-        self.hspl.addWidget(self.wlog)
+        if cp.wlog is None: self.hspl.addWidget(self.wlog)
         #self.hspl.addWidget(self.wtext)
 
         #self.hbox = QHBoxLayout() 
@@ -70,7 +72,6 @@ class H5VMain(QWidget):
         loglevel   = kwargs.get('loglevel', 'DEBUG').upper()
         logdir     = kwargs.get('logdir', './')
         savelog    = kwargs.get('savelog', False)
-        self.wlog  = kwargs.get('wlog', None)
         if is_in_command_line('-l', '--loglevel'): cp.log_level.setValue(loglevel)
         #if is_in_command_line('-S', '--saveloglogdir'):
         #if is_in_command_line('-L', '--logdir'):
@@ -102,7 +103,7 @@ class H5VMain(QWidget):
 
         self.layout().setContentsMargins(0,0,0,0)
 
-        self.wlog.setMinimumWidth(500)
+        #self.wlog.setMinimumWidth(500)
 
         self.wctrl.setFixedHeight(50)
         #self.wctrl.setMaximumHeight(80)
