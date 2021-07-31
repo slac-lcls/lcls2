@@ -92,6 +92,7 @@ class CMConfigParameters(PSConfigParameters):
         self.ivcontrol   = None
         self.ivmain      = None
         self.ivimageaxes = None
+        self.wlog        = None
 
         self.last_selection = None
         self.user = cc.USERNAME
@@ -123,8 +124,8 @@ class CMConfigParameters(PSConfigParameters):
         self.current_config_tab = self.declareParameter(name='CURRENT_CONFIG_TAB', val_def='Parameters', type='str')
         self.cdb_host = self.declareParameter(name='CDB_HOST', val_def=cc.HOST, type='str')
         self.cdb_port = self.declareParameter(name='CDB_PORT', val_def=cc.PORT, type='int')
-        self.cdb_hsplitter0 = self.declareParameter(name='CDB_HSPLITTER0', val_def=300, type='int')
-        self.cdb_hsplitter1 = self.declareParameter(name='CDB_HSPLITTER1', val_def=1000, type='int')
+        self.cdb_hsplitter0 = self.declareParameter(name='CDB_HSPLITTER0', val_def=220, type='int')
+        self.cdb_hsplitter1 = self.declareParameter(name='CDB_HSPLITTER1', val_def=600, type='int')
         self.cdb_hsplitter2 = self.declareParameter(name='CDB_HSPLITTER2', val_def=0, type='int')
         self.cdb_filter  = self.declareParameter(name='CDB_FILTER', val_def='', type='str')
         self.cdb_buttons = self.declareParameter(name='CDB_BUTTONS', val_def=1+2+8+16+32+128+1024+2048+8192, type='int')
