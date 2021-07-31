@@ -35,7 +35,8 @@ class CMWMain(QWidget):
         self.set_input_pars(**kwargs)
 
         from psana.graphqt.CMWMainTabs import CMWMainTabs # AFTER set_input_pars !!!!\
-        self.wlog = QWLoggerStd(cp, show_buttons=False)
+        self.wlog = cp.wlog = QWLoggerStd(cp, show_buttons=False)
+
         self.wtab = CMWMainTabs()
 
         self.vspl = QSplitter(Qt.Vertical)
@@ -111,8 +112,9 @@ class CMWMain(QWidget):
         self.wtab.close()
         self.on_save()
         QWidget.closeEvent(self, e)
-
+        cp.wlog = None
  
+
 #    def resizeEvent(self, e):
 #        QWidget.resizeEvent(self, e)
 #    def moveEvent(self, e):
