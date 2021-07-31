@@ -18,13 +18,8 @@ See:
 Created on 2017-04-05 by Mikhail Dubrovin
 """
 
-from psana.graphqt.CMWControlBase import *  # CMWControlBase, QApplication, QSize, ..., icon, style, cp, logging, os, sys
-
-from psana.graphqt.QWUtils import change_check_box_dict_in_popup_menu,\
-     confirm_or_cancel_dialog_box, select_item_from_popup_menu,\
-     get_existing_directory_through_dialog_box,\
-     get_open_fname_through_dialog_box
-
+from psana.graphqt.CMWControlBase import *
+import psana.graphqt.QWUtils as qwu
 from psana.graphqt.CMDBUtils import dbu
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 
@@ -61,12 +56,10 @@ class CMWDBControl(CMWControlBase):
         self.cmb_level.setCurrentIndex(self.log_level_names.index(cp.log_level.value()))
 
         self.but_exp_col  = QPushButton('Expand')
-        #self.but_tabs     = QPushButton('Tabs %s' % cp.char_expand)
         self.but_test     = QPushButton('Test')
         self.but_buts     = QPushButton('Buts %s' % cp.char_expand)
         self.but_del      = QPushButton('Delete')
         self.but_add      = QPushButton('Add')
-        #self.but_save     = QPushButton('Save')
         self.but_docs     = QPushButton('%s %s' % (cp.cdb_docw.value(), cp.char_expand))
         self.but_selm     = QPushButton('Selection %s' % cp.char_expand)
 
@@ -99,21 +92,14 @@ class CMWDBControl(CMWControlBase):
         self.hbox.addWidget(self.but_save)
         self.hbox.addWidget(self.but_view)
         self.hbox.addStretch(1) 
-        #self.hbox.addSpacing(20)
-        #self.hbox.addStrut(50)
-        #self.hbox.addSpacerItem(QSpacerItem)
         self.hbox.addWidget(self.but_test)
         self.hbox.addWidget(self.lab_docs)
         self.hbox.addWidget(self.cmb_docw)
         self.hbox.addWidget(self.but_docs)
         self.hbox.addWidget(self.but_buts)
         self.hbox.addWidget(self.but_tabs)
-        #self.hbox.addLayout(self.grid)
         self.setLayout(self.hbox)
 
-        #self.edi_.editingFinished.connect(self.on_edit_finished)
-        #self.cbx_host.stateChanged[int].connect(self.on_cbx_host_changed)
-        #self.cbx_host.stateChanged[int].connect(self.on_cbx_host_changed)
         self.cmb_host.currentIndexChanged[int].connect(self.on_cmb_host_changed)
         self.cmb_port.currentIndexChanged[int].connect(self.on_cmb_port_changed)
         self.cmb_docw.currentIndexChanged[int].connect(self.on_cmb_docw_changed)
@@ -127,8 +113,6 @@ class CMWDBControl(CMWControlBase):
         self.but_del    .clicked.connect(self.on_but_clicked)
         self.but_docs   .clicked.connect(self.on_but_clicked)
         self.but_selm   .clicked.connect(self.on_but_clicked)
-        #self.but_tabs   .clicked.connect(self.on_but_clicked)
-        #self.but_save   .clicked.connect(self.on_but_clicked)
  
         self.but_test.clicked .connect(self.on_but_clicked)
         self.but_test.released.connect(self.on_but_released)
@@ -153,8 +137,6 @@ class CMWDBControl(CMWControlBase):
         self.but_add.setToolTip('Add current\ndocument to DB')
         self.but_del.setToolTip('Delete selected\nDBs, collections, documents')
         self.cmb_level.setToolTip('Select logger level')
-        #self.but_save.setToolTip('Save current document\nand data in file')
-        #self.but_tabs.setToolTip('Show/hide tabs')
 
 
     def set_style(self):
@@ -282,7 +264,7 @@ class CMWDBControl(CMWControlBase):
     def select_visible_buttons(self):
         logger.debug('select_visible_buttons')
         d = self.buttons_dict()
-        resp = change_check_box_dict_in_popup_menu(d, 'Select buttons',\
+        resp = qwu.change_check_box_dict_in_popup_menu(d, 'Select buttons',\
                  msg='Check visible buttons then click Apply or Cancel', parent=self.but_buts)
         logger.debug('select_visible_buttons resp: %s' % resp)
         if resp is None:
@@ -295,7 +277,7 @@ class CMWDBControl(CMWControlBase):
 
 
     def select_doc_widget(self):
-        resp = select_item_from_popup_menu(cp.list_of_doc_widgets, parent=self)
+        resp = qwu.select_item_from_popup_menu(cp.list_of_doc_widgets, parent=self)
         logger.debug('select_doc_widget resp: %s' % resp)
         if resp is None: return
         cp.cdb_docw.setValue(resp)
@@ -332,6 +314,7 @@ class CMWDBControl(CMWControlBase):
         cp.cdb_port.setValue(int(selected)) 
         logger.info('on_cmb_port_changed - selected: %s' % selected)
         self.on_edi_db_filter_finished() # regenerate tree model
+
 
     def on_cmb_docw_changed(self):
         selected = self.cmb_docw.currentText()
@@ -387,7 +370,7 @@ class CMWDBControl(CMWControlBase):
         msg += '\n    '.join(msg_recs)
 
         logger.info(msg)
-        resp = confirm_or_cancel_dialog_box(parent=self.but_del, text=msg, title='Confirm or cancel')
+        resp = qwu.confirm_or_cancel_dialog_box(parent=self.but_del, text=msg, title='Confirm or cancel')
         logger.debug('delete_selected_items_docs response: %s' % resp)
 
         if resp:
@@ -437,7 +420,7 @@ class CMWDBControl(CMWControlBase):
                 msg += '\n    '.join(lstcols)
 
         logger.info(msg)
-        resp = confirm_or_cancel_dialog_box(parent=self.but_del, text=msg, title='Confirm or cancel')
+        resp = qwu.confirm_or_cancel_dialog_box(parent=self.but_del, text=msg, title='Confirm or cancel')
         logger.debug('delete_selected_items_db_cols response: %s' % resp)
 
         if resp:
@@ -455,7 +438,7 @@ class CMWDBControl(CMWControlBase):
         #logger.debug('set_selection_model')
         wtree = cp.cmwdbtree
         if wtree is None: return
-        selected = select_item_from_popup_menu(wtree.dic_smodes.keys(), title='Select mode',\
+        selected = qwu.select_item_from_popup_menu(wtree.dic_smodes.keys(), title='Select mode',\
                                                default=cp.cdb_selection_mode.value(), parent=self)
         logger.info('Set selection mode: %s' % selected)
         if selected is None: return
@@ -481,7 +464,7 @@ class CMWDBControl(CMWControlBase):
         logger.debug('TBD: In add_db - Adds DB from file')
 
         path0 = '.'
-        path = get_open_fname_through_dialog_box(self, path0, 'Select file with DB to add', filter='*')
+        path = qwu.get_open_fname_through_dialog_box(self, path0, 'Select file with DB to add', filter='*')
         if path is None: 
             logger.warning('DB file selection is cancelled')
             return
@@ -516,7 +499,7 @@ class CMWDBControl(CMWControlBase):
         colname = dicdoc.get('detector', None)
 
         d = {dbnexp: True, dbndet: True}
-        resp = change_check_box_dict_in_popup_menu(d, msg='Add constants\nand metadata to DB', parent=self.but_add)
+        resp = qwu.change_check_box_dict_in_popup_menu(d, msg='Add constants\nand metadata to DB', parent=self.but_add)
         logger.debug('add_doc resp: %s' % resp)
 
         if resp==1:
@@ -564,7 +547,7 @@ class CMWDBControl(CMWControlBase):
         port = cp.cdb_port.value()
 
         path0 = '.'
-        resp = get_existing_directory_through_dialog_box(self, path0, title='Select directory for DB files')
+        resp = qwu.get_existing_directory_through_dialog_box(self, path0, title='Select directory for DB files')
 
         if resp is None: 
             logger.warning('Saving of DBs is cancelled')
@@ -591,7 +574,7 @@ class CMWDBControl(CMWControlBase):
         prefix = dbu.out_fname_prefix(**doc)
 
         control = {'data': True, 'meta': True}
-        resp = change_check_box_dict_in_popup_menu(control, 'Select and confirm',\
+        resp = qwu.change_check_box_dict_in_popup_menu(control, 'Select and confirm',\
                msg='Save current document in file\n%s\nfor types:'%prefix, parent=self.but_add)
 
         if resp==1:
@@ -613,9 +596,6 @@ class CMWDBControl(CMWControlBase):
         elif but == self.but_docs    : self.select_doc_widget()
         elif but == self.but_selm    : self.set_selection_mode()
         elif but == self.but_add     : self.add_selected_item()
-        #elif but == self.but_tabs    : self.on_but_tabs()# view_hide_tabs()
-        #elif but == self.but_save    : self.save_selected_item()
-        #elif but == self.but_level   : self.set_logger_level()
 
 
     def on_but_save(self):
