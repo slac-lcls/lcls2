@@ -87,10 +87,10 @@ procmgr_config = [
  # make transition buffer size large to accomodate a non-timestamped camera
  { host: 'drp-neh-cmp015', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x8 -T 4000000'},
 
- #{ host: 'drp-neh-cmp007', id:'rix_fim2_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x10'},
- #{ host: 'drp-neh-cmp007', id:'rix_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR4K2:FIM:W8:02 -l 0x20'},
- #{ host: 'drp-neh-cmp007', id:'rix_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K2:FIM:W8:01 -l 0x80'},
- #{ host: 'drp-neh-cmp013', id:'atmopal_0',   flags:'spu' ,  env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=RIX:TIMETOOL:TTALL'},
+ { host: 'drp-neh-cmp007', id:'rix_fim2_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x10'},
+ { host: 'drp-neh-cmp007', id:'rix_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR4K2:FIM:W8:02 -l 0x20'},
+ { host: 'drp-neh-cmp007', id:'rix_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K2:FIM:W8:01 -l 0x80'},
+ { host: 'drp-neh-cmp013', id:'atmopal_0',   flags:'spu' ,  env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=RIX:TIMETOOL:TTALL'},
 
  #     Note: '-1' specifies fuzzy timestamping
  #           '-0' specifies no timestamp matching (-0 may have problems)
@@ -122,8 +122,8 @@ for instance, base_port in {"first": platform_base_port,}.items():
     { host:ami_manager_node, id:f'ami-global_{instance}',  flags:'s', env:epics_env, cmd:f'ami-global -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
         { host:ami_manager_node, id:f'ami-manager_{instance}', flags:'s', cmd:f'ami-manager -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
         {                        id:f'ami-client_{instance}',  flags:'s', cmd:f'ami-client -p {base_port} -H {ami_manager_node} --prometheus-dir {prom_dir}/{hutch} --hutch {hutch}_{instance}' },
-        {                        id:f'ami-client_{instance}_acr',  flags:'s', cmd:f'ami-client -l rix_acr_hsd_feedback.fc -p {base_port} -H {ami_manager_node} --prometheus-dir {prom_dir}/{hutch} --hutch {hutch}_{instance}_acr -g "acr_graph"'},
-        {                        id:f'acr_server',  flags:'s', cmd:f'python rix_acr_hsd_feedback.py -P RIX:ACR'},
+#        {                        id:f'ami-client_{instance}_acr',  flags:'s', cmd:f'ami-client -l rix_acr_hsd_feedback.fc -p {base_port} -H {ami_manager_node} --prometheus-dir {prom_dir}/{hutch} --hutch {hutch}_{instance}_acr -g "acr_graph"'},
+#        {                        id:f'acr_server',  flags:'s', cmd:f'python rix_acr_hsd_feedback.py -P RIX:ACR'},
     ]
 
     # ami workers
