@@ -63,9 +63,9 @@ class CMWControlBase(QWidget):
         icon.set_icons()
         self.but_save.setIcon(icon.icon_save)
         self.but_tabs.setStyleSheet(style.styleButtonGood)
-        self.but_tabs.setFixedWidth(50)
-        self.but_save.setFixedWidth(50)
-        self.but_view.setFixedWidth(50)
+        self.but_tabs.setFixedWidth(60)
+        self.but_save.setFixedWidth(60)
+        self.but_view.setFixedWidth(60)
 
 
     def on_but_tabs(self):
