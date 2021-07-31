@@ -74,8 +74,6 @@ class H5VControl(CMWControlBase):
 
     def set_tool_tips(self):
         CMWControlBase.set_tool_tips(self)
-        #self.but_tabs.setToolTip('Show/hide tabs')
-        #self.setToolTip('Control fields/buttons')
         self.but_save.setToolTip('To save array in file\nclick on numpy.array in the tree\nthen click on this Save button')
         self.but_exp_col.setToolTip('Collapse/expand hdf5 tree')
         self.w_fname.but.setToolTip('hdf5 file selection')
@@ -89,7 +87,6 @@ class H5VControl(CMWControlBase):
         #self.but_save.setIcon(icon.icon_save)
         #self.but_save.setStyleSheet('') #style.styleButton, style.styleButtonGood
         self.enable_but_save()
-        self.but_tabs.setFixedWidth(50)
 
 
     def on_but_exp_col(self):
