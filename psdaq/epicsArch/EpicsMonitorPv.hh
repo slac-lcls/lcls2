@@ -41,6 +41,7 @@ namespace Drp
     void onConnect()    override;
     void onDisconnect() override;
     void updated()      override;
+    void _ready();
   private:
     enum State { NotReady, Ready };
   private: // Marked static to share one mutex & condvar across all instances
