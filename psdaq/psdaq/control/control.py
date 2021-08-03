@@ -1370,10 +1370,7 @@ class CollectionManager():
                     self.cmstate[level][int(key2)]['active'] = body[level][key2]['active']
                     if level == 'drp':
                         # drp readout group
-                        if self.cmstate[level][int(key2)]['active'] == 1:
-                            self.cmstate[level][int(key2)]['det_info']['readout'] = body[level][key2]['det_info']['readout']
-                        else:
-                            self.cmstate[level][int(key2)]['det_info']['readout'] = self.platform
+                        self.cmstate[level][int(key2)]['det_info']['readout'] = body[level][key2]['det_info']['readout']
 
         except Exception as ex:
             msg = 'handle_selectplatform(): %s' % ex
@@ -1506,8 +1503,10 @@ class CollectionManager():
                             self.cmstate[level][id]['active'] = 0
                             self.report_warning('rollcall: %s NOT selected for data collection' % responder)
                             if level == 'drp':
+                                group = json_data['activedet'][level][alias]['det_info']['readout']
                                 self.cmstate[level][id]['det_info'] = {}
-                                self.cmstate[level][id]['det_info']['readout'] = self.platform
+                                self.cmstate[level][id]['det_info']['readout'] = group
+                                logging.info(f"condition_rollcall: newfound drp {responder} is in readout group {group}")
                         else:
                             # neither detector nor meb: default to active=1
                             self.cmstate[level][id]['active'] = 1
