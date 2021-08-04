@@ -79,19 +79,34 @@ class ts_connector:
         link_ids = self.ctxt.get(pv_names)
 
         pv_names = []
+        downstream_xpm_names = []
         for xpm_port in range(14):
             pv_names.append(pv+'LinkGroupMask'+str(xpm_port))
         link_masks = self.ctxt.get(pv_names)
 
         for i in range(14):
             xlink = xpm_link(link_ids[i])
+            # this gets run for all xpm's "downstream" of the master xpm
             if xlink.is_xpm():
+                downstream_xpm_names.append(self.xpm_base+str(xlink.xpm_num()))
                 self.xpm_link_disable(self.xpm_base+str(xlink.xpm_num())+':',groups)
                 link_masks[i] = 0xff   # xpm to xpm links should be enabled for everything
             else:
                 link_masks[i] &= ~groups
 
         self.ctxt.put(pv_names,link_masks)
+
+        # this code disables the "master" feature for each of the
+        # downstream xpm's for the readout groups used by the new xpm master
+        pv_names_downstream_xpm_master_enable = []
+        for name in downstream_xpm_names:
+            for igroup in range(8):
+                if (1<<igroup)&groups:
+                    pv_names_downstream_xpm_master_enable.append(name+':PART:%d:Master'%igroup)
+        num_master_disable = len(pv_names_downstream_xpm_master_enable)
+        if (num_master_disable):
+            print('*** Disable downstream xpm readout group master:',pv_names_downstream_xpm_master_enable)
+            self.ctxt.put(pv_names_downstream_xpm_master_enable,[0]*num_master_disable)
         
     def xpm_link_disable_all(self):
         # Start from the master and recursively remove the groups from each downstream link
