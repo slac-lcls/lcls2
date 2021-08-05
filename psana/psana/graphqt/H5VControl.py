@@ -11,8 +11,7 @@ Usage ::
 Created on 2020-01-04 by Mikhail Dubrovin
 """
 
-from psana.graphqt.CMWControlBase import *  # CMWControlBase, QApplication, QSize, ..., icon, style, cp, logging, os, sys
-from psana.graphqt.QWFileNameV2 import QWFileNameV2
+from psana.graphqt.CMWControlBase import *  # CMWControlBase, QApplication, QSize, ..., icon, style, cp, logging, os, sys, QWFileNameV2
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, np
 
 logger = logging.getLogger(__name__)
@@ -38,16 +37,18 @@ class H5VControl(CMWControlBase):
 
     def __init__(self, **kwargs):
 
-        parent = kwargs.get('parent', None)
+        kwargs['parent'] = kwargs.get('parent', None)
+        kwargs['path']   = cp.h5vmain.wtree.fname if cp.h5vmain is not None else './test.h5'
+        kwargs['label']  = 'HDF5 file:'
+        kwargs['fltr']   = '*.h5 *.hdf5 \n*'
+        kwargs['dirs']   = dirs_to_search()
         CMWControlBase.__init__(self, **kwargs)
         self.lab_ctrl = QLabel('Control:')
 
         self.but_exp_col = QPushButton('Collapse')
-
-        fname = cp.h5vmain.wtree.fname if cp.h5vmain is not None else './test.h5'
-
-        self.w_fname = QWFileNameV2(None, label='HDF5 file:',\
-           path=fname, fltr='*.h5 *.hdf5 \n*', dirs=dirs_to_search())
+        self.w_fname = self.wfnm # from base class
+        #self.w_fname = QWFileNameV2(None, label='HDF5 file:',\
+        #   path=fname, fltr='*.h5 *.hdf5 \n*', dirs=dirs_to_search())
 
         self.hbox = QHBoxLayout() 
         self.hbox.addWidget(self.w_fname)
@@ -82,11 +83,11 @@ class H5VControl(CMWControlBase):
     def set_style(self):
         CMWControlBase.set_style(self)
         self.lab_ctrl.setStyleSheet(style.styleLabel)
-        self.w_fname.lab.setStyleSheet(style.styleLabel)
         self.but_exp_col.setIcon(icon.icon_folder_open)
+        #self.w_fname.lab.setStyleSheet(style.styleLabel)
         #self.but_save.setIcon(icon.icon_save)
         #self.but_save.setStyleSheet('') #style.styleButton, style.styleButtonGood
-        self.enable_but_save()
+        self.enable_buts()
 
 
     def on_but_exp_col(self):
@@ -133,10 +134,11 @@ class H5VControl(CMWControlBase):
             logger.info('command "Save" is cancelled')
 
 
-    def enable_but_save(self, is_good=False):
-        self.but_save.setStyleSheet(style.styleButtonGood if is_good else style.styleButton)
-        self.but_save.setFlat(not is_good)
-        self.but_save.setEnabled(is_good)
+    def enable_buts(self, is_good=False):
+        for but in (self.but_save, self.but_view):
+            but.setStyleSheet(style.styleButtonGood if is_good else style.styleButton)
+            but.setFlat(not is_good)
+            but.setEnabled(is_good)
         if not is_good:
           self.dname = None
           self.data = None
@@ -145,7 +147,7 @@ class H5VControl(CMWControlBase):
     def on_item_selected(self, selected, deselected):
         logger.debug('TBD on_item_selected')
         wtree = cp.h5vmain.wtree
-        self.enable_but_save()
+        self.enable_buts()
         itemsel = wtree.model.itemFromIndex(selected)
         if itemsel is None: return
         if isinstance(itemsel.data(), wtree.h5py.Dataset):
@@ -157,7 +159,7 @@ class H5VControl(CMWControlBase):
             logger.info('full name: %s' % dname)
 
             is_good_to_save = isinstance(data, np.ndarray) and data.size>1
-            self.enable_but_save(is_good_to_save)
+            self.enable_buts(is_good_to_save)
 
 
 #    def on_but_clicked(self):
