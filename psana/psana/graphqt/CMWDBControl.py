@@ -609,7 +609,7 @@ class CMWDBControl(CMWControlBase):
         logger.debug('on_but_view')
         wdoce = cp.cmwdbdoceditor
         if wdoce is None or wdoce.data_nda is None:
-            logger.warning('Document editor is not selected. Select collection in DB then document in the List mode.')
+            logger.warning('Nothing selected to view yet. Select DB/collection then document to view in the List mode.')
             return
         #doc  = wdoce.get_model_dicdoc(discard_id_ts=False)
         #data = wdoce.get_data_nda()
