@@ -12,9 +12,6 @@ from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QTextEdit, QComboBox, 
 from PyQt5.QtCore import Qt #, QMargins
 
 from psana.graphqt.Styles import style
-
-#from ConfigParametersForApp import cp
-#from Logger                 import logger
 import psana.graphqt.QWUtils as gu
 
 from psana.pyalgos.generic.Utils import load_textfile
