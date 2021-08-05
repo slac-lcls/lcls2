@@ -12,8 +12,7 @@ Usage ::
 Created on 2021-06-14 by Mikhail Dubrovin
 """
 
-from psana.graphqt.CMWControlBase import * #cp, CMWControlBase, QApplication, os, sys, logging, QRectF
-from psana.graphqt.QWFileNameV2 import QWFileNameV2
+from psana.graphqt.CMWControlBase import * #cp, CMWControlBase, QApplication, os, sys, logging, QRectF, QWFileNameV2
 from psana.graphqt.IVControlSpec import IVControlSpec
 import psana.pyalgos.generic.PSUtils as psu
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
@@ -36,21 +35,22 @@ def image_from_ndarray(nda):
 class IVControl(CMWControlBase):
     """QWidget for Image Viewer control fields"""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwa):
 
-        parent = kwargs.get('parent',None)
         d = '/cds/group/psdm/detector/data2_test/misc/'
-        fname_nda = d + 'Select'
         fname_geo = d + 'Select'
+        kwa.setdefault('parent', None)
+        kwa.setdefault('path', d + 'Select')
+        kwa.setdefault('label', 'File:')
+        kwa.setdefault('fltr', '*.text *.txt *.npy *.data *.dat\n*')
+        kwa.setdefault('dirs', dirs_to_search())
 
-        CMWControlBase.__init__(self, **kwargs)
+        CMWControlBase.__init__(self, **kwa)
         cp.ivcontrol = self
         self.arr_his_old = None
         self.arr_img_old = None
 
-        self.wfnm_nda = QWFileNameV2(None, label='Array:',\
-           path=fname_nda, fltr='*.txt *.npy *.data *.dat\n*', dirs=dirs_to_search())
-
+        self.wfnm_nda = self.wfnm # from base class
         self.wfnm_geo = QWFileNameV2(None, label='Geometry:',\
                                      path=fname_geo, fltr='*.txt *.data\n*', dirs=dirs_to_search())
 
@@ -131,7 +131,7 @@ class IVControl(CMWControlBase):
         self.but_reset.setFixedWidth(50)
         self.but_buts.setFixedWidth(50)
         self.but_exp.setFixedWidth(80)
-        self.wfnm_nda.lab.setStyleSheet(style.styleLabel)
+        #self.wfnm_nda.lab.setStyleSheet(style.styleLabel)
         self.wfnm_geo.lab.setStyleSheet(style.styleLabel)
          #self.but_buts.setStyleSheet(style.styleButtonstyleLabel)
         #self.but_tabs.setVisible(True)
