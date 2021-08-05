@@ -666,6 +666,7 @@ class CollectionManager():
             elif key[0] in ControlDef.transitions:
                 # is body dict not-empty?
                 if body:
+                    logging.debug("service_requests: body not empty" % body)
                     self.phase1Info[key[1]] = body
                     logging.debug('*** %s %s' % (key[1], phase1Info))
                 # send 'ok' reply before calling handle_trigger()
@@ -680,14 +681,18 @@ class CollectionManager():
                 try:
                     # send error message, if any, to front_pub socket
                     self.report_error(retval['body']['err_info'])
-                except KeyError:
+                except KeyError as keyerr:
+                    logging.error("service_requests: transitions key ERROR = %s" % keyerr)
                     pass
             else:
+                logging.debug("service_requests, other request: key = %s" % key)
                 answer = self.handle_request[key[0]](body)
-        except KeyError:
+        except KeyError as keyerr:
+            logging.error("service_requests: key ERROR = %s" % keyerr)
             answer = create_msg('error')
         if answer is not None:
             self.front_rep.send_json(answer)
+        logging.debug("service_requests: complete with key %s" % key)
 
     def service_fast(self):
         # msg['header']['key'] formats:
