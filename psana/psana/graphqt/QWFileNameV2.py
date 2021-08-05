@@ -28,7 +28,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QFileDialog
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, Qt
 
 class QWFileNameV2(QWidget):
     """Widget for file name input
@@ -91,19 +91,20 @@ class QWFileNameV2(QWidget):
         self.but.setMinimumWidth(200)
         self.layout().setContentsMargins(0,0,0,0)
         self.but.setStyleSheet(self.but_style_on_start)
+        self.lab.setAlignment(Qt.AlignRight)
+        #self.lab.setStyleSheet(style.styleLabel)
 
 
     def on_but(self):
         path_old = self.path
-
-        qfdial = QFileDialog(directory=self.path, filter=self.fltr)
+        qfdial = QFileDialog(directory=self.path)
         qfdial.setHistory([]) # clear history
         rsp = qfdial.restoreState(qfdial.saveState())
         qfdial.setHistory(self.dirs)
         logger.debug('QFileDialog.history: %s' % str(qfdial.history()))
-        resp = qfdial.getSaveFileName(parent=self, caption='Output file')\
+        resp = qfdial.getSaveFileName(parent=self, caption='Output file', filter=self.fltr)\
                if self.mode == 'w' else \
-               qfdial.getOpenFileName(parent=self, caption='Input file')
+               qfdial.getOpenFileName(parent=self, caption='Input file', filter=self.fltr)
 
         logger.debug('response: %s len=%d' % (resp, len(resp)))
 
