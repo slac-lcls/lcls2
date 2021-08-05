@@ -21,16 +21,17 @@ from psana.graphqt.CMConfigParameters import cp
 class CMWMainTabs(QWidget):
     """GUI for tabs and associated widgets
     """
-    tab_names = ['CDB', 'IV', 'TV', 'HDF5', 'File Manager', 'Configuration', 't-converter', 'Mask Editor', 'Test']
+    tab_names = ['CDB', 'Image Viewer', 'Text Browser', 'File Manager', 'HDF5', 't-converter', 'Mask Editor', 'Configuration', 'Test']
 
     tool_tips = [\
       'Calibration Data Base\nviewer/manager',\
-      'Image Viewer',\
-      'Text Viewer',\
+      'Image Viewer for ndarrays',\
+      'Text Browser for text-like calibration constants',\
+      'File Manager for easy access calibration constants\nunder experimental calib directory',\
       'HDF5 file browser',\
-      'File Manager for calibration constants',\
-      'Configuration manager for this app',\
+      'Time converter between Date&Time <-> POSIX <-> LCLS2',\
       'Mask Editor for images',\
+      'Configuration manager for this app',\
       'Test Window',\
     ]
 
@@ -48,14 +49,6 @@ class CMWMainTabs(QWidget):
         self.make_tab_bar(start_tab_name)
         self.gui_selector(start_tab_name)
 
-        #self.whbox = QWidget(self)
-        #self.whbox.setLayout(self.box_layout)
-        #self.vspl = QSplitter(Qt.Vertical)
-        #self.vspl.addWidget(self.tab_bar)
-        #self.vspl.addWidget(self.whbox)
-        #self.box.addStretch(1)
-        #self.box.addWidget(self.vspl)
-
         self.box = QVBoxLayout(self)
         self.box.addWidget(self.tab_bar)
         self.box.addLayout(self.box_layout)
@@ -69,7 +62,6 @@ class CMWMainTabs(QWidget):
     def set_tool_tips(self):
         for t,s in zip(self.tab_names, self.tool_tips):
           self.tab_bar.setTabToolTip(self.tab_names.index(t), s)
-        #self.setToolTip('Main tab window')
 
 
     def set_style(self):
@@ -135,13 +127,14 @@ class CMWMainTabs(QWidget):
             from psana.graphqt.FMWTabs import FMWTabs
             self.gui_win = FMWTabs()
 
-        elif tab_name == 'IV':
+        elif tab_name == 'Image Viewer':
             from psana.graphqt.IVMain import IVMain
             #if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
             self.gui_win = IVMain()
 
-        elif tab_name == 'TV':
-            self.gui_win = QTextEdit('Selected tab "%s"' % tab_name)
+        elif tab_name == 'Text Browser':
+            from psana.graphqt.QWTextBrowser import QWTextBrowser
+            self.gui_win = QWTextBrowser()
 
         elif tab_name == 'Mask Editor':
             self.gui_win = QTextEdit('Selected tab "%s"' % tab_name)
@@ -191,12 +184,6 @@ class CMWMainTabs(QWidget):
     def closeEvent(self, e):
         logger.debug('closeEvent')
 
-        #try   : self.gui_win.close()
-        #except: pass
-
-        #try   : del self.gui_win
-        #except: pass
-
         if self.gui_win is not None:
             self.gui_win.close()
 
@@ -230,26 +217,26 @@ class CMWMainTabs(QWidget):
         elif data is None:
             cp.last_selected_data = None
             cp.last_selected_fname.setValue(fname)
-            tabname = 'TV' if 'geometry' in fname or 'common_mode' in fname else 'IV'
+            tabname = 'Text Browser' if 'geometry' in fname or 'common_mode' in fname else 'Image Viewer'
             self.set_tab(tabname)
         elif isinstance(data, np.ndarray):
             cp.last_selected_data = data
             cp.last_selected_fname.setValue(fname)
             logger.info(info_ndarr(data, 'switch to Image Viewer to view data:'))
             logger.warning('TBD: IV NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
-            self.set_tab(tabname='IV')
+            self.set_tab(tabname='Image Viewer')
         elif isinstance(data, str):
             cp.last_selected_data = data
             cp.last_selected_fname.setValue(fname)
             logger.info(info_ndarr(data, 'switch to Text Viewer to view data:'))
-            logger.warning('TBD: TV NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
-            self.set_tab(tabname='TV')
+            logger.warning('TBD: Text Browser NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
+            self.set_tab(tabname='Text Browser')
         else:
-            logger.debug('data of the selected document is not numpy array - do not switch to IV')
+            logger.debug('data of the selected document is not numpy array - do not switch to Image Viewer')
             cp.last_selected_data = None
 
 
-    def set_tab(self, tabname='IV'):
+    def set_tab(self, tabname='Image Viewer'):
         logger.debug('switch tab to %s' % str(tabname))
         self.tab_bar.setCurrentIndex(self.tab_names.index(tabname))
 
