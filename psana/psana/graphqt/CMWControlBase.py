@@ -17,21 +17,29 @@ import sys
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QGridLayout, QPushButton, QLabel, QComboBox, QLineEdit
+#from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QGridLayout,\
+                            QPushButton, QLabel, QComboBox, QLineEdit, QTextEdit
 from PyQt5.QtCore import QSize, QRectF, pyqtSignal, QModelIndex
 
+from psana.graphqt.QWFileNameV2 import QWFileNameV2
 from psana.graphqt.CMConfigParameters import cp, dirs_to_search
 from psana.graphqt.Styles import style
 from psana.graphqt.QWIcons import icon
 
 
 class CMWControlBase(QWidget):
-    """QWidget - base class for control buttons"""
+    """QWidget base class with a regular set of buttons for control panels"""
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwa):
 
-        parent = kwargs.get('parent',None)
-        QWidget.__init__(self, parent)
+        QWidget.__init__(self, kwa.get('parent', None))
+
+        self.wfnm = QWFileNameV2(parent = self,\
+          label  = kwa.get('label', 'File:'),\
+          path   = kwa.get('path', '/cds/group/psdm/detector/data2_test/misc/Select'),\
+          fltr   = kwa.get('fltr', '*.txt *.npy *.data *.dat\n*'),\
+          dirs   = kwa.get('dirs', dirs_to_search()))
 
         self.but_tabs = QPushButton('Tabs %s' % cp.char_expand)
         self.but_save = QPushButton('Save')
@@ -43,17 +51,21 @@ class CMWControlBase(QWidget):
 
         if __name__ == "__main__":
             self.box1 = QHBoxLayout()
+            self.box1.addWidget(self.wfnm)
             self.box1.addStretch(1) 
             self.box1.addWidget(self.but_tabs)
             self.box1.addWidget(self.but_save)
             self.box1.addWidget(self.but_view)
             self.setLayout(self.box1)
 
+            self.wfnm.connect_path_is_changed_to_recipient(self.on_changed_fname)
+
             self.set_tool_tips()
             self.set_style()
 
 
     def set_tool_tips(self):
+        self.wfnm.setToolTip('Select file')
         self.but_tabs.setToolTip('Show/hide tabs')
         self.but_save.setToolTip('Save button')
         self.but_view.setToolTip('Use the last selected item to view in IV')
@@ -66,6 +78,11 @@ class CMWControlBase(QWidget):
         self.but_tabs.setFixedWidth(60)
         self.but_save.setFixedWidth(60)
         self.but_view.setFixedWidth(60)
+        self.wfnm.lab.setStyleSheet(style.styleLabel)
+
+
+    def on_changed_fname(self, fname):
+        logger.debug('on_changed_fname: %s' % fname)
 
 
     def on_but_tabs(self):
