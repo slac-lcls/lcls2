@@ -29,7 +29,9 @@ cdef class SmdReader:
     cdef uint64_t   block_size_stepbufs[100]#
     cdef float      total_time
     cdef int        num_threads
-    cdef char*      send_buf                # contains repacked data for each EventBuilder node
+    cdef Buffer*    send_bufs               # array of customed Buffers (one per EB node)
+    cdef int        sendbufsize             # size of each send buffer
+    cdef int        n_eb_nodes
 
     def __init__(self, int[:] fds, int chunksize, int max_retries):
         assert fds.size > 0, "Empty file descriptor list (fds.size=0)."
@@ -40,10 +42,20 @@ cdef class SmdReader:
         self.sleep_secs         = 1
         self.total_time         = 0
         self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
-        self.send_buf           = <char *>malloc(0x8000000) 
+        self.n_eb_nodes         = int(os.environ.get('PS_EB_NODES', '1'))
+        self.send_bufs          = <Buffer *>malloc(self.n_eb_nodes * sizeof(Buffer))
+        self.sendbufsize        = 0x4000000
+        self._init_send_buffers()
 
     def __dealloc__(self):
-        free(self.send_buf)
+        cdef Py_ssize_t i
+        for i in range(self.n_eb_nodes):
+            free(self.send_bufs[i].chunk)
+    
+    cdef void _init_send_buffers(self):
+        cdef Py_ssize_t i
+        for i in range(self.n_eb_nodes):
+            self.send_bufs[i].chunk      = <char *>malloc(self.sendbufsize)
     
     def is_complete(self):
         """ Checks that all buffers have at least one event 
@@ -86,7 +98,7 @@ cdef class SmdReader:
                 if all(flag_founds): break
 
                 time.sleep(self.sleep_secs)
-                print(f'smdreader waiting for an event...retry#{cn_retries+1} (max_retries={self.max_retries}, use PS_R_MAX_RETRIES for different value)')
+                print(f'waiting for an event...retry#{cn_retries+1} (max_retries={self.max_retries}, use PS_R_MAX_RETRIES for different value)')
                 self.prl_reader.just_read()
                 cn_retries += 1
                 if cn_retries >= self.max_retries:
@@ -260,7 +272,7 @@ cdef class SmdReader:
             found = True
         return found
 
-    def repack(self, step_views, only_steps=False):
+    def repack(self, step_views, eb_node_id, only_steps=False):
         """ Repack step and smd data in one consecutive chunk with footer at end."""
         cdef Buffer* smd_buf
         cdef Py_buffer step_buf
@@ -269,6 +281,9 @@ cdef class SmdReader:
         cdef unsigned footer[1000]
         footer[self.prl_reader.nfiles] = self.prl_reader.nfiles 
         cdef char[:] view
+        cdef int eb_idx = eb_node_id - 1        # eb rank starts from 1 (0 is Smd0)
+        cdef char* send_buf
+        send_buf = self.send_bufs[eb_idx].chunk # select the buffer for this eb
         
         # Copy step and smd buffers if exist
         for i in range(self.prl_reader.nfiles):
@@ -276,7 +291,7 @@ cdef class SmdReader:
             view_ptr = <char *>step_buf.buf
             step_size = step_buf.len
             if step_size > 0:
-                memcpy(self.send_buf + offset, view_ptr, step_size)
+                memcpy(send_buf + offset, view_ptr, step_size)
                 offset += step_size
             PyBuffer_Release(&step_buf)
 
@@ -285,7 +300,7 @@ cdef class SmdReader:
                 smd_size = self.block_size_bufs[i]
                 if smd_size > 0:
                     smd_buf = &(self.prl_reader.bufs[i])
-                    memcpy(self.send_buf + offset, smd_buf.chunk + smd_buf.st_offset_arr[self.i_st_bufs[i]], smd_size)
+                    memcpy(send_buf + offset, smd_buf.chunk + smd_buf.st_offset_arr[self.i_st_bufs[i]], smd_size)
                     offset += smd_size
             
             footer[i] = step_size + smd_size
@@ -293,12 +308,12 @@ cdef class SmdReader:
 
         # Copy footer 
         footer_size = sizeof(unsigned) * (self.prl_reader.nfiles + 1)
-        memcpy(self.send_buf + offset, &footer, footer_size) 
+        memcpy(send_buf + offset, &footer, footer_size) 
         total_size += footer_size
-        view = <char [:total_size]> (self.send_buf) 
+        view = <char [:total_size]> (send_buf) 
         return view
 
-    def repack_parallel(self, step_views, only_steps=0):
+    def repack_parallel(self, step_views, eb_node_id, only_steps=0):
         """ Repack step and smd data in one consecutive chunk with footer at end.
         Memory copying is done is parallel.
         """
@@ -312,6 +327,9 @@ cdef class SmdReader:
         footer[self.prl_reader.nfiles] = self.prl_reader.nfiles 
         cdef char[:] view
         cdef int c_only_steps = only_steps
+        cdef int eb_idx = eb_node_id - 1        # eb rank starts from 1 (0 is Smd0)
+        cdef char* send_buf
+        send_buf = self.send_bufs[eb_idx].chunk # select the buffer for this eb
 
         # Compute beginning offsets of each chunk and get a list of buffer objects
         for i in range(self.prl_reader.nfiles):
@@ -330,20 +348,20 @@ cdef class SmdReader:
         for i in prange(self.prl_reader.nfiles, nogil=True, num_threads=self.num_threads):
             footer[i] = 0
             if step_sizes[i] > 0:
-                memcpy(self.send_buf + offsets[i], ptr_step_bufs[i], step_sizes[i])
+                memcpy(send_buf + offsets[i], ptr_step_bufs[i], step_sizes[i])
                 offsets[i] += step_sizes[i]
                 footer[i] += step_sizes[i]
             
             if c_only_steps == 0:
                 if self.block_size_bufs[i] > 0:
-                    memcpy(self.send_buf + offsets[i], 
+                    memcpy(send_buf + offsets[i], 
                             self.prl_reader.bufs[i].chunk + self.prl_reader.bufs[i].st_offset_arr[self.i_st_bufs[i]], 
                             self.block_size_bufs[i])
                     footer[i] += self.block_size_bufs[i]
             
         # Copy footer 
         footer_size = sizeof(unsigned) * (self.prl_reader.nfiles + 1)
-        memcpy(self.send_buf + total_size, &footer, footer_size) 
+        memcpy(send_buf + total_size, &footer, footer_size) 
         total_size += footer_size
-        view = <char [:total_size]> (self.send_buf) 
+        view = <char [:total_size]> (send_buf) 
         return view
