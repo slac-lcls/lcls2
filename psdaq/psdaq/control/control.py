@@ -681,8 +681,8 @@ class CollectionManager():
                 try:
                     # send error message, if any, to front_pub socket
                     self.report_error(retval['body']['err_info'])
-                except KeyError as keyerr:
-                    logging.error("service_requests: transitions key ERROR = %s" % keyerr)
+                except KeyError:
+                    # if 'err_info' is missing then ignore KeyError
                     pass
             else:
                 logging.debug("service_requests, other request: key = %s" % key)
@@ -1375,10 +1375,7 @@ class CollectionManager():
                     self.cmstate[level][int(key2)]['active'] = body[level][key2]['active']
                     if level == 'drp':
                         # drp readout group
-                        if self.cmstate[level][int(key2)]['active'] == 1:
-                            self.cmstate[level][int(key2)]['det_info']['readout'] = body[level][key2]['det_info']['readout']
-                        else:
-                            self.cmstate[level][int(key2)]['det_info']['readout'] = self.platform
+                        self.cmstate[level][int(key2)]['det_info']['readout'] = body[level][key2]['det_info']['readout']
 
         except Exception as ex:
             msg = 'handle_selectplatform(): %s' % ex
@@ -1429,13 +1426,19 @@ class CollectionManager():
 
         return json_data
 
-    def get_required_set(self, d):
-        retval = set()
-        for level, item1 in d["activedet"].items():
-            for alias, item2 in item1.items():
-                if item2["active"]:
-                    retval.add(level + "/" + alias)
-        return retval
+    def get_active_and_inactive(self, d):
+        active_set = set()
+        inactive_set = set()
+        try:
+            for level, item1 in d["activedet"].items():
+                for alias, item2 in item1.items():
+                    if item2["active"]:
+                        active_set.add(level + "/" + alias)
+                    else:
+                        inactive_set.add(level + "/" + alias)
+        except KeyError as keyerr:
+            logging.error("get_active_and_inactive: key ERROR = %s" % keyerr)
+        return active_set, inactive_set
 
     def progressReport(self, begin_time, end_time, *, progress_txt):
         elapsed = (datetime.now(timezone.utc) - begin_time).total_seconds()
@@ -1447,7 +1450,8 @@ class CollectionManager():
     def condition_rollcall(self):
         global report_keys
         retval = False
-        required_set = set()
+        active_set = set()
+        inactive_set = set()
 
         if not self.bypass_activedet and not os.path.isfile(self.activedetfilename):
             self.report_error('Missing active detectors file %s' % self.activedetfilename)
@@ -1460,14 +1464,16 @@ class CollectionManager():
             json_data = self.read_json_file(self.activedetfilename)
             if len(json_data) > 0:
                 if "activedet" in json_data.keys():
-                    required_set = self.get_required_set(json_data)
+                    active_set, inactive_set = self.get_active_and_inactive(json_data)
+                    logging.debug(f'rollcall: active_set = {active_set}')
+                    logging.debug(f'rollcall: inactive_set = {inactive_set}')
                 else:
                     self.report_error('Missing "activedet" key in active detectors file %s' % self.activedetfilename)
-            if not required_set:
+            if not active_set:
                 self.report_error('Failed to read configuration from active detectors file %s' % self.activedetfilename)
 
         logging.debug('rollcall: bypass_activedet = %s' % self.bypass_activedet)
-        missing_set = required_set.copy()
+        missing_set = active_set.copy()
         newfound_set = set()
         self.cmstate.clear()
         self.ids.clear()
@@ -1484,7 +1490,7 @@ class CollectionManager():
                     alias = item['proc_info']['alias']
                     responder = level + '/' + alias
                     if not self.bypass_activedet:
-                        if responder not in required_set:
+                        if responder not in active_set:
                             if responder not in newfound_set:
                                 newfound_set.add(responder)
                             elif responder not in missing_set:
@@ -1511,9 +1517,15 @@ class CollectionManager():
                             self.cmstate[level][id]['active'] = 0
                             self.report_warning('rollcall: %s NOT selected for data collection' % responder)
                             if level == 'drp':
+                                if responder in inactive_set:
+                                    # use readout group from active detector file
+                                    group = json_data['activedet'][level][alias]['det_info']['readout']
+                                else:
+                                    # not yet in active detector file, use default readout group
+                                    group = self.platform
                                 self.cmstate[level][id]['det_info'] = {}
-                                self.cmstate[level][id]['det_info']['readout'] = self.platform
-                                logging.info(f"rollcall: newfound drp {responder} is in readout group {self.platform}")
+                                self.cmstate[level][id]['det_info']['readout'] = group
+                                logging.info(f"rollcall: newfound drp {responder} is in readout group {group}")
                         else:
                             # neither detector nor meb: default to active=1
                             self.cmstate[level][id]['active'] = 1
