@@ -30,6 +30,10 @@ class QWTextBrowser(CMWControlBase):
         kwa.setdefault('fltr', '*.txt *.text *.dat *.data *.meta\n*')
         kwa.setdefault('dirs', dirs_to_search())
 
+        last_selected_fname = cp.last_selected_fname.value()
+        path = kwa['path']
+        if os.path.basename(path)=='Select' and last_selected_fname is not None: path = last_selected_fname
+
         CMWControlBase.__init__(self, **kwa)
 
         self.is_editable = kwa.get('is_editable', True)
@@ -60,7 +64,6 @@ class QWTextBrowser(CMWControlBase):
 
         cp.qwtextbrowser = self
 
-        path = kwa['path']
         if os.path.basename(path) != 'Select': self.on_changed_fname(path)
 
 
@@ -93,6 +96,10 @@ class QWTextBrowser(CMWControlBase):
         logger.debug('on_changed_fname: %s' % fname)
         txt = load_textfile(fname)
         logger.debug('loaded %d lines, %d chars from file %s' % (txt.count('\n'), len(txt), fname))
+
+        txtbut = str(self.wfnm.but.text())
+        if str(fname) != txtbut: self.wfnm.but.setText(str(fname))
+
         self.edi_txt.setText(txt)
 
  
