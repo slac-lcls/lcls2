@@ -25,7 +25,7 @@ import os #import psana.pyalgos.generic.UtilsFS as ufs
 
 #from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWTree import *
-
+from psana.pyalgos.generic.UtilsFS import safe_listdir
 #from PyQt5.QtCore import pyqtSignal # Qt 
 
 
@@ -61,7 +61,7 @@ class FSTree(QWTree):
 
 
     def fill_tree_model(self):
-        logger.debug('FSTree.fill_tree_model')
+        logger.debug('FSTree.fill_tree_model for %s' % self.topdir)
         from time import time
         t0_sec = time()
 
@@ -72,6 +72,19 @@ class FSTree(QWTree):
         if not os.path.isdir(tdir):
             logger.warning('NON-EXISTENT PATH: %s' % str(tdir))
             return
+
+        if not os.access(tdir, os.R_OK): # os.W_OK | os.R_OK
+            logger.warning('NON-ACCESSIBLE PATH FOR READOUT: %s' % str(tdir))
+            return
+
+        logger.debug('call safe_listdir("%s")' % str(tdir))
+        r = safe_listdir(tdir, timeout_sec=5)
+        if r is None:
+            logger.warning('safe_listdir is None for: %s' % str(tdir))
+            return
+
+        logger.debug('fill_tree_model for top directory:%s' % str(tdir))
+
 
         self.fill_tree_model_dir(tdir, pitem=None, **self.kwa)
 
@@ -99,11 +112,15 @@ class FSTree(QWTree):
 
     def fill_tree_model_dir(self, dirname, pitem=None, **kwa):
 
-        names = sorted(os.listdir(dirname)) # ufs.list_of_files_in_dir(pdir)
+        logger.debug('call safe_listdir("%s")' % str(dirname))
+        lst = safe_listdir(dirname)
+        if lst is None:
+            logger.warning('safe_listdir is None for: %s' % str(dirname))
+            return
 
-        s = 'FSTree.fill_tree_model_dir names: %s\nnumber of names: %d' % (str(names), len(names))
-        logger.debug(s)
-        print(s)
+        names = sorted(lst) # ufs.list_of_files_in_dir(pdir)
+
+        logger.debug('FSTree.fill_tree_model_dir len: %d names: %s' % (len(names), str(names)))
 
         is_selectable_dir  = kwa.get('is_selectable_dir', True)
         ptrns_selectable   = kwa.get('selectable_ptrns', []) #['.data',])
