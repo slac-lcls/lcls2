@@ -28,6 +28,9 @@ class FMW1Control(CMWControlBase):
         CMWControlBase.__init__(self, **kwargs)
         cp.fmw1control = self
 
+        self.wfnm.setVisible(False)
+        self.wfnm.setEnabled(False)
+
         self.lab_exp     = QLabel('Exp:')
         self.but_exp     = QPushButton(cp.exp_name.value())
         self.but_exp_col = QPushButton('Collapse')
@@ -73,6 +76,7 @@ class FMW1Control(CMWControlBase):
         self.but_exp_col.setFixedWidth(80)
         #self.but_buts.setStyleSheet(style.styleButton)
         #self.but_tabs.setVisible(True)
+        self.layout().setContentsMargins(5,0,5,0)
 
 
     def on_but_exp(self):
@@ -187,7 +191,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     w = FMW1Control()
-    w.setGeometry(100, 50, 500, 80)
+    w.setGeometry(100, 50, 500, 40)
     w.setWindowTitle('FM Control Panel')
     w.show()
     app.exec_()
