@@ -37,11 +37,16 @@ class FMW1Main(QWidget):
 
         #fname = kwargs.get('fname', None)
 
-        self.wfstree = FSTree(parent=parent,\
-               topdir=dir_calib(),\
+        tdir = dir_calib()
+        #tdir = '/cds/data/psdm/XPP/xpptut13/calib'
+        #tdir = '/cds/data/psdm/MEC/mecx24215'
+        logger.debug('topdir: %s' % tdir)
+
+        self.wfstree = FSTree(parent=None,\
+               topdir=tdir,\
                is_selectable_dir=False,\
                selectable_ptrns=['.data'],\
-               unselectable_ptrns=['HISTORY']\
+               unselectable_ptrns=['HISTORY','.data~']\
               )
 
         self.wctrl = FMW1Control(parent=parent)
