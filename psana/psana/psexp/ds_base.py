@@ -43,7 +43,7 @@ class DataSourceBase(abc.ABC):
     def __init__(self, **kwargs):
         """Initializes datasource base"""
         self.filter      = 0         # callback that takes an evt and return True/False.
-        self.batch_size  = 1         # length of batched offsets
+        self.batch_size  = 1000      # no. of events per batch sent to a bigdata core
         self.max_events  = 0         # no. of maximum events
         self.detectors   = []        # user-selected detector names
         self.exp         = None      # experiment id (e.g. xpptut13)
