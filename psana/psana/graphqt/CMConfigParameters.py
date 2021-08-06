@@ -31,12 +31,12 @@ from psana.pyalgos.generic.Utils import list_of_hosts as lshosts
 import psana.pscalib.calib.CalibConstants as cc
 
 
-def dir_exp(dirdef='/cds/data/psdm/XPP/xpptut13'):
+def dir_exp(dirdef='/cds/data/psdm/CXI/cxitut13'):
     return dirdef if cp.exp_name.is_default() else\
            os.path.join(cp.instr_dir.value(), cp.instr_name.value(), cp.exp_name.value())
 
 
-def dir_calib(dirdef='/cds/data/psdm/XPP/xpptut13'):
+def dir_calib(dirdef='/cds/data/psdm/XPP/xpptut21'): #XPP/xpptut13, MEC/mecx24215, CXI/cxitut13, XCS/xcstut13
     return os.path.join(dir_exp(dirdef), 'calib')
 
 
