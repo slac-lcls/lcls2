@@ -222,26 +222,26 @@ class CMWMainTabs(QWidget):
         elif data is None:
             cp.last_selected_data = None
             cp.last_selected_fname.setValue(fname)
-            tabname = 'Text Browser' if 'geometry' in fname or 'common_mode' in fname else 'Image Viewer'
+            tabname = 'Text' if 'geometry' in fname or 'common_mode' in fname else 'Image'
             self.set_tab(tabname)
         elif isinstance(data, np.ndarray):
             cp.last_selected_data = data
             cp.last_selected_fname.setValue(fname)
             logger.info(info_ndarr(data, 'switch to Image Viewer to view data:'))
             logger.warning('TBD: IV NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
-            self.set_tab(tabname='Image Viewer')
+            self.set_tab(tabname='Image')
         elif isinstance(data, str):
             cp.last_selected_data = data
             cp.last_selected_fname.setValue(fname)
             logger.info(info_ndarr(data, 'switch to Text Viewer to view data:'))
             logger.warning('TBD: Text Browser NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
-            self.set_tab(tabname='Text Browser')
+            self.set_tab(tabname='Text')
         else:
             logger.debug('data of the selected document is not numpy array - do not switch to Image Viewer')
             cp.last_selected_data = None
 
 
-    def set_tab(self, tabname='Image Viewer'):
+    def set_tab(self, tabname='Image'):
         logger.debug('switch tab to %s' % str(tabname))
         self.tab_bar.setCurrentIndex(self.tab_names.index(tabname))
 
