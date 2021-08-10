@@ -47,6 +47,20 @@ from time import time, strptime, strftime, localtime, mktime
 from psana.pyalgos.generic.UtilsFS import *
 #from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
 #from psana.pyalgos.generic.PSNameManager import nm
+INSTRUMENT_DIR = '/cds/data/psdm/'
+
+def dir_exp(expname, dirinstr=INSTRUMENT_DIR):
+    assert isinstance(expname, str)
+    assert len(expname) in (8,9)
+    return os.path.join(dirinstr, expname[:3].upper(), expname)
+
+
+def dir_xtc(expname, dirinstr=INSTRUMENT_DIR):
+    return os.path.join(dir_exp(expname, dirinstr), 'xtc')
+
+
+def dir_calib(expname, dirinstr=INSTRUMENT_DIR):
+    return os.path.join(dir_exp(expname, dirinstr), 'calib')
 
 
 def list_of_experiments(direxp=None): # e.g. '/reg/d/psdm/XPP'
@@ -85,10 +99,9 @@ def list_of_str_from_list_of_int(list_in, fmt='%04d'):
     return [fmt % item for item in list_in]
 
 
-def list_of_runs_in_xtc_dir(dirxtc):  # e.g. '/reg/d/psdm/XPP/xpptut13/xtc'
-    #dir = nm.dir_xtc() if dirxtc is None else dirxtc
-    dir = dirxtc
-    xtcfiles = list_of_files_in_dir_for_ext(dir, ext='.xtc2')
+def list_of_runs_in_xtc_dir(dirxtc, ext='.xtc'):  # e.g. '/reg/d/psdm/XPP/xpptut13/xtc'
+    #xtcfiles = list_of_files_in_dir_for_ext(dirxtc, ext)
+    xtcfiles = list_of_files_in_dir_for_pattern(dirxtc, ext)
     runs = [f.split('-')[1].lstrip('r') for f in xtcfiles]
     return set(runs)
 
