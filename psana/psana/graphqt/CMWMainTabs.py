@@ -21,7 +21,7 @@ from psana.graphqt.CMConfigParameters import cp
 class CMWMainTabs(QWidget):
     """GUI for tabs and associated widgets
     """
-    tab_names = ['CDB', 'Image Viewer', 'Text Browser', 'File Manager', 'HDF5', 't-converter', 'Mask Editor', 'Configuration', 'Test']
+    tab_names = ['CDB', 'Image', 'Text', 'Calib', 'HDF5', 'XTC', 't-converter', 'Mask', 'Configuration', 'Test']
 
     tool_tips = [\
       'Calibration Data Base\nviewer/manager',\
@@ -29,6 +29,7 @@ class CMWMainTabs(QWidget):
       'Text Browser for text-like calibration constants',\
       'File Manager for easy access calibration constants\nunder experimental calib directory',\
       'HDF5 file browser',\
+      'XTC data viewer',\
       'Time converter between Date&Time <-> POSIX <-> LCLS2',\
       'Mask Editor for images',\
       'Configuration manager for this app',\
@@ -123,20 +124,24 @@ class CMWMainTabs(QWidget):
             #if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
             self.gui_win = H5VMain()
 
-        elif tab_name == 'File Manager':
+        elif tab_name == 'Calib':
             from psana.graphqt.FMWTabs import FMWTabs
             self.gui_win = FMWTabs()
 
-        elif tab_name == 'Image Viewer':
+        elif tab_name == 'Image':
             from psana.graphqt.IVMain import IVMain
             #if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
             self.gui_win = IVMain()
 
-        elif tab_name == 'Text Browser':
+        elif tab_name == 'Text':
             from psana.graphqt.QWTextBrowser import QWTextBrowser
             self.gui_win = QWTextBrowser()
 
-        elif tab_name == 'Mask Editor':
+        elif tab_name == 'XTC':
+            from psana.graphqt.DMQWMain import DMQWMain
+            self.gui_win = DMQWMain()
+
+        elif tab_name == 'Mask':
             self.gui_win = QTextEdit('Selected tab "%s"' % tab_name)
 
         else:
