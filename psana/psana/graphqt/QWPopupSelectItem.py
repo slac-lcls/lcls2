@@ -126,7 +126,7 @@ class QWPopupSelectItem(QDialog):
     
 
     def closeEvent(self, e):
-        logger.debug('closeEvent', __name__)
+        logger.debug('closeEvent')
         self.reject()
         self.done(QDialog.Rejected)
 
