@@ -7,7 +7,7 @@ This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
 Usage ::
-
+    from psana.graphqt.CMConfigParameters import cp, dir_calib
     cp.readParametersFromFile()
     cp.printParameters()
     cp.log_level.setValue('DEBUG')
@@ -102,6 +102,11 @@ class CMConfigParameters(PSConfigParameters):
         self.fstree  = None
         self.fmwtabs = None
         self.fmw1main = None
+        self.fmw1control = None
+
+        self.dmqwmain = None
+        self.dmqwlist = None
+        self.dmqwcontrol = None
 
 
     def declareParameters(self):
