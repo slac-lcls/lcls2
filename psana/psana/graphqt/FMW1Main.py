@@ -106,7 +106,7 @@ def file_manager_lcls1(**kwargs):
     w.setGeometry(10, 100, 1000, 800)
     w.move(50,20)
     w.show()
-    w.setWindowTitle('Image Viewer')
+    w.setWindowTitle('File Manager')
     a.exec_()
     del w
     del a
