@@ -13,6 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 import os
+import threading
 
 
 def islink(path):
@@ -23,13 +24,7 @@ def isdir(path):
     return os.path.isdir(path)
 
 
-
-def list_of_files_in_dir(dirname):
-    return os.listdir(dirname)
-
-
 def safe_listdir(directory, timeout_sec=5):
-    import threading
     contents = []
     t = threading.Thread(target=lambda: contents.extend(os.listdir(directory)))
     t.daemon = True  # don't delay program's exit
@@ -40,11 +35,15 @@ def safe_listdir(directory, timeout_sec=5):
     return contents
 
 
+def list_of_files_in_dir(dirname):
+    return safe_listdir(dirname)
+
+
 def list_of_files_in_dir_for_ext(dir, ext='.xtc2'):
     """Returns the list of files in the directory for specified extension or None if directory is None."""
     if dir is None: return []
     if not os.path.exists(dir): return [] 
-    return sorted([f for f in os.listdir(dir) if os.path.splitext(f)[1] == ext])
+    return sorted([f for f in safe_listdir(dir) if os.path.splitext(f)[1] == ext])
 
 
 def list_of_pathes_in_dir_for_ext(dir, ext='.xtc2'):
@@ -56,7 +55,7 @@ def list_of_files_in_dir_for_pattern(dir, pattern='-r0022'):
     """Returns the list of files in the directory for specified file name pattern or [] - empty list."""
     if dir is None: return []
     if not os.path.exists(dir): return []
-    return sorted([os.path.join(dir,f) for f in os.listdir(dir) if pattern in f])
+    return sorted([os.path.join(dir,f) for f in safe_listdir(dir) if pattern in f])
 
 
 def load_ndarray_from_file(path):        
