@@ -95,6 +95,7 @@ namespace Drp {
         OpalTTFex             m_fex;
         pvac::ClientChannel   m_fex_pv;
         pvd::PVStructure::const_shared_pointer m_request;
+        double                m_vec[6];
     };
 
     class OpalTTSim {
@@ -378,16 +379,13 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
     }
     else if (result == OpalTTFex::VALID) {
         //  Live feedback
-        // we believe this memory will be freed when the shared_vector's
-        // reference count drops to zero. - weaver, valmar, ddamiani, cpo
-        double* vec = new double[6];
-        pvd::shared_vector<const double> ttvec(vec,0,6);
-        vec[0] = m_fex.amplitude();
-        vec[1] = m_fex.filtered_position();
-        vec[2] = m_fex.filtered_pos_ps();
-        vec[3] = m_fex.filtered_fwhm();
-        vec[4] = m_fex.next_amplitude();
-        vec[5] = m_fex.ref_amplitude();
+        pvd::shared_vector<const double> ttvec(m_vec,0,6);
+        m_vec[0] = m_fex.amplitude();
+        m_vec[1] = m_fex.filtered_position();
+        m_vec[2] = m_fex.filtered_pos_ps();
+        m_vec[3] = m_fex.filtered_fwhm();
+        m_vec[4] = m_fex.next_amplitude();
+        m_vec[5] = m_fex.ref_amplitude();
         m_fex_pv.put(m_request).set<const double>("value",ttvec).exec();
 
         //  Insert the results
