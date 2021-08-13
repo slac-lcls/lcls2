@@ -241,9 +241,17 @@ unsigned EaDetector::configure(const std::string& config_alias, XtcData::Xtc& xt
     m_monitor->addNames(m_para->detName, m_para->detType, m_para->serNo,
                         m_para->detSegment,
                         xtc, m_namesLookup, nodeId, payloadSize);
+    // make sure config transition will fit in the transition buffer (where SlowUpdate goes), however this check is too late: code can unfortunately segfault in the above line -cpo
+    if (sizeof(XtcData::Dgram)+xtc.sizeofPayload() > m_para->maxTrSize) {
+        logging::critical("Increase Parameter::maxTrSize (%zd) to avoid truncation of configure transition (%zd)",
+                          m_para->maxTrSize, sizeof(XtcData::Dgram)+xtc.sizeofPayload());
+        abort();
+    }
+    // make sure the data will fit in the transition buffer (where SlowUpdate goes)
     if (payloadSize > m_para->maxTrSize) {
-        logging::warning("Increase Parameter::maxTrSize (%zd) to avoid truncation of data (%zd)",
+        logging::critical("Increase Parameter::maxTrSize (%zd) to avoid truncation of SlowUpdate data (%zd)",
                          m_para->maxTrSize, payloadSize);
+        abort();
     }
 
     m_workerThread = std::thread{&EaDetector::_worker, this};
@@ -345,8 +353,7 @@ void EaDetector::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
 {
     // Make sure the datagram didn't get too big
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
-    const size_t maxSize = ((dgram.service() == XtcData::TransitionId::L1Accept) ||
-                            (dgram.service() == XtcData::TransitionId::SlowUpdate))
+    const size_t maxSize = (dgram.service() == XtcData::TransitionId::L1Accept)
                          ? m_pool->bufferSize()
                          : m_para->maxTrSize;
     if (size > maxSize) {
@@ -606,7 +613,7 @@ static void usage(const char* name)
 int main(int argc, char* argv[])
 {
     Drp::Parameters para;
-    para.maxTrSize = 256 * 1024;
+    para.maxTrSize = 1024 * 1024;
 
     std::string kwargs_str;
     int c;
