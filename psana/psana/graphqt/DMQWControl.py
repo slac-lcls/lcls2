@@ -30,17 +30,20 @@ class DMQWControl(CMWControlBase):
 
         self.lab_exp     = QLabel('Exp:')
         self.but_exp     = QPushButton(cp.exp_name.value())
+        self.but_runinfo = QPushButton('Run info')
 
         self.box = QHBoxLayout()
         self.box.addWidget(self.lab_exp)
         self.box.addWidget(self.but_exp)
         self.box.addStretch(1)
+        self.box.addWidget(self.but_runinfo)
         self.box.addWidget(self.but_save)
         self.box.addWidget(self.but_view)
         self.box.addWidget(self.but_tabs)
         self.setLayout(self.box)
  
         self.but_exp.clicked.connect(self.on_but_exp)
+        self.but_runinfo.clicked.connect(self.on_but_runinfo)
 
         self.set_tool_tips()
         self.set_style()
@@ -48,13 +51,14 @@ class DMQWControl(CMWControlBase):
 #        if cp.dmqwmain is not None:
 #            global full_path_for_item
 #            from psana.graphqt.FSTree import full_path_for_item
-#            cp.dmqwmain.wdmlist.connect_item_selected_to(self.on_item_selected)
-#            cp.dmqwmain.wdmlist.clicked[QModelIndex].connect(self.on_click)
+#            cp.dmqwmain.wlist.connect_item_selected_to(self.on_item_selected)
+#            cp.dmqwmain.wlist.clicked[QModelIndex].connect(self.on_click)
 
 
     def set_tool_tips(self):
         CMWControlBase.set_tool_tips(self)
         self.but_exp.setToolTip('Select experiment')
+        self.but_runinfo.setToolTip('Infromation about run from DB')
 
 
     def set_style(self):
@@ -69,8 +73,20 @@ class DMQWControl(CMWControlBase):
         self.wfnm.setVisible(False)
         self.wfnm.setEnabled(False)
         self.but_save.setVisible(False)
-        #self.but_view.setVisible(False)
+        self.but_view.setVisible(False)
+        self.but_save.setEnabled(False)
+        self.but_view.setEnabled(False)
 
+
+    def on_but_runinfo(self):
+        expname, runnum = cp.exp_name.value(), cp.last_selected_run
+        logger.info('TBD on_but_runinfo exp:%s run:%s' % (expname, str(runnum)))
+        if cp.last_selected_run is None:
+            logger.info('RUN IS NOT SELECTED - click/select run first')
+            return
+        if cp.dmqwmain is None: return
+        cp.dmqwmain.dump_info_exp_run(expname, runnum)
+        cp.dmqwmain.dump_info_exp_run_2(expname, runnum)
 
 
     def on_but_exp(self):
@@ -86,7 +102,7 @@ class DMQWControl(CMWControlBase):
             cp.exp_name.setValue(exp_name)
 
             if cp.dmqwmain is not None:
-               cp.dmqwmain.wdmlist.fill_list_model(experiment=exp_name)
+               cp.dmqwmain.wlist.fill_list_model(experiment=exp_name)
 
 
     def on_but_view(self):
@@ -106,7 +122,7 @@ class DMQWControl(CMWControlBase):
         """Re-implementation of the CMWControlBase.on_but_save"""
         logger.warning('on_but_save - show the list of selected files')
         if cp.dmqwmain is None: return
-        wtree = cp.dmqwmain.wdmlist
+        wtree = cp.dmqwmain.wlist
 
         names_selected = [full_path_for_item(i) for i in wtree.selected_items()]
         if len(names_selected)==0:
@@ -137,7 +153,7 @@ class DMQWControl(CMWControlBase):
 
 
     def save_item_path(self, index):
-        i = cp.dmqwmain.wdmlist.model.itemFromIndex(index)
+        i = cp.dmqwmain.wlist.model.itemFromIndex(index)
         if i is None:
            logger.info('on_item_selected: item is None')
            cp.last_selected_fname.setValue(None)
