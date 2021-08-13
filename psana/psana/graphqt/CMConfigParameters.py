@@ -141,6 +141,7 @@ class CMConfigParameters(PSConfigParameters):
         self.fmwtab_tab_name = self.declareParameter(name='FMWTAB_TAB_NAME', val_def='LCLS1', type='str')
         self.last_selected_fname = self.declareParameter(name='LAST_SELECTED_FNAME', val_def=None, type='str')
         self.last_selected_data = None # not persistent
+        self.last_selected_run = None # not persistent
 
 
 cp = CMConfigParameters()
