@@ -177,6 +177,9 @@ class CMWDBControl(CMWControlBase):
 
         self.edi_db_filter.setFixedWidth(80)
 
+        self.wfnm.setVisible(False)
+        self.wfnm.setEnabled(False)
+
 #    def resizeEvent(self, e):
 #        logger.debug('resizeEvent size: %s' % str(e.size()))
 #    def moveEvent(self, e):
