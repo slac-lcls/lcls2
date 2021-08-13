@@ -19,33 +19,31 @@ import sys
 
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QTextCursor
 from psana.graphqt.CMConfigParameters import cp, dir_calib
-from psana.graphqt.DMQWList import DMQWList, EXPNAME_TEST
+from psana.graphqt.DMQWList import DMQWList, EXPNAME_TEST, uws
 from psana.graphqt.DMQWControl import DMQWControl
+from psana.graphqt.QWInfoPanel import QWInfoPanel
 
 class DMQWMain(QWidget):
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwa):
 
-        parent = kwargs.get('parent', None)
+        kwa.setdefault('parent', None)
  
-        QWidget.__init__(self, parent=parent)
+        QWidget.__init__(self, parent=None)
 
         cp.dmqwmain = self
 
-        self.proc_kwargs(**kwargs)
+        self.proc_kwargs(**kwa)
 
-        #fname = kwargs.get('fname', None)
-
-        self.wdmlist = DMQWList(parent=self, **kwargs)
-
-        self.wctrl = DMQWControl(parent=self)
-
-        self.wrhs = QTextEdit('wrhs')
+        self.winfo = QWInfoPanel()
+        self.wlist = DMQWList(**kwa)
+        self.wctrl = DMQWControl(**kwa)
 
         self.hspl = QSplitter(Qt.Horizontal)
-        self.hspl.addWidget(self.wdmlist)
-        self.hspl.addWidget(self.wrhs)
+        self.hspl.addWidget(self.wlist)
+        self.hspl.addWidget(self.winfo)
         self.vbox = QVBoxLayout()
         self.vbox.addWidget(self.wctrl)
         self.vbox.addWidget(self.hspl)
@@ -54,19 +52,14 @@ class DMQWMain(QWidget):
         self.set_style()
         self.set_tool_tips()
 
-        #if fname is not None: self.wctrl.on_changed_fname_nda(fname)
-
-#        self.connect_signals_to_slots()
-#    def connect_signals_to_slots(self):
-#        self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
-#        self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
+        self.append_info = self.winfo.append # shotcut
 
 
-    def proc_kwargs(self, **kwargs):
-        #print_kwargs(kwargs)
-        loglevel   = kwargs.get('loglevel', 'DEBUG').upper()
-        logdir     = kwargs.get('logdir', './')
-        savelog    = kwargs.get('savelog', False)
+    def proc_kwargs(self, **kwa):
+        #print_kwa(kwa)
+        loglevel   = kwa.get('loglevel', 'DEBUG').upper()
+        logdir     = kwa.get('logdir', './')
+        savelog    = kwa.get('savelog', False)
 
 
     def set_tool_tips(self):
@@ -75,8 +68,6 @@ class DMQWMain(QWidget):
 
     def set_style(self):
         self.layout().setContentsMargins(0,0,0,0)
-        #self.wctrl.setFixedHeight(80)
-        #self.wspec.setMaximumWidth(300)
         self.wctrl.setFixedHeight(40)
 
 
@@ -86,13 +77,52 @@ class DMQWMain(QWidget):
         cp.dmqwmain = None
 
 
-def data_manager(**kwargs):
-    loglevel = kwargs.get('loglevel', 'DEBUG').upper()
+    def fname_info(self, expname, runnum):
+        srun = '%04d' % runnum if isinstance(runnum,int) else str(runnum)
+        return 'info-%s-r%s.txt' % (expname, srun)
+
+
+    def dump_info_exp_run(self, expname, runnum):
+        s = 'dump_info_exp_run %s run %s info:' % (expname, str(runnum))
+        lst = uws.run_table_data(expname)
+        if lst is None: s += ' list of run info dicts is missing'
+        else:
+          for d in lst:
+            if d['num']==runnum:
+              s += '\n' + uws.json.dumps(d, indent=2)
+              break
+        self.append_info(s, self.fname_info(expname, runnum))
+
+
+    def dump_info_exp_run_2(self, expname, runnum):
+        s = 'dump_info_exp_run_2 %s run %s info:' % (expname, str(runnum))
+        lst = uws.json_runs(expname)#, location)
+        if lst is None: s += ' list of run info dicts is missing'
+        else:
+          for d in lst:
+            if d['run_num']==runnum:
+              s += '\n' + uws.json.dumps(d, indent=2)
+              break
+
+        tags = uws.list_exp_tags(expname)
+        s += '\n exp: %s tags %s' % (expname, tags)
+        self.append_info(s, self.fname_info(expname, runnum))
+
+
+    def dump_all_run_parameters(self, expname, runnum):
+        s = 'all parameters for %s run %d\n' % (expname, runnum)
+        jo = uws.run_parameters(expname, runnum)
+        s += uws.json.dumps(jo, indent=2)
+        self.append_info(s, self.fname_info(expname, runnum))
+
+
+def data_manager(**kwa):
+    loglevel = kwa.get('loglevel', 'DEBUG').upper()
     intlevel = logging._nameToLevel[loglevel]
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d: %(message)s', level=intlevel)
 
     a = QApplication(sys.argv)
-    w = DMQWMain(**kwargs)
+    w = DMQWMain(**kwa)
     w.setGeometry(10, 100, 1000, 800)
     w.move(50,20)
     w.show()
@@ -102,20 +132,16 @@ def data_manager(**kwargs):
     del a
 
 
-def do_main(**kwargs):
-    data_manager(**kwargs)
-
-
 if __name__ == "__main__":
     import os
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
-    kwargs = {\
+    kwa = {\
       'loglevel':'DEBUG',\
       'expname':EXPNAME_TEST,\
     }
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    if   tname == '0': do_main(**kwargs)
+    if tname == '0': data_manager(**kwa)
     else: logger.debug('Not-implemented test "%s"' % tname)
 
 # EOF
