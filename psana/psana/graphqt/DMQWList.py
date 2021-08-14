@@ -14,13 +14,13 @@ Created on 2021-08-09 by Mikhail Dubrovin
 import os
 
 from psana.graphqt.QWList import *
-from psana.graphqt.CMConfigParameters import cp, dir_exp
+from psana.graphqt.CMConfigParameters import cp, dir_exp, expname_def
 import psana.pyalgos.generic.PSUtils as psu
 import psana.graphqt.UtilsWebServ as uws
 
 logger = logging.getLogger(__name__)
 
-EXPNAME_TEST='cxi78513'
+#EXPNAME_TEST='cxi78513'
 
 
 class DMQWList(QWList):
@@ -31,8 +31,11 @@ class DMQWList(QWList):
         cp.dmqwlist = self
         cp.last_selected_run = None
 
+        self.expname = kwa.get('expname', expname_def())
+        logger.debug('expname: %s' % self.expname)
 
-    def list_runs_fs(self, expname=EXPNAME_TEST, dirinstr=psu.INSTRUMENT_DIR):
+
+    def list_runs_fs(self, expname, dirinstr=psu.INSTRUMENT_DIR):
         dir_xtc = psu.dir_xtc(expname, dirinstr)
         return  psu.list_of_int_from_list_of_str(\
                   psu.list_of_runs_in_xtc_dir(dir_xtc, ext='.xtc'))
@@ -47,10 +50,7 @@ class DMQWList(QWList):
 
     def fill_list_model(self, **kwa):
 
-        expdef = EXPNAME_TEST if cp.exp_name.is_default() else\
-                 cp.exp_name.value()
-
-        expname = self.expname  = kwa.get('experiment', expdef)
+        expname = self.expname = kwa.get('experiment', expname_def())
         location = kwa.get('location', 'SLAC')
         dirinstr = kwa.get('dirinstr', psu.INSTRUMENT_DIR)
 
@@ -86,11 +86,11 @@ class DMQWList(QWList):
         item = self.model.itemFromIndex(index)
         runnum = int(item.accessibleText())
         cp.last_selected_run = runnum
-        logger.info('clicked on run:%d txt:%s' % (runnum, item.text()))
+        logger.info('clicked on exp=%s:run=%d txt:%s' % (self.expname, runnum, item.text()))
         if cp.dmqwmain is None: return
 
         tb, te, is_closed, all_present = self.runinfo_db[runnum]
-        s = '%s\nrun %04d in ARC|FS' % (80*'_', runnum)
+        s = '%s\nexp=%s:run=%04d in ARC|FS' % (50*'_', self.expname, runnum)
         s += '\nbegin_time: %s\n   end_time: %s' % (tb, te)\
           + '\n is_closed: %s all_present: %s' % (is_closed, all_present)
         cp.dmqwmain.append_info(s, cp.dmqwmain.fname_info(self.expname, runnum))
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     w = DMQWList()
     w.setGeometry(10, 25, 400, 600)
-    w.setWindowTitle('DMQWList')
+    w.setWindowTitle('DMQWList %s' % w.expname)
     w.move(100,50)
     w.show()
     app.exec_()
