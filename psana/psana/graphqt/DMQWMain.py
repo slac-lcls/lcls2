@@ -20,8 +20,8 @@ import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QTextCursor
-from psana.graphqt.CMConfigParameters import cp, dir_calib
-from psana.graphqt.DMQWList import DMQWList, EXPNAME_TEST, uws
+from psana.graphqt.CMConfigParameters import cp, dir_calib, expname_def
+from psana.graphqt.DMQWList import DMQWList, uws
 from psana.graphqt.DMQWControl import DMQWControl
 from psana.graphqt.QWInfoPanel import QWInfoPanel
 
@@ -29,9 +29,10 @@ class DMQWMain(QWidget):
 
     def __init__(self, **kwa):
 
+        parent = kwa.get('parent', None)
         kwa.setdefault('parent', None)
  
-        QWidget.__init__(self, parent=None)
+        QWidget.__init__(self, parent)
 
         cp.dmqwmain = self
 
@@ -137,7 +138,7 @@ if __name__ == "__main__":
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
     kwa = {\
       'loglevel':'DEBUG',\
-      'expname':EXPNAME_TEST,\
+      'expname':expname_def(),\
     }
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
