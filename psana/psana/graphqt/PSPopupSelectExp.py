@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QApplication, QDialog, QListWidget, QPushButton, QListWidgetItem,\
                             QVBoxLayout, QHBoxLayout, QTabBar
-from PyQt5.QtCore import Qt, QPoint, QMargins, QEvent
+from PyQt5.QtCore import Qt, QPoint, QMargins, QEvent, QTimer
 from PyQt5.QtGui import QFont, QColor, QCursor
 
 
@@ -74,7 +74,7 @@ class PSPopupSelectExp(QDialog):
     """
     def __init__(self, parent=None, lst_exp=[], show_frame=False):
 
-        QDialog.__init__(self, parent)
+        QDialog.__init__(self, parent, flags=Qt.WindowStaysOnTopHint)
 
         self.name_sel = None
         self.list = QListWidget(parent)
@@ -104,6 +104,16 @@ class PSPopupSelectExp(QDialog):
 
         self.show_tool_tips()
         self.set_style()
+
+        self.dt_msec=1000
+        QTimer().singleShot(self.dt_msec, self.on_timeout)
+
+
+    def on_timeout(self):
+        self.raise_()
+        self.activateWindow()
+        self.setFocus(True)
+        QTimer().singleShot(self.dt_msec, self.on_timeout)
 
 
     def fill_list(self, lst_exp):
@@ -136,6 +146,7 @@ class PSPopupSelectExp(QDialog):
         self.setMinimumHeight(600)
         if not self.show_frame:
           self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        self.setFocusPolicy(Qt.StrongFocus)
         self.layout().setContentsMargins(2,2,2,2)
         parent = self.parentWidget()
         if parent is None:

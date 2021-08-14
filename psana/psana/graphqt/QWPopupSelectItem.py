@@ -31,7 +31,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QApplication, QDialog, QListWidget, QVBoxLayout, QListWidgetItem# QPushButton
-from PyQt5.QtCore import Qt, QPoint, QEvent, QMargins, QSize
+from PyQt5.QtCore import Qt, QPoint, QEvent, QMargins, QSize, QTimer
 from PyQt5.QtGui import QCursor
 
 
@@ -39,10 +39,10 @@ class QWPopupSelectItem(QDialog):
 
     def __init__(self, parent=None, lst=[], show_frame=False):
 
-        QDialog.__init__(self, parent)
+        QDialog.__init__(self, parent, flags=Qt.WindowStaysOnTopHint)
 
         self.name_sel = None
-        self.list = QListWidget(parent)
+        self.list = QListWidget(parent=self)
         self.show_frame = show_frame
 
         self.fill_list(lst)
@@ -73,6 +73,21 @@ class QWPopupSelectItem(QDialog):
         self.show_tool_tips()
         self.set_style()
 
+        self.dt_msec=1000
+        QTimer().singleShot(self.dt_msec, self.on_timeout)
+
+#    def focusOutEvent(self, e):
+#        QDialog.focusOutEvent(self, e)
+#        print('XXX focusOutEvent')
+
+
+    def on_timeout(self):
+        logger.debug('on_timeout - activate popup window, isActive: %s' % self.isActiveWindow())
+        self.setFocus(True)
+        self.raise_()
+        self.activateWindow()
+        QTimer().singleShot(self.dt_msec, self.on_timeout)
+
 
     def fill_list(self, lst):
         self.list.clear()
@@ -93,6 +108,12 @@ class QWPopupSelectItem(QDialog):
         self.setWindowTitle('Select')
         if not self.show_frame:
           self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
+        #self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setEnabled(True)
+        #self.setWindowModality(Qt.WindowModal)
+        #self.setWindowState(Qt.WindowActive)
+        #self.setWindowState(self.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
         self.layout().setContentsMargins(0,0,0,0)
         parent = self.parentWidget()
         if parent is None:
