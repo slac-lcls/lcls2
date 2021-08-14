@@ -28,8 +28,10 @@ class DMQWControl(CMWControlBase):
         CMWControlBase.__init__(self, **kwa)
         cp.dmqwcontrol = self
 
+        expname = kwa.get('expname', expname_def())
+
         self.lab_exp     = QLabel('Exp:')
-        self.but_exp     = QPushButton(cp.exp_name.value())
+        self.but_exp     = QPushButton(expname)
         self.but_runinfo = QPushButton('Run info')
 
         self.box = QHBoxLayout()
