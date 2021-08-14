@@ -44,7 +44,7 @@ class PSConfigParameters(ConfigParameters):
 
         self.declareBaseParameters()
 
-        if  __name__ == '__main__':
+        if __name__ == '__main__':
             #self.fname_cp = '%s/%s' % (os.path.expanduser('~'), '.confpars-montool.txt') # Default config file name
             self.fname_cp = './confpars-def.txt' # Default config file name
             self.readParametersFromFile()
