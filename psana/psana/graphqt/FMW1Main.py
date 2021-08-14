@@ -19,43 +19,40 @@ import sys
 
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt
-from psana.graphqt.CMConfigParameters import cp, dir_calib
+from psana.graphqt.CMConfigParameters import cp, dir_calib, expname_def
 from psana.graphqt.FSTree import FSTree
 from psana.graphqt.FMW1Control import FMW1Control
 
 class FMW1Main(QWidget):
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwa):
 
-        parent = kwargs.get('parent', None)
+        parent = kwa.get('parent', None)
  
         QWidget.__init__(self, parent=parent)
 
         cp.fmw1main = self
 
-        self.proc_kwargs(**kwargs)
+        self.proc_kwargs(**kwa)
 
-        #fname = kwargs.get('fname', None)
-
-        tdir = dir_calib()
-        #tdir = '/cds/data/psdm/XPP/xpptut13/calib'
-        #tdir = '/cds/data/psdm/MEC/mecx24215'
+        expname = kwa.get('expname', expname_def())
+        tdir = dir_calib(expname)
         logger.debug('topdir: %s' % tdir)
 
-        self.wfstree = FSTree(parent=None,\
+        self.wfstree = FSTree(parent=self,\
                topdir=tdir,\
                is_selectable_dir=False,\
                selectable_ptrns=['.data'],\
                unselectable_ptrns=['HISTORY','.data~']\
               )
 
-        self.wctrl = FMW1Control(parent=parent)
+        self.wctrl = FMW1Control(parent=self, expname=expname)
 
-        self.wrhs = QTextEdit('wrhs')
+        #self.wrhs = QTextEdit('placeholder')
 
         self.hspl = QSplitter(Qt.Horizontal)
         self.hspl.addWidget(self.wfstree)
-        self.hspl.addWidget(self.wrhs)
+        #self.hspl.addWidget(self.wrhs)
         self.vbox = QVBoxLayout()
         self.vbox.addWidget(self.wctrl)
         self.vbox.addWidget(self.hspl)
@@ -64,19 +61,12 @@ class FMW1Main(QWidget):
         self.set_style()
         self.set_tool_tips()
 
-        #if fname is not None: self.wctrl.on_changed_fname_nda(fname)
 
-#        self.connect_signals_to_slots()
-#    def connect_signals_to_slots(self):
-#        self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
-#        self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
-
-
-    def proc_kwargs(self, **kwargs):
-        #print_kwargs(kwargs)
-        loglevel   = kwargs.get('loglevel', 'DEBUG').upper()
-        logdir     = kwargs.get('logdir', './')
-        savelog    = kwargs.get('savelog', False)
+    def proc_kwargs(self, **kwa):
+        #print_kwa(kwa)
+        loglevel   = kwa.get('loglevel', 'DEBUG').upper()
+        logdir     = kwa.get('logdir', './')
+        savelog    = kwa.get('savelog', False)
 
 
     def set_tool_tips(self):
@@ -85,8 +75,6 @@ class FMW1Main(QWidget):
 
     def set_style(self):
         self.layout().setContentsMargins(0,0,0,0)
-        #self.wctrl.setFixedHeight(80)
-        #self.wspec.setMaximumWidth(300)
         self.wctrl.setFixedHeight(40)
 
 
@@ -96,13 +84,13 @@ class FMW1Main(QWidget):
         cp.fmw1main = None
 
 
-def file_manager_lcls1(**kwargs):
-    loglevel = kwargs.get('loglevel', 'DEBUG').upper()
+def file_manager_lcls1(**kwa):
+    loglevel = kwa.get('loglevel', 'DEBUG').upper()
     intlevel = logging._nameToLevel[loglevel]
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d: %(message)s', level=intlevel)
 
     a = QApplication(sys.argv)
-    w = FMW1Main(**kwargs)
+    w = FMW1Main(**kwa)
     w.setGeometry(10, 100, 1000, 800)
     w.move(50,20)
     w.show()
@@ -112,19 +100,19 @@ def file_manager_lcls1(**kwargs):
     del a
 
 
-def do_main(**kwargs):
-    file_manager_lcls1(**kwargs)
+def do_main(**kwa):
+    file_manager_lcls1(**kwa)
 
 
 if __name__ == "__main__":
     import os
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
-    kwargs = {\
+    kwa = {\
       'loglevel':'DEBUG',\
     }
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    if   tname == '0': do_main(**kwargs)
+    if   tname == '0': do_main(**kwa)
     else: logger.debug('Not-implemented test "%s"' % tname)
 
 # EOF

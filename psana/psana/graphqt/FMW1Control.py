@@ -21,25 +21,26 @@ class FMW1Control(CMWControlBase):
 
     instr_exp_is_changed = pyqtSignal('QString', 'QString')
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwa):
 
-        parent = kwargs.get('parent', None)
-
-        CMWControlBase.__init__(self, **kwargs)
+        CMWControlBase.__init__(self, **kwa)
         cp.fmw1control = self
+
+        #expname = kwa.get('expname', cp.exp_name.value())
+        expname = kwa.get('expname', expname_def())
 
         self.wfnm.setVisible(False)
         self.wfnm.setEnabled(False)
 
         self.lab_exp     = QLabel('Exp:')
-        self.but_exp     = QPushButton(cp.exp_name.value())
+        self.but_exp     = QPushButton(expname)
         self.but_exp_col = QPushButton('Collapse')
 
         self.box = QHBoxLayout() #QGridLayout()
         self.box.addWidget(self.lab_exp)
         self.box.addWidget(self.but_exp)
-        self.box.addStretch(1)
         self.box.addWidget(self.but_exp_col)
+        self.box.addStretch(1)
         self.box.addWidget(self.but_save)
         self.box.addWidget(self.but_view)
         self.box.addWidget(self.but_tabs)
@@ -92,7 +93,7 @@ class FMW1Control(CMWControlBase):
             cp.exp_name.setValue(exp_name)
 
             if cp.fmw1main is not None:
-               cp.fmw1main.wfstree.update_tree_model(dir_calib())
+               cp.fmw1main.wfstree.update_tree_model(dir_calib(exp_name))
 
 
     def on_but_exp_col(self):
