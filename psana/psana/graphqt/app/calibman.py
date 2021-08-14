@@ -52,6 +52,7 @@ class Constants:
     d_loglevel   = 'INFO'
     d_logdir     = '/cds/group/psdm/logs/calibman/lcls2' # None # './cm-logger'
     d_webint     = True
+    d_savecfg    = False
 
     h_host       = 'DB host, default = %s' % d_host
     h_port       = 'DB port, default = %s' % d_port
@@ -62,22 +63,7 @@ class Constants:
     h_loglevel   = 'logging level from list (%s), default = %s' % (LEVEL_NAMES, d_loglevel)
     h_logdir     = 'logger directory, if specified the logfile will be saved under this directory, default = %s' % str(d_logdir)
     h_webint     = 'use web-based CLI, default = %s' % d_webint
-
-
-#def input_option_parser():
-#    from optparse import OptionParser
-#    parser = OptionParser(description='Calibration Management GUI', usage=USAGE)
-#    c = Constants()
-#    parser.add_option('--host',             default=c.d_host,       action='store', type='string', help=c.h_host)
-#    parser.add_option('--port',             default=c.d_port,       action='store', type='string', help=c.h_port)
-#    parser.add_option('-u', '--user',       default=c.d_user,       action='store', type='string', help=c.h_user)
-#    parser.add_option('-p', '--upwd',       default=c.d_upwd,       action='store', type='string', help=c.h_upwd)
-#    parser.add_option('-d', '--detector',   default=c.d_detector,   action='store', type='string', help=c.h_detector)
-#    parser.add_option('-e', '--experiment', default=c.d_experiment, action='store', type='string', help=c.h_experiment)
-#    parser.add_option('-l', '--loglevel',   default=c.d_loglevel,   action='store', type='string', help=c.h_loglevel)
-#    parser.add_option('-L', '--logdir',     default=c.d_logdir,     action='store', type='string', help=c.h_logdir)
-#    parser.add_option('-w', '--webint',     default=c.d_webint,     action='store_false',          help=c.h_webint)
-#    return parser
+    h_savecfg    = 'save configuration parameters in file at exit, default = %s' % d_savecfg
 
 
 def input_argument_parser():
@@ -93,6 +79,7 @@ def input_argument_parser():
     parser.add_argument('--port',             default=c.d_port,       type=str, help=c.h_port)
     parser.add_argument('-u', '--user',       default=c.d_user,       type=str, help=c.h_user)
     parser.add_argument('-p', '--upwd',       default=c.d_upwd,       type=str, help=c.h_upwd)
+    parser.add_argument('-S', '--savecfg',    default=c.d_savecfg, action='store_true', help=c.h_savecfg)
     return parser
   
 
