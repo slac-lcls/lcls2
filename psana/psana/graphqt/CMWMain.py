@@ -71,14 +71,15 @@ class CMWMain(QWidget):
         self.main_win_width  = cp.main_win_width
         self.main_win_height = cp.main_win_height
 
-        host       = kwa.get('host', None) # self.kwa['host']
-        port       = kwa.get('port', None) # self.kwa['port']
+        host       = kwa.get('host', None)
+        port       = kwa.get('port', None)
         cp.user    = kwa.get('user', None)
         cp.upwd    = kwa.get('upwd', None)
         exp        = kwa.get('experiment', None)
         det        = kwa.get('detector', None)
         logdir     = kwa.get('logdir', None)
         loglevel   = kwa.get('loglevel', 'DEBUG').upper()
+        savecfg    = kwa.get('savecfg', False)
         if isinstance(loglevel,str): loglevel = loglevel.upper()
 
         if is_in_command_line(None, '--host')      : cp.cdb_host.setValue(host)
@@ -87,6 +88,8 @@ class CMWMain(QWidget):
         if is_in_command_line('-d', '--detector')  : cp.data_source.setValue(det)
         if is_in_command_line('-l', '--loglevel')  : cp.log_level.setValue(loglevel)
         if is_in_command_line('-L', '--logdir')    : cp.log_prefix.setValue(logdir)
+
+        cp.save_cp_at_exit.setValue(savecfg)
 
         if loglevel == 'DEBUG':
             print(40*'_')
@@ -155,23 +158,21 @@ class CMWMain(QWidget):
 
         cp.main_vsplitter.setValue(spl_pos)
 
-        cp.printParameters()
-        cp.saveParametersInFile() # moved to PSConfigParameters
+        if cp.save_cp_at_exit.value():
+            cp.printParameters()
+            cp.saveParametersInFile() # see ConfigParameters
 
-        if cp.save_log_at_exit.value():
-            pass
-            #log.saveLogInFile(cp.log_file.value())
-            #print('Saved log file: %s' % cp.log_file.value())
-            #log.saveLogTotalInFile(fnm.log_file_total())
+#        if cp.save_log_at_exit.value():
+#            pass # see QWLoggerStd.py /reg/g/psdm/logs/calibman/lcls2/<year>/
 
 
 def calibman(**kwargs):
-    import sys
+    #import sys
     #sys.stdout = sys.stderr = open('/dev/null', 'w') # open('%s-stdout-stderr' % cp.log_file.value(), 'w')
     #logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
 
     global app # to prevent crash on exit
-    app = QApplication(sys.argv)
+    app = QApplication([]) #sys.argv
     w = CMWMain(**kwargs)
     #w.move(0,20)
     w.show()
