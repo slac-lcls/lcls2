@@ -23,7 +23,7 @@ from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QGr
 from PyQt5.QtCore import QSize, QRectF, pyqtSignal, QModelIndex
 
 from psana.graphqt.QWFileNameV2 import QWFileNameV2
-from psana.graphqt.CMConfigParameters import cp, dirs_to_search
+from psana.graphqt.CMConfigParameters import cp, dirs_to_search, expname_def
 from psana.graphqt.Styles import style
 from psana.graphqt.QWIcons import icon
 
