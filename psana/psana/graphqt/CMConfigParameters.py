@@ -29,19 +29,7 @@ logger = logging.getLogger(__name__)
 from psana.pyalgos.generic.PSConfigParameters import PSConfigParameters
 from psana.pyalgos.generic.Utils import list_of_hosts as lshosts
 import psana.pscalib.calib.CalibConstants as cc
-
-
-def dir_exp(dirdef='/cds/data/psdm/CXI/cxitut13'):
-    return dirdef if cp.exp_name.is_default() else\
-           os.path.join(cp.instr_dir.value(), cp.instr_name.value(), cp.exp_name.value())
-
-
-def dir_calib(dirdef='/cds/data/psdm/XPP/xpptut21'): #XPP/xpptut13, MEC/mecx24215, CXI/cxitut13, XCS/xcstut13
-    return os.path.join(dir_exp(dirdef), 'calib')
-
-
-def dirs_to_search():
-    return [dir_calib(), os.getcwd()]# os.path.expanduser('~')
+import psana.pyalgos.generic.PSUtils as psu # dir_calib, dir_exp
 
 
 class CMConfigParameters(PSConfigParameters):
@@ -143,8 +131,24 @@ class CMConfigParameters(PSConfigParameters):
         self.last_selected_data = None # not persistent
         self.last_selected_run = None # not persistent
 
+        self.instr_name = self.declareParameter(name='INSTRUMENT_NAME', val_def='XPP',      type='str')
+        self.exp_name   = self.declareParameter(name='EXPERIMENT_NAME', val_def='xpptut21', type='str') # 'Select'
+
 
 cp = CMConfigParameters()
+
+
+def expname_def():
+    return 'xpptut21' if cp.exp_name.is_default() else\
+           cp.exp_name.value()
+
+def dir_exp(expname=expname_def()): return psu.dir_exp(expname)
+def dir_xtc(expname=expname_def()): return psu.dir_xtc(expname)
+def dir_calib(expname=expname_def()): return psu.dir_calib(expname)
+
+def dirs_to_search(expname=expname_def()):
+    return [dir_calib(expname), os.getcwd()]# os.path.expanduser('~')
+
 
 if __name__ == "__main__":
   def test_CMConfigParameters():
