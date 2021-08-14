@@ -1,4 +1,4 @@
-#------------------------------
+
 """Class :py:class:`CMWConfig` is a QWidget for configuration parameters
 ==============================================================================
 
@@ -17,7 +17,7 @@ See:
 
 Created on 2017-04-05 by Mikhail Dubrovin
 """
-#------------------------------
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -29,23 +29,19 @@ from PyQt5.QtGui import QColor#, QFont
 from PyQt5.QtCore import Qt
 from psana.graphqt.Styles import style
 
-#------------------------------
 
-class CMWConfig(QWidget) :
+class CMWConfig(QWidget):
     """CMWConfig is a QWidget with tabs for configuration management"""
 
-    def __init__(self, parent=None) :
+    def __init__(self, parent=None):
         QWidget.__init__(self, parent)
 
-        #self.lab_title  = QLabel     ('Configuration settings')
-        #self.lab_status = QLabel     ('Status: ')
         self.but_close  = QPushButton('&Close') 
         self.but_save   = QPushButton('&Save') 
         self.but_show   = QPushButton('Show &Image') 
 
         self.hboxW = QHBoxLayout()
         self.hboxB = QHBoxLayout()
-        #self.hboxB.addWidget(self.lab_status)
         self.hboxB.addStretch(1)     
         self.hboxB.addWidget(self.but_close)
         self.hboxB.addWidget(self.but_save)
@@ -76,7 +72,6 @@ class CMWConfig(QWidget) :
 
 
     def set_tool_tips(self):
-        #msg = 'Edit field'
         self.but_close.setToolTip('Close this window.')
         self.but_save.setToolTip('Save all current configuration parameters.')
         self.but_show.setToolTip('Show ...')
@@ -91,16 +86,14 @@ class CMWConfig(QWidget) :
         self.setMinimumSize(600,500)
 
         is_visible = False
-        #self.lab_status.setVisible(False)
         self.but_close.setVisible(is_visible)
         self.but_save .setVisible(is_visible)
         self.but_show .setVisible(is_visible)
 
 
-    def make_tab_bar(self) :
+    def make_tab_bar(self):
         self.tab_bar = QTabBar()
 
-        #Uses self.tab_names
         self.ind_tab_0 = self.tab_bar.addTab(self.tab_names[0])
         self.ind_tab_1 = self.tab_bar.addTab(self.tab_names[1])
 
@@ -108,18 +101,7 @@ class CMWConfig(QWidget) :
         self.tab_bar.setTabTextColor(self.ind_tab_1, QColor('magenta'))
         self.tab_bar.setShape(QTabBar.RoundedNorth)
 
-        #self.tab_bar.setTabsClosable(True)
-        #self.tab_bar.setMovable(True)
-
-        #self.tab_bar.setTabEnabled(1, False)
-        #self.tab_bar.setTabEnabled(2, False)
-
         tab_index = self.tab_names.index(cp.current_config_tab.value())
-        #try :
-        #    tab_index = self.tab_names.index(cp.current_config_tab.value())
-        #except :
-        #    tab_index = 1
-        #    cp.current_config_tab.setValue(self.tab_names[tab_index])
 
         self.tab_bar.setCurrentIndex(tab_index)
 
@@ -131,31 +113,19 @@ class CMWConfig(QWidget) :
 
     def gui_selector(self, tab_name):
 
-        #try    : self.gui_win.close()
-        #except : pass
-
-        #try    : del self.gui_win
-        #except : pass
-
-        if self.gui_win is not None : 
+        if self.gui_win is not None: 
             self.gui_win.close()
             del self.gui_win
 
-        #w_height = 120
-
-        if tab_name == self.tab_names[0] :
+        if tab_name == self.tab_names[0]:
             self.gui_win = CMWConfigPars(self)
-            #w_height = 250
 
-        elif tab_name == self.tab_names[1] :
+        elif tab_name == self.tab_names[1]:
             self.gui_win = CMWConfigFile(self)
 
-        else :
+        else:
             logger.warning('Unknown tab name "%s"' % tab_name)
 
-        #self.set_status(0, 'Set configuration file')
-        #self.gui_win.setMinimumHeight(w_height)
-        #self.gui_win.setFixedHeight(w_height)
         self.hboxW.addWidget(self.gui_win)
         #self.hboxW.addStretch(1)
         self.gui_win.setVisible(True)
@@ -174,31 +144,26 @@ class CMWConfig(QWidget) :
         self.gui_selector(tab_name)
 
 
-    def set_parent(self,parent) :
+    def set_parent(self,parent):
         self.parent = parent
 
 
-    #def resizeEvent(self, e):
-        #logger.debug('resizeEvent') 
-        #print self._name + ' config: self.size():', self.size()
-        #self.setMinimumSize( self.size().width(), self.size().height()-40 )
-        #pass
+#    def resizeEvent(self, e):
+#        logger.debug('resizeEvent') 
+#        print self._name + ' config: self.size():', self.size()
+#        self.setMinimumSize( self.size().width(), self.size().height()-40 )
 
-
-    #def moveEvent(self, e):
-        #logger.debug('moveEvent') 
-        #self.position = self.mapToGlobal(self.pos())
-        #self.position = self.pos()
-        #logger.debug('moveEvent: new pos:' + str(self.position))
-        #pass
+#    def moveEvent(self, e):
+#        logger.debug('moveEvent') 
+#        self.position = self.mapToGlobal(self.pos())
+#        self.position = self.pos()
+#        logger.debug('moveEvent: new pos:' + str(self.position))
 
 
     def closeEvent(self, e):
         logger.debug('closeEvent')
-
         self.tab_bar.close()        
-        if self.gui_win is not None : self.gui_win.close()
-
+        if self.gui_win is not None: self.gui_win.close()
         QWidget.close(self)
 
 
@@ -216,17 +181,7 @@ class CMWConfig(QWidget) :
         logger.debug('on_show - is not implemented yet...')
 
 
-#    def set_status(self, status_index=0, msg=''):
-#        list_of_states = ['Good','Warning','Alarm']
-#        if status_index == 0 : self.lab_status.setStyleSheet(style.styleStatusGood)
-#        if status_index == 1 : self.lab_status.setStyleSheet(style.styleStatusWarning)
-#        if status_index == 2 : self.lab_status.setStyleSheet(style.styleStatusAlarm)
-#        #self.lab_status.setText('Status: ' + list_of_states[status_index] + msg)
-#        self.lab_status.setText(msg)
-
-#-----------------------------
-
-if __name__ == "__main__" :
+if __name__ == "__main__":
     from PyQt5.QtWidgets import QApplication
     import sys
     logging.basicConfig(level=logging.DEBUG)
@@ -243,4 +198,4 @@ if __name__ == "__main__" :
     del w
     del app
 
-#-----------------------------
+# EOF
