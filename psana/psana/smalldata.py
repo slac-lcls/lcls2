@@ -129,7 +129,7 @@ def _get_missing_value(dtype):
 
 
 def _format_srv_filename(dirname, basename, rank):
-    srv_basename = '%s_part%d.h5' % (basename.strip('.h5'), rank)
+    srv_basename = '%s_part%d.h5' % (basename.replace('.h5',''), rank)
     srv_fn = os.path.join(dirname, srv_basename)
     return srv_fn
 
