@@ -20,9 +20,6 @@ import psana.graphqt.UtilsWebServ as uws
 
 logger = logging.getLogger(__name__)
 
-#EXPNAME_TEST='cxi78513'
-
-
 class DMQWList(QWList):
     """Widget for the list of QWList-> QListView -> QWidget
     """
@@ -81,7 +78,6 @@ class DMQWList(QWList):
             self.model.appendRow(item)
 
 
-
     def on_click(self, index):
         item = self.model.itemFromIndex(index)
         runnum = int(item.accessibleText())
@@ -90,7 +86,7 @@ class DMQWList(QWList):
         if cp.dmqwmain is None: return
 
         tb, te, is_closed, all_present = self.runinfo_db[runnum]
-        s = '%s\nexp=%s:run=%04d in ARC|FS' % (50*'_', self.expname, runnum)
+        s = '%s\nexp=%s:run=%04d' % (50*'_', self.expname, runnum)
         s += '\nbegin_time: %s\n   end_time: %s' % (tb, te)\
           + '\n is_closed: %s all_present: %s' % (is_closed, all_present)
         cp.dmqwmain.append_info(s, cp.dmqwmain.fname_info(self.expname, runnum))
