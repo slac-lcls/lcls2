@@ -88,7 +88,6 @@ class DMQWControl(CMWControlBase):
             return
         if cp.dmqwmain is None: return
         cp.dmqwmain.dump_info_exp_run(expname, runnum)
-        cp.dmqwmain.dump_info_exp_run_2(expname, runnum)
 
 
     def on_but_exp(self):
