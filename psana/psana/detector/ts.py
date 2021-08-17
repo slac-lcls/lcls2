@@ -72,7 +72,7 @@ class ts_ts_1_2_3(DetectorImpl):
             format_string += v
             total_len += int(v[1:])
         format_string += '<' # indicated least-significant-byte first
-        self.total_bytes=total_len//8
+        self._total_bytes=total_len//8
 
         #self.bitstructure = bitstruct.compile(format_string)
 
@@ -93,7 +93,7 @@ class ts_ts_1_2_3(DetectorImpl):
         # seems reasonable to assume that all TS data comes from one segment
         data = segments[0].data
         # look in the remaining bytes for the event codes
-        tmp = data[self.total_bytes:]
+        tmp = data[self._total_bytes:]
         seq = tmp.view('uint16')
         return seq
 
