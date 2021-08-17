@@ -42,7 +42,7 @@ class DMQWList(QWList):
 
 
 #    def dict_runinfo_db(self, expname=EXPNAME_TEST, location='SLAC'):
-#        return uws.run_info(expname, location)
+#        return uws.run_info_selected(expname, location)
 
 #    def runnums_with_tag(self, expname, tag='DARK'):
 #        return uws.runnums_with_tag(expname, tag)
@@ -57,11 +57,12 @@ class DMQWList(QWList):
         self.clear_model()
         brush_green = QBrush(Qt.green)
         runs_fs = self.list_runs_fs(expname, dirinstr)
-        self.runinfo_db = uws.run_info(expname, location) # list_runs_db
+        self.runinfo_db = uws.run_info_selected(expname, location) # list_runs_db
         dark_runs = uws.runnums_with_tag(expname, tag='DARK')
         self.setSpacing(1)
         for r in sorted(self.runinfo_db.keys()):
             tb, te, is_closed, all_present = self.runinfo_db[r]
+            tb = '%s %s' % (tb[:19], 'GMT' if tb[-6:]=='+00:00' else tb[-6:])
             in_fs = r in runs_fs
             is_dark = r in dark_runs
             s = 'run %04d %s in ARC' % (r, tb)
@@ -69,8 +70,7 @@ class DMQWList(QWList):
             if r in dark_runs: s += ' DARK'
             item = QStandardItem(s)
             item.setAccessibleText('%d'%r)
-            if in_fs:
-               item.setBackground(brush_green)
+            #if in_fs: item.setBackground(brush_green)
             #item.setCheckable(False) 
             item.setSelectable(in_fs)
             item.setEnabled(in_fs)
