@@ -83,8 +83,8 @@ class DMQWMain(QWidget):
         return 'info-%s-r%s.txt' % (expname, srun)
 
 
-    def dump_info_exp_run(self, expname, runnum):
-        s = 'dump_info_exp_run %s run %s info:' % (expname, str(runnum))
+    def dump_info_exp_run_1(self, expname, runnum):
+        s = 'dump_info_exp_run_1 %s run %s info:' % (expname, str(runnum))
         lst = uws.run_table_data(expname)
         if lst is None: s += ' list of run info dicts is missing'
         else:
@@ -105,16 +105,30 @@ class DMQWMain(QWidget):
               s += '\n' + uws.json.dumps(d, indent=2)
               break
 
-        tags = uws.list_exp_tags(expname)
+        tags = uws.exp_tags(expname)
         s += '\n exp: %s tags %s' % (expname, tags)
         self.append_info(s, self.fname_info(expname, runnum))
 
 
+    def dump_info_files(self, expname, runnum):
+        s = 'dump_info_files %s run %s info:' % (expname, str(runnum))
+        jo = uws.run_files(expname, runnum)
+        s += uws.json.dumps(jo, indent=2)
+        self.append_info(s, self.fname_info(expname, runnum))
+
+
     def dump_all_run_parameters(self, expname, runnum):
-        s = 'all parameters for %s run %d\n' % (expname, runnum)
+        s = 'dump_all_run_parameters for %s run %d\n' % (expname, runnum)
         jo = uws.run_parameters(expname, runnum)
         s += uws.json.dumps(jo, indent=2)
         self.append_info(s, self.fname_info(expname, runnum))
+
+
+    def dump_info_exp_run(self, expname, runnum):
+        self.dump_all_run_parameters(expname, runnum)
+        self.dump_info_exp_run_1(expname, runnum)
+        self.dump_info_exp_run_2(expname, runnum)
+        self.dump_info_files(expname, runnum)
 
 
 def data_manager(**kwa):
