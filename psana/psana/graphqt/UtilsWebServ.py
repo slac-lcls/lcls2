@@ -54,29 +54,16 @@ def value_from_responce(r):
 def json_runs(expname, location='SLAC'):
     assert isinstance(expname, str)
     assert len(expname) in (8,9)
-    ws_url = "https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/%s/ws/files_for_live_mode_at_location?location=%s" % (expname, location)
-    krbheaders = kerberos_headers()
-    r = requests.get(ws_url, headers=krbheaders)
+    ws_url = "https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/%s/ws/files_for_live_mode_at_location?location=%s"%\
+             (expname, location)
+    r = requests.get(ws_url, headers=kerberos_headers())
     return value_from_responce(r)
 
 
-def run_numbers(expname, location='SLAC'):
-    joruns = json_runs(expname, location='SLAC')
-    if joruns is None: return None
-    return sorted([d['run_num'] for d in joruns])
-
-
-def run_info(expname, location='SLAC'):
-    joruns = json_runs(expname, location='SLAC')
+def run_info_selected(expname, location='SLAC'):
+    joruns = json_runs(expname, location)
     if joruns is None: return None
     return {d['run_num']: (d['begin_time'], d['end_time'], d['is_closed'], d['all_present']) for d in joruns}
-
-
-def list_exp_tags(expname):
-    ws_url = "https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/%s/ws/get_elog_tags" % expname
-    krbheaders = kerberos_headers()
-    r = requests.get(ws_url, headers=krbheaders)
-    return value_from_responce(r)
 
 
 def runnums_with_tag(expname, tag='DARK'):
@@ -95,9 +82,53 @@ def run_table_data(expname):
 
 def run_parameters(expname, runnum):
     ws_url = "https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/%s/ws/runs/%d" % (expname, runnum)
-    krbheaders = kerberos_headers()
-    r = requests.get(ws_url, headers=krbheaders)
+    r = requests.get(ws_url, headers=kerberos_headers())
     return value_from_responce(r)
+
+
+def runinfo_for_params(expname, params={"includeParams": "true"}):
+    ws_url = "https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/%s/ws/runs" % (expname)
+    r = requests.get(ws_url, headers=kerberos_headers(), params=params)
+    return value_from_responce(r)
+
+
+def run_numbers_at_location(expname, location='SLAC'):
+    joruns = json_runs(expname, location)
+    if joruns is None: return None
+    return sorted([d['run_num'] for d in joruns])
+
+
+def run_numbers(expname):
+    jo = runinfo_for_params(expname, params={"includeParams": "false"})
+    if jo is None: return None
+    return sorted([d['num'] for d in jo])
+
+
+def run_files(expname, runnum):
+    ws_url = "https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/%s/ws/%d/files" % (expname, runnum)
+    r = requests.get(ws_url, headers=kerberos_headers())
+    return value_from_responce(r)
+
+
+def exp_tags(expname):
+    ws_url = "https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/%s/ws/get_elog_tags" % expname
+    r = requests.get(ws_url, headers=kerberos_headers())
+    return value_from_responce(r)
+
+
+#def run_tags(expname, runnum):
+#    for tag in exp_tags(expname):
+#        if tag:
+
+
+def exprun_tags(expname):
+    """returns dict {runnum: <list-of-tags>}"""
+    d = {k:[] for k in run_numbers(expname)}
+    for tag in exp_tags(expname):
+      if tag:
+         for rnum in runnums_with_tag(expname, tag=tag):
+            d[rnum].append(tag)
+    return d
 
 
 if __name__ == "__main__":
@@ -119,12 +150,20 @@ if __name__ == "__main__":
     print(json.dumps(jo, indent=2) if jo else str(jo))
 
 
-  def test_run_numbers(expname, location='SLAC'):
-    print('run numbers:', run_numbers(expname, location))
+  def test_run_numbers_at_location(expname, location='SLAC'):
+    print('test_run_numbers_at_location:', run_numbers_at_location(expname, location))
 
 
-  def test_list_exp_tags(expname):
-    print(list_exp_tags(expname))
+  def test_run_numbers(expname):
+    print('run numbers:', run_numbers(expname))
+
+
+  def test_exp_tags(expname):
+    print(exp_tags(expname))
+
+
+  def test_exprun_tags(expname):
+    print(exprun_tags(expname))
 
 
   def test_runnums_with_tag(expname, tag='DARK'):
@@ -136,6 +175,24 @@ if __name__ == "__main__":
     if jo: print(json.dumps(jo, indent=2))
 
 
+  def test_runinfo_for_params(expname, params={"includeParams": "true"}):
+    jo = runinfo_for_params(expname, params)
+    print('runinfo_for_params raw json:', jo)
+    if jo: print(json.dumps(jo, indent=2))
+
+
+  def test_run_table_data_resp(expname):
+    ws_url = "https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/%s/ws/run_table_data" % expname
+    krbheaders = kerberos_headers()
+    r = requests.get(ws_url, headers=krbheaders, params={"tableName": "Scan Table"})
+    print(r)
+
+
+  def test_run_files(expname, runnum):
+    jo = run_files(expname, runnum)
+    if jo: print(json.dumps(jo, indent=2))
+
+
 if __name__ == "__main__":
     
     logging.basicConfig(format='[%(levelname).1s] L:%(lineno)03d %(name)s %(message)s', level=logging.DEBUG)
@@ -144,12 +201,19 @@ if __name__ == "__main__":
     print(50*'_', '\nTest %s' % tname)
     if   tname == '0': test_run_parameters('xcsdaq13', 200)
     elif tname == '1': test_all_runs_with_par_value()
-    elif tname == '2': test_run_numbers('xpptut15', location='SLAC')
-    elif tname == '3': test_jsinfo_runs('xpptut15', location='SLAC')
-    elif tname == '4': test_list_exp_tags('xpptut15') #xcsdaq13') #cxi78513')
-    elif tname == '5': test_runnums_with_tag('xcsdaq13', tag='SCREENSHOT') # DARK')
-    elif tname == '6': test_run_table_data(expname='xcsdaq13')
-    elif tname == '7': test_run_table_data(expname='xpplw3319')
+    elif tname == '2': test_run_numbers('xpplw3319')
+    elif tname == '3': test_run_numbers('xpptut15')
+    elif tname == '4': test_run_numbers_at_location('xpplw3319', location='SLAC') #'NERSK'
+    elif tname == '5': test_jsinfo_runs('xpptut15', location='SLAC')
+    elif tname == '6': test_exp_tags('xpptut15') #xcsdaq13') #cxi78513')
+    elif tname == '7': test_exprun_tags('tmox45719') #xcsdaq13')
+    elif tname == '8': test_runnums_with_tag('xcsdaq13', tag='SCREENSHOT') # DARK')
+    elif tname == '9': test_run_table_data(expname='xcsdaq13')
+    elif tname =='10': test_run_table_data_resp(expname='xpplw3319')
+    elif tname =='11': test_run_files('xcsdaq13', 200)
+    elif tname =='12': test_runinfo_for_params('xcsdaq13', params={"includeParams": "true"})
+    elif tname =='13': test_runinfo_for_params('xpplw3319', params={"includeParams": "true"})
+    elif tname =='14': test_runinfo_for_params('xpptut15', params={"includeParams": "true"})
     else: print('test %s is not implemented' % tname)
 
     sys.exit('End of Test %s' % tname)
