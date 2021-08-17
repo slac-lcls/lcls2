@@ -18,10 +18,6 @@ logger = logging.getLogger(__name__)
 from PyQt5.QtWidgets import QApplication, QListView, QVBoxLayout, QAbstractItemView
 from PyQt5.QtGui import QStandardItemModel, QStandardItem, QBrush
 from PyQt5.QtCore import Qt, QModelIndex, QSize
-
-
-
-
 from psana.graphqt.QWIcons import icon
 
 
@@ -164,13 +160,6 @@ class QWList(QListView):
 
     if __name__ == "__main__":
 
-      def key_usage(self):
-        return 'Keys:'\
-               '\n  ESC - exit'\
-               '\n  S - show selected items'\
-               '\n'
-
-
       def keyPressEvent(self, e):
         logger.info('keyPressEvent, key=%s' % e.key())       
         if   e.key() == Qt.Key_Escape:
@@ -180,7 +169,10 @@ class QWList(QListView):
             self.process_selected_items()
 
         else:
-            logger.info(self.key_usage())
+            logger.info('Keys:'\
+               '\n  ESC - exit'\
+               '\n  S - show selected items'\
+               '\n')
 
 
 if __name__ == "__main__":
