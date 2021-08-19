@@ -68,7 +68,7 @@ cdef class EventBuilder:
                 return True
         return False
 
-    def build(self, batch_size=1, filter_fn=0, destination=0, limit_ts=-1, prometheus_counter=None, run=None):
+    def build(self, batch_size=1, filter_fn=0, destination=0, limit_ts=-1, prometheus_counter=None, run=None, timestamps=0):
         """
         Builds a list of batches.
 
@@ -118,7 +118,7 @@ cdef class EventBuilder:
         cdef unsigned reach_limit_ts = 0
         
         # For checking step dgrams
-        cdef unsigned service = 0
+        cdef unsigned service = 0, aux_service = 0
         cdef unsigned long aux_ts = 0
         cdef unsigned long aux_min_ts = 0
         cdef int smd_id=0
@@ -126,6 +126,7 @@ cdef class EventBuilder:
         cdef int accept = 1 # for filter callback
 
 
+        
         while got < batch_size and self._has_more() and not reach_limit_ts:
             array.zero(self.timestamps)
             array.zero(self.dgram_sizes)
@@ -136,7 +137,7 @@ cdef class EventBuilder:
             # Get dgrams and collect their timestamps for all smds, then locate
             # smd_id with the smallest timestamp.
             aux_min_ts = 0
-            smd_id = 0
+            smd_id = -1 
             for view_idx in range(self.nsmds):
                 event_dgrams[view_idx] = 0
                 view = self.views[view_idx]
@@ -147,9 +148,28 @@ cdef class EventBuilder:
                     view_ptr += self.offsets[view_idx]
                     d = <Dgram *>(view_ptr)
                     payload = d.xtc.extent - self.XTC_SIZE
-                    self.timestamps[view_idx] = <uint64_t>d.seq.high << 32 | d.seq.low
+                    aux_ts = <uint64_t>d.seq.high << 32 | d.seq.low
+                    aux_service = (d.env>>24)&0xf
+                    
+                    # check if user selected this timestamp (only applies to L1)
+                    if timestamps and aux_service == self.L1Accept:
+                        while aux_ts not in timestamps and aux_service == self.L1Accept:
+                            self.offsets[view_idx] += self.DGRAM_SIZE + payload
+                            if self.offsets[view_idx] >= self.sizes[view_idx]:
+                                aux_ts = 0
+                                break
+                            view_ptr += self.DGRAM_SIZE + payload
+                            d = <Dgram *>(view_ptr)
+                            payload = d.xtc.extent - self.XTC_SIZE
+                            aux_ts = <uint64_t>d.seq.high << 32 | d.seq.low
+                            aux_service = (d.env>>24)&0xf
+
+                    self.timestamps[view_idx] = aux_ts
+                    if aux_ts == 0: # there's nothing for this stream
+                        continue
+
                     self.dgram_sizes[view_idx] = self.DGRAM_SIZE + payload
-                    self.services[view_idx] = (d.env>>24)&0xf
+                    self.services[view_idx] = aux_service
                     raw_dgrams[view_idx] = <char[:self.dgram_sizes[view_idx]]>view_ptr
 
                     # Check for the smallest timestamp
@@ -162,6 +182,13 @@ cdef class EventBuilder:
                             smd_id = view_idx
 
                     PyBuffer_Release(&buf)
+
+                # end if self.offsets[view_idx] < ...
+            
+            # end for view_id in ...
+
+            if smd_id == -1: # nothing matches user's selected timestamps 
+                continue
 
             self.event_timestamps[smd_id] = self.timestamps[smd_id]
             self.timestamps[smd_id] = 0 # prepare for next reload
@@ -259,6 +286,7 @@ cdef class EventBuilder:
             if got == batch_size:
                 break
 
+
         # end while got < batch_size...
         
         self.nevents = got
@@ -286,6 +314,7 @@ cdef class EventBuilder:
             step_batch_footer_view[-1] = evt_idx + 1
             step_batch.extend(step_batch_footer_view[:evt_idx+1])
             step_batch.extend(step_batch_footer_view[batch_size:])
+        
         
         return batch_dict, step_dict
 

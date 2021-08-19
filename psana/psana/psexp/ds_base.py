@@ -31,6 +31,7 @@ class DsParms:
     max_retries: int
     live: bool
     found_xtc2_callback: int
+    timestamps: list
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table):
         self.det_classes, self.xtc_info, self.det_info_table = det_classes, xtc_info, det_info_table
@@ -55,6 +56,7 @@ class DataSourceBase(abc.ABC):
         self.destination = 0         # callback that returns rank no. (used by EventBuilder)
         self.monitor     = False     # turns prometheus monitoring client of/off
         self.small_xtc   = []        # swap smd file(s) with bigdata files for these detetors
+        self.timestamps  = 0         # list of user-selected timestamps
 
         if kwargs is not None:
             self.smalldata_kwargs = {}
@@ -72,6 +74,7 @@ class DataSourceBase(abc.ABC):
                     'smalldata_kwargs', 
                     'monitor',
                     'small_xtc',
+                    'timestamps',
                     )
             
             for k in keywords:
@@ -102,7 +105,8 @@ class DataSourceBase(abc.ABC):
                 self.prom_man, 
                 max_retries, 
                 self.live,
-                self.found_xtc2_callback) 
+                self.found_xtc2_callback,
+                self.timestamps) 
 
     def found_xtc2_callback(self, file_type):
         """ Returns a list of True/False if .xtc2 file is found 

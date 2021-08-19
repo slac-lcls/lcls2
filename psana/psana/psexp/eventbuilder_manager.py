@@ -8,6 +8,7 @@ class EventBuilderManager(object):
         self.batch_size     = dsparms.batch_size
         self.filter_fn      = dsparms.filter
         self.destination    = dsparms.destination
+        self.timestamps     = dsparms.timestamps
         self.run            = run
         self.n_files        = len(self.configs)
 
@@ -23,7 +24,8 @@ class EventBuilderManager(object):
                     filter_fn           = self.filter_fn, 
                     destination         = self.destination,
                     prometheus_counter  = self.c_filter,
-                    run                 = self.run) 
+                    run                 = self.run,
+                    timestamps          = self.timestamps) 
             self.min_ts = self.eb.min_ts
             self.max_ts = self.eb.max_ts
             if self.eb.nevents==0 and self.eb.nsteps==0: break
