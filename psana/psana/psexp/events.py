@@ -34,23 +34,19 @@ class Events:
             except StopIteration:
                 try:
                     batch_dict, _ = next(self._batch_iter)
+                    self._evt_man = EventManager(batch_dict[0][0], 
+                            self.configs, 
+                            self.dm, 
+                            self.dsparms.esm,
+                            filter_fn           = self.filter_callback,
+                            prometheus_counter  = self.c_read,
+                            max_retries         = self.max_retries,
+                            use_smds            = self.dsparms.use_smds,
+                            )
+                    return self.__next__()
                 except StopIteration:
                     self._batch_iter = next(self.smdr_man)
-                    batch_dict, _ = next(self._batch_iter)
-
-                self._evt_man = EventManager(batch_dict[0][0], 
-                        self.configs, 
-                        self.dm, 
-                        self.dsparms.esm,
-                        filter_fn           = self.filter_callback,
-                        prometheus_counter  = self.c_read,
-                        max_retries         = self.max_retries,
-                        use_smds            = self.dsparms.use_smds,
-                        )
-                evt = next(self._evt_man)
-                if not any(evt._dgrams): return self.__next__()
-                self.smdr_man.last_seen_event = evt
-                return evt 
+                    return self.__next__()
 
         elif self.get_smd:
             # RunParallel

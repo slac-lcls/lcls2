@@ -27,4 +27,8 @@ class Test:
         env['PS_EB_NODES'] = '2'
         run_steps = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_steps.py')
         subprocess.check_call(['mpirun','-n','7','python',run_steps], env=env)
+        
+        # This also tests timestamps filter
+        run_steps = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'run_steps_w_ts_filter.py')
+        subprocess.check_call(['mpirun','-n','7','python',run_steps], env=env)
 

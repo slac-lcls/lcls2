@@ -14,10 +14,13 @@ class BatchIterator(object):
 
     SmdReaderManager returns this object when a chunk is read.
     """
-    def __init__(self, views, configs, run, batch_size=1, filter_fn=0, destination=0):
+    def __init__(self, views, configs, run, 
+            batch_size=1, filter_fn=0, 
+            destination=0, timestamps=0):
         self.batch_size     = batch_size
         self.filter_fn      = filter_fn
         self.destination    = destination
+        self.timestamps     = timestamps
         self.run            = run 
         
         empty_view = True
@@ -40,13 +43,16 @@ class BatchIterator(object):
         # With batch_size known, smditer returns a batch_dict,
         # {rank:[bytearray, evt_size_list], ...} for each next 
         # while updating offsets of each smd memoryview
-        if not self.eb: raise StopIteration
+        if not self.eb: 
+            raise StopIteration
 
         batch_dict, step_dict = self.eb.build(batch_size=self.batch_size, 
                 filter_fn=self.filter_fn, 
                 destination=self.destination,
-                run=self.run)
-        if self.eb.nevents == 0 and self.eb.nsteps == 0: raise StopIteration
+                run=self.run,
+                timestamps=self.timestamps)
+        if self.eb.nevents == 0 and self.eb.nsteps == 0: 
+            raise StopIteration
         return batch_dict, step_dict
 
 
@@ -136,7 +142,8 @@ class SmdReaderManager(object):
         batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, 
                 batch_size  = self.dsparms.batch_size, 
                 filter_fn   = self.dsparms.filter, 
-                destination = self.dsparms.destination)
+                destination = self.dsparms.destination,
+                timestamps  = self.dsparms.timestamps)
         self.got_events = self.smdr.view_size
         self.processed_events += self.got_events
 
@@ -189,7 +196,6 @@ class SmdReaderManager(object):
                 if not self.smdr.is_complete():
                     is_done = True
                     break
-            #print(f'chunks() view:{d_view:.3f} read:{d_read:.3f} tot:{d_view+d_read:.3f}') 
 
     @property
     def min_ts(self):
