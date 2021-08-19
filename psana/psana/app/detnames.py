@@ -14,7 +14,7 @@ def detnames():
   # support single runs, shmem, and filenames using standard sys.argv.
 
   parser = argparse.ArgumentParser()
-  parser.add_argument("dsname", help="psana datasource experiment/run (e.g. exp=xppd7114,run=43) or xtc2 filename or shmem='my_shmem_identifier'")
+  parser.add_argument("dsname", help="psana datasource experiment/run (e.g. exp=xppd7114,run=43) or xtc2 filename or shmem=<my_shmem_identifier>")
   parser.add_argument('-e','--epics', dest='epics', action='store_true', help='Dump epics variable aliases for use with Detector interface')
   parser.add_argument('-s','--scan', dest='scan', action='store_true', help='Dump step-scan names for use with Detector interface')
   parser.add_argument('-r','--raw', dest='raw', action='store_true', help='Expert only: dump data types in raw data')
