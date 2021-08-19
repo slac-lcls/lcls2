@@ -20,7 +20,7 @@ def config_dump():
 
     parser = argparse.ArgumentParser(description='LCLS2 Configuration Dump Utility')
     parser.add_argument("dsname", help="psana datasource experiment/run (e.g. exp=xppd7114,run=43) or xtc2 filename or shmem='my_shmem_identifier'")
-    parser.add_argument("det", help="Detector name selected from output of 'detnames' command")
+    parser.add_argument("detname", help="Detector name selected from output of 'detnames' command")
     parser.add_argument("datatype", help="Data type selected from output of 'detnames' command")
     parser.add_argument("-s","--segments", nargs='*', help="space-separated list of segment numbers from 'detnames -i' command (e.g. 4 6 7)", type=int, default=[])
     args=parser.parse_args()
