@@ -115,6 +115,7 @@ if 'PSANA' in BUILD_LIST :
             'hdf5explorer        = psana.graphqt.app.hdf5explorer:hdf5explorer_gui',
             'screengrabber       = psana.graphqt.ScreenGrabberQt5:run_GUIScreenGrabber',
             'detnames            = psana.app.detnames:detnames',
+            'config_dump         = psana.app.config_dump:config_dump',
             'xtcavDark           = psana.xtcav.app.xtcavDark:__main__',
             'xtcavLasingOff      = psana.xtcav.app.xtcavLasingOff:__main__',
             'xtcavLasingOn       = psana.xtcav.app.xtcavLasingOn:__main__',
