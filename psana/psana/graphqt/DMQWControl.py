@@ -19,6 +19,8 @@ logger = logging.getLogger(__name__)
 class DMQWControl(CMWControlBase):
     """QWidget for Data Manager control fields"""
 
+    cmd_list = ['detnames', 'datinfo', 'det_dark_proc','epix10ka_pedestals_calibration','epix10ka_deploy_constants','',] 
+
     instr_exp_is_changed = pyqtSignal('QString', 'QString')
 
     def __init__(self, **kwa):
@@ -33,15 +35,21 @@ class DMQWControl(CMWControlBase):
         expname = kwa.get('expname', expname_def())
 
         self.lab_exp = QLabel('Exp:')
+        self.lab_cmd = QLabel('CLI:')
         self.but_exp = QPushButton(expname)
-        self.but_cmd = QPushButton('Command')
-        self.but_stop = QPushButton('Stop')
-
+        self.but_start = QPushButton('start')
+        self.but_stop = QPushButton('stop')
+        self.cmb_cmd = QComboBox()
+        self.cmb_cmd.addItems(self.cmd_list)
+        self.cmb_cmd.setCurrentIndex(self.cmd_list.index('detnames'))
+ 
         self.box = QHBoxLayout()
         self.box.addWidget(self.lab_exp)
         self.box.addWidget(self.but_exp)
         self.box.addStretch(1)
-        self.box.addWidget(self.but_cmd)
+        self.box.addWidget(self.lab_cmd)
+        self.box.addWidget(self.cmb_cmd)
+        self.box.addWidget(self.but_start)
         self.box.addWidget(self.but_stop)
         self.box.addWidget(self.but_save)
         self.box.addWidget(self.but_view)
@@ -49,8 +57,9 @@ class DMQWControl(CMWControlBase):
         self.setLayout(self.box)
  
         self.but_exp.clicked.connect(self.on_but_exp)
-        self.but_cmd.clicked.connect(self.on_but_cmd)
+        self.but_start.clicked.connect(self.on_but_start)
         self.but_stop.clicked.connect(self.on_but_stop)
+        self.cmb_cmd.currentIndexChanged[int].connect(self.on_cmb_cmd)
 
         self.set_tool_tips()
         self.set_style()
@@ -65,15 +74,21 @@ class DMQWControl(CMWControlBase):
     def set_tool_tips(self):
         CMWControlBase.set_tool_tips(self)
         self.but_exp.setToolTip('Select experiment')
-        self.but_cmd.setToolTip('Infromation about run from DB')
+        self.but_start.setToolTip('Start command execution in subprocess')
+        self.but_stop.setToolTip('Stop subprocess')
+        self.cmb_cmd.setToolTip('Select command to execute for selected run(s)')
 
 
     def set_style(self):
         CMWControlBase.set_style(self)
         self.lab_exp.setStyleSheet(style.styleLabel)
+        self.lab_cmd.setStyleSheet(style.styleLabel)
         self.lab_exp.setFixedWidth(25)
+        self.lab_cmd.setFixedWidth(25)
         self.but_exp.setFixedWidth(80)
-        self.but_stop.setFixedWidth(45)
+        self.cmb_cmd.setFixedWidth(150)
+        self.but_start.setFixedWidth(35)
+        self.but_stop.setFixedWidth(35)
         #self.but_buts.setStyleSheet(style.styleButton)
         #self.but_tabs.setVisible(True)
         self.layout().setContentsMargins(5,0,5,0)
@@ -86,14 +101,20 @@ class DMQWControl(CMWControlBase):
         self.but_view.setEnabled(False)
 
 
+    def on_cmb_cmd(self, ind):
+        logger.debug('on_cmb_cmd selected index %d: %s' % (ind, self.cmd_list[ind]))
+        #command = self.cmb_cmd.currentText()
+
+
     def on_but_stop(self):
         logger.debug('on_but_stop')
         self.force_stop = True
 
 
-    def on_but_cmd(self):
+    def on_but_start(self):
+        command = self.cmb_cmd.currentText()
         expname, runnum = cp.exp_name.value(), cp.last_selected_run
-        logger.info('TBD on_but_cmd exp:%s run:%s' % (expname, str(runnum)))
+        logger.info('on_but_start command:%s exp:%s run:%s' % (command, expname, str(runnum)))
         #if cp.last_selected_run is None:
         #    logger.info('RUN IS NOT SELECTED - click/select run first')
         #    return
@@ -119,8 +140,14 @@ class DMQWControl(CMWControlBase):
         cp.dmqwmain.append_info(s)
 
         if is_lcls2:
-          cmd = 'detnames exp=%s,run=%d -r' % (expname, runnum)
-          #cmd = 'datinfo -e %s -r %d' % (expname, runnum)
+          cmd = ''
+          if command == 'detnames':
+            cmd = 'detnames exp=%s,run=%d -r' % (expname, runnum)
+          elif command == 'datinfo':
+            cmd = 'datinfo -e %s -r %d' % (expname, runnum)
+          else:
+            cp.dmqwmain.append_info('SORRY, COMMAND "%s" IS NOT IMPLEMENTED YET...' % command)
+            return
           self.subprocess_command(cmd)
 
 
