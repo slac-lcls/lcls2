@@ -17,7 +17,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QPushButton, QTextEdit, QMessageBox
-from PyQt5.QtGui import QTextCursor
+from PyQt5.QtGui import QTextCursor, QFont
 from psana.graphqt.QWIcons import icon
 
 FNAME_INFO_DEF = 'info.txt'
@@ -46,6 +46,7 @@ class QWInfoPanel(QWidget):
         QWidget.__init__(self, kwa.get('parent', None))
 
         self.fname = kwa.get('fname_info', FNAME_INFO_DEF)
+        self.count_empty = 0
 
         self.winfo = QTextEdit('Info panel')
         self.but_save = QPushButton('Save')
@@ -77,9 +78,16 @@ class QWInfoPanel(QWidget):
         self.but_save.setIcon(icon.icon_save)
         self.but_save.setFixedWidth(60)
         self.but_clear.setFixedWidth(60)
-        self.winfo.setReadOnly(True)
         self.layout().setContentsMargins(0,0,0,0)
         self.hbox.layout().setContentsMargins(2,2,2,0)
+
+        w = self.winfo
+        w.setReadOnly(True)
+        w.setFont(QFont('monospace'))
+        #cursor = w.textCursor()
+        #w.selectAll()
+        #w.setFontPointSize(32)
+        #w.setTextCursor(cursor)
 
 
     def set_info_filename(self, fname=FNAME_INFO_DEF):
@@ -98,11 +106,33 @@ class QWInfoPanel(QWidget):
     def on_but_clear(self):
         logger.debug('on_but_clear')
         self.winfo.clear()
+        self.count_empty = 0
+
+
+    def remove_last_line(self):
+        """trick removing last line"""
+        w = self.winfo
+        curspos = w.textCursor()
+        w.moveCursor(QTextCursor.End, QTextCursor.MoveAnchor)
+        w.moveCursor(QTextCursor.StartOfLine, QTextCursor.MoveAnchor)
+        w.moveCursor(QTextCursor.End, QTextCursor.KeepAnchor)
+        w.textCursor().removeSelectedText()
+        w.textCursor().deletePreviousChar()
+        w.setTextCursor(curspos)
 
 
     def append(self, s, fname=FNAME_INFO_DEF):
+        is_empty_record = not s
+        if is_empty_record:
+           self.count_empty += 1
+           s='%s times buffer is empty - click on stop' % str(self.count_empty)
+
+           if self.count_empty>5: self.remove_last_line()
+           #self.winfo.insertPlainText(s)
+        #else:
         self.winfo.append(s)
-        self.winfo.moveCursor(QTextCursor.End)
+        #self.winfo.insertPlainText(s)
+        self.winfo.moveCursor(QTextCursor.End)#, QTextCursor.KeepAnchor)
         self.winfo.repaint()
         self.fname = fname
         #self.raise_()
