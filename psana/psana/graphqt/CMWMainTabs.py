@@ -21,7 +21,7 @@ from psana.graphqt.CMConfigParameters import cp
 class CMWMainTabs(QWidget):
     """GUI for tabs and associated widgets
     """
-    tab_names = ['CDB', 'Image', 'Text', 'Calib', 'HDF5', 'XTC', 't-converter', 'Mask', 'Configuration', 'Test']
+    tab_names = ['CDB', 'Image', 'Text', 'Calib', 'HDF5', 'XTC', 't-converter', 'Configuration', 'Mask']
 
     tool_tips = [\
       'Calibration Data Base\nviewer/manager',\
@@ -31,13 +31,12 @@ class CMWMainTabs(QWidget):
       'HDF5 file browser',\
       'XTC data viewer',\
       'Time converter between Date&Time <-> POSIX <-> LCLS2',\
-      'Mask Editor for images',\
       'Configuration manager for this app',\
-      'Test Window',\
+      'Mask Editor for images',\
     ]
 
 
-    def __init__ (self, parent=None, app=None):
+    def __init__(self, parent=None, app=None):
 
         QWidget.__init__(self, parent)
 
