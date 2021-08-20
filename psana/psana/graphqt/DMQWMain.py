@@ -82,6 +82,9 @@ class DMQWMain(QWidget):
         self.wctrl.layout().setContentsMargins(2,2,2,0)
         self.winfo.hbox.layout().setContentsMargins(2,2,2,0)
         self.wctrl.setFixedHeight(26)
+        spl_pos = 280
+        self.wleft.setMinimumWidth(spl_pos)
+        self.hspl.setSizes((spl_pos, self.size().width()-spl_pos,))
 
 
     def closeEvent(self, e):
