@@ -55,30 +55,36 @@ class DMQWList(QWList):
         brush_green = QBrush(Qt.green)
         runs_fs = self.list_runs_fs(expname, dirinstr)
         self.runinfo_db = uws.run_info_selected(expname, location) # list_runs_db
-        dark_runs = uws.runnums_with_tag(expname, tag='DARK')
+        #dark_runs = uws.runnums_with_tag(expname, tag='DARK')
+        tags = uws.runs_to_tags(expname)
+        logger.debug('runs_to_tags for %s: %s' % (expname, str(tags)))
+
         self.setSpacing(1)
         for r in sorted(self.runinfo_db.keys()):
             tb, te, is_closed, all_present = self.runinfo_db[r]
-            tb = '%s %s' % (tb[:19], 'GMT' if tb[-6:]=='+00:00' else tb[-6:])
+            tb = '%s %s' % (tb[:19], 'UTC' if tb[-6:]=='+00:00' else tb[-6:])
             in_fs = r in runs_fs
-            is_dark = r in dark_runs
-            s = 'run %04d %s in ARC' % (r, tb)
+            s = 'r%04d %s in ARC' % (r, tb)
             s += '|FS' if in_fs else ''
-            if r in dark_runs: s += ' DARK'
+            if tags:
+              run_tags = tags.get(str(r), [])
+              if run_tags: s += ' '+', '.join(run_tags)
             item = QStandardItem(s)
             item.setAccessibleText('%d'%r)
-            #if in_fs: item.setBackground(brush_green)
-            #item.setCheckable(False) 
             item.setSelectable(in_fs)
             item.setEnabled(in_fs)
+            self.model.appendRow(item)
+
+            #if in_fs: item.setBackground(brush_green)
+            #item.setCheckable(False) 
             #item.setEditable(False)
             #item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
             #item.setSizeHint(QSize(-1,20))
             #item.setIcon(icon.icon_table)
-            self.model.appendRow(item)
 
 
     def on_click(self, index):
+        """overrides base class method"""
         item = self.model.itemFromIndex(index)
         runnum = int(item.accessibleText())
         cp.last_selected_run = runnum
@@ -91,6 +97,27 @@ class DMQWList(QWList):
           + '\n is_closed: %s all_present: %s' % (is_closed, all_present)
         cp.dmqwmain.append_info(s, cp.dmqwmain.fname_info(self.expname, runnum))
         cp.dmqwmain.dump_info_exp_run(self.expname, runnum)
+
+
+    def on_item_selected(self, selected, deselected):
+        """overrides base class method"""
+        itemsel = self.model.itemFromIndex(selected)
+        itemdesel = self.model.itemFromIndex(deselected)
+
+        ind_is_selected = selected in self.selectedIndexes()
+        #print('XXX ind_is_selected', ind_is_selected)
+        #if not ind_is_selected:
+        #    logger.debug('DESELECTED run %s' % itemsel.accessibleText())
+        #    return
+
+        if itemsel:
+          runnum = int(itemsel.accessibleText())
+          cp.last_selected_run = runnum
+          if itemsel is not None:
+            s = 'last_selected_run: %d %s' % (runnum, ind_is_selected)
+            logger.debug(s)
+            if cp.dmqwmain is None: return
+            cp.dmqwmain.append_info(s, cp.dmqwmain.fname_info(self.expname, runnum))
 
 
     def closeEvent(self, e):
