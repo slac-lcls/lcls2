@@ -42,11 +42,18 @@ class DMQWMain(QWidget):
         self.wlist = DMQWList(**kwa)
         self.wctrl = DMQWControl(**kwa)
 
+        self.vbox1 = QVBoxLayout()
+        self.vbox1.addWidget(self.wctrl)
+        self.vbox1.addWidget(self.wlist)
+        self.wleft = QWidget()
+        self.wleft.setLayout(self.vbox1)
+
         self.hspl = QSplitter(Qt.Horizontal)
-        self.hspl.addWidget(self.wlist)
+        #self.hspl.addWidget(self.wlist)
+        self.hspl.addWidget(self.wleft)
         self.hspl.addWidget(self.winfo)
         self.vbox = QVBoxLayout()
-        self.vbox.addWidget(self.wctrl)
+        #self.vbox.addWidget(self.wctrl)
         self.vbox.addWidget(self.hspl)
         self.setLayout(self.vbox)
 
@@ -54,6 +61,7 @@ class DMQWMain(QWidget):
         self.set_tool_tips()
 
         self.append_info = self.winfo.append # shotcut
+        self.is_lcls2 = uws.is_lcls2
 
 
     def proc_kwargs(self, **kwa):
@@ -69,7 +77,11 @@ class DMQWMain(QWidget):
 
     def set_style(self):
         self.layout().setContentsMargins(0,0,0,0)
-        self.wctrl.setFixedHeight(40)
+        self.wleft.layout().setContentsMargins(0,0,0,0)
+        self.winfo.layout().setContentsMargins(0,0,0,0)
+        self.wctrl.layout().setContentsMargins(2,2,2,0)
+        self.winfo.hbox.layout().setContentsMargins(2,2,2,0)
+        self.wctrl.setFixedHeight(26)
 
 
     def closeEvent(self, e):
