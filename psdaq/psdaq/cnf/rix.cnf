@@ -35,7 +35,7 @@ bld_cmd1 = task_set+'drp_bld '  +(std_opts%1)+' -k batching=no,interface=eno1 '
 elog_cfg = '/cds/group/pcds/dist/pds/rix/misc/elog_rix.txt'
 
 ea_cfg = '/cds/group/pcds/dist/pds/rix/misc/epicsArch.txt'
-ea_cmd0 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
+ea_cmd0 = task_set+'epicsArch '+(std_opts%0)+' -k batching=no '+ea_cfg
 ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
 
 #

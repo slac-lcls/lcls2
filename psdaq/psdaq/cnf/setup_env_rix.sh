@@ -1,12 +1,15 @@
 source /cds/sw/ds/ana/conda2/manage/bin/psconda.sh
 
+conda activate ps-4.3.2
+RELDIR="/cds/home/opr/rixopr/git/lcls2_080421"
+
 #conda activate ps-4.5.2
 #RELDIR="/cds/home/opr/rixopr/git/lcls2_070221_newrogue"
 
 # in use until July 3, 2021
-conda activate ps-4.3.2
+#conda activate ps-4.3.2
 #RELDIR="/cds/home/opr/rixopr/git/lcls2_062121"
-RELDIR="/cds/home/opr/rixopr/git/lcls2_062121_pv"
+#RELDIR="/cds/home/opr/rixopr/git/lcls2_062121_pv"
 
 # in use until June 21, 2021
 #conda activate ps-4.3.2
