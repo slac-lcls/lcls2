@@ -35,7 +35,7 @@ bld_cmd1 = task_set+'drp_bld '  +(std_opts%1)+' -k batching=no,interface=eno1 '
 elog_cfg = '/cds/group/pcds/dist/pds/tmo/misc/elog_tmo.txt'
 
 ea_cfg = '/cds/group/pcds/dist/pds/tmo/misc/epicsArch_tmo.txt'
-ea_cmd0 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
+ea_cmd0 = task_set+'epicsArch '+(std_opts%0)+' -k batching=no '+ea_cfg
 ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
 
 #
@@ -100,7 +100,8 @@ procmgr_config = [
  { host: 'drp-neh-cmp005', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/tmo/scripts/ttfeedback.py' },
 
  { host: 'drp-neh-cmp007', id:'meb1', flags:'spu', cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}'},
- { host: 'drp-neh-cmp014', id:'manta_0', flags:'spux', env:manta_env, cmd:pva_cmd1+' -l 0x1 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
+# { host: 'drp-neh-cmp007', id:'meb1', flags:'spu', cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q 8 -n 16'},
+# { host: 'drp-neh-cmp014', id:'manta_0', flags:'spu', env:manta_env, cmd:pva_cmd0+' -l 0x1 IM2K0:XTES:CAM:DATA1:Pva:Image -k pebbleBufSize=8400000'},
 ]
 
 hsd_epics = 'DAQ:TMO:HSD:1'

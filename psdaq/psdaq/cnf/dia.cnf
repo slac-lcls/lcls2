@@ -1,4 +1,4 @@
-if not platform: platform = '0'
+if not platform: platform = '1'
 
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
 epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
@@ -30,7 +30,7 @@ bld_cmd0 = task_set+'drp_bld '  +(std_opts%0)+' -k batching=no,interface=eno1 '
 bld_cmd1 = task_set+'drp_bld '  +(std_opts%1)+' -k batching=no,interface=eno1 '
 
 ea_cfg = '/cds/group/pcds/dist/pds/tmo/misc/epicsArch_dia.txt'
-ea_cmd0 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
+ea_cmd0 = task_set+'epicsArch '+(std_opts%0)+' -k batching=no '+ea_cfg
 ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
 
 #
