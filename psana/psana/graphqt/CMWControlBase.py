@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 #from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QGridLayout,\
                             QPushButton, QLabel, QComboBox, QLineEdit, QTextEdit
-from PyQt5.QtCore import QSize, QRectF, pyqtSignal, QModelIndex
+from PyQt5.QtCore import QSize, QRectF, pyqtSignal, QModelIndex, QTimer
 
 from psana.graphqt.QWFileNameV2 import QWFileNameV2
 from psana.graphqt.CMConfigParameters import cp, dirs_to_search, expname_def
