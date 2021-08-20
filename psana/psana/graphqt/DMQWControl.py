@@ -27,25 +27,30 @@ class DMQWControl(CMWControlBase):
 
         CMWControlBase.__init__(self, **kwa)
         cp.dmqwcontrol = self
+        self.osp = None
+        self.dt_msec = 1000
 
         expname = kwa.get('expname', expname_def())
 
-        self.lab_exp     = QLabel('Exp:')
-        self.but_exp     = QPushButton(expname)
-        self.but_runinfo = QPushButton('Run info')
+        self.lab_exp = QLabel('Exp:')
+        self.but_exp = QPushButton(expname)
+        self.but_cmd = QPushButton('Command')
+        self.but_stop = QPushButton('Stop')
 
         self.box = QHBoxLayout()
         self.box.addWidget(self.lab_exp)
         self.box.addWidget(self.but_exp)
         self.box.addStretch(1)
-        self.box.addWidget(self.but_runinfo)
+        self.box.addWidget(self.but_cmd)
+        self.box.addWidget(self.but_stop)
         self.box.addWidget(self.but_save)
         self.box.addWidget(self.but_view)
         self.box.addWidget(self.but_tabs)
         self.setLayout(self.box)
  
         self.but_exp.clicked.connect(self.on_but_exp)
-        self.but_runinfo.clicked.connect(self.on_but_runinfo)
+        self.but_cmd.clicked.connect(self.on_but_cmd)
+        self.but_stop.clicked.connect(self.on_but_stop)
 
         self.set_tool_tips()
         self.set_style()
@@ -60,7 +65,7 @@ class DMQWControl(CMWControlBase):
     def set_tool_tips(self):
         CMWControlBase.set_tool_tips(self)
         self.but_exp.setToolTip('Select experiment')
-        self.but_runinfo.setToolTip('Infromation about run from DB')
+        self.but_cmd.setToolTip('Infromation about run from DB')
 
 
     def set_style(self):
@@ -68,6 +73,7 @@ class DMQWControl(CMWControlBase):
         self.lab_exp.setStyleSheet(style.styleLabel)
         self.lab_exp.setFixedWidth(25)
         self.but_exp.setFixedWidth(80)
+        self.but_stop.setFixedWidth(45)
         #self.but_buts.setStyleSheet(style.styleButton)
         #self.but_tabs.setVisible(True)
         self.layout().setContentsMargins(5,0,5,0)
@@ -80,14 +86,66 @@ class DMQWControl(CMWControlBase):
         self.but_view.setEnabled(False)
 
 
-    def on_but_runinfo(self):
+    def on_but_stop(self):
+        logger.debug('on_but_stop')
+        self.force_stop = True
+
+
+    def on_but_cmd(self):
         expname, runnum = cp.exp_name.value(), cp.last_selected_run
-        logger.info('TBD on_but_runinfo exp:%s run:%s' % (expname, str(runnum)))
-        if cp.last_selected_run is None:
-            logger.info('RUN IS NOT SELECTED - click/select run first')
-            return
+        logger.info('TBD on_but_cmd exp:%s run:%s' % (expname, str(runnum)))
+        #if cp.last_selected_run is None:
+        #    logger.info('RUN IS NOT SELECTED - click/select run first')
+        #    return
+
+        self.force_stop = False
         if cp.dmqwmain is None: return
-        cp.dmqwmain.dump_info_exp_run(expname, runnum)
+
+        dsname = cp.dmqwmain.fname_info(expname, runnum)
+        cp.dmqwmain.append_info(dsname, cp.dmqwmain.fname_info(expname, runnum))
+        #cp.dmqwmain.dump_info_exp_run(expname, runnum)
+
+        selruns = [int(i.accessibleText()) for i in cp.dmqwmain.wlist.selected_items()]
+        s = 'Exp: %s %d selected runs:\n  %s\nLast selected run: %s'%\
+               (expname, len(selruns), str(selruns), str(cp.last_selected_run))
+        cp.dmqwmain.append_info(s)
+
+        if runnum is None:
+            logger.warning('RUN IS NOT SELECTED - command terminated')
+            return
+
+        is_lcls2 = cp.dmqwmain.is_lcls2(expname, runnum)
+        s = 'dataset exp=%s,run=%d is_lcls2:%s' % (expname, runnum, is_lcls2)
+        cp.dmqwmain.append_info(s)
+
+        if is_lcls2:
+          cmd = 'detnames exp=%s,run=%d -r' % (expname, runnum)
+          #cmd = 'datinfo -e %s -r %d' % (expname, runnum)
+          self.subprocess_command(cmd)
+
+
+    def subprocess_command(self, cmd):
+        import psana.graphqt.UtilsSubproc as usp
+        cp.dmqwmain.append_info(cmd)
+
+        self.osp = usp.SubProcess()
+        self.osp(cmd, stdout=usp.subprocess.PIPE, env=None, shell=False)
+        logger.info('\n== creates subprocess for command: %s' % cmd)
+
+        QTimer().singleShot(self.dt_msec, self.on_timeout)
+
+
+    def on_timeout(self):
+        if self.force_stop:
+           if self.osp: self.osp.kill()
+           return
+        s = self.osp.stdout_incriment().rstrip('\n')
+        if cp.dmqwmain is None: print(s)
+        else: cp.dmqwmain.append_info(s)
+        if self.osp.is_compleated():
+           cp.dmqwmain.append_info('subprocess is completed')
+           return
+        QTimer().singleShot(self.dt_msec, self.on_timeout)
 
 
     def on_but_exp(self):
@@ -104,6 +162,7 @@ class DMQWControl(CMWControlBase):
 
             if cp.dmqwmain is not None:
                cp.dmqwmain.wlist.fill_list_model(experiment=exp_name)
+               cp.dmqwmain.winfo.winfo.clear()
 
 
     def on_but_view(self):
