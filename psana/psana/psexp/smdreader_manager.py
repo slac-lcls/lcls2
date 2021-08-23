@@ -46,11 +46,12 @@ class BatchIterator(object):
         if not self.eb: 
             raise StopIteration
 
-        batch_dict, step_dict = self.eb.build(batch_size=self.batch_size, 
+        batch_dict, step_dict = self.eb.build(self.timestamps,
+                batch_size=self.batch_size, 
                 filter_fn=self.filter_fn, 
                 destination=self.destination,
                 run=self.run,
-                timestamps=self.timestamps)
+                )
         if self.eb.nevents == 0 and self.eb.nsteps == 0: 
             raise StopIteration
         return batch_dict, step_dict

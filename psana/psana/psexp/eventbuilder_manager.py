@@ -19,13 +19,13 @@ class EventBuilderManager(object):
 
     def batches(self):
         while True: 
-            batch_dict, step_dict = self.eb.build(
+            batch_dict, step_dict = self.eb.build(self.timestamps,
                     batch_size          = self.batch_size, 
                     filter_fn           = self.filter_fn, 
                     destination         = self.destination,
                     prometheus_counter  = self.c_filter,
                     run                 = self.run,
-                    timestamps          = self.timestamps) 
+                    ) 
             self.min_ts = self.eb.min_ts
             self.max_ts = self.eb.max_ts
             if self.eb.nevents==0 and self.eb.nsteps==0: break

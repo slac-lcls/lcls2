@@ -13,14 +13,14 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 
-import logging
-logger = logging.getLogger('psana.psexp')
-logger.setLevel(logging.DEBUG)
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-logger.addHandler(ch)
+#import logging
+#logger = logging.getLogger('psana.psexp')
+#logger.setLevel(logging.DEBUG)
+#ch = logging.StreamHandler()
+#ch.setLevel(logging.DEBUG)
+#formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+#ch.setFormatter(formatter)
+#logger.addHandler(ch)
 
 test_xtc_dir = os.environ.get('TEST_XTC_DIR', '.')
 xtc_dir = os.path.join(test_xtc_dir, '.tmp_smd0')
@@ -31,9 +31,9 @@ def my_filter(evt):
 def run_serial_read(n_events, batch_size=1, filter_fn=0):
     exp_xtc_dir = os.path.join(xtc_dir, '.tmp')
     os.environ['PS_SMD_N_EVENTS'] = str(n_events)
-    timestamps = [4294967300, 4294967303, 4294967305, 4294967311, \
+    timestamps = np.array([4294967300, 4294967303, 4294967305, 4294967311, \
             4294967317, 4294967318, 4294967319, 4294967321, 4294967322, \
-            4294967337, 4294967338, 4294967339, 4294967340, 4294967342, 4294967343]
+            4294967337, 4294967338, 4294967339, 4294967340, 4294967342, 4294967343], dtype=np.uint64)
     ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir, batch_size=batch_size, filter=filter_fn, monitor=True, timestamps=timestamps)
     cn_steps = 0
     cn_events = 0
@@ -114,6 +114,7 @@ if __name__ == "__main__":
                 n_steps = np.max([n_steps, result[i]['n_steps']])
             
             assert all(sum_events_per_step == [4,5,6]) 
+            print(sum_events_per_step)
             assert sum_events == 15
             assert n_steps == 3
     

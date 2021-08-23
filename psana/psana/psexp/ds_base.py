@@ -23,15 +23,15 @@ class InvalidDataSourceArgument(Exception): pass
 
 @dataclass
 class DsParms:
-    batch_size: int
-    max_events: int
-    filter: int
-    destination: int
-    prom_man: int
-    max_retries: int
-    live: bool
-    found_xtc2_callback: int
-    timestamps: list
+    batch_size:         int
+    max_events:         int
+    filter:             int
+    destination:        int
+    prom_man:           int
+    max_retries:        int
+    live:               bool
+    found_xtc2_callback:int
+    timestamps:         np.ndarray 
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table):
         self.det_classes, self.xtc_info, self.det_info_table = det_classes, xtc_info, det_info_table
@@ -39,6 +39,13 @@ class DsParms:
     def set_use_smds(self, use_smds):
         self.use_smds = use_smds
 
+    def read_ts_npy_file(self):
+        with open(self.timestamps, 'rb') as ts_npy_f:
+            return(np.asarray(np.load(ts_npy_f), dtype=np.uint64))
+
+    def set_timestamps(self):
+        if isinstance(self.timestamps, str):
+            self.timestamps = self.read_ts_npy_file()
 
 class DataSourceBase(abc.ABC):
     def __init__(self, **kwargs):
@@ -56,7 +63,8 @@ class DataSourceBase(abc.ABC):
         self.destination = 0         # callback that returns rank no. (used by EventBuilder)
         self.monitor     = False     # turns prometheus monitoring client of/off
         self.small_xtc   = []        # swap smd file(s) with bigdata files for these detetors
-        self.timestamps  = 0         # list of user-selected timestamps
+        self.timestamps  = np.empty(0, dtype=np.uint64)         
+                                     # list of user-selected timestamps
 
         if kwargs is not None:
             self.smalldata_kwargs = {}
@@ -79,6 +87,9 @@ class DataSourceBase(abc.ABC):
             
             for k in keywords:
                 if k in kwargs:
+                    if k == 'timestamps':
+                        msg = 'Numpy array or .npy filename is required for timestamps argument'
+                        assert isinstance(kwargs[k], (np.ndarray, str)), msg
                     setattr(self, k, kwargs[k])
 
             if self.destination != 0:
@@ -106,7 +117,14 @@ class DataSourceBase(abc.ABC):
                 max_retries, 
                 self.live,
                 self.found_xtc2_callback,
-                self.timestamps) 
+                self.timestamps,
+                ) 
+
+        if 'mpi_ts' not in kwargs:
+            self.dsparms.set_timestamps()
+        else:
+            if kwargs['mpi_ts'] == 0:
+                self.dsparms.set_timestamps()
 
     def found_xtc2_callback(self, file_type):
         """ Returns a list of True/False if .xtc2 file is found 
