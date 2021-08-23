@@ -68,7 +68,9 @@ cdef class EventBuilder:
                 return True
         return False
 
-    def build(self, batch_size=1, filter_fn=0, destination=0, limit_ts=-1, prometheus_counter=None, run=None, timestamps=0):
+    def build(self, uint64_t[:] timestamps, batch_size=1, 
+            filter_fn=0, destination=0, limit_ts=-1, 
+            prometheus_counter=None, run=None):
         """
         Builds a list of batches.
 
@@ -152,7 +154,7 @@ cdef class EventBuilder:
                     aux_service = (d.env>>24)&0xf
                     
                     # check if user selected this timestamp (only applies to L1)
-                    if timestamps and aux_service == self.L1Accept:
+                    if timestamps.shape[0] > 0 and aux_service == self.L1Accept:
                         while aux_ts not in timestamps and aux_service == self.L1Accept:
                             self.offsets[view_idx] += self.DGRAM_SIZE + payload
                             if self.offsets[view_idx] >= self.sizes[view_idx]:

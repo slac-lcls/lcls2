@@ -70,16 +70,23 @@ def safe_mpi_abort(msg):
 class MPIDataSource(DataSourceBase):
 
     def __init__(self, comms, *args, **kwargs):
+        # Check if an I/O-friendly numpy file storing timestamps is given by the user
+        kwargs['mpi_ts'] = 0
+        if 'timestamps' in kwargs:
+            if isinstance(kwargs['timestamps'], str):
+                kwargs['mpi_ts'] = 1
+        
+        # Initialize base class
         super(MPIDataSource, self).__init__(**kwargs)
+        self.smd_fds = None
 
+        # Set up the MPI communication
         self.comms = comms
         comm = self.comms.psana_comm # todo could be better
         rank = comm.Get_rank()
         size = comm.Get_size()
         global nodetype
         nodetype = self.comms.node_type()
-
-        self.smd_fds = None
         
         # prepare comms for running SmallData
         PS_SRV_NODES = int(os.environ.get('PS_SRV_NODES', 0))
@@ -101,6 +108,10 @@ class MPIDataSource(DataSourceBase):
         if self.destination and nsmds > 1:
             msg = 'ERROR Too many EventBuilder cores with destination callback'
             safe_mpi_abort(msg)
+        
+        # Load timestamp files on EventBuilder Node
+        if kwargs['mpi_ts'] == 1 and nodetype == 'eb':
+            self.dsparms.set_timestamps()
         
         # setup runnum list
         if nodetype == 'smd0':
