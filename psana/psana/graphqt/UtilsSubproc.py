@@ -19,12 +19,20 @@ import select
 import subprocess # for subprocess.Popen
 from time import time, sleep
 
-def subproc_open(command_seq, logname=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=None, shell=False): 
-    # e.g, command_seq=['bsub', '-q', cp.batch_queue, '-o', 'log-ls.txt', 'ls -l'] # subprocess.STDOUT, DEVNULL, STDIN
+def subproc_open(command_seq, logname=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=None, shell=False, executable='/bin/bash'): 
+    """ if shell=False command is a str: '/bin/bash -l -c "source /reg/g/psdm/etc/psconda.sh; echo $PYTHONPATH"'
+        else command is a list: ['/bin/bash', '-l', '-c', '. /reg/g/psdm/etc/psconda.sh; echo "PATH: $PATH";\
+                                 echo "CONDA_DEFAULT_ENV: $CONDA_DEFAULT_ENV"; detnames exp=xppx44719:run=11']
+    """    
+    logger.debug('executable: %s' % executable)
+    logger.debug('shell: %s' % str(shell))
+    logger.debug('env: %s' % str(env))
+    logger.debug('command:%s' % str(command_seq))
+
     if logname:
         log = open(logname, 'w')
         stderr = stdout = log
-    return subprocess.Popen(command_seq, stdout=stdout, stderr=stderr, env=env, shell=shell)
+    return subprocess.Popen(command_seq, stdout=stdout, stderr=stderr, env=env, shell=shell, executable=executable)
 
 
 class SubProcess:
@@ -34,9 +42,10 @@ class SubProcess:
         self.subproc = None
         self.selpoll = None
 
-    def subprocs_open(self, command, logname=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=None, shell=False):
+    def subprocs_open(self, command, logname=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=None, shell=False, executable='/bin/bash'):
         self.command = command
-        self.subproc = subproc_open(command.split(' '), logname, stdout, stderr, env, shell)
+        assert isinstance(command, str if shell else list) #cmd = cmd if shell else command.split(' ')
+        self.subproc = subproc_open(command, logname, stdout, stderr, env, shell, executable)
         self.selpoll = select.poll()
         self.selpoll.register(self.subproc.stdout, select.POLLIN)
 
@@ -64,9 +73,9 @@ class SubProcManager:
         parent=kwa.get('parent', None)
         subprocs = []
 
-    def subprocs_open(self, command, logname=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=None, shell=False):
+    def subprocs_open(self, command, logname=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=None, shell=False, executable='/bin/bash'):
         osp = SubProcess()
-        osp(command, logname, stdout, stderr, env, shell)
+        osp(command, logname, stdout, stderr, env, shell, executable)
         subprocs.append(osp)
 
 
