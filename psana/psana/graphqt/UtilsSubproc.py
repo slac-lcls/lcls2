@@ -44,6 +44,8 @@ class SubProcess:
 
     def subprocs_open(self, command, logname=None, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=None, shell=False, executable='/bin/bash'):
         self.command = command
+        logger.debug('command: %s' % str(command))
+        logger.debug('shell: %s' % str(shell))
         assert isinstance(command, str if shell else list) #cmd = cmd if shell else command.split(' ')
         self.subproc = subproc_open(command, logname, stdout, stderr, env, shell, executable)
         self.selpoll = select.poll()
