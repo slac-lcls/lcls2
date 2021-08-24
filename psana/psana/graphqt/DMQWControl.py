@@ -16,10 +16,14 @@ from psana.graphqt.CMWControlBase import * # CMWControlBase, QApplication, ..., 
 
 logger = logging.getLogger(__name__)
 
+COMMAND_SET_ENV_LCLS1 = '. /cds/sw/ds/ana/conda1/manage/bin/psconda.sh; echo "PATH: $PATH"; echo "CONDA_DEFAULT_ENV: $CONDA_DEFAULT_ENV"; '
+
+ENV1 = {'PATH':'/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/puppetlabs/bin'}
+
 class DMQWControl(CMWControlBase):
     """QWidget for Data Manager control fields"""
 
-    cmd_list = ['detnames', 'datinfo', 'det_dark_proc','epix10ka_pedestals_calibration','epix10ka_deploy_constants','',] 
+    cmd_list = ['detnames', 'datinfo', 'det_dark_proc','epix10ka_pedestals_calibration','epix10ka_deploy_constants', 'event_keys',] 
 
     instr_exp_is_changed = pyqtSignal('QString', 'QString')
 
@@ -146,17 +150,33 @@ class DMQWControl(CMWControlBase):
           elif command == 'datinfo':
             cmd = 'datinfo -e %s -r %d' % (expname, runnum)
           else:
-            cp.dmqwmain.append_info('SORRY, COMMAND "%s" IS NOT IMPLEMENTED YET...' % command)
+            cp.dmqwmain.append_info('LCLS2 COMMAND "%s" IS NOT IMPLEMENTED...' % command)
             return
-          self.subprocess_command(cmd)
+          self.subprocess_command(cmd, shell=True)
+
+        else: # LCLS1
+          cmd = COMMAND_SET_ENV_LCLS1
+          if command == 'detnames':
+            cmd += 'detnames exp=%s:run=%d' % (expname, runnum)
+          elif command == 'event_keys':
+            cmd += 'event_keys -d exp=%s:run=%d -m3' % (expname, runnum)
+          elif command == 'datinfo':
+            cmd += 'datinfo -e %s -r %d' % (expname, runnum)
+          else:
+            cp.dmqwmain.append_info('LCLS1 COMMAND "%s" IS NOT IMPLEMENTED...' % command)
+            return
+          cmd_seq = ['/bin/bash', '-l', '-c', cmd]
+          self.subprocess_command(cmd_seq, shell=False, env=ENV1, executable='/bin/bash')
 
 
-    def subprocess_command(self, cmd):
+    def subprocess_command(self, cmd, **kwa):
         import psana.graphqt.UtilsSubproc as usp
         cp.dmqwmain.append_info(cmd)
 
+        env   = kwa.get('env', None)
+        shell = kwa.get('shell', False)
         self.osp = usp.SubProcess()
-        self.osp(cmd, stdout=usp.subprocess.PIPE, env=None, shell=False)
+        self.osp(cmd, stdout=usp.subprocess.PIPE, env=env, shell=False)
         logger.info('\n== creates subprocess for command: %s' % cmd)
 
         QTimer().singleShot(self.dt_msec, self.on_timeout)
