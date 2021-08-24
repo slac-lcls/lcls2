@@ -57,7 +57,7 @@ def detnames(xtc_file):
     myrun = next(ds.runs())
 
     assert ('xppcspad', 'cspad', 'raw', '2_3_42') in myrun.xtcinfo
-    assert myrun.epicsinfo[('HX2:DVD:GCC:01:PMON', 'raw')] == 'raw'
+    assert myrun.epicsinfo[('HX2:DVD:GCC:01:PMON', 'HX2:DVD:GCC:01:PMON,hello1')] == 'HX2:DVD:GCC:01:PMON,hello1'
     assert myrun.scaninfo[('motor1', 'raw')] == 'raw'
 
 def det_container(xtc_file):
