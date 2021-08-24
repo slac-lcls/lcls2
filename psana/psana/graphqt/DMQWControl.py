@@ -172,11 +172,11 @@ class DMQWControl(CMWControlBase):
     def subprocess_command(self, cmd, **kwa):
         import psana.graphqt.UtilsSubproc as usp
         cp.dmqwmain.append_info(cmd)
-
         env   = kwa.get('env', None)
         shell = kwa.get('shell', False)
+        executable = kwa.get('executable', '/bin/bash')
         self.osp = usp.SubProcess()
-        self.osp(cmd, stdout=usp.subprocess.PIPE, env=env, shell=False)
+        self.osp(cmd, stdout=usp.subprocess.PIPE, stderr=usp.subprocess.STDOUT, env=env, shell=shell, executable=executable)
         logger.info('\n== creates subprocess for command: %s' % cmd)
 
         QTimer().singleShot(self.dt_msec, self.on_timeout)
