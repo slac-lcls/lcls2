@@ -130,7 +130,7 @@ class QWInfoPanel(QWidget):
            if self.count_empty>5: self.remove_last_line()
            #self.winfo.insertPlainText(s)
         #else:
-        self.winfo.append(s)
+        self.winfo.append(str(s))
         #self.winfo.insertPlainText(s)
         self.winfo.moveCursor(QTextCursor.End)#, QTextCursor.KeepAnchor)
         self.winfo.repaint()
