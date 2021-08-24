@@ -173,12 +173,18 @@ class EnvStore(object):
 
         return env_values
 
-    def get_info(self):
+    def get_info(self, epicsinfo=None):
         info = {}
         for alg, segment_dict in self.env_variables.items():
             for segment_id, var_dict in segment_dict.items():
                 for var_name, _ in var_dict.items():
-                    info[(var_name, alg)] = alg
+                    if epicsinfo is not None:
+                        epics_name = ''
+                        if var_name in epicsinfo:
+                            epics_name = epicsinfo[var_name]['epicsname']
+                        info[(var_name, epics_name)] = epics_name
+                    else:
+                        info[(var_name, alg)] = alg
         return info
 
     def dtype(self, var_name):

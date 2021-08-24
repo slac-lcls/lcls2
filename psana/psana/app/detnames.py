@@ -29,7 +29,7 @@ def detnames():
     format_string = '{0:%d} | {1:%d} | {2:%d} | {3:%d}'
     names = myrun.xtcinfo
   elif args.epics:
-    headers = ['Name','Data Type']
+    headers = ['Detector Name','Epics Name']
     format_string = '{0:%d} | {1:%d}'
     names = myrun.epicsinfo
   elif args.scan:

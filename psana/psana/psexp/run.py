@@ -160,7 +160,15 @@ class Run(object):
 
     @property
     def epicsinfo(self):
-        return self.esm.stores['epics'].get_info()
+        # EnvStore most likely have the correct detector names in config.software
+        # whereas 'epicsinfo' detector is an add-on way to map between detector
+        # names (e.g. AT1K0_PressureSetPt) to epics name (AT1K0:GAS:TRANS_SP_RBV).
+        # The priority is given to what stored in the EnvStore, then we build
+        # a table showing this mapping using information from epicsinfo detector.
+        edet = self.Detector('epicsinfo')
+        edict= edet.epicsinfo()
+        mapping_dict = self.esm.stores['epics'].get_info(epicsinfo=edict)
+        return mapping_dict
     
     @property
     def scaninfo(self):
