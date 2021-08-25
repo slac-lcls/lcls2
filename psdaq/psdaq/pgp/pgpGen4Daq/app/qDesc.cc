@@ -84,6 +84,6 @@ int main (int argc, char **argv) {
     sleep(1);
   }
 
-  free(data);
+  delete[] data;
   return 0;
 }

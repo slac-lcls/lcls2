@@ -393,6 +393,6 @@ void handle_data(void* args)
     }
   } while(1);
 
-  free(buff);
+  delete[] buff;
 }
 

@@ -402,7 +402,7 @@ int main (int argc, char **argv) {
 
   if (reportRate)
     pthread_join(thr,NULL);
-  free(data);
+  delete[] data;
   //  sleep(5);
   //  close(fd);
   return 0;

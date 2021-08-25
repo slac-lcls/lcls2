@@ -49,6 +49,8 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"):
                'laneConfig'  : {lane:'Opal1000'},
                'dataDebug'   : False,
                'enLclsII'    : True,
+               'pgp4'        : True,
+               'enableConfig': False,
     }
 
     # in older versions we didn't have to use the "with" statement
@@ -206,7 +208,7 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
     ocfg = cfg
 
-    if(cl.ClinkPcie.Hsio.PgpMon[lane].RxRemLinkReady.get() != 1):
+    if(cl.ClinkPcie.Hsio.PgpMon[lane].RxStatus.RemRxLinkReady.get() != 1):
         raise ValueError(f'PGP Link is down' )
 
     # drain any data in the event pipeline
