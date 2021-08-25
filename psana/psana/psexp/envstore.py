@@ -26,8 +26,11 @@ class EnvManager(object):
         
         env_variables = {alg: {segment_id: {var_name: var_type, }, }, }
         where Var contains name and type for the variables.
+        epics_mappers = {var_name: epics_name} # only valid for epics
         """
         self.env_variables = {}
+        self.epics_mapper = {}
+        self.epics_inv_mapper = {}
         if hasattr(self.config.software, self.env_name):
             envs = getattr(self.config.software, self.env_name)
             for segment_id, env in envs.items(): # check each segment 
@@ -39,6 +42,18 @@ class EnvManager(object):
                     env_vars = {}
                     for var_name in vars(seg_alg):
                         if var_name in ('version', 'software') : continue
+
+                        # Collect name mapping table for epics
+                        if self.env_name == 'epics':
+                            if hasattr(self.config, 'epicsinfo'):
+                                epicsinfo = getattr(self.config, 'epicsinfo')
+                                for eseg_id, epicsinfo_seg in epicsinfo.items():
+                                    epics_names = getattr(epicsinfo_seg, 'epicsinfo')
+                                    if var_name in epics_names.__dict__:
+                                        epics_value = getattr(epics_names, var_name)
+                                        self.epics_mapper[var_name]  = epics_value
+                                        self.epics_inv_mapper[epics_value] = var_name
+
                         var_obj = getattr(seg_alg, var_name)
                         if hasattr(var_obj, '_type') == False: continue
                         var_type = DetectorImpl._return_types(var_obj._type, var_obj._rank)
@@ -72,13 +87,17 @@ class EnvStore(object):
         self.n_files = 0
         self.env_managers = []
         self.env_variables = defaultdict(list)
+        self.epics_mapper  = defaultdict(list)
+        self.epics_inv_mapper = defaultdict(list)
         self.env_name = env_name
         if configs:
             self.n_files = len(configs)
             self.env_managers = [EnvManager(config, env_name) for config in configs]
 
-            # EnvStore has env_variables from all the env_managers
+            # EnvStore has env_variables and epics_mapper from all the env_managers
             for envm in self.env_managers:
+                self.epics_mapper.update(envm.epics_mapper)
+                self.epics_inv_mapper.update(envm.epics_inv_mapper)
                 for alg, env_dict in envm.env_variables.items(): 
                     if alg not in self.env_variables:
                         self.env_variables[alg] = {}
@@ -173,15 +192,15 @@ class EnvStore(object):
 
         return env_values
 
-    def get_info(self, epicsinfo=None):
+    def get_info(self):
         info = {}
         for alg, segment_dict in self.env_variables.items():
             for segment_id, var_dict in segment_dict.items():
                 for var_name, _ in var_dict.items():
-                    if epicsinfo is not None:
+                    if self.env_name == 'epics':
                         epics_name = ''
-                        if var_name in epicsinfo:
-                            epics_name = epicsinfo[var_name]['epicsname']
+                        if var_name in self.epics_mapper:
+                            epics_name = self.epics_mapper[var_name]
                         info[(var_name, epics_name)] = epics_name
                     else:
                         info[(var_name, alg)] = alg

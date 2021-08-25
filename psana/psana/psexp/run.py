@@ -83,16 +83,32 @@ class Run(object):
             if det_name not in self.dsparms.calibconst:
                 self.dsparms.calibconst[det_name]  = None
 
+    def _get_valid_env_var_name(self, det_name):
+        # Check against detector names
+        if self.esm.env_from_variable(det_name) is not None:
+            return det_name
+        
+        # Check against epics names (return detector name not epics name)
+        if det_name in self.esm.stores['epics'].epics_inv_mapper:
+            return self.esm.stores['epics'].epics_inv_mapper[det_name]
+        
+        return None
+            
+
     def Detector(self, name, accept_missing=False):
         if name in self._dets:
             return self._dets[name]
 
-        if name not in self.dsparms.configinfo_dict and self.esm.env_from_variable(name) is None:
+        mapped_env_var_name = self._get_valid_env_var_name(name)
+        if name not in self.dsparms.configinfo_dict and mapped_env_var_name is None:
             if not accept_missing:
                 err_msg = f"No available detector class matched with {name}. If this is a new detector/version, make sure to add new class in detector folder."
                 raise DetectorNameError(err_msg)
             else:
                 return MissingDet()
+
+        if mapped_env_var_name is not None:
+            name = mapped_env_var_name
 
         class Container:
             def __init__(self):
@@ -160,15 +176,9 @@ class Run(object):
 
     @property
     def epicsinfo(self):
-        # EnvStore most likely have the correct detector names in config.software
-        # whereas 'epicsinfo' detector is an add-on way to map between detector
-        # names (e.g. AT1K0_PressureSetPt) to epics name (AT1K0:GAS:TRANS_SP_RBV).
-        # The priority is given to what stored in the EnvStore, then we build
-        # a table showing this mapping using information from epicsinfo detector.
-        edet = self.Detector('epicsinfo')
-        edict= edet.epicsinfo()
-        mapping_dict = self.esm.stores['epics'].get_info(epicsinfo=edict)
-        return mapping_dict
+        # EnvStore a key-value pair of detectorname (e.g. AT1K0_PressureSetPt) 
+        # and epics name (AT1K0:GAS:TRANS_SP_RBV) in epics_mapper.
+        return self.esm.stores['epics'].get_info()
     
     @property
     def scaninfo(self):

@@ -51,7 +51,8 @@ for run in ds.runs():
     det = run.Detector('xppcspad')
 
     # Environment values are accessed also through detector interface
-    edet = run.Detector('HX2:DVD:GCC:01:PMON')
+    #edet = run.Detector('HX2:DVD:GCC:01:PMON')
+    edet = run.Detector('HX2:DVD:GCC:01:PMON,hello1')
     sdet = run.Detector('motor2')
 
     for evt in run.events():
@@ -67,7 +68,6 @@ for run in ds.runs():
         assert run.timestamp == 4294967297
     #endRunCode
 #endJobCode
-
 
 # Usecase#2 looping through steps
 ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, batch_size=10)
