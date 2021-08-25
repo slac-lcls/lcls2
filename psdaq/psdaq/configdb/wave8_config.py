@@ -369,6 +369,6 @@ def wave8_update(update):
 def wave8_unconfig(epics_prefix):
 
     ctxt_put(epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable', 0)
-    config_timing(epics_prefix, lcls2=False)
+    #config_timing(epics_prefix, lcls2=False)
 
     return None;

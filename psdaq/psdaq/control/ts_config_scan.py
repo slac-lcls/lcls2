@@ -15,7 +15,7 @@ def main():
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                         help='timeout msec (default 10000)')
     parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=1, help='# of events to aquire at each step (default 1)')
-    parser.add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<plaform)')
+    parser.add_argument('-g', type=int, metavar='GROUP_MASK', help='bit mask of readout groups (default 1<<platform)')
     parser.add_argument('--config', metavar='ALIAS', help='configuration alias (e.g. BEAM)')
     parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
     parser.add_argument('--scantype', default='scan', help="scan type (default 'scan')")

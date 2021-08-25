@@ -59,8 +59,7 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2016-09-09 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-16
 """
-
-from math import floor
+from math import floor, ceil
 from psana.graphqt import ColorTable as ct
 from psana.graphqt.FWView import *
 from PyQt5.QtGui import QImage, QPixmap
@@ -68,17 +67,22 @@ from PyQt5.QtGui import QImage, QPixmap
 
 class FWViewImage(FWView):
     
+    image_pixmap_changed = pyqtSignal()
+
     def __init__(self, parent=None, arr=None,\
                  coltab=ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20),\
-                 origin='UL', scale_ctl='HV'):
+                 origin='UL', scale_ctl='HV', show_mode=0, signal_fast=True):
 
         h, w = arr.shape
         rscene = QRectF(0, 0, w, h)
-        FWView.__init__(self, parent, rscene, origin, scale_ctl)
+        FWView.__init__(self, parent, rscene, origin, scale_ctl, show_mode, signal_fast)
         self._name = self.__class__.__name__
         self.set_coltab(coltab)
         self.pmi = None
+        self.arr_limits_old = None
+        self.arr_in_rect = None
         self.set_pixmap_from_arr(arr)
+        #self.connect_mouse_move_event_to(self.on_mouse_move_event)
 
 
     def set_coltab(self, coltab=ct.color_table_rainbow(ncolors=1000, hang1=250, hang2=-20)):
@@ -112,12 +116,12 @@ class FWViewImage(FWView):
         else               : self.pmi.setPixmap(pixmap)
 
 
-    def set_pixmap_from_arr(self, arr, set_def=True):
+    def set_pixmap_from_arr(self, arr, set_def=True, amin=None, amax=None, frmin=0.01, frmax=0.99):
         """Input array is scailed by color table. If color table is None arr set as is.
         """
         self.arr = arr
         anorm = arr if self.coltab is None else\
-                ct.apply_color_table(arr, ctable=self.coltab) 
+                ct.apply_color_table(arr, ctable=self.coltab, amin=amin, amax=amax, frmin=frmin, frmax=frmax)
         h, w = arr.shape
 
         image = QImage(anorm, w, h, QImage.Format_ARGB32)
@@ -127,6 +131,38 @@ class FWViewImage(FWView):
         if set_def:
             rs = QRectF(0, 0, w, h)
             self.set_rect_scene(rs, set_def)
+
+        self.image_pixmap_changed.emit()
+
+
+    def array_in_rect(self, rect=None):
+        if rect is None: rect=self.scene().sceneRect()
+        x1,y1,x2,y2 = rect.getCoords()
+        h,w = self.arr.shape
+        arr_limits = int(max(0, floor(y1))), int(min(h-1, ceil(y2))),\
+                     int(max(0, floor(x1))), int(min(w-1, ceil(x2)))
+
+        if self.arr_limits_old is not None and arr_limits == self.arr_limits_old: return self.arr_in_rect
+        r1,r2,c1,c2 = self.arr_limits_old = arr_limits
+
+        # allow minimal shape of zoomed in array (2,2)
+        if r1>r2-2:
+           r2=r1+2
+           if r2>=h: r1,r2 = h-3,h-1
+        if c1>c2-2:
+           c2=c1+2
+           if c2>=w: c1,c2 = w-3,w-1
+
+        self.arr_in_rect = self.arr[r1:r2,c1:c2]
+        return self.arr_in_rect
+
+
+    def connect_image_pixmap_changed(self, recip):
+        self.image_pixmap_changed.connect(recip)
+
+
+    def disconnect_image_pixmap_changed(self, recip):
+        self.image_pixmap_changed.disconnect(recip)
 
 
     def cursor_on_image_pixcoords_and_value(self, p):

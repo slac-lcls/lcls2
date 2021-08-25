@@ -50,9 +50,9 @@ Adopted for LCLS2 on 2018-02-20
 import logging
 logger = logging.getLogger(__name__)
 
-import ColorTable as ct
-from FWViewImage import *
-from QWPopupSelectColorBar import popup_select_color_table
+import psana.graphqt.ColorTable as ct
+from psana.graphqt.FWViewImage import *
+from psana.graphqt.QWPopupSelectColorBar import popup_select_color_table
 import numpy as np
 
 
@@ -119,9 +119,7 @@ class FWViewColorBar(FWViewImage):
         """Sets color table ctab (np.array) - list of colors 32-bit unsigned words"""
         self._ctab = ct.np.array(ctab)
         arr = ct.array_for_color_bar(ctab, self.orient)
-        self.set_pixmap_from_arr(arr) # method of the FWViewImage
-        #print('XXX Color table:', ctab)
-        #self.emit(QtCore.SIGNAL('new_color_table()'))
+        self.set_pixmap_from_arr(arr, amin=arr[0], amax=arr[-1]) # method of the FWViewImage
         self.new_color_table.emit()
 
 

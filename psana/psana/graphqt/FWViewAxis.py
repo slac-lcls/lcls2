@@ -68,13 +68,14 @@ class FWViewAxis(FWView):
         self.wwidth    = kwargs.get('wwidth',    60)
         self.bgcolor   = kwargs.get('bgcolor',   self.bgcolor_def)
         self.fgcolor   = kwargs.get('fgcolor',  'yellow')
+        signal_fast    = kwargs.get('signal_fast', True)
 
         self.side  = side.upper()
         self.ruler = None
 
         scctl = ('H' if self.side in ('U','D') else 'V') if self.scale_ctl else ''
         #scctl = 'HV'
-        FWView.__init__(self, parent, rscene, origin, scale_ctl=scctl)
+        FWView.__init__(self, parent, rscene, origin, scale_ctl=scctl, signal_fast=signal_fast)
 
         self._name = self.__class__.__name__
         #self.set_style() # called in FWView

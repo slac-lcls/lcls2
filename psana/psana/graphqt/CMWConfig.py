@@ -88,7 +88,7 @@ class CMWConfig(QWidget) :
         self.but_save .setStyleSheet(style.styleButton)
         self.but_show .setStyleSheet(style.styleButton)
 
-        self.setMinimumSize(600,360)
+        self.setMinimumSize(600,500)
 
         is_visible = False
         #self.lab_status.setVisible(False)
@@ -141,21 +141,23 @@ class CMWConfig(QWidget) :
             self.gui_win.close()
             del self.gui_win
 
-        w_height = 120
+        #w_height = 120
 
         if tab_name == self.tab_names[0] :
             self.gui_win = CMWConfigPars(self)
+            #w_height = 250
 
         elif tab_name == self.tab_names[1] :
             self.gui_win = CMWConfigFile(self)
-            w_height = 170
 
         else :
             logger.warning('Unknown tab name "%s"' % tab_name)
 
         #self.set_status(0, 'Set configuration file')
-        self.gui_win.setFixedHeight(w_height)
+        #self.gui_win.setMinimumHeight(w_height)
+        #self.gui_win.setFixedHeight(w_height)
         self.hboxW.addWidget(self.gui_win)
+        #self.hboxW.addStretch(1)
         self.gui_win.setVisible(True)
 
 

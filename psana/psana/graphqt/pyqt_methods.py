@@ -6,14 +6,11 @@ import os
 import os
 import sys
 from psana.graphqt.CMWControlBase import cp, CMWControlBase
-from PyQt5.QtWidgets import QGridLayout, QPushButton# QHBoxLayout #QWidget, QLabel, QComboBox, QPushButton, QLineEdit
 from psana.graphqt.QWFileName import QWFileName
-from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QFileDialog
-from PyQt5.QtCore import pyqtSignal #, Qt, QRectF, QPointF, QTimer
 
-#from PyQt5.QtWidgets import QGraphicsItem
-from PyQt5.QtGui import QPen, QBrush, QColor, QPainterPath #QFont, 
-from PyQt5.QtCore import Qt, QRectF #QPoint, QPointF, 
+from PyQt5.QtCore import Qt, pyqtSignal, QPoint, QPointF, QRect, QRectF, QSize, QTimer, QEvent, QMargins, QRegExp, QThread, QModelIndex
+from PyQt5.QtGui import QPen, QBrush, QColor, QFont, QCursor, QTextCursor, QIcon, QStandardItemModel, QStandardItem, QIntValidator, QRegExpValidator, QImage, QPixmap, QBitmap, QPolygon, QPolygonF, QPainterPath
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, QTabBar, QPushButton, QLabel, QComboBox, QLineEdit, QTextEdit, QFileDialog, QSizePolicy, QComboBox, QCheckBox, QListWidget, QButtonGroup, QRadioButton, QCheckBox, QFrame, QListView, QAbstractItemView, QListWidget, QListWidgetItem, QGraphicsView, QGraphicsScene, QSplitter, QGraphicsItem, QGraphicsPolygonItem, QGraphicsPathItem, QGraphicsRectItem, QGraphicsEllipseItem, QHeaderView
 
 logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
 logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG)

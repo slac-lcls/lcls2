@@ -71,3 +71,6 @@ class LegionDataSource(DataSourceBase):
         while self._start_run():
             run = RunLegion(self, Event(dgrams=self.beginruns))
             yield run
+    
+    def is_mpi(self):
+        return False

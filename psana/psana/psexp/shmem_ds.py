@@ -54,5 +54,8 @@ class ShmemDataSource(DataSourceBase):
             run = RunShmem(self, Event(dgrams=self.beginruns))
             yield run
     
+    def is_mpi(self):
+        return False
+    
 
 

@@ -104,6 +104,13 @@ namespace Drp
     logging::warning("%s disconnected\n", name().c_str());
   }
 
+  void EpicsMonitorPv::_ready()
+  {
+    auto size = _pData.size();
+    _shape = getData(_pData.data(), size);
+    _size = size;
+  }
+
   void EpicsMonitorPv::updated()
   {
     //logging::debug("EpicsMonitorPv::updated(): Called for '%s'", name().c_str());
@@ -112,9 +119,7 @@ namespace Drp
 
     if (_state == Ready)
     {
-      auto size = _pData.size();
-      _shape = getData(_pData.data(), size);
-      _size = size;
+      _ready();
       _bUpdated = true;
     }
     else
@@ -122,8 +127,9 @@ namespace Drp
       if (getParams(_pvField, _type, _nelem, _rank) == 0)
       {
         _pData.resize(_nelem * XtcData::Name::get_element_size(xtype[_type]));
-
+        _ready();
         _state = Ready;
+	_bUpdated = false;
       }
       else
         _bDisabled = true;

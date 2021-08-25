@@ -33,9 +33,7 @@ def calibman_gui():
     if len(sys.argv) == 1:
         print(80*'_')
         parser.print_help()
-        print(80*'_')
         parser.print_usage()
-        print(80*'_')
         print(USAGE)
         print(80*'_')
 

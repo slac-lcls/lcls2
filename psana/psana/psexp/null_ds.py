@@ -24,3 +24,11 @@ class NullDataSource(DataSourceBase):
 
     def runs(self):
         yield NullRun()
+    
+    def is_mpi(self):
+        return False
+
+    def unique_user_rank(self):
+        """ NullDataSource is used for srv nodes, therefore not a
+        'user'-unique rank."""
+        return False

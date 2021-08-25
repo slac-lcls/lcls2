@@ -15,12 +15,10 @@ Created on 2017-03-23 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QTreeView, QVBoxLayout, QAbstractItemView
+from PyQt5.QtWidgets import QApplication, QTreeView, QVBoxLayout, QAbstractItemView
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import Qt, QModelIndex
 
-#from psana.graphqt.CMConfigParameters import cp
-#from psana.pyalgos.generic.Logger import logger
 from psana.graphqt.QWIcons import icon
 
 
@@ -36,7 +34,6 @@ class QWTree(QTreeView):
     def __init__(self, parent=None, tname='1'):
 
         QTreeView.__init__(self, parent)
-        #self._name = self.__class__.__name__
 
         icon.set_icons()
 
@@ -131,8 +128,8 @@ class QWTree(QTreeView):
         if itemsel is not None:
             parent = itemsel.parent()
             parname = parent.text() if parent is not None else None
-            msg = 'selected item: %s row: %d parent: %s' % (itemsel.text(), selected.row(), parname) 
-            logger.debug(msg)
+            msg = 'selected item: %s row: %d parent: %s' % (itemsel.text(), selected.row(), str(parname))
+            logger.debug(str(msg))
 
         #itemdes = self.model.itemFromIndex(deselected)
         #if itemdes is not None:
@@ -275,6 +272,10 @@ class QWTree(QTreeView):
 
 
 if __name__ == "__main__":
+
+    import os
+    os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
+
     import sys
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     scrname = sys.argv[0].split('/')[-1]
@@ -283,10 +284,7 @@ if __name__ == "__main__":
       +'\n  python %s 2 - dynamically added item model ' % (scrname)\
     )
 
-    from PyQt5.QtWidgets import QApplication
-
-    logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
-    #logger.setPrintBits(0o177777)
+    logging.basicConfig(format='[%(levelname).1s] L:%(lineno)03d %(name)s %(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
     w = QWTree(tname=tname)
     w.setGeometry(10, 25, 400, 600)

@@ -52,9 +52,12 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2020-11-02 by Mikhail Dubrovin 
 """
 
-from FWView import * # FWView, QtGui, QtCore, Qt
-from FWHist import FWHist, test_histogram
+from psana.graphqt.FWView import * # FWView, QtGui, QtCore, Qt
+from psana.graphqt.FWHist import FWHist, test_histogram
 from PyQt5.QtGui import QColor, QFont
+
+from psana.pyalgos.generic.HBins import HBins, np
+from psana.pyalgos.generic.NDArrUtils import info_ndarr
 
 logger = logging.getLogger(__name__)
 
@@ -72,18 +75,20 @@ class FWViewHist(FWView):
         self.wwidth    = kwargs.get('wwidth',   60)
         self.bgcolor   = kwargs.get('bgcolor', self.bgcolor_def)
         self.fgcolor   = kwargs.get('fgcolor', 'blue')
+        self.hbins     = kwargs.get('hbins', test_histogram())
+        signal_fast    = kwargs.get('signal_fast', True)
         #self.kwargs    = kwargs
 
         self.hist = None
         self.side = 'D'
-
+        self.arr_old = None
         #scctl = ('H' if self.side in ('U','D') else 'V') if self.scale_ctl else ''
         #scctl = 'HV'
-        FWView.__init__(self, parent, rscene, origin, scale_ctl=self.scale_ctl)
+        FWView.__init__(self, parent, rscene, origin, scale_ctl=self.scale_ctl, signal_fast=signal_fast)
 
         self._name = self.__class__.__name__
         #self.set_style() # called in FWView
-        self.update_my_scene()
+        self.update_my_scene(self.hbins)
 
 
     def print_attributes(self):
@@ -93,39 +98,23 @@ class FWViewHist(FWView):
 
     def set_style(self):
         FWView.set_style(self)
-
-        #style_default = "background-color: rgb(239, 235, 231, 255); color: rgb(0, 0, 0);" # Gray bkgd 
-        #bgcolor = self.palette().color(QPalette.Background)
-        #style_default = '' if self.bgcolor is None else 'background-color: %s' % self.bgcolor
-        #self.setStyleSheet(style_default)
-
-        #self.layout().setContentsMargins(0,0,0,0)
-
-        #color = Qt.white
         color = QColor(self.fgcolor)
         self.colhi = QColor(color)
-        #self.fonax = QFont('Courier', 12, QFont.Normal)
         self.penhi = QPen(color, 1, Qt.SolidLine)
 
-        #if self.side in ('U','D') :
-        #    self.setMinimumSize(self.wlength, 2)
-        #    self.setFixedHeight(self.wwidth)
-        #else:
-        #    self.setMinimumSize(2, self.wlength)
-        #    self.setFixedWidth(self.wwidth)
 
-        #self.setWindowFlags(self.windowFlags() | Qt.FramelessWindowHint)
-
-
-    def update_my_scene(self, hbins=test_histogram()):
+    def update_my_scene(self, hbins=None):
         FWView.update_my_scene(self)
-        if self.hist is not None: self.hist.remove()
+        if hbins is None: return
+
+        if self.hist is not None:
+           self.hist.remove()
+           del self.hist
         view = self
         if self.bgcolor != self.bgcolor_def:
             s = self.scene()
             r = s.sceneRect()
             s.addRect(r, pen=QPen(Qt.black, 0, Qt.SolidLine), brush=QBrush(QColor(self.bgcolor)))
-
         self.hist = FWHist(view, hbins=hbins, color=self.colhi, brush=QBrush(), orient=self.orient, zvalue=self.zvalue)
 
 
@@ -133,20 +122,18 @@ class FWViewHist(FWView):
          # def in FWView.py with overloaded update_my_scene()
          self.reset_original_size()
 
-
 #    def reset_original_image_size(self):
 #        self.set_view()
 #        self.update_my_scene()
 #        self.check_axes_limits_changed()
-
-
 #    def mouseMoveEvent(self, e):
 #        self.update_my_scene()
 #        FWView.mouseMoveEvent(self, e)
 
 
     def mouseReleaseEvent(self, e):
-        self.update_my_scene()
+        logger.debug('mouseReleaseEvent')
+        FWView.update_my_scene(self)
         FWView.mouseReleaseEvent(self, e)
 
  
@@ -154,6 +141,34 @@ class FWViewHist(FWView):
         self.hist.remove()
         FWView.closeEvent(self, e)
         #print('FWViewHist.closeEvent')
+
+
+    def set_histogram_from_arr(self, arr, nbins=1000, amin=None, amax=None, frmin=0.001, frmax=0.999, edgemode=0):
+        #if np.array_equal(arr, self.arr_old): return
+        if arr is self.arr_old: return
+        self.arr_old = arr
+        if arr.size<1: return
+
+        aravel = arr.ravel()
+        vmin = amin if amin is not None else\
+               aravel.min() if frmin in (0,None) else\
+               np.quantile(aravel, frmin, axis=0, interpolation='lower')
+        vmax = amax if amax is not None else\
+               aravel.max() if frmax in (1,None) else\
+               np.quantile(aravel, frmax, axis=0, interpolation='higher')
+        if not vmin<vmax: vmax=vmin+1
+
+        hb = HBins((vmin,vmax), nbins=nbins)
+        hb.set_bin_data_from_array(aravel, dtype=np.float64, edgemode=edgemode)
+        hmin, hmax = 0, hb.bin_data_max()
+
+        #logger.debug('set_histogram_from_arr %s\n    vmin(%.5f%%):%.3f vmax(%.5f%%):%.3f hmin: %.3f hmax: %.3f'%\
+        #             (info_ndarr(aravel, 'arr.ravel'), frmin,vmin,frmax,vmax,hmin,hmax))
+        hgap = 0.05*(hmax-hmin)
+        rs = QRectF(hmin-hgap, hb.vmin(), hmax-hmin+2*hgap, hb.vmax()-hb.vmin())
+        self.set_rect_scene(rs, set_def=True)
+        self.update_my_scene(hbins=hb)
+        self.hbins = hb
 
 
 if __name__ == "__main__":

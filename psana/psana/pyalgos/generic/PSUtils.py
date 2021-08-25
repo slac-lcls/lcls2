@@ -36,6 +36,8 @@ Created by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-02
 """
 
+import logging
+logger = logging.getLogger(__name__)
 
 import os
 import sys
@@ -260,10 +262,12 @@ def table_nxm_jungfrau_from_ndarr(nda):
        return a
 
     elif a.size == 2*segsize:
+       logger.warning('jungfrau1m panels are stacked as [1,0]')
        sh = a.shape = (2,512,1024)
        return np.vstack([a[q,:] for q in (1,0)])
 
     elif a.size == 8*segsize:
+       logger.warning('jungfrau4m panels are stacked as [(7,3), (6,2), (5,1), (4,0)]')
        sh = a.shape = (8,512,1024)
        return np.hstack([np.vstack([a[q,:] for q in (7,6,5,4)]),\
                          np.vstack([a[q,:] for q in (3,2,1,0)])])
@@ -285,21 +289,27 @@ def table_nxn_epix10ka_from_ndarr(nda):
        return a
 
     elif a.size == 4*segsize:
-       sh = a.shape = (2,2*352,384)
-       return np.hstack([a[q,:] for q in range(sh[0])])
+       logger.warning('quad panels are stacked as [(3,2),(1,0)]')
+       sh = a.shape = (4,352,384)
+       return np.vstack([np.hstack([a[3],a[2]]), np.hstack([a[1],a[0]])])
+       #sh = a.shape = (2,2*352,384)
+       #return np.hstack([a[q,:] for q in range(sh[0])])
 
     elif a.size == 16*segsize:
        sh = a.shape = (4,4*352,384)
        return np.hstack([a[q,:] for q in range(sh[0])])
 
     elif a.size == 7*4*segsize:
-       sh = a.shape = (7,2,2*352,384)
+       logger.warning('quad panels are stacked as [(3,2),(1,0)]')
        agap = np.zeros((gapv,2*384))
-       return np.vstack([np.vstack([np.hstack([a[g,q,:] for q in range(2)]), agap]) for g in range(7)])
+       sh = a.shape = (7,4,352,384)
+       return np.vstack([np.vstack([np.hstack([a[g,3],a[g,2]]), np.hstack([a[g,1],a[g,0]]), agap]) for g in range(7)])
+       #sh = a.shape = (7,2,2*352,384)
+       #return np.vstack([np.vstack([np.hstack([a[g,q,:] for q in range(2)]), agap]) for g in range(7)])
 
     elif a.size == 7*16*segsize:
-       sh = a.shape = (7,4,4*352,384)
        agap = np.zeros((gapv,4*384))
+       sh = a.shape = (7,4,4*352,384)
        return np.vstack([np.vstack([np.hstack([a[g,q,:] for q in range(4)]), agap]) for g in range(7)])
 
     else:

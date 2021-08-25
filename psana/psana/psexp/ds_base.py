@@ -43,7 +43,7 @@ class DataSourceBase(abc.ABC):
     def __init__(self, **kwargs):
         """Initializes datasource base"""
         self.filter      = 0         # callback that takes an evt and return True/False.
-        self.batch_size  = 1         # length of batched offsets
+        self.batch_size  = 1000      # no. of events per batch sent to a bigdata core
         self.max_events  = 0         # no. of maximum events
         self.detectors   = []        # user-selected detector names
         self.exp         = None      # experiment id (e.g. xpptut13)
@@ -129,6 +129,26 @@ class DataSourceBase(abc.ABC):
     @abc.abstractmethod
     def runs(self):
         return
+
+    @abc.abstractmethod
+    def is_mpi(self):
+        return
+
+    def unique_user_rank(self):
+        """ Only applicable to MPIDataSource
+        All other types of DataSource always return True.
+        For MPIDataSource, only the last bigdata rank returns True."""
+        if not self.is_mpi():
+            return True
+
+        n_srv_ranks = int(os.environ.get('PS_SRV_NODES', 0))
+        my_rank = self.comms.world_rank
+        world_size = self.comms.world_size
+
+        if my_rank == (world_size - n_srv_ranks - 1):
+            return True
+        else:
+            return False
 
     # to be added at a later date...
     #@abc.abstractmethod

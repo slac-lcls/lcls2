@@ -125,6 +125,7 @@ if 'PSANA' in BUILD_LIST :
             'datinfo             = psana.app.datinfo:do_main',
             'det_dark_proc       = psana.app.det_dark_proc:do_main',
             'parallel_proc       = psana.app.parallel_proc:do_main',
+            'iv                  = psana.graphqt.app.iv:image_viewer',
         ]
     }
 

@@ -4,7 +4,7 @@
 
 Usage ::
 
-    from psana.pyalgos.generic.UtilsFS import load_ndarray_from_file, list_of_files_in_dir
+    from psana.pyalgos.generic.UtilsFS import load_ndarray_from_file, list_of_files_in_dir, safe_listdir
 
 Created on 2021-06-16 by Mikhail Dubrovin
 """
@@ -15,8 +15,29 @@ logger = logging.getLogger(__name__)
 import os
 
 
+def islink(path):
+    return os.path.islink(path)
+
+
+def isdir(path):
+    return os.path.isdir(path)
+
+
+
 def list_of_files_in_dir(dirname):
     return os.listdir(dirname)
+
+
+def safe_listdir(directory, timeout_sec=5):
+    import threading
+    contents = []
+    t = threading.Thread(target=lambda: contents.extend(os.listdir(directory)))
+    t.daemon = True  # don't delay program's exit
+    t.start()
+    t.join(timeout_sec)
+    if t.is_alive():
+        return None  # timeout
+    return contents
 
 
 def list_of_files_in_dir_for_ext(dir, ext='.xtc2'):

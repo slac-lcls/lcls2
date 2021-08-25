@@ -584,7 +584,9 @@ def time_and_timestamp(**kwa):
 
     if time_sec is not None:
         #print('XXX time_sec', time_sec, type(time_sec))# XXX time_sec 1623866309.5293562 <class 'str'>
-        time_sec = int(time_sec.split('.')[0])
+
+        #time_sec = int(time_sec.split('.')[0])
+        time_sec = int(float(time_sec))
         assert isinstance(time_sec, int) , 'time_and_timestamp - parameter time_sec should be int'
         assert 0 < time_sec < 5000000000,  'time_and_timestamp - parameter time_sec should be in allowed range'
 

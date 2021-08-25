@@ -240,3 +240,6 @@ class MPIDataSource(DataSourceBase):
             run = RunParallel(self, Event(dgrams=self.beginruns))
             yield run
 
+    def is_mpi(self):
+        return True
+

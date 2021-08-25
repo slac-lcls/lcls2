@@ -61,7 +61,8 @@ procmgr_config = [
  {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:UED 0 '+groups}, #+' --prod'},
  {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
 
- { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1'},
+# { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1'},
+ { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger'},
 # { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:UED -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -r /dev/null'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 

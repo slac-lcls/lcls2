@@ -21,6 +21,7 @@ See:
 Created on 2016-11-22 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 """
+import os
 
 import logging
 logger = logging.getLogger(__name__)
@@ -30,19 +31,31 @@ from psana.pyalgos.generic.Utils import list_of_hosts as lshosts
 import psana.pscalib.calib.CalibConstants as cc
 
 
+def dir_exp(dirdef='/cds/data/psdm/CXI/cxitut13'):
+    return dirdef if cp.exp_name.is_default() else\
+           os.path.join(cp.instr_dir.value(), cp.instr_name.value(), cp.exp_name.value())
+
+
+def dir_calib(dirdef='/cds/data/psdm/XPP/xpptut21'): #XPP/xpptut13, MEC/mecx24215, CXI/cxitut13, XCS/xcstut13
+    return os.path.join(dir_exp(dirdef), 'calib')
+
+
+def dirs_to_search():
+    return [dir_calib(), os.getcwd()]# os.path.expanduser('~')
+
+
 class CMConfigParameters(PSConfigParameters):
     """A storage of configuration parameters for LCLS-2 Calibration Manager (CM)
     """
     char_expand    = u' \u25BC' # down-head triangle
     char_shrink    = u' \u25B2' # solid up-head triangle
 
-    # delete flags:
     DB_COLS = 1
     DOCS    = 4
     COLS    = 'collections'
     DBS     = 'DBs'
     cc      = cc
-    kwargs  = {'webint':True, 'loglevel':'DEBUG'}
+    kwargs  = {'webint':True, 'loglevel':'INFO'}
  
     def __init__(self, fname=None):
         """fname: str - the file name with configuration parameters, if not specified then use default.
@@ -58,10 +71,6 @@ class CMConfigParameters(PSConfigParameters):
         self.readParametersFromFile()
         #self.printParameters()
 
-        #nm.set_config_pars(self)
-
-        #self.list_of_hosts = lshosts(filter='psanaphi') # ('psanaphi105', 'psanaphi106', 'psanaphi107')
-        #self.list_of_hosts += lshosts(filter='psanagpu')
         self.list_of_hosts = ['psanagpu114', 'psanaphi105', 'psanaphi106', 'psanaphi107','psdbdev01']
         self.list_of_hosts.append('psdb-dev')
 
@@ -79,17 +88,25 @@ class CMConfigParameters(PSConfigParameters):
         self.cmwdbdocswidg=None
         self.qwloggerstd = None
         self.cmwdbdoceditor = None
-        self.wimage      = None
+        self.ivspectrum  = None
+        self.ivcontrol   = None
+        self.ivmain      = None
+        self.ivimageaxes = None
+        self.wlog        = None
 
-        self.last_selection = None # self.DB_COLS, DOCS
-
+        self.last_selection = None
         self.user = cc.USERNAME
         self.upwd = None
 
-        
+        self.h5vmain = None
+        self.fstree  = None
+        self.fmwtabs = None
+        self.fmw1main = None
+
+
     def declareParameters(self):
         # Possible typs for declaration: 'str', 'int', 'long', 'float', 'bool'
-        self.log_level = self.declareParameter(name='LOG_LEVEL', val_def='INFO', type='str') # val_def='NOTSET'
+        self.log_level = self.declareParameter(name='LOG_LEVEL', val_def='DEBUG', type='str') # val_def='NOTSET'
 
         #self.log_file - DEPRICATED
         self.log_file  = self.declareParameter(name='LOG_FILE_NAME', val_def='cm-log.txt', type='str')
@@ -98,8 +115,8 @@ class CMConfigParameters(PSConfigParameters):
 
         self.main_win_pos_x  = self.declareParameter(name='MAIN_WIN_POS_X',  val_def=5,    type='int')
         self.main_win_pos_y  = self.declareParameter(name='MAIN_WIN_POS_Y',  val_def=5,    type='int')
-        self.main_win_width  = self.declareParameter(name='MAIN_WIN_WIDTH',  val_def=1200, type='int')
-        self.main_win_height = self.declareParameter(name='MAIN_WIN_HEIGHT', val_def=700,  type='int')
+        self.main_win_width  = self.declareParameter(name='MAIN_WIN_WIDTH',  val_def=800, type='int')
+        self.main_win_height = self.declareParameter(name='MAIN_WIN_HEIGHT', val_def=800,  type='int')
 
         self.main_vsplitter  = self.declareParameter(name='MAIN_VSPLITTER', val_def=600, type='int')
         self.main_tab_name   = self.declareParameter(name='MAIN_TAB_NAME', val_def='CDB', type='str')
@@ -107,13 +124,18 @@ class CMConfigParameters(PSConfigParameters):
         self.current_config_tab = self.declareParameter(name='CURRENT_CONFIG_TAB', val_def='Parameters', type='str')
         self.cdb_host = self.declareParameter(name='CDB_HOST', val_def=cc.HOST, type='str')
         self.cdb_port = self.declareParameter(name='CDB_PORT', val_def=cc.PORT, type='int')
-        self.cdb_hsplitter0 = self.declareParameter(name='CDB_HSPLITTER0', val_def=250, type='int')
-        self.cdb_hsplitter1 = self.declareParameter(name='CDB_HSPLITTER1', val_def=1000, type='int')
+        self.cdb_hsplitter0 = self.declareParameter(name='CDB_HSPLITTER0', val_def=220, type='int')
+        self.cdb_hsplitter1 = self.declareParameter(name='CDB_HSPLITTER1', val_def=600, type='int')
         self.cdb_hsplitter2 = self.declareParameter(name='CDB_HSPLITTER2', val_def=0, type='int')
         self.cdb_filter  = self.declareParameter(name='CDB_FILTER', val_def='', type='str')
-        self.cdb_buttons = self.declareParameter(name='CDB_BUTTONS', val_def=3259, type='int')
+        self.cdb_buttons = self.declareParameter(name='CDB_BUTTONS', val_def=1+2+8+16+32+128+1024+2048+8192, type='int')
         self.cdb_docw = self.declareParameter(name='CDB_DOC_WIDGET', val_def='List', type='str')
         self.cdb_selection_mode = self.declareParameter(name='CDB_SELECTION_MODE', val_def='extended', type='str')
+        self.iv_buttons = self.declareParameter(name='IV_BUTTONS', val_def=2+4+32+64, type='int')
+
+        self.fmwtab_tab_name = self.declareParameter(name='FMWTAB_TAB_NAME', val_def='LCLS1', type='str')
+        self.last_selected_fname = self.declareParameter(name='LAST_SELECTED_FNAME', val_def=None, type='str')
+        self.last_selected_data = None # not persistent
 
 
 cp = CMConfigParameters()
@@ -130,7 +152,6 @@ if __name__ == "__main__":
 
 
 if __name__ == "__main__":
-    import sys
     test_CMConfigParameters()
     sys.exit(0)
 

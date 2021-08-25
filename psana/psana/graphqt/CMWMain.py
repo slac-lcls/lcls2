@@ -17,7 +17,7 @@ Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QSplitter, QTextEdit
+from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QSplitter, QTextEdit
 from PyQt5.QtCore import Qt, QPoint
 
 from psana.pyalgos.generic.Utils import print_kwargs, is_in_command_line, log_rec_on_start
@@ -27,19 +27,17 @@ from psana.graphqt.QWLoggerStd import QWLoggerStd
 
 class CMWMain(QWidget):
 
-    _name = 'CMWMain'
-
     def __init__(self, **kwargs):
         QWidget.__init__(self, parent=None)
-        #self._name = self.__class__.__name__
 
         cp.cmwmain = self
 
         self.set_input_pars(**kwargs)
 
         from psana.graphqt.CMWMainTabs import CMWMainTabs # AFTER set_input_pars !!!!\
-        self.wlog = QWLoggerStd(cp, show_buttons=False)
-        self.wtab = CMWMainTabs() #self.wtab = QTextEdit('Some text')
+        self.wlog = cp.wlog = QWLoggerStd(cp, show_buttons=False)
+
+        self.wtab = CMWMainTabs()
 
         self.vspl = QSplitter(Qt.Vertical)
         self.vspl.addWidget(self.wtab) 
@@ -51,19 +49,12 @@ class CMWMain(QWidget):
         x,y,w,h = self.xywh
         self.setGeometry(x,y,w,h)
         logger.info('set preserved window geometry x,y,w,h: %d,%d,%d,%d' % (x,y,w,h))
-        logger.info(log_rec_on_start()) #tsfmt='%Y-%m-%dT%H:%M:%S%z'))
+        logger.info(log_rec_on_start())
 
         self.setLayout(self.mbox)
 
         self.set_style()
         #self.set_tool_tips()
-        #self.connect_signals_to_slots()
-
-
-#    def connect_signals_to_slots(self):
-#        pass
-#        #self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
-#        #self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
 
 
     def set_input_pars(self, **kwa):
@@ -115,28 +106,19 @@ class CMWMain(QWidget):
 
 
     def closeEvent(self, e):
-        logger.debug('%s.closeEvent' % self._name)
+        logger.debug('closeEvent')
         #try: self.wspe.close()
         #except: pass
         self.wtab.close()
         self.on_save()
         QWidget.closeEvent(self, e)
-
+        cp.wlog = None
  
+
 #    def resizeEvent(self, e):
 #        QWidget.resizeEvent(self, e)
-#        print('XXX resizeEvent _name', self._name) 
-
-
 #    def moveEvent(self, e):
 #        QWidget.moveEvent(self, e)
-#        pass
-        #logger.debug('moveEvent', self._name) 
-        #self.position = self.mapToGlobal(self.pos())
-        #self.position = self.pos()
-        #logger.debug('moveEvent - pos:' + str(self.position), __name__)       
-        #logger.info('CMWMain.moveEvent - move window to x,y: ', str(self.mapToGlobal(QPoint(0,0))))
-        #self.wimg.move(self.pos() + QPoint(self.width()+5, 0))
 
 
     def key_usage(self):
@@ -147,13 +129,10 @@ class CMWMain(QWidget):
 
     if __name__ == "__main__":
       def keyPressEvent(self, e):
-        #print('keyPressEvent, key=', e.key())       
-        if   e.key() == Qt.Key_Escape:
-            self.close()
-        elif e.key() == Qt.Key_V: 
-            self.wtab.view_hide_tabs()
-        else:
-            logger.info(self.key_usage())
+        logger.debug('keyPressEvent, key=%s' % e.key())
+        if   e.key() == Qt.Key_Escape: self.close()
+        elif e.key() == Qt.Key_V: self.wtab.view_hide_tabs()
+        else: logger.info(self.key_usage())
 
 
     def on_save(self):
@@ -161,7 +140,7 @@ class CMWMain(QWidget):
         point, size = self.mapToGlobal(QPoint(-5,-22)), self.size() # Offset (-5,-22) for frame size.
         x,y,w,h = point.x(), point.y(), size.width(), size.height()
         msg = 'save window geometry x,y,w,h: %d,%d,%d,%d' % (x,y,w,h)
-        logger.info(msg) #, self._name)
+        logger.info(msg)
         print(msg)
 
         #Save main window position and size
@@ -181,7 +160,6 @@ class CMWMain(QWidget):
 
         if cp.save_log_at_exit.value():
             pass
-            # ?????
             #log.saveLogInFile(cp.log_file.value())
             #print('Saved log file: %s' % cp.log_file.value())
             #log.saveLogTotalInFile(fnm.log_file_total())
@@ -191,8 +169,6 @@ def calibman(**kwargs):
     import sys
     #sys.stdout = sys.stderr = open('/dev/null', 'w') # open('%s-stdout-stderr' % cp.log_file.value(), 'w')
     #logging.basicConfig(format='[%(levelname).1s] %(asctime)s L:%(lineno)03d %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.DEBUG)
-
-    from PyQt5.QtWidgets import QApplication
 
     global app # to prevent crash on exit
     app = QApplication(sys.argv)

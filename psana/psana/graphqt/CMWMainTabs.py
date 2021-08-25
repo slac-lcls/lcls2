@@ -12,16 +12,29 @@ Adopted for LCLS2 on 2018-02-26 by Mikhail Dubrovin
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTabBar, QTextEdit #, QSplitter
-from PyQt5.QtGui import QColor # QPalette, QSizePolicy
-from PyQt5.QtCore import Qt #, QPoint
+from PyQt5.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QTabBar, QTextEdit
+from PyQt5.QtGui import QColor
+from PyQt5.QtCore import Qt
 from psana.graphqt.CMConfigParameters import cp
 
 
 class CMWMainTabs(QWidget):
     """GUI for tabs and associated widgets
     """
-    tab_names   = ['CDB', 'Configuration', 't-converter', 'HDF5', 'IV', 'Win-A', 'Win-B']
+    tab_names = ['CDB', 'Image Viewer', 'Text Browser', 'File Manager', 'HDF5', 't-converter', 'Mask Editor', 'Configuration', 'Test']
+
+    tool_tips = [\
+      'Calibration Data Base\nviewer/manager',\
+      'Image Viewer for ndarrays',\
+      'Text Browser for text-like calibration constants',\
+      'File Manager for easy access calibration constants\nunder experimental calib directory',\
+      'HDF5 file browser',\
+      'Time converter between Date&Time <-> POSIX <-> LCLS2',\
+      'Mask Editor for images',\
+      'Configuration manager for this app',\
+      'Test Window',\
+    ]
+
 
     def __init__ (self, parent=None, app=None):
 
@@ -31,78 +44,38 @@ class CMWMainTabs(QWidget):
 
         self.box_layout = QHBoxLayout()
 
+        start_tab_name = cp.main_tab_name.value()
         self.gui_win = None
-        self.make_tab_bar()
-        self.gui_selector(cp.main_tab_name.value()) # USES self.box_layout
-
-        #self.whbox = QWidget(self)
-        #self.whbox.setLayout(self.box_layout)
-
-        #self.vspl = QSplitter(Qt.Vertical)
-        #self.vspl.addWidget(self.tab_bar)
-        #self.vspl.addWidget(self.whbox)
+        self.make_tab_bar(start_tab_name)
+        self.gui_selector(start_tab_name)
 
         self.box = QVBoxLayout(self)
         self.box.addWidget(self.tab_bar)
         self.box.addLayout(self.box_layout)
-        #self.box.addStretch(1)
-        #self.box.addWidget(self.vspl)
 
         self.setLayout(self.box)
 
-        self.show_tool_tips()
+        self.set_tool_tips()
         self.set_style()
-        #gu.printStyleInfo(self)
-
-        #self.move(10,25)
-        
-        #logger.debug('End of init')
-        #self.set_tabs_visible(False)
 
 
-    def show_tool_tips(self):
-        self.setToolTip('Main tab window')
+    def set_tool_tips(self):
+        for t,s in zip(self.tab_names, self.tool_tips):
+          self.tab_bar.setTabToolTip(self.tab_names.index(t), s)
 
 
     def set_style(self):
-
         from psana.graphqt.Styles import style
         from psana.graphqt.QWIcons import icon
         icon.set_icons()
-
-        #self.tab_bar.setContentsMargins(0,0,0,0)
-
         self.setWindowIcon(icon.icon_monitor)
         self.setStyleSheet(style.styleBkgd)
         self.layout().setContentsMargins(0,0,0,0)
-
-        #self.palette = QPalette()
-        #self.resetColorIsSet = False
-
-        #self.butELog    .setIcon(icon.icon_mail_forward)
-        #self.butFile    .setIcon(icon.icon_save)
-        #self.butExit    .setIcon(icon.icon_exit)
-        #self.butLogger  .setIcon(icon.icon_logger)
-        #self.butFBrowser.setIcon(icon.icon_browser)
-        #self.butSave    .setIcon(icon.icon_save_cfg)
-        #self.butStop    .setIcon(icon.icon_stop)
-
-        #self.setMinimumHeight(250)
-        #self.setMinimumWidth(550)
-
-        #self.adjustSize()
-        #self.        setStyleSheet(style.styleBkgd)
-        #self.butSave.setStyleSheet(style.styleButton)
-        #self.butFBrowser.setVisible(False)
-        #self.butExit.setText('')
-        #self.butExit.setFlat(True)
-        #self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
  
 
-    def make_tab_bar(self):
+    def make_tab_bar(self, start_tab_name):
         self.tab_bar = QTabBar()
 
-        #len(self.tab_names)
         for tab_name in self.tab_names:
             tab_ind = self.tab_bar.addTab(tab_name)
             self.tab_bar.setTabTextColor(tab_ind, QColor('blue')) #gray, red, grayblue
@@ -111,7 +84,7 @@ class CMWMainTabs(QWidget):
         #self.tab_bar.setMovable(True)
         self.tab_bar.setShape(QTabBar.RoundedNorth)
 
-        tab_index = self.tab_names.index(cp.main_tab_name.value())            
+        tab_index = self.tab_names.index(start_tab_name)
         self.tab_bar.setCurrentIndex(tab_index)
         logger.debug('make_tab_bar - set tab index: %d'%tab_index)
 
@@ -123,50 +96,55 @@ class CMWMainTabs(QWidget):
     def gui_selector(self, tab_name):
 
         if self.gui_win is not None:
-            #self.box_layout.removeWidget(self.gui_win)
-            #self.gui_win.setVisible(False)
             self.gui_win.close()
             del self.gui_win
 
         w_height = 200
         if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(True)
 
-        if tab_name == 'CDB': #tab_names[0]
+        if tab_name == 'CDB':
             from psana.graphqt.CMWDBMain import CMWDBMain
             self.gui_win = CMWDBMain()
             w_height = 500
 
-        elif tab_name == 'Configuration': #tab_names[1]
+        elif tab_name == 'Configuration':
             from psana.graphqt.CMWConfig import CMWConfig
             self.gui_win = CMWConfig()
             w_height = 500
 
-        elif tab_name == 't-converter': #tab_names[2]
+        elif tab_name == 't-converter':
             from psana.graphqt.QWDateTimeSec import QWDateTimeSec
             self.gui_win = QWDateTimeSec()
-            self.gui_win.setMaximumWidth(500)
+            self.gui_win.setMaximumWidth(400)
             w_height = 80
-            #self.gui_win.setMaximumHeight(w_height)
 
         elif tab_name == 'HDF5':
             from psana.graphqt.H5VMain import H5VMain
-            if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
+            #if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
             self.gui_win = H5VMain()
 
-        elif tab_name == 'IV':
+        elif tab_name == 'File Manager':
+            from psana.graphqt.FMWTabs import FMWTabs
+            self.gui_win = FMWTabs()
+
+        elif tab_name == 'Image Viewer':
             from psana.graphqt.IVMain import IVMain
-            if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
+            #if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(False)
             self.gui_win = IVMain()
 
-        else:
-            self.gui_win = QTextEdit('Default window for tab %s' % tab_name)
+        elif tab_name == 'Text Browser':
+            from psana.graphqt.QWTextBrowser import QWTextBrowser
+            self.gui_win = QWTextBrowser()
 
-        #self.gui_win.setFixedHeight(w_height)
-        self.gui_win.setMinimumHeight(w_height)
+        elif tab_name == 'Mask Editor':
+            self.gui_win = QTextEdit('Selected tab "%s"' % tab_name)
+
+        else:
+            self.gui_win = QTextEdit('Selected tab "%s"' % tab_name)
+
+        #self.gui_win.setMinimumHeight(w_height)
         self.gui_win.setVisible(True)
         self.box_layout.addWidget(self.gui_win)
-
-        #self.setStatus(0, s_msg)
 
 
     def current_tab_index_and_name(self):
@@ -192,34 +170,26 @@ class CMWMainTabs(QWidget):
         logger.debug('on_tab_close_request tab index begin:%d -> end:%d' % (iold, inew))
 
  
-    #def resizeEvent(self, e):
-        #pass
-        #self.frame.setGeometry(self.rect())
-        #logger.debug('resizeEvent') 
-        #logger.debug('CMWMainTabs resizeEvent: %s' % str(self.size()))
+#    def resizeEvent(self, e):
+#        self.frame.setGeometry(self.rect())
+#        logger.debug('resizeEvent: %s' % str(self.size()))
 
 
-    #def moveEvent(self, e):
-        #logger.debug('moveEvent') 
-        #self.position = self.mapToGlobal(self.pos())
-        #self.position = self.pos()
-        #logger.debug('moveEvent - pos:' + str(self.position))       
-        #pass
+#    def moveEvent(self, e):
+#        logger.debug('moveEvent - pos:' + str(self.position))       
+#        self.position = self.mapToGlobal(self.pos())
+#        self.position = self.pos()
 
 
     def closeEvent(self, e):
         logger.debug('closeEvent')
 
-        #try   : self.gui_win.close()
-        #except: pass
-
-        #try   : del self.gui_win
-        #except: pass
-
         if self.gui_win is not None:
             self.gui_win.close()
 
         QWidget.closeEvent(self, e)
+
+        cp.cmwmaintabs = None
 
 
     def onExit(self):
@@ -238,6 +208,37 @@ class CMWMainTabs(QWidget):
 
     def view_hide_tabs(self):
         self.tab_bar.setVisible(not self.tab_bar.isVisible())
+
+
+    def view_data(self, data=None, fname=None):
+        from psana.pyalgos.generic.NDArrUtils import info_ndarr, np
+        if data is None and fname is None:
+            logger.debug('data and fname are None - do not switch to viewer')
+        elif data is None:
+            cp.last_selected_data = None
+            cp.last_selected_fname.setValue(fname)
+            tabname = 'Text Browser' if 'geometry' in fname or 'common_mode' in fname else 'Image Viewer'
+            self.set_tab(tabname)
+        elif isinstance(data, np.ndarray):
+            cp.last_selected_data = data
+            cp.last_selected_fname.setValue(fname)
+            logger.info(info_ndarr(data, 'switch to Image Viewer to view data:'))
+            logger.warning('TBD: IV NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
+            self.set_tab(tabname='Image Viewer')
+        elif isinstance(data, str):
+            cp.last_selected_data = data
+            cp.last_selected_fname.setValue(fname)
+            logger.info(info_ndarr(data, 'switch to Text Viewer to view data:'))
+            logger.warning('TBD: Text Browser NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
+            self.set_tab(tabname='Text Browser')
+        else:
+            logger.debug('data of the selected document is not numpy array - do not switch to Image Viewer')
+            cp.last_selected_data = None
+
+
+    def set_tab(self, tabname='Image Viewer'):
+        logger.debug('switch tab to %s' % str(tabname))
+        self.tab_bar.setCurrentIndex(self.tab_names.index(tabname))
 
 
     def key_usage(self):

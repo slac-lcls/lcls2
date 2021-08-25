@@ -6,48 +6,42 @@ import sys
 import logging
 import threading
 import zmq
-import asyncio
-import time
 import numpy as np
 
 from psdaq.control.ControlDef import ControlDef
-from psdaq.control.ControlDef import scan_pull_port
 
 class BlueskyScan:
-    def __init__(self, control, *, daqState, args):
-        self.zmq_port = scan_pull_port(args.p)
+    def __init__(self, control, *, daqState):
         self.control = control
         self.name = 'mydaq'
         self.parent = None
         self.context = zmq.Context()
         self.push_socket = self.context.socket(zmq.PUSH)
-        self.push_socket.bind('tcp://*:%d' % self.zmq_port)
+        self.push_socket.bind('inproc://bluesky_scan')
         self.pull_socket = self.context.socket(zmq.PULL)
-        self.pull_socket.connect('tcp://localhost:%d' % self.zmq_port)
-        self.comm_thread = threading.Thread(target=self.daq_communicator_thread, args=())
+        self.pull_socket.connect('inproc://bluesky_scan')
+        self.comm_thread = threading.Thread(target=self.daq_communicator_thread, args=(), daemon=True)
         self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
-        self.motors = []                # set in configure()
+        self.motors = []                        # set in configure()
+        self.group_mask = 1 << control.platform # set in configure()
+        self.events=1                           # set in configure()
+        self.record=False                       # set in configure()
+        self.detname='scan'                     # set in configure()
+        self.scantype='scan'                    # set in configure()
+        self.serial_number='1234'               # set in configure()
+        self.alg_name='raw'                     # set in configure()
+        self.alg_version=[1,0,0]                # set in configure()
         self.daqState = daqState
         self.daqState_cv = threading.Condition()
         self.stepDone_cv = threading.Condition()
         self.stepDone = 0
         self.comm_thread.start()
         self.mon_thread.start()
-        self.verbose = args.v
-        self.detname = args.detname
-        self.scantype = args.scantype
         self.step_done = threading.Event()
-        self.step_count = 1
-        self.platform = args.p
-
-        if args.g is None:
-            self.groupMask = 1 << self.platform
-        else:
-            self.groupMask = args.g
+        self.step_value = 1
 
         # StepEnd is a cumulative count
-        self.readoutCount = args.c
         self.readoutCumulative = 0
 
     def read(self):
@@ -85,24 +79,32 @@ class BlueskyScan:
                         logging.debug('daqState \'%s\', waiting for \'%s\'...' % (self.daqState, state))
                         self.daqState_cv.wait(1.0)
                     logging.debug('daqState \'%s\'' % self.daqState)
+
+                if self.daqState == 'connected':
+                    rv = self.control.setRecord(self.record)
+                    if rv is not None:
+                        logging.error('setRecord(%s): %s' % (self.record, rv))
+
                 self.ready.set()
             elif state=='running':
+                if len(self.motors) == 0:
+                    logging.error('motors not configured')
                 # launch the step with 'daqstate(running)' (with the
                 # scan values for the daq to record to xtc2).
                 # normally should block on "complete" from the daq here.
 
-                # allow user to override step count
+                # allow user to override step value
                 for motor in self.motors:
                     if motor.name == ControlDef.STEP_VALUE:
-                        self.step_count = int(motor.position)
-                        logging.debug(f'override: step count = {self.step_count}')
+                        self.step_value = int(motor.position)
+                        logging.debug(f'override: step value = {self.step_value}')
                         break
 
                 my_data = {}
 
-                # record step_count and step_docstring
-                my_data.update({'step_count': self.step_count})
-                docstring = f'{{"detname": "{self.detname}", "scantype": "{self.scantype}", "step": {self.step_count}}}'
+                # record step_value and step_docstring
+                my_data.update({'step_value': self.step_value})
+                docstring = f'{{"detname": "{self.detname}", "scantype": "{self.scantype}", "step": {self.step_value}}}'
                 my_data.update({'step_docstring': docstring})
 
                 # record motor positions
@@ -129,7 +131,7 @@ class BlueskyScan:
                 errMsg = self.control.setState('running',
                     {'configure':   {'NamesBlockHex':configureBlock},
                      'beginstep':   {'ShapesDataBlockHex':beginStepBlock},
-                     'enable':      {'readout_count':self.readoutCount, 'group_mask':self.groupMask}})
+                     'enable':      {'readout_count':self.events, 'group_mask':self.group_mask}})
                 if errMsg is not None:
                     logging.error('%s' % errMsg)
                     continue
@@ -145,8 +147,8 @@ class BlueskyScan:
                 logging.debug('Waiting for step done...')
                 self.step_done.wait()
                 self.step_done.clear()
-                logging.debug(f'step {self.step_count} done.')
-                self.step_count += 1
+                logging.debug(f'step {self.step_value} done.')
+                self.step_value += 1
 
                 # tell bluesky step is complete
                 # this line is needed in ReadableDevice mode to flag completion
@@ -168,8 +170,8 @@ class BlueskyScan:
 
             # part1=transition, part2=state, part3=config
             if part1 == 'endrun':
-                self.step_count = 1
-                logging.debug(f'step count reset to {self.step_count}')
+                self.step_value = 1
+                logging.debug(f'step value reset to {self.step_value}')
 
             with self.daqState_cv:
                 self.daqState = part2
@@ -198,15 +200,78 @@ class BlueskyScan:
         # the metadata for read_configuration()
         return {}
 
-    # use 'motors' keyword arg to specify a set of motors
-    def configure(self, *args, **kwargs):
+    def configure(self, *, motors=None, group_mask=None, events=None, record=None, detname=None, scantype=None, serial_number=None, alg_name=None, alg_version=None):
+        """Set parameters for scan.
+
+        Keyword arguments:
+        motors -- list of motors, optional
+            Motors with positions to include in the data stream
+        group_mask -- int, optional
+            Bit mask of readout groups
+        events -- int, optional
+            Number of events per scan point
+        record -- bool, optional
+            Enable recording of data
+        detname -- str, optional
+            Detector name
+        scantype -- str, optional
+            Scan type
+        serial_number -- str, optional
+            Serial number
+        alg_name -- str, optional
+            Algorithm name
+        alg_version -- list of 3 version numbers, optional
+            Algorithm version
+        """
         logging.debug("*** here in configure")
 
-        if 'motors' in kwargs:
-            self.motors = kwargs['motors']
-            logging.info('configure: %d motors' % len(self.motors))
-        else:
-            logging.error('configure: no motors')
+        if motors is not None:
+            if isinstance(motors, list):
+                self.motors = motors
+                logging.info('configure: %d motors' % len(self.motors))
+            else:
+                raise TypeError('motors must be of type list')
+        if group_mask is not None:
+            if isinstance(group_mask, int):
+                self.group_mask = group_mask
+            else:
+                raise TypeError('group_mask must be of type int')
+        if events is not None:
+            if isinstance(events, int):
+                self.events = events
+            else:
+                raise TypeError('events must be of type int')
+        if record is not None:
+            if isinstance(record, bool):
+                self.record = record
+            else:
+                raise TypeError('record must be of type bool')
+        if detname is not None:
+            if isinstance(detname, str):
+                self.detname = detname
+            else:
+                raise TypeError('detname must be of type str')
+        if scantype is not None:
+            if isinstance(scantype, str):
+                self.scantype = scantype
+            else:
+                raise TypeError('scantype must be of type str')
+        if serial_number is not None:
+            if isinstance(serial_number, str):
+                self.serial_number = serial_number
+            else:
+                raise TypeError('serial_number must be of type str')
+        if alg_name is not None:
+            if isinstance(alg_name, str):
+                self.alg_name = alg_name
+            else:
+                raise TypeError('alg_name must be of type str')
+        if alg_version is not None:
+            if isinstance(alg_version, list):
+                self.alg_version = alg_version
+            else:
+                raise TypeError('alg_version must be of type list')
+
         return (self.read_configuration(),self.read_configuration())
 
     def _set_connected(self):

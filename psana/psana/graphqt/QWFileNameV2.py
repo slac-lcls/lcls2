@@ -28,7 +28,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QWidget, QLabel, QPushButton, QLineEdit, QHBoxLayout, QFileDialog
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, Qt
 
 class QWFileNameV2(QWidget):
     """Widget for file name input
@@ -39,27 +39,26 @@ class QWFileNameV2(QWidget):
                  path='/cds/group/psdm/detector/data2_test/npy/Select',\
                  mode='r',\
                  fltr='*.txt *.data *.png *.gif *.jpg *.jpeg\n *',\
-                 show_frame=False,\
                  but_style_on_start = 'background-color: rgb(100, 255, 100); color: rgb(0, 0, 0);',\
-                 but_style_selected = ''):
+                 but_style_selected = '',\
+                 dirs=[os.path.expanduser('~'), './calib'],\
+                 hide_path=True): #os.getcwd(),
 
         QWidget.__init__(self, parent)
 
         self.mode = mode
         self.path = path
         self.fltr = fltr
-        self.show_frame = show_frame
         self.but_style_on_start = but_style_on_start
         self.but_style_selected = but_style_selected
+        self.dirs = dirs
+        self.hide_path = hide_path
 
         self.lab = QLabel(label)
-        self.but = QPushButton(path.rsplit('/',1)[-1])
-        #self.edi = QLineEdit(path)
-        #self.edi.setReadOnly(True) 
+        self.but = QPushButton(self.but_text())
 
         self.hbox = QHBoxLayout() 
         self.hbox.addWidget(self.lab)
-        #self.hbox.addWidget(self.edi)
         self.hbox.addWidget(self.but)
         self.hbox.addStretch(1)
         self.setLayout(self.hbox)
@@ -74,29 +73,38 @@ class QWFileNameV2(QWidget):
         return self.path
 
 
+    def but_text(self):
+        return self.path.rsplit('/',1)[-1] if self.hide_path else self.path
+
+
+    def set_dirs_to_search(self, dirs):
+        self.dirs = dirs
+
+
     def set_tool_tips(self):
         self.but.setToolTip('Click and select input file.')
-        #self.edi.setToolTip('Path to the file (read-only).\nClick on button to change it.') 
 
 
     def set_style(self):
         self.setWindowTitle('File name selection widget')
         self.setMinimumWidth(300)
-        #self.edi.setMinimumWidth(210)
-        self.but.setMinimumWidth(250)
-        self.setFixedHeight(34)
-        self.layout().setContentsMargins(5,0,5,0)
+        self.but.setMinimumWidth(200)
+        self.layout().setContentsMargins(0,0,0,0)
         self.but.setStyleSheet(self.but_style_on_start)
+        self.lab.setAlignment(Qt.AlignRight)
+        #self.lab.setStyleSheet(style.styleLabel)
 
 
     def on_but(self):
-        logger.debug('on_but')
-
         path_old = self.path
-
-        resp = QFileDialog.getSaveFileName(self, 'Output file', self.path, filter=self.fltr) \
+        qfdial = QFileDialog(directory=self.path)
+        qfdial.setHistory([]) # clear history
+        rsp = qfdial.restoreState(qfdial.saveState())
+        qfdial.setHistory(self.dirs)
+        logger.debug('QFileDialog.history: %s' % str(qfdial.history()))
+        resp = qfdial.getSaveFileName(parent=self, caption='Output file', filter=self.fltr)\
                if self.mode == 'w' else \
-               QFileDialog.getOpenFileName(self, 'Input file', self.path, filter=self.fltr)
+               qfdial.getOpenFileName(parent=self, caption='Input file', filter=self.fltr)
 
         logger.debug('response: %s len=%d' % (resp, len(resp)))
 
@@ -107,7 +115,6 @@ class QWFileNameV2(QWidget):
         if self.mode == 'r' and not os.path.lexists(self.path):
             logger.debug('pass does not exist: %s' % self.path)
             return
-            #raise IOError('file %s is not available' % self.path)
 
         elif dname == '' or fname == '':
             logger.debug('input directiry name "%s" or file name "%s" is empty... use default values'%(dname, fname))
@@ -119,14 +126,17 @@ class QWFileNameV2(QWidget):
 
         else:
             logger.debug('selected file: %s' % self.path)
-            #self.edi.setText(self.path)
-            self.but.setText(self.path.rsplit('/',1)[-1])
+            self.but.setText(self.but_text())
             self.path_is_changed.emit(self.path)
             self.but.setStyleSheet(self.but_style_selected)
 
 
     def connect_path_is_changed_to_recipient(self, recip):
         self.path_is_changed['QString'].connect(recip)
+
+
+    def disconnect_path_is_changed_from_recipient(self, recip):
+        self.path_is_changed['QString'].disconnect(recip)
 
  
     def test_signal_reception(self, s):
@@ -141,7 +151,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     app = QApplication(sys.argv)
-    w = QWFileNameV2(None, label='Path:', path='/cds/group/psdm/detector/data2_test/npy/Select', show_frame=True)
+    w = QWFileNameV2(None, label='Path:', path='/cds/group/psdm/detector/data2_test/npy/Select')
     w.setGeometry(100, 50, 350, 80)
     w.connect_path_is_changed_to_recipient(w.test_signal_reception)
     w.show()

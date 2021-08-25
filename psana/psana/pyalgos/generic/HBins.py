@@ -39,6 +39,8 @@ Usage::
 
     hb.set_bin_data(data, dtype=np.float) # adds bin data to the HBins object. data size should be equal to hb.nbins()
     data = bin_data(dtype=np.float)       # returns numpy array of data associated with HBins object.
+    data = hb.set_bin_data_from_array(self, arr, dtype=np.float64, edgemode=0) # set bin data from array (like image or ndarray)
+    mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w = hb.histogram_statistics()
 
     # Print methods
     hb.print_attrs_defined()
@@ -61,7 +63,11 @@ Created on 2016-01-15 by Mikhail Dubrovin
 
 import math
 import numpy as np
+sqrt = math.sqrt
 
+
+#import logging
+#logger = logging.getLogger(__name__)
 
 class HBins():
     """Hystogram-style bin parameters holder
@@ -85,6 +91,7 @@ class HBins():
         self._vmax       = max(self._edges)
         self._equalbins  = len(self._edges)==2 and nbins is not None
         self._ascending  = self._edges[0] < self._edges[-1]
+        self._bin_data   = None
 
         # dynamic parameters
         self._limits     = None
@@ -287,24 +294,36 @@ class HBins():
             return np.select(conds, inds, default=indmax)
 
 
-    def bin_count(self, arr):
-        #indmin, indmax = self._set_limit_indexes(edgemode)
-        edgemode=0
-        indarr = self.bin_indexes(arr.flatten(), edgemode)
-        weights=None
+    def bin_count(self, arr, edgemode=0, weights=None):
+        indarr = self.bin_indexes(arr.ravel(), edgemode)
         return np.bincount(indarr, weights, self.nbins())
 
 
-    def set_bin_data(self, data, dtype=float):
-        if len(data)!=self.nbins():
-            self._bin_data = None
-            return
+    def set_bin_data(self, data, dtype=np.float64):
+        assert len(data)==self.nbins()
+            #self._bin_data = None
+            #return
         self._bin_data = np.array(data, dtype)
 
 
-    def bin_data(self, dtype=float):
-        return self._bin_data.astype(dtype)
-        
+    def bin_data(self, dtype=np.float64):
+        return self._bin_data.astype(dtype) if self._bin_data is not None else None
+
+
+    def bin_data_max(self):
+        return self._bin_data.max() if self._bin_data is not None else None
+
+
+    def bin_data_min(self):
+        return self._bin_data.min() if self._bin_data is not None else None
+
+
+    def set_bin_data_from_array(self, arr, dtype=np.float64, edgemode=0):
+        aravel = arr.ravel()
+        hisarr = self.bin_count(aravel, edgemode=edgemode)
+        self.set_bin_data(hisarr, dtype=dtype)
+        #return hisarr
+
 
     def strrange(self, fmt='%.0f-%.0f-%d'):
         """Returns string of range parameters"""
@@ -330,6 +349,49 @@ class HBins():
         print('Methods & attributes of the %s object' % self._name)
         for m in dir(self):
             print('  %s' % (str(m).ljust(16)))
+
+
+    def histogram_statistics(self, vmin=None, vmax=None):
+        ibeg, iend = self.bin_indexes((vmin,vmax), edgemode=0)
+        #logger.debug('histogram_statistics between bins %d : %d'%(ibeg, iend))
+        center = self.bincenters()[ibeg:iend]
+        weights = self.bin_data()[ibeg:iend]
+        if weights is None: weights = np.ones_like(center)
+
+        sum_w  = weights.sum()
+        if sum_w <= 0: return  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+        sum_w2 = (weights*weights).sum()
+        neff   = sum_w*sum_w/sum_w2 if sum_w2>0 else 0
+        sum_1  = (weights*center).sum()
+        mean = sum_1/sum_w
+        d      = center - mean
+        d2     = d * d
+        wd2    = weights*d2
+        m2     = (wd2)   .sum() / sum_w
+        m3     = (wd2*d) .sum() / sum_w
+        m4     = (wd2*d2).sum() / sum_w
+
+        #sum_2  = (weights*center*center).sum()
+        #err2 = sum_2/sum_w - mean*mean
+        #err  = sqrt(err2)
+
+        rms  = sqrt(m2) if m2>0 else 0
+        rms2 = m2
+
+        err_mean = rms/sqrt(neff)
+        err_rms  = err_mean/sqrt(2)
+
+        skew, kurt, var_4 = 0, 0, 0
+
+        if rms>0 and rms2>0:
+            skew  = m3/(rms2 * rms)
+            kurt  = m4/(rms2 * rms2) - 3
+            var_4 = (m4 - rms2*rms2*(neff-3)/(neff-1))/neff if neff>1 else 0
+        err_err = sqrt(sqrt(var_4)) if var_4>0 else 0
+        #print  'mean:%f, rms:%f, err_mean:%f, err_rms:%f, neff:%f' % (mean, rms, err_mean, err_rms, neff)
+        #print  'skew:%f, kurt:%f, err_err:%f' % (skew, kurt, err_err)
+        return mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w, ibeg, iend
 
 
 def test_bin_indexes(o, vals, edgemode=0, cmt=''):
