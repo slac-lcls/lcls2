@@ -17,14 +17,18 @@ from psana.graphqt.CMWControlBase import * # CMWControlBase, QApplication, ..., 
 logger = logging.getLogger(__name__)
 
 COMMAND_SET_ENV_LCLS1 = '. /cds/sw/ds/ana/conda1/manage/bin/psconda.sh; echo "PATH: $PATH"; echo "CONDA_DEFAULT_ENV: $CONDA_DEFAULT_ENV"; '
-
-ENV1 = {'PATH':'/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/puppetlabs/bin'}
+ENV1 = {} #'PATH':'/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/puppetlabs/bin'}
 
 class DMQWControl(CMWControlBase):
     """QWidget for Data Manager control fields"""
 
-    cmd_list = ['detnames', 'datinfo', 'det_dark_proc','epix10ka_pedestals_calibration','epix10ka_deploy_constants', 'event_keys',] 
-
+    det_list0 = ['select','run mast be','selected first']
+    cmd_list = ['detnames', 'datinfo']
+    cmd_list_lcls1 = ['detnames', 'datinfo', 'event_keys', 'DetInfo']
+    cmd_list_lcls2 = ['detnames', 'datinfo', 'det_dark_proc','epix10ka_pedestals_calibration','epix10ka_deploy_constants', 'event_keys',]
+    lclsv_list = ['LCLS','LCLS2']
+    instr_lcls1 = ['AMO','CXI','XPP','SXR','MEC','DET','MFX','MOB','USR','MON','DIA']
+    instr_lcls2 = ['TST','TMO','RIX','UED']
     instr_exp_is_changed = pyqtSignal('QString', 'QString')
 
     def __init__(self, **kwa):
@@ -38,19 +42,29 @@ class DMQWControl(CMWControlBase):
 
         expname = kwa.get('expname', expname_def())
 
-        self.lab_exp = QLabel('Exp:')
-        self.lab_cmd = QLabel('CLI:')
+        self.lab_exp = QLabel('exp:')
+        self.lab_cmd = QLabel('cmd:')
+        self.lab_det = QLabel('det:')
         self.but_exp = QPushButton(expname)
         self.but_start = QPushButton('start')
         self.but_stop = QPushButton('stop')
+        self.cmb_det = QComboBox()
+        #self.cmb_det.addItems(self.det_list)
+        self.set_cmb_det()
+        self.cmb_lclsv = QComboBox()
+        self.cmb_lclsv.addItems(self.lclsv_list)
         self.cmb_cmd = QComboBox()
-        self.cmb_cmd.addItems(self.cmd_list)
-        self.cmb_cmd.setCurrentIndex(self.cmd_list.index('detnames'))
- 
+        self.set_lclsv_for_experiment(expname)
+
+        self.box2 = QHBoxLayout()
+        self.box2.addStretch(1)
+        self.box2.addWidget(self.lab_det)
+        self.box2.addWidget(self.cmb_det)
         self.box = QHBoxLayout()
         self.box.addWidget(self.lab_exp)
         self.box.addWidget(self.but_exp)
         self.box.addStretch(1)
+        self.box.addWidget(self.cmb_lclsv)
         self.box.addWidget(self.lab_cmd)
         self.box.addWidget(self.cmb_cmd)
         self.box.addWidget(self.but_start)
@@ -58,12 +72,16 @@ class DMQWControl(CMWControlBase):
         self.box.addWidget(self.but_save)
         self.box.addWidget(self.but_view)
         self.box.addWidget(self.but_tabs)
-        self.setLayout(self.box)
+        self.boxv = QVBoxLayout()
+        self.boxv.addLayout(self.box)
+        self.boxv.addLayout(self.box2)
+        self.setLayout(self.boxv)
  
         self.but_exp.clicked.connect(self.on_but_exp)
         self.but_start.clicked.connect(self.on_but_start)
         self.but_stop.clicked.connect(self.on_but_stop)
         self.cmb_cmd.currentIndexChanged[int].connect(self.on_cmb_cmd)
+        #self.cmb_lclsv.currentIndexChanged[int].connect(self.on_cmb_lclsv)
 
         self.set_tool_tips()
         self.set_style()
@@ -73,6 +91,43 @@ class DMQWControl(CMWControlBase):
 #            from psana.graphqt.FSTree import full_path_for_item
 #            cp.dmqwmain.wlist.connect_item_selected_to(self.on_item_selected)
 #            cp.dmqwmain.wlist.clicked[QModelIndex].connect(self.on_click)
+
+
+    def set_cmb_cmd(self):
+        self.cmb_cmd.clear()
+        self.cmb_cmd.addItems(self.cmd_list)
+        self.cmb_cmd.setCurrentIndex(self.cmd_list.index('detnames'))
+
+
+    def is_lcls1(self, expname=None):
+        """use instrument part of the passed experiment name or field content if expname=None
+        """
+        exp = expname if expname is not None else self.but_exp.text()
+        resp = expname[:3].upper() in self.instr_lcls1
+        logger.debug('instrument/experiment: %s belonds to LCLS%s' % (exp, '' if resp else '2'))
+        return resp
+
+
+    def is_lcls2(self, expname, runnum):
+        """checks db file name extension for *.xtc2
+        """
+        if cp.dmqwmain is None: return None
+        return cp.dmqwmain.is_lcls2(expname, runnum)
+
+
+    def set_lclsv(self, is_lcls1):
+        self.cmd_list = self.cmd_list_lcls1 if is_lcls1 else self.cmd_list_lcls2
+        self.cmb_lclsv.setCurrentIndex(self.lclsv_list.index('LCLS' if is_lcls1 else 'LCLS2'))
+        self.set_cmb_cmd()
+
+
+    def set_lclsv_for_instrument(self, instr):
+        self.set_lclsv(self.is_lcls1(instr))
+        #self.set_lclsv(instr.upper() in self.instr_lcls1)
+
+
+    def set_lclsv_for_experiment(self, expname):
+        self.set_lclsv_for_instrument(expname[:3])
 
 
     def set_tool_tips(self):
@@ -87,16 +142,20 @@ class DMQWControl(CMWControlBase):
         CMWControlBase.set_style(self)
         self.lab_exp.setStyleSheet(style.styleLabel)
         self.lab_cmd.setStyleSheet(style.styleLabel)
-        self.lab_exp.setFixedWidth(25)
-        self.lab_cmd.setFixedWidth(25)
+        self.lab_det.setStyleSheet(style.styleLabel)
+        self.lab_exp.setFixedWidth(28)
+        self.lab_cmd.setFixedWidth(28)
+        self.lab_det.setFixedWidth(28)
         self.but_exp.setFixedWidth(80)
-        self.cmb_cmd.setFixedWidth(150)
+        self.cmb_lclsv.setFixedWidth(65)
+        self.cmb_cmd.setFixedWidth(120)
+        self.cmb_det.setFixedWidth(200)
         self.but_start.setFixedWidth(35)
         self.but_stop.setFixedWidth(35)
         #self.but_buts.setStyleSheet(style.styleButton)
         #self.but_tabs.setVisible(True)
         self.layout().setContentsMargins(5,0,5,0)
-
+        self.cmb_lclsv.setEnabled(False)
         self.wfnm.setVisible(False)
         self.wfnm.setEnabled(False)
         self.but_save.setVisible(False)
@@ -105,9 +164,18 @@ class DMQWControl(CMWControlBase):
         self.but_view.setEnabled(False)
 
 
+    def on_cmb_det(self, ind):
+        logger.debug('on_cmb_det selected index %d: %s' % (ind, self.det_list[ind]))
+
+
     def on_cmb_cmd(self, ind):
         logger.debug('on_cmb_cmd selected index %d: %s' % (ind, self.cmd_list[ind]))
-        #command = self.cmb_cmd.currentText()
+
+
+    def on_cmb_lclsv(self, ind):
+        txt = self.lclsv_list[ind]
+        logger.debug('on_cmb_lclsv selected index %d: %s' % (ind, txt))
+        self.set_lclsv(txt=='LCLS')
 
 
     def on_but_stop(self):
@@ -139,9 +207,13 @@ class DMQWControl(CMWControlBase):
             logger.warning('RUN IS NOT SELECTED - command terminated')
             return
 
-        is_lcls2 = cp.dmqwmain.is_lcls2(expname, runnum)
+        is_lcls1 = self.is_lcls1(expname)
+        is_lcls2 = not is_lcls1
+        #is_lcls2 = self.is_lcls2(expname, runnum)
         s = 'dataset exp=%s,run=%d is_lcls2:%s' % (expname, runnum, is_lcls2)
         cp.dmqwmain.append_info(s)
+
+        detname = self.cmb_det.currentText()
 
         if is_lcls2:
           cmd = ''
@@ -156,12 +228,18 @@ class DMQWControl(CMWControlBase):
 
         else: # LCLS1
           cmd = COMMAND_SET_ENV_LCLS1
+          detname = detname.replace('-','.').replace('|',':')
           if command == 'detnames':
             cmd += 'detnames exp=%s:run=%d' % (expname, runnum)
           elif command == 'event_keys':
             cmd += 'event_keys -d exp=%s:run=%d -m3' % (expname, runnum)
+          elif command == 'DetInfo':
+            cmd += 'event_keys -d exp=%s:run=%d -pDetInfo -n10' % (expname, runnum)
           elif command == 'datinfo':
-            cmd += 'datinfo -e %s -r %d' % (expname, runnum)
+            if detname == self.det_list0[0]:
+                logger.info('PLEASE SELECT THE DETECTOR NAME')
+                return
+            cmd += 'datinfo -e %s -r %d -d %s' % (expname, runnum, detname)
           else:
             cp.dmqwmain.append_info('LCLS1 COMMAND "%s" IS NOT IMPLEMENTED...' % command)
             return
@@ -210,6 +288,9 @@ class DMQWControl(CMWControlBase):
             if cp.dmqwmain is not None:
                cp.dmqwmain.wlist.fill_list_model(experiment=exp_name)
                cp.dmqwmain.winfo.winfo.clear()
+
+            self.set_lclsv_for_instrument(instr_name)
+            self.set_cmb_det()
 
 
     def on_but_view(self):
@@ -277,6 +358,28 @@ class DMQWControl(CMWControlBase):
         self.save_item_path(selected)
 
 
+    def detnames(self, expname, runnum):
+        import psana.graphqt.UtilsWebServ as uws
+        lst = uws.detnames(expname, runnum)
+        s = 'detnames:\n  %s' % '\n  '.join(lst)
+        cp.dmqwmain.append_info(s)
+        return lst
+
+
+    def set_cmb_det(self, detnames=None):
+        lst = detnames if detnames else self.det_list0
+        self.cmb_det.clear()
+        self.cmb_det.addItems(lst)
+        self.cmb_det.setCurrentIndex(0)
+
+
+    def on_selected_exp_run(self, expname, runnum): # called from DMQWMain <- DMQWList
+        logger.debug('on_selected_exp_run: %s %d'%(expname, runnum))
+        lst = self.detnames(expname, runnum)
+        if not lst: return
+        self.set_cmb_det(detnames=lst)
+
+
     def on_click(self, index):
         self.save_item_path(index)
 
@@ -293,7 +396,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
     w = DMQWControl()
-    w.setGeometry(100, 50, 500, 40)
+    w.setGeometry(100, 50, 500, 70)
     w.setWindowTitle('FM Control Panel')
     w.show()
     app.exec_()
