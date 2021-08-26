@@ -81,7 +81,7 @@ class DMQWMain(QWidget):
         self.winfo.layout().setContentsMargins(0,0,0,0)
         self.wctrl.layout().setContentsMargins(2,2,2,0)
         self.winfo.hbox.layout().setContentsMargins(2,2,2,0)
-        self.wctrl.setFixedHeight(26)
+        self.wctrl.setFixedHeight(60) # 26)
         spl_pos = 280
         self.wleft.setMinimumWidth(spl_pos)
         self.hspl.setSizes((spl_pos, self.size().width()-spl_pos,))
@@ -144,6 +144,11 @@ class DMQWMain(QWidget):
         self.dump_info_exp_run_1(expname, runnum)
         self.dump_info_exp_run_2(expname, runnum)
         self.dump_info_files(expname, runnum)
+
+
+    def on_selected_exp_run(self, expname, runnum): # called from DMQWList
+        self.dump_info_exp_run(expname, runnum)
+        self.wctrl.on_selected_exp_run(expname, runnum)
 
 
 def data_manager(**kwa):
