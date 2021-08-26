@@ -53,7 +53,8 @@ class SubProcess:
 
     def __call__(self, *args, **kwargs): return self.subprocs_open(*args, **kwargs)
 
-    def is_compleated(self): return self.subproc.poll()==0
+    def is_compleated(self):
+        return self.subproc.poll()==0
 
     def kill(self): self.subproc.kill()
 
