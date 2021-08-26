@@ -28,10 +28,9 @@ from psana.graphqt.QWLoggerStd import QWLoggerStd
 class CMWMain(QWidget):
 
     def __init__(self, **kwargs):
-        QWidget.__init__(self, parent=None)
+        QWidget.__init__(self, parent=None, flags=Qt.WindowStaysOnTopHint)
 
         cp.cmwmain = self
-
         self.set_input_pars(**kwargs)
 
         from psana.graphqt.CMWMainTabs import CMWMainTabs # AFTER set_input_pars !!!!\
@@ -45,11 +44,6 @@ class CMWMain(QWidget):
 
         self.mbox = QHBoxLayout() 
         self.mbox.addWidget(self.vspl)
-
-        x,y,w,h = self.xywh
-        self.setGeometry(x,y,w,h)
-        logger.info('set preserved window geometry x,y,w,h: %d,%d,%d,%d' % (x,y,w,h))
-        logger.info(log_rec_on_start())
 
         self.setLayout(self.mbox)
 
@@ -65,6 +59,11 @@ class CMWMain(QWidget):
                     cp.main_win_pos_y .value(),\
                     cp.main_win_width .value(),\
                     cp.main_win_height.value()
+
+        x,y,w,h = self.xywh
+        self.setGeometry(x,y,w,h)
+        logger.info('set preserved window geometry x,y,w,h: %d,%d,%d,%d' % (x,y,w,h))
+        logger.info(log_rec_on_start())
 
         self.main_win_pos_x  = cp.main_win_pos_x
         self.main_win_pos_y  = cp.main_win_pos_y
