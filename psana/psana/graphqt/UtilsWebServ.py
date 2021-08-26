@@ -91,6 +91,11 @@ def run_parameters(expname, runnum):
     return value_for_request(ws_url)
 
 
+def detnames(expname, runnum):
+    jo = run_parameters(expname, runnum)
+    return [k.split('/')[-1] for k, v in jo.get("params", {}).items() if k.startswith("DAQ Detectors/")]
+
+
 def runinfo_for_params(expname, params={"includeParams": "true"}):
     ws_url = "https://pswww.slac.stanford.edu/ws-kerb/lgbk/lgbk/%s/ws/runs" % (expname)
     return value_for_request(ws_url, params=params)
@@ -247,9 +252,14 @@ if __name__ == "__main__":
     if jo: print(json.dumps(jo, indent=2))
 
 
+  def test_detnames(expname='xpplw2619', runnum=203):
+    lst = detnames(expname, runnum)
+    print('detnames:\n ', '\n  '.join(lst))
+
+
   def test_is_lcls2(expname):
-      status = is_lcls2(expname)
-      print('is_lcls2("%s"): %s' % (expname, str(status)))
+    status = is_lcls2(expname)
+    print('is_lcls2("%s"): %s' % (expname, str(status)))
 
 
 if __name__ == "__main__":
@@ -278,6 +288,7 @@ if __name__ == "__main__":
     elif tname =='17': test_tags_for_run('tmolw8819', 111)
     elif tname =='18': test_is_lcls2('xpplw3319')
     elif tname =='19': test_is_lcls2('tmolw8819')
+    elif tname =='20': test_detnames(expname='xpplw2619', runnum=203)
     else: print('test %s is not implemented' % tname)
 
     sys.exit('End of Test %s' % tname)
