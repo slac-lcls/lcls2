@@ -60,6 +60,11 @@ class DMQWList(QWList):
         logger.debug('runs_to_tags for %s: %s' % (expname, str(tags)))
 
         self.setSpacing(1)
+
+        if not self.runinfo_db:
+            logger.warning('runinfo_db: %s' % str(self.runinfo_db))
+            return
+
         for r in sorted(self.runinfo_db.keys()):
             tb, te, is_closed, all_present = self.runinfo_db[r]
             tb = '%s %s' % (tb[:19], 'UTC' if tb[-6:]=='+00:00' else tb[-6:])
@@ -96,7 +101,8 @@ class DMQWList(QWList):
         s += '\nbegin_time: %s\n   end_time: %s' % (tb, te)\
           + '\n is_closed: %s all_present: %s' % (is_closed, all_present)
         cp.dmqwmain.append_info(s, cp.dmqwmain.fname_info(self.expname, runnum))
-        cp.dmqwmain.dump_info_exp_run(self.expname, runnum)
+        #cp.dmqwmain.dump_info_exp_run(self.expname, runnum)
+        cp.dmqwmain.on_selected_exp_run(self.expname, runnum)
 
 
     def on_item_selected(self, selected, deselected):
@@ -118,6 +124,7 @@ class DMQWList(QWList):
             logger.debug(s)
             if cp.dmqwmain is None: return
             cp.dmqwmain.append_info(s, cp.dmqwmain.fname_info(self.expname, runnum))
+            cp.dmqwmain.on_selected_exp_run(self.expname, runnum)
 
 
     def closeEvent(self, e):
