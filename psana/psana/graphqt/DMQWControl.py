@@ -19,13 +19,50 @@ logger = logging.getLogger(__name__)
 COMMAND_SET_ENV_LCLS1 = '. /cds/sw/ds/ana/conda1/manage/bin/psconda.sh; echo "PATH: $PATH"; echo "CONDA_DEFAULT_ENV: $CONDA_DEFAULT_ENV"; '
 ENV1 = {} #'PATH':'/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/puppetlabs/bin'}
 
+
+def detname_contains_pattern(detname, pattern):
+    r = pattern in detname
+    if not r: logger.warning('DETECTOR NAME "%s" DOES NOT CONTAIN "%s"' % (detname, pattern))
+    return r
+
+def is_epix10ka(detname): return detname_contains_pattern(detname, 'Epix10')
+
+def is_jungfrau(detname): return detname_contains_pattern(detname, 'Jungfrau')
+
+def is_area_detector(detname): 
+    logger.warning('TBD: is_area_detector for DETECTOR NAME "%s"' % detname)
+    return True
+
+
 class DMQWControl(CMWControlBase):
     """QWidget for Data Manager control fields"""
 
     det_list0 = ['select','run mast be','selected first']
     cmd_list = ['detnames', 'datinfo']
-    cmd_list_lcls1 = ['detnames', 'datinfo', 'event_keys', 'DetInfo']
-    cmd_list_lcls2 = ['detnames', 'datinfo', 'det_dark_proc','epix10ka_pedestals_calibration','epix10ka_deploy_constants', 'event_keys',]
+    cmd_list_lcls1 = [\
+     'detnames',
+     'datinfo',
+     'event_keys',
+     'DetInfo',
+     'det_calib_ave_and_max',
+     'det_ndarr_raw_proc',
+     'epix10ka_id',
+     'epix10ka_offset_calibration',
+     'epix10ka_pedestals_calibration',
+     'epix10ka_deploy_constants',
+     'epix10ka_test_calibcycles',
+     'jungfrau_id',
+     'jungfrau_dark_proc',
+     'jungfrau_deploy_constants',
+    ]
+    cmd_list_lcls2 = [\
+     'detnames',
+     'datinfo',
+     'det_dark_proc',
+     'epix10ka_pedestals_calibration',
+     'epix10ka_deploy_constants',
+     'event_keys',
+    ]
     lclsv_list = ['LCLS','LCLS2']
     instr_lcls1 = ['AMO','CXI','XPP','SXR','MEC','DET','MFX','MOB','USR','MON','DIA']
     instr_lcls2 = ['TST','TMO','RIX','UED']
@@ -63,7 +100,7 @@ class DMQWControl(CMWControlBase):
         self.box = QHBoxLayout()
         self.box.addWidget(self.lab_exp)
         self.box.addWidget(self.but_exp)
-        self.box.addStretch(1)
+        #self.box.addStretch(1)
         self.box.addWidget(self.cmb_lclsv)
         self.box.addWidget(self.lab_cmd)
         self.box.addWidget(self.cmb_cmd)
@@ -81,6 +118,7 @@ class DMQWControl(CMWControlBase):
         self.but_start.clicked.connect(self.on_but_start)
         self.but_stop.clicked.connect(self.on_but_stop)
         self.cmb_cmd.currentIndexChanged[int].connect(self.on_cmb_cmd)
+        self.cmb_det.currentIndexChanged[int].connect(self.on_cmb_det)
         #self.cmb_lclsv.currentIndexChanged[int].connect(self.on_cmb_lclsv)
 
         self.set_tool_tips()
@@ -116,8 +154,10 @@ class DMQWControl(CMWControlBase):
 
 
     def set_lclsv(self, is_lcls1):
+        lclsv = 'LCLS' if is_lcls1 else 'LCLS2'
         self.cmd_list = self.cmd_list_lcls1 if is_lcls1 else self.cmd_list_lcls2
-        self.cmb_lclsv.setCurrentIndex(self.lclsv_list.index('LCLS' if is_lcls1 else 'LCLS2'))
+        self.cmb_lclsv.setCurrentIndex(self.lclsv_list.index(lclsv))
+        self.cmb_lclsv.setToolTip('%s data type is assumed from\ninstrument name' % lclsv)
         self.set_cmb_cmd()
 
 
@@ -136,6 +176,7 @@ class DMQWControl(CMWControlBase):
         self.but_start.setToolTip('Start command execution in subprocess')
         self.but_stop.setToolTip('Stop subprocess')
         self.cmb_cmd.setToolTip('Select command to execute for selected run(s)')
+        self.cmb_det.setToolTip('Select detector name for command')
 
 
     def set_style(self):
@@ -164,8 +205,14 @@ class DMQWControl(CMWControlBase):
         self.but_view.setEnabled(False)
 
 
+    def current_detnames(self):
+        count = self.cmb_det.count()
+        lst = [self.cmb_det.itemText(i) for i in range(count)]
+        logger.debug('count %d current_detnames %s' % (count, str(lst)))
+        return lst
+
     def on_cmb_det(self, ind):
-        logger.debug('on_cmb_det selected index %d: %s' % (ind, self.det_list[ind]))
+        logger.debug('on_cmb_det selected index %d: %s' % (ind, self.current_detnames()[ind] if ind>0 else 'None'))
 
 
     def on_cmb_cmd(self, ind):
@@ -183,7 +230,12 @@ class DMQWControl(CMWControlBase):
         self.force_stop = True
 
 
-    def on_but_start(self):
+    def on_but_start(self, **kwa):
+        events   = kwa.get('events', 100)
+        evskip   = kwa.get('evskip', 0)
+        calibdir = kwa.get('calibdir', None)
+        loglevel = kwa.get('loglevel', 'INFO')
+
         command = self.cmb_cmd.currentText()
         expname, runnum = cp.exp_name.value(), cp.last_selected_run
         logger.info('on_but_start command:%s exp:%s run:%s' % (command, expname, str(runnum)))
@@ -219,8 +271,10 @@ class DMQWControl(CMWControlBase):
           cmd = ''
           if command == 'detnames':
             cmd = 'detnames exp=%s,run=%d -r' % (expname, runnum)
+
           elif command == 'datinfo':
             cmd = 'datinfo -e %s -r %d' % (expname, runnum)
+
           else:
             cp.dmqwmain.append_info('LCLS2 COMMAND "%s" IS NOT IMPLEMENTED...' % command)
             return
@@ -231,18 +285,49 @@ class DMQWControl(CMWControlBase):
           detname = detname.replace('-','.').replace('|',':')
           if command == 'detnames':
             cmd += 'detnames exp=%s:run=%d' % (expname, runnum)
+
           elif command == 'event_keys':
             cmd += 'event_keys -d exp=%s:run=%d -m3' % (expname, runnum)
+
           elif command == 'DetInfo':
             cmd += 'event_keys -d exp=%s:run=%d -pDetInfo -n10' % (expname, runnum)
+
           elif command == 'datinfo':
             if detname == self.det_list0[0]:
-                logger.info('PLEASE SELECT THE DETECTOR NAME')
+                logger.warning('PLEASE SELECT THE DETECTOR NAME')
                 return
             cmd += 'datinfo -e %s -r %d -d %s' % (expname, runnum, detname)
+
+          elif command == 'det_calib_ave_and_max':
+            if not is_area_detector(detname): return
+            #det_calib_ave_and_max <dataset-name> <detector-name> <number-of-events> <number-events-to-skip> <calib-dir> <log-level-str>
+            cmd += 'det_calib_ave_and_max exp=%s:run=%d %s %d %d %s %s'%\
+                   (expname, runnum, detname, events, evskip, calibdir, loglevel)
+
+          elif command == 'det_ndarr_raw_proc':
+            if not is_area_detector(detname): return
+            #det_ndarr_raw_proc -d <dataset> [-s <source>] [-f <file-name-template>] [-n <events-collect>] [-m <events-skip>] 
+            cmd += 'det_ndarr_raw_proc -d exp=%s:run=%d -s %s -n %d -m %d -f nda-#exp-#run-#src-#type.txt'%\
+                   (expname, runnum, detname, events, evskip)
+
+          elif command == 'det_calib_ave_and_max':
+            if not is_area_detector(detname): return
+            #det_calib_ave_and_max <dataset-name> <detector-name> <number-of-events> <number-events-to-skip> <calib-dir> <log-level-str>
+            cmd += 'det_calib_ave_and_max exp=%s:run=%d %s %d %d %s %s'%\
+                   (expname, runnum, detname, events, evskip, str(calibdir), loglevel)
+
+          elif command == 'epix10ka_id':
+            if not is_epix10ka(detname): return
+            cmd += 'epix10ka_id exp=%s:run=%d %s' % (expname, runnum, detname)
+
+          elif command == 'jungfrau_id':
+            if not is_jungfrau(detname): return
+            cmd += 'jungfrau_id exp=%s:run=%d %s' % (expname, runnum, detname)
+
           else:
             cp.dmqwmain.append_info('LCLS1 COMMAND "%s" IS NOT IMPLEMENTED...' % command)
             return
+
           cmd_seq = ['/bin/bash', '-l', '-c', cmd]
           self.subprocess_command(cmd_seq, shell=False, env=ENV1, executable='/bin/bash')
 
@@ -367,10 +452,12 @@ class DMQWControl(CMWControlBase):
 
 
     def set_cmb_det(self, detnames=None):
-        lst = detnames if detnames else self.det_list0
+        lst = detnames if isinstance(detnames, list) else self.det_list0
+        detname_old = self.cmb_det.currentText()
+        i = lst.index(detname_old) if detname_old in lst else 0
         self.cmb_det.clear()
         self.cmb_det.addItems(lst)
-        self.cmb_det.setCurrentIndex(0)
+        self.cmb_det.setCurrentIndex(i)
 
 
     def on_selected_exp_run(self, expname, runnum): # called from DMQWMain <- DMQWList
