@@ -102,10 +102,9 @@ class Event():
     def _assign_det_segments(self):
         """
         """
-
         self._det_segments = {}
         for evt_dgram in self._dgrams:
-
+            
             if evt_dgram: # dgram can be None (missing) in an event
 
                 # detector name (e.g. "xppcspad")
@@ -123,10 +122,9 @@ class Event():
                             segs = self._det_segments[class_identifier]
 
                             if det_name not in ['runinfo','smdinfo'] :
-                                msg = f'Found duplicate segment: {segment} in {segs} for {class_identifier}'
-                                assert segment not in segs, msg 
+                                assert segment not in segs, f'Found duplicate segment: {segment} for {class_identifier}'
                             segs[segment] = drp_class
-
+                            
         return
 
     # this routine is called when all the dgrams have been inserted into
