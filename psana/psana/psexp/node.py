@@ -550,7 +550,7 @@ class BigDataNode(object):
             st_req = time.monotonic()
             req = bd_comm.Irecv(chunk, source=0)
             req.Wait()
-            logger.debug(f'RANK{self.comms.world_rank} 15. BD{self.comms.world_rank}RECVDATA {count} bytes {time.monotonic()}')
+            logger.debug(f'RANK{self.comms.world_rank} 15. BD{self.comms.world_rank}RECVDATA {time.monotonic()}')
             en_req = time.monotonic()
             self.bd_wait_eb.labels('seconds', self.comms.world_rank).inc(en_req - st_req)
             return chunk
