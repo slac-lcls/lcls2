@@ -44,7 +44,7 @@ cdef class SmdReader:
         self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
         self.n_eb_nodes         = int(os.environ.get('PS_EB_NODES', '1'))
         self.send_bufs          = <Buffer *>malloc(self.n_eb_nodes * sizeof(Buffer))
-        self.sendbufsize        = 0x4000000
+        self.sendbufsize        = 0x10000000
         self._init_send_buffers()
 
     def __dealloc__(self):
