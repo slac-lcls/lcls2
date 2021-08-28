@@ -231,7 +231,7 @@ class DMQWControl(CMWControlBase):
 
 
     def on_but_start(self, **kwa):
-        events   = kwa.get('events', 100)
+        events   = kwa.get('events', 1000)
         evskip   = kwa.get('evskip', 0)
         calibdir = kwa.get('calibdir', None)
         loglevel = kwa.get('loglevel', 'INFO')
@@ -302,7 +302,7 @@ class DMQWControl(CMWControlBase):
             if not is_area_detector(detname): return
             #det_calib_ave_and_max <dataset-name> <detector-name> <number-of-events> <number-events-to-skip> <calib-dir> <log-level-str>
             cmd += 'det_calib_ave_and_max exp=%s:run=%d %s %d %d %s %s'%\
-                   (expname, runnum, detname, events, evskip, calibdir, loglevel)
+                   (expname, runnum, detname, events, evskip, str(calibdir), loglevel)
 
           elif command == 'det_ndarr_raw_proc':
             if not is_area_detector(detname): return
