@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
 
   tpr->release();
 
-  uint16_t image[128];
+  uint16_t* image = new uint16_t[128];
   pvd::shared_vector<const uint16_t> pimage(image,0,128);
   for(unsigned i=0; i<pimage.size(); i++)
     image[i] = (i&0xffff);

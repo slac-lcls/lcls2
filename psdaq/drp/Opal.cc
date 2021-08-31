@@ -95,7 +95,7 @@ namespace Drp {
         OpalTTFex             m_fex;
         pvac::ClientChannel   m_fex_pv;
         pvd::PVStructure::const_shared_pointer m_request;
-        double                m_vec[6];
+        double                *m_vec;
     };
 
     class OpalTTSim {
@@ -379,6 +379,7 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
     }
     else if (result == OpalTTFex::VALID) {
         //  Live feedback
+	m_vec = new double[6];
         pvd::shared_vector<const double> ttvec(m_vec,0,6);
         m_vec[0] = m_fex.amplitude();
         m_vec[1] = m_fex.filtered_position();

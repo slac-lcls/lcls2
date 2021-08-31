@@ -76,7 +76,8 @@ json XpmDetector::connectionInfo()
 {
     int fd = m_pool->fd();
 
-    Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
+    Pds::Mmhw::TriggerEventManager* mem_pointer = (Pds::Mmhw::TriggerEventManager*)0x00C20000;
+    Pds::Mmhw::TriggerEventManager* tem = new (mem_pointer) Pds::Mmhw::TriggerEventManager;
 
     //  Advertise ID on the timing link
     {
@@ -154,7 +155,9 @@ void XpmDetector::connect(const json& connect_json, const std::string& collectio
     if (vsn.userValues[2]) // Second PCIe interface has lanes shifted by 4
        links <<= 4;
 
-    Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
+    //Pds::Mmhw::TriggerEventManager* tem = new ((void*)0x00C20000) Pds::Mmhw::TriggerEventManager;
+    Pds::Mmhw::TriggerEventManager* mem_pointer = (Pds::Mmhw::TriggerEventManager*)0x00C20000;
+    Pds::Mmhw::TriggerEventManager* tem = new (mem_pointer) Pds::Mmhw::TriggerEventManager;
     for(unsigned i=0, l=links; l; i++) {
         Pds::Mmhw::TriggerEventBuffer& b = tem->det(i);
         if (l&(1<<i)) {
