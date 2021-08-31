@@ -49,7 +49,7 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"):
                'laneConfig'  : {lane:'Opal1000'},
                'dataDebug'   : False,
                'enLclsII'    : True,
-               'pgp4'        : True,
+               'pgp4'        : False,
                'enableConfig': False,
     }
 
@@ -208,7 +208,8 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
     ocfg = cfg
 
-    if(cl.ClinkPcie.Hsio.PgpMon[lane].RxStatus.RemRxLinkReady.get() != 1):
+    #if(cl.ClinkPcie.Hsio.PgpMon[lane].RxStatus.RemRxLinkReady.get() != 1): # This is for PGP4
+    if(cl.ClinkPcie.Hsio.PgpMon[lane].RxRemLinkReady.get() != 1): # This is for PGP2
         raise ValueError(f'PGP Link is down' )
 
     # drain any data in the event pipeline
@@ -267,7 +268,6 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     config_expert(cl,cfg['expert'])
 
     cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
-    cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[lane].MasterEnable.set(True)
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(False)
     getattr(cl.ClinkPcie.Application,appLane).EventBuilder.Blowoff.set(False)
 
@@ -276,6 +276,12 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     cfg['firmwareBuild'  ] = cl.ClinkPcie.AxiPcieCore.AxiVersion.BuildStamp.get()
 
     cl.StartRun()
+
+    # must be done after StartRun because that routine sets MasterEnable
+    # to True for all lanes. That causes 100% deadtime from unused lanes.
+    for i in range(4):
+        # cpo: this should be done by the master in the multi-opal-drp case
+        cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[i].MasterEnable.set(i==lane)
 
     ocfg = cfg
     return json.dumps(cfg)
