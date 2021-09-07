@@ -211,6 +211,7 @@ class DMQWControl(CMWControlBase):
         logger.debug('count %d current_detnames %s' % (count, str(lst)))
         return lst
 
+
     def on_cmb_det(self, ind):
         logger.debug('on_cmb_det selected index %d: %s' % (ind, self.current_detnames()[ind] if ind>0 else 'None'))
 
@@ -273,7 +274,8 @@ class DMQWControl(CMWControlBase):
             cmd = 'detnames exp=%s,run=%d -r' % (expname, runnum)
 
           elif command == 'datinfo':
-            cmd = 'datinfo -e %s -r %d' % (expname, runnum)
+            cmd = 'datinfo -e %s -r %d -t D' % (expname, runnum)
+            if detname != 'select': cmd += ' -d %s' % detname
 
           else:
             cp.dmqwmain.append_info('LCLS2 COMMAND "%s" IS NOT IMPLEMENTED...' % command)
@@ -452,7 +454,8 @@ class DMQWControl(CMWControlBase):
 
 
     def set_cmb_det(self, detnames=None):
-        lst = detnames if isinstance(detnames, list) else self.det_list0
+        lst = ['select',] + detnames if isinstance(detnames, list) else self.det_list0
+        lst = [v.rstrip('_0') for v in lst]
         detname_old = self.cmb_det.currentText()
         i = lst.index(detname_old) if detname_old in lst else 0
         self.cmb_det.clear()
