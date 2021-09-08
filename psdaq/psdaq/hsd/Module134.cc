@@ -291,16 +291,12 @@ uint64_t Module134::device_dna() const
 
 void Module134::enable_test_pattern(TestPattern p)
 {
-  i2c_lock(I2cSwitch::PrimaryFmc);
   _jesd_init(unsigned(p));
-  i2c_unlock();
 }
 
 void Module134::disable_test_pattern()
 {
-  i2c_lock(I2cSwitch::PrimaryFmc);
   _jesd_init(0);
-  i2c_unlock();
 }
 
 // Update ID advertised on timing link
