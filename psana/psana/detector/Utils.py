@@ -27,7 +27,7 @@ def selected_record(nrec):
 
 
 def info_dict(d, fmt='  %12s: %s', sep='\n', sepnext=13*' '):
-    return (sep if len(d)>1 else '')\
+    return (sep if sep[0]!=',' else '')\
          + sep.join([fmt % (k, info_dict(v, fmt=fmt, sep=sep+sepnext)\
                if isinstance(v,dict) else str(v)) for k,v in d.items()])
 

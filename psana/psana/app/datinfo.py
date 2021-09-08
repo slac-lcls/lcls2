@@ -42,7 +42,8 @@ def ds_run_det(args):
     print('DataSource kwargs:%s' % info_dict(ds_kwa, fmt='%s: %s', sep=' '))
     ds = DataSource(**ds_kwa)
     run = next(ds.runs())
-    det = run.Detector(args.detname)
+    print('args.detname:%s' % str(args.detname))
+    det = None if args.detname is None else run.Detector(args.detname)
 
     expname = run.expt if run.expt is not None else args.expname # 'mfxc00318'
 
@@ -52,7 +53,8 @@ def ds_run_det(args):
     #print('run.timestamp :', run.timestamp)
 
     print(info_run(run, cmt='run info\n    ', sep='\n    '))
-    print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
+    if det is not None:
+      print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
 
 
 def selected_record(nrec):
@@ -64,7 +66,7 @@ def selected_record(nrec):
 
 
 def info_det_evt(det, evt, ievt):
-    return '  Event %05d %s '% (ievt, info_ndarr(det.raw.raw(evt), 'raw '))
+    return '  Event %05d %s '% (ievt, 'detector is None' if det is None else info_ndarr(det.raw.raw(evt), 'raw '))
  
 
 def loop_run_step_evt(args):
@@ -88,8 +90,8 @@ def loop_run_step_evt(args):
     
       if not do_loopsteps: continue
       print('%s detector object' % args.detname)
-      det = run.Detector(args.detname)
-      is_epix10ka = 'epix' in det.raw._uniqueid
+      det = None if args.detname is None else run.Detector(args.detname)
+      is_epix10ka = False if det is None else 'epix' in det.raw._uniqueid
       try:    step_docstring = run.Detector('step_docstring')
       except: step_docstring = None
       print('step_docstring detector object is %s' % ('missing' if step_docstring is None else 'created'))
@@ -108,8 +110,8 @@ def loop_run_step_evt(args):
           #if ievt>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
           if not selected_record(ievt): continue
           if segs is None:
-             segs = det.raw._segment_numbers(evt)
-             print('  Event %05d %s'% (ievt, info_ndarr(segs,'segments ')))
+             segs = det.raw._segment_numbers(evt) if det is not None else None
+             print('  Event %05d %s     ' % (ievt, info_ndarr(segs,'segments')))
              #print('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
              if dcfg is not None:
                s = '    gain mode fractions for: FH       FM       FL'\
@@ -152,7 +154,7 @@ def do_main():
 def argument_parser():
     from argparse import ArgumentParser
 
-    d_detname = 'epixquad'
+    d_detname = None # 'epixquad'
     d_expname = None # 'ueddaq02'
     d_runs    = None # '66' # 1021 or 1021,1022-1025
     d_fname   = None # '/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2'
@@ -171,7 +173,7 @@ def argument_parser():
     h_typeinfo= 'type of information for output D-detector, R-run-loop, S-step-loop, E-event-loop, default = %s' % d_typeinfo
 
     parser = ArgumentParser(description='Print info about experiment detector and run')
-    parser.add_argument('-d', '--detname', type=str, help=h_detname)
+    parser.add_argument('-d', '--detname', default=d_detname, type=str, help=h_detname)
     parser.add_argument('-e', '--expname', type=str, help=h_expname)
     parser.add_argument('-r', '--runs',    type=str, help=h_runs)
     parser.add_argument('-f', '--fname', default=d_fname, type=str, help=h_fname)

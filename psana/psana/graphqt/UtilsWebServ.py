@@ -289,6 +289,8 @@ if __name__ == "__main__":
     elif tname =='18': test_is_lcls2('xpplw3319')
     elif tname =='19': test_is_lcls2('tmolw8819')
     elif tname =='20': test_detnames(expname='xpplw2619', runnum=203)
+    elif tname =='21': test_detnames(expname='tmolv3919', runnum=11)
+    elif tname =='22': test_run_parameters('tmolv3919', 11)
     else: print('test %s is not implemented' % tname)
 
     sys.exit('End of Test %s' % tname)
