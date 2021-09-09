@@ -26,6 +26,7 @@ from psana.graphqt.QWFileNameV2 import QWFileNameV2
 from psana.graphqt.CMConfigParameters import cp, dirs_to_search, expname_def
 from psana.graphqt.Styles import style
 from psana.graphqt.QWIcons import icon
+import psana.graphqt.QWUtils as qwu
 
 
 class CMWControlBase(QWidget):
