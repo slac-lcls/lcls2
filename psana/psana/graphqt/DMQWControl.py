@@ -61,7 +61,6 @@ class DMQWControl(CMWControlBase):
      'det_dark_proc',
      'epix10ka_pedestals_calibration',
      'epix10ka_deploy_constants',
-     'event_keys',
     ]
     lclsv_list = ['LCLS','LCLS2']
     instr_lcls1 = ['AMO','CXI','XPP','SXR','MEC','DET','MFX','MOB','USR','MON','DIA']
@@ -277,9 +276,21 @@ class DMQWControl(CMWControlBase):
             cmd = 'datinfo -e %s -r %d -t D' % (expname, runnum)
             if detname != 'select': cmd += ' -d %s' % detname
 
+          elif command == 'det_dark_proc':
+            cmd = 'det_dark_proc -e %s -r %d -d %s -o ./work -L DEBUG' % (expname, runnum, detname)
+
+#         elif command == 'epix10ka_pedestals_calibration':
+#         elif command == 'epix10ka_deploy_constants':
+
           else:
             cp.dmqwmain.append_info('LCLS2 COMMAND "%s" IS NOT IMPLEMENTED...' % command)
             return
+
+          cmd = qwu.edit_and_confirm_or_cancel_dialog_box(parent=self, text=cmd, title='Edit and confirm or cancel command')
+          if cmd is None:
+            logger.info('command is cancelled')
+            return
+
           self.subprocess_command(cmd, shell=True)
 
         else: # LCLS1
@@ -328,6 +339,11 @@ class DMQWControl(CMWControlBase):
 
           else:
             cp.dmqwmain.append_info('LCLS1 COMMAND "%s" IS NOT IMPLEMENTED...' % command)
+            return
+
+          cmd = qwu.edit_and_confirm_or_cancel_dialog_box(parent=self, text=cmd, title='Edit and confirm or cancel command')
+          if cmd is None:
+            logger.info('command is cancelled')
             return
 
           cmd_seq = ['/bin/bash', '-l', '-c', cmd]
