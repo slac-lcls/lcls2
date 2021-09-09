@@ -500,7 +500,8 @@ class DMQWControl(CMWControlBase):
 
     def set_cmb_det(self, detnames=None):
         lst = ['select',] + detnames if isinstance(detnames, list) else self.det_list0
-        lst = [v.rstrip('_0') for v in lst]
+        lst = [v[:-2] if (len(v)>2 and v[-2:]=='_0') else v for v in lst]
+
         detname_old = self.cmb_det.currentText()
         i = lst.index(detname_old) if detname_old in lst else 0
         self.cmb_det.clear()
