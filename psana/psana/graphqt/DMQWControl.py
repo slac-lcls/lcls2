@@ -277,10 +277,16 @@ class DMQWControl(CMWControlBase):
             if detname != 'select': cmd += ' -d %s' % detname
 
           elif command == 'det_dark_proc':
-            cmd = 'det_dark_proc -e %s -r %d -d %s -o ./work -L DEBUG' % (expname, runnum, detname)
+            cmd = 'det_dark_proc -e %s -r %d -d %s' % (expname, runnum, detname)\
+                + '   !!! other options: -o ./work -L DEBUG'
 
-#         elif command == 'epix10ka_pedestals_calibration':
-#         elif command == 'epix10ka_deploy_constants':
+          elif command == 'epix10ka_pedestals_calibration':
+            cmd = 'epix10ka_pedestals_calibration -e %s -r %d -d %s' % (expname, runnum, detname)\
+                + '   !!! other options: -o ./work -L DEBUG'
+
+          elif command == 'epix10ka_deploy_constants':
+            cmd = 'epix10ka_deploy_constants -e %s -r %d -d %s' % (expname, runnum, detname)\
+                + '   !!! other options: -o ./work -D -c ./calib'
 
           else:
             cp.dmqwmain.append_info('LCLS2 COMMAND "%s" IS NOT IMPLEMENTED...' % command)
@@ -294,27 +300,27 @@ class DMQWControl(CMWControlBase):
           self.subprocess_command(cmd, shell=True)
 
         else: # LCLS1
-          cmd = COMMAND_SET_ENV_LCLS1
+          cmd_pref = COMMAND_SET_ENV_LCLS1
           detname = detname.replace('-','.').replace('|',':')
           if command == 'detnames':
-            cmd += 'detnames exp=%s:run=%d' % (expname, runnum)
+            cmd = 'detnames exp=%s:run=%d' % (expname, runnum)
 
           elif command == 'event_keys':
-            cmd += 'event_keys -d exp=%s:run=%d -m3' % (expname, runnum)
+            cmd = 'event_keys -d exp=%s:run=%d -m3' % (expname, runnum)
 
           elif command == 'DetInfo':
-            cmd += 'event_keys -d exp=%s:run=%d -pDetInfo -n10' % (expname, runnum)
+            cmd = 'event_keys -d exp=%s:run=%d -pDetInfo -n10' % (expname, runnum)
 
           elif command == 'datinfo':
             if detname == self.det_list0[0]:
                 logger.warning('PLEASE SELECT THE DETECTOR NAME')
                 return
-            cmd += 'datinfo -e %s -r %d -d %s' % (expname, runnum, detname)
+            cmd = 'datinfo -e %s -r %d -d %s' % (expname, runnum, detname)
 
           elif command == 'det_calib_ave_and_max':
             if not is_area_detector(detname): return
             #det_calib_ave_and_max <dataset-name> <detector-name> <number-of-events> <number-events-to-skip> <calib-dir> <log-level-str>
-            cmd += 'det_calib_ave_and_max exp=%s:run=%d %s %d %d %s %s'%\
+            cmd = 'det_calib_ave_and_max exp=%s:run=%d %s %d %d %s %s'%\
                    (expname, runnum, detname, events, evskip, str(calibdir), loglevel)
 
           elif command == 'det_ndarr_raw_proc':
@@ -326,16 +332,39 @@ class DMQWControl(CMWControlBase):
           elif command == 'det_calib_ave_and_max':
             if not is_area_detector(detname): return
             #det_calib_ave_and_max <dataset-name> <detector-name> <number-of-events> <number-events-to-skip> <calib-dir> <log-level-str>
-            cmd += 'det_calib_ave_and_max exp=%s:run=%d %s %d %d %s %s'%\
+            cmd = 'det_calib_ave_and_max exp=%s:run=%d %s %d %d %s %s'%\
                    (expname, runnum, detname, events, evskip, str(calibdir), loglevel)
 
           elif command == 'epix10ka_id':
             if not is_epix10ka(detname): return
-            cmd += 'epix10ka_id exp=%s:run=%d %s' % (expname, runnum, detname)
+            cmd = 'epix10ka_id exp=%s:run=%d %s' % (expname, runnum, detname)
 
           elif command == 'jungfrau_id':
             if not is_jungfrau(detname): return
-            cmd += 'jungfrau_id exp=%s:run=%d %s' % (expname, runnum, detname)
+            cmd = 'jungfrau_id exp=%s:run=%d %s' % (expname, runnum, detname)
+
+          elif command == 'epix10ka_offset_calibration':
+            cmd = 'epix10ka_offset_calibration -e %s -r %d -d %s' % (expname, runnum, detname)\
+                + '    !!! other options: -i0 -o ./work -p -P -O -s 60'
+
+          elif command == 'epix10ka_pedestals_calibration':
+            cmd = 'epix10ka_pedestals_calibration -e %s -r %d -d %s' % (expname, runnum, detname)\
+                + '    !!! other options: -c1 -i15 -o ./work'
+
+          elif command == 'epix10ka_deploy_constants':
+            cmd = 'epix10ka_deploy_constants -e %s -r %d -d %s -D' % (expname, runnum, detname)\
+                + '    !!! other options: -t 396 -o ./work -c ./calib -L DEBUG --proc=g --low=0.25 --medium=1 --high=1'
+
+          elif command == 'epix10ka_test_calibcycles':
+            cmd = 'epix10ka_test_calibcycles exp=%s:run=%d -e -p -s --detname %s -f ofname.txt' % (expname, runnum, detname)
+
+          elif command == 'jungfrau_dark_proc':
+            cmd = 'jungfrau_dark_proc -d exp=%s:run=%d:smd -s %s' % (expname, runnum, detname)\
+                + '    !!! other options: -I 1 --evcode 162'
+
+          elif command == 'jungfrau_deploy_constants':
+            cmd = 'jungfrau_deploy_constants -e %s -r %d -d %s -D' % (expname, runnum, detname)\
+                + '   !!! other options: -c ./calib'
 
           else:
             cp.dmqwmain.append_info('LCLS1 COMMAND "%s" IS NOT IMPLEMENTED...' % command)
@@ -346,7 +375,7 @@ class DMQWControl(CMWControlBase):
             logger.info('command is cancelled')
             return
 
-          cmd_seq = ['/bin/bash', '-l', '-c', cmd]
+          cmd_seq = ['/bin/bash', '-l', '-c', cmd_pref + cmd]
           self.subprocess_command(cmd_seq, shell=False, env=ENV1, executable='/bin/bash')
 
 
