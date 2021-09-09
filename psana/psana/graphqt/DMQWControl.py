@@ -326,7 +326,7 @@ class DMQWControl(CMWControlBase):
           elif command == 'det_ndarr_raw_proc':
             if not is_area_detector(detname): return
             #det_ndarr_raw_proc -d <dataset> [-s <source>] [-f <file-name-template>] [-n <events-collect>] [-m <events-skip>] 
-            cmd += 'det_ndarr_raw_proc -d exp=%s:run=%d -s %s -n %d -m %d -f nda-#exp-#run-#src-#type.txt'%\
+            cmd = 'det_ndarr_raw_proc -d exp=%s:run=%d -s %s -n %d -m %d -f nda-#exp-#run-#src-#type.txt'%\
                    (expname, runnum, detname, events, evskip)
 
           elif command == 'det_calib_ave_and_max':
