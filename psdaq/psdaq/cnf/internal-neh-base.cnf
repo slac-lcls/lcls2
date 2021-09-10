@@ -10,6 +10,12 @@ pyxpm_optsdb = '--db https://pswww.slac.stanford.edu/ws-auth/configdb/ws/,config
 base_host = 'drp-neh-ctl002'
 prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
 
+#
+# NOTE: with internal timing it is necessary to do
+# pvput DAQ:NEH:XPM:0:PART:0:L0Delay 80
+# otherwise some trigger delays end up negative (seems to have a default
+# value of 90 in internal mode) - cpo sept. 10, 2021
+
 procmgr_config = [
  { host: base_host, id:'pyxpm-0' , port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.102 -I -P DAQ:NEH:XPM:0'}, # XTPG
  { host: base_host, id:'pyxpm-3' , port:'29452', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.2.103 '+pyxpm_optsdb%3}, # RIX XPM
