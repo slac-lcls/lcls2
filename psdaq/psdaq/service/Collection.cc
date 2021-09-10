@@ -7,6 +7,7 @@
 #include <linux/if_packet.h>
 #include <netinet/ether.h>
 #include <netdb.h>
+#include <net/if.h>
 #include "Collection.hh"
 #include "psalg/utils/SysLog.hh"
 using logging = psalg::SysLog;
@@ -80,7 +81,8 @@ std::string getNicIp(bool forceEnet)
             if (s->sll_hatype == ARPHRD_INFINIBAND) {
                 if (!interface_name) interface_name = ifa->ifa_name;
             }
-            else if (s->sll_hatype == ARPHRD_ETHER) {
+            else if (s->sll_hatype == ARPHRD_ETHER && 
+                     ifa->ifa_flags & IFF_RUNNING) {
                 if (!ethernet_name) ethernet_name  = ifa->ifa_name;
             }
         }
