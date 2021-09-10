@@ -12,7 +12,6 @@ import requests
 from requests.auth import HTTPBasicAuth
 import logging
 from psalg.utils.syslog import SysLog
-import string
 from p4p.client.thread import Context
 import epics
 from threading import Thread, Event, Condition
@@ -149,7 +148,6 @@ class RunParams:
         self.caList = []
 
     def beginrun(self, experiment_name):
-        logging.debug("mmm")
         logging.debug(f"RunParams beginrun() experiment_name={experiment_name}")
         inCount = len(self.pvaList) + len(self.caList)
         errorCount = 0
@@ -195,15 +193,26 @@ class RunParams:
                         if item[xid]['active'] != 1:
                             # skip inactive detector
                             continue
-                        else:
-                            alias = item[xid]['proc_info']['alias']
+                        unique_id = item[xid]['proc_info']['alias']
+                        alias, seg = unique_id.rsplit(sep='_', maxsplit=1)
+                        if not seg.isnumeric():
+                            self.collection.report_error(f'drp id {unique_id} has malformed _N suffix')
+                            # skip misnamed detector
+                            continue
                     except KeyError as ex:
                         logging.error('KeyError: %s' % ex)
+                    except ValueError:
+                        self.collection.report_error(f'drp id {unique_id} is missing _N suffix')
                     else:
-                        params[f"DAQ Detectors/{level}/{alias}"] = True
-                        inCount += 1
+                        if f"DAQ Detectors/{level}/{alias}" in params:
+                            # append
+                            params[f"DAQ Detectors/{level}/{alias}"] += f",{seg}"
+                        else:
+                            # assign
+                            params[f"DAQ Detectors/{level}/{alias}"] = f"{seg}"
 
         # add run parameters to logbook
+        inCount = len(params)
         outCount = self.collection.add_run_params(experiment_name, params)
         if outCount < inCount:
             self.collection.report_error(f"{outCount} of {inCount} run parameters recorded in logbook (experiment={experiment_name})")
