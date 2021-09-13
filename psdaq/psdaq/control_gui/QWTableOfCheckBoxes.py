@@ -1,4 +1,4 @@
-#------------------------------
+
 """Class :py:class:`QWTableOfCheckBoxes` is derived as QWTableOfCheckBoxes->QWTable->QTableView
 ===============================================================================================
 
@@ -11,7 +11,6 @@ Usage ::
 
 Created on 2019-03-11 by Mikhail Dubrovin
 """
-#----------
 
 import logging
 logger = logging.getLogger(__name__)
@@ -20,10 +19,9 @@ from psdaq.control_gui.QWTable import QWTable, QStandardItem, Qt #icon
 
 from re import search as re_search
 
-#----------
 
 LIST_STR_CHECK_BOX_STATES = ['UNCHECKED', 'TRISTATE', 'CHECKED']
-DICT_CHECK_BOX_STATES = {0:False, 1:True, 2:True}
+DICT_CHECK_BOX_STATES = {0:False, 1:False, 2:True}
 
 BIT_CHECKABLE  = 1
 BIT_ENABLED    = 2
@@ -31,7 +29,6 @@ BIT_EDITABLE   = 4
 BIT_SELECTABLE = 8
 BIT_HIDDENROW  =16
 
-#----------
 
 class QWTableOfCheckBoxes(QWTable):
     """Widget for table with fields containing text with check-boxes.
@@ -41,6 +38,7 @@ class QWTableOfCheckBoxes(QWTable):
         QWTable.__init__(self, **kwargs)
         #self._name = self.__class__.__name__
         self.hide_hidden_rows()
+
 
     def fill_table_model(self, **kwargs):
         """Owerrides QWTable.fill_table_model
@@ -108,7 +106,6 @@ class QWTableOfCheckBoxes(QWTable):
 
         self.hide_hidden_rows()
 
-#----------
 
     def hide_hidden_rows(self):
         for row in self._list_hidden_rows:
@@ -131,7 +128,6 @@ class QWTableOfCheckBoxes(QWTable):
             #item.setCheckable(False)
             item.setEnabled(False)
 
-#----------
 
     def connect_control(self):
         """re-implementation of QWTable.connect_control"""
@@ -174,7 +170,7 @@ class QWTableOfCheckBoxes(QWTable):
             list_row = []
             for col in range(model.columnCount()):
                 item = model.item(row, col)
-                state = LIST_STR_CHECK_BOX_STATES[item.checkState()]
+                #state = LIST_STR_CHECK_BOX_STATES[item.checkState()]
                 #print('item(%d,%d) name: %s state: %s'% (row, col, item.text(), state))
                 txt = str(item.text())
                 rec = txt if item.accessibleDescription() == 'type:str' else\
@@ -184,7 +180,6 @@ class QWTableOfCheckBoxes(QWTable):
             list2d_out.append(list_row)
         return list2d_out
 
-#----------
 
 if __name__ == "__main__":
     import sys
@@ -219,4 +214,4 @@ if __name__ == "__main__":
     del w
     del app
 
-#----------
+# EOF
