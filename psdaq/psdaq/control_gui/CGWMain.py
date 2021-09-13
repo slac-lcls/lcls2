@@ -19,12 +19,11 @@ See:
 
 Created on 2019-01-25 by Mikhail Dubrovin
 """
-#------------------------------
 
 import logging
 logger = logging.getLogger(__name__)
 
-#------------------------------
+
 # zmq.utils.jsonapi ensures bytes, instead of unicode
 import zmq.utils.jsonapi as json
 from time import time
@@ -43,7 +42,6 @@ from psdaq.control_gui.QWUtils              import confirm_or_cancel_dialog_box
 #from psdaq.control_gui.CGWMainTabs          import CGWMainTabs
 from psdaq.control_gui.CGWMainTabExpert     import CGWMainTabExpert
 
-#------------------------------
 
 class CGWMain(QWZMQListener):
 
@@ -63,15 +61,15 @@ class CGWMain(QWZMQListener):
 
         self.wlogr = QWLoggerStd(log_level=self.loglevel, instrument=cp.instr,\
                                  log_prefix=self.logdir, show_buttons=False)
- 
+
         logger.debug('logger started with log_level:%s instrument:%s' % (self.loglevel, cp.instr))
 
         cp.cgwmain = self
 
-        self.main_win_width  = cp.main_win_width 
+        self.main_win_width  = cp.main_win_width
         self.main_win_height = cp.main_win_height
-        self.main_win_pos_x  = cp.main_win_pos_x 
-        self.main_win_pos_y  = cp.main_win_pos_y  
+        self.main_win_pos_x  = cp.main_win_pos_x
+        self.main_win_pos_y  = cp.main_win_pos_y
 
         #icon.set_icons()
 
@@ -86,7 +84,7 @@ class CGWMain(QWZMQListener):
         self.vspl.addWidget(self.winfo)
         self.vspl.addWidget(self.wlogr)
 
-        self.mbox = QHBoxLayout() 
+        self.mbox = QHBoxLayout()
         self.mbox.addWidget(self.vspl)
         self.setLayout(self.mbox)
 
@@ -102,7 +100,7 @@ class CGWMain(QWZMQListener):
         #self.connect(self.wbut.but_reset, QtCore.SIGNAL('clicked()'), self.on_but_reset)
         #self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
 
-#------------------------------
+
 
     def proc_parser(self, parser=None):
         self.parser=parser
@@ -126,8 +124,8 @@ class CGWMain(QWZMQListener):
         self.expname    = popts.expname
         self.uris       = popts.uris  # 'https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/'
         self.expert     = popts.expert # bool
-        self.user       = popts.user 
-        self.password   = popts.password 
+        self.user       = popts.user
+        self.password   = popts.password
 
         #if host     != self.defs['host']      : cp.cdb_host.setValue(host)
         #if host     != self.defs['host']      : cp.cdb_host.setValue(host)
@@ -148,7 +146,7 @@ class CGWMain(QWZMQListener):
         #    print(40*'_')
         #    print_parser(parser)
         #    print_kwargs(self.opts)
-#------------------------------
+
 
     def init_daq_control_parameters(self):
         cp.s_transition, cp.s_state, cp.s_cfgtype, cp.s_recording, _platform, \
@@ -157,20 +155,18 @@ class CGWMain(QWZMQListener):
         logger.debug('daq_control_get_instrument(): %s' % cp.instr)
         if cp.instr is None: logger.warning('instrument is None')
 
-#------------------------------
+
 
     def set_tool_tips(self):
         pass
         #self.setToolTip('DAQ control')
 
-#--------------------
 
     def sizeHint(self):
         """Set default window size
         """
         return QSize(370, 810)
 
-#--------------------
 
     def set_style(self):
         self.setWindowTitle("DAQ Control")
@@ -215,7 +211,7 @@ class CGWMain(QWZMQListener):
 
         #self.setStyleSheet("background-color:blue; border: 0px solid green")
         #self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        
+
         #self.        setStyleSheet(style.styleBkgd)
         #self.butSave.setStyleSheet(style.styleButton)
         #self.butExit.setStyleSheet(style.styleButton)
@@ -233,8 +229,8 @@ class CGWMain(QWZMQListener):
 
         resp = confirm_or_cancel_dialog_box(parent=None,
                                             text='Close window?',\
-                                            title='Confirm or cancel') 
-        if not resp: 
+                                            title='Confirm or cancel')
+        if not resp:
             logger.warning('Closing window is cancelled')
             e.ignore()
             return
@@ -247,7 +243,7 @@ class CGWMain(QWZMQListener):
         #except Exception as ex:
         #    print('Exception: %s' % ex)
 
-        try: 
+        try:
             self.wtabs.close()
             self.wconf.close()
             self.wlogr.close()
@@ -261,7 +257,7 @@ class CGWMain(QWZMQListener):
         cp.cgwmain = None
 
 #--------------------
-        
+
 #    def __del__(self):
 #        logger.debug('In CGConfigParameters d-tor')
 #        #if self.save_cp_at_exit.value():
@@ -269,22 +265,7 @@ class CGWMain(QWZMQListener):
 #            self.on_save()
 
 #--------------------
- 
-    #def resizeEvent(self, e):
-        #logger.debug('CGWMain.resizeEvent: %s' % str(self.size()))
-        #QWZMQListener.resizeEvent(self, e)
 
-
-    #def moveEvent(self, e):
-        #logger.debug('moveEvent', self._name) 
-        #self.position = self.mapToGlobal(self.pos())
-        #self.position = self.pos()
-        #logger.debug('moveEvent - pos:' + str(self.position), __name__)       
-        #logger.info('CGWMain.moveEvent - move window to x,y: ', str(self.mapToGlobal(QPoint(0,0))))
-        #self.wimg.move(self.pos() + QPoint(self.width()+5, 0))
-        #pass
-
- 
     def on_save(self):
 
         point, size = self.mapToGlobal(QPoint(-5,-22)), self.size() # Offset (-5,-22) for frame size.
@@ -338,7 +319,6 @@ class CGWMain(QWZMQListener):
         w = cp.cgwmaininfo
         if w is not None: w.update_info()
 
-#------------------------------
 
     def on_zmq_poll(self):
         """Re-implementation of the superclass QWZMQListener method for zmq message processing.
@@ -407,7 +387,7 @@ class CGWMain(QWZMQListener):
                     body = jo['body']
                     logger.debug('progress: %s' % str(body))
                     wctrl = self.wcontrol()
-                    if wctrl is not None: 
+                    if wctrl is not None:
                         v = 100*body['elapsed'] / body['total']
                         wctrl.update_progress_bar(v, is_visible=True, trans_name=body['transition'])
                         return # DO NOT enable_buttons()
@@ -424,10 +404,6 @@ class CGWMain(QWZMQListener):
         except Exception as ex:
              logger.warning('CGWMain.process_zmq_message: %s\nError: %s' % (str(msg),ex))
 
-#------------------------------
-#------------------------------
-#------------------------------
-#------------------------------
 
     if __name__ == "__main__":
 
@@ -437,15 +413,14 @@ class CGWMain(QWZMQListener):
                '\n'
 
       def keyPressEvent(self, e):
-        #print('keyPressEvent, key=', e.key())       
+        print('keyPressEvent, key=%s' % e.key())
         if   e.key() == Qt.Key_Escape:
             self.close()
-        elif e.key() == Qt.Key_V: 
+        elif e.key() == Qt.Key_V:
             self.wtab.view_hide_tabs()
         else:
             logger.info(self.key_usage())
 
-#------------------------------
 
 def proc_control_gui(parser=None):
     import sys
@@ -466,7 +441,6 @@ def proc_control_gui(parser=None):
     del w
     del app
 
-#------------------------------
 
 if __name__ == "__main__":
 
@@ -476,4 +450,4 @@ if __name__ == "__main__":
     proc_control_gui()
     print('End of CGWMain')
 
-#------------------------------
+# EOF
