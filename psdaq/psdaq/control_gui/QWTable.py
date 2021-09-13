@@ -16,7 +16,7 @@ Re-designed after copy psana/graphqt/QWTable.py -> psdaq/control_gui/
 import logging
 logger = logging.getLogger(__name__)
 
-from PyQt5.QtWidgets import QTableView, QVBoxLayout, QAbstractItemView, QSizePolicy #QWidget
+from PyQt5.QtWidgets import QTableView, QVBoxLayout, QAbstractItemView, QSizePolicy
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import Qt, QModelIndex
 
@@ -24,7 +24,7 @@ from psdaq.control_gui.QWIcons import icon
 
 
 class QWTable(QTableView):
-     
+
     def __init__(self, **kwargs):
 
         parent = kwargs.get('parent', None)
@@ -80,13 +80,13 @@ class QWTable(QTableView):
         self.selectionModel().currentChanged[QModelIndex, QModelIndex].disconnect(recipient)
 
 
-    def set_style(self): 
+    def set_style(self):
         self.setStyleSheet("QTableView::item:hover{background-color:#00FFAA;}")
         #self.setSizePolicy(QSizePolicy::Preferred,QSizePolicy::Fixed)
         self.set_exact_widget_size()
 
 
-    def set_exact_widget_size(self): 
+    def set_exact_widget_size(self):
         """set window size exactly matching actual size of QTableView.
         """
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
@@ -94,18 +94,18 @@ class QWTable(QTableView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.resizeColumnsToContents()
         self.setFixedSize(self.horizontalHeader().length()+self.verticalHeader().width(),\
-                          self.verticalHeader().length()+self.horizontalHeader().height())        
+                          self.verticalHeader().length()+self.horizontalHeader().height())
 
 
     def fill_table_model(self, **kwargs):
         self.clear_model()
-        self._si_model.setHorizontalHeaderLabels(['col0', 'col1', 'col2', 'col3', 'col4']) 
-        self._si_model.setVerticalHeaderLabels(['row0', 'row1', 'row2', 'row3']) 
+        self._si_model.setHorizontalHeaderLabels(['col0', 'col1', 'col2', 'col3', 'col4'])
+        self._si_model.setVerticalHeaderLabels(['row0', 'row1', 'row2', 'row3'])
         for row in range(0, 4):
             for col in range(0, 6):
                 item = QStandardItem("itemA %d %d"%(row,col))
                 item.setIcon(icon.icon_table)
-                item.setCheckable(True) 
+                item.setCheckable(True)
                 self._si_model.setItem(row,col,item)
                 if col==2: item.setIcon(icon.icon_folder_closed)
                 if col==3: item.setText('Some text')
@@ -126,14 +126,14 @@ class QWTable(QTableView):
         indexes =  self.selectedIndexes()
         return [self._si_model.itemFromIndex(i) for i in self.selectedIndexes()]
 
- 
-    def getFullNameFromItem(self, item): 
-        #item = self._si_model.itemFromIndex(ind)        
-        ind   = self._si_model.indexFromItem(item)        
+
+    def getFullNameFromItem(self, item):
+        #item = self._si_model.itemFromIndex(ind)
+        ind   = self._si_model.indexFromItem(item)
         return self.getFullNameFromIndex(ind)
 
 
-    def getFullNameFromIndex(self, ind): 
+    def getFullNameFromIndex(self, ind):
         item = self._si_model.itemFromIndex(ind)
         if item is None: return None
         self._full_name = item.text()
@@ -141,7 +141,7 @@ class QWTable(QTableView):
         return self._full_name
 
 
-    def _getFullName(self, ind): 
+    def _getFullName(self, ind):
         ind_par  = self._si_model.parent(ind)
         if(ind_par.column() == -1):
             item = self._si_model.itemFromIndex(ind)

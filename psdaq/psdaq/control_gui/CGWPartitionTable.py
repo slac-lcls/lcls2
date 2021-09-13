@@ -58,7 +58,7 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
 
 
     def set_group_check_state(self, item_cbx):
-        """for group of the "collapser" check-box set check states""" 
+        """for group of the "collapser" check-box set check states"""
         state = item_cbx.checkState()
         for it in item_cbx._group_cbx_items:
             if it == item_cbx:
@@ -119,7 +119,7 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
 
 
     def set_readout_group_number_for_detector_segments(self, item, selected):
-        column_grp = self.column_grp() # 2
+        column_grp = self.column_grp()
         item_cbx = self._si_model.item(item.row(), self.column_cbx())
         for it in item_cbx._group_cbx_items:
             item_grp = self._si_model.item(it.row(), column_grp)
@@ -221,7 +221,7 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
         model = self._si_model
         for r in range(model.rowCount()):
             model.item(r, col_id)._is_collapser = False
- 
+
 
     def closeEvent(self, event):
         logger.debug('closeEvent')
