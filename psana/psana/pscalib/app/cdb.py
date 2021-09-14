@@ -1,8 +1,7 @@
-#------------------------------
+
 """
 Created on 2018-02-23 by Mikhail Dubrovin
 """
-#------------------------------
 
 import sys
 
@@ -14,7 +13,6 @@ SCRNAME = sys.argv[0].rsplit('/')[-1]
 import psana.pscalib.calib.CalibConstants as cc
 from psana.pscalib.calib.MDBWeb_CLI import cdb_web, cdb, MODES # includes import from MDB_CLI
 
-#------------------------------
 
 def usage():
     return '\nCommand: cdb <mode> [options]'\
@@ -57,9 +55,8 @@ def usage():
            '  cdb import --dbname cdb_exp12345 --iofname cdb-...arc\n'\
            '  cdb print --host=psanagpu115 --port=27017 --stout=1000'
 
-#------------------------------
 
-def input_option_parser() :
+def input_option_parser():
 
     from optparse import OptionParser
 
@@ -80,7 +77,7 @@ def input_option_parser() :
     d_run_end    = 'end'
     d_time_stamp = None # '2001-09-08T18:46:40-0700'
     d_time_sec   = None
-    d_version    = 'V2021-01-21'
+    d_version    = None # 'V2021-01-21'
     d_confirm    = False
     d_iofname    = None # './fname.txt'
     d_comment    = 'no comment'
@@ -97,13 +94,13 @@ def input_option_parser() :
     h_dbname     = 'database name, works for mode "print" or "delete", default = %s' % d_dbname
     h_colname    = 'collection name, works for mode "print" or "delete", default = %s' % d_colname
     h_docid      = 'document Id, works for mode "print" or "delete", default = %s' % d_docid
-    h_experiment = 'experiment name, default = %s' % d_experiment 
+    h_experiment = 'experiment name, default = %s' % d_experiment
     h_detector   = 'detector name, default = %s' % d_detector
-    h_ctype      = 'calibration constant type, default = %s' % d_ctype 
-    h_dtype      = 'i/o file data type (None - array, txt, xtcav, json, pkl), default = %s' % d_dtype 
-    h_run        = 'run number (begin), default = %s' % str(d_run) 
+    h_ctype      = 'calibration constant type, default = %s' % d_ctype
+    h_dtype      = 'i/o file data type (None - array, txt, xtcav, json, pkl), default = %s' % d_dtype
+    h_run        = 'run number (begin), default = %s' % str(d_run)
     h_run_end    = 'run number (end), default = %s' % str(d_run_end)
-    h_time_stamp = 'time stamp in format like 2020-05-22T01:02:03-0800, default = %s' % d_time_stamp 
+    h_time_stamp = 'time stamp in format like 2020-05-22T01:02:03-0800, default = %s' % d_time_stamp
     h_time_sec   = 'time (sec), default = %s' % str(d_time_sec)
     h_version    = 'version of constants, default = %s' % d_version
     h_confirm    = 'confirmation of the action, default = %s' % d_confirm
@@ -141,15 +138,14 @@ def input_option_parser() :
     parser.add_option('--cdbonly',          default=d_cdbonly,    action='store_false',          help=h_cdbonly)
 
     return parser
-  
-#------------------------------
 
-def cdb_cli() :
+
+def cdb_cli():
     """Calibration Data Base Command Line Interface
     """
     parser = input_option_parser()
 
-    if len(sys.argv) == 1 : 
+    if len(sys.argv) == 1:
         print(80*'_')
         parser.print_help()
         print(80*'_')
@@ -170,10 +166,9 @@ def cdb_cli() :
     if kwargs['webcli']: cdb_web(parser)
     else:                cdb(parser)
 
-#------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     cdb_cli()
     sys.exit(0)
 
-#------------------------------
+# EOF
