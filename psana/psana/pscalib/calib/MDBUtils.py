@@ -63,7 +63,7 @@ Usage ::
     id_data_exp, id_data_det, id_exp, id_det = mu.insert_data_and_two_docs(data, fs_exp, fs_det, col_exp, col_det, **kwa)
     mu.insert_calib_data(data, **kwa)
 
-    msg = mu._error_msg(msg:str) 
+    msg = mu._error_msg(msg:str)
     mu.valid_experiment(experiment:str)
     mu.valid_detector(detector:str)
     mu.valid_ctype(ctype:str)
@@ -75,8 +75,8 @@ Usage ::
     mu.insert_constants(data, experiment:str, detector:str, ctype:str, run:int, time_sec:int, **kwa)
 
     mu.exec_command(cmd)
-    mu.exportdb(host, port, dbname, fname, **kwa) 
-    mu.importdb(host, port, dbname, fname, **kwa) 
+    mu.exportdb(host, port, dbname, fname, **kwa)
+    mu.importdb(host, port, dbname, fname, **kwa)
 
     # Delete data
     mu.del_document_data(doc, fs)
@@ -94,7 +94,7 @@ Usage ::
 
     keys = mu.document_keys(doc)
     s_vals, s_keys = mu.document_info(doc, keys:tuple=('time_stamp','time_sec','experiment','detector','ctype','run','id_data','data_type'), fmt:str='%24s %10d %11s %20s %16s %4d %30s %10s')
-    s = mu.collection_info(client, dbname, cname) 
+    s = mu.collection_info(client, dbname, cname)
     s = mu.database_info(client, dbname, level:int=10, gap:str='  ')
     s = mu.database_fs_info(db, gap:str='  ')
     s = mu.client_info(client=None, host:str=cc.HOST, port:int=cc.PORT, level:int=10, gap:str='  ')
@@ -168,12 +168,12 @@ def connect_to_server(host=cc.HOST, port=cc.PORT,\
     except errors.OperationFailure as err:
         msg = 'OperationFailure: Authentication failed for user:%s pwd:%s' % (user, 'you know that password...')
         logger.warning(msg)
-        #logger.exception(err) 
+        #logger.exception(err)
         sys.exit(msg)
 
     except:
         msg = 'Unexpected error in connect_to_server(%s)' % str(locals())
-        logger.exception(msg) 
+        logger.exception(msg)
         sys.exit()
 
 
@@ -191,7 +191,7 @@ def _uri(host, port, user, upwd):
 
     # for all other mongod clients
     else:
-        if not (upwd in ('', None)): 
+        if not (upwd in ('', None)):
             rhs = '%s:%s@%s' % (user, upwd, rhs)
 
     uri = 'mongodb://%s' % rhs # 'mongodb://psanagpu115:27017' # FOR TEST
@@ -213,7 +213,7 @@ def is_valid_port(port):
     if iport is None:
         logger.warning('parameter port "%s" does not represent integer value' % str(port))
         return False
-    elif iport<0 or iport>65535: 
+    elif iport<0 or iport>65535:
         logger.warning('parameter port "%d" must be an integer between 0 and 65535' % iport)
         return False
     return True
@@ -315,7 +315,7 @@ def collection_names(db, include_system_collections=False):
     """
     if not is_valid_database(db): return []
     return db.list_collection_names(include_system_collections)
-    
+
     #try:
     #    return db.list_collection_names(include_system_collections)
     #except:
@@ -351,12 +351,12 @@ def delete_database(client, dbname):
     try:
         client.drop_database(dbname)
 
-    except errors.OperationFailure as err: 
+    except errors.OperationFailure as err:
         #logger.exception(err)
         logger.warning('ERROR at attempt to delete document database. '\
                        'Check authorization: calibman -u <username> -p <password>.')
         return
-    except: 
+    except:
         logger.warning('delete_database unexpected ERROR')
         return
 
@@ -371,13 +371,13 @@ def delete_database_obj(odb):
     try:
         odb.dropDatabase()
 
-    except errors.OperationFailure as err: 
+    except errors.OperationFailure as err:
         #logger.exception(err)
         logger.warning('ERROR at attempt to delete database. '\
                        'Check authorization: -u <username> -p <password>.')
         return
 
-    except: 
+    except:
         logger.warning('delete_database_obj "%s" unexpected ERROR' % str(odb))
         #sys.exit(msg)
 
@@ -390,7 +390,7 @@ def delete_databases(client, dbnames):
     or not is_valid_iterable(dbnames, 'dbnames'):
         logger.warning('Databases "%s" ARE NOT DELETED' % str(dbname))
         return
-    for name in dbnames: 
+    for name in dbnames:
         try:
             client.drop_database(name)
         except errors.OperationFailure as err:
@@ -399,7 +399,7 @@ def delete_databases(client, dbnames):
                        'Check authorization: calibman -u <username> -p <password>.')
             return
 
-        except: 
+        except:
             logger.warning('delete_database_obj "%s" unexpected ERROR' % str(odb))
             #sys.exit(msg)
 
@@ -408,12 +408,12 @@ def delete_collection(db, cname):
     """Deletes db collection for database and (str) cname, e.g. cname='cspad_0001'.
     """
     if not is_valid_database(db)\
-    or not is_valid_cname(cname): 
+    or not is_valid_cname(cname):
         logger.warning('Collection "%s" IS NOT DELETED drom db %s' % (str(cname), str(db)))
         return
     try:
         db.drop_collection(cname)
-    except: 
+    except:
         logger.warning('delete_collection "%s" unexpected ERROR' % str(cname))
 
 
@@ -443,17 +443,17 @@ def delete_document_from_collection(col, oid):
     try:
         col.remove({'_id':oid})
 
-    except errors.OperationFailure as err: 
+    except errors.OperationFailure as err:
         #logger.exception(err)
         logger.warning('ERROR at attempt to delete document from collection. '\
                        'Check authorization: calibman -u <username> -p <password>.')
         return
 
-    except errors.InvalidDocument as err: 
+    except errors.InvalidDocument as err:
         logger.warning('ERROR InvalidDocument: %s' % str(err))
         return
 
-    except: 
+    except:
         logger.warning('delete_document_from_collection unexpected ERROR' % str(err))
         #sys.exit(msg)
         return
@@ -529,7 +529,7 @@ def connect(**kwa):
     db_exp, fs_exp = db_and_fs(client, dbname_exp)
     db_det, fs_det = db_and_fs(client, dbname_det)
     col_det = collection(db_det, detname)
-    col_exp = collection(db_exp, detname) 
+    col_exp = collection(db_exp, detname)
 
     msg = '==== Connect to host: %s port: %d connection time %.6f sec' % (host, port, time()-t0_sec)
     msg += '\n  client : %s' % client.name
@@ -552,7 +552,7 @@ def _timestamp(time_sec):
 
 def timestamp_id(id): # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
     """Converts MongoDB (str) id to (str) timestamp of adopted format.
-    """    
+    """
     oid = id
     if isinstance(id, str):
         if len(id) != 24: return str(id) # protection aginst non-valid id
@@ -590,10 +590,10 @@ def time_and_timestamp(**kwa):
         assert isinstance(time_sec, int) , 'time_and_timestamp - parameter time_sec should be int'
         assert 0 < time_sec < 5000000000,  'time_and_timestamp - parameter time_sec should be in allowed range'
 
-        if time_stamp is None: 
+        if time_stamp is None:
             time_stamp = gu.str_tstamp(TSFORMAT, time_sec)
     else:
-        if time_stamp is None: 
+        if time_stamp is None:
             time_sec_str, time_stamp = gu.time_and_stamp(TSFORMAT)
         else:
             time_sec_str = gu.time_sec_from_stamp(TSFORMAT, time_stamp)
@@ -703,11 +703,11 @@ def insert_document(doc, col):
         logger.debug('insert_document: %30s doc_id:%s' % (col.full_name, doc_id))
         return doc_id
 
-    except errors.ServerSelectionTimeoutError as err: 
+    except errors.ServerSelectionTimeoutError as err:
         logger.exception(err)
         sys.exit('ERROR at attempt to insert document in database. Check server.')
 
-    except: 
+    except:
         msg = 'insert_document unexpected ERROR'
         logger.exception(msg)
         sys.exit(msg)
@@ -723,7 +723,7 @@ def encode_data(data):
         logger.warning('DATA TYPE "%s" IS NOT "str" OR "numpy.ndarray" CONVERTED BY pickle.dumps ...'%\
                        type(data).__name__)
         s = pickle.dumps(data)
-    return s      
+    return s
 
 
 def insert_data(data, fs):
@@ -734,14 +734,14 @@ def insert_data(data, fs):
         return None
 
     s = encode_data(data)
-        
+
     try:
         r = fs.put(s)
-        logger.debug('data has been added to fs in db: %s' % fs._GridFS__database.name)        
+        logger.debug('data has been added to fs in db: %s' % fs._GridFS__database.name)
         #print('XXX dir(fs):', dir(fs._GridFS__database))
         return r
 
-    except errors.ServerSelectionTimeoutError as err: 
+    except errors.ServerSelectionTimeoutError as err:
         #logger.exception(err)
         logger.warning('ERROR at attempt to insert data in fs. Check server.')
         return None
@@ -926,7 +926,7 @@ def exportdb(host, port, dbname, fname, **kwa):
         logger.warning('--dbname %s is not available in the list:\n%s' % (dbname, dbnames))
         return
 
-    cmd = 'mongodump --host %s --port %s --db %s --archive %s' % (host, port, dbname, fname) # --gzip 
+    cmd = 'mongodump --host %s --port %s --db %s --archive %s' % (host, port, dbname, fname) # --gzip
     exec_command(cmd)
 
 
@@ -934,7 +934,7 @@ def importdb(host, port, dbname, fname, **kwa):
 
     if fname is None:
         logger.debug('WARNING input archive file name should be specified as --iofname <fname>')
-        return 
+        return
 
     client = connect_to_server(host, port)
     dbnames = database_names(client)
@@ -962,7 +962,7 @@ def object_from_data_string(s, doc):
     """Returns str, ndarray, or dict
     """
     data_type = doc.get('data_type', None)
-    if data_type is None: 
+    if data_type is None:
         logger.warning('object_from_data_string: data_type is None in the doc: %s' % str(doc))
         return None
 
@@ -980,7 +980,7 @@ def object_from_data_string(s, doc):
         nda.shape = eval(doc.get('data_shape', None)) # eval converts string shape to tuple
         return nda
 
-    elif data_type == 'any': 
+    elif data_type == 'any':
         import pickle
         return pickle.loads(s)
 
@@ -1092,12 +1092,12 @@ def find_doc(col, query={'ctype':'pedestals'}):
 
 
 def document_keys(doc):
-    """Returns formatted strings of document keys. 
+    """Returns formatted strings of document keys.
     """
     keys = sorted(doc.keys())
     s = '%d document keys:' % len(keys)
     for i,k in enumerate(keys):
-        if not(i%5): s += '\n      ' 
+        if not(i%5): s += '\n      '
         s += ' %s' % k.ljust(16)
     return s
     #return '%d doc keys:\n      %s' % (len(keys), '\n      '.join([k for k in keys]))
@@ -1106,9 +1106,9 @@ def document_keys(doc):
 def document_info(doc, keys=('time_sec','time_stamp','experiment',\
                   'detector','ctype','run','id_data','id_data_ts', 'data_type','data_dtype','version'),\
                   fmt='%10s %24s %11s %16s %12s %4s %24s %24s %10s %10s %7s'):
-    """Returns (str, str) for formatted document values and title made of keys. 
+    """Returns (str, str) for formatted document values and title made of keys.
     """
-    #if not ('id_data_ts' in doc.keys()): 
+    #if not ('id_data_ts' in doc.keys()):
     id_data = str(doc.get('id_data',None))
     doc['id_data_ts'] = timestamp_id(id_data)
 
@@ -1125,7 +1125,7 @@ def document_info(doc, keys=('time_sec','time_stamp','experiment',\
 
 
 def collection_info(client, dbname, cname):
-    """Returns (str) info regarding collection documents. 
+    """Returns (str) info regarding collection documents.
     """
     s = 'DB %s collection %s' % (dbname, cname)
 
@@ -1145,9 +1145,9 @@ def collection_info(client, dbname, cname):
     ndocs = number_of_docs(col, query={})
 
     if not ndocs: return s
-        
+
     s += ' contains %d docs\n' % ndocs
- 
+
     doc = docs[0]
     s += '\n  %s' % (document_keys(doc)) # str(doc.keys()))
 
@@ -1157,7 +1157,7 @@ def collection_info(client, dbname, cname):
 
     _, title = document_info(doc)
     s += '\n  %s%s' % ('doc#', title)
-    
+
     for idoc, doc in enumerate(docs):
         #id_data = doc.get('id_data', None)
         #if id_data is not None: doc['id_data_ts'] = timestamp_id(id_data)
@@ -1199,7 +1199,7 @@ def database_info(client, dbname, level=10, gap='  '):
       if col.name in ('fs.chunks', 'fs.files'): continue
 
       s += '\n%s%sDetails for collection %s %d documents' % (gap, gap, col.name, docs.count())
- 
+
       if docs.count() > 0:
         doc = docs[0]
         s += ':\n%s%s%s' % (gap, gap, document_keys(doc)) # str(doc.keys()))
@@ -1214,7 +1214,7 @@ def database_info(client, dbname, level=10, gap='  '):
 
 
 def database_fs_info(db, gap='  '):
-    """Returns (str) info about database fs collections 
+    """Returns (str) info about database fs collections
     """
     if not is_valid_database(db):
         return 'database_fs_info IS NOT AVAILABLE for database "%s"' % str(db)
@@ -1228,7 +1228,7 @@ def database_fs_info(db, gap='  '):
 
 
 def client_info(client=None, host=cc.HOST, port=cc.PORT, level=10, gap='  '):
-    """Returns (str) with generic information about MongoDB client (or host:port) 
+    """Returns (str) with generic information about MongoDB client (or host:port)
     """
     _client = client if client is not None else connect_to_server(host, port)
 
@@ -1258,7 +1258,7 @@ def client_info(client=None, host=cc.HOST, port=cc.PORT, level=10, gap='  '):
 
 
 def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, **kwa):
-    """Returns calibration constants for specified parameters. 
+    """Returns calibration constants for specified parameters.
        To get meaningful constants, at least a few parameters must be specified, e.g.:
        - det, ctype, time_sec
        - det, ctype, version
@@ -1333,10 +1333,10 @@ def save_doc_and_data_in_file(doc, data, prefix, control={'data': True, 'meta': 
             fname = '%s.npy' % prefix
             np.save(fname, data, allow_pickle=False)
 
-        elif ctype == 'geometry': 
+        elif ctype == 'geometry':
             gu.save_textfile(data, fname, mode='w', verb=verb)
 
-        elif data_type=='str' and (ctype in ('lasingoffreference', 'pedestals')): 
+        elif data_type=='str' and (ctype in ('lasingoffreference', 'pedestals')):
             logger.info('save_doc XTCAV IS RECOGNIZED ctype "%s"' % ctype)
             from psana.pscalib.calib.MDBConvertUtils import serialize_dict
             s = dict(data)
@@ -1354,10 +1354,10 @@ def save_doc_and_data_in_file(doc, data, prefix, control={'data': True, 'meta': 
 
         else:
             gu.save_textfile(str(data), fname, mode='w', verb=verb)
-            
+
         logger.info('saved file: %s' % fname)
 
-    if control['meta']: 
+    if control['meta']:
         fname = '%s.meta' % prefix
         gu.save_textfile(msg, fname, mode='w', verb=verb)
         logger.info('saved file: %s' % fname)
@@ -1381,7 +1381,7 @@ def data_from_file(fname, ctype, dtype, verb=False):
            np.load(fname)                     if ext == '.npy' else\
            gu.load_json(fname)                if ext == '.json' or dtype == 'json' else\
            gu.load_pickle(fname)              if ext == '.pkl' or dtype in ('pkl', 'pickle') else\
-           load_txt(fname) # input NDArrIO 
+           load_txt(fname) # input NDArrIO
 
     logger.debug('fname:%s ctype:%s dtype:%s verb:%s data:\n%s\n...'%\
                  (fname, ctype, dtype, verb, str(data)[:1000]))
@@ -1431,7 +1431,7 @@ def _add_detector_name(col, colname, detname, detnum):
 
     doc = _doc_detector_name(detname, colname, detnum)
     id_doc = insert_document(doc, col)
-    return doc['short'] if id_doc is not None else None   
+    return doc['short'] if id_doc is not None else None
 
 
 def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
@@ -1474,7 +1474,7 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
             num = doc.get('seqnumber', 0)
             if num > detnum: detnum = num
         detnum += 1
-      
+
     logger.debug('next available detnum: %d' % detnum)
 
     short_name = _add_detector_name(col, colname, detname, detnum)
@@ -1523,14 +1523,14 @@ if __name__ == "__main__":
     """Connect to host, port get db handls.
     """
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
-        connect(host=cc.HOST, port=cc.PORT, experiment='cxid9114', detector='cspad_0001') 
-        #connect(host=cc.HOST, port=cc.PORT, detector='cspad_0001') 
+        connect(host=cc.HOST, port=cc.PORT, experiment='cxid9114', detector='cspad_0001')
+        #connect(host=cc.HOST, port=cc.PORT, detector='cspad_0001')
 
 
   def test_insert_one(tname):
     """Insert one calibration data in data base.
     """
-    data = None 
+    data = None
     if   tname == '1': data, ctype = get_test_txt(), 'testtext'; logger.debug('txt: %s' % str(data))
     elif tname == '2': data, ctype = get_test_nda(), 'testnda';  logger.debug(info_ndarr(data, 'nda'))
     elif tname == '3': data, ctype = get_test_dic(), 'testdict'; logger.debug('dict: %s' % str(data))
@@ -1559,7 +1559,7 @@ if __name__ == "__main__":
     for i in range(nloops):
         logger.info('%s\nEntry: %4d' % (50*'_', i))
         data = get_test_nda()
-        print_ndarr(data, 'data nda') 
+        print_ndarr(data, 'data nda')
         t0_sec = time()
         t0_int = int(t0_sec)
         kwa['run'] = 10 + i
@@ -1582,9 +1582,9 @@ if __name__ == "__main__":
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det = connect(**kwa)
 
     t0_sec = time()
-    data_type='any' 
-    if tname == '11': data_type='str' 
-    if tname == '12': data_type='ndarray' 
+    data_type='any'
+    if tname == '11': data_type='str'
+    if tname == '12': data_type='ndarray'
 
     doc = find_doc(col_det, query={'data_type': data_type})
     logger.info('Find doc time %.6f sec' % (time()-t0_sec))
@@ -1611,7 +1611,7 @@ if __name__ == "__main__":
     print('XXX out: ', out)
 
     s = out.read()
-    
+
     print('XXX type(out.read()): ', type(s))
     print('XXX out.read(): ', s[:200])
 
@@ -1638,7 +1638,7 @@ if __name__ == "__main__":
         db = database(client, dbname) # client[dbname]
         cnames = collection_names(db)
         logger.info('== DB %2d: %12s # cols:%2d' % (idb, dbname, len(cnames)))
-        if dbname[:4] != prefix: 
+        if dbname[:4] != prefix:
             logger.info('     skip non-calib dbname: %s' % dbname)
             continue
         if level==1: continue
