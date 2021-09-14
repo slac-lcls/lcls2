@@ -43,7 +43,6 @@ Usage ::
 
     test_*()
 """
-#------------------------------
 
 import logging
 logger = logging.getLogger(__name__)
@@ -74,7 +73,7 @@ def has_kerberos_ticket():
 def check_kerberos_ticket(exit_if_invalid=True):
     if has_kerberos_ticket(): return True
     logger.warning('KERBEROS TICKET IS UNAVAILABLE OR EXPIRED. Requested operation requires valid kerberos ticket')
-    if exit_if_invalid : 
+    if exit_if_invalid:
         sys.exit('FIX KERBEROS TICKET - use command "kinit" or check its status with command "klist"')
     return False
 
@@ -142,7 +141,7 @@ def find_doc(dbname, colname, query={}, url=cc.URL): #query={'ctype':'pedestals'
        2. select the latest for run or time_sec
     """
     docs = find_docs(dbname, colname, query, url)
-    if docs is None : return None
+    if docs is None: return None
 
     return select_latest_doc(docs, query)
 
@@ -150,7 +149,7 @@ def find_doc(dbname, colname, query={}, url=cc.URL): #query={'ctype':'pedestals'
 def select_latest_doc(docs, query):
     """Returns a single document for query selected by time_sec (if available) or run
     """
-    if len(docs)==0 :
+    if len(docs)==0:
         # commented out by cpo since this happens routinely the way
         # that Mona is fetching calibration constants in psana.
         #logger.warning('find_docs returns list of length 0 for query: %s' % query)
@@ -165,8 +164,8 @@ def select_latest_doc(docs, query):
     logger.debug('find_doc values: %s' % str(vals))
     val_sel = int(vals[0])
     logger.debug('find_doc select document for %s: %s' % (key_sort,val_sel))
-    for d in docs : 
-        if d[key_sort]==val_sel : 
+    for d in docs:
+        if d[key_sort]==val_sel:
             return d
     return None
 
@@ -180,14 +179,14 @@ def get_doc_for_docid(dbname, colname, docid, url=cc.URL):
     return r.json()
 
 
-# curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/gridfs/5b6893d91ead141643fe3f6a" 
+# curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/gridfs/5b6893d91ead141643fe3f6a"
 def get_data_for_id(dbname, dataid, url=cc.URL):
     """Returns raw data from GridFS, at this level there is no info for parsing.
     """
     r = request('%s/%s/gridfs/%s'%(url,dbname,dataid))
     if r is None: return None
     logger.debug('get_data_for_docid:'\
-                +'\n  r.status_code: %s\n  r.headers: %s\n  r.encoding: %s\n  r.content: %s...\n' % 
+                +'\n  r.status_code: %s\n  r.headers: %s\n  r.encoding: %s\n  r.content: %s...\n' %
                  (str(r.status_code),  str(r.headers),  str(r.encoding),  str(r.content[:50])))
     return r.content
 
@@ -206,7 +205,7 @@ def get_data_for_doc(dbname, doc, url=cc.URL):
     """
     logger.debug('get_data_for_doc: %s', str(doc))
     idd = doc.get('id_data', None)
-    if idd is None :
+    if idd is None:
         logger.debug("get_data_for_doc: key 'id_data' is missing in selected document...")
         return None
 
@@ -227,7 +226,7 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
 
 
 def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL):
-    """Returns calibration constants and document with metadata for specified parameters. 
+    """Returns calibration constants and document with metadata for specified parameters.
        To get meaningful constants, at least a few parameters must be specified, e.g.:
        - det, ctype, time_sec
        - det, ctype, version
@@ -240,7 +239,7 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
     logger.debug('get_constants: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
     dbname = db_det if exp is None else db_exp
     doc = find_doc(dbname, colname, query, url)
-    if doc is None :
+    if doc is None:
         # commented out by cpo since this happens routinely the way
         # that Mona is fetching calibration constants in psana.
         logger.debug('document is not available for query: %s' % str(query))
@@ -258,7 +257,7 @@ def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, url=cc
     dbname = db_det
     docs = find_docs(dbname, colname, query, url)
     #logger.debug('find_docs: number of docs found: %d' % len(docs))
-    if docs is None : return None
+    if docs is None: return None
 
     ctypes = set([d.get('ctype',None) for d in docs])
     ctypes.discard(None)
@@ -272,7 +271,7 @@ def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, url=cc
     for ct in _ctypes:
         docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
         doc = select_latest_doc(docs_for_type, query)
-        if doc is None : continue
+        if doc is None: continue
         resp[ct] = (get_data_for_doc(dbname, doc, url), doc)
 
     return resp
@@ -290,7 +289,7 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
     dbname = db_det if exp is None else db_exp
     docs = find_docs(dbname, colname, query, url)
     #logger.debug('find_docs: number of docs found: %d' % len(docs))
-    if docs is None : return None
+    if docs is None: return None
 
     ctypes = set([d.get('ctype',None) for d in docs])
     ctypes.discard(None)
@@ -300,7 +299,7 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
     for ct in ctypes:
         docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
         doc = select_latest_doc(docs_for_type, query)
-        if doc is None : continue
+        if doc is None: continue
         resp[ct] = (get_data_for_doc(dbname, doc, url), doc)
 
     resp = calib_constants_of_missing_types(resp, det, time_sec, vers, url)
@@ -337,7 +336,7 @@ def add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     resp = post(url+dbname+'/gridfs/', headers=headers, data=d)
     logger.debug('add_data: to %s/gridfs/ resp: %s' % (dbname, resp.text))
     id = resp.json().get('_id',None)
-    if id is None : logger.warning('id_data is None')
+    if id is None: logger.warning('id_data is None')
     return id
 
 
@@ -349,7 +348,7 @@ def add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     resp = post(url+dbname+'/'+colname+'/', headers=krbheaders, json=doc)
     logger.debug('add_document: %s\n  to %s/%s resp: %s' % (str(doc), dbname, colname, resp.text))
     id = resp.json().get('_id',None)
-    if id is None : logger.warning('id_document is None')
+    if id is None: logger.warning('id_document is None')
     return id
 
 
@@ -487,7 +486,7 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
         logger.debug('List of documents in db/collection: %s/%s IS EMPTY' % (dbname, colname))
         detnum = 1
     else:
-        for doc in ldocs :
+        for doc in ldocs:
             num = doc.get('seqnumber', 0)
             if num > detnum: detnum = num
         detnum += 1
@@ -625,7 +624,7 @@ def info_doc(dbname, colname, docid, strlen=150):
     for k,v in doc.items():
         s += '\n  %s : %s' % (k.ljust(20), str(v)[:strlen])
     return s
-        
+
 
 def info_docs_list(docs, strlen=150):
     if not isinstance(docs, list):
@@ -720,7 +719,7 @@ def my_sort_parameter(e): return e['_id']
 
 
 def collection_info(dbname, cname, **kwa):
-    """Returns (str) info about collection documents. 
+    """Returns (str) info about collection documents.
     """
     s = 'DB %s collection %s' % (dbname, cname)
 
@@ -763,7 +762,7 @@ def list_of_documents(dbname, cname):
 
 #---------  TESTS  ------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
   TEST_FNAME_PNG = '/reg/g/psdm/detector/data2_test/misc/small_img.png'
   TEST_EXPNAME = 'testexper'
@@ -786,7 +785,7 @@ if __name__ == "__main__" :
     for i,d in enumerate(docs):
         print('%04d %12s %10s run:%04d time_sec:%10s %s' % (i, d['ctype'], d['experiment'], d['run'], str(d['time_sec']), d['detector']))
 
-    if len(docs)==0 : return
+    if len(docs)==0: return
     doc0 = docs[0]
     print('doc0 type:', type(doc0))
     print('doc0:', doc0)
@@ -812,8 +811,8 @@ if __name__ == "__main__" :
     #doc = find_doc('cdb_cxid9114', 'cspad_0001', query={'ctype':'pedestals', 'time_sec':{'$lte':1402851400}})
     #print('====> test_find_doc for time_sec: %s' % str(doc))
 
-    _,_,_,_ = test_get_random_doc_and_data_ids(det='cspad_0001') 
-    _,_,_,_ = test_get_random_doc_and_data_ids(det='cspad_0002') 
+    _,_,_,_ = test_get_random_doc_and_data_ids(det='cspad_0001')
+    _,_,_,_ = test_get_random_doc_and_data_ids(det='cspad_0002')
 
 
   def test_get_data_for_id():
@@ -889,7 +888,7 @@ if __name__ == "__main__" :
     #data, ctype = get_test_nda(), 'testnda';  logger.debug(info_ndarr(data, 'nda'))
     #data, ctype = get_test_dic(), 'testdict'; logger.debug('dict: %s' % str(data))
 
-    kwa = {'user' : gu.get_login()}
+    kwa = {'user': gu.get_login()}
     t0_sec = time()
     ts = gu.str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%z', time_sec=t0_sec)
     mu.insert_constants('%s - saved at %s'%(data,ts), expname, detname, ctype, runnum+int(tname), int(t0_sec),\
@@ -914,7 +913,7 @@ if __name__ == "__main__" :
   def test_delete_document(dbname='cdb_testexper', colname=TEST_DETNAME, query={'ctype':'test_ctype'}):
     doc = find_doc(dbname, colname, query=query, url=cc.URL)
     print('find_doc:', doc)
-    if doc is None : 
+    if doc is None:
         logger.warning('test_delete_document: Non-found document in db:%s col:%s query:%s' % (dbname,colname,str(query)))
         return
     id = doc.get('_id', None)
@@ -925,7 +924,7 @@ if __name__ == "__main__" :
 
   def test_delete_document_and_data(dbname='cdb_testexper', colname=TEST_DETNAME):
     ldocs = find_docs(dbname, colname, query={}, url=cc.URL)
-    if not ldocs :
+    if not ldocs:
         print('test_delete_document_and_data db/collection: %s/%s does not have any document' % (dbname, colname))
         return
     doc = ldocs[0]
@@ -1019,13 +1018,13 @@ if __name__ == "__main__" :
 
     #doc_id = ldocs[0]['_id']
     #print('==== selected doc _id:', doc_id)
-    
+
     #ldocs = find_docs(dbname, colname, query={'_id':doc_id})
     #print('==== query={"_id":doc_id}} ldocs:\n', ldocs)
 
 
-if __name__ == "__main__" :
-  def usage(): 
+if __name__ == "__main__":
+  def usage():
       return 'Use command: python %s <test-number>, where <test-number> = 0,1,2,...,9' % sys.argv[0]\
            + '\n  0: test_database_names'\
            + '\n  1: test_collection_names [dbname]'\
@@ -1063,31 +1062,31 @@ if __name__ == "__main__":
     logger.info('\n%s\n' % usage())
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     logger.info('%s Test %s %s' % (25*'_',tname, 25*'_'))
-    if   tname == '0' : test_database_names()
-    elif tname == '1' : test_collection_names()
-    elif tname == '2' : test_find_docs()
-    elif tname == '3' : test_find_doc()
-    elif tname == '4' : test_get_data_for_id()
-    elif tname == '5' : test_get_data_for_docid()
-    elif tname == '6' : test_dbnames_collection_query()
-    elif tname == '7' : test_calib_constants()
-    elif tname == '8' : test_calib_constants_text()
-    elif tname == '9' : test_calib_constants_dict()
-    elif tname =='10' : test_calib_constants_all_types()
-    elif tname =='11' : test_insert_constants()
-    elif tname =='12' : test_delete_database()
-    elif tname =='13' : test_delete_collection()
-    elif tname =='14' : test_delete_document()
-    elif tname =='15' : test_delete_document_and_data()
-    elif tname =='16' : test_add_data_from_file()
-    elif tname =='17' : test_add_data()
-    elif tname =='18' : test_add_document()
-    elif tname =='19' : test_add_data_and_two_docs()
-    elif tname =='20' : test_pro_detector_name()
-    elif tname =='21' : test_valid_post_privilege()
-    elif tname =='22' : test_collection_info()
-    elif tname =='00' : test_tmp()
-    else : logger.info('Not-recognized test name: %s' % tname)
+    if   tname == '0': test_database_names()
+    elif tname == '1': test_collection_names()
+    elif tname == '2': test_find_docs()
+    elif tname == '3': test_find_doc()
+    elif tname == '4': test_get_data_for_id()
+    elif tname == '5': test_get_data_for_docid()
+    elif tname == '6': test_dbnames_collection_query()
+    elif tname == '7': test_calib_constants()
+    elif tname == '8': test_calib_constants_text()
+    elif tname == '9': test_calib_constants_dict()
+    elif tname =='10': test_calib_constants_all_types()
+    elif tname =='11': test_insert_constants()
+    elif tname =='12': test_delete_database()
+    elif tname =='13': test_delete_collection()
+    elif tname =='14': test_delete_document()
+    elif tname =='15': test_delete_document_and_data()
+    elif tname =='16': test_add_data_from_file()
+    elif tname =='17': test_add_data()
+    elif tname =='18': test_add_document()
+    elif tname =='19': test_add_data_and_two_docs()
+    elif tname =='20': test_pro_detector_name()
+    elif tname =='21': test_valid_post_privilege()
+    elif tname =='22': test_collection_info()
+    elif tname =='00': test_tmp()
+    else: logger.info('Not-recognized test name: %s' % tname)
     sys.exit('End of test %s' % tname)
 
 # EOF
