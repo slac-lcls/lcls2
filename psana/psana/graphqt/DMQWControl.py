@@ -16,10 +16,6 @@ from psana.graphqt.CMWControlBase import * # CMWControlBase, QApplication, ..., 
 
 logger = logging.getLogger(__name__)
 
-COMMAND_SET_ENV_LCLS1 = '. /cds/sw/ds/ana/conda1/manage/bin/psconda.sh; echo "PATH: $PATH"; echo "CONDA_DEFAULT_ENV: $CONDA_DEFAULT_ENV"; '
-ENV1 = {} #'PATH':'/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/puppetlabs/bin'}
-
-
 def detname_contains_pattern(detname, pattern):
     r = pattern in detname
     if not r: logger.warning('DETECTOR NAME "%s" DOES NOT CONTAIN "%s"' % (detname, pattern))
@@ -29,7 +25,7 @@ def is_epix10ka(detname): return detname_contains_pattern(detname, 'Epix10')
 
 def is_jungfrau(detname): return detname_contains_pattern(detname, 'Jungfrau')
 
-def is_area_detector(detname): 
+def is_area_detector(detname):
     logger.warning('TBD: is_area_detector for DETECTOR NAME "%s"' % detname)
     return True
 
@@ -112,7 +108,7 @@ class DMQWControl(CMWControlBase):
         self.boxv.addLayout(self.box)
         self.boxv.addLayout(self.box2)
         self.setLayout(self.boxv)
- 
+
         self.but_exp.clicked.connect(self.on_but_exp)
         self.but_start.clicked.connect(self.on_but_start)
         self.but_stop.clicked.connect(self.on_but_stop)
@@ -407,7 +403,7 @@ class DMQWControl(CMWControlBase):
 
     def on_but_exp(self):
         from psana.graphqt.PSPopupSelectExp import select_instrument_experiment
-        from psana.graphqt.CMConfigParameters import dir_calib #cp, 
+        from psana.graphqt.CMConfigParameters import dir_calib
 
         dir_instr = cp.instr_dir.value()
         instr_name, exp_name = select_instrument_experiment(None, dir_instr, show_frame=True) # parent=self.but_exp

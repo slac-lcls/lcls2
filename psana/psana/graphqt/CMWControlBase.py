@@ -23,10 +23,13 @@ from PyQt5.QtWidgets import QApplication, QWidget, QHBoxLayout, QVBoxLayout, QGr
 from PyQt5.QtCore import QSize, QRectF, pyqtSignal, QModelIndex, QTimer
 
 from psana.graphqt.QWFileNameV2 import QWFileNameV2
-from psana.graphqt.CMConfigParameters import cp, dirs_to_search, expname_def
+from psana.graphqt.CMConfigParameters import cp, dirs_to_search, expname_def, dir_calib
 from psana.graphqt.Styles import style
 from psana.graphqt.QWIcons import icon
 import psana.graphqt.QWUtils as qwu
+
+COMMAND_SET_ENV_LCLS1 = '. /cds/sw/ds/ana/conda1/manage/bin/psconda.sh; echo "PATH: $PATH"; echo "CONDA_DEFAULT_ENV: $CONDA_DEFAULT_ENV"; '
+ENV1 = {} #'PATH':'/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:/opt/puppetlabs/bin'}
 
 
 class CMWControlBase(QWidget):
@@ -53,7 +56,7 @@ class CMWControlBase(QWidget):
         if __name__ == "__main__":
             self.box1 = QHBoxLayout()
             self.box1.addWidget(self.wfnm)
-            self.box1.addStretch(1) 
+            self.box1.addStretch(1)
             self.box1.addWidget(self.but_tabs)
             self.box1.addWidget(self.but_save)
             self.box1.addWidget(self.but_view)
@@ -70,7 +73,7 @@ class CMWControlBase(QWidget):
         self.but_tabs.setToolTip('Show/hide tabs')
         self.but_save.setToolTip('Save button')
         self.but_view.setToolTip('Use the last selected item to view in IV')
- 
+
 
     def set_style(self):
         icon.set_icons()
