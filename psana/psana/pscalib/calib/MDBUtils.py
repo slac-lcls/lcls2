@@ -516,7 +516,7 @@ def connect(**kwa):
     host    = kwa.get('host', cc.HOST)
     port    = kwa.get('port', cc.PORT)
     user    = kwa.get('user', cc.USERNAME)
-    upwd    = kwa.get('upwd', cc.OPER)
+    upwd    = kwa.get('upwd', cc.USERPW)
     expname = kwa.get('experiment', None)
     detname = kwa.get('detector', 'camera-0-cxids1-0')
 
@@ -1535,7 +1535,7 @@ if __name__ == "__main__":
     elif tname == '2': data, ctype = get_test_nda(), 'testnda';  logger.debug(info_ndarr(data, 'nda'))
     elif tname == '3': data, ctype = get_test_dic(), 'testdict'; logger.debug('dict: %s' % str(data))
 
-    kwa = {'user': gu.get_login(), 'upwd':cc.OPER}
+    kwa = {'user': gu.get_login(), 'upwd':cc.USERPW}
     t0_sec = int(time())
     insert_constants(data, TEST_EXPNAME, TEST_DETNAME, ctype, 20+int(tname), t0_sec,\
                      time_stamp=_timestamp(t0_sec), **kwa)
@@ -1626,7 +1626,7 @@ if __name__ == "__main__":
     #client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
     #    connect(host=cc.HOST, port=cc.PORT)
 
-    client = connect_to_server(host=cc.HOST, port=cc.PORT) # , user=cc.USERNAME, upwd=cc.USERPW)
+    client = connect_to_server(host=cc.HOST, port=cc.PORT, user=cc.USERNAME, upwd=cc.USERPW)
 
     print('type(client):', type(client))
     print('dir(client):', dir(client))
@@ -1636,7 +1636,7 @@ if __name__ == "__main__":
     logger.info('databases: %s' % str(dbnames))
     for idb, dbname in enumerate(dbnames):
         db = database(client, dbname) # client[dbname]
-        cnames = collection_names(db)
+        cnames = collection_names_pro(db)
         logger.info('== DB %2d: %12s # cols:%2d' % (idb, dbname, len(cnames)))
         if dbname[:4] != prefix:
             logger.info('     skip non-calib dbname: %s' % dbname)
@@ -1654,17 +1654,27 @@ if __name__ == "__main__":
                 logger.info('%s doc[0] %s' % (10*' ', str(doc.keys())))
 
 
+  def collection_names_pro(db):
+     try:
+       cnames = collection_names(db)
+     except Exception as err:
+       cnames = []
+       print('  Failed to access collections... err: %s' % str(err))
+     return cnames
+
+
   def test_dbnames_colnames():
     """Prints the list of DBs and in loop list of collections for each DB.
     """
-    client = connect_to_server()
+    client = connect_to_server(host=cc.HOST, port=cc.PORT, user=cc.USERNAME, upwd=cc.USERPW)
     dbnames = database_names(client)
-    #print('== client DBs: %s...' % str(dbnames[:5]))
+    print('== client DBs: %s...' % str(dbnames))
 
     for dbname in dbnames:
         db = database(client, dbname)
-        cnames = collection_names(db)
+        cnames = collection_names_pro(db)
         print('== collections of %s: %s' % (dbname.ljust(20),cnames))
+        #if dbname=='config': break
 
 
   def test_calib_constants_nda():
@@ -1718,7 +1728,7 @@ if __name__ == "__main__":
 
 
   def dict_usage(tname=None):
-      d = {'0': 'test_connect',
+      d = {'0': 'test_connect <do not forget server password after each command>',
            '1': 'test_insert_one txt',
            '2': 'test_insert_one nda',
            '3': 'test_insert_one dic',
@@ -1749,6 +1759,7 @@ if __name__ == "__main__":
     #logging.basicConfig(format=fmt', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
     #logging.basicConfig(format='%(message)s', level=logging.DEBUG)
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG) # logging.INFO
+    cc.USERPW = sys.argv[2] if len(sys.argv) > 2 else ''
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     if len(sys.argv) < 2: usage()
     logger.info('%s Test %s %s: %s' % (25*'=', tname, 25*'=', dict_usage(tname)))
