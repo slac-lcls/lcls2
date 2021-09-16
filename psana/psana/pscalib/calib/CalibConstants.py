@@ -1,5 +1,5 @@
 #### !/usr/bin/env python
-#------------------------------
+
 """
 :py:class:`CalibConstants` - global constants for Calib project
 ===================================================================
@@ -23,7 +23,7 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2018-02-02 by Mikhail Dubrovin
 """
-#------------------------------
+
 import os
 import sys
 import numpy as np
@@ -36,11 +36,11 @@ import getpass
 URL_ENV = os.environ.get('LCLS_CALIB_HTTP', None)
 URL     = 'https://pswww.slac.stanford.edu/calib_ws' if URL_ENV is None else URL_ENV
 URL_KRB = 'https://pswww.slac.stanford.edu/ws-kerb/calib_ws/'
-HOST = 'psdbdev01' # 'psdb-dev' # 'psanaphi103'
-PORT = 9306                     # 27017
+HOST = 'psdb02' # psdb01/02/03/04 'psdbdev01' # 'psanaphi103'
+PORT = 9307
 USERLOGIN = getpass.getuser()
-USERNAME = 'calibuser'
-USERPW   = USERNAME[:5]
+USERNAME = USERLOGIN
+USERPW = 'pw-should-be-provided-somehow'
 DBNAME_PREFIX = 'cdb_'
 DETNAMESDB = '%sdetnames' % DBNAME_PREFIX
 MAX_DETNAME_SIZE = 55
@@ -52,7 +52,7 @@ except Exception as e:
     #msg = e.message if hasattr(e, 'message') else str(e)
     #print('Exception:', msg)
     #sys.exit('Fix kerberos ticket - use command kinit')
-    KRBHEADERS = None 
+    KRBHEADERS = None
 
 TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T08:40:28-0800
 TSFORMAT_SHORT = '%Y%m%d%H%M%S'  # e.g. 20180207084028
@@ -73,16 +73,16 @@ CODE_GEOMETRY = 10
 LASINGOFFREFERENCE = 11
 
 ctype_tuple = (
-    (PEDESTALS,      'pedestals',     np.float32), 
+    (PEDESTALS,      'pedestals',     np.float32),
     (PIXEL_STATUS,   'pixel_status',  np.uint64 ),
-    (PIXEL_RMS,      'pixel_rms',     np.float32), 
-    (PIXEL_GAIN,     'pixel_gain',    np.float32), 
-    (PIXEL_MASK,     'pixel_mask',    np.uint8  ), 
-    (PIXEL_BKGD,     'pixel_bkgd',    np.float32), 
-    (COMMON_MODE,    'common_mode',   np.double ), 
-    (GEOMETRY,       'geometry',      str       ), 
-    (PIXEL_OFFSET,   'pixel_offset',  np.float32), 
-    (PIXEL_DATAST,   'pixel_datast',  np.uint16 ), 
+    (PIXEL_RMS,      'pixel_rms',     np.float32),
+    (PIXEL_GAIN,     'pixel_gain',    np.float32),
+    (PIXEL_MASK,     'pixel_mask',    np.uint8  ),
+    (PIXEL_BKGD,     'pixel_bkgd',    np.float32),
+    (COMMON_MODE,    'common_mode',   np.double ),
+    (GEOMETRY,       'geometry',      str       ),
+    (PIXEL_OFFSET,   'pixel_offset',  np.float32),
+    (PIXEL_DATAST,   'pixel_datast',  np.uint16 ),
     (CODE_GEOMETRY,  'code_geometry', str       ),
     (LASINGOFFREFERENCE, 'lasingoffreference', 'hdf5')
 )
@@ -96,18 +96,17 @@ dic_calib_name_to_type  = dict(zip(list_calib_names, list_calib_types))
 dic_calib_type_to_dtype = dict(zip(list_calib_types, list_calib_dtypes))
 dic_calib_name_to_dtype = dict(zip(list_calib_names, list_calib_dtypes))
 
-#------------------------------
 
 UNDEFINED   =  0
-CSPAD       =  1 
-CSPAD2X2    =  2 
-PRINCETON   =  3 
-PNCCD       =  4 
-TM6740      =  5 
-OPAL1000    =  6 
-OPAL2000    =  7 
-OPAL4000    =  8 
-OPAL8000    =  9 
+CSPAD       =  1
+CSPAD2X2    =  2
+PRINCETON   =  3
+PNCCD       =  4
+TM6740      =  5
+OPAL1000    =  6
+OPAL2000    =  7
+OPAL4000    =  8
+OPAL8000    =  9
 ORCAFL40    = 10
 EPIX        = 11
 EPIX10K     = 12
@@ -130,35 +129,35 @@ EpicsPVAM   = 28
 EPIX10KA    = 29
 
 det_tuple = (
-    (UNDEFINED   , 'UNDEFINED'), 
-    (CSPAD       , 'Cspad'), 
-    (CSPAD2X2    , 'Cspad2x2'), 
-    (PRINCETON   , 'Princeton'), 
-    (PNCCD       , 'pnCCD'), 
-    (TM6740      , 'Tm6740'), 
-    (OPAL1000    , 'Opal1000'), 
-    (OPAL2000    , 'Opal2000'), 
-    (OPAL4000    , 'Opal4000'), 
-    (OPAL8000    , 'Opal8000'), 
-    (ORCAFL40    , 'OrcaFl40'), 
-    (EPIX        , 'Epix'), 
-    (EPIX10K     , 'Epix10k'), 
-    (EPIX100A    , 'Epix100a'), 
-    (FCCD960     , 'Fccd960'), 
-    (ANDOR       , 'Andor'), 
-    (ACQIRIS     , 'Acqiris'), 
-    (IMP         , 'Imp'), 
-    (QUARTZ4A150 , 'Quartz4A150'), 
+    (UNDEFINED   , 'UNDEFINED'),
+    (CSPAD       , 'Cspad'),
+    (CSPAD2X2    , 'Cspad2x2'),
+    (PRINCETON   , 'Princeton'),
+    (PNCCD       , 'pnCCD'),
+    (TM6740      , 'Tm6740'),
+    (OPAL1000    , 'Opal1000'),
+    (OPAL2000    , 'Opal2000'),
+    (OPAL4000    , 'Opal4000'),
+    (OPAL8000    , 'Opal8000'),
+    (ORCAFL40    , 'OrcaFl40'),
+    (EPIX        , 'Epix'),
+    (EPIX10K     , 'Epix10k'),
+    (EPIX100A    , 'Epix100a'),
+    (FCCD960     , 'Fccd960'),
+    (ANDOR       , 'Andor'),
+    (ACQIRIS     , 'Acqiris'),
+    (IMP         , 'Imp'),
+    (QUARTZ4A150 , 'Quartz4A150'),
     (RAYONIX     , 'Rayonix'),
-    (EVR         , 'Evr'), 
-    (FCCD        , 'Fccd'), 
-    (TIMEPIX     , 'Timepix'), 
-    (FLI         , 'Fli'), 
-    (PIMAX       , 'Pimax'), 
-    (ANDOR3D     , 'Andor3d'), 
-    (JUNGFRAU    , 'Jungfrau'), 
-    (ZYLA        , 'Zyla'), 
-    (EpicsPVAM    , 'ControlsCamera'), 
+    (EVR         , 'Evr'),
+    (FCCD        , 'Fccd'),
+    (TIMEPIX     , 'Timepix'),
+    (FLI         , 'Fli'),
+    (PIMAX       , 'Pimax'),
+    (ANDOR3D     , 'Andor3d'),
+    (JUNGFRAU    , 'Jungfrau'),
+    (ZYLA        , 'Zyla'),
+    (EpicsPVAM    , 'ControlsCamera'),
     (EPIX10KA    , 'Epix10ka')
 )
 
@@ -168,9 +167,8 @@ list_det_names = [rec[1] for rec in det_tuple]
 dic_det_type_to_name = dict(zip(list_det_types, list_det_names))
 dic_det_name_to_type = dict(zip(list_det_names, list_det_types))
 
-#------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
   def test_constants() :
     print('URL_ENV  : %s' % str(URL_ENV ))
     print('URL      : %s' % str(URL     ))
@@ -180,23 +178,22 @@ if __name__ == "__main__" :
     print('USERNAME : %s' % str(USERNAME))
     print('USERPW   : %s' % str(USERPW  ))
 
-#------------------------------
 
-if __name__ == "__main__" :
-
-    print('%s\ndic_calib_type_to_name:'%(50*'_'))
-    for k,v in dic_calib_type_to_name.items() : print('%16s : %s' % (str(k), str(v)))
+if __name__ == "__main__":
 
     print('%s\ndic_calib_type_to_name:'%(50*'_'))
-    for k,v in dic_calib_name_to_type.items() : print('%16s : %s' % (str(k), str(v)))
+    for k,v in dic_calib_type_to_name.items(): print('%16s : %s' % (str(k), str(v)))
+
+    print('%s\ndic_calib_type_to_name:'%(50*'_'))
+    for k,v in dic_calib_name_to_type.items(): print('%16s : %s' % (str(k), str(v)))
 
     print('%s\ndic_det_type_to_name:'%(50*'_'))
-    for k,v in dic_det_type_to_name.items() : print('%16s : %s' % (str(k), str(v)))
+    for k,v in dic_det_type_to_name.items(): print('%16s : %s' % (str(k), str(v)))
 
     print('%s\ndic_det_name_to_type:'%(50*'_'))
-    for k,v in dic_det_name_to_type.items() : print('%16s : %s' % (str(k), str(v)))
+    for k,v in dic_det_name_to_type.items(): print('%16s : %s' % (str(k), str(v)))
 
     print('%s\n'%(50*'_'))
     test_constants()
 
-#------------------------------
+# EOF
