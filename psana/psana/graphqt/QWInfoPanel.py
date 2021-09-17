@@ -35,7 +35,7 @@ def save_textfile(text, path, mode='w'):
     logger.debug('save file %s' % path)
     f=open(path, mode)
     f.write(text)
-    f.close() 
+    f.close()
 
 
 class QWInfoPanel(QWidget):
@@ -71,7 +71,7 @@ class QWInfoPanel(QWidget):
     def set_tool_tips(self):
         self.but_save.setToolTip('Save info panel content in file')
         self.but_clear.setToolTip('Clean info panel')
- 
+
 
     def set_style(self):
         icon.set_icons()
