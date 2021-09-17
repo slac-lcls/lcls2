@@ -39,10 +39,10 @@ class CMWMain(QWidget):
         self.wtab = CMWMainTabs()
 
         self.vspl = QSplitter(Qt.Vertical)
-        self.vspl.addWidget(self.wtab) 
-        self.vspl.addWidget(self.wlog) 
+        self.vspl.addWidget(self.wtab)
+        self.vspl.addWidget(self.wlog)
 
-        self.mbox = QHBoxLayout() 
+        self.mbox = QHBoxLayout()
         self.mbox.addWidget(self.vspl)
 
         self.setLayout(self.mbox)
@@ -115,7 +115,7 @@ class CMWMain(QWidget):
         self.on_save()
         QWidget.closeEvent(self, e)
         cp.wlog = None
- 
+
 
 #    def resizeEvent(self, e):
 #        QWidget.resizeEvent(self, e)
