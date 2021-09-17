@@ -26,7 +26,7 @@ import os #import psana.pyalgos.generic.UtilsFS as ufs
 #from psana.graphqt.CMConfigParameters import cp
 from psana.graphqt.QWTree import *
 from psana.pyalgos.generic.UtilsFS import safe_listdir
-#from PyQt5.QtCore import pyqtSignal # Qt 
+#from PyQt5.QtCore import pyqtSignal # Qt
 
 
 def full_path_for_item(item, path=''):
@@ -38,7 +38,7 @@ def full_path_for_item(item, path=''):
 
 
 class FSTree(QWTree):
-    """GUI for file system tree 
+    """GUI for file system tree
     """
     #db_and_collection_selected = pyqtSignal('QString','QString')
 
@@ -99,8 +99,8 @@ class FSTree(QWTree):
         item = QStandardItem(name)
         if iconimg: item.setIcon(iconimg)
         item.setEditable(kwa.get('iseditable', False))
-        item.setCheckable(kwa.get('ischeckable', True)) 
-        item.setSelectable(kwa.get('isselectable', True)) 
+        item.setCheckable(kwa.get('ischeckable', True))
+        item.setSelectable(kwa.get('isselectable', True))
         item.setEnabled(kwa.get('isenabled', True))
         atxt = kwa.get('accessibletext', '')
         if atxt: item.setAccessibleText(atxt)
