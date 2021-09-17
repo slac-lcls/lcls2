@@ -22,13 +22,15 @@ from PyQt5.QtCore import Qt
 from psana.graphqt.CMConfigParameters import cp, dir_calib, expname_def
 from psana.graphqt.FSTree import FSTree
 from psana.graphqt.FMW1Control import FMW1Control
+from psana.graphqt.QWInfoPanel import QWInfoPanel
+
 
 class FMW1Main(QWidget):
 
     def __init__(self, **kwa):
 
         parent = kwa.get('parent', None)
- 
+
         QWidget.__init__(self, parent=parent)
 
         cp.fmw1main = self
@@ -46,18 +48,18 @@ class FMW1Main(QWidget):
                unselectable_ptrns=['HISTORY','.data~']\
               )
 
+        self.winfo = QWInfoPanel()
         self.wctrl = FMW1Control(parent=self, expname=expname)
-
-        #self.wrhs = QTextEdit('placeholder')
 
         self.hspl = QSplitter(Qt.Horizontal)
         self.hspl.addWidget(self.wfstree)
-        #self.hspl.addWidget(self.wrhs)
+        self.hspl.addWidget(self.winfo)
         self.vbox = QVBoxLayout()
         self.vbox.addWidget(self.wctrl)
         self.vbox.addWidget(self.hspl)
         self.setLayout(self.vbox)
-
+        self.hspl.splitterMoved[int,int].connect(self.on_splitter_moved)
+        self.append_info = self.winfo.append # shotcut
         self.set_style()
         self.set_tool_tips()
 
@@ -76,6 +78,25 @@ class FMW1Main(QWidget):
     def set_style(self):
         self.layout().setContentsMargins(0,0,0,0)
         self.wctrl.setFixedHeight(40)
+        self.wctrl.layout().setContentsMargins(2,2,2,0)
+        self.winfo.layout().setContentsMargins(0,0,0,0)
+        self.winfo.hbox.layout().setContentsMargins(2,2,2,0)
+        #self.wctrl.setFixedHeight(60) # 26)
+        self.spl_pos = spl_pos = 280
+        #self.wleft.setMinimumWidth(spl_pos)
+        self.hspl.setSizes((spl_pos, self.size().width()-spl_pos,))
+
+
+    def on_splitter_moved(self, pos, ind):
+        #logger.debug('on_splitter_moved - ind:%d position:%d' % (ind, pos))
+        self.spl_pos = pos
+
+
+    def resizeEvent(self, e):
+        QWidget.resizeEvent(self, e)
+        spl_pos = self.spl_pos
+        #logger.debug('resizeEvent - restore splitter position: %d' % spl_pos)
+        self.hspl.setSizes((spl_pos, self.size().width()-spl_pos,))
 
 
     def closeEvent(self, e):
@@ -88,7 +109,6 @@ def file_manager_lcls1(**kwa):
     loglevel = kwa.get('loglevel', 'DEBUG').upper()
     intlevel = logging._nameToLevel[loglevel]
     logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d: %(message)s', level=intlevel)
-
     a = QApplication(sys.argv)
     w = FMW1Main(**kwa)
     w.setGeometry(10, 100, 1000, 800)
