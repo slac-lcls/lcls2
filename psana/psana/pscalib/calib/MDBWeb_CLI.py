@@ -1,19 +1,17 @@
-#------------------------------
+
 """
 Created on 2020-05-15 by Mikhail Dubrovin
 """
-#------------------------------
 
 from psana.pscalib.calib.MDB_CLI import * # gu, mu, etc
 import psana.pscalib.calib.MDBWebUtils as wu
 cc = wu.cc
 logger = logging.getLogger(__name__)
 
-#------------------------------
 
 class MDBWeb_CLI(MDB_CLI):
 
-    def __init__(self, parser): 
+    def __init__(self, parser):
         MDB_CLI.__init__(self, parser)
 
 
@@ -36,11 +34,11 @@ class MDBWeb_CLI(MDB_CLI):
                            (str(dbname), str(colname), str(docid),\
                             wu.info_docs(dbname, colname, query={}, url=cc.URL, strlen=150)))
             return
-                
+
         docs = wu.find_docs(dbname, colname, query={}, url=cc.URL)
         logger.info('deldoc DB/collection/docid: %s/%s/%s from list of docs:%s' % (str(dbname), str(colname), str(docid),\
                     wu.info_docs_list(docs, strlen=150)))
-        
+
         if kwa.get('confirm', False):
             resp = wu.delete_document_and_data(dbname, colname, docid, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
             logger.info('deldoc for DB/collection/docid: %s/%s/%s resp=%s' % (str(dbname), str(colname), str(docid), str(resp)))
@@ -56,7 +54,7 @@ class MDBWeb_CLI(MDB_CLI):
         colname = mu.get_colname(**kwa)
         if None in (dbname, colname):
             logger.warning('CAN NOT DELETE COLLECTION for DB/collection: %s/%s' % (str(dbname), str(colname)))
- 
+
         confirm = kwa.get('confirm', False)
         # delete GridFS data associated with collection documents
         docs = wu.find_docs(dbname, colname, query={}, url=cc.URL)
@@ -99,11 +97,11 @@ class MDBWeb_CLI(MDB_CLI):
             return
 
         logger.debug('Databases before %s:\n%s' % (self.mode, wu.str_formatted_list(dbnames)))
-        if self.kwargs.get('confirm', False) :
+        if self.kwargs.get('confirm', False):
             resp = wu.delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
             dbnames = wu.database_names(pattern=ptrn)
             logger.debug('Databases after %s:\n%s' % (self.mode, wu.str_formatted_list(dbnames)))
-        else :
+        else:
             mu.request_confirmation()
 
 
@@ -132,11 +130,11 @@ class MDBWeb_CLI(MDB_CLI):
             logger.warning('files for doc and data are not saved')
             return
 
-        if prefix is None : prefix = mu.out_fname_prefix(**doc)
-        mu.save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' : True})
+        if prefix is None: prefix = mu.out_fname_prefix(**doc)
+        mu.save_doc_and_data_in_file(doc, data, prefix, control={'data': True, 'meta': True})
 
 
-    def add(self) :
+    def add(self):
         """Adds calibration constants to database from file.
         """
         kwa = self.kwargs
@@ -175,19 +173,17 @@ class MDBWeb_CLI(MDB_CLI):
         elif mode == 'import' : self.importdb()
         elif mode == 'test'   : self.test()
 
-        else : logger.warning('Non-implemented command mode "%s"\n  Known modes: %s' % (mode,', '.join(MODES)))
+        else: logger.warning('Non-implemented command mode "%s"\n  Known modes: %s' % (mode,', '.join(MODES)))
 
-#------------------------------
 
 def cdb_web(parser):
     """Calibration Data Base Command Line Interface
     """
     MDBWeb_CLI(parser)
 
-#------------------------------
 
 if __name__ == "__main__":
     import sys
     sys.exit('Run command cdb -w ...')
 
-#------------------------------
+# EOF
