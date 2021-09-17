@@ -1,6 +1,6 @@
 
 """Class :py:class:`FMWTabs` is a QWidget for File Manager tabs and switching window
-==========================================================================================
+====================================================================================
 
 Usage ::
     # Test: python lcls2/psana/psana/graphqt/FMWTabs.py
@@ -30,7 +30,7 @@ class FMWTabs(QWidget):
     def __init__ (self, parent=None, app=None):
 
         QWidget.__init__(self, parent)
-  
+
         cp.fmwtabs = self
 
         self.box_layout = QHBoxLayout()
@@ -63,7 +63,7 @@ class FMWTabs(QWidget):
         self.setWindowIcon(icon.icon_monitor)
         self.setStyleSheet(style.styleBkgd)
         self.layout().setContentsMargins(0,0,0,0)
- 
+
 
     def make_tab_bar(self, start_tab_name):
         self.tab_bar = QTabBar()
@@ -95,8 +95,6 @@ class FMWTabs(QWidget):
         #if cp.cmwmain is not None: cp.cmwmain.wlog.setVisible(True)
 
         if tab_name == 'LCLS1->LCLS2':
-#            from psana.graphqt.CMWDBMain import CMWDBMain
-#            self.gui_win = CMWDBMain()
             self.gui_win = QTextEdit('Selected tab "%s"' % tab_name)
             w_height = 400
 
@@ -137,26 +135,9 @@ class FMWTabs(QWidget):
     def on_tab_moved(self, inew, iold):
         logger.debug('on_tab_close_request tab index begin:%d -> end:%d' % (iold, inew))
 
- 
-#    def resizeEvent(self, e):
-#        self.frame.setGeometry(self.rect())
-#        logger.debug('resizeEvent: %s' % str(self.size()))
-
-
-#    def moveEvent(self, e):
-#        logger.debug('moveEvent - pos:' + str(self.position))       
-#        self.position = self.mapToGlobal(self.pos())
-#        self.position = self.pos()
-
 
     def closeEvent(self, e):
         logger.debug('closeEvent')
-
-        #try   : self.gui_win.close()
-        #except: pass
-
-        #try   : del self.gui_win
-        #except: pass
 
         if self.gui_win is not None:
             self.gui_win.close()
@@ -184,22 +165,19 @@ class FMWTabs(QWidget):
         self.tab_bar.setVisible(not self.tab_bar.isVisible())
 
 
-    def key_usage(self):
-        return 'Keys:'\
-               '\n  V - view/hide tabs'\
-               '\n'
-
     if __name__ == "__main__":
       def keyPressEvent(self, e):
-        #logger.debug('keyPressEvent, key=%s' % e.key())       
+        logger.debug('keyPressEvent, key=%s' % e.key())
         if   e.key() == Qt.Key_Escape:
             self.close()
 
-        elif e.key() == Qt.Key_V: 
+        elif e.key() == Qt.Key_V:
             self.view_hide_tabs()
 
         else:
-            logger.debug(self.key_usage())
+            logger.debug('Keys:'\
+               '\n  V - view/hide tabs'\
+               '\n')
 
 
 if __name__ == "__main__":
