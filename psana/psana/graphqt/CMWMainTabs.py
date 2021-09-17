@@ -124,8 +124,10 @@ class CMWMainTabs(QWidget):
             self.gui_win = H5VMain()
 
         elif tab_name == 'Calib':
-            from psana.graphqt.FMWTabs import FMWTabs
-            self.gui_win = FMWTabs()
+            from psana.graphqt.FMW1Main import FMW1Main
+            self.gui_win = FMW1Main()
+            #from psana.graphqt.FMWTabs import FMWTabs
+            #self.gui_win = FMWTabs()
 
         elif tab_name == 'Image':
             from psana.graphqt.IVMain import IVMain
