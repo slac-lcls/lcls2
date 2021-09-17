@@ -31,7 +31,7 @@ class DMQWMain(QWidget):
 
         parent = kwa.get('parent', None)
         kwa.setdefault('parent', None)
- 
+
         QWidget.__init__(self, parent)
 
         cp.dmqwmain = self
@@ -49,11 +49,9 @@ class DMQWMain(QWidget):
         self.wleft.setLayout(self.vbox1)
 
         self.hspl = QSplitter(Qt.Horizontal)
-        #self.hspl.addWidget(self.wlist)
         self.hspl.addWidget(self.wleft)
         self.hspl.addWidget(self.winfo)
         self.vbox = QVBoxLayout()
-        #self.vbox.addWidget(self.wctrl)
         self.vbox.addWidget(self.hspl)
         self.setLayout(self.vbox)
 
@@ -81,7 +79,7 @@ class DMQWMain(QWidget):
         self.winfo.layout().setContentsMargins(0,0,0,0)
         self.wctrl.layout().setContentsMargins(2,2,2,0)
         self.winfo.hbox.layout().setContentsMargins(2,2,2,0)
-        self.wctrl.setFixedHeight(60) # 26)
+        self.wctrl.setFixedHeight(60)
         spl_pos = 280
         self.wleft.setMinimumWidth(spl_pos)
         self.hspl.setSizes((spl_pos, self.size().width()-spl_pos,))
