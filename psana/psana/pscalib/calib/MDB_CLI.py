@@ -1,8 +1,7 @@
-#------------------------------
+
 """
 Created on 2018-02-23 by Mikhail Dubrovin
 """
-#------------------------------
 
 import numpy as np
 import logging
@@ -14,27 +13,26 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
 
 MODES = ('print', 'convert', 'deldoc', 'delcol', 'deldb', 'delall', 'add', 'get', 'export', 'import', 'test')
 
-#------------------------------
 
-class MDB_CLI :
+class MDB_CLI:
 
-    def __init__(self, parser) : 
+    def __init__(self, parser):
         self.unpack(parser)
         self.dispatcher()
 
 
-    def unpack(self, parser) :
+    def unpack(self, parser):
         """parser parameters:
-          -  host      
-          -  port      
+          -  host
+          -  port
           -  experiment
-          -  detector  
-          -  ctype     
-          -  run       
-          -  run_end       
+          -  detector
+          -  ctype
+          -  run
+          -  run_end
           -  time_stamp
           -  time_sec
-          -  version   
+          -  version
           -  iofname
           -  comment
           -  dbname
@@ -56,7 +54,7 @@ class MDB_CLI :
         self.defs = vars(parser.get_default_values())
         self.strloglev = kwargs.get('strloglev','DEBUG').upper()
 
-        if self.strloglev == 'DEBUG' :
+        if self.strloglev == 'DEBUG':
             #from psana.pyalgos.generic.Utils import print_kwargs, print_parser
             print(40*'_')
             gu.print_parser(parser)
@@ -64,7 +62,7 @@ class MDB_CLI :
             fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
 
 
-    def client(self) :
+    def client(self):
         kwargs = self.kwargs
         host  = kwargs.get('host',  None)
         port  = kwargs.get('port',  None)
@@ -75,21 +73,21 @@ class MDB_CLI :
         return mu.connect_to_server(host, port, user, upwd, ctout, stout)
 
 
-    def check_database(self, client, dbname) :
-        if mu.database_exists(client, dbname) : 
+    def check_database(self, client, dbname):
+        if mu.database_exists(client, dbname):
             return True
         logger.warning('Database "%s" is not available. See for deteals: cdb print'%(dbname))
         return False
 
 
-    def print_content(self) :
+    def print_content(self):
         dbname = mu.get_dbname(**self.kwargs)
         client = self.client()
         logger.info(mu.client_info(client, level=2) if dbname is None else
                     mu.database_info(client, dbname, level=3))
 
 
-    def convert(self) :
+    def convert(self):
         """Converts LCLS experiment calib directory to LCLS2 calibration database.
         """
         import psana.pscalib.calib.MDBConvertLCLS1 as cu
@@ -98,7 +96,7 @@ class MDB_CLI :
         cu.scan_calib_for_experiment(exp, **kwargs)
 
 
-    def delall(self) :
+    def delall(self):
         """FOR DEVELOPMENT: Deletes all databases with prefix in the name.
         """
         mode, kwargs = self.mode, self.kwargs
@@ -108,45 +106,45 @@ class MDB_CLI :
         logger.info('Databases before "%s":\n%s' % (mode, str(dbnames)))
         #confirm = kwargs.get('confirm', False)
         confirm = True
-        for dbname in mu.database_names(client) :
-            if prefix in dbname :
+        for dbname in mu.database_names(client):
+            if prefix in dbname:
                 logger.info('delete %s' % dbname)
-                if confirm : 
+                if confirm:
                     mu.delete_database(client, dbname)
- 
-        if confirm :
+
+        if confirm:
             logger.info('Databases after "%s" %s:\n%s' % (mode, dbname, str(mu.database_names(client))))
-        else : 
+        else:
             mu.request_confirmation()
 
 
-    def deldb(self) :
+    def deldb(self):
         """Deletes specified database.
         """
         mode, kwargs = self.mode, self.kwargs
         dbname = mu.get_dbname(**kwargs)
         client = self.client()
-        if not self.check_database(client, dbname) : return
+        if not self.check_database(client, dbname): return
         logger.info('Command mode "%s" database "%s"' % (mode, dbname))
         logger.info('Databases before:\n%s' % str(mu.database_names(client)))
 
-        if kwargs.get('confirm', False) :
+        if kwargs.get('confirm', False):
             mu.delete_database(client, dbname)
             logger.info('Databases after:\n%s' % str(mu.database_names(client)))
-        else :
+        else:
             mu.request_confirmation()
 
 
-    def delcol(self) :
+    def delcol(self):
         """Deletes specified collection in the database.
         """
         mode, kwargs = self.mode, self.kwargs
         dbname  = mu.get_dbname(**self.kwargs)
         client = self.client()
-        if not self.check_database(client, dbname) : return
+        if not self.check_database(client, dbname): return
 
         detname = kwargs.get('detector', None)
-        if detname is None :
+        if detname is None:
             logger.warning('%s needs in the collection name. Please specify the detector name.'%(mode))
         colname = detname
         db, fs = mu.db_and_fs(client, dbname)
@@ -155,39 +153,39 @@ class MDB_CLI :
         logger.info('Collections before "%s"'% str(colnames))
         logger.info(mu.database_fs_info(db, gap=''))
 
-        if not(colname in colnames) :
+        if not(colname in colnames):
             logger.warning('db "%s" does not have collection "%s"'% (db.name, str(colname)))
             return
 
-        if kwargs.get('confirm', False) : 
+        if kwargs.get('confirm', False):
             col = mu.collection(db, colname)
             mu.del_collection_data(col, fs) # delete data in fs associated with collection col
             mu.delete_collection_obj(col)
             logger.info('Collections after "%s"'% str(mu.collection_names(db)))
             logger.info(mu.database_fs_info(db, gap=''))
-        else : 
+        else:
             mu.request_confirmation()
 
 
-    def deldoc(self) :
+    def deldoc(self):
         """Deletes specified document in the database.
         """
         mode, kwargs = self.mode, self.kwargs
         dbname  = mu.get_dbname(**kwargs)
         client = self.client()
-        if not self.check_database(client, dbname) : return
+        if not self.check_database(client, dbname): return
 
         detname = kwargs.get('detector', None)
-        if detname is None :
+        if detname is None:
             logger.warning('%s needs in the collection name. Please specify the detector name.'%(mode))
         colname = detname
         db, fs = mu.db_and_fs(client, dbname)
         colnames = mu.collection_names(db)
 
-        if not(colname in colnames) : # mu.collection_exists(db, colname)
+        if not(colname in colnames): # mu.collection_exists(db, colname)
             logger.warning('db "%s" does not have collection "%s"'% (db.name, str(colname)))
             return
-            
+
         col = mu.collection(db,colname)
 
         logger.info('command mode: "%s" db: "%s" collection: "%s"'% (mode, db.name, str(colname)))
@@ -201,32 +199,32 @@ class MDB_CLI :
         confirm= kwargs.get('confirm',    False)
 
         query={'detector':detname}
-        if ctype != defs['ctype']    : query['ctype']    = ctype
-        if run   != defs['run']      : query['run']      = run
-        if vers  != defs['version']  : query['version']  = vers
-        #if tsec  != defs['time_sec'] : query['time_sec'] = tsec
-        if gu.is_in_command_line('-s', '--time_sec')   : query['time_sec'] = tsec 
-        if gu.is_in_command_line('-t', '--time_stamp') : query['time_stamp'] = tstamp 
+        if ctype != defs['ctype']   : query['ctype']    = ctype
+        if run   != defs['run']     : query['run']      = run
+        if vers  != defs['version'] : query['version']  = vers
+        #if tsec  != defs['time_sec']: query['time_sec'] = tsec
+        if gu.is_in_command_line('-s', '--time_sec')  : query['time_sec'] = tsec
+        if gu.is_in_command_line('-t', '--time_stamp'): query['time_stamp'] = tstamp
 
         logger.info('query: %s' % str(query))
 
         docs = mu.find_docs(col, query)
-        if docs is None or docs.count()==0 :
+        if docs is None or docs.count()==0:
             logger.warning('Can not find document for query: %s' % str(query))
             return
 
-        for i,doc in enumerate(docs) :
+        for i,doc in enumerate(docs):
             msg = '  deldoc %2d:'%i + doc['time_stamp'] + ' ' + str(doc['time_sec'])\
                 + ' %s'%doc['ctype'].ljust(16) + ' %4d'%doc['run'] + ' ' + str(doc['id_data'])
             logger.info(msg)
-            if confirm : 
+            if confirm:
                 mu.delete_document_from_collection(col, doc['_id'])
                 mu.del_document_data(doc, fs)
 
-        if not confirm : mu.request_confirmation()
+        if not confirm: mu.request_confirmation()
 
 
-    def add(self) :
+    def add(self):
         """Adds calibration constants to database from file.
         """
         kwa = self.kwargs
@@ -239,7 +237,7 @@ class MDB_CLI :
         mu.insert_calib_data(data, **kwa)
 
 
-    def get(self) :
+    def get(self):
         """Gets constans from DB and saves them in file.
         """
         mode, kwargs = self.mode, self.kwargs
@@ -262,37 +260,37 @@ class MDB_CLI :
         dbname = db_det if exp is None else db_exp
 
         client = self.client()
-        if not self.check_database(client, dbname) : return
+        if not self.check_database(client, dbname): return
 
         db, fs = mu.db_and_fs(client, dbname)
         colnames = mu.collection_names(db)
 
-        if not(colname in colnames) : # mu.collection_exists(db, colname)
+        if not(colname in colnames): # mu.collection_exists(db, colname)
             logger.warning('db "%s" does not have collection "%s"'% (db.name, str(colname)))
             return
-            
+
         col = mu.collection(db,colname)
 
         logger.debug('Search document in db "%s" collection "%s"' % (dbname,colname))
 
         doc = mu.find_doc(col, query)
-        if doc is None :
+        if doc is None:
             logger.warning('Can not find document for query: %s' % str(query))
             return
-            
+
         logger.debug('get doc:', doc)
 
         data = mu.get_data_for_doc(fs, doc)
-        if data is None :
+        if data is None:
             logger.warning('Can not load data for doc: %s' % str(doc))
             return
 
-        if prefix is None : prefix = mu.out_fname_prefix(**doc)
+        if prefix is None: prefix = mu.out_fname_prefix(**doc)
 
-        mu.save_doc_and_data_in_file(doc, data, prefix, control={'data' : True, 'meta' : True})
+        mu.save_doc_and_data_in_file(doc, data, prefix, control={'data': True, 'meta': True})
 
 
-    def host_port_dbname_fname(self) :
+    def host_port_dbname_fname(self):
         kwargs = self.kwargs
         host   = kwargs.get('host', None)
         port   = kwargs.get('port', None)
@@ -301,9 +299,9 @@ class MDB_CLI :
         return host, port, dbname, fname
 
 
-    def exportdb(self) :
+    def exportdb(self):
         """Exports database. Equivalent to: mongodump -d <dbname> -o <filename>
-           mongodump --host psanaphi105 --port 27017 --db calib-cxi12345 --archive=db.20180122.arc 
+           mongodump --host psanaphi105 --port 27017 --db calib-cxi12345 --archive=db.20180122.arc
         """
         host, port, dbname, fname = self.host_port_dbname_fname()
 
@@ -313,7 +311,7 @@ class MDB_CLI :
         mu.exportdb(host, port, dbname, fname)
 
 
-    def importdb(self) :
+    def importdb(self):
         """Imports database. Equivalent to: mongorestore -d <dbname> --archive <filename>
            mongorestore --archive cdb-2018-03-09T10-19-30-cdb-cxix25115.arc --db calib-cxi12345
         """
@@ -322,17 +320,17 @@ class MDB_CLI :
         mu.importdb(host, port, dbname, fname)
 
 
-    def test(self) :
+    def test(self):
         host, port, dbname, fname = self.host_port_dbname_fname()
         dbnames = mu.database_names(self.client())
         logger.info('dbnames: %s' % ', '.join(dbnames))
 
 
-    def _warning(self) :
+    def _warning(self):
         logger.warning('MDB_CLI: TBD for mode: %s' % self.mode)
 
 
-    def dispatcher(self) :
+    def dispatcher(self):
         mode = self.mode
         logger.debug('Mode: %s' % mode)
         if   mode == 'print'  : self.print_content()
@@ -346,19 +344,17 @@ class MDB_CLI :
         elif mode == 'export' : self.exportdb()
         elif mode == 'import' : self.importdb()
         elif mode == 'test'   : self.test()
-        else : logger.warning('Non-implemented command mode "%s"\n  Known modes: %s' % (mode,', '.join(MODES)))
+        else: logger.warning('Non-implemented command mode "%s"\n  Known modes: %s' % (mode,', '.join(MODES)))
 
-#------------------------------
 
-def cdb(parser) :
+def cdb(parser):
     """Calibration Data Base Command Line Interface
     """
     MDB_CLI(parser)
 
-#------------------------------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     import sys
     sys.exit('See example in app/cdb.py')
 
-#------------------------------
+# EOF
