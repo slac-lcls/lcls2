@@ -614,17 +614,19 @@ def docdic(data, dataid, **kwa):
     dic_extpars.setdefault('content', 'extended parameters dict->json->str')
     dic_extpars.setdefault('command', ' '.join(sys.argv))
     str_extpars = str(json.dumps(dic_extpars))
+    vers = kwa.get('version', None)
+    undef = 'undefined'
 
     doc = {
-          'experiment': kwa.get('experiment', None),
+          'experiment': kwa.get('experiment', undef),
           'run'       : kwa.get('run', 0),
           'run_end'   : kwa.get('run_end', 'end'),
-          'detector'  : kwa.get('detector', None),
-          'ctype'     : kwa.get('ctype', None),
-          'dtype'     : kwa.get('dtype', ''),
-          'time_sec'  : str(kwa.get('time_sec', None)),
-          'time_stamp': kwa.get('time_stamp', None),
-          'version'   : kwa.get('version', 'V2021-01-27'),
+          'detector'  : kwa.get('detector', undef),
+          'ctype'     : kwa.get('ctype', undef),
+          'dtype'     : kwa.get('dtype', undef),
+          'time_sec'  : str(kwa.get('time_sec', 1000000000)),
+          'time_stamp': kwa.get('time_stamp', '2001-09-09T01:46:40-0000'),
+          'version'   : vers if vers is not None else 'V2021-09-17',
           'comment'   : kwa.get('comment', 'no comment'),
           'uid'       : gu.get_login(),
           'host'      : gu.get_hostname(),
@@ -948,7 +950,12 @@ def importdb(host, port, dbname, fname, **kwa):
 
 def dict_from_data_string(s):
     import ast
-    d = ast.literal_eval(s) # retreive dict from str
+    try:
+        d = ast.literal_eval(s) # retreive dict from str
+    except Exception as err:
+        d = None
+        logger.error('ast.literal_eval("%s") err:\n%s' % (s,err))
+
     if not isinstance(d, dict):
         logger.debug('dict_from_data_string: literal_eval returns type: %s which is not "dict"' % type(d))
         return None
@@ -970,7 +977,7 @@ def object_from_data_string(s, doc):
 
     if data_type == 'str':
         data = s.decode()
-        if doc.get('ctype', None) in ('xtcav_lasingoff', 'xtcav_pedestals', 'lasingoffreference', 'pedestals'):
+        if doc.get('ctype', None) in ('xtcav_lasingoff', 'xtcav_pedestals', 'lasingoffreference'): # 'pedestals'):
             return dict_from_data_string(data)
         return data
 
