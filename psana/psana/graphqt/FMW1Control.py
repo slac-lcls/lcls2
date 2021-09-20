@@ -164,6 +164,7 @@ class FMW1Control(CMWControlBase):
             r = instr_exp_cvers_detname_ctype_runrange_from_calibpath(fname)
             if r is None: continue
             instrpath, exppath, cvers, detname, ctype, runrange = r
+            runbegin, runend = runrange.split('-') if '-' in runrange else ('1', 'end')
             # XcsEndstation.0:Epix100a.1 -> epix100a_test
             detname_lcls2 = detname.split(':')[-1].split('.')[0].lower() + '_test'
 
@@ -174,7 +175,7 @@ class FMW1Control(CMWControlBase):
             elif command == 'dcs':
                 #dcs print      -e mfxn8316 -r 11 -d Epix100a
                 #dcs add        -e mfxn8316 -r 11 -d Epix100a -t geometry     -f geo.txt -m "my geo" -c ./calib
-                cmd += 'dcs add -e %s -d %s -t %s -r 0 -f %s    -T 1500000000 -c ./calib;' % (expto, detname, ctype, fname)
+                cmd += 'dcs add -e %s -d %s -t %s -r 1 -f %s    -T 1500000000 -c ./calib;' % (expto, detname, ctype, fname)
 
             elif command == 'cdb':
                 #cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /reg/g/.../calib-amox27716-r50-opal-pop-rbfs-xiangli.pkl -i pkl
