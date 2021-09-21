@@ -41,7 +41,7 @@ Usage::
     gu.print_parsed_path(path)
 
     arr  = gu.load_textfile(path)
-    gu.save_textfile(text, path, mode='w') # mode: 'w'-write, 'a'-append 
+    gu.save_textfile(text, path, mode='w') # mode: 'w'-write, 'a'-append
     gu.set_file_access_mode(fname, mode=0o777)
 
     jo = gu.load_json(fname)
