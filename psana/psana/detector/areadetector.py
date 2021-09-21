@@ -58,7 +58,6 @@ from psana.detector.UtilsMask import CC, DTYPE_MASK, DTYPE_STATUS, mask_edges, m
 
 from amitypes import Array2d, Array3d
 
-#----
 
 class AreaDetector(DetectorImpl):
 
@@ -104,10 +103,10 @@ class AreaDetector(DetectorImpl):
 
     def _segment_numbers(self,evt):
         """ Returns dense 1-d numpy array of segment indexes.
-        from dict self._segments(evt)    
+        from dict self._segments(evt)
         """
         segs = self._segments(evt)
-        if segs is None: 
+        if segs is None:
             logger.debug('self._segments(evt) is None')
             return None
         return np.array(sorted(segs.keys()), dtype=np.uint16)
@@ -166,11 +165,11 @@ class AreaDetector(DetectorImpl):
             geotxt, meta = self._det_geotxt_and_meta()
             if geotxt is None:
                 logger.debug('_det_geo geotxt is None')
-                return None            
+                return None
             self._geo_ = GeometryAccess()
             self._geo_.load_pars_from_str(geotxt)
         return self._geo_
-        
+
 
     def _pixel_coord_indexes(self, **kwa):
         """
@@ -180,7 +179,7 @@ class AreaDetector(DetectorImpl):
         if geo is None:
             logger.debug('geo is None')
             return None
-            
+
         return geo.get_pixel_coord_indexes(\
             pix_scale_size_um  = kwa.get('pix_scale_size_um',None),\
             xy0_off_pix        = kwa.get('xy0_off_pix',None),\
@@ -243,7 +242,7 @@ class AreaDetector(DetectorImpl):
             self.imgind_to_seg_row_col = image_of_pixel_seg_row_col(img_pix_ascend_ind, arr_shape)
             logger.debug('statistics_of_holes.imgind_to_seg_row_col time (sec) = %.6f' % (time()-t0_sec)) # 47ms
             logger.debug(info_ndarr(self.imgind_to_seg_row_col, ' imgind_to_seg_row_col '))
-    
+
             if False:
                 s = ' imgind_to_seg_row_col '
                 # (n,352,384)
@@ -287,12 +286,11 @@ class AreaDetector(DetectorImpl):
             True/False: fill empty bin with minimal intensity of four neares neighbors/ do not fill.
 
         vbase: float, optional, default: 0
-            value substituted for all image map bins without entry from data.  
+            value substituted for all image map bins without entry from data.
 
         Returns
         -------
         image: np.array, ndim=2
-        
         """
         logger.debug('in AreaDretector.image')
         if any(v is None for v in self._pix_rc_):
@@ -309,7 +307,7 @@ class AreaDetector(DetectorImpl):
         if data is None:
             logger.debug('AreaDetector.image calib returns None')
             return None
-            
+
         #logger.debug(info_ndarr(data, 'data ', last=3))
 
         rows, cols = self._pix_rc_
@@ -326,7 +324,7 @@ class AreaDetector(DetectorImpl):
 
     def _shape_as_daq(self):
         peds = self._pedestals()
-        if peds is None: 
+        if peds is None:
             logger.debug('In _shape_as_daq pedestals are None, can not define daq data shape')
             return None
         return peds.shape if peds.ndim<4 else peds.shape[-3:]
@@ -390,25 +388,25 @@ class AreaDetector(DetectorImpl):
         """Returns per-pixel array with mask values (per-pixel product of all requested masks).
            Parameters
            - calib    : bool - True/False = on/off mask from calib directory.
-           - status   : bool - True/False = on/off mask generated from calib pixel_status. 
-           - edges    : bool - True/False = on/off mask of edges. 
-           - neighbors: bool - True/False = on/off mask of neighbors. 
-           - kwa      : dict - additional parameters passed to low level methods (width,...) 
+           - status   : bool - True/False = on/off mask generated from calib pixel_status.
+           - edges    : bool - True/False = on/off mask of edges.
+           - neighbors: bool - True/False = on/off mask of neighbors.
+           - kwa      : dict - additional parameters passed to low level methods (width,...)
                         for edges: edge_rows=1, edge_cols=1, center_rows=0, center_cols=0, dtype=DTYPE_MASK
                         for status of epix10ka: grinds=(0,1,2,3,4)
            Returns
            - np.array - per-pixel mask values 1/0 for good/bad pixels.
         """
-        dtype = kwa.get('dtype', DTYPE_MASK) 
+        dtype = kwa.get('dtype', DTYPE_MASK)
         mask = self._mask_calib_or_default(dtype) if calib else self._mask_default(dtype)
-        if status: mask = merge_masks(mask, self._mask_from_status(**kwa)) 
+        if status: mask = merge_masks(mask, self._mask_from_status(**kwa))
         if edges: mask = merge_masks(mask, self._mask_edges(**kwa))
         #if neighbors: mask = merge_masks(mask, self._mask_neighbors(self, **kwa))
         return mask
 
 
     def _mask_comb(self, **kwa):
-        mbits=kwa.get('mbits', 1)      
+        mbits=kwa.get('mbits', 1)
         return self._mask(\
           calib     = mbits & 1,\
           status    = mbits & 2,\
@@ -416,10 +414,9 @@ class AreaDetector(DetectorImpl):
           neighbors = mbits & 8,\
           **kwa)
 
-#----
 
 if __name__ == "__main__":
     import sys
     sys.exit('See example in test_%s if available...' % sys.argv[0].split('/')[-1])
 
-#----
+# EOF
