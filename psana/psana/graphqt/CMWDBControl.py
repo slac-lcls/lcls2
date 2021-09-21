@@ -39,19 +39,19 @@ class CMWDBControl(CMWControlBase):
         self.lab_port = QLabel('Port:')
         self.lab_docs = QLabel('Docs:')
 
-        self.cmb_host = QComboBox(self)        
+        self.cmb_host = QComboBox(self)
         self.cmb_host.addItems(cp.list_of_hosts)
         self.cmb_host.setCurrentIndex(cp.list_of_hosts.index(cp.cdb_host.value()))
 
-        self.cmb_port = QComboBox(self)        
+        self.cmb_port = QComboBox(self)
         self.cmb_port.addItems(cp.list_of_str_ports)
         self.cmb_port.setCurrentIndex(cp.list_of_str_ports.index(str(cp.cdb_port.value())))
 
-        self.cmb_docw = QComboBox(self)        
+        self.cmb_docw = QComboBox(self)
         self.cmb_docw.addItems(cp.list_of_doc_widgets)
         self.cmb_docw.setCurrentIndex(cp.list_of_doc_widgets.index(str(cp.cdb_docw.value())))
 
-        self.cmb_level = QComboBox(self)        
+        self.cmb_level = QComboBox(self)
         self.cmb_level.addItems(self.log_level_names)
         self.cmb_level.setCurrentIndex(self.log_level_names.index(cp.log_level.value()))
 
@@ -75,10 +75,10 @@ class CMWDBControl(CMWControlBase):
              self.but_test
         )
 
-        self.edi_db_filter = QLineEdit(cp.cdb_filter.value()) 
-        self.edi_db_filter.setPlaceholderText('DB filter')       
+        self.edi_db_filter = QLineEdit(cp.cdb_filter.value())
+        self.edi_db_filter.setPlaceholderText('DB filter')
 
-        self.hbox = QHBoxLayout() 
+        self.hbox = QHBoxLayout()
         self.hbox.addWidget(self.edi_db_filter)
         self.hbox.addWidget(self.but_exp_col)
         self.hbox.addWidget(self.but_selm)
@@ -91,7 +91,7 @@ class CMWDBControl(CMWControlBase):
         self.hbox.addWidget(self.but_del)
         self.hbox.addWidget(self.but_save)
         self.hbox.addWidget(self.but_view)
-        self.hbox.addStretch(1) 
+        self.hbox.addStretch(1)
         self.hbox.addWidget(self.but_test)
         self.hbox.addWidget(self.lab_docs)
         self.hbox.addWidget(self.cmb_docw)
@@ -113,7 +113,7 @@ class CMWDBControl(CMWControlBase):
         self.but_del    .clicked.connect(self.on_but_clicked)
         self.but_docs   .clicked.connect(self.on_but_clicked)
         self.but_selm   .clicked.connect(self.on_but_clicked)
- 
+
         self.but_test.clicked .connect(self.on_but_clicked)
         self.but_test.released.connect(self.on_but_released)
         self.but_test.pressed .connect(self.on_but_pressed)
@@ -159,9 +159,9 @@ class CMWDBControl(CMWControlBase):
         #self.but_test.setChecked(True)
         #self.but_test.setFlat(True)
         #self.but_test.setVisible(False)
-        #self.but_test.setFixedWidth(100) 
-        #self.but_test.setFixedHeight(100) 
-        #self.but_test.setIconSize(QSize(96,96)) 
+        #self.but_test.setFixedWidth(100)
+        #self.but_test.setFixedHeight(100)
+        #self.but_test.setIconSize(QSize(96,96))
 
         self.layout().setContentsMargins(10,0,10,0) # L,U,R,D
         self.setMinimumWidth(500)
@@ -307,14 +307,14 @@ class CMWDBControl(CMWControlBase):
 
     def on_cmb_host_changed(self):
         selected = self.cmb_host.currentText()
-        cp.cdb_host.setValue(selected) 
+        cp.cdb_host.setValue(selected)
         logger.info('on_cmb_host_changed - selected: %s' % selected)
         self.on_edi_db_filter_finished() # regenerate tree model
 
 
     def on_cmb_port_changed(self):
         selected = self.cmb_port.currentText()
-        cp.cdb_port.setValue(int(selected)) 
+        cp.cdb_port.setValue(int(selected))
         logger.info('on_cmb_port_changed - selected: %s' % selected)
         self.on_edi_db_filter_finished() # regenerate tree model
 
@@ -349,7 +349,7 @@ class CMWDBControl(CMWControlBase):
 
 
     def delete_selected_items(self):
-        """On press of Delete button deside what to delete 
+        """On press of Delete button deside what to delete
            dbs and collections from the tree or documents from the list
         """
         if   cp.last_selection == cp.DB_COLS: self.delete_selected_items_db_cols()
@@ -405,10 +405,10 @@ class CMWDBControl(CMWControlBase):
         del_mode = cp.COLS if all([p is not None for n,p in list_name_parent]) else cp.DBS
 
         list_db_names = [] # list of DB names
-        dic_db_cols = {}   # dict {DBname: list of collection names} 
+        dic_db_cols = {}   # dict {DBname: list of collection names}
         msg = 'Delete %s:\n  ' % del_mode
 
-        if del_mode == cp.DBS: 
+        if del_mode == cp.DBS:
             list_db_names = [n for n,p in list_name_parent if p is None]
             msg += '\n  '.join(list_db_names)
         else:
@@ -468,7 +468,7 @@ class CMWDBControl(CMWControlBase):
 
         path0 = '.'
         path = qwu.get_open_fname_through_dialog_box(self, path0, 'Select file with DB to add', filter='*')
-        if path is None: 
+        if path is None:
             logger.warning('DB file selection is cancelled')
             return
 
@@ -513,12 +513,12 @@ class CMWDBControl(CMWControlBase):
             if wdocs is None: return
             cp.cmwdbdocs.show_documents(wdocs.dbname, wdocs.colname, force_update=True)
 
-        else: 
+        else:
             logger.warning('Uploading of calibration constants in DB is cancelled')
 
 
     def save_selected_item(self):
-        """On press of Delete button deside what to delete 
+        """On press of Delete button deside what to delete
            dbs and collections from the tree or documents from the list
         """
         if   cp.last_selection == cp.DB_COLS: self.save_db()
@@ -552,7 +552,7 @@ class CMWDBControl(CMWControlBase):
         path0 = '.'
         resp = qwu.get_existing_directory_through_dialog_box(self, path0, title='Select directory for DB files')
 
-        if resp is None: 
+        if resp is None:
             logger.warning('Saving of DBs is cancelled')
             return
 
@@ -585,7 +585,7 @@ class CMWDBControl(CMWControlBase):
             dbu.save_doc_and_data_in_file(doc, data, prefix, control)
             cp.last_selected_fname.setValue('%s.npy' % prefix)
 
-        else: 
+        else:
             logger.warning('Command "Save" is cancelled')
 
 
@@ -639,10 +639,10 @@ class CMWDBControl(CMWControlBase):
         logger.debug('on_but_toggled "%s"' % but.text())
 
 
-    def set_logger_level(self): 
+    def set_logger_level(self):
         logger.debug('In set_logger_level')
 
- 
+
 if __name__ == "__main__":
 
     os.environ['LIBGL_ALWAYS_INDIRECT'] = '1'
