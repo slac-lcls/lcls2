@@ -44,7 +44,7 @@ class CMConfigParameters(PSConfigParameters):
     DBS     = 'DBs'
     cc      = cc
     kwargs  = {'webint':True, 'loglevel':'INFO'}
- 
+
     def __init__(self, fname=None):
         """fname: str - the file name with configuration parameters, if not specified then use default.
         """
@@ -59,7 +59,8 @@ class CMConfigParameters(PSConfigParameters):
         self.readParametersFromFile()
         #self.printParameters()
 
-        self.list_of_hosts = ['psanagpu114', 'psanaphi105', 'psanaphi106', 'psanaphi107','psdbdev01']
+        self.list_of_hosts = ['psdb01','psdb02','psdb03','psdb04',\
+           'psanagpu114', 'psanaphi105', 'psanaphi106', 'psanaphi107','psdbdev01']
         self.list_of_hosts.append('psdb-dev')
 
         self.list_of_ports = (27017, 27018, 27019, 27020, 27021, 9306, 9307, 9308)
