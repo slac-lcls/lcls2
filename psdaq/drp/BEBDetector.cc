@@ -154,9 +154,13 @@ unsigned BEBDetector::configure(const std::string& config_alias,
     char* buffer = new char[m_para->maxTrSize];
     Xtc& jsonxtc = *new (buffer) Xtc(TypeId(TypeId::Parent, 0));
 
+    logging::debug("PyList_Check");
     if (PyList_Check(mybytes)) {
+        logging::debug("PyList_Check true");
         for(unsigned seg=0; seg<PyList_Size(mybytes); seg++) {
+            logging::debug("seg %d",seg);
             PyObject* item = PyList_GetItem(mybytes,seg);
+            logging::debug("item %p",item);
             NamesId namesId(nodeId,ConfigNamesIndex+seg);
             if (Pds::translateJson2Xtc( item, jsonxtc, namesId ))
                 return -1;

@@ -7,6 +7,7 @@
 #include "AreaDetector.hh"
 #include "Digitizer.hh"
 #include "EpixQuad.hh"
+#include "EpixHR2x2.hh"
 #include "Opal.hh"
 #include "Wave8.hh"
 #include "psdaq/service/MetricExporter.hh"
@@ -115,6 +116,7 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     f.register_type<AreaDetector>("cspad");
     f.register_type<Digitizer>   ("hsd");
     f.register_type<EpixQuad>    ("epixquad");
+    f.register_type<EpixHR2x2>   ("epixhr2x2");
     f.register_type<Opal>        ("opal");
     f.register_type<TimeTool>    ("tt");
     f.register_type<TimingSystem>("ts");

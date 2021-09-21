@@ -26,6 +26,7 @@ target_link_libraries(drpbase
 add_executable(drp
     AreaDetector.cc
     Digitizer.cc
+    EpixHR2x2.cc
     EpixQuad.cc
     TimingSystem.cc
     TimeTool.cc

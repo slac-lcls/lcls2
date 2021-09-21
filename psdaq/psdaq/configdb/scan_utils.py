@@ -1,3 +1,6 @@
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
+
 #
 #  scan_utils.py
 #
@@ -15,7 +18,13 @@ def copy_config_entry(d,old,key):
         else:
             d[k] = {}
             d = d[k]
-    d[keys[-1]] = o[keys[-1]]
+    try:
+        d[keys[-1]] = o[keys[-1]]
+    except:
+        pp.pprint(old)
+        pp.pprint(d)
+        print('Caught exception on {}'.format(key))
+        raise KeyError(keys[-1])
 
 def update_config_entry(r,old,update):
     # Still need special handling for enums
