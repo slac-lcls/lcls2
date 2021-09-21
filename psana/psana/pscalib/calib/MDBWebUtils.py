@@ -94,7 +94,7 @@ def request(url, query=None):
     s = 'get url: %s query: %s\n  response status: %s status_code: %s reason: %s'%\
         (url, str(query), r.ok, r.status_code, r.reason)
     s += '\nTry command: curl -s "%s"' % url
-    logger.warning(s)
+    logger.debug(s)
     return None
 
 
