@@ -832,11 +832,12 @@ def merge_panel_gain_ranges(dir_ctype, panel_id, ctype, tstamp, shape, dtype, of
     nda = np.stack(tuple(lstnda))
     logger.debug('merge_panel_gain_ranges - merged with shape %s' % str(nda.shape))
 
-    nda.shape = (7, 1, 352, 384)
+    shape_merged = (7, 1) + shape # (7, 1, 352, 384)
+    nda.shape = shape_merged
     logger.debug(info_ndarr(nda, 'merged %s'%ctype))
     save_ndarray_in_textfile(nda, ofname, fac_mode, fmt)
 
-    nda.shape = (7, 1, 352, 384) # because save_ndarray_in_textfile changes shape
+    nda.shape = shape_merged # (7, 1, 352, 384) because save_ndarray_in_textfile changes shape
     return nda
 
 
