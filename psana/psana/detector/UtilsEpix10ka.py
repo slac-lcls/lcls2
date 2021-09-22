@@ -32,7 +32,7 @@ Usage::
 This software was developed for the LCLS project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
-Created on 2020-12-03 by Mikhail Dubrovin for LCLS2 from LCLS1 
+Created on 2020-12-03 by Mikhail Dubrovin for LCLS2 from LCLS1
 """
 
 import os
@@ -46,7 +46,6 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
 from psana.detector.UtilsMask import merge_masks, DTYPE_MASK
 from psana.detector.UtilsCommonMode import common_mode_cols,\
   common_mode_rows_hsplit_nbanks, common_mode_2d_hsplit_nbanks
-#----
 
 GAIN_MODES    = ['FH','FM','FL','AHL-H','AML-M','AHL-L','AML-L']
 GAIN_MODES_IN = ['FH','FM','FL','AHL-H','AML-M']
@@ -56,7 +55,6 @@ B04 =    0o20 #    16 or 1<<4   (5-th bit starting from 1)
 B05 =    0o40 #    32 or 1<<5   (6-th bit starting from 1)
 M14 =  0x3fff # 16383 or (1<<14)-1 - 14-bit mask
 
-#----
 
 class Storage:
     def __init__(self):
@@ -71,17 +69,17 @@ dic_store = {} # {det.name:Storage()} in stead of singleton
 #----
 
 def segment_indices_epix10ka_detector(det):
-    """Returns list det.raw._sorted_segment_ids, e.g. [0, 1, 2, 3]""" 
+    """Returns list det.raw._sorted_segment_ids, e.g. [0, 1, 2, 3]"""
     return det.raw._sorted_segment_ids
 
 
 def fullname_epix10ka_detector(det):
-    """Returns epix10ka detector full name, e.g. 
+    """Returns epix10ka detector full name, e.g.
        epix_3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000\
            _3926196238-0174824449-0268435478-0000000000-0000000000-0000000000-0000000000\
            _3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000\
            _3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000
-    """    
+    """
     return det.raw._uniqueid
 
 
@@ -97,7 +95,7 @@ def segment_ids_epix10ka_detector(det):
 
 def config_object_epix10ka(det, detname=None):
     """Returns [dict]={<seg-index>:<cob>} of configuration objects for detector with optional name.
-    """    
+    """
     _detname = det.raw._det_name if detname is None else detname
     for config in det._configs:
         if not _detname in config.__dict__:
@@ -109,7 +107,7 @@ def config_object_epix10ka(det, detname=None):
 
 def config_object_epix10ka_raw(det_raw):
     """Returns [dict]={<seg-index>:<cob>} of configuration objects for det.raw
-    """    
+    """
     logger.debug('det_raw._seg_configs(): ' + str(det_raw._seg_configs()))
     return det_raw._seg_configs()
 
@@ -143,7 +141,7 @@ def cbits_config_epix10ka(cob):
 
     #t0_sec = time()
 
-    # begin to create array of control bits 
+    # begin to create array of control bits
     #nasics, narows, nacols = pca.shape
     #seg_shape = (narows*2, nacols*2) # (352, 384)
 
@@ -168,7 +166,7 @@ def cbits_config_epix10ka(cob):
     np.bitwise_and(cbits,12,out=cbits) # 0o14 (bin:1100) # 0.000135 sec
 
     #logger.debug('TIME for cbits composition = %.6f sec' % (time()-t0_sec))
-    #logger.debug(info_ndarr(cbits,'cbits:'))    
+    #logger.debug(info_ndarr(cbits,'cbits:'))
     #exit('TEST EXIT')
 
     # add trbit
@@ -189,8 +187,8 @@ def cbits_config_epix10ka_any(dcfg):
     #      scob = v.config
     #      logger.debug('YYY dcfg[0].config.trbit: %s' % (k,str(dcfg[0].config.trbit))) # [1 1 1 1]
     #      logger.debug(info_ndarr(scob.asicPixelConfig, '...[%d].config.asicPixelConfig: '%k))
- 
-    #for k,v in dcfg.items(): 
+
+    #for k,v in dcfg.items():
     #    print('AAAA dir(k)', dir(k))
     #    print('AAAA dir(v)', dir(v))
 
@@ -200,12 +198,12 @@ def cbits_config_epix10ka_any(dcfg):
 
 
 def cbits_total_epix10ka_any(dcfg, data=None):
-    """Returns array of control bits shape=(<number-of-segments>, 352, 384) 
+    """Returns array of control bits shape=(<number-of-segments>, 352, 384)
        from any config object and data array.
     """
     cbits = cbits_config_epix10ka_any(dcfg)
     #logger.debug(info_ndarr(cbits, 'cbits', first, last))
-    
+
     if cbits is None: return None
 
     #----
@@ -230,7 +228,7 @@ def cbits_total_epix10ka_any(dcfg, data=None):
 
 
 def gain_maps_epix10ka_any(dcfg, data=None):
-    """Returns maps of gain groups shape=(<number-of-segments>, 352, 384) 
+    """Returns maps of gain groups shape=(<number-of-segments>, 352, 384)
     """
     cbits = cbits_total_epix10ka_any(dcfg, data)
     if cbits is None: return None
@@ -245,18 +243,18 @@ def gain_maps_epix10ka_any(dcfg, data=None):
     #   V / M   mask
     #    V / T  test       gain range index
     #     V /             /  in calib files
-    #      V             V 
-    # x111xx =28 -  FH_H 0 
-    # x011xx =12 -  FM_M 1 
+    #      V             V
+    # x111xx =28 -  FH_H 0
+    # x011xx =12 -  FM_M 1
     # xx10xx = 8 -  FL_L 2
     # 0100xx =16 - AHL_H 3
     # 0000xx = 0 - AML_M 4
     # 1100xx =48 - AHL_L 5
     # 1000xx =32 - AML_L 6
     #------
-    # 111100 =60 - cbitsM60 - mask 
-    # 011100 =28 - cbitsM28 - mask 
-    # 001100 =12 - cbitsM12 - mask 
+    # 111100 =60 - cbitsM60 - mask
+    # 011100 =28 - cbitsM28 - mask
+    # 001100 =12 - cbitsM12 - mask
     #------
 
     cbitsM60 = cbits & 60 # control bits masked by configuration 3-bit-mask
@@ -273,7 +271,7 @@ def gain_maps_epix10ka_any(dcfg, data=None):
     gr6 = (cbitsM60 == 32)
 
     #first = 10000; logger.debug(info_gain_mode_arrays((gr0, gr1, gr2, gr3, gr4, gr5, gr6), first, first+5))
-        
+
     return gr0, gr1, gr2, gr3, gr4, gr5, gr6
 
 
@@ -418,7 +416,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
         logger.info('create new store for %s' % det_raw._det_name)
         store = dic_store[det_raw._det_name] = Storage()
 
-        # do ONCE this initialization 
+        # do ONCE this initialization
         logger.debug(info_ndarr(raw,  '\n  raw ')\
                     +info_ndarr(gain, '\n  gain')\
                     +info_ndarr(peds, '\n  peds'))
@@ -521,7 +519,6 @@ def map_gain_range_index(det_raw, evt, **kwa):
 
     return np.select(gmaps, (0, 1, 2, 3, 4, 5, 6), default=10)
 
-#--------------------
 
 calib_epix10ka = calib_epix10ka_any
 
