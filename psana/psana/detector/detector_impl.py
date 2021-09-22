@@ -12,7 +12,7 @@ class MissingDet:
         pass
     def __getattr__(self, name):
         """ Returns itself recursively """
-        return MissingDet() 
+        return MissingDet()
     def __iter__(self):
         return self
     def __next__(self):
@@ -28,16 +28,16 @@ class DetectorImpl(object):
             var_name    = None):
         self._det_name          = det_name
         self._drp_class_name    = drp_class_name
-        
+
         # Both configs and calibconst are for only this detector
-        self._configs           = configinfo.configs 
-        self._calibconst        = calibconst 
+        self._configs           = configinfo.configs
+        self._calibconst        = calibconst
         self._sorted_segment_ids= configinfo.sorted_segment_ids
         self._uniqueid          = configinfo.uniqueid
         self._dettype           = configinfo.dettype
         self._env_store         = env_store
-        self._var_name          = var_name    
-    
+        self._var_name          = var_name
+
     def _seg_configs(self):
         """
         Gather up all the segment configs into an easier-to-use dictionary
@@ -93,7 +93,7 @@ class DetectorImpl(object):
     def _add_fields(self):
         for config in self._configs:
             if not hasattr(config,'software'): continue
-            
+
             seg      = getattr(config.software,self._det_name)
             seg_dict = getattr(seg[0],self._drp_class_name)
             attrs    = [attr for attr in vars(seg_dict) if not (attr=='software' or attr=='version')]
