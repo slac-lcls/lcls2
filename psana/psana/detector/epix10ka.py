@@ -3,18 +3,18 @@
 """
 import numpy as np
 from amitypes import Array2d
-from psana.detector.epix10ka_base import epix10ka_base, logging
+from psana.detector.epix_base import epix_base, logging
 logger = logging.getLogger(__name__)
 
-class epix10k_raw_0_0_1(epix10ka_base):
+class epix10k_raw_0_0_1(epix_base):
     def __init__(self, *args, **kwargs):
         logger.debug('epix10k_raw_0_0_1.__init__')
-        epix10ka_base.__init__(self, *args, **kwargs)
+        epix_base.__init__(self, *args, **kwargs)
 
 
-class epix10ka_raw_2_0_1(epix10ka_base):
+class epix10ka_raw_2_0_1(epix_base):
     def __init__(self, *args, **kwargs):
-        epix10ka_base.__init__(self, *args, **kwargs)
+        epix_base.__init__(self, *args, **kwargs)
     def _array(self, evt) -> Array2d:
         f = None
         segs = self._segments(evt)
