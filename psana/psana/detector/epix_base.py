@@ -1,3 +1,4 @@
+
 """
 Data access BASIC METHODS for composite detectors made of epix10ka panels
 =========================================================================
@@ -25,7 +26,6 @@ from psana.detector.UtilsMask import merge_status
 from psana.pscalib.geometry.SegGeometryEpix10kaV1 import epix10ka_one as seg
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 
-#----
 
 class epix_base(AreaDetector):
 
@@ -44,9 +44,7 @@ class epix_base(AreaDetector):
 
 
     def _gain_range_index(self, evt, **kwa):
-        """
-        Returns array (shaped as raw) per pixel gain range index or None.
-        """
+        """Returns array (shaped as raw) per pixel gain range index or None."""
         return map_gain_range_index(self, evt, **kwa)
 
 
@@ -93,20 +91,6 @@ class epix_base(AreaDetector):
         logger.info(info_ndarr(mask, '_mask_edges '))
         return mask
 
-
-    # example of some possible common behavior
-    #def _common_mode(self, **kwargs):
-    #    pass
-
-    #def raw(self,evt):
-    #    data = {}
-    #    segments = self._segments(evt)
-    #    if segments is None: return None
-    #    for segment,val in segments.items():
-    #        data[segment]=val.raw
-    #    return data
-
-#----
 
 if __name__ == "__main__":
     import sys
