@@ -1,3 +1,4 @@
+
 """
 Data access BASIC METHODS for opal detector
 ===========================================
@@ -19,15 +20,14 @@ from amitypes import Array2d, Array3d
 import logging
 logger = logging.getLogger(__name__)
 
-from psana.detector.areadetector import AreaDetector, np # DTYPE_MASK, DTYPE_STATUS
-from psana.detector.UtilsAreaDetector import arr3d_from_dict #, dict_from_arr3d,...
+from psana.detector.areadetector import AreaDetector, np
+from psana.detector.UtilsAreaDetector import arr3d_from_dict
 from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, divide_protected, info_ndarr
-#----
 
 class opal_base(AreaDetector):
 
     def __init__(self, *args, **kwa):
-        logger.debug('opal_base.__init__') # self.__class__.__name__
+        logger.debug('opal_base.__init__')
         AreaDetector.__init__(self, *args, **kwa)
 
 
@@ -40,9 +40,7 @@ class opal_base(AreaDetector):
 
 
     def calib(self, evt, **kwa) -> Array3d:
-        """
-        Returns calibrated data array.
-        """
+        """Returns calibrated data array."""
         logger.debug('opal_base.calib')
 
         dtype = kwa.get('dtype', np.float32)
@@ -72,7 +70,6 @@ class opal_base(AreaDetector):
         arr = self.calib(evt, **kwa) if nda is None else nda
         return arr if arr.ndim==2 else reshape_to_2d(arr)
 
-#----
 
 if __name__ == "__main__":
     import sys
