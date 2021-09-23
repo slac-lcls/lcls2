@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-#----
+
 import os
 import sys
-from time import time    
+from time import time
 import json
 
 from psana.detector.Utils import info_dict, info_command_line, info_namespace
@@ -30,7 +30,6 @@ USAGE = '\n  %s -d <detector> -e <experiment> -r <run-number(s)> [kwargs]' % SCR
       + '\n  %s -d epixquad -f /cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0086-s001-c000.xtc2' % SCRNAME\
       + '\n  %s -d tmoopal -e tmoc00118 -r 123 -td' % SCRNAME\
       + '\nHELP: %s -h' % SCRNAME
-#----
 
 def ds_run_det(args):
 
@@ -67,7 +66,7 @@ def selected_record(nrec):
 
 def info_det_evt(det, evt, ievt):
     return '  Event %05d %s '% (ievt, 'detector is None' if det is None else info_ndarr(det.raw.raw(evt), 'raw '))
- 
+
 
 def loop_run_step_evt(args):
   """Data access example for confluence
@@ -87,7 +86,7 @@ def loop_run_step_evt(args):
   if do_loopruns:
     for irun,run in enumerate(ds.runs()):
       print('\n==== %02d run: %d exp: %s detnames: %s' % (irun, run.runnum, run.expt, ','.join(run.detnames)))
-    
+
       if not do_loopsteps: continue
       print('%s detector object' % args.detname)
       det = None if args.detname is None else run.Detector(args.detname)
@@ -112,11 +111,13 @@ def loop_run_step_evt(args):
           if segs is None:
              segs = det.raw._segment_numbers(evt) if det is not None else None
              print('  Event %05d %s     ' % (ievt, info_ndarr(segs,'segments')))
+             raw = det.raw.raw(evt)
+             print(info_ndarr(raw,'    raw.raw'))
              #print('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
              if dcfg is not None:
                s = '    gain mode fractions for: FH       FM       FL'\
                    '       AHL-H    AML-M    AHL-L    AML-L\n%s' % (29*' ')
-               print(ue.info_pixel_gain_mode_fractions(dcfg, data=det.raw.raw(evt), msg=s))
+               print(ue.info_pixel_gain_mode_fractions(dcfg, data=raw, msg=s))
 
           print(info_det_evt(det, evt, ievt), end='\r')
         print(info_det_evt(det, evt, ievt), end='\n')
@@ -136,8 +137,8 @@ def do_main():
     #?????defs = vars(parser.parse_args([])) # dict of defaults only
 
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
-    fmt = '[%(levelname).1s] %(name)s %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
     #logging.basicConfig(filename='log.txt', filemode='w', format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
+    fmt = '[%(levelname).1s] %(name)s %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
     logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
 
     print('command line: %s' % info_command_line())
@@ -184,10 +185,8 @@ def argument_parser():
 
     return parser
 
-#----
-
 if __name__ == "__main__":
     do_main()
-    exit('End of %s'%SCRNAME)
+    sys.exit('End of %s'%SCRNAME)
 
-#---- EOF
+# EOF
