@@ -1,3 +1,4 @@
+
 """
     Wrapper for graphical utils.
 
@@ -21,7 +22,6 @@ logger = logging.getLogger(__name__)
 import numpy as np
 import psana.pyalgos.generic.Graphics as gr
 #from psana.pyalgos.generic.NDArrUtils import info_ndarr
-#----
 
 def arr_median_limits(arr, amin=None, amax=None, nneg=None, npos=None, fraclo=0.05, frachi=0.95):
     """ returns tuple of intensity limits (amin, amax) evaluated from arr or passed directly.
@@ -171,7 +171,7 @@ class flexhist(flexbase):
 
 
     def axtitle(self, title=''):
-        gr.add_title_labels_to_axes(self.axhi, title=title, fstit=10) 
+        gr.add_title_labels_to_axes(self.axhi, title=title, fstit=10)
          #, xlabel=None, ylabel=None, fslab=14, fstit=20, color='k')
 
 
@@ -250,7 +250,7 @@ class fleximagespec(flexbase):
              'label'      : kwa.get('label', ''),\
              'orientation': kwa.get('orientation',u'horizontal'),\
             }
- 
+
         #self.his = gr.hist(self.axhi, nda, **kwh)
         self.his = pp_hist(self.axhi, nda.ravel(), **kwh)
         wei, bins, patches = self.his
@@ -259,7 +259,7 @@ class fleximagespec(flexbase):
 
     def update(self, img, **kwa):
         """
-        """        
+        """
         amin, amax = self._intensity_limits(img, kwa)
         self.imsh.set_data(img)
         self.imsh.set_clim(amin, amax)
@@ -270,22 +270,22 @@ class fleximagespec(flexbase):
 
 
 def pp_hist(ax, x, **kwa):
-    """ matplotlib.pyplot.hist(x, 
-                       bins=10, 
-                       range=None, 
-                       normed=False, 
-                       weights=None, 
-                       cumulative=False, 
-                       bottom=None, 
-                       histtype=u'bar', 
-                       align=u'mid', 
-                       orientation=u'vertical', 
-                       rwidth=None, 
-                       log=False, 
-                       color=None, 
-                       label=None, 
-                       stacked=False, 
-                       hold=None, 
+    """ matplotlib.pyplot.hist(x,
+                       bins=10,
+                       range=None,
+                       normed=False,
+                       weights=None,
+                       cumulative=False,
+                       bottom=None,
+                       histtype=u'bar',
+                       align=u'mid',
+                       orientation=u'vertical',
+                       rwidth=None,
+                       log=False,
+                       color=None,
+                       label=None,
+                       stacked=False,
+                       hold=None,
                        **kwargs)
     """
     return ax.hist(x, **kwa)

@@ -40,7 +40,7 @@ def detnames():
       except ValueError:
         val = kwarg_split[1]
       kwargs[kwarg_split[0]] = val
-      
+
     print('XXX kwargs:', kwargs)
     ds = DataSource(**kwargs)
     print('XXX DataSource is created')
@@ -88,17 +88,18 @@ def detnames():
   for ntuple in names:
     lengths = [len(n) for n in ntuple]
     maxlen = [max(oldmax,length) for oldmax,length in zip(maxlen,lengths)]
-  
+
   # assumes that data rows are tuples
   template = format_string % tuple(maxlen)
   header = template.format(*headers)
   print('-'*len(header))
   print(header)
   print('-'*len(header))
-  for n in names: 
+  for n in names:
     print(template.format(*n))
   print('-'*len(header))
 
-#-----
 
 detnames()
+
+# EOF

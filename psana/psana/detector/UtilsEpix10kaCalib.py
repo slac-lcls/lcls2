@@ -498,7 +498,7 @@ def pedestals_calibration(*args, **kwa):
       tstamp_run, tstamp_now = tstamps_run_and_now(int(trun_sec))
       tstamp = tstamp_run
 
-      logger.debug('  run.timestamp: %d' % orun.timestamp) 
+      logger.debug('  run.timestamp: %d' % orun.timestamp)
       logger.debug('  run unix epoch time %06f sec' % trun_sec)
       logger.debug('  run tstamp: %s' % tstamp_run)
       logger.debug('  now tstamp: %s' % tstamp_now)
@@ -872,7 +872,7 @@ def add_links_for_gainci_fixed_modes(dir_gain, fname_prefix):
         fname_auto  = '%s/%s_gainci_%s.dat' % (dir_gain, fname_prefix, v)
         fname_fixed = '%s/%s_gainci_%s.dat' % (dir_gain, fname_prefix, k)
         #logger.info('file %s existx %s' % (fname_auto, os.path.exists(fname_auto)))
-        if os.path.exists(fname_auto) and not os.path.lexists(fname_fixed): 
+        if os.path.exists(fname_auto) and not os.path.lexists(fname_fixed):
             os.symlink(os.path.abspath(fname_auto), fname_fixed)
     return
 

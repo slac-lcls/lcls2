@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 """
 """
 import sys
@@ -15,7 +14,6 @@ from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
 from psana import DataSource
 from psana.detector.UtilsMask import CC, DTYPE_MASK
 
-#----
 
 def print_det_raw_attrs(det):
     print('dir(det):', dir(det))
@@ -79,13 +77,13 @@ def datasource_run(**kwa):
 def datasource_run_det(**kwa):
     ds = DataSource(**kwa)
     print('\n  dir(ds):', dir(ds))
-    
+
     run = next(ds.runs())
     print('\n  dir(run):', dir(run))
 
     det = run.Detector(kwa.get('detname','opal'))
     print('\n  dir(det):', dir(det))
-    
+
     return ds, run, det
 
 
@@ -181,7 +179,7 @@ def test_calib(args):
     print('XXX det.raw._det_name: ', det.raw._det_name) # epixquad
     print('XXX det.raw._dettype : ', det.raw._dettype)  # epix
     print('XXX det.raw._calibconst.keys(): ', det.raw._calibconst.keys()) # dict_keys(['geometry'])
-    print('XXX det.raw._seg_configs(): ', det.raw._seg_configs()) 
+    print('XXX det.raw._seg_configs(): ', det.raw._seg_configs())
     print('XXX det.raw._uniqueid: ', det.raw._uniqueid)
     print('XXX det.raw._sorted_segment_ids: ', det.raw._sorted_segment_ids) # [0, 1, 2, 3]
 
@@ -194,7 +192,7 @@ def test_calib(args):
     #geom   =  det.raw._calibconst['geometry'][0]
 
     peds   = det.raw._pedestals()
-    status = det.raw._status() 
+    status = det.raw._status()
     rms    = det.raw._rms()
     gain   = det.raw._gain()
 
@@ -280,7 +278,7 @@ def test_image(args):
             print('Step %1d Event %04d - skip first %04d events' % (stepnum, evnum, args.evskip),\
                    end=('\r' if evnum<args.evskip-1 else '\n'))
             continue
-            
+
         if evnum>args.events:
             print('break by number of events limit %d set in option -N' % args.events)
             break_event_loop = True
@@ -446,7 +444,6 @@ def test_mask(args):
         if args.ofname is not None:
             gr.save_fig(flimg.fig, fname=args.ofname, verb=True)
 
-#----
 
 if __name__ == "__main__":
 
@@ -476,7 +473,7 @@ if __name__ == "__main__":
     d_loglev  = 'INFO' #'INFO' #'DEBUG'
     d_fname   = None   #fname2 = '/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2' #dark
     d_pattrs  = False
-    d_dograph = 'c' # 'ihc' 
+    d_dograph = 'c' # 'ihc'
     d_cumulat = False
     d_show    = 'calibcm'
     d_detname = 'epixquad'

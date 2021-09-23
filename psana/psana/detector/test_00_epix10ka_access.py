@@ -100,7 +100,7 @@ elif tname == '5':
     #detnames /u2/lcls2/tst/tstx00117/xtc/tstx00117-r0144-s000-c000.xtc2
     #Name     | Data Type
     #--------------------
-    #epixquad | raw      
+    #epixquad | raw
 
     # cdb add -e tstx00117 -d epixquad -c geometry -r0 -f /reg/g/psdm/detector/alignment/epix10kaquad/2020-11-20-epix10kaquad0-ued/2020-11-20-epix10kaquad0-ued-geometry.txt
 
@@ -148,7 +148,7 @@ elif tname == '5':
     print('cfgm.value:', cfgm.value)             # 0
 
     cfexpert = cfd.expert
-    print('\ndir(cfd.cfexpert): ', dir(cfexpert))# 
+    print('\ndir(cfd.cfexpert): ', dir(cfexpert))#
 
 
 elif tname == '6':
@@ -189,7 +189,7 @@ elif tname == '6':
     print('XXX det.raw._calibconst.keys(): ', det.raw._calibconst.keys()) # dict_keys(['geometry'])
     print('XXX det.raw._segments(evt): ', det.raw._segments(evt)) # {0: <container.Container object at 0x7f29b7db4b30>, 1: <container.Container object at 0x7f29b7db4b90>, 2: <container.Container object at 0x7f29b7db4bf0>, 3: <container.Container object at 0x7f29b7db4c50>}
     print('XXX det.raw._seg_configs(): ', det.raw._seg_configs()) # {0: <container.Container object at 0x7f29b7df2870>, 1: <container.Container object at 0x7f29b7df28d0>, 2: <container.Container object at 0x7f29b7df2930>, 3: <container.Container object at 0x7f29b7df2990>}
- 
+
     print('XXX det.raw._uniqueid: ', det.raw._uniqueid)
                                                 # epix_3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000_-_3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000_3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000
     print('XXX det.raw._sorted_segment_ids: ', det.raw._sorted_segment_ids) # [0, 1, 2, 3]
@@ -211,11 +211,11 @@ elif tname == '6':
 
     print('det._configs:', cfgs)                # [<dgram.Dgram object at 0x7f5a36a1bd40>]
     cfg = cfgs[0]
-    print('\ndir(cfg):', dir(cfg))              # [..., 'epixquad', 'service', 'software', 'timestamp'] 
+    print('\ndir(cfg):', dir(cfg))              # [..., 'epixquad', 'service', 'software', 'timestamp']
 
     cfquad = cfg.epixquad                       # WHAT, epixquad ????
-    print('c0=cfg.epixquad :', cfquad)          # {0: <container.Container object at 0x7f79cfdd5fd0>, 
-                                                #  1: <container.Container object at 0x7f79cfd9cbb0>, 
+    print('c0=cfg.epixquad :', cfquad)          # {0: <container.Container object at 0x7f79cfdd5fd0>,
+                                                #  1: <container.Container object at 0x7f79cfd9cbb0>,
                                                 #  2: <container.Container object at 0x7f79cfd9cc10>,
                                                 #  3: <container.Container object at 0x7f79cfd9cc70>} # PER PANEL?
     cfp0 = cfquad[0]
@@ -224,7 +224,7 @@ elif tname == '6':
     cfp = cfp0.config
     print('\ndir(cfp):', dir(cfp))              # [..., 'asicPixelConfig', 'expert', 'trbit', 'user']
 
-    print(info_ndarr(cfp.asicPixelConfig,'cfp.asicPixelConfig: ', last=10)) # PER ASIC ARRAY (4, 178, 192) !!! 
+    print(info_ndarr(cfp.asicPixelConfig,'cfp.asicPixelConfig: ', last=10)) # PER ASIC ARRAY (4, 178, 192) !!!
                                                 # shape:(4, 178, 192) size:136704 dtype:uint8 [12 12 ...
     print('cfp.trbit :', cfp.trbit)             # [1 1 1 1]
 
@@ -232,7 +232,7 @@ elif tname == '6':
     if False:
         print('cfp.user  :', cfp.user)              # <container.Container object at 0x7f284c06db70>
         print('cfp.expert:', cfp.expert)            # <container.Container object at 0x7f284c06db70>
-        
+
         cfuser = cfp.user
         print('\ndir(cfuser):', dir(cfuser))        # [..., 'gain_mode', 'pixel_map', 'start_ns'
         print(info_ndarr(cfuser.pixel_map,'cfuser.pixel_map: ', last=10))
@@ -243,12 +243,12 @@ elif tname == '6':
         print('\ndir(cfuser.gain_mode):', dir(cfgm)) # [..., 'names', 'value']
         print('cfgm.names:', cfgm.names)             # {3: 'AutoHiLo', 4: 'AutoMedLo', 0: 'High', 2: 'Low', 5: 'Map', 1: 'Medium'} WHAT IS MAP???
         print('cfgm.value:', cfgm.value)             # 0
-        
+
         cfexpert = cfp.expert
         print('\ndir(cfexpert):', dir(cfexpert))      # ['DevPcie', 'EpixQuad', ...]
         print('cfexpert.DevPcie:', cfexpert.DevPcie)  # <container.Container object at 0x7f4ba0e05070>
         print('cfexpert.EpixQuad:', cfexpert.EpixQuad)# <container.Container object at 0x7feee97901b0>
-        
+
         print('\ndir(cfexpert.DevPcie):', dir(cfexpert.DevPcie))  # ['Hsio', ...]
         print('\ndir(cfexpert.EpixQuad):', dir(cfexpert.EpixQuad))# ['AcqCore', 'Ad9249Config[7]', 'Ad9249Readout[0]', 'Ad9249Readout[1]', 'Ad9249Readout[2]', 'Ad9249Readout[3]', 'Ad9249Readout[4]', 'Ad9249Readout[5]', 'Ad9249Readout[6]', 'Ad9249Readout[7]', 'Ad9249Readout[8]', 'Ad9249Readout[9]', 'Ad9249Tester', 'Epix10kaSaci[0]', 'Epix10kaSaci[10]', 'Epix10kaSaci[11]', 'Epix10kaSaci[12]', 'Epix10kaSaci[13]', 'Epix10kaSaci[14]', 'Epix10kaSaci[15]', 'Epix10kaSaci[1]', 'Epix10kaSaci[2]', 'Epix10kaSaci[3]', 'Epix10kaSaci[4]', 'Epix10kaSaci[5]', 'Epix10kaSaci[6]', 'Epix10kaSaci[7]', 'Epix10kaSaci[8]', 'Epix10kaSaci[9]', 'PseudoScopeCore', 'RdoutCore', 'SystemRegs', 'VguardDac', ...]
 
@@ -266,7 +266,7 @@ elif tname == '7':
     print('\nXXX dir(ds):', dir(ds)) #[...,'_abc_impl', '_close_opened_smd_files', '_configs', '_end_prometheus_client', '_get_runinfo', '_set_configinfo', '_setup_beginruns', '_setup_det_class_table', '_setup_run', '_setup_run_calibconst', '_setup_run_files', '_setup_runnum_list', '_start_prometheus_client', '_start_run', 'batch_size', 'destination', 'detectors', 'dir', 'dm', 'dsparms', 'exp', 'files', 'filter', 'live', 'max_events', 'monitor', 'prom_man', 'runnum', 'runnum_list', 'runnum_list_index', 'runs', 'shmem', 'smalldata', 'smalldata_kwargs']
     print('XXX ds.runnum: ', ds.runnum) # None
     print('XXX ds.exp   : ', ds.exp)    # None
-    print('XXX ds.runs(): ', ds.runs()) # 
+    print('XXX ds.runs(): ', ds.runs()) #
 
     #for run in ds.runs(): # DOES NOT WORK
     run = next(ds.runs())
@@ -296,7 +296,7 @@ elif tname == '7':
     print('\ndir(cfg):', dir(cfg))              # [..., 'epixquad', 'service', 'software', 'timestamp']
 
     for stepnum,step in enumerate(run.steps()):
-        print('\nSTEP dir(step):', dir(step))   # [..., 'esm', 'events', 'evt', 'evt_iter']    
+        print('\nSTEP dir(step):', dir(step))   # [..., 'esm', 'events', 'evt', 'evt_iter']
         print('STEP step.esm  : ', step.esm)    # <psana.psexp.envstore_manager.EnvStoreManager object at 0x7fd3ab1fffd0>
         print('\nSTEP dir(step.esm):', dir(step.esm))   # [..., '_update_config', 'configs', 'env_from_variable', 'get_stepinfo', 'stores', 'update_by_event', 'update_by_views']
         print('\nSTEP dir(step.evt):', dir(step.evt))   # [..., '__weakref__', '_assign_det_segments', '_complete', '_det_segments', '_dgrams', '_from_bytes', '_has_offset', '_nanoseconds', '_position', '_replace', '_run', '_seconds', '_size', '_to_bytes', 'datetime', 'get_offsets_and_sizes', 'next', 'run', 'service', 'timestamp']
@@ -315,7 +315,6 @@ elif tname == '7':
         print('STEP step.esm.configs[0].service():', cfgs0.service()) # 2
         print('STEP dir(step.esm.configs[0].software):', dir(cfgs0.software)) # <container.Container object at 0x7fb10b1da1d0> = [..., 'epixquad', 'epixquadhw', 'runinfo']
         print('STEP step.esm.configs[0].timestamp():', cfgs0.timestamp()) # 4190613348438778143
-
 
         #exit('TEST EXIT')
         #################
@@ -344,7 +343,6 @@ elif tname == '8':
         print('step:',nstep,step_value(step),step_docstring(step))
         for nevt,evt in enumerate(step.events()):
             if nevt==3: print('evt3:',nstep,step_value(evt),step_docstring(evt))
-
 
 else:
     print(USAGE)

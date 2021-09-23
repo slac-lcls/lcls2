@@ -1,3 +1,4 @@
+
 """
 :py:class:`UtilsEpix10ka` contains utilities for epix10ka and its composite detectors
 =====================================================================================
@@ -235,11 +236,11 @@ def gain_maps_epix10ka_any(dcfg, data=None):
     # 0000xx = 0 - AML_M 4
     # 1100xx =48 - AHL_L 5
     # 1000xx =32 - AML_L 6
-    #------
+    #----
     # 111100 =60 - cbitsM60 - mask
     # 011100 =28 - cbitsM28 - mask
     # 001100 =12 - cbitsM12 - mask
-    #------
+    #----
 
     cbitsM60 = cbits & 60 # control bits masked by configuration 3-bit-mask
     cbitsM28 = cbits & 28 # control bits masked by configuration 3-bit-mask
