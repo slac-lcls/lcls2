@@ -66,8 +66,6 @@ class Storage:
 
 dic_store = {} # {det.name:Storage()} in stead of singleton
 
-#----
-
 def segment_indices_epix10ka_detector(det):
     """Returns list det.raw._sorted_segment_ids, e.g. [0, 1, 2, 3]"""
     return det.raw._sorted_segment_ids
@@ -136,29 +134,15 @@ def cbits_config_epix10ka(cob):
     xxxx: np.array, dtype:uint8, ndim=2, shape=(352, 384)
     """
     trbits = cob.trbit # [1 1 1 1]
-    pca = cob.asicPixelConfig[:,:176,:] # shape:(4, 176, 192) size:135168 dtype:uint8 [8 8 8 8 8...]
-    #logger.debug(info_ndarr(pca, 'trbits: %s asicPixelConfig:'%str(trbits)))
+    pca = cob.asicPixelConfig # [:,:176,:] - fixed in daq # shape:(4, 176, 192) size:135168 dtype:uint8 [8 8 8 8 8...]
+    logger.debug(info_ndarr(cob.asicPixelConfig, 'trbits: %s asicPixelConfig:'%str(trbits)))
 
     #t0_sec = time()
 
     # begin to create array of control bits
-    #nasics, narows, nacols = pca.shape
-    #seg_shape = (narows*2, nacols*2) # (352, 384)
-
-    #cbits = np.empty(seg_shape, dtype=np.int16)
-    #cbits[176:,192:] = np.flipud(np.fliplr(pca[0]))
-    #cbits[:176,192:] = np.flipud(np.fliplr(pca[1]))
-    #cbits[:176,:192] = np.flipud(np.fliplr(pca[2]))
-    #cbits[176:,:192] = np.flipud(np.fliplr(pca[3])) # 0.000278 sec
-
-    #cbits = np.empty(seg_shape, dtype=np.int16)
-    #cbits[176:,192:] = pca[0,::-1,::-1]
-    #cbits[:176,192:] = pca[1,::-1,::-1]
-    #cbits[:176,:192] = pca[2,::-1,::-1]
-    #cbits[176:,:192] = pca[3,::-1,::-1] # 0.000248-264 sec
-
     # Origin of ASICs in bottom-right corner, so
     # stack them in upside-down matrix and rotete it by 180 deg.
+
     cbits = np.flipud(np.fliplr(np.vstack((np.hstack((pca[2],pca[1])),
                                            np.hstack((pca[3],pca[0])))))) # 0.000090 sec
 
