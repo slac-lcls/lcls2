@@ -67,7 +67,7 @@ def lst_exp_for_year(lst_exp, year):
     str_year = year if isinstance(year,str) else '%4d'%year
     pattern = str_year[-2:] # two last digits if the year
     return [exp for exp in lst_exp if exp[-2:]==pattern]
-  
+
 
 class PSPopupSelectExp(QDialog):
     """
@@ -81,20 +81,6 @@ class PSPopupSelectExp(QDialog):
         self.show_frame = show_frame
 
         self.fill_list(lst_exp)
-
-        # Confirmation buttons
-        #self.but_cancel = QPushButton('&Cancel') 
-        #self.but_apply  = QPushButton('&Apply') 
-        #cp.setIcons()
-        #self.but_cancel.setIcon(cp.icon_button_cancel)
-        #self.but_apply .setIcon(cp.icon_button_ok)
-        #self.connect(self.but_cancel, QtCore.SIGNAL('clicked()'), self.onCancel)
-        #self.connect(self.but_apply,  QtCore.SIGNAL('clicked()'), self.onApply)
-
-        #self.hbox = QVBoxLayout()
-        #self.hbox.addWidget(self.but_cancel)
-        #self.hbox.addWidget(self.but_apply)
-        ##self.hbox.addStretch(1)
 
         vbox = QVBoxLayout()
         vbox.addWidget(self.list)
@@ -166,11 +152,6 @@ class PSPopupSelectExp(QDialog):
         self.done(QDialog.Accepted)
 
 
-#    def mousePressEvent(self, e):
-#        QDialog.mousePressEvent(self, e)
-#        logger.debug('mousePressEvent')
-
-
     def event(self, e):
         #logger.debug('event.type %s' % str(e.type()))
         if e.type() == QEvent.WindowDeactivate:
@@ -178,7 +159,7 @@ class PSPopupSelectExp(QDialog):
             self.reject()
             self.done(QDialog.Rejected)
         return QDialog.event(self, e)
-    
+
 
     def closeEvent(self, event):
         logger.debug('closeEvent')
@@ -188,17 +169,6 @@ class PSPopupSelectExp(QDialog):
 
     def selectedName(self):
         return self.name_sel
-
- 
-#    def onCancel(self):
-#        logger.debug('onCancel')
-#        self.reject()
-#        self.done(QDialog.Rejected)
-
-#    def onApply(self):
-#        logger.debug('onApply')
-#        self.accept()
-#        self.done(QDialog.Accepted)
 
 
 def select_experiment(parent, lst_exp, show_frame=False):
