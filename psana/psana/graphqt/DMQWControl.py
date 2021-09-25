@@ -60,7 +60,7 @@ class DMQWControl(CMWControlBase):
     ]
     lclsv_list = ['LCLS','LCLS2']
     instr_lcls1 = ['AMO','CXI','XPP','SXR','MEC','DET','MFX','MOB','USR','MON','DIA']
-    instr_lcls2 = ['TST','TMO','RIX','UED']
+    instr_lcls2 = ['tst','tmo','rix','txi','ued','asc','prj']
     instr_exp_is_changed = pyqtSignal('QString', 'QString')
 
     def __init__(self, **kwa):
@@ -114,16 +114,9 @@ class DMQWControl(CMWControlBase):
         self.but_stop.clicked.connect(self.on_but_stop)
         self.cmb_cmd.currentIndexChanged[int].connect(self.on_cmb_cmd)
         self.cmb_det.currentIndexChanged[int].connect(self.on_cmb_det)
-        #self.cmb_lclsv.currentIndexChanged[int].connect(self.on_cmb_lclsv)
 
         self.set_tool_tips()
         self.set_style()
-
-#        if cp.dmqwmain is not None:
-#            global full_path_for_item
-#            from psana.graphqt.FSTree import full_path_for_item
-#            cp.dmqwmain.wlist.connect_item_selected_to(self.on_item_selected)
-#            cp.dmqwmain.wlist.clicked[QModelIndex].connect(self.on_click)
 
 
     def set_cmb_cmd(self):
@@ -158,7 +151,6 @@ class DMQWControl(CMWControlBase):
 
     def set_lclsv_for_instrument(self, instr):
         self.set_lclsv(self.is_lcls1(instr))
-        #self.set_lclsv(instr.upper() in self.instr_lcls1)
 
 
     def set_lclsv_for_experiment(self, expname):
@@ -188,8 +180,6 @@ class DMQWControl(CMWControlBase):
         self.cmb_det.setFixedWidth(200)
         self.but_start.setFixedWidth(35)
         self.but_stop.setFixedWidth(35)
-        #self.but_buts.setStyleSheet(style.styleButton)
-        #self.but_tabs.setVisible(True)
         self.layout().setContentsMargins(5,0,5,0)
         self.cmb_lclsv.setEnabled(False)
         self.wfnm.setVisible(False)
@@ -235,16 +225,12 @@ class DMQWControl(CMWControlBase):
         command = self.cmb_cmd.currentText()
         expname, runnum = cp.exp_name.value(), cp.last_selected_run
         logger.info('on_but_start command:%s exp:%s run:%s' % (command, expname, str(runnum)))
-        #if cp.last_selected_run is None:
-        #    logger.info('RUN IS NOT SELECTED - click/select run first')
-        #    return
 
         self.force_stop = False
         if cp.dmqwmain is None: return
 
         dsname = cp.dmqwmain.fname_info(expname, runnum)
         cp.dmqwmain.append_info(dsname, cp.dmqwmain.fname_info(expname, runnum))
-        #cp.dmqwmain.dump_info_exp_run(expname, runnum)
 
         selruns = [int(i.accessibleText()) for i in cp.dmqwmain.wlist.selected_items()]
         s = 'Exp: %s %d selected runs:\n  %s\nLast selected run: %s'%\
@@ -257,7 +243,6 @@ class DMQWControl(CMWControlBase):
 
         is_lcls1 = self.is_lcls1(expname)
         is_lcls2 = not is_lcls1
-        #is_lcls2 = self.is_lcls2(expname, runnum)
         s = 'dataset exp=%s,run=%d is_lcls2:%s' % (expname, runnum, is_lcls2)
         cp.dmqwmain.append_info(s)
 
@@ -321,7 +306,7 @@ class DMQWControl(CMWControlBase):
 
           elif command == 'det_ndarr_raw_proc':
             if not is_area_detector(detname): return
-            #det_ndarr_raw_proc -d <dataset> [-s <source>] [-f <file-name-template>] [-n <events-collect>] [-m <events-skip>] 
+            #det_ndarr_raw_proc -d <dataset> [-s <source>] [-f <file-name-template>] [-n <events-collect>] [-m <events-skip>]
             cmd = 'det_ndarr_raw_proc -d exp=%s:run=%d -s %s -n %d -m %d -f nda-#exp-#run-#src-#type.txt'%\
                    (expname, runnum, detname, events, evskip)
 
@@ -446,17 +431,6 @@ class DMQWControl(CMWControlBase):
             return
 
         logger.info('selected file names:\n  %s' % '\n  '.join(names_selected))
-
-#        self.instr_exp_is_changed.emit(instr_name, exp_name)
-
-#    def connect_instr_exp_is_changed(self, recip):
-#        self.instr_exp_is_changed.connect(recip)
-
-#    def disconnect_instr_exp_is_changed(self, recip):
-#        self.instr_exp_is_changed.disconnect(recip)
-
-#    def on_instr_exp_is_changed(self, instr, exp):
-#        logger.debug('selected instrument: %s experiment: %s' % (instr, exp))
 
 
     def view_hide_tabs(self):
