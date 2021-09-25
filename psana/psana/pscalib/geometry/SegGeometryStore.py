@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#------------------------------
 """
 Class :py:class:`SegGeometryStore` is a factory class/method
 ============================================================
@@ -12,6 +11,7 @@ Usage::
     from psana.pscalib.geometry.SegGeometryStore import sgs
 
     sg = sgs.Create(segname='SENS2X1:V1')
+    sg = sgs.Create(segname='EPIXHR2X2:V1')
     sg = sgs.Create(segname='EPIX100:V1')
     sg = sgs.Create(segname='EPIX10KA:V1')
     sg = sgs.Create(segname='PNCCD:V1')
@@ -38,13 +38,14 @@ Usage::
     ...
 
 See:
- * :py:class:`GeometryObject`, 
- * :py:class:`SegGeometry`, 
- * :py:class:`SegGeometryCspad2x1V1`, 
- * :py:class:`SegGeometryEpix100V1`, 
- * :py:class:`SegGeometryEpix10kaV1`, 
- * :py:class:`SegGeometryJungfrauV1`, 
- * :py:class:`SegGeometryMatrixV1`, 
+ * :py:class:`GeometryObject`,
+ * :py:class:`SegGeometry`,
+ * :py:class:`SegGeometryCspad2x1V1`,
+ * :py:class:`SegGeometryEpix100V1`,
+ * :py:class:`SegGeometryEpixHR2x2V1`
+ * :py:class:`SegGeometryEpix10kaV1`,
+ * :py:class:`SegGeometryJungfrauV1`,
+ * :py:class:`SegGeometryMatrixV1`,
  * :py:class:`SegGeometryStore`
 
 For more detail see `Detector Geometry <https://confluence.slac.stanford.edu/display/PSDM/Detector+Geometry>`_.
@@ -55,32 +56,29 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created: 2013-03-08 by Mikhail Dubrovin
 2020-09-04 - converted to py3
 """
-#------------------------------
 
 import logging
 logger = logging.getLogger(__name__)
 
 from psana.pscalib.geometry.SegGeometryCspad2x1V1 import cspad2x1_one, cspad2x1_wpc
 from psana.pscalib.geometry.SegGeometryEpix100V1  import epix2x2_one, epix2x2_wpc
+from psana.pscalib.geometry.SegGeometryEpixHR2x2V1 import epixhr2x2_one, epixhr2x2_wpc
 from psana.pscalib.geometry.SegGeometryEpix10kaV1 import epix10ka_one, epix10ka_wpc
 from psana.pscalib.geometry.SegGeometryMatrixV1   import SegGeometryMatrixV1, segment_one, matrix_pars
 from psana.pscalib.geometry.SegGeometryJungfrauV1 import jungfrau_one
 from psana.pscalib.geometry.SegGeometryJungfrauV2 import jungfrau_front
 
-#------------------------------
 
 class SegGeometryStore():
     """Factory class for SegGeometry-base objects of different detectors"""
 
-#------------------------------
 
     def __init__(sp):
         pass
 
-#------------------------------
 
     def Create(sp, **kwa):
-        """ Factory method returns device dependent SINGLETON object with interface implementation  
+        """ Factory method returns device dependent SINGLETON object with interface implementation
         """
         segname = kwa.get('segname', 'SENS2X1:V1')
         wpc     = kwa.get('use_wide_pix_center', False)
@@ -88,6 +86,7 @@ class SegGeometryStore():
         if segname=='SENS2X1:V1' : return cspad2x1_wpc if wpc else cspad2x1_one # SegGeometryCspad2x1V1(use_wide_pix_center=False)
         if segname=='EPIX100:V1' : return epix2x2_wpc  if wpc else epix2x2_one  # SegGeometryEpix100V1 (use_wide_pix_center=False)
         if segname=='EPIX10KA:V1': return epix10ka_wpc if wpc else epix10ka_one # SegGeometryEpix10kaV1(use_wide_pix_center=False)
+        if segname=='EPIXHR2X2:V1':return epixhr2x2_wpc if wpc else epixhr2x2_one # SegGeometryEpixHR2x2V1V1(use_wide_pix_center=False)
         if segname=='PNCCD:V1'   : return segment_one  # SegGeometryMatrixV1()
         if segname[:4]=='MTRX'   :
             rows, cols, psize_row, psize_col = matrix_pars(segname)
@@ -99,13 +98,10 @@ class SegGeometryStore():
         #if segname=='ANDOR3D:V1': return seg_andor3d     # SegGeometryMatrixV1()
         return None
 
-#------------------------------
 
 sgs = SegGeometryStore()
 
-#------------------------------
 #----------- TEST -------------
-#------------------------------
 
 if __name__ == "__main__":
 
@@ -113,7 +109,6 @@ if __name__ == "__main__":
   from time import time
   logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)
 
-#----------
 
   def usage(tname='0'):
     s = ''
@@ -125,10 +120,10 @@ if __name__ == "__main__":
     if tname in ('0','5'): s+='\n 5 - JUNGFRAU:V1'
     if tname in ('0','6'): s+='\n 6 - JUNGFRAU:V2'
     if tname in ('0','7'): s+='\n 7 - MTRX:512:512:54:54'
-    if tname in ('0','8'): s+='\n 8 - ABRACADABRA:V1'
+    if tname in ('0','8'): s+='\n 8 - EPIXHR2X2:V1'
+    if tname in ('0','9'): s+='\n 9 - ABRACADABRA:V1'
     return s
 
-#----------
 
   def test_segname(segname):
     t0_sec = time()
@@ -137,7 +132,6 @@ if __name__ == "__main__":
     sg.print_seg_info(pbits=0o377)
     logger.info('Consumed time to create = %.6f sec' % dt_sec)
 
-#----------
 
 if __name__ == "__main__":
 
@@ -150,11 +144,12 @@ if __name__ == "__main__":
     elif(tname=='5'): sg = test_segname('JUNGFRAU:V1')
     elif(tname=='6'): sg = test_segname('JUNGFRAU:V2')
     elif(tname=='7'): sg = test_segname('MTRX:512:512:54:54')
-    elif(tname=='8'):
+    elif(tname=='8'): sg = test_segname('EPIXHR2X2:V1')
+    elif(tname=='9'):
         sg = sgs.Create(segname='ABRACADABRA:V1')
         logger.info('Return for non-existent segment name: %s' % sg)
     else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, usage()))
     if len(sys.argv)>1: logger.info(usage(tname))
     sys.exit('END OF TEST')
 
-#------------------------------
+# EOF
