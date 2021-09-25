@@ -15,7 +15,7 @@ Usage::
     # ======================
     runnum, tstamp, tsec, fid = convertCheetahEventName('LCLS_2015_Feb22_r0169_022047_197f7', fmtts='%Y-%m-%dT%H:%M:%S')
 
-    table8x8 = table_from_cspad_ndarr(nda_cspad) 
+    table8x8 = table_from_cspad_ndarr(nda_cspad)
     nda_cspad = cspad_ndarr_from_table(table8x8)
 
     nda_32x185x388 = cspad_psana_from_cctbx(nda_64x185x194)
@@ -45,14 +45,13 @@ import math
 import numpy as np
 from time import time, strptime, strftime, localtime, mktime
 from psana.pyalgos.generic.UtilsFS import *
-#from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
-#from psana.pyalgos.generic.PSNameManager import nm
+
 INSTRUMENT_DIR = '/cds/data/psdm/'
 
 def dir_exp(expname, dirinstr=INSTRUMENT_DIR):
     assert isinstance(expname, str)
     assert len(expname) in (8,9)
-    return os.path.join(dirinstr, expname[:3].upper(), expname)
+    return os.path.join(dirinstr, expname[:3], expname) # expname[:3].upper()
 
 
 def dir_xtc(expname, dirinstr=INSTRUMENT_DIR):
@@ -81,10 +80,11 @@ def list_of_experiments(direxp=None): # e.g. '/reg/d/psdm/XPP'
 
 def list_of_instruments(dirname='/cds/data/psdm'):
     ldir = os.listdir(dirname)
-    if len(ldir)>10: return [d for d in ldir if d[:3].isupper()]
+    if len(ldir)>10: return tuple([d for d in ldir if d[:3].isupper()]) + ('asc','prj','mon','ued','txi')
     else:
-        logger('can not access content of the directory %s\n return hardwired list of instruments' % dirname)
-        return ['MEC', 'TMO', 'MOB', 'MFX', 'RIX', 'USR', 'SXR', 'AMO', 'XPP', 'CXI', 'DET', 'DIA', 'TST', 'XCS']
+        logger.info('can not access content of the directory %s\n return hardwired list of instruments' % dirname)
+        return ['MEC', 'TMO', 'MOB', 'MFX', 'RIX', 'USR', 'SXR', 'AMO', 'XPP', 'CXI', 'DET', 'DIA', 'TST', 'XCS',\
+                'asc', 'prj', 'mon', 'ued', 'txi']
 
 
 def list_of_int_from_list_of_str(list_in):
@@ -121,7 +121,7 @@ def convertCheetahEventName(evname, fmtts='%Y-%m-%dT%H:%M:%S'):
                          'LCLS_2015_Feb22_r0169_022047_197f7) \n number of fields is not 6: %s' % evname)
 
     s_factory, s_year, s_mon_day, s_run, s_time, s_fid = fields
-    
+
     #fid    = int(s_fid, 16)
     runnum = int(s_run.strip('r').lstrip('0'))
     struct = strptime('%s-%s-%s' % (s_year, s_mon_day, s_time), '%Y-%b%d-%H%M%S')
@@ -133,7 +133,7 @@ def convertCheetahEventName(evname, fmtts='%Y-%m-%dT%H:%M:%S'):
 def src_from_rc8x8(row, col):
     """Converts Cheetah 8x8 ASICs table row and column to seg, row, col coordinates
     """
-    qsegs, rows, cols = (8, 185, 388) 
+    qsegs, rows, cols = (8, 185, 388)
     quad = math.floor(col/cols) # [0,3]
     qseg = math.floor(row/rows) # [0,7]
     s = qsegs*quad + qseg
@@ -144,7 +144,7 @@ def src_from_rc8x8(row, col):
 
 def table_from_cspad_ndarr(nda_cspad):
     """returns table of 2x1s shaped as (8*185, 4*388) in style of Cheetah
-       generated from cspad array with size=(32*185*388) ordered as in data, shape does not matter. 
+       generated from cspad array with size=(32*185*388) ordered as in data, shape does not matter.
     """
     shape, size = (4, 8*185, 388), 4*8*185*388
     if nda_cspad.size != size:
@@ -181,7 +181,7 @@ def cspad_psana_from_cctbx(nda_in):
     asics, rows, colsh = shape_in = (64,185,194)
     size = asics * rows * colsh
     segs, cols = asics/2, colsh*2
-    
+
     if nda_in.size != size:
         raise ValueError('Input array size: %d is not consistent with cspad size: %d' % (nda_in.size, size))
 
@@ -189,7 +189,7 @@ def cspad_psana_from_cctbx(nda_in):
         raise ValueError('Input array shape: %s is not consistent with cspad 8x8 table shape: %s' % (nda_in.shape, shape_in))
 
     nda_out = np.empty((segs, rows, cols), dtype=nda_in.dtype)
-    
+
     for s in range(segs):
         a=s*2 # ASIC[0] in segment
         nda_out[s,:,0:colsh]    = nda_in[a,:,:]
@@ -234,7 +234,7 @@ def cross_check_cspad_psana_cctbx(nda, arr):
 
 def table_nxm_cspad2x1_from_ndarr(nda):
     """returns table of cspad2x1 panels shaped as (nxm)
-       generated from cspad array shaped as (N,185,388) in data. 
+       generated from cspad array shaped as (N,185,388) in data.
     """
     segsize = 185*388
     a = np.array(nda) # make a copy
@@ -265,7 +265,7 @@ def table_nxm_cspad2x1_from_ndarr(nda):
 
 def table_nxm_jungfrau_from_ndarr(nda):
     """returns table of epix10ka panels shaped as (nxn)
-       generated from epix10ka array shaped as (N, 352, 384) in data. 
+       generated from epix10ka array shaped as (N, 352, 384) in data.
     """
     segsize = 512*1024
     a = np.array(nda) # make a copy
@@ -291,7 +291,7 @@ def table_nxm_jungfrau_from_ndarr(nda):
 
 def table_nxn_epix10ka_from_ndarr(nda):
     """returns table of epix10ka panels shaped as (nxn)
-       generated from epix10ka array shaped as (N, 352, 384) in data. 
+       generated from epix10ka array shaped as (N, 352, 384) in data.
     """
     gapv = 20
     segsize = 352*384
@@ -403,7 +403,7 @@ if __name__ == "__main__":
     if len(sys.argv) != 2: test_01()
     elif tname == '1': test_convertCheetahEventName()
     elif tname == '2': test_list_of_experiments(tname)
-    elif tname == '3': test_list_of_str_from_list_of_int() 
+    elif tname == '3': test_list_of_str_from_list_of_int()
     elif tname == '4': test_list_of_int_from_list_of_str()
     elif tname == '5': test_list_of_files_in_dir()
     elif tname == '6': test_list_of_files_in_dir_for_ext()
