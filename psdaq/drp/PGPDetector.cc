@@ -275,8 +275,8 @@ void PGPDetector::reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector
                 if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
                     logging::critical("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, tid %s%s",
                                       RED_ON, m_lastComplete, evtCounter, evtCounter - m_lastComplete, XtcData::TransitionId::name(transitionId), RED_OFF);
-                    logging::critical("data: %08x %08x %08x %08x %08x %08x",
-                                      data[0], data[1], data[2], data[3], data[4], data[5]);
+                    logging::critical("data: %08x %08x %08x %08x %08x %08x service: 0x%x",
+                                      data[0], data[1], data[2], data[3], data[4], data[5], timingHeader->service());
 
                     logging::critical("lastTid %s", XtcData::TransitionId::name(lastTid));
                     logging::critical("lastData: %08x %08x %08x %08x %08x %08x",
