@@ -4,11 +4,13 @@
 import numpy as np
 from amitypes import Array2d
 #from psana.detector.detector_impl import DetectorImpl
-from psana.detector.epix_base import epix_base, logging
+from psana.detector.epix_base import epix_base
+import logging
 logger = logging.getLogger(__name__)
 
 class epixhr2x2_raw_2_0_1(epix_base):
     def __init__(self, *args, **kwargs):
+        logger.debug('epixhr2x2_raw_2_0_1.__init__')
         epix_base.__init__(self, *args, **kwargs)
 
     def _array(self, evt) -> Array2d:
