@@ -83,11 +83,8 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2021-09-24 by Mikhail Dubrovin
 """
-from psana.pscalib.geometry.SegGeometryEpix10kaV1 import *# SegGeometryEpix10kaV1
-#from psana.pscalib.geometry.SegGeometry import *
+from psana.pscalib.geometry.SegGeometryEpix10kaV1 import *
 logger = logging.getLogger(__name__)
-
-DTYPE_MASK = np.uint8
 
 
 class SegGeometryEpixHR2x2V1(SegGeometryEpix10kaV1):
