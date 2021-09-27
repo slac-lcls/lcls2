@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#------------------------------
 """
 Class :py:class:`SegGeometryEpix100V1` describes the Epix100 V1 sensor geometry
 ===============================================================================
@@ -8,7 +7,7 @@ In this class we use natural matrix notations like in data array
 \n We assume that
 \n * 2x2 ASICs has 704 rows and 768 columns,
 \n * Epix100 has a pixel size 50x50um, wide pixel size 50x175um
-\n * Epix10k has a pixel size 100x100um, 
+\n * Epix10k has a pixel size 100x100um,
 \n * X-Y coordinate system origin is in the sensor center,
 \n * pixel (r,c)=(0,0) is in the top left corner of the matrix, has coordinates (xmin,ymax), as shown below
 \n ::
@@ -38,7 +37,8 @@ In this class we use natural matrix notations like in data array
 
 Usage::
 
-    from SegGeometryEpix100V1 import epix2x2_one as sg
+    from psana.pscalib.geometry.SegGeometryEpix100V1 import epix2x2_one, epix2x2_wpc
+    from psana.pscalib.geometry.SegGeometryEpix100V1 import epix2x2_one as sg
 
     sg.print_seg_info(0o377)
 
@@ -70,9 +70,9 @@ Usage::
 
 See:
  * :py:class:`GeometryObject`
- * :py:class:`SegGeometry` 
+ * :py:class:`SegGeometry`
  * :py:class:`SegGeometryCspad2x1V1`
- * :py:class:`SegGeometryEpix100V1` 
+ * :py:class:`SegGeometryEpix100V1`
  * :py:class:`SegGeometryMatrixV1`
  * :py:class:`SegGeometryStore`
 
@@ -84,12 +84,10 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created: 2013-03-08 by Mikhail Dubrovin
 2020-09-04 - converted to py3
 """
-#------------------------------
 
 from psana.pscalib.geometry.SegGeometry import *
 logger = logging.getLogger(__name__)
 
-#------------------------------
 
 class SegGeometryEpix100V1(SegGeometry):
     """Self-sufficient class for generation of Epix100 2x2 sensor pixel coordinate array"""
@@ -105,7 +103,6 @@ class SegGeometryEpix100V1(SegGeometry):
     _pixsh = _pixs/2
     _pixwh = _pixw/2
 
-#------------------------------
 
     def __init__(sp, **kwa):
         SegGeometry.__init__(sp)
@@ -114,12 +111,11 @@ class SegGeometryEpix100V1(SegGeometry):
         sp.pix_area_arr = None
         sp.make_pixel_coord_arrs()
 
-#------------------------------
 
     def make_pixel_coord_arrs(sp):
         """Makes [704,768] maps of x, y, and z 2x2 pixel coordinates
         with origin in the center of 2x2
-        """        
+        """
         x_rhs = np.arange(sp._colsh)*sp._pixs + sp._pixw - sp._pixsh
         if sp.use_wide_pix_center: x_rhs[0] = sp._pixwh # set x-coordinate of the wide pixel in its geometry center
         sp.x_arr_um = np.hstack([-x_rhs[::-1], x_rhs])
@@ -130,12 +126,11 @@ class SegGeometryEpix100V1(SegGeometry):
 
         sp.x_pix_arr_um, sp.y_pix_arr_um  = np.meshgrid(sp.x_arr_um, sp.y_arr_um)
         sp.z_pix_arr_um = np.zeros((sp._rows,sp._cols))
-        
-#------------------------------
+
 
     def make_pixel_size_arrs(sp):
-        """Makes [704,768] maps of x, y, and z 2x2 pixel size 
-        """        
+        """Makes [704,768] maps of x, y, and z 2x2 pixel size
+        """
         if sp.pix_area_arr is not None: return
 
         x_rhs_size_um = np.ones(sp._colsh)*sp._pixs
@@ -148,11 +143,10 @@ class SegGeometryEpix100V1(SegGeometry):
 
         sp.x_pix_size_um, sp.y_pix_size_um = np.meshgrid(x_arr_size_um, y_arr_size_um)
         sp.z_pix_size_um = np.ones((sp._rows,sp._cols)) * sp._pixd
-        
+
         factor = 1./(sp._pixs*sp._pixs)
         sp.pix_area_arr = sp.x_pix_size_um * sp.y_pix_size_um * factor
 
-#------------------------------
 
     def print_member_data(sp):
         s = 'SegGeometryEpix100V1.print_member_data()'\
@@ -166,7 +160,6 @@ class SegGeometryEpix100V1(SegGeometry):
           + '\n    _pixwh: %7.2f' % sp._pixwh
         logger.info(s)
 
-#------------------------------
 
     def print_pixel_size_arrs(sp):
         sp.make_pixel_size_arrs()
@@ -181,7 +174,6 @@ class SegGeometryEpix100V1(SegGeometry):
           + '\n  sp.pix_area_arr.shape  = '           + str(sp.pix_area_arr.shape)
         logger.info(s)
 
-#------------------------------
 
     def print_maps_seg_um(sp):
         s = 'SegGeometryEpix100V1.print_maps_seg_um()'\
@@ -193,7 +185,6 @@ class SegGeometryEpix100V1(SegGeometry):
           + '\n  z_pix_arr_um.shape = ' + str(sp.z_pix_arr_um.shape)
         logger.info(s)
 
-#------------------------------
 
     def print_xy_1darr_um(sp):
         s = 'SegGeometryEpix100V1.print_xy_1darr_um()'\
@@ -203,7 +194,6 @@ class SegGeometryEpix100V1(SegGeometry):
           + '\n  y_arr_um.shape = ' + str(sp.y_arr_um.shape)
         logger.info(s)
 
-#------------------------------
 
     def print_xyz_min_max_um(sp):
         xmin, ymin, zmin = sp.get_xyz_min_um()
@@ -213,7 +203,6 @@ class SegGeometryEpix100V1(SegGeometry):
             % (xmin, xmax, ymin, ymax, zmin, zmax)
         logger.info(s)
 
-#------------------------------
 
     def get_xyz_min_um(sp):
         return sp.x_arr_um[0], sp.y_arr_um[-1], 0
@@ -263,9 +252,7 @@ class SegGeometryEpix100V1(SegGeometry):
         xmin, ymin = X.min(), Y.min()
         return X-xmin, Y-ymin
 
-#------------------------------
 # INTERFACE METHODS
-#------------------------------
 
     def print_seg_info(sp, pbits=0):
         """ Prints segment info for selected bits
@@ -344,7 +331,7 @@ class SegGeometryEpix100V1(SegGeometry):
     def pixel_mask_array(sp, mbits=0o377, **kwa):
         """ Returns numpy array of pixel mask: 1/0 = ok/masked,
         mbits: +1 - mask edges,
-        +2 - mask two central columns 
+        +2 - mask two central columns
         """
         zero_col = np.zeros(sp._rows,dtype=np.uint8)
         zero_row = np.zeros(sp._cols,dtype=np.uint8)
@@ -366,14 +353,11 @@ class SegGeometryEpix100V1(SegGeometry):
 
         return mask
 
-#------------------------------
 
 epix2x2_one = SegGeometryEpix100V1(use_wide_pix_center=False)
 epix2x2_wpc = SegGeometryEpix100V1(use_wide_pix_center=True)
 
-#------------------------------
 #----------- TEST -------------
-#------------------------------
 
 if __name__ == "__main__":
 
@@ -385,11 +369,10 @@ if __name__ == "__main__":
 
   def test_xyz_min_max():
     w = SegGeometryEpix100V1()
-    w.print_xyz_min_max_um() 
+    w.print_xyz_min_max_um()
     logger.info('\n  Ymin = %f' % w.pixel_coord_min('Y')\
               + '\n  Ymax = %f' % w.pixel_coord_max('Y'))
 
-#------------------------------
 
   def test_xyz_maps():
 
@@ -403,7 +386,6 @@ if __name__ == "__main__":
 
     gg.show()
 
-#------------------------------
 
   def test_2x2_img():
 
@@ -427,18 +409,6 @@ if __name__ == "__main__":
     logger.info('ysize =' + str(ysize))
 
 
-#    H, Xedges, Yedges = np.histogram2d(X.flatten(), Y.flatten(), bins=[xsize,ysize],\
-#          range=[[xmin, xmax], [ymin, ymax]], normed=False, weights=X.flatten()+Y.flatten()) 
-
-#    print('Xedges:', Xedges)
-#    print('Yedges:', Yedges)
-#    print('H.shape:', H.shape)
-
-#    gg.plotImageLarge(H, amp_range=(-800, 800), figsize=(8,10)) # range=(-1, 2), 
-#    gg.show()
-
-#------------------------------
-
   def test_2x2_img_easy():
     pc2x2 = SegGeometryEpix100V1(use_wide_pix_center=False)
     X,Y = pc2x2.get_seg_xy_maps_pix_with_offset()
@@ -447,7 +417,6 @@ if __name__ == "__main__":
     gg.plotImageLarge(img, amp_range=(0, 1500), figsize=(8,10))
     gg.show()
 
-#------------------------------
 
   def test_pix_sizes():
     w = SegGeometryEpix100V1()
@@ -463,7 +432,6 @@ if __name__ == "__main__":
     + '\n  size_arrY.shape:'              + str(size_arrY.shape)
     logger.info(s)
 
-#------------------------------
 
   def test_2x2_mask(mbits=0o377):
     pc2x2 = SegGeometryEpix100V1(use_wide_pix_center=False)
@@ -475,7 +443,6 @@ if __name__ == "__main__":
     gg.plotImageLarge(img, amp_range=(-1, 2), figsize=(8,10))
     gg.show()
 
-#----------
 
   def usage(tname='0'):
     s = ''
@@ -488,8 +455,7 @@ if __name__ == "__main__":
     if tname in ('0','6'): s+='\n 6 - test_2x2_mask(mbits=1+2)'
     return s
 
-#------------------------------
- 
+
 if __name__ == "__main__":
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
@@ -504,4 +470,4 @@ if __name__ == "__main__":
     if len(sys.argv)>1: logger.info(usage(tname))
     sys.exit('END OF TEST')
 
-#------------------------------
+# EOF
