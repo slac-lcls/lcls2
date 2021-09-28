@@ -6,7 +6,7 @@ Class :py:class:`SegGeometryEpix10kaV1` describes the Epix100 V1 sensor geometry
 In this class we use natural matrix notations like in data array
 \n We assume that
 \n * sensor consists of 2x2 ASICs has 352 rows and 384 columns,
-\n * Epix10ka has a pixel size 100x100um, wide pixel size 100x250um
+\n * Epix10ka has a pixel size 100x100um, wide pixel size 100x225um
 \n * X-Y coordinate system origin is in the sensor center,
 \n * pixel (r,c)=(0,0) is in the top left corner of the matrix, has coordinates (xmin,ymax), as shown below
 \n ::
@@ -98,7 +98,7 @@ class SegGeometryEpix10kaV1(SegGeometry):
     _rows  = 352     # Number of rows in 2x2
     _cols  = 384     # Number of cols in 2x2
     _pixs  = 100     # Pixel size in um (micrometer)
-    _pixw  = 250     # Wide pixel size in um (micrometer)
+    _pixw  = 225     # Wide pixel size in um (micrometer)
     _pixd  = 400.00  # Pixel depth in um (micrometer)
 
     _colsh = _cols//2

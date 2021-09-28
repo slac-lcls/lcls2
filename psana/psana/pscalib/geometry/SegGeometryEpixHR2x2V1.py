@@ -6,7 +6,7 @@ Class :py:class:`SegGeometryEpixHR2x2V1` describes the EpixHR2x2V1 sensor geomet
 In this class we use natural matrix notations like in data array
 \n We assume that
 \n * sensor consists of 2x2 ASICs has 288 rows and 384 columns,
-\n * Epix10ka has a pixel size 100x100um, wide pixel size 100x250um
+\n * Epix10ka has a pixel size 100x100um, wide pixel size 100x225um
 \n * X-Y coordinate system origin is in the sensor center,
 \n * pixel (r,c)=(0,0) is in the top left corner of the matrix, has coordinates (xmin,ymax), as shown below
 \n ::
@@ -97,7 +97,7 @@ class SegGeometryEpixHR2x2V1(SegGeometryEpix10kaV1):
         sp._rows  = 288     # Number of rows in 2x2
         sp._cols  = 384     # Number of cols in 2x2
         sp._pixs  = 100     # Pixel size in um (micrometer)
-        sp._pixw  = 250     # Wide pixel size in um (micrometer)
+        sp._pixw  = 225     # Wide pixel size in um (micrometer)
         sp._pixd  = 400.00  # Pixel depth in um (micrometer)
 
         sp._colsh = sp._cols//2
