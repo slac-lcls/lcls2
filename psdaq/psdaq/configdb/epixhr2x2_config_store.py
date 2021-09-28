@@ -24,7 +24,7 @@ def epixhr2x2_cdict():
     help_str += "\npixel_map    : 3D-map of pixel gain/inj settings"
     #top.set("help.user:RO", help_str, 'CHARSTR')
 
-    pixelMap = np.zeros((4,elemRows+2,elemCols),dtype=np.uint8)
+    pixelMap = np.zeros((elemRows*2,elemCols*2),dtype=np.uint8)
     top.set("user.pixel_map", pixelMap)
 
     top.set("user.start_ns" , 107749, 'UINT32')
@@ -68,6 +68,7 @@ def epixhr2x2_cdict():
     top.set(base+'DaqTriggerEnable' , 0, 'boolEnum')
     top.set(base+'DaqTriggerDelay'  , 0, 'UINT32')
     
+    #  There might be Json2Xtc problems with boolEnum in this object
     for i in range(4):
         base = 'expert.EpixHR.Hr10kTAsic{}.'.format(i)
         top.set(base+'shvc_DAC'      , 0, 'UINT8')

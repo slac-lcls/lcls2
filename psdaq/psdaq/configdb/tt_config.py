@@ -26,8 +26,10 @@ def cl_poll(uart):
             break
         time.sleep(0.01)
 
-def tt_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"):
+def tt_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",verbosity=0):
     global cl
+
+    logging.getLogger().setLevel(40-10*verbosity)
 
     myargs = { 'dev'         : dev,
                'pgp3'        : False,

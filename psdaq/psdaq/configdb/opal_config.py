@@ -32,12 +32,14 @@ def dict_compare(new,curr,result):
             else:
                 result[k] = new[k]
 
-def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"):
+def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",verbosity=0):
 
     global pv
     global cl
     global lm
     global lane
+
+    logging.getLogger().setLevel(40-10*verbosity)
     print('opal_init')
 
     lm=lanemask

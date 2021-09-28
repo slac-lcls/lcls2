@@ -21,8 +21,8 @@ def copy_config_entry(d,old,key):
     try:
         d[keys[-1]] = o[keys[-1]]
     except:
-        pp.pprint(old)
-        pp.pprint(d)
+        pp.pprint(o.keys())
+        pp.pprint(d.keys())
         print('Caught exception on {}'.format(key))
         raise KeyError(keys[-1])
 

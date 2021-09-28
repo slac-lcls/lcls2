@@ -30,6 +30,11 @@ elemRowsC = 146
 elemRowsD = 144
 elemCols  = 192
 
+def gain_mode_map(gain_mode):
+    mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
+    trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
+    return (mapv,trbit)
+
 class Board(pr.Root):
     def __init__(self,dev='/dev/datadev_0',):
         super().__init__(name='ePixHr10kT',description='ePixHrGen1 board')
@@ -112,11 +117,31 @@ def pixel_mask_square(value0,value1,spacing,position):
     return out
 
 #
+#  Scramble the user element pixel array into the native asic orientation
+#
+#
+#    A1   |   A3       (A1,A3) rotated 180deg
+# --------+--------
+#    A0   |   A2
+#
+def user_to_rogue(a):
+    v = a.reshape((elemRowsD*2,elemCols*2))
+    s = np.zeros((4,elemRowsC,elemCols),dtype=np.uint8)
+    s[0,:elemRowsD] = v[elemRowsD:,:elemCols]
+    s[2,:elemRowsD] = v[elemRowsD:,elemCols:]
+    vf = np.flip(v)
+    s[1,:elemRowsD] = vf[elemRowsD:,elemCols:]
+    s[3,:elemRowsD] = vf[elemRowsD:,:elemCols]
+
+    return s
+
+#
 #  Initialize the rogue accessor
 #
-def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"):
+def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",verbosity=0):
     global base
     global pv
+#    logging.getLogger().setLevel(40-10*verbosity)
     logging.debug('epixhr2x2_init')
 
     base = {}
@@ -154,6 +179,14 @@ def epixhr2x2_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M
     cbase = Board(dev=dev)
     cbase.__enter__()
     base['cam'] = cbase
+
+    base['bypass'] = 0x3f
+
+    #  Enable the environmental monitoring
+    cbase.EpixHR.SlowAdcRegisters.enable.set(1)
+    cbase.EpixHR.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
+    cbase.EpixHR.SlowAdcRegisters.StreamEn.set(1)
+    cbase.EpixHR.SlowAdcRegisters.enable.set(0)
 
     logging.info('epixhr2x2_unconfig')
     epixhr2x2_unconfig(base)
@@ -226,11 +259,14 @@ def intToBool(d,types,key):
 def dictToYaml(d,types,keys,dev,path,name):
     v = {'enable':True}
     for key in keys:
-        v[key] = d[key]
-        intToBool(v,types,key)
-        v[key]['enable'] = True
+        if key in d:
+            v[key] = d[key]
+            intToBool(v,types,key)
+            v[key]['enable'] = True
+        else:
+            v[key] = {'enable':False}
 
-    nd = {'ePixHr10kT':{'enable':True,'EpixHR':v}}
+    nd = {'ePixHr10kT':{'enable':True,'ForceWrite':False,'InitAfterConfig':False,'EpixHR':v}}
     yaml = pr.dataToYaml(nd)
     fn = path+name+'.yml'
     f = open(fn,'w')
@@ -240,7 +276,8 @@ def dictToYaml(d,types,keys,dev,path,name):
 
     #  Need to remove the enable field else Json2Xtc fails
     for key in keys:
-        del d[key]['enable']
+        if key in d:
+            del d[key]['enable']
 
 #
 #  Translate the 'user' components of the cfg dictionary into 'expert' settings
@@ -280,20 +317,21 @@ def user_to_expert(base, cfg, full=False):
 
     pixel_map_changed = False
     a = None
-    if (hasUser and ('gain_mode' in cfg['user'] or
-                     'pixel_map' in cfg['user'])):
+    hasGainMode = 'gain_mode' in cfg['user']
+    hasPixelMap = 'pixel_map' in cfg['user']
+    logging.debug(f'hasUser {hasUser}  pixel_map {hasPixelMap} gain_mode {hasGainMode}')
+    if hasUser and ('pixel_map' in cfg['user'] or
+                    'gain_mode' in cfg['user']):
         gain_mode = cfg['user']['gain_mode']
-        if gain_mode==5:
+        if gain_mode==5:  # user map
             a  = cfg['user']['pixel_map']
+            logging.debug('pixel_map len {}'.format(len(a)))
+            d['user.pixel_map'] = a
+            # what about associated trbit?
         else:
-            mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
-            trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
-            a  = (np.array(ocfg['user']['pixel_map'],dtype=np.uint8) & 0x3) | mapv
-            a = a.reshape(-1).tolist()
+            mapv, trbit = gain_mode_map(gain_mode)
             for i in range(4):
                 d[f'expert.EpixHR.Hr10kTAsic{i}.trbit'] = trbit
-        logging.debug('pixel_map len {}'.format(len(a)))
-        d['user.pixel_map'] = a
         pixel_map_changed = True
 
     update_config_entry(cfg,ocfg,d)
@@ -336,7 +374,12 @@ def config_expert(base, cfg, writePixelMap=True):
     m=3
     for i in asics:
         m = m | (4<<i)
-    pbase.DevPcie.Application.EventBuilder.Bypass.set(0x3f^m)
+    base['bypass'] = 0x3f^m
+    pbase.DevPcie.Application.EventBuilder.Bypass.set(base['bypass'])
+
+    #  Use a timeout in AxiStreamBatcherEventBuilder
+    #  Without a timeout, dropped contributions create an off-by-one between constributors
+    pbase.DevPcie.Application.EventBuilder.Timeout.set(int(8e-3*156.25e6)) # 8ms
 
     if epixHR is not None:
         # Work hard to use the underlying rogue interface
@@ -354,77 +397,44 @@ def config_expert(base, cfg, writePixelMap=True):
         arg = [1,0,0,0,0]
         for i in asics:
             arg[i+1] = 1
-        print(f'Calling fnInitAsicScript(None,None,{arg})')
+        logging.info(f'Calling fnInitAsicScript(None,None,{arg})')
         cbase.EpixHR.fnInitAsicScript(None,None,arg)
                                       
     if writePixelMap:
-        if 'user' in cfg and 'pixel_map' in cfg['user']:
-            #  Write the pixel gain maps
-            #  Would like to send a 3d array
-            a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-            pixelConfigMap = np.reshape(a,(4,146,192))
-            if False:
-                #
-                #  Accelerated matrix configuration (~2 seconds)
-                #
-                #  Found that gain_mode is mapping to [M/M/L/M/M]
-                #    Like trbit is always zero (Saci was disabled!)
-                #
-                core = cbase.SaciConfigCore
-                core.enable.set(True)
-                core.SetAsicsMatrix(json.dumps(pixelConfigMap.tolist()))
-                core.enable.set(False)
-            else:
-                #
-                #  Pixel by pixel matrix configuration (up to 15 minutes)
-                #
-                #  Found that gain_mode is mapping to [H/M/M/H/M]
-                #    Like pixelmap is always 0xc
-                #
-                for i in asics:
-                    saci = getattr(cbase.EpixHR,f'Hr10kTAsic{i}')
-                    saci.CmdPrepForRead()
-                    saci.PrepareMultiConfig()
+        hasGainMode = 'gain_mode' in cfg['user']
+        if (hasGainMode and cfg['user']['gain_mode']==5) or not hasGainMode:
+            #
+            #  Write the general pixel map
+            #
+            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+            pixelConfigMap = user_to_rogue(pixelConfigUsr)
 
-                #  Set the whole ASIC to its most common value
-                masic = {}
-                for i in asics:
-                    masic[i] = mode(pixelConfigMap[i])
-                    saci = getattr(cbase.EpixHR,f'Hr10kTAsic{i}')
-#                    saci.WriteMatrixData(masic)  # 0x4000 v 0x84000
-                    for r in range(48):
-                        saci.PrepareMultiConfig()
-                        saci.ColCounter.set(r)
-                        saci.WriteColData.set(masic[i])
-                    saci.CmdPrepForRead()
-
-                #  Now fix any pixels not at the common value
-                for i in asics:
-                    saci = getattr(cbase.EpixHR,f'Hr10kTAsic{i}')
-                    for x in range(145):
-                        for y in range(192):
-                            if masic[i]==pixelConfigMap[i][x][y]:
-                                continue
-                            bankToWrite = int(y/48)
-                            if bankToWrite==0:
-                                colToWrite = 0x700 + y%48;
-                            elif (bankToWrite == 1):
-                                colToWrite = 0x680 + y%48;
-                            elif (bankToWrite == 2):
-                                colToWrite = 0x580 + y%48;
-                            elif (bankToWrite == 3):
-                                colToWrite = 0x380 + y%48;
-                            else:
-                                print('unexpected bank number')
-                            saci.RowCounter.set(x) #6011
-                            saci.ColCounter.set(colToWrite) #6013
-                            saci.WritePixelData.set(int(pixelConfigMap[i][x][y])) #5000
-                    saci.CmdPrepForRead()
+            for i in asics:
+                #  Write a csv file then pass to rogue
+                fn = path+'PixelMap{}.csv'.format(i)
+                np.savetxt(fn, pixelConfigMap[i], fmt='%d', delimiter=',', newline='\n')
+                print('Setting pixel bit map from {}'.format(fn))
+                getattr(cbase.EpixHR,'Hr10kTAsic{}'.format(i)).fnSetPixelBitmap(None,None,fn)
 
             logging.debug('SetAsicsMatrix complete')
         else:
-            print('writePixelMap but no new map')
-            logging.debug(cfg)
+            #
+            #  Write a uniform pixel map
+            #
+            gain_mode = cfg['user']['gain_mode']
+            mapv, trbit = gain_mode_map(gain_mode)
+            print(f'Setting uniform pixel map mode {gain_mode} mapv {mapv} trbit {trbit}')
+
+            for i in asics:
+                saci = getattr(cbase.EpixHR,f'Hr10kTAsic{i}')
+                saci.enable.set(True)
+                for b in range(48):
+                    saci.PrepareMultiConfig()
+                    saci.ColCounter.set(b)
+                    saci.WriteColData.set(mapv)
+                saci.CmdPrepForRead()
+                saci.trbit.set(trbit)
+                saci.enable.set(False)
 
     #  Enable triggers to continue monitoring
     epixhr2x2_internal_trigger(base)
@@ -460,12 +470,14 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
     ocfg = cfg
 
     #  Translate user settings to the expert fields
-    user_to_expert(base, cfg, full=True)
+    writePixelMap=user_to_expert(base, cfg, full=True)
 
     #  Apply the expert settings to the device
-    config_expert(base, cfg, writePixelMap=False)
+    config_expert(base, cfg, writePixelMap)
 
     pbase = base['pci']
+    pbase.StopRun()
+    time.sleep(0.001)
     pbase.StartRun()
 
     #  Add some counter resets here
@@ -492,8 +504,14 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
     scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
 
 
-    a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-    pixelConfigMap = np.reshape(a,(4,146,192))
+    #  User pixel map is assumed to be 288x384 in standard element orientation
+    gain_mode = cfg['user']['gain_mode']
+    if gain_mode==5:
+        pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+    else:
+        mapv,trbit = gain_mode_map(gain_mode)
+        pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
+    pixelConfigMap = user_to_rogue(pixelConfigUsr)
 
     for seg in range(1):
         #  Construct the ID
@@ -510,8 +528,8 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
         top = cdict()
         top.setAlg('config', [2,0,0])
         top.setInfo(detType='epixhr2x2', detName=topname[0], detSegm=seg+int(topname[1]), detId=id, doc='No comment')
-        top.set('asicPixelConfig', pixelConfigMap[seg:seg+1,:144].tolist(), 'UINT8')  # only the rows which have readable pixels
-        top.set('trbit'          , trbit[seg:seg+1], 'UINT8')
+        top.set('asicPixelConfig', pixelConfigUsr)
+        top.set('trbit'          , [trbit for i in range(4)], 'UINT8')
         scfg[seg+1] = top.typed_json()
 
     result = []
@@ -554,9 +572,15 @@ def epixhr2x2_scan_keys(update):
     scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
 
     if pixelMapChanged:
-        a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-        pixelConfigMap = np.reshape(a,(16,178,192))
-        trbit = [ cfg['expert']['EpixHR'][f'Hr10kTAsic{i}']['trbit'] for i in range(16)]
+        gain_mode = cfg['user']['gain_mode']
+        if gain_mode==5:
+            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+        else:
+            mapv,trbit = gain_mode_map(gain_mode)
+            pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
+
+        pixelConfigMap = user_to_rogue(pixelConfigUsr)
+        trbit = [ cfg['expert']['EpixHR'][f'Hr10kTAsic{i}']['trbit'] for i in range(4)]
 
         cbase = base['cam']
         for seg in range(1):
@@ -564,8 +588,8 @@ def epixhr2x2_scan_keys(update):
             top = cdict()
             top.setAlg('config', [2,0,0])
             top.setInfo(detType='epixhr2x2', detName=topname[0], detSegm=int(topname[1]), detId=id, doc='No comment')
-            top.set('asicPixelConfig', pixelConfigMap[seg:seg+1,:144].tolist(), 'UINT8')
-            top.set('trbit'          , trbit[seg:seg+1], 'UINT8')
+            top.set('asicPixelConfig', pixelConfigUsr)
+            top.set('trbit'          , trbit                  , 'UINT8')
             scfg[seg+1] = top.typed_json()
 
     result = []
@@ -586,8 +610,16 @@ def epixhr2x2_update(update):
     update_config_entry(cfg,ocfg,json.loads(update))
     #  Apply to expert
     writePixelMap = user_to_expert(base,cfg,full=False)
+
+    ##  Having problems with partial configuration
     #  Apply config
-    config_expert(base, cfg, writePixelMap)
+    #config_expert(base, cfg, writePixelMap)
+    ##  Try full configuration
+    ncfg = ocfg
+    update_config_entry(ncfg,ocfg,json.loads(update))
+    config_expert(base, ncfg, writePixelMap)
+    ##  End of Try full
+
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
         copy_config_entry(cfg,ocfg,key)
@@ -604,8 +636,14 @@ def epixhr2x2_update(update):
     scfg[0] = cfg
 
     if writePixelMap:
-        a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-        pixelConfigMap = np.reshape(a,(16,178,192))
+        gain_mode = cfg['user']['gain_mode']
+        if gain_mode==5:
+            pixelConfigUsr = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
+        else:
+            mapv,trbit = gain_mode_map(gain_mode)
+            pixelConfigUsr = np.zeros((2*elemRowsD,2*elemCols),dtype=np.uint8)+mapv
+
+        pixelConfigMap = user_to_rogue(pixelConfigUsr)
         try:
             trbit = [ cfg['expert']['EpixHR'][f'Hr10kTAsic{i}']['trbit'] for i in range(4)]
         except:
@@ -617,9 +655,9 @@ def epixhr2x2_update(update):
             top = cdict()
             top.setAlg('config', [2,0,0])
             top.setInfo(detType='epixhr2x2', detName=topname[0], detSegm=seg+int(topname[1]), detId=id, doc='No comment')
-            top.set('asicPixelConfig', pixelConfigMap[seg:seg+1,:144].tolist(), 'UINT8')
+            top.set('asicPixelConfig', pixelConfigUsr)
             if trbit is not None:
-                top.set('trbit'          , trbit[seg:seg+1], 'UINT8')
+                top.set('trbit'      , trbit                  , 'UINT8')
             scfg[seg+1] = top.typed_json()
 
     result = []
@@ -666,26 +704,37 @@ def _resetSequenceCount():
     cbase.RegisterControl.ResetCounters.set(0)
 
 def epixhr2x2_external_trigger(base):
-    cbase = base['cam'].EpixHR
     #  Switch to external triggering
     print('=== external triggering ===')
+    cbase = base['cam'].EpixHR
     cbase.TriggerRegisters.enable.set(1)
+    cbase.TriggerRegisters.AutoRunEn.set(0)
+    cbase.TriggerRegisters.AutoDaqEn.set(0)
     cbase.TriggerRegisters.PgpTrigEn.set(1)
     cbase.TriggerRegisters.DaqTriggerEnable.set(1)
     cbase.TriggerRegisters.RunTriggerEnable.set(1)
+    cbase.TriggerRegisters.enable.set(0)
     #  Enable frame readout
-#    cbase.RdoutCore.RdoutEn.set(1)
+    time.sleep(0.01)  # make sure all auto triggers are done
+    pbase = base['pci']
+    pbase.DevPcie.Application.EventBuilder.Bypass.set(base['bypass'])
 
 def epixhr2x2_internal_trigger(base):
-    cbase = base['cam'].EpixHR
     #  Disable frame readout 
-    #  *** I don't know how to disable frame readout but still get monitoring
-    #  *** So, we can't enable internal triggers, since it kills the EventBuilder
-#    cbase.RdoutCore.RdoutEn.set(0)
+    pbase = base['pci']
+    pbase.DevPcie.Application.EventBuilder.Bypass.set(0x3c)
+
     #  Switch to internal triggering
     print('=== internal triggering ===')
+    cbase = base['cam'].EpixHR
     cbase.TriggerRegisters.enable.set(1)
     cbase.TriggerRegisters.PgpTrigEn.set(0)
+    cbase.TriggerRegisters.DaqTriggerEnable.set(1)
+    cbase.TriggerRegisters.RunTriggerEnable.set(1)
+    cbase.TriggerRegisters.AutoTrigPeriod.set(1000000)  # 100Hz
+    cbase.TriggerRegisters.AutoDaqEn.set(1)
+    cbase.TriggerRegisters.AutoRunEn.set(1)
+    cbase.TriggerRegisters.enable.set(0)
 
 def epixhr2x2_enable(base):
     epixhr2x2_external_trigger(base)

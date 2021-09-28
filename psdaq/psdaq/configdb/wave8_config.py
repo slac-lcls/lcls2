@@ -129,8 +129,9 @@ def config_timing(epics_prefix, lcls2=False):
     values = [0]
     ctxt_put(names,values)
         
-def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timebase="186M"):
+def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timebase="186M", verbosity=0):
     global prefix
+    logging.getLogger().setLevel(40-10*verbosity)
     prefix = epics_prefix
     return epics_prefix
 
