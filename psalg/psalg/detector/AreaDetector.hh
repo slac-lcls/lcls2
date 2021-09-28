@@ -56,13 +56,13 @@ public:
 
   template <typename T>
   inline T config_value_for_index(index_t i) {
-    assert(_pconfit > 0);
+    assert(_pconfit != 0);
     return _pconfit->desc_shape().get_value<T>(i);
   }
 
   template <typename T>
   inline Array<T> config_array_for_index(index_t i) {
-    assert(_pconfit > 0);
+    assert(_pconfit != 0);
     return _pconfit->desc_shape().get_array<T>(i);
   }
 
