@@ -77,12 +77,13 @@ void BEBDetector::_init(const char* arg)
       const char* xpmpv = MLOOKUP(m_para->kwargs,"xpmpv",0);
       const char* timebase = MLOOKUP(m_para->kwargs,"timebase","186M");
 
-      m_root = _check(PyObject_CallFunction(pFunc,"ssiss",
+      m_root = _check(PyObject_CallFunction(pFunc,"ssissi",
                                             arg,
                                             m_para->device.c_str(),
                                             m_para->laneMask,
                                             xpmpv,
-					    timebase));
+					    timebase,
+                                            m_para->verbose));
     }
 
     {
@@ -217,6 +218,7 @@ void BEBDetector::event(XtcData::Dgram& dgram, PGPEvent* event)
         unsigned nsubs = ebsft->tdest()+1;
         std::vector< XtcData::Array<uint8_t> > subframes(nsubs, XtcData::Array<uint8_t>(0, 0, 1) );
         do {
+            logging::debug("_event: array[%d] sz[%d]\n",ebsft->tdest(),ebsft->size());
             subframes[ebsft->tdest()] = XtcData::Array<uint8_t>(ebsft->data(), &ebsft->size(), 1);
         } while ((ebsft=ebit.next()));
         _event(dgram.xtc, subframes);

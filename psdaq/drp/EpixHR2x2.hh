@@ -22,13 +22,14 @@ protected:
     unsigned       _configure(XtcData::Xtc&, XtcData::ConfigIter&) override;
     void           _event    (XtcData::Xtc&,
                               std::vector< XtcData::Array<uint8_t> >&) override;
-private:
-    void           _monStreamEnable ();
-    void           _monStreamDisable();
+public:
+    void           monStreamEnable ();
+    void           monStreamDisable();
 protected:
     Pds::Semaphore    m_env_sem;
     bool              m_env_empty;
     XtcData::NamesId  m_evtNamesId[2];
+    unsigned          m_asics;
   };
 
 }

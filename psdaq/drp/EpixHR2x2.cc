@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <stdint.h>
+#include <signal.h>
 
 using namespace XtcData;
 using logging = psalg::SysLog;
@@ -92,12 +93,32 @@ namespace Drp {
 
 using Drp::EpixHR2x2;
 
+static EpixHR2x2* epix = 0;
+
+static void sigHandler(int signal)
+{
+  psignal(signal, "epixhr2x2 received signal");
+  epix->monStreamEnable();
+  ::exit(signal);
+}
+
 EpixHR2x2::EpixHR2x2(Parameters* para, MemPool* pool) :
     BEBDetector   (para, pool),
     m_env_sem     (Pds::Semaphore::FULL),
     m_env_empty   (true)
 {
     _init(para->detName.c_str());  // an argument is required here
+
+    epix = this;
+
+    struct sigaction sa;
+    sa.sa_handler = sigHandler;
+    sa.sa_flags = SA_RESETHAND;
+
+    sigaction(SIGINT ,&sa,NULL);
+    sigaction(SIGABRT,&sa,NULL);
+    sigaction(SIGKILL,&sa,NULL);
+    sigaction(SIGSEGV,&sa,NULL);
 }
 
 EpixHR2x2::~EpixHR2x2()
@@ -111,13 +132,13 @@ void EpixHR2x2::_connect(PyObject* mbytes)
 
 unsigned EpixHR2x2::enable(XtcData::Xtc& xtc, const nlohmann::json& info)
 {
-    _monStreamDisable();
+    monStreamDisable();
     return 0;
 }
 
 unsigned EpixHR2x2::disable(XtcData::Xtc& xtc, const nlohmann::json& info)
 {
-    _monStreamEnable();
+    monStreamEnable();
     return 0;
 }
 
@@ -151,6 +172,16 @@ unsigned EpixHR2x2::_configure(XtcData::Xtc& xtc,XtcData::ConfigIter& configo)
         m_namesLookup[nid] = NameIndex(eventNames);
     }
 
+    {
+        XtcData::Names&    names    = detector::configNames(configo);
+        XtcData::DescData& descdata = configo.desc_shape();
+        for(unsigned i=0; i< names.num(); i++) {
+            XtcData::Name& name = names.get(i);
+            if (strcmp(name.name(),"user.asic_enable")==0)
+                m_asics = descdata.get_value<uint32_t>(name.name());
+        }
+    }
+
     return 0;
 }
 
@@ -170,6 +201,11 @@ static float _getThermistorTemp(uint16_t x)
     return 0.;
 }
 
+//
+//  Subframes:  0:   Event header
+//              2:   Timing frame detailed
+//              3-6: ASIC[0:3]
+//
 void EpixHR2x2::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     unsigned shape[MaxRank] = {0,0,0,0,0};
@@ -183,15 +219,25 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >
     logging::debug("Writing panel event src 0x%x",unsigned(m_evtNamesId[0]));
     shape[0] = elemRows*2; shape[1] = elemRowSize*2;
     Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixHRPanelDef::raw, shape);
+    memset(aframe.data(),0,4*elemRows*elemRowSize*2);
     
     //
     //    A1   |   A3       (A1,A3) rotated 180deg
     // --------+--------
     //    A0   |   A2
     //
-    for(unsigned q=0; q<4; q+=2) {
-        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q+2].data());
-        if (!u) continue;
+    char dline[280];
+    for(unsigned q=0; (q+3)<subframes.size(); q+=2) {
+        logging::debug("asic[%d] nelem[%d]",q,subframes[q+3].num_elem());
+        if (!subframes[q+3].num_elem()) {
+            if (m_asics & q)
+                xtc.damage.increase(XtcData::Damage::MissingData);
+            continue;
+        }
+        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q+3].data());
+        for(unsigned i=0; i<32; i++)
+            sprintf(&dline[i*5]," %04x", u[i+19200]);
+        logging::debug("asic[%d] sz[%d] %s",q,subframes[q+3].num_elem(),dline);
         u += 6;
         for(unsigned row=0, e=0; row<elemRows; row++, e+=elemRowSize) {
             uint16_t* dst = &aframe(row+elemRows,elemRowSize*(q>>1));  
@@ -204,9 +250,14 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >
             }
         }
     }
-    for(unsigned q=1; q<4; q+=2) {
-        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q+2].data());
-        if (!u) continue;
+    for(unsigned q=1; (q+3)<subframes.size(); q+=2) {
+        logging::debug("asic[%d] nelem[%d]",q,subframes[q+3].num_elem());
+        if (!subframes[q+3].num_elem()) {
+            if (m_asics & q)
+                xtc.damage.increase(XtcData::Damage::MissingData);
+            continue;
+        }
+        const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q+3].data());
         u += 6;
         for(unsigned row=0, e=0; row<elemRows; row++, e+=elemRowSize) {
             uint16_t* dst = &aframe(elemRows-1-row,elemRowSize*(1-(q>>1)));
@@ -237,7 +288,7 @@ void     EpixHR2x2::shutdown()
 {
 }
 
-void     EpixHR2x2::_monStreamEnable()
+void     EpixHR2x2::monStreamEnable()
 {
     PyObject* pDict = _check(PyModule_GetDict(m_module));
     char func_name[64];
@@ -249,7 +300,7 @@ void     EpixHR2x2::_monStreamEnable()
     Py_DECREF(mybytes);
 }
 
-void     EpixHR2x2::_monStreamDisable()
+void     EpixHR2x2::monStreamDisable()
 {
     PyObject* pDict = _check(PyModule_GetDict(m_module));
     char func_name[64];
