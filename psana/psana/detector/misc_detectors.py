@@ -59,4 +59,9 @@ class encoder_raw_0_0_1(DetectorImpl):
         """
         segments = self._segments(evt)
         if segments is None: return None
+        # NOTE: here we only return the first channel of the array to
+        # make it easier for the users to use.  If we go to multi-channel in future
+        # we could update the version number of the raw data and have
+        # another det xface that returns all channels (leaving out the [0]
+        # in the "encoderValue" and "scale" below). - cpo 09/28/21
         return segments[0].encoderValue[0]*segments[0].scale[0]*1e-6
