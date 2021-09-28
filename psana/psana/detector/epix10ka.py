@@ -2,19 +2,31 @@
    for composite detectors made of epix10ka segments/panels.
 """
 import numpy as np
-from amitypes import Array2d
-from psana.detector.epix_base import epix_base, logging
+from amitypes import Array2d, Array3d
+import psana.detector.epix_base as eb
+import logging
 logger = logging.getLogger(__name__)
 
-class epix10k_raw_0_0_1(epix_base):
+
+class epix10k_raw_0_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
-        logger.debug('epix10k_raw_0_0_1.__init__')
-        epix_base.__init__(self, *args, **kwargs)
+        logger.debug('%s.__init__' % self.__class__.__name__)
+        eb.epix_base.__init__(self, *args, **kwargs)
 
 
-class epix10ka_raw_2_0_1(epix_base):
+class epix10ka_raw_2_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
-        epix_base.__init__(self, *args, **kwargs)
+        logger.debug('epix10ka_raw_2_0_1.__init__')
+        eb.epix_base.__init__(self, *args, **kwargs)
+
+    def calib(self, evt, **kwa) -> Array3d:
+        logger.debug('epix10ka_raw_2_0_1.calib')
+        return eb.calib_epix10ka_any(self, evt, **kwa)
+
+    def _gain_range_index(self, evt, **kwa):
+        """Returns array (shaped as raw) per pixel gain range index or None."""
+        return eb.map_gain_range_index(self, evt, **kwa)
+
     def _array(self, evt) -> Array2d:
         f = None
         segs = self._segments(evt)

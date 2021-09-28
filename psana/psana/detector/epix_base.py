@@ -21,7 +21,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from psana.detector.areadetector import AreaDetector, np, DTYPE_MASK, DTYPE_STATUS
-from psana.detector.UtilsEpix10ka import calib_epix10ka_any, map_gain_range_index
+from psana.detector.UtilsEpix10ka import np, calib_epix10ka_any, map_gain_range_index
 from psana.detector.UtilsMask import merge_status
 from psana.pscalib.geometry.SegGeometryEpix10kaV1 import epix10ka_one as seg
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
@@ -35,17 +35,17 @@ class epix_base(AreaDetector):
 
 
     def calib(self, evt, **kwa) -> Array3d:
-        """
-        Create calibrated data array.
-        """
-        logger.debug('epix_base.calib')
-        #return self.raw(evt)
-        return calib_epix10ka_any(self, evt, **kwa)
+        """Returns calibrated data array."""
+        logger.debug('epix_base.calib - TO BE REIMPLEMENTED - returns raw')
+        return self.raw(evt)
+        #return calib_epix10ka_any(self, evt, **kwa)
 
 
     def _gain_range_index(self, evt, **kwa):
         """Returns array (shaped as raw) per pixel gain range index or None."""
-        return map_gain_range_index(self, evt, **kwa)
+        logger.debug('epix_base._gain_range_index - TO BE REIMPLEMENTED - returns zeroes shaped as raw')
+        return np.zeros_like(self.raw(evt), dtype=np.uint16)
+        #return map_gain_range_index(self, evt, **kwa)
 
 
     def _mask_from_status(self, **kwa):
