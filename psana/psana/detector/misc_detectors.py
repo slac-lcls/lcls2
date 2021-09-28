@@ -59,4 +59,4 @@ class encoder_raw_0_0_1(DetectorImpl):
         """
         segments = self._segments(evt)
         if segments is None: return None
-        return segments[0].encoderValue*segments[0].scale*1e-6
+        return segments[0].encoderValue[0]*segments[0].scale[0]*1e-6
