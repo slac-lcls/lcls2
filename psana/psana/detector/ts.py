@@ -105,7 +105,7 @@ class ts_ts_0_0_1(DetectorImpl):
 
     def eventcodes(self,evt) -> amitypes.Array1d:
         seqV = self._info(evt).sequenceValues
-        return [int((seqV[i>>4]>>(i&0xf))&1) for i in range(256)]
+        return [int((seqV[i>>4]>>(i&0xf))&1) for i in range(288)]
 
     #def l1fid(self,evt) -> int:
     #    return self._info(evt).timeStamp&0x1ffff

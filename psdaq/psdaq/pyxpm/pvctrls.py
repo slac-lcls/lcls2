@@ -384,7 +384,7 @@ class GroupSetup(object):
 
     def setEventCode(self):
         code   = self._pv_EventCode.current()['value']
-        rateVal = (2<<14) | ((code&0xf0)<<4) | (code&0xf)
+        rateVal = (2<<14) | ((code&0x3f0)<<4) | (code&0xf)
         self._app.l0RateSel.set(rateVal)
 
     def setSequence(self):

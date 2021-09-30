@@ -22,7 +22,7 @@ mycdb.add_device_config('ts')
 top = cdict()
 
 top.setInfo('ts', args.name, args.segm, args.id, 'No comment')
-top.setAlg('config', [2,0,0])
+top.setAlg('config', [2,1,0])
 
 top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
 top.set("firmwareVersion:RO",   0, 'UINT32')
@@ -75,7 +75,10 @@ top.set('user.LINAC', 0, 'linacEnum')
 
 for group in range(8):
     grp_prefix = 'user.Cu.group'+str(group)+'_'
-    top.set(grp_prefix+'eventcode', 40, 'UINT8')
+    if group==6:
+        top.set(grp_prefix+'eventcode', 272, 'UINT32')
+    else:
+        top.set(grp_prefix+'eventcode', 40, 'UINT32')
 
     grp_prefix = 'user.SC.group'+str(group)+'.'
     top.set(grp_prefix+'trigMode', 0, 'trigModeEnum') # default to fixed rate
