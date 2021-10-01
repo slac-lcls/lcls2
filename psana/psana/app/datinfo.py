@@ -39,10 +39,30 @@ def ds_run_det(args):
 
     ds_kwa = datasource_arguments(args)
     print('DataSource kwargs:%s' % info_dict(ds_kwa, fmt='%s: %s', sep=' '))
-    ds = DataSource(**ds_kwa)
+    try:
+      ds = DataSource(**ds_kwa)
+    except:
+      print('Can not open DataSource\nCheck if xtc2 file is available')
+      sys.exit()
     run = next(ds.runs())
-    print('args.detname:%s' % str(args.detname))
     det = None if args.detname is None else run.Detector(args.detname)
+
+    print('args.detname:%s' % str(args.detname))
+    print('DataSource members and methods\ndir(ds):', dir(ds))
+    print('ds.xtc_path:', str(ds.xtc_path))
+    print('ds.n_files:', str(ds.n_files))
+    print('ds.xtc_files:\n ', '\n  '.join(ds.xtc_files))
+    print('ds.xtc_ext:', str(ds.xtc_ext))
+    print('ds.shmem:', str(ds.shmem))
+    print('ds.smd_files:\n ', '\n  '.join(ds.smd_files))
+    print('ds.smalldata_kwargs:', str(ds.smalldata_kwargs))
+    print('ds.timestamps:', str(ds.timestamps))
+    print('ds.unique_user_rank:', str(ds.unique_user_rank()))
+    print('ds.is_mpi:', str(ds.is_mpi()))
+    print('ds.live:', str(ds.live))
+    print('ds.destination:', str(ds.destination))
+
+    #sys.exit('TEST EXIT')
 
     expname = run.expt if run.expt is not None else args.expname # 'mfxc00318'
 
@@ -50,10 +70,25 @@ def ds_run_det(args):
     #print('expname:', expname)
     #print('runnum :', run.runnum)
     #print('run.timestamp :', run.timestamp)
+    print('_fullname       :', det.raw._fullname())
+    print('_segment_ids    :', det.raw._segment_ids())
+    print('_segment_indices:', det.raw._segment_indices())
+
+    #print('_config_object  :', str(det.raw._config_object()))
+    #print('_config_object2 :', str(ue.config_object_det(det)))
+    #print('_config_object3 :', str(ue.config_object_det_raw(det.raw)))
+
+    dcfg = det.raw._config_object()
+    for k,v in dcfg.items():
+        print('  seg:%s %s' % (str(k), info_ndarr(v.config.trbit, ' v.config.trbit for ASICs')))
+        print('  seg:%s %s' % (str(k), info_ndarr(v.config.asicPixelConfig, ' v.config.asicPixelConfig')))
 
     print(info_run(run, cmt='run info\n    ', sep='\n    '))
     if det is not None:
       print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
+      print('det.raw.seg_geo.shape():', det.raw.seg_geo.shape())
+
+    #sys.exit('TEST EXIT')
 
 
 def selected_record(nrec):
@@ -90,12 +125,16 @@ def loop_run_step_evt(args):
       if not do_loopsteps: continue
       print('%s detector object' % args.detname)
       det = None if args.detname is None else run.Detector(args.detname)
-      is_epix10ka = False if det is None else 'epix' in det.raw._uniqueid
+
+      is_epix10ka  = False if det is None else det.raw._dettype == 'epix10ka'
+      is_epixhr2x2 = False if det is None else det.raw._dettype == 'epixhr2x2'
+
       try:    step_docstring = run.Detector('step_docstring')
       except: step_docstring = None
       print('step_docstring detector object is %s' % ('missing' if step_docstring is None else 'created'))
+      print('det.raw.seg_geo.shape():', det.raw.seg_geo.shape())
 
-      dcfg = ue.config_object_epix10ka(det) if is_epix10ka else None
+      dcfg = det.raw._config_object() #_config_object() #ue.config_object_det(det)
 
       for istep,step in enumerate(run.steps()):
         print('\nStep %02d' % istep, end='')
@@ -112,12 +151,13 @@ def loop_run_step_evt(args):
              segs = det.raw._segment_numbers(evt) if det is not None else None
              print('  Event %05d %s     ' % (ievt, info_ndarr(segs,'segments')))
              raw = det.raw.raw(evt)
-             print(info_ndarr(raw,'    raw.raw'))
+             print(info_ndarr(raw,'    det.raw.raw(evt)'))
              #print('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
+
              if dcfg is not None:
                s = '    gain mode fractions for: FH       FM       FL'\
                    '       AHL-H    AML-M    AHL-L    AML-L\n%s' % (29*' ')
-               print(ue.info_pixel_gain_mode_fractions(dcfg, data=raw, msg=s))
+               print(ue.info_pixel_gain_mode_fractions(det.raw, evt, msg=s))
 
           print(info_det_evt(det, evt, ievt), end='\r')
         print(info_det_evt(det, evt, ievt), end='\n')
