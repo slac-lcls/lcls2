@@ -29,14 +29,13 @@ class epix10ka_raw_2_0_1(eb.epix_base):
         return eb.map_gain_range_index(self, evt, **kwa)
 
 
-
-
-    def _cbits_segment_config(self, cob):
+    def _cbits_config_segment(self, cob):
         """cob=det.raw._seg_configs()[<seg-ind>].config - segment configuration object"""
         return eb.cbits_config_epix10ka(cob, shape=(352, 384))
 
 
-
+    def _cbits_config_and_data_detector(self, evt=None):
+        return eb.cbits_config_and_data_detector_epix10ka(self, evt)
 
 
     def _array(self, evt) -> Array2d:
@@ -61,3 +60,4 @@ class epix10ka_raw_2_0_1(eb.epix_base):
 #  Old detType for epix10ka
 epix_raw_2_0_1 = epix10ka_raw_2_0_1
 
+# EOF
