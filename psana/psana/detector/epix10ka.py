@@ -7,17 +7,18 @@ import psana.detector.epix_base as eb
 import logging
 logger = logging.getLogger(__name__)
 
-
 class epix10k_raw_0_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
         logger.debug('%s.__init__' % self.__class__.__name__)
         eb.epix_base.__init__(self, *args, **kwargs)
+        self.seg_geo = eb.sgs.Create(segname='EPIX10KA:V1')
 
 
 class epix10ka_raw_2_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
         logger.debug('epix10ka_raw_2_0_1.__init__')
         eb.epix_base.__init__(self, *args, **kwargs)
+        self.seg_geo = eb.sgs.Create(segname='EPIX10KA:V1')
 
     def calib(self, evt, **kwa) -> Array3d:
         logger.debug('epix10ka_raw_2_0_1.calib')
@@ -26,6 +27,17 @@ class epix10ka_raw_2_0_1(eb.epix_base):
     def _gain_range_index(self, evt, **kwa):
         """Returns array (shaped as raw) per pixel gain range index or None."""
         return eb.map_gain_range_index(self, evt, **kwa)
+
+
+
+
+    def _cbits_segment_config(self, cob):
+        """cob=det.raw._seg_configs()[<seg-ind>].config - segment configuration object"""
+        return eb.cbits_config_epix10ka(cob, shape=(352, 384))
+
+
+
+
 
     def _array(self, evt) -> Array2d:
         f = None

@@ -4,14 +4,15 @@
 import numpy as np
 from amitypes import Array2d
 #from psana.detector.detector_impl import DetectorImpl
-from psana.detector.epix_base import epix_base
+import psana.detector.epix_base as eb
 import logging
 logger = logging.getLogger(__name__)
 
-class epixhr2x2_raw_2_0_1(epix_base):
+class epixhr2x2_raw_2_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
         logger.debug('epixhr2x2_raw_2_0_1.__init__')
-        epix_base.__init__(self, *args, **kwargs)
+        eb.epix_base.__init__(self, *args, **kwargs)
+        self.seg_geo = eb.sgs.Create(segname='EPIXHR2X2:V1')
 
     def _array(self, evt) -> Array2d:
         f = None
@@ -25,3 +26,7 @@ class epixhr2x2_raw_2_0_1(epix_base):
         return f
 
 
+
+    def _cbits_segment_config(self, cob):
+        """cob=det.raw._seg_configs()[<seg-ind>].config"""
+        return eb.cbits_config_epixhr2x2(cob, shape=(288, 384))
