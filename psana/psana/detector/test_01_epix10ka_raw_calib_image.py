@@ -256,8 +256,9 @@ def test_image(args):
     ds, run, det = ds_run_det(args)
     peds = det.raw._pedestals() if args.grindex is None else det.raw._pedestals()[args.grindex,:]
 
-    is_epix10ka = 'epix' in det.raw._uniqueid
-    dcfg = ue.config_object_epix10ka(det) if is_epix10ka else None
+    is_epix10ka = False if det is None else det.raw._dettype == 'epix10ka'
+    #is_epixhr2x2 = False if det is None else det.raw._dettype == 'epixhr2x2'
+    dcfg = ue.config_object_det(det) if is_epix10ka else None
 
     break_event_loop = False
 
@@ -290,12 +291,12 @@ def test_image(args):
             s = '    gain mode fractions for: FH       FM       FL'\
                 '       AHL-H    AML-M    AHL-L    AML-L\n%s' % (29*' ')
             #ue.info_pixel_gain_mode_for_fractions(dcfg, data=det.raw.raw(evt), msg=s))
-            gmfracs = ue.pixel_gain_mode_fractions(dcfg, data=det.raw.raw(evt))
+            gmfracs = ue.pixel_gain_mode_fractions(det.raw, evt)
             print(ue.info_pixel_gain_mode_for_fractions(gmfracs, msg=s))
             gmind = ue.gain_mode_index_from_fractions(gmfracs)
             gmname = ue.gain_mode_name_for_index(gmind).upper()
             print('  == major gain mode %d : %s' % (gmind, gmname))
-            #print('  == gain mode: %s' % ue.find_gain_mode(dcfg, data=None).upper())
+            #print('  == gain mode: %s' % ue.find_gain_mode(det.raw, evt).upper())
 
             if peds is None: peds = det.raw._pedestals()[gmind,:]
 

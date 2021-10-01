@@ -1,5 +1,5 @@
 """
-:py:class:`utils_psana` psana-specific utilities 
+:py:class:`utils_psana` psana-specific utilities
 ================================================
 
 Usage::
@@ -13,7 +13,7 @@ Usage::
 
     s = info_run_dsparms_det_classes(run, cmt='run.dsparms.det_classes:\n ', sep='\n ')
     s = info_run(run, cmt='run info:', sep='\n    ', verb=0o377)
- 
+
 This software was developed for the LCLS project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
