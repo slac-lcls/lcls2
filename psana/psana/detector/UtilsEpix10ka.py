@@ -6,26 +6,26 @@
 Usage::
     from psana.detector.UtilsEpix10ka import ...
 
-    inds = segment_indices_epix10ka_detector(det)
-    long_name = fullname_epix10ka_detector(det)
-    ids = segment_ids_epix10ka_detector(det)
-    o = config_object_epix10ka(det, detname=None)
-    o = config_object_epix10ka_raw(det_raw)
-    cbits = cbits_config_epix10ka(cob)
-    cbits = cbits_config_epix10ka_any(dcfg)
-    cbits = cbits_total_epix10ka_any(dcfg, data=None)
-    maps = gain_maps_epix10ka_any(dcfg, data=None)
+    #inds = segment_indices_det(det)
+    #long_name = fullname_det(det)
+    #ids = segment_ids_det(det)
+    o = config_object_det(det, detname=None)
+    #o = config_object_det_raw(det_raw)
+    cbits = cbits_config_epix10ka(cob)  # used in det.raw._cbits_segment_config(cob)
+    cbits = cbits_config_epixhr2x2(cob) # used in det.raw._cbits_segment_config(cob)
+    cbits = cbits_total_epix10ka_any(det_raw, evt=None) #dcfg, data=None)
+    maps = gain_maps_epix10ka_any(det_raw, evt=None)
     s = def info_gain_mode_arrays(gmaps, first=0, last=5)
     gmstatist = pixel_gain_mode_statistics(gmaps)
     s = info_pixel_gain_mode_statistics(gmaps)
-    s = info_pixel_gain_mode_statistics_for_raw(dcfg, data=None, msg='pixel gain mode statistics: ')
-    gmfs = pixel_gain_mode_fractions(dcfg, data=None)
+    s = info_pixel_gain_mode_statistics_for_raw(det_raw, evt=None, msg='pixel gain mode statistics: ')
+    gmfs = pixel_gain_mode_fractions(det_raw, evt=None)
     s = info_pixel_gain_mode_for_fractions(grp_prob, msg='pixel gain mode fractions: ')
-    s = info_pixel_gain_mode_fractions(dcfg, data=None, msg='pixel gain mode fractions: ')
+    s = info_pixel_gain_mode_fractions(det_raw, evt=None, msg='pixel gain mode fractions: ')
     gmind = gain_mode_index_from_fractions(gmfs)
-    gmind = find_gain_mode_index(dcfg, data=None)
+    gmind = find_gain_mode_index(det_raw, evt=None)
     gmode = gain_mode_name_for_index(ind)
-    gmode = find_gain_mode(dcfg, data=None)
+    gmode = find_gain_mode(det_raw, evt=None)
     calib = calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa)
     calib = calib_epix10ka_any(det_raw, evt, cmpars=(7,2,100,10),\
                             mbits=0o7, mask=None, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)
@@ -67,32 +67,36 @@ class Storage:
 
 dic_store = {} # {det.name:Storage()} in stead of singleton
 
-def segment_indices_epix10ka_detector(det):
-    """Returns list det.raw._sorted_segment_ids, e.g. [0, 1, 2, 3]"""
-    return det.raw._sorted_segment_ids
+#def segment_indices_det(det):
+#    """Returns list det.raw._sorted_segment_ids, e.g. [0, 1, 2, 3]
+#       The same as det.raw._segment_indices()
+#    """
+#    return det.raw._sorted_segment_ids
 
 
-def fullname_epix10ka_detector(det):
-    """Returns epix10ka detector full name, e.g.
-       epix_3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000\
-           _3926196238-0174824449-0268435478-0000000000-0000000000-0000000000-0000000000\
-           _3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000\
-           _3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000
-    """
-    return det.raw._uniqueid
+#def fullname_det(det):
+#    """Returns detector full name, e.g. for epix
+#       epix_3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000\
+#           _3926196238-0174824449-0268435478-0000000000-0000000000-0000000000-0000000000\
+#           _3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000\
+#           _3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000
+#       The same as det.raw._fullname()
+#    """
+#    return det.raw._uniqueid
 
 
-def segment_ids_epix10ka_detector(det):
-    """Returns list of epix10ka detector segment ids, e.g.
-    [3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000,
-     3926196238-0174824449-0268435478-0000000000-0000000000-0000000000-0000000000,
-     3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000,
-     3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000]
-    """
-    return det.raw._uniqueid.split('_')[1:]
+#def segment_ids_det(det):
+#    """Returns list of detector segment ids, e.g. for epix10ka
+#    [3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000,
+#     3926196238-0174824449-0268435478-0000000000-0000000000-0000000000-0000000000,
+#     3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000,
+#     3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000]
+#    The same as det.raw._segment_ids()
+#    """
+#    return det.raw._uniqueid.split('_')[1:]
 
 
-def config_object_epix10ka(det, detname=None):
+def config_object_det(det, detname=None):
     """Returns [dict]={<seg-index>:<cob>} of configuration objects for detector with optional name.
     """
     _detname = det.raw._det_name if detname is None else detname
@@ -104,17 +108,18 @@ def config_object_epix10ka(det, detname=None):
     return None
 
 
-def config_object_epix10ka_raw(det_raw):
-    """Returns [dict]={<seg-index>:<cob>} of configuration objects for det.raw
-    """
-    logger.debug('det_raw._seg_configs(): ' + str(det_raw._seg_configs()))
-    return det_raw._seg_configs()
+#def config_object_det_raw(det_raw):
+#    """Returns [dict]={<seg-index>:<cob>} of configuration objects for det.raw.
+#       The same as det.raw._config_object()
+#    """
+#    logger.debug('det_raw._seg_configs(): ' + str(det_raw._seg_configs()))
+#    return det_raw._seg_configs()
 
 
-def cbits_config_epix10ka(cob):
-    """
-    Creates array of control bits shape=(352, 384) from det.raw._seg_configs()[<seg-ind>].config object
-    get epix10ka per panel 4-bit pixel config array with bit assignment]
+def cbits_config_epix10ka(cob, shape=(352, 384)):
+    """Creates array of the segment control bits for epix10ka shape=(352, 384)
+    from cob=det.raw._seg_configs()[<seg-ind>].config object.
+    Returns per panel 4-bit pixel config array with bit assignment]
           0001 = 1<<0 = 1 - T test bit
           0010 = 1<<1 = 2 - M mask bit
           0100 = 1<<2 = 4 - g  gain bit
@@ -137,6 +142,7 @@ def cbits_config_epix10ka(cob):
     trbits = cob.trbit # [1 1 1 1]
     pca = cob.asicPixelConfig # [:,:176,:] - fixed in daq # shape:(4, 176, 192) size:135168 dtype:uint8 [8 8 8 8 8...]
     logger.debug(info_ndarr(cob.asicPixelConfig, 'trbits: %s asicPixelConfig:'%str(trbits)))
+    rowsh, colsh = int(shape[0]/2), int(shape[1]/2) # should be 176, 192 for epix10ka
 
     #t0_sec = time()
 
@@ -158,35 +164,69 @@ def cbits_config_epix10ka(cob):
     if all(trbits): cbits = np.bitwise_or(cbits, B04) # for all pixels (352, 384)
     elif not any(trbits): return cbits
     else: # set trbit per ASIC
-        if trbits[2]: np.bitwise_or(cbits[:176,:192], B04, out=cbits[:176,:192])
-        if trbits[3]: np.bitwise_or(cbits[176:,:192], B04, out=cbits[176:,:192])
-        if trbits[0]: np.bitwise_or(cbits[176:,192:], B04, out=cbits[176:,192:])
-        if trbits[1]: np.bitwise_or(cbits[:176,192:], B04, out=cbits[:176,192:]) #0.000189 sec
+        if trbits[2]: np.bitwise_or(cbits[:rowsh,:colsh], B04, out=cbits[:rowsh,:colsh])
+        if trbits[3]: np.bitwise_or(cbits[rowsh:,:colsh], B04, out=cbits[rowsh:,:colsh])
+        if trbits[0]: np.bitwise_or(cbits[rowsh:,colsh:], B04, out=cbits[rowsh:,colsh:])
+        if trbits[1]: np.bitwise_or(cbits[:rowsh,colsh:], B04, out=cbits[:rowsh,colsh:]) #0.000189 sec
     return cbits
 
 
-def cbits_config_epix10ka_any(dcfg):
-    """Returns array of control bits shape=(<number-of-segments>, 352, 384) from any config object
+def cbits_config_epixhr2x2(cob, shape=(288, 384)):
+    """Creates array of the segment control bits for epixhr2x2 shape=(288, 384)
+    from cob=det.raw._seg_configs()[<seg-ind>].config object.
+    Returns per panel 4-bit pixel config array with bit assignment]
+          0001 = 1<<0 = 1 - T test bit
+          0010 = 1<<1 = 2 - M mask bit
+          0100 = 1<<2 = 4 - g  gain bit
+          1000 = 1<<3 = 8 - ga gain bit
+          # add trbit
+          010000 = 1<<4 = 16 - trbit
+
+    Parameters
+    ----------
+    cob : container.Container object
+        segment configuration object det.raw._seg_configs()[<seg-ind>].config
+        Contains:
+        cob.asicPixelConfig shape:(110592,) size:110592 dtype:uint8 [0 0 0 0 0...]
+        cob.trbit: [1 1 1 1]
+
+    ASIC map of epixhr2x2 (Matt)
+      A1 | A3
+     ----+----
+      A0 | A2
+
+    Returns
+    -------
+    xxxx: np.array, dtype:uint8, ndim=2, shape=(288, 384)
     """
-    #for k,v in dcfg.items():
-    #      scob = v.config
-    #      logger.debug('YYY dcfg[0].config.trbit: %s' % (k,str(dcfg[0].config.trbit))) # [1 1 1 1]
-    #      logger.debug(info_ndarr(scob.asicPixelConfig, '...[%d].config.asicPixelConfig: '%k))
+    trbits = cob.trbit # [1 1 1 1]
+    pca = cob.asicPixelConfig # shape:(110592,)
+    rowsh, colsh = int(shape[0]/2), int(shape[1]/2) # should be 144, 192 for epixhr2x2
+    logger.debug(info_ndarr(cob.asicPixelConfig, 'shape: %s trbits: %s asicPixelConfig:'%(str(shape), str(trbits))))
 
-    #for k,v in dcfg.items():
-    #    print('AAAA dir(k)', dir(k))
-    #    print('AAAA dir(v)', dir(v))
+    # mask non-essential bits
+    cbits = np.bitwise_and(pca,12,out=None) # copy and 0o14 (bin:1100)
+    cbits.shape = shape
 
-    lst_cbits = [cbits_config_epix10ka(v.config) for k,v in dcfg.items()]
-    cbits = np.stack(tuple(lst_cbits))
+    # add trbit
+    if all(trbits): cbits = np.bitwise_or(cbits, B04) # for all pixels (352, 384)
+    elif not any(trbits): return cbits
+    else: # set trbit per ASIC
+        if trbits[1]: np.bitwise_or(cbits[:rowsh,:colsh], B04, out=cbits[:rowsh,:colsh])
+        if trbits[0]: np.bitwise_or(cbits[rowsh:,:colsh], B04, out=cbits[rowsh:,:colsh])
+        if trbits[3]: np.bitwise_or(cbits[:rowsh,colsh:], B04, out=cbits[:rowsh,colsh:])
+        if trbits[2]: np.bitwise_or(cbits[rowsh:,colsh:], B04, out=cbits[rowsh:,colsh:])
     return cbits
 
 
-def cbits_total_epix10ka_any(dcfg, data=None):
+def cbits_total_epix10ka_any(det_raw, evt=None): #dcfg, data=None):
     """Returns array of control bits shape=(<number-of-segments>, 352, 384)
        from any config object and data array.
     """
-    cbits = cbits_config_epix10ka_any(dcfg)
+    #dcfg = det_raw._config_object()
+    #cbits = cbits_epix10k_detector_config(det_raw) #dcfg)
+    data = det_raw.raw(evt)
+    cbits = det_raw._cbits_detector_config()
     #logger.debug(info_ndarr(cbits, 'cbits', first, last))
 
     if cbits is None: return None
@@ -212,10 +252,10 @@ def cbits_total_epix10ka_any(dcfg, data=None):
     return cbits
 
 
-def gain_maps_epix10ka_any(dcfg, data=None):
-    """Returns maps of gain groups shape=(<number-of-segments>, 352, 384)
+def gain_maps_epix10ka_any(det_raw, evt=None): #dcfg, data=None):
+    """Returns maps of gain groups shape=(<number-of-segments>, 352, 384) ???
     """
-    cbits = cbits_total_epix10ka_any(dcfg, data)
+    cbits = cbits_total_epix10ka_any(det_raw, evt) #dcfg, data)
     if cbits is None: return None
 
     #----
@@ -274,17 +314,10 @@ def info_gain_mode_arrays(gmaps, first=0, last=5):
 
 def pixel_gain_mode_statistics(gmaps):
     """returns statistics of pixels in defferent gain modes in gain maps
+       gr0, gr1, gr2, gr3, gr4, gr5, gr6 = gmaps
     """
-    #gr0, gr1, gr2, gr3, gr4, gr5, gr6 = gmaps
     arr1 = np.ones_like(gmaps[0], dtype=np.int32)
     return [np.sum(np.select((gr,), (arr1,), default=0)) for gr in gmaps]
-#      np.sum(np.select((gr0,), (arr1,), default=0)),\
-#      np.sum(np.select((gr1,), (arr1,), default=0)),\
-#      np.sum(np.select((gr2,), (arr1,), default=0)),\
-#      np.sum(np.select((gr3,), (arr1,), default=0)),\
-#      np.sum(np.select((gr4,), (arr1,), default=0)),\
-#      np.sum(np.select((gr5,), (arr1,), default=0)),\
-#      np.sum(np.select((gr6,), (arr1,), default=0))
 
 
 def info_pixel_gain_mode_statistics(gmaps):
@@ -294,18 +327,19 @@ def info_pixel_gain_mode_statistics(gmaps):
     return ', '.join(['%7d' % npix for npix in grp_stat])
 
 
-def info_pixel_gain_mode_statistics_for_raw(dcfg, data=None, msg='pixel gain mode statistics: '):
-    """returns (str) with statistics of pixels in defferent gain modes in raw data
+def info_pixel_gain_mode_statistics_for_raw(det_raw, evt=None, msg='pixel gain mode statistics: '):
+    """DOES ANYONE USE IT?
+       returns (str) with statistics of pixels in defferent gain modes in raw data
     """
-    gmaps = gain_maps_epix10ka_any(dcfg, data)
+    gmaps = gain_maps_epix10ka_any(det_raw, evt)
     if gmaps is None: return None
     return '%s%s' % (msg, info_pixel_gain_mode_statistics(gmaps))
 
 
-def pixel_gain_mode_fractions(dcfg, data=None):
+def pixel_gain_mode_fractions(det_raw, evt=None): #dcfg, data=None
     """returns fraction of pixels in defferent gain modes in gain maps
     """
-    gmaps = gain_maps_epix10ka_any(dcfg, data)
+    gmaps = gain_maps_epix10ka_any(det_raw, evt)
     if gmaps is None: return None
     pix_stat = pixel_gain_mode_statistics(gmaps)
     f = 1.0/gmaps[0].size
@@ -316,10 +350,10 @@ def info_pixel_gain_mode_for_fractions(grp_prob, msg='pixel gain mode fractions:
     return '%s%s' % (msg, ', '.join(['%.5f'%p for p in grp_prob]))
 
 
-def info_pixel_gain_mode_fractions(dcfg, data=None, msg='pixel gain mode fractions: '):
+def info_pixel_gain_mode_fractions(det_raw, evt=None, msg='pixel gain mode fractions: '):
     """returns (str) with fraction of pixels in defferent gain modes in gain maps
     """
-    grp_prob = pixel_gain_mode_fractions(dcfg, data)
+    grp_prob = pixel_gain_mode_fractions(det_raw, evt)
     return info_pixel_gain_mode_for_fractions(grp_prob, msg=msg)
 
 
@@ -328,11 +362,11 @@ def gain_mode_index_from_fractions(grp_prob):
     return next((i for i,p in enumerate(grp_prob) if p>0.5), None)
 
 
-def find_gain_mode_index(dcfg, data=None):
+def find_gain_mode_index(det_raw, evt=None): #dcfg, data=None):
     """Returns int gain mode index or None.
        if data=None: distinguish 5-modes w/o data
     """
-    grp_prob = pixel_gain_mode_fractions(dcfg, data)
+    grp_prob = pixel_gain_mode_fractions(det_raw, evt)
     return gain_mode_index_from_fractions(grp_prob)
 
 
@@ -342,11 +376,11 @@ def gain_mode_name_for_index(ind):
     return GAIN_MODES[ind] if ind<len(GAIN_MODES) else None
 
 
-def find_gain_mode(dcfg, data=None):
+def find_gain_mode(det_raw, evt=None): #dcfg, data=None):
     """Returns str gain mode from the list GAIN_MODES or None.
        if data=None: distinguish 5-modes w/o data
     """
-    grp_prob = pixel_gain_mode_fractions(dcfg, data)
+    grp_prob = pixel_gain_mode_fractions(det_raw, evt)
     ind = gain_mode_index_from_fractions(grp_prob)
     if ind is None: return None
     return gain_mode_name_for_index(ind)
@@ -417,9 +451,9 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
     gfac = store.gfac
 
-    if store.dcfg is None: store.dcfg = config_object_epix10ka_raw(det_raw)
+    #if store.dcfg is None: store.dcfg = det_raw._config_object() #config_object_det_raw(det_raw)
 
-    gmaps = gain_maps_epix10ka_any(store.dcfg, raw)
+    gmaps = gain_maps_epix10ka_any(det_raw, evt) #store.dcfg, raw)
     if gmaps is None: return None
     gr0, gr1, gr2, gr3, gr4, gr5, gr6 = gmaps
 
@@ -492,13 +526,13 @@ def map_gain_range_index(det_raw, evt, **kwa):
     """
     Returns array of epix10ka per pixel gain range indices [0:6]
     """
-    if store.dcfg is None: store.dcfg = config_object_epix10ka_raw(det_raw)
+    #if store.dcfg is None: store.dcfg = det_raw._config_object() #config_object_det_raw(det_raw)
 
     nda_raw = kwa.get('nda_raw', None)
     raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(352, 384) or suppose to be later (<nsegs>, 352, 384) dtype:uint16
     if raw is None: return None
 
-    gmaps = gain_maps_epix10ka_any(store.dcfg, raw)
+    gmaps = gain_maps_epix10ka_any(det_raw, evt) #store.dcfg, raw)
     if gmaps is None: return None
     #gr0, gr1, gr2, gr3, gr4, gr5, gr6 = gmaps
 
