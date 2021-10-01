@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 
 from psana.detector.areadetector import AreaDetector, np, DTYPE_MASK, DTYPE_STATUS
 from psana.detector.UtilsEpix10ka import np, calib_epix10ka_any, map_gain_range_index,\
-  cbits_config_epix10ka, cbits_config_epixhr2x2
+  cbits_config_epix10ka, cbits_config_epixhr2x2,\
+  cbits_config_and_data_detector_epix10ka, cbits_config_and_data_detector_epixhr2x2
 from psana.detector.UtilsMask import merge_status
 #from psana.pscalib.geometry.SegGeometryEpix10kaV1 import epix10ka_one as seg
 from psana.pscalib.geometry.SegGeometryStore import sgs
@@ -81,12 +82,12 @@ class epix_base(AreaDetector):
 #        return self._seg_configs()
 
 
-    def _cbits_segment_config(self, cob):
+    def _cbits_config_segment(self, cob):
         """for epix10ka and epixhr2x2, ...
            returns per-pixel array of gain control bits from segment configuration object
            cob=det.raw._seg_configs()[<seg-ind>].config
         """
-        logger.debug('epix_base._cbits_segment_config - MUST BE REIMPLEMENTED - return None')
+        logger.debug('epix_base._cbits_config_segment - MUST BE REIMPLEMENTED - return None')
         return None
 
 
@@ -94,7 +95,7 @@ class epix_base(AreaDetector):
         """for epix10ka and epixhr2x2, ...
            returns per-pixel array of gain control bits for segment index
         """
-        return self._cbits_segment_config(self._seg_configs()[i].config)
+        return self._cbits_config_segment(self._seg_configs()[i].config)
 
 
     def _config_object(self):
@@ -106,14 +107,17 @@ class epix_base(AreaDetector):
         return dcfg
 
 
-    def _cbits_detector_config(self):
+    def _cbits_config_detector(self):
         """Returns array of control bits shape=(<number-of-segments>, 352, 384) from any config object."""
         dcfg = self._config_object() # or alias self._seg_configs()
         if dcfg is None: return None
-        lst_cbits = [self._cbits_segment_config(v.config) for k,v in dcfg.items()]
+        lst_cbits = [self._cbits_config_segment(v.config) for k,v in dcfg.items()]
         return np.stack(tuple(lst_cbits))
 
 
+    def _cbits_config_and_data_detector(self, evt=None):
+        logger.debug('epix_base._cbits_config_and_data_detector - MUST BE REIMPLEMENTED - return None')
+        return None
 
 
     def _mask_from_status(self, **kwa):
