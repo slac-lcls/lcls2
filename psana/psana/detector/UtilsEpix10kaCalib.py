@@ -512,19 +512,19 @@ def pedestals_calibration(*args, **kwa):
       logger.debug('    det.raw._calibconst.keys(): %s' % str(det.raw._calibconst.keys())) # dict_keys(['geometry'])
       #logger.debug('    det.raw._uniqueid: %s' % det.raw._uniqueid)
       #logger.debug('    det.raw._sorted_segment_ids: %s' % str(det.raw._sorted_segment_ids))
-      #logger.debug('    ue.fullname_epix10ka_detector: %s' % ue.fullname_epix10ka_detector(det))
+      #logger.debug('    det.raw._fullname: %s' % det.raw._fullname())
 
-      segment_ids = ue.segment_ids_epix10ka_detector(det)
-      segment_inds = ue.segment_indices_epix10ka_detector(det)
+      segment_ids = det.raw._segment_ids() #ue.segment_ids_det(det)
+      segment_inds = det.raw._segment_indices() #ue.segment_indices_det(det)
       s = 'segment inds and ids in the detector'
       for i,id in zip(segment_inds,segment_ids):
           s += '\n  seg:%02d id:%s' % (i,id)
       logger.info(s)
 
-      #logger.debug('    ue.segment_ids_epix10ka_detector: %s' % str(ue.segment_ids_epix10ka_detector(det)))
-      #logger.debug('    ue.segment_indices_epix10ka_detector: %s' % str(ue.segment_indices_epix10ka_detector(det)))
+      #logger.debug('    det.raw._segment_ids: %s' % str(det.raw._segment_ids()))
+      #logger.debug('    det.raw._segment_indices: %s' % str(det.raw._segment_indices()))
 
-      dcfg = ue.config_object_epix10ka(det)
+      dcfg = det.raw._config_object() #ue.config_object_det(det)
 
       for nstep_run, step in enumerate(orun.steps()): #(loop through calyb cycles, using only the first):
         nstep_tot += 1
@@ -558,9 +558,9 @@ def pedestals_calibration(*args, **kwa):
             scob = v.config
             logger.info(info_ndarr(scob.asicPixelConfig[:,:-2,:], 'seg:%02d trbits: %s asicPixelConfig:'%(k, str(scob.trbit))))
 
-        gmaps = ue.gain_maps_epix10ka_any(dcfg, data=None)
+        gmaps = ue.gain_maps_epix10ka_any(det.raw, evt=None) #dcfg, data=None)
         logger.debug('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
-        logger.debug(ue.info_pixel_gain_mode_fractions(dcfg, data=None, msg='gain mode fractions :'))
+        logger.debug(ue.info_pixel_gain_mode_fractions(det.raw, evt=None, msg='gain mode fractions :'))
 
         logger.debug('gain maps'\
           + info_ndarr(gmaps[0],'\n    FH  ')\
@@ -570,7 +570,7 @@ def pedestals_calibration(*args, **kwa):
           + info_ndarr(gmaps[4],'\n    AML ')\
         )
 
-        mode = ue.find_gain_mode(dcfg, data=None).upper()
+        mode = ue.find_gain_mode(det.raw, evt=None).upper()   #dcfg, data=None).upper()
 
         if mode in ue.GAIN_MODES_IN:
             mode_in_step = ue.GAIN_MODES_IN[nstep]
@@ -742,17 +742,17 @@ def get_config_info_for_dataset_detname(**kwargs):
 
       det = orun.Detector(detname)
 
-      co = ue.config_object_epix10ka(det)
+      #co = det.raw._config_object()
 
       cpdic = {}
       cpdic['expname']    = orun.expt
       cpdic['calibdir']   = None
       cpdic['strsrc']     = None
-      cpdic['shape']      = (352, 384)
-      cpdic['gain_mode']  = ue.find_gain_mode(co, data=None) #data=raw: distinguish 5-modes w/o data
-      cpdic['panel_ids']  = ue.segment_ids_epix10ka_detector(det)
-      cpdic['panel_inds'] = ue.segment_indices_epix10ka_detector(det)
-      cpdic['longname']   = ue.fullname_epix10ka_detector(det) #det.raw._uniqueid
+      cpdic['shape']      = det.raw.seg_geo.shape() # (352, 384) for epix10ka or (288,384) for epixhr2x2
+      cpdic['gain_mode']  = ue.find_gain_mode(det.raw, evt=None) #data=raw: distinguish 5-modes w/o data
+      cpdic['panel_ids']  = det.raw._segment_ids() #ue.segment_ids_det(det)
+      cpdic['panel_inds'] = det.raw._segment_indices() #ue.segment_indices_det(det)
+      cpdic['longname']   = det.raw._fullname() #ue.fullname_det(det) #det.raw._uniqueid
       cpdic['det_name']   = det._det_name # det.raw._det_name epixquad
       cpdic['dettype']    = det._dettype # epix
       cpdic['tstamp']     = tstamp_run # (str) 20201209191018
