@@ -26,7 +26,12 @@ class epixhr2x2_raw_2_0_1(eb.epix_base):
         return f
 
 
-
-    def _cbits_segment_config(self, cob):
+    def _cbits_config_segment(self, cob):
         """cob=det.raw._seg_configs()[<seg-ind>].config"""
         return eb.cbits_config_epixhr2x2(cob, shape=(288, 384))
+
+
+    def _cbits_config_and_data_detector(self, evt=None):
+        return eb.cbits_config_and_data_detector_epixhr2x2(self, evt)
+
+# EOF
