@@ -13,7 +13,8 @@ Usage::
     #o = config_object_det_raw(det_raw)
     cbits = cbits_config_epix10ka(cob)  # used in det.raw._cbits_config_segment(cob)
     cbits = cbits_config_epixhr2x2(cob) # used in det.raw._cbits_config_segment(cob)
-    cbits = cbits_config_and_data_detector_epix10ka(det_raw, evt=None) #dcfg, data=None)
+    cbits = cbits_config_and_data_detector_epix10ka(det_raw, evt=None)  # used in det.raw._cbits_config_and_data_detector(evt)
+    cbits = cbits_config_and_data_detector_epixhr2x2(det_raw, evt=None) # used in det.raw._cbits_config_and_data_detector(evt)
     maps = gain_maps_epix10ka_any(det_raw, evt=None)
     s = def info_gain_mode_arrays(gmaps, first=0, last=5)
     gmstatist = pixel_gain_mode_statistics(gmaps)
@@ -37,6 +38,7 @@ Created on 2020-12-03 by Mikhail Dubrovin for LCLS2 from LCLS1
 """
 
 import os
+import sys
 import numpy as np
 from time import time
 
@@ -168,6 +170,7 @@ def cbits_config_epixhr2x2(cob, shape=(288, 384)):
     -------
     xxxx: np.array, dtype:uint8, ndim=2, shape=(288, 384)
     """
+    #t0_sec = time()
     trbits = cob.trbit # [1 1 1 1]
     pca = cob.asicPixelConfig # shape:(110592,)
     rowsh, colsh = int(shape[0]/2), int(shape[1]/2) # should be 144, 192 for epixhr2x2
@@ -176,6 +179,8 @@ def cbits_config_epixhr2x2(cob, shape=(288, 384)):
     cbits = np.bitwise_and(pca,12,out=None) # copy and mask non-essential bits 0o14 (bin:1100)
     cbits.shape = shape
 
+    #logger.info('TIME1 in cbits_config_epixhr2x2 = %.6f sec' % (time()-t0_sec)) # 0.000206 sec
+
     if all(trbits): cbits = np.bitwise_or(cbits, B04) # add trbit for all pixels (288, 384)
     elif not any(trbits): return cbits
     else: # set trbit per ASIC
@@ -183,10 +188,12 @@ def cbits_config_epixhr2x2(cob, shape=(288, 384)):
         if trbits[0]: np.bitwise_or(cbits[rowsh:,:colsh], B04, out=cbits[rowsh:,:colsh])
         if trbits[3]: np.bitwise_or(cbits[:rowsh,colsh:], B04, out=cbits[:rowsh,colsh:])
         if trbits[2]: np.bitwise_or(cbits[rowsh:,colsh:], B04, out=cbits[rowsh:,colsh:])
+
+    #logger.info('TIME2 in cbits_config_epixhr2x2 = %.6f sec' % (time()-t0_sec))
     return cbits
 
 
-def cbits_config_and_data_detector_epix10ka(det_raw, evt=None): #dcfg, data=None):
+def cbits_config_and_data_detector_epix10ka(det_raw, evt=None):
     """Returns array of control bits shape=(<number-of-segments>, 352, 384)
        from any config object and data array.
     """
@@ -223,8 +230,7 @@ def cbits_config_and_data_detector_epixhr2x2(det_raw, evt=None):
     """
     data = det_raw.raw(evt)
     cbits = det_raw._cbits_config_detector()
-    #logger.debug(info_ndarr(cbits, 'cbits', first, last))
-
+    #logger.info(info_ndarr(cbits, 'cbits', first=0, last=5))
     if cbits is None: return None
 
     #----
@@ -247,7 +253,7 @@ def cbits_config_and_data_detector_epixhr2x2(det_raw, evt=None):
     return cbits
 
 
-def gain_maps_epix10ka_any(det_raw, evt=None): #dcfg, data=None):
+def gain_maps_epix10ka_any(det_raw, evt=None):
     """Returns maps of gain groups shape=(<number-of-segments>, <2-d-panel-shape>)
        works for both epix10ka (352, 384) and epixhr2x2 (288, 384)
     """
@@ -332,7 +338,7 @@ def info_pixel_gain_mode_statistics_for_raw(det_raw, evt=None, msg='pixel gain m
     return '%s%s' % (msg, info_pixel_gain_mode_statistics(gmaps))
 
 
-def pixel_gain_mode_fractions(det_raw, evt=None): #dcfg, data=None
+def pixel_gain_mode_fractions(det_raw, evt=None):
     """returns fraction of pixels in defferent gain modes in gain maps
     """
     gmaps = gain_maps_epix10ka_any(det_raw, evt)
@@ -358,7 +364,7 @@ def gain_mode_index_from_fractions(grp_prob):
     return next((i for i,p in enumerate(grp_prob) if p>0.5), None)
 
 
-def find_gain_mode_index(det_raw, evt=None): #dcfg, data=None):
+def find_gain_mode_index(det_raw, evt=None):
     """Returns int gain mode index or None.
        if data=None: distinguish 5-modes w/o data
     """
@@ -372,7 +378,7 @@ def gain_mode_name_for_index(ind):
     return GAIN_MODES[ind] if ind<len(GAIN_MODES) else None
 
 
-def find_gain_mode(det_raw, evt=None): #dcfg, data=None):
+def find_gain_mode(det_raw, evt=None):
     """Returns str gain mode from the list GAIN_MODES or None.
        if data=None: distinguish 5-modes w/o data
     """
@@ -449,7 +455,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
     #if store.dcfg is None: store.dcfg = det_raw._config_object() #config_object_det_raw(det_raw)
 
-    gmaps = gain_maps_epix10ka_any(det_raw, evt) #store.dcfg, raw)
+    gmaps = gain_maps_epix10ka_any(det_raw, evt)
     if gmaps is None: return None
     gr0, gr1, gr2, gr3, gr4, gr5, gr6 = gmaps
 
