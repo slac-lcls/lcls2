@@ -25,3 +25,25 @@ def test_ipython():
     det = run.Detector('tmoopal')
     print('run.dsparms.det_classes dict content:\n  %s' % str(run.dsparms.det_classes))
 
+
+
+    run = None
+    evt = None
+    from psana import DataSource
+    ds = DataSource(exp='ascdaq18', run=24, max_events=100)
+    print('ds.xtc_files:\n ', '\n  '.join(ds.xtc_files))
+
+    for irun,run in enumerate(ds.runs()):
+      print('\n==== %02d run: %d exp: %s detnames: %s' % (irun, run.runnum, run.expt, ','.join(run.detnames)))
+      det = run.Detector('epixhr')
+      print('det.raw._fullname       :', det.raw._fullname())
+
+      for istep,step in enumerate(run.steps()):
+        print('\nStep %02d' % istep, type(step), end='')
+
+        for ievt,evt in enumerate(step.events()):
+          if ievt>10: continue #exit('exit by number of events limit %d' % args.evtmax)
+          print('\n  Event %02d' % (ievt))
+
+        st = evt.run().step(evt)
+        print('XXX dir(st):', dir(st))
