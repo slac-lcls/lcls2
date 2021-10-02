@@ -49,12 +49,15 @@ def ds_run_det(args):
 
     print('args.detname:%s' % str(args.detname))
     print('DataSource members and methods\ndir(ds):', dir(ds))
-    print('ds.xtc_path:', str(ds.xtc_path))
-    print('ds.n_files:', str(ds.n_files))
-    print('ds.xtc_files:\n ', '\n  '.join(ds.xtc_files))
-    print('ds.xtc_ext:', str(ds.xtc_ext))
+
+    xtc_path = getattr(ds, 'xtc_path', None)
+    print('ds.xtc_path:', str(xtc_path))
+    if xtc_path is not None:
+      print('ds.n_files:', str(ds.n_files))
+      print('ds.xtc_files:\n ', '\n  '.join(ds.xtc_files))
+      print('ds.xtc_ext:', str(ds.xtc_ext))
+      print('ds.smd_files:\n ', '\n  '.join(ds.smd_files))
     print('ds.shmem:', str(ds.shmem))
-    print('ds.smd_files:\n ', '\n  '.join(ds.smd_files))
     print('ds.smalldata_kwargs:', str(ds.smalldata_kwargs))
     print('ds.timestamps:', str(ds.timestamps))
     print('ds.unique_user_rank:', str(ds.unique_user_rank()))
