@@ -115,9 +115,9 @@ def path_prefixes(fname_prefix, dir_offset, dir_peds, dir_plots, dir_gain, dir_r
     return prefix_offset, prefix_peds, prefix_plots, prefix_gain, prefix_rms, prefix_status
 
 
-def file_name_prefix(dirrepo, panel_id, tstamp, exp, irun):
+def file_name_prefix(dirrepo, dettype, panel_id, tstamp, exp, irun):
     panel_alias = alias_for_id(panel_id, fname=os.path.join(dirrepo, FNAME_PANEL_ID_ALIASES))
-    return 'epix10ka_%s_%s_%s_r%04d' % (panel_alias, tstamp, exp, irun), panel_alias
+    return '%s_%s_%s_%s_r%04d' % (dettype, panel_alias, tstamp, exp, irun), panel_alias
 
 
 def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
@@ -481,6 +481,7 @@ def pedestals_calibration(*args, **kwa):
     ds = DataSource(**kwa)
     logger.debug('ds.runnum_list = %s' % str(ds.runnum_list))
     logger.debug('ds.detectors = %s' % str(ds.detectors))
+    logger.info('ds.xtc_files:\n  %s' % ('\n  '.join(ds.xtc_files)))
 
     mode = None # gain_mode
     nstep_tot = -1
@@ -521,6 +522,9 @@ def pedestals_calibration(*args, **kwa):
           s += '\n  seg:%02d id:%s' % (i,id)
       logger.info(s)
 
+      BIT_MASK = det.raw._data_bit_mask
+      logger.info('    det.raw._data_bit_mask BIT_MASK: %s' % oct(BIT_MASK))
+
       #logger.debug('    det.raw._segment_ids: %s' % str(det.raw._segment_ids()))
       #logger.debug('    det.raw._segment_indices: %s' % str(det.raw._segment_indices()))
 
@@ -556,7 +560,8 @@ def pedestals_calibration(*args, **kwa):
         #for k,v in det.raw._seg_configs().items(): # cpo's pattern DOES NOT WORK
         for k,v in dcfg.items():
             scob = v.config
-            logger.info(info_ndarr(scob.asicPixelConfig[:,:-2,:], 'seg:%02d trbits: %s asicPixelConfig:'%(k, str(scob.trbit))))
+            logger.info(info_ndarr(scob.asicPixelConfig, 'seg:%02d trbits: %s asicPixelConfig:'%(k, str(scob.trbit))))
+            #logger.info(info_ndarr(scob.asicPixelConfig[:,:-2,:], 'seg:%02d trbits: %s asicPixelConfig:'%(k, str(scob.trbit))))
 
         gmaps = ue.gain_maps_epix10ka_any(det.raw, evt=None) #dcfg, data=None)
         logger.debug('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
@@ -621,9 +626,9 @@ def pedestals_calibration(*args, **kwa):
                 break
             else:
                 nrec += 1
-                ss = info_ndarr(raw & ue.M14, 'Ev:%04d rec:%04d raw & M14 ' % (nevt,nrec))
+                ss = info_ndarr(raw & BIT_MASK, 'Ev:%04d rec:%04d raw & BIT_MASK ' % (nevt,nrec))
                 if do_print: logger.info(ss)
-                block[nrec]=(raw & ue.M14)
+                block[nrec]=(raw & BIT_MASK)
 
         if nevt < events: logger.info('==== Ev:%04d end of events in run step %d' % (nevt,nstep_run))
 
@@ -646,7 +651,7 @@ def pedestals_calibration(*args, **kwa):
 
             #print('XXXX panel_id, tstamp, exp, irun', panel_id, tstamp, exp, irun)
 
-            fname_prefix, panel_alias = file_name_prefix(dirrepo, panel_id, tstamp, exp, irun)
+            fname_prefix, panel_alias = file_name_prefix(dirrepo, det.raw._dettype, panel_id, tstamp, exp, irun)
             logger.debug('\n  fname_prefix:%s\n  panel_alias :%s' % (fname_prefix, panel_alias))
 
             prefix_offset, prefix_peds, prefix_plots, prefix_gain, prefix_rms, prefix_status =\
@@ -722,6 +727,7 @@ def get_config_info_for_dataset_detname(**kwargs):
     ds = DataSource(**data_source_kwargs(**kwargs))
     logger.debug('ds.runnum_list = %s' % str(ds.runnum_list))
     logger.debug('ds.detectors = %s' % str(ds.detectors))
+    logger.info('ds.xtc_files:\n  %s' % ('\n  '.join(ds.xtc_files)))
 
     #for orun in ds.runs():
     orun = next(ds.runs())
@@ -958,7 +964,7 @@ def deploy_constants(*args, **kwa):
         logger.info('%s\nmerge constants for panel:%02d id: %s' % (98*'_', ind, panel_id))
 
         dir_panel, dir_offset, dir_peds, dir_plots, dir_work, dir_gain, dir_rms, dir_status = dir_names(dirrepo, panel_id)
-        fname_prefix, panel_alias = file_name_prefix(dirrepo, panel_id, _tstamp, exp, irun)
+        fname_prefix, panel_alias = file_name_prefix(dirrepo, dettype, panel_id, _tstamp, exp, irun)
 
         prefix_offset, prefix_peds, prefix_plots, prefix_gain, prefix_rms, prefix_status =\
             path_prefixes(fname_prefix, dir_offset, dir_peds, dir_plots, dir_gain, dir_rms, dir_status)
