@@ -94,6 +94,7 @@ class AreaDetector(DetectorImpl):
         -------
         raw data: np.array, ndim=3, shape: as data
         """
+        if evt is None: return None
         segs = self._segments(evt)
         if segs is None:
             logger.debug('self._segments(evt) is None')
