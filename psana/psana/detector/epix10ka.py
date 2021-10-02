@@ -19,10 +19,13 @@ class epix10ka_raw_2_0_1(eb.epix_base):
         logger.debug('epix10ka_raw_2_0_1.__init__')
         eb.epix_base.__init__(self, *args, **kwargs)
         self.seg_geo = eb.sgs.Create(segname='EPIX10KA:V1')
+        self._data_bit_mask = eb.M14 # for epix10ka data
+
 
     def calib(self, evt, **kwa) -> Array3d:
         logger.debug('epix10ka_raw_2_0_1.calib')
         return eb.calib_epix10ka_any(self, evt, **kwa)
+
 
     def _gain_range_index(self, evt, **kwa):
         """Returns array (shaped as raw) per pixel gain range index or None."""
