@@ -378,7 +378,7 @@ def config_expert(base, cfg, writePixelMap=True):
     pbase.DevPcie.Application.EventBuilder.Bypass.set(base['bypass'])
 
     #  Use a timeout in AxiStreamBatcherEventBuilder
-    #  Without a timeout, dropped contributions create an off-by-one between constributors
+    #  Without a timeout, dropped contributions create an off-by-one between contributors
     pbase.DevPcie.Application.EventBuilder.Timeout.set(int(8e-3*156.25e6)) # 8ms
 
     if epixHR is not None:

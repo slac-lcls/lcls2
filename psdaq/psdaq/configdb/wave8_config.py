@@ -2,6 +2,7 @@ from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import *
 import epics
+import logging
 
 import json
 import time

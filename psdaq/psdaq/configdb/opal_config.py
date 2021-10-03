@@ -8,6 +8,7 @@ import time
 import json
 import IPython
 from collections import deque
+import logging
 
 cl = None
 pv = None

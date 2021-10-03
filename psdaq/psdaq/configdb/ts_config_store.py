@@ -22,7 +22,7 @@ mycdb.add_device_config('ts')
 top = cdict()
 
 top.setInfo('ts', args.name, args.segm, args.id, 'No comment')
-top.setAlg('config', [2,1,0])
+top.setAlg('config', [2,0,1])
 
 top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
 top.set("firmwareVersion:RO",   0, 'UINT32')

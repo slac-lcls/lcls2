@@ -6,6 +6,7 @@ import rogue
 import lcls2_timetool
 import json
 import IPython
+import logging
 
 from collections import deque
 
