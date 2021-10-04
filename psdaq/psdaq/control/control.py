@@ -22,6 +22,17 @@ from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_
 
 report_keys = ['error', 'warning', 'fileReport']
 
+def set2csv(seg_set):
+    seg_csv = ""
+    seg_list = list(seg_set)
+    seg_list.sort()
+    for element in seg_list:
+        if len(seg_csv) == 0:
+            seg_csv = f"{element}"      # assign
+        else:
+            seg_csv += f",{element}"    # append
+    return seg_csv
+
 class PvInfo:
     """PV"""
     def __init__(self, name, desc):
@@ -186,6 +197,8 @@ class RunParams:
                 params[name] = value
 
         # gather detector run parameters
+        # each active detector has a set of segments
+        detector_run_params = dict()
         for level, item in self.collection.cmstate_levels().items():
             if level == "drp":
                 for xid in item.keys():
@@ -204,12 +217,16 @@ class RunParams:
                     except ValueError:
                         self.collection.report_error(f'drp id {unique_id} is missing _N suffix')
                     else:
-                        if f"DAQ Detectors/{level}/{alias}" in params:
+                        if f"DAQ Detectors/{level}/{alias}" in detector_run_params:
                             # append
-                            params[f"DAQ Detectors/{level}/{alias}"] += f",{seg}"
+                            detector_run_params[f"DAQ Detectors/{level}/{alias}"].add(int(seg))
                         else:
                             # assign
-                            params[f"DAQ Detectors/{level}/{alias}"] = f"{seg}"
+                            detector_run_params[f"DAQ Detectors/{level}/{alias}"] = {int(seg)}
+
+        # convert sets to sorted comma separated values
+        for key, seg_set in detector_run_params.items():
+            params[key] = set2csv(seg_set)
 
         # add run parameters to logbook
         inCount = len(params)
