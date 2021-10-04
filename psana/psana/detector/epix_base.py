@@ -36,7 +36,7 @@ class epix_base(AreaDetector):
     def __init__(self, *args, **kwa):
         logger.debug('epix_base.__init__') # self.__class__.__name__
         AreaDetector.__init__(self, *args, **kwa)
-        self.seg_geo = None
+        self._seg_geo = None
         self._data_bit_mask = M14 # for epix10ka data
 
 
@@ -161,7 +161,7 @@ class epix_base(AreaDetector):
         mask: np.ndarray, ndim=3, shaped as full detector data, mask of the panel and asic edges
         """
         logger.debug('epix_base._mask_edges')
-        mask1 = self.seg_geo.pixel_mask_array(edge_rows, edge_cols, center_rows, center_cols, dtype)
+        mask1 = self._seg_geo.pixel_mask_array(edge_rows, edge_cols, center_rows, center_cols, dtype)
         nsegs = self._number_of_segments_total()
         if nsegs is None:
             logger.debug('_number_of_segments_total is None')

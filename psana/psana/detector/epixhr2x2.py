@@ -12,7 +12,7 @@ class epixhr2x2_raw_2_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
         logger.debug('epixhr2x2_raw_2_0_1.__init__')
         eb.epix_base.__init__(self, *args, **kwargs)
-        self.seg_geo = eb.sgs.Create(segname='EPIXHR2X2:V1')
+        self._seg_geo = eb.sgs.Create(segname='EPIXHR2X2:V1')
         self._data_bit_mask = eb.M15 # for epixhr2x2 data
 
     def _array(self, evt) -> Array2d:

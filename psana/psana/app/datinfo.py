@@ -89,7 +89,7 @@ def ds_run_det(args):
     print(info_run(run, cmt='run info\n    ', sep='\n    '))
     if det is not None:
       print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
-      print('det.raw.seg_geo.shape():', det.raw.seg_geo.shape())
+      print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape())
 
     #sys.exit('TEST EXIT')
 
@@ -135,7 +135,7 @@ def loop_run_step_evt(args):
       try:    step_docstring = run.Detector('step_docstring')
       except: step_docstring = None
       print('step_docstring detector object is %s' % ('missing' if step_docstring is None else 'created'))
-      print('det.raw.seg_geo.shape():', det.raw.seg_geo.shape())
+      print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape())
 
       dcfg = det.raw._config_object() #_config_object() #ue.config_object_det(det)
 

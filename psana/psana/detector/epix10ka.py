@@ -11,14 +11,14 @@ class epix10k_raw_0_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
         logger.debug('%s.__init__' % self.__class__.__name__)
         eb.epix_base.__init__(self, *args, **kwargs)
-        self.seg_geo = eb.sgs.Create(segname='EPIX10KA:V1')
+        self._seg_geo = eb.sgs.Create(segname='EPIX10KA:V1')
 
 
 class epix10ka_raw_2_0_1(eb.epix_base):
     def __init__(self, *args, **kwargs):
         logger.debug('epix10ka_raw_2_0_1.__init__')
         eb.epix_base.__init__(self, *args, **kwargs)
-        self.seg_geo = eb.sgs.Create(segname='EPIX10KA:V1')
+        self._seg_geo = eb.sgs.Create(segname='EPIX10KA:V1')
         self._data_bit_mask = eb.M14 # for epix10ka data
 
 
