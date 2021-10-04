@@ -23,8 +23,7 @@ logger = logging.getLogger(__name__)
 from psana.detector.areadetector import AreaDetector, np, DTYPE_MASK, DTYPE_STATUS
 from psana.detector.UtilsEpix10ka import np, calib_epix10ka_any, map_gain_range_index,\
   cbits_config_epix10ka, cbits_config_epixhr2x2,\
-  cbits_config_and_data_detector_epix10ka, cbits_config_and_data_detector_epixhr2x2,\
-  M14, M15
+  cbits_config_and_data_detector, M14, M15, B14, B15
 from psana.detector.UtilsMask import merge_status
 #from psana.pscalib.geometry.SegGeometryEpix10kaV1 import epix10ka_one as seg
 from psana.pscalib.geometry.SegGeometryStore import sgs
@@ -38,6 +37,8 @@ class epix_base(AreaDetector):
         AreaDetector.__init__(self, *args, **kwa)
         self._seg_geo = None
         self._data_bit_mask = M14 # for epix10ka data
+        self._data_gain_bit = B14 # for epix10ka data
+        self._gain_bit_shift = 9  # for epix10ka data
 
 
     def calib(self, evt, **kwa) -> Array3d:
@@ -118,9 +119,7 @@ class epix_base(AreaDetector):
 
 
     def _cbits_config_and_data_detector(self, evt=None):
-        logger.debug('epix_base._cbits_config_and_data_detector - MUST BE REIMPLEMENTED - return None')
-        return None
-
+        return cbits_config_and_data_detector(self, evt)
 
 
     def _mask_from_status(self, **kwa):

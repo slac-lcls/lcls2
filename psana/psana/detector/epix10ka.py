@@ -20,6 +20,8 @@ class epix10ka_raw_2_0_1(eb.epix_base):
         eb.epix_base.__init__(self, *args, **kwargs)
         self._seg_geo = eb.sgs.Create(segname='EPIX10KA:V1')
         self._data_bit_mask = eb.M14 # for epix10ka data
+        self._data_gain_bit = eb.B14
+        self._gain_bit_shift = 9
 
 
     def calib(self, evt, **kwa) -> Array3d:
@@ -36,9 +38,10 @@ class epix10ka_raw_2_0_1(eb.epix_base):
         """cob=det.raw._seg_configs()[<seg-ind>].config - segment configuration object"""
         return eb.cbits_config_epix10ka(cob, shape=(352, 384))
 
+# MOVED TO epix_base
+#    def _cbits_config_and_data_detector(self, evt=None):
+#        return eb.cbits_config_and_data_detector_epix10ka(self, evt)
 
-    def _cbits_config_and_data_detector(self, evt=None):
-        return eb.cbits_config_and_data_detector_epix10ka(self, evt)
 
 
     def _array(self, evt) -> Array2d:

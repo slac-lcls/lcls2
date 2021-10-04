@@ -14,6 +14,8 @@ class epixhr2x2_raw_2_0_1(eb.epix_base):
         eb.epix_base.__init__(self, *args, **kwargs)
         self._seg_geo = eb.sgs.Create(segname='EPIXHR2X2:V1')
         self._data_bit_mask = eb.M15 # for epixhr2x2 data
+        self._data_gain_bit = eb.B15
+        self._gain_bit_shift = 10
 
     def _array(self, evt) -> Array2d:
         f = None
@@ -31,8 +33,5 @@ class epixhr2x2_raw_2_0_1(eb.epix_base):
         """cob=det.raw._seg_configs()[<seg-ind>].config"""
         return eb.cbits_config_epixhr2x2(cob, shape=(288, 384))
 
-
-    def _cbits_config_and_data_detector(self, evt=None):
-        return eb.cbits_config_and_data_detector_epixhr2x2(self, evt)
 
 # EOF
