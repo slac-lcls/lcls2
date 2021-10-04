@@ -193,39 +193,8 @@ def cbits_config_epixhr2x2(cob, shape=(288, 384)):
     return cbits
 
 
-def cbits_config_and_data_detector_epix10ka(det_raw, evt=None):
-    """Returns array of control bits shape=(<number-of-segments>, 352, 384)
-       from any config object and data array.
-    """
-    data = det_raw.raw(evt)
-    cbits = det_raw._cbits_config_detector()
-    #logger.debug(info_ndarr(cbits, 'cbits', first, last))
-
-    if cbits is None: return None
-
-    #----
-    # get 5-bit pixel config array with bit assignments
-    #   0001 = 1<<0 = 1 - T test bit
-    #   0010 = 1<<1 = 2 - M mask bit
-    #   0100 = 1<<2 = 4 - g  gain bit
-    #   1000 = 1<<3 = 8 - ga gain bit
-    # 010000 = 1<<4 = 16 - trbit 1/0 for H/M
-    # add data bit
-    # 100000 = 1<<5 = 32 - data bit 14
-    #----
-    if data is not None:
-        #logger.debug(info_ndarr(data, 'data', first, last))
-        # get array of data bit 14 and add it as a bit 5 to cbits
-        databit14 = np.bitwise_and(data, B14)
-        databit05 = np.right_shift(databit14,9) # 040000 -> 040
-        np.bitwise_or(cbits, databit05, out=cbits) # 109us
-        #cbits[databit14>0] += 040              # 138us
-
-    return cbits
-
-
-def cbits_config_and_data_detector_epixhr2x2(det_raw, evt=None):
-    """Returns array of control bits shape=(<number-of-segments>, 288, 384)
+def cbits_config_and_data_detector(det_raw, evt=None):
+    """Returns array of control bits shape=(<number-of-segments>, 352(or 288), 384)
        from any config object and data array.
     """
     data = det_raw.raw(evt)
@@ -241,13 +210,13 @@ def cbits_config_and_data_detector_epixhr2x2(det_raw, evt=None):
     #   1000 = 1<<3 = 8 - ga gain bit
     # 010000 = 1<<4 = 16 - trbit 1/0 for H/M
     # add data bit
-    # 100000 = 1<<5 = 32 - data bit 14
+    # 100000 = 1<<5 = 32 - data bit 14/15 for epix10ka/epixhr2x2 panel
     #----
     if data is not None:
         #logger.debug(info_ndarr(data, 'data', first, last))
         # get array of data bit 15 and add it as a bit 5 to cbits
-        databit15 = np.bitwise_and(data, B15)
-        databit05 = np.right_shift(databit15,10) # 0o100000 -> 0o40
+        datagainbit = np.bitwise_and(data, det_raw._data_gain_bit)
+        databit05 = np.right_shift(datagainbit, det_raw._gain_bit_shift) # 0o100000 -> 0o40
         np.bitwise_or(cbits, databit05, out=cbits) # 109us
 
     return cbits
