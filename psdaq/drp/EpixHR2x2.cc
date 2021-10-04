@@ -230,8 +230,10 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >
     for(unsigned q=0; (q+3)<subframes.size(); q+=2) {
         logging::debug("asic[%d] nelem[%d]",q,subframes[q+3].num_elem());
         if (!subframes[q+3].num_elem()) {
-            if (m_asics & q)
+            if (m_asics & q) {
+                logging::error("Missing data from asic %d\n",q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
+            }
             continue;
         }
         const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q+3].data());
@@ -253,8 +255,10 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >
     for(unsigned q=1; (q+3)<subframes.size(); q+=2) {
         logging::debug("asic[%d] nelem[%d]",q,subframes[q+3].num_elem());
         if (!subframes[q+3].num_elem()) {
-            if (m_asics & q)
+            if (m_asics & q) {
+                logging::error("Missing data from asic %d\n",q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
+            }
             continue;
         }
         const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q+3].data());

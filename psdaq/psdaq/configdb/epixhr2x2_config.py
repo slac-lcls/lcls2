@@ -317,9 +317,7 @@ def user_to_expert(base, cfg, full=False):
 
     pixel_map_changed = False
     a = None
-    hasGainMode = 'gain_mode' in cfg['user']
-    hasPixelMap = 'pixel_map' in cfg['user']
-    logging.debug(f'hasUser {hasUser}  pixel_map {hasPixelMap} gain_mode {hasGainMode}')
+    hasUser = 'user' in cfg
     if hasUser and ('pixel_map' in cfg['user'] or
                     'gain_mode' in cfg['user']):
         gain_mode = cfg['user']['gain_mode']
@@ -436,9 +434,6 @@ def config_expert(base, cfg, writePixelMap=True):
                 saci.trbit.set(trbit)
                 saci.enable.set(False)
 
-    #  Enable triggers to continue monitoring
-    epixhr2x2_internal_trigger(base)
-
     logging.debug('config_expert complete')
 
 def reset_counters(base):
@@ -473,15 +468,20 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
     writePixelMap=user_to_expert(base, cfg, full=True)
 
     #  Apply the expert settings to the device
-    config_expert(base, cfg, writePixelMap)
-
     pbase = base['pci']
     pbase.StopRun()
+    time.sleep(0.001)
+
+    config_expert(base, cfg, writePixelMap)
+
     time.sleep(0.001)
     pbase.StartRun()
 
     #  Add some counter resets here
     reset_counters(base)
+
+    #  Enable triggers to continue monitoring
+    epixhr2x2_internal_trigger(base)
 
     #  Capture the firmware version to persist in the xtc
     cbase = base['cam']
@@ -705,7 +705,7 @@ def _resetSequenceCount():
 
 def epixhr2x2_external_trigger(base):
     #  Switch to external triggering
-    print('=== external triggering ===')
+    print('=== external triggering with bypass {} ==='.format(base['bypass']))
     cbase = base['cam'].EpixHR
     cbase.TriggerRegisters.enable.set(1)
     cbase.TriggerRegisters.AutoRunEn.set(0)
@@ -723,6 +723,7 @@ def epixhr2x2_internal_trigger(base):
     #  Disable frame readout 
     pbase = base['pci']
     pbase.DevPcie.Application.EventBuilder.Bypass.set(0x3c)
+    return
 
     #  Switch to internal triggering
     print('=== internal triggering ===')
