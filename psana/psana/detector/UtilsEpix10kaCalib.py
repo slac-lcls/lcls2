@@ -504,8 +504,11 @@ def pedestals_calibration(*args, **kwa):
       logger.debug('  run tstamp: %s' % tstamp_run)
       logger.debug('  now tstamp: %s' % tstamp_now)
       det = orun.Detector(detname)
-      step_value = orun.Detector('step_value')
-      step_docstring = orun.Detector('step_docstring')
+      #step_value = orun.Detector('step_value')
+      try: step_docstring = orun.Detector('step_docstring')
+      except Exception as err:
+        logger.error('run.Detector("step_docstring") does not work:\n    %s' % err)
+        sys.exit('Exit processing due to missing info about dark data step.')
       #cd = orun.Detector('ControlData') #LCLS1
 
       logger.debug('--- det.raw._det_name: %s' % det.raw._det_name) # epixquad
