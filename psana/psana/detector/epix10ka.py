@@ -22,6 +22,7 @@ class epix10ka_raw_2_0_1(eb.epix_base):
         self._data_bit_mask = eb.M14 # for epix10ka data
         self._data_gain_bit = eb.B14
         self._gain_bit_shift = 9
+        self._gains_def = (16.4, 5.466, 0.164) # epix10ka ADU/keV H:M:L = 1 : 1/3 : 1/100
 
 
     def calib(self, evt, **kwa) -> Array3d:
