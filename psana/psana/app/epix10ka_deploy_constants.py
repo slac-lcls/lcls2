@@ -34,7 +34,7 @@ def do_main():
     assert args.det is not None,  'WARNING: option "-d <detector-name>" MUST be specified.'
     assert args.runs is not None, 'WARNING: option "-r <run-number(s)>" MUST be specified.'
 
-    fmt = '[%(levelname).1s] %(name)s %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
+    fmt = '[%(levelname).1s] %(name)s L%(lineno)d: %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
     logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
 
     logger.debug('%s\nIn epix10ka_deploy_constants' % (50*'_'))
@@ -84,6 +84,7 @@ def argument_parser():
     d_version = 'V2021-10-05'
     d_run_end = 'end'
     d_comment = 'no comment'
+    d_dbsuffix= ''
 
     h_exp     = 'experiment name, default = %s' % d_exp
     h_det     = 'detector name, default = %s' % d_det
@@ -103,6 +104,7 @@ def argument_parser():
     h_version = 'constants version, default = %s' % str(d_version)
     h_run_end = 'last run for validity range, default = %s' % str(d_run_end)
     h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
+    h_dbsuffix= 'suffix of the PRIVATE DETECTOR-DB to deploy constants, default = %s' % str(d_dbsuffix)
 
     parser = ArgumentParser(description=usage(1)) #, usage = usage())
     parser.add_argument('-e', '--exp',     default=d_exp,      type=str,   help=h_exp)
@@ -120,6 +122,7 @@ def argument_parser():
     parser.add_argument('-v', '--version', default=d_version,  type=str,   help=h_version)
     parser.add_argument('-R', '--run_end', default=d_run_end,  type=str,   help=h_run_end)
     parser.add_argument('-C', '--comment', default=d_comment,  type=str,   help=h_comment)
+    parser.add_argument('-S', '--dbsuffix',default=d_dbsuffix, type=str,   help=h_dbsuffix)
     parser.add_argument('-D', '--deploy',  action='store_true', help=h_deploy)
 
     return parser
