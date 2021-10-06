@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#----
+
 import os
 import sys
 from time import time
@@ -17,7 +17,6 @@ STR_LEVEL_NAMES = ', '.join(DICT_NAME_TO_LEVEL.keys())
 #scrname = sys.argv[0].rsplit('/')[-1]
 scrname = os.path.basename(sys.argv[0])
 
-#----
 
 def do_main():
 
@@ -37,7 +36,7 @@ def do_main():
 
     fmt = '[%(levelname).1s] %(name)s %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
     logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
-    
+
     logger.debug('%s\nIn epix10ka_deploy_constants' % (50*'_'))
     logger.debug('Command line:%s' % ' '.join(sys.argv))
     logger.info(info_parser_arguments(parser))
@@ -60,7 +59,10 @@ def usage(mode=0):
            + '\n  %s -e ueddaq02 -d epixquad -r27 -o ./work -D -c ./calib' % scrname\
            + '\n  %s -e ueddaq02 -d epixquad -r27 -o ./work -D -c ./calib --proc=g --low=0.25 --medium=1 --high=1' % scrname\
            + '\n  %s -e ueddaq02 -d epixquad -r65 -t 60 -DTrue # deploy constants for earlier runs (>=60) of the same experiment' % scrname\
+           + '\n  %s -e rixx45619 -d epixhr -r1 --low=0.512 --medium=13.7 --high=41.0' % scrname\
+           + '\n  %s -e rixx45619 -d epixhr -r11 -x /cds/home/w/weaver/data/rix/rixx45619/xtc --low=0.512 --medium=13.7 --high=41.0' % scrname\
            + '\n\n  Try: %s -h' % scrname
+
 
 def argument_parser():
     #from optparse import OptionParser
@@ -71,21 +73,17 @@ def argument_parser():
     d_runs    = None # 1021
     d_tstamp  = None # 20180910111049
     d_dirxtc  = None # '/reg/d/psdm/mfx/mfxx32516/scratch/gabriel/pulser/xtc/combined'
-    d_dirrepo = CALIB_REPO_EPIX10KA # './myrepo' 
-    d_dircalib= None # './calib
+    d_dirrepo = CALIB_REPO_EPIX10KA # './myrepo'
     d_deploy  = False
     d_logmode = 'INFO'
     d_proc    = 'psrg'
     d_paninds = None
-    d_high    = 16.40 # 1.
-    d_medium  = 5.466 # 0.33333
-    d_low     = 0.164 # 0.01
-    #Blaj, Gabriel <blaj@slac.stanford.edu> Mon 8/3/2020 6:52 PM
-    #Hi, Here are some good starting values for the ADC to keV conversion:
-    #High gain: 132 ADU / 8.05 keV = 16.40 ADU/keV
-    #Medium gain: 132 ADU / 8.05 keV / 3 = 5.466 ADU/keV
-    #Low gain: 132 ADU / 8.05 keV / 100 = 0.164 ADU/keV
-    d_version = 'V2021-03-04'
+    # epix10ka H:M:L = 1 : 1/3 : 1/100 = 16.40 : 5.466 : 0.164 ADU/keV
+    # epixhr   H:M:L = 1 : 1/3 : 1/80  = 41 : 13.7 : 0.512 ADU/keV
+    d_high    = 16.40
+    d_medium  = 5.466
+    d_low     = 0.164
+    d_version = 'V2021-10-05'
     d_run_end = 'end'
     d_comment = 'no comment'
 
@@ -96,7 +94,6 @@ def argument_parser():
                 'By default run time is used, default = %s' % str(d_tstamp)
     h_dirxtc  = 'non-default xtc directory which is used to access run start time, default = %s' % d_dirxtc
     h_dirrepo = 'non-default repository of calibration results, default = %s' % d_dirrepo
-    h_dircalib= 'deployment calib directory if different from standard one, default = %s' % d_dircalib
     h_deploy  = 'deploy constants to the calib dir, default = %s' % d_deploy
     h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_high    = 'default high   gain ADU/keV, default = %s' % str(d_high)
@@ -108,7 +105,6 @@ def argument_parser():
     h_version = 'constants version, default = %s' % str(d_version)
     h_run_end = 'last run for validity range, default = %s' % str(d_run_end)
     h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
-    #h_     = ', default = %s' % str(d_)
 
     parser = ArgumentParser(description=usage(1)) #, usage = usage())
     parser.add_argument('-e', '--exp',     default=d_exp,      type=str,   help=h_exp)
@@ -117,7 +113,6 @@ def argument_parser():
     parser.add_argument('-t', '--tstamp',  default=d_tstamp,   type=int,   help=h_tstamp)
     parser.add_argument('-x', '--dirxtc',  default=d_dirxtc,   type=str,   help=h_dirxtc)
     parser.add_argument('-o', '--dirrepo', default=d_dirrepo,  type=str,   help=h_dirrepo)
-    parser.add_argument('-c', '--dircalib',default=d_dircalib, type=str,   help=h_dircalib)
     parser.add_argument('-L', '--logmode', default=d_logmode,  type=str,   help=h_logmode)
     parser.add_argument(      '--high',    default=d_high,     type=float, help=h_high)
     parser.add_argument(      '--medium',  default=d_medium,   type=float, help=h_medium)
@@ -131,7 +126,6 @@ def argument_parser():
 
     return parser
 
-#----
 
 if __name__ == "__main__":
     do_main()
