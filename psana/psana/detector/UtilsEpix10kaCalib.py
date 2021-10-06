@@ -755,7 +755,6 @@ def get_config_info_for_dataset_detname(**kwargs):
 
       cpdic = {}
       cpdic['expname']    = orun.expt
-      cpdic['calibdir']   = None
       cpdic['strsrc']     = None
       cpdic['shape']      = det.raw._seg_geo.shape() # (352, 384) for epix10ka or (288,384) for epixhr2x2
       cpdic['gain_mode']  = ue.find_gain_mode(det.raw, evt=None) #data=raw: distinguish 5-modes w/o data
@@ -899,7 +898,6 @@ def deploy_constants(*args, **kwa):
     tstamp     = kwa.get('tstamp', None) # (int) time stamp in format YYYYmmddHHMMSS or run number(<10000)
     dirxtc     = kwa.get('dirxtc', None)
     dirrepo    = kwa.get('dirrepo', CALIB_REPO_EPIX10KA)
-    dircalib   = kwa.get('dircalib', None)
     deploy     = kwa.get('deploy', False)
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_gain   = kwa.get('fmt_gain', '%.6f')
@@ -929,7 +927,6 @@ def deploy_constants(*args, **kwa):
     tstamp_run  = cpdic.get('tstamp',    None) # str
     expnum      = cpdic.get('expnum',    None)
     shape       = cpdic.get('shape',     None)
-    calibdir    = cpdic.get('calibdir',  None)
     strsrc      = cpdic.get('strsrc',    None)
     panel_ids   = cpdic.get('panel_ids', None)
     panel_inds  = cpdic.get('panel_inds',None)
@@ -1092,7 +1089,6 @@ if __name__ == "__main__":
       runs    = 27,\
       tstamp  = 20201216000000,\
       dirxtc  = '/cds/data/psdm/ued/ueddaq02/xtc/',\
-      dircalib= './calib',\
       deploy  = False)
       #dirrepo = './work',\
     print('TBD')
