@@ -915,6 +915,7 @@ def deploy_constants(*args, **kwa):
     version    = kwa.get('version', 'N/A')
     run_end    = kwa.get('run_end', 'end')
     comment    = kwa.get('comment', 'no comment')
+    dbsuffix   = kwa.get('dbsuffix', '')
 
     logger.setLevel(DICT_NAME_TO_LEVEL[logmode])
 
@@ -1047,7 +1048,8 @@ def deploy_constants(*args, **kwa):
             'version'    : version,
             'comment'    : comment,
             'extpars'    : {'content':'extended parameters dict->json->str',},
-            'dettype'    : dettype
+            'dettype'    : dettype,
+            'dbsuffix'   : dbsuffix
           }
 
           logger.debug('DEPLOY metadata: %s' % str(kwa))
@@ -1056,10 +1058,18 @@ def deploy_constants(*args, **kwa):
           logger.debug(info_ndarr(data, 'merged constants loaded from file'))
 
           if deploy:
+            resp = wu.add_data_and_doc_to_detdb_extended(data, exp, longname, **kwa) if dbsuffix else\
+                   wu.add_data_and_two_docs(data, exp, longname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+
+            if resp is None:
+                logger.warning('CONSTANTS ARE NOT DEPLOYED')
+                continue
+
             id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
-              wu.add_data_and_two_docs(data, exp, longname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+                  (None, resp[0], None, resp[1]) if dbsuffix else resp
+
             logger.debug('deployed with id_data_exp:%s and id_data_det:%s' % (id_data_exp, id_data_det))
-            logger.info('%s are deployed in DB(s) for exp:%s det:%s' % (16*' ', exp, detname))
+            logger.info('%s are deployed in DB(s) for exp:%s det:%s dbsuffix:%s' % (16*' ', exp, detname, dbsuffix))
 
           else:
             logger.warning('TO DEPLOY CONSTANTS ADD OPTION -D')
