@@ -1,3 +1,4 @@
+
 """
 1. Start server
 2. Use this API test: python lcls2/psana/psana/pscalib/calib/MDBUtils.py 0...14
@@ -39,7 +40,7 @@ Usage ::
 
     # All connect methods in one call
     client, expname, detname, db_exp, db_det, fs_exp, fs_det, col_exp, col_det =\
-        mu.connect(host='psanaphi105', port=27017, experiment='exp12345', detector='camera_1234') 
+        mu.connect(host='psanaphi105', port=27017, experiment='exp12345', detector='camera_1234')
 
     ts    = mu._timestamp(time_sec:int,int,float)
     ts    = mu.timestamp_id(id)
