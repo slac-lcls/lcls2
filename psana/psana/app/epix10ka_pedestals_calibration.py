@@ -21,7 +21,6 @@ USAGE = 'Usage:'\
       + '\n  mpirun -n 5 epix10ka_pedestals_calibration -e ueddaq02 -d epixquad -r27 -o ./work -L DEBUG'\
       + '\n\n  Try: %s -h' % SCRNAME
 
-#----
 
 def do_main():
 
@@ -71,8 +70,8 @@ def argument_parser():
     d_stepmax    = 5
     d_evskip     = 100     # number of events to skip in the beginning of each step
     d_events     = 1000    # last event number in the step to process
-    d_dirmode    = 0o777
-    d_filemode   = 0o666
+    d_dirmode    = 0o774
+    d_filemode   = 0o664
     d_int_lo     = 1       # lowest  intensity accepted for dark evaluation
     d_int_hi     = 16000   # highest intensity accepted for dark evaluation
     d_intnlo     = 6.0     # intensity ditribution number-of-sigmas low
@@ -148,7 +147,6 @@ def argument_parser():
 
     return parser
 
-#----
 
 if __name__ == "__main__":
     do_main()
