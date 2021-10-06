@@ -103,6 +103,19 @@ def apply_dict(pathbase,base,cfg):
                 logging.info(f'Setting {path} to {configdb_node}')
                 retry(rogue_node.set,configdb_node)
 
+def _dict_compare(d1,d2,path):
+    for k in d1.keys():
+        if k in d2.keys():
+            if d1[k] is dict:
+                _dict_compare(d1[k],d2[k],path+'.'+k)
+            elif (d1[k] != d2[k]):
+                print(f'key[{k}] d1[{d1[k]}] != d2[{d2[k]}]')
+        else:
+            print(f'key[{k}] not in d1')
+    for k in d2.keys():
+        if k not in d1.keys():
+            print(f'key[{k}] not in d2')
+
 #
 #  Construct an asic pixel mask with square spacing
 #
@@ -304,14 +317,6 @@ def user_to_expert(base, cfg, full=False):
 
         d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
 
-    if (hasUser and 'gate_ns' in cfg['user']):
-        triggerWidth = int(cfg['user']['gate_ns']/10)
-        if triggerWidth < 1:
-            logging.error('triggerWidth {} ({} ns)'.format(triggerWidth,cfg['user']['gate_ns']))
-            raise ValueError('triggerWidth computes to < 1')
-
-        d[f'expert.EpixHR.RegisterControl.AcqWidth1']=triggerWidth
-
     if full:
         d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition']=group
 
@@ -339,16 +344,16 @@ def user_to_expert(base, cfg, full=False):
 #
 #  Apply the cfg dictionary settings
 #
-def config_expert(base, cfg, writePixelMap=True):
+def config_expert(base, cfg, writePixelMap=True, secondPass=False):
+
+    pbase = base['pci']
 
     #  Disable internal triggers during configuration
     epixhr2x2_external_trigger(base)
 
     # overwrite the low-level configuration parameters with calculations from the user configuration
-    pbase = base['pci']
     if ('expert' in cfg and 'DevPcie' in cfg['expert']):
         apply_dict('pbase.DevPcie',pbase.DevPcie,cfg['expert']['DevPcie'])
-
 
     cbase = base['cam']
 
@@ -377,9 +382,13 @@ def config_expert(base, cfg, writePixelMap=True):
 
     #  Use a timeout in AxiStreamBatcherEventBuilder
     #  Without a timeout, dropped contributions create an off-by-one between contributors
-    pbase.DevPcie.Application.EventBuilder.Timeout.set(int(8e-3*156.25e6)) # 8ms
+    pbase.DevPcie.Application.EventBuilder.Timeout.set(int(0.4e-3*156.25e6)) # 400 us
 
-    if epixHR is not None:
+    #
+    #  For some unknown reason, performing this part of the configuration on BeginStep
+    #  causes the readout to fail until the next Configure
+    #
+    if epixHR is not None and not secondPass:
         # Work hard to use the underlying rogue interface
         # Translate config data to yaml files
         path = '/tmp/epixhr'
@@ -470,18 +479,18 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  Apply the expert settings to the device
     pbase = base['pci']
     pbase.StopRun()
-    time.sleep(0.001)
+    time.sleep(0.01)
 
     config_expert(base, cfg, writePixelMap)
 
-    time.sleep(0.001)
+    time.sleep(0.01)
     pbase.StartRun()
 
     #  Add some counter resets here
     reset_counters(base)
 
     #  Enable triggers to continue monitoring
-    epixhr2x2_internal_trigger(base)
+#    epixhr2x2_internal_trigger(base)
 
     #  Capture the firmware version to persist in the xtc
     cbase = base['cam']
@@ -605,20 +614,34 @@ def epixhr2x2_update(update):
     logging.debug('epixhr2x2_update')
     global ocfg
     global base
+    ##
+    ##  Having problems with partial configuration
+    ##
     # extract updates
     cfg = {}
     update_config_entry(cfg,ocfg,json.loads(update))
     #  Apply to expert
     writePixelMap = user_to_expert(base,cfg,full=False)
-
-    ##  Having problems with partial configuration
     #  Apply config
-    #config_expert(base, cfg, writePixelMap)
+    #    config_expert(base, cfg, writePixelMap)
+    ##
     ##  Try full configuration
-    ncfg = ocfg
+    ##
+#    ncfg = get_config(base['connect_str'],base['cfgtype'],base['detname'],base['detsegm'])
+    ncfg = ocfg.copy()
     update_config_entry(ncfg,ocfg,json.loads(update))
-    config_expert(base, ncfg, writePixelMap)
+    _writePixelMap = user_to_expert(base,ncfg,full=True)
+##  This kills the asic readout
+    pbase = base['pci']
+    pbase.StopRun()
+    time.sleep(0.01)
+    config_expert(base, ncfg, _writePixelMap, secondPass=True)
+    time.sleep(0.01)
+    pbase.StartRun()
     ##  End of Try full
+
+    #  Enable triggers to continue monitoring
+#    epixhr2x2_internal_trigger(base)
 
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
@@ -667,35 +690,6 @@ def epixhr2x2_update(update):
     logging.debug('update complete')
 
     return result
-
-#
-#  Check that ADC startup has completed successfully
-#
-def _checkADCs():
-
-    epixhr2x2_external_trigger(base)
-
-    cbase = base['cam']
-    tmo = 0
-    while True:
-        time.sleep(0.001)
-        if cbase.SystemRegs.AdcTestFailed.get()==1:
-            logging.warning('Adc Test Failed - restarting!')
-            cbase.SystemRegs.AdcReqStart.set(1)
-            time.sleep(1.e-6)
-            cbase.SystemRegs.AdcReqStart.set(0)
-        else:
-            tmo += 1
-            if tmo > 1000:
-                logging.warning('Adc Test Timedout')
-                return 1
-        if cbase.SystemRegs.AdcTestDone.get()==1:
-            break
-    logging.debug(f'Adc Test Done after {tmo} cycles')
-
-    epixhr2x2_internal_trigger(base)
-
-    return 0
 
 def _resetSequenceCount():
     cbase = base['cam']

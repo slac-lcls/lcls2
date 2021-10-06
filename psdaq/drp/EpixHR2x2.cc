@@ -226,16 +226,23 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >
     // --------+--------
     //    A0   |   A2
     //
-    char dline[280];
-    for(unsigned q=0; (q+3)<subframes.size(); q+=2) {
-        logging::debug("asic[%d] nelem[%d]",q,subframes[q+3].num_elem());
-        if (!subframes[q+3].num_elem()) {
-            if (m_asics & q) {
+
+    unsigned q_asics = m_asics;
+    for(unsigned q=0; q<4; q++) {
+        if (q_asics & (1<<q)) {
+            if (subframes.size()<(q+4) || subframes[q+3].num_elem()!=56076) {
                 logging::error("Missing data from asic %d\n",q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
+                q_asics ^= (1<<q);
             }
-            continue;
         }
+    }
+
+    char dline[280];
+    for(unsigned q=0; q<4; q+=2) {
+        if ((q_asics & (1<<q))==0)
+            continue;
+        logging::debug("asic[%d] nelem[%d]",q,subframes[q+3].num_elem());
         const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q+3].data());
         for(unsigned i=0; i<32; i++)
             sprintf(&dline[i*5]," %04x", u[i+19200]);
@@ -252,15 +259,10 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >
             }
         }
     }
-    for(unsigned q=1; (q+3)<subframes.size(); q+=2) {
-        logging::debug("asic[%d] nelem[%d]",q,subframes[q+3].num_elem());
-        if (!subframes[q+3].num_elem()) {
-            if (m_asics & q) {
-                logging::error("Missing data from asic %d\n",q);
-                xtc.damage.increase(XtcData::Damage::MissingData);
-            }
+    for(unsigned q=1; q<4; q+=2) {
+        if ((q_asics & (1<<q))==0)
             continue;
-        }
+        logging::debug("asic[%d] nelem[%d]",q,subframes[q+3].num_elem());
         const uint16_t* u = reinterpret_cast<const uint16_t*>(subframes[q+3].data());
         u += 6;
         for(unsigned row=0, e=0; row<elemRows; row++, e+=elemRowSize) {
