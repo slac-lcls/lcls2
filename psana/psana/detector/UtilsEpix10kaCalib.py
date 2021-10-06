@@ -767,6 +767,7 @@ def get_config_info_for_dataset_detname(**kwargs):
       cpdic['tstamp_now'] = tstamp_now # (str) 20201217140026
       cpdic['trun_sec']   = int(trun_sec) # 1607569818.532117 sec
       cpdic['tsrun_dark'] = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
+      cpdic['gains_def']  = det.raw._gains_def # e.g. for epix10ka (16.4, 5.466, 0.164) ADU/keV
       return cpdic
 
 
@@ -906,9 +907,9 @@ def deploy_constants(*args, **kwa):
     logmode    = kwa.get('logmode', 'DEBUG')
     dirmode    = kwa.get('dirmode',  0o777)
     filemode   = kwa.get('filemode', 0o666)
-    high       = kwa.get('high',   16.40) # ADU/keV #High gain: 132 ADU / 8.05 keV = 16.40 ADU/keV
-    medium     = kwa.get('medium', 5.466) # ADU/keV #Medium gain: 132 ADU / 8.05 keV / 3 = 5.466 ADU/keV
-    low        = kwa.get('low',    0.164) # ADU/keV#Low gain: 132 ADU / 8.05 keV / 100 = 0.164 ADU/keV
+    high       = kwa.get('high',   16.40) # ADU/keV
+    medium     = kwa.get('medium', 5.466) # ADU/keV
+    low        = kwa.get('low',    0.164) # ADU/keV
     proc       = kwa.get('proc', 'prsg')
     paninds    = kwa.get('paninds', None)
     version    = kwa.get('version', 'N/A')
@@ -933,9 +934,17 @@ def deploy_constants(*args, **kwa):
     dettype     = cpdic.get('dettype',   None)
     det_name    = cpdic.get('det_name',  None)
     longname    = cpdic.get('longname', detname)
+    gains_def   = cpdic.get('gains_def', None)
 
     req_inds = None if paninds is None else [int(i) for i in paninds.split(',')] # conv str '0,1,2,3' to list [0,1,2,3]
     logger.info('In %s\n      detector: "%s" \n      requested_inds: %s' % (_name, detname, str(req_inds)))
+
+    assert isinstance(gains_def, tuple)
+    assert len(gains_def) == 3
+
+    if high   is None: high   = gains_def[0]
+    if medium is None: medium = gains_def[1]
+    if low    is None: low    = gains_def[2]
 
     global GAIN_FACTOR_DEF
     #GAIN_MODES     = ['FH','FM','FL','AHL-H','AML-M','AHL-L','AML-L']
