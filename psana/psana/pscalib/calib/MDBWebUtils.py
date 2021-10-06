@@ -353,7 +353,7 @@ def add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
 
 
 def add_data_and_doc(data, _dbname, _colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
-    """Adds data and document to the db
+    """Check permission and add data and document to the db
     """
     logger.debug('add_data_and_doc kwargs: %s' % str(kwargs))
 
@@ -377,13 +377,12 @@ def add_data_and_doc(data, _dbname, _colname, url=cc.URL_KRB, krbheaders=cc.KRBH
 
 
 def insert_document_and_data(dbname, colname, dicdoc, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
-    """wrapper for pymongo compatability
-    """
+    """Wrapper for pymongo compatability"""
     return add_data_and_doc(data, dbname, colname, url, krbheaders, **dicdoc)
 
 
 def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
-    """ Check permission and add data and document to experiment and detector data bases.
+    """Add data and document to experiment and detector data bases.
     """
     logger.debug('add_data_and_two_docs kwargs: %s' % str(kwargs))
 
@@ -401,11 +400,6 @@ def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADE
     if resp is None: return None
     id_data_exp, id_doc_exp = resp
 
-    #logger.warning('Deployment of constants in the %s needs in expert-privilage\n' % dbname_det)
-    #if not kwargs.get('confirm', False):
-        #mu.request_confirmation()
-        #return id_data_exp, None, id_doc_exp, None
-
     kwargs['id_data_exp'] = id_data_exp # override
     kwargs['id_doc_exp']  = id_doc_exp  # add
     resp = add_data_and_doc(data, dbname_det, colname, url=url, krbheaders=krbheaders, **kwargs)
@@ -413,37 +407,30 @@ def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADE
     return id_data_exp, id_data_det, id_doc_exp, id_doc_det
 
 
-def add_data_and_two_docs_v0(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
-    """ Adds data and document to experiment and detector data bases.
+def add_data_and_doc_to_detdb_extended(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
+    """Add data and document to the detector data base with extended name using 'dbsuffix'.
+    Data and associated document added to the detector db with extended name, e.g. epix10ka_000001_mysandbox
+    All document fields stay unchanged.
     """
-    t0_sec = time()
+    logger.debug('add_data_and_doc_to_detdb_extended kwargs: %s' % str(kwargs))
 
+    dbsuffix = kwargs.get('dbsuffix','')
+    assert isinstance(dbsuffix, str)
     detname = pro_detector_name(det, add_shortname=True)
     colname = detname
-    dbname_exp = mu.db_prefixed_name(exp)
+    #dbname_exp = mu.db_prefixed_name(exp)
     dbname_det = mu.db_prefixed_name(detname)
+    if dbsuffix: dbname_det += '_%s'% dbsuffix
+    assert len(dbname_det) < 50
 
-    id_data_exp = add_data(dbname_exp, data, url, krbheaders)
-    id_data_det = add_data(dbname_det, data, url, krbheaders)
-    if None in (id_data_exp, id_data_det): return None
-
-    kwargs['detector'] = detname # ex: epix10ka_000001
-    kwargs['longname'] = det
-    doc = mu.docdic(data, id_data_exp, **kwargs)
-    logger.debug(mu.doc_info(doc, fmt='  %s:%s')) #sep='\n  %16s : %s'
-
-    id_doc_exp = add_document(dbname_exp, colname, doc, url, krbheaders)
-    doc['id_data'] = id_data_det # override
-    doc['id_exp']  = id_doc_exp  # add
-    id_doc_det = add_document(dbname_det, colname, doc, url, krbheaders)
-    if None in (id_doc_exp, id_doc_det): return None
-
-    msg = 'Add 2 data and docs time %.6f sec' % (time()-t0_sec)\
-        + '\n  - data in %s/gridfs id: %s and doc in collection %s id: %s' % (dbname_exp, id_data_exp, colname, id_doc_exp)\
-        + '\n  - data in %s/gridfs id: %s and doc in collection %s id: %s' % (dbname_det, id_data_det, colname, id_doc_det)
-    logger.debug(msg)
-
-    return id_data_exp, id_data_det, id_doc_exp, id_doc_det
+    kwargs['detector']  = detname # ex: epix10ka_000001
+    kwargs['shortname'] = detname # ex: epix10ka_000001
+    kwargs['longname']  = det     # ex: epix10ka_<_uniqueid>
+    #kwargs['detname']  = det_name # already in kwargs ex: epixquad
+    kwargs['id_data_exp'] = 'N/A'
+    kwargs['id_doc_exp']  = 'N/A'
+    resp = add_data_and_doc(data, dbname_det, colname, url=url, krbheaders=krbheaders, **kwargs)
+    return resp # None or (id_data_det, id_doc_det)
 
 
 def _add_detector_name(dbname, colname, detname, detnum):
@@ -702,7 +689,7 @@ def valid_post_privilege(dbname, url_krb=cc.URL_KRB):
         krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(ws_url).hostname).getAuthHeaders()
     except Exception as err: #except kerberos.GSSError as err:
         logger.warning('KerberosTicket error: %s' % str(err))
-        logger.info('Before running this script try command: kinit')
+        logger.warning('BEFORE RUNNING THIS SCRIPT TRY COMMAND: kinit')
         return False
 
     r = get(ws_url, headers=krbh_test)
