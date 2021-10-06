@@ -60,7 +60,7 @@ def usage(mode=0):
            + '\n  %s -e ueddaq02 -d epixquad -r27 -o ./work -D -c ./calib --proc=g --low=0.25 --medium=1 --high=1' % scrname\
            + '\n  %s -e ueddaq02 -d epixquad -r65 -t 60 -DTrue # deploy constants for earlier runs (>=60) of the same experiment' % scrname\
            + '\n  %s -e rixx45619 -d epixhr -r1 --low=0.512 --medium=13.7 --high=41.0' % scrname\
-           + '\n  %s -e rixx45619 -d epixhr -r11 -x /cds/home/w/weaver/data/rix/rixx45619/xtc --low=0.512 --medium=13.7 --high=41.0' % scrname\
+           + '\n  %s -e rixx45619 -d epixhr -r11 -x /cds/home/w/weaver/data/rix/rixx45619/xtc --low=0.0125 --medium=0.3333 --high=1' % scrname\
            + '\n\n  Try: %s -h' % scrname
 
 
@@ -78,11 +78,9 @@ def argument_parser():
     d_logmode = 'INFO'
     d_proc    = 'psrg'
     d_paninds = None
-    # epix10ka H:M:L = 1 : 1/3 : 1/100 = 16.40 : 5.466 : 0.164 ADU/keV
-    # epixhr   H:M:L = 1 : 1/3 : 1/80  = 41 : 13.7 : 0.512 ADU/keV
-    d_high    = 16.40
-    d_medium  = 5.466
-    d_low     = 0.164
+    d_high    = None #16.40 for epix10ka
+    d_medium  = None #5.466
+    d_low     = None #0.164
     d_version = 'V2021-10-05'
     d_run_end = 'end'
     d_comment = 'no comment'
