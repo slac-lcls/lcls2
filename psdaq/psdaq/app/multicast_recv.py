@@ -5,6 +5,7 @@ import numpy as np
 
 assert(len(sys.argv)==2)
 
+# can see these on the accelerator side on machine lcls-srv02
 # from psdaq/drp/BldDetector.cc
 server_address = ('', 10148) # BldDetectorSlow.cc says 12148 eventually
 if sys.argv[1]=="-h": #HXR ebeam
@@ -31,6 +32,7 @@ sock.bind(server_address)
 group = socket.inet_aton(multicast_group)
 mreq = struct.pack('4sL', group, socket.INADDR_ANY)
 sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 # matt has some c++ code to dump bld
 # psdaq/psdaq/app/xcasttest.cc
