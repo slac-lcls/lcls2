@@ -19,7 +19,6 @@ def epixhr2x2_cdict():
 
     help_str  = "-- user interface --"
     help_str += "\nstart_ns     : nanoseconds to exposure start"
-    help_str += "\ngate_ns      : nanoseconds of exposure window"
     help_str += "\ngain_mode    : High/Med/Low/AutoHiLo/AutoMedLo/Map"
     help_str += "\npixel_map    : 3D-map of pixel gain/inj settings"
     #top.set("help.user:RO", help_str, 'CHARSTR')
@@ -28,7 +27,6 @@ def epixhr2x2_cdict():
     top.set("user.pixel_map", pixelMap)
 
     top.set("user.start_ns" , 107749, 'UINT32')
-    top.set("user.gate_ns"  , 100000, 'UINT32')
 
     top.define_enum('gainEnum', {'High':0, 'Medium':1, 'Low':2, 'AutoHiLo':3, 'AutoMedLo':4, 'Map':5})
     top.set("user.gain_mode",      0, 'gainEnum')  
