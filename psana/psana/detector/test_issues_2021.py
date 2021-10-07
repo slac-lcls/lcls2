@@ -53,8 +53,8 @@ def issue_2020_12_02():
         print('XXX run.detnames: ', run.detnames) # {'epixquad'}
         print('XXX run.expt    : ', run.expt)     # amox27716
         print('XXX run.id      : ', run.id)       # 0
-        #det = run.Detector('epixquad') 
-    exit('TEST EXIT') 
+        #det = run.Detector('epixquad')
+    exit('TEST EXIT')
 
 
 def issue_2020_12_10():
@@ -67,8 +67,8 @@ def issue_2020_12_10():
     >>but I can't get anything useful from this detector. Something is still missing.
 
     The script below works for me for the ued epix-scan.
-    At the moment I?ve forgotten why we did it with two Detectors 
-    instead of putting the information into one detector 
+    At the moment I?ve forgotten why we did it with two Detectors
+    instead of putting the information into one detector
     or the Step object (like we do with the runinfo).
     Perhaps Mona/ChrisF/Matt (cc?d) can remind me post tag-up.
     We?ve had several long discussions about this and changed it a few times ...
@@ -125,7 +125,7 @@ def issue_2020_12_16():
           for k,v in scfg.items():
               cob = v.config
               print_ndarr(cob.asicPixelConfig, 'seg:%02d trbits: %s asicPixelConfig:'%(k, str(cob.trbit)))
-              
+
 
 def issue_2020_12_19():
     """First version of det.raw.calib"""
@@ -135,7 +135,7 @@ def issue_2020_12_19():
     ds = DataSource(exp='ueddaq02',run=28)
 
     for run in ds.runs():
-        print('====== run.runnum: ', run.runnum) 
+        print('====== run.runnum: ', run.runnum)
 
         det = run.Detector('epixquad')
 
@@ -370,6 +370,34 @@ def issue_2021_03_13():
   print('\nmedian(%s) = %.3f' % (str(a), np.median(a)))
   print('quantile(%s, %.3f) = %.3f' % (str(a), q, np.quantile(a, q, interpolation='linear')))
 
+
+def issue_2021_10_06():
+  """O'Grady, Paul Christopher <cpo@slac.stanford.edu> Wed 10/6/2021 3:37 PM
+     Hi Mikhail, Phil deployed pedestals from run 118,
+     but when we look at det.raw.image we don?t see numbers near zero,
+     instead we see numbers like 10000 (see ami image below).
+     Would you be able to have a look to help us understand?  Thanks!
+     chris
+  """
+  from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
+  from psana import DataSource
+  ds = DataSource(exp='rixx45619',run=119)
+  myrun = next(ds.runs())
+  det = myrun.Detector('epixhr')
+  peds = det.calibconst['pedestals'][0]
+  print('*** calibconst keys:',det.calibconst.keys())
+  print('*** pedestals:', peds[0])
+  print('*** pedestal metadata:',det.calibconst['pedestals'][1])
+  for evt in myrun.events():
+      img = det.raw.image(evt)
+      print(img)
+      print(info_ndarr(img, '=== img'))
+      break
+
+  print(info_ndarr(peds, '=== pedestals'))
+  print('=== pedestals[0,0,:]\n', peds[0,0,:])
+
+
 #if __name__ == "__main__":
 USAGE = '\nUsage:'\
       + '\n  python %s <test-name> <loglevel-e.g.-DEBUG-or-INFO>' % SCRNAME\
@@ -388,7 +416,7 @@ USAGE = '\nUsage:'\
       + '\n   11 - issue_2021_02_16 - cpo - passing None as a detector name'\
       + '\n   12 - issue_2021_03_10 - matplotlib and libGL error messages'\
       + '\n   13 - issue_2021_03_13 - mine - np.median and quntile return rounded values'\
-
+      + '\n   14 - issue_2021_10_06 - Philip & Chris pedestal subtraction for epixhr'\
 
 
 TNAME = sys.argv[1] if len(sys.argv)>1 else '0'
@@ -406,6 +434,7 @@ elif TNAME in ('10',): issue_2021_02_09()
 elif TNAME in ('11',): issue_2021_02_16()
 elif TNAME in ('12',): issue_2021_03_10()
 elif TNAME in ('13',): issue_2021_03_13()
+elif TNAME in ('14',): issue_2021_10_06()
 else:
     print(USAGE)
     exit('TEST %s IS NOT IMPLEMENTED'%TNAME)
