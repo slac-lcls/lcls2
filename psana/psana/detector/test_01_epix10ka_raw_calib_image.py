@@ -267,6 +267,8 @@ def test_image(args):
     med_vs_evt = np.zeros(args.events-args.evskip+10, dtype=np.float64)
     nrec_med = 0
 
+    MDBITS = det.raw._data_bit_mask # 0x7fff  # 32767
+
     for stepnum,step in enumerate(run.steps()):
       print('%s\nStep %1d' % (50*'_',stepnum))
 
@@ -306,7 +308,7 @@ def test_image(args):
 
         arr = None
         if args.show == 'raw-peds-med':
-           arr = (det.raw.raw(evt) & 0x3fff) - peds
+           arr = (det.raw.raw(evt) & MDBITS) - peds
            med = np.median(arr)
            print('XXX from raw-peds subtract its median = %.3f' % med)
            arr -= med
@@ -320,8 +322,8 @@ def test_image(args):
               det.raw.calib(evt)                 if args.show == 'calib'    else\
               peds                               if args.show == 'peds'     else\
               det.raw._gain_range_index(evt)     if args.show == 'grind'    else\
-              (det.raw.raw(evt) & 0x3fff) - peds if args.show == 'raw-peds' else\
-              (det.raw.raw(evt) & 0x3fff)        if args.show == 'rawbm'    else\
+              (det.raw.raw(evt) & MDBITS) - peds if args.show == 'raw-peds' else\
+              (det.raw.raw(evt) & MDBITS)        if args.show == 'rawbm'    else\
                np.ones_like(det.raw.raw(evt))    if args.show == 'ones'     else\
               (det.raw.raw(evt) & args.bitmask)
 
@@ -358,7 +360,7 @@ def test_image(args):
         logger.info(info_ndarr(arr, 'arr '))
         if img is None: continue
 
-        title = '%s %s run:%s ev:%d' % (args.detname, args.expname, args.runs, evnum)
+        title = '%s %s run:%s step:%d ev:%d' % (args.detname, args.expname, args.runs, stepnum, evnum)
 
         if 'i' in dograph:
             if flimg is None:
@@ -384,6 +386,7 @@ def test_image(args):
                                       amin=args.gramin,   amax=args.gramax,\
                                       nneg=args.grnneg,   npos=args.grnpos,\
                                       fraclo=args.grfrlo, frachi=args.grfrhi,\
+                                      w_in=14, h_in=8,\
                 )
                 flims.move(10,20)
             else:
@@ -470,6 +473,10 @@ if __name__ == "__main__":
       + '\n    ./%s image -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8 -o img-ueddaq02-epixquad-r140-ev0002-cm8-7-100-10.png -N3' % SCRNAME\
       + '\n    ./%s image -e ueddaq02 -d epixquad -r211 -N1 -M0 -Speds -g0 # - plot pedestals for gain group 0/FH' % SCRNAME\
       + '\n    ./%s image -e ueddaq02 -d epixquad -r211 -N100 -Sraw-peds -M2 -g2 # - plot calib[step=2] - pedestals[gain group 2]' % SCRNAME\
+      + '\n    ./%s image -e rixx45619 -d epixhr -r118 --gramin 1 --gramax 32000 -Sraw' % SCRNAME\
+      + '\n    ./%s image -e rixx45619 -d epixhr -r118 --gramin 1 --gramax 32000 -Speds -g0' % SCRNAME\
+      + '\n    ./%s image -e rixx45619 -d epixhr -r118 --gramin -100 --gramax 100 -Sraw-peds -g0' % SCRNAME\
+      + '\n    ./%s image -e rixx45619 -d epixhr -r119 -Scalib' % SCRNAME\
 
     d_loglev  = 'INFO' #'INFO' #'DEBUG'
     d_fname   = None   #fname2 = '/cds/data/psdm/ued/ueddaq02/xtc/ueddaq02-r0027-s000-c000.xtc2' #dark
@@ -521,7 +528,7 @@ if __name__ == "__main__":
     parser.add_argument('-K', '--evskip',  default=d_evskip,  type=int, help='number of events to skip in the beginning of run, def=%s' % d_evskip)
     parser.add_argument('-J', '--evjump',  default=d_evjump,  type=int, help='number of events to jump, def=%s' % d_evjump)
     parser.add_argument('-s', '--pscsize', default=d_pscsize, type=float, help='pixel scale size [um], def=%.1f' % d_pscsize)
-    parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int,   help='bitmask for raw 0x3fff=16383, def=%s' % hex(d_bitmask))
+    parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int,   help='bitmask for raw MDBITS=16383/0x7fff=32767, def=%s' % hex(d_bitmask))
     parser.add_argument('-M', '--stepsel', default=d_stepsel, type=int,   help='step selected to show or None for all, def=%s' % d_stepsel)
     parser.add_argument('-g', '--grindex', default=d_grindex, type=int,   help='gain range index [0,6] for peds, def=%s' % str(d_grindex))
     parser.add_argument('-t', '--thrmin',  default=d_thrmin,  type=float, help='minimal threshold on median to accumulate events with -C, def=%f' % d_thrmin)
@@ -539,7 +546,7 @@ if __name__ == "__main__":
     s = '\nArguments:'
     for k,v in kwa.items(): s += '\n %8s: %s' % (k, str(v))
 
-    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=DICT_NAME_TO_LEVEL[args.loglev])
+    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(name)s: %(message)s', level=DICT_NAME_TO_LEVEL[args.loglev])
 
     logger.info(s)
 
