@@ -175,7 +175,6 @@ class flexhist(flexbase):
          #, xlabel=None, ylabel=None, fslab=14, fstit=20, color='k')
 
 
-
 class fleximagespec(flexbase):
     def __init__(self, img, **kwa):
         """
@@ -183,7 +182,7 @@ class fleximagespec(flexbase):
         flexbase.__init__(self, **kwa)
         arr = kwa.setdefault('arr', img)
         amin, amax = self._intensity_limits(arr, kwa)
-        w_in = kwa.pop('w_in', 11)
+        w_in = kwa.pop('w_in', 14)
         h_in = kwa.pop('h_in', 8)
         self.hcolor = kwa.get('color', 'lightgreen')
         self.hbins = kwa.get('bins', 100)
@@ -202,10 +201,10 @@ class fleximagespec(flexbase):
                 **kwfig)
 
         kwfica={}
-        fymin, fymax = 0.050, 0.90
+        fymin, fymax = 0.04, 0.93
         self.fig, self.axim, self.axcb, self.axhi = gr.fig_img_cbar_hist_axes(\
             fig=_fig,\
-            win_axim = kwa.get('win_axim', (0.02,  fymin, 0.8,  fymax)),\
+            win_axim = kwa.get('win_axim', (0.04,  fymin, 0.71, fymax)),\
             win_axhi = kwa.get('win_axhi', (0.76,  fymin, 0.15, fymax)),\
             win_axcb = kwa.get('win_axcb', (0.915, fymin, 0.01, fymax)), **kwfica)
 
