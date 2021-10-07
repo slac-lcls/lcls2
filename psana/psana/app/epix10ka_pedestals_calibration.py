@@ -16,9 +16,10 @@ USAGE = 'Usage:'\
       + '\n     [-x <xtc-directory>] [-o <output-result-directory>] [-L <logging-mode>] [...]'\
       + '\nExamples:'\
       + '\n  %s -e ueddaq02 -d epixquad -r27' % SCRNAME\
+      + '\n  mpirun -n 5 %s -e ueddaq02 -d epixquad -r27 -o ./work -L DEBUG' % SCRNAME\
       + '\n  %s -e ueddaq02 -d epixquad -r83 -o ./work' % SCRNAME\
       + '\n  %s -e ueddaq02 -d epixquad -r27 -i15 -o ./work -L DEBUG' % SCRNAME\
-      + '\n  mpirun -n 5 epix10ka_pedestals_calibration -e ueddaq02 -d epixquad -r27 -o ./work -L DEBUG'\
+      + '\n  %s -e rixx45619 -d epixhr -r121' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
