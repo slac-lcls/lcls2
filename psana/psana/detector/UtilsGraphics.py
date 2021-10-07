@@ -70,7 +70,7 @@ class flexbase:
 
 
     def axtitle(self, title=''):
-        gr.add_title_labels_to_axes(self.axim, title=title, fstit=10) 
+        gr.add_title_labels_to_axes(self.axim, title=title, fstit=10)
          #, xlabel=None, ylabel=None, fslab=14, fstit=20, color='k')
 
 
@@ -98,10 +98,11 @@ class fleximage(flexbase):
                 **kwfig)
 
         kwfica={}
+        fymin, fymax = 0.04, 0.93
         self.fig, self.axim, self.axcb = gr.fig_img_cbar_axes(\
             fig=_fig,\
-            win_axim = kwa.get('win_axim', (0.05,0.03,0.87,0.94)),\
-            win_axcb = kwa.get('win_axcb', (0.915,0.03,0.01,0.94)), **kwfica)
+            win_axim = kwa.get('win_axim', (0.05,  fymin, 0.86, fymax)),\
+            win_axcb = kwa.get('win_axcb', (0.915, fymin, 0.01, fymax)), **kwfica)
 
         kwic={'amin':amin,
               'amax':amax,
