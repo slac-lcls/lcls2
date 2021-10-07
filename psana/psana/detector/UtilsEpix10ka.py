@@ -445,7 +445,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     logger.debug(info_ndarr(factor, 'calib_epix10ka factor'))
     logger.debug(info_ndarr(pedest, 'calib_epix10ka pedest'))
 
-    arrf = np.array(raw & M14, dtype=np.float32) - pedest
+    arrf = np.array(raw & det_raw._data_bit_mask, dtype=np.float32) - pedest
 
     logger.debug('common-mode correction pars cmp: %s' % str(_cmpars))
 
