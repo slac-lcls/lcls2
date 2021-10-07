@@ -142,7 +142,14 @@ def loop_run_step_evt(args):
       for istep,step in enumerate(run.steps()):
         print('\nStep %02d' % istep, end='')
 
-        metadic = None if step_docstring is None else json.loads(step_docstring(step))
+        sds = step_docstring(step)
+        try: sdsdict = json.loads(sds)
+        except Exception as err:
+            print('\nERROR FOR step_docstring: ', sds)
+            logger.error('json.loads(step_docstring(step)) err:', err)
+            sdsdict = None
+
+        metadic = None if step_docstring is None else sdsdict
         print('  metadata: %s' % str(metadic))
 
         if not do_loopevts: continue
