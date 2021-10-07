@@ -123,6 +123,7 @@ if 'PSANA' in BUILD_LIST :
             'shmemClientSimple   = psana.app.shmemClientSimple:main',
             'epix10ka_pedestals_calibration = psana.app.epix10ka_pedestals_calibration:do_main',
             'epix10ka_deploy_constants = psana.app.epix10ka_deploy_constants:do_main',
+            'epix10ka_raw_calib_image = psana.app.epix10ka_raw_calib_image:do_main',
             'datinfo             = psana.app.datinfo:do_main',
             'det_dark_proc       = psana.app.det_dark_proc:do_main',
             'parallel_proc       = psana.app.parallel_proc:do_main',
