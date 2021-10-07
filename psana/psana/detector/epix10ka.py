@@ -30,19 +30,19 @@ class epix10ka_raw_2_0_1(eb.epix_base):
         return eb.calib_epix10ka_any(self, evt, **kwa)
 
 
-    def _gain_range_index(self, evt, **kwa):
-        """Returns array (shaped as raw) per pixel gain range index or None."""
-        return eb.map_gain_range_index(self, evt, **kwa)
-
-
     def _cbits_config_segment(self, cob):
         """cob=det.raw._seg_configs()[<seg-ind>].config - segment configuration object"""
         return eb.cbits_config_epix10ka(cob, shape=(352, 384))
 
+
+# MOVED TO epix_base
+#    def _gain_range_index(self, evt, **kwa):
+#        return eb.map_gain_range_index(self, evt, **kwa)
+
+
 # MOVED TO epix_base
 #    def _cbits_config_and_data_detector(self, evt=None):
 #        return eb.cbits_config_and_data_detector_epix10ka(self, evt)
-
 
 
     def _array(self, evt) -> Array2d:
