@@ -45,21 +45,27 @@ class epix_base(AreaDetector):
 
     def calib(self, evt, **kwa) -> Array3d:
         """Returns calibrated data array."""
-        logger.debug('epix_base.calib - TO BE REIMPLEMENTED - return raw')
+        logger.debug('epix_base.calib - the same for epix10ka and epixhr2x2')
         return calib_epix10ka_any(self, evt, **kwa)
         #return self.raw(evt)
 
 
+#    def _gain_range_index(self, evt, **kwa):
+#        """Returns array (shaped as raw) per pixel gain range index or None."""
+#        logger.warning('epix_base._gain_range_index - TO BE REIMPLEMENTED - returns zeroes shaped as raw')
+#        return np.zeros_like(self.raw(evt), dtype=np.uint16)
+
+
     def _gain_range_index(self, evt, **kwa):
         """Returns array (shaped as raw) per pixel gain range index or None."""
-        logger.debug('epix_base._gain_range_index - TO BE REIMPLEMENTED - returns zeroes shaped as raw')
-        return np.zeros_like(self.raw(evt), dtype=np.uint16)
-        #return map_gain_range_index(self, evt, **kwa)
+        logger.debug('epix_base._gain_range_index - the same for epix10ka and epixhr2x2')
+        return map_gain_range_index(self, evt, **kwa)
 
 
     def _segment_indices(self):
         """Returns list det.raw._sorted_segment_ids, e.g. [0, 1, 2, 3]"""
         return self._sorted_segment_ids
+
 
     def _fullname(self):
         """Returns detector full name, e.g. for epix
@@ -92,7 +98,7 @@ class epix_base(AreaDetector):
            returns per-pixel array of gain control bits from segment configuration object
            cob=det.raw._seg_configs()[<seg-ind>].config
         """
-        logger.debug('epix_base._cbits_config_segment - MUST BE REIMPLEMENTED - return None')
+        logger.warning('epix_base._cbits_config_segment - MUST BE REIMPLEMENTED - return None')
         return None
 
 
