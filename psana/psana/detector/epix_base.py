@@ -46,8 +46,8 @@ class epix_base(AreaDetector):
     def calib(self, evt, **kwa) -> Array3d:
         """Returns calibrated data array."""
         logger.debug('epix_base.calib - TO BE REIMPLEMENTED - return raw')
-        return self.raw(evt)
-        #return calib_epix10ka_any(self, evt, **kwa)
+        return calib_epix10ka_any(self, evt, **kwa)
+        #return self.raw(evt)
 
 
     def _gain_range_index(self, evt, **kwa):
