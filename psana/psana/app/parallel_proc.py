@@ -56,7 +56,7 @@ def do_main():
     t0_sec = time()
     subprocesses = []
     for v in args.vals.split(','):
-       cmd = '%s --%s %s' % (args.cmd, args.opt, v) 
+       cmd = '%s --%s %s' % (args.cmd, args.opt, v)
        logname = '%s-%s-%s-%s.txt' % (args.logpref, args.cmd.split(' ',1)[0], args.opt, v)
        subprocesses.append(subproc_open(cmd.split(' '), logname, env=None, shell=False))
        print('\n== creates subprocess for command: %s\n   see results in %s' % (cmd, logname))
