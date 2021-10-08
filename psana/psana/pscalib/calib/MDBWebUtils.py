@@ -56,15 +56,10 @@ from requests import get, post, delete #put
 
 from time import time
 from numpy import fromstring
-#from psana.pscalib.calib.MDBUtils import dbnames_collection_query, object_from_data_string
 import psana.pscalib.calib.MDBUtils as mu
-#from bson.objectid import ObjectId
-
 import psana.pyalgos.generic.Utils as gu
-
-
 from subprocess import call
-#from psana.pyalgos.generic.Utils import has_kerberos_ticket
+
 def has_kerberos_ticket():
     """Checks to see if the user has a valid Kerberos ticket"""
     return not call(["klist", "-s"])
@@ -140,6 +135,9 @@ def find_doc(dbname, colname, query={}, url=cc.URL): #query={'ctype':'pedestals'
        1. finds all documents for query
        2. select the latest for run or time_sec
     """
+
+    logger.debug('find_doc input pars dbname: %s colname: %s query:%s' % (dbname, colname, str(query)))
+
     docs = find_docs(dbname, colname, query, url)
     if docs is None: return None
 
@@ -216,16 +214,19 @@ def get_data_for_doc(dbname, doc, url=cc.URL):
     return mu.object_from_data_string(s, doc)
 
 
-def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, dtype=None):
+def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, dtype=None, dbsuffix=''):
     """wrapper for MDBUtils.dbnames_collection_query,
        - which should receive short detector name, othervice uses direct interface to DB
     """
     short = pro_detector_name(det)
-    logger.debug('short: %s' % short)
-    return mu.dbnames_collection_query(short, exp, ctype, run, time_sec, vers, dtype)
+    logger.debug('short: %s dbsuffix: %s' % (short, dbsuffix))
+    resp = list(mu.dbnames_collection_query(short, exp, ctype, run, time_sec, vers, dtype))
+    if dbsuffix: resp[0] = detector_dbname(short, dbsuffix=dbsuffix)
+
+    return resp
 
 
-def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL):
+def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL, dbsuffix=''):
     """Returns calibration constants and document with metadata for specified parameters.
        To get meaningful constants, at least a few parameters must be specified, e.g.:
        - det, ctype, time_sec
@@ -235,9 +236,9 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
        - det, exp, ctype, run, version
        etc...
     """
-    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
+    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)
     logger.debug('get_constants: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
-    dbname = db_det if exp is None else db_exp
+    dbname = db_det if dbsuffix or (exp is None) else db_exp
     doc = find_doc(dbname, colname, query, url)
     if doc is None:
         # commented out by cpo since this happens routinely the way
@@ -253,7 +254,7 @@ def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, url=cc
     exp=None
     run=9999
     ctype=None
-    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
+    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None)
     dbname = db_det
     docs = find_docs(dbname, colname, query, url)
     #logger.debug('find_docs: number of docs found: %d' % len(docs))
@@ -277,16 +278,12 @@ def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, url=cc
     return resp
 
 
-def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL):
+def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL, dbsuffix=''):
     """ returns constants for all ctype-s
     """
     ctype=None
-    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers)
-
-    #print('YYYY db_det, db_exp, colname, query', db_det, db_exp, colname, query)
-
-
-    dbname = db_det if exp is None else db_exp
+    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)
+    dbname = db_det if dbsuffix or (exp is None) else db_exp
     docs = find_docs(dbname, colname, query, url)
     #logger.debug('find_docs: number of docs found: %d' % len(docs))
     if docs is None: return None
@@ -306,9 +303,6 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
 
     return resp
 
-#------------------------------
-#-------- 2020-04-30 ----------
-#------------------------------
 
 def add_data_from_file(dbname, fname, sfx=None, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     """Adds data from file to the database/gridfs.
@@ -407,6 +401,21 @@ def add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADE
     return id_data_exp, id_data_det, id_doc_exp, id_doc_det
 
 
+def detector_dbname(detname_short, **kwargs):
+    """makes detector db name depending on suffix,
+       e.g. for detname_short='epixhr2x2_000001' and suffix='mytestdb'
+       returns 'cdb_epixhr2x2_000001_mytestdb'
+    """
+    dbsuffix = kwargs.get('dbsuffix','')
+    #logger.debug('detector_dbname detname: %s dbsuffix: %s' % (detname_short, dbsuffix))
+    assert isinstance(dbsuffix, str)
+    dbname_det = mu.db_prefixed_name(detname_short)
+    if dbsuffix: dbname_det += '_%s'% dbsuffix
+    assert len(dbname_det) < 50
+    logger.debug('detector_dbname detname: %s dbsuffix: %s returns: %s' % (detname_short, dbsuffix, dbname_det))
+    return dbname_det
+
+
 def add_data_and_doc_to_detdb_extended(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
     """Add data and document to the detector data base with extended name using 'dbsuffix'.
     Data and associated document added to the detector db with extended name, e.g. epix10ka_000001_mysandbox
@@ -414,23 +423,44 @@ def add_data_and_doc_to_detdb_extended(data, exp, det, url=cc.URL_KRB, krbheader
     """
     logger.debug('add_data_and_doc_to_detdb_extended kwargs: %s' % str(kwargs))
 
-    dbsuffix = kwargs.get('dbsuffix','')
-    assert isinstance(dbsuffix, str)
-    detname = pro_detector_name(det, add_shortname=True)
-    colname = detname
-    #dbname_exp = mu.db_prefixed_name(exp)
-    dbname_det = mu.db_prefixed_name(detname)
-    if dbsuffix: dbname_det += '_%s'% dbsuffix
-    assert len(dbname_det) < 50
+    short = pro_detector_name(det, add_shortname=True)
 
-    kwargs['detector']  = detname # ex: epix10ka_000001
-    kwargs['shortname'] = detname # ex: epix10ka_000001
+    dbname_det = detector_dbname(short, **kwargs)
+    colname = short
+
+    kwargs['detector']  = short # ex: epix10ka_000001
+    kwargs['shortname'] = short # ex: epix10ka_000001
     kwargs['longname']  = det     # ex: epix10ka_<_uniqueid>
     #kwargs['detname']  = det_name # already in kwargs ex: epixquad
     kwargs['id_data_exp'] = 'N/A'
     kwargs['id_doc_exp']  = 'N/A'
     resp = add_data_and_doc(data, dbname_det, colname, url=url, krbheaders=krbheaders, **kwargs)
     return resp # None or (id_data_det, id_doc_det)
+
+
+def deploy_constants(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa):
+    """Deploy constants depending on dbsuffix"""
+
+    detname = pro_detector_name(det, add_shortname=False)
+    ctype = kwa.get('ctype','')
+    dbsuffix = kwa.get('dbsuffix','')
+
+    resp = add_data_and_doc_to_detdb_extended(data, exp, det, url=url, krbheaders=krbheaders, **kwa) if dbsuffix else\
+           add_data_and_two_docs(data, exp, det, url=url, krbheaders=krbheaders, **kwa)
+
+    if resp is None:
+        logger.warning('CONSTANTS ARE NOT DEPLOYED for exp:%s det:%s dbsuffix:%s ctype:%s' %\
+                       (exp, detname, dbsuffix, ctype))
+        return None
+
+    id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
+          (None, resp[0], None, resp[1]) if dbsuffix else resp
+
+    logger.debug('deployed with id_data_exp:%s and id_data_det:%s id_doc_exp:%s id_doc_det:%s' %\
+                 (id_data_exp, id_data_det, id_doc_exp, id_doc_det))
+    logger.info('  constants are deployed in DB(s) for exp:%s det:%s dbsuffix:%s ctype:%s' % (exp, detname, dbsuffix, ctype))
+
+    return id_data_exp, id_data_det, id_doc_exp, id_doc_det
 
 
 def _add_detector_name(dbname, colname, detname, detnum):
@@ -701,8 +731,6 @@ def valid_post_privilege(dbname, url_krb=cc.URL_KRB):
     return r.ok
 
 
-# 2021-05-13
-
 def my_sort_parameter(e): return e['_id']
 
 
@@ -712,16 +740,6 @@ def collection_info(dbname, cname, **kwa):
     s = 'DB %s collection %s' % (dbname, cname)
 
     docs = find_docs(dbname, cname)
-    #docs = find_docs(dbname, cname) #.sort('_id', mu.DESCENDING)
-    #print('type(docs)', type(docs))       # list
-    #print('type(docs[0])', type(docs[0])) # dict
-
-    #docs = col.find().sort('_id', DESCENDING)
-    #          # {'ctype':DESCENDING, 'time_sec':DESCENDING, 'run':ASCENDING}
-    #  s += '\n%s%s%s' % (gap, gap, 52*'_')
-    #s += '\n%s%sCOL %s contains %d docs' % (gap, gap, cname.ljust(12), docs.count())
-    #for idoc, doc in enumerate(docs):
-
     if not docs: return s
     s += ' contains %d docs\n' % len(docs)
 
@@ -734,8 +752,6 @@ def collection_info(dbname, cname, **kwa):
     s += '\n  doc# %s' % title
 
     for idoc, doc in enumerate(docs):
-        #id_data = doc.get('id_data', None)
-        #if id_data is not None: doc['id_data_ts'] = timestamp_idid_data)
         vals,_ = mu.document_info(doc, **kwa)
         s += '\n  %4d %s' % (idoc, vals)
 
