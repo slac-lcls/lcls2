@@ -52,15 +52,16 @@ def usage(mode=0):
     else: return\
            '\n%s -e <experiment> [-d <detector>] [-r <run-number>] [-L <logging-mode>] [-D] [...]' % scrname\
            + '\nTEST COMMAND:'\
-           + '\n  %s -e ueddaq02 -d epixquad -r27 -t 20180910111049 -x /cds/data/psdm/ued/ueddaq02/xtc/ -o ./myrepo -c ./calib -L info -D' % scrname\
+           + '\n  %s -e ueddaq02 -d epixquad -r27 -t 20180910111049 -x /cds/data/psdm/ued/ueddaq02/xtc/ -o ./myrepo -L info -D' % scrname\
            + '\nREGULAR COMMAND:'\
            + '\n  %s -e ueddaq02 -d epixquad -r27 -D -L INFO' % scrname\
-           + '\n  %s -e ueddaq02 -d epixquad -r27 -t 396 -o ./work -D -c ./calib # deploys 394-end.data for all calibrations found for runs <= 386' % scrname\
-           + '\n  %s -e ueddaq02 -d epixquad -r27 -o ./work -D -c ./calib' % scrname\
-           + '\n  %s -e ueddaq02 -d epixquad -r27 -o ./work -D -c ./calib --proc=g --low=0.25 --medium=1 --high=1' % scrname\
+           + '\n  %s -e ueddaq02 -d epixquad -r27 -t 396 -o ./work -D # deploys 394-end.data for all calibrations found for runs <= 386' % scrname\
+           + '\n  %s -e ueddaq02 -d epixquad -r27 -o ./work -D' % scrname\
+           + '\n  %s -e ueddaq02 -d epixquad -r27 -o ./work -D --proc=g --low=0.25 --medium=1 --high=1' % scrname\
            + '\n  %s -e ueddaq02 -d epixquad -r65 -t 60 -DTrue # deploy constants for earlier runs (>=60) of the same experiment' % scrname\
-           + '\n  %s -e rixx45619 -d epixhr -r1 --low=0.512 --medium=13.7 --high=41.0' % scrname\
-           + '\n  %s -e rixx45619 -d epixhr -r11 -x /cds/home/w/weaver/data/rix/rixx45619/xtc --low=0.0125 --medium=0.3333 --high=1' % scrname\
+           + '\n  %s -e rixx45619 -d epixhr -r11 -x /cds/home/w/weaver/data/rix/rixx45619/xtc --low=0.0125 --medium=0.3333 --high=1 -D' % scrname\
+           + '\n  %s -e rixx45619 -d epixhr -r1 --low=0.512 --medium=13.7 --high=41.0 -D' % scrname\
+           + '\n  %s -e rixx45619 -d epixhr -r121 -S mytestdb -D # creates private DB with name cdb_epixhr2x2_000001_mytestdb' % scrname\
            + '\n\n  Try: %s -h' % scrname
 
 
@@ -104,7 +105,7 @@ def argument_parser():
     h_version = 'constants version, default = %s' % str(d_version)
     h_run_end = 'last run for validity range, default = %s' % str(d_run_end)
     h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
-    h_dbsuffix= 'suffix of the PRIVATE DETECTOR-DB to deploy constants, default = %s' % str(d_dbsuffix)
+    h_dbsuffix= 'suffix of the PRIVATE detector db name to deploy constants, default = %s' % str(d_dbsuffix)
 
     parser = ArgumentParser(description=usage(1)) #, usage = usage())
     parser.add_argument('-e', '--exp',     default=d_exp,      type=str,   help=h_exp)
