@@ -39,7 +39,11 @@ USAGE = '\nCommand: cdb <mode> [options]'\
     '  cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /reg/g/psdm/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.json -i json\n'\
     '  cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /reg/g/psdm/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.pkl -i pkl\n'\
     '  cdb add -e amox23616 -d xtcav -c pedestals -r 104 -f xtcav_peds.data -i xtcav\n'\
-    '  cdb add -e rixx45619 -d epixhr -r1 -c pedestals -f mypeds.data -S mytestdb ## <<<=== THIS IS HOW TO DEPLOY IN YOUR OWN DETECTOR-DB\n'\
+    '  cdb add -e rixx45619 -d epixhr2x2_000001 -r1 -c pedestals -f mypeds -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
+    '  cdb add -e rixx45619 -d epixhr2x2_000001 -t 2021-10-01T00:00:00-0800 -c pedestals -f mypeds -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
+    '  cdb add -e rixx45619 -d epixhr2x2_000001 -t 2021-10-01T00:00:00-0800 -c geometry -f mygeo -i txt -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
+    '  cdb get -e rixx45619 -d epixhr2x2_000001 -r 100 -c pedestals -f mypeds.txt -S mytestdb\n'\
+    '  cdb print --dbname cdb_epixhr2x2_000001_mytestdb\n'\
     '  cdb deldb  --dbname cdb_testexper -C\n'\
     '  cdb delcol --dbname cdb_testexper --colname testdet_1234 -C\n'\
     '  cdb deldoc --dbname cdb_testexper --colname testdet_1234 --docid <document-id> -C\n'\
@@ -73,11 +77,11 @@ def input_option_parser():
     d_detector   = None
     d_ctype      = None # cc.list_calib_names[0], 'pedestals'
     d_dtype      = None
-    d_run        = None
+    d_run        = 0
     d_run_end    = 'end'
     d_time_stamp = None # '2001-09-08T18:46:40-0700'
     d_time_sec   = None
-    d_version    = None # 'V2021-01-21'
+    d_version    = None # 'V2021-10-08'
     d_confirm    = False
     d_iofname    = None # './fname.txt'
     d_comment    = 'no comment'
