@@ -144,10 +144,15 @@ class MDBWeb_CLI(MDB_CLI):
         verb  = self.strloglev == 'DEBUG'
         det   = kwa.get('detector', None)
         exp   = kwa.get('experiment', None)
+        dbsuffix = kwa.get('dbsuffix', '')
 
         data = mu.data_from_file(fname, ctype, dtype, verb)
-        id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
-          wu.add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
+
+        resp = wu.add_data_and_doc_to_detdb_extended(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa) if dbsuffix else\
+               wu.add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
+
+        #id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
+        #  wu.add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
 
 
     def test(self):
