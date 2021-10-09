@@ -36,6 +36,7 @@ class MDB_CLI:
           -  iofname
           -  comment
           -  dbname
+          -  dbsuffix
         """
         (popts, pargs) = parser.parse_args()
         #args = pargs
