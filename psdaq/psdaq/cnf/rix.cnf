@@ -10,7 +10,7 @@ andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.84  EPICS_PVA_AUTO_ADDR_LIST=N
 collect_host = 'drp-neh-ctl001'
 
 # readout group 5 is for manta
-groups = f'{platform} 5'
+groups = f'1 {platform} 5'
 hutch, station, user, password = ('rix', 2, 'rixopr', 'pcds')
 auth = ' --user {:} --password {:} '.format(user,password)
 url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
@@ -20,8 +20,7 @@ cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 #  drp variables
 #
 prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
-data_dir = '/ffb01/data'
-#data_dir = '/drpneh/data'
+data_dir = '/drpneh/data'
 
 task_set = 'taskset 0xffbfeffbfe '
 std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir+' -d /dev/datadev_%d'
@@ -68,8 +67,8 @@ procmgr_config = [
 # {                         id:'xpmpva' ,     flags:'s',   env:epics_env, cmd:'xpmpva DAQ:NEH:XPM:0 DAQ:NEH:XPM:2'},
 # {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups},
  {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
- { host: 'drp-neh-ctl002', id:'tprtrig',     flags:'sp',                 cmd:'tprtrig -t a -c 0 -o 1 -d 2 -w 10 -z'},
- { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:50,  cmd:f'drp_udpencoder -l 0x8 -o {data_dir} -P {hutch} -d /dev/datadev_0 -C {collect_host}'},
+# { host: 'drp-neh-ctl002', id:'tprtrig',     flags:'sp',                 cmd:'tprtrig -t a -c 0 -o 1 -d 2 -w 10 -z'},
+  { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:50,  cmd:f'drp_udpencoder -l 0x8 -o {data_dir} -P {hutch} -d /dev/datadev_0 -C {collect_host}'},
 
 # { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 0 -C NOBEAM {auth} {url} -d {cdb}/configDB -r /dev/null -t trigger -S 1 -T 20000'},
  #{ host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
@@ -82,7 +81,11 @@ procmgr_config = [
  { host: 'drp-neh-cmp015', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
  { host: 'drp-neh-cmp015', id:'bld_0',       flags:'spu', env:epics_env, cmd:bld_cmd1+' -l 0x2 -D ebeam,gmd,xgmd'},
+
+# 10/3/2021 - epixhr beam test
+ #{ host: 'drp-neh-cmp014', id:'epixhr_0',  flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -D epixhr2x2 -l 0x1'},
  
+# 10/10/2021 - direct andor hw has been re-connected
  { host: 'drp-neh-cmp015', id:'andor_dir_0',     flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:DIR:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
  { host: 'drp-neh-cmp015', id:'andor_vls_0',     flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
@@ -91,7 +94,7 @@ procmgr_config = [
  { host: 'drp-neh-cmp015', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x8 -T 4000000'},
 
 # 9/23/2021 - fim2 h/w not stable
-# { host: 'drp-neh-cmp007', id:'rix_fim2_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x10'},
+  { host: 'drp-neh-cmp007', id:'rix_fim2_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x10'},
   { host: 'drp-neh-cmp007', id:'rix_fim1_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR4K2:FIM:W8:02 -l 0x20'},
   { host: 'drp-neh-cmp007', id:'rix_fim0_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=MR3K2:FIM:W8:01 -l 0x80'},
  { host: 'drp-neh-cmp013', id:'atmopal_0',   flags:'spu' ,  env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=RIX:TIMETOOL:TTALL'},

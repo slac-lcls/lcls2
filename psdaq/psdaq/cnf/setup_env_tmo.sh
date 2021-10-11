@@ -2,7 +2,11 @@ source /cds/sw/ds/ana/conda2/manage/bin/psconda.sh
 conda deactivate
 
 conda activate ps-4.5.5
-RELDIR="/cds/home/opr/tmoopr/git/lcls2_090821"
+RELDIR="/cds/home/opr/tmoopr/git/lcls2_100621"
+
+# official running until Oct 6, 2021
+#conda activate ps-4.5.5
+#RELDIR="/cds/home/opr/tmoopr/git/lcls2_090821"
 
 # official running until Sep 8, 2021
 #conda activate ps-4.3.2
