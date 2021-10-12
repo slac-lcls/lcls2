@@ -42,7 +42,7 @@ class MyDAQ:
         self.readoutCumulative = 0
 
         # instantiate DaqPVA object
-        self.pva = DaqPVA(platform=args.p, xpm_master=args.x, pv_base=args.B)
+        self.pva = DaqPVA(platform=args.p, xpm_master=args.x, pv_base=args.B, report_error=self.report_error)
 
     # this thread tells the daq to do a step and waits for the completion
     def daq_communicator_thread(self):
@@ -175,6 +175,10 @@ class MyDAQ:
         self.push_socket.send_string('starting')
         self.ready.wait()
         self.ready.clear()
+
+    def report_error(self, msg):
+        logging.error(msg)
+        return
 
 def scan( keys, steps, setupStep=None ):
     parser = argparse.ArgumentParser()
