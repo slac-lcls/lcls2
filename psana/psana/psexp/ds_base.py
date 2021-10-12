@@ -31,7 +31,7 @@ class DsParms:
     max_retries:        int
     live:               bool
     found_xtc2_callback:int
-    timestamps:         np.ndarray 
+    timestamps:         np.ndarray
 
     def set_det_class_table(self, det_classes, xtc_info, det_info_table):
         self.det_classes, self.xtc_info, self.det_info_table = det_classes, xtc_info, det_info_table
@@ -55,36 +55,36 @@ class DataSourceBase(abc.ABC):
         self.max_events  = 0         # no. of maximum events
         self.detectors   = []        # user-selected detector names
         self.exp         = None      # experiment id (e.g. xpptut13)
-        self.runnum      = None      # run no. 
-        self.live        = False     # turns live mode on/off 
+        self.runnum      = None      # run no.
+        self.live        = False     # turns live mode on/off
         self.dir         = None      # manual entry for path to xtc files
         self.files       = None      # xtc2 file path
         self.shmem       = None
         self.destination = 0         # callback that returns rank no. (used by EventBuilder)
         self.monitor     = False     # turns prometheus monitoring client of/off
         self.small_xtc   = []        # swap smd file(s) with bigdata files for these detetors
-        self.timestamps  = np.empty(0, dtype=np.uint64)         
+        self.timestamps  = np.empty(0, dtype=np.uint64)
                                      # list of user-selected timestamps
 
         if kwargs is not None:
             self.smalldata_kwargs = {}
-            keywords = ('exp', 
-                    'dir', 
-                    'files', 
-                    'shmem', 
-                    'filter', 
-                    'batch_size', 
-                    'max_events', 
-                    'detectors', 
+            keywords = ('exp',
+                    'dir',
+                    'files',
+                    'shmem',
+                    'filter',
+                    'batch_size',
+                    'max_events',
+                    'detectors',
                     'det_name',
                     'destination',
                     'live',
-                    'smalldata_kwargs', 
+                    'smalldata_kwargs',
                     'monitor',
                     'small_xtc',
                     'timestamps',
                     )
-            
+
             for k in keywords:
                 if k in kwargs:
                     if k == 'timestamps':
@@ -103,22 +103,22 @@ class DataSourceBase(abc.ABC):
                     self.files = [self.files]
 
             max_retries = 0
-            if self.live: 
+            if self.live:
                 max_retries = int(os.environ.get('PS_R_MAX_RETRIES', '3'))
 
         assert self.batch_size > 0
-        
+
         self.prom_man = PrometheusManager(os.environ['PS_PROMETHEUS_JOBID'])
-        self.dsparms  = DsParms(self.batch_size, 
-                self.max_events, 
-                self.filter, 
-                self.destination, 
-                self.prom_man, 
-                max_retries, 
+        self.dsparms  = DsParms(self.batch_size,
+                self.max_events,
+                self.filter,
+                self.destination,
+                self.prom_man,
+                max_retries,
                 self.live,
                 self.found_xtc2_callback,
                 self.timestamps,
-                ) 
+                )
 
         if 'mpi_ts' not in kwargs:
             self.dsparms.set_timestamps()
@@ -127,16 +127,16 @@ class DataSourceBase(abc.ABC):
                 self.dsparms.set_timestamps()
 
     def found_xtc2_callback(self, file_type):
-        """ Returns a list of True/False if .xtc2 file is found 
-        
+        """ Returns a list of True/False if .xtc2 file is found
+
         Required file_type is either 'smd' or 'bd'.
 
-        For each xtc file, returns True ONLY IF using .inprogress files and .xtc2 files 
+        For each xtc file, returns True ONLY IF using .inprogress files and .xtc2 files
         are found on disk. We return False in the case where .inprogress
         files are not used because this callback is used to check if we
         should wait for more data on the xtc files. The read-retry will not
         happen if this callback returns True and there's 0 byte read out."""
-        found_flags = [False] * self.n_files 
+        found_flags = [False] * self.n_files
 
         xtc_files = []
         if file_type == 'smd':
@@ -144,10 +144,10 @@ class DataSourceBase(abc.ABC):
         elif file_type == 'bd':
             xtc_files = self.xtc_files
 
-        if self.xtc_ext == '.xtc2.inprogress' and xtc_files: 
-            found_flags = [os.path.isfile(os.path.splitext(xtc_file)[0]) for xtc_file  in xtc_files] 
+        if self.xtc_ext == '.xtc2.inprogress' and xtc_files:
+            found_flags = [os.path.isfile(os.path.splitext(xtc_file)[0]) for xtc_file  in xtc_files]
         return found_flags
-    
+
     @abc.abstractmethod
     def runs(self):
         return
@@ -176,7 +176,7 @@ class DataSourceBase(abc.ABC):
     #@abc.abstractmethod
     #def steps(self):
     #    retur
-    
+
     def _setup_run_files(self, runnum):
         """
         Generate list of smd and xtc files given a run number.
@@ -190,12 +190,12 @@ class DataSourceBase(abc.ABC):
         smd_files = [smd_file for smd_file in all_smd_files if smd_file.endswith('.inprogress')]
 
         # No .inprogress files found
-        if not smd_files: 
+        if not smd_files:
             smd_files = all_smd_files
             self.xtc_ext = '.xtc2'
         else:
-            self.xtc_ext = '.xtc2.inprogress' 
-            
+            self.xtc_ext = '.xtc2.inprogress'
+
         xtc_files = [os.path.join(self.xtc_path, \
                      os.path.basename(smd_file).split('.smd')[0] + self.xtc_ext) \
                      for smd_file in smd_files \
@@ -224,19 +224,19 @@ class DataSourceBase(abc.ABC):
         Requires:
         1) exp
         2) exp, run=N or [N, M, ...]
-        
+
         Build runnum_list for the experiment.
         """
 
         if not self.exp:
             raise InvalidDataSourceArgument("Missing exp or files input")
-            
+
         if self.dir:
             self.xtc_path = self.dir
         else:
             xtc_dir = os.environ.get('SIT_PSDM_DATA', '/reg/d/psdm')
             self.xtc_path = os.path.join(xtc_dir, self.exp[:3], self.exp, 'xtc')
-        
+
         if self.runnum is None:
             run_list = [int(os.path.splitext(os.path.basename(_dummy))[0].split('-r')[1].split('-')[0]) \
                     for _dummy in glob.glob(os.path.join(self.xtc_path, '*-r*.xtc2'))]
@@ -290,7 +290,7 @@ class DataSourceBase(abc.ABC):
             logger.debug(f'ds_base: smd0 opened tmp smd_fds: {smd_fds}')
             smdr_man = SmdReaderManager(smd_fds, self.dsparms)
             all_configs = smdr_man.get_next_dgrams()
-            
+
             xtc_files = []
             smd_files = []
             configs = []
@@ -325,10 +325,10 @@ class DataSourceBase(abc.ABC):
                         use_smds[i] = True
                     msg += f'   smd_files[{i}]={os.path.basename(smd_files[i])} use_smds[{i}]={use_smds[i]}\n'
                 logger.debug(msg)
-            
+
             self.xtc_files = xtc_files
             self.smd_files = smd_files
-            
+
             for smd_fd in smd_fds:
                 os.close(smd_fd)
             logger.debug(f"ds_base: close tmp smd fds:{smd_fds}")
@@ -398,7 +398,7 @@ class DataSourceBase(abc.ABC):
     def _set_configinfo(self):
         """ From configs, we generate a dictionary lookup with det_name as a key.
         The information stored the value field contains:
-        
+
         - configs specific to that detector
         - sorted_segment_ids
           used by Detector cls for checking if an event has correct no. of segments
@@ -425,9 +425,9 @@ class DataSourceBase(abc.ABC):
                     for segment, det in seg_dict.items():
                         detid_dict[segment] = det.detid
                         dettype = det.dettype
-                
+
                 sorted_segment_ids.sort()
-                
+
                 uniqueid = dettype
                 for segid in sorted_segment_ids:
                     uniqueid += '_'+detid_dict[segid]
@@ -438,7 +438,7 @@ class DataSourceBase(abc.ABC):
                         "detid_dict": detid_dict, \
                         "dettype": dettype, \
                         "uniqueid": uniqueid})
-    
+
     def _setup_run_calibconst(self):
         """
         note: calibconst is set differently in RunParallel (see node.py: BigDataNode)
@@ -447,10 +447,10 @@ class DataSourceBase(abc.ABC):
         if not runinfo:
             return
         expt, runnum, _ = runinfo
-        
+
         self.dsparms.calibconst = {}
         for det_name, configinfo in self.dsparms.configinfo_dict.items():
-            if expt: 
+            if expt:
                 if expt == "cxid9114": # mona: hack for cctbx
                     det_uniqueid = "cspad_0002"
                 elif expt == "xpptut15":
@@ -458,7 +458,7 @@ class DataSourceBase(abc.ABC):
                 else:
                     det_uniqueid = configinfo.uniqueid
                 calib_const = wu.calib_constants_all_types(det_uniqueid, exp=expt, run=runnum)
-                
+
                 # mona - hopefully this will be removed once the calibconst
                 # db all use uniqueid as an identifier
                 if not calib_const:
@@ -467,13 +467,13 @@ class DataSourceBase(abc.ABC):
             else:
                 print(f"ds_base: Warning: cannot access calibration constant (exp is None)")
                 self.dsparms.calibconst[det_name] = None
-    
+
     def _get_runinfo(self):
         if not self.beginruns : return
 
         beginrun_dgram = self.beginruns[0]
         if hasattr(beginrun_dgram, 'runinfo'): # some xtc2 do not have BeginRun
-            expt = beginrun_dgram.runinfo[0].runinfo.expt 
+            expt = beginrun_dgram.runinfo[0].runinfo.expt
             runnum = beginrun_dgram.runinfo[0].runinfo.runnum
             timestamp = beginrun_dgram.timestamp()
             return expt, runnum, timestamp
