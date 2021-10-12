@@ -54,14 +54,14 @@ class StepEvent(object):
 
 class Run(object):
     expt    = 0
-    runnum  = 0 
+    runnum  = 0
     dm      = None
     configs = None
     smd_dm  = None
     nfiles  = 0
     scan    = False # True when looping over steps
     smd_fds = None
-    
+
     def __init__(self, ds):
         self.dsparms = ds.dsparms
         self.c_ana   = self.dsparms.prom_man.get_metric('psana_bd_ana')
@@ -74,7 +74,7 @@ class Run(object):
         """ Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
         return self.run_no
-    
+
     def _check_empty_calibconst(self, det_name):
         # Some detectors do not have calibration constant - set default value to None
         if not hasattr(self.dsparms, 'calibconst'):
@@ -87,13 +87,13 @@ class Run(object):
         # Check against detector names
         if self.esm.env_from_variable(det_name) is not None:
             return det_name
-        
+
         # Check against epics names (return detector name not epics name)
         if det_name in self.esm.stores['epics'].epics_inv_mapper:
             return self.esm.stores['epics'].epics_inv_mapper[det_name]
-        
+
         return None
-            
+
 
     def Detector(self, name, accept_missing=False):
         if name in self._dets:
@@ -113,7 +113,7 @@ class Run(object):
         class Container:
             def __init__(self):
                 pass
-        
+
         det = Container()
         # instantiate the detector xface for this detector/drp_class
         # (e.g. (xppcspad,raw) or (xppcspad,fex)
@@ -143,7 +143,7 @@ class Run(object):
         # From d.epics[0].raw.HX2:DVD:GCC:01:PMON = 41.0
         # (d.env_name[0].alg.variable),
         # EnvStoreManager searches all the stores assuming that the variable name is
-        # unique and returns env_name ('epics' or 'scan') and algorithm. 
+        # unique and returns env_name ('epics' or 'scan') and algorithm.
         if not flag_found:
             found = self.esm.env_from_variable(name) # assumes that variable name is unique
             if found is not None:
@@ -155,7 +155,7 @@ class Run(object):
                 drp_class = det_class_table[(det_name, drp_class_name)]
 
                 self._check_empty_calibconst(det_name)
-                
+
                 det = drp_class(det_name, drp_class_name, self.dsparms.configinfo_dict[det_name], self.dsparms.calibconst[det_name], self.esm.stores[env_name], var_name)
                 setattr(det, '_det_name', det_name)
 
@@ -176,10 +176,10 @@ class Run(object):
 
     @property
     def epicsinfo(self):
-        # EnvStore a key-value pair of detectorname (e.g. AT1K0_PressureSetPt) 
+        # EnvStore a key-value pair of detectorname (e.g. AT1K0_PressureSetPt)
         # and epics name (AT1K0:GAS:TRANS_SP_RBV) in epics_mapper.
         return self.esm.stores['epics'].get_info()
-    
+
     @property
     def scaninfo(self):
         return self.esm.stores['scan'].get_info()
@@ -201,32 +201,32 @@ class Run(object):
 
         beginrun_dgram = self.beginruns[0]
         if hasattr(beginrun_dgram, 'runinfo'): # some xtc2 do not have BeginRun
-            self.expt = beginrun_dgram.runinfo[0].runinfo.expt 
+            self.expt = beginrun_dgram.runinfo[0].runinfo.expt
             self.runnum = beginrun_dgram.runinfo[0].runinfo.runnum
             self.timestamp = beginrun_dgram.timestamp()
 
     def step(self, evt):
         step_dgrams = self.esm.stores['scan'].get_step_dgrams_of_event(evt)
         return Event(dgrams=step_dgrams, run=self)
-    
+
     def _setup_envstore(self):
         assert hasattr(self, 'configs')
         assert hasattr(self, '_evt') # BeginRun
         self.esm = EnvStoreManager(self.configs)
-        # Special case for BeginRun - normally EnvStore gets updated 
+        # Special case for BeginRun - normally EnvStore gets updated
         # by EventManager but we get BeginRun w/o EventManager
         # so we need to update the EnvStore here.
-        self.esm.update_by_event(self._evt) 
-        
-        # EnvStore will be passed around so bigdata nodes can 
+        self.esm.update_by_event(self._evt)
+
+        # EnvStore will be passed around so bigdata nodes can
         # query SlowUpdate chunk ID
         self.dsparms.esm = self.esm
 
-        
-    
+
+
 class RunShmem(Run):
     """ Yields list of events from a shared memory client (no event building routine). """
-    
+
     def __init__(self, ds, run_evt):
         super(RunShmem, self).__init__(ds)
         self._evt      = run_evt
@@ -234,9 +234,9 @@ class RunShmem(Run):
         self.configs   = ds._configs
         super()._get_runinfo()
         super()._setup_envstore()
-        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms, 
+        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
                 filter_callback=ds.dsparms.filter)
-    
+
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
@@ -247,7 +247,7 @@ class RunShmem(Run):
             en = time.time()
             self.c_ana.labels('seconds','None').inc(en-st)
             self.c_ana.labels('batches','None').inc()
-        
+
     def steps(self):
         for evt in self._evt_iter:
             if evt.service() == TransitionId.EndRun: return
@@ -256,7 +256,7 @@ class RunShmem(Run):
 
 class RunSingleFile(Run):
     """ Yields list of events from a single bigdata file. """
-    
+
     def __init__(self, ds, run_evt):
         super(RunSingleFile, self).__init__(ds)
         self._evt      = run_evt
@@ -264,9 +264,9 @@ class RunSingleFile(Run):
         self.configs   = ds._configs
         super()._get_runinfo()
         super()._setup_envstore()
-        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms, 
+        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
                 filter_callback=ds.dsparms.filter)
-    
+
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
@@ -277,7 +277,7 @@ class RunSingleFile(Run):
             en = time.time()
             self.c_ana.labels('seconds','None').inc(en-st)
             self.c_ana.labels('batches','None').inc()
-        
+
     def steps(self):
         for evt in self._evt_iter:
             if evt.service() == TransitionId.EndRun: return
@@ -294,9 +294,9 @@ class RunSerial(Run):
         self.configs   = ds._configs
         super()._get_runinfo()
         super()._setup_envstore()
-        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms, 
+        self._evt_iter = Events(self.configs, ds.dm, ds.dsparms,
                 filter_callback=ds.dsparms.filter, smdr_man=ds.smdr_man)
-    
+
     def events(self):
         for evt in self._evt_iter:
             if evt.service() != TransitionId.L1Accept:
@@ -307,7 +307,7 @@ class RunSerial(Run):
             en = time.time()
             self.c_ana.labels('seconds','None').inc(en-st)
             self.c_ana.labels('batches','None').inc()
-        
+
     def steps(self):
         for evt in self._evt_iter:
             if evt.service() == TransitionId.EndRun: return
@@ -326,8 +326,8 @@ class RunLegion(Run):
         self.configs    = ds._configs
         super()._get_runinfo()
         super()._setup_envstore()
-    
+
     def analyze(self, **kwargs):
         return legion_node.analyze(self, **kwargs)
-    
-    
+
+
