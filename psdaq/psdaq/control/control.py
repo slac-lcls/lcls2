@@ -417,11 +417,12 @@ def levels_to_activedet(src):
     return dst
 
 class DaqPVA():
-    def __init__(self, *, platform, xpm_master, pv_base):
+    def __init__(self, *, platform, xpm_master, pv_base, collection):
         self.platform         = platform
         self.xpm_master       = xpm_master
         self.pv_xpm_base      = pv_base + ':XPM:%d'         % xpm_master
         self.pv_xpm_part_base = pv_base + ':XPM:%d:PART:%d' % (xpm_master, platform)
+        self.collection       = collection
 
         # name PVs
         self.pvListMsgHeader  = []  # filled in at alloc
@@ -471,9 +472,9 @@ class DaqPVA():
         try:
             self.ctxt.put(pvName, val)
         except TimeoutError:
-            self.report_error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
+            self.collection.report_error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
         except Exception:
-            self.report_error("self.ctxt.put('%s', %d) failed" % (pvName, val))
+            self.collection.report_error("self.ctxt.put('%s', %d) failed" % (pvName, val))
         else:
             retval = True
             logging.debug("self.ctxt.put('%s', %d)" % (pvName, val))
@@ -524,7 +525,7 @@ class CollectionManager():
         self.readoutCumulative = 0
 
         # instantiate DaqPVA object
-        self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base)
+        self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base, collection=self)
 
         # instantiate RunParams object
         self.runParams = RunParams(args.V, self, self.pva)
