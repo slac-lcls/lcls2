@@ -1,6 +1,6 @@
-from .prometheus_manager import PrometheusManager 
+from .prometheus_manager import PrometheusManager
 from .packet_footer import PacketFooter
-from .smdreader_manager import SmdReaderManager 
+from .smdreader_manager import SmdReaderManager
 from .tools import run_from_id, RunHelper, mode
 from .event_manager import EventManager
 from .eventbuilder_manager import EventBuilderManager
