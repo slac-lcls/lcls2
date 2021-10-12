@@ -471,9 +471,9 @@ class DaqPVA():
         try:
             self.ctxt.put(pvName, val)
         except TimeoutError:
-            logging.error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
+            self.report_error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
         except Exception:
-            logging.error("self.ctxt.put('%s', %d) failed" % (pvName, val))
+            self.report_error("self.ctxt.put('%s', %d) failed" % (pvName, val))
         else:
             retval = True
             logging.debug("self.ctxt.put('%s', %d)" % (pvName, val))
@@ -1582,8 +1582,8 @@ class CollectionManager():
 
         if missing_set:
             for client in missing_set:
-                self.report_error(client + ' did not respond to rollcall')
-            # Despite rollcall transition errors, allow state machine to advance.
+                self.report_warning(client + ' did not respond to rollcall')
+            # Despite rollcall transition warnings, allow state machine to advance.
             retval = True
             self.lastTransition = 'rollcall'
         else:
