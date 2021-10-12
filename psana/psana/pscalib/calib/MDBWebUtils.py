@@ -18,7 +18,7 @@ Usage ::
     _ = wu.get_data_for_docid(dbname, colname, docid, url=cc.URL)
     _ = wu.get_data_for_doc(dbname, doc, url=cc.URL)
     data,doc = wu.calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL)
-    d = wu.calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL)
+    d = wu.calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL, dbsuffix='')
     d = {ctype:(data,doc),}
 
     id = wu.add_data_from_file(dbname, fname, sfx=None, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
@@ -869,8 +869,8 @@ if __name__ == "__main__":
 
   def test_calib_constants_all_types():
     #resp = calib_constants_all_types('tmo_quadanode', exp='amox27716', run=100, time_sec=None, vers=None) #, url=cc.URL)
-
-    resp = calib_constants_all_types('pnccd_0001', exp='amo86615', run=200, time_sec=None, vers=None) #, url=cc.URL)
+    #resp = calib_constants_all_types('pnccd_0001', exp='amo86615', run=200, time_sec=None, vers=None) #, url=cc.URL)
+    resp = calib_constants_all_types('epixhr2x2_000001', exp='rixx45619', run=200, time_sec=None, vers=None, dbsuffix='mytestdb')
     print('==== test_calib_constants_text data:') #, resp)
 
     for k,v in resp.items():
