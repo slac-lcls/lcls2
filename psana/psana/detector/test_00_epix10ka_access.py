@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 
+from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
+from psana import DataSource
+
 import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(format='[%(levelname).1s] %(message)s', level=logging.DEBUG)
-
-from psana.pyalgos.generic.NDArrUtils import info_ndarr # print_ndarr
-from psana import DataSource
 
 import sys
 
@@ -21,6 +21,7 @@ USAGE = '\n  python %s <test-name>' % SCRNAME\
       + '\n    6 - epixquasd - exp:ueddaq02,  run:27,28 - pedestals calibration det.config'\
       + '\n    7 - epixquasd - exp:ueddaq02,  run:27,28 - another version'\
       + '\n    8 - epixquasd - exp:ueddaq02,  run:27,28 - metadata from step'\
+      + '\n    9 - epixhr2x2 - exp:rixx45619, run:121 - load constants from private db'\
 
 #print(USAGE)
 
@@ -40,7 +41,7 @@ def datasource_run_det(**kwa):
 
 if tname in ('0','1'):
 
-    fname = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2' if tname ==0 else\
+    fname = '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005.xtc2' if tname==0 else\
             '/reg/g/psdm/detector/data2_test/xtc/data-tstx00417-r0014-epix10kaquad-e000005-seg1and3.xtc2'
 
     ds,run,det = datasource_run_det(files=fname, detname='epix10k2M')
@@ -343,6 +344,35 @@ elif tname == '8':
         print('step:',nstep,step_value(step),step_docstring(step))
         for nevt,evt in enumerate(step.events()):
             if nevt==3: print('evt3:',nstep,step_value(evt),step_docstring(evt))
+
+
+elif tname == '9':
+
+    logging.getLogger().setLevel(logging.INFO)
+
+    from psana import DataSource
+    ds = DataSource(exp='rixx45619',run=121, dbsuffix='mytestdb')
+    run = next(ds.runs())
+    det = run.Detector('epixhr')
+    cc = det.calibconst
+
+    print('XXX run.runnum  : ', run.runnum)
+    print('XXX run.detnames: ', run.detnames)
+    print('XXX run.expt    : ', run.expt)
+    print('XXX cc.keys()   : ', cc.keys())
+
+    print('\n===== PEDESTALS =====')
+    resp =  cc['pedestals']
+    cons, meta = resp
+    print('=== pedestals metadata: %s' % str(meta))
+    print(info_ndarr(cons, '=== pedestals constants'))
+
+    print('\n===== GEOMETRY =====')
+    resp =  cc['geometry']
+    cons, meta = resp
+    print('=== geometry metadata: %s' % str(meta))
+    print('=== geometry constants:\n', cons)
+
 
 else:
     print(USAGE)
