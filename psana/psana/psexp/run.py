@@ -6,7 +6,6 @@ import time
 from copy import copy
 from psana import dgram
 from psana.dgrammanager import DgramManager
-import psana.pscalib.calib.MDBWebUtils as wu
 from psana.detector.detector_impl import MissingDet
 from psana.event import Event
 from psana.psexp import *
