@@ -65,6 +65,7 @@ class DataSourceBase(abc.ABC):
         self.small_xtc   = []        # swap smd file(s) with bigdata files for these detetors
         self.timestamps  = np.empty(0, dtype=np.uint64)
                                      # list of user-selected timestamps
+        self.dbsuffix  = ''          # calibration database name extension for private constants
 
         if kwargs is not None:
             self.smalldata_kwargs = {}
@@ -83,6 +84,7 @@ class DataSourceBase(abc.ABC):
                     'monitor',
                     'small_xtc',
                     'timestamps',
+                    'dbsuffix',
                     )
 
             for k in keywords:
