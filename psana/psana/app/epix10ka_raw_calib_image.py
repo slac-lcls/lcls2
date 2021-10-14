@@ -406,7 +406,7 @@ def test_image(args):
     print(50*'-')
 
 
-def test_mask(args):
+def test_single_image(args):
     ds, run, det = ds_run_det(args)
     #mask = det.raw._mask_from_status()
     #raw = det.raw.raw()
@@ -415,9 +415,25 @@ def test_mask(args):
     #mask = det.raw._mask_edges(edge_rows=20, edge_cols=10, center_rows=4, center_cols=2)
     #mask = det.raw._mask(calib=True, status=True, edges=True,\
     #                     edge_rows=20, edge_cols=10, center_rows=4, center_cols=2)
-    mask = det.raw._mask_comb(mbits=0o7,\
-                              edge_rows=20, edge_cols=10, center_rows=4, center_cols=2)
-    print(info_ndarr(mask, 'mask '))
+
+    tname = args.tname
+    grindex = 0 if args.grindex is None else args.grindex
+
+    arr, amin, amax, title = None, None, None, '%s for --grindex=%d ' % (tname, grindex)
+    if tname == 'mask':
+        arr = det.raw._mask_comb(mbits=0o7,edge_rows=20, edge_cols=10, center_rows=4, center_cols=2) + 1
+        amin, amax =-1, 2
+        title = 'mask+1'
+    elif tname=='peds':    arr = det.raw._pedestals()[grindex,:]
+    elif tname=='status':  arr = det.raw._status()[grindex,:]
+    elif tname=='rms':     arr = det.raw._rms()[grindex,:]
+    elif tname=='gain':    arr = det.raw._gain()[grindex,:]
+    elif tname=='xcoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[0] #, **kwa)
+    elif tname=='ycoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[1] #, **kwa)
+    elif tname=='zcoords': arr = det.raw._pixel_coords(do_tilt=True, cframe=args.cframe)[2] #, **kwa)
+    else: arr = det.raw._mask_calib()
+
+    print(info_ndarr(arr, 'array for %s' % tname))
 
     if args.dograph:
         from psana.detector.UtilsGraphics import gr, fleximage
@@ -427,11 +443,11 @@ def test_mask(args):
             print('Found non-empty event %d' % evnum); break
         if evt is None: sys.exit('ALL events are None')
 
-        #arr = det.raw.raw(evt)
-        arr = mask + 1
         img = det.raw.image(evt, nda=arr, pix_scale_size_um=args.pscsize, mapmode=args.mapmode)
-        flimg = fleximage(img, arr=None, h_in=8, w_in=11.5, amin=-1, amax=2)#, cmap='jet')
-        flimg.fig.canvas.set_window_title('mask + 1 (to distinguish 0/1 from background)')
+        print(info_ndarr(img, 'image for %s' % tname))
+
+        flimg = fleximage(img, arr=arr, h_in=8, w_in=11.5, amin=amin, amax=amax)#, cmap='jet')
+        flimg.fig.canvas.set_window_title(title)
         flimg.move(10,20)
         gr.show()
         if args.ofname is not None:
@@ -445,31 +461,32 @@ def do_main():
 
     tname = sys.argv[1] if len(sys.argv)>1 else '100'
     usage =\
-        '\n  %s <test-name> [optional-arguments]' % SCRNAME\
+        '\n  %s [test-name] [optional-arguments]' % SCRNAME\
       + '\n  where test-name: '\
-      + '\n    raw   - test_raw  (args) W/O GRAPHICS'\
-      + '\n    calib - test_calib(args) W/O GRAPHICS'\
-      + '\n    image - test_image(args) WITH GRAPHICS'\
-      + '\n    mask  - test_mask(args)  WITH GRAPHICS'\
+      + '\n    raw   - test_raw W/O GRAPHICS'\
+      + '\n    calib - test_calib W/O GRAPHICS'\
+      + '\n    [image] - test_image WITH GRAPHICS - optional default'\
+      + '\n    mask, peds, rms, status, gain, z/y/xcoords - test_single_image WITH GRAPHICS'\
       + '\n ==== '\
       + '\n    %s raw -e ueddaq02 -d epixquad -r66 # raw' % SCRNAME\
       + '\n    %s calib -e ueddaq02 -d epixquad -r66 # calib' % SCRNAME\
-      + '\n    %s image -e ueddaq02 -d epixquad -r66 -N1000 # image' % SCRNAME\
       + '\n    %s mask  -e ueddaq02 -d epixquad -r66 # mask' % SCRNAME\
-      + '\n    %s image -e ueddaq02 -d epixquad -r108 -N1 -S grind' % SCRNAME\
-      + '\n    %s image -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8' % SCRNAME\
-      + '\n    %s image -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8 -o img-ueddaq02-epixquad-r140-ev0002-cm8-7-100-10.png -N3' % SCRNAME\
-      + '\n    %s image -e ueddaq02 -d epixquad -r211 -N1 -M0 -Speds -g0 # - plot pedestals for gain group 0/FH' % SCRNAME\
-      + '\n    %s image -e ueddaq02 -d epixquad -r211 -N100 -Sraw-peds -M2 -g2 # - plot calib[step=2] - pedestals[gain group 2]' % SCRNAME\
-      + '\n    %s image -e rixx45619 -d epixhr -r118 --gramin 1 --gramax 32000 -Sraw' % SCRNAME\
-      + '\n    %s image -e rixx45619 -d epixhr -r118 --gramin 1 --gramax 32000 -Speds -g0' % SCRNAME\
-      + '\n    %s image -e rixx45619 -d epixhr -r118 --gramin -100 --gramax 100 -Sraw-peds -g0' % SCRNAME\
-      + '\n    %s image -e rixx45619 -d epixhr -r119 -Scalib' % SCRNAME\
-      + '\n    %s image -e rixx45619 -d epixhr -r119 -Sones' % SCRNAME\
-      + '\n    %s image -e rixx45619 -d epixhr -N10000 -J200 --gramin 0 --gramax 10 -Sgrind' % SCRNAME\
+      + '\n    %s -e ueddaq02 -d epixquad -r66 -N1000 # image' % SCRNAME\
+      + '\n    %s -e ueddaq02 -d epixquad -r108 -N1 -S grind' % SCRNAME\
+      + '\n    %s -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8' % SCRNAME\
+      + '\n    %s -e ueddaq02 -d epixquad -r140 -N100 -M2 -S calibcm8 -o img-ueddaq02-epixquad-r140-ev0002-cm8-7-100-10.png -N3' % SCRNAME\
+      + '\n    %s -e ueddaq02 -d epixquad -r211 -N1 -M0 -Speds -g0 # - plot pedestals for gain group 0/FH' % SCRNAME\
+      + '\n    %s -e ueddaq02 -d epixquad -r211 -N100 -Sraw-peds -M2 -g2 # - plot calib[step=2] - pedestals[gain group 2]' % SCRNAME\
+      + '\n    %s -e rixx45619 -d epixhr -r118 --gramin 1 --gramax 32000 -Sraw' % SCRNAME\
+      + '\n    %s -e rixx45619 -d epixhr -r118 --gramin 1 --gramax 32000 -Speds -g0' % SCRNAME\
+      + '\n    %s -e rixx45619 -d epixhr -r118 --gramin -100 --gramax 100 -Sraw-peds -g0' % SCRNAME\
+      + '\n    %s -e rixx45619 -d epixhr -r119 -Scalib' % SCRNAME\
+      + '\n    %s -e rixx45619 -d epixhr -r119 -Sones' % SCRNAME\
+      + '\n    %s -e rixx45619 -d epixhr -N10000 -J200 --gramin 0 --gramax 10 -Sgrind' % SCRNAME\
       + '\n    %s mask -e rixx45619 -d epixhr -r119' % SCRNAME\
-
-
+      + '\n    %s peds -e rixx45619 -d epixhr -r119 -g1' % SCRNAME\
+      + '\n    %s gains -e rixx45619 -d epixhr -r119 -g1' % SCRNAME\
+      + '\n    %s xcoords -e rixx45619 -d epixhr -r119 --cframe=1' % SCRNAME\
 
     d_loglev  = 'INFO'
     d_fname   = None
@@ -499,6 +516,7 @@ def do_main():
     d_grnpos  = None
     d_grfrlo  = 0.01
     d_grfrhi  = 0.99
+    d_cframe  = 0
 
     h_loglev  = 'logging level name, one of %s, def=%s' % (STR_LEVEL_NAMES, d_loglev)
     h_mapmode = 'multi-entry pixels image mappimg mode 0/1/2/3 = statistics of entries/last pix intensity/max/mean, def=%s' % d_mapmode
@@ -506,8 +524,9 @@ def do_main():
     h_dirxtc  = 'non-default xtc directory, default = %s' % d_dirxtc
     import argparse
 
-    parser = argparse.ArgumentParser(usage=usage)
-    parser.add_argument('tname', type=str, help='test name')
+    parser = argparse.ArgumentParser(usage=usage, description='%s - test epix10ka data'%SCRNAME)
+    #parser.add_argument('posargs', nargs='*', type=str, help='test name and other positional arguments')
+    parser.add_argument('tname', nargs='?', type=str, help='test name and other positional arguments')
     parser.add_argument('-f', '--fname',   default=d_fname,   type=str, help='xtc file name, def=%s' % d_fname)
     parser.add_argument('-l', '--loglev',  default=d_loglev,  type=str, help=h_loglev)
     parser.add_argument('-d', '--detname', default=d_detname, type=str, help='detector name, def=%s' % d_detname)
@@ -536,21 +555,27 @@ def do_main():
     parser.add_argument('--grnpos',        default=d_grnpos,  type=float, help='number of mean deviations of intensity negative limit for grphics, def=%s' % str(d_grnpos))
     parser.add_argument('--grfrlo',        default=d_grfrlo,  type=float, help='fraqction of statistics [0,1] below low  limit for grphics, def=%s' % str(d_grfrlo))
     parser.add_argument('--grfrhi',        default=d_grfrhi,  type=float, help='fraqction of statistics [0,1] below high limit for grphics, def=%s' % str(d_grfrhi))
+    parser.add_argument('--cframe',        default=d_cframe,  type=int, help='coordinate frame for images 0/1 for psana/LAB, def=%s' % str(d_cframe))
 
     args = parser.parse_args()
+    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(name)s: %(message)s', level=DICT_NAME_TO_LEVEL[args.loglev])
+    logging.getLogger('matplotlib').setLevel(logging.WARNING)
+    logger.debug('parser.parse_args: %s' % str(args))
+
     kwa = vars(args)
     s = '\nArguments:'
     for k,v in kwa.items(): s += '\n %8s: %s' % (k, str(v))
 
-    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(name)s: %(message)s', level=DICT_NAME_TO_LEVEL[args.loglev])
-
     logger.info(s)
 
     tname = args.tname
+    if tname is None: tname = 'image'
+    print('tname:', tname)
+
     if   tname=='raw':   test_raw  (args)
     elif tname=='calib': test_calib(args)
     elif tname=='image': test_image(args)
-    elif tname=='mask':  test_mask(args)
+    elif tname in ('mask', 'peds', 'status', 'rms', 'gain', 'xcoords', 'ycoords', 'zcoords') :  test_single_image(args)
     else: logger.warning('NON-IMPLEMENTED TEST: %s' % tname)
 
 
