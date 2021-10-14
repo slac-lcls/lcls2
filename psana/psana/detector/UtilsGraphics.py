@@ -79,7 +79,8 @@ class fleximage(flexbase):
         """
         """
         flexbase.__init__(self, **kwa)
-        arr = kwa.setdefault('arr', img)
+        arr = kwa.get('arr', None)
+        if arr is None: kwa['arr'] = arr = img
         amin, amax = self._intensity_limits(arr, kwa)
         w_in = kwa.pop('w_in', 9)
         h_in = kwa.pop('h_in', 8)
@@ -88,7 +89,7 @@ class fleximage(flexbase):
 
         kwfig = {}
         _fig=gr.plt.figure(\
-                num   = kwa.get('num',None),\
+                num       = kwa.get('num',None),\
                 figsize   = kwa.get('figsize',(w_in, h_in)),\
                 dpi       = kwa.get('dpi',80),\
                 facecolor = kwa.get('facecolor','w'),\
@@ -181,7 +182,9 @@ class fleximagespec(flexbase):
         """
         """
         flexbase.__init__(self, **kwa)
-        arr = kwa.setdefault('arr', img)
+        #arr = kwa.setdefault('arr', img)
+        arr = kwa.get('arr', None)
+        if arr is None: kwa['arr'] = arr = img
         amin, amax = self._intensity_limits(arr, kwa)
         w_in = kwa.pop('w_in', 14)
         h_in = kwa.pop('h_in', 8)
