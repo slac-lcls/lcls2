@@ -67,7 +67,7 @@ start()
 
 stop()
 {
-    pkill -u ${PROCMGRDUSER} procmgrd
+    pkill -u ${PROCMGRDUSERS} procmgrd
     RETVAL=$?
     echo
 }
