@@ -170,7 +170,7 @@ class IVImageAxes(QWidget):
         p = wimg.mapToScene(e.pos())
         ix, iy, v = wimg.cursor_on_image_pixcoords_and_value(p)
         fv = 0 if v is None else v
-        s = 'x:%d y:%d v:%s%s' % (ix, iy, '%.1f'%fv, 25*' ')
+        s = 'x:%d y:%d v:%s%s' % (ix, iy, '%.3f'%fv, 25*' ')
         #self.setWindowTitle('FWViewImage %s'%s)
         self.edi_info.setText(s)
 
