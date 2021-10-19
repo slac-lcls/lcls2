@@ -44,7 +44,7 @@ class EventManager(object):
 
         # Each chunk must fit in BD_CHUNKSIZE and we only fill bd buffers
         # when bd_offset reaches the size of buffer.
-        self.BD_CHUNKSIZE = int(os.environ.get('PS_BD_CHUNKSIZE', 0x400000))
+        self.BD_CHUNKSIZE = int(os.environ.get('PS_BD_CHUNKSIZE', 0x1000000))
         self._get_offset_and_size()
         if self.dm.n_files > 0:
             self._init_bd_chunks()
