@@ -15,15 +15,20 @@ Created on 2021-06-14 by Mikhail Dubrovin
 from psana.graphqt.CMWControlBase import * #cp, CMWControlBase, QApplication, os, sys, logging, QRectF, QWFileNameV2
 from psana.graphqt.IVControlSpec import IVControlSpec
 import psana.pyalgos.generic.PSUtils as psu
-from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr
+from psana.pyalgos.generic.NDArrUtils import reshape_to_2d, info_ndarr, np
 
 logger = logging.getLogger(__name__)
 
 
 def image_from_ndarray(nda):
     if nda is None:
-       logger.debug('nda is None - return None for image')
+       logger.warning('nda is None - return None for image')
        return None
+
+    if not isinstance(nda, np.ndarray):
+       logger.warning('nda is not np.ndarray, type(nda): %s - return None for image' % type(nda))
+       return None
+
     img = psu.table_nxn_epix10ka_from_ndarr(nda) if (nda.size % (352*384) == 0) else\
           psu.table_nxm_jungfrau_from_ndarr(nda) if (nda.size % (512*1024) == 0) else\
           psu.table_nxm_cspad2x1_from_ndarr(nda) if (nda.size % (185*388) == 0) else\
