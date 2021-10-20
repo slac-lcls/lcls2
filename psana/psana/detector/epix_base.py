@@ -76,6 +76,7 @@ class epix_base(AreaDetector):
         """
         return self._uniqueid
 
+
     def _segment_ids(self):
         """Returns list of detector segment ids, e.g. for epix10ka
         [3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000,
