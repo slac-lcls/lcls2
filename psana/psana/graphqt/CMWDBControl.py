@@ -614,11 +614,13 @@ class CMWDBControl(CMWControlBase):
         if wdoce is None or wdoce.data_nda is None:
             logger.warning('Nothing selected to view yet. Select DB/collection then document to view in the List mode.')
             return
-        #doc  = wdoce.get_model_dicdoc(discard_id_ts=False)
-        #data = wdoce.get_data_nda()
+
+        doc  = wdoce.get_model_dicdoc(discard_id_ts=False)
+        data = wdoce.get_data_nda()
+        logger.debug('doc: %s\nctype: %s\ntype(data): %s' % (str(doc), doc.get('ctype', None),type(data)))
 
         if cp.cmwmaintabs is not None:
-           cp.cmwmaintabs.view_data(data=wdoce.get_data_nda(), fname=None)
+           cp.cmwmaintabs.view_data(data=data, fname=None)
 
 
     def on_but_pressed(self):
