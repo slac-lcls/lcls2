@@ -9,8 +9,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=1,
                         help='platform (default 1)')
-    parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-tst-dev009',
-                        help='collection host (default drp-tst-dev009)')
+    parser.add_argument('-C', metavar='COLLECT_HOST', default='daq-tst-dev03',
+                        help='collection host (default daq-tst-dev03)')
     parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                         help='timeout msec (default 10000)')
     parser.add_argument('-v', action='store_true', help='be verbose')
@@ -52,13 +52,11 @@ def main():
 
     except KeyboardInterrupt:
         run.push_socket.send_string('shutdown') #shutdown the daq communicator thread
-        run.comm_thread.join()
         sys.exit('interrupted')
 
     run.unstage()
 
     run.push_socket.send_string('shutdown') #shutdown the daq communicator thread
-    run.comm_thread.join()
 
 if __name__ == '__main__':
     main()
