@@ -96,6 +96,7 @@ namespace Drp {
         pvac::ClientChannel   m_fex_pv;
         pvd::PVStructure::const_shared_pointer m_request;
         double                *m_vec;
+        const char            *m_ttpv;
     };
 
     class OpalTTSim {
@@ -299,11 +300,11 @@ OpalTT::OpalTT(Opal& d, Parameters* para) :
     m_background_empty(true),
     m_fex             (para)
 {
-    const char* ttpv = MLOOKUP(m_para->kwargs,"ttpv",0);
-    if (ttpv) {
-        logging::info("Connecting to pv %s\n", ttpv);
+    m_ttpv = MLOOKUP(m_para->kwargs,"ttpv",0);
+    if (m_ttpv) {
+        logging::info("Connecting to pv %s\n", m_ttpv);
         try {
-            m_fex_pv = pvac::ClientChannel(Pds_Epics::EpicsProviders::ca().connect(ttpv));
+            m_fex_pv = pvac::ClientChannel(Pds_Epics::EpicsProviders::ca().connect(m_ttpv));
             m_request = pvd::createRequest("field(value)");
             pvd::PVStructure::const_shared_pointer cpv = 
                 m_fex_pv.get(3.0,m_request);
@@ -372,8 +373,6 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
 
     OpalTTFex::TTResult result = m_fex.analyze(subframes);
 
-    CreateData cd(xtc, m_det.namesLookup(), m_fexNamesId);
-
     if (result == OpalTTFex::INVALID) {
         xtc.damage.increase(Damage::UserDefined);
     }
@@ -387,9 +386,12 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
         m_vec[3] = m_fex.filtered_fwhm();
         m_vec[4] = m_fex.next_amplitude();
         m_vec[5] = m_fex.ref_amplitude();
-        m_fex_pv.put(m_request).set<const double>("value",ttvec).exec();
+        if (m_ttpv) { 
+            m_fex_pv.put(m_request).set<const double>("value",ttvec).exec();
+        }
 
         //  Insert the results
+        CreateData cd(xtc, m_det.namesLookup(), m_fexNamesId);
         cd.set_value(FexDef::ampl      , m_fex.amplitude());
         cd.set_value(FexDef::fltpos    , m_fex.filtered_position());
         cd.set_value(FexDef::fltpos_ps , m_fex.filtered_pos_ps());

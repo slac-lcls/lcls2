@@ -39,9 +39,9 @@ static void            rolling_average(std::vector<int>& a,
 static void            rolling_average(std::vector<double>& a, 
                                        std::vector<double>& avg, 
                                        double fraction);
-static void            rolling_average(NDArray<double>& a, 
-                                       NDArray<double>& avg, 
-                                       double fraction);
+//static void            rolling_average(NDArray<double>& a, 
+//                                       NDArray<double>& avg, 
+//                                       double fraction);
 static std::vector<double> finite_impulse_response(std::vector<double>& filter,
                                                std::vector<double>& sample);
 static std::list<unsigned> find_peaks(std::vector<double>&, double, unsigned);
@@ -320,6 +320,41 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   sigd.resize(m_sig.size());
   std::vector<double> refd(m_sig.size());
 
+  // If the size stored in the file is out of date,
+  // resetting the size to 0 here will cause a new m_ref_avg
+  // to be initialized in rolling_average
+  // (and saved to a new file)
+  if (sigd.size() != m_ref_avg.size()) {
+     m_ref_avg.resize(0);
+  }
+  
+  // Checking that the projections of the ROIs are
+  // consistent
+  if (m_use_ref_roi) {
+     if (sigd.size() != m_ref.size()) {
+         logging::critical(
+           "The size of the reference ROI and of the "
+           "signal ROI are inconsistent with each other."
+         );
+         throw(
+           "The size of the reference ROI and of the "
+           "signal ROI are inconsistent with each other."
+         );
+      }
+  }
+  if (m_use_sb_roi) {
+      if (sigd.size() != m_sb.size()) {
+         logging::critical(
+           "The size of the side band ROI and of the "
+           "signal ROI are inconsistent with each other."
+         );
+         throw(
+           "The size of the side band ROI and of the "
+           "signal ROI are inconsistent with each other."
+         );
+      }
+  }
+
   //
   //  Correct projection for common mode found in sideband
   //
@@ -363,6 +398,9 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   if (lcut) { m_cut[_PROJCUT]++; return INVALID; }
 
   if (nobeam) {
+
+      // There is always a reference: either the ROI is used
+      // or, if no ROI is used, the signal when NOBEAM is used
       _monitor_ref_sig( refd );
       rolling_average(refd, m_ref_avg, m_ref_convergence);
 
@@ -557,8 +595,10 @@ void rolling_average(std::vector<int>& a, std::vector<double>& avg, double fract
     avg.resize(a.size());
     for(unsigned i=0; i<a.size(); i++)
       avg[i] = a[i];
-  }
-  else {
+  } else if (avg.size()!=a.size()) {
+    logging::critical("rolling average (int/double) with different sizes");
+    throw std::string("rolling average with different sizes");
+  } else {
     double g = (1-fraction);
     double f = fraction;
     for(unsigned i=0; i<a.size(); i++)
@@ -569,9 +609,13 @@ void rolling_average(std::vector<int>& a, std::vector<double>& avg, double fract
 void rolling_average(std::vector<double>& a, std::vector<double>& avg, double fraction)
 {
   if (avg.size()==0) {
-    avg = a;
-  }
-  else {
+    avg.resize(a.size());
+    for(unsigned i=0; i<a.size(); i++)
+      avg[i] = a[i];
+  } else if (avg.size()!=a.size()) {
+    logging::critical("rolling average (double/double) with different sizes");
+    throw std::string("rolling average with different sizes");
+  } else {
     double g = (1-fraction);
     double f = fraction;
     for(unsigned i=0; i<a.size(); i++)
@@ -579,31 +623,32 @@ void rolling_average(std::vector<double>& a, std::vector<double>& avg, double fr
   }
 } 
 
-void rolling_average(NDArray<double>& a, NDArray<double>& avg, double fraction)
-{
-  if (avg.size()==0)
-    avg = a;
-  else if (avg.size()!=a.size()) {
-      throw std::string("rolling average with different sizes");
-  }
-  else {
-    double g = (1-fraction);
-    double f = fraction;
-    const size_t sz = a.size();
-    double* ad   = a  .data();
-    double* avgd = avg.data();
-    for(unsigned i=0; i<sz; i++)
-      avgd[i] = avgd[i]*g + ad[i]*f;
-  }
-} 
+//void rolling_average(NDArray<double>& a, NDArray<double>& avg, double fraction)
+//{
+//  if (avg.size()==0)
+//    avg = a;
+//  else if (avg.size()!=a.size()) {
+//      throw std::string("rolling average with different sizes");
+//  }
+//  else {
+//    double g = (1-fraction);
+//    double f = fraction;
+//    const size_t sz = a.size();
+//    double* ad   = a  .data();
+//    double* avgd = avg.data();
+//    for(unsigned i=0; i<sz; i++)
+//      avgd[i] = avgd[i]*g + ad[i]*f;
+//  }
+//} 
 
 std::vector<double> finite_impulse_response(std::vector<double>& filter,
                                             std::vector<double>& sample)
 {
   unsigned nf = filter.size();
-  if (sample.size()<filter.size())
-    return std::vector<double>(0);
-  else {
+  if (sample.size()<filter.size()) {
+    logging::critical("OpalTTFex sample size %i smaller than filter size %i", sample.size(), filter.size()); 
+    throw("Error OpalTTFex sample size too small");
+  } else {
     unsigned len = sample.size()-nf;
     std::vector<double> result = std::vector<double>(len);
     for(unsigned i=0; i<len; i++) {
