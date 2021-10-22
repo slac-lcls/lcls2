@@ -90,7 +90,7 @@ def segment_geometry(**kwa):
         return cspad2x1_wpc if wpc else cspad2x1_one # SegGeometryCspad2x1V1(use_wide_pix_center=False)
     #elif segname=='ANDOR3D:V1': return seg_andor3d # SegGeometryMatrixV1()
     else:
-        logger.warning('segment "%s" gometry IS NOT IMPLEMENTED' % segname)
+        logger.debug('segment "%s" gometry IS NOT IMPLEMENTED' % segname)
         return None
 
 
