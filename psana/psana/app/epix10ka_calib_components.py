@@ -54,6 +54,7 @@ d_saveimg = False
 d_grindex = None
 d_amin    = None
 d_amax    = None
+d_cframe  = 0
 
 parser = argparse.ArgumentParser(usage=USAGE, description='%s - test per-event components of the det.raw.calib method'%SCRNAME)
 parser.add_argument('-t', '--tname',   default=d_tname,   type=str, help='test name, def=%s' % d_tname)
@@ -67,6 +68,8 @@ parser.add_argument('-S', '--saveimg', default=d_saveimg, action='store_true', h
 parser.add_argument('-g', '--grindex', default=d_grindex, type=int, help='gain range index [0,6] for peds, gains etc., def=%s' % str(d_grindex))
 parser.add_argument('--amin',          default=d_amin,    type=float, help='spectrum minimal value, def=%s' % str(d_amin))
 parser.add_argument('--amax',          default=d_amax,    type=float, help='spectrum maximal value, def=%s' % str(d_amax))
+parser.add_argument('--cframe',        default=d_cframe,  type=int, help='coordinate frame for images 0/1 for psana/LAB, def=%s' % str(d_cframe))
+
 
 args = parser.parse_args()
 print('*** parser.parse_args: %s' % str(args))
@@ -232,7 +235,7 @@ for nstep,step in enumerate(orun.steps()):
 
     print(info_ndarr(arr,'Event %d det.raw.calib'%nevt))
 
-    img = det.raw.image(evt, nda=arr, vbase=-1)
+    img = det.raw.image(evt, nda=arr, vbase=-1, cframe=args.cframe)
 
     if CROP1_IMG:
         img0 = np.zeros_like(img)
