@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """
+This script grew-up from test of specific issue -
 2021-10-18:
 Xiaozhe complains that too many pixels outside signal region in ueddaq02 r401 shows up in selection of intensities between 100 and 500 keV.
 See:
@@ -34,10 +35,10 @@ USAGE = '\n    %s -r554 -t1' % SCRNAME\
       + '\n      6 - raw'\
       + '\n      7 - raw-peds'\
       + '\n      8 - (raw-peds)/gain, keV'\
-      + '\n      9 - (raw-peds)/gain, keV hot'\
-      + '\n     10 - (raw-peds)/gain, keV cold'\
+      + '\n      9 - (raw-peds)/gain, keV hot - specific isuue test'\
+      + '\n     10 - (raw-peds)/gain, keV cold - specific isuue test'\
       + '\n     11 - calib, keV'\
-      + '\n     12 - gain factor, keV/ADU'\
+      + '\n     12 - gain factor = 1/gain, keV/ADU'\
       + '\n     13 - run 401 two-threshold selection issue'
 
 d_tname   = '0'
@@ -51,7 +52,7 @@ d_grindex = None
 d_amin    = None
 d_amax    = None
 
-parser = argparse.ArgumentParser(usage=USAGE, description='%s - test issue 2021-10-18 with epixquad data'%SCRNAME)
+parser = argparse.ArgumentParser(usage=USAGE, description='%s - test per-event components of the det.raw.calib method'%SCRNAME)
 parser.add_argument('-t', '--tname',   default=d_tname,   type=str, help='test name, def=%s' % d_tname)
 parser.add_argument('-d', '--detname', default=d_detname, type=str, help='detector name, def=%s' % d_detname)
 parser.add_argument('-e', '--expname', default=d_expname, type=str, help='experiment name, def=%s' % d_expname)
