@@ -349,7 +349,7 @@ def find_gain_mode(det_raw, evt=None):
 
 
 def event_constants_for_gmaps(gmaps, cons, default=0):
-    """
+    """ 6 msec
     Parameters
     ----------
     - gmaps - tuple of 7 boolean maps ndarray(<nsegs>, 352, 384)
@@ -371,7 +371,7 @@ def event_constants(det_raw, evt, cons, default=0):
 
 
 def event_constants_for_grinds(grinds, cons):
-    """
+    """ 12  msec
     FOR TEST PURPOSE ONLY - x2 slower than event_constants_for_gmaps
 
     Parameters
@@ -384,11 +384,20 @@ def event_constants_for_grinds(grinds, cons):
     -------
     np.ndarray (<nsegs>, 352, 384) - per event constants
     """
-    shape0 = grinds.shape
-    grinds.shape = (1,) + tuple(grinds.shape) #(1, 4, 352, 384) # add dimension for take_along_axis
+    #shape0 = grinds.shape
+    #grinds.shape = (1,) + tuple(grinds.shape) #(1, 4, 352, 384) # add dimension for take_along_axis
+    #nda = np.take_along_axis(cons, grinds, 0)
+    #grinds.shape = shape0 # restore original shape
+    #return nda
+
+    shapei = grinds.shape #(<nsegs>, 352, 384)
+    shapec = cons.shape #(7, <nsegs>, 352, 384)
+    cons.shape = (7,grinds.size)
+    grinds.shape = (1,grinds.size)
     nda = np.take_along_axis(cons, grinds, 0)
-    #nda = np.choose(grinds, cons) # slower than take_along_axis
-    grinds.shape = shape0 # restore original shape
+    nda.shape = shapei
+    cons.shape = shapec
+    grinds.shape = shapei
     return nda
 
 
@@ -398,8 +407,8 @@ def test_event_constants_for_grinds(det_raw, evt, gfac, peds):
     """
     t0_sec = time()
     grinds = map_gain_range_index(det_raw, evt) #.ravel()
-    factor = event_constants_for_grinds(grinds, gfac) #np.take_along_axis(gfac, grinds, 0)
-    pedest = event_constants_for_grinds(grinds, peds) #np.take_along_axis(peds, grinds, 0)
+    factor = event_constants_for_grinds(grinds, gfac)
+    pedest = event_constants_for_grinds(grinds, peds)
     print('XXX test_event_constants_for_grinds consumed time = %.6f sec' % (time()-t0_sec)) # 12msec for epixquad ueddaq02 r557
     print(info_ndarr(grinds, 'evt grinds'))
     print(info_ndarr(pedest, 'evt pedest'))
@@ -414,10 +423,8 @@ def test_event_constants_for_gmaps(det_raw, evt, gfac, peds):
     t0_sec = time()
     gmaps = gain_maps_epix10ka_any(det_raw, evt) #tuple: 7 x shape:(4, 352, 384)
     if gmaps is None: return None
-
     factor = event_constants_for_gmaps(gmaps, gfac, default=1)
-    pedest = event_constants_for_gmaps(gmaps, peds, default=0) # 60msec total versus 55 using select directly
-
+    pedest = event_constants_for_gmaps(gmaps, peds, default=0) # 6 msec total versus 5.5 using select directly
     print('XXX test_event_constants_for_gmaps consumed time = %.6f sec' % (time()-t0_sec)) # 6msec for epixquad ueddaq02 r557
     print(info_ndarr(gmaps,  'evt gmaps'))
     print(info_ndarr(pedest, 'evt pedest'))
