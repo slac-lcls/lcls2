@@ -9,7 +9,7 @@
 #include <list>
 #include <math.h>
 
-//#define DBUG
+#define DBUG
 
 using namespace Drp;
 using namespace XtcData;
@@ -218,6 +218,16 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
 
   m_prescale_image_counter = 0;
   m_prescale_projections_counter = 0;
+
+#ifdef DBUG
+  printf("incl_beam size %d  excl_beam size %d\n",
+         m_eventcodes_beam_incl.size(),
+         m_eventcodes_beam_excl.size());
+  printf("incl_laser size %d  excl_laser size %d\n",
+         m_eventcodes_laser_incl.size(),
+         m_eventcodes_laser_excl.size());
+#endif
+
 }
       
 void OpalTTFex::unconfigure()
@@ -281,7 +291,7 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   shape[1] = m_rows;
   NDArray<uint16_t> f(shape, 2, subframes[2].data());
 
-#ifdef DBUG
+#ifdef DBUG2
   { const uint16_t* p = reinterpret_cast<const uint16_t*>(subframes[2].data());
     for(unsigned i=0; i<m_rows; i+= 16) {
       for(unsigned j=0; j<m_columns; j+= 16)
