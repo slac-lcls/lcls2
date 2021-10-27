@@ -293,23 +293,24 @@ void frame_rates(TprReg& reg, bool lcls2, int n)
   static const unsigned rateMin[] = { 356, 116, 56, 27,  8, 3, 0, 909999, 69999,  9999,  999,  99,  9, 0 };
   static const unsigned rateMax[] = { 364, 124, 64, 33, 12, 7, 2, 910001, 70001, 10001, 1001, 101, 11, 2 };
 
-  for(unsigned i=0; i<nrates; i++) {
-    if (lcls2)
-      reg.base.channel[i].evtSel  = (1<<30) | i;
-    else {
-      switch(i) {
-      case 0:
-        reg.base.channel[i].evtSel  = (1<<30) | (1<<11) | (0x3f<<3);
-        break;
-      case 1:
-        reg.base.channel[i].evtSel  = (1<<30) | (1<<11) | (0x11<<3);
-        break;
-      default:
-        reg.base.channel[i].evtSel  = (1<<30) | (1<<11) | ((i-2)<<0) | (0x1<<3);
-        break;
+  //  for(unsigned i=0; i<nrates; i++) {
+  for(unsigned i=0; i<TprBase::NCHANNELS; i++) {
+      if (lcls2)
+          reg.base.channel[i].evtSel  = (1<<30) | (i%nrates);
+      else {
+          switch(i%nrates) {
+          case 0:
+              reg.base.channel[i].evtSel  = (1<<30) | (1<<11) | (0x3f<<3);
+              break;
+          case 1:
+              reg.base.channel[i].evtSel  = (1<<30) | (1<<11) | (0x11<<3);
+              break;
+          default:
+              reg.base.channel[i].evtSel  = (1<<30) | (1<<11) | (((i%nrates)-2)<<0) | (0x1<<3);
+              break;
+          }
       }
-    }
-    reg.base.channel[i].control = 1;
+      reg.base.channel[i].control = 1;
   }
 
   do {
@@ -327,7 +328,7 @@ void frame_rates(TprReg& reg, bool lcls2, int n)
       }
   } while (--n);
 
-  for(unsigned i=0; i<nrates; i++) {
+  for(unsigned i=0; i<TprBase::NCHANNELS; i++) {
       reg.base.channel[i].control = 0;
   }
 }
@@ -344,6 +345,15 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2)
     perror("Could not open");
     return;
   }
+
+  char bsadev[16];
+  sprintf(bsadev,"/dev/tpr%cBSA",tprid);
+  int fdbsa = open(bsadev, O_RDWR);
+  if (fdbsa<0) {
+      perror("Could not open");
+      return;
+  }
+
 
   void* ptr = mmap(0, sizeof(Queues), PROT_READ, MAP_SHARED, fd, 0);
   if (ptr == MAP_FAILED) {
@@ -412,6 +422,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2)
   } while(1);
 
 
+
   uint64_t active, avgdn, update, init, minor, major;
   nframes = 0;
   do {
@@ -441,7 +452,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2)
     }
     if (nframes>=10) 
       break;
-    read(fd, buff, 32);
+    read(fdbsa, buff, 32);
   } while(1);
 
   munmap(ptr, sizeof(Queues));
