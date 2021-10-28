@@ -14,7 +14,8 @@ import math
 import numpy as np
 import logging
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d: %(message)s', level=logging.INFO)
+DICT_NAME_TO_LEVEL = logging._nameToLevel # {'INFO': 20, 'WARNING': 30, 'WARN': 30,...
+
 from psana.pyalgos.generic.NDArrUtils import info_ndarr, divide_protected
 from psana import DataSource
 from psana.detector.UtilsGraphics import gr, fleximagespec#, fleximage, flexhist
@@ -55,6 +56,7 @@ d_grindex = None
 d_amin    = None
 d_amax    = None
 d_cframe  = 0
+d_loglev  = 'INFO'
 
 parser = argparse.ArgumentParser(usage=USAGE, description='%s - test per-event components of the det.raw.calib method'%SCRNAME)
 parser.add_argument('-t', '--tname',   default=d_tname,   type=str, help='test name, def=%s' % d_tname)
@@ -66,6 +68,7 @@ parser.add_argument('-K', '--evskip',  default=d_evskip,  type=int, help='number
 parser.add_argument('-s', '--stepnum', default=d_stepnum, type=int, help='step number counting from 0 or None for all steps, def=%s' % d_stepnum)
 parser.add_argument('-S', '--saveimg', default=d_saveimg, action='store_true', help='save image in file, def=%s' % d_saveimg)
 parser.add_argument('-g', '--grindex', default=d_grindex, type=int, help='gain range index [0,6] for peds, gains etc., def=%s' % str(d_grindex))
+parser.add_argument('-l', '--loglev',  default=d_loglev,  type=str, help='logger level (DEBUG, INFO, WARNING, etc.), def.=%s' % str(d_loglev))
 parser.add_argument('--amin',          default=d_amin,    type=float, help='spectrum minimal value, def=%s' % str(d_amin))
 parser.add_argument('--amax',          default=d_amax,    type=float, help='spectrum maximal value, def=%s' % str(d_amax))
 parser.add_argument('--cframe',        default=d_cframe,  type=int, help='coordinate frame for images 0/1 for psana/LAB, def=%s' % str(d_cframe))
@@ -73,6 +76,10 @@ parser.add_argument('--cframe',        default=d_cframe,  type=int, help='coordi
 
 args = parser.parse_args()
 print('*** parser.parse_args: %s' % str(args))
+
+logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d: %(message)s', level=DICT_NAME_TO_LEVEL[args.loglev])
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+logging.getLogger('psana.psexp.event_manager').setLevel(logging.INFO)
 
 tname = args.tname # sys.argv[1] if len(sys.argv) > 1 else '0'
 THRMIN = 100
