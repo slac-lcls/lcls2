@@ -259,8 +259,8 @@ def test_image(args):
     for stepnum,step in enumerate(run.steps()):
       print('%s\nStep %1d' % (50*'_',stepnum))
 
-      if args.stepsel is not None and stepnum != args.stepsel:
-          print('  skip - step selected in option -M is %1d' % (args.stepsel))
+      if args.stepnum is not None and stepnum != args.stepnum:
+          print('  skip - step selected in option -M is %1d' % (args.stepnum))
           continue
       print('%s\n  begin event loop' % (50*'_'))
       for evnum,evt in enumerate(step.events()):
@@ -504,7 +504,7 @@ def do_main():
     d_events  = 1000
     d_evskip  = 0
     d_evjump  = 100
-    d_stepsel = None
+    d_stepnum = None
     d_bitmask = 0xffff
     d_grindex = None
     d_thrmin  = -0.344 # -0.598 as in dark 211, -0.344 r134
@@ -544,7 +544,7 @@ def do_main():
     parser.add_argument('-J', '--evjump',  default=d_evjump,  type=int, help='number of events to jump, def=%s' % d_evjump)
     parser.add_argument('-s', '--pscsize', default=d_pscsize, type=float, help='pixel scale size [um], def=%.1f' % d_pscsize)
     parser.add_argument('-B', '--bitmask', default=d_bitmask, type=int,   help='bitmask for raw MDBITS=16383/0x7fff=32767, def=%s' % hex(d_bitmask))
-    parser.add_argument('-M', '--stepsel', default=d_stepsel, type=int,   help='step selected to show or None for all, def=%s' % d_stepsel)
+    parser.add_argument('-M', '--stepnum', default=d_stepnum, type=int,   help='step selected to show or None for all, def=%s' % d_stepnum)
     parser.add_argument('-g', '--grindex', default=d_grindex, type=int,   help='gain range index [0,6] for peds, def=%s' % str(d_grindex))
     parser.add_argument('-t', '--thrmin',  default=d_thrmin,  type=float, help='minimal threshold on median to accumulate events with -C, def=%f' % d_thrmin)
     parser.add_argument('-T', '--thrmax',  default=d_thrmax,  type=float, help='maximal threshold on median to accumulate events with -C, def=%f' % d_thrmax)
@@ -567,6 +567,10 @@ def do_main():
     for k,v in kwa.items(): s += '\n %8s: %s' % (k, str(v))
 
     logger.info(s)
+
+    if len(sys.argv)<2:
+        print(usage)
+        sys.exit('MISSING ARGUMENTS - EXIT')
 
     tname = args.tname
     if tname is None: tname = 'image'
