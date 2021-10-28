@@ -6,6 +6,7 @@
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
+#include "xtcdata/xtc/XtcFileIterator.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psalg/calib/NDArray.hh"
 #include "psalg/detector/UtilsConfig.hh"
@@ -101,8 +102,16 @@ namespace Drp {
 
     class OpalTTSim {
     public:
-        OpalTTSim(const char*, Opal&, Parameters* para);
-        ~OpalTTSim();
+        virtual ~OpalTTSim() {}
+        virtual unsigned       configure(XtcData::Xtc&,XtcData::ConfigIter&) = 0;
+        virtual void           event    (XtcData::Xtc&,
+                                         std::vector< XtcData::Array<uint8_t> >&) = 0;
+    };
+
+    class OpalTTSimL1 : public OpalTTSim {
+    public:
+        OpalTTSimL1(const char*, Opal&, Parameters* para);
+        ~OpalTTSimL1();
     public:
         unsigned       configure(XtcData::Xtc&,XtcData::ConfigIter&);
         void           event    (XtcData::Xtc&,
@@ -116,6 +125,38 @@ namespace Drp {
         unsigned              m_evtindex;
     };
 
+    class L2Iter : public XtcIterator
+    {
+    public:
+        enum { Stop, Continue };
+        L2Iter() : XtcIterator() {}
+
+        void get_value(int i, Name& name, DescData& descdata);
+        int process(Xtc*);
+    public:
+        NamesLookup namesLookup;
+        std::unordered_map<unsigned,ShapesData*> shapesdata;
+    };
+
+    class OpalTTSimL2 : public OpalTTSim {
+    public:
+        OpalTTSimL2(const char*,const char*, Opal&, Parameters* para);
+        ~OpalTTSimL2();
+    public:
+        unsigned       configure(XtcData::Xtc&,XtcData::ConfigIter&);
+        void           event    (XtcData::Xtc&,
+                                 std::vector< XtcData::Array<uint8_t> >&);
+    private:
+        Opal&                 m_det;
+        Parameters*           m_para;
+        XtcData::NamesId      m_simNamesId;
+        std::vector<uint16_t> m_framebuffer;
+        Pds::Semaphore        m_filesem;
+        XtcFileIterator*      m_iter;
+        XtcFileIterator*      m_timiter;
+        L2Iter                m_input;
+        L2Iter                m_timinput;
+    };
 
 };
 
@@ -175,7 +216,8 @@ static void _load_xtc(std::vector<uint8_t>&, const char*);
 using Drp::Opal;
 using Drp::OpalTT;
 using Drp::OpalTTFex;
-using Drp::OpalTTSim;
+using Drp::OpalTTSimL1;
+using Drp::OpalTTSimL2;
 
 Opal::Opal(Parameters* para, MemPool* pool) :
     BEBDetector   (para, pool),
@@ -191,9 +233,15 @@ Opal::Opal(Parameters* para, MemPool* pool) :
 
 #define MLOOKUP(m,name,dflt) (m.find(name)==m.end() ? dflt : m[name].c_str())
 
-    const char* simxtc = MLOOKUP(m_para->kwargs,"simxtc",0);
-    if (simxtc)
-        m_sim = new OpalTTSim(simxtc,*this, para);
+    const char* simxtc  = MLOOKUP(m_para->kwargs,"simxtc" ,0);
+    const char* simxtc2 = MLOOKUP(m_para->kwargs,"simxtc2",0);
+    const char* simtime = MLOOKUP(m_para->kwargs,"simtime",0);
+    if (simxtc) {
+        m_sim = new OpalTTSimL1(simxtc ,*this, para); 
+    }
+    else if (simxtc2) {
+        m_sim = new OpalTTSimL2(simxtc2,simtime,*this, para);
+    }
 }
 
 Opal::~Opal()
@@ -371,7 +419,8 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
 {
     m_fex.reset();
 
-    OpalTTFex::TTResult result = m_fex.analyze(subframes);
+    std::vector<double> sig, ref;
+    OpalTTFex::TTResult result = m_fex.analyze(subframes,sig,ref);
 
     if (result == OpalTTFex::INVALID) {
         xtc.damage.increase(Damage::UserDefined);
@@ -406,8 +455,11 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
             memcpy(a.data(), src.data(), src.size()*sizeof(atype)); }
 
         if (m_fex.write_evt_projections()) {
-            copy_projection(double, m_fex.sig_projection(), FexDef::proj_sig);
-            copy_projection(double, m_fex.ref_projection(), FexDef::proj_ref);
+#ifdef DBUG
+            printf("writing projections\n");
+#endif
+            copy_projection(double, sig, FexDef::proj_sig);
+            copy_projection(double, ref, FexDef::proj_ref);
         }
     }
     else if (result == OpalTTFex::NOBEAM) {
@@ -438,7 +490,7 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
 }
 
 
-OpalTTSim::OpalTTSim(const char* evtxtc, Opal& d, Parameters* para) :
+OpalTTSimL1::OpalTTSimL1(const char* evtxtc, Opal& d, Parameters* para) :
     m_det         (d),
     m_para        (para),
     m_simNamesId  (0,0),
@@ -449,11 +501,11 @@ OpalTTSim::OpalTTSim(const char* evtxtc, Opal& d, Parameters* para) :
     _load_xtc(m_evtbuffer, evtxtc);
 }
 
-OpalTTSim::~OpalTTSim()
+OpalTTSimL1::~OpalTTSimL1()
 {
 }
 
-unsigned OpalTTSim::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
+unsigned OpalTTSimL1::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
 {
     //  Add results into the dgram
     m_simNamesId = NamesId(m_det.nodeId, EventNamesIndex+2);
@@ -468,7 +520,7 @@ unsigned OpalTTSim::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
     return 0;
 }
 
-void OpalTTSim::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
+void OpalTTSimL1::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
 #define L1PAYLOAD(ptype,f)                                              \
     ptype& f = *reinterpret_cast<ptype*>( reinterpret_cast<PdsL1::Xtc*>(&m_evtbuffer[m_evtindex])->payload() ); \
@@ -517,6 +569,145 @@ void OpalTTSim::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >&
 
 }
 
+OpalTTSimL2::OpalTTSimL2(const char* evtxtc, const char* timxtc, Opal& d, Parameters* para) :
+    m_det         (d),
+    m_para        (para),
+    m_simNamesId  (0,0),
+    m_framebuffer (2*1024*1024),
+    m_filesem     (Pds::Semaphore::FULL)
+{
+    int fd = open(evtxtc, O_RDONLY);
+    if (fd < 0) {
+        perror("Error opening file");
+        exit(1);
+    }    
+
+    m_iter = new XtcData::XtcFileIterator(fd, 0x400000);
+
+    fd = open(timxtc, O_RDONLY);
+    if (fd < 0) {
+        perror("Error opening file");
+        exit(1);
+    }    
+
+    m_timiter = new XtcData::XtcFileIterator(fd, 0x40000);
+}
+
+OpalTTSimL2::~OpalTTSimL2()
+{
+}
+
+unsigned OpalTTSimL2::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
+{
+    //  Add results into the dgram
+    m_simNamesId = NamesId(m_det.nodeId, EventNamesIndex+2);
+    Alg alg("simfex", 2, 0, 0);
+    Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), alg,
+                                      m_para->detType.c_str(), m_para->serNo.c_str(), m_simNamesId, m_para->detSegment);
+
+    FexDef fexDef;
+    fexNames.add(xtc, fexDef);
+    m_det.namesLookup()[m_simNamesId] = NameIndex(fexNames);
+
+    //  Retrieve the offline configuration for parsing the event data
+    Dgram* dg;
+#define FIND_CONFIG(iter,input)                                         \
+    while((dg=iter->next())) {                                          \
+        if (dg->service()==TransitionId::Configure) {                   \
+            input.process(&dg->xtc);                                    \
+            break;                                                      \
+        }                                                               \
+    }
+
+    FIND_CONFIG(m_iter,m_input);
+    FIND_CONFIG(m_timiter,m_timinput);
+
+#define DUMP_NAMES(input)                                               \
+    for(std::unordered_map<unsigned,NameIndex>::iterator it=input.namesLookup.begin(); \
+        it!=input.namesLookup.end(); it++) {                            \
+        printf("namesid 0x%x\n",it->first);                             \
+        Names& names = it->second.names();                              \
+        for (unsigned i = 0; i < names.num(); i++) {                    \
+            Name& name = names.get(i);                                  \
+            printf("  %s\n",name.name());                               \
+        }                                                               \
+    }                                                               
+
+    DUMP_NAMES(m_input);
+    DUMP_NAMES(m_timinput);
+
+    return 0;
+}
+
+void OpalTTSimL2::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& subframes)
+{
+    m_filesem.take();
+    Dgram* dg;
+#define FIND_L1A(iter,input)                                            \
+    while(1) {                                                          \
+        while((dg=iter->next())) {                                      \
+            if (dg->service()==TransitionId::L1Accept) {                \
+                input.process(&dg->xtc);                                \
+                break;                                                  \
+            }                                                           \
+        }                                                               \
+        if (dg)                                                         \
+            break;                                                      \
+        else {                                                          \
+            logging::info("Rewind input xtc\n");                        \
+            iter->rewind();                                             \
+        }                                                               \
+    }
+
+    FIND_L1A(m_iter,m_input);
+    FIND_L1A(m_timiter,m_timinput);
+
+    /*
+    CreateData cd(xtc, m_det.namesLookup(), m_simNamesId);
+
+    //  Insert the results
+    cd.set_value(FexDef::ampl      , t._amplitude);
+    cd.set_value(FexDef::fltpos    , t._position_pixel);
+    cd.set_value(FexDef::fltpos_ps , t._position_time);
+    cd.set_value(FexDef::fltposfwhm, t._position_fwhm);
+    cd.set_value(FexDef::nxtampl   , t._nxt_amplitude);
+    cd.set_value(FexDef::refampl   , t._ref_amplitude);
+    */
+
+            //Data& data = it->second->data(); 
+
+    //  Copy the ROI into a full image
+    {
+        unsigned namesId = m_input.namesLookup.begin()->first;
+        namesId &= ~0xff;
+        namesId |= 0x0a; // event names ID
+        
+        DescData descdata(*m_input.shapesdata[namesId], 
+                          m_input.namesLookup[namesId]);
+        memcpy(subframes[2].data(), descdata.get_array<uint8_t>(0).data(), subframes[2].num_elem());
+    }
+
+    // transfer event codes into EventInfo
+    {
+        unsigned namesId = m_timinput.namesLookup.begin()->first;
+        namesId &= ~0xff;
+        namesId |= 0x01; // event names ID
+        NameIndex&  index  = m_timinput.namesLookup[namesId];
+        ShapesData& shapes = *m_timinput.shapesdata[namesId];
+        DescData descdata(shapes, index);
+        EventInfo& info = *reinterpret_cast<EventInfo*>(subframes[3].data());
+        memcpy(info._seqInfo, descdata.get_array<uint8_t>(index.nameMap()["sequenceValues"]).data(), 18*sizeof(uint16_t));
+#ifdef DBUG
+        const uint16_t* p = (const uint16_t*)(info._seqInfo);
+        printf("seq:");
+        for(unsigned i=0; i<16; i++)
+            printf(" %04x",p[i]);
+        printf("\n");
+#endif
+    }
+    m_filesem.give();
+}
+
 void _load_xtc(std::vector<uint8_t>& buffer, const char* filename)
 {
     int fd = open(filename, O_RDONLY);
@@ -536,3 +727,27 @@ void _load_xtc(std::vector<uint8_t>& buffer, const char* filename)
         exit(3);
     }
 }
+
+int Drp::L2Iter::process(Xtc* xtc)
+{
+    switch (xtc->contains.id()) {
+    case (TypeId::Parent): {
+        iterate(xtc);
+        break;
+    }
+    case (TypeId::Names): {
+        Names& names = *(Names*)xtc;
+        namesLookup[names.namesId()] = NameIndex(names);
+        break;
+    }
+    case (TypeId::ShapesData): {
+        ShapesData& _shapesdata = *(ShapesData*)xtc;
+        shapesdata[_shapesdata.namesId()] = &_shapesdata;
+        break;
+    }
+    default:
+        break;
+    }
+    return Continue;
+}
+

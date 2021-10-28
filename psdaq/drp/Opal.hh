@@ -25,7 +25,8 @@ protected:
     void           _fatal_error(std::string errMsg);
 protected:
     friend class OpalTT;
-    friend class OpalTTSim;
+    friend class OpalTTSimL1;
+    friend class OpalTTSimL2;
 
     XtcData::NamesId  m_evtNamesId;
     unsigned          m_rows;

@@ -9,7 +9,8 @@
 #include <list>
 #include <math.h>
 
-#define DBUG
+//#define DBUG
+//#define DBUG2
 
 using namespace Drp;
 using namespace XtcData;
@@ -56,7 +57,10 @@ OpalTTFex::OpalTTFex(Parameters* para) :
   m_eventcodes_beam_incl (0),
   m_eventcodes_beam_excl (0),
   m_eventcodes_laser_incl(0),
-  m_eventcodes_laser_excl(0)
+  m_eventcodes_laser_excl(0),
+  m_sig_avg_sem          (Pds::Semaphore::FULL),
+  m_ref_avg_sem          (Pds::Semaphore::FULL),
+  m_sb_avg_sem           (Pds::Semaphore::FULL)
 {
   std::string fname = MLOOKUP(para->kwargs,"ttreffile",
                               para->detName+".ttref");
@@ -220,10 +224,10 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
   m_prescale_projections_counter = 0;
 
 #ifdef DBUG
-  printf("incl_beam size %d  excl_beam size %d\n",
+  printf("incl_beam size %zd  excl_beam size %zd\n",
          m_eventcodes_beam_incl.size(),
          m_eventcodes_beam_excl.size());
-  printf("incl_laser size %d  excl_laser size %d\n",
+  printf("incl_laser size %zd  excl_laser size %zd\n",
          m_eventcodes_laser_incl.size(),
          m_eventcodes_laser_excl.size());
 #endif
@@ -252,7 +256,9 @@ void OpalTTFex::reset()
   m_nxt_amplitude = -1;
 }
 
-OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& subframes)
+OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& subframes,
+                                       std::vector<double>& sigd,
+                                       std::vector<double>& refout)
 {
   m_cut[_NCALLS]++;
 
@@ -284,7 +290,13 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   bool nobeam   = !beam;
   bool nolaser  = !laser;
 
-  if (nolaser) { m_cut[_NOLASER]++; return NOLASER; }
+  if (nolaser) { 
+      m_cut[_NOLASER]++; 
+#ifdef DBUG
+      printf("-->NOLASER\n");
+#endif
+      return NOLASER; 
+  }
 
   unsigned shape[2];
   shape[0] = m_columns;
@@ -301,11 +313,15 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   }
 #endif
 
-  if (!f.size()) { m_cut[_FRAMESIZE]++; return INVALID; }
+  if (!f.size()) { 
+      m_cut[_FRAMESIZE]++; 
+#ifdef DBUG
+      printf("-->INVALID1\n");
+#endif
+      return INVALID; 
+  }
 
   m_prescale_image_counter++;
-
-  std::vector<double> sigd;
 
   //
   //  Project signal ROI
@@ -335,7 +351,9 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   // to be initialized in rolling_average
   // (and saved to a new file)
   if (sigd.size() != m_ref_avg.size()) {
-     m_ref_avg.resize(0);
+      m_ref_avg_sem.take();
+      m_ref_avg.resize(0);
+      m_ref_avg_sem.give();
   }
   
   // Checking that the projections of the ROIs are
@@ -369,10 +387,12 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   //  Correct projection for common mode found in sideband
   //
   if (m_use_sb_roi) {
+      m_sb_avg_sem.take();
       rolling_average(m_sb, m_sb_avg, m_sb_convergence);
 
       //    ndarray<const double,1> sbc = commonModeLROE(m_sb, m_sb_avg);
       std::vector<double>& sbc = m_sb_avg;
+      m_sb_avg_sem.give();
 
       if (m_use_ref_roi)
           for(unsigned i=0; i<m_sig.size(); i++) {
@@ -405,14 +425,22 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
       if (sigd[i]>m_project_minvalue)
           lcut=false;
 
-  if (lcut) { m_cut[_PROJCUT]++; return INVALID; }
+  if (lcut) { 
+      m_cut[_PROJCUT]++; 
+#ifdef DBUG
+      printf("-->INVALID2\n");
+#endif
+      return INVALID; 
+}
 
   if (nobeam) {
 
       // There is always a reference: either the ROI is used
       // or, if no ROI is used, the signal when NOBEAM is used
       _monitor_ref_sig( refd );
+      m_ref_avg_sem.take();
       rolling_average(refd, m_ref_avg, m_ref_convergence);
+      m_ref_avg_sem.give();
 
 #ifdef DBUG
       printf("--refavg--\n");
@@ -422,30 +450,45 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
 #endif
 
       m_cut[_NOBEAM]++;
+#ifdef DBUG
+      printf("-->NOBEAM\n");
+#endif
       return NOBEAM;
   }
   else if (m_use_ref_roi) {
       _monitor_ref_sig( refd );
+      m_ref_avg_sem.take();
       rolling_average(refd, m_ref_avg, m_ref_convergence);
+      m_ref_avg_sem.give();
   }
 
   _monitor_raw_sig( sigd );
 
   if (m_ref_avg.size()==0) {
       m_cut[_NOREF]++;
+#ifdef DBUG
+      printf("-->NOREF\n");
+#endif
       return INVALID;
   }
 
   //
   //  Average the signal
   //
+  m_sig_avg_sem.take();
   rolling_average(sigd, m_sig_avg, m_sig_convergence);
+  sigd = m_sig_avg;
+  m_sig_avg_sem.give();
 
   //
   //  Divide by the reference
   //
-  for(unsigned i=0; i<sigd.size(); i++)
-      sigd[i] = m_sig_avg[i]/m_ref_avg[i] - 1;
+  m_ref_avg_sem.take();
+  for(unsigned i=0; i<sigd.size(); i++) {
+      sigd[i] = sigd[i]/m_ref_avg[i] - 1;
+  }
+  refout = m_ref_avg;
+  m_ref_avg_sem.give();
       
   _monitor_sub_sig( sigd );
 
@@ -496,9 +539,15 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   }
   else {
     m_cut[_NOFITS]++;
+#ifdef DBUG
+    printf("-->NOFITS\n");
+#endif
     return INVALID;
   }
 
+#ifdef DBUG
+    printf("-->VALID\n");
+#endif
   return VALID;
 }
 
@@ -572,7 +621,7 @@ std::vector<int> project_x(NDArray<uint16_t>& f,
                            Roi& roi,
                            unsigned ped)
 {
-#ifdef DBUG
+#ifdef DBUG2
   printf("proj_x roi [%u,%u],[%u,%u]\n",
          roi.x0,roi.x1,roi.y0,roi.y1);
 #endif
@@ -817,7 +866,7 @@ std::vector<double> parab_fit(double* input,
 
 void OpalTTFex::_monitor_raw_sig (std::vector<double>& a) 
 {
-#ifdef DBUG
+#ifdef DBUG2
   printf("raw_sig: ");
   for(unsigned i=0; i<a.size(); i+=16)
     printf("%g ",a[i]);
@@ -826,7 +875,7 @@ void OpalTTFex::_monitor_raw_sig (std::vector<double>& a)
 }
 void OpalTTFex::_monitor_ref_sig (std::vector<double>& a)
 {
-#ifdef DBUG
+#ifdef DBUG2
   printf("ref_sig: ");
   for(unsigned i=0; i<a.size(); i+=16)
     printf("%g ",a[i]);
@@ -835,7 +884,7 @@ void OpalTTFex::_monitor_ref_sig (std::vector<double>& a)
 }
 void OpalTTFex::_monitor_sub_sig (std::vector<double>& a)
 {
-#ifdef DBUG
+#ifdef DBUG2
   printf("sub_sig: ");
   for(unsigned i=0; i<a.size(); i+=16)
     printf("%g ",a[i]);
@@ -844,7 +893,7 @@ void OpalTTFex::_monitor_sub_sig (std::vector<double>& a)
 }
 void OpalTTFex::_monitor_flt_sig (std::vector<double>& a)
 {
-#ifdef DBUG
+#ifdef DBUG2
   printf("flt_sig: ");
   for(unsigned i=0; i<a.size(); i+=16)
     printf("%g ",a[i]);

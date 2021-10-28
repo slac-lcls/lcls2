@@ -14,6 +14,7 @@ public:
     XtcFileIterator(int fd, size_t maxDgramSize);
     ~XtcFileIterator();
     Dgram* next();
+    void rewind();
 
 private:
     int _fd;
