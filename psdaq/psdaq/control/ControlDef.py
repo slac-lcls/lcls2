@@ -37,6 +37,7 @@ class ControlDef:
         'running'
     ]
 
+    CHUNKINFO = 252         # psdaq/drp/drp.hh
     STEPINFO = 253          # psdaq/drp/drp.hh
     PORT_BASE = 29980
     POSIX_TIME_AT_EPICS_EPOCH = 631152000
