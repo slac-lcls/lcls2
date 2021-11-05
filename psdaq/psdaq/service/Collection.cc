@@ -223,7 +223,8 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_alias(alias),
     m_pushSocket{&m_context, ZMQ_PUSH},
     m_subSocket{&m_context, ZMQ_SUB},
-    m_inprocRecv{&m_context, ZMQ_PAIR}
+    m_inprocRecv{&m_context, ZMQ_PAIR},
+    m_nsubscribe_partition(0)
 {
     m_pushSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(zmq_base_port + platform)});
 

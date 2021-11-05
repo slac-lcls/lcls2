@@ -77,6 +77,7 @@ private:
     ZmqSocket m_pushSocket;
     ZmqSocket m_subSocket;
     ZmqSocket m_inprocRecv;
+    unsigned m_nsubscribe_partition;
     size_t m_id;
     std::unordered_map<std::string, std::function<void(nlohmann::json&)> > m_handleMap;
 };
