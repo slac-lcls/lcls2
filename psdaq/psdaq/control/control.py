@@ -1128,10 +1128,24 @@ class CollectionManager():
         return True
 
     def condition_dealloc(self):
-        # TODO
-        self.lastTransition = 'dealloc'
-        logging.debug('condition_dealloc() returning True')
-        return True
+        # select procs with active flag set
+        ids = self.filter_active_set(self.ids)
+        msg = create_msg('dealloc')
+        self.back_pub.send_multipart([b'partition', json.dumps(msg)])
+
+        retlist, answers, reports = self.confirm_response(self.back_pull, 30000, msg['header']['msg_id'], ids, progress_txt='dealloc')
+        self.process_reports(reports)
+        dealloc_ok = (self.check_answers(answers) == 0)
+        ret = len(retlist)
+        if ret:
+            for alias in self.get_aliases(retlist):
+                self.report_error('%s did not respond to dealloc' % alias)
+            self.report_error('%d client did not respond to dealloc' % ret)
+            dealloc_ok = False
+        if dealloc_ok:
+            self.lastTransition = 'dealloc'
+        logging.debug('condition_dealloc() returning %s' % dealloc_ok)
+        return dealloc_ok
 
     def condition_beginrun(self):
         logging.debug('condition_beginrun(): self.recording = %s' % self.recording)

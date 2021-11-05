@@ -238,6 +238,7 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     // register callbacks
     m_handleMap["rollcall"] = std::bind(&CollectionApp::handleRollcall, this, std::placeholders::_1);
     m_handleMap["alloc"] = std::bind(&CollectionApp::handleAlloc, this, std::placeholders::_1);
+    m_handleMap["dealloc"] = std::bind(&CollectionApp::handleDealloc, this, std::placeholders::_1);
     m_handleMap["connect"] = std::bind(&CollectionApp::handleConnect, this, std::placeholders::_1);
     m_handleMap["disconnect"] = std::bind(&CollectionApp::handleDisconnect, this, std::placeholders::_1);
     m_handleMap["reset"] = std::bind(&CollectionApp::handleReset, this, std::placeholders::_1);
@@ -268,9 +269,12 @@ void CollectionApp::handleAlloc(const json &msg)
     // check if own id is in included in the msg
     auto it = std::find(msg["body"]["ids"].begin(), msg["body"]["ids"].end(), m_id);
     if (it != msg["body"]["ids"].end()) {
-        logging::debug("%s", "subscribing to partition");
-        m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "partition", 9);
-
+        // check if already subscribed
+        if (m_nsubscribe_partition==0) {
+            logging::debug("subscribing to partition");
+            m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "partition", 9);
+            m_nsubscribe_partition = 1;
+        }
         json info = connectionInfo();
         json body = {{m_level, info}};
         std::ostringstream ss;
@@ -280,9 +284,19 @@ void CollectionApp::handleAlloc(const json &msg)
 
         reply(answer);
     }
-    else {
+}
+
+void CollectionApp::handleDealloc(const json &msg)
+{
+    // check if subscribed
+    if (m_nsubscribe_partition==1) {
+        logging::debug("unsubscribing from partition");
         m_subSocket.setsockopt(ZMQ_UNSUBSCRIBE, "partition", 9);
+        m_nsubscribe_partition = 0;
     }
+    json body = json({});
+    json answer = createMsg("dealloc", msg["header"]["msg_id"], m_id, body);
+    reply(answer);
 }
 
 void CollectionApp::reply(const json& msg)
