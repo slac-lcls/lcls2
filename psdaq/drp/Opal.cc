@@ -289,6 +289,18 @@ void     Opal::slowupdate(XtcData::Xtc& xtc)
 
 void     Opal::shutdown()
 {
+    // returns borrowed reference
+    PyObject* pDict = _check(PyModule_GetDict(m_module));
+
+    char func_name[64];
+    sprintf(func_name,"%s_shutdown",m_para->detType.c_str());
+    // returns borrowed reference
+    PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
+
+    // returns new reference
+    PyObject* val = _check(PyObject_CallFunction(pFunc,"O",m_root));
+
+    Py_DECREF(val);
     if (m_tt) m_tt->shutdown();
 }
 

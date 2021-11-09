@@ -86,31 +86,6 @@ void BEBDetector::_init(const char* arg)
                                             m_para->verbose));
     }
 
-    {
-      sprintf(func_name,"%s_connect",m_para->detType.c_str());
-      PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
-
-      // returns new reference
-      PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"O",m_root));
-
-      m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
-
-      // there is currently a failure mode where the register reads
-      // back as zero or 0xffffffff (incorrectly). This is not the best
-      // longterm fix, but throw here to highlight the problem. the
-      // difficulty is that Matt says this register has to work
-      // so that an automated software solution would know which
-      // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
-      if (!m_paddr || m_paddr==0xffffffff) {
-          logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
-          abort();
-      }
-
-      _connect(mbytes);
-
-      Py_DECREF(mbytes);
-    }
-
     m_configScanner = new PythonConfigScanner(*m_para,*m_module);
 }
 
@@ -204,6 +179,34 @@ void BEBDetector::connect(const json& connect_json, const std::string& collectio
     logging::info("BEBDetector connect");
     m_connect_json = connect_json.dump();
     m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
+
+    char func_name[64];
+    PyObject* pDict = _check(PyModule_GetDict(m_module));
+    {
+      sprintf(func_name,"%s_connect",m_para->detType.c_str());
+      PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
+
+      // returns new reference
+      PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"Os",m_root,m_connect_json.c_str()));
+
+      m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
+
+      // there is currently a failure mode where the register reads
+      // back as zero or 0xffffffff (incorrectly). This is not the best
+      // longterm fix, but throw here to highlight the problem. the
+      // difficulty is that Matt says this register has to work
+      // so that an automated software solution would know which
+      // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
+      if (!m_paddr || m_paddr==0xffffffff) {
+          logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
+          abort();
+      }
+
+      _connect(mbytes);
+
+      Py_DECREF(mbytes);
+    }
+
 }
 
 void BEBDetector::event(XtcData::Dgram& dgram, PGPEvent* event)

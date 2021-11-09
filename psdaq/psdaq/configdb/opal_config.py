@@ -1,7 +1,11 @@
 from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.xpmmini import *
+from psdaq.configdb.barrier import Barrier
 from psdaq.cas.xpm_utils import timTxId
+import os
+import socket
+import logging
 import rogue
 import cameralink_gateway
 import time
@@ -12,6 +16,8 @@ import logging
 
 cl = None
 pv = None
+xpmpv_global = None
+barrier_global = Barrier()
 lm = 1
 
 #FEB parameters
@@ -19,6 +25,24 @@ lane = 0
 chan = 0
 ocfg = None
 group = None
+
+def supervisor_info(connect_json):
+    nworker = 0
+    supervisor=None
+    mypid = os.getpid()
+    myhostname = socket.gethostname()
+    for drp in connect_json['body']['drp'].values():
+        proc_info = drp['proc_info']
+        host = proc_info['host']
+        pid = proc_info['pid']
+        if host==myhostname:
+            if supervisor is None:
+                # we are supervisor if our pid is the first entry
+                supervisor = pid==mypid
+            else:
+                # only count workers for second and subsequent entries on this host
+                nworker+=1
+    return supervisor,nworker
 
 def dict_compare(new,curr,result):
     for k in new.keys():
@@ -39,12 +63,14 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     global cl
     global lm
     global lane
+    global xpmpv_global
 
     print('opal_init')
 
     lm=lanemask
     lane = (lm&-lm).bit_length()-1
     assert(lm==(1<<lane)) # check that lanemask only has 1 bit for opal
+    xpmpv_global = xpmpv
     myargs = { 'dev'         : dev,
                'pollEn'      : False,
                'initRead'    : True,
@@ -60,24 +86,6 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     cl = cameralink_gateway.ClinkDevRoot(**myargs)
     cl.__enter__()
 
-    # Open a new thread here
-    if xpmpv is not None:
-        cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
-        pv = PVCtrls(xpmpv,cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper)
-        pv.start()
-    else:
-        #  Empirically found that we need to cycle to LCLS1 timing
-        #  to get the timing feedback link to lock
-        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV1()
-        time.sleep(0.1)
-        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-        time.sleep(0.1)
-
-    # the opal seems to intermittently lose lock back to the XPM
-    # and empirically this fixes it.  not sure if we need the sleep - cpo
-    cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
-    time.sleep(0.1)
-
     return cl
 
 def opal_init_feb(slane=None,schan=None):
@@ -86,16 +94,42 @@ def opal_init_feb(slane=None,schan=None):
     if schan is not None:
         chan = int(schan)
 
-def opal_connect(cl):
+def opal_connect(cl, connect_json_str):
     global lane
     global chan
+    global barrier_global
+
+    connect_json = json.loads(connect_json_str)
+    print('***',connect_json['body']['drp'])
+
+    supervisor,nworker = supervisor_info(connect_json)
+    print('***',supervisor,nworker)
+    barrier_global.init(supervisor,nworker)
 
     txId = timTxId('opal')
 
-    rxId = cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
-    cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
+    # Open a new thread here
+    if xpmpv_global is not None:
+        cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
+        pv = PVCtrls(xpmpv_global,cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper)
+        pv.start()
+    else:
+        #  Empirically found that we need to cycle to LCLS1 timing
+        #  to get the timing feedback link to lock
+        if barrier_global.supervisor:
+            cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV1()
+            time.sleep(0.1)
+            cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+            time.sleep(0.1)
 
-    print('rxId {:x}'.format(rxId))
+            # the opal seems to intermittently lose lock back to the XPM
+            # and empirically this fixes it.  not sure if we need the sleep - cpo
+            cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+            time.sleep(0.1)
+            cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
+        barrier_global.wait()
+        rxId = cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
+        print('rxId {:x}'.format(rxId))
 
     # initialize the serial link
     uart = getattr(getattr(cl,'ClinkFeb[%d]'%lane).ClinkTop,'Ch[%d]'%chan)
@@ -114,12 +148,19 @@ def opal_connect(cl):
     opalid = uart._rx._last
     print('opalid {:}'.format(opalid))
 
+    # maybe should be done by supervisor only. not sure.
+    print('*** cpo: fix cl.StopRun')
     cl.StopRun()
 
     d = {}
     d['paddr'] = rxId
-    d['model'] = opalid.split('-')[1].split('/')[0]
-    d['serno'] = opalid.split(':')[1]
+    try:
+        d['model'] = opalid.split('-')[1].split('/')[0]
+        d['serno'] = opalid.split(':')[1]
+    except:
+        logging.warning('No opal model/serialnum available on camlink serial port. Configure camera.')
+        d['model'] = 'none'
+        d['serno'] = '1000' # not ideal: default to opal1000
 
     return d
 
@@ -191,6 +232,9 @@ def config_expert(cl, cfg):
 
         #  Apply
         if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path is not 'cl' ):
+            if 'Hsio.TimingRx' in path and not barrier_global.supervisor:
+                print('*** non-supervisor skipping setting',path,'to value',configdb_node)
+                continue
             rogue_node.set(configdb_node)
 
     #  Parameters like black-level need time to take affect (100ms?)
@@ -269,6 +313,7 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
 
     config_expert(cl,cfg['expert'])
 
+    # should be done by supervisor only, but XpmMini so doesn't really matter
     cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(True)
     getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).Blowoff.set(False)
     getattr(cl.ClinkPcie.Application,appLane).EventBuilder.Blowoff.set(False)
@@ -277,13 +322,17 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     cfg['firmwareVersion'] = cl.ClinkPcie.AxiPcieCore.AxiVersion.FpgaVersion.get()
     cfg['firmwareBuild'  ] = cl.ClinkPcie.AxiPcieCore.AxiVersion.BuildStamp.get()
 
-    cl.StartRun()
+    if barrier_global.supervisor:
+        cl.StartRun()
 
-    # must be done after StartRun because that routine sets MasterEnable
-    # to True for all lanes. That causes 100% deadtime from unused lanes.
-    for i in range(4):
-        # cpo: this should be done by the master in the multi-opal-drp case
-        cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[i].MasterEnable.set(i==lane)
+        # supervisor disables all lanes
+        # must be done after StartRun because that routine sets MasterEnable
+        # to True for all lanes. That causes 100% deadtime from unused lanes.
+        for i in range(4):
+            cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[i].MasterEnable.set(0)
+    barrier_global.wait()
+    # enable our lane
+    cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[lane].MasterEnable.set(1)
 
     ocfg = cfg
     return json.dumps(cfg)
@@ -323,7 +372,10 @@ def opal_update(update):
         copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
     return json.dumps(cfg)
 
-def opal_unconfig(cl):
+def opal_shutdown(cl):
+    # this routine gets called on disconnect transition
+    print('*** here in shutdown')
+    barrier_global.shutdown()
     cl.StopRun()
 
     return cl
