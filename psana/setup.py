@@ -280,7 +280,18 @@ if 'DGRAM' in BUILD_LIST :
                     extra_link_args=extra_link_args + openmp_link_args,
     )
     CYTHON_EXTS.append(ext)
-
+    
+    ext = Extension("psana.xtcupdateiter",
+                    sources=["psana/xtcupdateiter.pyx"],
+                    libraries = ['xtc'],
+                    include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
+                    library_dirs = [os.path.join(instdir, 'lib')],
+                    language="c++",
+                    extra_compile_args = extra_cxx_compile_args,
+                    extra_link_args = extra_link_args_rpath,
+    )
+    CYTHON_EXTS.append(ext)
+    
 
 if 'HSD' in BUILD_LIST :
     ext = Extension("hsd",
