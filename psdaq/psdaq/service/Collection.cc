@@ -269,12 +269,7 @@ void CollectionApp::handleAlloc(const json &msg)
     // check if own id is in included in the msg
     auto it = std::find(msg["body"]["ids"].begin(), msg["body"]["ids"].end(), m_id);
     if (it != msg["body"]["ids"].end()) {
-        // check if already subscribed
-        if (m_nsubscribe_partition==0) {
-            logging::debug("subscribing to partition");
-            m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "partition", 9);
-            m_nsubscribe_partition = 1;
-        }
+        subscribePartition();       // ZMQ_SUBSCRIBE
         json info = connectionInfo();
         json body = {{m_level, info}};
         std::ostringstream ss;
@@ -288,12 +283,7 @@ void CollectionApp::handleAlloc(const json &msg)
 
 void CollectionApp::handleDealloc(const json &msg)
 {
-    // check if subscribed
-    if (m_nsubscribe_partition==1) {
-        logging::debug("unsubscribing from partition");
-        m_subSocket.setsockopt(ZMQ_UNSUBSCRIBE, "partition", 9);
-        m_nsubscribe_partition = 0;
-    }
+    unsubscribePartition();     // ZMQ_UNSUBSCRIBE
     json body = json({});
     json answer = createMsg("dealloc", msg["header"]["msg_id"], m_id, body);
     reply(answer);
@@ -302,6 +292,26 @@ void CollectionApp::handleDealloc(const json &msg)
 void CollectionApp::reply(const json& msg)
 {
     m_pushSocket.send(msg.dump());
+}
+
+void CollectionApp::subscribePartition()
+{
+    // check if already subscribed
+    if (m_nsubscribe_partition==0) {
+        logging::debug("subscribing to partition");
+        m_subSocket.setsockopt(ZMQ_SUBSCRIBE, "partition", 9);
+        m_nsubscribe_partition = 1;
+    }
+}
+
+void CollectionApp::unsubscribePartition()
+{
+    // check if already subscribed
+    if (m_nsubscribe_partition==1) {
+        logging::debug("unsubscribing from partition");
+        m_subSocket.setsockopt(ZMQ_UNSUBSCRIBE, "partition", 9);
+        m_nsubscribe_partition = 0;
+    }
 }
 
 void CollectionApp::run()

@@ -71,6 +71,8 @@ protected:
     const std::string& getLevel() const {return m_level;}
     const std::string& getAlias() const {return m_alias;}
     ZmqContext& context() {return m_context;}
+    void subscribePartition();
+    void unsubscribePartition();
 private:
     std::string m_level;
     std::string m_alias;

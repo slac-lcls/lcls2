@@ -1076,6 +1076,7 @@ void UdpApp::handlePhase1(const json& msg)
 
 void UdpApp::handleReset(const nlohmann::json& msg)
 {
+    unsubscribePartition();    // ZMQ_UNSUBSCRIBE
     _shutdown();
     m_drp.reset();
 }
