@@ -1000,6 +1000,7 @@ void PvaApp::handlePhase1(const json& msg)
 
 void PvaApp::handleReset(const nlohmann::json& msg)
 {
+    unsubscribePartition();    // ZMQ_UNSUBSCRIBE
     _shutdown();
     m_drp.reset();
 }
