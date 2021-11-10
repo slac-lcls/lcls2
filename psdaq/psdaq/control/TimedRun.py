@@ -13,7 +13,7 @@ class TimedRun:
         self.push_socket.bind('inproc://timed_run')
         self.pull_socket = self.context.socket(zmq.PULL)
         self.pull_socket.connect('inproc://timed_run')
-        self.comm_thread = Thread(target=self.daq_communicator_thread, args=())
+        self.comm_thread = Thread(target=self.daq_communicator_thread, args=(), daemon=True)
         self.mon_thread = Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = Event()
         self.daqState = daqState

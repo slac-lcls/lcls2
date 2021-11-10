@@ -67,7 +67,11 @@ start()
 
 stop()
 {
-    pkill -u ${PROCMGRDUSER} procmgrd
+    if [ -n "$PROCMGRDUSERS" ]; then
+        pkill -u ${PROCMGRDUSERS} procmgrd
+    else
+        pkill -u ${PROCMGRDUSER} procmgrd
+    fi
     RETVAL=$?
     echo
 }

@@ -418,6 +418,7 @@ void PGPDetectorApp::handleReset(const json& msg)
 {
     PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
 
+    unsubscribePartition();    // ZMQ_UNSUBSCRIBE
     shutdown();
     m_drp.reset();
     if (m_exporter)  m_exporter.reset();

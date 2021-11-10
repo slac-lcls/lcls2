@@ -14,46 +14,50 @@ import psana.pscalib.calib.CalibConstants as cc
 from psana.pscalib.calib.MDBWeb_CLI import cdb_web, cdb, MODES # includes import from MDB_CLI
 
 
-def usage():
-    return '\nCommand: cdb <mode> [options]'\
-           '\n              modes: %s\n'%(', '.join(MODES))\
-         + '\nExamples:\n'\
-           '  cdb\n'\
-           '  cdb -h\n'\
-           '  cdb print\n'\
-           '  cdb print --dbname cdb_testexper --colname testdet_1234 [--docid <document-id>]\n'\
-           '  cdb print -d testdet_1234 [--docid <document-id>]\n'\
-           '  cdb print -e testexper\n'\
-           '  cdb convert -e cxif5315 -p <password>\n'\
-           '  cdb convert -e amox23616 -p <password>\n'\
-           '  cdb get -e testexper -d testdet_1234 -r 21 -c test_ctype\n'\
-           '  cdb get -e exp12345 -d detector_1234 -c testdict -r 23 -f mydict\n'\
-           '  cdb get -e cxic0415 -d cspad_0001 -c pedestals -s 1520977960 -f mypeds\n'\
-           '  cdb get -e cxic0415 -d cspad_0001 -c geometry -r 100 -f mygeo\n'\
-           '  cdb get -d cspad_0001 -c pedestals -r 100 -f mypeds\n'\
-           '  cdb get -d opal1000_test -c pop_rbfs -r 50 -i pkl -f my_pop_rbfs\n'\
-           '  cdb add -e cxic0415 -d cspad_0001 -c geometry -r 100 -f mygeo -i txt -l DEBUG\n'\
-           '  cdb add -e testexper -d testdet_1234 -c test_ctype -r 123 -f cm-confpars.txt -i txt -l DEBUG\n'\
-           '  cdb add -e exp12345 -d detector_1234 -c pedestals -r 123 -f mypeds.data\n'\
-           '  cdb add -e new55555 -d detnew_5555   -c pedestals -r 123 -f mypeds.data\n'\
-           '  cdb add -e amox27716 -d tmo_quadanode -c calibcfg -r 100 -f configuration_quad.txt -i txt\n'\
-           '  cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /reg/g/psdm/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.json -i json\n'\
-           '  cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /reg/g/psdm/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.pkl -i pkl\n'\
-           '  cdb add -e amox23616 -d xtcav -c pedestals -r 104 -f xtcav_peds.data -i xtcav\n'\
-           '  cdb deldb  --dbname cdb_testexper -C\n'\
-           '  cdb delcol --dbname cdb_testexper --colname testdet_1234 -C\n'\
-           '  cdb deldoc --dbname cdb_testexper --colname testdet_1234 --docid <document-id> -C\n'\
-           '  cdb deldoc -e exp12345 -d detector_1234 -c pedestals -r 123 -v 05 -u <username> -p <password> -w -C\n'\
-           '  cdb deldoc -e cxix25615 -d cspad_0001 -c pedestals -r 125 -u <username> -p <password> -w -C\n'\
-           '  cdb deldoc -e cxix25615 -d cspad_0001 -c pedestals -s 1520977960 -u <username> -p <password> -w -C\n'\
-           '  cdb delcol -e cxix25615 -d cspad_0001 -u <username> -p <password> -w -C\n'\
-           '  cdb delcol -d cspad_0001 -u <username> -p <password> -w -C\n'\
-           '  cdb deldb -e amox23616 -u <username> -p <password> -w -C\n'\
-           '  cdb deldb -d opal1000_0059 -u <username> -p <password> -w -C\n'\
-           '  cdb delall\n'\
-           '  cdb export --dbname cdb_exp12345\n'\
-           '  cdb import --dbname cdb_exp12345 --iofname cdb-...arc\n'\
-           '  cdb print --host=psanagpu115 --port=27017 --stout=1000'
+USAGE = '\nCommand: cdb <mode> [options]'\
+    '\n              modes: %s\n'%(', '.join(MODES))\
+  + '\nExamples:\n'\
+    '  cdb\n'\
+    '  cdb -h\n'\
+    '  cdb print\n'\
+    '  cdb print --dbname cdb_testexper --colname testdet_1234 [--docid <document-id>]\n'\
+    '  cdb print -d testdet_1234 [--docid <document-id>]\n'\
+    '  cdb print -e testexper\n'\
+    '  cdb convert -e cxif5315 -p <password>\n'\
+    '  cdb convert -e amox23616 -p <password>\n'\
+    '  cdb get -e testexper -d testdet_1234 -r 21 -c test_ctype\n'\
+    '  cdb get -e exp12345 -d detector_1234 -c testdict -r 23 -f mydict\n'\
+    '  cdb get -e cxic0415 -d cspad_0001 -c pedestals -s 1520977960 -f mypeds\n'\
+    '  cdb get -e cxic0415 -d cspad_0001 -c geometry -r 100 -f mygeo\n'\
+    '  cdb get -d cspad_0001 -c pedestals -r 100 -f mypeds\n'\
+    '  cdb get -d opal1000_test -c pop_rbfs -r 50 -i pkl -f my_pop_rbfs\n'\
+    '  cdb add -e cxic0415 -d cspad_0001 -c geometry -r 100 -f mygeo -i txt -l DEBUG\n'\
+    '  cdb add -e testexper -d testdet_1234 -c test_ctype -r 123 -f cm-confpars.txt -i txt -l DEBUG\n'\
+    '  cdb add -e exp12345 -d detector_1234 -c pedestals -r 123 -f mypeds.data\n'\
+    '  cdb add -e new55555 -d detnew_5555   -c pedestals -r 123 -f mypeds.data\n'\
+    '  cdb add -e amox27716 -d tmo_quadanode -c calibcfg -r 100 -f configuration_quad.txt -i txt\n'\
+    '  cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /reg/g/psdm/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.json -i json\n'\
+    '  cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /reg/g/psdm/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.pkl -i pkl\n'\
+    '  cdb add -e amox23616 -d xtcav -c pedestals -r 104 -f xtcav_peds.data -i xtcav\n'\
+    '  cdb add -e rixx45619 -d epixhr2x2_000001 -r1 -c pedestals -f mypeds -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
+    '  cdb add -e rixx45619 -d epixhr2x2_000001 -t 2021-10-01T00:00:00-0800 -c pedestals -f mypeds -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
+    '  cdb add -e rixx45619 -d epixhr2x2_000001 -t 2021-10-01T00:00:00-0800 -c geometry -f mygeo -i txt -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
+    '  cdb get -e rixx45619 -d epixhr2x2_000001 -r 100 -c pedestals -f mypeds.txt -S mytestdb\n'\
+    '  cdb print --dbname cdb_epixhr2x2_000001_mytestdb\n'\
+    '  cdb deldb  --dbname cdb_testexper -C\n'\
+    '  cdb delcol --dbname cdb_testexper --colname testdet_1234 -C\n'\
+    '  cdb deldoc --dbname cdb_testexper --colname testdet_1234 --docid <document-id> -C\n'\
+    '  cdb deldoc -e exp12345 -d detector_1234 -c pedestals -r 123 -v 05 -u <username> -p <password> -w -C\n'\
+    '  cdb deldoc -e cxix25615 -d cspad_0001 -c pedestals -r 125 -u <username> -p <password> -w -C\n'\
+    '  cdb deldoc -e cxix25615 -d cspad_0001 -c pedestals -s 1520977960 -u <username> -p <password> -w -C\n'\
+    '  cdb delcol -e cxix25615 -d cspad_0001 -u <username> -p <password> -w -C\n'\
+    '  cdb delcol -d cspad_0001 -u <username> -p <password> -w -C\n'\
+    '  cdb deldb -e amox23616 -u <username> -p <password> -w -C\n'\
+    '  cdb deldb -d opal1000_0059 -u <username> -p <password> -w -C\n'\
+    '  cdb delall\n'\
+    '  cdb export --dbname cdb_exp12345\n'\
+    '  cdb import --dbname cdb_exp12345 --iofname cdb-...arc\n'\
+    '  cdb print --host=psanagpu115 --port=27017 --stout=1000'
 
 
 def input_option_parser():
@@ -73,17 +77,18 @@ def input_option_parser():
     d_detector   = None
     d_ctype      = None # cc.list_calib_names[0], 'pedestals'
     d_dtype      = None
-    d_run        = None
+    d_run        = 0
     d_run_end    = 'end'
     d_time_stamp = None # '2001-09-08T18:46:40-0700'
     d_time_sec   = None
-    d_version    = None # 'V2021-01-21'
+    d_version    = None # 'V2021-10-08'
     d_confirm    = False
     d_iofname    = None # './fname.txt'
     d_comment    = 'no comment'
     d_strloglev  = 'INFO'
     d_webcli     = True
     d_cdbonly    = True
+    d_dbsuffix   = ''
 
     h_host       = 'DB host, default = %s' % d_host
     h_port       = 'DB port, default = %s' % d_port
@@ -109,8 +114,9 @@ def input_option_parser():
     h_strloglev  = 'logging level from list (%s), default = %s' % (STR_LEVEL_NAMES, d_strloglev)
     h_webcli     = 'use web-based CLI, default = %s' % d_webcli
     h_cdbonly    = 'command valid for CDB only, ignores other DBs, default = %s' % d_cdbonly
+    h_dbsuffix   = 'suffix of the PRIVATE DETECTOR-DB to deploy constants, default = %s' % str(d_dbsuffix)
 
-    parser = OptionParser(description='Command line interface to LCLS2 calibration data base', usage=usage())
+    parser = OptionParser(description='Command line interface to LCLS2 calibration data base', usage=USAGE)
 
     parser.add_option('--host',             default=d_host,       action='store', type='string', help=h_host)
     parser.add_option('--port',             default=d_port,       action='store', type='string', help=h_port)
@@ -136,6 +142,7 @@ def input_option_parser():
     parser.add_option('-l', '--strloglev',  default=d_strloglev,  action='store', type='string', help=h_strloglev)
     parser.add_option('-w', '--webcli',     default=d_webcli,     action='store_false',          help=h_webcli)
     parser.add_option('--cdbonly',          default=d_cdbonly,    action='store_false',          help=h_cdbonly)
+    parser.add_option('-S', '--dbsuffix',   default=d_dbsuffix,   action='store', type='string', help=h_dbsuffix)
 
     return parser
 

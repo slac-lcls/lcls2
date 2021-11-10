@@ -116,14 +116,15 @@ class MDBWeb_CLI(MDB_CLI):
         run        = kwa.get('run', None)
         vers       = kwa.get('version', None)
         prefix     = kwa.get('iofname', None)
+        dbsuffix   = kwa.get('dbsuffix', '')
         time_sec   = kwa.get('time_sec', None)
         time_stamp = kwa.get('time_stamp', None)
         tsformat   = kwa.get('tsformat', '%Y-%m-%dT%H:%M:%S%z') # e.g. 2020-05-22T10:39:07-0700
         if time_stamp is not None:
            time_sec = gu.time_sec_from_stamp(tsformat, time_stamp)
 
-        data,doc = wu.calib_constants(det, exp, ctype, run, time_sec, vers, url=cc.URL)
-        logger.info('data: %s' % str(data)[:150])
+        data,doc = wu.calib_constants(det, exp, ctype, run, time_sec, vers, url=cc.URL, dbsuffix=dbsuffix)
+        logger.debug('data: %s' % str(data)[:150])
         logger.info('doc: %s' % str(doc))
 
         if doc is None or data is None:
@@ -144,10 +145,12 @@ class MDBWeb_CLI(MDB_CLI):
         verb  = self.strloglev == 'DEBUG'
         det   = kwa.get('detector', None)
         exp   = kwa.get('experiment', None)
+        dbsuffix = kwa.get('dbsuffix', '')
 
         data = mu.data_from_file(fname, ctype, dtype, verb)
-        id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
-          wu.add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
+
+        resp = wu.deploy_constants(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
+        #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp if resp is not None
 
 
     def test(self):

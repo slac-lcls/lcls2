@@ -42,9 +42,12 @@ class EventManager(object):
         self.smd_view = view
         self.i_evt = 0
 
+        # Each chunk must fit in BD_CHUNKSIZE and we only fill bd buffers
+        # when bd_offset reaches the size of buffer.
+        self.BD_CHUNKSIZE = int(os.environ.get('PS_BD_CHUNKSIZE', 0x1000000))
         self._get_offset_and_size()
         if self.dm.n_files > 0:
-            self._fill_bd_bufs() # only fill bigdata buffers when bigdata files exist.
+            self._init_bd_chunks()
 
     def __iter__(self):
         return self
@@ -67,15 +70,20 @@ class EventManager(object):
         
         return evt
     
-    def _get_bd_offset_and_size(self, d, current_bd_offsets, i_evt, i_smd, i_first_L1):
+    def _get_bd_offset_and_size(self, d, current_bd_offsets, current_bd_chunk_sizes, i_evt, i_smd, i_first_L1):
         if self.use_smds[i_smd]: return
 
         self.bd_offset_array[i_evt, i_smd] = d.smdinfo[0].offsetAlg.intOffset
         self.bd_size_array[i_evt, i_smd] = d.smdinfo[0].offsetAlg.intDgramSize 
         
-        # check cutoff
-        if current_bd_offsets[i_smd] == self.bd_offset_array[i_evt, i_smd] and i_evt != i_first_L1:
+        # Check continuous chunk 
+        if current_bd_offsets[i_smd] == self.bd_offset_array[i_evt, i_smd]  \
+                and i_evt != i_first_L1                                     \
+                and current_bd_chunk_sizes[i_smd] + self.bd_size_array[i_evt, i_smd] < self.BD_CHUNKSIZE:
             self.cutoff_flag_array[i_evt, i_smd] = 0
+            current_bd_chunk_sizes[i_smd] += self.bd_size_array[i_evt, i_smd]
+        else:
+            current_bd_chunk_sizes[i_smd] = self.bd_size_array[i_evt, i_smd]
 
         current_bd_offsets[i_smd] = self.bd_offset_array[i_evt, i_smd] + self.bd_size_array[i_evt, i_smd]
         
@@ -93,7 +101,8 @@ class EventManager(object):
         i_smd = 0
         smd_chunk_pf = PacketFooter(view=self.smd_view)
         dtype = np.int64
-        self.bd_offset_array    = np.zeros((smd_chunk_pf.n_packets, self.n_smd_files), dtype=dtype) # row - events, col = smd files
+        # Row - events, col = smd files
+        self.bd_offset_array    = np.zeros((smd_chunk_pf.n_packets, self.n_smd_files), dtype=dtype) 
         self.bd_size_array      = np.zeros((smd_chunk_pf.n_packets, self.n_smd_files), dtype=dtype)
         self.smd_offset_array   = np.zeros((smd_chunk_pf.n_packets, self.n_smd_files), dtype=dtype)
         self.smd_size_array     = np.zeros((smd_chunk_pf.n_packets, self.n_smd_files), dtype=dtype)
@@ -101,8 +110,11 @@ class EventManager(object):
         self.cutoff_flag_array  = np.ones((smd_chunk_pf.n_packets, self.n_smd_files), dtype=dtype)
         self.services           = np.zeros(smd_chunk_pf.n_packets, dtype=dtype)
         smd_aux_sizes           = np.zeros(self.n_smd_files, dtype=dtype)
+        # For comparing if the next dgram should be in the same read
+        current_bd_offsets      = np.zeros(self.n_smd_files, dtype=dtype) 
+        # Current chunk size (gets reset at boundary)
+        current_bd_chunk_sizes  = np.zeros(self.n_smd_files, dtype=dtype) 
         i_evt = 0
-        current_bd_offsets = np.zeros(self.n_smd_files, dtype=dtype) # for comparing if the next dgram should be in the same read
         i_first_L1 = -1
         while offset < memoryview(self.smd_view).nbytes - memoryview(smd_chunk_pf.footer).nbytes:
             if i_smd == 0:
@@ -128,13 +140,14 @@ class EventManager(object):
                 if d.service() == TransitionId.L1Accept and self.dm.n_files > 0:
                     if i_first_L1 == -1:
                         i_first_L1 = i_evt
-                    self._get_bd_offset_and_size(d, current_bd_offsets, i_evt, i_smd, i_first_L1)
+                    self._get_bd_offset_and_size(d, current_bd_offsets, current_bd_chunk_sizes, i_evt, i_smd, i_first_L1)
                 elif d.service() == TransitionId.SlowUpdate and hasattr(d, 'chunkinfo'):
                     # We only support chunking on bigdata
                     if self.dm.n_files > 0: 
                         stream_id = self.dm.get_stream_id(i_smd)
                         _chunk_ids = [getattr(d.chunkinfo[seg_id].chunkinfo, 'chunkid') for seg_id in d.chunkinfo]
-                        if _chunk_ids: self.new_chunk_id_array[i_evt, i_smd] = _chunk_ids[0] # there must be only one unique epics var
+                        # There must be only one unique epics var
+                        if _chunk_ids: self.new_chunk_id_array[i_evt, i_smd] = _chunk_ids[0] 
             
             offset += smd_aux_sizes[i_smd]            
             i_smd += 1
@@ -142,6 +155,14 @@ class EventManager(object):
                 offset += PacketFooter.n_bytes * (self.n_smd_files + 1) # skip the footer
                 i_smd = 0  # reset to the first smd file
                 i_evt += 1 # done with this smd event
+        
+        # end while offset
+
+        # Precalculate cutoff indices
+        self.cutoff_indices = []
+        self.chunk_indices  = np.zeros(self.n_smd_files, dtype=dtype)
+        for i_smd in range(self.n_smd_files):
+            self.cutoff_indices.append(np.where(self.cutoff_flag_array[:, i_smd] == 1)[0])
 
     def _open_new_bd_file(self, i_smd, new_chunk_id):
         os.close(self.dm.fds[i_smd])
@@ -183,39 +204,42 @@ class EventManager(object):
         self._inc_prometheus_counter('seconds', en-st)
         return chunk
 
-    def _fill_bd_bufs(self):
-        """
-        Fill self.bigdatas 
-        1) If use_smd is set for this file, no filling.
-        2) For others,
-            - Ignore all transitions
-            - Identify how many times do we need to read
-              From cutoff_flag_array[:, i_smd], we get cutoff_indices as
-              [0, 1, 2, 12, 13, 18, 19] a list of index to where each read or copy will happen.
-        """
-        self.bd_bufs = [None] * self.n_smd_files
+    def _init_bd_chunks(self):
+        self.bd_bufs = [bytearray() for i in range(self.n_smd_files)]
         self.bd_buf_offsets = np.zeros(self.n_smd_files, dtype=np.int64)
-        for i_smd in range(self.n_smd_files):
-            # Skip copy and read if smd was replaced with bigdata
-            if self.use_smds[i_smd]: continue
-
-            bd_buf = bytearray()
-            cutoff_indices = np.where(self.cutoff_flag_array[:, i_smd] == 1)[0]
-            for cn_i, i_evt_cutoff in enumerate(cutoff_indices):
-                # Check in case we need to switch to the next bigdata chunk file
-                if self.services[i_evt_cutoff] != TransitionId.L1Accept:
-                    if self.new_chunk_id_array[i_evt_cutoff, i_smd] != 0:
-                        self._open_new_bd_file(i_smd, self.new_chunk_id_array[i_evt_cutoff, i_smd])
-                else:
-                    begin_chunk_offset = self.bd_offset_array[i_evt_cutoff, i_smd]
-                    if cn_i == cutoff_indices.shape[0] - 1:
-                        read_size = np.sum(self.bd_size_array[i_evt_cutoff:, i_smd])
-                    else:
-                        i_next_evt_cutoff = cutoff_indices[cn_i + 1]
-                        read_size = np.sum(self.bd_size_array[i_evt_cutoff:i_next_evt_cutoff, i_smd])
-                    bd_buf.extend(self._read(self.dm.fds[i_smd], read_size, begin_chunk_offset))
-            self.bd_bufs[i_smd] = bd_buf
     
+    def _fill_bd_chunk(self, i_smd):
+        """
+        Fill self.bigdatas for this given stream id 
+        No filling: No bigdata files or 
+           when this stream doesn't have at least a dgram. 
+        Detail:
+            - Ignore all transitions
+            - Read the next chunk
+              From cutoff_flag_array[:, i_smd], we get cutoff_indices as
+              [0, 1, 2, 12, 13, 18, 19] a list of index to where each read 
+              or copy will happen. 
+        """
+        # Check no filling
+        if self.use_smds[i_smd]: return
+        
+        # Reset buffer offset with new filling
+        self.bd_buf_offsets[i_smd] = 0
+
+        cutoff_indices = self.cutoff_indices[i_smd]
+        i_evt_cutoff = cutoff_indices[self.chunk_indices[i_smd]]
+        begin_chunk_offset = self.bd_offset_array[i_evt_cutoff, i_smd]
+
+        # Calculate read size:
+        # For last chunk, read size is the sum of all bd dgrams all the
+        # way to the end of the array. Otherwise, only sum to the next chunk.
+        if self.chunk_indices[i_smd] == cutoff_indices.shape[0] - 1:
+            read_size = np.sum(self.bd_size_array[i_evt_cutoff:, i_smd])
+        else:
+            i_next_evt_cutoff = cutoff_indices[self.chunk_indices[i_smd] + 1]
+            read_size = np.sum(self.bd_size_array[i_evt_cutoff:i_next_evt_cutoff, i_smd])
+        self.bd_bufs[i_smd] = self._read(self.dm.fds[i_smd], read_size, begin_chunk_offset)
+
     def _get_next_evt(self):
         """ Generate bd evt for different cases:
         1) No bigdata or Transition Event
@@ -234,12 +258,30 @@ class EventManager(object):
                 view = self.smd_view
                 offset = self.smd_offset_array[self.i_evt, i_smd]
                 size = self.smd_size_array[self.i_evt, i_smd]
+
+                # Non L1 always are counted as a new "chunk" since they
+                # ther cutoff flag is set (data coming from smd view 
+                # instead of bd chunk. We'll need to update chunk index for
+                # this smd when we see non L1.
+                self.chunk_indices[i_smd] += 1
+                
+                # Check in case we need to switch to the next bigdata chunk file
+                if self.services[self.i_evt] != TransitionId.L1Accept:
+                    if self.new_chunk_id_array[self.i_evt, i_smd] != 0:
+                        self._open_new_bd_file(i_smd, 
+                                self.new_chunk_id_array[self.i_evt, i_smd])
             else:
-                view = self.bd_bufs[i_smd]
+                # Fill up bd buf if this dgram doesn't fit in the current view
+                if self.bd_buf_offsets[i_smd] + self.bd_size_array[self.i_evt, i_smd] \
+                        > memoryview(self.bd_bufs[i_smd]).nbytes:
+                    self._fill_bd_chunk(i_smd)
+                    self.chunk_indices[i_smd] += 1
+                
                 # This is the offset of bd buffer! and not what stored in smd dgram,
                 # which in contrast points to the location of disk.
                 offset = self.bd_buf_offsets[i_smd] 
                 size = self.bd_size_array[self.i_evt, i_smd] 
+                view = self.bd_bufs[i_smd]
                 self.bd_buf_offsets[i_smd] += size
             
             if size > 0:  # handles missing dgram
@@ -247,6 +289,7 @@ class EventManager(object):
 
         self.i_evt += 1
         self._inc_prometheus_counter('evts')
-        return Event(dgrams=dgrams, run=self.dm.get_run()) 
+        evt = Event(dgrams=dgrams, run=self.dm.get_run()) 
+        return evt
 
 

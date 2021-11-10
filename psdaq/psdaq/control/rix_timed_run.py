@@ -52,13 +52,11 @@ def main():
 
     except KeyboardInterrupt:
         run.push_socket.send_string('shutdown') #shutdown the daq communicator thread
-        run.comm_thread.join()
         sys.exit('interrupted')
 
     run.unstage()
 
     run.push_socket.send_string('shutdown') #shutdown the daq communicator thread
-    run.comm_thread.join()
 
 if __name__ == '__main__':
     main()

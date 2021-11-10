@@ -31,6 +31,8 @@ class QWTextBrowser(CMWControlBase):
         kwa.setdefault('dirs', dirs_to_search())
 
         last_selected_fname = cp.last_selected_fname.value()
+        last_selected_data = cp.last_selected_data
+
         path = kwa['path']
         if os.path.basename(path)=='Select' and last_selected_fname is not None: path = last_selected_fname
 
@@ -42,11 +44,10 @@ class QWTextBrowser(CMWControlBase):
 
         self.hbox2 = QHBoxLayout()
         self.hbox2.addWidget(self.edi_txt)
-
         self.hbox1 = QHBoxLayout()
         self.hbox1.addSpacing(5)
         self.hbox1.addWidget(self.wfnm)
-        self.hbox1.addStretch(1)     
+        self.hbox1.addStretch(1)
         self.hbox1.addWidget(self.but_save)
         self.hbox1.addWidget(self.but_view)
         self.hbox1.addWidget(self.but_tabs)
@@ -56,15 +57,17 @@ class QWTextBrowser(CMWControlBase):
         self.vbox.addLayout(self.hbox1)
         self.vbox.addLayout(self.hbox2)
         self.setLayout(self.vbox)
-        
+
         self.wfnm.connect_path_is_changed_to_recipient(self.on_changed_fname)
- 
+
         self.set_tool_tips()
         self.set_style()
 
         cp.qwtextbrowser = self
 
         if os.path.basename(path) != 'Select': self.on_changed_fname(path)
+        elif last_selected_data: self.set_text(str(last_selected_data))
+        else: self.set_text('File name and data are missing... Select the file name.')
 
 
     def set_tool_tips(self):
@@ -76,20 +79,19 @@ class QWTextBrowser(CMWControlBase):
         CMWControlBase.set_style(self)
         self.setStyleSheet(style.styleBkgd)
         self.edi_txt.setReadOnly(not self.is_editable)
-        self.edi_txt.setStyleSheet(style.styleWhiteFixed) 
+        self.edi_txt.setStyleSheet(style.styleWhiteFixed)
         self.layout().setContentsMargins(0,0,0,0)
         #self.wfnm.layout().setContentsMargins(5,0,0,0)
 
 
-    #def resizeEvent(self, e):
-        #logger.debug('resizeEvent') 
-        #pass
-
-
-    #def moveEvent(self, e):
-        #logger.debug('moveEvent') 
-        #cp.posGUIMain = (self.pos().x(),self.pos().y())
-        #pass
+    def set_text(self, txt):
+        #self.edi_txt.setLineWrapColumnOrWidth(300)
+        #self.edi_txt.setLineWrapMode(self.edi_txt.NoWrap) # WidgetWidth) # FixedColumnWidth)
+        #self.edi_txt.document().setTextWidth(200)
+        #logger.debug('XXX lineWrapMode: %d' % self.edi_txt.lineWrapMode())
+        #logger.debug('XXX lineWrapColumnOrWidth: %d' % self.edi_txt.lineWrapColumnOrWidth())
+        self.edi_txt.setText(txt)
+        #print(txt)
 
 
     def on_changed_fname(self, fname):
@@ -100,9 +102,9 @@ class QWTextBrowser(CMWControlBase):
         txtbut = str(self.wfnm.but.text())
         if str(fname) != txtbut: self.wfnm.but.setText(str(fname))
 
-        self.edi_txt.setText(txt)
+        self.set_text(self, txt)(txt)
 
- 
+
     def closeEvent(self, e):
         logger.debug('closeEvent')
         CMWControlBase.closeEvent(self, e)
@@ -123,7 +125,7 @@ class QWTextBrowser(CMWControlBase):
         logger.info('Save in file:\n%s' % text)
         f=open(path,'w')
         f.write(text)
-        f.close() 
+        f.close()
 
 
 if __name__ == "__main__":

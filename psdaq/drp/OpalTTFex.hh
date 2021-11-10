@@ -1,5 +1,7 @@
 #pragma once
 
+#include "psdaq/service/Semaphore.hh"
+
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/Array.hh"
 #include "xtcdata/xtc/ConfigIter.hh"
@@ -45,7 +47,9 @@ public:
     void reset      ();
     void unconfigure();
     enum TTResult { VALID, NOBEAM, NOLASER, INVALID };
-    TTResult analyze    (std::vector< XtcData::Array<uint8_t> >& subframes);
+    TTResult analyze    (std::vector< XtcData::Array<uint8_t> >& subframes,
+                         std::vector<double>& sigout,
+                         std::vector<double>& refout);
  public:
     bool   write_image          () const { return m_prescale_image; }
     bool   write_projections    () const { return m_prescale_projections; }
@@ -104,8 +108,11 @@ private:
     std::vector<double> m_calib_poly;
 
     bool m_ref_empty;
+    Pds::Semaphore m_sig_avg_sem;
     std::vector<double> m_sig_avg; // accumulated signal
+    Pds::Semaphore m_ref_avg_sem;
     std::vector<double> m_ref_avg; // accumulated reference
+    Pds::Semaphore m_sb_avg_sem;
     std::vector<double> m_sb_avg;  // averaged sideband region
     std::vector<int>    m_sig;     // signal region projection
     std::vector<int>    m_sb;      // sideband region

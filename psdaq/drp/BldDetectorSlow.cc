@@ -983,6 +983,7 @@ void BldApp::handlePhase1(const json& msg)
 
 void BldApp::handleReset(const nlohmann::json& msg)
 {
+    unsubscribePartition();    // ZMQ_UNSUBSCRIBE
     _shutdown();
     m_drp.reset();
     if (m_exporter)  m_exporter.reset();

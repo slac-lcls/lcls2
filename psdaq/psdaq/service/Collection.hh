@@ -60,6 +60,7 @@ public:
 protected:
     void handleRollcall(const nlohmann::json& msg);
     void handleAlloc(const nlohmann::json& msg);
+    void handleDealloc(const nlohmann::json& msg);
     virtual nlohmann::json connectionInfo() = 0;
     virtual void handleConnect(const nlohmann::json& msg) = 0;
     virtual void handleDisconnect(const nlohmann::json& msg) {};
@@ -70,6 +71,8 @@ protected:
     const std::string& getLevel() const {return m_level;}
     const std::string& getAlias() const {return m_alias;}
     ZmqContext& context() {return m_context;}
+    void subscribePartition();
+    void unsubscribePartition();
 private:
     std::string m_level;
     std::string m_alias;
@@ -77,6 +80,7 @@ private:
     ZmqSocket m_pushSocket;
     ZmqSocket m_subSocket;
     ZmqSocket m_inprocRecv;
+    unsigned m_nsubscribe_partition;
     size_t m_id;
     std::unordered_map<std::string, std::function<void(nlohmann::json&)> > m_handleMap;
 };

@@ -26,7 +26,7 @@ def opal_cdict():
     help_str  = "-- user interface --"
     help_str += "\nstart_ns : nanoseconds from fiducial to exposure start"
     help_str += "\ngate_ns  : nanoseconds of exposure; rounded up to 10 microseconds"
-#    top.set("help:RO", help_str, 'CHARSTR')
+    top.set("help:RO", help_str, 'CHARSTR')
 
     top.define_enum('binEnum', {'x%d'%(2**key):key for key in range(4)})
 

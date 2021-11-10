@@ -10,6 +10,7 @@ add_library(xtc SHARED
     src/ConfigIter.cc
     src/DataIter.cc
     src/Smd.cc
+    src/XtcUpdateIter.cc
 )
 
 target_include_directories(xtc PUBLIC
@@ -40,6 +41,7 @@ install(FILES
     TypeId.hh
     VarDef.hh
     Smd.hh
+    XtcUpdateIter.hh
     DESTINATION include/xtcdata/xtc
 )
 

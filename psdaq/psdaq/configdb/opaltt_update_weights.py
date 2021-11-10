@@ -3,6 +3,27 @@ import sys
 import IPython
 import numpy as np
 import argparse
+from psdaq.configdb.opaltt_config_store import opaltt_cdict
+
+#  Copy values and shape from config dict into cdict
+def copyValues(din,dout,k=None):
+    if k is not None and ':RO' in k:
+        return
+    if isinstance(din,dict):
+        for key,value in din.items():
+            copyValues(value,dout,key if k is None else k+'.'+key)
+    else:
+        v = dout.get(k,withtype=True)
+        if v is None:
+            pass
+        elif len(v)>2:
+            print(f'Skipping {k}')
+        elif len(v)==1:
+            print(f'Updating {k}')
+            dout.set(k,din,'UINT8')
+        else:
+            print(f'Updating {k}')
+            dout.set(k,din,v[0])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Update weights and/or calib polynomial constants')
@@ -37,11 +58,15 @@ if __name__ == "__main__":
 
     if cfg is None: raise ValueError('Config for instrument/detname %s/%s not found. dbase url: %s, db_name: %s, config_style: %s'%(args.inst,detname,url,dbname,args.alias))
 
+    top = opaltt_cdict()
+
+    #  Need our own function to copy into top
+    copyValues(cfg,top)
 
     if len(weights.shape)==1:
         if weights.shape[0]>0:
             print(f'Storing weights of length {weights.shape[0]}')
-            cfg['fex.fir_weights'] =  weights
+            top.set('fex.fir_weights', weights, 'DOUBLE', override=True)
         else:
             print('Weights not updated')
     else:
@@ -51,11 +76,12 @@ if __name__ == "__main__":
     if len(calib.shape)==1:
         if calib.shape[0]>0:
             print(f'Storing calib of length {calib.shape[0]}')
-            cfg['fex.calib_poly'] = calib
+            top.set('fex.calib_poly', calib, 'DOUBLE', override=True)
         else:
             print('Calib not updated')
     else:
         raise ValueError('dimension of calib {} is > 1'.format(len(calib.shape)))
 
-    mycdb.modify_device(args.alias, cfg)
+    top.setInfo('opal', args.name, args.segm, args.id, 'No comment')
+    mycdb.modify_device(args.alias, top)
 

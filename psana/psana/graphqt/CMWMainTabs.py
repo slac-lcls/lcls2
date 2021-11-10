@@ -71,7 +71,7 @@ class CMWMainTabs(QWidget):
         self.setWindowIcon(icon.icon_monitor)
         self.setStyleSheet(style.styleBkgd)
         self.layout().setContentsMargins(0,0,0,0)
- 
+
 
     def make_tab_bar(self, start_tab_name):
         self.tab_bar = QTabBar()
@@ -169,22 +169,10 @@ class CMWMainTabs(QWidget):
     def on_tab_close_request(self, ind):
         logger.debug('on_tab_close_request ind:%d' % ind)
         #self.tab_bar.removeTab(ind)
-        #logger.debug('on_tab_close_request tab index:%d' % (itab))
 
 
     def on_tab_moved(self, inew, iold):
         logger.debug('on_tab_close_request tab index begin:%d -> end:%d' % (iold, inew))
-
- 
-#    def resizeEvent(self, e):
-#        self.frame.setGeometry(self.rect())
-#        logger.debug('resizeEvent: %s' % str(self.size()))
-
-
-#    def moveEvent(self, e):
-#        logger.debug('moveEvent - pos:' + str(self.position))       
-#        self.position = self.mapToGlobal(self.pos())
-#        self.position = self.pos()
 
 
     def closeEvent(self, e):
@@ -218,24 +206,24 @@ class CMWMainTabs(QWidget):
 
     def view_data(self, data=None, fname=None):
         from psana.pyalgos.generic.NDArrUtils import info_ndarr, np
+        cp.last_selected_data = data
+        cp.last_selected_fname.setValue(fname)
         if data is None and fname is None:
             logger.debug('data and fname are None - do not switch to viewer')
         elif data is None:
-            cp.last_selected_data = None
-            cp.last_selected_fname.setValue(fname)
             tabname = 'Text' if 'geometry' in fname or 'common_mode' in fname else 'Image'
             self.set_tab(tabname)
         elif isinstance(data, np.ndarray):
-            cp.last_selected_data = data
-            cp.last_selected_fname.setValue(fname)
             logger.info(info_ndarr(data, 'switch to Image Viewer to view data:'))
-            logger.warning('TBD: IV NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
+            #logger.warning('TBD: IV NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
             self.set_tab(tabname='Image')
         elif isinstance(data, str):
-            cp.last_selected_data = data
-            cp.last_selected_fname.setValue(fname)
             logger.info(info_ndarr(data, 'switch to Text Viewer to view data:'))
-            logger.warning('TBD: Text Browser NEEDS TO BE SET TO ACCEPT DATA DIRECTLY FROM cp.last_selected_data')
+            self.set_tab(tabname='Text')
+        elif isinstance(data, dict):
+            from psana.pscalib.calib.MDBConvertUtils import info_dict
+            logger.info('data is dict switch to Text Viewer to view data as info_dict')
+            cp.last_selected_data = info_dict(data, offset='  ', s='') #str(cp.last_selected_data)
             self.set_tab(tabname='Text')
         else:
             logger.debug('data of the selected document is not numpy array - do not switch to Image Viewer')
@@ -254,11 +242,11 @@ class CMWMainTabs(QWidget):
 
     if __name__ == "__main__":
       def keyPressEvent(self, e):
-        #logger.debug('keyPressEvent, key=%s' % e.key())       
+        #logger.debug('keyPressEvent, key=%s' % e.key())
         if   e.key() == Qt.Key_Escape:
             self.close()
 
-        elif e.key() == Qt.Key_V: 
+        elif e.key() == Qt.Key_V:
             self.view_hide_tabs()
 
         else:

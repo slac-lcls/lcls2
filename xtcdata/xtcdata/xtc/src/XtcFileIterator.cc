@@ -32,3 +32,8 @@ Dgram* XtcFileIterator::next()
 
     return sz != (ssize_t)payloadSize ? 0 : &dg;
 }
+
+void XtcFileIterator::rewind()
+{
+    lseek(_fd, 0, SEEK_SET);
+}

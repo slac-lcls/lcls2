@@ -28,7 +28,10 @@ def arr_median_limits(arr, amin=None, amax=None, nneg=None, npos=None, fraclo=0.
     """
     if not(None in (amin, amax)): return amin, amax
 
-    if None in (nneg, npos):
+    if arr is None:
+        logger.warning('arr is None, LIMITS CAN NOT BE DEFINED - RETURN 0,1')
+        return 0,1
+    elif None in (nneg, npos):
         qlo = np.quantile(arr, fraclo, interpolation='linear')
         qhi = np.quantile(arr, frachi, interpolation='linear')
         logger.debug('quantile(%.3f):%.1f quantile(%.3f):%.1f' % (fraclo, qlo, frachi, qhi))
@@ -43,30 +46,34 @@ def arr_median_limits(arr, amin=None, amax=None, nneg=None, npos=None, fraclo=0.
 
 class flexbase:
     def __init__(self, **kwa):
-        self.amin    = kwa.setdefault('amin', None)
-        self.amax    = kwa.setdefault('amax', None)
-        self.nneg    = kwa.setdefault('nneg', None)
-        self.npos    = kwa.setdefault('npos', None)
-        self.fraclo  = kwa.setdefault('fraclo', 0.05)
-        self.frachi  = kwa.setdefault('frachi', 0.95)
-        #self.alimits = kwa.setdefault('alimits', None)
+        self.amin   = kwa.get('amin', None)
+        self.amax   = kwa.get('amax', None)
+        self.nneg   = kwa.get('nneg', None)
+        self.npos   = kwa.get('npos', None)
+        self.fraclo = kwa.get('fraclo', 0.05)
+        self.frachi = kwa.get('frachi', 0.95)
 
-    def _intensity_limits(self, a, kwa):
+
+    def _intensity_limits(self, a, **kwa):
         """ returns tuple of intensity limits (amin, amax)
             NOTE: kwa is MUTABLE dict (NOT **kwa) because it needs (???) to be cleaned up of parameters not used in other places
         """
-        return arr_median_limits(
-            arr    = kwa.get('arr', a),\
-            amin   = kwa.pop('amin',   self.amin),
-            amax   = kwa.pop('amax',   self.amax),
-            nneg   = kwa.pop('nneg',   self.nneg),
-            npos   = kwa.pop('npos',   self.npos),
-            fraclo = kwa.pop('fraclo', self.fraclo),
-            frachi = kwa.pop('frachi', self.frachi))
+        arr = a if a is not None else kwa.get('arr', None)
+        return arr_median_limits(arr,\
+            amin   = kwa.get('amin',   self.amin),
+            amax   = kwa.get('amax',   self.amax),
+            nneg   = kwa.get('nneg',   self.nneg),
+            npos   = kwa.get('npos',   self.npos),
+            fraclo = kwa.get('fraclo', self.fraclo),
+            frachi = kwa.get('frachi', self.frachi))
 
 
     def move(self, x0=100, y0=10):
         gr.move_fig(self.fig, x0, y0)
+
+
+    def save(self, fname='fig.png'):
+        gr.save_fig(self.fig, fname=fname, verb=True)
 
 
     def axtitle(self, title=''):
@@ -79,16 +86,17 @@ class fleximage(flexbase):
         """
         """
         flexbase.__init__(self, **kwa)
-        arr = kwa.setdefault('arr', img)
-        amin, amax = self._intensity_limits(arr, kwa)
-        w_in = kwa.pop('w_in', 9)
-        h_in = kwa.pop('h_in', 8)
+        arr = kwa.get('arr', None)
+        if arr is None: arr = img #kwa['arr'] = arr = img
+        amin, amax = self._intensity_limits(arr, **kwa)
+        w_in = kwa.get('w_in', 9)
+        h_in = kwa.get('h_in', 8)
 
         aspratio = float(img.shape[0])/float(img.shape[1]) # heigh/width
 
         kwfig = {}
         _fig=gr.plt.figure(\
-                num   = kwa.get('num',None),\
+                num       = kwa.get('num',None),\
                 figsize   = kwa.get('figsize',(w_in, h_in)),\
                 dpi       = kwa.get('dpi',80),\
                 facecolor = kwa.get('facecolor','w'),\
@@ -122,7 +130,7 @@ class fleximage(flexbase):
     def update(self, img, **kwa):
         """use kwa: arr=arr, nneg=1, npos=3 OR arr, fraclo=0.05, frachi=0.95
         """
-        amin, amax = self._intensity_limits(img, kwa)
+        amin, amax = self._intensity_limits(img, **kwa)
         self.imsh.set_data(img)
         self.imsh.set_clim(amin, amax)
         #gr.show(mode=1)
@@ -133,8 +141,8 @@ class flexhist(flexbase):
         """
         """
         flexbase.__init__(self, **kwa)
-        w_in = kwa.pop('w_in', 6)
-        h_in = kwa.pop('h_in', 5)
+        w_in = kwa.get('w_in', 6)
+        h_in = kwa.get('h_in', 5)
 
         kwfig = {}
         _fig=gr.plt.figure(num   = kwa.get('num',None),\
@@ -160,13 +168,13 @@ class flexhist(flexbase):
     def update(self, arr, **kwa):
         """use kwa: arr=arr, nneg=1, npos=3 OR arr, fraclo=0.05, frachi=0.95
         """
-        amin, amax = self._intensity_limits(arr, kwa)
+        amin, amax = self._intensity_limits(arr, **kwa)
         self.axhi.cla()
-        kwh={'amp_range'  : (amin, amax),\
-             'bins'       : kwa.get('bins',100),\
-             'weights'    : kwa.get('weights',None),\
-             'color'      : kwa.get('color',None),\
-             'log'        : kwa.get('log',False),\
+        kwh={'amp_range' : (amin, amax),\
+             'bins'      : kwa.get('bins',100),\
+             'weights'   : kwa.get('weights',None),\
+             'color'     : kwa.get('color',None),\
+             'log'       : kwa.get('log',False),\
              }
         self.his = gr.hist(self.axhi, arr, **kwh)
 
@@ -181,10 +189,12 @@ class fleximagespec(flexbase):
         """
         """
         flexbase.__init__(self, **kwa)
-        arr = kwa.setdefault('arr', img)
-        amin, amax = self._intensity_limits(arr, kwa)
-        w_in = kwa.pop('w_in', 14)
-        h_in = kwa.pop('h_in', 8)
+        #arr = kwa.setdefault('arr', img)
+        arr = kwa.get('arr', None)
+        if arr is None: arr = img
+        amin, amax = self._intensity_limits(arr, **kwa)
+        w_in = kwa.get('w_in', 14)
+        h_in = kwa.get('h_in', 8)
         self.hcolor = kwa.get('color', 'lightgreen')
         self.hbins = kwa.get('bins', 100)
 
@@ -192,7 +202,7 @@ class fleximagespec(flexbase):
 
         kwfig = {}
         _fig=gr.plt.figure(\
-                num   = kwa.get('num',None),\
+                num       = kwa.get('num',None),\
                 figsize   = kwa.get('figsize',(w_in, h_in)),\
                 dpi       = kwa.get('dpi',80),\
                 facecolor = kwa.get('facecolor','w'),\
@@ -228,7 +238,7 @@ class fleximagespec(flexbase):
     def update_his(self, nda, **kwa):
         """use kwa: arr=arr, nneg=1, npos=3 OR arr, fraclo=0.05, frachi=0.95
         """
-        amp_range = amin, amax = self._intensity_limits(nda, kwa)
+        amp_range = amin, amax = self._intensity_limits(nda, **kwa)
 
         self.axhi.cla()
         self.axhi.invert_xaxis() # anvert x-axis direction
@@ -251,7 +261,6 @@ class fleximagespec(flexbase):
              'orientation': kwa.get('orientation',u'horizontal'),\
             }
 
-        #self.his = gr.hist(self.axhi, nda, **kwh)
         self.his = pp_hist(self.axhi, nda.ravel(), **kwh)
         wei, bins, patches = self.his
         gr.add_stat_text(self.axhi, wei, bins)
@@ -260,12 +269,13 @@ class fleximagespec(flexbase):
     def update(self, img, **kwa):
         """
         """
-        amin, amax = self._intensity_limits(img, kwa)
+        amin, amax = self._intensity_limits(img, **kwa)
         self.imsh.set_data(img)
         self.imsh.set_clim(amin, amax)
         self.axcb.set_ylim(amin, amax)
 
-        arr = kwa.get('arr', img)
+        arr = kwa.get('arr', None)
+        if arr is None: arr = img
         self.update_his(arr, **kwa)
 
 

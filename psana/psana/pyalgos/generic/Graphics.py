@@ -33,13 +33,13 @@ Usage::
     gr.drawCenter(axes, xy0, s=10, linewidth=1, color='w')
     gr.drawLine(axes, xarr, yarr, s=10, linewidth=1, color='w')
     gr.drawRectangle(axes, xy, width, height, linewidth=1, color='w')
- 
-    # Depricated methods from pyimgalgos.GlobalGraphics.py added for compatability  
+
+    # Depricated methods from pyimgalgos.GlobalGraphics.py added for compatability
 
     fig, axhi, hi = gr.hist1d(arr, bins=None, amp_range=None, weights=None, color=None, show_stat=True,
-                              log=False, figsize=(6,5), axwin=(0.15, 0.12, 0.78, 0.80), title=None, 
+                              log=False, figsize=(6,5), axwin=(0.15, 0.12, 0.78, 0.80), title=None,
                               xlabel=None, ylabel=None, titwin=None)
-    axim = gr.plotImageLarge(arr, img_range=None, amp_range=None, figsize=(12,10), title='Image', origin='upper', 
+    axim = gr.plotImageLarge(arr, img_range=None, amp_range=None, figsize=(12,10), title='Image', origin='upper',
                              window=(0.05, 0.03, 0.94, 0.94), cmap='inferno')
     fig, ax = gr.plotGraph(x,y, figsize=(5,10), window=(0.15, 0.10, 0.78, 0.86), pfmt='b-', lw=1)
 
@@ -74,23 +74,9 @@ import matplotlib.patches as patches
 
 plt.rcParams.update({'figure.max_open_warning': 0}) #get rid of warning: More than 20 figures have been opened.
 
-#----
 
 def dict_subset(d, keys):
     return {k:v for k,v in d.items() if k in keys}
-
-
-#def figure(**kwa):
-#    """ Creates and returns figure.
-#        figsize=(13,12), title='Image', dpi=80, facecolor='w', edgecolor='w', frameon=True
-#    """
-#    fig = plt.figure(**dict_subset(kwa, ('num', 'figsize', 'dpi', 'facecolor', 'edgecolor', 'frameon', 'FigureClass', 'clear',\
-#                                         'linewidth', 'subplotpars', 'tight_layout', 'constrained_layout')))
-#    move = kwa.get('move', None)
-#    title = kwa.get('title', '')
-#    if title: fig.canvas.set_window_title(title)
-#    if move: move_fig(fig, x0=move[0], y0=move[1])
-#    return fig
 
 
 def figure(**kwa):
@@ -147,7 +133,7 @@ def fig_axes(fig, **kwa):
     windows = kwa.get('windows', ((0.05,  0.03, 0.87, 0.93), (0.923, 0.03, 0.02, 0.93)))
     kwa.setdefault('projection',None) # projection{None, 'aitoff', 'hammer', 'lambert', 'mollweide', 'polar', 'rectilinear', str}, optional
     kwa.setdefault('polar', False)
-    #kwa.setdefault('sharex', )  #sharex, shareyAxes, optional - Share the x or y axis with sharex and/or sharey. 
+    #kwa.setdefault('sharex', )  #sharex, shareyAxes, optional - Share the x or y axis with sharex and/or sharey.
     #kwa.setdefault('sharey',)   # The axis will have the same limits, ticks, and scale as the axis of the shared axes.
     #kwa.setdefault('label', '') # label str -A label for the returned axes.
     kwa_aa = dict_subset(kwa,\
@@ -249,7 +235,7 @@ def proc_stat(weights, bins):
 
     sum_w  = weights.sum()
     if sum_w <= 0: return  0, 0, 0, 0, 0, 0, 0, 0, 0
-    
+
     sum_w2 = (weights*weights).sum()
     neff   = sum_w*sum_w/sum_w2 if sum_w2>0 else 0
     sum_1  = (weights*center).sum()
@@ -261,45 +247,35 @@ def proc_stat(weights, bins):
     m3     = (wd2*d) .sum() / sum_w
     m4     = (wd2*d2).sum() / sum_w
 
-    #sum_2  = (weights*center*center).sum()
-    #err2 = sum_2/sum_w - mean*mean
-    #err  = sqrt(err2)
-
     rms  = sqrt(m2) if m2>0 else 0
     rms2 = m2
-    
+
     err_mean = rms/sqrt(neff)
-    err_rms  = err_mean/sqrt(2)    
+    err_rms  = err_mean/sqrt(2)
 
     skew, kurt, var_4 = 0, 0, 0
 
     if rms>0 and rms2>0:
-        skew  = m3/(rms2 * rms) 
+        skew  = m3/(rms2 * rms)
         kurt  = m4/(rms2 * rms2) - 3
         var_4 = (m4 - rms2*rms2*(neff-3)/(neff-1))/neff if neff>1 else 0
-    err_err = sqrt(sqrt(var_4)) if var_4>0 else 0 
+    err_err = sqrt(sqrt(var_4)) if var_4>0 else 0
     #print  'mean:%f, rms:%f, err_mean:%f, err_rms:%f, neff:%f' % (mean, rms, err_mean, err_rms, neff)
     #print  'skew:%f, kurt:%f, err_err:%f' % (skew, kurt, err_err)
     return mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w
 
 
 def add_stat_text(axhi, weights, bins):
-    #mean, rms, err_mean, err_rms, neff = proc_stat(weights,bins)
     mean, rms, err_mean, err_rms, neff, skew, kurt, err_err, sum_w = proc_stat(weights,bins)
-    pm = r'$\pm$' 
+    pm = r'$\pm$'
     txt  = 'Entries=%d\nMean=%.2f%s%.2f\nRMS=%.2f%s%.2f\n' % (sum_w, mean, pm, err_mean, rms, pm, err_rms)
     txt += r'$\gamma1$=%.3f  $\gamma2$=%.3f' % (skew, kurt)
-    #txt += '\nErr of err=%8.2f' % (err_err)
-    xb,xe = axhi.get_xlim()     
-    yb,ye = axhi.get_ylim()     
-    #x = xb + (xe-xb)*0.84
-    #y = yb + (ye-yb)*0.66
-    #axhi.text(x, y, txt, fontsize=10, color='k', ha='center', rotation=0)
+    xb,xe = axhi.get_xlim()
+    yb,ye = axhi.get_ylim()
     x = xb + (xe-xb)*0.98
     y = yb + (ye-yb)*0.95
 
     if axhi.get_yscale() is 'log':
-        #print 'axhi.get_yscale():', axhi.get_yscale()
         log_yb, log_ye = log10(yb), log10(ye)
         log_y = log_yb + (log_ye-log_yb)*0.95
         y = 10**log_y
@@ -463,7 +439,7 @@ def fig_img_proj_cbar(img, **kwa):
     return fig, axim, axcb, imsh, cbar
 
 
-def drawCircle(axes, xy0, radius, **kwa): 
+def drawCircle(axes, xy0, radius, **kwa):
     kwa.setdefault('radius', radius)
     kwa.setdefault('linewidth', 1)
     kwa.setdefault('color', 'w')
@@ -472,7 +448,7 @@ def drawCircle(axes, xy0, radius, **kwa):
     axes.add_artist(circ)
 
 
-def drawCenter(axes, xy0, **kwa): 
+def drawCenter(axes, xy0, **kwa):
     s = kwa.pop('s', 10)
     kwa.setdefault('linewidth', 1)
     kwa.setdefault('color', 'w')
@@ -480,14 +456,14 @@ def drawCenter(axes, xy0, **kwa):
     d = 0.15*s
     arrx = (xc+s, xc-s, xc-d, xc,   xc)
     arry = (yc,   yc,   yc-d, yc-s, yc+s)
-    line = lines.Line2D(arrx, arry, **kwa)   
+    line = lines.Line2D(arrx, arry, **kwa)
     axes.add_artist(line)
 
 
-def drawLine(axes, xarr, yarr, **kwa): 
+def drawLine(axes, xarr, yarr, **kwa):
     kwa.setdefault('linewidth', 1)
     kwa.setdefault('color', 'w')
-    line = lines.Line2D(xarr, yarr, **kwa)   
+    line = lines.Line2D(xarr, yarr, **kwa)
     axes.add_artist(line)
 
 
@@ -501,16 +477,13 @@ def drawRectangle(axes, xy, width, height, **kwa):
 # DEPRICATED from GlobalGraphics
 #--------------------------------
 
-def plotImageLarge(arr, img_range=None, amp_range=None, figsize=(12,10), title='Image', origin='upper', window=(0.05,  0.03, 0.94, 0.94), cmap='inferno'): 
+def plotImageLarge(arr, img_range=None, amp_range=None, figsize=(12,10), title='Image', origin='upper', window=(0.05,  0.03, 0.94, 0.94), cmap='inferno'):
     fig  = plt.figure(figsize=figsize, dpi=80, facecolor='w', edgecolor='w', frameon=True)
     axim = fig.add_axes(window)
     imsh = axim.imshow(arr, interpolation='nearest', aspect='auto', origin=origin, extent=img_range, cmap=cmap)
     axim.autoscale(False)
     colb = fig.colorbar(imsh, pad=0.005, fraction=0.09, shrink=1, aspect=40) # orientation=1
     if amp_range is not None: imsh.set_clim(amp_range[0], amp_range[1])
-    #else: 
-    #    ave, rms = arr.mean(), arr.std()
-    #    imsh.set_clim(ave-1*rms, ave+5*rms)
     fig.canvas.set_window_title(title)
     return axim
 
@@ -538,7 +511,7 @@ def hist1d(arr, bins=None, amp_range=None, weights=None, color=None, show_stat=T
     return fig, axhi, hi
 
 
-def plotGraph(x,y, figsize=(5,10), window=(0.15, 0.10, 0.78, 0.86), pfmt='b-', lw=1): 
+def plotGraph(x,y, figsize=(5,10), window=(0.15, 0.10, 0.78, 0.86), pfmt='b-', lw=1):
     fig = plt.figure(figsize=figsize, dpi=80, facecolor='w', edgecolor='w', frameon=True)
     ax = fig.add_axes(window)
     ax.plot(x, y, pfmt, linewidth=lw)
@@ -559,34 +532,29 @@ def img_from_pixel_arrays(rows, cols, W=None, dtype=np.float32, vbase=0):
     rowsfl = rows.ravel()
     colsfl = cols.ravel()
 
-    rsize = int(rowsfl.max())+1 
+    rsize = int(rowsfl.max())+1
     csize = int(colsfl.max())+1
 
     weight = W.ravel() if W is not None else np.ones_like(rowsfl)
     img = vbase*np.ones((rsize,csize), dtype=dtype)
-    img[rowsfl,colsfl] = weight # Fill image array with data 
+    img[rowsfl,colsfl] = weight # Fill image array with data
     return img
-    
-#----
 
 #from psana.pscalib.geometry.GeometryAccess import img_from_pixel_arrays
 getImageFromIndexArrays = img_from_pixel_arrays # backward compatability
 
-#----
+
 
 if __name__ == "__main__":
 
   def test01():
-    """ imshow
-    """
+    """imshow"""
     img = random_standard(shape=(40,60), mu=200, sigma=25)
-    #fig = figure(figsize=(6,5), title='Test imshow', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=(100,10))    
-    #axim = add_axes(fig, axwin=(0.10, 0.08, 0.85, 0.88))
     fig, axim = fig_img_axes()
     move_fig(fig, x0=50, y0=20)
     imsh = imshow(axim, img, amp_range=None, extent=None,\
            interpolation='nearest', aspect='auto', origin='upper',\
-           orientation='horizontal', cmap='jet') 
+           orientation='horizontal', cmap='jet')
 
 
   def test02():
@@ -594,7 +562,7 @@ if __name__ == "__main__":
     """
     mu, sigma = 200, 25
     arr = random_standard((500,), mu, sigma)
-    #fig = figure(figsize=(6,5), title='Test hist', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=(100,10))    
+    #fig = figure(figsize=(6,5), title='Test hist', dpi=80, facecolor='w', edgecolor='w', frameon=True, move=(100,10))
     #axhi = add_axes(fig, axwin=(0.10, 0.08, 0.85, 0.88))
     fig, axhi = fig_img_axes()
     move_fig(fig, x0=50, y0=20)
@@ -618,10 +586,10 @@ if __name__ == "__main__":
        if imsh is None:
            imsh = imshow(axim, img, amp_range=None, extent=None,\
                   interpolation='nearest', aspect='auto', origin='upper',\
-                  orientation='horizontal', cmap='jet') 
+                  orientation='horizontal', cmap='jet')
        else:
            imsh.set_data(img)
-       show(mode=1)  # !!!!!!!!!!       
+       show(mode=1)  # !!!!!!!!!!
        #draw_fig(fig) # !!!!!!!!!!
 
 
@@ -663,7 +631,7 @@ if __name__ == "__main__":
            imsh.set_data(img)
            ave, rms = img.mean(), img.std()
            imsh.set_clim(ave-1*rms, ave+3*rms)
-       show(mode=1)  # !!!!!!!!!!       
+       show(mode=1)  # !!!!!!!!!!
        #draw_fig(fig) # !!!!!!!!!!
 
   def test06():
@@ -718,7 +686,6 @@ if __name__ == "__main__":
     show()
     sys.exit(msg)
 
-#----
 
 if __name__ == "__main__":
 
@@ -730,5 +697,5 @@ if __name__ == "__main__":
     do_test()
     sys.exit('End of test')
 
-#----
+# EOF
 

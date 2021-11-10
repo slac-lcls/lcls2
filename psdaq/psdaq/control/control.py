@@ -417,11 +417,12 @@ def levels_to_activedet(src):
     return dst
 
 class DaqPVA():
-    def __init__(self, *, platform, xpm_master, pv_base):
+    def __init__(self, *, platform, xpm_master, pv_base, report_error):
         self.platform         = platform
         self.xpm_master       = xpm_master
         self.pv_xpm_base      = pv_base + ':XPM:%d'         % xpm_master
         self.pv_xpm_part_base = pv_base + ':XPM:%d:PART:%d' % (xpm_master, platform)
+        self.report_error     = report_error
 
         # name PVs
         self.pvListMsgHeader  = []  # filled in at alloc
@@ -471,9 +472,9 @@ class DaqPVA():
         try:
             self.ctxt.put(pvName, val)
         except TimeoutError:
-            logging.error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
+            self.report_error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
         except Exception:
-            logging.error("self.ctxt.put('%s', %d) failed" % (pvName, val))
+            self.report_error("self.ctxt.put('%s', %d) failed" % (pvName, val))
         else:
             retval = True
             logging.debug("self.ctxt.put('%s', %d)" % (pvName, val))
@@ -524,7 +525,7 @@ class CollectionManager():
         self.readoutCumulative = 0
 
         # instantiate DaqPVA object
-        self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base)
+        self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base, report_error=self.report_error)
 
         # instantiate RunParams object
         self.runParams = RunParams(args.V, self, self.pva)
@@ -1127,10 +1128,24 @@ class CollectionManager():
         return True
 
     def condition_dealloc(self):
-        # TODO
-        self.lastTransition = 'dealloc'
-        logging.debug('condition_dealloc() returning True')
-        return True
+        # select procs with active flag set
+        ids = self.filter_active_set(self.ids)
+        msg = create_msg('dealloc')
+        self.back_pub.send_multipart([b'partition', json.dumps(msg)])
+
+        retlist, answers, reports = self.confirm_response(self.back_pull, 30000, msg['header']['msg_id'], ids, progress_txt='dealloc')
+        self.process_reports(reports)
+        dealloc_ok = (self.check_answers(answers) == 0)
+        ret = len(retlist)
+        if ret:
+            for alias in self.get_aliases(retlist):
+                self.report_error('%s did not respond to dealloc' % alias)
+            self.report_error('%d client did not respond to dealloc' % ret)
+            dealloc_ok = False
+        if dealloc_ok:
+            self.lastTransition = 'dealloc'
+        logging.debug('condition_dealloc() returning %s' % dealloc_ok)
+        return dealloc_ok
 
     def condition_beginrun(self):
         logging.debug('condition_beginrun(): self.recording = %s' % self.recording)
@@ -1582,8 +1597,8 @@ class CollectionManager():
 
         if missing_set:
             for client in missing_set:
-                self.report_error(client + ' did not respond to rollcall')
-            # Despite rollcall transition errors, allow state machine to advance.
+                self.report_warning(client + ' did not respond to rollcall')
+            # Despite rollcall transition warnings, allow state machine to advance.
             retval = True
             self.lastTransition = 'rollcall'
         else:
