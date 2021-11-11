@@ -887,12 +887,9 @@ int main(int argc, char** argv)
                                     ? optarg
                                     : kwargs_str + ", " + optarg;  break;
       case 'v':  ++prms.verbose;                                   break;
-      case 'h':                         // help
-        usage(argv[0]);
-        return 0;
-        break;
+      case '?':
+      case 'h':
       default:
-        printf("Unrecogized parameter '%c'\n", c);
         usage(argv[0]);
         return 1;
     }
@@ -900,6 +897,15 @@ int main(int argc, char** argv)
 
   logging::init(prms.instrument.c_str(), prms.verbose ? LOG_DEBUG : LOG_INFO);
   logging::info("logging configured");
+
+  if (optind < argc)
+  {
+    logging::error("Unrecognized argument:");
+    while (optind < argc)
+      logging::error("  %s ", argv[optind++]);
+    usage(argv[0]);
+    return 1;
+  }
 
   if (prms.partition == NO_PARTITION)
   {
@@ -944,6 +950,16 @@ int main(int argc, char** argv)
   logging::info("Partition Tag: '%s'", prms.tag.c_str());
 
   get_kwargs(kwargs_str, prms.kwargs);
+  for (const auto& kwargs : prms.kwargs)
+  {
+    if (kwargs.first == "forceEnet")    continue;
+    if (kwargs.first == "ep_fabric")    continue;
+    if (kwargs.first == "ep_domain")    continue;
+    if (kwargs.first == "ep_provider")  continue;
+    logging::critical("Unrecognized kwarg '%s=%s'\n",
+                      kwargs.first.c_str(), kwargs.second.c_str());
+    return 1;
+  }
 
   struct sigaction sigAction;
 

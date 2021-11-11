@@ -700,17 +700,41 @@ int main(int argc, char* argv[])
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
     para.serNo = "detnum1234";
 
-    get_kwargs(kwargs_str, para.kwargs);
-
     std::string pvCfgFile;
     if (optind < argc)
-        pvCfgFile = argv[optind];
+    {
+        pvCfgFile = argv[optind++];
+
+        if (optind < argc)
+        {
+            logging::error("Unrecognized argument:");
+            while (optind < argc)
+                logging::error("  %s ", argv[optind++]);
+            return 1;
+        }
+    }
     else {
         logging::critical("A PV config filename is mandatory");
         return 1;
     }
 
     try {
+        get_kwargs(kwargs_str, para.kwargs);
+        for (const auto& kwargs : para.kwargs)
+        {
+            if (kwargs.first == "forceEnet")         continue;
+            if (kwargs.first == "ep_fabric")         continue;
+            if (kwargs.first == "ep_domain")         continue;
+            if (kwargs.first == "ep_provider")       continue;
+            if (kwargs.first == "sim_length")        continue;  // XpmDetector
+            if (kwargs.first == "timebase")          continue;  // XpmDetector
+            if (kwargs.first == "pebbleBufSize")     continue;  // DrpBase
+            if (kwargs.first == "batching")          continue;  // DrpBase
+            logging::critical("Unrecognized kwarg '%s=%s'\n",
+                              kwargs.first.c_str(), kwargs.second.c_str());
+            return 1;
+        }
+
         Py_Initialize(); // for use by configuration
         Drp::EpicsArchApp app(para, pvCfgFile);
         app.run();

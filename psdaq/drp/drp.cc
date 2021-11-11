@@ -70,6 +70,13 @@ int main(int argc, char* argv[])
       default: logging::init(para.instrument.c_str(), LOG_DEBUG);    break;
     }
     logging::info("logging configured");
+    if (optind < argc)
+    {
+        logging::error("Unrecognized argument:");
+        while (optind < argc)
+            logging::error("  %s ", argv[optind++]);
+        return 1;
+    }
     // Check required parameters
     if (para.instrument.empty()) {
         logging::critical("-P: instrument name is mandatory");
@@ -98,6 +105,35 @@ int main(int argc, char* argv[])
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
     get_kwargs(kwargs_str, para.kwargs);
+    for (const auto& kwargs : para.kwargs)
+    {
+        if (kwargs.first == "forceEnet")         continue;  // PGPDetectorApp
+        if (kwargs.first == "ep_fabric")         continue;  // PGPDetectorApp
+        if (kwargs.first == "ep_domain")         continue;  // PGPDetectorApp
+        if (kwargs.first == "ep_provider")       continue;  // PGPDetectorApp
+        if (kwargs.first == "sim_length")        continue;  // XpmDetector
+        if (kwargs.first == "timebase")          continue;  // XpmDetector
+        if (kwargs.first == "xpmpv")             continue;  // BEBDetector
+        if (kwargs.first == "feb_lane")          continue;  // BEBDetector
+        if (kwargs.first == "feb_channel")       continue;  // BEBDetector
+        if (kwargs.first == "pebbleBufSize")     continue;  // DrpBase
+        if (kwargs.first == "batching")          continue;  // DrpBase
+        if (para.detType == "opal") {
+          if (kwargs.first == "simxtc")            continue;  // Opal
+          if (kwargs.first == "simxtc2")           continue;  // Opal
+          if (kwargs.first == "simtime")           continue;  // Opal
+          if (kwargs.first == "ttpv")              continue;  // Opal
+        }
+        if (para.detType == "tt")
+          if (kwargs.first == "ttreffile")         continue;  // OpalTTFex
+        if (para.detType == "hsd")
+          if (kwargs.first == "hsd_epics_prefix")  continue;  // Digitizer
+        if (para.detType == "wave8")
+          if (kwargs.first == "epics_prefix")      continue;  // Wave8
+        logging::critical("Unrecognized kwarg '%s=%s'\n",
+                          kwargs.first.c_str(), kwargs.second.c_str());
+        return 1;
+    }
 
     para.nworkers = 10;
     para.batchSize = 32; // Must be a power of 2

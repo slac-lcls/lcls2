@@ -1050,7 +1050,7 @@ void TebApp::_printParams(const EbParams& prms, unsigned groups) const
 
 
 static
-void usage(char *name, char *desc, const EbParams& prms)
+void usage(const char *name, const char *desc, const EbParams& prms)
 {
   fprintf(stderr, "Usage:\n");
   fprintf(stderr, "  %s [OPTIONS]\n", name);
@@ -1124,13 +1124,22 @@ int main(int argc, char **argv)
       case '?':
       case 'h':
       default:
-        usage(argv[0], (char*)"Trigger Event Builder application", prms);
+        usage(argv[0], "Trigger Event Builder application", prms);
         return 1;
     }
   }
 
   logging::init(prms.instrument.c_str(), prms.verbose ? LOG_DEBUG : LOG_INFO);
   logging::info("logging configured");
+
+  if (optind < argc)
+  {
+    logging::error("Unrecognized argument:");
+    while (optind < argc)
+      logging::error("  %s ", argv[optind++]);
+    usage(argv[0], "Trigger Event Builder application", prms);
+    return 1;
+  }
 
   if (prms.instrument.empty())
   {
@@ -1152,6 +1161,16 @@ int main(int argc, char **argv)
   }
 
   get_kwargs(kwargs_str, prms.kwargs);
+  for (const auto& kwargs : prms.kwargs)
+  {
+    if (kwargs.first == "forceEnet")    continue;
+    if (kwargs.first == "ep_fabric")    continue;
+    if (kwargs.first == "ep_domain")    continue;
+    if (kwargs.first == "ep_provider")  continue;
+    logging::critical("Unrecognized kwarg '%s=%s'\n",
+                      kwargs.first.c_str(), kwargs.second.c_str());
+    return 1;
+  }
 
   struct sigaction sigAction;
 

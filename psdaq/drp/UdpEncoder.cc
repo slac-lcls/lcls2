@@ -1186,6 +1186,13 @@ int main(int argc, char* argv[])
         default: logging::init(para.instrument.c_str(), LOG_DEBUG);  break;
     }
     logging::info("logging configured");
+    if (optind < argc)
+    {
+        logging::error("Unrecognized argument:");
+        while (optind < argc)
+            logging::error("  %s ", argv[optind++]);
+        return 1;
+    }
     if (para.instrument.empty()) {
         logging::warning("-P: instrument name is missing");
     }
@@ -1225,6 +1232,21 @@ int main(int argc, char* argv[])
 
     para.maxTrSize = 256 * 1024;
     try {
+        get_kwargs(kwargs_str, para.kwargs);
+        for (const auto& kwargs : para.kwargs) {
+            if (kwargs.first == "forceEnet")     continue;
+            if (kwargs.first == "ep_fabric")     continue;
+            if (kwargs.first == "ep_domain")     continue;
+            if (kwargs.first == "ep_provider")   continue;
+            if (kwargs.first == "sim_length")    continue;  // XpmDetector
+            if (kwargs.first == "timebase")      continue;  // XpmDetector
+            if (kwargs.first == "pebbleBufSize") continue;  // DrpBase
+            if (kwargs.first == "batching")      continue;  // DrpBase
+            if (kwargs.first == "match_tmo_ms")  continue;
+            logging::critical("Unrecognized kwarg '%s=%s'\n",
+                              kwargs.first.c_str(), kwargs.second.c_str());
+            return 1;
+        }
         Py_Initialize(); // for use by configuration
         Drp::UdpApp app(para, std::make_shared<Drp::UdpMonitor>(para));
         app.run();
