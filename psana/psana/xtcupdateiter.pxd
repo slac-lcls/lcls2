@@ -1,3 +1,4 @@
+from libc.stdint cimport uint8_t
 cimport numpy as cnp
 cnp.import_array() # needed
 
@@ -68,7 +69,15 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         char* get_buf()
         unsigned get_bufsize()
         void copy2buf(char* in_buf, unsigned in_size)
-        void addNames(Xtc& xtc, char* detName, unsigned nodeId, unsigned namesId, unsigned segment)
+        void addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
+            unsigned nodeId, unsigned namesId, unsigned segment,
+            char* algName, uint8_t major, uint8_t minor, uint8_t micro,
+            NewDef& newdef)
         void addData(Xtc& xtc, unsigned nodeId, unsigned namesId)
+
+    cdef cppclass NewDef:
+        NewDef() except +
+        void show()
+        void add(char* name, unsigned dtype, int rank)
 
 

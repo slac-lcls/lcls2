@@ -4,26 +4,15 @@
 using namespace XtcData;
 using std::string;
 
-class FexDef:public VarDef
-{
-public:
-  enum index
-    {
-      arrayFex,
-    };
-
-  FexDef()
-   {
-       NameVec.push_back({"arrayFex",Name::FLOAT,2});
-   }
-} FexDef;
-
 void fexExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
 {
     CreateData fex(parent, namesLookup, namesId);
 
     unsigned shape[MaxRank] = {2,3};
-    Array<float> arrayT = fex.allocate<float>(FexDef::arrayFex,shape);
+    
+    int newdef_index = 0;
+
+    Array<float> arrayT = fex.allocate<float>(newdef_index,shape);
     for(unsigned i=0; i<shape[0]; i++){
         for (unsigned j=0; j<shape[1]; j++) {
             arrayT(i,j) = 142.0+i*shape[1]+j;
@@ -257,16 +246,32 @@ void XtcUpdateIter::copy2buf(char* in_buf, unsigned in_size){
 }
 
 
-void XtcUpdateIter::addNames(Xtc& xtc, char* detName, unsigned nodeId, unsigned namesId, unsigned segment) 
+void XtcUpdateIter::addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
+        unsigned nodeId, unsigned namesId, unsigned segment,
+        char* algName, uint8_t major, uint8_t minor, uint8_t micro,
+        NewDef& newdef) 
 {
-    Alg hsdFexAlg("fex",4,5,6);
+    Alg alg0(algName,major,minor,micro);
     NamesId namesId0(nodeId, namesId);
-    Names& fexNames = *new(xtc) Names(detName, hsdFexAlg, "hsd","detnum1234", namesId0, segment);
-    fexNames.add(xtc, FexDef);
-    _namesLookup[namesId0] = NameIndex(fexNames);
+    Names& names0 = *new(xtc) Names(detName, alg0, detType, detId, namesId0, segment);
+    names0.add(xtc, newdef);
+    _namesLookup[namesId0] = NameIndex(names0);
 }
 
 void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId) {
     NamesId namesId0(nodeId, namesId);
-    fexExample(xtc, _namesLookup, namesId0);
+    //fexExample(xtc, _namesLookup, namesId0);
+    
+    CreateData fex(xtc, _namesLookup, namesId0);
+
+    unsigned shape[MaxRank] = {2,3};
+    
+    int newdef_index = 0;
+
+    Array<float> arrayT = fex.allocate<float>(newdef_index,shape);
+    for(unsigned i=0; i<shape[0]; i++){
+        for (unsigned j=0; j<shape[1]; j++) {
+            arrayT(i,j) = 142.0+i*shape[1]+j;
+        }
+    };
 }

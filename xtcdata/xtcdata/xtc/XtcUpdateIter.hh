@@ -9,10 +9,49 @@
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/ShapesData.hh"
 
+#include <iostream>
+#include <map>
+#include <iterator>
+#include <string>
+#include <typeinfo>
+
 #define BUFSIZE 0x1000000
 
 namespace XtcData
 {
+
+class NewDef : public XtcData::VarDef
+{
+public:
+    NewDef()
+    {
+        _n_elems = 0;
+    }
+
+    void add(char* name, unsigned dtype, int rank){
+        Name::DataType dt = (Name::DataType) dtype;
+        NameVec.push_back({name, dt, rank});
+        std::string s(name);
+        _index.insert(std::pair<std::string, int>(s, _n_elems));
+        _n_elems++;
+    }
+
+    void show() { 
+        printf("List of names\n"); 
+        for (auto i=NameVec.begin(); i!=NameVec.end(); ++i)
+            std::cout << i->name() << std::endl;
+        printf("List of indices\n");
+        std::map<std::string, int>::iterator itr;
+        for (itr = _index.begin(); itr != _index.end(); ++itr){
+            std::cout << '\t' << itr->first << '\t' << itr->second << '\n';
+        }
+    }
+
+private:
+    std::map<std::string, int> _index;
+    int _n_elems;
+
+}; // end class NewDef
 
 class XtcUpdateIter : public XtcData::XtcIterator
 {
@@ -41,7 +80,10 @@ public:
     }
 
     void copy2buf(char* in_buf, unsigned in_size);
-    void addNames(Xtc& xtc, char* detName, unsigned nodeId, unsigned namesId, unsigned segment);
+    void addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
+        unsigned nodeId, unsigned namesId, unsigned segment,
+        char* algName, uint8_t major, uint8_t minor, uint8_t micro,
+        NewDef& newdef);
     void addData(Xtc& xtc, unsigned nodeId, unsigned namesId);
 
 
@@ -51,6 +93,7 @@ private:
     char* _buf;
     unsigned _bufsize;
 }; // end class XtcUpdateIter
+
 
 }; // end namespace XtcData
 
