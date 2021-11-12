@@ -141,7 +141,7 @@ def wave8_init_feb(slane=None,schan=None):
     if slane is not None:
         lane = int(slane)
 
-def wave8_connect(epics_prefix):
+def wave8_connect(epics_prefix, connect_json_str):
 
     #  Switch to LCLS2 Timing
     #    Need this to properly receive RxId
