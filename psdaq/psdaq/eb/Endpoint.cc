@@ -2031,20 +2031,21 @@ static void comp_error_dump(struct fi_cq_err_entry* comp_err)
 
 ssize_t CompletionQueue::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, const char* cmd)
 {
-  struct fi_cq_err_entry comp_err;
-  //uint32_t err_data = 0xeeeeeeee;
-  //memset(&comp_err, 0xee, sizeof(comp_err));
-  //comp_err.buf      = nullptr;
-  //comp_err.err_data = &err_data;
-
   if ((comp_ret < 0) && (comp_ret != -FI_EAGAIN)) {
     _errno = (int) comp_ret;
     if (comp_ret == -FI_EAVAIL) {
+      struct fi_cq_err_entry comp_err;  memset(&comp_err, 0, sizeof(comp_err));
+      char* err_data[ERR_MSG_LEN];      memset(err_data, 0, sizeof(err_data));
+      comp_err.err_data      = err_data;
+      comp_err.err_data_size = sizeof(err_data);
       if (comp_error(&comp_err) > 0) {
-        char buf[ERR_MSG_LEN];
-        fi_cq_strerror(_cq, comp_err.prov_errno, comp_err.err_data, buf, sizeof(buf));
-        set_custom_error("%s: %s(%d)", cmd, buf, comp_err.prov_errno);
-        //comp_error_dump(&comp_err);
+        char buf[ERR_MSG_LEN];          memset(buf, 0, sizeof(buf));
+        auto msg = fi_cq_strerror(_cq, comp_err.prov_errno, comp_err.err_data, buf, sizeof(buf));
+        set_custom_error("%s: err: %d(%s), prov_errno: %d(%s), addl: '%s'", cmd,
+                         comp_err.err, fi_strerror(comp_err.err),
+                         comp_err.prov_errno, msg, buf);
+        fprintf(stderr, "%s:\n  Error data available:\n", __PRETTY_FUNCTION__);
+        comp_error_dump(&comp_err);
       }
     } else {
       set_error(cmd);
