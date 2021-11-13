@@ -81,10 +81,11 @@ public:
 
     void copy2buf(char* in_buf, unsigned in_size);
     void addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
-        unsigned nodeId, unsigned namesId, unsigned segment,
-        char* algName, uint8_t major, uint8_t minor, uint8_t micro,
-        NewDef& newdef);
-    void addData(Xtc& xtc, unsigned nodeId, unsigned namesId);
+            unsigned nodeId, unsigned namesId, unsigned segment,
+            char* algName, uint8_t major, uint8_t minor, uint8_t micro,
+            NewDef& newdef);
+    void addData(Xtc& xtc, unsigned nodeId, unsigned namesId, 
+            unsigned* shape, char* data, NewDef& newdef);
 
 
 private:

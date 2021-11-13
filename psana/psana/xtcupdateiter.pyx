@@ -1,6 +1,7 @@
 from libc.string    cimport memcpy
 from libcpp.string  cimport string
 from xtcupdateiter  cimport XtcUpdateIter
+from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 
 import os
 
@@ -110,8 +111,22 @@ cdef class PyXtcUpdateIter():
                 algName, detdef.alg.major, detdef.alg.minor, detdef.alg.micro,
                 pynewdef.cptr[0])
 
-    def add_data(self, PyXtc pyxtc, unsigned nodeId, unsigned namesId):
-        self.cptr.addData(pyxtc.cptr[0], nodeId, namesId)
+    def add_data(self, PyXtc pyxtc, unsigned nodeId, unsigned namesId, 
+            unsigned[:] shape, char[:,:] data, PyNewDef pynewdef):
+        cdef unsigned* shape_ptr
+        cdef Py_buffer shape_pybuf
+        PyObject_GetBuffer(shape, &shape_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
+        shape_ptr = <unsigned *>shape_pybuf.buf
+
+        cdef char* data_ptr
+        cdef Py_buffer data_pybuf
+        PyObject_GetBuffer(data, &data_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
+        data_ptr = <char *>data_pybuf.buf
+
+        self.cptr.addData(pyxtc.cptr[0], nodeId, namesId, shape_ptr, data_ptr, pynewdef.cptr[0])
+        
+        PyBuffer_Release(&shape_pybuf)
+        PyBuffer_Release(&data_pybuf)
 
 
 cdef class PyXtcFileIterator():

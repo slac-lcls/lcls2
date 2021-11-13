@@ -4,23 +4,6 @@
 using namespace XtcData;
 using std::string;
 
-void fexExample(Xtc& parent, NamesLookup& namesLookup, NamesId& namesId)
-{
-    CreateData fex(parent, namesLookup, namesId);
-
-    unsigned shape[MaxRank] = {2,3};
-    
-    int newdef_index = 0;
-
-    Array<float> arrayT = fex.allocate<float>(newdef_index,shape);
-    for(unsigned i=0; i<shape[0]; i++){
-        for (unsigned j=0; j<shape[1]; j++) {
-            arrayT(i,j) = 142.0+i*shape[1]+j;
-        }
-    };
-
-}
-
 template<typename T> static void _dump(const char* name,  Array<T> arrT, unsigned numWords, unsigned* shape, unsigned rank, const char* fmt)
 {
     printf("'%s' ", name);
@@ -258,20 +241,40 @@ void XtcUpdateIter::addNames(Xtc& xtc, char* detName, char* detType, char* detId
     _namesLookup[namesId0] = NameIndex(names0);
 }
 
-void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId) {
+void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
+        unsigned* shape, char* data, NewDef& newdef) {
+    for(unsigned i=0; i<MaxRank; i++){
+        printf("shape[%u]: %u ", i, shape[i]);
+    }
+    printf("\n");
+
+    uint8_t* cdata = (uint8_t*) data;
+    for(unsigned i=0; i<6; i++){
+        printf("data[%u]: %u", i, cdata[i]);
+    }
+    printf("\n");
+    
     NamesId namesId0(nodeId, namesId);
-    //fexExample(xtc, _namesLookup, namesId0);
-    
-    CreateData fex(xtc, _namesLookup, namesId0);
+    CreateData newData(xtc, _namesLookup, namesId0);
 
-    unsigned shape[MaxRank] = {2,3};
-    
-    int newdef_index = 0;
+    int newIndex = 0;
 
-    Array<float> arrayT = fex.allocate<float>(newdef_index,shape);
+    //newData.set_value(newIndex, *cdata);
+    //newData.set_array_shape(newIndex, shape);
+
+    Array<uint8_t> arrayT = newData.allocate<uint8_t>(newIndex, shape);
+    Shape shp(shape);
+    Name& name = _namesLookup[namesId0].names().get(newIndex);
+    printf("copy to ArrayT size=%u\n", shp.size(name)); 
+    memcpy(arrayT.data(), cdata, shp.size(name));
+    
+    //Array<uint8_t> arrayI(cdata, shape, name.rank());
+    //arrayT = arrayI;
+    
     for(unsigned i=0; i<shape[0]; i++){
         for (unsigned j=0; j<shape[1]; j++) {
-            arrayT(i,j) = 142.0+i*shape[1]+j;
+            //arrayT(i,j) = 142+i*shape[1]+j;
+            printf("arrayT(%u,%u)=%u\n", i, j, arrayT(i,j));
         }
-    };
+    }
 }
