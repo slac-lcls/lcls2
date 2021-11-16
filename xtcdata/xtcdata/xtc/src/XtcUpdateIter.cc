@@ -242,7 +242,7 @@ void XtcUpdateIter::addNames(Xtc& xtc, char* detName, char* detType, char* detId
 }
 
 void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
-        unsigned* shape, char* data, NewDef& newdef) {
+        unsigned* shape, char* data, NewDef& newdef, char* varname) {
     for(unsigned i=0; i<MaxRank; i++){
         printf("shape[%u]: %u ", i, shape[i]);
     }
@@ -257,19 +257,14 @@ void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
     NamesId namesId0(nodeId, namesId);
     CreateData newData(xtc, _namesLookup, namesId0);
 
-    int newIndex = 0;
-
-    //newData.set_value(newIndex, *cdata);
-    //newData.set_array_shape(newIndex, shape);
+    // TODO: Add check for newIndex >= 0
+    int newIndex = newdef.index(varname);
 
     Array<uint8_t> arrayT = newData.allocate<uint8_t>(newIndex, shape);
     Shape shp(shape);
     Name& name = _namesLookup[namesId0].names().get(newIndex);
     printf("copy to ArrayT size=%u\n", shp.size(name)); 
     memcpy(arrayT.data(), cdata, shp.size(name));
-    
-    //Array<uint8_t> arrayI(cdata, shape, name.rank());
-    //arrayT = arrayI;
     
     for(unsigned i=0; i<shape[0]; i++){
         for (unsigned j=0; j<shape[1]; j++) {

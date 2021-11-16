@@ -74,7 +74,7 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
                 char* algName, uint8_t major, uint8_t minor, uint8_t micro,
                 NewDef& newdef)
         void addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
-                unsigned* shape, char* data, NewDef& newdef)
+                unsigned* shape, char* data, NewDef& newdef, char* varname)
 
     cdef cppclass NewDef:
         NewDef() except +
