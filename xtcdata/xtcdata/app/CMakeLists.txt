@@ -55,7 +55,14 @@ target_link_libraries(smdwriter
     xtc
 )
 
-install(TARGETS xtcwriter smdwriter xtcreader amiwriter
+add_executable(xtcupdate
+    xtcupdate.cc
+)
+target_link_libraries(xtcupdate
+    xtc
+)
+
+install(TARGETS xtcwriter smdwriter xtcreader amiwriter xtcupdate
     EXPORT xtcdataTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
