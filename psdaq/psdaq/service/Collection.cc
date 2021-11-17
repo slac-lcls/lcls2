@@ -362,7 +362,7 @@ void CollectionApp::run()
                 json body;
                 json answer = createMsg("timingTransition", std::to_string(pid), getId(), body);
                 reply(answer);
-            } else if ((key == "fileReport") || (key == "error")) {
+            } else if ((key == "fileReport") || (key == "error") || (key == "chunkRequest")) {
                 json answer = createMsg(key.c_str(), "0", 0, msg["body"]);
                 logging::debug("reply %s: %s", key.c_str(), answer.dump().c_str());
                 reply(answer);
