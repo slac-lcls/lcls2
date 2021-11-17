@@ -71,9 +71,9 @@ int main(int argc, char* argv[])
     uint8_t minor = 5;
     uint8_t micro = 6;
 
-    NewDef newdef;
+    DataDef datadef;
     char defName[] = "arrayFex";
-    newdef.add(defName, Name::UINT8, 2);
+    datadef.add(defName, Name::UINT8, 2);
 
     while(dg = iter.next()) {
         if (nevent >= neventreq) break;
@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
             printf("[Configure] ");
             uiter.addNames(dg->xtc, detName, detType, detId,
                     nodeId, namesId, segment,
-                    algName, major, minor, micro, newdef);
+                    algName, major, minor, micro, datadef);
             uiter.iterate(&(dg->xtc));
         }
 
@@ -96,7 +96,7 @@ int main(int argc, char* argv[])
             unsigned shape[MaxRank] = {2,3};
             uint8_t data[6] = {141,142,143,144,145,146};
             uiter.addData(dg->xtc, nodeId, namesId, 
-                    shape, (char *)data, newdef, defName);
+                    shape, (char *)data, datadef, defName);
             uiter.iterate(&(dg->xtc));
         }
         printf("\n");

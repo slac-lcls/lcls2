@@ -37,11 +37,11 @@ class DataType:
     FLOAT   = 8
     DOUBLE  = 9
 
-cdef class PyNewDef:
-    cdef NewDef* cptr
+cdef class PyDataDef:
+    cdef DataDef* cptr
 
     def __init__(self):
-        self.cptr = new NewDef()
+        self.cptr = new DataDef()
         
     def show(self):
         self.cptr.show()
@@ -96,7 +96,7 @@ cdef class PyXtcUpdateIter():
         print(f'sizeof(Dgram): {sizeof(Dgram)}')
         self.cptr.copy2buf(<char *>pydg.cptr, sizeof(Dgram))
 
-    def add_names(self, PyXtc pyxtc, detdef, PyNewDef pynewdef):
+    def add_names(self, PyXtc pyxtc, detdef, PyDataDef pydatadef):
         # Passing string to c needs utf-8 encoding
         detName = detdef.name.encode()
         detType = detdef.dettype.encode()
@@ -109,10 +109,10 @@ cdef class PyXtcUpdateIter():
         self.cptr.addNames(pyxtc.cptr[0], detName, detType, detId,
                 detdef.nodeId, detdef.namesId, detdef.segment,
                 algName, detdef.alg.major, detdef.alg.minor, detdef.alg.micro,
-                pynewdef.cptr[0])
+                pydatadef.cptr[0])
 
     def add_data(self, PyXtc pyxtc, unsigned nodeId, unsigned namesId, 
-            unsigned[:] shape, char[:,:] data, PyNewDef pynewdef, varname):
+            unsigned[:] shape, char[:,:] data, PyDataDef pydatadef, varname):
         cdef unsigned* shape_ptr
         cdef Py_buffer shape_pybuf
         PyObject_GetBuffer(shape, &shape_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
@@ -124,7 +124,7 @@ cdef class PyXtcUpdateIter():
         data_ptr = <char *>data_pybuf.buf
 
         self.cptr.addData(pyxtc.cptr[0], nodeId, namesId, shape_ptr, 
-                data_ptr, pynewdef.cptr[0], varname.encode())
+                data_ptr, pydatadef.cptr[0], varname.encode())
         
         PyBuffer_Release(&shape_pybuf)
         PyBuffer_Release(&data_pybuf)

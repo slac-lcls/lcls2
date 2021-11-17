@@ -232,17 +232,17 @@ void XtcUpdateIter::copy2buf(char* in_buf, unsigned in_size){
 void XtcUpdateIter::addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
         unsigned nodeId, unsigned namesId, unsigned segment,
         char* algName, uint8_t major, uint8_t minor, uint8_t micro,
-        NewDef& newdef) 
+        DataDef& datadef) 
 {
     Alg alg0(algName,major,minor,micro);
     NamesId namesId0(nodeId, namesId);
     Names& names0 = *new(xtc) Names(detName, alg0, detType, detId, namesId0, segment);
-    names0.add(xtc, newdef);
+    names0.add(xtc, datadef);
     _namesLookup[namesId0] = NameIndex(names0);
 }
 
 void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
-        unsigned* shape, char* data, NewDef& newdef, char* varname) {
+        unsigned* shape, char* data, DataDef& datadef, char* varname) {
     for(unsigned i=0; i<MaxRank; i++){
         printf("shape[%u]: %u ", i, shape[i]);
     }
@@ -258,7 +258,7 @@ void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
     CreateData newData(xtc, _namesLookup, namesId0);
 
     // TODO: Add check for newIndex >= 0
-    int newIndex = newdef.index(varname);
+    int newIndex = datadef.index(varname);
 
     Array<uint8_t> arrayT = newData.allocate<uint8_t>(newIndex, shape);
     Shape shp(shape);

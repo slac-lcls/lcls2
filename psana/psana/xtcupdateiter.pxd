@@ -72,12 +72,12 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
                 unsigned nodeId, unsigned namesId, unsigned segment,
                 char* algName, uint8_t major, uint8_t minor, uint8_t micro,
-                NewDef& newdef)
+                DataDef& datadef)
         void addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
-                unsigned* shape, char* data, NewDef& newdef, char* varname)
+                unsigned* shape, char* data, DataDef& datadef, char* varname)
 
-    cdef cppclass NewDef:
-        NewDef() except +
+    cdef cppclass DataDef:
+        DataDef() except +
         void show()
         void add(char* name, unsigned dtype, int rank)
 

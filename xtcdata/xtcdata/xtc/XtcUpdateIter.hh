@@ -20,10 +20,10 @@
 namespace XtcData
 {
 
-class NewDef : public XtcData::VarDef
+class DataDef : public XtcData::VarDef
 {
 public:
-    NewDef()
+    DataDef()
     {
         _n_elems = 0;
     }
@@ -48,7 +48,7 @@ public:
     }
 
     int index(char* name) {
-        // Locate name index using name in newdef
+        // Locate name index using name in datadef
         std::string s(name);
         for (auto itr = _index.find(s); itr!=_index.end(); itr++){
             std::cout << itr->first << '\t' << itr->second << '\n';
@@ -61,7 +61,7 @@ private:
     std::map<std::string, int> _index;
     int _n_elems;
 
-}; // end class NewDef
+}; // end class DataDef
 
 class XtcUpdateIter : public XtcData::XtcIterator
 {
@@ -93,9 +93,9 @@ public:
     void addNames(Xtc& xtc, char* detName, char* detType, char* detId, 
             unsigned nodeId, unsigned namesId, unsigned segment,
             char* algName, uint8_t major, uint8_t minor, uint8_t micro,
-            NewDef& newdef);
+            DataDef& datadef);
     void addData(Xtc& xtc, unsigned nodeId, unsigned namesId, 
-            unsigned* shape, char* data, NewDef& newdef, char* varname);
+            unsigned* shape, char* data, DataDef& datadef, char* varname);
 
 
 private:
