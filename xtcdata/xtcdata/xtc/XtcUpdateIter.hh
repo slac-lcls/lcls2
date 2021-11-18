@@ -96,6 +96,8 @@ public:
             DataDef& datadef);
     void addData(Xtc& xtc, unsigned nodeId, unsigned namesId, 
             unsigned* shape, char* data, DataDef& datadef, char* varname);
+    Dgram& createTransition(unsigned transId, bool counting_timestamps,
+                        unsigned timestamp_val);
 
 
 private:

@@ -281,8 +281,8 @@ if 'DGRAM' in BUILD_LIST :
     )
     CYTHON_EXTS.append(ext)
     
-    ext = Extension("psana.xtcupdateiter",
-                    sources=["psana/xtcupdateiter.pyx"],
+    ext = Extension("dgrampy",
+                    sources=["psana/dgrampy.pyx"],
                     libraries = ['xtc'],
                     include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
                     library_dirs = [os.path.join(instdir, 'lib')],

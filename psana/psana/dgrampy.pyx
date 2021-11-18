@@ -1,9 +1,11 @@
 from libc.string    cimport memcpy
 from libcpp.string  cimport string
-from xtcupdateiter  cimport XtcUpdateIter
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
+from psana.dgrampy  cimport *
+from cpython cimport array
+import array
+from psana.psexp import TransitionId
 
-import os
 
 class AlgDef:
     def __init__(self, name, major, minor, micro):
@@ -13,15 +15,16 @@ class AlgDef:
         self.micro  = micro
 
 class DetectorDef:
-    def __init__(self, name, alg, dettype, detid,
-            nodeId, namesId, segment):
+    def __init__(self, name, dettype, detid):
         self.name       = name
-        self.alg        = alg
         self.dettype    = dettype
         self.detid      = detid
-        self.nodeId     = nodeId
-        self.namesId    = namesId
-        self.segment    = segment
+
+class NamesDef:
+    def __init__(self, nodeId, namesId):
+        self.nodeId = nodeId
+        self.namesId = namesId
+
 
 class DataType:
     """ This list has to match Name.DataType c++ 
@@ -96,23 +99,29 @@ cdef class PyXtcUpdateIter():
         print(f'sizeof(Dgram): {sizeof(Dgram)}')
         self.cptr.copy2buf(<char *>pydg.cptr, sizeof(Dgram))
 
-    def add_names(self, PyXtc pyxtc, detdef, PyDataDef pydatadef):
+    def names(self, PyXtc pyxtc, detdef, algdef, PyDataDef pydatadef, 
+            nodeId=None, namesId=None, segment=None):
         # Passing string to c needs utf-8 encoding
         detName = detdef.name.encode()
         detType = detdef.dettype.encode()
         detId   = detdef.detid.encode()
-        algName = detdef.alg.name.encode()
+        algName = algdef.name.encode()
+
+        if not nodeId: nodeId = 1
+        if not namesId: namesId = 1
+        if not segment: segment = 0
         
         # Dereference in cython with * is not allowed. You can either use [0] index or
         # from cython.operator import dereference
         # cdef Xtc xtc = dereference(pyxtc.cptr)
         self.cptr.addNames(pyxtc.cptr[0], detName, detType, detId,
-                detdef.nodeId, detdef.namesId, detdef.segment,
-                algName, detdef.alg.major, detdef.alg.minor, detdef.alg.micro,
+                nodeId, namesId, segment,
+                algName, algdef.major, algdef.minor, algdef.micro,
                 pydatadef.cptr[0])
+        return NamesDef(nodeId, namesId)
 
-    def add_data(self, PyXtc pyxtc, unsigned nodeId, unsigned namesId, 
-            unsigned[:] shape, char[:,:] data, PyDataDef pydatadef, varname):
+    def adddata(self, PyXtc pyxtc, namesdef, PyDataDef pydatadef, 
+            datadef_name, unsigned[:] shape, char[:,:] data):
         cdef unsigned* shape_ptr
         cdef Py_buffer shape_pybuf
         PyObject_GetBuffer(shape, &shape_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
@@ -123,11 +132,18 @@ cdef class PyXtcUpdateIter():
         PyObject_GetBuffer(data, &data_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
         data_ptr = <char *>data_pybuf.buf
 
-        self.cptr.addData(pyxtc.cptr[0], nodeId, namesId, shape_ptr, 
-                data_ptr, pydatadef.cptr[0], varname.encode())
+        self.cptr.addData(pyxtc.cptr[0], namesdef.nodeId, namesdef.namesId, shape_ptr, 
+                data_ptr, pydatadef.cptr[0], datadef_name.encode())
         
         PyBuffer_Release(&shape_pybuf)
         PyBuffer_Release(&data_pybuf)
+    
+    def createTransition(self, transId, counting_timestamps, timestamp_val):
+        pydgram = PyDgram()
+        pydgram.cptr = &(self.cptr.createTransition(transId, 
+                counting_timestamps, timestamp_val))
+        return pydgram
+
 
 
 cdef class PyXtcFileIterator():
@@ -142,3 +158,55 @@ cdef class PyXtcFileIterator():
         pydg = PyDgram()
         pydg.cptr = dg
         return pydg
+
+"""
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
+List of convenient functions that allow users to access
+above classes w/o typing them out.
+x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
+"""
+
+# Main class used for creating and updating xtc data
+uiter = PyXtcUpdateIter()
+
+def config(ts):
+    cfg = uiter.createTransition(TransitionId.Configure, 1, ts)
+    return cfg
+
+def alg(algname, major, minor, macro):
+    return AlgDef(algname, major, minor, macro)
+
+def det(detname, dettype, detid):
+    return DetectorDef(detname, dettype, detid)
+
+def names(PyXtc pyxtc, detdef, algdef, PyDataDef pydatadef, 
+        nodeId=None, namesId=None, segment=None):
+    return uiter.names(pyxtc, detdef, algdef, pydatadef, 
+            nodeId, namesId, segment)
+
+def adddata(PyXtc pyxtc, namesdef, PyDataDef pydatadef, datadict):
+    cdef array.array shape = array.array('I', [0,0,0,0,0])
+    cdef int i
+    for datadef_name, data in datadict.items():
+        for i in range(len(shape)):
+            if i < len(data.shape):
+                shape[i] = data.shape[i]
+            else:
+                shape[i] = 0
+        uiter.adddata(pyxtc, namesdef, pydatadef, datadef_name, shape, data)
+
+def datadef(datadict):
+    datadef = PyDataDef()
+    for key, val in datadict.items():
+        datadef.add(key, val[0], val[1])
+    return datadef
+
+
+def copy_dgram(PyDgram pydg):
+    uiter.copy_dgram(pydg)
+
+def get_buf():
+    return uiter.get_buf()
+
+def iterate(PyXtc pyxtc):
+    uiter.iterate(pyxtc)

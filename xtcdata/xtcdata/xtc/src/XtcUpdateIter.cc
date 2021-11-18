@@ -1,5 +1,6 @@
 
 #include "xtcdata/xtc/XtcUpdateIter.hh"
+#include <sys/time.h>
 
 using namespace XtcData;
 using std::string;
@@ -273,3 +274,23 @@ void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
         }
     }
 }
+
+Dgram& XtcUpdateIter::createTransition(unsigned utransId, 
+        bool counting_timestamps,
+        unsigned timestamp_val) {
+    TransitionId::Value transId = (TransitionId::Value) utransId;
+    TypeId tid(TypeId::Parent, 0);
+    uint64_t pulseId = 0;
+    uint32_t env = 0;
+    struct timeval tv;
+    void* buf = malloc(BUFSIZE);
+    if (counting_timestamps) {
+        tv.tv_sec = 1;
+        tv.tv_usec = timestamp_val;
+    } else {
+        gettimeofday(&tv, NULL);
+    }
+    Transition tr(Dgram::Event, transId, TimeStamp(tv.tv_sec, tv.tv_usec), env);
+    return *new(buf) Dgram(tr, Xtc(tid));
+}
+
