@@ -271,7 +271,7 @@ def wave8_config(prefix,connect_str,cfgtype,detname,detsegm,grp):
     top.set("expert.RawBuffers.TrigPrescale"      , 0,'UINT32')    # user config
 
     top.set("expert.BatcherEventBuilder.Bypass" , 0,'UINT8')
-    top.set("expert.BatcherEventBuilder.Timeout", 0,'UINT32')
+    top.set("expert.BatcherEventBuilder.Timeout", 156,'UINT32')      # timeout needs non-zero value (156 is 1 us)
     top.set("expert.BatcherEventBuilder.Blowoff", 0,'UINT8')
 
     top.set("expert.TriggerEventManager.TriggerEventBuffer.TriggerDelay"  , 0,'UINT32')  # user config

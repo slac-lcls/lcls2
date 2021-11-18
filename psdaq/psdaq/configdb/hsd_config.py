@@ -36,6 +36,12 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
 
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
 
+    # program the group
+    expert = cfg['expert']
+    expert['readoutGroup'] = group
+    expert['enable'   ] = 0
+    apply_config(ctxt,cfg)
+
     # fetch the current configuration for defaults not specified in the configuration
     ctxt = Context('pva')
     values = ctxt.get(epics_prefix+':CONFIG')

@@ -59,6 +59,9 @@ namespace Pds {
 
       _m.dumpPgp();
 
+      // Let any configure set the group, so messageDelay will be updated
+      _m.tem().det(fmc).group = group;
+
       _m.i2c_lock(I2cSwitch::PrimaryFmc);
 
       int testp = PVGET(test_pattern);
