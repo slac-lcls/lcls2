@@ -37,7 +37,7 @@ namespace Drp {
     {
     public:
         enum index {
-            ampl, fltpos, fltpos_ps, fltposfwhm, nxtampl, refampl, proj_sig, proj_ref
+            ampl, fltpos, fltpos_ps, fltposfwhm, nxtampl, refampl
         };
 
         FexDef()
@@ -49,31 +49,44 @@ namespace Drp {
             NameVec.push_back({"amplnxt"   , Name::DOUBLE});
             NameVec.push_back({"refampl"   , Name::DOUBLE});
         }
+    };
 
-        FexDef(const OpalTTFex& fex)
+    class ProjDef : public VarDef
+    {
+    public:
+        enum index {
+            proj_sig, proj_ref
+        };
+
+        ProjDef()
         {
-            NameVec.push_back({"ampl"      , Name::DOUBLE});
-            NameVec.push_back({"fltpos"    , Name::DOUBLE});
-            NameVec.push_back({"fltpos_ps" , Name::DOUBLE});
-            NameVec.push_back({"fltposfwhm", Name::DOUBLE});
-            NameVec.push_back({"amplnxt"   , Name::DOUBLE});
-            NameVec.push_back({"refampl"   , Name::DOUBLE});
-            if (fex.write_projections()) {
-                NameVec.push_back({"proj_sig"   , Name::DOUBLE, 1});
-                NameVec.push_back({"proj_ref"   , Name::DOUBLE, 1});
-            }
+            NameVec.push_back({"proj_sig"   , Name::DOUBLE, 1});
+            NameVec.push_back({"proj_ref"   , Name::DOUBLE, 1});
         }
     };
 
+    //
+    //  This Names doesn't satisfy our general rules:
+    //    its structure is configuration-dependent
+    //    its data also only appears on SlowUpdate
+    //    there is no detector interface for it yet
+    //
     class RefDef : public VarDef {
     public:
-        enum index { image, projection };
-        RefDef(const char* detname, const char* dettype) {
+        //        enum index { image, projection };
+        RefDef(const char* detname, const char* dettype,
+               bool write_image,
+               bool write_projection) {
             char buff[128];
-            sprintf(buff,"%s_%s_image",detname,dettype);
-            NameVec.push_back({buff, Name::UINT16, 2});
-            sprintf(buff,"%s_%s_projection",detname,dettype);
-            NameVec.push_back({buff, Name::DOUBLE, 1}); }
+            if (write_image) {
+                sprintf(buff,"%s_%s_image",detname,dettype);
+                NameVec.push_back({buff, Name::UINT16, 2});
+            }
+            if (write_projection) {
+                sprintf(buff,"%s_%s_projection",detname,dettype);
+                NameVec.push_back({buff, Name::DOUBLE, 1}); 
+            }
+        }
     };
 
     class OpalTT {
@@ -90,6 +103,7 @@ namespace Drp {
         Opal&                 m_det;
         Parameters*           m_para;
         XtcData::NamesId      m_fexNamesId;
+        XtcData::NamesId      m_projNamesId;
         XtcData::NamesId      m_refNamesId;
         Pds::Semaphore        m_background_sem;
         std::atomic<bool>     m_background_empty; // cache image for slow update transition
@@ -392,22 +406,36 @@ unsigned OpalTT::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
 
     // set up the names for L1Accept data
     { m_fexNamesId = NamesId(m_det.nodeId, EventNamesIndex+1);
-        Alg alg("ttfex", 2, 0, 0);
+        Alg alg("ttfex", 2, 1, 0);
         Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), alg,
                                           m_para->detType.c_str(), m_para->serNo.c_str(), m_fexNamesId, m_para->detSegment);
-        FexDef fexDef(m_fex);
+        FexDef fexDef;
         fexNames.add(xtc, fexDef);
         m_det.namesLookup()[m_fexNamesId] = NameIndex(fexNames);
     }
 
+    // and the conditional projections
+    { m_projNamesId = NamesId(m_det.nodeId, EventNamesIndex+2);
+        Alg alg("ttproj", 2, 0, 0);
+        Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), alg,
+                                          m_para->detType.c_str(), m_para->serNo.c_str(), m_projNamesId, m_para->detSegment);
+        ProjDef fexDef;
+        fexNames.add(xtc, fexDef);
+        m_det.namesLookup()[m_projNamesId] = NameIndex(fexNames);
+    }
+
     // set up the data for slow update
-    { m_refNamesId = NamesId(m_det.nodeId, EventNamesIndex+3);
+    if (m_fex.write_ref_image() || 
+        m_fex.write_ref_projection()) {
+        m_refNamesId = NamesId(m_det.nodeId, EventNamesIndex+3);
         Alg alg("opaltt", 2, 0, 0);
         // cpo: rename this away from "epics" for now because the
         // segment number can conflict with epicsarch.
         Names& bkgNames = *new(xtc) Names("epics_dontuse", alg,
                                           "epics_dontuse", m_para->serNo.c_str(), m_refNamesId, m_para->detSegment);
-        RefDef refDef(m_para->detName.c_str(),"opaltt");
+        RefDef refDef(m_para->detName.c_str(),"opaltt",
+                      m_fex.write_ref_image(),
+                      m_fex.write_ref_projection());
         bkgNames.add(xtc, refDef);
         m_det.namesLookup()[m_refNamesId] = NameIndex(bkgNames);
     }
@@ -451,15 +479,16 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
 #define copy_projection(atype, src, index) {                            \
             unsigned shape[1];                                          \
             shape[0] = src.size();                                      \
-            Array<atype> a = cd.allocate<atype>(index,shape);           \
+            Array<atype> a = cdp.allocate<atype>(index,shape);          \
             memcpy(a.data(), src.data(), src.size()*sizeof(atype)); }
 
         if (m_fex.write_evt_projections()) {
 #ifdef DBUG
-            printf("writing projections\n");
+            printf("writing projections sized %zu %zu\n",sig.size(),ref.size());
 #endif
-            copy_projection(double, sig, FexDef::proj_sig);
-            copy_projection(double, ref, FexDef::proj_ref);
+            CreateData cdp(xtc, m_det.namesLookup(), m_projNamesId);
+            copy_projection(double, sig, ProjDef::proj_sig);
+            copy_projection(double, ref, ProjDef::proj_ref);
         }
     }
     else if (result == OpalTTFex::NOBEAM) {
@@ -467,19 +496,22 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
         // Only do this once per SlowUpdate
         if (m_background_empty) {
             m_det.transitionXtc().extent = sizeof(Xtc);
-            CreateData cd(m_det.transitionXtc(), m_det.m_namesLookup, m_refNamesId);
-            {
-                unsigned shape[MaxRank];
-                shape[0] =m_fex.write_ref_image() ?  m_det.m_rows : 0;
-                shape[1] = m_det.m_columns;
-                Array<uint16_t> arrayT = cd.allocate<uint16_t>(RefDef::image, shape);
-                memcpy(arrayT.data(), subframes[2].data(), m_fex.write_ref_image() ? subframes[2].shape()[0] : 0);
-            }
-            {
-                unsigned shape[MaxRank];
-                shape[0] = m_fex.write_ref_projection() ? m_fex.ref_projection().size() : 0;
-                Array<double> arrayT = cd.allocate<double>(RefDef::projection, shape);
-                memcpy(arrayT.data(), m_fex.ref_projection().data(), shape[0]*sizeof(double));
+            if (m_fex.write_ref_image() || m_fex.write_ref_projection()) {
+                CreateData cd(m_det.transitionXtc(), m_det.m_namesLookup, m_refNamesId);
+                unsigned index=0;
+                if (m_fex.write_ref_image()) {
+                    unsigned shape[MaxRank];
+                    shape[0] = m_det.m_rows;
+                    shape[1] = m_det.m_columns;
+                    Array<uint16_t> arrayT = cd.allocate<uint16_t>(index++, shape);
+                    memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
+                }
+                if (m_fex.write_ref_projection()) {
+                    unsigned shape[MaxRank];
+                    shape[0] = m_fex.ref_projection().size();
+                    Array<double> arrayT = cd.allocate<double>(index++, shape);
+                    memcpy(arrayT.data(), m_fex.ref_projection().data(), shape[0]*sizeof(double));
+                }
             }
             m_background_empty = false;
         }
@@ -508,8 +540,8 @@ OpalTTSimL1::~OpalTTSimL1()
 unsigned OpalTTSimL1::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
 {
     //  Add results into the dgram
-    m_simNamesId = NamesId(m_det.nodeId, EventNamesIndex+2);
-    Alg alg("simfex", 2, 0, 0);
+    m_simNamesId = NamesId(m_det.nodeId, EventNamesIndex+4);
+    Alg alg("simfex", 2, 1, 0);
     Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), alg,
                                       m_para->detType.c_str(), m_para->serNo.c_str(), m_simNamesId, m_para->detSegment);
 
@@ -600,8 +632,8 @@ OpalTTSimL2::~OpalTTSimL2()
 unsigned OpalTTSimL2::configure(XtcData::Xtc& xtc, XtcData::ConfigIter& cfg)
 {
     //  Add results into the dgram
-    m_simNamesId = NamesId(m_det.nodeId, EventNamesIndex+2);
-    Alg alg("simfex", 2, 0, 0);
+    m_simNamesId = NamesId(m_det.nodeId, EventNamesIndex+4);
+    Alg alg("simfex", 2, 1, 0);
     Names& fexNames = *new(xtc) Names(m_para->detName.c_str(), alg,
                                       m_para->detType.c_str(), m_para->serNo.c_str(), m_simNamesId, m_para->detSegment);
 

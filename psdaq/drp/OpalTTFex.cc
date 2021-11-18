@@ -903,14 +903,14 @@ void OpalTTFex::_monitor_flt_sig (std::vector<double>& a)
 
 bool   OpalTTFex::write_evt_image      ()  
 {
-  bool r = m_prescale_image_counter==m_prescale_image;
+  bool r = m_prescale_image_counter>=m_prescale_image;
   if (m_prescale_image_counter >= m_prescale_image)
     m_prescale_image_counter = 0;
   return r;
 }
 bool   OpalTTFex::write_evt_projections() 
 {
-  bool r = m_prescale_projections_counter==m_prescale_projections;
+  bool r = m_prescale_projections_counter>=m_prescale_projections;
   if (m_prescale_projections_counter >= m_prescale_projections)
     m_prescale_projections_counter = 0;
   return r;
