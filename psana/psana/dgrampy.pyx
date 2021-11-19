@@ -138,7 +138,12 @@ cdef class PyXtcUpdateIter():
         PyBuffer_Release(&shape_pybuf)
         PyBuffer_Release(&data_pybuf)
     
-    def createTransition(self, transId, counting_timestamps, timestamp_val):
+    def createTransition(self, transId, timestamp_val):
+        counting_timestamps = 1
+        if timestamp_val == -1:
+            counting_timestamps = 0
+            timestamp_val = 0 
+
         pydgram = PyDgram()
         pydgram.cptr = &(self.cptr.createTransition(transId, 
                 counting_timestamps, timestamp_val))
@@ -169,9 +174,13 @@ x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-
 # Main class used for creating and updating xtc data
 uiter = PyXtcUpdateIter()
 
-def config(ts):
-    cfg = uiter.createTransition(TransitionId.Configure, 1, ts)
+def config(ts=-1):
+    cfg = uiter.createTransition(TransitionId.Configure, ts)
     return cfg
+
+def dgram(ts=-1):
+    dg = uiter.createTransition(TransitionId.L1Accept, ts)
+    return dg
 
 def alg(algname, major, minor, macro):
     return AlgDef(algname, major, minor, macro)
@@ -179,12 +188,14 @@ def alg(algname, major, minor, macro):
 def det(detname, dettype, detid):
     return DetectorDef(detname, dettype, detid)
 
-def names(PyXtc pyxtc, detdef, algdef, PyDataDef pydatadef, 
+def names(PyDgram pydg, detdef, algdef, PyDataDef pydatadef, 
         nodeId=None, namesId=None, segment=None):
+    pyxtc = pydg.get_pyxtc()
     return uiter.names(pyxtc, detdef, algdef, pydatadef, 
             nodeId, namesId, segment)
 
-def adddata(PyXtc pyxtc, namesdef, PyDataDef pydatadef, datadict):
+def adddata(PyDgram pydg, namesdef, PyDataDef pydatadef, datadict):
+    pyxtc = pydg.get_pyxtc()
     cdef array.array shape = array.array('I', [0,0,0,0,0])
     cdef int i
     for datadef_name, data in datadict.items():
@@ -208,5 +219,6 @@ def copy_dgram(PyDgram pydg):
 def get_buf():
     return uiter.get_buf()
 
-def iterate(PyXtc pyxtc):
+def iterate(PyDgram pydg):
+    pyxtc = pydg.get_pyxtc()
     uiter.iterate(pyxtc)
