@@ -111,10 +111,11 @@ int EbLfLink::recvU32(uint32_t*   u32,
 {
   ssize_t  rc;
   uint64_t data;
-  if ((rc = poll(&data, 1000)))
+  if ((rc = poll(&data, 5000)))
   {
-    fprintf(stderr, "%s:\n  Failed to receive %s from peer: %s\n",
-            __PRETTY_FUNCTION__, name, _ep->error());
+    const char* errMsg = rc == -FI_EAGAIN ? "Timed out" : _ep->error();
+    fprintf(stderr, "%s:\n  Failed to receive %s from %s: %s\n",
+            __PRETTY_FUNCTION__, name, peer, errMsg);
     return rc;
   }
   *u32 = data;
@@ -133,8 +134,9 @@ int EbLfLink::sendU32(uint32_t    u32,
   uint64_t imm = u32;
   if ((rc = post(nullptr, 0, imm)))
   {
-    fprintf(stderr, "%s:\n  Failed to send %s to peer: %s\n",
-            __PRETTY_FUNCTION__, name, _ep->error());
+    const char* errMsg = rc == -FI_ETIMEDOUT ? "Timed out" : _ep->error();
+    fprintf(stderr, "%s:\n  Failed to send %s to %s: %s\n",
+            __PRETTY_FUNCTION__, name, peer, errMsg);
     return rc;
   }
 
@@ -153,10 +155,11 @@ int EbLfLink::recvMr(RemoteAddress& ra,
   for (unsigned i = 0; i < sizeof(ra)/sizeof(*ptr); ++i)
   {
     uint64_t imm;
-    if ((rc = poll(&imm, 1000)))
+    if ((rc = poll(&imm, 5000)))
     {
-      fprintf(stderr, "%s:\n  Failed to receive remote region specs from %s ID %d: %s\n",
-              __PRETTY_FUNCTION__, peer, _id, _ep->error());
+      const char* errMsg = rc == -FI_EAGAIN ? "Timed out" : _ep->error();
+      fprintf(stderr, "%s:\n  Failed to receive %s from %s ID %d: %s\n",
+              __PRETTY_FUNCTION__, "remote region specs", peer, _id, errMsg);
       return rc;
     }
     *ptr++ = imm & 0x00000000ffffffffull;
@@ -183,8 +186,9 @@ int EbLfLink::sendMr(MemoryRegion* mr,
     uint64_t imm = *ptr++;
     if ((rc = post(nullptr, 0, imm)) < 0)
     {
-      fprintf(stderr, "%s:\n  Failed to send local memory specs to %s ID %d: %s\n",
-              __PRETTY_FUNCTION__, peer, _id, _ep->error());
+      const char* errMsg = rc == -FI_ETIMEDOUT ? "Timed out" : _ep->error();
+      fprintf(stderr, "%s:\n  Failed to send %s to %s ID %d: %s\n",
+              __PRETTY_FUNCTION__, "local memory specs", peer, _id, errMsg);
       return rc;
     }
   }
@@ -401,8 +405,8 @@ int EbLfCltLink::prepare(unsigned    id,
   // Wait for synchronization to complete successfully prior to any sends/recvs
   if ( (rc = _synchronizeBegin()) )
   {
-    fprintf(stderr, "%s:\n  Failed synchronize Begin with peer: rc %d\n",
-            __PRETTY_FUNCTION__, rc);
+    fprintf(stderr, "%s:\n  Failed synchronize Begin with %s: rc %d\n",
+            __PRETTY_FUNCTION__, peer, rc);
     return rc;
   }
 
