@@ -378,6 +378,7 @@ namespace Pds {
       void shutdown();
     public:
       static void dump_cq_data_entry(struct fi_cq_data_entry& comp);
+      void comp_error_dump(struct fi_cq_err_entry* comp_err);
     private:
       bool initialize(struct fi_cq_attr* cq_attr, void* context);
     private:

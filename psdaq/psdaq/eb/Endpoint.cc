@@ -2003,22 +2003,23 @@ ssize_t CompletionQueue::comp_error(struct fi_cq_err_entry* comp_err)
   return rret;
 }
 
-#pragma GCC diagnostic ignored "-Wunused-function"
-
-static void comp_error_dump(struct fi_cq_err_entry* comp_err)
+void CompletionQueue::comp_error_dump(struct fi_cq_err_entry* comp_err)
 {
-  printf ("void*    op_context    %p\n",     comp_err->op_context);
-  printf ("uint64_t flags         %016lx\n", comp_err->flags);
-  printf ("size_t   len           %zd\n",    comp_err->len);
-  printf ("void*    buf           %p\n",     comp_err->buf);
-  printf ("uint64_t data          %016lx\n", comp_err->data);
-  printf ("uint64_t tag           %016lx\n", comp_err->tag);
-  printf ("size_t   olen          %zd\n",    comp_err->olen);
-  printf ("int      err           %d\n",     comp_err->err);
-  printf ("int      prov_errno    %d\n",     comp_err->prov_errno);
+  char buf[ERR_MSG_LEN];          memset(buf, 0, sizeof(buf));
+  auto msg = fi_cq_strerror(_cq, comp_err->prov_errno, comp_err->err_data, buf, sizeof(buf));
+
+  printf ("void*    op_context    %p\n",      comp_err->op_context);
+  printf ("uint64_t flags         %016lx\n",  comp_err->flags);
+  printf ("size_t   len           %zd\n",     comp_err->len);
+  printf ("void*    buf           %p\n",      comp_err->buf);
+  printf ("uint64_t data          %016lx\n",  comp_err->data);
+  printf ("uint64_t tag           %016lx\n",  comp_err->tag);
+  printf ("size_t   olen          %zd\n",     comp_err->olen);
+  printf ("int      err           %d (%s)\n", comp_err->err, fi_strerror(comp_err->err));
+  printf ("int      prov_errno    %d (%s)\n", comp_err->prov_errno, msg);
   /* err_data is available until the next time the CQ is read */
-  printf ("size_t   err_data_size %zd\n",    comp_err->err_data_size);
-  printf ("void*    err_data      %p\n",     comp_err->err_data);
+  printf ("size_t   err_data_size %zd\n",     comp_err->err_data_size);
+  printf ("void*    err_data      %p\n",      comp_err->err_data);
   if (comp_err->err_data_size) {
     uint32_t* ptr = (uint32_t*)comp_err->err_data;
     for (unsigned i = 0; i < comp_err->err_data_size; ++i)
@@ -2026,8 +2027,6 @@ static void comp_error_dump(struct fi_cq_err_entry* comp_err)
     printf("\n");
   }
 }
-
-#pragma GCC diagnostic pop
 
 ssize_t CompletionQueue::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* comp, const char* cmd)
 {
@@ -2039,12 +2038,10 @@ ssize_t CompletionQueue::handle_comp(ssize_t comp_ret, struct fi_cq_data_entry* 
       comp_err.err_data      = err_data;
       comp_err.err_data_size = sizeof(err_data);
       if (comp_error(&comp_err) > 0) {
-        char buf[ERR_MSG_LEN];          memset(buf, 0, sizeof(buf));
-        auto msg = fi_cq_strerror(_cq, comp_err.prov_errno, comp_err.err_data, buf, sizeof(buf));
-        set_custom_error("%s: err: %d(%s), prov_errno: %d(%s), addl: '%s'", cmd,
-                         comp_err.err, fi_strerror(comp_err.err),
-                         comp_err.prov_errno, msg, buf);
-        fprintf(stderr, "%s:\n  Error data available:\n", __PRETTY_FUNCTION__);
+        comp_ret = -comp_err.err;
+        _errno = (int) comp_ret;
+        set_error(cmd);
+        fprintf(stderr, "%s:\n  Completion error data:\n", __PRETTY_FUNCTION__);
         comp_error_dump(&comp_err);
       }
     } else {
