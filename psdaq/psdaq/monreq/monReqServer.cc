@@ -239,7 +239,6 @@ namespace Pds {
   {
   public:
     Meb(const MebParams& prms, const MetricExporter_t& exporter);
-    virtual ~Meb();
   public:
     int  resetCounters();
     int  connect();
@@ -287,10 +286,6 @@ Meb::Meb(const MebParams&        prms,
   exporter->add("MEB_ReqCt",  labels, MetricType::Counter, [&](){ return _requestCount;    });
   exporter->add("MRQ_BufCt",  labels, MetricType::Gauge,   [&](){ return _apps ? _apps->bufListCount() : 0; });
   exporter->constant("MRQ_BufCtMax", labels, prms.numEvBuffers);
-}
-
-Meb::~Meb()
-{
 }
 
 int Meb::resetCounters()
@@ -382,16 +377,20 @@ void Meb::run()
                    __PRETTY_FUNCTION__, strerror(rc));
   }
 
+  int rcPrv = 0;
   while (lRunning)
   {
-    if (EbAppBase::process() < 0)
+    rc = EbAppBase::process();
+    if (rc < 0)
     {
-      if (checkEQ() == -FI_ENOTCONN)
+      if (rc == -FI_ENOTCONN)
       {
-        logging::critical("MEB thread lost connection with DRP(s)");
-        break;
+        logging::critical("MEB thread lost connection with a DRP");
+        throw "Receiver thread lost connection with a DRP";
       }
+      if (rc == rcPrv)  throw "Repeating fatal error";
     }
+    rcPrv = rc;
   }
 
   logging::info("MEB thread finished");
@@ -489,9 +488,10 @@ class MebApp : public CollectionApp
 {
 public:
   MebApp(const std::string& collSrv, MebParams&);
-  ~MebApp();
+  virtual ~MebApp();
 public:                                 // For CollectionApp
   json connectionInfo() override;
+  void connectionShutdown() override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
   void handlePhase1(const json& msg) override;
@@ -501,7 +501,6 @@ private:
        _error(const json& msg, const std::string& errorMsg);
   int  _configure(const json& msg);
   void _unconfigure();
-  void _shutdown();
   int  _parseConnectionParams(const json& msg);
   void _printParams(const EbParams& prms, unsigned groups) const;
   void _printGroups(unsigned groups, const u64arr_t& array) const;
@@ -574,6 +573,11 @@ json MebApp::connectionInfo()
   return body;
 }
 
+void MebApp::connectionShutdown()
+{
+  _meb->shutdown();
+}
+
 void MebApp::handleConnect(const json &msg)
 {
   json body = json({});
@@ -613,18 +617,8 @@ void MebApp::_unconfigure()
   if (_appThread.joinable())  _appThread.join();
 
   _meb->unconfigure();
-}
 
-void MebApp::_shutdown()
-{
-  // Carry out the queued Unconfigure, if there was one
-  if (_unconfigFlag)
-  {
-    _unconfigure();
-    _unconfigFlag = false;
-  }
-
-  _meb->disconnect();
+  _unconfigFlag = false;
 }
 
 void MebApp::handlePhase1(const json& msg)
@@ -634,12 +628,8 @@ void MebApp::handlePhase1(const json& msg)
 
   if (key == "configure")
   {
-    // Carry out the queued Unconfigure, if any
-    if (_unconfigFlag)
-    {
-      _unconfigure();
-      _unconfigFlag = false;
-    }
+    // Handle a "queued" Unconfigure, if any
+    if (_unconfigFlag)  _unconfigure();
 
     int rc = _configure(msg);
     if (rc)
@@ -674,7 +664,10 @@ void MebApp::handlePhase1(const json& msg)
 
 void MebApp::handleDisconnect(const json &msg)
 {
-  _shutdown();
+  // Carry out the queued Unconfigure, if there was one
+  if (_unconfigFlag)  _unconfigure();
+
+  _meb->disconnect();
 
   // Reply to collection with connect status
   json body = json({});
@@ -683,8 +676,11 @@ void MebApp::handleDisconnect(const json &msg)
 
 void MebApp::handleReset(const json &msg)
 {
-  _unconfigFlag = true;
-  _shutdown();
+  unsubscribePartition();               // ZMQ_UNSUBSCRIBE
+
+  _unconfigure();
+  _meb->disconnect();
+  connectionShutdown();
 }
 
 int MebApp::_parseConnectionParams(const json& body)

@@ -65,7 +65,6 @@ class DrpBase
 public:
     DrpBase(Parameters& para, ZmqContext& context);
     void shutdown();
-    void reset();
     nlohmann::json connectionInfo(const std::string& ip);
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string configure(const nlohmann::json& msg);

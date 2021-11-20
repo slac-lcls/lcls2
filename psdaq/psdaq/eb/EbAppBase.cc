@@ -86,23 +86,24 @@ EbAppBase::~EbAppBase()
   _region.clear();
 }
 
+int EbAppBase::resetCounters()
+{
+  _bufferCnt = 0;
+  if (_fixupSrc)  _fixupSrc->clear();
+  if (_ctrbSrc)   _ctrbSrc ->clear();
+  EventBuilder::resetCounters();
+
+  return 0;
+}
+
 void EbAppBase::shutdown()
 {
-  if (_id != unsigned(-1))              // Avoid shutting down if already done
-  {
-    unconfigure();
-    disconnect();
-
-    _transport.shutdown();
-  }
+  _transport.shutdown();
 }
 
 void EbAppBase::disconnect()
 {
-  for (auto link : _links)
-  {
-    _transport.disconnect(link);
-  }
+  for (auto link : _links)  _transport.disconnect(link);
   _links.clear();
 
   _id           = -1;
@@ -115,26 +116,22 @@ void EbAppBase::disconnect()
 
 void EbAppBase::unconfigure()
 {
-  EventBuilder::dump(0);
+  if (!_links.empty())                  // Avoid dumping again if already done
+    EventBuilder::dump(0);
   EventBuilder::clear();
-}
-
-int EbAppBase::resetCounters()
-{
-  _bufferCnt = 0;
-  if (_fixupSrc)  _fixupSrc->clear();
-  if (_ctrbSrc)   _ctrbSrc ->clear();
-  EventBuilder::resetCounters();
-
-  return 0;
 }
 
 int EbAppBase::startConnection(const std::string& ifAddr,
                                std::string&       port,
                                unsigned           nLinks)
 {
-  int rc = linksStart(_transport, ifAddr, port, nLinks, "DRP");
-  if (rc)  return rc;
+  int rc = _transport.listen(ifAddr, port, nLinks);
+  if (rc)
+  {
+    logging::error("%s:\n  Failed to initialize %s EbLfServer on %s:%s",
+                   __PRETTY_FUNCTION__, "DRP", ifAddr.c_str(), port.c_str());
+    return rc;
+  }
 
   return 0;
 }
@@ -279,9 +276,16 @@ int EbAppBase::process()
   const int msTmo = 100;
   if ( (rc = _transport.pend(&data, msTmo)) < 0)
   {
-    // Time out incomplete events
-    if (rc == -FI_ETIMEDOUT)  EventBuilder::expired();
-    else logging::error("%s:\n  pend() error %d\n", __PRETTY_FUNCTION__, rc);
+    if (rc == -FI_ETIMEDOUT)
+    {
+      EventBuilder::expired();          // Time out incomplete events
+      rc = 0;
+    }
+    else if (_transport.pollEQ() == -FI_ENOTCONN)
+      rc = -FI_ENOTCONN;
+    else
+      logging::error("%s:\n  pend() error %d (%s)\n",
+                     __PRETTY_FUNCTION__, rc, strerror(-rc));
     return rc;
   }
 

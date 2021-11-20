@@ -42,8 +42,6 @@ namespace Pds {
                 const unsigned msTimeout);
       virtual ~EbAppBase();
     public:
-      int              checkEQ()  { return _transport.pollEQ(); }
-    public:
       int              resetCounters();
       int              startConnection(const std::string& ifAddr,
                                        std::string&       port,

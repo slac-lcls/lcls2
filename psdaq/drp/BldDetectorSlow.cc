@@ -775,8 +775,11 @@ BldApp::BldApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp        (para, context()),
     m_para       (para),
-    m_det        (new BldDetector(m_para, m_drp))
+    m_det        (new BldDetector(m_para, m_drp)),
+    m_unconfigure(false)
 {
+    Py_Initialize();                    // for use by configuration
+
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
@@ -798,12 +801,8 @@ BldApp::~BldApp()
     if (m_det) {
         delete m_det;
     }
-}
 
-void BldApp::_shutdown()
-{
-    _unconfigure();
-    _disconnect();
+    Py_Finalize();                      // for use by configuration
 }
 
 void BldApp::_disconnect()
@@ -822,6 +821,7 @@ void BldApp::_unconfigure()
          }
          m_pgp.reset();
     }
+    m_unconfigure = false;
 }
 
 json BldApp::connectionInfo()
@@ -836,6 +836,14 @@ json BldApp::connectionInfo()
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
     return body;
+}
+
+void BldApp::connectionShutdown()
+{
+    m_drp.shutdown();
+    if (m_exporter) {
+        m_exporter.reset();
+    }
 }
 
 void BldApp::_error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg)
@@ -876,8 +884,6 @@ void BldApp::handleConnect(const nlohmann::json& msg)
     m_det->nodeId = m_drp.nodeId();
     m_det->connect(msg, std::to_string(getId()));
 
-    m_unconfigure = false;
-
     json body = json({});
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -888,7 +894,6 @@ void BldApp::handleDisconnect(const json& msg)
     // Carry out the queued Unconfigure, if there was one
     if (m_unconfigure) {
         _unconfigure();
-        m_unconfigure = false;
     }
 
     _disconnect();
@@ -921,7 +926,6 @@ void BldApp::handlePhase1(const json& msg)
     if (key == "configure") {
         if (m_unconfigure) {
             _unconfigure();
-            m_unconfigure = false;
         }
 
         std::string errorMsg = m_drp.configure(msg);
@@ -984,9 +988,9 @@ void BldApp::handlePhase1(const json& msg)
 void BldApp::handleReset(const nlohmann::json& msg)
 {
     unsubscribePartition();    // ZMQ_UNSUBSCRIBE
-    _shutdown();
-    m_drp.reset();
-    if (m_exporter)  m_exporter.reset();
+    _unconfigure();
+    _disconnect();
+    connectionShutdown();
 }
 
 } // namespace Drp
@@ -1104,11 +1108,8 @@ int main(int argc, char* argv[])
 
     para.maxTrSize = 256 * 1024;
     try {
-        Py_Initialize(); // for use by configuration
         Drp::BldApp app(para);
         app.run();
-        app.handleReset(json({}));
-        Py_Finalize(); // for use by configuration
         return 0;
     }
     catch (std::exception& e)  { logging::critical("%s", e.what()); }

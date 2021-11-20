@@ -379,8 +379,11 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
     m_drp        (para, context()),
     m_para       (para),
     m_eaDetector (std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp)),
-    m_det        (m_eaDetector.get())
+    m_det        (m_eaDetector.get()),
+    m_unconfigure(false)
 {
+    Py_Initialize();                    // for use by configuration
+
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Fatal: Could not create Detector object";
@@ -398,12 +401,8 @@ EpicsArchApp::~EpicsArchApp()
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
-}
 
-void EpicsArchApp::_shutdown()
-{
-    _unconfigure();
-    _disconnect();
+    Py_Finalize();                      // for use by configuration
 }
 
 void EpicsArchApp::_disconnect()
@@ -417,6 +416,7 @@ void EpicsArchApp::_unconfigure()
 {
     m_drp.unconfigure();  // TebContributor must be shut down before the worker
     m_eaDetector->unconfigure();
+    m_unconfigure = false;
 }
 
 json EpicsArchApp::connectionInfo()
@@ -431,6 +431,11 @@ json EpicsArchApp::connectionInfo()
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
     return body;
+}
+
+void EpicsArchApp::connectionShutdown()
+{
+    m_drp.shutdown();
 }
 
 void EpicsArchApp::_error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg)
@@ -468,8 +473,6 @@ void EpicsArchApp::handleConnect(const nlohmann::json& msg)
         }
     }
 
-    m_unconfigure = false;
-
     json body = json({});
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -480,7 +483,6 @@ void EpicsArchApp::handleDisconnect(const json& msg)
     // Carry out the queued Unconfigure, if there was one
     if (m_unconfigure) {
         _unconfigure();
-        m_unconfigure = false;
     }
 
     _disconnect();
@@ -513,7 +515,6 @@ void EpicsArchApp::handlePhase1(const json& msg)
     if (key == "configure") {
         if (m_unconfigure) {
             _unconfigure();
-            m_unconfigure = false;
         }
 
         std::string errorMsg = m_drp.configure(msg);
@@ -564,8 +565,10 @@ void EpicsArchApp::handlePhase1(const json& msg)
 
 void EpicsArchApp::handleReset(const nlohmann::json& msg)
 {
-    _shutdown();
-    m_drp.reset();
+    unsubscribePartition();             // ZMQ_UNSUBSCRIBE
+    _unconfigure();
+    _disconnect();
+    connectionShutdown();
 }
 
 } // namespace Drp
@@ -735,11 +738,8 @@ int main(int argc, char* argv[])
             return 1;
         }
 
-        Py_Initialize(); // for use by configuration
         Drp::EpicsArchApp app(para, pvCfgFile);
         app.run();
-        app.handleReset(json({}));
-        Py_Finalize(); // for use by configuration
         return 0;
     }
     catch (std::exception& e)  { logging::critical("%s", e.what()); }

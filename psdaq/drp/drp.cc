@@ -141,7 +141,6 @@ int main(int argc, char* argv[])
     try {
         Drp::PGPDetectorApp app(para);
         app.run();
-        app.handleReset(json({}));
         std::cout<<"end of drp main\n";
         return 0;
     }

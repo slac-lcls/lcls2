@@ -830,8 +830,11 @@ PvaApp::PvaApp(Parameters& para, std::shared_ptr<PvaMonitor> pvaMonitor) :
     m_drp(para, context()),
     m_para(para),
     m_pvaDetector(std::make_unique<PvaDetector>(m_para, pvaMonitor, m_drp)),
-    m_det(m_pvaDetector.get())
+    m_det(m_pvaDetector.get()),
+    m_unconfigure(false)
 {
+    Py_Initialize();                    // for use by configuration
+
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
@@ -849,12 +852,8 @@ PvaApp::~PvaApp()
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
-}
 
-void PvaApp::_shutdown()
-{
-    _unconfigure();
-    _disconnect();
+    Py_Finalize();                      // for use by configuration
 }
 
 void PvaApp::_disconnect()
@@ -867,6 +866,7 @@ void PvaApp::_unconfigure()
 {
     m_drp.unconfigure();  // TebContributor must be shut down before the worker
     m_pvaDetector->unconfigure();
+    m_unconfigure = false;
 }
 
 json PvaApp::connectionInfo()
@@ -881,6 +881,11 @@ json PvaApp::connectionInfo()
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
     return body;
+}
+
+void PvaApp::connectionShutdown()
+{
+    m_drp.shutdown();
 }
 
 void PvaApp::_error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg)
@@ -904,8 +909,6 @@ void PvaApp::handleConnect(const nlohmann::json& msg)
         return;
     }
 
-    m_unconfigure = false;
-
     json body = json({});
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -916,7 +919,6 @@ void PvaApp::handleDisconnect(const json& msg)
     // Carry out the queued Unconfigure, if there was one
     if (m_unconfigure) {
         _unconfigure();
-        m_unconfigure = false;
     }
 
     _disconnect();
@@ -949,7 +951,6 @@ void PvaApp::handlePhase1(const json& msg)
     if (key == "configure") {
         if (m_unconfigure) {
             _unconfigure();
-            m_unconfigure = false;
         }
 
         std::string errorMsg = m_drp.configure(msg);
@@ -1001,8 +1002,9 @@ void PvaApp::handlePhase1(const json& msg)
 void PvaApp::handleReset(const nlohmann::json& msg)
 {
     unsubscribePartition();    // ZMQ_UNSUBSCRIBE
-    _shutdown();
-    m_drp.reset();
+    _unconfigure();
+    _disconnect();
+    connectionShutdown();
 }
 
 } // namespace Drp
@@ -1155,11 +1157,8 @@ int main(int argc, char* argv[])
         auto request(provider == "pva" ? "field(value,timeStamp,dimension)"
                                        : "field(value,timeStamp)");
 
-        Py_Initialize(); // for use by configuration
         Drp::PvaApp app(para, std::make_shared<Drp::PvaMonitor>(para, pv, provider, request));
         app.run();
-        app.handleReset(json({}));
-        Py_Finalize(); // for use by configuration
         return 0;
     }
     catch (std::exception& e)  { logging::critical("%s", e.what()); }

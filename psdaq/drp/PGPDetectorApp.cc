@@ -107,7 +107,8 @@ namespace Drp {
 PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
-    m_para(para)
+    m_para(para),
+    m_unconfigure(false)
 {
     Py_Initialize(); // for use by configuration
 
@@ -153,12 +154,6 @@ PGPDetectorApp::~PGPDetectorApp()
     }
 }
 
-void PGPDetectorApp::shutdown()
-{
-    unconfigure();
-    disconnect();
-}
-
 void PGPDetectorApp::disconnect()
 {
     m_drp.disconnect();
@@ -184,6 +179,8 @@ void PGPDetectorApp::unconfigure()
     m_drp.unconfigure();
 
     m_det->namesLookup().clear();   // erase all elements
+
+    m_unconfigure = false;
 }
 
 void PGPDetectorApp::handleConnect(const json& msg)
@@ -204,7 +201,6 @@ void PGPDetectorApp::handleConnect(const json& msg)
 
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 
-    m_unconfigure = false;
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
 }
@@ -216,7 +212,6 @@ void PGPDetectorApp::handleDisconnect(const json& msg)
     // Carry out the queued Unconfigure, if there was one
     if (m_unconfigure) {
         unconfigure();
-        m_unconfigure = false;
     }
 
     disconnect();
@@ -262,7 +257,6 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     if (key == "configure") {
         if (m_unconfigure) {
             unconfigure();
-            m_unconfigure = false;
         }
         if (has_names_block_hex && m_det->scanEnabled()) {
             std::string xtcHex = msg["body"]["phase1Info"]["NamesBlockHex"];
@@ -419,9 +413,9 @@ void PGPDetectorApp::handleReset(const json& msg)
     PY_ACQUIRE_GIL(m_pysave);  // Py_END_ALLOW_THREADS
 
     unsubscribePartition();    // ZMQ_UNSUBSCRIBE
-    shutdown();
-    m_drp.reset();
-    if (m_exporter)  m_exporter.reset();
+    unconfigure();
+    disconnect();
+    connectionShutdown();
 
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
 }
@@ -438,5 +432,13 @@ json PGPDetectorApp::connectionInfo()
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo); // Revisit: Should be in det_info
     return body;
+}
+
+void PGPDetectorApp::connectionShutdown()
+{
+    m_drp.shutdown();
+    if (m_exporter) {
+        m_exporter.reset();
+    }
 }
 }

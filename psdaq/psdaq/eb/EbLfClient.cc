@@ -115,7 +115,7 @@ int EbLfClient::connect(EbLfCltLink** link,
     delete ep;
     return (dT <= msTmo) ? rc : -FI_ETIMEDOUT;
   }
-  if (_verbose > 1)  printf("EbLfClient: dT to connect: %lu ms\n", dT);
+  if (_verbose > 1)  printf("EbLfClient: connect() took %lu ms\n", dT);
 
   int rxDepth = fab->info()->rx_attr->size;
   if (_verbose > 1)  printf("EbLfClient: rx_attr.size = %d\n", rxDepth);
@@ -135,18 +135,18 @@ int EbLfClient::disconnect(EbLfCltLink* link)
   if (!link)  return FI_SUCCESS;
 
   if (_verbose)
-    printf("Disconnecting from EbLfServer %d\n", link->id());
+    printf("EbLfClient: Disconnecting from EbLfServer %d\n", link->id());
 
   Endpoint* ep = link->endpoint();
+  delete link;
   if (ep)
   {
     CompletionQueue* txcq = ep->txcq();
     Fabric*          fab  = ep->fabric();
+    delete ep;
     if (txcq)  delete txcq;
     if (fab)   delete fab;
-    delete ep;
   }
-  delete link;
   _pending = 0;
 
   return FI_SUCCESS;

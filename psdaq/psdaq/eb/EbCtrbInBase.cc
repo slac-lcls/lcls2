@@ -91,13 +91,7 @@ int EbCtrbInBase::resetCounters()
 
 void EbCtrbInBase::shutdown()
 {
-  if (!_links.empty())                  // Avoid shutting down if already done
-  {
-    unconfigure();
-    disconnect();
-
-    _transport.shutdown();
-  }
+  _transport.shutdown();
 }
 
 void EbCtrbInBase::disconnect()
@@ -112,8 +106,13 @@ void EbCtrbInBase::unconfigure()
 
 int EbCtrbInBase::startConnection(std::string& port, size_t resSizeGuess)
 {
-  int rc = linksStart(_transport, _prms.ifAddr, port, MAX_TEBS, "TEB");
-  if (rc)  return rc;
+  int rc = _transport.listen(_prms.ifAddr, port, MAX_TEBS);
+  if (rc)
+  {
+    logging::error("%s:\n  Failed to initialize %s EbLfServer on %s:%s",
+                   __PRETTY_FUNCTION__, "TEB", _prms.ifAddr.c_str(), port.c_str());
+    return rc;
+  }
 
   // Set up a guess at the RDMA region
   // If it's too small, it will be corrected during Configure
@@ -251,16 +250,20 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
 
   logging::info("Receiver thread is starting");
 
+  int rcPrv = 0;
   while (running.load(std::memory_order_relaxed))
   {
-    if (_process(ctrb) < 0)
+    rc = _process(ctrb);
+    if (rc < 0)
     {
-      if (_transport.pollEQ() == -FI_ENOTCONN)
+      if (rc == -FI_ENOTCONN)
       {
-        logging::error("Receiver thread lost connection with a TEB");
-        break;
+        logging::critical("Receiver thread lost connection with a TEB");
+        throw "Receiver thread lost connection with a TEB";
       }
+      if (rc == rcPrv)  throw "Repeating fatal error";
     }
+    rcPrv = rc;
   }
 
   logging::info("Receiver thread finished");
@@ -275,9 +278,16 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
   const int tmo = 100;                  // milliseconds
   if ( (rc = _transport.pend(&data, tmo)) < 0)
   {
-    // Try to sweep out any deferred Results
-    if (rc == -FI_ETIMEDOUT)  _matchUp(ctrb, nullptr);
-    else logging::error("%s:\n  pend() error %d\n", __PRETTY_FUNCTION__, rc);
+    if (rc == -FI_ETIMEDOUT)
+    {
+      _matchUp(ctrb, nullptr);         // Try to sweep out any deferred Results
+      rc = 0;
+    }
+    else if (_transport.pollEQ() == -FI_ENOTCONN)
+      rc = -FI_ENOTCONN;
+    else
+      logging::error("%s:\n  pend() error %d (%s)\n",
+                     __PRETTY_FUNCTION__, rc, strerror(-rc));
     return rc;
   }
 

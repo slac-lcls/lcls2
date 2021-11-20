@@ -437,11 +437,6 @@ void DrpBase::shutdown()
     m_ebRecv->shutdown();
 }
 
-void DrpBase::reset()
-{
-    shutdown();
-}
-
 json DrpBase::connectionInfo(const std::string& ip)
 {
     m_tPrms.ifAddr = ip;

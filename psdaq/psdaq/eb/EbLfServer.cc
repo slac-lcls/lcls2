@@ -41,7 +41,14 @@ EbLfServer::EbLfServer(const unsigned&                           verbose,
 
 EbLfServer::~EbLfServer()
 {
-  shutdown();
+  for (auto& lbe : _linkByEp)
+  {
+    auto link = lbe.second;
+    if (link)  delete link;
+  }
+  if (_rxcq)  delete _rxcq;
+  if (_eq)    delete _eq;
+  if (_pep)   delete _pep;
 }
 
 int EbLfServer::listen(const std::string& addr,
@@ -67,33 +74,12 @@ int EbLfServer::listen(const std::string& addr,
     return _pep ? _pep->error_num(): ENOMEM;
   }
 
-  Fabric* fab = _pep->fabric();
-
   if (_verbose)
   {
-    void* data = fab;                   // Something since data can't be NULL
+    Fabric* fab  = _pep->fabric();
+    void*   data = fab;                 // Something since data can't be NULL
     printf("Server: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
            fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
-  }
-
-  _eq = new EventQueue(fab, 0);
-  if (!_eq)
-  {
-    fprintf(stderr, "%s:\n  Failed to create Event Queue: %s\n",
-            __PRETTY_FUNCTION__, "No memory");
-    return ENOMEM;
-  }
-
-  struct fi_info* info   = fab->info();
-  size_t          cqSize = nLinks * info->rx_attr->size;
-  if (_verbose > 1)  printf("EbLfServer: rx_attr.size = %zd, tx_attr.size = %zd\n",
-                            info->rx_attr->size, info->tx_attr->size);
-  _rxcq = new CompletionQueue(fab, cqSize);
-  if (!_rxcq)
-  {
-    fprintf(stderr, "%s:\n  Failed to create Rx Completion Queue: %s\n",
-            __PRETTY_FUNCTION__, "No memory");
-    return ENOMEM;
   }
 
   bool rc;
@@ -119,8 +105,36 @@ int EbLfServer::listen(const std::string& addr,
   return 0;
 }
 
-int EbLfServer::connect(EbLfSvrLink** link, int msTmo)
+int EbLfServer::connect(EbLfSvrLink** link, unsigned nLinks, int msTmo)
 {
+  Fabric* fab = _pep->fabric();
+
+  if (!_eq)                             // All links share the same EQ
+  {
+    _eq = new EventQueue(fab, 0);
+    if (!_eq)
+    {
+      fprintf(stderr, "%s:\n  Failed to create Event Queue: %s\n",
+              __PRETTY_FUNCTION__, "No memory");
+      return ENOMEM;
+    }
+  }
+
+  struct fi_info* info   = fab->info();
+  size_t          cqSize = nLinks * info->rx_attr->size;
+  if (_verbose > 1)  printf("EbLfServer: rx_attr.size = %zd, tx_attr.size = %zd\n",
+                            info->rx_attr->size, info->tx_attr->size);
+  if (!_rxcq)                           // All links share the same rxCQ
+  {
+    _rxcq = new CompletionQueue(fab, cqSize);
+    if (!_rxcq)
+    {
+      fprintf(stderr, "%s:\n  Failed to create Rx Completion Queue: %s\n",
+              __PRETTY_FUNCTION__, "No memory");
+      return ENOMEM;
+    }
+  }
+
   auto             t0(std::chrono::steady_clock::now());
   CompletionQueue* txcq    = nullptr;
   uint64_t         txFlags = 0;
@@ -134,9 +148,9 @@ int EbLfServer::connect(EbLfSvrLink** link, int msTmo)
   }
   auto t1(std::chrono::steady_clock::now());
   auto dT(std::chrono::duration_cast<ms_t>(t1 - t0).count());
-  if (_verbose > 1)  printf("EbLfServer: dT to connect: %lu ms\n", dT);
+  if (_verbose > 1)  printf("EbLfServer: accept() took %lu ms\n", dT);
 
-  int rxDepth = ep->fabric()->info()->rx_attr->size;
+  int rxDepth = info->rx_attr->size;
   if (_verbose > 1)  printf("EbLfServer: rx_attr.size = %d\n", rxDepth);
   *link = new EbLfSvrLink(ep, rxDepth, _verbose);
   if (!*link)
@@ -176,7 +190,7 @@ int EbLfServer::pollEQ()
         EbLfSvrLink* link = _linkByEp[ep];
         if (_verbose)
           printf("EbLfClient %d disconnected\n", link->id());
-        _linkByEp.erase(ep);
+        disconnect(link);
         rc = (_linkByEp.size() == 0) ? -FI_ENOTCONN : FI_SUCCESS;
       }
       else
@@ -221,14 +235,20 @@ int EbLfServer::disconnect(EbLfSvrLink* link)
   if (!link)  return FI_SUCCESS;
 
   if (_verbose)
-    printf("Disconnecting from EbLfClient %d\n", link->id());
+    printf("EbLfServer: Disconnecting from EbLfClient %d\n", link->id());
 
   Endpoint* ep = link->endpoint();
-  if (!ep)  return -FI_ENOTCONN;
-
-  ep->shutdown();
-
   delete link;
+  if (ep)
+  {
+    _linkByEp.erase(ep->endpoint());
+    _pep->close(ep);                    // Also does 'delete ep;'
+    if (_linkByEp.size() == 0)          // Delete these when all EPs are closed
+    {
+      if (_rxcq)  { delete _rxcq;  _rxcq = 0; }
+      if (_eq)    { delete _eq;    _eq   = 0; }
+    }
+  }
 
   return FI_SUCCESS;
 }
@@ -239,16 +259,6 @@ void EbLfServer::shutdown()
   {
     delete _pep;
     _pep = nullptr;
-  }
-  if (_rxcq)
-  {
-    delete _rxcq;
-    _rxcq = nullptr;
-  }
-  if (_eq)
-  {
-    delete _eq;
-    _eq = nullptr;
   }
 }
 
@@ -295,13 +305,8 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
     }
     else
     {
-      static int _errno = 1;
-      if (rc != _errno)
-      {
-        fprintf(stderr, "%s:\n  Error reading Rx CQ: %s(%d)\n",
-                __PRETTY_FUNCTION__, _rxcq->error(), rc);
-        _errno = rc;
-      }
+      fprintf(stderr, "%s:\n  Error %d reading Rx CQ: %s\n",
+              __PRETTY_FUNCTION__, rc, _rxcq->error());
       break;
     }
   }
@@ -344,7 +349,7 @@ int Pds::Eb::linksConnect(EbLfServer&                transport,
     int            rc;
     EbLfSvrLink*   link;
     const unsigned msTmo(14750);        // < control.py transition timeout
-    if ( (rc = transport.connect(&link, msTmo)) )
+    if ( (rc = transport.connect(&link, links.size(),  msTmo)) )
     {
       logging::error("%s:\n  Error connecting to a %s",
                      __PRETTY_FUNCTION__, peer);

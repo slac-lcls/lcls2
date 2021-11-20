@@ -193,13 +193,9 @@ int Teb::resetCounters()
 
 void Teb::shutdown()
 {
-  if (!_l3Links.empty())                // Avoid shutting down if already done
-  {
-    unconfigure();
-    disconnect();
+  _mrqTransport.shutdown();
 
-    _mrqTransport.shutdown();
-  }
+  EbAppBase::shutdown();
 }
 
 void Teb::disconnect()
@@ -218,7 +214,8 @@ void Teb::disconnect()
 
 void Teb::unconfigure()
 {
-  _batMan.dump();
+  if (!_l3Links.empty())              // Avoid dumping again if already done
+    _batMan.dump();
   _batMan.shutdown();
 
   EbAppBase::unconfigure();
@@ -230,8 +227,13 @@ int Teb::startConnection(std::string& tebPort,
   int rc = EbAppBase::startConnection(_prms.ifAddr, tebPort, MAX_DRPS);
   if (rc)  return rc;
 
-  rc = linksStart(_mrqTransport, _prms.ifAddr, mrqPort, MAX_MRQS, "MRQ");
-  if (rc)  return rc;
+  rc = _mrqTransport.listen(_prms.ifAddr, mrqPort, MAX_MRQS);
+  if (rc)
+  {
+    logging::error("%s:\n  Failed to initialize %s EbLfServer on %s:%s",
+                   __PRETTY_FUNCTION__, "MRQ", _prms.ifAddr.c_str(), mrqPort.c_str());
+    return rc;
+  }
 
   return 0;
 }
@@ -304,6 +306,7 @@ int Teb::configure(Trigger* object,
 int Teb::beginrun()
 {
   resetCounters();
+
   return 0;
 }
 
@@ -324,16 +327,20 @@ void Teb::run()
 
   resetCounters();
 
+  int rcPrv = 0;
   while (lRunning)
   {
-    if (EbAppBase::process() < 0)
+    rc = EbAppBase::process();
+    if (rc < 0)
     {
-      if (checkEQ() == -FI_ENOTCONN)
+      if (rc == -FI_ENOTCONN)
       {
-        logging::error("TEB thread lost connection with a DRP");
-        break;
+        logging::critical("TEB thread lost connection with a DRP");
+        throw "Receiver thread lost connection with a DRP";
       }
+      if (rc == rcPrv)  throw "Repeating fatal error";
     }
+    rcPrv = rc;
   }
 
   logging::info("TEB thread finished");
@@ -658,9 +665,10 @@ class TebApp : public CollectionApp
 {
 public:
   TebApp(const std::string& collSrv, EbParams&);
-  ~TebApp();
+  virtual ~TebApp();
 public:                                 // For CollectionApp
   json connectionInfo() override;
+  void connectionShutdown() override;
   void handleConnect(const json& msg) override;
   void handleDisconnect(const json& msg) override;
   void handlePhase1(const json& msg) override;
@@ -751,6 +759,11 @@ json TebApp::connectionInfo()
                                  {"teb_port", _prms.ebPort},
                                  {"mrq_port", _prms.mrqPort}}}};
   return body;
+}
+
+void TebApp::connectionShutdown()
+{
+  _teb->shutdown();
 }
 
 void TebApp::handleConnect(const json& msg)
@@ -863,6 +876,8 @@ void TebApp::_unconfigure()
   if (_appThread.joinable())  _appThread.join();
 
   _teb->unconfigure();
+
+  _unconfigFlag = false;
 }
 
 void TebApp::handlePhase1(const json& msg)
@@ -873,11 +888,7 @@ void TebApp::handlePhase1(const json& msg)
   if (key == "configure")
   {
     // Handle a "queued" Unconfigure, if any
-    if (_unconfigFlag)
-    {
-      _unconfigure();
-      _unconfigFlag = false;
-    }
+    if (_unconfigFlag)  _unconfigure();
 
     int rc = _configure(msg);
     if (rc)
@@ -913,11 +924,7 @@ void TebApp::handlePhase1(const json& msg)
 void TebApp::handleDisconnect(const json& msg)
 {
   // Carry out the queued Unconfigure, if there was one
-  if (_unconfigFlag)
-  {
-    _unconfigure();
-    _unconfigFlag = false;
-  }
+  if (_unconfigFlag)  _unconfigure();
 
   _teb->disconnect();
 
@@ -928,10 +935,11 @@ void TebApp::handleDisconnect(const json& msg)
 
 void TebApp::handleReset(const json& msg)
 {
-  lRunning = 0;
-  if (_appThread.joinable())  _appThread.join();
+  unsubscribePartition();               // ZMQ_UNSUBSCRIBE
 
-  _teb->shutdown();
+  _unconfigure();
+  _teb->disconnect();
+  connectionShutdown();
 }
 
 int TebApp::_parseConnectionParams(const json& body)

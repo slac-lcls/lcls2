@@ -16,6 +16,7 @@ public:
     PGPDetectorApp(Parameters& para);
     virtual ~PGPDetectorApp();
     nlohmann::json connectionInfo() override;
+    void connectionShutdown() override;
     void handleReset(const nlohmann::json& msg) override;
 private:
     void handleConnect(const nlohmann::json& msg) override;
@@ -23,7 +24,6 @@ private:
     void handlePhase1(const nlohmann::json& msg) override;
     void unconfigure();
     void disconnect();
-    void shutdown();
     DrpBase m_drp;
     Parameters& m_para;
     std::thread m_pgpThread;

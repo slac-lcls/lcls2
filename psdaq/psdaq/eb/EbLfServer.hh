@@ -33,7 +33,7 @@ namespace Pds {
       int  listen(const std::string& addr,    // Interface to use
                   std::string&       port,    // Port being listened on
                   unsigned           nLinks); // Max number of links
-      int  connect(EbLfSvrLink**, int msTmo = -1);
+      int  connect(EbLfSvrLink**, unsigned nLinks, int msTmo = -1);
       int  disconnect(EbLfSvrLink*);
       void shutdown();
       int  pend(fi_cq_data_entry*, int msTmo);

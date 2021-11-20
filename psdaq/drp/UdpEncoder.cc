@@ -908,8 +908,11 @@ UdpApp::UdpApp(Parameters& para, std::shared_ptr<UdpMonitor> udpMonitor) :
     m_drp(para, context()),
     m_para(para),
     m_udpDetector(std::make_unique<UdpEncoder>(m_para, udpMonitor, m_drp)),
-    m_det(m_udpDetector.get())
+    m_det(m_udpDetector.get()),
+    m_unconfigure(false)
 {
+    Py_Initialize();                    // for use by configuration
+
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
@@ -927,12 +930,8 @@ UdpApp::~UdpApp()
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
-}
 
-void UdpApp::_shutdown()
-{
-    _unconfigure();
-    _disconnect();
+    Py_Finalize();                      // for use by configuration
 }
 
 void UdpApp::_disconnect()
@@ -945,6 +944,7 @@ void UdpApp::_unconfigure()
 {
     m_drp.unconfigure();  // TebContributor must be shut down before the worker
     m_udpDetector->unconfigure();
+    m_unconfigure = false;
 }
 
 json UdpApp::connectionInfo()
@@ -959,6 +959,11 @@ json UdpApp::connectionInfo()
     json bufInfo = m_drp.connectionInfo(ip);
     body["connect_info"].update(bufInfo);
     return body;
+}
+
+void UdpApp::connectionShutdown()
+{
+    m_drp.shutdown();
 }
 
 void UdpApp::_error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg)
@@ -982,8 +987,6 @@ void UdpApp::handleConnect(const nlohmann::json& msg)
         return;
     }
 
-    m_unconfigure = false;
-
     json body = json({});
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -994,7 +997,6 @@ void UdpApp::handleDisconnect(const json& msg)
     // Carry out the queued Unconfigure, if there was one
     if (m_unconfigure) {
         _unconfigure();
-        m_unconfigure = false;
     }
 
     _disconnect();
@@ -1027,7 +1029,6 @@ void UdpApp::handlePhase1(const json& msg)
     if (key == "configure") {
         if (m_unconfigure) {
             _unconfigure();
-            m_unconfigure = false;
         }
 
         std::string errorMsg = m_drp.configure(msg);
@@ -1077,8 +1078,9 @@ void UdpApp::handlePhase1(const json& msg)
 void UdpApp::handleReset(const nlohmann::json& msg)
 {
     unsubscribePartition();    // ZMQ_UNSUBSCRIBE
-    _shutdown();
-    m_drp.reset();
+    _unconfigure();
+    _disconnect();
+    connectionShutdown();
 }
 
 } // namespace Drp
@@ -1247,11 +1249,8 @@ int main(int argc, char* argv[])
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
         }
-        Py_Initialize(); // for use by configuration
         Drp::UdpApp app(para, std::make_shared<Drp::UdpMonitor>(para));
         app.run();
-        app.handleReset(json({}));
-        Py_Finalize(); // for use by configuration
         return 0;
     }
     catch (std::exception& e)  { logging::critical("%s", e.what()); }
