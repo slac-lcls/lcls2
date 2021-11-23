@@ -368,6 +368,7 @@ OpalTT::OpalTT(Opal& d, Parameters* para) :
         try {
             m_fex_pv = pvac::ClientChannel(Pds_Epics::EpicsProviders::ca().connect(m_ttpv));
             m_request = pvd::createRequest("field(value)");
+#if 0
             pvd::PVStructure::const_shared_pointer cpv = 
                 m_fex_pv.get(3.0,m_request);
             const pvd::PVFieldPtrArray& fields = cpv->getPVFields();
@@ -378,6 +379,7 @@ OpalTT::OpalTT(Opal& d, Parameters* para) :
                               field->getFullName().c_str(),
                               field->getField()->getID().c_str());
             }
+#endif
             logging::info("Connection complete\n");
         } catch(...) {
             d._fatal_error("Error connecting to feedback PV");
@@ -466,7 +468,6 @@ bool OpalTT::event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >& su
         if (m_ttpv) { 
             m_fex_pv.put(m_request).set<const double>("value",ttvec).exec();
         }
-
         //  Insert the results
         CreateData cd(xtc, m_det.namesLookup(), m_fexNamesId);
         cd.set_value(FexDef::ampl      , m_fex.amplitude());

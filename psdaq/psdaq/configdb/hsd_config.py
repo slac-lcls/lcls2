@@ -34,6 +34,8 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     global ocfg
     epics_prefix = prefix
 
+    ctxt = Context('pva')
+
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
 
     # program the group
@@ -43,7 +45,6 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     apply_config(ctxt,cfg)
 
     # fetch the current configuration for defaults not specified in the configuration
-    ctxt = Context('pva')
     values = ctxt.get(epics_prefix+':CONFIG')
 
     # fetch the xpm delay
