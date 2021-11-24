@@ -147,10 +147,14 @@ class EventManager(object):
                 elif d.service() == TransitionId.Enable and hasattr(d, 'chunkinfo'):
                     # We only support chunking on bigdata
                     if self.dm.n_files > 0: 
-                        stream_id = self.dm.get_stream_id(i_smd)
                         _chunk_ids = [getattr(d.chunkinfo[seg_id].chunkinfo, 'chunkid') for seg_id in d.chunkinfo]
-                        # There must be only one unique chunkid name 
-                        if _chunk_ids: self.new_chunk_id_array[i_evt, i_smd] = _chunk_ids[0] 
+                        # Only flag new chunk when there's chunkinfo and that chunkid is new
+                        if _chunk_ids: 
+                            # There must be only one unique chunkid name 
+                            new_chunk_id = _chunk_ids[0]
+                            current_chunk_id = self.dm.get_chunk_id(i_smd)
+                            if new_chunk_id > current_chunk_id:
+                                self.new_chunk_id_array[i_evt, i_smd] = new_chunk_id
             
             offset += smd_aux_sizes[i_smd]            
             i_smd += 1

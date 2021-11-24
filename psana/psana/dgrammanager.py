@@ -56,6 +56,7 @@ class DgramManager(object):
         self.found_endrun = True
         self.buffered_beginruns = []
         self.max_retries = max_retries
+        self.chunk_ids = []
         
         # Add ability for dgrammanager to check if xtc2 files exist (in case 
         # .inprogress file is use).
@@ -104,6 +105,21 @@ class DgramManager(object):
 
         self.calibconst = {} # initialize to empty dict - will be populated by run class
         self.n_files = len(self.xtc_files)
+        self.set_chunk_ids()
+
+    def set_chunk_ids(self):
+        if len(self.xtc_files) == 0: return
+        if self.xtc_files[0] == 'shmem': return
+        for xtc_file in self.xtc_files:
+            filename = os.path.basename(xtc_file)
+            found = filename.find('-c')
+            if found >= 0:
+                found_e = filename.find('.xtc2')
+                self.chunk_ids.append(int(filename[found+2:found_e]))
+    
+    def get_chunk_id(self, ind):
+        if not self.chunk_ids: return None
+        return self.chunk_ids[ind]
 
     def close(self):
         if not self.given_fds:
@@ -215,14 +231,6 @@ class DgramManager(object):
     
     def get_run(self):
         return self._run
-
-    def get_stream_id(self, ind):
-        """ Returns stream id as shown as part of xtc data file"""
-        xtc_dir = os.path.dirname(self.xtc_files[ind])
-        filename = os.path.basename(self.xtc_files[ind])
-        found = filename.find('-s')
-        stream_id = int(filename[found+2:found+4])
-        return stream_id
 
 def parse_command_line():
     opts, args_proper = getopt.getopt(sys.argv[1:], 'hvd:f:')
