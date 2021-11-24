@@ -26,6 +26,38 @@ struct RunInfo
     uint32_t runNumber;
 };
 
+class FileParameters
+{
+    std::string m_outputDir;
+    std::string m_instrument;
+    unsigned m_runNumber;
+    std::string m_experimentName;
+    std::string m_hostname;
+    unsigned m_nodeId;
+    unsigned m_chunkNumber;
+
+public:
+    FileParameters(Parameters& para, RunInfo& runInfo, std::string hostname, unsigned nodeId) {
+        m_outputDir = para.outputDir;
+        m_instrument = para.instrument;
+        m_runNumber = runInfo.runNumber;
+        m_experimentName = runInfo.experimentName;
+        m_hostname = hostname;
+        m_nodeId = nodeId;
+        m_chunkNumber = 0;
+    }
+
+    void     nextChunk()            { ++ m_chunkNumber; }
+    // getters
+    std::string outputDir()         { return m_outputDir; }
+    std::string instrument()        { return m_instrument; }
+    unsigned runNumber()            { return m_runNumber; }
+    std::string experimentName()    { return m_experimentName; }
+    std::string hostname()          { return m_hostname; }
+    unsigned nodeId()               { return m_nodeId; }
+    unsigned chunkNumber()          { return m_chunkNumber; }
+};
+
 class EbReceiver : public Pds::Eb::EbCtrbInBase
 {
 public:
