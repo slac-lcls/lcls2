@@ -703,7 +703,7 @@ void addChunkInfoData(Xtc& xtc, NamesLookup& namesLookup, unsigned nodeId, unsig
     NamesId namesId(nodeId,MyNamesId::ChunkInfo+MyNamesId::NumberOf*(segment%nSegments));
     CreateData chunkinfo(xtc, namesLookup, namesId);
     chunkinfo.set_value(ChunkInfoDef::CHUNKID, (uint32_t)1);
-    chunkinfo.set_string(ChunkInfoDef::FILENAME, "data-r0001-s00-c01.xtc2");
+    chunkinfo.set_string(ChunkInfoDef::FILENAME, "data-r0001-s01-c01.xtc2");
 }
 
 
@@ -831,6 +831,24 @@ int main(int argc, char* argv[])
         for (unsigned ievt=0; ievt<nevents; ievt++) {
             if (epicsPeriod>0) {
                 if (ievt>0 and ievt%epicsPeriod==0) {
+
+                    if (adding_chunkinfo) {
+                        // make an Enable prior to SlowUpdate if chunkinfo is needed
+                        if (counting_timestamps) {
+                            tv.tv_sec = 1;
+                            tv.tv_usec = timestamp_val;
+                            timestamp_val++;
+                        } else {
+                            gettimeofday(&tv, NULL);
+                        }
+                        Transition chunkEnableTr(Dgram::Event, TransitionId::Enable, TimeStamp(tv.tv_sec, tv.tv_usec), env);
+                        Dgram& chunkEnableDgram = *new(buf) Dgram(chunkEnableTr, Xtc(tid));
+
+                        addChunkInfoData(chunkEnableDgram.xtc, namesLookup, nodeid1, starting_segment);
+
+                        save(chunkEnableDgram,xtcFile);
+                    }
+                    
                     // make a SlowUpdate with epics data
                     if (counting_timestamps) {
                         tv.tv_sec = 1;
@@ -846,10 +864,6 @@ int main(int argc, char* argv[])
                     // only add epics to the first stream
                     if (starting_segment==0) {
                         addEpicsData(dgram.xtc, namesLookup, nodeid1, iseg);
-                    }
-
-                    if (adding_chunkinfo) {
-                        addChunkInfoData(dgram.xtc, namesLookup, nodeid1, starting_segment);
                     }
 
                     save(dgram,xtcFile);

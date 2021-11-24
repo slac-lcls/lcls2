@@ -12,6 +12,10 @@ s_bd_just_read = PrometheusManager.get_metric('psana_bd_just_read')
 s_bd_gen_smd_batch = PrometheusManager.get_metric('psana_bd_gen_smd_batch')
 s_bd_gen_evt = PrometheusManager.get_metric('psana_bd_gen_evt')
 
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+
 class EventManager(object):
     """ Return an event from the received smalldata memoryview (view)
 
@@ -135,18 +139,17 @@ class EventManager(object):
                 self.services[i_evt] = d.service()
 
                 # For L1 with bigdata files, store offset and size found in smd dgrams.
-                # For SlowUpdate, store new chunk id (if found). TODO: check if
-                # we need to always check for epics for SlowUpdate.
+                # For Enable, store new chunk id (if found). 
                 if d.service() == TransitionId.L1Accept and self.dm.n_files > 0:
                     if i_first_L1 == -1:
                         i_first_L1 = i_evt
                     self._get_bd_offset_and_size(d, current_bd_offsets, current_bd_chunk_sizes, i_evt, i_smd, i_first_L1)
-                elif d.service() == TransitionId.SlowUpdate and hasattr(d, 'chunkinfo'):
+                elif d.service() == TransitionId.Enable and hasattr(d, 'chunkinfo'):
                     # We only support chunking on bigdata
                     if self.dm.n_files > 0: 
                         stream_id = self.dm.get_stream_id(i_smd)
                         _chunk_ids = [getattr(d.chunkinfo[seg_id].chunkinfo, 'chunkid') for seg_id in d.chunkinfo]
-                        # There must be only one unique epics var
+                        # There must be only one unique chunkid name 
                         if _chunk_ids: self.new_chunk_id_array[i_evt, i_smd] = _chunk_ids[0] 
             
             offset += smd_aux_sizes[i_smd]            
