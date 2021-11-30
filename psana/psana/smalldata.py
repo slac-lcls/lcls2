@@ -535,19 +535,69 @@ class SmallData: # (client)
         return r
 
 
-    def sum(self, value):
-        return self._reduction(value, MPI.SUM)
+    def sum(self, value, inplace=False):
+        return self._reduction(value, MPI.SUM, inplace)
 
 
-    def max(self, value):
-        return self._reduction(value, MPI.MAX)
+    def max(self, value, inplace=False):
+        return self._reduction(value, MPI.MAX, inplace)
 
 
-    def min(self, value):
-        return self._reduction(value, MPI.MIN)
+    def min(self, value, inplace=False):
+        return self._reduction(value, MPI.MIN, inplace)
 
 
-    def _reduction(self, value, op):
+    def _safe_reduction(self,value,op,inplace):
+        """
+        method that is robust to ranks that have received no data
+        """
+        comm = self._client_comm
+        if not isinstance(value,np.ndarray):
+            arrInfo= None
+        else:
+            # in principle could avoid amin/amax calls here since only
+            # really needed for min/max reductions
+            arrInfo = [value.shape,value.dtype,np.amin(value),np.amax(value)]
+        arrInfoAll=comm.allgather(arrInfo)
+        summaryArrInfo = None
+        for arrInfo in arrInfoAll:
+            if arrInfo is None: continue
+            if summaryArrInfo == None: summaryArrInfo = arrInfo
+            if arrInfo[:2] != summaryArrInfo[:2]: # check shape/dtype compatible
+                raise Exception('Unable to reduce incompatible array shapes/types:',arrInfo,summaryArrInfo)
+            # find global min/max (only necessary for min/max reduction)
+            if arrInfo[2]<summaryArrInfo[2]: summaryArrInfo[2]=arrInfo[2]
+            if arrInfo[3]>summaryArrInfo[3]: summaryArrInfo[3]=arrInfo[3]
+        if summaryArrInfo is None:
+            raise Exception('No arrays found for MPI reduce')
+        (shape,dtype,amin,amax) = summaryArrInfo
+        # if our rank has no data manufacture some that won't affect the result
+        if not isinstance(value,np.ndarray):
+            if op is MPI.SUM:
+                value = np.zeros(shape,dtype=dtype)
+            elif op is MPI.MIN:
+                value = np.empty(shape,dtype=dtype)
+                value.fill(amax) # use global max so we don't affect min calculation
+            elif op is MPI.MAX:
+                value = np.empty(shape,dtype=dtype)
+                value.fill(amin) # use global min so we don't affect max calculation
+        if inplace:
+            if comm.Get_rank()==0:
+                comm.Reduce(MPI.IN_PLACE,value,op=op)
+            else:
+                comm.Reduce(value,value,op=op)
+            result=value
+        else:
+            if comm.Get_rank()==0:
+                result = np.empty(shape,dtype=dtype)
+            else:
+                result = None
+            comm.Reduce(value,result,op=op)
+
+        return result
+
+
+    def _reduction(self, value, op, inplace):
         """
         perform a reduction across the worker MPI procs
         """
@@ -561,7 +611,7 @@ class SmallData: # (client)
             red_val = None
 
             if self._type == 'client':
-                red_val = self._client_comm.reduce(value, op)
+                red_val = self._safe_reduction(value, op, inplace)
 
         elif MODE == 'SERIAL':
             red_val = value # just pass it through...
@@ -748,5 +798,3 @@ class SmallData: # (client)
         joined_file.close()
 
         return
-
-
