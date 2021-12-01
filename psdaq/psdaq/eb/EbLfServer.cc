@@ -180,6 +180,8 @@ int EbLfServer::pollEQ()
   struct fi_eq_cm_entry entry;
   uint32_t              event;
 
+  if (!_eq)  return -FI_ENOTCONN;     // Not connected (see connect())
+
   if (_eq->event(&event, &entry, &cmEntry))
   {
     if (cmEntry && (event == FI_SHUTDOWN))
@@ -306,7 +308,8 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
     else
     {
       fprintf(stderr, "%s:\n  Error %d reading Rx CQ: %s\n",
-              __PRETTY_FUNCTION__, rc, _rxcq->error());
+              __PRETTY_FUNCTION__, rc,
+              _rxcq ? _rxcq->error() : fi_strerror(-rc));
       break;
     }
   }

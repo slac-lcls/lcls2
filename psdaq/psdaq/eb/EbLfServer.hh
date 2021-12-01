@@ -81,6 +81,8 @@ int Pds::Eb::EbLfServer::_poll(fi_cq_data_entry* cqEntry, uint64_t flags)
 {
   ssize_t rc;
 
+  if (!_rxcq)  return -FI_ENOTCONN;     // Not connected (see connect())
+
   // Polling favors latency, waiting favors throughput
   if (!_tmo)
   {
