@@ -577,6 +577,25 @@ void DrpBase::runInfoData(Xtc& xtc, NamesLookup& namesLookup, const RunInfo& run
     runinfo.set_value(RunInfoDef::RUNNUM, runInfo.runNumber);
 }
 
+void DrpBase::chunkInfoSupport(Xtc& xtc, NamesLookup& namesLookup)
+{
+    XtcData::Alg chunkInfoAlg("chunkinfo", 0, 0, 1);
+    XtcData::NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
+    XtcData::Names& chunkInfoNames = *new(xtc) XtcData::Names("chunkinfo", chunkInfoAlg,
+                                                              "chunkinfo", "", chunkInfoNamesId);
+    ChunkInfoDef myChunkInfoDef;
+    chunkInfoNames.add(xtc, myChunkInfoDef);
+    namesLookup[chunkInfoNamesId] = XtcData::NameIndex(chunkInfoNames);
+}
+
+void DrpBase::chunkInfoData(Xtc& xtc, NamesLookup& namesLookup, const ChunkInfo& chunkInfo)
+{
+    XtcData::NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
+    XtcData::CreateData chunkinfo(xtc, namesLookup, chunkInfoNamesId);
+    chunkinfo.set_string(ChunkInfoDef::FILENAME, chunkInfo.filename.c_str());
+    chunkinfo.set_value(ChunkInfoDef::CHUNKID, chunkInfo.chunkId);
+}
+
 std::string DrpBase::endrun(const json& phase1Info)
 {
     return std::string{};

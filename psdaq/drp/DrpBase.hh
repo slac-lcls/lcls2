@@ -26,6 +26,12 @@ struct RunInfo
     uint32_t runNumber;
 };
 
+struct ChunkInfo
+{
+    std::string filename;
+    uint32_t chunkId;
+};
+
 class FileParameters
 {
     std::string m_outputDir;
@@ -106,6 +112,8 @@ public:
     void disconnect();
     void runInfoSupport(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
     void runInfoData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, const RunInfo& runInfo);
+    void chunkInfoSupport(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup);
+    void chunkInfoData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLookup, const ChunkInfo& chunkInfo);
     Pds::Eb::TebContributor& tebContributor() {return *m_tebContributor;}
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
     prometheus::Exposer* exposer() {return m_exposer.get();}
