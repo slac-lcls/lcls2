@@ -121,13 +121,15 @@ cdef class EventBuilder:
         
         # For checking step dgrams
         cdef unsigned service = 0, aux_service = 0
-        cdef unsigned long aux_ts = 0
+        cdef unsigned long aux_ts = 0, ts = 0
         cdef unsigned long aux_min_ts = 0
         cdef int smd_id=0
 
-        cdef int accept = 1 # for filter callback
-
-
+        # For filter callback
+        cdef int accept = 1 
+        
+        # For counting if all transtion dgrams show up
+        cdef cn_dgrams = 0
         
         while got < batch_size and self._has_more() and not reach_limit_ts:
             array.zero(self.timestamps)
@@ -135,6 +137,7 @@ cdef class EventBuilder:
             array.zero(self.services)
             array.zero(self.event_timestamps)
             service = 0
+            cn_dgrams = 0
             
             # Get dgrams and collect their timestamps for all smds, then locate
             # smd_id with the smallest timestamp.
@@ -197,6 +200,8 @@ cdef class EventBuilder:
             self.offsets[smd_id] += self.dgram_sizes[smd_id]
             event_dgrams[smd_id] = raw_dgrams[smd_id] # this is the selected dgram
             service = self.services[smd_id]
+            ts = self.event_timestamps[smd_id]
+            cn_dgrams += 1
             
             if self.min_ts == 0:
                 self.min_ts = self.event_timestamps[smd_id] # records first timestamp
@@ -221,6 +226,7 @@ cdef class EventBuilder:
                     self.timestamps[view_idx] = 0 # prepare for next reload
                     self.offsets[view_idx] += (self.DGRAM_SIZE + payload)
                     event_dgrams[view_idx] = <char[:self.DGRAM_SIZE+payload]>view_ptr
+                    cn_dgrams += 1
                 PyBuffer_Release(&buf)
             
             # Generate event as bytes from the dgrams
@@ -279,6 +285,12 @@ cdef class EventBuilder:
                     step_batch.extend(evt_bytes)
                     step_sizes.append(evt_size + evt_footer_size)
                     got_step += 1
+
+                # Check that all transition dgrams show up in all streams
+                if service != self.L1Accept:
+                    if cn_dgrams != self.nsmds:
+                        print(f'Error: Transtion: {(ts >> 32) & 0xffffffff}.{ts & 0xffffffff} (service:{service}) is missing one or more dgrams (found: {cn_dgrams}/ expected: {self.nsmds})')
+                        raise
 
             if limit_ts > -1:
                 if self.max_ts >= limit_ts:
