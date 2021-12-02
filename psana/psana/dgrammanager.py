@@ -177,11 +177,12 @@ class DgramManager(object):
         else:
             try:
                 dgrams = [dgram.Dgram(config=config, max_retries=self.max_retries) for config in self.configs]
-            except StopIteration:
+            except StopIteration as err:
                 fake_endruns = self._check_missing_endrun()
                 if fake_endruns:
                     dgrams = fake_endruns
                 else:
+                    print(err)
                     raise StopIteration
                 
 
