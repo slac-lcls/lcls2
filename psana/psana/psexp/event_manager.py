@@ -12,6 +12,10 @@ s_bd_just_read = PrometheusManager.get_metric('psana_bd_just_read')
 s_bd_gen_smd_batch = PrometheusManager.get_metric('psana_bd_gen_smd_batch')
 s_bd_gen_evt = PrometheusManager.get_metric('psana_bd_gen_evt')
 
+class ExitId:
+    NoError = 0
+    BdReadFail = 1
+
 class EventManager(object):
     """ Return an event from the received smalldata memoryview (view)
 
@@ -41,6 +45,7 @@ class EventManager(object):
         self.use_smds = use_smds
         self.smd_view = view
         self.i_evt = 0
+        self.exit_id = ExitId.NoError
 
         # Each chunk must fit in BD_CHUNKSIZE and we only fill bd buffers
         # when bd_offset reaches the size of buffer.
@@ -58,6 +63,11 @@ class EventManager(object):
 
     @s_bd_gen_evt.time()
     def __next__(self):
+        # Check in case there are some failures (I/O) happened on a core.
+        # For MPI Mode, this allows clean exit.
+        if self.exit_id > 0:
+            raise StopIteration
+
         if self.i_evt == self.n_events: 
             raise StopIteration
         
@@ -186,15 +196,30 @@ class EventManager(object):
             got = memoryview(chunk).nbytes
             if got == size:
                 break
-            offset += got
-            size -= got
+            
+            # Check if we should exit when asked amount is not fulfilled
+            if i_retry == self.max_retries and got < size:
+                if self.max_retries > 0:
+                    # Live mode use max_retries
+                    print(f'Error: maximum no. of retries reached. exit.')
+                else:
+                    # Normal mode
+                    print(f'Error: not able to completely read big data (asked: {size} bytes/ got: {got} bytes)')
 
-            found_xtc2_flags = self.dm.found_xtc2('bd')
-            if got == 0 and all(found_xtc2_flags):
-                print(f'bigddata got 0 byte and .xtc2 files found on disk. stop reading this .inprogress file')
+                # Flag failure for system exit
+                self.exit_id = ExitId.BdReadFail
                 break
 
-            print(f'bigdata read retry#{i_retry} - waiting for {size/1e6} MB, max_retries: {self.max_retries} (PS_R_MAX_RETRIES), sleeping 1 second...') 
+            offset += got
+            size -= got
+            
+            found_xtc2_flags = self.dm.found_xtc2('bd')
+            if got == 0 and all(found_xtc2_flags):
+                print(f'Warning: bigdata got 0 byte and .xtc2 files found on disk. stop reading this .inprogress file')
+                break
+
+            print(f'Warning: bigdata read retry#{i_retry} fd:{fd} - waiting for {size/1e6} MB, max_retries: {self.max_retries} (PS_R_MAX_RETRIES), sleeping 1 second...') 
+
             time.sleep(1)
         
         en = time.monotonic()
