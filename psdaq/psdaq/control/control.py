@@ -508,7 +508,7 @@ class CollectionManager():
         self.front_rep.bind('tcp://*:%d' % front_rep_port(args.p))
         self.fast_rep.bind('tcp://*:%d' % fast_rep_port(args.p))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(args.p))
-        self.slow_update_rate = args.S if args.S else 0
+        self.slow_update_rate = args.S
         self.fast_reply_rate = 10           # Hz
         self.slow_update_enabled = False    # setter: self.set_slow_update_enabled()
         self.threads_exit = Event()
@@ -548,6 +548,7 @@ class CollectionManager():
         # initialize fast reply thread
         self.fast_reply_thread = Thread(target=self.fast_reply_func, name='fastreply')
 
+        logging.debug(f'slow update rate = {self.slow_update_rate} Hz')
         if self.slow_update_rate:
             # initialize slow update thread
             self.slow_update_thread = Thread(target=self.slow_update_func, name='slowupdate')
@@ -2176,7 +2177,7 @@ def main():
     parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')
     parser.add_argument('-t', metavar='TRIGGER_CONFIG', default='tmoteb', help='trigger configuration name')
-    parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, default=0, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 0)')
+    parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, default=1, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 1)')
     parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
     parser.add_argument('--rollcall_timeout', type=int, default=30, help='rollcall timeout sec (default 30)')
     parser.add_argument('-v', action='store_true', help='be verbose')
