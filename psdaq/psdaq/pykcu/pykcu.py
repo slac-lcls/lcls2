@@ -69,7 +69,7 @@ class PVStats(object):
         self.pv    = addPVT(name+':MON',pvdef)
         self.value = toDict(pvdef)
         self.hsd   = hsd
-    
+
     def init(self):
         pass
 
@@ -102,23 +102,24 @@ def main():
     global provider
 
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for KCU')
+    parser.add_argument('-P', required=True, help='e.g. DAQ:LAB2', metavar='PREFIX')
     parser.add_argument('-i','--interval',type=int ,help='PV update interval',default=10)
     parser.add_argument('-H','--hsd'     ,action='store_true',help='HSD node',default=False)
     parser.add_argument('-d','--dev'     ,type=str, default='/dev/datadev_0')
     args = parser.parse_args()
 
     # Set base
-    base = pr.Root(name='KCUr',description='') 
+    base = pr.Root(name='KCUr',description='')
 
     coreMap = rogue.hardware.axi.AxiMemMap(args.dev)
 
     base.add(Top(memBase = coreMap))
-    
+
     # Start the system
     base.start(
-        pollEn   = False,
-        initRead = False,
-        zmqPort  = None,
+#        pollEn   = False,
+#        initRead = False,
+#        zmqPort  = None,
     )
 
     kcu = base.KCU
@@ -134,12 +135,12 @@ def main():
         print('DateBlock: {:x}'.format(kcu.I2cBus.QSFP0.DateBlock.get()))
         print(kcu.I2cBus.QSFP0.getDate())
     else:
-        print(kcu.TDetTiming.getClkRates())
-        print(kcu.TDetSemi.getRTT())
+        print('ClkRates: ', kcu.TDetTiming.getClkRates())
+        print('RTT: ', kcu.TDetSemi.getRTT())
 
     provider = StaticProvider(__name__)
 
-    pvstats = PVStats('DAQ:LAB2:'+socket.gethostname().replace('-','_').upper(),kcu,args.hsd)
+    pvstats = PVStats(args.P+':'+socket.gethostname().replace('-','_').upper(),kcu,args.hsd)
 
     # process PVA transactions
     updatePeriod = args.interval
