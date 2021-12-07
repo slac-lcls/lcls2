@@ -260,9 +260,7 @@ void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
     }
     printf("\n");
     
-    //createData(xtc, nodeId, namesId);
     NamesId namesId0(nodeId, namesId);
-    //CreateData newData(xtc, _namesLookup, namesId0);
 
     // TODO: Add check for newIndex >= 0
     int newIndex = datadef.index(varname);
