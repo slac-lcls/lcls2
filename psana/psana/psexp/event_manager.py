@@ -46,6 +46,7 @@ class EventManager(object):
         self.smd_view = view
         self.i_evt = 0
         self.exit_id = ExitId.NoError
+        self.chunkinfo = {}  # store chunkid and chunk filename 
 
         # Each chunk must fit in BD_CHUNKSIZE and we only fill bd buffers
         # when bd_offset reaches the size of buffer.
@@ -154,13 +155,16 @@ class EventManager(object):
                     # We only support chunking on bigdata
                     if self.dm.n_files > 0: 
                         _chunk_ids = [getattr(d.chunkinfo[seg_id].chunkinfo, 'chunkid') for seg_id in d.chunkinfo]
+                        _chunk_filenames = [getattr(d.chunkinfo[seg_id].chunkinfo, 'filename') for seg_id in d.chunkinfo]
                         # Only flag new chunk when there's chunkinfo and that chunkid is new
                         if _chunk_ids: 
                             # There must be only one unique chunkid name 
                             new_chunk_id = _chunk_ids[0]
+                            new_filename = _chunk_filenames[0]
                             current_chunk_id = self.dm.get_chunk_id(i_smd)
                             if new_chunk_id > current_chunk_id:
                                 self.new_chunk_id_array[i_evt, i_smd] = new_chunk_id
+                                self.chunkinfo[new_chunk_id] = new_filename 
             
             offset += smd_aux_sizes[i_smd]            
             i_smd += 1
@@ -180,12 +184,11 @@ class EventManager(object):
     def _open_new_bd_file(self, i_smd, new_chunk_id):
         os.close(self.dm.fds[i_smd])
         xtc_dir = os.path.dirname(self.dm.xtc_files[i_smd])
-        filename = os.path.basename(self.dm.xtc_files[i_smd])
-        found = filename.find('-c')
-        new_filename = filename.replace(filename[found:found+4], '-c'+str(new_chunk_id).zfill(2))
+        new_filename = self.chunkinfo[new_chunk_id]
         fd = os.open(os.path.join(xtc_dir, new_filename), os.O_RDONLY)
         self.dm.fds[i_smd] = fd
         self.dm.xtc_files[i_smd] = new_filename
+        self.dm.set_chunk_id(i_smd, new_chunk_id)
     
     @s_bd_just_read.time()
     def _read(self, fd, size, offset):

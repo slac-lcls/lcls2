@@ -121,6 +121,9 @@ class DgramManager(object):
         if not self.chunk_ids: return None
         return self.chunk_ids[ind]
 
+    def set_chunk_id(self, ind, new_chunk_id):
+        self.chunk_ids[ind] = new_chunk_id
+
     def close(self):
         if not self.given_fds:
             for fd in self.fds:
