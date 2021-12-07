@@ -124,7 +124,7 @@ cdef class PyXtcUpdateIter():
         self.cptr.createData(pyxtc.cptr[0], namesdef.nodeId, namesdef.namesId)
 
     def adddata(self, PyXtc pyxtc, namesdef, PyDataDef pydatadef, 
-            datadef_name, unsigned[:] shape, char[:,:] data):
+            datadef_name, unsigned[:] shape, char[:] data):
         cdef unsigned* shape_ptr
         cdef Py_buffer shape_pybuf
         PyObject_GetBuffer(shape, &shape_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
@@ -210,7 +210,7 @@ def adddata(PyDgram pydg, namesdef, PyDataDef pydatadef, datadict):
                 shape[i] = data.shape[i]
             else:
                 shape[i] = 0
-        uiter.adddata(pyxtc, namesdef, pydatadef, datadef_name, shape, data)
+        uiter.adddata(pyxtc, namesdef, pydatadef, datadef_name, shape, data.flatten())
 
 def datadef(datadict):
     datadef = PyDataDef()
