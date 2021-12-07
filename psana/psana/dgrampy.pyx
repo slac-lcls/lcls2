@@ -120,6 +120,9 @@ cdef class PyXtcUpdateIter():
                 pydatadef.cptr[0])
         return NamesDef(nodeId, namesId)
 
+    def createdata(self, PyXtc pyxtc, namesdef):
+        self.cptr.createData(pyxtc.cptr[0], namesdef.nodeId, namesdef.namesId)
+
     def adddata(self, PyXtc pyxtc, namesdef, PyDataDef pydatadef, 
             datadef_name, unsigned[:] shape, char[:,:] data):
         cdef unsigned* shape_ptr
@@ -198,6 +201,9 @@ def adddata(PyDgram pydg, namesdef, PyDataDef pydatadef, datadict):
     pyxtc = pydg.get_pyxtc()
     cdef array.array shape = array.array('I', [0,0,0,0,0])
     cdef int i
+
+    uiter.createdata(pyxtc, namesdef)
+
     for datadef_name, data in datadict.items():
         for i in range(len(shape)):
             if i < len(data.shape):

@@ -14,6 +14,7 @@
 #include <iterator>
 #include <string>
 #include <typeinfo>
+#include <memory>
 
 #define BUFSIZE 0x1000000
 
@@ -98,6 +99,7 @@ public:
             unsigned* shape, char* data, DataDef& datadef, char* varname);
     Dgram& createTransition(unsigned transId, bool counting_timestamps,
                         unsigned timestamp_val);
+    void createData(Xtc& xtc, unsigned nodeId, unsigned namesId);
 
 
 private:
@@ -105,6 +107,7 @@ private:
     unsigned _numWords;
     char* _buf;
     unsigned _bufsize;
+    std::unique_ptr<CreateData> _newData;
 }; // end class XtcUpdateIter
 
 

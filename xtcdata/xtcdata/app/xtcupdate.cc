@@ -94,6 +94,7 @@ int main(int argc, char* argv[])
         if (dg->service() == TransitionId::L1Accept) {
             printf("[L1Accept] ");
             unsigned shape[MaxRank] = {2,3};
+            uiter.createData(dg->xtc, nodeId, namesId);
             uint8_t data[6] = {141,142,143,144,145,146};
             uiter.addData(dg->xtc, nodeId, namesId, 
                     shape, (char *)data, datadef, defName);

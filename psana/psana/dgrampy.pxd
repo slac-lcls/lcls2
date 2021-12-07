@@ -76,7 +76,8 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
                 unsigned* shape, char* data, DataDef& datadef, char* varname)
         Dgram& createTransition(unsigned transId, unsigned counting_timestamps,
-                        unsigned timestamp_val);
+                        unsigned timestamp_val)
+        void createData(Xtc& xtc, unsigned nodeId, unsigned namesId)
 
     cdef cppclass DataDef:
         DataDef() except +

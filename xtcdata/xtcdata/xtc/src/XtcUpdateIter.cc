@@ -242,6 +242,11 @@ void XtcUpdateIter::addNames(Xtc& xtc, char* detName, char* detType, char* detId
     _namesLookup[namesId0] = NameIndex(names0);
 }
 
+void XtcUpdateIter::createData(Xtc& xtc, unsigned nodeId, unsigned namesId) {
+    NamesId namesId0(nodeId, namesId);
+    _newData = std::unique_ptr<CreateData>(new CreateData{xtc, _namesLookup, namesId0});
+}
+
 void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
         unsigned* shape, char* data, DataDef& datadef, char* varname) {
     for(unsigned i=0; i<MaxRank; i++){
@@ -255,13 +260,14 @@ void XtcUpdateIter::addData(Xtc& xtc, unsigned nodeId, unsigned namesId,
     }
     printf("\n");
     
+    //createData(xtc, nodeId, namesId);
     NamesId namesId0(nodeId, namesId);
-    CreateData newData(xtc, _namesLookup, namesId0);
+    //CreateData newData(xtc, _namesLookup, namesId0);
 
     // TODO: Add check for newIndex >= 0
     int newIndex = datadef.index(varname);
 
-    Array<uint8_t> arrayT = newData.allocate<uint8_t>(newIndex, shape);
+    Array<uint8_t> arrayT = _newData->allocate<uint8_t>(newIndex, shape);
     Shape shp(shape);
     Name& name = _namesLookup[namesId0].names().get(newIndex);
     printf("copy to ArrayT size=%u\n", shp.size(name)); 
