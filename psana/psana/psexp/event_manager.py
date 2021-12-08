@@ -184,8 +184,8 @@ class EventManager(object):
     def _open_new_bd_file(self, i_smd, new_chunk_id):
         os.close(self.dm.fds[i_smd])
         xtc_dir = os.path.dirname(self.dm.xtc_files[i_smd])
-        new_filename = self.chunkinfo[new_chunk_id]
-        fd = os.open(os.path.join(xtc_dir, new_filename), os.O_RDONLY)
+        new_filename = os.path.join(xtc_dir, self.chunkinfo[new_chunk_id])
+        fd = os.open(new_filename, os.O_RDONLY)
         self.dm.fds[i_smd] = fd
         self.dm.xtc_files[i_smd] = new_filename
         self.dm.set_chunk_id(i_smd, new_chunk_id)
