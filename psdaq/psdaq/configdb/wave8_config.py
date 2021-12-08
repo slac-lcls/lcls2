@@ -1,6 +1,7 @@
 from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import *
+from psdaq.cas.xpm_utils import timTxId
 import epics
 import logging
 
@@ -156,6 +157,8 @@ def wave8_connect(epics_prefix):
             break
         print('{:} is zero, retry'.format(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:RxId'))
         time.sleep(0.1)
+
+    txId = timTxId('wave8')
 
     d = {}
     d['paddr'] = values
