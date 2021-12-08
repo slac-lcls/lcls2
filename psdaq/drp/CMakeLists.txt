@@ -189,6 +189,17 @@ target_link_libraries(fileWriteTest
     drpbase
 )
 
+add_executable(drp_groupsync
+    groupsync.cc
+)
+target_include_directories(drp_groupsync PUBLIC
+     ../psdaq/pgp/aes-stream-drivers/include
+ )
+target_link_libraries(drp_groupsync
+     Threads::Threads
+)
+
+
 install(TARGETS drp drp_bld drp_pva drp_udpencoder
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
