@@ -1,10 +1,12 @@
 if not platform: platform = '2'
 
+#epics_path = f'PATH={CONDA_PREFIX}/epics/bin/linux-x86_64:'+os.environ['PATH']
+epics_path = ' '
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
-manta_env = 'EPICS_PVA_ADDR_LIST=172.21.156.12 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
-hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path
-andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.84  EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path+' '+epics_path
+manta_env = 'EPICS_PVA_ADDR_LIST=172.21.156.12 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path+' '+epics_path
+hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path+' '+epics_path
+andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.84  EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path+' '+epics_path
 
 #collect_host = os.uname()[1]
 collect_host = 'drp-neh-ctl001'
@@ -19,24 +21,31 @@ cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
 #
 #  drp variables
 #
-prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
+prom_dir = f'/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}' # Prometheus
 data_dir = '/drpneh/data'
 
 task_set = 'taskset 0xffbfeffbfe '
-std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir+' -o '+data_dir+' -d /dev/datadev_%d'
+std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}'
+std_opts0 = f'{std_opts} -o {data_dir} -k batching=no -d /dev/datadev_0'
+std_opts1 = f'{std_opts} -o {data_dir} -k batching=no -d /dev/datadev_1'
 
-drp_cmd0 = task_set+'drp '      +(std_opts%0)+' -k batching=no '
-drp_cmd1 = task_set+'drp '      +(std_opts%1)+' -k batching=no '
-pva_cmd0 = task_set+'drp_pva '  +(std_opts%0)+' -k batching=no '
-pva_cmd1 = task_set+'drp_pva '  +(std_opts%1)+' -k batching=no '
-bld_cmd0 = task_set+'drp_bld '  +(std_opts%0)+' -k batching=no,interface=eno1 '
-bld_cmd1 = task_set+'drp_bld '  +(std_opts%1)+' -k batching=no,interface=eno1 '
+teb_cmd  = task_set+'teb '            +std_opts
+meb_cmd  = task_set+'monReqServer '   +std_opts
+
+drp_cmd0 = task_set+'drp '            +std_opts0
+drp_cmd1 = task_set+'drp '            +std_opts1
+pva_cmd0 = task_set+'drp_pva '        +std_opts0
+pva_cmd1 = task_set+'drp_pva '        +std_opts1
+udp_cmd0 = task_set+'drp_udpencoder ' +std_opts0
+udp_cmd1 = task_set+'drp_udpencoder ' +std_opts1
+bld_cmd0 = task_set+'drp_bld '        +std_opts0+' -k interface=eno1'
+bld_cmd1 = task_set+'drp_bld '        +std_opts1+' -k interface=eno1'
 
 elog_cfg = '/cds/group/pcds/dist/pds/rix/misc/elog_rix.txt'
 
 ea_cfg = '/cds/group/pcds/dist/pds/rix/misc/epicsArch.txt'
-ea_cmd0 = task_set+'epicsArch '+(std_opts%0)+' -k batching=no '+ea_cfg
-ea_cmd1 = task_set+'epicsArch '+(std_opts%1)+' -k batching=no '+ea_cfg
+ea_cmd0 = task_set+'epicsArch '+std_opts0+' '+ea_cfg
+ea_cmd1 = task_set+'epicsArch '+std_opts1+' '+ea_cfg
 
 #
 #  ami variables
@@ -68,9 +77,6 @@ procmgr_config = [
 # {                         id:'groupca',     flags:'s',   env:epics_env, cmd:'groupca DAQ:NEH 0 '+groups},
  {                         id:'procstat',    flags:'p',                  cmd:'procstat p'+platform+'.cnf.last'},
  { host: 'drp-neh-ctl002', id:'tprtrig',     flags:'sp',                 cmd:'tprtrig -t a -c 0 -o 1 -d 2 -w 10 -z'},
-# { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:50,  cmd:f'drp_udpencoder -l 0x8 -o {data_dir} -P {hutch} -d /dev/datadev_0 -C {collect_host}'},
-# Oct 18 caf: temporarily remove rtprio:50 until permissions are updated
-  { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu',             cmd:f'drp_udpencoder -l 0x8 -o {data_dir} -P {hutch} -d /dev/datadev_0 -C {collect_host}'},
 
 # { host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 0 -C NOBEAM {auth} {url} -d {cdb}/configDB -r /dev/null -t trigger -S 1 -T 20000'},
  #{ host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
@@ -78,7 +84,7 @@ procmgr_config = [
  #{ host: collect_host,     id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch}:{station} -B DAQ:NEH -x 3 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- { host: 'drp-neh-cmp013', id:'teb0',        flags:'spu',                cmd:task_set+'teb '+'-P '+hutch+' -C '+collect_host+' -M '+prom_dir},
+ { host: 'drp-neh-cmp013', id:'teb0',        flags:'spu',                cmd:teb_cmd},
 
  { host: 'drp-neh-cmp015', id:'timing_0',    flags:'spu',                cmd:drp_cmd1+' -l 0x1 -D ts'},
 
@@ -88,12 +94,16 @@ procmgr_config = [
  #{ host: 'drp-neh-cmp014', id:'epixhr_0',  flags:'sxpu',  env:epics_env, cmd:drp_cmd0+' -D epixhr2x2 -l 0x1'},
  
 # 10/10/2021 - direct andor hw has been re-connected
- { host: 'drp-neh-cmp015', id:'andor_dir_0',     flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:DIR:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
+ { host: 'drp-neh-cmp015', id:'andor_dir_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd1+' -l 0x4 RIX:DIR:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
- { host: 'drp-neh-cmp015', id:'andor_vls_0',     flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
+ { host: 'drp-neh-cmp015', id:'andor_vls_0', flags:'spu', env:andor_epics_env, cmd:pva_cmd0+' -l 0x1 RIX:VLS:CAM:01:IMAGE1:Pva:Image -k pebbleBufSize=2098216'},
 
  # make transition buffer size large to accomodate a non-timestamped camera
  { host: 'drp-neh-cmp015', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x8 -T 4000000'},
+
+# { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:50, cmd:udp_cmd0+' -l 0x8'},
+# Oct 18 caf: temporarily remove rtprio:50 until permissions are updated
+  { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu',            cmd:udp_cmd0+' -l 0x8'},
 
 # 9/23/2021 - fim2 h/w not stable
   { host: 'drp-neh-cmp007', id:'rix_fim2_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x10'},
@@ -113,7 +123,7 @@ procmgr_config = [
  # 9MPixel G-917C manta untimestamped image @1Hz (hence the "-0" flag)
  # set the pebbleBufSize smaller since filewriter only supports 8388688 currently
 # { host: 'drp-neh-cmp015', id:'mr2k1_0',      flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x1 MR2K1:MONO:CAM:04:DATA1:Pva:Image -k pebbleBufSize=8380000 -0'},
- { host: 'drp-neh-cmp007', id:'mebuser0', flags:'spu', cmd:f'{task_set} monReqServer -P {hutch} -C {collect_host} -M {prom_dir} -d -q {ami_workers_per_node}'},
+ { host: 'drp-neh-cmp007', id:'mebuser0', flags:'spu', cmd:meb_cmd+' -d -q {ami_workers_per_node}'},
 ]
 
 hsd_epics = 'DAQ:RIX:HSD:1'
@@ -132,11 +142,11 @@ procmgr_config.extend(procmgr_hsd)
 platform_base_port = 5555+50*int(platform)
 for instance, base_port in {"first": platform_base_port,}.items():
     procmgr_ami = [
-    { host:ami_manager_node, id:f'ami-global_{instance}',  flags:'s', env:epics_env, cmd:f'ami-global -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
-        { host:ami_manager_node, id:f'ami-manager_{instance}', flags:'s', cmd:f'ami-manager -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
-        {                        id:f'ami-client_{instance}',  flags:'s', cmd:f'ami-client -p {base_port} -H {ami_manager_node} --prometheus-dir {prom_dir}/{hutch} --hutch {hutch}_{instance}' },
-#        {                        id:f'ami-client_{instance}_acr',  flags:'s', cmd:f'ami-client -l rix_acr_hsd_feedback.fc -p {base_port} -H {ami_manager_node} --prometheus-dir {prom_dir}/{hutch} --hutch {hutch}_{instance}_acr -g "acr_graph"'},
-#        {                        id:f'acr_server',  flags:'s', cmd:f'python rix_acr_hsd_feedback.py -P RIX:ACR'},
+      { host:ami_manager_node, id:f'ami-global_{instance}',  flags:'s', env:epics_env, cmd:f'ami-global -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
+      { host:ami_manager_node, id:f'ami-manager_{instance}', flags:'s', cmd:f'ami-manager -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
+      {                        id:f'ami-client_{instance}',  flags:'s', cmd:f'ami-client -p {base_port} -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}_{instance}' },
+#      {                        id:f'ami-client_{instance}_acr',  flags:'s', cmd:f'ami-client -l rix_acr_hsd_feedback.fc -p {base_port} -H {ami_manager_node} --prometheus-dir {prom_dir} --hutch {hutch}_{instance}_acr -g "acr_graph"'},
+#      {                        id:f'acr_server',  flags:'s', cmd:f'python rix_acr_hsd_feedback.py -P RIX:ACR'},
     ]
 
     # ami workers
