@@ -115,12 +115,19 @@ class ts_connector:
     def xpm_link_enable(self):
         self.xpm_link_disable_all()
 
-        pv_names = []
-        values = []
+        d = {}
         for xpm_num,xpm_port,readout_group in self.xpm_info:
             pvname = self.xpm_base+str(xpm_num)+':'+'LinkGroupMask'+str(xpm_port)
-            pv_names.append(pvname)
-            values.append((1<<readout_group))
+            if pvname in d:
+                d[pvname] |= (1<<readout_group)
+            else:
+                d[pvname] = (1<<readout_group)
+
+        pv_names = []
+        values = []
+        for name,value in d.items():
+            pv_names.append(name)
+            values.append(value)
 
         print('*** setting xpm link enables',pv_names,values)
         self.ctxt.put(pv_names,values)
