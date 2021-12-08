@@ -84,10 +84,11 @@ def main():
     pvstats = PVStats(provider, lock, args.P, xpm, args.F)
 #    pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=True)
     pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, db=args.db, cuInit=args.I)
-    pvxtpg  = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms, cuMode='xtpg' in xpm.AxiVersion.ImageName.get(), bypassLock=args.L)
+    pvxtpg = None
 
     # process PVA transactions
     updatePeriod = 1.0
+    cycle = 0
     with Server(providers=[provider]):
         try:
             if pvxtpg is not None:
@@ -95,15 +96,22 @@ def main():
             pvstats.init()
             while True:
                 prev = time.perf_counter()
+                pvstats.update(cycle)
+                pvctrls.update(cycle)
+                #  We have to delay the startup of some classes
+                if cycle == 5:
+                    pvxtpg  = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms, cuMode='xtpg' in xpm.AxiVersion.ImageName.get(), bypassLock=args.L)
+                    pvxtpg.init()
+                elif cycle < 5:
+                    print('pvxtpg in %d'%(5-cycle))
                 if pvxtpg is not None:
                     pvxtpg .update()
-                pvstats.update()
-                pvctrls.update()
                 curr  = time.perf_counter()
                 delta = prev+updatePeriod-curr
 #                print('Delta {:.2f}  Update {:.2f}  curr {:.2f}  prev {:.2f}'.format(delta,curr-prev,curr,prev))
                 if delta>0:
                     time.sleep(delta)
+                cycle += 1
         except KeyboardInterrupt:
             pass
 

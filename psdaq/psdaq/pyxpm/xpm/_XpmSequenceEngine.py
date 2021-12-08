@@ -119,6 +119,7 @@ class SeqMem(pr.Device):
             mode         = "RW",
             number       = 2048,
             hidden       = True,
+            verify       = False,
         )
 
 class XpmSequenceEngine(pr.Device):

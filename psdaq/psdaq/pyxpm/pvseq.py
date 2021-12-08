@@ -26,6 +26,10 @@ class Engine(object):
         self._jump = reg.find(name='SeqJump_%d'%id)[0]
         self._ram  = reg.find(name='SeqMem_%d'%id)[0].mem
         self._caches  = {}  # instruction sequences committed to device
+
+        self._indices = 0
+        self.dump()
+
         a = 0
         self._caches[a]                           = SeqCache(0,3,[FixedRateSync(5,1),FixedRateSync(5,1),Branch.unconditional(line=0)])
         self._ram   [a  ].set(FixedRateSync(5,1)._word())
@@ -187,6 +191,10 @@ class Engine(object):
         self._reg.seqRestart.set(v)
 
     def dump(self):
+        print('seqAddrLen %d'%self._reg.seqAddrLen.get())
+        print('ctlSeq     %d'%self._reg.ctlSeq.get())
+        print('xpmSeq     %d'%self._reg.xpmSeq.get())
+
         v = self._jump.reg[15].get()
         print('Sync [{:04x}]  Start [{:04x}]  Enable [{:08x}]'.format(v>>16,v&0xffff,self._reg.seqEn.get()))
         state = self._reg.find(name='SeqState_%d'%self._id)[0]

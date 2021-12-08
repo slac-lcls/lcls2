@@ -289,7 +289,7 @@ class GroupStats(object):
             return addPV(name+':'+label,'f')
 
         self._pv_runTime   = addPVF('RunTime')
-        self._pv_msgDelay  = addPVF('MsgDelay')
+#        self._pv_msgDelay  = addPVF('MsgDelay')
         self._pv_l0InpRate = addPVF('L0InpRate')
         self._pv_l0AccRate = addPVF('L0AccRate')
         self._pv_l1Rate    = addPVF('L1Rate')
@@ -328,7 +328,8 @@ class GroupStats(object):
         offset += 1
         rT = l0Ena*fidPeriod
         updatePv(self._pv_runTime , rT, timev)
-        updatePv(self._pv_msgDelay, self._app.l0Delay.get(), timev)
+#       Does this get() cause problems via multi-threading?
+#        updatePv(self._pv_msgDelay, self._app.l0Delay.get(), timev)
 
         if self._master:
             dL0Ena   = l0Ena    - self._l0Ena
@@ -433,7 +434,7 @@ class PVStats(object):
             offset = self._amcPll[i].handle(msg,offset,timev)
         offset = self._monClks.handle(msg,offset,timev)
 
-    def update(self):
+    def update(self, cycle):
         try:
             self._usTiming.update()
             self._cuTiming.update()

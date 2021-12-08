@@ -50,7 +50,8 @@ class GthRxAlignCheck(pr.Device):
             bitSize      =  32,
             bitOffset    =  0x00,
             mode         = "RO",
-            pollInterval = 1,
+#  Too many accesses?
+#            pollInterval = 1,
             number       =  64,
             stride       =  4,
             hidden       =  True,

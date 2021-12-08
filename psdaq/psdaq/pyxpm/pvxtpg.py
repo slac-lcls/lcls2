@@ -124,7 +124,7 @@ class PVXTpg(object):
                 #raise RuntimeError("CuTiming not locked")
         else:
             if xpm.UsTiming.RxLinkUp.get()==0:
-                logging.error("CuTiming not locked")
+                logging.error("UsTiming not locked")
                 #raise RuntimeError("UsTiming not locked")
             else:
                 xpm.UsTiming.Dump()

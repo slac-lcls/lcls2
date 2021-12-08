@@ -335,6 +335,7 @@ class GroupSetup(object):
         
         self._pv_MsgHeader  = addPV('MsgHeader' , app.msgHdr ,  0, set=True)
         self._pv_MsgPayload = addPV('MsgPayload', app.msgPayl,  0, set=True)
+        self._pv_L0Groups   = addPV('L0Groups'  , app.l0Groups, 0, set=True)
 
         def addPV(label,reg,init=0,set=False):
             pvu = SharedPV(initial=NTScalar('f').wrap(init*1400/1.3),
@@ -534,14 +535,6 @@ class PVCtrls(object):
 
         self._group = GroupCtrls(name, app, stats, init=init)
 
-        #  The following section will throw an exception if the CuInput PV is not set properly
-        if not cuInit:
-            self._seq = PVSeq(provider, name+':SEQENG:0', ip, Engine(0, xpm.SeqEng_0))
-
-            self._pv_dumpSeq = SharedPV(initial=NTScalar('I').wrap(0), 
-                                        handler=CmdH(self._seq._eng.dump))
-            provider.add(name+':DumpSeq',self._pv_dumpSeq)
-
         self._pv_usRxReset = SharedPV(initial=NTScalar('I').wrap(0),
                                       handler=CmdH(xpm.UsTiming.C_RxReset))
         provider.add(name+':Us:RxReset',self._pv_usRxReset)
@@ -561,7 +554,18 @@ class PVCtrls(object):
         app.monStreamPeriod.set(125000000)
         app.monStreamEnable.set(1)
 
-    def update(self):
+    def update(self,cycle):
+
+        #  The following section will throw an exception if the CuInput PV is not set properly
+        if cycle < 10:
+            print('pvseq in %d'%(10-cycle))
+        elif cycle == 10:
+            self._seq = PVSeq(provider, self._name+':SEQENG:0', self._ip, Engine(0, self._xpm.SeqEng_0))
+
+            self._pv_dumpSeq = SharedPV(initial=NTScalar('I').wrap(0), 
+                                        handler=CmdH(self._seq._eng.dump))
+            provider.add(self._name+':DumpSeq',self._pv_dumpSeq)
+
         global countdn
         # check for config save
         if countdn > 0:

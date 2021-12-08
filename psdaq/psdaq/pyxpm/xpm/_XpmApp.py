@@ -359,6 +359,16 @@ class XpmApp(pr.Device):
         ))
 
         self.add(pr.RemoteVariable(    
+            name         = "l0Groups",
+            description  = "L0 deadtime groups",
+            offset       =  0x19,
+            bitSize      =  8,
+            bitOffset    =  0x00,
+            base         = pr.UInt,
+            mode         = "RW",
+        ))
+
+        self.add(pr.RemoteVariable(    
             name         = "l0En",
             description  = "L0 trigger enable",
             offset       =  0x1a,
