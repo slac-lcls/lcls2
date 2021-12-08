@@ -165,6 +165,8 @@ Wave8::Wave8(Parameters* para, MemPool* pool) :
 
 json Wave8::connectionInfo()
 {
+    return BEBDetector::connectionInfo();
+
     // Exclude connection info until cameralink-gateway timingTxLink is fixed
     logging::error("Returning NO XPM link; implementation incomplete");
     return json({});
