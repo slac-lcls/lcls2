@@ -490,7 +490,7 @@ def epixhr2x2_config(base,connect_str,cfgtype,detname,detsegm,rog):
     reset_counters(base)
 
     #  Enable triggers to continue monitoring
-#    epixhr2x2_internal_trigger(base)
+    epixhr2x2_internal_trigger(base)
 
     #  Capture the firmware version to persist in the xtc
     cbase = base['cam']
@@ -641,7 +641,7 @@ def epixhr2x2_update(update):
     ##  End of Try full
 
     #  Enable triggers to continue monitoring
-#    epixhr2x2_internal_trigger(base)
+    epixhr2x2_internal_trigger(base)
 
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):

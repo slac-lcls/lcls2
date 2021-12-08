@@ -230,8 +230,14 @@ void EpixHR2x2::_event(XtcData::Xtc& xtc, std::vector< XtcData::Array<uint8_t> >
     unsigned q_asics = m_asics;
     for(unsigned q=0; q<4; q++) {
         if (q_asics & (1<<q)) {
-            if (subframes.size()<(q+4) || subframes[q+3].num_elem()!=56076) {
+            if (subframes.size()<(q+4)) {
                 logging::error("Missing data from asic %d\n",q);
+                xtc.damage.increase(XtcData::Damage::MissingData);
+                q_asics ^= (1<<q);
+            }
+            else if (subframes[q+3].num_elem()!=56076) {
+                logging::error("Wrong size frame %d [%d] from asic %d\n",
+                               subframes[q+3].num_elem(),56076,q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
             }
