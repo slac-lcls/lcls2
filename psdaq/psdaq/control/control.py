@@ -601,7 +601,8 @@ class CollectionManager():
             'selectplatform': self.handle_selectplatform,
             'getstate': self.handle_getstate,
             'storejsonconfig': self.handle_storejsonconfig,
-            'getstatus': self.handle_getstatus
+            'getstatus': self.handle_getstatus,
+            'chunkRequest': self.handle_chunkrequest
         }
         self.handle_fast = {
             'getinstrument': self.handle_getinstrument,
@@ -849,6 +850,10 @@ class CollectionManager():
                     self.report_error(msg['body']['err_info'])
                 elif msg['header']['key'] == 'warning':
                     self.report_warning(msg['body']['err_info'])
+                # chunkRequest is more than a "report."
+                # include it here so drp's can use the back_pull zmq socket.
+                if msg['header']['key'] == 'chunkRequest':
+                    self.handle_chunkrequest(msg['body'])
             except KeyError as ex:
                 logging.error('process_reports() KeyError: %s' % ex)
 
@@ -1359,6 +1364,28 @@ class CollectionManager():
     def handle_getstatus(self, body):
         logging.debug('handle_getstatus()')
         return self.status_msg()
+
+    # request chunking opportunity (Running->Paused->Running)
+    def handle_chunkrequest(self, body):
+        logging.debug(f'handle_chunkrequest() in state {self.state}')
+
+        retval = create_msg('ok')   # ok
+
+        if self.state == 'running':
+            answer = self.handle_trigger('disable')
+            if 'err_info' in answer['body']:
+                retval = answer     # error
+            else:
+                answer = self.handle_trigger('enable')
+                if 'err_info' in answer['body']:
+                    retval = answer # error
+        else:
+            # error -- not in Running state
+            errMsg = f'cannot chunkrequest in state \'{self.state}\' -- must be Running first'
+            logging.error(errMsg)
+            retval = create_msg('error', body={'err_info': errMsg})
+
+        return retval
 
     # Update the active detector file.
     # May throw an exception.
