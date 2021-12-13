@@ -54,8 +54,13 @@ def printError(errorCode, args):
 #
 def getConfigFileNames(argconfig, partition):
 
-    run_name = 'p%d.cnf.running' % partition
-    last_name = 'p%d.cnf.last' % partition
+    dirname = os.path.dirname(argconfig)
+    if len(dirname) > 0:
+        run_name  = dirname + '/' + 'p%d.cnf.running' % partition
+        last_name = dirname + '/' + 'p%d.cnf.last' % partition
+    else:
+        run_name  = 'p%d.cnf.running' % partition
+        last_name = 'p%d.cnf.last' % partition
 
     # return filenames
     return (run_name, last_name)
