@@ -113,7 +113,7 @@ if [[ -v TESTRELDIR ]]; then
     echo "TESTRELDIR=${TESTRELDIR}"
     echo "CONDA_PREFIX=${CONDA_PREFIX}"
     # TESTRELDIR before condaEnv in PATH
-    export PATH="${TESTRELDIR}/bin:${CONDA_PREFIX}/bin:${PATH}"
+    export PATH="${TESTRELDIR}/bin:${CONDA_PREFIX}/bin:$CONDA_PREFIX/epics/bin/linux-x86_64:${PATH}"
     # SET LD_LIBRARY_PATH
     export LD_LIBRARY_PATH="${TESTRELDIR}/lib"
     if [ ! -z $pythonVer ]; then
@@ -122,7 +122,7 @@ if [[ -v TESTRELDIR ]]; then
     fi
 else
     echo "CONDA_PREFIX=${CONDA_PREFIX}"
-    export PATH="${CONDA_PREFIX}/bin:${PATH}"
+    export PATH="${CONDA_PREFIX}/bin:$CONDA_PREFIX/epics/bin/linux-x86_64:${PATH}"
 fi
 
 # expand command to absolute path
