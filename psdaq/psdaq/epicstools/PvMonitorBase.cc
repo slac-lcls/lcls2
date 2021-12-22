@@ -3,103 +3,90 @@
 #include "psalg/utils/SysLog.hh"
 
 #include "pv/pvTimeStamp.h"
+#include "pv/pvEnumerated.h"
 
 using logging = psalg::SysLog;
 
 namespace Pds_Epics
 {
 
+typedef uint32_t ShpArr[PvMonitorBase::MaxRank];
+
 int PvMonitorBase::printStructure() const
 {
     if (!_strct)  { logging::error("_strct is NULL");  return 1; }
-    auto structure = _strct->getStructure();
+    const auto& structure = _strct->getStructure();
     if (!structure)  { logging::error("structure is NULL");  return 1; }
-    auto names = structure->getFieldNames();
-    auto fields = structure->getFields();
+    const auto& names = structure->getFieldNames();
     //std::cout << "Fields are: " << structure << "\n";
     for (unsigned i=0; i<names.size(); i++) {
-        auto pvField = _strct->getSubField<pvd::PVField>(names[i]);
+        const auto& pvField = _strct->getSubField<pvd::PVField>(names[i]);
         if (!pvField)  { logging::error("pvField %s is NULL", names[i].c_str());  return 1; }
-        auto offset = pvField->getFieldOffset();
-        logging::info("PV Name: %s  FieldName: %s  Offset: %zu  FieldType: %s",
-                      name().c_str(), names[i].c_str(), offset, pvd::TypeFunc::name(fields[i]->getType()));
-        std::cout << "Field type: " << pvField->getField()->getType() << "\n";
-        switch (fields[i]->getType()) {
+        const auto& field  = pvField->getField();
+        const auto& offset = pvField->getFieldOffset();
+        logging::info("PV Name: %s  FieldName: %s  Offset: %zu  FieldType: %s  ID: %s",
+                      name().c_str(), names[i].c_str(), offset,
+                      pvd::TypeFunc::name(field->getType()),
+                      field->getID().c_str());
+        switch (field->getType()) {
             case pvd::scalar: {
-                auto pvScalar = _strct->getSubField<pvd::PVScalar>(offset);
+                const auto& pvScalar = _strct->getSubField<pvd::PVScalar>(offset);
                 if (!pvScalar)  { logging::error("pvScalar is NULL");  return 1; }
                 //std::cout << "PVScalar: " << pvScalar << "\n";
-                auto scalar   = pvScalar->getScalar();
+                const auto& scalar   = pvScalar->getScalar();
                 if (!scalar)  { logging::error("scalar is NULL");  return 1; }
-                auto fType = pvd::ScalarTypeFunc::name(scalar->getScalarType());
+                //std::cout << "Scalar: " << scalar << "\n";
+                const auto& fType = pvd::ScalarTypeFunc::name(scalar->getScalarType());
                 std::cout << "  Scalar type: " << fType << "\n";
                 break;
             }
             case pvd::scalarArray: {
-                auto pvScalarArray = _strct->getSubField<pvd::PVScalarArray>(offset);
+                const auto& pvScalarArray = _strct->getSubField<pvd::PVScalarArray>(offset);
                 if (!pvScalarArray)  { logging::error("pvScalarArray is NULL");  return 1; }
                 //std::cout << "PVScalarArray: " << pvScalarArray << "\n";
-                auto scalarArray   = pvScalarArray->getScalarArray();
+                const auto& scalarArray   = pvScalarArray->getScalarArray();
                 if (!scalarArray)  { logging::error("scalarArray is NULL");  return 1; }
-                auto fType = pvd::ScalarTypeFunc::name(scalarArray->getElementType());
+                //std::cout << "ScalarArray: " << scalarArray << "\n";
+                const auto& fType         = pvd::ScalarTypeFunc::name(scalarArray->getElementType());
                 std::cout << "  ScalarArray type: " << fType << "\n";
                 break;
             }
-            case pvd::union_: {
-                auto pvUnion = _strct->getSubField<pvd::PVUnion>(offset);
-                if (!pvUnion)  { logging::error("pvUnion is NULL");  return 1; }
-                //std::cout << "PVUnion: " << pvUnion << "\n";
-                auto union_ = pvUnion->getUnion();
-                if (!union_)  { logging::error("union is NULL");  return 1; }
-                //std::cout << "  Union: " << union_ << "\n";
-                printf("  Union has %zu fields\n", union_->getNumberFields());
-                printf("  Union is variant: %d\n", union_->isVariant());
-                std::cout << "  PVUnion numberFields: " << pvUnion->getNumberFields() << "\n";
-                auto pvField = pvUnion->get();
-                if (!pvField)  { logging::error("pvField is NULL");  return 1; }
-                std::cout << "  PVUnion type: " << pvField->getField()->getType() << "\n";
-                std::cout << "  PVUnion subtype: " << pvField->getField()->getID() << "\n";
-                auto pvScalarArray = pvUnion->get<pvd::PVScalarArray>();
-                if (!pvScalarArray)  { logging::error("Union's pvScalarArray is NULL");  return 1; }
-                auto scalarArray   = pvScalarArray->getScalarArray();
-                if (!scalarArray)  { logging::error("Union's scalarArray is NULL");  return 1; }
-                auto fType = pvd::ScalarTypeFunc::name(scalarArray->getElementType());
-                std::cout << "  ScalarArray offset: " << pvScalarArray->getFieldOffset() << "  Type: " << fType << "\n";
-                break;
-            }
             case pvd::structure: {
-                auto pvStructure = _strct->getSubField<pvd::PVStructure>(offset);
+                const auto& pvStructure = _strct->getSubField<pvd::PVStructure>(offset);
                 if (!pvStructure)  { logging::error("pvStructure is NULL");  return 1; }
                 //std::cout << "PVStructure: " << pvStructure << "\n";
-                auto structure   = pvStructure->getStructure();
+                const auto& structure   = pvStructure->getStructure();
                 if (!structure)  { logging::error("structure is NULL");  return 1; }
                 //std::cout << "  Structure: " << structure << "\n";
-                auto fieldNames = structure->getFieldNames();
+                const auto& fieldNames  = structure->getFieldNames();
                 for (unsigned k = 0; k < fieldNames.size(); k++) {
-                    auto pvField = pvStructure->getSubField(fieldNames[k]);
-                    auto offset = pvField->getFieldOffset();
-                    printf("    field '%s' has offset %zu\n", fieldNames[k].c_str(), offset);
+                    const auto& pvField = pvStructure->getSubField(fieldNames[k]);
+                    const auto& offset  = pvField->getFieldOffset();
+                    const auto& field   = pvField->getField();
+                    const auto& fType   = field->getType();
+                    std::cout << "    field '" << fieldNames[k] << "', offset " << offset
+                              << ", type " << fType << ", subtype " << field << "\n";
                 }
                 break;
             }
             case pvd::structureArray: {
-                auto pvStructureArray = _strct->getSubField<pvd::PVStructureArray>(offset);
+                const auto& pvStructureArray = _strct->getSubField<pvd::PVStructureArray>(offset);
                 if (!pvStructureArray)  { logging::error("pvStructureArray is NULL");  return 1; }
-                std::cout << "PVStructureArray: " << pvStructureArray << "\n";
-                auto structureArray   = pvStructureArray->getStructureArray();
+                //std::cout << "PVStructureArray: " << pvStructureArray << "\n";
+                const auto& structureArray   = pvStructureArray->getStructureArray();
                 if (!structureArray)  { logging::error("structureArray is NULL");  return 1; }
                 //std::cout << "StructureArray: " << structureArray << "\n";
                 printf("  StructureArray has length %zu\n", pvStructureArray->getLength());
                 std::vector<int> sizes(pvStructureArray->getLength());
-                auto pvStructure = pvStructureArray->view();
+                const auto& pvStructure      = pvStructureArray->view();
                 for (unsigned j = 0; j < pvStructureArray->getLength(); ++j) {
                     std::cout << "  PVStructure: " << pvStructure[j] << "\n";
-                    auto fieldNames = pvStructure[j]->getStructure()->getFieldNames();
+                    const auto& fieldNames = pvStructure[j]->getStructure()->getFieldNames();
                     for (unsigned k = 0; k < fieldNames.size(); k++) {
-                        auto pvField = pvStructure[j]->getSubField(fieldNames[k]);
+                        const auto& pvField = pvStructure[j]->getSubField(fieldNames[k]);
                         if (!pvField)  { logging::error("pvField is NULL");  return 1; }
                         if (names[i] == "dimension" && fieldNames[k] == "size") {
-                            auto pvInt = pvStructure[j]->getSubField<pvd::PVInt>("size");
+                            const auto& pvInt = pvStructure[j]->getSubField<pvd::PVInt>("size");
                             sizes[j] = pvInt ? pvInt->getAs<int>() : 0;
                         }
                         else {
@@ -114,6 +101,41 @@ int PvMonitorBase::printStructure() const
                 }
                 break;
             }
+            case pvd::union_: {
+                const auto& pvUnion = _strct->getSubField<pvd::PVUnion>(offset);
+                if (!pvUnion)  { logging::error("pvUnion is NULL");  return 1; }
+                //std::cout << "PVUnion: " << pvUnion << "\n";
+                const auto& union_  = pvUnion->getUnion();
+                if (!union_)  { logging::error("union is NULL");  return 1; }
+                //std::cout << "  Union: " << union_ << "\n";
+                printf("  Union has %zu fields\n", union_->getNumberFields());
+                printf("  Union is variant: %d\n", union_->isVariant());
+                std::cout << "  PVUnion numberFields: " << pvUnion->getNumberFields() << "\n";
+                const auto& pvField = pvUnion->get();
+                if (!pvField)  { logging::error("pvField is NULL");  return 1; }
+                const auto& field   = pvField->getField();
+                std::cout << "  PVUnion type: " << field->getType() << "\n";
+                std::cout << "  PVUnion subtype: " << field->getID() << "\n";
+                const auto& pvScalarArray = pvUnion->get<pvd::PVScalarArray>();
+                if (!pvScalarArray)  { logging::error("Union's pvScalarArray is NULL");  return 1; }
+                //std::cout << "PVScalarArray: " << pvScalarArray << "\n";
+                const auto& scalarArray   = pvScalarArray->getScalarArray();
+                if (!scalarArray)  { logging::error("Union's scalarArray is NULL");  return 1; }
+                //std::cout << "ScalarArray: " << scalarArray << "\n";
+                const auto& fType         = pvd::ScalarTypeFunc::name(scalarArray->getElementType());
+                std::cout << "  ScalarArray offset: " << pvScalarArray->getFieldOffset() << "  Type: " << fType << "\n";
+                break;
+            }
+            case pvd::unionArray: {     // Placeholder for now
+                const auto& pvUnionArray = _strct->getSubField<pvd::PVUnion>(offset);
+                if (!pvUnionArray)  { logging::error("pvUnionArray is NULL");  return 1; }
+                std::cout << "PVUnionArray: " << pvUnionArray << "\n";
+                const auto& unionArray   = pvUnionArray->getUnion();
+                if (!unionArray)  { logging::error("unionArray is NULL");  return 1; }
+                std::cout << "  UnionArray: " << unionArray << "\n";
+                logging::error("UnionArrays are unsupported as yet");
+                break;
+            }
             default: {
                 break;
             }
@@ -123,288 +145,291 @@ int PvMonitorBase::printStructure() const
     return 0;
 }
 
-int PvMonitorBase::getParams(const std::string& name,
-                             pvd::ScalarType&   type,
-                             size_t&            nelem,
-                             size_t&            rank)
+int PvMonitorBase::getParams(pvd::ScalarType& type,
+                             size_t&          nelem,
+                             size_t&          rank)
 {
     if (!_strct)  { logging::error("_strct is NULL");  return 1; }
-    auto pvStructureArray = _strct->getSubField<pvd::PVStructureArray>("dimension");
+    const auto& pvStructureArray = _strct->getSubField<pvd::PVStructureArray>("dimension");
     rank = pvStructureArray ? pvStructureArray->getLength() : 1;
 
-    auto pvField = _strct->getSubField<pvd::PVField>(name);
+    const auto& pvField = _strct->getSubField<pvd::PVField>(m_fieldName);
     if (!pvField) {
       logging::critical("No payload for PV %s.  Is FieldMask empty?", MonTracker::name().c_str());
       throw "No payload.  Is FieldMask empty?";
     }
-    auto offset = pvField->getFieldOffset();
-    switch (pvField->getField()->getType()) {
-        case pvd::scalar: {
-            auto pvScalar = _strct->getSubField<pvd::PVScalar>(offset);
-            if (!pvScalar)  { logging::error("pvScalar is NULL");  return 1; }
-            auto scalar   = pvScalar->getScalar();
-            if (!scalar)  { logging::error("scalar is NULL");  return 1; }
-            type          = scalar->getScalarType();
-            if (type==pvd::pvString) {
-                logging::critical("%s: Unsupported %s type %s (%d)",
-                                  MonTracker::name().c_str(),
-                                  pvd::TypeFunc::name(pvScalar->getField()->getType()),
-                                  pvd::ScalarTypeFunc::name(scalar->getScalarType()),
-                                  scalar->getScalarType());
-                throw "Unsupported string type";
-            }
-            nelem         = 1;
-            rank          = 0;
-// This was tested and is known to work
-//          switch (scalar->getScalarType()) {
-//              case pvd::pvBoolean: getData = [&](void* data, size_t& length) -> size_t { return _getScalar<uint8_t >(data, length); };  break;
-//              case pvd::pvByte:    getData = [&](void* data, size_t& length) -> size_t { return _getScalar<int8_t  >(data, length); };  break;
-//              case pvd::pvShort:   getData = [&](void* data, size_t& length) -> size_t { return _getScalar<int16_t >(data, length); };  break;
-//              case pvd::pvInt:     getData = [&](void* data, size_t& length) -> size_t { return _getScalar<int32_t >(data, length); };  break;
-//              case pvd::pvLong:    getData = [&](void* data, size_t& length) -> size_t { return _getScalar<int64_t >(data, length); };  break;
-//              case pvd::pvUByte:   getData = [&](void* data, size_t& length) -> size_t { return _getScalar<uint8_t >(data, length); };  break;
-//              case pvd::pvUShort:  getData = [&](void* data, size_t& length) -> size_t { return _getScalar<uint16_t>(data, length); };  break;
-//              case pvd::pvUInt:    getData = [&](void* data, size_t& length) -> size_t { return _getScalar<uint32_t>(data, length); };  break;
-//              case pvd::pvULong:   getData = [&](void* data, size_t& length) -> size_t { return _getScalar<uint64_t>(data, length); };  break;
-//              case pvd::pvFloat:   getData = [&](void* data, size_t& length) -> size_t { return _getScalar<float   >(data, length); };  break;
-//              case pvd::pvDouble:  getData = [&](void* data, size_t& length) -> size_t { return _getScalar<double  >(data, length); };  break;
-            logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
-                          MonTracker::name().c_str(),
-                          pvd::TypeFunc::name(pvField->getField()->getType()),
-                          pvd::ScalarTypeFunc::name(type),
-                          type, nelem, rank);
-            break;
-        }
-        case pvd::scalarArray: {
-            auto pvScalarArray = _strct->getSubField<pvd::PVScalarArray>(offset);
-            if (!pvScalarArray)  { logging::error("pvScalarArray is NULL");  return 1; }
-            auto scalarArray   = pvScalarArray->getScalarArray();
-            if (!scalarArray)  { logging::error("scalarArray is NULL");  return 1; }
-            type               = scalarArray->getElementType();
-            if (type==pvd::pvString) {
-                logging::critical("%s: Unsupported %s type '%s' (%d)",
-                                  MonTracker::name().c_str(),
-                                  pvd::TypeFunc::name(pvScalarArray->getField()->getType()),
-                                  pvd::ScalarTypeFunc::name(scalarArray->getElementType()),
-                                  scalarArray->getElementType());
-                throw "Unsupported string type";
-            }
-            nelem              = pvScalarArray->getLength();
-// This was tested and is known to work
-//          switch (scalarArray->getElementType()) {
-//              case pvd::pvBoolean: getData = [&](void* data, size_t& length) -> size_t { return _getArray<uint8_t >(data, length); };  break;
-//              case pvd::pvByte:    getData = [&](void* data, size_t& length) -> size_t { return _getArray<int8_t  >(data, length); };  break;
-//              case pvd::pvShort:   getData = [&](void* data, size_t& length) -> size_t { return _getArray<int16_t >(data, length); };  break;
-//              case pvd::pvInt:     getData = [&](void* data, size_t& length) -> size_t { return _getArray<int32_t >(data, length); };  break;
-//              case pvd::pvLong:    getData = [&](void* data, size_t& length) -> size_t { return _getArray<int64_t >(data, length); };  break;
-//              case pvd::pvUByte:   getData = [&](void* data, size_t& length) -> size_t { return _getArray<uint8_t >(data, length); };  break;
-//              case pvd::pvUShort:  getData = [&](void* data, size_t& length) -> size_t { return _getArray<uint16_t>(data, length); };  break;
-//              case pvd::pvUInt:    getData = [&](void* data, size_t& length) -> size_t { return _getArray<uint32_t>(data, length); };  break;
-//              case pvd::pvULong:   getData = [&](void* data, size_t& length) -> size_t { return _getArray<uint64_t>(data, length); };  break;
-//              case pvd::pvFloat:   getData = [&](void* data, size_t& length) -> size_t { return _getArray<float   >(data, length); };  break;
-//              case pvd::pvDouble:  getData = [&](void* data, size_t& length) -> size_t { return _getArray<double  >(data, length); };  break;
-            logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
-                          MonTracker::name().c_str(),
-                          pvd::TypeFunc::name(pvField->getField()->getType()),
-                          pvd::ScalarTypeFunc::name(type),
-                          type, nelem, rank);
-            break;
-        }
-         case pvd::union_: {
-            auto pvUnion       = _strct->getSubField<pvd::PVUnion>(offset);
-            if (!pvUnion)  { logging::error("pvUnion is NULL");  return 1; }
-            auto union_        = pvUnion->getUnion();
-            if (!union_)  { logging::error("union is NULL");  return 1; }
-            auto pvScalarArray = pvUnion->get<pvd::PVScalarArray>();
-            if (!pvScalarArray)  { logging::error("Union's pvScalarArray is NULL");  return 1; }
-            auto scalarArray   = pvScalarArray->getScalarArray();
-            if (!scalarArray)  { logging::error("Union's scalarArray is NULL");  return 1; }
-            type               = scalarArray->getElementType();
-            if (type==pvd::pvString) {
-                logging::critical("%s: Unsupported %s type '%s' (%d)",
-                                  MonTracker::name().c_str(),
-                                  pvd::TypeFunc::name(pvScalarArray->getField()->getType()),
-                                  pvd::ScalarTypeFunc::name(scalarArray->getElementType()),
-                                  scalarArray->getElementType());
-                throw "Unsupported string type";
-            }
-            nelem              = pvScalarArray->getLength();
-// This has NOT been tested
-//          switch (scalarArray->getElementType()) {
-//              case pvd::pvBoolean: getData = [&](void* data, size_t& length) -> size_t { return _getUnion<uint8_t >(data, length); };  break;
-//              case pvd::pvByte:    getData = [&](void* data, size_t& length) -> size_t { return _getUnion<int8_t  >(data, length); };  break;
-//              case pvd::pvShort:   getData = [&](void* data, size_t& length) -> size_t { return _getUnion<int16_t >(data, length); };  break;
-//              case pvd::pvInt:     getData = [&](void* data, size_t& length) -> size_t { return _getUnion<int32_t >(data, length); };  break;
-//              case pvd::pvLong:    getData = [&](void* data, size_t& length) -> size_t { return _getUnion<int64_t >(data, length); };  break;
-//              case pvd::pvUByte:   getData = [&](void* data, size_t& length) -> size_t { return _getUnion<uint8_t >(data, length); };  break;
-//              case pvd::pvUShort:  getData = [&](void* data, size_t& length) -> size_t { return _getUnion<uint16_t>(data, length); };  break;
-//              case pvd::pvUInt:    getData = [&](void* data, size_t& length) -> size_t { return _getUnion<uint32_t>(data, length); };  break;
-//              case pvd::pvULong:   getData = [&](void* data, size_t& length) -> size_t { return _getUnion<uint64_t>(data, length); };  break;
-//              case pvd::pvFloat:   getData = [&](void* data, size_t& length) -> size_t { return _getUnion<float   >(data, length); };  break;
-//              case pvd::pvDouble:  getData = [&](void* data, size_t& length) -> size_t { return _getUnion<double  >(data, length); };  break;
-            logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
-                          MonTracker::name().c_str(),
-                          pvd::TypeFunc::name(pvField->getField()->getType()),
-                          pvd::ScalarTypeFunc::name(type),
-                          type, nelem, rank);
-            break;
-        }
-        default: {
-            logging::warning("%s: Unsupported field type '%s' for subfield '%s'",
-                             MonTracker::name().c_str(),
-                             pvd::TypeFunc::name(pvField->getField()->getType()),
-                             pvField->getFieldName().c_str());
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-void PvMonitorBase::getTimestamp(int64_t& seconds, int32_t& nanoseconds) const
-{
-    // This seems to be the intended way to retrieve the timestamp
-    // However there is some problem with const...
-    //pvd::PVTimeStamp pvTimeStamp;
-    //pvTimeStamp.attach(_strct->getSubField("timeStamp"));
-    //pvd::TimeStamp ts;
-    //pvTimeStamp.get(ts);
-    //
-    //seconds     = ts.getSecondsPastEpoch();
-    //nanoseconds = ts.getNanoseconds();
-
-    seconds     = _strct->getSubField<pvd::PVScalar>("timeStamp.secondsPastEpoch")->getAs<long>();
-    nanoseconds = _strct->getSubField<pvd::PVScalar>("timeStamp.nanoseconds")->getAs<int>();
-    seconds    -= m_epochDiff;
-}
-
-size_t PvMonitorBase::_getData(std::shared_ptr<const pvd::PVScalar> const& pvScalar, void* data, size_t& size)
-{
-    auto scalar = pvScalar->getScalar();
-    switch (scalar->getScalarType()) {
-        case pvd::pvBoolean: return _getScalar<uint8_t >(pvScalar, data, size);
-        case pvd::pvByte:    return _getScalar<int8_t  >(pvScalar, data, size);
-        case pvd::pvShort:   return _getScalar<int16_t >(pvScalar, data, size);
-        case pvd::pvInt:     return _getScalar<int32_t >(pvScalar, data, size);
-        case pvd::pvLong:    return _getScalar<int64_t >(pvScalar, data, size);
-        case pvd::pvUByte:   return _getScalar<uint8_t >(pvScalar, data, size);
-        case pvd::pvUShort:  return _getScalar<uint16_t>(pvScalar, data, size);
-        case pvd::pvUInt:    return _getScalar<uint32_t>(pvScalar, data, size);
-        case pvd::pvULong:   return _getScalar<uint64_t>(pvScalar, data, size);
-        case pvd::pvFloat:   return _getScalar<float   >(pvScalar, data, size);
-        case pvd::pvDouble:  return _getScalar<double  >(pvScalar, data, size);
-        default: {
-            logging::critical("%s: Unsupported %s type %s (%d)",
-                              MonTracker::name().c_str(),
-                              pvd::TypeFunc::name(pvScalar->getField()->getType()),
-                              pvd::ScalarTypeFunc::name(scalar->getScalarType()),
-                              scalar->getScalarType());
-            throw "Unsupported scalar field type";
-        }
-    }
-    return 0;
-}
-
-size_t PvMonitorBase::_getData(std::shared_ptr<const pvd::PVScalarArray> const& pvScalarArray, void* data, size_t& size)
-{
-    auto scalarArray = pvScalarArray->getScalarArray();
-    switch (scalarArray->getElementType()) {
-        case pvd::pvBoolean: return _getArray<uint8_t >(pvScalarArray, data, size);
-        case pvd::pvByte:    return _getArray<int8_t  >(pvScalarArray, data, size);
-        case pvd::pvShort:   return _getArray<int16_t >(pvScalarArray, data, size);
-        case pvd::pvInt:     return _getArray<int32_t >(pvScalarArray, data, size);
-        case pvd::pvLong:    return _getArray<int64_t >(pvScalarArray, data, size);
-        case pvd::pvUByte:   return _getArray<uint8_t >(pvScalarArray, data, size);
-        case pvd::pvUShort:  return _getArray<uint16_t>(pvScalarArray, data, size);
-        case pvd::pvUInt:    return _getArray<uint32_t>(pvScalarArray, data, size);
-        case pvd::pvULong:   return _getArray<uint64_t>(pvScalarArray, data, size);
-        case pvd::pvFloat:   return _getArray<float   >(pvScalarArray, data, size);
-        case pvd::pvDouble:  return _getArray<double  >(pvScalarArray, data, size);
-        default: {
-            logging::critical("%s: Unsupported %s type '%s' (%d)",
-                              MonTracker::name().c_str(),
-                              pvd::TypeFunc::name(pvScalarArray->getField()->getType()),
-                              pvd::ScalarTypeFunc::name(scalarArray->getElementType()),
-                              scalarArray->getElementType());
-            throw "Unsupported scalarArray field type";
-        }
-    }
-    return 0;
-}
-
-size_t PvMonitorBase::_getData(std::shared_ptr<const pvd::PVUnion> const& pvUnion, void* data, size_t& size)
-{
-    auto union_ = pvUnion->getUnion();
-    if (pvUnion->getNumberFields() != 1) {
-        logging::error("%s: Unsupported field count %d\n",
-                       MonTracker::name().c_str(), pvUnion->getNumberFields());
-        throw "Unsupported union field count";
-    }
-    auto field = pvUnion->get()->getField();
+    const auto& field   = pvField->getField();
+    const auto& offset  = pvField->getFieldOffset();
     switch (field->getType()) {
-        case pvd::scalar:
-            return _getData(pvUnion->get<pvd::PVScalar>(), data, size);
-        case pvd::scalarArray:
-            return _getData(pvUnion->get<pvd::PVScalarArray>(), data, size);
-        default: {
-            logging::error("%s: Unsupported union field type '%s'",
-                           MonTracker::name().c_str(),
-                           pvd::TypeFunc::name(field->getType()));
-            throw "Unsupported union field type";
-        }
-    }
-    return 0;
-}
-
-std::vector<uint32_t> PvMonitorBase::_getDimensions(size_t count)
-{
-    auto pvStructureArray = _strct->getSubField<pvd::PVStructureArray>("dimension");
-    if (pvStructureArray) {
-        auto pvStructure = pvStructureArray->view();
-        std::vector<uint32_t> counts(pvStructureArray->getLength());
-        for (unsigned i = 0; i < counts.size(); ++i) {
-            // Revisit: EPICS data shows up in [x,y] order but psana wants [y,x]
-            counts[i] = pvStructure[counts.size() - 1 - i]->getSubField<pvd::PVInt>("size")->getAs<uint32_t>();
-        }
-        return counts;
-    }
-
-    return std::vector<uint32_t>(1, count);
-}
-
-std::vector<uint32_t> PvMonitorBase::getData(void* data, size_t& payloadSize)
-{
-    auto   pvField = _strct->getSubField<pvd::PVField>("value");
-    auto   offset  = pvField->getFieldOffset();
-    size_t size    = payloadSize;
-    size_t count;
-    switch (pvField->getField()->getType()) {
         case pvd::scalar: {
-            auto pvScalar = _strct->getSubField<pvd::PVScalar>(offset);
-            count = _getData(pvScalar, data, size);
-            payloadSize = size;
-            return std::vector<uint32_t>(0);
+            const auto& pvScalar = _strct->getSubField<pvd::PVScalar>(offset);
+            if        (!pvScalar)  { logging::error("pvScalar is NULL");  return 1; }
+            const auto& scalar   = pvScalar->getScalar();
+            if        (!scalar)    { logging::error("scalar is NULL");    return 1; }
+            type  = scalar->getScalarType();
+            nelem = type != pvd::pvString ? 1 : MAX_STRING_SIZE;
+            rank  = type != pvd::pvString ? 0 : 1;
+            // This was tested and is known to work
+            switch (type) {
+                case pvd::pvBoolean: getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getScalar<uint8_t >(buf, len, shp); };  break;
+                case pvd::pvByte:    getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getScalar<int8_t  >(buf, len, shp); };  break;
+                case pvd::pvShort:   getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getScalar<int16_t >(buf, len, shp); };  break;
+                case pvd::pvInt:     getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getScalar<int32_t >(buf, len, shp); };  break;
+                case pvd::pvLong:    getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getScalar<int64_t >(buf, len, shp); };  break;
+                case pvd::pvUByte:   getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getScalar<uint8_t >(buf, len, shp); };  break;
+                case pvd::pvUShort:  getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getScalar<uint16_t>(buf, len, shp); };  break;
+                case pvd::pvUInt:    getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getScalar<uint32_t>(buf, len, shp); };  break;
+                case pvd::pvULong:   getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getScalar<uint64_t>(buf, len, shp); };  break;
+                case pvd::pvFloat:   getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getScalar<float   >(buf, len, shp); };  break;
+                case pvd::pvDouble:  getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getScalar<double  >(buf, len, shp); };  break;
+                case pvd::pvString:  getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getScalarString    (buf, len, shp); };  break;
+                default: {
+                    logging::critical("%s: Unsupported %s type %s (%d)",
+                                      MonTracker::name().c_str(),
+                                      pvd::TypeFunc::name(field->getType()),
+                                      pvd::ScalarTypeFunc::name(type),
+                                      type);
+                    throw "Unsupported Scalar type";
+                }
+            }
+            logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
+                          MonTracker::name().c_str(),
+                          pvd::TypeFunc::name(field->getType()),
+                          pvd::ScalarTypeFunc::name(type),
+                          type, nelem, rank);
+            break;
         }
         case pvd::scalarArray: {
-            auto pvScalarArray = _strct->getSubField<pvd::PVScalarArray>(offset);
-            count = _getData(pvScalarArray, data, size);
+            const auto& pvScalarArray = _strct->getSubField<pvd::PVScalarArray>(offset);
+            if        (!pvScalarArray)  { logging::error("pvScalarArray is NULL");  return 1; }
+            const auto& scalarArray   = pvScalarArray->getScalarArray();
+            if        (!scalarArray)    { logging::error("scalarArray is NULL");    return 1; }
+            type  = scalarArray->getElementType();
+            nelem = (type != pvd::pvString ?    1 : MAX_STRING_SIZE) * pvScalarArray->getLength();
+            rank  =  type != pvd::pvString ? rank : 2;
+            // This was tested and is known to work
+            switch (type) {
+                case pvd::pvBoolean: getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getArray<uint8_t >(buf, len, shp); };  break;
+                case pvd::pvByte:    getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getArray<int8_t  >(buf, len, shp); };  break;
+                case pvd::pvShort:   getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getArray<int16_t >(buf, len, shp); };  break;
+                case pvd::pvInt:     getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getArray<int32_t >(buf, len, shp); };  break;
+                case pvd::pvLong:    getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getArray<int64_t >(buf, len, shp); };  break;
+                case pvd::pvUByte:   getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getArray<uint8_t >(buf, len, shp); };  break;
+                case pvd::pvUShort:  getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getArray<uint16_t>(buf, len, shp); };  break;
+                case pvd::pvUInt:    getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getArray<uint32_t>(buf, len, shp); };  break;
+                case pvd::pvULong:   getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getArray<uint64_t>(buf, len, shp); };  break;
+                case pvd::pvFloat:   getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getArray<float   >(buf, len, shp); };  break;
+                case pvd::pvDouble:  getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getArray<double  >(buf, len, shp); };  break;
+                case pvd::pvString:  getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getArrayString    (buf, len, shp); };  break;
+                default: {
+                    logging::critical("%s: Unsupported %s type '%s' (%d)",
+                                      MonTracker::name().c_str(),
+                                      pvd::TypeFunc::name(field->getType()),
+                                      pvd::ScalarTypeFunc::name(type),
+                                      type);
+                    throw "Unsupported ScalarArray type";
+                }
+            }
+            logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
+                          MonTracker::name().c_str(),
+                          pvd::TypeFunc::name(field->getType()),
+                          pvd::ScalarTypeFunc::name(type),
+                          type, nelem, rank);
             break;
         }
+        case pvd::structure: {
+            if (field->getID() == "enum_t") {
+                const auto& pvStructure = _strct->getSubField<pvd::PVStructure>(offset);
+                if        (!pvStructure)  { logging::error("pvStructure is NULL");  return 1; }
+                const auto& structure   = pvStructure->getStructure();
+                if        (!structure)    { logging::error("structure is NULL");    return 1; }
+                type  = pvd::pvString;
+                rank  = 1;
+                nelem = MAX_STRING_SIZE;
+                getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getEnum(buf, len, shp); };
+                logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
+                              MonTracker::name().c_str(),
+                              pvd::TypeFunc::name(field->getType()),
+                              pvd::ScalarTypeFunc::name(type),
+                              type, nelem, rank);
+            }
+            else
+            {
+                logging::critical("%s: Unsupported Structure ID '%s'",
+                                  MonTracker::name().c_str(), field->getID().c_str());
+                throw "Unsupported Structure ID";
+            }
+            break;
+        }
+        // case pvd::structureArray: {  // Placeholder
+        //     break;
+        // }
         case pvd::union_: {
-            auto pvUnion = _strct->getSubField<pvd::PVUnion>(offset);
-            count = _getData(pvUnion, data, size);
+            const auto& pvUnion       = _strct->getSubField<pvd::PVUnion>(offset);
+            if        (!pvUnion)        { logging::error("pvUnion is NULL");                return 1; }
+            const auto& union_        = pvUnion->getUnion();
+            if        (!union_)         { logging::error("union is NULL");                  return 1; }
+            const auto& ufield        = pvUnion->get()->getField();
+            switch (ufield->getType()) {
+                //case pvd::scalar: {     // Place holder
+                //    break;
+                //}
+                case pvd::scalarArray: {
+                    const auto& pvScalarArray = pvUnion->get<pvd::PVScalarArray>();
+                    if        (!pvScalarArray)  { logging::error("Union's pvScalarArray is NULL");  return 1; }
+                    const auto& scalarArray   = pvScalarArray->getScalarArray();
+                    if        (!scalarArray)    { logging::error("Union's scalarArray is NULL");    return 1; }
+                    if (pvUnion->getNumberFields() != 1) {
+                        logging::critical("%s: Unsupported Union ScalarArray field count %d\n",
+                                          MonTracker::name().c_str(), pvUnion->getNumberFields());
+                        throw "Unsupported Union ScalarArray field count";
+                    }
+                    type  = scalarArray->getElementType();
+                    nelem = pvScalarArray->getLength();
+                    // This has NOT been tested
+                    switch (type) {
+                        case pvd::pvBoolean: getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getUnionSclArr<uint8_t >(buf, len, shp); };  break;
+                        case pvd::pvByte:    getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getUnionSclArr<int8_t  >(buf, len, shp); };  break;
+                        case pvd::pvShort:   getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getUnionSclArr<int16_t >(buf, len, shp); };  break;
+                        case pvd::pvInt:     getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getUnionSclArr<int32_t >(buf, len, shp); };  break;
+                        case pvd::pvLong:    getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getUnionSclArr<int64_t >(buf, len, shp); };  break;
+                        case pvd::pvUByte:   getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getUnionSclArr<uint8_t >(buf, len, shp); };  break;
+                        case pvd::pvUShort:  getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getUnionSclArr<uint16_t>(buf, len, shp); };  break;
+                        case pvd::pvUInt:    getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getUnionSclArr<uint32_t>(buf, len, shp); };  break;
+                        case pvd::pvULong:   getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getUnionSclArr<uint64_t>(buf, len, shp); };  break;
+                        case pvd::pvFloat:   getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getUnionSclArr<float   >(buf, len, shp); };  break;
+                        case pvd::pvDouble:  getData = [&](void* buf, size_t len, ShpArr shp) -> size_t { return _getUnionSclArr<double  >(buf, len, shp); };  break;
+                        default:{
+                            logging::critical("%s: Unsupported %s %s type '%s' (%d)",
+                                              MonTracker::name().c_str(),
+                                              pvd::TypeFunc::name(field->getType()),
+                                              pvd::TypeFunc::name(ufield->getType()),
+                                              pvd::ScalarTypeFunc::name(type),
+                                              type);
+                            throw "Unsupported Union ScalarArray type";
+                        }
+                    }
+                    break;
+                }
+                default: {
+                    logging::critical("%s: Unsupported %s type '%s' for subfield '%s'",
+                                      MonTracker::name().c_str(),
+                                      pvd::TypeFunc::name(field->getType()),
+                                      pvd::TypeFunc::name(ufield->getType()),
+                                      pvField->getFieldName().c_str());
+                    throw "Unsupported Union type";
+                }
+            }
+            logging::info("PV name: %s,  %s type: '%s' (%d),  length: %zd,  rank: %zd",
+                          MonTracker::name().c_str(),
+                          pvd::TypeFunc::name(field->getType()),
+                          pvd::ScalarTypeFunc::name(type),
+                          type, nelem, rank);
             break;
         }
+        //case pvd::unionArray: {         // Place holder
+        //    break;
+        //}
         default: {
-            logging::error("%s: Unsupported field type '%s' for subfield '%s'",
-                           MonTracker::name().c_str(),
-                           pvd::TypeFunc::name(pvField->getField()->getType()),
-                           pvField->getFieldName().c_str());
+            logging::critical("%s: Unsupported field type '%s' for subfield '%s'",
+                              MonTracker::name().c_str(),
+                              pvd::TypeFunc::name(field->getType()),
+                              pvField->getFieldName().c_str());
             throw "Unsupported field type";
         }
     }
-    payloadSize = size;
-    return _getDimensions(count);
+
+    return 0;
+}
+
+void PvMonitorBase::_getDimensions(size_t count, uint32_t shape[MaxRank]) const
+{
+    printf("getDim() count %zu\n", count);
+
+    const auto& pvStructureArray = _strct->getSubField<pvd::PVStructureArray>("dimension");
+    if (pvStructureArray) {
+        const auto& pvStructure = pvStructureArray->view();
+        const auto  sz          = pvStructureArray->getLength();
+        if (sz > MaxRank)
+        {
+          logging::critical("%s: Unsupported number of dimensions %zs\n",
+                            MonTracker::name().c_str(), sz);
+          throw "Unsupported number of shape dimensions";
+        }
+        for (unsigned i = 0; i < sz; ++i) {
+            // Revisit: EPICS data shows up in [x,y] order but psana wants [y,x]
+            shape[i] = pvStructure[sz - 1 - i]->getSubField<pvd::PVInt>("size")->getAs<uint32_t>();
+            printf("getDim(): shape[%u] = %u\n", i, shape[i]);
+        }
+        printf("getDim(): shape array sz %zu\n", sz);
+    }
+    // else leave the already calculated shape alone
+    printf("getDim(): not dimension\n");
+}
+
+template<typename T>
+size_t PvMonitorBase::_getScalar(std::shared_ptr<const pvd::PVScalar> const& pvScalar, void* data, size_t size, uint32_t shape[MaxRank]) const {
+    if (sizeof(T) <= size)
+      *static_cast<T*>(data) = _strct->getSubField<pvd::PVScalar>(m_fieldName)->getAs<T>();
+    return sizeof(T);
+}
+
+static size_t copyString(void* dst, const std::string& src, size_t size)
+{
+    auto buf = static_cast<char*>(dst);
+    strncpy(buf, src.c_str(), size);    // Possibly truncates
+    auto sz  = src.size() + 1;          // +1 for null terminator
+    if  (sz >= size)  buf[size - 1] = '\0';
+    return sz;
+}
+
+size_t PvMonitorBase::_getScalarString(void* data, size_t size, uint32_t shape[MaxRank]) const
+{
+    const auto& sval(_strct->getSubField<pvd::PVScalar>(m_fieldName)->getAs<std::string>());
+    auto sz = copyString(data, sval, size);
+    shape[0] = sz < size ? sz : size;   // Rank 1 array, includes null
+    return sz;                          // Bytes needed to avoid truncation
+}
+
+template<typename T>
+size_t PvMonitorBase::_getArray(std::shared_ptr<const pvd::PVScalarArray> const& pvScalarArray, void* data, size_t size, uint32_t shape[MaxRank]) const {
+    //pvd::shared_vector<const T> vec((T*)data, [](void*){}, 0, 128); // Doesn't work
+    pvd::shared_vector<const T> vec;
+    pvScalarArray->getAs<T>(vec);
+    auto count = vec.size();
+    auto sz    = count * sizeof(T);
+    memcpy(data, vec.data(), sz < size ? sz : size); // Possibly truncates
+    shape[0] = count;                   // Number of elements in rank 1 array
+    return sz;                          // Bytes needed to avoid truncation
+}
+
+size_t PvMonitorBase::_getArrayString(void* data, size_t size, uint32_t shape[MaxRank]) const
+{
+    pvd::shared_vector<const std::string> vec;
+    _strct->getSubField<pvd::PVScalarArray>(m_fieldName)->getAs<std::string>(vec);
+    auto   count = vec.size();
+    size_t szPer = size / count;
+    char*  buf   = static_cast<char*>(data);
+    size_t maxSz = 0;
+    for (unsigned i = 0; i < count; ++i) {
+        auto sz = copyString(buf, vec[i], szPer);
+        if (sz > maxSz)   maxSz = sz;
+        buf += szPer;
+    }
+    shape[0] = count;                   // Number of    elements in rank 2 array
+    shape[1] = szPer;                   // Size of each element  in rank 2 array
+    return count * maxSz;               // Bytes needed to avoid truncation
+}
+
+size_t PvMonitorBase::_getEnum(void* data, size_t size, uint32_t shape[MaxRank]) const {
+    pvd::shared_vector<const std::string> choices;
+    const auto& pvStructure = _strct->getSubField<pvd::PVStructure>(m_fieldName);
+    auto idx = pvStructure->getSubField<pvd::PVScalar>("index")->getAs<int>();
+    pvStructure->getSubField<pvd::PVScalarArray>("choices")->getAs<std::string>(choices);
+
+    auto sz = copyString(data, choices[idx], size);
+    shape[0] = sz < size ? sz : size;   // Rank 1 array, includes null
+    return sz;                          // Bytes needed to avoid truncation
 }
 
 } // namespace Pds_Epics
