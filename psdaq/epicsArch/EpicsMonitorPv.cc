@@ -40,7 +40,6 @@ namespace Drp
     Pds_Epics::PvMonitorBase(sPvName, sProvider, sRequest),
     _sPvDescription(sPvDescription),
     _size(0),
-    _pvField("value"),
     _state(NotReady),
     _bUpdated(false),
     _bDisabled(false),
@@ -74,7 +73,7 @@ namespace Drp
       _condition.wait_for(lock, tmo, [this] { return _state == Ready; });
       if (_state != Ready)  return 1;
 
-      auto& detName = !_sPvDescription.empty() ? _sPvDescription : _pvField;
+      auto& detName = !_sPvDescription.empty() ? _sPvDescription : m_fieldName;
       varDef.NameVec.push_back(XtcData::Name(detName.c_str(), xtype[_type], _rank));
       size = _pData.size();
     }
@@ -104,32 +103,26 @@ namespace Drp
     logging::warning("%s disconnected\n", name().c_str());
   }
 
-  void EpicsMonitorPv::_ready()
-  {
-    auto size = _pData.size();
-    _shape = getData(_pData.data(), size);
-    _size = size;
-  }
-
   void EpicsMonitorPv::updated()
   {
     //logging::debug("EpicsMonitorPv::updated(): Called for '%s'", name().c_str());
 
     std::lock_guard<std::mutex> lock(_mutex);
 
+    // Place data in a temporary buffer because the Xtc buffer may not exist yet
     if (_state == Ready)
     {
-      _ready();
+      _size     = getData(_pData.data(), _pData.size(), _shape);
       _bUpdated = true;
     }
     else
     {
-      if (getParams(_pvField, _type, _nelem, _rank) == 0)
+      if (getParams(_type, _nelem, _rank) == 0)
       {
         _pData.resize(_nelem * XtcData::Name::get_element_size(xtype[_type]));
-        _ready();
-        _state = Ready;
-	_bUpdated = false;
+        _size     = getData(_pData.data(), _pData.size(), _shape);
+        _state    = Ready;
+        _bUpdated = false;
       }
       else
         _bDisabled = true;
@@ -154,7 +147,7 @@ namespace Drp
     return 0;
   }
 
-  int EpicsMonitorPv::addToXtc(XtcData::Damage& damage, bool& stale, char* pcXtcMem, size_t& iSizeXtc, std::vector<uint32_t>& sShape)
+  int EpicsMonitorPv::addToXtc(XtcData::Damage& damage, bool& stale, char* pcXtcMem, size_t& iSizeXtc, uint32_t sShape[XtcData::MaxRank])
   {
     stale = _bDisabled;
 
@@ -163,28 +156,35 @@ namespace Drp
 
     std::lock_guard<std::mutex> lock(_mutex);
 
-    auto sizeXtc = _pData.size();
-    if (sizeXtc > iSizeXtc)  sizeXtc = iSizeXtc; // Possibly truncate
-    memcpy(pcXtcMem, _pData.data(), sizeXtc);
-
-    if (_size > _pData.size())
+    // Now there's an Xtc buffer, copy data from the temporary buffer into it
+    auto sizeXtc = _size;
+    if (sizeXtc > _pData.size())        // Xtc will still be navigable
     {
-      logging::error("EpicsMonitorPv::updated: %s data truncated; size %zu vs %zu\n",
-                     name().c_str(), _pData.size(), _size);
+      logging::warning("EpicsMonitorPv::updated: %s data truncated; size %zu vs %zu\n",
+                       name().c_str(), _pData.size(), _size);
+      sizeXtc = _pData.size();          // Truncate: shape info is still be correct
       damage.increase(XtcData::Damage::Truncated);
-      _pData.resize(_size);
+      _pData.resize(_size);             // Increase temporary buffer's size
     }
+    if (sizeXtc > iSizeXtc)             // Xtc will likely not be navigable
+    {
+      logging::error("EpicsMonitorPv::addToXtc: %s data truncated; size %zu vs %zu\n",
+                     name().c_str(), iSizeXtc, sizeXtc);
+      sizeXtc = iSizeXtc;               // Truncate: shape info will be wrong
+      damage.increase(XtcData::Damage::Truncated);
+    }
+    memcpy(pcXtcMem, _pData.data(), sizeXtc); // Possibly truncate
 
     // Consider the PV stale if it hasn't updated since the last addToXtc call
     stale = !_bUpdated;
     if (stale)  logging::debug("PV is stale: %s\n", name().c_str());
 
-    //printf("XtcSize %zd, shape ", sizeXtc);
+    //printf("*** XtcSize %zu vs %zu vs %zu, rank %zu, shape ", sizeXtc, _size, _pData.size(), _rank);
     //for (auto dim: _shape)  printf("%d ", dim);
-    //printf("\n");
+    //printf("\t %s\n", name().c_str());
 
     iSizeXtc = sizeXtc;
-    sShape   = _shape;
+    memcpy(sShape, _shape, _rank * sizeof(*_shape));
 
     _bUpdated = false;
 
