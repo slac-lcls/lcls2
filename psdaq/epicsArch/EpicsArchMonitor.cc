@@ -201,7 +201,6 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
 
     bool stale;
     size_t size = payloadSize;
-    size_t rank;
     if (!epicsPvCur.addToXtc(xtc.damage, stale, pXtc, size, shapes[iPvName]))
     {
       if (epicsPvCur.rank() > 0)               // If rank is non-zero,
