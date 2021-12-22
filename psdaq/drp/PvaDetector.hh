@@ -11,6 +11,7 @@
 #include "psdaq/epicstools/PvMonitorBase.hh"
 #include "psdaq/service/Collection.hh"
 
+
 namespace Drp {
 
 class PvaDetector;
@@ -21,7 +22,8 @@ public:
     PvaMonitor(const Parameters&  para,
                const std::string& pvName,
                const std::string& provider,
-               const std::string& request);
+               const std::string& request,
+               const std::string& fieldName);
 public:
     void onConnect()    override;
     void onDisconnect() override;
@@ -36,7 +38,6 @@ private:
     const Parameters&               m_para;
     mutable std::mutex              m_mutex;
     mutable std::condition_variable m_condition;
-    const std::string               m_pvField;
     pvd::ScalarType                 m_type;
     size_t                          m_nelem;
     size_t                          m_rank;

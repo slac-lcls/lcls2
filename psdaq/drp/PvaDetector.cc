@@ -83,10 +83,10 @@ static const XtcData::Name::DataType xtype[] = {
 PvaMonitor::PvaMonitor(const Parameters&  para,
                        const std::string& pvName,
                        const std::string& provider,
-                       const std::string& request) :
-  Pds_Epics::PvMonitorBase(pvName, provider, request),
+                       const std::string& request,
+                       const std::string& field) :
+  Pds_Epics::PvMonitorBase(pvName, provider, request, field),
   m_para                  (para),
-  m_pvField               ("value"),
   m_state                 (NotReady),
   m_pvaDetector           (nullptr)
 {
@@ -118,7 +118,7 @@ int PvaMonitor::getVarDef(PvaDetector*     pvaDetector,
     if (rankHack != size_t(-1))  rank = rankHack; // Revisit: Hack!
 
     auto xtcType = xtype[m_type];
-    varDef.NameVec.push_back(XtcData::Name(m_pvField.c_str(), xtcType, rank));
+    varDef.NameVec.push_back(XtcData::Name(m_fieldName.c_str(), xtcType, rank));
 
     payloadSize = m_nelem * XtcData::Name::get_element_size(xtcType);
 
@@ -181,7 +181,7 @@ void PvaMonitor::updated()
     else {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (getParams(m_pvField, m_type, m_nelem, m_rank))  {
+        if (getParams(m_type, m_nelem, m_rank))  {
             logging::error("updated: getParams() failed");
         }
         else {
@@ -453,21 +453,24 @@ void PvaDetector::event(XtcData::Dgram& dgram, PGPEvent* pgpEvent)
                         sizeof(XtcData::Shapes)   +
                         sizeof(XtcData::Shape));
     auto payloadSize = m_pool->pebble.bufferSize() - ohSize; // Subtract overhead
-    auto size        = payloadSize;     // size available for data
-    auto shape       = m_pvaMonitor->getData(desc.data(), size);
-    if (size > payloadSize) {
+    uint32_t shape[XtcData::MaxRank];
+    auto     size    = m_pvaMonitor->getData(desc.data(), payloadSize, shape);
+    if (size > payloadSize) {           // Check actual size vs available size
         logging::debug("Truncated: Pebble buffer of size %zu is too small for payload of size %zu for %s\n",
                        m_pool->pebble.bufferSize(), size + ohSize, m_pvaMonitor->name().c_str());
         dgram.xtc.damage.increase(XtcData::Damage::Truncated);
         size = payloadSize;
     }
-    uint32_t shapeHack[XtcData::MaxRank]; // Revisit: Hack!
-    if (m_firstDimKw != 0) {
-      shapeHack[0] = m_firstDimKw;
-      shapeHack[1] = shape[0] / m_firstDimKw;
-    }
+
     desc.set_data_length(size);
-    if (m_pvaMonitor->rank()>0) desc.set_array_shape(0, m_firstDimKw == 0 ? shape.data() : shapeHack); // Revisit: Hack!
+
+    if (m_pvaMonitor->rank() > 0) {
+        if (m_firstDimKw != 0) {            // Revisit: Hack!
+            shape[1] = shape[0] / m_firstDimKw;
+            shape[0] = m_firstDimKw;
+        }
+        desc.set_array_shape(0, shape);
+    }
 
     //size_t sz = (sizeof(dgram) + dgram.xtc.sizeofPayload()) >> 2;
     //uint32_t* payload = (uint32_t*)dgram.xtc.payload();
@@ -1111,7 +1114,7 @@ int main(int argc, char* argv[])
     para.detSegment = std::stoi(para.alias.substr(found+1, para.alias.size()));
 
     // Provider is "pva" (default) or "ca"
-    std::string pv;                     // [<provider>/]<PV name>
+    std::string pv;                     // [<provider>/]<PV name>[.<field>]
     if (optind < argc)
     {
         pv = argv[optind++];
@@ -1125,7 +1128,7 @@ int main(int argc, char* argv[])
         }
     }
     else {
-        logging::critical("A PV ([<provider>/]<PV name>) is mandatory");
+        logging::critical("A PV ([<provider>/]<PV name>[.<field>]) is mandatory");
         return 1;
     }
 
@@ -1149,16 +1152,21 @@ int main(int argc, char* argv[])
         }
 
         std::string provider = "pva";
+        std::string field    = "value";
         auto pos = pv.find("/", 0);
-        if (pos != std::string::npos) {
+        if (pos != std::string::npos) { // Parse provider
             provider = pv.substr(0, pos);
             pv       = pv.substr(pos+1);
         }
+        pos = pv.find(".", 0);
+        if (pos != std::string::npos) { // Parse field
+            field = pv.substr(pos+1);
+            pv    = pv.substr(0, pos);
+        }
         auto request(provider == "pva" ? "field(value,timeStamp,dimension)"
                                        : "field(value,timeStamp)");
-
-        Drp::PvaApp app(para, std::make_shared<Drp::PvaMonitor>(para, pv, provider, request));
-        app.run();
+        auto pvaMonitor(std::make_shared<Drp::PvaMonitor>(para, pv, provider, request, field));
+        Drp::PvaApp(para, pvaMonitor).run();
         return 0;
     }
     catch (std::exception& e)  { logging::critical("%s", e.what()); }
