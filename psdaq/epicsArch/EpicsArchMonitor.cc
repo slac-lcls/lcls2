@@ -189,8 +189,9 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
   payloadSize -= nWords * sizeof(*staleFlags);
   uint64_t staleCount = 0;
 
-  std::vector<std::vector<uint32_t> > shapes(iNumPv);
+  std::vector<uint32_t[XtcData::MaxRank]> shapes(iNumPv);
   char* pXtc = reinterpret_cast<char*>(&staleFlags[nWords]);
+  unsigned index = 0;
   for (unsigned iPvName = 0; iPvName < iNumPv; iPvName++)
   {
     auto& epicsPvCur = *_lpvPvList[iPvName];
@@ -198,11 +199,12 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
     if ((_iDebugLevel >= 1) && epicsPvCur.isConnected())
       epicsPvCur.printPv();
 
-    size_t size = payloadSize;
     bool stale;
+    size_t size = payloadSize;
+    size_t rank;
     if (!epicsPvCur.addToXtc(xtc.damage, stale, pXtc, size, shapes[iPvName]))
     {
-      if (shapes[iPvName].size() != 0)         // If rank is non-zero,
+      if (epicsPvCur.rank() > 0)               // If rank is non-zero,
         payloadSize -= sizeof(XtcData::Shape); // reserve space for Shape data
 
       if (size > payloadSize) {
@@ -213,12 +215,13 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
       }
 
       if (stale) {
-        staleFlags[iPvName >> 5] |= 1 << (iPvName & 0x1f);
+        staleFlags[index >> 5] |= 1 << (index & 0x1f);
         ++staleCount;
       }
 
       pXtc        += size;
       payloadSize -= size;
+      ++index;
     }
   }
 
@@ -232,11 +235,14 @@ int EpicsArchMonitor::getData(XtcData::Xtc& xtc, XtcData::NamesLookup& namesLook
   nStales = staleCount;
 
   // Set array shape information for non-zero rank data
+  index = 0;
   for (unsigned iPvName = 0; iPvName < iNumPv; iPvName++)
   {
     const auto& epicsPvCur = *_lpvPvList[iPvName];
-    if (!epicsPvCur.isDisabled() && (shapes[iPvName].size() != 0)) {
-      desc.set_array_shape(EpicsArchDef::Data + iPvName, shapes[iPvName].data());
+    if (!epicsPvCur.isDisabled()) {
+      if (epicsPvCur.rank() > 0)
+        desc.set_array_shape(EpicsArchDef::Data + index, shapes[iPvName]);
+      ++index;
     }
   }
 
