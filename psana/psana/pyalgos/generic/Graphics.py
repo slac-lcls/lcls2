@@ -290,8 +290,11 @@ def hist(axhi, arr, bins=None, amp_range=None, weights=None, color=None, log=Fal
     """Makes historgam from input array of values (arr), which are sorted in number of bins (bins) in the range (amp_range=(amin,amax))
     """
     #axhi.cla()
-    hi = axhi.hist(arr.ravel(), bins=bins, range=amp_range, weights=weights, color=color, log=log, **kwa) #, log=logYIsOn)
-    if amp_range is not None: axhi.set_xlim(amp_range) # axhi.set_autoscale_on(False) # suppress autoscailing
+    hi = axhi.hist(arr.ravel(), bins=bins, range=amp_range, weights=weights, color=color, log=log, **kwa)
+    ori = kwa.get('orientation', None)
+    if amp_range is not None:
+        if ori[0]=='v': axhi.set_xlim(amp_range)
+        if ori[0]=='h': axhi.set_ylim(amp_range)
     wei, bins, patches = hi
     add_stat_text(axhi, wei, bins)
     return hi
