@@ -3,9 +3,9 @@ if not platform: platform = '2'
 #epics_path = f'PATH={CONDA_PREFIX}/epics/bin/linux-x86_64:'+os.environ['PATH']
 epics_path = ' '
 ld_lib_path = f'LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64'
-epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path+' '+epics_path
+epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path+' '+epics_path
 manta_env = 'EPICS_PVA_ADDR_LIST=172.21.156.12 EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path+' '+epics_path
-hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.255'+' '+ld_lib_path+' '+epics_path
+hsd_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.159.255'+' '+ld_lib_path+' '+epics_path
 andor_epics_env = 'EPICS_PVA_ADDR_LIST=172.21.156.84  EPICS_PVA_AUTO_ADDR_LIST=NO'+' '+ld_lib_path+' '+epics_path
 
 #collect_host = os.uname()[1]
@@ -101,9 +101,7 @@ procmgr_config = [
  # make transition buffer size large to accomodate a non-timestamped camera
  { host: 'drp-neh-cmp015', id:'epics_0',     flags:'spu', env:epics_env, cmd:ea_cmd1+' -l 0x8 -T 4000000'},
 
-# { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:50, cmd:udp_cmd0+' -l 0x8'},
-# Oct 18 caf: temporarily remove rtprio:50 until permissions are updated
-  { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu',            cmd:udp_cmd0+' -l 0x8'},
+ { host: 'drp-neh-cmp015', id:'mono_encoder_0', flags:'spu', rtprio:50, cmd:udp_cmd0+' -l 0x8'},
 
 # 9/23/2021 - fim2 h/w not stable
   { host: 'drp-neh-cmp007', id:'rix_fim2_0',  flags:'spu',  env:epics_env, cmd:drp_cmd0+' -D wave8 -k epics_prefix=RIX:FIM:W8:03 -l 0x10'},
@@ -113,7 +111,6 @@ procmgr_config = [
  { host: 'drp-neh-cmp013', id:'atmopal_0',   flags:'spu' ,  env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1 -k ttpv=RIX:TIMETOOL:TTALL'},
 # { host: 'drp-neh-cmp013', id:'atmopal_0',   flags:'spu' ,  env:epics_env, cmd:drp_cmd0+' -D opal -l 0x1'},
 # { host: 'drp-neh-cmp013', id:'tt_feedback', flags:'spu', env:epics_env, cmd:'python /cds/group/pcds/dist/pds/rix/scripts/ttfeedback.py' },
- { host: 'drp-neh-cmp013', id:'carepeater', flags:'spu', env:epics_env, cmd:'caRepeater' },
 
  #     Note: '-1' specifies fuzzy timestamping
  #           '-0' specifies no timestamp matching (-0 may have problems)
@@ -123,7 +120,7 @@ procmgr_config = [
  # 9MPixel G-917C manta untimestamped image @1Hz (hence the "-0" flag)
  # set the pebbleBufSize smaller since filewriter only supports 8388688 currently
 # { host: 'drp-neh-cmp015', id:'mr2k1_0',      flags:'spu', env:epics_env, cmd:pva_cmd1+' -l 0x1 MR2K1:MONO:CAM:04:DATA1:Pva:Image -k pebbleBufSize=8380000 -0'},
- { host: 'drp-neh-cmp007', id:'mebuser0', flags:'spu', cmd:meb_cmd+' -d -q {ami_workers_per_node}'},
+ { host: 'drp-neh-cmp007', id:'mebuser0', flags:'spu', cmd:meb_cmd+f' -d -q {ami_workers_per_node}'},
 ]
 
 hsd_epics = 'DAQ:RIX:HSD:1'
