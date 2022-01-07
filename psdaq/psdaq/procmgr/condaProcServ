@@ -158,7 +158,7 @@ ulimit -c $coreSize
 
 if [[ -f $PROCSERVBIN ]]; then
     $PROCSERVBIN \
-        --noautorestart --name $name $waitFlag $logFlag --allow \
+        --noautorestart --name $name --pidfile /dev/null $waitFlag $logFlag --allow \
         $ctrlPort $cmd $args
 else
     echo "error: procServ not found"
