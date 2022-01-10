@@ -46,6 +46,7 @@ pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.ver
 echo "CMAKE_BUILD_TYPE:" $cmake_option
 echo "Python install option:" $pyInstallStyle
 echo "build_ext_list:" $build_ext_list
+export BUILD_LIST=$build_ext_list
 
 if [ $force_clean == 1 ]; then
     echo "force_clean"
