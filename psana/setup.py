@@ -24,7 +24,7 @@ BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARR
 build_list_env = os.environ.get('BUILD_LIST')
 if build_list_env:
     BUILD_LIST = build_list_env.split(':')
-    #print('Build c++ python-extensions: %s' % s_exts)
+    #print('Build c++ python-extensions: %s' % str(BUILD_LIST))
 
 
 # allows a version number to be passed to the setup
@@ -280,7 +280,7 @@ if 'DGRAM' in BUILD_LIST :
                     extra_link_args=extra_link_args + openmp_link_args,
     )
     CYTHON_EXTS.append(ext)
-    
+
     ext = Extension("dgrampy",
                     sources=["psana/dgrampy.pyx"],
                     libraries = ['xtc'],
@@ -291,7 +291,7 @@ if 'DGRAM' in BUILD_LIST :
                     extra_link_args = extra_link_args_rpath,
     )
     CYTHON_EXTS.append(ext)
-    
+
 
 if 'HSD' in BUILD_LIST :
     ext = Extension("hsd",
@@ -308,18 +308,18 @@ if 'HSD' in BUILD_LIST :
     CYTHON_EXTS.append(ext)
 
 
-#if 'NDARRAY' in BUILD_LIST :
-#    ext = Extension("ndarray",
-#                    sources=["psana/pycalgos/NDArray_ext.pyx",
-#                             "psana/peakFinder/src/WFAlgos.cc"],
-#                    language="c++",
-#                    extra_compile_args = extra_cxx_compile_args,
-#                    include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
-#                    library_dirs = [os.path.join(instdir, 'lib')],
-#                    libraries=[],
-#                    extra_link_args = extra_link_args,
-#    )
-#    CYTHON_EXTS.append(ext)
+if 'NDARRAY' in BUILD_LIST :
+    ext = Extension("ndarray",
+                    sources=["psana/pycalgos/NDArray_ext.pyx",
+                             "psana/peakFinder/src/WFAlgos.cc"],
+                    language="c++",
+                    extra_compile_args = extra_cxx_compile_args,
+                    include_dirs=["psana",os.path.join(sys.prefix,'include'),np.get_include(),os.path.join(instdir,'include')],
+                    library_dirs = [os.path.join(instdir, 'lib')],
+                    libraries=[],
+                    extra_link_args = extra_link_args,
+    )
+    CYTHON_EXTS.append(ext)
 
 
 setup(
