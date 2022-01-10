@@ -5,12 +5,9 @@
 # command to build this module only
 # ./build_all.sh -m -d -b NDARRAY
 #
-#----------
 
 ####distutils: language = c++
 ####distutils: extra_compile_args = ["-std=c++11",] # "-g"]
-
-#----------
 
 #cimport cython
 #from libc.time cimport time_t, ctime
@@ -23,7 +20,6 @@ from libcpp.string cimport string
 from libcpp.vector cimport vector
 from libcpp cimport bool
 
-#----------
 
 ctypedef si.uint32_t shape_t
 ctypedef si.uint32_t size_t
@@ -35,7 +31,6 @@ ctypedef si.uint32_t index_t
 
 ctypedef int CSHAPE_T
 
-#----------
 
 ctypedef fused dtypes2d :
     cnp.ndarray[cnp.double_t, ndim=2]
@@ -47,16 +42,15 @@ ctypedef fused dtypes2d :
     cnp.ndarray[cnp.uint32_t, ndim=2]
     cnp.ndarray[cnp.uint64_t, ndim=2]
 
-#----------
 
 cdef extern from "psalg/utils/ctest_utils.hh" namespace "psalg":
     void ctest_nda[T](T *arr, int r, int c) except +
+
 
 def test_nda_fused(dtypes2d nda):
     print('nda.dtype =', str(nda.dtype))
     ctest_nda(&nda[0,0], nda.shape[0], nda.shape[1])
 
-#----------
 
 cdef extern from "psalg/utils/ctest_utils.hh" namespace "psalg":
     #void ctest_nda_v2[T](T*, CSHAPE_T*, int&) except +
@@ -78,7 +72,6 @@ def test_nda_fused_v2(dtypes2d nda):
     #nda.strides[0] = 20
     #nda.strides[1] = 4
 
-#----------
 
 #def cnp_shape_copy(dtypes2d nda):
 #    cdef cnp.ndarray[CSHAPE_T, ndim=1] ash = np.empty(nda.ndim, dtype=NP_SHAPE_T)
@@ -94,7 +87,6 @@ def test_nda_fused_v2(dtypes2d nda):
 #    ctest_nda_v2(&nda[0,0], &ash[0], nda.ndim)
 #    #for i in range(nda.ndim) : nda.shape[i] = ash[i]
 
-#----------
 
 cdef extern from "psalg/utils/ctest_utils.hh" namespace "psalg":
     void ctest_vector(vector[double] &v)
@@ -105,11 +97,7 @@ def py_ctest_vector(v):
     #v[1]=111 # THIS WORKS
     print('NDArray_ext::py_ctest_vector output v:', v)
 
-#----------
-#----------
-#----------
-#----------
-#----------
+
 
 cdef extern from "xtcdata/xtc/Array.hh" namespace "XtcData":
     cdef cppclass Array[T]:
@@ -133,7 +121,6 @@ cdef extern from "xtcdata/xtc/Array.hh" namespace "XtcData":
         void set_shape(shape_t *shape)
         void set_data(void *data)
 
-#----------
 
 cdef extern from "psalg/calib/NDArray.hh" namespace "psalg":
     cdef cppclass NDArray[T](Array[T]):
@@ -174,12 +161,11 @@ cdef extern from "psalg/calib/NDArray.hh" namespace "psalg":
 #    @property
 #    def x(self) : return self.cptr.x
 
- 
+
 #def test_nda_fused(dtypes2d nda):
 #    print('nda.dtype =', str(nda.dtype))
 #    ctest_nda(&nda[0,0], nda.shape[0], nda.shape[1])
 
-#----------
 
 #ctypedef fused ndatypes:
 #    NDArray[cnp.double_t]
@@ -191,10 +177,9 @@ cdef extern from "psalg/calib/NDArray.hh" namespace "psalg":
 #    NDArray[cnp.uint32_t]
 #    NDArray[cnp.uint64_t]
 
-#----------
 
 cdef class py_ndarray_double:
-    """ Python wrapper for C++ class NDArray. 
+    """ Python wrapper for C++ class NDArray.
     """
 
     cdef NDArray[double]* cptr # holds a C++ instance
@@ -213,7 +198,6 @@ cdef class py_ndarray_double:
             del self.cptr
             self.cptr = NULL
 
-#----------
 
 ctypedef fused dtypesv :
     cnp.float64_t
@@ -222,7 +206,6 @@ ctypedef fused dtypesv :
     cnp.int32_t
     cnp.int16_t
 
-#----------
 
 ctypedef fused dtypes1d :
     cnp.ndarray[cnp.float64_t,ndim=1]
@@ -231,14 +214,12 @@ ctypedef fused dtypes1d :
     cnp.ndarray[cnp.int32_t,  ndim=1]
     cnp.ndarray[cnp.int16_t,  ndim=1]
 
-#----------
-#
+
 # There are few unresolved puzles about code of wfpkfinder_cfd
 # 1. parameter vector[T] MUST go after T* pkvals, othervise type T is undefined...
-# 2. can't define tarameters double baseline and threshold as T ... event for fused type dtypesv
-#
+# 2. can't define parameters double baseline and threshold as T ... event for fused type dtypesv
 
-cdef extern from "psalg/peaks/WFAlgos.hh" namespace "psalg":
+cdef extern from "peakFinder/WFAlgos.hh" namespace "psalg":
     index_t find_edges[T](
         index_t npkmax,
         T* pkvals,
@@ -265,4 +246,4 @@ def wfpkfinder_cfd(wf, dtypesv baseline, dtypesv threshold, fraction, deadtime, 
     #print 'In NDArray_ext::wfpkfinder_cfd - npeaks: %d' % npeaks
     return npeaks
 
-#----------
+# EOF
