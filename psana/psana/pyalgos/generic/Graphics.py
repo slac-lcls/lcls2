@@ -466,7 +466,12 @@ def drawCenter(axes, xy0, **kwa):
 def drawLine(axes, xarr, yarr, **kwa):
     kwa.setdefault('linewidth', 1)
     kwa.setdefault('color', 'w')
-    line = lines.Line2D(xarr, yarr, **kwa)
+    #print('drawLine kwa keys: %s' % str(kwa.keys()))
+    kwal = dict_subset(kwa, ('color','linewidth','linestyle','marker','markersize',\
+           'markeredgewidth','markeredgecolor','markerfacecolor','markerfacecoloralt','fillstyle',\
+           'antialiased','dash_capstyle','solid_capstyle','dash_joinstyle','solid_joinstyle',\
+           'pickradius','drawstyle','markevery'))
+    line = lines.Line2D(xarr, yarr, **kwal)
     axes.add_artist(line)
 
 
