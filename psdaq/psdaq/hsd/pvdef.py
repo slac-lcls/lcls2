@@ -76,7 +76,12 @@ monFlow   = {'fmask'   :('i', 0, 'remaining streams'),
              'ntrig'   :('i', 0),
              'nread'   :('i', 0),
              'pkoflow' :('i', 0),
-             'oflow'   :('i', 0) }
+             'oflow'   :('i', 0),
+             'bstat'   :('i', 0, 'build state'), 
+             'dumps'   :('i', 0, 'build dumps'),
+             'bhdrv'   :('i', 0, 'header valid'),
+             'bval'    :('i', 0, 'master valid'),
+             'brdy'    :('i', 0, 'slave ready')}
  
 monEnv    = {'local12v' :('f',0),
              'edge12v'  :('f',0),

@@ -7,6 +7,7 @@
 #include "OptFmc.hh"
 #include "TprCore.hh"
 #include "Fmc134Ctrl.hh"
+#include "I2c134.hh"
 
 #include "psdaq/mmhw/TriggerEventManager2.hh"
 
@@ -106,6 +107,8 @@ namespace Pds {
             pv.putFromStructure(&_v_##p[i],_sz_##p);            \
       }
 
+      bool jesdreset = false;
+
       for(unsigned i=0; i<2; i++) {
         ChipAdcCore& chip = _m.chip(i);
         ChipAdcReg&  reg  = chip.reg;
@@ -185,27 +188,26 @@ namespace Pds {
           v.ntrig = (flowidxs>> 5)&0x1f;
           v.nread = (flowidxs>>10)&0x1f;
           v.oflow = (flowidxs>>16)&0xff;
+          uint32_t buildflow = reg.buildStatus;
+          v.bstat = (buildflow>>0)&0xf;
+          v.dumps = (buildflow>>4)&0xf;
+          v.bhdrv = (buildflow>>8)&1;
+          v.bval  = (buildflow>>9)&1;
+          v.brdy  = (buildflow>>10)&1;
           PVPUT(monFlow); }
 
         // JESD Status
         { MonJesd v;
-          bool rxreset = false;
+          Jesd204bStatus* stat = reinterpret_cast<Jesd204bStatus*>(v.stat);
           for(unsigned j=0; j<8; j++) {
-            Jesd204bStatus* stat = reinterpret_cast<Jesd204bStatus*>(v.stat);
             stat[j] = _m.jesd(i).status(j);
+            //if (stat[j].recvDataValid==0)
             if (stat[j].syncDone==0)
-              ; // rxreset = true;
+              jesdreset = true;
           }
           for(unsigned j=0; j<5; j++)
             v.clks[j] = float(_m.optfmc().clks[j]&0x1fffffff)*1.e-6;
           PVPUT(monJesd); 
-
-          if (rxreset) {
-            printf("--JESD RESET--\n");
-            unsigned u = _m.jesdctl().xcvr;
-            _m.jesdctl().xcvr = u | (1<<0);
-            _m.jesdctl().xcvr = u;
-          }
         }
 
         // ADC Monitoring
@@ -238,6 +240,13 @@ namespace Pds {
       PVPUTAU ( WrFifoCnt , FIFOS, (hdrf[i]._wrFifoCnt&0xf) );
       PVPUTAU ( RdFifoCnt , FIFOS, (hdrf[i]._rdFifoCnt&0xf) );
       */
+
+      if (jesdreset) {
+          printf("--jesdadcinit (auto)--\n");
+          _m.i2c_lock(I2cSwitch::PrimaryFmc);
+          _m.jesdctl().default_init(_m.i2c().fmc_cpld,0);
+          _m.i2c_unlock();
+      }
     
 #undef PVPUT
     }

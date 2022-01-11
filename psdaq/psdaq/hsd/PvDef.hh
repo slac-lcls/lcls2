@@ -84,6 +84,11 @@ namespace Pds {
       uint32_t nread;
       uint32_t pkoflow;
       uint32_t oflow;
+      uint32_t bstat;
+      uint32_t dumps;
+      uint32_t bhdrv;
+      uint32_t bval;
+      uint32_t brdy;
     };
 
     class MonEnv {
