@@ -5,7 +5,7 @@
 
     - loop over records in hdf5 file
       f = open_input_h5file(IFNAME, **kwargs)
-      while f.next_event() :
+      while f.next_event():
           nev = f.event_number()
 
     - get peak info
@@ -16,9 +16,9 @@
     - process peaktimes using Roentdec library algorithms,
       get and use sorted hit information
           proc = DLDProcessor(**kwargs)
-          for x,y,r,t in proc.xyrt_list(nev, nhits, pktsec) :
+          for x,y,r,t in proc.xyrt_list(nev, nhits, pktsec):
 
-    - accumulate per event DLDProcessor internal info in 
+    - accumulate per event DLDProcessor internal info in
           stats = DLDStatistics(proc,**kwargs)
           stats.fill_data(nhits, pktsec)
 
@@ -26,8 +26,6 @@
           from psana.hexanode.DLDGraphics import draw_plots
           draw_plots(stats, prefix=OFPREFIX, do_save=True, hwin_x0y0=(0,10))
 """
-
-#----------
 
 import logging
 logger = logging.getLogger(__name__)
@@ -43,11 +41,8 @@ from psana.hexanode.DLDGraphics   import draw_plots
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 from psana.pyalgos.generic.Utils import str_kwargs, do_print
 
-#----------
+USAGE = 'Use command: python %s' % sys.argv[0]
 
-USAGE = 'Use command: python %s [test-number]' % sys.argv[0]
-
-#----------
 
 def proc_data(**kwargs):
 
@@ -65,37 +60,37 @@ def proc_data(**kwargs):
     f = open_input_h5file(IFNAME, **kwargs)
     print('  file: %s\n  number of events in file %d' % (IFNAME, f.events_in_h5file()))
 
-    while f.next_event() :
+    t0_sec = time()
+    nev=0
+    while f.next_event():
         nev = f.event_number()
 
-        if nev<EVSKIP : continue
-        if nev>EVENTS : break
+        if nev<EVSKIP: continue
+        if nev>EVENTS: break
 
-        if do_print(nev) : logger.info('Event %3d'%nev)
-        t0_sec = time()
+        if do_print(nev): logger.info('Event %3d'%nev)
 
         nhits, pktsec = f.peak_arrays()
 
-        if VERBOSE :
-            print_ndarr(nhits,  '  number_of_hits : ')
-            print_ndarr(pktsec, '  peak_times_sec : ', last=4)
+        if VERBOSE:
+            print_ndarr(nhits,  '  number_of_hits: ')
+            print_ndarr(pktsec, '  peak_times_sec: ', last=4)
 
         proc.event_proc(nev, nhits, pktsec)
 
-        stats.fill_data(nhits, pktsec) 
+        stats.fill_data(nhits, pktsec)
 
-        if VERBOSE :
-            for i,(x,y,r,t) in enumerate(proc.xyrt_list(nev, nhits, pktsec)) :
+        if VERBOSE:
+            for i,(x,y,r,t) in enumerate(proc.xyrt_list(nev, nhits, pktsec)):
                  print('    hit:%2d x:%7.3f y:%7.3f t:%10.5g r:%7.3f' % (i,x,y,t,r))
+
+    dt = time()-t0_sec
+    print('%d events processing time = %.3f sec or %.6f sec/event or %.3f Hz' % (nev, dt, dt/nev, nev/dt))
 
     draw_plots(stats, prefix=OFPREFIX, do_save=True, hwin_x0y0=(0,10))
 
-#----------
-#----------
-#----------
-#----------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
     logging.basicConfig(format='%(levelname)s: %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
@@ -103,18 +98,18 @@ if __name__ == "__main__" :
     tname = sys.argv[1] if len(sys.argv) > 1 else '1'
     print('%s\nTEST %s' % (50*'_', tname))
 
-    #kwargs = {'ifname' : './amox27716-r0100-e000100-ex-22.h5',
-    kwargs = {'ifname' : '/reg/g/psdm/detector/data_test/hdf5/amox27716-r0100-e060000-single-node.h5',
-              'numchs'   : 5,
-              'numhits'  : 16,
-              'evskip'   : 7,
-              'events'   : 60000,
-              'ofprefix' : 'figs-DLD/plot',
-              'run'      : 100,
-              'exp'      : 'amox27716',
-              'calibcfg' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/configuration_quad.txt',
-              'calibtab' : '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/calibration_table_data.txt',
-              'verbose'  :  False,
+    #kwargs = {'ifname': './amox27716-r0100-e000100-ex-22.h5',
+    kwargs = {'ifname': '/reg/g/psdm/detector/data_test/hdf5/amox27716-r0100-e060000-single-node.h5',
+              'numchs'  : 5,
+              'numhits' : 16,
+              'evskip'  : 7,
+              'events'  : 60000,
+              'ofprefix': 'figs-DLD/plot',
+              'run'     : 100,
+              'exp'     : 'amox27716',
+              'calibcfg': '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/configuration_quad.txt',
+              'calibtab': '/reg/neh/home4/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/hexanode/examples/calibration_table_data.txt',
+              'verbose' :  False,
              }
 
     # Parameters of the CFD descriminator for hit time finding algotithm
@@ -163,4 +158,4 @@ if __name__ == "__main__" :
     print('\n', USAGE)
     sys.exit('End of %s' % sys.argv[0])
 
-#----------
+# EOF
