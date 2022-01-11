@@ -1,9 +1,8 @@
 #!/usr/bin/env python
-#----------
 """
    See example at the end of this file in __main__:
 
-   - loop over events of psana dataset (xtc2 file), 
+   - loop over events of psana dataset (xtc2 file),
    - draw acqiris waveforms in selected ROI for all quad-DLD channels,
    - for each waveform run peakfinder peaks(wfs,wts) and
      draw peak times as vertical lines.
@@ -18,9 +17,7 @@ from psana.hexanode.WFPeaks import WFPeaks
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 import psana.pyalgos.generic.Graphics as gr
 
-#----------
 tname = sys.argv[1] if len(sys.argv) > 1 else '1'
-#----------
 
 binmin, binmax = 6000, 22000 # (7500,26500)
 #  (7500,26500)  if tname == '1' else\
@@ -33,7 +30,7 @@ kwargs = {'numchs'   :  5,
           'numhits'  : 50,
          }
 
-if tname == '2' :
+if tname == '2':
     kwargs.update({'version':      2,
            'pf2_sigmabins'  :      3,
            'pf2_nstdthr'    :     -3,
@@ -44,7 +41,7 @@ if tname == '2' :
            'pf2_wfbinend'   : binmax,
           })
 
-elif tname == '3' :
+elif tname == '3':
     kwargs.update({'version':      3,
            'pf3_sigmabins'  :      3,
            'pf3_basebins'   :    100,
@@ -57,7 +54,7 @@ elif tname == '3' :
            'pf3_wfbinend'   : binmax,
             })
 
-elif tname == '4' :
+elif tname == '4':
     kwargs.update({'version' : 4,
                   'paramsCFD': {
  4: {'name': 'mcp',
@@ -111,7 +108,7 @@ elif tname == '4' :
   'timerange_low': 1e-06,
   'walk': 0}}})
 
-else :
+else:
     kwargs.update({'version':      1,
           'cfd_base'        :      0,
           'cfd_thr'         :  -0.05,
@@ -131,7 +128,6 @@ print(str_kwargs(kwargs, title='Input parameters:'))
 # algorithm initialization in global scope
 peaks = WFPeaks(**kwargs)
 
-#----------
 # global parameters for graphics
 
 tbin_ns = 0.25*1e-9
@@ -140,7 +136,7 @@ time_range_sec=(binmin*tbin_ns, binmax*tbin_ns)
 #time_range_sec=(0.0000000,0.0000111) # entire wf duration in this experiment
 
 naxes = 5 # 5 for quad- or 7 for hex-anode
-# assumes that lcls2 detector data returns channels 
+# assumes that lcls2 detector data returns channels
 # in desired order for u1, u2, v1, v2, [w1, w2,] mcp
 
 #gfmt = ('b-', 'r-', 'g-', 'k-', 'm-', 'y-', 'c-', )
@@ -157,15 +153,13 @@ fig = gr.figure(figsize=(15,15), title='Image')
 fig.clear()
 ax = [gr.add_axes(fig, axwin=(x0, y0 + i*dy, w, h)) for i in range(naxes)]
 
-#----------
 
-def array_of_selected_channels(a, ch = (2,3,4,5,6)) :
+def array_of_selected_channels(a, ch = (2,3,4,5,6)):
     """converts shape:(8, 44000) -> shape:(5, 44000)"""
     return a[ch,:]
 
-#----------
 
-def draw_waveforms(wfs, wts, nev) :
+def draw_waveforms(wfs, wts, nev):
     """Draws all waveforms on figure axes, one waveform per axis.
        Parameters:
        - wfs [np.array] shape=(NUM_CHANNELS, NUM_SAMPLES) - waveform intensities
@@ -191,7 +185,7 @@ def draw_waveforms(wfs, wts, nev) :
     print_ndarr(pktsec,'  pktsec: ', last=4)
     print_ndarr(pkvals,'  pkvals: ', last=4)
 
-    for ch in range(naxes) :
+    for ch in range(naxes):
         ax[ch].clear()
         ax[ch].set_xlim(time_range_sec)
         ax[ch].set_ylabel(ylab[ch], fontsize=14)
@@ -209,24 +203,22 @@ def draw_waveforms(wfs, wts, nev) :
     gr.draw_fig(fig)
     gr.show(mode='non-hold')
 
-#----------
 
-def draw_times(axis, pkvals, pkinds, wt) :
+def draw_times(axis, pkvals, pkinds, wt):
     """Adds to figure axis a set of vertical lines for found peaks.
        Parameters:
        - axis - figure axis to draw a single waveform
-       - pkvals [np.array] - 1-d peak values 
+       - pkvals [np.array] - 1-d peak values
        - pkinds [np.array] - 1-d peak indexes in wt
        - wt [np.array] - 1-d waveform sample times - is used to get time [sec] from pkinds
     """
-    for v,i in zip(pkvals,pkinds) :
+    for v,i in zip(pkvals,pkinds):
         t = wt[i]
         vend = v if abs(v)>0.05 else -0.5
         gr.drawLine(axis, (t,t), (0,vend), s=10, linewidth=2, color='r')
 
-#----------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     EVSKIP = 0
     EVENTS = 10 + EVSKIP
@@ -239,19 +231,19 @@ if __name__ == "__main__" :
     det  = orun.Detector('tmo_quadanode') # 'tmo_hexanode'
 
     for n,evt in enumerate(orun.events()):
-        if n<EVSKIP : continue
-        if n>EVENTS : break
+        if n<EVSKIP: continue
+        if n>EVENTS: break
         print('%s\nEvent # %d' % (50*'_',n))
 
         wfs = det.raw.waveforms(evt); print_ndarr(wfs, '  wforms: ', last=4)
         wts = det.raw.times(evt);     print_ndarr(wts, '  wtimes: ', last=4)
 
         draw_waveforms(wfs, wts, n)
-        if n==EVSAVE :
+        if n==EVSAVE:
             np.save(ofname%n, wfs)
             print('File saved: %s' % (ofname%n))
-        
+
     gr.save((ofname%(n-1)).replace('.npy','.png'))
     gr.show()
 
-#----------
+# EOF
