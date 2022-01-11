@@ -1,4 +1,3 @@
-#----------
 
 """
 Class :py:class:`WFHDF5IO` - HDF5 I/O for waveforms
@@ -18,9 +17,9 @@ Usage ::
     from psana.hexanode.WFPeaks import WFPeaks
     wfpeaks = WFPeaks(**kwargs)
 
-    f = open_output_h5file(self, wfpeaks, './test.h5') 
+    f = open_output_h5file(self, wfpeaks, './test.h5')
 
-    # in the event loop :
+    # in the event loop:
         # wfs,wts = input arrays of waveforms and sample times, shape=(nchannels, nsamples)
         wfpeaks.proc_waveforms(wfs, wts)
         f.add_event_to_h5file()
@@ -30,8 +29,8 @@ Usage ::
 
     f = open_input_h5file(self, './test.h5')
 
-    # event loop :
-    while f.next_event() :
+    # event loop:
+    while f.next_event():
         # Access methods
         #----------------
         nevts  = f.events_in_h5file()
@@ -53,11 +52,9 @@ from psana.pyalgos.generic.Utils import str_kwargs
 #import numpy as np
 #from psana.pyalgos.generic.NDArrUtils import print_ndarr
 
-#----------
+class WFHDF5IO:
 
-class WFHDF5IO :
-
-    def __init__(self, **kwargs) :
+    def __init__(self, **kwargs):
         """
         """
         logger.debug(str_kwargs(kwargs, title='WFHDF5IO input parameters:'))
@@ -69,11 +66,11 @@ class WFHDF5IO :
         self._size_increment = kwargs.get('size_increment', 4096)
 
 
-    def open_output_h5file(self, fname, wfpeaks) :
+    def open_output_h5file(self, fname, wfpeaks):
         self._nev = 0
         self._nevmax = self._size_increment
         self._wfpeaks        = wfpeaks
-        self.NUM_CHANNELS    = wfpeaks.NUM_CHANNELS # kwargs.get('numchs',5) #  (int) - number 
+        self.NUM_CHANNELS    = wfpeaks.NUM_CHANNELS # kwargs.get('numchs',5) #  (int) - number
         self.NUM_HITS        = wfpeaks.NUM_HITS     # kwargs.get('numhits',16) # (int) - maximal
 
         self._of = h5py.File(fname,'w')
@@ -94,8 +91,8 @@ class WFHDF5IO :
         self._start_time_sec = time()
 
 
-    def close_output_h5file(self) :
-        if self._of is None : return
+    def close_output_h5file(self):
+        if self._of is None: return
 
         self._stop_time_sec = time()
         self._resize_h5_datasets(self._nev)
@@ -104,23 +101,23 @@ class WFHDF5IO :
         self.h5ds_proc_time[0]  = self._stop_time_sec - self._start_time_sec
         self.h5ds_nevents[0]    = self._nev
         self.h5ds_tdc_res_ns[0] = self.TDC_RESOLUTION
-        self.h5ds_run[0]        = self.RUN
+        self.h5ds_run[0]        = str(self.RUN)
         self.h5ds_exp[0]        = self.EXP
         logger.debug('Close output file: %s' % self._of.filename)
         self._of.close()
         self._of = None
 
 
-    def _resize_h5_datasets(self, size=None) :
+    def _resize_h5_datasets(self, size=None):
         self._nevmax = self._nevmax + self._size_increment if size is None else size
         self._of.flush()
         self.h5ds_nhits       .resize(self._nevmax, axis=0)   # or dset.resize((20,1024))
         self.h5ds_tdcsec      .resize(self._nevmax, axis=0)   # or dset.resize((20,1024))
-        self.h5ds_event_number.resize(self._nevmax, axis=0) 
-        self.h5ds_event_time  .resize(self._nevmax, axis=0) 
+        self.h5ds_event_number.resize(self._nevmax, axis=0)
+        self.h5ds_event_time  .resize(self._nevmax, axis=0)
 
 
-    def add_event_to_h5file(self) :
+    def add_event_to_h5file(self):
         assert (self._wfpeaks._wfs_old is not None),\
                "waveforms need to be processed before calling add_event_to_h5file()"
         i = self._nev
@@ -129,10 +126,10 @@ class WFHDF5IO :
         self.h5ds_event_number[i] = i
         self.h5ds_event_time  [i] = time()
         self._nev += 1
-        if self._nev > self._nevmax : self._resize_h5_datasets()
+        if self._nev > self._nevmax: self._resize_h5_datasets()
 
 
-    def open_input_h5file(self, fname='./test.h5') :
+    def open_input_h5file(self, fname='./test.h5'):
         self._error_flag = 0
         self._nev = 0
         self._if = f = h5py.File(fname,'r')
@@ -148,16 +145,16 @@ class WFHDF5IO :
         logger.debug('File %s has %d records' % (fname, self.h5ds_nevents))
 
 
-    def close_input_h5file(self) :
-        if self._if is None : return
+    def close_input_h5file(self):
+        if self._if is None: return
         logger.debug('Close file: %s' % self._if.filename)
         self._if.close()
         self._if = None
 
 
-    def next_event(self, nev=None) :
+    def next_event(self, nev=None):
         i = nev if nev is not None else self._nev
-        if i>self.h5ds_nevents-1 : 
+        if i>self.h5ds_nevents-1:
              return False
         self._number_of_hits = self.h5ds_nhits[i]
         self._tdcsec         = self.h5ds_tdcsec[i] if self.h5ds_tdcsec is not None else\
@@ -177,38 +174,35 @@ class WFHDF5IO :
     def stop_time(self)        : return self._stop_time_sec
 
     # interface methods - return arrays through input parameters
-    def get_number_of_hits_array(self, arr, maxvalue=None) : # arr[:] = self._number_of_hits[:]
-        for i,v in enumerate(self._number_of_hits) :
+    def get_number_of_hits_array(self, arr, maxvalue=None): # arr[:] = self._number_of_hits[:]
+        for i,v in enumerate(self._number_of_hits):
             arr[i] = v if v<maxvalue else maxvalue
 
-    def get_tdc_data_array(self, arr, maxsize=-1) : arr[:,0:maxsize] = self._tdcsec[:,0:maxsize]
+    def get_tdc_data_array(self, arr, maxsize=-1): arr[:,0:maxsize] = self._tdcsec[:,0:maxsize]
 
-    def error_flag(self) : return self._error_flag
-    def get_error_text(self, error_flag) : return 'no-error: flag=%d' % self._error_flag
+    def error_flag(self): return self._error_flag
+    def get_error_text(self, error_flag): return 'no-error: flag=%d' % self._error_flag
 
 
-    def __del__(self) :
+    def __del__(self):
         #logger.debug('In WFHDF5IO.__del__')
         self.close_output_h5file()
         self.close_input_h5file()
 
-#----------
 
-def open_output_h5file(fname, peaks, **kwargs) :
+def open_output_h5file(fname, peaks, **kwargs):
     f = WFHDF5IO(**kwargs)
     f.open_output_h5file(fname, peaks)
     return f
 
-#----------
 
-def open_input_h5file(fname, **kwargs) :
+def open_input_h5file(fname, **kwargs):
     f = WFHDF5IO(**kwargs)
     f.open_input_h5file(fname)
     return f
 
-#----------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
     print('See example in hexanode/examples/ex-##-quad-*.py')
 
-#----------
+# EOF
