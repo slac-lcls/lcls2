@@ -5,8 +5,8 @@ detnames -i /reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0085-opal1k.xtc2
 ----------------------------------------
 Name    | Det Type | Data Type | Version
 ----------------------------------------
-runinfo | runinfo  | runinfo   | 0_0_1  
-opal    | ele_opal | raw       | 1_2_3  
+runinfo | runinfo  | runinfo   | 0_0_1
+opal    | ele_opal | raw       | 1_2_3
 ----------------------------------------
 
 cdb add -e testexper -d opal1000_test -c pop_rbfs -r 50 -f /reg/g/psdm/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.pkl -i pkl -u dubrovin
@@ -17,7 +17,6 @@ cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /reg/g/psdm/detector/calib
 
 Access opal1k camera in xtc2 files
 """
-#----------
 
 import sys
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
@@ -25,12 +24,10 @@ from psana import DataSource
 
 print('e.g.: [python] %s [test-number]' % sys.argv[0])
 
-#----------
 
 def test_opal_data_access() :
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
 
-    #----------
     print('DIRECT ACCESS CALIBRATION CONSTANTS')
 
     from psana.pscalib.calib.MDBWebUtils import calib_constants
@@ -39,7 +36,6 @@ def test_opal_data_access() :
     print('\ndirect consatnts access data:')
     for k,v in data.items() : print_ndarr(v, '%03d : '%k)
 
-    #----------
     print('DETECTOR INTERFACE ACCESS CALIBRATION CONSTANTS')
 
     ds = DataSource(files='/reg/g/psdm/detector/data2_test/xtc/data-amox27716-r0085-opal1k.xtc2')
@@ -60,12 +56,11 @@ def test_opal_data_access() :
         break
 
     calib_data, calib_meta = camera.calibconst.get('pop_rbfs')
-    print('camera..calibconst.get   calib_meta', calib_meta)
+    print('camera.calibconst.get   calib_meta', calib_meta)
 
-#----------
 
 if __name__ == "__main__":
     test_opal_data_access()
 
-#----------
+# EOF
 

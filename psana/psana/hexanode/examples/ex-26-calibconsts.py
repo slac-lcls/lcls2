@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#----------
 
 import logging
 logger = logging.getLogger(__name__)
@@ -9,7 +8,6 @@ from psana import DataSource
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 import psana.pscalib.calib.MDBWebUtils as wu
 
-#----------
 
 def test_calibconst() :
 
@@ -33,9 +31,8 @@ def test_calibconst() :
         print_ndarr(det.raw.times(evt),     '  times : ', last=4)
         print_ndarr(det.raw.waveforms(evt), '  wforms: ', last=4)
 
-#----------
 
 if __name__ == "__main__" :
     test_calibconst()
 
-#----------
+# EOF

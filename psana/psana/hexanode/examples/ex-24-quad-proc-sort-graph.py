@@ -10,7 +10,7 @@
 
     - use Detector interface to get acqiris raw waveforms and sampling times
           det = orun.Detector(DETNAME)
-          wts = det.raw.times(evt)     
+          wts = det.raw.times(evt)
           wfs = det.raw.waveforms(evt)
 
     - process all Quad-DLD chanel waveforms using peakfinder
@@ -20,9 +20,9 @@
     - process found peaktimes using Roentdec library algorithms,
       get and use sorted hit information
           proc = DLDProcessor(**kwargs)
-          for x,y,r,t in proc.xyrt_list(nev, nhits, pktsec) :
+          for x,y,r,t in proc.xyrt_list(nev, nhits, pktsec):
 
-    - accumulate per event DLDProcessor internal info in 
+    - accumulate per event DLDProcessor internal info in
           stats = DLDStatistics(proc,**kwargs)
           stats.fill_data(nhits, pktsec)
 
@@ -30,8 +30,6 @@
           from psana.hexanode.DLDGraphics import draw_plots
           draw_plots(stats, prefix=OFPREFIX, do_save=True, hwin_x0y0=(0,10))
 """
-
-#----------
 
 import logging
 logger = logging.getLogger(__name__)
@@ -48,11 +46,8 @@ from psana.hexanode.DLDGraphics   import draw_plots
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 from psana.pyalgos.generic.Utils import str_kwargs, do_print
 
-#----------
+USAGE = 'Usage: python %s' % sys.argv[0]
 
-USAGE = 'Use command: python %s [test-number]' % sys.argv[0]
-
-#----------
 
 def proc_data(**kwargs):
 
@@ -76,40 +71,36 @@ def proc_data(**kwargs):
     stats = DLDStatistics(proc,**kwargs)
 
     for nev,evt in enumerate(orun.events()):
-        if nev<EVSKIP : continue
-        if nev>EVENTS : break
+        if nev<EVSKIP: continue
+        if nev>EVENTS: break
 
-        if do_print(nev) : logger.info('Event %3d'%nev)
+        if do_print(nev): logger.info('Event %3d'%nev)
         t0_sec = time()
 
-        wts = det.raw.times(evt)     
+        wts = det.raw.times(evt)
         wfs = det.raw.waveforms(evt)
 
-        nhits, pkinds, pkvals, pktsec = peaks(wfs,wts) # ACCESS TO PEAK INFO
+        nhits, pkinds, pkvals, pktsec = peaks(wfs,wts)
 
-        if VERBOSE :
+        if VERBOSE:
             print("  waveforms processing time = %.6f sec" % (time()-t0_sec))
-            print_ndarr(wfs,    '  waveforms      : ', last=4)
-            print_ndarr(wts,    '  times          : ', last=4)
-            print_ndarr(nhits,  '  number_of_hits : ')
-            print_ndarr(pktsec, '  peak_times_sec : ', last=4)
+            print_ndarr(wfs,    '  waveforms     : ', last=4)
+            print_ndarr(wts,    '  times         : ', last=4)
+            print_ndarr(nhits,  '  number_of_hits: ')
+            print_ndarr(pktsec, '  peak_times_sec: ', last=4)
 
         proc.event_proc(nev, nhits, pktsec)
 
-        stats.fill_data(nhits, pktsec) 
+        stats.fill_data(nhits, pktsec)
 
-        if VERBOSE :
-            for i,(x,y,r,t) in enumerate(proc.xyrt_list(nev, nhits, pktsec)) :
+        if VERBOSE:
+            for i,(x,y,r,t) in enumerate(proc.xyrt_list(nev, nhits, pktsec)):
                  print('    hit:%2d x:%7.3f y:%7.3f t:%10.5g r:%7.3f' % (i,x,y,t,r))
 
     draw_plots(stats, prefix=OFPREFIX, do_save=True, hwin_x0y0=(0,10))
 
-#----------
-#----------
-#----------
-#----------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     #fmt='%(asctime)s %(name)s %(lineno)d %(levelname)s: %(message)s'
     logging.basicConfig(format='%(levelname)s: %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
@@ -164,4 +155,4 @@ if __name__ == "__main__" :
     print('\n', USAGE)
     sys.exit('End of %s' % sys.argv[0])
 
-#----------
+# EOF
