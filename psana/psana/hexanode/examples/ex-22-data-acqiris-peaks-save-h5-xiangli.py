@@ -44,6 +44,8 @@ def proc_data(**kwargs):
     orun  = next(ds.runs())
     det   = orun.Detector(DETNAME)
 
+    tb_sec = time()
+    nev = 0
     for nev,evt in enumerate(orun.events()):
 
         if nev<EVSKIP: continue
@@ -65,6 +67,8 @@ def proc_data(**kwargs):
             print_ndarr(pktsec, '    peak_times_sec : ', last=4)
 
         ofile.add_event_to_h5file()
+
+    print("  ev:%4d processing time = %.6f sec" % (nev, time()-tb_sec))
 
 
 if __name__ == "__main__":
