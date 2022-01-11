@@ -344,6 +344,15 @@ def intInput(layout, pv, label):
     lo.addWidget( PvEditInt(pv, '') )
     layout.addLayout(lo)
 
+def addUsTab(self,pvbase):
+    lor = QtWidgets.QVBoxLayout()
+    lor.addWidget( addTiming(self,pvbase+'Us:') )
+    lor.addWidget( PvMmcm(pvbase+'XTPG:MMCM3', pvbase+'XTPG:ResetMmcm3', 'mmcm3') )
+
+    w = QtWidgets.QWidget()
+    w.setLayout(lor)
+    return w
+
 def addCuTab(self,pvbase):
     lor = QtWidgets.QVBoxLayout()
     lor.addWidget( addTiming(self,pvbase+'Cu:') )
@@ -407,9 +416,9 @@ class Ui_MainWindow(object):
             pv = Pv(pvbase+'FwBuild')
             v = pv.get()
             if 'xtpg' in v:
-                tw.addTab( addCuTab (self,pvbase      ), "CuTiming")
+                tw.addTab( addCuTab (self,pvbase), "CuTiming")
             else:
-                tw.addTab( addTiming(self,pvbase+'Us:'), "UsTiming")
+                tw.addTab( addUsTab (self,pvbase), "UsTiming")
 
             tw.addTab(FrontPanelAMC(pvbase,0),"AMC0")
             tw.addTab(FrontPanelAMC(pvbase,1),"AMC1")
