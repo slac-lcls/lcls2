@@ -219,7 +219,7 @@ def draw_times(axis, pkvals, pkinds, wt):
 
 
 if __name__ == "__main__":
-
+    USAGE = '\nUsage: python %s <test-number>\n  where <test-name> stands for 1-4 peakfinder version' % sys.argv[0]
     EVSKIP = 0
     EVENTS = 10 + EVSKIP
     EVSAVE = EVENTS
@@ -245,5 +245,7 @@ if __name__ == "__main__":
 
     gr.save((ofname%(n-1)).replace('.npy','.png'))
     gr.show()
+
+    print(USAGE)
 
 # EOF
