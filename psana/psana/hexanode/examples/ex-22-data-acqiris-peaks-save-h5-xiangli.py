@@ -2,15 +2,12 @@
 """
    Reads xtc2 processes waveforms and saves peak info in hdf5.
 
-   The same as ex-25-quad-proc-data.py, 
+   The same as ex-25-quad-proc-data.py,
    BUT:
        - do not use DLDProcessor
        + saves wf times and nhits in HDF5 file
    peak time units: [sec]
 """
-
-#----------
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -24,11 +21,7 @@ from psana.hexanode.WFHDF5IO import open_output_h5file
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 from psana.pyalgos.generic.Utils import str_kwargs, do_print
 
-#----------
-
-USAGE = 'Use command: python %s [test-number]' % sys.argv[0]
-
-#----------
+USAGE = 'Usage: python %s' % sys.argv[0]
 
 def proc_data(**kwargs):
 
@@ -52,19 +45,19 @@ def proc_data(**kwargs):
     det   = orun.Detector(DETNAME)
 
     for nev,evt in enumerate(orun.events()):
-    
-        if nev<EVSKIP : continue
-        if nev>EVENTS : break
 
-        if do_print(nev) : logger.info('Event %4d'%nev)
+        if nev<EVSKIP: continue
+        if nev>EVENTS: break
+
+        if do_print(nev): logger.info('Event %4d'%nev)
         t0_sec = time()
 
-        wts = det.raw.times(evt)     
+        wts = det.raw.times(evt)
         wfs = det.raw.waveforms(evt)
 
         nhits, pkinds, pkvals, pktsec = peaks(wfs,wts) # ACCESS TO PEAK INFO
 
-        if VERBOSE :
+        if VERBOSE:
             print("  ev:%4d waveforms processing time = %.6f sec" % (nev, time()-t0_sec))
             print_ndarr(wfs,    '    waveforms      : ', last=4)
             print_ndarr(wts,    '    times          : ', last=4)
@@ -73,9 +66,8 @@ def proc_data(**kwargs):
 
         ofile.add_event_to_h5file()
 
-#----------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s: %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
 
@@ -92,8 +84,8 @@ if __name__ == "__main__" :
               'run'      : 100,
               'exp'      : 'amox27716',
               'version'  : 4,
-              'DLD': True,
-              'paramsCFD' : {0: {'channel': 'mcp',
+              'DLD'      : True,
+              'paramsCFD': {0: {'channel': 'mcp',
                               'delay': 3.068e-09,
                               'fraction': 0.35,
                               'offset': 0.054470544805354439,
@@ -162,4 +154,4 @@ if __name__ == "__main__" :
     print('\n%s' % USAGE)
     sys.exit('End of %s' % sys.argv[0])
 
-#----------
+# EOF

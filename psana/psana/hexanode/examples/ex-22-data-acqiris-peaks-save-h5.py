@@ -2,14 +2,12 @@
 """
    Reads xtc2 processes waveforms and saves peak info in hdf5.
 
-   The same as ex-25-quad-proc-data.py, 
+   The same as ex-25-quad-proc-data.py,
    BUT:
        - do not use DLDProcessor
        + saves wf times and nhits in HDF5 file
    peak time units: [sec]
 """
-
-#----------
 
 import logging
 logger = logging.getLogger(__name__)
@@ -24,11 +22,7 @@ from psana.hexanode.WFHDF5IO import open_output_h5file
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 from psana.pyalgos.generic.Utils import str_kwargs, do_print
 
-#----------
-
-USAGE = 'Use command: python %s [test-number]' % sys.argv[0]
-
-#----------
+USAGE = 'Usage: python %s' % sys.argv[0]
 
 def proc_data(**kwargs):
 
@@ -52,29 +46,28 @@ def proc_data(**kwargs):
     det   = orun.Detector(DETNAME)
 
     for nev,evt in enumerate(orun.events()):
-        if nev<EVSKIP : continue
-        if nev>EVENTS : break
+        if nev<EVSKIP: continue
+        if nev>EVENTS: break
 
-        if do_print(nev) : logger.info('Event %4d'%nev)
+        if do_print(nev): logger.info('Event %4d'%nev)
         t0_sec = time()
 
-        wts = det.raw.times(evt)     
+        wts = det.raw.times(evt)
         wfs = det.raw.waveforms(evt)
 
         nhits, pkinds, pkvals, pktsec = peaks(wfs,wts) # ACCESS TO PEAK INFO
 
-        if VERBOSE :
+        if VERBOSE:
             print("  ev:%4d waveforms processing time = %.6f sec" % (nev, time()-t0_sec))
-            print_ndarr(wfs,    '    waveforms      : ', last=4)
-            print_ndarr(wts,    '    times          : ', last=4)
-            print_ndarr(nhits,  '    number_of_hits : ')
-            print_ndarr(pktsec, '    peak_times_sec : ', last=4)
+            print_ndarr(wfs,    '    waveforms     : ', last=4)
+            print_ndarr(wts,    '    times         : ', last=4)
+            print_ndarr(nhits,  '    number_of_hits: ')
+            print_ndarr(pktsec, '    peak_times_sec: ', last=4)
 
         ofile.add_event_to_h5file()
 
-#----------
 
-if __name__ == "__main__" :
+if __name__ == "__main__":
 
     logging.basicConfig(format='%(levelname)s: %(message)s', datefmt='%Y-%m-%dT%H:%M:%S', level=logging.INFO)
 
@@ -90,7 +83,7 @@ if __name__ == "__main__" :
               'ofprefix' : './',
               'run'      : 100,
               'exp'      : 'amox27716',
-              'verbose'  :  True,
+              'verbose'  : True,
              }
 
     # Parameters of the CFD descriminator for hit time finding algotithm
@@ -112,4 +105,4 @@ if __name__ == "__main__" :
     print('\n%s' % USAGE)
     sys.exit('End of %s' % sys.argv[0])
 
-#----------
+# EOF
