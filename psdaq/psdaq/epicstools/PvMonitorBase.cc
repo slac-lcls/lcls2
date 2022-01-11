@@ -344,8 +344,6 @@ int PvMonitorBase::getParams(pvd::ScalarType& type,
 
 void PvMonitorBase::_getDimensions(size_t count, uint32_t shape[MaxRank]) const
 {
-    printf("getDim() count %zu\n", count);
-
     const auto& pvStructureArray = _strct->getSubField<pvd::PVStructureArray>("dimension");
     if (pvStructureArray) {
         const auto& pvStructure = pvStructureArray->view();
@@ -359,12 +357,9 @@ void PvMonitorBase::_getDimensions(size_t count, uint32_t shape[MaxRank]) const
         for (unsigned i = 0; i < sz; ++i) {
             // Revisit: EPICS data shows up in [x,y] order but psana wants [y,x]
             shape[i] = pvStructure[sz - 1 - i]->getSubField<pvd::PVInt>("size")->getAs<uint32_t>();
-            printf("getDim(): shape[%u] = %u\n", i, shape[i]);
         }
-        printf("getDim(): shape array sz %zu\n", sz);
     }
     // else leave the already calculated shape alone
-    printf("getDim(): not dimension\n");
 }
 
 template<typename T>
